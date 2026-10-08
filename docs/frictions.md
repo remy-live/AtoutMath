@@ -3381,3 +3381,22 @@ lignes** — 2026-10-01
   de faire tomber une épreuve neuve, se demander d'abord si c'est l'ÉPREUVE qui
   est faible — ou si c'est le CODE qui est mort. Ici c'était le code, et la
   bonne correction était de le retirer.
+
+## La revue de Rémy n'était plus sur le disque — 2026-10-08
+
+- **Ce que je voulais faire** : traiter le dernier point de sa revue du
+  catalogue, « un imprimé avec plusieurs questions pour un même tableau de
+  mosaïque ».
+- **Ce qui coûte** : une incertitude évitable. Le fichier `revue-2026-10-07.md`
+  avait été envoyé dans la conversation, lu, et jamais écrit sur le disque. Mes
+  propres notes l'avaient rattaché au mauvais exercice (`calc-add`, où
+  « mosaïque » n'a aucun sens). Il a fallu remonter la piste dans le catalogue
+  — `geo-mosaique` portait bien une `consignePapier` et aucune figure — pour
+  retrouver de quoi il parlait.
+- **Combien de fois** : || — c'est la deuxième revue qu'il envoie, et la
+  deuxième fois qu'elle ne survit pas à la session.
+- **Ce qui manque** : une habitude, pas un outil. **Toute liste de remarques
+  que Rémy envoie s'écrit dans `docs/` avant qu'on commence à la traiter**, et
+  les points faits s'y cochent au fur et à mesure. Une revue de vingt-deux
+  points ne tient pas dans une session, et ce qui n'est pas sur le disque
+  n'existe pas à la suivante.

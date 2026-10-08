@@ -914,9 +914,19 @@ export const geometrieExercises = [
         // touché, et il ne sait toujours pas pourquoi. Ce qui lui manque est le
         // TRAJET — voir sa pièce passer de l'autre côté de l'axe et se poser.
         id: 'geo-mosaique', title: 'La Mosaïque des Transformations',
-        colonnesPapier: 2,
         cree: '2026-10-06',
-        consignePapier: 'Pour chaque ligne, écris le numéro de la pièce image.',
+        // PLUSIEURS QUESTIONS POUR UN MÊME TABLEAU, demandé par Rémy dans sa
+        // revue du catalogue.
+        //
+        // La feuille écrivait « Quelle est l'image de la pièce 10 par la
+        // symétrie de centre K ? » suivi d'un pointillé, et RIEN d'autre — ni
+        // mosaïque, ni pièces, ni point K. La question était insoluble, et elle
+        // occupait quand même sa place : le défaut qu'il avait déjà relevé sur
+        // les quatre fiches de géométrie.
+        //
+        // `colonnesPapier` est parti avec : ce n'est plus une colonne de
+        // questions écrites, c'est un DESSIN avec ses questions à côté.
+        printable: 'mosaique', printGeneratorId: 'geo.mosaique-fiche',
         generatorId: 'geo.transfo.pavageImage', activityId: 'pavage-image',
         skills: ['geo.transfo.axiale', 'geo.transfo.centrale',
             'geo.transfo.translation', 'geo.transfo.rotation'],

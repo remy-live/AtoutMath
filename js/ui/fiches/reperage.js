@@ -5,7 +5,7 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, echapperSheet, geoQuadrillage, rvbCss
+    ENCRE, boiteDe, couperEnLignes, echapperSheet, geoQuadrillage, rvbCss
 } from './socle.js';
 import { SENS as SENS_ROTATION } from '../../core/transformations.js';
 import { caseCentrale } from '../../core/quadrillageSvg.js';
@@ -1164,7 +1164,256 @@ function dessinerColorierPdf(doc, item, slot, solution) {
     });
 }
 
+// ── LA MOSAÏQUE DES TRANSFORMATIONS ─────────────────────────────────────────
+//
+// RÉMY, dans sa revue : il voulait « un imprimé avec plusieurs questions pour
+// un même tableau de mosaïque ».
+//
+// MESURÉ AVANT : la feuille écrivait « Quelle est l'image de la pièce 10 par la
+// symétrie de centre K ? » suivi d'un pointillé, et RIEN d'autre — ni mosaïque,
+// ni pièces, ni point K. Une question dont l'énoncé entier a disparu n'est pas
+// incomplète, elle est INSOLUBLE, et elle occupait quand même sa place. C'est
+// le défaut qu'il avait déjà relevé sur les quatre fiches de géométrie.
+//
+// UNE MOSAÏQUE EST UN GRAND DESSIN : quinze pièces, onze points nommés. En
+// imprimer une par question en met quatre par page, chacune réduite à un timbre.
+// Quatre questions sur LA MÊME mosaïque tiennent à côté d'un dessin deux fois
+// plus grand — et relire la même figure sous quatre transformations est
+// l'exercice, pas une économie d'encre.
+//
+// CE QUI REND LA CHOSE POSSIBLE : LES LETTRES. « la symétrie d'axe (OD) », « de
+// centre G », « de vecteur IB » — ce sont les lettres des SOMMETS, qui sont
+// dessinés. Vérifié sur quarante tirages : aucune lettre citée ne manque au
+// dessin. Il n'y a donc rien à tracer de plus par question, et c'est pour cela
+// que quatre questions peuvent partager une figure sans la rendre illisible.
+
+/** La part de la largeur qui revient au dessin. Le reste est aux questions. */
+const PART_MOSAIQUE = 0.52;
+
+function geoMosaique(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta || {};
+    const bo = m.boite || { x0: 0, x1: 10, y0: 0, y1: 8 };
+    const L = bo.x1 - bo.x0, H = bo.y1 - bo.y0;
+    const marge = 2;
+    const dispoW = b.w * PART_MOSAIQUE - marge;
+    const dispoH = b.h - marge;
+    // LE PAVAGE GARDE SES PROPORTIONS : étiré, les carreaux cessent d'être des
+    // carrés et l'on ne reconnaît plus une rotation d'un quart de tour.
+    const pas = Math.min(dispoW / L, dispoH / H);
+    const x0 = b.x;
+    const y0 = b.y + (b.h - pas * H) / 2;
+    const questX = x0 + pas * L + marge * 2;
+    return {
+        b, m, bo, L, H, pas, x0, y0, marge,
+        questX, questW: b.x + b.w - questX,
+        // DU REPÈRE DE LA MOSAÏQUE AU PAPIER. `bo.y0` est en bas dans le repère
+        // du dessin et en haut sur la feuille : on retourne l'axe vertical ici,
+        // une fois, plutôt qu'à chaque appel.
+        P: (x, y) => ({ x: x0 + (x - bo.x0) * pas, y: y0 + (bo.y1 - y) * pas }),
+        taille: Math.max(1.9, Math.min(b.w * 0.019, 2.8))
+    };
+}
+
+/** Le centre d'une pièce, pour y poser son numéro. */
+function centreDeLaPiece(cases) {
+    const x = cases.reduce((s, c) => s + c.x, 0) / cases.length;
+    const y = cases.reduce((s, c) => s + c.y, 0) / cases.length;
+    // LE NUMÉRO VA DANS UNE CASE DE LA PIÈCE, pas à son centre de gravité :
+    // celui d'une pièce en L tombe dehors, et le numéro se lirait sur la pièce
+    // voisine. On prend la case la plus proche du centre.
+    let meilleure = cases[0], mieux = Infinity;
+    cases.forEach(c => {
+        const d = (c.x - x) ** 2 + (c.y - y) ** 2;
+        if (d < mieux) { mieux = d; meilleure = c; }
+    });
+    return meilleure;
+}
+
+function mosaiquePreviewHtml(item, slot, k, solution) {
+    const g = geoMosaique(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const encreT = `rgb(${ENCRE.trait.join(',')})`;
+    let d = '';
+
+    // 1. LE QUADRILLAGE, en gris clair : il porte les coordonnées sans les dire.
+    for (let i = 0; i <= g.L; i++) {
+        const a = g.P(g.bo.x0 + i, g.bo.y0), z = g.P(g.bo.x0 + i, g.bo.y1);
+        d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+            stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.18)}"/>`;
+    }
+    for (let j = 0; j <= g.H; j++) {
+        const a = g.P(g.bo.x0, g.bo.y0 + j), z = g.P(g.bo.x1, g.bo.y0 + j);
+        d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+            stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.18)}"/>`;
+    }
+
+    // 2. LES PIÈCES, chacune cernée d'un trait noir. C'est le CONTOUR qui fait
+    //    la pièce : un aplat gris ne se distingue pas de son voisin sur une
+    //    photocopie, et les pièces se touchent toutes.
+    (g.m.pieces || []).forEach(p => {
+        const dedans = new Set(p.cases.map(c => `${c.x},${c.y}`));
+        p.cases.forEach(c => {
+            const bords = [
+                [c.x - 0.5, c.y + 0.5, c.x + 0.5, c.y + 0.5, `${c.x},${c.y + 1}`],
+                [c.x - 0.5, c.y - 0.5, c.x + 0.5, c.y - 0.5, `${c.x},${c.y - 1}`],
+                [c.x - 0.5, c.y - 0.5, c.x - 0.5, c.y + 0.5, `${c.x - 1},${c.y}`],
+                [c.x + 0.5, c.y - 0.5, c.x + 0.5, c.y + 0.5, `${c.x + 1},${c.y}`]
+            ];
+            bords.forEach(([x1, y1, x2, y2, voisin]) => {
+                if (dedans.has(voisin)) return;      // bord intérieur : jamais tracé
+                const a = g.P(x1, y1), z = g.P(x2, y2);
+                d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+                    stroke="${encreT}" stroke-width="${T(0.5)}" stroke-linecap="square"/>`;
+            });
+        });
+        const c = centreDeLaPiece(p.cases);
+        const q = g.P(c.x, c.y);
+        d += `<text x="${T(q.x)}" y="${T(q.y + g.taille * 0.35)}" text-anchor="middle"
+            font-size="${T(g.taille)}" font-weight="700" fill="${encreT}"
+            font-family="Helvetica, Arial, sans-serif">${p.n}</text>`;
+    });
+
+    // 3. LES SOMMETS NOMMÉS : ce sont eux que les questions citent.
+    (g.m.sommets || []).forEach(s => {
+        const p = g.P(s.x, s.y);
+        d += `<circle cx="${T(p.x)}" cy="${T(p.y)}" r="${T(0.5)}" fill="${encreT}"/>`;
+        d += `<text x="${T(p.x)}" y="${T(p.y - 0.9)}" text-anchor="middle"
+            font-size="${T(g.taille * 0.95)}" font-weight="700" fill="${encreT}"
+            stroke="#ffffff" stroke-width="${T(0.45)}" paint-order="stroke"
+            font-family="Helvetica, Arial, sans-serif">${echapperSheet(s.nom)}</text>`;
+    });
+
+    // 4. LES QUESTIONS, à droite, avec leur ligne de réponse.
+    let html = '';
+    let y = g.b.y + g.marge;
+    (g.m.questions || []).forEach((q, i) => {
+        const lignes = couperEnLignes(`${i + 1}. ${q.texte}`,
+            Math.floor(g.questW / (g.taille * 0.47)), 4);
+        lignes.forEach((ligne, j) => {
+            html += `<div class="fx-abs" style="position:absolute; left:${T(g.questX)}px;
+                top:${T(y + j * g.taille * 1.3)}px; width:${T(g.questW)}px;
+                font-size:${T(g.taille)}px; line-height:1.25"
+                >${echapperSheet(ligne)}</div>`;
+        });
+        y += lignes.length * g.taille * 1.3;
+        const yl = y + g.taille * 0.9;
+        if (solution) {
+            html += `<div class="fx-abs" style="position:absolute; left:${T(g.questX + 3)}px;
+                top:${T(yl - g.taille)}px; font-size:${T(g.taille)}px; font-weight:700"
+                >la pièce ${q.vers}</div>`;
+        } else {
+            d += `<line x1="${T(g.questX + 3)}" y1="${T(yl)}"
+                x2="${T(g.questX + g.questW * 0.55)}" y2="${T(yl)}"
+                stroke="rgb(${ENCRE.gris.join(',')})" stroke-width="${T(0.25)}"/>`;
+        }
+        y = yl + g.taille * 0.9;
+    });
+
+    return html + `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`;
+}
+
+function dessinerMosaiquePdf(doc, item, slot, solution) {
+    const g = geoMosaique(item, slot);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.18);
+    for (let i = 0; i <= g.L; i++) {
+        const a = g.P(g.bo.x0 + i, g.bo.y0), z = g.P(g.bo.x0 + i, g.bo.y1);
+        doc.line(a.x, a.y, z.x, z.y);
+    }
+    for (let j = 0; j <= g.H; j++) {
+        const a = g.P(g.bo.x0, g.bo.y0 + j), z = g.P(g.bo.x1, g.bo.y0 + j);
+        doc.line(a.x, a.y, z.x, z.y);
+    }
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    (g.m.pieces || []).forEach(p => {
+        const dedans = new Set(p.cases.map(c => `${c.x},${c.y}`));
+        p.cases.forEach(c => {
+            const bords = [
+                [c.x - 0.5, c.y + 0.5, c.x + 0.5, c.y + 0.5, `${c.x},${c.y + 1}`],
+                [c.x - 0.5, c.y - 0.5, c.x + 0.5, c.y - 0.5, `${c.x},${c.y - 1}`],
+                [c.x - 0.5, c.y - 0.5, c.x - 0.5, c.y + 0.5, `${c.x - 1},${c.y}`],
+                [c.x + 0.5, c.y - 0.5, c.x + 0.5, c.y + 0.5, `${c.x + 1},${c.y}`]
+            ];
+            bords.forEach(([x1, y1, x2, y2, voisin]) => {
+                if (dedans.has(voisin)) return;
+                const a = g.P(x1, y1), z = g.P(x2, y2);
+                doc.line(a.x, a.y, z.x, z.y);
+            });
+        });
+    });
+
+    doc.setTextColor(...ENCRE.trait);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille * 2.83);
+    (g.m.pieces || []).forEach(p => {
+        const c = centreDeLaPiece(p.cases);
+        const q = g.P(c.x, c.y);
+        doc.text(String(p.n), q.x, q.y + g.taille * 0.35, { align: 'center' });
+    });
+
+    doc.setFillColor(...ENCRE.trait);
+    doc.setFontSize(g.taille * 0.95 * 2.83);
+    (g.m.sommets || []).forEach(s => {
+        const p = g.P(s.x, s.y);
+        doc.circle(p.x, p.y, 0.5, 'F');
+        // La pastille blanche sous la lettre : un sommet tombe sur un trait du
+        // quadrillage par construction, et une lettre barrée ne se lit pas.
+        const demi = g.taille * 0.45;
+        doc.setFillColor(255, 255, 255);
+        doc.rect(p.x - demi, p.y - 0.9 - g.taille * 0.8, demi * 2, g.taille, 'F');
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(s.nom, p.x, p.y - 0.9, { align: 'center' });
+        doc.setFillColor(...ENCRE.trait);
+    });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(g.taille * 2.83);
+    doc.setTextColor(...ENCRE.texte);
+    let y = g.b.y + g.marge + g.taille;
+    (g.m.questions || []).forEach((q, i) => {
+        const lignes = couperEnLignes(`${i + 1}. ${q.texte}`,
+            Math.floor(g.questW / (g.taille * 0.47)), 4);
+        lignes.forEach((ligne, j) => doc.text(ligne, g.questX, y + j * g.taille * 1.3));
+        y += lignes.length * g.taille * 1.3;
+        const yl = y + g.taille * 0.9;
+        if (solution) {
+            doc.setFont('helvetica', 'bold');
+            doc.text(`la pièce ${q.vers}`, g.questX + 3, yl);
+            doc.setFont('helvetica', 'normal');
+        } else {
+            doc.setDrawColor(...ENCRE.gris);
+            doc.setLineWidth(0.25);
+            doc.line(g.questX + 3, yl, g.questX + g.questW * 0.55, yl);
+        }
+        y = yl + g.taille * 0.9;
+    });
+}
+
 export const RENDUS_REPERAGE = {
+    mosaique: {
+        titre: 'La mosaïque des transformations',
+        consigne: () => 'Toutes les questions portent sur LE MÊME dessin. Pour chacune, '
+            + 'écris le numéro de la pièce image. Les axes, les centres et les vecteurs '
+            + 'sont nommés par les lettres des sommets, qui sont tracés sur la mosaïque. '
+            + 'Le conseil qui change tout : ne suis pas la pièce entière, choisis UN de '
+            + 'ses coins et cherche où il tombe — le reste se recopie.',
+        previewGrille: mosaiquePreviewHtml,
+        pdfGrille: dessinerMosaiquePdf,
+        nomBloc: 'Mosaïque', nomBlocs: 'mosaïques',
+        // DEUX PAR PAGE, et c'est tout le propos de la demande de Rémy : « un
+        // imprimé avec plusieurs questions pour un même tableau de mosaïque ».
+        // Une mosaïque par question en mettait quatre par page, chacune
+        // réduite à un timbre où l'on ne distingue plus les pièces.
+        disposition: { cols: 1, rows: 2, maxCols: 1, maxRows: 3 },
+        parLigneDefaut: 1,
+        proportions: { w: 1, h: 0.42 },
+        titreAGauche: true
+    },
     pavage: {
         titre: 'Symétrique par rapport à quoi ?',
         // SUR LE PAPIER, ON RÉPOND PAR LE NOM. Écrire « x = 4 » demanderait un
