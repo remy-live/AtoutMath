@@ -30,7 +30,8 @@ const EXOS = [
     ['logi-strimko', 'le Strimko'],
     ['logi-approxdoku', 'l\'Approxdoku'],
     ['logi-serpents', 'les Serpents'],
-    ['logi-enquete', "l'Enquête"]
+    ['logi-enquete', "l'Enquête"],
+    ['defi-trefles', 'le Trèfle à Quatre Feuilles']
 ];
 
 // Assez haute pour la feuille entière : `photo` découpe sur la FENÊTRE, et une
@@ -81,11 +82,26 @@ for (const [id, quoi] of EXOS) {
             // CAPSULES d'un Approxdoku : le même nom compterait deux choses.
             cases: ap.querySelectorAll('svg rect').length,
             capsules: ap.querySelectorAll('svg rect').length,
+            chemins: ap.querySelectorAll('svg path').length,
             chiffres: [...ap.querySelectorAll('svg text')].map(t => t.textContent.trim())
         };
     });
-    dire(vu.blocs >= 2, 'plusieurs grilles sur la page', `${vu.blocs} grille(s)`);
-    if (id === 'logi-enquete') {
+    // LE CHAMP DE TRÈFLES EST SEUL SUR SA PAGE, et c'est l'exercice qui le
+    // veut : chercher trois trèfles parmi quatre-vingt-dix demande qu'ils
+    // soient à la taille où l'on compte des feuilles.
+    dire(id === 'defi-trefles' ? vu.blocs === 1 : vu.blocs >= 2,
+        id === 'defi-trefles' ? 'un seul champ par page' : 'plusieurs grilles sur la page',
+        `${vu.blocs} bloc(s)`);
+    if (id === 'defi-trefles') {
+        // Chaque trèfle est une poignée de `<path>` : trois ou quatre feuilles
+        // plus son pédoncule. Un champ vide rendrait zéro, exactement comme un
+        // rendu absent.
+        dire(vu.chemins >= 150, 'LE CHAMP EST SEMÉ',
+            `${vu.chemins} tracé(s) de feuille et de pédoncule`);
+        dire(vu.ronds === 0,
+            'et la feuille de l\'élève n\'entoure RIEN — c\'est à lui de le faire',
+            `${vu.ronds} cercle(s)`);
+    } else if (id === 'logi-enquete') {
         // UN PLAN DE ZONES, et les indices écrits à côté. Sans le texte, la
         // feuille porte une grille vide et personne ne peut rien déduire :
         // c'est le défaut des figures de géométrie, à l'identique.
@@ -171,6 +187,11 @@ for (const [id, quoi] of EXOS) {
             noms: (q.meta.noms || []).length,
             textesEleve: (eleve.match(/<text/g) || []).length,
             textesCorrige: (corrige.match(/<text/g) || []).length,
+            parTrefles: !!q.meta.aTrouver && !!q.meta.trefles,
+            aTrouver: q.meta.aTrouver,
+            cerclesCorrige: (corrige.match(/<circle/g) || []).length,
+            cheminsEleve: (eleve.match(/<path/g) || []).length,
+            cheminsCorrige: (corrige.match(/<path/g) || []).length,
             // Un Strimko donne quelques chiffres de départ ; un Approxdoku
             // aucun ; une grille de serpents donne des ÉTIQUETTES, une par
             // serpent, qui ne sont pas des cases remplies.
@@ -184,7 +205,18 @@ for (const [id, quoi] of EXOS) {
             parContour: !!q.meta.serpents
         };
     }, id);
-    if (compte.parNoms) {
+    if (compte.parTrefles) {
+        // LE CORRIGÉ ENTOURE, ET REDESSINE EN GRAS. Le cercle seul entourait un
+        // enchevêtrement de trois trèfles mêlés : le professeur devait compter
+        // les feuilles pour vérifier sa propre correction, et un corrigé qu'il
+        // faut résoudre n'est pas un corrigé.
+        dire(compte.cerclesCorrige === compte.aTrouver,
+            'LE CORRIGÉ ENTOURE CHAQUE TRÈFLE À QUATRE FEUILLES',
+            `${compte.cerclesCorrige} cercle(s) pour ${compte.aTrouver} à trouver`);
+        dire(compte.cheminsCorrige > compte.cheminsEleve,
+            'et il les redessine en gras, pour qu\'on les reconnaisse sans recompter',
+            `${compte.cheminsCorrige - compte.cheminsEleve} tracé(s) ajouté(s)`);
+    } else if (compte.parNoms) {
         // Le corrigé pose UN PRÉNOM PAR PERSONNAGE sur le plan. La feuille de
         // l'élève porte déjà les noms des lieux et les repères : on ne compare
         // donc pas à zéro, on compare l'ÉCART.
@@ -227,7 +259,11 @@ for (const [id, quoi] of EXOS) {
         // feuille vide, alors qu'elle portait cinquante cases.
         const courbes = (brut.match(/ c\b/g) || []).length;
         const rectangles = (brut.match(/ re\b/g) || []).length;
-        if (id === 'logi-serpents' || id === 'logi-enquete') {
+        if (id === 'defi-trefles') {
+            // Un trèfle est fait de courbes de Bézier : « c » dans le flux.
+            dire(courbes >= 300, 'le PDF porte le champ entier',
+                `${courbes} courbe(s) · ${Math.round(buf.length / 1024)} Ko`);
+        } else if (id === 'logi-serpents' || id === 'logi-enquete') {
             dire(rectangles >= vu.blocs * 9, 'le PDF porte les cases de chaque grille',
                 `${rectangles} case(s), ${courbes} courbe(s) · ${Math.round(buf.length / 1024)} Ko`);
         } else {

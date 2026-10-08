@@ -3336,3 +3336,29 @@ lignes** — 2026-10-01
 - **Ce qui manque** : rien d'outillable, `epreuveTombe` fait son travail. La
   règle est de conduite : pour chaque champ d'un `meta`, se demander quel AUTRE
   champ dit la même chose autrement, et écrire l'épreuve qui les met d'accord.
+
+## Deux gardes neuves sur trois ne gardaient rien — 2026-10-08
+
+- **Ce que je voulais faire** : garder la fiche du champ de trèfles. Trois
+  épreuves écrites avec soin : l'écran et le papier tracent la même feuille,
+  les trèfles sortent dans l'ordre de dessin, le champ tient dans sa boîte.
+- **Ce qui coûte** : rien, parce que `epreuveTombe` les a passées une par une —
+  et **deux sur trois sont restées vertes avec le défaut remis**.
+  · « les trèfles sortent dans l'ordre de dessin » vérifiait que les ordonnées
+    ne montaient pas régulièrement. Le semis les fait déjà sauter d'un demi-pas :
+    l'épreuve était verte dans les deux cas. Il a fallu porter le RANG DE SEMIS
+    dans le `meta`, uniquement pour que la garde ait de quoi comparer.
+  · « l'écran et le papier tracent la même feuille » ne tombe pas si l'on
+    retouche un point de contrôle — les deux côtés bougent ensemble, ce qui est
+    précisément ce qu'elle garantit. Elle tombe quand on remet une SECONDE
+    description du chemin, et c'est ainsi qu'il fallait la voir tomber.
+- **Combien de fois** : |||| — c'est la quatrième fois en deux jours qu'une
+  épreuve écrite de bonne foi ne garde rien. Le fil commun : **une garde qui
+  observe une CONSÉQUENCE indirecte du défaut (des ordonnées qui montent, une
+  forme devinée par motif) ne le voit pas ; il faut comparer à la chose même.**
+  Et parfois cela oblige à ajouter au code un champ qui ne sert qu'à la garde :
+  c'est un coût honnête, bien moindre qu'une assurance qui n'existe pas.
+- **Ce qui manque** : rien d'outillable. `epreuveTombe` fait tout le travail, et
+  la règle à retenir est qu'il faut le lui donner à faire **sur chaque épreuve,
+  une par une** — pas sur le fichier entier, où une épreuve qui tombe en cache
+  deux qui ne tombent pas.

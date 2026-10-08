@@ -7,6 +7,7 @@
 import {
     ENCRE, boiteDe, couperEnLignes, echapperSheet, planchePasAPas, titrePasAPas
 } from './socle.js';
+import { courbesDuCoeur, courbesDuPedoncule } from '../../core/champDeTrefles.js';
 import { etapesBrahma } from '../../core/tourBrahma.js';
 import { etapesGrenouilles } from '../../core/grenouilles.js';
 import { etapesParking } from '../../core/parking.js';
@@ -1956,6 +1957,168 @@ function dessinerEnquetePdf(doc, item, slot, solution) {
     }
 }
 
+// ── LE CHAMP DE TRÈFLES ─────────────────────────────────────────────────────
+//
+// RÉMY a apporté ce jeu avec la page d'une REVUE : « Encoure les trèfles à
+// 4 feuilles ». L'écran l'a imité ; la feuille le rend à sa forme d'origine.
+// C'est le seul exercice du catalogue dont la version papier est l'original.
+//
+// LES COURBES VIENNENT DU NOYAU, pas d'ici. `courbesDuCoeur` et
+// `courbesDuPedoncule` rendent les mêmes points que le `d` de l'écran — le
+// SVG les écrit en texte, jsPDF les trace en cubiques, et il n'y a qu'une
+// description. Deux dessins du même objet divergent au premier réglage ; ce
+// dépôt l'a payé trois fois sur le radical.
+//
+// LE FOND DES FEUILLES EST BLANC, ET C'EST LE SUJET. Un trèfle dessiné après
+// un autre doit le RECOUVRIR : c'est toute la difficulté du palier « champ ».
+// Avec des feuilles transparentes, les traits se mêleraient et l'on compterait
+// les feuilles de deux trèfles à la fois.
+
+/** Un point tourné de `a` degrés autour de l'origine, puis posé en (cx, cy). */
+function tourner(p, a, cx, cy, k) {
+    const r = a * Math.PI / 180;
+    return {
+        x: cx + (p[0] * Math.cos(r) - p[1] * Math.sin(r)) * k,
+        y: cy + (p[0] * Math.sin(r) + p[1] * Math.cos(r)) * k
+    };
+}
+
+function geoTrefles(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    // LE CHAMP GARDE SES PROPORTIONS. Étiré, les trèfles deviendraient des
+    // ovales et l'on ne compterait plus leurs feuilles — ce qui est la seule
+    // chose que l'exercice demande.
+    const k = Math.min(b.w / m.largeur, b.h / m.hauteur);
+    const x0 = b.x + (b.w - m.largeur * k) / 2;
+    const y0 = b.y + (b.h - m.hauteur * k) / 2;
+    return { b, m, k, x0, y0, rayon: m.rayon * k,
+        centre: (t) => ({ x: x0 + t.x * k, y: y0 + t.y * k }) };
+}
+
+/**
+ * LES FEUILLES ET LE PÉDONCULE D'UN TRÈFLE, en coordonnées du papier.
+ *
+ * Une seule fonction pour les deux rendus : l'aperçu en fait des `<path>`, le
+ * PDF des appels à `curveTo`, et aucun des deux ne refait le calcul.
+ */
+function plantDUnTrefle(g, t) {
+    const c = g.centre(t);
+    const coeur = courbesDuCoeur();
+    const pas = 360 / t.feuilles;
+    const feuilles = [];
+    for (let i = 0; i < t.feuilles; i++) {
+        const a = t.angle + i * pas + (t.feuilles === 3 ? 0 : 45);
+        feuilles.push({
+            depart: tourner(coeur.depart, a, c.x, c.y, g.k),
+            courbes: coeur.courbes.map(seg =>
+                seg.map(p => tourner(p, a, c.x, c.y, g.k)))
+        });
+    }
+    const ped = courbesDuPedoncule();
+    return {
+        feuilles,
+        pedoncule: {
+            depart: tourner(ped.depart, t.angle, c.x, c.y, g.k),
+            courbes: ped.courbes.map(seg =>
+                seg.map(p => tourner(p, t.angle, c.x, c.y, g.k)))
+        },
+        centre: c
+    };
+}
+
+function treflesPreviewHtml(item, slot, k, solution) {
+    const g = geoTrefles(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const encreT = `rgb(${ENCRE.trait.join(',')})`;
+    const d = (depart, courbes) => `M${T(depart.x)},${T(depart.y)} `
+        + courbes.map(([a, b2, z]) =>
+            `C${T(a.x)},${T(a.y)} ${T(b2.x)},${T(b2.y)} ${T(z.x)},${T(z.y)}`).join(' ');
+    let out = '';
+    g.m.trefles.forEach(t => {
+        const p = plantDUnTrefle(g, t);
+        out += `<path d="${d(p.pedoncule.depart, p.pedoncule.courbes)}" fill="none"
+            stroke="${encreT}" stroke-width="${T(0.22)}" stroke-linecap="round"/>`;
+        p.feuilles.forEach(f => {
+            out += `<path d="${d(f.depart, f.courbes)} Z" fill="#ffffff"
+                stroke="${encreT}" stroke-width="${T(0.22)}" stroke-linejoin="round"/>`;
+        });
+    });
+    if (solution) {
+        g.m.trefles.filter(t => t.feuilles === 4).forEach(t => {
+            // ON REDESSINE LE TRÈFLE TROUVÉ EN TRAIT GRAS, par-dessus ses
+            // voisins. Le cercle seul ne suffisait pas : mesuré à la loupe sur
+            // le palier « le pré », il entourait un enchevêtrement de trois
+            // trèfles mêlés, et le professeur devait compter les feuilles pour
+            // vérifier sa propre correction. Un corrigé qu'il faut résoudre
+            // n'est pas un corrigé.
+            const p = plantDUnTrefle(g, t);
+            out += `<path d="${d(p.pedoncule.depart, p.pedoncule.courbes)}" fill="none"
+                stroke="${encreT}" stroke-width="${T(0.55)}" stroke-linecap="round"/>`;
+            p.feuilles.forEach(f => {
+                out += `<path d="${d(f.depart, f.courbes)} Z" fill="#ffffff"
+                    stroke="${encreT}" stroke-width="${T(0.55)}" stroke-linejoin="round"/>`;
+            });
+            // ET LE CERCLE, qui est le geste que l'élève doit faire. Rémy :
+            // « Encoure les trèfles à 4 feuilles. » Il passe en dernier, donc
+            // par-dessus tout.
+            const c = g.centre(t);
+            out += `<circle cx="${T(c.x)}" cy="${T(c.y - g.rayon * 0.25)}"
+                r="${T(g.rayon * 1.35)}" fill="none" stroke="${encreT}"
+                stroke-width="${T(0.6)}"/>`;
+        });
+    }
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${out}</svg>`;
+}
+
+function dessinerTreflesPdf(doc, item, slot, solution) {
+    const g = geoTrefles(item, slot);
+    // `lines` de jsPDF prend des DELTAS depuis le point courant ; on écrit donc
+    // chaque courbe relativement à celle qui précède.
+    const tracer = (depart, courbes, style) => {
+        let x = depart.x, y = depart.y;
+        const deltas = courbes.map(([a, b2, z]) => {
+            const d = [a.x - x, a.y - y, b2.x - x, b2.y - y, z.x - x, z.y - y];
+            x = z.x; y = z.y;
+            return d;
+        });
+        doc.lines(deltas, depart.x, depart.y, [1, 1], style, style === 'FD' || style === 'F');
+    };
+    doc.setLineWidth(0.22);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setFillColor(255, 255, 255);
+    doc.setLineJoin('round');
+    doc.setLineCap('round');
+    g.m.trefles.forEach(t => {
+        const p = plantDUnTrefle(g, t);
+        tracer(p.pedoncule.depart, p.pedoncule.courbes, 'S');
+        p.feuilles.forEach(f => tracer(f.depart, f.courbes, 'FD'));
+    });
+    doc.setLineJoin('miter');
+    doc.setLineCap('butt');
+    if (solution) {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineJoin('round');
+        doc.setLineCap('round');
+        g.m.trefles.filter(t => t.feuilles === 4).forEach(t => {
+            // Le trèfle trouvé, en gras et par-dessus — voir l'aperçu : un
+            // cercle autour d'un enchevêtrement oblige à recompter, et un
+            // corrigé qu'il faut résoudre n'est pas un corrigé.
+            const p = plantDUnTrefle(g, t);
+            doc.setLineWidth(0.55);
+            doc.setFillColor(255, 255, 255);
+            tracer(p.pedoncule.depart, p.pedoncule.courbes, 'S');
+            p.feuilles.forEach(f => tracer(f.depart, f.courbes, 'FD'));
+            const c = g.centre(t);
+            doc.setLineWidth(0.6);
+            doc.circle(c.x, c.y - g.rayon * 0.25, g.rayon * 1.35, 'S');
+        });
+        doc.setLineJoin('miter');
+        doc.setLineCap('butt');
+    }
+}
+
 export const RENDUS_CASSETETE = {
     chemin: {
         titre: 'Le chemin numéroté',
@@ -2199,5 +2362,26 @@ export const RENDUS_CASSETETE = {
         parLigneDefaut: 1,
         proportions: { w: 1, h: 0.45 },
         titreAGauche: true
+    },
+    trefles: {
+        titre: 'Le Trèfle à Quatre Feuilles',
+        consigne: (items) => {
+            const n = (items[0] && items[0].meta.aTrouver) || 3;
+            return `Entoure les ${n} trèfles à QUATRE feuilles. Balaie ligne par ligne, `
+                + 'de gauche à droite : au hasard, on repasse vingt fois au même endroit '
+                + 'et l\u2019on finit par en oublier un. Attention, un trèfle tourné '
+                + 'ressemble beaucoup à un trèfle à quatre feuilles — il faut COMPTER.';
+        },
+        previewGrille: treflesPreviewHtml,
+        pdfGrille: dessinerTreflesPdf,
+        nomBloc: 'Champ', nomBlocs: 'champs',
+        // UN SEUL CHAMP PAR PAGE. Ce n'est pas un choix de mise en page, c'est
+        // l'exercice : chercher trois trèfles parmi quatre-vingt-dix demande
+        // qu'ils soient à la taille où l'on compte des feuilles. Deux champs
+        // par page les ramènent à quatre millimètres, et il ne reste plus
+        // qu'une tache verte à regarder.
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 2 },
+        parLigneDefaut: 1,
+        proportions: { w: 4, h: 3 }
     },
 };

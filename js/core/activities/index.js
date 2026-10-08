@@ -45,6 +45,7 @@ import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js
 import { balanceFicheGenerator } from '../generators/balanceFiche.js';
 import { serpentsFicheGenerator } from '../generators/serpentsFiche.js';
 import { enqueteFicheGenerator } from '../generators/enqueteFiche.js';
+import { treflesFicheGenerator } from '../generators/treflesFiche.js';
 import { arrondiGenerator } from '../generators/arrondi.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
@@ -158,6 +159,7 @@ import {
     // Les Serpents sont dans le même cas, et pour la même raison : le jeu se
     // joue en coloriant, la fiche se fait au crayon.
     balanceFicheGenerator, serpentsFicheGenerator, enqueteFicheGenerator,
+    treflesFicheGenerator,
     arrondiGenerator,
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,

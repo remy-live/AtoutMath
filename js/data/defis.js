@@ -271,6 +271,11 @@ export const defisExercises = [
         id: 'defi-trefles', title: 'Le Trèfle à Quatre Feuilles',
         cree: '2026-10-05',
         activityId: 'trefles', skills: ['defi.trefles'],
+        // ET SUR LE PAPIER — relevé par Rémy dans sa revue du catalogue. C'est
+        // le seul exercice dont la version imprimée est l'ORIGINAL : il l'a
+        // apporté avec la page d'une revue, « Encoure les trèfles à 4
+        // feuilles ». L'écran l'imitait ; la feuille le rend à sa forme.
+        printable: 'trefles', printGeneratorId: 'defi.trefles-fiche',
         sansRevision: true,
         params: { palier: 'pre' },
         paramSchema: [

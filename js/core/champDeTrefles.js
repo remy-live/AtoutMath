@@ -246,12 +246,56 @@ export const ordreDeDessin = (champ) => [...champ.trefles].sort((a, b) => a.ordr
  * repère d'orientation, et le comptage devient possible. C'est aussi ce qui
  * fait qu'on reconnaît un trèfle et non une fleur.
  */
+/**
+ * LE CŒUR D'UNE FEUILLE, EN COURBES PLUTÔT QU'EN TEXTE.
+ *
+ * `cheminsDunTrefle` rendait une chaîne `d` de SVG, ce que le navigateur sait
+ * lire et jsPDF non. La fiche papier doit tracer EXACTEMENT la même feuille —
+ * et la seule façon de s'en assurer est qu'il n'y ait qu'une description.
+ *
+ * C'est la leçon payée trois fois sur le radical : deux dessins du même objet
+ * divergent au premier réglage. `cheminsDunTrefle` construit donc son `d` à
+ * partir de ces points-ci, et le papier les lit directement.
+ *
+ * Deux segments cubiques, pointe en (0,0), lobes vers le haut. Les nombres
+ * viennent du tracé de la revue, mis à l'échelle du rayon.
+ *
+ * @returns {{depart:number[], courbes:number[][][]}} chaque courbe est
+ *   `[témoin1, témoin2, arrivée]`.
+ */
+export function courbesDuCoeur() {
+    return {
+        depart: [0, 0],
+        courbes: [
+            [[-RAYON * 0.52, -RAYON * 0.30], [-RAYON * 0.86, -RAYON * 0.96],
+                [0, -RAYON * 0.82]],
+            [[RAYON * 0.86, -RAYON * 0.96], [RAYON * 0.52, -RAYON * 0.30], [0, 0]]
+        ]
+    };
+}
+
+/**
+ * LE PÉDONCULE, EN CUBIQUE.
+ *
+ * Le tracé de la revue est une QUADRATIQUE, et jsPDF ne connaît que les
+ * cubiques. La conversion est exacte — un seul point de contrôle devient deux,
+ * aux deux tiers du chemin — et elle est faite ici plutôt que dans le rendu :
+ * une conversion recopiée est une seconde description de la même courbe.
+ */
+export function courbesDuPedoncule() {
+    const P0 = [0, 0];
+    const Q = [RAYON * 0.10, RAYON * 0.55];
+    const P2 = [-RAYON * 0.06, RAYON * 1.05];
+    const vers = (A, B) => [A[0] + (2 / 3) * (B[0] - A[0]), A[1] + (2 / 3) * (B[1] - A[1])];
+    return { depart: P0, courbes: [[vers(P0, Q), vers(P2, Q), P2]] };
+}
+
 export function cheminsDunTrefle(feuilles) {
     const pas = 360 / feuilles;
-    // Le cœur : pointe en (0,0), lobes vers le haut. Les nombres viennent du
-    // tracé de la revue, mis à l'échelle du rayon.
-    const coeur = `M0,0 C${-RAYON * 0.52},${-RAYON * 0.30} ${-RAYON * 0.86},${-RAYON * 0.96} `
-        + `0,${-RAYON * 0.82} C${RAYON * 0.86},${-RAYON * 0.96} ${RAYON * 0.52},${-RAYON * 0.30} 0,0 Z`;
+    const c = courbesDuCoeur();
+    const coeur = `M${c.depart.join(',')} `
+        + c.courbes.map(([a, b, z]) =>
+            `C${a.join(',')} ${b.join(',')} ${z.join(',')}`).join(' ') + ' Z';
     const chemins = [];
     for (let k = 0; k < feuilles; k++) {
         // LES FEUILLES SONT CENTRÉES SUR LE HAUT quand il y en a trois : sans
@@ -263,8 +307,12 @@ export function cheminsDunTrefle(feuilles) {
 }
 
 /** Le pédoncule : un trait court qui part du centre, vers le bas. */
-export const pedonculeDunTrefle = () =>
-    `M0,0 Q${RAYON * 0.10},${RAYON * 0.55} ${-RAYON * 0.06},${RAYON * 1.05}`;
+export const pedonculeDunTrefle = () => {
+    const p = courbesDuPedoncule();
+    return `M${p.depart.join(',')} `
+        + p.courbes.map(([a, b, z]) =>
+            `C${a.join(',')} ${b.join(',')} ${z.join(',')}`).join(' ');
+};
 
 /**
  * LE MOT DE FIN — ce qu'on dit quand le champ est vide.
