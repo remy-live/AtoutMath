@@ -249,12 +249,36 @@ export async function ouvrirSonde(o = {}) {
             const x = Math.max(0, r.x - marge), y = Math.max(0, r.y - marge);
             const dossier = dirname(chemin);
             if (dossier && !existsSync(dossier)) mkdirSync(dossier, { recursive: true });
-            await page.screenshot({ path: chemin, clip: {
-                x, y,
-                width: Math.min(t.width - x, r.width + marge * 2),
-                height: Math.min(t.height - y, r.height + marge * 2) } });
+            const largeur = Math.min(t.width - x, r.width + marge * 2);
+            const hauteur = Math.min(t.height - y, r.height + marge * 2);
+            await page.screenshot({ path: chemin, clip: { x, y, width: largeur, height: hauteur } });
             const teintes = compterLesTeintes(chemin);
-            return { teintes, unie: teintes < 3 };
+            // ON DIT QUAND ON A COUPÉ, et c'est la moitié de l'intérêt.
+            //
+            // Une photo tronquée revient comme une photo réussie : le fichier
+            // existe, il s'ouvre, il montre quelque chose. On regarde le haut
+            // d'une fiche, on dit « c'est bon », et le défaut qu'on cherchait
+            // était trois lignes plus bas. MESURÉ : une fiche de sept lignes
+            // photographiée dans une fenêtre de 1100 px rendait la première
+            // ligne et un bout de la deuxième — et j'ai cru une passe entière
+            // que l'aperçu s'était replié.
+            //
+            // Playwright découpe sur la FENÊTRE, pas sur l'élément : un élément
+            // plus haut qu'elle est coupé sans erreur. Le remède est d'ouvrir
+            // la sonde plus haute ; encore faut-il savoir qu'il le faut.
+            const coupe = {
+                enBas: r.height + marge * 2 - hauteur,
+                aDroite: r.width + marge * 2 - largeur
+            };
+            if (coupe.enBas > 1 || coupe.aDroite > 1) {
+                console.warn(`  \x1b[33mphoto COUPÉE\x1b[0m ${chemin} : `
+                    + `${Math.round(coupe.enBas)} px manquent en bas, `
+                    + `${Math.round(coupe.aDroite)} px à droite — l'élément fait `
+                    + `${Math.round(r.width)}×${Math.round(r.height)} dans une fenêtre de `
+                    + `${t.width}×${t.height}. Ouvrir la sonde plus grande.`);
+            }
+            return { teintes, unie: teintes < 3, coupe,
+                entiere: coupe.enBas <= 1 && coupe.aDroite <= 1 };
         },
 
         /**

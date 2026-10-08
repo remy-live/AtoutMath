@@ -53,7 +53,7 @@ import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../core/figures.js';
 import { tracesDe, branchesCroix, TAILLE_CROIX } from '../core/cercleFigure.js';
 import { pourPdf, texteRiche, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
-    ficheEnPortrait, reglerFichePortrait, fermerAutreFiche, mesureur
+    ficheEnPortrait, reglerFichePortrait, fermerAutreFiche, mesureur, deposerLesRendus
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
 // Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
@@ -137,6 +137,10 @@ import { RENDUS_FIGURES } from './fiches/figures.js';
 // est à part parce qu'elle est la seule à poser une FIGURE ET UN QCM dans le
 // même bloc ; tout le reste de la géométrie demande une réponse écrite.
 import { RENDUS_ELEMENTS_GEO } from './fiches/elementsGeo.js';
+// LES DROITES GRADUÉES — Rémy : « présente en tableau et dessine les axes ».
+// Les deux exercices avaient une fiche, mais ÉCRITE : on ne trace pas une
+// droite graduée sur un pointillé de trois centimètres.
+import { RENDUS_AXES } from './fiches/axes.js';
 import { RENDUS_THEOREMES } from './fiches/theoremes.js';
 import { RENDUS_REPERAGE } from './fiches/reperage.js';
 import { RENDUS_NOMBRES } from './fiches/nombres.js';
@@ -291,11 +295,22 @@ export const RENDUS = {
     ...RENDUS_CASSETETE,
     ...RENDUS_FIGURES,
     ...RENDUS_ELEMENTS_GEO,
+    ...RENDUS_AXES,
     ...RENDUS_THEOREMES,
     ...RENDUS_REPERAGE,
     ...RENDUS_NOMBRES,
     ...RENDUS_ALGORITHMES,
 };
+
+// ON LA DÉPOSE DANS `ficheRendu`, qui ne l'importe plus.
+//
+// C'était un import à l'envers, et il fermait un cercle : `ficheRendu` tirait
+// `RENDUS` d'ici, `printSheet` tire ses rendus de `fiches/`, et chaque module
+// de `fiches/` revient à `ficheRendu` par `socle.js`. Le cercle ne se
+// refermait dans le bon ordre que si l'entrée était CE fichier — donc jamais
+// pour une sonde, qui importe le rendu qu'elle mesure. Voir le long
+// commentaire de `deposerLesRendus`.
+deposerLesRendus(RENDUS);
 
 // --- La modale ---------------------------------------------------------------
 

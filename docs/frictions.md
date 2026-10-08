@@ -3201,3 +3201,71 @@ lignes** — 2026-10-01
   épreuve — qui refuse qu'un radical, une fraction ou une puissance soit
   composé à la main ailleurs que par `core/maths/formule.js`. Le motif est
   simple à chercher : un `√` ou un `overline` écrit hors de ce module.
+
+## Un cercle d'imports qui ne casse que si l'on n'entre pas par la bonne porte — 2026-10-08
+
+- **Ce que je voulais faire** : mesurer, barreau par barreau, ce que la fiche
+  `sec-valeur-absolue` imprime. La sonde importait `js/ui/fiches/axes.js`.
+- **Ce qui coûte** : vingt minutes et trois corrections qui désignaient chacune
+  un fichier différent et jamais le bon. `Cannot access 'POINTE' before
+  initialization` dans `mots.js` ; puis `'ENCRE'` dans `elementsGeo.js` ; puis
+  `'RENDUS_AXES'` dans `printSheet.js`. Aucun des trois n'avait tort : les
+  modules de l'impression forment un cercle — `socle.js` → `ficheRendu.js` →
+  `printSheet.js` → un rendu → `socle.js` — et **un cercle ne se voit que
+  depuis la porte par laquelle on n'entre jamais**. L'application charge
+  `printSheet.js` en premier, tout se referme dans le bon ordre, et le défaut
+  dort. Une sonde importe le rendu qu'elle mesure, et tout tombe.
+- **Combien de fois** : | — mais le piège était armé depuis longtemps et aurait
+  sauté au prochain module de `fiches/` écrit avec le réflexe normal
+  `const TRAIT = ENCRE.trait` en tête de fichier.
+- **Ce qui manque** : rien, maintenant. `tests/cercleDesFiches.test.mjs` charge
+  chaque rendu **en premier**, dans un processus neuf, et exige qu'aucun ne
+  jette sur une zone morte. L'arête à l'envers est partie (`ficheRendu` ne
+  construit plus sa table, il la reçoit) et l'encre vit dans un module feuille
+  qui n'importe rien. La leçon générale : **une mesure qui n'emprunte pas le
+  chemin de l'utilisateur ne mesure pas son problème — mais une mesure qui
+  n'emprunte QUE ce chemin ne voit pas les pièges qu'il contourne.**
+
+## Une photo coupée ressemble à une photo réussie — 2026-10-08
+
+- **Ce que je voulais faire** : regarder la fiche entière, sept lignes, pour
+  voir si l'énoncé tombait bien à la hauteur de son axe.
+- **Ce qui coûte** : une passe perdue. `s.photo` découpe sur la FENÊTRE, pas
+  sur l'élément : une feuille plus haute que la sonde revient tronquée, sans
+  erreur, sans rien dans le verdict. J'ai regardé le haut d'une fiche, conclu
+  que l'aperçu s'était replié, et cherché le défaut du mauvais côté.
+- **Combien de fois** : || — c'était déjà arrivé la veille, et j'avais mis la
+  faute sur le cadre de l'aperçu.
+- **Ce qui manque** : rien, maintenant. `photo` rend `entiere` et `coupe`, et
+  **crie en jaune** quand elle a dû découper, en disant de combien et ce qu'il
+  faut faire. Une sonde peut donc en faire une mesure, comme `ficheAxes.mjs`.
+
+## Une garde qui lit la source trouve son propre commentaire — 2026-10-08
+
+- **Ce que je voulais faire** : interdire un import précis dans `ficheRendu.js`.
+- **Ce qui coûte** : un aller-retour. Ce dépôt explique chaque décision à
+  l'endroit où elle se prend : le commentaire qui interdit la ligne **la cite
+  mot pour mot**. La garde l'a trouvée et a rougi sur un fichier juste — et une
+  garde qui rougit à tort finit par être désactivée.
+- **Combien de fois** : | — mais toute garde future qui cherche un motif dans
+  du code tombera dessus, puisque la règle du dépôt est d'écrire le pourquoi à
+  côté du quoi.
+- **Ce qui manque** : un `sansCommentaires()` partagé. Il est pour l'instant
+  recopié dans `tests/cercleDesFiches.test.mjs` ; au deuxième usage, il
+  descendra dans un module d'épreuves.
+
+## Une épreuve qui devine la FORME de ce qu'elle interdit — 2026-10-08
+
+- **Ce que je voulais faire** : garder que l'énoncé papier du barreau 8
+  n'écrive pas la réponse. J'ai cherché `/[[\]]\s*-?\d/`.
+- **Ce qui coûte** : rien cette fois, et c'est tout l'intérêt —
+  `tools/epreuveTombe.mjs` l'a vue rester VERTE avec le défaut remis. Un
+  ensemble de points s'écrit « {−6 ; 4} » entre ACCOLADES, et son moins est le
+  « − » typographique, que `-?\d` ne reconnaît pas. La garde n'interdisait que
+  la forme que j'avais devinée.
+- **Combien de fois** : ||| — même famille que « une mesure qui ne cherche
+  qu'une valeur devinée ne mesure que ma devinette ». **On compare à la
+  fonction qui produit la chose** — ici `solutionTexte` —, jamais à un motif
+  qu'on a écrit de mémoire.
+- **Ce qui manque** : rien. `epreuveTombe` fait exactement son travail ; la
+  note est là pour que la règle se retienne.

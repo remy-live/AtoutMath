@@ -35,10 +35,16 @@
 // papier les met à son échelle, et c'est tout.
 
 import { planDeLaScene, planFigureCodee } from '../../core/pointsDroitesSvg.js';
-import { ENCRE, boiteDe, echapperSheet } from './socle.js';
+import { boiteDe, echapperSheet } from './socle.js';
+// L'ENCRE VIENT DU MODULE FEUILLE, et non de `socle.js` qui la ré-exporte :
+// les deux constantes ci-dessous sont lues EN TÊTE DE MODULE, et `socle.js`
+// est dans un cercle d'imports où une lecture en tête de module jette ou passe
+// selon qui a été chargé en premier. Voir `fiches/encre.js`.
+// Le noir des traits, nommé dans `encre.js` : deux fichiers qui déclarent
+// `TRAIT` sont deux endroits où chercher la même chose.
+import { TRAIT } from './encre.js';
 
 /** Le gris des traits ordinaires, le noir de ce qui porte la question. */
-const TRAIT = ENCRE.trait;
 
 /**
  * LA FIGURE EN HAUT, LES AFFIRMATIONS EN BAS.
@@ -47,7 +53,7 @@ const TRAIT = ENCRE.trait;
  * reste. C'est le même partage que sur l'écran, où la figure est au-dessus des
  * boutons — un élève qui a travaillé à l'écran retrouve sa feuille.
  */
-function plant(item, slot) {
+function plantDeLaFigure(item, slot) {
     const m = item.meta || {};
     const b = boiteDe(slot);
     const marge = 2;
@@ -113,7 +119,7 @@ const traitsDe = (g) => (g.plan.traits
 // ── L'APERÇU ────────────────────────────────────────────────────────────────
 
 export function elementsGeoPreviewHtml(item, slot, k, solution) {
-    const g = plant(item, slot);
+    const g = plantDeLaFigure(item, slot);
     const T = (v) => (v * k).toFixed(2);
     if (!g.plan) return '';
 
@@ -170,7 +176,7 @@ export function elementsGeoPreviewHtml(item, slot, k, solution) {
 // ── LE PDF ──────────────────────────────────────────────────────────────────
 
 export function dessinerElementsGeoPdf(doc, item, slot, solution) {
-    const g = plant(item, slot);
+    const g = plantDeLaFigure(item, slot);
     if (!g.plan) return;
 
     doc.setDrawColor(...TRAIT);

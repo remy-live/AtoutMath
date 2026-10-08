@@ -9,8 +9,15 @@ import { HAUTEUR_ETIQUETTE as HAUTEUR_ETIQ_ANGLE, ancreArc as ancreArcAngle, boi
 import { encre, mesureur, polycopieEnCouleur, pourPdf, texteRiche } from '../ficheRendu.js';
 import { sommets as sommetsAngles } from '../../core/anglesRemarquablesSvg.js';
 
-export const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240, 250],
-    texte: [45, 55, 72], gris: [110, 118, 132] };
+// L'ENCRE VIT DANS UN MODULE FEUILLE, et c'est ré-exporté ici pour que rien
+// ne change aux appels. Un rendu de `fiches/` a le droit d'écrire
+// `const TRAIT = ENCRE.trait` en tête de module, ce qui est le réflexe
+// naturel ; il ne l'avait PAS tant que `ENCRE` était déclaré ici, parce que ce
+// fichier est dans un cercle d'imports et qu'on ne lit pas une valeur d'un
+// cercle en train de se refermer. Voir `fiches/encre.js`, qui raconte les
+// vingt minutes que ça a coûté.
+export { ENCRE } from './encre.js';
+import { ENCRE } from './encre.js';
 
 // --- LES PLATEAUX À JOUER SUR PAPIER : puissance 4 et sim ---------------------
 //

@@ -152,7 +152,12 @@ function itemInverse(rng, q) {
             html: '<div class="game-question">Quelle condition sur x décrit '
                 + 'l\'ensemble dessiné ?</div>'
                 + axeDe(q.solution, `l'ensemble ${solutionTexte(q.solution)}`),
-            papier: `Écris la condition qui décrit ${solutionTexte(q.solution)}.`
+            // SUR LE PAPIER, L'ENSEMBLE EST DESSINÉ À DROITE, pas écrit en
+            // crochets dans la question. C'est tout le barreau 8 : lire un AXE
+            // et en déduire la condition. Écrire « [1 ; 5] » dans l'énoncé
+            // donnait la moitié du travail — il n'y avait plus qu'à traduire
+            // deux crochets, sans jamais regarder un dessin.
+            papier: 'Écris la condition sur x qui décrit l’ensemble dessiné :'
         },
         answer: 'ok',
         choices: choix,
@@ -163,7 +168,14 @@ function itemInverse(rng, q) {
         ],
         explanation: pourquoiTexte(q),
         difficulty: 3,
-        meta: { marche: 'inverse' }
+        // `solution` POUR QUE LA FICHE PUISSE LE DESSINER, et `donnee` pour
+        // qu'elle sache que ce tracé est l'ÉNONCÉ et non la réponse : sur ce
+        // barreau-là, l'axe est tracé sur les DEUX feuilles. Sans ce drapeau,
+        // la feuille de l'élève sortait un axe vide sous « décris l'ensemble
+        // dessiné » — une question dont on a effacé la donnée, c'est-à-dire
+        // insoluble.
+        meta: { marche: 'inverse', solution: q.solution, donnee: true,
+            reponse: q.enonce }
     });
 }
 
@@ -238,7 +250,11 @@ function itemRepresenter(rng, q) {
         schemas: ['', axeDe(q.solution, solutionTexte(q.solution))],
         explanation: pourquoiTexte(q),
         difficulty: q.solution.sorte === 'exterieur' ? 3 : 2,
-        meta: { marche: q.marche }
+        // LA SOLUTION VOYAGE AVEC L'ITEM, et c'est ce qui rend la feuille
+        // dessinable. RÉMY : « tu peux dessiner l'axe avec ou sans valeur pour
+        // l'impression ». Le papier ne sait pas lire le SVG du schéma — il
+        // dessine en traits —, il lui faut l'ensemble sous forme de BORNES.
+        meta: { marche: q.marche, solution: q.solution, centre: q.centre, rayon: q.rayon }
     });
 }
 
@@ -280,6 +296,19 @@ export const valeurAbsolueGenerator = {
         const marche = marcheAuRang(ctx.index ?? 0,
             marchesCochees(params, MARCHES), totalDe(ctx, params), params);
         const q = tirerValeurAbsolue({ rng, marche });
+        // LE BARREAU 1 NE S'IMPRIME PAS SUR UNE FICHE D'AXES.
+        //
+        // « |x − 5| se lit : ? » est un choix de vocabulaire entre quatre
+        // phrases ; sa réponse n'est pas un dessin. Sur la fiche demandée par
+        // Rémy — l'énoncé à gauche, la droite graduée à droite —, cette
+        // question sortait une ligne dont la moitié droite était BLANCHE :
+        // mesuré, premier bloc de la feuille, zéro trait.
+        //
+        // Une ligne qu'on ne peut pas remplir occupe quand même sa place. On
+        // rend donc la question du barreau suivant, qui travaille la même
+        // notion avec un dessin. Le barreau coché par le professeur reste
+        // servi À L'ÉCRAN, où ses quatre phrases existent.
+        if (marche === 'lire' && ctx.papier) return itemRepresenter(rng, q);
         if (marche === 'lire') return itemLire(rng, q);
         if (marche === 'inverse') return itemInverse(rng, q);
         return itemRepresenter(rng, q);

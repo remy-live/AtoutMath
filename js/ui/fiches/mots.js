@@ -444,22 +444,53 @@ function pointsFleche(x0, y0, x1, y1) {
 const cheminFleche = (pts) => 'M ' + pts
     .map(([x, y]) => `${x.toFixed(3)} ${y.toFixed(3)}`).join(' L ') + ' Z';
 
-const CHEMINS_FLECHE = {
-    droite: [pointsFleche(0.16, 0.5, 0.84, 0.5)],
-    bas: [pointsFleche(0.5, 0.16, 0.5, 0.84)]
-};
-
-// Sur une case d'angle, les deux flèches ne se superposent pas : centrées
-// toutes les deux, elles se croisent en une étoile qu'on ne lit plus. Chacune
-// dans sa moitié, comme les deux départs distincts qu'elles annoncent.
-const CHEMINS_COIN = [
-    pointsFleche(0.30, 0.28, 0.86, 0.28),
-    pointsFleche(0.28, 0.30, 0.28, 0.86)
-];
+/**
+ * LES CHEMINS SONT CALCULÉS AU PREMIER APPEL, PAS AU CHARGEMENT DU MODULE.
+ *
+ * `pointsFleche` lit `POINTE`, qui vient de `socle.js`, et ces modules forment
+ * un CERCLE :
+ *
+ *     socle.js → ficheRendu.js → printSheet.js → mots.js → socle.js
+ *
+ * Quand l'entrée du cercle est `printSheet.js` — ce qu'elle est dans
+ * l'application —, `socle.js` a fini de s'évaluer avant que `mots.js` ne
+ * commence, et trois constantes calculées en tête de module passent. Quand
+ * l'entrée est `socle.js` lui-même, ou n'importe quel module de `fiches/` qui
+ * l'importe en premier, `mots.js` est évalué PENDANT que `socle.js` est encore
+ * en cours : `POINTE` est alors dans sa zone morte et le module jette
+ *
+ *     ReferenceError: Cannot access 'POINTE' before initialization
+ *
+ * MESURÉ : une sonde qui importait `fiches/axes.js` sans passer par
+ * `printSheet.js` faisait tomber TOUT le sous-système d'impression sur ce
+ * message — qui désigne `mots.js`, c'est-à-dire un fichier sans rapport avec
+ * ce qu'on mesurait. Vingt minutes pour comprendre que l'ordre d'import était
+ * le sujet.
+ *
+ * Un calcul différé ne dépend plus de l'ordre : au premier dessin de flèche,
+ * les deux modules sont évalués depuis longtemps.
+ */
+let CHEMINS = null;
+function chemins() {
+    if (!CHEMINS) {
+        CHEMINS = {
+            droite: [pointsFleche(0.16, 0.5, 0.84, 0.5)],
+            bas: [pointsFleche(0.5, 0.16, 0.5, 0.84)],
+            // Sur une case d'angle, les deux flèches ne se superposent pas :
+            // centrées toutes les deux, elles se croisent en une étoile qu'on
+            // ne lit plus. Chacune dans sa moitié, comme les deux départs
+            // distincts qu'elles annoncent.
+            coin: [
+                pointsFleche(0.30, 0.28, 0.86, 0.28),
+                pointsFleche(0.28, 0.30, 0.28, 0.86)
+            ]
+        };
+    }
+    return CHEMINS;
+}
 
 function traitsFleche(type) {
-    if (type === 'coin') return CHEMINS_COIN;
-    return CHEMINS_FLECHE[type] || [];
+    return chemins()[type] || [];
 }
 
 /** La place d'une case de clé, la i-ème (0 en tête). */

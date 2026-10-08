@@ -106,7 +106,14 @@ export const secondeExercises = [
         cree: '2026-09-30',
         title: 'Valeur absolue : représenter sur un axe',
         consignePapier: 'Dans chaque cas, représente sur un axe l\'ensemble des nombres réels x tels que :',
-        colonnesPapier: 2,
+        // RÉMY : « présente-le sous forme de tableau pour avoir la même taille à
+        // gauche et la place à droite. Tu peux dessiner l'axe avec ou sans
+        // valeur pour l'impression. » L'énoncé tenait sur une ligne écrite
+        // suivie d'un pointillé — alors que ce qu'on demande est un DESSIN.
+        printable: 'valeurAbsolueAxe',
+        // PLUS DE `colonnesPapier` : une droite graduée coupée en deux colonnes
+        // fait seize graduations sur six centimètres, et l'on n'y trace plus
+        // rien à la main. C'est au rendu de disposer.
         generatorId: 'nb.valeur-absolue', activityId: 'buttons',
         // PAS DE `paramSchema` : le générateur déclare ses barreaux lui-même,
         // par `paramMarches`. Un réglage redéclaré ici gagnerait en silence
@@ -145,8 +152,12 @@ export const secondeExercises = [
         id: 'sec-union-inter',
         cree: '2026-09-22',
         title: 'Union et intersection d\'intervalles',
-        consignePapier: 'Écris l\'ensemble demandé.',
-        colonnesPapier: 1,
+        // LA CONSIGNE CHANGE AVEC LA FEUILLE. « Écris l'ensemble demandé »
+        // valait quand la réponse était une ligne de texte ; on la TRACE
+        // maintenant, et le rendu dit sur quelle droite.
+        consignePapier: 'Trace l\'ensemble demandé sur la troisième droite.',
+        // RÉMY : « présente en tableau et dessine les axes ».
+        printable: 'unionInterAxe',
         generatorId: 'nb.intervalles.ensemblistes', activityId: 'buttons',
         params: { operation: 'toutes', cas: 'tous' },
         motsClefs: ['union', 'intersection', 'intervalle', 'réunion', 'commun',

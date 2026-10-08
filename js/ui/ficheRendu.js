@@ -29,9 +29,48 @@ import { RE_FRACTION, etageEstUnTrou } from '../core/fiche.js';
 // premier réglage — c'est la leçon que ce fichier porte déjà pour l'aperçu et
 // le PDF, et je venais de la repayer à l'intérieur même de l'aperçu.
 import { formule as formuleHtml } from '../core/maths/formule.js';
-// Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
-// pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
-import { RENDUS } from './printSheet.js';
+/**
+ * LES RENDUS DE GRILLES SONT DÉPOSÉS ICI, PAS IMPORTÉS D'ICI.
+ *
+ * Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
+ * pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
+ * Ce fichier en a donc besoin — mais il ne peut pas les IMPORTER, et c'est ce
+ * qu'il faisait.
+ *
+ * ── LE CERCLE, ET CE QU'IL CASSAIT ────────────────────────────────────────
+ *
+ * `import { RENDUS } from './printSheet.js'` était l'arête à l'envers d'un
+ * cercle complet :
+ *
+ *     ficheRendu.js → printSheet.js → fiches/axes.js → fiches/socle.js
+ *                  ↖──────────────────────────────────────────┘
+ *
+ * Tant que l'application charge `printSheet.js` en premier, le cercle se
+ * referme dans le bon ordre et personne ne voit rien. Mais dès que l'entrée
+ * est un RENDU — ce qu'une sonde fait naturellement, et ce qu'un futur module
+ * fera un jour —, `printSheet.js` est atteint PENDANT que le rendu s'évalue,
+ * et sa table `RENDUS` se construit en lisant un `RENDUS_AXES` encore dans sa
+ * zone morte :
+ *
+ *     ReferenceError: Cannot access 'RENDUS_AXES' before initialization
+ *
+ * MESURÉ : une sonde qui importait `fiches/axes.js` sans passer par
+ * `printSheet.js` faisait tomber TOUT le sous-système d'impression, sur un
+ * message qui désignait à chaque correction un fichier différent et jamais le
+ * bon — `mots.js`, puis `socle.js`, puis `printSheet.js`. Vingt minutes avant
+ * de comprendre que le sujet n'était aucun des trois, mais le SENS d'une
+ * flèche d'import.
+ *
+ * ── CE QUI REMPLACE L'IMPORT ──────────────────────────────────────────────
+ *
+ * `RENDUS` n'est lu qu'à l'intérieur de deux fonctions, donc longtemps après
+ * que tout est chargé : une table qu'on DÉPOSE suffit, et le cercle disparaît.
+ * `printSheet.js` appelle `deposerLesRendus` au moment où il construit sa
+ * table. Si quelqu'un l'oubliait, les blocs de grille ne se dessineraient plus
+ * du tout — et `tests/cercleDesFiches.test.mjs` le dit avant le navigateur.
+ */
+let RENDUS = {};
+export function deposerLesRendus(table) { RENDUS = table || {}; }
 
 /**
  * L'ENCRE DU POLYCOPIÉ — QUATRE MODES, UN SEUL FILTRE.

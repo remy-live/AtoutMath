@@ -163,120 +163,184 @@ function crochet(x, ferme, versLaDroite, teinte = TEINTE) {
  * @param {Object} [opts]
  * @param {string} [opts.titre] ce que le lecteur d'écran doit entendre.
  */
-export function axeHtml(parts, opts = {}) {
+/**
+ * LE PLAN D'UN AXE — les traits et les nombres, sans une once de SVG.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, dans sa revue : « présente en tableau et dessine les axes »
+ * (`sec-union-inter`), « tu peux dessiner l'axe avec ou sans valeur pour
+ * l'impression » (`sec-valeur-absolue`).
+ *
+ * La feuille ne sait pas lire un SVG : elle est dessinée par jsPDF, en traits
+ * et en textes. Il lui faut donc les COORDONNÉES — et elles n'existaient que
+ * sous forme de balises.
+ *
+ * ON NE REDESSINE PAS L'AXE DE L'AUTRE CÔTÉ, c'est la leçon de la racine
+ * carrée et des figures de géométrie, payée deux fois. Tout ce qui est réglé
+ * ici l'a été sur des mesures : le sens des crochets (« avec des bras de six
+ * pixels sur un axe de 324, on ne les distingue pas »), l'intervalle tracé SUR
+ * la droite et non au-dessus (« pourquoi le trait est au dessus, fais-le d'une
+ * autre couleur »), les nombres qu'on n'écrit pas tous. Le papier hérite de
+ * tout cela au lieu de le réinventer, et mal.
+ *
+ * Les coordonnées sont celles de la vue SVG ; au papier de les ramener à ses
+ * millimètres.
+ *
+ * @returns {{L:number, Y:number, hauteur:number, hautVue:number,
+ *            traits:Array, tics:Array, nombres:Array, parts:Array,
+ *            points:Array, lettre:?object}}
+ */
+export function planDAxe(parts, opts = {}) {
     const vivants = parts.filter(Boolean);
-    const points = opts.points || [];
+    const pts = opts.points || [];
     const bornes = vivants.flatMap(p => [p.a, p.b]).filter(v => v !== null);
-    // LES POINTS ISOLÉS CADRENT L'AXE EUX AUSSI. Sans cela, un ensemble réduit
-    // à deux nombres n'aurait AUCUNE partie vivante : la fenêtre serait tirée
-    // de rien, et les deux points tomberaient hors du dessin.
     const f = opts.fenetre || fenetreCommune(vivants.length
-        ? vivants : points.map((v) => ({ a: v, b: v, ea: true, eb: true })));
+        ? vivants : pts.map((v) => ({ a: v, b: v, ea: true, eb: true })));
 
-    const hauteur = H + (vivants.length - 1) * 14;
-    let g = '';
+    const hauteur = H + (vivants.length - 1) * DECALAGE;
 
-    // La droite, ses flèches, ses graduations entières et leurs nombres.
-    g += `<path d="M 4 ${Y} L ${L - 4} ${Y}" stroke="currentColor" `
-        + `stroke-width="${TRAIT.axe}" fill="none"/>`;
-    g += `<path d="M ${L - 4} ${Y} l -6 -3.4 l 0 6.8 z" fill="currentColor"/>`;
+    // La droite et sa flèche.
+    const traits = [{ x1: 4, y1: Y, x2: L - 4, y2: Y, role: 'axe' }];
+    const fleches = [{ x: L - 4, y: Y, vers: 1, role: 'axe' }];
+
+    // Les graduations, et les nombres qu'on écrit — pas tous : le manuel n'en
+    // écrit que deux, 0 et 1, et laisse les graduations dire le reste.
+    const tics = [];
+    const nombres = [];
     for (let v = f.min; v <= f.max; v++) {
         const x = versX(v, f);
         const gros = v === 0 || v === 1;
-        g += `<path d="M ${x} ${Y - 4.5} L ${x} ${Y + 4.5}" stroke="currentColor" `
-            + `stroke-width="${gros ? TRAIT.ticRepere : TRAIT.tic}" fill="none"/>`;
-        // ON N'ÉCRIT PAS TOUS LES NOMBRES. Le manuel n'en écrit que deux — 0 et
-        // 1 — et laisse les graduations dire le reste ; seize nombres sous une
-        // droite de trois cents pixels se chevauchent et ne se lisent plus. On
-        // garde 0, 1 et les bornes de l'intervalle, qui sont ce qu'on regarde.
-        const estBorne = bornes.includes(v);
-        if (gros || estBorne) {
-            g += `<text x="${x}" y="${Y_NOMBRE}" text-anchor="middle" font-size="11" `
-                + `fill="currentColor">${nb(v)}</text>`;
+        tics.push({ x, demi: 4.5, gros });
+        // `bornesEnPlus` : des nombres à écrire bien qu'aucun intervalle ne les
+        // porte. C'est ce qu'il faut pour l'axe VIDE où l'élève trace sa
+        // réponse : il doit porter les mêmes repères que ceux qu'il lit
+        // au-dessus, sinon il recopie une longueur au lieu de lire une borne.
+        const enPlus = opts.bornesEnPlus || [];
+        // SUR LE PAPIER, TOUS LES ENTIERS SONT ÉCRITS. À l'écran, l'axe se LIT :
+        // deux repères suffisent, et le manuel n'en met pas plus. Sur la
+        // feuille, l'élève TRACE — il doit poser une borne au bon endroit, et
+        // une droite graduée de 1 à 11 où seul « 1 » est écrit ne le permet
+        // qu'en comptant les graduations une par une.
+        //
+        // Mesuré sur la photo de la fiche : sept lignes portant chacune un axe
+        // de dix graduations et un seul nombre.
+        //
+        // Cela ne donne RIEN de la réponse : les bornes se calculent, elles ne
+        // se lisent pas. Et le réglage « axe nu » de Rémy — « avec ou sans
+        // valeur » — retire tout, y compris cela.
+        if (gros || opts.tousLesEntiers || bornes.includes(v) || enPlus.includes(v)) {
+            nombres.push({ x, v, gras: false });
         }
     }
-
-    // LES BORNES QUI NE TOMBENT PAS SUR UNE GRADUATION.
-    //
-    // La boucle ci-dessus ne visite que les entiers : une borne à 1,5 n'y
-    // passait jamais, et l'intervalle [1,5 ; 4,5] se dessinait avec DEUX
-    // crochets sans nom. On les écrit donc à part, avec leur propre petit
-    // trait — sans quoi le lecteur ne sait pas à quelle hauteur de la
-    // graduation le crochet se pose.
-    for (const v of bornes) {
+    // LES BORNES QUI NE TOMBENT PAS SUR UNE GRADUATION : une borne à 1,5 ne
+    // passait jamais dans la boucle des entiers, et l'intervalle [1,5 ; 4,5] se
+    // dessinait avec DEUX crochets sans nom.
+    for (const v of [...bornes, ...(opts.bornesEnPlus || [])]) {
         if (Number.isInteger(v)) continue;
         const x = versX(v, f);
-        g += `<path d="M ${x} ${Y - 3} L ${x} ${Y + 3}" stroke="currentColor" `
-            + `stroke-width="${TRAIT.tic}" fill="none"/>`;
-        g += `<text x="${x}" y="${Y_NOMBRE}" text-anchor="middle" font-size="11" `
-            + `fill="currentColor">${nb(v)}</text>`;
+        tics.push({ x, demi: 3, gros: false });
+        // `entre` : CETTE BORNE TOMBE ENTRE DEUX GRADUATIONS, et le rendu
+        // papier l'écrit sur une SECONDE LIGNE.
+        //
+        // Mesuré sur le corrigé de `|x + 2| < 4,5` : « −7  −6,5  −6 » se
+        // touchaient, parce que la feuille écrit tous les entiers (`
+        // tousLesEntiers`) ET les bornes. À l'écran la question ne se pose pas,
+        // le manuel n'y écrivant que 0 et 1. C'est ce qu'un professeur fait à
+        // la main : la valeur exacte sous la graduation, décalée d'une ligne.
+        nombres.push({ x, v, gras: false, entre: true });
+    }
+    // LES POINTS ISOLÉS — « l'ensemble des x tels que |x − 2| = 5 ». Une
+    // ÉGALITÉ ne donne pas un intervalle : elle donne deux nombres, et rien
+    // entre eux. Au tableau on marque un gros point plein.
+    const points = pts.map(v => ({ x: versX(v, f), v }));
+    // `entre`, ici aussi : un point à −6,5 s'écrit sur la seconde ligne comme
+    // une borne à −6,5. Deux valeurs décimales voisines et tous les entiers
+    // écrits se touchent de la même façon, qu'elles viennent d'un point ou
+    // d'un crochet — et deux règles pour un même encombrement finiraient par
+    // diverger.
+    pts.forEach(v => nombres.push({
+        x: versX(v, f), v, gras: true, entre: !Number.isInteger(v) }));
+
+    // Les intervalles eux-mêmes, chacun à sa hauteur quand il y en a deux.
+    const lesParts = vivants.map((p, i) => ({
+        dy: i * DECALAGE,
+        x1: p.a === null ? 6 : versX(p.a, f),
+        x2: p.b === null ? L - 6 : versX(p.b, f),
+        teinte: p.teinte || TEINTE,
+        crochetA: p.a === null ? null : { x: versX(p.a, f), ferme: p.ea, versLaDroite: true },
+        crochetB: p.b === null ? null : { x: versX(p.b, f), ferme: p.eb, versLaDroite: false },
+        flecheA: p.a === null, flecheB: p.b === null
+    }));
+
+    return {
+        L, Y, H, hauteur, hautVue: hauteur - H,
+        crochetHaut: CROCHET.haut, crochetBras: CROCHET.bras,
+        yNombre: Y_NOMBRE,
+        traits, fleches, tics, nombres, points, parts: lesParts,
+        lettre: opts.nom ? { nom: opts.nom, teinte: opts.teinte || TEINTE } : null,
+        titre: opts.titre || 'Droite graduée'
+    };
+}
+
+/**
+ * Le dessin d'un ou plusieurs intervalles sur une même droite graduée — SVG.
+ *
+ * @param {Array<{a:?number,b:?number,ea:boolean,eb:boolean,teinte?:string}>} parts
+ *   `a`/`b` : les bornes, `null` pour l'infini. `ea`/`eb` : borne incluse.
+ * @param {Object} [opts]
+ * @param {string} [opts.titre] ce que le lecteur d'écran doit entendre.
+ */
+export function axeHtml(parts, opts = {}) {
+    const P = planDAxe(parts, opts);
+    let g = '';
+
+    g += `<path d="M ${P.traits[0].x1} ${P.Y} L ${P.traits[0].x2} ${P.Y}" `
+        + `stroke="currentColor" stroke-width="${TRAIT.axe}" fill="none"/>`;
+    g += `<path d="M ${L - 4} ${Y} l -6 -3.4 l 0 6.8 z" fill="currentColor"/>`;
+
+    for (const t of P.tics) {
+        g += `<path d="M ${t.x} ${Y - t.demi} L ${t.x} ${Y + t.demi}" stroke="currentColor" `
+            + `stroke-width="${t.gros ? TRAIT.ticRepere : TRAIT.tic}" fill="none"/>`;
+    }
+    for (const n of P.nombres) {
+        g += `<text x="${n.x}" y="${Y_NOMBRE}" text-anchor="middle" font-size="11" `
+            + `${n.gras ? 'font-weight="700" ' : ''}fill="currentColor">${nb(n.v)}</text>`;
+    }
+    for (const p of P.points) {
+        g += `<circle cx="${p.x}" cy="${Y}" r="4" fill="${opts.teinte || TEINTE}"/>`;
     }
 
-    // LES POINTS ISOLÉS — « représenter l'ensemble des x tels que |x − 2| = 5 ».
-    //
-    // Une ÉGALITÉ ne donne pas un intervalle : elle donne deux nombres, et rien
-    // entre eux. Un segment de longueur nulle avec deux crochets face à face
-    // serait illisible ; au tableau on marque un gros point plein, et c'est ce
-    // qu'on fait. Le nombre est écrit dessous comme une borne, puisque c'en est
-    // une — le seul point de l'ensemble de ce côté-là.
-    for (const p of (opts.points || [])) {
-        const x = versX(p, f);
-        g += `<circle cx="${x}" cy="${Y}" r="4" fill="${opts.teinte || TEINTE}"/>`;
-        g += `<text x="${x}" y="${Y_NOMBRE}" text-anchor="middle" font-size="11" `
-            + `font-weight="700" fill="currentColor">${nb(p)}</text>`;
-    }
-
-    vivants.forEach((p, i) => {
-        const dy = i * DECALAGE;
-        const x1 = p.a === null ? 6 : versX(p.a, f);
-        const x2 = p.b === null ? L - 6 : versX(p.b, f);
-        const teinte = p.teinte || TEINTE;
-        g += `<g transform="translate(0 ${-dy})">`;
-        // L'INTERVALLE SE DESSINE SUR LA DROITE, ET EN COULEUR.
-        //
-        // Rémy, capture à l'appui : « pourquoi le trait est au dessus, fais-le
-        // d'une autre couleur. » Il a raison sur les deux points, et c'est la
-        // même raison : au-dessus et en gris, la bande était un objet À CÔTÉ de
-        // la droite, alors qu'elle EST la partie de la droite dont on parle.
-        // Le manuel la trace sur la droite elle-même. On la pose donc à la
-        // hauteur de l'axe, épaisse, et de la couleur de l'application — les
-        // graduations restent noires dessous, ce qui laisse lire les nombres.
-        //
-        // UN SEUL DÉCALAGE SUBSISTE, quand on dessine DEUX intervalles sur la
-        // même droite (l'union, l'intersection) : sans lui, le second couvrirait
-        // le premier et l'on ne verrait plus qu'un seul segment.
-        g += `<path d="M ${x1} ${Y} L ${x2} ${Y}" stroke="${teinte}" `
+    for (const p of P.parts) {
+        g += `<g transform="translate(0 ${-p.dy})">`;
+        // L'INTERVALLE SE DESSINE SUR LA DROITE, ET EN COULEUR. Rémy, capture à
+        // l'appui : « pourquoi le trait est au dessus, fais-le d'une autre
+        // couleur. » Au-dessus et en gris, la bande était un objet À CÔTÉ de la
+        // droite, alors qu'elle EST la partie de la droite dont on parle.
+        g += `<path d="M ${p.x1} ${Y} L ${p.x2} ${Y}" stroke="${p.teinte}" `
             + `stroke-width="${TRAIT.intervalle}" stroke-linecap="butt" fill="none"/>`;
-        if (p.a !== null) g += crochet(x1, p.ea, true, teinte);
-        if (p.b !== null) g += crochet(x2, p.eb, false, teinte);
+        if (p.crochetA) g += crochet(p.crochetA.x, p.crochetA.ferme, true, p.teinte);
+        if (p.crochetB) g += crochet(p.crochetB.x, p.crochetB.ferme, false, p.teinte);
         // Vers l'infini, une flèche plutôt qu'un crochet : c'est ce qui se
         // dessine au tableau, et cela redit que la borne n'est pas atteinte.
-        if (p.a === null) g += `<path d="M 3 ${Y} l 8 -4.2 l 0 8.4 z" fill="${teinte}"/>`;
-        if (p.b === null) g += `<path d="M ${L - 3} ${Y} l -8 -4.2 l 0 8.4 z" fill="${teinte}"/>`;
+        if (p.flecheA) g += `<path d="M 3 ${Y} l 8 -4.2 l 0 8.4 z" fill="${p.teinte}"/>`;
+        if (p.flecheB) g += `<path d="M ${L - 3} ${Y} l -8 -4.2 l 0 8.4 z" fill="${p.teinte}"/>`;
         g += `</g>`;
-    });
+    }
 
     // LA LETTRE, DANS LE COIN. Quand on empile deux axes pour demander I ∩ J,
-    // il faut pouvoir dire LEQUEL est lequel autrement que par la couleur :
-    // un élève daltonien lit la lettre, et l'énoncé écrit « I = … » juste à
-    // côté avec la même. On la pose en haut à gauche, loin de la droite
-    // (y = 26) et des nombres (y = 45) : elle ne recouvre rien.
-    const lettre = opts.nom
+    // il faut pouvoir dire LEQUEL est lequel autrement que par la couleur : un
+    // élève daltonien lit la lettre.
+    const lettre = P.lettre
         ? `<text x="3" y="13" font-size="14" font-weight="700" `
-            + `fill="${opts.teinte || TEINTE}">${opts.nom}</text>`
+            + `fill="${P.lettre.teinte}">${P.lettre.nom}</text>`
         : '';
-    const titre = opts.titre || 'Droite graduée';
-    // LA DROITE A UNE TAILLE DE LECTURE, elle ne prend pas toute la place
-    // qu'on lui donne. Mesuré dans l'application : sur un écran large, l'axe
-    // s'étirait à 1 304 px — une unité de vue valait alors 4,07 px, et le
-    // moindre trait devenait un pavé. Tout grandissait ensemble, donc les
-    // proportions étaient les mêmes ; mais une droite graduée de treize cents
-    // pixels pour huit graduations ne ressemble plus à ce qu'un élève a dans
-    // son cahier, et c'est aussi cela que Rémy appelait « grossier ».
-    // Bornée à 560 px, une unité vaut 1,75 px : les nombres font 19 px, le
-    // trait de l'intervalle 6. C'est la taille d'un dessin de manuel.
-    return `<svg class="iv-axe" viewBox="0 -${hauteur - H} ${L} ${hauteur}" `
-        + `role="img" aria-label="${titre}" `
+    // LA DROITE A UNE TAILLE DE LECTURE, elle ne prend pas toute la place qu'on
+    // lui donne. Mesuré : sur un écran large l'axe s'étirait à 1 304 px, et une
+    // droite graduée de treize cents pixels pour huit graduations ne ressemble
+    // plus à ce qu'un élève a dans son cahier.
+    return `<svg class="iv-axe" viewBox="0 -${P.hautVue} ${L} ${P.hauteur}" `
+        + `role="img" aria-label="${P.titre}" `
         + `style="max-width:min(100%,560px);height:auto">${lettre}${g}</svg>`;
 }
 
@@ -1239,7 +1303,13 @@ export const ensemblistesGenerator = {
             // Le papier n'a pas le dessin de la correction : il faut que la
             // phrase se suffise, et elle le fait — elle nomme les deux résultats.
             difficulty: (!bonne.length || bonne.length === 2) ? 4 : 3,
-            meta: { op, position, vide: !bonne.length, morceaux: bonne.length }
+            // LES DEUX INTERVALLES VOYAGENT AVEC L'ITEM, et c'est ce qui rend
+            // la feuille dessinable. RÉMY : « présente en tableau et dessine
+            // les axes ». Le papier ne sait pas lire le SVG de `prompt.html` —
+            // il dessine en traits — et il lui faut donc I, J et la réponse
+            // sous forme de BORNES. Voir `planDAxe` et `fiches/axes.js`.
+            meta: { op, position, vide: !bonne.length, morceaux: bonne.length,
+                I, J, reponse: bonne }
         });
     }
 };
