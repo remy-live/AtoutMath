@@ -32,7 +32,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../js/core/ids.js';
 import { traitsDuPoint, marqueurPoint } from '../js/core/figures.js';
-import { planDeLaScene, planFigureCodee } from '../js/core/pointsDroitesSvg.js';
+import {
+    planDeLaScene, planFigureCodee, TYPO, demiDuNom
+} from '../js/core/pointsDroitesSvg.js';
 import { elementsGeometrieGenerator as G } from '../js/core/generators/elementsGeometrie.js';
 import {
     elementsGeoPreviewHtml, dessinerElementsGeoPdf
@@ -152,7 +154,13 @@ test('L\'ÉCRAN ET LE PAPIER TRACENT LA MÊME MARQUE', () => {
 
 // ── LA LETTRE QUI NOMME LE POINT ────────────────────────────────────────────
 
-/** Chaque étiquette : sa distance à SON point, et au point le plus proche. */
+/**
+ * Chaque étiquette : sa distance à SON point, au point le plus proche, et le
+ * BLANC qui reste entre son bord et le bord de la marque.
+ *
+ * Le blanc se calcule avec `demiDuNom`, la fonction même dont le plan se sert :
+ * une épreuve qui recopierait la formule mesurerait sa propre copie.
+ */
 function lesEtiquettes(combien = 60) {
     const out = [];
     for (let i = 0; i < combien; i++) {
@@ -164,9 +172,12 @@ function lesEtiquettes(combien = 60) {
         plan.points.forEach(p => {
             const n = plan.noms[p.nom];
             if (!n) return;
+            const d = Math.hypot(n.x - p.x, n.y - p.y) || 1;
+            const dir = { x: (n.x - p.x) / d, y: (n.y - p.y) / d };
             out.push({
                 nom: p.nom,
-                sien: Math.hypot(n.x - p.x, n.y - p.y),
+                sien: d,
+                blanc: d - TYPO.marque - demiDuNom(dir, TYPO),
                 voisin: Math.min(...plan.points.filter(q => q.nom !== p.nom)
                     .map(q => Math.hypot(n.x - q.x, n.y - q.y)))
             });
@@ -181,8 +192,8 @@ test('UNE LETTRE EST NETTEMENT PLUS PRÈS DE SON POINT QUE DU VOISIN', () => {
     // l'autre.
     //
     // MESURÉ AVANT, sur 670 étiquettes : rapport médian 0,35, et un pire cas à
-    // 0,99 — la lettre touchait l'autre point. APRÈS : 0,35 → 0,15, et 0,99 →
-    // 0,38. Le seuil est posé à la moitié : au-delà, un élève n'a plus de
+    // 0,99 — la lettre touchait l'autre point. APRÈS : 0,35 → 0,17, et 0,99 →
+    // 0,45. Le seuil est posé à la moitié : au-delà, un élève n'a plus de
     // raison de rattacher la lettre à l'un plutôt qu'à l'autre.
     const tout = lesEtiquettes();
     assert.ok(tout.length > 200, `${tout.length} étiquettes seulement`);
@@ -192,16 +203,139 @@ test('UNE LETTRE EST NETTEMENT PLUS PRÈS DE SON POINT QUE DU VOISIN', () => {
         + `${pire.voisin.toFixed(0)} px du voisin : on ne sait plus lequel elle nomme`);
 });
 
-test('ET LE TOUR LE PLUS ÉTROIT SERT DÈS QU\'IL EST LIBRE', () => {
-    // C'est l'autre moitié de la correction, et elle ne se voit pas dans le
-    // rapport ci-dessus : les trois tours sont essayés du plus près au plus
-    // loin, et l'on S'ARRÊTE au premier qui dégage assez. Sans cet arrêt, le
-    // score — qui croît avec la distance — faisait gagner le plus large
-    // presque à chaque fois, quel que soit le rayon.
+test('ET LE BLANC ENTRE LA LETTRE ET SA MARQUE EST LE MÊME PARTOUT', () => {
+    // CE QUE RÉMY VOIT N'EST PAS UNE DISTANCE DE CENTRE À CENTRE, c'est le
+    // BLANC entre le bord de la lettre et le bord de la croix. Et il l'a dit
+    // deux fois, parce que la première correction n'avait traité qu'une
+    // moitié : « le label du point est loin du point », puis « c'est encore
+    // bien éloigné le libellé du point dans le codage ».
     //
-    // MESURÉ : 659 étiquettes sur 670 sur le tour étroit après, zéro avant.
+    // MESURÉ SUR LA FEUILLE À QUATRE FIGURES PAR PAGE, avant cette épreuve :
+    // blanc de −0,7 px pour les lettres du tour le plus proche — elles
+    // mordaient sur la croix — et de 5,6 px pour celles qui avaient dû
+    // s'écarter d'un tour, soit plus d'une demi-hauteur de lettre. Les deux
+    // défauts sur la même page, en sens contraire, parce que l'écart se
+    // comptait en unités de FIGURE et la lettre en unités de PAGE.
+    //
+    // L'ÉPREUVE EST DONC CELLE DE L'UNIFORMITÉ, pas celle d'une valeur : le
+    // blanc d'une lettre posée en biais doit valoir celui d'une lettre posée
+    // au-dessus. C'est ce qu'aucune distance fixe ne donne.
     const tout = lesEtiquettes();
-    const etroit = tout.filter(e => e.sien < 11 * 1.4).length;
-    assert.ok(etroit / tout.length > 0.8,
-        `${etroit} étiquettes sur ${tout.length} au plus près : le tour large gagne encore`);
+    const blancs = tout.map(e => e.blanc);
+    const trie = [...blancs].sort((a, b) => a - b);
+    const median = trie[trie.length >> 1];
+    assert.ok(Math.abs(median - TYPO.blanc) < TYPO.corps * 0.1,
+        `blanc médian ${median.toFixed(1)} pour ${TYPO.blanc} voulu`);
+    // AUCUNE LETTRE À PLUS D'UN TIERS DE SA HAUTEUR DE SA MARQUE. Au-delà, on
+    // la voit flotter — c'est le « bien éloigné » de Rémy.
+    const loin = tout.filter(e => e.blanc > TYPO.blanc + TYPO.corps * 0.33);
+    assert.ok(loin.length / tout.length < 0.03,
+        `${loin.length} étiquettes sur ${tout.length} flottent loin de leur marque, `
+        + `par exemple « ${(loin[0] || {}).nom } » à ${(loin[0] || {}).blanc}`);
+    // ET AUCUNE NE MORD SUR LA CROIX. Collée est un défaut comme écartée.
+    const dessus = tout.filter(e => e.blanc < -TYPO.corps * 0.1);
+    assert.equal(dessus.length, 0,
+        `${dessus.length} étiquettes recouvrent la marque de leur point`);
+});
+
+test('ET LA FEUILLE POSE SES LETTRES À LA TAILLE DE SES LETTRES, PAS DE SA FIGURE', () => {
+    // LE DÉFAUT QUE RÉMY A VU DEUX FOIS, dans sa forme exacte.
+    //
+    // La figure se réduit pour entrer dans son bloc ; la lettre, elle, est
+    // écrite en millimètres de page et ne se réduit pas. Un écart compté en
+    // unités de FIGURE suit donc l'une et pas l'autre : sur une feuille à
+    // quatre figures par page, les lettres mordaient sur leur croix, et sur
+    // une feuille à une figure elles flottaient.
+    //
+    // ON CONFRONTE DONC DEUX BLOCS de tailles très différentes. Le blanc,
+    // rapporté à la hauteur de la lettre, doit être LE MÊME — c'est ce qu'un
+    // écart fixe ne peut pas donner, et c'est la seule forme d'épreuve qui le
+    // voie : mesurer un seul bloc laisserait passer le défaut entier.
+    const item = unItem('codage', 7);
+    const mesure = (boite) => {
+        const svg = avecLeReglage('croix',
+            () => elementsGeoPreviewHtml(item, { boite }, 1, false));
+        const corps = Number(/<text[^>]*font-size="([\d.]+)"/.exec(svg)[1]);
+        // Les deux traits d'une croix encadrent leur point : leur milieu EST
+        // le point. Les textes sortent dans le même ordre que les points.
+        const traits = [...svg.matchAll(
+            /class="eg-point"\s+x1="([\d.-]+)"\s+y1="([\d.-]+)"\s+x2="([\d.-]+)"\s+y2="([\d.-]+)"/g)]
+            .map(m => m.slice(1).map(Number));
+        const points = [];
+        for (let i = 0; i + 1 < traits.length; i += 2) {
+            points.push({ x: (traits[i][0] + traits[i][2]) / 2,
+                y: (traits[i][1] + traits[i][3]) / 2 });
+        }
+        const textes = [...svg.matchAll(/<text x="([\d.-]+)" y="([\d.-]+)"/g)]
+            .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
+        assert.equal(points.length, textes.length,
+            `${points.length} croix pour ${textes.length} noms`);
+        const t = { corps, encreH: TYPO.encreH, encreL: TYPO.encreL };
+        const blancs = points.map((p, i) => {
+            // `+1.3` : la ligne de base du texte, que l'aperçu décale — on la
+            // retire pour retrouver le CENTRE de la lettre.
+            const n = { x: textes[i].x, y: textes[i].y - 1.3 };
+            const d = Math.hypot(n.x - p.x, n.y - p.y) || 1;
+            const dir = { x: (n.x - p.x) / d, y: (n.y - p.y) / d };
+            return (d - (0.85 * 0.72 + 0.16) - demiDuNom(dir, t)) / corps;
+        });
+        return blancs.sort((a, b) => a - b)[blancs.length >> 1];
+    };
+    const grand = mesure({ x: 10, y: 10, w: 240, h: 160 });
+    const petit = mesure({ x: 10, y: 10, w: 62, h: 46 });
+    assert.ok(Math.abs(grand - petit) < 0.06,
+        `blanc relatif : ${grand.toFixed(3)} dans un grand bloc contre `
+        + `${petit.toFixed(3)} dans un petit — l'écart suit la figure et non la lettre`);
+    assert.ok(grand > 0 && grand < 0.33,
+        `blanc relatif ${grand.toFixed(3)} : la lettre est collée ou flotte`);
+});
+
+test('ET LE PDF POSE SES LETTRES EXACTEMENT OÙ L\'APERÇU LES MET', () => {
+    // RÉMY, en voyant la correction : « et pour l'impression aussi ! ».
+    //
+    // Les deux rendus partent du même `plantDeLaFigure`, donc du même plan —
+    // mais c'est une CROYANCE tant que rien ne la confronte. Ce dépôt a payé
+    // deux fois un rendu qui recalculait de son côté : la racine carrée, puis
+    // la pointe de flèche de l'axe, écrite en dur à l'écran pendant que le
+    // papier la lisait dans le plan.
+    //
+    // ON COMPARE DONC LES COORDONNÉES, pas les intentions : chaque lettre du
+    // PDF doit tomber à la même place que celle de l'aperçu, au centième de
+    // millimètre.
+    const item = unItem('codage', 11);
+    const slot = { boite: { x: 12, y: 18, w: 120, h: 84 } };
+
+    const doc = faussePage();
+    avecLeReglage('croix', () => dessinerElementsGeoPdf(doc, item, slot, false));
+    const svg = avecLeReglage('croix', () => elementsGeoPreviewHtml(item, slot, 1, false));
+
+    const duSvg = [...svg.matchAll(/<text x="([\d.-]+)" y="([\d.-]+)"/g)]
+        .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
+    const duPdf = doc.vu.textes.filter(t => /^[A-Z]'?$/.test(t.t));
+    assert.ok(duPdf.length >= 3, `${duPdf.length} lettre(s) dans le PDF`);
+    assert.equal(duSvg.length, duPdf.length,
+        `${duSvg.length} lettres à l'aperçu pour ${duPdf.length} au PDF`);
+    duPdf.forEach((t, i) => {
+        assert.ok(Math.abs(t.x - duSvg[i].x) < 0.01 && Math.abs(t.y - duSvg[i].y) < 0.01,
+            `« ${t.t} » : le PDF l'écrit en (${t.x.toFixed(2)} ; ${t.y.toFixed(2)}) `
+            + `et l'aperçu en (${duSvg[i].x.toFixed(2)} ; ${duSvg[i].y.toFixed(2)})`);
+    });
+
+    // ET LES MARQUES DE POINT AUSSI : une lettre bien posée à côté d'une croix
+    // mal posée reste une lettre mal posée.
+    const traitsSvg = [...svg.matchAll(
+        /class="eg-point"\s+x1="([\d.-]+)"\s+y1="([\d.-]+)"\s+x2="([\d.-]+)"\s+y2="([\d.-]+)"/g)]
+        .map(m => m.slice(1).map(Number));
+    // Les marques sont tracées EN DERNIER des deux côtés, après les droites et
+    // les marques de codage : on confronte donc les N derniers traits.
+    assert.equal(traitsSvg.length, duPdf.length * 2,
+        `${traitsSvg.length} traits de marque pour ${duPdf.length} points`);
+    assert.ok(doc.vu.traits.length >= traitsSvg.length,
+        `le PDF ne trace que ${doc.vu.traits.length} traits en tout`);
+    const debut = doc.vu.traits.length - traitsSvg.length;
+    traitsSvg.forEach((t, i) => {
+        const p = doc.vu.traits[debut + i];
+        assert.ok(Math.abs(t[0] - p.x1) < 0.01 && Math.abs(t[1] - p.y1) < 0.01,
+            `la marque ${i} tombe ailleurs au PDF : (${p.x1}, ${p.y1}) contre (${t[0]}, ${t[1]})`);
+    });
 });

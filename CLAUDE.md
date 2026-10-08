@@ -83,6 +83,13 @@ lui. On l'emploie sur tout crochet qu'on n'a pas LU dans la source.
 `s.page` reste la page Playwright pour tout le reste ; `s.erreurs` et
 `s.fenetresNatives` se remplissent tout seuls.
 
+Et pour **regarder** une feuille imprimée — compter les segments d'un PDF dit
+qu'il n'est pas vide, jamais qu'il est juste :
+
+```sh
+node tools/pdfEnImage.mjs <fiche.pdf> <image.png> [échelle] [page]
+```
+
 À la main, `php tools/siteEssai.php <PORT>` monte un site d'essai complet et
 imprime une ligne JSON avec `port`, `email: 'remy@essai.test'`,
 `mdp: 'motdepassetreslong'` — et une sonde doit alors **s'identifier puis

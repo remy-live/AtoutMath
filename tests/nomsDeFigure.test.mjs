@@ -56,16 +56,54 @@ test('ON ÉVITE LE TRAIT QU\'ON DESSINE, DÉPASSEMENT COMPRIS', () => {
         'les segments entre points nus ramènent le défaut : la droite les dépasse');
 });
 
-test('LA NOTE SE PREND SUR LA LETTRE, ET SUR LA PLACE QU\'ON PRENDRA', () => {
-    assert.match(SVG, /const DEMI = 9;/,
-        'la lettre a une taille : c\'est elle qu\'un trait traverse, pas son ancre');
-    assert.match(SVG, /distSeg\(q, s\)\)\) - DEMI/,
-        'la distance aux traits se compte depuis le bord de la lettre');
-    // LA PINCE AVANT LE CHOIX, ET NON APRÈS.
-    assert.match(SVG, /const q = dansLeCadre\(\{ x: c\.x \+ dir\.x \* RAYON/,
-        'on note la place qu\'on va vraiment prendre, pas celle qu\'on visait');
-    assert.doesNotMatch(SVG, /const place = dansLeCadre\(meilleur\);/,
-        'ramener l\'étiquette APRÈS le choix peut la reposer sur le trait évité');
+test('LA NOTE SE PREND SUR LE BORD DE LA LETTRE, PAS SUR SON ANCRE', () => {
+    // DEUXIÈME ÉPREUVE DE CE FICHIER À QUITTER LA SOURCE, et pour la même
+    // raison : elle cherchait `const DEMI = 9;` et `dir.x * RAYON`, deux noms
+    // qui ont disparu le jour où l'écart est devenu typographique. Le
+    // comportement n'avait pas bougé d'un pixel.
+    //
+    // CE QU'ELLE GARDE : une étiquette dont on note le CENTRE est jugée
+    // dégagée quand sa moitié est déjà sur le trait. C'est le deuxième des
+    // trois défauts d'origine, et il vaut une demi-hauteur de lettre.
+    //
+    // CE QU'ELLE NE GARDE PLUS, ET POURQUOI : la troisième ligne de l'ancienne
+    // épreuve disait que la pince du cadre s'applique AVANT le choix et non
+    // après. `epreuveTombe` a montré que ce défaut-là n'est plus atteignable :
+    // depuis que la lettre se pose CONTRE son point, elle ne sort plus du
+    // cadre. Mesuré : la pince déplace encore 243 places sur les 15 588
+    // essayées, mais AUCUNE des 540 places retenues — on l'a retirée
+    // entièrement, et pas un nom n'a bougé. On ne garde donc pas une règle que
+    // rien ne peut enfreindre ; on garde celle qui peut l'être.
+    const DEMI = 9;
+    const distSeg = (p, a, b) => {
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy)
+            / ((dx * dx + dy * dy) || 1)));
+        return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    };
+    let noms = 0, touches = 0;
+    for (let i = 0; i < 60; i++) {
+        const it = elementsGeometrieGenerator.generate(
+            { notion: ['appartenance', 'codage', 'milieu'][i % 3] },
+            { rng: makeRng('pince' + i), index: i, total: 60, themesExclus: [] });
+        const m = it.meta || {};
+        const plan = m.scene ? planDeLaScene(m.scene)
+            : m.figure ? planFigureCodee(m.figure) : null;
+        if (!plan) continue;
+        const segs = plan.traits
+            ? plan.traits.map(t => [{ x: t.x1, y: t.y1 }, { x: t.x2, y: t.y2 }])
+            : plan.segments.map(s => [s.A, s.B]);
+        plan.points.forEach(p => {
+            const n = plan.noms[p.nom];
+            if (!n) return;
+            noms++;
+            // LE BORD DE LA LETTRE, PAS SON ANCRE : un centre à neuf pixels
+            // d'un trait laisse la lettre dessus.
+            if (Math.min(...segs.map(([a, b]) => distSeg(n, a, b))) - DEMI < 0) touches++;
+        });
+    }
+    assert.ok(noms > 200, `${noms} noms seulement`);
+    assert.equal(touches, 0, `${touches} nom(s) sur ${noms} reposent sur un trait`);
 });
 
 test('VINGT-QUATRE PLACES, PAS HUIT — mesuré sur les figures, plus sur le code', () => {

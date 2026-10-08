@@ -3502,3 +3502,66 @@ lignes** — 2026-10-01
   sonde, `waitForTimeout` ne doit jamais être ce qui décide qu'une mesure est
   prête.** Le dépôt en porte d'autres ; on les corrigera au fur et à mesure
   qu'elles se signaleront.
+
+## Deux unités pour un même dessin, et la mesure qui ne les sépare pas — 2026-10-08
+
+- **Ce que je voulais faire** : rapprocher le nom d'un point de son point, sur
+  « lire un codage ». Rémy l'avait demandé une fois ; il a dû le redemander :
+  « c'est encore bien éloigné le libellé du point dans le codage ».
+- **Ce qui a coûté** : un aller-retour entier avec lui — le plus cher de tous.
+  Ma correction rapprochait l'étiquette de 15 unités de figure à 11, et elle
+  était juste À L'ÉCRAN, où la figure est dessinée à son échelle propre. Sur la
+  FEUILLE, la figure se réduit pour entrer dans son bloc et la lettre, écrite
+  en millimètres de page, ne se réduit pas : les deux grandeurs n'ont rien à
+  voir. Sur la même page on lisait alors des lettres mordant sur leur croix
+  (−0,7 px de blanc) et d'autres flottant à 5,6 px.
+- **Combien de fois** : || — et la première, c'était l'inverse : le PDF
+  dessinait un disque en dur là où l'écran suivait un réglage. Le motif commun
+  est **deux systèmes d'unités dans un même dessin** ; chaque fois, la mesure
+  faite dans l'un a dit que l'autre allait bien.
+- **Ce qui manque** : une habitude de mesure, et je l'écris. **Quand un dessin
+  vit dans deux systèmes d'unités, aucune mesure prise dans un seul des deux ne
+  compte.** Concrètement : une grandeur que l'ŒIL doit lire — un blanc, un
+  écart, une épaisseur — se compte dans les unités de ce qui est lu (la
+  lettre), jamais dans celles de ce qui la porte (la figure). Et l'épreuve qui
+  le garde doit confronter DEUX tailles de bloc : une seule est verte sur le
+  défaut entier, je l'ai vérifié avec `epreuveTombe`.
+
+## Un seul nombre non converti suffit à refaire le défaut — 2026-10-08
+
+- **Ce que je voulais faire** : finir la correction ci-dessus, c'est-à-dire
+  passer toutes les longueurs de `placerNoms` en unités de lettre.
+- **Ce qui a coûté** : une épreuve rouge et dix minutes à comprendre pourquoi.
+  J'avais converti l'écart, le demi-encombrement et le bord ; j'avais laissé
+  `DEGAGE = 2`. Sur une feuille à UNE figure par page, ce 2 renvoyait la moitié
+  des noms au tour suivant — 0,43 hauteur de lettre de blanc, contre 0,09 à
+  quatre figures par page. Le défaut entier était revenu par la seule constante
+  oubliée.
+- **Combien de fois** : | — mais la forme est générale et elle reviendra à
+  chaque conversion d'unités.
+- **Ce qui manque** : rien d'outillable. La règle : **quand on change les
+  unités d'une fonction, on les change pour TOUS ses nombres, et l'on relit la
+  fonction entière à la recherche de ceux qu'on a laissés.** Ici, ce qui l'a
+  trouvé n'est pas une relecture : c'est l'épreuve qui compare deux tailles de
+  bloc. Une épreuve qui ne regarde qu'un cas ne voit pas un facteur d'échelle.
+
+## On comptait les octets d'un PDF faute de pouvoir le regarder — 2026-10-08
+
+- **Ce que je voulais faire** : vérifier, sur l'IMPRESSION, que le nom d'un
+  point est bien contre son point. Rémy : « et pour l'impression aussi ! ».
+- **Ce qui a coûté** : une demi-heure, et surtout un défaut qui a survécu à une
+  correction. Toutes les sondes de fiches de ce dépôt téléchargent le PDF puis
+  en comptent les octets et les segments — « 146 segment(s) · 30 Ko ». Utile,
+  mais muet sur ce que Rémy voit. Je regardais donc l'APERÇU en croyant
+  regarder la feuille. `pdftoppm` n'est pas installable ici ; j'ai commencé par
+  lire le flux du PDF à la main, décompresser les `stream`, reconnaître les
+  `m`/`l`/`Td`/`Tj` — vingt minutes pour des chiffres que je n'arrivais pas à
+  rattacher aux bons objets.
+- **Combien de fois** : |||| — chacune des quatre sondes de fiches écrites
+  depuis une semaine a buté là-dessus, et chacune s'est rabattue sur « combien
+  de segments ».
+- **Ce qui manque** : c'est fait. `node tools/pdfEnImage.mjs <pdf> <png>
+  [échelle] [page]` rend une page dans une toile avec `pdfjs-dist`, déjà
+  présent pour l'aperçu, et la photographie. Deux secondes, et l'on REGARDE la
+  feuille. La règle qui va avec : **compter les segments d'un PDF dit qu'il
+  n'est pas vide, jamais qu'il est juste.**

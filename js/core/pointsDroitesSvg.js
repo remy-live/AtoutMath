@@ -34,14 +34,83 @@ const n2 = (v) => Number(v).toFixed(1);
 // choisit la moins mauvaise — c'est-à-dire une lettre barrée. MESURÉ : 31 noms
 // sur 196 encore touchés après avoir corrigé les segments. On donne donc de la
 // marge de manoeuvre : douze directions, deux distances, vingt-quatre places.
-// LES TROIS ANNEAUX SONT ESSAYÉS DU PLUS PROCHE AU PLUS LOIN, et c'est l'ordre
+// LES TROIS TOURS SONT ESSAYÉS DU PLUS PROCHE AU PLUS LOIN, et c'est l'ordre
 // qui compte — voir `placerNoms`. Groupés, parce qu'on s'arrête au premier qui
-// dégage assez.
-const ANNEAUX = [1.2, 1.6, 2.1].map(rayon =>
-    Array.from({ length: 12 }, (_, i) => {
-        const a = i * Math.PI / 6;
-        return { x: Math.cos(a) * rayon, y: Math.sin(a) * rayon };
-    }));
+// dégage assez. Chaque tour est un FACTEUR appliqué à la distance de contact,
+// et non une distance : voir `TYPO`.
+const TOURS = [1, 1.45, 2];
+const DIRECTIONS = Array.from({ length: 12 }, (_, i) => {
+    const a = i * Math.PI / 6;
+    return { x: Math.cos(a), y: Math.sin(a) };
+});
+
+/**
+ * LA DISTANCE D'UNE ÉTIQUETTE À SON POINT EST UNE AFFAIRE DE TYPOGRAPHIE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, deuxième fois sur le même sujet : « c'est encore bien éloigné le
+ * libellé du point dans le codage ». La première correction avait rapproché la
+ * lettre — de 15 unités de figure à 11 — et c'était la bonne direction, mais
+ * la mauvaise grandeur.
+ *
+ * LE DÉFAUT, MESURÉ SUR LA FEUILLE : l'écart se compte en unités de FIGURE et
+ * se réduit donc avec elle ; la lettre, elle, est posée en millimètres de PAGE
+ * et ne bouge pas. Quatre figures par page ramènent la figure à un peu plus de
+ * la moitié — et sur la même feuille on lisait alors :
+ *
+ *   · les étiquettes du tour le plus proche, à −0,7 px de blanc : COLLÉES à la
+ *     croix, parfois dessus ;
+ *   · celles qui avaient dû s'écarter d'un tour, à 5,6 px : plus d'une
+ *     demi-hauteur de lettre, c'est-à-dire « bien éloigné ».
+ *
+ * Les deux défauts sur la même page, en sens contraire, pour la même raison :
+ * un écart qui ne sait rien de la taille de la lettre.
+ *
+ * APRÈS, sur « lire un codage » et « le milieu », quatre figures par page : le
+ * blanc tient entre −1,6 et −0,7 px. Il reste négatif parce qu'on mesure des
+ * BOÎTES — celle d'une lettre est plus grande que son encre — mais l'écart
+ * entre la plus serrée et la plus lâche passe de 6,3 px à 0,9. C'est cette
+ * UNIFORMITÉ qui se voit, pas la valeur.
+ *
+ * ET L'AUTRE SENS, qui a failli passer inaperçu : le `DEGAGE` était resté un
+ * nombre absolu quand tout le reste était devenu typographique. Sur une
+ * feuille à UNE figure par page, il renvoyait d'un tour la moitié des noms —
+ * 0,43 hauteur de lettre de blanc, contre 0,09 à quatre par page. Un seul
+ * nombre non converti suffisait à rendre le défaut entier.
+ *
+ * ON SÉPARE DONC LES DEUX MÉTIERS. Le plan choisit la DIRECTION — c'est de la
+ * géométrie, c'est lui qui sait où passent les traits et les autres noms. La
+ * DISTANCE est de la typographie : marque + blanc + demi-encombrement de la
+ * lettre DANS CETTE DIRECTION. Une lettre posée au-dessus s'écarte de sa
+ * demi-hauteur, posée à droite de sa demi-largeur — et le blanc qu'on voit est
+ * le même des deux côtés, ce que nul écart fixe ne donne.
+ *
+ * LES VALEURS SONT CELLES DE L'ÉCRAN, en unités de `viewBox` :
+ *
+ *   · `lettre` : `.pd-nom` est en `font-size: 17px`, et ces pixels-là sont des
+ *     unités de la vue. L'encre d'une capitale grasse occupe environ 0,70 de
+ *     la hauteur du corps et 0,62 de sa largeur — mesuré au navigateur,
+ *     `getBBox` rend 12,0 de haut pour un corps de 17 ;
+ *   · `marque` : `marqueurPoint(..., 7)` trace une croix dont les branches
+ *     vont à 7 × 0,72 = 5,04, plus le demi-trait ;
+ *   · `blanc` : ce qui reste visible entre les deux. Un manuel en met peu —
+ *     la lettre touche presque.
+ *
+ * Le papier passe les siennes, en unités de plan (ses millimètres divisés par
+ * l'échelle de la figure) : voir `plantDeLaFigure` dans `fiches/elementsGeo.js`.
+ */
+export const TYPO = { corps: 17, encreH: 0.70, encreL: 0.62, marque: 6, blanc: 1.5 };
+
+/**
+ * Le demi-encombrement de la lettre dans une direction donnée.
+ *
+ * EXPORTÉ POUR QUE LES ÉPREUVES MESURENT LE BLANC — celui que Rémy voit — sans
+ * recopier cette arithmétique. Deux copies de la même formule, et le chiffre
+ * qu'annonce une garde cesse un jour d'être celui de la feuille.
+ */
+export const demiDuNom = (dir, t = TYPO) =>
+    Math.abs(dir.x) * t.corps * t.encreL / 2 + Math.abs(dir.y) * t.corps * t.encreH / 2;
 
 /** Les deux bouts RÉELLEMENT DESSINÉS d'une droite : ses points, dépassés. */
 function traitDessine(A, B) {
@@ -52,7 +121,7 @@ function traitDessine(A, B) {
         { x: B.x + dx / L * e, y: B.y + dy / L * e }];
 }
 
-function placerNoms(P, segments, boite) {
+function placerNoms(P, segments, boite, typo = TYPO) {
     // LA LETTRE SE POSE CONTRE SON POINT, PAS À CÔTÉ.
     //
     // RÉMY, sur « lire un codage » et sur « le milieu » : « le label du point
@@ -65,31 +134,41 @@ function placerNoms(P, segments, boite) {
     //
     //            rapport médian    pire cas
     //   avant        0,35            0,99   ← la lettre touchait l'autre point
-    //   après        0,15            0,38
+    //   après        0,17            0,45
     //
     // Un rapport de 0,99 veut dire qu'un élève lisant la figure n'avait aucune
     // raison de rattacher la lettre à l'un plutôt qu'à l'autre.
     //
-    // 15 px était le rayon d'origine, et le tour le plus large portait alors
-    // l'étiquette à 31 px. À 11, le bord de la lettre arrive à deux pixels du
-    // point : c'est ce que fait un manuel, la lettre touche presque. En
-    // dessous, elle recouvre la marque du point et devient illisible.
-    //
-    // CE NOMBRE SERT AUSSI À L'ÉCRAN — les deux dessins partent de ce plan, et
-    // Rémy a demandé de vérifier les deux. Mesuré au navigateur sur
-    // « lire un codage » et « le milieu » : 11,8 à 14,8 px.
-    const RAYON = 11;
+    // L'ÉCART NE SE DÉCIDE PLUS ICI : il se CALCULE, par direction, à partir de
+    // la taille de la lettre — voir `TYPO`, juste au-dessus, qui porte toute
+    // l'histoire de ce défaut. Un écart fixe donnait, sur la même page, des
+    // lettres collées à leur croix et d'autres à une demi-hauteur de lettre.
+    const contact = (dir) => typo.marque + typo.blanc + demiDuNom(dir, typo);
     // LA LETTRE A UNE TAILLE, ET C'EST ELLE QU'UN TRAIT TRAVERSE. La première
     // version notait la distance du CENTRE de l'étiquette aux droites : un
     // centre à 15 px d'un trait laisse la lettre à sept, c'est-à-dire dessus.
-    // On mesure donc depuis les bords de la lettre — un disque de 9 px suffit,
-    // les noms font une seule capitale.
-    const DEMI = 9;
-    // ON RAMÈNE L'ÉTIQUETTE DANS LE CADRE, et c'est la dernière chose qu'on
-    // fait — avant, la place choisie pouvait tomber dehors pour un point posé
-    // sur le bord de la grille. Mesuré : cinq noms sortis du viewBox sur
-    // quatre figures, tous aux bords. Un nom coupé ne nomme plus rien.
-    const BORD = 12;
+    // On mesure donc depuis les bords de la lettre — un disque de sa
+    // demi-hauteur suffit, les noms font une seule capitale.
+    const DEMI = typo.corps * typo.encreH / 2 + 1;
+    // ON RAMÈNE L'ÉTIQUETTE DANS LE CADRE, et on le fait AVANT de la noter —
+    // la pince appliquée après le choix déplaçait le nom élu et pouvait le
+    // reposer sur le trait qu'on venait de fuir. Mesuré à l'époque : cinq noms
+    // sortis du viewBox sur quatre figures, tous aux bords.
+    //
+    // CE FILET NE SERT PRESQUE PLUS, et il faut le dire plutôt que de le
+    // laisser croire gardé. Depuis que la lettre se pose CONTRE son point, elle
+    // ne va plus assez loin pour sortir : mesuré sur 90 figures, la pince
+    // déplace encore 243 des 15 588 places ESSAYÉES, mais aucune des 540 places
+    // RETENUES — retirée entièrement, pas un nom ne bouge. Aucune épreuve ne
+    // peut donc la faire tomber, et `epreuveTombe` l'a refusée. On la garde
+    // comme garde-fou (les tours sont des facteurs : un jour plus grands, elle
+    // resservira), pas comme une règle qu'on prétend tenir.
+    // EN UNITÉS DE LETTRE, LUI AUSSI : une demi-lettre, plus un peu d'air. Sur
+    // l'écran cela vaut 11,5 — les 12 d'avant, à un demi-pixel près — et sur
+    // une feuille à quatre figures par page, six. Un bord fixe aurait repoussé
+    // les noms du papier beaucoup plus loin qu'il ne faut, et c'est la pince
+    // qui aurait alors décidé de la place.
+    const BORD = typo.corps * 0.5 + 3.5;
     const dansLeCadre = (q) => ({
         x: Math.max(BORD, Math.min(boite.W - BORD, q.x)),
         y: Math.max(BORD + 4, Math.min(boite.H - BORD, q.y))
@@ -106,7 +185,13 @@ function placerNoms(P, segments, boite) {
     // 15 × 2,1 — le tour le plus large, dans la quasi-totalité des cas. Après :
     // 13,2 px, le tour le plus étroit, pour 659 étiquettes sur 670 ; les onze
     // autres sont celles qui en avaient vraiment besoin.
-    const DEGAGE = 2;
+    //
+    // ET IL SE COMPTE EN LETTRES, comme tout le reste ici. Resté à 2 unités de
+    // figure, il a fait repartir d'un tour la moitié des noms d'un grand bloc :
+    // la feuille à UNE figure par page remettait alors 0,43 hauteur de lettre
+    // de blanc là où celle à quatre en mettait 0,09. Le dernier nombre absolu
+    // d'une fonction devenue typographique faisait tout le défaut à lui seul.
+    const DEGAGE = typo.corps * 0.12;
     const poses = [];
     const distSeg = (p, [a, b]) => {
         const dx = b.x - a.x, dy = b.y - a.y;
@@ -123,20 +208,21 @@ function placerNoms(P, segments, boite) {
         // La pince qui ramène l'étiquette dans le cadre s'appliquait APRÈS le
         // choix : pour un point posé au bord, elle déplaçait le nom élu — et
         // pouvait le reposer exactement sur le trait qu'on venait de fuir.
-        for (const anneau of ANNEAUX) {
-            let deCetAnneau = null, scoreDeCetAnneau = -1;
-            for (const dir of anneau) {
-                const q = dansLeCadre({ x: c.x + dir.x * RAYON, y: c.y + dir.y * RAYON });
+        for (const tour of TOURS) {
+            let deCeTour = null, scoreDeCeTour = -1;
+            for (const dir of DIRECTIONS) {
+                const d = contact(dir) * tour;
+                const q = dansLeCadre({ x: c.x + dir.x * d, y: c.y + dir.y * d });
                 const aTraits = Math.min(...segments.map(s => distSeg(q, s))) - DEMI;
                 const aNoms = poses.length
                     ? Math.min(...poses.map(p => Math.hypot(q.x - p.x, q.y - p.y))) : 999;
                 const score = Math.min(aTraits, aNoms * 0.8);
-                if (score > scoreDeCetAnneau) { scoreDeCetAnneau = score; deCetAnneau = q; }
+                if (score > scoreDeCeTour) { scoreDeCeTour = score; deCeTour = q; }
                 if (score > meilleurScore) { meilleurScore = score; meilleur = q; }
             }
-            // ON S'ARRÊTE AU PREMIER ANNEAU QUI DÉGAGE ASSEZ. Les suivants ne
+            // ON S'ARRÊTE AU PREMIER TOUR QUI DÉGAGE ASSEZ. Les suivants ne
             // feraient qu'éloigner la lettre de ce qu'elle nomme.
-            if (scoreDeCetAnneau >= DEGAGE) { meilleur = deCetAnneau; break; }
+            if (scoreDeCeTour >= DEGAGE) { meilleur = deCeTour; break; }
         }
         poses.push(meilleur);
         out[nom] = meilleur;
@@ -203,10 +289,14 @@ export function planDeLaScene(sc, cfg = {}) {
     // LES SEGMENTS QU'ON ÉVITE SONT CEUX QU'ON DESSINE, dépassement compris.
     // Un nom posé au-delà d'un bout était sinon noté LOIN de la droite, et la
     // droite lui passait dessus.
+    // `cfg.typo` : LE PAPIER A SA PROPRE TAILLE DE LETTRE, et c'est elle qui
+    // décide de l'écart — voir `TYPO`. Sans ce passage, la feuille héritait de
+    // l'écart de l'écran réduit par son échelle, et les lettres touchaient leur
+    // croix. L'écran, lui, ne passe rien et garde `TYPO`.
     const noms = placerNoms(P, sc.droites.map(d => {
         const [a, b] = boutsDe(d);
         return traitDessine(P[a], P[b]);
-    }), { W, H });
+    }), { W, H }, cfg.typo || TYPO);
 
     // LES DROITES DÉPASSENT LEURS POINTS, et c'est ce qui les fait lire comme
     // des droites. Un trait qui s'arrête pile sur le dernier point nommé se
@@ -356,7 +446,9 @@ export function planFigureCodee(fig, cfg = {}) {
         P[nom] = { x: decalage + PAD + (p.x - x0) * UNIT, y: PAD + (y1 - p.y) * UNIT };
     }
     const marques = cfg.marques || marquesDe(fig);
-    const noms = placerNoms(P, fig.segments.map(s => [P[s.a], P[s.b]]), { W, H });
+    // `cfg.typo` : voir `planDeLaScene` et `TYPO` — le papier passe la sienne.
+    const noms = placerNoms(P, fig.segments.map(s => [P[s.a], P[s.b]]),
+        { W, H }, cfg.typo || TYPO);
     const vedettes = new Set(cfg.vedettes || []);
 
     return {

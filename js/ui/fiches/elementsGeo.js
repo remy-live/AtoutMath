@@ -34,7 +34,7 @@
 // est une correction payée : « 56 noms sur 196 touchés par un trait ». Le
 // papier les met à son échelle, et c'est tout.
 
-import { planDeLaScene, planFigureCodee } from '../../core/pointsDroitesSvg.js';
+import { planDeLaScene, planFigureCodee, TYPO } from '../../core/pointsDroitesSvg.js';
 import { boiteDe, echapperSheet } from './socle.js';
 import { traitsDuPoint } from '../../core/figures.js';
 
@@ -72,8 +72,16 @@ function plantDeLaFigure(item, slot) {
     const b = boiteDe(slot);
     const marge = 2;
 
-    const plan = m.scene ? planDeLaScene(m.scene)
-        : m.figure ? planFigureCodee(m.figure) : null;
+    const dessiner = (typo) => (m.scene ? planDeLaScene(m.scene, typo ? { typo } : {})
+        : m.figure ? planFigureCodee(m.figure, typo ? { typo } : {}) : null);
+    // UN PREMIER PLAN POUR CONNAÎTRE L'ENCOMBREMENT, et rien d'autre.
+    //
+    // L'échelle `k` se déduit de `W` et `H`, qui ne dépendent pas des noms ; et
+    // la place des noms, elle, dépend de `k` — voir plus bas. Deux passes donc,
+    // dans cet ordre, plutôt qu'un calcul d'échelle recopié ici : l'autre
+    // chemin est celui qui a coûté la racine carrée et les deux pointes de
+    // flèche.
+    const plan0 = dessiner(null);
 
     // LA PLACE DES AFFIRMATIONS SE CALCULE SUR LEUR NOMBRE, pas sur un
     // pourcentage : deux lignes de deux, plus un peu d'air.
@@ -85,7 +93,34 @@ function plantDeLaFigure(item, slot) {
 
     // La figure entre dans ce qui reste, sans jamais s'agrandir au-delà : une
     // scène de douze carreaux étirée sur toute la largeur devient illisible.
-    const k = plan ? Math.min((b.w - marge * 2) / plan.W, (dispoH - marge) / plan.H) : 1;
+    const k = plan0 ? Math.min((b.w - marge * 2) / plan0.W, (dispoH - marge) / plan0.H) : 1;
+
+    // ── OÙ SE POSE LA LETTRE, SUR LE PAPIER ─────────────────────────────
+    //
+    // RÉMY, deux fois : « le label du point est loin du point », puis « c'est
+    // encore bien éloigné le libellé du point dans le codage ».
+    //
+    // LA FIGURE SE RÉDUIT, LA LETTRE NON. `g.taille` est en millimètres de
+    // PAGE ; l'écart, lui, se comptait en unités de FIGURE et se réduisait
+    // donc avec `k`. Mesuré sur la feuille à quatre figures par page : les
+    // lettres du tour le plus proche laissaient −0,7 px de blanc — c'est-à-dire
+    // qu'elles mordaient sur la croix — et celles qui avaient dû s'écarter d'un
+    // tour en laissaient 5,6, plus d'une demi-hauteur de lettre. Les deux
+    // défauts sur la même page, en sens contraire.
+    //
+    // ON DONNE DONC AU PLAN LA TYPOGRAPHIE DU PAPIER, convertie en unités de
+    // plan — c'est-à-dire divisée par `k`. `placerNoms` en déduit la distance
+    // de contact direction par direction, et le blanc qu'on voit est le même
+    // partout.
+    const corpsMm = taille * 1.05;              // la lettre, telle qu'on l'écrit
+    const marqueMm = 0.85 * 0.72 + 0.16;        // la croix, branches et demi-trait
+    const typo = {
+        ...TYPO,
+        corps: corpsMm / k,
+        marque: marqueMm / k,
+        blanc: (corpsMm * 0.09) / k
+    };
+    const plan = plan0 ? dessiner(typo) : null;
     // LA FIGURE SE CENTRE DANS SA PLACE, horizontalement ET verticalement.
     //
     // Posée en haut, elle laissait une bande blanche de huit centimètres entre

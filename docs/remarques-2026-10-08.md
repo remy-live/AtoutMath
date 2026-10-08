@@ -66,7 +66,46 @@ s'arrête au premier qui dégage assez ; le rayon passe de 15 à 11.
 partent du même plan. Vérifié au navigateur sur `geo-codage-lire` et
 `geo-milieu` — 11,8 à 14,8 px, contre 31,5 avant.
 
-**Gardé par** : `tests/pointEtSonNom.test.mjs`, deux épreuves.
+### 2 bis. Il a fallu y revenir : « c'est encore bien éloigné »
+
+La correction ci-dessus était la bonne DIRECTION et la mauvaise GRANDEUR.
+
+**Ce que j'avais raté** : l'écart se comptait en unités de FIGURE, et la figure
+se réduit pour entrer dans son bloc ; la lettre, elle, est écrite en
+millimètres de PAGE et ne se réduit pas. Les deux grandeurs n'ont rien à voir,
+et sur une feuille à quatre figures par page on lisait, EN MÊME TEMPS :
+
+| | blanc entre la lettre et la croix |
+| --- | --- |
+| lettres du tour le plus proche | −0,7 px — elles mordaient sur la croix |
+| lettres écartées d'un tour | 5,6 px — plus d'une demi-hauteur de lettre |
+
+Les deux défauts sur la même page, en sens contraire, pour la même raison.
+
+**Pourquoi je ne l'avais pas vu** : j'avais mesuré sur le PLAN et à l'ÉCRAN, où
+les deux systèmes d'unités coïncident. La feuille, je l'avais regardée en
+entier — à cette taille, un millimètre ne se voit pas.
+
+**Fait** : le plan choisit la DIRECTION (c'est de la géométrie : il sait où
+passent les traits et les autres noms) ; la DISTANCE est de la typographie —
+marque + blanc + demi-encombrement de la lettre dans cette direction. La fiche
+passe sa propre typographie, convertie en unités de plan. Après : le blanc tient
+entre −1,6 et −0,7 px, soit un écart de 0,9 px là où il y en avait 6,3.
+
+**Gardé par** : `tests/pointEtSonNom.test.mjs`, quatre épreuves — dont une qui
+compare DEUX tailles de bloc (la seule forme qui voie ce défaut-là) et une qui
+confronte les coordonnées du PDF à celles de l'aperçu, au centième de
+millimètre.
+
+### 2 ter. « et pour l'impression aussi ! »
+
+Oui — et je ne l'avais vérifié que sur l'aperçu, ce qui n'est pas la feuille.
+
+**Regardé**, cette fois, dans le PDF lui-même, rendu en image : les quatre
+figures de « lire un codage » et les quatre du « milieu » portent leurs lettres
+contre leurs croix, du même blanc partout. `node tools/pdfEnImage.mjs
+<fiche.pdf> <image.png>` — l'outil manquait, toutes les sondes de fiches se
+contentaient de compter les segments du PDF.
 
 ---
 
