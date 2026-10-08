@@ -29,7 +29,8 @@ import { setTimeout as dormir } from 'node:timers/promises';
 const EXOS = [
     ['logi-strimko', 'le Strimko'],
     ['logi-approxdoku', 'l\'Approxdoku'],
-    ['logi-serpents', 'les Serpents']
+    ['logi-serpents', 'les Serpents'],
+    ['logi-enquete', "l'Enquête"]
 ];
 
 // Assez haute pour la feuille entière : `photo` découpe sur la FENÊTRE, et une
@@ -84,7 +85,19 @@ for (const [id, quoi] of EXOS) {
         };
     });
     dire(vu.blocs >= 2, 'plusieurs grilles sur la page', `${vu.blocs} grille(s)`);
-    if (id === 'logi-serpents') {
+    if (id === 'logi-enquete') {
+        // UN PLAN DE ZONES, et les indices écrits à côté. Sans le texte, la
+        // feuille porte une grille vide et personne ne peut rien déduire :
+        // c'est le défaut des figures de géométrie, à l'identique.
+        dire(vu.cases >= vu.blocs * 9, 'LE PLAN EST DESSINÉ',
+            `${vu.cases} case(s) pour ${vu.blocs} enquête(s)`);
+        dire(vu.bandes >= vu.blocs * 8, 'et les zones sont séparées par un trait',
+            `${vu.bandes} segment(s) de contour`);
+        const indices = await s.page.evaluate(() =>
+            (document.querySelector('#fp-apercu').innerText.match(/^\s*\d+\. /gm) || []).length);
+        dire(indices >= vu.blocs * 3, 'ET LES INDICES SONT ÉCRITS',
+            `${indices} indice(s) numérotés`);
+    } else if (id === 'logi-serpents') {
         // UNE GRILLE DE CASES, pas de ronds : une case par position, plus un
         // rond par tête de serpent pour porter son étiquette.
         dire(vu.cases >= vu.blocs * 16, 'LA GRILLE DE CASES EST DESSINÉE',
@@ -151,6 +164,13 @@ for (const [id, quoi] of EXOS) {
         const corrige = r.previewGrille(item, slot, 1, true);
         return {
             n: q.meta.n,
+            // L'ENQUÊTE SE CORRIGE EN ÉCRIVANT DES PRÉNOMS, pas des chiffres :
+            // un seul par case, et autant que de personnages.
+            parNoms: !!q.meta.solution && Array.isArray(q.meta.solution)
+                && !!(q.meta.solution[0] || {}).nom,
+            noms: (q.meta.noms || []).length,
+            textesEleve: (eleve.match(/<text/g) || []).length,
+            textesCorrige: (corrige.match(/<text/g) || []).length,
             // Un Strimko donne quelques chiffres de départ ; un Approxdoku
             // aucun ; une grille de serpents donne des ÉTIQUETTES, une par
             // serpent, qui ne sont pas des cases remplies.
@@ -164,7 +184,15 @@ for (const [id, quoi] of EXOS) {
             parContour: !!q.meta.serpents
         };
     }, id);
-    if (compte.parContour) {
+    if (compte.parNoms) {
+        // Le corrigé pose UN PRÉNOM PAR PERSONNAGE sur le plan. La feuille de
+        // l'élève porte déjà les noms des lieux et les repères : on ne compare
+        // donc pas à zéro, on compare l'ÉCART.
+        dire(compte.textesCorrige - compte.textesEleve === compte.noms,
+            'LE CORRIGÉ POSE CHAQUE PRÉNOM SUR LE PLAN',
+            `${compte.textesCorrige - compte.textesEleve} prénom(s) ajouté(s) `
+            + `pour ${compte.noms} personnage(s)`);
+    } else if (compte.parContour) {
         // LE CORRIGÉ TRACE, IL N'ÉCRIT PAS. Un serpent se corrige en montrant
         // son contour ; aucun chiffre ne s'ajoute, et une mesure qui compterait
         // les chiffres déclarerait le corrigé muet.
@@ -199,8 +227,8 @@ for (const [id, quoi] of EXOS) {
         // feuille vide, alors qu'elle portait cinquante cases.
         const courbes = (brut.match(/ c\b/g) || []).length;
         const rectangles = (brut.match(/ re\b/g) || []).length;
-        if (id === 'logi-serpents') {
-            dire(rectangles >= vu.blocs * 16, 'le PDF porte les cases de chaque grille',
+        if (id === 'logi-serpents' || id === 'logi-enquete') {
+            dire(rectangles >= vu.blocs * 9, 'le PDF porte les cases de chaque grille',
                 `${rectangles} case(s), ${courbes} courbe(s) · ${Math.round(buf.length / 1024)} Ko`);
         } else {
             dire(courbes >= vu.blocs * 16 * 4, 'le PDF porte les ronds de chaque grille',

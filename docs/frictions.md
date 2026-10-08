@@ -3315,3 +3315,24 @@ lignes** — 2026-10-01
   commentaire interdit une voie en citant un chiffre, on refait la mesure avant
   de renoncer — surtout si le même fichier documente ailleurs un piège qui
   expliquerait ce chiffre.
+
+## Une épreuve qui garde deux champs sans garder leur accord — 2026-10-08
+
+- **Ce que je voulais faire** : garder la fiche de l'Enquête. J'avais six
+  épreuves : les zones couvrent le plan, leur contour est fermé, les prénoms
+  sont sur des rangées distinctes, le coupable est seul dans son lieu.
+- **Ce qui coûte** : rien cette fois, et c'est encore `epreuveTombe` qui l'a
+  dit — j'ai échangé `r` et `c` dans la solution et **les six épreuves sont
+  restées vertes**. Chacune regardait UN champ : les rangées restaient
+  distinctes, les colonnes aussi, le coupable restait seul. Le `meta` porte
+  pourtant deux choses que le rendu lit séparément — la CASE où poser le
+  prénom, et le LIEU qui désigne le coupable — et rien ne les reliait. Une
+  transposition laissait les deux moitiés cohérentes chacune de son côté ;
+  seule la feuille imprimée aurait montré les prénoms au mauvais endroit.
+- **Combien de fois** : || — même famille que « une épreuve qui devine la forme
+  de ce qu'elle interdit ». **Quand un objet porte deux descriptions de la même
+  chose, la garde qui compte est celle qui les CONFRONTE**, pas celles qui les
+  vérifient séparément.
+- **Ce qui manque** : rien d'outillable, `epreuveTombe` fait son travail. La
+  règle est de conduite : pour chaque champ d'un `meta`, se demander quel AUTRE
+  champ dit la même chose autrement, et écrire l'épreuve qui les met d'accord.

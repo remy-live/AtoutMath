@@ -2690,6 +2690,12 @@ export const calculExercises = [
         id: 'logi-enquete', title: "L'Enquête",
         cree: '2026-09-14',
         activityId: 'enquete',
+        // ET SUR LE PAPIER. Relevé par Rémy dans sa revue. C'est l'exercice de
+        // la série qui s'y prête le mieux : on relit les indices dix fois, on
+        // barre, on écrit un prénom au crayon et on l'efface. À l'écran on
+        // clique et le logiciel refuse ; sur une feuille on RATURE, et la
+        // rature est une trace du raisonnement.
+        printable: 'enquete', printGeneratorId: 'logique.enquete-fiche',
         sansRevision: true,
         skills: ['num.logique.enquete'],
         params: { niveau: 1 },

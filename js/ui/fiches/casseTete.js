@@ -5,7 +5,7 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, boiteDe, echapperSheet, planchePasAPas, titrePasAPas
+    ENCRE, boiteDe, couperEnLignes, echapperSheet, planchePasAPas, titrePasAPas
 } from './socle.js';
 import { etapesBrahma } from '../../core/tourBrahma.js';
 import { etapesGrenouilles } from '../../core/grenouilles.js';
@@ -1711,6 +1711,251 @@ function dessinerSerpentsPdf(doc, item, slot, solution) {
     });
 }
 
+// ── L'ENQUÊTE ───────────────────────────────────────────────────────────────
+//
+// RÉMY, dans sa revue : l'Enquête n'avait pas de version imprimée. C'est
+// pourtant l'exercice de la série qui se prête le mieux au papier — on relit
+// les indices dix fois, on barre, on écrit un prénom au crayon dans une case et
+// on l'efface. À l'écran on clique et le logiciel refuse ; sur une feuille on
+// RATURE, et la rature est une trace du raisonnement.
+//
+// LA MISE EN PAGE EST COMMANDÉE PAR LES INDICES, PAS PAR LE PLAN. Le noyau
+// retire tous les indices dont on peut se passer : il en reste trois à sept
+// selon le tirage, et c'est la plus longue des deux colonnes qui décide de la
+// hauteur du bloc. Un plan de 4 × 4 tient dans un timbre ; sept phrases, non.
+//
+// À L'ÉCRAN LES LIEUX SONT DES APLATS DE COULEUR et le survol dit leur nom.
+// Sur le papier il n'y a ni couleur fiable ni survol : les zones sont séparées
+// par un TRAIT ÉPAIS — le même calcul de contour que pour les Serpents — et
+// chacune porte son nom écrit dans sa première case.
+
+/**
+ * LA PART MAXIMALE DE LA LARGEUR QUE LE PLAN PEUT PRENDRE.
+ *
+ * C'est un PLAFOND, pas une colonne réservée — et la nuance a coûté une mise
+ * en page. Avec une colonne fixe de 42 %, le plan était borné par la HAUTEUR du
+ * bloc (mesuré : 44 mm de plan pour 75 mm disponibles en largeur) et les 31 mm
+ * restants n'allaient à personne : ni au plan, qui est carré, ni aux indices,
+ * qui commençaient après la colonne.
+ *
+ * Les indices démarrent donc où le plan FINIT VRAIMENT.
+ */
+const PART_PLAN_MAX = 0.45;
+
+function geoEnquete(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const marge = 2;
+    // LA QUESTION EN TÊTE, SUR TOUTE LA LARGEUR : c'est l'énoncé, et il ne se
+    // coupe pas en deux colonnes.
+    const tailleQ = Math.max(2.2, Math.min(b.w * 0.022, 3.2));
+    const lignesQ = couperEnLignes(m.question, Math.floor(b.w / (tailleQ * 0.48)), 3);
+    const hautQ = lignesQ.length * tailleQ * 1.35 + marge;
+
+    const planW = b.w * PART_PLAN_MAX - marge;
+    const planH = b.h - hautQ - marge;
+    const cote = Math.min(planW, planH) / m.taille;
+    const largeurPlan = cote * m.taille;
+    const x0 = b.x;
+    const y0 = b.y + hautQ;
+
+    // LES INDICES COMMENCENT OÙ LE PLAN FINIT, et non à une colonne décidée
+    // d'avance : le plan est carré et sa taille vient de la plus serrée des
+    // deux dimensions, donc sa largeur n'est connue qu'ici.
+    const indicesX = x0 + largeurPlan + marge * 2;
+    const indicesW = b.x + b.w - indicesX;
+    const tailleI = Math.max(2, Math.min(b.w * 0.020, 2.9));
+
+    return {
+        b, m, marge, cote, x0, y0, tailleQ, lignesQ, hautQ,
+        indicesX, indicesW, tailleI,
+        P: (x, y) => ({ x: x0 + x * cote, y: y0 + y * cote }),
+        centre: (i) => ({
+            x: x0 + ((i % m.taille) + 0.5) * cote,
+            y: y0 + (Math.floor(i / m.taille) + 0.5) * cote
+        }),
+        // Les phrases coupées une fois pour les deux rendus : l'aperçu et le
+        // PDF ne doivent pas couper au même endroit par hasard, mais par
+        // construction.
+        phrases: m.indices.map((t, i) =>
+            couperEnLignes(`${i + 1}. ${t}`, Math.floor(indicesW / (tailleI * 0.47)), 4)),
+        /** Le nom d'un lieu, coupé pour tenir dans la largeur d'une case. */
+        nomDeZone: (z) =>
+            couperEnLignes(z.nom, Math.max(6, Math.floor(cote / (tailleI * 0.46))), 2),
+        /**
+         * LE POINT D'UN REPÈRE, ET SON NOM — qui ne doit pas sortir du plan.
+         *
+         * Mesuré sur la scène de 5 × 5 : « le distributeur d'eau », posé sous
+         * une case de la PREMIÈRE colonne, dépassait à gauche du plan et
+         * sortait même de la feuille. Un nom centré sous sa case déborde dès
+         * qu'il est plus large qu'elle, et les noms de repères le sont
+         * souvent — ce sont des phrases, pas des étiquettes.
+         *
+         * On le recentre donc dans le plan, et on le rétrécit s'il reste trop
+         * large. Un repère illisible vaudrait mieux qu'un repère absent, mais
+         * un repère hors de la page ne vaut rien.
+         */
+        repere: (rep) => {
+            const i = rep.case[0] * m.taille + rep.case[1];
+            const cx = x0 + ((i % m.taille) + 0.5) * cote;
+            const cy = y0 + (Math.floor(i / m.taille) + 0.5) * cote;
+            const largeurPlan = cote * m.taille;
+            // Une taille qui fait tenir le nom dans deux cases au plus.
+            const taille = Math.min(tailleI * 0.75,
+                (cote * 2) / Math.max(1, rep.nom.length * 0.5));
+            const demi = rep.nom.length * taille * 0.25;
+            const xTexte = Math.max(x0 + demi,
+                Math.min(x0 + largeurPlan - demi, cx));
+            return { x: cx, yPoint: cy + cote * 0.28,
+                xTexte, yTexte: cy + cote * 0.45, taille };
+        }
+    };
+}
+
+function enquetePreviewHtml(item, slot, k, solution) {
+    const g = geoEnquete(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const encreT = `rgb(${ENCRE.trait.join(',')})`;
+    let html = '';
+
+    // La question, en tête.
+    g.lignesQ.forEach((ligne, i) => {
+        html += `<div class="fx-abs" style="position:absolute; left:${T(g.b.x)}px;
+            top:${T(g.b.y + i * g.tailleQ * 1.35)}px; width:${T(g.b.w)}px;
+            font-size:${T(g.tailleQ)}px; line-height:1.3"
+            >${echapperSheet(ligne)}</div>`;
+    });
+
+    // Les indices, à droite.
+    let y = g.b.y + g.hautQ;
+    g.phrases.forEach(lignes => {
+        lignes.forEach((ligne, i) => {
+            html += `<div class="fx-abs" style="position:absolute; left:${T(g.indicesX)}px;
+                top:${T(y + i * g.tailleI * 1.3)}px; width:${T(g.indicesW)}px;
+                font-size:${T(g.tailleI)}px; line-height:1.25"
+                >${echapperSheet(ligne)}</div>`;
+        });
+        y += lignes.length * g.tailleI * 1.3 + g.tailleI * 0.5;
+    });
+
+    // Le plan, à gauche.
+    let d = '';
+    for (let r = 0; r < g.m.taille; r++) for (let c = 0; c < g.m.taille; c++) {
+        const p = g.P(c, r);
+        d += `<rect x="${T(p.x)}" y="${T(p.y)}" width="${T(g.cote)}" height="${T(g.cote)}"
+            fill="none" stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.25)}"/>`;
+    }
+    g.m.zones.forEach(z => z.contour.forEach(seg => {
+        const a = g.P(seg.x1, seg.y1), b2 = g.P(seg.x2, seg.y2);
+        d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(b2.x)}" y2="${T(b2.y)}"
+            stroke="${encreT}" stroke-width="${T(0.6)}" stroke-linecap="square"/>`;
+    }));
+    // LE NOM DU LIEU EN HAUT DE SA CASE, le prénom au milieu, le repère en bas.
+    // Les trois peuvent tomber dans la MÊME case : mesuré sur une scène de
+    // 5 × 5, « le gymnase » et « Léa » se chevauchaient, et « la cuisine » et
+    // « Anaïs » aussi. Chacun a maintenant son tiers.
+    g.m.zones.forEach(z => {
+        const p = g.centre(z.ancre);
+        g.nomDeZone(z).forEach((ligne, i) => {
+            d += `<text x="${T(p.x)}" y="${T(p.y - g.cote * 0.5 + g.tailleI * (0.95 + i * 0.95))}"
+                text-anchor="middle" font-size="${T(g.tailleI * 0.8)}"
+                fill="rgb(${ENCRE.gris.join(',')})"
+                font-family="Helvetica, Arial, sans-serif"
+                >${echapperSheet(ligne)}</text>`;
+        });
+    });
+    // Les repères de la scène — « le marronnier », « la photocopieuse ».
+    // Ils ne sont pas décoratifs : des indices les citent, et une feuille qui
+    // les oublierait rendrait ces indices-là illisibles.
+    (g.m.reperes || []).forEach(rep => {
+        const p = g.repere(rep);
+        d += `<circle cx="${T(p.x)}" cy="${T(p.yPoint)}" r="${T(g.cote * 0.06)}"
+            fill="${encreT}"/>`;
+        // UN HALO BLANC SOUS LE NOM DU REPÈRE. Il tombe souvent sur un trait
+        // de la grille — c'est inévitable, un repère est posé SUR une
+        // frontière —, et un nom barré par un trait ne se lit pas.
+        d += `<text x="${T(p.xTexte)}" y="${T(p.yTexte)}" text-anchor="middle"
+            font-size="${T(p.taille)}" fill="${encreT}"
+            stroke="#ffffff" stroke-width="${T(p.taille * 0.3)}" paint-order="stroke"
+            font-family="Helvetica, Arial, sans-serif">${echapperSheet(rep.nom)}</text>`;
+    });
+    if (solution) {
+        g.m.solution.forEach(s => {
+            const p = g.centre(s.r * g.m.taille + s.c);
+            d += `<text x="${T(p.x)}" y="${T(p.y + g.tailleI * 0.45)}" text-anchor="middle"
+                font-size="${T(g.tailleI * 1.15)}" font-weight="700" fill="${encreT}"
+                font-family="Helvetica, Arial, sans-serif">${echapperSheet(s.nom)}</text>`;
+        });
+    }
+    return html + `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`;
+}
+
+function dessinerEnquetePdf(doc, item, slot, solution) {
+    const g = geoEnquete(item, slot);
+
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(g.tailleQ * 2.83);
+    g.lignesQ.forEach((ligne, i) =>
+        doc.text(ligne, g.b.x, g.b.y + g.tailleQ + i * g.tailleQ * 1.35));
+
+    doc.setFontSize(g.tailleI * 2.83);
+    let y = g.b.y + g.hautQ + g.tailleI;
+    g.phrases.forEach(lignes => {
+        lignes.forEach((ligne, i) => doc.text(ligne, g.indicesX, y + i * g.tailleI * 1.3));
+        y += lignes.length * g.tailleI * 1.3 + g.tailleI * 0.5;
+    });
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    for (let r = 0; r < g.m.taille; r++) for (let c = 0; c < g.m.taille; c++) {
+        const p = g.P(c, r);
+        doc.rect(p.x, p.y, g.cote, g.cote);
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.6);
+    g.m.zones.forEach(z => z.contour.forEach(seg => {
+        const a = g.P(seg.x1, seg.y1), b2 = g.P(seg.x2, seg.y2);
+        doc.line(a.x, a.y, b2.x, b2.y);
+    }));
+
+    doc.setTextColor(...ENCRE.gris);
+    doc.setFontSize(g.tailleI * 0.8 * 2.83);
+    g.m.zones.forEach(z => {
+        const p = g.centre(z.ancre);
+        g.nomDeZone(z).forEach((ligne, i) => {
+            doc.text(ligne, p.x, p.y - g.cote * 0.5 + g.tailleI * (0.95 + i * 0.95),
+                { align: 'center' });
+        });
+    });
+
+    doc.setTextColor(...ENCRE.trait);
+    doc.setFillColor(...ENCRE.trait);
+    (g.m.reperes || []).forEach(rep => {
+        const p = g.repere(rep);
+        doc.setFillColor(...ENCRE.trait);
+        doc.circle(p.x, p.yPoint, g.cote * 0.06, 'F');
+        doc.setFontSize(p.taille * 2.83);
+        // La pastille blanche, comme le halo de l'aperçu : le nom d'un repère
+        // tombe sur un trait de la grille, et un nom barré ne se lit pas.
+        const demi = rep.nom.length * p.taille * 0.26;
+        doc.setFillColor(255, 255, 255);
+        doc.rect(p.xTexte - demi, p.yTexte - p.taille * 0.85, demi * 2, p.taille * 1.1, 'F');
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(rep.nom, p.xTexte, p.yTexte, { align: 'center' });
+    });
+
+    if (solution) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.tailleI * 1.15 * 2.83);
+        g.m.solution.forEach(s => {
+            const p = g.centre(s.r * g.m.taille + s.c);
+            doc.text(s.nom, p.x, p.y + g.tailleI * 0.45, { align: 'center' });
+        });
+    }
+}
+
 export const RENDUS_CASSETETE = {
     chemin: {
         titre: 'Le chemin numéroté',
@@ -1935,5 +2180,24 @@ export const RENDUS_CASSETETE = {
         // sur sept — tombe à huit millimètres.
         disposition: { cols: 2, rows: 1, maxCols: 2, maxRows: 2 },
         parLigneDefaut: 2
+    },
+    enquete: {
+        titre: "L'Enquête",
+        consigne: () => 'Place chaque prénom dans une case du plan. Deux personnes ne sont '
+            + 'jamais sur la même rangée ni sur la même colonne. Les indices se croisent : '
+            + 'aucun ne suffit seul, mais ensemble ils ne laissent qu\u2019un placement '
+            + 'possible. Écris au crayon — on rature beaucoup.',
+        previewGrille: enquetePreviewHtml,
+        pdfGrille: dessinerEnquetePdf,
+        nomBloc: 'Enquête', nomBlocs: 'enquêtes',
+        // UNE PAR LIGNE, ET DEUX PAR PAGE. Ce n'est pas la grille qui prend la
+        // place, c'est le TEXTE : le noyau garde trois à sept indices selon le
+        // tirage, et sept phrases de quatre-vingts signes ne tiennent pas dans
+        // un quart de page. Le plan d'une scène de 5 × 5 tiendrait, lui, dans
+        // un timbre — c'est la colonne de droite qui commande.
+        disposition: { cols: 1, rows: 2, maxCols: 1, maxRows: 3 },
+        parLigneDefaut: 1,
+        proportions: { w: 1, h: 0.45 },
+        titreAGauche: true
     },
 };
