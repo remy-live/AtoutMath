@@ -116,3 +116,88 @@ séances : combien de fois le même diagnostic revient d'affilée, et combien
 d'indices sont demandés par élève. Un outil qui lit ce que l'application garde
 déjà et n'imprime que des comptes — aucun nom, aucune donnée d'élève ne sort de
 chez lui.
+
+---
+
+# Suite — « parfois un élève bloque complètement, que faire ? »
+
+> « Oui mais parfois un élève bloque complètement que faire ? »
+
+Ce n'est pas la même question que la précédente, et la réponse est presque
+l'inverse. Celui qui répète a besoin du LOGICIEL ; celui qui est arrêté a
+besoin d'un HUMAIN.
+
+## Ce que le logiciel fait aujourd'hui — lu, pas supposé
+
+### 1. Celui qui RÉPOND n'est jamais coincé
+
+En entraînement : deux essais, puis la réponse et l'explication, et la série
+avance. « Montre-moi » existe aussi (`showMe: true` en entraînement comme en
+apprentissage, faux en évaluation) : il révèle, il explique, et l'élève refait
+le geste lui-même. **La porte existe, et elle est la bonne.**
+
+### 2. Celui qui NE RÉPOND PAS est gelé
+
+Il n'a aucune sortie. `sauterQuestion` existe — mais c'est `db-skip`, la barre
+de mise au point, un **outil d'auteur** : « Mettre au point la dixième question
+supposait de jouer les neuf précédentes. » Un élève n'y a pas accès.
+
+La seule autorisation de saut qui existe pour un élève est celle que le
+professeur accorde par exercice en séance pilotée (`skippable`), et elle a été
+écrite pour autre chose : « pouvoir supprimer ou autoriser le saut d'un
+exercice **au cas où un exercice plante** ».
+
+### 3. Le silence n'est écrit nulle part
+
+`state.recordAttempt` n'est appelé qu'au moment d'une réponse. `msElapsed` est
+l'intervalle entre deux ESSAIS. **Un élève arrêté quatre minutes ne produit
+aucun enregistrement** : ni le logiciel ni le serveur n'ont trace de ces quatre
+minutes. C'est le seul signal manquant, et c'est exactement celui qu'il
+faudrait.
+
+### 4. Le direct montre l'avancement, mais ne dit pas qui est arrêté
+
+`avancement.js` + `espaceClasses.js` donnent déjà, par élève, où il en est et
+`depuisCombien` — « à l'instant », « 6 min ». Le signal brut est donc là. Mais
+**rien ne l'interprète** : Rémy doit parcourir vingt-huit tuiles et remarquer
+celle qui dit 6 min. À vingt-huit, on ne le fait pas.
+
+## Mon avis
+
+**Un élève complètement arrêté n'est pas un problème de logiciel, c'est un
+problème de SIGNAL.** Le rôle du logiciel n'est pas de le débloquer — c'est de
+ne pas le piéger, et de prévenir Rémy à temps. Même raisonnement que la ligne
+rouge : rien ne remplace le geste du professeur, mais encore faut-il qu'il
+sache où aller.
+
+1. **Écrire le silence.** Le temps passé sur la question COURANTE sans aucun
+   essai. La session a déjà `startedAt` et `dernierEssaiAt` ; il manque
+   d'en faire une donnée. Sans cela, les deux points suivants sont impossibles.
+
+2. **Pour Rémy : « Léa est arrêtée sur la question 3 depuis 4 minutes ».** Pas
+   un écran de plus — Le direct existe et porte déjà l'avancement. Il doit
+   DIRE, au lieu de se faire lire. C'est la seule chose qui tienne à
+   vingt-huit : on ne surveille pas vingt-huit écrans, on peut apprendre
+   lesquels des trois ont besoin de nous.
+
+3. **Pour l'élève : une sortie digne, et une seule.** « Montre-moi » est déjà
+   la bonne porte ; il faut la lui OUVRIR plutôt que l'attendre. Après un
+   silence long, une phrase discrète — « Tu veux qu'on la fasse ensemble ? » —
+   qui ouvre « Montre-moi ». Pas « tu bloques ? », qui se lit par-dessus
+   l'épaule du voisin. Offerte une fois, et gratuite : elle n'a pas été
+   demandée.
+
+### Ce que je ne ferais pas
+
+**Donner le saut libre à l'élève.** Un saut gratuit transforme l'élève arrêté
+en élève qui saute tout — et il efface précisément ce que Rémy a besoin de
+voir. Le saut qui existe est le bon : accordé par le professeur, par exercice.
+
+### Le seuil, et pourquoi je ne le fixerai pas tout seul
+
+90 secondes ? 4 minutes ? **Tout chiffre que j'inventerais serait faux** :
+90 secondes de silence sur un calcul mental, c'est énorme ; sur « Rédiger une
+justification », c'est le travail. Le seuil doit dépendre de l'exercice — ou
+mieux, de la CLASSE : « nettement plus longtemps que les autres sur cette
+même question » est la seule référence honnête, et le serveur calcule déjà des
+projections de ce genre. À mesurer sur ses séances avant de coder un nombre.
