@@ -637,6 +637,19 @@ function schemaIndice(c) {
         en ${c.commun}èmes.</p>`;
 }
 
+/**
+ * LE CONTEXTE SUR UNE LIGNE, LA QUESTION SUR LA SUIVANTE.
+ *
+ * Toutes les histoires finissent par une question — « … Quelle part reste-t-il
+ * ? ». On coupe au dernier point : ce qui précède pose la situation, ce qui
+ * suit est ce qu'on demande. Une histoire sans point reste d'un bloc plutôt
+ * que d'être coupée au hasard.
+ */
+const questionALaLigne = (t) => {
+    const i = String(t).lastIndexOf('. ');
+    return i > 0 ? `${t.slice(0, i + 1)}\n${t.slice(i + 2)}` : t;
+};
+
 /** Le corps d'un item de calcul posé — partagé avec les problèmes. */
 function itemDeCalcul(c, rng, {
     generatorId, skillId, marche, enonce = '', enonceTexte = '', question = '',
@@ -660,6 +673,26 @@ function itemDeCalcul(c, rng, {
             // décide.
             text: enonceTexte
                 ? (avecCalcul ? `${enonceTexte} (${texte})` : enonceTexte)
+                : texte,
+            // SUR LE PAPIER, LA QUESTION PASSE À LA LIGNE.
+            //
+            // RÉMY, sa feuille à la main : « pour l'ex 92. Écris la question à
+            // la ligne. »
+            //
+            // Un problème de fractions s'écrivait d'un seul trait : le
+            // contexte, la question, et le calcul à poser entre parenthèses.
+            // MESURÉ sur son poly : cinq énoncés sur onze débordaient, et la
+            // coupure tombait où elle pouvait — une parenthèse fermante seule
+            // à la ligne suivante, un dénominateur orphelin collé après elle.
+            // Une fraction coupée en deux ne se lit plus comme une fraction.
+            //
+            // Le contexte d'un côté, la question et son calcul de l'autre : la
+            // feuille respecte les retours voulus (voir `lignesVoulues` dans
+            // `core/fiche.js`), et c'est ainsi qu'un manuel pose un problème.
+            papier: enonceTexte
+                ? (avecCalcul
+                    ? `${questionALaLigne(enonceTexte)} (${texte})`
+                    : questionALaLigne(enonceTexte))
                 : texte,
             html: `<div class="frac-egalite">
                     ${enonce ? `<p class="frac-enonce">${enonce}</p>` : ''}

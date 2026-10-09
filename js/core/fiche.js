@@ -157,6 +157,26 @@ export function mesureurFractions(mesurer) {
  * leur numéro, pour une fraction qui n'y était pas. C'est le décalage que Rémy
  * a vu sur la feuille de problèmes.
  */
+/**
+ * LE PAS ENTRE DEUX LIGNES D'UNE MÊME CELLULE.
+ *
+ * Une fraction en colonne occupe presque deux lignes : numérateur, trait,
+ * dénominateur. Tant qu'un énoncé tenait sur UNE ligne, cela se réglait en
+ * descendant la cellule entière (`supp`). Depuis que les problèmes de
+ * fractions passent leur question à la ligne (Rémy : « Écris la question à la
+ * ligne »), il y a DEUX lignes — et le dénominateur de la première venait se
+ * poser sur le texte de la seconde.
+ *
+ * Le pas vaut donc une ligne et demie quand la cellule porte des fractions.
+ * Les trois lecteurs de `lignes` — la mise en page, l'aperçu et le PDF —
+ * passent par ici : c'est la seule façon qu'ils ne divergent pas.
+ */
+export const pasDeLigne = (o, fractions) => o.interligne * (fractions ? 1.85 : 1);
+
+/** La hauteur occupée par les lignes d'une cellule, pas compris. */
+export const hauteurDesLignes = (o, combien, fractions) =>
+    Math.max(0, combien - 1) * pasDeLigne(o, fractions) + o.interligne;
+
 export function porteUneFraction(...textes) {
     return textes.some(t => RE_FRACTION().test(String(t ?? '')));
 }
@@ -991,7 +1011,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // sont pas seulement inutiles, elles proposent un second endroit
             // pour la même réponse.
             const sansPointilles = trou || memeLigne || (tableau && tableau.aRemplir);
-            const h = supp + lignes.length * o.interligne
+            const h = supp + hauteurDesLignes(o, lignes.length, !!q.fractions)
                 + (choix ? o.interligne : 0)
                 + (tableau ? o.avantTableau + tableau.h + o.apresTableau : 0)
                 + (sansPointilles ? 0 : ligneRep);
@@ -1139,7 +1159,7 @@ export function composerBlocs(exos, opts, mesurer) {
                     const pas = ligneRep / nRep;
                     rep = {
                         x: texteX,
-                        y: y + cell.dy + cell.lignes.length * o.interligne
+                        y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
                             + (cell.choix ? o.interligne : 0) + pas * 0.72,
                         w: texteW, lignes: nRep, pas
                     };
@@ -1160,7 +1180,7 @@ export function composerBlocs(exos, opts, mesurer) {
                 const tableau = cell.tableau ? {
                     ...cell.tableau,
                     x: texteX,
-                    y: y + cell.dy + cell.lignes.length * o.interligne
+                    y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
                         + (cell.choix ? o.interligne : 0) + o.avantTableau
                 } : null;
                 page.items.push({
@@ -1171,7 +1191,10 @@ export function composerBlocs(exos, opts, mesurer) {
                     lignes: cell.lignes, x, y, dy: cell.dy, texteX, texteW,
                     fractions: cell.fractions,
                     choix: cell.choix,
-                    choixY: cell.choix ? y + cell.dy + cell.lignes.length * o.interligne : null,
+                    choixY: cell.choix
+                        ? y + cell.dy
+                            + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
+                        : null,
                     rep
                 });
             });

@@ -10,7 +10,9 @@
 
 import { A4, morceauxReponse, typographieFr, couperEnLignes } from '../core/fiche.js';
 import { refaireSvg, croixSvg } from './icones.js';
-import { RE_FRACTION, etageEstUnTrou } from '../core/fiche.js';
+import {
+    RE_FRACTION, etageEstUnTrou, pasDeLigne, hauteurDesLignes
+} from '../core/fiche.js';
 // LE RADICAL DE L'ÉCRAN, RÉUTILISÉ TEL QUEL SUR L'APERÇU.
 //
 // RÉMY : « il faut bien que la racine carrée soit continue, là il y a une
@@ -611,6 +613,24 @@ const SYMBOLE = {
     '\u2260': ['\u00B9', 548],   // ≠
     '\u2264': ['\u00A3', 548],   // ≤
     '\u2265': ['\u00B3', 548],   // ≥
+    // ⩽ ET ⩾, CEUX DU PROGRAMME FRANÇAIS — et ils sortaient en « ? ».
+    //
+    // Le dépôt écrit partout le ⩽ français (`const LE = '⩽'` dans
+    // `generators/intervalles.js`, « celui du programme français, pas le ≤
+    // anglo-saxon »). Mais la table ci-dessus ne connaissait que le ≤
+    // anglo-saxon : le filet de sécurité de `pourPdf` remplaçait donc ⩽ par
+    // un point d'interrogation, et la feuille imprimait « x ? 3 ».
+    //
+    // MESURÉ sur le poly de Rémy : toutes les inégalités larges de la valeur
+    // absolue et des intervalles — « |x − 5| ⩽ 1 » devenait « |x - 5| ? 1 ».
+    // Personne ne l'avait vu parce que personne ne REGARDE un PDF : les
+    // sondes en comptent les segments. Voir `tools/pdfEnImage.mjs`.
+    //
+    // LA POLICE SYMBOL N'A PAS LE ⩽ INCLINÉ, elle n'a que le ≤ à barre
+    // droite. C'est le bon compromis : un ≤ se lit, un « ? » ne se lit pas.
+    // L'écran, lui, garde le ⩽ du programme.
+    '\u2A7D': ['\u00A3', 548],   // ⩽ — dessiné avec le ≤ de Symbol
+    '\u2A7E': ['\u00B3', 548],   // ⩾ — dessiné avec le ≥ de Symbol
     '\u221A': ['\u00D6', 548],   // √
     '\u2192': ['\u00AE', 986],   // →
     '\u2190': ['\u00AC', 986],   // ←
@@ -619,7 +639,18 @@ const SYMBOLE = {
     '\u221E': ['\u00A5', 713],   // ∞
     '\u2208': ['\u00CE', 713],   // ∈
     '\u2220': ['\u00D0', 768],   // ∠
-    '\u03C0': ['p', 548]          // π
+    '\u03C0': ['p', 548],         // π
+    // LES ENSEMBLES, ET CE QUI LES RELIE — mesuré par
+    // `node tools/caracteresPerdus.mjs` : ∪ ∩ ∅ ∉ sortaient en « ? » sur
+    // 128 questions du catalogue. « I ∩ J » s'imprimait « I ? J », ce qui est
+    // la question posée à l'envers.
+    //
+    // Symbol les a tous les quatre, et ∈ y était déjà : il manquait les
+    // quatre voisins de la même rangée.
+    '\u222A': ['\u00C8', 768],   // ∪ réunion
+    '\u2229': ['\u00C7', 768],   // ∩ intersection
+    '\u2205': ['\u00C6', 823],   // ∅ ensemble vide
+    '\u2209': ['\u00CF', 713]    // ∉ n'appartient pas
 };
 
 /**
@@ -657,7 +688,23 @@ const HORS_TABLE = {
     // Les fl\u00E8ches de rotation du chat g\u00E9om\u00E8tre. \u00AB \u00E0 droite \u00BB est d\u00E9j\u00E0 \u00E9crit \u00E0
     // c\u00F4t\u00E9 : la fl\u00E8che est un ornement, et un \u00AB ? \u00BB au milieu d'un programme
     // de construction se lit comme une donn\u00E9e manquante.
-    '\u21BB': '', '\u21BA': ''
+    '\u21BB': '', '\u21BA': '',
+    // LES LETTRES AJOURÉES DES ENSEMBLES — ℕ ℤ 𝔻 ℚ ℝ.
+    //
+    // Symbol ne les a pas, et `sec-ensembles` imprimait « ? — les
+    // rationnels ». Mesuré sur tout le catalogue : 132 occurrences, seize
+    // exercices — le plus gros des caractères perdus.
+    //
+    // La majuscule ordinaire est ce qu'on écrit au tableau, et c'est ainsi
+    // que le manuel les écrit quand il n'a pas la police. On ne perd que
+    // l'ajourage, qui est une convention typographique, pas une information.
+    '\u2115': 'N', '\u2124': 'Z', '\u211A': 'Q', '\u211D': 'R', '\u1D53B': 'D',
+    // LES NUMÉROS CERCLÉS DES ANGLES — et ici le chiffre nu est MIEUX que
+    // le cercle : la figure, elle, écrit « 1 » et « 2 » tout court
+    // (`fiches/figures.js`, `String(arc.pas)`). Le texte disait « Passe par
+    // l'angle ① » et la figure montrait « 1 » — deux écritures pour le même
+    // repère, dont une qui sortait en « ? ».
+    '\u2460': '1', '\u2461': '2', '\u2462': '3', '\u2463': '4'
 };
 
 /**
@@ -936,8 +983,12 @@ function largeurFraction(pdf, m) {
     // Un étage vide n'a pas de largeur propre : on lui donne celle de son
     // vis-à-vis, plus une marge — un trait de trois millimètres sous un
     // dénominateur à deux chiffres ne se remplit pas.
+    // Le plancher se dit EN CHIFFRES, et non en millimètres : c'est ainsi que
+    // l'aperçu le dit de son côté (trois `ch`), et deux planchers exprimés dans
+    // deux unités finissent par ne plus valoir la même chose quand la taille
+    // du corps change.
     const large = (t, autre) => (etageEstUnTrou(t)
-        ? Math.max(pdf.getTextWidth(autre), 5) : pdf.getTextWidth(t));
+        ? Math.max(pdf.getTextWidth(autre), pdf.getTextWidth('000')) : pdf.getTextWidth(t));
     return Math.max(large(m.num, m.den), large(m.den, m.num)) + 1.6;
 }
 
@@ -1048,10 +1099,25 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
         // UN ÉTAGE VIDE EST UN TROU, et un trou se dessine en pointillés — sans
         // quoi la place à remplir, faite d'espaces, disparaîtrait purement et
         // simplement dans le HTML.
-        const etage = (t) => (etageEstUnTrou(t)
-            ? `<span class="${trouCls}">${echapper(t)}</span>` : echapper(t));
-        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num)}</span>`
-            + `<span class="fx-frac-d">${etage(m.den)}</span></span>`;
+        // UN ÉTAGE VIDE A LA LARGEUR DE SON VIS-À-VIS, PAS CELLE DE SES ESPACES.
+        //
+        // RÉMY : « le trait de fraction est parfois très grand ». Le trait de
+        // fraction de l'aperçu EST la bordure basse du numérateur ; un
+        // numérateur fait d'une vingtaine d'espaces (la place à remplir,
+        // posée par `texteImprime`) donnait donc un trait de deux
+        // centimètres sous un dénominateur de deux chiffres.
+        //
+        // LE PDF, LUI, AVAIT DÉJÀ LA RÈGLE : `largeurFraction` prend la largeur
+        // du vis-à-vis, avec un plancher. Les deux dessins disaient donc deux
+        // choses différentes de la même fraction — et c'est l'aperçu que Rémy
+        // regarde avant d'imprimer. On écrit ici la MÊME règle, dans l'unité
+        // de l'aperçu : le `ch`, qui est la largeur d'un chiffre.
+        const chDuTrou = (autre) => Math.max(String(autre ?? '').trim().length, 3);
+        const etage = (t, autre) => (etageEstUnTrou(t)
+            ? `<span class="${trouCls} fx-frac-trou" style="width:${chDuTrou(autre)}ch"></span>`
+            : echapper(t));
+        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num, m.den)}</span>`
+            + `<span class="fx-frac-d">${etage(m.den, m.num)}</span></span>`;
     }).join('');
 }
 
@@ -1059,7 +1125,12 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
 const EXPOSANTS_HAUT = {
     '\u2070': '0', '\u00B9': '1', '\u00B2': '2', '\u00B3': '3', '\u2074': '4',
     '\u2075': '5', '\u2076': '6', '\u2077': '7', '\u2078': '8', '\u2079': '9',
-    '\u207B': '-'
+    '\u207B': '-',
+    // LE PLUS, LE ⁿ ET LE FOIS EN EXPOSANT. « 10⁷ × 10⁷ = 10⁷⁺⁷ » sortait
+    // « 10^7 × 10^7 = 10^7?7 » : le pas intermédiaire d'un exercice sur les
+    // puissances, c'est-à-dire tout ce qu'il enseigne. Et « a × 10ⁿ »
+    // devenait « a × 10? » dans la définition même de l'écriture scientifique.
+    '\u207A': '+', '\u207F': 'n', '\u02DF': '\u00D7'
 };
 // Seuls ¹ ² ³ existent dans la police du PDF. Les autres — ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁰ et le
 // moins en exposant — n'y sont pas, et sortaient en points d'interrogation :
@@ -1079,7 +1150,9 @@ const IMPRIMABLE_EN_HAUT = new Set(['\u00B9', '\u00B2', '\u00B3']);
  * problème et restent intacts.
  */
 const exposantsLisibles = (t) => t.replace(
-    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)/g,
+    // Le bloc inclut ⁺ ⁿ ˟ depuis qu'ils sont dans la table : sans eux,
+    // « 10⁷⁺⁷ » se coupait en deux blocs et le ⁺ tombait seul au milieu.
+    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207A\u207B\u207F\u02DF]+)/g,
     (_, avant, bloc) => {
         const puissance = /\d/.test(avant);
         const tout = [...bloc].every(c => IMPRIMABLE_EN_HAUT.has(c));
@@ -1308,7 +1381,7 @@ export function apercuItems(page, k, o) {
                 : '';
             html += `<div class="fx-qgestes${recrire}"
                 style="left:${it.x * k}px; top:${it.y * k}px;
-                width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(it.lignes.length * o.interligne, o.interligne) * k}px">
+                width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(hauteurDesLignes(o, it.lignes.length, it.fractions), o.interligne) * k}px">
                 <button type="button" class="fx-qgeste" data-q-neuf="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
                     title="Retirer une autre question au sort à cette place"
                     aria-label="Remplacer la question ${it.n ?? it.iQ + 1}">${refaireSvg(13)}</button>
@@ -1325,7 +1398,7 @@ export function apercuItems(page, k, o) {
         // et sa réponse, dans le même geste.
         it.lignes.forEach((ligne, i) => {
             html += `<div class="fq-ligne"
-                style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
+                style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * pasDeLigne(o, it.fractions)) * k}px;
                 width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions, o)}</div>`;
         });
         if (it.choix) {
@@ -1926,7 +1999,9 @@ export function pdfItems(pdf, page, o) {
         if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + (it.dy || 0) + o.taille);
         pdf.setFont('helvetica', 'normal');
         it.lignes.forEach((ligne, i) => {
-            dessinerLigne(pdf, ligne, it.texteX, it.y + (it.dy || 0) + o.taille + i * o.interligne, o, it.fractions);
+            dessinerLigne(pdf, ligne, it.texteX,
+                it.y + (it.dy || 0) + o.taille + i * pasDeLigne(o, it.fractions),
+                o, it.fractions);
         });
         if (it.choix) {
             // LES CASES À COCHER SONT DESSINÉES, pas écrites. Le caractère ☐

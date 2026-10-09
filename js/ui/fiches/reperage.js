@@ -12,6 +12,11 @@ import { caseCentrale } from '../../core/quadrillageSvg.js';
 import { dessinerPiecePdf, direPiece, pieceSvg } from '../piecesEchecs.js';
 import { ecrireElement } from '../../core/elementSymetrie.js';
 import { encre, polycopieEnCouleur, pourPdf } from '../ficheRendu.js';
+// LES TEINTES DES PIÈCES, CELLES DE L'ÉCRAN. Rémy : « Pour les pavages quand
+// c'est couleur pour le poly, mets de la couleur. » On ne refait pas une
+// palette : celle du jeu est déjà choisie claire pour qu'un numéro noir s'y
+// lise, et deux palettes pour le même objet finiraient par diverger.
+import { TEINTES as TEINTES_PIECE } from '../../core/teintesPieces.js';
 
 // --- Un repère, plusieurs points --------------------------------------------
 
@@ -885,13 +890,22 @@ function pavagePreviewHtml(item, slot, k, solution) {
     // AUCUNE PIÈCE N'EST DÉTOURÉE QUAND IL Y A PLUSIEURS QUESTIONS : le
     // détourage désignait la paire concernée, et il y en a maintenant deux. Les
     // lettres suffisent — c'est par elles que les questions les nomment.
+    // EN COULEUR, CHAQUE PIÈCE PREND SA TEINTE — celle de l'écran. RÉMY :
+    // « Pour les pavages quand c'est couleur pour le poly, mets de la
+    // couleur. » En noir et blanc on garde le gris d'avant : une photocopie
+    // n'en rend qu'un, et c'est la LETTRE qui nomme la pièce, jamais sa
+    // couleur — un élève daltonien fait l'exercice comme les autres.
+    const teintes = polycopieEnCouleur() ? TEINTES_PIECE : null;
     (m.pieces || []).forEach((cases, i) => {
         const vedette = g.lignes < 2 && (i === m.de || i === m.vers);
+        const fond = teintes
+            ? teintes[i % teintes.length]
+            : `rgba(120,128,150,${vedette ? '.34' : '.18'})`;
         cases.forEach(c => {
             html += `<div style="position:absolute;
                 left:${(g.x0 + c.x * g.pas) * k}px; top:${(g.y0 + c.y * g.pas) * k}px;
                 width:${g.pas * k}px; height:${g.pas * k}px;
-                background:rgba(120,128,150,${vedette ? '.34' : '.18'});
+                background:${fond};
                 ${vedette ? `outline:${Math.max(1, 0.45 * k)}px solid #1a202c; outline-offset:-1px;` : ''}"></div>`;
         });
         const c = caseCentrale(cases);
@@ -977,9 +991,14 @@ function dessinerPavagePdf(doc, item, slot, solution) {
     const g = geoPavage(item, slot);
     const m = g.m;
 
+    // Les mêmes teintes qu'à l'aperçu — voir le commentaire des pièces là-bas.
+    const rvb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const teintes = polycopieEnCouleur() ? TEINTES_PIECE : null;
     (m.pieces || []).forEach((cases, i) => {
         const vedette = g.lignes < 2 && (i === m.de || i === m.vers);
-        doc.setFillColor(...(vedette ? ENCRE.grille : ENCRE.donnee));
+        doc.setFillColor(...(teintes
+            ? rvb(teintes[i % teintes.length])
+            : (vedette ? ENCRE.grille : ENCRE.donnee)));
         cases.forEach(c => doc.rect(g.x0 + c.x * g.pas, g.y0 + c.y * g.pas, g.pas, g.pas, 'F'));
     });
 
@@ -1251,7 +1270,24 @@ function mosaiquePreviewHtml(item, slot, k, solution) {
     // 2. LES PIÈCES, chacune cernée d'un trait noir. C'est le CONTOUR qui fait
     //    la pièce : un aplat gris ne se distingue pas de son voisin sur une
     //    photocopie, et les pièces se touchent toutes.
-    (g.m.pieces || []).forEach(p => {
+    //
+    //    EN COULEUR, L'APLAT REVIENT — et il est celui de l'écran. RÉMY : « Pour
+    //    les pavages quand c'est couleur pour le poly, mets de la couleur. »
+    //    Les teintes sont celles de `core/activities/pavageImage.js`, claires
+    //    exprès pour qu'un numéro noir s'y lise ; une pièce de la feuille et
+    //    une pièce du jeu doivent être la même pièce. Le contour reste : il
+    //    porte l'information, la couleur n'est qu'un confort.
+    const couleurs = polycopieEnCouleur() ? TEINTES_PIECE : null;
+    (g.m.pieces || []).forEach((p, iPiece) => {
+        if (couleurs) {
+            const t = couleurs[iPiece % couleurs.length];
+            p.cases.forEach(c => {
+                const a1 = g.P(c.x - 0.5, c.y - 0.5), a2 = g.P(c.x + 0.5, c.y + 0.5);
+                d += `<rect x="${T(Math.min(a1.x, a2.x))}" y="${T(Math.min(a1.y, a2.y))}"
+                    width="${T(Math.abs(a2.x - a1.x))}" height="${T(Math.abs(a2.y - a1.y))}"
+                    fill="${t}"/>`;
+            });
+        }
         const dedans = new Set(p.cases.map(c => `${c.x},${c.y}`));
         p.cases.forEach(c => {
             const bords = [
@@ -1326,6 +1362,20 @@ function dessinerMosaiquePdf(doc, item, slot, solution) {
     for (let j = 0; j <= g.H; j++) {
         const a = g.P(g.bo.x0, g.bo.y0 + j), z = g.P(g.bo.x1, g.bo.y0 + j);
         doc.line(a.x, a.y, z.x, z.y);
+    }
+
+    // LES APLATS D'ABORD, LES CONTOURS PAR-DESSUS — mêmes teintes qu'à l'aperçu
+    // et qu'à l'écran. Voir le commentaire des pièces dans l'aperçu.
+    if (polycopieEnCouleur()) {
+        const rvb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+        (g.m.pieces || []).forEach((p, iPiece) => {
+            doc.setFillColor(...rvb(TEINTES_PIECE[iPiece % TEINTES_PIECE.length]));
+            p.cases.forEach(c => {
+                const a1 = g.P(c.x - 0.5, c.y - 0.5), a2 = g.P(c.x + 0.5, c.y + 0.5);
+                doc.rect(Math.min(a1.x, a2.x), Math.min(a1.y, a2.y),
+                    Math.abs(a2.x - a1.x), Math.abs(a2.y - a1.y), 'F');
+            });
+        });
     }
 
     doc.setDrawColor(...ENCRE.trait);

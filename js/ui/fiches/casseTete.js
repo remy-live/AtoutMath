@@ -2048,10 +2048,37 @@ function plantDUnTrefle(g, t) {
     };
 }
 
+/**
+ * LES ENCRES DU CHAMP — et elles suivent le réglage « couleur » de la feuille.
+ *
+ * RÉMY : « Pour les trèfles, j'ai mis la couleur pour le poly mais je n'ai pas
+ * de couleur quand je mets en couleur. »
+ *
+ * Le champ était dessiné en noir quoi qu'on coche. Le filtre général
+ * (`teindreHtml`, `teindreDoc`) ne peut rien y faire : il DÉSATURE ce que le
+ * rendu a posé, il n'invente pas une couleur qui n'a jamais été écrite.
+ * C'est la règle de la maison, écrite en tête de `encre()` : la distinction se
+ * décide là où l'on SAIT ce qu'on dessine.
+ *
+ * LES TEINTES SONT CELLES DE L'ÉCRAN (`js/games/trefles.js`) : le vert des
+ * feuilles, le vert presque noir du trait et de la tige, le rouge du cercle de
+ * correction. Un trèfle de la feuille et un trèfle du jeu doivent être le même
+ * trèfle.
+ *
+ * EN NOIR ET BLANC, LA FEUILLE RESTE BLANCHE. Un aplat vert passé au gris
+ * donne un gris moyen sur lequel on ne distingue plus les feuilles — or les
+ * COMPTER est tout l'exercice. On garde donc le fond blanc et le contour, qui
+ * est ce que la photocopieuse rend le mieux.
+ */
+const ENCRES_TREFLE = () => (polycopieEnCouleur()
+    ? { trait: '#1f2a1c', feuille: '#7cb35f', cercle: '#d62828' }
+    : { trait: `rgb(${ENCRE.trait.join(',')})`, feuille: '#ffffff',
+        cercle: `rgb(${ENCRE.trait.join(',')})` });
+
 function treflesPreviewHtml(item, slot, k, solution) {
     const g = geoTrefles(item, slot);
     const T = (v) => (v * k).toFixed(2);
-    const encreT = `rgb(${ENCRE.trait.join(',')})`;
+    const { trait: encreT, feuille: encreF, cercle: encreC } = ENCRES_TREFLE();
     const d = (depart, courbes) => `M${T(depart.x)},${T(depart.y)} `
         + courbes.map(([a, b2, z]) =>
             `C${T(a.x)},${T(a.y)} ${T(b2.x)},${T(b2.y)} ${T(z.x)},${T(z.y)}`).join(' ');
@@ -2063,7 +2090,7 @@ function treflesPreviewHtml(item, slot, k, solution) {
         out += `<path d="${d(p.pedoncule.depart, p.pedoncule.courbes)}" fill="none"
             stroke="${encreT}" stroke-width="${T(0.22)}" stroke-linecap="round"/>`;
         p.feuilles.forEach(f => {
-            out += `<path d="${d(f.depart, f.courbes)} Z" fill="#ffffff"
+            out += `<path d="${d(f.depart, f.courbes)} Z" fill="${encreF}"
                 stroke="${encreT}" stroke-width="${T(0.22)}" stroke-linejoin="round"/>`;
         });
     });
@@ -2079,7 +2106,7 @@ function treflesPreviewHtml(item, slot, k, solution) {
             out += `<path d="${d(p.pedoncule.depart, p.pedoncule.courbes)}" fill="none"
                 stroke="${encreT}" stroke-width="${T(0.55)}" stroke-linecap="round"/>`;
             p.feuilles.forEach(f => {
-                out += `<path d="${d(f.depart, f.courbes)} Z" fill="#ffffff"
+                out += `<path d="${d(f.depart, f.courbes)} Z" fill="${encreF}"
                     stroke="${encreT}" stroke-width="${T(0.55)}" stroke-linejoin="round"/>`;
             });
             // ET LE CERCLE, qui est le geste que l'élève doit faire. Rémy :
@@ -2087,7 +2114,7 @@ function treflesPreviewHtml(item, slot, k, solution) {
             // par-dessus tout.
             const c = g.centre(t);
             out += `<circle cx="${T(c.x)}" cy="${T(c.y - g.rayon * 0.25)}"
-                r="${T(g.rayon * 1.35)}" fill="none" stroke="${encreT}"
+                r="${T(g.rayon * 1.35)}" fill="none" stroke="${encreC}"
                 stroke-width="${T(0.6)}"/>`;
         });
     }
@@ -2111,9 +2138,16 @@ function dessinerTreflesPdf(doc, item, slot, solution) {
     doc.setDrawColor(...ENCRE.grille);
     doc.setLineWidth(0.3);
     doc.roundedRect(g.cadre.x, g.cadre.y, g.cadre.w, g.cadre.h, 1.5, 1.5, 'S');
+    // Les mêmes teintes qu'à l'aperçu — voir `ENCRES_TREFLE`. En trois
+    // composantes, puisque jsPDF ne lit pas les dièses.
+    const rvb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const e = ENCRES_TREFLE();
+    const TR = e.trait.startsWith('#') ? rvb(e.trait) : ENCRE.trait;
+    const FE = e.feuille.startsWith('#') ? rvb(e.feuille) : [255, 255, 255];
+    const CE = e.cercle.startsWith('#') ? rvb(e.cercle) : ENCRE.trait;
     doc.setLineWidth(0.22);
-    doc.setDrawColor(...ENCRE.trait);
-    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...TR);
+    doc.setFillColor(...FE);
     doc.setLineJoin('round');
     doc.setLineCap('round');
     g.m.trefles.forEach(t => {
@@ -2124,7 +2158,7 @@ function dessinerTreflesPdf(doc, item, slot, solution) {
     doc.setLineJoin('miter');
     doc.setLineCap('butt');
     if (solution) {
-        doc.setDrawColor(...ENCRE.trait);
+        doc.setDrawColor(...TR);
         doc.setLineJoin('round');
         doc.setLineCap('round');
         g.m.trefles.filter(t => t.feuilles === 4).forEach(t => {
@@ -2133,12 +2167,14 @@ function dessinerTreflesPdf(doc, item, slot, solution) {
             // corrigé qu'il faut résoudre n'est pas un corrigé.
             const p = plantDUnTrefle(g, t);
             doc.setLineWidth(0.55);
-            doc.setFillColor(255, 255, 255);
+            doc.setFillColor(...FE);
             tracer(p.pedoncule.depart, p.pedoncule.courbes, 'S');
             p.feuilles.forEach(f => tracer(f.depart, f.courbes, 'FD'));
             const c = g.centre(t);
             doc.setLineWidth(0.6);
+            doc.setDrawColor(...CE);
             doc.circle(c.x, c.y - g.rayon * 0.25, g.rayon * 1.35, 'S');
+            doc.setDrawColor(...TR);
         });
         doc.setLineJoin('miter');
         doc.setLineCap('butt');

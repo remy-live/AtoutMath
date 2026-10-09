@@ -45,7 +45,15 @@ export const secondeExercises = [
         id: 'sec-intervalles',
         cree: '2026-09-22',
         title: 'Intervalles : les trois écritures',
-        consignePapier: 'Entoure la bonne réponse.',
+        // SUR LE PAPIER ON N'ENTOURE RIEN, ON ÉCRIT.
+        //
+        // RÉMY, sa feuille à la main : « il manque qqch ? ». Il manquait
+        // deux choses, et celle-ci était la plus trompeuse : la consigne
+        // disait « Entoure la bonne réponse » devant des lignes où rien
+        // n'est proposé. À l'écran c'est un choix entre quatre écritures ;
+        // la feuille générique n'imprime pas les propositions, et trois
+        // d'entre elles sont des DESSINS qui ne s'impriment pas du tout.
+        consignePapier: 'Écris la réponse demandée.',
         colonnesPapier: 1,
         generatorId: 'nb.intervalles', activityId: 'buttons',
         params: { sens: 'toutes', forme: 'les-deux' },
@@ -76,7 +84,8 @@ export const secondeExercises = [
         id: 'sec-intervalles-demi',
         cree: '2026-09-22',
         title: 'Demi-droites et infini',
-        consignePapier: 'Entoure la bonne réponse.',
+        // Voir `sec-intervalles` : sur le papier on écrit, on n'entoure pas.
+        consignePapier: 'Écris la réponse demandée.',
         colonnesPapier: 1,
         generatorId: 'nb.intervalles', activityId: 'buttons',
         // LES DEMI-DROITES SEULES, parce que la faute qu'on y fait n'est pas la

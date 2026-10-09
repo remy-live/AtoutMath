@@ -115,6 +115,28 @@ const SEGMENTS_THALES = [['A', 'B'], ['A', 'C'], ['A', 'E'], ['A', 'D']];
  *
  * @returns {{barres:Array, pointilles:Array, egaux:Array, bas:number}}
  */
+/**
+ * OÙ COMMENCE L'ÉGALITÉ : SOUS L'ÉNONCÉ, JAMAIS DESSUS.
+ *
+ * RÉMY : « POur l'égalité de Thalès, les pointillés vont sur l'énoncé. »
+ *
+ * Le squelette partait d'une fraction FIXE de la hauteur du bloc — 40 % —,
+ * qui ne sait rien de la longueur du texte. « Les droites (DE) et (BC) sont
+ * parallèles. Écris l'égalité des trois rapports donnée par le théorème de
+ * Thalès. » tient sur QUATRE lignes dans une demi-colonne, et la quatrième
+ * tombait pile sur les pointillés des numérateurs.
+ *
+ * ON RÉSERVE LES QUATRE LIGNES, qui sont le maximum que le PDF imprime
+ * (`lignes.slice(0, 4)`). Compter les lignes réellement écrites serait plus
+ * serré — mais le navigateur et `splitTextToSize` ne coupent pas toujours au
+ * même mot, et les deux dessins se mettraient à diverger d'une ligne selon
+ * l'énoncé. Une réserve que les deux connaissent vaut mieux qu'une mesure que
+ * chacun refait de son côté.
+ */
+const hautDeLEgalite = (g) => Math.max(
+    g.b.y + g.b.h * 0.40,
+    g.b.y + g.corps * (1 + 3 * 1.15) + g.corps * 0.55);
+
 function egaliteThalesTraces(g, y0) {
     const c = g.corps;
     const wEq = c * 2.4;
@@ -193,14 +215,18 @@ function thalesPreviewHtml(item, slot, k) {
                 top:${T(y - taille * 0.78)}px; width:${T(large)}px;
                 text-align:center; font-size:${T(taille)}px">${nom}</div>`;
         });
+    // QUATRE LIGNES AU PLUS, comme le PDF (`lignes.slice(0, 4)`) : un aperçu qui
+    // montre une cinquième ligne promet un texte que la feuille n'imprimera pas,
+    // et c'est l'aperçu que le professeur relit avant de lancer la photocopie.
     html += `<div class="fx-th-enonce" style="left:${T(g.texteX)}px; top:${T(g.b.y)}px;
-        width:${T(g.texteW)}px; font-size:${T(g.corps)}px">${echapperSheet(item.prompt.papier)}</div>`;
+        width:${T(g.texteW)}px; font-size:${T(g.corps)}px; line-height:1.15;
+        max-height:${T(g.corps * 4.6)}px; overflow:hidden">${echapperSheet(item.prompt.papier)}</div>`;
     // L'ÉGALITÉ À REMPLIR, quand c'est elle qu'on demande — voir
     // `egaliteThalesTraces`. La réciproque, elle, se justifie en phrases : on
     // lui laisse ses lignes.
     const avecEgalite = g.m.etape === 'egalite' || g.m.etape === 'calculer';
     if (avecEgalite) {
-        const e = egaliteThalesTraces(g, g.b.y + g.b.h * 0.40);
+        const e = egaliteThalesTraces(g, hautDeLEgalite(g));
         e.pointilles.forEach(l => {
             html += `<div class="fx-th-ligne" style="left:${T(l.x1)}px; top:${T(l.y)}px;
                 width:${T(l.x2 - l.x1)}px"></div>`;
@@ -226,9 +252,12 @@ function thalesPreviewHtml(item, slot, k) {
         }
         return html;
     }
-    // Les lignes pour rédiger : c'est là que Thalès se note.
+    // Les lignes pour rédiger : c'est là que Thalès se note. Elles partent
+    // sous l'énoncé comme l'égalité — même défaut, même règle : sur un bloc
+    // bas, 42 % de sa hauteur tombe encore dans le texte.
+    const hautRedaction = Math.max(g.b.y + g.b.h * 0.42, hautDeLEgalite(g));
     for (let i = 0; i < 3; i++) {
-        const y = g.b.y + g.b.h * 0.42 + i * (g.b.h * 0.18);
+        const y = hautRedaction + i * (g.b.h * 0.18);
         html += `<div class="fx-th-ligne" style="left:${T(g.texteX)}px; top:${T(y)}px;
             width:${T(g.texteW)}px"></div>`;
     }
@@ -271,7 +300,7 @@ function dessinerThalesPdf(doc, item, slot, solution) {
         if (doc.setLineDashPattern) doc.setLineDashPattern([1, 1], 0);
         if (avecEgalite) {
             // Le squelette de l'égalité — les mêmes traits qu'à l'aperçu.
-            const e = egaliteThalesTraces(g, g.b.y + g.b.h * 0.40);
+            const e = egaliteThalesTraces(g, hautDeLEgalite(g));
             e.pointilles.forEach(l => doc.line(l.x1, l.y, l.x2, l.y));
             if (g.m.etape === 'calculer') {
                 [0, 1].forEach(i => doc.line(g.texteX, e.bas + i * g.corps * 1.9,
@@ -287,8 +316,9 @@ function dessinerThalesPdf(doc, item, slot, solution) {
             e.egaux.forEach(p => doc.text('=', p.x, p.y + g.corps * 0.4, { align: 'center' }));
             return;
         }
+        const hautRedaction = Math.max(g.b.y + g.b.h * 0.42, hautDeLEgalite(g));
         for (let i = 0; i < 3; i++) {
-            const y = g.b.y + g.b.h * 0.42 + i * (g.b.h * 0.18);
+            const y = hautRedaction + i * (g.b.h * 0.18);
             doc.line(g.texteX, y, g.texteX + g.texteW, y);
         }
         if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);

@@ -225,6 +225,27 @@ function grillesDe(etape, nb) {
         out.push({
             cle: etape.grille,
             item: etape.generator.generate(etape.params, {
+                // `papier: true` — IL MANQUAIT ICI, ET NULLE PART AILLEURS.
+                //
+                // RÉMY, sa feuille à la main : « on ne comprend pas le 851 ».
+                // Sur son poly, l'exercice de valeur absolue posait
+                // « |x − 3| se lit : ………… » — une question dont la réponse est
+                // un CHOIX entre quatre phrases, et les quatre phrases ne
+                // s'impriment pas. Le générateur sait déjà l'éviter :
+                // `if (marche === 'lire' && ctx.papier) return itemRepresenter(…)`.
+                // Il ne le savait pas parce qu'on ne le lui disait pas.
+                //
+                // DEUX CHEMINS MÈNENT AU PAPIER DANS CE FICHIER, et un seul
+                // disait qu'il était le papier : `questionsDe` passait
+                // `papier: true`, `grillesDe` l'avait oublié. Tout exercice
+                // qui déclare un `printable` passe par ici — c'est-à-dire
+                // TOUS ceux qui s'impriment en dessin —, et tous recevaient
+                // donc leur question d'écran.
+                //
+                // La leçon, pour la suite : deux portes vers le même dehors
+                // doivent porter la même pancarte, sans quoi l'une d'elles
+                // ment pendant des mois sans que rien ne le dise.
+                papier: true,
                 index: i, rng: makeRng(),
                 themesExclus: out.map(g => g.item.meta && g.item.meta.theme).filter(Boolean)
             })

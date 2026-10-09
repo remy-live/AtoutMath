@@ -3565,3 +3565,64 @@ lignes** — 2026-10-01
   présent pour l'aperçu, et la photographie. Deux secondes, et l'on REGARDE la
   feuille. La règle qui va avec : **compter les segments d'un PDF dit qu'il
   n'est pas vide, jamais qu'il est juste.**
+
+## Deux portes vers le papier, et une seule portait la pancarte — 2026-10-09
+
+- **Ce que je voulais faire** : comprendre pourquoi le poly de Rémy posait
+  « |x − 3| se lit : ………… », alors qu'une garde existe depuis des semaines pour
+  l'empêcher (`if (marche === 'lire' && ctx.papier)`).
+- **Ce qui a coûté** : une demi-heure, et surtout trois défauts livrés à un
+  professeur. `printParcours.js` a DEUX chemins vers le papier — `questionsDe`
+  pour les exercices écrits, `grillesDe` pour ceux qui s'impriment en dessin —
+  et seul le premier passait `papier: true`. Tout exercice déclarant un
+  `printable` recevait donc sa question d'écran. La correction fait une ligne ;
+  la trouver a demandé de REFAIRE son poly au navigateur, parce qu'aucune sonde
+  du dépôt ne passe par là.
+- **Combien de fois** : || — la seconde forme du même motif en deux jours. Hier,
+  l'écran écrivait sa pointe de flèche en dur pendant que le papier la lisait
+  dans le plan.
+- **Ce qui manque** : une habitude, et une garde qui la tient. **Quand deux
+  chemins mènent au même dehors, la garde ne vérifie pas l'un ni l'autre : elle
+  les COMPTE.** `tests/polyDuParcours.test.mjs` ne nomme aucune fonction — elle
+  compte les appels à `.generate(` dans le fichier et exige que chacun passe
+  `papier: true`. Un troisième chemin la fera tomber le jour où on l'écrira.
+
+## Un PDF ne se regardait pas : on en comptait les octets — 2026-10-09
+
+- **Ce que je voulais faire** : vérifier les neuf points de la revue du poly.
+- **Ce qui a coûté** : un défaut livré pendant des mois, et le pire de tous.
+  `⩽` et `⩾` — ceux du programme français, que ce dépôt écrit partout —
+  s'imprimaient « ? » : « x ⩾ 3 » sortait « x ? 3 ». En cherchant les autres :
+  treize caractères perdus, dont ℕ ℤ ℚ ℝ (« ? — les rationnels ») et ∪ ∩ ∅ ∉
+  (« I ∩ J » devenait « I ? J »). Rémy ne les a pas signalés ; il a signalé neuf
+  autres choses, toutes moins graves.
+- **Combien de fois** : |||| — les quatre sondes de fiches écrites cette semaine
+  se sont toutes arrêtées à « 146 segment(s) · 30 Ko ». Un « ? » au milieu d'une
+  inégalité ne casse rien : la feuille sort, elle a le bon nombre de lignes,
+  toutes les épreuves sont vertes.
+- **Ce qui manque** : c'est fait, et en deux morceaux.
+  `node tools/pdfEnImage.mjs <pdf> <png> [échelle] [page]` rend une page en
+  image (`pdfjs-dist` était déjà là pour l'aperçu, Chromium aussi) ;
+  `node tools/caracteresPerdus.mjs` balaie le catalogue en mode papier et dit
+  ce qui devient « ? ». La règle : **compter les segments d'un PDF dit qu'il
+  n'est pas vide, jamais qu'il est juste.**
+
+## L'accent grave, quinzième fois — et dans un `node -e` cette fois — 2026-10-09
+
+- **Ce que je voulais faire** : écrire un commentaire citant `largeurFraction`
+  entre accents graves, dans un fichier CSS, via `node tools/remplacer.mjs`.
+- **Ce qui a coûté** : quatre mots avalés et un second passage pour les
+  remettre. Le piège est connu — il a son hook, `tools/hooks/verifierSyntaxe.sh`
+  — mais celui-ci ne voit que le JavaScript invalide. Ici le fichier restait
+  valide : seuls les mots entre accents graves avaient disparu, parce que je
+  construisais le fichier de paires dans un `node -e "…"` dont le corps est
+  entre GUILLEMETS DOUBLES, où l'interpréteur exécute ce qui est entre accents
+  graves. La même chose m'est arrivée dans un `cat <<'XEOF'` avec des `\uXXXX`,
+  transformés en vrais caractères.
+- **Combien de fois** : ||| dans la seule journée.
+- **Ce qui manque** : la règle, que j'écris pour ne plus la chercher. **Un texte
+  qui contient un accent grave ou une séquence `\u` ne passe par AUCUNE forme de
+  ligne de commande** — ni `node -e "…"`, ni un heredoc. On l'écrit dans un
+  fichier avec l'outil d'écriture, et l'on construit le fichier de paires à
+  partir de ce fichier-là. `remplacer.mjs` ferme déjà le chemin du multiligne ;
+  celui-ci reste ouvert parce qu'un texte d'une ligne a le droit de passer.

@@ -2871,7 +2871,25 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     vertical-align: baseline; line-height: 1; margin: 0 .12em;
     transform: translateY(-.29em);
 }
-.fx-frac-n { border-bottom: 1px solid currentColor; padding: 0 .18em .04em; }
+/* LE TRAIT DE FRACTION COURT SUR TOUTE LA LARGEUR DE LA FRACTION.
+
+   Rémy : « le trait de fraction est parfois très grand ». Le trait EST la
+   bordure basse du numérateur ; il valait donc la largeur du numérateur seul.
+   Quand c'est le DÉNOMINATEUR qui est le plus large — « 6 / 15 » —, le trait
+   s'arrêtait au milieu ; et quand le numérateur était la place à remplir, il
+   courait sur toute la longueur des espaces.
+
+   `align-self: stretch` le fait valoir la largeur de la colonne,
+   c'est-à-dire celle du plus large des deux étages — ce que le PDF trace
+   depuis toujours (`largeurFraction`). */
+.fx-frac-n {
+    border-bottom: 1px solid currentColor; padding: 0 .18em .04em;
+    align-self: stretch; text-align: center;
+}
+/* L'étage à remplir : sa largeur est posée en `ch` par `ligneHtml`, et son
+   contenu est vide — les espaces de la place à remplir la rendaient sinon
+   aussi longue qu'eux. */
+.fx-frac-trou { display: inline-block; }
 .fx-frac-d { padding: .04em .18em 0; }
 /* Le « à peu près égal » : dans l'aperçu on l'écrit, dans le PDF on le trace —
    les polices standard d'un PDF ne le connaissent pas. */

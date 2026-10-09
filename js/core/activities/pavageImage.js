@@ -61,24 +61,14 @@ import { marqueurPoint } from '../figures.js';
 const COTE = 46;
 const MARGE = 22;
 
-/**
- * LES COULEURS DES PIÈCES.
- *
- * Elles ne portent AUCUNE information : deux pièces voisines doivent seulement
- * se distinguer, et c'est le NUMÉRO qui désigne. Un élève daltonien fait donc
- * l'exercice exactement comme les autres — ce qui ne serait pas le cas si l'on
- * avait écrit « l'image de la pièce bleue ».
- *
- * On prend des teintes claires : le numéro est écrit par-dessus en noir, et il
- * doit se lire. Mesuré sur le Jardin : une encre qui suit le thème devient
- * illisible dès que la couleur de fond est fixe (contraste 1,11 en thème
- * sombre). L'encre est donc littérale ici aussi.
- */
-const TEINTES = [
-    '#bfdbfe', '#fecaca', '#bbf7d0', '#fde68a', '#e9d5ff', '#a5f3fc',
-    '#fed7aa', '#d9f99d', '#fbcfe8', '#c7d2fe', '#99f6e4', '#fef08a',
-    '#ddd6fe', '#bae6fd', '#fecdd3', '#d1fae5'
-];
+// LES COULEURS DES PIÈCES vivent dans un module feuille : la fiche en a
+// besoin aussi, et elle ne peut pas importer cette activité sans entraîner le
+// meneur de démonstration et tout le `document` avec lui. Voir
+// `core/teintesPieces.js`, qui porte le pourquoi en entier.
+// (importée ET réexportée : ce module s'en sert aussi, et un simple
+// 'export … from' ne lierait pas le nom ici.)
+import { TEINTES } from '../teintesPieces.js';
+export { TEINTES };
 
 export function mount(container, session, opts = {}) {
     let destroyed = false;

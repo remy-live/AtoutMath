@@ -634,7 +634,43 @@ export const intervallesGenerator = {
         const I = tirerIntervalle(rng, params.forme || 'les-deux');
 
         const voulu = params.sens && params.sens !== 'toutes' ? params.sens : null;
-        const possibles = voulu ? SENS.filter(s => s.vers === voulu) : SENS;
+        // ── SUR LE PAPIER, NI DESSIN DE DÉPART NI DESSIN D'ARRIVÉE ───────
+        //
+        // RÉMY, sa feuille à la main : « Idem pour le 845, il manque qqch ? »
+        // et « Pour l'ex 145, il ne manque pas le graphique ? »
+        //
+        // Ce qu'il avait sous les yeux :
+        //
+        //   839.  Voir la droite graduée ci-dessus.  ..........
+        //   846.  Voir la droite graduée ci-dessus.  ..........
+        //
+        // Il n'y avait pas de droite au-dessus. À l'écran, la question PART
+        // d'un axe dessiné dans l'énoncé ; la feuille, elle, n'imprime que
+        // `prompt.papier`, et ce texte-là est un RENVOI à un dessin qui
+        // n'existe pas. Une question dont l'énoncé a disparu n'est pas
+        // incomplète, elle est insoluble — et elle occupe quand même sa place.
+        //
+        // L'AUTRE SENS EST TOUT AUSSI IMPOSSIBLE, et personne ne l'avait vu :
+        // « Quelle droite graduée ? » suivi d'un pointillé demande à l'élève
+        // de tracer un axe gradué sur trois centimètres de ligne. À l'écran il
+        // choisit parmi quatre dessins ; sur le papier, les quatre dessins ne
+        // s'impriment pas.
+        //
+        // ON NE GARDE DONC, SUR LE PAPIER, QUE LES TRADUCTIONS D'UNE ÉCRITURE
+        // VERS UNE ÉCRITURE. Il en reste trois sur huit, ce qui suffit à une
+        // feuille ; et l'élève peut répondre à chacune.
+        //
+        // (La vraie réponse serait d'imprimer l'axe, comme le fait
+        // `sec-union-inter` avec `RENDUS_AXES` — mais c'est un rendu de fiche
+        // à écrire, et ces trois exercices-là passent par la feuille générique.
+        // Le jour où on l'écrira, cette liste se rouvrira.)
+        const ecritesSeules = (s) => s.de !== 'axe' && s.vers !== 'axe';
+        const utilisables = ctx.papier ? SENS.filter(ecritesSeules) : SENS;
+        let possibles = voulu ? utilisables.filter(s => s.vers === voulu) : utilisables;
+        // « Représenter sur l'axe » coché ET papier : il ne reste rien. On sert
+        // alors les autres traductions plutôt qu'une feuille vide, et la
+        // question dira elle-même ce qu'elle demande (voir `ditLeSens`).
+        if (!possibles.length) possibles = utilisables;
         const sens = possibles[rng.int(0, possibles.length - 1)];
         const depart = DEPART[sens.de](I);
         const arrivee = ARRIVEE[sens.vers];
@@ -670,6 +706,10 @@ export const intervallesGenerator = {
         }
 
         const consigne = `${CE_QU_ON_DEMANDE[sens.vers]} correspond à ${depart.nom} ?`;
+        // LA LIGNE DIT-ELLE CE QU'ELLE DEMANDE ? Oui dès que la feuille
+        // mélange les traductions — c'est-à-dire dès que la consigne du haut
+        // ne peut pas le dire pour elle. Voir `prompt.papier`.
+        const ditLeSens = !voulu || sens.vers !== voulu;
 
         return makeItem({
             seed: rng.seed,
@@ -680,9 +720,22 @@ export const intervallesGenerator = {
                 text: `${depart.papier} — ${CE_QU_ON_DEMANDE[sens.vers]} ?`,
                 html: `<div class="game-question iv-consigne">${consigne}</div>`
                     + depart.montre + dessin,
-                // SUR LE PAPIER, L'AXE AUSSI. Une fiche imprimée où la question
-                // dit « cette droite » sans droite est une question sans énoncé.
-                papier: depart.papier
+                // ET LA QUESTION DIT CE QU'ELLE DEMANDE.
+                //
+                // RÉMY : « il manque qqch ? » sous « 845. x est un réel
+                // strictement supérieur à 0. .......... ». Il manquait la
+                // question : cet exercice-là mélange les traductions, et
+                // l'élève ne pouvait pas savoir s'il devait écrire
+                // l'intervalle ou l'inégalité. `prompt.text` le disait depuis
+                // toujours ; `prompt.papier` gardait le seul énoncé de départ.
+                //
+                // QUAND LE PROFESSEUR A FIXÉ LE SENS, ON NE LE RÉPÈTE PAS : la
+                // consigne de la feuille le dit déjà en haut (« Écris
+                // l'intervalle correspondant. »), et la redire à chaque ligne
+                // n'ajoute que du bruit.
+                papier: ditLeSens
+                    ? `${depart.papier} — ${CE_QU_ON_DEMANDE[sens.vers]} ?`
+                    : depart.papier
             },
             answer: 'ok',
             choices: choix,
