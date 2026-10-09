@@ -224,9 +224,18 @@ console.log(`  ok    elle est verte sur le dépôt intact${nomVoulu ? ` (${intac
 
 let tombe = false;
 let avecElle = [];
+// LE DÉFAUT REMIS COMPILE-T-IL SEULEMENT ? On compte les épreuves VUES.
+//
+// Payé une fois : un `&&` passé au shell entre apostrophes était arrivé
+// `\&\&` dans le fichier. Le module ne se chargeait plus, AUCUNE épreuve ne
+// tournait, et l'outil annonçait « l'épreuve reste verte » — c'est-à-dire
+// « ta garde ne garde rien », exactement le contraire de ce qui se passait.
+// Le seul indice était le nom du FICHIER listé parmi les épreuves tombées.
+let vuesAbimee = null;
 try {
     writeFileSync(source, abime());
     const abimee = lancer();
+    vuesAbimee = abimee.vues.size;
     tombe = nomVoulu ? abimee.tombees.has(nomVoulu) : !abimee.verte;
     avecElle = [...abimee.tombees].filter(n => n !== nomVoulu);
 } finally {
@@ -249,6 +258,16 @@ console.log(`  ${remis ? 'ok  ' : 'RATÉ'}  ${source} est remis comme il était`
 
 if (!remis) {
     console.error('\nATTENTION : le fichier source n\'a pas pu être remis. Vérifier à la main.');
+    process.exit(1);
+}
+// UN FICHIER QUI NE TOURNE PLUS N'EST PAS UNE MESURE. On le dit avant tout le
+// reste : le remède est dans le DÉFAUT qu'on a écrit, pas dans l'épreuve.
+if (vuesAbimee !== null && vuesAbimee < intact.vues.size) {
+    console.error(`\nLE DÉFAUT REMIS EMPÊCHE LE FICHIER DE TOURNER : ${vuesAbimee} épreuve(s)`
+        + ` vues au lieu de ${intact.vues.size}.`);
+    console.error('Rien n\'est mesuré ici. Le texte de remplacement ne compile sans doute pas —');
+    console.error('un « && » échappé par le shell, une accolade en trop. L\'écrire dans un');
+    console.error('fichier et employer --depuis règle la plupart de ces cas.');
     process.exit(1);
 }
 if (!tombe) {

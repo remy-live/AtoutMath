@@ -381,10 +381,25 @@ export async function ouvrirSonde(o = {}) {
 
         async fermer() {
             await nav.close();
-            // ON NE TUE QUE CE QU'ON A LANCÉ. Un `pkill -f siteEssai` emporte
-            // le site d'une autre sonde qui tourne en même temps — et l'on
-            // passe vingt minutes à croire que le serveur est cassé.
-            try { serveur.kill(); } catch (e) { /* déjà parti */ }
+            // ON NE TUE QUE CE QU'ON A LANCÉ — ET TOUT CE QU'ON A LANCÉ.
+            //
+            // Un `pkill -f siteEssai` emporte le site d'une autre sonde qui
+            // tourne en même temps, et l'on passe vingt minutes à croire que le
+            // serveur est cassé. Mais tuer le seul processus qu'on a lancé n'y
+            // suffit pas non plus : `siteEssai.php` démarre un `php -S` qui a
+            // ses propres ouvriers, et ceux-là survivent à leur père. MESURÉ
+            // après trois sondes dans la même séance : 60 `routeurEssai.php`
+            // encore vivants, et deux `siteEssai.php` dont le plus vieux avait
+            // trente-neuf minutes.
+            //
+            // LE GROUPE DE PROCESSUS EST LA RÉPONSE, et il est exact là où un
+            // motif est approximatif : `detached` fait du site le chef de son
+            // propre groupe, et `kill(-pid)` emporte le groupe entier — le
+            // sien, jamais celui d'une autre sonde.
+            try { process.kill(-serveur.pid, 'SIGTERM'); }
+            catch (e) {
+                try { serveur.kill(); } catch (e2) { /* déjà parti */ }
+            }
         }
     };
     return sonde;
@@ -397,7 +412,11 @@ async function monterLeSite() {
     // tiraient le même numéro une fois sur cent, et la seconde mesurait le site
     // de la première.
     const port = String(9000 + Math.floor(Math.random() * 900));
-    const serveur = spawn('php', ['tools/siteEssai.php', port], { stdio: ['ignore', 'pipe', 'pipe'] });
+    // `detached` : voir `fermer()`. Le site devient chef de son propre groupe de
+    // processus, et c'est la seule façon d'emporter ses ouvriers `php -S` sans
+    // tuer au motif ce qui ne nous appartient pas.
+    const serveur = spawn('php', ['tools/siteEssai.php', port],
+        { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     const info = await new Promise((ok, ko) => {
         const minuteur = setTimeout(() => ko(new Error('le site d\'essai n\'a rien dit en 30 s')), 30000);
         let tampon = '';

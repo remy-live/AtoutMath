@@ -3648,3 +3648,75 @@ lignes** — 2026-10-01
   de CE fichier.** Jamais dans le corps d'un `node -e`, jamais dans un heredoc
   non plus — un `cat <<'EOF'` conserve les accents graves mais l'outil
   d'écriture, lui, transforme les `\uXXXX` en vrais caractères.
+
+## Une garde qui emploie la fonction mesurée ne voit pas une mesure fausse — 2026-10-10
+
+- **Ce que je voulais faire** : garder la règle « deux lettres d'une figure ne
+  se posent jamais l'une sur l'autre ». La garde appelait `ecartDesLettres`,
+  c'est-à-dire la fonction même dont le générateur se sert pour décider.
+- **Ce qui a coûté** : un aller-retour complet. `epreuveTombe` a remis le vrai
+  défaut d'origine — ne mesurer que les points DU CERCLE — et l'épreuve est
+  restée VERTE : la règle et sa garde partageaient la même mesure, donc la
+  garde ne pouvait pas voir que la mesure était fausse. Elle est repartie de
+  `tracesDe`, c'est-à-dire de ce que l'écran dessine.
+- **Combien de fois** : || — même famille que « une garde qui lit la source
+  trouve son propre commentaire », notée hier. Les deux disent la même chose
+  d'une autre manière : **une garde ne doit rien partager avec ce qu'elle
+  garde.**
+- **Ce qui manque** : rien d'outillable de plus — `epreuveTombe` a fait
+  exactement son travail, et c'est la deuxième fois en deux jours qu'il
+  rattrape une épreuve verte qui ne gardait rien. La règle est à écrire dans
+  `CLAUDE.md` le jour où l'on y touche : **une épreuve qui importe la fonction
+  qu'elle juge ne juge rien.**
+
+## `epreuveTombe` disait « ta garde ne garde rien » quand le défaut ne compilait pas — 2026-10-10
+
+- **Ce que je voulais faire** : remettre un défaut contenant `&&` depuis la
+  ligne de commande.
+- **Ce qui a coûté** : vingt minutes. Entre apostrophes, mon `\&\&` est arrivé
+  tel quel dans le fichier : le module ne se chargeait plus, AUCUNE épreuve ne
+  tournait, et l'outil annonçait « l'épreuve reste verte », c'est-à-dire « ta
+  garde ne garde rien » — exactement le contraire de ce qui se passait. Le seul
+  indice était le NOM DU FICHIER listé parmi les épreuves tombées, ce qui ne
+  saute pas aux yeux.
+- **Combien de fois** : | — mais c'est la même famille que les quatre marques
+  de « un `node -e` est une ligne de commande comme une autre » : un texte qui
+  part au shell revient abîmé, et le silence qui suit ressemble à une mesure.
+- **Ce qui manque** : rien, c'est fait. `epreuveTombe` compte maintenant les
+  épreuves VUES avant et après ; s'il en voit moins, il dit « le défaut remis
+  empêche le fichier de tourner » et renvoie vers `--depuis`.
+
+## Une règle de lisibilité qui ne connaît qu'une famille de points — 2026-10-10
+
+- **Ce que je voulais faire** : rien. J'ai vu « B » posé sur « D » sur une
+  capture prise pour mesurer autre chose.
+- **Ce qui a coûté** : rien cette fois, et c'est tout l'intérêt de la noter. La
+  règle existante mesurait un écart d'ANGLE entre points du cercle ; le second
+  point d'une tangente n'est pas sur le cercle, donc il n'existait pas pour
+  elle. Le même piège attend toute famille de tracé à venir.
+- **Combien de fois** : || — « le label du point est loin du point » (2 octobre)
+  était déjà une mesure prise dans le mauvais système de coordonnées.
+- **Ce qui manque** : une habitude plus qu'un outil. **Quand une règle porte
+  sur ce que l'œil voit, elle se mesure sur CE QUI EST DESSINÉ** — ici
+  `tracesDe` —, jamais sur les paramètres qui ont servi à le dessiner. Les
+  paramètres ne connaissent qu'une partie de la figure ; le dessin les connaît
+  toutes, y compris celles qu'on ajoutera.
+
+## Chaque sonde laissait vingt serveurs PHP derrière elle — 2026-10-10
+
+- **Ce que je voulais faire** : lancer trois sondes de navigateur dans la même
+  séance, puis comprendre pourquoi la machine ramait et pourquoi `npm test`
+  mettait deux fois son temps.
+- **Ce qui a coûté** : une demi-heure de lenteur inexpliquée. `fermer()` tuait
+  le processus qu'elle avait lancé — `php tools/siteEssai.php` — mais celui-ci
+  démarre un `php -S` qui a vingt ouvriers, et les ouvriers survivent à leur
+  père. Compté : **60 `routeurEssai.php` vivants**, dont les plus vieux avaient
+  quarante-deux minutes. Et la règle « jamais de `pkill -f` » rend le ménage
+  pénible : il faut lister les PID et les tuer un par un.
+- **Combien de fois** : | la première fois qu'on la NOMME, mais elle durait
+  depuis que `sonde.mjs` existe — c'est-à-dire sous toutes les sondes du dépôt.
+- **Ce qui manque** : rien, c'est fait. `sonde.mjs` lance le site en
+  `detached` — il devient chef de son propre groupe de processus — et
+  `fermer()` tue le GROUPE (`kill(-pid)`). C'est exact là où un motif est
+  approximatif : son groupe, jamais celui d'une autre sonde. Vérifié : zéro
+  processus laissé derrière après une sonde complète.

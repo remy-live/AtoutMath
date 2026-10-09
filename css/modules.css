@@ -1737,6 +1737,14 @@ html[data-point="plus"] .pt-croix { display: none; }
     min-height: 1.3em; text-align: center; margin: 0 auto 10px;
     font-size: .9rem; font-weight: 600; color: var(--text-muted);
 }
+/* « Il manque les crochets » n'est pas une consigne, c'est une correction :
+   Rémy, « Précise leur erreur si ils se trompent ». Elle prend donc la couleur
+   d'un avertissement, et la largeur d'une phrase — trois lignes centrées dans
+   un écran de 390 px se lisent, un ruban pleine page non. */
+.cv-statut--dit {
+    color: var(--warning-texte); max-width: 34ch; line-height: 1.35;
+    font-weight: 700;
+}
 
 /* --- LES OUTILS D'UN EXERCICE : schéma, formules -------------------------
    Rémy : « on pourrait avoir un bouton schéma et un bouton formule (mais pas
@@ -9007,6 +9015,21 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    sans cela, la touche du carré déborde de sa case sur un téléphone. */
 .pav-touche--carre { letter-spacing: -.02em; font-size: .92em; }
 .pav-touche--ok { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* LES DEUX TOUCHES DE NOTATION — « [ ] » et « ( ) ».
+   Rémy : « c'est galère au clavier, permet d'avoir des touches de crochet ou
+   parenthèses ». Elles vivent sous le champ et NON dans un pavé complet : il
+   n'y a que deux lettres à taper, que le clavier de l'appareil donne très bien,
+   et un pavé prendrait la place de la figure qu'on demande de lire.
+   `.pav-touche` s'étire (`flex: 1 1 0`) parce qu'il partage une rangée de cinq
+   chiffres ; ici elles sont deux, et on les borne. */
+.pav-notation { display: flex; gap: 10px; justify-content: center; margin: 0 auto 8px; }
+.pav-touche--notation {
+    /* Deux fois plus large que haute : la touche porte DEUX signes séparés
+       d'une espace, pour qu'on lise la paire et non un crochet seul. */
+    flex: 0 0 auto; width: clamp(88px, 24vw, 104px); height: clamp(44px, 7vh, 52px);
+    letter-spacing: .12em; font-weight: 700;
+}
 
 /* --- Fiche « Le tangram » ------------------------------------------------
    Le carré porte ses traits de découpe ; une silhouette n'est qu'un contour

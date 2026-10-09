@@ -29,7 +29,11 @@ import { hintBar, wireHint } from './choice.js';
 import { tracesDe, cercleSvg } from '../cercleFigure.js';
 // La comparaison des mots vit avec le VOCABULAIRE, pas avec l'écran : c'est une
 // règle sur les mots du cercle, et elle se teste sans navigateur.
-import { memeMot, memeNotation } from '../generators/cercleVocabulaire.js';
+import { memeMot, jugerNotation } from '../generators/cercleVocabulaire.js';
+// LES TOUCHES VIENNENT DU MÊME MODULE QUE LE PAVÉ DE CHIFFRES, et pour la même
+// raison : « c'est galère au clavier ». Un signe qu'on ne trouve pas sur un
+// téléphone ferme l'exercice aussi sûrement qu'un bogue.
+import { poserTouchesDeNotation, enMajuscules } from '../../ui/paveTactile.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { meneurDemo } from '../meneurDemo.js';
 
@@ -111,15 +115,22 @@ export function mount(container, session, opts = {}) {
             // notation elle-même. Les deux gestes restent ouverts en même
             // temps : celui qui sait l'écrire n'a pas à viser un trait de deux
             // millimètres, celui qui hésite montre du doigt.
-            return `<p class="cv-consigne">Clique sur le bon tracé — ou écris sa notation.</p>
+            //
+            // LA CONSIGNE DIT LA PONCTUATION, parce qu'on l'exige désormais :
+            // Rémy, « il faudrait taper [OG] ». Et le repère « [  ] » du champ
+            // s'en va — il annonçait un segment devant une tangente, qui
+            // s'écrit (AB). Les touches posées plus bas montrent les deux
+            // paires sans en désigner une.
+            return `<p class="cv-consigne">Clique sur le bon tracé — ou écris sa notation,
+                    avec ses crochets ou ses parenthèses.</p>
                 <div class="cv-ecriture">
                     <label class="cv-label" for="cv-champ">Notation :</label>
                     <input id="cv-champ" class="cv-champ cv-champ--court" type="text"
                            inputmode="text" autocomplete="off" spellcheck="false"
-                           autocapitalize="characters" placeholder="[  ]">
+                           autocapitalize="characters" aria-describedby="cv-dit">
                     <button type="button" class="kk-btn-valider" data-valider>Valider</button>
                 </div>
-                <p class="cv-statut" role="status"></p>`;
+                <p class="cv-statut" id="cv-dit" role="status"></p>`;
         }
         // PAS D'EXEMPLE DANS LE CHAMP. « un rayon » en filigrane est la réponse
         // d'une question sur deux : on donnerait le mot à celui qui doit le
@@ -154,6 +165,25 @@ export function mount(container, session, opts = {}) {
         }
         const champ = container.querySelector('#cv-champ');
         if (!champ) return;
+        if (faire === 'cliquer') {
+            // LES POINTS D'UNE FIGURE SONT DES MAJUSCULES, et un champ qui
+            // montre « og » enseigne une notation qui n'existe pas. Rémy :
+            // « et en majuscule ».
+            //
+            // SEULEMENT ICI, ET C'EST TOUT L'INTÉRÊT DE LA CONDITION : l'autre
+            // champ attend un MOT, et « UN RAYON » en capitales n'est pas la
+            // façon dont on écrit un mot français. Posée une ligne plus haut,
+            // la mise en majuscules les prenait tous les deux.
+            enMajuscules(champ);
+            // LES DEUX PAIRES SONT LÀ EN MÊME TEMPS, toujours. N'offrir que
+            // « [ ] » devant un rayon dirait que la réponse est un segment —
+            // c'est-à-dire la moitié de la question, quand la figure porte
+            // aussi une tangente.
+            poserTouchesDeNotation(container, {
+                champ: () => container.querySelector('#cv-champ'),
+                avant: container.querySelector('.cv-statut')
+            });
+        }
         const valider = () => repondreParEcriture(champ.value, faire);
         champ.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); valider(); } };
         container.querySelector('[data-valider]').onclick = valider;
@@ -177,20 +207,35 @@ export function mount(container, session, opts = {}) {
 
     /**
      * ON REND LA RÉPONSE ATTENDUE QUAND C'EST LA MÊME CHOSE. La session compare
-     * des chaînes ; c'est ici que « rayon » et « un rayon » se rejoignent, ici
-     * aussi que « OA » rejoint « [OA] », et nulle part ailleurs — le journal
-     * doit enregistrer la même réponse quel que soit le geste.
+     * des chaînes ; c'est ici que « rayon » et « un rayon » se rejoignent, et
+     * nulle part ailleurs — le journal doit enregistrer la même réponse quel
+     * que soit le geste.
+     *
+     * MAIS « OA » NE REJOINT PLUS « [OA] ». Rémy : « tu acceptes comme rayon og
+     * comme réponse alors qu'il faudrait taper [OG] ». La ponctuation EST
+     * l'objet — [OA] le segment, (OA) la droite, OA la longueur —, et c'est
+     * `jugerNotation` qui tranche, en trois états plutôt qu'en deux.
      */
     function repondreParEcriture(texte, faire) {
         if (session.locked || destroyed) return;
         const notation = faire === 'cliquer';
         if (!texte.trim()) {
-            statut(notation ? 'Écris la notation du tracé, par exemple [OA].'
+            statut(notation ? 'Écris la notation du tracé, avec ses crochets ou ses parenthèses.'
                 : 'Écris le mot qui nomme ce tracé.');
             return;
         }
-        const memeChose = notation ? memeNotation(texte, item.answer) : memeMot(texte, item.answer);
-        conclure(memeChose ? item.answer : texte.trim(), null);
+        if (!notation) {
+            conclure(memeMot(texte, item.answer) ? item.answer : texte.trim(), null);
+            return;
+        }
+        // UNE NOTATION MAL ÉCRITE N'EST PAS UNE RÉPONSE FAUSSE, et c'est tout
+        // l'objet du verdict en trois états : l'élève qui a tapé les bonnes
+        // lettres a LU LA FIGURE. On lui dit ce qui manque et on le laisse
+        // corriger — sans consommer un essai, parce qu'un professeur au bureau
+        // de l'élève ne compte pas une faute pour une paire de crochets.
+        const avis = jugerNotation(texte, item.answer);
+        if (avis.verdict === 'notation') { statut(avis.dire, 'dit'); return; }
+        conclure(avis.verdict === 'juste' ? item.answer : texte.trim(), null);
     }
 
     function conclure(valeur, element) {
@@ -223,9 +268,13 @@ export function mount(container, session, opts = {}) {
         statut(`C'était ${item.answer}.`);
     }
 
-    function statut(texte) {
+    function statut(texte, ton) {
         const el = container.querySelector('.cv-statut');
-        if (el) el.textContent = texte;
+        if (!el) return;
+        el.textContent = texte;
+        // La phrase qui corrige une notation n'est pas un murmure : elle prend
+        // la couleur d'un avertissement, parce que c'est ce qu'elle est.
+        el.className = `cv-statut${ton ? ' cv-statut--' + ton : ''}`;
     }
 
     // --- La démonstration du robot -------------------------------------------
