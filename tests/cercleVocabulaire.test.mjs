@@ -10,7 +10,7 @@ import { getExerciseById } from '../js/data/catalog.js';
 import { RENDUS } from '../js/ui/printSheet.js';
 import {
     MOTS_CERCLE, cercleVocabulaireGenerator, memeMot, normaliser, jugerNotation, lettresDe,
-    lettresEnOrdre, familleAttendue
+    lettresEnOrdre, familleAttendue, ecrituresDeLaSerie
 } from '../js/core/generators/cercleVocabulaire.js';
 import { marcheDe } from '../js/core/activities/cercleElement.js';
 import { tracesDe, surCercle, polyArc, cercleSvg, branchesCroix, CX, CY, R } from '../js/core/cercleFigure.js';
@@ -117,6 +117,55 @@ test('LE DÉCOR NE PORTE JAMAIS LE NOM DE LA RÉPONSE', () => {
     }
 });
 
+test('UNE SÉRIE COURTE GARDE DE QUOI CHOISIR, SANS SORTIR DU NIVEAU', () => {
+    // Prendre les leurres dans la série, c'est bien — jusqu'à la série d'un
+    // seul mot, qui ne proposerait alors que la bonne réponse. On complète
+    // avec les mots du MÊME NIVEAU, et jamais avec la quatrième.
+    for (const mots of [['rayon'], ['rayon', 'corde'], ['arc', 'corde', 'rayon']]) {
+        const it = gen().generate({ mots, sens: 'nommer' },
+            { rng: makeRng(`court-${mots.length}`), index: 0 });
+        assert.ok(it.choices.length >= 4,
+            `${mots.length} mot(s) : seulement ${it.choices.length} proposition(s)`);
+        it.choices.forEach(c => {
+            const m = MOTS_CERCLE.find(x => x.nom === c.value);
+            assert.ok(m, `« ${c.value} » n'est pas un mot du cercle`);
+            assert.equal(!!m.avance, false,
+                `« ${c.value} » est de quatrième, dans une série qui ne l'est pas`);
+        });
+    }
+    // Et quand le professeur DEMANDE la quatrième, elle revient : la règle
+    // suit le niveau de la série, elle n'interdit rien.
+    const quatre = gen().generate({ mots: ['tangente', 'secante'], sens: 'nommer' },
+        { rng: makeRng('q4'), index: 0 });
+    assert.ok(quatre.choices.some(c => /tangente|sécante/.test(c.value)));
+});
+
+test('LES TOUCHES SONT CELLES QUE LA SÉRIE PEUT DEMANDER', () => {
+    // RÉMY : « ne parle pas de tangente pour le cercle ! » La touche « ( ) »
+    // était posée toujours, au motif que n'en montrer qu'une désignerait la
+    // famille de la réponse. C'est vrai DANS une série qui mélange les deux —
+    // et faux dans la sienne, où rayon, diamètre et corde sont tous des
+    // segments : la parenthèse n'annonçait rien d'autre qu'un objet hors
+    // programme.
+    const sixieme = ['centre', 'rayon', 'diametre', 'corde', 'arc', 'cercle', 'disque'];
+    assert.deepEqual(ecrituresDeLaSerie(sixieme), ['segment', 'arc']);
+    // Sans réglage, c'est la série par défaut — celle de sixième.
+    assert.deepEqual(ecrituresDeLaSerie(null), ['segment', 'arc']);
+    assert.deepEqual(ecrituresDeLaSerie([]), ['segment', 'arc']);
+    // La quatrième ramène la parenthèse, et elle seule.
+    assert.deepEqual(ecrituresDeLaSerie(['rayon', 'corde', 'tangente']), ['segment', 'droite']);
+    assert.deepEqual(ecrituresDeLaSerie(['rayon', 'diametre', 'corde']), ['segment']);
+    // Les mots qui SONT la figure entière ne demandent aucune notation.
+    assert.deepEqual(ecrituresDeLaSerie(['centre', 'cercle', 'disque']), []);
+    // ET LA LISTE SE LIT SUR CE QUE LE GÉNÉRATEUR ÉCRIT, pas sur une table
+    // parallèle : la famille de chaque mot doit être celle de sa notation.
+    for (const mots of [sixieme, ['tangente', 'secante'], ['arc']]) {
+        for (const f of ecrituresDeLaSerie(mots)) {
+            assert.ok(['segment', 'droite', 'arc'].includes(f), f);
+        }
+    }
+});
+
 test('la figure se dessine, et ses points sont bien sur le cercle', () => {
     const p = surCercle(0);
     assert.ok(Math.abs(p.x - (CX + R)) < 1e-9 && Math.abs(p.y - CY) < 1e-9, 'zéro degré est à droite');
@@ -199,10 +248,25 @@ test('LE DÉCOR RESTE DANS LA SÉRIE : pas de tangente en sixième', () => {
             assert.equal(['tangente', 'secante'].includes(e.type), false,
                 `graine ${i} : « ${e.type} » dans une série de sixième`);
         });
-        // Et les propositions non plus ne doivent pas dépasser du programme…
-        // sauf en mode « nommer », où tout le vocabulaire sert de leurres :
-        // c'est voulu, l'élève doit pouvoir écarter un mot qu'il ne connaît pas
-        // encore. Ce qui compte, c'est que la FIGURE reste dans la série.
+        // ET LES PROPOSITIONS NON PLUS — une règle, là où il n'y avait qu'un
+        // accident. Les neuf mots servaient de leurres quelle que soit la
+        // série ; mesuré sur 286 questions de sixième, « une tangente » n'y
+        // est jamais apparue, parce que `finalizeChoices` garde les quatre
+        // PREMIERS leurres et que la tangente est l'avant-dernière de
+        // `MOTS_CERCLE`. La propriété tenait à l'ordre d'un tableau : elle
+        // tombe le jour où l'on réordonne le vocabulaire ou l'on passe à six
+        // propositions. C'est ce que cette épreuve garde — et c'est aussi
+        // pourquoi le défaut qui la fait tomber est « montrer plus de
+        // propositions », et non « reprendre les neuf mots ».
+        const permis = new Set(sixieme.map(id =>
+            MOTS_CERCLE.find(m => m.id === id).nom));
+        // EN MODE TROUVER, les propositions sont des NOTATIONS — « [AB] » —
+        // et viennent des tracés de la figure, déjà gardés juste au-dessus.
+        // La règle des leurres porte sur les MOTS.
+        if (it.meta.sens === 'nommer') it.choices.forEach(c => {
+            assert.ok(permis.has(c.value),
+                `graine ${i} : « ${c.value} » est proposé hors de la série`);
+        });
     }
     // Et quand on demande la quatrième, la tangente revient bien.
     const quatre = Array.from({ length: 12 }, (_, i) =>

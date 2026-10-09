@@ -3720,3 +3720,45 @@ lignes** — 2026-10-01
   `fermer()` tue le GROUPE (`kill(-pid)`). C'est exact là où un motif est
   approximatif : son groupe, jamais celui d'une autre sonde. Vérifié : zéro
   processus laissé derrière après une sonde complète.
+
+## Un défaut que j'ai cru trouver, et qui n'existait pas — 2026-10-10
+
+- **Ce que je voulais faire** : corriger « ne parle pas de tangente pour le
+  cercle ! ». J'ai listé trois endroits où la tangente entrait, et j'en ai
+  **supposé un quatrième** : les propositions du mode « nommer », qui puisaient
+  dans les neuf mots quelle que soit la série.
+- **Ce qui a coûté** : un aller-retour, et il aurait coûté bien plus si
+  `epreuveTombe` ne m'avait pas arrêté — l'épreuve que je venais d'écrire pour
+  ce défaut restait VERTE avec l'ancien code remis. J'ai alors mesuré : sur 286
+  questions d'une série de sixième, « une tangente » n'est proposée AUCUNE
+  fois. `finalizeChoices` garde les quatre PREMIERS leurres, et la tangente est
+  l'avant-dernière du vocabulaire.
+- **Combien de fois** : || — même famille que « un commentaire qui cite une
+  mesure QU'ON N'A PAS FAITE », notée hier. Hier j'inventais un chiffre,
+  aujourd'hui un symptôme.
+- **Ce qui manque** : rien de nouveau, et c'est le plus intéressant :
+  `epreuveTombe` fait déjà ce travail. **Une épreuve qu'on écrit pour un défaut
+  qu'on n'a pas vu de ses yeux doit être passée à `epreuveTombe` AVANT d'écrire
+  la correction** — elle dit « ce défaut n'existe pas » aussi bien qu'elle dit
+  « ta garde ne garde rien ». Je l'ai lancé après, par habitude ; le lancer
+  avant aurait économisé la correction inutile.
+
+## Une sonde de jeu qui perd parce que le jeu continue — 2026-10-10
+
+- **Ce que je voulais faire** : mesurer un geste qui demande de garder le
+  pointeur appuyé plusieurs secondes, dans un jeu où les ennemis continuent
+  d'arriver.
+- **Ce qui a coûté** : trois passages pour comprendre une sonde qui échouait
+  une fois sur quatre. La partie se TERMINAIT pendant la mesure — cinq vies
+  perdues pendant que le pointeur attendait —, et le jeu refusait alors tous
+  les tirs. La sonde annonçait « la correction ne marche pas », ce qui était
+  faux ; elle aurait dû annoncer « la mesure n'a pas eu lieu ».
+- **Combien de fois** : || — même famille que « dans une sonde,
+  `waitForTimeout` ne doit jamais décider qu'une mesure est prête ». Les deux
+  disent : **une sonde doit savoir distinguer « c'est faux » de « je n'ai pas
+  pu regarder »**.
+- **Ce qui manque** : la forme à reprendre, et elle est maintenant écrite dans
+  `tools/clicQuiBouge.mjs` — on REJOUE la mesure jusqu'à trois fois, on dit à
+  quel essai elle a réussi, et l'on ne confond jamais un essai perdu avec un
+  verdict. Baisser le seuil aurait été l'erreur : la mesure serait devenue
+  facile et n'aurait plus rien mesuré.

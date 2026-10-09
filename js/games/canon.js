@@ -29,6 +29,11 @@ import { CSS_GLISSER } from '../core/glisserDeposer.js';
 // `clearEngines()` ne peut pas annuler survit à l'exercice qui l'a posé.
 import { regTimeout } from '../core/timers.js';
 import { meneurDemo } from '../core/meneurDemo.js';
+// UN ASTÉROÏDE QUI AVANCE NE SE TOUCHE PAS AU `click` : voir
+// `cibleQuiBouge.js`. Même défaut que les cartes des Amis de Dix, trouvé en
+// mesurant celui-ci — le geste échoue dès que la roche a quitté le point
+// d'appui, et l'élève a pourtant visé juste.
+import { surAppui, CSS_CIBLE_QUI_BOUGE } from '../core/cibleQuiBouge.js';
 
 /**
  * De quoi laisser le temps de calculer — ou de ne pas s'ennuyer. « Tranquille »
@@ -189,7 +194,7 @@ class Canon extends BaseGame {
                     box-shadow: 0 0 14px rgba(251,146,60,.35), inset -7px -7px 14px rgba(0,0,0,.65),
                                 inset 5px 5px 12px rgba(255,255,255,.14);
                     text-shadow: 0 1px 3px rgba(0,0,0,.95);
-                    -webkit-tap-highlight-color: transparent;
+                    ${CSS_CIBLE_QUI_BOUGE}
                     transition: filter .12s ease;
                 }
                 @media (hover: hover) {
@@ -519,7 +524,8 @@ class Canon extends BaseGame {
         // roches l'une sur l'autre, et un nombre en cacherait un autre.
         if (!libres.length) { el.remove(); return false; }
         const b = { el, valeur, voie: this.rng.pick(libres), avancee: -60 };
-        el.onclick = () => this.tirer(b);
+        // À L'APPUI, PAS AU CLIC — la roche avance. Voir `cibleQuiBouge.js`.
+        surAppui(el, () => this.tirer(b));
         this.terrainEl.appendChild(el);
         this.placerEnnemi(b);
         this.boulets.push(b);

@@ -21,6 +21,9 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { meneurDemo } from '../core/meneurDemo.js';
+// UNE CARTE QUI DÉRIVE NE SE TOUCHE PAS AU `click` : voir `cibleQuiBouge.js`,
+// qui porte la règle et la mesure qui l'a imposée.
+import { surAppui, CSS_CIBLE_QUI_BOUGE } from '../core/cibleQuiBouge.js';
 
 const COMPETENCE = 'num.complement';
 
@@ -79,8 +82,8 @@ class AmisDeDix extends BaseGame {
                     aspect-ratio: 1; border: 2.5px solid var(--text-main); border-radius: 14px;
                     background: var(--bg-panel); font-weight: 900; cursor: pointer;
                     display: flex; align-items: center; justify-content: center;
-                    font-size: clamp(15px, 6.4cqw, 30px); user-select: none;
-                    -webkit-tap-highlight-color: transparent; font-family: inherit;
+                    font-size: clamp(15px, 6.4cqw, 30px); font-family: inherit;
+                    ${CSS_CIBLE_QUI_BOUGE}
                     color: var(--text-main);
                     transition: transform .1s ease, opacity .25s ease, box-shadow .1s ease;
                 }
@@ -162,8 +165,13 @@ class AmisDeDix extends BaseGame {
         this.tableEl.style.setProperty('--dx-cols', String(cols));
         this.tableEl.innerHTML = this.cartes.map((v, i) =>
             `<button type="button" class="dx-carte" data-i="${i}" data-v="${v}">${v}</button>`).join('');
+        // ON AGIT À L'APPUI, PAS AU CLIC. Rémy : « le clic est complexe car ca
+        // sélectionne le texte que de sélectionner la case qui bouge ». Un
+        // `click` va à l'ancêtre commun de l'appui et du RELÂCHEMENT : une
+        // carte qui dérive sort de sous le doigt entre les deux, et le geste
+        // part au plateau. Voir `cibleQuiBouge.js` — le clavier garde sa voie.
         this.tableEl.querySelectorAll('.dx-carte').forEach(b => {
-            b.onclick = () => this.taper(b);
+            surAppui(b, () => this.taper(b));
         });
         this.tableEl.classList.toggle('dx-table--mouvante', this.enMouvement);
         if (this.enMouvement) this.lancerDerive();

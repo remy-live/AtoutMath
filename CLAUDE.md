@@ -120,7 +120,17 @@ node tools/epreuveTombe.mjs <essai> <source> --depuis <paires.json>   # multilig
 ```
 
 Il remet le défaut dans le code, relance l'épreuve, **exige qu'elle tombe**, et
-remet le fichier comme il était quoi qu'il arrive.
+remet le fichier comme il était quoi qu'il arrive. Quand il voit moins
+d'épreuves qu'avant, il le dit : le défaut remis ne compilait pas, et rien n'a
+été mesuré.
+
+**Et il répond à une seconde question, qu'on oublie de poser : ce défaut
+existe-t-il ?** Quand on n'a pas vu le défaut de ses propres yeux — quand on
+l'a DÉDUIT en lisant le code —, on le lance AVANT d'écrire la correction. Si
+l'épreuve reste verte avec l'ancien code remis, c'est que le défaut n'était pas
+là. Cela s'est produit : « les neuf mots servent de leurres, donc un élève de
+sixième voit une tangente » était faux — `finalizeChoices` ne garde que les
+quatre premiers leurres, et la tangente est l'avant-dernière du vocabulaire.
 
 ## 3 bis. Quand Rémy envoie une de ses séances
 

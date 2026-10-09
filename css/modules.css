@@ -9030,6 +9030,10 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     flex: 0 0 auto; width: clamp(88px, 24vw, 104px); height: clamp(44px, 7vh, 52px);
     letter-spacing: .12em; font-weight: 700;
 }
+/* UNE TOUCHE QUI PORTE UN MOT S'ÉCRIT COMME UN MOT. L'espacement ci-dessus
+   sert à détacher les deux signes d'une paire, pour qu'on lise « [ ] » et non
+   un crochet seul ; appliqué au mot « arc », il donnait « a r c ». */
+.pav-touche--motEcrit { letter-spacing: normal; font-style: italic; }
 
 /* --- Fiche « Le tangram » ------------------------------------------------
    Le carré porte ses traits de découpe ; une silhouette n'est qu'un contour

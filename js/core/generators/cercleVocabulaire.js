@@ -378,6 +378,34 @@ const PAIRES = {
     }
 };
 
+/**
+ * LES ÉCRITURES QUE CETTE SÉRIE PEUT DEMANDER — et pas une de plus.
+ *
+ * RÉMY : « ne parle pas de tangente pour le cercle ! » On posait toujours les
+ * deux touches, « [ ] » et « ( ) », en se disant que n'en montrer qu'une
+ * désignerait la famille de la réponse. C'est vrai DANS une série qui mélange
+ * les deux — et faux dans la sienne : rayon, diamètre et corde sont tous des
+ * segments, aucun tracé ne s'écrit entre parenthèses, et la touche « ( ) »
+ * n'annonçait donc rien d'autre qu'un objet hors programme.
+ *
+ * ON LIT LA FAMILLE SUR CE QUE LE GÉNÉRATEUR ÉCRIT, et non sur une table
+ * parallèle : `FORMES[id].ecrire` est déjà la seule source de la notation, et
+ * `familleAttendue` sait la lire. Un mot ajouté au vocabulaire apportera donc
+ * sa touche tout seul.
+ */
+export function ecrituresDeLaSerie(mots) {
+    const liste = (Array.isArray(mots) && mots.length ? mots.filter(motDe) : null)
+        || MOTS_CERCLE.filter(m => !m.avance).map(m => m.id);
+    const vues = new Set();
+    for (const id of liste) {
+        if (GLOBAUX.has(id) || !FORMES[id]) continue;
+        const f = familleAttendue(FORMES[id].ecrire(['A', 'B']));
+        if (f !== 'libre') vues.add(f);
+    }
+    // L'ordre est celui du cours, pas celui du tirage : le segment d'abord.
+    return ['segment', 'droite', 'arc'].filter(f => vues.has(f));
+}
+
 /** Ce que la notation attendue réclame : des crochets, des parenthèses, un mot. */
 export function familleAttendue(attendu) {
     const t = String(attendu == null ? '' : attendu);
@@ -503,7 +531,7 @@ function itemNommer(rng, mot, liste, papier = false) {
     const spec = { elements, surligne: 0 };
     const noms = elements[0].noms;
     const enonce = FORMES[mot.id].question(noms);
-    const autres = MOTS_CERCLE.filter(m => m.id !== mot.id)
+    const autres = leurres(mot, liste)
         .map(m => ({ value: m.nom, label: m.nom, why: contreDe(m, mot) }));
     return makeItem({
         seed: rng.seed,
@@ -519,7 +547,7 @@ function itemNommer(rng, mot, liste, papier = false) {
         answer: mot.nom,
         choices: finalizeChoices(rng, [
             { value: mot.nom, label: mot.nom, correct: true }, ...autres
-        ], { count: Math.min(5, MOTS_CERCLE.length) }),
+        ], { count: Math.min(5, 1 + autres.length) }),
         hints: [
             'Regarde d\'abord OÙ commence et où finit le tracé : au centre O ? sur le cercle ? '
                 + 'des deux côtés du cercle ?',
@@ -615,6 +643,40 @@ function itemTrouver(rng, mot, liste) {
             ecrits: tous.map((m, i) => ecrit(i))
         }
     });
+}
+
+/**
+ * LES LEURRES SORTENT DE LA SÉRIE — et c'était vrai PAR ACCIDENT.
+ *
+ * RÉMY : « ne parle pas de tangente pour le cercle ! » J'ai cru que les
+ * propositions en étaient la cause — les NEUF mots y servaient de leurres —
+ * et JE SUIS ALLÉ MESURER AVANT DE LE DIRE : sur 286 questions d'une série de
+ * sixième, « une tangente » n'est proposée AUCUNE fois. Ce n'était donc pas
+ * là. (C'était dans les touches et dans la consigne, que j'avais écrites le
+ * jour même.)
+ *
+ * POURQUOI ELLE N'Y ÉTAIT PAS, ET POURQUOI ON CHANGE QUAND MÊME.
+ * `finalizeChoices` garde les quatre PREMIERS leurres de la liste qu'on lui
+ * donne ; tangente et sécante sont les deux DERNIÈRES de `MOTS_CERCLE`, donc
+ * elles ne passaient jamais la coupe. La règle tenait à l'ordre d'un tableau.
+ * Le jour où l'on réordonne le vocabulaire, ou l'on passe à six propositions,
+ * elle tombe sans bruit — c'est ce que garde l'épreuve.
+ *
+ * LE DÉPÔT A DÉJÀ ÉCRIT CETTE RÈGLE UN ÉTAGE PLUS BAS, pour le DÉCOR de la
+ * figure : voir `decor`, « ET PRIS DANS LA SÉRIE SEULEMENT ». Celle-ci est la
+ * même, au même endroit du raisonnement.
+ *
+ * ET L'ON NE DESCEND PAS SOUS QUATRE PROPOSITIONS : une série d'un ou deux
+ * mots n'en fournit pas assez, et l'on complète alors avec les mots du MÊME
+ * NIVEAU — jamais avec la quatrième dans une série de sixième.
+ */
+function leurres(mot, liste) {
+    const dedans = liste.filter(m => m.id !== mot.id);
+    if (dedans.length >= 4) return dedans;
+    const avance = liste.some(m => m.avance);
+    const renfort = MOTS_CERCLE.filter(m => m.id !== mot.id
+        && !dedans.includes(m) && (avance || !m.avance));
+    return [...dedans, ...renfort].slice(0, 4);
 }
 
 /**

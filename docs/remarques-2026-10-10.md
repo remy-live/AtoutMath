@@ -161,3 +161,82 @@ Une lettre fait 6,5 unités de haut.
 POSENT JAMAIS L'UNE SUR L'AUTRE » — qui a dû être réécrite : sa première
 version appelait la fonction même que le générateur emploie pour décider, et
 `epreuveTombe` l'a vue rester verte avec le défaut d'origine remis.
+
+---
+
+# Suite — deux retours le même jour
+
+## 5. « Ne parle pas de tangente pour le cercle ! »
+
+> « ne parle pas de tangente pour le cercle ! »
+
+**Il a raison, et c'est moi qui l'avais fait entrer, l'après-midi même.** La
+tangente et la sécante sont une option de QUATRIÈME qu'il a lui-même rangée
+hors des réglages par défaut (`avance: true`). Sa série de sixième tient en
+rayon, diamètre, corde, arc, cercle, disque et centre — et la correction de la
+notation, livrée une heure plus tôt, y avait glissé la parenthèse :
+
+| où | ce qui arrivait |
+| --- | --- |
+| la touche `( )` | posée TOUJOURS, alors qu'aucun tracé de sa série ne s'écrit entre parenthèses |
+| la consigne | « ou écris sa notation, avec ses crochets ou ses parenthèses » |
+| l'instruction de l'exercice | « (AB) est la DROITE qui passe par A et par B et ne s'arrête jamais » |
+
+Mon raisonnement était : montrer une seule paire désignerait la famille de la
+réponse. **C'est vrai dans une série qui mélange les deux, et faux dans la
+sienne** — rayon, diamètre et corde sont tous des segments, il n'y a rien à
+cacher, et la parenthèse n'annonçait qu'un objet hors programme.
+
+### Ce que j'ai cru trouver en plus, et qui n'y était pas
+
+J'ai soupçonné un quatrième endroit : les PROPOSITIONS du mode « nommer », qui
+puisaient dans les neuf mots quelle que soit la série. **Mesuré avant de
+l'écrire : sur 286 questions d'une série de sixième, « une tangente » n'est
+proposée AUCUNE fois.** `finalizeChoices` garde les quatre PREMIERS leurres, et
+la tangente est l'avant-dernière du vocabulaire — elle ne passait jamais la
+coupe.
+
+La propriété tenait donc à l'ordre d'un tableau. On l'a quand même écrite comme
+une règle (`leurres`), parce qu'un jour on réordonnera le vocabulaire ou l'on
+passera à six propositions — et l'épreuve est construite pour tomber sur CE
+défaut-là, pas sur un défaut imaginaire.
+
+**Ce qu'on garde** : la tangente reste disponible pour qui coche la quatrième,
+avec sa touche `( )`. Ce qui change, c'est que **l'exercice ne parle que de ce
+que la série contient**. Et comme l'arc n'a ni crochets ni parenthèses, il a
+maintenant sa touche à lui : « arc ».
+
+## 6. Les amis de 10 — « le clic sélectionne le texte »
+
+> « pour les amis de 10, le clic est complexe car ca sélectionne le texte que de
+> sélectionner la case qui bouge »
+
+**Les Amis de Dix** (`num-amis-de-dix`) : au bout de deux tables, les cartes se
+mettent à DÉRIVER — c'est tout l'objet du jeu, « on ne peut plus retenir où
+elles sont ». Et c'est là que le geste casse.
+
+**Un `click` n'est pas délivré à ce sur quoi on a appuyé.** Le navigateur le
+délivre à l'ancêtre commun de l'élément de l'appui et de celui du
+RELÂCHEMENT. Tant que la cible est immobile, les deux sont le même élément et
+personne n'a besoin de le savoir. Une carte qui dérive, elle, sort de sous le
+doigt entre les deux : le geste part au plateau, et **rien ne se passe**. Et
+pendant ce temps, un appui suivi d'un déplacement sur du texte, c'est la
+définition d'un glisser de sélection — d'où la surbrillance bleue qu'il décrit.
+
+**Mesuré** (`tools/clicQuiBouge.mjs`) : on pose le pointeur au centre d'une
+carte, on attend qu'elle ait quitté ce point, on relâche. Avec `onclick`, la
+carte n'est pas prise.
+
+**Fait** : on agit à l'APPUI (`pointerdown`), dont le `preventDefault` coupe
+aussi la sélection à la racine. Le clavier garde sa voie — un bouton activé à
+Entrée émet un `click` sans pointeur, que `detail === 0` distingue. La règle et
+sa mesure vivent dans `js/core/cibleQuiBouge.js`.
+
+**Et le même défaut était dans Le Canon des Compléments**, qu'il n'a pas
+signalé : on y touche un astéroïde qui avance. Trouvé en mesurant, corrigé
+avec.
+
+**Ce qu'on ne peut pas éprouver ici** : le conteneur n'a que Chromium. La
+sélection sur l'iPad de la classe tient aussi à des propriétés PRÉFIXÉES
+(`-webkit-user-select`, `-webkit-touch-callout`) que WebKit seul respecte. On
+les pose ; on ne peut pas les mesurer.

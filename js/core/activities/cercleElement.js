@@ -29,7 +29,7 @@ import { hintBar, wireHint } from './choice.js';
 import { tracesDe, cercleSvg } from '../cercleFigure.js';
 // La comparaison des mots vit avec le VOCABULAIRE, pas avec l'écran : c'est une
 // règle sur les mots du cercle, et elle se teste sans navigateur.
-import { memeMot, jugerNotation } from '../generators/cercleVocabulaire.js';
+import { memeMot, jugerNotation, ecrituresDeLaSerie } from '../generators/cercleVocabulaire.js';
 // LES TOUCHES VIENNENT DU MÊME MODULE QUE LE PAVÉ DE CHIFFRES, et pour la même
 // raison : « c'est galère au clavier ». Un signe qu'on ne trouve pas sur un
 // téléphone ferme l'exercice aussi sûrement qu'un bogue.
@@ -39,6 +39,19 @@ import { meneurDemo } from '../meneurDemo.js';
 
 /** Les deux marches, et le préréglage qui les enchaîne. */
 export const MARCHES = ['choisir', 'seul'];
+
+/**
+ * CE QU'ON POSE SOUS LE CHAMP POUR CHAQUE FAÇON D'ÉCRIRE.
+ *
+ * Le noyau dit QUELLES écritures la série peut demander ; cette table dit à
+ * quoi ressemble la touche. Les deux sont séparés parce qu'ils changent pour
+ * des raisons différentes : l'une suit le vocabulaire, l'autre le clavier.
+ */
+const TOUCHES = {
+    segment: { paire: '[]', titre: 'Les crochets, pour un segment' },
+    droite: { paire: '()', titre: 'Les parenthèses, pour une droite' },
+    arc: { mot: 'arc', titre: 'Le mot « arc », pour une ligne courbe' }
+};
 
 /**
  * À la question n sur N, quelle marche ?
@@ -116,13 +129,19 @@ export function mount(container, session, opts = {}) {
             // temps : celui qui sait l'écrire n'a pas à viser un trait de deux
             // millimètres, celui qui hésite montre du doigt.
             //
-            // LA CONSIGNE DIT LA PONCTUATION, parce qu'on l'exige désormais :
-            // Rémy, « il faudrait taper [OG] ». Et le repère « [  ] » du champ
-            // s'en va — il annonçait un segment devant une tangente, qui
-            // s'écrit (AB). Les touches posées plus bas montrent les deux
-            // paires sans en désigner une.
-            return `<p class="cv-consigne">Clique sur le bon tracé — ou écris sa notation,
-                    avec ses crochets ou ses parenthèses.</p>
+            // LA CONSIGNE RENVOIE AUX TOUCHES, ET NE NOMME AUCUNE PONCTUATION.
+            //
+            // Elle disait « avec ses crochets ou ses parenthèses ». Rémy : « ne
+            // parle pas de tangente pour le cercle ! » — dans sa série, aucun
+            // tracé ne s'écrit entre parenthèses, et les nommer faisait entrer
+            // la quatrième dans une heure de sixième. Les touches posées plus
+            // bas montrent ce que CETTE série peut demander, et elles le
+            // montrent sans le dire.
+            //
+            // Et le repère « [  ] » du champ s'en va : il annonçait un segment
+            // là où la réponse pouvait être un arc, qui n'a pas de crochets.
+            return `<p class="cv-consigne">Clique sur le bon tracé — ou écris sa notation
+                    avec les touches ci-dessous.</p>
                 <div class="cv-ecriture">
                     <label class="cv-label" for="cv-champ">Notation :</label>
                     <input id="cv-champ" class="cv-champ cv-champ--court" type="text"
@@ -174,14 +193,22 @@ export function mount(container, session, opts = {}) {
             // champ attend un MOT, et « UN RAYON » en capitales n'est pas la
             // façon dont on écrit un mot français. Posée une ligne plus haut,
             // la mise en majuscules les prenait tous les deux.
-            enMajuscules(champ);
-            // LES DEUX PAIRES SONT LÀ EN MÊME TEMPS, toujours. N'offrir que
-            // « [ ] » devant un rayon dirait que la réponse est un segment —
-            // c'est-à-dire la moitié de la question, quand la figure porte
-            // aussi une tangente.
+            // « arc » RESTE EN BAS DE CASSE : c'est un mot du cours, pas un
+            // point. Toujours passé, même quand la série n'a pas d'arc — une
+            // notation fait deux lettres, donc aucun tracé ne peut s'appeler
+            // « ARC », et la règle n'a pas à savoir ce que la série contient.
+            enMajuscules(champ, ['arc']);
+            // LES TOUCHES SONT CELLES QUE LA SÉRIE PEUT DEMANDER, toutes
+            // ensemble — jamais celle de la réponse du moment, qui la
+            // désignerait. Dans une série de sixième il n'y a que des segments
+            // et des arcs : la touche « ( ) » n'y a rien à faire, et Rémy l'a
+            // dit sans détour — « ne parle pas de tangente pour le cercle ! ».
+            // Le noyau tranche (`ecrituresDeLaSerie`), l'écran pose.
             poserTouchesDeNotation(container, {
                 champ: () => container.querySelector('#cv-champ'),
-                avant: container.querySelector('.cv-statut')
+                avant: container.querySelector('.cv-statut'),
+                touches: ecrituresDeLaSerie(session.params && session.params.mots)
+                    .map(f => TOUCHES[f])
             });
         }
         const valider = () => repondreParEcriture(champ.value, faire);
@@ -220,8 +247,8 @@ export function mount(container, session, opts = {}) {
         if (session.locked || destroyed) return;
         const notation = faire === 'cliquer';
         if (!texte.trim()) {
-            statut(notation ? 'Écris la notation du tracé, avec ses crochets ou ses parenthèses.'
-                : 'Écris le mot qui nomme ce tracé.');
+            statut(notation ? 'Écris la notation du tracé — les touches ci-dessous posent '
+                + 'ce qui l\'entoure.' : 'Écris le mot qui nomme ce tracé.');
             return;
         }
         if (!notation) {

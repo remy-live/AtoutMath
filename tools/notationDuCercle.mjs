@@ -120,16 +120,18 @@ dire(/notation/i.test(mot.dit || ''), `on le lui dit : « ${mot.dit || '—'} »
 
 // ── LES TOUCHES, ET LES MAJUSCULES ─────────────────────────────────────────
 console.log('\n\x1b[1mLES TOUCHES — « c\'est galère au clavier »\x1b[0m');
-await s.doitExister('[data-notation]', 'les touches de crochets et de parenthèses');
-const touches = await s.page.evaluate(() => [...document.querySelectorAll('[data-notation]')]
+await s.doitExister('[data-notation]', 'les touches qui posent la notation');
+const lesTouches = () => s.page.evaluate(() => [...document.querySelectorAll('[data-notation]')]
     .map(b => ({ signes: b.dataset.notation, h: Math.round(b.getBoundingClientRect().height),
         l: Math.round(b.getBoundingClientRect().width) })));
+const touches = await lesTouches();
 console.log('  ' + touches.map(t => `« ${t.signes} » ${t.l}×${t.h}`).join(' · '));
-dire(touches.some(t => t.signes === '[]') && touches.some(t => t.signes === '()'),
-    'les crochets ET les parenthèses sont là');
-// LES QUATRE SIGNES EN MÊME TEMPS, TOUJOURS : n'offrir que « [ ] » devant un
-// rayon dirait que la réponse est un segment — la moitié de la question.
-dire(touches.length === 2, `deux touches, pas une de plus : ${touches.length}`);
+// LES TOUCHES SUIVENT LA SÉRIE. Rémy : « ne parle pas de tangente pour le
+// cercle ! » Rayon, diamètre et corde sont tous des segments : aucun tracé de
+// cette série ne s'écrit entre parenthèses, et la touche « ( ) » n'y annonce
+// qu'un objet hors programme.
+dire(touches.length === 1 && touches[0].signes === '[]',
+    `une seule touche pour une série de segments : ${touches.map(t => t.signes).join(', ')}`);
 dire(touches.every(t => t.h >= 44 && t.l >= 44),
     'chacune fait au moins 44 px au doigt');
 
@@ -139,11 +141,6 @@ await s.page.fill('#cv-champ', lettres.toLowerCase());
 await s.page.click('[data-notation="[]"]');
 let vu = await s.page.inputValue('#cv-champ');
 dire(vu === `[${lettres}]`, `« ${lettres.toLowerCase()} » puis la touche donne « ${vu} »`);
-
-// ET ELLE REMPLACE L'AUTRE PAIRE : tapé « ( ) » par erreur, une touche corrige.
-await s.page.click('[data-notation="()"]');
-vu = await s.page.inputValue('#cv-champ');
-dire(vu === `(${lettres})`, `puis la touche « ( ) » donne « ${vu} »`);
 
 // LE CHAMP VIDE : la touche pose la paire et le curseur se met DEDANS.
 await s.page.fill('#cv-champ', '');
@@ -197,6 +194,17 @@ dire(!crochets.acceptee, `« [${lettresD}] » n'est pas accepté pour une droite
 dire(/parenthès|segment/i.test(crochets.dit || ''),
     `on lui dit la différence : « ${crochets.dit || '—'} »`);
 
+// ET LA SÉRIE QUI EMPLOIE LA PARENTHÈSE LA DONNE, elle. C'est l'autre moitié
+// de la règle : on ne la retire pas du logiciel, on la retire de la sixième.
+const touchesD = await lesTouches();
+dire(touchesD.length === 1 && touchesD[0].signes === '()',
+    `la série de quatrième donne la parenthèse : ${touchesD.map(t => t.signes).join(', ')}`);
+await s.page.fill('#cv-champ', `[${lettresD}]`);
+await s.page.click('[data-notation="()"]');
+const corrigee = await s.page.inputValue('#cv-champ');
+dire(corrigee === `(${lettresD})`,
+    `la touche CORRIGE la paire au lieu de l'emballer : « ${corrigee} »`);
+
 // ── LA PHOTO SE PREND LA PHRASE SOUS LES YEUX ──────────────────────────────
 //
 // Un compte de touches ne dit pas de quoi l'écran a l'air, et c'est la phrase
@@ -218,6 +226,38 @@ await s.photo('.canvas-area', 'tools/tmp/notation-cercle.png', 0);
 
 const justeD = await essayer(attendue);
 dire(justeD.acceptee, `« ${attendue} » est accepté`);
+
+// ── L'ARC : ni crochets ni parenthèses, un mot ─────────────────────────────
+//
+// C'est la troisième écriture du chapitre, et la seule qui ne s'entoure de
+// rien : sa notation du cours porte un arrondi au-dessus des deux lettres,
+// qui ne se tape pas.
+console.log('\n\x1b[1mL\'ARC — le mot, et la touche qui le pose\x1b[0m');
+attendue = await ouvrirSurUneNotation(['arc', 'corde']);
+const touchesA = await lesTouches();
+console.log(`  la figure attend « ${attendue} » · touches ${touchesA.map(t => t.signes).join(', ')}`);
+dire(touchesA.length === 2 && touchesA.some(t => t.signes === 'arc')
+    && touchesA.some(t => t.signes === '[]'),
+    'la série « arc et corde » donne le crochet ET le mot');
+const lettresA = attendue.replace(/[^A-Z]/g, '');
+await s.page.fill('#cv-champ', lettresA.toLowerCase());
+await s.page.click('[data-notation="arc"]');
+const avecMot = await s.page.inputValue('#cv-champ');
+dire(avecMot === `arc ${lettresA}`, `la touche « arc » donne « ${avecMot} »`);
+// ET ELLE REMPLACE LES CROCHETS : tapé « [AB] » devant un arc, un appui
+// corrige au lieu d'empiler « arc [AB] ».
+await s.page.fill('#cv-champ', `[${lettresA}]`);
+await s.page.click('[data-notation="arc"]');
+const arcCorrige = await s.page.inputValue('#cv-champ');
+dire(arcCorrige === `arc ${lettresA}`, `et elle corrige « [${lettresA}] » en « ${arcCorrige} »`);
+
+// LA PHOTO DE LA SÉRIE DE RÉMY : deux touches, « [ ] » et « arc », aucune
+// parenthèse — et la phrase qui corrige sous les yeux.
+await s.page.fill('#cv-champ', '');
+const refus = await essayer(lettresA);
+dire(!refus.acceptee && /LONGUEUR|arc/.test(refus.dit || ''),
+    `devant un arc, « ${lettresA} » est refusé et expliqué : « ${refus.dit || '—'} »`);
+await s.photo('.canvas-area', 'tools/tmp/notation-sixieme.png', 0);
 
 console.log('\n' + '─'.repeat(74));
 console.log(`fenêtres natives : ${s.fenetresNatives.length} · erreurs de page : ${s.erreurs.length}`);
