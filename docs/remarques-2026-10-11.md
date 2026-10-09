@@ -201,3 +201,60 @@ justification », c'est le travail. Le seuil doit dépendre de l'exercice — ou
 mieux, de la CLASSE : « nettement plus longtemps que les autres sur cette
 même question » est la seule référence honnête, et le serveur calcule déjà des
 projections de ce genre. À mesurer sur ses séances avant de coder un nombre.
+
+---
+
+## La forme, tranchée par Rémy
+
+> « Le point 2 est pas mal mais j'ai peur que ça intervienne trop, en fait
+> lancer une popup à chaque fois c'est l'enfer. Il faudra que ça apparaisse,
+> que ce soit discret, et que ça ne casse pas la mise en page. »
+
+**Il a raison, et le dépôt lui donne déjà raison deux fois.**
+
+### Côté professeur : la réponse existe DÉJÀ dans son direct
+
+Chaque ligne d'élève porte, à côté du prénom :
+
+```html
+${aFini(e) ? '<span class="ec-fini">a fini</span>' : ''}
+```
+
+et le commentaire au-dessus dit exactement le principe qu'il redemande
+aujourd'hui :
+
+> « la question qu'on se pose en marchant dans les rangs est "qui a fini ?",
+> et on la pose aux NOMS. Elle se lit donc là où l'œil arrive. »
+
+**« est arrêté » est le même objet, à la même place, de sens opposé.** Pas une
+fenêtre, pas une notification, pas un bandeau : un mot à côté d'un prénom,
+dans une liste qu'il parcourt déjà. Et la ligne porte déjà les deux gestes qui
+suivent — « mot » et « indice », dont l'infobulle dit « Lui souffler un coup
+de pouce, **sans l'interrompre** ». L'action est là ; il ne manque que le
+signal.
+
+### Côté élève : une ligne réservée d'avance, et non un ajout
+
+Le dépôt a payé les deux erreurs opposées, et elles disent quand faire quoi :
+
+| | ce qui s'est passé |
+| --- | --- |
+| `wireHint` | l'indice s'affichait EN DESSOUS, dans le flux : il poussait le champ hors de l'écran au moment même où l'élève demandait de l'aide pour écrire. → carte |
+| `seanceDistanteUI` | le bandeau est un enfant souple de `#app-container` EXPRÈS : « rien à recalculer, rien qui recouvre un bouton » |
+
+Donc ni « toujours en fenêtre » ni « toujours dans le flux » : cela dépend de
+s'il faut le lire MAINTENANT. Ici, non — justement.
+
+**La troisième forme est celle qui convient, et c'est déjà une convention du
+dépôt** : une ligne RÉSERVÉE D'AVANCE, vide la plupart du temps
+(`min-height: 1.3em`, dix occurrences : `.cv-statut`, `.kk-status`,
+`.tu-status`…). La remplir ne déplace rien, puisque la place était prise.
+
+### Et la règle qui empêche que ça devienne du papier peint
+
+Un avis qui revient souvent cesse d'être lu. Donc, par construction :
+
+- il apparaît une fois le silence passé, **et ne revient pas pour la même
+  question** ;
+- il disparaît dès que l'élève repart, ou dès que Rémy a agi ;
+- aucune fenêtre, aucun son, aucun clignotement — des deux côtés.
