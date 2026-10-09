@@ -3626,3 +3626,25 @@ lignes** — 2026-10-01
   fichier avec l'outil d'écriture, et l'on construit le fichier de paires à
   partir de ce fichier-là. `remplacer.mjs` ferme déjà le chemin du multiligne ;
   celui-ci reste ouvert parce qu'un texte d'une ligne a le droit de passer.
+
+## Un `node -e "…"` est une ligne de commande comme une autre — 2026-10-10
+
+- **Ce que je voulais faire** : poser un commentaire citant `enginePoserOperation`
+  entre accents graves, et une chaîne contenant `${…}`, dans un fichier de
+  paires pour `remplacer.mjs`.
+- **Ce qui a coûté** : trois allers-retours dans la même journée. L'interpréteur
+  exécute ce qui est entre accents graves ET substitue `${…}` à l'intérieur
+  d'une chaîne entre GUILLEMETS DOUBLES — ce que `node -e "…"` est toujours. Le
+  premier passage a avalé quatre mots d'un commentaire CSS sans rien casser
+  (`node --check` se tait, le hook aussi) ; le troisième a rendu « bad
+  substitution » et n'a rien écrit du tout.
+- **Combien de fois** : |||| — et le dépôt a déjà un garde-fou pour la MÊME
+  famille : `remplacer.mjs` refuse un texte multiligne sur la ligne de
+  commande, précisément à cause des accents graves.
+- **Ce qui manque** : l'élargissement de ce garde-fou, et je le note plutôt que
+  de le faire au milieu d'une tâche. **La règle en attendant : dès qu'un texte
+  contient un accent grave, un `$` ou une séquence `\u`, on l'écrit dans un
+  fichier avec l'outil d'écriture, et le fichier de paires se construit à partir
+  de CE fichier.** Jamais dans le corps d'un `node -e`, jamais dans un heredoc
+  non plus — un `cat <<'EOF'` conserve les accents graves mais l'outil
+  d'écriture, lui, transforme les `\uXXXX` en vrais caractères.

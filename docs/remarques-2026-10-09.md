@@ -169,3 +169,34 @@ dépôt** : on en comptait les octets et les segments. D'où les deux outils
   le terme manquant DANS la fraction ; le pointillé ajouté à droite propose un
   second endroit pour la même réponse. Même famille que « des lignes en
   pointillé qui ne servent à rien », déjà corrigé ailleurs.
+
+---
+
+# Suite — 10 octobre
+
+## 10. ✅ Le petit rond de retenue sur la colonne des unités
+
+> « normalement, il ne devrait pas pour l'addition avoir une retenue sur la
+> première colonne non ? » (capture : 554 + 448, quatre ronds pour trois
+> colonnes)
+
+**Il a raison, et c'est une règle, pas une préférence.** La retenue d'une
+colonne VIENT de la colonne à sa droite. La colonne des unités n'a rien à sa
+droite : aucune retenue ne peut y entrer, jamais. Le rond qu'on y dessinait
+était une case qu'on ne remplit pas — et un élève qui cherche quoi y écrire
+cherche quelque chose qui n'existe pas.
+
+**Le même raisonnement vaut pour la soustraction** : la compensation écrite
+contre le chiffre du bas vient de l'emprunt fait à la colonne de droite, et
+`retenueBas` du rang le plus faible vaut 0 par construction. Une seule règle,
+donc, et elle est maintenant dans le noyau : `porteUneRetenue` dans
+`js/core/poser.js`. `attenduEn(…, 'retenue')` rend `null` là où il ne peut PAS
+y en avoir — zéro et `null` ne disent pas la même chose, et c'est sur le
+second que le rond se décide.
+
+**La feuille imprimée n'était pas concernée** : elle ne dessine aucun rond
+depuis qu'il l'a demandé (« pour le pdf, ne mets pas le rond des retenues »).
+
+**Gardé par** : `tests/poser.test.mjs` pour la règle, et
+`node tools/retenueDesUnites.mjs` pour le rond que l'élève voit — le jeu ne
+s'importe pas sous Node, il lui faut un `document`.

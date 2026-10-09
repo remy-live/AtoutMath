@@ -6,7 +6,7 @@ import {
     chiffresParRang, enFrancais,
     colonnesAddition, colonnesSoustraction, colonnesMultiplication, poser,
     lignesMultiplication, colonnesDivision, apercuPose, verifierPose,
-    verifierPlacement, attenduEn, premierRang, rangSuivant
+    verifierPlacement, attenduEn, porteUneRetenue, premierRang, rangSuivant
 } from '../js/core/poser.js';
 
 // --- Les rangs -------------------------------------------------------------------
@@ -225,12 +225,31 @@ test('on sait dire ce qu\'attend chaque case, résultat comme retenue', () => {
     assert.equal(attenduEn(t, 0, 'resultat'), 2);
     assert.equal(attenduEn(t, 1, 'resultat'), 4);
     assert.equal(attenduEn(t, 1, 'retenue'), 1, 'la retenue se lit sur les dizaines');
-    assert.equal(attenduEn(t, 0, 'retenue'), 0);
+    // LA COLONNE DES UNITÉS NE PORTE PAS DE RETENUE — 'null', et non zéro.
+    //
+    // RÉMY, capture à l'appui sur 554 + 448 : « normalement, il ne devrait pas
+    // pour l'addition avoir une retenue sur la première colonne non ? » Non :
+    // la retenue d'une colonne VIENT de celle qui est à sa droite, et les
+    // unités n'ont rien à leur droite. Le jeu dessinait quand même son petit
+    // rond au-dessus — une case qu'on ne remplit jamais, posée devant un
+    // élève qui cherche quoi y écrire.
+    //
+    // Zéro et 'null' ne disent pas la même chose : zéro, c'est « la retenue
+    // vaut zéro cette fois-ci » ; 'null', c'est « il ne peut pas y en avoir ».
+    // Le rond se décide sur le second.
+    assert.equal(attenduEn(t, 0, 'retenue'), null,
+        'rien ne peut entrer dans la colonne des unités');
+    assert.equal(porteUneRetenue(t, 0), false);
+    assert.equal(porteUneRetenue(t, 1), true);
     assert.equal(attenduEn(t, 9, 'resultat'), null, 'pas de colonne à ce rang');
 
     const s = poser('-', [52, 27]);
     assert.equal(attenduEn(s, 0, 'resultat'), 5);
     assert.equal(attenduEn(s, 1, 'retenue'), 1, 'la retenue du bas, sur les dizaines');
+    // LA SOUSTRACTION SUIT LA MÊME RÈGLE : la compensation écrite contre le
+    // chiffre du bas vient de l'emprunt fait à la colonne de droite.
+    assert.equal(attenduEn(s, 0, 'retenue'), null,
+        'la colonne des unités d\'une soustraction ne porte pas de compensation');
 });
 
 test('l\'ordre de calcul va des unités vers la gauche', () => {
