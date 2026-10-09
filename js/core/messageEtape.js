@@ -34,6 +34,53 @@ export const LONGUEUR_MAX = 1200;
 /** Et le titre tient sur une ligne. */
 export const TITRE_MAX = 60;
 
+// ── L'INVITE DU CHAMP, ET L'ASTUCE QUI NE S'ÉCRIT QU'UNE FOIS ─────────────
+//
+// RÉMY : « pour l'aide pour le parcours de prof, dès que je glisse le texte,
+// l'aide réapparait, ne la fait apparaitre qu'une fois. »
+//
+// Le bloc d'un mot s'ouvre vide, et son invite enseignait la mise en forme :
+// « Une ligne vide fait un paragraphe, *un mot entre étoiles* s'affiche en
+// gras. » C'est juste la première fois. À la troisième, c'est la MÊME phrase
+// trois fois l'une sous l'autre — et comme elle est longue, elle prend dans la
+// colonne plus de place que les mots eux-mêmes.
+//
+// (Ce n'est pas le bandeau « Ce que font les icônes de la barre » : celui-là
+// porte « J'ai compris » et ne revient pas. Mesuré au navigateur — congé
+// donné, page rechargée, mot glissé à la souris puis ajouté au clic : absent
+// les quatre fois.)
+//
+// UNE SEULE, ET C'EST CELLE DU PREMIER MOT. Aucune mémoire rangée sur
+// l'appareil : un champ déjà rempli ne montre pas d'invite, donc le professeur
+// qui rouvre un parcours écrit n'en voit aucune, et celui qui commence en voit
+// une. La règle se lit dans la page ; elle ne dépend pas d'un état qu'on ne
+// peut plus inspecter — c'est la leçon du bandeau, qu'on ne pouvait rappeler
+// que par la poubelle de la barre de debug.
+//
+// ET LA DÉCISION EST ICI, PAS DANS `builder.js` : la vue pose du balisage, le
+// noyau décide. C'est aussi ce qui la rend mesurable sous Node — `builder.js`
+// ne s'importe pas sans `document`.
+
+/** L'invite longue : elle enseigne la mise en forme. */
+export const ASTUCE_MOT = 'Ce que l’élève lira ici. Une ligne vide fait un '
+    + 'paragraphe, *un mot entre étoiles* s’affiche en gras.';
+
+/** Et l'invite courte, pour tous les autres. */
+export const INVITE_MOT = 'Ce que l’élève lira ici.';
+
+/**
+ * L'invite du champ d'un mot : l'astuce pour le premier, la phrase courte
+ * ensuite.
+ *
+ * @param {object} step  l'étape qu'on dessine
+ * @param {Array}  steps toutes les étapes du parcours, dans l'ordre
+ * @param {(s:object)=>boolean} estUnMot  comment on reconnaît un mot
+ */
+export function inviteDuMot(step, steps, estUnMot) {
+    const premier = (steps || []).find(estUnMot);
+    return premier && premier.stepId === step.stepId ? ASTUCE_MOT : INVITE_MOT;
+}
+
 /**
  * ÉCHAPPER, ET ÉCHAPPER D'ABORD.
  *

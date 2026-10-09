@@ -16,7 +16,7 @@ import { exercices, getExerciseById, paramSchemaOf, estNotable } from '../data/c
 import { state } from '../core/state.js';
 import { makePath, makeStep, makeMessage, estUnMessage, normalizePath, totalItems }
     from '../core/path.js';
-import { TITRE_MAX, LONGUEUR_MAX } from '../core/messageEtape.js';
+import { TITRE_MAX, LONGUEUR_MAX, inviteDuMot } from '../core/messageEtape.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
 import { poserLeBandeauDesOutils, basculerLeBandeauDesOutils } from './bandeauOutils.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
@@ -1255,6 +1255,14 @@ function miniBande(exo, step) {
     return el;
 }
 
+// L'INVITE DU CHAMP D'UN MOT — l'astuce pour le premier, la phrase courte
+// ensuite. Rémy : « dès que je glisse le texte, l'aide réapparait, ne la fait
+// apparaitre qu'une fois. » La règle et ses deux phrases sont dans
+// `core/messageEtape.js`, avec tout ce qui a été mesuré pour y arriver : la
+// vue pose du balisage, le noyau décide.
+const inviteDuChampMot = (step) => inviteDuMot(
+    step, (state.currentPath && state.currentPath.steps) || [], estUnMessage);
+
 function stepRow(step, index, policy) {
     const exo = getExerciseById(step.exerciseId);
     const row = document.createElement('div');
@@ -1288,7 +1296,7 @@ function stepRow(step, index, policy) {
                        aria-label="Titre du mot, facultatif"
                        value="${escapeHtml(m.titre || '')}">
                 <textarea class="path-mot-texte" rows="1" maxlength="${LONGUEUR_MAX}"
-                          placeholder="Ce que l'élève lira ici. Une ligne vide fait un paragraphe, *un mot entre étoiles* s'affiche en gras."
+                          placeholder="${escapeHtml(inviteDuChampMot(step))}"
                           aria-label="Le texte du mot">${escapeHtml(m.texte || '')}</textarea>
             </div>
         </div>`;

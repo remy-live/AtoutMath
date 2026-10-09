@@ -179,3 +179,28 @@ quoi reculer le plan corrigeait le papier et cassait l'écran.
   ici les deux morceaux sont le MÊME ensemble, et les étager laisse croire le
   contraire. À demander à Rémy avant de toucher : il corrige ces feuilles, pas
   moi.
+
+---
+
+# Suite — 9 octobre 2026
+
+## 6. ✅ L'astuce du mot se répétait dans chaque mot
+
+> « pour l'aide pour le parcours de prof, dès que je glisse le texte, l'aide
+> réapparait, ne la fait apparaitre qu'une fois. »
+
+**Ce que c'est** : le texte d'invite du bloc « mot » — « Ce que l'élève lira
+ici. Une ligne vide fait un paragraphe, *un mot entre étoiles* s'affiche en
+gras. » Il enseigne la mise en forme, et il s'écrit À L'IDENTIQUE dans chaque
+bloc vide. Trois mots glissés, trois fois la même phrase l'une sous l'autre.
+
+**Ce que ce n'est pas, et c'est mesuré** : le grand bandeau « Ce que font les
+icônes de la barre ». Celui-là porte « J'ai compris » et ne revient pas —
+vérifié au navigateur, congé donné, page rechargée, mot glissé à la souris
+puis ajouté au clic : `bandeau=false` les quatre fois
+(`tools/tmp/aideApresRechargement.mjs`).
+
+**Fait** : l'astuce ne s'écrit que dans le PREMIER mot du parcours. Les
+suivants portent l'invite courte, « Ce que l'élève lira ici. »
+
+**Gardé par** : `tests/motDuProfesseur.test.mjs`.
