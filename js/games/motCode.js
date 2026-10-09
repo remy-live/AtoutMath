@@ -27,6 +27,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerMotCode, saisieInitiale, numerosFaux, lettresEnDouble, PART_OFFERTE,
     estResoluCode, qualiteCode, THEMES, FORMATS_CODE
@@ -479,10 +480,11 @@ class MotCode extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.m) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         const q = qualiteCode(this.m);
         cur.say(`${q.alphabet} lettres se cachent derrière ${q.alphabet} numéros. `
@@ -490,7 +492,7 @@ class MotCode extends BaseGame {
                 ? `La clé commence par ${q.cle} : ses ${q.cle.length} lettres sont posées `
                     + 'partout où leur numéro paraît — c\'est de là qu\'on part.'
                 : 'Aucune n\'est donnée : on part de rien.'), this.grilleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // Le numéro le plus fréquent encore inconnu : c'est celui qui rapporte
         // le plus, et donc celui par lequel on commence.
@@ -505,7 +507,7 @@ class MotCode extends BaseGame {
         this.vise = num; this.dessiner();
         cur.say(`Je ne prends pas un numéro au hasard : le ${num} paraît ${combien} fois. `
             + 'Le trouver éclaire toute la grille d\'un coup.', this.cleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         this.saisie[num] = this.m.parNumero[num];
         this.soufflees.add(num);

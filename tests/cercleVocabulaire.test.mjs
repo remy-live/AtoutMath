@@ -9,7 +9,8 @@ import { getGenerator } from '../js/core/registry.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { RENDUS } from '../js/ui/printSheet.js';
 import {
-    MOTS_CERCLE, cercleVocabulaireGenerator, memeMot, normaliser, memeNotation, lettresDe
+    MOTS_CERCLE, cercleVocabulaireGenerator, memeMot, normaliser, jugerNotation, lettresDe,
+    lettresEnOrdre, familleAttendue, ecrituresDeLaSerie
 } from '../js/core/generators/cercleVocabulaire.js';
 import { marcheDe } from '../js/core/activities/cercleElement.js';
 import { tracesDe, surCercle, polyArc, cercleSvg, branchesCroix, CX, CY, R } from '../js/core/cercleFigure.js';
@@ -116,6 +117,55 @@ test('LE DÉCOR NE PORTE JAMAIS LE NOM DE LA RÉPONSE', () => {
     }
 });
 
+test('UNE SÉRIE COURTE GARDE DE QUOI CHOISIR, SANS SORTIR DU NIVEAU', () => {
+    // Prendre les leurres dans la série, c'est bien — jusqu'à la série d'un
+    // seul mot, qui ne proposerait alors que la bonne réponse. On complète
+    // avec les mots du MÊME NIVEAU, et jamais avec la quatrième.
+    for (const mots of [['rayon'], ['rayon', 'corde'], ['arc', 'corde', 'rayon']]) {
+        const it = gen().generate({ mots, sens: 'nommer' },
+            { rng: makeRng(`court-${mots.length}`), index: 0 });
+        assert.ok(it.choices.length >= 4,
+            `${mots.length} mot(s) : seulement ${it.choices.length} proposition(s)`);
+        it.choices.forEach(c => {
+            const m = MOTS_CERCLE.find(x => x.nom === c.value);
+            assert.ok(m, `« ${c.value} » n'est pas un mot du cercle`);
+            assert.equal(!!m.avance, false,
+                `« ${c.value} » est de quatrième, dans une série qui ne l'est pas`);
+        });
+    }
+    // Et quand le professeur DEMANDE la quatrième, elle revient : la règle
+    // suit le niveau de la série, elle n'interdit rien.
+    const quatre = gen().generate({ mots: ['tangente', 'secante'], sens: 'nommer' },
+        { rng: makeRng('q4'), index: 0 });
+    assert.ok(quatre.choices.some(c => /tangente|sécante/.test(c.value)));
+});
+
+test('LES TOUCHES SONT CELLES QUE LA SÉRIE PEUT DEMANDER', () => {
+    // RÉMY : « ne parle pas de tangente pour le cercle ! » La touche « ( ) »
+    // était posée toujours, au motif que n'en montrer qu'une désignerait la
+    // famille de la réponse. C'est vrai DANS une série qui mélange les deux —
+    // et faux dans la sienne, où rayon, diamètre et corde sont tous des
+    // segments : la parenthèse n'annonçait rien d'autre qu'un objet hors
+    // programme.
+    const sixieme = ['centre', 'rayon', 'diametre', 'corde', 'arc', 'cercle', 'disque'];
+    assert.deepEqual(ecrituresDeLaSerie(sixieme), ['segment', 'arc']);
+    // Sans réglage, c'est la série par défaut — celle de sixième.
+    assert.deepEqual(ecrituresDeLaSerie(null), ['segment', 'arc']);
+    assert.deepEqual(ecrituresDeLaSerie([]), ['segment', 'arc']);
+    // La quatrième ramène la parenthèse, et elle seule.
+    assert.deepEqual(ecrituresDeLaSerie(['rayon', 'corde', 'tangente']), ['segment', 'droite']);
+    assert.deepEqual(ecrituresDeLaSerie(['rayon', 'diametre', 'corde']), ['segment']);
+    // Les mots qui SONT la figure entière ne demandent aucune notation.
+    assert.deepEqual(ecrituresDeLaSerie(['centre', 'cercle', 'disque']), []);
+    // ET LA LISTE SE LIT SUR CE QUE LE GÉNÉRATEUR ÉCRIT, pas sur une table
+    // parallèle : la famille de chaque mot doit être celle de sa notation.
+    for (const mots of [sixieme, ['tangente', 'secante'], ['arc']]) {
+        for (const f of ecrituresDeLaSerie(mots)) {
+            assert.ok(['segment', 'droite', 'arc'].includes(f), f);
+        }
+    }
+});
+
 test('la figure se dessine, et ses points sont bien sur le cercle', () => {
     const p = surCercle(0);
     assert.ok(Math.abs(p.x - (CX + R)) < 1e-9 && Math.abs(p.y - CY) < 1e-9, 'zéro degré est à droite');
@@ -198,10 +248,25 @@ test('LE DÉCOR RESTE DANS LA SÉRIE : pas de tangente en sixième', () => {
             assert.equal(['tangente', 'secante'].includes(e.type), false,
                 `graine ${i} : « ${e.type} » dans une série de sixième`);
         });
-        // Et les propositions non plus ne doivent pas dépasser du programme…
-        // sauf en mode « nommer », où tout le vocabulaire sert de leurres :
-        // c'est voulu, l'élève doit pouvoir écarter un mot qu'il ne connaît pas
-        // encore. Ce qui compte, c'est que la FIGURE reste dans la série.
+        // ET LES PROPOSITIONS NON PLUS — une règle, là où il n'y avait qu'un
+        // accident. Les neuf mots servaient de leurres quelle que soit la
+        // série ; mesuré sur 286 questions de sixième, « une tangente » n'y
+        // est jamais apparue, parce que `finalizeChoices` garde les quatre
+        // PREMIERS leurres et que la tangente est l'avant-dernière de
+        // `MOTS_CERCLE`. La propriété tenait à l'ordre d'un tableau : elle
+        // tombe le jour où l'on réordonne le vocabulaire ou l'on passe à six
+        // propositions. C'est ce que cette épreuve garde — et c'est aussi
+        // pourquoi le défaut qui la fait tomber est « montrer plus de
+        // propositions », et non « reprendre les neuf mots ».
+        const permis = new Set(sixieme.map(id =>
+            MOTS_CERCLE.find(m => m.id === id).nom));
+        // EN MODE TROUVER, les propositions sont des NOTATIONS — « [AB] » —
+        // et viennent des tracés de la figure, déjà gardés juste au-dessus.
+        // La règle des leurres porte sur les MOTS.
+        if (it.meta.sens === 'nommer') it.choices.forEach(c => {
+            assert.ok(permis.has(c.value),
+                `graine ${i} : « ${c.value} » est proposé hors de la série`);
+        });
     }
     // Et quand on demande la quatrième, la tangente revient bien.
     const quatre = Array.from({ length: 12 }, (_, i) =>
@@ -288,34 +353,95 @@ test('la progression met les propositions d\'abord, et la réponse seule ensuite
     assert.equal(marcheDe('seul', 0, 9), 'seul');
 });
 
-test('LA NOTATION AUSSI VAUT RÉPONSE — « [OA] », tapé', () => {
-    // Rémy : « ce serait bien de pouvoir aussi répondre [OA] ou écrire cercle
-    // ou rayon. En gardant ce que tu as déjà fait et qui est très bien. »
-    // Désigner le tracé au doigt reste ; l'écrire demande une chose de plus,
-    // qui est au programme — la notation elle-même.
-    assert.equal(memeNotation('[OA]', '[OA]'), true);
-    // Un segment se lit dans les deux sens, et la ponctuation ne dit rien de
-    // plus que ce que la figure montre déjà.
-    assert.equal(memeNotation('[AO]', '[OA]'), true);
-    assert.equal(memeNotation('oa', '[OA]'), true);
-    assert.equal(memeNotation(' O A ', '[OA]'), true);
-    assert.equal(memeNotation('AB', '(AB)'), true);
-    assert.equal(memeNotation('arc AB', 'l\'arc AB'), true);
-    // Et ce qui désigne un AUTRE tracé reste faux.
-    assert.equal(memeNotation('[OB]', '[OA]'), false);
-    assert.equal(memeNotation('', '[OA]'), false);
-    assert.equal(memeNotation('rayon', '[OA]'), false);
+test('LA NOTATION VAUT RÉPONSE — mais écrite comme elle s\'écrit', () => {
+    // Rémy, le premier jour : « ce serait bien de pouvoir aussi répondre [OA]
+    // ou écrire cercle ou rayon. » Rémy, revenu dessus : « tu acceptes comme
+    // rayon og comme réponse alors qu'il faudrait taper [OG] ».
+    //
+    // LA PONCTUATION EST L'OBJET, et non son habillage : [OA] est le segment,
+    // (OA) la droite, OA la longueur. On ne comparait que les lettres.
+    const v = (donne, attendu) => jugerNotation(donne, attendu).verdict;
+
+    // CE QUI RESTE JUSTE. Un segment se lit dans les deux sens, la casse et
+    // les espaces ne sont pas le sujet, et l'article de l'arc non plus.
+    assert.equal(v('[OA]', '[OA]'), 'juste');
+    assert.equal(v('[AO]', '[OA]'), 'juste');
+    assert.equal(v('[oa]', '[OA]'), 'juste');
+    assert.equal(v(' [ O A ] ', '[OA]'), 'juste');
+    assert.equal(v('(AB)', '(AB)'), 'juste');
+    assert.equal(v('l\'arc AB', 'l\'arc AB'), 'juste');
+    assert.equal(v('arc AB', 'l\'arc AB'), 'juste');
+    // Tapé sans l'espace, comme sur un clavier de téléphone.
+    assert.equal(v('arcAB', 'l\'arc AB'), 'juste');
+
+    // CE QUI NE PASSE PLUS : les bonnes lettres, la mauvaise écriture. Ce
+    // n'est pas « faux » — l'élève a LU LA FIGURE —, c'est 'notation'.
+    assert.equal(v('og', '[OG]'), 'notation');
+    assert.equal(v('OA', '[OA]'), 'notation');
+    assert.equal(v('(OA)', '[OA]'), 'notation');   // la droite, pas le segment
+    assert.equal(v('[AB]', '(AB)'), 'notation');   // le segment, pas la droite
+    assert.equal(v('[OA)', '[OA]'), 'notation');   // une paire dépareillée
+    assert.equal(v('[OA', '[OA]'), 'notation');    // ouverte, jamais fermée
+    assert.equal(v('AB', 'l\'arc AB'), 'notation');
+    assert.equal(v('[AB]', 'l\'arc AB'), 'notation');
+    // Un mot n'est pas une notation : l'élève a répondu à une autre question
+    // que celle posée, et le lui dire vaut mieux que de compter une faute.
+    assert.equal(v('un rayon', '[OA]'), 'notation');
+    assert.equal(v('corde', '[OA]'), 'notation');
+    assert.equal(v('', '[OA]'), 'notation');
+
+    // ET CE QUI DÉSIGNE UN AUTRE TRACÉ RESTE FAUX, comme avant.
+    assert.equal(v('[OB]', '[OA]'), 'faux');
+    assert.equal(v('[CD]', '[OA]'), 'faux');
+    assert.equal(v('(CD)', '[OA]'), 'faux');
 
     // L'ÉLISION SE RETIRE PAR SON APOSTROPHE, JAMAIS COMME UN MOT : un segment
     // peut très bien s'appeler [LE], et retirer « LE » l'effacerait.
     assert.equal(lettresDe('[LE]'), 'EL');
-    assert.equal(memeNotation('EL', '[LE]'), true);
+    assert.equal(v('[EL]', '[LE]'), 'juste');
     // Le mot « arc » ne compte pas comme des points, même quand les points
     // s'appellent A, R ou C.
     assert.equal(lettresDe('l\'arc AC'), 'AC');
     assert.equal(lettresDe('l\'arc AR'), 'AR');
-    // Tapé sans l'espace, comme sur un clavier de téléphone.
     assert.equal(lettresDe('arcAB'), 'AB');
+    // ET L'ORDRE SE GARDE À PART : on réécrit la notation à l'élève dans les
+    // phrases, et « [EO] » sous une figure qui porte [OE] aurait l'air d'une
+    // seconde erreur.
+    assert.equal(lettresEnOrdre('[OE]'), 'OE');
+    assert.equal(lettresEnOrdre('l\'arc EO'), 'EO');
+    assert.equal(lettresDe('[OE]'), 'EO');
+
+    // CE QUE LA NOTATION ATTENDUE RÉCLAME se lit sur elle-même : une seule
+    // source, celle que le générateur a écrite.
+    assert.equal(familleAttendue('[OA]'), 'segment');
+    assert.equal(familleAttendue('(AB)'), 'droite');
+    assert.equal(familleAttendue('l\'arc AB'), 'arc');
+});
+
+test('CHAQUE REFUS DIT CE QUI NE VA PAS, et nomme la bonne écriture', () => {
+    // Rémy : « Précise leur erreur si ils se trompent. » Une phrase vide serait
+    // un « faux » déguisé — et c'est la phrase qui enseigne, pas le verdict.
+    const dit = (donne, attendu) => jugerNotation(donne, attendu).dire;
+
+    assert.match(dit('og', '[OG]'), /crochets/);
+    assert.match(dit('og', '[OG]'), /LONGUEUR/);
+    assert.match(dit('og', '[OG]'), /\[OG\]/);
+
+    assert.match(dit('(OG)', '[OG]'), /DROITE/);
+    assert.match(dit('(OG)', '[OG]'), /\[OG\]/);
+
+    assert.match(dit('[AB]', '(AB)'), /SEGMENT/);
+    assert.match(dit('[AB]', '(AB)'), /\(AB\)/);
+
+    assert.match(dit('AB', 'l\'arc AB'), /arc AB/);
+    assert.match(dit('[AB]', 'l\'arc AB'), /arc AB/);
+
+    assert.match(dit('[OG', '[OG]'), /ouvre ET se ferme/);
+    assert.match(dit('un rayon', '[OG]'), /NOTATION/);
+
+    // ET UNE RÉPONSE JUSTE NE DIT RIEN : un commentaire sous une bonne réponse
+    // se lit comme un reproche.
+    assert.equal(dit('[OG]', '[OG]'), '');
 });
 
 test('ce que l\'élève écrit se compare à ce que l\'item attend', () => {
@@ -328,17 +454,20 @@ test('ce que l\'élève écrit se compare à ce que l\'item attend', () => {
             { rng: makeRng(`not-${i}`), index: i });
         if (!item || !item.meta || item.meta.sens !== 'trouver') continue;
         vus++;
-        // Tapée telle quelle, sans crochets, ou à l'envers : c'est la même.
-        assert.equal(memeNotation(item.answer, item.answer), true, item.answer);
-        // Tel qu'un élève le taperait : les lettres, sans crochets ni article.
+        // Tapée telle quelle : c'est la réponse, et elle doit passer.
+        assert.equal(jugerNotation(item.answer, item.answer).verdict, 'juste', item.answer);
+        // Tel qu'un élève le tapait avant, sans crochets ni article : il a lu la
+        // figure, et on le lui dit — mais ce n'est plus accepté.
         const nu = item.answer.replace(/^l['\u2019]arc\s*/, '').replace(/[[\]()]/g, '').trim();
-        assert.equal(memeNotation(nu, item.answer), true, `« ${nu} » vs « ${item.answer} »`);
+        const avis = jugerNotation(nu, item.answer);
+        assert.equal(avis.verdict, 'notation', `« ${nu} » vs « ${item.answer} »`);
+        assert.ok(avis.dire.length > 30, `« ${nu} » : refus sans explication`);
         // ET AUCUN AUTRE TRACÉ DE LA MÊME FIGURE ne passe pour le bon : deux
         // tracés ne partagent jamais une lettre, c'est ce qui rend la
         // comparaison par lettres sans ambiguïté.
         (item.meta.ecrits || []).forEach(e => {
             if (e === item.answer) return;
-            assert.equal(memeNotation(e, item.answer), false,
+            assert.equal(jugerNotation(e, item.answer).verdict, 'faux',
                 `« ${e} » ne doit pas valoir « ${item.answer} »`);
         });
     }
@@ -380,4 +509,67 @@ test('l\'écran garde sa question unique', () => {
         { index: 0, total: 10, rng: makeRng('x') });
     assert.equal(it.meta.questions, null);
     assert.equal(it.meta.enoncePapier, null);
+});
+
+test('DEUX LETTRES NE SE POSENT JAMAIS L\'UNE SUR L\'AUTRE', () => {
+    // Vu sur une capture de l\'écran, en cherchant tout autre chose : « B »
+    // posé sur « D » dans une figure de tangente et de sécante. La règle de
+    // lisibilité ne regardait que les points DU CERCLE, à vingt degrés d\'écart
+    // — et le second point d\'une tangente n\'est pas sur le cercle : il est
+    // posé sur la droite, hors du disque, pour qu\'on puisse écrire « (AB) ».
+    //
+    // ET CE DÉFAUT EST DEVENU PLUS CHER : depuis que la notation est exigée,
+    // deux lettres superposées ne rendent plus la figure moins jolie, elles
+    // rendent la réponse impossible à écrire.
+    //
+    // MESURÉ sur 2 400 figures, avant et après :
+    //
+    //            figures sous 11 unités    écart le plus faible rencontré
+    //   avant             290                   1,3  (deux lettres l'une sur l'autre)
+    //   après               8                   9,9  (lisibles, un peu serrées)
+    //
+    // UNE LETTRE FAIT 6,5 UNITÉS DE HAUT : le plancher dur est là, et il ne se
+    // négocie pas. Le seuil de 11 est l'objectif — celui que la règle vise —,
+    // et l'on tolère qu'il manque sur moins d'un pour cent des figures les plus
+    // chargées, où neuf lettres se partagent un cercle de rayon 32.
+    // ELLE MESURE SEULE, et il a fallu `epreuveTombe` pour le comprendre.
+    // Première version : elle appelait `ecartDesLettres`, la fonction même que
+    // le générateur emploie pour décider. On a remis le défaut — ne regarder
+    // que les points DU CERCLE — et l'épreuve est restée VERTE : la règle et sa
+    // garde partageaient la même mesure, donc la garde ne pouvait pas voir une
+    // mesure fausse. Elle repart donc de `tracesDe`, c'est-à-dire de ce que
+    // l'écran dessine vraiment.
+    const ecartVu = (spec) => {
+        const l = tracesDe(spec).filter(t => t.k === 'texte');
+        let min = Infinity;
+        for (let a = 0; a < l.length; a++) {
+            for (let b = a + 1; b < l.length; b++) {
+                min = Math.min(min, Math.hypot(l[a].x - l[b].x, l[a].y - l[b].y));
+            }
+        }
+        return min;
+    };
+    const SERIES = [
+        ['centre', 'rayon', 'diametre', 'corde', 'arc', 'cercle', 'disque'],
+        ['rayon', 'diametre', 'corde', 'arc', 'tangente', 'secante'],
+        ['tangente', 'secante']
+    ];
+    let vues = 0, serrees = 0, pire = Infinity;
+    for (const mots of SERIES) {
+        for (const sens of ['nommer', 'trouver']) {
+            for (let i = 0; i < 120; i++) {
+                const it = cercleVocabulaireGenerator.generate({ mots, sens },
+                    { rng: makeRng(`e-${mots.length}-${sens}-${i}`), index: i, total: 120 });
+                const d = ecartVu(it.meta.spec);
+                vues++;
+                pire = Math.min(pire, d);
+                if (d < 11) serrees++;
+                assert.ok(d >= 7,
+                    `${sens} · ${mots.length} mots · graine ${i} : deux lettres à `
+                    + `${d.toFixed(1)} unités, elles se recouvrent`);
+            }
+        }
+    }
+    assert.ok(serrees <= vues * 0.01,
+        `${serrees} figures sur ${vues} sous 11 unités (pire écart ${pire.toFixed(1)})`);
 });

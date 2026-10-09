@@ -5,8 +5,9 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, boiteDe, echapperSheet, planchePasAPas, titrePasAPas
+    ENCRE, boiteDe, couperEnLignes, echapperSheet, planchePasAPas, titrePasAPas
 } from './socle.js';
+import { courbesDuCoeur, courbesDuPedoncule } from '../../core/champDeTrefles.js';
 import { etapesBrahma } from '../../core/tourBrahma.js';
 import { etapesGrenouilles } from '../../core/grenouilles.js';
 import { etapesParking } from '../../core/parking.js';
@@ -1616,6 +1617,570 @@ function dessinerLabyNombresPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
 }
 
+// ── LES SERPENTS ────────────────────────────────────────────────────────────
+//
+// RÉMY, dans sa revue : les Serpents n'avaient pas de version imprimée. C'est
+// pourtant un jeu qu'on fait au crayon bien plus volontiers qu'à la souris —
+// on gomme, on recommence, et la grille supporte les repentirs.
+//
+// À L'ÉCRAN, L'ÉLÈVE COLORIE : chaque serpent prend une teinte, et c'est ainsi
+// qu'on les distingue. Sur une feuille photocopiée, les teintes deviennent des
+// gris qui se ressemblent — et l'élève n'a de toute façon pas sept crayons.
+//
+// Le corrigé trace donc le CONTOUR de chaque serpent, un trait épais le long
+// de ses bords extérieurs. On le suit du doigt comme on suit un ruisseau de
+// Strimko, et cela se lit en noir et blanc. Les segments du contour sont
+// calculés par `contourDuSerpent` dans le générateur : c'est de la géométrie
+// pure, elle se tient sous Node, et une épreuve la garde.
+
+function geoSerpents(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const cote = Math.min(b.w / m.colonnes, b.h / m.lignes);
+    const x0 = b.x + (b.w - cote * m.colonnes) / 2;
+    const y0 = b.y + (b.h - cote * m.lignes) / 2;
+    return {
+        b, m, cote, x0, y0,
+        // D'UN SOMMET DE LA GRILLE au papier : les contours sont donnés en
+        // coins de case, pas en centres.
+        P: (x, y) => ({ x: x0 + x * cote, y: y0 + y * cote }),
+        centre: (i) => ({
+            x: x0 + ((i % m.colonnes) + 0.5) * cote,
+            y: y0 + (Math.floor(i / m.colonnes) + 0.5) * cote
+        }),
+        taille: Math.max(2, Math.min(cote * 0.42, 5))
+    };
+}
+
+function serpentsPreviewHtml(item, slot, k, solution) {
+    const g = geoSerpents(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let d = '';
+    for (let r = 0; r < g.m.lignes; r++) for (let c = 0; c < g.m.colonnes; c++) {
+        d += `<rect x="${T(g.x0 + c * g.cote)}" y="${T(g.y0 + r * g.cote)}"
+            width="${T(g.cote)}" height="${T(g.cote)}" fill="none"
+            stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.25)}"/>`;
+    }
+    if (solution) {
+        g.m.serpents.forEach(s => s.contour.forEach(seg => {
+            const a = g.P(seg.x1, seg.y1), z = g.P(seg.x2, seg.y2);
+            d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+                stroke="rgb(${ENCRE.trait.join(',')})" stroke-width="${T(0.7)}"
+                stroke-linecap="square"/>`;
+        }));
+    }
+    // LES ÉTIQUETTES PAR-DESSUS LE CONTOUR : une tête tombe sur un coin, et le
+    // trait épais passerait sur le chiffre.
+    g.m.serpents.forEach(s => {
+        const p = g.centre(s.tete);
+        d += `<circle cx="${T(p.x)}" cy="${T(p.y)}" r="${T(g.cote * 0.33)}"
+            fill="#ffffff" stroke="rgb(${ENCRE.trait.join(',')})" stroke-width="${T(0.3)}"/>`;
+        d += `<text x="${T(p.x)}" y="${T(p.y)}" fill="rgb(${ENCRE.trait.join(',')})"
+            font-weight="700" font-size="${T(g.taille)}" text-anchor="middle"
+            dominant-baseline="central"
+            font-family="Helvetica, Arial, sans-serif">${echapperSheet(s.etiquette)}</text>`;
+    });
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`;
+}
+
+function dessinerSerpentsPdf(doc, item, slot, solution) {
+    const g = geoSerpents(item, slot);
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    for (let r = 0; r < g.m.lignes; r++) for (let c = 0; c < g.m.colonnes; c++) {
+        doc.rect(g.x0 + c * g.cote, g.y0 + r * g.cote, g.cote, g.cote);
+    }
+    if (solution) {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.7);
+        g.m.serpents.forEach(s => s.contour.forEach(seg => {
+            const a = g.P(seg.x1, seg.y1), z = g.P(seg.x2, seg.y2);
+            doc.line(a.x, a.y, z.x, z.y);
+        }));
+    }
+    doc.setLineWidth(0.3);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille * 2.83);
+    g.m.serpents.forEach(s => {
+        const p = g.centre(s.tete);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.circle(p.x, p.y, g.cote * 0.33, 'FD');
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(String(s.etiquette), p.x, p.y + g.taille * 0.35, { align: 'center' });
+    });
+}
+
+// ── L'ENQUÊTE ───────────────────────────────────────────────────────────────
+//
+// RÉMY, dans sa revue : l'Enquête n'avait pas de version imprimée. C'est
+// pourtant l'exercice de la série qui se prête le mieux au papier — on relit
+// les indices dix fois, on barre, on écrit un prénom au crayon dans une case et
+// on l'efface. À l'écran on clique et le logiciel refuse ; sur une feuille on
+// RATURE, et la rature est une trace du raisonnement.
+//
+// LA MISE EN PAGE EST COMMANDÉE PAR LES INDICES, PAS PAR LE PLAN. Le noyau
+// retire tous les indices dont on peut se passer : il en reste trois à sept
+// selon le tirage, et c'est la plus longue des deux colonnes qui décide de la
+// hauteur du bloc. Un plan de 4 × 4 tient dans un timbre ; sept phrases, non.
+//
+// À L'ÉCRAN LES LIEUX SONT DES APLATS DE COULEUR et le survol dit leur nom.
+// Sur le papier il n'y a ni couleur fiable ni survol : les zones sont séparées
+// par un TRAIT ÉPAIS — le même calcul de contour que pour les Serpents — et
+// chacune porte son nom écrit dans sa première case.
+
+/**
+ * LA PART MAXIMALE DE LA LARGEUR QUE LE PLAN PEUT PRENDRE.
+ *
+ * C'est un PLAFOND, pas une colonne réservée — et la nuance a coûté une mise
+ * en page. Avec une colonne fixe de 42 %, le plan était borné par la HAUTEUR du
+ * bloc (mesuré : 44 mm de plan pour 75 mm disponibles en largeur) et les 31 mm
+ * restants n'allaient à personne : ni au plan, qui est carré, ni aux indices,
+ * qui commençaient après la colonne.
+ *
+ * Les indices démarrent donc où le plan FINIT VRAIMENT.
+ */
+const PART_PLAN_MAX = 0.45;
+
+function geoEnquete(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const marge = 2;
+    // LA QUESTION EN TÊTE, SUR TOUTE LA LARGEUR : c'est l'énoncé, et il ne se
+    // coupe pas en deux colonnes.
+    const tailleQ = Math.max(2.2, Math.min(b.w * 0.022, 3.2));
+    const lignesQ = couperEnLignes(m.question, Math.floor(b.w / (tailleQ * 0.48)), 3);
+    const hautQ = lignesQ.length * tailleQ * 1.35 + marge;
+
+    const planW = b.w * PART_PLAN_MAX - marge;
+    const planH = b.h - hautQ - marge;
+    const cote = Math.min(planW, planH) / m.taille;
+    const largeurPlan = cote * m.taille;
+    const x0 = b.x;
+    const y0 = b.y + hautQ;
+
+    // LES INDICES COMMENCENT OÙ LE PLAN FINIT, et non à une colonne décidée
+    // d'avance : le plan est carré et sa taille vient de la plus serrée des
+    // deux dimensions, donc sa largeur n'est connue qu'ici.
+    const indicesX = x0 + largeurPlan + marge * 2;
+    const indicesW = b.x + b.w - indicesX;
+    const tailleI = Math.max(2, Math.min(b.w * 0.020, 2.9));
+
+    return {
+        b, m, marge, cote, x0, y0, tailleQ, lignesQ, hautQ,
+        indicesX, indicesW, tailleI,
+        P: (x, y) => ({ x: x0 + x * cote, y: y0 + y * cote }),
+        centre: (i) => ({
+            x: x0 + ((i % m.taille) + 0.5) * cote,
+            y: y0 + (Math.floor(i / m.taille) + 0.5) * cote
+        }),
+        // Les phrases coupées une fois pour les deux rendus : l'aperçu et le
+        // PDF ne doivent pas couper au même endroit par hasard, mais par
+        // construction.
+        phrases: m.indices.map((t, i) =>
+            couperEnLignes(`${i + 1}. ${t}`, Math.floor(indicesW / (tailleI * 0.47)), 4)),
+        /** Le nom d'un lieu, coupé pour tenir dans la largeur d'une case. */
+        nomDeZone: (z) =>
+            couperEnLignes(z.nom, Math.max(6, Math.floor(cote / (tailleI * 0.46))), 2),
+        /**
+         * LE POINT D'UN REPÈRE, ET SON NOM — qui ne doit pas sortir du plan.
+         *
+         * Mesuré sur la scène de 5 × 5 : « le distributeur d'eau », posé sous
+         * une case de la PREMIÈRE colonne, dépassait à gauche du plan et
+         * sortait même de la feuille. Un nom centré sous sa case déborde dès
+         * qu'il est plus large qu'elle, et les noms de repères le sont
+         * souvent — ce sont des phrases, pas des étiquettes.
+         *
+         * On le recentre donc dans le plan, et on le rétrécit s'il reste trop
+         * large. Un repère illisible vaudrait mieux qu'un repère absent, mais
+         * un repère hors de la page ne vaut rien.
+         */
+        repere: (rep) => {
+            const i = rep.case[0] * m.taille + rep.case[1];
+            const cx = x0 + ((i % m.taille) + 0.5) * cote;
+            const cy = y0 + (Math.floor(i / m.taille) + 0.5) * cote;
+            const largeurPlan = cote * m.taille;
+            // Une taille qui fait tenir le nom dans deux cases au plus.
+            const taille = Math.min(tailleI * 0.75,
+                (cote * 2) / Math.max(1, rep.nom.length * 0.5));
+            const demi = rep.nom.length * taille * 0.25;
+            const xTexte = Math.max(x0 + demi,
+                Math.min(x0 + largeurPlan - demi, cx));
+            return { x: cx, yPoint: cy + cote * 0.28,
+                xTexte, yTexte: cy + cote * 0.45, taille };
+        }
+    };
+}
+
+function enquetePreviewHtml(item, slot, k, solution) {
+    const g = geoEnquete(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const encreT = `rgb(${ENCRE.trait.join(',')})`;
+    let html = '';
+
+    // La question, en tête.
+    g.lignesQ.forEach((ligne, i) => {
+        html += `<div class="fx-abs" style="position:absolute; left:${T(g.b.x)}px;
+            top:${T(g.b.y + i * g.tailleQ * 1.35)}px; width:${T(g.b.w)}px;
+            font-size:${T(g.tailleQ)}px; line-height:1.3"
+            >${echapperSheet(ligne)}</div>`;
+    });
+
+    // Les indices, à droite.
+    let y = g.b.y + g.hautQ;
+    g.phrases.forEach(lignes => {
+        lignes.forEach((ligne, i) => {
+            html += `<div class="fx-abs" style="position:absolute; left:${T(g.indicesX)}px;
+                top:${T(y + i * g.tailleI * 1.3)}px; width:${T(g.indicesW)}px;
+                font-size:${T(g.tailleI)}px; line-height:1.25"
+                >${echapperSheet(ligne)}</div>`;
+        });
+        y += lignes.length * g.tailleI * 1.3 + g.tailleI * 0.5;
+    });
+
+    // Le plan, à gauche.
+    let d = '';
+    for (let r = 0; r < g.m.taille; r++) for (let c = 0; c < g.m.taille; c++) {
+        const p = g.P(c, r);
+        d += `<rect x="${T(p.x)}" y="${T(p.y)}" width="${T(g.cote)}" height="${T(g.cote)}"
+            fill="none" stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.25)}"/>`;
+    }
+    g.m.zones.forEach(z => z.contour.forEach(seg => {
+        const a = g.P(seg.x1, seg.y1), b2 = g.P(seg.x2, seg.y2);
+        d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(b2.x)}" y2="${T(b2.y)}"
+            stroke="${encreT}" stroke-width="${T(0.6)}" stroke-linecap="square"/>`;
+    }));
+    // LE NOM DU LIEU EN HAUT DE SA CASE, le prénom au milieu, le repère en bas.
+    // Les trois peuvent tomber dans la MÊME case : mesuré sur une scène de
+    // 5 × 5, « le gymnase » et « Léa » se chevauchaient, et « la cuisine » et
+    // « Anaïs » aussi. Chacun a maintenant son tiers.
+    g.m.zones.forEach(z => {
+        const p = g.centre(z.ancre);
+        g.nomDeZone(z).forEach((ligne, i) => {
+            d += `<text x="${T(p.x)}" y="${T(p.y - g.cote * 0.5 + g.tailleI * (0.95 + i * 0.95))}"
+                text-anchor="middle" font-size="${T(g.tailleI * 0.8)}"
+                fill="rgb(${ENCRE.gris.join(',')})"
+                font-family="Helvetica, Arial, sans-serif"
+                >${echapperSheet(ligne)}</text>`;
+        });
+    });
+    // Les repères de la scène — « le marronnier », « la photocopieuse ».
+    // Ils ne sont pas décoratifs : des indices les citent, et une feuille qui
+    // les oublierait rendrait ces indices-là illisibles.
+    (g.m.reperes || []).forEach(rep => {
+        const p = g.repere(rep);
+        d += `<circle cx="${T(p.x)}" cy="${T(p.yPoint)}" r="${T(g.cote * 0.06)}"
+            fill="${encreT}"/>`;
+        // UN HALO BLANC SOUS LE NOM DU REPÈRE. Il tombe souvent sur un trait
+        // de la grille — c'est inévitable, un repère est posé SUR une
+        // frontière —, et un nom barré par un trait ne se lit pas.
+        d += `<text x="${T(p.xTexte)}" y="${T(p.yTexte)}" text-anchor="middle"
+            font-size="${T(p.taille)}" fill="${encreT}"
+            stroke="#ffffff" stroke-width="${T(p.taille * 0.3)}" paint-order="stroke"
+            font-family="Helvetica, Arial, sans-serif">${echapperSheet(rep.nom)}</text>`;
+    });
+    if (solution) {
+        g.m.solution.forEach(s => {
+            const p = g.centre(s.r * g.m.taille + s.c);
+            d += `<text x="${T(p.x)}" y="${T(p.y + g.tailleI * 0.45)}" text-anchor="middle"
+                font-size="${T(g.tailleI * 1.15)}" font-weight="700" fill="${encreT}"
+                font-family="Helvetica, Arial, sans-serif">${echapperSheet(s.nom)}</text>`;
+        });
+    }
+    return html + `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`;
+}
+
+function dessinerEnquetePdf(doc, item, slot, solution) {
+    const g = geoEnquete(item, slot);
+
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(g.tailleQ * 2.83);
+    g.lignesQ.forEach((ligne, i) =>
+        doc.text(ligne, g.b.x, g.b.y + g.tailleQ + i * g.tailleQ * 1.35));
+
+    doc.setFontSize(g.tailleI * 2.83);
+    let y = g.b.y + g.hautQ + g.tailleI;
+    g.phrases.forEach(lignes => {
+        lignes.forEach((ligne, i) => doc.text(ligne, g.indicesX, y + i * g.tailleI * 1.3));
+        y += lignes.length * g.tailleI * 1.3 + g.tailleI * 0.5;
+    });
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    for (let r = 0; r < g.m.taille; r++) for (let c = 0; c < g.m.taille; c++) {
+        const p = g.P(c, r);
+        doc.rect(p.x, p.y, g.cote, g.cote);
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.6);
+    g.m.zones.forEach(z => z.contour.forEach(seg => {
+        const a = g.P(seg.x1, seg.y1), b2 = g.P(seg.x2, seg.y2);
+        doc.line(a.x, a.y, b2.x, b2.y);
+    }));
+
+    doc.setTextColor(...ENCRE.gris);
+    doc.setFontSize(g.tailleI * 0.8 * 2.83);
+    g.m.zones.forEach(z => {
+        const p = g.centre(z.ancre);
+        g.nomDeZone(z).forEach((ligne, i) => {
+            doc.text(ligne, p.x, p.y - g.cote * 0.5 + g.tailleI * (0.95 + i * 0.95),
+                { align: 'center' });
+        });
+    });
+
+    doc.setTextColor(...ENCRE.trait);
+    doc.setFillColor(...ENCRE.trait);
+    (g.m.reperes || []).forEach(rep => {
+        const p = g.repere(rep);
+        doc.setFillColor(...ENCRE.trait);
+        doc.circle(p.x, p.yPoint, g.cote * 0.06, 'F');
+        doc.setFontSize(p.taille * 2.83);
+        // La pastille blanche, comme le halo de l'aperçu : le nom d'un repère
+        // tombe sur un trait de la grille, et un nom barré ne se lit pas.
+        const demi = rep.nom.length * p.taille * 0.26;
+        doc.setFillColor(255, 255, 255);
+        doc.rect(p.xTexte - demi, p.yTexte - p.taille * 0.85, demi * 2, p.taille * 1.1, 'F');
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(rep.nom, p.xTexte, p.yTexte, { align: 'center' });
+    });
+
+    if (solution) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.tailleI * 1.15 * 2.83);
+        g.m.solution.forEach(s => {
+            const p = g.centre(s.r * g.m.taille + s.c);
+            doc.text(s.nom, p.x, p.y + g.tailleI * 0.45, { align: 'center' });
+        });
+    }
+}
+
+// ── LE CHAMP DE TRÈFLES ─────────────────────────────────────────────────────
+//
+// RÉMY a apporté ce jeu avec la page d'une REVUE : « Encoure les trèfles à
+// 4 feuilles ». L'écran l'a imité ; la feuille le rend à sa forme d'origine.
+// C'est le seul exercice du catalogue dont la version papier est l'original.
+//
+// LES COURBES VIENNENT DU NOYAU, pas d'ici. `courbesDuCoeur` et
+// `courbesDuPedoncule` rendent les mêmes points que le `d` de l'écran — le
+// SVG les écrit en texte, jsPDF les trace en cubiques, et il n'y a qu'une
+// description. Deux dessins du même objet divergent au premier réglage ; ce
+// dépôt l'a payé trois fois sur le radical.
+//
+// LE FOND DES FEUILLES EST BLANC, ET C'EST LE SUJET. Un trèfle dessiné après
+// un autre doit le RECOUVRIR : c'est toute la difficulté du palier « champ ».
+// Avec des feuilles transparentes, les traits se mêleraient et l'on compterait
+// les feuilles de deux trèfles à la fois.
+
+/** Un point tourné de `a` degrés autour de l'origine, puis posé en (cx, cy). */
+function tourner(p, a, cx, cy, k) {
+    const r = a * Math.PI / 180;
+    return {
+        x: cx + (p[0] * Math.cos(r) - p[1] * Math.sin(r)) * k,
+        y: cy + (p[0] * Math.sin(r) + p[1] * Math.cos(r)) * k
+    };
+}
+
+function geoTrefles(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    // LE CHAMP GARDE SES PROPORTIONS. Étiré, les trèfles deviendraient des
+    // ovales et l'on ne compterait plus leurs feuilles — ce qui est la seule
+    // chose que l'exercice demande.
+    // LE RAYON DES TRÈFLES DU BORD COMPTE DANS L'ENCOMBREMENT.
+    //
+    // `largeur` et `hauteur` sont les bornes des CENTRES ; un trèfle posé sur
+    // le bord déborde d'un rayon de chaque côté. Mesuré sur la feuille : les
+    // trèfles des quatre bords sortaient du cadre, et ceux du haut recouvraient
+    // le titre « Champ 1 ».
+    //
+    // On calcule donc l'échelle sur l'étendue DESSINÉE, bords compris — ce qui
+    // se résout d'un trait, les deux étant en unités de vue.
+    const R = m.rayon;
+    const etenduW = m.largeur + 2 * R, etenduH = m.hauteur + 2 * R;
+    const k = Math.min(b.w / etenduW, b.h / etenduH);
+    const x0 = b.x + (b.w - etenduW * k) / 2 + R * k;
+    // LE CHAMP SE POSE SOUS SON TITRE, il ne flotte pas au milieu du bloc.
+    //
+    // Deux champs côte à côte, centrés chacun dans un bloc deux fois plus haut
+    // que large, laissaient une bande blanche en haut et en bas — et « Champ 1 »
+    // se retrouvait seul à dix centimètres de son champ.
+    const y0 = b.y + R * k;
+    return { b, m, k, x0, y0, rayon: R * k,
+        // LE CADRE DU CHAMP. Deux champs sur la même page se touchaient par le
+        // milieu et se lisaient comme un seul : on ne savait plus où chercher
+        // les trois trèfles du premier. Un cadre, c'est aussi ce qu'une revue
+        // imprime autour de ce jeu.
+        cadre: { x: x0 - R * k, y: y0 - R * k, w: etenduW * k, h: etenduH * k },
+        centre: (t) => ({ x: x0 + t.x * k, y: y0 + t.y * k }) };
+}
+
+/**
+ * LES FEUILLES ET LE PÉDONCULE D'UN TRÈFLE, en coordonnées du papier.
+ *
+ * Une seule fonction pour les deux rendus : l'aperçu en fait des `<path>`, le
+ * PDF des appels à `curveTo`, et aucun des deux ne refait le calcul.
+ */
+function plantDUnTrefle(g, t) {
+    const c = g.centre(t);
+    const coeur = courbesDuCoeur();
+    const pas = 360 / t.feuilles;
+    const feuilles = [];
+    for (let i = 0; i < t.feuilles; i++) {
+        const a = t.angle + i * pas + (t.feuilles === 3 ? 0 : 45);
+        feuilles.push({
+            depart: tourner(coeur.depart, a, c.x, c.y, g.k),
+            courbes: coeur.courbes.map(seg =>
+                seg.map(p => tourner(p, a, c.x, c.y, g.k)))
+        });
+    }
+    const ped = courbesDuPedoncule();
+    return {
+        feuilles,
+        pedoncule: {
+            depart: tourner(ped.depart, t.angle, c.x, c.y, g.k),
+            courbes: ped.courbes.map(seg =>
+                seg.map(p => tourner(p, t.angle, c.x, c.y, g.k)))
+        },
+        centre: c
+    };
+}
+
+/**
+ * LES ENCRES DU CHAMP — et elles suivent le réglage « couleur » de la feuille.
+ *
+ * RÉMY : « Pour les trèfles, j'ai mis la couleur pour le poly mais je n'ai pas
+ * de couleur quand je mets en couleur. »
+ *
+ * Le champ était dessiné en noir quoi qu'on coche. Le filtre général
+ * (`teindreHtml`, `teindreDoc`) ne peut rien y faire : il DÉSATURE ce que le
+ * rendu a posé, il n'invente pas une couleur qui n'a jamais été écrite.
+ * C'est la règle de la maison, écrite en tête de `encre()` : la distinction se
+ * décide là où l'on SAIT ce qu'on dessine.
+ *
+ * LES TEINTES SONT CELLES DE L'ÉCRAN (`js/games/trefles.js`) : le vert des
+ * feuilles, le vert presque noir du trait et de la tige, le rouge du cercle de
+ * correction. Un trèfle de la feuille et un trèfle du jeu doivent être le même
+ * trèfle.
+ *
+ * EN NOIR ET BLANC, LA FEUILLE RESTE BLANCHE. Un aplat vert passé au gris
+ * donne un gris moyen sur lequel on ne distingue plus les feuilles — or les
+ * COMPTER est tout l'exercice. On garde donc le fond blanc et le contour, qui
+ * est ce que la photocopieuse rend le mieux.
+ */
+const ENCRES_TREFLE = () => (polycopieEnCouleur()
+    ? { trait: '#1f2a1c', feuille: '#7cb35f', cercle: '#d62828' }
+    : { trait: `rgb(${ENCRE.trait.join(',')})`, feuille: '#ffffff',
+        cercle: `rgb(${ENCRE.trait.join(',')})` });
+
+function treflesPreviewHtml(item, slot, k, solution) {
+    const g = geoTrefles(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const { trait: encreT, feuille: encreF, cercle: encreC } = ENCRES_TREFLE();
+    const d = (depart, courbes) => `M${T(depart.x)},${T(depart.y)} `
+        + courbes.map(([a, b2, z]) =>
+            `C${T(a.x)},${T(a.y)} ${T(b2.x)},${T(b2.y)} ${T(z.x)},${T(z.y)}`).join(' ');
+    let out = `<rect x="${T(g.cadre.x)}" y="${T(g.cadre.y)}"
+        width="${T(g.cadre.w)}" height="${T(g.cadre.h)}" rx="${T(1.5)}" fill="none"
+        stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.3)}"/>`;
+    g.m.trefles.forEach(t => {
+        const p = plantDUnTrefle(g, t);
+        out += `<path d="${d(p.pedoncule.depart, p.pedoncule.courbes)}" fill="none"
+            stroke="${encreT}" stroke-width="${T(0.22)}" stroke-linecap="round"/>`;
+        p.feuilles.forEach(f => {
+            out += `<path d="${d(f.depart, f.courbes)} Z" fill="${encreF}"
+                stroke="${encreT}" stroke-width="${T(0.22)}" stroke-linejoin="round"/>`;
+        });
+    });
+    if (solution) {
+        g.m.trefles.filter(t => t.feuilles === 4).forEach(t => {
+            // ON REDESSINE LE TRÈFLE TROUVÉ EN TRAIT GRAS, par-dessus ses
+            // voisins. Le cercle seul ne suffisait pas : mesuré à la loupe sur
+            // le palier « le pré », il entourait un enchevêtrement de trois
+            // trèfles mêlés, et le professeur devait compter les feuilles pour
+            // vérifier sa propre correction. Un corrigé qu'il faut résoudre
+            // n'est pas un corrigé.
+            const p = plantDUnTrefle(g, t);
+            out += `<path d="${d(p.pedoncule.depart, p.pedoncule.courbes)}" fill="none"
+                stroke="${encreT}" stroke-width="${T(0.55)}" stroke-linecap="round"/>`;
+            p.feuilles.forEach(f => {
+                out += `<path d="${d(f.depart, f.courbes)} Z" fill="${encreF}"
+                    stroke="${encreT}" stroke-width="${T(0.55)}" stroke-linejoin="round"/>`;
+            });
+            // ET LE CERCLE, qui est le geste que l'élève doit faire. Rémy :
+            // « Encoure les trèfles à 4 feuilles. » Il passe en dernier, donc
+            // par-dessus tout.
+            const c = g.centre(t);
+            out += `<circle cx="${T(c.x)}" cy="${T(c.y - g.rayon * 0.25)}"
+                r="${T(g.rayon * 1.35)}" fill="none" stroke="${encreC}"
+                stroke-width="${T(0.6)}"/>`;
+        });
+    }
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${out}</svg>`;
+}
+
+function dessinerTreflesPdf(doc, item, slot, solution) {
+    const g = geoTrefles(item, slot);
+    // `lines` de jsPDF prend des DELTAS depuis le point courant ; on écrit donc
+    // chaque courbe relativement à celle qui précède.
+    const tracer = (depart, courbes, style) => {
+        let x = depart.x, y = depart.y;
+        const deltas = courbes.map(([a, b2, z]) => {
+            const d = [a.x - x, a.y - y, b2.x - x, b2.y - y, z.x - x, z.y - y];
+            x = z.x; y = z.y;
+            return d;
+        });
+        doc.lines(deltas, depart.x, depart.y, [1, 1], style, style === 'FD' || style === 'F');
+    };
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(g.cadre.x, g.cadre.y, g.cadre.w, g.cadre.h, 1.5, 1.5, 'S');
+    // Les mêmes teintes qu'à l'aperçu — voir `ENCRES_TREFLE`. En trois
+    // composantes, puisque jsPDF ne lit pas les dièses.
+    const rvb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const e = ENCRES_TREFLE();
+    const TR = e.trait.startsWith('#') ? rvb(e.trait) : ENCRE.trait;
+    const FE = e.feuille.startsWith('#') ? rvb(e.feuille) : [255, 255, 255];
+    const CE = e.cercle.startsWith('#') ? rvb(e.cercle) : ENCRE.trait;
+    doc.setLineWidth(0.22);
+    doc.setDrawColor(...TR);
+    doc.setFillColor(...FE);
+    doc.setLineJoin('round');
+    doc.setLineCap('round');
+    g.m.trefles.forEach(t => {
+        const p = plantDUnTrefle(g, t);
+        tracer(p.pedoncule.depart, p.pedoncule.courbes, 'S');
+        p.feuilles.forEach(f => tracer(f.depart, f.courbes, 'FD'));
+    });
+    doc.setLineJoin('miter');
+    doc.setLineCap('butt');
+    if (solution) {
+        doc.setDrawColor(...TR);
+        doc.setLineJoin('round');
+        doc.setLineCap('round');
+        g.m.trefles.filter(t => t.feuilles === 4).forEach(t => {
+            // Le trèfle trouvé, en gras et par-dessus — voir l'aperçu : un
+            // cercle autour d'un enchevêtrement oblige à recompter, et un
+            // corrigé qu'il faut résoudre n'est pas un corrigé.
+            const p = plantDUnTrefle(g, t);
+            doc.setLineWidth(0.55);
+            doc.setFillColor(...FE);
+            tracer(p.pedoncule.depart, p.pedoncule.courbes, 'S');
+            p.feuilles.forEach(f => tracer(f.depart, f.courbes, 'FD'));
+            const c = g.centre(t);
+            doc.setLineWidth(0.6);
+            doc.setDrawColor(...CE);
+            doc.circle(c.x, c.y - g.rayon * 0.25, g.rayon * 1.35, 'S');
+            doc.setDrawColor(...TR);
+        });
+        doc.setLineJoin('miter');
+        doc.setLineCap('butt');
+    }
+}
+
 export const RENDUS_CASSETETE = {
     chemin: {
         titre: 'Le chemin numéroté',
@@ -1817,5 +2382,94 @@ export const RENDUS_CASSETETE = {
         disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 2 },
         parLigneDefaut: 1,
         grilleMax: 130
+    },
+    serpents: {
+        titre: 'Les Serpents',
+        consigne: (items) => {
+            const calculs = items[0] && items[0].meta.etiquettes === 'calculs';
+            return 'Chaque case appartient à un serpent et un seul. '
+                + (calculs
+                    ? 'Le CALCUL écrit dans un rond donne la longueur de son serpent, en cases'
+                    : 'Le NOMBRE écrit dans un rond dit la longueur de son serpent, en cases')
+                + ' — ce rond en est un bout. Un serpent va tout droit ou tourne à angle '
+                + 'droit, ne se recoupe jamais, et ne remplit jamais un carré de quatre '
+                + 'cases. Entoure chaque serpent au crayon.';
+        },
+        previewGrille: serpentsPreviewHtml,
+        pdfGrille: dessinerSerpentsPdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        proportions: { w: 1, h: 1 },
+        // DEUX PAR PAGE. Une grille de serpents se fait au crayon et se gomme :
+        // il y faut la place du poignet, et des cases où un trait raté reste
+        // effaçable. À quatre par page, une case du palier « difficile » — sept
+        // sur sept — tombe à huit millimètres.
+        disposition: { cols: 2, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 2
+    },
+    enquete: {
+        titre: "L'Enquête",
+        consigne: () => 'Place chaque prénom dans une case du plan. Deux personnes ne sont '
+            + 'jamais sur la même rangée ni sur la même colonne. Les indices se croisent : '
+            + 'aucun ne suffit seul, mais ensemble ils ne laissent qu\u2019un placement '
+            + 'possible. Écris au crayon — on rature beaucoup.',
+        previewGrille: enquetePreviewHtml,
+        pdfGrille: dessinerEnquetePdf,
+        nomBloc: 'Enquête', nomBlocs: 'enquêtes',
+        // UNE PAR LIGNE, ET DEUX PAR PAGE. Ce n'est pas la grille qui prend la
+        // place, c'est le TEXTE : le noyau garde trois à sept indices selon le
+        // tirage, et sept phrases de quatre-vingts signes ne tiennent pas dans
+        // un quart de page. Le plan d'une scène de 5 × 5 tiendrait, lui, dans
+        // un timbre — c'est la colonne de droite qui commande.
+        disposition: { cols: 1, rows: 2, maxCols: 1, maxRows: 3 },
+        parLigneDefaut: 1,
+        proportions: { w: 1, h: 0.45 },
+        titreAGauche: true
+    },
+    trefles: {
+        titre: 'Le Trèfle à Quatre Feuilles',
+        consigne: (items) => {
+            const n = (items[0] && items[0].meta.aTrouver) || 3;
+            return `Entoure les ${n} trèfles à QUATRE feuilles. Balaie ligne par ligne, `
+                + 'de gauche à droite : au hasard, on repasse vingt fois au même endroit '
+                + 'et l\u2019on finit par en oublier un. Attention, un trèfle tourné '
+                + 'ressemble beaucoup à un trèfle à quatre feuilles — il faut COMPTER.';
+        },
+        previewGrille: treflesPreviewHtml,
+        pdfGrille: dessinerTreflesPdf,
+        nomBloc: 'Champ', nomBlocs: 'champs',
+        // DEUX CHAMPS PAR PAGE — et le chiffre que j'avais mis ici était
+        // SUPPOSÉ, pas mesuré.
+        //
+        // RÉMY : « Les trèfles prennent toutes une page sur le pdf. » Ce même
+        // commentaire annonçait, pour justifier l'inverse, que deux champs par
+        // page ramèneraient les trèfles « à quatre millimètres ». Personne ne
+        // l'avait vérifié, et il faisait autorité depuis.
+        //
+        // MESURÉ cette fois — diamètre d'un trèfle sur la feuille, en
+        // millimètres (`node tools/tailleTrefle.mjs`, qui refait le calcul de
+        // la mise en page) :
+        //
+        //                        1 par page   2 côte à côte   2 empilés
+        //   la promenade (40)      19,4           12,4           9,2
+        //   le pré (90)            16,1           10,2           7,6
+        //   le champ (160)         13,5            8,6           6,4
+        //   le grand pré (240)     11,8            7,5           5,6
+        //
+        // Un trèfle de la revue que Rémy a apportée fait six à huit
+        // millimètres. À une par page, le dessin était donc DEUX FOIS trop
+        // gros, et il fallait une feuille entière pour trois trèfles à
+        // trouver.
+        //
+        // CÔTE À CÔTE, ET NON EMPILÉS. Le champ est plus large que haut : à
+        // deux rangées, c'est la HAUTEUR qui borne, on perd un quart de la
+        // taille et la largeur de la page reste blanche. La même raison fait
+        // que quatre par page ne rend rien de plus que deux empilés — c'est la
+        // même colonne de chiffres.
+        //
+        // La bande blanche sous les deux champs n'est pas perdue : c'est là que
+        // la main se pose pendant qu'on cherche.
+        disposition: { cols: 2, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 2,
+        proportions: { w: 4, h: 3 }
     },
 };

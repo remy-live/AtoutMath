@@ -19,6 +19,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     genererGrille, bornes, traceVide, poserTrace, occupant, reliee, verifier,
     solutionComplete, prochainPas, conseil, adjacentes, memeCase, clef, CONSIGNE,
@@ -391,18 +392,24 @@ class Relier extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.grille) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Deux points de même marque, un chemin de l\'un à l\'autre, sans diagonale. '
-            + 'Et la règle qu\'on oublie : à la fin, AUCUNE case ne doit rester vide.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
+        cur.say('Deux points de même marque, un chemin de l\'un à l\'autre, sans diagonale.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        // UNE IDÉE PAR BULLE, ICI ET PLUS BAS : le tracé d'abord, la case vide ensuite.
+        // Au-delà de 110 caractères la bulle se lit si lentement qu'on croit la
+        // démonstration plantée (js/core/activities/choice.js, COURT).
+        cur.say('Et à la fin, AUCUNE case ne doit rester vide.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 0; k < 2; k++) {
             const pas = prochainPas(this.grille, this.etat);
             if (!pas) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const p = this.grille.paires[pas.id];
             const depart = this.svg.querySelector(`[data-x="${p.a[0]}"][data-y="${p.a[1]}"]`);
             cur.say(k === 0
@@ -414,15 +421,17 @@ class Relier extends BaseGame {
             for (let i = 2; i <= p.solution.length; i++) {
                 this.etat = poserTrace(this.grille, this.etat, pas.id, p.solution.slice(0, i));
                 this.dessiner();
-                if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.press)) return fin();
             }
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Si une case reste vide à la fin, ce n\'est pas perdu : il suffit d\'allonger '
-            + 'un chemin pour qu\'il y passe. Commence toujours par les coins — un coin n\'a '
-            + 'que deux voisines.', this.container.querySelector('[data-verifier]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Une case reste vide ? J\'allonge un chemin pour qu\'il y passe.',
+            this.container.querySelector('[data-verifier]'));
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        cur.say('Je commence toujours par les coins : un coin n\'a que deux voisines.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

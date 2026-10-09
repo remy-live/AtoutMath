@@ -7,7 +7,7 @@
 // seule annonce.
 
 import { badgesCatalog } from '../core/gamification.js';
-import { showModal } from './modal.js';
+import { deposerBadges } from './finDeSerie.js';
 
 const attente = [];
 let minuteur = null;
@@ -22,32 +22,25 @@ export function initGamificationUI() {
     });
 }
 
+/**
+ * LES RÉCOMPENSES N'OUVRENT PLUS LEUR PROPRE FENÊTRE.
+ *
+ * Elles en ouvraient une, et le bilan de maîtrise en ouvrait une autre, au
+ * même instant, par-dessus l'écran de fin du parcours. Trois panneaux
+ * empilés : l'élève devait en fermer deux pour atteindre « Voir mon bilan »,
+ * qui était dessous. À la sonnerie, il fermait tout au réflexe.
+ *
+ * On DÉPOSE donc le lot, et `ui/finDeSerie` décide s'il ouvre une carte pour
+ * lui seul ou s'il le pose au-dessus du bilan dans la même. Ce module n'a pas
+ * à savoir ce qu'est un bilan de maîtrise — c'est justement pourquoi il ne
+ * pouvait pas s'en arranger tout seul.
+ */
 function annoncer() {
     const lot = attente.splice(0, attente.length);
     if (!lot.length) return;
-
-    confettis();
-
-    const pluriel = lot.length > 1;
-    const cartes = lot.map(b => `
-        <div class="badge-won${b.medal ? ` badge-won--${b.medal}` : ''}">
-            <div class="badge-won-icon">${b.icon}</div>
-            <div>
-                <div class="badge-won-title">${echapper(b.title)}</div>
-                <div class="badge-won-desc">${echapper(b.description)}</div>
-            </div>
-        </div>`).join('');
-
-    const contenu = `
-        <div class="badge-modal">
-            <h2 class="badge-modal-titre">${pluriel ? `${lot.length} récompenses débloquées !` : 'Badge débloqué !'}</h2>
-            <div class="badge-won-list">${cartes}</div>
-            <button class="badge-ok-btn">Super !</button>
-        </div>`;
-
-    const modal = showModal('', contenu, { width: '460px' });
-    const ok = modal.element.querySelector('.badge-ok-btn');
-    if (ok) ok.onclick = () => modal.close();
+    // Les confettis partent AVEC la carte, pas avant : lancés ici, ils
+    // tombaient derrière la fenêtre qui s'ouvrait juste après.
+    deposerBadges(lot, confettis);
 }
 
 function confettis() {
@@ -61,6 +54,6 @@ function confettis() {
     }());
 }
 
-function echapper(s) {
-    return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-}
+// `echapper` vivait ici : il est parti avec le gabarit, dans `finDeSerie`,
+// qui est désormais le seul à écrire du HTML de récompense. Deux échappements
+// pour un même texte, c'est un échappement qu'on oublie de corriger.

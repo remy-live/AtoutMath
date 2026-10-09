@@ -19,6 +19,43 @@ const ICON_HINT = `<svg viewBox="0 0 24 24" width="42" height="42" fill="none" s
 
 let current = null;
 
+/**
+ * À QUI RENDRE LE FOYER QUAND LA BANNIÈRE SE FERME.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « parfois le bouton valider est inactif ».
+ *
+ * MESURÉ, ET LA BANNIÈRE EN EST LA MOITIÉ. `showDismissable` donne le foyer à
+ * son bouton « J'ai compris » — c'est juste, l'élève au clavier doit pouvoir
+ * fermer sans viser à la souris. Mais ce bouton est ensuite RETIRÉ du document,
+ * et le foyer ne retombe sur personne : il va sur `<body>`, hors de l'activité.
+ * Les écrans de saisie écoutent le clavier sur LEUR conteneur ; à partir de là,
+ * l'élève tape et rien ne s'écrit.
+ *
+ * MESURÉ SUR « L'Égalité à Compléter » : après « Valider » et la fermeture de
+ * la bannière, foyer sur BODY, bouton éteint, clavier muet pour le reste de la
+ * question. La correction posée dans l'activité n'y suffisait pas — c'est la
+ * bannière qui avait pris le foyer, c'est à elle de le rendre.
+ *
+ * ON LE REND À CELUI QUI L'AVAIT, et à défaut au plateau de jeu : l'élément
+ * d'avant a pu disparaître entre-temps (une touche effacée par un nouveau
+ * rendu), et `focus()` sur un élément détaché échoue en SILENCE — c'est-à-dire
+ * de la même façon qu'un logiciel cassé.
+ */
+function rendreLeFoyerA(avant) {
+    const plateau = document.querySelector('#game-layer .canvas-area');
+    const vivant = avant && avant.isConnected && typeof avant.focus === 'function'
+        // UN ÉLÉMENT DÉSACTIVÉ NE PEUT PAS PRENDRE LE FOYER : le lui donner
+        // revient à le donner à `<body>`, c'est-à-dire à ne rien faire.
+        && !avant.disabled
+        && (!plateau || plateau.contains(avant));
+    const cible = vivant ? avant : plateau;
+    if (!cible) return;
+    if (!cible.hasAttribute('tabindex') && cible === plateau) cible.tabIndex = -1;
+    cible.focus({ preventScroll: true });
+}
+
 export function initGameFeedbackUI() {
     document.addEventListener('game_feedback', (e) => {
         const d = e.detail || {};
@@ -127,7 +164,9 @@ function showDismissable(d, done, isHint) {
         <button type="button" class="fb-close">${isHint ? 'Merci !' : 'J\'ai compris'}</button>`,
         isHint ? 'fb-card--hint' : 'fb-card--ko', true);
 
-    const finish = () => { close(card); done(); };
+    // QUI AVAIT LE FOYER AVANT NOUS — on le lui rendra. Voir `rendreLeFoyerA`.
+    const avant = document.activeElement;
+    const finish = () => { close(card); rendreLeFoyerA(avant); done(); };
 
     const btn = card.querySelector('.fb-close');
     btn.onclick = finish;

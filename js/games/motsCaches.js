@@ -12,6 +12,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     THEMES, tirerMots, creerGrille, segment, motTrouve, toutTrouve
 } from '../core/motsCaches.js';
@@ -49,7 +50,9 @@ class MotsCaches extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .mc-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .mc-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* Le corps : la grille et la liste des mots côte à côte quand il
                    y a de la largeur, l'une sous l'autre sur un téléphone. */
@@ -323,29 +326,36 @@ class MotsCaches extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.grilleEl);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Des mots de mathématiques sont cachés dans cette grille : horizontalement, verticalement, en diagonale. On glisse le doigt de la première lettre à la dernière.', this.grilleEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
+        // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
+        // lentement (340 ms le mot) qu'on croit la démonstration plantée.
+        cur.say('Des mots de mathématiques sont cachés ici : horizontalement, verticalement, en diagonale.', this.grilleEl);
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+        cur.say('On glisse le doigt de la première lettre à la dernière.', this.grilleEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (const m of this.etat.mots.slice(0, 3)) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const depart = this.caseEn(m.x, m.y);
             const arrivee = this.caseEn(m.x + m.dx * (m.longueur - 1), m.y + m.dy * (m.longueur - 1));
             cur.say(`Je cherche un mot qui se lit en ${m.direction}. Là : ${m.mot.split('').join(' ')}.`, depart);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
-            if (!await cur.moveTo(depart) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+            if (!await robot.vers(depart)) return fin();
             this.tracer({ x: m.x, y: m.y }, { x: m.x + m.dx * (m.longueur - 1), y: m.y + m.dy * (m.longueur - 1) });
-            if (!await cur.moveTo(arrivee) || !this.isRunning) return fin();
+            if (!await robot.vers(arrivee)) return fin();
             this.valider({ x: m.x + m.dx * (m.longueur - 1), y: m.y + m.dy * (m.longueur - 1) });
             cur.say(`${m.mot} : ${m.def}`, arrivee);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Et c\'est là tout l\'intérêt : chaque mot trouvé donne sa définition. Le bouton 💡 fait l\'inverse — il donne la définition, à toi de retrouver le mot.', this.grilleEl);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Chaque mot trouvé donne sa définition.', this.grilleEl);
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+        cur.say('Le bouton 💡 fait l\'inverse : il donne la définition, à toi de trouver le mot.', this.grilleEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

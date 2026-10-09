@@ -20,6 +20,10 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
+// UNE CARTE QUI DÉRIVE NE SE TOUCHE PAS AU `click` : voir `cibleQuiBouge.js`,
+// qui porte la règle et la mesure qui l'a imposée.
+import { surAppui, CSS_CIBLE_QUI_BOUGE } from '../core/cibleQuiBouge.js';
 
 const COMPETENCE = 'num.complement';
 
@@ -67,7 +71,7 @@ class AmisDeDix extends BaseGame {
                     container-type: inline-size;
                 }
                 .dx-tete { text-align: center; font-size: 1rem; flex: 0 0 auto; }
-                .dx-cible { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
+                .dx-cible { font-size: 1.5rem; font-weight: 900; color: var(--primary-texte); }
                 .dx-vies { font-size: 1.05rem; letter-spacing: .1em; }
                 .dx-table {
                     display: grid; gap: 9px; justify-content: center; flex: 0 0 auto;
@@ -78,12 +82,14 @@ class AmisDeDix extends BaseGame {
                     aspect-ratio: 1; border: 2.5px solid var(--text-main); border-radius: 14px;
                     background: var(--bg-panel); font-weight: 900; cursor: pointer;
                     display: flex; align-items: center; justify-content: center;
-                    font-size: clamp(15px, 6.4cqw, 30px); user-select: none;
-                    -webkit-tap-highlight-color: transparent; font-family: inherit;
+                    font-size: clamp(15px, 6.4cqw, 30px); font-family: inherit;
+                    ${CSS_CIBLE_QUI_BOUGE}
                     color: var(--text-main);
                     transition: transform .1s ease, opacity .25s ease, box-shadow .1s ease;
                 }
-                .dx-carte:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+                @media (hover: hover) {
+                    .dx-carte:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+                }
                 /* LA TABLE QUI DÉRIVE. Les cartes quittent la grille et se
                    placent au pixel près : on les anime par leur position, et
                    non par une transformation — celle-ci reste aux états (prise,
@@ -100,7 +106,9 @@ class AmisDeDix extends BaseGame {
                     font-size: clamp(15px, 5.4cqw, 26px);
                     transition: opacity .25s ease, box-shadow .1s ease;
                 }
-                .dx-table--mouvante .dx-carte:hover { transform: none; }
+                @media (hover: hover) {
+                    .dx-table--mouvante .dx-carte:hover { transform: none; }
+                }
                 .dx-carte--prise {
                     border-color: var(--primary); background: color-mix(in srgb, var(--primary) 16%, var(--bg-panel));
                     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);
@@ -157,8 +165,13 @@ class AmisDeDix extends BaseGame {
         this.tableEl.style.setProperty('--dx-cols', String(cols));
         this.tableEl.innerHTML = this.cartes.map((v, i) =>
             `<button type="button" class="dx-carte" data-i="${i}" data-v="${v}">${v}</button>`).join('');
+        // ON AGIT À L'APPUI, PAS AU CLIC. Rémy : « le clic est complexe car ca
+        // sélectionne le texte que de sélectionner la case qui bouge ». Un
+        // `click` va à l'ancêtre commun de l'appui et du RELÂCHEMENT : une
+        // carte qui dérive sort de sous le doigt entre les deux, et le geste
+        // part au plateau. Voir `cibleQuiBouge.js` — le clavier garde sa voie.
         this.tableEl.querySelectorAll('.dx-carte').forEach(b => {
-            b.onclick = () => this.taper(b);
+            surAppui(b, () => this.taper(b));
         });
         this.tableEl.classList.toggle('dx-table--mouvante', this.enMouvement);
         if (this.enMouvement) this.lancerDerive();
@@ -340,39 +353,43 @@ class AmisDeDix extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.cartes) this.poserTable();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say(`Je ne cherche pas deux cartes au hasard : j'en choisis UNE, et je calcule ce qui `
             + `lui manque pour faire ${this.cible}.`, this.cibleEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 0; k < 3; k++) {
             const libres = [...this.tableEl.querySelectorAll('.dx-carte:not(.dx-carte--partie)')];
             if (libres.length < 2) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const a = libres[0];
             const va = Number(a.dataset.v);
             const manque = this.cible - va;
             const b = libres.find(c => c !== a && Number(c.dataset.v) === manque);
             if (!b) break;
             cur.say(`${va}… pour aller à ${this.cible}, il manque ${manque}. Je cherche un ${manque}.`, a);
-            if (!await cur.tap(a)) return fin();
+            if (!await robot.toucher(a)) return fin();
             a.classList.add('dx-carte--prise');
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
-            if (!await cur.tap(b)) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+            if (!await robot.toucher(b)) return fin();
             a.classList.remove('dx-carte--prise');
             a.classList.add('dx-carte--partie');
             b.classList.add('dx-carte--partie');
             this.note(`${va} + ${manque} = ${this.cible} ✓`, 'ok');
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Toujours dans cet ordre : une carte, LE calcul, puis l\'amie qu\'on cherche. '
-            + 'C\'est comme ça que les paires deviennent des réflexes.', this.tableEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        // « C'est comme ça que les paires deviennent des réflexes » était la leçon, pas le
+        // geste : coupée. Au-delà de 110 caractères la bulle se lit si lentement qu'on
+        // croit la démonstration plantée (js/core/activities/choice.js, COURT).
+        cur.say('Toujours dans cet ordre : une carte, LE calcul, puis l\'amie qu\'on cherche.',
+            this.tableEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

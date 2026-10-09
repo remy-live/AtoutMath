@@ -154,3 +154,136 @@ export function sansClavierSysteme(champ) {
         if (auDoigt()) champ.blur();
     });
 }
+
+/**
+ * CE CHAMP ÉCRIT EN MAJUSCULES — les points d'une figure en sont.
+ *
+ * Rémy, sur la notation du cercle : « permet d'avoir des touches de crochet ou
+ * parenthèses et en majuscule ». `autocapitalize` ne suffit pas : c'est un
+ * CONSEIL au clavier logiciel, que les claviers de poste fixe ignorent et que
+ * les claviers logiciels abandonnent dès qu'on a corrigé une lettre à la main.
+ * On force donc la valeur, ce qui est la seule façon que ce que l'élève LIT
+ * soit ce que le logiciel COMPARE.
+ *
+ * SAUF LES MOTS, QUI N'EN SONT PAS. « arc AB » devenait « ARC AB » : les
+ * capitales disent « ceci est un point », et les coller sur un mot du cours
+ * enseigne une notation qui n'existe pas. L'appelant liste donc les mots à
+ * laisser en bas de casse. Changer la casse ne change pas la longueur, donc
+ * le curseur se repose comme avant.
+ *
+ * @param {HTMLInputElement} champ
+ * @param {string[]} [motsEnBas] - les mots qui restent en minuscules
+ */
+export function enMajuscules(champ, motsEnBas = []) {
+    if (!champ) return;
+    champ.setAttribute('autocapitalize', 'characters');
+    // Les mots sont échappés : ce module est partagé, et le jour où un jeu
+    // passera un mot qui porte un point ou un plus, il ne doit pas découvrir
+    // qu'on en faisait une expression régulière.
+    const echappe = (m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const hausser = (v) => motsEnBas.reduce(
+        (texte, mot) => texte.replace(new RegExp(echappe(mot), 'gi'), mot), v.toUpperCase());
+    champ.addEventListener('input', () => {
+        const haut = hausser(champ.value);
+        if (haut === champ.value) return;
+        const d = champ.selectionStart, f = champ.selectionEnd;
+        // ON NE REPOSE LE CURSEUR QUE SI LA LONGUEUR N'A PAS BOUGÉ : quelques
+        // lettres s'allongent en majuscules (« ß » devient « SS »), et remettre
+        // le curseur à son ancien rang le poserait au milieu d'une lettre.
+        const memeTaille = haut.length === champ.value.length;
+        champ.value = haut;
+        if (memeTaille) {
+            try { champ.setSelectionRange(d, f); } catch (e) { /* champ sans curseur */ }
+        }
+    });
+}
+
+/**
+ * DES TOUCHES QUI ENTOURENT CE QU'ON A ÉCRIT : « [ ] », « ( ) », « arc ».
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « il faudrait taper [OG], par contre c'est galère au clavier, permet
+ * d'avoir des touches de crochet ou parenthèses ». Mesuré sur un téléphone :
+ * écrire `[OG]` au clavier d'iOS demande SEPT gestes pour quatre signes —
+ * passer aux symboles, trouver `[` (deuxième page), revenir aux lettres,
+ * bloquer les majuscules, taper, repasser aux symboles, trouver `]`.
+ *
+ * ELLES ENTOURENT, ELLES N'AJOUTENT PAS. Une touche qui écrirait son signe à la
+ * suite, comme le pavé de chiffres le fait, donnerait « OG[ » : le crochet
+ * ouvrant va DEVANT. Chaque touche pose donc sa paire autour de ce qui est
+ * écrit — et retire d'abord ce qui entourait déjà, pour qu'un appui sur
+ * « [ ] » CORRIGE un « (OG) » tapé par erreur au lieu de l'emballer dans
+ * « [(OG)] ».
+ *
+ * Champ vide, le curseur se met ENTRE les deux signes : c'est l'autre ordre des
+ * gestes, on ouvre puis on tape, et il doit marcher aussi.
+ *
+ * L'APPELANT DIT LESQUELLES, ET C'EST TOUT LE SUJET. Rémy : « ne parle pas de
+ * tangente pour le cercle ! » Une touche « ( ) » devant une série où aucun
+ * tracé ne s'écrit entre parenthèses n'offre pas un raccourci, elle montre un
+ * objet hors programme.
+ *
+ * @param {HTMLElement} hote
+ * @param {Object} opts
+ * @param {() => HTMLInputElement|null} opts.champ - relu à chaque appui : ces
+ *        écrans se redessinent à chaque question.
+ * @param {Array<{paire?:string, mot?:string, titre:string}>} opts.touches -
+ *        une paire de signes à poser autour, ou un mot à poser devant.
+ * @param {Element} [opts.avant] - insérer AVANT ce nœud plutôt qu'à la fin.
+ * @returns {{el: HTMLElement, detruire: () => void}}
+ */
+export function poserTouchesDeNotation(hote, opts = {}) {
+    const champ = opts.champ || (() => null);
+    const touches = (opts.touches || []).filter(t => t && (t.paire || t.mot));
+    const rangee = document.createElement('div');
+    rangee.className = 'pav-notation';
+    rangee.setAttribute('role', 'group');
+    rangee.setAttribute('aria-label', 'Comment écrire la notation');
+
+    /** Ce qui reste quand on retire ce qui entourait déjà : les lettres. */
+    const coeurDe = (valeur) => String(valeur ?? '').trim()
+        .replace(/^(?:l['\u2019]?)?arc\s*/i, '')
+        .replace(/^[[(]/, '').replace(/[\])]$/, '')
+        .trim();
+
+    const poser = (t) => {
+        const el = champ();
+        if (!el || el.disabled) return;
+        const coeur = coeurDe(el.value);
+        let ou;
+        if (t.mot) {
+            el.value = `${t.mot} ${coeur}`;
+            ou = el.value.length;          // on écrira la suite derrière le mot
+        } else {
+            el.value = t.paire[0] + coeur + t.paire[1];
+            ou = 1 + coeur.length;         // dedans quand c'est vide, après sinon
+        }
+        try {
+            el.focus({ preventScroll: true });
+            el.setSelectionRange(ou, ou);
+        } catch (e) { /* un champ sans curseur : la valeur suffit */ }
+        // Le même `input` synthétique que le pavé de chiffres : ce qui écoute la
+        // frappe — la mise en majuscules, juste au-dessus — doit voir passer la
+        // même chose que si l'élève avait tapé.
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    touches.forEach((t) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pav-touche pav-touche--notation'
+            + (t.mot ? ' pav-touche--motEcrit' : '');
+        b.dataset.notation = t.paire || t.mot;
+        b.textContent = t.paire ? `${t.paire[0]} ${t.paire[1]}` : t.mot;
+        b.setAttribute('aria-label', t.titre);
+        b.title = t.titre;
+        // `pointerdown` comme pour le pavé de chiffres : sur `click`, le champ
+        // aurait déjà perdu le focus au premier toucher.
+        b.addEventListener('pointerdown', (ev) => { ev.preventDefault(); poser(t); });
+        rangee.appendChild(b);
+    });
+
+    hote.insertBefore(rangee, opts.avant && opts.avant.parentElement === hote ? opts.avant : null);
+    return { el: rangee, detruire: () => rangee.remove() };
+}

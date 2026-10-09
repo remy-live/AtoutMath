@@ -5,7 +5,7 @@
 // `mount()` et l'inscrire ici. La compatibilité entre les deux se déduit des
 // manifestes, elle ne se code pas.
 
-import { registerGenerator, registerActivity } from '../registry.js';
+import { registerGenerator, registerActivity, declarerSansNote } from '../registry.js';
 import { REGLAGE_SAISIE } from '../../ui/champsGrille.js';
 
 import {
@@ -26,6 +26,10 @@ import {
     egypteGenerator, complementGenerator, pariteGenerator
 } from '../generators/numeration.js';
 import { kenkenGenerator } from '../generators/kenken.js';
+import { strimkoGenerator } from '../generators/strimko.js';
+import { approxdokuGenerator } from '../generators/approxdoku.js';
+import { jardinGenerator } from '../generators/jardin.js';
+import { dingbatGenerator } from '../generators/dingbat.js';
 import { binairoGenerator } from '../generators/binairo.js';
 import { colorierNombresGenerator } from '../generators/colorierNombres.js';
 import { garamGenerator } from '../generators/garam.js';
@@ -39,6 +43,10 @@ import { relatifsProduitGenerator } from '../generators/relatifsProduit.js';
 import { litteralReduireGenerator } from '../generators/litteral.js';
 import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js';
 import { balanceFicheGenerator } from '../generators/balanceFiche.js';
+import { serpentsFicheGenerator } from '../generators/serpentsFiche.js';
+import { enqueteFicheGenerator } from '../generators/enqueteFiche.js';
+import { treflesFicheGenerator } from '../generators/treflesFiche.js';
+import { mosaiqueFicheGenerator } from '../generators/mosaiqueFiche.js';
 import { arrondiGenerator } from '../generators/arrondi.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
@@ -48,11 +56,13 @@ import { pythagoreGenerator } from '../generators/pythagore.js';
 import { vitesseGenerator } from '../generators/vitesse.js';
 import { vocabulaireGenerator } from '../generators/vocabulaire.js';
 import { notationGenerator } from '../generators/notation.js';
+import { elementsGeometrieGenerator } from '../generators/elementsGeometrie.js';
 import { anglesManquantsGenerator } from '../generators/anglesManquants.js';
 import { anglesNommerGenerator } from '../generators/anglesNommer.js';
 import { graduationsGenerator } from '../generators/graduations.js';
 import { transfoQuadrillageGenerator } from '../generators/transfoQuadrillage.js';
 import { pavageGenerator } from '../generators/pavage.js';
+import { generator as pavageImageGenerator } from '../generators/pavageImage.js';
 import { carreMagiqueGenerator } from '../generators/carreMagique.js';
 import { futoshikiGenerator } from '../generators/futoshiki.js';
 import { relierGenerator } from '../generators/relier.js';
@@ -111,6 +121,13 @@ import { memoryFicheGenerator } from '../generators/memoryFiche.js';
 import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
 import { tuyauxGenerator } from '../generators/tuyaux.js';
 import { lasersGenerator } from '../generators/lasers.js';
+import { intervallesGenerator, ensemblesGenerator, ensemblistesGenerator } from '../generators/intervalles.js';
+import { valeurAbsolueGenerator } from '../generators/valeurAbsolue.js';
+import { factorisationGenerator } from '../generators/factorisation.js';
+import { calculFractionsGenerator } from '../generators/calculFractions.js';
+import { racinesGenerator } from '../generators/racines.js';
+import { developpementGenerator } from '../generators/developpement.js';
+import { opposeRegleGenerator, opposeEnleverGenerator } from '../generators/oppose.js';
 import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
@@ -132,17 +149,24 @@ import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, binairoGenerator, colorierNombresGenerator, garamGenerator, sudokuGenerator,
+    kenkenGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
+    dingbatGenerator,
+    binairoGenerator, colorierNombresGenerator,
+    garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
     litteralPuissancesGenerator,
     // La balance n'a pas de générateur — elle a une activité. Sa fiche en a un.
-    balanceFicheGenerator,
+    // Les Serpents sont dans le même cas, et pour la même raison : le jeu se
+    // joue en coloriant, la fiche se fait au crayon.
+    balanceFicheGenerator, serpentsFicheGenerator, enqueteFicheGenerator,
+    treflesFicheGenerator, mosaiqueFicheGenerator,
     arrondiGenerator,
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
+    elementsGeometrieGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,
-    graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator,
+    graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator, pavageImageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, cubesGenerator,
     repereFicheGenerator,
@@ -171,7 +195,19 @@ import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator, hexagrilleFicheGenerator,
     tuyauxGenerator, pourcentagesGenerator,
-    perimetreTriangleGenerator, disqueGenerator, lasersGenerator
+    perimetreTriangleGenerator, disqueGenerator, lasersGenerator,
+    intervallesGenerator,
+    valeurAbsolueGenerator,
+    ensemblesGenerator,
+    ensemblistesGenerator,
+    factorisationGenerator,
+    calculFractionsGenerator,
+    racinesGenerator,
+    developpementGenerator,
+    // LE MOINS DEVANT LA PARENTHÈSE — deux générateurs pour deux activités qui
+    // existaient déjà : le QCM et la saisie ligne à ligne. Voir l'en-tête de
+    // `generators/oppose.js` : la première version les avait refaits à la main.
+    opposeRegleGenerator, opposeEnleverGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -401,6 +437,101 @@ registerActivity({
     // aujourd'hui comme demain, et le réglage n'est écrit qu'une fois.
     params: [REGLAGE_SAISIE],
     load: () => import('./kenken.js')
+});
+
+// LE STRIMKO — la même famille, et pourtant un autre exercice.
+//
+// RÉMY : « tu me fais le jeu strimko ».
+//
+// Même genre de réponse que le Mathdoku (`grid`), même saisie, même palette.
+// Ce qui change est ce qu'on demande à l'élève : le Mathdoku fait CALCULER
+// avant de déduire — une cage « 12× » occupe la tête pendant qu'on cherche où
+// la poser —, le Strimko ne demande aucun calcul. Il ne reste que la
+// déduction, toute nue. C'est l'exercice de raisonnement le plus dépouillé
+// qu'on puisse poser, et c'est pour cela qu'il marche avec ceux que le calcul
+// encombre.
+//
+// UNE GRILLE EST UN TRAVAIL FINI : `parDefaut: 3`, comme le Mathdoku. On ne
+// découpe pas « un demi-Strimko ».
+registerActivity({
+    id: 'strimko',
+    unite: 'grille',
+    parDefaut: 3,
+    label: 'Strimko',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [REGLAGE_SAISIE],
+    load: () => import('./strimko.js')
+});
+
+// L'APPROXDOKU — le troisième de la famille, et celui qui fait CALCULER.
+//
+// RÉMY : « et un approxdoku », avec la page d'Erich Friedman en capture.
+//
+// Les trois se ressemblent de loin — un carré latin, une grille, une palette —
+// et ne demandent pas du tout la même chose :
+//
+//   · le MATHDOKU fait calculer une cage, puis chercher où la poser ;
+//   · le STRIMKO ne fait rien calculer du tout, c'est de la déduction nue ;
+//   · l'APPROXDOKU fait calculer les DEUX CÔTÉS d'une chaîne et comparer — et
+//     il refuse l'égalité parfaite, ce qui oblige à calculer juste pour rater
+//     de un. C'est le seul des trois où les PRIORITÉS OPÉRATOIRES servent.
+//
+// UNE GRILLE EST UN TRAVAIL FINI : `parDefaut: 3`, comme ses deux voisins.
+registerActivity({
+    id: 'approxdoku',
+    unite: 'grille',
+    parDefaut: 3,
+    label: 'Approxdoku',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [REGLAGE_SAISIE],
+    load: () => import('./approxdoku.js')
+});
+
+// LE JARDIN — un Rows Garden en français, et le seul jeu du catalogue dont les
+// grilles sont COMPOSÉES D'AVANCE.
+//
+// RÉMY : « j'adore le jeu rows garden qui était souvent sur world of puzzles,
+// on pourrait le faire en français avec des mots de math ».
+//
+// PAS DE `REGLAGE_SAISIE` ICI, et c'est voulu : le réglage offre de remplir une
+// case en la touchant plutôt qu'en tapant, ce qui vaut pour quatre ou cinq
+// chiffres et ne vaut rien pour vingt-six lettres — il faudrait dix-sept appuis
+// pour un Q. Une case du jardin est toujours un champ.
+//
+// `parDefaut: 1` : un jardin est long. Trois d'affilée, c'est une heure.
+registerActivity({
+    id: 'jardin',
+    unite: 'grille',
+    parDefaut: 1,
+    label: 'Le Jardin',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [],
+    load: () => import('./jardin.js')
+});
+
+// LES DINGBATS — une expression cachée dans la FAÇON dont les mots sont posés.
+//
+// Rémy : « j'aimerais bien un jeu de dingbats, idéalement dans le thème
+// mathématique mais dans les réglages on peut avoir le choix ».
+//
+// `accepts: ['text']` ET RIEN D'AUTRE : un QCM tuerait le jeu — on reconnaîtrait
+// la bonne proposition sans avoir lu la disposition. On écrit ce qu'on lit.
+//
+// `parDefaut: 8` : une énigme se résout ou ne se résout pas, et il n'y a pas de
+// calcul derrière. Huit tiennent dans un quart d'heure, ce qui est la place
+// qu'un jeu de vocabulaire prend dans une heure.
+registerActivity({
+    id: 'dingbat',
+    unite: 'énigme',
+    parDefaut: 8,
+    label: 'Dingbats',
+    accepts: ['text'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [],
+    load: () => import('./dingbat.js')
 });
 
 // LE CIRCUIT D'EAU — un jeu qui ne demande rien à valider.
@@ -736,6 +867,12 @@ const legacy = [
     // Le tasuko se compte en GRILLES : une partie, c'est un découpage entier,
     // et rien ne se valide avant la dernière somme.
     ['tasuko', 'Tasuko — les sommes cachées', 'tasuko', 'engineTasuko', 'grille', 3],
+    // Les serpents se comptent aussi en GRILLES : une partie, c'est une grille
+    // entièrement remplie.
+    ['serpents', 'Les Serpents (longueurs imposées)', 'serpents', 'engineSerpents', 'grille', 3],
+    // Les croisés se comptent en CROIX : une partie, c'est une croix dont les
+    // deux calculs tombent juste.
+    ['croises', 'Les Croisés du Calcul', 'croises', 'engineCroises', 'croix', 4],
     // LES DÉFIS SE COMPTENT EN PARTIES GAGNÉES, pas en questions : une tour de
     // Brahma se finit ou ne se finit pas, et c'est le nombre de COUPS qui dit
     // la qualité — pas le nombre d'essais.
@@ -750,17 +887,31 @@ const legacy = [
     ['tour-brahma', 'La Tour de Hanoï', 'tourBrahma', 'engineTourBrahma', 'tour', 1],
     ['grenouilles', 'Les Grenouilles', 'grenouilles', 'engineGrenouilles', 'échange', 1],
     ['parking', 'Le Parking', 'parking', 'engineParking', 'échange', 1],
+    // UN CHAMP, UNE PARTIE. Chercher trois trèfles dans deux cents est un
+    // travail fini : on ne découpe pas « un demi-champ ». C'est le même
+    // raisonnement que la tour de Hanoï juste au-dessus.
+    ['trefles', 'Le Trèfle à Quatre Feuilles', 'trefles', 'engineTrefles', 'champ', 1],
     // L'embouteillage se compte en PARKINGS : une partie, c'est une voiture
     // rouge sortie. Trois suffisent — le niveau monte tout seul entre chaque,
     // donc trois parties, ce sont déjà trois marches.
     ['embouteillage', 'L\'Embouteillage', 'embouteillage', 'engineEmbouteillage', 'parking', 3],
     // Le pousseur se compte en ENTREPÔTS rangés, et le niveau monte entre chaque.
     ['pousseur', 'Le Pousseur', 'pousseur', 'enginePousseur', 'entrepôt', 3],
-    // LES PETITES AILES SE COMPTENT EN MONDES, depuis qu'il n'y a plus de
-    // nombres à avaler. Rémy : « on peut passer de monde à monde ». Il y en a
-    // six, et le compteur du bandeau est justement le but du jeu — « 2 / 6
-    // mondes » dit d'un coup d'œil où l'on en est.
-    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'monde', 6],
+    // LES PETITES AILES SE COMPTENT EN PARTIES, et plus en mondes.
+    //
+    // RÉMY : « pas besoin de 5/6 obligatoire c'est un jeu ».
+    //
+    // Six mondes comme unité, c'était six mondes À FRANCHIR — et le seuil de
+    // réussite (70 %) en exigeait CINQ. On demandait donc de traverser presque
+    // tout le jeu pour qu'une récréation compte comme faite. C'est un devoir
+    // déguisé en jeu, et c'est l'inverse de ce qu'il a demandé le jour où les
+    // nombres sont partis : « n'en fais pas un jeu mathématiques ».
+    //
+    // UNE PARTIE, comme la Tour de Hanoï, le Parking et la Pipopipette. Le
+    // compteur des mondes ne disparaît pas pour autant : il est DANS le jeu,
+    // sur son bandeau, où il est un but qu'on se donne et non une consigne
+    // qu'on subit.
+    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'partie', 1],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],
@@ -779,6 +930,11 @@ const legacy = [
     ['deuxmille', '2048 (doublements)', 'deuxmille', 'engineDeuxMille'],
     ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique', 'grille', 4],
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki', 'grille', 3],
+    // L'enquête se compte en ENQUÊTES : une partie, c'est un plan entièrement
+    // reconstitué PUIS le coupable nommé ; rien ne se valide avant.
+    ['enquete', 'L\'Enquête', 'enquete', 'engineEnquete', 'enquête', 3],
+    // La chute se compte en BRIQUES posées : une brique, une question.
+    ['chute-decimaux', 'La Chute des Décimaux', 'chuteDecimaux', 'engineChuteDecimaux', 'brique', 10],
     ['hexagrille', 'L\'Hexagrille (1 à 9, sommes fléchées)', 'hexagrille', 'engineHexagrille', 'grille', 3],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
@@ -865,3 +1021,75 @@ legacy.forEach(([id, label, file, fn, unite, parDefaut]) => {
     });
 });
 
+// --- CE QUI NE SE NOTE PAS --------------------------------------------------
+//
+// RÉMY : « comment juges-tu un exercice comme l'organigramme des quadrilatères
+// en mode évaluation ? Ma question générale est : est-ce que tous les exercices
+// sont vraiment évaluables ? »
+//
+// NON, ET C'EST MESURABLE. Une note compte des questions ratées ; une activité
+// qui ne peut RIEN rater rend 20 à qui la traverse. MESURÉ en cherchant, dans
+// chaque module, une tentative fausse qui ne soit pas marquée `partiel`
+// (`tools/tmp/notable3.mjs`) : 28 exercices sur 172, que voici.
+//
+// CE N'EST PAS UN DÉFAUT DE CES ACTIVITÉS. Ce sont des CONSTRUCTIONS et des
+// RÉFLEXIONS : l'organigramme se bâtit jusqu'à ce qu'il tienne, le pousseur se
+// recommence, les mots croisés se remplissent. « Raté » n'y veut rien dire, et
+// leur arracher une note donnerait précisément le 20 de participation qu'on
+// cherche à éviter. Elles gardent tout leur sens en entraînement, et elles
+// alimentent le bilan par compétence comme les autres.
+//
+// LA LISTE EST ICI, ET NULLE PART AILLEURS. Portée par chaque déclaration, elle
+// serait illisible ; `tests/exercicesNotables.test.mjs` la redérive du code à
+// chaque exécution, donc elle ne peut pas dériver en silence.
+const SANS_NOTE = [
+    'arpenteurs', 'balance', 'colorier-nombres', 'dedale', 'deuxmille', 'duel',
+    'embouteillage', 'grenouilles', 'mot-code', 'mots-croises', 'motscaches',
+    'parking', 'petites-ailes', 'pipopipette', 'pousseur', 'programme-construction',
+    'puissance4', 'pyramide', 'pyramide-nombres', 'quadrilateres', 'sans-croiser',
+    'serpent', 'sim', 'tableau-croise', 'tasuko', 'tetris', 'tour-brahma',
+    // LE CHAMP DE TRÈFLES EST UNE PAUSE : il n'y a rien à y rater. Cliquer
+    // à côté ne compte pas une faute — c'est l'œil qui passe, pas une erreur
+    // de mathématiques —, et le carnet d'erreurs n'en entend donc jamais
+    // parler. Un exercice qui ne peut RIEN rater rendrait 20 à qui le
+    // traverse : il se déclare ici au lieu de fausser une moyenne.
+    'trefles',
+    'trigo-cotes'
+];
+SANS_NOTE.forEach(id => declarerSansNote(id));
+
+// ET TROIS QUI DÉPENDENT DE LEUR RÉGLAGE. Les échecs, les dames et l'othello
+// notent en « mat en un, mat en deux » : un coup faux est un coup faux, et le
+// module le remonte comme tel. En « partie contre l'ordinateur » ou « à deux »,
+// il n'y a pas de bonne réponse — il y a un vainqueur. C'est le même exercice,
+// et il est notable ou non selon ce que le professeur a coché.
+['othello', 'dames', 'echecs'].forEach(id =>
+    declarerSansNote(id, (p) => p.mode === 'exercice'));
+
+
+// LA MOSAÏQUE DES TRANSFORMATIONS — « quelle est l'image de la pièce 5 ? »
+//
+// RÉMY, photo de sa fiche à l'appui : « je sais que l'on a déjà un exercice sur
+// les transformations mais tu pourrais refaire ce pavage et poser différentes
+// questions et si l'élève se trompe, lui compter faux mais aussi montrer la
+// transformation ».
+//
+// CE N'EST PAS LE MÊME EXERCICE QUE « LE PAVAGE » (`symetrie-element`), et il
+// le dit lui-même. Là-bas on montre DEUX pièces et l'on demande par rapport à
+// quoi elles sont symétriques ; ici on donne UNE pièce et UNE transformation,
+// et l'on demande où elle tombe. La première question se résout en comparant
+// deux dessins, la seconde oblige à suivre une figure de tête — c'est plus
+// difficile, et c'est ce qu'un contrôle demande.
+//
+// UNE QUESTION EST UNE QUESTION : `unite: 'question'`, et pas une grille
+// entière comme un Strimko. L'élève touche une pièce, et c'est fini.
+registerActivity({
+    id: 'pavage-image',
+    unite: 'question',
+    parDefaut: 6,
+    label: 'La mosaïque des transformations',
+    accepts: ['piece'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [],
+    load: () => import('./pavageImage.js')
+});

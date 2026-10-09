@@ -21,6 +21,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     PISTES, pisteParId, lirePiste, etatDepart, coupsPossibles, jouer,
     cheminOptimal, conseil, expliquerCoup, VITESSE_MAX
@@ -168,7 +169,7 @@ class CourseVecteurs extends BaseGame {
                 }
                 .cv-avant[hidden] { display: none; }
                 .cv-avant-nom {
-                    font-weight: 900; font-size: clamp(1.1rem, 5cqw, 1.9rem); color: var(--primary);
+                    font-weight: 900; font-size: clamp(1.1rem, 5cqw, 1.9rem); color: var(--primary-texte);
                 }
                 .cv-avant-mot {
                     font-size: clamp(.9rem, 3.4cqw, 1.15rem); line-height: 1.45;
@@ -275,7 +276,9 @@ class CourseVecteurs extends BaseGame {
                     font-size: clamp(.85rem, 3cqh, 1.3rem); font-weight: 800; line-height: 1;
                     -webkit-tap-highlight-color: transparent;
                 }
-                .cv-touche-acc:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .cv-touche-acc:hover { background: var(--bg-hover); }
+                }
                 .cv-touche-acc:active { transform: scale(.93); }
                 /* LA PASTILLE DE LA TOUCHE — la jumelle de celle qu'on voit
                    sur la piste. Même couleur, même rôle : celle qu'on touche
@@ -311,7 +314,9 @@ class CourseVecteurs extends BaseGame {
                     border-radius: 10px; padding: 5px 12px; font-weight: 700; cursor: pointer;
                     font-size: inherit; -webkit-tap-highlight-color: transparent;
                 }
-                .cv-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .cv-btn:hover { background: var(--bg-hover); }
+                }
                 .cv-select { font: inherit; padding: 4px 8px; border-radius: 10px;
                     border: 2px solid var(--border); background: var(--bg-panel); color: var(--text-main); }
             </style>
@@ -652,34 +657,44 @@ class CourseVecteurs extends BaseGame {
         const fin = () => {
             cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null;
         };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, fin, { rangementSeul: true });
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Une course sur papier quadrillé. La voiture GARDE sa vitesse d\'un tour sur '
-            + 'l\'autre : je ne choisis que comment la changer, d\'une case au plus.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
+        // UNE IDÉE PAR BULLE : la conséquence (« donc je freine avant le virage »)
+        // devient sa propre bulle au lieu d'allonger la première. Au-delà de 110
+        // caractères, la bulle se lit si longtemps qu'on croit la démonstration
+        // plantée — la règle est dans `js/core/activities/choice.js`.
+        cur.say('Une course sur papier quadrillé : la voiture GARDE sa vitesse d\'un tour sur l\'autre.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Les neuf points sont mes neuf arrivées possibles. Les rouges m\'enverraient '
-            + 'dans le décor : je les vois AVANT de jouer.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Je ne choisis que comment la changer, d\'une case au plus.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        if (!await robot.tour()) return fin();
+        cur.say('Les neuf points sont mes neuf arrivées possibles. Les rouges m\'enverraient dans le décor.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let tour = 0; tour < 8 && !this.fini; tour++) {
-            if (this.gelDemo) { if (!await cur.pause(400)) return fin(); tour--; continue; }
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (this.gelDemo) { if (!await robot.pause(400)) return fin(); tour--; continue; }
+            if (!await robot.tour()) return fin();
             const c = conseil(this.piste, this.moi.etat);
             cur.say(expliquerCoup(this.moi.etat, c), this.svg);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             const cible = this.svg.querySelector(`[data-coup="${c.ax},${c.ay}"]`);
             if (cible && !await cur.tap(cible, 380)) return fin();
             this.tenter(c.ax, c.ay);
             if (this.moi && this.moi.robot) this.jouerRobot();
-            if (!await cur.pause(320) || !this.isRunning) return fin();
+            if (!await robot.pause(320)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Le carré des neuf points s\'éloigne à mesure qu\'on accélère : c\'est pour ça '
-            + 'qu\'il faut freiner AVANT le virage, jamais dedans.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Le carré des neuf points s\'éloigne à mesure qu\'on accélère.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        if (!await robot.tour()) return fin();
+        cur.say('Donc je freine AVANT le virage, jamais dedans.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

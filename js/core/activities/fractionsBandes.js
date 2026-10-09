@@ -28,7 +28,9 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
+import { eteindreSansPerdreLeFoyer } from '../foyerDeLaSaisie.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
@@ -169,7 +171,14 @@ export function mount(container, session, opts = {}) {
 
     function majValider() {
         const btn = container.querySelector('[data-valider]');
-        if (btn) btn.disabled = Object.keys(cases).some(n => !valeurs[n]);
+        // LE BOUTON S'ÉTEINT SANS EMPORTER LE FOYER — voir
+        // `core/foyerDeLaSaisie.js`. MESURÉ ICI AUSSI, et Rémy ne l'avait pas
+        // encore signalé : sur « L'Égalité à Compléter », après « Valider », le
+        // foyer tombait sur `<body>` et le clavier devenait muet pour le reste
+        // de la question. Le défaut qu'il a vu sur « Enlever les parenthèses »
+        // vivait donc à deux endroits, et la même ligne ferme les deux.
+        eteindreSansPerdreLeFoyer(btn,
+            Object.keys(cases).some(n => !valeurs[n]), container, session.locked);
     }
 
 
@@ -506,37 +515,40 @@ export function mount(container, session, opts = {}) {
     async function runDemo(item, scene) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const sceneEl = container.querySelector('.fb-scene');
         cursor.say('Les deux bandes font la même longueur. Je cherche en combien la seconde '
             + 'est coupée.', sceneEl || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
 
         for (const pas of (scene.demo || [])) {
             const c = cases[pas.nom];
             if (!c) continue;
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             selectionner(pas.nom);
             if (pas.dit) {
                 cursor.say(pas.dit, c.el);
-                if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+                if (!await robot.pause(DEMO_SPEED.settle)) return;
             }
-            if (!await cursor.tap(c.el, 380) || destroyed) return;
+            if (!await robot.toucher(c.el, 380)) return;
             const cible = String(c.attendu);
             for (let i = 0; i < cible.length; i++) {
                 poser(pas.nom, cible.slice(0, i + 1));
-                if (!await cursor.pause(200) || destroyed) return;
+                if (!await robot.pause(200)) return;
             }
             c.el.classList.add('fb-case--juste');
         }
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         if (scene.reussi) scene.reussi();
-        cursor.say(item.explanation || 'Et voilà : la longueur n\'a pas bougé.',
+        // L'EXPLICATION VIENT DU GÉNÉRATEUR : rien ne garantit qu'elle tienne
+        // en une bulle, et elle grandira sans que personne relise cette ligne.
+        cursor.say(enUneBulle(item.explanation, 'Et voilà : la longueur n\'a pas bougé.'),
             sceneEl || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

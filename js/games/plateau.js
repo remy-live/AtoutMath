@@ -27,6 +27,7 @@ import * as echecs from '../core/echecs.js';
 import { critiquer, defense, nommerCoup, estMat, preparer } from '../core/mat.js';
 import { POSITIONS_MAT, FAMILLES_MAT, COMBIEN_MAT } from '../data/matProblemes.js';
 import { pieceSvg } from '../ui/piecesEchecs.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 // LE SÉLECTEUR DE VARIANTE ︎ N'EST PAS DÉCORATIF.
 //
@@ -189,7 +190,9 @@ class Plateau extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .pl-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pl-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* LA SCÈNE NE PREND QUE LA PLACE DU DAMIER. En « flex: 1 » elle
                    occupait toute la hauteur restante et centrait le damier
@@ -338,7 +341,9 @@ class Plateau extends BaseGame {
                     border: 2px solid var(--border); border-radius: 11px;
                     background: ${co.claire};
                 }
-                .pl-promo-btn:hover { border-color: #2563eb; transform: translateY(-2px); }
+                @media (hover: hover) {
+                    .pl-promo-btn:hover { border-color: #2563eb; transform: translateY(-2px); }
+                }
                 .pl-promo-btn .pl-glyphe { font-size: clamp(24px, 7cqw, 40px); }
                 .pl-promo-btn small { font-size: .7rem; font-weight: 700; color: #3f3222; }
 
@@ -779,31 +784,32 @@ class Plateau extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.damierEl);
         this.demoGate = gate;
-        const fin = () => { cur?.destroy(); gate?.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         for (const b of this.ad.bulles) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(b, this.damierEl);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
         }
 
         // L'ordinateur contre lui-même, quelques coups : on voit la partie
         // respirer avant d'y toucher.
         for (let i = 0; i < 6 && !this.finie && this.isRunning; i++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const r = meilleurCoup(this.ad.module, this.etat, { profondeur: 1, rng: this.rng });
             if (!r) break;
             const cible = this.casesDuCoup(r.coup)[this.ad.id === 'othello' ? 0 : 1];
             const el = cible != null && this.caseEl(cible % this.ad.taille, Math.floor(cible / this.ad.taille));
             if (el && !await cur.tap(el)) return fin();
             this.jouerCoup(r.coup);
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('À toi : chaque coup se prépare un coup d\'avance.', this.damierEl);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

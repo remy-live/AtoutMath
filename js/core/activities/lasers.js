@@ -27,6 +27,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 import {
     VIDE, MUR, MINE, MIROIRS, PAS, tracer, poserMiroir, miroirsPoses, ditLeReste
 } from '../lasers.js';
@@ -360,7 +361,8 @@ export function mount(container, session) {
         if (!cursor) cursor = createDemoCursor();
         cursor.protegerZone(container.querySelector('.la-board'));
         const gate = createDemoGate(container.querySelector('.la-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
         // LE PRINCIPE D'ABORD, EN UNE PHRASE. Rémy : « de manière générale, il
         // faut que le texte du robot soit très court. Et qu'il explique le
@@ -368,11 +370,11 @@ export function mount(container, session) {
         // bulle de trois lignes est sautée, et le robot n'a plus rien montré.
         cursor.say('Un miroir fait tourner le rayon d’un quart de tour.',
             container.querySelector('.la-board'));
-        if (!await cursor.pause(1200) || destroyed) return fin();
+        if (!await robot.pause(1200)) return fin();
         while (!destroyed) {
             const i = prochaineCase();
             if (i < 0) break;
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const el = container.querySelector(`.la-case[data-i="${i}"]`);
             if (!el) return fin();
             const vise = g.solution[i];
@@ -383,18 +385,18 @@ export function mount(container, session) {
             // Le robot appuie autant de fois qu'il faut pour arriver au bon
             // sens : c'est le geste de l'élève, montré tel quel.
             for (let k = 0; k < 3 && g.cases[i] !== vise; k++) {
-                if (!await cursor.tap(el, 340) || destroyed) return fin();
+                if (!await robot.toucher(el, 340)) return fin();
                 const res = poserMiroir(g, i);
                 if (!res.refus) g = { ...g, cases: res.cases };
                 peindre();
-                if (!await cursor.pause(280) || destroyed) return fin();
+                if (!await robot.pause(280)) return fin();
             }
-            if (!await cursor.pause(600) || destroyed) return fin();
+            if (!await robot.pause(600)) return fin();
         }
         fin();
         if (destroyed) return;
         container.querySelector('.la-board').classList.add('la-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

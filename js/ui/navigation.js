@@ -1,46 +1,41 @@
-import { exercices, domaines, filterByStatus, statusOf, estADeux, STATUS, STATUS_LABELS } from '../data/catalog.js';
+import { exercices, domaines, filterByStatus, statusOf, estADeux, seJoueAussiADeux, STATUS, STATUS_LABELS } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import { clearEngines } from '../core/timers.js';
 import { destroyAllDemoCursors } from '../core/demoPointer.js';
 import { accessOf, lockLabel, isGame } from '../core/gameAccess.js';
 import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
-import { correspond } from '../core/recherche.js';
+import { chercher, decouper } from '../core/recherche.js';
 import { estJeuCatalogue } from '../core/revue.js';
 import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
+import { montrerApercu, fermerApercu, laisserPartir, retenir, glissementEnCours } from './apercuTiroir.js';
+import { pendantLeGlissement, arreterLeDefilement, brancherDefilementGlisse }
+    from './defilementGlisse.js';
 
-// L'APERÇU AU SURVOL, ET SA MISE À MORT.
+// L'APERÇU DU CATALOGUE VIT DANS SON PROPRE MODULE.
 //
-// `clearEngines()` ne coupe que les minuteurs déclarés par `regInterval` — les
-// jeux historiques ouvrent les leurs directement, et y survivaient. On quittait
-// une carte, la vignette se cachait, mais la course continuait de rafraîchir un
-// tableau de bord que la vignette suivante venait d'effacer : une erreur par
-// seconde dans la console, jusqu'au rechargement de la page.
-//
-// On garde donc l'instance et on la DÉTRUIT. Le jeton règle le cas de celui qui
-// passe vite : quand l'aperçu finit de monter alors que la souris est déjà
-// repartie, il est détruit à l'arrivée au lieu de rester en fond.
-let apercuSurvol = null;
-let jetonSurvol = 0;
-
-function couperApercuSurvol() {
-    jetonSurvol++;
-    const h = apercuSurvol;
-    apercuSurvol = null;
-    if (h && typeof h.destroy === 'function') {
-        try { h.destroy(); } catch (e) { /* déjà démonté */ }
-    }
-    clearEngines();
-}
+// Il ne s'agit plus d'une vignette qui suit la souris : elle s'épingle, elle se
+// ferme, et elle se taille sur le jeu qu'elle montre. Trois règles qui tiennent
+// ensemble et qu'on relit d'un bloc — voir `apercuTiroir.js`.
 
 export function createLibraryItem(exo) {
     const item = document.createElement('div');
     item.className = 'exo-list-item';
-    item.style.display = 'flex';
-    item.style.justifyContent = 'space-between';
-    item.style.alignItems = 'center';
-    item.style.gap = '6px';
+    // CETTE LIGNE SE PREND AU CLAVIER, depuis le champ de recherche : ↓ y entre,
+    // les flèches la parcourent, Entrée l'ajoute. Rémy : « quand on appuie sur
+    // entrée il faudrait que la liste arrive dans l'arbre en dessous ».
+    //
+    // `tabIndex = -1` ET PAS 0 : le focus se donne par programme, mais la ligne
+    // n'entre pas dans l'ordre de tabulation. À 217 exercices, elle y mettrait
+    // 217 arrêts entre le champ de recherche et le reste de la page.
+    item.tabIndex = -1;
+    // L'identifiant voyage sur la ligne : le clavier retrouve l'exercice sans
+    // qu'on ait à garder une table en mémoire, qui se périmerait à la frappe
+    // suivante puisque la liste est redessinée en entier.
+    item.dataset.exo = exo.id;
+    // La mise en page vit dans la feuille de style, et pas ici : une hauteur de
+    // rangee fixee en CSS que quatre styles en ligne contredisent ne tient pas.
 
     // Œil d'aperçu : sur un écran tactile, il n'y a ni survol ni appui long
     // fiable — ce bouton est le seul moyen de voir l'exercice avant de
@@ -55,8 +50,7 @@ export function createLibraryItem(exo) {
     btnEye.onclick = (e) => {
         e.stopPropagation();
         if (!state.isTeacherMode) return;
-        couperApercuSurvol();
-        document.getElementById('hover-demo-box').style.display = 'none';
+        fermerApercu({ force: true });
         openGameLayer(exo, true);
     };
     item.appendChild(btnEye);
@@ -76,10 +70,27 @@ export function createLibraryItem(exo) {
         item.appendChild(cadeau);
     }
 
+    // LE TITRE SE COUPE, ET RESTE LISIBLE AUTREMENT. Un titre de 47 caracteres
+    // dans une colonne de 320 px tenait sur deux lignes ; l'infobulle et
+    // l'apercu epingle le rendent en entier quand on en a besoin.
     const titleSpan = document.createElement('span');
-    titleSpan.textContent = exo.title;
-    titleSpan.style.flex = '1';
-    titleSpan.style.minWidth = '0';
+    titleSpan.className = 'exo-item-titre';
+    // LE GRAS MARQUE CE QU'ON VIENT DE TAPER, et l'œil retrouve sa saisie dans
+    // la ligne sans relire le titre entier. C'est la seconde chose que faisait
+    // la boîte flottante de suggestions et que la liste ne faisait pas — la
+    // première étant le classement. Les deux sont ici maintenant ; la boîte
+    // n'avait plus rien à elle.
+    //
+    // `decouper` rend le titre d'ORIGINE, accents compris : il compare sur la
+    // forme sans accents mais ne rend jamais « Geometrie » à l'écran.
+    const q = (state.searchQuery || '').trim();
+    if (q) {
+        titleSpan.innerHTML = decouper(exo.title, q)
+            .map((m) => m.fort ? `<b>${echapper(m.texte)}</b>` : echapper(m.texte)).join('');
+    } else {
+        titleSpan.textContent = exo.title;
+    }
+    titleSpan.title = exo.title;
     item.appendChild(titleSpan);
 
     const btnAdd = document.createElement('button');
@@ -96,20 +107,46 @@ export function createLibraryItem(exo) {
         e.stopPropagation();
         if (!state.isTeacherMode) return;
         // Une étape est une référence à l'exercice, pas une copie de celui-ci.
+        // UN CLIC, UN AVIS.
+        //
+        // Il y en avait DEUX, qui disaient la même chose à une seconde
+        // d'intervalle : celui-ci (« « X » ajouté au parcours ») et celui que
+        // `addStep` pose lui-même (« X ajouté — clique dessus pour le
+        // régler. »). MESURÉ : trois ajouts de suite empilaient six avis sur
+        // 314 pixels de haut, qui recouvraient la colonne du parcours — le
+        // professeur venait d'ajouter trois exercices et ne pouvait plus
+        // relire ce qu'il avait fait.
+        //
+        // C'est celui d'`addStep` qu'on garde : il dit le GESTE suivant, pas
+        // seulement le fait. Et il paraît sur téléphone comme ailleurs, donc
+        // la raison d'être de celui-ci — « sur téléphone la colonne est hors
+        // de vue, sans retour l'ajout semble muet » — reste servie.
         import('./builder.js').then(module => module.addStep(exo.id));
-        // Sur téléphone, la colonne du parcours est hors de vue quand on
-        // parcourt le catalogue : sans ce retour, l'ajout semblait muet.
-        import('./modal.js').then(m => m.showToast(`« ${exo.title} » ajouté au parcours`, 'success'));
     };
     item.appendChild(btnAdd);
 
     // Interaction Éditeur vs Élève
     item.draggable = true;
+    // Le défilement pendant le glissement se branche sur le DOCUMENT, une fois
+    // pour toutes : l'API HTML5 n'envoie `dragover` qu'aux éléments qui
+    // l'acceptent, et l'on veut défiler où que le curseur passe.
+    brancherDefilementGlisse();
     item.ondragstart = (e) => {
         if(!state.isTeacherMode) { e.preventDefault(); return; }
         e.dataTransfer.setData('text/plain', exo.id);
-        couperApercuSurvol(); document.getElementById('hover-demo-box').style.display = 'none';
+        // DÉSARMER LE MINUTEUR, PAS SEULEMENT FERMER. `fermerApercu` ne fermait
+        // rien du tout — la vignette n'était pas encore ouverte — et le minuteur
+        // de survol, lui, continuait de courir : il l'ouvrait à 500 ms, en plein
+        // glisser, par-dessus la colonne où l'on voulait déposer. Voir
+        // `glissementEnCours`, qui raconte la suite.
+        clearTimeout(hoverTimer);
+        glissementEnCours(true);
     };
+
+    // PENDANT UN GLISSER, LE NAVIGATEUR SE TAIT. Ni `mouseleave` ni `mouseenter`
+    // n'arrivent tant que le geste dure ; `dragend`, lui, arrive toujours — que
+    // l'on ait déposé ou renoncé. C'est donc lui qui rend l'aperçu au survol.
+    item.ondragend = () => { glissementEnCours(false); };
 
     // PAS D'APERÇU AU DOIGT DEPUIS LA BIBLIOTHÈQUE. Un appui d'une demi-seconde
     // — un doigt qui s'attarde, un défilement qui démarre avant que `touchmove`
@@ -123,62 +160,46 @@ export function createLibraryItem(exo) {
     // Pointer Events — fantôme sous le doigt, dépôt sur la colonne du milieu.
     enableTouchDragToPath(item, () => import('./builder.js').then(m => m.addStep(exo.id)));
 
+    // CLIQUER ÉPINGLE L'APERÇU — le geste que le relecteur demandait : « au clic
+    // sur la vignette, l'aperçu doit rester actif pour un test rapide ». Une
+    // vignette épinglée ne part plus qu'à la croix, et l'on peut y jouer.
+    //
+    // Côté élève, le clic ouvre le jeu en plein écran : lui n'a pas de parcours
+    // à construire, il n'a rien à comparer, il veut jouer.
     item.onclick = () => {
-        if(!state.isTeacherMode) {
-            // Clic Élève = Ouvre le jeu en plein écran, MODE JOUABLE FIRST
-            openGameLayer(exo, false);
-        }
+        if (!state.isTeacherMode) { openGameLayer(exo, false); return; }
+        if (!matchMedia('(hover: hover)').matches) return;   // au doigt, c'est l'œil
+        clearTimeout(hoverTimer);
+        montrerApercu(exo, item, { epingler: true });
     };
 
-    // Hover -> Auto Demo Teacher (Desktop)
+    // SURVOLER RESTE SURVOLER. Avec 172 exercices au catalogue, remplacer le
+    // coup d'œil par un clic transformerait un balayage en 172 clics.
+    //
     // Réservé aux pointeurs qui survolent vraiment : une tablette fabrique un
     // `mouseenter` au moment du contact, si bien qu'un simple appui déclenchait
     // la vignette — et `mouseleave` n'arrivant qu'au prochain appui ailleurs,
     // elle restait affichée.
     let hoverTimer;
-    item.onmouseenter = (e) => {
-        if(!state.isTeacherMode) return;
-        if(!matchMedia('(hover: hover)').matches) return;
-        hoverTimer = setTimeout(() => {
-            const hdBox = document.getElementById('hover-demo-box');
-            document.getElementById('hd-title').textContent = exo.title;
-            
-            // Positionnement intelligent
-            const rect = item.getBoundingClientRect();
-            const hdHeight = 280; // Correspond au css height
-            let topPos = rect.top - 20;
-            
-            // Si ça dépasse en bas
-            if (topPos + hdHeight > window.innerHeight) {
-                topPos = window.innerHeight - hdHeight - 20;
-            }
-            // Si ça dépasse en haut
-            if (topPos < 20) topPos = 20;
-
-            hdBox.style.top = `${topPos}px`;
-            hdBox.style.left = `${rect.right + 20}px`;
-            hdBox.style.display = 'flex';
-
-            // Aperçu autonome dans la vignette : aucune donnée n'est
-            // enregistrée, et le robot joue en muet — ses bulles couvriraient
-            // la page entière.
-            const jeton = ++jetonSurvol;
-            launchPreview(exo, document.getElementById('hover-demo-canvas'), null, { muet: true })
-                .then(h => {
-                    if (jeton !== jetonSurvol) {
-                        if (h && typeof h.destroy === 'function') h.destroy();
-                        return;
-                    }
-                    apercuSurvol = h;
-                });
-        }, 500);
+    item.onmouseenter = () => {
+        if (!state.isTeacherMode) return;
+        if (!matchMedia('(hover: hover)').matches) return;
+        retenir();          // on revient : la sortie en cours est annulée
+        // ON DÉSARME AVANT DE RÉARMER. Deux `mouseenter` de suite sans
+        // `mouseleave` entre les deux — cela arrive dès qu'un événement est
+        // synthétisé, et c'est arrivé sous la sonde — perdaient la poignée du
+        // premier minuteur : plus personne ne pouvait l'annuler, et il ouvrait
+        // la vignette une demi-seconde plus tard, en dehors de tout survol.
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => montrerApercu(exo, item), 500);
     };
 
     item.onmouseleave = () => {
         clearTimeout(hoverTimer);
-        document.getElementById('hover-demo-box').style.display = 'none';
-        couperApercuSurvol();     // détruit l'instance, pas seulement ses minuteurs déclarés
-        destroyAllDemoCursors();  // ... et balaie sa flèche et sa bulle
+        // ON NE FERME PAS SÈCHEMENT : le curseur est peut-être en route vers la
+        // vignette, à vingt pixels de là. `laisserPartir` accorde ce temps-là,
+        // et ne ferme rien du tout si la vignette est épinglée.
+        laisserPartir();
     };
 
     return item;
@@ -211,6 +232,7 @@ function enableTouchDragToPath(item, auDepot) {
     const cleanup = () => {
         clearTimeout(armTimer); armTimer = null;
         dragging = false; start = null;
+        arreterLeDefilement();
         if (ghost) { ghost.remove(); ghost = null; }
         const box = pathBox();
         if (box) box.classList.remove('drag-over');
@@ -250,6 +272,10 @@ function enableTouchDragToPath(item, auDepot) {
         }
         ghost.style.left = `${e.clientX - ghost.offsetWidth / 2}px`;
         ghost.style.top = `${e.clientY - 24}px`;
+        // ON FAIT DÉFILER SOUS LE DOIGT. Sans cela, on ne peut déposer que sur
+        // ce qui est déjà à l'écran — et comme lâcher DÉPOSE, il faudrait
+        // d'abord déposer au mauvais endroit pour aller voir plus loin.
+        pendantLeGlissement(e.clientX, e.clientY);
         const box = pathBox();
         if (box) {
             const r = box.getBoundingClientRect();
@@ -287,12 +313,38 @@ function statusBadge(exo) {
     return `<span class="tag tag-btn tag-status tag-status--${s}">${STATUS_LABELS[s]}</span>`;
 }
 
-// Le catalogue se resserre avec EXACTEMENT la règle des suggestions : sans
-// accents, mot à mot, la consigne en dernier recours. Deux règles différentes
-// donneraient le spectacle absurde d'une suggestion visible au-dessus d'un
-// catalogue qui prétend n'avoir rien trouvé.
-function matchesSearch(exo, query) {
-    return correspond(ficheDe(exo), query);
+/**
+ * LA RECHERCHE NE FILTRE PLUS SEULEMENT, ELLE CLASSE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * MESURÉ AVANT (tools/leTrajetDuProf.mjs) : en tapant « addition », les trois
+ * premières lignes du catalogue étaient « Les Nombres des Pharaons », « Le Mot
+ * Juste » et « Nombres Relatifs ». Le premier titre contenant le mot arrivait
+ * en QUATRIÈME position. Ces trois-là répondent bien — leur consigne parle
+ * d'addition — mais un professeur ne lit pas les vingt-sept résultats : il lit
+ * les trois premiers et conclut que la recherche ne marche pas.
+ *
+ * LE CLASSEMENT EXISTAIT DÉJÀ, et c'est bien le problème : il ne servait que
+ * la petite liste flottante, celle-là même qui recouvrait cinq lignes du
+ * catalogue en montrant les mêmes exercices. Rémy : « quand on appuie sur
+ * entrée il faudrait que la liste arrive dans l'arbre en dessous non ». Elle y
+ * arrive — il ne lui manquait que l'ordre.
+ *
+ * L'ENSEMBLE NE CHANGE PAS, SEULEMENT L'ORDRE. `chercher` écarte une fiche dès
+ * qu'un mot n'y marque aucun point, ce qui est mot pour mot la règle de
+ * `correspond` : les deux gardent les mêmes exercices. On ne risque donc pas
+ * de faire disparaître un résultat en le triant — et le compte « 27 sur 217 »
+ * reste juste.
+ */
+function classerParPertinence(list, query) {
+    // `chercher` rend l'OBJET FICHE qu'on lui a passé, et `ficheDe` le garde en
+    // cache : la même fiche pour le même exercice. La table tient donc sur
+    // l'identité, sans avoir à recomparer des identifiants.
+    const parFiche = new Map(list.map((e) => [ficheDe(e), e]));
+    return chercher([...parFiche.keys()], query, { max: Infinity })
+        .map((r) => parFiche.get(r.fiche))
+        .filter(Boolean);
 }
 
 export function getFilteredExercises() {
@@ -306,12 +358,101 @@ export function getFilteredExercises() {
         list = list.filter(e => e.tags.niveaux && e.tags.niveaux.some(n => state.selectedNiveaux.includes(n)));
     }
     if (state.aDeuxSeuls) {
-        list = list.filter(e => estADeux(e));
+        // LE FILTRE RÉPOND À LA QUESTION DU PROFESSEUR — « je cherche une
+        // activité à faire en binôme » — et non à celle de l'élève seul. Il
+        // montre donc aussi les six jeux de plateau, qui se jouent à deux sans
+        // y être obligés. Cacher le Puissance 4 à qui cherche un jeu pour deux
+        // n'aurait aucun sens.
+        list = list.filter(e => seJoueAussiADeux(e));
     }
-    if (state.searchQuery) {
-        list = list.filter(e => matchesSearch(e, state.searchQuery));
+    if (state.searchQuery && state.searchQuery.trim()) {
+        list = classerParPertinence(list, state.searchQuery);
     }
     return list;
+}
+
+/**
+ * TOUT LE CATALOGUE VISIBLE PAR CE RÔLE — avant les filtres du professeur.
+ *
+ * C'est le dénominateur : « 140 exercices SUR 172 ». Il ne compte pas les
+ * brouillons pour un élève, parce qu'ils n'existent pas pour lui.
+ */
+/** Ce que le professeur a tapé se pose dans du HTML : on l'échappe. */
+const echapper = (t) => String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function catalogueEntier() {
+    return filterByStatus(exercices, {
+        only: state.catalogFilter, teacher: state.isTeacherMode
+    });
+}
+
+/**
+ * DIRE CE QUE LES FILTRES GARDENT, ET COMMENT LES DÉFAIRE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * Rémy : « il faudrait des filtres pour afficher moins d'infos (surtout que
+ * puisque tu rajoutes un jeu par jour, ça va vite faire beaucoup) ».
+ *
+ * MESURÉ. 172 exercices ; l'arbre entièrement déplié fait 9 076 pixels dans
+ * une fenêtre de 595 — quinze écrans de défilement. Cocher « 6ème » ramène la
+ * liste de 172 à 140 lignes, et RIEN à l'écran ne le dit : ni le nombre, ni le
+ * filtre qui l'a fait. Le mot « 6ème » est écrit dans un menu replié.
+ *
+ * LE VRAI DÉGÂT N'EST PAS DE NE PAS SAVOIR : c'est de chercher. Un filtre coché
+ * la semaine dernière et oublié fait chercher un exercice qui est là, et l'on
+ * finit par croire qu'il n'existe pas. Une ligne qui dit « 140 sur 172 » et
+ * nomme ce qui manque coûte trois centimètres et supprime cette recherche.
+ *
+ * ET ELLE OFFRE LA SORTIE. « Tout afficher » défait tout d'un geste — le
+ * niveau, le duo, la recherche — au lieu de faire rouvrir trois menus.
+ */
+export function majCompteCatalogue() {
+    const el = document.getElementById('catalogue-compte');
+    if (!el) return null;
+
+    const total = catalogueEntier().length;
+    const gardes = getFilteredExercises().length;
+
+    const niveaux = (state.selectedNiveaux || []).slice();
+    const recherche = (state.searchQuery || '').trim();
+    const duo = !!state.aDeuxSeuls;
+    const actifs = niveaux.length + (recherche ? 1 : 0) + (duo ? 1 : 0);
+
+    // RIEN DE FILTRÉ : on ne dit rien. Un « 172 sur 172 » permanent est du
+    // bruit, et l'on cesse de lire une ligne qui ne change jamais.
+    if (!actifs) { el.hidden = true; el.innerHTML = ''; return { total, gardes, actifs }; }
+
+    // On NOMME ce qui filtre : « 6ème », « à deux », « “fraction” ». Dire
+    // seulement « 3 filtres actifs » obligerait à les rouvrir pour savoir
+    // lesquels — c'est-à-dire le geste qu'on veut éviter.
+    const quoi = [];
+    if (niveaux.length) quoi.push(niveaux.join(', '));
+    if (duo) quoi.push('à deux');
+    if (recherche) quoi.push(`« ${recherche} »`);
+
+    const mot = gardes > 1 ? 'exercices' : 'exercice';
+    el.hidden = false;
+    el.innerHTML = `<span class="cat-compte-nb">${gardes} ${mot}</span>`
+        + `<span class="cat-compte-sur"> sur ${total}</span>`
+        + `<span class="cat-compte-quoi"> · ${quoi.map(echapper).join(' · ')}</span>`
+        + ` <button type="button" class="cat-compte-tout" data-tout-afficher>Tout afficher</button>`;
+
+    const bouton = el.querySelector('[data-tout-afficher]');
+    if (bouton) bouton.onclick = () => {
+        state.selectedNiveaux = [];
+        state.aDeuxSeuls = false;
+        state.searchQuery = '';
+        // Le champ de recherche porte le texte : le vider dans l'état sans le
+        // vider à l'écran laisserait un mot écrit qui ne filtre plus rien.
+        const champ = document.getElementById('sidebar-search-input');
+        if (champ) champ.value = '';
+        const croix = document.getElementById('sidebar-search-clear');
+        if (croix) croix.hidden = true;
+        refreshCatalogViews();
+    };
+    return { total, gardes, actifs };
 }
 
 /** Ce que la recherche doit rafraîchir derrière elle, à chaque frappe. */
@@ -319,6 +460,7 @@ export function refreshCatalogViews() {
     initAccordion();
     renderDrilldown();
     initGridFilters();
+    majCompteCatalogue();
 }
 
 // Un exercice "appartient" au noeud `path` si les premiers segments de son
@@ -360,35 +502,82 @@ function getNodeSubKeys(filtered, path) {
 }
 
 /**
- * La bascule « Domaines / Chapitres » au-dessus de l'arbre.
+ * LA BASCULE DU RANGEMENT VIT DANS LE FIL D'ARIANE, qui la nomme déjà.
+ *
+ * Rémy, devant la colonne de gauche : « tu penses pas que ça, ça pourrait être
+ * optimisé, ça prend de la place quand même ne code rien ».
+ *
+ * MESURÉ : 287 px passaient avant le premier exercice sur un écran de 1440 ×
+ * 900, soit SIX exercices de 48 px, pour 512 px de catalogue. Or le bandeau
+ * gris écrit déjà « Domaines » ou « Chapitres » à la racine : une bande de deux
+ * boutons qui répétait cela dix pixels plus haut coûtait 46 px pour ne rien
+ * apprendre. Elle est donc devenue une pastille DANS ce bandeau, là où son
+ * effet est nommé. Mesuré après : 182 px, deux exercices de plus à l'écran.
+ *
+ * ELLE NE DIT PAS OÙ L'ON EST, ELLE DIT OÙ L'ON VA. Deux boutons montraient
+ * l'état ; une pastille unique doit montrer la DESTINATION, sinon on clique sur
+ * « Domaines » en étant déjà dans les domaines. Elle porte donc le nom de
+ * l'AUTRE rangement, et la flèche ⇄ dit que c'est un aller-retour.
  *
  * Changer de rangement remet la navigation à la racine : le dossier ouvert
- * — « Numérique › Calcul Mental » — n'existe pas dans l'autre rangement, et
+ * — « Numérique › Calcul mental » — n'existe pas dans l'autre rangement, et
  * l'y laisser afficherait une grille vide sans dire pourquoi.
  */
+/**
+ * LE FIL D'ARIANE, DANS LES DEUX VUES.
+ *
+ * Il vivait DANS `#view-drilldown` et disparaissait donc en vue « Arbre ».
+ * Tant qu'il ne portait qu'un chemin, cela allait : l'arbre n'a pas de dossier
+ * ouvert. Depuis qu'il porte la BASCULE DU RANGEMENT, le faire disparaître,
+ * c'est rendre un réglage introuvable — et le professeur ne saurait même pas
+ * qu'il a existé.
+ *
+ * @param {boolean} enArbre - vrai en vue « Arbre », où il n'y a rien à remonter
+ */
+function peindreFil(enArbre) {
+    const fil = document.getElementById('breadcrumb');
+    const texte = document.getElementById('breadcrumb-text');
+    const retour = document.getElementById('btn-back');
+    if (!fil) return;
+    fil.style.display = 'flex';
+    if (enArbre) {
+        if (retour) retour.style.display = 'none';
+        if (texte) {
+            texte.textContent = modeRangement() === RANGEMENTS.CHAPITRE
+                ? 'Chapitres' : 'Domaines';
+        }
+    }
+}
+
+/** Le fil reste à l'écran : c'est lui qui porte la bascule. */
+function montrerFil() {
+    const fil = document.getElementById('breadcrumb');
+    if (fil) fil.style.display = 'flex';
+}
+
 export function initBasculeRangement() {
-    const boite = document.getElementById('rangement-bascule');
-    if (!boite) return;
-    const boutons = [...boite.querySelectorAll('.rang-btn')];
+    const pastille = document.getElementById('rangement-fil');
+    if (!pastille) return;
+    const mot = pastille.querySelector('[data-rang-mot]');
 
     const peindre = () => {
-        const mode = modeRangement();
-        boutons.forEach(b => {
-            const actif = b.dataset.rangement === mode;
-            b.classList.toggle('active', actif);
-            b.setAttribute('aria-pressed', String(actif));
-        });
+        const vers = modeRangement() === RANGEMENTS.CHAPITRE ? 'Domaines' : 'Chapitres';
+        if (mot) mot.textContent = vers;
+        pastille.title = `Ranger le catalogue par ${vers.toLowerCase()}`;
+        pastille.setAttribute('aria-label', pastille.title);
     };
 
-    boutons.forEach(b => {
-        b.onclick = () => {
-            if (b.dataset.rangement === modeRangement()) return;
-            setModeRangement(b.dataset.rangement);
-            state.navStack = [];
-            peindre();
-            refreshCatalogViews();
-        };
-    });
+    pastille.onclick = (e) => {
+        // LE FIL D'ARIANE PORTE AUSSI LE BOUTON « RETOUR » : sans cela, un clic
+        // sur la pastille remonterait d'un dossier en même temps qu'il change
+        // de rangement.
+        e.stopPropagation();
+        setModeRangement(modeRangement() === RANGEMENTS.CHAPITRE
+            ? RANGEMENTS.DOMAINE : RANGEMENTS.CHAPITRE);
+        state.navStack = [];
+        peindre();
+        refreshCatalogViews();
+    };
 
     // Le classement change dans l'écran des chapitres pendant que l'arbre est
     // affiché derrière : il doit suivre, sans quoi le professeur croit que sa
@@ -504,6 +693,7 @@ export function renderDrilldown() {
     }
 
     back.style.display = path.length === 0 ? 'none' : 'block';
+    montrerFil();
     // À la racine, le fil d'Ariane annonce le rangement en cours : « Domaines »
     // au-dessus d'une liste de niveaux se lirait comme une erreur.
     bread.textContent = path.length === 0
@@ -628,7 +818,7 @@ function renderNiveauRow() {
     // elle ne concerne qu'une poignée d'exercices, et une ligne de tags de plus
     // coûterait à tout le monde la place qu'elle ne rend qu'à eux.
     const duos = filterByStatus(exercices, { only: state.catalogFilter, teacher: state.isTeacherMode })
-        .filter(e => estADeux(e)).length;
+        .filter(e => seJoueAussiADeux(e)).length;
 
     const ligne = document.getElementById('filter-row-niveau');
     if (ligne) ligne.hidden = dispo.length < 2 && !duos;
@@ -643,11 +833,10 @@ function renderNiveauRow() {
             const i = sel.indexOf(n);
             if (i >= 0) sel.splice(i, 1); else sel.push(n);
             state.selectedNiveaux = sel;
-            // Le niveau filtre TOUT le catalogue : l'arbre de gauche et la
-            // grille de droite doivent repartir ensemble.
-            initAccordion();
-            renderDrilldown();
-            initGridFilters();
+            // Le niveau filtre TOUT le catalogue : l'arbre de gauche, la
+            // grille de droite et la ligne qui dit ce qui reste doivent
+            // repartir ensemble.
+            refreshCatalogViews();
         };
         fn.appendChild(btn);
     });
@@ -660,9 +849,7 @@ function renderNiveauRow() {
         if (state.aDeuxSeuls) duo.classList.add('active');
         duo.onclick = () => {
             state.aDeuxSeuls = !state.aDeuxSeuls;
-            initAccordion();
-            renderDrilldown();
-            initGridFilters();
+            refreshCatalogViews();
         };
         fn.appendChild(duo);
     }
@@ -776,7 +963,13 @@ function createCard(exo) {
     tags.innerHTML = `<span class="tag tag-btn tag-niveau">${niveauxStr}</span>
         <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
         ${isGame(exo) ? '<span class="tag tag-btn tag-jeu">🎮 jeu</span>' : ''}
-        ${estADeux(exo) ? '<span class="tag tag-btn tag-duo">👥 à deux</span>' : ''}
+        ${estADeux(exo)
+        ? '<span class="tag tag-btn tag-duo" title="Il faut être deux devant '
+          + 'le même écran.">👥 à deux</span>'
+        : (seJoueAussiADeux(exo)
+            ? '<span class="tag tag-btn tag-duo tag-duo--aussi" title="Se joue '
+              + 'seul contre l\'ordinateur, ou à deux sur le même écran — c\'est '
+              + 'un réglage de l\'exercice.">👥 aussi à deux</span>' : '')}
         ${statusBadge(exo)}`;
 
     if (state.previewsOn) {
@@ -984,6 +1177,11 @@ export function setSidebarMode(m) {
     }
     if(m==='acc') {
         document.getElementById('view-accordion').style.display = 'block';
+        // L'ARBRE N'A PAS DE DOSSIER OUVERT À ANNONCER, mais il a un
+        // RANGEMENT — et depuis que la bascule vit dans le fil d'Ariane, ce
+        // bandeau doit rester à l'écran dans les deux vues, sans quoi le
+        // réglage devient introuvable dès qu'on passe en arbre.
+        peindreFil(true);
     }
 }
 

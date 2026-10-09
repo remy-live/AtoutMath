@@ -35,6 +35,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     MONDES, SOL_MOYEN, mondeDe, progressionMonde, relief, pas, etatInitial,
     semerEtoile, ECART_ETOILES, avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE,
@@ -518,31 +519,39 @@ class PetitesAiles extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Une seule touche — clic, doigt ou barre d\'espace. Tu appuies pour '
-            + 'PLONGER, tu relâches pour planer. Il n\'y a rien à calculer : c\'est un jeu '
-            + 'd\'adresse.', this.wrap);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
+        // UNE IDÉE PAR BULLE. Les touches et la jauge restent — l'élève en a
+        // besoin ; les commentaires sur le jeu (« rien à calculer », « c'est un jeu
+        // d'adresse ») sont partis. Au-delà de 110 caractères, la bulle se lit si
+        // longtemps qu'on croit la démonstration figée.
+        cur.say('Une seule touche : clic, doigt ou barre d\'espace.', this.wrap);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
-        cur.say('Appuie dans la DESCENTE — tu prends de la vitesse — et relâche au '
-            + 'sommet : la bosse te met en l\'air, et tu sautes toute la côte suivante. '
-            + 'Regarde la jauge de vitesse en bas.', this.wrap);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        cur.say('J\'appuie pour PLONGER, je relâche pour planer.', this.wrap);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
+
+        cur.say('J\'appuie dans la DESCENTE pour prendre de la vitesse — regarde la jauge en bas.', this.wrap);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
+
+        cur.say('Je relâche au sommet : la bosse me met en l\'air, et je saute la côte suivante.', this.wrap);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // Le robot joue parfaitement pendant quelques secondes.
         for (let i = 0; i < 260 && this.isRunning; i++) {
             const sol = relief(this.etat.x, this.grainePaysage);
             this.appuie = sol.pente < 0;
-            if (!await cur.pause(16)) break;
+            if (!await robot.pause(16)) break;
         }
         this.appuie = false;
         if (!this.isRunning) return fin();
 
-        cur.say('Et il faut aller vite : la nuit court derrière toi. Chaque frontière '
-            + 'franchie ouvre un nouveau monde et la repousse — il y en a six.',
-        this.mondeEl);
+        cur.say('Et il faut aller vite : la nuit court derrière toi.', this.mondeEl);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
+
+        cur.say('Chaque frontière franchie ouvre un nouveau monde et repousse la nuit — il y en a six.', this.mondeEl);
         await cur.pause(DEMO_SPEED.between);
         fin();
     }

@@ -18,6 +18,7 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     MUR, NIVEAUX, lireNiveau, cloner, simuler, pousser, gagne,
     bloqueDefinitivement, resoudre
@@ -83,7 +84,9 @@ class Chantier extends BaseGame {
                     padding: 6px 11px; line-height: 1.2;
                     transition: background .12s, transform .1s;
                 }
-                .ch-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .ch-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                }
                 .ch-btn:active:not(:disabled) { transform: scale(.94); }
                 .ch-btn:disabled { opacity: .38; cursor: default; }
 
@@ -194,7 +197,7 @@ class Chantier extends BaseGame {
                 .ch-cible {
                     border: max(2px, calc(var(--case) * .07)) solid var(--primary);
                     background: color-mix(in srgb, var(--primary) 20%, transparent);
-                    color: var(--primary); cursor: pointer; z-index: 4;
+                    color: var(--primary-texte); cursor: pointer; z-index: 4;
                     font-size: calc(var(--case) * .46); font-weight: 800;
                     animation: ch-appel 1.5s ease-in-out infinite;
                 }
@@ -203,7 +206,9 @@ class Chantier extends BaseGame {
                     background: color-mix(in srgb, var(--success) 24%, transparent);
                 }
                 @keyframes ch-appel { 50% { opacity: .55; } }
-                .ch-cible:hover { animation: none; opacity: 1; }
+                @media (hover: hover) {
+                    .ch-cible:hover { animation: none; opacity: 1; }
+                }
 
                 .ch-note {
                     min-height: 2.6em; text-align: center; width: 100%;
@@ -595,42 +600,55 @@ class Chantier extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.plateau);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Le chantier : chaque bloc porte une multiplication, chaque dalle creuse porte un résultat. Il faut poser chaque bloc sur la dalle qui porte SON résultat.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
+        // UNE IDÉE PAR BULLE, ET LE GESTE PLUTÔT QUE LA LEÇON. Les phrases qui
+        // concluaient (« le calcul ouvre la porte, le chemin la referme », « se
+        // tromper ici ne coûte rien ») sont parties : au-delà de 110 caractères
+        // la bulle se lit si longtemps qu'on croit la démonstration plantée, et
+        // la règle se voit dans le geste qui suit.
+        cur.say('Chaque bloc porte une multiplication, chaque dalle creuse porte un résultat.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Attention : un bloc poussé ne fait pas un pas. Il GLISSE jusqu\'à rencontrer un mur ou un autre bloc. On ne choisit donc pas où il s\'arrête — on choisit contre quoi.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        cur.say('Je pose chaque bloc sur la dalle qui porte SON résultat.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await this.demoNiveau(cur, gate)) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Un bloc poussé ne fait pas un pas : il GLISSE jusqu\'à un mur ou un autre bloc.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        cur.say('Je ne choisis donc pas où il s\'arrête, mais contre quoi.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        if (!await robot.puis(this.demoNiveau(cur, gate))) return fin();
 
         // Puis le niveau qui contient toute l'idée du jeu : deux blocs de même
         // valeur, donc un calcul qui ne suffit plus à décider.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.charger(NIVEAUX.findIndex(n => n.id === 'ch5'));
-        cur.say('Voici le vrai problème. Ce bloc fait 4 × 4, celui-là 2 × 8 : ils valent TOUS LES DEUX 16, et les deux dalles portent 16. Le calcul ouvre donc deux possibilités au lieu d\'une.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        cur.say('Ce bloc fait 4 × 4, celui-là 2 × 8 : les deux font 16, et les deux dalles portent 16.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Savoir que 4 × 4 = 16 ne suffit plus : il faut regarder QUEL bloc peut atteindre QUELLE dalle. Le calcul ouvre la porte, le chemin la referme.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Savoir que 4 × 4 = 16 ne suffit plus : je regarde QUEL bloc atteint QUELLE dalle.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await this.demoNiveau(cur, gate)) return fin();
+        if (!await robot.puis(this.demoNiveau(cur, gate))) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Et si tu t\'enfermes — un bloc scellé au mauvais endroit bouche un passage pour toujours — le jeu te le dit tout de suite, et le bouton Annuler défait le coup. Se tromper ici ne coûte rien : c\'est de la réflexion, pas un contrôle.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Un bloc scellé au mauvais endroit bouche un passage : le bouton Annuler défait le coup.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 
     /** Joue la solution du niveau courant, un coup expliqué à la fois. */
     async demoNiveau(cur, gate) {
+        const robot = meneurDemo(cur, gate, () => this.isRunning, null, { rangementSeul: true });
         const sol = resoudre(this.etat, 200000) || [];
         for (const { id, dir } of sol) {
-            if (!await gate.waitTurn() || !this.isRunning) return false;
+            if (!await robot.tour()) return false;
             const b = this.etat.blocs.find(o => o.id === id);
             const r = simuler(this.etat, id, dir);
             if (!b || !r) break;
@@ -640,7 +658,7 @@ class Chantier extends BaseGame {
                 ? `${b.a} × ${b.b} = ${b.produit} : je pousse ce bloc vers ${NOMS[dir]}, il glisse et vient se poser sur la dalle ${b.produit}.`
                 : `Je pousse ${b.a} × ${b.b} vers ${NOMS[dir]} : il ne se pose pas encore, il va simplement se placer pour la suite.`,
                 this.plateau.querySelector(`[data-bloc="${id}"]`));
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return false;
+            if (!await robot.pause(DEMO_SPEED.settle)) return false;
 
             const cible = this.plateau.querySelector(`.ch-cible[data-dir="${dir}"]`);
             if (cible && !await cur.tap(cible)) return false;
@@ -648,9 +666,9 @@ class Chantier extends BaseGame {
             this.choisi = null;
             this.majPlateau();
             this.majBarre();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return false;
+            if (!await robot.pause(DEMO_SPEED.press)) return false;
         }
-        if (!await gate.waitTurn() || !this.isRunning) return false;
+        if (!await robot.tour()) return false;
         cur.say('Toutes les dalles sont couvertes : le chantier est terminé.', this.plateau);
         return await cur.pause(DEMO_SPEED.between);
     }

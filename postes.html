@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mur des postes — AtoutMath</title>
+<!--
+  LE MUR DES POSTES — PLUSIEURS ÉLÈVES SOUS LES YEUX, EN MÊME TEMPS.
+
+  ──────────────────────────────────────────────────────────────────────────
+
+  RÉMY : « un mode qui m'ouvre soit quelques onglets soit une fenêtre avec
+  plusieurs iframes où ça ouvre des fenêtres d'élèves, tu vois pour tester […]
+  dans une séance en direct ou pas, que je puisse voir ce que cela donne pour
+  plusieurs élèves. »
+
+  UNE FENÊTRE ET NON DES ONGLETS, POUR UNE RAISON MESURABLE. Un navigateur
+  n'autorise qu'UNE fenêtre surgissante par geste de l'utilisateur : six
+  `window.open` d'affilée, et cinq sont bloqués en silence. Une seule fenêtre
+  qui porte six cadres passe toujours — et elle se pose sur le second écran, à
+  côté du Direct, ce qui est exactement l'usage demandé.
+
+  CE N'EST PAS UNE IMITATION. Chaque cadre charge la MÊME application, sur le
+  MÊME serveur, avec un VRAI billet : la porte s'ouvre pour de bon, le travail
+  part pour de bon, et le professeur le voit arriver dans son Direct. C'était
+  déjà le parti pris de « Ouvrir son poste » ; un simulacre ne prouverait rien.
+
+  CE QUI A DÛ ÊTRE LEVÉ AVANT. Le préfixe de stockage d'un poste était FIXE
+  (`poste:`) : deux cadres auraient écrit dans le même tiroir, et le second
+  billet connecté aurait déconnecté le premier. Chaque cadre reçoit maintenant
+  sa PLACE — voir le script en tête de `index.html`.
+
+  LES PLACES COMMENCENT À 2. La place 1 reste celle de « Ouvrir son poste » :
+  un professeur qui a déjà la fenêtre d'Alice ouverte et qui lance le mur ne
+  doit pas voir les deux se marcher dessus.
+
+  LES CODES VOYAGENT DANS LE FRAGMENT, jamais dans la requête. Un fragment
+  n'est pas envoyé au serveur : ni journal d'Apache, ni référent, ni historique
+  d'intermédiaire. Et il est effacé de la barre d'adresse dès qu'il est lu —
+  cette fenêtre finit souvent au vidéoprojecteur.
+-->
+<style>
+    :root {
+        --fond: #11151f; --panneau: #1b2130; --bord: #2c3547;
+        --texte: #e8ecf5; --doux: #97a3ba; --vif: #6366f1;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+        background: var(--fond); color: var(--texte);
+        font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        display: flex; flex-direction: column;
+    }
+    header {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        padding: 10px 14px; background: var(--panneau);
+        border-bottom: 1px solid var(--bord); flex: none;
+    }
+    h1 { font-size: 1rem; margin: 0; font-weight: 800; }
+    .compte { color: var(--doux); font-size: .85rem; }
+    .grandit { flex: 1; }
+    button {
+        font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer;
+        color: var(--texte); background: transparent;
+        border: 1px solid var(--bord); border-radius: 999px; padding: 6px 13px;
+    }
+    button:hover { border-color: var(--vif); }
+    /* LA GRILLE SE COMPTE TOUTE SEULE. Des colonnes fixes donneraient des
+       cases de deux cents pixels à six élèves sur un portable, et des cases
+       immenses à deux élèves sur un grand écran. */
+    .mur {
+        flex: 1; display: grid; gap: 10px; padding: 10px; min-height: 0;
+        grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+        grid-auto-rows: minmax(360px, 1fr);
+        overflow: auto;
+    }
+    .case {
+        display: flex; flex-direction: column; min-height: 0;
+        background: var(--panneau); border: 1px solid var(--bord);
+        border-radius: 12px; overflow: hidden;
+    }
+    .case-tete {
+        display: flex; align-items: center; gap: 8px;
+        padding: 6px 10px; border-bottom: 1px solid var(--bord); flex: none;
+    }
+    .case-nom { font-weight: 800; font-size: .88rem; }
+    .case-place { color: var(--doux); font-size: .74rem; }
+    .case-tete button { padding: 3px 9px; font-size: .76rem; }
+    iframe { flex: 1; width: 100%; border: 0; background: #fff; min-height: 0; }
+    .vide { padding: 30px; color: var(--doux); }
+    .vide code { color: var(--texte); }
+</style>
+</head>
+<body>
+<header>
+    <h1>Mur des postes</h1>
+    <span class="compte" id="compte"></span>
+    <span class="grandit"></span>
+    <button type="button" id="recharger">Tout recharger</button>
+    <button type="button" id="oublier">Vider les tiroirs et fermer</button>
+</header>
+<div class="mur" id="mur"></div>
+
+<script>
+(function () {
+    'use strict';
+
+    // ── LE FRAGMENT, LU PUIS EFFACÉ ─────────────────────────────────────────
+    // Même raison que pour un billet : cette fenêtre finit au vidéoprojecteur.
+    var brut = location.hash.replace(/^#/, '');
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* tant pis */ }
+
+    function param(nom) {
+        var m = new RegExp('(?:^|&)' + nom + '=([^&]*)').exec(brut);
+        if (!m) return '';
+        try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
+    }
+
+    // « login/code,login/code,… » — la barre oblique comme sur le billet
+    // imprimé, la virgule entre les élèves.
+    var eleves = param('eleves').split(',')
+        .map(function (t) { return t.trim(); })
+        .filter(Boolean)
+        .map(function (t) {
+            var i = t.indexOf('/');
+            return i < 0 ? { login: t, code: '' }
+                : { login: t.slice(0, i).trim(), code: t.slice(i + 1).trim() };
+        })
+        .filter(function (e) { return e.login; })
+        // DOUZE PLACES EN TOUT, deux prises d'avance : voir index.html.
+        .slice(0, 10);
+
+    var mur = document.getElementById('mur');
+    var compte = document.getElementById('compte');
+
+    // L'IDENTIFIANT VIENT DE L'ADRESSE, DONC IL S'ÉCHAPPE. Rien n'empêche
+    // d'envoyer à un professeur un lien dont le fragment porte du HTML : il
+    // s'exécuterait dans l'origine du site, avec son jeton à portée.
+    function ech(t) {
+        return String(t).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    if (!eleves.length) {
+        mur.innerHTML = '<div class="vide">Aucun élève dans l\'adresse.'
+            + ' Ouvrez ce mur depuis <b>Les élèves</b> d\'une classe,'
+            + ' bouton « Ouvrir plusieurs postes ».<br><br>'
+            + 'Format attendu : <code>postes.html#eleves=alice.d/4417,bilal.n/8830</code></div>';
+        compte.textContent = '0 poste';
+        return;
+    }
+
+    var cadres = [];
+    eleves.forEach(function (e, i) {
+        // La place 1 appartient à « Ouvrir son poste » : le mur commence à 2.
+        var place = i + 2;
+        var url = 'index.html?poste=' + place
+            + '#billet=' + encodeURIComponent(e.login + '/' + (e.code || ''));
+
+        var boite = document.createElement('div');
+        boite.className = 'case';
+        boite.innerHTML = '<div class="case-tete">'
+            + '<span class="case-nom">' + ech(e.login) + '</span>'
+            + '<span class="case-place">poste ' + place + '</span>'
+            + '<span class="grandit"></span>'
+            + '<button type="button" data-recharger>Recharger</button>'
+            + '</div>';
+
+        var cadre = document.createElement('iframe');
+        cadre.src = url;
+        cadre.title = 'Poste de ' + e.login;
+        cadre.setAttribute('allow', 'fullscreen');
+        boite.appendChild(cadre);
+        // On retient l'adresse À PART : la lire dans `cadre.src` après coup
+        // rendrait celle où l'élève a navigué, et « Recharger » le ramènerait
+        // au milieu de son parcours au lieu de la porte.
+        boite.querySelector('[data-recharger]').onclick = function () {
+            cadre.src = 'about:blank';
+            setTimeout(function () { cadre.src = url; }, 60);
+        };
+        cadres.push({ cadre: cadre, url: url });
+        mur.appendChild(boite);
+    });
+
+    compte.textContent = eleves.length + (eleves.length > 1 ? ' postes' : ' poste')
+        + ' — places 2 à ' + (eleves.length + 1);
+
+    document.getElementById('recharger').onclick = function () {
+        cadres.forEach(function (c, i) {
+            c.cadre.src = 'about:blank';
+            // ÉCHELONNÉ : dix cadres qui rechargent ensemble lancent dix
+            // connexions d'un coup, et l'hébergement mutualisé de Rémy les
+            // sert à la file. On les espace, ce qui ne coûte qu'une seconde.
+            setTimeout(function () { c.cadre.src = c.url; }, 80 + i * 120);
+        });
+    };
+
+    // VIDER LES TIROIRS : chaque cadre range ses clefs sous son propre préfixe
+    // dans le MÊME localStorage d'origine. On les retire ici, depuis la page
+    // mère, parce qu'un cadre déjà déchargé ne peut plus le faire lui-même.
+    document.getElementById('oublier').onclick = function () {
+        try {
+            var aJeter = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                // `poste:` et `poste2:` … `poste12:` — et RIEN d'autre : les
+                // clefs du professeur n'ont pas ce préfixe, et c'est la seule
+                // chose qui empêche ce bouton d'effacer sa session à lui.
+                if (k && /^poste\d*:/.test(k)) aJeter.push(k);
+            }
+            aJeter.forEach(function (k) { localStorage.removeItem(k); });
+        } catch (e) { /* navigation privée */ }
+        window.close();
+        location.replace(location.pathname);
+    };
+}());
+</script>
+</body>
+</html>

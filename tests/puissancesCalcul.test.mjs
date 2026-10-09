@@ -214,3 +214,95 @@ test('la même graine rend la même question', () => {
     assert.equal(a.prompt.text, b.prompt.text);
     assert.equal(a.answer, b.answer);
 });
+
+// ── « TU ÉCRIRAS LE CALCUL ! » ──────────────────────────────────────────────
+//
+// C'est écrit en rouge sur chaque exercice de la fiche de quatrième de Rémy.
+// Il ne veut pas le résultat, il veut voir 10³ × 10² = 10³⁺² = 10⁵ — la ligne
+// du milieu est celle où la règle se montre, et celle où l'on voit, quand elle
+// est fausse, que l'élève a appliqué le signe de l'opération aux exposants.
+//
+// LE JUGE COMPARE LES EXPOSANTS, PAS LES VALEURS : 10⁹ × 10⁹ vaut 10¹⁸, qui
+// dépasse 2⁵³ et cesse d'être un entier exact en virgule flottante.
+
+test('CHAQUE LIGNE VAUT L\'ÉNONCÉ, ET NE SE LAISSE PAS SAUTER', async () => {
+    const { lirePuissance, memePuissance, lireExacte, memeR } =
+        await import('../js/core/maths/valeurExacte.js');
+    const fx = await import('../js/core/maths/formule.js');
+    let lignesVues = 0, sansChaine = 0;
+    for (const marche of ORDRE) {
+        for (let i = 0; i < 40; i++) {
+            const it = G.generate({ marches: [marche], etapes: 'oui' },
+                { rng: makeRng(`pcc_${marche}_${i}`), index: 0, total: 3 });
+            const etapes = it.meta.etapes || [];
+            if (!etapes.length) { sansChaine += 1; continue; }
+            assert.equal(it.meta.saisieSeule, true,
+                `[${marche}] le clavier ne prend pas la main`);
+            const memeQue = (a, b) => memePuissance(lirePuissance(a, fx), lirePuissance(b, fx))
+                || memeR(lireExacte(a, fx), lireExacte(b, fx));
+            for (const e of etapes) {
+                lignesVues += 1;
+                assert.ok(memeQue(e.montrer, it.reponsePapier),
+                    `[${marche}] « ${e.montrer} » ne vaut pas « ${it.reponsePapier} »`);
+                assert.ok(e.verifie(e.montrer.replace(/\s+/g, '')).juste,
+                    `[${marche}] « ${e.montrer} » refusée à son étape`);
+                // LA RÉPONSE FINALE NE PASSE PAS À L'ÉTAPE : les deux sont
+                // égales, donc sans exigence de forme l'étape serait sautable.
+                const v = e.verifie(it.reponsePapier.replace(/\s+/g, ''));
+                assert.ok(v && !v.juste,
+                    `[${marche}] « ${it.reponsePapier} » passe à l'étape « ${e.titre} »`);
+                assert.ok(e.modele && /[□…]/.test(e.modele),
+                    `[${marche}] l'étape « ${e.titre} » n'a pas de moule`);
+            }
+        }
+    }
+    assert.ok(lignesVues > 200, `seulement ${lignesVues} lignes jugées`);
+    assert.ok(sansChaine > 0, 'toutes les marches ont une chaîne : (−3)² n\'en veut pas');
+});
+
+test('CE QUI S\'AFFICHE EN PETIT SE TAPE AVEC ^ — et rien n\'est intapable', () => {
+    // LE PIÈGE DU « ² » DE LA FACTORISATION, où la première ligne ne pouvait
+    // pas s'écrire et où rien ne le disait. Ici le danger est double : les
+    // chiffres en exposant (10⁸) et le trait d'union (−2 écrit « -2 »), qui
+    // n'est PAS le moins du clavier.
+    const CLAVIER = new Set(['^', '(', ')', '+', '−', '×', '/', ...'0123456789']);
+    for (const marche of ORDRE) {
+        for (let i = 0; i < 40; i++) {
+            const it = G.generate({ marches: [marche], etapes: 'oui' },
+                { rng: makeRng(`pct_${marche}_${i}`), index: 0, total: 3 });
+            if (!it.meta.composable) continue;   // réponse en toutes lettres
+            const lignes = [...(it.meta.etapes || []).map(e => e.montrer), it.reponsePapier];
+            for (const l of lignes) {
+                const manque = new Set();
+                for (const c of String(l).replace(/\s+/g, '')) {
+                    if (!CLAVIER.has(c)) manque.add(c);
+                }
+                assert.deepEqual([...manque], [],
+                    `[${marche}] « ${l} » demande ${[...manque].join(' ')}, `
+                    + 'que le pavé n\'a pas');
+            }
+            assert.equal(it.meta.exposant, true, `[${marche}] pas de touche ^`);
+            assert.equal(it.meta.lettre, null, `[${marche}] le pavé offre une lettre`);
+            assert.equal(it.meta.carre, false, `[${marche}] le pavé offre la touche ²`);
+        }
+    }
+});
+
+test('UNE RÉPONSE QUI EST UNE PHRASE N\'OUVRE PAS DE CLAVIER', () => {
+    // « On ne peut pas simplifier » est la bonne réponse quand les bases
+    // diffèrent : c'est une reconnaissance, pas une écriture. Ouvrir un
+    // clavier devant elle demanderait de taper ce qui n'a pas d'écriture.
+    let vues = 0;
+    for (let i = 0; i < 120; i++) {
+        const it = G.generate({ marches: ['memeBase'], etapes: 'oui' },
+            { rng: makeRng(`pcm_${i}`), index: 0, total: 3 });
+        if (!/simplifier/.test(String(it.answer))) continue;
+        vues += 1;
+        assert.ok(!it.meta.composable, 'le clavier s\'ouvre sur une réponse en toutes lettres');
+        assert.ok(!it.meta.saisieSeule, 'la saisie prend la main sur une phrase');
+        // `makeItem` normalise les champs absents : on teste la présence,
+        // pas la valeur exacte.
+        assert.ok(!it.verifieTexte, 'un juge de texte sur une phrase');
+    }
+    assert.ok(vues > 20, `seulement ${vues} questions à bases différentes`);
+});

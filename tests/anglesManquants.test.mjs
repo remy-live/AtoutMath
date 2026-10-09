@@ -72,16 +72,34 @@ test('la chaîne passe vraiment par un pas intermédiaire', () => {
 });
 
 test('le niveau demandé est celui qu\'on obtient', () => {
-    for (const niveau of ['0', '1', '2']) {
+    // UNE SEULE CASE COCHÉE : toutes les figures sont à ce niveau-là.
+    for (const marche of ['0', '1', '2']) {
         for (let i = 0; i < 30; i++) {
-            const m = G.generate({ niveau }, { rng: makeRng('n' + niveau + i), index: i }).meta;
-            assert.equal(String(m.niveau), niveau);
+            const m = G.generate({ marches: [marche] },
+                { rng: makeRng('n' + marche + i), index: i, total: 30 }).meta;
+            assert.equal(String(m.marche), marche);
         }
     }
-    // Mélangé : les trois niveaux apparaissent sur une fiche ordinaire, et
-    // dans l'ordre — on ne commence pas une série par la chaîne.
-    const niveaux = Array.from({ length: 12 }, (_, i) => tirer({ niveau: 'melange' }, i).meta.niveau);
-    assert.deepEqual(niveaux.slice(0, 6), [0, 0, 1, 1, 1, 2]);
+    // ET LE RÉGLAGE D'AVANT LES CASES SE RELIT : un parcours enregistré porte
+    // `niveau: '1'`, pas de liste de marches — voir core/progression.js.
+    for (let i = 0; i < 10; i++) {
+        assert.equal(String(G.generate({ niveau: '1' },
+            { rng: makeRng('v' + i), index: i, total: 10 }).meta.marche), '1');
+    }
+    // « MÉLANGÉ » VOULAIT DIRE « DANS L'ORDRE », et le menu l'écrivait en dur :
+    // `[0, 0, 1, 1, 1, 2][i % 6]`. C'est maintenant le partage des marches qui
+    // le donne, et c'est le même esprit — on ne commence pas une série par la
+    // chaîne — avec deux choses en plus : le professeur VOIT le partage, et il
+    // peut le tirer. Douze questions sur les trois niveaux : quatre chacun.
+    const suite = Array.from({ length: 12 }, (_, i) =>
+        G.generate({ niveau: 'melange' },
+            { rng: makeRng('mel' + i), index: i, total: 12 }).meta.niveau);
+    assert.deepEqual(suite, [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2]);
+    // Et la répartition écrite à la main est suivie : trois, puis un, puis huit.
+    const tiree = Array.from({ length: 12 }, (_, i) =>
+        G.generate({ repartitionMarches: '3,1,8' },
+            { rng: makeRng('tir' + i), index: i, total: 12 }).meta.niveau);
+    assert.deepEqual(tiree, [0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2]);
 });
 
 test('les réglages de relations sont respectés', () => {

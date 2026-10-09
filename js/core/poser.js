@@ -451,6 +451,39 @@ export function verifierPlacement(operandes, pose) {
 }
 
 /**
+ * CETTE COLONNE PEUT-ELLE PORTER UNE RETENUE ?
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, capture à l'appui, sur 554 + 448 : « normalement, il ne devrait pas
+ * pour l'addition avoir une retenue sur la première colonne non ? »
+ *
+ * Non, et c'est une règle, pas une préférence : la retenue d'une colonne
+ * VIENT de la colonne à sa droite. La colonne des unités n'a rien à sa
+ * droite — aucune retenue ne peut y entrer, jamais, quelle que soit
+ * l'opération. Le petit rond qu'on y dessinait était donc une case qu'on ne
+ * remplit pas ; et un élève qui cherche quoi y écrire cherche quelque chose
+ * qui n'existe pas.
+ *
+ * LE MÊME RAISONNEMENT VAUT POUR LA SOUSTRACTION. La compensation qu'on écrit
+ * contre le chiffre du bas vient de l'emprunt fait à la colonne de droite :
+ * `retenueBas` du rang le plus faible vaut 0 par construction (la boucle part
+ * de `retenue = 0`). Une seule règle, donc, et elle se lit ici.
+ *
+ * ON LA MET DANS LE NOYAU et non dans le jeu : c'est une propriété de
+ * l'opération posée, pas une décision d'affichage. La feuille imprimée, elle,
+ * ne dessine aucun rond — Rémy : « pour le pdf, ne mets pas le rond des
+ * retenues » — mais le jour où un autre écran les redessinera, il trouvera la
+ * règle ici plutôt que de la redécouvrir.
+ */
+export function porteUneRetenue(tableau, rang) {
+    const colonnes = (tableau && tableau.colonnes) || [];
+    if (!colonnes.length) return false;
+    // Les colonnes sont rangées du rang le plus faible au plus fort.
+    return rang > colonnes[0].rang;
+}
+
+/**
  * Ce qu'on attend dans une case du tableau, pour la correction au fil de l'eau.
  * `quoi` vaut 'resultat' ou 'retenue'.
  */
@@ -459,7 +492,10 @@ export function attenduEn(tableau, rang, quoi) {
     if (!c) return null;
     if (quoi === 'resultat') return c.resultat;
     // La retenue lue sur cette colonne : au-dessus pour une addition, contre
-    // le chiffre du bas pour une soustraction.
+    // le chiffre du bas pour une soustraction. `null` là où il ne peut PAS y
+    // en avoir — voir `porteUneRetenue` : c'est ce qui retire le petit rond
+    // de la colonne des unités.
+    if (!porteUneRetenue(tableau, rang)) return null;
     return tableau.operation === '+' ? c.retenueEntrante : c.retenueBas;
 }
 

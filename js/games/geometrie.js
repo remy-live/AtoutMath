@@ -20,6 +20,7 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     tirerConsigne, departDe, juger, estDepart, demoMediatrice, consigneDe
 } from '../core/geoConstruction.js';
@@ -73,7 +74,9 @@ class Geometrie extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 700; font-size: .84rem; padding: 7px 14px;
                 }
-                .gm-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .gm-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                }
                 .gm-btn--valider { border-color: var(--primary); color: #fff; background: var(--primary); }
                 .gm-btn:disabled { opacity: .45; cursor: default; }
                 .gm-note {
@@ -302,6 +305,7 @@ class Geometrie extends BaseGame {
             cur.destroy(); gate.destroy();
             this.demoCursor = null; this.demoGate = null;
         };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, fin, { rangementSeul: true });
 
         // Trois mégaoctets d'instruments : le robot attend, comme l'élève.
         await this.attendrePret();
@@ -315,17 +319,23 @@ class Geometrie extends BaseGame {
 
         const temps = demoMediatrice(depart.reperes);
         for (const t of temps) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             await this.charger(t.json);
             this.note(t.note);
             cur.say(t.note, this.cadreEl);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('À toi : les mêmes instruments sont là, en haut de la feuille. '
-            + 'La règle, l\'équerre, le compas et le rapporteur se prennent, se posent et se tournent à la souris ou au doigt.', this.cadreEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        // DEUX IDÉES, DONC DEUX BULLES : en une seule, la phrase faisait 172
+        // caractères et figeait la fin de la démonstration. Rémy : « des
+        // explications courtes, et concises ».
+        cur.say('À toi : les mêmes instruments sont là, en haut de la feuille.', this.cadreEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        if (!await robot.tour()) return fin();
+        cur.say('La règle, l\'équerre, le compas et le rapporteur se prennent au doigt ou à la souris.', this.cadreEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

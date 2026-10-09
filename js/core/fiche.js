@@ -157,6 +157,26 @@ export function mesureurFractions(mesurer) {
  * leur numéro, pour une fraction qui n'y était pas. C'est le décalage que Rémy
  * a vu sur la feuille de problèmes.
  */
+/**
+ * LE PAS ENTRE DEUX LIGNES D'UNE MÊME CELLULE.
+ *
+ * Une fraction en colonne occupe presque deux lignes : numérateur, trait,
+ * dénominateur. Tant qu'un énoncé tenait sur UNE ligne, cela se réglait en
+ * descendant la cellule entière (`supp`). Depuis que les problèmes de
+ * fractions passent leur question à la ligne (Rémy : « Écris la question à la
+ * ligne »), il y a DEUX lignes — et le dénominateur de la première venait se
+ * poser sur le texte de la seconde.
+ *
+ * Le pas vaut donc une ligne et demie quand la cellule porte des fractions.
+ * Les trois lecteurs de `lignes` — la mise en page, l'aperçu et le PDF —
+ * passent par ici : c'est la seule façon qu'ils ne divergent pas.
+ */
+export const pasDeLigne = (o, fractions) => o.interligne * (fractions ? 1.85 : 1);
+
+/** La hauteur occupée par les lignes d'une cellule, pas compris. */
+export const hauteurDesLignes = (o, combien, fractions) =>
+    Math.max(0, combien - 1) * pasDeLigne(o, fractions) + o.interligne;
+
 export function porteUneFraction(...textes) {
     return textes.some(t => RE_FRACTION().test(String(t ?? '')));
 }
@@ -579,6 +599,20 @@ export function composerBlocs(exos, opts, mesurer) {
     // Ce que « auto » a finalement décidé, exercice par exercice : l'interface
     // le rend au professeur, pour qu'il sache de quoi il part avant de forcer.
     const colonnesParExo = [];
+    // OÙ CHAQUE EXERCICE A COMMENCÉ À NUMÉROTER — et pourquoi on le rapporte.
+    //
+    // Rémy, corrigé en main : « je pense qu'il y a un bug […] j'ai l'impression
+    // d'un problème d'ordre ». Sur sa feuille, l'exercice d'appariement prenait
+    // les numéros 1 et 2, et les questions écrites commençaient à 3. Le corrigé,
+    // lui, ne reçoit QUE les exercices qui ont des questions écrites — un
+    // appariement se corrige sur son propre dessin — et repartait donc à 1.
+    // « 1. 8 + 2 = 10 » ne renvoyait à rien : la feuille n'a pas de question 1
+    // dans cet exercice.
+    //
+    // ON NE RECALCULE PAS LA RÈGLE AILLEURS, ON RAPPORTE CE QU'ON A FAIT. Deux
+    // compteurs pour la même numérotation finiraient par compter différemment —
+    // c'est exactement ce qui vient d'arriver.
+    const departsParExo = [];
 
     // On ne pousse JAMAIS une page vide : une feuille blanche au milieu d'un
     // PDF ressemble à une erreur d'impression, et le professeur la photocopie
@@ -600,6 +634,10 @@ export function composerBlocs(exos, opts, mesurer) {
         // le « 3. » tombe sur la bordure de la carte suivante, et il n'a rien à
         // y faire : ce qu'on découpe, on le mélange.
         const numerote = exo.numeroter !== false && !exo.blocsColles;
+        // Le premier numéro que CET exercice va poser sur la feuille. En
+        // numérotation par exercice, on repart à 1 : c'est dit juste après.
+        departsParExo[iExo] = numerote
+            ? (o.numerotation === 'exercice' ? 1 : numero + 1) : null;
         // LA GOUTTIÈRE DU NUMÉRO SUIT LA LARGEUR DE LA CELLULE. Sept
         // millimètres et demi devant « 12. » sont justes dans une colonne
         // large ; dans une cellule de vingt-deux millimètres — six colonnes de
@@ -973,7 +1011,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // sont pas seulement inutiles, elles proposent un second endroit
             // pour la même réponse.
             const sansPointilles = trou || memeLigne || (tableau && tableau.aRemplir);
-            const h = supp + lignes.length * o.interligne
+            const h = supp + hauteurDesLignes(o, lignes.length, !!q.fractions)
                 + (choix ? o.interligne : 0)
                 + (tableau ? o.avantTableau + tableau.h + o.apresTableau : 0)
                 + (sansPointilles ? 0 : ligneRep);
@@ -1049,7 +1087,38 @@ export function composerBlocs(exos, opts, mesurer) {
         for (let debut = 0; debut < cellules.length; debut += cols) {
             const rangee = cellules.slice(debut, debut + cols);
             const rangeeH = Math.max(...rangee.map(c => c.h));
-            if (y + rangeeH > basPage) {
+
+            // PAS DE VEUVE : UNE PAGE ENTIÈRE POUR UNE SEULE QUESTION.
+            //
+            // Mesuré en composant 287 pages — toutes les tailles d'exercice de
+            // 1 à 60 questions, en portrait, en paysage et en interrogation :
+            // trois fois, la DERNIÈRE rangée d'un exercice tombait seule sur
+            // une page neuve, sous un bandeau « (suite) ». Une feuille de
+            // photocopie pour une question, et le professeur qui la distribue
+            // le voit tout de suite.
+            //
+            // La règle typographique est vieille comme l'imprimerie : on ne
+            // laisse pas une ligne seule de l'autre côté du pli. Quand il ne
+            // reste que DEUX rangées et qu'elles ne tiennent pas ensemble ici,
+            // on les emmène toutes les deux sur la page suivante plutôt que
+            // d'en abandonner une.
+            //
+            // ON NE LE FAIT QUE SI LES DEUX TIENNENT SUR UNE PAGE VIDE :
+            // autrement on les repousserait indéfiniment, et la feuille
+            // n'aurait pas de fin. Et le coût est assumé : un blanc en bas de
+            // la page précédente, contre une page entière gaspillée.
+            const restantes = Math.ceil((cellules.length - debut) / cols);
+            let veuve = false;
+            if (restantes === 2) {
+                const derniere = cellules.slice(debut + cols);
+                const derniereH = Math.max(...derniere.map(c => c.h));
+                const ensemble = rangeeH + o.entreQuestions + derniereH;
+                veuve = (y + rangeeH <= basPage)          // celle-ci passerait…
+                    && (y + ensemble > basPage)           // …mais pas l'autre
+                    && (haut() + ensemble <= basPage);    // et les deux tiennent ailleurs
+            }
+
+            if (y + rangeeH > basPage || veuve) {
                 nouvellePage();
                 poserBandeau(true);
             }
@@ -1090,7 +1159,7 @@ export function composerBlocs(exos, opts, mesurer) {
                     const pas = ligneRep / nRep;
                     rep = {
                         x: texteX,
-                        y: y + cell.dy + cell.lignes.length * o.interligne
+                        y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
                             + (cell.choix ? o.interligne : 0) + pas * 0.72,
                         w: texteW, lignes: nRep, pas
                     };
@@ -1111,7 +1180,7 @@ export function composerBlocs(exos, opts, mesurer) {
                 const tableau = cell.tableau ? {
                     ...cell.tableau,
                     x: texteX,
-                    y: y + cell.dy + cell.lignes.length * o.interligne
+                    y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
                         + (cell.choix ? o.interligne : 0) + o.avantTableau
                 } : null;
                 page.items.push({
@@ -1122,7 +1191,10 @@ export function composerBlocs(exos, opts, mesurer) {
                     lignes: cell.lignes, x, y, dy: cell.dy, texteX, texteW,
                     fractions: cell.fractions,
                     choix: cell.choix,
-                    choixY: cell.choix ? y + cell.dy + cell.lignes.length * o.interligne : null,
+                    choixY: cell.choix
+                        ? y + cell.dy
+                            + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
+                        : null,
                     rep
                 });
             });
@@ -1131,7 +1203,8 @@ export function composerBlocs(exos, opts, mesurer) {
     });
 
     if (page.items.length) pages.push(page);
-    return { pages, zone, opts: o, nbQuestions: total, page: page0, colonnes: colonnesParExo };
+    return { pages, zone, opts: o, nbQuestions: total, page: page0,
+        colonnes: colonnesParExo, departs: departsParExo };
 }
 
 /**
@@ -1288,7 +1361,21 @@ export function composerSolutions(questions, opts, mesurer) {
             const qs = sec.questions || [];
             if (!qs.length) return;
             const bareme = sec.points ? ` — ${sec.points} pt${sec.points > 1 ? 's' : ''}` : '';
-            items.push({ titre: true, texte: `Exercice ${i + 1} — ${sec.titre}${bareme}` });
+            // LE NUMÉRO D'EXERCICE EST CELUI DE LA FEUILLE, pas celui d'ici.
+            //
+            // Rémy : « j'ai l'impression d'un problème d'ordre ». Le corrigé ne
+            // reçoit que les exercices qui ont des questions écrites — un
+            // appariement se corrige sur son propre dessin — et il comptait
+            // 1, 2, 3 sur CETTE liste-là. Son « Exercice 1 » était donc
+            // l'exercice 2 de la feuille, et le professeur cherchait sur la
+            // mauvaise moitié de la page.
+            const rang = Number(sec.rang) || (i + 1);
+            items.push({ titre: true, texte: `Exercice ${rang} — ${sec.titre}${bareme}` });
+            // ET LES NUMÉROS DE QUESTION REPRENNENT LÀ OÙ LA FEUILLE LES A LAISSÉS.
+            // `depart` vient de `composerBlocs`, qui les a posés : on rapporte
+            // ce qui a été fait, on ne le recalcule pas — deux compteurs pour
+            // la même numérotation finissent par compter différemment.
+            if (Number(sec.depart) > 0) n = Number(sec.depart) - 1;
             if (o.numerotation === 'exercice') n = 0;
             const numerote = sec.numeroter !== false;
             // CE QUE VAUT UNE QUESTION. L'intertitre porte le total de
@@ -1507,3 +1594,110 @@ export const BAREME = (points) => {
 
 /** La ligne débarrassée de ses marques : pour mesurer, et pour les tests. */
 export const sansMarques = (t) => String(t ?? '').replace(/[\u0001-\u0006]/g, '');
+
+/**
+ * L'ÉNONCÉ QUI SE RÉPÈTE DEVANT CHAQUE QUESTION S'EN VA EN TÊTE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, sur `cf-ensemble` : « laisse de la place et ne remets pas l'énoncé à
+ * chaque question sur la version imprimé ».
+ *
+ * Une feuille de dix questions écrivait dix fois « Simplifier : », « Calculer :
+ * », « Dans chaque cas, … ». Sur un cahier d'écolier cela ne se fait pas : la
+ * consigne est donnée UNE fois, en tête, et les questions ne portent que ce qui
+ * les distingue. La place gagnée est celle où l'élève écrit.
+ *
+ * ── CE QU'ON DÉGAGE, ET CE QU'ON NE DÉGAGE PAS ─────────────────────────────
+ *
+ * On ne coupe qu'au bout d'un VRAI séparateur — « : », « — », « ? » — et
+ * seulement si toutes les questions le partagent. Couper au mot près donnerait
+ * « Simplifier : √64 » et « Simplifier : √(9 + 16) » réduits à « √64 » et
+ * « (9 + 16) » le jour où deux questions commenceraient par « Simplifier : √ ».
+ *
+ * ET IL DOIT RESTER QUELQUE CHOSE. Deux questions identiques au séparateur près
+ * se retrouveraient vides, numérotées devant une ligne blanche — ce qui est
+ * exactement le défaut qu'on répare, à l'envers.
+ *
+ * ON NE TOUCHE PAS À UNE QUESTION SEULE : un préfixe ne se « répète » pas à un
+ * exemplaire, et le dégager laisserait une question sans énoncé.
+ *
+ * @param {string[]} textes   les questions, telles qu'elles seraient écrites
+ * @returns {{prefixe: string, textes: string[]}}
+ */
+export function degagerLePrefixe(textes) {
+    const liste = (textes || []).map(t => String(t ?? ''));
+    const rien = { prefixe: '', suffixe: '', textes: liste };
+    if (liste.length < 2) return rien;
+
+    // ── LE DÉBUT COMMUN ────────────────────────────────────────────────────
+    let n = 0;
+    const court = Math.min(...liste.map(t => t.length));
+    while (n < court && liste.every(t => t[n] === liste[0][n])) n++;
+
+    let prefixe = '';
+    if (n) {
+        // ON RECULE JUSQU'AU DERNIER SÉPARATEUR. C'est lui qui fait d'un début
+        // commun un ÉNONCÉ ; sans lui on couperait au milieu d'un mot ou d'un
+        // nombre.
+        const m = liste[0].slice(0, n).match(/^(.*[:?\u2014\u00bb.][\s\u00a0]+)/);
+        // UN SÉPARATEUR N'EST PAS UN ÉNONCÉ. « : » tout seul, « Soit : »,
+        // « Et : » ne valent pas d'être hissés — et les retirer priverait la
+        // question du peu qu'elle disait. La plus courte consigne utile du
+        // catalogue est « Calcule : », qui fait neuf signes.
+        if (m && m[1].trim().length >= 8) prefixe = m[1];
+    }
+
+    // ── LA FIN COMMUNE ─────────────────────────────────────────────────────
+    //
+    // RÉMY, sur `cf-ensemble` : « ne remets pas l'énoncé à chaque question ».
+    // Son énoncé ne se répétait pas DEVANT mais DERRIÈRE — « …, puis préciser
+    // le plus petit ensemble auquel le résultat appartient. », dix fois, pour
+    // une consigne qui le disait déjà en tête. Une queue qui se répète est
+    // exactement aussi encombrante qu'une tête, et deux fois plus longue ici.
+    const reste0 = liste.map(t => t.slice(prefixe.length));
+    let k = 0;
+    const court2 = Math.min(...reste0.map(t => t.length));
+    while (k < court2 && reste0.every(t => t[t.length - 1 - k] === reste0[0][reste0[0].length - 1 - k])) k++;
+
+    let suffixe = '';
+    if (k) {
+        const queue = reste0[0].slice(reste0[0].length - k);
+        // ON AVANCE JUSQU'AU PREMIER DÉBUT DE MOT : une fin commune commence
+        // rarement sur une limite propre — « …ppartient. » est commun à toutes
+        // sans être une phrase.
+        const m2 = queue.match(/[\s\u00a0]([^\s\u00a0].*)$/s);
+        const candidat = m2 ? m2[1] : '';
+        // Assez long pour valoir la peine, et il doit rester la question.
+        if (candidat.trim().length >= 12) suffixe = candidat.trim();
+    }
+
+    const restes = reste0.map(t => (suffixe ? t.slice(0, t.length - suffixe.length) : t)
+        .replace(/[\s\u00a0,;]+$/, '').trim());
+    // ET IL DOIT RESTER QUELQUE CHOSE. Deux questions identiques au séparateur
+    // près se retrouveraient vides, numérotées devant une ligne blanche — le
+    // défaut qu'on répare, à l'envers.
+    if (!prefixe && !suffixe) return rien;
+    if (restes.some(r => !r)) return rien;
+    return { prefixe: prefixe.trim(), suffixe, textes: restes };
+}
+
+export function consigneAvecPrefixe(consigne, ...bouts) {
+    const net = (t) => String(t).toLowerCase().replace(/[^a-zà-ÿ]+/g, '');
+    let c = String(consigne || '').trim();
+    for (const bout of bouts) {
+        const b = String(bout || '').trim();
+        if (!b) continue;
+        // LE BÉGAIEMENT EST LE SEUL RISQUE. La consigne de `cf-ensemble` dit
+        // déjà « puis préciser le plus petit ensemble auquel appartient le
+        // résultat » — l'y remettre une seconde fois ne gagnerait rien et se
+        // lirait comme une erreur. On compare sur les LETTRES SEULES :
+        // « appartient le résultat » et « le résultat appartient » ne sont pas
+        // le même ordre, mais c'est la même phrase, et c'est ce qui compte.
+        const lettres = net(b).replace(/^(.{12,}?)$/, '$1');
+        if (c && (net(c).includes(lettres) || lettres.length > 20
+            && net(c).includes(lettres.slice(0, 20)))) continue;
+        c = c ? `${c} ${b}` : b;
+    }
+    return c;
+}

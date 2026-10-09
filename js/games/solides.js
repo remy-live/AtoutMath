@@ -22,7 +22,10 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
+import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
+import { LISTE_MARCHES, ANCIEN } from '../core/generators/solides.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     ASPECTS, tirerQuestion, dessiner, facesVisibles, aretesCachees, sommetsCaches,
     compter, euler, direMethode, accorder
@@ -41,7 +44,7 @@ class Solides extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'solides');
         this.rng = makeRng(this.params.seed);
-        this.niveau = this.params.niveau || 'tous';
+        this.poses = 0;
         this.aspectVoulu = this.params.aspect || 'tous';
         this.reussis = 0;
         this.marques = new Set();
@@ -169,7 +172,9 @@ class Solides extends BaseGame {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 800; font-size: 1rem;
                 }
-                .sd-touche:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .sd-touche:hover { background: var(--bg-hover); }
+                }
                 .sd-ecran {
                     min-width: 66px; text-align: center; font-weight: 800; font-size: 1.25rem;
                     border: 2px solid var(--primary); border-radius: 10px; padding: 5px 10px;
@@ -224,6 +229,17 @@ class Solides extends BaseGame {
     // --- Une question -------------------------------------------------------
 
     poser() {
+        // LA MARCHE DE LA QUESTION QU'ON POSE. Le jeu lisait `params.niveau`
+        // UNE fois, au démarrage, et toute la partie restait dessus. Depuis
+        // que le réglage est une colonne de cases (Rémy : « il faudrait
+        // pouvoir faire les check box comme pour le calcul littéral »), les
+        // niveaux cochés se partagent les questions dans l'ordre — voir
+        // core/progression.js. On compte les questions POSÉES et non les
+        // réussies : une question ratée reste une question, et la progression
+        // ne doit pas piétiner.
+        this.niveau = String(marcheAuRang(this.poses++,
+            marchesCochees(this.params, LISTE_MARCHES, ANCIEN),
+            totalDe(null, this.params), this.params) || 'tous');
         this.q = tirerQuestion(this.rng, {
             niveau: this.niveau, aspect: this.aspectVoulu, eviter: this.precedent
         });
@@ -511,12 +527,13 @@ class Solides extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.q) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say(direMethode(this.q.solide, this.q.aspect), this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Le robot marque tout, en commençant par ce qui se voit — puis il
         // annonce qu'il va chercher derrière. C'est là qu'est la leçon.
@@ -527,24 +544,24 @@ class Solides extends BaseGame {
             .concat([...Array(total).keys()].filter(cache));
         let annonce = false;
         for (const i of ordre) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             if (cache(i) && !annonce) {
                 annonce = true;
                 cur.say('Et maintenant celles de DERRIÈRE. C\'est là qu\'on se trompe : '
                     + 'elles ne se voient pas, mais elles existent.', this.svg);
-                if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.between)) return fin();
             }
             const el = this.svg.querySelector(`[data-cible="${i}"]`);
             if (el && !await cur.tap(el)) return fin();
             this.marques.add(i);
             this.peindreMarques();
             this.majCompteur();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`J'en ai marqué ${total}. ${this.q.explication}`, this.compteurEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

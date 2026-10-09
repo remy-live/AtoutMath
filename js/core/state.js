@@ -22,10 +22,74 @@ import {
     computeScore, computeTime, computeBadges, computeAttempts, computeErrors,
     countCorrect, computeAssignedPath, errorKeyOf, computeExploits, computeVerrousOuverts
 } from './projections.js';
+import { poserSigneFois, SIGNE_PAR_DEFAUT } from './signeFois.js';
 import { computeMastery } from './mastery.js';
 import { conceptToSkill, deriveSkillFromLegacy } from './compat.js';
 
 let profileStore = null;
+
+// --- L'IDENTITÉ D'UNE QUESTION, ET LE NUMÉRO DE L'ESSAI ---------------------
+//
+// RÉMY : « comment juges-tu un exercice comme l'organigramme des quadrilatères
+// en mode évaluation ? Ma question générale est : est-ce que tous les
+// exercices sont vraiment évaluables ? »
+//
+// LE DÉFAUT QUE SA QUESTION A FAIT SORTIR. La règle par défaut d'une
+// évaluation est « juste DU PREMIER COUP » ; `grading.js` la lit dans
+// `attemptIndex`. Or cette ligne disait `a.attemptIndex || 0` — et MESURÉ,
+// 79 des 80 modules qui remontent des réponses ne le renseignent jamais. Les
+// exercices à générateur s'en tirent, parce qu'`itemSession` le compte pour
+// eux ; les 78 activités, non. Même élève, mêmes réponses (trois questions
+// ratées puis reprises sur dix) :
+//
+//     exercice à générateur   note 14/20 — premier essai : 7/10
+//     jeu autonome            note 20/20 — premier essai : 10/10
+//
+// Un élève qui se trompe puis se reprend était noté comme s'il avait tout eu
+// du premier coup, sur plus de la moitié du catalogue.
+//
+// ON LE COMPTE ICI, ET NON DANS CHAQUE JEU. C'est le seul entonnoir par lequel
+// passe toute tentative, de quelque origine qu'elle vienne : le corriger à
+// soixante-dix-huit endroits, c'est se donner soixante-dix-huit occasions de
+// l'oublier au prochain jeu écrit.
+//
+// DEUX NOTIONS QUI SE CONFONDAIENT, et c'est la racine :
+//   · REPRENDRE la même question — deuxième essai, la note doit le savoir ;
+//   · RETOMBER sur le même fait plus tard — « 7 × 8 » qui revient à la
+//     troisième minute de Tetris est une AUTRE question, pas une reprise.
+// `grading.js` groupait par énoncé, faute de mieux, et mélangeait les deux.
+// Chaque OCCURRENCE reçoit donc son identité ; les essais d'une occurrence la
+// partagent. La question courante est close dès qu'elle tombe juste.
+//
+// ON NE TOUCHE À RIEN QUAND L'APPELANT SAIT : un exercice à générateur donne
+// sa graine et son numéro d'essai, et ils sont justes. C'est l'absence qu'on
+// comble, pas la présence qu'on corrige.
+let questionEnCours = null;   // { cle, essais, graine }
+let occurrences = 0;
+
+function identifierLaQuestion(a, ctx) {
+    const graineDonnee = a.itemSeed || ctx.itemSeed || null;
+    if (graineDonnee) {
+        // L'appelant tient le compte : `itemSession` incrémente son
+        // `attemptIndex` à chaque essai et remet à zéro à la question suivante.
+        questionEnCours = null;
+        return { itemSeed: graineDonnee, attemptIndex: a.attemptIndex || 0 };
+    }
+    // L'ÉTAPE FAIT PARTIE DE LA CLEF : deux étapes du même jeu posent la même
+    // question sans que ce soit une reprise — et `grading.js` groupe sur la
+    // seule graine, sans regarder l'étape.
+    const cle = `${ctx.stepId || ''}|${a.questionText || ''}`;
+    if (!questionEnCours || questionEnCours.cle !== cle) {
+        questionEnCours = { cle, essais: 0, graine: `q${++occurrences}@${ctx.stepId || 'libre'}` };
+    }
+    const attemptIndex = a.attemptIndex || questionEnCours.essais;
+    questionEnCours.essais++;
+    const graine = questionEnCours.graine;
+    // JUSTE = CLOSE. La suivante, même si elle porte le même énoncé, est une
+    // nouvelle question et non un troisième essai.
+    if (a.correct) questionEnCours = null;
+    return { itemSeed: graine, attemptIndex };
+}
 
 // --- Mémoïsation des projections -------------------------------------------
 // Recalculer les projections à chaque lecture serait correct mais coûteux :
@@ -72,7 +136,7 @@ export const state = {
     // les classes qui avaient reçu n'importe quel autre parcours sans
     // identifiant. Ce n'était pas une mémoire de la dernière classe : c'était
     // deux inconnus qui se prenaient pour le même.
-    currentPath: { id: 'path_' + shortId(8), version: 2, name: 'Mon Parcours', policy: null, steps: [] },
+    currentPath: { id: 'path_' + shortId(8), version: 2, name: 'Nouveau parcours', policy: null, steps: [] },
     currentPathId: null,
     isTeacherMode: false,
     isMobileView: false,
@@ -92,6 +156,15 @@ export const state = {
     // d'affichage global, persisté : c'est une habitude de classe, pas un choix
     // qu'on refait à chaque exercice.
     stylePoint: 'croix',
+    // LE SIGNE DE MULTIPLICATION : 'fois' (×) | 'point' (·) | 'etoile' (*).
+    //
+    // Rémy : « dans les paramètres d'affichage, propose aussi le x (le signe
+    // fois français) ou l'astérisque ». Réglage d'affichage global et persisté,
+    // pour la même raison que la marque des points : c'est une habitude de
+    // classe, pas un choix qu'on refait à chaque exercice. Voir
+    // `js/core/signeFois.js`, qui explique pourquoi la substitution se fait à
+    // l'affichage et non dans les mille endroits qui écrivent un « × ».
+    signeFois: SIGNE_PAR_DEFAUT,
     // Filtre d'état de publication du catalogue : 'tout' | 'valide' | 'test'
     // | 'brouillon'. Outil d'auteur, persisté par confort entre deux sessions.
     catalogFilter: 'tout',
@@ -187,6 +260,11 @@ export const state = {
         this.mesExercices = (await profileStore.get('mesExercices', [])) || [];
         this.stylePoint = (await profileStore.get('stylePoint', 'croix')) || 'croix';
         appliquerStylePoint(this.stylePoint);
+        // `poserSigneFois` BORNE ELLE-MÊME ce qu'on lui donne : la valeur vient
+        // d'un stockage qu'un navigateur peut rendre dans n'importe quel état,
+        // et elle rend l'identifiant qu'elle a vraiment retenu.
+        this.signeFois = poserSigneFois(
+            await profileStore.get('signeFois', SIGNE_PAR_DEFAUT));
 
         journal.compact();
         invalidate();
@@ -226,6 +304,7 @@ export const state = {
      */
     recordAttempt(a) {
         const ctx = this.attemptContext || {};
+        const identite = identifierLaQuestion(a, ctx);
         const exo = this.activeExo;
         const payload = {
             runId: ctx.runId || null,
@@ -235,12 +314,12 @@ export const state = {
             generatorId: a.generatorId || ctx.generatorId || null,
             activityId: a.activityId || ctx.activityId || null,
             skillId: a.skillId || ctx.skillId || null,
-            itemSeed: a.itemSeed || ctx.itemSeed || null,
+            itemSeed: identite.itemSeed,
             questionText: a.questionText !== undefined ? a.questionText : (ctx.questionText || ''),
             given: a.given,
             expected: a.expected !== undefined ? a.expected : ctx.expected,
             correct: !!a.correct,
-            attemptIndex: a.attemptIndex || 0,
+            attemptIndex: identite.attemptIndex,
             msElapsed: a.msElapsed || (ctx.startedAt ? Date.now() - ctx.startedAt : 0),
             hintsUsed: a.hintsUsed || ctx.hintsUsed || 0,
             misconception: a.misconception || null,
@@ -356,6 +435,23 @@ export const state = {
         appliquerStylePoint(this.stylePoint);
         if (profileStore) await profileStore.set('stylePoint', this.stylePoint);
     },
+    /**
+     * CHANGER LA NOTATION DE LA MULTIPLICATION.
+     *
+     * ON ANNONCE LE CHANGEMENT, et c'est nécessaire : un exercice déjà à
+     * l'écran a écrit son énoncé avec l'ancien signe, et rien ne le lui
+     * redemandera. Sans cet avis, le professeur changerait le réglage et ne
+     * verrait rien bouger avant la question suivante — donc croirait que le
+     * bouton ne marche pas.
+     */
+    async setSigneFois(id) {
+        this.signeFois = poserSigneFois(id);
+        if (profileStore) await profileStore.set('signeFois', this.signeFois);
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('signe_fois_change',
+                { detail: this.signeFois }));
+        }
+    },
 
     // --- Parcours assigné ---------------------------------------------------
 
@@ -465,7 +561,23 @@ export const state = {
 
     saveTeacherPath(name, pathData, folderId = 'root') {
         const newPath = {
-            id: 'path_' + Date.now(),
+            // L'HORLOGE SEULE NE SUFFIT PAS À FAIRE UN IDENTIFIANT.
+            //
+            // MESURÉ (`tools/gestionParcours.mjs`) : trois parcours enregistrés
+            // d'affilée reçoivent le MÊME `path_<ms>`, et la bibliothèque en
+            // affiche trois fois le dernier. Ce n'est pas un cas de laboratoire
+            // — `generateSampleData` enregistre « Parcours découverte » puis
+            // « Tout sur papier » coup sur coup, et tout code qui pose deux
+            // parcours à la suite tombe dedans.
+            //
+            // ET CE SERAIT PIRE AU SERVEUR : `/teacher/paths` fait un
+            // `ON CONFLICT(id) DO UPDATE`. Deux parcours de même identifiant,
+            // c'est le second qui ÉCRASE le premier, sans un mot.
+            //
+            // `shortId` est déjà ce qui sert à `currentPath` seize lignes plus
+            // haut ; l'horloge reste devant pour que les identifiants gardent
+            // leur ordre naturel, ce qui aide à lire une base à la main.
+            id: 'path_' + Date.now() + '_' + shortId(4),
             name,
             data: pathData,
             folderId,
@@ -476,11 +588,31 @@ export const state = {
         return newPath;
     },
 
+    /**
+     * LE NOM EST ÉCRIT À DEUX ENDROITS, ET LES DEUX DOIVENT SUIVRE.
+     *
+     * Une entrée porte `name` — ce que montre l'explorateur — et son parcours
+     * porte `data.name`, la même chose à l'intérieur. Renommer n'écrivait que
+     * le premier.
+     *
+     * MESURÉ : on renomme « Gamma » en « Gamma renommé » dans le tiroir, on le
+     * rouvre, il s'appelle de nouveau « Gamma » — et cette fois pour de bon,
+     * car la sauvegarde automatique recopie alors l'ancien nom dans l'entrée.
+     * La cause tient en une ligne de `normalizePath`, qui répand `...raw` : le
+     * nom rangé DANS le parcours l'emporte sur celui qu'on lui passe. C'est
+     * cohérent — le parcours sait comment il s'appelle —, à condition que
+     * personne ne renomme l'entrée sans le lui dire.
+     *
+     * On le lui dit donc ici, au seul endroit par où passe un renommage.
+     */
     updateTeacherPath(id, name, pathData) {
         const p = this.teacherPaths.find(x => x.id === id);
         if (!p) return;
         if (name) p.name = name;
         if (pathData) p.data = pathData;
+        if (name && p.data && typeof p.data === 'object' && !Array.isArray(p.data)) {
+            p.data.name = name;
+        }
         p.timestamp = Date.now();
         this.saveTeacherPaths();
     },
@@ -504,7 +636,9 @@ export const state = {
     },
 
     addTeacherFolder(name) {
-        const folder = { id: 'folder_' + Date.now(), name, timestamp: Date.now() };
+        // MÊME RAISON QUE POUR LES PARCOURS, et le même piège : deux dossiers
+        // créés dans la même milliseconde n'en feraient qu'un.
+        const folder = { id: 'folder_' + Date.now() + '_' + shortId(4), name, timestamp: Date.now() };
         this.teacherFolders.push(folder);
         this.saveTeacherFolders();
         return folder;
@@ -515,6 +649,31 @@ export const state = {
         if (!f) return;
         f.name = name;
         f.timestamp = Date.now();
+        this.saveTeacherFolders();
+    },
+
+    /**
+     * REPLIER UN DOSSIER, ET S'EN SOUVENIR.
+     *
+     * Rémy : « on pourrait replier des répertoires ? ». Un dossier de
+     * cinquante parcours pousse tout le reste hors de l'écran ; replié, il
+     * tient sur une ligne et dit combien il garde.
+     *
+     * ON LE RANGE SUR LE DOSSIER LUI-MÊME, et pas dans un réglage à part.
+     * C'est discutable — un pli est une vue, pas une donnée, et le replier sur
+     * le téléphone le repliera sur l'ordinateur. On l'assume : les dossiers
+     * voyagent déjà d'un appareil à l'autre par `saveTeacherFolders`, et un
+     * second stockage à synchroniser pour un booléen coûterait plus cher que
+     * ce qu'il éviterait.
+     */
+    setFolderReplie(id, replie) {
+        const f = this.teacherFolders.find(x => x.id === id);
+        if (!f || !!f.replie === !!replie) return;
+        f.replie = !!replie;
+        // ON NE TOUCHE PAS À `timestamp` : replier un dossier n'est pas le
+        // modifier, et l'explorateur trie sur cette date. Un dossier qu'on
+        // ouvre pour regarder ne doit pas remonter en tête comme s'il avait
+        // été travaillé.
         this.saveTeacherFolders();
     },
 

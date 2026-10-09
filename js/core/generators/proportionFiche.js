@@ -8,26 +8,42 @@
 
 import { makeItem } from '../items.js';
 import { tirerTableau, attendu, ecrire } from '../proportion.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
+
+// ── LA PROGRESSION, EN CASES À COCHER ───────────────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? — fais tout, ce serait le plus cohérent non ? »
+//
+// DOUZE TABLEAUX SUR UNE FEUILLE, ET TOUS AU MÊME CRAN : le menu ne
+// savait dire que cela. Cochés, les trois crans se partagent la page — le
+// coefficient entier d'abord, les cinq colonnes à la fin.
+const LISTE_MARCHES = [
+    { id: 'facile', nom: '1. Coefficient entier, 2 cases en bas' },
+    { id: 'moyen', nom: '2. Coefficient décimal, 3 cases dans les deux sens' },
+    { id: 'difficile', nom: '3. 5 colonnes, 4 cases, coefficients difficiles' }
+];
+/** Le réglage d'avant les cases — voir `marchesCochees`. */
+const ANCIEN = { cle: 'niveau' };
 
 export const proportionFicheGenerator = {
     id: 'num.proportion-fiche',
     label: 'Tableaux de proportionnalité',
     skills: ['num.proportion.tableau'],
     answerKinds: ['grid'],
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 'facile',
-            options: [
-                { value: 'facile', label: 'Coefficient entier, 2 cases en bas' },
-                { value: 'moyen', label: 'Coefficient décimal, 3 cases dans les deux sens' },
-                { value: 'difficile', label: '5 colonnes, 4 cases, coefficients difficiles' }
-            ]
-        }
+        paramMarches({ marches: LISTE_MARCHES, mot: 'niveau', ancien: ANCIEN })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const niveau = (params || {}).niveau || 'facile';
+        const niveau = String(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params) || 'facile');
         // DOUZE TABLEAUX SUR UNE FEUILLE, ET TROIS QUI PARLENT DE MENTHE À
         // L'EAU : l'élève ne lit plus la situation, il reconnaît la ligne. On
         // retire donc tant que le contexte a déjà servi sur cette fiche — la
@@ -56,6 +72,7 @@ export const proportionFicheGenerator = {
             meta: {
                 contexte: t.contexte, coef: t.coef,
                 a: t.a, b: t.b, trous: t.trous, niveau: t.niveau,
+                marche: niveau,
                 // Le canal par lequel la fiche dit ce qu'elle a déjà servi.
                 theme: t.contexte.sujet
             }

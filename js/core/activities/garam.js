@@ -14,6 +14,7 @@ import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { OPS_GARAM } from '../generators/garam.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = -1;
@@ -298,7 +299,8 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.ga-board, .kk-board'));
         const gate = createDemoGate(container.querySelector('.kk-actions') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
         const lit = (i) => (valeurs[i] === VIDE ? '?' : valeurs[i]);
         const cibleDe = () => {
@@ -332,20 +334,20 @@ export function mount(container, session, opts = {}) {
             return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ? : je calcule → ${v}.`;
         };
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        if (!await robot.pause(600)) return fin();
         cursor.say('Je cherche une égalité où il ne manque qu\'UNE case : elle se calcule à coup sûr.',
             container.querySelector('.ga-board'));
-        if (!await cursor.pause(2000) || destroyed) return fin();
+        if (!await robot.pause(2000)) return fin();
 
         let prochaine;
         while ((prochaine = cibleDe())) {
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const { eq, idx } = prochaine;
             const el = celluleEl(idx);
             if (!el) return fin();
             cursor.say(phraseDe(eq, idx), el);
-            if (!await cursor.pause(2100) || destroyed) return fin();
-            if (!await cursor.tap(el, 320) || destroyed) return fin();
+            if (!await robot.pause(2100)) return fin();
+            if (!await robot.toucher(el, 320)) return fin();
             valeurs[idx] = solution[idx];
             el.querySelector('.kk-val').textContent = solution[idx];
             el.classList.add('demo-target');
@@ -361,7 +363,7 @@ export function mount(container, session, opts = {}) {
         cursor.say('Toutes les égalités sont vraies : le Garam est terminé !',
             container.querySelector('.ga-board'));
         container.querySelector('.ga-board').classList.add('kk-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between + 600) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 600)) return fin();
         fin();
         renderNext();
     }

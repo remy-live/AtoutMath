@@ -11,6 +11,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     grilleVide, glisser, apparaitre, peutJouer, plusGrande, conseiller, direConseil
 } from '../core/deuxmille.js';
@@ -362,29 +363,32 @@ class DeuxMille extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.grille) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Toutes les tuiles sont des DOUBLEMENTS : 2, 4, 8, 16… Quand deux tuiles égales se '
-            + 'touchent dans le sens du geste, elles fusionnent en leur double.', this.grilleEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
+        // UNE IDÉE PAR BULLE : au-delà de 110 caractères la démonstration paraît figée.
+        cur.say('Toutes les tuiles sont des DOUBLEMENTS : 2, 4, 8, 16…', this.grilleEl);
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+        cur.say('Deux tuiles égales qui se touchent dans le sens du geste fusionnent en leur double.', this.grilleEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 0; k < 5 && peutJouer(this.grille); k++) {
             const c = conseiller(this.grille);
             if (!c) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(direConseil(c), this.grilleEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             const coup = glisser(this.grille, c.direction);
             if (coup) this.appliquer(coup);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Le secret : ne joue pas au hasard. AVANT de glisser, cherche quelles tuiles vont se '
-            + 'retrouver — c\'est du calcul mental déguisé en réflexe.', this.container.querySelector('[data-aide]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        // « du calcul mental déguisé en réflexe » est une leçon sur le jeu, pas un geste : coupée.
+        cur.say('AVANT de glisser, cherche quelles tuiles vont se retrouver.', this.container.querySelector('[data-aide]'));
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

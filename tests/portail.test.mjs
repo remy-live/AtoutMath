@@ -131,3 +131,115 @@ test('CHAQUE CASE DIT LA FORME DU CODE QU\'ELLE ATTEND', () => {
     assert.match(src, /4 signes/, 'la case du billet doit annoncer sa forme');
     assert.match(src, /long, avec des tirets/, 'celle de la séance aussi');
 });
+
+// ─────────────── LA PORTE DU PROFESSEUR EST UNE PORTE ───────────────────────
+//
+// RÉMY, devant la copie d'essai en ligne : « mais comment j'entre sur github en
+// tant que prof ? »
+//
+// MESURÉ. La porte existait — « Je suis le professeur », sous les deux cartes —
+// mais c'était un lien souligné gris de 26 PX DE HAUT sur ordinateur : sous le
+// seuil des 44 px qu'on tient partout ailleurs, et de la couleur qu'on réserve
+// aux textes secondaires. Elle se lisait comme une note de bas de page, et l'on
+// ne cherche pas une porte dans les mentions légales.
+//
+// Après : 44 px sur les deux appareils, contraste 17,85, et le clic ouvre le
+// mode professeur (sur la copie d'essai, sans mot de passe — ailleurs, la
+// fenêtre d'identification s'ouvre, ce qui est le même geste).
+//
+// ELLE RESTE DISCRÈTE, et c'est voulu : c'est l'écran des élèves, ils sont
+// trente pour un professeur. Discret n'est pas illisible.
+
+test('LA PORTE DU PROFESSEUR SE VOIT ET SE CLIQUE', () => {
+    const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
+    const css = fs.readFileSync(new URL('../css/ui.css', import.meta.url), 'utf8');
+    assert.match(src, /class="portail-lien portail-lien--porte">Je suis le professeur</);
+    assert.match(css, /\.portail-lien--porte \{\s*\n\s*min-height: 44px;/);
+    // Un cadre, pour qu'elle dise qu'on peut cliquer — mais pas de fond plein :
+    // les deux portes des élèves gardent le premier rôle.
+    assert.match(css, /\.portail-lien--porte \{[\s\S]{0,300}border: 1px solid var\(--border\)/);
+    assert.ok(!/\.portail-lien--porte \{[\s\S]{0,300}background: var\(--primary\)/.test(css));
+    // Et « Explorer les exercices » est une porte au même titre : elle avait
+    // exactement le même défaut, pour exactement la même raison.
+    assert.match(src, /id="portail-libre" class="portail-lien portail-lien--porte">'\s*\n\s*\+ 'Explorer les exercices/);
+});
+
+test('LE SOUS-TITRE NE COMPTE PLUS LES PORTES', () => {
+    // Il annonçait « l'une des deux portes » alors qu'il y en avait trois — la
+    // troisième étant justement celle du professeur. Et le compte change avec
+    // le mode libre : une phrase qui dépend d'un décompte finit par mentir.
+    const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
+    const sansCommentaires = src.replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(!/portail-sous">Entre par l'une des deux portes/.test(sansCommentaires));
+    assert.match(sansCommentaires, /<p class="portail-sous">Choisis par où tu entres\.<\/p>/);
+});
+
+test('L\'ÉCRAN D\'ACCUEIL DIT QUELLE VERSION IL EST', () => {
+    // La question a coûté deux échanges : Rémy voyait un écran, je décrivais un
+    // bouton, et le bouton n'y était pas — son navigateur lui servait une
+    // version d'avant. Le numéro était déjà lisible dans la zone professeur ;
+    // il ne l'était pas ICI, sur le premier écran, celui qu'on a sous les yeux
+    // quand on se demande si la mise à jour est arrivée.
+    const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
+    assert.match(src, /import \{ versionLisible \} from '\.\.\/core\/versionDuSite\.js';/);
+    assert.match(src, /<p class="portail-version">\$\{versionLisible\(\)\}/);
+    // Et il dit AUSSI que c'est une copie d'essai, quand c'en est une.
+    assert.match(src, /copieDEssai\(\) \? ' · copie d\\'essai' : ''/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// L'EXEMPLE EST DANS L'ÉTIQUETTE, PAS DANS LE CHAMP.
+//
+// RÉMY : « dans l'écran d'accueil ou on tape son identifiant, quand on clique
+// sur le champ qui affiche un exemple ca efface le champ exemple ».
+//
+// MESURÉ, PHOTO À L'APPUI, portail ouvert à 390 px de large : « lea.durand »
+// s'affichait en gras sombre dans la police du champ, et « 4KP2 » en monospace
+// espacé — c'est-à-dire exactement la typographie d'un code réellement saisi.
+// Rien ne distinguait l'exemple d'une valeur déjà tapée. L'élève voit son champ
+// rempli, pose le doigt, tape : de son point de vue, le logiciel vient
+// d'effacer quelque chose.
+//
+// ET CE N'ÉTAIT PAS UN DÉFAUT DE CONTRASTE. Le fort contraste des indices a été
+// posé exprès et mesuré, parce que dans les fenêtres sans retour l'indice PORTE
+// LE MOT À RECOPIER (EFFACER, REFAIRE, RETIRER). L'affaiblir aurait défait une
+// correction juste pour en faire une autre. Le défaut était l'ENDROIT.
+
+test('AUCUN EXEMPLE NE SE CACHE DANS UN CHAMP DE LA PORTE D\'ENTRÉE', () => {
+    const src = fs.readFileSync('js/ui/portailUI.js', 'utf8');
+    const formulaire = src.slice(src.indexOf('portail-portes'), src.indexOf('portail-pied'));
+    assert.ok(formulaire.length > 500, 'tranche vide : le test ne vérifierait rien');
+
+    // LES QUATRE QU'ON A DÉPLACÉS, nommément : chacun ressemblait à une valeur.
+    ['lea.durand', '4KP2', 'ABC123', 'Léa'].forEach(exemple => {
+        assert.ok(!new RegExp(`placeholder="${exemple}"`).test(formulaire),
+            `« ${exemple} » est redescendu dans le champ : il y ressemble à une saisie`);
+    });
+
+    // ET ILS SONT DANS L'ÉTIQUETTE, où ils restent visibles PENDANT la frappe —
+    // ce qu'un indice de champ ne fait jamais, et c'est précisément quand on
+    // tape qu'on a besoin de l'avoir sous les yeux.
+    assert.match(formulaire, /<label>Identifiant <span class="portail-forme">par exemple lea\.durand<\/span>/);
+    assert.match(formulaire, /<label>Code <span class="portail-forme">4 signes, par exemple 4KP2<\/span>/);
+    assert.match(formulaire, /<label>Code de la classe <span class="portail-forme">par exemple ABC123<\/span>/);
+});
+
+test('UNE CONSIGNE RESTE DANS SON CHAMP — ce n\'est pas un exemple', () => {
+    // « colle le code ici » n'est pas une valeur : personne ne la prend pour un
+    // code déjà entré, et elle disparaît au bon moment, quand on colle. La
+    // retirer aussi aurait été appliquer la règle sans la comprendre.
+    const src = fs.readFileSync('js/ui/portailUI.js', 'utf8');
+    assert.match(src, /placeholder="colle le code ici"/);
+});
+
+test('LE CONTRASTE DES INDICES N\'A PAS ÉTÉ TOUCHÉ', () => {
+    // Le témoin du correctif. `::placeholder` porte `--text-muted` à pleine
+    // opacité — mesuré 5,48 en clair, 9,47 en sombre — parce que dans les
+    // fenêtres sans retour l'indice porte le mot à recopier. Si une prochaine
+    // main « corrige » l'exemple en pâlissant tous les indices, elle casse
+    // EFFACER, REFAIRE et RETIRER du même geste.
+    const css = fs.readFileSync('css/ui.css', 'utf8');
+    assert.match(css, /::placeholder \{ color: var\(--text-muted\); opacity: 1; \}/);
+});

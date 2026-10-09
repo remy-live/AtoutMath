@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atelier des dingbats</title>
+<!--
+    L'ATELIER DES DINGBATS — la page autonome.
+
+    Rémy : « pour l'atelier, donne-le-moi directement ici sous forme de
+    fichier », puis : « parfait, tu me l'intègres à AtoutMath désormais ».
+
+    CETTE PAGE NE PORTE PLUS QUE SA COQUILLE. Tout l'atelier — le balisage, le
+    geste, l'enregistrement, l'export — vit dans « js/ui/atelierToile.js », que
+    la modale de l'application monte aussi, depuis la palette d'auteur.
+
+    POURQUOI : tant que le balisage vivait ici, l'intégrer à l'application en
+    aurait fait une SECONDE copie, et la correction suivante serait allée dans
+    l'une et pas dans l'autre. C'est la même raison qui fait fabriquer le fichier
+    autonome par un outil (« tools/paquetAtelier.mjs ») plutôt qu'à la main.
+
+    LA RÉCOLTE EST LA MÊME DES DEUX CÔTÉS quand on travaille sur le site : même
+    clef d'enregistrement, donc on commence ici et l'on finit dans l'application,
+    ou l'inverse. Le fichier reçu par courriel, lui, vit sous « file:// » et garde
+    la sienne — c'est le navigateur qui en décide, pas nous — et le JSON reste le
+    pont entre les deux.
+-->
+<link rel="stylesheet" href="css/base.css?v=983">
+<link rel="stylesheet" href="css/atelierEssai.css?v=983">
+</head>
+<body class="ae-corps">
+
+<header class="ae-tete">
+    <h1 class="ae-titre">🧩 Atelier des dingbats</h1>
+    <a class="ae-retour" href="index.html">← AtoutMath</a>
+</header>
+
+<div id="ae-racine"></div>
+
+<script type="module" src="js/essai/montage.js?v=983"></script>
+</body>
+</html>

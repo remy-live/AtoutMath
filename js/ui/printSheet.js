@@ -16,6 +16,7 @@
 // la page, l'en-tête et la page des solutions sont communs.
 
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
+import { replierApercuSiEtroit } from './modal.js';
 import { ficheSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
@@ -52,7 +53,7 @@ import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../core/figures.js';
 import { tracesDe, branchesCroix, TAILLE_CROIX } from '../core/cercleFigure.js';
 import { pourPdf, texteRiche, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
-    ficheEnPortrait, reglerFichePortrait, fermerAutreFiche, mesureur
+    ficheEnPortrait, reglerFichePortrait, fermerAutreFiche, mesureur, deposerLesRendus
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
 // Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
@@ -131,6 +132,20 @@ import { RENDUS_JEUX } from './fiches/jeux.js';
 import { RENDUS_MOTS } from './fiches/mots.js';
 import { RENDUS_CASSETETE } from './fiches/casseTete.js';
 import { RENDUS_FIGURES } from './fiches/figures.js';
+// LES QUATRE EXERCICES D'ÉLÉMENTS DE GÉOMÉTRIE, qui n'avaient aucune fiche —
+// Rémy : « tu oublies toutes les figures sur la version imprimé ». Leur famille
+// est à part parce qu'elle est la seule à poser une FIGURE ET UN QCM dans le
+// même bloc ; tout le reste de la géométrie demande une réponse écrite.
+import { RENDUS_ELEMENTS_GEO } from './fiches/elementsGeo.js';
+// LES DROITES GRADUÉES — Rémy : « présente en tableau et dessine les axes ».
+// Les deux exercices avaient une fiche, mais ÉCRITE : on ne trace pas une
+// droite graduée sur un pointillé de trois centimètres.
+import { RENDUS_AXES } from './fiches/axes.js';
+// LES CARRÉS LATINS À RONDS — Strimko et Approxdoku n'avaient pas de version
+// imprimée du tout, et ce sont deux des casse-tête qu'on distribue le plus
+// volontiers. Un ruisseau y est une BANDE, pas une couleur : une feuille passe
+// à la photocopieuse.
+import { RENDUS_LATINS } from './fiches/latins.js';
 import { RENDUS_THEOREMES } from './fiches/theoremes.js';
 import { RENDUS_REPERAGE } from './fiches/reperage.js';
 import { RENDUS_NOMBRES } from './fiches/nombres.js';
@@ -284,11 +299,24 @@ export const RENDUS = {
     ...RENDUS_MOTS,
     ...RENDUS_CASSETETE,
     ...RENDUS_FIGURES,
+    ...RENDUS_ELEMENTS_GEO,
+    ...RENDUS_AXES,
+    ...RENDUS_LATINS,
     ...RENDUS_THEOREMES,
     ...RENDUS_REPERAGE,
     ...RENDUS_NOMBRES,
     ...RENDUS_ALGORITHMES,
 };
+
+// ON LA DÉPOSE DANS `ficheRendu`, qui ne l'importe plus.
+//
+// C'était un import à l'envers, et il fermait un cercle : `ficheRendu` tirait
+// `RENDUS` d'ici, `printSheet` tire ses rendus de `fiches/`, et chaque module
+// de `fiches/` revient à `ficheRendu` par `socle.js`. Le cercle ne se
+// refermait dans le bon ordre que si l'entrée était CE fichier — donc jamais
+// pour une sonde, qui importe le rendu qu'elle mesure. Voir le long
+// commentaire de `deposerLesRendus`.
+deposerLesRendus(RENDUS);
 
 // --- La modale ---------------------------------------------------------------
 
@@ -349,9 +377,12 @@ function assurerModale() {
                         <select id="fp-couleur" class="cfg-input"></select></label>
                 </div>
             </details>
+            <details class="fp-apercu-repli" open>
+                <summary>L’aperçu de la feuille</summary>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu" id="fp-apercu"></div>
             </div>
+            </details>
             <div class="fp-note" id="fp-note">Page 1 : les grilles, avec un en-tête Nom / Date.
                 Page 2 : les solutions — à garder pour soi ou à donner après.</div>
             <div class="modal-actions-center">
@@ -360,6 +391,7 @@ function assurerModale() {
             </div>
         </div>`;
     document.body.appendChild(modal);
+    replierApercuSiEtroit(modal);
     // Les deux commandes de fenêtre — ancrer/détacher, replier les réglages —
     // sont posées dans le titre une fois pour toutes.
     fenetreFiche = equiperFenetre(modal, CLE_FENETRE, { peutDetacher: fenetresDetachables });
@@ -555,7 +587,13 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // de l'exercice de repérage ; une planche composée à la main n'est pas cet
     // exercice-là, et coiffer la feuille du professeur d'une consigne qu'il
     // n'a pas écrite serait la lui prendre.
-    const titreFiche = (atelier && atelier.titre) || rendu.titre;
+    //
+    // ET IL PEUT DÉPENDRE DES ITEMS, comme la consigne et les proportions.
+    // Un même rendu sert parfois deux chapitres : celui des priorités imprime
+    // aussi « Le moins devant la parenthèse », et coiffer cette feuille-là du
+    // titre de l'autre, c'est demander à l'élève de chercher ce qu'il révise.
+    const titreDe = (its) => (atelier && atelier.titre)
+        || (typeof rendu.titre === 'function' ? rendu.titre(its || []) : rendu.titre);
     let items = [];
     let solutionsVisibles = false;
 
@@ -631,6 +669,14 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
             // boulangerie trois fois sur la même feuille.
             items.push(generator.generate(reglages, {
                 rng: makeRng(), index: items.length,
+                // COMBIEN DE BLOCS AURA LA FEUILLE. Un générateur à
+                // progression en a besoin pour partager ses marches sur la
+                // page — voir `totalDe` dans core/progression.js. Sans lui, la
+                // feuille retombait sur deux calculs par marche et les
+                // dernières marches n'apparaissaient jamais sur une page
+                // courte, ou toutes les dernières lignes tombaient sur la plus
+                // dure sur une page longue.
+                total,
                 // UNE FICHE EST DU PAPIER, et un générateur a le droit de le
                 // savoir : la feuille de questions le disait déjà, la feuille
                 // de grilles non. C'est ce qui permet à un axe gradué d'y
@@ -694,7 +740,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         const pageHtml = (feuille, iFeuille) => {
         let html = `
             <div class="fp-entete fp-entete--partage" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
-                <b>${titreFiche}${solutionsVisibles ? ' — ' + (rendu.nomSolutions || 'Solutions') : ''}${
+                <b>${titreDe(items)}${solutionsVisibles ? ' — ' + (rendu.nomSolutions || 'Solutions') : ''}${
     feuilles.length > 1 ? ` (${iFeuille + 1}/${feuilles.length})` : ''}</b>
                 <span>Nom : ............  Date : ......</span>
             </div>
@@ -754,6 +800,11 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                 // revenir, et le tirage se rétrécit à chaque clic.
                 items[i] = generator.generate(reglages, {
                     rng: makeRng(), index: i,
+                    // MÊME RANG, MÊME TOTAL : relancer un bloc doit rendre un
+                    // calcul de la MÊME marche que celui qu'on remplace, sinon
+                    // un clic sur la première ligne d'une feuille qui monte en
+                    // ramènerait la plus dure.
+                    total: items.length,
                     themesExclus: items
                         .filter((_, j) => j !== i)
                         .map(it => it.meta && it.meta.theme).filter(Boolean)
@@ -878,7 +929,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                 // Un plateau de jeu vide n'a pas
                 // de correction — la page de solutions serait le même plateau,
                 // toujours vide, et une feuille de plus à photocopier.
-                const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreFiche,
+                const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreDe(items),
                     !!atelier || !!rendu.sansSolution, rendu.plusieursPages ? parPage : 0);
                 doc.save(`${(atelier && atelier.nom) || exo.printable}-${items.length}.pdf`);
             })

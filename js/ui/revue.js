@@ -51,6 +51,20 @@ import {
 // loin : parcourir une longue liste et trancher une fois par ligne, c'est
 // exactement ce que fait cet écran sur les exercices.
 import { quotidienHtml, brancherQuotidien } from './quotidienTri.js';
+import { dingbatsHtml, brancherDingbats } from './dingbatsTri.js';
+
+// LE TRI AU POUCE — le MÊME onglet des exercices, dans l'autre forme.
+//
+// Rémy : « tu pourrais me faire, pour la revue du catalogue, sur téléphone, un
+// fonctionnement pratique pour que je t'envoie ce que l'on garde ou non. »
+//
+// CE N'EST PAS UN QUATRIÈME ONGLET : c'est le même objet — le catalogue — et le
+// même carnet. Un onglet de plus laisserait croire à deux listes à trancher, et
+// l'on se demanderait laquelle compte. C'est une BASCULE de présentation, comme
+// on passe d'une liste à une grille.
+import {
+    triTelephoneHtml, brancherTriTelephone, remettreLeTriAuDebut
+} from './triTelephone.js';
 
 const CLE = 'mathbox-revue';
 let revue = null;
@@ -63,6 +77,16 @@ const CRITERES_VIDES = () => ({
 let criteres = CRITERES_VIDES();
 /** L'onglet regardé : les exercices, ou le tri du quotidien. */
 let vue = 'exercices';
+// LA FORME DE L'ONGLET DES EXERCICES : le tableau, ou le tri au pouce. `null`
+// veut dire « pas encore choisi », et c'est la LARGEUR DE L'ÉCRAN qui tranche
+// alors — sur un téléphone, on ouvre directement sur les cartes. Dès que Rémy
+// touche la bascule, son choix tient : on ne lui remet pas le tableau parce
+// qu'il a tourné l'appareil.
+let auPouce = null;
+const tranchePouce = () => {
+    if (auPouce === null) auPouce = window.innerWidth < 780;
+    return auPouce;
+};
 let retour = null;         // ce qu'on est parti regarder, et où le cocher au retour
 
 // --- Le carnet, gardé sur l'appareil ----------------------------------------
@@ -227,17 +251,23 @@ function assurerPanneau() {
                 color: var(--text-muted); padding: 6px 6px;
             }
             .rv-tri { cursor: pointer; user-select: none; }
-            .rv-tri:hover { color: var(--primary); }
-            .rv-tri--actif { color: var(--primary); }
+            @media (hover: hover) {
+                .rv-tri:hover { color: var(--primary-texte); }
+            }
+            .rv-tri--actif { color: var(--primary-texte); }
             .rv-fleche { display: inline-block; min-width: .7em; font-size: .8em; }
             .rv-table th.rv-nom, .rv-table td.rv-nom {
                 position: sticky; left: 0; z-index: 2; text-align: left;
                 border-right: 1px solid var(--border);
             }
             .rv-table td.rv-nom { cursor: pointer; }
-            .rv-table td.rv-nom:hover b { color: var(--primary); }
+            @media (hover: hover) {
+                .rv-table td.rv-nom:hover b { color: var(--primary-texte); }
+            }
             .rv-table thead th.rv-nom { z-index: 4; }
-            .rv-table tbody tr:hover td { background: var(--bg-panel); }
+            @media (hover: hover) {
+                .rv-table tbody tr:hover td { background: var(--bg-panel); }
+            }
             /* LA LARGEUR EST PORTÉE PAR LE CONTENU, PAS PAR LA CASE. Un
                max-width sur une cellule de tableau ne tient pas : en mise en
                page automatique, la colonne grandit jusqu'au plus long des
@@ -263,7 +293,9 @@ function assurerPanneau() {
                 justify-content: center; border-radius: 8px; cursor: pointer;
                 border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main); padding: 0;
             }
-            .rv-voir:hover { border-color: var(--primary); color: var(--primary); }
+            @media (hover: hover) {
+                .rv-voir:hover { border-color: var(--primary); color: var(--primary-texte); }
+            }
             .rv-ico { width: 15px; height: 15px; fill: none; stroke: currentColor;
                 stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
             .rv-coche { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
@@ -276,7 +308,9 @@ function assurerPanneau() {
             .rv-date { width: 118px; font-size: .74rem; }
             .rv-quand { font-size: .72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
             .rv-jour { color: var(--text-muted); }
-            .rv-jour:hover { color: #16a34a; border-color: #16a34a; }
+            @media (hover: hover) {
+                .rv-jour:hover { color: #16a34a; border-color: #16a34a; }
+            }
             .rv-remarque { width: 200px; }
             .rv-moteur { font-size: .7rem; color: var(--text-muted); font-family: ui-monospace, monospace;
                 max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -292,7 +326,9 @@ function assurerPanneau() {
                 border-radius: 9px; padding: 3px 7px; font: inherit; font-size: .74rem;
                 font-weight: 600; cursor: pointer; white-space: normal;
             }
-            .rv-classer:hover { border-color: var(--primary); color: var(--primary); }
+            @media (hover: hover) {
+                .rv-classer:hover { border-color: var(--primary); color: var(--primary-texte); }
+            }
             .rv-classer--plein { border-style: solid; border-color: var(--primary); color: var(--text-main); }
             .rv-pastille {
                 background: var(--primary); color: #fff; border-radius: 999px;
@@ -370,6 +406,149 @@ function assurerPanneau() {
                filtres se replient derrière un bouton, et la recherche — le
                seul filtre dont on se sert à chaque fois — reste dehors. */
             .rv-plier { display: none; }
+
+            /* ── LE TRI AU POUCE ─────────────────────────────────────────
+               UNE carte, TROIS boutons. Les trois réponses portent des
+               couleurs ÉCRITES EN DUR et non des jetons de thème : « on
+               garde » doit être le même vert dans les cinq thèmes, parce que
+               c'est à la couleur qu'on reconnaît son geste au bout de
+               cinquante cartes. Les étiquettes de statut, juste au-dessus,
+               font déjà ce choix-là pour la même raison. */
+            .rv-pouce { padding: 10px 12px 44px; max-width: 620px; margin: 0 auto; }
+            /* LA TÊTE S'EFFACE QUAND ON TRIE AU POUCE, ET C'EST MESURÉ : sur
+               un iPhone, sept boutons et la ligne de bilan faisaient 250 px
+               avant la première carte — le tiers de l'écran, pour des commandes
+               dont aucune ne sert pendant une passe. Ne restent que la
+               recherche (le seul filtre qu'on emploie à chaque fois), les
+               filtres, « Coller » — on commence souvent sur l'ordinateur et on
+               finit dans le train — et « Fermer ».
+
+               ON NE LES SUPPRIME PAS, ON LES RANGE : la bascule « En tableau »
+               les ramène toutes, et c'est là qu'on lit un bilan de toute façon.
+               Et rien de tout cela ne s'applique sur un grand écran, où la
+               place ne manque pas. */
+            @media (max-width: 780px) {
+                .rv--pouce [data-consigne],
+                .rv--pouce [data-copier],
+                .rv--pouce [data-fichier],
+                .rv--pouce .rv-compteur { display: none; }
+            }
+            /* TROIS CHOSES SUR DEUX LIGNES, ET NON SUR TROIS. Empilées, la
+               phrase d'avancement, la jauge et la case faisaient 83 px — pour
+               deux mots et une barre de sept pixels. La case remonte à côté de
+               la phrase ; la jauge passe dessous (« order: 3 ») parce qu'elle
+               est la seule des trois qui veut toute la largeur. */
+            .tt-tete { display: flex; flex-wrap: wrap; align-items: center;
+                gap: 0 10px; margin-bottom: 12px; }
+            .tt-avance { flex: 1 1 auto; font-size: .86rem; }
+            .tt-jauge {
+                flex: 1 1 100%; order: 3; height: 7px; border-radius: 999px; margin: 4px 0 0;
+                background: color-mix(in srgb, var(--text-muted) 22%, transparent);
+                overflow: hidden;
+            }
+            .tt-jauge span { display: block; height: 100%; background: var(--primary); }
+            .tt-coche {
+                flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+                cursor: pointer; font-size: .78rem; color: var(--text-muted); min-height: 32px;
+            }
+            .tt-coche input { width: 17px; height: 17px; accent-color: var(--primary); }
+
+            .tt-carte {
+                border: 1px solid var(--border); border-radius: 16px;
+                background: var(--bg-panel); padding: 14px 14px 16px;
+                box-shadow: var(--shadow-lg);
+            }
+            .tt-haut { display: flex; align-items: center; gap: 8px; }
+            .tt-rang {
+                font-size: .72rem; font-weight: 800; color: var(--text-muted);
+                font-variant-numeric: tabular-nums;
+            }
+            .tt-statut { margin-left: auto; font-size: .66rem; font-weight: 800;
+                border-radius: 999px; padding: 2px 8px; }
+            .tt-statut--test { background: #fef3c7; color: #92400e; }
+            .tt-statut--valide { background: #dcfce7; color: #166534; }
+            .tt-statut--brouillon { background: #e2e8f0; color: #475569; }
+            .tt-titre { margin: 6px 0 2px; font-size: 1.12rem; line-height: 1.25; }
+            .tt-id { font-size: .7rem; color: var(--text-muted);
+                font-family: ui-monospace, monospace; }
+            .tt-consigne {
+                margin: 10px 0 0; font-size: .86rem; line-height: 1.45;
+                color: var(--text-main);
+            }
+            .tt-change { margin: 8px 0 0; font-size: .74rem; color: var(--primary-texte); }
+            .tt-essais { margin: 12px 0 14px; }
+            .tt-essai {
+                width: 100%; min-height: 46px; border-radius: 12px; cursor: pointer;
+                border: 1px solid var(--primary); background: transparent;
+                color: var(--primary-texte); font: inherit; font-weight: 800; font-size: .92rem;
+            }
+
+            /* TROIS BOUTONS, ET ILS SONT GRANDS. Quarante-huit pixels est le
+               minimum tenable au pouce ; en dessous on tape « on retire » en
+               visant « à revoir », et une erreur de tri ne se voit pas. */
+            .tt-reponses { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            .tt-rep {
+                display: flex; flex-direction: column; align-items: center; gap: 2px;
+                min-height: 62px; padding: 8px 4px; border-radius: 13px; cursor: pointer;
+                border: 2px solid var(--border); background: var(--bg-app);
+                color: var(--text-main); font: inherit;
+            }
+            .tt-rep-picto { font-size: 1.2rem; font-weight: 800; line-height: 1; }
+            .tt-rep-nom { font-size: .76rem; font-weight: 800; text-align: center; }
+            /* LA RÉPONSE CHOISIE SE REMPLIT. Un simple liseré ne se voit pas à
+               bout de bras, et sur « ne montrer que ce qui reste » la carte
+               part aussitôt : c'est le seul accusé de réception qu'on a. */
+            .tt-rep--choisie { color: #fff; }
+            .tt-rep--garder.tt-rep--choisie { background: #15803d; border-color: #15803d; }
+            .tt-rep--test.tt-rep--choisie { background: #b45309; border-color: #b45309; }
+            .tt-rep--retirer.tt-rep--choisie { background: #be123c; border-color: #be123c; }
+            @media (hover: hover) {
+                .tt-rep--garder:hover { border-color: #15803d; }
+                .tt-rep--test:hover { border-color: #b45309; }
+                .tt-rep--retirer:hover { border-color: #be123c; }
+            }
+            .tt-remarque {
+                display: block; margin: 14px 0 0; font-size: .74rem; color: var(--text-muted);
+            }
+            .tt-remarque input {
+                display: block; width: 100%; margin-top: 5px; min-height: 40px;
+                border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px;
+                background: var(--bg-app); color: var(--text-main); font: inherit; font-size: .86rem;
+            }
+
+            .tt-pas { display: flex; align-items: center; gap: 10px; margin: 12px 0 18px; }
+            .tt-pas-btn {
+                flex: 1 1 auto; min-height: 44px; border-radius: 12px; cursor: pointer;
+                border: 1px solid var(--border); background: var(--bg-panel);
+                color: var(--text-main); font: inherit; font-weight: 700; font-size: .84rem;
+            }
+            .tt-pas-btn:disabled { opacity: .45; cursor: default; }
+            .tt-pas-ou { font-size: .78rem; color: var(--text-muted);
+                font-variant-numeric: tabular-nums; }
+            .tt-fini {
+                border: 1px dashed var(--border); border-radius: 14px; padding: 26px 16px;
+                text-align: center; color: var(--text-muted); font-size: .9rem;
+            }
+
+            .tt-envoi {
+                border-top: 1px solid var(--border); padding-top: 14px;
+            }
+            .tt-consigne-titre { font-size: .74rem; font-weight: 800;
+                text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+            textarea.tt-consigne {
+                width: 100%; margin-top: 6px; resize: vertical;
+                border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px;
+                background: var(--bg-app); color: var(--text-main);
+                font-family: ui-monospace, monospace; font-size: .76rem; line-height: 1.5;
+            }
+            .tt-envoi-boutons { display: flex; gap: 8px; margin-top: 8px; }
+            .tt-env {
+                flex: 1 1 auto; min-height: 46px; border-radius: 12px; cursor: pointer;
+                border: 1px solid var(--primary); background: var(--primary); color: #fff;
+                font: inherit; font-weight: 800; font-size: .88rem;
+            }
+            .tt-env:disabled { opacity: .45; cursor: default; }
+            .tt-note { margin: 8px 0 0; font-size: .72rem; color: var(--text-muted); line-height: 1.45; }
             @media (max-width: 780px) {
                 .rv-titre { display: none; }
                 .rv-plier { display: inline-flex; }
@@ -411,6 +590,22 @@ function assurerPanneau() {
                 role="tab" aria-selected="true">Les exercices</button>
             <button type="button" class="rv-onglet" data-vue="quotidien"
                 role="tab" aria-selected="false">📅 Le quotidien</button>
+            <!-- TROIS OBJETS, TROIS ONGLETS. Rémy : « pour les dingbats
+                 intègre-le dans la revue catalogue pour que je puisse faire le
+                 tri et te faire un rapport. » C'est le même geste que sur les
+                 proverbes — parcourir, trancher, recoller — donc le même écran,
+                 et surtout PAS un bouton de plus dans la palette d'auteur :
+                 « on a beaucoup d'interface de debug ». -->
+            <button type="button" class="rv-onglet" data-vue="dingbats"
+                role="tab" aria-selected="false">🧩 Les dingbats</button>
+            <!-- LA BASCULE DE FORME, et elle n'est PAS un onglet : elle ne
+                 change pas d'objet, elle change de geste sur le même. Elle est
+                 à droite, séparée des trois onglets, et elle ne paraît que
+                 lorsqu'on est sur les exercices — le quotidien et les dingbats
+                 se trient déjà une ligne à la fois. -->
+            <button type="button" class="rv-btn rv-forme" data-pouce
+                style="margin-left: auto; margin-bottom: 6px"
+                title="Trancher un exercice à la fois, au pouce"></button>
         </div>
         <div class="rv-filtres" data-filtres></div>
         <div class="rv-cadre" data-cadre></div>
@@ -431,6 +626,14 @@ function assurerPanneau() {
     el.querySelectorAll('[data-vue]').forEach(b => {
         b.onclick = () => { vue = b.dataset.vue; peindre(); };
     });
+    el.querySelector('[data-pouce]').onclick = () => {
+        auPouce = !tranchePouce();
+        // ON REPART DE LA PREMIÈRE CARTE À CHAQUE RETOUR AU POUCE : le rang
+        // gardé entre deux formes désignerait une place dans une pile qui a
+        // changé de taille pendant qu'on était dans le tableau.
+        remettreLeTriAuDebut();
+        peindre();
+    };
     el.querySelector('[data-fermer]').onclick = () => fermer();
     el.querySelector('[data-consigne]').onclick = () => copierConsigne();
     el.querySelector('[data-copier]').onclick = () => copierBilan();
@@ -487,7 +690,18 @@ function peindreFiltres(el) {
     el.querySelectorAll('[data-f]').forEach(ch => {
         const nom = ch.dataset.f;
         const lire = () => (ch.type === 'checkbox' ? ch.checked : ch.value);
-        const appliquer = () => { criteres[nom] = lire(); peindreTable(el); majCompteur(el); };
+        const appliquer = () => {
+            criteres[nom] = lire();
+            // LES FILTRES VALENT POUR LES DEUX FORMES : filtrer sur « Nombres
+            // et Calculs » puis trancher les trente cartes de ce domaine est
+            // exactement la passe qu'on veut faire dans une salle d'attente. Et
+            // l'on revient à la PREMIÈRE : la carte n° 40 d'une pile qui vient
+            // d'en perdre trente n'existe plus.
+            remettreLeTriAuDebut();
+            if (vue === 'exercices' && tranchePouce()) { peindrePouce(el); return; }
+            peindreTable(el);
+            majCompteur(el);
+        };
         ch.oninput = ch.tagName === 'SELECT' || ch.type === 'checkbox' ? null : appliquer;
         ch.onchange = appliquer;
     });
@@ -498,7 +712,13 @@ function majCompteur(el) {
     const b = bilan(revue, exercices);
     const montres = filtrer(exercices, revue, criteres).length;
     const c = el.querySelector('[data-compteur]');
-    c.textContent = `${montres}/${b.total} affichés · ${b.enTest} en test, ${b.valides} validés · `
+    // LE BROUILLON SE DIT, ET SEULEMENT S'IL Y EN A UN. Il manquait à cette
+    // ligne comme il manquait au bilan : la revue affichait « 222 validés » sur
+    // 223 affichés, et le vingt-troisième s'était évaporé. On ne l'écrit pas
+    // quand il n'y en a pas — une mention « 0 désactivé » est du bruit sur une
+    // ligne qui en porte déjà huit.
+    const eteints = b.brouillons ? `, ${b.brouillons} désactivé${b.brouillons > 1 ? 's' : ''}` : '';
+    c.textContent = `${montres}/${b.total} affichés · ${b.enTest} en test, ${b.valides} validés${eteints} · `
         + `${b.jeux} jeux · ${b.calc} avec calculatrice · `
         + `${b.decides} décidés, ${b.changes + b.jeuxChanges + b.calcChanges} à reporter, `
         + `${b.remarques} remarques, ${b.classer} à reclasser`;
@@ -1076,6 +1296,41 @@ function demanderCarnet() {
     };
 }
 
+// --- Le tri au pouce --------------------------------------------------------
+
+/**
+ * LA MÊME LISTE QUE LE TABLEAU, CARTE PAR CARTE.
+ *
+ * ELLE REÇOIT LA LISTE FILTRÉE, et c'est voulu : la bascule ne change que la
+ * forme. Chercher « fraction », cocher « les jeux », puis trancher les douze
+ * cartes qui restent — c'est la passe qu'on fait vraiment.
+ *
+ * ON NE REPEINT QUE LE CADRE, et pas l'écran entier. `peindre()` refait aussi
+ * les filtres : le champ de recherche perdrait le foyer à chaque appui sur « on
+ * garde », et une passe de cinquante cartes demanderait cinquante retours au
+ * clavier. Le piège exact du tableau, payé ligne 817.
+ */
+function peindrePouce(el) {
+    fermerClassement();
+    const cadre = el.querySelector('[data-cadre]');
+    const liste = () => filtrer(exercices, revue, criteres);
+    cadre.className = 'rv-cadre rv-pouce';
+    el.classList.add('rv--pouce');
+    cadre.innerHTML = triTelephoneHtml(liste(), revue);
+    brancherTriTelephone(cadre, {
+        exercices: liste,
+        revue: () => revue,
+        enregistrer: (suite) => { revue = suite; garder(); },
+        redessiner: () => peindrePouce(el),
+        // « L'essayer » lance l'exercice SUR L'APPAREIL QU'ON TIENT, sans cadre
+        // de simulation : on est déjà sur le téléphone, un cadre de téléphone
+        // par-dessus serait une poupée russe. C'est le geste du nom de ligne
+        // dans le tableau, et il coche la même case au retour.
+        essayer: (id) => regarder(id, colonneDeCetEcran(), true)
+    });
+    majCompteur(el);
+}
+
 // --- Ouverture / fermeture --------------------------------------------------
 
 function peindre() {
@@ -1085,15 +1340,31 @@ function peindre() {
         b.classList.toggle('rv-onglet--actif', actif);
         b.setAttribute('aria-selected', String(actif));
     });
+    // LA BASCULE DIT OÙ L'ON VA, PAS OÙ L'ON EST. Un bouton qui annonce l'état
+    // courant — « Au pouce » quand on y est déjà — se lit comme un onglet actif
+    // et l'on n'ose plus le toucher. Mesuré sur la barre de passe, où le même
+    // bouton a été réécrit deux fois pour cette raison.
+    const forme = el.querySelector('[data-pouce]');
+    forme.style.display = vue === 'exercices' ? '' : 'none';
+    forme.textContent = tranchePouce() ? '▦ En tableau' : '👆 Au pouce';
+    forme.setAttribute('aria-pressed', String(tranchePouce()));
     // LES FILTRES SONT CEUX DES EXERCICES : les montrer au-dessus d'une liste
     // de proverbes proposerait de filtrer par niveau et par domaine des
     // phrases qui n'en ont pas.
     const cadre = el.querySelector('[data-cadre]');
-    el.classList.toggle('rv--quotidien', vue === 'quotidien');
-    if (vue === 'quotidien') {
-        cadre.className = 'rv-cadre rv-quotidien';
-        cadre.innerHTML = quotidienHtml();
-        brancherQuotidien(cadre, peindre);
+    // LES FILTRES ET LE COMPTEUR SONT CEUX DES EXERCICES : on les cache sur les
+    // deux autres onglets. `rv--quotidien` porte cette règle dans le CSS depuis
+    // le premier jour ; l'onglet des dingbats la partage plutôt que d'en
+    // dupliquer une identique sous un autre nom.
+    el.classList.toggle('rv--quotidien', vue === 'quotidien' || vue === 'dingbats');
+    if (vue === 'quotidien' || vue === 'dingbats') {
+        // La tête rangée est celle du tri au pouce : les deux autres onglets
+        // la retrouvent entière.
+        el.classList.remove('rv--pouce');
+        const cesDingbats = vue === 'dingbats';
+        cadre.className = 'rv-cadre rv-quotidien' + (cesDingbats ? ' rv-dingbats' : '');
+        cadre.innerHTML = cesDingbats ? dingbatsHtml() : quotidienHtml();
+        (cesDingbats ? brancherDingbats : brancherQuotidien)(cadre, peindre);
         // Le compteur parle des exercices : il n'a rien à dire ici, et un
         // « 152 lignes » sous une liste de proverbes serait un mensonge.
         el.querySelector('[data-compteur]').textContent = '';
@@ -1101,6 +1372,11 @@ function peindre() {
     }
     cadre.className = 'rv-cadre';
     peindreFiltres(el);
+    if (tranchePouce()) { peindrePouce(el); return; }
+    // AVANT LE TABLEAU, ET APRÈS LE RETOUR DU POUCE : la tête rangée revient
+    // entière dès qu'on repasse aux onze colonnes, où l'on vient justement lire
+    // un bilan.
+    el.classList.remove('rv--pouce');
     peindreTable(el);
     majCompteur(el);
 }

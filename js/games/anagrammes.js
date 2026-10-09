@@ -21,6 +21,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { tirerAnagramme, analyser, debutDevoile, normaliser } from '../core/anagrammes.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'voc.mathematique';
 /** Au-delà, l'énigme n'en est plus une : on garde la trace des mots vus. */
@@ -71,7 +72,7 @@ class Anagrammes extends BaseGame {
                     border-radius: 9px; border: 2.5px dashed var(--border);
                     display: flex; align-items: center; justify-content: center;
                     font-weight: 900; font-size: calc(var(--an-cote) * .58);
-                    background: var(--bg-panel); color: var(--primary);
+                    background: var(--bg-panel); color: var(--primary-texte);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                 }
                 .an-case--pleine { border-style: solid; border-color: var(--primary); }
@@ -373,26 +374,27 @@ class Anagrammes extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.q) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         cur.say(`Les lettres sont toutes là, dans le désordre : ${this.q.melange.split('').join(' ')}. `
             + 'Ce n\'est pas un mot au hasard — c\'est un mot du cours.', this.tasEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say(`Je lis la définition : « ${this.q.def} » C'est elle l'énigme ; `
             + 'les lettres, je les ai déjà.', this.defEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say(`Et je compte les cases : ${this.q.mot.length} lettres. `
             + 'Un mot trop court ou trop long, je peux l\'écarter tout de suite.', this.motEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // Il pose le mot, lettre par lettre : c'est le geste qu'on demande.
         for (const lettre of this.q.mot) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const j = this.tas.find(x => !x.pose && x.lettre === lettre);
             if (!j) break;
             const el = this.tasEl.querySelector(`[data-jeton="${j.i}"]`);
@@ -404,10 +406,10 @@ class Anagrammes extends BaseGame {
             j.pose = true;
             this.cases[this.premiereLibre()] = j.i;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.press)) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`${this.q.mot}. Le tas s'est vidé exactement, donc j'ai employé toutes les `
             + 'lettres et aucune deux fois — c\'est la vérification qui va avec ce jeu.', this.motEl);
         await cur.pause(DEMO_SPEED.between);

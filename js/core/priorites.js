@@ -27,6 +27,11 @@
 // l'application.
 
 /** Les jetons d'une expression : des nombres, des opérateurs, des parenthèses. */
+// LA NOTATION DE LA MULTIPLICATION S'APPLIQUE AUSSI ICI. La cascade réécrit ses
+// lignes elle-même, sans repasser par `makeItem` : sans cet import, l'énoncé
+// aurait le signe choisi et les lignes en dessous garderaient le « × ».
+import { avecSigne } from './signeFois.js';
+
 export const nombre = (v) => ({ type: 'n', valeur: v });
 export const operateur = (op) => ({ type: 'op', op });
 export const ouvrante = () => ({ type: '(' });
@@ -46,6 +51,27 @@ export const fermante = () => ({ type: ')' });
  */
 export const puissance = (base, exp) => ({ type: 'p', base, exp });
 
+/**
+ * LE MOINS QUI N'A RIEN À SA GAUCHE ET QUI PORTE UN GROUPE.
+ *
+ * Rémy : « les élèves galèrent aux exercices −(−3+5×6)−(−7) […] je pense qu'il
+ * faut être progressif ».
+ *
+ * CE MOINS-LÀ N'EST PAS UNE SOUSTRACTION, et c'est toute la difficulté du
+ * chapitre. Il n'a pas de gauche : il prend l'OPPOSÉ de ce qui le suit. Le
+ * moteur ne savait pas l'écrire — toutes ses formes commencent par un nombre
+ * ou par une parenthèse ouvrante —, si bien que l'expression que Rémy met au
+ * tableau ne pouvait tout simplement pas être tirée.
+ *
+ * ET IL NE DEVIENT CALCULABLE QU'UNE FOIS LE GROUPE RÉDUIT À UN NOMBRE. C'est
+ * la règle qu'on veut enseigner, et elle tombe toute seule : tant qu'il reste
+ * une parenthèse, `groupeInterieur` la sert en premier ; `nettoyerParentheses`
+ * réduit ensuite « (27) » en « 27 » ; et alors seulement l'opposé a un nombre
+ * sous la main. Aucun élève ne peut donc « distribuer le moins » avant d'avoir
+ * calculé dedans — ce qui est exactement la faute qu'on cherche à empêcher.
+ */
+export const oppose = () => ({ type: 'u', op: '-' });
+
 const FORTES = ['×', '÷'];
 const FAIBLES = ['+', '-'];
 
@@ -62,7 +88,11 @@ export function ecrire(jetons) {
         const avant = jetons[i - 1];
         // Pas d'espace après une parenthèse ouvrante ni avant une fermante :
         // « ( 3 + 4 ) » n'est pas ce qu'on écrit au tableau.
-        const colle = !avant || avant.type === '(' || j.type === ')';
+        //
+        // NI APRÈS UN OPPOSÉ : on écrit « −(−3 + 30) », jamais « − (−3 + 30) ».
+        // L'espace ferait lire une soustraction — précisément la confusion que
+        // ce chapitre existe pour lever.
+        const colle = !avant || avant.type === '(' || avant.type === 'u' || j.type === ')';
         if (!colle) out += ' ';
         out += ecrireJeton(j, avant);
     });
@@ -90,9 +120,19 @@ export function ecrireJeton(j, avant) {
     if (j.type === 'n' && j.valeur < 0 && avant && avant.type === 'op') {
         return `(${String(j.valeur).replace('-', '−').replace('.', ',')})`;
     }
+    // UN NOMBRE NÉGATIF QUI SUIT UN OPPOSÉ PREND SES PARENTHÈSES LUI AUSSI :
+    // « −(−7) » et non « −−7 ». C'est la même règle que pour un opérateur, et
+    // c'est ici la forme la plus courante du chapitre.
+    if (j.type === 'n' && j.valeur < 0 && avant && avant.type === 'u') {
+        return `(${String(j.valeur).replace('-', '−')})`;
+    }
     if (j.type === 'n') return String(j.valeur).replace('-', '−').replace('.', ',');
     if (j.type === 'p') return ecrirePuissance(j);
-    if (j.type === 'op') return j.op === '-' ? '−' : j.op;
+    if (j.type === 'u') return '−';
+    // LA CASCADE N'EST PAS UN ÉNONCÉ : elle réécrit ses lignes elle-même, sans
+    // repasser par `makeItem`. La notation choisie doit donc être posée ici
+    // aussi, et c'est le seul endroit où un opérateur de cascade s'écrit.
+    if (j.type === 'op') return j.op === '-' ? '−' : avecSigne(j.op);
     return j.type;
 }
 
@@ -162,9 +202,19 @@ export function lire(texte) {
         // « −3 + 4 » commence par le nombre −3.
         if (c === '-') {
             const precedent = jetons[jetons.length - 1];
-            const signe = !precedent || precedent.type === 'op' || precedent.type === '(';
+            const signe = !precedent || precedent.type === 'op' || precedent.type === '('
+                || precedent.type === 'u';
             const m = signe && /^-\s*(\d+(?:\.\d+)?)/.exec(t.slice(i));
             if (m) { jetons.push(nombre(-Number(m[1]))); i += m[0].length; continue; }
+            // UN MOINS EN POSITION DE SIGNE, SUIVI D'UN GROUPE : c'est l'OPPOSÉ
+            // de ce groupe, pas une soustraction. Sans cette lecture, le jeton
+            // partait en opérateur sans rien à sa gauche, `operationPrioritaire`
+            // rendait une valeur nulle, et la cascade se déclarait insoluble —
+            // donc le professeur qui récrivait « −(−3+5×6)−(−7) » dans la fiche
+            // obtenait un corrigé refusé, sans savoir pourquoi.
+            if (signe && /^-\s*\(/.test(t.slice(i))) {
+                jetons.push(oppose()); i++; continue;
+            }
         }
         if (c === ')') { jetons.push(fermante()); i++; continue; }
         if ('+-×÷'.includes(c)) { jetons.push(operateur(c)); i++; continue; }
@@ -257,7 +307,18 @@ export function groupeInterieur(jetons) {
  *            valeur:number|null, raison:string, dans:Object|null}|null}
  */
 export function operationPrioritaire(jetons, opts = {}) {
-    const groupe = groupeInterieur(jetons);
+    let groupe = groupeInterieur(jetons);
+    // UNE PARENTHÈSE QUI NE CONTIENT PLUS QU'UN NOMBRE EST FINIE.
+    //
+    // `nettoyerParentheses` les efface toutes SAUF celle d'un opposé, qu'il
+    // garde exprès pour que « −(27) » puis « −27 » soient deux lignes
+    // différentes. Il faut donc le dire ici aussi : sans cette ligne, le
+    // moteur cherchait une opération À L'INTÉRIEUR de « (27) », n'en trouvait
+    // aucune, et déclarait la cascade insoluble. Mesuré : les quatre
+    // expressions à opposé sont passées d'un coup de « ça marche » à
+    // « IMPOSSIBLE », pour une parenthèse qu'on venait de préserver.
+    if (groupe && groupe.fin - groupe.debut === 2
+        && jetons[groupe.debut + 1].type === 'n') groupe = null;
     // On ne cherche que DANS le groupe le plus intérieur s'il en reste un :
     // c'est la première règle, et elle prime sur toutes les autres.
     const de = groupe ? groupe.debut + 1 : 0;
@@ -279,6 +340,37 @@ export function operationPrioritaire(jetons, opts = {}) {
                 ? 'Les parenthèses d\'abord — et dedans, la puissance avant tout le reste.'
                 : 'Les PUISSANCES d\'abord : elles passent avant les multiplications et les divisions.',
             dans: groupe
+        };
+    }
+
+    // L'OPPOSÉ D'UN NOMBRE, une fois qu'il en a un sous la main.
+    //
+    // Il ne peut PAS être choisi tant qu'il porte encore une parenthèse : le
+    // balayage ci-dessus s'est déjà restreint au groupe le plus intérieur, et
+    // l'on n'arrive ici que lorsqu'il n'en reste aucun. C'est la règle du
+    // chapitre, et elle n'a pas eu besoin d'être écrite — « on calcule DEDANS,
+    // puis on applique le signe » est une conséquence de l'ordre existant.
+    //
+    // IL PASSE AVANT LES MULTIPLICATIONS. « −(6) × 2 » vaut −12 des deux
+    // façons, donc le résultat ne tranche pas ; ce qui tranche, c'est le
+    // GESTE qu'on enseigne : la parenthèse se supprime d'abord, et la ligne
+    // suivante montre un nombre négatif ordinaire.
+    for (let i = de; i < a; i++) {
+        if (jetons[i].type !== 'u') continue;
+        // « −27 » OU « −(27) » : les deux formes existent et disent la même
+        // chose. La seconde est celle qui reste après le calcul d'un groupe —
+        // c'est la ligne où l'on voit la parenthèse disparaître.
+        const porte = jetons[i + 1] && jetons[i + 1].type === '('
+            ? jetons[i + 2] : jetons[i + 1];
+        if (!porte || porte.type !== 'n') continue;
+        return {
+            index: i, op: '-', unaire: true, oppose: true,
+            gauche: null, droite: porte.valeur,
+            valeur: -porte.valeur,
+            libelle: `−(${String(porte.valeur).replace('-', '−')})`,
+            raison: 'Ce moins-là n\'a rien à sa gauche : il prend l\'OPPOSÉ de ce qui '
+                + 'le suit. La parenthèse disparaît, et le signe change.',
+            dans: null
         };
     }
 
@@ -334,11 +426,27 @@ export function critiquer(jetons, index, opts = {}) {
             ? 'À priorité égale, on calcule de GAUCHE À DROITE — cette puissance-là vient plus loin.'
             : 'Il reste des parenthèses : on les calcule avant tout le reste.';
     }
+    // ON A CLIQUÉ L'OPPOSÉ TROP TÔT — la faute que ce chapitre existe pour
+    // corriger. L'élève veut « distribuer le moins » avant d'avoir calculé
+    // dedans, et c'est ainsi qu'on obtient « 3 − 5 × 6 ». On le dit avec le
+    // geste, pas avec la règle : d'abord ce qu'il y a DANS la parenthèse.
+    if (j && j.type === 'u') {
+        return 'Pas encore : ce moins prendra l\'opposé de la parenthèse quand elle '
+            + 'sera devenue UN SEUL nombre. On calcule d\'abord ce qu\'il y a dedans.';
+    }
     if (!j || j.type !== 'op') return 'Ce n\'est pas une opération.';
 
     const groupe = groupeInterieur(jetons);
     if (groupe && (index < groupe.debut || index > groupe.fin)) {
         return 'Il reste des parenthèses : on les calcule avant tout le reste.';
+    }
+    // `unaire` COUVRE MAINTENANT DEUX CHOSES : une puissance et un opposé. Les
+    // confondre dirait « il reste une puissance » devant une expression qui
+    // n'en a jamais eu — une phrase qui envoie l'élève chercher ce qui n'existe
+    // pas, et c'est le genre de message qui fait cesser de lire les messages.
+    if (bonne.oppose) {
+        return `Il reste un moins sans rien à sa gauche, ${bonne.libelle} : celui-là `
+            + 'prend l\'opposé, et il passe avant.';
     }
     if (bonne.unaire) {
         return `Il reste une PUISSANCE, ${bonne.libelle} : elle passe avant les `
@@ -359,14 +467,43 @@ export function critiquer(jetons, index, opts = {}) {
  * Sans ce nettoyage, l'élève verrait une ligne qu'aucun professeur n'écrit, et
  * devrait deviner qu'elle ne compte pas.
  */
+/**
+ * COMBIEN DE JETONS UNE OPÉRATION REMPLACE-T-ELLE ?
+ *
+ * QUATRE LARGEURS, ET ELLES SE DISENT ICI UNE SEULE FOIS :
+ *
+ *   · une PUISSANCE occupe une case — « 3 + 4² » devient « 3 + 16 », et non
+ *     « 16 » : remplacer trois jetons ferait disparaître le « + » et le 3 ;
+ *   · un OPPOSÉ sur un nombre nu en occupe deux — « −27 − (−7) » devient
+ *     « 27 − (−7) » ;
+ *   · un OPPOSÉ sur une parenthèse en occupe quatre — « −(27) − (−7) » devient
+ *     « −27 − (−7) », la parenthèse partant avec ;
+ *   · une opération ORDINAIRE en occupe trois, ses deux nombres compris.
+ *
+ * `reduire` ET `reduirePourEcrire` DOIVENT DÉCOUPER PAREIL : la première pose
+ * le résultat, la seconde pose le trou où il tombera. Les laisser calculer
+ * chacune de son côté, c'est se donner deux occasions de se tromper — et
+ * l'erreur ne lèverait rien : elle effacerait un voisin, et la ligne suivante
+ * serait fausse sans qu'aucune exception ne se déclare.
+ */
+function largeurOperation(jetons, index) {
+    const t = jetons[index] && jetons[index].type;
+    if (t === 'p') return { debut: index, apres: index + 1 };
+    if (t === 'u') {
+        const surGroupe = jetons[index + 1] && jetons[index + 1].type === '(';
+        return { debut: index, apres: index + (surGroupe ? 4 : 2) };
+    }
+    return { debut: index - 1, apres: index + 2 };
+}
+
 export function reduire(jetons, index, valeur) {
     // UNE PUISSANCE OCCUPE UNE SEULE CASE, pas trois : « 3 + 4² » devient
     // « 3 + 16 », et non « 16 ». Remplacer trois jetons ferait disparaître le
     // « + » et le 3 avec.
-    const unaire = jetons[index] && jetons[index].type === 'p';
-    const out = jetons.slice(0, unaire ? index : index - 1)
+    const { debut, apres } = largeurOperation(jetons, index);
+    const out = jetons.slice(0, debut)
         .concat([nombre(valeur)])
-        .concat(jetons.slice(index + (unaire ? 1 : 2)));
+        .concat(jetons.slice(apres));
     return nettoyerParentheses(out);
 }
 
@@ -384,16 +521,31 @@ export function reduire(jetons, index, valeur) {
  */
 export function reduirePourEcrire(jetons, index) {
     const marque = { type: 'n', valeur: null, trou: true };
-    const unaire = jetons[index] && jetons[index].type === 'p';
-    const out = jetons.slice(0, unaire ? index : index - 1)
+    const { debut, apres } = largeurOperation(jetons, index);
+    const out = jetons.slice(0, debut)
         .concat([marque])
-        .concat(jetons.slice(index + (unaire ? 1 : 2)));
+        .concat(jetons.slice(apres));
     const propre = nettoyerParentheses(out);
     return { jetons: propre, trou: propre.indexOf(marque) };
 }
 
 function nettoyerParentheses(jetons) {
     for (let i = 0; i < jetons.length - 2; i++) {
+        // LA PARENTHÈSE D'UN OPPOSÉ SURVIT À SON CONTENU, ET C'EST ELLE QUI
+        // REND L'ÉTAPE VISIBLE.
+        //
+        // MESURÉ avant : « −(−3 + 5 × 6) − (−7) » donnait la cascade
+        //     −(−3 + 30) − (−7)  =  −27 − (−7)  =  −27 − (−7)  =  −20
+        // — une ligne écrite DEUX FOIS à l'identique. Le nettoyage réduisait
+        // « (27) » en « 27 » dès le calcul du groupe, si bien que le moins
+        // s'appliquait à l'écriture avant de s'appliquer au calcul : l'élève
+        // voyait « −27 » apparaître sans avoir rien fait, puis une ligne qui ne
+        // changeait rien.
+        //
+        // On garde donc « −(27) », et la ligne suivante montre « −27 ». C'est
+        // exactement ce qu'on écrit au tableau, et c'est LE geste du chapitre.
+        if (jetons[i].type === '(' && jetons[i + 1].type === 'n' && jetons[i + 2].type === ')'
+            && i > 0 && jetons[i - 1].type === 'u') continue;
         if (jetons[i].type === '(' && jetons[i + 1].type === 'n' && jetons[i + 2].type === ')') {
             return nettoyerParentheses(
                 jetons.slice(0, i).concat([jetons[i + 1]]).concat(jetons.slice(i + 3)));
@@ -466,6 +618,110 @@ const FORMES = {
 };
 
 /**
+ * L'ÉCHELLE DU MOINS DEVANT UNE PARENTHÈSE.
+ *
+ * Rémy : « les élèves galèrent aux exercices −(−3+5×6)−(−7). Comment les
+ * aider ? Peut-être commencer par remplacer +(−3), puis faire −(−3+7) en les
+ * guidant sur les parenthèses puis faire les priorités opératoires » — puis :
+ * « oui et je pense qu'il faut être progressif ».
+ *
+ * QUATRE BARREAUX, ET LE DERNIER EST SON EXPRESSION. Chacun ajoute UNE
+ * difficulté et une seule :
+ *
+ *   1. une parenthèse, UN nombre : −(−7). C'est un remplacement, il n'y a
+ *      rien à décider. On y met aussi 5 + (−3), l'autre écriture qu'il cite ;
+ *   2. une parenthèse, UNE SOMME : −(−3 + 7). Là il faut choisir — et la
+ *      cascade choisit pour lui, en calculant dedans d'abord ;
+ *   3. des PRIORITÉS dedans : −(−3 + 5 × 6). C'est la rencontre des deux
+ *      chapitres, et la marche la plus haute ;
+ *   4. l'expression entière : −(−3 + 5 × 6) − (−7).
+ *
+ * ON A INVERSÉ SES ÉTAPES 2 ET 3, ET C'EST LE SEUL ENDROIT OÙ L'ON S'ÉCARTE DE
+ * CE QU'IL PROPOSAIT. Sa deuxième idée — « faire −(−3+7) en les guidant sur les
+ * parenthèses puis faire les priorités » — met la règle du signe avant les
+ * priorités. Or dans −(−3 + 5 × 6), la règle du signe est INAPPLICABLE tant que
+ * l'intérieur n'est pas un seul nombre : un élève à qui l'on a montré −(−3+7)
+ * d'abord écrit 3 − 5 × 6, ce qui est faux et plausible. Le moteur le lui
+ * interdit maintenant (voir `critiquer`), mais l'ordre des barreaux doit dire
+ * la même chose que le moteur.
+ *
+ * `n-` EST UN NOMBRE NÉGATIF IMPOSÉ, et ce n'est pas un détail : « −(5) »
+ * s'écrit « −5 » et n'est plus un exercice sur la parenthèse. Ce qui suit un
+ * opposé doit donc être négatif, sinon le barreau ne porte pas son nom.
+ */
+// LES DEUX DERNIERS BARREAUX DE L'ÉCHELLE DE RÉMY — les seuls qui se cliquent.
+//
+// L'échelle en compte cinq. Les quatre premiers ne passent plus par ce moteur :
+// ils ont leurs propres exercices et leurs propres activités — `calc-oppose-regle`
+// est un QCM servi par `activities/choice.js`, `calc-oppose-enlever` une saisie
+// ligne à ligne servie par `activities/litteralSaisie.js`. Leurs tirages vivent
+// dans `js/core/opposeParentheses.js`.
+//
+// POURQUOI LA TABLE A MAIGRI. Elle a porté les cinq barreaux pendant une
+// journée, du temps où le jeu des priorités les affichait tous lui-même. Rémy :
+// « pourquoi n'utilises tu pas le système de QCM, pourquoi as tu tout refait ».
+// Il avait raison ; en rendant chaque barreau à l'activité qui sait le servir,
+// trois formes sur cinq n'avaient plus personne pour les tirer — et une forme
+// que rien ne tire est une forme qu'on croit éprouvée.
+//
+// JAMAIS DE PRODUIT DE DEUX RELATIFS. Rémy : « pour l'instant on n'a pas encore
+// fait le produit de nombres négatifs ». Le « × » est donc entre deux POSITIFS
+// (`n+`) : c'est une priorité à respecter, pas une règle des signes à deviner.
+const FORMES_OPPOSE = {
+    // 1 — une priorité DANS la parenthèse : « −(−3 + 5 × 6) ».
+    1: [
+        ['u', '(', 'n-', 'op+', 'n+', 'op×', 'n+', ')']
+    ],
+    // 2 — l'expression entière : « −(−3 + 5 × 6) − (−7) ».
+    2: [
+        ['u', '(', 'n-', 'op+', 'n+', 'op×', 'n+', ')', 'op+', 'n-']
+    ]
+};
+
+/**
+ * LES BARREAUX DE L'ÉCHELLE, ÉCRITS UNE SEULE FOIS.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Ils vivaient en TROIS copies : une dans le catalogue pour « Priorités :
+ * ligne par ligne », une autre pour « Prio-Bot Relatifs », une troisième dans
+ * `prioritesFiche.js` pour la feuille papier. Trois listes identiques au mot
+ * près, et rien pour les tenir d'accord : le jour où l'on renomme un barreau,
+ * l'écran et la feuille ne disent plus la même chose du même travail.
+ *
+ * ILS SONT ICI PARCE QUE C'EST ICI QU'ON LES SERT. `FORMES` et `FORMES_OPPOSE`
+ * sont juste au-dessus : un barreau est le nom d'une ligne de ces tables, et
+ * le nommer loin de ce qu'il désigne, c'est garantir qu'ils divergeront.
+ */
+export const MARCHES_PRIORITES = [
+    { id: '1', nom: '1. Deux opérations, sans parenthèses' },
+    { id: '2', nom: '2. Jusqu\'à trois opérations' },
+    { id: '3', nom: '3. Les parenthèses arrivent' },
+    { id: '4', nom: '4. Deux groupes de parenthèses' }
+];
+
+/**
+ * LE MOINS DEVANT UNE PARENTHÈSE — les deux derniers crans de l'échelle de
+ * Rémy. Les quatre premiers sont dans « La règle du signe » et « Enlever les
+ * parenthèses » ; cet exercice-ci ne porte que ceux où une priorité entre en
+ * jeu, et c'est pour cela qu'il a sa propre liste.
+ */
+export const MARCHES_OPPOSE = [
+    { id: '1', nom: '1. Une priorité dedans : −(−3 + 5 × 6)' },
+    { id: '2', nom: '2. L\'expression entière : −(−3 + 5 × 6) − (−7)' }
+];
+
+/**
+ * LE RÉGLAGE D'AVANT LES CASES.
+ *
+ * Un parcours préparé hier porte `niveau: 2` et rien d'autre. Sans cette
+ * traduction, `marchesCochees` ne saurait pas quoi en faire et rendrait TOUTE
+ * l'échelle : le professeur rouvrirait son parcours et y trouverait quatre
+ * barreaux cochés là où il en avait choisi un. Voir `core/progression.js`.
+ */
+export const ANCIEN_NIVEAU = { cle: 'niveau' };
+
+/**
  * COMBIEN D'ÉTAPES, AU MAXIMUM, POUR CE RÉGLAGE ?
  *
  * La feuille en a besoin pour donner à TOUS les calculs le même nombre de
@@ -477,9 +733,23 @@ const FORMES = {
  * creux : trois lignes vides disent « il reste trois opérations ».
  */
 export function etapesMax({
-    niveau = 2, parentheses = true, imposer = false, puissances = false
+    niveau = 2, parentheses = true, imposer = false, puissances = false, avecOppose = false
 } = {}) {
-    const n = Math.max(1, Math.min(4, niveau));
+    // LE MÊME PLAFOND QUE LE TIRAGE. Deux bornes qui ne disent pas la même
+    // chose feraient réserver, sur la feuille, la place d'un barreau pour le
+    // calcul d'un autre — une ligne de moins que ce que l'élève a à écrire, et
+    // le trou se voit au crayon.
+    const n = Math.max(1, Math.min(avecOppose ? 2 : 4, niveau));
+    if (avecOppose) {
+        const f = FORMES_OPPOSE[n] || FORMES_OPPOSE[1];
+        // UN OPPOSÉ EST UNE OPÉRATION, et il compte donc une ligne comme les
+        // autres : « −(27) » devient « −27 ». L'oublier donnerait, sur la
+        // feuille, une cascade à qui il manque sa dernière ligne.
+        // `op+` ET `op×` SONT DES OPÉRATEURS EUX AUSSI. Les oublier ici
+        // donnerait, sur la feuille, une cascade à qui il manque deux lignes
+        // sur trois — et le trou se voit au crayon, pas à l'écran.
+        return Math.max(...f.map(x => x.filter(t => t.startsWith('op') || t === 'u').length));
+    }
     let formes = FORMES[n] || FORMES[2];
     if (!parentheses) formes = formes.filter(f => !f.includes('('));
     else if (imposer) {
@@ -528,12 +798,26 @@ export function tirerExpression({
     // 4³ vaut déjà 64, et 4³ × 5 dépasse le plafond ordinaire : une cascade
     // avec puissances a besoin de plus d'air, sinon le tirage échoue et l'on
     // retombe sur l'expression de secours.
+    // LE MOINS DEVANT UNE PARENTHÈSE — voir `FORMES_OPPOSE`. Ce réglage change
+    // la TABLE DES FORMES, pas le reste du moteur : le tirage, la cascade et la
+    // correction ne savent pas qu'ils travaillent sur un chapitre différent.
+    avecOppose = false,
     plafond = puissances ? 1200 : 400
 } = {}) {
-    const n = Math.max(1, Math.min(4, niveau));
+    // CINQ BARREAUX POUR L'OPPOSÉ, quatre pour le reste : l'échelle de Rémy
+    // ajoute « avec les priorités » APRÈS les quatre de remplissage. Borner à 4
+    // sans le dire aurait fait retomber le barreau 5 sur le 4 — le bon calcul
+    // par accident, jusqu'au jour où la table bouge.
+    // DEUX BARREAUX POUR L'OPPOSÉ, quatre pour le reste : cet exercice ne porte
+    // plus que les deux derniers crans de l'échelle, les seuls qui se cliquent.
+    const n = Math.max(1, Math.min(avecOppose ? 2 : 4, niveau));
     const grand = Math.max(3, Math.round(max));
-    let formes = FORMES[n] || FORMES[2];
-    if (!parentheses) {
+    // LE NOM DE L'OPTION N'EST PAS CELUI DU JETON, ET C'EST VOULU : `oppose`
+    // est le CONSTRUCTEUR du jeton, et une option du même nom le masquerait
+    // dans toute la fonction — `oppose()` appellerait alors un booléen.
+    let formes = avecOppose ? (FORMES_OPPOSE[n] || FORMES_OPPOSE[1]) : (FORMES[n] || FORMES[2]);
+    if (avecOppose) relatifs = true;   // un opposé sans négatifs n'enseigne rien
+    if (!parentheses && !avecOppose) {
         formes = formes.filter(f => !f.includes('('));
         if (!formes.length) formes = FORMES[2].filter(f => !f.includes('('));
     } else if (imposer) {
@@ -556,6 +840,37 @@ export function tirerExpression({
                 const v = rng.int(2, grand);
                 return nombre(relatifs && rng.next() < 0.45 ? -v : v);
             }
+            // `n-` : UN NÉGATIF IMPOSÉ, et non tiré au sort. « −(5) » s'écrit
+            // « −5 » et n'est plus un exercice sur la parenthèse : ce qui suit
+            // un opposé doit être négatif, sinon le barreau ne porte pas son
+            // nom une fois sur deux.
+            if (t === 'n-') return nombre(-rng.int(2, grand));
+            // `n+` : UN POSITIF IMPOSÉ, le pendant de `n-`, et il ferme deux
+            // trous d'un coup dans les formes de l'opposé.
+            //
+            // MESURÉ sur le tirage, avant lui : le barreau 5 sortait
+            // « −(−7 − (−7) × (−6)) », c'est-à-dire le PRODUIT DE DEUX
+            // RELATIFS — le chapitre que Rémy a nommément mis de côté (« pour
+            // l'instant on n'a pas encore fait le produit de nombres
+            // négatifs »). Et les barreaux 3 et 4 sortaient « −(−2 + (−6)) »,
+            // une parenthèse dans une parenthèse, quand Rémy écrit « −(−3+5) ».
+            //
+            // La cause était la même : `n` tire un négatif 45 fois sur 100 dès
+            // que les relatifs sont en jeu. C'est ce qu'on veut dans une
+            // cascade ordinaire ; ici le SECOND opérande doit être positif,
+            // faute de quoi le barreau enseigne autre chose que son nom.
+            if (t === 'n+') return nombre(rng.int(2, grand));
+            if (t === 'u') return oppose();
+            // LE GENRE DE L'OPÉRATEUR EST DIT PAR LA FORME, et c'est ce qui
+            // sépare les barreaux. MESURÉ à l'écran : le barreau 2 tirait
+            // « −(−8 × 7) » — une multiplication à l'intérieur, c'est-à-dire
+            // très exactement ce que le barreau 3 est censé apporter. Deux
+            // crans qui enseignent la même chose ne sont plus une progression.
+            //   'op+'  une addition ou une soustraction, et rien d'autre ;
+            //   'op×'  une multiplication ou une division, pour que le barreau
+            //          des priorités en ait TOUJOURS une à trancher.
+            if (t === 'op+') return operateur(rng.pick(['+', '-']));
+            if (t === 'op×') return operateur(rng.pick(['×', '÷']));
             if (t === 'op') return operateur(rng.pick(['+', '-', '×', '÷']));
             return t === '(' ? ouvrante() : fermante();
         });
@@ -584,7 +899,12 @@ export function tirerExpression({
         // cascade de positifs et ne porte pas sur ce qu'il annonce.
         if (relatifs && !jetons.some(j => j.type === 'n' && j.valeur < 0)) continue;
         // AU MOINS DEUX ÉTAPES, sinon il n'y a pas de priorité à trancher.
-        if (lignes.length < 3) continue;
+        //
+        // SAUF AU PREMIER BARREAU DE L'OPPOSÉ, où il n'y a justement QU'UN
+        // geste : « −(−7) » devient « 7 », et c'est tout ce qu'on veut y voir.
+        // Exiger deux étapes y serait exiger une difficulté de plus que le
+        // barreau n'en enseigne — c'est-à-dire refuser d'être progressif.
+        if (lignes.length < (avecOppose && n === 1 ? 2 : 3)) continue;
         // Et l'ordre naïf de gauche à droite doit donner AUTRE CHOSE : sans
         // cela, l'élève qui ignore la règle tombe juste et n'apprend rien.
         if (!parentheses && naif(jetons, { relatifs }) === finale) continue;
@@ -613,9 +933,12 @@ export function tirerExpression({
 
 /** Le résultat qu'obtient celui qui calcule bêtement de gauche à droite. */
 export function naif(jetons, opts = {}) {
-    // Ni parenthèses ni puissances : « calculer bêtement de gauche à droite »
-    // n'a de sens que sur une suite plate d'opérations.
-    if (jetons.some(j => j.type === '(' || j.type === ')' || j.type === 'p')) return null;
+    // Ni parenthèses, ni puissances, NI OPPOSÉ : « calculer bêtement de gauche
+    // à droite » n'a de sens que sur une suite plate d'opérations. Un opposé en
+    // tête n'a pas de gauche — le premier jeton n'est plus un nombre, et la
+    // boucle ci-dessous lirait `undefined.valeur`.
+    if (jetons.some(j => j.type === '(' || j.type === ')' || j.type === 'p'
+        || j.type === 'u')) return null;
     let v = jetons[0].valeur;
     for (let i = 1; i < jetons.length - 1; i += 2) {
         v = calculer(v, jetons[i].op, jetons[i + 1].valeur, opts);

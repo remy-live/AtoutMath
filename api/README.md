@@ -114,67 +114,53 @@ l'élève qui tapait son prénom en minuscules à la maison ne retrouvait pas so
 travail de l'école. C'est désormais la même élève — mais « Léa B. » reste bien
 distincte de « Léa », puisque c'est ainsi qu'on sépare deux homonymes.
 
-## L'administration — `api/admin/`
+## L'administration — `api/admin/` : **une seule page**
+
+Rémy : « la zone admin n'a plus besoin de classe et est vieillotte, va à
+l'essentiel avec des choses déroulantes », puis « j'aimerai en une seule page
+même pour le déposer ».
 
 Des pages HTML ordinaires, sans JavaScript obligatoire : elles marchent depuis
-le poste de l'établissement, quel que soit son navigateur.
+le poste de l'établissement, quel que soit son navigateur. Il y en avait six ;
+il en reste **une**, faite de sections qui se déplient (`<details>`, natif —
+un repli écrit en JavaScript aurait été la seule chose de la page capable de
+tomber en panne).
 
-**`index.php`** — vos classes, leur code à dicter, combien d'élèves y sont et
-combien sont en ligne en ce moment. Et le formulaire qui crée une classe.
+**Les classes n'y sont plus.** La liste, la création, la console de séance et
+les listes d'élèves vivaient ici, en double de ce que fait le logiciel : c'est
+`lib/eleves.php` qui travaillait des deux côtés, mais avec deux interfaces à
+tenir, dont une en retard. Tout cela se conduit maintenant depuis l'espace
+Classes, par `/teacher/class`, `/teacher/roster`, `/teacher/override` et
+`/teacher/message`. Huit cents lignes sont parties avec elles.
 
-**`classe.php`** — la console de séance. Tout tient sur une page, qui se
-rafraîchit toute seule toutes les vingt secondes (jamais pendant que vous
-écrivez dans un champ) :
+Il ne reste ici que **ce qui touche au serveur**, dans l'ordre de l'usage :
 
-- **Le verrou.** Verrouillée, la classe ne voit plus le catalogue : seulement
-  le parcours que vous lui donnez. L'onglet « Code » reste ouvert — c'est par
-  lui que le travail arrive.
-- **La consigne**, affichée en bandeau chez tous les élèves.
-- **Les élèves** : qui est en ligne, sur quel exercice, combien de réussites.
-  L'identifiant de l'exercice est **cliquable** : il se recopie dans le champ
-  de déblocage, pour ne pas avoir à le retaper au milieu d'une classe.
-- **Envoyer un mot**, à un élève ou à toute la classe, avec l'accusé de
-  lecture (« ✓ lu », ou « 12 / 24 » pour un mot collectif).
-- **Un exercice bloque** : *autoriser le saut* fait apparaître un bouton
-  « Passer » chez l'élève ; *retirer* le fait disparaître du parcours.
-  Portée au choix : la classe entière ou un élève.
-- **Mettre un élève de côté** (il ne se rattache plus, son travail reste) ou
-  l'effacer.
-- **Effacer** : les élèves, ou la classe entière. Il faut écrire `EFFACER`.
+1. **Déposer une mise à jour** — en tête, et dépliée : c'est ce qu'on vient
+   faire. Le guichet, puis l'archive, sur la même page. Voir plus bas.
+2. **Santé de l'installation** — repliée, mais son état se lit sur sa pastille,
+   et si un point est grave une ligne le dit tout en haut et la section s'ouvre
+   d'elle-même. Tout en vert, rien ne s'affiche : un bandeau « tout va bien »
+   ne sert qu'à repousser d'un cran ce pour quoi on est venu.
+3. **Ranger la base hors du dossier web** — en un bouton, avec la copie
+   vérifiée avant la bascule.
+4. **Rapport à copier** — le bloc à coller quand quelque chose cloche.
+5. **Mot de passe et déconnexion** — le même mot de passe ouvre le logiciel,
+   cette page et le dépôt : c'est la clé de tout.
 
-**`eleves.php`** — la liste de la classe : coller ou déposer, **voir**,
-confirmer, imprimer.
+`sante.php`, `rapport.php` et `ranger.php` existent encore, **réduits à une
+redirection** vers l'ancre correspondante. Leur adresse est écrite ailleurs
+qu'ici — dans `deposer.php`, dans ce fichier, dans les instructions imprimées
+par `tools/paquet.mjs` — et un lien qui tombe dans le vide le jour d'une
+installation ratée est le pire moment pour découvrir qu'on a déplacé la page.
 
-*Faire entrer la liste.* On colle depuis le presse-papier, ou on dépose un
-fichier `.csv` tel qu'il sort de Pronote ou d'un tableur. Point-virgule, virgule
-ou tabulation ; ligne d'en-tête ou non ; cellules entre guillemets ; accents
-d'Excel (Windows-1252) et BOM : tout est lu sans rien préparer. Le nom seul
-suffit — l'identifiant se fabrique (`Léa Durand` → `lea.durand`). La forme
-`DURAND;Léa` est reconnue comme un nom en deux colonnes, pas comme un
-identifiant.
+**Le dépôt se fait sur cette page**, et sans recopier une ligne de
+`deposer.php` : l'administration le charge avec `DEPOSER_SANS_PAGE` et appelle
+`lireArchive()` et `poserArchive()`. Les règles qui refusent une archive
+piégée — les chemins qui remontent, `api/config.php`, `api/data/` — restent
+donc écrites à un seul endroit. `deposer.php` reste à la racine, seul et sans
+dépendance : c'est lui qu'on transfère le tout premier jour, quand `api/`
+n'existe pas encore.
 
-*L'aperçu.* Lire une liste de professeur demande des devinettes, et aucune n'est
-sûre. **Rien n'est écrit avant confirmation** : la page montre d'abord, ligne par
-ligne, ce qui va se passer — « nouvel élève », « déjà dans la liste, code
-inchangé », « entré par le code de la classe, il garde son travail », « vient de
-la 5e B, sera déplacé ici ». La même fonction décide à l'aperçu et à l'import,
-pour qu'ils ne puissent pas diverger.
-
-*Les codes.* Un code différent par élève (conseillé), ou **le même code pour
-toute la classe** si vous le demandez — la page dit alors en une ligne ce que
-cela coûte : les identifiants étant prévisibles, un élève peut entrer à la place
-d'un autre. On refait le code **d'un élève** ou **de toute la classe** en un
-geste ; les anciens billets cessent aussitôt de valoir.
-
-*Le reste.* Recoller la liste ne change aucun code déjà donné. Un élève se
-**retire** (son travail part avec lui, en cascade). Un élève inscrit dans une
-autre de vos classes se **déplace** au lieu d'être refusé.
-
-> **Le doublon d'autrefois.** L'ancienne page conseillait d'ajouter à la liste
-> les élèves entrés par le code de la classe. Ce conseil créait un second élève :
-> le travail sur l'un, le billet sur l'autre. Ils sont maintenant reconnus par
-> leur nom — dans l'ordre écrit ou dans l'autre, `NGUYÊN;Maëlle` valant
-> `Maëlle Nguyên` — et rattachés à ce qu'ils ont déjà fait.
 
 **`sante.php`** — le contrôle de l'installation, **sur votre hébergement**.
 Le serveur va chercher ses propres fichiers par le web, comme le ferait un
@@ -291,7 +277,7 @@ complète ou ne s'ouvre pas ; il n'y a pas d'oubli possible.
 1. transférer `deposer.php` et le `.zip` dans `www/` ;
 2. ouvrir `https://votre-site/deposer.php`, vérifier l'aperçu, poser ;
 3. ouvrir `api/install.php` **tout de suite** ;
-4. ouvrir `api/admin/sante.php`.
+4. ouvrir `api/admin/` et regarder la santé.
 
 L'archive peut aussi être **envoyée depuis le navigateur**, si elle tient sous le
 plafond de transfert de l'hébergement — la page l'affiche et dit quoi faire
@@ -478,7 +464,7 @@ manœuvre.
 
 **Deux portes, et elles ne protègent pas la même chose.**
 
-**Identifiant + code** — la liste que vous fournissez (`admin/eleves.php`). Seul
+**Identifiant + code** — la liste que vous fournissez (espace Classes du logiciel). Seul
 celui qui est sur la liste entre, et sous le nom que vous lui avez donné. C'est
 la bonne porte quand le travail compte. Deux champs pour l'élève : ni adresse de
 serveur, ni code de classe — l'identifiant suffit à le retrouver.

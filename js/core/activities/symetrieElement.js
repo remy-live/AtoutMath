@@ -30,6 +30,7 @@ import {
     cleElement, ecrireElement, lireElement
 } from '../elementSymetrie.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Les trois marches, et le préréglage qui les enchaîne. */
 export const MARCHES = ['choisir', 'cliquer', 'ecrire'];
@@ -78,6 +79,42 @@ export function mount(container, session, opts = {}) {
         // afficherait « (d₂) » à côté de la droite cherchée : l'élève
         // désignerait un nom, pas une droite, et la marche n'en serait plus une.
         const candidats = m.candidats.map(c => (marche === 'choisir' ? c : { ...c, nom: '' }));
+        // ── CHAQUE DROITE PEUT DIRE COMMENT ELLE S'ÉCRIT ────────────────────
+        //
+        // RÉMY : « Les élèves ont beaucoup de mal à comprendre le concept de
+        // x = 6 […] si la souris passe sur une droite ou sur un point ou qu'il
+        // clique dessus, on a un petit tooltip visible qui donne les
+        // coordonnées du point ou l'équation de la droite ».
+        //
+        // À TOUTES LES MARCHES, Y COMPRIS « ÉCRIRE ». ET ON Y EST VENU EN TROIS
+        // TEMPS, DONT DEUX FAUX.
+        //
+        //   1. J'avais éteint la bulle sur « écrire » : afficher « x = 6 » au
+        //      survol donnerait la réponse à recopier sur la marche qui demande
+        //      justement de l'écrire. L'argument paraissait solide.
+        //   2. Rémy : « là il faudrait encore le point d'interrogation qui donne
+        //      les coordonnées ». J'ai mis un bouton « ? » qui l'allumait.
+        //   3. Rémy, l'ayant vu en classe : « en fait c'est le point ? qui n'est
+        //      pas instinctif, et qui disparaît d'ailleurs quand on clique
+        //      dessus. Mets par défaut quand on passe ou clique dessus. »
+        //
+        // IL A RAISON SUR LES DEUX GRIEFS, ET LE SECOND DÉCOUSAIT LE PREMIER :
+        // le bouton s'effaçait dès qu'il avait servi — c'était voulu, « un bouton
+        // qui n'allume plus rien est un bouton cassé » —, de sorte que l'élève
+        // qui l'avait pressé une fois ne pouvait plus comprendre d'où venaient
+        // les bulles, et celui qui ne l'avait jamais vu ne savait pas qu'il
+        // existait. Une aide qu'il faut deviner n'est pas une aide.
+        //
+        // ET MON OBJECTION DE DÉPART ÉTAIT FAUSSE, c'est ce qui rend la décision
+        // facile : la bulle ne donne pas la réponse. TOUTES les droites disent la
+        // leur, pas seulement la bonne. Savoir que (d₂) s'écrit « x = 6 » ne dit
+        // pas que (d₂) est l'axe cherché — il reste à trouver LAQUELLE, et c'est
+        // toute la question. C'est une aide à la LECTURE, comme la calculatrice,
+        // et elle ne coûte donc rien à la note.
+        //
+        // Il n'y a donc plus ni réglage ni bouton : chaque candidat porte son
+        // écriture, à toutes les marches.
+        const montres = candidats.map(c => ({ ...c, dit: ecrireElement(m.hauteur, c) }));
         const grille = quadrillageSvg({
             largeur: m.largeur, hauteur: m.hauteur, repere: true, prefixe: 'sy',
             figures: m.pieces.map((cases, i) => ({
@@ -86,7 +123,7 @@ export function mount(container, session, opts = {}) {
                     + (i === m.de ? ' qd-piece--source' : '')
                     + (i === m.vers ? ' qd-piece--cible' : '')
             })),
-            elements: candidats,
+            elements: montres,
             // Les CANDIDATS sont cliquables, pas les cases : la nappe de cases
             // recouvre la grille entière et attraperait les clics des droites.
             elementsCliquables: marche === 'cliquer'
@@ -94,7 +131,8 @@ export function mount(container, session, opts = {}) {
 
         container.innerHTML = `
             <div class="game-question">${echapper(item.prompt.text)}</div>
-            <div class="figure-wrap figure-wrap--interactive sy-plateau">${grille}</div>
+            <div class="figure-wrap figure-wrap--interactive sy-plateau">${grille}<span
+                class="sy-bulle" hidden aria-hidden="true"></span></div>
             ${zoneDeReponse()}
             ${hintBar(session)}`;
 
@@ -104,6 +142,7 @@ export function mount(container, session, opts = {}) {
             return;
         }
         wireHint(container, session);
+        brancherLaBulle();
         brancher();
     }
 
@@ -119,6 +158,11 @@ export function mount(container, session, opts = {}) {
                 directement sur le dessin.</p>`;
         }
         const quoi = 'une droite s\'écrit x = … ou y = …, un point s\'écrit (… ; …)';
+        // PLUS DE BOUTON « ? » ICI. Il y en avait un, qui allumait les écritures
+        // des droites ; Rémy l'a vu en classe : « c'est le point ? qui n'est pas
+        // instinctif, et qui disparaît d'ailleurs quand on clique dessus ». Les
+        // bulles sont maintenant là d'emblée, à cette marche comme aux deux
+        // autres — voir `render`. Une aide qu'il faut deviner n'est pas une aide.
         return `<div class="sy-ecriture">
             <label class="sy-label" for="sy-champ">Écris-le : <span>${quoi}</span></label>
             <input id="sy-champ" class="sy-champ" type="text" inputmode="text"
@@ -126,6 +170,79 @@ export function mount(container, session, opts = {}) {
             <button type="button" class="kk-btn-valider" data-valider>Valider</button>
         </div>
         <p class="sy-statut" role="status"></p>`;
+    }
+
+    /**
+     * LA BULLE QUI DIT « x = 6 ».
+     *
+     * AU DOIGT AUSSI, et pas seulement à la souris : sur une tablette il n'y a
+     * pas de survol, et c'est la moitié de la classe. Elle répond donc à quatre
+     * gestes — la souris qui passe, la souris qui CLIQUE, le doigt qui touche,
+     * la tabulation qui arrive — et le doigt la laisse deux secondes et demie,
+     * le temps de lire.
+     *
+     * LE CLIC EST VENU APRÈS, ET IL ÉTAIT DANS LA DEMANDE DEPUIS LE DÉBUT.
+     * Rémy, la première fois : « si la souris passe sur une droite ou sur un
+     * point OU QU'IL CLIQUE DESSUS ». Puis, en voyant l'écran : « mets par
+     * défaut quand on passe ou clique dessus ». Seul le survol était branché —
+     * ce qui marche à la souris, où un clic est toujours précédé d'un survol,
+     * mais pas pour l'élève qui vise et appuie sans promener le curseur. On
+     * écoute donc `pointerdown`, qui dit s'il s'agit d'un doigt ou d'une souris
+     * et permet de garder la même règle de tenue que le survol.
+     *
+     * ELLE NE RÉPOND PAS DE LA RÉPONSE. Sur la marche « cliquer », le même
+     * geste désigne l'élément ET montre son écriture : c'est voulu, l'élève
+     * apprend le nom de ce qu'il vient de choisir au moment où il le choisit.
+     * La bulle ne juge rien, elle nomme.
+     */
+    function brancherLaBulle() {
+        const bulle = container.querySelector('.sy-bulle');
+        const plateau = container.querySelector('.sy-plateau');
+        if (!bulle || !plateau) return;
+        let minuteur = null;
+
+        const cacher = () => {
+            if (minuteur) { clearTimeout(minuteur); minuteur = null; }
+            bulle.hidden = true;
+        };
+        const montrer = (cible, tenir) => {
+            const texte = cible.dataset.dit;
+            if (!texte) return;
+            bulle.textContent = texte;
+            bulle.hidden = false;
+            // ON LA POSE SUR LA ZONE DE VISÉE, pas sous le curseur : une bulle
+            // qui suit la souris passe son temps à se glisser sous le doigt
+            // qu'on vient de poser, et au doigt il n'y a pas de curseur du
+            // tout. Le milieu de la zone est le même repère pour les deux.
+            const z = cible.getBoundingClientRect();
+            const p = plateau.getBoundingClientRect();
+            bulle.style.left = `${Math.round(z.left + z.width / 2 - p.left)}px`;
+            bulle.style.top = `${Math.round(z.top + z.height / 2 - p.top)}px`;
+            if (minuteur) { clearTimeout(minuteur); minuteur = null; }
+            // `regTimeout` et non `setTimeout` : un minuteur laissé derrière
+            // soi écrirait dans une bulle que la question suivante a effacée.
+            if (tenir) minuteur = regTimeout(cacher, 2500);
+        };
+
+        svg.querySelectorAll('.qd-el-hit[data-dit]').forEach(cible => {
+            cible.addEventListener('pointerenter', (e) => {
+                // UN DOIGT ENVOIE AUSSI `pointerenter`, et il n'enverra jamais
+                // le `pointerleave` qui va avec : sans la tenue, la bulle
+                // resterait ouverte jusqu'à la question suivante.
+                montrer(cible, e.pointerType !== 'mouse');
+            });
+            // LE CLIC, ET LA MÊME RÈGLE DE TENUE QUE LE SURVOL : la souris garde
+            // la bulle tant qu'elle ne s'en va pas, le doigt deux secondes et
+            // demie, puisqu'il n'enverra jamais de `pointerleave`.
+            cible.addEventListener('pointerdown', (e) => {
+                montrer(cible, e.pointerType !== 'mouse');
+            });
+            cible.addEventListener('pointerleave', (e) => {
+                if (e.pointerType === 'mouse') cacher();
+            });
+            cible.addEventListener('focus', () => montrer(cible, false));
+            cible.addEventListener('blur', cacher);
+        });
     }
 
     function brancher() {
@@ -257,26 +374,27 @@ export function mount(container, session, opts = {}) {
         const m = item.meta;
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const plateau = container.querySelector('.sy-plateau') || container;
         cursor.say(m.genre === 'axe'
             ? 'La figure est retournée : on cherche une droite.'
             : 'La figure a fait un demi-tour : on cherche un point.', plateau);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(m.genre === 'axe'
             ? 'Elle passe au milieu de chaque point et de son image.'
             : 'Il est le milieu du segment qui joint un point à son image.', plateau);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         const btn = container.querySelector(`.sy-btn[data-el="${m.idJuste}"]`);
         if (btn && await cursor.tap(btn)) btn.classList.add('sy-juste');
         cursor.say(`C'est ${ecrireElement(m.hauteur, m.bon)}.`, btn || plateau);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

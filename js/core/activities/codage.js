@@ -25,6 +25,7 @@ import {
     verifierCodage, bornesDe, NOM_TYPE
 } from '../codage.js';
 import { codageSvg, jetonSvg, jetonAngleSvg } from '../codageSvg.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Les quatre marques d'égalité disponibles, dans l'ordre de la palette. */
 const MARQUES = [1, 2, 3, 4];
@@ -39,6 +40,7 @@ export function mount(container, session) {
     let ids = [];
     let pts = [];
     let pose = { marques: {}, angles: {} };
+    let inacheve = 0;
 
     function renderNext() {
         if (destroyed) return;
@@ -48,6 +50,9 @@ export function mount(container, session) {
         ids = m.segments;
         pts = m.points;
         pose = { marques: {}, angles: {} };
+        // COMBIEN DE FOIS ON A VALIDÉ UNE FIGURE INACHEVÉE — voir
+        // `brancherValidation`.
+        inacheve = 0;
         render();
     }
 
@@ -180,11 +185,35 @@ export function mount(container, session) {
             if (session.locked || destroyed) return;
             const bilan = verifierCodage(fig, pose, ids, pts);
 
-            // CE QUI N'EST PAS FINI N'EST PAS UNE ERREUR. Tant qu'il reste un
-            // segment nu, on le dit et l'on ne compte rien : valider à moitié
-            // ferait perdre une vie pour une phrase inachevée.
+            // CE QUI N'EST PAS FINI N'EST PAS UNE ERREUR — LA PREMIÈRE FOIS.
+            //
+            // Tant qu'il reste un segment nu, on le dit et l'on ne compte
+            // rien : valider à moitié ferait perdre une vie pour une phrase
+            // inachevée. L'intention est bonne ; elle avait un trou.
+            //
+            // RÉMY : « dans ce genre d'exercice on peut se retrouver bloqué ».
+            // Il avait raison, et la cause tient en une ligne : ce retour
+            // anticipé n'appelle PAS `session.submit`. Or tous les filets
+            // pendent à `submit` — le décompte des essais, la correction
+            // montrée, la figure suivante. Un élève qui ne sait pas quoi poser
+            // sur un segment pouvait donc appuyer sur Valider indéfiniment :
+            // rien ne bougeait. En entraînement les indices POSENT des marques
+            // et finissent par le sortir de là ; en ÉVALUATION la politique
+            // les coupe (`hints: false`), et il n'existait alors plus aucune
+            // sortie : ni validation, ni indice, ni passage. La séance
+            // s'arrêtait là.
+            //
+            // Le premier refus reste donc gratuit — c'est vraiment une phrase
+            // inachevée. Au second, l'exercice redevient un exercice : la
+            // réponse compte, la correction s'affiche au bout des essais, et
+            // la figure suivante arrive.
             const manque = bilan.problemes.find(p => p.genre === 'manque');
-            if (manque) { statut(manque.message, 'ko'); secouer(); return; }
+            if (manque) {
+                inacheve += 1;
+                statut(manque.message, 'ko');
+                secouer();
+                if (inacheve < 2) return;
+            }
 
             const result = session.submit(canoniser(pose, ids, pts), {
                 misconception: bilan.correct ? '' : bilan.problemes[0].message
@@ -304,43 +333,44 @@ export function mount(container, session) {
         cursor.protegerZone(container.querySelector('.cg-figure'));
         gate = createDemoGate(container.querySelector('.cg-layout') || container);
         const fin = () => { cursor?.hideBubble(); gate?.destroy(); gate = null; };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, fin, { rangementSeul: true });
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        if (!await robot.pause(600)) return fin();
 
         const classes = classesDeLongueur(fig, ids);
         for (let i = 0; i < classes.length; i++) {
             const classe = classes[i];
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const premier = cibleSegment(classe[0]);
             if (premier) cursor.say(phraseClasse(classe, i), premier);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             for (const id of classe) {
                 const el = cibleSegment(id);
                 if (!el) continue;
-                if (!await cursor.tap(el, 300) || destroyed) return fin();
+                if (!await robot.toucher(el, 300)) return fin();
                 pose.marques[id] = i + 1;
                 redessiner();
             }
         }
 
         const droits = anglesDroitsDe(fig, pts);
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         const ancre = container.querySelector('.cg-figure');
         cursor.say(droits.length
             ? `Les angles droits, maintenant : ${droits.length === 1 ? 'il y en a un seul' : `il y en a ${droits.length}`}.`
             : `Dans ${NOM_TYPE[item.meta.type]}, aucun angle n'est droit : on ne pose rien.`, ancre);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         for (const p of droits) {
             const el = ciblePoint(p);
             if (!el) continue;
-            if (!await cursor.tap(el, 300) || destroyed) return fin();
+            if (!await robot.toucher(el, 300)) return fin();
             pose.angles[p] = true;
             redessiner();
         }
 
         fin();
         if (destroyed) return;
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

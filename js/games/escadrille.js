@@ -18,6 +18,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 // Cadence de descente : vitesse et intervalle d'apparition.
 //
@@ -49,6 +50,9 @@ const SEUIL_TAPE = 10;   // au-delà, l'appui est un déplacement, pas un tir
 
 class Escadrille extends BaseGame {
     render() {
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.table = Math.max(2, Math.min(12, parseInt(this.params.table) || 7));
         this.viesMax = parseInt(this.params.lives) || 3;
         this.rythme = RYTHMES[this.params.rythme] || RYTHMES.lent;
@@ -648,37 +652,38 @@ class Escadrille extends BaseGame {
 
     async jouerDemo() {
         const cur = this.demoCursor, gate = this.demoGate;
-        const fin = () => { cur?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, null, { garderPointeur: true });
+        const fin = () => robot.fin();
         const t = this.table;
 
-        if (!await cur.pause(700) || !this.isRunning) return fin();
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.pause(700)) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Ma mission : abattre tout ce qui n'est PAS dans la table de ${t}.`, this.arene);
-        if (!await cur.pause(2000) || !this.isRunning) return fin();
+        if (!await robot.pause(2000)) return fin();
 
         // Un ami, puis un intrus, tous deux placés à la main pour que la
         // démonstration dise toujours la même chose.
         const ami = this.creerEnnemi();
         ami.valeur = t * 6; ami.ami = true; ami.x = this.canvas.width * 0.32; ami.y = 60;
         this.ennemis.push(ami);
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`${ami.valeur} ? ${t} × 6 = ${ami.valeur}. C'est un ami : je NE TIRE PAS, je le laisse passer.`, this.arene);
-        if (!await cur.pause(2600) || !this.isRunning) return fin();
+        if (!await robot.pause(2600)) return fin();
 
         const intrus = this.creerEnnemi();
         intrus.valeur = t * 6 + 2; intrus.ami = false; intrus.x = this.canvas.width * 0.68; intrus.y = 40;
         this.ennemis.push(intrus);
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const q = Math.floor(intrus.valeur / t);
         cur.say(`${intrus.valeur} ? ${t} × ${q} = ${t * q} et ${t} × ${q + 1} = ${t * (q + 1)} : ${intrus.valeur} est entre les deux, il n'y est pas. Feu !`, this.arene);
-        if (!await cur.pause(3000) || !this.isRunning) return fin();
+        if (!await robot.pause(3000)) return fin();
 
         this.vaisseau.cible = intrus.x;
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         this.tirer();
-        if (!await cur.pause(DEMO_SPEED.between + 1200) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1200)) return fin();
         cur.say(`Deux façons de se tromper : tirer sur un multiple de ${t}, ou laisser un intrus atteindre la base.`, this.arene);
-        if (!await cur.pause(DEMO_SPEED.between + 1600) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1600)) return fin();
         fin();
     }
 

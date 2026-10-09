@@ -17,6 +17,31 @@
 
 import { makeItem } from '../items.js';
 import { executer } from '../scratchVM.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
+
+// ── LA PROGRESSION, EN CASES À COCHER ───────────────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? — fais tout, ce serait le plus cohérent non ? »
+//
+// SEULE LA DIFFICULTÉ DEVIENT DES CASES, PAS « CE QU'ON DEMANDE ». Les
+// trois bandes de figures se contiennent — l'octogone ajoute au carré,
+// l'escalier à l'octogone —, et cochées elles font une feuille qui monte.
+// « Tracer / retrouver l'angle / les deux mélangés » n'est pas une échelle :
+// « mélangés » y veut dire UN TIRAGE AU HASARD à chaque figure, ce que des
+// cases ne savent pas dire — elles donneraient six tracés puis six angles,
+// c'est-à-dire deux demi-feuilles et non une feuille mélangée. Ce menu-là
+// reste donc un menu.
+const LISTE_MARCHES = [
+    { id: 'facile', nom: '1. Carré, rectangle, triangle' },
+    { id: 'moyen', nom: "2. Jusqu'à l'octogone" },
+    { id: 'difficile', nom: '3. Escalier et étoile compris' }
+];
+/** Le réglage d'avant les cases — voir `marchesCochees`. */
+const ANCIEN = { cle: 'niveau' };
 
 const av = (n) => ({ type: 'avancer', valeur: n });
 const dr = (n) => ({ type: 'droite', valeur: n });
@@ -130,20 +155,15 @@ export const chatFicheGenerator = {
                 { value: 'melange', label: 'Les deux, mélangés' }
             ]
         },
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 'moyen',
-            options: [
-                { value: 'facile', label: 'Carré, rectangle, triangle' },
-                { value: 'moyen', label: 'Jusqu\'à l\'octogone' },
-                { value: 'difficile', label: 'Escalier et étoile compris' }
-            ]
-        }
+        paramMarches({ marches: LISTE_MARCHES, mot: 'niveau', ancien: ANCIEN })
     ],
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
 
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
-        const niveau = ['facile', 'moyen', 'difficile'].includes(p.niveau) ? p.niveau : 'moyen';
+        const niveau = String(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(p, LISTE_MARCHES, ANCIEN), totalDe(ctx, p), p) || 'moyen');
         const quoi = ['dessiner', 'angle'].includes(p.quoi) ? p.quoi : rng.pick(['dessiner', 'angle']);
 
         const pool = FIGURES.filter(f => (niveau === 'facile' ? f.facile
@@ -197,7 +217,7 @@ export const chatFicheGenerator = {
                 : `Le programme dessine ${fig.nom}.`,
             difficulty: fig.dur ? 3 : (fig.facile ? 1 : 2),
             meta: {
-                quoi, figure: fig.id, nom: fig.nom, angle, n,
+                quoi, figure: fig.id, nom: fig.nom, angle, n, marche: niveau,
                 script, depart, cases,
                 lignes: ecrireProgramme(script, quoi === 'angle' ? angle : null),
                 // Le tracé, en pas de chat : la fiche n'a plus qu'à le mettre

@@ -23,6 +23,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     INGREDIENTS, tirerCommande, verifier, expliquer, direFraction,
     complement, parts
@@ -141,7 +142,9 @@ class Pizza extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .pz-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pz-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* LE BON DE COMMANDE. Une ligne = une fraction et son
                    ingrédient : « un quart d'ananas ». RIEN D'AUTRE.
@@ -172,7 +175,9 @@ class Pizza extends BaseGame {
                 }
                 .pz-svg { width: 100%; height: 100%; display: block; touch-action: none; }
                 .pz-part { cursor: pointer; }
-                .pz-part:hover .pz-fond { filter: brightness(1.06); }
+                @media (hover: hover) {
+                    .pz-part:hover .pz-fond { filter: brightness(1.06); }
+                }
 
                 /* LA CAISSE À INGRÉDIENTS : on en choisit un, ou on le fait
                    glisser sur une part. Le bac sélectionné est franchement
@@ -565,11 +570,12 @@ class Pizza extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.sceneEl);
         this.demoGate = gate;
-        const fin = () => { cur?.destroy(); gate?.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
         const f = this.commande.fractions;
         const dens = f.map(x => x.den);
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         // UNE IDÉE PAR BULLE, ET CHAQUE NOMBRE EXPLIQUÉ. Rémy : « explication du
         // robot pas claire ». Il disait « 2 et 3 : pas le même dénominateur »,
         // puis « on coupe en 6 », puis « 1 × 3 = 3 parts » — trois phrases
@@ -578,22 +584,22 @@ class Pizza extends BaseGame {
         cur.say(`La commande demande ${f.map(x => direFraction(x.num, x.den)).join(' et ')} de pizza. `
             + `Les dénominateurs ne sont pas les mêmes : ${dens.join(' et ')}. `
             + `Je ne peux donc pas encore compter en parts.`, this.commandeEl);
-        if (!await cur.pause(DEMO_SPEED.settle + 900) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle + 900)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const etListe = (t) => t.length < 2 ? String(t[0])
             : `${t.slice(0, -1).join(', ')} et ${t[t.length - 1]}`;
         cur.say(`Il me faut un découpage qui marche pour TOUTES les fractions à la fois. `
             + `${this.commande.parts} se divise par ${etListe([...new Set(dens)])} : je coupe la pizza `
             + `en ${this.commande.parts} parts.`, this.sceneEl);
-        if (!await cur.pause(DEMO_SPEED.settle + 900) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle + 900)) return fin();
 
         for (const frac of f) {
             const ing = par(frac.ingredient);
             const cible = this.commande.cible[frac.ingredient];
             const facteur = this.commande.parts / frac.den;
 
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             // Le facteur est NOMMÉ, et il vient d'une division qu'on voit :
             // sans elle, le « × 3 » tombe du ciel.
             const nom = direFraction(frac.num, frac.den);
@@ -603,7 +609,7 @@ class Pizza extends BaseGame {
                     ? `Il m'en faut un seul : ${parts(cible)}. `
                     : `Il m'en faut ${frac.num}, donc ${frac.num} × ${facteur} = ${parts(cible)}. `)
                 + `Autrement dit ${frac.num}/${frac.den} = ${cible}/${this.commande.parts}.`, this.commandeEl);
-            if (!await cur.pause(DEMO_SPEED.settle + 1100) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle + 1100)) return fin();
 
             const bac = this.bacsEl.querySelector(`[data-bac="${ing.id}"]`);
             this.choisi = ing.id;
@@ -619,17 +625,17 @@ class Pizza extends BaseGame {
                 this.garniture[libre] = ing.id;
                 this.peindre(libre);
                 this.majCommande();
-                if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.press)) return fin();
             }
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Chaque garniture a son compte — ${f.map(x => parts(this.commande.cible[x.ingredient])).join(' et ')} `
             + `sur ${this.commande.parts} —, et les fractions sont respectées. Au four.`, this.fourEl);
-        if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
-        if (!await cur.tap(this.fourEl)) return fin();
+        if (!await robot.pause(DEMO_SPEED.press)) return fin();
+        if (!await robot.toucher(this.fourEl)) return fin();
         this.enfourner();
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

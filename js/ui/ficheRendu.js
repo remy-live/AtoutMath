@@ -10,10 +10,69 @@
 
 import { A4, morceauxReponse, typographieFr, couperEnLignes } from '../core/fiche.js';
 import { refaireSvg, croixSvg } from './icones.js';
-import { RE_FRACTION, etageEstUnTrou } from '../core/fiche.js';
-// Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
-// pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
-import { RENDUS } from './printSheet.js';
+import {
+    RE_FRACTION, etageEstUnTrou, pasDeLigne, hauteurDesLignes
+} from '../core/fiche.js';
+// LE RADICAL DE L'ÉCRAN, RÉUTILISÉ TEL QUEL SUR L'APERÇU.
+//
+// RÉMY : « il faut bien que la racine carrée soit continue, là il y a une
+// rupture sur ce que tu as fait. » J'avais écrit un second radical — le
+// caractère « √ » suivi d'un `overline` —, et entre le crochet de la police et
+// la barre du soulignement il restait une marche : deux traits d'épaisseurs et
+// de hauteurs différentes qui ne se rejoignent pas.
+//
+// `core/maths/formule.js` existe PRÉCISÉMENT pour ça. Rémy, il y a des mois :
+// « les racines carrées sont très moches », puis « sur ton banc les radicaux
+// ont-ils une ligne de la même épaisseur ». Son crochet et sa barre sont DEUX
+// TRACÉS SVG aux mêmes réglages, et le crochet se termine par un bout
+// horizontal qui prolonge la barre : la jonction est structurelle, pas calée.
+//
+// EN ÉCRIRE UN SECOND ÉTAIT L'ERREUR. Deux rendus de la même chose divergent au
+// premier réglage — c'est la leçon que ce fichier porte déjà pour l'aperçu et
+// le PDF, et je venais de la repayer à l'intérieur même de l'aperçu.
+import { formule as formuleHtml } from '../core/maths/formule.js';
+/**
+ * LES RENDUS DE GRILLES SONT DÉPOSÉS ICI, PAS IMPORTÉS D'ICI.
+ *
+ * Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
+ * pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
+ * Ce fichier en a donc besoin — mais il ne peut pas les IMPORTER, et c'est ce
+ * qu'il faisait.
+ *
+ * ── LE CERCLE, ET CE QU'IL CASSAIT ────────────────────────────────────────
+ *
+ * `import { RENDUS } from './printSheet.js'` était l'arête à l'envers d'un
+ * cercle complet :
+ *
+ *     ficheRendu.js → printSheet.js → fiches/axes.js → fiches/socle.js
+ *                  ↖──────────────────────────────────────────┘
+ *
+ * Tant que l'application charge `printSheet.js` en premier, le cercle se
+ * referme dans le bon ordre et personne ne voit rien. Mais dès que l'entrée
+ * est un RENDU — ce qu'une sonde fait naturellement, et ce qu'un futur module
+ * fera un jour —, `printSheet.js` est atteint PENDANT que le rendu s'évalue,
+ * et sa table `RENDUS` se construit en lisant un `RENDUS_AXES` encore dans sa
+ * zone morte :
+ *
+ *     ReferenceError: Cannot access 'RENDUS_AXES' before initialization
+ *
+ * MESURÉ : une sonde qui importait `fiches/axes.js` sans passer par
+ * `printSheet.js` faisait tomber TOUT le sous-système d'impression, sur un
+ * message qui désignait à chaque correction un fichier différent et jamais le
+ * bon — `mots.js`, puis `socle.js`, puis `printSheet.js`. Vingt minutes avant
+ * de comprendre que le sujet n'était aucun des trois, mais le SENS d'une
+ * flèche d'import.
+ *
+ * ── CE QUI REMPLACE L'IMPORT ──────────────────────────────────────────────
+ *
+ * `RENDUS` n'est lu qu'à l'intérieur de deux fonctions, donc longtemps après
+ * que tout est chargé : une table qu'on DÉPOSE suffit, et le cercle disparaît.
+ * `printSheet.js` appelle `deposerLesRendus` au moment où il construit sa
+ * table. Si quelqu'un l'oubliait, les blocs de grille ne se dessineraient plus
+ * du tout — et `tests/cercleDesFiches.test.mjs` le dit avant le navigateur.
+ */
+let RENDUS = {};
+export function deposerLesRendus(table) { RENDUS = table || {}; }
 
 /**
  * L'ENCRE DU POLYCOPIÉ — QUATRE MODES, UN SEUL FILTRE.
@@ -554,6 +613,24 @@ const SYMBOLE = {
     '\u2260': ['\u00B9', 548],   // ≠
     '\u2264': ['\u00A3', 548],   // ≤
     '\u2265': ['\u00B3', 548],   // ≥
+    // ⩽ ET ⩾, CEUX DU PROGRAMME FRANÇAIS — et ils sortaient en « ? ».
+    //
+    // Le dépôt écrit partout le ⩽ français (`const LE = '⩽'` dans
+    // `generators/intervalles.js`, « celui du programme français, pas le ≤
+    // anglo-saxon »). Mais la table ci-dessus ne connaissait que le ≤
+    // anglo-saxon : le filet de sécurité de `pourPdf` remplaçait donc ⩽ par
+    // un point d'interrogation, et la feuille imprimait « x ? 3 ».
+    //
+    // MESURÉ sur le poly de Rémy : toutes les inégalités larges de la valeur
+    // absolue et des intervalles — « |x − 5| ⩽ 1 » devenait « |x - 5| ? 1 ».
+    // Personne ne l'avait vu parce que personne ne REGARDE un PDF : les
+    // sondes en comptent les segments. Voir `tools/pdfEnImage.mjs`.
+    //
+    // LA POLICE SYMBOL N'A PAS LE ⩽ INCLINÉ, elle n'a que le ≤ à barre
+    // droite. C'est le bon compromis : un ≤ se lit, un « ? » ne se lit pas.
+    // L'écran, lui, garde le ⩽ du programme.
+    '\u2A7D': ['\u00A3', 548],   // ⩽ — dessiné avec le ≤ de Symbol
+    '\u2A7E': ['\u00B3', 548],   // ⩾ — dessiné avec le ≥ de Symbol
     '\u221A': ['\u00D6', 548],   // √
     '\u2192': ['\u00AE', 986],   // →
     '\u2190': ['\u00AC', 986],   // ←
@@ -562,7 +639,18 @@ const SYMBOLE = {
     '\u221E': ['\u00A5', 713],   // ∞
     '\u2208': ['\u00CE', 713],   // ∈
     '\u2220': ['\u00D0', 768],   // ∠
-    '\u03C0': ['p', 548]          // π
+    '\u03C0': ['p', 548],         // π
+    // LES ENSEMBLES, ET CE QUI LES RELIE — mesuré par
+    // `node tools/caracteresPerdus.mjs` : ∪ ∩ ∅ ∉ sortaient en « ? » sur
+    // 128 questions du catalogue. « I ∩ J » s'imprimait « I ? J », ce qui est
+    // la question posée à l'envers.
+    //
+    // Symbol les a tous les quatre, et ∈ y était déjà : il manquait les
+    // quatre voisins de la même rangée.
+    '\u222A': ['\u00C8', 768],   // ∪ réunion
+    '\u2229': ['\u00C7', 768],   // ∩ intersection
+    '\u2205': ['\u00C6', 823],   // ∅ ensemble vide
+    '\u2209': ['\u00CF', 713]    // ∉ n'appartient pas
 };
 
 /**
@@ -600,7 +688,23 @@ const HORS_TABLE = {
     // Les fl\u00E8ches de rotation du chat g\u00E9om\u00E8tre. \u00AB \u00E0 droite \u00BB est d\u00E9j\u00E0 \u00E9crit \u00E0
     // c\u00F4t\u00E9 : la fl\u00E8che est un ornement, et un \u00AB ? \u00BB au milieu d'un programme
     // de construction se lit comme une donn\u00E9e manquante.
-    '\u21BB': '', '\u21BA': ''
+    '\u21BB': '', '\u21BA': '',
+    // LES LETTRES AJOURÉES DES ENSEMBLES — ℕ ℤ 𝔻 ℚ ℝ.
+    //
+    // Symbol ne les a pas, et `sec-ensembles` imprimait « ? — les
+    // rationnels ». Mesuré sur tout le catalogue : 132 occurrences, seize
+    // exercices — le plus gros des caractères perdus.
+    //
+    // La majuscule ordinaire est ce qu'on écrit au tableau, et c'est ainsi
+    // que le manuel les écrit quand il n'a pas la police. On ne perd que
+    // l'ajourage, qui est une convention typographique, pas une information.
+    '\u2115': 'N', '\u2124': 'Z', '\u211A': 'Q', '\u211D': 'R', '\u1D53B': 'D',
+    // LES NUMÉROS CERCLÉS DES ANGLES — et ici le chiffre nu est MIEUX que
+    // le cercle : la figure, elle, écrit « 1 » et « 2 » tout court
+    // (`fiches/figures.js`, `String(arc.pas)`). Le texte disait « Passe par
+    // l'angle ① » et la figure montrait « 1 » — deux écritures pour le même
+    // repère, dont une qui sortait en « ? ».
+    '\u2460': '1', '\u2461': '2', '\u2462': '3', '\u2463': '4'
 };
 
 /**
@@ -644,6 +748,27 @@ const HORS_TABLE = {
  */
 const RE_EXPOSANT = '([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)';
 
+/**
+ * LE RADICAL, ET CE QU'IL DOIT RECOUVRIR.
+ *
+ * RÉMY, quatre fois dans la même revue : « racine carré qui ne recouvre pas
+ * tout », « la racine carré ne recouvre pas bien le nombre sur la version
+ * imprimé », « attention au racine carré pour le mode imprimable ».
+ *
+ * LA CAUSE EST STRUCTURELLE, PAS COSMÉTIQUE. L'écran dessine le radical avec
+ * sa barre (`core/maths/formule.js`), mais la FEUILLE reçoit la forme TEXTE —
+ * et à plat, un radical s'écrit « √64 ». Il n'y a pas de barre à perdre : il
+ * n'y en a jamais eu. Or « √64 » ne dit pas si l'on prend la racine de 64 ou
+ * la racine de 6 multipliée par 4, et « √81 × √49 » ne se distingue pas de
+ * « √(81 × 49) » autrement que par cette barre.
+ *
+ * ON RECONNAÎT DEUX FORMES, celles que `formule.js` produit : le radicande
+ * parenthésé (`√(9 + 16)`) et le radicande atomique (`√64`, `√a`). Rien
+ * d'autre — un motif qui essaierait de deviner où s'arrête un radicande non
+ * parenthésé se tromperait sur « √2 + 3 », où la barre ne couvre que le 2.
+ */
+const RE_RACINE = '\u221A\\(([^()]*)\\)|\u221A([0-9]+(?:[.,][0-9]+)?|[a-zA-Z])';
+
 export function morceauxLigne(ligne, avecFractions) {
     const out = [];
     // Le motif vient de core/fiche.js : l'aperçu, le PDF et la mesure des
@@ -662,7 +787,10 @@ export function morceauxLigne(ligne, avecFractions) {
     // π, et un bloc d'exposants ne contient que des exposants. Le reste est une
     // fraction, et ses deux étages sont les deux premiers groupes — ceux qui
     // marchaient déjà avant qu'on touche à ce motif.
-    const hors = `\u2248|\u03C0|${RE_EXPOSANT}`;
+    // LA RACINE PASSE AVANT LA FRACTION, et l'ordre compte : dans « √(a/b) »,
+    // le motif de la fraction attraperait « a/b » tout seul et laisserait le
+    // « √( » au texte, ce qui donnerait une barre posée sur rien.
+    const hors = `${RE_RACINE}|\u2248|\u03C0|${RE_EXPOSANT}`;
     const re = avecFractions
         ? new RegExp(`${RE_FRACTION().source}|${hors}`, 'g')
         : new RegExp(hors, 'g');
@@ -670,7 +798,11 @@ export function morceauxLigne(ligne, avecFractions) {
     let dernier = 0, m;
     while ((m = re.exec(ligne))) {
         if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
-        if (m[0] === '\u2248') out.push({ presque: true });
+        // ON RECONNAÎT LE MORCEAU À CE QU'IL EST, PAS À SON NUMÉRO DE GROUPE —
+        // la leçon est écrite plus haut, et la racine la respecte : elle se
+        // reconnaît à son premier caractère, pas à la place de sa capture.
+        if (m[0][0] === '\u221A') out.push({ racine: m[0].slice(1).replace(/^\((.*)\)$/, '$1') });
+        else if (m[0] === '\u2248') out.push({ presque: true });
         else if (m[0] === '\u03C0') out.push({ pi: true });
         else if (queDesExposants.test(m[0])) out.push({ haut: m[0] });
         else out.push({ num: m[1], den: m[2] });
@@ -678,6 +810,86 @@ export function morceauxLigne(ligne, avecFractions) {
     }
     if (dernier < ligne.length) out.push({ texte: ligne.slice(dernier) });
     return out.length ? out : [{ texte: ligne }];
+}
+
+/**
+ * LE RADICAL DU PDF : le signe, puis le radicande, puis LA BARRE PAR-DESSUS.
+ *
+ * RÉMY : « la racine carré ne recouvre pas bien le nombre sur la version
+ * imprimé ». Elle ne le recouvrait pas du tout — la feuille recevait « √64 »,
+ * une chaîne plate, et jsPDF l'écrivait telle quelle.
+ *
+ * LA BARRE EST DESSINÉE, PAS ÉCRITE. Le caractère « ‾ » n'existe pas dans les
+ * polices standard du PDF — c'est le même piège que la case à cocher « ☐ »,
+ * déjà payé dix lignes plus bas. On mesure le radicande et l'on tire un trait
+ * de cette longueur.
+ *
+ * LES PROPORTIONS SONT CELLES DE L'ÉCRAN (`css/components.css`) : la barre se
+ * pose au niveau du sommet du radical, soit un peu au-dessus des capitales, et
+ * elle déborde d'un cheveu à droite pour ne pas sembler s'arrêter trop tôt sur
+ * un chiffre à jambage.
+ */
+/**
+ * LES PROPORTIONS DU CROCHET, celles du tracé de l'écran ramenées au corps.
+ *
+ * Le tracé de `core/maths/formule.js` est « M0 12.4 L2.7 12.4 L5.2 19.4
+ * L8.2 0 L10 0 » dans une boîte de 10 × 20 : un petit horizontal, la descente,
+ * la remontée jusqu'au sommet, puis UN BOUT HORIZONTAL AU SOMMET — c'est lui
+ * qui prolonge la barre, et c'est lui qui manquait.
+ */
+const CROCHET = [
+    [0.00, -0.38],   // départ du petit horizontal de gauche
+    [0.14, -0.38],   // fin de ce petit horizontal
+    [0.26, 0.00],    // le bas du V, posé sur la ligne d'écriture
+    [0.41, -1.00],   // le sommet
+    [0.47, -1.00]    // le bout horizontal qui devient la barre
+];
+/** La largeur du crochet, en corps : c'est là que commence le radicande. */
+const CROCHET_LARGE = 0.47;
+
+/**
+ * LE RADICAL DU PDF — CROCHET ET BARRE D'UN SEUL TRACÉ.
+ *
+ * RÉMY : « il faut bien que la racine carrée soit continue, là il y a une
+ * rupture sur ce que tu as fait. »
+ *
+ * PREMIÈRE VERSION : le caractère « √ » de la police, puis un trait tiré
+ * au-dessus du radicande. Deux objets différents — un glyphe et un trait —
+ * dont ni l'épaisseur ni la hauteur ne pouvaient coïncider : jsPDF écrit le
+ * radical avec le « Ö » de la police Symbol, dont le sommet est où il est, et
+ * mon trait passait à côté. Une marche, visible à l'œil nu.
+ *
+ * ICI, LE CROCHET N'EST PLUS UN CARACTÈRE : c'est le même tracé que l'écran,
+ * prolongé par la barre dans LE MÊME chemin. La continuité n'est plus un calage
+ * qu'on ajuste, elle est structurelle — on ne peut plus la casser sans casser
+ * le trait. C'est exactement ce que `formule.js` avait déjà établi pour
+ * l'écran, pour la même raison.
+ */
+export function dessinerRacine(pdf, dedans, x, y, taille) {
+    const t = pourPdf(String(dedans));
+    const wDedans = pdf.getTextWidth(t);
+    const xDedans = x + taille * CROCHET_LARGE;
+    // Le radicande d'abord : la barre doit passer PAR-DESSUS, et un trait tiré
+    // avant le texte se laisse recouvrir par ses jambages hauts.
+    pdf.text(t, xDedans, y);
+
+    pdf.setLineWidth(taille * 0.055);
+    pdf.setDrawColor(...ENCRE.texte);
+    // UN SEUL CHEMIN : le crochet, puis la barre jusqu'au bout du radicande.
+    // `lines` prend des déplacements RELATIFS ; on les calcule depuis le point
+    // précédent, et le dernier segment est la barre.
+    const pts = CROCHET.map(([dx, dy]) => [x + dx * taille, y + dy * taille]);
+    pts.push([xDedans + wDedans + taille * 0.08, pts[pts.length - 1][1]]);
+    const deltas = pts.slice(1).map(([px, py], i) => [px - pts[i][0], py - pts[i][1]]);
+    pdf.lines(deltas, pts[0][0], pts[0][1], [1, 1], 'S', false);
+
+    return taille * CROCHET_LARGE + wDedans + taille * 0.12;
+}
+
+/** La largeur d'un radical, sans l'écrire — pour centrer avant de dessiner. */
+export function largeurRacine(pdf, dedans, taille) {
+    const t = taille || 1;
+    return t * CROCHET_LARGE + pdf.getTextWidth(pourPdf(String(dedans))) + t * 0.12;
 }
 
 /** Le π du PDF : le « p » de la police Symbol, qui en est un. */
@@ -704,14 +916,21 @@ export function dessinerPi(pdf, x, y) {
  */
 export function texteRiche(pdf, texte, x, y, taille, o = {}) {
     const morceaux = morceauxLigne(String(texte ?? ''), false);
+    // LA CINQUIÈME SORTE DE MORCEAU, ET LE TROISIÈME LECTEUR. `morceauxLigne`
+    // en a maintenant CINQ et il y a TROIS lecteurs : l'aperçu, le PDF et cette
+    // mesure. Le commentaire de `ligneHtml` le dit déjà — en ajouter une sans
+    // faire le tour des trois, c'est composer sur une largeur et imprimer sur
+    // une autre.
     const large = (m) => (m.texte !== undefined ? pdf.getTextWidth(pourPdf(m.texte))
-        : m.pi ? largeurPi(pdf)
-            : m.haut ? largeurExposant(pdf, m.haut, taille)
-                : taille * 1.25);
+        : m.racine !== undefined ? largeurRacine(pdf, m.racine, taille)
+            : m.pi ? largeurPi(pdf)
+                : m.haut ? largeurExposant(pdf, m.haut, taille)
+                    : taille * 1.25);
     const total = morceaux.reduce((n, m) => n + large(m), 0);
     let cx = o.align === 'center' ? x - total / 2 : o.align === 'right' ? x - total : x;
     for (const m of morceaux) {
         if (m.texte !== undefined) { const t = pourPdf(m.texte); pdf.text(t, cx, y); }
+        else if (m.racine !== undefined) dessinerRacine(pdf, m.racine, cx, y, taille);
         else if (m.pi) dessinerPi(pdf, cx, y);
         else if (m.haut) dessinerExposant(pdf, m.haut, cx, y, taille);
         else signePresque(pdf, cx + taille * 0.15, y, taille);
@@ -764,8 +983,12 @@ function largeurFraction(pdf, m) {
     // Un étage vide n'a pas de largeur propre : on lui donne celle de son
     // vis-à-vis, plus une marge — un trait de trois millimètres sous un
     // dénominateur à deux chiffres ne se remplit pas.
+    // Le plancher se dit EN CHIFFRES, et non en millimètres : c'est ainsi que
+    // l'aperçu le dit de son côté (trois `ch`), et deux planchers exprimés dans
+    // deux unités finissent par ne plus valoir la même chose quand la taille
+    // du corps change.
     const large = (t, autre) => (etageEstUnTrou(t)
-        ? Math.max(pdf.getTextWidth(autre), 5) : pdf.getTextWidth(t));
+        ? Math.max(pdf.getTextWidth(autre), pdf.getTextWidth('000')) : pdf.getTextWidth(t));
     return Math.max(large(m.num, m.den), large(m.den, m.num)) + 1.6;
 }
 
@@ -787,6 +1010,8 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
             x += dessinerPi(pdf, x, y);
         } else if (m.haut) {
             x += dessinerExposant(pdf, m.haut, x, y, o.taille);
+        } else if (m.racine !== undefined) {
+            x += dessinerRacine(pdf, m.racine, x, y, o.taille);
         } else {
             const w = largeurFraction(pdf, m);
             // L'ÉTAGE À REMPLIR, en pointillés : le même trait qu'ailleurs sur
@@ -852,6 +1077,15 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
         // sortes de morceaux et TROIS lecteurs (l'aperçu, le PDF, la mesure).
         // Ajouter une sorte sans faire le tour des trois, c'est reproduire ce
         // bug — et il ne se voit que sur une feuille, à l'écran d'un élève.
+        // LA RACINE DE L'APERÇU, DESSINÉE PAR LE MÊME CODE QUE L'ÉCRAN.
+        // `formule('√(…)')` rend le crochet et la barre en SVG, d'une seule
+        // venue. On lui passe le radicande ENTRE PARENTHÈSES quoi qu'il
+        // arrive : son analyseur les retire, et sans elles « 9 + 16 » ne
+        // passerait que le 9 sous la barre.
+        if (m.racine !== undefined) {
+            try { return formuleHtml(`\u221A(${m.racine})`); }
+            catch (e) { return '&#8730;' + texteHtml(m.racine); }
+        }
         if (m.pi) return '<span class="fx-pi">&#960;</span>';
         // Le navigateur sait écrire « ² » ; mais au-delà de ³ les polices ne
         // suivent pas toutes, et l'on verrait un carré vide. Un `<sup>` avec le
@@ -865,10 +1099,25 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
         // UN ÉTAGE VIDE EST UN TROU, et un trou se dessine en pointillés — sans
         // quoi la place à remplir, faite d'espaces, disparaîtrait purement et
         // simplement dans le HTML.
-        const etage = (t) => (etageEstUnTrou(t)
-            ? `<span class="${trouCls}">${echapper(t)}</span>` : echapper(t));
-        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num)}</span>`
-            + `<span class="fx-frac-d">${etage(m.den)}</span></span>`;
+        // UN ÉTAGE VIDE A LA LARGEUR DE SON VIS-À-VIS, PAS CELLE DE SES ESPACES.
+        //
+        // RÉMY : « le trait de fraction est parfois très grand ». Le trait de
+        // fraction de l'aperçu EST la bordure basse du numérateur ; un
+        // numérateur fait d'une vingtaine d'espaces (la place à remplir,
+        // posée par `texteImprime`) donnait donc un trait de deux
+        // centimètres sous un dénominateur de deux chiffres.
+        //
+        // LE PDF, LUI, AVAIT DÉJÀ LA RÈGLE : `largeurFraction` prend la largeur
+        // du vis-à-vis, avec un plancher. Les deux dessins disaient donc deux
+        // choses différentes de la même fraction — et c'est l'aperçu que Rémy
+        // regarde avant d'imprimer. On écrit ici la MÊME règle, dans l'unité
+        // de l'aperçu : le `ch`, qui est la largeur d'un chiffre.
+        const chDuTrou = (autre) => Math.max(String(autre ?? '').trim().length, 3);
+        const etage = (t, autre) => (etageEstUnTrou(t)
+            ? `<span class="${trouCls} fx-frac-trou" style="width:${chDuTrou(autre)}ch"></span>`
+            : echapper(t));
+        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num, m.den)}</span>`
+            + `<span class="fx-frac-d">${etage(m.den, m.num)}</span></span>`;
     }).join('');
 }
 
@@ -876,7 +1125,12 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
 const EXPOSANTS_HAUT = {
     '\u2070': '0', '\u00B9': '1', '\u00B2': '2', '\u00B3': '3', '\u2074': '4',
     '\u2075': '5', '\u2076': '6', '\u2077': '7', '\u2078': '8', '\u2079': '9',
-    '\u207B': '-'
+    '\u207B': '-',
+    // LE PLUS, LE ⁿ ET LE FOIS EN EXPOSANT. « 10⁷ × 10⁷ = 10⁷⁺⁷ » sortait
+    // « 10^7 × 10^7 = 10^7?7 » : le pas intermédiaire d'un exercice sur les
+    // puissances, c'est-à-dire tout ce qu'il enseigne. Et « a × 10ⁿ »
+    // devenait « a × 10? » dans la définition même de l'écriture scientifique.
+    '\u207A': '+', '\u207F': 'n', '\u02DF': '\u00D7'
 };
 // Seuls ¹ ² ³ existent dans la police du PDF. Les autres — ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁰ et le
 // moins en exposant — n'y sont pas, et sortaient en points d'interrogation :
@@ -896,7 +1150,9 @@ const IMPRIMABLE_EN_HAUT = new Set(['\u00B9', '\u00B2', '\u00B3']);
  * problème et restent intacts.
  */
 const exposantsLisibles = (t) => t.replace(
-    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)/g,
+    // Le bloc inclut ⁺ ⁿ ˟ depuis qu'ils sont dans la table : sans eux,
+    // « 10⁷⁺⁷ » se coupait en deux blocs et le ⁺ tombait seul au milieu.
+    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207A\u207B\u207F\u02DF]+)/g,
     (_, avant, bloc) => {
         const puissance = /\d/.test(avant);
         const tout = [...bloc].every(c => IMPRIMABLE_EN_HAUT.has(c));
@@ -1125,7 +1381,7 @@ export function apercuItems(page, k, o) {
                 : '';
             html += `<div class="fx-qgestes${recrire}"
                 style="left:${it.x * k}px; top:${it.y * k}px;
-                width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(it.lignes.length * o.interligne, o.interligne) * k}px">
+                width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(hauteurDesLignes(o, it.lignes.length, it.fractions), o.interligne) * k}px">
                 <button type="button" class="fx-qgeste" data-q-neuf="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
                     title="Retirer une autre question au sort à cette place"
                     aria-label="Remplacer la question ${it.n ?? it.iQ + 1}">${refaireSvg(13)}</button>
@@ -1142,7 +1398,7 @@ export function apercuItems(page, k, o) {
         // et sa réponse, dans le même geste.
         it.lignes.forEach((ligne, i) => {
             html += `<div class="fq-ligne"
-                style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
+                style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * pasDeLigne(o, it.fractions)) * k}px;
                 width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions, o)}</div>`;
         });
         if (it.choix) {
@@ -1743,7 +1999,9 @@ export function pdfItems(pdf, page, o) {
         if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + (it.dy || 0) + o.taille);
         pdf.setFont('helvetica', 'normal');
         it.lignes.forEach((ligne, i) => {
-            dessinerLigne(pdf, ligne, it.texteX, it.y + (it.dy || 0) + o.taille + i * o.interligne, o, it.fractions);
+            dessinerLigne(pdf, ligne, it.texteX,
+                it.y + (it.dy || 0) + o.taille + i * pasDeLigne(o, it.fractions),
+                o, it.fractions);
         });
         if (it.choix) {
             // LES CASES À COCHER SONT DESSINÉES, pas écrites. Le caractère ☐

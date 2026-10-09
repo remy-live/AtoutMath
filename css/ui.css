@@ -24,7 +24,9 @@
     padding: 9px 15px; border-radius: 11px; border: 1.5px solid var(--primary);
     background: var(--primary); color: #fff; transition: transform .14s, box-shadow .14s;
 }
-.auj-jeu:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+@media (hover: hover) {
+    .auj-jeu:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+}
 
 /* ═══ MES CLASSES — l'espace du professeur ═══════════════════════════════════
 
@@ -73,7 +75,9 @@
 }
 .ec-retour { font-size: 1.15rem; margin-top: 2px; }
 .ec-fermer { font-size: 1.5rem; padding: 2px 10px 5px; }
-.ec-retour:hover, .ec-fermer:hover { background: var(--bg-hover); color: var(--text-main); }
+@media (hover: hover) {
+    .ec-retour:hover, .ec-fermer:hover { background: var(--bg-hover); color: var(--text-main); }
+}
 
 /* --- Les cartes de classe ------------------------------------------------- */
 .ec-grille {
@@ -87,9 +91,11 @@
     font: inherit; color: inherit;
     transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
 }
-.ec-carte:hover, .ec-carte:focus-visible {
-    transform: translateY(-2px); box-shadow: var(--shadow-md);
-    border-color: var(--primary); outline: none;
+.ec-carte:focus-visible { transform: translateY(-2px); box-shadow: var(--shadow-md);
+    border-color: var(--primary); outline: none; }
+@media (hover: hover) {
+    .ec-carte:hover { transform: translateY(-2px); box-shadow: var(--shadow-md);
+    border-color: var(--primary); outline: none; }
 }
 .ec-carte-haut { display: flex; align-items: baseline; gap: 8px; justify-content: space-between; }
 .ec-carte-nom {
@@ -97,12 +103,12 @@
     overflow-wrap: anywhere;
 }
 .ec-niveau {
-    font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+    font-size: .75rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;
     background: var(--tag-niv-bg); color: var(--tag-niv-txt); white-space: nowrap;
 }
 .ec-carte-code { display: flex; flex-direction: column; gap: 3px; }
 .ec-code-eti {
-    font-size: .68rem; text-transform: uppercase; letter-spacing: .09em;
+    font-size: .75rem; text-transform: uppercase; letter-spacing: .09em;
     color: var(--text-muted); font-weight: 700;
 }
 /* LE CODE EST GROS PARCE QU'ON LE DICTE. C'est le seul chiffre de cet écran
@@ -110,7 +116,7 @@
 .ec-code {
     font-family: ui-monospace, Menlo, Consolas, monospace;
     font-size: 1.32rem; font-weight: 700; letter-spacing: .14em;
-    color: var(--primary);
+    color: var(--primary-texte);
 }
 .ec-code--petit { font-size: .95rem; letter-spacing: .09em; }
 /* Le code est un bouton parce qu'on le copie ; il ne doit pas en avoir l'air. */
@@ -118,7 +124,28 @@
     background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
     text-align: left; border-radius: 6px; transition: .15s;
 }
-.ec-code--copie:hover { background: var(--bg-hover); box-shadow: 0 0 0 5px var(--bg-hover); }
+@media (hover: hover) {
+    .ec-code--copie:hover { background: var(--bg-hover); box-shadow: 0 0 0 5px var(--bg-hover); }
+}
+/* LA PORTE FERMÉE SE VOIT, SANS CRIER.
+   Le code reste gros — on le dicte toujours, et on le dictera dès la porte
+   rouverte —, mais il perd la couleur qui promettait qu'il servait, et l'on pose
+   à côté le geste qui l'ouvre. Ce n'est pas une alarme : c'est un réglage juste
+   (« gardez-la éteinte si votre liste vient de Pronote »), simplement un réglage
+   dont l'écran se taisait. */
+.ec-carte-code--ferme .ec-code { color: var(--text-muted); }
+.ec-code--ferme { color: var(--text-muted); }
+.ec-ferme-mot { color: var(--text-muted); font-weight: 600; }
+.ec-code-ouvrir {
+    align-self: flex-start; margin-top: 2px;
+    font: inherit; font-size: .78rem; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    background: var(--bg-panel); color: var(--primary-texte);
+    border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+@media (hover: hover) {
+    .ec-code-ouvrir:hover { background: var(--bg-hover); }
+}
 .ec-carte-bas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ec-eff { font-size: .85rem; color: var(--text-muted); font-weight: 600; }
 .ec-pastille {
@@ -133,33 +160,326 @@
     border-style: dashed; color: var(--text-muted); font-weight: 700;
     min-height: 132px; background: transparent;
 }
-.ec-plus { font-size: 1.7rem; line-height: 1; color: var(--primary); }
+.ec-plus { font-size: 1.7rem; line-height: 1; color: var(--primary-texte); }
 
 /* --- Les onglets ---------------------------------------------------------- */
+/* LES CINQ ONGLETS DÉFILENT PLUTÔT QUE DE SE COUPER.
+   MESURÉ à 360 px : le cinquième — « Les bilans » — dépassait de 15 px, son
+   libellé rogné au bord, et il ne s'atteignait qu'en faisant glisser toute la
+   page. Un onglet à moitié dehors ne se lit pas comme un onglet : il se lit
+   comme la fin de la liste, et l'écran qu'il ouvre n'existe plus.
+   On garde les cinq sur une rangée — les replier casserait le repère — mais la
+   rangée défile toute seule, et le rognage aux bords dit qu'il y a une suite. */
 .ec-onglets {
     display: flex; gap: 4px; padding: 0 26px;
     border-bottom: 1px solid var(--border); background: var(--bg-app);
+    overflow-x: auto; scrollbar-width: none;
 }
+.ec-onglets::-webkit-scrollbar { display: none; }
+.ec-onglet { flex: 0 0 auto; }
 .ec-onglet {
     background: none; border: none; border-bottom: 2.5px solid transparent;
     color: var(--text-muted); cursor: pointer; font: inherit; font-weight: 700;
     font-size: .92rem; padding: 12px 14px 10px; margin-bottom: -1px; transition: .15s;
 }
-.ec-onglet:hover { color: var(--text-main); }
-.ec-onglet--actif { color: var(--primary); border-bottom-color: var(--primary); }
+@media (hover: hover) {
+    .ec-onglet:hover { color: var(--text-main); }
+}
+.ec-onglet--actif { color: var(--primary-texte); border-bottom-color: var(--primary); }
 
 .ec-corps { padding: 20px 26px 26px; }
 
 /* --- Le direct ------------------------------------------------------------ */
 .ec-compte { margin: 0 0 14px; font-weight: 700; color: var(--text-main); }
 .ec-rangs { display: flex; flex-direction: column; gap: 6px; }
+/* SIX COLONNES, PARCE QUE LA LIGNE A SIX ENFANTS — et la panne est revenue.
+   La note ci-dessous (« LES DEUX BOUTONS TIENNENT DANS UNE SEULE CELLULE »)
+   décrit exactement ce défaut et le dit réparé. Il l'était : la ligne comptait
+   alors cinq enfants pour cinq colonnes. La CASE À COCHER, ajoutée depuis pour
+   donner la calculatrice à des élèves choisis, en a fait un sixième — et la
+   réparation d'hier est redevenue la panne d'aujourd'hui.
+
+   MESURÉ à 768 px, sur une classe de trente : les lignes des élèves qui ont un
+   score faisaient 129 px, celles des élèves jamais venus 64 px, l'une sous
+   l'autre dans la même liste ; à 1280, trois hauteurs — 110 / 97 / 56. Et les
+   deux gestes changeaient de place selon l'élève : à x = 590 pour les uns, à
+   x = 14 à la ligne suivante pour les autres, à cinq cents pixels de leur nom.
+
+   LE COMPTE D'ENFANTS EST DÉSORMAIS CONSTANT : le score est toujours écrit,
+   vide quand il n'y en a pas (voir `rangHtml`). Compter sur une cellule qui
+   n'apparaît que parfois, c'est reposer le même piège pour le prochain. */
 .ec-rang {
     display: grid; align-items: center; gap: 12px;
-    grid-template-columns: 10px minmax(120px, 1.1fr) minmax(0, 1.6fr) auto auto;
+    grid-template-columns: auto 10px minmax(120px, 1.1fr) minmax(0, 1.6fr) auto auto;
     padding: 9px 13px; border-radius: 11px;
     background: var(--bg-panel); border: 1px solid var(--border);
 }
+/* La cellule du score existe même vide : c'est elle qui tient le compte. */
+.ec-score--vide { display: block; width: 0; }
 .ec-rang--ici { border-color: color-mix(in srgb, #10b981 45%, var(--border)); }
+
+/* ─────────── LA FICHE D'UN ÉLÈVE, DÉPLIÉE SOUS SA LIGNE ───────────────────
+   Rémy : « dans le direct, il faut aussi pouvoir cliquer sur l'élève, voir où
+   il en est, débloquer un exercice, envoyer un message ».
+
+   ELLE SE DÉPLIE, ELLE NE RECOUVRE RIEN. Cet écran se lit debout, au fond de la
+   salle ; si ouvrir la fiche d'un élève faisait perdre les vingt-neuf autres,
+   on ne l'ouvrirait pas pendant le cours — et un geste qu'on n'ose pas faire en
+   classe n'existe pas.
+
+   PAS DE CHEVRON DANS LA LIGNE. La ligne est une grille de cinq colonnes ; un
+   sixième enfant serait passé à la ligne suivante et aurait cassé l'alignement
+   des trente. L'ouverture se dit par le cadre, qui ne coûte aucune colonne. */
+/* LES DEUX BOUTONS TIENNENT DANS UNE SEULE CELLULE, et c'est une capture qui
+   l'a imposé. La ligne est une grille de CINQ colonnes ; avec le score, elle
+   comptait six enfants — « indice » passait à la ligne suivante, sous le prénom,
+   et la hauteur des trente lignes changeait selon qu'un élève avait répondu ou
+   non. Groupés, ils ne coûtent qu'une colonne. */
+.ec-rang-gestes { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+.ec-rang-hote { display: flex; flex-direction: column; }
+.ec-rang--cliquable { cursor: pointer; }
+@media (hover: hover) {
+    .ec-rang--cliquable:hover { border-color: var(--primary); }
+}
+.ec-rang--cliquable:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.ec-rang--cliquable[aria-expanded="true"] {
+    border-color: var(--primary);
+    border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+    background: color-mix(in srgb, var(--primary) 7%, var(--bg-panel));
+}
+.ec-fiche {
+    border: 1px solid var(--primary); border-top: none;
+    border-radius: 0 0 11px 11px;
+    background: color-mix(in srgb, var(--primary) 4%, var(--bg-panel));
+    padding: 12px 14px 13px;
+    display: flex; flex-direction: column; gap: 9px;
+}
+.ec-fiche-haut { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.ec-fiche-haut > div { flex: 1 1 200px; min-width: 0; }
+.ec-fiche-ou { margin: 0; font-weight: 700; color: var(--text-main); }
+.ec-fiche-silence {
+    flex: 0 0 auto; font-size: .78rem; font-weight: 600; color: var(--text-muted);
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--bg-app); border: 1px solid var(--border);
+}
+.ec-fiche-silence--trop {
+    color: var(--warning-texte); border-color: color-mix(in srgb, var(--warning) 50%, var(--border));
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+/* LES ÉTAPES, UNE PAR UNE. Une étape ratée ne se distingue pas d'une réussie sur
+   une barre — or dire « continue » à un élève qui vient de rater l'étape
+   d'avant, c'est l'enfoncer. La forme porte donc l'information autant que la
+   couleur : plein, barré, cerné, vide. */
+.ec-fiche-pas-rangee { display: flex; flex-wrap: wrap; gap: 5px; }
+.ec-fiche-pas {
+    width: 26px; height: 26px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .74rem; font-weight: 700;
+    border: 1px solid var(--border); background: var(--bg-app); color: var(--text-muted);
+}
+.ec-fiche-pas--reussie {
+    background: color-mix(in srgb, #10b981 20%, var(--bg-panel));
+    border-color: color-mix(in srgb, #10b981 55%, var(--border)); color: var(--text-main);
+}
+.ec-fiche-pas--ratee {
+    background: color-mix(in srgb, var(--danger) 16%, var(--bg-panel));
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--border)); color: var(--text-main);
+    text-decoration: line-through;
+}
+.ec-fiche-pas--en-cours {
+    border-color: var(--primary); color: var(--primary-texte);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.ec-fiche-question { margin: 0; font-size: .84rem; color: var(--text-muted); }
+/* CE QU'IL A SOUS LES YEUX, EN CE MOMENT.
+   Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+   exercice, car c'est créé de façon aléatoire. » Cette ligne-ci porte l'énoncé
+   même, et elle ne doit pas se lire comme les autres lignes de la fiche : elle
+   est la seule qui vienne de l'écran de l'élève et non d'un calcul. D'où
+   l'encadré, et la petite étiquette qui dit d'où ça sort. */
+.ec-fiche-yeux {
+    margin: 0; font-size: .86rem; color: var(--text-main);
+    background: var(--bg-plateau); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 9px;
+}
+.ec-fiche-yeux span {
+    display: block; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 2px;
+}
+/* LE CONSEIL N'EST PAS UNE DÉCISION. On dit ce qu'on a vu — « bloqué depuis
+   douze minutes » — et c'est le professeur qui tranche. */
+.ec-fiche-conseil {
+    margin: 0; font-size: .84rem; font-weight: 600; color: var(--text-main);
+    border-left: 3px solid var(--warning); padding: 4px 0 4px 10px;
+}
+.ec-fiche-gestes { display: flex; flex-wrap: wrap; gap: 7px; }
+.ec-fiche-gestes .ec-bouton[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* ─────────── LA BARRE DE PILOTAGE, AU-DESSUS DES ÉLÈVES ────────────────────
+   Rémy : « je pense que dans le direct, c'est là qu'il faut gérer la séance,
+   pouvoir mettre en pause, envoyer un message commun ».
+
+   CE QUI EST TOUJOURS VISIBLE EST CE QU'ON FAIT EN COURS D'HEURE. Le reste se
+   replie : laisser six blocs de réglages ouverts repousserait les élèves sous
+   la ligne de flottaison, et c'est eux qu'on vient voir. */
+.ec-pilote {
+    display: flex; flex-direction: column; gap: 8px;
+    margin: 0 0 14px; padding: 10px 12px;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
+}
+.ec-pilote-rangee { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* CHAQUE COMMANDE EST UN OBJET, PAS UN CHAMP EN VRAC.
+   Rémy : « le bandeau rouvrir la classe avec le 10 le lancer à zéro on termine
+   le mot pour toute la classe est vraiment en bazar ».
+
+   IL AVAIT RAISON, ET LE DÉFAUT ÉTAIT DE N'AVOIR PAS DIT CE QUI VA ENSEMBLE.
+   Cinq commandes de rôles différents se suivaient sur une ligne, séparées par
+   le même écart : un « 10 » posé à côté d'un bouton « Pause » ne veut rien
+   dire, et l'œil n'a aucune raison de le rattacher au « Lancer » trois
+   éléments plus loin. Chaque groupe a donc un cadre et un NOM écrit dessus. */
+.ec-pilote-cadre {
+    display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+    /* LE CADRE NE PREND QUE CE QU'IL LUI FAUT. Mesuré sur une capture : sans
+       cette borne, le champ « 10 » s'étirait sur un tiers de l'écran et le
+       « min, » finissait à trente centimètres du nombre qu'il qualifie. */
+    flex: 0 0 auto; max-width: 100%;
+    padding: 6px 10px; border-radius: 10px;
+    background: var(--bg-app); border: 1px solid var(--border);
+}
+.ec-pilote-cadre .ec-champ { flex: 0 0 auto; }
+.ec-pilote-cadre .ec-champ--court { width: 4.2rem; text-align: center; }
+/* LE CHOIX DE LA PORTÉE DE LA CALCULATRICE — « pour toute la séance » ou le nom
+   d'un exercice. Il ne peut pas être aussi court que le champ des minutes : un
+   titre d'exercice coupé à quatre rem ne se lit pas. Mais il ne doit pas non
+   plus pousser le reste de la barre hors de l'écran, d'où le maximum. */
+.ec-pilote-cadre .ec-champ--ou { max-width: 13rem; }
+/* LA CASE QUI CHOISIT UN ÉLÈVE, dans Le direct.
+   Elle est DANS une ligne qui est elle-même un bouton (elle ouvre la fiche) :
+   la zone de clic est donc élargie autour de la case, pour qu'un doigt qui vise
+   la case ne déplie pas la fiche. Voir data-choix dans ui/espaceClasses.js. */
+.ec-choix {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 6px; margin: -6px 2px -6px -2px; flex: 0 0 auto;
+}
+/* « A FINI », À CÔTÉ DU NOM — Rémy : « tu peux aussi écrire dans le direct au
+   nom de l'élève quand il a fini ». C'est la question qu'on se pose en marchant
+   dans les rangs, et on la pose aux noms, pas aux jauges. */
+.ec-fini {
+    flex: 0 0 auto; margin-left: 6px;
+    background: var(--success-fond); color: #fff;
+    border-radius: 999px; padding: 1px 8px;
+    font-size: .76rem; font-weight: 700; letter-spacing: .02em;
+    white-space: nowrap;
+}
+/* L'ENVELOPPE PORTE LE GESTE, LA CASE PORTE LE DESSIN. Voir le commentaire du
+   gabarit : un seul événement part, et il part d'une zone qu'on peut viser. */
+.ec-choix { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.ec-choix input { width: 17px; height: 17px; accent-color: var(--primary); pointer-events: none; }
+.ec-pilote-cadre .ec-champ--mince { width: auto; }
+.ec-pilote-mot-liant { font-size: .8rem; color: var(--text-muted); }
+/* LE MOT À LA CLASSE PREND LA PLACE QUI RESTE : c'est le seul champ où l'on
+   écrit une phrase, et un champ trop court fait écrire des télégrammes. */
+.ec-pilote-mot { display: flex; gap: 6px; align-items: center; flex: 1 1 280px; min-width: 0; }
+.ec-pilote-mot .ec-champ { flex: 1 1 auto; min-width: 0; }
+.ec-pilote-btn {
+    font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer;
+    padding: 7px 12px; border-radius: 9px; white-space: nowrap;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-main);
+}
+@media (hover: hover) {
+    .ec-pilote-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
+/* DANS QUEL ORDRE ON RANGE LES ÉLÈVES DU DIRECT.
+   Rémy : « pour le direct ce serait bien de pouvoir faire le tri au nom et pas
+   à celui qui est connecté ».
+   DEUX BOUTONS PLUTÔT QU'UN DÉROULANT : il y a deux choix, et un déroulant
+   demande deux gestes pour en voir un. Ils sont DISCRETS — c'est un réglage
+   d'habitude, pas une commande de classe : il ne doit pas se disputer l'œil
+   avec « Mettre en pause », qui change ce que trente écrans montrent. */
+.ec-ordre {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    margin: 10px 0 6px;
+}
+.ec-ordre-btn {
+    font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer;
+    min-height: 32px; padding: 4px 10px; border-radius: 999px;
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+}
+@media (hover: hover) {
+    .ec-ordre-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
+.ec-ordre-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* CELUI QUI EST ACTIF SE VOIT : un réglage qu'on ne voit pas est un réglage
+   qu'on reclique, et l'on se demande s'il a marché. */
+.ec-ordre-btn--actif {
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    border-color: var(--primary); color: var(--primary-texte);
+}
+
+/* LA PAUSE ALLUMÉE SE VOIT DE LOIN. C'est le seul réglage de cette barre qui
+   change ce que TRENTE écrans montrent ; l'oublier allumé en fin d'heure, c'est
+   une classe qui ne peut plus rien ouvrir le lendemain. */
+.ec-pilote-btn--actif {
+    background: color-mix(in srgb, var(--warning) 18%, var(--bg-app));
+    border-color: var(--warning); color: var(--text-main);
+}
+.ec-pilote-btn--doux { color: var(--text-muted); }
+.ec-champ--mince { padding: 6px 8px; font-size: .82rem; }
+/* LE REPLI DOIT SE VOIR REPLIABLE. Une ligne de texte gris sous une barre de
+   boutons se lit comme une légende, pas comme une porte : le triangle est la
+   seule chose qui dise « il y a autre chose dessous ». */
+.ec-pilote-plus > summary {
+    cursor: pointer; font-size: .8rem; font-weight: 600; color: var(--text-muted);
+    padding: 3px 0; list-style: none; display: flex; align-items: center; gap: 6px;
+}
+.ec-pilote-plus > summary::-webkit-details-marker { display: none; }
+.ec-pilote-plus > summary::before {
+    content: '\25b8'; display: inline-block; transition: transform .15s ease;
+}
+.ec-pilote-plus[open] > summary::before { transform: rotate(90deg); }
+@media (hover: hover) {
+    .ec-pilote-plus > summary:hover { color: var(--primary-texte); }
+}
+.ec-pilote-plus-corps {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px; padding-top: 10px;
+}
+.ec-pilote-bloc { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ec-pilote-eti { font-size: .78rem; font-weight: 700; color: var(--text-main); }
+.ec-pilote-cadre .ec-pilote-eti { white-space: nowrap; }
+/* Sur téléphone, chaque cadre prend la largeur : à 390 px, deux cadres côte à
+   côte rognent les deux.
+
+   ET SON CONTENU DOIT SE REPLIER AVEC LUI — la moitié qui manquait. Le cadre
+   prenait toute la largeur, mais gardait `flex-wrap: nowrap` : ses boutons
+   sortaient donc de l'écran par la droite pendant que les étiquettes, seules
+   compressibles, s'écrasaient en colonnes d'un mot.
+
+   MESURÉ à 360 px, barre complète : « Lancer » à x = 422, « Autoriser » à
+   x = 386, « Poser » à x = 364 — jusqu'à 131 px au-delà du bord, aucun pixel
+   visible. Rien ne le signalait : `#zone-classe` porte `overflow-y: auto`, donc
+   l'autre axe passe à `auto` tout seul, et il fallait faire glisser toute la
+   liste des élèves de 131 px pour retrouver les boutons. Pendant ce temps « à
+   toute la classe » s'écrivait sur quatre lignes d'un mot et « ouvert à ceux
+   qui ont fini » sur six.
+
+   ON REPLIE DONC, ET L'ON CESSE D'ÉCRASER LES MOTS : un cadre replié est plus
+   haut, mais tout y est atteignable — et c'est exactement le compromis que la
+   note du repli décrit plus haut, « ce qui est toujours visible est ce qu'on
+   fait en cours d'heure ». */
+@media (max-width: 700px) {
+    .ec-pilote-cadre { flex: 1 1 100%; flex-wrap: wrap; }
+    .ec-pilote-mot { flex: 1 1 100%; }
+    /* Les étiquettes de liaison cessent d'absorber le manque de place : elles
+       passent à la ligne d'un bloc, au lieu de se casser mot à mot. */
+    .ec-pilote-cadre .ec-pilote-mot-liant { white-space: nowrap; }
+    /* Un bouton n'est jamais plus étroit que son mot. */
+    .ec-pilote-cadre .ec-pilote-btn { flex: 0 0 auto; }
+    /* Et les deux déroulants prennent ce qui reste plutôt que de déborder. */
+    .ec-pilote-cadre select, .ec-pilote-cadre .ec-champ { min-width: 0; flex: 1 1 auto; }
+}
 .ec-rang--ecarte { opacity: .5; }
 /* Le vert de présence ne vient PAS du thème : « il est là » doit se voir de la
    même façon sur les trois thèmes, et c'est la seule information de cet écran
@@ -181,12 +501,80 @@
     font-weight: 700; font-size: .88rem; color: var(--text-muted);
     white-space: nowrap;
 }
-.ec-score--bien { color: var(--success); }
+.ec-score--bien { color: var(--success-texte); }
+
+/* --- L'avancement : la classe, puis chacun --------------------------------
+   Rémy : « il faut que la séance soit facilement visible l'avancement ».
+
+   LA LIGNE DE CLASSE PASSE AVANT LES TRENTE LIGNES D'ÉLÈVES, et c'est
+   délibéré. La question qu'on se pose en fin d'exercice — « est-ce que je peux
+   passer à la suite ? » — se tranche sur un chiffre, pas sur trente barres
+   qu'il faudrait lire une à une, debout au fond de la salle. */
+.ec-classe-avance {
+    margin: 0 0 14px; padding: 11px 14px; border-radius: 12px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+}
+.ec-classe-ligne {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 9px;
+}
+.ec-classe-ligne b { color: var(--text-main); }
+.ec-classe-chiffres { display: flex; gap: 7px; flex-wrap: wrap; }
+.ec-pastille {
+    font-size: .76rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: var(--bg-app); color: var(--text-muted); border: 1px solid var(--border);
+    white-space: nowrap;
+}
+.ec-pastille--fini { color: var(--success-texte); border-color: color-mix(in srgb, var(--success) 40%, var(--border)); }
+.ec-pastille--cours { color: var(--primary-texte); border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+/* CELUI-LÀ SEUL EST ROUGE, et seulement s'il n'est pas à zéro. C'est le chiffre
+   qui décide : une classe où trois élèves n'ont rien ouvert n'est pas prête à
+   passer à la suite, quel que soit l'état des vingt-sept autres. */
+.ec-pastille--rien { color: var(--danger-texte); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+
+.ec-jauge {
+    height: 10px; border-radius: 5px; background: var(--border); overflow: hidden;
+}
+.ec-jauge > i {
+    display: block; height: 100%; border-radius: 5px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width .4s ease;
+}
+.ec-jauge--mince { height: 6px; }
+.ec-jauge--fini > i { background: var(--success); }
+.ec-jauge--arrete > i { background: var(--warning); }
+
+.ec-avance { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ec-avance-mot { font-size: .76rem; color: var(--text-muted); }
+.ec-pasparti { font-style: italic; }
+/* Le silence se voit sans crier : le professeur balaie trente lignes, et ce
+   sont les trois qui portent ce mot-là qu'il doit repérer sans les chercher. */
+.ec-silence { color: var(--warning-texte); font-weight: 700; }
 
 /* --- Tableaux, listes, aperçu --------------------------------------------- */
+/* UN TABLEAU QUI NE TIENT PAS DÉFILE DANS SON CADRE, il ne sort pas de l'écran.
+
+   MESURÉ à 360 px sur « Les élèves » : le tableau faisait 720 px dans une
+   fenêtre de 360, et quatre boutons de CHACUNE des trente lignes étaient
+   entièrement dehors — « billet » à x = 473, « retirer » à x = 653, jusqu'à
+   293 px au-delà du bord. Sur « Les bilans », l'en-tête « Dernière note » et
+   ses trente cellules étaient hors écran. Rien ne le disait : `#zone-classe`
+   porte `overflow-y: auto`, donc l'autre axe passe à `auto` tout seul et il
+   fallait faire glisser TOUTE la page — liste des élèves comprise — pour
+   retrouver les boutons.
+
+   Le cadre défile donc lui-même, et le tableau garde sa largeur utile au lieu
+   d'être comprimé jusqu'à l'illisible. La page, elle, ne bouge plus. */
+.ec-table-cadre { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ec-table { width: 100%; border-collapse: collapse; margin: 6px 0 18px; }
+@media (max-width: 760px) {
+    /* En dessous, on ne comprime plus : on laisse le tableau prendre ce qu'il
+       lui faut et l'on fait glisser le cadre. Un « retirer » lisible qu'on
+       atteint vaut mieux qu'un « ret… » qu'on ne touche pas. */
+    .ec-table { width: auto; min-width: 100%; }
+}
 .ec-table th {
-    text-align: left; font-size: .72rem; text-transform: uppercase;
+    text-align: left; font-size: .76rem; text-transform: uppercase;
     letter-spacing: .07em; color: var(--text-muted); font-weight: 700;
     padding: 7px 10px; border-bottom: 1px solid var(--border);
 }
@@ -244,13 +632,40 @@
     padding: 9px 16px; border-radius: 10px; border: 1.5px solid var(--primary);
     background: var(--primary); color: #fff; transition: .15s;
 }
-.ec-bouton:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+@media (hover: hover) {
+    .ec-bouton:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+}
 .ec-bouton--doux {
     background: var(--bg-panel); color: var(--text-main); border-color: var(--border);
 }
-.ec-bouton--doux:hover { background: var(--bg-hover); border-color: var(--text-muted); }
-.ec-bouton--rouge { background: var(--bg-panel); color: var(--danger); border-color: var(--danger); }
-.ec-bouton--rouge:hover { background: var(--danger); color: #fff; }
+@media (hover: hover) {
+    .ec-bouton--doux:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+}
+.ec-bouton--rouge { background: var(--bg-panel); color: var(--danger-texte); border-color: var(--danger); }
+
+/* LE CHOISISSEUR D'EXERCICE, dans l'écran de la classe.
+   Rémy : « il faut vraiment que pour la séance ce soit facile d'ajouter et
+   d'enlever un exercice ». Une liste de lignes pleines, hautes de 44 px : on
+   la parcourt des yeux et on vise au doigt, en classe, sans précision. */
+.ec-choix-liste { display: flex; flex-direction: column; gap: 6px; margin-top: 10px;
+                  max-height: 46vh; overflow-y: auto; }
+.ec-choix-ligne {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    font: inherit; text-align: left; cursor: pointer; width: 100%;
+    min-height: 44px; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+}
+@media (hover: hover) {
+    .ec-choix-ligne:hover { background: var(--bg-hover); border-color: var(--primary); }
+}
+.ec-choix-ligne:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Les deux gestes posés sous une séance : ils doivent se distinguer du reste
+   de la ligne, qui n'est que de l'information. */
+.ec-seance-gestes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+@media (hover: hover) {
+    .ec-bouton--rouge:hover { background: var(--danger-fond); color: #fff; }
+}
 .ec-bouton--grand { padding: 12px 24px; font-size: 1rem; margin-top: 6px; }
 
 .ec-mini {
@@ -259,8 +674,66 @@
     border: 1px solid var(--border); background: var(--bg-panel);
     color: var(--text-muted); transition: .15s;
 }
-.ec-mini:hover { background: var(--bg-hover); color: var(--text-main); }
-.ec-mini--rouge:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+@media (hover: hover) {
+    .ec-mini:hover { background: var(--bg-hover); color: var(--text-main); }
+}
+@media (hover: hover) {
+    .ec-mini--rouge:hover { background: var(--danger-fond); color: #fff; border-color: var(--danger); }
+}
+
+/* --- Ce que les élèves signalent ------------------------------------------
+   Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+   et de prendre une photo d'écran. »
+
+   CE QU'ON LIT EN PREMIER EST CE QUI EST ÉCRIT, et les faits viennent après, en
+   petit. L'ordre inverse — l'exercice, le thème, la version, puis la phrase de
+   l'élève — a été essayé : on parcourt alors une fiche technique en cherchant
+   la seule ligne qu'une personne a tapée. */
+
+.ec-signalements { display: flex; flex-direction: column; gap: 12px; }
+.ec-signal {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 13px; padding: 13px 15px;
+}
+/* CLASSÉ SE VOIT SANS SE CACHER : le trait de gauche s'éteint, le reste pâlit
+   un peu. Un signalement traité reste lisible — trois fois le même défaut, c'est
+   une information que le premier tout seul ne donne pas. */
+.ec-signal--traite { border-left-color: var(--border); opacity: .72; }
+.ec-signal-tete { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ec-signal-qui { font-size: .95rem; color: var(--text-main); }
+.ec-signal-marque {
+    margin-left: auto; font-size: .72rem; font-weight: 800; border-radius: 999px;
+    padding: 2px 9px; background: color-mix(in srgb, var(--success) 18%, transparent);
+    color: var(--success-texte);
+}
+.ec-signal-dit {
+    margin: 8px 0 0; font-size: .98rem; line-height: 1.5; color: var(--text-main);
+    white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.ec-signal-faits { margin: 8px 0 0; font-size: .78rem; color: var(--text-muted); }
+.ec-signal-question {
+    margin: 6px 0 0; font-size: .85rem; line-height: 1.45; color: var(--text-muted);
+    border-left: 2px solid var(--border); padding-left: 9px;
+}
+/* LE TEXTE D'UNE ERREUR NE SE REPLIE PAS : une pile d'appels coupée au milieu
+   d'un chemin de fichier ne se lit plus. Elle défile donc dans sa propre boîte,
+   et le reste de la page ne défile pas avec. */
+.ec-signal-erreurs {
+    margin: 8px 0 0; padding: 8px 10px; border-radius: 9px; overflow-x: auto;
+    background: var(--bg-app); border: 1px solid var(--border);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .72rem; line-height: 1.45; color: var(--text-muted);
+}
+.ec-signal-photo { margin-top: 10px; }
+/* LA PHOTO NE PREND PAS TOUT L'ÉCRAN. Une capture d'iPhone fait deux fois plus
+   haut que large : sans ce plafond, un seul signalement occuperait trois écrans
+   et l'on perdrait les suivants. */
+.ec-signal-image {
+    max-width: 100%; max-height: 60vh; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-app);
+}
+.ec-signal-gestes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 11px; }
 
 /* --- Vides, notes, alertes ------------------------------------------------ */
 .ec-vide { padding: 40px 26px; text-align: center; color: var(--text-muted); }
@@ -285,7 +758,7 @@
 }
 .ec-lien {
     background: none; border: none; padding: 0; cursor: pointer; font: inherit;
-    font-size: .85rem; font-weight: 650; color: var(--primary); text-decoration: none;
+    font-size: .85rem; font-weight: 650; color: var(--primary-texte); text-decoration: none;
 }
 .ec-lien:hover { text-decoration: underline; }
 .ec-pied-sep { color: var(--text-muted); opacity: .5; }
@@ -300,17 +773,51 @@
     .ec-qui { display: none; }
     /* Le rang se replie sur deux lignes : le nom et la présence d'abord, ce
        qu'il fait ensuite. Un tableau à cinq colonnes sur un téléphone se lit
-       en zoomant, c'est-à-dire pas du tout. */
-    .ec-rang { grid-template-columns: 10px 1fr auto; row-gap: 4px; }
-    .ec-rang-quoi { grid-column: 2 / -1; }
-    .ec-table th:nth-child(4), .ec-table td:nth-child(4) { display: none; }
+       en zoomant, c'est-à-dire pas du tout.
+
+       ON PLACE CHAQUE CELLULE, ON NE LAISSE PLUS DEVINER. Le placement
+       automatique dépend du NOMBRE d'enfants, et ce nombre a changé deux fois
+       (le score, puis la case à cocher) : chaque fois, la mise en page s'est
+       défaite en silence. Six cases nommées ne se défont pas. */
+    .ec-rang { grid-template-columns: auto 10px 1fr auto; row-gap: 4px; }
+    .ec-choix        { grid-area: 1 / 1 / 2 / 2; }
+    .ec-point        { grid-area: 1 / 2 / 2 / 3; }
+    .ec-rang-qui     { grid-area: 1 / 3 / 2 / 4; }
+    .ec-rang-gestes  { grid-area: 1 / 4 / 2 / 5; }
+    .ec-rang-quoi    { grid-area: 2 / 3 / 3 / 5; }
+    .ec-score        { grid-area: 2 / 1 / 3 / 3; justify-self: center; }
+    /* LA COLONNE QU'ON CACHE SUR TÉLÉPHONE EST « VU », ET ELLE SEULE.
+       Cette règle nommait `.ec-table`, c'est-à-dire TOUS les tableaux de
+       l'espace — et la quatrième colonne n'est pas la même partout :
+
+         · liste des élèves  → « Vu » (la cacher se défend, c'est un détail) ;
+         · aperçu d'import   → « CE QUI SE PASSERA » ;
+         · les professeurs   → LE BOUTON « retirer ».
+
+       MESURÉ à 360 px : la cellule « déjà dans la liste — son code ne change
+       pas » rendue 0 × 0, et le cadre ne pouvait même pas glisser pour aller la
+       chercher. Le professeur confirmait un import SANS RETOUR en ayant lu
+       trois colonnes sur quatre, alors que le commentaire de ce tableau dit :
+       « C'est la pièce la plus importante de tout l'écran […] Le professeur
+       doit voir, ligne par ligne, ce que le logiciel a compris — et pouvoir
+       dire non. » Et dans « Les professeurs », « retirer » passait de 57 × 25 à
+       0 × 0 entre 768 et 560 px, pendant que la phrase du dessous continuait de
+       promettre le geste.
+
+       Les deux autres tableaux défilent dans leur cadre depuis hier : ils n'ont
+       plus besoin qu'on leur retire une colonne. */
+    .ec-table--eleves th:nth-child(4), .ec-table--eleves td:nth-child(4) { display: none; }
 }
 
 /* La FORME du code, écrite à côté de son nom. Les deux portes demandaient
    « un code » sans dire lequel : Rémy a collé un code de séance dans la case
    du billet, et le refus qui suivait l'envoyait vérifier son billet. */
 .portail-forme {
-    font-weight: 500; font-size: .74rem; color: var(--text-muted, #64748b);
+    /* 11,8 px SUR LA PORTE D'ENTRÉE, et ce texte-là porte de l'information :
+       « 4 signes », « long, avec des tirets » — c'est lui qui dit quel code on
+       attend, et il a été ajouté exprès parce que Rémy avait collé un code de
+       séance dans la case du billet. */
+    font-weight: 500; font-size: .78rem; color: var(--text-muted, #64748b);
     margin-left: 6px; letter-spacing: 0;
 }
 
@@ -344,16 +851,46 @@
 /* ====================================================================== */
 
 /* --- La fenêtre qui remplace `prompt()` -------------------------------- */
+/* CES FENÊTRES-CI DÉBORDAIENT PAR LES DEUX BOUTS, ET RIEN NE DÉFILAIT.
+   Le même piège que la zone de jeu, l'écran de leçon, la porte d'entrée et les
+   fenêtres déclarées — la cinquième fois, et la dernière famille qui restait :
+   un contenu centré qui dépasse sort des DEUX côtés, le haut passe au-dessus de
+   `scrollTop = 0`, et ici rien ne pouvait même ramener le bas.
+
+   MESURÉ sur « Coup de pouce » avec six propositions — cas réel, la compétence
+   « fractions équivalentes » en rend six : panneau de 721 px dans un écran de
+   640, haut du titre à −41, bouton « Souffler » à 659 et AUCUN conteneur
+   défilable entre lui et la racine. En paysage (640 × 360), le bouton était
+   entièrement dehors. Et `index.html` pose `user-scalable=no` : on ne pouvait
+   même pas dézoomer pour le rattraper. Même chose sur « Coller une liste
+   d'élèves » en paysage, 48 px sous la ligne.
+
+   Le voile défile, la boîte se borne, et `safe center` rend le haut. */
 .demander {
     position: fixed; inset: 0; z-index: 2000001;
     background: rgba(15, 23, 42, .55);
-    display: flex; align-items: center; justify-content: center; padding: 18px;
+    display: flex; align-items: safe center; justify-content: safe center;
+    padding: 18px; overflow-y: auto;
 }
 .demander-boite {
     background: var(--bg-panel, #fff); color: var(--text-main, #1a202c);
     border-radius: 18px; padding: 22px; width: min(430px, 100%);
     box-shadow: 0 24px 60px rgba(15, 23, 42, .35);
+    max-height: calc(100dvh - 36px); overflow-y: auto;
+    /* Le navigateur ne décide pas où l'on regarde — voir `.report-panel`. */
+    overflow-anchor: none;
 }
+/* L'INVITE D'UN CHAMP N'AVAIT AUCUNE RÈGLE DANS TOUT LE DÉPÔT.
+   Elle prenait donc le gris par défaut du navigateur, #757575 — MESURÉ AU PIXEL
+   sur les captures : 4,40 en thème clair, 3,87 en sombre, là où il en faut 4,5.
+   Et ce n'est pas un texte décoratif : c'est lui qui porte LE MOT À RECOPIER —
+   EFFACER pour « Vider la liste » et « Supprimer la classe », REFAIRE pour
+   « Refaire tous les codes », RETIRER pour retirer un élève. Dans les quatre
+   fenêtres sans retour, la chose la moins lisible de l'écran était celle qu'il
+   fallait taper.
+   `--text-muted` est fait pour ça et passe dans les CINQ thèmes — mesuré :
+   5,48 en clair, 9,47 en sombre, 6,68 à 7,09 dans les trois autres. */
+::placeholder { color: var(--text-muted); opacity: 1; }
 .demander-boite h2 { margin: 0 0 14px; font-size: 1.1rem; }
 .demander-boite input {
     width: 100%; padding: 11px 13px; font: inherit;
@@ -437,6 +974,16 @@
 }
 .verrou-boite h2 { margin: 0 0 6px; font-size: 1.2rem; }
 .verrou-sous { margin: 0 0 16px; color: var(--text-muted, #64748b); font-size: .9rem; }
+/* L'AVERTISSEMENT PREND LA PLACE DE LA CONSIGNE, il ne s'ajoute pas à elle :
+   « tapez votre mot de passe » sous « il n'y a pas de serveur ici » serait deux
+   conseils contraires à la fois. Teinte d'attention, pas de rouge : rien n'a
+   échoué, on prévient avant. */
+.verrou-sous--alerte {
+    color: var(--text-main); font-weight: 600;
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    border-left: 3px solid var(--warning);
+    border-radius: 0 8px 8px 0; padding: 9px 11px; text-align: left;
+}
 .verrou-boite label {
     display: block; font-weight: 700; font-size: .85rem; margin: 12px 0 4px;
 }
@@ -473,7 +1020,21 @@
     z-index: 9000;
     background: var(--bg-app, #f6f7fb);
     overflow-y: auto;
-    display: flex; align-items: center; justify-content: center;
+    /* CENTRÉ TANT QUE ÇA TIENT, COLLÉ EN HAUT DÈS QUE ÇA DÉBORDE.
+       Le même piège que la zone de jeu et les fenêtres, à la porte d'entrée —
+       l'écran que TOUS les élèves voient en premier. Un contenu centré qui
+       dépasse déborde des DEUX côtés, et la moitié du haut passe au-dessus de
+       `scrollTop = 0`, là où aucun navigateur ne sait aller.
+
+       MESURÉ sur un téléphone de 360 × 640 : la boîte fait 823 px, le titre
+       « AtoutMath » se retrouve à y = −92, HORS VITRE, et l'élève arrive sur
+       une page dont le premier élément lisible est une case de code. Avec le
+       repli « Je n'ai pas de billet » ouvert, 279 px de perdus ; après un code
+       refusé, 288. Ça se lit comme une page à moitié chargée.
+
+       Le bas, lui, se rattrapait en défilant : c'est bien le centrage qui
+       mange le haut, pas la hauteur. */
+    display: flex; align-items: safe center; justify-content: safe center;
     padding: 24px 18px;
 }
 .portail-boite { width: min(880px, 100%); }
@@ -505,6 +1066,26 @@
 /* Le code de classe se dicte en majuscules : autant l'écrire ainsi, quoi que
    tape l'élève — c'est une frappe de moins et un doute de moins. */
 #portail-classe { text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+
+/* LE CHAMP DU BILLET N'AVAIT AUCUNE TYPOGRAPHIE — et c'est celui qu'on remplit
+   d'après un code DICTÉ à voix haute, vingt-cinq fois de suite.
+
+   Les deux autres champs de code en avaient une : `#student-code-input` est en
+   `monospace` avec 4 px d'écartement, `#portail-classe` en majuscules espacées.
+   Celui-ci héritait du texte courant. Or dans Outfit, la police de
+   l'application, `I` majuscule, `l` minuscule et `1` sont trois traits
+   verticaux quasi identiques — et un code se dicte justement lettre par
+   lettre. L'élève qui entend « i » tape `l`, et la porte se referme sur lui
+   sans qu'il comprenne pourquoi.
+
+   `monospace` sépare ces trois-là par construction (le chiffre y porte des
+   empattements, le `l` une queue), et l'écartement empêche deux signes voisins
+   de se lire comme un seul. C'est la même correction que pour les deux autres
+   champs, avec trois ans de retard. */
+#portail-code-eleve {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: .12em; font-weight: 700; font-size: 1.05rem;
+}
 .portail-bouton {
     width: 100%; margin-top: 4px; padding: 12px; border: none; border-radius: 10px;
     background: var(--primary); color: #fff; font: inherit; font-weight: 700;
@@ -524,17 +1105,48 @@
 .portail-repli summary::-webkit-details-marker { display: none; }
 .portail-repli summary::before { content: '▸ '; }
 .portail-repli[open] summary::before { content: '▾ '; }
-.portail-repli summary:hover { color: var(--text-main); }
+@media (hover: hover) {
+    .portail-repli summary:hover { color: var(--text-main); }
+}
 .portail-repli > label:first-of-type { margin-top: 12px; }
 .portail-bouton--doux { background: var(--bg-app); color: var(--text-main);
     border: 1px solid var(--border); font-weight: 600; }
 
-.portail-pied { text-align: center; margin: 24px 0 0; }
+.portail-pied {
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin: 24px 0 0;
+}
 .portail-lien {
     background: none; border: none; font: inherit; font-size: .88rem;
     color: var(--text-muted); text-decoration: underline; cursor: pointer; padding: 4px;
 }
-.portail-lien:hover { color: var(--text-main); }
+@media (hover: hover) {
+    .portail-lien:hover { color: var(--text-main); }
+}
+/* LES PORTES DU PIED SONT DES PORTES. « Je suis le professeur », « Explorer les
+   exercices », « Entrer comme élève » : toutes trois étaient des liens
+   soulignés gris de 26 px de haut sur ordinateur — sous le seuil des 44 px
+   qu'on tient partout ailleurs, et de la couleur qu'on réserve aux textes
+   secondaires. Elles se lisaient comme des mentions légales, et l'on ne
+   cherche pas une porte dans les mentions légales.
+   Elles restent SANS FOND PLEIN : les deux portes des élèves, au-dessus,
+   gardent le premier rôle. */
+.portail-lien--porte {
+    min-height: 44px; padding: 0 18px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); text-decoration: none; font-weight: 600;
+    transition: border-color .15s ease, background .15s ease;
+}
+@media (hover: hover) {
+    .portail-lien--porte:hover { border-color: var(--primary); background: var(--bg-hover); }
+}
+.portail-lien--porte:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* Le numéro de version : discret, mais LISIBLE — c'est ce qu'on vient y lire
+   quand on doute que la mise à jour soit arrivée. */
+.portail-version {
+    text-align: center; margin: 14px 0 0;
+    font-size: .78rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
 
 /* SANS MODE LIBRE, LE CATALOGUE N'EST PAS UNE PORTE. Les mêmes règles que le
    verrou de classe, pour la même raison — sauf qu'ici c'est un choix de
@@ -546,7 +1158,7 @@ body.sans-mode-libre #mob-btn-drill-acc,
 body.sans-mode-libre #btn-toggle-sidebar,
 body.sans-mode-libre #sidebar,
 body.sans-mode-libre #debug-toolbar,
-body.sans-mode-libre #rangement-bascule { display: none !important; }
+body.sans-mode-libre #rangement-fil { display: none !important; }
 
 /* --- LA SÉANCE PILOTÉE PAR LE PROFESSEUR ---
    Voir js/core/seanceDistante.js. Le serveur dit ce que la classe a le droit de
@@ -556,7 +1168,15 @@ body.sans-mode-libre #rangement-bascule { display: none !important; }
    flexible de #app-container : elle pousse le reste au lieu de le recouvrir. */
 .consigne-prof {
     flex-shrink: 0;
-    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    /* LE BANDEAU SUIT LE THÈME. Rémy, devant la maquette : « ok pour 4 ». Il
+       allait d'un indigo à un violet écrits en dur : un professeur en Forêt
+       recevait une bande indigo-violet en travers d'une interface verte.
+       Les deux bouts portent du blanc, et c'est la seule contrainte de ce
+       bandeau. Mesuré sur les cinq thèmes : 6,29 → 7,90 · 6,29 → 7,90 ·
+       5,93 → 7,56 · 5,02 → 7,13 · 5,18 → 7,31, pour un seuil de 4,5. Le
+       dégradé en dur donnait 6,29 → 5,70 : on ne perd rien en lisibilité, on
+       y gagne même au bout sombre. */
+    background: linear-gradient(90deg, var(--primary), var(--primary-hover));
     color: #fff;
     font-weight: 600;
     font-size: .95rem;
@@ -564,10 +1184,41 @@ body.sans-mode-libre #rangement-bascule { display: none !important; }
     padding: 9px 18px;
     text-align: center;
     /* Une consigne longue ne doit pas manger l'écran d'un téléphone : au-delà
-       de trois lignes elle défile dans son propre bandeau. */
-    max-height: 4.4em;
+       d'un certain point elle défile dans son propre bandeau.
+
+       MAIS 4,4em CACHAIT LA MOITIÉ DU MESSAGE, SANS LE DIRE. MESURÉ avec une
+       consigne de professeur réaliste — « On commence par les additions
+       posées… Ceux qui ont fini peuvent aller au bac à sable, mais SEULEMENT
+       après m'avoir montré leur cahier » : à 360 × 640, bandeau de 67 px pour
+       141 px de texte, soit 74 px cachés — 52 % du message, coupé en plein
+       milieu d'un mot, sans points de suspension, sans barre de défilement
+       visible sur un téléphone, et sans bouton pour fermer. La moitié de ce
+       que le professeur écrit à sa classe n'existait pas sur leur écran.
+
+       Le plafond suit donc la hauteur de l'écran : une consigne ordinaire tient
+       en entier, une consigne démesurée défile toujours. Mesuré à 360 × 640
+       après correction : 141 px de texte dans 150 px de bandeau, rien de caché
+       — et le plafond de 35 % garde la promesse de ne pas manger l'écran. */
+    max-height: min(35vh, 10em);
     overflow-y: auto;
     z-index: 60;
+}
+/* LE BILLET PERIME. Meme place que la consigne — au-dessus de tout — mais la
+   couleur d'une alerte : ce n'est pas le professeur qui parle, c'est
+   l'application qui previent. Il se ferme, parce qu'un bandeau qu'on ne peut
+   pas faire taire finit par etre lu comme un decor. */
+.consigne-prof--alerte {
+    background: linear-gradient(90deg, #b45309, #d97706);
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    flex-wrap: wrap; max-height: none; text-align: center;
+}
+.consigne-fermer {
+    flex-shrink: 0; min-height: 32px; padding: 4px 14px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.55); background: rgba(255,255,255,.14);
+    color: #fff; font: inherit; font-size: .85rem; cursor: pointer;
+}
+@media (hover: hover) {
+    .consigne-fermer:hover { background: rgba(255,255,255,.28); }
 }
 
 /* LE VERROU — CE QU'IL FERME, ET CE QU'IL LAISSE OUVERT.
@@ -587,11 +1238,24 @@ body.classe-verrouillee #top-btn-grid,
 body.classe-verrouillee #mob-btn-grid,
 body.classe-verrouillee #mob-btn-drill-acc,
 body.classe-verrouillee #btn-toggle-sidebar,
-body.classe-verrouillee #btn-role,
 body.classe-verrouillee #btn-open-import-export-student,
 body.classe-verrouillee #sidebar,
 body.classe-verrouillee #debug-toolbar,
-body.classe-verrouillee #rangement-bascule { display: none !important; }
+body.classe-verrouillee #rangement-fil { display: none !important; }
+
+/* LA PASTILLE DU PRÉNOM RESTE, MAIS ELLE CESSE D'ÊTRE UNE PORTE.
+   Elle était masquée avec les autres, et pour une bonne raison — c'est par elle
+   qu'on passe en mode professeur, « et un élève de sixième trouve ce clic avant
+   la fin de l'heure ». Mais elle est AUSSI le seul endroit où l'élève lit son
+   propre prénom en haut de l'écran, posé là exprès. MESURÉ : sous verrou,
+   `.nav-left` passait de 152 × 44 — « AtoutMath » et « Alicia » — à 74 × 44
+   sans un pixel d'encre, soit 7 % de la hauteur d'un téléphone en bande
+   blanche, et l'élève perdait son nom.
+   On lui retire donc le GESTE, pas la place : elle reste lisible, elle ne se
+   clique plus, et le clavier ne s'y arrête pas. */
+body.classe-verrouillee #btn-role {
+    pointer-events: none; cursor: default;
+}
 
 /* L'ÉLÈVE MIS EN PAUSE. Un voile complet : il n'y a rien à faire tant que le
    professeur n'a pas rouvert, et laisser l'application utilisable derrière
@@ -622,6 +1286,61 @@ body.classe-verrouillee #rangement-bascule { display: none !important; }
     font-weight: 700; padding: 11px 26px; border-radius: 10px; cursor: pointer;
 }
 
+/* ─────────────────────────── L'INDICE DU PROFESSEUR ───────────────────────
+   Rémy : « la possibilité de […] envoyer un indice ».
+
+   IL SE POSE À CÔTÉ DE LA QUESTION, IL NE SE MET PAS DEVANT. C'est toute la
+   différence avec le mot ci-dessus : une fenêtre qu'il faut acquitter est ce
+   qu'il faut pour « arrêtez tout, on corrige au tableau », et c'est exactement
+   ce qu'il ne faut pas pour « regarde la retenue ». On interromprait la pensée
+   qu'on veut aider.
+
+   EN BAS À DROITE, et pas en haut : le haut porte déjà le titre, la
+   progression, le chronomètre et le fil de la séance. Le bas à droite est le
+   seul coin qu'aucun exercice n'utilise — vérifié sur le catalogue.
+
+   ET ELLE NE VOLE JAMAIS LE FOCUS : un élève qui tape sa réponse doit pouvoir
+   continuer à taper pendant qu'elle apparaît. */
+.indices-prof {
+    position: fixed; right: 16px; z-index: 9000;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-direction: column; gap: 8px;
+    max-width: min(340px, calc(100vw - 32px));
+    pointer-events: none;
+}
+.indice-prof {
+    pointer-events: auto;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 12px; padding: 10px 13px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .16);
+    animation: indiceArrive .3s ease;
+}
+@keyframes indiceArrive {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+}
+.indice-prof--part { opacity: 0; transform: translateY(8px); transition: .25s ease; }
+.indice-prof-tete {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.indice-prof-qui {
+    font-size: .72rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--accent-texte);
+}
+.indice-prof-fermer {
+    background: none; border: none; cursor: pointer; font-size: 1.15rem;
+    line-height: 1; color: var(--text-muted); padding: 0 2px;
+}
+.indice-prof-texte {
+    margin: 5px 0 0; font-size: .92rem; line-height: 1.45;
+    color: var(--text-main); white-space: pre-wrap;
+}
+/* Sur téléphone, il tient toute la largeur : à 340 px de carte sur un écran de
+   375, il resterait 35 px de marge d'un côté et zéro de l'autre. */
+@media (max-width: 480px) {
+    .indices-prof { left: 12px; right: 12px; max-width: none; }
+}
 /* LE BOUTON « PASSER CET EXERCICE ». Il n'existe que quand le professeur l'a
    autorisé pour cet exercice-là : c'est le geste de secours quand un exercice
    plante et bloque tout le parcours. En orange et non en rouge — ce n'est pas
@@ -632,11 +1351,20 @@ body.classe-verrouillee #rangement-bascule { display: none !important; }
     font-weight: 700; font-size: .85rem; padding: 7px 13px; border-radius: 9px;
     cursor: pointer; white-space: nowrap;
 }
-#btn-passer-exo:hover { background: #d97706; }
+@media (hover: hover) {
+    #btn-passer-exo:hover { background: #d97706; }
+}
 #btn-passer-exo[hidden] { display: none !important; }
 
 /* --- COHESION MODE PROF VS ELEVE --- */
-body.teacher-mode { --primary: #6366f1; --primary-hover: #4f46e5; }
+/* L'INDIGO DU PROFESSEUR, ASSOMBRI COMME CELUI DE TOUT LE MONDE. Cette ligne
+   impose la teinte indigo par-dessus le thème choisi, dans les cinq thèmes :
+   tant qu'elle gardait #6366f1, tous les boutons pleins de l'espace classes et
+   de la page profil restaient à 4,47 de contraste — la correction des jetons
+   ne les atteignait pas. `--primary-texte` n'est volontairement PAS repris
+   ici : le thème sombre a le sien, pâle, et le lui reprendre le rendrait
+   illisible. */
+body.teacher-mode { --primary: #4f46e5; --primary-hover: #4338ca; }
 body:not(.teacher-mode) .teacher-only { display: none !important; }
 body.teacher-mode .student-only { display: none !important; }
 
@@ -644,9 +1372,14 @@ body.teacher-mode .student-only { display: none !important; }
 /* --- Palette d'outils d'auteur ------------------------------
    Flottante, déplaçable, repliable. En bandeau pleine largeur, elle recouvrait
    l'en-tête du jeu — c'est-à-dire précisément ce qu'elle sert à tester. */
+/* ÉTEINTE, SAUF DEMANDE. Voir js/core/outilsAuteur.js : la palette se montrait
+   à tout professeur identifié, avec « vider la sauvegarde locale » et
+   « générer des données d'exemple » en deuxième rangée. Elle attend maintenant
+   `body.outils-auteur`, que seul l'interrupteur des réglages (ou `?auteur=1`)
+   pose. Le `display: flex` vit donc dans la règle qui la rallume. */
 #debug-toolbar {
     position: fixed; top: 6px; left: 6px; z-index: 100000;
-    display: flex; align-items: center; gap: 3px;
+    display: none; align-items: center; gap: 3px;
     /* Elle ne peut pas être plus large que l'écran : à 436 px sur un
        téléphone de 390, elle débordait des deux côtés et il devenait
        impossible de la pousser hors du chemin.
@@ -683,14 +1416,22 @@ body.teacher-mode .student-only { display: none !important; }
    eux qui avait fait abandonner `flex-wrap` la première fois.
    Le défilement horizontal reste, en dernier recours : à vingt icônes sur un
    petit téléphone, deux rangées ne suffiront plus non plus. */
+/* DIX COLONNES POUR VINGT ICÔNES — soit DEUX rangées pleines, ce que
+   `tests/paletteAuteur.test.mjs` exige. Elle était à neuf pour dix-huit ; les
+   deux ateliers d'auteur (dingbats, quotidien) en font vingt, et sans ce
+   réglage la palette passait à trois rangées — c'est-à-dire qu'elle recouvrait
+   une rangée de touches de plus sur un téléphone, précisément le défaut que
+   Rémy avait signalé sur le Duel des Tables. Le nombre d'icônes est dans la
+   page et le nombre de colonnes ici : rien ne les relie, sauf cette épreuve. */
 .dbg-tools {
-    display: grid; grid-auto-flow: row; grid-template-columns: repeat(9, auto);
+    display: grid; grid-auto-flow: row; grid-template-columns: repeat(10, auto);
     align-items: center; justify-content: start; gap: 4px;
     flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none; -ms-overflow-style: none;
     scroll-snap-type: x proximity; overscroll-behavior-x: contain;
 }
 .dbg-tools::-webkit-scrollbar { display: none; }
+body.outils-auteur #debug-toolbar { display: flex; }
 #debug-toolbar.dbg--folded .dbg-tools { display: none; }
 .dbg-version, .dbg-fold, .dbg-grip { flex-shrink: 0; }
 
@@ -718,7 +1459,9 @@ body.teacher-mode .student-only { display: none !important; }
     min-width: 26px; min-height: 26px; border-radius: 7px;
 }
 #plan-etapes .pe-grip { cursor: grab; touch-action: none; }
-#plan-etapes .pe-btn:hover, #plan-etapes .pe-grip:hover { background: #334155; }
+@media (hover: hover) {
+    #plan-etapes .pe-btn:hover, #plan-etapes .pe-grip:hover { background: #334155; }
+}
 .pe-titre {
     flex: none; font-size: .68rem; font-weight: 800; color: #94a3b8;
     text-transform: uppercase; letter-spacing: .03em; max-width: 130px;
@@ -742,7 +1485,9 @@ body.teacher-mode .student-only { display: none !important; }
     max-width: 190px; overflow: hidden; text-overflow: ellipsis;
 }
 .pe-etape b { color: #94a3b8; font-weight: 800; margin-right: 3px; }
-.pe-etape:hover { border-color: #64748b; background: #273449; }
+@media (hover: hover) {
+    .pe-etape:hover { border-color: #64748b; background: #273449; }
+}
 /* CE QUI EST FAIT, ET OÙ L'ON EST. Deux états lisibles d'un coup d'œil : le
    passé s'efface, le présent s'allume. Sans eux, la ligne dirait CE QUE
    l'exercice contient sans dire OÙ l'on en est — la moitié de la question. */
@@ -772,7 +1517,9 @@ body.teacher-mode .student-only { display: none !important; }
     background: none; border: none; color: #64748b;
     font-size: .95rem; line-height: 1; cursor: pointer;
 }
-.dbg-fold:hover, .dbg-grip:hover { color: #f8fafc; }
+@media (hover: hover) {
+    .dbg-fold:hover, .dbg-grip:hover { color: #f8fafc; }
+}
 
 .dbg-version {
     color: #94a3b8; font-size: 0.66rem; font-weight: 700;
@@ -786,7 +1533,9 @@ body.teacher-mode .student-only { display: none !important; }
     border-radius: 7px; border: 1px solid #334155;
     font-size: 0.82rem; line-height: 1; cursor: pointer; transition: 0.2s;
 }
-.debug-btn:hover { background: #334155; }
+@media (hover: hover) {
+    .debug-btn:hover { background: #334155; }
+}
 .debug-btn.active { background: #22c55e; border-color: #16a34a; }
 #db-clear-storage { background: #ef4444; }
 #db-fake-data { background: #3b82f6; }
@@ -801,15 +1550,21 @@ body.teacher-mode .student-only { display: none !important; }
 }
 
 /* --- CONTROLES INTERFACES --- */
-.title { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+/* LE NOM DU LOGICIEL SUIT LE THÈME AUX DEUX BOUTS. Les valeurs et leurs
+   mesures sont dans `css/base.css`, là où les jetons se déclarent. */
+.title { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--degrade-texte-debut), var(--degrade-texte-fin)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
 /* Top Navbar Tabs */
 .nav-tab { background: transparent; border: none; font-size: 1rem; font-weight: 600; color: var(--text-muted); padding: 18px 15px; cursor: pointer; transition: 0.2s; position: relative; }
-.nav-tab:hover { color: var(--text-main); }
-.nav-tab.active { color: var(--primary); }
+@media (hover: hover) {
+    .nav-tab:hover { color: var(--text-main); }
+}
+.nav-tab.active { color: var(--primary-texte); }
 .nav-tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: var(--primary); border-top-left-radius: 3px; border-top-right-radius: 3px; }
 .btn-icon { background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; padding: 5px; border-radius: 8px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
-.btn-icon:hover { background: var(--bg-hover); color: var(--text-main); }
+@media (hover: hover) {
+    .btn-icon:hover { background: var(--bg-hover); color: var(--text-main); }
+}
 .btn-icon--sm { font-size: 1.2rem; }
 
 /* --- PLEIN ÉCRAN ------------------------------------------------------------
@@ -842,9 +1597,11 @@ body.plein-ecran .pe-sortir { display: block; }
     border: 1px solid transparent; cursor: pointer; transition: all .15s ease;
     white-space: nowrap;
 }
-.top-nav-tab:hover:not(.active) { color: var(--text-main); background: rgba(0, 0, 0, 0.04); }
+@media (hover: hover) {
+    .top-nav-tab:hover:not(.active) { color: var(--text-main); background: rgba(0, 0, 0, 0.04); }
+}
 .top-nav-tab.active {
-    color: var(--primary); background: var(--bg-panel);
+    color: var(--primary-texte); background: var(--bg-panel);
     border-color: var(--border); box-shadow: var(--shadow-sm);
 }
 .top-nav-tab svg { flex-shrink: 0; }
@@ -853,23 +1610,266 @@ body.plein-ecran .pe-sortir { display: block; }
     .top-nav-tab { font-size: 0; gap: 0; padding: 8px 10px; }
     .top-nav-tab svg { width: 18px; height: 18px; }
 }
-.nav-center-editing-label { color: var(--primary); font-weight: bold; }
+.nav-center-editing-label { color: var(--primary-texte); font-weight: bold; }
 /* `flex-shrink: 0` + `nowrap` : comprimé par une barre étroite (téléphone),
    le badge passait l'étoile au-dessus du nombre. Il garde sa largeur, sur
    une seule ligne. */
-.score-display { font-weight: 700; color: var(--primary); font-size: 1.1rem; background: var(--bg-panel); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; white-space: nowrap; line-height: 1; }
-.score-display svg { color: var(--warning); flex-shrink: 0; }
+.score-display { font-weight: 700; color: var(--primary-texte); font-size: 1.1rem; background: var(--bg-panel); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; white-space: nowrap; line-height: 1; }
+.score-display svg { color: var(--warning-texte); flex-shrink: 0; }
 /* Le compteur d'etoiles est un bouton : il mene au profil, ou le meme
    chiffre est explique (niveau, XP, badges). Il doit donc se voir cliquable
    sans pour autant ressembler a un bouton de plus dans une barre qui en
    compte deja beaucoup : meme pastille qu'avant, elle se souleve au survol. */
 .score-display { font-family: inherit; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
 .score-display b { font-weight: 700; }
-.score-display:hover { transform: translateY(-1px); border-color: var(--warning); box-shadow: var(--shadow); }
+@media (hover: hover) {
+    .score-display:hover { transform: translateY(-1px); border-color: var(--warning); box-shadow: var(--shadow); }
+}
 .score-display:active { transform: translateY(0); }
 
+/* --- AU DOIGT, 44 PIXELS ----------------------------------------------------
+
+   MESURÉ, palette d'auteur éteinte, en professeur identifié : sur un téléphone
+   de 390 × 844, 18 cibles tactiles sur 29 font moins de 44 px ; sur une
+   tablette de 820 × 1180, 20 sur 25. Et ce ne sont pas des boutons obscurs :
+   ce sont TOUS ceux de la barre du haut — le rôle à 19 × 19, les trois icônes
+   de droite à 24 × 24, le titre à 20 px de haut.
+
+   POURQUOI 44. C'est la mesure que donnent Apple et Google, et elle ne vient
+   pas d'un goût : c'est la largeur moyenne de la pulpe d'un index adulte. En
+   dessous, on ne vise plus le bouton, on vise son centre — et l'on rate. Un
+   professeur qui circule dans les rangs avec son téléphone d'une main n'a pas
+   le loisir de viser.
+
+   POURQUOI SEULEMENT AU DOIGT. `pointer: coarse` demande à l'appareil quel est
+   son moyen de pointage principal. À la souris, le pointeur fait un pixel et
+   vise juste : élargir les icônes de la barre à 44 px sur un écran
+   d'ordinateur donnerait une barre du haut obèse pour rien.
+
+   ON ÉLARGIT LA ZONE, PAS LE DESSIN. Ce sont des `min-height` / `min-width` et
+   du remplissage — les icônes gardent leur taille, c'est le champ autour qui
+   grandit. Un bouton n'a pas besoin d'être GROS, il a besoin d'être ATTEIGNABLE. */
+@media (pointer: coarse) {
+    #top-navbar .btn-icon,
+    #top-navbar .btn-icon--sm { min-width: 44px; min-height: 44px; }
+    /* Le titre est un bouton — il ramène à l'accueil — mais il ne ressemble pas
+       à un bouton, donc on ne peut pas l'agrandir : on lui donne de la hauteur
+       de part et d'autre du texte, ce qui ne se voit pas et se touche. */
+    #top-navbar .title { min-height: 44px; display: inline-flex; align-items: center; }
+    .role-badge { min-height: 44px; min-width: 44px; justify-content: center; }
+    .top-nav-tab { min-height: 44px; }
+    .score-display { min-height: 44px; }
+    .tiroir-onglet { min-height: 44px; }
+    /* Sur tablette, les deux portes du professeur se replient sur leur icône
+       (règle des écrans moyens) : 40 px de large pour 44 de haut, c'est une
+       fente. On leur rend leur carré. */
+    .top-nav-tab { min-width: 44px; }
+    /* LES COMMANDES DE L'ATELIER, mesurées au même endroit : la bascule
+       Domaines / Chapitres à 28 px de haut, Clic / Arbre à 36, les quatre
+       boutons du parcours à 38 × 38, et la croix qui vide la recherche à
+       24 × 24 — la plus petite de l'écran, et celle qu'on vise le plus vite. */
+    .rang-btn, .btn-toggle { min-height: 44px; }
+    .toolbar-icon-btn { min-width: 44px; min-height: 44px; }
+    .rech-croix { min-width: 44px; min-height: 44px; }
+
+    /* ── LE RESTE DE CE QUI ÉCHAPPAIT AU PLANCHER ────────────────────────────
+       Trouvé par un balayage de tous les écrans, au doigt. Deux familles, et
+       elles disent la même chose que les notes précédentes : une LISTE de
+       sélecteurs ne connaît que ce qu'on y a mis.
+
+       CÔTÉ ÉLÈVE. « changer » — le geste de l'élève assis devant la tablette de
+       quelqu'un d'autre — faisait 60 × 18, la plus petite cible de son espace.
+       Puis les cartes de plan (65 × 25 et 298 × 41), le dépliant « Pourquoi, et
+       avec quoi ? » (298 × 24), les onglets du profil (× 37), « Explorer tous
+       les exercices » (× 40), « J'ai lu » du mot du professeur (× 42) et la
+       porte du bac à sable (× 42).
+
+       CÔTÉ PROFESSEUR. Le « + » de l'arbre du catalogue (24 × 24) et son œil
+       (28 × 28), les trois champs de la barre latérale (35 à 37 px), le chevron
+       d'une étape (28 × 28), les « Oui » / « Non » des réglages (× 41), la
+       bascule d'aperçu (28 × 30) et la poignée du tiroir (19 px de haut).
+
+       DEUX D'ENTRE ELLES SE VISENT DANS LES DEUX SENS — celles qui sont
+       carrées ; les autres sont déjà larges et ne manquaient que de hauteur. */
+    .auj-lien, .auj-explorer, .plan-exo, .plan-btn, .plan-detail > summary,
+    .prof-onglet-btn, .mot-du-prof-ok, .bac-porte { min-height: 44px; }
+    .exo-list-item button.teacher-only, .path-step-toggle, .preview-mode-btn {
+        min-width: 44px; min-height: 44px;
+    }
+    #sidebar-search-input, #custom-niveau-select, #path-name-input,
+    .cfg-on, .path-step-actions button { min-height: 44px; }
+    #drawer-handle { min-height: 44px; }
+    /* LA PORTE D'ENTRÉE DE L'ÉLÈVE, mesurée sur un téléphone de 390 : deux
+       cibles trop petites, et ce sont les deux SEULES portes de secours —
+       « Je n'ai pas de billet », qui déplie la saisie du prénom, et « Je suis
+       le professeur ». Un enfant de onze ans qui n'arrive pas à ouvrir celle
+       qui le concerne reste devant un écran dont il ne sait rien faire. */
+    .portail-repli summary { min-height: 44px; display: flex; align-items: center; }
+    .portail-lien { min-height: 44px; }
+    /* Les commandes DES EXERCICES ont leur propre plancher, déjà écrit, déjà
+       pensé, et avec la liste d'exceptions qui va avec — voir modules.css,
+       « LE PLANCHER DES BOUTONS DE JEU ». En redoubler un ici donnerait deux
+       règles à tenir d'accord pour un seul chiffre. */
+    /* La barre du haut n'a plus 46 px de haut imposés : elle prend ce qu'il
+       faut. Sans cela, les 44 px demandés débordent d'une barre de 46 et les
+       boutons se rognent en silence. */
+    body.mobile-view #top-navbar { min-height: 52px; }
+
+    /* ─── L'ESPACE « LA CLASSE », QUI MANQUAIT À CETTE LISTE ───────────────
+       MESURÉ sur une tablette de 820 (avec `hasTouch`, sans quoi
+       `pointer: coarse` ne s'applique pas et l'on mesure les tailles de la
+       souris) : 31 cibles sur 46 sous 44 px dans « Le direct », dont les deux
+       SEULS gestes de cet écran — « mot » à 42 × 25 et « indice » à 53 × 25.
+       Vingt-cinq pixels, c'est 57 % de la pulpe d'un index.
+
+       La règle existait, elle marchait partout ailleurs — sur « Préparer », au
+       téléphone, 2 cibles sur 29 — mais sa liste de sélecteurs a été écrite
+       AVANT cet espace et ne le nommait nulle part. Une liste de sélecteurs
+       est une liste : elle ne connaît que ce qu'on y a mis, et elle ne
+       prévient pas quand un écran nouveau lui échappe.
+
+       ET C'EST L'ÉCRAN QU'ON TIENT DEBOUT, tablette d'une main, devant
+       vingt-cinq élèves — celui où viser est le plus difficile et le plus
+       pressé. */
+    .ec-mini, .ec-onglet, .ec-pilote-btn, .ec-bouton,
+    .ec-retour, .ec-fermer, .ec-carte-jeter, .ec-lien,
+    .ec-code, .ec-alarme-qui { min-height: 44px; }
+    /* Les deux gestes du direct gardent leur dessin : c'est le champ autour
+       qui grandit, pas la pastille. Sans ce remplissage, `min-height` seul
+       étire le texte au milieu d'une boîte vide et la rangée se déforme. */
+    .ec-mini { padding-top: 4px; padding-bottom: 4px; }
+    /* Les deux croix sont carrées : leur donner de la hauteur sans largeur
+       ferait une fente de 32 de large sur 44 de haut. */
+    .ec-fermer, .ec-carte-jeter { min-width: 44px; }
+    /* ET LA LARGEUR AUSSI, POUR LES PLUS COURTS. Mesuré après un premier
+       passage : « mot » était remonté à 42 × 44 — la hauteur réparée, la
+       largeur à deux pixels du compte. Une cible se vise dans les deux sens ;
+       s'arrêter à la hauteur, c'est réparer la moitié du geste. */
+    .ec-mini, .ec-retour { min-width: 44px; }
+    /* LES CHAMPS DE SAISIE COMPTENT COMME DES CIBLES. « Un mot à toute la
+       classe » faisait 520 × 40 et le champ des minutes 67 × 40 : on les
+       touche pour écrire, et rater un champ oblige à recommencer la phrase.
+       On vise large plutôt que d'énumérer : tout ce qui se remplit dans cet
+       espace, y compris ce qu'on y ajoutera demain. */
+    #zone-classe input, #zone-classe select, #zone-classe textarea,
+    .ec-champ { min-height: 44px; }
+    /* TROIS CIBLES QUE LA LISTE NE CONNAISSAIT PAS — et la note ci-dessus
+       prévenait que c'est ce qui arrive à une liste : « elle ne connaît que ce
+       qu'on y a mis, et elle ne prévient pas quand un écran nouveau lui
+       échappe. » Les trois sont nées après elle.
+
+       LA CASE DE CHOIX était haute de 44 et LARGE DE 13 : la hauteur réparée
+       par la règle des champs juste au-dessus, la largeur oubliée. Trente fois
+       par écran, et c'est le geste qui désigne qui reçoit la calculatrice. On
+       élargit l'ENVELOPPE, pas la case : une case à cocher de 44 px de côté
+       serait énorme à l'œil, et c'est la zone qu'on vise, pas le dessin. */
+    .ec-choix { min-width: 44px; min-height: 44px; }
+    .ec-choix input { min-height: 17px; }
+    /* LE REPLI DU PILOTE est la SEULE porte vers « Le mot au tableau » : 690 ×
+       22 à 768 px, une fente. */
+    details.ec-pilote-plus > summary { min-height: 44px; display: flex;
+        align-items: center; }
+    /* ET « OUVRIR LA PORTE », posé ce matin, 102 × 25. */
+    .ec-code-ouvrir { min-height: 44px; }
+
+    /* MÊME CAUSE, DEUX AUTRES ENDROITS.
+
+       La croix de « Choisir un exercice » : 13 × 30 au doigt, la plus petite
+       cible du parcours professeur — et sur tactile il n'y a pas de clavier,
+       donc pas d'Échap : c'est la SEULE sortie d'une fenêtre qui couvre
+       l'écran. */
+    .modal-close-btn { min-width: 44px; min-height: 44px; }
+    /* Le panneau « Réglages de la partie » : 15 cibles sur 41 sous 44 px, et
+       le « ? » d'aide à 18 × 18, la plus petite du logiciel. Le plancher des
+       jeux existait déjà mais s'écrit `#game-layer button` — or ce panneau est
+       une MODALE, donc hors de `#game-layer`, et la règle ne l'atteignait pas.
+       Un sélecteur qui nomme un ancêtre ne protège que ce qui est dedans. */
+    .cfg-step, .cfg-info, .cfg-rail { min-height: 44px; }
+    .cfg-info { min-width: 44px; }
+
+    /* ET LES CASES À COCHER, QUE LA LISTE NE NOMMAIT PAS.
+       MESURÉ au doigt dans les fenêtres d'impression et de réglages :
+       « Mode interrogation », « Proposer les réponses », « Bonus »,
+       « Facultatif », « Calculatrice » — treize pixels sur treize, dans des
+       étiquettes de dix-neuf de haut. Une case à cocher est toujours petite,
+       et c'est très bien : ce qu'on vise, c'est son ÉTIQUETTE. On grandit
+       donc l'étiquette, qui porte déjà le geste (`&lt;label&gt;` : cliquer le mot
+       coche la case), et l'on ne touche pas au dessin.
+
+       LA MÊME LEÇON QUE LA CASE DE CHOIX DU DIRECT, le même jour : la zone
+       qu'on vise n'est pas le dessin. */
+    .fq-case, .cfg-case, .path-step-case,
+    label:has(> input[type="checkbox"]) { min-height: 44px; display: flex;
+        align-items: center; }
+
+    /* DEUX ÉCRANS DE PLUS QUE LA LISTE NE CONNAISSAIT — et la note du dessus
+       l'avait prédit mot pour mot : « une liste de sélecteurs est une liste :
+       elle ne connaît que ce qu'on y a mis, et elle ne prévient pas quand un
+       écran nouveau lui échappe. »
+
+       Les fenêtres de `demander.js` et celle des colonnes d'import
+       (`collerListeUI.js`) s'accrochent à `document.body`, donc HORS de
+       `#zone-classe` : le second plancher, écrit `#zone-classe input, …`, ne les
+       atteignait pas non plus. MESURÉ au doigt : les sept menus de colonnes à
+       172 × 23 — la moitié du compte, et c'est le SEUL geste de cet écran,
+       corriger une colonne mal devinée — et tous les boutons de validation à
+       42 px, deux pixels trop bas. */
+    .demander-bouton, .cl-bouton, .indice-choix-item { min-height: 44px; }
+    .cl-select, .demander-boite input, .demander-boite select,
+    .demander-boite textarea { min-height: 44px; }
+
+}
+
 /* Sidebar - sélecteur de niveau */
-.sidebar-top-controls { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+/* LES DEUX FILTRES SUR UNE SEULE LIGNE. Rémy : « ça prend de la place quand
+   même ne code rien ». Mesuré sur 1440 × 900 : 287 px passaient avant le
+   premier exercice, soit SIX exercices de 48 px, pour 512 px de catalogue.
+
+   LA LARGEUR EST LA CONTRAINTE, et c'est elle qui a écarté deux mises en page
+   qu'on croyait meilleures : la colonne fait 319 px, et le niveau apparié au
+   rangement (162 px) tombait à 149 et affichait « Tous les … ». Le rangement
+   parti dans le fil d'Ariane, il reste de quoi poser Clic/Arbre en icônes
+   (84 px) et laisser 227 px au niveau — qui se lit en entier.
+   Mesuré après : 182 px, DEUX EXERCICES DE PLUS à l'écran. */
+.sidebar-top-controls { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 6px; }
+/* CLIC / ARBRE PERD SES MOTS, ET C'EST LE PRIX DE LA LIGNE UNIQUE. Rémy a
+   tranché devant la maquette. Les deux icônes — la souris et l'arborescence —
+   gardent leur infobulle et leur `aria-label` ; c'est un choix de présentation
+   qu'on fait une fois par séance, pas un bouton qu'on cherche. */
+.sidebar-top-controls > .desktop-controls { flex: 0 0 auto; width: auto; }
+/* `gap: 0` AUSSI, ET C'EST LA MOITIÉ QUI RESTAIT.
+   Retirer la marge de l'icône a ramené l'écart de 5 px à 2,5 — la moitié
+   exactement, ce qui désignait un espacement PARTAGÉ plutôt qu'une marge. Le
+   bouton est un `flex` avec `gap: 5px`, et le libellé réduit à `font-size: 0`
+   reste un élément de flex : il a une largeur nulle, mais le gap qui le sépare
+   de l'icône, lui, existe toujours. Le centrage répartit donc 17 px d'icône et
+   5 px de vide, et pousse l'icône de 2,5 px vers la gauche. */
+.sidebar-top-controls > .desktop-controls .btn-toggle { font-size: 0; padding: 0; gap: 0; width: 38px; min-width: 38px; justify-content: center; }
+/* ET LA MARGE DU MOT PART AVEC LE MOT.
+   Rémy : « un petit détail les icones ne font pas centrés dans le bouton du
+   switch ». `.btn-toggle svg` porte `margin-right: 5px` (layout.css) pour
+   séparer l'icône de son libellé — « 🖱 Clic ». Le libellé a été retiré d'ici
+   (`font-size: 0`, voir juste au-dessus) ; la marge, elle, est restée, et elle
+   pousse l'icône vers la gauche dans un bouton de 38 px.
+   MESURÉ, écart entre le centre de l'icône et celui du bouton : −5,00 px sur
+   les DEUX boutons. Après : 0,00. */
+.sidebar-top-controls > .desktop-controls .btn-toggle svg {
+    width: 17px; height: 17px; margin-right: 0;
+}
+.sidebar-top-controls > .select-wrap { flex: 1 1 auto; min-width: 0; width: auto; }
+#cns-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (pointer: coarse) {
+    .sidebar-top-controls > .desktop-controls .btn-toggle { min-height: 44px; width: 44px; min-width: 44px; }
+}
+/* SUR TÉLÉPHONE, LES DEUX FILTRES PARTAGENT UNE LIGNE.
+   Le niveau et le rangement répondent à deux questions voisines — « pour quelle
+   classe ? » et « rangé comment ? » —, et chacun tenait sa propre bande. Mesuré
+   sur un écran de 390 × 844 : 396 px avant le premier exercice, pour quatre
+   exercices visibles. Côte à côte, ils en rendent une cinquantaine. */
+body.mobile-view .sidebar-top-controls { flex-direction: row; align-items: center; }
+body.mobile-view .sidebar-top-controls > .select-wrap,
+/* La bande du rangement est partie dans le fil d'Ariane : le niveau prend
+   donc toute la largeur sur téléphone, au lieu de la partager. */
 .select-wrap { position: relative; }
 #custom-niveau-select { width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; }
 #cns-dropdown { display: none; flex-direction: column; gap: 4px; position: absolute; top: calc(100% - 5px); left: 10px; right: 10px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); z-index: 100; max-height: 250px; overflow-y: auto; padding: 5px; }
@@ -886,64 +1886,150 @@ body.plein-ecran .pe-sortir { display: block; }
 #sidebar-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
 #sidebar-search-input::-webkit-search-cancel-button { display: none; }  /* la nôtre suffit */
 .rech-croix { position: absolute; right: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 1.15rem; line-height: 1; color: var(--text-muted); background: none; border: none; cursor: pointer; }
-.rech-croix:hover { color: var(--text-main); background: rgba(0,0,0,0.06); }
+@media (hover: hover) {
+    .rech-croix:hover { color: var(--text-main); background: rgba(0,0,0,0.06); }
+}
 
-.rech-liste { position: absolute; top: calc(100% - 10px); left: 10px; right: 10px; z-index: 120; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-md); max-height: min(52vh, 340px); overflow-y: auto; }
-.rech-item { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 7px 9px; border-radius: 7px; cursor: pointer; }
-.rech-item--actif, .rech-item:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); }
-.rech-titre { font-size: 0.9rem; font-weight: 600; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Le gras marque CE QU'ON VIENT DE TAPER : l'œil retrouve sa saisie dans la
-   ligne sans relire le titre entier. */
-.rech-titre b { color: var(--primary); font-weight: 800; }
-.rech-tags { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
-.rech-sous { grid-column: 1; font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rech-vide { padding: 10px; font-size: 0.82rem; color: var(--text-muted); text-align: center; }
+/* LA LISTE FLOTTANTE DE SUGGESTIONS N'EST PLUS. Elle montrait huit des mêmes
+   résultats que la liste du dessous, sans l'œil ni le « + », et en recouvrait
+   cinq — mesuré en tapant « fraction » dans l'atelier. Ce qu'elle avait à elle,
+   le classement par pertinence et le clavier, est passé à la vraie liste.
+   Rémy : « quand on appuie sur entrée il faudrait que la liste arrive dans
+   l'arbre en dessous non et pas insérer le premier lien ? » */
 
 .btn-group { display: flex; gap: 4px; background: var(--bg-app); padding: 4px; border-radius: 10px; border: 1px solid var(--border); box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
 .btn-toggle { padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; transition: all 0.2s ease; border: 1px solid transparent; }
-.btn-toggle:hover:not(.active) { color: var(--text-main); background: rgba(0,0,0,0.02); }
-.btn-toggle.active { background: var(--bg-panel); color: var(--primary); box-shadow: var(--shadow-sm); border-color: var(--border); }
+@media (hover: hover) {
+    .btn-toggle:hover:not(.active) { color: var(--text-main); background: rgba(0,0,0,0.02); }
+}
+.btn-toggle.active { background: var(--bg-panel); color: var(--primary-texte); box-shadow: var(--shadow-sm); border-color: var(--border); }
 .desktop-controls .btn-toggle { display: flex; align-items: center; justify-content: center; gap: 5px; flex: 1; }
-.builder-header-label { color: var(--primary); font-weight: 600; font-size: 0.85rem; }
+.builder-header-label { color: var(--primary-texte); font-weight: 600; font-size: 0.85rem; }
 .flex-spacer { flex-grow: 1; }
 .filter-row { display: flex; gap: 10px; align-items: center; }
 .filter-row-label { font-size: 0.8rem; font-weight: bold; min-width: 60px; flex-shrink: 0; }
 .bottom-nav-btn { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 0.75rem; color: var(--text-muted); transition: 0.2s; }
-.bottom-nav-btn:hover { color: var(--text-main); }
-.bottom-nav-btn.active { color: var(--primary); font-weight: 600; transform: translateY(-2px); }
+@media (hover: hover) {
+    .bottom-nav-btn:hover { color: var(--text-main); }
+}
+.bottom-nav-btn.active { color: var(--primary-texte); font-weight: 600; transform: translateY(-2px); }
 
 /* --- SYSTEME ARBORESCENCE --- */
 #nav-container { flex-grow: 1; overflow-y: auto; padding: 15px; }
 #view-accordion { display: none; }
 details > summary { padding: 10px 12px; border-radius: 8px; font-weight: 600; display: flex; align-items: center; user-select: none; transition: 0.2s; cursor: pointer; color: var(--text-main); }
-details > summary:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    details > summary:hover { background: var(--bg-hover); }
+}
 .custom-chevron { display: inline-block; width: 16px; height: 16px; margin-right: 10px; transition: transform 0.2s; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z' clip-rule='evenodd'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: center; }
 details[open] > summary .custom-chevron { transform: rotate(90deg); }
 .sub-details { margin-left: 20px; border-left: 2px solid var(--border); padding-left: 10px; margin-top: 4px; }
 
-.exo-list-item { padding: 10px 12px; margin: 4px 0; border-radius: 8px; font-size: 0.95rem; font-weight: 500; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; background: var(--bg-panel); border: 1px solid var(--border); transition: all 0.2s ease; cursor: pointer; }
-.exo-list-item:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); transform: translateX(2px); color: var(--primary); }
+/* UNE LIGNE EST UNE LIGNE.
+   Mesure avant : sur 172 exercices, 59 titres (34 %) passaient sur deux lignes
+   et AUCUN n'etait coupe, si bien que la hauteur d'une rangee allait de 50 a
+   79 px. L'oeil qui descend la colonne ne longe alors aucun bord droit : il
+   saute. C'est ce que le relecteur de Remy appelle « une sensation
+   d'oppression » — ce n'est pas la densite, c'est l'irregularite.
+   44 px et pas moins : c'est la cible tactile minimale confortable, et le
+   catalogue se parcourt au doigt sur tablette. */
+.exo-list-item { height: 44px; box-sizing: border-box; padding: 0 8px 0 6px; margin: 2px 0; border-radius: 8px; font-size: 0.95rem; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 6px; background: var(--bg-panel); border: 1px solid var(--border); transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, transform 0.2s ease; cursor: pointer; }
+/* LA LIGNE OÙ L'ON EST ARRIVÉ AU CLAVIER, depuis le champ de recherche. Elle se
+   marque comme une ligne SURVOLÉE et non comme un champ de saisie : c'est le
+   même geste — parcourir une liste — et l'on ne veut pas apprendre deux
+   signes pour lui. Le cerne s'ajoute par-dessus, pour qui navigue sans voir
+   les couleurs. */
+.exo-list-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); box-shadow: var(--shadow-sm); color: var(--primary-texte); }
+@media (hover: hover) {
+    .exo-list-item:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); transform: translateX(2px); color: var(--primary-texte); }
+}
+/* Le titre coupe, et le titre entier reste accessible : l'attribut `title`
+   pose l'infobulle du navigateur, et l'apercu epingle porte le nom en clair. */
+.exo-item-titre b { color: var(--primary-texte); font-weight: 800; }
+.exo-item-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* CE QU'ON A REGLE, SUR LA LIGNE DE L'ETAPE. Discret — c'est un repere, pas un
+   titre — mais coloré, parce que c'est la seule chose de cette ligne que le
+   professeur a decidee lui-meme. */
+.pstep-regle {
+    color: var(--primary-texte, var(--primary)); font-weight: 600;
+    max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* LES DEUX FLECHES D'ORDRE. Le meme chevron que partout, retourne pour celle
+   du haut : deux dessins pour deux sens, ce sont deux choses a tenir d'accord.
+   44 px, parce que le premier public de ces boutons est le doigt — sur
+   tablette, l'ordre des etapes ne pouvait pas changer du tout. */
+.pstep-ordre { min-width: 44px; min-height: 44px; }
+.pstep-ordre--haut svg { transform: rotate(180deg); }
+/* Desactivee, elle reste VISIBLE : elle dit ou l'on est dans la liste. La
+   faire disparaitre decalerait les autres boutons d'une rangee a l'autre. */
+.pstep-ordre:disabled { opacity: .3; cursor: default; }
+
+/* LE PRENOM DE L'ALARME EST UN BOUTON. Il garde l'allure du texte qui
+   l'entoure — c'est une phrase, pas une barre d'outils — et se souligne pour
+   dire qu'on peut y aller. */
+.ec-alarme-qui {
+    background: none; border: none; padding: 0; margin: 0; font: inherit;
+    color: inherit; cursor: pointer; text-decoration: underline;
+    text-underline-offset: 3px; text-decoration-thickness: 2px;
+}
+.ec-alarme-qui:hover, .ec-alarme-qui:focus-visible { text-decoration-thickness: 3px; }
+
+/* LE DECOMPTE, LU A BOUT DE BRAS. Le professeur circule dans les rangs : ce
+   nombre doit se lire depuis le fond de la salle, pas de sa chaise. Chiffres a
+   chasse fixe, sinon il saute a chaque seconde. */
+.ec-chrono-reste {
+    font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    letter-spacing: .02em; color: var(--text-main); min-width: 4ch; text-align: center;
+}
+.ec-chrono-reste--court { color: var(--danger-texte); }
 body.teacher-mode .exo-list-item { cursor: grab; }
 body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 
 /* --- DRILL DOWN --- */
 #view-drilldown { display: flex; flex-direction: column; height: 100%; }
-#breadcrumb { padding: 12px 15px; border-bottom: 1px solid var(--border); background: var(--bg-hover); display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); }
+#breadcrumb { padding: 8px 10px 8px 15px; border-bottom: 1px solid var(--border); background: var(--bg-hover); display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); }
+/* LA BASCULE DU RANGEMENT, DANS LE BANDEAU QUI LA NOMME. Voir
+   `initBasculeRangement` dans js/ui/navigation.js : elle porte le nom de
+   l'AUTRE rangement, parce qu'une pastille unique doit dire où l'on VA.
+   Elle est poussée à droite pour ne jamais se confondre avec le chemin. */
+#breadcrumb-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rang-fil { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--bg-panel); color: var(--primary-texte);
+    font-size: .78rem; font-weight: 700; white-space: nowrap;
+    transition: border-color .15s, background .15s; }
+@media (hover: hover) {
+    .rang-fil:hover { border-color: var(--primary); background: var(--bg-hover); }
+}
+/* AU DOIGT, ELLE DOIT FAIRE 44 px comme tout le reste : c'est le plancher du
+   dépôt, et une pastille de 26 px de haut est précisément le genre de cible
+   qu'on rate deux fois sur trois sur un téléphone. */
+@media (pointer: coarse) {
+    .rang-fil { min-height: 44px; padding: 4px 14px; font-size: .84rem; }
+}
 #btn-back { font-size: 1.2rem; font-weight: bold; color: var(--text-main); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; background: transparent; }
-#btn-back:hover { background: var(--border); }
+@media (hover: hover) {
+    #btn-back:hover { background: var(--border); }
+}
 #drill-content { flex-grow: 1; padding: 10px; overflow-y: auto; }
 .drill-item { width: 100%; text-align: left; padding: 14px 16px; font-size: 1rem; font-weight: 600; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; color: var(--text-main); transition: 0.2s; border: 1px solid transparent; }
-.drill-item:hover { background-color: #fff; border-color: var(--border); box-shadow: var(--shadow-sm); transform: translateX(2px); color: var(--primary); }
+@media (hover: hover) {
+    .drill-item:hover { background-color: #fff; border-color: var(--border); box-shadow: var(--shadow-sm); transform: translateX(2px); color: var(--primary-texte); }
+}
 
 /* --- SEQUENCE EDITEUR PROF --- */
 .sequence-area { width: 100%; max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding: 30px 15px; }
 #path-container { min-height: 150px; background: var(--bg-hover); border: 2px dashed var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; transition: 0.3s; }
-#path-container.drag-over { border-color: var(--primary); background: rgba(99, 102, 241, 0.05); }
+#path-container.drag-over { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); }
 /* Rangée compacte : une seule ligne par étape, hauteur minimale, pas de
    retour à la ligne — la colonne du milieu doit montrer un parcours entier
    sans défiler. */
 .path-step { background: var(--bg-panel); border: 1px solid var(--border); border-left: 5px solid var(--primary); padding: 8px 12px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); transition: 0.2s;}
-.path-step:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+@media (hover: hover) {
+    .path-step:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+}
 
 /* Œil d'aperçu des exercices du catalogue (mode professeur, écrans tactiles). */
 .exo-item-eye {
@@ -952,7 +2038,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     background: none; border: 1px solid var(--border); color: var(--text-muted);
     cursor: pointer; transition: 0.15s;
 }
-.exo-item-eye:hover { border-color: var(--primary); color: var(--primary); }
+@media (hover: hover) {
+    .exo-item-eye:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .exo-list-item.drag-source { opacity: .35; }
 .collapsable-btn { cursor: pointer; transform: rotate(180deg); transition: transform 0.3s; }
 
@@ -974,7 +2062,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    les cartes en theme sombre. */
 #filter-bar { position: sticky; top: 0; padding: 20px 25px; background: color-mix(in srgb, var(--bg-app) 82%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 15px; z-index: 5; flex-shrink: 0; }
 .tag-btn { font-size: 0.8rem; padding: 6px 14px; border-radius: 20px; font-weight: 600; border: 1px solid var(--border); background: var(--bg-panel); cursor: pointer; transition: 0.2s; color: var(--text-muted); box-shadow: var(--shadow-sm); }
-.tag-btn:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
+@media (hover: hover) {
+    .tag-btn:hover { border-color: var(--primary); color: var(--primary-texte); transform: translateY(-1px); }
+}
 .tag-niveau.active { background: var(--tag-niv-bg); color: var(--tag-niv-txt); border-color: var(--tag-niv-bg); box-shadow: 0 4px 10px rgba(225, 29, 72, 0.2); }
 .tag-domaine.active { background: var(--tag-dom-bg); color: var(--tag-dom-txt); border-color: var(--tag-dom-bg); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
 /* La liste d'exercices.
@@ -992,21 +2082,39 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 25px; display: flex; flex-direction: column; gap: 15px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm); position: relative; overflow: hidden; }
 .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--primary), var(--accent)); opacity: 0; transition: 0.3s; }
-.card:hover { border-color: transparent; transform: translateY(-4px) scale(1.01); box-shadow: var(--shadow-lg); }
-.card:hover::before { opacity: 1; }
+@media (hover: hover) {
+    .card:hover { border-color: transparent; transform: translateY(-4px) scale(1.01); box-shadow: var(--shadow-lg); }
+}
+@media (hover: hover) {
+    .card:hover::before { opacity: 1; }
+}
 
 /* Modals & Glassmorphism Buttons */
-.glass-panel { background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius: 16px; }
-.glass-btn { border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.9); border-radius: 8px; font-weight: 600; transition: 0.2s; }
-.glass-btn:hover { background: #fff; box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+/* LES FENETRES SUIVENT LE THEME, et jusqu'ici elles ne le suivaient pas.
+   Le fond etait ecrit en dur — rgba(255,255,255,.85) — pendant que le texte,
+   lui, prend `--text-main` et passe donc au blanc en theme sombre. Mesure
+   faite sur les NEUF fenetres du logiciel (tools/tmp/contrasteSombre.mjs) :
+   fond rgb(219,220,223), texte rgb(248,250,252), rapport de contraste 1,31.
+   Le seuil AA est 4,5 : on lisait un rectangle vide.
+   `--bg-verre` existait deja et est redefini dans les cinq themes (base.css) —
+   il ne manquait que de s'en servir. */
+.glass-panel { background: var(--bg-verre); border: 1px solid var(--border); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius: 16px; color: var(--text-main); }
+.glass-btn { border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main); border-radius: 8px; font-weight: 600; transition: 0.2s; }
+@media (hover: hover) {
+    .glass-btn:hover { background: var(--bg-hover); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+}
 .glass-btn.primary { background: var(--primary); color: white; border-color: transparent; }
-.glass-btn.primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
+@media (hover: hover) {
+    .glass-btn.primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent); }
+}
 
 /* Style des Checkboxes config */
 .config-table-cb { display: none; }
 .config-table-cb + span { display: inline-block; width: 45px; height: 45px; line-height: 45px; text-align: center; border-radius: 12px; background: rgba(0,0,0,0.03); border: 2px solid rgba(0,0,0,0.08); font-weight: 600; font-size: 1.1rem; color: #94a3b8; cursor: pointer; transition: 0.2s; }
-.config-table-cb + span:hover { background: rgba(0,0,0,0.06); color: var(--text-main); }
-.config-table-cb:checked + span { background: var(--primary); border-color: var(--primary); color: white; font-weight: 700; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); transform: scale(1.05); }
+@media (hover: hover) {
+    .config-table-cb + span:hover { background: rgba(0,0,0,0.06); color: var(--text-main); }
+}
+.config-table-cb:checked + span { background: var(--primary); border-color: var(--primary); color: white; font-weight: 700; box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 30%, transparent); transform: scale(1.05); }
 
 @keyframes popIn {
     0% { opacity: 0; transform: scale(0.9); }
@@ -1057,10 +2165,12 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     margin-left: auto; display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; flex-shrink: 0;
     border-radius: 50%; border: 1px solid var(--border);
-    background: var(--bg-panel); color: var(--primary); cursor: pointer;
+    background: var(--bg-panel); color: var(--primary-texte); cursor: pointer;
     transition: background .2s ease, color .2s ease, transform .2s ease;
 }
-.card-play:hover { background: var(--primary); color: #fff; transform: scale(1.08); }
+@media (hover: hover) {
+    .card-play:hover { background: var(--primary); color: #fff; transform: scale(1.08); }
+}
 
 .tag-eye {
     margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
@@ -1110,11 +2220,13 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    modale dédiée, avec l'aperçu de la page A4 paysage. Aperçu et PDF partagent
    la même mise en page en millimètres : ce qu'on voit est ce qu'on imprime. */
 .cfg-print-btn {
-    background: var(--bg-panel); color: var(--primary);
+    background: var(--bg-panel); color: var(--primary-texte);
     border: 2px solid var(--primary); border-radius: 10px;
     padding: 8px 12px; font-weight: 700; cursor: pointer; transition: .2s;
 }
-.cfg-print-btn:hover { background: var(--primary); color: #fff; }
+@media (hover: hover) {
+    .cfg-print-btn:hover { background: var(--primary); color: #fff; }
+}
 .cfg-print-btn--seul { width: 100%; margin-top: 12px; padding: 11px; }
 
 .fp-panel { max-width: 96vw; }
@@ -1150,11 +2262,13 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     transition: transform .15s ease;
 }
 .fp-repli[open] > summary::before { transform: rotate(45deg) translate(-2px, -2px); }
-.fp-repli > summary:hover { background: var(--bg-hover); color: var(--text-main); }
+@media (hover: hover) {
+    .fp-repli > summary:hover { background: var(--bg-hover); color: var(--text-main); }
+}
 .fp-repli > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .fp-repli > .fp-controles {
     padding: 8px 0 4px 10px; margin-left: 6px;
-    border-left: 2px solid var(--border-soft, rgba(0,0,0,.08));
+    border-left: 2px solid var(--border);
 }
 /* Le nom d'un groupe de cases à cocher, dans le repli : « En-tête : Nom,
    Prénom… ». Sans lui, quatre cases flottent sans dire de quoi elles parlent. */
@@ -1171,7 +2285,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-contenu {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     padding-bottom: 10px; margin-bottom: 4px;
-    border-bottom: 1px solid var(--border-soft, rgba(0,0,0,.08));
+    border-bottom: 1px solid var(--border);
 }
 .fp-contenu[hidden] { display: none; }
 .fp-contenu-titre {
@@ -1231,12 +2345,14 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-pas select.cfg-input { width: 72px; text-align: center; padding: 0 4px 0 8px; }
 .fp-pas-btn {
     width: 28px; height: 28px; flex: 0 0 auto; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--border); background: var(--surface-2, rgba(127, 127, 127, .12));
+    border: 1px solid var(--border); background: var(--bg-hover);
     color: var(--text); font-size: 1.05rem; font-weight: 700; line-height: 1;
     display: flex; align-items: center; justify-content: center;
     transition: background .12s, opacity .12s;
 }
-.fp-pas-btn:hover:not(:disabled) { background: var(--primary); color: #fff; }
+@media (hover: hover) {
+    .fp-pas-btn:hover:not(:disabled) { background: var(--primary); color: #fff; }
+}
 .fp-pas-btn:disabled { opacity: .32; cursor: default; }
 .fp-total { color: var(--text-muted); font-size: .9rem; margin-right: auto; }
 /* ② COMBIEN — un seul nombre, et la conséquence écrite à côté : « 12 sudokus ·
@@ -1273,6 +2389,37 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 
 /* La feuille : format A4 paysage exact, ombre de papier posé. */
 .fp-apercu-cadre { display: flex; justify-content: center; }
+/* UN `display` D'AUTEUR L'EMPORTE SUR LE MASQUAGE DU NAVIGATEUR.
+   Le navigateur cache les enfants d'un `<details>` fermé par sa propre feuille
+   de style ; la ligne ci-dessus, écrite bien avant le repli, gagnait contre
+   elle. MESURÉ : `open: false` et pourtant 371 px d'aperçu peints. On rend donc
+   au repli ce qui lui revient, explicitement. */
+.fp-apercu-repli:not([open]) > .fp-apercu-cadre { display: none; }
+/* SUR TÉLÉPHONE, L'APERÇU SE REPLIE — parce qu'il ne montre plus rien.
+   MESURÉ à 360 et 414 px : une feuille A4 réduite à la largeur de la colonne
+   donne 154 textes SOUS 12 PX — le titre de la feuille à 5,5 px, la consigne et
+   les numéros de questions à 3,8 px, les emplacements « + Prénom » à 3,5 px.
+   Ce n'est pas un aperçu, c'est une tache grise, et elle occupe toute la
+   hauteur de l'écran entre les réglages et le bouton.
+   On ne le SUPPRIME pas : le professeur qui veut vérifier sa mise en page peut
+   le déplier d'un doigt, et la ligne qui l'annonce dit pourquoi il est replié.
+   Le PDF, lui, sort à la bonne taille — c'est ce qui compte. */
+@media (max-width: 560px) {
+    .fp-apercu-repli { display: block; }
+    .fp-apercu-repli > summary {
+        cursor: pointer; list-style: none; padding: 10px 2px; min-height: 44px;
+        display: flex; align-items: center; gap: 8px;
+        font-size: .86rem; font-weight: 700; color: var(--text-muted);
+    }
+    .fp-apercu-repli > summary::-webkit-details-marker { display: none; }
+    .fp-apercu-repli > summary::before { content: '\25b8'; transition: transform .15s ease; }
+    .fp-apercu-repli[open] > summary::before { transform: rotate(90deg); }
+}
+/* Au-delà du téléphone, le repli n'en est pas un : l'aperçu est toujours là et
+   sa ligne d'annonce disparaît. */
+@media (min-width: 561px) {
+    .fp-apercu-repli > summary { display: none; }
+}
 .fp-apercu {
     position: relative; background: #fff; overflow: hidden;
     border: 1px solid var(--border); border-radius: 4px;
@@ -1411,7 +2558,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     padding: 0 .35em; margin-left: .5em; cursor: pointer; white-space: nowrap;
     line-height: 1.35;
 }
-.fp-fantome:hover { color: var(--primary, #6366f1); border-color: var(--primary, #6366f1); }
+@media (hover: hover) {
+    .fp-fantome:hover { color: var(--primary, #6366f1); border-color: var(--primary, #6366f1); }
+}
 .fp-fantome--case { border-style: dotted; }
 /* LA CROIX QUI RETIRE UN CHAMP D'EN-TÊTE.
    Rémy : « on ne peut les supprimer ». On pouvait : le clic marchait, et une
@@ -1427,7 +2576,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .fp-champ:hover .fp-champ-x,
 .fp-champ:focus-within .fp-champ-x { opacity: .75; }
-.fp-champ-x:hover { opacity: 1; color: #fff; background: var(--danger, #c0392b); }
+@media (hover: hover) {
+    .fp-champ-x:hover { opacity: 1; color: #fff; background: var(--danger-fond); }
+}
 @media (hover: none) { .fp-champ-x { opacity: .6; } }
 .fp-champ i { font-style: normal; color: #4a5568; }
 
@@ -1483,8 +2634,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     transition: opacity .12s, background .12s;
 }
 .fx-rang + .fx-roue { margin-left: 4px; }
-.fx-rang:hover:not(:disabled), .fx-rang:focus-visible {
-    opacity: 1; background: rgba(0, 0, 0, .07);
+.fx-rang:focus-visible { opacity: 1; background: rgba(0, 0, 0, .07); }
+@media (hover: hover) {
+    .fx-rang:hover:not(:disabled) { opacity: 1; background: rgba(0, 0, 0, .07); }
 }
 .fx-rang:disabled { opacity: .12; cursor: default; }
 .fx-rang:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
@@ -1499,7 +2651,10 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border-radius: 6px; background: transparent; color: inherit;
     opacity: .45; cursor: pointer; transition: opacity .12s, background .12s;
 }
-.fx-roue:hover, .fx-roue:focus-visible { opacity: 1; background: rgba(0, 0, 0, .07); }
+.fx-roue:focus-visible { opacity: 1; background: rgba(0, 0, 0, .07); }
+@media (hover: hover) {
+    .fx-roue:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
+}
 .fx-roue:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 
 /* LE RÉSUMÉ DU REPLI : ce qu'il contient, dit sans qu'on l'ouvre. Discret —
@@ -1525,8 +2680,22 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     /* AU-DESSUS DE LA MODALE QUI L'A OUVERT : la fiche vit dans une
        « modal-overlay--top » à z-index 999999, et un panneau posé en dessous
        existe sans se voir — le pire des deux mondes. */
-    position: fixed; z-index: 1000001; min-width: 190px;
+    /* UNE LARGEUR BORNÉE, pour que la hauteur ne dépende pas de l'endroit où
+       le panneau se trouve quand on la mesure. Sans elle, il s'étale tant
+       qu'il n'est pas posé, puis se replie — et se retrouve plus haut qu'on ne
+       l'avait cru. Les panneaux mesurés font 224 à 247 px : 320 ne change
+       donc rien à ce qu'on voit, seulement à ce qu'on mesure. */
+    position: fixed; z-index: 1000001;
+    min-width: 190px; max-width: min(320px, calc(100vw - 16px));
     display: flex; flex-direction: column; gap: 8px;
+    /* PLUS HAUT QUE L'ÉCRAN : ALORS IL DÉFILE.
+       Les réglages en listes à cocher — « les étapes travaillées », « les
+       paliers travaillés » — font des panneaux de 607 px. Sur un portable
+       posé en paysage, c'est plus que la fenêtre entière : sans défilement, il
+       faudrait choisir quelle moitié on sacrifie. La hauteur est posée par
+       `poserContre`, qui connaît l'écran ; ici on dit seulement quoi faire du
+       trop-plein. */
+    overflow-y: auto; overscroll-behavior: contain;
     padding: 12px; border-radius: 12px;
     background: var(--bg-panel); border: 1px solid var(--border);
     box-shadow: 0 14px 40px rgba(0, 0, 0, .22);
@@ -1583,7 +2752,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     color: var(--text-main); border-radius: 9px; cursor: pointer;
     font: inherit; font-weight: 700; font-size: 12px; padding: 6px 10px;
 }
-.pp-roue-autres:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+@media (hover: hover) {
+    .pp-roue-autres:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+}
 
 /* UNE GRILLE SE CHANGE EN CLIQUANT DESSUS. « Autres grilles » refait la feuille
    entière : quand une seule ne convient pas, on perdait les onze autres pour la
@@ -1600,11 +2771,14 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     background: var(--primary); color: #fff; border-radius: 0 5px 0 6px;
     padding: 2px 7px; transition: opacity .12s; pointer-events: none;
 }
-.fp-bloc:hover {
-    border-color: var(--primary);
-    background: color-mix(in srgb, var(--primary) 8%, transparent);
+@media (hover: hover) {
+    .fp-bloc:hover { border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 8%, transparent); }
 }
-.fp-bloc:hover > span, .fp-bloc:focus-visible > span { opacity: 1; }
+.fp-bloc:focus-visible > span { opacity: 1; }
+@media (hover: hover) {
+    .fp-bloc:hover > span { opacity: 1; }
+}
 .fp-bloc:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .fp-grille { position: absolute; border-collapse: collapse; }
 .fp-grille td {
@@ -1640,6 +2814,39 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
        exactement là où il doit être fiable. */
     font-family: Helvetica, Arial, sans-serif;
 }
+/* LA COUCHE DE DESSIN NE PREND PAS LES CLICS.
+   ─────────────────────────────────────────────
+   RÉMY, trois fois : « sur le 9, 10, 11 les paramètres ne sont toujours pas
+   accessibles. Depuis tout le temps ! »
+
+   Chaque page porte un `<svg>` en `position:absolute` qui occupe toute sa
+   surface et déborde (`overflow:visible`) : c'est là que se peignent la droite
+   graduée, le repère, les figures. Un SVG n'attrape le clic que là où il a
+   DESSINÉ quelque chose — d'où un défaut qui ne frappait que les exercices à
+   dessin, et seulement quand leur tracé passait par-dessus le bandeau du
+   dessus. L'engrenage était là, visible, et le clic tombait sur le trait d'une
+   droite numérique.
+
+   MESURÉ sur une fiche de neuf exercices, en amenant chaque élément sous les
+   yeux puis en demandant qui reçoit le clic (`tools/tmp/sondeSvg.mjs`) :
+   13 éléments cliquables sur 80 étaient inatteignables, et le voile n'en
+   épargnait aucune sorte —
+
+       2 engrenages + 4 flèches ▲▼   (« La Loupe sur la Droite », « Lire des
+                                       Coordonnées »)
+       7 textes à récrire            le bandeau dit « clique un titre, une
+                                     consigne ou un calcul pour le récrire »,
+                                     et sur ces exercices-là il mentait.
+
+   Après : 0 sur 80. Et les 48 couches de dessin de cette fiche ne contiennent
+   RIEN de cliquable — ni retouche, ni bouton, ni écouteur —, donc elles n'ont
+   aucune raison de prendre un clic.
+
+   POURQUOI JE NE L'AVAIS PAS VU : mes sondes cliquaient en JavaScript, ce qui
+   traverse tout. Un professeur, lui, clique avec une souris. Une mesure qui
+   n'emprunte pas le chemin de l'utilisateur ne mesure pas son problème. */
+.fq-page > svg { pointer-events: none; }
+
 /* LES PAGES DE SOLUTIONS SE REPÈRENT EN DÉFILANT. L'aperçu montre maintenant
    le document entier — questions puis corrigé — et sans marque on ne sait plus,
    à mi-défilement, de quel côté de la pile on se trouve. Un liseré suffit :
@@ -1664,11 +2871,48 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     vertical-align: baseline; line-height: 1; margin: 0 .12em;
     transform: translateY(-.29em);
 }
-.fx-frac-n { border-bottom: 1px solid currentColor; padding: 0 .18em .04em; }
+/* LE TRAIT DE FRACTION COURT SUR TOUTE LA LARGEUR DE LA FRACTION.
+
+   Rémy : « le trait de fraction est parfois très grand ». Le trait EST la
+   bordure basse du numérateur ; il valait donc la largeur du numérateur seul.
+   Quand c'est le DÉNOMINATEUR qui est le plus large — « 6 / 15 » —, le trait
+   s'arrêtait au milieu ; et quand le numérateur était la place à remplir, il
+   courait sur toute la longueur des espaces.
+
+   `align-self: stretch` le fait valoir la largeur de la colonne,
+   c'est-à-dire celle du plus large des deux étages — ce que le PDF trace
+   depuis toujours (`largeurFraction`). */
+.fx-frac-n {
+    border-bottom: 1px solid currentColor; padding: 0 .18em .04em;
+    align-self: stretch; text-align: center;
+}
+/* L'étage à remplir : sa largeur est posée en `ch` par `ligneHtml`, et son
+   contenu est vide — les espaces de la place à remplir la rendaient sinon
+   aussi longue qu'eux. */
+.fx-frac-trou { display: inline-block; }
 .fx-frac-d { padding: .04em .18em 0; }
 /* Le « à peu près égal » : dans l'aperçu on l'écrit, dans le PDF on le trace —
    les polices standard d'un PDF ne le connaissent pas. */
 .fx-presque { padding: 0 .05em; }
+
+/* L'EXPOSANT NE DOIT PAS FAIRE DESCENDRE SA LIGNE.
+
+   Rémy, capture d'un aperçu de fiche : « pour l'impression des calculs en
+   puissance, le nombre en puissance est décalé par rapport aux numéros ». Le
+   « 163. » était sur sa ligne, le « 2³ = » un peu plus bas.
+
+   MESURÉ, sur la fiche des puissances contre une fiche d'additions : la ligne
+   qui porte un exposant fait 17,5 px de haut au lieu de 14, et comme chaque
+   ligne est posée en ABSOLU à un `top` fixe, ces 3,5 px de plus s'ajoutent
+   au-dessus — c'est donc la BASE qui descend de 3,5 px. Le numéro, lui, n'a
+   pas d'exposant et ne bouge pas. Sur une feuille de trente calculs, l'œil
+   voit la ligne onduler.
+
+   `line-height: 0` rend l'exposant transparent au calcul de la hauteur de
+   ligne ; son décalage vers le haut reste celui du navigateur
+   (`vertical-align: super`), qui est déjà ce que le PDF dessine de son côté —
+   voir `ligneHtml` dans ui/ficheRendu.js. */
+.fx-haut { line-height: 0; }
 
 /* LE TROU À REMPLIR, écrit dans la ligne : impossible qu'il dérive. */
 .fx-trou { border-bottom: 1px dotted #9aa3b2; }
@@ -1677,6 +2921,18 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fq-num { position: absolute; font-weight: 700; color: #1a202c; line-height: 1.05; }
 .fq-ligne { position: absolute; line-height: 1.05; white-space: pre; }
 .fq-choix { position: absolute; color: #5a6270; line-height: 1.05; white-space: pre; }
+
+/* LE RADICAL DE L'APERÇU DE FICHE n'a PLUS de style à lui.
+
+   J'en avais écrit un — le caractere racine suivi d'un `overline` — et Remy a
+   vu tout de suite ce que cela donnait : « il faut bien que la racine carree
+   soit continue, la il y a une rupture sur ce que tu as fait ». Un glyphe de
+   police et un soulignement ne se rejoignent pas : ni la meme epaisseur, ni la
+   meme hauteur.
+
+   L'apercu emploie desormais `formule()` de `core/maths/formule.js`, dont le
+   crochet et la barre sont deux traces SVG aux memes reglages — les styles
+   `fx-*` de `components.css` suffisent. UN SEUL RENDU POUR UNE SEULE CHOSE. */
 /* La ligne à remplir : des pointillés, pas un trait plein — un trait plein
    ressemble à une réponse déjà écrite quand on photocopie en gris. */
 .fq-reponse { position: absolute; border-top: 1px dotted #9aa3b2; }
@@ -1730,7 +2986,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     /* Le navigateur ne doit pas prendre le glissement pour un défilement. */
     touch-action: none;
 }
-.bb-grip:hover { color: var(--text-main); }
+@media (hover: hover) {
+    .bb-grip:hover { color: var(--text-main); }
+}
 .bb-grip:active { cursor: grabbing; }
 .bb-btn {
     flex: 0 0 auto; width: 30px; height: 30px; padding: 0;
@@ -1739,8 +2997,12 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     background: var(--bg-hover); color: var(--text-main);
     font: inherit; font-size: 14px; font-weight: 800;
 }
-.bb-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-.bb-btn--fermer:hover, .bb-btn--vider:hover { background: var(--danger); border-color: var(--danger); }
+@media (hover: hover) {
+    .bb-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+}
+@media (hover: hover) {
+    .bb-btn--fermer:hover, .bb-btn--vider:hover { background: var(--danger); border-color: var(--danger); }
+}
 /* Le titre est un bouton : il ouvre la LISTE des exercices. */
 .bb-titre {
     flex: 0 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 7px;
@@ -1750,7 +3012,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .bb-titre span { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .bb-titre b { flex: 0 0 auto; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.bb-titre:hover { border-color: var(--border); background: var(--bg-hover); }
+@media (hover: hover) {
+    .bb-titre:hover { border-color: var(--border); background: var(--bg-hover); }
+}
 .bb-chevron { flex: 0 0 auto; color: var(--text-muted); font-size: 10px; }
 
 /* --- LA LISTE DÉROULANTE DE LA BARRE DE PASSE ------------------------------
@@ -1772,7 +3036,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     padding: 5px 8px; border: 0; border-radius: 7px; cursor: pointer;
     background: transparent; color: var(--text-main); font: inherit; font-size: 13px;
 }
-.bb-l:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .bb-l:hover { background: var(--bg-hover); }
+}
 /* Celui qu'on regarde : on doit le retrouver d'un coup d'œil dans une liste
    qui fait dix écrans de haut. */
 .bb-l--ici { background: color-mix(in srgb, var(--primary) 16%, transparent); font-weight: 800; }
@@ -1788,7 +3054,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     white-space: nowrap; }
 /* Un point pour « déjà annoté » : au milieu d'une passe, c'est ce qu'on
    cherche — où l'on s'est arrêté. */
-.bb-l-note { flex: 0 0 auto; color: var(--success); font-weight: 900; }
+.bb-l-note { flex: 0 0 auto; color: var(--success-texte); font-weight: 900; }
 /* LA REMARQUE PREND TOUTE LA PLACE QUI RESTE : c'est elle qu'on vient écrire,
    pas les boutons qu'on vient regarder. */
 .bb-note {
@@ -1802,7 +3068,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    à la prise du focus : la barre se reflowait, les flèches se déplaçaient sous
    le doigt, et le premier clic après avoir tapé ne faisait que sortir du champ.
    On perdait un geste sur deux sans comprendre pourquoi. */
-.bb-etat { flex: 0 0 auto; width: 14px; color: var(--success); font-weight: 800; }
+.bb-etat { flex: 0 0 auto; width: 14px; color: var(--success-texte); font-weight: 800; }
 @media (max-width: 560px) {
     .bb-titre span { display: none; }
     #banc-barre { gap: 4px; padding: 5px; }
@@ -1854,7 +3120,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
     background: var(--bg-hover); color: var(--text-muted);
 }
-.flot-cmd button:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+@media (hover: hover) {
+    .flot-cmd button:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+}
 
 /* REPLIÉS, LES RÉGLAGES DISPARAISSENT ET LA FEUILLE PREND TOUT. C'est ce qu'on
    veut neuf fois sur dix : on a réglé une fois, on regarde ensuite cent
@@ -1899,7 +3167,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     gap: 3px; padding-right: 1px; opacity: 0; transition: opacity .12s ease;
     pointer-events: none;
 }
-.fx-qgestes:hover, .fq-page:hover .fx-qgestes:focus-within { opacity: 1; }
+@media (hover: hover) {
+    .fx-qgestes:hover, .fq-page:hover .fx-qgestes:focus-within { opacity: 1; }
+}
 /* La zone reste sensible au pointeur même invisible, sinon on ne peut pas la
    survoler pour la faire paraître. Et elle passe AU-DESSUS du texte : depuis
    que l'énoncé se retouche d'un clic, il recouvrait les deux boutons — ils
@@ -1913,8 +3183,12 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     font-size: 9px; line-height: 1; cursor: pointer;
     box-shadow: 0 1px 4px rgba(0, 0, 0, .16);
 }
-.fx-qgeste:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
-.fx-qgeste--sup:hover { background: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
+@media (hover: hover) {
+    .fx-qgeste:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+}
+@media (hover: hover) {
+    .fx-qgeste--sup:hover { background: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
+}
 .fx-qgeste:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 
 /* LE CALCUL PRIORITAIRE, SOULIGNÉ dans le corrigé des priorités. Le gras est
@@ -1968,11 +3242,15 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     background: var(--bg-app); color: var(--text-muted);
     font-size: .7rem; font-weight: 700; cursor: pointer;
 }
-.cx-tete-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+@media (hover: hover) {
+    .cx-tete-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+}
 .cx-tete-btn[aria-pressed="true"] {
     background: var(--primary); border-color: var(--primary); color: #fff;
 }
-.cx-fermer:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+@media (hover: hover) {
+    .cx-fermer:hover { background: var(--danger-fond); border-color: var(--danger); color: #fff; }
+}
 
 /* L'ÉCRAN : ce qu'on tape en petit, le résultat en grand — l'inverse de ce
    qu'on lit d'abord serait une calculatrice qu'on relit deux fois. */
@@ -2012,11 +3290,13 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
        cinq — c'est la même règle que le pavé de réponse des exercices. */
     transition: background .1s ease, transform .05s ease;
 }
-.cx-t:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .cx-t:hover { background: var(--bg-hover); }
+}
 .cx-t:active { transform: scale(.94); background: var(--bg-hover); }
 .cx-t--gris { background: var(--bg-app); color: var(--text-muted); font-size: .95rem; }
-.cx-t--op { color: var(--primary); font-size: 1.12rem; }
-.cx-t--fn { height: 32px; font-size: .8rem; background: var(--bg-app); color: var(--primary); }
+.cx-t--op { color: var(--primary-texte); font-size: 1.12rem; }
+.cx-t--fn { height: 32px; font-size: .8rem; background: var(--bg-app); color: var(--primary-texte); }
 /* LE « = » EST EN BAS À DROITE, comme sur toutes les machines de poche : c'est
    la seule touche qu'on cherche sans regarder, et la déplacer d'une case coûte
    un coup d'œil à chaque calcul. Elle occupe UNE case, pas deux : à cheval sur
@@ -2027,7 +3307,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     background: var(--primary); border-color: var(--primary);
     color: #fff; font-size: 1.15rem;
 }
-.cx-t--egal:hover { background: var(--primary-hover); }
+@media (hover: hover) {
+    .cx-t--egal:hover { background: var(--primary-hover); }
+}
 
 /* L'ERREUR SE SECOUE, elle n'efface rien : ce qui est tapé reste tapé, et il
    n'y a qu'un signe à corriger plutôt qu'un calcul entier à recopier. */
@@ -2127,7 +3409,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
     padding: 5px 10px; font-size: .8rem; min-height: 32px;
 }
-.path-selection-btn:hover { border-color: var(--primary); color: var(--primary); }
+@media (hover: hover) {
+    .path-selection-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .path-selection-btn--fin { margin-left: auto; color: var(--text-muted); }
 
 /* Une étape non obligatoire se lit d'un coup d'œil : liseré en pointillé, et
@@ -2138,6 +3422,27 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     letter-spacing: .04em; color: var(--text-muted);
     border: 1px solid var(--border); border-radius: 999px; padding: 1px 6px;
 }
+
+/* CE QUI NE SE NOTERA PAS, quand la séance note.
+   Rémy : « comment juges-tu un exercice comme l'organigramme des quadrilatères
+   en mode évaluation ? » Il ne se juge pas — et il faut le voir AVANT la
+   séance. La marque reprend l'orange d'avertissement, pas le rouge : ce n'est
+   pas une erreur, c'est un choix dont on doit connaître la conséquence. */
+.path-step-sansnote {
+    flex: 0 0 auto; font-size: .66rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--warning-texte);
+    border: 1px solid var(--warning); border-radius: 999px; padding: 1px 6px;
+}
+.path-avis-sans-note {
+    /* `.path-summary` est une ligne de texte, pas une grille : le bloc se pose
+       dessous en `block`, et non en élément de flex qui s'écraserait. */
+    display: block; margin-top: 6px; padding: 7px 10px;
+    border-radius: 9px; font-size: .78rem; line-height: 1.4;
+    color: var(--warning-texte);
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+}
+.path-avis-sans-note b { display: block; }
 
 /* --- LES RÉGLAGES GLOBAUX, deuxième ligne de la barre -----------------------
    Rémy : « on essaie de faire des réglages globaux. Rends cela simple. » Deux
@@ -2175,7 +3480,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    obligatoire soit entouré. Je pense qu'il y a une confusion. » Trois boutons
    côte à côte ressemblent à trois actions ; ils décrivent aussi un état. */
 .path-selection-btn--actif {
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
     background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
 }
@@ -2183,7 +3488,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     margin-left: auto; border-color: var(--primary);
     background: var(--primary); color: #fff;
 }
-.path-selection-btn--valider:hover { filter: brightness(1.08); color: #fff; }
+@media (hover: hover) {
+    .path-selection-btn--valider:hover { filter: brightness(1.08); color: #fff; }
+}
 
 /* Sans rien de coché, la barre se réduit à son bouton : « Tout sélectionner »
    doit rester atteignable, sinon il faudrait cocher une case à la main pour
@@ -2309,7 +3616,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .verrou-erreur {
     min-height: 1.3em; margin: 8px 0 12px; font-size: .9rem; font-weight: 600;
-    color: var(--danger);
+    color: var(--danger-texte);
 }
 .verrou-ok {
     border: none; background: var(--primary); color: #fff; font: inherit; font-weight: 700;
@@ -2343,7 +3650,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .cl-lien {
     border: none; background: none; padding: 0; font: inherit; cursor: pointer;
-    color: var(--primary); text-decoration: underline;
+    color: var(--primary-texte); text-decoration: underline;
 }
 
 
@@ -2383,7 +3690,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .ds-niveau {
     border: none; background: none; padding: 0 0 4px; cursor: pointer; font: inherit;
     font-weight: 800; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
-    color: var(--primary);
+    color: var(--primary-texte);
 }
 .ds-classes { display: flex; flex-wrap: wrap; gap: 6px; }
 .ds-classe, .ds-eleve, .ds-choix {
@@ -2477,7 +3784,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .pc-mode-nom {
     font-weight: 800; font-size: .78rem; letter-spacing: .04em;
-    text-transform: uppercase; color: var(--primary);
+    text-transform: uppercase; color: var(--primary-texte);
 }
 .pc-mode-select {
     width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit;
@@ -2512,20 +3819,70 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pc-eff { font-size: .78rem; color: var(--text-muted); flex: 0 0 auto; }
+/* LE CODE, SEULEMENT QUAND DEUX CLASSES PORTENT LE MÊME NOM. Deux « 4C »
+   indiscernables, c'est un devoir donné à la classe d'à côté. Partout
+   ailleurs il ferait du bruit permanent pour un problème rare. */
+.pc-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .68rem; letter-spacing: .06em; flex: 0 0 auto;
+    padding: 1px 5px; border-radius: 5px;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-muted);
+}
 
 .pc-puce {
     flex: 0 0 auto; font-size: .68rem; font-weight: 800; letter-spacing: .02em;
     padding: 2px 6px; border-radius: 999px; white-space: nowrap;
 }
-.pc-vif { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
-.pc-attente { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary); }
+.pc-vif { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success-texte); }
+.pc-attente { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary-texte); }
 .pc-calme { background: color-mix(in srgb, var(--text-muted) 18%, transparent); color: var(--text-muted); }
 
 .pc-bilan {
     flex: 0 0 auto; border: none; background: none; padding: 2px 4px; cursor: pointer;
-    font: inherit; font-size: .78rem; font-weight: 700; color: var(--primary);
+    font: inherit; font-size: .78rem; font-weight: 700; color: var(--primary-texte);
     text-decoration: underline; text-underline-offset: 2px;
 }
+/* REMETTRE À ZÉRO — un geste rare, et qui efface.
+
+   IL EST ÉCRIT EN TOUTES LETTRES, et c'est une correction : Rémy, devant la
+   première version, « je ne trouve pas ta flèche qui tourne ». Un « ↺ » seul ne
+   se cherche pas, et il se confond avec le « ↻ Donner un rattrapage » qui vit
+   sur l'écran d'à côté. La flèche reste, mais devant un mot.
+
+   44 PX DE HAUT, comme toutes les cibles tactiles du logiciel — et ici la rater
+   veut dire toucher « bilan », ce qui est sans gravité, ou la toucher PAR
+   ERREUR, ce qui ne l'est pas. C'est aussi pour cela qu'on demande
+   confirmation. */
+.pc-remettre {
+    flex: 0 0 auto; min-height: 44px; padding: 0 10px;
+    border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+    background: none; cursor: pointer; border-radius: 10px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--danger-texte);
+}
+@media (hover: hover) {
+    .pc-remettre:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+}
+.pc-remettre:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* DANS UNE LIGNE D'ÉLÈVE, il se fait tout petit : la ligne porte déjà un nom,
+   un chiffre et « bilan ». Il ressemble alors à son voisin plutôt qu'à un
+   bouton d'action principale. */
+.pc-remettre--ligne {
+    min-height: 32px; padding: 2px 6px; border: none;
+    font-size: .74rem; font-weight: 700; color: var(--text-muted);
+    text-decoration: underline; text-underline-offset: 2px;
+}
+@media (hover: hover) {
+    .pc-remettre--ligne:hover { color: var(--danger-texte); background: none; }
+}
+/* SOUS LE BILAN QU'ELLE EFFACE : séparée par un filet, pour qu'on ne la prenne
+   pas pour la suite du mot qu'on vient d'écrire. */
+.pc-remise {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+.pc-remise-dit { font-size: .8rem; color: var(--text-muted); flex: 1 1 180px; }
+
 /* CLORE EST DISCRET MAIS PRÉSENT. C'est un geste qu'on fait une fois par
    séance, pas un bouton d'action principale — mais il doit être là, à côté du
    bilan qu'on lit juste après. */
@@ -2534,7 +3891,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     font: inherit; font-size: .74rem; font-weight: 700; color: var(--text-muted);
     text-decoration: underline; text-underline-offset: 2px;
 }
-.pc-clore:hover { color: var(--text-main); }
+@media (hover: hover) {
+    .pc-clore:hover { color: var(--text-main); }
+}
 .pc-plier {
     flex: 0 0 auto; border: none; background: none; cursor: pointer;
     font-size: .9rem; color: var(--text-muted); padding: 2px 4px;
@@ -2554,6 +3913,14 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     display: flex; align-items: baseline; gap: 6px; font-size: .84rem;
     padding: 2px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
 }
+/* LA CASE D'UN ÉLÈVE. Rémy : « il faudrait pouvoir, en cliquant sur la classe,
+   ne le donner qu'à certains élèves ». Une poignée de cases plutôt qu'un objet
+   « groupe » à créer, nommer et tenir à jour : un groupe change toutes les
+   semaines, une case ne demande rien à ranger. */
+.pc-eleve-case { display: flex; align-items: center; flex: 0 0 auto; cursor: pointer; }
+.pc-eleve-case input { cursor: pointer; }
+.pc-eleve-case input:disabled { cursor: default; opacity: .45; }
+.pc-vide--note { font-size: .76rem; margin: 2px 0 6px; }
 .pc-eleve-nom { flex: 1 1 auto; min-width: 0; color: var(--text-main);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pc-chiffre { flex: 0 0 auto; font-size: .76rem; color: var(--text-muted); }
@@ -2565,6 +3932,18 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     font-size: .85rem; line-height: 1.35; color: var(--text-main);
 }
 .pc-vide { font-size: .84rem; color: var(--text-muted); line-height: 1.4; }
+/* LE SERVEUR N'A PAS RÉPONDU — ce n'est pas un état vide, c'est un
+   incident. Voir `lireClasses` dans ui/donnerSeance.js : le panneau
+   annonçait « Vous n'avez pas encore de classe » à un professeur qui en
+   a deux. La couleur d'alerte le distingue d'un simple manque. */
+.pc-vide--muet { color: var(--warning-texte); }
+.pc-reessayer {
+    display: inline-block; margin-left: 6px;
+    border: 1px solid currentColor; border-radius: 999px;
+    background: none; color: inherit; font: inherit; font-weight: 600;
+    padding: 3px 12px; cursor: pointer;
+}
+.pc-reessayer:disabled { opacity: .6; cursor: default; }
 
 /* LE BILAN S'OUVRE SOUS LA LISTE, pas dans une boîte par-dessus : on veut
    pouvoir passer d'un élève à l'autre sans refermer, et une boîte modale
@@ -2582,7 +3961,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .pc-resume { margin: 0 0 6px; font-size: .84rem; color: var(--text-muted); line-height: 1.35; }
 .pc-phrase { margin: 0 0 8px; font-size: .87rem; line-height: 1.4; color: var(--text-main); }
 .pc-alerte {
-    margin: 0 0 8px; font-size: .84rem; font-weight: 700; color: var(--danger);
+    margin: 0 0 8px; font-size: .84rem; font-weight: 700; color: var(--danger-texte);
 }
 .pc-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
 .pc-table th {
@@ -2592,7 +3971,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .pc-table td { padding: 3px 4px; border-top: 1px solid var(--border); color: var(--text-main); }
 .pc-table td:nth-child(2), .pc-table td:nth-child(3),
 .pc-table th:nth-child(2), .pc-table th:nth-child(3) { text-align: right; width: 4.5em; }
-.pc-rouge { color: var(--danger); font-weight: 800; }
+.pc-rouge { color: var(--danger-texte); font-weight: 800; }
 
 .pc-liste { margin: 0; padding-left: 0; list-style: none; font-size: .84rem; line-height: 1.5; }
 .pc-liste li { display: flex; align-items: baseline; gap: 6px; color: var(--text-main); }
@@ -2604,7 +3983,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    la marge, et non comme une donnée de plus. */
 .pc-mot {
     display: block; margin: 6px 0 0; font-size: .82rem; font-style: italic;
-    color: var(--primary);
+    color: var(--primary-texte);
 }
 .pc-eleves-bilan { display: flex; flex-direction: column; gap: 1px; }
 .pc-fermer-rapport {
@@ -2655,7 +4034,9 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border: none; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
     background: none; font: inherit; padding: 4px 2px;
 }
-.pc-eleve--clic:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+@media (hover: hover) {
+    .pc-eleve--clic:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+}
 .pc-consigne-eleve {
     font-size: .8rem; color: var(--text-muted); line-height: 1.25;
     overflow: hidden; text-overflow: ellipsis;
@@ -2665,7 +4046,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .pc-pdf, .pc-retour {
     margin-top: 10px; width: 100%; padding: 8px; font: inherit; font-size: .84rem;
     font-weight: 700; border-radius: 9px; cursor: pointer;
-    border: 1.5px solid var(--primary); color: var(--primary);
+    border: 1.5px solid var(--primary); color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
 }
 .pc-pdf:disabled { opacity: .6; cursor: progress; }
@@ -2682,7 +4063,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .pc-rattr {
     display: flex; align-items: center; gap: 8px;
     margin: 2px 0 0 22px; padding: 3px 0;
-    color: var(--warning); font-size: .78rem; font-weight: 700;
+    color: var(--warning-texte); font-size: .78rem; font-weight: 700;
 }
 .pc-rattr > span { flex: 1 1 auto; min-width: 0; }
 
@@ -2691,10 +4072,12 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .pc-rattrapage {
     padding: 8px; font: inherit; font-size: .84rem; font-weight: 700;
     border-radius: 9px; cursor: pointer;
-    border: 1.5px solid var(--warning); color: var(--warning);
+    border: 1.5px solid var(--warning); color: var(--warning-texte);
     background: color-mix(in srgb, var(--warning) 10%, var(--bg-panel));
 }
-.pc-rattrapage:hover { filter: brightness(1.06); }
+@media (hover: hover) {
+    .pc-rattrapage:hover { filter: brightness(1.06); }
+}
 
 /* LE MOT QU'ON ÉCRIT À UN ÉLÈVE — sous son bilan, parce que c'est là qu'on a
    quelque chose à lui dire. */
@@ -2725,9 +4108,1061 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .rt-nom { font-weight: 700; }
 /* LE TAUX EST LA RAISON D'ÊTRE DE LA LIGNE : il se lit d'un coup d'œil, et il
    est en ambre parce qu'il est en dessous du seuil. */
-.rt-taux { color: var(--warning); font-weight: 800; font-variant-numeric: tabular-nums; }
+.rt-taux { color: var(--warning-texte); font-weight: 800; font-variant-numeric: tabular-nums; }
 .rt-ok {
     padding: 11px; font: inherit; font-weight: 800; border: 0; border-radius: 10px;
     color: #fff; background: var(--primary); cursor: pointer;
 }
-.rt-ok:hover { filter: brightness(1.06); }
+@media (hover: hover) {
+    .rt-ok:hover { filter: brightness(1.06); }
+}
+
+/* ─────────────────────────────────────────────── LE POSTE ÉLÈVE ──────────
+   La seconde fenêtre, celle où le professeur se met à la place d'un élève.
+
+   LE BANDEAU EST EN BAS, ET C'EST RÉFLÉCHI. En haut, il aurait recouvert la
+   barre de l'application — donc changé ce qu'on est venu regarder. En bas, il
+   ne masque que la barre de navigation du bas, dont on ajoute la hauteur en
+   marge : l'écran de l'élève reste exactement l'écran de l'élève.
+
+   IL NE S'IMPRIME PAS : une fiche tirée depuis le poste élève doit être la
+   fiche de l'élève, pas une page barrée d'un bandeau orange. */
+.poste-bandeau {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 2147483000;
+    background: #7c2d12;
+    color: #fff;
+    box-shadow: 0 -2px 14px rgba(0, 0, 0, .28);
+    font-size: .9rem;
+}
+
+.poste-bandeau-dedans {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 10px 16px;
+}
+
+.poste-pastille {
+    flex: none;
+    background: #fb923c;
+    color: #431407;
+    font-weight: 800;
+    letter-spacing: .02em;
+    border-radius: 999px;
+    padding: 3px 12px;
+    white-space: nowrap;
+}
+
+.poste-texte { flex: 1 1 260px; line-height: 1.4; }
+.poste-texte b { color: #fed7aa; }
+
+.poste-sortir {
+    flex: none;
+    background: transparent;
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, .6);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+@media (hover: hover) {
+    .poste-sortir:hover { background: rgba(255, 255, 255, .14); }
+}
+
+/* De quoi ne rien cacher du contenu qui se termine tout en bas. */
+html.poste-eleve body { padding-bottom: 64px; }
+
+/* DANS UN CADRE DU MUR, LE BANDEAU SE RÉDUIT À SON ÉTIQUETTE.
+   Voir `dansUnCadre` dans ui/posteEleve.js : mesuré dans la largeur d'une case,
+   116 px ramenés à 25, pour redire le nom que le mur écrit déjà en tête de
+   chaque case. On garde la pastille — un écran d'élève doit se reconnaître d'un coup
+   d'œil, même petit — et l'on rend le reste à ce qu'on est venu regarder. */
+.poste-bandeau-dedans--cadre {
+    gap: 7px; padding: 4px 9px; font-size: .78rem; max-width: none;
+    flex-wrap: nowrap; justify-content: flex-start;
+}
+.poste-bandeau-dedans--cadre .poste-pastille { padding: 1px 8px; font-size: .72rem; }
+.poste-bandeau-dedans--cadre .poste-texte {
+    flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+html.poste-dans-cadre body { padding-bottom: 30px; }
+
+@media print {
+    .poste-bandeau { display: none !important; }
+    html.poste-eleve body { padding-bottom: 0; }
+}
+
+/* Le numéro de version, discret mais lisible : on le cherche quand quelque
+   chose ne ressemble pas à ce qu'on attendait, pas le reste du temps. */
+.ec-pied-version {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    /* `--texte-doux` n'a jamais existé : le repli codé en dur s'appliquait
+       donc toujours, et ce gris-là donne 2,45 de contraste sur le fond de
+       l'application — le numéro de version était illisible dans les cinq
+       thèmes. Le jeton du texte second existe, il suffisait de l'appeler. */
+    color: var(--text-muted);
+    font-size: .82rem;
+    letter-spacing: .02em;
+}
+
+/* ── LES PORTES DU PROFESSEUR ──────────────────────────────────────────────
+   Deux zones nommées, toujours visibles, au milieu de la barre du haut —
+   exactement là où l'élève a les siennes. Rémy : « j'ai l'impression que l'on
+   se perd un peu ». On se perdait parce que la moitié du métier était rangée
+   derrière un engrenage, c'est-à-dire derrière le mot « réglages ». */
+.nav-center--prof { gap: 4px; }
+.nav-center--prof .top-nav-tab { font-weight: 700; }
+
+/* ── LA CLASSE EN PAGE, PAS EN FENÊTRE ─────────────────────────────────────
+   Elle prend la place de l'atelier plutôt que de se poser dessus : la barre
+   du haut reste atteignable, il n'y a pas de voile gris, et l'on revient par
+   la porte « Préparer », au même endroit que l'aller. */
+#zone-classe {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-y: auto;
+    background: var(--bg-app);
+}
+
+body.classe-ouverte #sidebar,
+body.classe-ouverte #main-area { display: none !important; }
+
+/* ── LES PORTES DU PROFESSEUR SUR TÉLÉPHONE ────────────────────────────────
+   Rémy, capture d'un iPhone à l'appui : « Sur téléphone je ne vois pas où
+   faire les classes ».
+
+   Il ne les voyait pas parce qu'elles n'y étaient pas : une règle de mise en
+   page masque toute la zone centrale de la barre en mobile — elle a été écrite
+   pour les onglets de l'élève, qui ont leur barre du bas pour les remplacer.
+   Le professeur, lui, n'a pas de barre du bas : la règle lui retirait sa seule
+   porte, et il n'y avait plus AUCUN chemin vers ses classes depuis un
+   téléphone.
+
+   On les rend donc, sur une seconde ligne qui prend toute la largeur. Deux
+   portes nommées valent mieux qu'une barre courte : c'est la navigation, pas
+   une décoration, et un professeur qui fait cours avec son téléphone à la main
+   doit l'atteindre au pouce. */
+body.mobile-view #top-navbar { flex-wrap: wrap; height: auto; row-gap: 6px; }
+/* ET SEULEMENT POUR LE PROFESSEUR. Le `!important` de la ligne suivante passait
+   par-dessus le garde `body:not(.teacher-mode) .teacher-only { display: none }`
+   : mesure faite, un ELEVE connecte sur telephone voyait « Preparer » et « La
+   classe » — les deux plus gros boutons de son ecran. Ajouter `.teacher-mode`
+   au selecteur rend sa force au garde. */
+body.mobile-view.teacher-mode #top-navbar .nav-center--prof {
+    display: flex !important;
+    flex: 1 0 100%;
+    justify-content: stretch;
+    gap: 6px;
+    padding-bottom: 4px;
+}
+body.mobile-view .nav-center--prof .top-nav-tab { flex: 1 1 0; justify-content: center; }
+
+/* ── TROIS RANGÉES POUR UNE BARRE, C'ÉTAIT DEUX DE TROP ────────────────────
+   Rémy, capture d'un téléphone : « la zone prof en portable est horrible […]
+   quelle place perdue en haut ».
+
+   MESURÉ sur un écran de 390 × 844 : la barre du haut faisait 149 pixels, soit
+   DIX-HUIT POUR CENT de l'écran, en trois rangées de 44 :
+       0 → 44    ☰, AtoutMath, la pastille de rôle
+      50 → 98    « Préparer » / « La classe »
+     104 → 148   ⋯, plein écran, réglages, ★
+   La cause est l'ORDRE du document : les onglets du professeur sont au milieu
+   et prennent toute la largeur (`flex: 1 0 100%`), ce qui rejette le groupe
+   d'icônes — pourtant court — sur une troisième ligne.
+
+   On les descend donc en DERNIER : le groupe d'icônes remonte à côté du logo,
+   et il ne reste que deux rangées. `order` ne touche pas au document, donc ni
+   la lecture d'écran ni la tabulation ne changent d'ordre. */
+body.mobile-view.teacher-mode #top-navbar .nav-left { order: 1; }
+body.mobile-view.teacher-mode #top-navbar .nav-right { order: 2; }
+body.mobile-view.teacher-mode #top-navbar .nav-center--prof { order: 3; }
+
+/* ET LE PLEIN ÉCRAN S'EFFACE, POUR QUE LES DEUX GROUPES TIENNENT ENSEMBLE.
+   Mesuré : 178 px à gauche et 218 à droite font 396, pour 370 disponibles —
+   vingt-six de trop, et la barre se remettait sur trois lignes. Ce bouton-ci
+   est celui qu'on retire : sur l'iPhone de Rémy il ne fait RIEN (Safari iOS
+   n'ouvre pas le plein écran), et un professeur qui prépare un parcours ne
+   cherche pas à masquer sa propre barre d'outils. L'élève, lui, le garde. */
+body.mobile-view.teacher-mode #top-navbar #btn-fullscreen { display: none; }
+
+/* Les portes du professeur GARDENT LEUR NOM sur téléphone.
+   Une règle générale réduit les onglets à leur icône en dessous d'une certaine
+   largeur (`font-size: 0`) : elle a été écrite pour les QUATRE onglets de
+   l'élève, qui ne tiendraient pas autrement. Le professeur n'en a que deux, et
+   c'est précisément le défaut qu'on vient de corriger — une icône seule n'est
+   devinable que par celui qui l'a dessinée. */
+body.mobile-view .nav-center--prof .top-nav-tab { font-size: .9rem; gap: 7px; }
+
+/* LA CLASSE PREND LA PLACE DE L'ATELIER, SUR TÉLÉPHONE AUSSI.
+   La mise en page mobile du professeur empile l'atelier et le catalogue avec
+   des `display: flex !important` plus spécifiques que notre règle : les deux
+   écrans se retrouvaient l'un sous l'autre, « Mes classes » puis « Mon
+   Parcours » dans la même page. On reprend la main en étant plus spécifique
+   qu'elles, plutôt qu'en ajoutant un !important de plus — qui n'aurait rien
+   changé, la spécificité tranchant avant lui. */
+body.mobile-view.teacher-mode.classe-ouverte #main-area,
+body.mobile-view.teacher-mode.classe-ouverte #sidebar,
+body.mobile-view.classe-ouverte #tiroir-catalogue,
+body.classe-ouverte #bottom-nav { display: none !important; }
+
+/* ── LE MOMENT : le compte à rebours et la pause ───────────────────────────
+   Il est en haut, lisible du fond de la salle, et il rougit dans la dernière
+   minute. Un compte à rebours qu'il faut aller chercher n'en est pas un. */
+.moment {
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    z-index: 2147482000;
+    display: flex; align-items: baseline; gap: 12px;
+    background: #1e293b; color: #fff;
+    padding: 7px 20px; border-radius: 0 0 14px 14px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+    max-width: 92vw;
+}
+.moment[hidden] { display: none !important; }
+.moment-chrono {
+    font-variant-numeric: tabular-nums; font-weight: 800; font-size: 1.45rem;
+    letter-spacing: .02em;
+}
+.moment-quoi { font-size: .82rem; opacity: .85; }
+.moment--rouge { background: #b91c1c; }
+.moment--rouge .moment-chrono { animation: moment-battement 1s ease-in-out infinite; }
+.moment--fini { background: #7c2d12; }
+@keyframes moment-battement { 50% { opacity: .55; } }
+
+/* LA PAUSE COUVRE LE TRAVAIL, ELLE NE LE FERME PAS. Quand le professeur rend
+   la main, l'élève retrouve sa question exactement où elle était. */
+.moment-pause {
+    position: fixed; inset: 0; z-index: 2147481000;
+    background: rgba(15, 23, 42, .93);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.moment-pause-carte {
+    background: var(--bg-panel, #fff); color: var(--text-main, #0f172a);
+    border-radius: 20px; padding: 28px 32px; max-width: 460px; text-align: center;
+}
+.moment-pause-titre { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+.moment-pause-carte p { line-height: 1.5; }
+.moment-pause-note { margin-top: 12px; font-size: .86rem; color: var(--text-muted, #64748b); }
+
+@media print { .moment, .moment-pause { display: none !important; } }
+
+/* Le bouton « indice » se distingue du bouton « mot » sans crier : ce sont deux
+   gestes différents, et la ligne d'un élève en porte déjà trois. */
+.ec-mini--indice { color: var(--accent-texte); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+
+/* La fenêtre de choix d'un indice — plus large que « demander », parce qu'elle
+   porte des phrases entières et non un nom de classe. */
+.demander-boite--large { width: min(560px, calc(100vw - 32px)); }
+.indice-choix { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 14px; }
+.indice-choix-item {
+    text-align: left; font: inherit; font-size: .88rem; line-height: 1.4;
+    background: var(--bg-app); color: var(--text-main);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 9px; padding: 8px 11px; cursor: pointer;
+}
+@media (hover: hover) {
+    .indice-choix-item:hover { border-color: var(--accent); }
+}
+/* Les coups de pouce universels ne parlent d'aucune notion : ils passent après,
+   et ils le montrent. */
+.indice-choix-item--doux { border-left-color: var(--border); color: var(--text-muted); }
+
+/* ──────────────────────── L'ALARME ET LE MUR ──────────────────────────────
+   Rémy : « un système "d'alarme si un élève est inactif" » et « une zone où
+   regarder les écrans des élèves ».
+
+   L'ALARME NE CLIGNOTE PAS. Un bandeau qui clignote au-dessus d'une classe de
+   trente se fait recouvrir d'un onglet au bout de trois minutes. Elle est
+   large, elle est orange, elle nomme les élèves, et elle disparaît toute seule
+   dès qu'ils repartent — ce qui est le cas le plus fréquent. */
+.ec-alarme {
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 0 14px; padding: 10px 14px; border-radius: 12px;
+    background: color-mix(in srgb, var(--warning) 12%, var(--bg-panel));
+    border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+    color: var(--text-main); font-size: .88rem;
+}
+.ec-alarme--dur {
+    background: color-mix(in srgb, var(--danger) 12%, var(--bg-panel));
+    border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+.ec-alarme-oeil {
+    flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    /* Un « ! » blanc de 22 px : blanc sur `--warning` vaut 2,15 dans quatre
+       thèmes sur cinq, et c'est l'alarme du direct — celle qu'on doit lire en
+       balayant trente lignes. */
+    font-weight: 900; color: #fff; background: var(--warning-fond);
+}
+.ec-alarme--dur .ec-alarme-oeil { background: var(--danger-fond); }
+.ec-alarme-mot { font-weight: 600; }
+
+/* Dans Le direct, la ligne de celui qui ne répond plus se teinte : c'est ce qui
+   la rend repérable en balayant trente lignes, sans avoir à lire chacune. */
+.ec-rang--ralenti { border-color: color-mix(in srgb, var(--warning) 50%, var(--border)); }
+.ec-rang--bloque {
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+    background: color-mix(in srgb, var(--danger) 6%, var(--bg-panel));
+}
+
+/* LE MUR. Des tuiles, pas des lignes : trente lignes tiennent sur deux écrans,
+   trente tuiles tiennent sur un — et ce qu'on cherche ici se voit à la couleur,
+   pas à la lecture. */
+/* LES TUILES S'ÉLARGISSENT AVEC L'ÉCRAN, au lieu de rester au minimum.
+   MESURÉ à 1920 px : la grille faisait dix colonnes de 176 px et coupait
+   « GRANDJEAN Marie-Ange » à 24 px près, alors qu'il restait 350 px de vide
+   sous le mur. La troncature est voulue — un nom long ne doit pas déformer sa
+   tuile —, mais elle n'a rien à faire sur un tableau de classe de deux mètres.
+   La largeur minimale suit donc la fenêtre, bornée aux deux bouts. */
+.ec-mur {
+    display: grid; gap: 9px;
+    grid-template-columns: repeat(auto-fill, minmax(clamp(168px, 14vw, 262px), 1fr));
+}
+.ec-tuile {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-top: 3px solid var(--border);
+    border-radius: 11px; padding: 9px 11px 8px;
+    display: flex; flex-direction: column; gap: 5px; min-width: 0;
+}
+.ec-tuile-qui {
+    font-weight: 700; color: var(--text-main); font-size: .9rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ec-tuile-jauge { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.ec-tuile-jauge > i {
+    display: block; height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width .4s ease;
+}
+.ec-tuile-mot {
+    font-size: .78rem; color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ec-tuile-actions { display: flex; gap: 5px; margin-top: 2px; }
+/* La couleur porte l'état, et c'est la seule chose qu'on lit de loin. */
+.ec-tuile--bloque  { border-top-color: var(--danger); }
+.ec-tuile--bloque .ec-tuile-mot { color: var(--danger-texte); font-weight: 700; }
+.ec-tuile--ralenti { border-top-color: var(--warning); }
+.ec-tuile--ralenti .ec-tuile-mot { color: var(--warning-texte); font-weight: 700; }
+.ec-tuile--ok      { border-top-color: var(--primary); }
+.ec-tuile--fini    { border-top-color: var(--success); }
+.ec-tuile--fini .ec-tuile-jauge > i { background: var(--success); }
+.ec-tuile--parti, .ec-tuile--pas-commence, .ec-tuile--ecarte { opacity: .55; }
+
+.ec-mur-pause { margin: 0 0 12px; font-style: italic; }
+.ec-mur-legende {
+    display: flex; flex-wrap: wrap; gap: 14px; margin: 14px 0 0;
+    font-size: .76rem; color: var(--text-muted);
+}
+.ec-mur-legende span { display: inline-flex; align-items: center; gap: 5px; }
+.ec-pastel { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.ec-pastel--bloque  { background: var(--danger); }
+.ec-pastel--ralenti { background: var(--warning); }
+.ec-pastel--ok      { background: var(--primary); }
+.ec-pastel--fini    { background: var(--success); }
+.ec-pastel--parti   { background: var(--border); }
+
+/* ──────────────────────────── LE BAC À SABLE ──────────────────────────────
+   Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des jeux ».
+
+   LA PORTE S'AFFICHE MÊME FERMÉE — quand l'élève n'a pas encore fini. Un bouton
+   absent laisse croire qu'il n'y a rien ; « encore deux étapes, et le bac à
+   sable s'ouvre » est la phrase qui donne envie de finir. (Fermée PAR LE
+   PROFESSEUR, en revanche, elle disparaît : annoncer ce qu'on ne donnera pas
+   est une promesse en l'air.) */
+.report-bac { margin: 14px 0 2px; text-align: center; }
+.bac-porte { font: inherit; }
+.bac-porte--ouverte {
+    /* LE DÉGRADÉ FINIT SUR `--accent-fond`, ET NON SUR `--accent`. Le blanc
+       tient sur l'indigo du départ (5,02 au pire des cinq thèmes) et
+       s'effondre à l'arrivée : 2,14 sur le bleu ciel. La moitié droite du
+       bouton était illisible, et personne ne regarde la moitié d'un bouton. */
+    background: linear-gradient(90deg, var(--primary), var(--accent-fond));
+    color: #fff; border: none; font-weight: 800; font-size: 1rem;
+    padding: 11px 26px; border-radius: 11px; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .14);
+}
+.bac-porte--close {
+    margin: 0; color: var(--text-muted); font-size: .9rem; font-style: italic;
+}
+
+.bac-mot { margin: 0 0 14px; color: var(--text-muted); font-size: .95rem; }
+/* « Comme ta séance » : le titre dit POURQUOI ces jeux-là sont proposés.
+   Sans lui, l'élargissement ne serait qu'une grille plus longue à parcourir —
+   et le module tout entier existe pour éviter ça. */
+.bac-groupe {
+    margin: 18px 0 8px; font-size: .82rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted);
+}
+.bac-grille {
+    display: grid; gap: 9px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+.bac-jeu {
+    display: flex; flex-direction: column; gap: 3px; text-align: left;
+    font: inherit; cursor: pointer;
+    background: var(--bg-app); color: var(--text-main);
+    border: 1px solid var(--border); border-radius: 11px; padding: 10px 12px;
+}
+@media (hover: hover) {
+    .bac-jeu:hover { border-color: var(--primary); }
+}
+.bac-jeu-nom { font-weight: 700; font-size: .93rem; }
+.bac-jeu-quoi {
+    font-size: .76rem; color: var(--text-muted); line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.bac-refus { margin: 0; font-size: 1rem; color: var(--text-main); }
+.ec-etat-bac { color: var(--text-muted); font-size: .88rem; align-self: center; }
+
+/* ─────────────────────────────── LES BILANS ───────────────────────────────
+   La route du serveur existait ; la porte n'existait pas. Mais un tableau de
+   trente lignes de chiffres n'est pas un bilan : la question qu'un professeur
+   se pose en rentrant chez lui est « qu'est-ce que je reprends lundi, et avec
+   qui ». « À reprendre » passe donc AVANT le tableau. */
+.ec-bilan-resume {
+    display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px;
+}
+.ec-chiffre {
+    flex: 1 1 130px; min-width: 0;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 11px 14px;
+    display: flex; flex-direction: column; gap: 1px;
+}
+.ec-chiffre b { font-size: 1.32rem; color: var(--text-main); line-height: 1.1; }
+.ec-chiffre span { font-size: .76rem; color: var(--text-muted); }
+.ec-chiffre--bien b { color: var(--success-texte); }
+.ec-chiffre--alerte b { color: var(--warning-texte); }
+
+.ec-bloc--reprendre { border-left: 3px solid var(--primary); }
+.ec-reprendre { margin: 0 0 12px; }
+.ec-reprendre-haut {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin-bottom: 5px;
+}
+.ec-reprendre-haut b { color: var(--text-main); }
+.ec-reprendre-combien {
+    font-size: .78rem; font-weight: 700; color: var(--text-muted); white-space: nowrap;
+}
+/* Au-delà de quatre élèves sur dix, ce n'est plus un accompagnement : c'est une
+   leçon à reprendre au tableau. La couleur dit ce changement de nature. */
+.ec-reprendre-combien--fort { color: var(--danger-texte); }
+.ec-reprendre-qui { font-size: .76rem; color: var(--text-muted); margin-top: 4px; }
+
+/* CE QUI EST COMPRIS : le même bloc, l'autre couleur.
+
+   Les deux listes se lisent l'une après l'autre en tête du bilan, et elles ne
+   disent pas la même chose. Si rien ne les distingue à l'œil, on lit la
+   seconde en croyant lire la suite de la première — et l'on reprend lundi des
+   notions que la classe maîtrise. Le filet vert et la jauge verte suffisent :
+   les titres, eux, se lisent déjà. */
+.ec-bloc--compris { border-left: 3px solid var(--success); }
+.ec-reprendre-combien--bien { color: var(--success-texte); }
+.ec-jauge--bien > i { background: var(--success); }
+
+.ec-table--bilan td { vertical-align: middle; }
+.ec-td-faible { color: var(--danger-texte); font-weight: 700; }
+
+/* ── LE TABLEAU À DOUBLE ENTRÉE ─────────────────────────────────────────────
+
+   LES CASES SONT PETITES ET SERRÉES EXPRÈS. Ce tableau n'est utile que si on
+   le BALAYE : la colonne rouge partout doit sauter aux yeux sans qu'on lise
+   une seule case. Des cases confortables à lire une par une étaleraient huit
+   colonnes sur deux écrans, et la colonne ne serait plus une colonne.
+
+   L'ÉCHELLE DE COULEUR EST CELLE DE TOUTE L'APPLICATION — NA, EC, A, E. En
+   inventer une seconde ferait qu'un même élève serait « acquis » ici et « en
+   cours » ailleurs, pour la même réussite. Les teintes sont posées en
+   `color-mix` sur le fond du panneau : franches, elles mangeraient le texte,
+   et c'est le texte qui porte le nombre. */
+.ec-table--croise { font-variant-numeric: tabular-nums; }
+.ec-th-exo {
+    font-size: .68rem; font-weight: 700; line-height: 1.15;
+    text-align: center; vertical-align: bottom; padding: 4px 3px;
+    min-width: 54px; max-width: 72px;
+}
+.ec-case {
+    text-align: center; padding: 4px 3px; font-size: .78rem; font-weight: 700;
+    border: 1px solid var(--border);
+}
+/* LE COMPTE EXACT SOUS LE POURCENTAGE, en petit : « 75 % » ne dit pas si c'est
+   trois questions sur quatre ou neuf sur douze, et ce n'est pas la même
+   confiance. */
+.ec-case > .ec-note { display: block; font-size: .6rem; font-weight: 400; }
+.ec-case--na { background: color-mix(in srgb, var(--danger) 22%, var(--bg-panel)); }
+.ec-case--ec { background: color-mix(in srgb, var(--warning) 22%, var(--bg-panel)); }
+.ec-case--a  { background: color-mix(in srgb, var(--success) 22%, var(--bg-panel)); }
+.ec-case--e  { background: color-mix(in srgb, var(--primary) 20%, var(--bg-panel)); }
+/* RIEN N'EST PAS ZÉRO. Une case vide dit « il n'est pas arrivé jusque-là » ;
+   une case rouge dirait « il a tout raté ». Les deux appellent des gestes
+   opposés — raccourcir la séance, ou reprendre la notion —, et une seule
+   couleur pour les deux rendrait le tableau trompeur là où il doit trancher. */
+.ec-case--vide { background: transparent; }
+.ec-td-total { text-align: right; font-weight: 700; white-space: nowrap; }
+.ec-td-total > .ec-note { display: block; font-size: .64rem; font-weight: 400; }
+.ec-tr-pied td {
+    border-top: 2px solid var(--text-muted); font-weight: 700;
+    text-align: center; padding: 5px 3px; font-size: .78rem;
+}
+.ec-tr-pied td > .ec-note { display: block; font-size: .6rem; font-weight: 400; }
+.ec-phrase-tableau {
+    margin: 0 0 10px; padding: 8px 12px; border-radius: 10px;
+    background: color-mix(in srgb, var(--warning) 14%, var(--bg-panel));
+    border-left: 3px solid var(--warning);
+    font-size: .84rem; color: var(--text-main);
+}
+/* LA LISTE DES SÉANCES NE PREND PAS TOUTE LA LARGEUR. Un menu de quatorze
+   cents pixels pour « Devoir du mardi » se lit comme un champ à remplir, pas
+   comme un choix déjà fait. */
+.ec-choix-seance {
+    display: flex; align-items: center; gap: 8px; margin: 10px 0 8px; flex-wrap: wrap;
+}
+.ec-choix-seance select { width: auto; max-width: min(100%, 26rem); }
+.ec-bilan-gestes { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+.ec-tr-rien { background: color-mix(in srgb, var(--warning) 8%, transparent); }
+
+/* ── LE DÉPLIAGE D'UN ÉLÈVE, SOUS SA LIGNE ──────────────────────────────────
+
+   Rémy : « le bilan que tu proposes est bien car concis, on pourrait avoir un
+   peu de détail par élève si on le souhaite et qu'on clique sur lui ? »
+
+   LA LIGNE DOIT SE DONNER POUR CLIQUABLE, sinon personne ne la clique : un
+   tableau ne s'essaie pas, il se lit. Le curseur et le survol le disent, et
+   `aria-expanded` le dit à qui lit l'écran à l'oreille. */
+.ec-tr-bilan { cursor: pointer; }
+@media (hover: hover) and (pointer: fine) {
+    .ec-tr-bilan:hover > td { background: color-mix(in srgb, var(--primary) 6%, transparent); }
+}
+.ec-tr-bilan:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.ec-tr-bilan--ouverte > td { background: color-mix(in srgb, var(--primary) 9%, transparent); }
+/* Le dépliage n'est pas une ligne d'élève : il n'en porte ni la grille ni les
+   bords, et sa cellule traverse les six colonnes. */
+.ec-tr-detail > td { padding: 12px 14px 16px; background: var(--bg-app); }
+.ec-detail-bloc { margin-top: 10px; }
+.ec-detail-titre {
+    margin: 0 0 6px; font-size: .82rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+}
+.ec-detail-notion {
+    display: grid; grid-template-columns: minmax(0, 1fr) 90px 44px;
+    align-items: center; gap: 10px; padding: 3px 0; font-size: .9rem;
+}
+.ec-detail-notion > b { min-width: 0; overflow-wrap: anywhere; }
+.ec-detail-note {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; padding: 3px 0; font-size: .9rem;
+}
+/* À la largeur d'un téléphone, la jauge et le pourcentage passent sous le nom
+   plutôt que de le réduire à trois lettres. */
+@media (max-width: 560px) {
+    .ec-detail-notion { grid-template-columns: minmax(0, 1fr) 44px; }
+    .ec-detail-notion > .ec-jauge { grid-column: 1 / -1; }
+}
+
+/* ─────────────────────────── SE DÉCONNECTER ───────────────────────────────
+   Rémy : « Tu sais qu'on ne peut même pas se déconnecter ».
+
+   LE BOUTON EST EN BAS DU MENU, ET IL SE DISTINGUE. C'est le seul geste de ce
+   menu qu'on ne veut pas faire par erreur : on le sépare d'un filet, et son
+   libellé dit de QUOI on se déconnecte — sur une machine où le professeur et
+   l'élève passent l'un après l'autre, « se déconnecter » tout court laisse la
+   question ouverte, et c'est exactement la machine où l'on clique. */
+.nav-menu-item--sortie {
+    border-top: 1px solid var(--border); margin-top: 4px; padding-top: 9px;
+    color: var(--danger-texte);
+}
+.nav-menu-item--sortie[hidden] { display: none; }
+
+.dx-mot { margin: 0 0 10px; font-size: 1rem; color: var(--text-main); }
+.dx-note { margin: 0 0 14px; font-size: .88rem; color: var(--text-muted); line-height: 1.45; }
+.dx-note--alerte { color: var(--warning-texte); font-weight: 600; }
+.dx-case {
+    display: flex; gap: 9px; align-items: flex-start;
+    margin: 0 0 16px; font-size: .86rem; color: var(--text-main); cursor: pointer;
+}
+.dx-case input { margin-top: 2px; flex-shrink: 0; }
+.dx-case em { display: block; font-style: normal; color: var(--text-muted); font-size: .8rem; margin-top: 2px; }
+.dx-boutons { display: flex; gap: 9px; flex-wrap: wrap; }
+.dx-bouton {
+    font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 10px;
+    cursor: pointer; border: 1px solid transparent;
+}
+.dx-bouton--sortie { background: var(--danger-fond); color: #fff; }
+.dx-bouton--sortie:disabled { opacity: .6; cursor: default; }
+.dx-bouton--doux { background: var(--bg-app); color: var(--text-main); border-color: var(--border); }
+
+/* ─────────────────── LE TABLEAU DES COLONNES (coller une liste) ────────────
+   Rémy : « tu me le présentes sous forme de tableau où tu sélectionnes
+   intelligemment les colonnes ou on peut les sélectionner ».
+
+   LE TABLEAU DÉFILE HORIZONTALEMENT, ET C'EST VOULU. Un export de Pronote a
+   vingt-deux colonnes ; les tasser pour qu'elles tiennent les rendrait toutes
+   illisibles, et c'est justement leur contenu qu'on demande au professeur de
+   juger. On garde donc des colonnes lisibles et on laisse glisser. */
+.cl-note { margin: 0 0 10px; font-size: .86rem; color: var(--text-muted); }
+.cl-table-cadre {
+    overflow-x: auto; border: 1px solid var(--border); border-radius: 10px;
+    max-height: 46vh;
+}
+.cl-table { border-collapse: collapse; font-size: .8rem; }
+.cl-table th, .cl-table td {
+    border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    padding: 5px 8px; text-align: left; white-space: nowrap;
+    max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-table th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--bg-panel); vertical-align: top;
+}
+/* Une colonne retenue se voit d'un coup d'œil : c'est la seule chose que le
+   professeur cherche en balayant l'en-tête. */
+.cl-th--pris { background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel)); }
+.cl-titre {
+    font-weight: 700; color: var(--text-main); margin-bottom: 4px;
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-select { font: inherit; font-size: .76rem; max-width: 190px; padding: 2px 4px; }
+.cl-table td { color: var(--text-muted); }
+
+.cl-sortie { margin: 14px 0 4px; }
+.cl-h4 { margin: 0 0 7px; font-size: .92rem; color: var(--text-main); }
+.cl-sortie-liste { margin: 0; padding-left: 18px; font-size: .88rem; line-height: 1.6; }
+.cl-sortie-liste code {
+    font-size: .8rem; background: var(--bg-app); padding: 1px 5px; border-radius: 5px;
+}
+.cl-code {
+    font-weight: 700; letter-spacing: .06em; color: var(--primary-texte);
+}
+.cl-vide { margin: 0; font-size: .9rem; color: var(--warning-texte); }
+/* Ce qu'on écarte s'affiche AVEC SA RAISON : un import qui avale une ligne en
+   silence est un import qu'on ne peut pas vérifier. */
+.cl-ecarte {
+    margin: 10px 0 0; font-size: .82rem; color: var(--text-muted);
+    background: var(--bg-app); border-radius: 8px; padding: 7px 10px;
+}
+.cl-ecarte em { font-style: italic; }
+.cl-boutons { display: flex; gap: 9px; margin-top: 16px; flex-wrap: wrap; }
+.cl-bouton {
+    font: inherit; font-weight: 700; padding: 10px 22px; border-radius: 10px;
+    cursor: pointer; border: 1px solid transparent;
+    background: var(--primary); color: #fff;
+}
+.cl-bouton--doux { background: var(--bg-app); color: var(--text-main); border-color: var(--border); }
+
+/* La croix de suppression sur une carte de classe.
+   Rémy : « il faudrait pouvoir supprimer les classes ». Le geste existait à
+   l'intérieur de la classe — le bon endroit pour supprimer celle qu'on regarde,
+   le mauvais pour faire le ménage.
+
+   ELLE EST DISCRÈTE, ET C'EST DÉLIBÉRÉ. La carte entière se clique pour ENTRER
+   dans la classe : une croix voyante y serait un piège à fausse manœuvre. Elle
+   se révèle au survol, reste atteignable au doigt (32 px), et passe par la même
+   confirmation qu'ailleurs — écrire EFFACER. */
+.ec-carte { position: relative; }
+.ec-carte-jeter {
+    position: absolute; top: 8px; right: 8px;
+    width: 32px; height: 32px; border-radius: 8px;
+    border: none; background: transparent; color: var(--text-muted);
+    font-size: 1rem; line-height: 1; cursor: pointer;
+    opacity: 0; transition: opacity .15s, background .15s, color .15s;
+}
+.ec-carte:hover .ec-carte-jeter,
+.ec-carte:focus-within .ec-carte-jeter { opacity: .55; }
+.ec-carte-jeter:focus-visible { opacity: 1; background: color-mix(in srgb, var(--danger) 14%, transparent);
+    color: var(--danger-texte); }
+@media (hover: hover) {
+    .ec-carte-jeter:hover { opacity: 1; background: color-mix(in srgb, var(--danger) 14%, transparent);
+    color: var(--danger-texte); }
+}
+/* SUR UN ÉCRAN TACTILE, IL N'Y A PAS DE SURVOL : la croix y est toujours
+   visible, sinon elle n'existe pas du tout sur la tablette du professeur. */
+@media (hover: none) {
+    .ec-carte-jeter { opacity: .5; }
+}
+
+/* ─────────────────────── LES SÉANCES D'UNE CLASSE ─────────────────────────
+   Rémy : « quand je clique sur une classe, il faut pouvoir voir la liste des
+   séances attitrées, je trouve que c'est un peu confus ». L'information était
+   en base depuis le début ; il manquait la porte pour la lire. */
+.ec-seances { display: flex; flex-direction: column; gap: 8px; }
+.ec-seance {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 11px; padding: 10px 13px;
+}
+/* Celle qui s'ouvre toute seule chez les élèves se distingue : c'est la seule
+   de la liste qui agit en ce moment même. */
+.ec-seance--imposee { border-left-color: var(--primary); }
+.ec-seance-haut {
+    display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+}
+.ec-seance-haut b { color: var(--text-main); }
+.ec-seance-quand { margin-left: auto; font-size: .78rem; color: var(--text-muted); }
+.ec-seance-bas {
+    margin-top: 4px; font-size: .78rem; color: var(--text-muted);
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline;
+}
+.ec-pastille--impose {
+    color: var(--primary-texte); border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+/* « à Léa » — une séance donnée à quelques élèves, pas à la classe. Sans cette
+   pastille, la ligne laisserait croire que les trente l'ont reçue, et c'est sur
+   cette liste que le professeur décide de ce qu'il ramasse. Et pas de
+   « mettre en cours » sur celle-là : la séance imposée vaut pour la classe
+   entière, l'imposer à partir d'un travail nommé le donnerait à tout le monde. */
+.ec-pastille--nomme {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary-texte);
+    border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+}
+/* Les réglages de la classe ferment l'onglet « La classe » : on les cherche
+   après la liste, jamais avant. */
+.ec-bloc--reglages { margin-top: 22px; }
+
+/* ───────────────────── L'EXPLORATEUR DE PARCOURS ──────────────────────────
+   Rémy : « l'explorateur de parcours va vite avoir ses limites. Il faudrait un
+   explorateur avec les derniers parcours édités […] sobre, avec la date de
+   modif », puis, la première version vue : « évite la flèche, fais un mode plus
+   compact, avoir moins de marge », puis enfin, la popup sous les yeux : « non,
+   je voyais cela comme un explorateur intégré, un peu comme les exercices dans
+   le tiroir de gauche ».
+
+   IL A EU RAISON LES TROIS FOIS, ET LA TROISIÈME EXPLIQUE LES DEUX AUTRES.
+   Une popup est faite pour une décision qu'on prend et qu'on quitte ; elle
+   recouvrait le parcours en construction et se refermait à chaque chargement.
+   Le tiroir, lui, est un LIEU : on y reste, on compare, on range. C'est ce que
+   demandaient déjà « moins de marge » et « pas de flèche » — un endroit qu'on
+   balaie des yeux, pas une fiche qu'on ouvre.
+
+   ET LA COLONNE EST ÉTROITE : 320 px, 250 sur petit écran. Tout ce qui tenait
+   sur une ligne de 940 px s'empile ici. Ce n'est pas une perte — c'est ce qui
+   rend la ligne lisible sur téléphone, où le même tiroir monte du bas. */
+
+/* Les deux contenus du tiroir : le catalogue, et les parcours. */
+.tiroir-onglets {
+    display: flex; gap: 4px; padding: 8px 10px 0;
+    flex-shrink: 0;
+}
+.tiroir-onglet {
+    flex: 1 1 0; font: inherit; font-size: .84rem; font-weight: 700;
+    cursor: pointer; padding: 8px 6px; border-radius: 9px 9px 0 0;
+    border: 1px solid transparent; border-bottom: none;
+    background: none; color: var(--text-muted);
+}
+@media (hover: hover) {
+    .tiroir-onglet:hover { color: var(--text-main); }
+}
+.tiroir-onglet--actif {
+    background: var(--bg-panel); border-color: var(--border);
+    color: var(--primary-texte);
+}
+/* Le panneau visible prend toute la hauteur restante et défile seul : c'est ce
+   qui garde la barre de recherche en place pendant qu'on parcourt la liste. */
+.tiroir-panneau { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* `display: flex` BAT L'ATTRIBUT `hidden`. Le navigateur cache un élément
+   `hidden` par une règle de sa feuille à lui — la moins prioritaire de
+   toutes — et n'importe quel `display` écrit ici la renverse. Mesuré : les
+   deux panneaux s'affichaient l'un sous l'autre, le catalogue en haut et les
+   parcours écrasés en bas, alors que le JS avait bien posé `hidden`. */
+.tiroir-panneau[hidden] { display: none; }
+#tiroir-parcours { padding: 10px; gap: 8px; }
+
+.pb-barre {
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    flex-shrink: 0;
+}
+.pb-chercher {
+    flex: 1 1 100%; min-width: 0; font: inherit; font-size: .86rem;
+    padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg-app); color: var(--text-main);
+}
+.pb-chercher:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.pb-tris { display: flex; gap: 4px; width: 100%; }
+.pb-tri {
+    flex: 1 1 0; font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer;
+    padding: 5px 6px; border-radius: 8px; white-space: nowrap;
+    border: 1px solid var(--border); background: var(--bg-app); color: var(--text-muted);
+}
+.pb-tri--actif {
+    background: color-mix(in srgb, var(--primary) 14%, var(--bg-app));
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    color: var(--primary-texte);
+}
+/* « + Dossier » n'est pas un rangement : il agit. Il ne prend donc jamais
+   l'état actif, et se tient un peu en retrait de ses deux voisins. */
+.pb-tri--neuf { flex: 0 0 auto; color: var(--text-main); }
+
+/* LA LISTE DÉFILE, LA BARRE RESTE. Sans cela, chercher demande de remonter —
+   ce qui est exactement le geste qu'on essaie d'épargner. */
+#path-browser-list {
+    flex: 1; min-height: 0; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px;
+    padding-right: 2px;
+}
+#tiroir-parcours .path-browser-root { padding: 0; display: block; }
+#tiroir-parcours .path-browser-root-title {
+    font-size: .7rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted); margin-bottom: 5px;
+}
+
+/* LA FICHE S'OUVRE EN CLIQUANT DESSUS, comme un exercice du catalogue juste
+   au-dessus. Elle se comporte donc comme lui : elle s'allume au survol et
+   glisse d'un cheveu vers la droite. */
+#tiroir-parcours .path-browser-item {
+    display: flex; align-items: flex-start; gap: 6px;
+    padding: 7px 9px; margin-bottom: 4px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    cursor: pointer; transition: all .18s ease;
+}
+@media (hover: hover) {
+    #tiroir-parcours .path-browser-item:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); transform: translateX(2px); }
+}
+#tiroir-parcours .path-browser-item:focus-visible {
+    outline: 2px solid var(--primary); outline-offset: 2px;
+}
+/* CELUI QU'ON ÉDITE SE DISTINGUE. Le tiroir reste ouvert à côté du parcours :
+   sans repère, on ne sait plus lequel des cinquante noms est celui qu'on a
+   sous les yeux à droite. */
+#tiroir-parcours .path-browser-item--ouvert {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 9%, var(--bg-panel));
+}
+#tiroir-parcours .path-browser-item > div:first-child { flex: 1; min-width: 0; }
+#tiroir-parcours .path-browser-name {
+    font-size: .88rem; font-weight: 600; line-height: 1.25;
+    border-bottom-color: transparent;
+    overflow-wrap: anywhere;
+}
+#tiroir-parcours .path-browser-name:focus {
+    border-bottom-color: var(--border); outline: none;
+}
+/* LE RÉSUMÉ TIENT SUR UNE LIGNE, ET S'ABRÈGE PLUTÔT QUE DE PASSER À LA SUIVANTE.
+   Il finit par « modifié hier », qu'on devine ; le nom, lui, ne se devine pas
+   et garde donc le droit de passer à la ligne. */
+#tiroir-parcours .path-browser-sub {
+    font-size: .73rem; line-height: 1.25; margin-top: 1px; color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* LES BOUTONS NE COMMANDENT PAS LA HAUTEUR DE LA LIGNE, le texte le fait.
+   Des pastilles de 36 px imposaient 68 px de fiche quand le texte n'en demande
+   que 38 : l'explorateur n'est pas l'endroit où l'on vise au doigt, c'est
+   celui où l'on cherche des yeux. */
+#tiroir-parcours .path-browser-actions { gap: 3px; flex-shrink: 0; }
+/* PARTAGER ET SUPPRIMER NE S'AFFICHENT QU'AU SURVOL, à la souris. Cinquante
+   corbeilles rouges alignées à droite, ce n'est pas « sobre » : ce sont deux
+   gestes rares qui criaient plus fort que les noms qu'on vient chercher. Au
+   doigt, où il n'y a pas de survol, elles restent visibles — un bouton qui
+   n'apparaît jamais n'existe pas.
+   ET ELLES NE CLIQUENT PAS TANT QU'ELLES NE SE VOIENT PAS : une corbeille
+   transparente qui supprime quand même est pire que pas de corbeille. */
+@media (hover: hover) and (pointer: fine) {
+    #tiroir-parcours .path-browser-actions {
+        opacity: 0; pointer-events: none; transition: opacity .15s ease;
+    }
+    #tiroir-parcours .path-browser-item:hover .path-browser-actions,
+    #tiroir-parcours .path-browser-item:focus-within .path-browser-actions {
+        opacity: 1; pointer-events: auto;
+    }
+}
+#tiroir-parcours .path-browser-actions .btn-icon,
+#tiroir-parcours .path-browser-actions .game-icon-btn {
+    width: 26px; height: 26px; padding: 4px; box-shadow: none;
+}
+
+/* Les dossiers : un cadre léger, et une zone de dépôt qui s'allume. */
+#tiroir-parcours .path-folder { padding: 7px 8px; }
+#tiroir-parcours .path-folder-body { margin-top: 5px; }
+#tiroir-parcours .path-folder-name { font-size: .82rem; }
+#tiroir-parcours .path-folder-empty { font-size: .74rem; }
+/* DANS LE TIROIR DE 300 px, LE COMPTE D'UN DOSSIER REPLIÉ EST LA PREMIÈRE
+   CHOSE QU'ON SACRIFIE : le nom se lit, « 4 parcours » se devine. On le garde
+   mais on l'écrase, et on laisse le nom le pousser dehors plutôt que passer à
+   la ligne — une tête de dossier sur deux lignes ne ressemble plus à une tête
+   de dossier. */
+#tiroir-parcours .path-folder-head { gap: 6px; }
+#tiroir-parcours .path-folder-compte { font-size: .7rem; overflow: hidden; text-overflow: ellipsis; }
+#tiroir-parcours .path-folder-chevron svg { width: 14px; height: 14px; }
+/* LA CORBEILLE D'UN DOSSIER SUIT CELLE D'UN PARCOURS : elle ne se montre qu'au
+   survol à la souris. Sinon une tête de dossier repliée, qui tient sur une
+   ligne, n'est plus qu'un nom coincé entre deux icônes. */
+@media (hover: hover) and (pointer: fine) {
+    #tiroir-parcours .path-folder-head > .btn-icon {
+        opacity: 0; pointer-events: none; transition: opacity .15s ease;
+    }
+    #tiroir-parcours .path-folder-head:hover > .btn-icon,
+    #tiroir-parcours .path-folder-head:focus-within > .btn-icon {
+        opacity: 1; pointer-events: auto;
+    }
+}
+#tiroir-parcours .path-folder-head > .btn-icon { width: 24px; height: 24px; padding: 4px; box-shadow: none; }
+
+
+/* ─────────────── LA SÉANCE EN COURS, DITE PLUTÔT QUE DEVINÉE ──────────────
+   Rémy : « Comment sait-on qu'une classe fait un parcours ? […] est-ce qu'un
+   élève a accès à tous les parcours que je définis pour la classe, et du coup
+   le parcours actuel c'est lequel ? »
+
+   La réponse est OUI — il les reçoit toutes et choisit —, et c'est elle qui
+   crée le flou. Sauf si l'une est IMPOSÉE : celle-là s'ouvre toute seule, et
+   c'est elle « la séance en cours ». Cette règle ne se devine pas : on l'écrit,
+   en haut de la liste et en haut du direct. */
+.ec-encours {
+    margin: 0 0 14px; padding: 11px 14px; border-radius: 12px;
+    background: var(--bg-panel);
+    border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+    border-left: 3px solid var(--primary);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
+}
+.ec-encours b { color: var(--text-main); }
+.ec-encours span { font-size: .84rem; color: var(--text-muted); flex: 1 1 260px; }
+.ec-encours button { margin-left: auto; }
+/* Aucune séance imposée n'est pas une panne : c'est un mode de travail, où
+   chacun choisit. On le dit sans alarmer. */
+.ec-encours--aucune { border-left-color: var(--border); border-color: var(--border); }
+.ec-encours-fil { margin-top: -8px; }
+
+/* LE TITRE EST UN BOUTON, ET IL DOIT RESTER UN TITRE. Un `<button>` porte par
+   défaut un fond, une bordure et la police du système : on les retire tous,
+   mais on garde le curseur et le retour au survol — sans quoi personne ne
+   devine qu'il se clique, ce qui était précisément le problème. */
+/* LE NOM DU LOGICIEL NE SE PEIGNAIT PLUS DU TOUT.
+   `.title` écrit « AtoutMath » en DÉGRADÉ DÉCOUPÉ PAR LE TEXTE : le fond porte
+   les couleurs, `-webkit-text-fill-color: transparent` rend les lettres
+   creuses, et l'on voit le fond à travers. Le jour où le titre est devenu un
+   bouton — Rémy : « quand on clique sur AtoutMath en haut à gauche, on revient
+   sur le site » —, cette règle-ci a remis `background: none` pour effacer
+   l'apparence de bouton. Le dégradé est parti ; le remplissage transparent est
+   resté. Des lettres creuses sans rien derrière ne dessinent rien.
+
+   MESURÉ : `-webkit-text-fill-color: rgba(0,0,0,0)`, `background-image: none`,
+   et dans la boîte du bouton (74 × 44) deux à trois couleurs distinctes — celles
+   du fond. Pas une lettre. À toutes les largeurs, dans les deux thèmes, sur
+   tous les écrans connectés.
+
+   On efface donc la BORDURE et le remplissage du bouton, pas son fond : c'est
+   ce fond-là qui EST le texte. */
+#top-navbar button.title {
+    border: none; padding: 0; font: inherit;
+    cursor: pointer; text-align: left;
+}
+@media (hover: hover) {
+    #top-navbar button.title:hover { opacity: .78; }
+}
+#top-navbar button.title:focus-visible {
+    outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 6px;
+}
+
+/* ═══ LE GESTIONNAIRE DE PARCOURS ═════════════════════════════════════════════
+   Rémy : « il me faudrait clairement un gestionnaire de parcours pour en
+   sélectionner plusieurs les trier les classer […] supprimer en bloc, mettre
+   dans la corbeille. »
+
+   LA CASE REPREND LE MOTIF DU DIRECT, classe `.ec-choix` comprise : une
+   enveloppe de 44 px qui porte le geste, la case en `pointer-events: none`
+   pour qu'un seul événement parte. Deux façons de cocher dans le même
+   logiciel, ce serait une de trop. */
+.pb-choix { flex: 0 0 auto; margin-right: 2px; }
+.path-browser-item--coche {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    box-shadow: inset 2px 0 0 var(--primary);
+}
+/* L'ORDRE DE LECTURE. Un menu déroulant et non quatre boutons : la barre en
+   porte déjà trois, et sept côte à côte dans un tiroir de trois cents pixels
+   ne se lisent plus. */
+.pb-ordre-mot { font-size: .78rem; color: var(--text-soft); margin-left: 2px; }
+.pb-ordre {
+    font: inherit; font-size: .82rem; padding: 4px 6px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-app); color: var(--text-main); max-width: 100%;
+}
+.pb-ordre:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.pb-gerer { margin-left: auto; font-weight: 700; }
+
+/* ═══ GÉRER MES PARCOURS — la fenêtre ════════════════════════════════════════
+   Rémy : « tu peux pas faire mieux ou ouvrir une modale […] on ne peut faire
+   des cadre de sélection, utiliser shift ou cmd ».
+
+   UNE LISTE, PAS UN TABLEAU À BORDURES. Quatre colonnes alignées suffisent à
+   comparer cinquante lignes ; des traits entre elles ajouteraient cinquante
+   lignes de plus à regarder. */
+.gp-barre { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.gp-barre .ec-champ { flex: 1 1 auto; }
+/* UNE HAUTEUR MINIMALE, pour que la fenêtre ne saute pas de taille entre une
+   bibliothèque de deux parcours et une recherche qui n'en garde qu'un. Elle
+   laisse aussi du vide sous la dernière ligne quand il y en a peu — ce n'est
+   plus NÉCESSAIRE au cadre depuis qu'il peut partir d'une ligne, mais c'est là
+   qu'on pense à le tirer. */
+.gp-liste {
+    position: relative; min-height: 230px; max-height: 52vh;
+    overflow-y: auto; overflow-x: hidden;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg-app);
+}
+.gp-liste:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* L'EN-TÊTE RESTE EN HAUT pendant qu'on fait défiler : trier par nom puis
+   chercher la colonne pour revenir en arrière, c'est deux gestes de trop. */
+.gp-tete {
+    display: flex; gap: 10px; padding: 6px 10px; position: sticky; top: 0; z-index: 1;
+    background: var(--bg-panel); border-bottom: 1px solid var(--border);
+    font-size: .78rem; font-weight: 700; color: var(--text-soft);
+}
+.gp-tete .gp-col { text-align: left; }
+.gp-tete button.gp-col {
+    border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
+    padding: 0; border-radius: 4px;
+}
+/* `--primary-texte` ET NON `--primary` : la couleur du bouton ne passe pas le
+   seuil AA sur du texte. Gardé par tests/contraste.test.mjs. */
+@media (hover: hover) { .gp-tete button.gp-col:hover { color: var(--primary-texte); } }
+.gp-tete button.gp-col:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.gp-ligne {
+    display: flex; gap: 10px; padding: 7px 10px; cursor: default;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+    /* ON NE SÉLECTIONNE PAS LE TEXTE EN TIRANT UN CADRE : sans cela, le geste
+       surligne les noms au lieu de prendre les lignes. */
+    user-select: none;
+}
+.gp-ligne:last-child { border-bottom: 0; }
+@media (hover: hover) {
+    .gp-ligne:hover { background: var(--bg-hover); }
+}
+.gp-ligne--prise {
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    box-shadow: inset 2px 0 0 var(--primary);
+}
+.gp-col--nom { flex: 1 1 40%; min-width: 0; font-weight: 600; color: var(--text-main);
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gp-col--taille { flex: 0 0 26%; color: var(--text-soft); font-size: .85rem; }
+.gp-col--dossier { flex: 0 0 16%; color: var(--text-soft); font-size: .85rem; }
+.gp-col--date { flex: 0 0 14%; color: var(--text-soft); font-size: .85rem; }
+.gp-vide { padding: 18px 10px; text-align: center; }
+/* « DONNÉ » — la marque d'un parcours qui a déjà servi. Rémy : « on prévient,
+   et on garde le bilan ». Discrète parce qu'elle n'empêche rien : elle informe
+   avant un geste que la confirmation rappellera de toute façon. */
+.gp-donne {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .02em; vertical-align: middle;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    color: var(--primary-texte);
+}
+/* LE CADRE QU'ON TIRE. Il ne prend pas les clics — il ne fait que se montrer. */
+.gp-cadre {
+    position: absolute; left: 0; right: 0; pointer-events: none; z-index: 2;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    border: 1px solid var(--primary); border-radius: 4px;
+}
+.gp-pied { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.gp-combien { font-weight: 700; font-size: .9rem; color: var(--text-main); margin-right: auto; }
+.gp-pied .ec-bouton[disabled] { opacity: .45; cursor: default; }
+.gp-aide { margin-top: 8px; }

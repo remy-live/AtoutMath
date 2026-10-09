@@ -16,6 +16,7 @@
 import { regTimeout } from '../timers.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 import { hintBar, wireHint } from './choice.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const DEPART = 9000;        // temps accordé à la première question (ms)
 const PLANCHER = 2600;      // en dessous, ce n'est plus du calcul mais du réflexe
@@ -245,10 +246,11 @@ export function mount(container, session, opts = {}) {
         const el = tuiles[choices.findIndex(c => c.correct)];
         if (!el) { regTimeout(suivante, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(500) || destroyed) return;
-        if (!await cursor.tap(el) || destroyed) return;
+        const robot = meneurDemo(cursor, null, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.pause(500)) return;
+        if (!await robot.toucher(el)) return;
         el.classList.add('sprint-tuile--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         suivante();
     }
 

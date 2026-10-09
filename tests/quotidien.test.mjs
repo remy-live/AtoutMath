@@ -13,7 +13,7 @@ import {
     GENRES, numeroDeJour, permutation, rangDuJour, duJour, decalagePour, prochains
 } from '../js/core/quotidien.js';
 import {
-    LISTES, comptes, normaliser, entreeDuJour, toutDuJour, genreDuJour, apercu
+    LISTES, comptes, normaliser, entreeDuJour, toutDuJour, genreDuJour, apercu, ROULEMENT
 } from '../js/data/quotidien.js';
 import { FIGURES, figureSvg } from '../js/data/enigmesFigures.js';
 
@@ -236,17 +236,43 @@ test('un genre inconnu ne casse rien', () => {
 //
 // « Je peux aussi faire un retour sur les proverbes, blagues et autres, car il
 // y en a à supprimer, mets-en alors deux cents et un clic oui ou non et je te
-// l'envoie. » Deux cents, donc — et pas cent quatre-vingt-dix-neuf.
+// l'envoie. »
+//
+// DEUX CENTS ÉTAIT LE STOCK DE DÉPART, PAS UNE RÈGLE. Le nombre était calculé
+// pour qu'on puisse en jeter la moitié ; le jour où Rémy en a jeté soixante-
+// quatorze, l'épreuve qui exigeait « au moins deux cents » s'est mise à
+// défendre le contraire de ce pour quoi elle avait été écrite — elle interdisait
+// le tri qu'elle devait rendre possible.
 //
 // « Pour les énigmes, il faut quand même expliquer la réponse. Tu peux faire
 // des énigmes à petites images vectorielles. »
 
-test('DEUX CENTS ENTRÉES PAR LISTE, comme demandé', () => {
-    // Deux cents laissent de quoi en jeter la moitié et garder une année
-    // entière de contenu. C'est tout l'intérêt du nombre : il est calculé pour
-    // survivre à la relecture.
+test('APRÈS LE TRI, CHAQUE LISTE TOURNE ENCORE PLUS LONGTEMPS QU\'UNE ANNÉE', () => {
+    // CE QUI COMPTE N'EST PAS LE NOMBRE, C'EST LE TEMPS QUE MET UNE ENTRÉE À
+    // REVENIR SOUS LES YEUX D'UN ÉLÈVE. Et ce temps ne se lit pas sur la seule
+    // longueur de la liste, parce que deux roulements se superposent :
+    //
+    //   · l'entrée montrée le jour `j` est la n° `j % n` — elle revient donc au
+    //     calendrier tous les `n` jours ;
+    //   · mais son genre n'est à l'affiche qu'un jour sur cinq (`ROULEMENT`),
+    //     et `j` et `j + n` ne tombent au même rang du roulement que si `n` est
+    //     un multiple de cinq.
+    //
+    // D'OÙ LA RÈGLE, ET ELLE EST CONTRE-INTUITIVE : une liste de 200 entrées
+    // (multiple de 5) revient tous les 200 jours, tandis qu'une liste de 127
+    // met 5 × 127 = 635 jours. RACCOURCIR LA LISTE PEUT DONC ALLONGER LE CYCLE.
+    // C'est ce que le tri de Rémy a fait : blagues 201 → 127, cycle 1005 → 635
+    // jours, soit toujours plus de deux années scolaires.
+    const PAS = ROULEMENT.length;
+    const ANNEE = 365;
     comptes().forEach(({ genre, n }) => {
-        assert.ok(n >= 200, `${genre} : ${n} entrées, il en faut deux cents`);
+        assert.ok(n >= 100, `${genre} : ${n} entrées, il en faut au moins cent`);
+        const cycle = n % PAS === 0 ? n : n * PAS;
+        assert.ok(cycle >= ANNEE,
+            `${genre} : ${n} entrées → une entrée revient tous les ${cycle} jours,\n`
+            + `  c'est moins d'une année. ${n % PAS === 0
+                ? `Et ${n} est un multiple de ${PAS} : une de plus ou une de moins suffirait.`
+                : ''}`);
     });
 });
 

@@ -2,15 +2,56 @@
 declare(strict_types=1);
 
 /**
- * CONNEXION ET LISTE DES CLASSES.
+ * L'ADMINISTRATION, EN UNE SEULE PAGE.
  *
- * La première page que Rémy voit : ses classes, leur code à dicter, combien
- * d'élèves y sont, et combien sont en ligne en ce moment. Le reste — la
- * conduite de la séance — vit dans `classe.php`.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « la zone admin n'a plus besoin de classe et est vieillotte, va à
+ * l'essentiel avec des choses déroulantes », puis « j'aimerai en une seule page
+ * même pour le déposer », puis, devant l'aperçu : « mets le déposer en haut et
+ * la santé en dessous ».
+ *
+ * ── CE QUI A DISPARU, ET POURQUOI C'EST LA MOITIÉ DU TRAVAIL ────────────────
+ *
+ * LES CLASSES ONT QUITTÉ L'ADMINISTRATION. Il y avait ici la liste des classes,
+ * leur création, la conduite de séance (`classe.php`, 408 lignes) et les listes
+ * d'élèves (`eleves.php`, 386 lignes). Tout cela se fait maintenant DANS le
+ * logiciel, et depuis un moment : `api/index.php` sert déjà l'espace Classes
+ * par `lib/eleves.php`, qui est la MÊME mise en œuvre, pas une copie.
+ *
+ * L'administration en gardait donc une seconde version — forcément moins bonne,
+ * forcément en retard, et à maintenir en double. Rémy : « je n'ai plus besoin
+ * des classes ». Huit cents lignes s'en vont avec elles.
+ *
+ * SIX PAGES DEVIENNENT UNE. `sante.php`, `rapport.php` et `ranger.php` sont
+ * devenues des SECTIONS de celle-ci — leur calcul n'a pas changé d'une ligne,
+ * seul l'endroit où il s'affiche a bougé. Les trois fichiers restent, réduits à
+ * une redirection : `deposer.php`, le README et les instructions du paquet
+ * envoient vers eux depuis longtemps, et un lien qui tombe dans le vide le jour
+ * d'une installation ratée est le pire moment pour découvrir qu'on l'a déplacé.
+ *
+ * ── L'ORDRE DES SECTIONS EST CELUI DE L'USAGE ───────────────────────────────
+ *
+ * Le DÉPÔT d'abord, et déplié : c'est ce qu'on vient faire. La SANTÉ ensuite,
+ * repliée, mais son état se lit sur la pastille de sa section — et si un point
+ * est grave, une ligne le dit tout en haut et la section s'ouvre d'elle-même.
+ * Tout en vert, rien ne s'affiche : un bandeau « tout va bien » ne sert qu'à
+ * repousser d'un cran ce pour quoi on est venu.
  */
 
 require_once __DIR__ . '/_socle.php';
 require_once __DIR__ . '/../lib/seance.php';
+require_once __DIR__ . '/../lib/coffre.php';
+require_once __DIR__ . '/../lib/sante.php';
+require_once __DIR__ . '/../lib/guichet.php';
+require_once __DIR__ . '/../lib/menage.php';
+
+// LE DÉPOSEUR, CHARGÉ SANS SA PAGE. Il apporte `lireArchive`, `poserArchive`,
+// `plafondTransfert`, `archivesPresentes` et `poids` — les règles qui refusent
+// une archive piégée, éprouvées à leur place et appelées d'ici.
+define('DEPOSER_SANS_PAGE', true);
+require_once dirname(__DIR__, 2) . '/deposer.php';
+
 demarrerSession();
 
 if (isset($_GET['deconnexion'])) {
@@ -35,6 +76,19 @@ $erreur = '';
 if (empty($_SESSION['prof']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $email = trim((string) ($_POST['email'] ?? ''));
     $mdp   = (string) ($_POST['mdp'] ?? '');
+    // DIX ESSAIS PAR MINUTE, COMME L'API — et cette page ne les comptait pas.
+    //
+    // `/teacher/login` est bornée depuis longtemps. Cette page-ci ouvre la
+    // MÊME porte, avec le MÊME mot de passe, et ne comptait rien : elle se
+    // contentait du `sleep(1)` plus bas, qui ne retarde que la requête en
+    // cours et ne gêne pas celui qui en lance quarante à la fois. MESURÉ :
+    // 40 essais en parallèle, 40 réponses 200 en dix secondes, et le bon mot
+    // de passe passait encore juste après.
+    //
+    // Ce mot de passe n'ouvre pas que l'administration : il ouvre aussi
+    // l'espace professeur et le dépôt de fichiers, c'est-à-dire l'écriture sur
+    // le site. C'était la dernière porte non gardée.
+    $tropDEssais = compterEtDepasse('admin_login_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 10);
     // L'ADRESSE SE COMPARE SANS TENIR COMPTE DES MAJUSCULES.
     //
     // Rémy, enfermé dehors : « mon mail et code ne fonctionnent pas ». Une
@@ -43,22 +97,24 @@ if (empty($_SESSION['prof']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     // différentes. Mais `WHERE email = ?` le faisait, et le message de refus
     // est le même dans les deux cas, exprès : impossible de comprendre qu'on
     // s'est simplement trompé de majuscule.
-    //
-    // `LOWER()` des deux côtés : la comparaison suit enfin ce que tout le
-    // monde croit qu'elle fait.
     $stmt = db()->prepare('SELECT * FROM teachers WHERE LOWER(email) = LOWER(?) LIMIT 1');
     $stmt->execute([$email]);
     $prof = $stmt->fetch();
     // LA MÊME PHRASE DANS LES DEUX CAS. Dire « cette adresse n'existe pas »
     // apprend à un inconnu quelles adresses existent.
-    if ($prof && password_verify($mdp, $prof['password_hash'])) {
+    if (!$tropDEssais && $prof && password_verify($mdp, $prof['password_hash'])) {
         session_regenerate_id(true);
         $_SESSION['prof'] = $prof['id'];
         redirige('index.php');
     }
     // Une seconde d'attente : de quoi rendre l'essai en boucle inintéressant.
     sleep(1);
-    $erreur = 'Adresse ou mot de passe incorrect.';
+    // ON DIT QU'ON COMPTE, mais sans dire si l'adresse existe : le professeur
+    // qui s'est trompé trois fois comprend qu'il doit souffler une minute,
+    // l'inconnu n'apprend rien de plus qu'avant.
+    $erreur = $tropDEssais
+        ? 'Trop d\'essais. Attendez une minute avant de réessayer.'
+        : 'Adresse ou mot de passe incorrect.';
 }
 
 if (empty($_SESSION['prof'])) {
@@ -79,7 +135,7 @@ if (empty($_SESSION['prof'])) {
            border-radius: 9px; padding: 10px 12px; margin-top: 14px; font-size: .92rem; }
     </style></head><body>
     <form method="post">
-        <h1>AtoutMath — professeur</h1>
+        <h1>AtoutMath — administration</h1>
         <label>Adresse électronique<input type="email" name="email" required autofocus></label>
         <label>Mot de passe<input type="password" name="mdp" required></label>
         <?php if ($erreur): ?><div class="err"><?= h($erreur) ?></div><?php endif; ?>
@@ -95,79 +151,174 @@ $prof = profConnecte();
 // planifiée qu'on ne peut pas installer n'est pas une conservation limitée.
 purgerSiNecessaire();
 
-// --- Créer une classe ------------------------------------------------------
-if (($_POST['action'] ?? '') === 'creer') {
+// ═══════════════════ CE QUE LES FORMULAIRES DEMANDENT ═══════════════════════
+//
+// TOUT LE TRAITEMENT EST ICI, ET L'AFFICHAGE EST AILLEURS. Les sections ne font
+// que calculer et écrire ; elles ne changent rien. C'est ce qui permet de les
+// lire — et de les réordonner — sans se demander laquelle a un effet de bord.
+//
+// CHAQUE ACTION REVIENT SUR SON ANCRE. Après avoir ouvert le guichet, on veut
+// se retrouver devant le dépôt, pas en haut de la page : une redirection qui
+// oublie l'ancre oblige à redéplier ce qu'on venait de déplier.
+
+$apercu = null;        // ce que contient l'archive examinée
+$pose = null;          // le résultat d'une pose
+$erreurDepot = '';
+$fait = null;          // le rangement de la base
+$erreur = '';
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     exigerJeton();
-    $nom = trim((string) ($_POST['nom'] ?? ''));
-    if ($nom !== '') {
-        // Un code qui n'existe pas déjà : on retire, au pire quelques fois.
-        do {
-            $code = joinCode();
-            $s = db()->prepare('SELECT 1 FROM classes WHERE join_code = ?');
-            $s->execute([$code]);
-        } while ($s->fetch());
-        db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code, level) VALUES (?, ?, ?, ?, ?)')
-            ->execute([uuidv4(), $prof['id'], $nom, $code, trim((string) ($_POST['niveau'] ?? '')) ?: null]);
-        redirige('index.php', "Classe « $nom » créée. Le code à dicter est $code.");
+    $action = (string) ($_POST['action'] ?? '');
+
+    // --- Le guichet des mises à jour ---------------------------------------
+    if (($_POST['guichet'] ?? '') === 'ouvrir') {
+        // LE GUICHET DONNE LE SITE, PAS UNE CLASSE. Poser une archive écrit des
+        // fichiers PHP : qui l'ouvre peut remplacer le logiciel, et lire par là
+        // tout ce qui appartient aux autres professeurs. C'est donc un geste de
+        // l'installation, comme créer un compte — il revient à celui qui a
+        // installé le site. Voir `professeurFondateur` dans lib/db.php : le
+        // modèle tient en une phrase, tous égaux devant leurs classes, un seul
+        // responsable du serveur.
+        if (!estLeFondateur($prof)) {
+            redirige('index.php#depot', 'Seul le professeur qui a installé le site '
+                . 'ouvre le guichet des mises à jour.');
+        }
+        ouvrirGuichet();
+        redirige('index.php#depot', 'Guichet ouvert pour trente minutes.');
     }
-    redirige('index.php');
+    if (($_POST['guichet'] ?? '') === 'fermer') {
+        fermerGuichet();
+        redirige('index.php#depot', 'Guichet refermé.');
+    }
+
+    // --- Effacer install.php, d'un bouton ----------------------------------
+    if ($action === 'effacer-installeur') {
+        $ok = @unlink(dirname(__DIR__) . '/install.php');
+        redirige('index.php#sante', $ok
+            ? 'install.php est effacé.'
+            : "Impossible de l'effacer : supprimez api/install.php par FTP.");
+    }
+
+    // --- Retirer les fichiers d'une version précédente ----------------------
+    if ($action === 'menage') {
+        $r = effacerFichiersPerimes(dirname(__DIR__, 2));
+        $n = count($r['effaces']);
+        redirige('index.php#sante', $r['restants']
+            ? $n . ' retiré(s), mais ' . implode(', ', $r['restants'])
+                . ' résiste(nt) : supprimez-les par FTP.'
+            : ($n > 0
+                ? $n . ' fichier' . ($n > 1 ? 's' : '') . ' d\'une version précédente retiré'
+                    . ($n > 1 ? 's' : '') . '.'
+                : 'Il n\'y en avait plus.'));
+    }
+
+    // --- Le dépôt d'une archive --------------------------------------------
+    //
+    // RIEN NE S'ÉCRIT TANT QUE LE GUICHET EST FERMÉ, et on le vérifie ICI plutôt
+    // que dans l'affichage : une page qui cache un bouton mais accepte quand
+    // même la requête ne protège rien du tout.
+    if (in_array($action, ['televerser', 'apercu', 'poser'], true)) {
+        if (!guichetOuvert()) {
+            redirige('index.php#depot', 'Le guichet est fermé. Ouvrez-le d\'abord.');
+        }
+        $racine = dirname(__DIR__, 2);
+
+        if ($action === 'televerser') {
+            $f = $_FILES['archive'] ?? null;
+            if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                $erreurDepot = 'Choisissez une archive.';
+            } elseif (($f['error'] ?? 1) !== UPLOAD_ERR_OK) {
+                // C'EST L'ERREUR QU'ON RENCONTRERA VRAIMENT sur un hébergement
+                // mutualisé : le plafond de transfert de PHP y est souvent à
+                // 2 Mo et l'archive en fait plus du double. On ne dit pas
+                // « erreur 1 », on dit quoi faire.
+                $erreurDepot = 'Le transfert a échoué. Le plafond de cet hébergement est de '
+                    . poids(plafondTransfert()) . ' ; déposez plutôt l\'archive à la '
+                    . 'racine du site avec l\'explorateur de votre hébergeur, puis '
+                    . 'rechargez cette page.';
+            } else {
+                $nom = basename((string) $f['name']);
+                if (!preg_match('/^[\w.-]+\.zip$/', $nom)) {
+                    $erreurDepot = 'Ce fichier n\'est pas une archive .zip.';
+                } elseif (!@move_uploaded_file($f['tmp_name'], $racine . '/' . $nom)) {
+                    $erreurDepot = 'Impossible d\'écrire l\'archive à la racine du site. '
+                        . 'Le dossier n\'est peut-être pas accessible en écriture.';
+                } else {
+                    $_POST['archive'] = $nom;
+                    $action = 'apercu';   // reçue : on montre aussitôt ce qu'elle contient
+                }
+            }
+        }
+
+        if ($action === 'apercu' && $erreurDepot === '') {
+            $nom = basename((string) ($_POST['archive'] ?? ''));
+            $chemin = $racine . '/' . $nom;
+            if ($nom === '' || !is_file($chemin)) {
+                $erreurDepot = 'Archive introuvable.';
+            } else {
+                $apercu = lireArchive($chemin) + ['nom' => $nom, 'poids' => filesize($chemin)];
+                if ($apercu['erreur'] !== '') {
+                    $erreurDepot = (string) $apercu['erreur'];
+                    $apercu = null;
+                }
+            }
+        }
+
+        if ($action === 'poser') {
+            $nom = basename((string) ($_POST['archive'] ?? ''));
+            $chemin = $racine . '/' . $nom;
+            if ($nom === '' || !is_file($chemin)) {
+                $erreurDepot = 'Archive introuvable.';
+            } else {
+                $pose = poserArchive($chemin);
+                inscrireDepot($nom, (int) ($pose['ecrits'] ?? 0));
+                if (($_POST['effacer'] ?? '') === 'oui' && empty($pose['erreurs'])) {
+                    @unlink($chemin);
+                }
+            }
+        }
+    }
+
+    // --- Ranger la base hors du dossier web --------------------------------
+    if ($action === 'ranger') {
+        require __DIR__ . '/rangerBase.php';   // calcule $fait ou $erreur
+    }
 }
 
-// --- La liste --------------------------------------------------------------
-$stmt = db()->prepare(
-    'SELECT c.*,
-            (SELECT COUNT(*) FROM students s WHERE s.class_id = c.id) AS combien,
-            (SELECT MAX(s.last_seen_at) FROM students s WHERE s.class_id = c.id) AS vu
-     FROM classes c WHERE c.teacher_id = ? ORDER BY c.archived ASC, c.created_at DESC'
-);
-$stmt->execute([$prof['id']]);
-$classes = $stmt->fetchAll();
+enTete('Administration', $prof);
 
-// Combien d'élèves en ligne, par classe — la question de la séance en cours.
-$enLigne = [];
-foreach ($classes as $c) {
-    $s = db()->prepare('SELECT last_seen_at FROM students WHERE class_id = ?');
-    $s->execute([$c['id']]);
-    $enLigne[$c['id']] = count(array_filter($s->fetchAll(), fn ($x) => estEnLigne($x['last_seen_at'])));
+// LE VERDICT DE SANTÉ, CALCULÉ AVANT D'ÊTRE AFFICHÉ — parce qu'il se lit tout
+// en haut alors que sa section est en bas. On ne peut donc pas se contenter de
+// le sortir au fil de l'eau : on met la section de côté, et l'on écrit son
+// verdict avant elle.
+ob_start();
+require __DIR__ . '/sections/sante.php';
+$htmlSante = ob_get_clean();
+
+if (($santeGraves ?? 0) > 0 || ($santeTiedes ?? 0) > 0) {
+    $grave = ($santeGraves ?? 0) > 0;
+    ?>
+    <div class="avis<?= $grave ? ' avis--grave' : '' ?>">
+        <span class="marque" aria-hidden="true"><?= $grave ? '✗' : '!' ?></span>
+        <p><b><?= $grave
+            ? (int) $santeGraves . ' point' . ($santeGraves > 1 ? 's' : '') . ' grave'
+                . ($santeGraves > 1 ? 's' : '') . ' à corriger'
+            : (int) $santeTiedes . ' point' . ($santeTiedes > 1 ? 's' : '') . ' à regarder' ?>
+        dans la santé de l'installation.</b> <a href="#sante">Voir</a>.</p>
+    </div>
+    <?php
 }
-
-enTete('Mes classes', $prof, 'classes');
 ?>
-<h1>Mes classes</h1>
+<p class="rappel">Les classes, les élèves et la conduite de séance ont quitté
+cette page : tout cela se fait dans le logiciel. Il ne reste ici que ce qui
+touche au serveur.</p>
+<?php
 
-<?php if (!$classes): ?>
-<div class="carte">
-    <h2>Aucune classe pour l'instant</h2>
-    <p class="gris-clair">Créez-en une ci-dessous. Vous obtiendrez un code à six
-    signes : c'est tout ce que vos élèves auront à saisir, avec leur prénom.</p>
-</div>
-<?php else: ?>
-<div class="carte">
-<table>
-    <tr><th>Classe</th><th>Code à dicter</th><th>Élèves</th><th>En ligne</th><th>État</th><th></th></tr>
-    <?php foreach ($classes as $c): ?>
-    <tr>
-        <td><b><?= h($c['name']) ?></b><?= $c['level'] ? ' <span class="gris-clair">' . h($c['level']) . '</span>' : '' ?></td>
-        <td><span class="code"><?= h($c['join_code']) ?></span></td>
-        <td><?= (int) $c['combien'] ?></td>
-        <td><span class="pastille <?= $enLigne[$c['id']] ? 'on' : '' ?>"></span><?= $enLigne[$c['id']] ?></td>
-        <td><?= $c['archived'] ? 'archivée' : ($c['locked'] ? '🔒 verrouillée' : 'ouverte') ?></td>
-        <td style="text-align:right"><a class="bouton" href="classe.php?id=<?= h($c['id']) ?>">Conduire la séance</a></td>
-    </tr>
-    <?php endforeach; ?>
-</table>
-</div>
-<?php endif; ?>
+require __DIR__ . '/sections/depot.php';
+echo $htmlSante;
+require __DIR__ . '/sections/ranger.php';
+require __DIR__ . '/sections/rapport.php';
+require __DIR__ . '/sections/compte.php';
 
-<div class="carte">
-    <h2>Nouvelle classe</h2>
-    <form method="post" class="rangee">
-        <input type="hidden" name="jeton" value="<?= h(jeton()) ?>">
-        <input type="hidden" name="action" value="creer">
-        <div><label>Nom</label><input type="text" name="nom" placeholder="6e B" required></div>
-        <div><label>Niveau <span class="gris-clair">(facultatif)</span></label>
-             <input type="text" name="niveau" placeholder="6e"></div>
-        <button>Créer</button>
-    </form>
-</div>
-<?php piedDePage();
+piedDePage();

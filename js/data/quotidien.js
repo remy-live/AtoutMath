@@ -116,7 +116,11 @@ export function toutDuJour(opts = {}) {
  * serve directement à travailler — les trois autres donnent envie, ce qui n'est
  * pas rien, mais ce n'est pas la même chose.
  */
-const ROULEMENT = ['conseil', 'blague', 'conseil', 'citation', 'enigme'];
+// EXPORTÉ POUR L'ÉPREUVE, et ce n'est pas un détail de confort : la longueur
+// de ce roulement entre dans le calcul de ce qu'un élève revoit et quand. Une
+// épreuve qui recopierait « 5 » chez elle cesserait de garder quoi que ce soit
+// le jour où l'on ajoute un genre.
+export const ROULEMENT = ['conseil', 'blague', 'conseil', 'citation', 'enigme'];
 
 export function genreDuJour(jour) {
     const j = Math.floor(Number(jour) || 0);

@@ -165,43 +165,68 @@ const FORMES = {
 const LETTRES_POINTS = 'ABCDEFGHJKLMNPRSTUVWXYZ';
 
 /**
- * LES POINTS NE DOIVENT PAS SE MARCHER DESSUS.
+ * LES LETTRES NE DOIVENT PAS SE MARCHER DESSUS — et l'on mesure LES LETTRES.
  *
- * Vu sur la feuille imprimée : « F », « C » et « A » empilés au même endroit du
- * cercle, illisibles. Trois éléments tirés indépendamment tombent
- * régulièrement au même angle, et leurs lettres se superposent — la figure
- * devient fausse à lire alors que la géométrie est juste.
+ * PREMIÈRE RÈGLE, écrite après avoir vu « F », « C » et « A » empilés au même
+ * endroit du cercle sur une feuille imprimée : vingt degrés d'écart entre deux
+ * points DU CERCLE, et l'on retire le tirage tant que ce n'est pas le cas.
  *
- * On impose donc VINGT DEGRÉS d'écart entre deux points quelconques du cercle,
- * et l'on retire le tirage tant que ce n'est pas le cas.
+ * ELLE NE VOYAIT PAS LE SECOND POINT D'UNE TANGENTE, qui n'est pas sur le
+ * cercle : il est posé sur la droite, hors du disque, pour qu'on puisse écrire
+ * « (AB) ». Mesuré sur une figure de tangente et de sécante — « B » tombait
+ * sur « D », illisibles l'un et l'autre.
+ *
+ * ET CE DÉFAUT-LÀ EST DEVENU PLUS CHER QU'AVANT. Depuis que la notation est
+ * exigée (Rémy : « il faudrait taper [OG] »), deux lettres superposées ne
+ * rendent plus la figure moins jolie : elles rendent la réponse IMPOSSIBLE à
+ * écrire.
+ *
+ * ON MESURE DONC LÀ OÙ LES LETTRES SONT RÉELLEMENT POSÉES, en demandant la
+ * figure à `tracesDe` : c'est le seul endroit qui sait où chacune atterrit —
+ * sur le cercle, hors du cercle, écartée du centre de six unités —, et toute
+ * famille de tracé à venir y sera comprise sans qu'on y pense.
+ *
+ * ONZE UNITÉS : c'est ce que valaient les vingt degrés de la première règle
+ * sur un cercle de rayon 32 (2 × 32 × sin 10° = 11,1). On ne resserre ni ne
+ * relâche rien pour les points du cercle ; on étend la règle aux autres.
  */
-const ECART_MIN = 20;
+const ECART_MIN = 11;
 
-function anglesDe(e) {
-    if (e.type === 'rayon' || e.type === 'tangente') return [e.a];
-    if (e.type === 'diametre') return [e.a, e.a + 180];
-    if (e.type === 'corde' || e.type === 'arc' || e.type === 'secante') return [e.a, e.b];
-    return [];
-}
-
-function pointsEcartes(elements) {
-    const angles = elements.flatMap(anglesDe).map(a => ((a % 360) + 360) % 360);
-    for (let i = 0; i < angles.length; i++) {
-        for (let j = i + 1; j < angles.length; j++) {
-            const d = Math.abs(angles[i] - angles[j]);
-            if (Math.min(d, 360 - d) < ECART_MIN) return false;
+/** La distance entre les deux lettres les plus proches de la figure. */
+function ecartDesLettres(elements) {
+    // LES POINTS SONT NOMMÉS AVANT D'ÊTRE MESURÉS : sans lettre, `tracesDe` ne
+    // pose aucun texte, et la mesure dirait que tout va bien.
+    const lettres = tracesDe({ elements: nommerPoints(elements), surligne: [] })
+        .filter(t => t.k === 'texte');
+    let min = Infinity;
+    for (let i = 0; i < lettres.length; i++) {
+        for (let j = i + 1; j < lettres.length; j++) {
+            min = Math.min(min,
+                Math.hypot(lettres[i].x - lettres[j].x, lettres[i].y - lettres[j].y));
         }
     }
-    return true;
+    return min;
 }
 
-/** Retire le tirage jusqu'à ce que les points soient lisibles. */
+/**
+ * Retire le tirage jusqu'à ce que les lettres soient lisibles — ET GARDE LE
+ * MEILLEUR, pas le dernier.
+ *
+ * MESURÉ : une question « trouver » pose jusqu'à quatre tracés, soit neuf
+ * lettres autour d'un cercle de rayon 32. Quarante tirages ne suffisent pas
+ * toujours — 8 figures sur 2 400 restaient trop serrées —, et l'on rendait
+ * alors le QUARANTIÈME, choisi pour rien. Garder le meilleur ne coûte qu'une
+ * comparaison, et c'est la seule chose à faire quand on ne peut pas satisfaire
+ * la règle : les mauvais jours, la figure est la moins mauvaise possible.
+ */
 function tirerLisible(rng, faire) {
-    let derniers = faire();
-    for (let essai = 0; essai < 40 && !pointsEcartes(derniers); essai++) derniers = faire();
-    return derniers;
+    let meilleur = faire(), score = ecartDesLettres(meilleur);
+    for (let essai = 0; essai < 40 && score < ECART_MIN; essai++) {
+        const autre = faire(), s = ecartDesLettres(autre);
+        if (s > score) { meilleur = autre; score = s; }
+    }
+    return meilleur;
 }
-
 /** Donne un nom aux points de chaque élément, sans jamais réutiliser une lettre. */
 function nommerPoints(elements) {
     let k = 0;
@@ -233,51 +258,208 @@ export function memeMot(donne, attendu) {
 }
 
 /**
- * ET LA NOTATION VAUT AUSSI LA RÉPONSE — « [OA] », tapé.
+ * ET LA NOTATION VAUT AUSSI LA RÉPONSE — mais écrite comme elle s'écrit.
  *
- * Rémy : « ce serait bien pour le vocabulaire du cercle de pouvoir aussi
- * répondre [OA] ou écrire cercle ou rayon. En gardant ce que tu as déjà fait
- * et qui est très bien. »
+ * Rémy, le premier jour : « ce serait bien pour le vocabulaire du cercle de
+ * pouvoir aussi répondre [OA] ou écrire cercle ou rayon. »
  *
- * Sur les questions « lequel est un rayon ? », on désignait le tracé au doigt.
- * C'est bien, et cela reste : désigner sur la figure demande d'avoir vraiment
- * trouvé. Mais l'ÉCRIRE demande une chose de plus, qui est au programme — la
- * notation elle-même. Un élève qui tape « [OA] » a lu la figure ET su
- * l'écrire.
+ * Rémy, revenu dessus : « tu acceptes comme rayon og comme réponse alors qu'il
+ * faudrait taper [OG] ».
  *
- * ON COMPARE LES LETTRES, PAS LA PONCTUATION. [OA] et [AO] sont le même
- * segment ; les crochets, les parenthèses, le mot « arc » et les espaces ne
- * disent rien de plus que ce que la figure montre déjà, et refuser « OA » tapé
- * sans crochets sur un clavier de téléphone n'enseignerait rien sur le cercle.
- * Deux tracés d'une même figure ne partagent jamais une lettre — c'est
- * `nommerPoints` qui s'en charge —, donc les lettres seules désignent sans
- * ambiguïté.
+ * ON NE COMPARAIT QUE LES LETTRES, et c'était écrit ici noir sur blanc :
+ * « refuser OA tapé sans crochets sur un clavier de téléphone n'enseignerait
+ * rien sur le cercle ». Il tranche l'inverse, et il a raison — la ponctuation
+ * n'habille pas la notation, elle EST l'objet :
+ *
+ *     [OG]   le SEGMENT d'extrémités O et G
+ *     (OG)   la DROITE qui passe par O et par G, infinie des deux côtés
+ *      OG    la LONGUEUR, un nombre
+ *
+ * Un rayon est un segment. « OG » répond par une longueur à une question qui
+ * demande un tracé, et le logiciel l'acceptait.
+ *
+ * TROIS VERDICTS, LÀ OÙ UN BOOLÉEN N'EN DONNAIT QUE DEUX. « (OG) » devant un
+ * rayon n'est pas la même erreur que « [AB] » : dans le premier cas l'élève a
+ * LU LA FIGURE et ne sait pas l'écrire, dans le second il s'est trompé de
+ * tracé. Répondre « faux » aux deux apprend au premier qu'il n'a pas trouvé,
+ * ce qui est faux.
+ *
+ *   'juste'    les bonnes lettres, la bonne ponctuation.
+ *   'notation' les bonnes lettres, la mauvaise ponctuation : on DIT ce qui
+ *              manque, et cela ne consomme pas d'essai. C'est ce qu'un
+ *              professeur fait au bureau de l'élève : « il manque les
+ *              crochets », et on laisse corriger.
+ *   'faux'     d'autres lettres : réponse fausse, comme avant.
+ *
+ * Rémy : « Précise leur erreur si ils se trompent. » `dire` est cette phrase.
+ * Elle vit ici et non dans l'écran : c'est une règle sur la notation du
+ * cercle, et elle s'éprouve sans navigateur.
+ *
+ * @returns {{verdict:'juste'|'notation'|'faux', dire:string}}
  */
-export function memeNotation(donne, attendu) {
-    const a = lettresDe(donne), b = lettresDe(attendu);
-    return a.length > 0 && a === b;
+export function jugerNotation(donne, attendu) {
+    const texte = String(donne == null ? '' : donne);
+    const lettres = lettresDe(texte);
+    const famille = familleAttendue(attendu);
+    // LES LETTRES DANS L'ORDRE DE LA FIGURE, et non triées : on les lui réécrit
+    // dans les phrases, et « [EO] » sous une figure qui porte [OE] aurait l'air
+    // d'une seconde erreur.
+    const n = lettresEnOrdre(attendu);
+
+    // UN MOT DU CHAPITRE N'EST PAS UNE NOTATION — et ce n'est pas une erreur de
+    // lecture : l'élève a répondu à une AUTRE question que celle posée. Le
+    // champ est à côté d'une figure qu'on peut aussi cliquer ; rien ne dit, si
+    // on ne le dit pas, qu'on attend ici des lettres.
+    if (MOTS_CERCLE.some(m => memeMot(texte, m.nom))) {
+        return { verdict: 'notation', dire: 'On ne demande pas le NOM du tracé mais sa '
+            + 'NOTATION : les lettres de ses extrémités, avec ce qui les entoure.' };
+    }
+    if (!lettres) {
+        return { verdict: 'notation', dire: 'Écris la notation du tracé : ses deux lettres, '
+            + 'entre crochets ou entre parenthèses.' };
+    }
+    if (lettres !== lettresDe(attendu)) return { verdict: 'faux', dire: '' };
+
+    // À PARTIR D'ICI L'ÉLÈVE A TROUVÉ LE BON TRACÉ : il ne reste que l'écriture.
+    const p = ponctuationDe(texte);
+    if (famille === 'libre') return { verdict: 'juste', dire: '' };
+
+    if (famille === 'arc') {
+        // UN ARC NE S'ENTOURE DE RIEN. Sa notation du cours porte un arrondi
+        // au-dessus des deux lettres, qui ne se tape pas : on le nomme donc
+        // par le mot, et le mot devient la partie qui compte.
+        if (p.arc && !p.ouvre && !p.ferme) return { verdict: 'juste', dire: '' };
+        if (p.ouvre || p.ferme) {
+            return { verdict: 'notation', dire: 'Crochets et parenthèses désignent des tracés '
+                + `DROITS. De ${n[0]} à ${n[1]}, le tracé suit le cercle : c'est un arc, et `
+                + `on écrit « arc ${n} ».` };
+        }
+        return { verdict: 'notation', dire: 'Les deux lettres toutes seules désignent une '
+            + `LONGUEUR. L'arc se nomme avec le mot : écris « arc ${n} ».` };
+    }
+
+    const veut = PAIRES[famille], autre = PAIRES[famille === 'segment' ? 'droite' : 'segment'];
+    const bonne = `${veut.o}${n}${veut.f}`;
+    if (p.ouvre === veut.o && p.ferme === veut.f && !p.arc) return { verdict: 'juste', dire: '' };
+    if (p.arc) {
+        return { verdict: 'notation', dire: 'Le mot « arc » nomme une ligne COURBE, qui suit '
+            + `le cercle. Ce tracé-là est droit : il s'écrit ${bonne}.` };
+    }
+    if (!p.ouvre && !p.ferme) {
+        return { verdict: 'notation', dire: `Il manque ${veut.nom} : ${n} tout seul désigne une `
+            + `LONGUEUR, un nombre. Le tracé, lui, s'écrit ${bonne}.` };
+    }
+    if (p.ouvre === autre.o && p.ferme === autre.f) {
+        return { verdict: 'notation', dire: veut.contre(n) };
+    }
+    // Une seule moitié, ou un crochet refermé par une parenthèse.
+    return { verdict: 'notation', dire: 'Une notation s\'ouvre ET se ferme, avec les deux '
+        + `signes de la même paire : c'est ${bonne}.` };
+}
+
+/**
+ * LES DEUX PAIRES, ET CE QU'ON RÉPOND À QUI PREND L'AUTRE.
+ *
+ * `contre` est la phrase du cours — la même idée que le `contre` des neuf mots,
+ * plus haut : ce n'est pas la bonne réponse qui enseigne, c'est la petite
+ * différence avec celle qu'on a donnée.
+ */
+const PAIRES = {
+    segment: {
+        o: '[', f: ']', nom: 'les crochets',
+        contre: (n) => `Les parenthèses désignent la DROITE (${n}), qui continue au-delà de `
+            + `${n[0]} et de ${n[1]}. Ce tracé-ci s'arrête : c'est un segment, et cela `
+            + `s'écrit [${n}].`
+    },
+    droite: {
+        o: '(', f: ')', nom: 'les parenthèses',
+        contre: (n) => `Les crochets désignent le SEGMENT [${n}], qui s'arrête en ${n[0]} et `
+            + `en ${n[1]}. Ce tracé-ci continue de part et d'autre : il s'écrit (${n}).`
+    }
+};
+
+/**
+ * LES ÉCRITURES QUE CETTE SÉRIE PEUT DEMANDER — et pas une de plus.
+ *
+ * RÉMY : « ne parle pas de tangente pour le cercle ! » On posait toujours les
+ * deux touches, « [ ] » et « ( ) », en se disant que n'en montrer qu'une
+ * désignerait la famille de la réponse. C'est vrai DANS une série qui mélange
+ * les deux — et faux dans la sienne : rayon, diamètre et corde sont tous des
+ * segments, aucun tracé ne s'écrit entre parenthèses, et la touche « ( ) »
+ * n'annonçait donc rien d'autre qu'un objet hors programme.
+ *
+ * ON LIT LA FAMILLE SUR CE QUE LE GÉNÉRATEUR ÉCRIT, et non sur une table
+ * parallèle : `FORMES[id].ecrire` est déjà la seule source de la notation, et
+ * `familleAttendue` sait la lire. Un mot ajouté au vocabulaire apportera donc
+ * sa touche tout seul.
+ */
+export function ecrituresDeLaSerie(mots) {
+    const liste = (Array.isArray(mots) && mots.length ? mots.filter(motDe) : null)
+        || MOTS_CERCLE.filter(m => !m.avance).map(m => m.id);
+    const vues = new Set();
+    for (const id of liste) {
+        if (GLOBAUX.has(id) || !FORMES[id]) continue;
+        const f = familleAttendue(FORMES[id].ecrire(['A', 'B']));
+        if (f !== 'libre') vues.add(f);
+    }
+    // L'ordre est celui du cours, pas celui du tirage : le segment d'abord.
+    return ['segment', 'droite', 'arc'].filter(f => vues.has(f));
+}
+
+/** Ce que la notation attendue réclame : des crochets, des parenthèses, un mot. */
+export function familleAttendue(attendu) {
+    const t = String(attendu == null ? '' : attendu);
+    if (/arc/i.test(t)) return 'arc';
+    if (t.includes('(')) return 'droite';
+    if (t.includes('[')) return 'segment';
+    // Aucune des trois : on ne refusera pas sur une ponctuation qu'on ne sait
+    // pas nommer. Les mots globaux — le centre, le cercle, le disque — ne
+    // passent jamais par ici : ils se nomment, ils ne se désignent pas.
+    return 'libre';
+}
+
+/** Ce qui entoure la notation écrite, et si le mot « arc » y est. */
+export function ponctuationDe(texte) {
+    const t = String(texte == null ? '' : texte);
+    return {
+        ouvre: t.includes('[') ? '[' : (t.includes('(') ? '(' : null),
+        ferme: t.includes(']') ? ']' : (t.includes(')') ? ')' : null),
+        arc: /arc/i.test(t)
+    };
+}
+
+/**
+ * LE TEXTE SANS SES MOTS — il ne reste que des lettres de points.
+ *
+ * « ARC » et « DROITE » sont des mots, pas des points : on les retire avant de
+ * ramasser les lettres, sinon leurs A, R et C entreraient dans le compte.
+ *
+ * ET L'ÉLISION SE RETIRE PAR SON APOSTROPHE, jamais comme un mot : un segment
+ * peut très bien s'appeler [LE], et retirer « LE » l'effacerait. L'apostrophe,
+ * elle, ne sort d'aucun crochet.
+ *
+ * « ARC » se retire SANS frontière de mot : « arcAB » tapé sans espace sur un
+ * clavier de téléphone doit valoir « l'arc AB ». Aucune notation ne fait trois
+ * lettres, donc « ARC » ne peut jamais être un tracé.
+ */
+function sansLesMots(texte) {
+    return String(texte == null ? '' : texte).toUpperCase()
+        .replace(/[LD]['’]/g, ' ')
+        .replace(/ARC/g, ' ')
+        .replace(/\b(DROITE|SEGMENT|POINT|CERCLE|DISQUE)\b/g, ' ');
 }
 
 /** Les lettres d'une notation, rangées : « [AO] », « OA », « l'arc AO » → « AO ». */
 export function lettresDe(texte) {
-    const brut = String(texte == null ? '' : texte).toUpperCase();
-    // « ARC » et « DROITE » sont des mots, pas des points : on les retire avant
-    // de ramasser les lettres, sinon leurs A, R et C entreraient dans le compte.
-    //
-    // ET L'ÉLISION SE RETIRE PAR SON APOSTROPHE, jamais comme un mot : un
-    // segment peut très bien s'appeler [LE], et retirer « LE » l'effacerait.
-    // L'apostrophe, elle, ne sort d'aucun crochet.
-    // « ARC » se retire SANS frontière de mot : « arcAB » tapé sans espace sur
-    // un clavier de téléphone doit valoir « l'arc AB ». Aucune notation ne fait
-    // trois lettres, donc « ARC » ne peut jamais être un tracé.
-    const sansMots = brut
-        .replace(/[LD]['\u2019]/g, ' ')
-        .replace(/ARC/g, ' ')
-        .replace(/\b(DROITE|SEGMENT|POINT|CERCLE|DISQUE)\b/g, ' ');
-    const lettres = (sansMots.match(/[A-Z]/g) || []);
+    const lettres = (sansLesMots(texte).match(/[A-Z]/g) || []);
     return [...new Set(lettres)].sort().join('');
 }
 
+/** Les mêmes, DANS L'ORDRE OÙ ELLES SONT ÉCRITES : « [OE] » → « OE ». */
+export function lettresEnOrdre(texte) {
+    const lettres = (sansLesMots(texte).match(/[A-Z]/g) || []);
+    return [...new Set(lettres)].join('');
+}
 export function normaliser(mot) {
     return String(mot == null ? '' : mot)
         .toLowerCase()
@@ -349,7 +531,7 @@ function itemNommer(rng, mot, liste, papier = false) {
     const spec = { elements, surligne: 0 };
     const noms = elements[0].noms;
     const enonce = FORMES[mot.id].question(noms);
-    const autres = MOTS_CERCLE.filter(m => m.id !== mot.id)
+    const autres = leurres(mot, liste)
         .map(m => ({ value: m.nom, label: m.nom, why: contreDe(m, mot) }));
     return makeItem({
         seed: rng.seed,
@@ -365,7 +547,7 @@ function itemNommer(rng, mot, liste, papier = false) {
         answer: mot.nom,
         choices: finalizeChoices(rng, [
             { value: mot.nom, label: mot.nom, correct: true }, ...autres
-        ], { count: Math.min(5, MOTS_CERCLE.length) }),
+        ], { count: Math.min(5, 1 + autres.length) }),
         hints: [
             'Regarde d\'abord OÙ commence et où finit le tracé : au centre O ? sur le cercle ? '
                 + 'des deux côtés du cercle ?',
@@ -461,6 +643,40 @@ function itemTrouver(rng, mot, liste) {
             ecrits: tous.map((m, i) => ecrit(i))
         }
     });
+}
+
+/**
+ * LES LEURRES SORTENT DE LA SÉRIE — et c'était vrai PAR ACCIDENT.
+ *
+ * RÉMY : « ne parle pas de tangente pour le cercle ! » J'ai cru que les
+ * propositions en étaient la cause — les NEUF mots y servaient de leurres —
+ * et JE SUIS ALLÉ MESURER AVANT DE LE DIRE : sur 286 questions d'une série de
+ * sixième, « une tangente » n'est proposée AUCUNE fois. Ce n'était donc pas
+ * là. (C'était dans les touches et dans la consigne, que j'avais écrites le
+ * jour même.)
+ *
+ * POURQUOI ELLE N'Y ÉTAIT PAS, ET POURQUOI ON CHANGE QUAND MÊME.
+ * `finalizeChoices` garde les quatre PREMIERS leurres de la liste qu'on lui
+ * donne ; tangente et sécante sont les deux DERNIÈRES de `MOTS_CERCLE`, donc
+ * elles ne passaient jamais la coupe. La règle tenait à l'ordre d'un tableau.
+ * Le jour où l'on réordonne le vocabulaire, ou l'on passe à six propositions,
+ * elle tombe sans bruit — c'est ce que garde l'épreuve.
+ *
+ * LE DÉPÔT A DÉJÀ ÉCRIT CETTE RÈGLE UN ÉTAGE PLUS BAS, pour le DÉCOR de la
+ * figure : voir `decor`, « ET PRIS DANS LA SÉRIE SEULEMENT ». Celle-ci est la
+ * même, au même endroit du raisonnement.
+ *
+ * ET L'ON NE DESCEND PAS SOUS QUATRE PROPOSITIONS : une série d'un ou deux
+ * mots n'en fournit pas assez, et l'on complète alors avec les mots du MÊME
+ * NIVEAU — jamais avec la quatrième dans une série de sixième.
+ */
+function leurres(mot, liste) {
+    const dedans = liste.filter(m => m.id !== mot.id);
+    if (dedans.length >= 4) return dedans;
+    const avance = liste.some(m => m.avance);
+    const renfort = MOTS_CERCLE.filter(m => m.id !== mot.id
+        && !dedans.includes(m) && (avance || !m.avance));
+    return [...dedans, ...renfort].slice(0, 4);
 }
 
 /**

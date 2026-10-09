@@ -21,6 +21,7 @@
 
 import { regTimeout, regInterval } from '../timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const HOLES = 9;
 const SORTIES_MAX = 3;       // disques visibles en même temps
@@ -168,11 +169,18 @@ export function mount(container, session, opts = {}) {
     async function lancerDemo() {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
+        // LA GÉNÉRATION ENTRE DANS LA VIE DU MENEUR, et elle remonte donc d'une
+        // ligne : la démonstration ne doit pas continuer si la question a changé
+        // sous elle. C'était écrit à la main devant chacun de ses pas — sauf
+        // devant le premier, qui ne vérifiait que `destroyed`. Le meneur ne peut
+        // plus l'oublier, et ce premier pas y gagne la vérification qui lui
+        // manquait : si la question a déjà tourné, il n'y a rien à montrer.
         const gen = generation;
+        const robot = meneurDemo(cursor, gate, () => !destroyed && gen === generation, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
         // Deux distracteurs sortent d'abord, la bonne ensuite.
         sortir(); sortir();
-        if (!await cursor.pause(900) || destroyed || gen !== generation) return;
+        if (!await robot.pause(900)) return;
 
         let bonIdx = sorties.findIndex(s => s && s.correct);
         if (bonIdx === -1) {
@@ -193,10 +201,10 @@ export function mount(container, session, opts = {}) {
         // laquelle. Il montre ce qu'il fait, avec le mot du geste : il touche,
         // et il touche ICI — la bulle pointe le rond dont elle parle.
         cursor.say(`La bonne réponse est ${item.answer} : je touche ici.`, holes[bonIdx]);
-        if (!await cursor.pause(1600) || destroyed || gen !== generation) return;
-        if (!await cursor.tap(holes[bonIdx]) || destroyed || gen !== generation) return;
+        if (!await robot.pause(1600)) return;
+        if (!await robot.toucher(holes[bonIdx])) return;
         holes[bonIdx].querySelector('[data-mole]').classList.add('mole--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed || gen !== generation) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         cursor.hideBubble();
         nextItem();
     }

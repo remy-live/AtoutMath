@@ -12,6 +12,7 @@ import { regTimeout } from '../timers.js';
 import { repereSvg, marqueurPoint } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 export function mount(container, session) {
     let destroyed = false;
@@ -112,22 +113,23 @@ export function mount(container, session) {
         if (!target) { regTimeout(renderNext, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         // La règle de lecture, DITE avant le geste. Le pointeur allait droit au
         // point : on voyait où, jamais comment — or « d'abord l'abscisse, puis
         // l'ordonnée » est exactement ce qui s'oublie.
         cursor.say(phraseDepart(item), container.querySelector('.figure-wrap') || container);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.tap(target) || destroyed) return;
+        if (!await robot.tour()) return;
+        if (!await robot.toucher(target)) return;
         markPoint(svg, target, 'demo');
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(item), target);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

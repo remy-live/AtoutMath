@@ -246,26 +246,64 @@ verifier('une route inconnue répond 404', $r['code'] === 404, "code {$r['code']
 
 titre("2. L'administration du professeur");
 
+// ═══════════════════════════════════════════════════════════════════════════
+// L'ADMINISTRATION NE CRÉE PLUS DE CLASSE, et cette section le reflète.
+//
+// Rémy : « la zone admin n'a plus besoin de classe et est vieillotte, va à
+// l'essentiel avec des choses déroulantes […] je n'ai plus besoin des classes ».
+// La liste, la création et la conduite de séance ont quitté cette page ; elles
+// se font dans le logiciel, par `/teacher/classes`.
+//
+// CE QUI RESTE ÉPROUVÉ ICI, c'est l'administration elle-même : la porte, le
+// mauvais mot de passe, le jeton anti-rejeu, et le fait qu'une action refuse
+// de s'exécuter sans lui. La classe, elle, se crée maintenant par l'API — deux
+// lignes plus bas, et le reste du harnais ne s'aperçoit de rien.
+// ═══════════════════════════════════════════════════════════════════════════
+
 $p = page('/admin/');
-verifier("la page de connexion s'affiche", $p['code'] === 200 && str_contains($p['html'], 'AtoutMath — professeur'));
+verifier("la page de connexion s'affiche",
+    $p['code'] === 200 && str_contains($p['html'], 'AtoutMath — administration'));
 
 $p = page('/admin/', ['email' => 'prof@essai.test', 'mdp' => 'faux']);
 verifier('un mauvais mot de passe est refusé', str_contains($p['html'], 'Adresse ou mot de passe incorrect'));
 
 $p = page('/admin/', ['email' => 'prof@essai.test', 'mdp' => 'motdepassetreslong']);
-verifier('le bon mot de passe ouvre la liste des classes',
-    str_contains($p['html'], 'Mes classes') && !str_contains($p['html'], 'incorrect'));
+verifier('le bon mot de passe ouvre l\'administration',
+    str_contains($p['html'], 'Déposer une mise à jour') && !str_contains($p['html'], 'incorrect'));
+
+// LES CLASSES N'Y SONT PLUS, et on le vérifie : une page qu'on croit avoir
+// vidée et qui garde un formulaire oublié est pire qu'une page qu'on n'a pas
+// touchée, parce que plus personne ne le regarde.
+// ON CHERCHE CE QUE SEULE L'ANCIENNE INTERFACE POUVAIT ÉCRIRE, et non des
+// mots qui peuvent se trouver ailleurs : « Mes classes » apparaît dans un
+// COMMENTAIRE CSS de _socle.php, celui-là même qui explique que la barre de
+// navigation a été retirée. Une épreuve qui lit la source plutôt que l'écran
+// accuse le code de dire ce qu'il explique ne plus faire.
+$tracesClasses = array_values(array_filter([
+    'Conduire la séance', 'Code à dicter', 'value="creer"', 'Nouvelle classe'],
+    fn ($t) => str_contains($p['html'], $t)));
+verifier('aucune trace de l\'ancienne interface des classes', $tracesClasses === [],
+    implode(' · ', $tracesClasses));
+verifier('et la page tient en une seule, à sections dépliables',
+    substr_count($p['html'], '<details class="bloc"') === 5,
+    substr_count($p['html'], '<details class="bloc"') . ' section(s)');
 
 $jeton = jetonDe($p['html']);
 verifier('le formulaire porte un jeton anti-rejeu', $jeton !== '');
 
-$p = page('/admin/index.php', ['action' => 'creer', 'nom' => '6e B', 'niveau' => '6e']);
-verifier('créer une classe SANS jeton est refusé', str_contains($p['html'], 'Formulaire expiré'));
+// UNE ACTION SANS JETON EST REFUSÉE. On le vérifie sur le guichet des mises à
+// jour, qui est l'action la plus lourde de conséquence de cette page : elle
+// ouvre l'écriture de fichiers sur le serveur.
+$p = page('/admin/index.php', ['guichet' => 'ouvrir']);
+verifier('ouvrir le guichet SANS jeton est refusé', str_contains($p['html'], 'Formulaire expiré'));
 
-$p = page('/admin/');
-$jeton = jetonDe($p['html']);
-$p = page('/admin/index.php', ['jeton' => $jeton, 'action' => 'creer', 'nom' => '6e B', 'niveau' => '6e']);
-verifier('la classe est créée et le code annoncé', str_contains($p['html'], '6e B'));
+// --- La classe se crée dans le logiciel, par l'API ---------------------------
+$jetonProf = json('/teacher/login',
+    ['email' => 'prof@essai.test', 'password' => 'motdepassetreslong'])['json']['token'] ?? '';
+verifier('le professeur obtient son jeton d\'application', $jetonProf !== '');
+
+$r = json('/teacher/classes', ['action' => 'create', 'name' => '6e B', 'level' => '6e'], $jetonProf);
+verifier('la classe se crée depuis le logiciel', $r['code'] === 200, $r['brut']);
 
 $classe = db()->query("SELECT * FROM classes WHERE name = '6e B'")->fetch();
 verifier('la classe existe en base', (bool) $classe);
@@ -273,9 +311,29 @@ $code = $classe['join_code'] ?? '';
 verifier('le code fait six signes sans 0/O ni 1/I',
     (bool) preg_match('/^[2-9A-HJ-NP-Z]{6}$/', $code), "code « $code »");
 
+
 // -------------------------------------------------------------- Les élèves --
 
 titre('3. Les élèves se rattachent');
+
+// ── L'INSCRIPTION LIBRE EST FERMÉE PAR DÉFAUT ────────────────────────────────
+//
+// Rémy : « je pense qu'il faut le fermer, mais permettre la réouverture ». On
+// vérifie les deux états AVANT tout le reste : la suite de ce fichier rattache
+// une douzaine d'élèves par cette porte, et elle ne le pourrait pas si la porte
+// restait close. C'est aussi la preuve que le réglage commande vraiment.
+$r = json('/join', ['classCode' => $code, 'firstName' => 'Léa']);
+verifier('PORTE FERMÉE : un élève inconnu ne se crée pas',
+    $r['code'] === 403 && ($r['json']['error'] ?? '') === 'inscription_fermee', $r['brut']);
+verifier('et on lui dit quoi faire, en français d\'élève',
+    str_contains($r['json']['message'] ?? '', 'billet'), $r['brut']);
+
+$r = json('/teacher/reglages', ['inscriptionLibre' => true], $jetonProf);
+verifier('le professeur rouvre l\'inscription',
+    $r['code'] === 200 && ($r['json']['reglages']['inscriptionLibre'] ?? false) === true, $r['brut']);
+$r = json('/reglages');
+verifier('et la porte d\'entrée le sait, sans jeton',
+    ($r['json']['reglages']['inscriptionLibre'] ?? false) === true);
 
 $r = json('/join', ['classCode' => $code, 'firstName' => 'Léa']);
 verifier('Léa se rattache', $r['code'] === 200 && !empty($r['json']['token']), $r['brut']);
@@ -284,6 +342,7 @@ $leaId = $r['json']['studentId'] ?? '';
 
 $r = json('/join', ['classCode' => $code, 'firstName' => 'Sacha']);
 $sacha = $r['json']['token'] ?? '';
+$sachaId = $r['json']['studentId'] ?? '';
 verifier('Sacha se rattache', $sacha !== '');
 
 $r = json('/join', ['classCode' => 'ZZZZZZ', 'firstName' => 'Personne']);
@@ -348,41 +407,160 @@ $r = json('/sync', ['deviceId' => 'essai', 'cursor' => 0, 'events' => [
 ]], $lea);
 verifier('un événement malformé est ignoré sans casser la synchro', $r['code'] === 200);
 
+// ── LE BILAN DIT MAINTENANT LES DEUX MOITIÉS ────────────────────────────────
+//
+// RÉMY : « au début du bilan, mettre ce qu'il faut revoir ET CE QUI A ÉTÉ
+// COMPRIS pour la classe ».
+//
+// La route n'envoyait que `weakSkills`, depuis toujours : l'écran ne POUVAIT
+// pas dire ce qui tenait, même en le voulant. Cet essai le vérifie de bout en
+// bout, avec les deux cas dans la même élève — c'est la seule façon de voir que
+// les deux listes se partagent les notions au lieu de les répéter.
+//
+// SIX RÉPONSES, ET NON CINQ — MESURÉ, APRÈS M'ÊTRE TROMPÉ.
+//
+// `RELIABLE_MIN_ATTEMPTS` vaut 5, et j'en avais donc poussé cinq. Les deux
+// listes sont revenues VIDES. La raison est que le seuil ne porte pas sur le
+// nombre de réponses mais sur leur POIDS : `masteryOf` pèse chacune par
+// `pow(0.5, (maintenant - ts) / 21 jours)`, et une réponse enregistrée il y a
+// une milliseconde pèse un cheveu de moins que 1. Cinq d'entre elles font donc
+// 4,999… — juste en dessous de 5, et la notion est déclarée NON FIABLE. Le
+// seuil est donc atteint à six réponses, jamais à cinq.
+// ET LES RÉPONSES APPARTIENNENT À UN RUN QUI PORTE UN PARCOURS.
+//
+// C'est ce qui rend le tableau à double entrée possible : `parSeance` croise
+// l'`exerciseId` de la tentative avec le `pathId` de son run. Sans
+// `run_started`, `runsOf` fabrique bien le run — mais avec `pathId` à `null`,
+// et les réponses n'appartiennent alors à AUCUNE séance. Je l'ai découvert en
+// écrivant cet essai : les six premières réponses de ce fichier n'ont pas de
+// `run_started`, et leur colonne n'existe donc pas. C'est juste, et c'est
+// pourquoi on en pousse d'autres ici, avec leur run déclaré.
+$aPousser = [[
+    'id' => '00000000-4444-4222-8333-000000000000',
+    'type' => 'run_started',
+    'ts' => (int) (microtime(true) * 1000),
+    'payload' => ['runId' => 'run-detail', 'pathId' => 'p-essai',
+                  'pathName' => 'Devoir du mardi', 'mode' => 'entrainement'],
+]];
+for ($i = 0; $i < 6; $i++) {
+    $aPousser[] = [
+        'id' => sprintf('%08x-2222-4222-8333-%012x', $i, $i),
+        'type' => 'attempt',
+        'ts' => (int) (microtime(true) * 1000),
+        'payload' => ['exerciseId' => 'calc-add', 'skillId' => 'calc.add.entiers',
+                      'correct' => true, 'attemptIndex' => 0, 'runId' => 'run-detail'],
+    ];
+    $aPousser[] = [
+        'id' => sprintf('%08x-3333-4222-8333-%012x', $i, $i),
+        'type' => 'attempt',
+        'ts' => (int) (microtime(true) * 1000),
+        'payload' => ['exerciseId' => 'num-frac', 'skillId' => 'num.frac.comparer',
+                      'correct' => $i < 2, 'attemptIndex' => 0, 'runId' => 'run-detail'],
+    ];
+}
+// UNE QUESTION RATTRAPÉE AU SECOND ESSAI : elle ne doit compter ni comme une
+// question de plus, ni comme une réussite du premier coup. C'est le mensonge
+// qu'on a corrigé sur l'écran de fin d'étape, et il ne doit pas revenir par le
+// bilan.
+$aPousser[] = [
+    'id' => '00000000-5555-4222-8333-000000000000',
+    'type' => 'attempt',
+    'ts' => (int) (microtime(true) * 1000),
+    'payload' => ['exerciseId' => 'num-frac', 'skillId' => 'num.frac.comparer',
+                  'correct' => true, 'attemptIndex' => 1, 'runId' => 'run-detail'],
+];
+json('/sync', ['deviceId' => 'essai', 'cursor' => 0, 'events' => $aPousser], $lea);
+
+$bilan = json('/teacher/report', ['classId' => $classe['id']], $jetonProf);
+$sienne = null;
+foreach ($bilan['json']['students'] ?? [] as $ligne) {
+    if (($ligne['firstName'] ?? '') === 'Léa') { $sienne = $ligne; break; }
+}
+$faibles = array_column($sienne['weakSkills'] ?? [], 'skillId');
+$fortes  = array_column($sienne['strongSkills'] ?? [], 'skillId');
+verifier('le bilan rend aussi les notions SOLIDES, pas seulement les fragiles',
+    in_array('calc.add.entiers', $fortes, true),
+    'solides : ' . implode(', ', $fortes));
+verifier('deux réussites sur six restent une notion fragile',
+    in_array('num.frac.comparer', $faibles, true),
+    'fragiles : ' . implode(', ', $faibles));
+verifier('AUCUNE NOTION N\'EST DANS LES DEUX LISTES',
+    // Le seuil est le même des deux côtés (0,7) : une notion qui paraîtrait
+    // dans les deux rendrait l'écran contradictoire, « compris » et « à
+    // reprendre » pour le même mot.
+    array_intersect($faibles, $fortes) === []);
+
+// ── ET LE DÉTAIL PAR EXERCICE, CROISÉ AVEC LA SÉANCE ────────────────────────
+//
+// RÉMY : « un tableau des exercices (double entrée donc) et leur détail de
+// réussite par exercice », « pour le 4 colonne séance choisie ».
+//
+// AUCUNE DONNÉE NOUVELLE N'A ÉTÉ DEMANDÉE AUX ÉLÈVES : les tentatives portaient
+// déjà leur exercice, les runs déjà leur parcours. Cet essai vérifie que le
+// serveur croise bien les deux, et qu'il compte les QUESTIONS et non les
+// tentatives.
+$detail = $sienne['parSeance']['p-essai'] ?? [];
+verifier('le bilan rend le détail par exercice, croisé avec la séance',
+    isset($detail['calc-add']) && isset($detail['num-frac']),
+    'colonnes : ' . implode(', ', array_keys($detail)));
+verifier('six réponses justes font six questions et six réussites',
+    ($detail['calc-add']['posees'] ?? 0) === 6
+    && ($detail['calc-add']['justes'] ?? 0) === 6,
+    json_encode($detail['calc-add'] ?? null));
+verifier('UNE QUESTION RATTRAPÉE N\'EST NI UNE QUESTION DE PLUS NI UNE RÉUSSITE',
+    ($detail['num-frac']['posees'] ?? 0) === 6
+    && ($detail['num-frac']['justes'] ?? 0) === 2
+    && ($detail['num-frac']['reprises'] ?? 0) === 1,
+    json_encode($detail['num-frac'] ?? null));
+verifier('les réponses d\'un run SANS parcours n\'entrent dans aucune colonne',
+    // Les six premières réponses de ce fichier (« run-1 ») n'ont pas de
+    // `run_started` : elles n'appartiennent à aucune séance, et aucune colonne
+    // ne doit les réclamer. Un entraînement libre, c'est exactement ce cas.
+    !isset($sienne['parSeance']['']) && !isset($detail['num-rang']),
+    implode(', ', array_keys($sienne['parSeance'] ?? [])));
+
 // --------------------------------------------------- Ce que le prof pilote --
 
 titre('5. Le professeur conduit la séance');
 
-$url = '/admin/classe.php?id=' . urlencode($classe['id']);
-$p = page($url);
-verifier('la console de séance s\'ouvre', str_contains($p['html'], 'Le verrou'));
-verifier('elle montre les deux élèves',
-    str_contains($p['html'], 'Léa') && str_contains($p['html'], 'Sacha'));
-// ATTENTION AU FAUX POSITIF : « num-rang » est aussi le texte d'exemple du
-// champ de déblocage. On cherche donc le bouton cliquable du rang de l'élève,
-// qui, lui, n'existe que si le serveur a vraiment vu Léa travailler dessus.
-verifier('elle montre ce que Léa fait en ce moment',
-    str_contains($p['html'], 'data-exo="num-rang"'));
+// ═══════════════════════════════════════════════════════════════════════════
+// CETTE SECTION PASSE MAINTENANT PAR L'API, ET NON PLUS PAR UNE PAGE.
+//
+// Rémy : « la zone admin n'a plus besoin de classe […] je n'ai plus besoin des
+// classes ». La console de séance (`api/admin/classe.php`) a donc disparu :
+// tout cela se conduit depuis le logiciel, par `/teacher/class` et
+// `/teacher/message`.
+//
+// CE QUI EST ÉPROUVÉ ICI N'A PAS CHANGÉ D'UN POUCE, et c'est le point : le
+// verrou qui arrive jusqu'à l'élève, la consigne, le mot privé que le voisin ne
+// voit pas, l'accusé de lecture qui ne vaut que pour celui qui a lu. C'est du
+// comportement de SERVEUR ; la page n'en était qu'une des deux télécommandes.
+// Les seules assertions perdues sont celles qui lisaient le HTML d'une page qui
+// n'existe plus — et une épreuve qui garde une page supprimée ne garde rien.
+// ═══════════════════════════════════════════════════════════════════════════
+
+$classId = $classe['id'];
 
 // --- Le verrou
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'verrou', 'verrou' => 'on']);
+$r = json('/teacher/class', ['classId' => $classId, 'action' => 'lock', 'locked' => true], $jetonProf);
+verifier('le professeur verrouille sa classe', $r['code'] === 200, $r['brut']);
 $r = json('/session', [], $lea);
 verifier('LE VERROU ARRIVE JUSQU\'À L\'ÉLÈVE', ($r['json']['session']['locked'] ?? null) === true);
 
+json('/teacher/class', ['classId' => $classId, 'action' => 'lock', 'locked' => false], $jetonProf);
+$r = json('/session', [], $lea);
+verifier('et le déverrouillage aussi', ($r['json']['session']['locked'] ?? null) === false);
+
 // --- La consigne
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'consigne', 'notice' => 'Aujourd\'hui : les fractions.']);
+json('/teacher/class', ['classId' => $classId, 'action' => 'notice',
+                        'notice' => 'Aujourd\'hui : les fractions.'], $jetonProf);
 $r = json('/session', [], $lea);
 verifier('LA CONSIGNE ARRIVE JUSQU\'À L\'ÉLÈVE',
-    ($r['json']['session']['notice'] ?? '') === "Aujourd'hui : les fractions.");
+    str_contains((string) ($r['json']['session']['notice'] ?? ''), 'fractions'));
 
-// --- Le mot individuel
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'message', 'pour' => $leaId,
-            'corps' => 'Reprends l\'exercice 3, tu confonds dizaines et dixièmes.']);
-
+// --- Le mot à un seul élève
+json('/teacher/message', ['classId' => $classId, 'studentId' => $leaId,
+                          'body' => 'Regarde les dixièmes.'], $jetonProf);
 $r = json('/session', [], $lea);
 $mots = $r['json']['session']['messages'] ?? [];
 verifier('LE MOT ARRIVE À LÉA', count($mots) === 1 && str_contains($mots[0]['body'] ?? '', 'dixièmes'));
@@ -391,20 +569,26 @@ verifier('le mot est marqué « pour elle »', ($mots[0]['scope'] ?? '') === 'st
 $r2 = json('/session', [], $sacha);
 verifier('SACHA NE VOIT PAS LE MOT DE LÉA', count($r2['json']['session']['messages'] ?? []) === 0);
 
-// --- L'accusé de lecture
-$idMot = $mots[0]['id'];
+$idMot = $mots[0]['id'] ?? '';
 $r = json('/messages/read', ['ids' => [$idMot]], $lea);
 verifier('Léa accuse réception', ($r['json']['read'] ?? 0) === 1);
 $r = json('/session', [], $lea);
 verifier('le mot lu ne revient plus', count($r['json']['session']['messages'] ?? []) === 0);
 
-$p = page($url);
-verifier('le professeur voit la coche', str_contains($p['html'], '✓ lu'));
+// LE PROFESSEUR VOIT LA COCHE — depuis le logiciel, maintenant.
+$r = json('/teacher/message', ['classId' => $classId, 'action' => 'list'], $jetonProf);
+$liste = $r['json']['messages'] ?? [];
+$vu = null;
+foreach ($liste as $m) {
+    if (($m['id'] ?? '') === $idMot) { $vu = $m; }
+}
+verifier('le professeur retrouve son mot', $vu !== null, $r['brut']);
+verifier('et il voit qu\'il a été lu', (int) ($vu['lus'] ?? 0) === 1,
+    json_encode($vu, JSON_UNESCAPED_UNICODE));
 
 // --- Le mot à toute la classe
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'message', 'pour' => 'classe',
-            'corps' => 'On se retrouve tous sur l\'exercice 5.']);
+json('/teacher/message', ['classId' => $classId, 'studentId' => '',
+                          'body' => 'On se retrouve tous sur l\'exercice 5.'], $jetonProf);
 $a = json('/session', [], $lea)['json']['session']['messages'] ?? [];
 $b = json('/session', [], $sacha)['json']['session']['messages'] ?? [];
 verifier('LE MOT À LA CLASSE ARRIVE AUX DEUX', count($a) === 1 && count($b) === 1);
@@ -414,9 +598,6 @@ verifier('il est marqué « à la classe »', ($a[0]['scope'] ?? '') === 'class'
 json('/messages/read', ['ids' => [$a[0]['id']]], $lea);
 $b = json('/session', [], $sacha)['json']['session']['messages'] ?? [];
 verifier('LÉA QUI LIT NE LIT PAS POUR SACHA', count($b) === 1);
-
-$p = page($url);
-verifier('le professeur voit « 1 / 2 »', str_contains($p['html'], '1 / 2'));
 
 // --- Un élève ne peut pas marquer lu ce qui ne lui est pas destiné
 $autreProf = uuidv4();
@@ -434,23 +615,169 @@ $r = json('/session', [], $lea);
 verifier('et il ne le reçoit pas non plus',
     !in_array($motAilleurs, array_column($r['json']['session']['messages'] ?? [], 'id'), true));
 
+
+
+// ------------------------------------------------ Ce qu'il a sous les yeux ----
+
+titre('5 bis. Ce que l\'élève a sous les yeux');
+
+// Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+// exercice, car c'est créé de façon aléatoire. » Ce qui manquait n'était pas le
+// bouton du direct — il existe — mais LA GRAINE, qui rend la question
+// reproductible. Elle voyage désormais avec le battement de cœur `/session`,
+// qui partait le corps vide toutes les dix secondes.
+
+$r = json('/session', ['ecran' => [
+    'exerciseId' => 'num-rang', 'graine' => 'ab12cd34',
+    'question' => 'Quel est le chiffre des dizaines dans 4 572 ?',
+    'etape' => 'Le rang des chiffres', 'fait' => 3, 'total' => 10,
+]], $lea);
+verifier('le relevé d\'écran part avec le battement de cœur', $r['code'] === 200);
+
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$rangs = $r['json']['eleves'] ?? [];
+$deLea = null;
+foreach ($rangs as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('LE PROFESSEUR VOIT LA QUESTION DE LÉA',
+    ($deLea['ecran']['question'] ?? '') === 'Quel est le chiffre des dizaines dans 4 572 ?');
+verifier('ET SA GRAINE — c\'est elle qui rouvre la même question chez lui',
+    ($deLea['ecran']['graine'] ?? '') === 'ab12cd34');
+verifier('avec l\'avancement qu\'elle a annoncé',
+    ($deLea['ecran']['fait'] ?? null) === 3 && ($deLea['ecran']['total'] ?? null) === 10);
+verifier('et l\'heure du relevé, qui vient du SERVEUR et non de la tablette',
+    ($deLea['ecran']['ts'] ?? 0) > 1000000000);
+
+// SACHA N'A RIEN DIT : son relevé est vide, et ce n'est pas une panne.
+$deSacha = null;
+foreach ($rangs as $x) {
+    if (($x['prenom'] ?? '') === 'Sacha') $deSacha = $x;
+}
+verifier('celui qui n\'a rien dit n\'a pas d\'écran',
+    is_array($deSacha) && array_key_exists('ecran', $deSacha) && $deSacha['ecran'] === null);
+
+// ON NE CROIT RIEN DE CE QUI ARRIVE. Le relevé vient d'un client : chaque champ
+// est borné, et un relevé difforme vaut « rien à l'écran » — pas une erreur, car
+// un navigateur qui bafouille ne doit pas cesser de synchroniser son travail.
+json('/session', ['ecran' => [
+    'exerciseId' => str_repeat('x', 500),
+    'question' => str_repeat('a', 5000),
+    'graine' => str_repeat('g', 500),
+    'fait' => 'beaucoup', 'total' => ['pas', 'un', 'nombre'],
+]], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$deLea = null;
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('un relevé difforme est BORNÉ, pas refusé',
+    mb_strlen($deLea['ecran']['exerciseId'] ?? '') === 80
+    && mb_strlen($deLea['ecran']['question'] ?? '') === 240
+    && mb_strlen($deLea['ecran']['graine'] ?? '') === 64);
+verifier('et ce qui n\'est pas un nombre ne devient pas un nombre',
+    $deLea['ecran']['fait'] === null && $deLea['ecran']['total'] === null);
+
+// IL REVIENT AU MENU : il faut l'ÉCRIRE, et pas laisser le relevé vieillir
+// trois minutes — sinon le professeur conseille sur une question quittée.
+json('/session', ['ecran' => null], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$deLea = null;
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('QUAND IL QUITTE, L\'ÉCRAN S\'EFFACE TOUT DE SUITE',
+    is_array($deLea) && array_key_exists('ecran', $deLea) && $deLea['ecran'] === null);
+
+// UNE APPLICATION QUI NE CONNAÎT PAS LE RELEVÉ NE DOIT RIEN EFFACER. Un élève
+// qui n'a pas encore rechargé sa page envoie `/session` sans champ `ecran` ; si
+// l'absence valait « rien à l'écran », le professeur ne verrait jamais celui-là.
+json('/session', ['ecran' => [
+    'exerciseId' => 'num-rang', 'graine' => 'zz99', 'question' => 'Et celle-ci ?',
+]], $lea);
+json('/session', [], $lea);            // l'ancienne application, corps vide
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$deLea = null;
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('un battement sans champ « ecran » NE L\'EFFACE PAS',
+    ($deLea['ecran']['graine'] ?? '') === 'zz99');
+
+// ET LE RELEVÉ EST CHIFFRÉ DANS LA BASE, comme le prénom. Ce n'est pas la
+// réponse de l'élève — elle voyage par le journal —, mais c'est ce qu'un élève
+// NOMMÉ fait à la minute : le fichier qui part seul ne doit pas le dire.
+$brut = db()->query('SELECT ecran FROM students WHERE ecran IS NOT NULL LIMIT 1')->fetchColumn();
+verifier('le relevé est chiffré sur le disque',
+    is_string($brut) && $brut !== '' && !str_contains($brut, 'num-rang'));
+
+// --- SES RÉGLAGES À LUI, et pas ceux qu'on devine ---
+//
+// Rémy : « ce serait aussi vraiment cool dans le direct de pouvoir avoir le même
+// exercice avec les mêmes paramètres que l'élève ». La graine ne rejoue une
+// question qu'à réglages ÉGAUX : le générateur lit les deux.
+
+json('/session', ['ecran' => [
+    'exerciseId' => 'logi-serpents', 'graine' => 'rr77',
+    'reglages' => ['palier' => 'difficile', 'niveaux' => ['cm2', 'sixieme'],
+                   'avecZero' => true, 'taille' => 5],
+]], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$deLea = null;
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('LES RÉGLAGES DE L\'ÉLÈVE ARRIVENT AU PROFESSEUR',
+    ($deLea['ecran']['reglages']['palier'] ?? '') === 'difficile');
+verifier('une liste de paliers cochés passe aussi',
+    ($deLea['ecran']['reglages']['niveaux'] ?? []) === ['cm2', 'sixieme']);
+verifier('et les booléens restent des booléens',
+    ($deLea['ecran']['reglages']['avecZero'] ?? null) === true
+    && ($deLea['ecran']['reglages']['taille'] ?? null) === 5);
+
+// ON NE CROIT RIEN DE CE QUI ARRIVE, ICI NON PLUS. Le client a déjà taillé,
+// mais rien n'oblige un client à être le nôtre.
+$enorme = [];
+for ($i = 0; $i < 200; $i++) $enorme['c' . $i] = str_repeat('x', 50);
+json('/session', ['ecran' => [
+    'exerciseId' => 'logi-serpents', 'graine' => 'rr77', 'reglages' => $enorme,
+]], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('des réglages démesurés valent AUCUN réglage, pas une erreur',
+    $deLea['ecran']['reglages'] === null && ($deLea['ecran']['graine'] ?? '') === 'rr77');
+
+json('/session', ['ecran' => [
+    'exerciseId' => 'logi-serpents', 'graine' => 'rr77',
+    'reglages' => ['bon' => 1, 'imbrique' => ['a' => ['b' => 1]], 'liste' => [1, 2, 3]],
+]], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('un réglage imbriqué est écarté, les voisins restent',
+    ($deLea['ecran']['reglages'] ?? []) === ['bon' => 1, 'liste' => [1, 2, 3]]);
+
 // ------------------------------------------------- L'exercice qui bloque ----
 
 titre('6. Un exercice plante et bloque la progression');
 
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'exercice', 'exercice' => 'num-egypte',
-            'pour' => 'classe', 'mode' => 'saut']);
+// MÊME RAISON QUE LA SECTION 5 : ces gestes se faisaient depuis la console de
+// séance de l'administration, qui a disparu à la demande de Rémy. Ils se font
+// maintenant par `/teacher/override`, et c'est le SERVEUR qu'on éprouve ici —
+// il n'a pas changé d'une ligne.
+
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'num-egypte',
+                           'mode' => 'saut'], $jetonProf);
 $s = json('/session', [], $lea)['json']['session'];
 verifier('LE SAUT EST AUTORISÉ POUR TOUTE LA CLASSE', in_array('num-egypte', $s['skippable'], true));
 $s2 = json('/session', [], $sacha)['json']['session'];
 verifier('Sacha aussi', in_array('num-egypte', $s2['skippable'], true));
 
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'exercice', 'exercice' => 'geo-thales',
-            'pour' => $leaId, 'mode' => 'retire']);
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'geo-thales',
+                           'mode' => 'retire', 'studentId' => $leaId], $jetonProf);
 $s = json('/session', [], $lea)['json']['session'];
 verifier('L\'EXERCICE EST RETIRÉ, POUR LÉA SEULE', in_array('geo-thales', $s['removed'], true));
 $s2 = json('/session', [], $sacha)['json']['session'];
@@ -458,19 +785,60 @@ verifier('et Sacha le garde', !in_array('geo-thales', $s2['removed'], true));
 
 // « retire » l'emporte sur « saut » : le professeur qui retire a constaté que
 // l'exercice plante, il ne veut pas que l'élève retombe dessus.
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'exercice', 'exercice' => 'num-egypte',
-            'pour' => $leaId, 'mode' => 'retire']);
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'num-egypte',
+                           'mode' => 'retire', 'studentId' => $leaId], $jetonProf);
 $s = json('/session', [], $lea)['json']['session'];
 verifier('« retiré » l\'emporte sur « saut autorisé »',
     in_array('num-egypte', $s['removed'], true) && !in_array('num-egypte', $s['skippable'], true));
 
+// ── « TOUT DÉBLOQUER », MAIS POUR QUELQU'UN ─────────────────────────────────
+//
+// RÉMY : « il faudrait aussi pouvoir mais seulement pour le direct permettre de
+// débloquer tous les exercices (et aussi au cas par cas pour l'élève) quand on
+// clique dessus », et, sur la portée : « Pour la séance en cours ».
+//
+// LA GARDE D'ORIGINE TIENT TOUJOURS, et elle avait raison : sauter TOUS les
+// exercices pour la CLASSE, ce n'est pas un réglage, c'est annuler la séance.
+// La distinction est le DESTINATAIRE, pas le mode.
+
+$r = json('/teacher/override', ['classId' => $classId, 'exerciseId' => '*',
+                                'mode' => 'saut'], $jetonProf);
+verifier('TOUT DÉBLOQUER POUR LA CLASSE EST REFUSÉ', $r['code'] === 400);
+
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => '*',
+                           'mode' => 'saut', 'studentId' => $sachaId], $jetonProf);
+$s2 = json('/session', [], $sacha)['json']['session'];
+verifier('MAIS ACCORDÉ À UN ÉLÈVE NOMMÉ', in_array('*', $s2['skippable'], true));
+$s = json('/session', [], $lea)['json']['session'];
+verifier('et Léa suit toujours son parcours dans l\'ordre',
+    !in_array('*', $s['skippable'], true));
+
+// ── LE RÉGLAGE DIT À QUI IL EST, PAR SON IDENTIFIANT ────────────────────────
+//
+// La fiche d'un élève doit savoir si c'est LUI qui a la calculatrice. Il y a
+// deux Lucas dans la classe de Rémy : un prénom ne désigne personne.
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => '*',
+                           'mode' => 'calculatrice', 'studentId' => $leaId], $jetonProf);
+$liste = json('/teacher/override', ['classId' => $classId, 'action' => 'list'],
+              $jetonProf)['json']['reglages'];
+$saCalc = null;
+foreach ($liste as $x) {
+    if ($x['mode'] === 'calculatrice' && $x['exerciseId'] === '*') $saCalc = $x;
+}
+verifier('LE RÉGLAGE PORTE L\'IDENTIFIANT DE SON ÉLÈVE',
+    $saCalc && ($saCalc['pourId'] ?? null) === $leaId);
+
+// Et on le retire par cet identifiant-là : c'est ce que fait sa fiche.
+json('/teacher/override', ['classId' => $classId, 'action' => 'cancel',
+                           'overrideId' => $saCalc['id']], $jetonProf);
+$s = json('/session', [], $lea)['json']['session'];
+verifier('et il se retire depuis la fiche, sans toucher aux autres',
+    !in_array('*', $s['calculatrice'] ?? [], true));
+
 // --- Annuler un réglage
-$p = page($url);
 $over = db()->query("SELECT id FROM overrides WHERE exercise_id = 'geo-thales'")->fetch();
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'exercice-annuler', 'over' => $over['id']]);
+json('/teacher/override', ['classId' => $classId, 'action' => 'cancel',
+                           'overrideId' => $over['id']], $jetonProf);
 $s = json('/session', [], $lea)['json']['session'];
 verifier('annuler un réglage rend l\'exercice obligatoire',
     !in_array('geo-thales', $s['removed'], true));
@@ -479,45 +847,50 @@ verifier('annuler un réglage rend l\'exercice obligatoire',
 
 titre('7. Mettre un élève de côté, puis tout effacer');
 
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'eleve-bloquer', 'eleve' => $leaId, 'bloque' => 'on']);
+// CE QU'ON COMPTE, ON LE COMPTE AVANT — ET NON PAR CŒUR.
+//
+// Cette vérification attendait « 5 événements en base », le nombre que la
+// section de la synchro poussait ce jour-là. Ajouter six réponses ailleurs dans
+// ce fichier la faisait donc tomber, pour une raison qui n'a RIEN à voir avec
+// ce qu'elle garde : écarter un élève n'efface pas son travail. C'est la
+// quatrième fois qu'un nombre écrit à la main dans une épreuve de ce dépôt se
+// retourne contre le travail suivant (voir `docs/frictions.md`). On mesure
+// donc l'avant et l'après.
+$avantEcart = (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'];
+
+json('/teacher/roster', ['classId' => $classId, 'action' => 'bloquer',
+                         'studentId' => $leaId, 'blocked' => true], $jetonProf);
 
 $r = json('/join', ['classCode' => $code, 'firstName' => 'Léa']);
 verifier('L\'ÉLÈVE ÉCARTÉ NE SE RATTACHE PLUS', $r['code'] === 403, "code {$r['code']}");
 
 $s = json('/session', [], $lea)['json']['session'];
 verifier('son application le sait', ($s['blocked'] ?? null) === true);
+$apresEcart = (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'];
 verifier('mais son travail n\'est pas perdu',
-    (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'] === 5);
+    $apresEcart === $avantEcart && $avantEcart > 0, "$avantEcart puis $apresEcart");
 
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'eleve-bloquer', 'eleve' => $leaId, 'bloque' => 'off']);
+json('/teacher/roster', ['classId' => $classId, 'action' => 'bloquer',
+                         'studentId' => $leaId, 'blocked' => false], $jetonProf);
 $r = json('/join', ['classCode' => $code, 'firstName' => 'Léa']);
 verifier('réactivé, il se rattache de nouveau', $r['code'] === 200);
 $lea = $r['json']['token'];
 
 // --- Le professeur d'à côté ne voit rien
-$p = page('/admin/index.php?deconnexion=1');
-$p = page('/admin/', ['email' => 'autre@essai.test', 'mdp' => 'x']);
-$p = page($url);
-verifier('UN AUTRE PROFESSEUR N\'OUVRE PAS CETTE CLASSE',
-    !str_contains($p['html'], 'Le verrou'));
-
-$p = page('/admin/index.php?deconnexion=1');
-$p = page('/admin/', ['email' => 'prof@essai.test', 'mdp' => 'motdepassetreslong']);
+$jetonAutre = json('/teacher/login',
+    ['email' => 'autre@essai.test', 'password' => 'x'])['json']['token'] ?? '';
+$r = json('/teacher/live', ['classId' => $classId], $jetonAutre);
+verifier('UN AUTRE PROFESSEUR N\'OUVRE PAS CETTE CLASSE', $r['code'] >= 400,
+    "code {$r['code']}");
 
 // --- Effacer, avec la confirmation écrite
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'vider', 'confirmation' => 'oui']);
+$r = json('/teacher/class', ['classId' => $classId, 'action' => 'empty',
+                             'confirmation' => 'oui'], $jetonProf);
 verifier('sans écrire EFFACER, rien n\'est effacé',
-    (int) db()->query('SELECT COUNT(*) c FROM students')->fetch()['c'] === 2);
+    (int) db()->query('SELECT COUNT(*) c FROM students')->fetch()['c'] === 2, $r['brut']);
 
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'vider', 'confirmation' => 'EFFACER']);
+json('/teacher/class', ['classId' => $classId, 'action' => 'empty',
+                        'confirmation' => 'EFFACER'], $jetonProf);
 verifier('EFFACER efface les élèves',
     (int) db()->query('SELECT COUNT(*) c FROM students')->fetch()['c'] === 0);
 verifier('LA CASCADE EMPORTE LEUR TRAVAIL',
@@ -529,11 +902,11 @@ $r = json('/sync', ['deviceId' => 'essai', 'cursor' => 0, 'events' => []], $lea)
 verifier('le jeton d\'un élève effacé ne vaut plus rien', $r['code'] === 401);
 
 // --- Supprimer la classe
-$p = page($url);
-$jeton = jetonDe($p['html']);
-page($url, ['jeton' => $jeton, 'action' => 'supprimer-classe', 'confirmation' => 'EFFACER']);
+json('/teacher/class', ['classId' => $classId, 'action' => 'delete',
+                        'confirmation' => 'EFFACER'], $jetonProf);
 verifier('la classe est supprimée',
     (int) db()->query("SELECT COUNT(*) c FROM classes WHERE name = '6e B'")->fetch()['c'] === 0);
+
 
 // ------------------------------------------------------------- La purge -----
 
@@ -612,13 +985,14 @@ titre('9. La liste du professeur : identifiant et code');
 $classeL = uuidv4();
 db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
     ->execute([$classeL, $profId, 'Liste', 'LISTE1']);
-$uL = '/admin/eleves.php?id=' . urlencode($classeL);
-
-$p = page($uL);
-verifier('la page de liste s\'ouvre', str_contains($p['html'], 'Coller la liste'));
-$jeton = jetonDe($p['html']);
-page($uL, ['jeton' => $jeton, 'action' => 'importer',
-    'liste' => "Léa Durand\nJean-Luc Martin ; jeanluc.martin\nEmma Dupont ; emma.dupont ; 4KP2"]);
+// LA LISTE SE COLLE DEPUIS LE LOGICIEL, par `/teacher/roster`. Elle passait
+// par `api/admin/eleves.php`, qui a disparu avec les classes — mais c'est la
+// MÊME mise en œuvre qui travaille : `lib/eleves.php`, pas une copie. Ce que
+// cette section éprouve n'a donc pas bougé d'une ligne.
+$r = json('/teacher/roster', ['classId' => $classeL, 'action' => 'importer',
+    'liste' => "Léa Durand\nJean-Luc Martin ; jeanluc.martin\nEmma Dupont ; emma.dupont ; 4KP2"],
+    $jetonProf);
+verifier('la liste collée est acceptée', $r['code'] === 200, $r['brut']);
 
 $s = db()->prepare('SELECT first_name, login, access_code FROM students WHERE class_id = ?');
 $s->execute([$classeL]);
@@ -655,10 +1029,8 @@ verifier('LES DEUX ÉCHECS DISENT EXACTEMENT LA MÊME CHOSE',
     'sinon on apprend quels identifiants existent');
 
 // --- Recoller la liste ne périme pas les billets distribués
-$p = page($uL);
-$jeton = jetonDe($p['html']);
-page($uL, ['jeton' => $jeton, 'action' => 'importer',
-    'liste' => "Léa Durand\nEmma Dupont\nTom Bernard"]);
+json('/teacher/roster', ['classId' => $classeL, 'action' => 'importer',
+    'liste' => "Léa Durand\nEmma Dupont\nTom Bernard"], $jetonProf);
 verifier('RECOLLER LA LISTE NE CHANGE PAS LES CODES DÉJÀ DONNÉS',
     json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['code'] === 200);
 $s->execute([$classeL]);
@@ -672,9 +1044,8 @@ verifier('un élève mis de côté ne se connecte plus avec son billet',
 db()->prepare('UPDATE students SET blocked = 0 WHERE id = ?')->execute([$idEmma]);
 
 // --- Un nouveau code invalide l'ancien billet
-$p = page($uL);
-$jeton = jetonDe($p['html']);
-page($uL, ['jeton' => $jeton, 'action' => 'nouveau-code', 'eleve' => $idEmma]);
+json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
+                         'studentId' => $idEmma], $jetonProf);
 verifier('un nouveau code périme l\'ancien billet',
     json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['code'] === 401);
 
@@ -687,7 +1058,11 @@ titre('10. La page de santé sait reconnaître une fuite');
 // `.htaccess` et sert donc TOUT, fichier de base compris. C'est exactement le
 // cas d'un hébergement mal réglé — et la page doit le dire en rouge.
 $p = page('/admin/sante.php');
-verifier('la page de santé s\'ouvre', str_contains($p['html'], 'Santé de l\'installation'));
+// ON NE CHERCHE PLUS UN TEXTE À APOSTROPHE : `h()` l'échappe en `&#039;`, et
+// l'épreuve cherchait la forme non échappée. C'est l'échappement qui avait
+// raison. On vise donc l'ancre de la section, qui ne peut pas changer sans
+// qu'on le veuille — les liens de `deposer.php` et du README pointent dessus.
+verifier('la santé s\'ouvre, à son ancre', str_contains($p['html'], 'id="sante"'));
 verifier('elle rend compte du chiffrement', str_contains($p['html'], 'AES-256-GCM actif'));
 verifier('elle voit que la page d\'installation n\'est pas là',
     str_contains($p['html'], 'effacée'));
@@ -757,6 +1132,109 @@ verifier('et garde le récent', (int) $s->fetchAll()[0]['c'] === 1);
 verifier('elle ne repasse pas le même jour', purgerSiNecessaire() === 0);
 @unlink($API . '/.derniere-purge');
 
+// ------------------------------------------------------- Les signalements ---
+
+titre('11 bis. « Ça ne marche pas » : de l\'élève au professeur');
+
+// Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+// et de prendre une photo d'écran ».
+//
+// LE RÉGLAGE EST UNE PORTE, PAS UNE DÉCORATION. Cacher le bouton empêche
+// d'appuyer ; cela n'empêche personne d'appeler la route à la main. On commence
+// donc par vérifier que la route refuse quand le professeur n'a rien ouvert —
+// c'est le seul essai de cette section qui garde une règle plutôt qu'un usage.
+
+// UNE CLASSE ET UNE ÉLÈVE À NOUS. Le jeton de Léa ne vaut plus rien depuis la
+// section 7, qui vide sa classe exprès : s'en servir ici ferait refuser la
+// route pour une raison qui n'a rien à voir avec ce qu'on mesure.
+$classeSignal = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeSignal, $profId, 'Signaux', 'SIGNAL']);
+$r = json('/join', ['classCode' => 'SIGNAL', 'firstName' => 'Awa']);
+$awa = $r['json']['token'] ?? '';
+verifier('une élève se rattache pour cette section', $awa !== '');
+
+$r = json('/reglages');
+verifier('le signalement est ÉTEINT par défaut',
+    ($r['json']['reglages']['signalement'] ?? null) === false);
+
+$r = json('/signalement', ['corps' => 'Le bouton ne marche pas.'], $awa);
+verifier('ET LA ROUTE REFUSE TANT QU\'IL EST ÉTEINT', $r['code'] === 403, (string) $r['code']);
+
+$r = json('/teacher/reglages', ['signalement' => true], $jetonProf);
+verifier('le professeur l\'allume', ($r['json']['reglages']['signalement'] ?? null) === true);
+verifier('et l\'élève le voit dans les réglages publics',
+    (json('/reglages')['json']['reglages']['signalement'] ?? null) === true);
+
+// LE CONTEXTE EST CE QUI VAUT LE PLUS : c'est la graine qui rouvre la question.
+$photo = 'data:image/jpeg;base64,' . base64_encode(str_repeat('P', 900));
+$r = json('/signalement', [
+    'corps' => 'Le clavier cache la question, je ne vois pas ce qu\'il faut taper.',
+    'contexte' => ['ecran' => ['exerciseId' => 'num-rang', 'graine' => 'ab12cd34',
+                               'question' => 'Quel est le chiffre des dizaines ?'],
+                   'theme' => 'dark', 'largeur' => 390, 'hauteur' => 844, 'version' => 'v874'],
+    'image' => $photo,
+], $awa);
+verifier('l\'élève envoie son signalement', $r['code'] === 200);
+verifier('et le serveur dit qu\'il a gardé la photo', ($r['json']['photo'] ?? null) === true);
+
+$r = json('/teacher/signalements', ['action' => 'list'], $jetonProf);
+$sig = $r['json']['signalements'][0] ?? null;
+verifier('LE PROFESSEUR LE LIT', is_array($sig)
+    && str_contains($sig['corps'] ?? '', 'Le clavier cache la question'));
+verifier('AVEC LA GRAINE — sans elle, « ça bugue » ne se reproduit pas',
+    ($sig['contexte']['ecran']['graine'] ?? '') === 'ab12cd34');
+verifier('et le thème, qui explique la moitié des défauts d\'affichage',
+    ($sig['contexte']['theme'] ?? '') === 'dark');
+verifier('il sait qui l\'a écrit', ($sig['qui'] ?? '') === 'Awa');
+// LA PHOTO NE VOYAGE PAS AVEC LA LISTE : on dit seulement qu'elle existe.
+verifier('la liste annonce la photo sans la porter',
+    ($sig['photo'] ?? null) === true && !array_key_exists('image', $sig));
+$r = json('/teacher/signalements', ['action' => 'photo', 'id' => $sig['id']], $jetonProf);
+verifier('et elle s\'ouvre à la demande', ($r['json']['image'] ?? '') === $photo);
+
+// ON NE CROIT RIEN DE CE QUI ARRIVE D'UN NAVIGATEUR. Une image trop lourde ou
+// qui n'en est pas une est ÉCARTÉE — jamais refusée : le texte et le contexte
+// valent plus qu'elle, et les perdre pour une photo serait perdre le plus.
+$r = json('/signalement', [
+    'corps' => 'Deuxième essai.',
+    'image' => 'data:image/jpeg;base64,' . base64_encode(str_repeat('Z', 500000)),
+], $awa);
+verifier('UNE PHOTO TROP LOURDE EST ÉCARTÉE, PAS REFUSÉE',
+    $r['code'] === 200 && ($r['json']['photo'] ?? null) === false);
+$r = json('/signalement', ['corps' => 'Troisième.', 'image' => 'javascript:alert(1)'], $awa);
+verifier('et ce qui n\'est pas une image non plus',
+    $r['code'] === 200 && ($r['json']['photo'] ?? null) === false);
+verifier('un signalement vide est refusé',
+    json('/signalement', ['corps' => '   '], $awa)['code'] === 400);
+
+// CLASSER N'EST PAS EFFACER — le même défaut signalé trois fois dit quelque
+// chose que le premier signalement tout seul ne dit pas.
+json('/teacher/signalements', ['action' => 'traite', 'id' => $sig['id'], 'traite' => true], $jetonProf);
+$liste = json('/teacher/signalements', ['action' => 'list'], $jetonProf)['json']['signalements'] ?? [];
+$lui = null;
+foreach ($liste as $x) { if (($x['id'] ?? '') === $sig['id']) $lui = $x; }
+verifier('classé, il reste dans la liste', is_array($lui) && ($lui['traite'] ?? null) === true);
+verifier('et il descend sous ceux qui attendent',
+    count($liste) > 1 && ($liste[count($liste) - 1]['id'] ?? '') === $sig['id']);
+
+json('/teacher/signalements', ['action' => 'supprimer', 'id' => $sig['id']], $jetonProf);
+$restants = json('/teacher/signalements', ['action' => 'list'], $jetonProf)['json']['signalements'] ?? [];
+verifier('effacé, il n\'y est plus',
+    !array_filter($restants, fn ($x) => ($x['id'] ?? '') === $sig['id']));
+
+// LE FICHIER QUI PART SEUL NE DOIT PAS PARLER — un signalement porte ce qu'un
+// élève NOMMÉ était en train de faire, et sa phrase à lui. La vérification est
+// en SECTION 13 et non ici : lire le fichier pendant que deux processus
+// l'utilisent laisse la connexion dans un état où l'écriture suivante rend
+// « database disk image is malformed », trois sections plus loin, sur une
+// insertion banale. On laisse donc « Deuxième essai » dans la base pour qu'elle
+// ait quelque chose à chercher.
+
+// ET L'ON REFERME, pour que la suite des essais retrouve le site tel qu'il
+// était : ce réglage vaut pour tout le serveur.
+json('/teacher/reglages', ['signalement' => false], $jetonProf);
+
 // ------------------------------------------------------------ Le schéma -----
 
 titre('12. Le schéma se remet à niveau sans rien casser');
@@ -769,9 +1247,14 @@ verifier('migrer() est idempotent', (int) db()->query('SELECT COUNT(*) c FROM ev
 $tables = array_column(db()->query(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
 )->fetchAll(), 'name');
-verifier('les onze tables sont là',
+// LA LISTE EST ÉCRITE EN ENTIER, ET ELLE DOIT L'ÊTRE : une table oubliée au
+// déploiement ne se voit qu'au moment où une route l'interroge — c'est-à-dire
+// en classe. On la met à jour à la main à chaque table neuve, et c'est le prix
+// à payer pour que l'oubli crie ici plutôt que là-bas.
+verifier('les treize tables sont là',
     $tables === ['assignments', 'classes', 'events', 'message_reads', 'messages',
-                 'overrides', 'paths', 'reglages', 'student_tokens', 'students', 'teachers'],
+                 'overrides', 'paths', 'reglages', 'reinitialisations',
+                 'signalements', 'student_tokens', 'students', 'teachers'],
     implode(', ', $tables));
 
 titre('12 bis. La liste : lire un vrai fichier de professeur');
@@ -817,25 +1300,31 @@ verifier("CE QUE L'APERÇU MONTRE EST EXACTEMENT CE QUI SERA ÉCRIT",
 $classeF = uuidv4();
 db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
     ->execute([$classeF, $profId, 'Fichiers', 'FICHI1']);
-$uF = '/admin/eleves.php?id=' . urlencode($classeF);
+// L'APERÇU ET L'IMPORT PASSENT PAR L'API. Deux raccourcis, pour que la
+// suite de la section se lise comme avant.
+$apercuF = fn (array $corps) => json('/teacher/roster',
+    ['classId' => $classeF, 'action' => 'apercu'] + $corps, $jetonProf);
+$importF = fn (string $liste) => json('/teacher/roster',
+    ['classId' => $classeF, 'action' => 'importer', 'liste' => $liste], $jetonProf);
+/** Ce que l'aperçu a dit de chaque ligne, sort par sort. */
+$sortsDe = fn (array $r) => array_column($r['json']['apercu']['lignes'] ?? [], 'sort');
 $compteF = function () use ($classeF) {
     $s = db()->prepare('SELECT COUNT(*) c FROM students WHERE class_id = ?');
     $s->execute([$classeF]);
     return (int) $s->fetchAll()[0]['c'];
 };
 
-$jeton = jetonDe(page($uF)['html']);
 // DES NOMS QUI N'EXISTENT NULLE PART AILLEURS dans cet essai — la section 9 a
 // déjà une Léa Durand dans une autre classe, et l'aperçu proposerait alors de
 // la déplacer. C'est le bon comportement, mais ce n'est pas ce qu'on mesure ici.
-$p = page($uF, ['jeton' => $jeton, 'action' => 'apercu', 'liste' => "Élise Vasseur\nNoé Perrin"]);
-verifier("L'APERÇU MONTRE AVANT D'ÉCRIRE", str_contains($p['html'], 'Voici ce qui va se passer'));
+$r = $apercuF(['texte' => "Élise Vasseur\nNoé Perrin"]);
+verifier("L'APERÇU MONTRE AVANT D'ÉCRIRE",
+    count($r['json']['apercu']['lignes'] ?? []) === 2, $r['brut']);
 verifier("et il n'a rien écrit", $compteF() === 0);
 verifier('il annonce les deux élèves comme nouveaux',
-    substr_count($p['html'], 'nouvel élève') === 2,
-    'vu ' . substr_count($p['html'], 'nouvel élève') . ' fois');
+    $sortsDe($r) === ['nouveau', 'nouveau'], implode(' ', $sortsDe($r)));
 
-page($uF, ['jeton' => $jeton, 'action' => 'importer', 'liste' => "Élise Vasseur;elise.vasseur;\nNoé Perrin;noe.perrin;"]);
+$importF("Élise Vasseur;elise.vasseur;\nNoé Perrin;noe.perrin;");
 verifier('la confirmation écrit les deux élèves', $compteF() === 2);
 
 // --- LE DOUBLON D'AUTREFOIS. Une élève entrée par le code de la classe, puis
@@ -847,11 +1336,13 @@ json('/sync', ['events' => [['id' => uuidv4(), 'type' => 'ATTEMPT', 'ts' => time
     'deviceId' => 'pc', 'payload' => ['exerciseId' => 'x', 'correct' => true]]]], $r['json']['token']);
 verifier('une élève entre par le code de la classe et travaille', $compteF() === 3);
 
-$jeton = jetonDe(page($uF)['html']);
-$p = page($uF, ['jeton' => $jeton, 'action' => 'apercu', 'liste' => 'Maëlle Nguyên']);
+$r = $apercuF(['texte' => 'Maëlle Nguyên']);
 verifier("L'APERÇU ANNONCE LE RATTACHEMENT, pas une création",
-    str_contains($p['html'], 'il garde son travail'), 'sinon on recrée un doublon');
-page($uF, ['jeton' => $jeton, 'action' => 'importer', 'liste' => "Maëlle Nguyên;maelle.nguyen;"]);
+    $sortsDe($r) === ['rattache'], 'sinon on recrée un doublon : ' . implode(' ', $sortsDe($r)));
+verifier('et il dit pourquoi, en français de professeur',
+    str_contains($r['json']['apercu']['lignes'][0]['dit'] ?? '', 'garde son travail'),
+    $r['json']['apercu']['lignes'][0]['dit'] ?? '');
+$importF("Maëlle Nguyên;maelle.nguyen;");
 verifier('ELLE N\'EST PAS DÉDOUBLÉE', $compteF() === 3);
 $s = db()->prepare('SELECT id, login FROM students WHERE class_id = ? AND first_name_key = ?');
 $s->execute([$classeF, empreintePrenom('Maëlle Nguyên')]);
@@ -864,19 +1355,22 @@ verifier('et son travail est toujours là', (int) $s->fetchAll()[0]['c'] >= 1);
 
 // --- LE CODE COMMUN. Rémy : « je peux choisir un mdp générique pour tous mes
 //     élèves ». Il l'a demandé, il l'a — avec un mot de prudence dans la page.
-$jeton = jetonDe(page($uF)['html']);
-page($uF, ['jeton' => $jeton, 'action' => 'apercu', 'genre_code' => 'commun',
-    'code_commun' => 'sixieme', 'liste' => "Sacha Roy\nYanis Ferrand"]);
-page($uF, ['jeton' => $jeton, 'action' => 'importer',
-    'liste' => "Sacha Roy;sacha.roy;SIXIEME\nYanis Ferrand;yanis.ferrand;SIXIEME"]);
+$apercuF(['texte' => "Sacha Roy\nYanis Ferrand", 'codeCommun' => 'sixieme']);
+$importF("Sacha Roy;sacha.roy;SIXIEME\nYanis Ferrand;yanis.ferrand;SIXIEME");
 verifier('LE CODE COMMUN OUVRE POUR L\'UN', json('/login', ['login' => 'sacha.roy', 'code' => 'SIXIEME'])['code'] === 200);
 verifier('et pour l\'autre', json('/login', ['login' => 'yanis.ferrand', 'code' => 'sixieme'])['code'] === 200);
-verifier('la page prévient de ce que cela coûte',
-    str_contains(page($uF)['html'], 'entre à sa place'));
+// L'AVERTISSEMENT A FAILLI PARTIR AVEC LA PAGE. Il vivait dans
+// `api/admin/eleves.php` : « entre à sa place ». En retirant les classes de
+// l'administration, on l'aurait perdu sans s'en apercevoir — un code commun
+// veut dire que n'importe quel élève peut entrer à la place d'un autre, et
+// c'est une mise en garde, pas une formulation. Il est maintenant dans le
+// logiciel, là où le geste se fait.
+verifier('le logiciel prévient de ce que le code commun coûte',
+    str_contains(file_get_contents(dirname(__DIR__) . '/js/ui/espaceClasses.js'),
+        'entrer à la place d'));
 
 // --- REFAIRE TOUS LES CODES D'UN COUP.
-$jeton = jetonDe(page($uF)['html']);
-page($uF, ['jeton' => $jeton, 'action' => 'codes-classe', 'genre_code' => 'chacun']);
+json('/teacher/roster', ['classId' => $classeF, 'action' => 'codes'], $jetonProf);
 verifier('REFAIRE LES CODES PÉRIME TOUS LES ANCIENS BILLETS',
     json('/login', ['login' => 'sacha.roy', 'code' => 'SIXIEME'])['code'] === 401);
 $s = db()->prepare('SELECT access_code FROM students WHERE class_id = ? AND login_key IS NOT NULL AND login_key <> \'\'');
@@ -885,18 +1379,117 @@ $codes = array_map(fn ($e) => dechiffrer($e['access_code']), $s->fetchAll());
 verifier('et « un code différent pour chacun » en donne bien autant que d\'élèves',
     count(array_unique($codes)) === count($codes), implode(' ', $codes));
 
-$jeton = jetonDe(page($uF)['html']);
-page($uF, ['jeton' => $jeton, 'action' => 'codes-classe', 'genre_code' => 'commun', 'code_commun' => 'CLASSE6']);
+json('/teacher/roster', ['classId' => $classeF, 'action' => 'codes',
+                         'codeCommun' => 'CLASSE6'], $jetonProf);
 verifier('« le même pour tous » donne bien le même à tous',
     json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['code'] === 200
     && json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
+
+// --- AJOUTER UN SEUL ÉLÈVE, SANS TOUCHER AUX AUTRES.
+//
+// Rémy : « j'ai l'impression qu'on ne peut pas ajouter un élève dans une
+// classe, idem pour l'enlever ? ». Retirer, il pouvait (c'est la section
+// suivante, et elle est plus vieille que sa question). Ajouter aussi — mais le
+// seul chemin était « Coller une liste d'élèves », dont la fenêtre dit
+// « collez le fichier ENTIER ». Un professeur qui lit cela n'y colle pas un nom
+// le 15 novembre quand un élève arrive : il croit qu'il va écraser sa classe.
+//
+// LE LOGICIEL PORTE MAINTENANT « + Ajouter un élève », qui envoie une liste
+// d'UNE LIGNE par le même chemin. C'est donc cette promesse-là qu'on mesure
+// ici : une ligne de plus n'enlève rien et ne change AUCUN code déjà
+// distribué. Si l'import devenait un jour un remplacement, trente billets
+// cesseraient de valoir d'un coup, en pleine année.
+$codesDe = function () use ($classeF) {
+    $s = db()->prepare('SELECT login, access_code FROM students WHERE class_id = ?');
+    $s->execute([$classeF]);
+    $m = [];
+    foreach ($s->fetchAll() as $e) {
+        $m[dechiffrer($e['login'])] = dechiffrer($e['access_code']);
+    }
+    return $m;
+};
+$avantAjout = $codesDe();
+$r = $apercuF(['texte' => 'Camille Thibault']);
+verifier("AJOUTER UN SEUL ÉLÈVE : l'aperçu l'annonce comme nouveau",
+    $sortsDe($r) === ['nouveau'], implode(' ', $sortsDe($r)));
+$importF($r['json']['apercu']['texte']);
+$apresAjout = $codesDe();
+verifier('la classe a UN élève de plus', count($apresAjout) === count($avantAjout) + 1);
+verifier('et pas un seul code déjà distribué n\'a changé',
+    array_intersect_key($apresAjout, $avantAjout) == $avantAjout,
+    'un import qui rebat les codes périme tous les billets de la classe');
+verifier('le nouvel élève a reçu un identifiant et un code',
+    (bool) preg_match('/^[a-z0-9._-]+$/', array_key_last(array_diff_key($apresAjout, $avantAjout)) ?? ''),
+    implode(' ', array_keys(array_diff_key($apresAjout, $avantAjout))));
+
+// --- L'IDENTITÉ DU TRAVAIL EST FIGÉE AU MOMENT OÙ LA SÉANCE EST DONNÉE.
+//
+// Rémy : « si je me rends compte qu'une séance est trop courte […] puis-je la
+// compléter ? ». Oui — et compléter touche à une chose qu'on ne voit pas :
+// l'identité sous laquelle les élèves rangent leur travail.
+//
+// Elle est calculée par le NAVIGATEUR (une empreinte du contenu) et chaque
+// élève la recalculait chez lui, à la réception. Tant que le parcours ne
+// bougeait pas, tout le monde tombait sur la même — mais dès qu'on complète,
+// celui qui avait déjà la séance garde l'ancienne et celui qui la reçoit après
+// en obtient une neuve. MESURÉ au navigateur : Tom « path_cDPF7NX », Emma
+// « path_cK8LZGE », même séance, même contenu. Le bilan de séance filtre les
+// travaux là-dessus : l'un des deux en tombait, sans un mot.
+//
+// Le serveur la range donc une fois et la rend à tout le monde. CE QU'ON
+// MESURE ICI : qu'il la garde, et surtout qu'il NE LA RÉÉCRIVE PAS quand le
+// professeur redonne le même parcours — ce qu'il fait à chaque retouche.
+$classeI = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeI, $profId, '6e Identité', 'IDENTI']);
+$parcoursI = uuidv4();
+db()->prepare('INSERT INTO paths (id, teacher_id, name, data) VALUES (?, ?, ?, ?)')
+    ->execute([$parcoursI, $profId, 'Séance du lundi',
+               json_encode(['id' => $parcoursI, 'version' => 2, 'name' => 'Séance du lundi',
+                            'steps' => [['stepId' => 's0', 'exerciseId' => 'calc-add']]])]);
+json('/teacher/assign', ['pathId' => $parcoursI, 'classId' => $classeI,
+                         'pathIdentity' => 'path_PREMIERE'], $jetonProf);
+$lire = function () use ($classeI) {
+    $s = db()->prepare('SELECT path_identity FROM assignments WHERE class_id = ?');
+    $s->execute([$classeI]);
+    return (string) ($s->fetchAll()[0]['path_identity'] ?? '');
+};
+verifier("L'IDENTITÉ DU TRAVAIL EST RANGÉE EN BASE", $lire() === 'path_PREMIERE', $lire());
+
+// On redonne le même parcours, avec une identité DIFFÉRENTE — c'est très
+// exactement ce qui arrive quand le professeur complète sa séance puis renvoie.
+json('/teacher/assign', ['pathId' => $parcoursI, 'classId' => $classeI,
+                         'pathIdentity' => 'path_SECONDE'], $jetonProf);
+verifier('ET REDONNER NE LA RÉÉCRIT PAS',
+    $lire() === 'path_PREMIERE',
+    'sinon le travail déjà fait change de nom et le bilan le perd : ' . $lire());
+
+// Et l'élève la reçoit, plutôt que de la recalculer chez lui.
+$eleveI = uuidv4();
+db()->prepare('INSERT INTO students (id, class_id, first_name, first_name_key, login, login_key,
+                                     access_code, token_hash)
+               VALUES (?,?,?,?,?,?,?,?)')
+    ->execute([$eleveI, $classeI, chiffrer('Tom Identité'), empreintePrenom('Tom Identité'),
+               chiffrer('tom.identite'), empreinteLogin('tom.identite'),
+               chiffrer('IDTOM1'), hash('sha256', uuidv4())]);
+$cx = json('/login', ['login' => 'tom.identite', 'code' => 'IDTOM1']);
+// LES ASSIGNATIONS VOYAGENT AVEC /sync, PAS AVEC /session : ma première
+// version interrogeait /session, qui ne porte que l'état de séance, et
+// concluait que l'élève ne recevait rien. C'est la vérification qui avait
+// tort, pas le serveur.
+$sess = json('/sync', ['deviceId' => 'd', 'cursor' => 0, 'events' => []],
+              $cx['json']['token'] ?? '');
+$a = ($sess['json']['assignments'] ?? [])[0] ?? [];
+verifier("ET L'ÉLÈVE LA REÇOIT AU LIEU DE LA RECALCULER",
+    ($a['pathIdentity'] ?? '') === 'path_PREMIERE',
+    json_encode($a['pathIdentity'] ?? null));
 
 // --- RETIRER UN ÉLÈVE. Impossible avant : un départ en cours d'année restait
 //     dans la liste pour toujours.
 $idSacha = json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['json']['studentId'];
 $avant = $compteF();
-$jeton = jetonDe(page($uF)['html']);
-page($uF, ['jeton' => $jeton, 'action' => 'retirer', 'eleve' => $idSacha]);
+json('/teacher/roster', ['classId' => $classeF, 'action' => 'retirer',
+                         'studentId' => $idSacha], $jetonProf);
 verifier('UN ÉLÈVE PEUT ÊTRE RETIRÉ', $compteF() === $avant - 1);
 verifier('et son billet ne vaut plus rien',
     json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['code'] === 401);
@@ -908,12 +1501,16 @@ verifier('ses jetons sont partis avec lui', (int) $s->fetchAll()[0]['c'] === 0);
 $classeG = uuidv4();
 db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
     ->execute([$classeG, $profId, 'Cinquième', 'CINQU1']);
-$uG = '/admin/eleves.php?id=' . urlencode($classeG);
-$jeton = jetonDe(page($uG)['html']);
-$p = page($uG, ['jeton' => $jeton, 'action' => 'apercu', 'liste' => 'Yanis Ferrand;yanis.ferrand']);
+$r = json('/teacher/roster', ['classId' => $classeG, 'action' => 'apercu',
+                              'texte' => 'Yanis Ferrand;yanis.ferrand'], $jetonProf);
 verifier('L\'APERÇU PROPOSE DE DÉPLACER, il ne refuse plus',
-    str_contains($p['html'], 'sera déplacé ici'), 'sinon un changement de classe est sans issue');
-page($uG, ['jeton' => $jeton, 'action' => 'importer', 'liste' => 'Yanis Ferrand;yanis.ferrand;']);
+    ($r['json']['apercu']['lignes'][0]['sort'] ?? '') === 'deplace',
+    'sinon un changement de classe est sans issue : ' . $r['brut']);
+verifier('et il dit d\'où vient l\'élève',
+    str_contains($r['json']['apercu']['lignes'][0]['dit'] ?? '', 'sera déplacé ici'),
+    $r['json']['apercu']['lignes'][0]['dit'] ?? '');
+json('/teacher/roster', ['classId' => $classeG, 'action' => 'importer',
+                         'liste' => 'Yanis Ferrand;yanis.ferrand;'], $jetonProf);
 $s = db()->prepare('SELECT class_id FROM students WHERE login_key = ?');
 $s->execute([empreinteLogin('yanis.ferrand')]);
 $ou = $s->fetchAll();
@@ -1064,29 +1661,47 @@ $p = page('/admin/rapport.php');
 verifier('la page de rapport s\'ouvre', str_contains($p['html'], 'RAPPORT ATOUTMATH'),
     'code ' . $p['code']);
 
+// ─────────────────────────────────────────────────────────────────────────
+// ON CHERCHE LES SECRETS DANS CE QU'ON COLLE, pas dans la page entière.
+//
+// C'est une conséquence directe de la fusion demandée par Rémy : le rapport
+// et le RANGEMENT DE LA BASE vivent maintenant sur la même page, et le
+// rangement affiche forcément le chemin de la base — c'est tout son sujet.
+// La page a donc le droit de le montrer à un professeur connecté ; le
+// RAPPORT, lui, n'a pas le droit de l'emporter dans un courriel.
+//
+// La garantie porte sur le texte qu'on copie. On l'isole donc, au lieu de
+// mesurer la page — sinon l'épreuve accuse le rangement de dire ce qu'il est
+// là pour dire.
+$aCopier = '';
+if (preg_match('/<textarea[^>]*id="rapport"[^>]*>(.*?)<\/textarea>/s', $p['html'], $m)) {
+    $aCopier = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
+}
+verifier('le texte à copier se lit dans la page', $aCopier !== '');
+
 $secret = (string) (config()['app_secret'] ?? '');
 $cle    = (string) (config()['data_key'] ?? '');
 verifier('LE SECRET DE SIGNATURE N\'Y EST PAS',
-    $secret !== '' && !str_contains($p['html'], $secret));
+    $secret !== '' && !str_contains($aCopier, $secret));
 verifier('LA CLÉ DE CHIFFREMENT N\'Y EST PAS',
-    $cle === '' || !str_contains($p['html'], $cle));
+    $cle === '' || !str_contains($aCopier, $cle));
 verifier('mais leur LONGUEUR y est — c\'est ce qu\'on veut savoir',
-    (bool) preg_match('/app_secret\s*:\s*\d+ signes/', $p['html']));
+    (bool) preg_match('/app_secret\s*:\s*\d+ signes/', $aCopier));
 
 // Un prénom d'élève : le rapport compte, il ne nomme pas.
 $r = json('/join', ['classCode' => 'FICHI1', 'firstName' => 'Zéphyrin Kwiatkowski']);
 verifier('un élève au prénom reconnaissable est en base', ($r['json']['studentId'] ?? '') !== '');
 $p = page('/admin/rapport.php');
 verifier('AUCUN PRÉNOM D\'ÉLÈVE N\'Y EST',
-    !str_contains($p['html'], 'Zéphyrin') && !str_contains($p['html'], 'Kwiatkowski'));
+    !str_contains($aCopier, 'Zéphyrin') && !str_contains($aCopier, 'Kwiatkowski'));
 verifier('mais le NOMBRE d\'élèves y est',
-    (bool) preg_match('/élèves\s*:\s*\d+/u', $p['html']));
+    (bool) preg_match('/élèves\s*:\s*\d+/u', $aCopier));
 
 // Le nom du fichier de base est tiré au hasard EXPRÈS : l'écrire dans un
 // rapport qu'on colle quelque part annulerait cette précaution.
 $fichier = basename((string) (config()['db_file'] ?? ''));
 verifier('LE NOM DU FICHIER DE BASE N\'Y EST PAS',
-    $fichier === '' || !str_contains($p['html'], $fichier), $fichier);
+    $fichier === '' || !str_contains($aCopier, $fichier), $fichier);
 
 // Et ce qu'on lui demande vraiment doit y être.
 foreach (['PHP', 'upload_max_filesize', 'pdo_sqlite', 'racine web', 'moteur de base'] as $attendu) {
@@ -1178,9 +1793,9 @@ titre('12 ter. Le dépôt d\'archive : ce qu\'il refuse d\'écrire');
 // qu'un intrus rêve de trouver. Ses refus sont la seule chose qui le rende
 // acceptable, et ils se vérifient ici plutôt que dans un navigateur.
 //
-// `DEPOSER_ESSAI` charge ses décisions sans afficher la page : un fichier qui
+// `DEPOSER_SANS_PAGE` charge ses décisions sans afficher la page : un fichier qui
 // ne s'exécute que tout entier ne se met pas à l'épreuve.
-define('DEPOSER_ESSAI', true);
+define('DEPOSER_SANS_PAGE', true);
 require_once dirname(__DIR__) . '/deposer.php';
 
 $acceptes = [
@@ -1352,6 +1967,15 @@ json('/teacher/paths', ['action' => 'save',
 $s = db()->prepare('SELECT name, teacher_id FROM paths WHERE id = ?');
 $s->execute([$notreParcours]);
 $apres = $s->fetch() ?: [];
+// ON REFERME LE CURSEUR, ET CE N'EST PAS DE LA POLITESSE.
+//
+// Mesuré : les vérifications suivantes lisaient une base VIDE pendant que le
+// serveur y écrivait. En SQLite, une requête dont on n'a pas lu la dernière
+// ligne garde sa transaction de lecture ouverte ; en mode WAL, cela ÉPINGLE
+// l'instantané de la base sur cette connexion. `$s` restant en portée pour
+// tout le reste du fichier, le harnais voyait la base telle qu'elle était ici
+// — et il l'aurait affirmé en vert.
+$s->closeCursor();
 verifier('le collègue n\'écrase pas notre parcours par son identifiant',
     ($apres['name'] ?? '') === 'Parcours à garder', 'nom en base : ' . ($apres['name'] ?? '?'));
 
@@ -1364,10 +1988,193 @@ verifier('et nous modifions bien notre propre parcours',
         'path' => ['id' => $notreParcours, 'name' => 'Parcours retouché',
                    'version' => 2, 'steps' => []]], $jetonNotre)['code'] === 200);
 
+// ─── LE PARCOURS REDESCEND DÉCODÉ, ET AVEC SES ÉTAPES ──────────────────────
+//
+// Rémy : « le parcours que j'ai créé au collège sur mon compte, je ne l'ai pas
+// sur mon mac chez moi !!!! »
+//
+// LE PIÈGE TENAIT EN UN CARACTÈRE. La route rendait la liste avec
+// `$r + ['data' => json_decode(...)]`, et l'opérateur `+` sur deux tableaux PHP
+// NE REMPLACE PAS une clef que la gauche porte déjà : la ligne sortie de la
+// base a une colonne `data`, donc le tableau décodé était calculé puis JETÉ, et
+// la route rendait la CHAÎNE JSON BRUTE sous le même nom. Le champ existait, il
+// avait le bon nom, il contenait bien le parcours — en texte.
+//
+// CÔTÉ NAVIGATEUR, `ramenerLaBibliotheque` fait `if (!p || !p.id) continue` :
+// sur une chaîne, `p.id` est `undefined`, donc TOUTES les lignes étaient
+// sautées. La bibliothèque du serveur ne redescendait jamais, en silence.
+//
+// ON MESURE LE TYPE, et pas seulement la présence : c'est exactement ce que
+// personne ne regardait.
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_essai_forme', 'name' => 'ENVELOPPE À DÉBALLER',
+               'data' => ['id' => 'path_dedans', 'version' => 2,
+                          'name' => 'ENVELOPPE À DÉBALLER',
+                          'steps' => [['stepId' => 'a', 'exerciseId' => 'calc-add'],
+                                      ['stepId' => 'b', 'exerciseId' => 'calc-prio']]],
+               'folderId' => 'root', 'timestamp' => 1700000000000]], $jetonNotre);
+$laListe = json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['paths'] ?? [];
+$laLigne = null;
+foreach ($laListe as $l) {
+    if (($l['id'] ?? '') === 'path_essai_forme') { $laLigne = $l; break; }
+}
+verifier('le parcours est bien dans la liste', $laLigne !== null);
+verifier('ET SON `data` EST UN TABLEAU, PAS UNE CHAÎNE JSON',
+    is_array($laLigne['data'] ?? null),
+    'reçu : ' . gettype($laLigne['data'] ?? null));
+verifier('IL PORTE SES DEUX ÉTAPES, UN NIVEAU PLUS BAS',
+    count($laLigne['data']['data']['steps'] ?? []) === 2,
+    (string) count($laLigne['data']['data']['steps'] ?? []) . ' étape(s)');
+// ET LES AUTRES CHAMPS DE LA LIGNE N'ONT PAS DISPARU en changeant d'opérateur :
+// `array_merge` remplace `data` et garde le reste.
+verifier('et la ligne garde son nom et sa date',
+    ($laLigne['name'] ?? '') === 'ENVELOPPE À DÉBALLER' && !empty($laLigne['updated_at']));
+
+// ─── LA CORBEILLE : JETER, RESTAURER, VIDER ────────────────────────────────
+//
+// Rémy : « supprimer en bloc, mettre dans la corbeille ».
+//
+// MESURÉ AVANT (tools/parcoursSupprime.mjs) : on supprimait un parcours, on
+// rechargeait la page, IL REVENAIT. La route n'acceptait que `save` et `list` ;
+// le navigateur effaçait sa copie, le serveur gardait la sienne, et le
+// rapatriement du démarrage suivant la redescendait. Le bouton disait
+// « définitivement ».
+$lesVivants = fn () => array_column(
+    json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['paths'] ?? [], 'name');
+$laCorbeille = fn () => array_column(
+    json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['corbeille'] ?? [], 'name');
+
+verifier('avant de jeter, le parcours est parmi les vivants',
+    in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true));
+$jete = json('/teacher/paths',
+    ['action' => 'corbeille', 'ids' => ['path_essai_forme']], $jetonNotre);
+verifier('JETER LE MET À LA CORBEILLE', ($jete['json']['combien'] ?? 0) === 1);
+verifier('il quitte la liste des vivants',
+    !in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true));
+verifier('ET IL EST DANS LA CORBEILLE, PAS EFFACÉ',
+    in_array('ENVELOPPE À DÉBALLER', $laCorbeille(), true));
+verifier('le serveur dit lui-même combien de jours il le garde',
+    (json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['joursCorbeille'] ?? 0) === 30);
+
+// UN COLLÈGUE NE JETTE PAS NOS PARCOURS. C'est la seule chose qui compte
+// vraiment dans cette route : sans `AND teacher_id = ?`, un identifiant deviné
+// suffirait.
+json('/teacher/paths', ['action' => 'restaurer', 'ids' => ['path_essai_forme']], $jetonNotre);
+$volé = json('/teacher/paths',
+    ['action' => 'corbeille', 'ids' => ['path_essai_forme']], $jetonAutre);
+verifier('UN COLLÈGUE NE JETTE PAS NOTRE PARCOURS',
+    ($volé['json']['combien'] ?? -1) === 0,
+    'lignes touchées : ' . (string) ($volé['json']['combien'] ?? '?'));
+verifier('et il est toujours vivant chez nous',
+    in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true));
+
+// RESTAURER LE REMET PARMI LES VIVANTS — c'est la moitié qui rend la corbeille
+// utile : une suppression dont on ne revient pas n'est pas une corbeille.
+json('/teacher/paths', ['action' => 'corbeille', 'ids' => ['path_essai_forme']], $jetonNotre);
+$remis = json('/teacher/paths',
+    ['action' => 'restaurer', 'ids' => ['path_essai_forme']], $jetonNotre);
+verifier('RESTAURER LE REMET PARMI LES VIVANTS',
+    ($remis['json']['combien'] ?? 0) === 1
+    && in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true)
+    && !in_array('ENVELOPPE À DÉBALLER', $laCorbeille(), true));
+
+// EN BLOC, parce que c'est le geste demandé : trente parcours à jeter, c'est
+// UNE requête et non trente.
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_jeter_1', 'name' => 'JETABLE 1', 'version' => 2, 'steps' => []]],
+    $jetonNotre);
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_jeter_2', 'name' => 'JETABLE 2', 'version' => 2, 'steps' => []]],
+    $jetonNotre);
+$bloc = json('/teacher/paths',
+    ['action' => 'corbeille', 'ids' => ['path_jeter_1', 'path_jeter_2']], $jetonNotre);
+verifier('ON EN JETTE DEUX D\'UN COUP', ($bloc['json']['combien'] ?? 0) === 2);
+verifier('une liste vide est refusée plutôt que de ne rien faire en silence',
+    json('/teacher/paths', ['action' => 'corbeille', 'ids' => []], $jetonNotre)['code'] === 400);
+
+// VIDER EFFACE POUR DE BON, et seulement ce qui est à la corbeille.
+$vide = json('/teacher/paths', ['action' => 'vider'], $jetonNotre);
+verifier('VIDER LA CORBEILLE EFFACE POUR DE BON', ($vide['json']['combien'] ?? 0) === 2);
+verifier('et la corbeille est vide', count($laCorbeille()) === 0);
+verifier('MAIS LES VIVANTS N\'ONT PAS BOUGÉ',
+    in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true));
+
 // Une assignation qui ne vise personne n'a jamais servi à rien : elle restait
 // en base sans jamais être lue, et l'écran disait pourtant « donné ».
 verifier('une assignation sans classe ni élève est refusée',
     json('/teacher/assign', ['pathId' => $notreParcours], $jetonNotre)['code'] === 400);
+
+// ─────────────── DONNER, ET REPRENDRE — les deux moitiés du geste ──────────
+//
+// Rémy, deux captures côte à côte : « il y a une incohérence ». Le panneau
+// « À qui ce parcours est donné » disait « 4C · En cours » ; l'onglet
+// « Les séances » de la même 4C disait « Aucune séance donnée à cette classe ».
+//
+// Les deux disaient vrai : cocher une classe n'écrivait que dans le navigateur
+// du professeur, et personne n'appelait cette route. La table restait vide —
+// donc `/sync` ne servait rien aux élèves, et le travail n'arrivait chez
+// PERSONNE. Ce qui suit tient les deux moitiés du geste.
+
+// UNE CONNEXION NEUVE POUR COMPTER. Voir `closeCursor` plus haut : une lecture
+// de vérification qui se ferait fouler par un curseur oublié ailleurs dans ce
+// fichier rendrait un compte faux — et un harnais qui se trompe en vert est
+// pire que pas de harnais. Une connexion qui naît et meurt ici ne peut porter
+// aucun instantané d'avant.
+// TOUCHER LA BASE SANS RIEN LAISSER OUVERT.
+//
+// Deux fois dans ce fichier, une lecture directe a coûté cher : une requête
+// dont on n'avait pas lu la dernière ligne gardait sa transaction ouverte, et
+// en WAL cela ÉPINGLE l'instantané (le harnais lisait alors une base vide) ou
+// BLOQUE l'écriture suivante (« database is locked »). Une connexion qui naît
+// et meurt à l'appel ne peut faire ni l'un ni l'autre.
+function enBase(): PDO
+{
+    return new PDO('sqlite:' . config()['db_file'], null, null,
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+         PDO::ATTR_TIMEOUT => 5]);
+}
+
+$compterAssign = function (string $pathId, string $classId): int {
+    $q = enBase()->prepare('SELECT COUNT(*) FROM assignments WHERE path_id = ? AND class_id = ?');
+    $q->execute([$pathId, $classId]);
+    return (int) $q->fetchColumn();
+};
+
+// DONNER DEUX FOIS NE DONNE PAS DEUX FOIS. La case du panneau se décoche et se
+// recoche ; chaque coche insérait une ligne. L'élève recevait le même travail
+// en double, et retirer n'en enlevait qu'un — l'autre restait, invisible.
+json('/teacher/assign', ['pathId' => $notreParcours, 'classId' => $notreClasse], $jetonNotre);
+json('/teacher/assign', ['pathId' => $notreParcours, 'classId' => $notreClasse], $jetonNotre);
+verifier('DONNER DEUX FOIS NE CRÉE QU\'UNE SÉANCE',
+    $compterAssign($notreParcours, $notreClasse) === 1,
+    $compterAssign($notreParcours, $notreClasse) . ' assignation(s)');
+
+// RETIRER, C'EST RETIRER DE CHEZ LES ÉLÈVES. Sans cette route, la séance
+// quittait l'écran du professeur et restait en base.
+$r = json('/teacher/assign',
+    ['action' => 'retirer', 'pathId' => $notreParcours, 'classId' => $notreClasse], $jetonNotre);
+verifier('RETIRER ENLÈVE LA SÉANCE POUR DE BON',
+    $r['code'] === 200 && $compterAssign($notreParcours, $notreClasse) === 0,
+    'retirées : ' . ($r['json']['retirees'] ?? '?'));
+
+verifier('retirer ce qui n\'est plus là ne casse rien',
+    json('/teacher/assign',
+        ['action' => 'retirer', 'pathId' => $notreParcours, 'classId' => $notreClasse],
+        $jetonNotre)['code'] === 200);
+
+// LA MÊME PORTE QUE POUR DONNER. Un collègue qui ne peut pas donner du travail
+// à notre classe ne doit pas non plus pouvoir lui en reprendre.
+json('/teacher/assign', ['pathId' => $notreParcours, 'classId' => $notreClasse], $jetonNotre);
+verifier('LE COLLÈGUE NE REPREND PAS LE TRAVAIL DE NOTRE CLASSE',
+    json('/teacher/assign',
+        ['action' => 'retirer', 'pathId' => $notreParcours, 'classId' => $notreClasse],
+        $jetonAutre)['code'] === 404
+    && $compterAssign($notreParcours, $notreClasse) === 1);
+
+verifier('retirer sans dire quelle classe est refusé',
+    json('/teacher/assign', ['action' => 'retirer', 'pathId' => $notreParcours],
+        $jetonNotre)['code'] === 400);
 
 titre('12 nonies. L\'espace professeur, depuis l\'application');
 
@@ -1444,6 +2251,173 @@ verifier('retirer un élève le retire vraiment',
         ['classId' => $idApp, 'action' => 'retirer', 'studentId' => $listeApp[2]['id']],
         $jetonNotre)['json']['eleves']) === 2);
 
+// ────────── LA SÉANCE ARRIVE-T-ELLE CHEZ L'ÉLÈVE ? — la seule question ────────
+//
+// C'est le bout du fil que Rémy a tiré : « il y a une incohérence ». Tout le
+// reste — la case cochée, la pastille « En cours », la liste des séances —
+// n'est que de l'affichage. Ce qui compte est qu'un élève, sur SA machine,
+// reçoive le travail. On le vérifie donc par la porte qu'il emprunte vraiment.
+
+$leParcours = json('/teacher/paths', ['action' => 'save',
+    'path' => ['name' => 'Le devoir du mardi', 'version' => 2,
+               'steps' => [['stepId' => 'a', 'exerciseId' => 'calc-add', 'nbItems' => 4]]]],
+    $jetonNotre)['json']['pathId'] ?? '';
+json('/teacher/class', ['classId' => $idApp, 'action' => 'lock', 'locked' => false], $jetonNotre);
+$billet = $listeApp[1];
+$jetonEleve = json('/login',
+    ['login' => $billet['login'], 'code' => 'RENTREE'])['json']['token'] ?? '';
+verifier('l\'élève entre avec son billet', $jetonEleve !== '');
+
+$vu = fn () => array_column(
+    json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => []],
+        $jetonEleve)['json']['assignments'] ?? [], 'name');
+
+verifier('avant d\'avoir donné, l\'élève ne reçoit pas ce devoir',
+    !in_array('Le devoir du mardi', $vu(), true));
+
+json('/teacher/assign', ['pathId' => $leParcours, 'classId' => $idApp], $jetonNotre);
+verifier('DONNER LE PARCOURS LE FAIT ARRIVER CHEZ L\'ÉLÈVE',
+    in_array('Le devoir du mardi', $vu(), true), implode(' · ', $vu()));
+
+json('/teacher/assign',
+    ['action' => 'retirer', 'pathId' => $leParcours, 'classId' => $idApp], $jetonNotre);
+verifier('LE RETIRER LE FAIT DISPARAÎTRE DE CHEZ LUI',
+    !in_array('Le devoir du mardi', $vu(), true), implode(' · ', $vu()));
+
+// ────────── LA SÉANCE EN COURS S'ÉTEINT TOUTE SEULE ────────────────────────
+//
+// Rémy : « si je ne clos pas une séance, à la maison l'élève aura toujours la
+// séance en cours non ? » — oui, et sans fin. La séance imposée était une
+// propriété de la classe qui ne périmait jamais : posée un mardi matin et
+// oubliée, elle s'ouvrait encore toute seule le samedi.
+
+// LA RÈGLE D'ABORD, SANS BASE NI RÉSEAU. « Jusqu'à trois heures du matin » se
+// vérifie sur des instants choisis, et non sur l'heure qu'il est pendant
+// l'essai — sans quoi il passerait ou tomberait selon le moment de la journée.
+$fuseau = fuseauDeLEcole();
+$a = fn (string $quand) => (new DateTimeImmutable($quand, $fuseau))->getTimestamp();
+$ditH = fn (int $t) => (new DateTimeImmutable('@' . $t))->setTimezone($fuseau)->format('Y-m-d H:i');
+
+verifier('POSÉE EN JOURNÉE, ELLE VAUT JUSQU\'AU LENDEMAIN 3 H',
+    $ditH(finDeLaJourneeScolaire($a('2026-09-15 10:30'))) === '2026-09-16 03:00',
+    $ditH(finDeLaJourneeScolaire($a('2026-09-15 10:30'))));
+
+verifier('l\'élève qui finit à 23 h 50 n\'est pas coupé à minuit',
+    finDeLaJourneeScolaire($a('2026-09-15 10:30')) > $a('2026-09-16 00:00'));
+
+verifier('préparée à 1 h du matin, elle vaut pour LA journée qui commence',
+    $ditH(finDeLaJourneeScolaire($a('2026-09-16 01:00'))) === '2026-09-16 03:00',
+    $ditH(finDeLaJourneeScolaire($a('2026-09-16 01:00'))));
+
+// PUIS LA RÈGLE APPLIQUÉE, PAR LA PORTE QUE L'ÉLÈVE EMPRUNTE VRAIMENT.
+json('/teacher/assign', ['pathId' => $leParcours, 'classId' => $idApp], $jetonNotre);
+$rImp = json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours], $jetonNotre);
+verifier('IMPOSER POSE UNE ÉCHÉANCE, ET LE DIT',
+    ($rImp['json']['jusqua'] ?? 0) > time()
+    && str_contains($rImp['json']['dit'] ?? '', 'demain matin'),
+    $rImp['json']['dit'] ?? '?');
+
+$laSienne = fn () => json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => []],
+    $jetonEleve)['json']['session']['impose']['name'] ?? '';
+verifier('la séance imposée s\'ouvre bien toute seule chez lui',
+    $laSienne() === 'Le devoir du mardi', $laSienne() ?: '(rien)');
+
+// On avance l'horloge en reculant l'échéance : c'est le lendemain.
+enBase()->prepare('UPDATE classes SET impose_jusqu_a = ? WHERE id = ?')
+    ->execute([time() - 60, $idApp]);
+verifier('PASSÉE L\'ÉCHÉANCE, ELLE NE S\'OUVRE PLUS CHEZ LUI',
+    $laSienne() === '', $laSienne() ?: '(rien)');
+
+// ET LA BASE NE GARDE PAS UNE VALEUR PÉRIMÉE : sans cela, l'écran du
+// professeur afficherait encore « en cours » pour une séance que ses élèves ne
+// reçoivent plus depuis ce matin.
+$qImp = enBase()->prepare('SELECT impose_path_id FROM classes WHERE id = ?');
+$qImp->execute([$idApp]);
+verifier('ET LA BASE EST NETTOYÉE, elle ne ment plus au professeur',
+    ($qImp->fetchColumn() ?: null) === null);
+verifier('l\'écran du professeur le dit comme l\'élève le vit',
+    (json('/teacher/class', ['classId' => $idApp, 'action' => 'list'],
+        $jetonNotre)['json']['classe']['impose_path_id'] ?? null) === null);
+
+// UNE SÉANCE SANS ÉCHÉANCE N'EST PAS PÉRIMÉE D'UN COUP. C'est le cas des
+// séances posées avant que cette règle existe : les éteindre toutes à la mise
+// à jour retirerait à une classe le travail qu'elle est en train de faire.
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours],
+    $jetonNotre);
+enBase()->prepare('UPDATE classes SET impose_jusqu_a = NULL WHERE id = ?')->execute([$idApp]);
+verifier('UNE SÉANCE D\'AVANT LA RÈGLE N\'EST PAS ÉTEINTE PAR LA MISE À JOUR',
+    $laSienne() === 'Le devoir du mardi', $laSienne() ?: '(rien)');
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
+
+// ────────── DONNER À UN ÉLÈVE, ET À LUI SEUL ───────────────────────────────
+//
+// Rémy : « quand on donne la séance on le donne à la classe ; il faudrait
+// pouvoir, en cliquant sur la classe, ne le donner qu'à certains élèves. En
+// fait pour l'instant on ne peut donner une séance qu'à une classe, ni à un
+// groupe ni à un élève spécifique. »
+//
+// Le serveur savait viser un élève depuis le début (`assignments.student_id`,
+// et `/sync` sert déjà « ma classe OU moi ») ; ce qui manquait tenait aux
+// bords : reprendre à un seul, et le voir dans la liste de la classe.
+
+$leSien = json('/teacher/paths', ['action' => 'save',
+    'path' => ['name' => 'Le rattrapage de Léa', 'version' => 2,
+               'steps' => [['stepId' => 'a', 'exerciseId' => 'calc-add', 'nbItems' => 3]]]],
+    $jetonNotre)['json']['pathId'] ?? '';
+
+// $billet est l'élève connecté plus haut ; on donne au SEUL autre.
+$unAutre = null;
+foreach ($listeApp as $x) { if ($x['id'] !== $billet['id']) { $unAutre = $x; break; } }
+
+json('/teacher/assign', ['pathId' => $leSien, 'studentId' => $billet['id']], $jetonNotre);
+verifier('DONNER À UN ÉLÈVE LE FAIT ARRIVER CHEZ LUI',
+    in_array('Le rattrapage de Léa', $vu(), true), implode(' · ', $vu()));
+
+// ET PAS CHEZ SON VOISIN. C'est le seul point qui distingue « donner à un
+// élève » de « donner à la classe » — et celui qu'on ne voit pas en essayant.
+$jetonVoisin = json('/login',
+    ['login' => $unAutre['login'], 'code' => 'RENTREE'])['json']['token'] ?? '';
+$vuVoisin = fn () => array_column(
+    json('/sync', ['deviceId' => 'voisin', 'cursor' => 0, 'events' => []],
+        $jetonVoisin)['json']['assignments'] ?? [], 'name');
+verifier('ET SON VOISIN NE LE REÇOIT PAS',
+    $jetonVoisin !== '' && !in_array('Le rattrapage de Léa', $vuVoisin(), true),
+    implode(' · ', $vuVoisin()) ?: '(rien)');
+
+// LA LISTE DES SÉANCES DE LA CLASSE LE MONTRE, ET DIT À QUI. Sans cela, un
+// travail donné à trois élèves n'apparaîtrait nulle part chez le professeur —
+// exactement le genre de séance fantôme qu'on vient de supprimer ailleurs.
+$sean = json('/teacher/assign', ['classId' => $idApp, 'action' => 'list'],
+    $jetonNotre)['json']['seances'] ?? [];
+$sienne = null;
+foreach ($sean as $x) { if ($x['nom'] === 'Le rattrapage de Léa') { $sienne = $x; break; } }
+verifier('LA LISTE DE LA CLASSE MONTRE CE QU\'ON A DONNÉ À UN SEUL, ET À QUI',
+    $sienne !== null && ($sienne['pour'] ?? null) !== null,
+    $sienne ? ('pour : ' . ($sienne['pour'] ?? 'toute la classe')) : '(absente)');
+
+// REPRENDRE À UN ÉLÈVE NE TOUCHE QUE LUI.
+json('/teacher/assign', ['pathId' => $leSien, 'classId' => $idApp], $jetonNotre);
+json('/teacher/assign',
+    ['action' => 'retirer', 'pathId' => $leSien, 'studentId' => $billet['id']], $jetonNotre);
+verifier('REPRENDRE À UN ÉLÈVE NE RETIRE PAS LA SÉANCE DE LA CLASSE',
+    in_array('Le rattrapage de Léa', $vuVoisin(), true),
+    implode(' · ', $vuVoisin()) ?: '(rien)');
+
+// ET L'INVERSE : retirer à la classe ne retire pas le travail nommé. « Je ne le
+// donne plus à toute la 4C » ne veut pas dire « j'enlève le rattrapage de Léa ».
+json('/teacher/assign', ['pathId' => $leSien, 'studentId' => $billet['id']], $jetonNotre);
+json('/teacher/assign',
+    ['action' => 'retirer', 'pathId' => $leSien, 'classId' => $idApp], $jetonNotre);
+verifier('RETIRER À LA CLASSE NE REPREND PAS LE TRAVAIL NOMMÉ',
+    in_array('Le rattrapage de Léa', $vu(), true) && !in_array('Le rattrapage de Léa', $vuVoisin(), true),
+    'lui : ' . implode(' · ', $vu()) . ' | voisin : ' . (implode(' · ', $vuVoisin()) ?: 'rien'));
+
+verifier('un collègue ne reprend pas le travail d\'un de nos élèves',
+    json('/teacher/assign',
+        ['action' => 'retirer', 'pathId' => $leSien, 'studentId' => $billet['id']],
+        $jetonAutre)['code'] === 404);
+
 // --- Conduire la classe ---
 verifier('renommer une classe',
     json('/teacher/class',
@@ -1479,6 +2453,111 @@ verifier('les mots se relisent, avec pour qui ils étaient',
     count(json('/teacher/message', ['classId' => $idApp, 'action' => 'list'], $jetonNotre)['json']['messages']) === 2);
 verifier('un mot vide est refusé',
     json('/teacher/message', ['classId' => $idApp, 'body' => '   '], $jetonNotre)['code'] === 400);
+
+// --- Le bac à sable de ceux qui ont fini ------------------------------------
+//
+// Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des jeux ».
+// Il est OUVERT par défaut, et c'est délibéré : une fonction qu'il faut allumer
+// pour la découvrir n'est jamais découverte.
+verifier('le bac à sable est ouvert sans qu\'on ait rien réglé',
+    json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
+        $jetonNotre)['json']['classe']['bac_ferme'] === false);
+verifier('le professeur peut le fermer',
+    json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => true],
+        $jetonNotre)['code'] === 200
+    && json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
+        $jetonNotre)['json']['classe']['bac_ferme'] === true);
+verifier('et le rouvrir',
+    json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => false],
+        $jetonNotre)['code'] === 200
+    && json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
+        $jetonNotre)['json']['classe']['bac_ferme'] === false);
+
+// CE QU'IL Y A DEDANS, maintenant que le professeur peut le composer.
+//
+// Rémy : « pour le bac à sable j'aimerai quand même bien pouvoir éditer le
+// contenu ». Le noyau savait recevoir une liste depuis le premier jour ; il
+// manquait la colonne, la route et le bouton.
+//
+// TROIS ÉTATS, ET C'EST TOUT L'ENJEU DE CETTE SECTION : la clef ABSENTE ne
+// touche à rien, la liste VIDE est une demande, une liste est servie. Les deux
+// premiers se confondent à la moindre distraction, et les confondre remplit le
+// bac de ce que le professeur vient justement d'enlever.
+$bacDe = fn () => json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
+    $jetonNotre)['json']['classe']['bac_jeux'];
+verifier('tant qu\'on n\'y a pas touché, le contenu du bac est NULL',
+    $bacDe() === null);
+$pose = json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+     'jeux' => ['geo-tangram', 'calc-nova', 'calc-labyrinthe']], $jetonNotre);
+verifier('le professeur choisit trois jeux, et le serveur les lui rend',
+    $pose['code'] === 200
+    && $pose['json']['jeux'] === ['geo-tangram', 'calc-nova', 'calc-labyrinthe']);
+verifier('la liste se relit dans la classe',
+    $bacDe() === 'geo-tangram,calc-nova,calc-labyrinthe');
+verifier('L\'ÉLÈVE LA REÇOIT, ET DANS LE MÊME ORDRE',
+    json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => []],
+        $jetonEleve)['json']['session']['bacJeux']
+        === ['geo-tangram', 'calc-nova', 'calc-labyrinthe']);
+
+// FERMER LE BAC N'EFFACE PAS CE QU'ON Y A MIS. C'est la même règle que pour la
+// durée, et elle se joue sur une clef ABSENTE du corps de la requête : un
+// `jeux: []` de politesse viderait le bac à chaque clic sur « Fermer ».
+json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => true], $jetonNotre);
+json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+                        'minutes' => 10], $jetonNotre);
+verifier('FERMER LE BAC, PUIS RÉGLER SA DURÉE, N\'EFFACE PAS SES JEUX',
+    $bacDe() === 'geo-tangram,calc-nova,calc-labyrinthe');
+
+// LA LISTE VIDE EST UNE RÉPONSE. Elle s'écrit, et elle s'écrit DIFFÉRENTE de
+// NULL : sans quoi le bac vidé se remplirait tout seul des valeurs par défaut.
+$vide = json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'bac', 'ferme' => false, 'jeux' => []], $jetonNotre);
+verifier('vider le bac l\'écrit vide, et non « jamais réglé »',
+    $vide['json']['jeux'] === [] && $bacDe() === '');
+verifier('et l\'élève reçoit un tableau vide, pas null',
+    json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => []],
+        $jetonEleve)['json']['session']['bacJeux']
+        === []);
+
+// CE QUI PART VERS TRENTE NAVIGATEURS D'ÉLÈVES EST FILTRÉ ICI. L'écran du
+// professeur ne propose que des identifiants du catalogue ; la route, elle, ne
+// le suppose pas.
+$sale = json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+     'jeux' => ['geo-tangram', '../../config.php', '<script>', '', 'geo-tangram',
+                'A-MAJUSCULES', 'calc-nova']], $jetonNotre);
+verifier('UN IDENTIFIANT QUI N\'EST PAS DU CATALOGUE EST ÉCARTÉ, ET LE DOUBLON AUSSI',
+    $sale['json']['jeux'] === ['geo-tangram', 'calc-nova']);
+verifier('vingt jeux au plus : choisir ne doit pas durer plus que jouer',
+    count(json('/teacher/class',
+        ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+         'jeux' => array_map(fn ($i) => "jeu-$i", range(1, 40))],
+        $jetonNotre)['json']['jeux']) === 20);
+// On remet la classe comme on l'a trouvée : la suite des épreuves ne parle plus
+// du bac, et un réglage qui traîne fausse ce qu'on mesurera plus loin.
+json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+                        'minutes' => 0, 'jeux' => []], $jetonNotre);
+
+// --- L'indice : à UN élève, et jamais à la classe ---------------------------
+//
+// Rémy : « la possibilité de […] envoyer un indice ». Un indice soufflé à
+// trente élèves dont vingt-cinq n'avaient pas de difficulté, c'est la réponse
+// donnée à toute la classe — le professeur qui voulait aider Léo aurait gâché
+// l'exercice pour les autres. La règle est tenue ICI, au serveur, et pas
+// seulement par l'écran qui n'offre pas le bouton.
+verifier('un indice à un élève passe, et il se dit indice',
+    json('/teacher/message',
+        ['classId' => $idApp, 'studentId' => $resteApp[0]['id'],
+         'body' => 'Regarde la retenue.', 'genre' => 'indice'], $jetonNotre)['code'] === 200);
+verifier('UN INDICE À TOUTE LA CLASSE EST REFUSÉ',
+    json('/teacher/message',
+        ['classId' => $idApp, 'body' => 'Regarde la retenue.', 'genre' => 'indice'],
+        $jetonNotre)['code'] === 400);
+$lesMots = json('/teacher/message', ['classId' => $idApp, 'action' => 'list'], $jetonNotre)['json']['messages'];
+verifier('le genre se relit, et un ancien message reste un mot',
+    count(array_filter($lesMots, fn ($m) => ($m['genre'] ?? '') === 'indice')) === 1
+    && count(array_filter($lesMots, fn ($m) => ($m['genre'] ?? '') === 'mot')) === 2);
 
 // --- Ce qu'un autre professeur ne peut pas faire de ces routes-là non plus ---
 verifier('le collègue ne lit pas la liste de cette classe',
@@ -1587,6 +2666,94 @@ verifier('le collègue ne règle rien chez nous',
     json('/teacher/override',
         ['classId' => $idDeb, 'action' => 'add', 'exerciseId' => 'calc-add'],
         $jetonAutre)['code'] === 404);
+
+// ── LA CALCULATRICE, ACCORDÉE EN PLEINE HEURE.
+//
+// RÉMY : « pourrait-on autoriser dans les options l'utilisation de la
+// calculatrice ou le permettre en direct à un groupe ou aux élèves (on pourrait
+// sélectionner dans le direct) », puis : « les deux au choix mais on pourrait le
+// donner que pour certains élèves ».
+//
+// Elle n'était qu'une propriété du catalogue — quatre exercices, écrits en dur,
+// que le professeur ne pouvait ni donner ni retirer. Elle passe par la même
+// table que le saut et le retrait : un réglage d'exercice, pour la classe ou
+// pour un élève. `*` n'est pas un exercice, c'est « toute la séance ».
+
+$codeDeb = $cl2['join_code'] ?? '';
+$rDeb = json('/join', ['classCode' => $codeDeb, 'firstName' => 'Nour']);
+$jetonNour = $rDeb['json']['token'] ?? '';
+$idNour = $rDeb['json']['studentId'] ?? '';
+$jetonZoe = json('/join', ['classCode' => $codeDeb, 'firstName' => 'Zoé'])['json']['token'] ?? '';
+verifier('deux élèves pour l\'essai de la calculatrice',
+    $jetonNour !== '' && $jetonZoe !== '' && $idNour !== '');
+
+$calcDe = fn (string $jeton) => json('/session', [], $jeton)['json']['session']['calculatrice'] ?? null;
+
+verifier('AU DÉPART, PERSONNE N\'A DE CALCULATRICE ACCORDÉE',
+    $calcDe($jetonNour) === [] && $calcDe($jetonZoe) === [],
+    json_encode($calcDe($jetonNour)));
+
+// POUR TOUTE LA SÉANCE, À TOUTE LA CLASSE : le geste qu'on fait en le disant à
+// voix haute.
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'mode' => 'calculatrice', 'exerciseId' => '*'],
+    $jetonNotre);
+verifier('LA CALCULATRICE S\'ACCORDE À TOUTE LA CLASSE, POUR TOUTE LA SÉANCE',
+    $r['code'] === 200 && $calcDe($jetonNour) === ['*'] && $calcDe($jetonZoe) === ['*'],
+    $r['json']['dit'] ?? '');
+
+// ET ELLE SE RETIRE D'UN GESTE, SANS AVOIR À NOMMER CHAQUE LIGNE.
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'cancel', 'mode' => 'calculatrice'], $jetonNotre);
+verifier('ELLE SE RETIRE SANS QU\'ON AIT À RETROUVER LA LIGNE',
+    $r['code'] === 200 && $calcDe($jetonNour) === [] && $calcDe($jetonZoe) === [],
+    $r['json']['dit'] ?? '');
+
+// À CERTAINS SEULEMENT — « on pourrait le donner que pour certains élèves ».
+// Un seul aller-retour pour plusieurs noms : quatre requêtes, c'est quatre
+// occasions qu'une seule échoue sans qu'on sache laquelle.
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'mode' => 'calculatrice',
+     'exerciseId' => 'calc-add', 'studentIds' => [$idNour]], $jetonNotre);
+verifier('ELLE S\'ACCORDE À UN ÉLÈVE, SUR UN SEUL EXERCICE',
+    $r['code'] === 200 && $calcDe($jetonNour) === ['calc-add'] && $calcDe($jetonZoe) === [],
+    'Nour : ' . json_encode($calcDe($jetonNour)) . ' · Zoé : ' . json_encode($calcDe($jetonZoe)));
+
+// DONNER DEUX FOIS NE DONNE PAS DEUX FOIS. La même faute que sur les séances :
+// rappuyer ajoutait une ligne de plus, invisible, et « retirer » n'en enlevait
+// qu'une.
+json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'mode' => 'calculatrice',
+     'exerciseId' => 'calc-add', 'studentIds' => [$idNour]], $jetonNotre);
+$combien = (int) db()->query(
+    "SELECT COUNT(*) FROM overrides WHERE mode = 'calculatrice' AND exercise_id = 'calc-add'"
+)->fetchColumn();
+verifier('ACCORDER DEUX FOIS N\'ÉCRIT QU\'UNE LIGNE', $combien === 1, "$combien ligne(s)");
+
+// ET L'ON N'AUTORISE PAS À SAUTER TOUTE LA SÉANCE : `*` n'a de sens que pour la
+// calculatrice. Vider un parcours se fait en le retirant, pas en l'éventrant.
+verifier('« toute la séance » ne vaut que pour la calculatrice',
+    json('/teacher/override',
+        ['classId' => $idDeb, 'action' => 'add', 'mode' => 'saut', 'exerciseId' => '*'],
+        $jetonNotre)['code'] === 400);
+
+verifier('un élève d\'une autre classe est refusé',
+    json('/teacher/override',
+        ['classId' => $idDeb, 'action' => 'add', 'mode' => 'calculatrice',
+         'exerciseId' => '*', 'studentIds' => ['pas-un-eleve']], $jetonNotre)['code'] === 404);
+
+// LE SAUT ET LA CALCULATRICE NE SE MARCHENT PAS SUR LES PIEDS : trois modes
+// dans la même table, et l'élève doit recevoir les trois listes séparément.
+json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'mode' => 'saut', 'exerciseId' => 'calc-mult'],
+    $jetonNotre);
+$sess = json('/session', [], $jetonNour)['json']['session'] ?? [];
+verifier('TROIS MODES, TROIS LISTES, ET AUCUN MÉLANGE',
+    ($sess['calculatrice'] ?? null) === ['calc-add']
+    && in_array('calc-mult', $sess['skippable'] ?? [], true)
+    && !in_array('calc-mult', $sess['calculatrice'] ?? [], true),
+    'calc : ' . json_encode($sess['calculatrice'] ?? null)
+        . ' · saut : ' . json_encode($sess['skippable'] ?? null));
 
 // ── UNE PORTE QUI S'OUVRE DOIT POUVOIR SE REFERMER.
 //
@@ -1768,6 +2935,8 @@ $octets = (string) @file_get_contents($BAC . '/essai.sqlite')
         . (string) @file_get_contents($BAC . '/essai.sqlite-wal');
 
 verifier('le fichier porte bien des blocs chiffrés', str_contains($octets, 'v1:'));
+verifier('ce qu\'un élève a SIGNALÉ n\'est pas lisible dans le fichier',
+    !str_contains($octets, 'Deuxième essai'));
 foreach ([
     'un prénom d\'élève'          => 'Anastasia',
     'la réponse d\'un élève'      => 'quarante-deux-mille',
@@ -1778,6 +2947,144 @@ foreach ([
     verifier("$quoi n'est pas lisible dans le fichier", !str_contains($octets, $mot),
         "« $mot » trouvé en clair");
 }
+
+// ------------------------------------------ LA BASE SE MET À JOUR TOUTE SEULE
+
+// CE CONTRÔLE VIENT D'UNE PANNE EN CLASSE, ET C'EST LA PLUS COÛTEUSE DE TOUTES.
+//
+// `migrer()` — qui ajoute les colonnes d'une version à l'autre — n'était appelé
+// que par `install.php`, `motdepasse.php` et les pages d'administration. JAMAIS
+// par `api/index.php`, c'est-à-dire jamais par l'application. Une mise à jour
+// déposée qui ajoutait une colonne laissait donc la base en arrière, et la
+// première requête qui nommait cette colonne partait en erreur SQL : le serveur
+// répondait 500, et l'élève lisait « Connexion impossible pour l'instant.
+// Préviens ton professeur. » Rémy l'a eu en classe, avec ses élèves devant lui.
+//
+// ON REPRODUIT DONC EXACTEMENT CELA : on retire une colonne récente de la base
+// en marche — c'est l'état d'un site mis à jour sans migration — et l'on vérifie
+// que l'API se répare toute seule au premier appel, sans qu'on ouvre quoi que
+// ce soit d'autre.
+$base = new PDO('sqlite:' . $BAC . '/essai.sqlite');
+$colonnes = fn () => array_column(
+    $base->query('PRAGMA table_info(classes)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+
+verifier('avant : la colonne récente est bien là',
+    in_array('bac_ferme', $colonnes(), true));
+
+$base->exec('ALTER TABLE classes DROP COLUMN bac_ferme');
+$base->exec("UPDATE reglages SET valeur = '0' WHERE cle = 'schema'");
+verifier('on remet la base dans l\'état d\'un site mis à jour sans migration',
+    !in_array('bac_ferme', $colonnes(), true));
+
+// Un simple appel de l'API doit suffire. N'importe lequel.
+$sante = json('/health', []);
+verifier('L\'API RÉPOND QUAND MÊME', $sante['code'] === 200, 'code ' . $sante['code']);
+verifier('ET ELLE A REMIS LA COLONNE TOUTE SEULE',
+    in_array('bac_ferme', $colonnes(), true),
+    'colonnes : ' . implode(', ', $colonnes()));
+
+// ─── ET CE CONTRÔLE NE GARDE PLUS *UNE* COLONNE, MAIS TOUTES ───────────────
+//
+// Rémy, écran à l'appui : « Le serveur a refusé (code 500) ».
+//
+// SA BASE TOURNE DEPUIS LA RENTRÉE, et la migration des bases déjà installées
+// reposait sur une SECONDE LISTE, tenue à la main, qu'il fallait penser à
+// allonger. Trois colonnes y manquaient : `assignments.path_identity`,
+// `classes.bac_jeux` et `paths.supprime_le`. La dernière a tout fait tomber —
+// la requête qui LISTE les parcours la nomme, donc ce n'était pas la corbeille
+// qui refusait, c'était la bibliothèque entière.
+//
+// LE CONTRÔLE D'AVANT N'AURAIT JAMAIS PU LE VOIR : il vérifiait `bac_ferme`,
+// une colonne qui, elle, était bien dans la liste. On vérifie donc désormais
+// que CHAQUE colonne de CHAQUE définition existe en base — ce qui est
+// exactement la promesse que la migration doit tenir.
+$manquantes = [];
+foreach (lesTablesDuSchema(true) as $table => $definition) {
+    $enBase = array_column(
+        $base->query("PRAGMA table_info($table)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!$enBase) { continue; }
+    foreach (array_keys(colonnesDeLaDefinition($definition)) as $col) {
+        if (!in_array($col, $enBase, true)) { $manquantes[] = "$table.$col"; }
+    }
+}
+verifier('CHAQUE COLONNE DÉCLARÉE EXISTE VRAIMENT EN BASE',
+    $manquantes === [], implode(', ', $manquantes) ?: 'aucune manquante');
+
+// ─── LA PANNE DE RÉMY, REPRODUITE SUR UNE BASE À PART ─────────────────────
+//
+// Elle ne tient PAS à une colonne manquante : elle tient à une base dont le
+// NUMÉRO DE SCHÉMA est à jour alors que les colonnes ne le sont pas. C'est
+// l'état d'un site mis à jour avec un paquet dont l'auteur a oublié de monter
+// `VERSION_SCHEMA` à la main — ce qui est arrivé deux fois, pour
+// `classes.bac_jeux` puis pour `paths.supprime_le`.
+//
+// `migrerSiNecessaire()` rendait alors la main sans rien faire, et toute
+// requête qui nomme la colonne partait en 500 :
+//   · `/teacher/paths` nomme `supprime_le` → la bibliothèque entière tombe ;
+//   · `etatDeSeance()` nomme `bac_jeux` → `/login` tombe, et l'ÉLÈVE lit
+//     « Connexion impossible pour l'instant. Préviens ton professeur. »
+//
+// ON LE MESURE DANS CE PROCESSUS-CI, SUR UNE BASE NEUVE, et non à travers le
+// serveur d'essai. Deux connexions PDO sur un même fichier SQLite ne voient pas
+// le schéma au même instant : une première version de ce contrôle arrachait la
+// colonne d'un côté et interrogeait de l'autre, et mesurait surtout ce
+// décalage-là. Ici, une base, une connexion, aucun doute sur ce qu'on observe.
+$bacMig = $BAC . '/migration.sqlite';
+$pdoMig = new PDO('sqlite:' . $bacMig);
+$pdoMig->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+migrer($pdoMig);
+$colsMig = fn ($t) => array_column(
+    $pdoMig->query("PRAGMA table_info($t)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+
+// L'ÉTAT EXACT DE SA BASE : deux colonnes en retard, et le numéro de schéma
+// resté à `4` — la valeur de la constante écrite à la main, que personne n'a
+// montée. Avec l'ancienne constante, `4 === 4` et la migration rendait la main.
+$pdoMig->exec('ALTER TABLE paths DROP COLUMN supprime_le');
+$pdoMig->exec('ALTER TABLE classes DROP COLUMN bac_jeux');
+$pdoMig->exec("INSERT OR REPLACE INTO reglages (cle, valeur) VALUES ('schema', '4')");
+verifier('une base « à jour de numéro » à qui il manque deux colonnes',
+    !in_array('supprime_le', $colsMig('paths'), true)
+    && !in_array('bac_jeux', $colsMig('classes'), true));
+verifier('et son numéro vaut bien l\'ancienne constante',
+    $pdoMig->query("SELECT valeur FROM reglages WHERE cle = 'schema'")->fetchColumn() === '4');
+
+$aMigre = migrerSiNecessaire($pdoMig);
+verifier('LA MIGRATION PART QUAND MÊME, parce que la version est CALCULÉE', $aMigre === true);
+verifier('ET LES DEUX COLONNES SONT REVENUES',
+    in_array('supprime_le', $colsMig('paths'), true)
+    && in_array('bac_jeux', $colsMig('classes'), true),
+    'paths : ' . implode(', ', $colsMig('paths')));
+// ET LE NUMÉRO EST CELUI DU SCHÉMA RÉEL : le prochain appel ne remigrera pas
+// pour rien.
+verifier('le numéro stocké devient celui que le schéma calcule',
+    (int) $pdoMig->query("SELECT valeur FROM reglages WHERE cle = 'schema'")->fetchColumn()
+        === versionDuSchema());
+verifier('ET UN SECOND APPEL NE REMIGRE PAS', migrerSiNecessaire($pdoMig) === false);
+
+// Et ce qui tombait en panne remarche : la connexion d'un élève.
+//
+// On en fabrique un NEUF plutôt que de réutiliser l'un des précédents : les
+// essais d'avant ont refait les codes de la classe, et un contrôle qui échoue
+// parce qu'un autre contrôle a fait son travail ne prouve rien.
+$cMaj = json('/teacher/classes', ['action' => 'create', 'name' => 'Après la mise à jour'],
+    $jetonNotre)['json'];
+$idMaj = '';
+foreach ($cMaj['classes'] ?? [] as $c) {
+    if (($c['name'] ?? '') === 'Après la mise à jour') { $idMaj = $c['id']; break; }
+}
+$apMaj = json('/teacher/roster',
+    ['classId' => $idMaj, 'action' => 'apercu', 'texte' => "NEUF;Léa\n", 'codeCommun' => ''],
+    $jetonNotre)['json'];
+json('/teacher/roster',
+    ['classId' => $idMaj, 'action' => 'importer', 'liste' => $apMaj['apercu']['texte']], $jetonNotre);
+$listeMaj = json('/teacher/roster', ['classId' => $idMaj, 'action' => 'list'],
+    $jetonNotre)['json']['eleves'][0] ?? null;
+
+$apresMaj = json('/login', ['login' => $listeMaj['login'] ?? '', 'code' => $listeMaj['code'] ?? '',
+    'deviceId' => 'd-maj']);
+verifier('UN ÉLÈVE PEUT SE CONNECTER APRÈS UNE MISE À JOUR',
+    $apresMaj['code'] === 200,
+    'code ' . $apresMaj['code'] . ' — c\'est exactement ce que Rémy a eu en classe');
 
 // --------------------------------------------------------------- Le bilan ---
 
