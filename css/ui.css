@@ -4252,6 +4252,23 @@ body.classe-ouverte #main-area { display: none !important; }
    une décoration, et un professeur qui fait cours avec son téléphone à la main
    doit l'atteindre au pouce. */
 body.mobile-view #top-navbar { flex-wrap: wrap; height: auto; row-gap: 6px; }
+
+/* ET SOUS 700 PIXELS, QUELLE QUE SOIT LA PRÉSENTATION.
+   La règle ci-dessus répare la barre du professeur sur téléphone — mais elle
+   est écrite pour la CLASSE `mobile-view`, et il reste une façon de se
+   retrouver étroit sans elle : une fenêtre d'ordinateur qu'on rétrécit, ou le
+   réglage « ordinateur » sur un appareil que la détection laisse passer.
+   MESURÉ à 390 px sans la classe : « Prof » chevauchait « Préparer » de
+   18 × 15 pixels. Une barre qui n'a plus la place doit passer à la ligne, pas
+   empiler ses commandes — c'est vrai de toutes les barres, pas de la seule
+   présentation mobile. */
+@media (max-width: 700px) {
+    #top-navbar { flex-wrap: wrap; height: auto; row-gap: 6px; padding-bottom: 4px; }
+    /* La pastille de rôle garde son mot : c'est elle qui dit à qui est
+       l'écran, et Rémy l'avait demandée pour cela. Elle cesse seulement de
+       rétrécir au point de déborder. */
+    #top-navbar .role-badge { flex: 0 0 auto; }
+}
 /* ET SEULEMENT POUR LE PROFESSEUR. Le `!important` de la ligne suivante passait
    par-dessus le garde `body:not(.teacher-mode) .teacher-only { display: none }`
    : mesure faite, un ELEVE connecte sur telephone voyait « Preparer » et « La

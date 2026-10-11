@@ -3762,3 +3762,45 @@ lignes** — 2026-10-01
   quel essai elle a réussi, et l'on ne confond jamais un essai perdu avec un
   verdict. Baisser le seuil aurait été l'erreur : la mesure serait devenue
   facile et n'aurait plus rien mesuré.
+
+## `epreuveTombe` dit aussi « ton ASSERTION est à l'envers » — 2026-10-11
+
+- **Ce que je voulais faire** : garder une règle booléenne un peu subtile — un
+  réglage mémorisé qui vaut dans un sens et pas dans l'autre.
+- **Ce qui a coûté** : presque rien, et c'est pour cela que je la note. J'avais
+  écrit deux assertions À L'ENVERS (`presentationMobile('desktop', true)`
+  devait rendre `true`, j'avais écrit `false`). L'outil a répondu « L'ÉPREUVE
+  EST DÉJÀ ROUGE avant qu'on touche à quoi que ce soit », ce qui est un
+  troisième message, distinct des deux autres : ni « ta garde ne garde rien »,
+  ni « ton défaut ne compile pas », mais **« ce que tu crois attendre n'est pas
+  ce que tu as écrit »**.
+- **Combien de fois** : ||| — troisième entrée de la famille en deux jours, et
+  les trois disent la même chose sous un angle différent : on ne croit pas une
+  épreuve qu'on n'a pas vue tomber.
+- **Ce qui manque** : rien. Mais la règle mérite d'être dite une fois pour
+  toutes : **quand l'épreuve porte sur une règle asymétrique, on l'écrit
+  d'abord en COMPARANT les deux cas** (`assert.notEqual(a, b)` sur le grand
+  écran, `assert.equal(a, b)` sur le téléphone) plutôt qu'en fixant deux
+  valeurs. Une comparaison ne peut pas s'inverser en silence ; deux constantes,
+  si.
+
+## Quinze tirages sans graine, et l'un d'eux tombe un jour sur vingt — 2026-10-11
+
+- **Ce que je voulais faire** : committer une correction du menu sur téléphone.
+  `npm test` est revenu avec UNE épreuve rouge, dans un fichier que je n'avais
+  pas touché : « LA CASCADE DESCEND JUSQU'AU NOMBRE SEUL ».
+- **Ce qui a coûté** : un quart d'heure, et surtout un doute — *est-ce moi ?*
+  La cause : `makeRng()` SANS graine, donc un tirage neuf à chaque exécution.
+  Ce jour-là il a sorti « −(−8 + 2 × 4) », dont le résultat est **moins zéro**,
+  et `assert.equal` distingue `0` de `-0` là où plus rien d'autre ne le fait
+  (`String(-0)` écrit « 0 »). L'épreuve avait tort, pas le logiciel.
+- **Combien de fois** : | pour celle-ci, mais **quinze tirages sans graine dans
+  sept fichiers** (`axeSurLaFiche`, `enqueteSurLaFiche`, `mosaiqueSurLaFiche`,
+  `opposeSurLaFiche`, `poserFiche`, `serpentsSurLaFiche`, `treflesSurLaFiche`).
+  Chacun est une loterie du même genre.
+- **Ce qui manque** : surtout PAS des graines fixes — c'est le tirage libre qui
+  a trouvé ce cas, et un tamis vaut mieux qu'un exemple. Ce qui manque, c'est
+  que **l'échec dise SUR QUOI il est tombé**. `makeRng()` porte déjà sa graine
+  (`rng.seed`) : il suffit que le message la cite, et l'échec devient
+  rejouable au lieu d'être une rumeur. Fait pour `opposeSurLaFiche` ; les six
+  autres fichiers attendent, et c'est un bon lot pour `/distill`.

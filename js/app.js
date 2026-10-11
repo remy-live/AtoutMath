@@ -31,6 +31,7 @@ import {
 import { initRechercheUI } from './ui/rechercheUI.js';
 import { initBuilder } from './ui/builder.js';
 import { initDebugBar } from './ui/debugBar.js';
+import { presentationMobile } from './core/presentation.js';
 import { initImportExport } from './core/importExport.js';
 import { initProfileUI, ouvrirCarnet } from './ui/profileUI.js';
 import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
@@ -479,9 +480,12 @@ function initDeviceMode() {
     const telephonePortrait = () => window.innerWidth <= 700
         && window.matchMedia('(pointer: coarse)').matches;
 
+    // LA RÈGLE EST DANS LE NOYAU, et pour une raison : elle est asymétrique
+    // exprès, et une réécriture qui la rendrait symétrique paraîtrait plus
+    // propre. Voir `js/core/presentation.js` — c'est le défaut que Rémy a
+    // signalé sous la forme « je n'arrive plus à fermer le menu ».
     const appliquer = () => {
-        const choix = choixMemorise();
-        state.isMobileView = choix ? choix === 'mobile' : telephonePortrait();
+        state.isMobileView = presentationMobile(choixMemorise(), telephonePortrait());
         document.body.classList.toggle('mobile-view', state.isMobileView);
         document.body.style.overflowX = state.isMobileView ? 'hidden' : '';
         if (state.isMobileView) {
@@ -1106,9 +1110,29 @@ function initNavButtons() {
 
     const toggleSidebar = () => {
         const sidebar = document.getElementById('sidebar');
-        const mobile = window.innerWidth <= 768 || document.body.classList.contains('mobile-view');
-        // En professeur sur téléphone, le catalogue est un tiroir : le ☰
-        // l'ouvre et le ferme, comme sa poignée.
+        const mobile = document.body.classList.contains('mobile-view');
+        // LE TIROIR N'EST LE BON GESTE QUE LÀ OÙ IL EXISTE.
+        //
+        // RÉMY, capture d'un iPhone : « quand j'ouvre le menu de gauche c'est
+        // le bazar en haut et surtout je n'arrive plus à le fermer. »
+        //
+        // CETTE LIGNE DÉCIDAIT « TÉLÉPHONE » D'APRÈS LA LARGEUR —
+        // `window.innerWidth <= 768` — alors que le tiroir, lui (la feuille
+        // coulissante, la poignée, le voile), n'existe en CSS que sous
+        // `body.mobile-view.teacher-mode`, c'est-à-dire d'après la CLASSE.
+        // Les deux s'accordent partout sauf en un point : écran étroit et
+        // présentation épinglée en « ordinateur », ce que le bouton 📱 de la
+        // palette de test écrit DÉFINITIVEMENT dans le stockage local. Le ☰
+        // basculait alors `drawer-open`, que plus aucune règle ne lit.
+        //
+        // MESURÉ dans cet état exact (390 × 844, tactile, professeur) : menu
+        // 250 px, page 140 px, aucune poignée, et le ☰ ne referme rien. C'est
+        // sa capture au pixel près.
+        //
+        // ON LIT DONC LA MÊME CONDITION QUE LE CSS, et l'on garde pour tous
+        // les autres cas le repli qui, lui, existe partout : `collapsed` met
+        // la colonne à zéro. Le dépôt le dit trois lignes plus bas — « un
+        // bouton qui ne fait rien, c'est pire qu'un bouton absent ».
         if (mobile && state.isTeacherMode) return toggleDrawer();
         sidebar.classList.toggle(mobile ? 'mob-active' : 'collapsed');
     };

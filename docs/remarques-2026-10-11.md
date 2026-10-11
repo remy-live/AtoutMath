@@ -258,3 +258,84 @@ Un avis qui revient souvent cesse d'être lu. Donc, par construction :
   question** ;
 - il disparaît dès que l'élève repart, ou dès que Rémy a agi ;
 - aucune fenêtre, aucun son, aucun clignotement — des deux côtés.
+
+---
+
+# Le menu de gauche sur téléphone — « je n'arrive plus à le fermer »
+
+> « Sur portable quand j'ouvre le menu de gauche c'est le bazar en haut et
+> surtout je n'arrive plus à le fermer. » (capture d'un iPhone, v978)
+
+## Reproduit, et ce n'est pas une hypothèse
+
+Sa capture ne ressemble PAS à ce que donne un téléphone ordinaire : chez nous,
+à 390 px, le tiroir couvre tout l'écran et se referme de trois façons. Chez
+lui, la page est en DEUX COLONNES écrasées, et rien ne referme.
+
+Un seul réglage produit cela, et il est visible sur sa propre capture : **la
+palette de test est ouverte en bas de son écran, et elle porte un bouton 📱
+« Vue mobile »**. Ce bouton écrit dans le stockage local :
+
+```js
+try { localStorage.setItem('mathbox-device', state.isMobileView ? 'mobile' : 'desktop'); }
+```
+
+et au démarrage suivant, ce choix **l'emporte définitivement** sur la détection :
+
+```js
+state.isMobileView = choix ? choix === 'mobile' : telephonePortrait();
+```
+
+Mesuré en reproduisant exactement cet état — 390 × 844, tactile,
+`mathbox-device = 'desktop'`, mode professeur :
+
+| | mesuré |
+| --- | --- |
+| `body.mobile-view` | **absent** |
+| le menu | 250 px |
+| la page à droite | **140 px** |
+| la poignée du tiroir | absente |
+| le ☰ referme-t-il ? | **NON** |
+| chevauchements dans la barre | **2** : « Prof » sur « Préparer » (18 × 15 px) et sur « La classe » |
+
+Et la liste des boutons de la barre, dans cet état, est exactement celle de sa
+capture — y compris `btn-fullscreen` (le ⛶), qui n'existe PAS en présentation
+mobile. C'est la signature qui ferme le dossier.
+
+## Pourquoi le ☰ ne ferme rien — la cause, en une ligne
+
+```js
+const mobile = window.innerWidth <= 768 || document.body.classList.contains('mobile-view');
+if (mobile && state.isTeacherMode) return toggleDrawer();
+```
+
+`toggleSidebar` décide « téléphone » d'après la **largeur**. Le tiroir, lui —
+la feuille coulissante, la poignée, le voile — n'existe en CSS que sous
+`body.mobile-view.teacher-mode`, c'est-à-dire d'après la **classe**. Les deux
+sont d'accord partout, sauf exactement là : écran étroit, présentation
+épinglée en ordinateur. Le ☰ bascule alors `drawer-open`, **que plus aucune
+règle ne lit**.
+
+Le dépôt condamne déjà ce cas, trois lignes plus bas, de sa propre main :
+
+> « sans cela, le bouton du menu basculerait un panneau que le CSS garde caché
+> — **un bouton qui ne fait rien, ce qui est pire qu'un bouton absent**. »
+
+## Ce qu'on corrige
+
+1. **Le ☰ ferme toujours ce qu'il ouvre.** Le tiroir n'est le bon geste que
+   lorsqu'il EXISTE — même condition que le CSS. Sinon on replie la colonne
+   (`collapsed`, qui existe et met la largeur à zéro).
+2. **La barre du haut cesse de se chevaucher.** Huit commandes sur une rangée
+   de 390 px : la pastille du rôle déborde sur les onglets. La barre passe sur
+   deux rangées sous 700 px — ce qu'elle fait DÉJÀ en présentation mobile, où
+   rien ne se chevauche.
+3. **Une sortie visible de la présentation épinglée.** Le choix est aujourd'hui
+   irréversible pour qui ne connaît pas la palette de test. Il rejoint le menu
+   « … », là où le dépôt a déjà rangé ce geste : « c'est le même geste — je
+   règle comment l'écran me parle — et l'élève qui en a besoin cherche là ».
+
+## Et un détail qui n'en est pas un
+
+Sa capture porte **v978**, le dépôt est à **v983**. Son téléphone n'a pas repris
+les cinq dernières versions — à vérifier de son côté.

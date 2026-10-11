@@ -24,8 +24,21 @@ import { RENDUS_NOMBRES } from '../js/ui/fiches/nombres.js';
 import { MARCHES_OPPOSE } from '../js/core/priorites.js';
 import { makeRng } from '../js/core/ids.js';
 
-const tirer = (params, i = 0, total = 8) => prioritesFicheGenerator.generate(params,
-    { rng: makeRng(), index: i, total, papier: true, themesExclus: [] });
+// LE TIRAGE EST LIBRE, ET IL GARDE SA GRAINE.
+//
+// `makeRng()` sans graine tire au hasard à chaque exécution : c'est un
+// TAMIS, et il vaut mieux qu'une graine fixe — c'est lui qui a trouvé
+// « −(−8 + 2 × 4) », une expression dont le résultat est moins zéro. Mais un
+// tamis qui tombe un jour sur vingt sans dire SUR QUOI coûte très cher : on
+// passe le quart d'heure suivant à se demander si c'est sa propre
+// modification qui l'a cassé. La graine est donc retenue et dite.
+let derniereGraine = '';
+const tirer = (params, i = 0, total = 8) => {
+    const rng = makeRng();
+    derniereGraine = rng.seed;
+    return prioritesFicheGenerator.generate(params,
+        { rng, index: i, total, papier: true, themesExclus: [] });
+};
 
 test('LA FICHE DU MOINS DEVANT LA PARENTHÈSE TIRE BIEN DES OPPOSÉS', () => {
     for (let i = 0; i < 12; i++) {
@@ -87,8 +100,17 @@ test('LA CASCADE DESCEND JUSQU\'AU NOMBRE SEUL', () => {
         // juste — c'est le même piège que la garde du radical, où un motif
         // deviné ne reconnaissait pas le « − » du logiciel.
         const dernier = m.lignes[m.lignes.length - 1].replace(/\u2212/g, '-');
-        assert.equal(Number(dernier), m.resultat,
-            `« ${m.texte} » finit sur « ${m.lignes[m.lignes.length - 1]} » et non ${m.resultat}`);
+        // MOINS ZÉRO EST ZÉRO, et c'est l'épreuve qui avait tort.
+        //
+        // Le tirage libre a fini par sortir « −(−8 + 2 × 4) » : l'intérieur
+        // vaut 0, l'opposé vaut −0, et `assert.equal` les distingue là où
+        // personne d'autre ne le fait — `String(-0)` écrit « 0 », donc ni la
+        // feuille ni l'élève ne verront jamais la différence. Le `+ 0` ramène
+        // les deux au même nombre, ce que le commentaire du dessus annonçait
+        // déjà : « ON COMPARE LES NOMBRES, PAS LEUR ÉCRITURE ».
+        assert.equal(Number(dernier) + 0, m.resultat + 0,
+            `« ${m.texte} » finit sur « ${m.lignes[m.lignes.length - 1]} » et non `
+            + `${m.resultat} (graine ${derniereGraine})`);
         // Et la feuille réserve au moins la place de ce qu'il y a à écrire.
         assert.ok(m.etapesMax >= m.etapes,
             `${m.etapes} étapes à écrire pour ${m.etapesMax} lignes réservées`);
