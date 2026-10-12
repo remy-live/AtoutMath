@@ -1913,6 +1913,32 @@ function champCoche(pdf, x, y, cote, nom, valeur) {
     return true;
 }
 
+/**
+ * LE CRAYON DES CHAMPS REMPLISSABLES, fabriqué en un seul endroit.
+ *
+ * Il écrit — `champ(x, y, w, h)` pose une case de saisie — et il coche —
+ * `champ.coche(x, y, côté, valeur)` pose une vraie case à cocher.
+ *
+ * POURQUOI UNE FABRIQUE PLUTÔT QUE DEUX COPIES : il y a TROIS portes vers le
+ * papier dans ce logiciel — la fiche d'un exercice (`printSheet`), celle des
+ * questions (`printQuestions`) et le poly d'un parcours (`printParcours`) —
+ * et c'est exactement le genre d'endroit où une correction se pose sur une
+ * seule des trois. Le dépôt a payé cette leçon cinq fois.
+ *
+ * @param {object} pdf le document jsPDF
+ * @param {string} groupe le nom du groupe de cases à cocher. Deux cases du
+ *   MÊME nom et de valeurs différentes forment un groupe de boutons radio
+ *   dans un lecteur PDF : c'est ce qui rend les propositions d'une question
+ *   exclusives entre elles. Un QCM où l'on peut cocher les quatre réponses
+ *   n'est pas un QCM.
+ */
+export function crayonDeChamps(pdf, groupe) {
+    const champ = (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`);
+    champ.coche = (x, y, cote, valeur) =>
+        champCoche(pdf, x, y, cote, groupe || `choix_g${++compteurChamps}`, valeur);
+    return champ;
+}
+
 function champCase(pdf, x, y, w, h, nom) {
     const Champ = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormTextField)
         || (pdf.AcroFormTextField);
@@ -2022,18 +2048,12 @@ export function pdfItems(pdf, page, o) {
                 // Le crayon porte sa variante en propriété plutôt qu'en second
                 // argument : les quarante rendus qui n'ont pas de QCM gardent
                 // leur appel à quatre nombres, inchangé.
+                // Le nom du groupe porte le RANG DU BLOC, pas celui de la
+                // case : deux blocs voisins ont des groupes différents, et les
+                // propositions d'un même bloc s'excluent.
                 const champ = (o.champs && !o.solution)
-                    ? (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`)
+                    ? crayonDeChamps(pdf, `choix_g${it.n ?? it.iQ ?? ++compteurChamps}`)
                     : null;
-                if (champ) {
-                    // Le nom porte le RANG DU BLOC, pas le rang de la case :
-                    // c'est ce qui rend les quatre propositions d'une même
-                    // question exclusives entre elles, comme un QCM doit
-                    // l'être. Deux blocs voisins ont des noms différents.
-                    const groupe = `choix_g${it.n ?? it.iQ ?? ++compteurChamps}`;
-                    champ.coche = (x, y, cote, valeur) =>
-                        champCoche(pdf, x, y, cote, groupe, valeur);
-                }
                 r.pdfGrille(pdf, it.item,
                     { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
                         numero: r.numeroInterne ? it.n : null,

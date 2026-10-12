@@ -3896,3 +3896,22 @@ lignes** — 2026-10-01
   et l'épreuve. La leçon vaut au-delà : **un double de l'environnement
   (navigateur, PDF, horloge) ne se recopie pas, il se partage** — sinon chaque
   copie ment à son tour, et toujours en silence.
+
+## Un réglage absent ne ressemble pas à un défaut — 2026-10-12
+
+- **Ce que je voulais faire** : équiper tous les exercices qui peuvent porter
+  un champ remplissable, comme Rémy l'a demandé.
+- **Ce qui a coûté** : rien de plus ce jour-là, mais cinquante-neuf rendus
+  posaient depuis des heures des champs que l'une des TROIS portes vers le
+  papier ne demandait jamais — la fiche d'un exercice seul n'avait pas de case
+  « Champs remplissables ». Le code était juste, le réglage n'existait pas.
+  **Aucune épreuve ne pouvait le voir** : le rendu pose bien ses champs quand
+  on les lui demande, et l'outil de balayage appelle le rendu directement.
+- **Combien de fois** : || — même forme que « on mesurait une porte que Rémy
+  n'emprunte pas » (le 12 octobre au matin, `#fq-champs` cherché sur la fiche
+  d'une grille). Les trois portes vers le papier sont un piège régulier.
+- **Ce qui manque** : une mesure qui parte des TROIS portes plutôt que du
+  rendu. `tools/grilleSeuleRemplissable.mjs` couvre la troisième ; les deux
+  autres sont couvertes par `champsSurLeVraiPdf.mjs` et `polyDu12Octobre.mjs`.
+  La règle à retenir : **quand un réglage commande une fonctionnalité, la
+  mesurer en appelant la fonctionnalité ne dit rien du réglage.**

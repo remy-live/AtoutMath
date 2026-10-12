@@ -85,6 +85,30 @@ Et cela rejoint la ligne rouge du logiciel : « je ne veux pas de construction
 géométrique avec des outils virtuels ». Un champ de PDF sur « Place le point
 A » serait exactement cela.
 
+### La troisième porte, qui n'avait pas de case
+
+Il y a **trois chemins vers le papier** : la fiche des QUESTIONS
+(`#fq-champs`), le poly d'un PARCOURS (`#pp-champs`), et la fiche d'**un seul
+exercice** — qui n'avait aucune case. Cinquante-neuf rendus posaient donc des
+champs que cette porte-là ne demandait jamais : le code était juste, le
+réglage n'existait pas.
+
+Ce trou ne se voit dans **aucune épreuve de code** — le rendu pose bien ses
+champs quand on les lui demande — ni dans `champsRemplissables.mjs`, qui
+appelle le rendu directement. Il ne se voit qu'en empruntant le chemin du
+professeur. `tools/grilleSeuleRemplissable.mjs` l'emprunte, et mesure :
+
+| Exercice imprimé SEUL | saisies | cases à cocher |
+| --- | --- | --- |
+| Sudoku | 192 | 0 |
+| Le Tableau de Conversion | 128 | 0 |
+| Le point est-il dessus ? | 0 | 16 |
+
+Au passage, le crayon des champs se fabrique maintenant en **un seul endroit**
+(`crayonDeChamps`, dans `ficheRendu.js`) au lieu d'être recopié par porte :
+c'est exactement le genre d'endroit où une correction se pose sur une seule des
+trois.
+
 ### Comment on le remesure
 
 ```sh

@@ -52,7 +52,7 @@ import { relire as relirePriorites } from '../core/priorites.js';
 import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../core/figures.js';
 import { tracesDe, branchesCroix, TAILLE_CROIX } from '../core/cercleFigure.js';
 import { pourPdf, texteRiche, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
-    optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
+    optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre, crayonDeChamps,
     ficheEnPortrait, reglerFichePortrait, fermerAutreFiche, mesureur, deposerLesRendus
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
@@ -375,6 +375,17 @@ function assurerModale() {
                         </select></label>
                     <label>Impression
                         <select id="fp-couleur" class="cfg-input"></select></label>
+                    <!-- LA TROISIÈME PORTE VERS LE PAPIER AVAIT CE TROU.
+                         Rémy : « je voudrais que tous les exercices qui peuvent
+                         prétendre à un champ remplissable puissent y avoir le
+                         droit. » Cinquante-neuf rendus en posent — mais la case
+                         pour les ALLUMER n'existait que sur la fiche des
+                         questions et sur le poly d'un parcours. Qui imprimait un
+                         sudoku ou un tableau de conversion SEUL n'avait aucun
+                         moyen de l'obtenir : le champ était posé et jamais
+                         demandé. -->
+                    <label class="fq-case" title="Des cases où l'élève peut écrire directement dans le PDF, sur ordinateur ou sur tablette.">
+                        <input type="checkbox" id="fp-champs"> Champs remplissables (PDF)</label>
                 </div>
             </details>
             <details class="fp-apercu-repli" open>
@@ -447,7 +458,7 @@ function entetePdf(doc, titre, sousTitre, consigne, mention = '') {
 }
 
 function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSolutions = false,
-    parPage = 0) {
+    parPage = 0, champsRemplissables = false) {
     // L'ENCRE DU MODE CHOISI EST POSÉE SUR LE DOCUMENT, une fois : les deux
     // cents endroits qui écrivent une couleur n'ont rien à en savoir.
     const doc = teindreDoc(new jsPDF({ orientation: ficheEnPortrait() ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' }));
@@ -491,7 +502,13 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
             else doc.text(nom, slot.titre.x, slot.titre.y, { align: 'center' });
             // Le RANG du bloc sur la feuille : certains rendus en tirent leur
             // couleur, pour que deux figures voisines ne soient pas jumelles.
-            rendu.pdfGrille(doc, item, slot, solution, null, i, items);
+            // LE CRAYON DES CHAMPS — `null` jusqu'ici, c'est-à-dire « cette
+            // feuille ne sera jamais remplissable ». Voir `crayonDeChamps`.
+            // Un groupe de cases à cocher par BLOC, pour que les propositions
+            // d'une même question s'excluent et pas celles de la voisine.
+            const champ = (champsRemplissables && !solution)
+                ? crayonDeChamps(doc, `choix_g${i}`) : null;
+            rendu.pdfGrille(doc, item, slot, solution, champ, i, items);
         });
     };
 
@@ -929,8 +946,10 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                 // Un plateau de jeu vide n'a pas
                 // de correction — la page de solutions serait le même plateau,
                 // toujours vide, et une feuille de plus à photocopier.
+                const champsEl = modal.querySelector('#fp-champs');
                 const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreDe(items),
-                    !!atelier || !!rendu.sansSolution, rendu.plusieursPages ? parPage : 0);
+                    !!atelier || !!rendu.sansSolution, rendu.plusieursPages ? parPage : 0,
+                    !!(champsEl && champsEl.checked));
                 doc.save(`${(atelier && atelier.nom) || exo.printable}-${items.length}.pdf`);
             })
             .catch(() => {
