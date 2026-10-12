@@ -3804,3 +3804,62 @@ lignes** — 2026-10-01
   (`rng.seed`) : il suffit que le message la cite, et l'échec devient
   rejouable au lieu d'être une rumeur. Fait pour `opposeSurLaFiche` ; les six
   autres fichiers attendent, et c'est un bon lot pour `/distill`.
+
+## Un réglage dans un repli fermé se mesure « visible » — 2026-10-12
+
+- **Ce que je voulais faire** : cocher « Champs remplissables » dans le panneau
+  d'impression d'un poly, avec Playwright, pour compter les champs du PDF.
+- **Ce qui a coûté** : une heure. Playwright a refusé la case trente secondes
+  (« element is not visible »), puis l'étiquette trente secondes de plus ; en
+  forçant, il a répondu « Clicking the checkbox did not change its state ».
+  J'ai cru l'outil fautif, **parce que ma propre mesure disait le contraire** :
+  la case rend `display: block`, `visibility: visible`, `opacity: 1` et un
+  rectangle de 13 × 13 à une position plausible — **alors qu'elle est dans un
+  `<details>` FERMÉ**. Le rectangle non vide plus le style calculé, c'est-à-dire
+  la façon dont tout le dépôt répond à « est-ce visible ? », donne un FAUX
+  POSITIF sous un repli fermé. Ce qui a tranché en une ligne :
+  `document.elementFromPoint` au centre, qui a désigné l'aperçu derrière le
+  panneau.
+- **Combien de fois** : || — deux fois dans la même heure, sur deux replis
+  différents (`#pp-plus` pour le poly, « Sur quel papier » pour la fiche).
+- **Ce qui manque** : *fait* — `sonde.deplier(selecteur)` clique le `<summary>`
+  du repli qui contient le réglage, et jette si le repli ne s'ouvre pas. Reste
+  la leçon générale : **une mesure de visibilité doit regarder
+  `closest('details:not([open])')`**, sinon elle ment.
+
+## « Zéro champ » peut vouloir dire « pas de QCM sur cette feuille » — 2026-10-12
+
+- **Ce que je voulais faire** : vérifier que les QCM imprimés portent de vraies
+  cases à cocher dans le PDF, comme Rémy l'a demandé.
+- **Ce qui a coûté** : trois quarts d'heure et deux fausses pistes. La sonde
+  lisait « 0 case à cocher » et j'ai cherché le défaut dans `champCoche` —
+  deux fois. Il n'y en avait pas. (1) Le poly n'imprime les propositions que si
+  « Proposer les réponses » est coché : sans elles, un QCM s'imprime en
+  question ouverte. (2) L'exercice choisi, `mes-perimetre-qcm`, s'imprime par
+  la porte des GRILLES et ne pose jamais de propositions — **un QCM à l'écran
+  n'est pas un QCM sur le papier**.
+- **Combien de fois** : ||| — c'est la troisième fois ce mois-ci qu'une mesure
+  répond « c'est cassé » là où il fallait lire « je ne regarde pas la bonne
+  feuille » (déjà : `#fq-champs` sur la fiche d'un exercice seul, qui n'en a
+  pas).
+- **Ce qui manque** : une sonde qui, quand elle compte ZÉRO, dise d'abord
+  **ce qu'elle a trouvé à la place** — ici « 0 proposition imprimée », qui
+  aurait désigné la cause en une seconde. Un zéro sans contexte est
+  indiscernable d'un logiciel cassé, exactement comme un sélecteur inventé
+  avant `doitExister`.
+
+## Une correction posée sur un cas « auto » ne mord sur rien — 2026-10-12
+
+- **Ce que je voulais faire** : arrondir le nombre de grilles d'un poly au
+  multiple du nombre de colonnes, pour supprimer les derniers rangs à moitié
+  vides que Rémy signale (« 6 calculs pour 4 colonnes, c'est idiot »).
+- **Ce qui a coûté** : la correction a été écrite, relue, commentée — et elle
+  ne faisait RIEN pour le cas cité. Elle lisait `Number(colonnes[stepId])`, or
+  ce réglage vaut la chaîne `'auto'` pour presque tous les exercices, et
+  l'exercice de Rémy en fait partie. `Number('auto')` est `NaN`, la condition
+  tombait, la boucle passait son chemin. Vu seulement en REGARDANT la feuille.
+- **Combien de fois** : | (mais la famille est connue : une correction qui ne
+  s'exécute jamais ressemble en tout point à une correction qui marche).
+- **Ce qui manque** : la règle, déjà écrite dans `CLAUDE.md` à propos de
+  `epreuveTombe`, vaut aussi pour les corrections de mise en page — **remettre
+  le défaut et voir la feuille changer**. Ici, deux images suffisaient.

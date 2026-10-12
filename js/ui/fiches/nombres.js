@@ -1148,7 +1148,10 @@ function geoPriorites(item, slot) {
     // LE NUMÉRO EST SUR LA MÊME LIGNE QUE LE CALCUL, comme dans un cahier :
     // « 1.  2 × 6 + 7 − 2 ». Posé au-dessus du bloc, il coûtait une ligne
     // entière et le calcul flottait sans rien à quoi s'aligner.
-    const gouttiere = slot.numero != null ? 7 : 0;
+    // MÊME PIÈGE QUE SUR LA POSE, et il se voit sur la capture de Rémy : son
+    // poly en est au 235, le numéro s'écrit à `taille × 0,85` avec un plafond
+    // de 14, et « 235. » demande 8,2 mm pour une gouttière de sept.
+    const gouttiere = gouttiereDuNumero(slot.numero, 14 * 0.85);
     // LES LIGNES NE S'ÉTIRENT PAS POUR REMPLIR LE BLOC — mais elles ne se
     // perdent pas non plus dedans. Sept millimètres, c'est l'interligne d'un
     // cahier : au-delà on n'écrit plus une cascade, on écrit dans le vide, et
@@ -1224,13 +1227,13 @@ function prioritesPreviewHtml(item, slot, k, solution) {
         html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
             width:${g.largeur * k}px; height:${g.ligneH * k}px;
             display:flex; align-items:center; font-size:${g.taille * 0.3528 * k}px;
-            font-weight:${i === 0 ? 800 : 600}; color:${i === 0 ? '#1a202c' : '#2f855a'};
+            font-weight:${i === 0 ? 400 : 700}; color:${i === 0 ? '#1a202c' : '#2f855a'};
             white-space:nowrap">${texte}</div>`;
     }
     return html;
 }
 
-function dessinerPrioritesPdf(doc, item, slot, solution) {
+function dessinerPrioritesPdf(doc, item, slot, solution, champ) {
     const g = geoPriorites(item, slot);
     if (g.numero != null) {
         doc.setFont('helvetica', 'bold');
@@ -1245,10 +1248,41 @@ function dessinerPrioritesPdf(doc, item, slot, solution) {
             doc.setLineWidth(0.22);
             const yl = y + g.ligneH * 0.86;
             doc.line(g.x0, yl, g.x0 + g.largeur, yl);
+            // UNE LIGNE À ÉCRIRE EST UN CHAMP REMPLISSABLE.
+            //
+            // RÉMY : « as-tu prévu des champs remplissables pour tous les
+            // exercices […] il faut que tu vérifies les exercices ». Balayage
+            // fait (`tools/champsRemplissables.mjs`) : vingt-cinq rendus sur
+            // quatre-vingt-neuf en posaient, et celui-ci — celui-là même dont
+            // il critique la police trois lignes plus haut — n'en était pas.
+            //
+            // La règle qu'on applique partout : là où la feuille TRACE une
+            // ligne pour que l'élève écrive, la fiche remplissable pose un
+            // champ sur cette ligne. Pas ailleurs : un champ sans trait est
+            // invisible à l'impression.
+            if (typeof champ === 'function' && !solution) {
+                champ(g.x0, yl - g.ligneH * 0.8, g.largeur, g.ligneH * 0.8);
+            }
         }
         const texte = (i === 0 || solution) ? (g.m.lignes[i] || '') : '';
         if (!texte) continue;
-        doc.setFont('helvetica', i === 0 ? 'bold' : 'normal');
+        // L'ÉNONCÉ S'ÉCRIT EN ROMAIN, ET LE GRAS RESTE À LA RÉPONSE.
+        //
+        // RÉMY : « la police de caractère pour le priorité ligne par ligne est
+        // bizarre, pourquoi en gras comme cela », et « idem pour prio bot
+        // relatifs », « idem pour le - devant la parenthèses ». Les trois
+        // exercices passent par CE rendu : une seule ligne les portait tous.
+        //
+        // IL A RAISON POUR UNE RAISON QUI SE LIT AILLEURS DANS LE FICHIER.
+        // Sur une fiche ordinaire, l'énoncé est en 'normal' et le gras ne sert
+        // qu'à UNE chose, la réponse du corrigé — « LE GRAS SUFFIT », dit le
+        // commentaire de `ficheRendu`. Écrire l'expression en gras lui donnait
+        // donc l'allure d'un titre au milieu d'une feuille en romain, ET volait
+        // le seul signe qui veut dire « voici la réponse ».
+        //
+        // On rend les deux à leur place : l'expression en romain comme tout
+        // énoncé, les lignes du corrigé en gras comme toute réponse.
+        doc.setFont('helvetica', i === 0 ? 'normal' : 'bold');
         doc.setFontSize(g.taille);
         // Les lignes de la solution en gris : sur la page des solutions, on
         // distingue d'un coup d'œil ce qui était donné de ce qui était à faire.
@@ -1315,12 +1349,41 @@ const digitsDe = (v) => String(Math.round(Math.abs(v) * Math.pow(10, decimalesPo
 const basPotence = (m, t) =>
     Math.max(decimalesPose(m.operandes[0]), t.decimalesQuotient || 0);
 
+/**
+ * LA PLACE QU'IL FAUT À GAUCHE POUR ÉCRIRE « 277. ».
+ *
+ * RÉMY, capture d'un poly de divisions : « le numéro de la question est collé
+ * au dividende ». On lisait « 2778 2 » là où il y avait « 277. » et le
+ * dividende « 8 2 ».
+ *
+ * LA GOUTTIÈRE ÉTAIT UN SEPT EN DUR, et sept millimètres suffisent — jusqu'à
+ * deux chiffres. Le numéro s'écrit en helvetica gras à `taille × 0,9` points,
+ * et `taille` plafonne à 13 : au plafond, un chiffre avance de 0,556 cadratin
+ * et le point de 0,278 (métriques d'Helvetica-Bold, celles dont jsPDF se
+ * sert).
+ *
+ *     « 42. »   1,39  cadratin × 4,13 mm = 5,7 mm   → tient dans 7
+ *     « 277. »  1,946 cadratin × 4,13 mm = 8,0 mm   → DÉBORDE
+ *
+ * D'où un défaut qui n'apparaît qu'à partir de la centième question — c'est-
+ * à-dire sur un poly de parcours, et jamais sur une fiche d'essai. On mesure
+ * donc la gouttière SUR LE NUMÉRO, avec un plancher à l'ancienne valeur : une
+ * gouttière trop courte colle deux nombres l'un à l'autre, une gouttière large
+ * ne coûte qu'un peu de blanc.
+ */
+function gouttiereDuNumero(numero, taillePt) {
+    if (numero == null) return 0;
+    const cadratins = String(numero).length * 0.556 + 0.278;
+    return Math.max(7, cadratins * taillePt * 0.3528 + 1.2);
+}
+
 function geoPose(item, slot) {
     const m = item.meta;
     const b = slot.boite;
     const t = m.table;
     const op = m.operation;
-    const gouttiere = slot.numero != null ? 7 : 0;
+    // Le numéro de la pose s'écrit à `taille × 0,9`, et `taille` plafonne à 13.
+    const gouttiere = gouttiereDuNumero(slot.numero, 13 * 0.9);
     const x0 = b.x + gouttiere;
     const large = b.w - gouttiere - 1;
 
@@ -1400,6 +1463,41 @@ function geoPose(item, slot) {
 
 /** Les chiffres d'un nombre, du rang le plus faible au plus fort. */
 const chiffresDroiteGauche = (v) => digitsDe(v).reverse();
+
+/**
+ * LES CASES À REMPLIR D'UNE OPÉRATION POSÉE, pour une fiche remplissable.
+ *
+ * RÉMY : « as-tu prévu des champs remplissables pour tous les exercices (par
+ * exemple pour les additions posées, ça manque) ». Mesuré avec
+ * `tools/champsRemplissables.mjs` : vingt et un exercices sur quatre-vingt-
+ * neuf en posaient, et celui-ci n'en était pas.
+ *
+ * ON NE PEUT PAS SUIVRE LES CASES DE RÉPONSE : elles n'existent pas sur la
+ * feuille de l'élève. `planPose` ne les ajoute que `if (solution)` — la
+ * grille qu'il reçoit est VIDE sous le trait, et c'est volontaire : on écrit
+ * entre les lignes, comme au cahier.
+ *
+ * ON PART DONC DE LA GÉOMÉTRIE, et l'on pose un champ sur chaque case de la
+ * grille que rien n'occupe. C'est la définition même de « ce que l'élève
+ * remplit », et cela vaut pour les quatre opérations sans les énumérer — y
+ * compris la rangée des retenues, où un élève écrit bel et bien.
+ *
+ * Le repérage se fait au CENTRE de la case, arrondi au dixième de millimètre :
+ * les chiffres déjà posés y sont centrés eux aussi, donc deux centres qui se
+ * confondent désignent la même case.
+ */
+function poserLesChamps(g, plan, champ) {
+    if (typeof champ !== 'function') return;
+    const clef = (x, y) => `${x.toFixed(1)}|${y.toFixed(1)}`;
+    const prises = new Set(plan.cases.map(c => clef(c.x, c.y)));
+    for (let rang = 0; rang < g.rangs; rang++) {
+        for (let col = 0; col < g.nCol; col++) {
+            const x = g.colX(col), y = g.ligneY(rang) + g.rh * 0.5;
+            if (prises.has(clef(x, y))) continue;
+            champ(x - g.cw / 2, y - g.rh / 2, g.cw, g.rh);
+        }
+    }
+}
 
 /**
  * Ce qu'il y a à écrire dans une opération posée : une liste de
@@ -1602,9 +1700,10 @@ function posePreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerPosePdf(doc, item, slot, solution) {
+function dessinerPosePdf(doc, item, slot, solution, champ) {
     const g = geoPose(item, slot);
     const plan = planPose(g, solution);
+    poserLesChamps(g, plan, champ);
     if (g.numero != null) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(g.taille * 0.9);
@@ -2891,9 +2990,20 @@ export const RENDUS_NOMBRES = {
         consigne: (items) => {
             const noms = [...new Set(items.map(i => i.meta && i.meta.nom).filter(Boolean))];
             const quoi = noms.length === 1 ? `Ces ${noms[0]}s sont posées` : 'Ces opérations sont posées';
-            return `${quoi} et alignées : il ne reste qu'à calculer, colonne par `
+            const base = `${quoi} et alignées : il ne reste qu'à calculer, colonne par `
                 + 'colonne, en partant de la DROITE. Écris tes retenues au crayon, '
-                + 'là où tu as l\'habitude de les mettre. Une division se fait par étapes : '
+                + 'là où tu as l\'habitude de les mettre.';
+            // LA PHRASE SUR LA DIVISION NE SORT QUE S'IL Y A UNE DIVISION.
+            //
+            // Vu sur le poly du 12 octobre, en le REGARDANT : l'exercice
+            // « Poser une multiplication » expliquait à l'élève qu'« une
+            // division se fait par étapes : on abaisse un chiffre, on cherche
+            // combien de fois le diviseur tient dedans ». Trois lignes de
+            // consigne hors sujet, en tête de l'exercice, c'est-à-dire à
+            // l'endroit exact que l'élève lit avant de commencer.
+            const divise = items.some(i => i.meta && i.meta.operation === '÷');
+            if (!divise) return base;
+            return base + ' Une division se fait par étapes : '
                 + 'on abaisse un chiffre, on cherche combien de fois le diviseur tient '
                 + 'dedans, on multiplie, on soustrait — et le reste est toujours plus '
                 + 'petit que le diviseur.';

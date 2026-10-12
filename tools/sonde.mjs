@@ -190,6 +190,59 @@ export async function ouvrirSonde(o = {}) {
             return n;
         },
 
+        /**
+         * DÉPLIE LE REPLI QUI CONTIENT CE RÉGLAGE, et rend la main quand il
+         * est ouvert.
+         *
+         * ─────────────────────────────────────────────────────────────────
+         *
+         * LA FRICTION QUE CETTE FONCTION FERME A COÛTÉ DEUX FOIS LE MÊME
+         * APRÈS-MIDI. Les panneaux d'impression rangent leurs réglages rares
+         * dans un `<details>` replié — « Papier, numéros et corrigé »,
+         * « Sur quel papier ». Playwright refuse alors de cliquer et répète
+         * « element is not visible » pendant trente secondes, ce qui est
+         * vrai mais ne dit pas pourquoi.
+         *
+         * ET NOTRE PROPRE MESURE DIT LE CONTRAIRE, c'est là le piège :
+         * mesurée à la main dans un repli FERMÉ, la case rend
+         * `display: block`, `visibility: visible`, `opacity: 1` et un
+         * rectangle de 13 × 13 à une position plausible. Le rectangle non
+         * vide plus le style calculé — notre façon de répondre à « est-ce
+         * visible ? » depuis le début du dépôt — donne donc un FAUX POSITIF
+         * sous un repli fermé. Ce qui tranche en une ligne :
+         * `document.elementFromPoint` au centre, qui désigne ce qu'il y a
+         * vraiment là — l'aperçu, derrière le panneau.
+         *
+         * Le professeur, lui, déplie puis règle. On fait pareil : on clique
+         * le `<summary>`, parce qu'un `open = true` posé à la main sauterait
+         * le code qui retient l'état du repli.
+         *
+         * @param {string} selecteur le réglage qu'on veut atteindre
+         * @returns {Promise<boolean>} vrai si un repli a dû être ouvert
+         */
+        async deplier(selecteur) {
+            await this.doitExister(selecteur, 'le réglage à déplier');
+            const ferme = () => page.evaluate((s) => {
+                const el = document.querySelector(s);
+                const d = el && el.closest('details:not([open])');
+                return d ? (d.id || d.className || 'details') : null;
+            }, selecteur);
+            const quel = await ferme();
+            if (!quel) return false;
+            await page.evaluate((s) => {
+                document.querySelector(s).closest('details:not([open])')
+                    .querySelector('summary').click();
+            }, selecteur);
+            await dormir(700);
+            const encore = await ferme();
+            if (encore) {
+                throw new Error(`le repli « ${encore} » qui contient « ${selecteur} »`
+                    + ' ne s\'ouvre pas : le réglage restera hors d\'atteinte, et'
+                    + ' Playwright dira seulement « element is not visible ».');
+            }
+            return true;
+        },
+
         /** Bascule un thème (ou revient au thème clair avec `null`). */
         async theme(nom) {
             themeVoulu = nom || null;

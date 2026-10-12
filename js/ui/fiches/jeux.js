@@ -526,10 +526,21 @@ export const RENDUS_JEUX = {
     },
     memory: {
         titre: 'Memory des tables',
-        consigne: () => 'DÉCOUPE les cartes le long des pointillés. La page 2 porte les '
-            + 'DOS : imprime-la au verso, ou découpe-la aussi et colle chaque dos derrière '
-            + 'sa carte. Puis mélange, étale face cachée, et retourne deux cartes à la '
-            + 'fois : on garde la paire quand le calcul et son résultat se rencontrent.',
+        // LA CONSIGNE NE PROMET PLUS UNE PAGE QUI N'EST PAS LÀ.
+        //
+        // RÉMY : « enlève la page 2 qui porte le dos, car ce n'est pas le
+        // cas ». Elle annonçait « La page 2 porte les DOS : imprime-la au
+        // verso » — or les dos sont la page de SOLUTIONS du rendu
+        // (`nomSolutions: 'les dos à coller'`), qui ne s'imprime que si on la
+        // demande. Un élève qui retourne sa feuille et ne trouve rien ne
+        // conclut pas « le professeur n'a pas coché la case » : il conclut que
+        // la feuille est ratée.
+        //
+        // On dit donc ce qui est VRAI dans tous les cas, et les dos restent
+        // disponibles pour qui les veut — ils ne sont simplement plus promis.
+        consigne: () => 'DÉCOUPE les cartes le long des pointillés. Puis mélange, étale '
+            + 'face cachée, et retourne deux cartes à la fois : on garde la paire quand le '
+            + 'calcul et son résultat se rencontrent.',
         previewGrille: memoryPreviewHtml,
         pdfGrille: dessinerMemoryPdf,
         nomBloc: 'Paire', nomBlocs: 'paires',
@@ -549,6 +560,14 @@ export const RENDUS_JEUX = {
         // `colonnes` est le vœu que `choisirDisposition` suivra : sans lui, la
         // règle générale préférait trois colonnes larges et neuf paires.
         disposition: { cols: 4, rows: 2, colonnes: 4, maxCols: 4, maxRows: 2 },
+        // ET HUIT PAIRES DANS UN PARCOURS AUSSI. Rémy : « débrouille-toi pour
+        // avoir le même nombre par ligne ». Sa capture en montrait SIX —
+        // quatre sur la première rangée, deux sur la seconde — parce que le
+        // poly de parcours plafonne les grilles à six (`Math.min(6, n)`), ce
+        // qui passe juste à côté des deux rangées pleines que ce rendu
+        // demande. Le plafond ne savait pas qu'un memory se compte par
+        // rangées ; maintenant le rendu le dit.
+        parDefaut: 8,
         // ET AUTANT DE FEUILLES QU'IL EN FAUT. Rémy : « 16 paires (2 pages du
         // coup) ou 24 paires (3 pages) ». Serrer seize paires sur une feuille
         // donnerait des cartes de 35 mm sur 21 : on ne joue pas avec cela. Une

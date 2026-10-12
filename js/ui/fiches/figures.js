@@ -186,7 +186,7 @@ function cercleVocabulairePreviewHtml(item, slot, k, solution) {
         + (g.quest ? lignes : ligneAnglePreviewHtml(g, k, '', solution ? g.m.reponse : ''));
 }
 
-function dessinerCercleVocabulairePdf(doc, item, slot, solution) {
+function dessinerCercleVocabulairePdf(doc, item, slot, solution, champ) {
     const g = geoCercleVocabulaire(item, slot);
     const traces = tracesDe({ ...g.m.spec, couleurs: false });
     const poly = (pts, ep) => {
@@ -252,6 +252,19 @@ function dessinerCercleVocabulairePdf(doc, item, slot, solution) {
             doc.setLineDashPattern([0.8, 0.8], 0);
             doc.line(xT, y, g.b.x + g.b.w - 1, y);
             doc.setLineDashPattern([], 0);
+            // ET LE CHAMP REMPLISSABLE SE POSE SUR LE POINTILLÉ.
+            //
+            // RÉMY : « pour le vocabulaire du cercle, par exemple, tu n'as pas
+            // mis de champs remplissables ». Mesuré : vingt et un exercices
+            // sur quatre-vingt-neuf en posaient, celui-ci n'en était pas.
+            //
+            // La boîte monte juste au-dessus du trait et fait la hauteur d'une
+            // ligne : on écrit SUR le pointillé, pas en dessous. Le trait
+            // reste tracé — une fiche remplissable s'imprime aussi, et sans
+            // ses lignes elle devient une page de questions et de blancs.
+            if (typeof champ === 'function') {
+                champ(xT, y - g.hLigne * 0.72, g.b.x + g.b.w - 1 - xT, g.hLigne * 0.8);
+            }
         }
     });
     doc.setFont('helvetica', 'normal');

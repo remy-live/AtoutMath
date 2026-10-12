@@ -528,7 +528,14 @@ export function ouvrirFicheParcours(chemin) {
     const points = {};
     papier.forEach(e => {
         const n = Math.max(1, Math.min(40, e.nbItems || (e.grille ? 2 : 5)));
-        quantites[e.stepId] = unExemplaire(e) ? 1 : (e.grille ? Math.min(6, n) : n);
+        // UN RENDU PEUT SAVOIR COMBIEN IL LUI EN FAUT, et c'est alors lui qui
+        // a raison : un memory se compte par rangées pleines (huit paires,
+        // seize, vingt-quatre), pas par le plafond général de six. Sans ce
+        // vœu, la feuille de Rémy sortait quatre paires sur une rangée et deux
+        // sur la suivante.
+        const voulu = e.grille && RENDUS[e.grille] && RENDUS[e.grille].parDefaut;
+        quantites[e.stepId] = unExemplaire(e) ? 1
+            : (e.grille ? (voulu || Math.min(6, n)) : n);
     });
     // LA MISE EN PAGE, EXERCICE PAR EXERCICE. Pour les questions c'est un
     // nombre de colonnes, pour les grilles un nombre par ligne : dans les deux
@@ -540,6 +547,43 @@ export function ouvrirFicheParcours(chemin) {
     papier.forEach(e => {
         colonnes[e.stepId] = unExemplaire(e) ? 1 : (e.exercise.colonnesPapier || 'auto');
     });
+    // UN DERNIER RANG À MOITIÉ VIDE N'EST PAS UNE MISE EN PAGE.
+    //
+    // RÉMY : « pour les poser une multiplication ou addition, tu as souvent
+    // 6 calculs pour 4 colonnes. Du coup ça fait une ligne à 4 calculs et une
+    // ligne à deux calculs. C'est idiot car déséquilibré. Pour les endroits où
+    // tu mets 4 calculs par ligne, mets juste 4 questions plutôt que 6. » Et,
+    // deux lignes plus bas : « pour le slitherlink aussi ».
+    //
+    // LE SIX N'EST PAS SON CHOIX, C'EST NOTRE PLAFOND — `Math.min(6, n)`,
+    // quinze lignes plus haut. Le `nbItems` de l'étape, lui, est le compte
+    // conseillé pour l'ÉCRAN (vingt calculs de réflexe), pas pour une feuille.
+    // On ramène donc notre propre plafond au multiple du nombre de colonnes :
+    // six grilles sur quatre colonnes deviennent quatre, six sur trois restent
+    // six.
+    //
+    // ON NE DESCEND JAMAIS SOUS UNE RANGÉE PLEINE, et l'on ne touche pas à ce
+    // qui tient déjà en moins d'une rangée : trois grilles sur quatre colonnes
+    // font un rang de trois, et en ajouter une changerait son exercice.
+    //
+    // Et ce n'est qu'un DÉFAUT : c'est le nombre qu'il trouve en ouvrant le
+    // panneau d'impression, où il reste libre de le changer.
+    papier.forEach(e => {
+        // LE NOMBRE PAR LIGNE SE LIT AU MÊME ENDROIT QUE PLUS BAS, et c'est le
+        // seul endroit où il existe. Première version : `Number(colonnes[...])`
+        // tout court. Or `colonnes` vaut « auto » pour presque tous les
+        // exercices — `Number('auto')` est NaN —, et le cas même dont Rémy
+        // parle, les opérations posées, est un cas « auto ». La correction ne
+        // mordait donc sur rien. C'est `parLigneDefaut`, posé par le rendu, qui
+        // dit alors combien il en met par rangée (voir `grillesParLigne`).
+        const rendu = e.grille ? RENDUS[e.grille] : null;
+        const parLigne = Number(colonnes[e.stepId]) || (rendu && rendu.parLigneDefaut) || 0;
+        if (!e.grille || !(parLigne > 1)) return;
+        const combien = quantites[e.stepId];
+        if (combien <= parLigne || combien % parLigne === 0) return;
+        quantites[e.stepId] = Math.max(parLigne, Math.floor(combien / parLigne) * parLigne);
+    });
+
     // NUMÉROTER, OU NON, EXERCICE PAR EXERCICE. Par défaut oui — c'est ce
     // qu'on attend d'une fiche. Mais six grilles de sudoku appelées « 7. » à
     // « 12. » n'y gagnent rien : ce qu'on écrit dedans n'est pas la réponse à

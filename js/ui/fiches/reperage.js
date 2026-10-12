@@ -17,6 +17,28 @@ import { encre, polycopieEnCouleur, pourPdf } from '../ficheRendu.js';
 // palette : celle du jeu est déjà choisie claire pour qu'un numéro noir s'y
 // lise, et deux palettes pour le même objet finiraient par diverger.
 import { TEINTES as TEINTES_PIECE } from '../../core/teintesPieces.js';
+// LA CROIX VIENT DU MÊME ENDROIT QUE CELLE DU CERCLE. Rémy : « je te rappelle
+// qu'un point est représenté par une croix » — une règle, et donc un seul
+// code. Le dépôt a payé cinq fois la leçon inverse : une correction posée sur
+// un seul des chemins qui mènent au même endroit ne ferme rien.
+import { branchesCroix } from '../../core/cercleFigure.js';
+
+/**
+ * LA TAILLE D'UNE CROIX DE SOMMET, en millimètres, PRISE SUR LE QUADRILLAGE.
+ *
+ * Celle du cercle (`TAILLE_CROIX`) vaut 3,4 dans le repère de SA figure, qui
+ * fait cent unités de côté — ce n'est pas une mesure de feuille.
+ *
+ * ON A D'ABORD ÉCRIT 1,6 MM FIXES, ET C'ÉTAIT TROP PETIT. Mesuré sur le PDF
+ * du 12 octobre : les carreaux font près de cinq millimètres, et une croix de
+ * 1,6 mm en occupe le tiers — à côté d'une lettre de 2,4 mm, elle ne se lit
+ * plus comme une croix. La moitié du carreau se voit à l'œil nu sans jamais
+ * toucher le sommet voisin ; les bornes gardent les mosaïques très serrées
+ * (croix minuscule) comme les très larges (croix de pancarte).
+ */
+function tailleCroixSommet(g) {
+    return Math.max(1.8, Math.min(g.pas * 0.5, 3.2));
+}
 
 // --- Un repère, plusieurs points --------------------------------------------
 
@@ -862,6 +884,29 @@ function dessinerQuadrillagePdf(doc, item, slot, solution) {
 // PARLE LA QUESTION sont cerclées de noir — sur cinq pièces éparpillées, les
 // retrouver prendrait plus de temps que de répondre.
 
+/**
+ * LA LETTRE D'UNE PIÈCE RESTE DANS LA FAMILLE DU TEXTE.
+ *
+ * RÉMY : « Comme symétrique par rapport à quoi. Essaie de garder une
+ * cohérence de taille de police. »
+ *
+ * MESURÉ sur quatre blocs d'un poly à trois colonnes : le texte des questions
+ * fait 1,94 mm PARTOUT, et la lettre de pièce va de 1,71 à 3,40 mm — du simple
+ * au double, sur la même page. Elle suivait le pas du quadrillage
+ * (`pas × 0,6`) : un pavage serré donnait une lettre plus PETITE que la
+ * question, un pavage large une lettre 75 % plus grosse.
+ *
+ * On garde le lien au quadrillage — une lettre doit tenir dans sa case — mais
+ * on l'enferme entre la taille du texte et une fois et demie celle-ci. Le
+ * lecteur voit alors une famille, pas une collection.
+ *
+ * @returns {number} la hauteur de la lettre, en millimètres.
+ */
+function tailleDeLettre(g) {
+    const texte = g.pt * 0.3528;
+    return Math.max(texte, Math.min(g.pas * 0.6, texte * 1.5));
+}
+
 function geoPavage(item, slot) {
     const m = item.meta || {};
     // AUTANT DE LIGNES QUE DE QUESTIONS, ET LA GRILLE RECULE D'AUTANT.
@@ -913,7 +958,7 @@ function pavagePreviewHtml(item, slot, k, solution) {
             left:${(g.x0 + c.x * g.pas) * k}px; top:${(g.y0 + c.y * g.pas) * k}px;
             width:${g.pas * k}px; height:${g.pas * k}px; display:flex;
             align-items:center; justify-content:center;
-            font-size:${(g.pas * 0.6 * k).toFixed(2)}px; font-weight:800;
+            font-size:${(tailleDeLettre(g) * k).toFixed(2)}px; font-weight:800;
             color:#1a202c">${(m.noms || [])[i] || ''}</div>`;
     });
 
@@ -1017,7 +1062,8 @@ function dessinerPavagePdf(doc, item, slot, solution) {
     });
 
     doc.setTextColor(...ENCRE.trait);
-    doc.setFontSize(Math.max(7, g.pas * 1.6));
+    // La même règle qu'à l'aperçu, en points : voir `tailleDeLettre`.
+    doc.setFontSize(tailleDeLettre(g) / 0.3528);
     (m.pieces || []).forEach((cases, i) => {
         const c = caseCentrale(cases);
         doc.text(String((m.noms || [])[i] || ''),
@@ -1311,10 +1357,30 @@ function mosaiquePreviewHtml(item, slot, k, solution) {
     });
 
     // 3. LES SOMMETS NOMMÉS : ce sont eux que les questions citent.
+    // UN SOMMET EST UNE CROIX, PAS UNE PASTILLE.
+    //
+    // RÉMY : « pour mosaïque des transformations, les points ne sont toujours
+    // pas des croix ». « Toujours pas » : la règle est dans le dépôt depuis
+    // qu'il l'a donnée — « je te rappelle qu'un point est représenté par une
+    // croix » —, et le cercle la respecte (`branchesCroix`). Elle n'était
+    // jamais descendue jusqu'ici.
+    //
+    // Ce n'est pas une préférence graphique : un disque plein OCCUPE une
+    // surface, alors qu'un point n'en a pas. C'est l'INTERSECTION des deux
+    // traits qui EST le point, et sur un quadrillage — où le sommet tombe
+    // pile sur un croisement — la différence se voit.
+    const croix = tailleCroixSommet(g);
     (g.m.sommets || []).forEach(s => {
         const p = g.P(s.x, s.y);
-        d += `<circle cx="${T(p.x)}" cy="${T(p.y)}" r="${T(0.5)}" fill="${encreT}"/>`;
-        d += `<text x="${T(p.x)}" y="${T(p.y - 0.9)}" text-anchor="middle"
+        branchesCroix(p.x, p.y, croix).forEach(([a, b]) => {
+            d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(b.x)}" y2="${T(b.y)}"
+                stroke="${encreT}" stroke-width="${T(0.32)}" stroke-linecap="round"/>`;
+        });
+        // LA LETTRE SE POSE AU-DESSUS DE LA CROIX, JAMAIS DESSUS. Sur le PDF,
+        // le fond blanc qui la rend lisible effaçait la moitié haute de la
+        // croix ; l'aperçu, lui, la grignotait de son contour blanc. On
+        // remonte la lettre d'une demi-branche, et les deux se lisent.
+        d += `<text x="${T(p.x)}" y="${T(p.y - croix / 2 - 0.5)}" text-anchor="middle"
             font-size="${T(g.taille * 0.95)}" font-weight="700" fill="${encreT}"
             stroke="#ffffff" stroke-width="${T(0.45)}" paint-order="stroke"
             font-family="Helvetica, Arial, sans-serif">${echapperSheet(s.nom)}</text>`;
@@ -1350,7 +1416,7 @@ function mosaiquePreviewHtml(item, slot, k, solution) {
         overflow:visible; pointer-events:none">${d}</svg>`;
 }
 
-function dessinerMosaiquePdf(doc, item, slot, solution) {
+function dessinerMosaiquePdf(doc, item, slot, solution, champ) {
     const g = geoMosaique(item, slot);
 
     doc.setDrawColor(...ENCRE.grille);
@@ -1408,16 +1474,42 @@ function dessinerMosaiquePdf(doc, item, slot, solution) {
 
     doc.setFillColor(...ENCRE.trait);
     doc.setFontSize(g.taille * 0.95 * 2.83);
+    // UN SOMMET EST UNE CROIX, PAS UNE PASTILLE.
+    //
+    // RÉMY : « pour mosaïque des transformations, les points ne sont toujours
+    // pas des croix ». « Toujours pas » : la règle est dans le dépôt depuis
+    // qu'il l'a donnée — « je te rappelle qu'un point est représenté par une
+    // croix » —, et le cercle la respecte (`branchesCroix`). Elle n'était
+    // jamais descendue jusqu'ici.
+    //
+    // Ce n'est pas une préférence graphique : un disque plein OCCUPE une
+    // surface, alors qu'un point n'en a pas. C'est l'INTERSECTION des deux
+    // traits qui EST le point, et sur un quadrillage — où le sommet tombe
+    // pile sur un croisement — la différence se voit.
+    doc.setLineWidth(0.32);
+    doc.setDrawColor(...ENCRE.trait);
+    // LE DÉFAUT N'ÉTAIT PAS DANS LE TRACÉ, IL ÉTAIT DANS L'ORDRE.
+    //
+    // Rémy, une deuxième fois : « les points ne sont toujours pas des croix ».
+    // La croix était pourtant bien tracée — on l'a regardée sur le PDF rendu
+    // en image : ce qui s'imprimait était un accent circonflexe. La pastille
+    // blanche posée SOUS la lettre, pour qu'elle ne soit pas barrée par le
+    // quadrillage, arrivait APRÈS la croix et en effaçait la moitié haute.
+    //
+    // Donc : la pastille d'abord, la lettre ensuite, la croix en dernier — et
+    // la lettre remonte d'une demi-branche pour ne plus la rencontrer.
+    const croix = tailleCroixSommet(g);
     (g.m.sommets || []).forEach(s => {
         const p = g.P(s.x, s.y);
-        doc.circle(p.x, p.y, 0.5, 'F');
-        // La pastille blanche sous la lettre : un sommet tombe sur un trait du
-        // quadrillage par construction, et une lettre barrée ne se lit pas.
+        const yTexte = p.y - croix / 2 - 0.6;
         const demi = g.taille * 0.45;
         doc.setFillColor(255, 255, 255);
-        doc.rect(p.x - demi, p.y - 0.9 - g.taille * 0.8, demi * 2, g.taille, 'F');
+        doc.rect(p.x - demi, yTexte - g.taille * 0.8, demi * 2, g.taille * 0.95, 'F');
         doc.setTextColor(...ENCRE.trait);
-        doc.text(s.nom, p.x, p.y - 0.9, { align: 'center' });
+        doc.text(s.nom, p.x, yTexte, { align: 'center' });
+        branchesCroix(p.x, p.y, croix).forEach(([a, b]) => {
+            doc.line(a.x, a.y, b.x, b.y);
+        });
         doc.setFillColor(...ENCRE.trait);
     });
 
@@ -1439,6 +1531,13 @@ function dessinerMosaiquePdf(doc, item, slot, solution) {
             doc.setDrawColor(...ENCRE.gris);
             doc.setLineWidth(0.25);
             doc.line(g.questX + 3, yl, g.questX + g.questW * 0.55, yl);
+            // LÀ OÙ LA FEUILLE TRACE UNE LIGNE, LA FICHE REMPLISSABLE POSE UN
+            // CHAMP. Rémy : « il faut que tu vérifies les exercices ». Celui-ci
+            // n'en posait aucun — et c'est pourtant une réponse qui s'écrit en
+            // deux caractères (« la pièce 7 »), le cas le plus simple qui soit.
+            if (typeof champ === 'function') {
+                champ(g.questX + 3, yl - g.taille, g.questW * 0.55 - 3, g.taille);
+            }
         }
         y = yl + g.taille * 0.9;
     });

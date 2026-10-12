@@ -72,6 +72,7 @@ await s.ouvrirExercice('calc-add');         // monte le meneur, clique « JOUER 
 await s.photo('.title', 'tools/tmp/t.png'); // découpe la page, dit si l'image est UNIE
 await s.contrasteRendu('.title');           // sur les PIXELS, donc lit les color-mix
 await s.doitExister('.game-question');      // JETTE si le crochet ne désigne rien
+await s.deplier('#pp-champs');              // ouvre le <details> qui cache un réglage
 await s.fermer();                           // ne tue que SON serveur
 ```
 
@@ -79,6 +80,12 @@ await s.fermer();                           // ne tue que SON serveur
 rend `false`, c'est-à-dire la même réponse qu'un logiciel cassé** — on cherche
 alors le défaut dans le code pendant vingt minutes. Quinze occurrences avant
 lui. On l'emploie sur tout crochet qu'on n'a pas LU dans la source.
+
+`deplier` ferme la deuxième : **un réglage dans un `<details>` fermé se mesure
+« visible »** — 13 × 13, `display: block`, `visibility: visible` — pendant que
+Playwright répète « element is not visible » trente secondes. L'outil a raison,
+la mesure ment, et forcer le clic ne coche rien. Avant de douter de l'outil, on
+demande `document.elementFromPoint` au centre : il nomme QUI est là.
 
 `s.page` reste la page Playwright pour tout le reste ; `s.erreurs` et
 `s.fenetresNatives` se remplissent tout seuls.

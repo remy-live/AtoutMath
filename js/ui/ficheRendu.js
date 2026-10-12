@@ -1882,6 +1882,37 @@ function champSaisie(pdf, rep, index) {
 // une case du premier sudoku et voyait son chiffre apparaître dans le second.
 let compteurChamps = 0;
 
+/**
+ * UNE VRAIE CASE À COCHER, pas un carré dessiné.
+ *
+ * RÉMY : « et pour les QCM, il faut que le champ remplissable soit une
+ * checkbox ». Le carré tracé est le bon choix pour une feuille qu'on IMPRIME
+ * — le caractère ☐ n'existe pas dans les polices standard du PDF, voir le
+ * commentaire du dessin. Mais sur une fiche REMPLISSABLE, un carré dessiné
+ * n'est qu'un dessin : l'élève ne peut pas le cocher, et il ne lui reste que
+ * la case de texte d'à côté, qui ne correspond à rien.
+ *
+ * ON POSE DONC LES DEUX : le carré reste tracé — une fiche remplissable
+ * s'imprime aussi —, et la case à cocher se pose dessus.
+ *
+ * LE NOM DU CHAMP PORTE LA QUESTION, et c'est ce qui rend les cases
+ * EXCLUSIVES entre elles : deux cases du même nom et de valeurs différentes
+ * forment un groupe de boutons radio dans un lecteur PDF. Un QCM où l'on peut
+ * cocher les quatre réponses n'est pas un QCM.
+ */
+function champCoche(pdf, x, y, cote, nom, valeur) {
+    const Coche = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormCheckBox)
+        || (pdf.AcroFormCheckBox);
+    if (typeof Coche !== 'function' || typeof pdf.addField !== 'function') return false;
+    const champ = new Coche();
+    champ.Rect = [x, y, cote, cote];
+    champ.fieldName = nom;
+    champ.appearanceState = 'Off';
+    if (valeur != null) champ.caption = String(valeur).slice(0, 1);
+    pdf.addField(champ);
+    return true;
+}
+
 function champCase(pdf, x, y, w, h, nom) {
     const Champ = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormTextField)
         || (pdf.AcroFormTextField);
@@ -2016,6 +2047,13 @@ export function pdfItems(pdf, page, o) {
                 pdf.setDrawColor(...ENCRE.gris);
                 pdf.setLineWidth(0.22);
                 pdf.rect(cx, it.choixY + o.taille - cote, cote, cote, 'S');
+                // Voir `champCoche` : le carré est le dessin, la case est le
+                // champ, et les deux se superposent. Le nom porte le rang de
+                // la question, donc les choix d'une même question s'excluent.
+                if (o.champs && !o.solution) {
+                    champCoche(pdf, cx, it.choixY + o.taille - cote, cote,
+                        `choix_${it.n ?? ++nChamp}`, mot);
+                }
                 pdf.setTextColor(...ENCRE.gris);
                 pdf.text(mot, cx + cote + 1.4, it.choixY + o.taille);
                 cx += cote + 1.4 + pdf.getTextWidth(mot) + 4;
@@ -2024,7 +2062,15 @@ export function pdfItems(pdf, page, o) {
         }
         if (it.tableau) tableauPdf(pdf, it.tableau, o);
         if (it.rep) {
-            if (o.champs) champSaisie(pdf, it.rep, ++nChamp);
+            // SUR UN QCM, LA RÉPONSE EST LA CASE COCHÉE, pas une seconde
+            // saisie. Rémy : « pour les QCM, il faut que le champ remplissable
+            // soit une checkbox ». Vu sur le PDF du 12 octobre : les quatre
+            // cases étaient bien là, ET une ligne de saisie les suivait —
+            // l'élève qui remplit à l'écran avait deux endroits où répondre,
+            // et deux réponses possibles qui se contredisent. La ligne
+            // pointillée, elle, reste dessinée : sur du papier, on écrit
+            // encore à la main à côté des cases.
+            if (o.champs && !it.choix) champSaisie(pdf, it.rep, ++nChamp);
             else {
                 for (let i = 0; i < (it.rep.lignes || 1); i++) {
                     pointilles(pdf, it.rep.x, it.rep.y + i * (it.rep.pas || 0), it.rep.w);

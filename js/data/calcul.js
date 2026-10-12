@@ -2697,6 +2697,11 @@ export const calculExercises = [
         // la grille que si un seul survit aux indices. Puis il retire un à un
         // les indices dont on peut se passer. Voir core/enquete.js.
         id: 'logi-enquete', title: "L'Enquête",
+        // DEUX PAR LIGNE. Rémy : « pour l'enquête mets deux colonnes par
+        // défaut ». Une enquête, c'est une liste d'indices qu'on relit dix
+        // fois : au-delà de deux par ligne la colonne devient trop étroite
+        // pour la phrase, et l'élève lit en escalier.
+        colonnesPapier: 2,
         cree: '2026-09-14',
         activityId: 'enquete',
         // ET SUR LE PAPIER. Relevé par Rémy dans sa revue. C'est l'exercice de
