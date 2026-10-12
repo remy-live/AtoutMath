@@ -73,6 +73,33 @@ const proportionsRendu = (rendu, tire) => (typeof rendu.proportions === 'functio
  * utile — le bloc épouse la page au lieu de s'inscrire dans un carré.
  */
 const EST_PLEIN = (rendu, tire) => proportionsRendu(rendu, tire) === 'plein';
+
+/**
+ * LE RAPPORT HAUTEUR / LARGEUR D'UN BLOC — ET C'EST UNE DIVISION.
+ *
+ * RÉMY : « le champ de trèfles tout seul part sur une page presque blanche ».
+ * Mesuré, la cause n'était pas la pose des blocs : c'était une erreur de
+ * calcul, une ligne plus haut. On lisait `proportions.h` TOUT COURT là où il
+ * faut `h / w`.
+ *
+ * Tant que `w` vaut 1 — c'est le cas de presque tous les rendus — les deux
+ * sont le même nombre, et rien ne se voyait. Le champ de trèfles déclare
+ * `{ w: 4, h: 3 }`, c'est-à-dire un bloc une fois et un tiers plus LARGE que
+ * haut. On en déduisait un bloc TROIS FOIS PLUS HAUT QUE LARGE : 234 mm au
+ * lieu de 58, donc plus rien ne tenait sous la consigne, donc un saut de page
+ * à chaque fois — et le titre restait seul sur une feuille.
+ *
+ * Deux rendus seulement déclarent une largeur différente de 1 : le champ de
+ * trèfles et la planche de la Tour de Hanoï. Les deux sont de ceux dont Rémy
+ * a dit qu'ils gaspillaient la page.
+ */
+export function rapportDuBloc(rendu, tire) {
+    const p = proportionsRendu(rendu, tire);
+    if (!p || typeof p !== 'object') return 1;
+    const w = Number(p.w) > 0 ? Number(p.w) : 1;
+    const h = Number(p.h) > 0 ? Number(p.h) : 1;
+    return h / w;
+}
 // La consigne de repli se coupe comme sur la fiche d'un exercice seul : même
 // règle, même fonction — deux copies auraient divergé au premier ajustement.
 import { premierePhrase } from './printQuestions.js';
@@ -1289,8 +1316,7 @@ export function ouvrirFicheParcours(chemin) {
                     // La proportion peut être une FONCTION des grilles tirées
                     // (le tableau de conversion la calcule sur son nombre de
                     // lignes) : on la résout ici, pas plus loin.
-                    grilleRatio: e.grille
-                        ? (proportionsRendu(RENDUS[e.grille], tire)?.h ?? 1) : 1,
+                    grilleRatio: e.grille ? rapportDuBloc(RENDUS[e.grille], tire) : 1,
                     // Le plancher que le rendu s'est fixé, quand il en a un.
                     grilleHauteurMin: e.grille ? (RENDUS[e.grille].hauteurMin ?? 0) : 0,
                     // « PLEIN » : LA PAGE ENTIÈRE. Ce n'est pas une proportion

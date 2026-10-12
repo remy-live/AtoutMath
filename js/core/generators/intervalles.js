@@ -197,12 +197,24 @@ function crochet(x, ferme, versLaDroite, teinte = TEINTE) {
  */
 export function planDAxe(parts, opts = {}) {
     const vivants = parts.filter(Boolean);
+    // UN ENSEMBLE EN DEUX MORCEAUX SE DESSINE À UNE SEULE HAUTEUR.
+    //
+    // RÉMY, sur « Valeur absolue » : « |x − 1| > 1 » donne ]−∞ ; 0[ ∪ ]2 ; +∞[,
+    // et les deux morceaux sortaient étagés. L'étagement existe pour une bonne
+    // raison — distinguer I de J quand on les EMPILE sur le même axe, ce que
+    // fait l'écran — mais ici les deux morceaux sont le MÊME ensemble, et les
+    // étager laisse croire le contraire.
+    //
+    // Sur le papier, un axe porte toujours UN ensemble (les unions en
+    // dessinent trois, un par ligne) : c'est la feuille qui demande
+    // `empiler: false`, et l'écran garde son comportement.
+    const empiler = opts.empiler !== false;
     const pts = opts.points || [];
     const bornes = vivants.flatMap(p => [p.a, p.b]).filter(v => v !== null);
     const f = opts.fenetre || fenetreCommune(vivants.length
         ? vivants : pts.map((v) => ({ a: v, b: v, ea: true, eb: true })));
 
-    const hauteur = H + (vivants.length - 1) * DECALAGE;
+    const hauteur = H + (empiler ? (vivants.length - 1) * DECALAGE : 0);
 
     // La droite et sa flèche.
     const traits = [{ x1: 4, y1: Y, x2: L - 4, y2: Y, role: 'axe' }];
@@ -268,7 +280,7 @@ export function planDAxe(parts, opts = {}) {
 
     // Les intervalles eux-mêmes, chacun à sa hauteur quand il y en a deux.
     const lesParts = vivants.map((p, i) => ({
-        dy: i * DECALAGE,
+        dy: empiler ? i * DECALAGE : 0,
         // UN INTERVALLE INFINI S'ARRÊTE AVANT LA FLÈCHE DE L'AXE.
         //
         // RÉMY : « attention à la présentation ». L'axe porte sa propre flèche

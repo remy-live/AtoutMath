@@ -208,3 +208,32 @@ a une division sur la feuille.
 - **Le pavage** (« Symétrique par rapport à quoi ? ») écrit ses pointillés en
   TEXTE, pas en trait : y poser un champ demande de mesurer la largeur de la
   question. Pas fait aujourd'hui.
+
+---
+
+# Ses décisions, le 12 octobre au soir
+
+Je lui ai réexpliqué les cinq points ouverts, chacun illustré par ce qu'on
+pourrait faire. Ses réponses, mot pour mot :
+
+> « ok pour le 1, le 2, on ne fait rien, en apprentissage ce n'est pas grave de
+> perdre des points, le 3, tu corriges, le 4, ok, le 5 ok »
+
+| | Point | Décision |
+| --- | --- | --- |
+| 1 | L'élève qui répète et l'élève qui est arrêté | **ON LE FAIT** — les trois gestes |
+| 2 | `hintPenalty` à 0,25 | **ON NE TOUCHE À RIEN** |
+| 3 | Le champ de trèfles seul sur une page presque blanche | **à corriger** |
+| 4 | La ligne pointillée en trop sur « L'Égalité à Compléter » | **à corriger** |
+| 5 | L'intervalle en deux morceaux à deux hauteurs | **une seule hauteur** |
+
+**Sur le 2, une précision que je lui ai faite et qu'il faut garder ici** : le
+coût de 0,25 est en **entraînement**, pas en apprentissage — l'apprentissage
+est déjà à zéro (« les aides ne coûtent rien : on apprend »). Sa phrase dit
+« en apprentissage », ce qui pourrait être un lapsus ou une décision fondée sur
+cette lecture-là. Il garde la main ; **en attendant, on ne touche à rien**,
+c'est ce qu'il a demandé.
+
+L'ordre convenu : les trois corrections de feuille (4, 5, 3), courtes et qui se
+regardent en images ; puis le 1, qui demande de mesurer avant de coder un
+seuil.

@@ -3915,3 +3915,43 @@ lignes** — 2026-10-01
   autres sont couvertes par `champsSurLeVraiPdf.mjs` et `polyDu12Octobre.mjs`.
   La règle à retenir : **quand un réglage commande une fonctionnalité, la
   mesurer en appelant la fonctionnalité ne dit rien du réglage.**
+
+## Un balayage qui ne regarde qu'une des deux portes — 2026-10-12 (soir)
+
+- **Ce que je voulais faire** : vérifier trois corrections de feuille en les
+  REGARDANT. Sur l'image, « |x − 2| = 1 » s'imprimait « |x " 2| = 1 » : le
+  moins typographique sortait en guillemet, et les graduations « −1 » aussi.
+- **Ce qui a coûté** : rien à trouver — l'image l'a montré. Ce qui coûte, c'est
+  que `tools/caracteresPerdus.mjs` existe POUR ÇA et répondait « AUCUN
+  CARACTÈRE PERDU ». Il tire les QUESTIONS en mode papier ; ces textes-là sont
+  fabriqués par le RENDU de grille, après le générateur. Un outil qui dit
+  « tout va bien » sur la moitié du sujet est pire qu'un outil absent : on ne
+  le relance pas.
+- **Combien de fois** : ||| — c'est la troisième fois ce mois-ci qu'une mesure
+  ne couvre qu'une des deux ou trois portes vers le papier (la case
+  « remplissable » absente de la fiche d'un exercice seul, `#fq-champs` cherché
+  sur une grille, et maintenant les caractères).
+- **Ce qui manque** : *fait* — une épreuve qui lit ce que CHAQUE rendu de
+  grille écrit (`tests/feuillesDu12OctobreSoir.test.mjs`) et refuse un
+  caractère hors Latin-1 que `pourPdf` aurait remplacé. Elle a trouvé un second
+  fautif que personne n'avait signalé : l'opérateur de l'Approxdoku.
+  **La règle : un balayage doit nommer les portes qu'il n'emprunte pas.**
+
+## Deux fois de suite, une épreuve neuve trop large — 2026-10-12 (soir)
+
+- **Ce que je voulais faire** : garder la règle « aucun rendu n'écrit un
+  caractère que le PDF ne sait pas ».
+- **Ce qui a coûté** : deux écritures fausses avant la bonne, et les deux
+  accusaient du code sain. (1) « ce texte diffère-t-il de `pourPdf(texte)` ? »
+  attrapait l'espace fine devant un « ? » — de la typographie, pas une police.
+  (2) « ce caractère sort-il du Latin-1 ? » accusait le tiret cadratin et les
+  points de suspension, que l'encodage WinAnsi d'un PDF porte très bien.
+  Le critère juste tient les deux bouts : **hors Latin-1 ET remplacé par
+  `pourPdf`**.
+- **Combien de fois** : || — même famille que « l'épreuve ne garde rien », mais
+  à l'envers : celle-ci gardait TROP, et une épreuve qui crie sur du code sain
+  finit par être désactivée.
+- **Ce qui manque** : le réflexe, pas un outil. `epreuveTombe` répond à « cette
+  épreuve garde-t-elle quelque chose ? » ; il ne répond pas à « accuse-t-elle
+  autre chose que ce qu'elle vise ? ». **Quand une épreuve neuve ROUGIT sur du
+  code qu'on n'a pas touché, lire ce qu'elle accuse avant de corriger le code.**

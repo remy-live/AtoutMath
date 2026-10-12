@@ -188,6 +188,33 @@ export function trouDe(ligne) {
 }
 
 /**
+ * CE TROU-LÀ EST-IL DÉJÀ DESSINÉ PAR UNE FRACTION ?
+ *
+ * RÉMY, sur « L'Égalité à Compléter » : la réponse est le terme manquant DANS
+ * la fraction, et un pointillé s'ajoutait à droite — « un second endroit pour
+ * la même réponse ».
+ *
+ * MESURÉ SUR LE PDF, et le défaut n'est pas celui qu'on croyait : le trou EST
+ * bien repéré, et la place à écrire EST bien posée « dans le texte ». Mais son
+ * abscisse se calcule en mesurant `ligne.slice(0, trou.debut)` — un bout de
+ * chaîne coupé AU MILIEU de la fraction, alors que la ligne, elle, s'imprime
+ * en COLONNE. La mesure ne correspond donc à rien de ce qui est dessiné, et le
+ * trait atterrissait après l'expression entière.
+ *
+ * Or cette place existe déjà : `dessinerLigne` pose des pointillés sur l'étage
+ * vide de la fraction (voir `etageEstUnTrou`). Il n'y a rien à ajouter — il
+ * faut s'abstenir. On reconnaît donc le cas, et l'on ne pose aucune ligne de
+ * réponse : ni dans le texte, ni au bout.
+ */
+export function trouDessineParUneFraction(ligne, trou) {
+    if (!trou) return false;
+    for (const m of String(ligne ?? '').matchAll(RE_FRACTION())) {
+        if (trou.debut >= m.index && trou.fin <= m.index + m[0].length) return true;
+    }
+    return false;
+}
+
+/**
  * UN TABLEAU DESSINÉ SOUS L'ÉNONCÉ — et il fallait Rémy pour s'en apercevoir.
  *
  * « Le pdf pour les fonctions n'est pas terrible. Tableau non dessiné. »
@@ -926,10 +953,15 @@ export function composerBlocs(exos, opts, mesurer) {
             // LE TROU DANS L'ÉNONCÉ. « 82 041 = 80 000 +      + 40 + 1 » porte
             // déjà la place où l'on écrit : lui ajouter des pointillés au bout
             // ferait deux endroits pour une seule réponse.
-            let trou = null;
-            for (let i = 0; i < lignes.length && !trou; i++) {
+            let trou = null, trouDessine = false;
+            for (let i = 0; i < lignes.length && !trou && !trouDessine; i++) {
                 const t = trouDe(lignes[i]);
-                if (t) trou = { ...t, ligne: i };
+                if (!t) continue;
+                // Un trou au milieu d'une FRACTION porte déjà sa place : la
+                // fraction la dessine à son étage. Voir
+                // `trouDessineParUneFraction`.
+                if (trouDessineParUneFraction(lignes[i], t)) trouDessine = true;
+                else trou = { ...t, ligne: i };
             }
             // La réponse va SUR la ligne de l'énoncé quand il reste assez de
             // pointillés ; sinon dessous, en pleine largeur de cellule.
@@ -998,7 +1030,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // tient pas dans huit descend, et y trouve toute la largeur.
             const besoinRep = Math.min(o.repMin,
                 Math.max(8, mes(String(q.reponse ?? ''), o.taille) + 3));
-            const memeLigne = !placeDemandee && !trou && !choix && !tableau && lignes.length === 1
+            const memeLigne = !placeDemandee && !trou && !trouDessine && !choix && !tableau && lignes.length === 1
                 && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= besoinRep;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
             // numérateur au-dessus du trait, le dénominateur dessous. Il leur
@@ -1010,7 +1042,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // tableau des fonctions : sous un tableau qu'on remplit, elles ne
             // sont pas seulement inutiles, elles proposent un second endroit
             // pour la même réponse.
-            const sansPointilles = trou || memeLigne || (tableau && tableau.aRemplir);
+            const sansPointilles = trou || trouDessine || memeLigne || (tableau && tableau.aRemplir);
             const h = supp + hauteurDesLignes(o, lignes.length, !!q.fractions)
                 + (choix ? o.interligne : 0)
                 + (tableau ? o.avantTableau + tableau.h + o.apresTableau : 0)
@@ -1019,7 +1051,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // chose qui permette, depuis l'aperçu, de désigner celle qu'on
             // veut retirer ou retirer au sort — le numéro imprimé, lui, court
             // sur toute la feuille et saute les exercices non numérotés.
-            return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, tableau, sansPointilles, h,
+            return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, trouDessine, tableau, sansPointilles, h,
                 dy: supp, mes, iQ, fractions: !!q.fractions };
         }); }
 
@@ -1130,6 +1162,10 @@ export function composerBlocs(exos, opts, mesurer) {
                 let rep = null;
                 if (cell.tableau && cell.tableau.aRemplir) {
                     // Rien : le tableau est la place pour répondre.
+                } else if (cell.trouDessine) {
+                    // Rien non plus : la FRACTION porte sa propre place, à
+                    // l'étage vide. Rémy : « la réponse est le terme manquant
+                    // dans la fraction ».
                 } else if (cell.trou) {
                     // On écrit DANS l'énoncé, à l'endroit du trou : le trait à
                     // remplir se pose sous ce blanc, et le champ du PDF dessus.

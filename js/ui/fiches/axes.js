@@ -47,6 +47,20 @@
 import { planDAxe } from '../../core/generators/intervalles.js';
 import { dessinDe } from '../../core/valeursAbsolues.js';
 import { boiteDe, echapperSheet } from './socle.js';
+// LE MOINS DES MATHÉMATIQUES N'EXISTE PAS DANS LA POLICE DU PDF.
+//
+// Vu en REGARDANT la feuille des valeurs absolues, en vérifiant tout autre
+// chose : « |x − 2| = 1 » s'imprimait « |x " 2| = 1 », et la graduation « −1 »
+// sortait « " 1 ». Le moins typographique (U+2212) n'est pas dans le jeu de
+// caractères des polices standard d'un PDF ; `pourPdf` le translittère, comme
+// il le fait partout ailleurs sur la feuille. Ce rendu-ci écrivait ses trois
+// textes SANS lui.
+//
+// ET LE BALAYAGE NE POUVAIT PAS LE VOIR : `tools/caracteresPerdus.mjs` tire
+// les QUESTIONS en mode papier, et ces trois textes-là sont fabriqués par le
+// rendu de grille, après le générateur. Il disait « AUCUN CARACTÈRE PERDU »
+// pendant que la feuille en perdait trois par ligne.
+import { pourPdf } from '../ficheRendu.js';
 // L'ENCRE VIENT DU MODULE FEUILLE, et non de `socle.js` qui la ré-exporte :
 // les deux constantes ci-dessous sont lues EN TÊTE DE MODULE, et `socle.js`
 // est dans un cercle d'imports où une lecture en tête de module jette ou passe
@@ -83,6 +97,10 @@ function plantDesAxes(item, slot, opts = {}) {
         ...a,
         plan: planDAxe(a.parts || [], {
             points: a.points || [], fenetre: a.fenetre, bornesEnPlus: a.bornesEnPlus,
+            // SUR LE PAPIER, UN AXE PORTE UN ENSEMBLE — les unions en dessinent
+            // trois, un par ligne. Ses morceaux vont donc tous à la même
+            // hauteur : voir `planDAxe`, et la remarque de Rémy du 12 octobre.
+            empiler: false,
             // TOUS LES ENTIERS SONT ÉCRITS SUR LE PAPIER — voir `planDAxe`.
             // L'élève y trace au lieu d'y lire ; il lui faut ses repères.
             tousLesEntiers: true
@@ -324,7 +342,7 @@ function axePdf(doc, g, i, a, avecValeurs) {
             // La seconde ligne des bornes non entières, comme dans l'aperçu.
             const p = g.P(i, n.x, P.yNombre + (n.entre ? 9 : 0));
             doc.setFont('helvetica', n.gras ? 'bold' : 'normal');
-            doc.text(nb(n.v), p.x, p.y, { align: 'center' });
+            doc.text(pourPdf(nb(n.v)), p.x, p.y, { align: 'center' });
         });
     }
 
@@ -346,7 +364,7 @@ function axePdf(doc, g, i, a, avecValeurs) {
         doc.setTextColor(...TRAIT);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(g.taille * 2.83);
-        doc.text(a.nom, c.x, c.y);
+        doc.text(pourPdf(a.nom), c.x, c.y);
     }
 }
 
@@ -401,7 +419,7 @@ function reponseEcritePdf(doc, g, texte, champ) {
         doc.setTextColor(...TRAIT);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(g.taille * 2.83);
-        doc.text(String(texte), g.b.x, y);
+        doc.text(pourPdf(String(texte)), g.b.x, y);
         return;
     }
     doc.setLineWidth(0.25);
@@ -551,11 +569,11 @@ function enoncePdf(doc, g, texte) {
     // déjà entière, et la découper serait précisément le défaut qu'on répare.
     // Voir le long commentaire de `enonceHtml`.
     if (Array.isArray(texte)) {
-        texte.forEach((l, i) => doc.text(String(l), g.b.x,
+        texte.forEach((l, i) => doc.text(pourPdf(String(l)), g.b.x,
             g.b.y + g.marge + g.taille + i * g.taille * 1.85));
         return;
     }
-    const lignes = doc.splitTextToSize(String(texte), g.gaucheW - 2);
+    const lignes = doc.splitTextToSize(pourPdf(String(texte)), g.gaucheW - 2);
     lignes.forEach((l, i) =>
         doc.text(l, g.b.x, g.b.y + g.b.h / 2 - g.taille * 0.2 + i * g.taille * 1.3));
 }

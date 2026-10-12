@@ -996,7 +996,15 @@ function largeurFraction(pdf, m) {
  * Une ligne d'énoncé dans le PDF, morceau par morceau. Rend l'abscisse
  * atteinte, ce qui permettrait d'enchaîner.
  */
-function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
+/**
+ * @param {Function} [champ] le crayon de la fiche remplissable. L'étage vide
+ *   d'une fraction est une place où l'élève écrit : c'est donc un champ, au
+ *   même titre qu'un pointillé de fin de ligne. Sans cela, « L'Égalité à
+ *   Compléter » sortait remplissable sans aucun endroit où taper — la seule
+ *   case du PDF était l'ancienne ligne de réponse, qu'on vient de retirer
+ *   parce qu'elle proposait un second endroit pour la même réponse.
+ */
+function dessinerLigne(pdf, ligne, x0, y, o, avecFractions, champ) {
     let x = x0;
     for (const m of morceauxLigne(ligne, avecFractions)) {
         if (m.texte !== undefined) {
@@ -1022,6 +1030,11 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
                     return;
                 }
                 pointilles(pdf, x + 0.6, yEtage + o.taille * 0.06, w - 1.2);
+                // La boîte est À CHEVAL sur ce pointillé, comme partout
+                // ailleurs : c'est là que l'élève écrirait à la main.
+                if (typeof champ === 'function') {
+                    champ(x + 0.6, yEtage - o.taille * 0.82, w - 1.2, o.taille * 1.05);
+                }
             };
             // LE TRAIT EST LA LIGNE D'ÉCRITURE. On le posait un tiers de corps
             // plus haut, et la fraction entière flottait au-dessus du texte :
@@ -1162,7 +1175,7 @@ const exposantsLisibles = (t) => t.replace(
     });
 
 /** Les caractères que `ecrireSymboles` sait dessiner : ils traversent pourPdf. */
-const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('') + Object.keys(INDICES).join('') + ']');
+export const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('') + Object.keys(INDICES).join('') + ']');
 
 export function pourPdf(texte) {
     let t = exposantsLisibles(typographieFr(texte));
@@ -2069,10 +2082,15 @@ export function pdfItems(pdf, page, o) {
         // le commentaire de l'aperçu, plus haut.
         if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + (it.dy || 0) + o.taille);
         pdf.setFont('helvetica', 'normal');
+        // LE CRAYON VOYAGE JUSQUE DANS LA LIGNE, parce qu'une place où écrire
+        // peut être AU MILIEU de l'énoncé — l'étage vide d'une fraction. Il
+        // n'existe que sur une fiche déclarée remplissable, et jamais sur un
+        // corrigé.
+        const crayonTexte = (o.champs && !o.solution) ? crayonDeChamps(pdf) : null;
         it.lignes.forEach((ligne, i) => {
             dessinerLigne(pdf, ligne, it.texteX,
                 it.y + (it.dy || 0) + o.taille + i * pasDeLigne(o, it.fractions),
-                o, it.fractions);
+                o, it.fractions, crayonTexte);
         });
         if (it.choix) {
             // LES CASES À COCHER SONT DESSINÉES, pas écrites. Le caractère ☐

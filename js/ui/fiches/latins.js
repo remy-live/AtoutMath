@@ -32,6 +32,9 @@
 // occupent les pistes impaires et les opérateurs les pistes paires.
 
 import { boiteDe, echapperSheet } from './socle.js';
+// `pourPdf` : la translittération des caractères que les polices d'un PDF
+// ne portent pas. Voir l'opérateur de l'Approxdoku, plus bas.
+import { pourPdf } from '../ficheRendu.js';
 // L'encre vient du module feuille — voir `fiches/encre.js`.
 import { GRIS, TRAIT } from './encre.js';
 
@@ -253,7 +256,12 @@ function dessinerApproxdokuPdf(doc, item, slot, solution, champ) {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(g.taille * 0.8 * 2.83);
             doc.setTextColor(...TRAIT);
-            doc.text(String(o.op), o.x, o.y + g.taille * 0.3, { align: 'center' });
+            // LE MOINS DES MATHÉMATIQUES PASSE PAR `pourPdf`, comme partout
+            // ailleurs : U+2212 n'existe pas dans les polices standard d'un
+            // PDF et s'imprimait en guillemet. Trouvé par l'épreuve
+            // `feuillesDu12OctobreSoir`, qui lit ce que CHAQUE rendu écrit —
+            // le balayage des caractères, lui, ne voit que les questions.
+            doc.text(pourPdf(String(o.op)), o.x, o.y + g.taille * 0.3, { align: 'center' });
         });
     });
 }
