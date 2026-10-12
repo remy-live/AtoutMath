@@ -1045,7 +1045,7 @@ function plancheVignettesSvg(g, k) {
     return out;
 }
 
-function dessinerOrganigrammePdf(doc, item, slot, solution) {
+function dessinerOrganigrammePdf(doc, item, slot, solution, champ) {
     const g = geoOrganigramme(item, slot);
 
     const tailleP = Math.max(1.6, g.wUtile * 0.011);
@@ -1133,6 +1133,11 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         doc.setTextColor(...ENCRE.texte);
         if (g.m.avecNoms || solution) {
             doc.text(pourPdf(fam.nom), c.x, y + hd + hb / 2, { align: 'center', baseline: 'middle' });
+        } else if (typeof champ === 'function') {
+            // LE BANDEAU SOUS LA FIGURE EST LA CASE DU NOM. Quand l'exercice
+            // ne donne pas les noms, c'est là que l'élève écrit
+            // « Parallélogramme » — le corrigé y met le sien, au même endroit.
+            champ(c.x - g.caseW / 2, y + hd, g.caseW, hb);
         }
     });
 
@@ -1168,6 +1173,10 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
             doc.setFontSize(Math.min(h * 0.62, 7) / 0.352778);
             doc.setTextColor(...rvbHex(ENCRE_COND(f.famille)));
             doc.text(g.m.parCle[cleFlecheQ(f)], e.x, e.y, { align: 'center', baseline: 'middle' });
+        } else if (typeof champ === 'function') {
+            // « on écrit dans la case teintée elle-même », dit le commentaire
+            // trois lignes plus haut : c'est donc elle, le champ.
+            champ(e.x - w / 2, e.y - h / 2, w, h);
         }
     });
 
@@ -1381,7 +1390,7 @@ function tableauCroisePreviewHtml(item, slot, k, solution) {
         overflow:visible; pointer-events:none">${d}</svg>`;
 }
 
-function dessinerTableauCroisePdf(doc, item, slot, solution) {
+function dessinerTableauCroisePdf(doc, item, slot, solution, champ) {
     const g = geoTableauCroise(item, slot);
     const m = g.m;
     const connus = new Set(m.depart === 'enonce' ? [] : m.connus);
@@ -1422,6 +1431,11 @@ function dessinerTableauCroisePdf(doc, item, slot, solution) {
     for (let r = 0; r <= m.R; r++) {
         for (let c = 0; c <= m.C; c++) {
             const donne = connus.has(`${r},${c}`);
+            // UNE CASE QUE L'ÉNONCÉ NE DONNE PAS EST UNE CASE À REMPLIR : c'est
+            // la définition même de cet exercice, et `connus` la porte déjà.
+            if (!donne && !solution && typeof champ === 'function') {
+                champ(g.xDe(c), g.yDe(r), g.wCol, g.rh);
+            }
             if (!donne && !solution) continue;
             doc.setTextColor(...(donne ? ENCRE.texte : ENCRE.gris));
             doc.text(String(m.valeurs[r][c]), g.xDe(c) + g.wCol / 2, g.yDe(r) + g.rh / 2,

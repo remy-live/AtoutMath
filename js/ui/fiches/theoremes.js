@@ -264,7 +264,7 @@ function thalesPreviewHtml(item, slot, k) {
     return html;
 }
 
-function dessinerThalesPdf(doc, item, slot, solution) {
+function dessinerThalesPdf(doc, item, slot, solution, champ) {
     const g = geoThalesFiche(item, slot);
     const P = g.m.points;
     const X = (n) => g.versX(P[n].x), Y = (n) => g.versY(P[n].y);
@@ -302,9 +302,19 @@ function dessinerThalesPdf(doc, item, slot, solution) {
             // Le squelette de l'égalité — les mêmes traits qu'à l'aperçu.
             const e = egaliteThalesTraces(g, hautDeLEgalite(g));
             e.pointilles.forEach(l => doc.line(l.x1, l.y, l.x2, l.y));
+            // CHAQUE POINTILLÉ DE L'ÉGALITÉ EST UN CHAMP : numérateurs et
+            // dénominateurs, c'est ce que l'élève a à écrire.
+            if (typeof champ === 'function') {
+                e.pointilles.forEach(l => champ(l.x1, l.y - g.corps * 0.95,
+                    l.x2 - l.x1, g.corps * 1.1));
+            }
             if (g.m.etape === 'calculer') {
                 [0, 1].forEach(i => doc.line(g.texteX, e.bas + i * g.corps * 1.9,
                     g.texteX + g.texteW, e.bas + i * g.corps * 1.9));
+                if (typeof champ === 'function') {
+                    [0, 1].forEach(i => champ(g.texteX, e.bas + i * g.corps * 1.9 - g.corps * 1.4,
+                        g.texteW, g.corps * 1.6));
+                }
             }
             if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
             doc.setDrawColor(...ENCRE.trait);
@@ -320,6 +330,10 @@ function dessinerThalesPdf(doc, item, slot, solution) {
         for (let i = 0; i < 3; i++) {
             const y = hautRedaction + i * (g.b.h * 0.18);
             doc.line(g.texteX, y, g.texteX + g.texteW, y);
+            // Trois lignes tracées pour qu'on y rédige : trois champs.
+            if (typeof champ === 'function') {
+                champ(g.texteX, y - g.b.h * 0.15, g.texteW, g.b.h * 0.16);
+            }
         }
         if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
         return;
@@ -543,7 +557,7 @@ function redactionPapier(item) {
     ];
 }
 
-function dessinerPythagorePdf(doc, item, slot, solution) {
+function dessinerPythagorePdf(doc, item, slot, solution, champ) {
     const g = geoPythagoreFiche(item, slot);
     const b = g.b;
 
@@ -612,6 +626,11 @@ function dessinerPythagorePdf(doc, item, slot, solution) {
             doc.setDrawColor(...ENCRE.grille);
             doc.setLineWidth(0.2);
             doc.line(g.droiteX, y + g.pas * 0.82, g.droiteX + g.droiteW, y + g.pas * 0.82);
+            // « Je sais que… », « Or… », « Donc… » : chaque ligne tracée sous
+            // une amorce attend une phrase de l'élève. Un champ par ligne.
+            if (!solution && typeof champ === 'function') {
+                champ(g.droiteX, y + g.pas * 0.82 - g.pas * 0.88, g.droiteW, g.pas * 0.9);
+            }
             const texte = rempli ? (rempli[iA][i] || '') : '';
             if (texte) {
                 doc.setFont('helvetica', 'normal');
@@ -1045,7 +1064,7 @@ function thalesRedactionPreviewHtml(item, slot, k, solution) {
         overflow:visible; pointer-events:none">${out}</svg>`;
 }
 
-function dessinerThalesRedactionPdf(doc, item, slot, solution) {
+function dessinerThalesRedactionPdf(doc, item, slot, solution, champ) {
     const g = geoThalesRedaction(item, slot, solution);
     const m = g.m;
 
@@ -1135,6 +1154,12 @@ function dessinerThalesRedactionPdf(doc, item, slot, solution) {
         for (let i = 1; i <= box.lignes; i++) {
             const y = box.y + box.hTitre + i * box.hLigne - 1.5;
             doc.line(box.x + 3, y, box.x + box.w - 3, y);
+            // Une ligne de rédaction par champ. C'est l'exercice de ce bloc :
+            // « Je sais que… », « Donc… » — on écrit des phrases, et la fiche
+            // remplissable doit permettre de les taper.
+            if (typeof champ === 'function') {
+                champ(box.x + 3, y - box.hLigne * 0.86, box.w - 6, box.hLigne * 0.92);
+            }
         }
     });
 }
@@ -1326,7 +1351,7 @@ function libelleTrigo(ligne, mesurer) {
     };
 }
 
-function dessinerTrigoPdf(doc, item, slot, solution) {
+function dessinerTrigoPdf(doc, item, slot, solution, champ) {
     const g = geoTrigo(item, slot);
     const t = tracesTrigo(g);
 
@@ -1373,6 +1398,11 @@ function dessinerTrigoPdf(doc, item, slot, solution) {
         doc.setLineDashPattern([0.9, 0.9], 0);
         doc.line(xDebut, y + 4, g.b.x + g.b.w - 1, y + 4);
         doc.setLineDashPattern([], 0);
+        // Le nom du côté s'écrit sur ce pointillé : « [MN] », deux lettres
+        // entre crochets. C'est court, et c'est tout l'exercice.
+        if (!solution && typeof champ === 'function') {
+            champ(xDebut, y + 4 - 3.4, g.b.x + g.b.w - 1 - xDebut, 3.8);
+        }
         if (solution) {
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(43, 108, 176);

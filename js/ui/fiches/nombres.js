@@ -5,7 +5,7 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, TEINTES_FIGURE, blocsVoisins, boiteDe, dessinerMarque,
+    ENCRE, champSurLePointille, TEINTES_FIGURE, blocsVoisins, boiteDe, dessinerMarque,
     echapperSheet, largeurTexte, largeurTrigo, ligneReponsePdf, rangDuBloc,
     unite
 } from './socle.js';
@@ -74,12 +74,18 @@ function pyramideNPreviewHtml(item, slot, k, solution) {
     }).join('')).join('');
 }
 
-function dessinerPyramideNPdf(doc, item, slot, solution) {
+function dessinerPyramideNPdf(doc, item, slot, solution, champ) {
     const g = geoPyramideN(item, slot);
     doc.setLineWidth(0.35);
     g.m.lignes.forEach((l, r) => l.forEach((v, i) => {
         const x = g.x(r, i), y = g.y(r);
         const donne = g.m.donnes[r][i];
+        // UN CHAMP SUR CHAQUE CASE QUI N'EST PAS DONNÉE. Le commentaire
+        // ci-dessous dit déjà lesquelles : « les autres restent blanches,
+        // prêtes pour le crayon ». La fiche remplissable n'a qu'à suivre.
+        if (!donne && !solution && typeof champ === 'function') {
+            champ(x, y, g.largeur, g.cote);
+        }
         // Une case DONNÉE est de l'énoncé : fond teinté, on n'écrit pas dedans.
         // Les autres restent blanches, prêtes pour le crayon.
         if (donne) {
@@ -172,7 +178,7 @@ function pyramidePreviewHtml(item, slot, k, solution) {
     }).join('');
 }
 
-function dessinerPyramidePdf(doc, item, slot, solution) {
+function dessinerPyramidePdf(doc, item, slot, solution, champ) {
     const g = geoPyramide(item, slot);
     doc.setLineWidth(0.3);
     g.m.barreaux.forEach((bar, i) => {
@@ -200,7 +206,13 @@ function dessinerPyramidePdf(doc, item, slot, solution) {
             doc.setDrawColor(...ENCRE.trait);
             doc.rect(x, y, g.cote, g.cote);
             const lettre = mot[c];
-            if (!lettre) continue;
+            // UNE CASE SANS LETTRE EST UNE CASE À REMPLIR. Sur la feuille de
+            // l'élève, le mot n'est rempli qu'aux amorces données ; ailleurs il
+            // rend une case vide, et c'est exactement le crayon qu'on attend.
+            if (!lettre) {
+                if (typeof champ === 'function') champ(x, y, g.cote, g.cote);
+                continue;
+            }
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(Math.max(5, g.cote * 1.7));
             doc.setTextColor(...(donne ? ENCRE.trait : [47, 133, 90]));
@@ -311,7 +323,7 @@ function cubesPreviewHtml(item, slot, k, solution, rang) {
             solution ? `${g.m.reponse} cubes` : ''}</i></div>`;
 }
 
-function dessinerCubesPdf(doc, item, slot, solution, _c, rang) {
+function dessinerCubesPdf(doc, item, slot, solution, champ, rang) {
     const g = geoCubes(item, slot);
     const encre = teinteCube(rangDuBloc(slot, rang));
     doc.setLineWidth(g.trait);
@@ -323,7 +335,7 @@ function dessinerCubesPdf(doc, item, slot, solution, _c, rang) {
         doc.lines(suite, pts[0].x, pts[0].y, [1, 1], 'FD', true);
     });
     doc.setLineJoin('miter');
-    ligneReponsePdf(doc, g, '=', solution ? `${g.m.reponse} cubes` : '');
+    ligneReponsePdf(doc, g, '=', solution ? `${g.m.reponse} cubes` : '', champ);
 }
 
 // --- LA PENDULE --------------------------------------------------------------
@@ -467,7 +479,7 @@ const HORLOGE_COULEUR = {
     chiffres: [30, 41, 59]
 };
 
-function dessinerHorlogePdf(doc, item, slot, solution) {
+function dessinerHorlogePdf(doc, item, slot, solution, champ) {
     const g = geoHorloge(item, slot);
     const m = item.meta;
     const tracer = m.mode === 'lire' || solution;
@@ -535,6 +547,13 @@ function dessinerHorlogePdf(doc, item, slot, solution) {
     doc.setFontSize(Math.max(7, g.ligneH * 1.5));
     doc.setTextColor(...ENCRE.texte);
     doc.text(pourPdf(ligne), slot.x + slot.taille / 2, g.ligneY + g.ligneH * 0.7, { align: 'center' });
+    // « ....... h ....... » : DEUX trous, donc deux champs — l'heure et les
+    // minutes se répondent séparément. Voir `champSurLePointille`. En mode
+    // « placer », la ligne porte l'heure en toutes lettres et il n'y a aucun
+    // trou : la fonction n'en pose alors aucun, et c'est juste — on y dessine
+    // les aiguilles.
+    champSurLePointille(doc, champ, ligne, slot.x + slot.taille / 2,
+        g.ligneY + g.ligneH * 0.7, { align: 'center', hauteur: Math.max(3.4, g.ligneH) });
 }
 
 // --- LA PIZZERIA DES FRACTIONS ------------------------------------------------
@@ -658,7 +677,7 @@ const rvbIngredient = (id) => {
 /** « 1 part », « 3 parts » : un singulier fautif se remarque sur une fiche. */
 const direParts = (n) => `${n} part${n > 1 ? 's' : ''}`;
 
-function dessinerPizzaPdf(doc, item, slot, solution) {
+function dessinerPizzaPdf(doc, item, slot, solution, champ) {
     const g = geoPizza(item, slot);
     const m = item.meta;
     const couleur = polycopieEnCouleur();
@@ -711,8 +730,14 @@ function dessinerPizzaPdf(doc, item, slot, solution) {
         doc.text(pourPdf(` de ${f.nom}`), x, y);
         doc.setTextColor(...ENCRE.gris);
         doc.setFont('helvetica', 'bold');
-        doc.text(pourPdf(solution ? `= ${direParts(m.cible[f.ingredient])}` : '= ....... parts'),
-            cx + mm * 0.68, haut + hLigne * 0.88);
+        const dit = solution ? `= ${direParts(m.cible[f.ingredient])}` : '= ....... parts';
+        doc.text(pourPdf(dit), cx + mm * 0.68, haut + hLigne * 0.88);
+        // LE NOMBRE DE PARTS S'ÉCRIT SUR LES POINTS. Le coloriage de la pizza,
+        // lui, ne peut pas être un champ — on colorie au crayon, et c'est le
+        // but de l'exercice. Cette ligne-ci, si : c'est la conversion de la
+        // fraction en parts, le calcul qu'on veut lire.
+        champSurLePointille(doc, champ, dit, cx + mm * 0.68, haut + hLigne * 0.88,
+            { hauteur: Math.max(3.2, mm * 1.05) });
     });
 }
 
@@ -2007,7 +2032,7 @@ function conversionPreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerConversionPdf(doc, item, slot, solution) {
+function dessinerConversionPdf(doc, item, slot, solution, champ) {
     const g = geoConversion(item, slot);
     const m = g.m;
     if (g.avecTableau) {
@@ -2049,6 +2074,27 @@ function dessinerConversionPdf(doc, item, slot, solution) {
         doc.setFontSize(g.tailleEnonce);
         doc.setTextColor(...ENCRE.trait);
         doc.text(pourPdf(solution ? cv.complet : cv.enonce), pl.x, y + g.rh * 0.68);
+        // DEUX ENDROITS OÙ L'ÉLÈVE ÉCRIT, ET DONC DEUX CHAMPS.
+        //
+        // (1) Le trou de l'énoncé : « 79 dam = ……………… cm ». On mesure la
+        //     largeur du texte qui précède les points de suspension, et celle
+        //     des points eux-mêmes — la boîte tombe alors exactement dessus,
+        //     quelle que soit la longueur du nombre de départ.
+        // (2) Les cases du tableau, quand il y en a un : c'est là que se fait
+        //     le travail, un chiffre par colonne.
+        if (!solution && typeof champ === 'function') {
+            const trou = /^([^…]*)(…+)/.exec(cv.enonce);
+            if (trou) {
+                const avant = doc.getTextWidth(pourPdf(trou[1]));
+                const creux = Math.max(10, doc.getTextWidth(pourPdf(trou[2])));
+                champ(pl.x + avant, y + g.rh * 0.12, creux, g.rh * 0.74);
+            }
+            if (g.avecTableau) {
+                for (let c = 0; c < g.nCol; c++) {
+                    champ(g.x0 + c * g.cw, y, g.cw, g.rh);
+                }
+            }
+        }
         if (!solution || !g.avecTableau) return;
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...ENCRE.gris);
@@ -2125,7 +2171,7 @@ function comptePreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerComptePdf(doc, item, slot, solution) {
+function dessinerComptePdf(doc, item, slot, solution, champ) {
     const g = geoCompte(item, slot);
     const m = g.m;
     doc.setFont('helvetica', 'bold');
@@ -2149,6 +2195,11 @@ function dessinerComptePdf(doc, item, slot, solution) {
         doc.setDrawColor(...ENCRE.grille);
         doc.setLineWidth(0.22);
         doc.line(g.b.x, y + g.ligneH * 0.88, g.b.x + g.b.w, y + g.ligneH * 0.88);
+        // Ces lignes sont le brouillon de l'élève : une étape par ligne, et le
+        // corrigé y écrit les siennes. Donc un champ par ligne.
+        if (!solution && typeof champ === 'function') {
+            champ(g.b.x, y + g.ligneH * 0.1, g.b.w, g.ligneH * 0.78);
+        }
         if (!solution || !m.etapes[i]) continue;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(g.taille * 0.9);
@@ -2464,7 +2515,7 @@ function egyptePreviewHtml(item, slot, k, solution, _rang, tous) {
     return html;
 }
 
-function dessinerEgyptePdf(doc, item, slot, solution, _c, _rang, tous) {
+function dessinerEgyptePdf(doc, item, slot, solution, champ, _rang, tous) {
     const g = geoEgypte(item, slot, tous);
     const m = g.m;
     if (m.sens === 'lire' || solution) {
@@ -2506,6 +2557,13 @@ function dessinerEgyptePdf(doc, item, slot, solution, _c, _rang, tous) {
     doc.setFontSize(g.corpsEgal / 0.3528);
     doc.setTextColor(...ENCRE.trait);
     doc.text('=', g.xEgal + g.largeurEgal / 2, g.yReponse, { align: 'center' });
+    // LE TRAIT APRÈS LE « = » EST LA RÉPONSE. En mode « lire », l'élève y
+    // écrit le nombre que les hiéroglyphes valent ; en mode « écrire », il y
+    // dessine les hiéroglyphes — et un champ de PDF ne dessine pas. On ne le
+    // pose donc que dans le sens qui s'écrit.
+    if (m.sens === 'lire' && !solution && typeof champ === 'function') {
+        champ(g.xReponse, g.yReponse - 5.2, g.b.x + g.b.w - g.xReponse, 5.6);
+    }
 
     if (g.ecrire) {
         doc.setFont('helvetica', 'bold');
@@ -2661,7 +2719,7 @@ function graduationPreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerGraduationPdf(doc, item, slot, solution) {
+function dessinerGraduationPdf(doc, item, slot, solution, champ) {
     const g = geoGraduation(item, slot);
     const m = g.m;
     const bout = g.pas * 0.5;
@@ -2727,6 +2785,11 @@ function dessinerGraduationPdf(doc, item, slot, solution) {
             doc.setLineDashPattern([0.8, 0.8], 0);
             doc.line(xTrait, g.yEcrit, xTrait + lTrait, g.yEcrit);
             doc.setLineDashPattern([], 0);
+            // L'abscisse s'écrit SUR ce pointillé, entre les parenthèses.
+            if (typeof champ === 'function') {
+                const h = Math.max(3.2, g.pt * 0.3528 * 1.15);
+                champ(xTrait, g.yEcrit - h * 0.78, lTrait, h);
+            }
         }
         if (p.lettre) {
             doc.setTextColor(...ENCRE.texte);

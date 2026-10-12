@@ -33,45 +33,16 @@
 // `tools/pdfEnImage.mjs` et des yeux.
 
 import { exercices } from '../js/data/catalog.js';
+import { fauxPdf, poserUnDocumentDeSecours, SLOT_ESSAI } from './fauxPdf.mjs';
 
 // Les rendus touchent `document` au chargement : on leur en donne un qui ne
 // sert à rien.
-globalThis.document = globalThis.document || {
-    createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }) }) })
-};
-globalThis.window = globalThis.window || { localStorage: null, matchMedia: null };
+poserUnDocumentDeSecours();
 
 const { RENDUS } = await import('../js/ui/printSheet.js');
 const { getGenerator } = await import('../js/core/registry.js');
 await import('../js/core/activities/index.js');
 const { makeRng } = await import('../js/core/ids.js');
-
-/**
- * UN FAUX jsPDF QUI DIT OUI À TOUT.
- *
- * Les rendus appellent une quarantaine de méthodes de dessin et quelques-unes
- * qui RENDENT quelque chose. Les énumérer serait une liste à tenir à jour ;
- * un `Proxy` répond à tout, et l'on ne nomme que celles dont la valeur compte.
- */
-function fauxPdf() {
-    const vrai = {
-        getTextWidth: (t) => String(t || '').length * 1.9,
-        getStringUnitWidth: (t) => String(t || '').length * 0.5,
-        splitTextToSize: (t) => [String(t || '')],
-        getFontSize: () => 10,
-        getLineHeight: () => 12,
-        internal: { pageSize: { getWidth: () => 210, getHeight: () => 297 },
-            getFontSize: () => 10, scaleFactor: 2.8346 },
-        getNumberOfPages: () => 1
-    };
-    return new Proxy(vrai, {
-        get(cible, clef) {
-            if (clef in cible) return cible[clef];
-            // Tout le reste est un crayon : il dessine et ne rend rien.
-            return () => undefined;
-        }
-    });
-}
 
 /** Tire un item comme la feuille le ferait. */
 function tirer(exo, i) {
@@ -82,8 +53,7 @@ function tirer(exo, i) {
             themesExclus: [] });
 }
 
-const SLOT = { x: 12, y: 30, taille: 4, boite: { x: 12, y: 30, w: 86, h: 60 },
-    numero: 1, tous: null, rang: 0 };
+const SLOT = SLOT_ESSAI;
 
 const muetsSeuls = process.argv.includes('--muets');
 const lignes = [];
@@ -94,7 +64,11 @@ for (const exo of exercices) {
     const rendu = RENDUS[exo.printable];
     if (typeof rendu.pdfGrille !== 'function') continue;
     let poses = 0, erreur = null;
+    // LE CRAYON ESPION A LES DEUX MÉTIERS DU VRAI : écrire et cocher. Sans
+    // `coche`, un QCM dessiné par la porte des grilles — « Le point est-il
+    // dessus ? » — serait compté « AUCUN CHAMP » alors qu'il en pose quatre.
     const champ = () => { poses++; return true; };
+    champ.coche = () => { poses++; return true; };
     try {
         // Deux tirages : un exercice peut poser des champs sur une question et
         // pas sur une autre — un QCM à dessin, par exemple.
@@ -122,15 +96,30 @@ for (const l of lignes) {
     if (!parRendu.has(l.rendu)) parRendu.set(l.rendu, []);
     parRendu.get(l.rendu).push(l);
 }
+// ON NE LIT PLUS LE PREMIER EXERCICE POUR TOUS LES AUTRES.
+//
+// C'était `l[0].poses` — le compte du PREMIER exercice du rendu, affiché pour
+// le rendu entier. Mesuré : le rendu `repere` affichait « AUCUN CHAMP » alors
+// que « Lire des Coordonnées » en posait douze, parce que son voisin « Placer
+// un Point » — qui n'en pose aucun, et ne le DOIT pas, on y trace une croix —
+// passait en premier dans le catalogue. Un tableau de bord qui déclare mort un
+// exercice vivant fait chercher un défaut là où il n'y en a pas.
+//
+// Deux exercices du même rendu peuvent légitimement différer : c'est le MODE
+// qui change (lire / placer, lire / écrire), pas le rendu. On montre donc le
+// compte de CHACUN.
+const compteDu = (l) => Math.max(...l.map(x => x.poses));
 const tries = [...parRendu.entries()].sort((a, b) =>
-    (a[1][0].poses > 0) - (b[1][0].poses > 0) || a[0].localeCompare(b[0]));
+    (compteDu(a[1]) > 0) - (compteDu(b[1]) > 0) || a[0].localeCompare(b[0]));
 for (const [rendu, l] of tries) {
-    const n = l[0].poses, err = l.find(x => x.erreur);
+    const n = compteDu(l), err = l.find(x => x.erreur);
     if (muetsSeuls && n > 0 && !err) continue;
     const marque = err ? `${JAUNE}?   ${RESET}` : (n > 0 ? `${VERT}ok  ${RESET}` : `${ROUGE}non ${RESET}`);
+    const tous = l.every(x => x.poses > 0);
     console.log(`  ${marque}${rendu.padEnd(22)} ${err ? err
-        : (n > 0 ? `${n} champ(s)` : 'AUCUN CHAMP')}`);
-    l.forEach(x => console.log(`        · ${x.id.padEnd(28)} « ${x.titre} »`));
+        : (n > 0 ? `${n} champ(s)${tous ? '' : ' — mais pas pour tous'}` : 'AUCUN CHAMP')}`);
+    l.forEach(x => console.log(`        · ${x.id.padEnd(28)} « ${x.titre} »`
+        + `${l.length > 1 ? `  [${x.poses}]` : ''}`));
 }
 
 console.log('\n' + '─'.repeat(74));

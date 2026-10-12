@@ -5,7 +5,7 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, boiteDe, couperEnLignes, echapperSheet, geoQuadrillage, rvbCss
+    ENCRE, champSurLePointille, boiteDe, couperEnLignes, echapperSheet, geoQuadrillage, rvbCss
 } from './socle.js';
 import { SENS as SENS_ROTATION } from '../../core/transformations.js';
 import { caseCentrale } from '../../core/quadrillageSvg.js';
@@ -229,7 +229,7 @@ function reperePreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerRepPdf(doc, item, slot, solution) {
+function dessinerRepPdf(doc, item, slot, solution, champ) {
     const g = geoRepere(item, slot);
     const m = g.m;
     const montrer = m.mode === 'lire' || solution;
@@ -318,6 +318,13 @@ function dessinerRepPdf(doc, item, slot, solution) {
         doc.text(pourPdf(p.label), x0, y);
         doc.setTextColor(...ENCRE.texte);
         doc.text(pourPdf(suite), x0 + wL, y);
+        // « A ( ...... ; ...... ) » : DEUX trous, l'abscisse et l'ordonnée.
+        // Un seul champ sur les deux, et l'élève taperait ses deux nombres au
+        // même endroit — ce n'est pas la question posée. En mode « placer »,
+        // la suite porte déjà les coordonnées : aucun trou, aucun champ, et
+        // c'est juste — on y trace une croix.
+        champSurLePointille(doc, champ, suite, x0 + wL, y,
+            { hauteur: Math.max(3, g.corpsTab * 1.15) });
     });
 }
 
@@ -1032,7 +1039,7 @@ const nomDuCandidat = (g, k, nom, x, y, centre) =>
         font-size="${(g.pt * 0.3528 * k).toFixed(2)}" font-weight="700"
         font-style="italic">${nom || ''}</text>`;
 
-function dessinerPavagePdf(doc, item, slot, solution) {
+function dessinerPavagePdf(doc, item, slot, solution, champ) {
     const g = geoPavage(item, slot);
     const m = g.m;
 
@@ -1104,8 +1111,20 @@ function dessinerPavagePdf(doc, item, slot, solution) {
     questions.forEach((q, i) => {
         const dit = solution ? solutionDuPavage(m, q)
             : `${questionDuPavage(m, q)} ${'.'.repeat(20)}`;
-        doc.text(doc.splitTextToSize(pourPdf(dit), g.boite.w),
-            g.boite.x, g.yQuestion + i * g.hQuestion + g.pt * 0.3528);
+        const yQ = g.yQuestion + i * g.hQuestion + g.pt * 0.3528;
+        doc.text(doc.splitTextToSize(pourPdf(dit), g.boite.w), g.boite.x, yQ);
+        // SYMÉTRIQUE PAR RAPPORT À QUOI ? La réponse s'écrit sur les points de
+        // suspension qui terminent la question. Rémy les a sous les yeux dans
+        // sa revue du 12 octobre ; il n'y avait pas de champ dessus.
+        //
+        // On ne mesure PAS le texte replié : `splitTextToSize` peut le couper
+        // en deux lignes, et le trou tombe alors sur la dernière. On pose donc
+        // le champ sur la dernière ligne rendue, à son propre ordonnée.
+        const lignesQ = doc.splitTextToSize(pourPdf(dit), g.boite.w);
+        const derniere = lignesQ[lignesQ.length - 1];
+        const pas = doc.getLineHeight ? doc.getLineHeight() / doc.internal.scaleFactor : g.pt * 0.3528;
+        champSurLePointille(doc, champ, derniere, g.boite.x,
+            yQ + (lignesQ.length - 1) * pas, { hauteur: Math.max(3.2, g.pt * 0.3528 * 1.1) });
     });
 }
 

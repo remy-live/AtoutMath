@@ -2011,9 +2011,29 @@ export function pdfItems(pdf, page, o) {
                 if (it.n != null && !r.numeroInterne) pdf.text(`${it.n}.`, it.x, it.y - 1.2);
                 // Le rendu de la grille appelle ce crayon pour chaque case
                 // vide, quand la fiche est déclarée remplissable.
+                //
+                // ET IL SAIT AUSSI COCHER. Rémy : « pour les QCM, il faut que
+                // le champ remplissable soit une checkbox ». Un QCM n'arrive
+                // pas toujours par la porte des QUESTIONS : « Le point est-il
+                // dessus ? » dessine sa figure puis ses quatre affirmations
+                // avec leurs carrés, et passe donc par ici. Lui donner une
+                // case de SAISIE serait répondre à côté de la question.
+                //
+                // Le crayon porte sa variante en propriété plutôt qu'en second
+                // argument : les quarante rendus qui n'ont pas de QCM gardent
+                // leur appel à quatre nombres, inchangé.
                 const champ = (o.champs && !o.solution)
                     ? (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`)
                     : null;
+                if (champ) {
+                    // Le nom porte le RANG DU BLOC, pas le rang de la case :
+                    // c'est ce qui rend les quatre propositions d'une même
+                    // question exclusives entre elles, comme un QCM doit
+                    // l'être. Deux blocs voisins ont des noms différents.
+                    const groupe = `choix_g${it.n ?? it.iQ ?? ++compteurChamps}`;
+                    champ.coche = (x, y, cote, valeur) =>
+                        champCoche(pdf, x, y, cote, groupe, valeur);
+                }
                 r.pdfGrille(pdf, it.item,
                     { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
                         numero: r.numeroInterne ? it.n : null,

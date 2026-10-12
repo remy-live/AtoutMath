@@ -255,7 +255,7 @@ export function elementsGeoPreviewHtml(item, slot, k, solution) {
 
 // ── LE PDF ──────────────────────────────────────────────────────────────────
 
-export function dessinerElementsGeoPdf(doc, item, slot, solution) {
+export function dessinerElementsGeoPdf(doc, item, slot, solution, champ) {
     const g = plantDeLaFigure(item, slot);
     if (!g.plan) return;
 
@@ -309,6 +309,12 @@ export function dessinerElementsGeoPdf(doc, item, slot, solution) {
         doc.setLineWidth(0.25);
         doc.setDrawColor(...TRAIT);
         doc.rect(x, y, cote, cote, solution && i === bonne ? 'FD' : 'S');
+        // UN QCM SE COCHE. Le carré reste TRACÉ — une fiche remplissable
+        // s'imprime aussi, et sans ses carrés il n'y a plus de QCM sur le
+        // papier —, et la vraie case se pose dessus. Voir `champ.coche`.
+        if (!solution && champ && typeof champ.coche === 'function') {
+            champ.coche(x, y, cote, String(c).slice(0, 18));
+        }
         doc.setTextColor(...TRAIT);
         doc.text(String(c), x + cote + 0.8, y + cote * 0.85);
     });

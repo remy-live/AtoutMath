@@ -3863,3 +3863,36 @@ lignes** — 2026-10-01
 - **Ce qui manque** : la règle, déjà écrite dans `CLAUDE.md` à propos de
   `epreuveTombe`, vaut aussi pour les corrections de mise en page — **remettre
   le défaut et voir la feuille changer**. Ici, deux images suffisaient.
+
+## Un tableau de bord qui ne lit que le PREMIER de chaque groupe — 2026-10-12
+
+- **Ce que je voulais faire** : savoir quels exercices posent des champs
+  remplissables, pour équiper ceux qui le peuvent (demande de Rémy).
+- **Ce qui a coûté** : vingt minutes de recherche d'un défaut qui n'existait
+  pas. `tools/champsRemplissables.mjs` affichait « repere — AUCUN CHAMP » alors
+  que « Lire des Coordonnées » en posait vingt-quatre : il imprimait
+  `l[0].poses`, le compte du PREMIER exercice du rendu, pour le rendu entier.
+  Son voisin « Placer un Point » — qui n'en pose aucun, et ne le DOIT pas —
+  passait en premier dans le catalogue.
+- **Combien de fois** : | (mais la famille est connue : un agrégat qui prend un
+  représentant au lieu du maximum, et qui ne dit pas qu'il l'a fait).
+- **Ce qui manque** : *fait* — l'outil affiche maintenant le compte de chacun
+  et ajoute « mais pas pour tous » quand ils diffèrent. La règle générale :
+  **un tableau de bord qui groupe doit dire ce qu'il a fait des membres du
+  groupe.** Déclarer mort un exercice vivant fait chercher un défaut ailleurs.
+
+## Trois copies du même faux jsPDF, et l'une d'elles était fausse — 2026-10-12
+
+- **Ce que je voulais faire** : mesurer, sans navigateur, ce que les rendus de
+  fiche font de leurs arguments.
+- **Ce qui a coûté** : deux rendus sur quatre-vingts sortaient « pas
+  mesurables » — `Cannot read properties of undefined (reading 'fontName')` —
+  c'est-à-dire que l'outil déclarait inconnu un rendu parfaitement sain,
+  faute d'une méthode (`getFont`) dans SA copie du faux jsPDF. Il y en avait
+  trois : deux outils et une épreuve, écrites à trois moments différents.
+- **Combien de fois** : ||| — trois copies, donc trois occasions de diverger,
+  et la divergence s'est produite dès la troisième.
+- **Ce qui manque** : *fait* — `tools/fauxPdf.mjs`, importé par les deux outils
+  et l'épreuve. La leçon vaut au-delà : **un double de l'environnement
+  (navigateur, PDF, horloge) ne se recopie pas, il se partage** — sinon chaque
+  copie ment à son tour, et toujours en silence.

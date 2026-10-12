@@ -284,7 +284,7 @@ function mastermindPreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerMastermindPdf(doc, item, slot, solution) {
+function dessinerMastermindPdf(doc, item, slot, solution, champ) {
     const g = geoMastermind(item, slot);
     const m = g.m;
     const aplat = polycopieEnCouleur();
@@ -348,6 +348,10 @@ function dessinerMastermindPdf(doc, item, slot, solution) {
         const x = g.xJetons + c * g.pas;
         doc.setDrawColor(...ENCRE.trait);
         doc.rect(x, y, g.jeton, g.jeton);
+        // LA LIGNE « Le code : » EST LA RÉPONSE, et c'est la seule case que
+        // l'élève remplit ici : les lignes du dessus sont l'énoncé, avec leurs
+        // nombres de jetons bien et mal placés déjà écrits.
+        if (!solution && typeof champ === 'function') champ(x, y, g.jeton, g.jeton);
         if (!solution) continue;
         doc.setFontSize(Math.max(6, g.jeton * 1.9));
         doc.setTextColor(47, 133, 90);

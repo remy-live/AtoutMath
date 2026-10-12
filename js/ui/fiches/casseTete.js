@@ -1892,7 +1892,7 @@ function enquetePreviewHtml(item, slot, k, solution) {
         overflow:visible; pointer-events:none">${d}</svg>`;
 }
 
-function dessinerEnquetePdf(doc, item, slot, solution) {
+function dessinerEnquetePdf(doc, item, slot, solution, champ) {
     const g = geoEnquete(item, slot);
 
     doc.setTextColor(...ENCRE.texte);
@@ -1913,6 +1913,13 @@ function dessinerEnquetePdf(doc, item, slot, solution) {
     for (let r = 0; r < g.m.taille; r++) for (let c = 0; c < g.m.taille; c++) {
         const p = g.P(c, r);
         doc.rect(p.x, p.y, g.cote, g.cote);
+        // CHAQUE CASE DU PLAN REÇOIT UN PRÉNOM — c'est tout l'exercice, et le
+        // corrigé en écrit un dans trois d'entre elles. Toutes sont donc des
+        // champs : l'élève écrit, rature, recommence (« Écris au crayon — on
+        // rature beaucoup », dit la consigne).
+        if (!solution && typeof champ === 'function') {
+            champ(p.x, p.y, g.cote, g.cote);
+        }
     }
     doc.setDrawColor(...ENCRE.trait);
     doc.setLineWidth(0.6);

@@ -395,7 +395,7 @@ function reponseEcriteHtml(g, k, texte) {
             stroke="rgb(${GRIS.join(',')})" stroke-width="${T(0.25)}"/></svg>`;
 }
 
-function reponseEcritePdf(doc, g, texte) {
+function reponseEcritePdf(doc, g, texte, champ) {
     const y = g.b.y + g.b.h / 2 + g.taille * 1.6;
     if (texte) {
         doc.setTextColor(...TRAIT);
@@ -407,6 +407,14 @@ function reponseEcritePdf(doc, g, texte) {
     doc.setLineWidth(0.25);
     doc.setDrawColor(...GRIS);
     doc.line(g.b.x, y, g.b.x + g.gaucheW - 3, y);
+    // CE TRAIT EST LA RÉPONSE ÉCRITE — « |x − 3| = 4 », « I ∩ J = ∅ ». Le
+    // corrigé écrit dessus, donc la fiche remplissable y pose un champ. Les
+    // intervalles eux-mêmes se COLORIENT sur l'axe : ça, un champ ne le fait
+    // pas, et c'est pour cela que seule cette ligne-ci en reçoit un.
+    if (typeof champ === 'function') {
+        const h = Math.max(3.2, g.taille * 1.2);
+        champ(g.b.x, y - h * 0.78, g.gaucheW - 3, h);
+    }
 }
 
 function valeurAbsoluePreviewHtml(item, slot, k, solution) {
@@ -419,11 +427,11 @@ function valeurAbsoluePreviewHtml(item, slot, k, solution) {
     axeHtmlPapier(g, i, a, k, avecValeurs(item))).join('')}</svg>`;
 }
 
-function dessinerValeurAbsoluePdf(doc, item, slot, solution) {
+function dessinerValeurAbsoluePdf(doc, item, slot, solution, champ) {
     const m = item.meta || {};
     const g = plantDesAxes(item, slot, { axes: axesDeLaValeurAbsolue(item, solution) });
     enoncePdf(doc, g, (item.prompt && item.prompt.papier) || '');
-    if (m.donnee) reponseEcritePdf(doc, g, solution ? m.reponse : '');
+    if (m.donnee) reponseEcritePdf(doc, g, solution ? m.reponse : '', champ);
     g.axes.forEach((a, i) => axePdf(doc, g, i, a, avecValeurs(item)));
 }
 

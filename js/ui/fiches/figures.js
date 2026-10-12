@@ -5,7 +5,7 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, blocsVoisins, boiteDe, couperEnLignes, dessinerFigureAnglePdf,
+    ENCRE, blocsVoisins, boiteDe, champSurLePointille, couperEnLignes, dessinerFigureAnglePdf,
     dessinerMarque, echapper, echapperSheet, figureAnglePreviewHtml,
     geoAnglesManquants, ligneAnglePreviewHtml, ligneReponseFigurePdf,
     ligneReponsePdf, rangDuBloc, rvbCss, rvbHex, teinteFigure, unite
@@ -39,10 +39,10 @@ function anglesManquantsPreviewHtml(item, slot, k, solution) {
         + ligneAnglePreviewHtml(g, k, '? =', solution ? `${g.m.reponse}°` : '');
 }
 
-function dessinerAnglesManquantsPdf(doc, item, slot, solution) {
+function dessinerAnglesManquantsPdf(doc, item, slot, solution, champ) {
     const g = geoAnglesManquants(item, slot);
     dessinerFigureAnglePdf(doc, g, (arc) => texteArcAngle(arc, solution));
-    ligneReponsePdf(doc, g, '? =', solution ? `${g.m.reponse}°` : '');
+    ligneReponsePdf(doc, g, '? =', solution ? `${g.m.reponse}°` : '', champ);
 }
 
 // --- LE NOM DES ANGLES : L'EXERCICE 8 DE LA FICHE -----------------------------
@@ -60,10 +60,10 @@ function anglesNommerPreviewHtml(item, slot, k, solution) {
         + ligneAnglePreviewHtml(g, k, 'Nom :', solution ? g.m.nom : '');
 }
 
-function dessinerAnglesNommerPdf(doc, item, slot, solution) {
+function dessinerAnglesNommerPdf(doc, item, slot, solution, champ) {
     const g = geoAnglesManquants(item, slot, 0.24);
     dessinerFigureAnglePdf(doc, g, (arc) => (arc.pas ? String(arc.pas) : ''));
-    ligneReponsePdf(doc, g, 'Nom :', solution ? g.m.nom : '');
+    ligneReponsePdf(doc, g, 'Nom :', solution ? g.m.nom : '', champ);
 }
 
 // --- LE VOCABULAIRE DU CERCLE, SUR LE PAPIER ----------------------------------
@@ -232,7 +232,7 @@ function dessinerCercleVocabulairePdf(doc, item, slot, solution, champ) {
         }
     }
     if (!g.quest) {
-        ligneReponsePdf(doc, g, '', solution ? g.m.reponse : '');
+        ligneReponsePdf(doc, g, '', solution ? g.m.reponse : '', champ);
         return;
     }
     // « [OA] : ………… », une ligne par tracé nommé — les mêmes que l'aperçu.
@@ -438,7 +438,7 @@ const NOMS_NOTATION = {
     'demi-droite': (a, b) => `la demi-droite d'origine ${a} passant par ${b}`
 };
 
-function dessinerNotationPdf(doc, item, slot, solution) {
+function dessinerNotationPdf(doc, item, slot, solution, champ) {
     const g = geoNotation(item, slot);
     const m = g.m;
     doc.setFont('helvetica', 'normal');
@@ -475,6 +475,12 @@ function dessinerNotationPdf(doc, item, slot, solution) {
         if (doc.setLineDashPattern) doc.setLineDashPattern([0.6, 0.9], 0);
         doc.line(g.x0, y, g.x0 + g.largeur, y);
         if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+        // La réponse s'écrit sur la PREMIÈRE ligne — c'est là que le corrigé
+        // la met. Les suivantes sont de la place pour se reprendre, et elles
+        // méritent leur champ aussi : on rature beaucoup sur ces notations.
+        if (!solution && typeof champ === 'function') {
+            champ(g.x0, y - g.taille * 1.7, g.largeur, g.taille * 1.8);
+        }
         if (!solution || i > 0) continue;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(g.taille / 0.3528);
@@ -1012,7 +1018,7 @@ function solidesPreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerSolidesPdf(doc, item, slot, solution) {
+function dessinerSolidesPdf(doc, item, slot, solution, champ) {
     const g = geoSolide(item, slot);
     const m = item.meta;
     const X = (i) => g.x0 + g.d.plan.points[i][0];
@@ -1056,6 +1062,11 @@ function dessinerSolidesPdf(doc, item, slot, solution) {
         doc.setFontSize(Math.max(5, g.tabH * 0.9));
         doc.setTextColor(...ENCRE.gris);
         doc.text(pourPdf(titre), x + largeur / 2, g.tabY + teteH * 0.72, { align: 'center' });
+        // La case sous l'en-tête est celle que l'élève remplit : « Sommets :
+        // 8 ». Le corrigé y écrit son nombre, donc le champ y va.
+        if (!solution && typeof champ === 'function') {
+            champ(x, g.tabY + teteH, largeur, g.tabH - teteH);
+        }
         if (solution) {
             doc.setFontSize(Math.max(8, g.tabH * 1.5));
             doc.setTextColor(...ENCRE.trait);
@@ -1371,7 +1382,7 @@ function anglePreviewHtml(item, slot, k, solution) {
              font-size:${g.ligneH * 0.42 * k}px">${echapperSheet(ligne)}</div>`;
 }
 
-function dessinerAnglePdf(doc, item, slot, solution) {
+function dessinerAnglePdf(doc, item, slot, solution, champ) {
     const g = geoAngle(item, slot, solution);
     const m = item.meta;
     const c = cotesAngle(g, m);
@@ -1461,6 +1472,11 @@ function dessinerAnglePdf(doc, item, slot, solution) {
     doc.setFontSize(Math.max(7, g.ligneH * 1.5));
     doc.setTextColor(...ENCRE.texte);
     doc.text(pourPdf(ligne), g.x0 + g.largeur / 2, g.ligneY + g.ligneH * 0.7, { align: 'center' });
+    // LE TROU EST AU MILIEU D'UNE PHRASE CENTRÉE : voir `champSurLePointille`,
+    // qui mesure où il tombe. En mode « construire » il n'y a pas de trou —
+    // on construit au rapporteur, et la fonction rend simplement faux.
+    champSurLePointille(doc, champ, ligne, g.x0 + g.largeur / 2,
+        g.ligneY + g.ligneH * 0.7, { align: 'center', hauteur: Math.max(3.4, g.ligneH) });
 }
 
 // --- PÉRIMÈTRE ET AIRE : LE RECTANGLE COTÉ ------------------------------------
@@ -2117,7 +2133,7 @@ function hexagrillePreviewHtml(item, slot, k, solution) {
     return `<svg class="fx-hx-svg" style="left:0; top:0; width:100%; height:100%">${svg}</svg>`;
 }
 
-function dessinerHexagrillePdf(doc, item, slot, solution) {
+function dessinerHexagrillePdf(doc, item, slot, solution, champ) {
     const g = geoHexagrille(item, slot);
 
     CASES_HEXA.forEach(({ c, r, i }) => {
@@ -2133,8 +2149,17 @@ function dessinerHexagrillePdf(doc, item, slot, solution) {
         doc.lines(pas, pts[0][0], pts[0][1], [1, 1], 'FD', true);
 
         const ecrit = solution ? g.p.solution[i] : (donnee ? g.p.donnees[i] : 0);
-        if (!ecrit) return;
         const o = centreHexa(c, r);
+        // UNE ALVÉOLE QUE L'ÉNONCÉ NE DONNE PAS EST UNE CASE À REMPLIR. La
+        // boîte est CARRÉE et inscrite dans l'hexagone : un champ de PDF est
+        // toujours un rectangle, et le déborder mettrait le curseur sur
+        // l'alvéole voisine.
+        if (!donnee && !solution && typeof champ === 'function') {
+            const cote = g.echelle * 0.9;
+            champ(g.x0 + o.x * g.echelle - cote / 2,
+                g.y0 + o.y * g.echelle - cote / 2, cote, cote);
+        }
+        if (!ecrit) return;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(g.corps / 0.3528);
         if (donnee) doc.setTextColor(...ENCRE.texte);
@@ -2284,7 +2309,7 @@ function programmePreviewHtml(item, slot, k, solution) {
         overflow:visible; pointer-events:none">${out}</svg>`;
 }
 
-function dessinerProgrammePdf(doc, item, slot, solution) {
+function dessinerProgrammePdf(doc, item, slot, solution, champ) {
     const g = geoProgramme(item, slot);
     const t = tracesProgramme(g);
 
@@ -2327,6 +2352,11 @@ function dessinerProgrammePdf(doc, item, slot, solution) {
         doc.setLineDashPattern([0.9, 0.9], 0);
         doc.line(g.b.x + 1, y + 4.6, g.b.x + g.b.w - 1, y + 4.6);
         doc.setLineDashPattern([], 0);
+        // Une étape du programme par ligne : c'est de la phrase, et c'est
+        // tout l'exercice — « Trace le cercle de centre O et de rayon 3 cm ».
+        if (!solution && typeof champ === 'function') {
+            champ(g.b.x + 1, y + 4.6 - PC_LIGNE * 0.82, g.b.w - 2, PC_LIGNE * 0.9);
+        }
         if (solution && g.m.solution[i]) {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(7);
