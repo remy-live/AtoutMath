@@ -172,3 +172,78 @@ ouvre **les sept panneaux d'outils** du catalogue sur un téléphone :
 largeur définie ne lui est donc donnée qu'à lui (`:has(.tn-cadre)`), et les
 autres panneaux gardent leur taille — un dessin de 200 px n'a rien à gagner à
 occuper 420 px.
+
+---
+
+# « Le compteur de vitesse est là, est-ce dû à l'aperçu ? »
+
+Capture d'iPhone, **Sprint des Notations**, étape 3 d'un parcours, vu depuis
+l'**aperçu** du professeur. Rémy voit « Vitesse 1 », « Série 0 » et une barre
+dorée qui se vide, et demande si c'est l'aperçu qui les ajoute.
+
+> « Je parle sur téléphone depuis tout à l'heure. »
+
+— donc tout ce qui suit se mesure au doigt (390 × 844), pas à la souris.
+
+## 1. La réponse : non, ce n'est pas l'aperçu
+
+« Sprint des Notations » **est** un contre-la-montre. Le catalogue le dit en une
+ligne — `activityId: 'sprint'` (`js/data/geometrie.js`) — et la consigne de
+l'exercice, écrite pour l'élève, l'annonce déjà :
+
+> « Réponds avant que la jauge ne se vide : elle se remplit de moins en moins
+> longtemps à mesure que tu enchaînes. »
+
+Mesuré par le chemin de l'élève, sur un téléphone de 390 × 844 et sans aucun
+aperçu : « Vitesse 1 » et « Série 0 » sont là, à y = 106, et la jauge à y = 134.
+Le compteur appartient donc à l'exercice. C'est même tout son ressort : le temps
+accordé part de neuf secondes et se resserre de 12 % à chaque bonne réponse,
+sans descendre sous 2,6 s ; une erreur le desserre de 22 %, pour qu'un élève en
+difficulté ne s'enferme pas contre un mur.
+
+L'exercice frère **« Les Notations »** (`geo-notations`) pose exactement les
+mêmes questions **sans** chronomètre. Si vous voulez la notion sans la course,
+c'est celui-là qu'il faut mettre dans le parcours.
+
+## 2. Ce que sa capture montrait d'autre, et qu'il n'a pas signalé
+
+Sur l'image, la jauge dorée passe **entre les deux lignes de la question** —
+« Quelle est la » au-dessus, « bonne écriture ? » en dessous.
+
+Ce n'était pas une illusion. Reproduit à 390 × 440 — la hauteur qui lui reste
+une fois les barres du professeur déduites de son iPhone — et c'est pire qu'une
+gêne : **la barre tranche les lettres de « Comment note-t-on » par le milieu.**
+
+La cause n'est pas un chevauchement : `.sprint-scene` est une colonne flex, qui
+l'interdit. C'est qu'**un contenu centré qui ne tient pas déborde des deux
+côtés** — moitié en haut, moitié en bas —, et que le haut passe sous la jauge,
+dont le fond est opaque. La question sortait par le haut de 32,6 px.
+
+| 390 × … | avant | après |
+| --- | --- | --- |
+| 844 (l'élève) | question dégagée | **identique au pixel près** |
+| 620 | question dégagée | identique |
+| 520 | question dégagée | identique |
+| **440 (son aperçu)** | **la jauge tranche l'énoncé** | **question dégagée** |
+
+Le correctif tient en deux mots, `safe center`, et ce n'était pas une invention :
+cette feuille les emploie déjà **neuf fois** — `.run-screen`, `.rep-layout`,
+`.angles-layout`, `.hg-layout`… La scène du contre-la-montre était restée en
+arrière, et son voisin opaque le lui a fait payer.
+
+`overflow-y: auto` va avec : `safe` ne crée pas de place, il déplace les 32,6 px
+vers le bas, où sont les réponses. À 440 px le contenu dépasse de 160 px — les
+quatre réponses passent en une seule colonne sous 420 px — et aucun réglage de
+police ne fabrique 160 px.
+
+## 3. Ce que je n'ai pas touché, et qui mérite son avis
+
+L'aperçu « mobile » pose au jeu un cadre de **400 px de large** dans son écran
+de 390, et l'aperçu « tablette » un cadre de **768 px** — 189 px dehors. Ces
+deux lignes ont été écrites pour un ordinateur, où simuler un téléphone demande
+un cadre étroit dans un grand écran. Sur un vrai téléphone, elles n'ont plus de
+sens : il **est** le téléphone.
+
+Faut-il, sur un écran étroit, que les trois boutons d'aperçu se taisent et
+montrent simplement la page ? C'est un choix d'usage, pas un défaut : je le lui
+laisse.

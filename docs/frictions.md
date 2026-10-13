@@ -4040,3 +4040,29 @@ lignes** — 2026-10-01
   ferme l'autre moitié du piège : chercher une déclaration **n'importe où**
   dans un fichier de 2 000 lignes ne garde rien, `width: 100%` s'y trouve
   quarante fois.
+
+---
+
+**Trois mesures justes et un défaut intact : la dimension qu'on n'a pas fait varier**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : reproduire ce que montrait la capture de Rémy —
+  la jauge du contre-la-montre passant entre les deux lignes de la question.
+- *Ce qui a coûté* : trois sondes successives, toutes correctes, toutes
+  muettes. J'ai fait varier la LARGEUR (320, 390, 768, 1280), puis le mode
+  d'aperçu (aucun, mobile, tablette), et conclu chaque fois « la question ne
+  chevauche pas le compteur ». Les trois avaient 844 px de hauteur de fenêtre,
+  parce que c'est ce qu'écrit `ouvrirSonde` quand on lui donne un téléphone.
+  Or Rémy regardait un parcours en aperçu : les barres du professeur lui
+  mangeaient près de 300 px, et le défaut n'apparaît qu'à 440 px de haut. La
+  quatrième sonde, la seule à faire varier la hauteur, l'a eu du premier coup.
+- *Combien de fois* : || — la page qui déborde et la question tranchée ont la
+  même forme : un correctif jugé bon parce que la mesure n'a pas visité le
+  régime où il casse.
+- *Ce qui manque* : un réflexe, et il s'écrit en une phrase. **Quand une
+  capture d'écran montre un défaut qu'on ne reproduit pas, la première chose à
+  faire varier est ce que la capture a de PLUS DIFFÉRENT de la sonde** — ici,
+  Rémy avait trois barres au-dessus du jeu et je n'en avais aucune. Un
+  `ouvrirSonde({ hauteurUtile })` qui simule les barres du professeur, ou
+  simplement une sonde qui balaie deux ou trois hauteurs quand la première ne
+  reproduit rien, aurait fait l'économie de trois tours.

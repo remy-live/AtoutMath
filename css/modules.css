@@ -1019,8 +1019,48 @@
     100% { transform: scaleX(0); background: #ef4444; }
 }
 
+/* « safe center » : ON CENTRE TANT QU'IL Y A LA PLACE, ON CALE EN HAUT SINON.
+   ==========================================================================
+   RÉMY, capture d'iPhone du 13 octobre : il regarde un parcours depuis son
+   aperçu, sur son téléphone. Les barres du professeur lui mangent près de
+   300 px de haut, et la jauge dorée passe ENTRE les deux lignes de la
+   question — « Quelle est la » au-dessus, « bonne écriture ? » en dessous.
+
+   REPRODUIT à 390 × 440, et c'est pire qu'une gêne : la barre TRANCHE les
+   lettres de « Comment note-t-on » par le milieu. La question sortait de sa
+   scène par le haut de 32,6 px, et le fond de la jauge est opaque.
+
+   LA CAUSE N'EST PAS UN CHEVAUCHEMENT DE FLUX — cette colonne l'interdit. Un
+   contenu CENTRÉ qui ne tient pas déborde des DEUX côtés, moitié en haut,
+   moitié en bas ; et ce qui sort par le haut passe sous la jauge. C'est le
+   piège connu du centrage flex, et le mot-clé « safe » existe exactement pour
+   lui : il abandonne le centrage plutôt que de faire sortir par le haut.
+
+   MESURÉ, les deux bouts : à 844 px de haut, RIEN ne change — 102,4 px de
+   marge au-dessus comme au-dessous, aucun défilement. À 440 px, la question
+   se cale en haut, sort de 0 px, et la jauge ne la touche plus.
+
+   « overflow-y: auto » VA AVEC, et n'est pas décoratif : « safe » ne crée pas
+   de place, il déplace les 32,6 px vers le bas, où se trouvent les réponses.
+   À 440 px le contenu dépasse de 160 px — quatre réponses en UNE colonne, le
+   conteneur « plateau » le veut ainsi sous 420 px — et aucun réglage de
+   police ne fabrique 160 px. Sans cette ligne, la dernière réponse
+   deviendrait inatteignable ; avec elle, on y accède en faisant défiler la
+   scène. Rien n'y est positionné en absolu : il n'y a donc rien à rogner.
+
+   Les trois autres remèdes ont été ESSAYÉS dans le navigateur
+   (tools/tmp/essaiScene.mjs) : « overflow-y: auto » SEUL ne change rien — le
+   débordement d'un contenu centré n'est pas atteignable par défilement, c'est
+   le second visage du même piège ; « flex-start » répare aussi, mais au prix
+   du centrage sur tous les écrans où il y avait la place.
+
+   CE N'ÉTAIT PAS UNE INVENTION, MAIS UN OUBLI : « safe center » est déjà
+   employé NEUF fois dans cette feuille — .run-screen, .rep-layout,
+   .angles-layout, .hg-layout… Cette scène-ci était restée en arrière, et son
+   voisin opaque l'a fait payer. */
 .sprint-scene {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: safe center; overflow-y: auto;
     flex: 1; min-height: 0; width: 100%;
 }
 .sprint-choix {
