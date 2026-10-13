@@ -332,10 +332,23 @@ class DeuxMille extends BaseGame {
         if (!this.gagnee && plusGrande(this.grille) >= this.objectif) {
             this.gagnee = true;
             this.note(`🏆 La tuile ${this.objectif} est là ! Tu peux continuer, ou repartir de zéro.`, 'ok');
+            // `partiel` : LA TUILE OBJECTIF A DÉJÀ COMPTÉ, COMME PALIER.
+            //
+            // RÉMY : « sur Poser une opération, les élèves ont fait 2 opérations
+            // (ou 3) et ont eu 5/5 ». Le même défaut vivait ici, en plus discret :
+            // une question de plus à chaque manche terminée.
+            //
+            // CE N'EST PAS UN JUGEMENT DE MA PART : le manifeste de l'activité
+            // déclare `unite: 'question'`, et c'est lui qui dit ce qu'est une
+            // question dans ce jeu. Chaque grand palier se crédite une fois par
+            // partie, et la tuile visée en est un : elle comptait donc DEUX fois.
+            //
+            // La tentative reste ENREGISTRÉE — statistiques, carnet d'erreurs,
+            // points : elle ne fait plus avancer le compteur de questions.
             this.onCorrectAnswer(null, COMPETENCE, {
                 questionText: `Atteindre la tuile ${this.objectif}`,
                 expected: String(this.objectif), given: String(this.objectif),
-                points: 25
+                points: 25, partiel: true
             });
         } else if (!peutJouer(this.grille)) {
             this.finie = true;

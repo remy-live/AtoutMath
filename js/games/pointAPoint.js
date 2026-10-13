@@ -364,9 +364,22 @@ class PointAPoint extends BaseGame {
         // une réponse, elle compte. En correction à la fin, tout est accepté —
         // rien n'est prouvé, on ne note qu'au moment de vérifier.
         if (this.exercice.verification === 'immediate') {
+            // `partiel` : UN CALCUL RELIÉ EST UNE ÉTAPE DU DESSIN.
+            //
+            // RÉMY : « sur Poser une opération, les élèves ont fait 2 opérations
+            // (ou 3) et ont eu 5/5 ». Le même défaut vivait ici, en plus discret :
+            // une question de plus à chaque manche terminée.
+            //
+            // CE N'EST PAS UN JUGEMENT DE MA PART : le manifeste de l'activité
+            // déclare `unite: 'dessin'`, et c'est lui qui dit ce qu'est une
+            // question dans ce jeu. Le dessin se compte en dessins ; chaque point
+            // relié est un pas vers celui qu'on découvre.
+            //
+            // La tentative reste ENREGISTRÉE — statistiques, carnet d'erreurs,
+            // points : elle ne fait plus avancer le compteur de questions.
             this.onCorrectAnswer(null, COMPETENCE, {
                 questionText: `Quel calcul vaut ${veut} ?`,
-                expected: String(veut), given: p.texte, points: 1
+                expected: String(veut), given: p.texte, points: 1, partiel: true
             });
         }
         this.dessinerTraits();

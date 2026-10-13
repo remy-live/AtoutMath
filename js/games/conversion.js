@@ -445,9 +445,22 @@ class Conversion extends BaseGame {
             if (v.ok) {
                 this.tableauGarni = true;
                 this.etape = 2;
+                // `partiel` : GARNIR LE TABLEAU EST LA MISE EN PLACE, PAS UNE
+                // CONVERSION.
+                //
+                // C'est la même forme exactement que l'alignement de « Poser
+                // une opération », que Rémy a signalé : une étape préalable
+                // qui se faisait compter comme une question. Elle n'arrive
+                // qu'UNE fois par partie — l'élève recevait donc une question
+                // gratuite en début d'exercice, et l'étape se refermait une
+                // conversion trop tôt.
+                //
+                // Ranger les sept unités dans l'ordre EST une réussite, et
+                // elle reste enregistrée : statistiques, carnet d'erreurs,
+                // points. Elle ne fait plus avancer le compteur.
                 this.onCorrectAnswer(null, COMPETENCE, {
                     questionText: `Ranger les unités de ${familleDe(this.famille).nom.toLowerCase()}`,
-                    expected: 'km hm dam m dm cm mm', given: 'juste', points: 8
+                    expected: 'km hm dam m dm cm mm', given: 'juste', points: 8, partiel: true
                 });
                 this.dessiner();
                 this.note('✅ Le tableau est prêt — et il le restera pour les conversions suivantes.', 'ok');

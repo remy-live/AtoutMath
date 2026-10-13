@@ -287,9 +287,22 @@ class MotsCaches extends BaseGame {
 
         if (toutTrouve(this.etat, this.trouves)) {
             this.dire(`🎉 Les ${this.etat.mots.length} mots sont trouvés ! Relis la liste : ce sont les mots que ton cours emploie sans les expliquer.`, 'ok');
+            // `partiel` : LA GRILLE FINIE EST LA SOMME DES MOTS, PAS UN MOT DE PLUS.
+            //
+            // RÉMY : « sur Poser une opération, les élèves ont fait 2 opérations
+            // (ou 3) et ont eu 5/5 ». Le même défaut vivait ici, en plus discret :
+            // une question de plus à chaque manche terminée.
+            //
+            // CE N'EST PAS UN JUGEMENT DE MA PART : le manifeste de l'activité
+            // déclare `unite: 'mot'`, et c'est lui qui dit ce qu'est une
+            // question dans ce jeu. Un mot trouvé est une question ; la grille
+            // terminée les a déjà toutes comptées.
+            //
+            // La tentative reste ENREGISTRÉE — statistiques, carnet d'erreurs,
+            // points : elle ne fait plus avancer le compteur de questions.
             this.onCorrectAnswer(null, SKILL, {
                 points: 30, questionText: `Grille de vocabulaire (${THEMES[this.theme]}) terminée`,
-                given: 'terminée', expected: 'terminée'
+                given: 'terminée', expected: 'terminée', partiel: true
             });
         }
     }

@@ -530,7 +530,22 @@ class Tetris extends BaseGame {
         this.gameRunning = false;
         if(this.rafId) cancelAnimationFrame(this.rafId);
         this.destroy();
-        this.onCorrectAnswer(null); // Return to sequence/menu
+        // `partiel` : QUITTER LA PARTIE N'EST PAS UNE RÉPONSE.
+        //
+        // Cet appel ne porte ni énoncé, ni attendu, ni donné : il créditait
+        // une bonne réponse pour un geste où RIEN n'a été répondu, et le
+        // compteur de questions avançait d'autant. `core/BaseGame.js`
+        // signalait déjà ces appels comme « trompeurs » et leur avait
+        // retiré la carte « Bonne réponse ! » — c'est l'affichage qui avait
+        // été corrigé, pas le compte.
+        //
+        // ON NE SUPPRIME PAS LA TENTATIVE, parce que la maison a écrit
+        // qu'elle la gardait (« c'est l'affichage qu'on supprime, pas la
+        // donnée »). On lui retire seulement le droit de compter pour une
+        // question. Faut-il qu'elle compte encore aux statistiques ? C'est
+        // une autre question, et elle est posée dans
+        // docs/remarques-2026-10-13.md.
+        this.onCorrectAnswer(null, null, { partiel: true });
     }
 
     initGrid() {

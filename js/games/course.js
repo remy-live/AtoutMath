@@ -444,7 +444,22 @@ class Course extends BaseGame {
                 this.showScreen('course-screen-menu');
             } else {
                 this.destroy();
-                this.onCorrectAnswer(null); // finish game
+                // `partiel` : QUITTER LA PARTIE N'EST PAS UNE RÉPONSE.
+                //
+                // Cet appel ne porte ni énoncé, ni attendu, ni donné : il créditait
+                // une bonne réponse pour un geste où RIEN n'a été répondu, et le
+                // compteur de questions avançait d'autant. `core/BaseGame.js`
+                // signalait déjà ces appels comme « trompeurs » et leur avait
+                // retiré la carte « Bonne réponse ! » — c'est l'affichage qui avait
+                // été corrigé, pas le compte.
+                //
+                // ON NE SUPPRIME PAS LA TENTATIVE, parce que la maison a écrit
+                // qu'elle la gardait (« c'est l'affichage qu'on supprime, pas la
+                // donnée »). On lui retire seulement le droit de compter pour une
+                // question. Faut-il qu'elle compte encore aux statistiques ? C'est
+                // une autre question, et elle est posée dans
+                // docs/remarques-2026-10-13.md.
+                this.onCorrectAnswer(null, null, { partiel: true });
             }
         };
         
@@ -666,7 +681,8 @@ class Course extends BaseGame {
             this.showScreen('course-screen-menu');
         } else {
             this.destroy();
-            this.onCorrectAnswer(null); // finish game
+            // `partiel` : quitter la partie — même raison que plus haut.
+            this.onCorrectAnswer(null, null, { partiel: true });
         }
     }
 
@@ -708,10 +724,15 @@ class Course extends BaseGame {
             <div class="course-res-row"><span>${h.q}</span>${h.ok ? '<span style="color:var(--success);">OK</span>' : `<span style="color:var(--danger);text-decoration:line-through">${h.u}</span>`}</div>
         `).join('');
         
+        // `partiel` : LA PRIME DE FIN DE COURSE N'EST PAS UNE RÉPONSE DE PLUS.
+        //
+        // Chaque astéroïde touché a déjà compté pour une question. Bien finir
+        // la course est la SOMME de ces réponses, et la compter en ajoutait
+        // une qui n'a jamais été posée.
         if (successRatio > 0.7 && this.mode !== 'sprint' && this.history.length >= 5) {
-            this.onCorrectAnswer(null);
+            this.onCorrectAnswer(null, null, { partiel: true });
         } else if (successRatio > 0.7 && this.mode === 'sprint' && this.lives > 0) {
-            this.onCorrectAnswer(null);
+            this.onCorrectAnswer(null, null, { partiel: true });
         }
     }
     updateHUD() {

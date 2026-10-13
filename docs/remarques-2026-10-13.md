@@ -720,3 +720,75 @@ tirage du piège pouvait rendre 3050, qui s'écrit 3,05 — deux décimales pour
 dénominateur 1000. L'élève qui compte les chiffres après la virgule, comme on
 le lui apprend, aurait répondu 100 et aurait été marqué faux. Corrigé avant que
 l'exercice ne serve.
+
+---
+
+# « Fais tout » — les jeux qui comptaient une question de trop
+
+Suite de « 2 opérations et 5/5 ». J'ai ouvert les **treize** fichiers que
+`tools/comptesDesJeux.mjs` signalait. Huit avaient le défaut, cinq étaient
+sains.
+
+## La règle, et elle n'est pas de moi
+
+**Le manifeste de chaque activité déclare son unité de compte** — `unite:
+'chantier'`, `unite: 'mot'`, `unite: 'partie'`, `unite: 'dessin'`. Ce qui
+correspond à cette unité est la question ; tout le reste est une étape.
+
+**Deux fois sur huit, cette règle m'a contredit.** Dans ma réponse d'hier je
+disais que Le Chantier et Le Plateau comptaient « un par élément plus un par
+manche » et qu'il fallait marquer la manche. C'est l'inverse : leur manifeste
+dit `chantier` et `partie`, donc **c'est l'élément qui est l'étape**. Une
+relecture au jugé aurait inversé les deux.
+
+## Les huit corrigés
+
+| jeu | l'unité dit | ce qui devient une étape |
+| --- | --- | --- |
+| **Le Chantier** | `chantier` | le bloc posé |
+| **Le Plateau** (échecs, dames, othello) | `partie` | le coup joué |
+| **Point à point** | `dessin` | le calcul relié |
+| **Rédiger un raisonnement** | `rédaction` | la propriété **et** les données |
+| **Les Mots Cachés** | `mot` | la grille terminée |
+| **2000** | — | la tuile visée (déjà comptée comme palier) |
+| **Le Peintre** | — | le niveau terminé |
+| **Le tableau de conversion** | — | garnir le tableau (la mise en place) |
+
+**Rédiger un raisonnement était le pire** : ses trois marches — reconstituer la
+propriété, lire les données, conclure — comptaient pour **trois rédactions**.
+Une étape de quatre se refermait après la deuxième.
+
+## Et deux jeux créditaient une réussite pour avoir QUITTÉ la partie
+
+`Course` et `Math Tetris` appelaient `onCorrectAnswer(null)` depuis
+`quitGame()` — sans énoncé, sans attendu, sans donné. `core/BaseGame.js`
+signalait déjà ces appels comme « trompeurs » et leur avait retiré la carte
+« Bonne réponse ! » : **c'est l'affichage qui avait été corrigé, pas le
+compte.** Course créditait aussi une prime de fin de course.
+
+Je n'ai **pas supprimé** ces tentatives : la maison a écrit qu'elle les gardait
+(« c'est l'affichage qu'on supprime, pas la donnée »). Je leur ai seulement
+retiré le droit de compter pour une question.
+
+> **Une question pour Rémy** : faut-il qu'abandonner une partie enregistre
+> encore une *bonne réponse* dans les statistiques ? Je ne l'ai pas tranché
+> tout seul, parce que la décision de garder la donnée est écrite.
+
+## Les cinq sains, et pourquoi
+
+| jeu | pourquoi ce n'est pas un défaut |
+| --- | --- |
+| **Ninja des Nombres** | les deux déclarations s'excluent par le mode ; une seule part |
+| **Nova** | six façons distinctes de répondre à une multiplication |
+| **Le patron du cube** | chaque question porte sa `famille` ; une seule des deux part |
+
+Ils sont nommés dans l'épreuve, avec leur raison, plutôt que d'affaiblir le
+critère : une liste qu'on lit vaut mieux qu'un seuil qu'on baisse.
+
+## Ce que garde l'épreuve
+
+Deux choses, et la seconde a été trouvée par `epreuveTombe` : la **forme**
+(aucune étape marquée dans un fichier qui déclare plusieurs réussites) et, pour
+les dix jeux corrigés, le **nombre** de déclarations pleines. La première seule
+laissait passer « Rédiger un raisonnement », dont un des trois sites était déjà
+marqué. Les neuf défauts remis un par un la font tomber.

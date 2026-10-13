@@ -470,9 +470,22 @@ class Plateau extends BaseGame {
         this.dernier = this.casesDuCoup(coup);
         this.etat = echecs.jouer(this.etat, coup);
         this.coupsJoues++;
+        // `partiel` : UN COUP EST UNE ÉTAPE, LA PARTIE EST LA QUESTION.
+        //
+        // RÉMY : « sur Poser une opération, les élèves ont fait 2 opérations
+        // (ou 3) et ont eu 5/5 ». Le même défaut vivait ici, en plus discret :
+        // une question de plus à chaque manche terminée.
+        //
+        // CE N'EST PAS UN JUGEMENT DE MA PART : le manifeste de l'activité
+        // déclare `unite: 'partie'`, et c'est lui qui dit ce qu'est une
+        // question dans ce jeu. Un mat en trois coups est UN problème, pas trois :
+        // les deux premiers coups préparent celui qui conclut.
+        //
+        // La tentative reste ENREGISTRÉE — statistiques, carnet d'erreurs,
+        // points : elle ne fait plus avancer le compteur de questions.
         this.onCorrectAnswer(null, 'geo.espace.reperage', {
             questionText: `${this.famille.titre} — coup ${this.coupsJoues}`,
-            expected: texte, given: texte, points: 6
+            expected: texte, given: texte, points: 6, partiel: true
         });
 
         if (estMat(this.etat)) {

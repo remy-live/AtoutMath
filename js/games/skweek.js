@@ -549,10 +549,23 @@ class Skweek extends BaseGame {
     gagne() {
         this.finie = true;
         this.note(`🎉 Niveau ${this.etat.niveau} terminé : tout est rose !`, 'ok');
+        // `partiel` : LE NIVEAU FINI EST LA SOMME DES DALLES REPEINTES.
+        //
+        // RÉMY : « sur Poser une opération, les élèves ont fait 2 opérations
+        // (ou 3) et ont eu 5/5 ». Le même défaut vivait ici, en plus discret :
+        // une question de plus à chaque manche terminée.
+        //
+        // CE N'EST PAS UN JUGEMENT DE MA PART : le manifeste de l'activité
+        // déclare `unite: 'question'`, et c'est lui qui dit ce qu'est une
+        // question dans ce jeu. Chaque dalle est un calcul trié — « 12 fait-il
+        // partie des multiples de 3 ? » —, et elles ont toutes déjà compté.
+        //
+        // La tentative reste ENREGISTRÉE — statistiques, carnet d'erreurs,
+        // points : elle ne fait plus avancer le compteur de questions.
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `Le Peintre niveau ${this.etat.niveau} — ${this.etat.regle.consigne}`,
             expected: 'sol repeint', given: 'sol repeint',
-            points: 15 + this.etat.niveau * 5
+            points: 15 + this.etat.niveau * 5, partiel: true
         });
         this.niveauCourant = Math.min(NIVEAUX.length, this.niveauCourant + 1);
         setTimeout(() => { if (this.isRunning) this.poser(); }, 1800);

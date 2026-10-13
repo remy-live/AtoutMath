@@ -458,9 +458,22 @@ class Chantier extends BaseGame {
     commenter(b, r) {
         if (r.scelle) {
             this.note(`<b>${b.a} × ${b.b} = ${b.produit}</b> : le bloc se pose et devient un mur.`, 'ok');
+            // `partiel` : UN BLOC POSÉ EST UNE ÉTAPE, PAS UNE QUESTION.
+            //
+            // RÉMY : « sur Poser une opération, les élèves ont fait 2 opérations
+            // (ou 3) et ont eu 5/5 ». Le même défaut vivait ici, en plus discret :
+            // une question de plus à chaque manche terminée.
+            //
+            // CE N'EST PAS UN JUGEMENT DE MA PART : le manifeste de l'activité
+            // déclare `unite: 'chantier'`, et c'est lui qui dit ce qu'est une
+            // question dans ce jeu. Un chantier se compte en chantiers, et un bloc
+            // est un coup dans celui qu'on construit.
+            //
+            // La tentative reste ENREGISTRÉE — statistiques, carnet d'erreurs,
+            // points : elle ne fait plus avancer le compteur de questions.
             this.onCorrectAnswer(null, skillDe(b.a, b.b), {
                 points: 10, questionText: `${b.a} × ${b.b}`,
-                given: String(b.produit), expected: b.produit
+                given: String(b.produit), expected: b.produit, partiel: true
             });
             return;
         }

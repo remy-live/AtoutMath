@@ -4245,3 +4245,25 @@ lignes** — 2026-10-01
   se passerait X », on ouvre un terminal : `node -e` coûte dix secondes, et
   c'est le prix de la différence entre une mesure et une légende. Si l'on n'a
   pas mesuré, on écrit « par précaution » et on le dit.
+
+---
+
+**Une garde qui regarde la FORME laisse passer le fichier à moitié corrigé**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : garder d'un seul coup les huit jeux qui
+  comptaient une question de trop par manche.
+- *Ce qui a coûté* : une épreuve écrite, verte, et qui ne gardait qu'un peu
+  plus de la moitié de ce qu'elle annonçait. Son critère était « un fichier qui
+  déclare plusieurs réussites sans marquer AUCUNE étape » — élégant, et aveugle
+  au cas de « Rédiger un raisonnement », dont trois déclarations se comptaient
+  comme trois rédactions et dont une seule a été marquée. `epreuveTombe` l'a
+  dit en refusant de tomber : le fichier avait désormais une étape marquée,
+  donc il sortait du critère.
+- *Combien de fois* : || — même forme que le critère « au moins 2 champs et un
+  nombre pair », qui restait vert avec un champ par point.
+- *Ce qui manque* : un réflexe, et il se formule en une question. **Quand une
+  garde se fonde sur « au moins un », demander ce qu'elle dit du cas « un sur
+  trois ».** Ici il a fallu lui adjoindre une liste nommée — pour chaque jeu
+  corrigé, COMBIEN de déclarations doivent rester pleines. Moins élégant,
+  mais c'est la liste qui attrape les huit, pas le critère.

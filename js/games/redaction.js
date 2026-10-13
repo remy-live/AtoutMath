@@ -468,9 +468,20 @@ class Redaction extends BaseGame {
         const r = verifierPhrase(this.phrase, this.propriete.id);
         if (r.juste) {
             this.note('✅ C\'est exactement la propriété du cours.', 'ok');
+            // `partiel` : RECONSTITUER LA PROPRIÉTÉ EST LA PREMIÈRE DES TROIS
+            // MARCHES D'UNE RÉDACTION, PAS UNE RÉDACTION.
+            //
+            // Le manifeste de l'activité déclare `unite: 'rédaction'` : une
+            // rédaction vaut une question. Or ce jeu en déclarait TROIS —
+            // la propriété, les données, la conclusion — si bien qu'une étape
+            // de quatre rédactions se refermait après la deuxième.
+            //
+            // Seule la CONCLUSION reste pleine : c'est elle qui finit la
+            // rédaction. Marquer les trois ferait une étape qui ne se termine
+            // jamais, et l'épreuve resterait verte en le laissant faire.
             this.onCorrectAnswer(null, SKILL, {
                 points: 15, questionText: 'Reconstituer la propriété des parallèles et perpendiculaires',
-                given: 'ordre juste', expected: 'ordre juste'
+                given: 'ordre juste', expected: 'ordre juste', partiel: true
             });
             this.suiteEl.hidden = false;
         } else {
@@ -508,9 +519,11 @@ class Redaction extends BaseGame {
         const b = verifierDonnee(this.figure, 1, t.d1g, t.d1d);
         if (a.juste && b.juste) {
             this.note(`✅ ${a.message}, et ${b.message}.`, 'ok');
+            // `partiel` : la deuxième marche de la même rédaction — voir
+            // `controlerPhrase` plus haut.
             this.onCorrectAnswer(null, SKILL, {
                 points: 15, questionText: 'Lire les données sur la figure',
-                given: 'données justes', expected: 'données justes'
+                given: 'données justes', expected: 'données justes', partiel: true
             });
             this.suiteEl.hidden = false;
         } else {
