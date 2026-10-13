@@ -461,6 +461,22 @@ const BASE = {
         descriptor: 'Distinguer la partie entière de la partie décimale d\'un nombre.',
         lesson: 'Pour 125,16 : 125 est la partie entière, 0,16 la partie décimale. Un nombre entier a une partie décimale nulle.'
     },
+    'num.decimal.fraction': {
+        label: 'Fraction décimale et écriture à virgule',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.SIXIEME],
+        prereqs: ['num.numeration.rang'],
+        descriptor: 'Passer de 3,5 à 35/10 et de 35/10 à 3,5.',
+        lesson: 'Un nombre à virgule EST une fraction décimale : ce sont deux écritures du '
+            + 'même nombre, pas deux nombres. 3,5 se lit « trente-cinq dixièmes », et '
+            + 'c\'est exactement 35/10. Pour passer de la virgule à la fraction, on compte '
+            + 'les chiffres APRÈS la virgule : un chiffre, c\'est un dénominateur 10 ; deux '
+            + 'chiffres, 100 ; trois, 1000 — et le numérateur est le nombre écrit sans sa '
+            + 'virgule. Ainsi 3,5 = 35/10, 3,05 = 305/100, et 0,7 = 7/10. Dans l\'autre '
+            + 'sens, le dénominateur dit combien de chiffres mettre après la virgule : '
+            + '305/100 a deux zéros, donc deux décimales, donc 3,05. Attention au zéro qui '
+            + 'tient le rang : 7/100 n\'est pas 0,7 mais 0,07.'
+    },
     'num.decimal.zeros': {
         label: 'Zéros inutiles',
         chemin: [D.NUMERIQUE, SD.DECIMAUX],

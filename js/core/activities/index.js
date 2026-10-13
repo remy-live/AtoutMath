@@ -48,6 +48,7 @@ import { enqueteFicheGenerator } from '../generators/enqueteFiche.js';
 import { treflesFicheGenerator } from '../generators/treflesFiche.js';
 import { mosaiqueFicheGenerator } from '../generators/mosaiqueFiche.js';
 import { arrondiGenerator } from '../generators/arrondi.js';
+import { fractionDecimaleGenerator } from '../generators/fractionDecimale.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
 import { logigrammeGenerator } from '../generators/logigramme.js';
@@ -161,7 +162,7 @@ import {
     // joue en coloriant, la fiche se fait au crayon.
     balanceFicheGenerator, serpentsFicheGenerator, enqueteFicheGenerator,
     treflesFicheGenerator, mosaiqueFicheGenerator,
-    arrondiGenerator,
+    arrondiGenerator, fractionDecimaleGenerator,
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
     elementsGeometrieGenerator,

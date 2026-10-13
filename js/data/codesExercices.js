@@ -37,6 +37,7 @@ export const CODES_EXERCICES = {
     'num-egypte-qcm':             'HE',   // Hiéroglyphes Express
     'num-ordre-grandeur':         'PP',   // À Peu Près
     'num-arrondi':                'VA',   // Valeur Approchée
+    'num-fraction-decimale':      'VF',   // Virgule ou Fraction ?
     'num-graduations':            'LD',   // La Loupe sur la Droite
     'num-vocabulaire':            'MJ',   // Le Mot Juste
     'num-complement-10':          'AM',   // Amis de 10

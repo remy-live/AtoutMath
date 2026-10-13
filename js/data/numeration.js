@@ -101,6 +101,36 @@ export const numerationExercises = [
             + "dizaines et dixièmes ne sont pas le même rang."
     },
 
+    // --- La fraction décimale (demandée après une séance) ---
+    //
+    // RÉMY : « on a fait des exercices où il faut convertir 3,5 en 35/10 etc
+    // et inversement ».
+    //
+    // LE CATALOGUE N'AVAIT RIEN, et c'est la lacune la plus surprenante du
+    // chapitre : neuf exercices de fractions, cinq de décimaux, et pas un seul
+    // qui dise que ce sont les MÊMES nombres. L'élève apprenait les deux
+    // écritures côte à côte sans qu'on les lui montre jamais égales.
+    {
+        id: 'num-fraction-decimale', title: 'Virgule ou Fraction ?',
+        cree: '2026-10-13',
+        consignePapier: 'Complète l\'égalité entre l\'écriture à virgule et la fraction.',
+        colonnesPapier: 3,
+        generatorId: 'num.fraction-decimale', activityId: 'numpad',
+        // LES DEUX SENS, ET LES DEUX TROUS, DÈS LE DÉPART. Un réglage par
+        // défaut qui ne poserait qu'un seul sens enseignerait une recette —
+        // c'est précisément ce que cet exercice existe pour empêcher. Le
+        // professeur peut les figer pour une remédiation de dix minutes.
+        params: { sens: 'les-deux', trou: 'les-deux',
+            rangs: ['dixiemes', 'centiemes'], maxEntier: 9, piegeZero: true },
+        motsClefs: ['fraction décimale', 'dixièmes', 'centièmes', 'millièmes',
+            'écriture à virgule', 'numérateur', 'dénominateur'],
+        tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
+        instruction: 'Un nombre à virgule EST une fraction décimale : 3,5 = 35/10. '
+            + 'Le numérateur est le nombre écrit sans sa virgule, et le dénominateur '
+            + 'porte autant de zéros qu\'il y a de chiffres après la virgule. '
+            + 'Attention au zéro qui tient le rang : 7/100 fait 0,07, pas 0,7.'
+    },
+
     // --- Décimaux (fiche § 5, 6) ---
     {
         id: 'num-parties',

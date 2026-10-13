@@ -659,3 +659,64 @@ Les sept autres (`patrons`, `conversion`, `redaction`, `nova`, `course`,
 `tetris`, `ninja`) semblent déclarer des questions **distinctes** plutôt qu'une
 étape et sa somme — sauf peut-être `redaction`, dont les trois déclarations
 ressemblent aux trois étapes d'UNE démonstration.
+
+---
+
+# « On a fait des exercices où il faut convertir 3,5 en 35/10 et inversement »
+
+Séance en classe, 13 octobre. Les **fractions décimales** : passer de l'écriture
+à virgule à la fraction de dénominateur 10, 100, 1000 — et l'inverse.
+
+C'est le pivot du chapitre : un nombre décimal EST une fraction décimale, et
+l'élève qui ne fait pas ce va-et-vient apprend deux objets au lieu d'un.
+
+Premier geste : regarder ce que le catalogue sait déjà faire.
+
+## Ce qui a été fait
+
+**« Virgule ou Fraction ? »** (`num-fraction-decimale`, code dicté **VF**), dans
+le chapitre Numération, juste avant les décimaux.
+
+**Le va-et-vient EST l'exercice**, et non l'un des deux sens : un élève qui
+n'apprend que « virgule → fraction » apprend une recette. Les deux sens et les
+deux trous sortent donc par défaut :
+
+| ce qui est posé | ce qu'on demande |
+| --- | --- |
+| `749/100 = ?` | **7,49** — la touche virgule apparaît |
+| `7,6 = ?/10` | **76** — le numérateur, virgule retirée |
+| `3,294 = 3294/?` | **1000** — le dénominateur, décimales comptées |
+
+Demander le **dénominateur** est l'autre moitié de la règle, et la plus
+oubliée : donner `/10` et demander le numérateur, c'est seulement demander de
+retirer la virgule.
+
+**Le zéro qui tient le rang est posé exprès** — 7/100 fait 0,07, pas 0,7 ; 3,05
+fait 305/100, pas 35/100. Il ne sort presque jamais d'un tirage uniforme : une
+question sur trois le pose quand le rang le permet. Mesuré : 6 fois sur 30.
+
+Mesuré en jouant, dans un vrai navigateur :
+
+```
+749/100 = ?      touche virgule : oui   tapé « 7,49 » → ACCEPTÉE
+3,09 = ?/100     touche virgule : non   tapé « 309 »  → ACCEPTÉE
+fenêtres natives : 0 · erreurs de page : 0
+```
+
+### Deux choses que les épreuves ont trouvées, et pas moi
+
+**J'avais écrit un danger qui n'existe pas.** Le commentaire du générateur
+affirmait que `305 / 100` vaut `3.0500000000000003` et qu'il fallait éviter les
+flottants. `epreuveTombe` a posé sa seconde question — *ce défaut existe-t-il ?*
+— et l'essai a tranché : sur **les 300 000 numérateurs** que cet exercice peut
+tirer, la division et la composition chiffre à chiffre donnent exactement le
+même nombre. **Zéro divergence.** Le commentaire est corrigé, et l'épreuve qui
+gardait ce faux danger a été remplacée.
+
+**Et mon générateur avait un vrai défaut, que je n'avais pas vu.** L'épreuve qui
+l'a remplacée garde la règle du cours : *autant de décimales que le dénominateur
+a de zéros*. Elle est tombée **sur mon propre code** : à trois décimales, le
+tirage du piège pouvait rendre 3050, qui s'écrit 3,05 — deux décimales pour un
+dénominateur 1000. L'élève qui compte les chiffres après la virgule, comme on
+le lui apprend, aurait répondu 100 et aurait été marqué faux. Corrigé avant que
+l'exercice ne serve.

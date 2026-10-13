@@ -4222,3 +4222,26 @@ lignes** — 2026-10-01
   `rang` / `chiffrePris`, dont la convention n'est écrite nulle part — on les
   CALCULE depuis les données du jeu, ou on essaie chaque possibilité : trois
   millisecondes, et aucune supposition.
+
+---
+
+**J'écris des dangers que je n'ai pas mesurés, et je les commente avec aplomb**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : écrire un générateur qui compose un décimal à
+  partir de ses chiffres plutôt que par une division.
+- *Ce qui a coûté* : rien en temps — et c'est pour cela qu'il faut le noter.
+  Le commentaire affirmait « 305 / 100 vaut 3.0500000000000003 sur une
+  machine », un nombre que je n'ai JAMAIS calculé. C'est faux : 305/100 est
+  exact, et l'essai exhaustif sur les 300 000 numérateurs du domaine donne
+  zéro divergence. J'avais aussi écrit une épreuve pour garder ce danger : elle
+  ne gardait rien, et `epreuveTombe` l'a dit.
+- *Combien de fois* : ||| — troisième fois ce mois-ci qu'un commentaire
+  affirme un mécanisme déduit : « les neuf mots servent de leurres », « un code
+  en minuscules n'aurait laissé entrer personne », et celui-ci. Les trois
+  étaient faux, et les trois étaient écrits du ton de quelqu'un qui a mesuré.
+- *Ce qui manque* : pas un outil — une règle d'écriture. **Un commentaire qui
+  cite un nombre doit citer un nombre OBTENU.** Quand on veut écrire « sinon il
+  se passerait X », on ouvre un terminal : `node -e` coûte dix secondes, et
+  c'est le prix de la différence entre une mesure et une légende. Si l'on n'a
+  pas mesuré, on écrit « par précaution » et on le dit.
