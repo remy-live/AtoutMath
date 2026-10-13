@@ -116,7 +116,16 @@ export function mount(container, session, opts = {}) {
                 </span>
             </span>`;
         }
-        const classes = ['pp-jeton', `pp-jeton--${etage}`];
+        // UN JETON EST UN NOMBRE DANS UNE LIGNE DE CALCUL, pas un bouton de
+        // barre d'outils : sa taille est celle du texte qui l'entoure.
+        //
+        // Trouvé par `tools/boutonsEtires.mjs` en cherchant le défaut que Rémy
+        // signale sur les retenues : au doigt, ces jetons mesuraient 18 × 44 px
+        // — deux fois et demie plus hauts que larges — parce que le plancher
+        // tactile de 44 px s'applique à tout bouton de jeu qui ne déclare pas
+        // sa forme. Un « 3 × 11 × 45 » dont chaque facteur fait deux
+        // centimètres de haut n'est plus un produit, c'est une colonne.
+        const classes = ['btn-carre', 'pp-jeton', `pp-jeton--${etage}`];
         if (t.barre) classes.push('pp-jeton--barre');
         if (choisi === t.id) classes.push('pp-jeton--choisi');
         return `<button type="button" class="${classes.join(' ')}" data-jeton="${t.id}"

@@ -326,7 +326,28 @@ class PoserOperation extends BaseGame {
         if (attenduEn(this.tableau, rang, 'retenue') === null) return null;
         const rond = document.createElement('button');
         rond.type = 'button';
-        rond.className = 'po-rond' + (this.retenues[rang] ? ' po-rond--plein' : '')
+        // `btn-carre`' : « MA TAILLE EST LA MIENNE, ne l'étire pas ».
+        //
+        // RÉMY, pour la DEUXIÈME fois : « y a pas un souci sur les retenues,
+        // elle devrait pas être ronde ». Mesuré au doigt : 17,9 × 44 px, soit
+        // deux fois et demie plus haut que large. Le plancher tactile de 44 px
+        // (voir `css/modules.css`) s'applique à tout bouton de jeu qui ne
+        // déclare pas sa forme, et un rayon de 50 % sur un rectangle étiré
+        // donne exactement l'ovale qu'il voit.
+        //
+        // LA DIVISION POSÉE LE DÉCLARAIT DÉJÀ (`btn-carre pl-rond`, dans
+        // `poserLongue.js`) depuis sa première remarque du 8 octobre : la
+        // correction avait été posée sur UN des deux chemins qui mènent au même
+        // endroit. C'est la sixième fois que le dépôt paie cette leçon, et
+        // `tools/boutonsEtires.mjs` existe maintenant pour qu'il n'y ait pas
+        // de septième — il ouvre tous les jeux au format téléphone et liste ce
+        // que le plancher a étiré.
+        //
+        // (Le nom dit « carré » et sert aussi à des pastilles RONDES — les
+        // jetons du Mastermind, les ronds de la division. Son sens est celui de
+        // la ligne du dessus ; on suit l'usage plutôt que d'inventer un second
+        // nom pour la même chose.)
+        rond.className = 'btn-carre po-rond' + (this.retenues[rang] ? ' po-rond--plein' : '')
             + (auCoin ? ' po-rond--coin' : '');
         rond.textContent = this.retenues[rang] ?? '';
         rond.dataset.rang = rang;

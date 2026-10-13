@@ -3955,3 +3955,40 @@ lignes** — 2026-10-01
   épreuve garde-t-elle quelque chose ? » ; il ne répond pas à « accuse-t-elle
   autre chose que ce qu'elle vise ? ». **Quand une épreuve neuve ROUGIT sur du
   code qu'on n'a pas touché, lire ce qu'elle accuse avant de corriger le code.**
+
+## Le même défaut, le même mois, l'autre exercice — 2026-10-13
+
+- **Ce que je voulais faire** : corriger « les retenues font des ovales », que
+  Rémy signale pour la DEUXIÈME fois.
+- **Ce qui a coûté** : rien à chercher — la cause était écrite noir sur blanc
+  dans le commentaire de la correction précédente, et `poserLongue.js`
+  déclarait déjà `btn-carre` sur ses ronds depuis le 8 octobre. C'est
+  `poserOperation.js` qui ne l'avait pas reçue. **Une correction posée sur un
+  seul des chemins qui mènent au même endroit ne ferme rien** : sixième fois.
+- **Combien de fois** : |||||| — et celle-ci est la plus nette, puisque les
+  deux fichiers portent le même objet sous deux noms (`pl-rond`, `po-rond`).
+- **Ce qui manque** : *fait* — `tools/boutonsEtires.mjs` ouvre les
+  quatre-vingts activités sur un téléphone de 390 × 844 et mesure CHAQUE
+  bouton de la couche de jeu : 1 902 mesurés, et il a trouvé tout seul un
+  second fautif que personne n'avait vu (les facteurs cliquables d'un produit
+  posé, 18 × 44 px). La règle générale : **quand une correction porte sur une
+  CLASSE d'objets, ne pas corriger l'objet — balayer la classe.**
+
+## Une règle de mesure écrite trois fois avant d'être juste — 2026-10-13
+
+- **Ce que je voulais faire** : que `boutonsEtires` dise « ceci est un ovale ».
+- **Ce qui a coûté** : deux balayages complets pour rien (vingt minutes
+  chacun). (1) « rayon ≥ la moitié du PETIT côté » : 117 fautifs, dont tous les
+  boutons en GÉLULE du dépôt — « Un indice », « Montre-moi », « Vérifier » —
+  qui sont ronds par le rayon et trois fois plus LARGES que hauts. (2) rayon
+  sur le petit côté encore : le chiffre « 3 » d'une ligne de calcul,
+  18 × 25 px avec 10 px de rayon, déclaré ovale alors qu'il a la forme d'un
+  chiffre. La bonne règle tient deux bouts : **rayon mesuré sur le GRAND côté**
+  (seuls un cercle et une gélule passent) **et plus haut que large d'un quart
+  au moins** (le plancher étire la hauteur, jamais la largeur).
+- **Combien de fois** : ||| — troisième outil de mesure ce mois-ci dont la
+  première écriture accusait du code sain (les caractères perdus, deux fois).
+- **Ce qui manque** : le réflexe, et il commence à se dessiner. **Un critère
+  neuf se teste d'abord sur ce qu'on SAIT bon**, pas seulement sur le défaut
+  qu'on vient de voir : si la règle crie sur dix objets sains, elle sera
+  désactivée avant d'avoir servi.
