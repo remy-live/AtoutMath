@@ -393,7 +393,28 @@
 
 /* --- RESPONSIVE ADJUSTMENTS --- */
 @media (max-width: 600px) {
-    .game-question { font-size: 1.6rem; margin-bottom: 20px; }
+    /* ICI SE TROUVAIT « font-size: 1.6rem », ET IL ANNULAIT LES QUATRE
+       PALIERS CI-DESSUS SUR TOUT ÉCRAN DE MOINS DE 600 px.
+       ====================================================================
+       RÉMY, capture d'iPhone du 13 octobre : « sur téléphone le texte est
+       gros le schéma minuscule ». Et déjà, au banc du Mac : « globalement
+       les énoncés ont une police énorme ».
+
+       « .game-question--long » et « .game-question » ont la MÊME spécificité
+       — une classe chacun. Entre deux règles de même poids, c'est l'ordre du
+       fichier qui tranche, et celle-ci était plus bas. Résultat : sur un
+       téléphone, « 7 × 8 » et une phrase de soixante-dix caractères avaient
+       exactement la même taille, celle du calcul mental. Tout le travail de
+       « ui/enonce.js » ne servait qu'à la souris.
+
+       MESURÉ : l'énoncé de « Lire un codage » tombait de 25,6 px à 16,8 px
+       une fois la ligne retirée, et sa hauteur de 96 px à 42 px — la place
+       rendue allant à la figure, qui est ce qu'il faut LIRE pour répondre.
+
+       On ne remet pas une taille ici : la borne par la largeur de l'écran est
+       déjà dans le clamp des paliers (5,4vw + 14px et ses cousins). Seule la
+       marge basse reste, qui ne contredit personne. */
+    .game-question { margin-bottom: 20px; }
     .tactile-grid { grid-template-columns: repeat(5, 50px); grid-template-rows: repeat(5, 50px); gap: 4px; padding: 8px; }
     .missing-grid { grid-template-columns: repeat(3, 60px); gap: 10px; }
     .missing-cell { width: 60px; height: 60px; font-size: 1.4rem; }
@@ -408,7 +429,12 @@
 }
 
 /* Appliquer les mêmes styles pour le simulateur mobile (qui a une largeur fixe < 600px) */
-.device-simulator .game-question { font-size: 1.6rem; margin-bottom: 20px; }
+/* MÊME CORRECTION QUE CI-DESSUS, et ici c'était pire : « .device-simulator
+   .game-question » pèse DEUX classes contre une, si bien que les paliers
+   étaient battus quel que soit l'ordre du fichier. L'aperçu du professeur
+   montrait donc un énoncé qu'aucun élève n'a jamais vu. C'est précisément
+   par cet aperçu que Rémy regarde ses parcours. */
+.device-simulator .game-question { margin-bottom: 20px; }
 .device-simulator .bubble { width: 80px; height: 80px; font-size: 1.6rem; }
 .device-simulator .tactile-grid { grid-template-columns: repeat(5, 50px); grid-template-rows: repeat(5, 50px); gap: 4px; padding: 8px; }
 .device-simulator .missing-grid { grid-template-columns: repeat(3, 60px); gap: 10px; }

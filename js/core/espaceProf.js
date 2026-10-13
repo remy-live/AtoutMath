@@ -158,8 +158,13 @@ export const apercuDeListe = (classId, texte, codeCommun) =>
     auServeur('/teacher/roster', { classId, action: 'apercu', texte, codeCommun });
 export const importerListe = (classId, liste) =>
     auServeur('/teacher/roster', { classId, action: 'importer', liste });
-export const nouveauCode = (classId, studentId) =>
-    auServeur('/teacher/roster', { classId, action: 'code', studentId });
+// LE CODE PEUT MAINTENANT ÊTRE CHOISI. Sans deuxième argument, on tire au
+// hasard comme avant — tous les appels existants gardent leur sens.
+export const nouveauCode = (classId, studentId, codeChoisi = '') =>
+    auServeur('/teacher/roster', { classId, action: 'code', studentId, codeChoisi });
+// RENOMMER UN ÉLÈVE. Rémy : « il faut que ce soit simple de le renommer ».
+export const renommerLEleve = (classId, studentId, pseudo) =>
+    auServeur('/teacher/roster', { classId, action: 'pseudo', studentId, pseudo });
 export const refaireLesCodes = (classId, codeCommun = '') =>
     auServeur('/teacher/roster', { classId, action: 'codes', codeCommun });
 export const retirerEleve = (classId, studentId) =>

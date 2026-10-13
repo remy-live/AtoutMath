@@ -30,6 +30,7 @@ import { uuid, shortId } from './ids.js';
 import { direQuOnVoit, oublierLEcran } from './ecran.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
+import { surveillerEnonces } from '../ui/enonce.js';
 import { filtrerEtapes, peutSauter, estRetire, calculatriceAccordee } from './seanceDistante.js';
 import { majFilSeance, cacherFilSeance } from '../ui/filSeance.js';
 
@@ -1251,6 +1252,24 @@ export class Runner {
                 reglages: step.params
             });
         });
+
+        // L'ÉNONCÉ SE RÈGLE SUR SA LONGUEUR — voir `ui/enonce.js`, qui range les
+        // questions en quatre paliers : « la question doit dominer, pas régner ».
+        //
+        // L'OBSERVATEUR ÉTAIT POSÉ DANS `games/engine.js`, ET LÀ SEULEMENT. Or un
+        // exercice sur deux n'est pas un « jeu » mais une ACTIVITÉ — un QCM, un
+        // pavé numérique, une activité à choix —, et celles-là montaient par ici
+        // sans jamais croiser l'observateur. MESURÉ sur quatre exercices à
+        // figure : palier attendu `--long` ou `--moyen`, palier posé : aucun.
+        // Rémy : « sur téléphone le texte est gros le schéma minuscule ».
+        //
+        // L'appel est posé ICI plutôt que dans chaque activité, pour la raison
+        // qu'`enonce.js` écrit lui-même : `.game-question` est écrite par une
+        // trentaine d'endroits, et les appeler un par un, c'est en oublier un
+        // aujourd'hui et trois demain. C'est d'ailleurs exactement ce qui vient
+        // d'arriver. `surveillerEnonces` ne s'installe qu'une fois par racine :
+        // l'appeler à chaque question ne coûte rien.
+        surveillerEnonces(this.canvas);
 
         this.handle = mod.mount(this.canvas, this.session, activity.mountOptions || {});
         // La session n'existe qu'ici : c'est seulement maintenant qu'on sait

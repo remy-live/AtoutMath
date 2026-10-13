@@ -753,6 +753,47 @@
     .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .prio-btn { flex: 0 0 auto; }
 }
 
+/* ET « CE QUI RESTE » A UN PLANCHER. C'est le complément de la règle
+   ci-dessus, pas son contraire.
+   ======================================================================
+   RÉMY, capture d'iPhone du 13 octobre : « sur téléphone le texte est gros
+   le schéma minuscule ».
+
+   La règle de Thalès a raison sur le principe — les cartes sont ce qu'on
+   TOUCHE, elles gardent leur taille, la figure prend ce qui reste. Mais
+   « ce qui reste » n'avait aucun plancher, et une figure qui prend ce qui
+   reste de rien ne vaut plus rien : MESURÉ sur « Lire un codage » dans un
+   plateau de 354 px, le dessin tombait à ×0,19 de sa taille — 60 × 55 px
+   pour une vue de 318 × 290. Un timbre au milieu d'une boîte large et vide,
+   car « preserveAspectRatio » réduit alors le dessin jusqu'à ce qu'il tienne
+   dans la HAUTEUR, et tout le reste est du blanc.
+
+   La section de css/games.css avait déjà tranché, pour les mêmes plaintes
+   (« il n'y a plus le schéma », « la grille du robot est trop petite ») :
+   « la zone de dessin a un PLANCHER, jamais 0 ; l'enveloppe DÉFILE au lieu
+   de rogner ce qui dépasse ». Il manquait de l'appliquer ici.
+
+   POURQUOI LE PLANCHER EST SUR LE CADRE ET NON SUR LE SVG, et c'est mesuré :
+   posé sur le SVG (« max-height: max(100%, 200px) »), il relève la figure
+   SANS rien faire défiler — trop beau — parce que le dessin déborde alors de
+   son cadre sans pousser personne, et MORD sur la première carte. On venait
+   de corriger ce défaut-là sur le contre-la-montre ; le réintroduire ici en
+   réparant autre chose aurait été un bel aller-retour. Sur le CADRE, le
+   plancher occupe une vraie place : il POUSSE, et le plateau défile.
+
+   200 px ET NON 240, mesuré aux deux hauteurs qui comptent : à 560 px —
+   celle d'un iPhone dont on a grossi le texte dans les réglages — il coûte
+   8 px de défilement et garde les DEUX cartes à l'écran, pour un dessin de
+   ×0,735 au lieu de ×0,707. À 240 px de plancher, le dessin monte à ×0,882
+   mais le défilement passe à 48 px. Au-dessus de 660 px de plateau, la règle
+   ne s'applique pas du tout : rien ne change pour l'élève sur son téléphone,
+   où le dessin fait déjà sa taille entière. */
+@container plateau (max-height: 660px) {
+    .canvas-area:has(> .figure-wrap):has(> .prio-btn) > .figure-wrap {
+        min-height: 200px;
+    }
+}
+
 /* Disposition en une seule colonne (complément de la règle deux colonnes) :
    figure et pavé se partagent la hauteur, la figure doit donc céder. Pour que
    les cotes restent lisibles malgré cette réduction, on les écrit plus gros

@@ -1043,11 +1043,75 @@ verifier('un élève mis de côté ne se connecte plus avec son billet',
     json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['code'] === 403);
 db()->prepare('UPDATE students SET blocked = 0 WHERE id = ?')->execute([$idEmma]);
 
+// --- RENOMMER UN ÉLÈVE, ET LE CHOIX DE SON CODE
+//
+// RÉMY : « j'aimerais aussi pouvoir modifier le pseudo d'un élève et son mot
+// de passe », puis « il faut que ce soit simple de le renommer ».
+//
+// CE QUE CETTE ÉPREUVE GARDE, ET QU'UN APPEL QUI REND « ok » NE PROUVE PAS :
+// un renommage n'a de sens que si l'élève entre avec le NOUVEAU nom et plus
+// avec l'ancien. On écrit donc les deux connexions, pas la réponse de l'API.
+$r = json('/teacher/roster', ['classId' => $classeL, 'action' => 'pseudo',
+                              'studentId' => $idEmma, 'pseudo' => 'emma.d'], $jetonProf);
+verifier('le professeur renomme un élève', $r['code'] === 200);
+verifier('ET L\'ÉLÈVE ENTRE AVEC SON NOUVEAU NOM',
+    json('/login', ['login' => 'emma.d', 'code' => '4KP2'])['code'] === 200);
+verifier('et plus avec l\'ancien',
+    json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['code'] === 401);
+
+// SON CODE N'A PAS BOUGÉ, et c'est la moitié qu'on oublie : un billet
+// distribué ne se périme pas parce qu'on corrige une faute de frappe. La
+// connexion ci-dessus le prouve déjà — elle emploie le code d'avant.
+
+// UN IDENTIFIANT DÉJÀ PRIS EST REFUSÉ, sans quoi deux élèves entreraient l'un
+// chez l'autre. La liste importée plus haut porte « jeanluc.martin ».
+$r = json('/teacher/roster', ['classId' => $classeL, 'action' => 'pseudo',
+                              'studentId' => $idEmma, 'pseudo' => 'jeanluc.martin'], $jetonProf);
+verifier('un identifiant déjà pris est refusé', $r['code'] === 400);
+verifier('et le refus dit pourquoi, en français',
+    str_contains(mb_strtolower((string) ($r['json']['message'] ?? '')), 'déjà pris'));
+verifier('ET L\'ÉLÈVE RENOMMÉ GARDE SON NOM après un refus',
+    json('/login', ['login' => 'emma.d', 'code' => '4KP2'])['code'] === 200);
+
+// SE RENOMMER COMME ON S'APPELLE DÉJÀ n'est pas un conflit avec soi-même.
+// L'empreinte est la même, et le code comparait les empreintes : « Emma.D »
+// aurait été refusé parce qu'« emma.d » est pris — par lui.
+$r = json('/teacher/roster', ['classId' => $classeL, 'action' => 'pseudo',
+                              'studentId' => $idEmma, 'pseudo' => 'Emma.D'], $jetonProf);
+verifier('on peut se renommer comme on s\'appelle déjà', $r['code'] === 200);
+
+// UN IDENTIFIANT VIDE NE PERMET DE SE CONNECTER À RIEN.
+verifier('un identifiant vide est refusé',
+    json('/teacher/roster', ['classId' => $classeL, 'action' => 'pseudo',
+                             'studentId' => $idEmma, 'pseudo' => '   '], $jetonProf)['code'] === 400);
+
+// LE CODE CHOISI PAR LE PROFESSEUR — « modifier […] son mot de passe ».
+$r = json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
+                              'studentId' => $idEmma, 'codeChoisi' => 'zb7k'], $jetonProf);
+verifier('le professeur choisit le code d\'un élève', $r['code'] === 200);
+verifier('ET IL ENTRE AVEC, MÊME ÉCRIT EN MINUSCULES',
+    json('/login', ['login' => 'emma.d', 'code' => 'zb7k'])['code'] === 200);
+// LE CODE EST RANGÉ EN MAJUSCULES, et ce n'est pas pour la connexion : celle-ci
+// marche dans les deux cas, `/login` comparant après `strtoupper`. C'est pour
+// le BILLET. Le code s'imprime et se lit à côté de ceux des camarades, tous en
+// majuscules ; un « zb7k » au milieu de vingt-neuf « 4KP2 » se recopie de
+// travers. Écrit ainsi après que `epreuveTombe` a montré que la version
+// précédente de cette vérification ne gardait RIEN.
+$ligne = null;
+foreach (($r['json']['eleves'] ?? []) as $e) {
+    if (($e['id'] ?? '') === $idEmma) $ligne = $e;
+}
+verifier('et le code s\'affiche en majuscules sur sa ligne',
+    $ligne !== null && ($ligne['code'] ?? '') === 'ZB7K');
+verifier('un code choisi avec un espace est refusé',
+    json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
+                             'studentId' => $idEmma, 'codeChoisi' => 'a b'], $jetonProf)['code'] === 400);
+
 // --- Un nouveau code invalide l'ancien billet
 json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
                          'studentId' => $idEmma], $jetonProf);
 verifier('un nouveau code périme l\'ancien billet',
-    json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['code'] === 401);
+    json('/login', ['login' => 'emma.d', 'code' => 'zb7k'])['code'] === 401);
 
 titre('10. La page de santé sait reconnaître une fuite');
 

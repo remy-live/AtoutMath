@@ -1611,11 +1611,41 @@ function handleTeacherRoster(): void
                  'eleves' => rosterLisible($classe['id'])]);
     }
 
+    // RENOMMER UN ÉLÈVE. Rémy : « j'aimerais aussi pouvoir modifier le pseudo
+    // d'un élève et son mot de passe », puis « il faut que ce soit simple ».
+    // Une action, un champ, une phrase en retour — et le refus est une phrase
+    // lui aussi, parce qu'« identifiant déjà pris » se répare tout seul quand
+    // on le lit, alors qu'une erreur 409 muette fait écrire un message.
+    if ($action === 'pseudo') {
+        $bilan = renommerEleve((string) ($body['studentId'] ?? ''), $classe['id'],
+                               (string) ($body['pseudo'] ?? ''));
+        if (!$bilan['ok']) fail(400, 'bad_login', $bilan['dit']);
+        respond(['ok' => true, 'dit' => $bilan['dit'],
+                 'eleves' => rosterLisible($classe['id'])]);
+    }
+
     if ($action === 'code') {
-        if (!nouveauCodePourEleve((string) ($body['studentId'] ?? ''), $classe['id'])) {
+        // LE CODE CHOISI PASSE PAR LE MÊME CONTRÔLE QUE LE CODE COMMUN, et ce
+        // n'est pas de la symétrie pour la symétrie : c'est le même objet, qui
+        // se dicte et se recopie sur un billet photocopié. Un code avec un
+        // espace ou un accent se perd entre le tableau et le clavier.
+        $choisi = trim((string) ($body['codeChoisi'] ?? ''));
+        if ($choisi !== '' && !preg_match('/^[A-Za-z0-9]{3,12}$/', $choisi)) {
+            fail(400, 'bad_code', 'Le code doit faire de 3 à 12 lettres ou chiffres, sans espace.');
+        }
+        if (!nouveauCodePourEleve((string) ($body['studentId'] ?? ''), $classe['id'], $choisi)) {
             fail(404, 'student_not_found', 'Élève introuvable.');
         }
-        respond(['ok' => true, 'dit' => "Nouveau code tiré. L'ancien billet ne vaut plus rien.",
+        respond(['ok' => true,
+                 'dit' => $choisi !== ''
+                    ? 'Son code est maintenant « ' . mb_strtoupper($choisi)
+                        . ' ». L\'ancien billet ne vaut plus rien.'
+                    : "Nouveau code tiré. L'ancien billet ne vaut plus rien.",
+                 // UN TIRAGE NEUF POUR LA FENÊTRE SUIVANTE. Elle pré-remplit
+                 // son champ avec lui ; sans cette ligne, deux élèves changés
+                 // à la suite recevraient le MÊME code proposé, et chacun
+                 // pourrait entrer chez l'autre.
+                 'codePropose' => codeEleve(4),
                  'eleves' => rosterLisible($classe['id'])]);
     }
 

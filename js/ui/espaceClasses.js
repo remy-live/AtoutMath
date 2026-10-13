@@ -56,7 +56,7 @@ import { oublierLesClasses } from './donnerSeance.js';
 import { nomDuProf } from '../core/verrouProf.js';
 import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
-    nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, leDirect,
+    nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, renommerLEleve, leDirect,
     renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
     seancesDeLaClasse,
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
@@ -2041,8 +2041,16 @@ function listeHtml() {
                 <button type="button" class="ec-mini" data-billet="${esc(e.id)}"
                         title="Réimprimer CE billet, sans changer son code"
                         >billet</button>
+                <button type="button" class="ec-mini" data-pseudo="${esc(e.id)}"
+                        data-pseudo-actuel="${esc(e.login || '')}"
+                        data-prenom="${esc(e.prenom)}"
+                        title="Changer l'identifiant avec lequel il se connecte. Son code et son travail ne changent pas."
+                        >renommer</button>
                 <button type="button" class="ec-mini" data-code="${esc(e.id)}"
-                        title="Tirer un nouveau code : l'ancien billet ne vaudra plus rien">code</button>
+                        data-prenom="${esc(e.prenom)}"
+                        data-code-actuel="${esc(e.code || '')}"
+                        title="Changer son code : en accepter un tiré au hasard, ou écrire le vôtre. L'ancien billet ne vaudra plus rien."
+                        >code</button>
                 <button type="button" class="ec-mini" data-ecarter="${esc(e.id)}"
                         data-etat="${e.ecarte ? '1' : '0'}"
                         title="${e.ecarte ? 'Le laisser revenir' : 'Il ne pourra plus se rattacher'}"
@@ -2552,7 +2560,13 @@ async function brancher(e, redessiner) {
     }
 
     const el = e.target.closest('[data-ouvrir], [data-retour], [data-onglet], [data-nouvelle-classe],'
-        + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
+        // UN CROCHET NEUF DOIT ÊTRE INSCRIT ICI, et l'oublier échoue EN
+        // SILENCE : le bouton existe, il a la bonne taille, la bonne
+        // infobulle, les bons attributs — et le clic ne déclenche rien, parce
+        // que `closest()` ne le reconnaît pas. Mesuré en ajoutant
+        // « renommer » : la sonde voyait « bouton renommer 79×25 px, élève
+        // Bernard Tom », puis « le clic n'ouvre aucune fenêtre ».
+        + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code], [data-pseudo],'
         + '[data-seance-ajouter], [data-seance-retirer], [data-bac-jeux],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
@@ -3139,9 +3153,59 @@ async function brancher(e, redessiner) {
         return;
     }
 
-    if (d.code) {
-        await fait(nouveauCode(cid, d.code), (r) => {
+    // RENOMMER, ET C'EST TOUT. Rémy : « il faut que ce soit simple de le
+    // renommer ». Une fenêtre, un champ DÉJÀ REMPLI avec son identifiant
+    // actuel, Entrée pour valider — on corrige une faute de frappe sans
+    // retaper le reste, ce qui est le cas le plus fréquent et de loin.
+    //
+    // PAS DE CONFIRMATION, et c'est un choix : renommer n'efface rien et se
+    // refait en trois secondes. On garde « écrivez RETIRER » pour ce qui ne se
+    // répare pas. Une confirmation posée partout n'est plus lue nulle part.
+    //
+    // Le refus du serveur — « déjà pris » — remonte par `fait`, qui l'affiche :
+    // il n'y a donc rien à vérifier ici, et SURTOUT rien à vérifier DEUX fois.
+    // L'unicité se juge sur l'empreinte de tous les élèves de la base, que
+    // cette page ne connaît pas.
+    if (d.pseudo) {
+        const avant = d.pseudoActuel || '';
+        const voulu = await demander(`L'identifiant de ${d.prenom}`, {
+            valeur: avant, bouton: 'Renommer', max: 40,
+            aide: 'C\'est ce qu\'il tape pour se connecter. Son code ne change pas, '
+                + 'et son travail non plus.'
+        });
+        const propre = (voulu || '').trim();
+        if (!propre || propre === avant) return;
+        await fait(renommerLEleve(cid, d.pseudo, propre), (r) => {
             if (r.eleves) vue.liste = { ...(vue.liste || {}), eleves: r.eleves };
+        });
+        return;
+    }
+
+    if (d.code) {
+        // LE CHAMP EST PRÉ-REMPLI AVEC UN CODE TIRÉ AU HASARD, et c'est ce qui
+        // fait tenir les deux gestes dans une seule fenêtre : Entrée accepte le
+        // tirage — l'ancien comportement du bouton, à une touche près —, et
+        // l'on écrit par-dessus pour choisir le sien. Rémy : « modifier […]
+        // son mot de passe ».
+        //
+        // ON NE PEUT PAS DIRE « LAISSEZ VIDE POUR TIRER AU HASARD » : `demander`
+        // refuse de valider un champ vide et garde la fenêtre ouverte. Une
+        // aide qui promet un geste impossible est pire qu'une aide absente.
+        const propose = (vue.liste && vue.liste.codePropose) || '';
+        const choisi = await demander(`Le code de ${d.prenom}`, {
+            valeur: propose, bouton: 'Changer le code', max: 12,
+            aide: `Il a aujourd'hui « ${d.codeActuel || '—'} ». Celui-ci est tiré au `
+                + 'hasard : validez-le, ou écrivez le vôtre par-dessus. '
+                + 'Dans les deux cas, l\'ancien billet ne vaudra plus rien.'
+        });
+        if (!choisi) return;
+        await fait(nouveauCode(cid, d.code, choisi.trim()), (r) => {
+            if (r.eleves) vue.liste = { ...(vue.liste || {}), eleves: r.eleves };
+            // LE TIRAGE SUIVANT DOIT ÊTRE UN AUTRE, sans quoi deux élèves
+            // changés à la suite repartiraient avec le MÊME code — et chacun
+            // pourrait entrer chez l'autre. Le serveur en renvoie un neuf à
+            // chaque fois ; il reste à le ranger.
+            if (r.codePropose) vue.liste = { ...(vue.liste || {}), codePropose: r.codePropose };
         });
         return;
     }

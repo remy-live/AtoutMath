@@ -69,6 +69,10 @@ if (iNom >= 0) {
     args.splice(iNom, 2);
 }
 const [essai, source, ancien, nouveau] = args;
+// LE HARNAIS DE L'API EST EN PHP. On le reconnaît à son extension, et c'est
+// tout ce qui le distingue ici : le reste de l'outil — remettre le défaut,
+// exiger la chute, remettre le fichier quoi qu'il arrive — ne change pas.
+const estDuPhp = /\.php$/i.test(essai || '');
 
 // UN DÉFAUT TIENT PARFOIS SUR PLUSIEURS LIGNES, et la ligne de commande ne sait
 // pas les porter — l'interpréteur exécute ce qui est entre accents graves, et un
@@ -141,9 +145,19 @@ function lancer() {
         // dépôt en met quarante secondes. Au-delà, ce n'est plus une épreuve
         // lente, c'est une épreuve qui ne rend pas la main — et c'est une
         // information, pas une panne de l'outil.
-        sortie = execFileSync('node', ['--test', essai], {
-            encoding: 'utf8', stdio: 'pipe', timeout: 120_000, killSignal: 'SIGKILL'
-        });
+        // LE HARNAIS DE L'API EST EN PHP, ET IL COMPTE AUTANT QUE LES AUTRES.
+        // Pendant longtemps cet outil ne savait lancer que `node --test`, si
+        // bien que la règle de la maison — « une épreuve neuve se voit échouer
+        // avant qu'on la croie » — ne s'appliquait qu'aux deux tiers du dépôt.
+        // Les gardes de `tools/testApi.php` étaient crues sur parole, ou
+        // vérifiées à la main avec un script jeté après usage, trois fois.
+        sortie = estDuPhp
+            ? execFileSync('php', [essai], {
+                encoding: 'utf8', stdio: 'pipe', timeout: 180_000, killSignal: 'SIGKILL'
+            })
+            : execFileSync('node', ['--test', essai], {
+                encoding: 'utf8', stdio: 'pipe', timeout: 120_000, killSignal: 'SIGKILL'
+            });
     } catch (e) {
         verte = false;
         sortie = `${e.stdout || ''}${e.stderr || ''}`;
@@ -158,6 +172,20 @@ function lancer() {
         }
     }
     const vues = new Set(), tombees = new Set();
+    if (estDuPhp) {
+        // `tools/testApi.php` n'écrit pas du TAP : il imprime « ✓ <nom> » pour
+        // chaque vérification, et liste les échecs en fin de course derrière
+        // un « · ». On lit les deux — les noms vus d'un côté, les tombés de
+        // l'autre — pour rendre exactement la même chose que le lecteur TAP.
+        for (const ligne of sortie.split('\n')) {
+            const nu = ligne.replace(/\u001b\[[0-9;]*m/g, '').trim();
+            const ok = /^[✓v]\s+(.*)$/.exec(nu);
+            if (ok) { vues.add(ok[1]); continue; }
+            const ko = /^·\s+(.*)$/.exec(nu);
+            if (ko) { vues.add(ko[1]); tombees.add(ko[1]); }
+        }
+        return { verte, vues, tombees };
+    }
     for (const ligne of sortie.split('\n')) {
         const m = /^(not ok|ok) \d+ - (.*)$/.exec(ligne.trim());
         if (!m) continue;

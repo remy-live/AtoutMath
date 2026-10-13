@@ -235,16 +235,92 @@ function instantDe(?string $quand): ?int
     return $t === false ? null : $t;
 }
 
-/** Un nouveau code pour un élève. Rend faux s'il n'est pas dans cette classe. */
-function nouveauCodePourEleve(string $eleveId, string $classeId): bool
+/**
+ * RENOMMER UN ÉLÈVE — changer l'identifiant avec lequel il se connecte.
+ *
+ * RÉMY : « j'aimerais aussi pouvoir modifier le pseudo d'un élève et son mot
+ * de passe », et aussitôt après : « il faut que ce soit simple de le
+ * renommer ». Donc pas de cérémonie ici : on vérifie ce qu'il faut, on écrit,
+ * on rend une phrase de français.
+ *
+ * TROIS CHOSES À SAVOIR, ET AUCUNE NE SE DEVINE EN LISANT L'APPEL.
+ *
+ * · L'IDENTIFIANT EST UNIQUE DANS TOUTE LA BASE, pas seulement dans la
+ *   classe : « login_key » est l'index aveugle sur lequel « /login » cherche,
+ *   et deux élèves qui le partageraient feraient entrer l'un chez l'autre.
+ *   On refuse donc, et on le DIT — « déjà pris » est une information utile,
+ *   « impossible » n'en est pas une.
+ * · L'ÉLÈVE QUI PORTE DÉJÀ CE PSEUDO PEUT ÊTRE LUI-MÊME. Renommer « marie.d »
+ *   en « Marie.D » ne doit pas échouer : « identifiantDe » met en minuscules
+ *   et range la ponctuation, donc l'empreinte est la même. On compare les
+ *   identifiants de LIGNE, pas les empreintes.
+ * · LE CODE NE CHANGE PAS. Un billet distribué ne se périme pas parce qu'on
+ *   corrige une faute de frappe dans un prénom. C'est la règle que l'import
+ *   suit déjà (« Le nom peut avoir été corrigé ; le code, jamais »).
+ *
+ * @return array{ok:bool,dit:string,login:string}
+ */
+function renommerEleve(string $eleveId, string $classeId, string $nouveau): array
+{
+    $voulu = identifiantDe($nouveau);
+    if ($voulu === '') {
+        return ['ok' => false, 'login' => '',
+                'dit' => 'Un identifiant vide ne permet de se connecter à rien.'];
+    }
+
+    $s = db()->prepare('SELECT id FROM students WHERE id = ? AND class_id = ? LIMIT 1');
+    $s->execute([$eleveId, $classeId]);
+    if (!$s->fetchAll()) {
+        return ['ok' => false, 'login' => '', 'dit' => 'Cet élève n\'est pas dans cette classe.'];
+    }
+
+    // DÉJÀ PRIS, ET PAR QUI ? On ne nomme pas l'autre élève — il peut être
+    // dans la classe d'un collègue, et son prénom ne regarde personne.
+    $s = db()->prepare('SELECT id FROM students WHERE login_key = ? LIMIT 1');
+    $s->execute([empreinteLogin($voulu)]);
+    $occupant = $s->fetchAll()[0] ?? null;
+    if ($occupant && (string) $occupant['id'] !== $eleveId) {
+        return ['ok' => false, 'login' => '',
+                'dit' => '« ' . $voulu . ' » est déjà pris. Ajoutez une initiale, '
+                       . 'par exemple « ' . $voulu . '.2 ».'];
+    }
+
+    db()->prepare('UPDATE students SET login = ?, login_key = ? WHERE id = ?')
+        ->execute([chiffrer($voulu), empreinteLogin($voulu), $eleveId]);
+    return ['ok' => true, 'login' => $voulu,
+            'dit' => 'Il se connecte maintenant avec « ' . $voulu . ' ». Son code n\'a pas changé.'];
+}
+
+/**
+ * Un nouveau code pour un élève. Rend faux s'il n'est pas dans cette classe.
+ *
+ * `$choisi` VIDE : on tire au hasard, comme avant. RENSEIGNÉ : le professeur
+ * pose le code qu'il veut — Rémy : « modifier […] son mot de passe ». Un élève
+ * qui a oublié le sien repart ainsi avec celui que son professeur lui dicte,
+ * au lieu d'un tirage qu'il faut réimprimer.
+ *
+ * MIS EN MAJUSCULES POUR LE BILLET, et pas pour la connexion — c'est la
+ * correction d'une affirmation que j'avais écrite ici sans la vérifier.
+ * `/login` compare `strtoupper($attendu)` au code tapé : un code rangé en
+ * minuscules laisse donc TRÈS BIEN entrer. Les deux mises en majuscules sont
+ * redondantes, et `tools/epreuveTombe.mjs` l'a prouvé en retirant chacune
+ * tour à tour sans faire tomber la moindre épreuve.
+ *
+ * La vraie raison tient en une ligne : le code est IMPRIMÉ. Il s'affiche sur
+ * la ligne de l'élève et sur son billet, à côté de ceux de ses camarades qui
+ * sont tous en majuscules. Un « zb7k » au milieu de vingt-neuf « 4KP2 » se
+ * recopie de travers.
+ */
+function nouveauCodePourEleve(string $eleveId, string $classeId, string $choisi = ''): bool
 {
     $s = db()->prepare('SELECT id FROM students WHERE id = ? AND class_id = ?');
     $s->execute([$eleveId, $classeId]);
     if (!$s->fetchAll()) {
         return false;
     }
+    $choisi = trim($choisi);
     db()->prepare('UPDATE students SET access_code = ? WHERE id = ?')
-        ->execute([chiffrer(codeEleve()), $eleveId]);
+        ->execute([chiffrer($choisi !== '' ? mb_strtoupper($choisi) : codeEleve()), $eleveId]);
     return true;
 }
 

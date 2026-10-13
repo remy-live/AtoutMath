@@ -247,3 +247,94 @@ sens : il **est** le téléphone.
 Faut-il, sur un écran étroit, que les trois boutons d'aperçu se taisent et
 montrent simplement la page ? C'est un choix d'usage, pas un défaut : je le lui
 laisse.
+
+---
+
+# « Sur téléphone le texte est gros, le schéma minuscule »
+
+Capture d'iPhone, **Lire un codage**, étape 3 d'un parcours en aperçu. La
+question « Combien d'égalités de longueurs ce codage donne-t-il ? » occupe
+**trois lignes** en très gros caractères ; la figure codée, qui est ce qu'il
+faut LIRE pour répondre, tient dans un timbre au milieu de l'écran.
+
+C'est un rapport, pas une taille : il ne demande pas que le texte rapetisse,
+il demande que ce soit la figure qu'on voie.
+
+---
+
+# « J'aimerais aussi pouvoir modifier le pseudo d'un élève et son mot de passe »
+
+Demandé le 13 octobre, dans la foulée des remarques d'affichage. Deux gestes
+distincts, qui ne se valent pas :
+
+- **changer le pseudo** : un élève s'est inscrit avec une faute, ou deux élèves
+  portent le même nom, ou un prénom change. C'est une correction d'état civil ;
+- **changer le mot de passe** : un élève l'a oublié. Le professeur ne doit pas
+  pouvoir LIRE l'ancien — il n'est pas stocké en clair, et c'est une bonne
+  chose —, mais il doit pouvoir en poser un nouveau.
+
+Ce qui suit est à vérifier dans le code avant toute écriture : ce que l'API
+sait déjà faire, qui a le droit de le faire, et ce que l'unicité du pseudo
+impose.
+
+> « il faut que ce soit simple de le renommer »
+
+Donc : **un bouton sur la ligne de l'élève, une fenêtre pré-remplie avec son
+pseudo actuel, Entrée pour valider.** Pas d'enchaînement de confirmations —
+renommer n'efface rien et se refait en trois secondes si l'on s'est trompé.
+On réserve la confirmation à ce qui ne se répare pas (« retirer »).
+
+Ce que l'état des lieux a montré :
+
+| | où | ce qui existe |
+| --- | --- | --- |
+| pseudo | colonne « Identifiant », `students.login` (+ `login_key`) | **rien** — aucune action de l'API ne le change |
+| mot de passe | colonne « Code », `students.access_code` | bouton « code », qui en **tire un au hasard** — on ne peut pas le CHOISIR |
+
+Le pseudo est unique dans toute la base (`login_key`), pas seulement dans la
+classe : un renommage doit donc refuser un pseudo déjà pris, et le dire.
+
+## Ce qui a été fait
+
+**Le bouton « renommer »**, sur la ligne de l'élève, juste à côté de
+l'identifiant qu'il change. Un clic ouvre une fenêtre dont le champ est
+**déjà rempli** avec son identifiant actuel, et sélectionné : on corrige une
+faute de frappe sans retaper le reste. Entrée valide. Pas de confirmation —
+renommer n'efface rien, et on garde « écrivez RETIRER » pour ce qui ne se
+répare pas.
+
+**Le bouton « code » choisit maintenant.** Il ouvre une fenêtre pré-remplie
+avec un code tiré au hasard : valider, c'est l'ancien geste à une touche près ;
+écrire par-dessus, c'est choisir le sien. Les deux demandes de Rémy tiennent
+ainsi dans une seule fenêtre.
+
+Mesuré par le chemin du professeur, dans un vrai navigateur :
+
+```
+bouton « renommer » 79×25 px · élève « Bernard Tom » · identifiant « tom.b »
+fenêtre « L'identifiant de Bernard Tom » · bouton « Renommer »
+champ : « tom.b » PRÉ-REMPLI · 5 signes sélectionnés
+après le renommage, la ligne porte « essai.renomme »  ÉCRIT
+fenêtres natives : 0 · erreurs de page : 0
+```
+
+**Ce que le serveur refuse, et le dit en français** : un identifiant déjà pris
+(« Ajoutez une initiale, par exemple "emma.d.2" »), un identifiant vide, un
+code avec un espace ou un accent. Onze vérifications neuves dans
+`tools/testApi.php`, **vues tomber une par une**.
+
+**Le code de l'élève ne change pas quand on le renomme.** Un billet distribué
+ne se périme pas parce qu'on corrige une faute de frappe. L'épreuve le prouve
+en reconnectant l'élève avec son ancien code sous son nouveau nom.
+
+### Un défaut rencontré en chemin, et gardé
+
+Le bouton s'est d'abord affiché **sans rien faire**. L'espace classes n'écoute
+pas les boutons un par un : un seul gestionnaire remonte au `closest()` d'une
+liste de crochets. Un crochet neuf qu'on oublie d'y inscrire échoue **en
+silence** — le bouton a la bonne taille, la bonne infobulle, les bons
+attributs, et le clic ne déclenche rien.
+
+`tests/crochetsDeLEspaceClasses.test.mjs` compare désormais les crochets posés
+sur des boutons à ceux que les répartiteurs écoutent, et nomme ceux qui
+manquent.

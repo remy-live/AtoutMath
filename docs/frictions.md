@@ -4066,3 +4066,45 @@ lignes** — 2026-10-01
   `ouvrirSonde({ hauteurUtile })` qui simule les barres du professeur, ou
   simplement une sonde qui balaie deux ou trois hauteurs quand la première ne
   reproduit rien, aurait fait l'économie de trois tours.
+
+---
+
+**« Une épreuve neuve se voit échouer » ne valait pas pour le harnais PHP** — 13 octobre 2026
+
+- *Ce que je voulais faire* : vérifier que les onze vérifications neuves de
+  `tools/testApi.php` gardaient bien quelque chose.
+- *Ce qui a coûté* : `tools/epreuveTombe.mjs` ne savait lancer que
+  `node --test`. Les gardes de l'API — un tiers des épreuves du dépôt —
+  étaient donc crues sur parole, ou vérifiées à la main avec un script jeté
+  après usage. C'est la troisième fois que j'écris ce script. Cette fois il a
+  servi tout de suite : sur trois défauts remis, **un ne faisait pas tomber
+  l'épreuve**, et le commentaire que j'avais écrit à côté affirmait un
+  mécanisme FAUX (« un code en minuscules n'aurait laissé entrer personne » —
+  `/login` compare après `strtoupper`, donc si).
+- *Combien de fois* : ||| — et l'outil manquait depuis le début.
+- *Ce qui manque* : plus rien. `epreuveTombe.mjs` reconnaît maintenant un
+  fichier `.php` à son extension, le lance avec `php`, et lit « ✓ nom » et
+  « · nom » là où il lisait du TAP. Le reste de l'outil — exiger une seule
+  occurrence, exiger la chute, remettre le fichier quoi qu'il arrive — n'a pas
+  bougé.
+
+---
+
+**Un crochet neuf non inscrit chez le répartiteur échoue en silence** — 13 octobre 2026
+
+- *Ce que je voulais faire* : ajouter un bouton « renommer » dans l'espace
+  classes.
+- *Ce qui a coûté* : une sonde complète, écrite puis relancée trois fois. Le
+  bouton s'affichait parfaitement — 79 × 25 px, la bonne infobulle, les bons
+  attributs, que la sonde LISAIT — et le clic ne faisait rien. L'espace
+  classes n'écoute pas les boutons un par un : un gestionnaire remonte au
+  `closest()` d'une liste de cinquante crochets écrite à la main. Le mien n'y
+  était pas, et `if (!el) return;` sort sans erreur, sans message, sans trace.
+  Le symptôme — « tout a l'air juste et rien ne se passe » — est le plus cher
+  à diagnostiquer du dépôt.
+- *Combien de fois* : | — mais il se reproduira à chaque bouton ajouté là-bas.
+- *Ce qui manque* : plus rien. `tests/crochetsDeLEspaceClasses.test.mjs`
+  compare les crochets posés sur un bouton à ceux que les répartiteurs
+  écoutent. Il a fallu deux essais pour l'écrire — « le premier `closest()` »
+  n'en lisait qu'un, « celui qui en porte le plus » accusait deux crochets
+  sains écoutés par un second gestionnaire : c'est leur UNION qu'il faut lire.
