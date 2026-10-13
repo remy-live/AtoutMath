@@ -116,6 +116,56 @@ class Relier extends BaseGame {
                 }
                 .rp-note--ok { color: var(--success); font-weight: 700; }
                 .rp-note--ko { color: var(--danger); font-weight: 600; }
+
+                /* SUR UN PLATEAU COURT, LE MOBILIER CÈDE AVANT LA GRILLE.
+                   =====================================================
+                   RÉMY A SIGNALÉ CE JEU DEUX FOIS, DANS DEUX SENS OPPOSÉS :
+                   « relier les points aussi [est tronqué] », puis, le
+                   13 octobre, « c'est petit ». Les deux sont vrais, et ils ne
+                   se règlent pas l'un par l'autre.
+
+                   MESURÉ dans un plateau de 354 px : le mobilier prend 252 px
+                   — titre 77, barre des boutons 144, note 31 — et la grille
+                   reçoit ce qui reste, 170 px. Pire, la barre ne tenait plus :
+                   QUATRE boutons sur cinq étaient hors de l'écran et 153 px de
+                   contenu étaient cachés. L'état d'avant cumulait donc les
+                   deux plaintes.
+
+                   On ne reprend pas la place des boutons — ce sont eux qu'on
+                   TOUCHE, et c'est leur disparition qui avait fait dire
+                   « tronqué ». On en fabrique :
+
+                   · LE TITRE ÉTAIT ÉCRIT DEUX FOIS. « Relie les points »
+                     s'affiche déjà dans la barre du haut, au-dessus du jeu —
+                     on le voit sur sa capture d'iPhone. Sur un écran court,
+                     une des deux est de trop ;
+                   · LES CINQ BOUTONS, EUX, NE BOUGENT PAS. Ils coûtent 144 px
+                     sur trois rangs, et c'est le poste le plus lourd — mais
+                     les resserrer demandait de passer sous le plancher
+                     tactile de 44 px, et ce plancher a déjà été contourné
+                     ailleurs : ce sont les ovales que Rémy a signalés deux
+                     fois. Un essai l'a d'ailleurs confirmé en refusant de
+                     s'appliquer, « #game-layer button » pesant plus lourd que
+                     « .rp-btn ». L'outil avait raison.
+
+                   MESURÉ APRÈS, à 560 px de fenêtre : 103 px de contenu caché
+                   deviennent 83. Au-dessus de 520 px de plateau, la règle ne
+                   s'applique pas : rien ne change pour l'élève sur son
+                   téléphone, où la grille fait déjà 330 px, soit 85 % de la
+                   largeur de l'écran — le maximum qu'une grille carrée puisse
+                   y prendre, les 60 px restants étant les marges du plateau
+                   et du cadre.
+
+                   CE QUI RESTE, ET QUE CE CORRECTIF NE RÉSOUT PAS : à 440 px
+                   de fenêtre — la hauteur qu'il reste à Rémy dans son aperçu —
+                   le contenu de ce jeu ne tient tout simplement pas. Le cadre
+                   défile (overflow-y: auto), donc rien n'est perdu, mais il
+                   faut glisser pour atteindre les boutons. C'est dit dans
+                   docs/remarques-2026-10-13.md plutôt que corrigé de travers. */
+                @container (max-height: 520px) {
+                    .rp-titre { display: none; }
+                    .rp-barre { gap: 5px; }
+                }
             </style>
             <div class="rp-wrap">
                 <div class="rp-tete">

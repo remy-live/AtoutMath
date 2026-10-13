@@ -4136,3 +4136,44 @@ lignes** — 2026-10-01
   en ENTIER.** Celle-ci fait deux cents lignes et portait déjà un bloc pour
   écran étroit, trente lignes plus bas. Un `grep` de la propriété qu'on
   s'apprête à poser (`min-width`, ici) l'aurait montré en une seconde.
+
+---
+
+**La feuille d'un jeu bat celle du dépôt, et mes essais injectés ne mesurent rien**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : essayer trois correctifs dans le navigateur avant
+  d'en écrire un, comme d'habitude — un `<style>` posé dans `<head>`, et l'on
+  compare.
+- *Ce qui a coûté* : trois tours pour rien, sur deux jeux différents le même
+  jour. Les jeux injectent leur feuille DANS leur conteneur
+  (`this.container.innerHTML = '<style>…'`), donc plus bas dans le document que
+  tout ce qu'on ajoute à `<head>` : à spécificité égale, c'est la leur qui
+  gagne, et l'essai mesure l'état d'avant en croyant mesurer l'état d'après.
+  Les verdicts étaient « aucun changement », ce qu'on lit volontiers comme
+  « ce correctif ne sert à rien ».
+- *Combien de fois* : ||| — deux fois sur le tableau à double entrée, une sur
+  Relie les points.
+- *Ce qui manque* : que `ouvrirSonde` sache poser une feuille d'essai QUI
+  GAGNE — un `s.essayerCss(regles)` qui insère le style à la fin du conteneur
+  du jeu, après la sienne, plutôt qu'en tête de document. En attendant,
+  `!important` sur chaque déclaration d'essai fait l'affaire, et il faut y
+  penser à chaque fois.
+
+---
+
+**Un essai qui refuse de s'appliquer peut avoir raison** — 13 octobre 2026
+
+- *Ce que je voulais faire* : resserrer cinq boutons qui prennent 144 px de
+  haut dans un jeu, pour rendre de la place à la grille.
+- *Ce qui a coûté* : rien, et c'est tout l'intérêt de la note. L'essai n'a pas
+  marché : `min-height: 40px` sur `.rp-btn` était battu par
+  `#game-layer button:not(…)`, qui porte un ID. J'ai d'abord cherché pourquoi
+  « mon correctif ne prend pas » — réflexe normal — avant de voir que cette
+  règle-là est le PLANCHER TACTILE de 44 px, et que son contournement est
+  exactement ce qui a produit les ovales que Rémy a signalés deux fois ce
+  mois-ci. La feuille de style défendait une décision prise.
+- *Combien de fois* : | — mais le réflexe vaut d'être écrit.
+- *Ce qui manque* : rien d'outillable. Une phrase, plutôt : **quand une règle
+  refuse de s'appliquer, lire CELLE QUI GAGNE avant de forcer.** Elle dit
+  souvent pourquoi.

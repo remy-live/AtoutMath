@@ -386,3 +386,74 @@ décision est écrite et mesurée là-bas — « la colonne coupée est celle de
 il défile dans sa boîte. J'avais écrit un bloc qui doublait celui-là, et qui
 était d'ailleurs mort — placé plus haut dans la feuille, il était écrasé par
 l'existant. Retiré.
+
+---
+
+# « Idem c'est petit — est-ce manière générale, ou parce que c'est le mode aperçu pour prof ? »
+
+Capture d'iPhone, **Relie les points**, étape 5 d'un parcours. La grille 6 × 6
+occupe moins du quart de l'écran, et plus de la moitié de la page est vide en
+dessous.
+
+La question est la bonne, et c'est elle qu'il faut trancher AVANT de corriger
+quoi que ce soit : ce qu'il voit depuis son aperçu, ses élèves le voient-ils ?
+
+## La réponse : non, l'aperçu ne ment pas
+
+`node tools/apercuContreEleve.mjs` ouvre le **même exercice** par les deux
+chemins, dans la **même fenêtre de 390 × 844**, et compare la part de l'écran
+que prend le dessin.
+
+| exercice | l'élève | son aperçu « mobile » | écart |
+| --- | --- | --- | --- |
+| **Relie les points** | 47 % | 43 % | −4 points |
+| Le Tableau à Double Entrée | 20 % | 23 % | +3 |
+| Lire un codage | 32 % | 44 % | +12 |
+
+**Donc ce qu'il voit, ses élèves le voient.** Ses remarques de ce matin valent
+pour trente téléphones, pas pour un mode d'affichage. (L'aperçu « tablette »,
+lui, pose un cadre de 768 px dans un écran de 390 : 189 px hors écran. Celui-là
+n'a aucun sens sur un téléphone.)
+
+## Mais « c'est petit » a une cause, et elle n'est pas l'aperçu
+
+**C'est la HAUTEUR qui lui manque, pas l'exercice.** Les barres du professeur
+— étape du parcours, titre, boutons de pilotage — lui prennent près de 300 px
+de ses 844. Il regarde donc chaque jeu dans l'équivalent d'un écran de 440 px,
+que ses élèves n'ont jamais.
+
+Dans « Relie les points », à cette hauteur, le **mobilier** prend 252 px :
+
+| | hauteur |
+| --- | --- |
+| titre du jeu | 77 px |
+| **barre des cinq boutons** | **144 px** |
+| note | 31 px |
+| **ce qui reste à la grille** | **170 px** |
+
+Chez l'élève, à 844 px, la grille fait **330 px — 85 % de la largeur de
+l'écran**, et c'est le maximum qu'une grille carrée puisse y prendre : les
+60 px restants sont les marges du plateau (40) et du cadre (20).
+
+### Ce que j'ai corrigé, et ce que je n'ai pas voulu corriger
+
+**Le titre était écrit deux fois** — « Relie les points » s'affiche dans la
+barre du haut *et* dans le jeu. Sur un plateau de moins de 520 px, le second se
+tait : 20 px rendus, sans contrepartie.
+
+**Je n'ai pas touché aux boutons.** Les resserrer demandait de passer sous le
+plancher tactile de 44 px — celui dont le contournement a produit les ovales
+qu'il a signalés deux fois. Mon essai a d'ailleurs refusé de s'appliquer tout
+seul, `#game-layer button` pesant plus lourd que `.rp-btn` : l'outil avait
+raison avant moi.
+
+**Et je n'ai pas rendu son plancher à la grille**, bien que ce soit la façon
+évidente de l'agrandir : ce plancher a été retiré **exprès**, le mois dernier,
+parce qu'il poussait les boutons sous le bord de l'écran — et c'est ce que Rémy
+appelait déjà « tronqué ». Le remettre échangerait sa plainte d'aujourd'hui
+contre celle d'hier.
+
+À 440 px de haut, ce jeu ne tient pas : le cadre défile, donc rien n'est perdu,
+mais il faut glisser pour atteindre les boutons. **C'est la hauteur de son
+aperçu qui est en cause**, et c'est le vrai sujet — voir plus haut : les trois
+boutons mobile/tablette/ordinateur ont été écrits pour un ordinateur.
