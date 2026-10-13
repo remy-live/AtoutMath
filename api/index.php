@@ -1616,6 +1616,14 @@ function handleTeacherRoster(): void
     // Une action, un champ, une phrase en retour — et le refus est une phrase
     // lui aussi, parce qu'« identifiant déjà pris » se répare tout seul quand
     // on le lit, alors qu'une erreur 409 muette fait écrire un message.
+    if ($action === 'prenom') {
+        $bilan = renommerLePrenom((string) ($body['studentId'] ?? ''), $classe['id'],
+                                  (string) ($body['prenom'] ?? ''));
+        if (!$bilan['ok']) fail(400, 'bad_prenom', $bilan['dit']);
+        respond(['ok' => true, 'dit' => $bilan['dit'],
+                 'eleves' => rosterLisible($classe['id'])]);
+    }
+
     if ($action === 'pseudo') {
         $bilan = renommerEleve((string) ($body['studentId'] ?? ''), $classe['id'],
                                (string) ($body['pseudo'] ?? ''));

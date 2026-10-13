@@ -56,7 +56,8 @@ import { oublierLesClasses } from './donnerSeance.js';
 import { nomDuProf } from '../core/verrouProf.js';
 import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
-    nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, renommerLEleve, leDirect,
+    nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, renommerLEleve,
+    corrigerLePrenom, leDirect,
     renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
     seancesDeLaClasse,
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
@@ -286,6 +287,53 @@ export async function ouvrirEspaceClasses() {
         if (e.target.closest('[data-fermer]')) { partir(); return; }
         brancher(e, redessiner);
     });
+    // DOUBLE-CLIC SUR CE QU'ON LIT.
+    //
+    // RÉMY : « il faudrait aussi pouvoir changer le nom et le mdp avec un
+    // double clic, ce serait bien mieux ». Il a raison : viser un petit bouton
+    // à l'autre bout de la ligne pour changer une valeur qu'on a sous les yeux
+    // est un détour, et la liste d'une classe de trente en est pleine.
+    //
+    // ZÉRO DUPLICATION, ET C'EST TOUT LE SOIN DE CET ÉCOUTEUR. Les fenêtres de
+    // l'identifiant et du code existent déjà, avec leurs textes, leurs
+    // pré-remplissages et leurs pièges (le tirage qu'il faut renouveler, le
+    // refus « déjà pris » qui remonte du serveur). On ne les réécrit pas : on
+    // CLIQUE le bouton de la ligne, et tout le reste suit. Le jour où l'une de
+    // ces fenêtres change, le double-clic change avec elle.
+    //
+    // Le prénom, lui, n'a pas de bouton — la ligne en a déjà six. On fabrique
+    // donc un porteur de crochet à la volée et on le donne au répartiteur. Il
+    // n'entre jamais dans la page : aucun clic réel ne peut l'atteindre, et le
+    // prénom ne s'ouvre donc QUE sur un double-clic.
+    //
+    // LES BOUTONS RESTENT. Un double-clic n'existe pas vraiment au doigt — un
+    // double-tap déclenche souvent le zoom du navigateur — et cette liste se
+    // consulte aussi sur téléphone. C'est un raccourci pour la souris, pas un
+    // remplacement.
+    racine.addEventListener('dblclick', (e) => {
+        const cellule = e.target.closest('[data-editer]');
+        if (!cellule) return;
+        // LA CORRESPONDANCE EST ÉCRITE, PAS DÉDUITE DU NOM DU CHAMP.
+        //
+        // Première version : `querySelector('[data-' + champ + ']')`. Élégant,
+        // et faux — `data-prenom` existe déjà sur les boutons « renommer » et
+        // « code », où il PORTE LE PRÉNOM pour le titre de la fenêtre. Un
+        // double-clic sur le prénom trouvait donc le bouton « renommer » et
+        // ouvrait la fenêtre de l'IDENTIFIANT. Mesuré, et pas deviné : la
+        // sonde a dit « fenêtre : L'identifiant de Bernard Tom », alors qu'on
+        // attendait « Le prénom de cet élève ».
+        const CROCHETS = { pseudo: '[data-pseudo]', code: '[data-code]' };
+        const champ = cellule.dataset.editer;
+        const ligne = cellule.closest('tr');
+        const bouton = CROCHETS[champ] && ligne && ligne.querySelector(CROCHETS[champ]);
+        if (bouton) { bouton.click(); return; }
+        if (champ !== 'prenom') return;
+        const porteur = document.createElement('span');
+        porteur.dataset.prenomDe = cellule.dataset.eleve || '';
+        porteur.dataset.prenomActuel = cellule.dataset.valeur || '';
+        brancher({ target: porteur }, redessiner);
+    });
+
     // UNE LISTE DÉROULANTE NE SE CLIQUE PAS, ELLE CHANGE.
     //
     // Il y a d'autres `<select>` dans cette pièce — le quoi du chrono, l'où de
@@ -2029,9 +2077,15 @@ function listeHtml() {
         <tbody>
         ${avec.map(e => `
         <tr${e.ecarte ? ' class="ec-tr-ecarte"' : ''}>
-            <td><b>${esc(e.prenom)}</b>${e.ecarte ? ' <span class="ec-note">(mis de côté)</span>' : ''}</td>
-            <td><code>${esc(e.login)}</code></td>
-            <td><span class="ec-code ec-code--petit">${esc(e.code)}</span></td>
+            <td class="ec-modifiable" data-editer="prenom" data-eleve="${esc(e.id)}"
+                data-valeur="${esc(e.prenom)}" title="Double-cliquez pour corriger le prénom"
+                ><b>${esc(e.prenom)}</b>${e.ecarte ? ' <span class="ec-note">(mis de côté)</span>' : ''}</td>
+            <td class="ec-modifiable" data-editer="pseudo" data-eleve="${esc(e.id)}"
+                data-valeur="${esc(e.login)}" title="Double-cliquez pour changer l'identifiant"
+                ><code>${esc(e.login)}</code></td>
+            <td class="ec-modifiable" data-editer="code" data-eleve="${esc(e.id)}"
+                data-valeur="${esc(e.code)}" title="Double-cliquez pour changer le code"
+                ><span class="ec-code ec-code--petit">${esc(e.code)}</span></td>
             <td class="ec-note">${esc(depuis(e.vu, Math.floor(Date.now() / 1000)))}</td>
             <td class="ec-actions">
                 <button type="button" class="ec-mini" data-poste="${esc(e.login)}"
@@ -2566,7 +2620,7 @@ async function brancher(e, redessiner) {
         // que `closest()` ne le reconnaît pas. Mesuré en ajoutant
         // « renommer » : la sonde voyait « bouton renommer 79×25 px, élève
         // Bernard Tom », puis « le clic n'ouvre aucune fenêtre ».
-        + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code], [data-pseudo],'
+        + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code], [data-pseudo], [data-prenom-de],'
         + '[data-seance-ajouter], [data-seance-retirer], [data-bac-jeux],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
@@ -3166,6 +3220,29 @@ async function brancher(e, redessiner) {
     // il n'y a donc rien à vérifier ici, et SURTOUT rien à vérifier DEUX fois.
     // L'unicité se juge sur l'empreinte de tous les élèves de la base, que
     // cette page ne connaît pas.
+    // CORRIGER LE PRÉNOM — le troisième champ de la ligne, et le seul que rien
+    // ne changeait : il fallait recoller toute la liste de la classe pour une
+    // faute de frappe. Rémy : « changer le nom et le mdp avec un double clic ».
+    //
+    // AUCUN BOUTON NE PORTE CE CROCHET, et c'est voulu : seul le double-clic
+    // le déclenche, par un porteur fabriqué à la volée (voir l'écouteur
+    // « dblclick »). La ligne a déjà six boutons ; un septième pour un geste
+    // qu'on fait trois fois l'an aurait coûté plus qu'il ne rapporte.
+    if (d.prenomDe) {
+        const avant = d.prenomActuel || '';
+        const voulu = await demander('Le prénom de cet élève', {
+            valeur: avant, bouton: 'Corriger', max: 60,
+            aide: 'C\'est le nom que vous lisez dans la liste et dans le direct. '
+                + 'Son identifiant, son code et son travail ne changent pas.'
+        });
+        const propre = (voulu || '').trim();
+        if (!propre || propre === avant) return;
+        await fait(corrigerLePrenom(cid, d.prenomDe, propre), (r) => {
+            if (r.eleves) vue.liste = { ...(vue.liste || {}), eleves: r.eleves };
+        });
+        return;
+    }
+
     if (d.pseudo) {
         const avant = d.pseudoActuel || '';
         const voulu = await demander(`L'identifiant de ${d.prenom}`, {

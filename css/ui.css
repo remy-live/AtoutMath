@@ -579,6 +579,29 @@
     padding: 7px 10px; border-bottom: 1px solid var(--border);
 }
 .ec-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+/* CE QUI SE DOUBLE-CLIQUE DOIT LE DIRE.
+   ====================================
+   RÉMY : « il faudrait aussi pouvoir changer le nom et le mdp avec un double
+   clic, ce serait bien mieux ». Un double-clic est le geste le plus discret de
+   l'interface : il ne laisse aucune trace à l'écran, et personne ne le
+   découvre par hasard. Un pointillé sous la valeur et un curseur de texte
+   suffisent — c'est ce que font les tableurs, et c'est là que le geste
+   s'apprend.
+
+   LE POINTILLÉ EST SOUS LA CELLULE, PAS SOUS LE TEXTE : le code d'un élève est
+   déjà dans une pastille, son identifiant dans un `<code>` ; souligner leur
+   contenu les aurait alourdis. Le survol appuie le trait, pour confirmer qu'on
+   vise bien la bonne cellule dans une liste de trente lignes.
+
+   AU DOIGT, CE STYLE NE SERT À RIEN et ne gêne pas : les boutons de la ligne
+   restent le chemin, et un double-tap y déclencherait surtout le zoom. */
+.ec-modifiable { cursor: text; }
+.ec-modifiable > * {
+    border-bottom: 1px dotted color-mix(in srgb, var(--text-muted) 55%, transparent);
+}
+@media (hover: hover) {
+    .ec-modifiable:hover > * { border-bottom-color: var(--primary); }
+}
 .ec-table tr:last-child td { border-bottom: none; }
 .ec-table code {
     font-size: .86rem; background: var(--bg-hover); padding: 2px 7px;

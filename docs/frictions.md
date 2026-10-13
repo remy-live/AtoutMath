@@ -4177,3 +4177,26 @@ lignes** — 2026-10-01
 - *Ce qui manque* : rien d'outillable. Une phrase, plutôt : **quand une règle
   refuse de s'appliquer, lire CELLE QUI GAGNE avant de forcer.** Elle dit
   souvent pourquoi.
+
+---
+
+**Un attribut `data-` qui sert de PORTEUR DE VALEUR n'est pas un crochet d'action**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : brancher un double-clic sur les trois cellules
+  modifiables d'une ligne d'élève, en cliquant le bouton correspondant plutôt
+  qu'en réécrivant les fenêtres.
+- *Ce qui a coûté* : une sonde complète. `querySelector('[data-' + champ + ']')`
+  est élégant et faux : `data-prenom` existait déjà sur DEUX boutons de la
+  ligne, où il PORTE le prénom pour le titre de la fenêtre. Un double-clic sur
+  le prénom trouvait donc « renommer » et ouvrait la fenêtre de l'identifiant.
+  Le symptôme est trompeur — une fenêtre S'OUVRE, tout a l'air de marcher, et
+  c'est la mauvaise.
+- *Combien de fois* : || — ce fichier mélange les deux usages de `data-` un peu
+  partout (`data-prenom`, `data-etat`, `data-poste-code` portent des valeurs ;
+  `data-code`, `data-retirer` déclenchent des actions).
+- *Ce qui manque* : une convention, et elle coûterait une heure à poser : les
+  porteurs de valeur prennent un préfixe (`data-v-prenom`), les crochets
+  d'action gardent le nom nu. En attendant, **ne jamais composer un sélecteur
+  de crochet par concaténation** — l'écrire en toutes lettres, où un humain le
+  relit.

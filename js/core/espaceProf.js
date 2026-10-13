@@ -165,6 +165,10 @@ export const nouveauCode = (classId, studentId, codeChoisi = '') =>
 // RENOMMER UN ÉLÈVE. Rémy : « il faut que ce soit simple de le renommer ».
 export const renommerLEleve = (classId, studentId, pseudo) =>
     auServeur('/teacher/roster', { classId, action: 'pseudo', studentId, pseudo });
+// CORRIGER LE PRÉNOM. Rémy : « changer le nom et le mdp avec un double clic ».
+// C'était le seul des trois champs de la ligne que rien ne changeait.
+export const corrigerLePrenom = (classId, studentId, prenom) =>
+    auServeur('/teacher/roster', { classId, action: 'prenom', studentId, prenom });
 export const refaireLesCodes = (classId, codeCommun = '') =>
     auServeur('/teacher/roster', { classId, action: 'codes', codeCommun });
 export const retirerEleve = (classId, studentId) =>

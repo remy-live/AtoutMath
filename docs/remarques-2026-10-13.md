@@ -457,3 +457,65 @@ contre celle d'hier.
 mais il faut glisser pour atteindre les boutons. **C'est la hauteur de son
 aperçu qui est en cause**, et c'est le vrai sujet — voir plus haut : les trois
 boutons mobile/tablette/ordinateur ont été écrits pour un ordinateur.
+
+---
+
+# « Changer le nom et le mdp avec un double clic, ce serait bien mieux »
+
+Demandé le 13 octobre, juste après les deux boutons posés le matin. Il dit
+« le **nom** », et non plus « le pseudo » : la ligne d'un élève porte TROIS
+champs, et il les veut tous les trois sous la main.
+
+| colonne | ce que c'est | changeable avant |
+| --- | --- | --- |
+| **Élève** | son prénom (`first_name`) | **non** — seul un import le corrigeait |
+| **Identifiant** | ce qu'il tape pour entrer (`login`) | oui, bouton « renommer » |
+| **Code** | son mot de passe (`access_code`) | oui, bouton « code » |
+
+Donc : double-clic sur la cellule, la fenêtre s'ouvre pré-remplie, Entrée
+valide. On clique **sur ce qu'on lit**, ce qui est plus court que de viser un
+petit bouton à l'autre bout de la ligne.
+
+**Les boutons restent.** Un double-clic n'existe pas vraiment au doigt — un
+double-tap déclenche souvent le zoom du navigateur —, et la liste se consulte
+aussi sur téléphone. Le double-clic est un raccourci pour la souris, pas un
+remplacement. À lui de dire s'il veut qu'on retire les boutons ensuite.
+
+## Ce qui a été fait
+
+**Les trois cellules se double-cliquent** — prénom, identifiant, code. La
+fenêtre s'ouvre pré-remplie, Entrée valide. Un pointillé sous la valeur et un
+curseur de texte le disent : un double-clic ne laisse aucune trace à l'écran,
+et personne ne le découvre par hasard.
+
+Mesuré par le chemin du professeur, dans un vrai navigateur :
+
+| double-clic sur | fenêtre | champ pré-rempli | après |
+| --- | --- | --- | --- |
+| **prénom** | « Le prénom de cet élève » | « Bernard Tom » | **écrit** |
+| **identifiant** | « L'identifiant de DUPONT Emma » | « dupont.emma » | **écrit** |
+| **code** | « Le code de DUPONT Emma » | un tirage | **écrit** |
+
+Un **simple** clic sur le prénom ne fait rien — sinon on renommerait un élève
+en voulant seulement poser le curseur quelque part. Zéro fenêtre native, zéro
+erreur de page.
+
+**Le prénom était le seul des trois que rien ne changeait** : il fallait
+recoller toute la liste de la classe pour corriger une faute de frappe. Six
+vérifications neuves dans `tools/testApi.php`, dont celle qui compte le plus :
+**l'empreinte du prénom doit suivre**. C'est par elle que l'import reconnaît un
+élève déjà là ; la laisser derrière, c'est préparer un doublon au prochain
+collage de liste — un second compte qui n'aurait fait aucun exercice. Vue
+tomber.
+
+### Deux pièges rencontrés en chemin
+
+`data-prenom` **existait déjà** sur les boutons « renommer » et « code », où il
+porte le prénom pour le titre de la fenêtre. Mon écouteur dérivait le sélecteur
+du nom du champ : un double-clic sur le prénom trouvait le bouton « renommer »
+et ouvrait la fenêtre de l'**identifiant**. La correspondance est maintenant
+écrite, pas déduite.
+
+Et ma sonde a d'abord lu « rien n'a changé » sur un prénom qui venait de
+changer : **la liste se retrie par prénom**, donc la première cellule désigne
+quelqu'un d'autre. On suit l'élève par son identifiant.

@@ -292,6 +292,50 @@ function renommerEleve(string $eleveId, string $classeId, string $nouveau): arra
 }
 
 /**
+ * CORRIGER LE PRÉNOM D'UN ÉLÈVE.
+ *
+ * RÉMY : « il faudrait aussi pouvoir changer le nom et le mdp avec un double
+ * clic ». Le NOM, cette fois — et c'était le seul des trois champs de la ligne
+ * que rien ne changeait : il fallait recoller toute la liste de la classe pour
+ * corriger une faute de frappe sur un prénom.
+ *
+ * DEUX CHOSES, ET LA SECONDE EST LA RAISON D'ÊTRE DE CETTE FONCTION.
+ *
+ * · `first_name_key` DOIT SUIVRE. C'est l'index aveugle sur lequel l'import
+ *   reconnaît un élève déjà là (« entré par le code de la classe — il garde
+ *   son travail »). Le laisser derrière, c'est préparer un doublon au prochain
+ *   collage de liste : l'élève ne serait plus reconnu, et l'on créerait un
+ *   second compte qui n'aurait fait aucun exercice.
+ * · AUCUNE UNICITÉ N'EST EXIGÉE, à la différence de l'identifiant. Deux Lucas
+ *   dans une classe, cela existe ; c'est l'identifiant qui les distingue, et
+ *   lui seul sert à se connecter.
+ *
+ * @return array{ok:bool,dit:string,prenom:string}
+ */
+function renommerLePrenom(string $eleveId, string $classeId, string $nouveau): array
+{
+    $voulu = trim(preg_replace('/\s+/u', ' ', $nouveau) ?? $nouveau);
+    if ($voulu === '') {
+        return ['ok' => false, 'prenom' => '', 'dit' => 'Un prénom vide ne désigne personne.'];
+    }
+    if (mb_strlen($voulu) > 60) {
+        return ['ok' => false, 'prenom' => '', 'dit' => 'Ce prénom est trop long (60 signes au plus).'];
+    }
+
+    $s = db()->prepare('SELECT id FROM students WHERE id = ? AND class_id = ? LIMIT 1');
+    $s->execute([$eleveId, $classeId]);
+    if (!$s->fetchAll()) {
+        return ['ok' => false, 'prenom' => '', 'dit' => 'Cet élève n\'est pas dans cette classe.'];
+    }
+
+    db()->prepare('UPDATE students SET first_name = ?, first_name_key = ? WHERE id = ?')
+        ->execute([chiffrer($voulu), empreintePrenom($voulu), $eleveId]);
+    return ['ok' => true, 'prenom' => $voulu,
+            'dit' => 'Il s\'appelle maintenant ' . $voulu
+                   . '. Son identifiant et son code n\'ont pas changé.'];
+}
+
+/**
  * Un nouveau code pour un élève. Rend faux s'il n'est pas dans cette classe.
  *
  * `$choisi` VIDE : on tire au hasard, comme avant. RENSEIGNÉ : le professeur

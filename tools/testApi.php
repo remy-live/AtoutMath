@@ -1063,6 +1063,44 @@ verifier('et plus avec l\'ancien',
 // distribué ne se périme pas parce qu'on corrige une faute de frappe. La
 // connexion ci-dessus le prouve déjà — elle emploie le code d'avant.
 
+// --- CORRIGER LE PRÉNOM
+//
+// RÉMY : « il faudrait aussi pouvoir changer le nom et le mdp avec un double
+// clic ». Le NOM — et c'était le seul des trois champs de la ligne que rien ne
+// changeait : il fallait recoller toute la liste pour une faute de frappe.
+$r = json('/teacher/roster', ['classId' => $classeL, 'action' => 'prenom',
+                              'studentId' => $idEmma, 'prenom' => '  Emma   Dupont-Léger '],
+          $jetonProf);
+verifier('le professeur corrige un prénom', $r['code'] === 200);
+$ligne = null;
+foreach (($r['json']['eleves'] ?? []) as $e) {
+    if (($e['id'] ?? '') === $idEmma) $ligne = $e;
+}
+verifier('ET LA LISTE PORTE LE NOUVEAU PRÉNOM, les espaces en trop rangés',
+    $ligne !== null && ($ligne['prenom'] ?? '') === 'Emma Dupont-Léger');
+verifier('son identifiant n\'a pas bougé', ($ligne['login'] ?? '') === 'emma.d');
+verifier('ET IL SE CONNECTE TOUJOURS',
+    json('/login', ['login' => 'emma.d', 'code' => '4KP2'])['code'] === 200);
+
+// L'EMPREINTE DU PRÉNOM DOIT SUIVRE, et c'est la moitié invisible : c'est par
+// elle que l'import reconnaît un élève déjà là. La laisser derrière, c'est
+// préparer un DOUBLON au prochain collage de liste — un second compte qui
+// n'aurait fait aucun exercice.
+// `fetchAll()` ET NON `fetchColumn()` : la règle est écrite plus haut dans ce
+// fichier — « on ne garde jamais un PDOStatement à moitié lu ». Un curseur
+// laissé ouvert verrouille la base, et l'écriture SUIVANTE meurt sur
+// « database is locked », à cinquante lignes de là. C'est ce qui vient
+// d'arriver.
+$s = db()->prepare('SELECT first_name_key FROM students WHERE id = ?');
+$s->execute([$idEmma]);
+$lu = $s->fetchAll();
+verifier('et l\'empreinte du prénom a suivi',
+    (string) ($lu[0]['first_name_key'] ?? '') === empreintePrenom('Emma Dupont-Léger'));
+
+verifier('un prénom vide est refusé',
+    json('/teacher/roster', ['classId' => $classeL, 'action' => 'prenom',
+                             'studentId' => $idEmma, 'prenom' => '   '], $jetonProf)['code'] === 400);
+
 // UN IDENTIFIANT DÉJÀ PRIS EST REFUSÉ, sans quoi deux élèves entreraient l'un
 // chez l'autre. La liste importée plus haut porte « jeanluc.martin ».
 $r = json('/teacher/roster', ['classId' => $classeL, 'action' => 'pseudo',
