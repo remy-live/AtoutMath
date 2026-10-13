@@ -576,3 +576,86 @@ différence.
 > **Si le point résiste encore sur son iPhone**, ce n'est pas le logiciel : il
 > faudra regarder son clavier. Je n'ai pas pu le reproduire, ni à 1280 px ni à
 > 390 px, ni dans la fenêtre d'hier ni dans la cellule d'aujourd'hui.
+
+---
+
+# « Sur Poser une opération, les élèves ont fait 2 opérations (ou 3) et ont eu 5/5 »
+
+Signalé le 13 octobre, après une séance en classe. C'est un défaut de
+**notation**, et c'est le plus grave de la journée : tout le reste touche à ce
+qu'on voit, celui-ci touche à ce que le professeur croit savoir du travail de
+ses élèves. Une étape se referme en 5/5 après deux ou trois opérations.
+
+À reproduire en JOUANT l'exercice, pas en lisant le code : il faut savoir
+combien de fois le jeu annonce une réponse juste, et ce que le meneur en
+compte.
+
+## La cause, mesurée
+
+Le jeu déclarait **deux réussites par opération** : une à l'alignement sur la
+virgule, une au résultat. Mesuré en espionnant `state.recordAttempt` pendant
+une vraie partie :
+
+```
+2 tentative(s) déclarée(s) :
+  ✓ COMPTE COMME UNE QUESTION   « Aligner 47 + 128 »
+  ✓ COMPTE COMME UNE QUESTION   « 47 + 128 »
+  le meneur en a retenu : 2
+```
+
+D'où l'arithmétique exacte de ce que Rémy a vu :
+
+| ce que l'élève a fait | ce que le compteur a vu |
+| --- | --- |
+| 3 opérations | 6 → l'étape de 5 se referme à la troisième |
+| 2 opérations + l'alignement d'une 3ᵉ | 5 → **5/5** |
+
+« 2 opérations (ou 3) » : les deux cas, exactement.
+
+**Le remède existait déjà.** `core/BaseGame.js` écrit la règle — « UNE ÉTAPE
+N'EST PAS UNE QUESTION […] c'est l'OPÉRATION qui compte, une fois finie » — et
+`core/runner.js` l'applique en une ligne (`if (payload.partiel) return;`). Ce
+jeu n'avait jamais posé le drapeau.
+
+Après, sur la même partie :
+
+```
+  ✓ partiel                     « Aligner 820 + 728 »
+  ✓ COMPTE COMME UNE QUESTION   « 820 + 728 »
+  le meneur en a retenu : 1
+```
+
+L'alignement **reste enregistré** : il nourrit les statistiques et le carnet
+d'erreurs — aligner sur la virgule est une vraie réussite, et même la moitié
+difficile de l'exercice. Il ne fait simplement plus avancer le compteur.
+
+## Et ce n'est peut-être pas le seul
+
+`node tools/comptesDesJeux.mjs` (neuf) cherche la même forme dans tout le
+catalogue : **124 déclarations de réussite dans 82 fichiers**, dont **13
+fichiers** déclarent plusieurs réussites sans jamais marquer la moindre étape.
+
+Six ont très exactement la forme de celui-ci — une réussite par élément, **plus
+une pour la manche entière** :
+
+| jeu | par élément | par manche |
+| --- | --- | --- |
+| Le Chantier | `6 × 7` | « Chantier terminé » |
+| Les Mots Cachés | un mot trouvé | « Grille terminée » |
+| 2000 | une addition | « Atteindre la tuile » |
+| Le Plateau | un coup | « mat en N » |
+| Point à point | un calcul | « Relier N points » |
+| Le Peintre | une case | « niveau N » |
+
+Dans Les Mots Cachés, la manche se déclare **dans la même respiration** que le
+dernier mot : ce dernier mot compte donc deux fois.
+
+**Je ne les ai pas corrigés.** Deux fois aujourd'hui, une règle qui paraissait
+fausse s'est révélée délibérée et mesurée — le plancher tactile, la règle de
+Thalès. Ces six-là demandent d'ouvrir chaque jeu et de compter, comme on vient
+de le faire pour celui de Rémy. À lui de dire si l'on s'y met.
+
+Les sept autres (`patrons`, `conversion`, `redaction`, `nova`, `course`,
+`tetris`, `ninja`) semblent déclarer des questions **distinctes** plutôt qu'une
+étape et sa somme — sauf peut-être `redaction`, dont les trois déclarations
+ressemblent aux trois étapes d'UNE démonstration.

@@ -4200,3 +4200,25 @@ lignes** — 2026-10-01
   d'action gardent le nom nu. En attendant, **ne jamais composer un sélecteur
   de crochet par concaténation** — l'écrire en toutes lettres, où un humain le
   relit.
+
+---
+
+**Une sonde qui recopie le code qu'elle mesure ne mesure que la recopie** — 13 octobre 2026
+
+- *Ce que je voulais faire* : vérifier qu'une opération posée ne comptait plus
+  que pour une question, après avoir marqué l'alignement `partiel`.
+- *Ce qui a coûté* : trois tours. Pour simuler l'alignement, j'avais RECOPIÉ
+  dans la sonde la charge que le jeu envoie — `onCorrectAnswer(null, …, {…})`,
+  les mêmes lignes, sans le `partiel` que je venais d'ajouter. Le correctif
+  était en place et la sonde continuait d'annoncer le défaut, fidèlement : elle
+  mesurait MA charge. Puis, en passant par la vraie méthode, j'ai cassé l'état
+  du jeu (`jeu.pose = {}`) et `finir()` est mort en redessinant.
+- *Combien de fois* : || — même forme que la « duplication de l'environnement »
+  déjà notée : on recopie un bout du système pour l'observer, et l'on observe
+  la copie.
+- *Ce qui manque* : la discipline tient en une phrase. **Une sonde appelle les
+  méthodes du code, jamais son contenu recopié, et ne touche JAMAIS à son
+  état.** Quand on ne sait pas quels arguments passer — ici le couple
+  `rang` / `chiffrePris`, dont la convention n'est écrite nulle part — on les
+  CALCULE depuis les données du jeu, ou on essaie chaque possibilité : trois
+  millisecondes, et aucune supposition.

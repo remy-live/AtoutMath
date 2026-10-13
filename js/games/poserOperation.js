@@ -538,9 +538,30 @@ class PoserOperation extends BaseGame {
             this.rangCourant = premierRang(this.tableau);
             this.note('✅ Bien aligné. Maintenant on calcule, en partant de la droite. '
                 + `Colonne des ${this.nomRang(this.rangCourant)} : que met-on dessous ?`, 'ok');
+            // `partiel` : ALIGNER N'EST PAS AVOIR POSÉ L'OPÉRATION.
+            //
+            // RÉMY, après une séance : « sur Poser une opération, les élèves
+            // ont fait 2 opérations (ou 3) et ont eu 5/5 ».
+            //
+            // MESURÉ : une seule opération déclarait DEUX questions — celle-ci
+            // à l'alignement, puis celle de `finir()` au résultat. Trois
+            // opérations en valaient donc six, et une étape de cinq se
+            // refermait avant la troisième. Deux opérations suivies de
+            // l'alignement d'une troisième suffisaient aussi : cinq.
+            //
+            // `BaseGame` dit la règle depuis longtemps — « UNE ÉTAPE N'EST PAS
+            // UNE QUESTION […] c'est l'OPÉRATION qui compte, une fois finie » —
+            // et `runner.onAttempt` la fait appliquer (`if (payload.partiel)
+            // return;`). Ce jeu-ci n'avait jamais posé le drapeau.
+            //
+            // LA TENTATIVE RESTE ENREGISTRÉE : elle nourrit les statistiques et
+            // le carnet d'erreurs — aligner sur la virgule EST une réussite, et
+            // c'est même la moitié difficile de l'exercice. Elle ne fait
+            // simplement plus avancer le compteur de questions.
             this.onCorrectAnswer(null, COMPETENCE, {
                 questionText: `Aligner ${this.operandes.map(x => String(x).replace('.', ',')).join(` ${this.operation} `)}`,
-                expected: 'aligné sur la virgule', given: 'juste', points: 8
+                expected: 'aligné sur la virgule', given: 'juste', points: 8,
+                partiel: true
             });
         } else {
             this.note('Ce nombre est bien placé. Pose l\'autre.', 'ok');
