@@ -1637,9 +1637,23 @@ function handleTeacherRoster(): void
         // n'est pas de la symétrie pour la symétrie : c'est le même objet, qui
         // se dicte et se recopie sur un billet photocopié. Un code avec un
         // espace ou un accent se perd entre le tableau et le clavier.
+        // LE POINT EST ACCEPTÉ, ET LE TIRET, ET LE SOULIGNÉ.
+        //
+        // RÉMY : « que ça accepte aussi le point ». L'ancienne règle,
+        // `[A-Za-z0-9]`, refusait tout le reste — un professeur qui donne
+        // « 6e.2 » comme code à sa classe se faisait renvoyer un message
+        // d'erreur sans comprendre lequel des signes gênait.
+        //
+        // CES TROIS-LÀ ET PAS D'AUTRES, parce qu'un code se DICTE et se
+        // RECOPIE depuis un billet photocopié : le point, le tiret et le
+        // souligné se nomment en un mot et s'écrivent sans ambiguïté. Une
+        // apostrophe ou une espace, non — et l'espace casserait en plus le
+        // collage d'une liste, où elle sépare les colonnes.
         $choisi = trim((string) ($body['codeChoisi'] ?? ''));
-        if ($choisi !== '' && !preg_match('/^[A-Za-z0-9]{3,12}$/', $choisi)) {
-            fail(400, 'bad_code', 'Le code doit faire de 3 à 12 lettres ou chiffres, sans espace.');
+        if ($choisi !== '' && !preg_match('/^[A-Za-z0-9._-]{3,12}$/', $choisi)) {
+            fail(400, 'bad_code',
+                 'Le code doit faire de 3 à 12 signes : des lettres, des chiffres, '
+                 . 'et si besoin un point, un tiret ou un souligné.');
         }
         if (!nouveauCodePourEleve((string) ($body['studentId'] ?? ''), $classe['id'], $choisi)) {
             fail(404, 'student_not_found', 'Élève introuvable.');
@@ -1658,9 +1672,15 @@ function handleTeacherRoster(): void
     }
 
     if ($action === 'codes') {
+        // MÊME ALPHABET QUE LE CODE D'UN SEUL ÉLÈVE — voir plus haut. Deux
+        // règles pour le même objet finissent toujours par diverger, et c'est
+        // le professeur qui paie la différence : « 6e.2 » accepté ici, refusé
+        // là, sans que rien ne l'explique.
         $commun = trim((string) ($body['codeCommun'] ?? ''));
-        if ($commun !== '' && !preg_match('/^[A-Za-z0-9]{3,12}$/', $commun)) {
-            fail(400, 'bad_code', 'Le code commun doit faire de 3 à 12 lettres ou chiffres.');
+        if ($commun !== '' && !preg_match('/^[A-Za-z0-9._-]{3,12}$/', $commun)) {
+            fail(400, 'bad_code',
+                 'Le code commun doit faire de 3 à 12 signes : des lettres, des chiffres, '
+                 . 'et si besoin un point, un tiret ou un souligné.');
         }
         $n = refaireLesCodes($classe['id'], $commun);
         respond(['ok' => true, 'eleves' => rosterLisible($classe['id']),

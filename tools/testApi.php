@@ -1145,6 +1145,28 @@ verifier('un code choisi avec un espace est refusé',
     json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
                              'studentId' => $idEmma, 'codeChoisi' => 'a b'], $jetonProf)['code'] === 400);
 
+// LE POINT EST ACCEPTÉ DANS UN CODE. Rémy : « que ça accepte aussi le point ».
+// Un professeur qui donne « 6e.2 » à sa classe se faisait renvoyer un refus
+// sans comprendre lequel des signes gênait.
+$r = json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
+                              'studentId' => $idEmma, 'codeChoisi' => '6e.2'], $jetonProf);
+verifier('UN CODE AVEC UN POINT EST ACCEPTÉ', $r['code'] === 200);
+// ET IL LAISSE ENTRER : un code accepté qui ne connecte personne serait pire
+// que refusé — on ne s'en apercevrait qu'en classe, trente élèves devant.
+verifier('ET L\'ÉLÈVE ENTRE AVEC',
+    json('/login', ['login' => 'emma.d', 'code' => '6e.2'])['code'] === 200);
+verifier('le tiret et le souligné aussi',
+    json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
+                             'studentId' => $idEmma, 'codeChoisi' => 'a-b_2'], $jetonProf)['code'] === 200);
+// UN CODE COMMUN SUIT LE MÊME ALPHABET : deux règles pour le même objet
+// divergent toujours, et c'est le professeur qui paie la différence.
+verifier('un code COMMUN avec un point est accepté lui aussi',
+    json('/teacher/roster', ['classId' => $classeL, 'action' => 'codes',
+                             'codeCommun' => '6e.2'], $jetonProf)['code'] === 200);
+verifier('mais une apostrophe reste refusée',
+    json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
+                             'studentId' => $idEmma, 'codeChoisi' => "a'b"], $jetonProf)['code'] === 400);
+
 // --- Un nouveau code invalide l'ancien billet
 json('/teacher/roster', ['classId' => $classeL, 'action' => 'code',
                          'studentId' => $idEmma], $jetonProf);

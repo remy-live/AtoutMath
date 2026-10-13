@@ -312,26 +312,7 @@ export async function ouvrirEspaceClasses() {
     // remplacement.
     racine.addEventListener('dblclick', (e) => {
         const cellule = e.target.closest('[data-editer]');
-        if (!cellule) return;
-        // LA CORRESPONDANCE EST ÉCRITE, PAS DÉDUITE DU NOM DU CHAMP.
-        //
-        // Première version : `querySelector('[data-' + champ + ']')`. Élégant,
-        // et faux — `data-prenom` existe déjà sur les boutons « renommer » et
-        // « code », où il PORTE LE PRÉNOM pour le titre de la fenêtre. Un
-        // double-clic sur le prénom trouvait donc le bouton « renommer » et
-        // ouvrait la fenêtre de l'IDENTIFIANT. Mesuré, et pas deviné : la
-        // sonde a dit « fenêtre : L'identifiant de Bernard Tom », alors qu'on
-        // attendait « Le prénom de cet élève ».
-        const CROCHETS = { pseudo: '[data-pseudo]', code: '[data-code]' };
-        const champ = cellule.dataset.editer;
-        const ligne = cellule.closest('tr');
-        const bouton = CROCHETS[champ] && ligne && ligne.querySelector(CROCHETS[champ]);
-        if (bouton) { bouton.click(); return; }
-        if (champ !== 'prenom') return;
-        const porteur = document.createElement('span');
-        porteur.dataset.prenomDe = cellule.dataset.eleve || '';
-        porteur.dataset.prenomActuel = cellule.dataset.valeur || '';
-        brancher({ target: porteur }, redessiner);
+        if (cellule) modifierDansLaCellule(cellule, redessiner);
     });
 
     // UNE LISTE DÉROULANTE NE SE CLIQUE PAS, ELLE CHANGE.
@@ -2590,6 +2571,100 @@ function exercicesSousLaMain() {
     return out;
 }
 
+/**
+ * MODIFIER DANS LA CELLULE, SANS FENÊTRE.
+ *
+ * RÉMY : « j'aimerais bien changer sans popup ». C'est sa ligne rouge de
+ * toujours — « tu utilises des alert et prompt, on évite ! » — poussée d'un
+ * cran : même une fenêtre maison est un détour quand la valeur est sous les
+ * yeux. On fait donc ce que fait un tableur. La cellule devient un champ, on
+ * écrit dedans, Entrée valide, Échap annule.
+ *
+ * TROIS CHAMPS, TROIS ROUTES, UNE SEULE MÉCANIQUE. Ce tableau est la seule
+ * chose qui les distingue ; tout le reste — le pré-remplissage, la sélection,
+ * la remise en état en cas de refus — est écrit une fois.
+ */
+const CHAMPS_MODIFIABLES = {
+    prenom: { max: 60, quoi: 'le prénom', envoyer: corrigerLePrenom },
+    pseudo: { max: 40, quoi: 'l\'identifiant', envoyer: renommerLEleve },
+    code: { max: 12, quoi: 'le code', envoyer: nouveauCode }
+};
+
+/**
+ * Ouvre une cellule à la modification. Rend faux si elle ne s'y prête pas.
+ *
+ * ON NE FILTRE AUCUN SIGNE À LA SAISIE. Rémy : « que ça accepte aussi le
+ * point ». Un identifiant d'élève s'écrit « emma.d » : un champ qui refuserait
+ * le point ne servirait à rien pour le cas le plus courant. C'est le SERVEUR
+ * qui juge, et qui le dit en français quand il refuse — une règle écrite à
+ * deux endroits finit toujours par diverger.
+ */
+function modifierDansLaCellule(cellule, redessiner) {
+    if (!cellule || cellule.querySelector('input') || vue.occupe) return false;
+    const champ = CHAMPS_MODIFIABLES[cellule.dataset.editer];
+    const cid = vue.classe && vue.classe.id;
+    const eleve = cellule.dataset.eleve;
+    if (!champ || !cid || !eleve) return false;
+
+    const avant = cellule.dataset.valeur || '';
+    const dedans = cellule.innerHTML;
+    const saisie = document.createElement('input');
+    saisie.type = 'text';
+    saisie.className = 'ec-saisie-cellule';
+    saisie.value = avant;
+    saisie.maxLength = champ.max;
+    saisie.autocomplete = 'off';
+    saisie.spellcheck = false;
+    // PAS DE MAJUSCULE AUTOMATIQUE : sur un téléphone, « emma.d » deviendrait
+    // « Emma.d » sans qu'on le demande, et le professeur corrigerait à la main
+    // une faute que le clavier vient d'ajouter.
+    saisie.setAttribute('autocapitalize', 'off');
+    cellule.innerHTML = '';
+    cellule.appendChild(saisie);
+    saisie.focus();
+    saisie.select();
+
+    let fini = false;
+    const rendre = () => { cellule.innerHTML = dedans; };
+
+    const terminer = async (valider) => {
+        if (fini) return;
+        fini = true;
+        const voulu = saisie.value.trim();
+        if (!valider || !voulu || voulu === avant) { rendre(); return; }
+        vue.occupe = true;
+        const r = await champ.envoyer(cid, eleve, voulu);
+        vue.occupe = false;
+        if (!r || r.erreur) {
+            // LE REFUS REMET LA CELLULE COMME ELLE ÉTAIT, et le dit. Laisser le
+            // champ ouvert sur une valeur refusée donne à croire qu'elle est
+            // prise — « emma.d est déjà pris » se lit, puis on recommence.
+            rendre();
+            showToast((r && r.erreur) || 'Impossible de changer ' + champ.quoi + '.', 'error');
+            return;
+        }
+        if (r.dit) showToast(r.dit, 'success');
+        if (r.eleves) vue.liste = { ...(vue.liste || {}), eleves: r.eleves };
+        if (r.codePropose) vue.liste = { ...(vue.liste || {}), codePropose: r.codePropose };
+        redessiner();
+    };
+
+    saisie.addEventListener('keydown', (ev) => {
+        // ON ARRÊTE LA TOUCHE ICI. La pièce écoute « Échap » pour se fermer et
+        // « Entrée » pour valider le champ voisin : sans cette ligne, Échap
+        // dans une cellule refermait la classe entière.
+        if (ev.key === 'Enter' || ev.key === 'Escape') {
+            ev.preventDefault();
+            ev.stopPropagation();
+            terminer(ev.key === 'Enter');
+        }
+    });
+    // CLIQUER AILLEURS VALIDE, comme dans un tableur. C'est le geste qu'on
+    // fait sans y penser après avoir tapé, et le perdre serait une surprise.
+    saisie.addEventListener('blur', () => terminer(true));
+    return true;
+}
+
 async function brancher(e, redessiner) {
     // LE CODE SE COPIE SANS OUVRIR LA CLASSE. Il est DANS la carte, et la carte
     // entière est cliquable : sans cette sortie anticipée, copier le code
@@ -2620,7 +2695,7 @@ async function brancher(e, redessiner) {
         // que `closest()` ne le reconnaît pas. Mesuré en ajoutant
         // « renommer » : la sonde voyait « bouton renommer 79×25 px, élève
         // Bernard Tom », puis « le clic n'ouvre aucune fenêtre ».
-        + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code], [data-pseudo], [data-prenom-de],'
+        + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code], [data-pseudo],'
         + '[data-seance-ajouter], [data-seance-retirer], [data-bac-jeux],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
@@ -3220,73 +3295,6 @@ async function brancher(e, redessiner) {
     // il n'y a donc rien à vérifier ici, et SURTOUT rien à vérifier DEUX fois.
     // L'unicité se juge sur l'empreinte de tous les élèves de la base, que
     // cette page ne connaît pas.
-    // CORRIGER LE PRÉNOM — le troisième champ de la ligne, et le seul que rien
-    // ne changeait : il fallait recoller toute la liste de la classe pour une
-    // faute de frappe. Rémy : « changer le nom et le mdp avec un double clic ».
-    //
-    // AUCUN BOUTON NE PORTE CE CROCHET, et c'est voulu : seul le double-clic
-    // le déclenche, par un porteur fabriqué à la volée (voir l'écouteur
-    // « dblclick »). La ligne a déjà six boutons ; un septième pour un geste
-    // qu'on fait trois fois l'an aurait coûté plus qu'il ne rapporte.
-    if (d.prenomDe) {
-        const avant = d.prenomActuel || '';
-        const voulu = await demander('Le prénom de cet élève', {
-            valeur: avant, bouton: 'Corriger', max: 60,
-            aide: 'C\'est le nom que vous lisez dans la liste et dans le direct. '
-                + 'Son identifiant, son code et son travail ne changent pas.'
-        });
-        const propre = (voulu || '').trim();
-        if (!propre || propre === avant) return;
-        await fait(corrigerLePrenom(cid, d.prenomDe, propre), (r) => {
-            if (r.eleves) vue.liste = { ...(vue.liste || {}), eleves: r.eleves };
-        });
-        return;
-    }
-
-    if (d.pseudo) {
-        const avant = d.pseudoActuel || '';
-        const voulu = await demander(`L'identifiant de ${d.prenom}`, {
-            valeur: avant, bouton: 'Renommer', max: 40,
-            aide: 'C\'est ce qu\'il tape pour se connecter. Son code ne change pas, '
-                + 'et son travail non plus.'
-        });
-        const propre = (voulu || '').trim();
-        if (!propre || propre === avant) return;
-        await fait(renommerLEleve(cid, d.pseudo, propre), (r) => {
-            if (r.eleves) vue.liste = { ...(vue.liste || {}), eleves: r.eleves };
-        });
-        return;
-    }
-
-    if (d.code) {
-        // LE CHAMP EST PRÉ-REMPLI AVEC UN CODE TIRÉ AU HASARD, et c'est ce qui
-        // fait tenir les deux gestes dans une seule fenêtre : Entrée accepte le
-        // tirage — l'ancien comportement du bouton, à une touche près —, et
-        // l'on écrit par-dessus pour choisir le sien. Rémy : « modifier […]
-        // son mot de passe ».
-        //
-        // ON NE PEUT PAS DIRE « LAISSEZ VIDE POUR TIRER AU HASARD » : `demander`
-        // refuse de valider un champ vide et garde la fenêtre ouverte. Une
-        // aide qui promet un geste impossible est pire qu'une aide absente.
-        const propose = (vue.liste && vue.liste.codePropose) || '';
-        const choisi = await demander(`Le code de ${d.prenom}`, {
-            valeur: propose, bouton: 'Changer le code', max: 12,
-            aide: `Il a aujourd'hui « ${d.codeActuel || '—'} ». Celui-ci est tiré au `
-                + 'hasard : validez-le, ou écrivez le vôtre par-dessus. '
-                + 'Dans les deux cas, l\'ancien billet ne vaudra plus rien.'
-        });
-        if (!choisi) return;
-        await fait(nouveauCode(cid, d.code, choisi.trim()), (r) => {
-            if (r.eleves) vue.liste = { ...(vue.liste || {}), eleves: r.eleves };
-            // LE TIRAGE SUIVANT DOIT ÊTRE UN AUTRE, sans quoi deux élèves
-            // changés à la suite repartiraient avec le MÊME code — et chacun
-            // pourrait entrer chez l'autre. Le serveur en renvoie un neuf à
-            // chaque fois ; il reste à le ranger.
-            if (r.codePropose) vue.liste = { ...(vue.liste || {}), codePropose: r.codePropose };
-        });
-        return;
-    }
-
     if (d.ecarter) {
         await fait(ecarterEleve(cid, d.ecarter, d.etat !== '1'), (r) => {
             if (r.eleves) vue.liste = { ...(vue.liste || {}), eleves: r.eleves };

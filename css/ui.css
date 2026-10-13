@@ -596,6 +596,18 @@
    AU DOIGT, CE STYLE NE SERT À RIEN et ne gêne pas : les boutons de la ligne
    restent le chemin, et un double-tap y déclencherait surtout le zoom. */
 .ec-modifiable { cursor: text; }
+/* LE CHAMP PREND LA PLACE DE LA VALEUR, SANS DÉPLACER LA LIGNE.
+   Rémy : « j'aimerais bien changer sans popup ». Une cellule qui grandit de
+   deux pixels en s'ouvrant fait sauter les trente lignes du tableau, et l'on
+   perd des yeux l'élève qu'on modifiait. D'où la même police, la même taille,
+   et une bordure qui ne prend pas de place en plus. */
+.ec-saisie-cellule {
+    width: 100%; box-sizing: border-box; font: inherit; font-size: inherit;
+    color: var(--text-main); background: var(--bg-panel);
+    border: 1px solid var(--primary); border-radius: 6px;
+    padding: 2px 6px; margin: -3px 0;
+}
+.ec-saisie-cellule:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
 .ec-modifiable > * {
     border-bottom: 1px dotted color-mix(in srgb, var(--text-muted) 55%, transparent);
 }

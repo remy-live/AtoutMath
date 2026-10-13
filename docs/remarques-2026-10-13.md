@@ -519,3 +519,60 @@ et ouvrait la fenêtre de l'**identifiant**. La correspondance est maintenant
 Et ma sonde a d'abord lu « rien n'a changé » sur un prénom qui venait de
 changer : **la liste se retrie par prénom**, donc la première cellule désigne
 quelqu'un d'autre. On suit l'élève par son identifiant.
+
+---
+
+# « Changer sans popup, et que ça accepte aussi le point »
+
+> « là je ne peux pas taper le point »
+
+Deux demandes, et la seconde est un **défaut** : un identifiant d'élève s'écrit
+`emma.d`. Si le point ne s'écrit pas, la fenêtre de renommage ne sert à rien
+pour le cas le plus courant. À reproduire en tapant VRAIMENT au clavier — poser
+la valeur par script ne traverse aucun écouteur et ne prouve rien.
+
+Et sur la forme : il veut **modifier dans la cellule**, pas dans une fenêtre.
+C'est la même ligne rouge que « tu utilises des alert et prompt, on évite ! »,
+poussée d'un cran : même une fenêtre maison est un détour quand on a la valeur
+sous les yeux.
+
+## Ce qui a été fait
+
+**Plus aucune fenêtre.** Le prénom, l'identifiant et le code se modifient
+**dans la cellule**, comme dans un tableur : double-clic (ou les deux boutons
+de la ligne, qui ouvrent la même cellule au doigt), le champ arrive pré-rempli
+et sélectionné, **Entrée** valide, **Échap** annule, **cliquer ailleurs**
+valide aussi.
+
+Mesuré en **tapant vraiment au clavier**, dans un vrai navigateur :
+
+| cellule | tapé | le champ porte | en base |
+| --- | --- | --- | --- |
+| prénom | `Jean-Luc A.` | `Jean-Luc A.` | **écrit** |
+| identifiant | `jean.luc.a` | `jean.luc.a` | **écrit** |
+| code | `6e.2` | `6e.2` | **`6E.2`** |
+
+**Aucune fenêtre** dans les trois cas. Échap annule sans fermer la classe — la
+pièce écoute Échap pour se refermer, et il a fallu arrêter la touche dans la
+cellule, sans quoi un élève à moitié renommé faisait perdre tout l'écran.
+
+### Le point
+
+**Dans l'identifiant, le point passait déjà** : mesuré en tapant au clavier, à
+la souris comme au doigt, `a.b-_2é` arrive entier. Ce n'était donc pas un
+filtre de saisie.
+
+**C'est le CODE qui le refusait.** Sa règle était `[A-Za-z0-9]{3,12}` : un
+professeur qui donne `6e.2` à sa classe recevait un refus sans savoir quel
+signe gênait. Le point, le tiret et le souligné sont maintenant acceptés — ces
+trois-là et pas d'autres, parce qu'un code se **dicte** et se **recopie** depuis
+un billet photocopié. L'apostrophe reste refusée, et l'espace aussi : elle
+casserait en plus le collage d'une liste, où elle sépare les colonnes.
+
+Même alphabet pour le code commun de toute la classe : deux règles pour le même
+objet finissent toujours par diverger, et c'est le professeur qui paie la
+différence.
+
+> **Si le point résiste encore sur son iPhone**, ce n'est pas le logiciel : il
+> faudra regarder son clavier. Je n'ai pas pu le reproduire, ni à 1280 px ni à
+> 390 px, ni dans la fenêtre d'hier ni dans la cellule d'aujourd'hui.
