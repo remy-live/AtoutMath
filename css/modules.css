@@ -1782,18 +1782,92 @@ html[data-point="plus"] .pt-croix { display: none; }
    dessin ajoute est la frontière de la virgule, en rouge, entre les unités et
    les dixièmes. Le panneau des outils centre son contenu et peut être étroit
    sur téléphone : le cadre défile alors horizontalement plutôt que d'écraser
-   sept colonnes en sept traits. */
-.tn-cadre { width: 100%; overflow-x: auto; display: flex; justify-content: center; }
+   sept colonnes en sept traits.
+
+   LE CADRE EST UN CONTENEUR DE REQUÊTE (`container-type`), et pas par goût de
+   la nouveauté : c'est lui qui mesure la place réellement disponible, et
+   l'en-tête ci-dessous s'en sert pour choisir sa taille. Sans cela, la police
+   serait fixe et « centièmes » déborderait de sa colonne dès 390 px. */
+.tn-cadre {
+    width: 100%; overflow-x: auto; display: flex; justify-content: center;
+    container-type: inline-size;
+}
+/* LE PANNEAU QUI PORTE LE TABLEAU A UNE LARGEUR DÉFINIE, les autres non.
+   `.np-outil` n'a qu'un `max-width` : sa largeur vient donc de son CONTENU.
+   Or ce contenu est une table en `width: 100 %` dont l'en-tête se mesure en
+   `cqi`, un pourcentage du cadre. Pour mesurer le contenu il faut la largeur,
+   pour la largeur il faut le contenu : le navigateur tranche en prenant la
+   police la plus petite, et tout rétrécit — MESURÉ, 390 px de table devenaient
+   358,2 px et l'en-tête passait de 10,56 px à 9,31 px à la souris.
+
+   Une largeur définie casse ce cercle. On ne la donne qu'au panneau qui porte
+   le tableau : les autres outils sont des DESSINS, qui n'ont rien à gagner à
+   occuper 420 px quand ils en demandent 200. */
+.np-outil:has(.tn-cadre) { width: min(420px, 100%); }
+/* AUCUNE CELLULE NE DÉCLARE SA LARGEUR, ET C'EST TOUT LE SUJET.
+   ===========================================================
+   RÉMY, capture d'iPhone : « colonnes qui ne sont pas de même largeur ».
+   MESURÉ avant : 19,2 px d'écart au doigt — « unités » 35,2 px, « centièmes »
+   54,4 px —, et 4,8 px à la souris. MESURÉ après : 45,4 px aux sept, et le
+   tableau entier dans l'écran.
+
+   `table-layout: fixed` était pourtant déjà là, et le commentaire ci-dessus
+   annonçait déjà « toutes de la même largeur ». Il manquait de comprendre
+   DEUX choses, qu'aucune lecture de cette feuille n'annonce.
+
+   · `fixed` RÉPARTIT À ÉGALITÉ TOUT SEUL — mais seulement quand personne ne
+     déclare de largeur. L'ancien `width: 3.1em` par cellule le faisait
+     taire, et pire : `3.1em` se résout sur la police de la CELLULE, `.66rem`
+     dans un en-tête et `1rem` dans une case, si bien que la même
+     déclaration demandait 33 px à l'une et 50 px à l'autre. D'où l'écart.
+   · UNE LARGEUR SUR LA TABLE NE RÉPARE PAS CELA, elle le déplace. Premier
+     correctif essayé : sept colonnes de 52,8 px, égales — et le tableau
+     finissait à x=406,6 dans une fenêtre de 390 px, donc 16,6 px DEHORS,
+     parce que le panneau qui le porte se dimensionne sur son contenu. Sous
+     `fixed`, la somme des largeurs déclarées devient la largeur MINIMALE de
+     la table : `min-width: 0` n'y fait rien, on ne descend pas sous un
+     minimum qu'on s'est écrit soi-même. Des colonnes égales qu'il faut faire
+     défiler ne valent pas mieux que des colonnes inégales.
+
+   D'où ces trois lignes : la table remplit la place (`width: 100%`) au lieu
+   de l'imposer, et plus personne ne déclare de largeur de colonne.
+
+   QUATORZE CORRECTIFS ESSAYÉS DANS LE NAVIGATEUR avant d'écrire celui-ci, sur
+   quatre largeurs d'écran dont le plus petit téléphone encore en service
+   (`tools/tmp/essaiColonnes{,2,3,4}.mjs`). La largeur en rem seule ne change
+   RIEN ; un en-tête autorisé à passer à la ligne non plus ; des colonnes plus
+   étroites coupent « centaines » et « centièmes ». Celui-ci est le seul qui
+   donne, de 320 px à 1280 px, les trois à la fois : colonnes égales, tableau
+   dans l'écran, aucun mot coupé.
+
+   LE NOMBRE DE COLONNES NE S'ÉCRIT PLUS ICI, et n'a plus besoin de l'être :
+   `fixed` les compte lui-même. Le jour où le tableau gagne les
+   dix-millièmes, cette feuille n'a rien à apprendre. */
 .tn-tab {
     border-collapse: collapse; margin: 2px auto; table-layout: fixed;
+    width: 100%; min-width: 0;
     border: 2px solid var(--border); border-radius: 8px;
 }
 .tn-tab th, .tn-tab td {
-    border: 1px solid var(--border); width: 3.1em; padding: 0;
+    border: 1px solid var(--border); padding: 0;
     text-align: center; vertical-align: middle;
 }
+/* L'EN-TÊTE SE MESURE SUR LA PLACE DISPONIBLE, pas sur la taille du texte de
+   la page. Une fois les colonnes égales, c'est le dernier obstacle : à 390 px
+   elles font 45,4 px, et « centièmes » en demande 52,4 à `.66rem`.
+
+   Le coefficient n'est pas choisi au hasard. « centièmes » mesure 4,96 fois la
+   taille de sa police ; il tient donc si police × 4,96 ≤ (cadre − 2) / 7 − 2,
+   soit 2,76 % du cadre à 390 px, 2,74 % à 320 px et 2,70 % à 250 px. 2,7 cqi
+   passe aux trois, et la marge est MINCE : l'essai à 3 cqi coupe « centièmes »
+   sur les deux téléphones. Ce n'est donc pas un nombre à arrondir au confort.
+
+   Le `clamp` garde les deux bouts : jamais plus grand que les `.66rem`
+   d'origine — à la souris il les retrouve, 10,53 px mesurés —, jamais plus
+   petit que `.4rem`, où le mot cesserait d'être lisible. */
 .tn-tab th {
-    font-size: .66rem; font-weight: 700; color: var(--text-muted);
+    font-size: clamp(.4rem, 2.7cqi, .66rem);
+    font-weight: 700; color: var(--text-muted);
     line-height: 1.15; padding: 5px 2px; white-space: nowrap;
 }
 .tn-tab td { height: 2.4em; }

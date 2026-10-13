@@ -93,3 +93,82 @@ des ovales, et aucun n'a été signalé — je les laisse à son arbitrage :
 Les touches du Duel ne viennent **pas** du plancher tactile (74 px ≠ 44) :
 c'est la mise en page du jeu qui les étire à dix touches sur 390 px de large.
 Les trois autres, si. À voir s'il les trouve gênantes sur son téléphone.
+
+---
+
+# « Colonne qui ne sont pas de même largeur »
+
+Capture d'iPhone, exercice « Chasse au Chiffre », outil **Tableau de
+numération**. Sept colonnes qui devaient être identiques — un chiffre par
+case — et qui ne l'étaient pas.
+
+## 1. Ce qui était mesuré
+
+| | « unités » | « centièmes » | écart |
+| --- | --- | --- | --- |
+| au doigt (390 × 844) | 35,2 px | 54,4 px | **19,2 px** |
+| à la souris (1280 × 900) | — | — | 4,8 px |
+
+L'écart suit exactement la longueur des étiquettes. La feuille de style
+déclarait pourtant `table-layout: fixed` **et** une largeur par cellule, et son
+commentaire annonçait déjà « toutes de la même largeur ». Les trois choses
+étaient fausses ensemble, et c'est ce qui a rendu le défaut difficile.
+
+## 2. Pourquoi la déclaration ne suffisait pas
+
+- `table-layout: fixed` **répartit à égalité tout seul** — mais seulement quand
+  personne ne déclare de largeur. Le `width: 3.1em` posé sur chaque cellule le
+  faisait taire.
+- `3.1em` **se résout sur la police de la cellule** : `.66rem` dans un en-tête,
+  `1rem` dans une case. La même déclaration demandait 33 px à l'une et 50 px à
+  l'autre.
+
+## 3. Le premier correctif était faux, et la mesure l'a dit
+
+Donner une largeur définie à la table égalise bien les sept colonnes — 52,8 px
+partout. Mais le panneau qui porte le tableau se dimensionne sur son contenu :
+le tableau finissait **à x = 406,6 dans une fenêtre de 390 px**, soit 16,6 px
+dehors, et 86,6 px dehors sur un téléphone de 320 px.
+
+Des colonnes égales qu'il faut faire défiler ne valent pas mieux que des
+colonnes inégales. C'est la photo qui l'a dit, pas le calcul : les nombres,
+eux, annonçaient « 0 px d'écart, aucun mot coupé ».
+
+## 4. Le correctif retenu
+
+**Quatorze variantes essayées dans le navigateur**, sur quatre largeurs d'écran
+dont le plus petit téléphone encore en service (320 px). Trois lignes :
+
+- plus aucune largeur par cellule — `fixed` répartit, c'est son métier ;
+- la table **remplit** la place (`width: 100%`) au lieu de l'imposer ;
+- l'en-tête se mesure sur la place disponible (`clamp(.4rem, 2.7cqi, .66rem)`),
+  sans quoi « centièmes » déborde de sa colonne dès 390 px.
+
+| écran | colonnes | tableau | en-tête | mots coupés |
+| --- | --- | --- | --- | --- |
+| 320 × 700 | 35,4 px — **égales** | dans l'écran | 6,75 px | aucun |
+| 390 × 844 | 45,4 px — **égales** | dans l'écran | 8,64 px | aucun |
+| 768 × 1024 | 55,4 px — **égales** | dans l'écran | 10,53 px | aucun |
+| 1280 × 900 | 55,4 px — **égales** | dans l'écran | 10,53 px | aucun |
+
+Le `2,7` n'est pas arrondi au confort : « centièmes » mesure 4,96 fois la
+taille de sa police, et l'essai à `3cqi` le coupe sur les deux téléphones.
+
+## 5. Et l'on a balayé la classe plutôt que l'objet
+
+La cause de fond était partagée : `.np-outil` n'était borné que par un
+`max-width: 420px` — plus large qu'un iPhone. `node tools/tmp/panneauxDOutils.mjs`
+ouvre **les sept panneaux d'outils** du catalogue sur un téléphone :
+
+| exercice | outil | largeur |
+| --- | --- | --- |
+| Chasse au Chiffre | Tableau de numération | 350 px |
+| Arrondir | Les trois mots | 377,9 px |
+| Le Disque | La valeur de π | 329 px |
+| Grandeurs composées | Voir le schéma · La méthode | 360 · 377,9 px |
+| Vitesse | Voir le schéma · Les formules | 360 · 377,9 px |
+
+**Aucun ne sort de l'écran.** Le tableau était le seul au contenu rigide : la
+largeur définie ne lui est donc donnée qu'à lui (`:has(.tn-cadre)`), et les
+autres panneaux gardent leur taille — un dessin de 200 px n'a rien à gagner à
+occuper 420 px.

@@ -3992,3 +3992,51 @@ lignes** — 2026-10-01
   neuf se teste d'abord sur ce qu'on SAIT bon**, pas seulement sur le défaut
   qu'on vient de voir : si la règle crie sur dix objets sains, elle sera
   désactivée avant d'avoir servi.
+
+---
+
+**Une mesure de mise en page répond toujours, même quand elle regarde le mauvais bord**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : vérifier que mon correctif rendait les sept
+  colonnes du tableau de numération égales **sans** faire déborder le tableau.
+- *Ce qui a coûté* : trois tours de sonde et deux correctifs écrits pour rien.
+  La sonde comparait le bord droit du tableau à celui de son cadre et répondait
+  « 0 px » à chaque essai — donc « tout va bien » — alors que le tableau
+  dépassait de l'écran de 16,6 px. Le cadre fait `width: 100 %` : il ne grandit
+  pas avec son contenu, et un enfant plus large que lui a donc **le même bord
+  droit** dès qu'il le remplit à ras. La mesure disait « ils se touchent », et
+  je lisais « il y a la place ». C'est `s.photo` — qui, lui, découpe la page et
+  dit ce qui MANQUE — qui a fini par le signaler.
+- *Combien de fois* : || — deuxième fois ce mois-ci qu'une mesure de mise en
+  page renvoie un chiffre plausible sur le mauvais référentiel (la première :
+  un réglage dans un `<details>` fermé, mesuré « visible », 13 × 13 px).
+- *Ce qui manque* : une sonde qui, pour « est-ce que ça déborde ? », remonte
+  d'elle-même la lignée jusqu'au premier ancêtre qui DÉFILE (`scrollWidth >
+  clientWidth`) et le nomme, au lieu de croire le parent immédiat.
+  `tools/tmp/cadreDuTableau.mjs` le fait en quinze lignes et a trouvé le
+  coupable — `.np-outil`, 401,6 px dans un plateau de 390 — en une exécution.
+  Il mériterait d'entrer dans `tools/sonde.mjs` sous le nom `s.deborde(sel)`.
+
+---
+
+**Un motif d'épreuve qui cherche `width` trouve `max-width`** — 13 octobre 2026
+
+- *Ce que je voulais faire* : garder, par une épreuve sur la feuille de style,
+  que le panneau du tableau déclare bien `width` et non `max-width` — les deux
+  ne donnent pas le même résultat, et la différence est invisible à l'œil.
+- *Ce qui a coûté* : deux passages de `epreuveTombe.mjs`. `/\bwidth\s*:/`
+  trouve `width` **dans** `max-width` : le tiret compte comme une frontière de
+  mot. L'épreuve restait donc verte sur le défaut même qu'elle devait attraper,
+  et `epreuveTombe` a dit « CETTE ÉPREUVE NE GARDE RIEN ». Dans le même
+  fichier, `/\bcqi\b/` ne trouvait **pas** `2.7cqi` — pas de frontière entre un
+  chiffre et une lettre — et l'épreuve tombait cette fois sur du code sain.
+  Le même `\b` s'est trompé deux fois dans les deux sens en dix minutes.
+- *Combien de fois* : || — déjà rencontré sur les jetons de couleur.
+- *Ce qui manque* : un petit `declare(corps, propriété, valeur)` partagé plutôt
+  qu'un motif réécrit à la main dans chaque épreuve de feuille de style. Il est
+  écrit dans `tests/colonnesDuTableau.test.mjs` ; il devrait vivre dans un
+  module commun aux épreuves de CSS, avec `corpsDeLaRegle(sélecteur)` — qui
+  ferme l'autre moitié du piège : chercher une déclaration **n'importe où**
+  dans un fichier de 2 000 lignes ne garde rien, `width: 100%` s'y trouve
+  quarante fois.
