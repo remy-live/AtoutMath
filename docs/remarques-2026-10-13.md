@@ -338,3 +338,51 @@ attributs, et le clic ne déclenche rien.
 `tests/crochetsDeLEspaceClasses.test.mjs` compare désormais les crochets posés
 sur des boutons à ceux que les répartiteurs écoutent, et nomme ceux qui
 manquent.
+
+---
+
+# « Là c'est tronqué sur téléphone »
+
+Capture d'iPhone, **Le Tableau à Double Entrée**, « Le tournoi d'échecs »,
+étape 4 d'un parcours en aperçu. Le tableau s'arrête **au milieu de sa
+troisième ligne** — on voit l'en-tête, « Gagnées », « Nulles », puis une ligne
+coupée en deux —, et sous la coupure il reste **la moitié de l'écran en
+blanc**. Une barre de défilement fine apparaît à droite du tableau.
+
+Donc ce n'est pas la place qui manque : c'est une hauteur imposée au cadre du
+tableau pendant que la page en dessous ne sert à rien.
+
+## Ce qui coupait, et ce qui ne coupait pas
+
+**Deux déclarations faisaient le défaut, et aucune ne se devine.**
+
+`.tc-wrap` portait `height: 100%` — il prenait donc la hauteur du plateau quel
+que soit son contenu — **et** `min-height: 0`, qui autorisait le surplus à
+rétrécir jusqu'à zéro. C'est exactement le piège de la scène du
+contre-la-montre, corrigé le matin même : un élément flex dans une colonne.
+
+`overflow-y: auto` ne rattrapait rien. Il rend le contenu **atteignable**, pas
+**visible** — et une ligne de tableau coupée en deux ne se lit pas « il y a la
+suite plus bas », elle se lit « c'est cassé ».
+
+| 390 px de large | avant | après |
+| --- | --- | --- |
+| 844 px | 0 px caché | **identique** |
+| 560 px | **204 px cachés** | 0 px caché, la page glisse de 204 |
+| 440 px (son aperçu) | **324 px cachés** | 0 px caché, la page glisse de 324 |
+
+Mesuré sur **huit tirages** à chaque hauteur : la largeur du tableau dépend du
+nombre de colonnes, et une mesure sur un seul tirage ne dit rien de
+l'exercice. `.canvas-area` sait déjà défiler : une page qui glisse est un geste
+que tout le monde connaît, une barre de quatre pixels au bord d'un tableau n'en
+est pas un.
+
+### Ce que je n'ai pas touché, et j'ai failli
+
+Ma première sonde criait « le tableau sort de 26 px à droite ». C'était un faux
+positif : le jeu pose **déjà** `[data-table] { overflow-x: auto }`, et la
+décision est écrite et mesurée là-bas — « la colonne coupée est celle des
+**totaux**, celle que l'exercice demande de compléter ». Le tableau ne sort pas :
+il défile dans sa boîte. J'avais écrit un bloc qui doublait celui-là, et qui
+était d'ailleurs mort — placé plus haut dans la feuille, il était écrasé par
+l'existant. Retiré.

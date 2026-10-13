@@ -66,11 +66,46 @@ class TableauCroise extends BaseGame {
     render() {
         this.container.innerHTML = `
             <style>
+                /* LE CADRE GRANDIT AVEC SON CONTENU ; C'EST LA PAGE QUI GLISSE.
+                   ========================================================
+                   RÉMY, capture d'iPhone du 13 octobre : « là c'est tronqué
+                   sur téléphone ». Le tableau s'arrêtait au milieu de sa
+                   troisième ligne, avec une barre de défilement de quatre
+                   pixels au bord pour toute explication.
+
+                   DEUX DÉCLARATIONS FAISAIENT LE DÉFAUT, ET AUCUNE NE SE
+                   DEVINE :
+
+                   · « height: 100% » imposait au cadre la hauteur du plateau,
+                     quel que soit ce qu'il contient. MESURÉ dans un plateau de
+                     354 px : 638 px de contenu, donc 324 px cachés ;
+                   · « min-height: 0 » disait au surplus de rétrécir. Le cadre
+                     est un élément flex dans une colonne : sans cette ligne il
+                     garderait déjà sa taille, avec elle il descend jusqu'à
+                     zéro. C'est le même piège que la scène du contre-la-montre,
+                     corrigé le même jour.
+
+                   « overflow-y: auto » n'y changeait rien — il rendait le
+                   contenu ATTEIGNABLE, pas VISIBLE. Or une ligne de tableau
+                   coupée en deux ne se lit pas « il y a la suite plus bas » :
+                   elle se lit « c'est cassé ». Et « .canvas-area » sait déjà
+                   défiler (overflow-y: auto !important) : une page qui glisse
+                   est un geste que tout le monde connaît, une barre de quatre
+                   pixels au bord d'un tableau n'en est pas un.
+
+                   MESURÉ APRÈS, aux trois hauteurs : 844 px — RIEN ne change,
+                   0 px caché, 0 px à faire glisser. 560 px — 0 px caché (204
+                   avant), la page glisse de 196. 440 px — 0 px caché (324
+                   avant), la page glisse de 316.
+
+                   « min-height: 100% » garde l'autre bout : quand le contenu
+                   est court, le cadre remplit encore le plateau et le tableau
+                   reste centré au lieu de se coller en haut. */
                 .tc-wrap {
                     display: flex; flex-direction: column; align-items: center; gap: 8px;
-                    width: 100%; height: 100%; padding: 10px 12px 12px; box-sizing: border-box;
+                    width: 100%; padding: 10px 12px 12px; box-sizing: border-box;
                     color: var(--text-main); overflow-y: auto; container-type: inline-size;
-                    min-height: 0;
+                    min-height: 100%; flex: 0 0 auto;
                 }
                 .tc-enonce {
                     text-align: center; max-width: 640px; flex: 0 0 auto;

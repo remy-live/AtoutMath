@@ -4108,3 +4108,31 @@ lignes** — 2026-10-01
   écoutent. Il a fallu deux essais pour l'écrire — « le premier `closest()` »
   n'en lisait qu'un, « celui qui en porte le plus » accusait deux crochets
   sains écoutés par un second gestionnaire : c'est leur UNION qu'il faut lire.
+
+---
+
+**Une sonde qui ne distingue pas « caché » de « qui défile » accuse une décision déjà prise**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : vérifier que le tableau à double entrée ne
+  débordait plus, après avoir réparé sa troncature verticale.
+- *Ce qui a coûté* : un correctif écrit, appliqué, mesuré — et inutile. La
+  sonde comparait le bord droit du tableau à celui de son cadre et criait
+  « SORT À DROITE » sur 26 px. Or le jeu pose `[data-table] { overflow-x:
+  auto }` : le tableau DÉFILE dans sa boîte, et c'est une décision écrite,
+  commentée et mesurée au-dessus (« la colonne coupée est celle des TOTAUX »).
+  J'ai ajouté un bloc `@container` qui la doublait — et qui ne faisait même
+  rien, placé plus haut dans la feuille donc écrasé par l'existant. Trois
+  mesures pour m'en apercevoir, dont une qui montrait `min-width: 2.4em` ET
+  `min-width: 2.9em` dans la même feuille.
+- *Combien de fois* : || — même forme que le « hors cadre : 0 px » du tableau
+  de numération ce matin : la mesure répond, le chiffre est juste, et il ne
+  parle pas du problème.
+- *Ce qui manque* : deux réflexes, et le second est le plus cher.
+  **(1)** Pour « est-ce que ça déborde ? », distinguer toujours *caché sans
+  recours* de *atteignable par un défilement* — ce ne sont pas le même défaut,
+  et le second est souvent une décision.
+  **(2)** **Avant d'écrire une règle dans la feuille d'un jeu, lire la feuille
+  en ENTIER.** Celle-ci fait deux cents lignes et portait déjà un bloc pour
+  écran étroit, trente lignes plus bas. Un `grep` de la propriété qu'on
+  s'apprête à poser (`min-width`, ici) l'aurait montré en une seconde.
