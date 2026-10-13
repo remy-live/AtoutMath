@@ -792,3 +792,212 @@ Deux choses, et la seconde a été trouvée par `epreuveTombe` : la **forme**
 les dix jeux corrigés, le **nombre** de déclarations pleines. La première seule
 laissait passer « Rédiger un raisonnement », dont un des trois sites était déjà
 marqué. Les neuf défauts remis un par un la font tomber.
+
+---
+
+# Les six arbitrages de Rémy — 13 octobre, fin de journée
+
+> « Ok pose moi les questions et quand je dis je ne sais pas tu ne fais rien »
+
+Cinq questions étaient en attente de son avis, et un chantier n'attendait qu'un
+feu vert. Il a répondu aux six. **La consigne vaut autant que les réponses :
+sur ce qu'il ne sait pas, on ne fait rien** — ni correctif, ni enquête, ni
+« au cas où ». Elles sont écrites ici avant d'être travaillées, pour qu'on
+puisse relire ce qu'il a dit plutôt que ce dont je me souviens.
+
+| ce qui était en attente | sa réponse |
+| --- | --- |
+| Les 43 boutons étirés | **« Oui, à corriger »** |
+| Les trois boutons d'aperçu sur téléphone | **« Les masquer sur écran étroit »** |
+| Quitter une partie, dans les statistiques | **« Garder la donnée »** |
+| Les millièmes de « Virgule ou Fraction ? » | **« Cocher par défaut »** |
+| Le point sur son iPhone | **« Je ne sais pas »** → on ne fait rien |
+| L'élève qui répète et l'élève arrêté | **« Vas-y »** |
+
+## 1. Les 43 boutons étirés — à corriger
+
+Les mesures sont celles du haut de ce document (§ 3 des retenues) : `du-touche`
+27 × 74 px et `du-table` 36 × 74 px au Duel de calcul, `mk-clef` 24 × 44 px au
+Mot Codé, `hg-pas-btn` 26 × 44 px à « Quelle heure est-il ? », `dv-cible`
+43 × 67 px aux Diviseurs.
+
+**La contrainte à ne pas perdre de vue** : trois des quatre sont à 44 px de haut
+*parce que* le plancher tactile les y met, et ce plancher est exactement la règle
+qui, contournée, a produit les ovales qu'il a signalés **deux fois**. On ne
+corrige donc pas en descendant sous 44 px. On corrige la **largeur**, c'est-à-dire
+la mise en page qui serre dix touches sur 390 px.
+
+## 2. Les trois boutons d'aperçu — qu'ils se taisent sur écran étroit
+
+Ce sont eux qui rendaient ses captures d'écran minuscules, et ce document le
+mesure deux fois (« Le compteur de vitesse » et « Idem c'est petit »). Sur un
+écran de 390 px, le bouton « téléphone » dessine un cadre de 400 px — plus large
+que l'écran qui le contient — et « tablette » un cadre de 768 px dont 189
+sortent du champ. **Simuler un téléphone dans un téléphone ne montre rien.**
+
+Sur son ordinateur, les trois gardent tout leur sens : on les masque donc sur
+écran étroit, et non partout.
+
+## 3. Quitter une partie — garder la donnée
+
+**C'est l'état actuel, et il n'y a donc rien à écrire.** La tentative reste
+enregistrée (statistiques, carnet d'erreurs, points) ; elle ne fait plus avancer
+le compteur de questions depuis les dix correctifs de « fais tout ». La décision
+de la garder était déjà écrite dans `core/BaseGame.js` — « c'est l'affichage
+qu'on supprime, pas la donnée » — et il la confirme. La question posée en marge
+du § « Et deux jeux créditaient une réussite pour avoir QUITTÉ la partie » est
+donc close : *on garde la trace de la partie commencée.*
+
+## 4. Les millièmes — cochés par défaut
+
+Dans « Virgule ou Fraction ? », les trois rangs existent mais seuls les dixièmes
+et les centièmes partaient cochés : un élève ne voyait **aucun** millième si
+Rémy ne le demandait pas. Il veut les trois dès l'ouverture.
+
+## 5. Le point sur son iPhone — « je ne sais pas »
+
+Je lui demandais dans quel champ exactement, parce que je ne l'ai **jamais
+reproduit** : ni dans la cellule du code, ni au pavé numérique d'un exercice. Le
+filtre du serveur accepte le point depuis le correctif de « changer sans popup »
+(`/^[A-Za-z0-9._-]{3,12}$/`).
+
+**Il ne sait pas, donc on ne fait rien** : pas de sonde de plus, pas de
+contournement préventif, pas de clavier réécrit « au cas où ». Si cela lui
+arrive encore, ce sera le moment de dire où — et la mesure partira de là.
+
+## 6. L'élève qui répète et l'élève arrêté — « vas-y »
+
+Le seul chantier qui n'attendait qu'un feu vert. Sa forme est arrêtée depuis le
+11 octobre (`docs/remarques-2026-10-11.md`) et elle ne change pas : **aucune
+fenêtre, rien qui pousse.** Trois gestes :
+
+1. **Nommer la répétition** dans la phrase de diagnostic — l'élève qui refait la
+   même erreur ne lit pas trois fois la même phrase neutre.
+2. **Pousser le premier indice, gratuit**, après deux échecs de suite sur la même
+   compétence.
+3. **Écrire le silence** — un mot à côté du nom dans Le direct, et une ligne
+   discrète qui propose « Montre-moi » à l'élève.
+
+Et un ordre, qui n'est pas négociable : **on mesure les seuils sur ses quatre
+séances AVANT d'écrire une ligne.** « Deux échecs de suite » est un chiffre que
+je n'ai pas obtenu ; tant qu'il n'est pas mesuré sur ses séances réelles, c'est
+une supposition qui s'apprête à parler à un élève de sixième.
+
+## Ce qui a été fait, et ce que chaque mesure a dit
+
+### 1. Les millièmes — cochés
+
+Deux endroits, et il fallait les deux : `js/data/numeration.js` (le réglage de
+l'exercice) et `js/core/generators/fractionDecimale.js` (le défaut du
+générateur, que voit un professeur qui part du générateur). **Mesuré ensuite sur
+soixante tirages** : millièmes 23, dixièmes 23, centièmes 14 — ils sortent
+vraiment. Et l'énoncé le plus long de la fiche fait 19 caractères (`2,066 =
+…/1000`), donc les trois colonnes du papier tiennent.
+
+En chemin, une question à laquelle il fallait répondre avant : **un générateur
+JETTE SILENCIEUSEMENT une valeur de réglage qu'il ne connaît pas**
+(`.filter(r => RANGS[r])`). Écrire `millièmes` avec son accent aurait donné un
+exercice réglé qui ne l'est pas. Les 205 valeurs de réglage du catalogue ont été
+lues : aucune n'était inventée. `tests/valeursDesReglages.test.mjs` tient la
+porte pour le 226ᵉ exercice.
+
+### 2. Les boutons d'aperçu — la moitié du travail était faite
+
+**Les boutons étaient DÉJÀ masqués**, et depuis longtemps : ils portent
+`desktop-only`, que `body.mobile-view` efface. Mesuré sur 390 × 844, professeur
+identifié : **zéro bouton visible**. Et pourtant, dans le même état :
+
+```
+cadreDe(exercice)   → 'mobile'
+#game-layer         → device-simulator, 400 px
+écran               → 390 px, donc 5 px hors champ
+```
+
+**Un réglage qu'on ne pouvait ni voir, ni changer, ni annuler** — le bouton qui
+l'aurait fait étant caché. La cause : `ui/builder.js` et `games/engine.js`
+écrivaient LA MÊME RÈGLE, et seule la première avait reçu le garde-fou du
+téléphone. L'autre sert le chemin que Rémy emprunte le plus souvent.
+
+La règle vit maintenant dans `js/core/presentation.js`, où elle s'éprouve sans
+navigateur. Remesuré : `cadreRendu: 'none'`, `#game-layer` 390 px, 0 px dehors.
+**Et sur un écran de 1280, le cadre de 400 px s'applique toujours** — on n'a pas
+retiré à Rémy le seul moyen de voir la présentation du téléphone depuis son
+ordinateur.
+
+### 3. Les boutons étirés — et l'outil se trompait de cause
+
+`tools/boutonsEtires.mjs` disait « 53 étirés » sans dire **par quoi**, et la
+distinction décide de la correction :
+
+| hauteur | cause | ce qu'on fait |
+| --- | --- | --- |
+| **≈ 44 px** | le plancher tactile | on élargit, ou le jeu déclare `btn-carre` |
+| **> 44 px** | le jeu lui-même | on relit sa feuille AVANT d'y toucher |
+
+32 d'un côté, 21 de l'autre. J'ai commencé à élargir une cible du jeu des
+Diviseurs (43 × 67) avant de voir que le plancher n'y était pour **rien** : sa
+hauteur vient de ses deux lignes empilées. Elle n'a pas été touchée.
+
+| jeu | avant | après | ce qui a été fait |
+| --- | --- | --- | --- |
+| **Duel de calcul** | 27,3 × 74 | **31,1 × 58** | l'espace entre touches mangeait 59 px des 370 |
+| **Les Anagrammes** | jeton 29 × 44, case 29 × 33 | **les deux à 29 × 33,4** | `btn-carre` : le jeton coïncide avec sa case |
+| **Quelle heure est-il ?** | 26 × 44 | **44 × 44** | la feuille demandait un carré de 26, le plancher en donnait 44 |
+| **Le Mot Codé** | 24 × 44 | **36 × 49** | la cible double de surface |
+| Les Diviseurs | 43 × 67 | inchangé | sa hauteur est son dessin, pas le plancher |
+
+**Aucune correction ne descend sous 44 px** : c'est la règle qui, contournée,
+avait produit les ovales signalés deux fois.
+
+Trois choses que les mesures ont dites et que je n'avais pas vues :
+
+- le commentaire du Duel annonçait une cible de **33 × 58** et la mesure en
+  donnait 27 × 74 : **la forme avait dérivé de sa propre décision**, et la
+  corriger a REJOINT ce qui était écrit plutôt que de le contredire. Le couloir
+  de la balle passe de 394,8 à **426,8 px** — ce que Rémy demandait deux fois ;
+- aux Anagrammes, le jeton et sa case se dessinent sur la même variable, et le
+  plancher n'en cassait **qu'une des deux moitiés** : un jeton plus haut de onze
+  pixels que la case où il doit tomber ;
+- au Mot Codé, **le rapport de forme ne se corrige pas** : 1,37 à 34 px comme à
+  36 px, parce que le numéro sous la lettre est proportionnel à elle. Aucune
+  largeur ne rendra cette clef carrée. Le gain réel est la cible, pas le
+  rapport — et mon premier commentaire citait un 1,29 que je n'avais pas obtenu.
+
+### 4. L'élève arrêté — la mesure d'abord, et elle est livrée
+
+Rien n'est encore écrit du côté de l'élève, **et c'est l'ordre convenu** : « on
+mesure les seuils sur ses quatre séances AVANT d'écrire une ligne ».
+
+L'outil existe, et il est là où Rémy peut l'ouvrir : **Administration → « Les
+blocages, en comptes »**. Il clique « Copier », il colle. Il compte, sur SES
+séances :
+
+1. le même diagnostic sur des questions qui se suivent (faut-il nommer la
+   répétition ?) ;
+2. les échecs qui se suivent sur la même compétence — **le seuil de l'indice
+   poussé**, deux ou trois ;
+3. les indices aujourd'hui demandés, par élève ;
+4. **le temps par question, exercice par exercice** : médiane, neuvième décile,
+   et leur rapport. On ne cherche pas une durée mais un ÉCART — si le neuvième
+   décile vaut déjà quatre fois la médiane, « quatre fois la médiane » ne
+   désigne pas un élève arrêté, il désigne un élève sur dix ;
+5. les diagnostics les plus vus.
+
+**Aucun nom n'en sort** — ni prénom, ni identifiant d'élève, ni réponse donnée,
+ni énoncé. Les élèves sont comptés, jamais nommés, et c'est la vérification la
+plus importante du lot : `php tools/testApi.php` met de faux identifiants
+reconnaissables dans la fonction de comptage et exige qu'ils ne ressortent pas.
+Les seuls noms lisibles sont ceux des exercices et des compétences, qui sont
+dans le logiciel de tout le monde.
+
+Treize vérifications nouvelles gardent le comptage, dont trois qui n'étaient pas
+évidentes : trois tentatives sur la même question font **une** question ; une
+étape (`partiel`) n'en est pas une — recompter ici le défaut du 13 octobre
+fausserait la décision elle-même ; et **deux élèves ne forment pas une suite**,
+sans quoi deux élèves faisant chacun l'erreur une fois seraient comptés comme un
+élève la faisant deux fois de suite, c'est-à-dire exactement le cas qu'on
+cherche.
+
+### 5. Le point sur son iPhone
+
+Rien. Il a répondu « je ne sais pas », et c'était la consigne.

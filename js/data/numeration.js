@@ -120,8 +120,13 @@ export const numerationExercises = [
         // défaut qui ne poserait qu'un seul sens enseignerait une recette —
         // c'est précisément ce que cet exercice existe pour empêcher. Le
         // professeur peut les figer pour une remédiation de dix minutes.
+        // LES TROIS RANGS COCHÉS, MILLIÈMES COMPRIS — arbitrage de Rémy, le
+        // 13 octobre : « cocher par défaut ». Les millièmes existaient dès le
+        // premier jour mais partaient décochés, si bien qu'un élève n'en
+        // voyait AUCUN tant que le professeur ne les demandait pas. Un rang
+        // disponible et jamais tiré est un rang absent.
         params: { sens: 'les-deux', trou: 'les-deux',
-            rangs: ['dixiemes', 'centiemes'], maxEntier: 9, piegeZero: true },
+            rangs: ['dixiemes', 'centiemes', 'milliemes'], maxEntier: 9, piegeZero: true },
         motsClefs: ['fraction décimale', 'dixièmes', 'centièmes', 'millièmes',
             'écriture à virgule', 'numérateur', 'dénominateur'],
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },

@@ -17,6 +17,7 @@ import { questionsConseillees } from '../core/duree.js';
 import { accessOf, lockLabel } from '../core/gameAccess.js';
 import { surveillerEnonces } from '../ui/enonce.js';
 import { aApprentissage, construireApprentissage } from '../core/apprentissage.js';
+import { cadreDApercu } from '../core/presentation.js';
 
 /**
  * Ouvre un exercice en plein écran.
@@ -146,9 +147,17 @@ function launchFreePlay(exo, params) {
  * donc sur le descripteur qu'elle passe, et c'est celui-là qui gagne.
  */
 export function cadreDe(exo) {
+    // LA REVUE DU CATALOGUE GARDE LA MAIN, MÊME SUR UN TÉLÉPHONE : elle lance
+    // le même exercice en téléphone, en tablette puis en plein écran, et la
+    // présentation du poste ne doit pas lui faire mesurer trois fois la même
+    // chose. C'est un outil, pas l'aperçu du professeur.
     if (exo && exo.apercuAppareil) return exo.apercuAppareil;
     if (!state.isTeacherMode) return 'none';
-    return state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode;
+    // LA RÈGLE EST DANS LE NOYAU, et elle y est pour une raison mesurée :
+    // `ui/builder.js` l'écrivait aussi, de son côté, et seule SA copie avait
+    // reçu la correction de la présentation téléphone. Voir
+    // `core/presentation.js` — les 400 px dans un écran de 390 y sont relevés.
+    return cadreDApercu(state.previewDeviceMode, state.isMobileView);
 }
 
 /**

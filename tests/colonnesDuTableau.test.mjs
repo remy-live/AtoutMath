@@ -31,38 +31,15 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { lireFeuille, corpsDeLaRegle as aideCorps, declare } from './aidesCss.mjs';
 
-const CSS = readFileSync('css/modules.css', 'utf8');
-
-/**
- * Le corps d'une règle, désigné par son sélecteur exact.
- *
- * On ne cherche PAS la déclaration n'importe où dans le fichier : `width: 100%`
- * s'y trouve quarante fois, et une épreuve qui la verrait ailleurs resterait
- * verte en ne gardant plus rien.
- */
-/**
- * La règle déclare-t-elle CETTE propriété, et avec cette valeur ?
- *
- * `/\bwidth\s*:/` NE SUFFIT PAS, et l'épreuve s'est fait prendre : le tiret de
- * « max-width » compte comme une frontière de mot, si bien que le motif
- * trouvait `width` dans `max-width` et restait vert sur le défaut même qu'il
- * devait attraper. On exige donc que la propriété COMMENCE une déclaration.
- */
-function declare(corps, propriete, valeur = '') {
-    return new RegExp(`(?:^|[;{\\s])${propriete}\\s*:\\s*${valeur}`).test(corps);
-}
-
-function corpsDeLaRegle(selecteur) {
-    const debut = CSS.indexOf(selecteur + ' {');
-    assert.notEqual(debut, -1,
-        `la règle « ${selecteur} » a disparu de css/modules.css — le tableau de\n`
-        + 'numération ne tient plus que par chance.');
-    const ouvre = CSS.indexOf('{', debut);
-    const ferme = CSS.indexOf('}', ouvre);
-    return CSS.slice(ouvre + 1, ferme);
-}
+// LES DEUX AIDES VIVENT DANS `tests/aidesCss.mjs` DEPUIS QU'ELLES ÉTAIENT
+// ÉCRITES TROIS FOIS — ici, dans `sceneDuSprint` et dans `cadreDuTableauCroise`,
+// avec, les trois fois, le même commentaire sur le piège de `\b`. Une leçon
+// écrite trois fois est une leçon qu'on réapprendra une quatrième.
+const CSS = lireFeuille('css/modules.css');
+const corpsDeLaRegle = (selecteur) =>
+    aideCorps(CSS, selecteur, { ou: 'css/modules.css — le tableau de numération' });
 
 test('AUCUNE CELLULE DU TABLEAU NE DÉCLARE SA LARGEUR', () => {
     // C'est la déclaration qui faisait le défaut de Rémy : sous

@@ -62,7 +62,7 @@ const aOuvrir = await s.page.evaluate(async (unSeul) => {
 
 console.log(`\n\x1b[1mLES BOUTONS DE ${aOuvrir.length} ACTIVITÉ(S), AU DOIGT (390 × 844)\x1b[0m\n`);
 
-const ovales = [], etires = [];
+const ovales = [], etires = [], voulus = [];
 let mesures = 0, muets = 0;
 
 for (const exo of aOuvrir) {
@@ -112,10 +112,29 @@ for (const exo of aOuvrir) {
         // un carré aux coins ronds, pas un ovale — le commentaire du plancher
         // le dit déjà : « la forme d'une touche ». Les deux vrais défauts
         // trouvés jusqu'ici valaient 2,4 fois ; on ne crie pas pour 1,16.
-        if (estRond(v) && rapport > 1.25) ovales.push({ exo, v, rapport });
-        else if (rapport > 1.35 && v.plancher !== 'auto') etires.push({ exo, v, rapport });
+        if (estRond(v) && rapport > 1.25) { ovales.push({ exo, v, rapport }); continue; }
+        if (rapport <= 1.35 || v.plancher === 'auto') continue;
+        // QUI A ÉTIRÉ CE BOUTON ? L'outil ne le disait pas, et la question
+        // n'est pas de forme : elle décide de la correction.
+        //
+        // `v.plancher !== 'auto'` dit seulement que le plancher S'APPLIQUE à
+        // ce bouton, pas qu'il l'a étiré. Un bouton de 43 × 67 dont le
+        // plancher vaut 44 est haut de 67 parce que SON JEU le dessine ainsi —
+        // le plancher n'y est pour rien. On l'a cru, et l'on a failli
+        // « corriger » une cible du jeu des Diviseurs qui porte deux lignes de
+        // texte empilées.
+        //
+        //   · hauteur ≈ plancher  → c'est LE PLANCHER qui étire. On élargit,
+        //     ou le jeu déclare `btn-carre` si sa hauteur est sa mise en page.
+        //   · hauteur > plancher  → c'est LE JEU. On relit sa feuille avant de
+        //     toucher à quoi que ce soit : elle dit souvent pourquoi.
+        const plancher = parseFloat(v.plancher) || 0;
+        const parLePlancher = Math.abs(v.h - plancher) <= 1.5;
+        (parLePlancher ? etires : voulus).push({ exo, v, rapport });
     }
-    const ennuis = ovales.filter(x => x.exo === exo).length + etires.filter(x => x.exo === exo).length;
+    const ennuis = ovales.filter(x => x.exo === exo).length
+        + etires.filter(x => x.exo === exo).length
+        + voulus.filter(x => x.exo === exo).length;
     console.log(`  ${ennuis ? '\x1b[31mnon \x1b[0m' : '\x1b[32mok  \x1b[0m'}`
         + `${exo.id.padEnd(26)} ${String(vus.length).padStart(3)} bouton(s)`
         + (ennuis ? `  \x1b[31m${ennuis} à revoir\x1b[0m` : ''));
@@ -133,12 +152,16 @@ const dire = (titre, liste, pourquoi) => {
 
 dire('DES OVALES — un bouton rond qui n\'est pas rond', ovales,
     'Ajouter `btn-carre` à leur classe : « ma taille est la mienne ».');
-dire('DES ÉTIRÉS — nettement plus hauts que larges', etires,
-    'À regarder un par un : une touche de pavé (38 × 44) est normale.');
+dire('ÉTIRÉS PAR LE PLANCHER — leur hauteur vaut le plancher, pas leur mise en page',
+    etires,
+    'On ÉLARGIT — ou le jeu déclare `btn-carre` si sa hauteur est sa mise en page.');
+dire('HAUTS PARCE QUE LEUR JEU LE VEUT — le plancher n\'y est pour rien', voulus,
+    'Relire la feuille du jeu AVANT d\'y toucher : elle dit souvent pourquoi.');
 
 console.log('\n' + '─'.repeat(74));
 console.log(`  ${mesures} boutons mesurés · ${ovales.length} ovale(s) · `
-    + `${etires.length} étiré(s) · ${muets} activité(s) non ouvertes`);
+    + `${etires.length} étiré(s) par le plancher · ${voulus.length} haut(s) par leur jeu · `
+    + `${muets} activité(s) non ouvertes`);
 console.log(`  fenêtres natives : ${s.fenetresNatives.length} · erreurs de page : ${s.erreurs.length}`);
 await s.fermer();
 process.exitCode = ovales.length ? 1 : 0;

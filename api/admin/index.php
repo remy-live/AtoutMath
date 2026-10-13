@@ -318,6 +318,11 @@ touche au serveur.</p>
 require __DIR__ . '/sections/depot.php';
 echo $htmlSante;
 require __DIR__ . '/sections/ranger.php';
+// LES BLOCAGES AVANT LE RAPPORT, et pour la même raison que le rapport existe :
+// c'est une page qu'on ouvre POUR COPIER quelque chose. Rémy la cherchera le
+// jour où l'on décidera des seuils, et pas avant — elle est donc sous les
+// sections qu'il ouvre toutes les semaines.
+require __DIR__ . '/sections/blocages.php';
 require __DIR__ . '/sections/rapport.php';
 require __DIR__ . '/sections/compte.php';
 

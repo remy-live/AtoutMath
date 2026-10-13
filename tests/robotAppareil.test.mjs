@@ -48,12 +48,27 @@ test('ET LES DEUX VOCABULAIRES SE TRADUISENT DANS LES DEUX SENS', () => {
     // paraisse — c'est très exactement le défaut qu'on vient de corriger.
     const atelier = lire('js/ui/atelier.js');
     const engine = lire('js/games/engine.js');
+    const noyau = lire('js/core/presentation.js');
     // Aller : l'état du professeur → l'adresse du volet.
     assert.match(atelier, /return m === 'desktop' \|\| !m \? 'none' : m;/,
         'appareilDuProf traduit « desktop » en « none » pour l\'adresse');
-    // Retour : l'état du volet → le cadre.
-    assert.match(engine, /state\.previewDeviceMode === 'desktop' \? 'none' : state\.previewDeviceMode/,
-        'cadreDe retraduit « desktop » en « none »');
+    // RETOUR : L'ÉTAT DU VOLET → LE CADRE. Cette traduction a DÉMÉNAGÉ, et le
+    // déménagement est lui-même la correction d'un défaut : la même règle
+    // s'écrivait dans `games/engine.js` ET dans `ui/builder.js`, et seule la
+    // seconde avait reçu le garde-fou du téléphone. Sur l'iPhone de Rémy, un
+    // exercice ouvert depuis le catalogue se jouait dans un cadre de 400 px
+    // sur un écran de 390 — mesuré. Elle vit maintenant dans le noyau, où
+    // elle s'éprouve sans navigateur, et les deux aperçus l'appellent.
+    //
+    // Cette épreuve garde donc deux choses au lieu d'une : que la traduction
+    // existe, et qu'`engine.js` la DEMANDE au lieu de la refaire.
+    assert.match(noyau, /reglage === 'mobile' \|\| reglage === 'tablet'/,
+        'cadreDApercu ne traduit plus les deux vocabulaires');
+    assert.match(engine, /cadreDApercu\(state\.previewDeviceMode, state\.isMobileView\)/,
+        'cadreDe ne demande plus le cadre au noyau — il en refait une copie');
+    assert.ok(!/previewDeviceMode === 'desktop'/.test(engine),
+        'engine.js décide encore du cadre lui-même : c\'est la copie qui avait '
+        + 'été oubliée la première fois (voir tests/cadreDApercu.test.mjs).');
 });
 
 test('ET LE CADRE POSÉ SUR L\'EXERCICE GARDE LA PRIORITÉ', () => {

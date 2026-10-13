@@ -32,29 +32,16 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { lireFeuille, corpsDeLaRegle as aideCorps, declare } from './aidesCss.mjs';
 
 const SOURCE = 'js/games/tableauCroise.js';
-const source = readFileSync(SOURCE, 'utf8');
+const source = lireFeuille(SOURCE);
 
+// LES DEUX AIDES VIVENT DANS `tests/aidesCss.mjs` : elles étaient écrites trois
+// fois, et le commentaire sur le piège de `\b` avec elles.
 /** Le corps de la règle `.tc-wrap`, dans la feuille que le jeu injecte. */
 function corpsDuCadre() {
-    const i = source.indexOf('.tc-wrap {');
-    assert.notEqual(i, -1, `la règle .tc-wrap a disparu de ${SOURCE}`);
-    const ouvre = source.indexOf('{', i);
-    return source.slice(ouvre + 1, source.indexOf('}', ouvre));
-}
-
-/**
- * La règle déclare-t-elle cette propriété, avec cette valeur ?
- *
- * On exige que la propriété COMMENCE une déclaration : chercher `height`
- * trouverait `min-height` et `max-height`, le tiret comptant comme une
- * frontière de mot. Le piège a déjà coûté une épreuve verte qui ne gardait
- * rien, le même jour.
- */
-function declare(corps, propriete, valeur = '') {
-    return new RegExp(`(?:^|[;{\\s])${propriete}\\s*:\\s*${valeur}`).test(corps);
+    return aideCorps(source, '.tc-wrap', { ou: SOURCE });
 }
 
 test('LE CADRE DU TABLEAU CROISÉ NE S\'IMPOSE PAS LA HAUTEUR DU PLATEAU', () => {

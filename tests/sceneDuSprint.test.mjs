@@ -33,17 +33,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { lireFeuille, corpsDeLaRegle as aideCorps } from './aidesCss.mjs';
 
-const CSS = readFileSync('css/modules.css', 'utf8');
-
-/** Le corps d'une règle, désigné par son sélecteur exact. */
-function corpsDeLaRegle(selecteur) {
-    const debut = CSS.indexOf(selecteur + ' {');
-    assert.notEqual(debut, -1, `la règle « ${selecteur} » a disparu de css/modules.css`);
-    const ouvre = CSS.indexOf('{', debut);
-    return CSS.slice(ouvre + 1, CSS.indexOf('}', ouvre));
-}
+// L'AIDE VIT DANS `tests/aidesCss.mjs` : elle était écrite trois fois.
+const CSS = lireFeuille('css/modules.css');
+const corpsDeLaRegle = (selecteur) => aideCorps(CSS, selecteur, { ou: 'css/modules.css' });
 
 test('LA SCÈNE DU SPRINT CENTRE « SAFE »', () => {
     const scene = corpsDeLaRegle('.sprint-scene');

@@ -284,9 +284,24 @@ $tracesClasses = array_values(array_filter([
     fn ($t) => str_contains($p['html'], $t)));
 verifier('aucune trace de l\'ancienne interface des classes', $tracesClasses === [],
     implode(' · ', $tracesClasses));
-verifier('et la page tient en une seule, à sections dépliables',
-    substr_count($p['html'], '<details class="bloc"') === 5,
-    substr_count($p['html'], '<details class="bloc"') . ' section(s)');
+// RÉMY : « j'aimerai en une seule page même pour le déposer ». Ce qu'on garde
+// est donc QU'IL N'Y AIT QU'UNE PAGE, et que chaque morceau soit une section
+// dépliable — pas qu'il y en ait exactement cinq.
+//
+// LE COMPTE SEUL S'EST RETOURNÉ CONTRE MOI : en ajoutant la section des
+// blocages, l'épreuve est tombée en annonçant « 6 section(s) » — ce qui ne dit
+// ni quelle section est apparue, ni si c'est voulu. On NOMME donc les sections,
+// comme ailleurs dans ce dépôt : une liste qu'on lit vaut mieux qu'un seuil
+// qu'on monte d'un cran à chaque fois.
+$sectionsVues = [];
+if (preg_match_all('/<details class="bloc" id="([a-z-]+)"/', $p['html'], $m)) {
+    $sectionsVues = $m[1];
+}
+sort($sectionsVues);
+$sectionsVoulues = ['blocages', 'compte', 'depot', 'ranger', 'rapport', 'sante'];
+verifier('et la page tient en une seule, à sections dépliables nommées',
+    $sectionsVues === $sectionsVoulues,
+    'vues : ' . implode(', ', $sectionsVues));
 
 $jeton = jetonDe($p['html']);
 verifier('le formulaire porte un jeton anti-rejeu', $jeton !== '');
@@ -3209,6 +3224,189 @@ $apresMaj = json('/login', ['login' => $listeMaj['login'] ?? '', 'code' => $list
 verifier('UN ÉLÈVE PEUT SE CONNECTER APRÈS UNE MISE À JOUR',
     $apresMaj['code'] === 200,
     'code ' . $apresMaj['code'] . ' — c\'est exactement ce que Rémy a eu en classe');
+
+titre('13. Les comptes des blocages, avant de décider des seuils');
+
+// RÉMY : « parfois un élève bloque complètement, que faire ? ». Les trois gestes
+// qui en découlent demandent des seuils, et j'ai écrit le 11 octobre que je ne
+// les fixerais pas tout seul. `api/lib/blocages.php` les COMPTE sur ses séances.
+//
+// CE QU'ON ÉPROUVE ICI N'EST PAS L'AFFICHAGE, C'EST LE COMPTAGE — et surtout
+// qu'il ne fasse sortir aucun nom. Une page de comptes qui laisse filtrer un
+// identifiant d'élève est pire qu'une page absente : Rémy la collerait de
+// confiance.
+require_once $API . '/lib/blocages.php';
+
+/** Un essai, écrit court — seuls les champs qui comptent pour la mesure. */
+$essai = function (string $eleve, int $ts, array $o = []) {
+    return array_merge([
+        'eleve' => $eleve, 'ts' => $ts,
+        'exerciseId' => 'calc-add', 'skillId' => 'num.add', 'itemSeed' => 'g' . $ts,
+        'correct' => false, 'attemptIndex' => 0, 'msElapsed' => 10000,
+        'hintsUsed' => 0, 'misconception' => null, 'partiel' => false,
+    ], $o);
+};
+
+// --- Une question n'est pas une tentative --------------------------------
+$trois = [
+    $essai('e1', 1000, ['itemSeed' => 'A']),
+    $essai('e1', 2000, ['itemSeed' => 'A', 'attemptIndex' => 1]),
+    $essai('e1', 3000, ['itemSeed' => 'A', 'attemptIndex' => 2, 'correct' => true]),
+];
+$c = comptesDesBlocages($trois);
+verifier('TROIS TENTATIVES SUR LA MÊME QUESTION FONT UNE QUESTION',
+    $c['questions'] === 1, 'compté ' . $c['questions']);
+verifier('et elle est ratée, puisqu\'elle ne l\'a pas été du premier coup',
+    $c['echouees'] === 1, 'compté ' . $c['echouees']);
+
+// --- Une étape ne compte pas --------------------------------------------
+//
+// C'est le défaut que Rémy a signalé le 13 octobre (« ils ont fait 2 opérations
+// et ont eu 5/5 »). Le recompter ici fausserait la mesure qui sert à régler un
+// seuil — on tromperait la décision elle-même.
+$avecEtape = [
+    $essai('e1', 1000, ['itemSeed' => 'A', 'correct' => true, 'partiel' => true]),
+    $essai('e1', 2000, ['itemSeed' => 'B', 'correct' => true]),
+];
+$c = comptesDesBlocages($avecEtape);
+verifier('UNE ÉTAPE NE COMPTE PAS POUR UNE QUESTION',
+    $c['questions'] === 1, 'compté ' . $c['questions']);
+
+// --- Le même diagnostic d'affilée ---------------------------------------
+$repete = [
+    $essai('e1', 1000, ['itemSeed' => 'A', 'misconception' => 'oubli.retenue']),
+    $essai('e1', 2000, ['itemSeed' => 'B', 'misconception' => 'oubli.retenue']),
+    $essai('e1', 3000, ['itemSeed' => 'C', 'misconception' => 'oubli.retenue']),
+    $essai('e1', 4000, ['itemSeed' => 'D', 'misconception' => 'autre.chose']),
+];
+$c = comptesDesBlocages($repete);
+verifier('TROIS FOIS LE MÊME DIAGNOSTIC FONT UNE SUITE DE TROIS',
+    $c['diagnosticRepete']['distribution']['3'] === 1,
+    json_encode($c['diagnosticRepete']['distribution']));
+// UNE SUITE DE TROIS FRANCHIT LE SEUIL « DEUX » DEUX FOIS, et c'est tout
+// l'intérêt du comptage : ne regarder que la longueur maximale
+// sous-estimerait le nombre de moments où le seuil serait atteint.
+verifier('et le seuil « deux de suite » y est franchi DEUX fois',
+    $c['diagnosticRepete']['franchissements']['2'] === 2,
+    json_encode($c['diagnosticRepete']['franchissements']));
+
+// --- Les échecs d'affilée sur la MÊME compétence ------------------------
+$melange = [
+    $essai('e1', 1000, ['itemSeed' => 'A', 'skillId' => 'num.add']),
+    $essai('e1', 2000, ['itemSeed' => 'B', 'skillId' => 'num.add']),
+    // Une réussite remet le compteur à zéro.
+    $essai('e1', 3000, ['itemSeed' => 'C', 'skillId' => 'num.add', 'correct' => true]),
+    $essai('e1', 4000, ['itemSeed' => 'D', 'skillId' => 'num.add']),
+    // Un changement de compétence aussi : deux échecs sur deux compétences
+    // différentes ne sont pas un blocage, ce sont deux questions difficiles.
+    $essai('e1', 5000, ['itemSeed' => 'E', 'skillId' => 'geo.aire']),
+];
+$c = comptesDesBlocages($melange);
+verifier('UNE RÉUSSITE COUPE LA SUITE D\'ÉCHECS',
+    $c['echecRepete']['distribution']['2'] === 1
+        && $c['echecRepete']['suites'] === 1,
+    json_encode($c['echecRepete']));
+
+// --- Deux élèves ne se mélangent pas ------------------------------------
+//
+// SANS CETTE SÉPARATION, LA MESURE SERAIT TOUTE FAUSSE : deux élèves qui font
+// la même erreur chacun une fois seraient comptés comme un élève qui la fait
+// deux fois de suite — c'est-à-dire exactement le cas qu'on cherche.
+$deux = [
+    $essai('e1', 1000, ['itemSeed' => 'A', 'misconception' => 'oubli.retenue']),
+    $essai('e2', 2000, ['itemSeed' => 'B', 'misconception' => 'oubli.retenue']),
+];
+$c = comptesDesBlocages($deux);
+verifier('DEUX ÉLÈVES NE FORMENT PAS UNE SUITE',
+    $c['eleves'] === 2 && $c['diagnosticRepete']['suites'] === 0,
+    json_encode($c['diagnosticRepete']));
+
+// --- Les indices --------------------------------------------------------
+$indices = [
+    $essai('e1', 1000, ['itemSeed' => 'A', 'hintsUsed' => 2, 'correct' => true]),
+    $essai('e1', 2000, ['itemSeed' => 'B', 'correct' => true]),
+    $essai('e2', 3000, ['itemSeed' => 'C', 'correct' => true]),
+];
+$c = comptesDesBlocages($indices);
+verifier('LES INDICES SE COMPTENT PAR QUESTION ET PAR ÉLÈVE',
+    $c['avecIndice'] === 1 && $c['indices']['total'] === 2
+        && $c['indices']['elevesSansIndice'] === 1,
+    json_encode($c['indices']));
+
+// --- Le temps, et son écart ---------------------------------------------
+$temps = [];
+foreach ([5, 6, 7, 8, 40] as $k => $s) {
+    $temps[] = $essai('e' . $k, 1000 * ($k + 1),
+        ['itemSeed' => 'T' . $k, 'msElapsed' => $s * 1000, 'correct' => true]);
+}
+$c = comptesDesBlocages($temps);
+$t = $c['temps'][0] ?? null;
+verifier('LE TEMPS PAR EXERCICE REND SA MÉDIANE ET SON NEUVIÈME DÉCILE',
+    $t && $t['n'] === 5 && abs($t['medianeS'] - 7.0) < 0.01 && $t['rapport'] > 3,
+    json_encode($t));
+
+// --- ET AUCUN NOM N'EN SORT ---------------------------------------------
+//
+// LA VÉRIFICATION LA PLUS IMPORTANTE DU LOT. Les identifiants d'élèves entrent
+// dans la fonction — il faut bien séparer deux suites d'essais —, et ils ne
+// doivent RESSORTIR nulle part. Rémy collera ce bloc de confiance, et c'est
+// cette confiance-là qu'on éprouve.
+$avecNoms = [
+    $essai('SECRET-ELEVE-1', 1000, ['itemSeed' => 'A', 'questionText' => 'SECRET-ENONCE',
+        'misconception' => 'oubli.retenue']),
+    $essai('SECRET-ELEVE-2', 2000, ['itemSeed' => 'B', 'questionText' => 'SECRET-ENONCE']),
+];
+$sortie = json_encode(comptesDesBlocages($avecNoms), JSON_UNESCAPED_UNICODE);
+verifier('AUCUN IDENTIFIANT D\'ÉLÈVE NE RESSORT DES COMPTES',
+    strpos($sortie, 'SECRET-ELEVE') === false, substr($sortie, 0, 120));
+verifier('AUCUN ÉNONCÉ NE RESSORT DES COMPTES',
+    strpos($sortie, 'SECRET-ENONCE') === false, substr($sortie, 0, 120));
+
+// --- Une base vide ne casse rien ----------------------------------------
+$c = comptesDesBlocages([]);
+verifier('UNE BASE SANS AUCUN ESSAI REND DES ZÉROS, PAS UNE ERREUR',
+    $c['eleves'] === 0 && $c['questions'] === 0 && $c['temps'] === []);
+
+// --- Et la page s'affiche ------------------------------------------------
+//
+// Le comptage juste ne sert à rien si la page ne s'ouvre pas : on la demande
+// comme le navigateur de Rémy, et l'on vérifie qu'elle porte sa section et pas
+// une trace d'erreur PHP.
+// ON DEMANDE LA PAGE, ON NE SE RECONNECTE PAS. La session du début vit encore
+// dans le pot à biscuits que `page()` partage, et un POST sur `/admin/` est
+// REFUSÉ (400) : le portail exige son jeton anti-rejeu, qu'on ne contourne pas.
+// C'est exactement ce que cette protection doit faire — l'essai avait tort, pas
+// le serveur.
+//
+// ET L'ÉPREUVE NOMME CE QU'ELLE A VU, pour ne pas accuser le code à sa place :
+// un échec dira si les autres sections sont là, c'est-à-dire si l'on regarde
+// bien l'administration et non le portail.
+$pageAdmin = page('/admin/');
+$autresSections = ['depot', 'sante', 'ranger', 'rapport'];
+$vuesAutres = array_values(array_filter($autresSections,
+    fn ($s) => str_contains($pageAdmin['html'], 'id="' . $s . '"')));
+verifier('LA PAGE D\'ADMINISTRATION PORTE LA SECTION DES BLOCAGES',
+    str_contains($pageAdmin['html'], 'id="blocages"'),
+    'code ' . $pageAdmin['code'] . ', autres sections vues : '
+        . (implode(', ', $vuesAutres) ?: 'AUCUNE — on regarde le portail'));
+// ET ELLE A VRAIMENT LU LA BASE. Le harnais a fait répondre des élèves plus
+// haut : la section doit donc compter des questions, et non annoncer « rien
+// encore ». Sans cette ligne, une requête SQL cassée passerait inaperçue —
+// la page s'afficherait, vide et paisible.
+// ET ELLE A VRAIMENT LU LA BASE. Le harnais a fait répondre des élèves plus
+// haut : la section doit donc avoir déchiffré de vrais essais, et non annoncer
+// « rien encore ». Sans cette ligne, une requête SQL cassée passerait
+// inaperçue — la page s'afficherait, vide et paisible, et l'épreuve au-dessus
+// resterait verte.
+verifier('ET ELLE A COMPTÉ DE VRAIS ESSAIS, LUS EN BASE',
+    str_contains($pageAdmin['html'], 'Lu : ')
+        && !str_contains($pageAdmin['html'], 'La lecture a échoué')
+        && !str_contains($pageAdmin['html'], 'Aucun essai enregistré'),
+    'la section est là mais n\'a rien compté — requête ou déchiffrement muet');
+verifier('ET ELLE NE CRACHE AUCUNE ERREUR PHP',
+    stripos($pageAdmin['html'], 'Fatal error') === false
+        && stripos($pageAdmin['html'], 'Warning:') === false
+        && stripos($pageAdmin['html'], 'Deprecated:') === false);
 
 // --------------------------------------------------------------- Le bilan ---
 

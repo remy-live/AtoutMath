@@ -135,8 +135,15 @@ export const fractionDecimaleGenerator = {
             ]
         },
         {
+            // LES TROIS, ET NON DEUX — Rémy, le 13 octobre : « cocher par
+            // défaut ». Le repli de `generate` ci-dessous tire les deux
+            // premiers rangs quand la liste arrive vide ; ce repli n'est PAS
+            // le réglage par défaut, et c'est pourquoi les deux s'écrivent
+            // séparément. `tests/fractionDecimale.test.mjs` tire déjà ses
+            // 200 questions sur les trois rangs : la branche des millièmes
+            // était mesurée avant d'être montrée.
             id: 'rangs', type: 'multiselect', label: 'Jusqu\'où', deroulant: true,
-            default: ['dixiemes', 'centiemes'],
+            default: ['dixiemes', 'centiemes', 'milliemes'],
             options: [
                 { value: 'dixiemes', label: 'Dixièmes (un chiffre après la virgule)' },
                 { value: 'centiemes', label: 'Centièmes (deux chiffres)' },

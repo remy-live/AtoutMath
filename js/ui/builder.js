@@ -33,6 +33,7 @@ import {
 } from '../core/explorateurParcours.js';
 import { initTiroirOnglets, montrerPanneau } from './tiroirParcours.js';
 import { chapitresDe } from '../core/chapitres.js';
+import { cadreDApercu } from '../core/presentation.js';
 import { nomPropose, themesDExercice, domaineDExercice } from '../core/nomDeParcours.js';
 import {
     renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide, direLesReglages
@@ -1856,8 +1857,13 @@ function initPreviewModes() {
 }
 
 function previewMode() {
-    if (document.body.classList.contains('mobile-view')) return 'none';
-    return state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode;
+    // CES TROIS LIGNES ÉTAIENT LA BONNE VERSION D'UNE RÈGLE ÉCRITE DEUX FOIS.
+    // `games/engine.js` portait la même, sans le garde-fou du téléphone, et
+    // c'est par là que Rémy ouvre ses exercices depuis le catalogue : son jeu
+    // se jouait dans un cadre de 400 px sur un écran de 390. La règle vit
+    // maintenant dans `core/presentation.js`, où elle s'éprouve sans
+    // navigateur, et les deux aperçus la lisent au même endroit.
+    return cadreDApercu(state.previewDeviceMode, state.isMobileView);
 }
 
 async function runPath(path, deviceMode, startIndex = 0) {

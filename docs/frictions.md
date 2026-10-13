@@ -4267,3 +4267,129 @@ lignes** — 2026-10-01
   trois ».** Ici il a fallu lui adjoindre une liste nommée — pour chaque jeu
   corrigé, COMBIEN de déclarations doivent rester pleines. Moins élégant,
   mais c'est la liste qui attrape les huit, pas le critère.
+
+---
+
+**Une règle écrite deux fois ne se corrige qu'une** — 13 octobre 2026
+
+- *Ce que je voulais faire* : masquer les trois boutons d'aperçu sur un écran
+  étroit, comme Rémy l'a tranché.
+- *Ce qui a coûté* : une sonde pour découvrir que **la moitié visible du travail
+  était faite depuis longtemps** — les boutons portent `desktop-only` et
+  `body.mobile-view` les efface : zéro bouton visible, mesuré. Mais le cadre
+  s'appliquait toujours : `cadreDe()` rendait `'mobile'`, et `#game-layer`
+  faisait 400 px dans un écran de 390. La cause : `ui/builder.js` et
+  `games/engine.js` écrivaient LA MÊME RÈGLE, à un garde-fou près — et seule la
+  copie que j'avais sous les yeux, des semaines plus tôt, l'avait reçu. L'autre
+  sert le chemin que Rémy emprunte le plus souvent.
+- *Combien de fois* : ||| — le même motif que « la correction d'alors était
+  juste ; elle avait été posée sur UN des deux chemins » (les ovales de
+  retenue, signalés deux fois), et que `data-prenom` porté par deux boutons.
+- *Ce qui manque* : une épreuve qui garde l'UNICITÉ et non la valeur. Celle du
+  cadre lit maintenant les 400 fichiers de `js/` et refuse qu'un module décide
+  du cadre à partir de `previewDeviceMode` hors du noyau. **Quand on corrige une
+  règle, chercher d'abord si elle est écrite ailleurs** — avant d'écrire la
+  correction, pas après.
+
+---
+
+**Une sonde qui ne mesure rien répond « tout va bien »** — 13 octobre 2026
+
+- *Ce que je voulais faire* : vérifier qu'aucun exercice du catalogue ne coche
+  une valeur de réglage que son générateur ignore.
+- *Ce qui a coûté* : deux minutes et une fausse certitude. En corrigeant un
+  import, j'ai retiré celui qui ENREGISTRE les générateurs. La sonde a imprimé
+  « **0 valeur de réglage lue dans 225 exercices — aucune valeur inventée** » :
+  les deux moitiés de la phrase se contredisaient, et seule la seconde était
+  lue. Avec l'import remis : 205 valeurs, et toujours aucune inventée — mais
+  cette fois la réponse voulait dire quelque chose.
+- *Combien de fois* : |||| — c'est la quatrième forme du même piège (`hors
+  cadre: 0` partout, `\bcqi` qui ne correspondait à rien, l'épreuve verte qui
+  ne gardait rien, celle-ci).
+- *Ce qui manque* : rien à construire, une ligne à écrire. **Toute sonde et
+  toute épreuve qui balaie une collection doit AFFIRMER combien d'éléments elle
+  a lus**, et échouer si le compte s'écroule. Les trois épreuves écrites
+  aujourd'hui portent ce seuil (`lues > 150`, `fichiers > 60`,
+  `fichiers.length > 100`).
+
+---
+
+**« Étiré » ne dit pas QUI a étiré** — 13 octobre 2026
+
+- *Ce que je voulais faire* : corriger les 53 boutons plus hauts que larges que
+  `tools/boutonsEtires.mjs` signale.
+- *Ce qui a coûté* : j'ai commencé à élargir une cible du jeu des Diviseurs
+  (43 × 67) avant de voir que le plancher tactile n'y était pour **rien** : sa
+  hauteur vient de ses deux lignes de texte empilées. Le critère de l'outil,
+  `plancher !== 'auto'`, dit seulement que le plancher S'APPLIQUE à ce bouton,
+  pas qu'il l'a étiré. Même piège sur le Duel : 74 px de haut, décidés par sa
+  propre feuille.
+- *Combien de fois* : || — déjà payé sur « hors cadre : 0 », où la mesure
+  répondait contre la mauvaise référence.
+- *Ce qui manque* : fait. L'outil sépare désormais **« étirés par le plancher »**
+  (hauteur ≈ 44 px : on élargit, ou le jeu déclare `btn-carre`) de **« hauts
+  parce que leur jeu le veut »** (hauteur > plancher : on relit sa feuille
+  AVANT d'y toucher — elle dit souvent pourquoi). 32 d'un côté, 21 de l'autre.
+
+---
+
+**Lire une règle CSS dans une épreuve était écrit trois fois** — 13 octobre 2026
+
+- *Ce que je voulais faire* : garder quatre valeurs de mise en page que Rémy
+  vient d'arbitrer.
+- *Ce qui a coûté* : en cherchant comment le dépôt lit une règle CSS, j'ai
+  trouvé `corpsDeLaRegle` et `declare` recopiées dans trois épreuves —
+  `colonnesDuTableau`, `sceneDuSprint`, `cadreDuTableauCroise` — et, avec elles,
+  **trois fois le même commentaire** expliquant que `/\bheight/` trouve
+  `min-height`. Une leçon écrite trois fois est une leçon qu'on réapprendra une
+  quatrième.
+- *Combien de fois* : ||| (trois copies, et la mienne aurait fait quatre)
+- *Ce qui manque* : fait — `tests/aidesCss.mjs`, et les trois épreuves
+  migrées. Il porte en plus ce que les copies ne savaient pas faire :
+  `{ apres: '@container …' }`, parce qu'un même sélecteur revient dans
+  plusieurs blocs et que **c'est le dernier qui gagne** — le Duel fixe la
+  hauteur de son pavé à trois endroits.
+
+---
+
+**Deux retouches liées, en deux appels, laissent un fichier qui ne compile pas**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : remplacer une aide locale par un import, dans une
+  épreuve — donc changer l'en-tête ET supprimer la fonction, ensemble.
+- *Ce qui a coûté* : un aller-retour. Fait en deux appels à
+  `tools/remplacer.mjs`, le premier a introduit l'import et le second a été
+  REFUSÉ par `node --check` (« Identifier 'declare' has already been
+  declared ») — l'outil a bien remis le fichier, mais le premier changement
+  était déjà écrit, et le fichier est resté cassé entre les deux.
+- *Combien de fois* : |
+- *Ce qui manque* : rien, l'outil fait déjà ce qu'il faut : `--depuis` accepte
+  PLUSIEURS paires et n'écrit qu'une fois tout vérifié. **Des retouches qui
+  dépendent l'une de l'autre vont dans le MÊME fichier de paires**, jamais en
+  deux appels.
+
+---
+
+**Un code de quatre caractères cherché dans un fichier binaire tombe au hasard**
+— 13 octobre 2026
+
+- *Ce que je voulais faire* : lire le verdict de `php tools/testApi.php` avant de
+  committer.
+- *Ce qui a coûté* : dix minutes de doute sur une correction qui n'avait rien à
+  voir. Le harnais a annoncé **« un code de billet n'est pas lisible dans le
+  fichier — « 4KP2 » trouvé en clair »**, c'est-à-dire la pire nouvelle
+  possible : le chiffrement décoratif. Relancé sans rien changer : vert. C'était
+  une COLLISION FORTUITE — la vérification cherche la chaîne littérale `4KP2`
+  dans les quelques centaines de kilo-octets du fichier SQLite et de son
+  journal, et quatre caractères ASCII se rencontrent par hasard de temps en
+  temps.
+- *Combien de fois* : | (une fois sur les cinq lancements de la journée, donc
+  cela recommencera)
+- *Ce qui manque* : une **sentinelle assez longue pour ne pas se rencontrer par
+  hasard**. Le code `4KP2` est écrit à la main par le harnais (douze endroits) et
+  le format du produit accepte jusqu'à douze caractères : un code de neuf
+  signes rendrait la collision impossible sans rien changer à ce que la
+  vérification prouve. Non fait aujourd'hui — le harnais était vert, Rémy n'a
+  pas demandé cela, et toucher à douze appels de connexion pour un faux positif
+  rare se décide à froid. **Écrit ici pour que la prochaine session relance
+  avant de chercher le défaut.**

@@ -87,6 +87,32 @@ class Anagrammes extends BaseGame {
                 /* LE TAS DE LETTRES. Il se vide à mesure : ce qui reste est un
                    indice à lui tout seul. */
                 .an-tas { display: flex; gap: clamp(4px, 1cqw, 8px); flex-wrap: wrap; justify-content: center; }
+                /* LE JETON ET SA CASE ONT LA MÊME TAILLE, ET LE PLANCHER EN
+                   AVAIT CASSÉ UNE SEULE DES DEUX.
+
+                   Les deux se dessinent sur la même variable — width:
+                   var(--an-cote), height: calc(var(--an-cote) * 1.15) —
+                   puisque le jeton va SE POSER dans la case. Mais le plancher
+                   tactile de css/modules.css épargne tout bouton dont le nom
+                   contient « case », par la liste qu'il devine : an-case
+                   passait, an-jeton non.
+
+                   MESURÉ sur 390 × 844 : case 29 × 33, jeton 29 × 44. Un
+                   jeton plus haut que la case où il doit tomber, et personne
+                   ne l'avait signalé — ce n'est pas un ovale, c'est un
+                   désaccord de onze pixels entre deux objets qui doivent
+                   coïncider.
+
+                   btn-carre EST LA RÉPONSE ÉCRITE : le plancher dit
+                   lui-même « le jeu dit qu'il est carré, sa hauteur est ma
+                   mise en page », et il ajoute, pour les cases de grille, « à
+                   44 px, une grille de dix colonnes ferait 440 px de large sur
+                   un écran qui en a 390 : on casserait le jeu pour élargir un
+                   bouton ». C'est exactement le cas ici —
+                   « PERPENDICULAIRE » fait quinze lettres — et --an-cote monte
+                   déjà à 58 px dès que le mot est court.
+
+                   On ne devine donc plus par le nom : on déclare. */
                 .an-jeton {
                     width: var(--an-cote); height: calc(var(--an-cote) * 1.15);
                     border-radius: 10px; border: 2px solid var(--primary);
@@ -212,7 +238,7 @@ class Anagrammes extends BaseGame {
         });
 
         this.tasEl.innerHTML = this.tas.map(j =>
-            `<button type="button" class="an-jeton${j.pose ? ' an-jeton--pose' : ''}"
+            `<button type="button" class="an-jeton btn-carre${j.pose ? ' an-jeton--pose' : ''}"
                      data-jeton="${j.i}">${j.lettre}</button>`).join('');
         this.tasEl.querySelectorAll('[data-jeton]').forEach(b => {
             b.onclick = () => this.poserJeton(Number(b.dataset.jeton));
