@@ -92,8 +92,24 @@ class PyramideNombres extends BaseGame {
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
+                /* LE BOUTON DE LA SUITE, QUAND C'EST GAGNÉ. Rémy : « quand c'est
+                   bon et que l'élève a cliqué vérifié il faut dire qu'il a eu bon et
+                   proposer une nouvelle pyramide, j'ai une élève qui n'a pas compris
+                   qu'il fallait faire cela ». Les trois boutons étaient identiques :
+                   même fond blanc, même graisse, et deux d'entre eux ne répondaient
+                   plus. Mesuré (tools/pyramideQuandCestJuste.mjs) : rgb(255,255,255)
+                   pour « Vérifier » comme pour « Nouvelle pyramide ». */
+                .pn-btn--suite {
+                    background: var(--primary, #6d5cf6); color: #fff;
+                    border-color: var(--primary, #6d5cf6);
+                    transform: scale(1.06);
+                }
+                /* UN BOUTON VIVANT QUI NE RÉPOND PAS EST PIRE QUE PAS DE BOUTON :
+                   l'élève touche « Vérifier » une deuxième fois, il ne se passe
+                   rien, et elle en conclut que le logiciel est bloqué. */
+                .pn-btn:disabled { opacity: .4; cursor: default; }
                 .pn-note { min-height: 1.5em; text-align: center; font-weight: 600;
-                    font-size: clamp(11px, 2.4cqh, 15px); }
+                    font-size: clamp(11px, 2.4cqh, 15px); line-height: 1.35; }
                 .pn-note--ok { color: #2f855a; }
                 .pn-note--ko { color: #c53030; }
             </style>
@@ -122,7 +138,14 @@ class PyramideNombres extends BaseGame {
         });
 
         this.surTouche = (e) => {
-            if (this.fini || this.isDemo) return;
+            if (this.isDemo) return;
+            // ENTRÉE MÈNE PLUS LOIN QUAND C'EST GAGNÉ. Elle vient de taper dix
+            // nombres et de valider avec Entrée : la même touche doit lui
+            // donner la pyramide suivante, et pas rester muette.
+            if (this.fini) {
+                if (e.key === 'Enter') { this.poser(true); e.preventDefault(); }
+                return;
+            }
             if (/^[0-9]$/.test(e.key)) { this.taper(e.key); e.preventDefault(); }
             else if (e.key === 'Backspace') { this.taper('eff'); e.preventDefault(); }
             else if (e.key === 'Enter') { this.verifier(); e.preventDefault(); }
@@ -143,8 +166,38 @@ class PyramideNombres extends BaseGame {
         this.montre = null;
         this.vise = this.premiereVide();
         this.dessiner();
+        this.boutons(false);
         const q = qualitePN(this.p);
         this.note(`${q.aTrouver} cases à trouver. Chaque case est la SOMME des deux du dessous.`);
+    }
+
+    /**
+     * LES TROIS BOUTONS, SELON QU'IL RESTE QUELQUE CHOSE À FAIRE OU NON.
+     *
+     * RÉMY : « quand c'est bon et que l'élève a cliqué vérifié il faut dire
+     * qu'il a eu bon et proposer une nouvelle pyramide, j'ai une élève qui n'a
+     * pas compris qu'il fallait faire cela ».
+     *
+     * Le bouton existait depuis le début, à côté des deux autres et habillé
+     * comme eux. Pendant ce temps, « Vérifier » et « Un indice » ne faisaient
+     * plus rien — ils commencent tous les deux par `if (this.fini) return` —,
+     * et c'est sur « Vérifier » qu'on retouche quand on ne sait pas quoi faire.
+     * Elle a donc touché le bouton MORT, et a conclu que c'était bloqué.
+     *
+     * On éteint donc ce qui ne répond plus, on allume ce qu'il faut toucher, et
+     * l'on y met le foyer pour qu'Entrée suffise.
+     */
+    boutons(gagne) {
+        const neuf = this.container.querySelector('#pn-neuf');
+        const verif = this.container.querySelector('#pn-verif');
+        const aide = this.container.querySelector('#pn-aide');
+        if (verif) verif.disabled = gagne;
+        if (aide) aide.disabled = gagne;
+        if (!neuf) return;
+        neuf.classList.toggle('pn-btn--suite', gagne);
+        // PAS DE FOYER PENDANT LA DÉMONSTRATION : le robot joue tout seul, et
+        // déplacer le foyer sous le curseur de démonstration le fait sauter.
+        if (gagne && !this.isDemo) neuf.focus();
     }
 
     premiereVide() {
@@ -312,8 +365,13 @@ class PyramideNombres extends BaseGame {
         this.montre = null;
         this.dessiner();
         const q = qualitePN(this.p);
-        this.note(`🏆 Pyramide complète — sommet ${q.sommet}, base `
-            + `${q.base.join(' · ')}.`, 'ok');
+        // LA PHRASE DIT DEUX CHOSES, ET IL EN MANQUAIT UNE. « Pyramide
+        // complète » décrit la grille ; il faut d'abord dire à l'élève
+        // qu'ELLE a eu bon, puis où aller ensuite. Rémy : « il faut dire qu'il
+        // a eu bon et proposer une nouvelle pyramide ».
+        this.note(`🏆 Bravo, ta pyramide est JUSTE — sommet ${q.sommet}, base `
+            + `${q.base.join(' · ')}.<br>Touche « Nouvelle pyramide » pour en faire une autre.`, 'ok');
+        this.boutons(true);
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `Pyramide additive de ${this.p.n} étages (sommet ${q.sommet})`,
             expected: String(q.sommet), given: String(q.sommet),

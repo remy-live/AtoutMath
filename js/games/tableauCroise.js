@@ -117,11 +117,30 @@ class TableauCroise extends BaseGame {
                     flex-wrap: wrap; width: 100%;
                 }
 
-                .tc-table { border-collapse: collapse; font-size: clamp(12px, 2.9cqw, 16px); }
+                /* TOUTES LES COLONNES DE JOURS À LA MÊME LARGEUR.
+                   RÉMY, capture à l'appui : « le colonne lundi, mardi, mercredi
+                   n'ont pas la même taille ». Un tableau se lit en COLONNES, et
+                   trois colonnes de largeurs différentes se lisent comme trois
+                   choses d'importance différente — « Mercredi » paraissait deux
+                   fois plus large que « Lundi » parce qu'il a trois lettres de
+                   plus. C'est le défaut par défaut d'un tableau HTML : chaque
+                   colonne prend la largeur de son contenu.
+                   table-layout: fixed le corrige, mais il déplace la décision :
+                   ce sont les largeurs de la PREMIÈRE rangée qui commandent, et
+                   le reste ne compte plus. On les écrit donc toutes les deux —
+                   celle des en-têtes de colonnes et celle de la colonne des
+                   intitulés —, calculées sur le mot le plus long (voir
+                   dessinerTableau). Sans la seconde, « En bon état » se
+                   retrouverait dans une colonne large de trois caractères. */
+                .tc-table { border-collapse: collapse; table-layout: fixed;
+                            font-size: clamp(12px, 2.9cqw, 16px); }
                 .tc-table th, .tc-table td {
                     border: 1px solid var(--border); padding: 4px 6px; text-align: center;
                     min-width: 3.4em; height: 2.4em;
+                    width: calc(var(--tc-col, 8ch) + 1.6em);
                 }
+                .tc-table thead th:first-child,
+                .tc-table .tc-tete-ligne { width: calc(var(--tc-tete, 9ch) + 1.8em); }
                 .tc-table th { font-weight: 800; background: var(--bg-hover); }
                 /* La ligne et la colonne des totaux se voient : ce sont elles
                    qu'on boucle, et l'élève doit les repérer d'un coup d'œil. */
@@ -277,7 +296,19 @@ class TableauCroise extends BaseGame {
                 : 'Complète les valeurs manquantes.')
             + faits;
 
-        let html = '<table class="tc-table"><thead><tr><th></th>';
+        // LA LARGEUR SE CALCULE SUR LE MOT LE PLUS LONG, ET ELLE VAUT POUR
+        // TOUTES. Rémy : « le colonne lundi, mardi, mercredi n'ont pas la même
+        // taille ». Les en-têtes viennent de l'énoncé — des jours, des parfums,
+        // des classes —, donc aucune largeur écrite à la main ne tiendrait :
+        // « Lun. » et « Après-midi » ne demandent pas la même chose. On mesure
+        // en `ch`, la largeur d'un chiffre, et l'on ajoute de quoi loger la
+        // bordure et les marges intérieures.
+        const long = (mots, plancher) =>
+            Math.max(plancher, ...mots.map((m) => String(m || '').length));
+        const larg = long([...t.colonnes, 'Total'], 5);
+        const largTete = long([...t.lignes, 'Total'], 6);
+        let html = `<table class="tc-table" style="--tc-col: ${larg}ch; --tc-tete: ${largTete}ch">`
+            + '<thead><tr><th></th>';
         t.colonnes.forEach(c => { html += `<th>${echapper(c)}</th>`; });
         html += '<th class="tc-total">Total</th></tr></thead><tbody>';
         for (let r = 0; r <= t.R; r++) {

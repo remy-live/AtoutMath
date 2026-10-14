@@ -141,8 +141,19 @@ class Pyramide extends BaseGame {
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
+                /* LE BOUTON DE LA SUITE, QUAND C'EST GAGNÉ — même correction que
+                   sur la pyramide des nombres, et pour la même raison. Rémy :
+                   « quand c'est bon et que l'élève a cliqué vérifié il faut dire
+                   qu'il a eu bon et proposer une nouvelle pyramide, j'ai une élève
+                   qui n'a pas compris qu'il fallait faire cela ». */
+                .py-btn--suite {
+                    background: var(--primary, #6d5cf6); color: #fff;
+                    border-color: var(--primary, #6d5cf6);
+                    transform: scale(1.06);
+                }
+                .py-btn:disabled { opacity: .4; cursor: default; }
                 .py-note { min-height: 1.5em; text-align: center; font-weight: 600;
-                    font-size: clamp(11px, 2.4cqh, 15px); }
+                    font-size: clamp(11px, 2.4cqh, 15px); line-height: 1.35; }
                 .py-note--ok { color: #2f855a; }
                 .py-note--ko { color: #c53030; }
 
@@ -197,7 +208,13 @@ class Pyramide extends BaseGame {
         });
 
         this.surTouche = (e) => {
-            if (this.fini || this.isDemo) return;
+            if (this.isDemo) return;
+            // ENTRÉE MÈNE PLUS LOIN QUAND C'EST GAGNÉ : la même touche qui
+            // validait doit donner la pyramide suivante, et pas rester muette.
+            if (this.fini) {
+                if (e.key === 'Enter') { this.poser(true); e.preventDefault(); }
+                return;
+            }
             const k = (e.key || '').toUpperCase();
             if (ALPHABET.includes(k) && k.length === 1) { this.taper(k); e.preventDefault(); }
             else if (e.key === 'Backspace') { this.taper('eff'); e.preventDefault(); }
@@ -221,7 +238,32 @@ class Pyramide extends BaseGame {
         this.vise = this.p.donnes.findIndex(d => !d);
         this.col = 0;
         this.dessiner();
+        this.boutons(false);
         this.note('');
+    }
+
+    /**
+     * LES TROIS BOUTONS, SELON QU'IL RESTE QUELQUE CHOSE À FAIRE OU NON.
+     *
+     * RÉMY : « quand c'est bon et que l'élève a cliqué vérifié il faut dire
+     * qu'il a eu bon et proposer une nouvelle pyramide, j'ai une élève qui n'a
+     * pas compris qu'il fallait faire cela ».
+     *
+     * « Nouvelle pyramide » existait depuis le début, habillé exactement comme
+     * ses deux voisins — pendant que ces deux-là, une fois la pyramide finie,
+     * ne faisaient plus rien (`if (this.fini) return`). On éteint donc ce qui
+     * ne répond plus, on allume ce qu'il faut toucher, et l'on y met le foyer.
+     */
+    boutons(gagne) {
+        const neuf = this.container.querySelector('#py-neuf');
+        const verif = this.container.querySelector('#py-verif');
+        const aide = this.container.querySelector('#py-aide');
+        if (verif) verif.disabled = gagne;
+        if (aide) aide.disabled = gagne;
+        if (!neuf) return;
+        neuf.classList.toggle('py-btn--suite', gagne);
+        // Pas de foyer pendant la démonstration : le robot joue tout seul.
+        if (gagne && !this.isDemo) neuf.focus();
     }
 
     dessiner() {
@@ -380,7 +422,11 @@ class Pyramide extends BaseGame {
         this.fautes = null;
         this.dessiner();
         const q = qualitePyramide(this.p);
-        this.note(`🏆 Pyramide complète : ${q.mots.join(' → ')}.`, 'ok');
+        // La phrase dit d'abord qu'ELLE a eu bon, puis où aller ensuite :
+        // « Pyramide complète » ne décrivait que la grille.
+        this.note(`🏆 Bravo, ta pyramide est JUSTE : ${q.mots.join(' → ')}.`
+            + '<br>Touche « Nouvelle pyramide » pour en faire une autre.', 'ok');
+        this.boutons(true);
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `Pyramide de ${q.hauteur} lignes (${q.mots[q.mots.length - 1]})`,
             expected: q.mots.join(' → '), given: q.mots.join(' → '),
