@@ -130,7 +130,17 @@ function longueursDesSuites(array $suites): array
         $seuils['3'] += max(0, $n - 2);
         $seuils['4'] += max(0, $n - 3);
     }
+    // LA PLUS LONGUE, À PART. Les trois paniers ci-dessus regroupent « 4 et
+    // plus », ce qui suffit à lire une distribution mais pas à éprouver un
+    // comptage : un essai qui attend « une suite de cinq » ne peut pas se
+    // vérifier sur un panier. Et à l'écran, elle répond à une question que
+    // Rémy posera forcément — jusqu'où ça va.
+    $plusLongue = 0;
+    foreach ($suites as $n) {
+        if ($n >= 2 && $n > $plusLongue) $plusLongue = $n;
+    }
     return ['distribution' => $dist, 'franchissements' => $seuils,
+            'plusLongue' => $plusLongue,
             'suites' => count(array_filter($suites, fn($n) => $n >= 2))];
 }
 

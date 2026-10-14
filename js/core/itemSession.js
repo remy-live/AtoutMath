@@ -14,6 +14,7 @@ import { state } from './state.js';
 import { getWeakTables } from './stats.js';
 import { defaultPolicy } from './policy.js';
 import { etatDepart, apresReponse } from './aide.js';
+import { laMemeBetiseQuAvant, noterUneQuestion } from './memoireCourte.js';
 
 // COMBIEN DE FOIS ON RETIRE AVANT D'ACCEPTER UNE QUESTION DÉJÀ POSÉE.
 //
@@ -307,6 +308,21 @@ export class ItemSession {
         this.item = item;
         this.attemptIndex = 0;
         this.hintIndex = 0;
+        // LE DIAGNOSTIC DE LA QUESTION, QUI N'EST PAS CELUI DU DERNIER ESSAI.
+        //
+        // Un élève se trompe, on lui dit pourquoi, il se reprend et trouve.
+        // Au moment où la question se conclut, le verdict du dernier essai est
+        // « juste » et ne porte AUCUN diagnostic — alors que la question, elle,
+        // en a eu un. Sans cette mémoire d'une question, la mémoire courte
+        // n'inscrirait que les questions jamais trouvées, et « c'est la même
+        // chose qu'à la question d'avant » ne se dirait jamais à l'élève qui
+        // se corrige — c'est-à-dire à celui qui écoute.
+        //
+        // `api/lib/blocages.php` fait exactement cela, et pour la même raison
+        // (« LE DERNIER DIAGNOSTIC L'EMPORTE […] c'est celui qui décrit où
+        // l'élève en est resté »). Les deux doivent coïncider : c'est sur ses
+        // comptes que Rémy choisira le seuil.
+        this.diagnosticDeLaQuestion = null;
         this.eliminated = new Set();
         this.locked = false;
         this.startedAt = Date.now();
@@ -430,6 +446,12 @@ export class ItemSession {
             this.eliminated.add(String(given));
         }
 
+        // EST-CE LA DEUXIÈME FOIS ? La question se pose AVANT d'inscrire celle
+        // d'aujourd'hui, sans quoi elle se comparerait à elle-même.
+        const memeBetise = !verdict.correct
+            && laMemeBetiseQuAvant(verdict.misconception);
+        if (verdict.misconception) this.diagnosticDeLaQuestion = verdict.misconception;
+
         const exhausted = !verdict.correct && this.attemptIndex >= this.policy.maxAttemptsPerItem;
         const result = {
             ...verdict,
@@ -492,6 +514,39 @@ export class ItemSession {
                     sec = verdict.misconception || prochainIndice
                         || 'Ce n\'est pas ça. Il te reste un essai.';
                 }
+                // LA MÊME BÊTISE DEUX FOIS DOIT S'ENTENDRE AUTREMENT.
+                //
+                // RÉMY : « parfois un élève bloque complètement, que faire ? ».
+                // Nommer la répétition est tout l'enseignement, et c'est
+                // exactement ce qu'il fait de vive voix : « c'est la même chose
+                // que tout à l'heure ». Le logiciel, lui, répétait la même
+                // phrase neutre — celle d'une machine qui ne s'aperçoit de
+                // rien.
+                //
+                // ON NOMME, PUIS ON REDIT LA RÈGLE, et l'ordre est le bon : la
+                // remarque situe, la règle enseigne. Dire la règle d'abord, ce
+                // serait la troisième fois qu'on la dit sans que l'élève
+                // remarque qu'il l'a déjà lue.
+                //
+                // RIEN D'AUTRE NE CHANGE : pas de fenêtre, pas de son, pas de
+                // clignotement — la carte est celle de toujours, avec une
+                // phrase de plus. Rémy : « lancer une popup à chaque fois c'est
+                // l'enfer […] il faudra que ça apparaisse, que ce soit discret,
+                // et que ça ne casse pas la mise en page. »
+                //
+                // ET ELLE SE TAIT EN INTERROGATION, parce que LE DÉPÔT A DÉJÀ
+                // TRANCHÉ CELA quinze lignes plus haut : en régime « reponse »,
+                // « l'élève ne repart pas avec son erreur, mais on ne lui fait
+                // pas cours pendant qu'on le mesure ». Nommer la répétition
+                // EST faire cours — c'est même tout ce que ce geste prétend
+                // faire. Un devoir noté n'est pas le moment.
+                //
+                // Le régime « robot » — le devoir formatif que Rémy décrit
+                // (« si c'est en mode interrogation il faut une explication de
+                // la part du robot ») — la garde, lui : il enseigne exprès.
+                if (memeBetise && sec && this.policy.correction !== 'reponse') {
+                    sec = 'C\'est la même chose qu\'à la question d\'avant. ' + sec;
+                }
                 dismissed = announce({
                     kind: 'error',
                     isError: true,
@@ -543,6 +598,20 @@ export class ItemSession {
                 reussi: verdict.correct,
                 duPremierCoup: isFirstTry,
                 avecIndice: this.hintIndex > 0
+            });
+            // ET LA MÉMOIRE COURTE S'INSCRIT ICI, AU MÊME ENDROIT ET POUR LA
+            // MÊME RAISON : une question conclue est un verdict, pas deux. Un
+            // élève qui se trompe puis se reprend a buté UNE fois.
+            //
+            // `duPremierCoup` ne regarde pas les indices, et c'est voulu : la
+            // définition est celle de `api/lib/blocages.php`, qui compte comme
+            // réussi « correct au premier essai ». Les deux doivent dire la
+            // même chose, sinon le seuil que Rémy choisira sur ses comptes ne
+            // sera pas celui que le logiciel appliquera.
+            noterUneQuestion({
+                competence: this.item ? this.item.skillId : null,
+                diagnostic: this.diagnosticDeLaQuestion,
+                duPremierCoup: verdict.correct && isFirstTry
             });
         }
 

@@ -31,6 +31,7 @@ import { direQuOnVoit, oublierLEcran } from './ecran.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
 import { surveillerEnonces } from '../ui/enonce.js';
+import { oublierLaSeance } from './memoireCourte.js';
 import { filtrerEtapes, peutSauter, estRetire, calculatriceAccordee } from './seanceDistante.js';
 import { majFilSeance, cacherFilSeance } from '../ui/filSeance.js';
 
@@ -174,6 +175,18 @@ export class Runner {
         // pu laisser sa flèche, sa bulle ou sa barre de commandes. Elle n'est
         // tenue par aucun parcours, donc personne d'autre ne les enlève.
         destroyAllDemoCursors();
+
+        // ET D'UNE MÉMOIRE PROPRE. `core/memoireCourte.js` se souvient des
+        // dernières questions pour pouvoir dire « c'est la même chose qu'à la
+        // question d'avant ». Cette remarque doit porter sur une question que
+        // l'élève peut RETROUVER : s'il reprend son travail une heure plus
+        // tard, « la question d'avant » n'est plus à son écran, et la remarque
+        // n'enseigne plus rien — elle inquiète.
+        //
+        // L'oubli est ici et non à la fin d'un parcours : un parcours
+        // interrompu — l'élève ferme l'onglet, la sonnerie sonne — ne passe
+        // par aucune fin.
+        oublierLaSeance();
 
         // Le titre est posé DÈS MAINTENANT et pas seulement dans `runStep` :
         // en évaluation, un écran de consignes s'intercale, et il portait

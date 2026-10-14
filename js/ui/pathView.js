@@ -14,6 +14,7 @@ import { state } from '../core/state.js';
 import { estUnMessage } from '../core/path.js';
 import { sectionMesExercices } from './mesExercicesUI.js';
 import { instantane, ouvrirSeance } from './maSeance.js';
+import { pleinEcranSiSeanceImposee } from './fullscreen.js';
 import { estRattache } from '../core/portail.js';
 import { getExerciseById } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
@@ -514,6 +515,18 @@ function salleDeJeux(path, steps, etat) {
  * choisisse par où commencer ne peut pas sauter l'écran du choix.
  */
 async function launchAssigned(path, startIndex) {
+    // LE PLEIN ÉCRAN PART ICI, ET AVANT LE PREMIER `await` — Rémy : « oui si la
+    // séance est imposée et laisse le bouton ». Un `await import()` rend la
+    // main au navigateur, qui ne reconnaît alors plus le geste de l'élève et
+    // refuse le plein écran en silence. Voir `ui/fullscreen.js`, qui décide
+    // seul s'il y a lieu.
+    //
+    // CETTE FONCTION EST LA PORTE DE TOUS LES APPUIS DE LA CARTE : le bouton
+    // « Jouer », une étape cliquée, une étape sous clé une fois la clé donnée.
+    // La poser ici plutôt que sur chacun est ce qui évite qu'un chemin soit
+    // oublié — ce qui est déjà arrivé deux fois sur cet écran (voir le double
+    // écran de `sansCarteDOuverture` juste au-dessus).
+    pleinEcranSiSeanceImposee(path);
     const { Runner } = await import('../core/runner.js');
     new Runner({
         path, deviceMode: 'none', isStudentPath: true, startIndex,

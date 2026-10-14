@@ -212,6 +212,27 @@ function lesTablesDuSchema(bool $sqlite): array
         --     samedi. Un instant, et non un drapeau : c'est la seule forme qui
         --     survit à un serveur qu'on ne redémarre jamais.
         impose_jusqu_a " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
+        --   · impose_plein_ecran : l'écran de l'élève passe en plein écran dès
+        --     qu'il ouvre la séance imposée.
+        --
+        --     Rémy : « est ce que lorsque j'impose une séance, et que l'élève
+        --     découvre la carte du monde je peux forcer le plein écran ? »,
+        --     puis, une fois la contrainte du navigateur expliquée : « oui si
+        --     la séance est imposée et laisse le bouton », et enfin « après
+        --     peut être vaut il mieux le mettre en paramètre ».
+        --
+        --     IL A RAISON, ET MA PREMIÈRE ÉCRITURE ÉTAIT PIRE : le plein écran
+        --     partait dès qu'une séance était imposée, sans qu'il puisse dire
+        --     non. Or cela dépend de la salle — une 6e sur les postes de la
+        --     salle informatique, oui ; une 3e sur ses propres téléphones,
+        --     c'est à lui de voir.
+        --
+        --     PAR CLASSE ET AVEC LA SÉANCE IMPOSÉE, donc ici et non dans le
+        --     parcours : un parcours donné par code dicté se fait aussi le
+        --     soir à la maison, et personne n'a demandé le plein écran chez
+        --     l'élève. C'est une décision de CONDUITE DE CLASSE, comme le
+        --     verrou et le compte à rebours qui l'entourent.
+        impose_plein_ecran $bool,
         chrono_fin     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         chrono_a_zero  $txtNull,
         --   · bac_ferme : le bac à sable de ceux qui ont fini. Ouvert par

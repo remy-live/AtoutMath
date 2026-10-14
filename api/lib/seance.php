@@ -127,13 +127,14 @@ function etatDeSeance(array $eleve): array
     // requireStudent(), pour que cette fonction soit utilisable seule (elle
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
-                              impose_jusqu_a, chrono_fin, chrono_a_zero, bac_ferme,
-                              bac_minutes, bac_jeux
+                              impose_jusqu_a, impose_plein_ecran, chrono_fin, chrono_a_zero,
+                              bac_ferme, bac_minutes, bac_jeux
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
                               'notice' => null, 'impose_path_id' => null,
-                              'impose_jusqu_a' => null, 'chrono_fin' => null,
+                              'impose_jusqu_a' => null, 'impose_plein_ecran' => 0,
+                              'chrono_fin' => null,
                               'chrono_a_zero' => null, 'bac_ferme' => 0,
                               'bac_minutes' => null, 'bac_jeux' => null];
     // LA SÉANCE IMPOSÉE A UNE FIN, et c'est ici qu'on la fait respecter : c'est
@@ -205,6 +206,11 @@ function etatDeSeance(array $eleve): array
         $p = $q->fetch();
         if ($p) {
             $impose = ['pathId' => $p['id'], 'name' => $p['name'],
+                       // LE PLEIN ÉCRAN VOYAGE DANS LA SÉANCE IMPOSÉE, et non à
+                       // côté d'elle : c'est elle que l'élève reçoit, et un
+                       // drapeau rangé ailleurs serait à retrouver au bon
+                       // moment. Rémy : « oui si la séance est imposée ».
+                       'pleinEcran' => (bool) ($classe['impose_plein_ecran'] ?? 0),
                        'path' => json_decode($p['data'], true)];
         }
     }

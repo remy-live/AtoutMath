@@ -1429,10 +1429,19 @@ function handleTeacherClass(): void
     // être fermée ici aussi.
     if ($action === 'imposer') {
         $pathId = trim((string) ($body['pathId'] ?? ''));
+        // LE PLEIN ÉCRAN VOYAGE AVEC LA SÉANCE IMPOSÉE, et s'éteint avec elle.
+        //
+        // Rémy : « après peut être vaut il mieux le mettre en paramètre ». Un
+        // drapeau qui survivrait à la séance qu'il accompagne serait un piège :
+        // la séance du mardi s'éteint toute seule à la fin de la journée (voir
+        // `impose_jusqu_a`), et le plein écran reviendrait tout seul la
+        // semaine suivante sur une séance pour laquelle il ne l'a pas demandé.
+        $pleinEcran = !empty($body['pleinEcran']) ? 1 : 0;
         if ($pathId === '') {
-            db()->prepare('UPDATE classes SET impose_path_id = NULL, impose_jusqu_a = NULL
+            db()->prepare('UPDATE classes SET impose_path_id = NULL, impose_jusqu_a = NULL,
+                                  impose_plein_ecran = 0
                            WHERE id = ?')->execute([$classe['id']]);
-            respond(['ok' => true, 'impose' => null, 'jusqua' => null,
+            respond(['ok' => true, 'impose' => null, 'jusqua' => null, 'pleinEcran' => false,
                      'dit' => 'La séance n\'est plus imposée : chacun choisit.']);
         }
         $q = db()->prepare('SELECT id, name FROM paths WHERE id = ? AND teacher_id = ?');
@@ -1448,11 +1457,14 @@ function handleTeacherClass(): void
         // heures du matin, pour ne pas se refermer au milieu d'une question
         // chez l'élève qui finit à 23 h 50.
         $jusqua = finDeLaJourneeScolaire();
-        db()->prepare('UPDATE classes SET impose_path_id = ?, impose_jusqu_a = ? WHERE id = ?')
-            ->execute([$pathId, $jusqua, $classe['id']]);
+        db()->prepare('UPDATE classes SET impose_path_id = ?, impose_jusqu_a = ?,
+                              impose_plein_ecran = ? WHERE id = ?')
+            ->execute([$pathId, $jusqua, $pleinEcran, $classe['id']]);
         respond(['ok' => true, 'impose' => $pathId, 'jusqua' => $jusqua,
+                 'pleinEcran' => (bool) $pleinEcran,
                  'dit' => '« ' . $p['name'] . ' » s\'ouvre tout seul chez vos élèves '
-                        . 'jusqu\'à demain matin.']);
+                        . 'jusqu\'à demain matin'
+                        . ($pleinEcran ? ', en plein écran.' : '.')]);
     }
 
     // LE COMPTE À REBOURS, ET SES DEUX ISSUES. Rémy : « pour le compte à
@@ -1720,6 +1732,10 @@ function handleTeacherRoster(): void
             // que ses élèves ne reçoivent plus depuis ce matin.
             'impose_path_id' => imposeEncoreValide($classe),
             'impose_jusqu_a' => $classe['impose_jusqu_a'] ?? null,
+            // LA CASE DOIT MONTRER SON ÉTAT, sinon le professeur la recoche à
+            // chaque heure sans savoir si elle l'était déjà — c'est la leçon
+            // écrite deux lignes plus haut, et elle vaut pour tout réglage.
+            'impose_plein_ecran' => (bool) ($classe['impose_plein_ecran'] ?? 0),
             'chrono_fin' => $classe['chrono_fin'] ?? null,
             'chrono_a_zero' => $classe['chrono_a_zero'] ?? null,
             'bac_ferme' => (bool) ($classe['bac_ferme'] ?? 0),

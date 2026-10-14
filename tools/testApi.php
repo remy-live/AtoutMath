@@ -2475,9 +2475,27 @@ $qImp = enBase()->prepare('SELECT impose_path_id FROM classes WHERE id = ?');
 $qImp->execute([$idApp]);
 verifier('ET LA BASE EST NETTOYÉE, elle ne ment plus au professeur',
     ($qImp->fetchColumn() ?: null) === null);
+// ON INTERROGE `/teacher/roster`, ET ON EXIGE QUE LA RÉPONSE ARRIVE.
+//
+// Cette vérification visait `/teacher/class`, qui ne connaît pas d'action
+// `list` et répond 400 : `['classe']['impose_path_id'] ?? null` valait donc
+// `null` quoi qu'il arrive, et elle était verte sans rien garder. Trouvée en
+// écrivant la même ligne pour le plein écran, qui attendait `true` et ne l'a
+// jamais reçu — c'est l'attente d'une valeur NON NULLE qui a révélé les deux.
+// ET `??` NE SAIT PAS DISTINGUER « ABSENTE » DE « NULLE » — c'est le piège qui
+// rendait cette vérification creuse, et mon premier détecteur y est tombé à son
+// tour : `$x['clef'] ?? 'absent'` rend « absent » AUSSI quand la clef existe et
+// vaut null. On demande donc la présence à `array_key_exists`, qui, elle, fait
+// la différence.
+$vuApres = json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre);
+$classeApres = $vuApres['json']['classe'] ?? [];
 verifier('l\'écran du professeur le dit comme l\'élève le vit',
-    (json('/teacher/class', ['classId' => $idApp, 'action' => 'list'],
-        $jetonNotre)['json']['classe']['impose_path_id'] ?? null) === null);
+    $vuApres['code'] === 200
+    && array_key_exists('impose_path_id', $classeApres)
+    && $classeApres['impose_path_id'] === null,
+    'code ' . $vuApres['code'] . ' · la clef est '
+        . (array_key_exists('impose_path_id', $classeApres) ? 'là' : 'ABSENTE')
+        . ' et vaut ' . var_export($classeApres['impose_path_id'] ?? null, true));
 
 // UNE SÉANCE SANS ÉCHÉANCE N'EST PAS PÉRIMÉE D'UN COUP. C'est le cas des
 // séances posées avant que cette règle existe : les éteindre toutes à la mise
@@ -2488,6 +2506,75 @@ enBase()->prepare('UPDATE classes SET impose_jusqu_a = NULL WHERE id = ?')->exec
 verifier('UNE SÉANCE D\'AVANT LA RÈGLE N\'EST PAS ÉTEINTE PAR LA MISE À JOUR',
     $laSienne() === 'Le devoir du mardi', $laSienne() ?: '(rien)');
 json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
+
+// ────────── LE PLEIN ÉCRAN DE LA SÉANCE IMPOSÉE ───────────────────────────
+//
+// RÉMY : « est ce que lorsque j'impose une séance, et que l'élève découvre la
+// carte du monde je peux forcer le plein écran ? », puis « oui si la séance est
+// imposée et laisse le bouton », puis « après peut être vaut il mieux le mettre
+// en paramètre ».
+//
+// ON NE PEUT PAS LE FORCER — un navigateur n'accorde le plein écran qu'à la
+// suite d'un geste de l'élève, et c'est une règle du web. Ce qui part au
+// PREMIER APPUI, lui, s'accroche à ce geste : mesuré au navigateur par
+// `node tools/pleinEcranImpose.mjs`, qui obtient un vrai
+// `document.fullscreenElement`.
+//
+// CE QUI SE GARDE ICI EST LE CHEMIN DU RÉGLAGE, et il traverse trois couches :
+// la case du professeur, la colonne en base, et ce que l'élève reçoit. Un
+// drapeau qui s'arrête en route ne casse rien et ne fait rien — le professeur
+// coche, et l'écran de ses élèves ne bouge pas.
+$avecEcran = json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours,
+     'pleinEcran' => true], $jetonNotre);
+verifier('IMPOSER AVEC LE PLEIN ÉCRAN LE DIT EN RETOUR',
+    ($avecEcran['json']['pleinEcran'] ?? null) === true
+    && str_contains($avecEcran['json']['dit'] ?? '', 'plein écran'),
+    $avecEcran['json']['dit'] ?? '?');
+
+$sonEcran = fn () => json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => []],
+    $jetonEleve)['json']['session']['impose']['pleinEcran'] ?? null;
+verifier('ET L\'ÉLÈVE LE REÇOIT AVEC SA SÉANCE', $sonEcran() === true,
+    var_export($sonEcran(), true));
+// LA ROUTE EST `/teacher/roster`, ET NON `/teacher/class`.
+//
+// C'est `roster` qui rend le bloc `classe` avec l'état du moment ; `class` ne
+// connaît pas d'action `list` et répond 400. Ma première écriture visait
+// `class`, obtenait une erreur, lisait `['classe']['...'] ?? null` — donc
+// `null` — et aurait pu passer sans rien garder. Elle est tombée par chance :
+// `null !== true`.
+//
+// ET LA VÉRIFICATION VOISINE, VERTE DEPUIS TOUJOURS, FAISAIT EXACTEMENT CELA
+// (voir « l'écran du professeur le dit comme l'élève le vit », corrigée avec
+// celle-ci) : elle attendait `null` et le recevait d'une erreur 400. Elle ne
+// gardait rien. On exige donc aussi que la réponse ARRIVE.
+$repProf = json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre);
+$vuProf = $repProf['json']['classe'] ?? [];
+verifier('l\'écran du professeur montre la case cochée',
+    $repProf['code'] === 200 && ($vuProf['impose_plein_ecran'] ?? null) === true,
+    'code ' . $repProf['code'] . ' · reçu : '
+        . var_export($vuProf['impose_plein_ecran'] ?? null, true));
+
+// LA CASE SE DÉCOCHE SANS LEVER L'IMPOSITION — c'est tout l'intérêt d'un
+// réglage : il doit pouvoir revenir en arrière tout seul.
+json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours,
+     'pleinEcran' => false], $jetonNotre);
+verifier('DÉCOCHÉE, LA SÉANCE RESTE IMPOSÉE ET L\'ÉCRAN NE BOUGE PLUS',
+    $laSienne() === 'Le devoir du mardi' && $sonEcran() === false,
+    $laSienne() . ' / ' . var_export($sonEcran(), true));
+
+// ET IL S'ÉTEINT AVEC LA SÉANCE. Un drapeau qui lui survivrait reviendrait tout
+// seul la semaine suivante sur une séance qui ne l'a pas demandé — la séance,
+// elle, s'éteint toute seule à la fin de la journée.
+json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours,
+     'pleinEcran' => true], $jetonNotre);
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
+$qEcr = enBase()->prepare('SELECT impose_plein_ecran FROM classes WHERE id = ?');
+$qEcr->execute([$idApp]);
+verifier('LE PLEIN ÉCRAN S\'ÉTEINT AVEC LA SÉANCE QU\'IL ACCOMPAGNAIT',
+    (int) $qEcr->fetchColumn() === 0);
 
 // ────────── DONNER À UN ÉLÈVE, ET À LUI SEUL ───────────────────────────────
 //
@@ -3361,6 +3448,47 @@ verifier('AUCUN IDENTIFIANT D\'ÉLÈVE NE RESSORT DES COMPTES',
     strpos($sortie, 'SECRET-ELEVE') === false, substr($sortie, 0, 120));
 verifier('AUCUN ÉNONCÉ NE RESSORT DES COMPTES',
     strpos($sortie, 'SECRET-ENONCE') === false, substr($sortie, 0, 120));
+
+// --- L'ACCORD AVEC LE LOGICIEL, SUR UN SEUL JEU D'ESSAIS ----------------
+//
+// VOICI LE DÉFAUT LE PLUS COÛTEUX QU'ON PUISSE COMMETTRE ICI SANS QU'IL SE
+// VOIE. Ces comptes servent à CHOISIR un seuil ; c'est `js/core/memoireCourte.js`
+// qui l'APPLIQUERA. Deux fichiers, deux langages, deux chemins — et rien pour
+// les tenir d'accord : ni compilateur, ni types, ni relecture. S'ils comptent
+// différemment, la mesure ne prédit pas le comportement, et le seuil que Rémy
+// choisira sur elle sera faux. Le défaut ne se manifesterait nulle part : deux
+// pages vertes, deux comptages honnêtes, et une décision prise sur le mauvais
+// chiffre.
+//
+// `tests/fixtures/suitesDEchecs.json` est la seule vérité des deux, et
+// `tests/memoireCourte.test.mjs` le lit aussi.
+$essaisCommuns = json_decode(
+    (string) @file_get_contents($RACINE . '/tests/fixtures/suitesDEchecs.json'), true);
+verifier('LE JEU D\'ESSAIS COMMUN AUX DEUX LANGAGES EST LISIBLE',
+    is_array($essaisCommuns) && count($essaisCommuns['cas'] ?? []) >= 8,
+    'cas lus : ' . count($essaisCommuns['cas'] ?? []));
+
+$desaccords = [];
+foreach (($essaisCommuns['cas'] ?? []) as $cas) {
+    // Une question ratée se modèle par un essai faux jamais repris ; une
+    // réussie du premier coup, par un essai juste d'indice 0. C'est le plus
+    // court chemin qui donne les mêmes `duPremierCoup` que le logiciel.
+    $suite = [];
+    foreach ($cas['questions'] as $k => $q) {
+        $suite[] = $essai('eleve-unique', 1000 * ($k + 1), [
+            'itemSeed' => 'Q' . $k,
+            'skillId' => $q['c'],
+            'correct' => !empty($q['r']),
+            'attemptIndex' => 0,
+        ]);
+    }
+    $vu = comptesDesBlocages($suite)['echecRepete']['plusLongue'];
+    if ($vu !== $cas['suiteLaPlusLongue']) {
+        $desaccords[] = $cas['nom'] . ' : ' . $vu . ' au lieu de ' . $cas['suiteLaPlusLongue'];
+    }
+}
+verifier('ET LES DEUX COMPTAGES DISENT LA MÊME CHOSE SUR CHACUN DE SES CAS',
+    $desaccords === [], implode(' · ', $desaccords));
 
 // --- Une base vide ne casse rien ----------------------------------------
 $c = comptesDesBlocages([]);

@@ -4393,3 +4393,48 @@ lignes** — 2026-10-01
   pas demandé cela, et toucher à douze appels de connexion pour un faux positif
   rare se décide à froid. **Écrit ici pour que la prochaine session relance
   avant de chercher le défaut.**
+
+---
+
+**Une épreuve verte depuis toujours, qui interrogeait une route inexistante**
+— 14 octobre 2026
+
+- *Ce que je voulais faire* : vérifier que l'écran du professeur montre la case
+  « Plein écran chez les élèves » qu'il vient de cocher.
+- *Ce qui a coûté* : vingt minutes, et deux fois le même piège. J'ai copié la
+  ligne de la vérification voisine — `json('/teacher/class', ['action' =>
+  'list'])['json']['classe']['impose_path_id'] ?? null` — et je n'ai jamais rien
+  reçu. **Cette route ne connaît pas d'action `list`** : elle répond 400, et le
+  `?? null` transformait l'erreur en la valeur attendue. La vérification voisine
+  attendait précisément `null` : elle était donc **verte en toutes
+  circonstances depuis le jour de son écriture**. Puis mon détecteur de ce
+  défaut (`?? 'absent'`) est tombé dans le même trou : **`??` ne distingue pas
+  une clef absente d'une clef nulle.**
+- *Combien de fois* : || — même famille que « une sonde qui ne mesure rien
+  répond tout va bien », et c'est la deuxième en deux jours.
+- *Ce qui manque* : une règle, et elle se formule en une ligne. **Une
+  vérification qui attend une valeur FAUSSE ou NULLE doit aussi exiger que la
+  réponse soit arrivée** — `$r['code'] === 200`, et `array_key_exists` plutôt
+  que `??` quand c'est la présence qui compte. Seule l'attente d'une valeur NON
+  nulle révèle ces épreuves creuses, et il ne faut pas compter sur la chance
+  d'en écrire une à côté.
+
+---
+
+**La garde des crochets ne regardait que les boutons** — 14 octobre 2026
+
+- *Ce que je voulais faire* : ajouter une case à cocher dans l'espace classes.
+- *Ce qui a coûté* : rien cette fois, et c'est le seul mérite — mais le trou
+  était là. `tests/crochetsDeLEspaceClasses.test.mjs` existe pour garder un
+  défaut précis : « un crochet neuf qu'on oublie d'inscrire au répartiteur
+  échoue EN SILENCE ». Elle ne lisait que les lignes portant `<button`. Une
+  **case à cocher se clique aussi**, et son crochet échoue de la même façon
+  muette : l'épreuve écrite pour ce défaut-là ne l'aurait pas vu.
+- *Combien de fois* : | (mais la famille — « une garde qui regarde la FORME
+  laisse passer » — en est à quatre)
+- *Ce qui manque* : fait, elle lit `<input` aussi. Et `epreuveTombe` a refusé de
+  croire ma première écriture : le motif exigeait une espace après le crochet,
+  alors que le gabarit porte `data-ecran-seance${…}` — **le `$` n'est pas une
+  espace**. Même famille que le `\b` des feuilles de style, payé trois fois.
+  **Quand on élargit une garde, on la refait tomber** : elle ne garde pas le
+  nouveau cas du seul fait qu'on a touché son motif.

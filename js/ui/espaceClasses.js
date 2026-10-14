@@ -1444,16 +1444,41 @@ function seancesHtml() {
     // sans un bouton sur chaque ligne, on ne peut pas la changer là où on la
     // lit. Le menu déroulant existait, au fond d'un autre onglet.
     const enCours = liste.find(s => s.pathId === impose);
+    // LE PLEIN ÉCRAN EST UN RÉGLAGE DE LA SÉANCE IMPOSÉE, ET IL SE COCHE ICI.
+    //
+    // Rémy : « est ce que lorsque j'impose une séance […] je peux forcer le
+    // plein écran ? », puis « oui si la séance est imposée et laisse le
+    // bouton », puis « après peut être vaut il mieux le mettre en paramètre ».
+    //
+    // LA CASE EST LÀ MÊME QUAND RIEN N'EST IMPOSÉ, et c'est délibéré : sans
+    // cela, il faudrait imposer d'abord, puis cocher — et les élèves déjà
+    // entrés dans l'intervalle n'auraient pas le plein écran, tandis que les
+    // suivants l'auraient. On la coche AVANT, elle part avec l'imposition.
+    // Cochée pendant qu'une séance est déjà en cours, elle se réapplique
+    // aussitôt plutôt que d'attendre : un réglage qui ne fait rien quand on y
+    // touche ressemble à un réglage cassé.
+    const pleinEcran = !!(vue.liste && vue.liste.classe
+        && vue.liste.classe.impose_plein_ecran);
+    const caseEcran = `
+        <label class="ec-encours-ecran">
+            <input type="checkbox" data-ecran-seance${pleinEcran ? ' checked' : ''}>
+            <span>Plein écran chez les élèves</span>
+        </label>
+        <span class="ec-note">Au premier appui de l'élève — un navigateur ne
+            l'accorde pas autrement. Le bouton pour en sortir reste à l'écran,
+            et sur iPad Safari ne le donne pas du tout.</span>`;
     return `
         <div class="ec-encours${enCours ? '' : ' ec-encours--aucune'}">
             ${enCours
                 ? `<b>En ce moment : ${esc(enCours.nom)}</b>
                    <span>Elle s'ouvre toute seule chez vos élèves, sans qu'ils aient rien à
                          lancer, ${esc(jusquaDit())}.</span>
+                   ${caseEcran}
                    <button type="button" class="ec-bouton ec-bouton--doux" data-imposer-rien>Ne plus rien imposer</button>`
                 : `<b>Aucune séance imposée</b>
                    <span>Vos élèves voient TOUTES les séances ci-dessous et choisissent eux-mêmes.
-                         Pour qu'une seule s'ouvre toute seule, cliquez <b>mettre en cours</b>.</span>`}
+                         Pour qu'une seule s'ouvre toute seule, cliquez <b>mettre en cours</b>.</span>
+                   ${caseEcran}`}
         </div>
         <p class="ec-note ec-note--bloc">De la plus récente à la plus ancienne.</p>
         <div class="ec-seances">${liste.map(s => `
@@ -2703,7 +2728,7 @@ async function brancher(e, redessiner) {
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
-        + '[data-imposer-rien], [data-mettre-en-cours],'
+        + '[data-imposer-rien], [data-mettre-en-cours], [data-ecran-seance],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
@@ -2915,14 +2940,38 @@ async function brancher(e, redessiner) {
     // choisit la séance du jour en regardant la liste des séances, pas en
     // déroulant un menu ailleurs. Même route, même effet.
     if (d.mettreEnCours) {
-        await fait(imposerLaSeance(vue.classe.id, d.mettreEnCours), () => {
-            if (vue.liste && vue.liste.classe) vue.liste.classe.impose_path_id = d.mettreEnCours;
+        // LA CASE DU PLEIN ÉCRAN PART AVEC L'IMPOSITION, et on la lit à cet
+        // instant plutôt que de la garder quelque part : ce qu'elle montre est
+        // ce que le professeur veut.
+        const ecran = !!(document.querySelector('[data-ecran-seance]') || {}).checked;
+        await fait(imposerLaSeance(vue.classe.id, d.mettreEnCours, ecran), () => {
+            if (vue.liste && vue.liste.classe) {
+                vue.liste.classe.impose_path_id = d.mettreEnCours;
+                vue.liste.classe.impose_plein_ecran = ecran;
+            }
         });
+        return;
+    }
+    if (d.ecranSeance !== undefined) {
+        // ON LA COCHE PENDANT QU'UNE SÉANCE EST EN COURS : elle se réapplique
+        // tout de suite. Sans séance imposée, il n'y a rien à appliquer — la
+        // case garde sa valeur et partira avec la prochaine imposition.
+        const ecran = !!el.checked;
+        const encours = (vue.liste && vue.liste.classe && vue.liste.classe.impose_path_id) || '';
+        if (vue.liste && vue.liste.classe) vue.liste.classe.impose_plein_ecran = ecran;
+        if (!encours) return;
+        await fait(imposerLaSeance(vue.classe.id, encours, ecran), () => {});
         return;
     }
     if (d.imposerRien !== undefined) {
         await fait(imposerLaSeance(vue.classe.id, ''), () => {
-            if (vue.liste && vue.liste.classe) vue.liste.classe.impose_path_id = null;
+            if (vue.liste && vue.liste.classe) {
+                vue.liste.classe.impose_path_id = null;
+                // LE PLEIN ÉCRAN S'ÉTEINT AVEC LA SÉANCE, côté serveur comme
+                // ici : un drapeau qui lui survivrait reviendrait tout seul la
+                // semaine suivante sur une séance qui ne l'a pas demandé.
+                vue.liste.classe.impose_plein_ecran = false;
+            }
         });
         return;
     }

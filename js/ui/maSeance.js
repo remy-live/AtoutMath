@@ -43,6 +43,7 @@ import {
 import { direSeance } from '../core/seances.js';
 import { lireClasses, lireSeances } from './donnerSeance.js';
 import { showModal, showToast, showConfirm } from './modal.js';
+import { pleinEcranSiSeanceImposee } from './fullscreen.js';
 
 const CLE_LIENS = 'rattachements';
 
@@ -136,6 +137,12 @@ function parcoursCharge() {
  */
 export function ouvrirSeance(seance, { autoStart = true } = {}) {
     if (!seance || !seance.path) return false;
+
+    // LE PLEIN ÉCRAN, SI LA SÉANCE EST IMPOSÉE — et avant tout `await`, sans
+    // quoi le navigateur ne reconnaît plus le geste de l'élève. Rémy : « oui
+    // si la séance est imposée et laisse le bouton ». `ui/fullscreen.js`
+    // décide seul s'il y a lieu ; ici on ne fait que lui passer ce qu'on ouvre.
+    pleinEcranSiSeanceImposee(seance.path);
 
     // LE PARCOURS PREND L'IDENTITÉ DE SA SÉANCE, ET C'EST INDISPENSABLE.
     //

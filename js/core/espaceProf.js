@@ -208,8 +208,9 @@ export const supprimerClasse = (classId, confirmation) =>
  * Rémy : « lorsque les élèves se connectent, j'impose la séance, comme cela ils
  * n'ont rien à lancer ». Un identifiant vide lève l'imposition.
  */
-export const imposerLaSeance = (classId, pathId) =>
-    auServeur('/teacher/class', { classId, action: 'imposer', pathId: pathId || '' });
+export const imposerLaSeance = (classId, pathId, pleinEcran = false) =>
+    auServeur('/teacher/class',
+        { classId, action: 'imposer', pathId: pathId || '', pleinEcran: !!pleinEcran });
 
 /**
  * LE COMPTE À REBOURS, ET CE QU'IL FAIT À ZÉRO.

@@ -5085,6 +5085,29 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .ec-encours--aucune { border-left-color: var(--border); border-color: var(--border); }
 .ec-encours-fil { margin-top: -8px; }
 
+/* LA CASE DU PLEIN ÉCRAN, à côté de « mettre en cours ».
+   Rémy : « après peut être vaut il mieux le mettre en paramètre ».
+
+   SON `span` DOIT ÉCHAPPER AU `flex: 1 1 260px` DE `.ec-encours span`, sinon
+   les deux mots de l'étiquette s'étirent sur 260 px et la case se retrouve
+   seule à l'autre bout de sa propre phrase. C'est la règle du bloc qui gagne
+   par défaut : elle a été écrite pour les phrases d'explication, pas pour une
+   étiquette.
+
+   ET 44 PX DE HAUT, parce que Rémy conduit sa classe depuis une tablette : une
+   case de 13 px cochée au doigt entre deux rangs se rate. Le plancher tactile
+   du dépôt ne couvre que la couche de jeu — ici, on le déclare. */
+.ec-encours-ecran {
+    display: inline-flex; align-items: center; gap: 8px;
+    flex: 0 0 auto; min-height: 44px; cursor: pointer;
+    font-size: .88rem; font-weight: 700; color: var(--text-main);
+}
+.ec-encours-ecran input {
+    width: 20px; height: 20px; flex: 0 0 auto;
+    accent-color: var(--primary); cursor: pointer;
+}
+.ec-encours-ecran span { flex: 0 0 auto; font-size: inherit; color: inherit; }
+
 /* LE TITRE EST UN BOUTON, ET IL DOIT RESTER UN TITRE. Un `<button>` porte par
    défaut un fond, une bordure et la police du système : on les retire tous,
    mais on garde le curseur et le retour au survol — sans quoi personne ne

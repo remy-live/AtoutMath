@@ -61,12 +61,45 @@ function crochetsEcoutes() {
     return tous;
 }
 
-/** Les crochets `data-…` posés sur un bouton dans les gabarits. */
+/**
+ * Les crochets `data-…` posés sur une COMMANDE dans les gabarits.
+ *
+ * ET `<input>` COMPTE AUTANT QUE `<button>`, ce qui manquait. Cette épreuve ne
+ * regardait que les boutons, et le trou s'est vu le jour où la case à cocher
+ * « Plein écran chez les élèves » est arrivée — Rémy : « après peut être vaut
+ * il mieux le mettre en paramètre ». Une case à cocher se CLIQUE : son crochet
+ * échoue exactement de la même façon silencieuse, et l'épreuve écrite pour
+ * garder ce défaut-là n'allait pas le voir.
+ *
+ * `<select>` et `<textarea>` ne sont pas ajoutés ici, et c'est délibéré : ce
+ * répartiteur écoute le CLIC, et ce qu'on attend d'un menu déroulant ou d'un
+ * champ de texte est un `change` ou une saisie — un crochet de clic y serait
+ * une autre erreur, que cette épreuve ne saurait pas juger. Le jour où il en
+ * faudra un, on l'ajoutera en sachant pourquoi.
+ */
 function crochetsPoses() {
     const poses = new Map();
     for (const ligne of source.split('\n')) {
-        if (!/<button/.test(ligne)) continue;
+        if (!/<button|<input/.test(ligne)) continue;
         for (const m of ligne.matchAll(/\bdata-([a-z-]+)\s*=/g)) {
+            if (!poses.has(m[1])) poses.set(m[1], ligne.trim().slice(0, 90));
+        }
+        // UNE CASE À COCHER PORTE SON CROCHET SANS VALEUR — `data-ecran-seance`
+        // tout court, puisqu'il n'y a rien à transporter : son état EST dans
+        // `checked`. Le motif ci-dessus exige un `=` et l'aurait donc manqué.
+        //
+        // ET CE QUI SUIT LE CROCHET N'EST PAS UNE ESPACE. Première écriture :
+        // `(?=[\s>])`. `epreuveTombe` a refusé de la croire, et il avait
+        // raison — la ligne du gabarit est
+        //
+        //     <input type="checkbox" data-ecran-seance${pleinEcran ? …}>
+        //
+        // donc le caractère suivant est un `$` d'interpolation. On exige donc
+        // seulement que le NOM s'arrête là, sans rien dire de ce qui vient
+        // après : c'est la seule forme qui ne dépende pas de l'écriture du
+        // gabarit. (Le piège est de la même famille que le `\b` des feuilles
+        // de style, payé trois fois dans ce dépôt.)
+        for (const m of ligne.matchAll(/\bdata-([a-z]+(?:-[a-z]+)*)(?![a-z0-9-])/g)) {
             if (!poses.has(m[1])) poses.set(m[1], ligne.trim().slice(0, 90));
         }
     }
