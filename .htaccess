@@ -100,3 +100,46 @@ Options -Indexes
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 # ── fin CSP ──
+
+# ── LES FICHIERS PARTENT COMPRESSÉS ────────────────────────────────────────
+#
+# MESURÉ (tools/poidsDuDemarrage.mjs) : la première ouverture d'une version
+# demande 256 fichiers au serveur, et le service worker en range 131 de plus
+# derrière. L'essentiel est du JavaScript, qui se comprime autour de quatre
+# pour un. Sur une salle de trente postes, le lendemain d'un dépôt, c'est la
+# différence entre ~230 Mo et ~60 Mo à faire entrer par la ligne du collège,
+# tous en même temps.
+#
+# ET SEULEMENT LE LENDEMAIN D'UN DÉPÔT : une fois le cache du worker garni,
+# l'ouverture coûte deux requêtes. La compression ne change donc rien aux
+# heures ordinaires — c'est le matin de la mise à jour qu'elle paie.
+#
+# `AddOutputFilterByType` ET PAS `SetOutputFilter` : le second comprimerait
+# aussi ce qui l'est déjà — les images, les polices woff2 — ce qui coûte du
+# calcul au serveur pour grossir le fichier de quelques octets.
+#
+# SI LE MODULE N'EST PAS CHARGÉ chez l'hébergeur, le bloc entier est ignoré :
+# le site sert exactement ce qu'il servait, sans erreur. C'est pourquoi on peut
+# le poser sans avoir vérifié la configuration d'OVH.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+    AddOutputFilterByType DEFLATE application/javascript text/javascript
+    AddOutputFilterByType DEFLATE application/json application/manifest+json
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# ── LE SERVICE WORKER NE DOIT JAMAIS ÊTRE SERVI PÉRIMÉ ──────────────────────
+#
+# C'est lui qui décide maintenant de tout le reste : depuis qu'il sert les
+# fichiers depuis son cache (voir sw.js), un `sw.js` périmé figerait un poste
+# sur une ancienne version sans qu'aucune requête n'échoue — le pire des
+# défauts, celui qui ne se voit pas.
+#
+# Les navigateurs revalident déjà `sw.js` d'eux-mêmes ; on l'écrit quand même,
+# parce que le jour où un intermédiaire du réseau du collège décide d'en garder
+# une copie, c'est cette ligne qui le lui interdit.
+<IfModule mod_headers.c>
+    <FilesMatch "^(sw\.js|index\.html|manifest\.webmanifest)$">
+        Header always set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

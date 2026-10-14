@@ -79,6 +79,15 @@ function monter({ reseau = () => new Rep('ok'), bac = new Map(), putRate = false
                 journal.puts.push(clef(req));
                 bac.set(clef(req), rep);
             },
+            // `match` SUR LE CACHE OUVERT, et pas seulement sur `caches` : le
+            // worker puise maintenant dans le cache de SA version, nommément.
+            //
+            // IL MANQUAIT, ET C'EST UNE LEÇON. Sans lui, l'appel levait une
+            // exception que le worker rattrape en repartant au réseau : les
+            // épreuves restaient VERTES en mesurant exactement le comportement
+            // qu'on venait de remplacer. Une épreuve qui se trompe de monde ne
+            // dit rien de celui où vivent les élèves.
+            match: async (req) => bac.get(clef(req)) || undefined,
             addAll: async () => {}, keys: async () => []
         }),
         match: async (req) => bac.get(clef(req)) || undefined,
@@ -137,6 +146,42 @@ test('LE WORKER S\'OCCUPE BIEN DE NOS FICHIERS, ET PAS DE L\'API', async () => {
     // du jour (voir le commentaire de sw.js).
     assert.equal(journal.fetches[0].cache, 'no-cache');
     assert.equal(journal.puts.length, 1, 'la copie en cache ne se fait plus');
+});
+
+test('CE QUI EST DÉJÀ EN CACHE NE REPART PAS AU RÉSEAU', async () => {
+    // RÉMY : « pour le site atout-math.fr où je dépose l'archive ça ne recharge
+    // pas à chaque fois si ? ». Mesuré dans le journal du serveur d'essai :
+    // avant cette correction, rouvrir l'application coûtait 382 requêtes, à
+    // CHAQUE ouverture. Après : deux.
+    //
+    // C'est la raison d'être du cache nommé par version — voir sw.js. Ici on
+    // garde la moitié qu'une sonde ne peut pas tenir à chaque commit : qu'un
+    // fichier déjà rangé ne redemande RIEN.
+    const url = `${ORIGINE}/js/core/state.js`;
+    const bac = new Map([[url, new Rep('du code déjà rangé')]]);
+    const { demander, journal } = monter({ bac });
+
+    const rep = await demander(url);
+    assert.equal(rep.corps, 'du code déjà rangé', 'le cache de la version n\'a pas servi');
+    assert.deepEqual(journal.fetches, [],
+        'le fichier était en cache et le worker est quand même allé au réseau');
+});
+
+test('MAIS LA PAGE, ELLE, VA TOUJOURS AU RÉSEAU', async () => {
+    // C'est elle qui tient la mise à jour : en la demandant, le navigateur
+    // relit `sw.js` et découvre qu'une version est arrivée. Servie depuis le
+    // cache, on obtiendrait un logiciel qui ne se met plus jamais à jour —
+    // et aucune requête n'échouerait pour le dire.
+    const page = `${ORIGINE}/index.html`;
+    const bac = new Map([[page, new Rep('une vieille page')]]);
+    const { demander, journal } = monter({ bac, reseau: () => new Rep('la page du jour') });
+
+    const rep = await demander(page, { mode: 'navigate' });
+    assert.equal(rep.corps, 'la page du jour', 'la page a été servie depuis le cache');
+    assert.equal(journal.fetches.length, 1, 'la page n\'est plus demandée au réseau');
+    // ET LA DEMANDE RESTE REVALIDÉE : c'est ce qui empêchait, en 2024, de
+    // recevoir une page neuve avec d'anciens modules.
+    assert.equal(journal.fetches[0].cache, 'no-cache');
 });
 
 test('HORS LIGNE : LE CACHE D\'ABORD, PUIS UNE RÉPONSE — JAMAIS UN REJET', async () => {
