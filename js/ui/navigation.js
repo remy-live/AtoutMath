@@ -7,7 +7,8 @@ import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
 import { chercher, decouper } from '../core/recherche.js';
 import { estJeuCatalogue } from '../core/revue.js';
-import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
+import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE, familleSiNumerote }
+    from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
 import { montrerApercu, fermerApercu, laisserPartir, retenir, glissementEnCours } from './apercuTiroir.js';
 import { pendantLeGlissement, arreterLeDefilement, brancherDefilementGlisse }
@@ -19,7 +20,7 @@ import { pendantLeGlissement, arreterLeDefilement, brancherDefilementGlisse }
 // ferme, et elle se taille sur le jeu qu'elle montre. Trois règles qui tiennent
 // ensemble et qu'on relit d'un bloc — voir `apercuTiroir.js`.
 
-export function createLibraryItem(exo) {
+export function createLibraryItem(exo, { horsDossier = false } = {}) {
     const item = document.createElement('div');
     item.className = 'exo-list-item';
     // CETTE LIGNE SE PREND AU CLAVIER, depuis le champ de recherche : ↓ y entre,
@@ -70,6 +71,43 @@ export function createLibraryItem(exo) {
         item.appendChild(cadeau);
     }
 
+    // « 8. » TOUT SEUL NE DIT RIEN QUAND LA LIGNE EST HORS DE SON DOSSIER.
+    //
+    // Rémy, devant les résultats de recherche : « pourquoi j'ai des noms
+    // d'exercices avec un numéro devant du genre 8. Diviser et le ... ».
+    //
+    // Le numéro est un RANG dans une échelle — douze barreaux pour les
+    // fractions, huit pour les racines —, et jusqu'ici c'était le dossier
+    // au-dessus qui disait laquelle. La recherche, elle, affiche à plat : la
+    // ligne doit alors le dire elle-même.
+    //
+    // SEULEMENT HORS DU DOSSIER, ET C'EST LA VUE QUI LE DÉCLARE. Sous un
+    // dossier qui s'appelle déjà « Fractions », douze lignes « Fractions · »
+    // ajouteraient du bruit là où la réponse est déjà à l'écran. On ne le
+    // devine pas depuis l'état de la recherche : la vue à plat le dit.
+    //
+    // ELLE SE POSE AU-DESSUS DU TITRE, ET C'EST UNE MESURE QUI L'A DÉCIDÉ.
+    // Côte à côte sur la même ligne, « Racines carrées · » prenait 93 px des
+    // 269 que fait la colonne du professeur : il restait 90 px de titre, et
+    // « 5. Multiplier deux racines » y perdait son premier mot — on aurait
+    // répondu « huitième DE QUOI » en retirant « huitième QUOI ». La hauteur,
+    // elle, était libre : la rangée fait 44 px pour une seule ligne de 15.
+    // C'est d'ailleurs ce que fait déjà l'autre liste du logiciel, celle de
+    // « Choisir un exercice » : le titre, puis son chemin en dessous.
+    const famille = horsDossier ? familleSiNumerote(exo) : '';
+    let pile = null;
+    if (famille) {
+        pile = document.createElement('span');
+        pile.className = 'exo-item-texte';
+        const fam = document.createElement('span');
+        fam.className = 'nav-item-famille';
+        fam.textContent = famille;
+        // Pas d'`aria-hidden` : c'est le mot qui répond à la question, et le
+        // lecteur d'écran annonce donc « Racines carrées, 8. Diviser… ».
+        pile.appendChild(fam);
+        item.appendChild(pile);
+    }
+
     // LE TITRE SE COUPE, ET RESTE LISIBLE AUTREMENT. Un titre de 47 caracteres
     // dans une colonne de 320 px tenait sur deux lignes ; l'infobulle et
     // l'apercu epingle le rendent en entier quand on en a besoin.
@@ -91,7 +129,9 @@ export function createLibraryItem(exo) {
         titleSpan.textContent = exo.title;
     }
     titleSpan.title = exo.title;
-    item.appendChild(titleSpan);
+    // Dans la pile quand il y a une famille, directement sur la ligne sinon :
+    // une rangée sans famille garde EXACTEMENT la structure qu'elle avait.
+    (pile || item).appendChild(titleSpan);
 
     const btnAdd = document.createElement('button');
     btnAdd.textContent = '➕';
@@ -685,7 +725,10 @@ export function renderDrilldown() {
     if (state.searchQuery && state.searchQuery.trim()) {
         back.style.display = 'none';
         bread.textContent = `${filtered.length} résultat${filtered.length > 1 ? 's' : ''}`;
-        filtered.forEach(exo => content.appendChild(createLibraryItem(exo)));
+        // `horsDossier` : c'est LA vue qui montre les exercices sans leur
+        // dossier, donc la seule où un titre numéroté a besoin de sa famille.
+        filtered.forEach(exo =>
+            content.appendChild(createLibraryItem(exo, { horsDossier: true })));
         if (!filtered.length) {
             content.innerHTML = '<div class="empty-state-msg">Aucun exercice ne correspond à cette recherche.</div>';
         }

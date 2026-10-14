@@ -113,6 +113,41 @@ function dedoublonner(chemins) {
     });
 }
 
+/** Le titre porte-t-il un rang d'échelle — « 8. Diviser par une fraction » ? */
+export const TITRE_NUMEROTE = /^\d+\.\s/;
+
+/**
+ * LA FAMILLE D'UN TITRE NUMÉROTÉ, OU RIEN.
+ *
+ * RÉMY, devant les résultats de recherche : « pourquoi j'ai des noms
+ * d'exercices avec un numéro devant du genre 8. Diviser et le ... ».
+ *
+ * Vingt exercices portent un rang dans leur titre : les douze barreaux des
+ * fractions, les huit des racines. Ce rang est une place dans UNE échelle, et
+ * pas un ordre dans le catalogue. Dans l'arbre, le dossier au-dessus dit de
+ * laquelle il s'agit ; à PLAT — en recherche — rien ne le dit, et deux lignes
+ * commencent par « 8. » sans parler de la même chose.
+ *
+ * ON LIT LA FAMILLE DANS `tags.chemin`, QUI LA PORTE DÉJÀ. Un champ de plus à
+ * côté du titre aurait été une seconde vérité à tenir d'accord avec la
+ * première, et c'est toujours la seconde qui se périme. Le libellé du
+ * générateur ne pouvait pas servir non plus : « Calculer avec des fractions,
+ * jusqu'aux expressions du devoir » fait soixante-dix caractères, là où la
+ * ligne entière en affiche une trentaine.
+ *
+ * ET LE DOMAINE SEUL NE RÉPOND PAS. Un chemin réduit à « Numérique » ne nomme
+ * aucune échelle : on rend alors le vide plutôt qu'un mot qui ne répond pas à
+ * la question posée. L'épreuve exige qu'aucun titre numéroté n'y tombe — c'est
+ * elle qui attrapera la prochaine famille numérotée mal rangée.
+ *
+ * @returns {string} le sous-domaine, ou '' si le titre ne porte pas de rang
+ */
+export function familleSiNumerote(exo) {
+    if (!exo || !TITRE_NUMEROTE.test(exo.title || '')) return '';
+    const chemin = (exo.tags && exo.tags.chemin) || [];
+    return chemin.length >= 2 ? chemin[chemin.length - 1] : '';
+}
+
 /** L'exercice appartient-il au dossier `path` (ou à l'un de ses sous-dossiers) ? */
 export function sousLeDossier(exo, path, mode, classement) {
     return cheminsDe(exo, mode, classement)

@@ -628,6 +628,33 @@ body.mobile-view #toast-container {
     opacity: .8; margin-right: 1px;
 }
 
+/* LA FAMILLE D'UN TITRE NUMÉROTÉ, DANS LA LISTE À PLAT. Rémy : « pourquoi j'ai
+   des noms d'exercices avec un numéro devant du genre 8. Diviser et le ... ».
+
+   AU-DESSUS DU TITRE, ET PAS À CÔTÉ — une mesure l'a tranché. Côte à côte,
+   « Racines carrées · » prenait 93 px des 269 que fait la colonne du
+   professeur : il ne restait que 90 px de titre, et trois lignes sur vingt y
+   perdaient leur premier mot (« 5. Multipli… »). La hauteur, elle, était
+   libre : la rangée fait 44 px pour une seule ligne de 15.
+
+   LA RANGÉE NE BOUGE PAS D'UN PIXEL pour autant — le titre descend à .88rem,
+   et les deux lignes tiennent dans les 44 px. C'est l'IRRÉGULARITÉ des
+   hauteurs qui donnait « une sensation d'oppression » au relecteur de Rémy,
+   pas la densité : une rangée plus haute que ses voisines l'aurait rendue.
+
+   Et c'est déjà ce que fait l'autre liste du logiciel, celle de « Choisir un
+   exercice » : le titre, puis son chemin en dessous. */
+.exo-item-texte {
+    flex: 1 1 auto; min-width: 0;
+    display: flex; flex-direction: column; justify-content: center; gap: 1px;
+}
+.exo-item-texte .exo-item-titre { flex: 0 1 auto; font-size: .88rem; }
+.nav-item-famille {
+    font-size: .7rem; font-weight: 700; line-height: 1.15;
+    letter-spacing: .02em; color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* UNE ÉTAPE DE RÉCOMPENSE SE RECONNAÎT DANS LA LISTE. Le cadeau la marque, et
    un liseré vert la range du côté du plaisir plutôt que du travail — c'est
    exactement ce qu'elle est. */

@@ -243,6 +243,26 @@ export async function ouvrirSonde(o = {}) {
             return true;
         },
 
+        /**
+         * CLIQUE, ET JETTE SI LE CROCHET NE DÉSIGNE RIEN.
+         *
+         * `doitExister` ferme le piège du crochet inventé pour ce qu'on
+         * INTERROGE. Un clic, lui, s'écrit `const b = document.getElementById(…);
+         * if (b) b.click();` — et ce `if` est exactement le trou : un
+         * identifiant deviné ne jette pas, il ne fait rien, et la sonde
+         * continue de mesurer l'écran d'AVANT le clic en annonçant des
+         * chiffres parfaitement crédibles. Vu sur le tiroir du catalogue, où
+         * trois crochets devinés mesuraient un panneau resté fermé.
+         *
+         * @param {string} selecteur
+         * @param {string} [pourquoi] ce qu'on croyait ouvrir, pour le message
+         */
+        async cliquer(selecteur, pourquoi = '') {
+            await this.doitExister(selecteur, pourquoi);
+            await page.evaluate((s) => document.querySelector(s).click(), selecteur);
+            await dormir(400);
+        },
+
         /** Bascule un thème (ou revient au thème clair avec `null`). */
         async theme(nom) {
             themeVoulu = nom || null;

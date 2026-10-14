@@ -4464,6 +4464,27 @@ lignes** — 2026-10-01
 
 ---
 
+**Une sonde qui CLIQUE un crochet inventé ne crie pas, elle mesure l'autre écran**
+— 14 octobre 2026
+
+- *Ce que je voulais faire* : mesurer la liste du catalogue au doigt, dans le
+  tiroir qu'on ouvre à 390 px.
+- *Ce qui a coûté* : j'ai écrit `const b = document.getElementById(...) ||
+  document.querySelector('[data-tiroir-catalogue], #mobile-catalogue-btn');
+  if (b) b.click();` avec trois crochets **devinés**, dont aucun n'existe (le
+  vrai est `btn-toggle-sidebar`). `doitExister` ferme exactement ce piège —
+  mais seulement pour ce qu'on INTERROGE. Un clic, lui, est gardé par un
+  `if` : il ne jette pas, il ne fait rien, et la sonde mesure alors le panneau
+  resté fermé en annonçant des largeurs parfaitement crédibles. Rattrapé avant
+  de mesurer, par relecture — pas par l'outil.
+- *Combien de fois* : | (et c'est la famille « un crochet inventé rend la même
+  réponse qu'un logiciel cassé », qui en est à seize)
+- *Ce qui manque* : fait. `s.cliquer(selecteur, pourquoi)` est dans
+  `tools/sonde.mjs` : il passe par `doitExister`, donc il JETTE en nommant le
+  crochet au lieu de ne rien faire. Le `if (b)` ne se réécrit plus.
+
+---
+
 **Une garde qui cherche les erreurs PHP dans la PAGE ne les trouve jamais**
 — 14 octobre 2026
 
