@@ -36,7 +36,7 @@ test('UN EXERCICE RETIRÉ OUVRE LE BOUTON « PASSER », TOUT DE SUITE', () => {
     // que l'exercice plante, et il ne veut pas que l'élève retombe dessus,
     // dans ce parcours-ci ni dans un autre.
     assert.match(bloc.slice(0, 2200),
-        /const permis = !!exoId && \(peutSauter\(exoId, this\.path && this\.path\.id\) \|\| retireMaintenant\);/,
+        /const permis = !!exoId && \(peutSauter\(exoId\) \|\| retireMaintenant\);/,
         'le retrait vaut permission de passer, comme le saut — mais lui, partout');
 });
 

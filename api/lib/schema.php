@@ -573,14 +573,23 @@ function lesTablesDuSchema(bool $sqlite): array
     //
     // MESURÉ SUR UN VRAI SERVEUR, et sa question était juste : la permission
     // n'était rattachée qu'à l'EXERCICE. On imposait la séance A, on autorisait
-    // le saut de `calc-add`, on imposait la séance B — un autre parcours — et
-    // l'élève pouvait encore le sauter. Même sans aucune séance imposée.
+    // le saut de `calc-add`, on imposait la séance B et l'élève pouvait encore
+    // le sauter. Même sans aucune séance imposée du tout.
     //
-    // `path_id` RÉPARE CELA, et il est NULL pour tout ce qui existait avant :
-    // une permission sans parcours vaut partout, comme hier. Rémy, interrogé
-    // sur ce qui devait y mettre fin, a choisi « attaché au parcours » — le
-    // plus juste des trois, et le seul qui marche aussi quand aucune séance
-    // n'est imposée.
+    // DEUX COLONNES Y METTENT FIN, ET ELLES DISENT « LA SÉANCE » À DEUX
+    // ÉCHELLES. Rémy, qui s'est repris le soir même : « attache le à la séance,
+    // pour le parcours on a déjà des sauts optionnels ». Il a raison, et c'est
+    // une meilleure façon de le dire : un parcours a déjà ses étapes « non
+    // obligatoires », réglées en le construisant. Ce qu'on accorde depuis le
+    // direct n'est pas une propriété du parcours, c'est un geste de L'HEURE —
+    // « laisse tomber celui-là, on avance ».
+    //
+    //   · `seance_id` : la séance IMPOSÉE au moment où on l'a accordé. Le
+    //     professeur passe à une autre séance, la permission tombe. NULL quand
+    //     rien n'était imposé — on ne s'accroche alors qu'à l'heure.
+    //   · `expire_le` : la fin de la journée scolaire, la même que celle de la
+    //     séance imposée (`finDeLaJourneeScolaire`). C'est le plancher : même
+    //     sans séance imposée, une permission ne passe pas la nuit.
     //
     // PAS DE CLÉ ÉTRANGÈRE VERS `paths` : un parcours supprimé ne doit pas
     // emporter la ligne en silence, et un identifiant qui ne désigne plus rien
@@ -591,7 +600,8 @@ function lesTablesDuSchema(bool $sqlite): array
         student_id  $refNull,
         exercise_id $txt,
         mode        $txt,
-        path_id     $txtNull,
+        seance_id   $txtNull,
+        expire_le   " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         created_at  $date,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";

@@ -784,41 +784,72 @@ titre('6. Un exercice plante et bloque la progression');
 // maintenant par `/teacher/override`, et c'est le SERVEUR qu'on éprouve ici —
 // il n'a pas changé d'une ligne.
 
-// LE SAUT PORTE MAINTENANT DEUX INFORMATIONS : l'exercice et le parcours où la
-// permission a été donnée. Un parcours nul veut dire « partout » — c'est le cas
-// de ce geste-ci, qui ne part pas du direct.
-$sauteur = fn (array $s, string $exo, $parcours = false) => count(array_filter(
-    $s['skippable'] ?? [],
-    fn ($x) => ($x['exo'] ?? null) === $exo
-        && ($parcours === false || ($x['parcours'] ?? null) === $parcours)
-)) > 0;
+$sauteur = fn (array $s, string $exo) => in_array($exo, $s['skippable'] ?? [], true);
 
 json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'num-egypte',
                            'mode' => 'saut'], $jetonProf);
 $s = json('/session', [], $lea)['json']['session'];
 verifier('LE SAUT EST AUTORISÉ POUR TOUTE LA CLASSE', $sauteur($s, 'num-egypte'));
-verifier('et sans parcours, il vaut partout', $sauteur($s, 'num-egypte', null),
-    json_encode($s['skippable'] ?? null));
 $s2 = json('/session', [], $sacha)['json']['session'];
 verifier('Sacha aussi', $sauteur($s2, 'num-egypte'));
 
-// ── ET UN SAUT DONNÉ DANS UNE SÉANCE NE VAUT QUE LÀ ────────────────────────
+// ── ET IL S'ÉTEINT AVEC LA SÉANCE ──────────────────────────────────────────
 //
 // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
 // l'exercice, sur un autre parcours, cette même exercice peut se passer aussi,
 // j'ai l'impression que c'est ce qui est arrivé d'une séance sur l'autre ? »
 //
-// C'ÉTAIT MESURÉ, ET C'ÉTAIT OUI : la table ne portait que l'exercice. Il a
-// tranché « attaché au parcours », et c'est ce que cette vérification garde —
-// le serveur rend le parcours avec la permission, et c'est l'ardoise de l'élève
-// qui refuse de l'appliquer ailleurs (voir `peutSauter`).
+// C'ÉTAIT MESURÉ, ET C'ÉTAIT OUI : la table ne portait que l'exercice, sans
+// séance ni échéance. Première correction : rattacher au PARCOURS. Il s'est
+// repris le soir même — « attache le à la séance, pour le parcours on a déjà
+// des sauts optionnels » — et il avait raison deux fois : un parcours a déjà
+// ses étapes « non obligatoires », et ce qu'on accorde au direct est un geste
+// de l'heure.
+//
+// DEUX FAÇONS DE FINIR UNE SÉANCE, DONC DEUX VÉRIFICATIONS : on en impose une
+// autre, ou l'heure passe. C'est le SERVEUR qui tranche les deux — l'ardoise de
+// l'élève ne lit ni l'échéance de la séance imposée ni l'horloge de l'école.
+$unParcours = fn (string $nom) => json('/teacher/paths', ['action' => 'save',
+    'path' => ['name' => $nom, 'steps' => [['stepId' => 'z1', 'exerciseId' => 'calc-add']]]],
+    $jetonProf)['json']['pathId'] ?? '';
+$premiereSeance = $unParcours('La séance de ce matin');
+$deuxiemeParcours = $unParcours('La séance d\'après');
+
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $premiereSeance], $jetonProf);
 json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'calc-sous',
-                           'mode' => 'saut', 'studentId' => $leaId,
-                           'pathId' => 'parcours-de-lundi'], $jetonProf);
+                           'mode' => 'saut', 'studentId' => $leaId], $jetonProf);
 $s = json('/session', [], $lea)['json']['session'];
-verifier('UN SAUT DONNÉ DANS UNE SÉANCE EN PORTE LE PARCOURS',
-    $sauteur($s, 'calc-sous', 'parcours-de-lundi'), json_encode($s['skippable'] ?? null));
-verifier('et il ne vaut PAS partout', !$sauteur($s, 'calc-sous', null));
+verifier('UN SAUT ACCORDÉ PENDANT LA SÉANCE VAUT PENDANT LA SÉANCE',
+    $sauteur($s, 'calc-sous'), json_encode($s['skippable'] ?? null));
+
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $deuxiemeParcours], $jetonProf);
+$s = json('/session', [], $lea)['json']['session'];
+verifier('ET IL TOMBE DÈS QU\'ON IMPOSE UNE AUTRE SÉANCE',
+    !$sauteur($s, 'calc-sous'), json_encode($s['skippable'] ?? null));
+
+// L'AUTRE FAÇON : personne ne touche à rien, et l'heure passe. On recule
+// l'échéance en base, ce qui est la seule façon d'avancer l'horloge.
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer', 'pathId' => ''], $jetonProf);
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'calc-sous',
+                           'mode' => 'saut', 'studentId' => $leaId], $jetonProf);
+verifier('SANS SÉANCE IMPOSÉE, LE SAUT VAUT QUAND MÊME',
+    $sauteur(json('/session', [], $lea)['json']['session'], 'calc-sous'));
+enBase()->prepare("UPDATE overrides SET expire_le = ? WHERE exercise_id = 'calc-sous'")
+    ->execute([time() - 60]);
+verifier('MAIS IL NE PASSE PAS LA NUIT',
+    !$sauteur(json('/session', [], $lea)['json']['session'], 'calc-sous'));
+
+// ET UNE LIGNE SANS ÉCHÉANCE VAUT ENCORE : ce sont celles d'avant la règle, et
+// les éteindre d'un coup retirerait à une classe une permission qu'elle est en
+// train d'utiliser.
+enBase()->prepare("UPDATE overrides SET expire_le = NULL WHERE exercise_id = 'calc-sous'")
+    ->execute();
+verifier('UNE PERMISSION D\'AVANT LA RÈGLE N\'EST PAS ÉTEINTE PAR LA MISE À JOUR',
+    $sauteur(json('/session', [], $lea)['json']['session'], 'calc-sous'));
+json('/teacher/override', ['classId' => $classId, 'action' => 'cancel',
+                           'mode' => 'saut'], $jetonProf);
 
 json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'geo-thales',
                            'mode' => 'retire', 'studentId' => $leaId], $jetonProf);

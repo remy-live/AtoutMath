@@ -1834,9 +1834,6 @@ function handleTeacherLive(): void
             'ecarte' => !empty($e['blocked']),
             'exo' => $a['exo'],
             'parcours' => $a['parcours'],
-            // L'identifiant du parcours ouvert, pour que « laisse tomber celui-là »
-            // s'accroche à CETTE séance et pas aux suivantes.
-            'parcoursId' => $a['parcoursId'] ?? null,
             'justes' => $a['justes'],
             'total' => $a['total'],
             'quand' => $a['quand'],
@@ -2397,37 +2394,51 @@ function handleTeacherOverride(): void
            AND (' . ($ids ? 'student_id = ?' : 'class_id = ?') . ')'
     );
 
-    // ── LE SAUT NE VAUT QUE DANS LE PARCOURS OÙ ON L'A ACCORDÉ ──────────────
+    // ── LE SAUT EST UN GESTE DE L'HEURE, ET IL S'ÉTEINT AVEC ELLE ───────────
     //
     // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
     // l'exercice, sur un autre parcours, cette même exercice peut se passer
-    // aussi ». Oui, c'était mesuré, et il a tranché : « attaché au parcours ».
+    // aussi ». Oui, c'était mesuré. Puis, le soir même, il s'est repris :
+    // « attache le à la séance, pour le parcours on a déjà des sauts
+    // optionnels ».
     //
-    // C'EST L'ÉCRAN QUI DIT LEQUEL, et c'est la seule place où on le sache :
-    // le direct affiche l'élève EN TRAIN de faire son parcours, et c'est là
-    // qu'on clique « laisse tomber celui-là ». Le serveur ne peut pas le
-    // deviner — la séance imposée n'est pas forcément celle que l'élève a
-    // ouverte, et une classe peut travailler sans séance imposée du tout.
+    // ET IL A RAISON DEUX FOIS. D'abord parce qu'un parcours a DÉJÀ ses étapes
+    // « non obligatoires », réglées en le construisant : rattacher la
+    // permission au parcours aurait fait deux mécanismes pour une seule idée.
+    // Ensuite parce que ce qu'il fait au direct n'est pas une propriété du
+    // parcours : c'est « laisse tomber celui-là, on avance », dit à un élève
+    // coincé, pendant CETTE heure.
     //
-    // VIDE VEUT DIRE « PARTOUT », et c'est ce qui garde l'ancien comportement
-    // pour tout ce qui ne passe pas par le direct.
+    // LE SERVEUR SAIT SEUL CE QU'EST « LA SÉANCE », et c'est pour cela qu'il
+    // l'écrit lui-même plutôt que de le demander à l'écran : la séance imposée
+    // porte une échéance que le navigateur ne lit pas, et elle peut tomber
+    // entre le clic et la question suivante.
     //
-    // « RETIRER » NE SE RATTACHE À RIEN, ET C'EST VOULU : c'est le geste du
+    // DEUX ÉCHELLES, PARCE QU'IL Y A DEUX FAÇONS DE FINIR UNE SÉANCE :
+    //   · on en impose une autre — `seance_id` ne correspond plus, la
+    //     permission tombe ;
+    //   · ou l'heure passe et personne ne touche à rien — `expire_le` la ferme
+    //     à la fin de la journée scolaire, exactement comme la séance imposée.
+    // Sans la seconde, une classe qui travaille sans séance imposée garderait
+    // ses permissions pour toujours, ce qui était le défaut du départ.
+    //
+    // « RETIRER » NE S'ÉTEINT PAS, ET C'EST VOULU : c'est le geste du
     // professeur qui a constaté que l'exercice PLANTE. Il ne veut pas que
-    // l'élève retombe dessus, dans ce parcours-ci ni dans un autre.
-    $parcours = $mode === 'saut' ? mb_substr(trim((string) ($body['pathId'] ?? '')), 0, 80) : '';
-    $insert = db()->prepare('INSERT INTO overrides (id, class_id, student_id, exercise_id, mode, path_id)
-                             VALUES (?, ?, ?, ?, ?, ?)');
+    // l'élève retombe dessus demain matin.
+    $laSeance = $mode === 'saut' ? imposeEncoreValide($classe) : null;
+    $jusqua = $mode === 'saut' ? finDeLaJourneeScolaire() : null;
+    $insert = db()->prepare(
+        'INSERT INTO overrides (id, class_id, student_id, exercise_id, mode, seance_id, expire_le)
+         VALUES (?, ?, ?, ?, ?, ?, ?)');
     $court = mb_substr($exo, 0, 80);
-    $ou = $parcours !== '' ? $parcours : null;
     if ($ids) {
         foreach ($ids as $id) {
             $vide->execute([$mode, $court, $id]);
-            $insert->execute([uuidv4(), null, $id, $court, $mode, $ou]);
+            $insert->execute([uuidv4(), null, $id, $court, $mode, $laSeance, $jusqua]);
         }
     } else {
         $vide->execute([$mode, $court, $classe['id']]);
-        $insert->execute([uuidv4(), $classe['id'], null, $court, $mode, $ou]);
+        $insert->execute([uuidv4(), $classe['id'], null, $court, $mode, $laSeance, $jusqua]);
     }
 
     $aQui = $ids ? (count($ids) === 1 ? 'à cet élève' : 'à ' . count($ids) . ' élèves')

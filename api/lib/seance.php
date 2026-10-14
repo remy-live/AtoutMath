@@ -171,7 +171,7 @@ function etatDeSeance(array $eleve): array
     // parce que retirer est le geste du professeur qui a constaté que
     // l'exercice plante — il ne veut pas que l'élève retombe dessus.
     $s = $pdo->prepare(
-        'SELECT exercise_id, mode, path_id FROM overrides
+        'SELECT exercise_id, mode, seance_id, expire_le FROM overrides
           WHERE class_id = ? OR student_id = ?'
     );
     $s->execute([$eleve['class_id'], $eleve['id']]);
@@ -187,24 +187,37 @@ function etatDeSeance(array $eleve): array
         } elseif ($o['mode'] === 'retire') {
             $retire[$o['exercise_id']] = true;
         } else {
-            // ── LE SAUT VOYAGE AVEC SON PARCOURS ────────────────────────────
+            // ── LE SAUT S'ÉTEINT AVEC LA SÉANCE, ET LE SERVEUR LE SAIT SEUL ──
             //
             // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à
             // passer l'exercice, sur un autre parcours, cette même exercice
             // peut se passer aussi, j'ai l'impression que c'est ce qui est
-            // arrivé d'une séance sur l'autre ? » C'était mesuré : oui.
+            // arrivé d'une séance sur l'autre ? » C'était mesuré : oui. Puis :
+            // « attache le à la séance, pour le parcours on a déjà des sauts
+            // optionnels ».
             //
-            // UNE LISTE D'OBJETS ET NON PLUS DE CHAÎNES, parce qu'une
-            // permission porte maintenant DEUX informations. Un parcours vide
-            // vaut « partout », ce qui garde les lignes d'avant telles
-            // qu'elles étaient.
-            $saut[] = ['exo' => $o['exercise_id'],
-                       'parcours' => ($o['path_id'] ?? '') !== '' ? $o['path_id'] : null];
+            // ON FILTRE ICI PLUTÔT QUE CHEZ L'ÉLÈVE, et c'est tout le sens de
+            // sa correction : l'ardoise ne sait pas quand la séance imposée
+            // expire, ni laquelle est en cours. Elle reçoit donc une liste
+            // d'identifiants, comme avant, et n'a rien à décider.
+            //
+            //   · l'heure est passée — `expire_le` est derrière nous ;
+            //   · ou l'on a changé de séance — `seance_id` ne désigne plus
+            //     celle qui est imposée.
+            //
+            // UNE LIGNE SANS ÉCHÉANCE VAUT ENCORE : ce sont celles d'avant
+            // cette règle, et les éteindre d'un coup retirerait à une classe
+            // une permission qu'elle est en train d'utiliser.
+            $quand = (int) ($o['expire_le'] ?? 0);
+            if ($quand > 0 && $quand <= time()) continue;
+            $sienne = ($o['seance_id'] ?? '') !== '' ? (string) $o['seance_id'] : null;
+            if ($sienne !== null && $sienne !== $imposeId) continue;
+            $saut[$o['exercise_id']] = true;
         }
     }
     // « Retiré » l'emporte toujours sur « saut autorisé » : inutile d'offrir de
     // passer un exercice qui a déjà disparu du parcours.
-    $saut = array_values(array_filter($saut, fn ($x) => !isset($retire[$x['exo']])));
+    $saut = array_diff_key($saut, $retire);
 
     // LA SÉANCE IMPOSÉE. Rémy : « est-ce qu'il ne serait pas possible que
     // lorsque les élèves se connectent, j'impose la séance, comme cela ils
@@ -289,7 +302,7 @@ function etatDeSeance(array $eleve): array
             : (((string) $classe['bac_jeux']) === ''
                 ? [] : explode(',', (string) $classe['bac_jeux'])),
         'messages'  => $messages,
-        'skippable' => $saut,
+        'skippable' => array_keys($saut),
         'removed'   => array_keys($retire),
         // Les exercices où le professeur vient d'autoriser la calculatrice —
         // `*` valant pour toute la séance.

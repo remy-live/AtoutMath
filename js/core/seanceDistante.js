@@ -391,6 +391,20 @@ export function estRetire(exerciceId) {
  * ni pour ni contre lui — elle n'a aucune tentative, donc aucun poids dans la
  * note (voir `gradeRun`, qui agrège les tentatives et non les étapes).
  *
+ * ── ET IL S'ÉTEINT AVEC LA SÉANCE, MAIS CE N'EST PAS ICI QUE ÇA SE DÉCIDE ──
+ *
+ * RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
+ * l'exercice, sur un autre parcours, cette même exercice peut se passer aussi,
+ * j'ai l'impression que c'est ce qui est arrivé d'une séance sur l'autre ? »
+ * C'était mesuré : oui, la permission ne s'éteignait jamais. Puis : « attache
+ * le à la séance, pour le parcours on a déjà des sauts optionnels ».
+ *
+ * CETTE FONCTION N'EN SAIT RIEN, ET C'EST VOULU. La liste qu'elle lit est déjà
+ * filtrée par le serveur, qui seul connaît la séance imposée et son échéance.
+ * Lui faire refaire ce calcul ici, sur trente appareils dont les horloges ne
+ * s'accordent pas, produirait trente réponses — et c'est exactement la raison
+ * pour laquelle le compte à rebours, juste au-dessus, est écrit comme il est.
+ *
  * ── `*` VEUT DIRE « TOUS », ICI AUSSI ───────────────────────────────────────
  *
  * RÉMY : « il faudrait aussi pouvoir mais seulement pour le direct permettre
@@ -403,22 +417,10 @@ export function estRetire(exerciceId) {
  * le serveur ne l'accorde qu'à un ÉLÈVE NOMMÉ, jamais à la classe, parce que
  * sauter tout pour trente, ce n'est pas un réglage, c'est annuler la séance.
  */
-export function peutSauter(exerciceId, parcoursId = null) {
+export function peutSauter(exerciceId) {
     const liste = etat.skippable || [];
     if (!liste.length) return false;
-    return liste.some((s) => {
-        // UNE CHAÎNE EST UNE PERMISSION D'AVANT, et elle vaut partout. L'état
-        // de la séance est GARDÉ SUR L'APPAREIL : un élève qui rouvre son
-        // ardoise hors ligne relit ce que le serveur lui avait dit la veille,
-        // dans l'ancienne forme. La lire comme « sans parcours » est à la fois
-        // juste et compatible.
-        const quel = typeof s === 'string' ? { exo: s, parcours: null } : (s || {});
-        // LE PARCOURS, QUAND IL EST DIT, FERME LA PERMISSION AILLEURS. C'est
-        // toute la correction : « laisse tomber celui-là » se dit DANS une
-        // séance, et il n'y a aucune raison qu'il survive à la suivante.
-        if (quel.parcours && quel.parcours !== parcoursId) return false;
-        return quel.exo === '*' || (!!exerciceId && quel.exo === exerciceId);
-    });
+    return liste.includes('*') || (!!exerciceId && liste.includes(exerciceId));
 }
 
 /**

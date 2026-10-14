@@ -365,7 +365,7 @@ rythme-là, une demande non écrite est une demande perdue.
 | 2 | « ce qui serait bien pour les codes liés aux identifiants, c'est d'afficher un tableau avec identifiant et code […] sur un seul écran que je peux projeter […] 2 colonnes avec des couleurs pour pas confondre » | **fait** — v1005 |
 | 3 | « pour les pyramides quand c'est bon et que l'élève a cliqué vérifié il faut dire qu'il a eu bon et proposer une nouvelle pyramide, j'ai une élève qui n'a pas compris qu'il fallait faire cela » | **fait** — v1005 |
 | 4 | « le colonne lundi, mardi, mercredi n'ont pas la même taille » (capture du tableau croisé) | **fait** — v1005 |
-| 5 | « est ce possible si sur un parcours, j'ai autorisé à passer l'exercice, sur un autre parcours, cette même exercice peut se passer aussi, j'ai l'impression que c'est ce qui est arrivé d'une séance sur l'autre ? » | **mesuré : oui, c'est bien cela** — attend son arbitrage |
+| 5 | « est ce possible si sur un parcours, j'ai autorisé à passer l'exercice, sur un autre parcours, cette même exercice peut se passer aussi, j'ai l'impression que c'est ce qui est arrivé d'une séance sur l'autre ? » | **fait** — v1008, attaché à la séance |
 | 6 | « une élève a eu cela mais je n'ai pas su l'aider car je ne sais pas ce qu'il faut écrire » (capture : « Comment appelle-t-on la ligne en gras ? », un cercle rouge, un arc vert, un diamètre bleu) | en cours |
 | 7 | « là ca bloque, on peut appuyer sur la croix mais il faudrait un bouton quitter ou recommencer » (capture : la carte de fin de Math Crush) | en cours |
 | 8 | « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à dire que juste la séance imposée fonctionne mais par contre si il se connecte, on leur dit que pour l'instant ce n'est disponible qu'au collège (je peux mettre le message de mon choix) » | à faire |
@@ -394,14 +394,31 @@ est de cliquer « retirer » dans le direct.
 exercice retiré pendant la séance A disparaît du parcours B de la même classe,
 silencieusement, puisque `filtrerEtapes` le retire de n'importe quel parcours.
 
-Trois façons d'y mettre fin, et c'est à lui de trancher :
+Trois façons d'y mettre fin lui ont été proposées : **(a)** la permission meurt
+quand on impose une autre séance, **(b)** elle expire toute seule à la fin de la
+journée, **(c)** elle est attachée au parcours où on l'a accordée.
 
-- **(a) la permission meurt avec la séance** — changer de séance imposée efface
-  les sauts de la classe. Simple, et c'est le modèle qu'il décrit (« d'une
-  séance sur l'autre »). Mais une classe qui travaille sans séance imposée ne
-  nettoie jamais ;
-- **(b) elle expire toute seule** au bout de quelques heures ou à la fin de la
-  journée. Rien à cliquer, rien à oublier ;
-- **(c) elle est attachée au parcours** où elle a été accordée. Le plus juste —
-  et le seul qui marche aussi sans séance imposée —, mais il faut que l'élève
-  dise au serveur quel parcours il fait.
+### Il a d'abord choisi (c), puis s'est repris — et c'est lui qui avait raison
+
+> « Je me suis trompé pour le saut d'exercice attache le à la séance pour le
+> parcours on a déjà des sauts optionnels désolé »
+
+**Il a raison deux fois, et la seconde est la plus intéressante.** D'abord parce
+qu'un parcours a DÉJÀ ses étapes « non obligatoires », réglées en le
+construisant (`js/ui/builder.js`, bouton « Non obligatoires ») : rattacher la
+permission au parcours aurait fait **deux mécanismes pour une seule idée**, et
+c'est exactement le genre de doublon que ce dépôt paie cher. Ensuite parce que
+ce qu'il fait au direct n'est pas une propriété du parcours : c'est « laisse
+tomber celui-là, on avance », dit à un élève coincé, **pendant cette heure-là**.
+
+**CE QUI A ÉTÉ POSÉ, DONC : (a) ET (b) ENSEMBLE**, parce qu'une séance finit de
+deux façons — on en impose une autre, ou l'heure passe sans que personne ne
+touche à rien. Deux colonnes sur `overrides` : `seance_id`, la séance imposée au
+moment où on accorde, et `expire_le`, la fin de la journée scolaire — la même
+règle que celle de la séance imposée elle-même.
+
+**ET C'EST LE SERVEUR QUI ÉCRIT LES DEUX**, pas l'écran qui clique : la séance
+imposée porte une échéance que le navigateur ne lit pas, et elle peut tomber
+entre le clic et la question suivante. La première écriture faisait porter le
+parcours par le bouton du direct ; elle est partie, et le code est plus court
+qu'avant elle.

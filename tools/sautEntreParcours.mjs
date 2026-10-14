@@ -15,17 +15,19 @@
 //   SÉANCE B   skippable = ["calc-add"]  · imposé : Séance B
 //   AUCUNE     skippable = ["calc-add"]  · imposé : aucun
 //
-// ON MESURE LES DEUX MOITIÉS, et c'est le seul moyen de répondre : le serveur
-// REND la permission avec son parcours, et c'est l'ardoise de l'élève qui
-// refuse de l'appliquer ailleurs. Mesurer le serveur seul dirait « la
-// permission est toujours là » et ferait croire que rien n'a changé.
+// PUIS IL S'EST REPRIS, le soir même : « attache le à la séance, pour le
+// parcours on a déjà des sauts optionnels ». Il a raison deux fois — un
+// parcours a déjà ses étapes « non obligatoires », réglées en le construisant,
+// et ce qu'on accorde au direct est un geste de L'HEURE.
+//
+// C'EST DONC LE SERVEUR QU'ON MESURE ICI, et c'est lui qui doit trancher : il
+// est le seul à savoir quelle séance est imposée et jusqu'à quand elle vaut.
+// L'ardoise de l'élève reçoit une liste d'identifiants et n'a rien à décider.
 //
 //   node tools/sautEntreParcours.mjs
 //
 import { spawn } from 'node:child_process';
 import { setTimeout as dormir } from 'node:timers/promises';
-import '../tests/helpers.mjs';
-import { appliquerEtat, peutSauter } from '../js/core/seanceDistante.js';
 
 const PORT = 8571;
 const serveur = spawn('php', ['tools/siteEssai.php', String(PORT)], { cwd: process.cwd() });
@@ -67,9 +69,10 @@ console.log('parcours', p1.code, id1, '·', p2.code, id2);
 
 // 2. On impose la séance A, puis on autorise le saut de calc-add.
 await appel('/teacher/class', { classId: classe.id, action: 'imposer', pathId: id1 }, jp);
-const ajout = await appel('/teacher/override',
-    { classId: classe.id, action: 'add', exerciseId: 'calc-add', mode: 'saut',
-      pathId: id1 }, jp);
+const ajout = // RIEN À DIRE AU SERVEUR : il lit lui-même la séance imposée de cette classe,
+// et c'est précisément ce qu'on vient vérifier.
+await appel('/teacher/override',
+    { classId: classe.id, action: 'add', exerciseId: 'calc-add', mode: 'saut' }, jp);
 // ET LE MÊME GESTE POUR « RETIRER » : c'est la même table, et retirer est plus
 // lourd de conséquences — l'étape DISPARAÎT du parcours de l'élève.
 await appel('/teacher/override',
@@ -77,39 +80,35 @@ await appel('/teacher/override',
 console.log('override', ajout.code, JSON.stringify(ajout.corps).slice(0, 200));
 
 const sessionA = await appel('/session', null, je);
-// CE QUE L'ÉLÈVE EN CONCLUT, et non ce que le serveur a dit : on donne la
-// réponse du serveur à l'ardoise, telle quelle, et on lui pose la question
-// qu'elle se pose quand elle dessine le bouton « Passer ».
-const dit = (q, r, parcoursOuvert) => {
+// CE QUE L'ÉLÈVE REÇOIT, tel quel. Pas de vert ni de rouge sur ces lignes :
+// « il peut sauter » est la bonne réponse pendant la séance et la mauvaise
+// après, et colorer la CAPACITÉ au lieu de l'attente ferait lire le verdict à
+// l'envers. Le verdict est plus bas.
+const dit = (q, r) => {
     const s = r.corps.session;
-    appliquerEtat({ skippable: s.skippable || [], removed: s.removed || [] });
-    const peut = peutSauter('calc-add', parcoursOuvert);
-    console.log(q.padEnd(10) + ' le serveur rend ' + JSON.stringify(s.skippable)
-        + '\n           l\'élève, dans ' + (parcoursOuvert || 'aucun parcours') + ' : '
-        // PAS DE VERT NI DE ROUGE ICI : « il peut sauter » est la bonne réponse
-        // dans sa séance et la mauvaise ailleurs. Colorer la CAPACITÉ au lieu de
-        // l'attente ferait lire le verdict à l'envers. Le verdict est plus bas.
-        + (peut ? 'il PEUT sauter' : 'il ne peut pas')
+    const peut = (s.skippable || []).includes('calc-add');
+    console.log(q.padEnd(10) + ' skippable = ' + JSON.stringify(s.skippable)
+        + '  · imposé : ' + (s.impose ? s.impose.name : 'aucun')
         + '  · retirés : ' + JSON.stringify(s.removed));
     return peut;
 };
-const aA = dit('SÉANCE A', sessionA, id1);
+const aA = dit('SÉANCE A', sessionA);
 
 // 3. On impose la séance B — un AUTRE parcours — et l'on redemande.
 await appel('/teacher/class', { classId: classe.id, action: 'imposer', pathId: id2 }, jp);
 const sessionB = await appel('/session', null, je);
-const aB = dit('SÉANCE B', sessionB, id2);
+const aB = dit('SÉANCE B', sessionB);
 
 // 4. Et sans séance imposée du tout.
 await appel('/teacher/class', { classId: classe.id, action: 'imposer', pathId: '' }, jp);
 const sansRien = await appel('/session', null, je);
-const aRien = dit('AUCUNE', sansRien, null);
+const aRien = dit('AUCUNE', sansRien);
 
 console.log('\n\x1b[1mVERDICT\x1b[0m');
 const dire = (q, ok) => console.log(`  ${ok ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${q}`);
-dire('dans la séance où on l\'a accordé, il peut sauter', aA === true);
-dire('dans l\'autre séance, il ne peut pas', aB === false);
-dire('et sans séance ouverte non plus', aRien === false);
+dire('pendant la séance où on l\'a accordé, il peut sauter', aA === true);
+dire('dès qu\'on impose une AUTRE séance, il ne peut plus', aB === false);
+dire('et quand il n\'y a plus de séance imposée non plus', aRien === false);
 
 serveur.kill();
 await dormir(300);

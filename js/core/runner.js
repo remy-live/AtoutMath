@@ -1858,7 +1858,7 @@ export class Runner {
         // franchit quand il veut. Le saut ne compte ni pour ni contre lui.
         const exoId = step && step.exercise && step.exercise.id;
         const retireMaintenant = !!exoId && estRetire(exoId);
-        const permis = !!exoId && (peutSauter(exoId, this.path && this.path.id) || retireMaintenant);
+        const permis = !!exoId && (peutSauter(exoId) || retireMaintenant);
         const apparait = permis && bouton.hidden;
         bouton.hidden = !permis;
         bouton.onclick = permis ? () => this.passerEtape() : null;

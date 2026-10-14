@@ -298,19 +298,20 @@ export const fermerHorsSeance = (classId, ferme, mot = '') =>
 export const lesReglages = (classId) =>
     auServeur('/teacher/override', { classId, action: 'list' });
 /**
- * `pathId` RATTACHE LE RÉGLAGE À LA SÉANCE OÙ ON LE DONNE.
+ * LE SAUT S'ÉTEINT AVEC LA SÉANCE, ET C'EST LE SERVEUR QUI L'ÉCRIT.
  *
  * RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
  * l'exercice, sur un autre parcours, cette même exercice peut se passer aussi,
  * j'ai l'impression que c'est ce qui est arrivé d'une séance sur l'autre ? »
- * C'était mesuré, et il a tranché : « attaché au parcours ».
+ * C'était mesuré : oui. Puis : « attache le à la séance, pour le parcours on a
+ * déjà des sauts optionnels ».
  *
- * Vide veut dire « partout », ce qui reste l'ancien comportement pour les
- * gestes qui ne partent pas du direct.
+ * RIEN À ENVOYER D'ICI : le serveur connaît la séance imposée de cette classe
+ * et son échéance, et il les écrit lui-même sur la ligne. L'écran qui clique
+ * n'a pas à les lui dire — il les lirait moins bien que lui.
  */
-export const reglerUnExercice = (classId, exerciseId, mode, studentId = '', pathId = '') =>
-    auServeur('/teacher/override',
-        { classId, action: 'add', exerciseId, mode, studentId, pathId });
+export const reglerUnExercice = (classId, exerciseId, mode, studentId = '') =>
+    auServeur('/teacher/override', { classId, action: 'add', exerciseId, mode, studentId });
 export const annulerUnReglage = (classId, overrideId) =>
     auServeur('/teacher/override', { classId, action: 'cancel', overrideId });
 

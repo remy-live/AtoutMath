@@ -53,50 +53,29 @@ test('`*` VEUT DIRE « TOUS » POUR LE SAUT AUSSI', () => {
     appliquerEtat({ skippable: [] });
 });
 
-test('UN SAUT DONNÉ DANS UNE SÉANCE NE VAUT QUE DANS CELLE-LÀ', () => {
+test('LE SAUT NE S\'ÉTEINT PAS ICI, ET C\'EST VOULU', () => {
     // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
     // l'exercice, sur un autre parcours, cette même exercice peut se passer
     // aussi, j'ai l'impression que c'est ce qui est arrivé d'une séance sur
-    // l'autre ? »
+    // l'autre ? » C'était mesuré : oui. Puis, le soir même : « attache le à la
+    // séance, pour le parcours on a déjà des sauts optionnels ».
     //
-    // MESURÉ SUR UN VRAI SERVEUR, et c'était oui : la permission n'était
-    // rattachée qu'à l'exercice, sans parcours ni date de péremption. Elle
-    // survivait à la séance, à la séance suivante, et même à l'absence de
-    // séance. Interrogé sur ce qui devait y mettre fin, il a choisi « attaché
-    // au parcours ».
-    appliquerEtat({ skippable: [{ exo: 'calc-add', parcours: 'p-lundi' }] });
-    assert.equal(peutSauter('calc-add', 'p-lundi'), true, 'dans SA séance, il se passe');
-    assert.equal(peutSauter('calc-add', 'p-mardi'), false, 'dans une autre, non');
-    // SANS PARCOURS SOUS LES YEUX — un exercice ouvert depuis le catalogue —
-    // la permission ne vaut pas : elle a été donnée POUR une séance.
-    assert.equal(peutSauter('calc-add', null), false);
-    assert.equal(peutSauter('calc-add'), false);
-
-    // ET « TOUT DÉBLOQUER » SUIT LA MÊME RÈGLE : c'est le geste qu'on fait
-    // debout à côté d'un élève coincé, pendant CETTE heure.
-    appliquerEtat({ skippable: [{ exo: '*', parcours: 'p-lundi' }] });
-    assert.equal(peutSauter('geo-thales', 'p-lundi'), true);
-    assert.equal(peutSauter('geo-thales', 'p-mardi'), false);
-    appliquerEtat({ skippable: [] });
-});
-
-test('UNE PERMISSION SANS PARCOURS VAUT PARTOUT, ET UNE CHAÎNE EN EST UNE', () => {
-    // CE QUI NE PART PAS DU DIRECT N'A PAS DE PARCOURS À DÉCLARER : le réglage
-    // posé sur toute la classe depuis la liste des réglages vaut partout, comme
-    // hier.
-    appliquerEtat({ skippable: [{ exo: 'calc-add', parcours: null }] });
-    assert.equal(peutSauter('calc-add', 'p-lundi'), true);
-    assert.equal(peutSauter('calc-add', null), true);
-
-    // ET L'ANCIENNE FORME RESTE LUE. L'état de la séance est GARDÉ SUR
-    // L'APPAREIL : un élève qui rouvre son ardoise relit ce que le serveur lui
-    // avait dit la veille, en chaînes. La lire comme « sans parcours » est à la
-    // fois juste et compatible — sans quoi un élève hors ligne perdrait une
-    // permission qu'on lui avait accordée.
-    appliquerEtat({ skippable: ['calc-add'] });
-    assert.equal(peutSauter('calc-add', 'p-lundi'), true);
-    assert.equal(peutSauter('geo-thales', 'p-lundi'), false);
-    appliquerEtat({ skippable: [] });
+    // LA PREMIÈRE ÉCRITURE FILTRAIT ICI, sur le parcours ouvert par l'élève.
+    // Elle est partie, et cette épreuve garde qu'elle ne revienne pas : la
+    // liste que lit l'ardoise est DÉJÀ filtrée par le serveur, qui seul connaît
+    // la séance imposée et son échéance. Refaire ce calcul sur trente appareils
+    // dont les horloges ne s'accordent pas donnerait trente réponses.
+    const src = lire('js/core/seanceDistante.js');
+    const corps = src.slice(src.indexOf('export function peutSauter'));
+    assert.match(corps.slice(0, 200), /peutSauter\(exerciceId\)/,
+        'peutSauter ne doit rien demander d\'autre que l\'exercice');
+    assert.ok(!/parcours/i.test(corps.slice(0, 400)),
+        'le filtrage par parcours est revenu dans l\'ardoise');
+    // Et le serveur, lui, le garde : voir `tools/testApi.php`, section 6.
+    assert.match(lire('api/lib/seance.php'), /\$sienne !== null && \$sienne !== \$imposeId/,
+        'le serveur ne filtre plus les sauts sur la séance imposée');
+    assert.match(lire('api/lib/seance.php'), /\$quand > 0 && \$quand <= time\(\)/,
+        'le serveur ne ferme plus les sauts à la fin de la journée');
 });
 
 test('SANS RÉGLAGE, RIEN — ni saut, ni calculatrice', () => {
@@ -173,16 +152,18 @@ test('ET ILS VALENT POUR LA SÉANCE EN COURS — c\'est ce que Rémy a demandé'
     // pas le menu « où » de la barre de pilotage, qui n'est pas sur cet écran.
     const EC = lire('js/ui/espaceClasses.js');
     assert.match(EC, /accorderLaCalculatrice\(cid, '\*', \[d\.calcEleve\]\)/);
-    // ET « POUR LA SÉANCE EN COURS » EST DEVENU VRAI AU PIED DE LA LETTRE :
-    // le parcours que l'élève a sous les yeux part avec la permission, et
-    // celle-ci ne vaut plus ailleurs. Rémy : « est ce possible si sur un
-    // parcours, j'ai autorisé à passer l'exercice, sur un autre parcours, cette
-    // même exercice peut se passer aussi ». C'était oui ; ce ne l'est plus.
-    assert.match(EC, /reglerUnExercice\(cid, '\*', 'saut', d\.sautTout, d\.parcours \|\| ''\)/);
-    assert.match(EC, /reglerUnExercice\(cid, d\.exo, 'saut', d\.sautEleve, d\.parcours \|\| ''\)/);
-    // LE BOUTON DOIT PORTER CE QU'IL ENVOIE : sans `data-parcours` sur les deux
-    // boutons, `d.parcours` est toujours vide et la permission revaut partout —
-    // la correction serait là, et elle ne ferait rien.
-    assert.ok(EC.split('data-parcours="${esc(e.parcoursId').length - 1 === 2,
-        'les deux boutons de saut ne portent pas le parcours de l\'élève');
+    assert.match(EC, /reglerUnExercice\(cid, '\*', 'saut', d\.sautTout\)/);
+    // ET « POUR LA SÉANCE EN COURS » EST DEVENU VRAI AU PIED DE LA LETTRE —
+    // mais côté serveur. Rémy : « attache le à la séance, pour le parcours on a
+    // déjà des sauts optionnels ». L'écran n'envoie donc rien de plus : c'est
+    // le serveur qui écrit sur la ligne quelle séance était imposée et jusqu'à
+    // quand elle vaut. Une première écriture faisait porter le parcours par le
+    // bouton ; elle est partie, et c'est mieux — l'écran n'a plus rien à savoir.
+    assert.ok(!EC.includes('data-parcours='),
+        'le bouton ne doit plus porter le parcours : le serveur le sait mieux');
+    const API = lire('api/index.php');
+    assert.match(API, /\$laSeance = \$mode === 'saut' \? imposeEncoreValide\(\$classe\) : null;/,
+        'le serveur n\'écrit plus la séance imposée sur la permission');
+    assert.match(API, /\$jusqua = \$mode === 'saut' \? finDeLaJourneeScolaire\(\) : null;/,
+        'le serveur n\'écrit plus d\'échéance sur la permission');
 });

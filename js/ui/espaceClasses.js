@@ -1116,15 +1116,8 @@ function ficheHtml(e, maintenant) {
                         ? 'SA question, celle-là précisément, ouverte chez vous avec SES réglages. Rien n\'est enregistré. Pour être lui et non plus le regarder, c\'est « Ouvrir son poste », dans Les élèves.'
                         : 'Son étape, avec SES réglages. Il n\'a pas encore dit quelle question il a sous les yeux : ce sera le même travail, pas forcément la même question. Pour voir ce qu\'il a sous les yeux, c\'est « Ouvrir son poste », dans Les élèves.'}"
                     >${f.graine ? 'Sa question, chez moi' : 'Son exercice, chez moi'}</button>
-            <!-- data-parcours RATTACHE LA PERMISSION À LA SÉANCE OÙ ON LA DONNE.
-                 Rémy : « est ce possible si sur un parcours, j'ai autorisé à
-                 passer l'exercice, sur un autre parcours, cette même exercice
-                 peut se passer aussi ». C'était mesuré, et il a tranché :
-                 « attaché au parcours ». Le direct est le SEUL endroit qui sache
-                 lequel — l'élève l'a sous les yeux en ce moment même. -->
             <button type="button" class="ec-bouton" data-saut-eleve="${esc(e.id)}"
-                    data-exo="${esc(e.exo || '')}" data-prenom="${esc(e.prenom)}"
-                    data-parcours="${esc(e.parcoursId || '')}"${
+                    data-exo="${esc(e.exo || '')}" data-prenom="${esc(e.prenom)}"${
                     g.debloquer ? '' : ' disabled'}
                     title="${g.debloquer
                         ? 'Il pourra passer cet exercice. L\'\u00e9tape ne comptera ni pour ni contre lui.'
@@ -1168,7 +1161,6 @@ function ficheHtml(e, maintenant) {
                     >🧮 ${saCalc ? 'Lui retirer la calculatrice' : 'Lui donner la calculatrice'}</button>
             <button type="button" class="ec-bouton ec-bouton--doux"
                     data-saut-tout="${esc(e.id)}" data-prenom="${esc(e.prenom)}"
-                    data-parcours="${esc(e.parcoursId || '')}"
                     data-deja="${sonSaut ? esc(sonSaut.id) : ''}"
                     title="${sonSaut
                         ? 'Il peut passer n\'importe quel exercice. Appuyer le lui retire.'
@@ -3595,7 +3587,7 @@ async function brancher(e, redessiner) {
     // vient de cliquer sur LUI.
     if (d.sautEleve) {
         if (!d.exo) { showToast('Il faut qu\'il soit sur un exercice.', 'info'); return; }
-        await fait(reglerUnExercice(cid, d.exo, 'saut', d.sautEleve, d.parcours || ''), (r) => {
+        await fait(reglerUnExercice(cid, d.exo, 'saut', d.sautEleve), (r) => {
             vue.reglages = r.reglages || vue.reglages;
             showToast(`${d.prenom || 'L\'élève'} pourra passer « ${nomDExercice(d.exo)} ».`,
                 'success');
@@ -3624,7 +3616,7 @@ async function brancher(e, redessiner) {
         const qui = d.prenom || 'L\'élève';
         await fait(d.deja
             ? annulerUnReglage(cid, d.deja)
-            : reglerUnExercice(cid, '*', 'saut', d.sautTout, d.parcours || ''), (r) => {
+            : reglerUnExercice(cid, '*', 'saut', d.sautTout), (r) => {
             vue.reglages = r.reglages || vue.reglages;
         }, d.deja ? `🔓 ${qui} suit de nouveau son parcours dans l'ordre.`
             : `🔓 ${qui} peut passer n'importe quel exercice de la séance.`);
