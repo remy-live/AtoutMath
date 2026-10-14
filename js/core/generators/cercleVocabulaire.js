@@ -723,6 +723,27 @@ function decor(rng, mot, liste, combien) {
     const possibles = MOTS_CERCLE.filter(m => permis.has(m.id) && !GLOBAUX.has(m.id) && m.id !== mot.id
         // Un décor qui porte le MÊME nom que la réponse rendrait l'énoncé faux :
         // « ce qui est tracé en rouge » n'aurait plus de réponse unique.
-        && !(mot.id === 'corde' && m.id === 'diametre'));
+        && !(mot.id === 'corde' && m.id === 'diametre')
+        // ── UN ARC SE DESSINE SUR LE CERCLE, ET LA QUESTION DEVIENT INSOLUBLE ──
+        //
+        // RÉMY, capture à l'appui : « une élève a eu cela mais je n'ai pas su
+        // l'aider car je ne sais pas ce qu'il faut écrire ». La question était
+        // « Comment appelle-t-on la ligne en gras ? », la réponse « le cercle »,
+        // et l'élève avait écrit « UN ARC ».
+        //
+        // ELLE AVAIT DE BONNES RAISONS. Un arc n'est pas un décor à côté du
+        // cercle : il est TRACÉ DESSUS, sur une portion du même rond. L'élève
+        // voyait donc un seul rond, de deux couleurs, et on lui demandait le nom
+        // de « la ligne en gras ». Les deux réponses se défendaient — et le
+        // professeur, devant l'écran, ne pouvait pas trancher non plus. C'est le
+        // signe qui ne trompe pas : quand celui qui a écrit le cours hésite,
+        // l'énoncé est en cause, pas l'élève.
+        //
+        // Les autres décors — un rayon, une corde, un diamètre — sont des
+        // segments DROITS à l'intérieur : ils ne se confondent pas avec le rond.
+        // On n'écarte donc que l'arc, et seulement quand c'est le cercle qu'on
+        // demande. L'inverse reste permis : sur une question d'arc, l'énoncé
+        // nomme ses deux extrémités (« de C à D »), ce qui ne laisse aucun doute.
+        && !(mot.id === 'cercle' && m.id === 'arc'));
     return rng.shuffle(possibles).slice(0, combien).map(m => m.tirer(rng));
 }

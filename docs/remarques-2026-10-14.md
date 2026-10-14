@@ -350,3 +350,58 @@ Les faire compter côté serveur demanderait de tenir deux vérités d'accord �
 catalogue est en JavaScript, la page est en PHP — et c'est le genre d'accord
 qui finit toujours par produire un chiffre faux. **Mieux vaut une date qu'une
 illusion**, et la page le dit.
+
+---
+
+# Le second envoi du 14 octobre — huit demandes d'affilée
+
+Elles sont arrivées pendant que je travaillais, l'une après l'autre, souvent
+avec une capture d'écran. On les écrit ICI avant de les traiter : à ce
+rythme-là, une demande non écrite est une demande perdue.
+
+| # | Ce qu'il a dit | État |
+| --- | --- | --- |
+| 1 | « pourquoi j'ai des noms d'exercices avec un numéro devant du genre 8. Diviser et le ... » | **fait** — v1004 |
+| 2 | « ce qui serait bien pour les codes liés aux identifiants, c'est d'afficher un tableau avec identifiant et code […] sur un seul écran que je peux projeter […] 2 colonnes avec des couleurs pour pas confondre » | **fait** — v1005 |
+| 3 | « pour les pyramides quand c'est bon et que l'élève a cliqué vérifié il faut dire qu'il a eu bon et proposer une nouvelle pyramide, j'ai une élève qui n'a pas compris qu'il fallait faire cela » | **fait** — v1005 |
+| 4 | « le colonne lundi, mardi, mercredi n'ont pas la même taille » (capture du tableau croisé) | **fait** — v1005 |
+| 5 | « est ce possible si sur un parcours, j'ai autorisé à passer l'exercice, sur un autre parcours, cette même exercice peut se passer aussi, j'ai l'impression que c'est ce qui est arrivé d'une séance sur l'autre ? » | **mesuré : oui, c'est bien cela** — attend son arbitrage |
+| 6 | « une élève a eu cela mais je n'ai pas su l'aider car je ne sais pas ce qu'il faut écrire » (capture : « Comment appelle-t-on la ligne en gras ? », un cercle rouge, un arc vert, un diamètre bleu) | en cours |
+| 7 | « là ca bloque, on peut appuyer sur la croix mais il faudrait un bouton quitter ou recommencer » (capture : la carte de fin de Math Crush) | en cours |
+| 8 | « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à dire que juste la séance imposée fonctionne mais par contre si il se connecte, on leur dit que pour l'instant ce n'est disponible qu'au collège (je peux mettre le message de mon choix) » | à faire |
+| 9 | « je pensais aussi pouvoir faire un challenge, exemple, j'impose dans le direct, un exercice à chacun (avec un temps déterminé) et on fait le bilan et ca peut faire un petit classement. Ca peut être sympa pour couper la séance » | à faire — c'est une fonction, pas une correction |
+
+## 5. Le saut autorisé traverse les séances — mesuré
+
+**Sa question était juste, et la réponse est oui.** Mesuré sur un vrai serveur
+(`tools/tmp/sautEntreParcours.mjs`) : on impose la séance A, on autorise le
+saut de `calc-add` depuis le direct, puis on impose la séance B — un autre
+parcours — et l'on redemande la session de l'élève :
+
+```
+SÉANCE A   skippable = ["calc-add"]  · imposé : Séance A  · retirés : ["calc-mult"]
+SÉANCE B   skippable = ["calc-add"]  · imposé : Séance B  · retirés : ["calc-mult"]
+AUCUNE     skippable = ["calc-add"]  · imposé : aucun     · retirés : ["calc-mult"]
+```
+
+**La permission n'est rattachée à rien d'autre qu'à l'exercice.** La table
+`overrides` porte `(class_id | student_id, exercise_id, mode)` — aucune colonne
+de parcours, aucune date de péremption —, et `GET /session` les rend toutes,
+quel que soit le parcours que l'élève ouvre. Le seul moyen de les faire cesser
+est de cliquer « retirer » dans le direct.
+
+**Et cela vaut aussi pour « retirer un exercice », qui est plus lourd** : un
+exercice retiré pendant la séance A disparaît du parcours B de la même classe,
+silencieusement, puisque `filtrerEtapes` le retire de n'importe quel parcours.
+
+Trois façons d'y mettre fin, et c'est à lui de trancher :
+
+- **(a) la permission meurt avec la séance** — changer de séance imposée efface
+  les sauts de la classe. Simple, et c'est le modèle qu'il décrit (« d'une
+  séance sur l'autre »). Mais une classe qui travaille sans séance imposée ne
+  nettoie jamais ;
+- **(b) elle expire toute seule** au bout de quelques heures ou à la fin de la
+  journée. Rien à cliquer, rien à oublier ;
+- **(c) elle est attachée au parcours** où elle a été accordée. Le plus juste —
+  et le seul qui marche aussi sans séance imposée —, mais il faut que l'élève
+  dise au serveur quel parcours il fait.

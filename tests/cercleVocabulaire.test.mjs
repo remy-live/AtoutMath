@@ -114,7 +114,39 @@ test('LE DÉCOR NE PORTE JAMAIS LE NOM DE LA RÉPONSE', () => {
         if (it.meta.mot === 'corde') {
             assert.equal(spec.elements.slice(1).some(e => e.type === 'diametre'), false, `graine ${i}`);
         }
+        // ── ET JAMAIS D'ARC SUR UNE QUESTION DE CERCLE ─────────────────────
+        //
+        // RÉMY, capture à l'appui : « une élève a eu cela mais je n'ai pas su
+        // l'aider car je ne sais pas ce qu'il faut écrire ». La question était
+        // « Comment appelle-t-on la ligne en gras ? » et l'élève avait écrit
+        // « UN ARC » — devant un cercle rouge, un arc vert dessiné DESSUS, et
+        // un diamètre bleu.
+        //
+        // Un arc n'est pas un décor à côté du cercle : c'est une portion du
+        // MÊME rond. Les deux réponses se défendaient, et le professeur devant
+        // l'écran ne pouvait pas trancher non plus — c'est le signe que
+        // l'énoncé est en cause, pas l'élève.
+        if (it.meta.mot === 'cercle') {
+            assert.equal(spec.elements.slice(1).some(e => e.type === 'arc'), false,
+                `graine ${i} : un arc est tracé sur le cercle qu'on demande de nommer`);
+        }
     }
+});
+
+test('UNE QUESTION DE CERCLE GARDE QUAND MÊME SON DÉCOR', () => {
+    // LA CORRECTION POUVAIT SE RETOURNER EN VIDANT LA FIGURE : un cercle tout
+    // seul avec « comment appelle-t-on la ligne en gras » ne demande plus de
+    // lire une figure, il demande de lire un mot. On écarte l'arc, et RIEN
+    // d'autre — rayon, corde, diamètre et tangente restent.
+    let avecDecor = 0, vues = 0;
+    for (let i = 0; i < 60; i++) {
+        const it = gen().generate({ sens: 'nommer' }, { rng: makeRng(`c-${i}`), index: i });
+        if (it.meta.mot !== 'cercle') continue;
+        vues++;
+        if (it.meta.spec.elements.length > 1) avecDecor++;
+    }
+    assert.ok(vues >= 5, `seulement ${vues} question(s) de cercle vues : l'épreuve ne mesure rien`);
+    assert.equal(avecDecor, vues, 'une question de cercle se retrouve sans aucun autre tracé');
 });
 
 test('UNE SÉRIE COURTE GARDE DE QUOI CHOISIR, SANS SORTIR DU NIVEAU', () => {
