@@ -298,7 +298,7 @@ if (preg_match_all('/<details class="bloc" id="([a-z-]+)"/', $p['html'], $m)) {
     $sectionsVues = $m[1];
 }
 sort($sectionsVues);
-$sectionsVoulues = ['blocages', 'compte', 'depot', 'ranger', 'rapport', 'sante'];
+$sectionsVoulues = ['apropos', 'blocages', 'compte', 'depot', 'ranger', 'rapport', 'sante'];
 verifier('et la page tient en une seule, à sections dépliables nommées',
     $sectionsVues === $sectionsVoulues,
     'vues : ' . implode(', ', $sectionsVues));
@@ -3574,6 +3574,25 @@ $criees = [];
 foreach (['Fatal error', 'Parse error', 'Warning:', 'Deprecated:'] as $quoi) {
     if (stripos($journal, $quoi) !== false) $criees[] = $quoi;
 }
+// LES CRÉDITS NOMMENT QUELQU'UN, ET RAPPELLENT LA LIGNE ROUGE.
+//
+// RÉMY, pour les mille versions : « C est pas mal sinon des crédits en plus ».
+// Il n'y avait aucune page de crédits — mille versions, et nulle part le nom de
+// celui qui a décidé de chacune.
+//
+// On exige la PRÉSENCE de ce qui fait cette page, et non l'absence d'une
+// erreur : une section vide s'afficherait sans rien casser, et c'est
+// exactement ce qui vient d'arriver à la section voisine (voir plus haut, le
+// fatal que le journal seul montrait).
+verifier('LA PAGE « À PROPOS » NOMME SON AUTEUR ET RAPPELLE LA LIGNE ROUGE',
+    str_contains($pageAdmin['html'], 'professeur de')
+    && str_contains($pageAdmin['html'], 'Rien ne remplace le geste')
+    && str_contains($pageAdmin['html'], 'Anthropic'),
+    'vu : '
+        . (str_contains($pageAdmin['html'], 'professeur de') ? 'auteur ' : '')
+        . (str_contains($pageAdmin['html'], 'Rien ne remplace le geste') ? 'ligne-rouge ' : '')
+        . (str_contains($pageAdmin['html'], 'Anthropic') ? 'qui-a-écrit' : ''));
+
 verifier('ET LE SERVEUR N\'A CRIÉ AUCUNE ERREUR PHP, DE TOUT L\'ESSAI',
     $criees === [] && stripos($pageAdmin['html'], 'Fatal error') === false,
     $criees ? implode(', ', $criees) . ' — voir ' . $BAC . '/serveur.log' : '');

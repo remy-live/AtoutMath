@@ -325,5 +325,9 @@ require __DIR__ . '/sections/ranger.php';
 require __DIR__ . '/sections/blocages.php';
 require __DIR__ . '/sections/rapport.php';
 require __DIR__ . '/sections/compte.php';
+// « À PROPOS » EN DERNIER, et c'est sa place : on ne vient pas ici pour la
+// lire, on tombe dessus. Rémy, pour les mille versions : « C est pas mal sinon
+// des crédits en plus ».
+require __DIR__ . '/sections/apropos.php';
 
 piedDePage();

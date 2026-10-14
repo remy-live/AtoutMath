@@ -276,3 +276,77 @@ tout l'essai, et elle a été vue tomber.
 Ce sont les deux vérifications qui exigeaient un **contenu** qui ont attrapé le
 défaut : une garde qui cherche l'absence d'un signe d'échec vaut toujours moins
 qu'une garde qui exige la présence du résultat.
+
+---
+
+# Le cadeau des mille versions
+
+> « nous avions faire plus de 1000 versions puisque nous sommes à plus de v1000
+> alors ca méritait un cadeau », puis, devant les idées proposées : « C est pas
+> mal sinon des crédits en plus ».
+
+Deux cadeaux, donc. Aucun des deux ne touche au logiciel des élèves.
+
+## 1. « Mille versions » — ses propres phrases, rendues
+
+`node tools/milleVersions.mjs` lit 1218 fichiers du dépôt et en sort **1794
+phrases de Rémy**, chacune avec la décision qu'elle a prise et l'endroit où
+elle vit encore. Le document est imprimable.
+
+**Ce cadeau n'existe que parce qu'une règle a tenu mille versions.** `CLAUDE.md`
+la pose au premier jour : « Un bon commentaire dit POURQUOI, cite Rémy mot pour
+mot quand c'est lui qui a tranché, et annonce ce qui a été MESURÉ. » L'outil
+n'invente rien — il relit.
+
+Il exploite deux conventions du dépôt, et c'est tout :
+
+- les phrases de Rémy sont entre guillemets français, précédées de son prénom ;
+- la décision qui suit est annoncée **en capitales**, parce que c'est ainsi
+  qu'on écrit « voici ce qui a été tranché ».
+
+D'où les trois colonnes : ce qu'il a dit, ce que cela a décidé, où cela vit.
+
+### Quatre défauts trouvés en le fabriquant, tous par la mesure
+
+| | |
+| --- | --- |
+| **six phrases dans « Ce qu'on voit »** | on ne lisait que les lignes commençant par `//` ou `*`. Dans un commentaire `/* … */`, les lignes du milieu ne commencent par rien — presque tout le CSS était perdu. Suivi d'état : 6 → **134**. |
+| **des noms d'exercices pris pour des phrases** | « Quadrilatère », « Valeur absolue ». On exige trois mots et dix-huit lettres. |
+| **502 exercices** | un `grep` sur `id: '…'` ramassait les étapes et les paramètres. Le vrai nombre est **225**, et l'outil le demande maintenant au catalogue lui-même. **Un document qu'on offre ne peut pas se tromper sur ses propres chiffres.** |
+| **« le 26 July 2026 »** | git parle la langue de la machine. La date se compose en français. |
+
+Et « 91 jeux » était le nombre de FICHIERS de `js/games/`, dont certains sont
+des pièces partagées. Ce qu'on voulait dire est « combien de façons
+différentes de poser une question » : **125**, demandées au registre des
+activités.
+
+## 2. Une page « À propos » — le logiciel dit qui l'a fait
+
+**Il n'y en avait aucune.** Mille versions, 225 exercices, et nulle part le nom
+de celui qui a décidé de chacun d'eux. Un logiciel scolaire dit qui l'a fait.
+
+Elle est dans l'administration, derrière son mot de passe. Interrogé sur qui
+devait la voir, il a répondu « je ne sais pas » : on prend donc le choix qu'on
+peut défaire. **On peut toujours l'ouvrir aux élèves ensuite ; l'inverse serait
+plus gênant, parce qu'un nom publié a déjà été lu.**
+
+Elle dit trois choses : que le logiciel est écrit **pour et avec** lui, que
+tout vient de ses classes — près de mille huit cents de ses phrases sont dans
+le code —, et que le code a été écrit par Claude sous sa conduite. Elle
+rappelle aussi la ligne rouge, mot pour mot.
+
+### Son nom n'y est pas encore, et c'est volontaire
+
+Il a choisi « mon nom complet — je vous le donne » et ne l'a pas encore donné.
+**On ne le devine pas** : son adresse électronique le laisse peut-être
+entrevoir, mais tirer un nom de famille d'une adresse pour le publier sur une
+page n'est pas à moi de le faire. Le prénom tient la place, dans **une seule
+constante** — `APROPOS_AUTEUR`, une ligne à changer.
+
+### Et un chiffre qui ne se met pas à jour tout seul
+
+La page annonce 225 exercices et 125 activités, avec la date de leur mesure.
+Les faire compter côté serveur demanderait de tenir deux vérités d'accord — le
+catalogue est en JavaScript, la page est en PHP — et c'est le genre d'accord
+qui finit toujours par produire un chiffre faux. **Mieux vaut une date qu'une
+illusion**, et la page le dit.
