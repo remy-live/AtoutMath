@@ -280,11 +280,37 @@ export const lesProfesseurs = () => auServeur('/teacher/signup', { action: 'list
 export const retirerUnProfesseur = (teacherId, classes = 'reprendre', confirmation = '') =>
     auServeur('/teacher/signup', { action: 'remove', teacherId, classes, confirmation });
 
+/**
+ * FERMER LA CLASSE EN DEHORS D'UNE SÉANCE IMPOSÉE, AVEC SON MOT.
+ *
+ * RÉMY : « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à dire
+ * que juste la séance imposée fonctionne mais par contre si il se connecte, on
+ * leur dit que pour l'instant ce n'est disponible qu'au collège (je peux mettre
+ * le message de mon choix) ».
+ *
+ * LES DEUX ENSEMBLE, EN UN SEUL ALLER-RETOUR : fermer d'abord et écrire ensuite
+ * laisserait une minute où l'élève voit une porte close sans savoir pourquoi.
+ */
+export const fermerHorsSeance = (classId, ferme, mot = '') =>
+    auServeur('/teacher/class', { classId, action: 'maison', ferme: !!ferme, mot });
+
 /** Les réglages d'exercice d'une classe : saut autorisé, exercice retiré. */
 export const lesReglages = (classId) =>
     auServeur('/teacher/override', { classId, action: 'list' });
-export const reglerUnExercice = (classId, exerciseId, mode, studentId = '') =>
-    auServeur('/teacher/override', { classId, action: 'add', exerciseId, mode, studentId });
+/**
+ * `pathId` RATTACHE LE RÉGLAGE À LA SÉANCE OÙ ON LE DONNE.
+ *
+ * RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
+ * l'exercice, sur un autre parcours, cette même exercice peut se passer aussi,
+ * j'ai l'impression que c'est ce qui est arrivé d'une séance sur l'autre ? »
+ * C'était mesuré, et il a tranché : « attaché au parcours ».
+ *
+ * Vide veut dire « partout », ce qui reste l'ancien comportement pour les
+ * gestes qui ne partent pas du direct.
+ */
+export const reglerUnExercice = (classId, exerciseId, mode, studentId = '', pathId = '') =>
+    auServeur('/teacher/override',
+        { classId, action: 'add', exerciseId, mode, studentId, pathId });
 export const annulerUnReglage = (classId, overrideId) =>
     auServeur('/teacher/override', { classId, action: 'cancel', overrideId });
 

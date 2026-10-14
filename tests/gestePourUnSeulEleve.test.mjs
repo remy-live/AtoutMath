@@ -53,6 +53,52 @@ test('`*` VEUT DIRE « TOUS » POUR LE SAUT AUSSI', () => {
     appliquerEtat({ skippable: [] });
 });
 
+test('UN SAUT DONNÉ DANS UNE SÉANCE NE VAUT QUE DANS CELLE-LÀ', () => {
+    // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
+    // l'exercice, sur un autre parcours, cette même exercice peut se passer
+    // aussi, j'ai l'impression que c'est ce qui est arrivé d'une séance sur
+    // l'autre ? »
+    //
+    // MESURÉ SUR UN VRAI SERVEUR, et c'était oui : la permission n'était
+    // rattachée qu'à l'exercice, sans parcours ni date de péremption. Elle
+    // survivait à la séance, à la séance suivante, et même à l'absence de
+    // séance. Interrogé sur ce qui devait y mettre fin, il a choisi « attaché
+    // au parcours ».
+    appliquerEtat({ skippable: [{ exo: 'calc-add', parcours: 'p-lundi' }] });
+    assert.equal(peutSauter('calc-add', 'p-lundi'), true, 'dans SA séance, il se passe');
+    assert.equal(peutSauter('calc-add', 'p-mardi'), false, 'dans une autre, non');
+    // SANS PARCOURS SOUS LES YEUX — un exercice ouvert depuis le catalogue —
+    // la permission ne vaut pas : elle a été donnée POUR une séance.
+    assert.equal(peutSauter('calc-add', null), false);
+    assert.equal(peutSauter('calc-add'), false);
+
+    // ET « TOUT DÉBLOQUER » SUIT LA MÊME RÈGLE : c'est le geste qu'on fait
+    // debout à côté d'un élève coincé, pendant CETTE heure.
+    appliquerEtat({ skippable: [{ exo: '*', parcours: 'p-lundi' }] });
+    assert.equal(peutSauter('geo-thales', 'p-lundi'), true);
+    assert.equal(peutSauter('geo-thales', 'p-mardi'), false);
+    appliquerEtat({ skippable: [] });
+});
+
+test('UNE PERMISSION SANS PARCOURS VAUT PARTOUT, ET UNE CHAÎNE EN EST UNE', () => {
+    // CE QUI NE PART PAS DU DIRECT N'A PAS DE PARCOURS À DÉCLARER : le réglage
+    // posé sur toute la classe depuis la liste des réglages vaut partout, comme
+    // hier.
+    appliquerEtat({ skippable: [{ exo: 'calc-add', parcours: null }] });
+    assert.equal(peutSauter('calc-add', 'p-lundi'), true);
+    assert.equal(peutSauter('calc-add', null), true);
+
+    // ET L'ANCIENNE FORME RESTE LUE. L'état de la séance est GARDÉ SUR
+    // L'APPAREIL : un élève qui rouvre son ardoise relit ce que le serveur lui
+    // avait dit la veille, en chaînes. La lire comme « sans parcours » est à la
+    // fois juste et compatible — sans quoi un élève hors ligne perdrait une
+    // permission qu'on lui avait accordée.
+    appliquerEtat({ skippable: ['calc-add'] });
+    assert.equal(peutSauter('calc-add', 'p-lundi'), true);
+    assert.equal(peutSauter('geo-thales', 'p-lundi'), false);
+    appliquerEtat({ skippable: [] });
+});
+
 test('SANS RÉGLAGE, RIEN — ni saut, ni calculatrice', () => {
     // Le témoin : une liste vide ne doit pas tout ouvrir par mégarde, et c'est
     // la faute qu'on fait en écrivant `includes('*')` sans garde.
@@ -127,5 +173,16 @@ test('ET ILS VALENT POUR LA SÉANCE EN COURS — c\'est ce que Rémy a demandé'
     // pas le menu « où » de la barre de pilotage, qui n'est pas sur cet écran.
     const EC = lire('js/ui/espaceClasses.js');
     assert.match(EC, /accorderLaCalculatrice\(cid, '\*', \[d\.calcEleve\]\)/);
-    assert.match(EC, /reglerUnExercice\(cid, '\*', 'saut', d\.sautTout\)/);
+    // ET « POUR LA SÉANCE EN COURS » EST DEVENU VRAI AU PIED DE LA LETTRE :
+    // le parcours que l'élève a sous les yeux part avec la permission, et
+    // celle-ci ne vaut plus ailleurs. Rémy : « est ce possible si sur un
+    // parcours, j'ai autorisé à passer l'exercice, sur un autre parcours, cette
+    // même exercice peut se passer aussi ». C'était oui ; ce ne l'est plus.
+    assert.match(EC, /reglerUnExercice\(cid, '\*', 'saut', d\.sautTout, d\.parcours \|\| ''\)/);
+    assert.match(EC, /reglerUnExercice\(cid, d\.exo, 'saut', d\.sautEleve, d\.parcours \|\| ''\)/);
+    // LE BOUTON DOIT PORTER CE QU'IL ENVOIE : sans `data-parcours` sur les deux
+    // boutons, `d.parcours` est toujours vide et la permission revaut partout —
+    // la correction serait là, et elle ne ferait rien.
+    assert.ok(EC.split('data-parcours="${esc(e.parcoursId').length - 1 === 2,
+        'les deux boutons de saut ne portent pas le parcours de l\'élève');
 });

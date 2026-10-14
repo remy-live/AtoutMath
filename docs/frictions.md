@@ -4506,3 +4506,26 @@ lignes** — 2026-10-01
   vérifications qui exigeaient un CONTENU qui ont attrapé le défaut** : une
   garde qui cherche l'absence d'un signe d'échec vaut toujours moins qu'une
   garde qui exige la présence du résultat.
+
+---
+
+**Une garde de crochets qui ne lit que la PREMIÈRE ligne de chaque bouton**
+— 14 octobre 2026
+
+- *Ce que je voulais faire* : ajouter `data-parcours` sur deux boutons du
+  direct, pour rattacher le saut autorisé à la séance où on l'accorde.
+- *Ce qui a coûté* : dix minutes de doute. `tests/crochetsDeLEspaceClasses`
+  garde que tout crochet de bouton est écouté par le répartiteur — un crochet
+  oublié donne un bouton qui ne fait RIEN, sans erreur. Elle est restée verte
+  sur mon ajout, et j'ai cru un instant que `data-parcours` était déjà écouté.
+  Non : elle ne regarde que les lignes qui contiennent `<button` ou `<input`,
+  et dans ce fichier la plupart des boutons tiennent sur quatre lignes. Tout
+  crochet écrit sous la première ligne lui est **invisible**. Elle garde donc
+  une partie de ce qu'elle prétend garder, et c'est la plus petite.
+- *Combien de fois* : | (famille « une mesure qui ne mesure rien répond tout
+  va bien », qui en est à six)
+- *Ce qui manque* : lire l'ÉLÉMENT et non la ligne — accumuler jusqu'au `>`
+  qui ferme la balise. Attention : élargir fera apparaître les porteurs de
+  valeur (`data-exo`, `data-prenom`, `data-graine`…), qu'il faudra nommer
+  explicitement, sans quoi l'épreuve criera sur du code sain — et une épreuve
+  qui crie sur du code sain finit éteinte.

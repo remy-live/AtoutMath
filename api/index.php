@@ -1411,6 +1411,29 @@ function handleTeacherClass(): void
             : 'Classe rouverte : les élèves retrouvent tout le catalogue.']);
     }
 
+    // ── FERMÉ EN DEHORS D'UNE SÉANCE IMPOSÉE ────────────────────────────────
+    //
+    // RÉMY : « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à
+    // dire que juste la séance imposée fonctionne mais par contre si il se
+    // connecte, on leur dit que pour l'instant ce n'est disponible qu'au
+    // collège (je peux mettre le message de mon choix) », puis : « Je peux
+    // choisir qu'il ne puisse avoir accès à rien à la maison pour la simple
+    // raison que pour le moment je veux suivre ce qu'ils font et voir le
+    // debug ».
+    //
+    // LE MOT EST LE SIEN, et le défaut n'est là que pour celui qui coche sans
+    // écrire : une case cochée qui n'afficherait rien laisserait l'élève
+    // devant un écran muet, ce qui est le contraire de ce qu'on veut.
+    if ($action === 'maison') {
+        $on = !empty($body['ferme']) ? 1 : 0;
+        $mot = trim((string) ($body['mot'] ?? ''));
+        db()->prepare('UPDATE classes SET hors_seance = ?, hors_seance_mot = ? WHERE id = ?')
+            ->execute([$on, $mot !== '' ? mb_substr($mot, 0, 300) : null, $classe['id']]);
+        respond(['ok' => true, 'ferme' => (bool) $on, 'mot' => $mot, 'dit' => $on
+            ? 'Fermé hors séance : vos élèves ne peuvent travailler que lorsque vous imposez une séance.'
+            : 'Rouvert : vos élèves peuvent travailler même sans séance imposée.']);
+    }
+
     if ($action === 'notice') {
         $mot = trim((string) ($body['notice'] ?? ''));
         db()->prepare('UPDATE classes SET notice = ? WHERE id = ?')
@@ -1736,6 +1759,10 @@ function handleTeacherRoster(): void
             // chaque heure sans savoir si elle l'était déjà — c'est la leçon
             // écrite deux lignes plus haut, et elle vaut pour tout réglage.
             'impose_plein_ecran' => (bool) ($classe['impose_plein_ecran'] ?? 0),
+            // FERMÉ HORS SÉANCE, et le mot qu'on lit alors. Même raison que
+            // ci-dessus : une case qui ne montre pas son état se recoche.
+            'hors_seance' => (bool) ($classe['hors_seance'] ?? 0),
+            'hors_seance_mot' => (string) ($classe['hors_seance_mot'] ?? ''),
             'chrono_fin' => $classe['chrono_fin'] ?? null,
             'chrono_a_zero' => $classe['chrono_a_zero'] ?? null,
             'bac_ferme' => (bool) ($classe['bac_ferme'] ?? 0),
@@ -1807,6 +1834,9 @@ function handleTeacherLive(): void
             'ecarte' => !empty($e['blocked']),
             'exo' => $a['exo'],
             'parcours' => $a['parcours'],
+            // L'identifiant du parcours ouvert, pour que « laisse tomber celui-là »
+            // s'accroche à CETTE séance et pas aux suivantes.
+            'parcoursId' => $a['parcoursId'] ?? null,
             'justes' => $a['justes'],
             'total' => $a['total'],
             'quand' => $a['quand'],
@@ -2367,17 +2397,37 @@ function handleTeacherOverride(): void
            AND (' . ($ids ? 'student_id = ?' : 'class_id = ?') . ')'
     );
 
-    $insert = db()->prepare('INSERT INTO overrides (id, class_id, student_id, exercise_id, mode)
-                             VALUES (?, ?, ?, ?, ?)');
+    // ── LE SAUT NE VAUT QUE DANS LE PARCOURS OÙ ON L'A ACCORDÉ ──────────────
+    //
+    // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
+    // l'exercice, sur un autre parcours, cette même exercice peut se passer
+    // aussi ». Oui, c'était mesuré, et il a tranché : « attaché au parcours ».
+    //
+    // C'EST L'ÉCRAN QUI DIT LEQUEL, et c'est la seule place où on le sache :
+    // le direct affiche l'élève EN TRAIN de faire son parcours, et c'est là
+    // qu'on clique « laisse tomber celui-là ». Le serveur ne peut pas le
+    // deviner — la séance imposée n'est pas forcément celle que l'élève a
+    // ouverte, et une classe peut travailler sans séance imposée du tout.
+    //
+    // VIDE VEUT DIRE « PARTOUT », et c'est ce qui garde l'ancien comportement
+    // pour tout ce qui ne passe pas par le direct.
+    //
+    // « RETIRER » NE SE RATTACHE À RIEN, ET C'EST VOULU : c'est le geste du
+    // professeur qui a constaté que l'exercice PLANTE. Il ne veut pas que
+    // l'élève retombe dessus, dans ce parcours-ci ni dans un autre.
+    $parcours = $mode === 'saut' ? mb_substr(trim((string) ($body['pathId'] ?? '')), 0, 80) : '';
+    $insert = db()->prepare('INSERT INTO overrides (id, class_id, student_id, exercise_id, mode, path_id)
+                             VALUES (?, ?, ?, ?, ?, ?)');
     $court = mb_substr($exo, 0, 80);
+    $ou = $parcours !== '' ? $parcours : null;
     if ($ids) {
         foreach ($ids as $id) {
             $vide->execute([$mode, $court, $id]);
-            $insert->execute([uuidv4(), null, $id, $court, $mode]);
+            $insert->execute([uuidv4(), null, $id, $court, $mode, $ou]);
         }
     } else {
         $vide->execute([$mode, $court, $classe['id']]);
-        $insert->execute([uuidv4(), $classe['id'], null, $court, $mode]);
+        $insert->execute([uuidv4(), $classe['id'], null, $court, $mode, $ou]);
     }
 
     $aQui = $ids ? (count($ids) === 1 ? 'à cet élève' : 'à ' . count($ids) . ' élèves')

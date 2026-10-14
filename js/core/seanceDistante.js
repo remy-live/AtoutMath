@@ -31,6 +31,12 @@ const CLE = 'seanceDistante';
 const VIDE = {
     className: '', classCode: '',
     locked: false, notice: null, blocked: false,
+    // FERMÉ HORS SÉANCE IMPOSÉE — c'est le serveur qui tranche, l'écran obéit.
+    // Rémy : « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à
+    // dire que juste la séance imposée fonctionne mais par contre si il se
+    // connecte, on leur dit que pour l'instant ce n'est disponible qu'au
+    // collège (je peux mettre le message de mon choix) ».
+    horsSeance: false, horsSeanceMot: '',
     messages: [], skippable: [], removed: [],
     // LES EXERCICES OÙ LE PROFESSEUR VIENT D'ACCORDER LA CALCULATRICE — et
     // l'exercice `*`, qui veut dire « toute la séance ». Voir
@@ -178,6 +184,24 @@ export function estEcarte() {
     return !!etat.blocked;
 }
 
+/**
+ * LA CLASSE EST-ELLE FERMÉE PARCE QU'AUCUNE SÉANCE N'EST IMPOSÉE ?
+ *
+ * RÉMY : « Je peux choisir qu'il ne puisse avoir accès à rien à la maison pour
+ * la simple raison que pour le moment je veux suivre ce qu'ils font et voir le
+ * debug ».
+ *
+ * ON NE RECALCULE PAS LA RÈGLE ICI. Le serveur a déjà répondu « fermé pour toi,
+ * en ce moment » : il connaît le réglage de la classe ET la séance imposée, et
+ * lui seul sait si celle-ci n'a pas expiré. Redériver cela sur trente appareils,
+ * c'est se préparer trente réponses différentes.
+ *
+ * @returns {{ferme: boolean, mot: string}}
+ */
+export function fermeHorsSeance() {
+    return { ferme: !!etat.horsSeance, mot: etat.horsSeanceMot || '' };
+}
+
 export function consigneDuProf() {
     return etat.notice || '';
 }
@@ -273,12 +297,17 @@ export function indicesNonLus() { return messagesNonLus().filter(m => genreDe(m)
  */
 export function ceQueVoitLEleve(opts = {}) {
     if (opts.professeur) {
-        return { consigne: '', verrouille: false, ecarte: false, mots: [], indices: [] };
+        return { consigne: '', verrouille: false, ecarte: false, ferme: null,
+                 mots: [], indices: [] };
     }
     return {
         consigne: consigneDuProf(),
         verrouille: estVerrouille(),
         ecarte: estEcarte(),
+        // LE PROFESSEUR QUI REPASSE CÔTÉ ÉLÈVE NE DOIT PAS SE FERMER LA PORTE :
+        // c'est la même règle que pour le verrou et les mots, et elle est déjà
+        // écrite une seule fois, juste au-dessus.
+        ferme: fermeHorsSeance(),
         mots: motsNonLus(),
         indices: indicesNonLus()
     };
@@ -374,10 +403,22 @@ export function estRetire(exerciceId) {
  * le serveur ne l'accorde qu'à un ÉLÈVE NOMMÉ, jamais à la classe, parce que
  * sauter tout pour trente, ce n'est pas un réglage, c'est annuler la séance.
  */
-export function peutSauter(exerciceId) {
+export function peutSauter(exerciceId, parcoursId = null) {
     const liste = etat.skippable || [];
     if (!liste.length) return false;
-    return liste.includes('*') || (!!exerciceId && liste.includes(exerciceId));
+    return liste.some((s) => {
+        // UNE CHAÎNE EST UNE PERMISSION D'AVANT, et elle vaut partout. L'état
+        // de la séance est GARDÉ SUR L'APPAREIL : un élève qui rouvre son
+        // ardoise hors ligne relit ce que le serveur lui avait dit la veille,
+        // dans l'ancienne forme. La lire comme « sans parcours » est à la fois
+        // juste et compatible.
+        const quel = typeof s === 'string' ? { exo: s, parcours: null } : (s || {});
+        // LE PARCOURS, QUAND IL EST DIT, FERME LA PERMISSION AILLEURS. C'est
+        // toute la correction : « laisse tomber celui-là » se dit DANS une
+        // séance, et il n'y a aucune raison qu'il survive à la suivante.
+        if (quel.parcours && quel.parcours !== parcoursId) return false;
+        return quel.exo === '*' || (!!exerciceId && quel.exo === exerciceId);
+    });
 }
 
 /**

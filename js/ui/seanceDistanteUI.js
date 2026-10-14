@@ -47,6 +47,7 @@ function rendre() {
     majBandeau(vu.consigne);
     majVerrou(vu.verrouille);
     majEcarte(vu.ecarte);
+    majFerme(vu.ferme);
     montrerLesMots(vu.mots);
     montrerLesIndices(vu.indices);
 }
@@ -148,6 +149,59 @@ function majEcarte(actif) {
             <p>Ton travail est conservé. Préviens-le : il peut te réactiver
                en un clic.</p>
         </div>`;
+    document.body.appendChild(voile);
+}
+
+/* -------------------------------------------------------- Fermé hors séance */
+
+/**
+ * L'APPLICATION NE S'OUVRE QUE PENDANT LA SÉANCE, ET LE MOT EST LE SIEN.
+ *
+ * RÉMY : « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à dire
+ * que juste la séance imposée fonctionne mais par contre si il se connecte, on
+ * leur dit que pour l'instant ce n'est disponible qu'au collège (je peux mettre
+ * le message de mon choix) », puis : « Je peux choisir qu'il ne puisse avoir
+ * accès à rien à la maison pour la simple raison que pour le moment je veux
+ * suivre ce qu'ils font et voir le debug ».
+ *
+ * MÊME VOILE QUE L'ÉLÈVE ÉCARTÉ, ET C'EST VOULU : c'est le même geste du point
+ * de vue de l'élève — la porte est fermée, et on lui dit par qui. Ce qui change
+ * est la PHRASE, et elle ne doit pas se lire comme une punition : personne n'a
+ * rien fait de mal, c'est simplement l'heure.
+ *
+ * ON NE RÉÉCRIT PAS LE VOILE À CHAQUE BATTEMENT : la séance se redemande toutes
+ * les dix secondes, et un voile reconstruit dix fois par minute reprendrait son
+ * animation d'entrée à chaque fois.
+ */
+function majFerme(ferme) {
+    const actif = !!(ferme && ferme.ferme);
+    let voile = document.getElementById('eleve-ferme');
+    if (!actif) {
+        if (voile) voile.remove();
+        return;
+    }
+    const mot = (ferme.mot || '').trim()
+        || 'Pour l\'instant, AtoutMath ne s\'ouvre qu\'au collège, pendant le cours.';
+    if (voile) {
+        // Le mot peut changer sans que le voile parte : le professeur le
+        // réécrit depuis son écran, et l'élève doit lire le nouveau.
+        const p = voile.querySelector('.eleve-ecarte-mot');
+        if (p && p.textContent !== mot) p.textContent = mot;
+        return;
+    }
+    voile = document.createElement('div');
+    voile.id = 'eleve-ferme';
+    voile.className = 'eleve-ecarte';
+    voile.innerHTML = `
+        <div class="eleve-ecarte-carte">
+            <div class="eleve-ecarte-icone" aria-hidden="true">🏫</div>
+            <h2>C'est fermé pour le moment.</h2>
+            <p class="eleve-ecarte-mot"></p>
+        </div>`;
+    // `textContent` ET PAS `innerHTML` : ce mot vient d'un champ de formulaire,
+    // et un champ de formulaire est du texte, jamais du balisage. (La même
+    // règle que la consigne, trente lignes plus haut.)
+    voile.querySelector('.eleve-ecarte-mot').textContent = mot;
     document.body.appendChild(voile);
 }
 

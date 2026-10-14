@@ -61,7 +61,7 @@ test('LE PROFESSEUR N\'EN VOIT RIEN — ni le mot, ni le coup de pouce', () => {
     uneClasseQuiParle();
     const vu = ceQueVoitLEleve({ professeur: true });
     assert.deepEqual(vu, {
-        consigne: '', verrouille: false, ecarte: false, mots: [], indices: []
+        consigne: '', verrouille: false, ecarte: false, ferme: null, mots: [], indices: []
     });
 });
 
@@ -91,11 +91,48 @@ test('IL N\'Y A QU\'UNE PORTE, ET L\'ÉCRAN PASSE PAR ELLE', () => {
     // directement, le sixième ajout ramènera le mot sur l'écran du professeur.
     assert.match(ecran, /ceQueVoitLEleve\(\{ professeur/,
         'l\'écran doit demander ce qu\'il montre, en disant qui regarde');
+    // ET CHAQUE AFFICHAGE EST BRANCHÉ À LA PORTE. Passer par `ceQueVoitLEleve`
+    // ne sert à rien si l'on oublie d'en SERVIR une partie : `epreuveTombe` a
+    // refusé cette épreuve tant qu'elle ne regardait pas la ligne d'appel —
+    // on pouvait retirer `majFerme(vu.ferme)` sans qu'elle bronche, c'est-à-dire
+    // fermer la classe hors séance sans que l'élève voie quoi que ce soit.
+    const rendre = ecran.slice(ecran.indexOf('function rendre()'));
+    for (const sert of ['majBandeau(vu.consigne)', 'majVerrou(vu.verrouille)',
+        'majEcarte(vu.ecarte)', 'majFerme(vu.ferme)',
+        'montrerLesMots(vu.mots)', 'montrerLesIndices(vu.indices)']) {
+        assert.ok(rendre.slice(0, 600).includes(sert),
+            `l'écran ne sert plus ${sert} : la règle décide, et personne n'affiche`);
+    }
     for (const direct of ['consigneDuProf()', 'estVerrouille()', 'estEcarte()',
-        'motsNonLus()', 'indicesNonLus()']) {
+        'motsNonLus()', 'indicesNonLus()', 'fermeHorsSeance()']) {
         assert.ok(!ecran.includes(direct),
             `l'écran ne doit plus appeler ${direct} par-dessus la règle`);
     }
+});
+
+test('FERMÉ HORS SÉANCE : L\'ÉLÈVE LIT LE MOT, LE PROFESSEUR N\'EST PAS ENFERMÉ', () => {
+    // RÉMY : « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à
+    // dire que juste la séance imposée fonctionne mais par contre si il se
+    // connecte, on leur dit que pour l'instant ce n'est disponible qu'au
+    // collège (je peux mettre le message de mon choix) ».
+    appliquerEtat({ horsSeance: true, horsSeanceMot: 'On se voit au collège.' });
+    const eleve = ceQueVoitLEleve();
+    assert.equal(eleve.ferme.ferme, true);
+    assert.equal(eleve.ferme.mot, 'On se voit au collège.');
+
+    // LE PROFESSEUR QUI REPASSE CÔTÉ ÉLÈVE NE DOIT PAS SE FERMER LA PORTE : il
+    // regarde ce que ses élèves voient, souvent le soir en préparant — et il
+    // est le seul à ne pas pouvoir se rouvrir, puisque c'est son propre réglage
+    // qui le bloquerait. C'est la même règle que pour le verrou et les mots, et
+    // elle passe par la même porte.
+    assert.equal(ceQueVoitLEleve({ professeur: true }).ferme, null);
+
+    // ET L'ÉCRAN AFFICHE LE MOT COMME DU TEXTE, jamais comme du balisage : il
+    // vient d'un champ de formulaire. La même règle que la consigne.
+    assert.match(ecran, /eleve-ecarte-mot'\)\.textContent = mot/,
+        'le mot du professeur doit se poser en textContent');
+    assert.ok(!/eleve-ferme[\s\S]{0,400}innerHTML = mot/.test(ecran));
+    appliquerEtat({ horsSeance: false, horsSeanceMot: '' });
 });
 
 test('LE CHANGEMENT DE RÔLE SE SAIT TOUT DE SUITE', () => {

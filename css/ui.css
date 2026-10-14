@@ -5108,6 +5108,23 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 }
 .ec-encours-ecran span { flex: 0 0 auto; font-size: inherit; color: inherit; }
 
+/* LA CASE DU PILOTE : « Fermé hors séance ». Même forme et même plancher
+   tactile que celle du plein écran, juste au-dessus — c'est le même geste, fait
+   depuis la même tablette, et deux cases qui se ressemblent se cochent sans
+   réfléchir. Rémy : « j'aimerai aussi le fait de bloquer les élèves chez eux ».
+   LE MOT PREND LE RESTE DE LA LIGNE : il est long, et c'est lui que l'élève
+   lira. La case, elle, ne rétrécit jamais. */
+.ec-pilote-case {
+    display: inline-flex; align-items: center; gap: 8px;
+    flex: 0 0 auto; min-height: 44px; cursor: pointer;
+    font-size: .88rem; font-weight: 700; color: var(--text-main);
+}
+.ec-pilote-case input {
+    width: 20px; height: 20px; flex: 0 0 auto;
+    accent-color: var(--primary); cursor: pointer;
+}
+.ec-pilote-rangee--maison .ec-pilote-mot { flex: 1 1 260px; }
+
 /* LE TITRE EST UN BOUTON, ET IL DOIT RESTER UN TITRE. Un `<button>` porte par
    défaut un fond, une bordure et la police du système : on les retire tous,
    mais on garde le curseur et le retour au survol — sans quoi personne ne

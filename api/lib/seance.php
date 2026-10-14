@@ -128,7 +128,8 @@ function etatDeSeance(array $eleve): array
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
                               impose_jusqu_a, impose_plein_ecran, chrono_fin, chrono_a_zero,
-                              bac_ferme, bac_minutes, bac_jeux
+                              bac_ferme, bac_minutes, bac_jeux,
+                              hors_seance, hors_seance_mot
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
@@ -170,7 +171,7 @@ function etatDeSeance(array $eleve): array
     // parce que retirer est le geste du professeur qui a constaté que
     // l'exercice plante — il ne veut pas que l'élève retombe dessus.
     $s = $pdo->prepare(
-        'SELECT exercise_id, mode FROM overrides
+        'SELECT exercise_id, mode, path_id FROM overrides
           WHERE class_id = ? OR student_id = ?'
     );
     $s->execute([$eleve['class_id'], $eleve['id']]);
@@ -186,10 +187,24 @@ function etatDeSeance(array $eleve): array
         } elseif ($o['mode'] === 'retire') {
             $retire[$o['exercise_id']] = true;
         } else {
-            $saut[$o['exercise_id']] = true;
+            // ── LE SAUT VOYAGE AVEC SON PARCOURS ────────────────────────────
+            //
+            // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à
+            // passer l'exercice, sur un autre parcours, cette même exercice
+            // peut se passer aussi, j'ai l'impression que c'est ce qui est
+            // arrivé d'une séance sur l'autre ? » C'était mesuré : oui.
+            //
+            // UNE LISTE D'OBJETS ET NON PLUS DE CHAÎNES, parce qu'une
+            // permission porte maintenant DEUX informations. Un parcours vide
+            // vaut « partout », ce qui garde les lignes d'avant telles
+            // qu'elles étaient.
+            $saut[] = ['exo' => $o['exercise_id'],
+                       'parcours' => ($o['path_id'] ?? '') !== '' ? $o['path_id'] : null];
         }
     }
-    $saut = array_diff_key($saut, $retire);
+    // « Retiré » l'emporte toujours sur « saut autorisé » : inutile d'offrir de
+    // passer un exercice qui a déjà disparu du parcours.
+    $saut = array_values(array_filter($saut, fn ($x) => !isset($retire[$x['exo']])));
 
     // LA SÉANCE IMPOSÉE. Rémy : « est-ce qu'il ne serait pas possible que
     // lorsque les élèves se connectent, j'impose la séance, comme cela ils
@@ -238,6 +253,23 @@ function etatDeSeance(array $eleve): array
         'locked'    => (bool) $classe['locked'],
         'notice'    => $classe['notice'] !== null && $classe['notice'] !== '' ? $classe['notice'] : null,
         'blocked'   => (bool) ($eleve['blocked'] ?? 0),
+        // ── FERMÉ HORS SÉANCE, ET CE QU'ON LIT ALORS ────────────────────────
+        //
+        // RÉMY : « j'aimerai aussi le fait de bloquer les élèves chez eux.
+        // C'est à dire que juste la séance imposée fonctionne mais par contre
+        // si il se connecte, on leur dit que pour l'instant ce n'est disponible
+        // qu'au collège (je peux mettre le message de mon choix) ».
+        //
+        // LE SERVEUR TRANCHE, L'ÉCRAN OBÉIT. On n'envoie pas le réglage brut
+        // pour que le navigateur en déduise quelque chose : on envoie la
+        // CONCLUSION — « c'est fermé pour toi, en ce moment ». C'est la même
+        // raison que pour le compte à rebours : une règle recalculée sur trente
+        // appareils finit par diverger de celle du serveur.
+        'horsSeance' => !empty($classe['hors_seance']) && !$imposeId,
+        'horsSeanceMot' => trim((string) ($classe['hors_seance_mot'] ?? '')) !== ''
+            ? (string) $classe['hors_seance_mot']
+            : 'Pour l\'instant, AtoutMath ne s\'ouvre qu\'au collège, '
+                . 'pendant le cours. À tout à l\'heure !',
         // LE BAC À SABLE : ouvert par défaut, et c'est délibéré. Une fonction
         // qu'il faut allumer pour la découvrir n'est jamais découverte.
         'bacFerme'  => (bool) ($classe['bac_ferme'] ?? 0),
@@ -257,7 +289,7 @@ function etatDeSeance(array $eleve): array
             : (((string) $classe['bac_jeux']) === ''
                 ? [] : explode(',', (string) $classe['bac_jeux'])),
         'messages'  => $messages,
-        'skippable' => array_keys($saut),
+        'skippable' => $saut,
         'removed'   => array_keys($retire),
         // Les exercices où le professeur vient d'autoriser la calculatrice —
         // `*` valant pour toute la séance.

@@ -29,9 +29,15 @@ const SRC = readFileSync(new URL('../js/core/runner.js', import.meta.url), 'utf8
 test('UN EXERCICE RETIRÉ OUVRE LE BOUTON « PASSER », TOUT DE SUITE', () => {
     const bloc = SRC.slice(SRC.indexOf('majBoutonPasser(step, annoncer'));
     assert.match(bloc.slice(0, 2200), /const retireMaintenant = !!exoId && estRetire\(exoId\);/);
+    // LE SAUT DEMANDE MAINTENANT DANS QUEL PARCOURS ON EST — Rémy : « est ce
+    // possible si sur un parcours, j'ai autorisé à passer l'exercice, sur un
+    // autre parcours, cette même exercice peut se passer aussi ». Le RETRAIT,
+    // lui, ne se rattache à rien : c'est le geste du professeur qui a constaté
+    // que l'exercice plante, et il ne veut pas que l'élève retombe dessus,
+    // dans ce parcours-ci ni dans un autre.
     assert.match(bloc.slice(0, 2200),
-        /const permis = !!exoId && \(peutSauter\(exoId\) \|\| retireMaintenant\);/,
-        'le retrait vaut permission de passer, comme le saut');
+        /const permis = !!exoId && \(peutSauter\(exoId, this\.path && this\.path\.id\) \|\| retireMaintenant\);/,
+        'le retrait vaut permission de passer, comme le saut — mais lui, partout');
 });
 
 test('ET CELA PASSE PAR L\'ÉCOUTE DE LA SÉANCE, DONC SANS RECHARGER', () => {

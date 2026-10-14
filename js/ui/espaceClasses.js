@@ -62,7 +62,7 @@ import {
     seancesDeLaClasse,
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
     creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
-    lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
+    lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis, fermerHorsSeance,
     accorderLaCalculatrice, retirerLaCalculatrice,
     imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur, reglagesDuSite,
     lesSignalements, photoDuSignalement, classerSignalement, effacerSignalement
@@ -1116,8 +1116,15 @@ function ficheHtml(e, maintenant) {
                         ? 'SA question, celle-là précisément, ouverte chez vous avec SES réglages. Rien n\'est enregistré. Pour être lui et non plus le regarder, c\'est « Ouvrir son poste », dans Les élèves.'
                         : 'Son étape, avec SES réglages. Il n\'a pas encore dit quelle question il a sous les yeux : ce sera le même travail, pas forcément la même question. Pour voir ce qu\'il a sous les yeux, c\'est « Ouvrir son poste », dans Les élèves.'}"
                     >${f.graine ? 'Sa question, chez moi' : 'Son exercice, chez moi'}</button>
+            <!-- data-parcours RATTACHE LA PERMISSION À LA SÉANCE OÙ ON LA DONNE.
+                 Rémy : « est ce possible si sur un parcours, j'ai autorisé à
+                 passer l'exercice, sur un autre parcours, cette même exercice
+                 peut se passer aussi ». C'était mesuré, et il a tranché :
+                 « attaché au parcours ». Le direct est le SEUL endroit qui sache
+                 lequel — l'élève l'a sous les yeux en ce moment même. -->
             <button type="button" class="ec-bouton" data-saut-eleve="${esc(e.id)}"
-                    data-exo="${esc(e.exo || '')}" data-prenom="${esc(e.prenom)}"${
+                    data-exo="${esc(e.exo || '')}" data-prenom="${esc(e.prenom)}"
+                    data-parcours="${esc(e.parcoursId || '')}"${
                     g.debloquer ? '' : ' disabled'}
                     title="${g.debloquer
                         ? 'Il pourra passer cet exercice. L\'\u00e9tape ne comptera ni pour ni contre lui.'
@@ -1161,6 +1168,7 @@ function ficheHtml(e, maintenant) {
                     >🧮 ${saCalc ? 'Lui retirer la calculatrice' : 'Lui donner la calculatrice'}</button>
             <button type="button" class="ec-bouton ec-bouton--doux"
                     data-saut-tout="${esc(e.id)}" data-prenom="${esc(e.prenom)}"
+                    data-parcours="${esc(e.parcoursId || '')}"
                     data-deja="${sonSaut ? esc(sonSaut.id) : ''}"
                     title="${sonSaut
                         ? 'Il peut passer n\'importe quel exercice. Appuyer le lui retire.'
@@ -2309,6 +2317,33 @@ function barrePiloteHtml() {
             </span>
         </div>
 
+        <!-- FERMÉ EN DEHORS D'UNE SÉANCE IMPOSÉE.
+             Rémy : « j'aimerai aussi le fait de bloquer les élèves chez eux.
+             C'est à dire que juste la séance imposée fonctionne mais par contre
+             si il se connecte, on leur dit que pour l'instant ce n'est
+             disponible qu'au collège (je peux mettre le message de mon choix) »,
+             puis : « Je peux choisir qu'il ne puisse avoir accès à rien à la
+             maison pour la simple raison que pour le moment je veux suivre ce
+             qu'ils font et voir le debug ».
+             LA CASE ET LE MOT PARTENT ENSEMBLE, dans un seul aller-retour :
+             cocher sans message laisserait l'élève devant un écran muet, et
+             deux appels séparés laisseraient une seconde où c'est fermé sans
+             que rien ne l'explique. -->
+        <div class="ec-pilote-rangee ec-pilote-rangee--maison">
+            <label class="ec-pilote-case">
+                <input type="checkbox" data-maison${info.hors_seance ? ' checked' : ''}>
+                <span>Fermé hors séance</span>
+            </label>
+            <span class="ec-pilote-mot">
+                <input type="text" id="ec-maison-mot" class="ec-champ" maxlength="300"
+                       placeholder="Ce que l'élève lira quand c'est fermé…"
+                       aria-label="Le message affiché hors séance"
+                       value="${esc(info.hors_seance_mot || '')}"
+                       data-valide-sur-entree="data-maison-mot">
+                <button type="button" class="ec-pilote-btn" data-maison-mot>Enregistrer</button>
+            </span>
+        </div>
+
         <!-- LE CHRONO EST UN OBJET, PAS QUATRE CHAMPS EN VRAC.
              Rémy : « le bandeau rouvrir la classe avec le 10 le lancer à zéro
              on termine le mot pour toute la classe est vraiment en bazar ».
@@ -2729,6 +2764,7 @@ async function brancher(e, redessiner) {
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours], [data-ecran-seance],'
+        + '[data-maison], [data-maison-mot],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
@@ -3559,7 +3595,7 @@ async function brancher(e, redessiner) {
     // vient de cliquer sur LUI.
     if (d.sautEleve) {
         if (!d.exo) { showToast('Il faut qu\'il soit sur un exercice.', 'info'); return; }
-        await fait(reglerUnExercice(cid, d.exo, 'saut', d.sautEleve), (r) => {
+        await fait(reglerUnExercice(cid, d.exo, 'saut', d.sautEleve, d.parcours || ''), (r) => {
             vue.reglages = r.reglages || vue.reglages;
             showToast(`${d.prenom || 'L\'élève'} pourra passer « ${nomDExercice(d.exo)} ».`,
                 'success');
@@ -3588,10 +3624,28 @@ async function brancher(e, redessiner) {
         const qui = d.prenom || 'L\'élève';
         await fait(d.deja
             ? annulerUnReglage(cid, d.deja)
-            : reglerUnExercice(cid, '*', 'saut', d.sautTout), (r) => {
+            : reglerUnExercice(cid, '*', 'saut', d.sautTout, d.parcours || ''), (r) => {
             vue.reglages = r.reglages || vue.reglages;
         }, d.deja ? `🔓 ${qui} suit de nouveau son parcours dans l'ordre.`
             : `🔓 ${qui} peut passer n'importe quel exercice de la séance.`);
+        return;
+    }
+
+    // ── FERMÉ HORS SÉANCE : la case et le mot, d'un seul geste ──────────────
+    //
+    // Les deux crochets mènent ici : cocher la case, ou valider le message.
+    // Dans les deux cas on envoie l'ÉTAT COMPLET — c'est ce qui évite qu'un
+    // message enregistré rouvre la classe sans qu'on l'ait demandé.
+    if (d.maison !== undefined || d.maisonMot !== undefined) {
+        const zone = el.closest('.ec-pilote') || document;
+        const case_ = zone.querySelector('[data-maison]');
+        const champ = zone.querySelector('#ec-maison-mot');
+        const ferme = !!(case_ && case_.checked);
+        const mot = champ ? champ.value.trim() : '';
+        await fait(fermerHorsSeance(cid, ferme, mot), (r) => {
+            const info = (vue.liste && vue.liste.classe);
+            if (info) { info.hors_seance = !!r.ferme; info.hors_seance_mot = mot; }
+        });
         return;
     }
 
@@ -3994,7 +4048,7 @@ function signatureDuPilote() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
     return [!!info.locked, !!bacDeLaClasse(), chronoQuiTourne(ch), (ch && ch.quoi) || '',
-        info.impose_path_id || '',
+        info.impose_path_id || '', info.hors_seance ? 'maison' : '',
         (vue.reglages || []).some(x => x.mode === 'calculatrice') ? 'calc' : '',
         String(minutesDuBac())].join('|');
 }

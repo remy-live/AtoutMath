@@ -441,7 +441,7 @@ function derniereActivite(string $eleveId): array
     $s->execute([$eleveId]);
     $lignes = $s->fetchAll();
 
-    $exo = null; $parcours = null; $justes = 0; $total = 0; $quand = null;
+    $exo = null; $parcours = null; $parcoursId = null; $justes = 0; $total = 0; $quand = null;
     // Les événements remis À L'ENDROIT pour la projection : `runsOf` lit une
     // histoire, pas une pile.
     $pourLeRun = [];
@@ -455,6 +455,18 @@ function derniereActivite(string $eleveId): array
         }
         if ($parcours === null && !empty($p['pathName'])) {
             $parcours = (string) $p['pathName'];
+        }
+        // ── ET SON IDENTIFIANT, PAS SEULEMENT SON NOM ───────────────────────
+        //
+        // Le nom suffisait pour l'afficher ; il ne suffit pas pour RATTACHER un
+        // réglage. Rémy : « est ce possible si sur un parcours, j'ai autorisé à
+        // passer l'exercice, sur un autre parcours, cette même exercice peut se
+        // passer aussi ». Le saut qu'on accorde depuis le direct est accordé
+        // DANS le parcours que l'élève a sous les yeux : c'est ici qu'on
+        // apprend lequel, et nulle part ailleurs — la séance imposée n'est pas
+        // forcément celle qu'il a ouverte.
+        if ($parcoursId === null && !empty($p['pathId'])) {
+            $parcoursId = (string) $p['pathId'];
         }
         // On ne compte que l'exercice EN COURS : « 7 sur 10 » ne veut rien dire
         // s'il mélange l'exercice d'avant.
@@ -482,7 +494,7 @@ function derniereActivite(string $eleveId): array
     }
     $avancement = avancementDeRun($duTravail);
 
-    return ['exo' => $exo, 'parcours' => $parcours, 'justes' => $justes,
+    return ['exo' => $exo, 'parcours' => $parcours, 'parcoursId' => $parcoursId, 'justes' => $justes,
             'total' => $total, 'quand' => $quand, 'combien' => count($lignes),
             'avancement' => $avancement];
 }

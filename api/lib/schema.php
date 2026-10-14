@@ -233,6 +233,28 @@ function lesTablesDuSchema(bool $sqlite): array
         --     l'élève. C'est une décision de CONDUITE DE CLASSE, comme le
         --     verrou et le compte à rebours qui l'entourent.
         impose_plein_ecran $bool,
+        --   · hors_seance : la classe est FERMÉE quand aucune séance n'est
+        --     imposée, et l'élève ne voit alors que le mot du professeur.
+        --
+        --     RÉMY : « j'aimerai aussi le fait de bloquer les élèves chez eux.
+        --     C'est à dire que juste la séance imposée fonctionne mais par
+        --     contre si il se connecte, on leur dit que pour l'instant ce n'est
+        --     disponible qu'au collège (je peux mettre le message de mon
+        --     choix) », puis, sur ce qu'il veut vraiment : « Je peux choisir
+        --     qu'il ne puisse avoir accès à rien à la maison pour la simple
+        --     raison que pour le moment je veux suivre ce qu'ils font et voir
+        --     le debug ».
+        --
+        --     C'EST LA SÉANCE IMPOSÉE QUI OUVRE LA PORTE, et non une heure ni
+        --     une adresse réseau. Un horaire se trompe le jour où le cours
+        --     tombe ailleurs, et une adresse réseau ne distingue pas le
+        --     collège d'un téléphone posé dans la cour. La séance imposée, elle,
+        --     dit exactement ce qu'on veut dire : « je suis là, et je regarde ».
+        hors_seance    $bool,
+        --   · hors_seance_mot : ce qu'on lit alors. « je peux mettre le message
+        --     de mon choix » — c'est donc le sien, et il y a un défaut pour
+        --     celui qui coche sans écrire.
+        hors_seance_mot $txtNull,
         chrono_fin     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         chrono_a_zero  $txtNull,
         --   · bac_ferme : le bac à sable de ceux qui ont fini. Ouvert par
@@ -542,12 +564,34 @@ function lesTablesDuSchema(bool $sqlite): array
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
 
+    // ── UN RÉGLAGE DE SÉANCE NE DOIT PAS SURVIVRE À LA SÉANCE ────────────────
+    //
+    // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
+    // l'exercice, sur un autre parcours, cette même exercice peut se passer
+    // aussi, j'ai l'impression que c'est ce qui est arrivé d'une séance sur
+    // l'autre ? »
+    //
+    // MESURÉ SUR UN VRAI SERVEUR, et sa question était juste : la permission
+    // n'était rattachée qu'à l'EXERCICE. On imposait la séance A, on autorisait
+    // le saut de `calc-add`, on imposait la séance B — un autre parcours — et
+    // l'élève pouvait encore le sauter. Même sans aucune séance imposée.
+    //
+    // `path_id` RÉPARE CELA, et il est NULL pour tout ce qui existait avant :
+    // une permission sans parcours vaut partout, comme hier. Rémy, interrogé
+    // sur ce qui devait y mettre fin, a choisi « attaché au parcours » — le
+    // plus juste des trois, et le seul qui marche aussi quand aucune séance
+    // n'est imposée.
+    //
+    // PAS DE CLÉ ÉTRANGÈRE VERS `paths` : un parcours supprimé ne doit pas
+    // emporter la ligne en silence, et un identifiant qui ne désigne plus rien
+    // ferme la permission — ce qui est exactement le comportement voulu.
     $tables['overrides'] = "
         id          $id,
         class_id    $refNull,
         student_id  $refNull,
         exercise_id $txt,
         mode        $txt,
+        path_id     $txtNull,
         created_at  $date,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";

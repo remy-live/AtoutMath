@@ -784,12 +784,41 @@ titre('6. Un exercice plante et bloque la progression');
 // maintenant par `/teacher/override`, et c'est le SERVEUR qu'on éprouve ici —
 // il n'a pas changé d'une ligne.
 
+// LE SAUT PORTE MAINTENANT DEUX INFORMATIONS : l'exercice et le parcours où la
+// permission a été donnée. Un parcours nul veut dire « partout » — c'est le cas
+// de ce geste-ci, qui ne part pas du direct.
+$sauteur = fn (array $s, string $exo, $parcours = false) => count(array_filter(
+    $s['skippable'] ?? [],
+    fn ($x) => ($x['exo'] ?? null) === $exo
+        && ($parcours === false || ($x['parcours'] ?? null) === $parcours)
+)) > 0;
+
 json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'num-egypte',
                            'mode' => 'saut'], $jetonProf);
 $s = json('/session', [], $lea)['json']['session'];
-verifier('LE SAUT EST AUTORISÉ POUR TOUTE LA CLASSE', in_array('num-egypte', $s['skippable'], true));
+verifier('LE SAUT EST AUTORISÉ POUR TOUTE LA CLASSE', $sauteur($s, 'num-egypte'));
+verifier('et sans parcours, il vaut partout', $sauteur($s, 'num-egypte', null),
+    json_encode($s['skippable'] ?? null));
 $s2 = json('/session', [], $sacha)['json']['session'];
-verifier('Sacha aussi', in_array('num-egypte', $s2['skippable'], true));
+verifier('Sacha aussi', $sauteur($s2, 'num-egypte'));
+
+// ── ET UN SAUT DONNÉ DANS UNE SÉANCE NE VAUT QUE LÀ ────────────────────────
+//
+// RÉMY : « est ce possible si sur un parcours, j'ai autorisé à passer
+// l'exercice, sur un autre parcours, cette même exercice peut se passer aussi,
+// j'ai l'impression que c'est ce qui est arrivé d'une séance sur l'autre ? »
+//
+// C'ÉTAIT MESURÉ, ET C'ÉTAIT OUI : la table ne portait que l'exercice. Il a
+// tranché « attaché au parcours », et c'est ce que cette vérification garde —
+// le serveur rend le parcours avec la permission, et c'est l'ardoise de l'élève
+// qui refuse de l'appliquer ailleurs (voir `peutSauter`).
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'calc-sous',
+                           'mode' => 'saut', 'studentId' => $leaId,
+                           'pathId' => 'parcours-de-lundi'], $jetonProf);
+$s = json('/session', [], $lea)['json']['session'];
+verifier('UN SAUT DONNÉ DANS UNE SÉANCE EN PORTE LE PARCOURS',
+    $sauteur($s, 'calc-sous', 'parcours-de-lundi'), json_encode($s['skippable'] ?? null));
+verifier('et il ne vaut PAS partout', !$sauteur($s, 'calc-sous', null));
 
 json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'geo-thales',
                            'mode' => 'retire', 'studentId' => $leaId], $jetonProf);
@@ -804,7 +833,7 @@ json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'num-egypte',
                            'mode' => 'retire', 'studentId' => $leaId], $jetonProf);
 $s = json('/session', [], $lea)['json']['session'];
 verifier('« retiré » l\'emporte sur « saut autorisé »',
-    in_array('num-egypte', $s['removed'], true) && !in_array('num-egypte', $s['skippable'], true));
+    in_array('num-egypte', $s['removed'], true) && !$sauteur($s, 'num-egypte'));
 
 // ── « TOUT DÉBLOQUER », MAIS POUR QUELQU'UN ─────────────────────────────────
 //
@@ -823,10 +852,9 @@ verifier('TOUT DÉBLOQUER POUR LA CLASSE EST REFUSÉ', $r['code'] === 400);
 json('/teacher/override', ['classId' => $classId, 'exerciseId' => '*',
                            'mode' => 'saut', 'studentId' => $sachaId], $jetonProf);
 $s2 = json('/session', [], $sacha)['json']['session'];
-verifier('MAIS ACCORDÉ À UN ÉLÈVE NOMMÉ', in_array('*', $s2['skippable'], true));
+verifier('MAIS ACCORDÉ À UN ÉLÈVE NOMMÉ', $sauteur($s2, '*'));
 $s = json('/session', [], $lea)['json']['session'];
-verifier('et Léa suit toujours son parcours dans l\'ordre',
-    !in_array('*', $s['skippable'], true));
+verifier('et Léa suit toujours son parcours dans l\'ordre', !$sauteur($s, '*'));
 
 // ── LE RÉGLAGE DIT À QUI IL EST, PAR SON IDENTIFIANT ────────────────────────
 //
@@ -2507,6 +2535,65 @@ verifier('UNE SÉANCE D\'AVANT LA RÈGLE N\'EST PAS ÉTEINTE PAR LA MISE À JOUR
     $laSienne() === 'Le devoir du mardi', $laSienne() ?: '(rien)');
 json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
 
+// ────────── FERMÉ EN DEHORS D'UNE SÉANCE IMPOSÉE ──────────────────────────
+//
+// RÉMY : « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à dire
+// que juste la séance imposée fonctionne mais par contre si il se connecte, on
+// leur dit que pour l'instant ce n'est disponible qu'au collège (je peux mettre
+// le message de mon choix) », puis : « Je peux choisir qu'il ne puisse avoir
+// accès à rien à la maison pour la simple raison que pour le moment je veux
+// suivre ce qu'ils font et voir le debug ».
+//
+// C'EST LE SERVEUR QUI TRANCHE, et c'est ce qu'on garde ici : il connaît le
+// réglage de la classe ET la séance imposée — y compris son échéance, que le
+// navigateur ne sait pas lire. L'écran de l'élève ne fait qu'obéir à
+// `horsSeance`, et le voile se mesure au navigateur
+// (`node tools/fermeHorsSeance.mjs`).
+$saSeance = fn () => json('/session', [], $jetonEleve)['json']['session'];
+
+$rFerme = json('/teacher/class', ['classId' => $idApp, 'action' => 'maison',
+                                  'ferme' => true, 'mot' => 'On se voit au collège.'], $jetonNotre);
+verifier('LA CLASSE SE FERME HORS SÉANCE, ET LE SERVEUR LE DIT',
+    ($rFerme['json']['ferme'] ?? null) === true
+    && str_contains($rFerme['json']['dit'] ?? '', 'séance'), $rFerme['brut']);
+
+$s = $saSeance();
+verifier('SANS SÉANCE IMPOSÉE, C\'EST FERMÉ POUR L\'ÉLÈVE',
+    ($s['horsSeance'] ?? null) === true, json_encode($s['horsSeance'] ?? null));
+verifier('et il lit LE MOT DU PROFESSEUR, pas le nôtre',
+    ($s['horsSeanceMot'] ?? '') === 'On se voit au collège.', $s['horsSeanceMot'] ?? '(rien)');
+
+// LA SÉANCE IMPOSÉE OUVRE LA PORTE, et c'est tout le sens du réglage : « juste
+// la séance imposée fonctionne ».
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours],
+    $jetonNotre);
+$s = $saSeance();
+verifier('LA SÉANCE IMPOSÉE ROUVRE LA PORTE', ($s['horsSeance'] ?? null) === false,
+    json_encode($s['horsSeance'] ?? null));
+
+// ET QUAND LA SÉANCE EXPIRE, LA PORTE SE REFERME TOUTE SEULE. C'est la raison
+// pour laquelle le serveur tranche : l'échéance du lendemain matin est à lui,
+// et un navigateur qui recalculerait « une séance est imposée » rouvrirait la
+// maison toute la nuit.
+enBase()->prepare('UPDATE classes SET impose_jusqu_a = ? WHERE id = ?')
+    ->execute([time() - 60, $idApp]);
+$s = $saSeance();
+verifier('UNE SÉANCE PÉRIMÉE NE TIENT PLUS LA PORTE OUVERTE',
+    ($s['horsSeance'] ?? null) === true, json_encode($s['horsSeance'] ?? null));
+
+// ON ROUVRE, ET LE MOT PAR DÉFAUT EXISTE POUR CELUI QUI COCHE SANS ÉCRIRE :
+// une porte fermée sans un mot est un écran muet.
+json('/teacher/class', ['classId' => $idApp, 'action' => 'maison',
+                        'ferme' => true, 'mot' => ''], $jetonNotre);
+$s = $saSeance();
+verifier('COCHER SANS ÉCRIRE LAISSE QUAND MÊME UNE PHRASE',
+    mb_strlen((string) ($s['horsSeanceMot'] ?? '')) > 20, $s['horsSeanceMot'] ?? '(rien)');
+
+json('/teacher/class', ['classId' => $idApp, 'action' => 'maison', 'ferme' => false], $jetonNotre);
+$s = $saSeance();
+verifier('et décocher rouvre pour de bon', ($s['horsSeance'] ?? null) === false);
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
+
 // ────────── LE PLEIN ÉCRAN DE LA SÉANCE IMPOSÉE ───────────────────────────
 //
 // RÉMY : « est ce que lorsque j'impose une séance, et que l'élève découvre la
@@ -2976,7 +3063,7 @@ json('/teacher/override',
 $sess = json('/session', [], $jetonNour)['json']['session'] ?? [];
 verifier('TROIS MODES, TROIS LISTES, ET AUCUN MÉLANGE',
     ($sess['calculatrice'] ?? null) === ['calc-add']
-    && in_array('calc-mult', $sess['skippable'] ?? [], true)
+    && $sauteur($sess, 'calc-mult')
     && !in_array('calc-mult', $sess['calculatrice'] ?? [], true),
     'calc : ' . json_encode($sess['calculatrice'] ?? null)
         . ' · saut : ' . json_encode($sess['skippable'] ?? null));
