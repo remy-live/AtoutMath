@@ -76,6 +76,13 @@ function questionsParEleve(array $essais): array
             $parEleve[$eleve]['vues'][$cle] = count($parEleve[$eleve]['ordre']);
             $parEleve[$eleve]['ordre'][] = [
                 'exercice' => (string) ($e['exerciseId'] ?? '?'),
+                // LE NOM DE L'EXERCICE, ET NON SON IDENTIFIANT. La page disait
+                // « sur calc-add, la moitié de vos élèves… » : c'est le nom que
+                // je lis dans le code, pas celui que Rémy lit dans son
+                // catalogue. Le titre voyage dans la charge utile de chaque
+                // essai (`exerciseTitle`), et le serveur n'a pas d'autre moyen
+                // de le connaître — le catalogue est en JavaScript.
+                'titre' => (string) ($e['exerciseTitle'] ?? ''),
                 'competence' => (string) ($e['skillId'] ?? ''),
                 'diagnostic' => '',
                 'essais' => 0,
@@ -170,6 +177,7 @@ function comptesDesBlocages(array $essais): array
     $suitesDiagnostic = [];
     $suitesEchec = [];
     $parDiagnostic = [];
+    $titreDe = [];
     $indicesParEleve = [];
     $questions = 0;
     $avecDiagnostic = 0;
@@ -196,7 +204,10 @@ function comptesDesBlocages(array $essais): array
             // essais a buté, et c'est ce moment qu'on cherche à voir venir.
             $rate = !$q['duPremierCoup'];
             if ($rate) $echouees++;
-            if ($q['ms'] > 0) $tempsParExercice[$q['exercice']][] = $q['ms'];
+            if ($q['ms'] > 0) {
+                $tempsParExercice[$q['exercice']][] = $q['ms'];
+                if ($q['titre'] !== '') $titreDe[$q['exercice']] = $q['titre'];
+            }
 
             // Le même diagnostic, deux questions de suite.
             if ($q['diagnostic'] !== '' && $q['diagnostic'] === $diagCourant) {
@@ -240,6 +251,7 @@ function comptesDesBlocages(array $essais): array
         $p90 = quantile($liste, 0.9);
         $temps[] = [
             'exercice' => $exo,
+            'nom' => $titreDe[$exo] ?? $exo,
             'n' => count($liste),
             'medianeS' => round($med / 1000, 1),
             'p90S' => round($p90 / 1000, 1),
@@ -268,4 +280,177 @@ function comptesDesBlocages(array $essais): array
         ],
         'temps' => $temps,
     ];
+}
+
+/** « 37 % », ou « — » quand le dénominateur est nul. */
+function part(int $n, int $sur): string
+{
+    return $sur > 0 ? round($n * 100 / $sur) . ' %' : '—';
+}
+
+/** « une fois sur 14 », ou rien quand on ne peut pas le dire. */
+function uneFoisSur(int $combien, int $sur): string
+{
+    if ($combien <= 0 || $sur <= 0) return '';
+    $n = (int) round($sur / $combien);
+    return $n >= 2 ? ', soit une fois sur ' . $n . ' questions' : '';
+}
+
+/**
+ * CE QUE LES COMPTES VEULENT DIRE, EN FRANÇAIS.
+ *
+ * RÉMY : « je ne comprends pas les blocages en compte ».
+ *
+ * IL AVAIT RAISON, ET LE DÉFAUT ÉTAIT ENTIÈREMENT DANS LA PAGE. Elle affichait
+ * mes chiffres de travail — « neuvième décile », « franchissements »,
+ * « p90/méd » — et lui demandait de me les recopier. Je l'avais transformé en
+ * instrument de mesure, pour une décision qui est la SIENNE.
+ *
+ * Une page qui pose une question doit la poser en entier : ce qu'on a compté,
+ * ce que cela veut dire, et ce que je propose. Les chiffres bruts restent,
+ * repliés, pour le jour où une de ces phrases a l'air fausse.
+ *
+ * ELLE EST PURE, et c'est ce qui permet de l'éprouver : ni base, ni session, ni
+ * HTML. `php tools/testApi.php` lui donne des comptes et lit ses phrases.
+ *
+ * @param ?array $c       ce que rend `comptesDesBlocages`, ou null
+ * @param string $erreur  le message de lecture, s'il y en a eu une
+ * @return array{dit: array, propose: string, aChoisir: bool}
+ */
+function phrasesDesBlocages(?array $c, string $erreur = ''): array
+{
+    // --- CE QUE TOUT CELA VEUT DIRE, EN FRANÇAIS ------------------------------
+    //
+    // RÉMY : « je ne comprends pas les blocages en compte ».
+    //
+    // IL A RAISON, ET LE DÉFAUT EST ENTIÈREMENT DANS CETTE PAGE. Elle affichait
+    // mes chiffres de travail — « neuvième décile », « franchissements »,
+    // « p90/méd » — et lui demandait de me les recopier. Je l'avais transformé en
+    // instrument de mesure, pour une décision qui est la SIENNE.
+    //
+    // Une page qui pose une question doit la poser en entier : ce qu'on a compté,
+    // ce que cela veut dire, et ce que je propose. Les chiffres bruts restent —
+    // repliés, et pour moi.
+    //
+    // (`uneFoisSur` et `part` sont au-dessus, hors de cette fonction. Déclarées
+    //  DEDANS, PHP les redéclarait au second appel et la page mourait d'un
+    //  « Cannot redeclare function » — un fatal que le serveur d'essai avale,
+    //  si bien que la section s'affichait entièrement VIDE. C'est le journal du
+    //  serveur qui l'a dit, pas l'écran.)
+
+    $dit = [];
+    $propose = '';
+    // Y A-T-IL VRAIMENT UN CHOIX À FAIRE ? Quand le seuil ne se déclencherait
+    // jamais sur ces séances, lui demander « deux ou trois ? » est du bruit : il
+    // n'y a rien à trancher tant qu'on n'a pas mesuré autre chose. La page le dit,
+    // et se tait sur le choix.
+    $aChoisir = false;
+    if ($erreur !== '') {
+        $dit[] = ['gris', 'La lecture a échoué : ' . $erreur];
+    } elseif (!$c || $c['questions'] === 0) {
+        $dit[] = ['gris', 'Aucune question répondue n\'est encore enregistrée ici. '
+            . 'Ce n\'est pas une panne : les comptes se remplissent tout seuls dès '
+            . 'qu\'une classe travaille. Revenez après une séance.'];
+        $dit[] = ['gris', 'Attention tout de même : le site ne garde les réponses '
+            . 'que pendant un temps réglé dans sa configuration (trente jours par '
+            . 'défaut). Passé ce délai, elles s\'effacent toutes seules.'];
+    } else {
+        $qs = $c['questions'];
+        $deux = $c['echecRepete']['franchissements']['2'] ?? 0;
+        $trois = $c['echecRepete']['franchissements']['3'] ?? 0;
+        $diag = $c['diagnosticRepete']['franchissements']['2'] ?? 0;
+
+        $dit[] = ['fort', sprintf(
+            'Vos élèves ont répondu à %d question%s. %d ont été ratées au premier '
+            . 'coup, soit %s.',
+            $qs, $qs > 1 ? 's' : '', $c['echouees'], part($c['echouees'], $qs))];
+
+        // LA QUESTION QUE CETTE PAGE EXISTE POUR POSER.
+        $dit[] = ['titre', 'Après combien d\'échecs faut-il lui pousser un indice ?'];
+        $dit[] = ['', sprintf(
+            'Un élève a raté <b>deux questions de suite sur la même compétence</b> '
+            . '%d fois%s. C\'est à ce moment-là que le logiciel lui tendrait son '
+            . 'premier indice, sans qu\'il le demande et sans que ça lui coûte de '
+            . 'points.',
+            $deux, uneFoisSur($deux, $qs))];
+        $dit[] = ['', sprintf(
+            'Si l\'on attend <b>trois</b> échecs de suite, cela n\'arrive plus que '
+            . '%d fois%s.',
+            $trois, uneFoisSur($trois, $qs))];
+    // ZÉRO SE DIT AUTREMENT. « cela n'arrive plus que 0 fois » se lit mal, et
+    // surtout ne dit pas ce qui compte : à trois, le geste ne partirait jamais.
+    if ($trois === 0) {
+        $dit[count($dit) - 1] = ['', 'Si l\'on attend <b>trois</b> échecs de '
+            . 'suite, cela n\'arriverait <b>jamais</b> sur ces séances.'];
+    }
+
+        // ET CE QUE J'EN PENSE, AVEC LA RAISON. Un seuil se juge sur sa FRÉQUENCE :
+        // trop souvent, l'aide devient du papier peint qu'on ne lit plus ; trop
+        // rare, elle n'arrive jamais à celui qui en a besoin. Les bornes sont
+        // dites, pour qu'il puisse ne pas être d'accord en connaissance de cause.
+        $partDeux = $qs > 0 ? $deux * 100 / $qs : 0;
+        if ($deux === 0) {
+            $propose = 'Sur ces séances, personne n\'a raté deux questions de suite '
+                . 'sur la même compétence : l\'indice poussé ne se déclencherait '
+                . 'jamais. Soit ces séances étaient faciles, soit il faut en '
+                . 'mesurer d\'autres avant de choisir.';
+        } elseif ($partDeux > 20) {
+            $aChoisir = true;
+            $propose = sprintf('Je propose <b>trois</b> échecs de suite. À deux, '
+                . 'l\'indice arriverait sur %s des questions : à cette fréquence '
+                . 'il devient du papier peint, et un avis qui revient tout le '
+                . 'temps cesse d\'être lu.', part($deux, $qs));
+        } else {
+            $aChoisir = true;
+            $propose = sprintf('Je propose <b>deux</b> échecs de suite. L\'indice '
+                . 'arriverait sur %s des questions — assez rare pour qu\'on le '
+                . 'remarque, assez fréquent pour atteindre celui qui bute.',
+                part($deux, $qs));
+        }
+
+        // L'ARGUMENT POUR LE POUSSER : ils ne le demandent pas.
+        $sans = $c['indices']['elevesSansIndice'];
+        $dit[] = ['titre', 'Pourquoi le pousser plutôt que l\'attendre'];
+        $dit[] = ['', sprintf(
+            'Le bouton « Un indice » existe déjà, et il est peu employé : %s des '
+            . 'questions seulement, et <b>%d élève%s sur %d n\'en %s jamais demandé '
+            . 'un seul</b>. Celui qui bloque est précisément celui qui ne le '
+            . 'demande pas.',
+            part($c['avecIndice'], $qs), $sans, $sans > 1 ? 's' : '', $c['eleves'],
+            $sans > 1 ? 'ont' : 'a')];
+
+        // NOMMER LA RÉPÉTITION — déjà en place, et voici ce que cela touche.
+        $dit[] = ['titre', 'La phrase « c\'est la même chose qu\'à la question d\'avant »'];
+        $dit[] = ['', $diag > 0
+            ? sprintf('Elle est déjà en place. Sur ces séances, le même diagnostic '
+                . 'revenait sur deux questions qui se suivent <b>%d fois</b>%s : '
+                . 'autant de moments où l\'élève lisait deux fois la même phrase '
+                . 'neutre sans que rien ne signale qu\'il recommençait.',
+                $diag, uneFoisSur($diag, $qs))
+            : 'Elle est déjà en place. Sur ces séances, aucun élève n\'a refait la '
+                . 'même erreur exacte sur deux questions qui se suivent — elle ne '
+                . 'se serait donc jamais affichée.'];
+
+        // LE SILENCE : un écart, pas une durée.
+        $dit[] = ['titre', 'Au bout de combien de silence vous dire qu\'un élève est arrêté'];
+        if (!$c['temps']) {
+            $dit[] = ['gris', 'Pas encore assez de questions sur un même exercice '
+                . 'pour le dire (il en faut cinq).'];
+        } else {
+            $t = $c['temps'][0];
+            $dit[] = ['', sprintf(
+                'Cela ne peut pas être une durée fixe : sur « %s », la moitié de vos '
+                . 'élèves répondent en moins de %s secondes, et un sur dix met plus '
+                . 'de %s secondes%s. Un élève lent n\'est pas un élève arrêté. Le '
+                . 'logiciel comparera donc chacun <b>à sa propre classe, sur la même '
+                . 'question</b> — il n\'y a aucun nombre à choisir.',
+                htmlspecialchars((string) ($t['nom'] ?? $t['exercice']), ENT_QUOTES, 'UTF-8'),
+                number_format((float) $t['medianeS'], 0, ',', ' '),
+                number_format((float) $t['p90S'], 0, ',', ' '),
+                $t['rapport'] ? sprintf(' — %s fois plus longtemps',
+                    number_format((float) $t['rapport'], 1, ',', ' ')) : '')];
+        }
+    }
+
+    return ['dit' => $dit, 'propose' => $propose, 'aChoisir' => $aChoisir];
 }

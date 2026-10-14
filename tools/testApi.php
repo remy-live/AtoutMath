@@ -3526,15 +3526,57 @@ verifier('LA PAGE D\'ADMINISTRATION PORTE LA SECTION DES BLOCAGES',
 // « rien encore ». Sans cette ligne, une requête SQL cassée passerait
 // inaperçue — la page s'afficherait, vide et paisible, et l'épreuve au-dessus
 // resterait verte.
+// ET ELLE LE DIT EN FRANÇAIS, PAS SEULEMENT EN CHIFFRES.
+//
+// RÉMY : « je ne comprends pas les blocages en compte ». La page affichait mes
+// chiffres de travail — « neuvième décile », « franchissements » — et lui
+// demandait de me les recopier. Les phrases sont maintenant la PAGE, et les
+// chiffres sont repliés dessous.
+//
+// Sans cette vérification, la moitié lisible pourrait disparaître sans que
+// rien ne rougisse : la vérification suivante ne regarde que le bloc brut,
+// qui est précisément ce qu'il ne comprenait pas.
+// ON NE CHERCHE PAS « JE PROPOSE », et c'est l'épreuve elle-même qui me l'a
+// appris : sur une base d'essai où personne n'a raté deux questions de suite,
+// la page dit « le seuil ne se déclencherait jamais » — et c'est la bonne
+// réponse, pas un défaut. Un avis qu'on exige toujours obligerait la page à en
+// inventer un.
+//
+// Ce qu'on garde est donc : le COMPTE, la QUESTION, et le bloc d'AVIS, quel
+// que soit ce qu'il dit.
+$vuesPhrases = array_values(array_filter([
+    'compte' => str_contains($pageAdmin['html'], 'ont répondu à'),
+    'question' => str_contains($pageAdmin['html'], 'faut-il lui pousser un indice'),
+    'indices' => str_contains($pageAdmin['html'], 'Pourquoi le pousser'),
+    'avis' => str_contains($pageAdmin['html'], 'class="avis"'),
+]));
+verifier('ET ELLE POSE SA QUESTION EN FRANÇAIS, AVANT SES CHIFFRES',
+    count($vuesPhrases) === 4, count($vuesPhrases) . ' phrase(s) sur 4');
 verifier('ET ELLE A COMPTÉ DE VRAIS ESSAIS, LUS EN BASE',
     str_contains($pageAdmin['html'], 'Lu : ')
         && !str_contains($pageAdmin['html'], 'La lecture a échoué')
         && !str_contains($pageAdmin['html'], 'Aucun essai enregistré'),
     'la section est là mais n\'a rien compté — requête ou déchiffrement muet');
-verifier('ET ELLE NE CRACHE AUCUNE ERREUR PHP',
-    stripos($pageAdmin['html'], 'Fatal error') === false
-        && stripos($pageAdmin['html'], 'Warning:') === false
-        && stripos($pageAdmin['html'], 'Deprecated:') === false);
+// ELLE LIT LE JOURNAL DU SERVEUR, ET NON L'ÉCRAN — et c'est une correction,
+// pas un raffinement.
+//
+// MESURÉ : en déplaçant les phrases de cette section vers le noyau, j'ai laissé
+// une fonction déclarée DANS une autre. PHP est mort d'un « Cannot redeclare
+// function » au second appel, la section s'est affichée entièrement VIDE — et
+// cette vérification est restée VERTE, parce que `display_errors` est éteint :
+// le fatal part dans le journal, jamais dans la page. Elle donnait donc
+// exactement l'assurance qu'elle prétendait donner, à l'envers.
+//
+// Ce sont les deux vérifications ci-dessus — celles qui exigent un CONTENU —
+// qui ont attrapé le défaut. Celle-ci lit maintenant là où PHP parle.
+$journal = (string) @file_get_contents($BAC . '/serveur.log');
+$criees = [];
+foreach (['Fatal error', 'Parse error', 'Warning:', 'Deprecated:'] as $quoi) {
+    if (stripos($journal, $quoi) !== false) $criees[] = $quoi;
+}
+verifier('ET LE SERVEUR N\'A CRIÉ AUCUNE ERREUR PHP, DE TOUT L\'ESSAI',
+    $criees === [] && stripos($pageAdmin['html'], 'Fatal error') === false,
+    $criees ? implode(', ', $criees) . ' — voir ' . $BAC . '/serveur.log' : '');
 
 // --------------------------------------------------------------- Le bilan ---
 

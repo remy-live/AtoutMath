@@ -4438,3 +4438,50 @@ lignes** — 2026-10-01
   espace**. Même famille que le `\b` des feuilles de style, payé trois fois.
   **Quand on élargit une garde, on la refait tomber** : elle ne garde pas le
   nouveau cas du seul fait qu'on a touché son motif.
+
+---
+
+**J'avais fait de Rémy mon instrument de mesure** — 14 octobre 2026
+
+- *Ce que je voulais faire* : choisir le seuil de l'indice poussé sur ses
+  séances réelles, plutôt que sur mon intuition.
+- *Ce qui a coûté* : un aller-retour entier, et sa phrase : **« je ne comprends
+  pas les blocages en compte »**. J'avais bâti une page qui affiche « neuvième
+  décile », « franchissements », « p90/méd » et un tableau de décimales, puis je
+  lui avais demandé de **me la recopier** pour que je décide. La page était
+  juste, le comptage était juste, les épreuves étaient vertes — et elle ne
+  servait à rien, parce qu'elle posait une question à quelqu'un dans une langue
+  qui n'est pas la sienne.
+- *Combien de fois* : || — déjà payé avec « le message disait le bouton Code en
+  haut de l'écran » alors qu'il est en bas sur téléphone : on envoie quelqu'un
+  chercher dans un vocabulaire qui est le nôtre.
+- *Ce qui manque* : un réflexe, et il est simple. **Une page qui pose une
+  question doit la poser en entier** : ce qu'on a compté, ce que cela veut dire,
+  et ce que je propose — avec la raison. Les chiffres bruts restent, repliés,
+  pour le jour où une de mes phrases a l'air fausse. Et le test à se poser avant
+  d'écrire une page pour lui : **est-ce que je lui demande de faire mon travail
+  de lecture ?**
+
+---
+
+**Une garde qui cherche les erreurs PHP dans la PAGE ne les trouve jamais**
+— 14 octobre 2026
+
+- *Ce que je voulais faire* : déplacer les phrases de la section vers le noyau,
+  pour qu'elles soient éprouvables sans serveur ni session.
+- *Ce qui a coûté* : dix minutes de recherche à l'aveugle. Le bloc déplacé
+  portait sa propre fonction d'aide, qui s'est retrouvée déclarée **à
+  l'intérieur** de la nouvelle fonction : PHP meurt d'un « Cannot redeclare
+  function » au second appel, et la section s'est affichée **entièrement
+  vide**. Or « ET ELLE NE CRACHE AUCUNE ERREUR PHP » est resté **VERT** :
+  `display_errors` est éteint, donc le fatal part dans le journal du serveur et
+  jamais dans la page. La garde donnait exactement l'assurance qu'elle
+  prétendait donner, à l'envers.
+- *Combien de fois* : | (et c'est la famille « une mesure qui ne mesure rien
+  répond tout va bien », qui en est à cinq)
+- *Ce qui manque* : fait. Elle lit maintenant `$BAC/serveur.log`, là où PHP
+  parle vraiment, et sur TOUT l'essai — pas seulement sur la dernière page
+  demandée. Elle est vue tomber en remettant le fatal. **Ce sont les deux
+  vérifications qui exigeaient un CONTENU qui ont attrapé le défaut** : une
+  garde qui cherche l'absence d'un signe d'échec vaut toujours moins qu'une
+  garde qui exige la présence du résultat.

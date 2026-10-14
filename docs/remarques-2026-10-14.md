@@ -201,3 +201,78 @@ encore à l'élève qui n'a jamais trouvé, et **jamais à celui qui écoute**.
 | --- | --- |
 | **l'indice gratuit après deux échecs** | attend ses comptes. « Deux » est le sens minimal de « il répète », et ce sera un réglage que ses chiffres déplaceront. |
 | **écrire le silence** | un mot à côté du nom dans Le direct, et une ligne discrète offrant « Montre-moi ». Le seuil sera **relatif** — la médiane de la classe sur la même question —, donc aucun nombre à inventer. |
+
+---
+
+# « Je ne comprends pas les blocages en compte »
+
+> Et il avait raison : le défaut était entièrement dans la page.
+
+Elle affichait **mes** chiffres de travail — « neuvième décile »,
+« franchissements », « p90/méd », un tableau de décimales — et lui demandait de
+me les recopier pour que je décide. J'avais fait de lui un instrument de mesure,
+pour une décision qui est la sienne.
+
+## Ce qu'elle dit maintenant
+
+Les phrases SONT la page ; les chiffres bruts sont repliés dessous, pour le jour
+où une de ces phrases a l'air fausse. Ce qu'il lira, par exemple :
+
+```
+Vos élèves ont répondu à 60 questions. 5 ont été ratées au premier coup,
+soit 8 %.
+
+### Après combien d'échecs faut-il lui pousser un indice ?
+Un élève a raté deux questions de suite sur la même compétence 2 fois,
+soit une fois sur 30 questions. C'est à ce moment-là que le logiciel lui
+tendrait son premier indice, sans qu'il le demande et sans que ça lui
+coûte de points.
+Si l'on attend trois échecs de suite, cela n'arriverait jamais sur ces
+séances.
+
+### Pourquoi le pousser plutôt que l'attendre
+Le bouton « Un indice » existe déjà, et il est peu employé : 2 % des
+questions seulement, et 2 élèves sur 3 n'en ont jamais demandé un seul.
+Celui qui bloque est précisément celui qui ne le demande pas.
+
+### Au bout de combien de silence vous dire qu'un élève est arrêté
+Cela ne peut pas être une durée fixe : sur « Additions Mystères », la
+moitié de vos élèves répondent en moins de 9 secondes, et un sur dix met
+plus de 38 secondes — 4,2 fois plus longtemps. Un élève lent n'est pas un
+élève arrêté. Le logiciel comparera donc chacun à sa propre classe, sur
+la même question — il n'y a aucun nombre à choisir.
+
+→ Je propose deux échecs de suite. L'indice arriverait sur 3 % des
+  questions — assez rare pour qu'on le remarque, assez fréquent pour
+  atteindre celui qui bute.
+```
+
+**Et la page donne son avis, avec la raison.** Une page qui pose une question
+sans dire ce qu'elle en pense renvoie le travail à celui qui l'a demandée.
+Rémy tranche, mais sur un avis argumenté — pas sur un tableau de décimales.
+
+## Deux choses rendues possibles par ce déplacement
+
+Les phrases vivent dans `api/lib/blocages.php` et non dans le gabarit :
+`phrasesDesBlocages` est **pure** — ni base, ni session, ni HTML. D'où deux
+gains qui ne sont pas de style :
+
+- **le harnais lit les phrases**, et non plus seulement le bloc de chiffres
+  (celui-là même qu'il ne comprenait pas) ;
+- **je peux les lire de mes yeux** en une commande, ce qui a fait trouver deux
+  maladresses : l'exercice s'affichait par son identifiant (`calc-add`) au lieu
+  de son nom, et « cela n'arrive plus que 0 fois » se lisait mal là où il
+  fallait dire « cela n'arriverait jamais ».
+
+### Et le fatal que personne ne voyait
+
+En déplaçant le bloc, j'ai laissé une fonction déclarée **dans** une autre :
+PHP meurt au second appel, et la section s'est affichée **entièrement vide**.
+Or « ET ELLE NE CRACHE AUCUNE ERREUR PHP » est resté **VERT** — `display_errors`
+est éteint, le fatal part dans le journal du serveur et jamais dans la page.
+La garde donnait son assurance à l'envers. Elle lit maintenant le journal, sur
+tout l'essai, et elle a été vue tomber.
+
+Ce sont les deux vérifications qui exigeaient un **contenu** qui ont attrapé le
+défaut : une garde qui cherche l'absence d'un signe d'échec vaut toujours moins
+qu'une garde qui exige la présence du résultat.

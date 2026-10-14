@@ -85,6 +85,12 @@ try {
             'eleve' => (string) $r['student_id'],
             'ts' => $ts,
             'exerciseId' => $p['exerciseId'] ?? null,
+            // LE NOM DE L'EXERCICE, pour que la page dise « sur Additions
+            // Mystères » et non « sur calc-add » : le second est le nom que je
+            // lis dans le code, pas celui que Rémy lit dans son catalogue — qui
+            // est en JavaScript, donc hors de portée du serveur. Le titre
+            // voyage dans chaque essai, c'est la seule source qu'on ait.
+            'exerciseTitle' => $p['exerciseTitle'] ?? '',
             'skillId' => $p['skillId'] ?? null,
             'itemSeed' => $p['itemSeed'] ?? null,
             'questionText' => $p['questionText'] ?? '',
@@ -181,11 +187,18 @@ if ($erreur !== '') {
 }
 $texte = implode("\n", $l);
 
-/** « 37 % », ou « — » quand le dénominateur est nul. */
-function part(int $n, int $sur): string
-{
-    return $sur > 0 ? round($n * 100 / $sur) . ' %' : '—';
-}
+// LES PHRASES VIVENT DANS `api/lib/blocages.php`, ET C'EST VOULU.
+//
+// RÉMY : « je ne comprends pas les blocages en compte ». Ce qui le lui
+// explique est donc la partie la plus importante de cette page — trop pour
+// qu'elle vive au milieu du HTML, où rien ne peut l'éprouver sans monter un
+// serveur et ouvrir une session. `phrasesDesBlocages` est pure : elle prend
+// des comptes, elle rend des phrases, et `php tools/testApi.php` les lit.
+extract(phrasesDesBlocages($c, $erreur));   // $dit, $propose, $aChoisir
+
+// `part()` et `uneFoisSur()` vivent avec les phrases, dans
+// `api/lib/blocages.php` : les déclarer ici aussi ferait tomber PHP sur une
+// redéclaration, et les deux endroits les emploient.
 
 /** Les quatre lignes d'une distribution de suites. */
 function suite(array $s): string
@@ -205,26 +218,63 @@ sectionDebut('blocages', 'Les blocages, en comptes',
     'ce qu\'il faut savoir avant de régler un seuil', $combien,
     $erreur !== '' ? 'grave' : ($c ? 'neutre' : 'attention'));
 ?>
-<p class="gris-clair">Avant de décider après combien d'échecs pousser un indice,
-   ou au bout de combien de silence vous signaler qu'un élève est arrêté, il faut
-   savoir ce que ces chiffres valent <b>dans vos classes</b>. Cette page les
-   compte. Cliquez sur <b>Copier</b>, puis collez-le où on vous le demande.</p>
+<p class="gris-clair">Quand un élève bloque, le logiciel peut lui tendre un
+   indice tout seul, et vous signaler qu'il est arrêté. Reste à savoir
+   <b>à partir de quand</b> — et cela ne se décide bien que sur ce qui s'est
+   passé <b>dans vos classes</b>. Voici ce que vos séances disent.</p>
 
 <div class="carte">
-    <p>
-        <button type="button" class="bouton" id="btn-copier-blocages">Copier les comptes</button>
-        <span class="gris-clair" id="dit-copie-blocages" style="margin-left:10px"></span>
-    </p>
-    <textarea id="blocages" rows="28" readonly
-              style="font-family: ui-monospace, Menlo, Consolas, monospace; font-size:.82rem;
-                     line-height:1.45; white-space:pre; overflow-x:auto"><?= h($texte) ?></textarea>
-    <p class="gris-clair" style="margin-bottom:0">
-        <b>Aucun nom n'en sort</b> — ni prénom, ni identifiant d'élève, ni réponse
-        donnée, ni énoncé. Les élèves sont comptés, jamais nommés. Les seuls noms
-        que vous lirez sont ceux des exercices et des compétences, qui sont dans
-        le logiciel de tout le monde.
-    </p>
+    <?php foreach ($dit as [$genre, $phrase]): ?>
+        <?php if ($genre === 'titre'): ?>
+            <h3 style="margin:18px 0 6px; font-size:1rem"><?= $phrase ?></h3>
+        <?php elseif ($genre === 'fort'): ?>
+            <p style="margin:0 0 4px"><b><?= $phrase ?></b></p>
+        <?php elseif ($genre === 'gris'): ?>
+            <p class="gris-clair"><?= $phrase ?></p>
+        <?php else: ?>
+            <p style="margin:0 0 6px"><?= $phrase ?></p>
+        <?php endif; ?>
+    <?php endforeach; ?>
+
+    <?php if ($propose !== ''): ?>
+        <!-- CE QUE JE PROPOSE, ET LA RAISON AVEC. Une page qui pose une
+             question sans dire ce qu'elle en pense renvoie le travail à
+             celui qui l'a demandée. Rémy tranche, mais il tranche sur un
+             avis argumenté — pas sur un tableau de décimales. -->
+        <div class="avis" style="margin-top:16px">
+            <span class="marque" aria-hidden="true">?</span>
+            <p><?= $propose ?><?php if ($aChoisir): ?><br>
+               <span class="gris-clair">Dites-moi simplement « deux » ou « trois »,
+               ou votre propre chiffre — c'est votre décision, pas la mienne.</span>
+               <?php endif; ?></p>
+        </div>
+    <?php endif; ?>
 </div>
+
+<!-- LES CHIFFRES BRUTS RESTENT, MAIS REPLIÉS ET POUR MOI.
+     Rémy : « je ne comprends pas les blocages en compte ». Cette page lui
+     montrait « neuvième décile », « franchissements », « p90/méd » et lui
+     demandait de me les recopier : je l'avais transformé en instrument de
+     mesure pour une décision qui est la sienne. Ils ne disparaissent pas —
+     ils servent le jour où une de mes phrases ci-dessus a l'air fausse. -->
+<details style="margin-top:14px">
+    <summary style="cursor:pointer">Les chiffres bruts, si on me les demande</summary>
+    <div class="carte" style="margin-top:10px">
+        <p>
+            <button type="button" class="bouton" id="btn-copier-blocages">Copier les comptes</button>
+            <span class="gris-clair" id="dit-copie-blocages" style="margin-left:10px"></span>
+        </p>
+        <textarea id="blocages" rows="24" readonly
+                  style="font-family: ui-monospace, Menlo, Consolas, monospace; font-size:.82rem;
+                         line-height:1.45; white-space:pre; overflow-x:auto"><?= h($texte) ?></textarea>
+        <p class="gris-clair" style="margin-bottom:0">
+            <b>Aucun nom n'en sort</b> — ni prénom, ni identifiant d'élève, ni réponse
+            donnée, ni énoncé. Les élèves sont comptés, jamais nommés. Les seuls noms
+            que vous lirez sont ceux des exercices et des compétences, qui sont dans
+            le logiciel de tout le monde.
+        </p>
+    </div>
+</details>
 
 <script>
 document.getElementById('btn-copier-blocages').onclick = async () => {
