@@ -4551,3 +4551,28 @@ lignes** — 2026-10-01
   "<ligne>" [--dans "<méthode>"]`, qui construit la paire lui-même en prenant
   les deux lignes voisines comme ancre. Le défaut le plus fréquent du dépôt est
   un retrait, et c'est le seul que l'outil ne sache pas écrire tout seul.
+
+---
+
+**Rien ne mesure ce que l'élève a À LIRE, et c'est Rémy qui l'a vu**
+— 14 octobre 2026
+
+- *Ce que je voulais faire* : aider un élève arrêté devant un tableau à
+  compléter.
+- *Ce qui a coûté* : un commit entier, jeté. J'avais posé sous la case fausse
+  une explication de trente-deux mots PLUS un conseil de vingt-six — quatre
+  lignes de texte devant un élève en difficulté. J'avais même écrit la réserve
+  dans mon message (« c'est à voir en classe, si tu me dis que c'est trop on
+  raccourcit ») et livré quand même. Rémy a répondu : « tes phrases son
+  tellement longues et compliquées elles ne seront pas lues pour le remplissage
+  du tableau il faut du visuel tu sélectionnes les cellules tu montres bien ».
+  La photo que j'avais prise montrait ces quatre lignes ; je les ai regardées
+  sans les COMPTER.
+- *Combien de fois* : | (première fois nommée — mais tous les jeux écrivent des
+  phrases à l'élève, et aucune n'est mesurée)
+- *Ce qui manque* : que `tools/sonde.mjs` sache compter. Un `s.lisible('.tc-note')`
+  qui rende les mots, la longueur et la taille de police, et une sonde pourrait
+  dire « 58 mots sous la case fausse » là où l'œil lit « une phrase ». La
+  mesure existe pour les couleurs (`contrasteRendu`) et pour les crochets
+  (`doitExister`) ; elle n'existe pas pour le TEXTE, qui est pourtant ce que
+  l'élève doit traverser avant d'atteindre l'exercice.

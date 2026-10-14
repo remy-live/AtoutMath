@@ -455,3 +455,36 @@ ne le sait pas.
 Huit erreurs réparties sur huit cases, c'est un élève qui avance en tâtonnant.
 **Deux erreurs sur la MÊME case**, c'est un élève bloqué. C'est ce compteur-là
 qu'il faut tenir, et il n'existait pas.
+
+---
+
+# « Il faut du visuel : tu sélectionnes les cellules, tu montres bien »
+
+> « Tes phrases sont tellement longues et compliquées, elles ne seront pas lues.
+> Pour le remplissage du tableau il faut du visuel : tu sélectionnes les
+> cellules, tu montres bien »
+
+Dit après la première correction, et il tranche la réserve que je m'étais faite
+à moi-même : l'explication **plus** le conseil, cela faisait quatre lignes de
+texte devant un élève qui lit mal. Sa réponse est plus forte que « raccourcis » :
+**ce n'est pas la longueur, c'est le média.** Un élève arrêté devant un tableau
+ne lit pas une phrase sur la méthode — il regarde le tableau.
+
+## Ce qu'un professeur fait au tableau, et que le logiciel n'imitait pas
+
+Il montre. Il pose le doigt sur la ligne, dit « regarde, ici tu as 312 », puis
+sur les cases déjà remplies, « 56, 63 », puis sur la case vide. Les nombres
+viennent des cases qu'il touche ; aucune phrase n'est nécessaire.
+
+## Ce qu'on fait donc
+
+- **La piste est sélectionnée** : tout le tableau s'éteint sauf la ligne (ou la
+  colonne) où il ne manque qu'une case.
+- **Les cases sont teintées par leur rôle**, et elles s'allument l'une après
+  l'autre : le total en ambre, les nombres connus en bleu, la case qui manque
+  en vert, cerclée.
+- **L'opération s'écrit en grand sous le tableau** — `312 − 56 − 63 = ?` —,
+  chaque nombre dans la couleur de SA case. C'est le lien que le doigt du
+  professeur fait, et qu'aucune phrase ne fait.
+- **Les phrases tombent à trois mots** : « Trop grand », « Trop petit »,
+  avec la flèche qui dit dans quel sens aller.

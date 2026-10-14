@@ -12,10 +12,22 @@
 //     appuyer sans arrière-pensée. C'est la différence essentielle avec la
 //     feuille, et elle vaut d'être prise.
 //
-//   · L'AIDE DÉSIGNE LA LIGNE, JAMAIS LE NOMBRE. C'est l'astuce imprimée sous
-//     la fiche de Rémy — « trouve la ligne ou la colonne où il ne manque qu'une
-//     seule information » —, et elle EST la méthode. La donner comme conseil
-//     apprend à chercher ; donner le nombre n'apprend rien.
+//   · L'AIDE MONTRE, ELLE N'ÉCRIT PAS. C'est l'astuce imprimée sous la fiche
+//     de Rémy — « trouve la ligne ou la colonne où il ne manque qu'une seule
+//     information » —, et elle EST la méthode. Elle était ÉCRITE, et Rémy a
+//     tranché : « tes phrases son tellement longues et compliquées elles ne
+//     seront pas lues pour le remplissage du tableau il faut du visuel tu
+//     sélectionnes les cellules tu montres bien ». Le tableau s'éteint donc
+//     sauf la piste, ses cases s'allument par rôle dans l'ordre du calcul, et
+//     l'opération s'écrit en grand dessous avec les mêmes couleurs — voir
+//     `montrerLeGeste`.
+//
+//     CE QUE CELA CONCÈDE, ET IL FAUT LE SAVOIR : le conseil écrit ne donnait
+//     jamais un nombre, et une épreuve le garde encore (« L'AIDE DÉSIGNE LA
+//     LIGNE À BOUCLER, JAMAIS LE NOMBRE À ÉCRIRE »). Le geste MONTRÉ, lui,
+//     assemble l'opération — 312 − 56 − 63 = ? — et ne laisse que le calcul.
+//     Il n'arrive qu'après DEUX erreurs sur la même case, ou sur demande : à ce
+//     moment-là l'élève est arrêté, il n'est plus en train de chercher.
 //
 //   · UN PAVÉ POUR ÉCRIRE, PAS UNE CALCULATRICE. Rémy avait d'abord demandé
 //     « l'utilisation pour le début de la calculatrice », puis, au banc
@@ -119,6 +131,19 @@ class TableauCroise extends BaseGame {
                     display: flex; gap: 14px; align-items: flex-start; justify-content: center;
                     flex-wrap: wrap; width: 100%;
                 }
+                /* L'OPÉRATION EST COLLÉE AU TABLEAU, PAS À LA PAGE. Vu sur la
+                   photo (tools/tmp/tableau-montre.png) : posée sous le corps
+                   entier, elle descendait sous la hauteur du PAVÉ NUMÉRIQUE,
+                   cent pixels plus bas que les cases dont elle reprend les
+                   couleurs — et au téléphone, où le pavé passe sous le
+                   tableau, elle serait passée encore dessous. Le lien entre un
+                   nombre et sa case ne survit pas à cette distance.
+                   min-width: 0 garde le défilement du tableau : sans lui, un
+                   élément flex refuse de rétrécir sous son contenu. */
+                .tc-pile {
+                    display: flex; flex-direction: column; align-items: center;
+                    gap: 10px; min-width: 0;
+                }
 
                 /* TOUTES LES COLONNES DE JOURS À LA MÊME LARGEUR.
                    RÉMY, capture à l'appui : « le colonne lundi, mardi, mercredi
@@ -165,6 +190,99 @@ class TableauCroise extends BaseGame {
                 td.tc-faux { background: color-mix(in srgb, var(--danger) 18%, var(--bg-panel)); }
                 td.tc-vise { outline: 2px dashed var(--primary); outline-offset: -2px; }
 
+                /* ── MONTRER, PAS ÉCRIRE ───────────────────────────────────
+                   RÉMY, après la première correction : « tes phrases son
+                   tellement longues et compliquées elles ne seront pas lues
+                   pour le remplissage du tableau il faut du visuel tu
+                   sélectionnes les cellules tu montres bien ».
+                   IL TRANCHE AUTRE CHOSE QUE LA LONGUEUR : ce n'est pas la
+                   phrase qui est trop longue, c'est le MÉDIA qui est faux. Un
+                   élève arrêté devant un tableau ne lit pas la méthode, il
+                   regarde le tableau. Ce que fait un professeur au tableau :
+                   il pose le doigt sur la ligne, dit « ici tu as 312 », puis
+                   sur les cases déjà remplies, puis sur la case vide. Les
+                   nombres viennent des cases qu'il touche, et il n'a pas
+                   prononcé une phrase sur la méthode.
+                   TOUT S'ÉTEINT SAUF LA PISTE, et c'est le plus fort des
+                   quatre gestes : l'élève n'a plus à chercher OÙ regarder. On
+                   baisse l'opacité au lieu de masquer — le tableau garde sa
+                   taille, donc rien ne bouge sous les doigts. */
+                .tc-table.tc-montre td:not(.tc-piste),
+                .tc-table.tc-montre th:not(.tc-piste) { opacity: .18; }
+                /* LES TROIS RÔLES. Leurs couleurs sont reprises À L'IDENTIQUE
+                   sous le tableau, sur les nombres de l'opération : c'est CE
+                   LIEN-LÀ qui remplace la phrase, et c'est tout ce que fait le
+                   doigt du professeur. */
+                .tc-table.tc-montre td.tc-source {
+                    background: color-mix(in srgb, var(--primary) 28%, var(--bg-panel));
+                }
+                .tc-table.tc-montre td.tc-somme {
+                    background: color-mix(in srgb, var(--warning) 48%, var(--bg-panel));
+                }
+                /* LA CIBLE SE RECONNAÎT À SA FORME, PAS À SA TEINTE. Les cinq
+                   thèmes ne gardent pas les mêmes écarts entre « --primary » et
+                   « --success » : en thème vert, les deux sont verts (#15803d et
+                   #22c55e). Un anneau épais sur une case VIDE ne dépend
+                   d'aucun thème. */
+                .tc-table.tc-montre td.tc-cible {
+                    background: var(--bg-panel);
+                    outline: 3px solid var(--success); outline-offset: -3px;
+                    animation: tc-allume .3s ease-out both, tc-bat 1.1s ease-in-out 5;
+                    animation-delay: calc(var(--i, 0) * .16s), calc(var(--i, 0) * .16s + .3s);
+                }
+                /* ELLES S'ALLUMENT L'UNE APRÈS L'AUTRE, dans l'ordre de
+                   l'OPÉRATION et non du tableau : c'est le doigt qui se
+                   déplace. Tout allumer d'un coup donne une image à
+                   déchiffrer ; en quatre temps, cela se SUIT. L'index « --i »
+                   est posé par le code. */
+                .tc-table.tc-montre .tc-piste {
+                    animation: tc-allume .3s ease-out both;
+                    animation-delay: calc(var(--i, 0) * .16s);
+                }
+                @keyframes tc-allume {
+                    from { background-color: var(--bg-panel); outline-color: transparent; }
+                }
+                @keyframes tc-bat {
+                    0%, 100% { outline-offset: -3px; }
+                    50% { outline-offset: 3px; }
+                }
+                @keyframes tc-paraitre {
+                    from { opacity: 0; transform: translateY(-5px); }
+                }
+                /* L'OPÉRATION, EN GRAND, SOUS LE TABLEAU. Chaque nombre porte
+                   la couleur de SA case : « 312 − 56 − 63 = ? » se lit sans un
+                   mot de français. */
+                .tc-geste {
+                    display: flex; gap: 4px; align-items: center; justify-content: center;
+                    flex-wrap: wrap; flex: 0 0 auto; font-weight: 900;
+                    font-size: clamp(17px, 5.5cqw, 30px);
+                    animation: tc-paraitre .3s ease-out both;
+                    animation-delay: var(--retard, 0s);
+                }
+                /* SANS CETTE LIGNE, L'OPÉRATION RESTE AFFICHÉE TOUT LE JEU :
+                   un « display: flex » écrit dans une classe l'emporte sur le
+                   « hidden » du navigateur. Le défaut a déjà été payé une fois,
+                   sur l'écran de fin de Math Crush, et il ne lève aucune
+                   erreur — il se voit seulement à l'œil. */
+                .tc-geste[hidden] { display: none; }
+                .tc-geste span { padding: 1px 9px; border-radius: 8px; }
+                .tc-geste .g-src { background: color-mix(in srgb, var(--primary) 28%, var(--bg-panel)); }
+                .tc-geste .g-tot { background: color-mix(in srgb, var(--warning) 48%, var(--bg-panel)); }
+                .tc-geste .g-cib {
+                    outline: 2px solid var(--success); outline-offset: -2px;
+                    color: var(--text-muted);
+                }
+                .tc-geste .g-op { color: var(--text-muted); font-weight: 800; padding: 0 1px; }
+                /* QUI NE SUPPORTE PAS LES ANIMATIONS VOIT TOUT, D'UN COUP. Le
+                   geste vaut surtout par son ORDRE ; sans l'ordre il reste les
+                   trois couleurs, l'anneau et l'opération, et c'est
+                   l'essentiel. */
+                @media (prefers-reduced-motion: reduce) {
+                    .tc-table.tc-montre .tc-piste,
+                    .tc-table.tc-montre td.tc-cible,
+                    .tc-geste { animation: none; }
+                }
+
                 /* --- Le pavé numérique --- */
                 .tc-calc {
                     display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;
@@ -197,7 +315,6 @@ class TableauCroise extends BaseGame {
                    ici », et elle n'est utilisée nulle part ailleurs dans cette
                    barre. Trois battements puis plus rien — un bouton qui
                    clignote sans fin cesse d'être vu et devient agaçant. */
-                .tc-conseil { color: var(--text-main); font-weight: 700; }
                 .tc-btn--appel { animation: tc-appel 1.25s ease-out 3; }
                 @keyframes tc-appel {
                     0%, 100% { box-shadow: none; transform: scale(1); }
@@ -227,6 +344,13 @@ class TableauCroise extends BaseGame {
                 /* Rangée : barrée et pâlie. On la garde à l'écran — c'est une
                    donnée du problème, on peut avoir à la relire. */
                 .tc-fait--pose { text-decoration: line-through; opacity: .45; }
+                /* ET CELLE QU'IL FAUT RANGER MAINTENANT S'ALLUME. Sur douze
+                   puces, « reprends l'énoncé : "…" » demandait de retrouver la
+                   phrase des yeux avant de pouvoir la ranger. */
+                .tc-fait--vise {
+                    background: color-mix(in srgb, var(--warning) 38%, transparent);
+                    border-radius: 5px; font-weight: 800; opacity: 1;
+                }
                 @container (max-width: 620px) { .tc-faits { columns: 1; font-size: .82rem; } }
 
                 /* Sur un téléphone, la calculatrice passe SOUS le tableau :
@@ -251,7 +375,10 @@ class TableauCroise extends BaseGame {
             <div class="tc-wrap">
                 <div class="tc-enonce" data-enonce></div>
                 <div class="tc-corps">
-                    <div data-table></div>
+                    <div class="tc-pile">
+                        <div data-table></div>
+                        <div class="tc-geste" data-geste hidden aria-live="polite"></div>
+                    </div>
                     <div class="tc-calc" data-calc hidden></div>
                 </div>
                 <div class="tc-barre">
@@ -266,6 +393,7 @@ class TableauCroise extends BaseGame {
         this.tableEl = this.container.querySelector('[data-table]');
         this.calcEl = this.container.querySelector('[data-calc]');
         this.noteEl = this.container.querySelector('[data-note]');
+        this.gesteEl = this.container.querySelector('[data-geste]');
         this.container.querySelector('[data-aide]').onclick = () => this.aider();
         this.container.querySelector('[data-effacer]').onclick = () => this.effacer();
         this.container.querySelector('[data-neuf]').onclick = () => this.showNext();
@@ -333,18 +461,22 @@ class TableauCroise extends BaseGame {
         const largTete = long([...t.lignes, 'Total'], 6);
         let html = `<table class="tc-table" style="--tc-col: ${larg}ch; --tc-tete: ${largTete}ch">`
             + '<thead><tr><th></th>';
-        t.colonnes.forEach(c => { html += `<th>${echapper(c)}</th>`; });
-        html += '<th class="tc-total">Total</th></tr></thead><tbody>';
+        // LES EN-TÊTES PORTENT LEUR INDEX, et les cases DONNÉES un `data-cell`
+        // comme les autres : le geste (`montrerLeGeste`) doit pouvoir allumer
+        // une case déjà remplie, et c'est justement celles-là qu'il montre.
+        t.colonnes.forEach((c, i) => { html += `<th data-tete-col="${i}">${echapper(c)}</th>`; });
+        html += `<th class="tc-total" data-tete-col="${t.C}">Total</th></tr></thead><tbody>`;
         for (let r = 0; r <= t.R; r++) {
             const totalL = estTotalLigne(t, r);
-            html += `<tr><th class="tc-tete-ligne${totalL ? ' tc-total' : ''}">`
+            html += `<tr><th class="tc-tete-ligne${totalL ? ' tc-total' : ''}" data-tete-ligne="${r}">`
                 + `${totalL ? 'Total' : echapper(t.lignes[r])}</th>`;
             for (let c = 0; c <= t.C; c++) {
                 const totalC = estTotalColonne(t, c);
                 const classes = [];
                 if (totalL || totalC) classes.push(totalL && totalC ? 'tc-coin' : 'tc-total');
                 if (estDonnee(t, r, c)) {
-                    html += `<td class="${classes.join(' ')}">${t.valeurs[r][c]}</td>`;
+                    html += `<td class="${classes.join(' ')}" data-cell="${r},${c}">`
+                        + `${t.valeurs[r][c]}</td>`;
                     continue;
                 }
                 const saisie = this.saisies[cle(r, c)];
@@ -363,6 +495,9 @@ class TableauCroise extends BaseGame {
         this.tableEl.innerHTML = html;
         this.brancherCases();
         this.dessinerPave();
+        // LE TABLEAU EST NEUF : rien n'est éteint, rien n'est teinté, et le
+        // bandeau de l'opération ne parle plus d'un tableau qui n'existe plus.
+        this.effacerLeGeste();
     }
 
     nomDeCase(r, c) {
@@ -381,7 +516,15 @@ class TableauCroise extends BaseGame {
             el.onblur = () => this.valider(el);
             el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } };
             // La case ACTIVE, celle où le pavé numérique écrit.
-            el.onfocus = () => { this.actif = { r: Number(el.dataset.r), c: Number(el.dataset.c) }; };
+            el.onfocus = () => {
+                this.actif = { r: Number(el.dataset.r), c: Number(el.dataset.c) };
+                // LE GESTE S'EFFACE DÈS QU'IL VA TRAVAILLER AILLEURS. S'il
+                // clique la case qu'on lui montre, on ne touche à rien : il
+                // fait exactement ce qu'on lui demande, et il a encore besoin
+                // des couleurs et de l'opération sous les yeux.
+                const td = el.closest('td');
+                if (!td || !td.classList.contains('tc-cible')) this.effacerLeGeste();
+            };
         });
     }
 
@@ -455,10 +598,15 @@ class TableauCroise extends BaseGame {
                 partiel: true
             });
             this.majCase(r, c);
-            // Une case juste ouvre la suivante : on enchaîne sur le conseil
-            // plutôt que sur un « bravo » qui n'apprend rien.
-            if (this.reste()) this.note(conseil(this.tableau, this.saisies));
-            else this.gagner();
+            // UNE CASE JUSTE OUVRE LA SUIVANTE, ET ON LA MONTRE. La phrase
+            // disait « Regarde la ligne "Total" : il n'y manque qu'une seule
+            // case » ; le cercle dit la même chose et se voit sans être lu.
+            // Rémy : « il faut du visuel tu sélectionnes les cellules ».
+            if (this.reste()) {
+                this.effacerLeGeste();
+                this.note('');
+                this.viser();
+            } else this.gagner();
             return;
         }
         this.onWrongAnswer(null, {
@@ -499,24 +647,30 @@ class TableauCroise extends BaseGame {
     }
 
     /**
-     * DIRE POURQUOI, PAS SEULEMENT QUE C'EST FAUX. L'erreur de cet exercice est
-     * presque toujours la même : on a additionné là où il fallait soustraire,
-     * ou l'inverse. On le nomme, sans donner le nombre.
+     * DEUX MOTS ET UNE FLÈCHE.
+     *
+     * La version longue expliquait la méthode sous la case fausse — « cette
+     * case est DANS le tableau, pas dans les totaux : on part du total de sa
+     * ligne et on RETIRE ce qu'on y a déjà ». Trente-deux mots, et Rémy a
+     * tranché : « tes phrases son tellement longues et compliquées elles ne
+     * seront pas lues ».
+     *
+     * LA MÉTHODE SE MONTRE MAINTENANT SUR LE TABLEAU (montrerLeGeste), et il
+     * ne reste ici que le sens dans lequel aller. La flèche le porte seule :
+     * elle se lit sans lire.
+     *
+     * CE QUE ÇA DONNE EN PLUS QU'AVANT, ET C'EST ASSUMÉ : l'ancienne version
+     * ne disait « trop grand » que pour une case du corps, et « trop petit »
+     * que pour un total — ailleurs, un « ce n'est pas ça » sans direction.
+     * Donner le sens à chaque fois ouvre un tâtonnement par encadrement ; mais
+     * le nombre de cette case se DÉDUIT, il n'est pas à devinette, et l'élève
+     * qui approche 97, 96, 95 n'apprenait de toute façon rien avec la phrase.
      */
     pourquoiFaux(r, c, n) {
-        const t = this.tableau;
-        const dansLeTotal = estTotalColonne(t, c) || estTotalLigne(t, r);
-        const attendu = t.valeurs[r][c];
-        if (!dansLeTotal && n > attendu) {
-            return 'Trop grand. Cette case est DANS le tableau, pas dans les totaux : '
-                + 'on part du total de sa ligne (ou de sa colonne) et on RETIRE ce qu\'on y a déjà.';
-        }
-        if (dansLeTotal && n < attendu) {
-            return 'Trop petit. Cette case est un TOTAL : on additionne toute la ligne '
-                + '(ou toute la colonne), sans en oublier une.';
-        }
-        return `Ce n'est pas ça. Reprends ${estTotalColonne(t, c) || !estTotalLigne(t, r)
-            ? nomDeLigne(t, r) : nomDeColonne(t, c)} et recompte case par case.`;
+        const attendu = this.tableau.valeurs[r][c];
+        if (n > attendu) return '↓ Trop grand';
+        if (n < attendu) return '↑ Trop petit';
+        return 'Pas ça';
     }
 
     reste() {
@@ -533,6 +687,9 @@ class TableauCroise extends BaseGame {
 
     gagner() {
         this.fini = true;
+        // LE TABLEAU EST FINI : plus rien à montrer, et une opération qui
+        // resterait sous un tableau complet se lirait comme un reproche.
+        this.effacerLeGeste();
         this.note(`✅ Tableau complet — ${totalGeneral(this.tableau)} ${this.tableau.unite} en tout.`, 'ok');
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `${this.tableau.titre} — tableau complété`,
@@ -543,43 +700,211 @@ class TableauCroise extends BaseGame {
     }
 
     /**
-     * `pourquoi` est rempli quand l'aide arrive SANS qu'on l'ait demandée —
-     * après deux erreurs sur la même case. On garde alors l'explication de
-     * l'erreur ET on ajoute où aller : la retirer ferait disparaître sous ses
-     * yeux la phrase qu'il était peut-être en train de lire.
+     * L'AIDE, DANS L'ORDRE : ON MONTRE, PUIS ON MONTRE AUTREMENT, ET L'ON
+     * N'ÉCRIT QU'EN DERNIER RECOURS.
+     *
+     * `pourquoi` est rempli quand l'aide arrive SANS qu'on l'ait demandée,
+     * après deux erreurs sur la même case. On garde alors sa flèche — deux
+     * mots, elle tient sur la même ligne que rien d'autre.
      */
     aider(pourquoi = '') {
         if (this.isDemo || !this.tableau) return;
-        // LE ROUGE DIT « NON », PAS « VOICI COMMENT ». Vu sur la photo
-        // (tools/tmp/tableau-bloque.png) : les deux phrases sortaient de la
-        // même couleur, et celle qui aide se lisait comme une seconde
-        // réprimande. L'explication de l'erreur reste rouge ; le conseil qui
-        // suit prend l'encre ordinaire, en gras — c'est lui qu'on doit lire.
-        this.note(pourquoi
-            ? `${pourquoi}<br><span class="tc-conseil">${conseil(this.tableau, this.saisies)}</span>`
-            : conseil(this.tableau, this.saisies), pourquoi ? 'ko' : undefined);
-        // ET LE BOUTON SE RAPPELLE À L'ŒIL, mais seulement quand l'aide est
-        // venue toute seule : le faire battre quand l'élève vient de le toucher
-        // serait lui répondre « j'ai vu que tu m'as touché ».
-        if (pourquoi) {
-            const b = this.container.querySelector('[data-aide]');
-            if (b) {
-                // On retire la classe et l'on force un reflow avant de la
-                // remettre, sans quoi l'animation ne rejoue pas la fois
-                // suivante : pour le navigateur, rien n'a changé.
-                b.classList.remove('tc-btn--appel');
-                void b.offsetWidth;
-                b.classList.add('tc-btn--appel');
-            }
+        const ton = pourquoi ? 'ko' : undefined;
+        // RANGER AVANT DE CALCULER. Tant qu'une phrase de l'énoncé n'est pas
+        // reportée, il n'y a RIEN à déduire : montrer une ligne enverrait
+        // l'élève chercher un raisonnement là où il lui manque une lecture.
+        if (this.montrerLeReport()) {
+            this.note(pourquoi || 'Cette phrase, dans cette case.', ton);
+            this.appeler(pourquoi);
+            return;
         }
-        // On ENTOURE la ligne dont on parle : lire « la colonne Mardi » et
-        // devoir la chercher des yeux ajoute une difficulté qui n'est pas
-        // celle de l'exercice.
-        const suite = prochaineLigne(this.tableau, this.saisies);
+        if (this.montrerLeGeste()) {
+            this.note(pourquoi, ton);
+            this.appeler(pourquoi);
+            return;
+        }
+        // LE SEUL CAS QU'ON NE SAIT PAS MONTRER : tout est rempli, et quelque
+        // chose ne tombe pas juste. Il n'y a alors aucune case à désigner —
+        // c'est tout le tableau qu'il faut relire, et ça, ça s'écrit.
+        this.effacerLeGeste();
+        this.note(conseil(this.tableau, this.saisies));
+        this.appeler(pourquoi);
+    }
+
+    /**
+     * LE BOUTON SE RAPPELLE À L'ŒIL, mais seulement quand l'aide est venue
+     * toute seule : le faire battre quand l'élève vient de le toucher serait
+     * lui répondre « j'ai bien vu que tu m'as touché ».
+     */
+    appeler(spontanee) {
+        if (!spontanee) return;
+        const b = this.container.querySelector('[data-aide]');
+        if (!b) return;
+        // On retire la classe et l'on force un reflow avant de la remettre,
+        // sans quoi l'animation ne rejoue pas la fois suivante : pour le
+        // navigateur, rien n'a changé.
+        b.classList.remove('tc-btn--appel');
+        void b.offsetWidth;
+        b.classList.add('tc-btn--appel');
+    }
+
+    /**
+     * MONTRER LE CALCUL SUR LE TABLEAU, SANS L'ÉCRIRE.
+     *
+     * RÉMY : « il faut du visuel tu sélectionnes les cellules tu montres bien ».
+     *
+     * On éteint tout sauf la ligne (ou la colonne) où il ne manque qu'une
+     * case ; on teinte ses cases par leur RÔLE — le total, les nombres connus,
+     * la case qui manque ; on les allume l'une après l'autre dans l'ordre du
+     * CALCUL et non du tableau ; et l'opération s'écrit en grand dessous avec
+     * les mêmes couleurs. C'est le doigt du professeur, et il n'y a pas une
+     * phrase à lire.
+     *
+     * @returns {boolean} faux quand rien n'est déductible — il reste alors la
+     *          phrase écrite, en dernier recours.
+     */
+    montrerLeGeste() {
+        const t = this.tableau;
+        this.effacerLeGeste();
+        const table = this.tableEl.querySelector('.tc-table');
+        const suite = table && prochaineLigne(t, this.saisies);
+        if (!suite) return false;
+        const ligne = suite.sens === 'ligne';
+        const [rc, cc] = suite.case;
+        const dernier = ligne ? t.C : t.R;
+        const cibleEstTotal = ligne ? cc === t.C : rc === t.R;
+
+        // LA CASE VISÉE SE VIDE. Quand c'est celle sur laquelle il s'est trompé
+        // deux fois, garder son nombre faux sous le nez pendant qu'on lui
+        // montre le calcul, c'est lui demander de lire par-dessus — et le « ? »
+        // de l'opération ne veut rien dire si la case porte déjà un nombre.
+        if (this.saisies[cle(rc, cc)] !== undefined) {
+            delete this.saisies[cle(rc, cc)];
+            this.majCase(rc, cc);
+        }
+
+        const bouts = [];
+        let i = 1;
+        const allumer = (r, c, role, classe) => {
+            const td = table.querySelector(`[data-cell="${r},${c}"]`);
+            if (td) {
+                td.classList.add('tc-piste', role);
+                td.style.setProperty('--i', String(i));
+            }
+            bouts.push({ classe, texte: String(t.valeurs[r][c]) });
+            i++;
+        };
+
+        // L'EN-TÊTE S'ALLUME LE PREMIER : c'est lui qui dit DE QUOI on parle, et
+        // le doigt commence toujours par là.
+        const tete = table.querySelector(ligne
+            ? `[data-tete-ligne="${suite.indice}"]` : `[data-tete-col="${suite.indice}"]`);
+        if (tete) { tete.classList.add('tc-piste'); tete.style.setProperty('--i', '0'); }
+
+        // LE TOTAL D'ABORD QUAND C'EST UNE SOUSTRACTION : on allume dans l'ordre
+        // où l'on écrit l'opération, pas dans l'ordre du tableau.
+        if (!cibleEstTotal) {
+            allumer(ligne ? suite.indice : t.R, ligne ? t.C : suite.indice, 'tc-somme', 'g-tot');
+        }
+        for (let k = 0; k <= dernier; k++) {
+            const r = ligne ? suite.indice : k;
+            const c = ligne ? k : suite.indice;
+            if (r === rc && c === cc) continue;                 // la case qui manque
+            if (!cibleEstTotal && k === dernier) continue;      // le total : déjà posé
+            if (bouts.length) bouts.push({ classe: 'g-op', texte: cibleEstTotal ? '+' : '−' });
+            allumer(r, c, 'tc-source', 'g-src');
+        }
+        const cible = table.querySelector(`[data-cell="${rc},${cc}"]`);
+        if (cible) {
+            cible.classList.add('tc-piste', 'tc-cible');
+            cible.style.setProperty('--i', String(i));
+        }
+        bouts.push({ classe: 'g-op', texte: '=' }, { classe: 'g-cib', texte: '?' });
+
+        table.classList.add('tc-montre');
+        this.gesteEl.innerHTML = bouts
+            .map(b => `<span class="${b.classe}">${b.texte}</span>`).join('');
+        // L'OPÉRATION ARRIVE APRÈS LES CASES, sinon elle donne la réponse du
+        // film avant le film : c'est l'ordre des cases qui porte le sens.
+        this.gesteEl.style.setProperty('--retard', `${((i + 1) * 0.16).toFixed(2)}s`);
+        this.gesteEl.hidden = false;
+        // ET LE FOYER VA DANS LA CASE MONTRÉE : sur une tablette, le pavé
+        // numérique écrit dans la case ACTIVE. Sans ce foyer, l'élève tape dans
+        // celle d'avant.
+        const champ = cible && cible.querySelector('.tc-case');
+        if (champ) champ.focus();
+        // ET ON LA RAMÈNE AU MILIEU. Mesuré au doigt (390 px, photo
+        // tools/tmp/tableau-doigt.png) : le tableau déborde de son cadre et
+        // glisse, le foyer y amène bien la case montrée — mais COLLÉE au bord,
+        // l'anneau coupé. Le navigateur fait le minimum ; on lui demande le
+        // milieu, qui est là où l'on pose le doigt.
+        if (cible && cible.scrollIntoView) {
+            cible.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+        }
+        return true;
+    }
+
+    /**
+     * AVANT DE CALCULER, IL FAUT RANGER — et c'est l'étape qu'on rate quand le
+     * tableau part vide. On montre donc LA PHRASE et LA CASE où elle va,
+     * ensemble : la ligne et la colonne qui se croisent là s'allument, et la
+     * phrase s'allume dans la liste. C'est le geste du doigt qui descend la
+     * colonne puis traverse la ligne.
+     */
+    montrerLeReport() {
+        const t = this.tableau;
+        if (t.depart !== 'enonce' || !t.donnees) return false;
+        const i = t.donnees.findIndex(d => Number(this.saisies[cle(d.r, d.c)]) !== d.valeur);
+        if (i < 0) return false;
+        const d = t.donnees[i];
+        const table = this.tableEl.querySelector('.tc-table');
+        const td = table && table.querySelector(`[data-cell="${d.r},${d.c}"]`);
+        if (!td) return false;
+        this.effacerLeGeste();
+        [table.querySelector(`[data-tete-ligne="${d.r}"]`),
+            table.querySelector(`[data-tete-col="${d.c}"]`)].forEach((el, k) => {
+            if (!el) return;
+            el.classList.add('tc-piste');
+            el.style.setProperty('--i', String(k));
+        });
+        td.classList.add('tc-piste', 'tc-cible');
+        td.style.setProperty('--i', '2');
+        table.classList.add('tc-montre');
+        const items = this.enonceEl.querySelectorAll('.tc-faits li');
+        if (items[i]) items[i].classList.add('tc-fait--vise');
+        const champ = td.querySelector('.tc-case');
+        if (champ) champ.focus();
+        return true;
+    }
+
+    /** On remet le tableau comme il était : rien d'éteint, rien de teinté. */
+    effacerLeGeste() {
+        if (!this.tableEl) return;
+        const table = this.tableEl.querySelector('.tc-table');
+        if (table) table.classList.remove('tc-montre');
+        this.tableEl.querySelectorAll('.tc-piste, .tc-vise').forEach((el) => {
+            el.classList.remove('tc-piste', 'tc-source', 'tc-somme', 'tc-cible', 'tc-vise');
+            el.style.removeProperty('--i');
+        });
+        if (this.enonceEl) {
+            this.enonceEl.querySelectorAll('.tc-fait--vise')
+                .forEach(el => el.classList.remove('tc-fait--vise'));
+        }
+        if (this.gesteEl) { this.gesteEl.hidden = true; this.gesteEl.innerHTML = ''; }
+    }
+
+    /**
+     * LE CERCLE SEUL, après une case juste. On ne monte PAS le geste complet
+     * ici : un élève qui enchaîne n'a pas besoin qu'on éteigne son tableau sous
+     * ses yeux à chaque bonne réponse. Il a besoin de savoir où aller, et le
+     * cercle le dit.
+     */
+    viser() {
+        if (!this.tableEl) return;
         this.tableEl.querySelectorAll('.tc-vise').forEach(el => el.classList.remove('tc-vise'));
+        const suite = prochaineLigne(this.tableau, this.saisies);
         if (!suite) return;
-        const [r, c] = suite.case;
-        const td = this.tableEl.querySelector(`[data-cell="${r},${c}"]`);
+        const td = this.tableEl.querySelector(`[data-cell="${suite.case[0]},${suite.case[1]}"]`);
         if (td) td.classList.add('tc-vise');
     }
 

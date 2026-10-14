@@ -25,11 +25,17 @@
 
 import { makeRng } from './ids.js';
 
-export const ASTUCE = 'Cherche à chaque fois la ligne ou la colonne où il ne manque '
-    + 'QU\'UNE SEULE information : celle-là, tu peux la boucler. Le nombre que tu viens '
-    + 'd\'écrire en ouvre alors d\'autres. On n\'a jamais besoin de deviner.';
+// QUATRE PHRASES NE SE LISENT PAS SUR UN ÉCRAN. Rémy : « tes phrases son
+// tellement longues et compliquées elles ne seront pas lues ». Il reste CELLE
+// QUI PORTE LA MÉTHODE ; le reste — « le nombre que tu viens d'écrire en ouvre
+// alors d'autres », « on n'a jamais besoin de deviner » — est vrai, utile, et
+// vit toujours sur la FEUILLE IMPRIMÉE, qu'on lit assis
+// (js/ui/fiches/algorithmes.js). À l'écran, c'est le TABLEAU qui montre : voir
+// montrerLeGeste() dans js/games/tableauCroise.js.
+export const ASTUCE = 'Cherche la ligne ou la colonne où il ne manque '
+    + 'QU\'UNE SEULE case : celle-là, tu peux la boucler.';
 
-export const CONSIGNE = 'Complète les cases vides du tableau. ' + ASTUCE;
+export const CONSIGNE = 'Complète les cases vides. ' + ASTUCE;
 
 /**
  * LES ÉNONCÉS. Rémy : « fais plein de types d'énoncé, un peu rigolo pour
@@ -629,8 +635,7 @@ export const estConnue = (t, r, c) => t.connus.includes(cle(r, c));
 /** La consigne, qui n'est pas la même selon d'où viennent les nombres. */
 export function consigneDe(t) {
     return t && t.depart === 'enonce'
-        ? 'Reporte d\'abord les informations de l\'énoncé dans le tableau, puis complète-le. '
-            + ASTUCE
+        ? 'Reporte d\'abord l\'énoncé dans le tableau. ' + ASTUCE
         : CONSIGNE;
 }
 
