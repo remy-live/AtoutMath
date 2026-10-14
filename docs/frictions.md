@@ -4529,3 +4529,25 @@ lignes** — 2026-10-01
   valeur (`data-exo`, `data-prenom`, `data-graine`…), qu'il faudra nommer
   explicitement, sans quoi l'épreuve criera sur du code sain — et une épreuve
   qui crie sur du code sain finit éteinte.
+
+---
+
+**Remettre un défaut qui est « cette ligne en moins » se recopie à la main**
+— 14 octobre 2026
+
+- *Ce que je voulais faire* : voir tomber huit gardes neuves sur les tableaux à
+  compléter, avec `tools/epreuveTombe.mjs`.
+- *Ce qui a coûté* : onze fichiers de paires JSON, et un script Python jetable
+  pour les écrire — exactement celui que `tools/remplacer.mjs` existe pour ne
+  plus écrire. La raison est toujours la même : neuf des onze défauts étaient
+  « cette ligne-là en moins » (un `this.rates = {};` oublié dans `poser`, le
+  `void b.offsetWidth` du reflow, l'anneau du mode calme). Comme la ligne seule
+  n'est pas unique dans le fichier — `this.rates = {};` y figure trois fois —,
+  il faut recopier le bloc qui l'entoure DEUX fois, avec son indentation exacte,
+  une fois avec et une fois sans. Quinze minutes, dont zéro de réflexion.
+- *Combien de fois* : || (déjà le 13 octobre, pour les gardes du service
+  worker)
+- *Ce qui manque* : `node tools/epreuveTombe.mjs <essai> <source> --retirer
+  "<ligne>" [--dans "<méthode>"]`, qui construit la paire lui-même en prenant
+  les deux lignes voisines comme ancre. Le défaut le plus fréquent du dépôt est
+  un retrait, et c'est le seul que l'outil ne sache pas écrire tout seul.

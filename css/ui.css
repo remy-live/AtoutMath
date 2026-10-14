@@ -3391,15 +3391,25 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    sans un mot, au milieu de six autres icônes.
    TROIS BATTEMENTS, PUIS PLUS RIEN. Un clignotement permanent dans un en-tête
    n'attire plus l'œil au bout d'une minute, il l'agace — et sur un exercice où
-   l'on a le droit de calculer, ce serait agacer pendant tout l'exercice. */
-.calc-dispo { animation: calc-dispo 1s ease-out 3; }
+   l'on a le droit de calculer, ce serait agacer pendant tout l'exercice.
+
+   IL BATTAIT DANS LA COULEUR DE L'APPLICATION, ET ON NE LE VOYAIT PAS.
+   Rémy : « quand c'est la calculatrice le clignotement est discret il faudrait
+   une couleur plus visible ». Le halo était en `--primary` à 40 % — c'est-à-dire
+   la teinte de tout le reste de l'entête, posée en transparence sur un fond
+   clair. Il bat maintenant en AMBRE PLEIN (`--warning`, #f59e0b), la couleur
+   que le dépôt réserve déjà à « regarde ici » : elle n'est utilisée nulle part
+   ailleurs dans cette barre, donc elle ne se confond avec rien.
+   ET L'ANNEAU EST PLUS ÉPAIS ET PLUS LENT : 4 px à 1 s passaient sous l'œil
+   d'un élève qui regarde sa feuille. 6 px à 1,25 s, c'est le même geste, vu. */
+.calc-dispo { animation: calc-dispo 1.25s ease-out 3; }
 @keyframes calc-dispo {
     0%, 100% { box-shadow: none; transform: scale(1); }
     35% {
-        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 40%, transparent);
-        transform: scale(1.12);
+        box-shadow: 0 0 0 6px var(--warning);
+        transform: scale(1.14);
     }
-    70% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+    70% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warning) 0%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) { .calc-dispo { animation: none; } }
 

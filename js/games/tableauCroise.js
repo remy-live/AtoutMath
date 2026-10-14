@@ -60,6 +60,9 @@ class TableauCroise extends BaseGame {
         // pas, et il ne s'adresse qu'à qui vient le chercher.
         this.taille = TAILLES[this.params.taille] ? this.params.taille : 'auto';
         this.saisies = {};
+        // COMBIEN DE FOIS CHAQUE CASE A ÉTÉ RATÉE. C'est le signal « il est
+        // bloqué » : voir `valider`. Une case, pas le tableau.
+        this.rates = {};
         this.actif = null;
     }
 
@@ -186,6 +189,25 @@ class TableauCroise extends BaseGame {
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 12px; font-size: .85rem; min-height: 38px;
                 }
+                /* LE BOUTON D'AIDE SE RAPPELLE À L'ŒIL, après deux erreurs sur
+                   la même case. Rémy : « est ce que quand l'élève fait beaucoup
+                   d'erreurs on fait clignoter le bouton indice ».
+                   EN AMBRE, comme la calculatrice disponible, et pour la même
+                   raison : c'est la couleur que le dépôt réserve à « regarde
+                   ici », et elle n'est utilisée nulle part ailleurs dans cette
+                   barre. Trois battements puis plus rien — un bouton qui
+                   clignote sans fin cesse d'être vu et devient agaçant. */
+                .tc-conseil { color: var(--text-main); font-weight: 700; }
+                .tc-btn--appel { animation: tc-appel 1.25s ease-out 3; }
+                @keyframes tc-appel {
+                    0%, 100% { box-shadow: none; transform: scale(1); }
+                    35% { box-shadow: 0 0 0 6px var(--warning); transform: scale(1.1); }
+                    70% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warning) 0%, transparent); }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .tc-btn--appel { animation: none;
+                                     box-shadow: 0 0 0 3px var(--warning); }
+                }
                 .tc-note {
                     min-height: 2.4em; text-align: center; font-size: .85rem; line-height: 1.35;
                     color: var(--text-muted); max-width: 640px; flex: 0 0 auto;
@@ -256,6 +278,7 @@ class TableauCroise extends BaseGame {
             depart: this.depart, taille: this.taille });
         if (!this.tableau) return false;
         this.saisies = {};
+        this.rates = {};
         this.fini = false;
         this.dessiner();
         this.note(consigneDe(this.tableau));
@@ -267,6 +290,7 @@ class TableauCroise extends BaseGame {
     effacer() {
         if (this.isDemo || !this.tableau) return;
         this.saisies = {};
+        this.rates = {};
         this.fini = false;
         this.dessiner();
         this.note('');
@@ -443,6 +467,34 @@ class TableauCroise extends BaseGame {
             input: brut, expected: String(attendu), partiel: true, silencieux: true
         });
         this.majCase(r, c);
+
+        // ── DEUX FOIS SUR LA MÊME CASE : L'AIDE VIENT À LUI ─────────────────
+        //
+        // RÉMY : « des élèves en difficulté ont eu pas mal de soucis sur les
+        // tableaux à compléter […] est ce que quand l'élève fait beaucoup
+        // d'erreurs on fait clignoter le bouton indice ».
+        //
+        // LE SIGNAL EST LA CASE, PAS LE TABLEAU. Huit erreurs réparties sur
+        // huit cases, c'est un élève qui tâtonne et qui avance. DEUX sur la
+        // MÊME case, c'est un élève bloqué : la première erreur apprend
+        // quelque chose — l'explication dit laquelle —, la seconde dit qu'elle
+        // n'a pas suffi.
+        //
+        // ET L'AIDE EXISTAIT DÉJÀ, GRATUITE ET ILLIMITÉE. Le défaut n'était
+        // pas son absence : celui qui sait que « Aide-moi » va l'aider n'en a
+        // pas besoin, et celui qui en a besoin ne le sait pas. On ne lui
+        // demande donc plus de la demander.
+        //
+        // ON LE RENVOIE VERS UNE AUTRE CASE, et c'est la méthode même de cet
+        // exercice : quand une case résiste, c'est souvent qu'il lui manque
+        // encore une valeur. `conseil` désigne celle où il ne manque plus
+        // rien, et on l'entoure.
+        const k = cle(r, c);
+        this.rates[k] = (this.rates[k] || 0) + 1;
+        if (this.rates[k] >= 2) {
+            this.aider(this.pourquoiFaux(r, c, n));
+            return;
+        }
         this.note(this.pourquoiFaux(r, c, n), 'ko');
     }
 
@@ -490,9 +542,36 @@ class TableauCroise extends BaseGame {
         setTimeout(() => { if (this.isRunning) this.showNext(); }, 2400);
     }
 
-    aider() {
+    /**
+     * `pourquoi` est rempli quand l'aide arrive SANS qu'on l'ait demandée —
+     * après deux erreurs sur la même case. On garde alors l'explication de
+     * l'erreur ET on ajoute où aller : la retirer ferait disparaître sous ses
+     * yeux la phrase qu'il était peut-être en train de lire.
+     */
+    aider(pourquoi = '') {
         if (this.isDemo || !this.tableau) return;
-        this.note(conseil(this.tableau, this.saisies));
+        // LE ROUGE DIT « NON », PAS « VOICI COMMENT ». Vu sur la photo
+        // (tools/tmp/tableau-bloque.png) : les deux phrases sortaient de la
+        // même couleur, et celle qui aide se lisait comme une seconde
+        // réprimande. L'explication de l'erreur reste rouge ; le conseil qui
+        // suit prend l'encre ordinaire, en gras — c'est lui qu'on doit lire.
+        this.note(pourquoi
+            ? `${pourquoi}<br><span class="tc-conseil">${conseil(this.tableau, this.saisies)}</span>`
+            : conseil(this.tableau, this.saisies), pourquoi ? 'ko' : undefined);
+        // ET LE BOUTON SE RAPPELLE À L'ŒIL, mais seulement quand l'aide est
+        // venue toute seule : le faire battre quand l'élève vient de le toucher
+        // serait lui répondre « j'ai vu que tu m'as touché ».
+        if (pourquoi) {
+            const b = this.container.querySelector('[data-aide]');
+            if (b) {
+                // On retire la classe et l'on force un reflow avant de la
+                // remettre, sans quoi l'animation ne rejoue pas la fois
+                // suivante : pour le navigateur, rien n'a changé.
+                b.classList.remove('tc-btn--appel');
+                void b.offsetWidth;
+                b.classList.add('tc-btn--appel');
+            }
+        }
         // On ENTOURE la ligne dont on parle : lire « la colonne Mardi » et
         // devoir la chercher des yeux ajoute une difficulté qui n'est pas
         // celle de l'exercice.

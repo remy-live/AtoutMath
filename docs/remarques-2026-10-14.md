@@ -422,3 +422,36 @@ imposée porte une échéance que le navigateur ne lit pas, et elle peut tomber
 entre le clic et la question suivante. La première écriture faisait porter le
 parcours par le bouton du direct ; elle est partie, et le code est plus court
 qu'avant elle.
+
+---
+
+# Les élèves en difficulté devant un tableau à compléter
+
+> « Des élèves en difficulté ont eu pas mal de soucis sur les tableaux à
+> compléter. J'ai des idées est ce que quand l'élève fait beaucoup d'erreurs on
+> fait clignoter le bouton indice ou montre moi et quand c'est la calculatrice
+> le clignotement est discret il faudrait une couleur plus visible. Je prends
+> toutes tes idées »
+
+## Ce que le tableau croisé fait DÉJÀ, et ce qui manque
+
+Lu dans `js/games/tableauCroise.js` avant de proposer quoi que ce soit :
+
+- chaque case fausse est **expliquée**, et pas seulement refusée —
+  `pourquoiFaux` nomme l'erreur (« Trop grand. Cette case est DANS le tableau,
+  pas dans les totaux : on part du total de sa ligne et on RETIRE ce qu'on y a
+  déjà ») ;
+- « 💡 Aide-moi » donne la **prochaine case déductible** et l'**entoure** —
+  c'est une bonne aide, elle est gratuite et illimitée ;
+- rien ne compte les erreurs, donc rien ne monte d'un cran.
+
+**Le défaut n'est pas l'absence d'aide : c'est que l'élève perdu ne la demande
+pas.** Il retape un nombre, relit la même explication, retape un nombre. Celui
+qui sait que « Aide-moi » va l'aider n'en a pas besoin ; celui qui en a besoin
+ne le sait pas.
+
+## Le signal, c'est la CASE, pas le tableau
+
+Huit erreurs réparties sur huit cases, c'est un élève qui avance en tâtonnant.
+**Deux erreurs sur la MÊME case**, c'est un élève bloqué. C'est ce compteur-là
+qu'il faut tenir, et il n'existait pas.
