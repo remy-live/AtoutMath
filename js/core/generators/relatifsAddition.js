@@ -331,8 +331,14 @@ export const relatifsAdditionGenerator = {
             const enonce = `Écris ce calcul plus simplement : ${complete(a, b)}`;
             const enoncePapier = `${complete(a, b)} =`;
             const explication = `${complete(a, b)} : on n'écrit jamais deux signes à la suite. `
-                + `Le « + » et le « ${b < 0 ? '−' : '+'} » du deuxième nombre se réduisent à un seul « ${b < 0 ? '−' : '+'} », `
-                + `et les parenthèses ne servent plus à rien. On écrit donc ${juste}.`;
+                // DEUX PHRASES COURTES, PAS UNE LONGUE. La version d'un seul
+                // tenant faisait 28 mots : « Le « + » et le « − » du deuxième
+                // nombre se réduisent à un seul « − », et les parenthèses ne
+                // servent plus à rien. » C'était le dernier pavé du catalogue
+                // (tools/cequilFautLire.mjs). Rémy : « un élève qui galère
+                // c'est aussi un élève qui peut avoir du mal à lire ».
+                + `Le « + » et le « ${b < 0 ? '−' : '+'} » se réduisent à un seul « ${b < 0 ? '−' : '+'} ». `
+                + `Les parenthèses ne servent plus à rien. On écrit donc ${juste}.`;
             return makeItem({
                 seed: rng.seed,
                 generatorId: 'num.relatifs.addition',

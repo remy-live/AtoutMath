@@ -488,3 +488,61 @@ viennent des cases qu'il touche ; aucune phrase n'est nécessaire.
   professeur fait, et qu'aucune phrase ne fait.
 - **Les phrases tombent à trois mots** : « Trop grand », « Trop petit »,
   avec la flèche qui dit dans quel sens aller.
+
+---
+
+# « Une aide doit être visuelle et pas trop longue, comme c'est parfois le cas pour certains exercices »
+
+> « Deux c'est bien et évidemment un élève qui galère c'est aussi un élève qui
+> peut avoir du mal à lire, le but est qu'il comprenne. Mais surtout une aide
+> doit être visuelle et pas trop longue en explication comme c'est parfois le
+> cas pour certains exercices »
+
+Trois choses, et la troisième est la plus grosse.
+
+1. **Le seuil de deux est tranché.** Deux erreurs sur la même case.
+2. **Un élève qui galère est souvent un élève qui lit mal.** Ce n'est pas une
+   préférence de style : lui donner un paragraphe, c'est ajouter sa difficulté
+   à celle de l'exercice. « Le but est qu'il comprenne. »
+3. **Ce n'est pas le tableau croisé, c'est le logiciel.** « comme c'est parfois
+   le cas pour certains exercices » — il ne parle plus de celui qu'on vient de
+   corriger. Il faut donc aller voir TOUS les autres.
+
+## Ce qu'on fait, dans l'ordre
+
+**On mesure avant de corriger.** On ne sait pas lesquels sont longs : on le
+croit. Un outil compte les mots de tout ce qu'un élève peut recevoir comme
+aide, exercice par exercice, et les classe. Ensuite on corrige les pires, et
+l'on garde l'outil pour que la question se repose toute seule.
+
+C'est exactement la friction écrite hier : la sonde sait mesurer une couleur et
+un crochet, pas une phrase.
+
+## Mesuré, puis corrigé
+
+`tools/cequilFautLire.mjs` tire de vraies questions de chaque générateur et
+compte **le plus long bloc d'un trait** — pas le total.
+
+|  | avant | après |
+| --- | --- | --- |
+| exercices à l'écran posant un pavé de plus de 25 mots | **47** sur 97 | **0** |
+| aides répétant la même phrase | 2 | 0 |
+| exercices sans AUCUN dessin sous leurs indices | 87 sur 97 | 87 |
+
+**Compter les mots était le mauvais instrument**, et cela s'est vu à la
+première mesure : « Temps, Distance, Vitesse » sortait en tête avec 44 mots —
+lu, c'est une BONNE aide : une phrase, trois formules sur trois lignes, une
+phrase. À côté, un pavé de trente mots d'un trait se lit deux fois plus mal.
+
+**Quarante-trois des quarante-sept sont tombés sans qu'un mot soit réécrit**,
+par trois règles d'affichage (`aerer`) : une phrase par ligne, les suites
+d'étapes (`;` et `|`) en colonne, et le deux-points comme respiration. Les
+quatre autres étaient de vrais défauts d'écriture, corrigés un par un.
+
+## Ce qui reste, et c'est l'autre moitié de sa phrase
+
+**87 exercices sur 97 n'ont aucun dessin sous leurs indices**, alors que le
+logiciel sait en poser un (`item.schemas[i]`) et que dix s'en servent. C'est
+« une aide doit être **visuelle** », et cela ne se corrige pas par une règle
+d'affichage : il faut dessiner, exercice par exercice. À faire là où ça compte
+le plus — c'est Rémy qui sait lesquels ses élèves ouvrent.

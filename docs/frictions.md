@@ -4576,3 +4576,33 @@ lignes** — 2026-10-01
   mesure existe pour les couleurs (`contrasteRendu`) et pour les crochets
   (`doitExister`) ; elle n'existe pas pour le TEXTE, qui est pourtant ce que
   l'élève doit traverser avant d'atteindre l'exercice.
+- **FERMÉE** — 15 octobre 2026, le lendemain, par la remarque suivante de Rémy
+  (« une aide doit être visuelle et pas trop longue en explication comme c'est
+  parfois le cas pour certains exercices »). `tools/cequilFautLire.mjs` tire de
+  vraies questions de chaque générateur et compte **le plus long bloc d'un
+  trait** — pas le total, qui condamnait les bonnes aides : « Temps, Distance,
+  Vitesse » faisait 44 mots sur quatre lignes et se lit très bien. Mesuré : 47
+  des 97 exercices à l'écran posaient un pavé de plus de 25 mots. Après, zéro.
+  Les fonctions de mesure vivent à part (`tools/mesureDuTexte.mjs`) pour qu'une
+  épreuve compte EXACTEMENT comme l'outil : `tests/aidesLisibles.test.mjs`
+  garde le zéro sur tout le catalogue.
+
+---
+
+**Un filtre ajouté pour taire un faux positif a emporté le vrai défaut**
+— 15 octobre 2026
+
+- *Ce que je voulais faire* : détecter les aides qui répètent la même phrase.
+- *Ce qui a coûté* : trois écritures du même détecteur. La première criait sur
+  « 5/8 = 45/72 (× 9 en haut et en bas). 5/9 = 40/72 (× 8 en haut et en bas). »
+  — deux étapes différentes dont la part française est identique. J'ai ajouté
+  « les mots doivent faire 60 % de la phrase ». **Cette règle écartait aussi le
+  seul vrai défaut du catalogue, à deux dixièmes de mot près** : la phrase
+  d'Euler fait 16 mots français sur 27 jetons, et 16 < 16,2. L'épreuve passait
+  au vert, le détecteur ne détectait plus rien, et rien ne le disait.
+- *Combien de fois* : | (famille « une mesure qui ne mesure rien répond tout va
+  bien », qui en est à sept)
+- *Ce qui manque* : rien de neuf — `tools/epreuveTombe.mjs` l'a attrapé en une
+  commande, et c'est la troisième fois de la journée. La leçon est d'usage :
+  **quand on resserre un filtre pour taire un faux positif, on relance la chute
+  sur le VRAI cas**, parce qu'un filtre ne sait pas lequel des deux il coupe.

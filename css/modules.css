@@ -125,6 +125,12 @@
    formules ; empilées, elles se retiennent. Le texte reste échappé, seul le
    saut de ligne du texte source est honoré. */
 .fb-message { font-size: 1.1rem; font-weight: 600; line-height: 1.45; color: var(--text-main); white-space: pre-line; }
+/* UNE AIDE DE PLUSIEURS LIGNES SE LIT À GAUCHE. Centrée, chaque ligne commence
+   à une abscisse différente et l'œil doit la chercher — voir `aere` dans
+   js/ui/gameFeedbackUI.js. La largeur de ligne est bornée pour la même raison
+   qu'un livre n'a pas de lignes de trente centimètres : au-delà, on perd la
+   ligne suivante en revenant à la marge. */
+.fb-message--aere { text-align: left; max-width: 46ch; margin: 0 auto; }
 /* L'exemple chiffré d'un indice, sur sa propre ligne : la coupure tombait au
    milieu de l'égalité (« 032,12 = » d'un côté, « 32,12. » de l'autre). */
 .fb-exemple {

@@ -11,7 +11,9 @@
 // font l'exercice : sans eux on compte ce qu'on voit, et l'on se trompe.
 
 import { makeItem } from '../items.js';
-import { construire, famillesDe, compter, euler, expliquer, ASPECTS } from '../solides.js';
+import {
+    construire, famillesDe, compter, euler, expliquer, filetDEuler, ASPECTS
+} from '../solides.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
@@ -71,7 +73,11 @@ export const solidesGenerator = {
                 html: `<div class="game-question">${solide.nom}</div>`
             },
             answer: `${e.S}-${e.A}-${e.F}`,
-            explanation: ASPECTS.map(a => expliquer(solide, a.id)).join(' '),
+            // UNE LIGNE PAR ASPECT, ET LA VÉRIFICATION À LA FIN. Recollées
+            // d'un trait, les trois explications répétaient la phrase d'Euler
+            // trois fois : 139 mots pour en dire 60.
+            explanation: [...ASPECTS.map(a => expliquer(solide, a.id, false)),
+                filetDEuler(solide)].join('\n'),
             difficulty: solide.famille === 'autre' ? 3 : (solide.n <= 4 ? 1 : 2),
             meta: {
                 id: solide.id, nom: solide.nom, famille: solide.famille, n: solide.n,
