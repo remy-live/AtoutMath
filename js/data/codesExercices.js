@@ -54,6 +54,9 @@ export const CODES_EXERCICES = {
     'num-serpent':               'SP',   // le SerPent littéral — « SR » et « SL » étaient pris
     'num-relatifs-addition':      'AR',   // Additionner des Relatifs, pas à pas
     'num-relatifs-produit':       'MR',   // Multiplier des Relatifs, pas à pas
+    'num-relatifs-melange':       'SX',   // Somme ou produit ? — Somme et le signe ×
+    'num-relatifs-melange-sprint': 'RX',  // Réflexe des signes — le même, contre la montre
+    'num-relatifs-melange-arcade': 'VX',  // Attrape le bon signe — le même, en arcade
     'alg-fonctions':              'FN',   // Les Fonctions : Image et Antécédent
     'num-litteral-reduire':       'SR',   // Simplifier et Réduire
     'num-litteral-puissances':    'CR',   // Carrés, Cubes et Réduction

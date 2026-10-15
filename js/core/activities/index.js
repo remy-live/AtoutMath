@@ -40,6 +40,7 @@ import { horlogeGenerator } from '../generators/horloge.js';
 import { relatifsGenerator } from '../generators/relatifs.js';
 import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
 import { relatifsProduitGenerator } from '../generators/relatifsProduit.js';
+import { relatifsMelangeGenerator } from '../generators/relatifsMelange.js';
 import { litteralReduireGenerator } from '../generators/litteral.js';
 import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js';
 import { balanceFicheGenerator } from '../generators/balanceFiche.js';
@@ -155,7 +156,8 @@ import {
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
-    relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
+    relatifsAdditionGenerator, relatifsProduitGenerator, relatifsMelangeGenerator,
+    litteralReduireGenerator,
     litteralPuissancesGenerator,
     // La balance n'a pas de générateur — elle a une activité. Sa fiche en a un.
     // Les Serpents sont dans le même cas, et pour la même raison : le jeu se

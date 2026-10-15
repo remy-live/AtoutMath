@@ -546,3 +546,48 @@ logiciel sait en poser un (`item.schemas[i]`) et que dix s'en servent. C'est
 « une aide doit être **visuelle** », et cela ne se corrige pas par une règle
 d'affichage : il faut dessiner, exercice par exercice. À faire là où ça compte
 le plus — c'est Rémy qui sait lesquels ses élèves ouvrent.
+
+---
+
+# Les relatifs en 4ᵉ : « quel type d'exercice pour bien les entraîner ? »
+
+> « en ce moment avec mes 4ᵉ, je fais les additions, soustractions,
+> simplification et multiplications de nombres relatifs, c'est pas simple pour
+> eux. Quel type d'exercice pourrait-on faire pour bien les entraîner. »
+>
+> puis : « et puis après viser des automatismes, au début on applique, comment
+> après rendre cela un peu ludique et vraiment ancrer les réflexes »
+
+## Ce qui existait déjà, et qu'on ne refait pas
+
+Neuf exercices touchent les relatifs : l'ascenseur et le thermomètre,
+« Additionner des Relatifs, pas à pas », « Multiplier des Relatifs, pas à
+pas », le Ninja, Prio-Bot, et les trois marches du moins devant la parenthèse.
+**Le calcul était couvert.**
+
+## Le trou : chacun ANNONCE son opération
+
+On entre dans « Multiplier », donc on multiplie. Or l'erreur reine de la 4ᵉ
+n'est pas d'ignorer une règle, c'est d'appliquer **celle du produit à une
+somme** : « moins et moins font plus », donc −3 − 5 = 8. Un élève qui ne
+rencontre jamais les deux opérations dans la même minute ne s'entraîne pas à
+les distinguer — il s'entraîne à appliquer celle qu'on lui a annoncée.
+
+## Ce qui est fait
+
+**« Somme ou Produit ? »** — onze marches. Les trois premières montrent les
+deux écritures côte à côte, sur les mêmes nombres, et ne demandent que le
+signe. Puis le signe d'une expression seule, en vrac. Puis le résultat, avec
+toujours le résultat de l'AUTRE opération en premier piège.
+
+**Et les automatismes sont presque gratuits**, parce qu'un exercice ici est un
+GÉNÉRATEUR plus une ACTIVITÉ. Le même générateur rejoué ailleurs donne
+**« Réflexe des Signes »** (contre-la-montre, les marches du signe seules) et
+**« Attrape le Bon Signe »** (arcade, les marches mêlées). Trois portes, un
+seul contenu à maintenir.
+
+## Arbitrage à poser
+
+Le chrono ne porte que sur le SIGNE : chronométrer un calcul mental demande
+deux choses à la fois, et n'ancre ni l'une ni l'autre. À revoir si Rémy
+constate le contraire en classe.

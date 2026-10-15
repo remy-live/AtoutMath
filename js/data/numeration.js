@@ -572,6 +572,82 @@ export const numerationExercises = [
         instruction: "Douze marches, deux questions chacune. LES CINQ PREMIÈRES NE DEMANDENT PAS DE CALCULER : seulement de dire si le produit sera positif ou négatif. C'est le vrai sujet du chapitre — (−3) + (−4) fait −7, mais (−3) × (−4) fait +12, et ce n'est pas la même règle. Ensuite on calcule, d'abord avec les parenthèses puis sans. Les trois dernières marches passent à plusieurs facteurs : on ne récite plus une règle, on COMPTE les facteurs négatifs, et leur parité décide. La dernière garde les cas à part : le zéro, le 1, le −1, et le carré d'un négatif — (−4)² vaut +16, mais −4² vaut −16."
     },
     {
+        // SOMME OU PRODUIT ? — celui qui fait CHOISIR la règle.
+        //
+        // RÉMY : « en ce moment avec mes 4ᵉ, je fais les additions,
+        // soustractions, simplification et multiplications de nombres
+        // relatifs, c'est pas simple pour eux. Quel type d'exercice
+        // pourrait-on faire pour bien les entraîner ».
+        //
+        // NEUF EXERCICES TOUCHAIENT DÉJÀ LES RELATIFS, et le calcul était
+        // couvert. Le trou : chacun ANNONCE son opération. On entre dans
+        // « Multiplier », donc on multiplie. Or l'erreur reine de la 4ᵉ n'est
+        // pas d'ignorer une règle, c'est d'appliquer celle du produit à une
+        // somme — « moins et moins font plus », donc −3 − 5 = 8. Un élève qui
+        // ne rencontre jamais les deux opérations dans la même minute
+        // s'entraîne à appliquer celle qu'on lui a annoncée.
+        //
+        // ET LE RÉSULTAT VIENT APRÈS LE SIGNE, Rémy : « et après on peut aussi
+        // demander le résultat ».
+        id: 'num-relatifs-melange',
+        cree: '2026-10-15',
+        consignePapier: 'Regarde l’opération AVANT les signes : la règle n’est pas la même.',
+        colonnesPapier: 3,
+        title: 'Somme ou Produit ?',
+        generatorId: 'num.relatifs.melange', activityId: 'buttons',
+        motsClefs: ['règle des signes', 'somme', 'produit', 'addition', 'multiplication',
+            'négatif', 'positif', 'confusion'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Onze marches. LES TROIS PREMIÈRES MONTRENT LES DEUX ÉCRITURES CÔTE À CÔTE : les mêmes deux nombres, avec + et avec ×, et une seule question — lequel donne un résultat positif ? On ne calcule rien, on choisit la règle. Ensuite le signe d’une seule expression, somme ou produit au hasard, puis sans les parenthèses — c’est là que −3 − 5 et −3 × (−5) se ressemblent le plus. Les quatre dernières demandent le résultat, et le premier piège y est toujours le résultat de L’AUTRE opération."
+    },
+    {
+        // LE RÉFLEXE DU SIGNE, CONTRE LA MONTRE.
+        //
+        // RÉMY, juste après avoir choisi l'exercice d'apprentissage : « et
+        // puis après viser des automatismes, au début on applique, comment
+        // après rendre cela un peu ludique et vraiment ancrer les réflexes ».
+        //
+        // RIEN À ÉCRIRE POUR ÇA, ET C'EST LE POINT : un exercice, dans ce
+        // logiciel, est un GÉNÉRATEUR plus une ACTIVITÉ. Le même générateur
+        // rejoué en contre-la-montre devient l'entraînement au réflexe, et il
+        // garde tout — les pièges qui nomment la confusion, l'explication, le
+        // carnet d'erreurs. C'est déjà ce que font « Sprint des Notations » et
+        // « Attrape le Résultat ».
+        //
+        // ET SEULEMENT LES MARCHES DU SIGNE. Un chronomètre sur un calcul
+        // mental demande deux choses à la fois ; ce qu'on veut ancrer ici, et
+        // qui doit devenir instantané, c'est « quelle règle s'applique ? ».
+        id: 'num-relatifs-melange-sprint',
+        cree: '2026-10-15',
+        consignePapier: 'Donne le SIGNE du résultat, sans calculer.',
+        colonnesPapier: 4,
+        title: 'Réflexe des Signes',
+        generatorId: 'num.relatifs.melange', activityId: 'sprint',
+        params: { marches: ['signe-somme', 'signe-produit', 'signe-melange', 'signe-simple'] },
+        motsClefs: ['règle des signes', 'automatisme', 'réflexe', 'chrono', 'somme', 'produit'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Le même travail que « Somme ou Produit ? », mais contre la montre et sur le SIGNE seul. On ne calcule rien : on regarde l'opération, et l'on répond. C'est l'étape d'après celle où l'on applique la règle — celle où elle doit devenir instantanée."
+    },
+    {
+        // LE MÊME, EN ARCADE — « un peu ludique », demandé le même jour.
+        //
+        // ICI ON CALCULE, et c'est voulu : la taupe apporte le jeu, donc la
+        // question peut redemander un résultat sans que la séance devienne un
+        // contrôle. Les marches mêlées seulement : attraper le bon nombre
+        // quand la série alterne sommes et produits, c'est exactement le
+        // réflexe qu'on cherche, avec la main en plus.
+        id: 'num-relatifs-melange-arcade',
+        cree: '2026-10-15',
+        consignePapier: 'Calcule. Attention : somme ou produit, ce n’est pas la même règle.',
+        colonnesPapier: 4,
+        title: 'Attrape le Bon Signe',
+        generatorId: 'num.relatifs.melange', activityId: 'moles',
+        params: { marches: ['calcul-melange', 'calcul-simple'] },
+        motsClefs: ['règle des signes', 'automatisme', 'arcade', 'somme', 'produit', 'calcul mental'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Les sommes et les produits se suivent sans prévenir, et l'on attrape le bon résultat. Le piège est toujours là : la proposition la plus tentante est le résultat de L'AUTRE opération."
+    },
+    {
         // LE SERPENT LITTÉRAL. Rémy : « Quel jeu sympa comme Nova ou le
         // Peintre pourrait-on mettre en place ? »
         //
