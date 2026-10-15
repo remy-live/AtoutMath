@@ -408,6 +408,34 @@ export const fractionsExercises = [
         instruction: "Rends la fraction irréductible ! Décompose le numérateur et le dénominateur (36/48 = 12×3 / 12×4), puis barre le facteur commun d'un coup de sabre. Attention aux pièges : si rien ne se simplifie, lève le bouclier 🛡️."
     },
     {
+        // LIRE LA FRACTION D'UNE FIGURE — le tout premier geste du chapitre,
+        // et il manquait.
+        //
+        // RÉMY : « on a même pas fait d'exercice de fraction où il faut écrire
+        // la fraction en fonction d'un camembert, pavage et avec la difficulté
+        // que parfois les parts ne sont pas identiques et que du coup, on
+        // sépare mentalement et en indice on peut voir la découpe ».
+        //
+        // AUDITÉ AVANT D'ÉCRIRE, ET IL AVAIT RAISON : vingt-huit exercices de
+        // fractions au catalogue, et pas un seul ne demandait de LIRE une
+        // figure. « La Pizzeria », juste en dessous, fait l'inverse — on lui
+        // donne 3/4 et l'élève colorie.
+        //
+        // LA DIFFICULTÉ QU'IL DEMANDE EST LA BONNE : une figure aux morceaux
+        // inégaux ne se COMPTE pas, elle se redécoupe. Un élève qui compte
+        // « 1 sur 3 » sans regarder la taille des morceaux écrit une fraction
+        // fausse — et c'est exactement ce que le temps B attrape.
+        id: 'frac-lire',
+        cree: '2026-10-15',
+        title: 'Lis la Fraction',
+        generatorId: 'frac.lire', activityId: 'numpad',
+        motsClefs: ['fraction', 'camembert', 'pavage', 'numérateur', 'dénominateur',
+            'parts égales', 'lire une fraction', 'partage', 'colorié'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Une figure est coloriée en partie : écris la fraction qu'elle montre. Le nombre du BAS dit en combien de parts ÉGALES la figure est coupée, celui du HAUT combien sont coloriées. Les trois premières marches coupent en parts toutes pareilles : il n'y a qu'à compter. LES TROIS DERNIÈRES NE LE FONT PAS — un morceau peut en valoir deux ou trois autres, et compter les morceaux donne alors une fraction fausse. Il faut d'abord trouver la plus petite part et voir combien de fois elle tient dans la figure. Le deuxième indice redessine la figure AVEC toutes ses coupes."
+    },
+    {
         // LE PPCM RENDU MANGEABLE. Deux fractions de dénominateurs différents
         // ne se posent pas sur la même pizza tant qu'on n'a pas trouvé le
         // découpage commun. L'élève ne calcule pas une fraction équivalente sur

@@ -170,6 +170,7 @@ export const CODES_EXERCICES = {
     'frac-probleme':              'HF',   // Histoires de Fractions
     'frac-samurai':               'SF',   // Le Samouraï des Fractions
     'frac-pizza':                 'PZ',   // La Pizzeria des Fractions
+    'frac-lire':                  'LF',   // Lis la Fraction
     'dec-compare':                'DD',   // Décimaux en Duel
     'geo-angles-manquants':       'VM',   // La Valeur Manquante
     'geo-angles-nommer':          'NA',   // Le Nom des Angles

@@ -1060,3 +1060,54 @@ sur la rangée du haut**. Les photos sont dans `tools/tmp/`.
 levait « querySelectorAll is not a function » — **et la fenêtre s'ouvrait quand
 même, avec aucun de ses deux boutons branché.** Une fenêtre qui s'affiche et ne
 répond pas ressemble à un logiciel lent, pas à un logiciel cassé.
+
+---
+
+# « Lis la Fraction » — FAIT (code dicté LF)
+
+> « on a même pas fait d'exercice de fraction où il faut écrire la fraction en
+> fonction d'un camembert, pavage et avec la difficulté que parfois les parts
+> ne sont pas identiques et que du coup, on sépare mentalement et en indice on
+> peut voir la découpe »
+
+**Six marches en deux temps.** Trois aux parts égales — camembert, pavage, les
+deux mêlés — puis trois aux parts INÉGALES. L'élève écrit la fraction dans
+deux trous, numérateur sur dénominateur, comme au tableau.
+
+**La difficulté qu'il demande est la bonne, et elle se mesure** : sur les
+marches inégales, le nombre de MORCEAUX est toujours plus petit que le nombre
+de PARTS. Un élève qui compte les morceaux obtient donc toujours une fraction
+fausse — et le diagnostic la NOMME au lieu de la constater : « tu as compté
+les MORCEAUX : il y en a 7. Mais ils ne sont pas de la même taille, et une
+fraction compte des parts ÉGALES. »
+
+**Le second indice redécoupe la figure**, exactement comme il le demandait :
+les traits qui manquaient apparaissent en pointillés.
+
+## Deux décisions qui ne se devinent pas
+
+**1. LA FRACTION EST TOUJOURS IRRÉDUCTIBLE.** Si la figure montrait 6 parts
+dont 3 coloriées, « 1/2 » serait une réponse JUSTE que la grille compterait
+fausse : la comparaison des réponses ne sait pas accepter deux écritures. On
+choisit donc toujours un numérateur premier avec le dénominateur. On ne punit
+personne pour avoir simplifié — la simplification a son exercice à elle.
+
+**2. L'INDICE NE PROMET RIEN QU'IL NE MONTRE.** Aux parts égales il n'y a
+aucune coupe à révéler ; le second indice y disait pourtant « voilà la figure
+avec toutes ses coupes » en remontrant la même image. Un indice qui ne montre
+rien de neuf en promettant le contraire est pire que pas d'indice : l'élève le
+lit, ne voit pas la différence, et conclut qu'il n'a pas compris. Il dit
+maintenant où va chaque nombre.
+
+## Le défaut que seule la planche de contact a dit
+
+**LE PREMIER PAVAGE SORTAIT TROUÉ.** Les morceaux se posaient à la file et
+passaient à la ligne quand le suivant ne tenait plus : la figure avait des
+trous et des bords en escalier. **Ce n'est pas un défaut de dessin, c'est un
+défaut de mathématiques** — la figure DOIT valoir un, c'est le tout dont on
+prend une fraction. Trouée, la question n'a plus de réponse.
+
+Le SVG était pourtant bien formé, avec le bon nombre de rectangles : aucun
+sélecteur ne l'aurait dit. Les morceaux se découpent maintenant ligne par
+ligne, chacune remplie au trait près, et une épreuve recompose la grille case
+par case pour vérifier qu'aucune n'est couverte deux fois ni oubliée.
