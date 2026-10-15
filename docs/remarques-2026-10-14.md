@@ -734,3 +734,52 @@ d'arcade de la règle des signes — et c'est trois lignes dans `MODES`
   une question apparaître sous ses doigts et répond au hasard.
 - **Le voile passe sous la pause du professeur** : « tout le monde s'arrête »
   veut dire tout le monde, défi compris.
+
+---
+
+# Sa demande du 15 au soir, après « Compter l'Argent »
+
+> « et après tu peux faire des petits problèmes avec calcul »
+
+**Ce qui existe déjà, vérifié avant d'écrire quoi que ce soit** : « Histoires
+en Pagaille » (code HP), onze familles rangées selon la typologie de Vergnaud,
+trois niveaux CM2 / 6ème / 5ème, un schéma gratuit sous chaque énoncé, et une
+version papier à deux lignes de réponse. L'exercice existe, il est complet, et
+il est bon.
+
+**Ce qu'il n'a pas, et c'est précisément le chapitre que Rémy enseigne en ce
+moment** : AUCUNE famille sur les nombres relatifs. Ses 4ème font « les
+additions, soustractions, simplification et multiplications de nombres
+relatifs » — et les quatre mondes où un relatif est une histoire vraie
+(température, altitude, compte en banque, ascenseur, chronologie avant/après
+J.-C.) n'existent nulle part dans le logiciel.
+
+Les onze familles s'arrêtent aussi aux entiers et aux prix simples : rien sur
+les décimaux, rien sur le calcul mental du « Détour par le Nombre Rond ».
+
+**Tranché par lui, dans la minute** : « Dans la même catégorie que les
+billets, l'argent et les prix. »
+
+Donc : payer, rendre la monnaie, le prix de plusieurs articles, ce qu'il me
+reste — avec les pièces et les billets DESSINÉS, comme dans « Compter
+l'Argent », puisque c'est « la même catégorie » qu'il demande. Les dessins
+existent déjà et s'exportent : `pieceSvg`, `billetSvg`, `tasSvg`.
+
+Ce que « Histoires en Pagaille » ne fait pas et qu'il faut donc faire ici :
+**les décimaux**. Ses onze familles travaillent des prix ENTIERS ; or la
+monnaie rendue sur un billet de 10 € pour un article à 7,40 € est exactement
+l'endroit où un élève de sixième écrit 3,60 au lieu de 2,60 — ou 2,6 au lieu
+de 2,60.
+
+Les familles à écrire, et chacune a son geste :
+
+| la question | l'opération |
+| --- | --- |
+| le total de deux (puis trois) articles | + |
+| la monnaie rendue sur un billet | − |
+| ce qu'il me reste après la dépense | − |
+| le prix de plusieurs articles identiques | × |
+| le prix d'UN article quand on connaît celui de plusieurs | ÷ |
+| combien puis-je en acheter avec ce que j'ai | ÷ avec reste |
+| deux étapes : j'achète deux choses ET je paie avec un billet | + puis − |
+| combien me manque-t-il | comparaison |
