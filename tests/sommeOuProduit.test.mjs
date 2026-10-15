@@ -149,14 +149,15 @@ test('LA COMPÉTENCE SUIT L\'OPÉRATION TIRÉE, PAS LA MARCHE', () => {
         `la marche mêlée ne mêle pas : ${somme} sommes, ${produit} produits`);
 });
 
-test('LES TROIS PORTES DU MÊME GÉNÉRATEUR EXISTENT, ET LEURS MARCHES AUSSI', () => {
+test('LES QUATRE PORTES DU MÊME GÉNÉRATEUR EXISTENT, ET LEURS MARCHES AUSSI', () => {
     // UN EXERCICE EST UN GÉNÉRATEUR PLUS UNE ACTIVITÉ, et c'est ce qui rend
     // l'entraînement aux automatismes presque gratuit. Rémy : « et puis après
     // viser des automatismes […] comment rendre cela un peu ludique et
     // vraiment ancrer les réflexes ».
     const portes = exercices.filter(e => e.generatorId === 'num.relatifs.melange');
-    assert.equal(portes.length, 3, `${portes.length} exercice(s) sur ce générateur`);
-    assert.deepEqual(portes.map(e => e.activityId).sort(), ['buttons', 'moles', 'sprint']);
+    assert.equal(portes.length, 4, `${portes.length} exercice(s) sur ce générateur`);
+    assert.deepEqual(portes.map(e => e.activityId).sort(),
+        ['buttons', 'moles', 'sprint', 'sprint']);
 
     // ET LES MARCHES PRÉRÉGLÉES EXISTENT VRAIMENT. Un identifiant mal recopié
     // ne lève aucune erreur : la liste cochée devient vide, et l'exercice
@@ -168,9 +169,34 @@ test('LES TROIS PORTES DU MÊME GÉNÉRATEUR EXISTENT, ET LEURS MARCHES AUSSI', 
             assert.ok(connus.has(m), `${e.id} coche « ${m} », qui n'est pas une marche`);
         }
     }
-    // LE CHRONO NE DEMANDE QUE LE SIGNE : un chronomètre sur un calcul mental
-    // demande deux choses à la fois, et n'ancre ni l'une ni l'autre.
-    const chrono = portes.find(e => e.activityId === 'sprint');
-    assert.ok(chrono.params.marches.every(m => marche(m) && !marche(m).calcul),
-        `« ${chrono.title} » chronomètre une marche où il faut calculer`);
+    // DEUX CHRONOS, ET ILS NE FONT PAS LA MÊME CHOSE — c'est un arbitrage de
+    // RÉMY qui renverse le mien.
+    //
+    // J'avais écrit, en montant le premier : « un chronomètre sur un calcul
+    // mental demande deux choses à la fois, et n'ancre ni l'une ni l'autre ».
+    // Lui, après l'avoir vu en classe : « pour les sommes et produits il faut
+    // aussi faire faire des calculs pas que le signe ». L'un ancre le CHOIX de
+    // la règle, l'autre son APPLICATION, et l'ordre dans lequel on les prend
+    // est tout.
+    const signe = exercices.find(e => e.id === 'num-relatifs-melange-sprint');
+    const calcul = exercices.find(e => e.id === 'num-relatifs-melange-calcul');
+    assert.ok(signe && calcul, 'une des deux portes chrono manque');
+    assert.ok(signe.params.marches.every(m => marche(m) && !marche(m).calcul),
+        `« ${signe.title} » chronomètre une marche où il faut calculer`);
+    assert.ok(calcul.params.marches.length >= 2
+        && calcul.params.marches.every(m => marche(m) && marche(m).calcul),
+        `« ${calcul.title} » ne fait pas calculer — c'était tout le sujet de la demande`);
+
+    // ET UN TITRE QUI MENT COÛTE UNE SÉANCE. L'arcade s'appelait « Attrape le
+    // Bon Signe » alors que ses marches DEMANDENT le résultat depuis le
+    // premier jour : un professeur qui la prenait pour travailler le signe
+    // recevait du calcul mental.
+    for (const p of portes) {
+        const calcule = (p.params && p.params.marches || [])
+            .every(m => marche(m) && marche(m).calcul);
+        if (calcule) {
+            assert.ok(!/signe/i.test(p.title),
+                `« ${p.title} » annonce le signe et demande le résultat`);
+        }
+    }
 });

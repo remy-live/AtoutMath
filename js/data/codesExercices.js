@@ -56,7 +56,11 @@ export const CODES_EXERCICES = {
     'num-relatifs-produit':       'MR',   // Multiplier des Relatifs, pas à pas
     'num-relatifs-melange':       'SX',   // Somme ou produit ? — Somme et le signe ×
     'num-relatifs-melange-sprint': 'RX',  // Réflexe des signes — le même, contre la montre
-    'num-relatifs-melange-arcade': 'VX',  // Attrape le bon signe — le même, en arcade
+    'num-relatifs-melange-arcade': 'VX',  // Attrape le Résultat Relatif — le même, en arcade
+    // « RE », « RX » et « CK » étaient pris : on garde « ER », les deux
+    // lettres d'Express et de Relatifs.
+    'num-relatifs-melange-calcul': 'ER',  // calcul Express des Relatifs — chrono sur le résultat
+    'num-ninja-relatifs-meles':   'NM',   // le Ninja des deux règles — Négatifs Mêlés
     // « CA » (Canon des compléments) et « AR » (Additionner des Relatifs) étaient
     // pris, et toutes les initiales de « Compter » aussi : A comme Argent, C
     // comme Centimes.

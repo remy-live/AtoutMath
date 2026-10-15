@@ -7,6 +7,7 @@
 
 import { registerGenerator, registerActivity, declarerSansNote } from '../registry.js';
 import { REGLAGE_SAISIE } from '../../ui/champsGrille.js';
+import { PARAM_ALLURE } from '../allure.js';
 
 import {
     additionGenerator, soustractionGenerator, multFactGenerator,
@@ -412,11 +413,20 @@ registerActivity({
 // Contre-la-montre : le temps accordé se resserre à chaque bonne réponse.
 // Activité générique — elle ne connaît aucune notion, donc elle sert aussi bien
 // les notations de géométrie que les tables ou les fractions.
+// LES DEUX JEUX CHRONOMÉTRÉS PRENNENT L'ALLURE DU NINJA — Rémy : « pour
+// détour express, c'est sympa mais comment régler la durée sur chaque
+// question ? (est-ce le cas pour d'autres exercices) ».
+//
+// LA RÉPONSE ÉTAIT NON, ET POUR LES DEUX. Neuf secondes et un plancher à 2,6
+// d'un côté, 2 600 ms de sortie et 850 de cadence de l'autre — tout écrit en
+// dur. Le Ninja, lui, avait son réglage depuis août ; la table est maintenant
+// dans `js/core/allure.js` et les trois la lisent.
 registerActivity({
     id: 'sprint',
     label: 'Contre-la-montre',
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
+    params: [PARAM_ALLURE],
     load: () => import('./sprint.js')
 });
 
@@ -425,6 +435,7 @@ registerActivity({
     label: 'Attraper le bon nombre',
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
+    params: [PARAM_ALLURE],
     load: () => import('./moles.js')
 });
 

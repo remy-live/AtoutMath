@@ -721,6 +721,37 @@ Lui ajouter un mode « produits », ou mieux un mode « mêlés », en ferait le
 d'arcade de la règle des signes — et c'est trois lignes dans `MODES`
 (`js/core/tri.js`), pas un jeu neuf.
 
+---
+
+## Et sa réponse, le 15 au soir : « pas que le signe »
+
+> « pour les sommes et produits il faut aussi faire faire des calculs pas que
+> le signe et aussi des jeux en rapport avec cela »
+
+**IL RENVERSE UN DE MES ARBITRAGES, ET IL A LA MAIN.** J'avais écrit, en
+montant « Réflexe des Signes » : « un chronomètre sur un calcul mental demande
+deux choses à la fois, et n'ancre ni l'une ni l'autre », avec la note « à
+revoir si Rémy constate le contraire en classe ». Il l'a constaté.
+
+**Trois choses faites, et une quatrième trouvée en chemin :**
+
+1. **« Calcul Express des Relatifs »** (code **ER**) — le chrono sur les quatre
+   marches de CALCUL. Les deux portes chrono restent et ne font pas doublon :
+   l'une ancre le CHOIX de la règle, l'autre son APPLICATION.
+2. **Le Ninja des deux règles** (code **NM**) — deux modes neufs dans
+   `js/core/tri.js` : « produits » et « mêlés ». Une vague mêlée porte toujours
+   au moins une somme ET un produit ; tirée à pile ou face par bulle, elle
+   n'aurait mêlé rien du tout une fois sur trente-deux.
+3. **Le facteur 1 écarté des produits** — vu sur la photo : deux bulles sur
+   cinq portaient « 9 × (−1) ». Le signe y est juste, mais le produit n'en est
+   pas un.
+4. **UN TITRE QUI MENTAIT.** « Attrape le Bon Signe » DEMANDE le résultat
+   depuis le premier jour — ses marches sont `calcul-melange` et
+   `calcul-simple`. Un professeur qui la prenait pour travailler le signe
+   recevait du calcul mental. Renommée **« Attrape le Résultat Relatif »**,
+   et une garde refuse désormais tout titre qui annonce le signe sur des
+   marches qui calculent.
+
 ## Le défi est fait — ce qui a été tranché en l'écrivant
 
 - **Ça coupe, et ça ne démonte rien.** L'exercice reste monté dessous ; le
@@ -783,3 +814,69 @@ Les familles à écrire, et chacune a son geste :
 | combien puis-je en acheter avec ce que j'ai | ÷ avec reste |
 | deux étapes : j'achète deux choses ET je paie avec un billet | + puis − |
 | combien me manque-t-il | comparaison |
+
+---
+
+# « Comment régler la durée sur chaque question ? » — et la réponse était NON
+
+> « pour détour express, c'est sympa mais comment régler la durée sur chaque
+> question ? (est ce le cas pour d'autres exercices) »
+
+**Mesuré avant de répondre, et sa question en valait deux :**
+
+| activité | ce qui réglait la durée |
+| --- | --- |
+| `sprint` — Contre-la-montre | **rien.** 9 000 ms au départ, plancher 2 600, ×0,88 par bonne réponse, ×1,22 après une erreur — tout écrit en dur |
+| `moles` — Attraper le bon nombre | **rien.** 2 600 ms de sortie, 850 ms de cadence |
+| `ninja` — Ninja des Relatifs | « Allure », quatre crans, depuis août |
+
+Donc oui, c'était le cas ailleurs, et ce n'était pas un oubli isolé : **deux
+jeux chronométrés sur trois n'avaient aucune vis.** Le troisième en avait une,
+et c'est la sienne qu'on a déménagée dans `js/core/allure.js` pour que les
+trois lisent la même table — recopiée trois fois, « posée » aurait fini par
+vouloir dire trois choses.
+
+**Deux précisions qui ne se devinent pas :**
+
+- **Le plancher suit l'allure**, pas seulement le départ. Multiplier le seul
+  départ ferait redescendre tout le monde aux mêmes 2,6 secondes au bout de six
+  bonnes réponses — c'est-à-dire exactement là où l'élève lent décroche.
+- **Chez les taupes, la cadence suit la sortie.** Ralentir la sortie sans la
+  cadence ferait sortir trois disques de plus pendant qu'on lit le premier :
+  « plus lent » donnerait un écran plus chargé.
+
+Mesuré au navigateur, sur « Détour Express » : jauge à **9 s** en normale,
+**14,4 s** en tranquille, **6,75 s** en rapide.
+
+---
+
+# La soustraction posée : deux méthodes de retenue, et ses élèves font l'autre
+
+> « pour la soustraction posée, il faut que si il y a une retenue en haut, la
+> mettre et actualisé le +1 en bas dans le rang après. mais j'ai des élèves qui
+> font une autre méthode où pour 53 − 17, il mette le 1 à 3 et au lieu du 5, il
+> barre et mette 4, est ce clair ? »
+>
+> « du coup peut être un bouton changer de méthode avec un popup qui montre un
+> exemple »
+
+**C'est parfaitement clair, et ce sont les deux méthodes que l'école française
+enseigne — selon l'année, le manuel et le professeur :**
+
+| | 53 − 17 |
+| --- | --- |
+| **Par compensation** (« le +1 en bas ») | on écrit un petit 1 devant le 3 (13 − 7 = 6), **et l'on ajoute 1 au 1 de 17**, qui devient 2 : 5 − 2 = 3. On ajoute dix en haut ET dix en bas, la différence ne change pas. |
+| **Par emprunt** (« on casse une dizaine ») | on écrit le 1 devant le 3 (13 − 7 = 6), **on barre le 5 et l'on écrit 4 au-dessus** : 4 − 1 = 3. On casse une dizaine du 53 pour la donner aux unités. |
+
+**Les deux donnent 36.** La première est plus rapide à poser, la seconde dit ce
+qui se passe vraiment — et c'est elle que beaucoup d'élèves apprennent au
+primaire aujourd'hui.
+
+**Ce qu'il demande** : un bouton « changer de méthode », avec une fenêtre qui
+montre un exemple de chacune. Donc **deux gestes à écrire dans la soustraction
+posée**, et un réglage qui dit lequel l'exercice attend — plus la fenêtre
+d'exemple, qui est un `showModal` et jamais une fenêtre native.
+
+**À vérifier avant d'écrire** : ce que `js/games/poserOperation.js` fait
+aujourd'hui de la retenue, et si le barré d'un chiffre y est seulement
+dessinable.

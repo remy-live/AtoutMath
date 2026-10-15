@@ -26,6 +26,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { meneurDemo } from '../core/meneurDemo.js';
+import { allureDe } from '../core/allure.js';
 import {
     MODES, creerPartie, genererVague, toucher, laisserPasserGroupe, vagueFinie, resteAPrendre
 } from '../core/tri.js';
@@ -58,8 +59,12 @@ const LENTEUR_ZEROS = 1.7;
  */
 const LENTEUR_CALCUL = 1.35;
 
-const lenteurDe = (mode) => (mode === 'zeros' ? LENTEUR_ZEROS
-    : (mode === 'positifs' || mode === 'negatifs' ? LENTEUR_CALCUL : 1));
+// ET LE TEST PORTE SUR CE QUE L'OBJET DEMANDE, PAS SUR LA LISTE DES MODES.
+// Écrit « positifs ou negatifs », il rendait 1 — donc la pleine vitesse — pour
+// tout mode ajouté ensuite : les deux modes de produits, arrivés après, y
+// seraient tombés sans que rien ne le dise. Un seul mode ne porte pas de
+// calcul, et c'est celui-là qu'on nomme.
+const lenteurDe = (mode) => (mode === 'zeros' ? LENTEUR_ZEROS : LENTEUR_CALCUL);
 
 /**
  * L'ALLURE, RÉGLABLE PAR LE PROFESSEUR.
@@ -75,14 +80,11 @@ const lenteurDe = (mode) => (mode === 'zeros' ? LENTEUR_ZEROS
  * temps à le parcourir. Sans le carré, les bulles sortiraient par le haut de
  * l'écran au réglage lent.
  */
-const ALLURES = {
-    tranquille: 1.6, posee: 1.3, normale: 1, rapide: 0.75,
-    // Les noms de l'ancien réglage « rythme » du Ninja des Nombres : il ne
-    // faisait rien du tout, faute d'être lu. Les garder évite qu'un parcours
-    // déjà enregistré change d'allure sans prévenir.
-    lent: 1.6, normal: 1
-};
-const allureDe = (p) => ALLURES[p.vitesse] || ALLURES[p.rythme] || 1;
+// LA TABLE A DÉMÉNAGÉ DANS `js/core/allure.js`, et elle y sert trois jeux au
+// lieu d'un : le contre-la-montre et les taupes n'avaient aucun réglage de
+// durée avant que Rémy ne le demande. Recopiée trois fois, elle aurait divergé
+// à la première correction — et « posée » n'aurait plus voulu dire la même
+// chose d'un exercice à l'autre.
 
 function auCoeur(el, x, y) {
     const r = el.getBoundingClientRect();

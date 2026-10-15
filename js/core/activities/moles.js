@@ -22,6 +22,7 @@
 import { regTimeout, regInterval } from '../timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { meneurDemo } from '../meneurDemo.js';
+import { allureDe } from '../allure.js';
 
 const HOLES = 9;
 const SORTIES_MAX = 3;       // disques visibles en même temps
@@ -35,6 +36,17 @@ export function mount(container, session, opts = {}) {
     let gate = null;
     let metronome = null;
     let generation = 0;      // invalide les minuteurs d'une question passée
+
+    // L'ALLURE RÉGLÉE PAR LE PROFESSEUR — Rémy : « comment régler la durée sur
+    // chaque question ? ». Elle ne l'était pas ici non plus.
+    //
+    // LES DEUX DURÉES SUIVENT ENSEMBLE, et c'est ce qui garde le jeu jouable :
+    // ralentir la sortie sans ralentir la cadence ferait sortir trois disques
+    // de plus pendant qu'on lit le premier, et « plus lent » donnerait un
+    // écran plus chargé. Le rapport entre les deux ne bouge pas.
+    const allure = allureDe(session.params);
+    const dureeSortie = Math.round(DUREE_SORTIE * allure);
+    const cadence = Math.round(CADENCE * allure);
 
     container.innerHTML = `
         <div class="moles-wrap">
@@ -82,7 +94,7 @@ export function mount(container, session, opts = {}) {
         }
         // Premier trio tout de suite, puis le métronome prend le relais.
         sortir(); sortir();
-        metronome = regInterval(() => tic(), CADENCE);
+        metronome = regInterval(() => tic(), cadence);
     }
 
     function tic() {
@@ -136,7 +148,7 @@ export function mount(container, session, opts = {}) {
             sorties[idx] = null;
             mole.classList.remove('mole--up');
         };
-        regTimeout(rentrer, DUREE_SORTIE + Math.random() * 700);
+        regTimeout(rentrer, dureeSortie + Math.random() * 700 * allure);
     }
 
     holes.forEach((hole, idx) => {

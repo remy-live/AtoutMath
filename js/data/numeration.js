@@ -23,10 +23,17 @@ const NINJA_REGLAGES = (mode) => ([
 
             {
                 id: 'mode', type: 'select', label: 'Ce qu\'on coupe', default: mode,
-                aide: 'Trois règles pour le même geste. « Zéros inutiles » travaille l\'écriture décimale ; les deux autres, le signe d\'une somme de relatifs — l\'un en tranchant, l\'autre en tirant.',
+                // LE POURQUOI VA ICI, PAS DANS L'AIDE : une aide de réglage
+                // tient en deux phrases courtes, et une épreuve le garde.
+                // « Sommes ET produits » est le seul mode où l'élève doit
+                // CHOISIR sa règle avant de l'appliquer — et appliquer celle
+                // du produit à une somme est l'erreur reine de la 4ᵉ.
+                aide: 'Cinq règles pour le même geste. « Zéros inutiles » travaille l\'écriture décimale ; les autres, le signe d\'un calcul de relatifs — et « sommes ET produits » fait CHOISIR la règle.',
                 options: [
-                    { value: 'negatifs', label: 'Les résultats négatifs' },
-                    { value: 'positifs', label: 'Les résultats positifs (au tir)' },
+                    { value: 'negatifs', label: 'Les sommes négatives' },
+                    { value: 'positifs', label: 'Les sommes positives (au tir)' },
+                    { value: 'produits', label: 'Les produits négatifs' },
+                    { value: 'meles', label: 'Les résultats négatifs — sommes ET produits' },
                     { value: 'zeros', label: 'Les zéros inutiles' }
                 ]
             },
@@ -565,6 +572,31 @@ export const numerationExercises = [
         instruction: "Des nombres traversent l'écran et tu tranches LES ZÉROS INUTILES, ceux qu'on peut effacer sans changer le nombre. Un zéro est inutile s'il est DEVANT le nombre — 048 s'écrit 48 — ou tout à la FIN après la virgule : 2,90 s'écrit 2,9. Les autres tiennent la place d'un rang et doivent rester : dans 4,08 le zéro dit qu'il n'y a pas de dixième, et dans 250 qu'il n'y a pas d'unité. Attention, laisser filer un zéro inutile coûte une vie, comme trancher un zéro utile : ne rien faire n'est pas une stratégie."
     },
     {
+        // LE NINJA DES DEUX RÈGLES — « et aussi des jeux en rapport avec cela ».
+        //
+        // LE MOTEUR SAVAIT DÉJÀ TRIER DES CALCULS ; il ne savait tirer que des
+        // SOMMES. Deux modes de plus dans `js/core/tri.js`, et le jeu qui
+        // existait depuis août devient celui de la règle des signes.
+        //
+        // UNE PORTE À PART, ET NON UN RÉGLAGE DE PLUS. Les deux modes sont
+        // accessibles depuis « Ninja des Relatifs » en changeant « ce qu'on
+        // coupe » — mais un réglage que personne ne déplie n'existe pas : 87
+        // exercices portent un dessin sous leurs indices que personne ne voit,
+        // on connaît la leçon. Celui-ci s'ouvre déjà réglé sur « mêlés », qui
+        // est le seul mode où l'élève doit CHOISIR sa règle avant de
+        // l'appliquer.
+        id: 'num-ninja-relatifs-meles', title: 'Le Ninja des Deux Règles',
+        cree: '2026-10-15',
+        activityId: 'ninja', skills: ['num.relatifs.somme', 'num.relatifs.produit'],
+        sansRevision: true,
+        params: { vitesse: 'posee', mode: 'meles', vies: 3, parVague: 5 },
+        paramSchema: NINJA_REGLAGES('meles'),
+        motsClefs: ['règle des signes', 'relatifs', 'somme', 'produit', 'négatif',
+            'trancher', 'ninja', 'arcade'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Des bulles traversent l'écran, et chacune porte une somme OU un produit de relatifs. Tu coupes celles dont le résultat est négatif. Le piège est tout le chapitre : dans une somme, c'est le nombre le plus éloigné de zéro qui donne le signe ; dans un produit, ce sont les signes des deux facteurs. Regarde l'opération AVANT les signes. L'allure part en « posée » — un tiers de temps en plus — parce qu'ici il faut d'abord CHOISIR la règle."
+    },
+    {
         id: 'num-relatifs-addition',
         cree: '2026-08-10',
         consignePapier: "Simplifie et calcule.",
@@ -662,16 +694,51 @@ export const numerationExercises = [
         // contrôle. Les marches mêlées seulement : attraper le bon nombre
         // quand la série alterne sommes et produits, c'est exactement le
         // réflexe qu'on cherche, avec la main en plus.
+        //
+        // LE TITRE MENTAIT, ET RÉMY L'A DIT AUTREMENT : « il faut aussi faire
+        // faire des calculs pas que le signe ». Cette porte-ci DEMANDE le
+        // résultat depuis le premier jour — ses marches sont `calcul-melange`
+        // et `calcul-simple` — mais elle s'appelait « Attrape le Bon Signe ».
+        // Un professeur qui la prenait pour travailler le signe recevait du
+        // calcul mental ; un titre qui ment coûte une séance.
         id: 'num-relatifs-melange-arcade',
         cree: '2026-10-15',
         consignePapier: 'Calcule. Attention : somme ou produit, ce n’est pas la même règle.',
         colonnesPapier: 4,
-        title: 'Attrape le Bon Signe',
+        title: 'Attrape le Résultat Relatif',
         generatorId: 'num.relatifs.melange', activityId: 'moles',
         params: { marches: ['calcul-melange', 'calcul-simple'] },
-        motsClefs: ['règle des signes', 'automatisme', 'arcade', 'somme', 'produit', 'calcul mental'],
+        motsClefs: ['règle des signes', 'automatisme', 'arcade', 'somme', 'produit',
+            'calcul mental', 'résultat'],
         tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
         instruction: "Les sommes et les produits se suivent sans prévenir, et l'on attrape le bon résultat. Le piège est toujours là : la proposition la plus tentante est le résultat de L'AUTRE opération."
+    },
+    {
+        // LE CALCUL CONTRE LA MONTRE — ET C'EST UN ARBITRAGE DE RÉMY QUI
+        // RENVERSE LE MIEN.
+        //
+        // J'avais écrit, en montant « Réflexe des Signes » : « un chronomètre
+        // sur un calcul mental demande deux choses à la fois, et n'ancre ni
+        // l'une ni l'autre » — et noté dans les remarques « à revoir si Rémy
+        // constate le contraire en classe ». Il l'a constaté : « pour les
+        // sommes et produits il faut aussi faire faire des calculs pas que le
+        // signe ».
+        //
+        // LES DEUX PORTES RESTENT, ET ELLES NE FONT PAS DOUBLON : l'une ancre
+        // le CHOIX de la règle, l'autre son APPLICATION. C'est l'ordre dans
+        // lequel on les prend qui compte — le signe d'abord, le résultat
+        // ensuite.
+        id: 'num-relatifs-melange-calcul',
+        cree: '2026-10-15',
+        consignePapier: 'Calcule. Regarde l’opération AVANT les signes.',
+        colonnesPapier: 4,
+        title: 'Calcul Express des Relatifs',
+        generatorId: 'num.relatifs.melange', activityId: 'sprint',
+        params: { marches: ['calcul-somme', 'calcul-produit', 'calcul-melange', 'calcul-simple'] },
+        motsClefs: ['règle des signes', 'calcul mental', 'chrono', 'automatisme',
+            'somme', 'produit', 'résultat'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Le RÉSULTAT, contre la montre. On commence par des sommes seules, puis des produits seuls, puis les deux mêlés, et enfin sans les parenthèses — c'est là que −3 − 5 et −3 × (−5) se ressemblent le plus. À prendre APRÈS « Réflexe des Signes » : tant que la règle ne se choisit pas toute seule, la chronométrer fait deux choses à la fois."
     },
     {
         // LE DÉTOUR PAR LE NOMBRE ROND.
