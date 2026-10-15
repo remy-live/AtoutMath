@@ -764,8 +764,22 @@ export const numerationExercises = [
         colonnesPapier: 4,
         title: 'Le Détour par le Nombre Rond',
         generatorId: 'calc.detour', activityId: 'buttons',
+        // LES NOMBRES SONT DES MOTS-CLEFS, et c'est Rémy qui l'a vu : « le nom
+        // Détour Express n'est pas évident car si je tape 99 dans la barre de
+        // recherche, j'aurai pu espérer tomber dessus ».
+        //
+        // MESURÉ AVANT DE CORRIGER : « 99 » rendait ZÉRO résultat, « 101 » et
+        // « 19 » aussi. L'exercice existe précisément pour 76 + 99, et le
+        // nombre 99 n'était écrit nulle part de cherchable — ni dans le
+        // titre, ni dans les mots-clefs, ni dans la consigne. Seuls 9, 8 et 98
+        // se trouvaient, et par accident : ils figuraient dans une phrase
+        // d'exemple.
+        //
+        // UNE GARDE LES TIENT À LA TABLE `VOISINS` du générateur : ajouter un
+        // voisin sans ajouter son nombre ici fait rougir l'épreuve.
         motsClefs: ['calcul mental', 'ajouter 9', 'retirer 9', 'compensation',
-            'nombre rond', 'dizaine', 'centaine', 'astuce'],
+            'nombre rond', 'dizaine', 'centaine', 'astuce',
+            '9', '99', '8', '98', '11', '101', '19', '21'],
         tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
         instruction: "Dix marches. LES TROIS PREMIÈRES NE DEMANDENT AUCUN CALCUL : trouver le nombre rond caché (9 c'est 10 − 1, 98 c'est 100 − 2), puis dire ce qu'on fait APRÈS le grand saut. C'est là qu'est le piège du chapitre : pour ajouter 9 on ajoute 10 puis on retire 1, mais pour RETIRER 9 on retire 10 puis on AJOUTE 1. Ensuite on écrit la ligne du milieu — 76 + 10 − 1 —, et seulement après on calcule. Le deuxième indice est un dessin : le grand saut, puis le petit pas en arrière."
     },
@@ -780,7 +794,10 @@ export const numerationExercises = [
         title: 'Détour Express',
         generatorId: 'calc.detour', activityId: 'sprint',
         params: { marches: ['calcul-plus', 'calcul-moins', 'calcul-melange', 'calcul-voisins'] },
-        motsClefs: ['calcul mental', 'chrono', 'automatisme', 'ajouter 9', 'retirer 9'],
+        // LES MÊMES NOMBRES QUE LA PORTE D'APPRENTISSAGE : c'est cette
+        // porte-ci que Rémy cherchait en tapant « 99 ».
+        motsClefs: ['calcul mental', 'chrono', 'automatisme', 'ajouter 9', 'retirer 9',
+            '9', '99', '8', '98', '11', '101', '19', '21'],
         tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
         instruction: "Le même calcul, contre la montre. On ne travaille plus la méthode — on vérifie qu'elle est devenue automatique. À prendre quand les trois premières marches du « Détour » sont acquises, pas avant."
     },
@@ -793,7 +810,8 @@ export const numerationExercises = [
         title: 'Attrape le Détour',
         generatorId: 'calc.detour', activityId: 'moles',
         params: { marches: ['calcul-melange', 'calcul-voisins'] },
-        motsClefs: ['calcul mental', 'arcade', 'ajouter 9', 'retirer 9', 'compensation'],
+        motsClefs: ['calcul mental', 'arcade', 'ajouter 9', 'retirer 9', 'compensation',
+            '9', '99', '8', '98', '11', '101', '19', '21'],
         tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
         instruction: "Les additions et les soustractions se suivent sans prévenir. Le piège est toujours le même : le nombre où l'on s'arrête quand on a sauté sans revenir."
     },

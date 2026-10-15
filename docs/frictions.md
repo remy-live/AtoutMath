@@ -4648,3 +4648,25 @@ trentaine de lignes** — 15 octobre 2026
   réponse dans le meneur, la tape sur le pavé OU clique le bon choix selon
   l'activité, ferme la carte de correction et rend la question suivante. Trois
   exercices sur trois en ont eu besoin ; le quatrième l'écrira aussi.
+
+---
+
+**Une recherche qui ne trouve rien rend la MÊME réponse qu'une recherche dont
+le résultat n'existe pas** — 15 octobre 2026
+
+- *Ce que je voulais faire* : rien. C'est Rémy qui l'a trouvé — « si je tape 99
+  dans la barre de recherche, j'aurai pu espérer tomber dessus ».
+- *Ce qui a coûté* : l'exercice du détour existe depuis la veille POUR 76 + 99,
+  et « 99 » rendait zéro résultat. « 101 » et « 19 » aussi. Mesuré ensuite sur
+  quarante requêtes usuelles : deux autres trous. Le coût n'est pas en minutes,
+  il est en silence — **une liste vide est exactement ce qu'affiche une
+  recherche dont le résultat n'existe pas**, et aucune erreur n'est levée. Seul
+  quelqu'un qui CHERCHE la chose et sait qu'elle existe peut le dire ; ce
+  quelqu'un, c'est Rémy, une fois sur dix.
+- *Combien de fois* : | (première, mais la famille « une mesure qui rend bon
+  pour une mauvaise raison » en est à huit)
+- *Ce qui manque* : fait. `tools/cequOnTape.mjs` tape ce qu'un professeur tape
+  — les nombres du programme d'abord, parce que ce sont eux qui vivent dans le
+  générateur et jamais sur la page — et n'imprime que ce qui ne trouve RIEN.
+  Une garde tient en plus les mots-clefs du détour à la table `VOISINS` : on ne
+  peut plus ajouter un voisin sans le rendre cherchable.

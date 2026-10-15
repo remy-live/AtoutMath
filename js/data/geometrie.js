@@ -87,8 +87,14 @@ export const geometrieExercises = [
         consignePapier: 'Trouve la mesure de l\'angle vert. Les droites en pointillés sont parallèles.',
         params: { niveau: 'melange' },
         skills: ['geo.angles.relations'],
+        // LES TROIS TOTAUX SONT DES MOTS-CLEFS, pour la même raison que les
+        // nombres du Détour : « 360 » ne rendait AUCUN résultat alors que la
+        // première marche de cet exercice s'appelle « Une soustraction : 90°,
+        // 180° ou 360° ». Le nombre vivait dans le générateur et dans la tête
+        // de qui l'a écrit, nulle part sur la page.
         motsClefs: ['angles', 'opposés par le sommet', 'correspondants', 'alternes-internes',
-            'complémentaires', 'supplémentaires', 'parallèles', 'sécante'],
+            'complémentaires', 'supplémentaires', 'parallèles', 'sécante',
+            '90', '180', '360', 'degrés', 'tour complet', 'angle plat', 'angle droit'],
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]

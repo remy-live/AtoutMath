@@ -175,3 +175,31 @@ test('LES TROIS PORTES DU DÉTOUR EXISTENT, ET LEURS MARCHES AUSSI', () => {
             `« ${e.title} » met en vitesse une marche qui demande de lire une ligne`);
     }
 });
+
+test('ON TROUVE L\'EXERCICE EN TAPANT LE NOMBRE QU\'IL TRAVAILLE', () => {
+    // RÉMY : « le nom Détour Express n'est pas évident car si je tape 99 dans
+    // la barre de recherche, j'aurai pu espérer tomber dessus ».
+    //
+    // MESURÉ AVANT DE CORRIGER : « 99 » rendait ZÉRO résultat, « 101 » et
+    // « 19 » aussi. L'exercice existe précisément pour 76 + 99, et le nombre
+    // 99 n'était écrit nulle part de cherchable. Seuls 9, 8 et 98 sortaient,
+    // et par accident — ils figuraient dans une phrase d'exemple de la
+    // consigne.
+    //
+    // UNE RECHERCHE MUETTE NE LÈVE AUCUNE ERREUR : elle rend une liste vide,
+    // ce qui est EXACTEMENT ce que rend une recherche dont le résultat
+    // n'existe pas. Rien ne distingue « il n'y a pas d'exercice sur 99 » de
+    // « l'exercice sur 99 ne porte pas le mot 99 ». D'où cette garde, qui
+    // tient les mots-clefs à la table du générateur : ajouter un voisin sans
+    // ajouter son nombre la fait rougir.
+    const portes = exercices.filter(e => e.generatorId === 'calc.detour');
+    assert.equal(portes.length, 3, `${portes.length} porte(s) sur le détour`);
+    for (const p of portes) {
+        const mots = (p.motsClefs || []).map(String);
+        for (const v of VOISINS) {
+            assert.ok(mots.includes(String(v.n)),
+                `« ${p.title} » travaille ${v.n} et ne le dit nulle part de cherchable : `
+                + 'taper ce nombre dans la barre ne le trouvera pas.');
+        }
+    }
+});

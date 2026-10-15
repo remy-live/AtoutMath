@@ -924,3 +924,53 @@ C'est `item.schemas[i]`, le dessin sous l'indice — exactement ce dont les
 | --- | --- |
 | **le camembert** | le tout est UN disque ; les parts sont des secteurs, et l'inégalité se voit à l'angle |
 | **le pavage** | le tout est un rectangle quadrillé ; l'inégalité se voit à l'aire, et la figure se prête aux fractions supérieures à 1 (deux rectangles côte à côte) |
+
+---
+
+# « Si je tape 99, j'aurais pu espérer tomber dessus »
+
+> « et je me dis aussi que le nom Détour express n'est pas évident car si je
+> tape 99 dans la barre de recherche, j'aurai pu espérer tomber dessus »
+
+**MESURÉ AVANT DE CORRIGER, ET C'EST PIRE QUE CE QU'IL DIT :**
+
+| ce qu'on tape | ce que ça trouvait |
+| --- | --- |
+| `99` | **rien** |
+| `101` | **rien** |
+| `19` | **rien** |
+| `9` | les trois portes du détour — par accident |
+| `98` | idem |
+
+Les trois seuls nombres qui sortaient figuraient dans une phrase d'EXEMPLE de
+la consigne. Les huit nombres que l'exercice travaille vraiment —
+`VOISINS` : 9, 99, 8, 98, 11, 101, 19, 21 — vivaient dans le générateur et
+dans la tête de celui qui l'a écrit. Nulle part sur la page.
+
+**Et le défaut est de la famille la plus chère** : une recherche muette rend
+une liste vide, c'est-à-dire **exactement ce que rend une recherche dont le
+résultat n'existe pas**. Rien ne distingue « il n'y a pas d'exercice sur 99 »
+de « l'exercice sur 99 ne porte pas le mot 99 ». Aucune erreur, aucun signal —
+seul quelqu'un qui cherche la chose ET sait qu'elle existe peut le voir.
+
+**Ce qui est fait :**
+
+1. Les huit nombres sont mots-clefs sur les trois portes du détour ;
+2. **une garde les tient à la table `VOISINS`** : ajouter un voisin sans
+   ajouter son nombre fait rougir l'épreuve ;
+3. `tools/cequOnTape.mjs` tape quarante requêtes qu'un professeur de collège
+   tape vraiment — les nombres du programme d'abord — et n'imprime que celles
+   qui ne trouvent RIEN. Il a sorti deux autres trous : **`360`** (alors que la
+   première marche de « La Valeur Manquante » s'appelle « Une soustraction :
+   90°, 180° ou 360° ») et **`periode`**.
+
+**Sur `periode`, on n'a RIEN ajouté, et c'est une décision** : aucun exercice
+du catalogue ne parle de développement décimal périodique. La réponse « rien »
+y était donc juste, et une alarme qui sonne toujours pour une bonne raison
+apprend à ne plus regarder l'outil. C'est en revanche un trou de catalogue, à
+lui signaler : **le quotient qui ne tombe pas juste n'existe nulle part.**
+
+Les quarante requêtes usuelles trouvent maintenant toutes quelque chose.
+
+**Sur le NOM lui-même** : « Détour Express » reste, et la recherche fait le
+travail. Un titre ne peut pas porter huit nombres ; les mots-clefs, si.
