@@ -591,3 +591,100 @@ seul contenu à maintenir.
 Le chrono ne porte que sur le SIGNE : chronométrer un calcul mental demande
 deux choses à la fois, et n'ancre ni l'une ni l'autre. À revoir si Rémy
 constate le contraire en classe.
+
+---
+
+# Calcul mental : « on retire un et on ajoute 10 »
+
+> « j'aimerai bien des exercices de calcul mentaux du genre 76 + 9 ou 76 + 99
+> ou 156 − 9 ou 156 − 99, il faut que l'élève comprenne qu'on retire un et
+> qu'on ajoute 10 (en tout cas pour le 9), etc, et qu'on en fasse des ludiques,
+> voire des challenges vitesse mais facultatif »
+>
+> puis : « avec high score de la classe »
+
+## Ce qu'il demande vraiment
+
+Pas « calcule 76 + 9 » : **la STRATÉGIE**. Le résultat n'est que la preuve
+qu'on l'a employée. Et la difficulté est au point précis où la compensation
+s'inverse :
+
+| | on remplace | puis |
+| --- | --- | --- |
+| 76 **+** 9 | + 10 | **− 1** |
+| 156 **−** 9 | − 10 | **+ 1** |
+
+C'est ce renversement qu'un élève rate, et il le rate toujours au même endroit.
+
+Le « etc » de sa phrase compte aussi : la méthode vaut pour 8 (10 − 2), 11
+(10 + 1), 98, 101 — on ne s'arrête donc pas à 9 et 99.
+
+## Ce qui existe déjà
+
+Rien sur la compensation. Le catalogue a « Amis de 100 et 1000 », « Le Canon
+des Compléments », « À Peu Près », « Attrape le Résultat » — des compléments
+et de l'ordre de grandeur, jamais le passage par le nombre rond.
+
+## Le high score de la classe
+
+**Il n'existe nulle part**, vérifié : aucun classement, aucun meilleur score,
+ni côté élève ni côté professeur. En revanche la matière est déjà sur le
+serveur — chaque `attempt` et chaque `run_finished` y sont synchronisés, et un
+élève appartient à une classe. C'est donc une LECTURE neuve, pas une base
+neuve. À faire après l'exercice, avec un arbitrage à poser : **qu'est-ce que le
+score** (la plus longue série ? le nombre de questions en 60 secondes ?), et
+**qui se voit** (le prénom en clair, ou le seul chiffre à battre ?).
+
+---
+
+# Deux demandes de plus, le 15 au soir
+
+## 1. Compter l'argent
+
+> « j'aimerai bien aussi un exercice où il faut compter l'argent et par exemple
+> si j'ai 7 centimes, il faut marquer 0,07 »
+
+**Ce n'est pas un exercice sur l'argent, c'est un exercice sur les DÉCIMAUX.**
+« 7 centimes → 0,07 » est exactement le piège du rang : l'élève écrit 0,7
+parce qu'il entend « sept ». L'euro est le meilleur support qui existe pour
+cela — il est concret, il a exactement deux décimales, et la pièce de 1 centime
+EST le centième.
+
+Trois gestes à distinguer, et le logiciel doit les séparer :
+
+| ce qu'on voit | ce qu'on écrit | la faute |
+| --- | --- | --- |
+| 7 centimes | 0,07 € | 0,7 € |
+| 70 centimes | 0,70 € | 0,07 € |
+| 2 € et 5 c | 2,05 € | 2,5 € |
+
+À vérifier dans le catalogue avant d'écrire quoi que ce soit : « Virgule ou
+Fraction ? » et « Dizaines, Centaines, Milliers » touchent déjà les rangs.
+
+## 2. Le défi chronométré de la classe
+
+> « en fait tu vois je peux lancer un challenge chronométré, le plus de calcul
+> et toute la classe participe et au bout du challenge, un tableau de High
+> score, on pourrait faire cela avec les générateurs. Exemple : je lance le
+> défi. Et là tous les élèves reçoivent des calculs, il faut taper la réponse
+> ou QCM, aux choix, et au bout d'une minute, tableau de score pour tout le
+> monde, et on reprend la suite des exercices normalement »
+
+C'est la forme complète de l'idée du QCM lancé depuis le Direct, et elle est
+meilleure : **ce n'est pas une question, c'est une minute.**
+
+Ce qui est déjà là : le canal du Direct pousse déjà vers l'ardoise (verrou,
+mot, indice, voile), les élèves appartiennent à une classe, et chaque `attempt`
+remonte au serveur. Ce qui manque : le défi lui-même, le score, et le tableau.
+
+**Trois arbitrages à poser avant d'écrire** — le troisième est le seul qui ne
+soit pas technique :
+
+1. **D'où viennent les calculs ?** Du catalogue : Rémy choisit un exercice au
+   lancement, et le générateur fournit la série. Rien à écrire à la volée.
+2. **Qu'est-ce que le score ?** Le nombre de bonnes réponses dans la minute,
+   et la rapidité ne départage qu'en cas d'égalité. Compter des points de
+   vitesse récompenserait la frappe, pas le calcul.
+3. **Qui voit quoi dans le tableau ?** Afficher les trente prénoms classés
+   devant toute la classe, c'est désigner le dernier chaque fois. À trancher
+   par Rémy : classement complet, ou podium plus « ta place et ton score ».

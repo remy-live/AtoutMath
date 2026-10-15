@@ -145,6 +145,14 @@ const BASE = {
         descriptor: 'Reconnaître rapidement les écritures d\'un nombre : sommes, différences, produits.',
         lesson: 'Un même nombre s\'écrit de mille façons : 12 = 8 + 4 = 15 − 3 = 3 × 4. Les reconnaître d\'un coup d\'œil, c\'est ça, le calcul mental.'
     },
+    'num.calc.detour': {
+        label: 'Calculer de tête en passant par le nombre rond',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.calc.decomposition'],
+        descriptor: 'Ajouter ou retirer 9, 99, 11, 101… en passant par la dizaine ou la centaine, et compenser.',
+        lesson: 'AJOUTER 9, C\'EST AJOUTER 10 PUIS RETIRER 1. 76 + 9 = 76 + 10 − 1 = 86 − 1 = 85. Le détour par le nombre rond est facile ; le petit pas qui suit remet les comptes. ET IL CHANGE DE SENS AVEC L\'OPÉRATION, c\'est tout le piège : pour RETIRER 9, on retire 10 — donc 1 de trop — et on le rend. 156 − 9 = 156 − 10 + 1 = 146 + 1 = 147. La méthode ne vaut pas que pour 9 : 8 = 10 − 2, 11 = 10 + 1, 98 = 100 − 2, 101 = 100 + 1. On cherche le nombre rond le plus proche, et l\'on compense de l\'écart.'
+    },
     'num.logique.sudoku': {
         label: 'Sudoku',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

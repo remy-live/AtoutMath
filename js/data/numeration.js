@@ -648,6 +648,63 @@ export const numerationExercises = [
         instruction: "Les sommes et les produits se suivent sans prévenir, et l'on attrape le bon résultat. Le piège est toujours là : la proposition la plus tentante est le résultat de L'AUTRE opération."
     },
     {
+        // LE DÉTOUR PAR LE NOMBRE ROND.
+        //
+        // RÉMY : « j'aimerai bien des exercices de calcul mentaux du genre
+        // 76 + 9 ou 76 + 99 ou 156 − 9 ou 156 − 99, il faut que l'élève
+        // comprenne qu'on retire un et qu'on ajoute 10 (en tout cas pour le
+        // 9), etc, et qu'on en fasse des ludiques, voire des challenges
+        // vitesse mais facultatif ».
+        //
+        // CE QU'IL DEMANDE N'EST PAS « CALCULE 76 + 9 » : c'est la STRATÉGIE.
+        // Le résultat n'est que la preuve qu'on l'a employée — un exercice qui
+        // ne demanderait que lui laisserait l'élève poser son addition en
+        // colonne dans sa tête, ce qu'il fait déjà.
+        //
+        // ET LA DIFFICULTÉ EST À UN POINT PRÉCIS : la compensation change de
+        // sens avec l'opération. 76 + 9 = 76 + 10 − 1, mais 156 − 9 =
+        // 156 − 10 + 1. Les marches 2 et 3 ne travaillent que ce renversement,
+        // et sans aucun calcul.
+        id: 'calc-detour-rond',
+        cree: '2026-10-15',
+        consignePapier: 'Passe par le nombre rond, puis fais le petit pas qui reste.',
+        colonnesPapier: 4,
+        title: 'Le Détour par le Nombre Rond',
+        generatorId: 'calc.detour', activityId: 'buttons',
+        motsClefs: ['calcul mental', 'ajouter 9', 'retirer 9', 'compensation',
+            'nombre rond', 'dizaine', 'centaine', 'astuce'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Dix marches. LES TROIS PREMIÈRES NE DEMANDENT AUCUN CALCUL : trouver le nombre rond caché (9 c'est 10 − 1, 98 c'est 100 − 2), puis dire ce qu'on fait APRÈS le grand saut. C'est là qu'est le piège du chapitre : pour ajouter 9 on ajoute 10 puis on retire 1, mais pour RETIRER 9 on retire 10 puis on AJOUTE 1. Ensuite on écrit la ligne du milieu — 76 + 10 − 1 —, et seulement après on calcule. Le deuxième indice est un dessin : le grand saut, puis le petit pas en arrière."
+    },
+    {
+        // LE MÊME, CONTRE LA MONTRE — « voire des challenges vitesse mais
+        // facultatif ». Facultatif : c'est un exercice à part, que Rémy met
+        // dans une séance ou n'y met pas. L'apprentissage ne dépend pas de lui.
+        id: 'calc-detour-sprint',
+        cree: '2026-10-15',
+        consignePapier: 'Calcule de tête, en passant par le nombre rond.',
+        colonnesPapier: 5,
+        title: 'Détour Express',
+        generatorId: 'calc.detour', activityId: 'sprint',
+        params: { marches: ['calcul-plus', 'calcul-moins', 'calcul-melange', 'calcul-voisins'] },
+        motsClefs: ['calcul mental', 'chrono', 'automatisme', 'ajouter 9', 'retirer 9'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Le même calcul, contre la montre. On ne travaille plus la méthode — on vérifie qu'elle est devenue automatique. À prendre quand les trois premières marches du « Détour » sont acquises, pas avant."
+    },
+    {
+        // ET EN ARCADE — « qu'on en fasse des ludiques ».
+        id: 'calc-detour-arcade',
+        cree: '2026-10-15',
+        consignePapier: 'Attrape le bon résultat.',
+        colonnesPapier: 5,
+        title: 'Attrape le Détour',
+        generatorId: 'calc.detour', activityId: 'moles',
+        params: { marches: ['calcul-melange', 'calcul-voisins'] },
+        motsClefs: ['calcul mental', 'arcade', 'ajouter 9', 'retirer 9', 'compensation'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Les additions et les soustractions se suivent sans prévenir. Le piège est toujours le même : le nombre où l'on s'arrête quand on a sauté sans revenir."
+    },
+    {
         // LE SERPENT LITTÉRAL. Rémy : « Quel jeu sympa comme Nova ou le
         // Peintre pourrait-on mettre en place ? »
         //

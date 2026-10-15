@@ -57,6 +57,9 @@ export const CODES_EXERCICES = {
     'num-relatifs-melange':       'SX',   // Somme ou produit ? — Somme et le signe ×
     'num-relatifs-melange-sprint': 'RX',  // Réflexe des signes — le même, contre la montre
     'num-relatifs-melange-arcade': 'VX',  // Attrape le bon signe — le même, en arcade
+    'calc-detour-rond':           'DN',   // le Détour par le Nombre rond
+    'calc-detour-sprint':         'DJ',   // Détour express — le même, chrono
+    'calc-detour-arcade':         'NB',   // attrape le détour — Nombre à Battre
     'alg-fonctions':              'FN',   // Les Fonctions : Image et Antécédent
     'num-litteral-reduire':       'SR',   // Simplifier et Réduire
     'num-litteral-puissances':    'CR',   // Carrés, Cubes et Réduction
