@@ -285,3 +285,56 @@ replié en bas d'une page de deux écrans — et **« Conseils »** : une phrase
 élève, rangée par urgence, qui nomme la notion et jamais l'élève. La phrase et
 son rang viennent du noyau (`conseilDuRapport`), parce que deux échelles
 divergent : la première fois, « 4 questions seulement » s'affichait en vert.
+
+---
+
+# Quatrième passe — le conseil, les onglets, et le mur
+
+> « voilà le conseil... il faut plutôt préciser en quoi ca doit être
+> retravaillé. Et dans le direct, je voulais des onglets aussi et la liste fait
+> parti d'un onglet, là ce sont des boutons qui ouvrent ou ferment pas terrible
+> ca fait un peu désorganié. Et j'ai l'impression le direct et le mur font la
+> même chose mais présenté différement »
+
+## 1. Le conseil nommait un nombre, pas une notion
+
+Sa capture : sept élèves d'affilée portaient « 67 erreurs jamais reprises : les
+revoir avec lui ou elle ». Sept fois la même phrase, qui ne nomme rien et ne se
+recopie nulle part.
+
+**La cause est dans l'ordre des cas.** Le compte d'erreurs ouvertes passait
+AVANT les notions fragiles : dès qu'un élève avait une erreur en souffrance —
+c'est-à-dire tout le monde —, on n'allait jamais jusqu'à la notion. Le compte
+est maintenant un **détail entre parenthèses**, derrière le nom de la notion :
+
+> Doit réviser : Additionner des entiers (67 erreurs à reprendre).
+
+Et quand aucune compétence n'est fragile, **on nomme les notions des erreurs
+elles-mêmes** — le serveur les envoie désormais avec le compte :
+
+> À reprendre : Soustraire des entiers et Sens de la multiplication (52 erreurs).
+
+## 2. De vrais onglets, et non des boutons qui ouvrent
+
+Les pastilles dépliantes avaient un défaut que je n'avais pas vu : **celle qu'on
+ouvrait prenait toute la largeur et poussait les six autres sur la ligne
+suivante**. La rangée changeait de forme à chaque clic, et l'on cherchait des
+yeux l'outil qu'on venait d'ouvrir.
+
+Mesuré après : la rangée d'onglets reste au **même pixel** (437, hauteur 53)
+qu'on ouvre le défi, le chrono ou rien du tout ; les champs de chaque panneau
+commencent au même endroit (52 px) ; la barre fait 123 px au repos.
+
+## 3. Le mur n'est plus un écran
+
+> « j'ai l'impression le direct et le mur font la même chose mais présenté
+> différement »
+
+Il a raison, et ma réponse précédente — une phrase sous chaque onglet — revenait
+à **expliquer** une distinction plutôt qu'à la supprimer. C'est la même classe,
+la même seconde, les mêmes données : seule la forme change.
+
+« Le mur » a donc quitté la rangée d'onglets. Le direct porte un interrupteur
+**≡ en lignes · ▦ en tuiles**, au bout de la rangée « Ranger ». Les tuiles
+gardent leur tri par urgence — c'est le seul affichage qu'on lit debout, de
+loin, et l'ordre y est l'information.

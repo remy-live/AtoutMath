@@ -1215,6 +1215,29 @@ function handleTeacherReport(): void
             }
         }
 
+        // LES ERREURS JAMAIS REPRISES, ET LES NOTIONS QU'ELLES DÉSIGNENT.
+        //
+        // RÉMY, devant la colonne des conseils : « il faut plutôt préciser en
+        // quoi ça doit être retravaillé ». Sa classe affichait « 67 erreurs
+        // jamais reprises » sur sept élèves d'affilée : un nombre qui ne dit
+        // pas QUOI reprendre, et c'est la seule chose qu'on demande là.
+        //
+        // TROIS NOTIONS AU PLUS, la plus fournie d'abord : au-delà ce n'est
+        // plus un conseil mais un inventaire, et l'on ne reprend pas six
+        // notions avec un élève.
+        $ouvertes = openErrorsOf($events);
+        $parNotion = [];
+        foreach ($ouvertes as $err) {
+            $sk = (string) ($err['skillId'] ?? '');
+            if ($sk === '') continue;
+            $parNotion[$sk] = ($parNotion[$sk] ?? 0) + (int) ($err['count'] ?? 1);
+        }
+        arsort($parNotion);
+        $notionsOuvertes = [];
+        foreach (array_slice($parNotion, 0, 3, true) as $sk => $n) {
+            $notionsOuvertes[] = ['skillId' => $sk, 'count' => $n];
+        }
+
         $rows[] = [
             'studentId' => $s['id'],
             'firstName' => $s['first_name'],
@@ -1225,7 +1248,19 @@ function handleTeacherReport(): void
                 ? round(count(array_filter($attempts, fn($a) => !empty($a['correct']))) / count($attempts), 3)
                 : null,
             'timeSeconds' => timeOf($events),
-            'openErrors' => count(openErrorsOf($events)),
+            'openErrors' => count($ouvertes),
+            // LES NOTIONS DE CES ERREURS, ET NON LEUR SEUL NOMBRE.
+            //
+            // RÉMY, devant la colonne des conseils : « il faut plutôt préciser
+            // en quoi ça doit être retravaillé ». Sa classe affichait « 67
+            // erreurs jamais reprises : les revoir avec lui ou elle » sur sept
+            // élèves d'affilée — un nombre qui ne dit pas QUOI reprendre, et
+            // c'est la seule chose qu'on demande à cette phrase.
+            //
+            // TROIS AU PLUS, triées par nombre d'erreurs : au-delà, ce n'est
+            // plus un conseil mais un inventaire, et l'on ne reprend pas six
+            // notions avec un élève.
+            'openSkills' => $notionsOuvertes,
             'weakSkills' => array_map(fn($m) => ['skillId' => $m['skillId'], 'mastery' => $m['mastery'], 'level' => $m['level']], $weak),
             'strongSkills' => array_map(fn($m) => ['skillId' => $m['skillId'], 'mastery' => $m['mastery'], 'level' => $m['level']], $strong),
             // UN TABLEAU PHP VIDE SE SÉRIALISE EN `[]`, ET NON EN `{}`. Le

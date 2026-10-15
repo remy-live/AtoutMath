@@ -71,8 +71,13 @@ test('ET LE BATTEMENT DU PROFESSEUR EST DESCENDU À CINQ SECONDES', () => {
 });
 
 test('LE BATTEMENT NE TOURNE QUE SOUS LES YEUX DU PROFESSEUR', () => {
-    // C'est ce qui borne la dépense : hors du Direct et du Mur, rien ne bat.
-    assert.match(EC, /const surUnEcranVivant = vue\.onglet === 'direct' \|\| vue\.onglet === 'mur';/);
+    // C'est ce qui borne la dépense : hors du Direct, rien ne bat.
+    //
+    // LE MUR N'EST PLUS UN ÉCRAN mais une FORME du direct — Rémy : « j'ai
+    // l'impression le direct et le mur font la même chose mais présenté
+    // différement ». Il n'y a donc plus qu'un écran vivant, et c'est la même
+    // règle qui le borne.
+    assert.match(EC, /const surUnEcranVivant = vue\.onglet === 'direct';/);
     assert.match(EC, /if \(vue\.ou !== 'classe' \|\| !surUnEcranVivant \|\| vue\.occupe\) return;/);
 });
 

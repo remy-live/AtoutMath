@@ -465,35 +465,53 @@
    LE REPLI NE CACHE PAS CE QUI AGIT : `ec-outil-vif` dit sur la pastille
    elle-même qu'un compte à rebours tourne, que la calculatrice est accordée,
    que la classe est fermée hors séance. */
-.ec-pilote-outils { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
-.ec-pilote-outil {
-    flex: 0 0 auto; min-width: 0;
-    border: 1px solid var(--border); border-radius: 10px;
-    background: var(--bg-app);
+/* LA RANGÉE D'ONGLETS NE BOUGE PAS, LE PANNEAU CHANGE.
+
+   RÉMY : « là ce sont des boutons qui ouvrent ou ferment pas terrible ca fait
+   un peu désorganié ». Les pastilles dépliantes prenaient toute la largeur en
+   s'ouvrant et repoussaient les autres sur une seconde ligne : la rangée
+   changeait de forme à chaque clic. Une rangée d'onglets, elle, reste où elle
+   est ; c'est le panneau du dessous qui change, toujours au même endroit. */
+.ec-pilote-onglets {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    border-bottom: 1px solid var(--border); padding-bottom: 8px;
 }
-.ec-pilote-outil[open] { flex: 1 0 100%; }
-.ec-pilote-outil > summary {
-    cursor: pointer; list-style: none; white-space: nowrap;
-    display: flex; align-items: center; gap: 6px;
+.ec-pilote-onglet {
+    font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer;
+    white-space: nowrap; display: flex; align-items: center; gap: 6px;
     /* LE PLANCHER TACTILE S'APPLIQUE ICI AUSSI : c'est une commande de
        classe, touchée sur tablette, au fond de la salle. */
-    min-height: 44px; padding: 0 12px;
-    font-size: .84rem; font-weight: 700; color: var(--text-main);
+    min-height: 44px; padding: 0 14px; border-radius: 10px 10px 0 0;
+    background: none; border: 1px solid transparent; border-bottom: 0;
+    color: var(--text-muted);
 }
-.ec-pilote-outil > summary::-webkit-details-marker { display: none; }
-.ec-pilote-outil > summary::before { content: none; }
-.ec-pilote-outil[open] > summary { border-bottom: 1px solid var(--border); }
+.ec-pilote-onglet--actif {
+    background: var(--bg-app); border-color: var(--border);
+    color: var(--text-main);
+    /* IL DÉBORDE SUR LE FILET DU DESSOUS : c'est ce qui rattache l'onglet à
+       son panneau, et qui fait qu'on ne les lit pas comme deux objets. */
+    margin-bottom: -9px; padding-bottom: 8px;
+}
 @media (hover: hover) {
-    .ec-pilote-outil > summary:hover { color: var(--primary-texte); }
+    .ec-pilote-onglet:not(.ec-pilote-onglet--actif):hover { color: var(--primary-texte); }
 }
-.ec-pilote-outil-corps { padding: 10px 12px; }
+/* L'INTERRUPTEUR DE FORME, au bout de la rangée « Ranger ». Il s'en détache
+   par une marge, pas par un cadre : ce sont deux réglages d'habitude, pas des
+   commandes de classe — ils ne doivent pas se disputer l'oeil avec « Mettre
+   en pause ». */
+.ec-forme { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.ec-pilote-panneau {
+    border: 1px solid var(--border); border-top: 0;
+    border-radius: 0 10px 10px 10px; background: var(--bg-app);
+    padding: 12px;
+}
 /* CE QUI AGIT EN CE MOMENT, écrit sur la pastille repliée. En ambre : c'est
    la couleur que ce dépôt réserve à « regarde ici ». */
 .ec-pilote-outil-vif { color: var(--warning-texte); font-weight: 800; }
 /* LE CADRE INTÉRIEUR PERD SON SECOND BORD : la pastille en porte déjà un, et
    deux traits à deux pixels l'un de l'autre font une bordure sale. */
-.ec-pilote-outil-corps > .ec-pilote-cadre { border: 0; background: none; padding: 0; }
-.ec-pilote-outil-corps .ec-pilote-plus-corps { padding-top: 0; }
+.ec-pilote-panneau > .ec-pilote-cadre { border: 0; background: none; padding: 0; }
+.ec-pilote-panneau .ec-pilote-plus-corps { padding-top: 0; }
 
 /* L'APERÇU DU DÉFI — trois questions, comme les élèves les auront.
 
@@ -5025,9 +5043,9 @@ body.classe-ouverte #bottom-nav { display: none !important; }
    premiers champs étaient décalés de quelques pixels, ce qui se voit
    exactement quand on en ouvre deux. Le cadre intérieur n'a plus ni bord ni
    marge (voir plus haut), et le corps porte la seule qui reste. */
-.ec-pilote-outil-corps > .ec-pilote-cadre,
-.ec-pilote-outil-corps > .ec-pilote-rangee { margin: 0; }
-.ec-pilote-outil-corps .ec-pilote-cadre { flex-wrap: wrap; row-gap: 8px; }
+.ec-pilote-panneau > .ec-pilote-cadre,
+.ec-pilote-panneau > .ec-pilote-rangee { margin: 0; }
+.ec-pilote-panneau .ec-pilote-cadre { flex-wrap: wrap; row-gap: 8px; }
 .ec-seance-haut {
     display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
 }

@@ -458,12 +458,19 @@ export function consigneClasse(b) {
  *   1. il n'est jamais venu — aucun conseil de travail n'a de sens tant que
  *      l'élève n'est pas entré ; ce qui manque est son code, pas une notion ;
  *   2. il n'a rien fait — rien à réviser tant qu'on n'a pas travaillé ;
- *   3. une erreur jamais reprise — elle se corrige en deux minutes quand on
- *      la voit, et elle fausse tout le reste tant qu'elle est là ;
- *   4. trop peu de questions pour conclure — dire « 40 % » sur six questions
+ *   3. trop peu de questions pour conclure — dire « 40 % » sur six questions
  *      est un chiffre juste et une conclusion fausse ;
- *   5. les notions fragiles, nommées ;
+ *   4. les notions fragiles, NOMMÉES — et le nombre d'erreurs en souffrance
+ *      rangé derrière, entre parenthèses ;
+ *   5. pas de notion fragile mais des erreurs jamais reprises : on nomme les
+ *      notions de CES erreurs-là ;
  *   6. rien de fragile : on peut ouvrir la suite.
+ *
+ * LE NOMBRE NE DIT PAS QUOI REPRENDRE. Première écriture : le compte d'erreurs
+ * ouvertes passait AVANT les notions, et sept élèves d'affilée portaient « 67
+ * erreurs jamais reprises : les revoir avec lui ou elle ». Rémy : « il faut
+ * plutôt préciser en quoi ça doit être retravaillé ». Une phrase qui ne nomme
+ * rien ne se recopie nulle part.
  *
  * ELLE NOMME LA NOTION, JAMAIS L'ÉLÈVE : « Doit réviser : les relatifs » se
  * recopie sur un cahier de textes, « est en difficulté » n'apprend rien à
@@ -486,18 +493,34 @@ export function conseilDuRapport(ligne) {
     if (!questions) {
         return { rang: 1, phrase: 'N\'a pas encore travaillé : commencer par une séance courte.' };
     }
-    const ouvertes = Number(l.openErrors || 0);
-    if (ouvertes > 0) {
-        return { rang: 2, phrase: `${ouvertes} erreur${ouvertes > 1 ? 's' : ''} jamais reprise`
-            + `${ouvertes > 1 ? 's' : ''} : les revoir avec lui ou elle.` };
-    }
     if (questions < RELIABLE_MIN_ATTEMPTS) {
         return { rang: 4, phrase: `${questions} question${questions > 1 ? 's' : ''} seulement : `
             + 'trop tôt pour conclure.' };
     }
+    // LE NOMBRE D'ERREURS NE DIT PAS QUOI REPRENDRE — LA NOTION, SI.
+    //
+    // RÉMY, devant la colonne : « il faut plutôt préciser en quoi ça doit être
+    // retravaillé ». Sept élèves d'affilée portaient « 67 erreurs jamais
+    // reprises : les revoir avec lui ou elle » — sept fois la même phrase, qui
+    // ne nomme rien et ne se recopie nulle part. Le compte passe donc APRÈS la
+    // notion, et seulement comme détail.
+    const ouvertes = Number(l.openErrors || 0);
+    const detail = ouvertes ? ` (${ouvertes} erreur${ouvertes > 1 ? 's' : ''} à reprendre)` : '';
     const faibles = (l.weakSkills || []).map(w => nomCompetence(w.skillId)).filter(Boolean);
     if (faibles.length) {
-        return { rang: 3, phrase: `Doit réviser : ${faibles.slice(0, 2).join(' et ')}.` };
+        return { rang: 2, phrase: `Doit réviser : ${faibles.slice(0, 2).join(' et ')}${detail}.` };
+    }
+    // PAS DE NOTION FRAGILE, MAIS DES ERREURS EN SOUFFRANCE : on nomme alors
+    // les notions de CES erreurs-là. Elles ne sont pas les mêmes que les
+    // compétences fragiles — une notion peut être acquise et garder deux
+    // questions ratées qu'on n'a jamais rouvertes.
+    const desErreurs = (l.openSkills || []).map(s => nomCompetence(s.skillId)).filter(Boolean);
+    if (desErreurs.length) {
+        return { rang: 3, phrase: `À reprendre : ${desErreurs.slice(0, 2).join(' et ')}${detail}.` };
+    }
+    if (ouvertes > 0) {
+        return { rang: 3, phrase: `${ouvertes} erreur${ouvertes > 1 ? 's' : ''} jamais reprise`
+            + `${ouvertes > 1 ? 's' : ''}, sans notion qui ressorte : les revoir avec lui ou elle.` };
     }
     const taux = l.successRate;
     if (typeof taux === 'number' && taux < 0.5) {

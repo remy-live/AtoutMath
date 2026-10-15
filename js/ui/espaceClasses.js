@@ -228,6 +228,10 @@ export function fermerEspaceClasses() {
 
 export async function ouvrirEspaceClasses() {
     vue = { ou: 'classes', classes: null, erreur: '', classe: null, onglet: 'direct',
+        // EN LIGNES OU EN TUILES : l'ancien « Le mur » est devenu une forme
+        // de ce même écran. Rémy : « j'ai l'impression le direct et le mur
+        // font la même chose mais présenté différement ».
+        formeDuDirect: 'lignes',
             liste: null, direct: null, apercu: null, profs: null, reglages: null,
             // Ce que les élèves ont signalé — `null` tant qu'on n'est pas allé
             // voir, ce qui n'est pas « aucun signalement ».
@@ -244,6 +248,10 @@ export async function ouvrirEspaceClasses() {
         // L'ONGLET DE BILAN QU'ON LIT : d'ensemble, par séance, ou les
         // conseils. Rémy : « pour les bilans, propose des onglets ».
         sousBilan: 'ensemble',
+        // ET L'OUTIL DE L'HEURE OUVERT DANS LE DIRECT. `null` = aucun, et
+        // c'est le départ : la barre fait alors deux lignes au-dessus de la
+        // liste des élèves, qui est ce qu'on vient regarder.
+        outil: null,
         seanceDetail: null,
         // Et celui dont la ligne est dépliée dans Les bilans. Les deux écrans
         // ne se partagent pas ce souvenir : on n'y cherche pas la même chose.
@@ -290,26 +298,6 @@ export async function ouvrirEspaceClasses() {
 
     racine.addEventListener('click', (e) => {
         if (e.target.closest('[data-fermer]')) { partir(); return; }
-        // UN SEUL OUTIL DE L'HEURE OUVERT À LA FOIS.
-        //
-        // RÉMY : « mets des onglets c'est pas terrible ». Sur sa capture, trois
-        // outils étaient dépliés en même temps, chacun avec son titre et ses
-        // champs à une indentation différente : cela ne se lit pas comme une
-        // barre de commandes mais comme un empilement.
-        //
-        // L'attribut `name` des `details` le fait tout seul — mais seulement
-        // depuis Chrome 120, Safari 17.2 et Firefox 130. Un collège n'a pas
-        // forcément cela, et un onglet qui n'en est un que sur les navigateurs
-        // neufs n'en est pas un. Ces trois lignes referment donc les voisins
-        // partout, et la règle ne dépend plus du navigateur.
-        const tete = e.target.closest('.ec-pilote-outil > summary');
-        if (tete) {
-            const moi = tete.parentElement;
-            if (!moi.open) {          // il est sur le point de s'ouvrir
-                moi.parentElement.querySelectorAll('.ec-pilote-outil[open]')
-                    .forEach(d => { if (d !== moi) d.open = false; });
-            }
-        }
         brancher(e, redessiner);
     });
     // DOUBLE-CLIC SUR CE QU'ON LIT.
@@ -840,8 +828,7 @@ function classeHtml() {
         data-onglet="${cle}">${texte}</button>`;
 
     let corps = '';
-    if (vue.onglet === 'mur') corps = murHtml();
-    else if (vue.onglet === 'liste') corps = listeHtml();
+    if (vue.onglet === 'liste') corps = listeHtml();
     else if (vue.onglet === 'bilans') corps = bilansHtml();
     else if (vue.onglet === 'seances') corps = seancesHtml();
     else corps = directHtml();
@@ -849,7 +836,6 @@ function classeHtml() {
     return enTeteHtml(info.name || c.name, sous, true) + messageHtml() + `
     <nav class="ec-onglets">
         ${onglet('direct', 'Le direct')}
-        ${onglet('mur', 'Le mur')}
         ${onglet('seances', 'Les séances')}
         ${onglet('liste', 'Les élèves')}
         ${onglet('bilans', 'Les bilans')}
@@ -872,9 +858,8 @@ function classeHtml() {
  * Rémy entre le direct et le mur, qui montrent pourtant la même classe.
  */
 const DIT_ONGLET = {
-    direct: 'Assis : une ligne par élève, et les commandes de l\'heure sous la main.',
-    mur: 'Debout : les mêmes élèves en tuiles de couleur, lisibles du fond de la '
-        + 'salle. On regarde, on ne règle rien.',
+    direct: 'Qui travaille en ce moment, et où il en est — en lignes pour le '
+        + 'détail, en tuiles pour lire la classe du fond de la salle.',
     seances: 'Ce que vous avez donné à cette classe. Celle qui est en cours est '
         + 'sur fond coloré.',
     liste: 'Les prénoms, les identifiants et les codes — et c\'est ici qu\'on '
@@ -887,6 +872,9 @@ const DIT_ONGLET = {
 function directHtml() {
     if (!vue.direct) return '<div class="ec-vide">On regarde qui travaille…</div>';
     const { eleves, maintenant } = vue.direct;
+    // EN LIGNES OU EN TUILES — c'est l'ancien « Le mur », devenu une forme de
+    // ce même écran. Voir l'interrupteur, plus bas.
+    const enTuiles = vue.formeDuDirect === 'tuiles';
     if (!eleves.length) {
         return `<div class="ec-vide ec-vide--invite">
             <p class="ec-vide-grand">Personne dans cette classe pour l'instant.</p>
@@ -974,11 +962,36 @@ function directHtml() {
             data-ordre-direct="${esc(o.cle)}"
             aria-pressed="${o.cle === ordreDuDirect ? 'true' : 'false'}"
             >${esc(o.mot)}</button>`).join('')}
+        <!-- LE MUR N'EST PLUS UN ÉCRAN : C'EST UNE FAÇON DE REGARDER CELUI-CI.
+
+             RÉMY, deux fois : « J'ai du mal à voir la différence avec les murs
+             et le direct », puis « j'ai l'impression le direct et le mur font
+             la même chose mais présenté différement ». Il a raison, et je lui
+             ai d'abord répondu par une PHRASE sous l'onglet — ce qui revenait à
+             expliquer une distinction au lieu de la supprimer.
+
+             C'EST LA MÊME CLASSE, LA MÊME SECONDE, LES MÊMES DONNÉES : seule
+             la forme change. Deux onglets pour cela, c'est une question de
+             plus à se poser chaque fois qu'on ouvre l'écran. Un interrupteur
+             de forme ne la pose pas : on voit les deux états, on prend celui
+             qu'on veut.
+
+             LES TUILES GARDENT LEUR TRI PAR URGENCE : c'est le seul écran
+             qu'on lit debout, de loin, et l'ordre y est l'information. -->
+        <span class="ec-forme" role="group" aria-label="Comment les montrer">
+            <span class="ec-note">Montrer</span>
+            <button type="button" class="ec-ordre-btn${enTuiles ? '' : ' ec-ordre-btn--actif'}"
+                data-forme-direct="lignes" aria-pressed="${enTuiles ? 'false' : 'true'}"
+                title="Une ligne par élève : le détail, assis">≡ en lignes</button>
+            <button type="button" class="ec-ordre-btn${enTuiles ? ' ec-ordre-btn--actif' : ''}"
+                data-forme-direct="tuiles" aria-pressed="${enTuiles ? 'true' : 'false'}"
+                title="Des tuiles de couleur, lisibles du fond de la salle">▦ en tuiles</button>
+        </span>
     </div>
-    <div class="ec-rangs">
+    ${enTuiles ? murHtml() : `<div class="ec-rangs">
         ${trieurDuDirect(ordreDuDirect)(eleves, maintenant, { enPause: classeEnPause() })
             .map(v => rangHtml(v.eleve, maintenant)).join('')}
-    </div>`;
+    </div>`}`;
 }
 
 /**
@@ -2394,14 +2407,76 @@ function chronoQuiTourne(ch) {
     return !!(ch && ch.finAt) && resteDuChrono(ch) > 0;
 }
 
+/**
+ * LA BARRE DE PILOTAGE — une rangée toujours là, puis de VRAIS onglets.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, troisième passe : « dans le direct, je voulais des onglets aussi et la
+ * liste fait parti d'un onglet, là ce sont des boutons qui ouvrent ou ferment
+ * pas terrible ca fait un peu désorganié ».
+ *
+ * CE QUE LES PASTILLES DÉPLIANTES FAISAIENT DE TRAVERS. Celle qu'on ouvrait
+ * prenait toute la largeur et poussait les six autres sur la ligne suivante :
+ * la rangée changeait de forme à chaque clic, et l'on cherchait des yeux
+ * l'outil qu'on venait d'ouvrir. Un onglet, lui, ne bouge pas — c'est le
+ * PANNEAU, dessous, qui change, et toujours au même endroit.
+ *
+ * CE QUI RESTE HORS DES ONGLETS : la pause et le mot à la classe. Ce sont les
+ * deux gestes qu'on fait sans y penser, et les replier coûterait un clic à
+ * chaque fois.
+ *
+ * AUCUN ONGLET OUVERT AU DÉPART, et c'est voulu : la barre fait alors deux
+ * lignes au-dessus de la liste des élèves, qui est ce qu'on vient regarder.
+ * Un second clic sur l'onglet ouvert le referme.
+ *
+ * UN ONGLET FERMÉ DIT CE QU'IL FAIT : le compte à rebours porte son temps,
+ * la calculatrice son « accordée », le bac son « ouvert ». Replier ne doit
+ * jamais cacher ce qui AGIT sur la classe.
+ */
+const OUTILS_DE_LHEURE = [
+    { cle: 'maison',
+      titre: (info, ch, enCours, defiCourt) => `🏠 Hors séance${info.hors_seance
+                ? ' <b class="ec-pilote-outil-vif">· fermé</b>' : ''}`,
+      corps: outilMaison },
+    { cle: 'defi',
+      titre: (info, ch, enCours, defiCourt) => `⚡ Défi de la classe${defiCourt
+                ? ' <b class="ec-pilote-outil-vif">· en cours</b>' : ''}`,
+      corps: outilDefi },
+    { cle: 'chrono',
+      titre: (info, ch, enCours, defiCourt) => `⏱ Compte à rebours${enCours
+                ? ` <b class="ec-pilote-outil-vif ec-chrono-reste">${enMinutes(resteDuChrono(ch))}</b>`
+                : ''}`,
+      corps: outilChrono },
+    { cle: 'calc',
+      titre: (info, ch, enCours, defiCourt) => `🧮 Calculatrice${(vue.reglages || []).some(x => x.mode === 'calculatrice')
+                ? ' <b class="ec-pilote-outil-vif">· accordée</b>' : ''}`,
+      corps: outilCalc },
+    { cle: 'bac',
+      titre: (info, ch, enCours, defiCourt) => `🧰 Bac à sable${bacDeLaClasse()
+                ? '' : ' <b class="ec-pilote-outil-vif">· ouvert</b>'}`,
+      corps: outilBac },
+    { cle: 'liste',
+      titre: (info, ch, enCours, defiCourt) => `👥 La liste${(vue.liste && vue.liste.eleves)
+                ? ` <b class="ec-pilote-outil-vif">· ${vue.liste.eleves.length}</b>` : ''}`,
+      corps: outilListe },
+    { cle: 'tableau',
+      titre: (info, ch, enCours, defiCourt) => `✍ Le mot au tableau · dispenses${info.notice
+                ? ' <b class="ec-pilote-outil-vif">· affiché</b>' : ''}`,
+      corps: outilTableau }
+];
+
 function barrePiloteHtml() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
     const enCours = chronoQuiTourne(ch);
-    // CE QUI TOURNE DÉJÀ S'OUVRE TOUT SEUL, et se dit sur sa pastille : un
-    // outil replié ne doit jamais cacher qu'il est EN TRAIN d'agir sur la
-    // classe. Voir la note des pastilles, plus bas.
     const defiCourt = !!(vue.direct && vue.direct.defi && !vue.direct.defi.fini);
+    // CE QUI TOURNE DÉJÀ S'OUVRE TOUT SEUL : un défi lancé ou un chrono qui
+    // court sont des choses qu'on surveille, pas qu'on range.
+    const ouvert = vue.outil !== undefined && vue.outil !== null
+        ? vue.outil
+        : (defiCourt ? 'defi' : (enCours ? 'chrono' : null));
+    const lOutil = OUTILS_DE_LHEURE.find(o => o.cle === ouvert) || null;
     return `
     <!-- L'attribut data-forme dit ce qui, dans cette barre, changerait sa
          STRUCTURE. Le battement s'en sert pour savoir s'il doit la refaire —
@@ -2411,7 +2486,21 @@ function barrePiloteHtml() {
          (Et pas de guillemet oblique dans ce commentaire : il est DANS un
          gabarit, et le premier qu'on y pose ferme le gabarit.) -->
     <div class="ec-pilote" data-forme="${esc(signatureDuPilote())}">
-        <div class="ec-pilote-rangee">
+        ${rangeeDuHaut(info)}
+        <div class="ec-pilote-onglets" role="tablist" aria-label="Les commandes de l'heure">
+            ${OUTILS_DE_LHEURE.map(o => `<button type="button" role="tab"
+                class="ec-pilote-onglet${o.cle === ouvert ? ' ec-pilote-onglet--actif' : ''}"
+                aria-selected="${o.cle === ouvert ? 'true' : 'false'}"
+                data-outil="${o.cle}">${o.titre(info, ch, enCours, defiCourt)}</button>`).join('')}
+        </div>
+        ${lOutil ? `<div class="ec-pilote-panneau" role="tabpanel">${
+            lOutil.corps(info, ch, enCours, defiCourt)}</div>` : ''}
+    </div>`;
+}
+
+/** La rangée qui ne se replie jamais : la pause, et le mot à toute la classe. */
+function rangeeDuHaut(info) {
+    return `<div class="ec-pilote-rangee">
             <button type="button" class="ec-pilote-btn${info.locked ? ' ec-pilote-btn--actif' : ''}"
                     data-pause="${info.locked ? '0' : '1'}"
                     title="En pause, les élèves ne voient plus que ce que vous leur donnez : le catalogue disparaît.">
@@ -2425,46 +2514,12 @@ function barrePiloteHtml() {
                        data-valide-sur-entree="data-mot-classe">
                 <button type="button" class="ec-pilote-btn" data-mot-classe>Envoyer</button>
             </span>
-        </div>
+        </div>`;
+}
 
-        <!-- LES SIX COMMANDES DE L'HEURE, PLIÉES EN PASTILLES.
-
-             RÉMY, capture à l'appui : « je trouve cela chargé, il faudrait
-             améliorer cela ». Il avait raison : six rangées de cadres, vingt
-             contrôles, tous dépliés en permanence au-dessus de la liste des
-             élèves — c'est-à-dire au-dessus de ce qu'on vient regarder.
-
-             CE QU'ON GARDE DÉPLIÉ : la pause et le mot à la classe. Ce sont
-             les deux gestes de l'heure qu'on fait sans y penser, et les
-             replier aurait coûté un clic à chaque fois.
-
-             LE RESTE SE DEMANDE, ET UN SEUL À LA FOIS SUFFIT. On ne lance pas
-             un défi EN MÊME TEMPS qu'on règle le bac à sable.
-
-             MAIS UNE PASTILLE REPLIÉE DIT CE QU'ELLE FAIT : le compte à
-             rebours qui tourne montre son temps sur la pastille elle-même, le
-             défi en cours s'ouvre tout seul, et la calculatrice accordée, le
-             bac ouvert, la classe fermée hors séance, le mot au tableau
-             portent chacun leur mot. Replier ne doit pas cacher ce qui AGIT. -->
-        <div class="ec-pilote-outils">
-
-        <!-- FERMÉ EN DEHORS D'UNE SÉANCE IMPOSÉE.
-             Rémy : « j'aimerai aussi le fait de bloquer les élèves chez eux.
-             C'est à dire que juste la séance imposée fonctionne mais par contre
-             si il se connecte, on leur dit que pour l'instant ce n'est
-             disponible qu'au collège (je peux mettre le message de mon choix) »,
-             puis : « Je peux choisir qu'il ne puisse avoir accès à rien à la
-             maison pour la simple raison que pour le moment je veux suivre ce
-             qu'ils font et voir le debug ».
-             LA CASE ET LE MOT PARTENT ENSEMBLE, dans un seul aller-retour :
-             cocher sans message laisserait l'élève devant un écran muet, et
-             deux appels séparés laisseraient une seconde où c'est fermé sans
-             que rien ne l'explique. -->
-        <details class="ec-pilote-outil" name="outils-de-l-heure">
-            <summary class="ec-pilote-outil-tete">🏠 Hors séance${info.hors_seance
-                ? ' <b class="ec-pilote-outil-vif">· fermé</b>' : ''}</summary>
-            <div class="ec-pilote-outil-corps">
-            <label class="ec-pilote-case">
+/** 🏠 Hors séance — corps de l'onglet. */
+function outilMaison(info, ch, enCours, defiCourt) {
+    return `<label class="ec-pilote-case">
                 <input type="checkbox" data-maison${info.hors_seance ? ' checked' : ''}>
                 <span>Fermé hors séance</span>
             </label>
@@ -2475,33 +2530,12 @@ function barrePiloteHtml() {
                        value="${esc(info.hors_seance_mot || '')}"
                        data-valide-sur-entree="data-maison-mot">
                 <button type="button" class="ec-pilote-btn" data-maison-mot>Enregistrer</button>
-            </span>
-            </div>
-        </details>
+            </span>`;
+}
 
-        <!-- LE CHRONO EST UN OBJET, PAS QUATRE CHAMPS EN VRAC.
-             Rémy : « le bandeau rouvrir la classe avec le 10 le lancer à zéro
-             on termine le mot pour toute la classe est vraiment en bazar ».
-             Il avait raison : cinq commandes de rôles différents se suivaient
-             sur une seule ligne, et rien ne disait lesquelles allaient
-             ensemble — « 10 » tout seul à côté d'un bouton « Pause » ne veut
-             rien dire. Le compte à rebours se referme donc dans son propre
-             cadre, avec son nom écrit dessus. -->
-        <!-- LE DÉFI CHRONOMÉTRÉ DE LA CLASSE.
-             Rémy : « je peux lancer un challenge chronométré, le plus de
-             calcul et toute la classe participe et au bout du challenge, un
-             tableau de High score […] et on reprend la suite des exercices
-             normalement ».
-             TROIS RÉGLAGES ET UN BOUTON, et pas un de plus : l'exercice (ce
-             sont les générateurs qui font les questions, rien à écrire à la
-             volée), la durée, et la façon de répondre — « il faut taper la
-             réponse ou QCM, aux choix ». Le reste est au serveur : la graine,
-             les deux instants, et le classement. -->
-        <details class="ec-pilote-outil" name="outils-de-l-heure"${defiCourt ? ' open' : ''}>
-            <summary class="ec-pilote-outil-tete">⚡ Défi de la classe${defiCourt
-                ? ' <b class="ec-pilote-outil-vif">· en cours</b>' : ''}</summary>
-            <div class="ec-pilote-outil-corps">
-            <span class="ec-pilote-cadre" role="group" aria-label="Défi chronométré">
+/** ⚡ Défi de la classe — corps de l'onglet. */
+function outilDefi(info, ch, enCours, defiCourt) {
+    return `<span class="ec-pilote-cadre" role="group" aria-label="Défi chronométré">
                 <select class="ec-champ ec-champ--defi" data-defi-exo
                         aria-label="L'exercice du défi">
                     ${exercicesPourLeDefi(info)}
@@ -2539,16 +2573,12 @@ function barrePiloteHtml() {
                     ? '<button type="button" class="ec-pilote-btn ec-pilote-btn--actif"'
                         + ' data-defi-stop>Arrêter</button>' : ''}
             </span>
-            ${classementDuDefiHtml(vue.direct)}
-            </div>
-        </details>
+            ${classementDuDefiHtml(vue.direct)}`;
+}
 
-        <details class="ec-pilote-outil" name="outils-de-l-heure"${enCours ? ' open' : ''}>
-            <summary class="ec-pilote-outil-tete">⏱ Compte à rebours${enCours
-                ? ` <b class="ec-pilote-outil-vif ec-chrono-reste">${enMinutes(resteDuChrono(ch))}</b>`
-                : ''}</summary>
-            <div class="ec-pilote-outil-corps">
-            <!-- LE PROFESSEUR DOIT VOIR LE TEMPS QU'IL A LANCÉ.
+/** ⏱ Compte à rebours — corps de l'onglet. */
+function outilChrono(info, ch, enCours, defiCourt) {
+    return `<!-- LE PROFESSEUR DOIT VOIR LE TEMPS QU'IL A LANCÉ.
                  Il lançait un compte à rebours et ne le voyait JAMAIS : seuls
                  ses élèves l'avaient à l'écran. Pendant que la classe regarde
                  les secondes tomber, lui devait demander « il reste combien ? »
@@ -2575,27 +2605,12 @@ function barrePiloteHtml() {
                 </select>
                 <button type="button" class="ec-pilote-btn" data-chrono>Lancer</button>
                 `}
-            </span>
-            </div>
-        </details>
+            </span>`;
+}
 
-            <!-- LA CALCULATRICE, ACCORDÉE EN PLEINE HEURE.
-                 RÉMY : « pourrait-on autoriser dans les options l'utilisation
-                 de la calculatrice ou le permettre en direct à un groupe ou aux
-                 élèves (on pourrait sélectionner dans le direct) », puis « les
-                 deux au choix mais on pourrait le donner que pour certains
-                 élèves ».
-                 DEUX PORTÉES, comme il les a demandées : toute la séance — le
-                 « vous pouvez prendre la calculatrice » qu'on dit à voix haute
-                 et qu'on ne répète pas — ou un exercice seul. Et deux
-                 destinataires : toute la classe, ou les élèves cochés dans la
-                 liste en dessous. L'étiquette dit lequel, parce qu'accorder à
-                 trente en croyant accorder à quatre ne se voit qu'après. -->
-        <details class="ec-pilote-outil" name="outils-de-l-heure">
-            <summary class="ec-pilote-outil-tete">🧮 Calculatrice${(vue.reglages || []).some(x => x.mode === 'calculatrice')
-                ? ' <b class="ec-pilote-outil-vif">· accordée</b>' : ''}</summary>
-            <div class="ec-pilote-outil-corps">
-            <span class="ec-pilote-cadre">
+/** 🧮 Calculatrice — corps de l'onglet. */
+function outilCalc(info, ch, enCours, defiCourt) {
+    return `<span class="ec-pilote-cadre">
                 <span class="ec-pilote-mot-liant" data-calc-aqui>${aQuiLaCalculatrice()}</span>
                 <select id="ec-calc-ou" class="ec-champ ec-champ--ou"
                         aria-label="Où la calculatrice est autorisée">
@@ -2606,16 +2621,12 @@ function barrePiloteHtml() {
                 <button type="button" class="ec-pilote-btn" data-calc-donner>Autoriser</button>
                 ${(vue.reglages || []).some(x => x.mode === 'calculatrice')
         ? '<button type="button" class="ec-pilote-btn" data-calc-retirer>Retirer</button>' : ''}
-            </span>
+            </span>`;
+}
 
-            </div>
-        </details>
-
-        <details class="ec-pilote-outil" name="outils-de-l-heure">
-            <summary class="ec-pilote-outil-tete">🧰 Bac à sable${bacDeLaClasse()
-                ? '' : ' <b class="ec-pilote-outil-vif">· ouvert</b>'}</summary>
-            <div class="ec-pilote-outil-corps">
-            <span class="ec-pilote-cadre">
+/** 🧰 Bac à sable — corps de l'onglet. */
+function outilBac(info, ch, enCours, defiCourt) {
+    return `<span class="ec-pilote-cadre">
                 <span class="ec-pilote-mot-liant">${bacDeLaClasse()
                     ? 'fermé pour cette heure' : 'ouvert à ceux qui ont fini'}</span>
                 ${bacDeLaClasse()
@@ -2654,29 +2665,17 @@ function barrePiloteHtml() {
                 <button type="button" class="ec-pilote-btn" data-bac-jeux
                         title="Choisir les jeux que vos élèves trouveront dans le bac. Sans choix, le logiciel propose ses valeurs sûres, élargies à ce que la séance vient de travailler."
                         >Choisir</button>`}
-            </span>
-            </div>
-        </details>
+            </span>`;
+}
 
-        <!-- LA LISTE DE LA CLASSE, SANS QUITTER LE DIRECT.
-             RÉMY : « et un onglet aussi avec la liste de classe ». Ce qu'on
-             cherche là-dedans en plein cours n'est pas la liste pour elle-même
-             — elle a son écran — mais LE CODE D'UN ÉLÈVE qui n'arrive pas à
-             entrer, pendant que les vingt-neuf autres travaillent. Aller le
-             chercher dans « Les élèves » coûte de quitter le direct, donc de
-             perdre les vingt-neuf de vue. -->
-        <details class="ec-pilote-outil" name="outils-de-l-heure">
-            <summary class="ec-pilote-outil-tete">👥 La liste${(vue.liste && vue.liste.eleves)
-                ? ` <b class="ec-pilote-outil-vif">· ${vue.liste.eleves.length}</b>` : ''}</summary>
-            <div class="ec-pilote-outil-corps">${listeDePoche()}</div>
-        </details>
+/** 👥 La liste — corps de l'onglet. */
+function outilListe(info, ch, enCours, defiCourt) {
+    return `${listeDePoche()}`;
+}
 
-        <details class="ec-pilote-outil ec-pilote-plus" name="outils-de-l-heure">
-            <summary class="ec-pilote-outil-tete">✍ Le mot au tableau · dispenses${info.notice
-                ? ' <b class="ec-pilote-outil-vif">· affiché</b>' : ''}</summary>
-            <div class="ec-pilote-plus-corps">
-
-                <div class="ec-pilote-bloc">
+/** ✍ Le mot au tableau · dispenses — corps de l'onglet. */
+function outilTableau(info, ch, enCours, defiCourt) {
+    return `<div class="ec-pilote-bloc">
                     <span class="ec-pilote-eti">Le mot au tableau</span>
                     <p class="ec-note">Il reste affiché chez tous jusqu'à ce que vous le retiriez.</p>
                     <div class="ec-champ-ligne">
@@ -2727,22 +2726,9 @@ function barrePiloteHtml() {
                                 >Le retirer pour tous</button>
                     </div>
                     ${reglagesHtml()}
-                </div>
-
-            </div>
-        </details>
-
-        </div>
-    </div>`;
+                </div>`;
 }
 
-/**
- * À QUI LA CALCULATRICE VA — dit avant de cliquer, pas après.
- *
- * Accorder à trente élèves en croyant en accorder à quatre ne se voit qu'au
- * moment où trente sortent leur calculatrice. L'étiquette suit donc les cases
- * cochées, et c'est elle qu'on relit avant d'appuyer.
- */
 /**
  * LA LISTE DE POCHE — prénom, identifiant, code, et qui est en ligne.
  *
@@ -3030,6 +3016,7 @@ async function brancher(e, redessiner) {
         + '[data-calc-eleve], [data-saut-tout], [data-bilan-eleve],'
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
         + '[data-ordre-direct], [data-ordre-bilan], [data-sous-bilan], [data-bilan-pdf],'
+        + '[data-outil], [data-forme-direct],'
         + '[data-effacer-signal]');
     if (!el) return;
     const d = el.dataset;
@@ -3088,6 +3075,29 @@ async function brancher(e, redessiner) {
     // de suite.
     if (d.sousBilan !== undefined) {
         vue.sousBilan = d.sousBilan;
+        redessiner();
+        return;
+    }
+
+    // ── CHANGER D'OUTIL DE L'HEURE : rien à demander au serveur non plus ────
+    //
+    // RÉMY : « je voulais des onglets aussi ». Un second clic sur l'onglet
+    // ouvert le referme — c'est ce qui rend la barre à deux lignes quand on
+    // n'a plus rien à régler, et la liste des élèves est juste dessous.
+    if (d.outil !== undefined) {
+        vue.outil = vue.outil === d.outil ? null : d.outil;
+        redessiner();
+        return;
+    }
+
+    // ── EN LIGNES OU EN TUILES : la même classe, regardée autrement ─────────
+    //
+    // Ce cas passe AVANT le verrou `vue.occupe` et avant tout aller-retour,
+    // pour la même raison que l'ordre des rangs : changer de forme ne demande
+    // rien au serveur, et un redessin complet effacerait le mot que le
+    // professeur est peut-être en train d'écrire dans la barre.
+    if (d.formeDirect !== undefined) {
+        vue.formeDuDirect = d.formeDirect;
         redessiner();
         return;
     }
@@ -3455,7 +3465,7 @@ async function brancher(e, redessiner) {
         // serveur toutes les vingt secondes pendant qu'on colle une liste.
         // Le direct ET le mur battent : ce sont les deux écrans qui changent
         // tout seuls sous les yeux du professeur.
-        if (d.onglet === 'direct' || d.onglet === 'mur') lancerLeBattement(redessiner);
+        if (d.onglet === 'direct') lancerLeBattement(redessiner);
         else arreterLeBattement();
         if (!vue.liste) await rafraichirClasse(redessiner);
         // LA BIBLIOTHÈQUE DU SERVEUR, pour savoir ce qu'on peut imposer. On ne
@@ -4382,6 +4392,9 @@ function signatureDuPilote() {
     const ch = vue.direct && vue.direct.chrono;
     const df = vue.direct && vue.direct.defi;
     return [!!info.locked, !!bacDeLaClasse(), chronoQuiTourne(ch), (ch && ch.quoi) || '',
+        // L'ONGLET OUVERT FAIT PARTIE DE LA FORME DE LA BARRE : sans lui, le
+        // battement la laisserait telle quelle alors qu'on vient d'en changer.
+        vue.outil || '',
         info.impose_path_id || '', info.hors_seance ? 'maison' : '',
         (vue.reglages || []).some(x => x.mode === 'calculatrice') ? 'calc' : '',
         String(minutesDuBac()),
@@ -4536,7 +4549,8 @@ function lancerLeBattement(redessiner) {
         //
         // C'est le seul écran trié par urgence : figé, il désigne le mauvais
         // élève, ce qui est pire que ne rien désigner du tout.
-        const surUnEcranVivant = vue.onglet === 'direct' || vue.onglet === 'mur';
+        // LE MUR EST DEVENU UNE FORME DU DIRECT : un seul écran bat.
+        const surUnEcranVivant = vue.onglet === 'direct';
         if (vue.ou !== 'classe' || !surUnEcranVivant || vue.occupe) return;
         const cid = vue.classe && vue.classe.id;
         if (!cid) return;
@@ -4551,7 +4565,6 @@ function lancerLeBattement(redessiner) {
         // au bout de dix secondes : le professeur aurait vu son écran changer
         // tout seul sous ses yeux, ce qui est un défaut plus grave que celui
         // qu'on corrige.
-        if (vue.onglet === 'mur') { zone.innerHTML = murHtml(); return; }
         rafraichirLeDirect(zone);
     }, BATTEMENT_MS);
 }

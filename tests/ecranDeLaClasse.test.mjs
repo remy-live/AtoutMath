@@ -35,24 +35,34 @@ const SOURCE = 'js/ui/espaceClasses.js';
 const source = lireFeuille(SOURCE);
 const feuille = lireFeuille('css/ui.css');
 
-test('UN SEUL OUTIL DE L\'HEURE OUVERT À LA FOIS', () => {
-    // RÉMY : « mets des onglets c'est pas terrible ». Sur sa capture, trois
-    // outils étaient dépliés en même temps, chacun à une indentation
-    // différente : cela ne se lit pas comme une barre de commandes.
+test('LES OUTILS DE L\'HEURE SONT DE VRAIS ONGLETS', () => {
+    // RÉMY, deux fois. D'abord « mets des onglets c'est pas terrible », puis,
+    // devant les pastilles dépliantes qui avaient suivi : « là ce sont des
+    // boutons qui ouvrent ou ferment pas terrible ca fait un peu désorganié ».
     //
-    // L'ATTRIBUT `name` NE SUFFIT PAS : il ne vaut que depuis Chrome 120,
-    // Safari 17.2 et Firefox 130. Un collège n'a pas forcément cela, et un
-    // onglet qui n'en est un que sur les navigateurs neufs n'en est pas un.
-    // ON COMPARE LES DEUX COMPTES, et non un minimum : avec « au moins six »,
-    // retirer le nom d'un outil sur sept laissait l'épreuve verte. Vu à
-    // `epreuveTombe`, qui l'a dit avant qu'on la croie.
-    const outils = (source.match(/<details class="ec-pilote-outil/g) || []).length;
-    const avecNom = (source.match(/<details class="ec-pilote-outil[^"]*" name="outils-de-l-heure"/g) || []).length;
-    assert.equal(avecNom, outils,
-        `${avecNom} outils sur ${outils} portent le nom de groupe : les autres `
-        + 's\'ouvriront en même temps.');
-    assert.match(source, /\.ec-pilote-outil\[open\]'\)\s*\n?\s*\.forEach\(d => \{ if \(d !== moi\) d\.open = false; \}\)/,
-        'rien ne referme les voisins : la règle redevient dépendante du navigateur');
+    // CE QUI CLOCHAIT : la pastille ouverte prenait toute la largeur et
+    // poussait les six autres sur la ligne suivante. La rangée changeait donc
+    // de forme à chaque clic. Mesuré après la correction : la rangée d'onglets
+    // reste au même pixel (437, hauteur 53) qu'on ouvre le défi, le chrono ou
+    // rien du tout.
+    assert.match(source, /class="ec-pilote-onglets" role="tablist"/,
+        'la rangée d\'onglets a disparu');
+    assert.match(source, /class="ec-pilote-panneau" role="tabpanel"/,
+        'le panneau unique a disparu : les outils se rouvrent chacun chez soi');
+    assert.doesNotMatch(source, /<details class="ec-pilote-outil/,
+        'les pastilles dépliantes sont revenues');
+    // SEPT OUTILS, ET CHACUN SON CORPS : un onglet sans corps est un bouton
+    // qui ne fait rien.
+    const table = source.slice(source.indexOf('const OUTILS_DE_LHEURE = ['),
+        source.indexOf('function barrePiloteHtml'));
+    const cles = table.match(/cle: '/g) || [];
+    const corps = table.match(/corps: outil/g) || [];
+    assert.equal(cles.length, 7, `${cles.length} outils au lieu de sept`);
+    assert.equal(corps.length, cles.length, 'un onglet n\'a pas de corps');
+    // ET UN SECOND CLIC REFERME : c'est ce qui rend la barre à deux lignes
+    // au-dessus de la liste des élèves, qui est ce qu'on vient regarder.
+    assert.match(source, /vue\.outil = vue\.outil === d\.outil \? null : d\.outil;/,
+        'l\'onglet ouvert ne se referme plus : la barre reste dépliée');
 });
 
 test('LA LISTE DE LA CLASSE SE LIT SANS QUITTER LE DIRECT', () => {
@@ -78,12 +88,31 @@ test('CHAQUE ÉCRAN DE LA CLASSE DIT CE QU\'IL EST', () => {
     // POSTURES — assis avec les commandes, debout du fond de la salle.
     const dit = source.slice(source.indexOf('const DIT_ONGLET'),
         source.indexOf('// --- Onglet « Le direct »'));
-    for (const cle of ['direct', 'mur', 'seances', 'liste', 'bilans']) {
+    for (const cle of ['direct', 'seances', 'liste', 'bilans']) {
         assert.ok(new RegExp(`${cle}:`).test(dit), `l'onglet « ${cle} » ne dit plus ce qu'il est`);
     }
-    assert.match(dit, /Assis/, 'le direct ne dit plus sa posture');
-    assert.match(dit, /Debout/, 'le mur ne dit plus sa posture');
     assert.match(source, /class="ec-onglet-dit"/, 'la phrase n\'est plus affichée');
+});
+
+test('LE MUR EST UNE FORME DU DIRECT, ET NON UN ÉCRAN DE PLUS', () => {
+    // RÉMY, deux fois : « J'ai du mal à voir la différence avec les murs et le
+    // direct », puis « j'ai l'impression le direct et le mur font la même
+    // chose mais présenté différement ».
+    //
+    // IL A RAISON : c'est la même classe, la même seconde, les mêmes données —
+    // seule la forme change. J'avais d'abord répondu par une PHRASE sous
+    // l'onglet, ce qui revenait à expliquer une distinction au lieu de la
+    // supprimer. Deux onglets pour cela, c'est une question de plus à se poser
+    // chaque fois qu'on ouvre l'écran.
+    assert.doesNotMatch(source, /\$\{onglet\('mur'/,
+        'l\'onglet « Le mur » est revenu : c\'est le même écran que le direct');
+    assert.match(source, /data-forme-direct="tuiles"/,
+        'l\'interrupteur « en tuiles » a disparu : le mur n\'est plus atteignable');
+    assert.match(source, /\$\{enTuiles \? murHtml\(\) :/,
+        'le direct ne sait plus se montrer en tuiles');
+    // ET LE BATTEMENT NE SUIT PLUS QU'UN ÉCRAN.
+    assert.doesNotMatch(source, /vue\.onglet === 'mur'/,
+        'le battement cherche encore un onglet qui n\'existe plus');
 });
 
 test('LA SÉANCE EN COURS SE VOIT À SON FOND', () => {

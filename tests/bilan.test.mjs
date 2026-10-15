@@ -357,25 +357,57 @@ test('UN CONSEIL PAR ÉLÈVE, ET IL DIT QUOI FAIRE', () => {
     assert.match(c({}).phrase, /code/);
     // PUIS CELUI QUI EST VENU SANS RIEN FAIRE.
     assert.equal(c({ lastSeenAt: 1, totalQuestions: 0 }).rang, 1);
-    // PUIS L'ERREUR JAMAIS REPRISE : elle se corrige en deux minutes quand on
-    // la voit, et elle fausse tout le reste tant qu'elle est là.
-    const ouverte = c({ lastSeenAt: 1, totalQuestions: 40, openErrors: 2 });
-    assert.equal(ouverte.rang, 2);
-    assert.match(ouverte.phrase, /2 erreurs/);
-    // TROP PEU DE QUESTIONS PASSE AVANT LES NOTIONS FRAGILES : dire « doit
+    // TROP PEU DE QUESTIONS PASSE AVANT TOUTE CONCLUSION : dire « doit
     // réviser » sur quatre questions est un chiffre juste et une conclusion
     // fausse. C'est le défaut qu'on a vu à l'écran — il s'affichait en vert.
     const tot = c({ lastSeenAt: 1, totalQuestions: 4,
         weakSkills: [{ skillId: 'num.add.entiers' }] });
     assert.equal(tot.rang, 4);
     assert.match(tot.phrase, /trop tôt/);
-    // ET LA NOTION EST NOMMÉE, pas son identifiant.
+    // PUIS LA NOTION FRAGILE, NOMMÉE — pas son identifiant.
     const faible = c({ lastSeenAt: 1, totalQuestions: 40,
         weakSkills: [{ skillId: 'num.add.entiers' }, { skillId: 'num.sub.entiers' }] });
-    assert.equal(faible.rang, 3);
+    assert.equal(faible.rang, 2);
     assert.equal(faible.phrase, 'Doit réviser : Additionner des entiers et Soustraire des entiers.');
     // ENFIN CELUI QUI N'A RIEN À REPRENDRE.
     assert.equal(c({ lastSeenAt: 1, totalQuestions: 40, successRate: .9 }).rang, 5);
+});
+
+test('LE CONSEIL NOMME LA NOTION, ET NON LE NOMBRE D\'ERREURS', () => {
+    // RÉMY, devant sa classe de trente : « il faut plutôt préciser en quoi ça
+    // doit être retravaillé ». Sept élèves d'affilée portaient « 67 erreurs
+    // jamais reprises : les revoir avec lui ou elle » — sept fois la même
+    // phrase, qui ne nomme rien et ne se recopie nulle part.
+    const avecNotion = conseilDuRapport({
+        lastSeenAt: 1, totalQuestions: 400, openErrors: 67,
+        weakSkills: [{ skillId: 'num.add.entiers' }],
+        openSkills: [{ skillId: 'num.sub.entiers', count: 40 }]
+    });
+    assert.match(avecNotion.phrase, /Additionner des entiers/,
+        'la notion fragile n\'est plus nommée');
+    // LE COMPTE RESTE, MAIS DERRIÈRE, entre parenthèses : il dit l\'ampleur,
+    // pas le travail.
+    assert.match(avecNotion.phrase, /\(67 erreurs à reprendre\)/);
+    assert.ok(!/^67/.test(avecNotion.phrase), 'le nombre a repris la tête de la phrase');
+
+    // SANS NOTION FRAGILE, ON NOMME CELLES DES ERREURS EN SOUFFRANCE : elles
+    // ne sont pas les mêmes — une notion peut être acquise et garder deux
+    // questions ratées qu\'on n\'a jamais rouvertes.
+    const desErreurs = conseilDuRapport({
+        lastSeenAt: 1, totalQuestions: 400, openErrors: 52, weakSkills: [],
+        openSkills: [{ skillId: 'num.sub.entiers', count: 40 },
+                     { skillId: 'num.mult.sens', count: 12 }]
+    });
+    assert.equal(desErreurs.phrase,
+        'À reprendre : Soustraire des entiers et Sens de la multiplication '
+        + '(52 erreurs à reprendre).');
+
+    // ET QUAND MÊME LES ERREURS NE DÉSIGNENT RIEN, on le dit — plutôt que de
+    // faire passer un nombre pour un conseil.
+    const sansRien = conseilDuRapport({
+        lastSeenAt: 1, totalQuestions: 400, openErrors: 3, weakSkills: [], openSkills: []
+    });
+    assert.match(sansRien.phrase, /sans notion qui ressorte/);
 });
 
 test('LE RANG DU CONSEIL VIENT AVEC SA PHRASE', () => {
@@ -387,15 +419,20 @@ test('LE RANG DU CONSEIL VIENT AVEC SA PHRASE', () => {
     const r = conseilDuRapport(l);
     assert.equal(typeof r.rang, 'number');
     assert.equal(typeof r.phrase, 'string');
-    // ET LES RANGS SE SUIVENT, du plus urgent au moins urgent.
-    const rangs = [
-        conseilDuRapport({}).rang,
-        conseilDuRapport({ lastSeenAt: 1 }).rang,
-        conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40, openErrors: 1 }).rang,
-        conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40,
+    // ET CHAQUE CAS A SON RANG, du plus urgent au moins urgent — c'est lui qui
+    // range la liste ET qui teinte le filet de la ligne.
+    const rangs = {
+        jamaisVenu: conseilDuRapport({}).rang,
+        rienFait: conseilDuRapport({ lastSeenAt: 1 }).rang,
+        notionFragile: conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40,
             weakSkills: [{ skillId: 'num.add.entiers' }] }).rang,
-        conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40, successRate: .9 }).rang
-    ];
-    assert.deepEqual(rangs, [...rangs].sort((a, b) => a - b),
-        'les rangs ne sont plus rangés du plus urgent au moins urgent');
+        erreursOuvertes: conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40,
+            openErrors: 1 }).rang,
+        tropPeu: conseilDuRapport({ lastSeenAt: 1, totalQuestions: 2 }).rang,
+        rienAFaire: conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40, successRate: .9 }).rang
+    };
+    assert.deepEqual(rangs, {
+        jamaisVenu: 0, rienFait: 1, notionFragile: 2, erreursOuvertes: 3,
+        tropPeu: 4, rienAFaire: 5
+    }, 'l\'échelle des urgences a changé : les couleurs des filets ne veulent plus dire la même chose');
 });

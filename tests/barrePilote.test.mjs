@@ -26,20 +26,24 @@ import { lireFeuille, corpsDeLaRegle, valeurDe } from './aidesCss.mjs';
 const SOURCE = 'js/ui/espaceClasses.js';
 const source = lireFeuille(SOURCE);
 
-test('LES OUTILS DE L\'HEURE SE REPLIENT, UN PAR UN', () => {
-    // SIX PASTILLES : hors séance, défi, compte à rebours, calculatrice, bac à
-    // sable, et le mot au tableau. Chacune est un `details` — donc repliée par
-    // défaut, et ouverte par un seul clic.
-    const pastilles = source.match(/<details class="ec-pilote-outil/g) || [];
-    assert.ok(pastilles.length >= 6,
-        `il ne reste que ${pastilles.length} outils repliables : la barre se `
-        + 'redéplie en entier au-dessus de la liste des élèves.');
-    // ET LA PAUSE RESTE DÉPLIÉE : c'est le geste qu'on fait sans y penser.
-    const avantLesOutils = source.slice(0, source.indexOf('<div class="ec-pilote-outils">'));
-    assert.match(avantLesOutils, /data-pause=/,
-        'la pause est passée dans un repli : elle doit rester sous la main');
-    assert.match(avantLesOutils, /data-mot-classe/,
-        'le mot à la classe est passé dans un repli');
+test('LA PAUSE ET LE MOT NE SE REPLIENT JAMAIS', () => {
+    // CE SONT LES DEUX GESTES QU'ON FAIT SANS Y PENSER, et les replier
+    // coûterait un clic à chaque fois. Ils vivent donc dans la rangée du haut,
+    // qui ne connaît pas les onglets.
+    //
+    // (Les pastilles dépliantes sont devenues de vrais onglets après la
+    // deuxième remarque de Rémy : « là ce sont des boutons qui ouvrent ou
+    // ferment pas terrible ca fait un peu désorganié ». Ce que cette épreuve
+    // garde n'a pas changé : la rangée du haut reste hors des onglets.)
+    const haut = source.slice(source.indexOf('function rangeeDuHaut(info)'),
+        source.indexOf('/** 🏠 Hors séance'));
+    assert.match(haut, /data-pause=/,
+        'la pause est passée dans un onglet : elle doit rester sous la main');
+    assert.match(haut, /data-mot-classe/,
+        'le mot à la classe est passé dans un onglet');
+    // ET LA BARRE APPELLE BIEN CETTE RANGÉE.
+    assert.match(source, /\$\{rangeeDuHaut\(info\)\}/,
+        'la barre n\'affiche plus la rangée du haut');
 });
 
 test('UNE PASTILLE REPLIÉE DIT CE QUI AGIT DÉJÀ', () => {
