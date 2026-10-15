@@ -14047,3 +14047,93 @@ body.en-boite > #app-container { background: none; }
 .dgt-rate { margin: 0; color: var(--danger-texte); font-size: .8rem; font-weight: 700; }
 
 .dgt-verdict { display: flex; gap: 6px; justify-content: flex-end; margin-top: auto; }
+
+/* ── LE DÉFI CHRONOMÉTRÉ DE LA CLASSE ───────────────────────────────────────
+   RÉMY : « je lance le défi. Et là tous les élèves reçoivent des calculs […]
+   et au bout d'une minute, tableau de score pour tout le monde ».
+   LE VOILE COUVRE TOUT, et c'est le but : pendant la minute, il n'y a qu'une
+   chose à faire. Ce qu'il faisait reste monté DESSOUS — on ne démonte rien,
+   il le retrouve exactement où il l'avait laissé. */
+.defi-voile {
+    /* AU-DESSUS DU PLATEAU DE JEU, ET SOUS LA PAUSE DU PROFESSEUR.
+       VU SUR LA PHOTO, ET SEULEMENT LÀ : à z-index 9000, le voile passait
+       DERRIÈRE #game-layer (10000). Le sélecteur répondait « il est là », le
+       compteur montait, les contrôles étaient tous verts — et l'élève voyait
+       son exercice. C'est la famille de défauts la plus chère du dépôt : tout
+       fonctionne, rien ne se voit.
+       L'ORDRE EST UNE DÉCISION : le plateau, puis le défi, puis la pause
+       (.moment-pause, 2147481000), puis le compte à rebours. Si le professeur
+       met la classe en pause pendant un défi, c'est la pause qui gagne —
+       « tout le monde s'arrête » veut dire tout le monde. */
+    position: fixed; inset: 0; z-index: 2147480000;
+    display: flex; align-items: center; justify-content: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px;
+    /* `--bg-page` N'EXISTE PAS, ET UN `color-mix` INVALIDE NE PEINT RIEN.
+       Vu sur la photo : la carte du défi flottait sur l'exercice resté
+       visible — titre, compteur de questions, bouton « Voir mon bilan ». Le
+       jeton s'appelle `--bg-app`, et une faute de frappe dans un nom de
+       variable CSS ne lève aucune erreur : la déclaration est simplement
+       ignorée. */
+    background: color-mix(in srgb, var(--bg-app) 88%, var(--primary));
+    animation: defi-entre .25s ease-out;
+}
+@keyframes defi-entre { from { opacity: 0; transform: scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .defi-voile { animation: none; } }
+.defi-carte {
+    background: var(--bg-panel); border-radius: 18px; box-shadow: var(--shadow-lg);
+    padding: clamp(18px, 4vmin, 34px); text-align: center;
+    width: min(720px, 100%); max-height: 100%; overflow-y: auto;
+}
+.defi-titre { font-weight: 900; letter-spacing: .06em; color: var(--primary-texte); }
+.defi-exo { font-size: clamp(1.1rem, 3.4vmin, 1.6rem); font-weight: 800; margin: 10px 0; }
+.defi-compte {
+    font-size: clamp(3rem, 14vmin, 6rem); font-weight: 900; line-height: 1.1;
+    color: var(--warning-texte);
+}
+.defi-sous { color: var(--text-muted); font-weight: 600; }
+/* LA JAUGE EST LA SEULE CHOSE QUI BOUGE PENDANT QU'IL CALCULE : un chiffre qui
+   décroît attire l'œil à chaque seconde, une barre se lit sans la regarder. */
+.defi-barre { height: 10px; border-radius: 99px; background: var(--bg-hover); overflow: hidden; }
+.defi-jauge { height: 100%; background: var(--warning); transition: width .25s linear; }
+.defi-haut {
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 800; margin: 10px 2px 4px; color: var(--text-muted);
+}
+.defi-score { color: var(--success-texte); }
+.defi-question { font-size: clamp(1.3rem, 5vmin, 2.2rem); font-weight: 900; margin: 14px 0; }
+.defi-reponses { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.defi-choix {
+    flex: 1 1 140px; max-width: 280px; min-height: 58px;
+    border: 2px solid var(--border); border-radius: 12px; background: var(--bg-panel);
+    color: var(--text-main); font: inherit; font-weight: 800;
+    font-size: clamp(1rem, 3.2vmin, 1.4rem); cursor: pointer;
+}
+.defi-choix:active { background: var(--bg-hover); }
+.defi-saisie {
+    font: inherit; font-weight: 800; font-size: clamp(1.1rem, 4vmin, 1.8rem);
+    text-align: center; width: min(220px, 60%); padding: 10px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+}
+.defi-valider {
+    border: none; border-radius: 12px; background: var(--primary); color: #fff;
+    font: inherit; font-weight: 800; padding: 12px 22px; min-height: 48px; cursor: pointer;
+}
+/* LE RETOUR EST UN FLASH, PAS UNE PHRASE : à une réponse toutes les trois
+   secondes, il n'y a pas le temps de lire — mais il y a le temps de voir. */
+.defi-ok { animation: defi-ok .25s ease-out; }
+.defi-ko { animation: defi-ko .25s ease-out; }
+@keyframes defi-ok { 50% { background: color-mix(in srgb, var(--success) 28%, transparent); } }
+@keyframes defi-ko { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .defi-ok, .defi-ko { animation: none; } }
+.defi-podium { margin: 14px 0; display: flex; flex-direction: column; gap: 8px; }
+.defi-marche {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    border-radius: 12px; background: var(--bg-hover); font-weight: 800;
+}
+.defi-medaille { font-size: 1.4rem; }
+.defi-prenom { flex: 1 1 auto; text-align: left; }
+.defi-pts { color: var(--primary-texte); }
+.defi-moi { margin: 12px 0 16px; font-weight: 700; }
+.defi-carte--jeu .defi-titre { margin-bottom: 10px; font-size: .8rem; }
+.defi-temps { font-variant-numeric: tabular-nums; }

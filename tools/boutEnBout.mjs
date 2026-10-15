@@ -554,6 +554,101 @@ ok('IL SE POSE À CÔTÉ, ET N\'OUVRE AUCUNE FENÊTRE',
     carte ? `${carte.fenetres} fenêtre(s), comme avant (${fenetresAvant}) · `
         + `posé à ${carte.bas} px du bas et ${carte.droite} px de la droite` : '—');
 
+// ─────────────── 3 quinquies. LE DÉFI CHRONOMÉTRÉ DE LA CLASSE ─────────────
+//
+// RÉMY : « je lance le défi. Et là tous les élèves reçoivent des calculs, il
+// faut taper la réponse ou QCM, aux choix, et au bout d'une minute, tableau de
+// score pour tout le monde, et on reprend la suite des exercices normalement ».
+//
+// ICI ET PAS PLUS BAS, ET C'EST UNE LEÇON PAYÉE : la section suivante
+// DÉCONNECTE l'élève pour éprouver la déconnexion. Posée après elle, celle-ci
+// recevait « Pas de classe rattachée » et quatre contrôles tombaient — sur un
+// code parfaitement bon. Un contrôle qui casse les contrôles d'après n'en est
+// pas un ; un contrôle placé après celui qui casse tout non plus.
+//
+// CE QUE CETTE SECTION MESURE, ET QUE LE HARNAIS PHP NE PEUT PAS MESURER : que
+// le défi ARRIVE SUR L'ÉCRAN DE L'ÉLÈVE sans qu'il ait rien demandé, qu'il
+// puisse répondre, et que son score reparte. Le serveur est déjà gardé de son
+// côté (treize vérifications dans tools/testApi.php) ; ici on regarde l'écran.
+console.log('\nLE DÉFI CHRONOMÉTRÉ');
+console.log('─'.repeat(64));
+
+// QUINZE SECONDES, PAS SOIXANTE : on ne fait pas attendre un harnais une
+// minute pour voir un tableau de scores. C'est le serveur qui écrit la fin,
+// donc la durée courte ne change rien au mécanisme qu'on éprouve.
+const defiLance = await prof.evaluate(async (cid) => {
+    const { lancerLeDefi } = await import('./js/core/espaceProf.js');
+    const r = await lancerLeDefi(cid, 'calc-add', 15, 'qcm');
+    return !!(r && r.ok);
+}, classe.id);
+ok('le professeur lance le défi', defiLance);
+
+// L'ARDOISE LE REÇOIT TOUTE SEULE. On force une relecture de l'état de séance
+// plutôt que d'attendre les dix secondes du battement : c'est la même route.
+const arrive = await eleve.evaluate(async () => {
+    const { rafraichirSeance } = await import('./js/core/sync.js');
+    await rafraichirSeance();
+    const { defiEnCours } = await import('./js/core/seanceDistante.js');
+    const d = defiEnCours();
+    return d ? { exo: d.exo, mode: d.mode, reste: d.reste, graine: !!d.graine } : null;
+});
+ok('le défi arrive chez l\'élève, avec sa graine et son temps',
+    !!arrive && arrive.exo === 'calc-add' && arrive.reste > 0 && arrive.graine,
+    JSON.stringify(arrive));
+
+// L'ÉCRAN SE POSE PAR-DESSUS — et ce qu'il faisait reste monté DESSOUS.
+await eleve.waitForTimeout(3200);   // les trois secondes du départ, et la marge
+// ET L'ON EN GARDE UNE IMAGE : un compte de boutons dit que l'écran n'est pas
+// vide, jamais qu'il est lisible. C'est la photo qu'on regarde, pas le chiffre.
+await eleve.screenshot({ path: 'tools/tmp/defi-eleve.png' }).catch(() => {});
+const ecranDefi = await eleve.evaluate(() => ({
+    voile: !!document.querySelector('.defi-voile--jeu'),
+    question: (document.querySelector('.defi-question') || {}).textContent || '',
+    choix: document.querySelectorAll('.defi-choix').length,
+    dessous: !!document.getElementById('app-container')
+}));
+ok('l\'écran du défi se pose sur le sien', ecranDefi.voile, JSON.stringify(ecranDefi));
+ok('avec une vraie question et des réponses à choisir',
+    ecranDefi.question.trim().length > 0 && ecranDefi.choix >= 2,
+    `« ${ecranDefi.question.trim().slice(0, 30)} » · ${ecranDefi.choix} choix`);
+ok('et ce qu\'il faisait reste monté dessous', ecranDefi.dessous);
+
+// IL RÉPOND. On clique la bonne réponse trois fois : c'est le chemin de
+// l'élève, et c'est aussi la seule façon de savoir que le compteur monte.
+for (let i = 0; i < 3; i++) {
+    const clique = await eleve.evaluate(() => {
+        const bons = [...document.querySelectorAll('.defi-choix')];
+        if (!bons.length) return false;
+        // On ne connaît pas la bonne réponse de l'extérieur : on prend la
+        // première, et le compteur dira combien étaient justes.
+        bons[0].click();
+        return true;
+    });
+    if (!clique) break;
+    await eleve.waitForTimeout(400);
+}
+const compteur = await eleve.evaluate(() =>
+    (document.querySelector('[data-bonnes]') || {}).textContent || '');
+ok('le compteur de bonnes réponses existe et se lit', compteur !== '', compteur);
+
+// LA MINUTE PASSE. On ne l'attend pas : le serveur écrit la fin, et c'est lui
+// qu'on avance — exactement comme le harnais PHP le fait pour le chrono.
+await prof.evaluate(async (cid) => {
+    const { lancerLeDefi } = await import('./js/core/espaceProf.js');
+    // Relancer avec la durée minimale puis laisser filer serait plus long :
+    // on arrête, ce qui est le geste « le défi est fini » du professeur.
+    await lancerLeDefi(cid, '', 0);
+}, classe.id);
+await eleve.waitForTimeout(16000);
+const apres = await eleve.evaluate(async () => {
+    const { rafraichirSeance } = await import('./js/core/sync.js');
+    await rafraichirSeance();
+    const { defiEnCours } = await import('./js/core/seanceDistante.js');
+    return { encore: !!defiEnCours(), voile: !!document.querySelector('.defi-voile--jeu') };
+});
+ok('la minute passée, le défi s\'efface et l\'élève reprend son travail',
+    !apres.encore && !apres.voile, JSON.stringify(apres));
+
 // ─────────────────── 3 quater. SE DÉCONNECTER, DES DEUX CÔTÉS ──────────────
 //
 // Rémy : « Tu sais qu'on ne peut même pas se déconnecter ».

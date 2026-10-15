@@ -286,6 +286,39 @@ function lesTablesDuSchema(bool $sqlite): array
         --     bac doit alors rester vide plutôt que de se remplir tout seul de
         --     ce qu'il vient d'enlever.
         bac_jeux       $txtNull,
+        -- ── LE DÉFI CHRONOMÉTRÉ DE LA CLASSE ───────────────────────────────
+        --
+        -- RÉMY : « je peux lancer un challenge chronométré, le plus de calcul
+        -- et toute la classe participe et au bout du challenge, un tableau de
+        -- High score. Exemple : je lance le défi. Et là tous les élèves
+        -- reçoivent des calculs, il faut taper la réponse ou QCM, aux choix,
+        -- et au bout d'une minute, tableau de score pour tout le monde, et on
+        -- reprend la suite des exercices normalement ».
+        --
+        -- CINQ COLONNES, ET PAS UNE TABLE : comme le moment en cours, un défi
+        -- n'existe qu'au présent — il y en a un ou il n'y en a pas. Les SCORES,
+        -- eux, s'empilent : ils ont leur table.
+        --
+        --   · defi_exo : l'exercice du catalogue qui fournit les questions.
+        --     Rémy : « on pourrait faire cela avec les générateurs ». Rien à
+        --     écrire à la volée, donc : il choisit, et le générateur fait la
+        --     série.
+        defi_exo       $txtNull,
+        --   · defi_graine : LA MÊME SÉRIE POUR TOUT LE MONDE. Sans elle,
+        --     chaque ardoise tirerait ses propres questions et le classement
+        --     comparerait trente épreuves différentes. Les générateurs sont
+        --     déjà déterministes : une graine suffit.
+        defi_graine    $txtNull,
+        --   · defi_mode : 'saisie' ou 'qcm' — « aux choix », et c'est le sien.
+        defi_mode      $txtNull,
+        --   · defi_debut et defi_fin : DEUX INSTANTS, jamais une durée (UNIX).
+        --     C'est la règle du compte à rebours, et elle vaut doublement ici :
+        --     une durée commence à vieillir dès qu'elle est écrite, et une
+        --     ardoise qui interroge deux secondes plus tard aurait deux
+        --     secondes de plus que les autres. `defi_debut` sert en plus
+        --     d'identifiant du défi dans la table des scores.
+        defi_debut     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
+        defi_fin       " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
@@ -594,6 +627,30 @@ function lesTablesDuSchema(bool $sqlite): array
     // PAS DE CLÉ ÉTRANGÈRE VERS `paths` : un parcours supprimé ne doit pas
     // emporter la ligne en silence, et un identifiant qui ne désigne plus rien
     // ferme la permission — ce qui est exactement le comportement voulu.
+    // ── LES SCORES D'UN DÉFI ───────────────────────────────────────────────
+    //
+    // UNE LIGNE PAR ÉLÈVE ET PAR DÉFI. `defi_debut` identifie le défi avec la
+    // classe : c'est l'instant que le serveur a écrit en le lançant, donc il
+    // ne peut pas être deux fois le même pour une classe.
+    //
+    // ON GARDE LES ANCIENS. Rémy relance un défi sur le même exercice la
+    // semaine suivante, et la question « est-ce qu'ils vont plus vite qu'avant »
+    // est la plus intéressante qu'on puisse poser à ces chiffres.
+    $tables['defi_scores'] = "
+        id         $id,
+        class_id   $ref,
+        student_id $ref,
+        defi_debut " . ($sqlite ? 'INTEGER NOT NULL' : 'BIGINT NOT NULL') . ",
+        bonnes     " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        total      " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        -- LE TEMPS CUMULÉ DES BONNES RÉPONSES, en millisecondes. Il ne fait pas
+        -- le score — Rémy veut « le plus de calculs » —, il DÉPARTAGE les
+        -- égalités. Compter des points de vitesse récompenserait la frappe.
+        ms         " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        created_at $date,
+        FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
+
     $tables['overrides'] = "
         id          $id,
         class_id    $refNull,

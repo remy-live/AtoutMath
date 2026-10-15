@@ -4606,3 +4606,22 @@ lignes** — 2026-10-01
   commande, et c'est la troisième fois de la journée. La leçon est d'usage :
   **quand on resserre un filtre pour taire un faux positif, on relance la chute
   sur le VRAI cas**, parce qu'un filtre ne sait pas lequel des deux il coupe.
+
+---
+
+**`epreuveTombe` ne reconnaissait pas la chute d'une vérification PHP qui a un détail**
+— 15 octobre 2026
+
+- *Ce que je voulais faire* : voir tomber cinq gardes neuves du défi chronométré,
+  écrites dans `tools/testApi.php`.
+- *Ce qui a coûté* : quatre fausses alertes de suite, et dix minutes à croire
+  que mes gardes ne gardaient rien. `verifier()` écrit « ✓ nom » quand ça passe
+  et « · nom — détail » quand ça tombe ; l'outil lisait donc le nom NU d'un
+  côté et le nom SUIVI DU DÉTAIL de l'autre. `--epreuve "<nom>"` ne reconnaissait
+  jamais la chute et annonçait « CETTE ÉPREUVE NE GARDE RIEN » — le message le
+  plus alarmant du dépôt — sur des gardes parfaitement bonnes.
+- *Combien de fois* : |||| (quatre dans la même minute, et le `--epreuve` sur
+  du PHP n'avait encore jamais servi avec un détail)
+- *Ce qui manque* : fait. Le lecteur PHP range maintenant les DEUX formes du
+  nom, entière et coupée au premier « — ». Il ne peut pas choisir : dans la
+  course où elle tombe, l'épreuve n'imprime jamais son nom nu.

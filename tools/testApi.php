@@ -1449,9 +1449,9 @@ $tables = array_column(db()->query(
 // déploiement ne se voit qu'au moment où une route l'interroge — c'est-à-dire
 // en classe. On la met à jour à la main à chaque table neuve, et c'est le prix
 // à payer pour que l'oubli crie ici plutôt que là-bas.
-verifier('les treize tables sont là',
-    $tables === ['assignments', 'classes', 'events', 'message_reads', 'messages',
-                 'overrides', 'paths', 'reglages', 'reinitialisations',
+verifier('les quatorze tables sont là',
+    $tables === ['assignments', 'classes', 'defi_scores', 'events', 'message_reads',
+                 'messages', 'overrides', 'paths', 'reglages', 'reinitialisations',
                  'signalements', 'student_tokens', 'students', 'teachers'],
     implode(', ', $tables));
 
@@ -2729,38 +2729,125 @@ verifier('ET SON VOISIN NE LE REÇOIT PAS',
     $jetonVoisin !== '' && !in_array('Le rattrapage de Léa', $vuVoisin(), true),
     implode(' · ', $vuVoisin()) ?: '(rien)');
 
-// LA LISTE DES SÉANCES DE LA CLASSE LE MONTRE, ET DIT À QUI. Sans cela, un
-// travail donné à trois élèves n'apparaîtrait nulle part chez le professeur —
-// exactement le genre de séance fantôme qu'on vient de supprimer ailleurs.
-$sean = json('/teacher/assign', ['classId' => $idApp, 'action' => 'list'],
-    $jetonNotre)['json']['seances'] ?? [];
-$sienne = null;
-foreach ($sean as $x) { if ($x['nom'] === 'Le rattrapage de Léa') { $sienne = $x; break; } }
-verifier('LA LISTE DE LA CLASSE MONTRE CE QU\'ON A DONNÉ À UN SEUL, ET À QUI',
-    $sienne !== null && ($sienne['pour'] ?? null) !== null,
-    $sienne ? ('pour : ' . ($sienne['pour'] ?? 'toute la classe')) : '(absente)');
+// ────────── LE DÉFI CHRONOMÉTRÉ DE LA CLASSE ───────────────────────────────
+//
+// RÉMY : « je peux lancer un challenge chronométré, le plus de calcul et toute
+// la classe participe et au bout du challenge, un tableau de High score […] et
+// on reprend la suite des exercices normalement ».
+//
+// CE QUI SE GARDE ICI, ET QU'AUCUNE ÉPREUVE DE NAVIGATEUR NE PEUT GARDER : que
+// les trente ardoises reçoivent LA MÊME SÉRIE et LA MÊME MINUTE. Les deux
+// viennent du serveur, et d'aucun autre endroit.
+//
+// UNE CLASSE À PART, ET C'EST UNE LEÇON PAYÉE : la première écriture ajoutait
+// quatre élèves à la classe du Direct pour que le podium ait de quoi déborder,
+// et cassait une épreuve écrite deux cents lignes plus bas qui comptait « deux
+// élèves ». Un décor partagé se paie toujours, et jamais là où on l'a touché.
 
-// REPRENDRE À UN ÉLÈVE NE TOUCHE QUE LUI.
-json('/teacher/assign', ['pathId' => $leSien, 'classId' => $idApp], $jetonNotre);
-json('/teacher/assign',
-    ['action' => 'retirer', 'pathId' => $leSien, 'studentId' => $billet['id']], $jetonNotre);
-verifier('REPRENDRE À UN ÉLÈVE NE RETIRE PAS LA SÉANCE DE LA CLASSE',
-    in_array('Le rattrapage de Léa', $vuVoisin(), true),
-    implode(' · ', $vuVoisin()) ?: '(rien)');
+json('/teacher/classes', ['action' => 'create', 'name' => 'Les défis'], $jetonNotre);
+$idDefi = (string) enBase()->query(
+    "SELECT id FROM classes WHERE name = 'Les défis'")->fetchColumn();
+json('/teacher/roster', ['classId' => $idDefi, 'action' => 'importer',
+    'liste' => "Zoe Defi ; zoe.defi ; DEFI01\nYanis Defi ; yanis.defi ; DEFI02\n"
+             . "Xavier Defi ; xavier.defi ; DEFI03\nWassim Defi ; wassim.defi ; DEFI04\n"
+             . "Victor Defi ; victor.defi ; DEFI05"], $jetonNotre);
+$jetonZoe = json('/login', ['login' => 'zoe.defi', 'code' => 'DEFI01'])['json']['token'] ?? '';
+$jetonYanis = json('/login', ['login' => 'yanis.defi', 'code' => 'DEFI02'])['json']['token'] ?? '';
+verifier('les deux élèves du défi sont entrés', $jetonZoe !== '' && $jetonYanis !== '');
 
-// ET L'INVERSE : retirer à la classe ne retire pas le travail nommé. « Je ne le
-// donne plus à toute la 4C » ne veut pas dire « j'enlève le rattrapage de Léa ».
-json('/teacher/assign', ['pathId' => $leSien, 'studentId' => $billet['id']], $jetonNotre);
-json('/teacher/assign',
-    ['action' => 'retirer', 'pathId' => $leSien, 'classId' => $idApp], $jetonNotre);
-verifier('RETIRER À LA CLASSE NE REPREND PAS LE TRAVAIL NOMMÉ',
-    in_array('Le rattrapage de Léa', $vu(), true) && !in_array('Le rattrapage de Léa', $vuVoisin(), true),
-    'lui : ' . implode(' · ', $vu()) . ' | voisin : ' . (implode(' · ', $vuVoisin()) ?: 'rien'));
+$defiProf = fn (array $corps) => json('/teacher/class',
+    array_merge(['classId' => $idDefi, 'action' => 'defi'], $corps), $jetonNotre);
 
-verifier('un collègue ne reprend pas le travail d\'un de nos élèves',
-    json('/teacher/assign',
-        ['action' => 'retirer', 'pathId' => $leSien, 'studentId' => $billet['id']],
-        $jetonAutre)['code'] === 404);
+$r = $defiProf(['exo' => 'calc-add', 'secondes' => 60, 'mode' => 'qcm']);
+verifier('LE PROFESSEUR LANCE UN DÉFI', ($r['json']['ok'] ?? false) === true,
+    json_encode($r['json']));
+
+$vuPar = fn (string $jeton) => json('/session', [], $jeton)['json']['session']['defi'] ?? null;
+$chezZoe = $vuPar($jetonZoe);
+$chezYanis = $vuPar($jetonYanis);
+verifier('IL ARRIVE CHEZ L\'ÉLÈVE, AVEC SON EXERCICE ET SA FIN',
+    ($chezZoe['exo'] ?? '') === 'calc-add' && ($chezZoe['fin'] ?? 0) > time(),
+    json_encode($chezZoe));
+verifier('ET LES DEUX ÉLÈVES REÇOIVENT LA MÊME GRAINE ET LA MÊME MINUTE',
+    ($chezZoe['graine'] ?? 'a') === ($chezYanis['graine'] ?? 'b')
+    && ($chezZoe['fin'] ?? 0) === ($chezYanis['fin'] ?? -1),
+    json_encode([$chezZoe['graine'] ?? null, $chezYanis['graine'] ?? null]));
+verifier('LE SERVEUR ÉCRIT LES DEUX INSTANTS, PAS UNE DURÉE',
+    ($chezZoe['fin'] ?? 0) - ($chezZoe['debut'] ?? 0) === 60,
+    ($chezZoe['fin'] ?? 0) - ($chezZoe['debut'] ?? 0) . ' s');
+verifier('UNE DURÉE ABSURDE EST REFUSÉE',
+    ($defiProf(['exo' => 'calc-add', 'secondes' => 4000])['code'] ?? 0) === 400);
+verifier('PENDANT, IL N\'Y A PAS DE TABLEAU DE SCORES',
+    (json('/session', [], $jetonZoe)['json']['session']['defiTableau'] ?? null) === null);
+
+// ── LES SCORES ─────────────────────────────────────────────────────────────
+json('/defi/score', ['bonnes' => 12, 'total' => 15, 'ms' => 40000], $jetonZoe);
+json('/defi/score', ['bonnes' => 12, 'total' => 14, 'ms' => 31000], $jetonYanis);
+// LE RENVOI D'UN SCORE PLUS FAIBLE NE DOIT RIEN DÉTRUIRE : une ardoise qui a
+// perdu le réseau renvoie son score en se reconnectant.
+json('/defi/score', ['bonnes' => 3, 'total' => 3, 'ms' => 9000], $jetonZoe);
+$qScore = enBase()->prepare('SELECT bonnes FROM defi_scores WHERE class_id = ? ORDER BY bonnes DESC');
+$qScore->execute([$idDefi]);
+verifier('UN RENVOI PLUS FAIBLE NE DÉTRUIT PAS LE MEILLEUR',
+    array_map('intval', array_column($qScore->fetchAll(), 'bonnes')) === [12, 12],
+    'scores en base');
+
+// LES TROIS AUTRES, POUR QUE LE PODIUM AIT DE QUOI DÉBORDER. À trois
+// participants, « au plus trois » est vrai quelle que soit la coupe —
+// l'épreuve ne garderait rien, et `tools/epreuveTombe.mjs` l'a dit.
+$debutDuDefi = (int) enBase()->query(
+    'SELECT defi_debut FROM classes WHERE id = ' . enBase()->quote($idDefi))->fetchColumn();
+$qIns = enBase()->prepare('INSERT INTO defi_scores (id, class_id, student_id, defi_debut,
+                                                    bonnes, total, ms)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)');
+$autres = enBase()->prepare('SELECT id FROM students WHERE class_id = ?');
+$autres->execute([$idDefi]);
+$dejaNotes = 0;
+foreach ($autres->fetchAll() as $x) {
+    $q = enBase()->prepare('SELECT COUNT(*) FROM defi_scores WHERE student_id = ?');
+    $q->execute([$x['id']]);
+    if ((int) $q->fetchColumn() > 0) {
+        continue;
+    }
+    $qIns->execute([bin2hex(random_bytes(16)), $idDefi, $x['id'], $debutDuDefi,
+                    20 + $dejaNotes, 25, 10000]);
+    $dejaNotes++;
+}
+
+// ── LA MINUTE PASSE : on recule la fin en base, seule façon d'avancer l'horloge
+enBase()->prepare('UPDATE classes SET defi_fin = ? WHERE id = ?')
+    ->execute([time() - 5, $idDefi]);
+$s = json('/session', [], $jetonZoe)['json']['session'];
+verifier('LA MINUTE PASSÉE, LE DÉFI S\'EFFACE ET LE TABLEAU ARRIVE',
+    ($s['defi'] ?? null) === null && is_array($s['defiTableau'] ?? null),
+    json_encode($s['defiTableau'] ?? null));
+// RÉMY A CHOISI « PODIUM + TA PLACE » : l'élève ne voit pas les trente prénoms
+// classés devant toute la classe, il voit les trois premiers et sa ligne.
+verifier('AU PLUS TROIS PRÉNOMS DESCENDENT CHEZ L\'ÉLÈVE',
+    $dejaNotes >= 2 && count($s['defiTableau']['podium'] ?? []) === 3,
+    $dejaNotes . ' autre(s), podium de ' . count($s['defiTableau']['podium'] ?? []));
+verifier('ET IL VOIT SA PLACE MÊME HORS DU PODIUM',
+    ($s['defiTableau']['moi']['rang'] ?? 0) > 3
+    && ($s['defiTableau']['moi']['bonnes'] ?? 0) === 12,
+    json_encode($s['defiTableau']['moi'] ?? null));
+
+// ── ET LE PROFESSEUR, LUI, VOIT TOUT LE MONDE ──────────────────────────────
+$classementProf = json('/teacher/live', ['classId' => $idDefi], $jetonNotre)['json']['classement'] ?? [];
+verifier('LE PROFESSEUR A LE CLASSEMENT ENTIER',
+    count($classementProf) === 5 && ($classementProf[0]['bonnes'] ?? 0) === 22,
+    json_encode(array_column($classementProf, 'bonnes')));
+// À ÉGALITÉ DE BONNES RÉPONSES, LE PLUS RAPIDE PASSE DEVANT. Le temps ne fait
+// pas le score — Rémy veut « le plus de calcul » — il départage.
+$exAequo = array_values(array_filter($classementProf, fn ($l) => $l['bonnes'] === 12));
+verifier('À ÉGALITÉ, LE PLUS RAPIDE EST DEVANT',
+    count($exAequo) === 2 && str_contains($exAequo[0]['prenom'] ?? '', 'Yanis'),
+    json_encode(array_column($exAequo, 'prenom')));
+
+// ── ON NE MARQUE PAS UN POINT SUR UN DÉFI QUI N'EXISTE PAS ─────────────────
+$defiProf(['secondes' => 0]);
+$r = json('/defi/score', ['bonnes' => 99, 'total' => 99, 'ms' => 1000], $jetonZoe);
+verifier('SANS DÉFI OUVERT, UN SCORE N\'EST PAS ENREGISTRÉ',
+    ($r['json']['ok'] ?? true) === false, json_encode($r['json']));
 
 // --- Conduire la classe ---
 verifier('renommer une classe',

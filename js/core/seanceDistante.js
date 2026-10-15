@@ -64,7 +64,17 @@ const VIDE = {
     maintenant: 0, recuA: 0,
     // LE COMPTE À REBOURS QU'ON A VU COURIR — voir `tempsRestant`. Il ne vient
     // pas du serveur : c'est ce que CET appareil a constaté.
-    vuCourir: null
+    vuCourir: null,
+    // ── LE DÉFI CHRONOMÉTRÉ DE LA CLASSE ────────────────────────────────────
+    //
+    // RÉMY : « je lance le défi. Et là tous les élèves reçoivent des calculs
+    // […] et au bout d'une minute, tableau de score pour tout le monde, et on
+    // reprend la suite des exercices normalement ».
+    //
+    // DEUX CHAMPS ET NON UN, parce que ce sont deux moments : pendant, on
+    // répond ; après, on regarde. Le serveur n'en envoie jamais deux à la
+    // fois, donc l'écran n'a aucune règle à appliquer pour savoir où il en est.
+    defi: null, defiTableau: null
 };
 
 let etat = { ...VIDE };
@@ -298,7 +308,7 @@ export function indicesNonLus() { return messagesNonLus().filter(m => genreDe(m)
 export function ceQueVoitLEleve(opts = {}) {
     if (opts.professeur) {
         return { consigne: '', verrouille: false, ecarte: false, ferme: null,
-                 mots: [], indices: [] };
+                 mots: [], indices: [], defi: null, defiTableau: null };
     }
     return {
         consigne: consigneDuProf(),
@@ -309,7 +319,12 @@ export function ceQueVoitLEleve(opts = {}) {
         // écrite une seule fois, juste au-dessus.
         ferme: fermeHorsSeance(),
         mots: motsNonLus(),
-        indices: indicesNonLus()
+        indices: indicesNonLus(),
+        // LE DÉFI PASSE PAR LA MÊME PORTE QUE LE RESTE, et il obéit à la même
+        // règle : le professeur qui repasse côté élève ne se lance pas un défi
+        // à lui-même.
+        defi: defiEnCours(),
+        defiTableau: tableauDuDefi()
     };
 }
 
@@ -379,6 +394,47 @@ export function tempsRestant(maintenant = Math.floor(Date.now() / 1000)) {
     if (reste > 0) return dit;
     // Il est à zéro : on ne l'annonce qu'à ceux qui l'ont vu courir.
     return etat.vuCourir === etat.chrono.finAt ? dit : null;
+}
+
+/**
+ * LE DÉFI EN COURS, AVEC LE TEMPS QU'IL RESTE VRAIMENT.
+ *
+ * LA MÊME CORRECTION D'HORLOGE QUE LE COMPTE À REBOURS, et pour une raison plus
+ * forte encore : ici le chiffre décide d'un CLASSEMENT. Deux ardoises mal
+ * réglées donneraient deux minutes de longueurs différentes, et le score ne
+ * voudrait plus rien dire.
+ *
+ * @returns {{exo:string, graine:string, mode:string, reste:number, duree:number}|null}
+ */
+export function defiEnCours(maintenant = Math.floor(Date.now() / 1000)) {
+    const d = etat.defi;
+    if (!d || !d.fin) return null;
+    const VRAIE_HEURE = 1.5e9;
+    const ecart = (etat.maintenant > VRAIE_HEURE && etat.recuA > VRAIE_HEURE)
+        ? (etat.maintenant - etat.recuA) : 0;
+    const reste = d.fin - (maintenant + ecart);
+    if (reste <= 0) return null;
+    return {
+        exo: d.exo,
+        graine: d.graine,
+        mode: d.mode === 'saisie' ? 'saisie' : 'qcm',
+        debut: d.debut,
+        reste,
+        duree: Math.max(1, d.fin - d.debut)
+    };
+}
+
+/**
+ * LE TABLEAU DE SCORES, quand le défi vient de finir.
+ *
+ * RÉMY A CHOISI « PODIUM + TA PLACE » : trois prénoms et sa ligne à lui.
+ * Afficher les trente prénoms classés devant toute la classe désignerait le
+ * dernier à chaque défi — et ce sont justement les élèves dont il parlait la
+ * veille. Le serveur a déjà coupé ; on ne fait que relayer.
+ */
+export function tableauDuDefi() {
+    const t = etat.defiTableau;
+    return t && Array.isArray(t.podium) ? t : null;
 }
 
 export function estRetire(exerciceId) {

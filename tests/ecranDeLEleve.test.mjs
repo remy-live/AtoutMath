@@ -61,7 +61,11 @@ test('LE PROFESSEUR N\'EN VOIT RIEN — ni le mot, ni le coup de pouce', () => {
     uneClasseQuiParle();
     const vu = ceQueVoitLEleve({ professeur: true });
     assert.deepEqual(vu, {
-        consigne: '', verrouille: false, ecarte: false, ferme: null, mots: [], indices: []
+        consigne: '', verrouille: false, ecarte: false, ferme: null, mots: [], indices: [],
+        // ET PAS DAVANTAGE LE DÉFI CHRONOMÉTRÉ : son navigateur a servi à
+        // essayer le côté élève, il reste rattaché à la classe — il se
+        // lancerait un défi à lui-même en plein cours.
+        defi: null, defiTableau: null
     });
 });
 

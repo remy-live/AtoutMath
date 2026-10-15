@@ -688,3 +688,32 @@ soit pas technique :
 3. **Qui voit quoi dans le tableau ?** Afficher les trente prénoms classés
    devant toute la classe, c'est désigner le dernier chaque fois. À trancher
    par Rémy : classement complet, ou podium plus « ta place et ton score ».
+
+## 3. « Des exercices ludiques sur l'addition et le produit de relatifs »
+
+> « et aussi pour des exercices ludiques sur l'addition et le produit de
+> nombres relatifs »
+
+**La moitié est faite depuis v1013** : « Attrape le Bon Signe » est l'arcade du
+même générateur sur les marches de calcul mêlées, et « Réflexe des Signes » en
+est la version chrono. À vérifier avec lui que c'est bien ce qu'il cherchait.
+
+**Ce qui manquerait, et qui est bon marché** : le Ninja des Relatifs ne coupe
+que des SOMMES (`num.relatifs.somme`, « le nombre le plus éloigné de zéro »).
+Lui ajouter un mode « produits », ou mieux un mode « mêlés », en ferait le jeu
+d'arcade de la règle des signes — et c'est trois lignes dans `MODES`
+(`js/core/tri.js`), pas un jeu neuf.
+
+## Le défi est fait — ce qui a été tranché en l'écrivant
+
+- **Ça coupe, et ça ne démonte rien.** L'exercice reste monté dessous ; le
+  voile se retire, l'élève retrouve sa question où il l'avait laissée.
+- **La graine vient du serveur** : la même série de questions pour toute la
+  classe. Sans elle, on classerait trente épreuves différentes.
+- **Deux instants, jamais une durée** — et l'ardoise corrige en plus l'écart
+  entre son horloge et celle du serveur, parce qu'ici le chiffre décide d'un
+  classement.
+- **Trois secondes avant de commencer** : sans elles, l'élève qui écrivait voit
+  une question apparaître sous ses doigts et répond au hasard.
+- **Le voile passe sous la pause du professeur** : « tout le monde s'arrête »
+  veut dire tout le monde, défi compris.

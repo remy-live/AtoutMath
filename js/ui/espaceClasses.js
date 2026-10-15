@@ -64,7 +64,7 @@ import {
     creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis, fermerHorsSeance,
     accorderLaCalculatrice, retirerLaCalculatrice,
-    imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur, reglagesDuSite,
+    imposerLaSeance, lancerLeChrono, arreterLeChrono, lancerLeDefi, auServeur, reglagesDuSite,
     lesSignalements, photoDuSignalement, classerSignalement, effacerSignalement
 } from '../core/espaceProf.js';
 import { noterReglagesSite } from '../core/reglagesSite.js';
@@ -2344,6 +2344,43 @@ function barrePiloteHtml() {
              ensemble — « 10 » tout seul à côté d'un bouton « Pause » ne veut
              rien dire. Le compte à rebours se referme donc dans son propre
              cadre, avec son nom écrit dessus. -->
+        <!-- LE DÉFI CHRONOMÉTRÉ DE LA CLASSE.
+             Rémy : « je peux lancer un challenge chronométré, le plus de
+             calcul et toute la classe participe et au bout du challenge, un
+             tableau de High score […] et on reprend la suite des exercices
+             normalement ».
+             TROIS RÉGLAGES ET UN BOUTON, et pas un de plus : l'exercice (ce
+             sont les générateurs qui font les questions, rien à écrire à la
+             volée), la durée, et la façon de répondre — « il faut taper la
+             réponse ou QCM, aux choix ». Le reste est au serveur : la graine,
+             les deux instants, et le classement. -->
+        <div class="ec-pilote-rangee ec-pilote-rangee--defi">
+            <span class="ec-pilote-cadre" role="group" aria-label="Défi chronométré">
+                <span class="ec-pilote-eti">⚡ Défi de la classe</span>
+                <select class="ec-champ ec-champ--defi" data-defi-exo
+                        aria-label="L'exercice du défi">
+                    ${exercicesPourLeDefi(info)}
+                </select>
+                <select class="ec-champ ec-champ--court" data-defi-duree
+                        aria-label="La durée du défi">
+                    <option value="60">1 min</option>
+                    <option value="30">30 s</option>
+                    <option value="120">2 min</option>
+                    <option value="180">3 min</option>
+                </select>
+                <select class="ec-champ ec-champ--court" data-defi-mode
+                        aria-label="Comment on répond">
+                    <option value="qcm">QCM</option>
+                    <option value="saisie">Saisie</option>
+                </select>
+                <button type="button" class="ec-pilote-btn" data-defi-go>Lancer</button>
+                ${(vue.direct && vue.direct.defi && !vue.direct.defi.fini)
+                    ? '<button type="button" class="ec-pilote-btn ec-pilote-btn--actif"'
+                        + ' data-defi-stop>Arrêter</button>' : ''}
+            </span>
+            ${classementDuDefiHtml(vue.direct)}
+        </div>
+
         <div class="ec-pilote-rangee">
             <!-- LE PROFESSEUR DOIT VOIR LE TEMPS QU'IL A LANCÉ.
                  Il lançait un compte à rebours et ne le voyait JAMAIS : seuls
@@ -2756,7 +2793,7 @@ async function brancher(e, redessiner) {
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours], [data-ecran-seance],'
-        + '[data-maison], [data-maison-mot],'
+        + '[data-maison], [data-maison-mot], [data-defi-go], [data-defi-stop],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
@@ -3641,6 +3678,27 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    // ── LE DÉFI CHRONOMÉTRÉ ────────────────────────────────────────────────
+    //
+    // RÉMY : « je lance le défi ». Trois réglages lus sur place, et le serveur
+    // écrit le reste — la graine et les deux instants.
+    if (d.defiGo !== undefined || d.defiStop !== undefined) {
+        const zone = el.closest('.ec-pilote') || document;
+        if (d.defiStop !== undefined) {
+            await fait(lancerLeDefi(cid, '', 0));
+            return;
+        }
+        const exo = (zone.querySelector('[data-defi-exo]') || {}).value || '';
+        const secondes = Number((zone.querySelector('[data-defi-duree]') || {}).value || 60);
+        const mode = (zone.querySelector('[data-defi-mode]') || {}).value || 'qcm';
+        if (!exo) return;
+        await fait(lancerLeDefi(cid, exo, secondes, mode), () => {
+            const info = (vue.liste && vue.liste.classe);
+            if (info) info.defi_exo = exo;
+        });
+        return;
+    }
+
     if (d.imprimer !== undefined) return imprimerLesBillets();
     // UN SEUL BILLET, POUR L'ÉLÈVE QUI A PERDU LE SIEN.
     //
@@ -4039,10 +4097,55 @@ const BATTEMENT_MS = 5000;
 function signatureDuPilote() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
+    const df = vue.direct && vue.direct.defi;
     return [!!info.locked, !!bacDeLaClasse(), chronoQuiTourne(ch), (ch && ch.quoi) || '',
         info.impose_path_id || '', info.hors_seance ? 'maison' : '',
         (vue.reglages || []).some(x => x.mode === 'calculatrice') ? 'calc' : '',
-        String(minutesDuBac())].join('|');
+        String(minutesDuBac()),
+        // LE DÉFI DOIT ENTRER DANS LA SIGNATURE, sinon le pilote ne se
+        // redessine pas : le bouton « Arrêter » n'apparaîtrait jamais, et le
+        // classement non plus. Le NOMBRE de scores en fait partie — c'est lui
+        // qui bouge pendant que les élèves finissent.
+        df ? `${df.debut || ''}:${df.fini ? 'fini' : 'court'}` : '',
+        String((vue.direct && vue.direct.classement || []).length)].join('|');
+}
+
+/**
+ * LES EXERCICES QU'ON PEUT LANCER EN DÉFI.
+ *
+ * TOUS CEUX QUI ONT UN GÉNÉRATEUR, et c'est exactement ce que Rémy demandait :
+ * « on pourrait faire cela avec les générateurs ». Un exercice sans générateur
+ * est un jeu à plateau — on ne joue pas au 2048 pendant une minute à trente.
+ */
+function exercicesPourLeDefi(info) {
+    const choisi = (info && info.defi_exo) || '';
+    return catalogueComplet
+        .filter(e => e.generatorId)
+        .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fr'))
+        .map(e => `<option value="${esc(e.id)}"${e.id === choisi ? ' selected' : ''}>`
+            + `${esc(e.title)}</option>`)
+        .join('');
+}
+
+/**
+ * LE CLASSEMENT ENTIER, ET POUR LUI SEUL.
+ *
+ * Rémy a choisi « podium + ta place » pour les élèves — afficher les trente
+ * prénoms classés devant toute la classe désignerait le dernier à chaque défi.
+ * Lui voit tout, parce que c'est avec ce tableau-là qu'il parlera ensuite.
+ */
+function classementDuDefiHtml(direct) {
+    const liste = (direct && direct.classement) || [];
+    const df = direct && direct.defi;
+    if (!df) return '';
+    if (!liste.length) {
+        return '<div class="ec-defi-vide">'
+            + (df.fini ? 'Personne n\'a marqué.' : 'Le défi tourne…') + '</div>';
+    }
+    return '<ol class="ec-defi-classement">'
+        + liste.map(l => `<li><span>${esc(l.prenom)}</span><b>${l.bonnes}</b>`
+            + `<small>/ ${l.total}</small></li>`).join('')
+        + '</ol>';
 }
 
 function rafraichirLeDirect(zone) {

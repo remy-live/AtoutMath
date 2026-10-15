@@ -117,6 +117,7 @@ switch ($route) {
     case '/session':         handleSession(); break;
     case '/messages/read':   handleMessagesRead(); break;
     case '/signalement':     handleSignalement(); break;
+    case '/defi/score':      handleDefiScore(); break;
     case '/teacher/login':   handleTeacherLogin(); break;
     case '/teacher/classes': handleTeacherClasses(); break;
     case '/teacher/paths':   handleTeacherPaths(); break;
@@ -1490,6 +1491,54 @@ function handleTeacherClass(): void
                         . ($pleinEcran ? ', en plein écran.' : '.')]);
     }
 
+    // ── LE DÉFI CHRONOMÉTRÉ DE LA CLASSE ────────────────────────────────────
+    //
+    // RÉMY : « je peux lancer un challenge chronométré, le plus de calcul et
+    // toute la classe participe et au bout du challenge, un tableau de High
+    // score […] et on reprend la suite des exercices normalement ».
+    //
+    // DEUX INSTANTS, ÉCRITS PAR LE SERVEUR. C'est la règle du compte à rebours,
+    // et elle vaut doublement ici : l'ardoise qui interroge deux secondes plus
+    // tard aurait deux secondes de plus que celle du voisin, et le classement
+    // comparerait des minutes de longueurs différentes.
+    //
+    // ET UNE GRAINE, POUR QUE LA SÉRIE SOIT LA MÊME CHEZ TOUT LE MONDE. Sans
+    // elle, chaque ardoise tirerait ses propres questions : on classerait
+    // trente épreuves différentes. Les générateurs sont déjà déterministes —
+    // il suffit de leur donner le même point de départ.
+    if ($action === 'defi') {
+        $secondes = (int) ($body['secondes'] ?? 0);
+        if ($secondes <= 0) {
+            db()->prepare('UPDATE classes SET defi_exo = NULL, defi_graine = NULL,
+                                  defi_mode = NULL, defi_debut = NULL, defi_fin = NULL
+                           WHERE id = ?')->execute([$classe['id']]);
+            respond(['ok' => true, 'defi' => null, 'dit' => 'Défi arrêté.']);
+        }
+        // DIX SECONDES AU MOINS, CINQ MINUTES AU PLUS. En deçà, personne n'a le
+        // temps de lire la première question ; au-delà, ce n'est plus un défi,
+        // c'est un exercice — et il en existe déjà.
+        if ($secondes < 10 || $secondes > 300) {
+            fail(400, 'duree', 'Entre 10 secondes et 5 minutes.');
+        }
+        $exo = trim((string) ($body['exo'] ?? ''));
+        if ($exo === '' || !preg_match('/^[a-z0-9._-]{2,64}$/i', $exo)) {
+            fail(400, 'exo', 'Il faut choisir un exercice.');
+        }
+        $mode = ($body['mode'] ?? 'qcm') === 'saisie' ? 'saisie' : 'qcm';
+        // LA GRAINE EST TIRÉE ICI, PAS PAR L'ÉCRAN : c'est la seule façon
+        // qu'elle soit la même pour tous, et personne ne peut la choisir pour
+        // retomber sur une série qu'il connaît déjà.
+        $graine = bin2hex(random_bytes(6));
+        $debut = time();
+        db()->prepare('UPDATE classes SET defi_exo = ?, defi_graine = ?, defi_mode = ?,
+                              defi_debut = ?, defi_fin = ? WHERE id = ?')
+            ->execute([$exo, $graine, $mode, $debut, $debut + $secondes, $classe['id']]);
+        respond(['ok' => true,
+                 'defi' => ['exo' => $exo, 'graine' => $graine, 'mode' => $mode,
+                            'debut' => $debut, 'fin' => $debut + $secondes],
+                 'dit' => 'Défi lancé : ' . $secondes . ' secondes pour toute la classe.']);
+    }
+
     // LE COMPTE À REBOURS, ET SES DEUX ISSUES. Rémy : « pour le compte à
     // rebours c'est pour terminer la séance ou mettre en pause (pour faire un
     // peu de cours par exemple ou pour parler) ».
@@ -1864,7 +1913,37 @@ function handleTeacherLive(): void
         // différentes, une tablette mal réglée fait disparaître toute la classe.
         'maintenant' => time(),
         'eleves' => $rangs,
+        // LE DÉFI ET SON CLASSEMENT ENTIER. Rémy a choisi « podium + ta place »
+        // pour les élèves ; lui voit tout, parce que c'est avec ce tableau-là
+        // qu'il parlera à la classe ensuite.
+        'defi' => defiEnCours($classe) ?: (($classe['defi_debut'] ?? 0) ? [
+            'exo' => (string) ($classe['defi_exo'] ?? ''),
+            'fini' => true,
+            'debut' => (int) $classe['defi_debut'],
+            'fin' => (int) ($classe['defi_fin'] ?? 0),
+        ] : null),
+        'classement' => classementDuDefi($classe),
     ]);
+}
+
+/**
+ * LE SCORE D'UN ÉLÈVE À LA FIN DU DÉFI.
+ *
+ * L'ardoise l'envoie une fois la minute écoulée. Tout le contrôle est dans
+ * `enregistrerScoreDefi` : c'est le serveur qui sait quel défi est ouvert, et
+ * personne d'autre.
+ */
+function handleDefiScore(): void
+{
+    $eleve = requireStudent();
+    $body = jsonBody();
+    $r = enregistrerScoreDefi(
+        $eleve,
+        (int) ($body['bonnes'] ?? 0),
+        (int) ($body['total'] ?? 0),
+        (int) ($body['ms'] ?? 0)
+    );
+    respond($r);
 }
 
 /**

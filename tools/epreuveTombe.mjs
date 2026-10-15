@@ -184,6 +184,26 @@ function lancer() {
             const ko = /^·\s+(.*)$/.exec(nu);
             if (ko) { vues.add(ko[1]); tombees.add(ko[1]); }
         }
+        // UNE VÉRIFICATION PHP QUI TOMBE IMPRIME SON DÉTAIL, ET SON NOM NE
+        // CORRESPOND ALORS PLUS.
+        //
+        // `verifier()` écrit « ✓ nom » quand ça passe, et « · nom — détail »
+        // quand ça tombe. On lisait donc le nom NU d'un côté et le nom SUIVI
+        // DU DÉTAIL de l'autre : `--epreuve "<nom>"` ne reconnaissait jamais
+        // la chute, et l'outil annonçait « CETTE ÉPREUVE NE GARDE RIEN » sur
+        // des gardes qui tombaient parfaitement. Quatre fausses alertes de
+        // suite avant de comprendre.
+        //
+        // ON GARDE LES DEUX FORMES, le nom entier et le nom coupé au premier
+        // « — ». Chercher à ne garder que la bonne demanderait de savoir
+        // laquelle, et on ne le sait pas d'ici : dans la course OÙ ELLE TOMBE,
+        // cette épreuve n'imprime JAMAIS son nom nu — c'est tout le problème.
+        // Deux entrées dans un ensemble ne coûtent rien, et `--epreuve`
+        // retrouve la sienne dans les deux cas.
+        for (const nom of [...tombees]) {
+            const i = nom.indexOf(' — ');
+            if (i > 0) tombees.add(nom.slice(0, i));
+        }
         return { verte, vues, tombees };
     }
     for (const ligne of sortie.split('\n')) {

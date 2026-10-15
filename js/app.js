@@ -46,6 +46,7 @@ import { initSync, getSyncConfig } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
 import { initSeanceDistante } from './core/seanceDistante.js';
 import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
+import { initDefiUI } from './ui/defiUI.js';
 import { modeLibre, estRattache, adresseApiDeduite } from './core/portail.js';
 import { chargerReglagesSite } from './core/reglagesSite.js';
 import { outilsAuteur, reglerOutilsAuteur, appliquerOutilsAuteur } from './core/outilsAuteur.js';
@@ -125,6 +126,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // que le verrou doit empêcher. La synchro, elle, le rafraîchira ensuite.
     await initSeanceDistante();
     initSeanceDistanteUI();
+    // LE DÉFI CHRONOMÉTRÉ ÉCOUTE LE MÊME ÉVÉNEMENT que le reste du direct : il
+    // arrive par l'état de séance, comme le verrou et les mots.
+    initDefiUI();
     initSync();
 
     // LES PARCOURS ET LE SERVEUR, DANS LES DEUX SENS.

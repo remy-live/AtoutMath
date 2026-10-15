@@ -5268,3 +5268,28 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .gp-combien { font-weight: 700; font-size: .9rem; color: var(--text-main); margin-right: auto; }
 .gp-pied .ec-bouton[disabled] { opacity: .45; cursor: default; }
 .gp-aide { margin-top: 8px; }
+
+/* ── LE DÉFI CHRONOMÉTRÉ, DANS LE PILOTE DU DIRECT ──────────────────────────
+   Rémy : « je lance le défi ». Trois réglages et un bouton, dans le même cadre
+   que le compte à rebours — ce sont deux gestes de conduite de classe, et ils
+   se ressemblent assez pour se ranger côte à côte. */
+.ec-pilote-rangee--defi { flex-wrap: wrap; gap: 10px; }
+.ec-champ--defi { max-width: 260px; }
+.ec-champ--court { max-width: 110px; }
+/* LE CLASSEMENT EST POUR LUI SEUL : les élèves n'ont que le podium et leur
+   place. Il tient dans la rangée, et il défile s'il déborde — une classe de
+   trente ne doit pas repousser le reste du pilote hors de l'écran. */
+.ec-defi-classement {
+    list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px;
+    max-height: 120px; overflow-y: auto; counter-reset: rang;
+}
+.ec-defi-classement li {
+    counter-increment: rang;
+    display: flex; align-items: baseline; gap: 6px;
+    background: var(--bg-hover); border-radius: 8px; padding: 4px 10px;
+    font-size: .85rem; font-weight: 700;
+}
+.ec-defi-classement li::before { content: counter(rang) "."; color: var(--text-muted); }
+.ec-defi-classement b { color: var(--primary-texte); }
+.ec-defi-classement small { color: var(--text-muted); font-weight: 600; }
+.ec-defi-vide { color: var(--text-muted); font-size: .85rem; font-weight: 600; }

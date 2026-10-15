@@ -294,6 +294,18 @@ export const retirerUnProfesseur = (teacherId, classes = 'reprendre', confirmati
 export const fermerHorsSeance = (classId, ferme, mot = '') =>
     auServeur('/teacher/class', { classId, action: 'maison', ferme: !!ferme, mot });
 
+/**
+ * LANCER LE DÉFI CHRONOMÉTRÉ DE LA CLASSE.
+ *
+ * RÉMY : « je lance le défi. Et là tous les élèves reçoivent des calculs ».
+ *
+ * ON N'ENVOIE PAS LA GRAINE NI LES INSTANTS : c'est le serveur qui les écrit,
+ * et c'est toute la différence entre une minute et trente minutes différentes.
+ * `secondes = 0` arrête le défi en cours.
+ */
+export const lancerLeDefi = (classId, exo, secondes, mode = 'qcm') =>
+    auServeur('/teacher/class', { classId, action: 'defi', exo, secondes, mode });
+
 /** Les réglages d'exercice d'une classe : saut autorisé, exercice retiré. */
 export const lesReglages = (classId) =>
     auServeur('/teacher/override', { classId, action: 'list' });

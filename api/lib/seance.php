@@ -129,7 +129,8 @@ function etatDeSeance(array $eleve): array
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
                               impose_jusqu_a, impose_plein_ecran, chrono_fin, chrono_a_zero,
                               bac_ferme, bac_minutes, bac_jeux,
-                              hors_seance, hors_seance_mot
+                              hors_seance, hors_seance_mot,
+                              defi_exo, defi_graine, defi_mode, defi_debut, defi_fin
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
@@ -309,8 +310,159 @@ function etatDeSeance(array $eleve): array
         'calculatrice' => array_keys($calculatrice),
         'impose'    => $impose,
         'chrono'    => $chrono,
+        // ── LE DÉFI, ET LE TABLEAU QUI LE SUIT ──────────────────────────────
+        //
+        // DEUX CHAMPS ET NON UN, parce que ce sont deux moments : pendant, on
+        // répond ; après, on regarde. Un seul champ obligerait l'écran à
+        // deviner lequel des deux il tient, et il le devinerait en comparant
+        // des horloges — celle du serveur et la sienne.
+        'defi'        => defiEnCours($classe),
+        'defiTableau' => tableauDuDefi($classe, $eleve['id']),
         'maintenant' => time(),
     ];
+}
+
+/**
+ * LE DÉFI EN COURS, ou rien.
+ *
+ * RÉMY : « je lance le défi. Et là tous les élèves reçoivent des calculs ».
+ *
+ * ON NE RENVOIE QUE CE QUI EST VIVANT : un défi dont la fin est passée n'est
+ * plus un défi, c'est un tableau de scores. L'ardoise n'a donc aucune règle à
+ * appliquer — elle reçoit l'un ou l'autre, jamais les deux.
+ */
+function defiEnCours(array $classe): ?array
+{
+    $fin = (int) ($classe['defi_fin'] ?? 0);
+    if (!$fin || $fin <= time() || empty($classe['defi_exo'])) {
+        return null;
+    }
+    return [
+        'exo'    => (string) $classe['defi_exo'],
+        // LA GRAINE : la MÊME série pour tout le monde. Sans elle, on
+        // classerait trente épreuves différentes.
+        'graine' => (string) $classe['defi_graine'],
+        'mode'   => ($classe['defi_mode'] ?? 'qcm') === 'saisie' ? 'saisie' : 'qcm',
+        'debut'  => (int) $classe['defi_debut'],
+        'fin'    => $fin,
+    ];
+}
+
+/**
+ * LE TABLEAU DE SCORES, pendant les cinq minutes qui suivent le défi.
+ *
+ * RÉMY, sur ce que chacun doit voir : « podium + ta place à toi ». Afficher
+ * les trente prénoms classés devant toute la classe, c'est désigner le dernier
+ * à chaque défi — et ce sont justement les élèves dont on parle depuis deux
+ * jours. Le professeur, lui, a le classement entier sur son écran.
+ *
+ * LE SCORE EST LE NOMBRE DE BONNES RÉPONSES. Rémy : « le plus de calcul ». La
+ * rapidité ne départage qu'à égalité : compter des points de vitesse
+ * récompenserait la frappe, pas le calcul.
+ */
+function tableauDuDefi(array $classe, string $eleveId): ?array
+{
+    $fin = (int) ($classe['defi_fin'] ?? 0);
+    $debut = (int) ($classe['defi_debut'] ?? 0);
+    // CINQ MINUTES, PUIS IL S'EFFACE : « on reprend la suite des exercices
+    // normalement ». Un tableau qui resterait à l'écran toute l'heure
+    // empêcherait exactement ce qu'il demande.
+    if (!$fin || !$debut || time() < $fin || time() > $fin + 300) {
+        return null;
+    }
+    $s = db()->prepare(
+        'SELECT d.student_id, d.bonnes, d.ms, e.first_name
+           FROM defi_scores d JOIN students e ON e.id = d.student_id
+          WHERE d.class_id = ? AND d.defi_debut = ?
+          ORDER BY d.bonnes DESC, d.ms ASC'
+    );
+    $s->execute([$classe['id'], $debut]);
+    $lignes = $s->fetchAll();
+    $podium = [];
+    $moi = null;
+    foreach ($lignes as $i => $l) {
+        if ($i < 3) {
+            $podium[] = ['prenom' => dechiffrer($l['first_name']), 'bonnes' => (int) $l['bonnes']];
+        }
+        if ($l['student_id'] === $eleveId) {
+            $moi = ['rang' => $i + 1, 'bonnes' => (int) $l['bonnes']];
+        }
+    }
+    return [
+        'debut' => $debut,
+        'exo' => (string) ($classe['defi_exo'] ?? ''),
+        'podium' => $podium,
+        'moi' => $moi,
+        'participants' => count($lignes),
+    ];
+}
+
+/**
+ * LE SCORE D'UN ÉLÈVE, rangé une fois pour toutes.
+ *
+ * ON N'ACCEPTE QUE LE DÉFI EN COURS OU CELUI QUI VIENT DE FINIR, et c'est la
+ * seule garde qui compte : sans elle, un élève pourrait réécrire son score
+ * d'un défi passé — ou en inventer un pour un défi qui n'a jamais eu lieu.
+ *
+ * ET ON GARDE LE MEILLEUR. Une ardoise qui perd le réseau renvoie son score en
+ * se reconnectant ; le renvoi doit être sans effet, pas destructeur.
+ */
+function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms): array
+{
+    $s = db()->prepare('SELECT id, defi_debut, defi_fin FROM classes WHERE id = ?');
+    $s->execute([$eleve['class_id']]);
+    $classe = $s->fetch();
+    $debut = (int) ($classe['defi_debut'] ?? 0);
+    $fin = (int) ($classe['defi_fin'] ?? 0);
+    if (!$debut || time() > $fin + 300) {
+        return ['ok' => false, 'dit' => 'Aucun défi en cours.'];
+    }
+    $bonnes = max(0, min(999, $bonnes));
+    $total = max($bonnes, min(999, $total));
+    $ms = max(0, min(3600000, $ms));
+
+    $q = db()->prepare('SELECT id, bonnes FROM defi_scores
+                         WHERE class_id = ? AND defi_debut = ? AND student_id = ?');
+    $q->execute([$eleve['class_id'], $debut, $eleve['id']]);
+    $deja = $q->fetch();
+    if ($deja) {
+        if ((int) $deja['bonnes'] >= $bonnes) {
+            return ['ok' => true, 'dit' => 'Score déjà enregistré.'];
+        }
+        db()->prepare('UPDATE defi_scores SET bonnes = ?, total = ?, ms = ? WHERE id = ?')
+            ->execute([$bonnes, $total, $ms, $deja['id']]);
+        return ['ok' => true, 'dit' => 'Score mis à jour.'];
+    }
+    db()->prepare('INSERT INTO defi_scores (id, class_id, student_id, defi_debut, bonnes, total, ms)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)')
+        ->execute([uuidv4(), $eleve['class_id'], $eleve['id'], $debut, $bonnes, $total, $ms]);
+    return ['ok' => true, 'dit' => 'Score enregistré.'];
+}
+
+/**
+ * LE CLASSEMENT ENTIER, pour le professeur seul.
+ *
+ * Rémy a choisi « podium + ta place » pour les élèves ; lui voit tout, parce
+ * que c'est avec ce tableau-là qu'il parlera à la classe ensuite.
+ */
+function classementDuDefi(array $classe): array
+{
+    $debut = (int) ($classe['defi_debut'] ?? 0);
+    if (!$debut) {
+        return [];
+    }
+    $s = db()->prepare(
+        'SELECT d.bonnes, d.total, d.ms, e.first_name
+           FROM defi_scores d JOIN students e ON e.id = d.student_id
+          WHERE d.class_id = ? AND d.defi_debut = ?
+          ORDER BY d.bonnes DESC, d.ms ASC'
+    );
+    $s->execute([$classe['id'], $debut]);
+    return array_map(fn ($l) => [
+        'prenom' => dechiffrer($l['first_name']),
+        'bonnes' => (int) $l['bonnes'],
+        'total'  => (int) $l['total'],
+    ], $s->fetchAll());
 }
 
 /**
