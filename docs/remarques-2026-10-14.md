@@ -1111,3 +1111,55 @@ Le SVG était pourtant bien formé, avec le bon nombre de rectangles : aucun
 sélecteur ne l'aurait dit. Les morceaux se découpent maintenant ligne par
 ligne, chacune remplie au trait près, et une épreuve recompose la grille case
 par case pour vérifier qu'aucune n'est couverte deux fois ni oubliée.
+
+---
+
+# « Histoires d'Argent » — FAIT (code dicté HG)
+
+> « et après tu peux faire des petits problèmes avec calcul » · « Dans la même
+> catégorie que les billets, l'argent et les prix »
+
+**Huit situations qu'on rencontre vraiment à une caisse**, en trois temps : une
+seule opération (le total, ce qu'il reste, la monnaie rendue), puis multiplier
+et partager (plusieurs articles identiques, le prix d'un seul, combien on peut
+en acheter), puis deux étapes (payer deux choses avec un billet, et ce qui
+manque).
+
+**L'argent est DESSINÉ** — le billet qu'on tend, les pièces qu'on a dans la
+poche —, repris tel quel de « Compter l'Argent » : c'est « la même catégorie »
+qu'il demandait.
+
+## Trois choses que la mesure a trouvées, et pas la lecture
+
+**1. ON POUVAIT RENDRE ZÉRO.** Un article à 5,00 € payé avec un billet de 5 €
+donnait « Combien la caissière lui rend-elle ? » avec zéro pour réponse. La
+question n'est pas fausse, elle est **absurde** — et un élève qui écrit 0 sans
+comprendre pourquoi n'a rien appris. Trouvé par une épreuve, pas en relisant
+le code. Le billet est maintenant strictement plus grand que la somme.
+
+**2. LES ÉNONCÉS NE S'ACCORDAIENT PAS.** Les premiers écrivaient « **UNE**
+trousse coûte » — la mise en majuscules portait sur tout l'article au lieu de
+sa seule initiale — et « **Léa** achète […] Combien paie-t-**il** ? ». Vu en
+lisant ce qui sortait. Un énoncé mal accordé fait trébucher la lecture au
+moment précis où l'on demande de lire avec attention, et dans un problème
+**c'est la lecture qui fait échouer, pas le calcul.** Les prénoms portent leur
+genre, les articles le leur.
+
+**3. ET UNE ÉPREUVE QUI ACCUSAIT LE CODE DE SA PROPRE FAUTE.** Écrite pour
+vérifier qu'aucun centime ne se perd, elle multipliait la réponse par cent —
+or 4,4 × 100 vaut 440.00000000000006 en virgule flottante. Elle demande
+maintenant autre chose : la réponse s'écrit-elle exactement avec deux
+décimales ? Le générateur, lui, compte en centimes du début à la fin et ne
+divise qu'au dernier moment.
+
+## Deux décisions
+
+**La virgule n'apparaît que pour un prix.** « Combien de gommes peut-elle
+acheter ? » n'a jamais 2,5 pour réponse — une touche virgule offerte là est une
+invitation à la faute.
+
+**Le premier indice ne donne jamais l'opération.** Un élève à qui l'on dit
+« c'est une soustraction » ne cherchera plus jamais ; il fait relire l'énoncé,
+et c'est la seule aide qui apprenne quelque chose. Une épreuve refuse qu'un
+premier indice contienne « addition », « soustraction », « multiplication » ou
+« division ».

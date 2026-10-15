@@ -65,6 +65,9 @@ export const CODES_EXERCICES = {
     // pris, et toutes les initiales de « Compter » aussi : A comme Argent, C
     // comme Centimes.
     'num-argent':                 'AC',   // Compter l'Argent — les Centimes
+    // « HA » est le Hashi et « HP » les Histoires en Pagaille : on garde
+    // « HG », Histoires d'arGent.
+    'num-argent-problemes':       'HG',   // Histoires d'arGent
     'calc-detour-rond':           'DN',   // le Détour par le Nombre rond
     'calc-detour-sprint':         'DJ',   // Détour express — le même, chrono
     'calc-detour-arcade':         'NB',   // attrape le détour — Nombre à Battre

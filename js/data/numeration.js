@@ -193,6 +193,30 @@ export const numerationExercises = [
         instruction: "Neuf marches, en trois temps. On écrit d'abord des centimes seuls (7 centimes, c'est 0,07 € — le zéro des dixièmes n'est pas décoratif), puis des dizaines de centimes, qui sont le piège INVERSE (70 centimes, c'est 0,70 € et non 0,07 €), puis des euros ET des centimes. LE DERNIER TEMPS COMPTE DE VRAIES PIÈCES : un tas est dessiné, à sa vraie taille et dans son vrai métal, et il faut trouver le total — c'est la seule façon de rencontrer les pièces de 20 et de 2 centimes. Le deuxième indice est un tableau de rangs qui montre où va chaque chiffre."
     },
 
+    {
+        // LES PETITS PROBLÈMES D'ARGENT — Rémy : « et après tu peux faire des
+        // petits problèmes avec calcul », puis « Dans la même catégorie que
+        // les billets, l'argent et les prix ».
+        //
+        // POURQUOI UN EXERCICE DE PLUS, ALORS QUE « HISTOIRES EN PAGAILLE »
+        // EXISTE. Vérifié avant d'écrire : ses onze familles travaillent des
+        // prix ENTIERS. Or la monnaie rendue sur un billet de 10 € pour un
+        // article à 7,40 € est exactement l'endroit où un élève de sixième
+        // écrit 3,60 au lieu de 2,60 — ou 2,6 au lieu de 2,60. C'est le rang
+        // décimal de « Compter l'Argent », mais dans un problème.
+        id: 'num-argent-problemes',
+        cree: '2026-10-15',
+        consignePapier: 'Lis bien, écris ton calcul, puis la réponse avec son unité.',
+        lignesReponsePapier: 2,
+        colonnesPapier: 1,
+        title: 'Histoires d\'Argent',
+        generatorId: 'num.argent-problemes', activityId: 'numpad',
+        motsClefs: ['problème', 'argent', 'monnaie', 'euros', 'prix', 'rendre la monnaie',
+            'acheter', 'payer', 'reste', 'combien'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME] },
+        instruction: "Huit situations qu'on rencontre vraiment à une caisse. On commence par une seule opération — le total de deux achats, ce qu'il reste, la monnaie rendue —, puis on multiplie et on partage : plusieurs articles identiques, le prix d'un seul, et combien on peut en acheter avec ce qu'on a. Les deux dernières demandent DEUX calculs : payer deux choses avec un billet, et savoir combien il manque. Les prix sont des décimaux, et c'est tout le sujet : la monnaie rendue sur un billet de 10 € est l'endroit où l'on écrit 3,60 au lieu de 2,60."
+    },
+
     // --- Décomposition et conversions (fiche § 10, 11, 18, 20, 21) ---
     {
         id: 'num-decomposition',

@@ -14137,3 +14137,30 @@ body.en-boite > #app-container { background: none; }
 .defi-moi { margin: 12px 0 16px; font-weight: 700; }
 .defi-carte--jeu .defi-titre { margin-bottom: 10px; font-size: .8rem; }
 .defi-temps { font-variant-numeric: tabular-nums; }
+
+/* === LIRE UNE FRACTION, ET LES HISTOIRES D'ARGENT ==========================
+   Deux exercices dont l'ÉNONCÉ EST UN DESSIN — une figure coloriée, un billet
+   qu'on tend. Le dessin a besoin d'air autour de lui, et la question a besoin
+   d'être séparée de la situation : Rémy, sur les aides, « tes phrases sont
+   tellement longues et compliquées elles ne seront pas lues ». Un problème EST
+   une phrase à lire ; on ne peut pas la raccourcir, mais on peut séparer ce
+   qu'on lit UNE fois de ce qu'on relit. */
+.lf-scene { display: block; margin: 0 auto .6em; }
+.lf-figure { display: block; margin: 0 auto; }
+
+.ap-probleme { display: flex; flex-direction: column; align-items: center; gap: .5em; }
+/* LA SITUATION SE LIT COMME UN TEXTE, pas comme un énoncé de calcul : à la
+   taille du corps, alignée à gauche, et pas plus large que ce qu'un œil suit
+   d'une ligne à l'autre — 46 caractères, la même mesure que les aides aérées. */
+.ap-situation {
+    display: block; font-size: .5em; font-weight: 600; line-height: 1.45;
+    text-align: left; max-width: 46ch; color: var(--text-main);
+}
+.ap-sous { display: block; }
+.ap-argent { display: block; margin: 0 auto; }
+/* LA QUESTION, ELLE, SE RELIT DIX FOIS : c'est elle qu'on doit retrouver d'un
+   coup d'œil après avoir regardé le dessin. */
+.ap-question {
+    display: block; font-size: .62em; font-weight: 800; line-height: 1.3;
+    color: var(--primary-texte);
+}
