@@ -136,3 +136,62 @@ test('LES DEUX NOMBRES N\'ONT PAS TOUJOURS LA MÊME LONGUEUR', () => {
     assert.match(pose, /i === 0 \? this\.chiffres/,
         'le premier nombre n\'a plus la longueur réglée');
 });
+
+test('CHANGER DE MÉTHODE NE CHANGE PAS D\'OPÉRATION', () => {
+    // RÉMY : « le changement de méthode fait recommencer l'exercice ». On
+    // tirait une opération neuve — si bien qu'un élève qui ouvre la fenêtre
+    // POUR COMPRENDRE perdait le calcul en cours, et ne voyait donc jamais sa
+    // soustraction dans l'autre méthode, qui est tout l'intérêt du bouton.
+    const choix = corpsDe('choisirMethode');
+    assert.match(choix, /this\.changerMethode\(/,
+        'la carte ne passe plus par changerMethode');
+    assert.doesNotMatch(choix, /this\.poser\(\)/,
+        'le choix d\'une méthode retire une opération neuve : le calcul en cours est perdu');
+    const chg = corpsDe('changerMethode');
+    // LE MÊME CALCUL, RECALCULÉ : mêmes opérandes, colonnes neuves.
+    assert.match(chg, /this\.tableau = poser\(this\.operation, this\.operandes/,
+        'la méthode change sans recalculer les colonnes : la grille mentirait');
+    assert.doesNotMatch(chg, /this\.poser\(\)/, 'changerMethode retire une opération');
+    // ET LES MARQUES PARTENT : un +1 en bas ne veut rien dire dans le cassage.
+    assert.match(chg, /this\.retenues = \{\}/);
+    assert.match(chg, /this\.marquesBas = \{\}/);
+});
+
+test('LA GRILLE N\'ANNONCE PAS LES COLONNES OÙ L\'ÉLÈVE N\'EST PAS', () => {
+    // RÉMY, par cassage : « ca casse automatiquement le suivant au début ».
+    // MESURÉ sur 224 − 157, avant le moindre clic : les deux colonnes qui
+    // seront réécrites portaient déjà leur marque en pointillé, À LA PLACE DU
+    // CHIFFRE BARRÉ. L'écran disait donc quelles colonnes empruntent — c'est
+    // la question que la méthode pose à l'élève.
+    const rond = corpsDe('rondRetenue');
+    assert.match(rond, /rang > this\.rangCourant/,
+        'la grille montre à nouveau les marques des colonnes à venir : elle '
+        + 'annonce à l\'élève lesquelles empruntent');
+    // UNE MARQUE DÉJÀ ÉCRITE RESTE : elle est de la main de l'élève.
+    assert.match(rond, /sac\[rang\] === undefined\) return null/,
+        'la règle efface aussi les marques déjà écrites');
+    // ET L'ADDITION GARDE SES RONDS : ils sont sur CHAQUE colonne, retenue ou
+    // pas, et n'apprennent donc rien à personne.
+    assert.match(rond, /this\.operation === '-' &&[\s\S]{0,80}rang > this\.rangCourant/,
+        'la règle s\'applique aussi à l\'addition, dont les ronds ne disent rien');
+});
+
+test('CASSER UNE DIZAINE EST UN SEUL GESTE, DANS LES DEUX MÉTHODES', () => {
+    // RÉMY, deux fois : « la retenue indique 1 en haut et le chiffre d'après
+    // est décrémenté de 1 », puis « quand on clique sur le 1, ca casse
+    // automatiquement le suivant ». La compensation le faisait déjà (le +1 du
+    // bas) ; le cassage, non.
+    const tourne = corpsDe('tournerRetenue');
+    assert.doesNotMatch(tourne, /!this\.parEmprunt\(\)\) \{\n\s+const suivant/,
+        'la colonne suivante n\'est plus touchée que par la compensation');
+    assert.match(tourne, /this\.parEmprunt\(\) \? this\.retenues : this\.marquesBas/,
+        'le cassage n\'écrit plus la marque de la colonne suivante');
+    // ET IL N'ÉCRIT QUE LE PREMIER PAS : sur 815 − 269, le 1 des dizaines
+    // FINIT à 10 — prêté une dizaine ET emprunté une centaine. L'écrire au
+    // moment où l'on casse les unités ferait d'avance un emprunt que l'élève
+    // n'a pas décidé. `valeursDuRond` tient les deux dans l'ordre, h−1 puis
+    // h+9, et c'est le premier qu'on pose.
+    assert.match(tourne, /this\.valeursDuRond\(suivant, 'retenue'\) \|\| \[\]\)\[0\]/,
+        'le cassage écrit la marque FINALE de la colonne suivante : il emprunte '
+        + 'd\'avance à la place de l\'élève');
+});

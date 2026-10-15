@@ -85,3 +85,47 @@ En passant : le bouton « 💡 Aide » servait la compensation à tout le monde.
 élève qui casse lisait « on ajoute un au chiffre du BAS » — l'autre méthode, sur
 une grille qui ne lui offrait même pas l'endroit où l'écrire. L'aide et le robot
 de démonstration suivent maintenant la méthode choisie.
+
+---
+
+# Deuxième passe, le même jour
+
+> « le changement de méthode fait recommencer l'exercice, au départ par cassage
+> quand on clique sur le 1, ca casse automatiquement le suivant au début »
+
+## 3. Changer de méthode ne doit pas changer d'opération
+
+C'était vrai, et c'était ma faute : le clic sur une carte appelait `poser()`,
+qui **tire une opération neuve**. Un élève qui ouvre la fenêtre *pour
+comprendre* perdait donc le calcul en cours — et ne voyait jamais SA
+soustraction dans l'autre méthode, ce qui est tout l'intérêt du bouton.
+
+`changerMethode()` recalcule les colonnes avec les **mêmes nombres**.
+L'alignement déjà fait et les chiffres déjà écrits sous le trait restent en
+place ; seules les marques partent, parce qu'un « +1 » en bas ne veut rien dire
+dans le cassage. Mesuré : `152 − 53`, un 9 déjà écrit — après le changement,
+même opération, même 9.
+
+## 4. « ça casse automatiquement le suivant au début »
+
+Mesuré avant de corriger, sur `224 − 157` par cassage, **avant le moindre
+clic** : les deux colonnes qui seront réécrites portaient déjà leur marque en
+pointillé, à la place du chiffre barré.
+
+> L'écran annonçait donc QUELLES colonnes empruntent — c'est-à-dire la question
+> même que la méthode pose à l'élève.
+
+Une marque ne se montre plus que sur la colonne où il travaille ; celles qu'il a
+déjà écrites restent. (L'addition garde ses ronds partout : ils sont sur
+*chaque* colonne, retenue ou pas, et n'apprennent donc rien à personne.)
+
+Et le geste est devenu **un seul clic dans les deux méthodes**, comme il
+l'avait décrit dès le premier jour — « la retenue indique 1 en haut et le
+chiffre d'après est décrémenté de 1 ». La compensation écrivait déjà le `+1` du
+bas ; le cassage barre maintenant le chiffre suivant et écrit celui qui reste.
+
+**Mais seulement le premier pas.** Sur `815 − 269`, le 1 des dizaines *finit* à
+10 — il a prêté une dizaine et emprunté une centaine. L'écrire au moment où l'on
+casse les unités, ce serait faire d'avance un emprunt que l'élève n'a pas
+décidé. On pose donc `h − 1` (le 2 de 821 devient 1), et c'est un second clic,
+arrivé sur la colonne, qui le fera passer à `h + 9`.

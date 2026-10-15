@@ -554,6 +554,20 @@ class PoserOperation extends BaseGame {
         if (auCoin !== undefined && !auCoin) return null;
         if (this.etape !== 2) return null;
         if (attenduEn(this.tableau, rang, ou) === null) return null;
+        const sac = ou === 'retenue-bas' ? this.marquesBas : this.retenues;
+        // ON N'ANNONCE PAS LES COLONNES OÙ L'ÉLÈVE N'EST PAS ENCORE.
+        //
+        // RÉMY, par cassage : « ca casse automatiquement le suivant au début ».
+        // MESURÉ sur 224 − 157, avant le moindre clic : les DEUX colonnes qui
+        // seront réécrites portaient déjà leur marque en pointillé, à la place
+        // du chiffre barré. L'écran disait donc à l'élève quelles colonnes
+        // empruntent — c'est-à-dire la question que la méthode lui pose.
+        //
+        // Une marque DÉJÀ ÉCRITE reste, elle : elle est de sa main. Et
+        // l'addition garde ses ronds sur toute la ligne, car ils y sont sur
+        // CHAQUE colonne, retenue ou pas : ils n'apprennent rien à personne.
+        if (this.operation === '-' && this.rangCourant !== null
+            && rang > this.rangCourant && sac[rang] === undefined) return null;
         const rond = document.createElement('button');
         rond.type = 'button';
         // `btn-carre`' : « MA TAILLE EST LA MIENNE, ne l'étire pas ».
@@ -577,7 +591,6 @@ class PoserOperation extends BaseGame {
         // jetons du Mastermind, les ronds de la division. Son sens est celui de
         // la ligne du dessus ; on suit l'usage plutôt que d'inventer un second
         // nom pour la même chose.)
-        const sac = ou === 'retenue-bas' ? this.marquesBas : this.retenues;
         // UNE SOUSTRACTION ECRIT AU CRAYON, UNE ADDITION DANS UN ROND.
         // Voir la feuille de style : c'est la demande de Remy, image de
         // cahier a l'appui.
@@ -979,10 +992,38 @@ class PoserOperation extends BaseGame {
         const suite = [undefined, ...this.valeursDuRond(rang, ou)];
         sac[rang] = suite[(suite.indexOf(sac[rang]) + 1) % suite.length];
 
-        if (ou === 'retenue' && this.operation === '-' && !this.parEmprunt()) {
+        // ET CELA CASSE AUSSI LA COLONNE SUIVANTE, dans les deux méthodes.
+        //
+        // RÉMY l'avait décrit dès le premier jour — « la retenue indique 1 en
+        // haut et le chiffre d'après est décrémenté de 1 et si c'est 0, le
+        // suivant est alors aussi décrémenté » — puis redit par cassage :
+        // « quand on clique sur le 1, ca casse automatiquement le suivant ».
+        // La compensation le faisait déjà ; le cassage, non.
+        //
+        // C'EST UN SEUL GESTE : j'emprunte dix, donc je les prends quelque
+        // part. Les séparer en deux clics ferait croire qu'on peut faire l'un
+        // sans l'autre, ce qui est exactement la faute du chapitre.
+        if (ou === 'retenue' && this.operation === '-') {
             const suivant = rangSuivant(this.tableau, rang);
-            if (suivant !== null && attenduEn(this.tableau, suivant, 'retenue-bas') !== null) {
-                this.marquesBas[suivant] = sac[rang] === undefined ? undefined : 1;
+            // ET L'ON N'ÉCRIT QUE LE PREMIER PAS, PAS LE DERNIER.
+            //
+            // Par cassage, `attenduEn` rend la marque FINALE de la colonne
+            // suivante : sur 815 − 269, le 1 des dizaines finit à 10 — il a
+            // prêté une dizaine ET emprunté une centaine. Écrire 10 au moment
+            // où l'on casse les unités, c'est faire d'avance un emprunt que
+            // l'élève n'a pas encore décidé. Rémy ne demande que le premier :
+            // « le chiffre d'après est décrémenté de 1 ».
+            //
+            // `valeursDuRond` tient déjà les deux dans l'ordre — h−1 puis
+            // h+9 —, et c'est par un second clic, arrivé sur la colonne, que
+            // le 0 deviendra 10. (Un 0 n'a qu'une valeur, 9 : il ne peut pas
+            // prêter sans emprunter lui-même, et le cahier l'écrit ainsi.)
+            const du = suivant === null ? null
+                : (this.parEmprunt() ? (this.valeursDuRond(suivant, 'retenue') || [])[0]
+                    : attenduEn(this.tableau, suivant, 'retenue-bas'));
+            if (du !== null && du !== undefined) {
+                const sacSuivant = this.parEmprunt() ? this.retenues : this.marquesBas;
+                sacSuivant[suivant] = sac[rang] === undefined ? undefined : du;
             }
         }
         this.dessiner();
@@ -1088,13 +1129,40 @@ class PoserOperation extends BaseGame {
             { width: '460px', zIndex: ETAGE_MODALE });
         fenetre.element.querySelectorAll('[data-methode]').forEach(b => {
             b.addEventListener('click', () => {
-                this.methode = b.dataset.methode;
                 fenetre.close();
-                // ON REPOSE L'OPÉRATION EN COURS, et c'est voulu : les marques
-                // déjà écrites ne veulent plus rien dire dans l'autre méthode.
-                this.poser();
+                this.changerMethode(b.dataset.methode);
             });
         });
+    }
+
+    /**
+     * CHANGER DE MÉTHODE NE CHANGE PAS D'OPÉRATION.
+     *
+     * RÉMY : « le changement de méthode fait recommencer l'exercice ». Il
+     * avait raison et j'avais tort : on tirait une opération neuve, si bien
+     * qu'un élève qui ouvre la fenêtre pour COMPRENDRE perd le calcul qu'il
+     * était en train de faire — et ne voit donc jamais sa soustraction dans
+     * l'autre méthode, qui est tout l'intérêt du bouton.
+     *
+     * LE MÊME CALCUL, RECALCULÉ : les colonnes diffèrent d'une méthode à
+     * l'autre, les nombres et le résultat non. L'alignement déjà fait et les
+     * chiffres déjà écrits sous le trait restent donc en place.
+     *
+     * LES MARQUES, ELLES, NE SURVIVENT PAS : un « +1 » en bas ne veut rien
+     * dire dans le cassage, et un chiffre barré rien dans la compensation.
+     */
+    changerMethode(methode) {
+        if (methode === this.methode) return;
+        this.methode = methode;
+        this.tableau = poser(this.operation, this.operandes, { methode });
+        this.retenues = {};
+        this.marquesBas = {};
+        this.dessiner();
+        this.note(methode === 'emprunt'
+            ? '⇄ On casse : barre le chiffre du haut et écris celui qui reste. '
+                + 'La même opération continue.'
+            : '⇄ On compense : écris +1 contre le chiffre du BAS de la colonne '
+                + 'suivante. La même opération continue.');
     }
 
     finir() {
