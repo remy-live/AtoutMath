@@ -198,3 +198,27 @@ fixe du champ des minutes du chrono avait été posée sur un déroulant), avec 
 bouton **👁 Aperçu** qui pose trois vraies questions du défi, dans le mode
 choisi, en marquant la bonne réponse — et qui prévient quand l'exercice ne peut
 pas se jouer en QCM.
+
+## 9. « tjs un bug pour la séance en cours il me montre l'ancienne »
+
+Deuxième passe, capture à l'appui. Le filtre posé le matin marchait — les barres
+disaient bien « Pas commencé » — mais **la colonne d'à côté montrait encore
+l'exercice et le score d'hier** : « Nova · 2 / 6 » pour un élève vu « hier ».
+
+J'avais laissé cette moitié **exprès**, en me disant que l'exercice en cours est
+ce que l'élève fait vraiment, séance ou pas. C'était une erreur de lecture :
+devant trente lignes, l'œil lit la ligne entière comme un seul état, et deux
+séances mêlées sur une ligne mentent. L'exercice, le score et l'heure de la
+dernière réponse sont maintenant ceux de la séance en cours, eux aussi.
+
+### Et un second défaut trouvé en le corrigeant
+
+**« + un exercice » change l'empreinte du parcours.** L'identité est calculée
+sur le CONTENU ; celle rangée dans `assignments` est figée exprès (le bilan doit
+continuer de compter le même travail). L'élève qui ouvre la séance **après**
+l'ajout en calcule donc une autre, et serait passé pour n'ayant rien commencé —
+alors qu'il travaille sous les yeux du professeur.
+
+Le **nom** de la séance sert donc de seconde clef : il ne bouge pas quand on
+complète. Deux séances homonymes se confondraient ; c'est le seul faux positif,
+et il rend alors le comportement d'avant.

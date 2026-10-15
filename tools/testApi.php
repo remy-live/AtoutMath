@@ -862,15 +862,29 @@ json('/sync', ['deviceId' => 'sien', 'cursor' => 0,
                'events' => $unRun('hier', 'path_cHIER', 'La séance d\'hier')], $lea);
 json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
                         'pathId' => $duJour], $jetonProf);
-$avDeLea = function () use ($classId, $jetonProf) {
+$ligneDeLea = function () use ($classId, $jetonProf) {
     $r = json('/teacher/live', ['classId' => $classId], $jetonProf);
     foreach ($r['json']['eleves'] ?? [] as $x) {
-        if (($x['prenom'] ?? '') === 'Léa') return $x['avancement'] ?? null;
+        if (($x['prenom'] ?? '') === 'Léa') return $x;
     }
-    return 'introuvable';
+    return [];
 };
+$avDeLea = fn () => $ligneDeLea()['avancement'] ?? null;
 verifier('LE DIRECT NE MONTRE PAS LA PROGRESSION DE LA SÉANCE D\'AVANT',
     $avDeLea() === null, json_encode($avDeLea()));
+
+// ET PAS DAVANTAGE L'EXERCICE ET LE SCORE D'HIER.
+//
+// RÉMY, deuxième passe : « tjs un bug pour la séance en cours il me montre
+// l'ancienne ». La barre disait « Pas commencé » et la colonne d'à côté
+// montrait « Nova · 2 / 6 » — l'exercice d'hier, pour un élève vu hier. Une
+// ligne qui raconte deux séances à la fois ne se lit pas.
+$laLigne = $ligneDeLea();
+verifier('NI L\'EXERCICE D\'HIER À CÔTÉ DE « PAS COMMENCÉ »',
+    ($laLigne['exo'] ?? null) === null, json_encode($laLigne['exo'] ?? null));
+verifier('NI LE SCORE D\'HIER',
+    (int) ($laLigne['total'] ?? -1) === 0 && (int) ($laLigne['justes'] ?? -1) === 0,
+    json_encode([$laLigne['justes'] ?? null, $laLigne['total'] ?? null]));
 
 // ET DÈS QU'ELLE OUVRE CELLE DU JOUR, LE DIRECT LA SUIT : sans quoi on aurait
 // corrigé en cachant tout, ce qui serait pire que le défaut.
@@ -880,6 +894,36 @@ $apres = $avDeLea();
 verifier('ET IL SUIT CELLE DU JOUR DÈS QU\'ELLE L\'OUVRE',
     is_array($apres) && ($apres['pathName'] ?? '') === 'La séance d\'aujourd\'hui',
     json_encode($apres));
+
+// ET UNE SÉANCE COMPLÉTÉE EN ROUTE RESTE LA MÊME SÉANCE.
+//
+// « + un exercice » en pleine heure change le CONTENU du parcours, donc son
+// empreinte : l'élève qui l'ouvre après l'ajout en calcule une autre que celle
+// figée dans `assignments` — figée exprès, pour que le bilan continue de
+// compter le même travail. Sans le NOM comme seconde clef, cet élève-là
+// passerait pour n'ayant rien commencé, et c'est l'heure entière qui serait
+// fausse sur l'écran du professeur.
+json('/sync', ['deviceId' => 'sien', 'cursor' => 0,
+               'events' => [
+    // PLUS TARD QUE LE PRÉCÉDENT, sinon les deux runs portent le même instant
+    // et c'est l'ordre d'arrivée qui tranche — l'essai mesurerait alors le
+    // hasard plutôt que la règle.
+    ['id' => 'aaaaaaaa-7777-4222-8333-000000000011',
+     'type' => 'run_started', 'ts' => $msNow + 60000,
+     'payload' => ['runId' => 'run-complete', 'pathId' => 'path_cAUTRE',
+                   'pathName' => 'La séance d\'aujourd\'hui', 'mode' => 'entrainement',
+                   'stepCount' => 3, 'plan' => [['questions' => 2, 'requis' => 2, 'titre' => 'Un'],
+                                                ['questions' => 2, 'requis' => 2, 'titre' => 'Deux'],
+                                                ['questions' => 2, 'requis' => 2, 'titre' => 'Trois']]]],
+    ['id' => 'aaaaaaaa-7777-4222-8333-000000000012',
+     'type' => 'step_completed', 'ts' => $msNow + 60001,
+     'payload' => ['runId' => 'run-complete', 'stepId' => 'z1', 'passed' => true,
+                   'exerciseId' => 'calc-add']],
+]], $lea);
+$complete = $avDeLea();
+verifier('UNE SÉANCE COMPLÉTÉE EN ROUTE RESTE LA MÊME SÉANCE',
+    is_array($complete) && ($complete['runId'] ?? '') === 'run-complete',
+    json_encode($complete['runId'] ?? $complete));
 
 // SANS SÉANCE IMPOSÉE, ON NE CACHE RIEN : chacun choisit dans sa liste, et le
 // direct montre son dernier travail — c'est ce qu'il a toujours fait.

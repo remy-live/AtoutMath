@@ -432,8 +432,29 @@ function retirerEleve(string $eleveId, string $classeId): string
  * calculer à part ; ce serait une seconde requête par élève, soixante au lieu
  * de trente à chaque battement, pour des lignes qu'on vient de déchiffrer.
  */
-function derniereActivite(string $eleveId, ?string $identiteSeance = null): array
+function derniereActivite(string $eleveId, ?string $identiteSeance = null,
+                          ?string $nomSeance = null): array
 {
+    // CE QUI FAIT QU'UN TRAVAIL APPARTIENT À LA SÉANCE EN COURS.
+    //
+    // DEUX CLEFS, ET LA SECONDE N'EST PAS UN LUXE. L'identité est une empreinte
+    // du CONTENU : dès que le professeur complète la séance en route — « + un
+    // exercice », qu'il fait en pleine heure —, le parcours change, et l'élève
+    // qui l'ouvre APRÈS en calcule une autre. L'identité rangée dans
+    // `assignments` est figée exprès (le bilan doit continuer de compter le
+    // même travail), si bien que les deux ne se rejoignent plus et que l'élève
+    // arrivé après l'ajout passerait pour n'ayant rien commencé.
+    //
+    // LE NOM, LUI, NE BOUGE PAS quand on ajoute un exercice. Deux séances
+    // homonymes se confondraient — c'est le seul faux positif, et il rend
+    // alors le comportement d'avant, qui montrait n'importe quel travail.
+    $deLaSeance = function (array $r) use ($identiteSeance, $nomSeance): bool {
+        if ($identiteSeance === null && $nomSeance === null) return true;
+        if ($identiteSeance !== null && (string) ($r['pathId'] ?? '') === $identiteSeance) return true;
+        if ($nomSeance !== null && $nomSeance !== ''
+            && (string) ($r['pathName'] ?? '') === $nomSeance) return true;
+        return false;
+    };
     $s = db()->prepare(
         'SELECT type, ts, payload FROM events WHERE student_id = ?
          ORDER BY seq DESC LIMIT 200'
@@ -441,29 +462,12 @@ function derniereActivite(string $eleveId, ?string $identiteSeance = null): arra
     $s->execute([$eleveId]);
     $lignes = $s->fetchAll();
 
-    $exo = null; $parcours = null; $justes = 0; $total = 0; $quand = null;
     // Les événements remis À L'ENDROIT pour la projection : `runsOf` lit une
     // histoire, pas une pile.
     $pourLeRun = [];
     foreach ($lignes as $l) {
-        $p = json_decode((string) dechiffrer($l['payload']), true) ?: [];
-        $pourLeRun[] = ['type' => $l['type'], 'ts' => (int) $l['ts'], 'payload' => $p];
-        $cet = $p['exerciseId'] ?? $p['exoId'] ?? null;
-        if ($exo === null && $cet) {
-            $exo = $cet;
-            $quand = (int) $l['ts'];
-        }
-        if ($parcours === null && !empty($p['pathName'])) {
-            $parcours = (string) $p['pathName'];
-        }
-        // On ne compte que l'exercice EN COURS : « 7 sur 10 » ne veut rien dire
-        // s'il mélange l'exercice d'avant.
-        if ($cet && $cet === $exo && $l['type'] === 'attempt') {
-            $total++;
-            if (!empty($p['correct'])) {
-                $justes++;
-            }
-        }
+        $pourLeRun[] = ['type' => $l['type'], 'ts' => (int) $l['ts'],
+                        'payload' => json_decode((string) dechiffrer($l['payload']), true) ?: []];
     }
 
     // LE RUN LE PLUS RÉCENT, ET LUI SEUL. `runsOf` les rend déjà du plus récent
@@ -503,11 +507,58 @@ function derniereActivite(string $eleveId, ?string $identiteSeance = null): arra
         // SANS IDENTITÉ CONNUE, ON NE FILTRE RIEN : une séance d'avant cette
         // colonne, ou une classe sans séance imposée, garde l'ancien
         // comportement — le dernier travail en date.
-        if ($identiteSeance !== null && (string) ($r['pathId'] ?? '') !== $identiteSeance) continue;
+        if (!$deLaSeance($r)) continue;
         $duTravail = $r;
         break;
     }
     $avancement = avancementDeRun($duTravail);
+
+    // ── CE QU'IL FAIT EN CE MOMENT, DANS LA SÉANCE EN COURS ────────────────
+    //
+    // RÉMY, deuxième passe, capture à l'appui : « tjs un bug pour la séance en
+    // cours il me montre l'ancienne ». La barre disait bien « Pas commencé » —
+    // le filtre posé la veille marchait — mais la colonne d'à côté montrait
+    // encore « Nova · 2 / 6 », c'est-à-dire l'exercice ET le score d'HIER,
+    // pour un élève vu « hier ». Une ligne qui raconte deux séances à la fois
+    // ne se lit pas : on y voit la seule chose qu'on cherchait à éviter.
+    //
+    // J'AVAIS LAISSÉ CETTE MOITIÉ EXPRÈS, et j'avais tort. Le raisonnement
+    // était « l'exercice en cours, c'est ce qu'il fait VRAIMENT, même hors
+    // séance » ; mais devant trente lignes, l'oeil lit la ligne entière comme
+    // un seul état, et deux séances mêlées sur une ligne mentent.
+    //
+    // CE QUI RESTE VISIBLE POUR L'ÉLÈVE PARTI AILLEURS : l'heure de sa
+    // dernière venue (« hier », « il y a 21 min ») et, s'il est devant son
+    // écran, le relevé de ce qu'il a sous les yeux — qui, lui, ne vit que
+    // trois minutes et ne peut donc pas dater d'hier.
+    $gardes = null;
+    if ($identiteSeance !== null || ($nomSeance !== null && $nomSeance !== '')) {
+        $gardes = [];
+        foreach ($runs as $r) {
+            if ($deLaSeance($r)) $gardes[(string) $r['runId']] = true;
+        }
+    }
+    $exo = null; $parcours = null; $justes = 0; $total = 0; $quand = null;
+    foreach ($pourLeRun as $e) {             // du plus récent au plus ancien
+        $p = $e['payload'];
+        if ($gardes !== null && empty($gardes[(string) ($p['runId'] ?? '')])) continue;
+        $cet = $p['exerciseId'] ?? $p['exoId'] ?? null;
+        if ($exo === null && $cet) {
+            $exo = $cet;
+            $quand = (int) $e['ts'];
+        }
+        if ($parcours === null && !empty($p['pathName'])) {
+            $parcours = (string) $p['pathName'];
+        }
+        // On ne compte que l'exercice EN COURS : « 7 sur 10 » ne veut rien dire
+        // s'il mélange l'exercice d'avant.
+        if ($cet && $cet === $exo && $e['type'] === 'attempt') {
+            $total++;
+            if (!empty($p['correct'])) {
+                $justes++;
+            }
+        }
+    }
 
     return ['exo' => $exo, 'parcours' => $parcours, 'justes' => $justes,
             'total' => $total, 'quand' => $quand, 'combien' => count($lignes),

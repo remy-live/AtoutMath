@@ -1900,18 +1900,24 @@ function handleTeacherLive(): void
     // la séance. Une séance donnée avant que cette colonne n'existe n'en a pas,
     // et l'on ne filtre alors rien plutôt que de tout cacher.
     $identiteSeance = null;
+    $nomSeance = null;
     $imposeId = imposeEncoreValide($classe);
     if ($imposeId) {
         $q = db()->prepare('SELECT path_identity FROM assignments
                             WHERE path_id = ? AND class_id = ? AND student_id IS NULL');
         $q->execute([$imposeId, $classe['id']]);
         $identiteSeance = ($q->fetchColumn() ?: null);
+        // ET SON NOM, qui ne change pas quand on complète la séance en route —
+        // voir `derniereActivite`, qui dit pourquoi il faut les deux.
+        $qn = db()->prepare('SELECT name FROM paths WHERE id = ?');
+        $qn->execute([$imposeId]);
+        $nomSeance = ($qn->fetchColumn() ?: null);
     }
 
     $rangs = [];
     $maintenant = time();
     foreach (elevesDeLaClasse($classe['id']) as $e) {
-        $a = derniereActivite($e['id'], $identiteSeance);
+        $a = derniereActivite($e['id'], $identiteSeance, $nomSeance);
         $rangs[] = [
             'id' => $e['id'],
             'prenom' => $e['first_name'],
