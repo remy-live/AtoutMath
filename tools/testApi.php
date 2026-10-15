@@ -829,6 +829,64 @@ $s = json('/session', [], $lea)['json']['session'];
 verifier('ET IL TOMBE DÈS QU\'ON IMPOSE UNE AUTRE SÉANCE',
     !$sauteur($s, 'calc-sous'), json_encode($s['skippable'] ?? null));
 
+// ── LE DIRECT MONTRE LA SÉANCE EN COURS, PAS CELLE D'HIER ───────────────────
+//
+// RÉMY : « quand je mets une nouvelle séance en cours, pour le direct, ce sont
+// les progressions de la séance d'avant qui apparaissent, toutes les élèves
+// devraient être à 0 ».
+//
+// Le direct prenait le run le PLUS RÉCENT de l'élève, sans regarder à quel
+// travail il appartient : celui qui n'a pas encore ouvert la séance du jour
+// montrait son devoir d'hier, barre pleine, sur le tableau de bord de l'heure
+// en cours. C'est la décision « puis-je passer à la suite ? » qui était faussée.
+$hier = $unParcours('La séance d\'hier');
+$duJour = $unParcours('La séance d\'aujourd\'hui');
+json('/teacher/assign', ['pathId' => $hier, 'classId' => $classId,
+                         'pathIdentity' => 'path_cHIER'], $jetonProf);
+json('/teacher/assign', ['pathId' => $duJour, 'classId' => $classId,
+                         'pathIdentity' => 'path_cDUJOUR'], $jetonProf);
+$msNow = (int) (microtime(true) * 1000);
+$unRun = fn (string $cle, string $identite, string $nom) => [
+    ['id' => sprintf('%s-7777-4222-8333-000000000001', substr(md5($cle), 0, 8)),
+     'type' => 'run_started', 'ts' => $msNow,
+     'payload' => ['runId' => 'run-' . $cle, 'pathId' => $identite, 'pathName' => $nom,
+                   'mode' => 'entrainement', 'stepCount' => 2,
+                   'plan' => [['questions' => 2, 'requis' => 2, 'titre' => 'Un'],
+                              ['questions' => 2, 'requis' => 2, 'titre' => 'Deux']]]],
+    ['id' => sprintf('%s-7777-4222-8333-000000000002', substr(md5($cle), 0, 8)),
+     'type' => 'step_completed', 'ts' => $msNow + 1,
+     'payload' => ['runId' => 'run-' . $cle, 'stepId' => 'z1', 'passed' => true,
+                   'exerciseId' => 'calc-add']],
+];
+json('/sync', ['deviceId' => 'sien', 'cursor' => 0,
+               'events' => $unRun('hier', 'path_cHIER', 'La séance d\'hier')], $lea);
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $duJour], $jetonProf);
+$avDeLea = function () use ($classId, $jetonProf) {
+    $r = json('/teacher/live', ['classId' => $classId], $jetonProf);
+    foreach ($r['json']['eleves'] ?? [] as $x) {
+        if (($x['prenom'] ?? '') === 'Léa') return $x['avancement'] ?? null;
+    }
+    return 'introuvable';
+};
+verifier('LE DIRECT NE MONTRE PAS LA PROGRESSION DE LA SÉANCE D\'AVANT',
+    $avDeLea() === null, json_encode($avDeLea()));
+
+// ET DÈS QU'ELLE OUVRE CELLE DU JOUR, LE DIRECT LA SUIT : sans quoi on aurait
+// corrigé en cachant tout, ce qui serait pire que le défaut.
+json('/sync', ['deviceId' => 'sien', 'cursor' => 0,
+               'events' => $unRun('jour', 'path_cDUJOUR', 'La séance d\'aujourd\'hui')], $lea);
+$apres = $avDeLea();
+verifier('ET IL SUIT CELLE DU JOUR DÈS QU\'ELLE L\'OUVRE',
+    is_array($apres) && ($apres['pathName'] ?? '') === 'La séance d\'aujourd\'hui',
+    json_encode($apres));
+
+// SANS SÉANCE IMPOSÉE, ON NE CACHE RIEN : chacun choisit dans sa liste, et le
+// direct montre son dernier travail — c'est ce qu'il a toujours fait.
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer', 'pathId' => ''], $jetonProf);
+verifier('SANS SÉANCE IMPOSÉE, LE DIRECT MONTRE LE DERNIER TRAVAIL',
+    is_array($avDeLea()));
+
 // L'AUTRE FAÇON : personne ne touche à rien, et l'heure passe. On recule
 // l'échéance en base, ce qui est la seule façon d'avancer l'horloge.
 json('/teacher/class', ['classId' => $classId, 'action' => 'imposer', 'pathId' => ''], $jetonProf);

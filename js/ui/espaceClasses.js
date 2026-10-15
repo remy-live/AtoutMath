@@ -2284,6 +2284,10 @@ function barrePiloteHtml() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
     const enCours = chronoQuiTourne(ch);
+    // CE QUI TOURNE DÉJÀ S'OUVRE TOUT SEUL, et se dit sur sa pastille : un
+    // outil replié ne doit jamais cacher qu'il est EN TRAIN d'agir sur la
+    // classe. Voir la note des pastilles, plus bas.
+    const defiCourt = !!(vue.direct && vue.direct.defi && !vue.direct.defi.fini);
     return `
     <!-- L'attribut data-forme dit ce qui, dans cette barre, changerait sa
          STRUCTURE. Le battement s'en sert pour savoir s'il doit la refaire —
@@ -2309,6 +2313,27 @@ function barrePiloteHtml() {
             </span>
         </div>
 
+        <!-- LES SIX COMMANDES DE L'HEURE, PLIÉES EN PASTILLES.
+
+             RÉMY, capture à l'appui : « je trouve cela chargé, il faudrait
+             améliorer cela ». Il avait raison : six rangées de cadres, vingt
+             contrôles, tous dépliés en permanence au-dessus de la liste des
+             élèves — c'est-à-dire au-dessus de ce qu'on vient regarder.
+
+             CE QU'ON GARDE DÉPLIÉ : la pause et le mot à la classe. Ce sont
+             les deux gestes de l'heure qu'on fait sans y penser, et les
+             replier aurait coûté un clic à chaque fois.
+
+             LE RESTE SE DEMANDE, ET UN SEUL À LA FOIS SUFFIT. On ne lance pas
+             un défi EN MÊME TEMPS qu'on règle le bac à sable.
+
+             MAIS UNE PASTILLE REPLIÉE DIT CE QU'ELLE FAIT : le compte à
+             rebours qui tourne montre son temps sur la pastille elle-même, le
+             défi en cours s'ouvre tout seul, et la calculatrice accordée, le
+             bac ouvert, la classe fermée hors séance, le mot au tableau
+             portent chacun leur mot. Replier ne doit pas cacher ce qui AGIT. -->
+        <div class="ec-pilote-outils">
+
         <!-- FERMÉ EN DEHORS D'UNE SÉANCE IMPOSÉE.
              Rémy : « j'aimerai aussi le fait de bloquer les élèves chez eux.
              C'est à dire que juste la séance imposée fonctionne mais par contre
@@ -2321,7 +2346,10 @@ function barrePiloteHtml() {
              cocher sans message laisserait l'élève devant un écran muet, et
              deux appels séparés laisseraient une seconde où c'est fermé sans
              que rien ne l'explique. -->
-        <div class="ec-pilote-rangee ec-pilote-rangee--maison">
+        <details class="ec-pilote-outil">
+            <summary class="ec-pilote-outil-tete">🏠 Hors séance${info.hors_seance
+                ? ' <b class="ec-pilote-outil-vif">· fermé</b>' : ''}</summary>
+            <div class="ec-pilote-outil-corps">
             <label class="ec-pilote-case">
                 <input type="checkbox" data-maison${info.hors_seance ? ' checked' : ''}>
                 <span>Fermé hors séance</span>
@@ -2334,7 +2362,8 @@ function barrePiloteHtml() {
                        data-valide-sur-entree="data-maison-mot">
                 <button type="button" class="ec-pilote-btn" data-maison-mot>Enregistrer</button>
             </span>
-        </div>
+            </div>
+        </details>
 
         <!-- LE CHRONO EST UN OBJET, PAS QUATRE CHAMPS EN VRAC.
              Rémy : « le bandeau rouvrir la classe avec le 10 le lancer à zéro
@@ -2354,34 +2383,57 @@ function barrePiloteHtml() {
              volée), la durée, et la façon de répondre — « il faut taper la
              réponse ou QCM, aux choix ». Le reste est au serveur : la graine,
              les deux instants, et le classement. -->
-        <div class="ec-pilote-rangee ec-pilote-rangee--defi">
+        <details class="ec-pilote-outil"${defiCourt ? ' open' : ''}>
+            <summary class="ec-pilote-outil-tete">⚡ Défi de la classe${defiCourt
+                ? ' <b class="ec-pilote-outil-vif">· en cours</b>' : ''}</summary>
+            <div class="ec-pilote-outil-corps">
             <span class="ec-pilote-cadre" role="group" aria-label="Défi chronométré">
-                <span class="ec-pilote-eti">⚡ Défi de la classe</span>
                 <select class="ec-champ ec-champ--defi" data-defi-exo
                         aria-label="L'exercice du défi">
                     ${exercicesPourLeDefi(info)}
                 </select>
-                <select class="ec-champ ec-champ--court" data-defi-duree
+                <!-- PAS ec-champ--court : CE N'EST PAS UN CHAMP DE CHIFFRES.
+                     RÉMY : « pour le défi de la classe, on ne voit pas le
+                     temps (il est tronqué) ». Mesuré sur sa capture : « 1 mi »
+                     au lieu de « 1 min ». La règle .ec-pilote-cadre
+                     .ec-champ--court { width: 4.2rem } est faite pour le
+                     champ des minutes du chrono, où l'on tape « 10 » ; posée
+                     sur un déroulant, elle laisse 67 px pour un libellé ET la
+                     flèche du navigateur. Un déroulant se dimensionne sur son
+                     contenu, et --mince est exactement cela. -->
+                <select class="ec-champ ec-champ--mince" data-defi-duree
                         aria-label="La durée du défi">
                     <option value="60">1 min</option>
                     <option value="30">30 s</option>
                     <option value="120">2 min</option>
                     <option value="180">3 min</option>
                 </select>
-                <select class="ec-champ ec-champ--court" data-defi-mode
+                <select class="ec-champ ec-champ--mince" data-defi-mode
                         aria-label="Comment on répond">
                     <option value="qcm">QCM</option>
                     <option value="saisie">Saisie</option>
                 </select>
+                <!-- VOIR LES QUESTIONS AVANT DE LES LANCER À TRENTE.
+                     RÉMY : « ce serait cool d'avoir un apercu du jeu pour ne
+                     pas se tromper ». Un défi dure une minute et ne se reprend
+                     pas : se tromper d'exercice, c'est brûler l'heure. -->
+                <button type="button" class="ec-pilote-btn" data-defi-voir
+                        title="Voir trois questions de cet exercice, comme les élèves les auront"
+                        >👁 Aperçu</button>
                 <button type="button" class="ec-pilote-btn" data-defi-go>Lancer</button>
-                ${(vue.direct && vue.direct.defi && !vue.direct.defi.fini)
+                ${defiCourt
                     ? '<button type="button" class="ec-pilote-btn ec-pilote-btn--actif"'
                         + ' data-defi-stop>Arrêter</button>' : ''}
             </span>
             ${classementDuDefiHtml(vue.direct)}
-        </div>
+            </div>
+        </details>
 
-        <div class="ec-pilote-rangee">
+        <details class="ec-pilote-outil"${enCours ? ' open' : ''}>
+            <summary class="ec-pilote-outil-tete">⏱ Compte à rebours${enCours
+                ? ` <b class="ec-pilote-outil-vif ec-chrono-reste">${enMinutes(resteDuChrono(ch))}</b>`
+                : ''}</summary>
+            <div class="ec-pilote-outil-corps">
             <!-- LE PROFESSEUR DOIT VOIR LE TEMPS QU'IL A LANCÉ.
                  Il lançait un compte à rebours et ne le voyait JAMAIS : seuls
                  ses élèves l'avaient à l'écran. Pendant que la classe regarde
@@ -2411,6 +2463,8 @@ function barrePiloteHtml() {
                 <button type="button" class="ec-pilote-btn" data-chrono>Lancer</button>
                 `}
             </span>
+            </div>
+        </details>
 
             <!-- LA CALCULATRICE, ACCORDÉE EN PLEINE HEURE.
                  RÉMY : « pourrait-on autoriser dans les options l'utilisation
@@ -2424,8 +2478,11 @@ function barrePiloteHtml() {
                  destinataires : toute la classe, ou les élèves cochés dans la
                  liste en dessous. L'étiquette dit lequel, parce qu'accorder à
                  trente en croyant accorder à quatre ne se voit qu'après. -->
+        <details class="ec-pilote-outil">
+            <summary class="ec-pilote-outil-tete">🧮 Calculatrice${(vue.reglages || []).some(x => x.mode === 'calculatrice')
+                ? ' <b class="ec-pilote-outil-vif">· accordée</b>' : ''}</summary>
+            <div class="ec-pilote-outil-corps">
             <span class="ec-pilote-cadre">
-                <span class="ec-pilote-eti">🧮 Calculatrice</span>
                 <span class="ec-pilote-mot-liant" data-calc-aqui>${aQuiLaCalculatrice()}</span>
                 <select id="ec-calc-ou" class="ec-champ ec-champ--ou"
                         aria-label="Où la calculatrice est autorisée">
@@ -2438,8 +2495,14 @@ function barrePiloteHtml() {
         ? '<button type="button" class="ec-pilote-btn" data-calc-retirer>Retirer</button>' : ''}
             </span>
 
+            </div>
+        </details>
+
+        <details class="ec-pilote-outil">
+            <summary class="ec-pilote-outil-tete">🧰 Bac à sable${bacDeLaClasse()
+                ? '' : ' <b class="ec-pilote-outil-vif">· ouvert</b>'}</summary>
+            <div class="ec-pilote-outil-corps">
             <span class="ec-pilote-cadre">
-                <span class="ec-pilote-eti">🧰 Bac à sable</span>
                 <span class="ec-pilote-mot-liant">${bacDeLaClasse()
                     ? 'fermé pour cette heure' : 'ouvert à ceux qui ont fini'}</span>
                 ${bacDeLaClasse()
@@ -2479,10 +2542,12 @@ function barrePiloteHtml() {
                         title="Choisir les jeux que vos élèves trouveront dans le bac. Sans choix, le logiciel propose ses valeurs sûres, élargies à ce que la séance vient de travailler."
                         >Choisir</button>`}
             </span>
-        </div>
+            </div>
+        </details>
 
-        <details class="ec-pilote-plus">
-            <summary>Le mot au tableau · dispenser toute la classe d'un exercice</summary>
+        <details class="ec-pilote-outil ec-pilote-plus">
+            <summary class="ec-pilote-outil-tete">✍ Le mot au tableau · dispenses${info.notice
+                ? ' <b class="ec-pilote-outil-vif">· affiché</b>' : ''}</summary>
             <div class="ec-pilote-plus-corps">
 
                 <div class="ec-pilote-bloc">
@@ -2540,6 +2605,8 @@ function barrePiloteHtml() {
 
             </div>
         </details>
+
+        </div>
     </div>`;
 }
 
@@ -2793,7 +2860,7 @@ async function brancher(e, redessiner) {
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours], [data-ecran-seance],'
-        + '[data-maison], [data-maison-mot], [data-defi-go], [data-defi-stop],'
+        + '[data-maison], [data-maison-mot], [data-defi-go], [data-defi-stop], [data-defi-voir],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
@@ -3682,6 +3749,56 @@ async function brancher(e, redessiner) {
     //
     // RÉMY : « je lance le défi ». Trois réglages lus sur place, et le serveur
     // écrit le reste — la graine et les deux instants.
+    // VOIR LES QUESTIONS AVANT DE LES LANCER À TRENTE.
+    //
+    // RÉMY : « ce serait cool d'avoir un apercu du jeu pour ne pas se tromper ».
+    // Un défi dure une minute, part chez tout le monde en même temps et ne se
+    // reprend pas : se tromper d'exercice brûle l'heure. L'aperçu pose les
+    // trois premières questions du défi — les VRAIES, par la fonction que le
+    // défi lui-même emploie — avec la façon de répondre choisie.
+    //
+    // ET IL DIT CE QUI CLOCHE AVANT QUE LA CLASSE NE LE DÉCOUVRE : un exercice
+    // sans choix proposés ne peut pas se jouer en QCM, et c'est le genre de
+    // chose qui ne se voit qu'au moment où trente élèves regardent l'écran.
+    if (d.defiVoir !== undefined) {
+        const zone = el.closest('.ec-pilote') || document;
+        const exoId = (zone.querySelector('[data-defi-exo]') || {}).value || '';
+        const mode = (zone.querySelector('[data-defi-mode]') || {}).value || 'qcm';
+        const exo = exoId ? getExerciseById(exoId) : null;
+        if (!exo) return;
+        const { questionDuDefi } = await import('./defiUI.js');
+        const graine = 'apercu-' + Date.now();
+        const cartes = [];
+        let sansChoix = 0;
+        for (let n = 0; n < 3; n++) {
+            const item = questionDuDefi(exo, graine, n);
+            if (!item) continue;
+            const enonce = (item.prompt && item.prompt.html)
+                || `<div class="game-question">${esc((item.prompt || {}).text || '')}</div>`;
+            const choix = (item.choices || []).slice(0, 4);
+            if (!choix.length) sansChoix++;
+            const reponses = (mode === 'saisie' || !choix.length)
+                ? `<div class="ec-apercu-saisie">réponse attendue :
+                   <b>${esc(String(item.answer ?? '?'))}</b></div>`
+                : `<div class="ec-apercu-choix">${choix.map(c =>
+                    `<span class="ec-apercu-choix-un${c.correct ? ' ec-apercu-choix-un--bonne' : ''}">`
+                    + `${c.label !== undefined ? c.label : esc(String(c.value))}</span>`).join('')}</div>`;
+            cartes.push(`<div class="ec-apercu-carte"><span class="ec-apercu-rang">${n + 1}</span>
+                <div class="ec-apercu-enonce">${enonce}</div>${reponses}</div>`);
+        }
+        const alerte = (mode === 'qcm' && sansChoix)
+            ? '<p class="ec-note ec-note--bloc">⚠ Cet exercice ne propose pas de choix : '
+                + 'le défi passera tout seul en <b>saisie</b> pour ces questions-là.</p>'
+            : '';
+        showModal(`Aperçu — ${exo.title}`,
+            `<p class="ec-note">Trois questions comme vos élèves les auront, en
+             <b>${mode === 'saisie' ? 'saisie' : 'QCM'}</b>. La bonne réponse est marquée ;
+             chez eux elle ne l'est pas.</p>${alerte}
+             <div class="ec-apercu">${cartes.join('') || '<p>Cet exercice n\'a rien rendu.</p>'}</div>`,
+            { width: '560px' });
+        return;
+    }
+
     if (d.defiGo !== undefined || d.defiStop !== undefined) {
         const zone = el.closest('.ec-pilote') || document;
         if (d.defiStop !== undefined) {
@@ -4206,14 +4323,19 @@ function arreterLeTicTac() { if (tictac) { clearInterval(tictac); tictac = null;
 function lancerLeTicTac() {
     arreterLeTicTac();
     tictac = setInterval(() => {
-        const el = document.querySelector('.ec-chrono-reste');
-        if (!el) return;
+        // DEUX ENDROITS LE PORTENT MAINTENANT : la pastille repliée et le
+        // cadre ouvert. Un `querySelector` n'en aurait rafraîchi qu'un, et
+        // l'autre serait resté figé à l'heure où on l'a ouvert.
+        const tous = [...document.querySelectorAll('.ec-chrono-reste')];
+        if (!tous.length) return;
         const ch = vue.direct && vue.direct.chrono;
         if (!ch || !ch.finAt) return;
         const reste = Math.max(0,
             ch.finAt - (Math.floor(Date.now() / 1000) + decalageHorloge));
-        el.textContent = enMinutes(reste);
-        el.classList.toggle('ec-chrono-reste--court', reste <= 60);
+        for (const el of tous) {
+            el.textContent = enMinutes(reste);
+            el.classList.toggle('ec-chrono-reste--court', reste <= 60);
+        }
         // ET À ZÉRO, LA BARRE REPREND SA FORME TOUT DE SUITE.
         //
         // Sans cette ligne, elle attendrait le prochain battement du serveur —

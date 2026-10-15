@@ -1888,10 +1888,30 @@ function handleTeacherLive(): void
     $body = jsonBody();
     $classe = classeDuProf($teacher, $body);
 
+    // L'IDENTITÉ DE LA SÉANCE EN COURS, s'il y en a une imposée.
+    //
+    // RÉMY : « quand je mets une nouvelle séance en cours, pour le direct, ce
+    // sont les progressions de la séance d'avant qui apparaissent ». On la
+    // passe à `derniereActivite`, qui ne retient alors que le travail de CETTE
+    // séance — voir le commentaire qui l'explique, dans lib/eleves.php.
+    //
+    // ELLE VIENT DE `assignments`, pas d'un calcul : c'est le navigateur qui
+    // sait fabriquer une identité de parcours, et il l'a déposée là en donnant
+    // la séance. Une séance donnée avant que cette colonne n'existe n'en a pas,
+    // et l'on ne filtre alors rien plutôt que de tout cacher.
+    $identiteSeance = null;
+    $imposeId = imposeEncoreValide($classe);
+    if ($imposeId) {
+        $q = db()->prepare('SELECT path_identity FROM assignments
+                            WHERE path_id = ? AND class_id = ? AND student_id IS NULL');
+        $q->execute([$imposeId, $classe['id']]);
+        $identiteSeance = ($q->fetchColumn() ?: null);
+    }
+
     $rangs = [];
     $maintenant = time();
     foreach (elevesDeLaClasse($classe['id']) as $e) {
-        $a = derniereActivite($e['id']);
+        $a = derniereActivite($e['id'], $identiteSeance);
         $rangs[] = [
             'id' => $e['id'],
             'prenom' => $e['first_name'],

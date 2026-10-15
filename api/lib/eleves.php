@@ -432,7 +432,7 @@ function retirerEleve(string $eleveId, string $classeId): string
  * calculer à part ; ce serait une seconde requête par élève, soixante au lieu
  * de trente à chaque battement, pour des lignes qu'on vient de déchiffrer.
  */
-function derniereActivite(string $eleveId): array
+function derniereActivite(string $eleveId, ?string $identiteSeance = null): array
 {
     $s = db()->prepare(
         'SELECT type, ts, payload FROM events WHERE student_id = ?
@@ -478,7 +478,34 @@ function derniereActivite(string $eleveId): array
     $runs = runsOf(array_reverse($pourLeRun));
     $duTravail = null;
     foreach ($runs as $r) {
-        if (empty($r['bac'])) { $duTravail = $r; break; }
+        if (!empty($r['bac'])) continue;
+        // ET SI UNE SÉANCE EST IMPOSÉE, C'EST D'ELLE QU'ON PARLE.
+        //
+        // RÉMY : « quand je mets une nouvelle séance en cours, pour le direct,
+        // ce sont les progressions de la séance d'avant qui apparaissent,
+        // toutes les élèves devraient être à 0 ».
+        //
+        // Il avait raison, et la cause tient en une ligne : on prenait le run
+        // le PLUS RÉCENT, sans regarder à quel travail il appartient. Un élève
+        // qui n'a pas encore ouvert la séance d'aujourd'hui montrait donc son
+        // devoir d'hier — « Terminé, 18 / 24 » — sur le tableau de bord de
+        // l'heure en cours. Le professeur lit cet écran debout, au fond de la
+        // salle, pour décider s'il peut passer à la suite : c'est exactement
+        // la décision qu'une progression d'hier fausse.
+        //
+        // ON COMPARE LA MÊME CHOSE QUE LE BILAN DE SÉANCE : l'identité DE
+        // CONTENU du parcours (`identiteDeParcours` côté navigateur), écrite
+        // dans `assignments.path_identity` au moment où la séance est donnée,
+        // et portée par chaque `run_started`. Le serveur ne sait pas la
+        // calculer — il n'a pas à connaître cette définition —, il la lit.
+        // Miroir exact de `runsDeLaSeance` dans js/core/bilanSeance.js.
+        //
+        // SANS IDENTITÉ CONNUE, ON NE FILTRE RIEN : une séance d'avant cette
+        // colonne, ou une classe sans séance imposée, garde l'ancien
+        // comportement — le dernier travail en date.
+        if ($identiteSeance !== null && (string) ($r['pathId'] ?? '') !== $identiteSeance) continue;
+        $duTravail = $r;
+        break;
     }
     $avancement = avancementDeRun($duTravail);
 

@@ -2011,6 +2011,10 @@ function initToolbar() {
             const input = document.getElementById('path-name-input');
             if (input) input.value = state.currentPath.name;
             renderTeacherPath();
+            // ET CE QUI PARLAIT DE L'ANCIEN PARCOURS SE TAIT : le badge « donné
+            // à 6e B » et le panneau des classes appartenaient au précédent.
+            demanderLAuditoire(true);
+            suivreLeParcoursOuvert();
         };
         // « Nouveau parcours » VIDE la table de travail. Ce n'est pas rien :
         // sans un mot, on croit avoir perdu ce qu'on venait de composer. On le
@@ -2069,6 +2073,42 @@ async function demanderLAuditoire(force = false) {
         auditoire = { id: null, classes: [], eleves: [] };
     }
     direLAuditoire();
+}
+
+/**
+ * LE PANNEAU « À QUI C'EST DONNÉ » SUIT LE PARCOURS OUVERT.
+ *
+ * RÉMY : « quand je suis sur un parcours, je mets envoyé pour l'adresser à mes
+ * classes[,] si je charge un nouveau parcours[,] eh bien les classes à qui
+ * j'envoie le nouveau parcours ne sont pas actualisées ».
+ *
+ * C'EST LE PRIX DU PANNEAU, ET IL FALLAIT LE PAYER. Une boîte de dialogue se
+ * referme quand on fait autre chose ; un panneau reste ouvert — c'est tout son
+ * intérêt — et celui-ci restait accroché au parcours qu'il avait reçu À
+ * L'OUVERTURE. Mesuré par le chemin du professeur : parcours B donné à la 6e B,
+ * puis parcours A chargé dans le tiroir, panneau resté ouvert — il affichait
+ * encore « Donné à 1 classe — 6 élèves », case cochée, pour un parcours que
+ * personne n'avait reçu. Cocher là-dedans aurait donné B, pas A.
+ *
+ * ON LE ROUVRE DONC SUR LE NOUVEAU, plutôt que de le fermer : le professeur
+ * vient de charger un parcours en regardant ses classes, il veut les voir pour
+ * CELUI-LÀ. Un parcours vide, lui, n'a rien à donner : le panneau se ferme,
+ * sans quoi `ouvrirPanneauClasses` ouvrirait une alerte sur un geste que
+ * personne n'a fait.
+ */
+function suivreLeParcoursOuvert() {
+    const panel = document.getElementById('builder-properties-panel');
+    if (!panel || panel.dataset.pour !== 'classes') return;
+    if (!state.currentPath || !(state.currentPath.steps || []).length) {
+        fermerProprietes();
+        return;
+    }
+    import('./parcoursClasses.js').then(({ ouvrirPanneauClasses }) => {
+        ouvrirPanneauClasses(state.currentPath, () => {
+            renderTeacherPath();
+            demanderLAuditoire(true);
+        });
+    });
 }
 
 /** Le badge, et l'infobulle qui porte la règle. */
@@ -2452,8 +2492,38 @@ function teteDeDossier(section, replie) {
         state.setFolderReplie(section.id, !replie);
         renderPathBrowser();
     };
+
+    // LE DOUBLE-CLIC SUR LE NOM NE DOIT PAS ÊTRE MANGÉ PAR LE PLI.
+    //
+    // RÉMY : « le double clic pour renommer un dossier ne fonctionne pas ».
+    // MESURÉ : après un double-clic, `contentEditable` valait « inherit », le
+    // nom n'avait pas le foyer, et le dossier s'était replié puis déplié.
+    //
+    // LA CAUSE : un double-clic commence par DEUX clics simples. Chacun
+    // repliait le dossier et appelait `renderPathBrowser()`, qui refait la
+    // liste entière — si bien que le `dblclick` arrivait sur un nœud détruit
+    // entre-temps. Le geste ne pouvait pas marcher, jamais.
+    //
+    // ON NE DIFFÈRE QUE LÀ OÙ IL Y A AMBIGUÏTÉ : sur le nom, le pli attend un
+    // quart de seconde de voir si un second clic arrive ; partout ailleurs
+    // sur la tête — la flèche, le compte, le vide à droite — il reste
+    // immédiat. Retirer le nom de la zone qui replie aurait été plus simple,
+    // mais le nom FAIT la tête : la cible utile serait tombée à la flèche de
+    // 18 px, « qui se rate une fois sur trois au doigt ».
+    const DEUX_CLICS = 260;
+    let attente = null;
+    const annuler = () => { clearTimeout(attente); attente = null; };
+    // EN CAPTURE, parce que `nomRenommable` arrête la propagation de son
+    // double-clic : en phase montante, cet écouteur-ci ne serait jamais
+    // appelé et le pli différé partirait quand même.
+    head.addEventListener('dblclick', annuler, true);
     head.onclick = (e) => {
         if (e.target.closest('.btn-icon')) return;
+        if (e.target.closest('.path-folder-name')) {
+            annuler();
+            attente = setTimeout(basculer, DEUX_CLICS);
+            return;
+        }
         basculer();
     };
     // AU CLAVIER AUSSI. La tête devient l'élément qu'on atteint par tabulation
@@ -2640,6 +2710,8 @@ function pathItem(p, resume = null) {
         if (input) input.value = state.currentPath.name;
         renderTeacherPath();
         marquerOuvert(p.id);
+        // LE PANNEAU DES CLASSES, S'IL EST OUVERT, CHANGE DE PARCOURS AVEC NOUS.
+        suivreLeParcoursOuvert();
     };
     row.onclick = (e) => {
         // LE NOM NE S'EXCLUT PLUS. Il en était écarté du temps où il était un

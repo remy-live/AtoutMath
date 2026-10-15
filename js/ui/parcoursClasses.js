@@ -607,6 +607,11 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 <div class="pc-rapport-zone" hidden></div>
             </div>`;
         panel.classList.add('mob-open');
+        // CE QUE CE VOLET MONTRE, ÉCRIT SUR LUI. Le constructeur s'en sert
+        // pour savoir qu'il doit le rouvrir sur le parcours qu'on vient de
+        // charger — sans cette marque, il ne peut pas distinguer ce panneau
+        // d'un autre, et il restait accroché au parcours précédent.
+        panel.dataset.pour = 'classes';
         brancher();
 
         // ON ROUVRE CE QUI ÉTAIT OUVERT, et l'on remet la liste où elle était.

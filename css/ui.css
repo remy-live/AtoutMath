@@ -449,6 +449,92 @@
 .ec-pilote-bloc { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .ec-pilote-eti { font-size: .78rem; font-weight: 700; color: var(--text-main); }
 .ec-pilote-cadre .ec-pilote-eti { white-space: nowrap; }
+
+/* LES OUTILS DE L'HEURE, EN PASTILLES QU'ON DÉPLIE.
+
+   RÉMY, capture à l'appui : « je trouve cela chargé, il faudrait améliorer
+   cela ». Six rangées de cadres et une vingtaine de contrôles tenaient
+   dépliés en permanence AU-DESSUS de la liste des élèves — c'est-à-dire
+   au-dessus de ce qu'on vient regarder dans cet écran.
+
+   UNE PASTILLE OUVERTE PREND TOUTE LA LARGEUR (`flex-basis: 100%`), et les
+   autres se rangent derrière elle. C'est ce qui évite le défaut classique du
+   repli : un panneau qui s'ouvre DANS une rangée pousse ses voisins hors de
+   l'écran, et l'on se retrouve à chercher la commande qu'on vient d'ouvrir.
+
+   LE REPLI NE CACHE PAS CE QUI AGIT : `ec-outil-vif` dit sur la pastille
+   elle-même qu'un compte à rebours tourne, que la calculatrice est accordée,
+   que la classe est fermée hors séance. */
+.ec-pilote-outils { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.ec-pilote-outil {
+    flex: 0 0 auto; min-width: 0;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-app);
+}
+.ec-pilote-outil[open] { flex: 1 0 100%; }
+.ec-pilote-outil > summary {
+    cursor: pointer; list-style: none; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+    /* LE PLANCHER TACTILE S'APPLIQUE ICI AUSSI : c'est une commande de
+       classe, touchée sur tablette, au fond de la salle. */
+    min-height: 44px; padding: 0 12px;
+    font-size: .84rem; font-weight: 700; color: var(--text-main);
+}
+.ec-pilote-outil > summary::-webkit-details-marker { display: none; }
+.ec-pilote-outil > summary::before { content: none; }
+.ec-pilote-outil[open] > summary { border-bottom: 1px solid var(--border); }
+@media (hover: hover) {
+    .ec-pilote-outil > summary:hover { color: var(--primary-texte); }
+}
+.ec-pilote-outil-corps { padding: 10px 12px; }
+/* CE QUI AGIT EN CE MOMENT, écrit sur la pastille repliée. En ambre : c'est
+   la couleur que ce dépôt réserve à « regarde ici ». */
+.ec-pilote-outil-vif { color: var(--warning-texte); font-weight: 800; }
+/* LE CADRE INTÉRIEUR PERD SON SECOND BORD : la pastille en porte déjà un, et
+   deux traits à deux pixels l'un de l'autre font une bordure sale. */
+.ec-pilote-outil-corps > .ec-pilote-cadre { border: 0; background: none; padding: 0; }
+.ec-pilote-outil-corps .ec-pilote-plus-corps { padding-top: 0; }
+
+/* L'APERÇU DU DÉFI — trois questions, comme les élèves les auront.
+
+   RÉMY : « ce serait cool d'avoir un apercu du jeu pour ne pas se tromper ».
+   La bonne réponse est marquée ICI et nulle part ailleurs : c'est un aperçu
+   pour le professeur, pas une partie. */
+.ec-apercu { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.ec-apercu-carte {
+    position: relative; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px 10px 38px; background: var(--bg-app);
+}
+.ec-apercu-rang {
+    position: absolute; left: 10px; top: 10px;
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary); color: #fff; font-size: .75rem; font-weight: 800;
+}
+/* L'ÉNONCÉ GARDE SON DESSIN, MAIS PAS SA TAILLE.
+
+   Les gabarits des exercices sont écrits pour remplir l'écran d'un élève :
+   mesuré à la photo, le premier énoncé occupait à lui seul les deux tiers de
+   la fenêtre d'aperçu, et il fallait faire défiler pour voir la deuxième
+   question. Or l'aperçu sert à comparer trois questions D'UN COUP D'OEIL,
+   avant de lancer. On borne donc la taille du texte et la hauteur des
+   figures, sans toucher au reste du dessin. */
+.ec-apercu-enonce { font-size: 1rem; font-weight: 600; }
+.ec-apercu-enonce .game-question,
+.ec-apercu-enonce .question-text,
+.ec-apercu-enonce .enonce { font-size: 1.08rem; line-height: 1.35; }
+.ec-apercu-enonce svg { max-height: 96px; width: auto; }
+.ec-apercu-enonce img { max-height: 96px; }
+.ec-apercu-choix { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ec-apercu-choix-un {
+    border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px;
+    font-weight: 700; background: var(--bg-panel);
+}
+.ec-apercu-choix-un--bonne {
+    border-color: var(--success); color: var(--success-texte);
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+.ec-apercu-saisie { margin-top: 8px; font-size: .86rem; color: var(--text-muted); }
 /* Sur téléphone, chaque cadre prend la largeur : à 390 px, deux cadres côte à
    côte rognent les deux.
 
@@ -661,7 +747,7 @@
 .ec-champ:focus { outline: none; border-color: var(--primary); }
 
 /* --- Boutons -------------------------------------------------------------- */
-.ec-outils { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.ec-pilote-outils { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
 .ec-bouton {
     font: inherit; font-weight: 700; font-size: .88rem; cursor: pointer;
     padding: 9px 16px; border-radius: 10px; border: 1.5px solid var(--primary);

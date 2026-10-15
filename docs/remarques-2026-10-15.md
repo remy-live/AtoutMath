@@ -129,3 +129,72 @@ bas ; le cassage barre maintenant le chiffre suivant et écrit celui qui reste.
 casse les unités, ce serait faire d'avance un emprunt que l'élève n'a pas
 décidé. On pose donc `h − 1` (le 2 de 821 devient 1), et c'est un second clic,
 arrivé sur la colonne, qui le fera passer à `h + 9`.
+
+---
+
+# Deux bogues du tiroir des parcours — même jour
+
+> « un petit bug, quand je suis sur un parcours, je mets envoyé pour l'adresser
+> à mes classes si je charge un nouveau parcours et bien les classes à qui
+> j'envoie le nouveau parcours ne sont pas actualisées »
+
+> « le double clic pour renommer un dossier ne fonctionne pas »
+
+(à mesurer avant de corriger — le journal de ce qui a été trouvé suit)
+
+> « quand je mets une nonvelle séance en cours, pour le direct, ce sont les
+> progressions de la séance d'avant qui apparaissent, toutes les élèves
+> devraient être à 0. »
+
+> « Pour le défi de la classe, on ne voit pas le temps (il est tronqué), ce
+> serait cool d'avoir un apercu du jeu pour ne pas se tromper. »
+
+## 5. Le panneau des classes restait accroché au parcours précédent
+
+**Mesuré par le chemin du professeur** : parcours B donné à la 6e B, puis
+parcours A chargé dans le tiroir, panneau resté ouvert — il affichait encore
+« Donné à 1 classe — 6 élèves », case cochée, **pour un parcours que personne
+n'avait reçu**. Cocher là-dedans aurait donné B, pas A.
+
+C'est le prix du panneau, et il fallait le payer : une boîte de dialogue se
+referme quand on fait autre chose, un panneau reste — c'est tout son intérêt.
+Il se rouvre maintenant sur le parcours qu'on vient de charger (et se ferme si
+celui-ci est vide). Remesuré : « Pas encore donné », zéro case cochée.
+
+## 6. Le double-clic pour renommer un dossier
+
+**Mesuré** : après un double-clic, `contentEditable` valait `inherit`, le nom
+n'avait pas le foyer, et le dossier s'était replié **puis** déplié.
+
+La cause tient en une ligne : un double-clic commence par deux clics simples.
+Chacun repliait le dossier et appelait `renderPathBrowser()`, qui refait la
+liste entière — le `dblclick` arrivait donc sur un nœud détruit entre-temps. Le
+geste ne pouvait pas marcher, jamais.
+
+On ne diffère le pli **que sur le nom** (un quart de seconde, le temps de voir
+si un second clic arrive) ; partout ailleurs sur la tête du dossier il reste
+immédiat. Remesuré : `contentEditable: true`, le foyer, « Sixièmes » conservé
+après un redessin complet, et le clic simple replie toujours.
+
+## 7. Le direct montrait la séance d'hier
+
+Voir le commit : `derniereActivite` prenait le run **le plus récent** sans
+regarder à quel travail il appartient. L'élève qui n'avait pas encore ouvert la
+séance du jour montrait son devoir d'hier, barre pleine. On compare désormais
+l'identité de contenu du parcours — la même que le bilan de séance — portée par
+`assignments.path_identity`.
+
+## 8. La barre de pilotage, repliée
+
+**Mesuré à la sonde** : six rangées de cadres, une vingtaine de contrôles
+dépliés en permanence au-dessus de la liste des élèves. Après : **134 px**, deux
+lignes — la pause et le mot à la classe restent sous la main, les six autres
+outils sont des pastilles qu'on déplie une par une. Une pastille repliée **dit
+ce qu'elle fait** : le compte à rebours montre son temps dessus, le bac ouvert,
+la calculatrice accordée, la classe fermée hors séance.
+
+Et le temps du défi se lit en entier (« 1 min » et non « 1 mi » : la largeur
+fixe du champ des minutes du chrono avait été posée sur un déroulant), avec un
+bouton **👁 Aperçu** qui pose trois vraies questions du défi, dans le mode
+choisi, en marquant la bonne réponse — et qui prévient quand l'exercice ne peut
+pas se jouer en QCM.

@@ -113,7 +113,7 @@ const echapper = (s) => String(s == null ? '' : s)
  * numéro sept est la même chez les trente élèves, et elle ne dépend pas de la
  * vitesse à laquelle on y arrive.
  */
-function questionDuDefi(exo, graine, n) {
+export function questionDuDefi(exo, graine, n) {
     const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
     if (!gen) return null;
     try {
