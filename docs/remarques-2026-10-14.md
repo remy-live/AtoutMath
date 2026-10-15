@@ -880,3 +880,47 @@ d'exemple, qui est un `showModal` et jamais une fenêtre native.
 **À vérifier avant d'écrire** : ce que `js/games/poserOperation.js` fait
 aujourd'hui de la retenue, et si le barré d'un chiffre y est seulement
 dessinable.
+
+---
+
+# « On n'a même pas fait d'exercice de fraction où il faut ÉCRIRE la fraction »
+
+> « on a même pas fait d'exercice de fraction où il faut écrire la fraction en
+> fonction d'un camembert, pavage et avec la difficulté que parfois les parts
+> ne sont pas identiques et que du coup, on sépare mentalement et en indice on
+> peut voir la découpe »
+
+**IL A RAISON, ET C'EST LE TROU LE PLUS SURPRENANT DU CHAPITRE.** Audité : le
+catalogue porte vingt-huit exercices de fractions — comparer, additionner,
+multiplier, simplifier, poser, douze cartes de calcul — et **pas un seul ne
+demande de LIRE une figure pour en écrire la fraction.** « La Pizzeria des
+Fractions » fait l'inverse : on lui donne 3/4 et l'élève colorie.
+
+Or c'est le tout premier geste du chapitre en sixième, et celui qui fonde tout
+le reste : le dénominateur dit **en combien de parts ÉGALES** le tout est
+coupé, le numérateur **combien on en prend**.
+
+**ET SA DIFFICULTÉ EST LA BONNE** — c'est même la seule qui fasse travailler la
+définition plutôt que le comptage :
+
+> « parfois les parts ne sont pas identiques et du coup on sépare mentalement »
+
+Une figure dont les morceaux sont inégaux ne se compte pas : il faut
+reconnaître que le grand morceau en vaut deux petits, donc **ramener au plus
+petit**. Un élève qui compte « 3 morceaux sur 5 » sans regarder leur taille
+écrit une fraction fausse — et c'est exactement l'erreur que cet exercice
+existe pour attraper.
+
+> « en indice on peut voir la découpe »
+
+L'indice ne DIT pas la réponse, il **redécoupe la figure** : les traits qui
+manquaient apparaissent, et l'élève compte alors des parts vraiment égales.
+C'est `item.schemas[i]`, le dessin sous l'indice — exactement ce dont les
+87 exercices qui n'en ont pas auraient besoin.
+
+**Les deux supports qu'il nomme**, et ils ne travaillent pas la même chose :
+
+| | ce que ça fait voir |
+| --- | --- |
+| **le camembert** | le tout est UN disque ; les parts sont des secteurs, et l'inégalité se voit à l'angle |
+| **le pavage** | le tout est un rectangle quadrillé ; l'inégalité se voit à l'aire, et la figure se prête aux fractions supérieures à 1 (deux rectangles côte à côte) |
