@@ -184,13 +184,61 @@ class PoserOperation extends BaseGame {
                    crayon, entre les deux colonnes, et c'est ce débordement qui
                    dit à quel chiffre il s'ajoute. */
                 .po-case--porte-rond { position: relative; overflow: visible; }
-                .po-rond--coin, .po-rond--coin-haut {
-                    position: absolute; left: -6px;
-                    width: clamp(14px, 3.6cqw, 19px); height: clamp(14px, 3.6cqw, 19px);
-                    font-size: clamp(9px, 2.4cqw, 12px);
-                    background: var(--bg-panel);
+                /* LES MARQUES D'UNE SOUSTRACTION S'ECRIVENT AU CRAYON, PAS
+                   DANS UN ROND.
+
+                   REMY, capture d'un cahier a l'appui : « j'aime pas la
+                   presentation par cassage. Presente-le comme cela sans le
+                   CDU et les traits de separation ». Sur son image la retenue
+                   n'est pas cerclee : c'est un petit chiffre de couleur pose
+                   dans la marge, et le chiffre remplace est BARRE d'un trait
+                   oblique. C'est ce qu'un eleve a sous les yeux dans son
+                   cahier, et le rond rouge n'y ressemblait pas.
+
+                   PAS DE C/D/U NI DE TRAITS VERTICAUX : il les a ecartes
+                   lui-meme, et il a raison — la colonne se voit deja, et
+                   trois lettres de plus au-dessus d'une operation de deux
+                   chiffres encombrent plus qu'elles n'aident.
+
+                   LE ROND RESTE A L'ADDITION, ou la tradition de classe
+                   l'emploie et ou personne ne s'en est plaint. */
+                .po-marque {
+                    position: absolute; left: -7px;
+                    min-width: clamp(11px, 2.8cqw, 14px); padding: 0 1px;
+                    border: 0; background: var(--bg-panel); border-radius: 3px;
+                    font-size: clamp(10px, 2.7cqw, 14px); font-weight: 900;
+                    line-height: 1.15; color: var(--danger); cursor: pointer;
+                    display: flex; align-items: center; justify-content: center;
                 }
-                .po-rond--coin { bottom: -4px; }
+                /* VIDE, ELLE DOIT SE VOIR : sans repere, l'eleve ne sait pas
+                   ou ecrire. Pointillee et pale, elle s'efface des qu'il a
+                   ecrit — et le dessin redevient celui du cahier. */
+                .po-marque--vide {
+                    border: 1.5px dashed var(--danger); opacity: .5;
+                    min-height: clamp(11px, 2.8cqw, 14px);
+                }
+                /* DEUX MARQUES DU HAUT, ET ELLES N'ONT NI LA MEME PLACE NI
+                   LA MEME TAILLE. Remy, en regardant la photo d'essai :
+                   « mets pour la compensation le 1 a gauche du 2 sur ton
+                   image de test et un chiffre plus grand par cassage ».
+
+                   DEVANT  la dizaine empruntee : un petit 1 pose A GAUCHE du
+                           chiffre, sur sa ligne — on lit « 12 » d'un trait,
+                           et c'est bien un seul nombre qu'on lit. Pose
+                           au-dessus, il devenait un exposant.
+                   DESSUS  le chiffre reecrit du cassage : il REMPLACE celui
+                           qui est barre, donc il se lit comme un chiffre et
+                           non comme une annotation. Il est presque aussi
+                           grand que lui. */
+                .po-marque--devant {
+                    top: 50%; transform: translateY(-50%); left: -9px;
+                }
+                .po-marque--dessus {
+                    top: -13px; left: -1px;
+                    font-size: clamp(14px, 3.8cqw, 19px);
+                    min-width: clamp(13px, 3.4cqw, 17px);
+                }
+                .po-marque--bas { bottom: -6px; }
                 /* EN HAUT À GAUCHE DU CHIFFRE DU HAUT : la dizaine empruntée
                    s'écrit DEVANT lui — c'est le « 1 » de 13. Rémy : « à côté
                    du 0 en haut et à côté du 2 en bas ». */
@@ -204,10 +252,7 @@ class PoserOperation extends BaseGame {
                     border-top: 2.5px solid var(--danger); transform: rotate(-12deg);
                     pointer-events: none;
                 }
-                /* LE « +1 » EST PLUS LARGE QU'UN CHIFFRE : sans cela, le signe
-                   et le chiffre se chevauchent dans un rond fait pour un seul
-                   caractère. */
-                .po-rond--coin { width: auto; min-width: clamp(14px, 3.6cqw, 19px); padding: 0 2px; }
+
 
                 .po-pave { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 340px; }
                 .po-touche {
@@ -409,8 +454,25 @@ class PoserOperation extends BaseGame {
         // la ligne du dessus ; on suit l'usage plutôt que d'inventer un second
         // nom pour la même chose.)
         const sac = ou === 'retenue-bas' ? this.marquesBas : this.retenues;
-        rond.className = 'btn-carre po-rond' + (sac[rang] ? ' po-rond--plein' : '')
-            + (auCoin ? ` po-rond--${ou === 'retenue-bas' ? 'coin' : 'coin-haut'}` : '');
+        // UNE SOUSTRACTION ECRIT AU CRAYON, UNE ADDITION DANS UN ROND.
+        // Voir la feuille de style : c'est la demande de Remy, image de
+        // cahier a l'appui.
+        // OU VA LA MARQUE : a gauche du chiffre quand c'est la dizaine
+        // empruntee, AU-DESSUS quand c'est le chiffre reecrit du cassage —
+        // celui-la remplace le chiffre barre, il n'annote pas.
+        const col = (this.tableau.colonnes.find(c => c.rang === rang) || {});
+        const place = ou === 'retenue-bas' ? 'bas'
+            : (col.hautCorrige !== null && col.hautCorrige !== undefined ? 'dessus' : 'devant');
+        // DEUX AFFECTATIONS ET NON UN TERNAIRE, et ce n'est pas du style :
+        // l'epreuve des pastilles lit l'affectation entiere, et un ternaire
+        // qui porte `btn-carre` dans UNE de ses deux branches la fait passer
+        // au vert pour les deux. Separees, chacune repond d'elle-meme.
+        const vide = sac[rang] === undefined;
+        if (auCoin) {
+            rond.className = `btn-carre po-marque po-marque--${place}${vide ? ' po-marque--vide' : ''}`;
+        } else {
+            rond.className = `btn-carre po-rond${sac[rang] ? ' po-rond--plein' : ''}`;
+        }
         // LE « +1 » S'ÉCRIT AVEC SON SIGNE : c'est ce qu'on AJOUTE au chiffre
         // du bas, et un « 1 » nu se lirait comme un chiffre de plus.
         rond.textContent = sac[rang] === undefined ? ''

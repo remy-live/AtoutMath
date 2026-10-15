@@ -1217,3 +1217,56 @@ rature.
 **Mesuré au navigateur** : en compensation, un clic sur la marque du haut écrit
 « 1 » en haut ET « +1 » en bas. Par emprunt, le 6 est barré et surmonté d'un
 « 5 ».
+
+---
+
+# « J'aime pas la présentation par cassage »
+
+> Capture d'un cahier à l'appui (682 − 337, le 8 barré et surmonté d'un 7, un
+> petit 1 devant le 2) : « j'aime pas la présentation par cassage. Présente le
+> comme cela sans le CDU et les traits de séparation »
+
+**Ce n'est pas la MÉTHODE qu'il refuse, c'est le DESSIN.** Sur son image, la
+retenue n'est pas cerclée : c'est un **petit chiffre de couleur posé dans la
+marge**, et le chiffre remplacé est **barré d'un trait oblique**. C'est ce
+qu'un élève a sous les yeux dans son cahier — le rond rouge n'y ressemblait
+pas.
+
+**Fait** : les marques d'une soustraction s'écrivent maintenant au crayon, sans
+rond. Le rond reste à l'ADDITION, où la tradition de classe l'emploie et où
+personne ne s'en est plaint.
+
+**Et je n'ai PAS repris deux choses de son image, parce qu'il l'a demandé
+explicitement** : le bandeau **C / D / U** au-dessus des colonnes, et les
+**traits verticaux** de séparation. Il a raison : la colonne se voit déjà, et
+trois lettres de plus au-dessus d'une opération de deux chiffres encombrent
+plus qu'elles n'aident.
+
+**Une seule chose de son image n'y est pas reprise telle quelle** : tant que
+l'élève n'a rien écrit, la place de la marque est signalée par un petit
+pointillé pâle. Sans repère, il ne sait pas où écrire — et le pointillé
+disparaît dès qu'il a posé son chiffre. Le dessin redevient alors exactement
+celui du cahier.
+
+## Et son second coup d'œil sur la photo d'essai
+
+> « mets pour la compensation le 1 à gauche du 2 sur ton image de test et un
+> chiffre plus grand par cassage »
+
+**Les deux marques du haut n'ont ni la même place ni la même taille**, et les
+confondre était ma faute :
+
+| | où | taille |
+| --- | --- | --- |
+| la dizaine empruntée | **à GAUCHE** du chiffre, sur sa ligne | petite |
+| le chiffre réécrit du cassage | **AU-DESSUS** du chiffre barré | presque celle d'un chiffre |
+
+**Et la raison est de lecture, pas de goût.** Le petit 1 posé à gauche se lit
+d'un trait avec le chiffre : on lit « 13 », un seul nombre. Posé au-dessus, il
+devenait un exposant. Le chiffre réécrit, lui, **remplace** celui qui est
+barré : il doit se lire comme un chiffre, pas comme une annotation — donc
+grand, et au-dessus.
+
+**Mesuré au navigateur** : sur 50 − 39 par cassage, le 5 est barré d'un trait
+oblique et surmonté d'un **4** rouge presque aussi grand que lui ; sur 93 − 57
+par compensation, un petit **1** à gauche du 3 et un **+1** sous le 5 du bas.

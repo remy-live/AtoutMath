@@ -42,7 +42,9 @@ const PASTILLES = [
     ['js/games/poserLongue.js', 'pl-rond', 'les ronds de retenue d\'une division posée'],
     ['js/core/activities/produitPose.js', 'pp-jeton', 'les facteurs cliquables d\'un produit'],
     ['js/games/mastermind.js', 'mm-jeton', 'les jetons du Mastermind'],
-    ['js/games/hexagrille.js', 'hx-jeton', 'les jetons de l\'Hexagrille']
+    ['js/games/hexagrille.js', 'hx-jeton', 'les jetons de l\'Hexagrille'],
+    ['js/games/poserOperation.js', 'po-marque',
+        'les retenues ecrites au crayon d\'une soustraction posee']
 ];
 
 test('CHAQUE PASTILLE DE JEU DÉCLARE « btn-carre »', () => {
@@ -53,10 +55,26 @@ test('CHAQUE PASTILLE DE JEU DÉCLARE « btn-carre »', () => {
         // affectation de `className` ou un `class="…"` — et l'on exige que
         // `btn-carre` y soit. Chercher `btn-carre` n'importe où dans le
         // fichier ne garderait rien : il pourrait être sur un autre bouton.
-        const lignes = source.split('\n')
-            .filter(l => l.includes(classe) && /class/i.test(l));
-        assert.ok(lignes.length, `« ${classe} » n'est plus posé dans ${fichier}`);
-        if (!lignes.some(l => l.includes('btn-carre'))) {
+        // ON LIT L'AFFECTATION ENTIERE, PAS UNE LIGNE.
+        //
+        // La version d'avant filtrait les LIGNES contenant a la fois la
+        // classe et le mot « class ». Un ternaire ecrit sur trois lignes —
+        // `rond.className =` sur la premiere, la classe sur la troisieme —
+        // la faisait crier « n'est plus pose dans ce fichier » sur un bouton
+        // parfaitement declare. Une garde qui tombe sur une mise en forme ne
+        // garde pas ce qu'elle annonce : elle apprend a reformater pour la
+        // faire taire.
+        const plat = source.replace(/\s+/g, ' ');
+        const poses = [
+            // `className = …`, mais aussi `const classes = [ … ]` : deux jeux
+            // sur cinq construisent leur liste dans un tableau avant de la
+            // joindre, et `class\\w*` les prend tous les deux.
+            ...[...plat.matchAll(/class\w*\s*=\s*([^;]*);/g)].map(m => m[1]),
+            ...[...plat.matchAll(/classList\.add\(([^)]*)\)/g)].map(m => m[1]),
+            ...[...plat.matchAll(/class="([^"]*)"/g)].map(m => m[1])
+        ].filter(s => s.includes(classe));
+        assert.ok(poses.length, `« ${classe} » n'est plus posé dans ${fichier}`);
+        if (!poses.some(s => s.includes('btn-carre'))) {
             manquants.push(`  · ${quoi}\n      ${fichier} — « ${classe} » sans « btn-carre »`);
         }
     }
