@@ -550,7 +550,8 @@ export const calculExercises = [
         printParams: { retenue: true },
         consignePapier: 'Effectue ces opérations posées.',
         skills: ['num.add.entiers'],
-        params: { operation: '+', decimales: false, chiffres: 3, termes: 2 },
+        params: { operation: '+', decimales: false, chiffres: 3, termes: 2,
+            methode: 'compensation' },
         paramSchema: [
             {
                 id: 'operation', type: 'select', label: 'Opération',
@@ -584,11 +585,30 @@ export const calculExercises = [
                     { value: 3, label: 'Trois' }
                 ],
                 default: 2
+            },
+            {
+                // LES DEUX MÉTHODES DE RETENUE — Rémy : « j'ai des élèves qui
+                // font une autre méthode où pour 53 − 17, il mette le 1 à 3 et
+                // au lieu du 5, il barre et mette 4 ». Les deux s'enseignent,
+                // et un élève qui applique CORRECTEMENT celle qu'on lui a
+                // apprise ne pouvait pas l'écrire dans la grille.
+                //
+                // L'ÉLÈVE EN CHANGE AUSSI, par le bouton « ⇄ Méthode » du jeu :
+                // le réglage dit avec laquelle on OUVRE, pas laquelle on
+                // impose. Une classe où les deux cohabitent est le cas normal.
+                id: 'methode', type: 'select', label: 'Retenue de la soustraction',
+                aide: 'Pour 53 − 17 : « on compense » ajoute 1 au 1 de 17 ; « on emprunte » barre le 5 et écrit 4. Les deux donnent 36. Sans effet sur une addition.',
+                options: [
+                    { value: 'compensation', label: 'On compense (+1 en bas)' },
+                    { value: 'emprunt', label: 'On emprunte (le haut barré)' }
+                ],
+                default: 'compensation'
             }
         ],
-        motsClefs: ['addition posée', 'soustraction posée', 'retenue', 'colonnes', 'aligner'],
+        motsClefs: ['addition posée', 'soustraction posée', 'retenue', 'colonnes', 'aligner',
+            'emprunt', 'compensation', 'barrer', 'méthode'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "D'abord ALIGNER : fais glisser chaque NOMBRE ENTIER dans la grille. Attrape-le par n'importe lequel de ses chiffres — celui que tu tiens tombe dans la colonne que tu survoles, et les autres suivent. Un fantôme te montre où il tomberait avant que tu lâches. Les unités sous les unités : c'est la virgule qui aligne, pas le bord droit. Puis calculer, colonne par colonne, en partant de la droite. Dans une ADDITION, la retenue s'écrit dans le petit rond EN HAUT de la colonne suivante — à deux nombres elle vaut 0 ou 1, à trois elle peut valoir 2. Dans une SOUSTRACTION, quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : la retenue se note contre le nombre du dessous."
+        instruction: "D'abord ALIGNER : fais glisser chaque NOMBRE ENTIER dans la grille. Attrape-le par n'importe lequel de ses chiffres — celui que tu tiens tombe dans la colonne que tu survoles, et les autres suivent. Un fantôme te montre où il tomberait avant que tu lâches. Les unités sous les unités : c'est la virgule qui aligne, pas le bord droit. Puis calculer, colonne par colonne, en partant de la droite. Dans une ADDITION, la retenue s'écrit dans le petit rond EN HAUT de la colonne suivante — à deux nombres elle vaut 0 ou 1, à trois elle peut valoir 2. Dans une SOUSTRACTION, quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : la retenue se note contre le nombre du dessous. DEUX MÉTHODES EXISTENT POUR CETTE RETENUE, et le bouton « ⇄ Méthode » montre les deux sur 53 − 17 : on peut compenser (+1 au chiffre du bas) ou emprunter (on barre le chiffre du haut et on écrit ce qu'il devient). Prends celle que tu as apprise — elles donnent le même résultat."
     },
     {
         // POSER UNE MULTIPLICATION. Une LIGNE par chiffre du multiplicateur,

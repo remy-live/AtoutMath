@@ -337,6 +337,103 @@ export function dessinerElement(e) {
     throw new Error(`élément libre de genre inconnu « ${e.type} »`);
 }
 
+// ── CE QUE LE DESSIN OCCUPE VRAIMENT ───────────────────────────────────────
+//
+// RÉMY, en envoyant son premier dingbat : « est ce que cela supprime le blanc
+// autour et ca centre le dingbats lors de la présentation ».
+//
+// LA RÉPONSE ÉTAIT NON, ET MESURÉE : son « 100 sur PRISE » occupait 111 × 100
+// sur une toile de 400 × 260, SOIT ONZE POUR CENT, et son centre tombait en
+// (170, 115) au lieu de (200, 130). Vidéoprojeté, c'est un timbre-poste collé
+// de travers sur une page blanche.
+//
+// LA TOILE EST UN PLAN DE TRAVAIL, PAS UN CADRE. Dans l'atelier elle doit
+// rester fixe — on ne peut pas poser un mot sur une toile qui bouge sous la
+// main. À la présentation, elle n'a plus aucune raison d'être : ce qu'on
+// montre, c'est le DESSIN. On recadre donc sur lui, et `preserveAspectRatio`
+// fait le centrage sans une ligne de calcul.
+//
+// LES LARGEURS DE TEXTE SONT ESTIMÉES, ET VOLONTAIREMENT GÉNÉREUSES. Mesurer
+// un texte demande un navigateur ; ce module est pur et s'éprouve sous Node.
+// Une estimation trop juste COUPERAIT une lettre — un défaut qu'on ne voit
+// qu'en projetant —, alors qu'une estimation large ne coûte qu'un peu de
+// blanc. Mesuré au navigateur sur les mots de Rémy : 0,66 em par caractère en
+// gras ; on compte 0,68.
+const LARGEUR_CARACTERE = 0.68;   // en em, pour la graisse 800 de l'application
+const DEMI_HAUTEUR_MOT = 0.62;    // idem, de part et d'autre de la ligne médiane
+
+/** Les quatre coins d'une boîte, tournés de `angle` degrés autour de (cx, cy). */
+function coinsTournes(x1, y1, x2, y2, angle, cx, cy) {
+    const coins = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
+    if (!angle) return coins;
+    const a = angle * Math.PI / 180;
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    return coins.map(([x, y]) => {
+        const dx = x - cx;
+        const dy = y - cy;
+        return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos];
+    });
+}
+
+/** Les coins qu'occupe UN élément, rotation comprise. */
+function coinsDe(e) {
+    const x = n(e.x);
+    const y = n(e.y);
+    if (e.type === 'trait') {
+        const d = (mesure(e.epaisseur, 3) || 3) / 2;
+        // UNE FLÈCHE DÉPASSE DE SA LIGNE : sa pointe est un chemin posé au
+        // bout, et l'oublier couperait la pointe au recadrage.
+        const p = e.fleche ? Math.max(d, mesure(e.epaisseur, 3) * 3) : d;
+        return [[n(e.x1) - p, n(e.y1) - p], [n(e.x2) + p, n(e.y1) + p],
+            [n(e.x2) + p, n(e.y2) + p], [n(e.x1) - p, n(e.y2) - p]];
+    }
+    if (e.type === 'mot') {
+        const texte = String(e.texte == null ? '' : e.texte);
+        const taille = mesure(e.taille, 34) || 34;
+        const esp = n(e.espacement) || 0;
+        const l = texte.length * taille * LARGEUR_CARACTERE
+            + Math.max(0, texte.length - 1) * esp;
+        const h = taille * DEMI_HAUTEUR_MOT * 2;
+        return coinsTournes(x - l / 2, y - h / 2, x + l / 2, y + h / 2, n(e.angle), x, y);
+    }
+    // `forme` et `dessin` sont centrés sur (x, y), largeur et hauteur connues.
+    const def = e.type === 'forme'
+        ? (FORMES_LIBRES.find(f => f.id === e.forme) || FORMES_LIBRES[0]) : null;
+    const l = mesure(e.largeur, e.type === 'forme' ? 120 : 100);
+    const h = (def && def.egal) ? l : mesure(e.hauteur, e.type === 'forme' ? 90 : 100);
+    const trait = e.type === 'forme' ? (mesure(e.epaisseur, 3) || 3) / 2 : 0;
+    return coinsTournes(x - l / 2 - trait, y - h / 2 - trait,
+        x + l / 2 + trait, y + h / 2 + trait, n(e.angle), x, y);
+}
+
+/**
+ * LA BOÎTE QU'OCCUPE LA COMPOSITION, marge comprise.
+ *
+ * Exportée parce qu'une épreuve doit pouvoir la lire sans navigateur — et
+ * parce qu'un recadrage faux se voit sur la photo mais ne lève rien.
+ */
+export function boiteLibre(d) {
+    const els = (d && Array.isArray(d.elements)) ? d.elements : [];
+    const coins = els.filter(Boolean).flatMap(coinsDe);
+    if (!coins.length) return { x: 0, y: 0, largeur: TOILE.largeur, hauteur: TOILE.hauteur };
+    const xs = coins.map(c => c[0]);
+    const ys = coins.map(c => c[1]);
+    const x1 = Math.min(...xs);
+    const x2 = Math.max(...xs);
+    const y1 = Math.min(...ys);
+    const y2 = Math.max(...ys);
+    // UNE MARGE, SINON LES LETTRES TOUCHENT LE BORD. Proportionnelle au
+    // dessin, pour qu'un petit dingbat agrandi ne se retrouve pas avec une
+    // marge énorme — et jamais moins de huit unités.
+    const marge = Math.max(8, Math.max(x2 - x1, y2 - y1) * 0.07);
+    return {
+        x: n(x1 - marge), y: n(y1 - marge),
+        largeur: n(Math.max(1, x2 - x1 + marge * 2)),
+        hauteur: n(Math.max(1, y2 - y1 + marge * 2))
+    };
+}
+
 /**
  * LA SCÈNE D'UNE COMPOSITION LIBRE.
  *
@@ -345,6 +442,9 @@ export function dessinerElement(e) {
  * muet, c'est rendre la même chose qu'un logiciel cassé, et l'élève chercherait
  * la réponse d'un dessin qui n'existe pas. Un dingbat SE LIT : s'il n'y a aucun
  * mot, il n'y a rien à lire.
+ *
+ * ELLE RECADRE SUR LE DESSIN — voir `boiteLibre`. La toile de 400 × 260 reste
+ * le plan de travail de l'atelier ; elle ne sort pas d'ici.
  */
 export function rendreLibre(d) {
     const els = (d && Array.isArray(d.elements)) ? d.elements : [];
@@ -353,8 +453,9 @@ export function rendreLibre(d) {
         throw new Error(`dingbat « ${d && d.id} » : composition libre SANS AUCUN MOT`
             + ' — il n\'y a rien à lire');
     }
-    return `<svg class="dg-libre" viewBox="0 0 ${TOILE.largeur} ${TOILE.hauteur}"`
-        + ` width="${TOILE.largeur}" height="${TOILE.hauteur}"`
+    const b = boiteLibre(d);
+    return `<svg class="dg-libre" viewBox="${b.x} ${b.y} ${b.largeur} ${b.hauteur}"`
+        + ` width="${b.largeur}" height="${b.hauteur}"`
         + ` role="img" aria-label="${esc(direLibre(d))}">`
         + els.map(dessinerElement).join('') + '</svg>';
 }

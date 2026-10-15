@@ -27,7 +27,7 @@ import {
 } from '../js/core/dingbat.js';
 import {
     TOILE, COULEURS, FORMES_LIBRES, couleurCss, elementNeuf, dessinerElement,
-    rendreLibre, validerLibre, enigmeEnJson, enigmeEnTexte, direLibre,
+    rendreLibre, boiteLibre, validerLibre, enigmeEnJson, enigmeEnTexte, direLibre,
     lotEnTexte, lireUnLot
 } from '../js/core/dingbatLibre.js';
 
@@ -67,7 +67,10 @@ test('UNE COMPOSITION LIBRE SE DESSINE DANS LE MÊME CADRE QUE LES AUTRES', () =
     // LE MÊME ENROBAGE QUE LES CENT NEUF : `dg-scene` porte la mise en page du
     // cadre. Une scène libre qui s'en passerait se poserait n'importe où.
     assert.match(html, /dg-scene dg-scene--libre/);
-    assert.match(html, /<svg[^>]+viewBox="0 0 400 260"/);
+    // ET LA SCÈNE EST RECADRÉE SUR LE DESSIN, PAS SUR LA TOILE — voir
+    // l'épreuve dédiée plus bas. Ce qu'on garde ici, c'est qu'il y a bien un
+    // `viewBox` : sans lui, le SVG ne se met plus à l'échelle du tout.
+    assert.match(html, /<svg[^>]+viewBox="[-\d. ]+"/);
 
     // L'INVARIANT QUE `tests/dingbat.test.mjs` EXIGE DES CENT NEUF : du texte
     // qui survit au retrait des balises. Un dingbat sans rien à lire n'est pas
@@ -425,4 +428,81 @@ test('L\'EXPORT D\'UN DESSIN RANGE SON CONTENU EN DERNIER', () => {
         elements: [elementNeuf('mot', { texte: 'A' }),
             elementNeuf('dessin', { contenu: '<path d="M0 0"/>' })]
     }))).elements.length, 2);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LE RECADRAGE — « est-ce que cela supprime le blanc autour ? »
+//
+// RÉMY, en envoyant son premier dingbat (« 100 » sur un trait sur « PRISE »,
+// qui se lit « cent sur prise ») : « est ce que cela supprime le blanc autour
+// et ca centre le dingbats lors de la présentation ».
+//
+// LA RÉPONSE ÉTAIT NON, ET MESURÉE AU NAVIGATEUR : son dessin occupait
+// 111 × 100 sur une toile de 400 × 260, soit ONZE POUR CENT, et son centre
+// tombait en (170, 115) au lieu de (200, 130). Vidéoprojeté, un timbre-poste
+// collé de travers sur une page blanche.
+
+test('LA SCÈNE SE RECADRE SUR LE DESSIN, ET NON SUR LA TOILE', () => {
+    // LE DINGBAT DE RÉMY, à la virgule près.
+    const sien = exemple({
+        id: 'dg-sans-surprise', reponse: 'sans surprise',
+        elements: [
+            { type: 'mot', texte: '100', x: 167.5, y: 85, taille: 34, couleur: 'encre' },
+            { type: 'trait', x1: 135, y1: 115, x2: 200, y2: 115, epaisseur: 3, couleur: 'encre' },
+            { type: 'mot', texte: 'PRISE', x: 170, y: 145, taille: 34, couleur: 'encre' }
+        ]
+    });
+    const b = boiteLibre(sien);
+    assert.ok(b.largeur < TOILE.largeur * 0.6 && b.hauteur < TOILE.hauteur * 0.8,
+        `la boîte fait ${b.largeur} × ${b.hauteur} : elle ne recadre rien`);
+
+    // LE VIEWBOX EST CELUI DE LA BOÎTE, pas celui de la toile — c'est lui qui
+    // supprime le blanc, et `preserveAspectRatio` fait le centrage.
+    const svg = rendreLibre(sien);
+    assert.match(svg, new RegExp(`viewBox="${b.x} ${b.y} ${b.largeur} ${b.hauteur}"`));
+    assert.ok(!svg.includes(`viewBox="0 0 ${TOILE.largeur} ${TOILE.hauteur}"`),
+        'la scène montre encore toute la toile : le blanc autour reste');
+});
+
+test('LE RECADRAGE NE COUPE AUCUN ÉLÉMENT, ET LAISSE UNE MARGE', () => {
+    // UNE ESTIMATION TROP JUSTE COUPERAIT UNE LETTRE — un défaut qu'on ne voit
+    // qu'en projetant. On vérifie donc sur les points qu'on CONNAÎT
+    // exactement : les bouts des traits et les centres des mots.
+    const cas = [
+        exemple(),
+        exemple({ elements: [{ type: 'mot', texte: 'SEUL', x: 40, y: 30, taille: 40, couleur: 'encre' }] }),
+        exemple({ elements: [
+            { type: 'mot', texte: 'TOURNÉ', x: 300, y: 200, taille: 28, angle: 90, couleur: 'encre' },
+            { type: 'trait', x1: 10, y1: 250, x2: 390, y2: 10, epaisseur: 5, couleur: 'rouge' }
+        ] })
+    ];
+    for (const d of cas) {
+        const b = boiteLibre(d);
+        for (const e of d.elements) {
+            const points = e.type === 'trait'
+                ? [[e.x1, e.y1], [e.x2, e.y2]] : [[e.x, e.y]];
+            for (const [x, y] of points) {
+                assert.ok(x >= b.x && x <= b.x + b.largeur && y >= b.y && y <= b.y + b.hauteur,
+                    `(${x}, ${y}) tombe hors du recadrage `
+                    + `[${b.x}, ${b.x + b.largeur}] × [${b.y}, ${b.y + b.hauteur}]`);
+            }
+        }
+        // ET UNE MARGE : sans elle, les lettres touchent le bord du cadre.
+        assert.ok(b.largeur >= 16 && b.hauteur >= 16, 'pas de marge autour du dessin');
+    }
+});
+
+test('UN MOT TOURNÉ D\'UN QUART DE TOUR TIENT DEBOUT DANS SA BOÎTE', () => {
+    // SANS LA ROTATION DES COINS, la boîte d'un mot vertical garderait la
+    // largeur du mot horizontal : le recadrage couperait le mot par le haut et
+    // par le bas, et le laisserait flotter sur les côtés.
+    const mot = (angle) => boiteLibre(exemple({
+        elements: [{ type: 'mot', texte: 'VERTICAL', x: 200, y: 130, taille: 30, angle, couleur: 'encre' }]
+    }));
+    const droit = mot(0);
+    const tourne = mot(90);
+    assert.ok(droit.largeur > droit.hauteur, 'un mot droit est plus large que haut');
+    assert.ok(tourne.hauteur > tourne.largeur,
+        `tourné d'un quart de tour, le mot fait ${tourne.largeur} × ${tourne.hauteur} : `
+        + 'la boîte n\'a pas suivi la rotation');
 });

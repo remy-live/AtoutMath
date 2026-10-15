@@ -27,6 +27,7 @@ import {
     apercuPose, verifierPose
 } from '../core/poser.js';
 import { CSS_GLISSER, rendreGlissable } from '../core/glisserDeposer.js';
+import { showModal } from '../ui/modal.js';
 
 const COMPETENCE = 'num.add.entiers';
 const SIGNES = { '+': '+', '-': '−' };
@@ -42,6 +43,12 @@ class PoserOperation extends BaseGame {
         // forcer dans cette grille-ci donnerait un mauvais compromis pour les
         // trois. On retombe donc sur l'addition plutôt que de casser.
         this.operation = ['+', '-'].includes(this.params.operation) ? this.params.operation : '+';
+        // LA MÉTHODE DE RETENUE DE LA SOUSTRACTION — Rémy : « j'ai des élèves
+        // qui font une autre méthode où pour 53 − 17, il mette le 1 à 3 et au
+        // lieu du 5, il barre et mette 4 ». Les deux s'enseignent en France,
+        // et un élève qui applique CORRECTEMENT celle qu'on lui a apprise ne
+        // pouvait pas l'écrire dans la grille.
+        this.methode = this.params.methode === 'emprunt' ? 'emprunt' : 'compensation';
         this.avecVirgule = this.params.decimales === true;
         this.nbTermes = this.operation === '+' ? Math.max(2, Math.min(3, parseInt(this.params.termes) || 2)) : 2;
         this.chiffres = Math.max(2, Math.min(4, parseInt(this.params.chiffres) || 3));
@@ -208,12 +215,33 @@ class PoserOperation extends BaseGame {
                     font-size: clamp(13px, 3cqw, 15px); color: var(--text-muted); max-width: 560px; }
                 .po-note--ok { color: var(--success); font-weight: 700; }
                 .po-note--ko { color: var(--danger); font-weight: 700; }
+
+                /* LES DEUX MÉTHODES, DANS LA FENÊTRE. Deux cartes qu'on
+                   compare d'un coup d'œil : le titre dit le geste, la ligne
+                   dessous le fait sur 53 − 17. */
+                .po-meth-dit { margin: 0 0 12px; color: var(--text-muted); }
+                .po-meth { display: block; width: 100%; text-align: left;
+                    margin-bottom: 10px; padding: 12px 14px; border-radius: 10px;
+                    border: 2px solid var(--border); background: var(--bg-panel);
+                    color: var(--text-main); cursor: pointer; line-height: 1.5; }
+                /* LE SURVOL EST PROTÉGÉ : sur un téléphone, un :hover nu
+                   reste COLLÉ après le toucher, et la carte qu'on vient de
+                   quitter garde l'air d'être choisie. Une épreuve du dépôt
+                   garde cette règle. */
+                @media (hover: hover) {
+                    .po-meth:hover { border-color: var(--primary); }
+                }
+                .po-meth--actif { border-color: var(--primary); }
+                .po-meth i { font-weight: 600; color: var(--primary-texte); font-style: normal; }
+                .po-meth-ex { display: block; margin-top: 6px;
+                    font-variant-numeric: tabular-nums; color: var(--text-muted); }
             </style>
             <div class="po-wrap">
                 <div class="po-tete">
                     <span data-score></span>
                     <button type="button" class="po-btn" data-indice>💡 Aide</button>
                     <button type="button" class="po-btn" data-neuf>↺ Autre opération</button>
+                    <button type="button" class="po-btn" data-methode hidden>⇄ Méthode</button>
                 </div>
                 <div class="po-etape" data-etape></div>
                 <div class="po-grille" data-grille></div>
@@ -228,6 +256,12 @@ class PoserOperation extends BaseGame {
         this.scoreEl = this.container.querySelector('[data-score]');
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.poser());
         this.container.querySelector('[data-indice]').addEventListener('click', () => this.aider());
+        // LE BOUTON NE SERT QU'À LA SOUSTRACTION : une addition n'a qu'une
+        // façon de poser sa retenue, et un bouton qui ouvre une fenêtre sans
+        // objet apprend à ne plus la lire.
+        const bm = this.container.querySelector('[data-methode]');
+        bm.hidden = this.operation !== '-';
+        bm.addEventListener('click', () => this.choisirMethode());
         this.poser();
     }
 
@@ -249,7 +283,8 @@ class PoserOperation extends BaseGame {
                 if (operandes[0] === operandes[1]) continue;
             }
             let t;
-            try { t = poser(this.operation, operandes); } catch (e) { continue; }
+            try { t = poser(this.operation, operandes, { methode: this.methode }); }
+            catch (e) { continue; }
             this.tableau = t;
             this.operandes = operandes;
             break;
@@ -284,8 +319,13 @@ class PoserOperation extends BaseGame {
         // Une colonne pour le signe, puis une par rang.
         g.style.gridTemplateColumns = `auto repeat(${rangs.length}, auto)`;
 
-        // La rangée des retenues — en haut seulement pour l'addition.
-        if (this.operation === '+') this.rangeeRetenues(rangs);
+        // LA RANGÉE DES RETENUES — EN HAUT, ET PAS SEULEMENT POUR L'ADDITION.
+        //
+        // Par EMPRUNT, la marque est le chiffre du haut barré et réécrit :
+        // elle va donc au-dessus de lui, exactement comme la retenue d'une
+        // addition. Par COMPENSATION, elle reste au coin du chiffre du bas,
+        // contre le soustracteur — voir `caseOperande`.
+        if (this.operation === '+' || this.parEmprunt()) this.rangeeRetenues(rangs);
 
         this.operandes.forEach((v, i) => {
             const signe = document.createElement('div');
@@ -381,7 +421,8 @@ class PoserOperation extends BaseGame {
         }
         // Le petit rond de compensation, au coin bas-gauche du chiffre du
         // soustracteur — et sur lui seul : c'est à ce chiffre qu'on ajoute.
-        const rond = this.rondRetenue(rang, i === this.operandes.length - 1 && this.operation === '-');
+        const rond = this.rondRetenue(rang,
+            i === this.operandes.length - 1 && this.operation === '-' && !this.parEmprunt());
         if (rond) { el.classList.add('po-case--porte-rond'); el.appendChild(rond); }
         return el;
     }
@@ -639,14 +680,86 @@ class PoserOperation extends BaseGame {
         this.note(retenue + `Colonne des ${this.nomRang(suivant)} : que met-on dessous ?`);
     }
 
-    /** Les petits ronds tournent : 0, 1, 2 — puis vide. */
+    /** La soustraction se fait-elle en barrant le chiffre du haut ? */
+    parEmprunt() {
+        return this.operation === '-' && this.methode === 'emprunt';
+    }
+
+    /**
+     * CE QUE LE PETIT ROND PEUT PORTER, DANS CETTE COLONNE-LÀ.
+     *
+     * À l'addition et par compensation, c'est une retenue : 0, 1, parfois 2.
+     *
+     * PAR EMPRUNT, C'EST UN CHIFFRE RÉÉCRIT, et faire tourner un rond de 0 à
+     * 19 demanderait vingt clics pour une marque qui n'est même pas notée.
+     * Les trois valeurs possibles se déduisent du chiffre du haut, qui est
+     * écrit juste en dessous et que tout le monde voit :
+     *
+     *     h − 1    on lui a pris une dizaine     (53 : le 5 barré devient 4)
+     *     h + 10   il en reçoit une              (53 : le 3 devient 13)
+     *     h + 9    les deux à la fois            (503 : le 0 devient 9)
+     *
+     * Trois candidats, donc : la marque ne se devine pas, et elle s'atteint
+     * en trois clics au pire.
+     */
+    valeursDuRond(rang) {
+        if (!this.parEmprunt()) {
+            const maxi = this.tableau.retenueMax || 1;
+            return Array.from({ length: maxi + 1 }, (_, k) => k);
+        }
+        const c = this.tableau.colonnes.find(x => x.rang === rang);
+        const h = (c && c.chiffreHaut) || 0;
+        return [...new Set([h - 1, h + 10, h + 9])].filter(v => v >= 0);
+    }
+
+    /** Les petits ronds tournent sur leurs valeurs possibles — puis vide. */
     tournerRetenue(rang) {
-        const maxi = this.tableau.retenueMax || 1;
         const actuel = this.retenues[rang];
-        const suite = [undefined, ...Array.from({ length: maxi + 1 }, (_, k) => k)];
+        const suite = [undefined, ...this.valeursDuRond(rang)];
         const i = suite.indexOf(actuel);
         this.retenues[rang] = suite[(i + 1) % suite.length];
         this.dessiner();
+    }
+
+    /**
+     * LA FENÊTRE QUI MONTRE LES DEUX MÉTHODES, ET QUI LES FAIT CHANGER.
+     *
+     * RÉMY : « du coup peut être un bouton changer de méthode avec un popup
+     * qui montre un exemple ».
+     *
+     * L'EXEMPLE EST TOUJOURS 53 − 17, parce que c'est LE SIEN et qu'il tient
+     * en deux colonnes : une qui emprunte, une qui ne le fait pas. Un exemple
+     * à quatre chiffres montrerait la même chose en moins lisible.
+     */
+    choisirMethode() {
+        const carte = (id, titre, lignes, actif) =>
+            `<button type="button" class="po-meth${actif ? ' po-meth--actif' : ''}"`
+            + ` data-methode="${id}">`
+            + `<b>${titre}</b>${actif ? ' <i>— en cours</i>' : ''}`
+            + `<span class="po-meth-ex">${lignes}</span></button>`;
+        const html = '<p class="po-meth-dit">Les deux donnent 36. Choisis celle que tu '
+            + 'as apprise.</p>'
+            + carte('compensation', 'On compense : +1 en bas',
+                '<u>1</u>3 − 7 = 6, puis le <b>1</b> de 17 devient <b>2</b> : 5 − 2 = 3',
+                this.methode === 'compensation')
+            + carte('emprunt', 'On emprunte : le haut est barré',
+                '<u>1</u>3 − 7 = 6, puis on barre le <b>5</b> et l\'on écrit <b>4</b> : '
+                + '4 − 1 = 3',
+                this.methode === 'emprunt');
+        // `showModal` REND UN OBJET, PAS L'ÉLÉMENT : `{ close, element }`.
+        // Écrit comme si c'était le nœud, le code levait « querySelectorAll
+        // is not a function » — et la fenêtre s'ouvrait quand même, sans
+        // aucun de ses boutons branché. Vu à la sonde, pas à la lecture.
+        const fenetre = showModal('Les deux méthodes de retenue', html, { width: '460px' });
+        fenetre.element.querySelectorAll('[data-methode]').forEach(b => {
+            b.addEventListener('click', () => {
+                this.methode = b.dataset.methode;
+                fenetre.close();
+                // ON REPOSE L'OPÉRATION EN COURS, et c'est voulu : les marques
+                // déjà écrites ne veulent plus rien dire dans l'autre méthode.
+                this.poser();
+            });
+        });
     }
 
     finir() {

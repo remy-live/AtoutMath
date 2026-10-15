@@ -936,6 +936,36 @@ export const DINGBATS = [
         reponse: 'premier de cordée', variantes: ['le premier de cordée'],
         aide: 'Celui qui ouvre la file, et qui tire les autres.',
         explication: 'En montagne, celui qui ouvre la voie est le PREMIER DE CORDÉE.'
+    },
+
+    // ── LA CENT-DIXIÈME, ET ELLE N'EST PAS DE MOI ─────────────────────────
+    //
+    // RÉMY, le 15 octobre : « j'ai fait un dingbats », avec son JSON en
+    // entier. C'est la première composée dans l'atelier, et la première à
+    // employer la disposition `libre` — les cent neuf autres sont des
+    // TOURNURES écrites dans le code.
+    //
+    // ELLE EST BONNE, ET POUR UNE RAISON PRÉCISE : la lecture se fait en
+    // fraction. « 100 » se lit « cent », PRISE est dessous, et une fraction se
+    // dit « numérateur SUR dénominateur » — cent sur prise. C'est le seul
+    // dingbat du lot qui demande de LIRE une écriture mathématique à voix
+    // haute pour trouver un mot de tous les jours.
+    //
+    // SON JSON EST REPRIS À L'IDENTIQUE : mêmes coordonnées, même taille, même
+    // indice. On n'y a ajouté que la variante et l'explication, que l'atelier
+    // ne demande pas et que les cent neuf autres portent toutes.
+    {
+        id: 'dg-sans-surprise', theme: 'maths', niveau: 1, forme: 'libre',
+        elements: [
+            { type: 'mot', texte: '100', x: 167.5, y: 85, taille: 34, couleur: 'encre' },
+            { type: 'trait', x1: 135, y1: 115, x2: 200, y2: 115, epaisseur: 3, couleur: 'encre' },
+            { type: 'mot', texte: 'PRISE', x: 170, y: 145, taille: 34, couleur: 'encre' }
+        ],
+        reponse: 'sans surprise', variantes: ['sans surprises'],
+        aide: 'Prise est sous le cent',
+        explication: 'Une fraction se lit « ce qui est au-dessus SUR ce qui est '
+            + 'en dessous ». Ici : 100 sur PRISE, c\'est-à-dire CENT SUR PRISE '
+            + '— SANS SURPRISE.'
     }
 ];
 

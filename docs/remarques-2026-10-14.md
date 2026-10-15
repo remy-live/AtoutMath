@@ -974,3 +974,89 @@ Les quarante requêtes usuelles trouvent maintenant toutes quelque chose.
 
 **Sur le NOM lui-même** : « Détour Express » reste, et la recherche fait le
 travail. Un titre ne peut pas porter huit nombres ; les mots-clefs, si.
+
+---
+
+# Son premier dingbat — « est-ce que ça supprime le blanc autour ? »
+
+> « j'ai fait un dingbats » — puis son JSON, et : « Tu comprends l'idée, est ce
+> que cela supprime le blanc autour et ca centre le dingbats lors de la
+> présentation »
+
+**L'énigme est bonne, et pour une raison précise** : elle se lit en FRACTION.
+« 100 » se lit « cent », PRISE est dessous, et une fraction se dit
+« numérateur SUR dénominateur » — *cent sur prise*. C'est la seule des cent dix
+qui demande de lire une écriture mathématique à voix haute pour trouver un mot
+de tous les jours. Elle est entrée au catalogue telle quelle.
+
+**Et la réponse à sa question était NON. Mesurée au navigateur :**
+
+| | |
+| --- | --- |
+| ce que son dessin occupait | **111 × 100 sur une toile de 400 × 260, soit 11 %** |
+| où tombait son centre | **(170, 115)** au lieu de (200, 130) |
+
+Vidéoprojeté, un timbre-poste collé de travers sur une page blanche.
+
+**LA TOILE EST UN PLAN DE TRAVAIL, PAS UN CADRE.** Dans l'atelier elle doit
+rester fixe — on ne peut pas poser un mot sur une toile qui bouge sous la
+main. À la présentation, elle n'a plus aucune raison d'être : ce qu'on montre,
+c'est le DESSIN. La scène se recadre donc sur lui, et `preserveAspectRatio`
+fait le centrage sans une ligne de calcul. L'atelier, lui, n'a pas bougé d'un
+pixel : il dessine ses éléments directement, sans passer par `rendreLibre`.
+
+**Mesuré après, dans la vraie scène avec la vraie feuille de style** : le
+dessin prend **100 % de la largeur, 100 % de la hauteur, et il est à 0 px du
+centre.**
+
+**Une précision qui ne se devine pas** : les largeurs de texte sont ESTIMÉES —
+mesurer un texte demande un navigateur, et ce module est pur. L'estimation est
+donc volontairement généreuse (0,68 em par caractère, mesuré à 0,66) : trop
+juste, elle couperait une lettre, et c'est un défaut qu'on ne voit qu'en
+projetant.
+
+---
+
+# La soustraction posée : les deux méthodes — FAIT
+
+> « pour la soustraction posée, il faut que si il y a une retenue en haut, la
+> mettre et actualisé le +1 en bas dans le rang après. mais j'ai des élèves qui
+> font une autre méthode où pour 53 − 17, il mette le 1 à 3 et au lieu du 5, il
+> barre et mette 4, est ce clair ? »
+>
+> « du coup peut être un bouton changer de méthode avec un popup qui montre un
+> exemple »
+
+**Les deux sont écrites, et le bouton « ⇄ Méthode » montre l'exemple.**
+
+**Ce qui change dans le cahier, et donc dans la grille :**
+
+| | la marque | où elle se pose |
+| --- | --- | --- |
+| compensation | +1 au chiffre du BAS | au coin du soustracteur, colonne suivante |
+| emprunt | le chiffre du HAUT barré et réécrit | au-dessus du chiffre du haut, comme la retenue d'une addition |
+
+**Mesuré au navigateur, sur une soustraction qui emprunte vraiment** — 82 − 49
+en compensation : **un rond au coin du 4**. 78 − 19 par emprunt : **deux ronds
+sur la rangée du haut**. Les photos sont dans `tools/tmp/`.
+
+**Trois décisions qui ne se devinent pas :**
+
+1. **Le petit rond ne tourne pas de 0 à 19.** Par emprunt la marque est un
+   chiffre réécrit, et faire tourner un rond sur vingt valeurs demanderait
+   vingt clics pour une marque qui n'est même pas notée. Les trois seules
+   valeurs possibles se déduisent du chiffre du haut, qui est écrit juste en
+   dessous : `h − 1` (on lui a pris une dizaine), `h + 10` (il en reçoit une),
+   `h + 9` (les deux). Trois candidats : la marque ne se devine pas, et elle
+   s'atteint en trois clics au pire.
+2. **Le cas du zéro qui devient neuf tombe tout seul.** 503 − 17 donne 13, puis
+   9, puis 4 — exactement ce qu'un élève écrit. Un calcul naïf aurait écrit
+   « −1 » au-dessus du zéro.
+3. **Changer de méthode repose l'opération.** Les marques déjà écrites ne
+   veulent plus rien dire dans l'autre méthode.
+
+**Et un défaut que seule la sonde pouvait dire** : `showModal` rend un OBJET
+`{ close, element }`, pas le nœud. Écrit comme si c'était l'élément, le code
+levait « querySelectorAll is not a function » — **et la fenêtre s'ouvrait quand
+même, avec aucun de ses deux boutons branché.** Une fenêtre qui s'affiche et ne
+répond pas ressemble à un logiciel lent, pas à un logiciel cassé.

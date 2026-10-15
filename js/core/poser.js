@@ -194,14 +194,35 @@ export function colonnesAddition(operandes) {
 // --- LA SOUSTRACTION ------------------------------------------------------------------
 
 /**
- * Les colonnes d'une soustraction, méthode française par compensation.
+ * LES DEUX MÉTHODES DE RETENUE DE LA SOUSTRACTION POSÉE.
  *
- * Quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne pas
- * changer la différence, on ajoute un au chiffre du bas de la colonne
- * suivante. LA RETENUE SE NOTE DONC EN BAS, contre le chiffre du soustracteur,
- * et jamais au-dessus comme à l'addition.
+ * RÉMY : « pour la soustraction posée, il faut que si il y a une retenue en
+ * haut, la mettre et actualisé le +1 en bas dans le rang après. mais j'ai des
+ * élèves qui font une autre méthode où pour 53 − 17, il mette le 1 à 3 et au
+ * lieu du 5, il barre et mette 4 ».
+ *
+ * LES DEUX S'ENSEIGNENT EN FRANCE, et les deux donnent 36 :
+ *
+ *   COMPENSATION   13 − 7 = 6, puis le 1 de 17 devient 2 : 5 − 2 = 3.
+ *                  On ajoute dix EN HAUT et dix EN BAS ; la différence ne
+ *                  change pas. Le chiffre du haut n'est jamais touché.
+ *
+ *   EMPRUNT        13 − 7 = 6, puis on BARRE le 5 et l'on écrit 4 : 4 − 1 = 3.
+ *                  On casse une dizaine du 53 pour la donner aux unités. Le
+ *                  chiffre du bas n'est jamais touché.
+ *
+ * CE N'EST PAS UNE PRÉFÉRENCE, C'EST UN BLOCAGE. Le logiciel n'enseignait que
+ * la première ; un élève qui applique CORRECTEMENT la seconde — celle qu'on
+ * lui a enseignée au primaire — ne pouvait pas l'écrire dans la grille.
  */
-export function colonnesSoustraction(a, b) {
+export const METHODES_SOUSTRACTION = ['compensation', 'emprunt'];
+
+/**
+ * Les colonnes d'une soustraction, dans l'une ou l'autre méthode.
+ *
+ * @param {'compensation'|'emprunt'} methode
+ */
+export function colonnesSoustraction(a, b, methode = 'compensation') {
     // UNE SOUSTRACTION POSÉE NE VA QUE DU GRAND VERS LE PETIT. Sans ce refus,
     // 27 − 52 rendait des colonnes de chiffres pris en valeur absolue : un
     // tableau d'apparence normale, entièrement faux, et rien pour le dire.
@@ -212,25 +233,45 @@ export function colonnesSoustraction(a, b) {
     const { rangs } = etendue([a, b], reste);
     const bas = rangs[rangs.length - 1];
     const haut = rangs[0];
+    const parEmprunt = methode === 'emprunt';
     const colonnes = [];
-    let retenue = 0;                 // ce qu'on ajoute au chiffre du BAS
+    let reporte = 0;                 // ce que la colonne précédente a pris
     for (let r = bas; r <= haut; r++) {
-        const hautC = aLeRang(a, r) ? chiffreAuRang(a, r) : 0;
-        const basC = (aLeRang(b, r) ? chiffreAuRang(b, r) : 0) + retenue;
+        const hautBrut = aLeRang(a, r) ? chiffreAuRang(a, r) : 0;
+        const basBrut = aLeRang(b, r) ? chiffreAuRang(b, r) : 0;
+        // LÀ EST TOUTE LA DIFFÉRENCE ENTRE LES DEUX MÉTHODES, et elle tient en
+        // deux lignes : par emprunt c'est le chiffre du HAUT qui perd un, par
+        // compensation c'est celui du BAS qui en gagne un.
+        const hautC = parEmprunt ? hautBrut - reporte : hautBrut;
+        const basC = parEmprunt ? basBrut : basBrut + reporte;
         const emprunte = hautC < basC;
         colonnes.push({
             rang: r,
             chiffreHaut: aLeRang(a, r) ? chiffreAuRang(a, r) : null,
             chiffreBas: aLeRang(b, r) ? chiffreAuRang(b, r) : null,
             // La retenue écrite CONTRE le chiffre du bas de cette colonne.
-            retenueBas: retenue,
+            retenueBas: parEmprunt ? 0 : reporte,
+            // CE QUE L'ÉLÈVE ÉCRIT AU-DESSUS DU CHIFFRE DU HAUT, méthode par
+            // emprunt : le chiffre barré et réécrit, plus les dix empruntés
+            // s'il en emprunte à son tour. 53 − 17 donne 13 aux unités et 4
+            // aux dizaines ; 503 − 17 donne 13, puis 9, puis 4 — c'est le cas
+            // du zéro qui devient neuf, et il tombe tout seul.
+            //
+            // `null` quand il n'y a RIEN à écrire : ni emprunt reçu, ni
+            // emprunt fait. Sans ce null, la grille demanderait une marque
+            // dans une colonne où le cahier n'en porte aucune.
+            hautCorrige: parEmprunt && (reporte || emprunte)
+                ? hautC + (emprunte ? 10 : 0) : null,
             emprunte,
             resultat: (hautC + (emprunte ? 10 : 0)) - basC,
             retenueSortante: emprunte ? 1 : 0
         });
-        retenue = emprunte ? 1 : 0;
+        reporte = emprunte ? 1 : 0;
     }
-    return { operation: '-', operandes: [a, b], resultat: reste, colonnes, retenueMax: 1 };
+    return {
+        operation: '-', operandes: [a, b], resultat: reste, colonnes,
+        retenueMax: parEmprunt ? 19 : 1, methode
+    };
 }
 
 const aLeRang = (v, r) => rangsDe(v).includes(r);
@@ -414,7 +455,9 @@ export function colonnesDivision(dividende, diviseur, { decimalesMax = 0 } = {})
 /** Le tableau complet d'une opération posée, quelle qu'elle soit. */
 export function poser(operation, operandes, options = {}) {
     if (operation === '+') return colonnesAddition(operandes);
-    if (operation === '-') return colonnesSoustraction(operandes[0], operandes[1]);
+    if (operation === '-') {
+        return colonnesSoustraction(operandes[0], operandes[1], options.methode);
+    }
     if (operation === '×') return lignesMultiplication(operandes[0], operandes[1]);
     if (operation === '÷') return colonnesDivision(operandes[0], operandes[1], options);
     throw new Error(`opération inconnue : ${operation}`);
@@ -479,6 +522,15 @@ export function verifierPlacement(operandes, pose) {
 export function porteUneRetenue(tableau, rang) {
     const colonnes = (tableau && tableau.colonnes) || [];
     if (!colonnes.length) return false;
+    // PAR EMPRUNT, C'EST LA COLONNE QUI DÉCIDE, PAS SON RANG. Le chiffre du
+    // haut se barre là où l'on a emprunté ou prêté — et la colonne des unités
+    // EN PORTE UNE : c'est elle qui reçoit les dix, le fameux petit 1 devant
+    // le 3 de 53. Par compensation, au contraire, la marque va toujours à la
+    // colonne SUIVANTE, donc jamais aux unités.
+    if (tableau.methode === 'emprunt') {
+        const c = colonnes.find(x => x.rang === rang);
+        return !!c && c.hautCorrige !== null;
+    }
     // Les colonnes sont rangées du rang le plus faible au plus fort.
     return rang > colonnes[0].rang;
 }
@@ -496,7 +548,11 @@ export function attenduEn(tableau, rang, quoi) {
     // en avoir — voir `porteUneRetenue` : c'est ce qui retire le petit rond
     // de la colonne des unités.
     if (!porteUneRetenue(tableau, rang)) return null;
-    return tableau.operation === '+' ? c.retenueEntrante : c.retenueBas;
+    if (tableau.operation === '+') return c.retenueEntrante;
+    // PAR EMPRUNT, LA MARQUE N'EST PAS UNE RETENUE MAIS UN CHIFFRE RÉÉCRIT :
+    // ce n'est pas « il y a un à reporter », c'est « le haut vaut maintenant
+    // 4 » — ou 13, ou 9. La case attend donc ce nombre-là.
+    return tableau.methode === 'emprunt' ? c.hautCorrige : c.retenueBas;
 }
 
 /**
