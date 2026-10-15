@@ -184,12 +184,30 @@ class PoserOperation extends BaseGame {
                    crayon, entre les deux colonnes, et c'est ce débordement qui
                    dit à quel chiffre il s'ajoute. */
                 .po-case--porte-rond { position: relative; overflow: visible; }
-                .po-rond--coin {
-                    position: absolute; left: -6px; bottom: -4px;
+                .po-rond--coin, .po-rond--coin-haut {
+                    position: absolute; left: -6px;
                     width: clamp(14px, 3.6cqw, 19px); height: clamp(14px, 3.6cqw, 19px);
                     font-size: clamp(9px, 2.4cqw, 12px);
                     background: var(--bg-panel);
                 }
+                .po-rond--coin { bottom: -4px; }
+                /* EN HAUT À GAUCHE DU CHIFFRE DU HAUT : la dizaine empruntée
+                   s'écrit DEVANT lui — c'est le « 1 » de 13. Rémy : « à côté
+                   du 0 en haut et à côté du 2 en bas ». */
+                .po-rond--coin-haut { top: -4px; }
+                /* LE CHIFFRE BARRÉ. Un trait en travers, et non une rature :
+                   on doit encore LIRE ce qu'il y avait — c'est de lui qu'on
+                   est parti. */
+                .po-case--barree { position: relative; }
+                .po-case--barree::after {
+                    content: ''; position: absolute; left: 12%; right: 12%; top: 50%;
+                    border-top: 2.5px solid var(--danger); transform: rotate(-12deg);
+                    pointer-events: none;
+                }
+                /* LE « +1 » EST PLUS LARGE QU'UN CHIFFRE : sans cela, le signe
+                   et le chiffre se chevauchent dans un rond fait pour un seul
+                   caractère. */
+                .po-rond--coin { width: auto; min-width: clamp(14px, 3.6cqw, 19px); padding: 0 2px; }
 
                 .po-pave { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 340px; }
                 .po-touche {
@@ -295,7 +313,8 @@ class PoserOperation extends BaseGame {
         this.etape = 1;
         this.rangCourant = null;
         this.resultats = {};
-        this.retenues = {};
+        this.retenues = {};     // la marque du HAUT : le petit 1, ou le chiffre réécrit
+        this.marquesBas = {};   // la marque du BAS : le +1 de la compensation
         this.note('');
         this.dessiner();
         return true;
@@ -319,13 +338,15 @@ class PoserOperation extends BaseGame {
         // Une colonne pour le signe, puis une par rang.
         g.style.gridTemplateColumns = `auto repeat(${rangs.length}, auto)`;
 
-        // LA RANGÉE DES RETENUES — EN HAUT, ET PAS SEULEMENT POUR L'ADDITION.
+        // LA RANGÉE DES RETENUES EST CELLE DE L'ADDITION, ET D'ELLE SEULE.
         //
-        // Par EMPRUNT, la marque est le chiffre du haut barré et réécrit :
-        // elle va donc au-dessus de lui, exactement comme la retenue d'une
-        // addition. Par COMPENSATION, elle reste au coin du chiffre du bas,
-        // contre le soustracteur — voir `caseOperande`.
-        if (this.operation === '+' || this.parEmprunt()) this.rangeeRetenues(rangs);
+        // RÉMY, devant 307 − 260 : « logiquement la retenue devrait être à
+        // l'endroit où il y a une retenue, en l'occurrence à côté du 0 en haut
+        // et à côté du 2 en bas ». Une soustraction n'écrit pas ses retenues
+        // sur une ligne à part : elle les écrit CONTRE les chiffres, dans la
+        // marge entre deux colonnes. Elles sont donc posées par
+        // `caseOperande`, au coin du chiffre qu'elles changent.
+        if (this.operation === '+') this.rangeeRetenues(rangs);
 
         this.operandes.forEach((v, i) => {
             const signe = document.createElement('div');
@@ -360,10 +381,10 @@ class PoserOperation extends BaseGame {
      * @param {boolean} [auCoin] - posé au coin du chiffre plutôt que sur sa
      *   propre rangée : c'est la compensation de la soustraction.
      */
-    rondRetenue(rang, auCoin) {
+    rondRetenue(rang, auCoin, ou = 'retenue') {
         if (auCoin !== undefined && !auCoin) return null;
         if (this.etape !== 2) return null;
-        if (attenduEn(this.tableau, rang, 'retenue') === null) return null;
+        if (attenduEn(this.tableau, rang, ou) === null) return null;
         const rond = document.createElement('button');
         rond.type = 'button';
         // `btn-carre`' : « MA TAILLE EST LA MIENNE, ne l'étire pas ».
@@ -387,12 +408,21 @@ class PoserOperation extends BaseGame {
         // jetons du Mastermind, les ronds de la division. Son sens est celui de
         // la ligne du dessus ; on suit l'usage plutôt que d'inventer un second
         // nom pour la même chose.)
-        rond.className = 'btn-carre po-rond' + (this.retenues[rang] ? ' po-rond--plein' : '')
-            + (auCoin ? ' po-rond--coin' : '');
-        rond.textContent = this.retenues[rang] ?? '';
+        const sac = ou === 'retenue-bas' ? this.marquesBas : this.retenues;
+        rond.className = 'btn-carre po-rond' + (sac[rang] ? ' po-rond--plein' : '')
+            + (auCoin ? ` po-rond--${ou === 'retenue-bas' ? 'coin' : 'coin-haut'}` : '');
+        // LE « +1 » S'ÉCRIT AVEC SON SIGNE : c'est ce qu'on AJOUTE au chiffre
+        // du bas, et un « 1 » nu se lirait comme un chiffre de plus.
+        rond.textContent = sac[rang] === undefined ? ''
+            : (ou === 'retenue-bas' ? `+${sac[rang]}` : String(sac[rang]));
         rond.dataset.rang = rang;
-        rond.title = 'La retenue de cette colonne';
-        rond.addEventListener('click', (ev) => { ev.stopPropagation(); this.tournerRetenue(rang); });
+        rond.dataset.ou = ou;
+        rond.title = ou === 'retenue-bas'
+            ? 'Ce qu\'on ajoute au chiffre du bas' : 'La retenue de cette colonne';
+        rond.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            this.tournerRetenue(rang, ou);
+        });
         return rond;
     }
 
@@ -419,10 +449,32 @@ class PoserOperation extends BaseGame {
             el.dataset.operande = i;
             el.dataset.rang = rang;
         }
-        // Le petit rond de compensation, au coin bas-gauche du chiffre du
-        // soustracteur — et sur lui seul : c'est à ce chiffre qu'on ajoute.
-        const rond = this.rondRetenue(rang,
-            i === this.operandes.length - 1 && this.operation === '-' && !this.parEmprunt());
+        // LES DEUX MARQUES D'UNE SOUSTRACTION, CHACUNE À SON CHIFFRE.
+        //
+        //   EN HAUT   le petit 1 qui fait du 0 un 10 — les deux méthodes
+        //             l'écrivent — ou, par emprunt, le chiffre barré et
+        //             réécrit (le 3 qui devient 2) ;
+        //   EN BAS    le +1 contre le chiffre du bas, et seulement dans la
+        //             compensation.
+        //
+        // Elles débordent un peu de la case sur la gauche : c'est ainsi qu'on
+        // les écrit au crayon, entre deux colonnes, et c'est ce débordement
+        // qui dit à quel chiffre elles s'appliquent.
+        // LE CHIFFRE RÉÉCRIT SE BARRE, comme au crayon. Rémy : « au lieu du
+        // 5, il barre et mette 4 ». Tant que l'élève n'a rien écrit dans le
+        // rond, on ne barre rien : le trait est la seconde moitié de SON
+        // geste, pas une correction que le logiciel ferait à sa place.
+        if (i === 0 && this.parEmprunt()
+            && (this.tableau.colonnes.find(c => c.rang === rang) || {}).hautCorrige !== null
+            && this.retenues[rang] !== undefined) {
+            el.classList.add('po-case--barree');
+        }
+        const dernier = this.operandes.length - 1;
+        const rond = this.operation !== '-' ? null
+            : (i === 0
+                ? this.rondRetenue(rang, true, 'retenue')
+                : (i === dernier && !this.parEmprunt()
+                    ? this.rondRetenue(rang, true, 'retenue-bas') : null));
         if (rond) { el.classList.add('po-case--porte-rond'); el.appendChild(rond); }
         return el;
     }
@@ -702,22 +754,49 @@ class PoserOperation extends BaseGame {
      * Trois candidats, donc : la marque ne se devine pas, et elle s'atteint
      * en trois clics au pire.
      */
-    valeursDuRond(rang) {
+    valeursDuRond(rang, ou) {
+        // LE « +1 » DU BAS N'A QU'UNE VALEUR : c'est une compensation, elle
+        // vaut un ou rien. Un rond qui tournerait de 0 à 2 donnerait le choix
+        // là où il n'y en a pas.
+        if (ou === 'retenue-bas') return [1];
         if (!this.parEmprunt()) {
+            // EN HAUT, DANS LA COMPENSATION, C'EST LA DIZAINE EMPRUNTÉE : le
+            // petit 1 devant le chiffre. Elle non plus n'a qu'une valeur.
+            if (this.operation === '-') return [1];
             const maxi = this.tableau.retenueMax || 1;
             return Array.from({ length: maxi + 1 }, (_, k) => k);
         }
+        // PAR EMPRUNT, la marque est un chiffre réécrit — ou le petit 1 de la
+        // colonne qui emprunte. Les valeurs possibles se déduisent du chiffre
+        // du haut, écrit juste en dessous : on lui a pris une dizaine, il en
+        // reçoit une, ou les deux.
         const c = this.tableau.colonnes.find(x => x.rang === rang);
+        if (c && c.retenueHaut) return [1];
         const h = (c && c.chiffreHaut) || 0;
-        return [...new Set([h - 1, h + 10, h + 9])].filter(v => v >= 0);
+        return [...new Set([h - 1, h + 9])].filter(v => v >= 0);
     }
 
-    /** Les petits ronds tournent sur leurs valeurs possibles — puis vide. */
-    tournerRetenue(rang) {
-        const actuel = this.retenues[rang];
-        const suite = [undefined, ...this.valeursDuRond(rang)];
-        const i = suite.indexOf(actuel);
-        this.retenues[rang] = suite[(i + 1) % suite.length];
+    /**
+     * Les petits ronds tournent sur leurs valeurs possibles — puis vide.
+     *
+     * ET LE PETIT 1 DU HAUT ÉCRIT AUSSI LE +1 DU BAS, dans la compensation.
+     * Rémy : « on clique sur la retenue du haut, ça affiche 1 et en bas à
+     * gauche +1 ». Les deux marques sont UNE SEULE décision — j'emprunte dix,
+     * donc je les rends — et les séparer en deux clics ferait croire qu'on
+     * peut faire l'une sans l'autre, ce qui est exactement la faute du
+     * chapitre.
+     */
+    tournerRetenue(rang, ou = 'retenue') {
+        const sac = ou === 'retenue-bas' ? this.marquesBas : this.retenues;
+        const suite = [undefined, ...this.valeursDuRond(rang, ou)];
+        sac[rang] = suite[(suite.indexOf(sac[rang]) + 1) % suite.length];
+
+        if (ou === 'retenue' && this.operation === '-' && !this.parEmprunt()) {
+            const suivant = rangSuivant(this.tableau, rang);
+            if (suivant !== null && attenduEn(this.tableau, suivant, 'retenue-bas') !== null) {
+                this.marquesBas[suivant] = sac[rang] === undefined ? undefined : 1;
+            }
+        }
         this.dessiner();
     }
 
@@ -840,10 +919,18 @@ class PoserOperation extends BaseGame {
                 this.grilleEl);
                 await gate.wait(2500);
                 this.resultats[c.rang] = c.resultat;
+                // LE ROBOT ÉCRIT LES DEUX MARQUES, comme un élève : celle du
+                // haut sur la colonne qui emprunte, celle du bas sur la
+                // suivante. Il n'en écrivait qu'une, et la démonstration
+                // enseignait donc une moitié de geste.
+                const h = attenduEn(this.tableau, c.rang, 'retenue');
+                if (h) this.retenues[c.rang] = h;
                 const s = rangSuivant(this.tableau, c.rang);
                 if (s !== null) {
                     const a = attenduEn(this.tableau, s, 'retenue');
                     if (a) this.retenues[s] = a;
+                    const b = attenduEn(this.tableau, s, 'retenue-bas');
+                    if (b) this.marquesBas[s] = b;
                 }
                 this.rangCourant = s;
                 this.dessiner();

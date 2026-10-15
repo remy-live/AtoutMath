@@ -249,7 +249,22 @@ export function colonnesSoustraction(a, b, methode = 'compensation') {
             rang: r,
             chiffreHaut: aLeRang(a, r) ? chiffreAuRang(a, r) : null,
             chiffreBas: aLeRang(b, r) ? chiffreAuRang(b, r) : null,
-            // La retenue écrite CONTRE le chiffre du bas de cette colonne.
+            // LE PETIT 1 DEVANT LE CHIFFRE DU HAUT, et il appartient aux DEUX
+            // méthodes.
+            //
+            // RÉMY, devant 307 − 260 : « logiquement la retenue devrait être
+            // à l'endroit où il y a une retenue, en l'occurrence à côté du 0
+            // en haut et à côté du 2 en bas ». Il a raison, et le logiciel
+            // n'écrivait que la seconde : le « 1 » qui fait du 0 un 10 était
+            // sous-entendu, alors que c'est LUI qu'on écrit en premier au
+            // crayon.
+            //
+            // PAR EMPRUNT, IL CÈDE LA PLACE AU CHIFFRE RÉÉCRIT. Une colonne
+            // qui a PRÊTÉ une dizaine ne porte pas un petit 1 : elle porte
+            // son chiffre barré et refait — on n'écrit pas les deux.
+            retenueHaut: emprunte && !(parEmprunt && reporte) ? 1 : 0,
+            // La retenue écrite CONTRE le chiffre du bas de la colonne
+            // suivante : la compensation, et elle seule.
             retenueBas: parEmprunt ? 0 : reporte,
             // CE QUE L'ÉLÈVE ÉCRIT AU-DESSUS DU CHIFFRE DU HAUT, méthode par
             // emprunt : le chiffre barré et réécrit, plus les dix empruntés
@@ -260,7 +275,7 @@ export function colonnesSoustraction(a, b, methode = 'compensation') {
             // `null` quand il n'y a RIEN à écrire : ni emprunt reçu, ni
             // emprunt fait. Sans ce null, la grille demanderait une marque
             // dans une colonne où le cahier n'en porte aucune.
-            hautCorrige: parEmprunt && (reporte || emprunte)
+            hautCorrige: parEmprunt && reporte
                 ? hautC + (emprunte ? 10 : 0) : null,
             emprunte,
             resultat: (hautC + (emprunte ? 10 : 0)) - basC,
@@ -522,14 +537,15 @@ export function verifierPlacement(operandes, pose) {
 export function porteUneRetenue(tableau, rang) {
     const colonnes = (tableau && tableau.colonnes) || [];
     if (!colonnes.length) return false;
-    // PAR EMPRUNT, C'EST LA COLONNE QUI DÉCIDE, PAS SON RANG. Le chiffre du
-    // haut se barre là où l'on a emprunté ou prêté — et la colonne des unités
-    // EN PORTE UNE : c'est elle qui reçoit les dix, le fameux petit 1 devant
-    // le 3 de 53. Par compensation, au contraire, la marque va toujours à la
-    // colonne SUIVANTE, donc jamais aux unités.
-    if (tableau.methode === 'emprunt') {
+    // UNE SOUSTRACTION NE MARQUE QUE LÀ OÙ IL Y A UNE RETENUE, et c'est Rémy
+    // qui l'a relevé devant 307 − 260 : « logiquement la retenue devrait être
+    // à l'endroit où il y a une retenue ». Le logiciel posait un petit rond
+    // vide sous CHAQUE colonne sauf les unités, y compris là où rien ne se
+    // passe — un rond à remplir avec zéro n'est pas une retenue, c'est du
+    // bruit, et il apprend à ne plus regarder les autres.
+    if (tableau.operation === '-') {
         const c = colonnes.find(x => x.rang === rang);
-        return !!c && c.hautCorrige !== null;
+        return !!c && !!(c.retenueHaut || c.retenueBas || c.hautCorrige !== null);
     }
     // Les colonnes sont rangées du rang le plus faible au plus fort.
     return rang > colonnes[0].rang;
@@ -549,10 +565,18 @@ export function attenduEn(tableau, rang, quoi) {
     // de la colonne des unités.
     if (!porteUneRetenue(tableau, rang)) return null;
     if (tableau.operation === '+') return c.retenueEntrante;
-    // PAR EMPRUNT, LA MARQUE N'EST PAS UNE RETENUE MAIS UN CHIFFRE RÉÉCRIT :
-    // ce n'est pas « il y a un à reporter », c'est « le haut vaut maintenant
-    // 4 » — ou 13, ou 9. La case attend donc ce nombre-là.
-    return tableau.methode === 'emprunt' ? c.hautCorrige : c.retenueBas;
+    // UNE SOUSTRACTION PORTE DEUX MARQUES DE NATURES DIFFÉRENTES, et elles ne
+    // sont pas au même endroit du cahier :
+    //
+    //   EN HAUT   le petit 1 devant le chiffre du haut — ou, par emprunt, ce
+    //             chiffre barré et réécrit (le 0 qui devient 9) ;
+    //   EN BAS    le +1 contre le chiffre du bas de la colonne suivante,
+    //             qui n'existe que dans la compensation.
+    //
+    // `quoi` les distingue. « retenue » tout court rend celle du haut : c'est
+    // la seule des deux que les deux méthodes écrivent.
+    if (quoi === 'retenue-bas') return c.retenueBas || null;
+    return c.hautCorrige !== null ? c.hautCorrige : (c.retenueHaut || null);
 }
 
 /**

@@ -243,13 +243,39 @@ test('on sait dire ce qu\'attend chaque case, résultat comme retenue', () => {
     assert.equal(porteUneRetenue(t, 1), true);
     assert.equal(attenduEn(t, 9, 'resultat'), null, 'pas de colonne à ce rang');
 
+    // LA SOUSTRACTION PORTE DEUX MARQUES, ET PAS AU MÊME ENDROIT.
+    //
+    // RÉMY, devant 307 − 260 : « logiquement la retenue devrait être à
+    // l'endroit où il y a une retenue, en l'occurrence à côté du 0 en haut et
+    // à côté du 2 en bas ».
+    //
+    // 52 − 27 : les unités empruntent (2 < 7), donc le petit 1 va devant le 2
+    // du HAUT ; la compensation +1 va contre le 2 du BAS, colonne des
+    // dizaines.
     const s = poser('-', [52, 27]);
     assert.equal(attenduEn(s, 0, 'resultat'), 5);
-    assert.equal(attenduEn(s, 1, 'retenue'), 1, 'la retenue du bas, sur les dizaines');
-    // LA SOUSTRACTION SUIT LA MÊME RÈGLE : la compensation écrite contre le
-    // chiffre du bas vient de l'emprunt fait à la colonne de droite.
-    assert.equal(attenduEn(s, 0, 'retenue'), null,
-        'la colonne des unités d\'une soustraction ne porte pas de compensation');
+    assert.equal(attenduEn(s, 0, 'retenue'), 1, 'le petit 1 devant le chiffre du haut');
+    assert.equal(attenduEn(s, 0, 'retenue-bas'), null, 'rien à ajouter aux unités du bas');
+    assert.equal(attenduEn(s, 1, 'retenue-bas'), 1, 'la compensation, contre le chiffre du bas');
+    assert.equal(attenduEn(s, 1, 'retenue'), null, 'les dizaines n\'empruntent rien');
+});
+
+test('UNE SOUSTRACTION NE MARQUE QUE LÀ OÙ IL Y A UNE RETENUE', () => {
+    // RÉMY, capture à l'appui sur 307 − 260. Le jeu posait un petit rond vide
+    // sous CHAQUE colonne sauf les unités, y compris là où rien ne se passe —
+    // un rond à remplir avec zéro n'est pas une retenue, c'est du bruit, et
+    // il apprend à ne plus regarder les autres.
+    //
+    // 307 − 260 : seules les dizaines empruntent. Donc UN « 1 » devant le 0,
+    // UN « +1 » contre le 2, et rien ailleurs.
+    const t = poser('-', [307, 260], { methode: 'compensation' });
+    assert.deepEqual(t.colonnes.map(c => attenduEn(t, c.rang, 'retenue')), [null, 1, null]);
+    assert.deepEqual(t.colonnes.map(c => attenduEn(t, c.rang, 'retenue-bas')), [null, null, 1]);
+    assert.deepEqual(t.colonnes.map(c => porteUneRetenue(t, c.rang)), [false, true, true]);
+
+    // ET UNE SOUSTRACTION SANS AUCUN EMPRUNT NE MARQUE RIEN DU TOUT.
+    const calme = poser('-', [48, 12], { methode: 'compensation' });
+    assert.deepEqual(calme.colonnes.map(c => porteUneRetenue(calme, c.rang)), [false, false]);
 });
 
 test('l\'ordre de calcul va des unités vers la gauche', () => {
@@ -496,9 +522,14 @@ test('53 − 17 PAR EMPRUNT : LE 3 DEVIENT 13, ET LE 5 BARRÉ DEVIENT 4', () => 
     const t = colonnesSoustraction(53, 17, 'emprunt');
     assert.equal(t.resultat, 36);
     const [unites, dizaines] = t.colonnes;
-    assert.equal(unites.hautCorrige, 13, '« il mette le 1 à 3 »');
+    // « IL METTE LE 1 À 3 » : un petit 1 DEVANT le 3, pas un « 13 » dans un
+    // rond. C'est la correction que Rémy a demandée en regardant 307 − 260 :
+    // « la retenue indique 1 en haut ».
+    assert.equal(unites.retenueHaut, 1, '« il mette le 1 à 3 »');
+    assert.equal(unites.hautCorrige, null, 'les unités ne prêtent rien, rien n\'y est barré');
     assert.equal(unites.resultat, 6, '13 − 7 = 6');
     assert.equal(dizaines.hautCorrige, 4, '« au lieu du 5, il barre et mette 4 »');
+    assert.equal(dizaines.retenueHaut, 0, 'on n\'écrit pas les deux marques sur le même chiffre');
     assert.equal(dizaines.resultat, 3, '4 − 1 = 3');
     // ET LE CHIFFRE DU BAS N'EST JAMAIS TOUCHÉ : c'est toute la différence
     // avec la compensation, où c'est lui qui prend le +1.
@@ -511,7 +542,11 @@ test('LE ZÉRO QUI DEVIENT NEUF — 503 − 17 par emprunt', () => {
     // et le 0 se barre en 9. Un calcul naïf écrirait « −1 ».
     const t = colonnesSoustraction(503, 17, 'emprunt');
     assert.equal(t.resultat, 486);
-    assert.deepEqual(t.colonnes.map(c => c.hautCorrige), [13, 9, 4]);
+    // Les unités reçoivent le petit 1 ; les dizaines, qui ont PRÊTÉ une
+    // dizaine après en avoir emprunté une, se barrent en 9 ; les centaines en
+    // 4. « si c'est 0, le suivant est alors aussi décrémenté » — Rémy.
+    assert.deepEqual(t.colonnes.map(c => c.retenueHaut), [1, 0, 0]);
+    assert.deepEqual(t.colonnes.map(c => c.hautCorrige), [null, 9, 4]);
     assert.deepEqual(t.colonnes.map(c => c.resultat), [6, 8, 4]);
 });
 
@@ -558,11 +593,16 @@ test('LA GRILLE DEMANDE LA MARQUE LÀ OÙ LE CAHIER LA PORTE', () => {
     // elle qui reçoit les dix — le fameux petit 1 devant le 3 de 53.
     const comp = colonnesSoustraction(53, 17, 'compensation');
     const emp = colonnesSoustraction(53, 17, 'emprunt');
-    assert.equal(porteUneRetenue(comp, 0), false, 'la compensation marque les unités');
-    assert.equal(attenduEn(comp, 1, 'retenue'), 1, 'le +1 des dizaines manque');
-    assert.equal(porteUneRetenue(emp, 0), true, 'l\'emprunt ne marque pas les unités');
-    assert.equal(attenduEn(emp, 0, 'retenue'), 13);
-    assert.equal(attenduEn(emp, 1, 'retenue'), 4);
+    // LES DEUX MÉTHODES ÉCRIVENT LE MÊME PETIT 1 EN HAUT : c'est la dizaine
+    // empruntée, et elle s'écrit pareil dans les deux cahiers. Ce qui change
+    // est ce qu'on fait ENSUITE.
+    assert.equal(attenduEn(comp, 0, 'retenue'), 1, 'le petit 1 devant le 3 manque');
+    assert.equal(attenduEn(emp, 0, 'retenue'), 1, 'le petit 1 devant le 3 manque');
+    // PUIS LA COMPENSATION AJOUTE EN BAS, et l'emprunt barre en haut.
+    assert.equal(attenduEn(comp, 1, 'retenue-bas'), 1, 'le +1 des dizaines manque');
+    assert.equal(attenduEn(comp, 1, 'retenue'), null, 'la compensation ne touche pas au haut');
+    assert.equal(attenduEn(emp, 1, 'retenue'), 4, 'le 5 barré ne devient pas 4');
+    assert.equal(attenduEn(emp, 1, 'retenue-bas'), null, 'l\'emprunt ne touche pas au bas');
     // ET UNE COLONNE SANS RIEN À ÉCRIRE N'EN DEMANDE PAS : 48 − 12 n'emprunte
     // nulle part, donc pas une seule marque.
     const calme = colonnesSoustraction(48, 12, 'emprunt');

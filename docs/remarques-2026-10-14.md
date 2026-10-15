@@ -1163,3 +1163,57 @@ invitation à la faute.
 et c'est la seule aide qui apprenne quelque chose. Une épreuve refuse qu'un
 premier indice contienne « addition », « soustraction », « multiplication » ou
 « division ».
+
+---
+
+# « La retenue devrait être à l'endroit où il y a une retenue »
+
+> Capture à l'appui sur **307 − 260** : « logiquement la retenue devrait être
+> au endroit où il y a une retnue en l'occureance à côté du 0 en haut et à côté
+> du 2 en bas, quand on clique sur la retenue, il apparaitra +1, on clique sur
+> la retenue, du haut, ca affiche 1 et en bas à gauche +1, pour la méthode 2,
+> la retenue indique 1 en haut et le chiffre d'apèrs est décrémenté de 1 et si
+> c'est 0, le suivant est alors aussi décrémenté etc »
+
+**Il a raison sur les deux points, et le second est le plus important.**
+
+## 1. Le logiciel posait des ronds là où il n'y a pas de retenue
+
+`porteUneRetenue` rendait vrai pour **toute colonne sauf les unités**, sans
+regarder si quoi que ce soit s'y passait. Sur 307 − 260, seules les dizaines
+empruntent — et il y avait pourtant deux ronds, dont un à remplir avec zéro.
+**Un rond vide n'est pas une retenue, c'est du bruit, et il apprend à ne plus
+regarder les autres.** Une soustraction ne marque plus que là où il y a
+vraiment une retenue.
+
+## 2. Le petit 1 du haut n'était pas écrit du tout
+
+Le logiciel n'écrivait que la compensation du bas. Or **ce qu'on écrit en
+premier au crayon, c'est le 1 devant le chiffre du haut** — celui qui fait du
+0 un 10. Il est là maintenant, et **dans les DEUX méthodes** : c'est la seule
+marque qu'elles ont en commun.
+
+| 307 − 260 | en haut | en bas |
+| --- | --- | --- |
+| **compensation** | **1** devant le 0 | **+1** contre le 2 |
+| **emprunt** | **1** devant le 0 | rien — le 3 devient **2**, et il est BARRÉ |
+
+## 3. Un clic, deux marques
+
+> « on clique sur la retenue du haut, ça affiche 1 et en bas à gauche +1 »
+
+Fait. Les deux marques de la compensation sont **une seule décision** —
+j'emprunte dix, donc je les rends —, et les séparer en deux clics ferait croire
+qu'on peut faire l'une sans l'autre : c'est exactement la faute du chapitre.
+
+## 4. Et le chiffre réécrit se barre
+
+« au lieu du 5, il barre et mette 4 ». Le trait apparaît quand l'élève a écrit
+la marque, pas avant : **c'est la seconde moitié de SON geste**, pas une
+correction que le logiciel ferait à sa place. Et l'on doit encore LIRE ce qu'il
+y avait — c'est de lui qu'on est parti —, donc un trait en travers, pas une
+rature.
+
+**Mesuré au navigateur** : en compensation, un clic sur la marque du haut écrit
+« 1 » en haut ET « +1 » en bas. Par emprunt, le 6 est barré et surmonté d'un
+« 5 ».
