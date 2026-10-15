@@ -587,6 +587,25 @@ export function attenduEn(tableau, rang, quoi) {
  */
 export const premierRang = (tableau) => tableau.colonnes[0].rang;
 
+/**
+ * LA DERNIÈRE COLONNE QU'ON DEMANDE À L'ÉLÈVE : celle où le résultat s'arrête.
+ *
+ * RÉMY : « et si on fait 1000 - 3 par exemple ». 1000 − 3 = 997, et AUCUN
+ * cahier n'écrit 0997 : la colonne des milliers reste vide. Les colonnes, elles,
+ * existent toutes — ce sont celles des opérandes — et le tableau y calcule bien
+ * un zéro ; c'est l'ÉCRITURE qui s'arrête avant.
+ *
+ * JAMAIS SOUS LES UNITÉS : 7,2 − 6,7 = 0,5 s'écrit AVEC son zéro. Le rang des
+ * unités se demande toujours, fût-il nul.
+ */
+export function dernierRangDemande(tableau) {
+    // `rangsDe` PART DES UNITÉS AU MINIMUM — 0,5 rend [0, −1] — si bien que le
+    // zéro devant la virgule est compris sans qu'on ait à l'ajouter. Vérifié à
+    // `epreuveTombe`, qui a montré qu'un `Math.max(0, …)` autour ne gardait
+    // rien : il ne pouvait pas changer une seule réponse.
+    return rangsDe(tableau.resultat)[0];
+}
+
 /** Le rang suivant dans l'ordre de calcul, ou null si l'opération est finie. */
 export function rangSuivant(tableau, rang) {
     const i = tableau.colonnes.findIndex(c => c.rang === rang);

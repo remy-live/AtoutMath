@@ -6,7 +6,8 @@ import {
     chiffresParRang, enFrancais,
     colonnesAddition, colonnesSoustraction, colonnesMultiplication, poser,
     lignesMultiplication, colonnesDivision, apercuPose, verifierPose,
-    verifierPlacement, attenduEn, porteUneRetenue, premierRang, rangSuivant
+    verifierPlacement, attenduEn, porteUneRetenue, premierRang, rangSuivant,
+    dernierRangDemande
 } from '../js/core/poser.js';
 
 // --- Les rangs -------------------------------------------------------------------
@@ -608,4 +609,24 @@ test('LA GRILLE DEMANDE LA MARQUE LÀ OÙ LE CAHIER LA PORTE', () => {
     const calme = colonnesSoustraction(48, 12, 'emprunt');
     assert.equal(calme.colonnes.every(c => c.hautCorrige === null), true);
     assert.equal(porteUneRetenue(calme, 1), false);
+});
+
+test('ON NE DEMANDE PAS LE ZÉRO DE TÊTE DU RÉSULTAT', () => {
+    // RÉMY : « et si on fait 1000 - 3 par exemple ». 1000 − 3 = 997, posé sur
+    // quatre colonnes : la colonne des milliers calcule bien un 0, mais aucun
+    // cahier n'écrit 0997. On s'arrête donc à la dernière colonne que le
+    // résultat occupe vraiment.
+    assert.equal(dernierRangDemande(poser('-', [1000, 3])), 2,
+        'la colonne des milliers de 1000 − 3 est encore réclamée : l\'élève '
+        + 'devra écrire 0997');
+    assert.equal(dernierRangDemande(poser('-', [8123, 7256])), 2);
+    // ET L'ON NE RETIRE RIEN QUAND LE RÉSULTAT OCCUPE TOUT : 53 − 17 = 36.
+    assert.equal(dernierRangDemande(poser('-', [53, 17])), 1);
+    // UNE ADDITION GAGNE UNE COLONNE au lieu d'en perdre une, et celle-là se
+    // demande : 99 + 8 = 107.
+    assert.equal(dernierRangDemande(poser('+', [99, 8])), 2);
+    // JAMAIS SOUS LES UNITÉS : 7,2 − 6,7 = 0,5 s'écrit avec son zéro, sans
+    // quoi l'élève lirait « ,5 ».
+    assert.equal(dernierRangDemande(poser('-', [7.2, 6.7])), 0,
+        'le zéro de 0,5 n\'est plus demandé : il manquerait devant la virgule');
 });

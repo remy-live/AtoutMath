@@ -23,11 +23,16 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     poser, etendue, placementAttendu, verifierPlacement, attenduEn,
-    premierRang, rangSuivant, decimales, chiffreAuRang, rangsDe,
+    premierRang, rangSuivant, decimales, chiffreAuRang, dernierRangDemande,
     apercuPose, verifierPose
 } from '../core/poser.js';
 import { CSS_GLISSER, rendreGlissable } from '../core/glisserDeposer.js';
 import { showModal } from '../ui/modal.js';
+
+// L'ÉTAGE D'UNE FENÊTRE OUVERTE DEPUIS LA COUCHE DE JEU. Celle-ci est à
+// 10000 ; `showModal` se range par défaut à 9999, donc DESSOUS. Même valeur
+// que l'organigramme des quadrilatères, qui a payé la même leçon.
+const ETAGE_MODALE = 100001;
 
 const COMPETENCE = 'num.add.entiers';
 const SIGNES = { '+': '+', '-': '−' };
@@ -230,15 +235,49 @@ class PoserOperation extends BaseGame {
                            qui est barre, donc il se lit comme un chiffre et
                            non comme une annotation. Il est presque aussi
                            grand que lui. */
+                /* DANS SA PROPRE CASE, ET LEGEREMENT RELEVE.
+
+                   MESURE A LA PHOTO, sur 7106 − 4709 : a cheval sur la
+                   frontiere (left: -9px), la marque se lisait comme un
+                   indice du chiffre de GAUCHE — « 7₁ 1₁ 0₁ 6 » la ou il
+                   fallait lire « 11 », « 10 », « 16 ». Son fond opaque
+                   creusait meme une encoche blanche dans la case d'a cote,
+                   ce qui achevait de l'y rattacher.
+
+                   DEUX PIXELS DEHORS, PAS NEUF : elle ne mord plus que sur
+                   l'intervalle entre deux cases, qui n'appartient a personne.
+                   ET RELEVEE, comme on ecrit la dizaine empruntee au crayon :
+                   un petit chiffre devant et un peu plus haut se lit comme le
+                   debut du nombre, pas comme une annotation du voisin. */
                 .po-marque--devant {
-                    top: 50%; transform: translateY(-50%); left: -9px;
+                    top: 18%; left: -2px;
                 }
                 .po-marque--dessus {
                     top: -13px; left: -1px;
                     font-size: clamp(14px, 3.8cqw, 19px);
                     min-width: clamp(13px, 3.4cqw, 17px);
                 }
-                .po-marque--bas { bottom: -6px; }
+                /* LE +1 SOUS SON PROPRE CHIFFRE, pour la meme raison : a
+                   left: -7px il se lisait sous le chiffre de gauche. */
+                .po-marque--bas { bottom: -6px; left: -1px; }
+
+                /* LE BOUTON « METHODE » SE RAPPELLE A L'OEIL, AU DEBUT.
+                   Remy : « fais le clignoter au début et expliquant ce que
+                   c'est ». Un bouton que personne n'ouvre ne sert a rien, et
+                   celui-ci porte un choix que l'eleve est le seul a pouvoir
+                   faire : la methode qu'on lui a enseignee.
+                   EN AMBRE, comme partout dans ce depot ou l'on dit « regarde
+                   ici », et TROIS BATTEMENTS puis plus rien — un bouton qui
+                   clignote sans fin cesse d'etre vu et devient agacant. */
+                .po-btn--appel { animation: po-appel 1.25s ease-out 3; }
+                @keyframes po-appel {
+                    0%, 100% { box-shadow: none; transform: scale(1); }
+                    35% { box-shadow: 0 0 0 5px var(--warning); transform: scale(1.07); }
+                    70% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warning) 0%, transparent); }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .po-btn--appel { animation: none; box-shadow: 0 0 0 3px var(--warning); }
+                }
                 /* EN HAUT À GAUCHE DU CHIFFRE DU HAUT : la dizaine empruntée
                    s'écrit DEVANT lui — c'est le « 1 » de 13. Rémy : « à côté
                    du 0 en haut et à côté du 2 en bas ». */
@@ -296,15 +335,47 @@ class PoserOperation extends BaseGame {
                 }
                 .po-meth--actif { border-color: var(--primary); }
                 .po-meth i { font-weight: 600; color: var(--primary-texte); font-style: normal; }
-                .po-meth-ex { display: block; margin-top: 6px;
-                    font-variant-numeric: tabular-nums; color: var(--text-muted); }
+                .po-meth-ex { display: block; margin-top: 4px;
+                    font-size: .92em; color: var(--text-muted); }
+
+                /* L'EXEMPLE SE POSE EN COLONNES, COMME DANS LE CAHIER.
+
+                   REMY, devant la fenetre : « pour les méthodes, présente le
+                   en colonne, pas en ligne, c'est incompréhensible ». Les
+                   deux cartes etaient deja l'une sous l'autre : c'est
+                   l'EXEMPLE qu'il lisait, et il etait en prose —
+
+                       13 − 7 = 6, puis le 1 de 17 devient 2 : 5 − 2 = 3
+
+                   c'est-a-dire la seule forme sous laquelle on n'ecrit JAMAIS
+                   une soustraction posee. Deux « 1 » y voulaient dire deux
+                   choses differentes sans que rien ne le dise.
+
+                   IL REUTILISE LES CLASSES DE LA GRILLE — po-case,
+                   po-marque--devant, po-case--barree — pour que la figure
+                   de la fenetre soit, au pixel, celle que l'eleve va
+                   construire. Une figure dessinee a part aurait derive des
+                   le premier reglage change.
+
+                   LE container-type EST INDISPENSABLE : les cases se mesurent
+                   en cqw, et hors de po-wrap (la fenetre s'ouvre dans le
+                   corps du document) elles se mesureraient sur la fenetre du
+                   navigateur — 46 px plafonnes sur un ecran large, 30 sur un
+                   telephone, soit l'inverse de ce qu'on veut. */
+                .po-fig {
+                    display: flex; justify-content: center; margin-top: 8px;
+                    container-type: inline-size;
+                }
+                .po-fig .po-marque { cursor: default; }
             </style>
             <div class="po-wrap">
                 <div class="po-tete">
                     <span data-score></span>
                     <button type="button" class="po-btn" data-indice>💡 Aide</button>
                     <button type="button" class="po-btn" data-neuf>↺ Autre opération</button>
-                    <button type="button" class="po-btn" data-methode hidden>⇄ Méthode</button>
+                    <button type="button" class="po-btn" data-methode hidden
+                            title="Deux façons d'écrire la retenue d'une soustraction : choisis la tienne"
+                    >⇄ Méthode</button>
                 </div>
                 <div class="po-etape" data-etape></div>
                 <div class="po-grille" data-grille></div>
@@ -324,8 +395,31 @@ class PoserOperation extends BaseGame {
         // objet apprend à ne plus la lire.
         const bm = this.container.querySelector('[data-methode]');
         bm.hidden = this.operation !== '-';
-        bm.addEventListener('click', () => this.choisirMethode());
+        bm.addEventListener('click', () => {
+            // LE CLIGNOTEMENT S'ARRETE DES QU'IL A SERVI : il appelle l'oeil
+            // sur un bouton qu'on ne connait pas encore, pas sur un bouton
+            // qu'on vient d'utiliser.
+            bm.classList.remove('po-btn--appel');
+            this.choisirMethode();
+        });
         this.poser();
+        // ET IL SE RAPPELLE A L'OEIL AU DEBUT, EN DISANT CE QU'IL EST.
+        //
+        // REMY : « quand je clique sur méthode, ca ne fait rien, fais le
+        // clignoter au début et expliquant ce que c'est ». Un bouton que
+        // personne n'ouvre ne sert a rien — et celui-ci porte un choix que
+        // l'eleve est le seul a pouvoir faire : la methode qu'on lui a
+        // enseignee au primaire.
+        //
+        // TROIS BATTEMENTS PUIS PLUS RIEN, en ambre : c'est la couleur que le
+        // depot reserve a « regarde ici », et un bouton qui clignote sans fin
+        // cesse d'etre vu.
+        if (this.operation === '-') {
+            bm.classList.add('po-btn--appel');
+            this.note('⇄ Méthode : il y a DEUX façons d\'écrire la retenue d\'une '
+                + 'soustraction. Touche ce bouton pour les voir et prendre celle '
+                + 'que tu as apprise.');
+        }
     }
 
     startGameLoop() { /* Pas d'horloge. */ }
@@ -334,11 +428,32 @@ class PoserOperation extends BaseGame {
     poser() {
         for (let essai = 0; essai < 300; essai++) {
             const dec = this.avecVirgule ? this.rng.int(1, 2) : 0;
-            const tirer = () => {
-                const n = this.rng.int(Math.pow(10, this.chiffres - 1), Math.pow(10, this.chiffres) - 1);
+            const tirer = (chiffres) => {
+                const n = this.rng.int(Math.pow(10, chiffres - 1), Math.pow(10, chiffres) - 1);
                 return dec ? Number((n / Math.pow(10, dec)).toFixed(dec)) : n;
             };
-            let operandes = Array.from({ length: this.nbTermes }, tirer);
+            // LES DEUX NOMBRES N'ONT PLUS TOUJOURS LA MÊME LONGUEUR.
+            //
+            // RÉMY : « et si on fait 1000 - 3 par exemple ». MESURÉ avant de
+            // lui répondre, sur 400 tirages d'entiers à quatre chiffres :
+            // ZÉRO de longueurs différentes. 1000 − 3 ne POUVAIT pas sortir,
+            // les deux nombres étant tirés dans le même intervalle.
+            //
+            // OR C'EST L'EXERCICE LUI-MÊME. Son en-tête annonce l'erreur
+            // qu'il existe pour corriger — « il cale 12,4 sous 324,5 en
+            // collant à droite » —, et entre deux nombres de même forme,
+            // aligner REVIENT à coller à droite : le geste faux donnait la
+            // bonne réponse. (Les décimaux y échappaient par accident : 3,70
+            // s'écrit 3,7 et 16,0 s'écrit 16, soit 84 tirages sur 400.)
+            //
+            // UNE FOIS SUR DEUX, ET DE UN À TROIS CHIFFRES EN MOINS : assez
+            // pour que la colonne se cherche, pas au point que l'exercice
+            // devienne « poser un nombre à un chiffre ».
+            const court = () => (this.chiffres < 2 || dec || !this.rng.bool())
+                ? this.chiffres
+                : Math.max(1, this.chiffres - this.rng.int(1, 3));
+            let operandes = Array.from({ length: this.nbTermes },
+                (_, i) => tirer(i === 0 ? this.chiffres : court()));
             if (this.operation === '-') {
                 operandes.sort((a, b) => b - a);
                 // Une soustraction ne se pose que du grand vers le petit, et
@@ -354,6 +469,15 @@ class PoserOperation extends BaseGame {
         }
         this.etendue = etendue(this.operandes, this.tableau.resultat);
         this.attendu = placementAttendu(this.operandes);
+        // LA DERNIÈRE COLONNE QU'ON DEMANDE : celle où le résultat s'arrête.
+        //
+        // 1000 − 3 = 997, et AUCUN cahier n'écrit 0997 : la colonne des
+        // milliers reste vide. Depuis que le second nombre peut être plus
+        // court, le cas est fréquent — il l'était déjà pour 8123 − 7256.
+        //
+        // JAMAIS SOUS LES UNITÉS : 7,2 − 6,7 = 0,5 s'écrit AVEC son zéro,
+        // et le rang 0 se demande toujours.
+        this.rangFinal = dernierRangDemande(this.tableau);
         this.pose = this.operandes.map(() => []);
         this.etape = 1;
         this.rangCourant = null;
@@ -780,7 +904,9 @@ class PoserOperation extends BaseGame {
         this.resultats[r] = n;
         // ON SIGNALE LA RETENUE, ON NE LA RÉCLAME PAS. Le petit rond reste là
         // pour qui a besoin de l'écrire ; celui qui la garde en tête continue.
-        const suivant = rangSuivant(this.tableau, r);
+        let suivant = rangSuivant(this.tableau, r);
+        // ET L'ON NE DEMANDE PAS LES ZÉROS DE TÊTE (voir `rangFinal`).
+        if (suivant !== null && suivant > this.rangFinal) suivant = null;
         const aPoser = suivant !== null ? attenduEn(this.tableau, suivant, 'retenue') : 0;
         this.rangCourant = suivant;
         if (suivant === null) return this.finir();
@@ -863,6 +989,60 @@ class PoserOperation extends BaseGame {
     }
 
     /**
+     * L'EXEMPLE, POSÉ EN COLONNES — et non raconté en une phrase.
+     *
+     * RÉMY, devant la fenêtre : « pour les méthodes, présente le en colonne,
+     * pas en ligne, c'est incompréhensible ». Une soustraction posée ne
+     * s'écrit pas en prose : ce qui faisait la différence entre les deux
+     * méthodes — OÙ la marque se pose — était justement ce que la phrase ne
+     * pouvait pas montrer.
+     *
+     * LA FIGURE SORT DU NOYAU, et c'est tout son intérêt : elle appelle
+     * poser(), lit les colonnes qu'il rend, et pose ses marques avec les
+     * classes de la VRAIE grille. Elle ne peut donc pas dire autre chose que
+     * ce que l'élève va construire ; une figure écrite à la main aurait menti
+     * dès le premier réglage changé, et personne ne l'aurait su.
+     *
+     * TOUT EST EN span, Y COMPRIS LES CASES : la carte est un bouton, qui
+     * n'accepte que du contenu de phrase. Le quadrillage les transforme de
+     * toute façon en blocs — un div là-dedans ne donnerait rien de plus,
+     * qu'un document invalide.
+     */
+    figureMethode(methode, a = 53, b = 17) {
+        const t = poser('-', [a, b], { methode });
+        const rangs = etendue([a, b], t.resultat).rangs;   // du plus fort au plus faible
+        const col = (r) => t.colonnes.find(c => c.rang === r) || {};
+        const aReecrit = (r) => col(r).hautCorrige !== null && col(r).hautCorrige !== undefined;
+        const chiffre = (v) => (v === null || v === undefined ? '' : String(v));
+        // LA MARQUE À LA PLACE EXACTE OÙ LA GRILLE LA MET : devant le chiffre
+        // pour la dizaine empruntée, AU-DESSUS pour le chiffre réécrit du
+        // cassage, EN BAS pour le +1 de la compensation. Les trois noms de
+        // classe sont ceux de la grille, pas des copies.
+        const marque = (r, ou) => {
+            const v = attenduEn(t, r, ou);
+            if (v === null) return '';
+            const place = ou === 'retenue-bas' ? 'bas' : (aReecrit(r) ? 'dessus' : 'devant');
+            return `<span class="po-marque po-marque--${place}">`
+                + `${ou === 'retenue-bas' ? '+' : ''}${v}</span>`;
+        };
+        const uneCase = (texte, marq = '', barree = false) =>
+            `<span class="po-case${texte === '' ? '' : ' po-case--pose'}`
+            + `${marq ? ' po-case--porte-rond' : ''}${barree ? ' po-case--barree' : ''}">`
+            + `${texte}${marq}</span>`;
+        const haut = rangs.map(r => uneCase(chiffre(col(r).chiffreHaut),
+            marque(r, 'retenue'), methode === 'emprunt' && aReecrit(r))).join('');
+        const bas = rangs.map(r => uneCase(chiffre(col(r).chiffreBas),
+            marque(r, 'retenue-bas'))).join('');
+        const res = rangs.map(r => uneCase(chiffre(attenduEn(t, r, 'resultat')))).join('');
+        return '<span class="po-fig"><span class="po-grille" style="grid-template-columns: '
+            + `auto repeat(${rangs.length}, auto)">`
+            + `<span class="po-signe"></span>${haut}`
+            + `<span class="po-signe">${SIGNES['-']}</span>${bas}`
+            + '<span class="po-trait"></span>'
+            + `<span class="po-signe"></span>${res}</span></span>`;
+    }
+
+    /**
      * LA FENÊTRE QUI MONTRE LES DEUX MÉTHODES, ET QUI LES FAIT CHANGER.
      *
      * RÉMY : « du coup peut être un bouton changer de méthode avec un popup
@@ -873,25 +1053,39 @@ class PoserOperation extends BaseGame {
      * à quatre chiffres montrerait la même chose en moins lisible.
      */
     choisirMethode() {
-        const carte = (id, titre, lignes, actif) =>
+        const carte = (id, titre, geste, actif) =>
             `<button type="button" class="po-meth${actif ? ' po-meth--actif' : ''}"`
             + ` data-methode="${id}">`
             + `<b>${titre}</b>${actif ? ' <i>— en cours</i>' : ''}`
-            + `<span class="po-meth-ex">${lignes}</span></button>`;
+            + `<span class="po-meth-ex">${geste}</span>`
+            + this.figureMethode(id) + '</button>';
         const html = '<p class="po-meth-dit">Les deux donnent 36. Choisis celle que tu '
             + 'as apprise.</p>'
-            + carte('compensation', 'On compense : +1 en bas',
-                '<u>1</u>3 − 7 = 6, puis le <b>1</b> de 17 devient <b>2</b> : 5 − 2 = 3',
+            + carte('compensation', 'Je compense',
+                'On écrit +1 contre le chiffre du BAS de la colonne suivante.',
                 this.methode === 'compensation')
-            + carte('emprunt', 'On emprunte : le haut est barré',
-                '<u>1</u>3 − 7 = 6, puis on barre le <b>5</b> et l\'on écrit <b>4</b> : '
-                + '4 − 1 = 3',
+            + carte('emprunt', 'Je casse',
+                'On BARRE le chiffre du haut et l\'on écrit celui qui reste.',
                 this.methode === 'emprunt');
         // `showModal` REND UN OBJET, PAS L'ÉLÉMENT : `{ close, element }`.
         // Écrit comme si c'était le nœud, le code levait « querySelectorAll
         // is not a function » — et la fenêtre s'ouvrait quand même, sans
         // aucun de ses boutons branché. Vu à la sonde, pas à la lecture.
-        const fenetre = showModal('Les deux méthodes de retenue', html, { width: '460px' });
+        // AU-DESSUS DE LA COUCHE DE JEU, SANS QUOI ELLE S'OUVRE DERRIÈRE.
+        //
+        // RÉMY : « quand je clique sur méthode, ça ne fait rien ». Elle
+        // s'ouvrait pourtant — à `z-index: 9999`, c'est-à-dire SOUS
+        // `#game-layer` qui est à 10000. La fenêtre était dans le document,
+        // avec son titre et ses deux cartes ; personne ne pouvait la voir.
+        //
+        // C'EST LA TROISIÈME FOIS QUE CE DÉPÔT PAIE CETTE LEÇON : le voile du
+        // défi était à 9000, le contre-exemple de l'organigramme à 9999. Et
+        // ma sonde avait LU la fenêtre dans le DOM en la déclarant présente —
+        // une lecture de sélecteur ne voit pas ce qui est caché. Il fallait
+        // demander `elementFromPoint` au centre de l'écran, ce qu'elle fait
+        // maintenant.
+        const fenetre = showModal('Les deux méthodes de retenue', html,
+            { width: '460px', zIndex: ETAGE_MODALE });
         fenetre.element.querySelectorAll('[data-methode]').forEach(b => {
             b.addEventListener('click', () => {
                 this.methode = b.dataset.methode;
@@ -936,10 +1130,18 @@ class PoserOperation extends BaseGame {
                 + `${c.retenueEntrante ? ` + ${c.retenueEntrante} de retenue` : ''} = ${c.total}. `
                 + 'On écrit le chiffre des unités, et le reste part en retenue.');
         }
-        return this.note(c.emprunte
-            ? 'Le chiffre du haut est trop petit : on lui ajoute dix, et l\'on ajoute un au '
-                + 'chiffre du BAS de la colonne suivante.'
-            : 'On soustrait directement : le chiffre du haut est assez grand.');
+        // ET L'AIDE SUIT LA MÉTHODE CHOISIE. Elle disait la compensation à
+        // tout le monde : l'élève qui casse lisait « ajoute un au chiffre du
+        // BAS », c'est-à-dire l'autre méthode, sur une grille qui ne lui
+        // offrait même pas l'endroit où l'écrire.
+        if (!c.emprunte) {
+            return this.note('On soustrait directement : le chiffre du haut est assez grand.');
+        }
+        return this.note(this.parEmprunt()
+            ? 'Le chiffre du haut est trop petit : on CASSE une dizaine au chiffre d\'à '
+                + 'côté. On le barre, on écrit un de moins au-dessus, et celui-ci gagne dix.'
+            : 'Le chiffre du haut est trop petit : on lui ajoute dix, et l\'on ajoute un au '
+                + 'chiffre du BAS de la colonne suivante.');
     }
 
     note(html, ton) {
@@ -972,12 +1174,17 @@ class PoserOperation extends BaseGame {
 
             for (const c of this.tableau.colonnes) {
                 if (!this.isRunning) break;
+                // LE ROBOT N'ÉCRIT PAS LE ZÉRO DE TÊTE NON PLUS : il montre
+                // ce qu'on attend de l'élève, pas une colonne de plus.
+                if (c.rang > this.rangFinal) break;
                 cur.say(this.operation === '+'
                     ? `${c.chiffres.filter(x => x !== null).join(' + ')}`
                         + `${c.retenueEntrante ? ` + ${c.retenueEntrante}` : ''} = ${c.total} : j'écris ${c.resultat}`
                         + `${c.retenueSortante ? `, je retiens ${c.retenueSortante}` : ''}.`
                     : `Colonne des ${this.nomRang(c.rang)} : ${c.resultat}`
-                        + `${c.emprunte ? ' — j\'ai ajouté dix en haut, et un en bas à la colonne suivante.' : '.'}`,
+                        + `${c.emprunte ? (this.parEmprunt()
+                            ? ' — j\'ai cassé une dizaine au chiffre d\'à côté : je le barre et j\'écris un de moins.'
+                            : ' — j\'ai ajouté dix en haut, et un en bas à la colonne suivante.') : '.'}`,
                 this.grilleEl);
                 await gate.wait(2500);
                 this.resultats[c.rang] = c.resultat;

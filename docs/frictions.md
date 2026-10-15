@@ -4670,3 +4670,20 @@ le résultat n'existe pas** — 15 octobre 2026
   générateur et jamais sur la page — et n'imprime que ce qui ne trouve RIEN.
   Une garde tient en plus les mots-clefs du détour à la table `VOISINS` : on ne
   peut plus ajouter un voisin sans le rendre cherchable.
+
+**Une sonde ne peut pas atteindre le jeu qu'elle regarde** — 15 octobre 2026
+
+- *Ce que je voulais faire* : mesurer le cassage de `1000 − 3`, c'est-à-dire une
+  soustraction qui emprunte sur TOUTES ses colonnes. Tirée au hasard, elle ne
+  sort presque jamais : il faut retirer jusqu'à la trouver, donc appeler
+  `poser()` sur l'instance du jeu.
+- *Ce qui a coûté* : deux lancements de sonde perdus, environ six minutes.
+  `window.__sondeRunner.handle` n'est PAS le jeu : c'est un relais
+  (`{ jeu, showNext, showPrevious… }`) construit dans `runner.js`, et
+  `handle.poser is not a function` ne le dit pas. Il a fallu lire le meneur pour
+  trouver `handle.jeu`.
+- *Combien de fois* : || (déjà payé pour forcer une grille du Mastermind)
+- *Ce qui manque* : `s.jeu()` dans la sonde — le jeu autonome quand il y en a
+  un, une erreur nommée sinon. Et, tant qu'à faire, `s.rejouerJusqua(predicat)`
+  qui retire une question jusqu'à ce qu'elle remplisse une condition : c'est la
+  même boucle de quinze lignes dans trois sondes.
