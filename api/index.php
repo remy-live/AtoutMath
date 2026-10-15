@@ -2546,8 +2546,20 @@ function handleTeacherOverride(): void
     // « RETIRER » NE S'ÉTEINT PAS, ET C'EST VOULU : c'est le geste du
     // professeur qui a constaté que l'exercice PLANTE. Il ne veut pas que
     // l'élève retombe dessus demain matin.
-    $laSeance = $mode === 'saut' ? imposeEncoreValide($classe) : null;
-    $jusqua = $mode === 'saut' ? finDeLaJourneeScolaire() : null;
+    // LA CALCULATRICE AUSSI, ET C'EST SA DEMANDE DU SOIR. « pour une séance
+    // nouvelle, il faut réinitialiser les exercices que j'ai autorisé à
+    // passer » — capture à l'appui, où trois vignettes se suivaient : deux
+    // calculatrices « pour toute la séance » accordées un autre jour, et un
+    // saut déjà mort. « Pour toute la séance » doit vouloir dire CETTE
+    // séance ; sans échéance, la permission traversait les vacances.
+    //
+    // « RETIRER » NE S'ÉTEINT TOUJOURS PAS : c'est le geste du professeur qui
+    // a constaté que l'exercice PLANTE, et il ne veut pas que l'élève retombe
+    // dessus demain matin. Il reste dans la liste, avec sa croix pour
+    // l'annuler.
+    $deLHeure = $mode === 'saut' || $mode === 'calculatrice';
+    $laSeance = $deLHeure ? imposeEncoreValide($classe) : null;
+    $jusqua = $deLHeure ? finDeLaJourneeScolaire() : null;
     $insert = db()->prepare(
         'INSERT INTO overrides (id, class_id, student_id, exercise_id, mode, seance_id, expire_le)
          VALUES (?, ?, ?, ?, ?, ?, ?)');
@@ -2574,7 +2586,18 @@ function handleTeacherOverride(): void
                     : "Le saut de « $exo » est autorisé : un bouton « passer » apparaîtra.")]);
 }
 
-/** Les réglages d'exercice en vigueur dans cette classe, du plus récent au plus ancien. */
+/**
+ * Les réglages d'exercice EN VIGUEUR dans cette classe, du plus récent au plus
+ * ancien.
+ *
+ * EN VIGUEUR, ET NON « TOUS » : c'est la demande de Rémy, capture à l'appui —
+ * « pour une séance nouvelle, il faut réinitialiser les exercices que j'ai
+ * autorisé à passer ». Le serveur éteignait déjà ces permissions-là pour
+ * l'élève (voir `reglageEnVigueur`), mais l'écran du professeur les listait
+ * TOUTES : il lisait donc, sur la séance du jour, des vignettes qui ne
+ * valaient plus rien, sans qu'aucune ne dise lesquelles. Les deux écrans
+ * appellent maintenant la même règle.
+ */
 function overridesDeLaClasse(string $classeId): array
 {
     $s = db()->prepare(
@@ -2584,6 +2607,11 @@ function overridesDeLaClasse(string $classeId): array
          ORDER BY o.created_at DESC'
     );
     $s->execute([$classeId, $classeId]);
+    $q = db()->prepare('SELECT * FROM classes WHERE id = ?');
+    $q->execute([$classeId]);
+    $classe = $q->fetch() ?: [];
+    $imposeId = $classe ? imposeEncoreValide($classe) : null;
+    $vivants = array_filter($s->fetchAll(), fn ($o) => reglageEnVigueur($o, $imposeId));
     return array_map(fn ($o) => [
         'id' => $o['id'],
         'exerciseId' => $o['exercise_id'],
@@ -2594,7 +2622,7 @@ function overridesDeLaClasse(string $classeId): array
         // dans la classe de Rémy. Un prénom ne désigne personne.
         'pourId' => $o['student_id'] ?: null,
         'quand' => instantDe($o['created_at']),
-    ], $s->fetchAll());
+    ], array_values($vivants));
 }
 
 /**

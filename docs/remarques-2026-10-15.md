@@ -222,3 +222,66 @@ alors qu'il travaille sous les yeux du professeur.
 Le **nom** de la séance sert donc de seconde clef : il ne bouge pas quand on
 complète. Deux séances homonymes se confondraient ; c'est le seul faux positif,
 et il rend alors le comportement d'avant.
+
+---
+
+# Troisième passe — l'écran de la classe (15 octobre, soir)
+
+> « pour une séance nouvelle, il faut réinitialister les exercices que j'ai
+> autorisé à passer et aussi mieux aligner verticalmeent les input et puis mets
+> des onglets c'est pas terrible et un onglet aussi avec la liste de classe.
+> J'ai du mal à voir la différence avec les murs et le direct.
+> Et aussi la séance en cours, mets le fond d'une autre couleur.
+> Et pour les bilans, propose des onglets, fais le au parcours, de manière
+> globale, une conseil pour chaque élève. »
+
+Six demandes :
+
+1. une séance neuve **réinitialise** les sauts autorisés et les dispenses ;
+2. **aligner verticalement** les champs des outils de l'heure ;
+3. des **onglets** plutôt que les pastilles dépliantes, plus un onglet **liste
+   de classe** ;
+4. la différence entre **Le mur** et **Le direct** ne se voit pas ;
+5. la séance **en cours** doit avoir un fond d'une autre couleur ;
+6. **Les bilans** : des onglets — au parcours, global, et un conseil par élève.
+
+## Ce qui a été fait
+
+**1. Une séance neuve réinitialise les permissions.** Mesuré sur sa capture :
+trois vignettes se suivaient — deux calculatrices « pour toute la séance »
+accordées un autre jour, et un saut déjà mort. La règle « cela s'éteint avec la
+séance » n'était posée **que sur le saut**, et la liste du professeur montrait
+**tout**, vivant ou mort. Les trois gestes passent maintenant par la même porte
+(`reglageEnVigueur`), et l'écran du professeur y passe aussi. « Retirer » reste
+hors de la règle, et c'est voulu : c'est le geste de celui qui a constaté que
+l'exercice plante.
+
+**2. Les champs alignés, un seul outil à la fois.** Les titres étaient écrits
+deux fois (sur la pastille et dans le cadre) ; le cadre intérieur a perdu son
+second bord et sa marge, et les champs de tous les outils commencent désormais
+au même pixel — mesuré : 52 px pour le défi comme pour le chrono. Et ouvrir un
+outil referme les autres, sur tous les navigateurs (l'attribut `name` des
+`details` ne vaut que depuis Chrome 120).
+
+**3. La liste de classe sous la main.** Une septième pastille, « 👥 La liste » :
+le code de la classe, puis chaque élève avec son identifiant, son code et un
+point vert s'il est en ligne. Ce qu'on y cherche en plein cours n'est pas la
+liste pour elle-même — elle a son écran — mais **le code d'un élève qui n'arrive
+pas à entrer**, sans perdre les vingt-neuf autres de vue.
+
+**4. La différence entre Le mur et Le direct, écrite sous l'onglet.** Ce sont
+deux **postures** : « Assis : une ligne par élève, et les commandes de l'heure
+sous la main » contre « Debout : les mêmes élèves en tuiles de couleur, lisibles
+du fond de la salle. On regarde, on ne règle rien. » Les cinq onglets ont leur
+phrase.
+
+**5. La séance en cours sur fond coloré.** Mesuré sur les pixels : elle peint
+vraiment (un `color-mix` dont un jeton n'existe pas ne peint rien, en silence —
+ce dépôt a payé cette leçon trois fois).
+
+**6. Les bilans en trois onglets.** « D'ensemble » (ce qu'il y avait), « Par
+séance » — le tableau croisé élèves × exercices, qui existait mais vivait
+replié en bas d'une page de deux écrans — et **« Conseils »** : une phrase par
+élève, rangée par urgence, qui nomme la notion et jamais l'élève. La phrase et
+son rang viennent du noyau (`conseilDuRapport`), parce que deux échelles
+divergent : la première fois, « 4 questions seulement » s'affichait en vert.

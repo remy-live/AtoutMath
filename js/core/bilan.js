@@ -439,6 +439,74 @@ export function consigneClasse(b) {
     return `Revoir avec toute la classe : ${noms}.`;
 }
 
+/**
+ * UN CONSEIL PAR ÉLÈVE, SUR LE TERME — et non sur une séance.
+ *
+ * RÉMY : « Et pour les bilans, propose des onglets, fais le au parcours, de
+ * manière globale, une conseil pour chaque élève. »
+ *
+ * ── POURQUOI UNE DEUXIÈME FONCTION, APRÈS `consigneDe` ───────────────────
+ *
+ * `consigneDe` lit le bilan d'UNE SÉANCE — questions, étapes inachevées,
+ * erreur têtue. Celle-ci lit la ligne du RAPPORT DE CLASSE, qui ne porte ni
+ * séance ni étapes : des compétences fragiles, un taux, des erreurs jamais
+ * reprises, une dernière venue. Ce ne sont pas les mêmes données, et une
+ * fonction qui prétendrait lire les deux formes mentirait sur l'une.
+ *
+ * L'ORDRE DES CAS EST L'ORDRE DES PRIORITÉS, comme pour `consigneDe` :
+ *
+ *   1. il n'est jamais venu — aucun conseil de travail n'a de sens tant que
+ *      l'élève n'est pas entré ; ce qui manque est son code, pas une notion ;
+ *   2. il n'a rien fait — rien à réviser tant qu'on n'a pas travaillé ;
+ *   3. une erreur jamais reprise — elle se corrige en deux minutes quand on
+ *      la voit, et elle fausse tout le reste tant qu'elle est là ;
+ *   4. trop peu de questions pour conclure — dire « 40 % » sur six questions
+ *      est un chiffre juste et une conclusion fausse ;
+ *   5. les notions fragiles, nommées ;
+ *   6. rien de fragile : on peut ouvrir la suite.
+ *
+ * ELLE NOMME LA NOTION, JAMAIS L'ÉLÈVE : « Doit réviser : les relatifs » se
+ * recopie sur un cahier de textes, « est en difficulté » n'apprend rien à
+ * personne et ne se recopie nulle part.
+ *
+ * ELLE REND SON RANG AVEC SA PHRASE, et c'est tout le point : l'écran range
+ * les élèves par urgence et teinte le filet de chaque ligne. S'il redérivait
+ * ce rang de son côté, il y aurait deux échelles à tenir d'accord — et la
+ * première fois qu'elles ont divergé, « trop peu de questions » s'affichait
+ * en VERT, c'est-à-dire « rien à signaler ».
+ *
+ * @returns {{rang:number, phrase:string}} 0 = le plus urgent, 5 = rien à faire
+ */
+export function conseilDuRapport(ligne) {
+    const l = ligne || {};
+    const questions = Number(l.totalQuestions || 0);
+    if (!l.lastSeenAt && !questions) {
+        return { rang: 0, phrase: 'Ne s\'est jamais connecté : lui redonner son code.' };
+    }
+    if (!questions) {
+        return { rang: 1, phrase: 'N\'a pas encore travaillé : commencer par une séance courte.' };
+    }
+    const ouvertes = Number(l.openErrors || 0);
+    if (ouvertes > 0) {
+        return { rang: 2, phrase: `${ouvertes} erreur${ouvertes > 1 ? 's' : ''} jamais reprise`
+            + `${ouvertes > 1 ? 's' : ''} : les revoir avec lui ou elle.` };
+    }
+    if (questions < RELIABLE_MIN_ATTEMPTS) {
+        return { rang: 4, phrase: `${questions} question${questions > 1 ? 's' : ''} seulement : `
+            + 'trop tôt pour conclure.' };
+    }
+    const faibles = (l.weakSkills || []).map(w => nomCompetence(w.skillId)).filter(Boolean);
+    if (faibles.length) {
+        return { rang: 3, phrase: `Doit réviser : ${faibles.slice(0, 2).join(' et ')}.` };
+    }
+    const taux = l.successRate;
+    if (typeof taux === 'number' && taux < 0.5) {
+        return { rang: 3, phrase: 'Beaucoup d\'erreurs, sans notion qui ressorte : '
+            + 'reprendre avec lui ou elle.' };
+    }
+    return { rang: 5, phrase: 'Rien à reprendre : on peut ouvrir de nouvelles notions.' };
+}
+
 /** La couleur d'une case du tableau, du plus fragile au plus sûr. */
 export function couleurNiveau(niveauKey) {
     return (LEVELS[niveauKey] || LEVELS.NA).color;

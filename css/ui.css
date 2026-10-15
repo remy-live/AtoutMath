@@ -4949,7 +4949,85 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 }
 /* Celle qui s'ouvre toute seule chez les élèves se distingue : c'est la seule
    de la liste qui agit en ce moment même. */
-.ec-seance--imposee { border-left-color: var(--primary); }
+/* LA SÉANCE EN COURS SE VOIT DE LOIN.
+
+   RÉMY : « la séance en cours, mets le fond d'une autre couleur ». Elle ne se
+   distinguait que par un filet de quatre pixels à gauche et par sa vignette
+   « en cours » — sur une liste de quinze séances empilées, cela ne se voit
+   pas. Le fond, lui, se voit avant même qu'on ait lu. */
+.ec-seance--imposee {
+    border-left-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 14%, var(--bg-panel));
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+/* ET LA LISTE DE POCHE DU DIRECT : prénom, identifiant, code, point vert.
+   Trois colonnes de largeur fixe, pour que l'oeil descende la colonne des
+   codes sans la chercher — c'est le seul geste qu'on fait avec. */
+.ec-poche {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 2px 14px; max-height: 44vh; overflow-y: auto;
+}
+.ec-poche-eleve {
+    display: grid; grid-template-columns: 10px 1fr auto auto;
+    align-items: center; gap: 8px; padding: 3px 2px;
+    border-bottom: 1px solid var(--border);
+}
+.ec-poche-eleve b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-poche-eleve code { font-size: .78rem; color: var(--text-muted); }
+.ec-poche-eleve--ecarte { opacity: .5; }
+/* CE QUE CHAQUE ÉCRAN EST, sous sa rangée d'onglets. Discret : c'est une
+   phrase qu'on lit UNE fois, le jour où l'on se demande à quoi sert l'autre. */
+.ec-onglet-dit {
+    margin: 2px 0 10px; font-size: .82rem; color: var(--text-muted);
+}
+/* LES TROIS ONGLETS DES BILANS. Plus discrets que ceux de la classe : on est
+   déjà dans « Les bilans », ceux-ci ne font que choisir la lecture. */
+.ec-sous-onglets {
+    display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px;
+    border-bottom: 1px solid var(--border); padding-bottom: 8px;
+}
+.ec-sous-onglet {
+    font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer;
+    min-height: 36px; padding: 6px 14px; border-radius: 999px;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-muted);
+}
+.ec-sous-onglet--actif {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+}
+@media (hover: hover) {
+    .ec-sous-onglet:not(.ec-sous-onglet--actif):hover { color: var(--primary-texte); }
+}
+/* UNE PHRASE PAR ÉLÈVE, rangée par urgence. Le filet de gauche donne le ton
+   sans couleur de fond : vingt-six lignes colorées se liraient comme un
+   tableau de bord, alors que c'est une LISTE qu'on recopie. */
+.ec-conseils { display: flex; flex-direction: column; gap: 4px; }
+.ec-conseil {
+    display: grid; grid-template-columns: minmax(120px, 190px) 1fr; gap: 12px;
+    align-items: baseline; padding: 7px 10px; border-radius: 8px;
+    border-left: 4px solid var(--border); background: var(--bg-panel);
+}
+.ec-conseil b { font-weight: 800; }
+.ec-conseil span { color: var(--text-muted); }
+.ec-conseil--0, .ec-conseil--1 { border-left-color: var(--danger); }
+.ec-conseil--2 { border-left-color: var(--warning); }
+.ec-conseil--3 { border-left-color: var(--primary); }
+/* RANG 4 : « trop peu de questions pour conclure ». Ni rouge ni vert — il n'y
+   a rien à reprendre, mais rien n'est acquis non plus. */
+.ec-conseil--4 { border-left-color: var(--border); }
+.ec-conseil--5 { border-left-color: var(--success); }
+@media (max-width: 560px) {
+    .ec-conseil { grid-template-columns: 1fr; gap: 2px; }
+}
+/* LES CHAMPS D'UN OUTIL COMMENCENT TOUS AU MÊME ENDROIT.
+
+   RÉMY : « mieux aligner verticalement les input ». Chaque outil posait ses
+   champs dans un cadre qui avait sa propre marge : d'un outil à l'autre, les
+   premiers champs étaient décalés de quelques pixels, ce qui se voit
+   exactement quand on en ouvre deux. Le cadre intérieur n'a plus ni bord ni
+   marge (voir plus haut), et le corps porte la seule qui reste. */
+.ec-pilote-outil-corps > .ec-pilote-cadre,
+.ec-pilote-outil-corps > .ec-pilote-rangee { margin: 0; }
+.ec-pilote-outil-corps .ec-pilote-cadre { flex-wrap: wrap; row-gap: 8px; }
 .ec-seance-haut {
     display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
 }

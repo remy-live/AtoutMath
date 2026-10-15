@@ -144,6 +144,9 @@ import { ficheDeLEleve, gestesPossibles, pourquoiDebloquer } from '../core/fiche
 import { notionsAReprendre, notionsComprises, resumeDeClasse, enHeures,
     ORDRES_DU_BILAN, trieurDuBilan } from '../core/bilanClasse.js';
 import { tableauDesExercices, phraseDuTableau } from '../core/tableauDesExercices.js';
+// LE CONSEIL PAR ÉLÈVE vient du noyau : c'est lui qui porte l'ordre des
+// priorités, et il se vérifie sous Node. Rémy : « une conseil pour chaque élève ».
+import { conseilDuRapport } from '../core/bilan.js';
 import { levelFor } from '../core/mastery.js';
 import { detailDeLEleve } from '../core/detailDeLEleve.js';
 import { getSkill as laCompetence } from '../data/skills.js';
@@ -238,7 +241,9 @@ export async function ouvrirEspaceClasses() {
         // concis », et trente lignes de plus sous les yeux de qui ne les
         // cherche pas le défont. La séance choisie est `null` tant qu'on n'a
         // rien cliqué, ce qui veut dire « la dernière donnée », et non « aucune ».
-        detailBilan: false,
+        // L'ONGLET DE BILAN QU'ON LIT : d'ensemble, par séance, ou les
+        // conseils. Rémy : « pour les bilans, propose des onglets ».
+        sousBilan: 'ensemble',
         seanceDetail: null,
         // Et celui dont la ligne est dépliée dans Les bilans. Les deux écrans
         // ne se partagent pas ce souvenir : on n'y cherche pas la même chose.
@@ -285,6 +290,26 @@ export async function ouvrirEspaceClasses() {
 
     racine.addEventListener('click', (e) => {
         if (e.target.closest('[data-fermer]')) { partir(); return; }
+        // UN SEUL OUTIL DE L'HEURE OUVERT À LA FOIS.
+        //
+        // RÉMY : « mets des onglets c'est pas terrible ». Sur sa capture, trois
+        // outils étaient dépliés en même temps, chacun avec son titre et ses
+        // champs à une indentation différente : cela ne se lit pas comme une
+        // barre de commandes mais comme un empilement.
+        //
+        // L'attribut `name` des `details` le fait tout seul — mais seulement
+        // depuis Chrome 120, Safari 17.2 et Firefox 130. Un collège n'a pas
+        // forcément cela, et un onglet qui n'en est un que sur les navigateurs
+        // neufs n'en est pas un. Ces trois lignes referment donc les voisins
+        // partout, et la règle ne dépend plus du navigateur.
+        const tete = e.target.closest('.ec-pilote-outil > summary');
+        if (tete) {
+            const moi = tete.parentElement;
+            if (!moi.open) {          // il est sur le point de s'ouvrir
+                moi.parentElement.querySelectorAll('.ec-pilote-outil[open]')
+                    .forEach(d => { if (d !== moi) d.open = false; });
+            }
+        }
         brancher(e, redessiner);
     });
     // DOUBLE-CLIC SUR CE QU'ON LIT.
@@ -829,8 +854,33 @@ function classeHtml() {
         ${onglet('liste', 'Les élèves')}
         ${onglet('bilans', 'Les bilans')}
     </nav>
+    <!-- CE QUE CHAQUE ÉCRAN EST, ÉCRIT SOUS SON ONGLET.
+         RÉMY : « J'ai du mal à voir la différence avec les murs et le
+         direct ». Les deux montrent la même classe à la même seconde, et
+         rien ne disait pour quoi faire. Ce sont deux POSTURES : le direct
+         se lit assis, une ligne par élève, avec les commandes sous la
+         main ; le mur se lit debout, du fond de la salle, et ne règle
+         rien. Une ligne sous l'onglet coûte moins qu'un écran de plus. -->
+    <p class="ec-onglet-dit">${esc(DIT_ONGLET[vue.onglet] || DIT_ONGLET.direct)}</p>
     <div class="ec-corps">${corps}</div>`;
 }
+
+/**
+ * CE QUE CHAQUE ÉCRAN EST — une phrase, sous son onglet.
+ *
+ * Elles disent une POSTURE, pas une liste de boutons : c'est ce qui manquait à
+ * Rémy entre le direct et le mur, qui montrent pourtant la même classe.
+ */
+const DIT_ONGLET = {
+    direct: 'Assis : une ligne par élève, et les commandes de l\'heure sous la main.',
+    mur: 'Debout : les mêmes élèves en tuiles de couleur, lisibles du fond de la '
+        + 'salle. On regarde, on ne règle rien.',
+    seances: 'Ce que vous avez donné à cette classe. Celle qui est en cours est '
+        + 'sur fond coloré.',
+    liste: 'Les prénoms, les identifiants et les codes — et c\'est ici qu\'on '
+        + 'ajoute un élève.',
+    bilans: 'Ce que la classe a travaillé, et ce qu\'il faudrait reprendre.'
+};
 
 // --- Onglet « Le direct » ---------------------------------------------------
 
@@ -1587,6 +1637,31 @@ function quandLisible(quand) {
 // avec qui ». Ce qui suit répond à celle-là d'abord, et donne le tableau
 // ensuite.
 
+/**
+ * LES BILANS, EN TROIS ONGLETS.
+ *
+ * RÉMY : « Et pour les bilans, propose des onglets, fais le au parcours, de
+ * manière globale, une conseil pour chaque élève. »
+ *
+ * ── CE QUE CHACUN RÉPOND, ET POURQUOI ILS NE TIENNENT PAS SUR UN ÉCRAN ────
+ *
+ *   D'ENSEMBLE  où en est la classe sur le TERME : le taux, ce qu'il faut
+ *               reprendre, ce qui est acquis, et le tableau des élèves.
+ *   PAR SÉANCE  ce qu'a donné UNE séance, exercice par exercice. C'est le
+ *               seul qui dise si un exercice a résisté à toute la classe —
+ *               un taux global ne peut pas le dire. Il existait déjà, mais
+ *               derrière un interrupteur replié que personne n'ouvrait.
+ *   CONSEILS    une phrase par élève, à recopier sur le cahier de textes.
+ *
+ * LES TROIS LISTES SONT LONGUES : empilées, le tableau de la classe commençait
+ * à deux écrans du haut, et les conseils n'existaient pas faute de place.
+ */
+const SOUS_BILANS = [
+    ['ensemble', 'D\'ensemble'],
+    ['seance', 'Par séance'],
+    ['conseils', 'Conseils']
+];
+
 function bilansHtml() {
     if (!vue.bilans) return '<div class="ec-vide">On rassemble les bilans…</div>';
     if (vue.bilans.erreur) return `<div class="ec-vide">${esc(vue.bilans.erreur)}</div>`;
@@ -1596,15 +1671,59 @@ function bilansHtml() {
         return `<div class="ec-vide ec-vide--invite">
             <p class="ec-vide-grand">Aucun élève dans cette classe.</p></div>`;
     }
+    const quel = vue.sousBilan || 'ensemble';
+    const barre = `<nav class="ec-sous-onglets" role="tablist" aria-label="Le bilan à lire">
+        ${SOUS_BILANS.map(([cle, mot]) => `<button type="button" role="tab"
+            class="ec-sous-onglet${quel === cle ? ' ec-sous-onglet--actif' : ''}"
+            aria-selected="${quel === cle ? 'true' : 'false'}"
+            data-sous-bilan="${cle}">${esc(mot)}</button>`).join('')}
+    </nav>`;
+
+    if (quel === 'seance') return barre + detailParExerciceHtml(lignes);
+    if (quel === 'conseils') return barre + conseilsHtml(lignes);
+
     const r = resumeDeClasse(lignes);
     const notions = notionsAReprendre(lignes);
-
-    return resumeHtml(r)
+    return barre
+        + resumeHtml(r)
         + barreDuBilanHtml()
         + reprendreHtml(notions, r.eleves)
         + comprisHtml(notionsComprises(lignes), r.eleves)
-        + tableauBilanHtml(lignes)
-        + detailParExerciceHtml(lignes);
+        + tableauBilanHtml(lignes);
+}
+
+/**
+ * UNE PHRASE PAR ÉLÈVE — celle qu'on recopie sur le cahier de textes.
+ *
+ * RÉMY : « une conseil pour chaque élève ».
+ *
+ * LA PHRASE EST CALCULÉE DANS LE NOYAU (`conseilDuRapport`), pas ici : c'est
+ * elle qui porte l'ordre des priorités — jamais venu, rien fait, erreur jamais
+ * reprise, trop peu de questions, notions fragiles — et elle se vérifie sous
+ * Node, ligne par ligne.
+ *
+ * RANGÉS PAR URGENCE, et non par ordre alphabétique : la question qu'on pose à
+ * cet écran est « avec qui dois-je reprendre quelque chose ? », et vingt-six
+ * noms dans l'ordre du registre ne la répondent pas.
+ */
+function conseilsHtml(lignes) {
+    // LE RANG VIENT AVEC LA PHRASE, et ne se redérive pas ici : deux échelles
+    // à tenir d'accord divergent, et la première fois qu'elles l'ont fait,
+    // « trop peu de questions » s'affichait en VERT.
+    const rangs = lignes.map(l => ({ ...conseilDuRapport(l), eleve: l }))
+        .sort((a, b) => a.rang - b.rang
+            || (a.eleve.firstName || '').localeCompare(b.eleve.firstName || '', 'fr'));
+    return `<section class="ec-bloc">
+        <p class="ec-note ec-note--bloc">Une phrase par élève, rangée par urgence —
+           celle qu'on recopie sur le cahier de textes. Elle nomme la notion, jamais
+           l'élève.</p>
+        <div class="ec-conseils">
+            ${rangs.map(c => `<div class="ec-conseil ec-conseil--${c.rang}">
+                <b>${esc(c.eleve.firstName || '?')}</b>
+                <span>${esc(c.phrase)}</span>
+            </div>`).join('')}
+        </div>
+    </section>`;
 }
 
 function resumeHtml(r) {
@@ -1825,20 +1944,15 @@ function seanceDuDetail() {
  * phrase. Ici, on ne fait que poser le HTML.
  */
 function detailParExerciceHtml(lignes) {
-    const ouvert = !!vue.detailBilan;
-    const bascule = `<button type="button"
-            class="reglage-interrupteur${ouvert ? ' reglage-interrupteur--actif' : ''}"
-            data-detail-bilan="${ouvert ? '0' : '1'}" aria-pressed="${ouvert}">
-            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
-            <span class="reglage-interrupteur-mot">Le détail, exercice par exercice</span>
-        </button>`;
-
-    if (!ouvert) {
-        return `<section class="ec-bloc">${bascule}
-            <p class="ec-note ec-note--bloc">Vos élèves en lignes, les exercices d'une
-               séance en colonnes. C'est ce qui dit si UN exercice a résisté à toute la
-               classe — ce qu'un taux global ne peut pas dire.</p></section>`;
-    }
+    // L'INTERRUPTEUR A DISPARU AVEC L'ONGLET QUI LE REMPLACE.
+    //
+    // Ce tableau vivait derrière un interrupteur replié, en bas d'une page de
+    // deux écrans : pour le voir il fallait savoir qu'il existait. Rémy :
+    // « propose des onglets, fais le au parcours ». Un onglet EST la bascule,
+    // et il dit en plus ce qu'il y a derrière.
+    const bascule = '<p class="ec-note ec-note--bloc">Vos élèves en lignes, les '
+        + 'exercices d\'une séance en colonnes. C\'est ce qui dit si UN exercice a '
+        + 'résisté à toute la classe — ce qu\'un taux global ne peut pas dire.</p>';
 
     const seances = seancesPourLeDetail();
     if (!seances.length) {
@@ -2346,7 +2460,7 @@ function barrePiloteHtml() {
              cocher sans message laisserait l'élève devant un écran muet, et
              deux appels séparés laisseraient une seconde où c'est fermé sans
              que rien ne l'explique. -->
-        <details class="ec-pilote-outil">
+        <details class="ec-pilote-outil" name="outils-de-l-heure">
             <summary class="ec-pilote-outil-tete">🏠 Hors séance${info.hors_seance
                 ? ' <b class="ec-pilote-outil-vif">· fermé</b>' : ''}</summary>
             <div class="ec-pilote-outil-corps">
@@ -2383,7 +2497,7 @@ function barrePiloteHtml() {
              volée), la durée, et la façon de répondre — « il faut taper la
              réponse ou QCM, aux choix ». Le reste est au serveur : la graine,
              les deux instants, et le classement. -->
-        <details class="ec-pilote-outil"${defiCourt ? ' open' : ''}>
+        <details class="ec-pilote-outil" name="outils-de-l-heure"${defiCourt ? ' open' : ''}>
             <summary class="ec-pilote-outil-tete">⚡ Défi de la classe${defiCourt
                 ? ' <b class="ec-pilote-outil-vif">· en cours</b>' : ''}</summary>
             <div class="ec-pilote-outil-corps">
@@ -2429,7 +2543,7 @@ function barrePiloteHtml() {
             </div>
         </details>
 
-        <details class="ec-pilote-outil"${enCours ? ' open' : ''}>
+        <details class="ec-pilote-outil" name="outils-de-l-heure"${enCours ? ' open' : ''}>
             <summary class="ec-pilote-outil-tete">⏱ Compte à rebours${enCours
                 ? ` <b class="ec-pilote-outil-vif ec-chrono-reste">${enMinutes(resteDuChrono(ch))}</b>`
                 : ''}</summary>
@@ -2443,7 +2557,6 @@ function barrePiloteHtml() {
                  décompte lui-même, gros et lisible à bout de bras : ce n'est
                  plus le moment de régler, c'est le moment de lire. -->
             <span class="ec-pilote-cadre" role="group" aria-label="Compte à rebours">
-                <span class="ec-pilote-eti">⏱ Compte à rebours</span>
                 ${enCours ? `
                 <b class="ec-chrono-reste${resteDuChrono(ch) <= 60 ? ' ec-chrono-reste--court' : ''}"
                    role="timer" aria-live="off">${enMinutes(resteDuChrono(ch))}</b>
@@ -2478,7 +2591,7 @@ function barrePiloteHtml() {
                  destinataires : toute la classe, ou les élèves cochés dans la
                  liste en dessous. L'étiquette dit lequel, parce qu'accorder à
                  trente en croyant accorder à quatre ne se voit qu'après. -->
-        <details class="ec-pilote-outil">
+        <details class="ec-pilote-outil" name="outils-de-l-heure">
             <summary class="ec-pilote-outil-tete">🧮 Calculatrice${(vue.reglages || []).some(x => x.mode === 'calculatrice')
                 ? ' <b class="ec-pilote-outil-vif">· accordée</b>' : ''}</summary>
             <div class="ec-pilote-outil-corps">
@@ -2498,7 +2611,7 @@ function barrePiloteHtml() {
             </div>
         </details>
 
-        <details class="ec-pilote-outil">
+        <details class="ec-pilote-outil" name="outils-de-l-heure">
             <summary class="ec-pilote-outil-tete">🧰 Bac à sable${bacDeLaClasse()
                 ? '' : ' <b class="ec-pilote-outil-vif">· ouvert</b>'}</summary>
             <div class="ec-pilote-outil-corps">
@@ -2545,7 +2658,20 @@ function barrePiloteHtml() {
             </div>
         </details>
 
-        <details class="ec-pilote-outil ec-pilote-plus">
+        <!-- LA LISTE DE LA CLASSE, SANS QUITTER LE DIRECT.
+             RÉMY : « et un onglet aussi avec la liste de classe ». Ce qu'on
+             cherche là-dedans en plein cours n'est pas la liste pour elle-même
+             — elle a son écran — mais LE CODE D'UN ÉLÈVE qui n'arrive pas à
+             entrer, pendant que les vingt-neuf autres travaillent. Aller le
+             chercher dans « Les élèves » coûte de quitter le direct, donc de
+             perdre les vingt-neuf de vue. -->
+        <details class="ec-pilote-outil" name="outils-de-l-heure">
+            <summary class="ec-pilote-outil-tete">👥 La liste${(vue.liste && vue.liste.eleves)
+                ? ` <b class="ec-pilote-outil-vif">· ${vue.liste.eleves.length}</b>` : ''}</summary>
+            <div class="ec-pilote-outil-corps">${listeDePoche()}</div>
+        </details>
+
+        <details class="ec-pilote-outil ec-pilote-plus" name="outils-de-l-heure">
             <summary class="ec-pilote-outil-tete">✍ Le mot au tableau · dispenses${info.notice
                 ? ' <b class="ec-pilote-outil-vif">· affiché</b>' : ''}</summary>
             <div class="ec-pilote-plus-corps">
@@ -2617,6 +2743,43 @@ function barrePiloteHtml() {
  * moment où trente sortent leur calculatrice. L'étiquette suit donc les cases
  * cochées, et c'est elle qu'on relit avant d'appuyer.
  */
+/**
+ * LA LISTE DE POCHE — prénom, identifiant, code, et qui est en ligne.
+ *
+ * RÉMY : « et un onglet aussi avec la liste de classe ».
+ *
+ * ELLE NE REMPLACE PAS L'ÉCRAN « LES ÉLÈVES », et ne doit pas : on n'y ajoute
+ * personne, on n'y renomme rien, on n'imprime pas. C'est la liste qu'on sort
+ * de sa poche au milieu de l'heure pour redonner un code — rien de plus, et
+ * surtout rien qui demande à réfléchir.
+ *
+ * LE POINT VERT VIENT DU DIRECT, qui bat toutes les cinq secondes : celui qui
+ * n'arrive pas à entrer est justement celui qui n'a pas de point.
+ */
+function listeDePoche() {
+    const l = vue.liste;
+    if (!l) return '<p class="ec-note">On lit la liste…</p>';
+    const eleves = [...(l.eleves || [])].sort((a, b) =>
+        (a.prenom || '').localeCompare(b.prenom || '', 'fr'));
+    if (!eleves.length) {
+        return '<p class="ec-note">Personne dans cette classe pour l\'instant.</p>';
+    }
+    const maintenant = (vue.direct && vue.direct.maintenant) || 0;
+    const vuDe = new Map((vue.direct && vue.direct.eleves || []).map(e => [e.id, e.vu]));
+    const code = (l.classe && (l.classe.join_code || l.classe.joinCode)) || '';
+    return `
+    ${code ? `<p class="ec-note">Code de la classe : <b>${esc(code)}</b> — pour l'élève
+        qui n'arrive pas à entrer.</p>` : ''}
+    <div class="ec-poche">
+        ${eleves.map(e => `<span class="ec-poche-eleve${e.ecarte ? ' ec-poche-eleve--ecarte' : ''}">
+            <i class="ec-point${estEnLigne(vuDe.get(e.id), maintenant) ? ' ec-point--vert' : ''}"></i>
+            <b>${esc(e.prenom)}</b>
+            <code>${esc(e.login || '—')}</code>
+            <span class="ec-code ec-code--petit">${esc(e.code || '—')}</span>
+        </span>`).join('')}
+    </div>`;
+}
+
 function aQuiLaCalculatrice() {
     const n = elevesChoisis().length;
     if (!n) return 'à toute la classe';
@@ -2866,7 +3029,7 @@ async function brancher(e, redessiner) {
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
         + '[data-calc-eleve], [data-saut-tout], [data-bilan-eleve],'
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
-        + '[data-ordre-direct], [data-ordre-bilan], [data-detail-bilan], [data-bilan-pdf],'
+        + '[data-ordre-direct], [data-ordre-bilan], [data-sous-bilan], [data-bilan-pdf],'
         + '[data-effacer-signal]');
     if (!el) return;
     const d = el.dataset;
@@ -2917,13 +3080,14 @@ async function brancher(e, redessiner) {
         return;
     }
 
-    // ── LA BASCULE DU DÉTAIL : rien à demander au serveur non plus ──────────
+    // ── CHANGER D'ONGLET DE BILAN : rien à demander au serveur ──────────────
     //
-    // Le tableau croisé se calcule entièrement avec ce que `/teacher/report` a
-    // déjà rendu — chaque ligne porte son `parSeance`. Ouvrir le détail ne
-    // coûte donc pas une requête, et la bascule répond tout de suite.
-    if (d.detailBilan !== undefined) {
-        vue.detailBilan = d.detailBilan === '1';
+    // Les trois onglets se calculent entièrement avec ce que `/teacher/report`
+    // a déjà rendu — chaque ligne porte son `parSeance` et ses compétences
+    // fragiles. Changer d'onglet ne coûte donc pas une requête, et répond tout
+    // de suite.
+    if (d.sousBilan !== undefined) {
+        vue.sousBilan = d.sousBilan;
         redessiner();
         return;
     }
@@ -2944,7 +3108,9 @@ async function brancher(e, redessiner) {
             return;
         }
         const trier = trieurDuBilan(ordreDesBilans);
-        const choisie = vue.detailBilan ? seanceDuDetail() : null;
+        // LE PAPIER REPREND L'ONGLET QU'ON LIT : le tableau croisé n'entre
+        // dans le PDF que si c'est lui qu'on regarde.
+        const choisie = vue.sousBilan === 'seance' ? seanceDuDetail() : null;
         const { exporterBilanClassePdf } = await import('./bilanClassePdf.js');
         await exporterBilanClassePdf({
             classe: (vue.bilans && vue.bilans.class) || vue.classe,

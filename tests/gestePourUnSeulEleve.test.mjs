@@ -72,10 +72,23 @@ test('LE SAUT NE S\'ÉTEINT PAS ICI, ET C\'EST VOULU', () => {
     assert.ok(!/parcours/i.test(corps.slice(0, 400)),
         'le filtrage par parcours est revenu dans l\'ardoise');
     // Et le serveur, lui, le garde : voir `tools/testApi.php`, section 6.
-    assert.match(lire('api/lib/seance.php'), /\$sienne !== null && \$sienne !== \$imposeId/,
-        'le serveur ne filtre plus les sauts sur la séance imposée');
-    assert.match(lire('api/lib/seance.php'), /\$quand > 0 && \$quand <= time\(\)/,
-        'le serveur ne ferme plus les sauts à la fin de la journée');
+    // LA RÈGLE A DÉMÉNAGÉ DANS `reglageEnVigueur`, ET ELLE S'EST ÉLARGIE.
+    //
+    // RÉMY, plus tard : « pour une séance nouvelle, il faut réinitialiser les
+    // exercices que j'ai autorisé à passer ». Elle ne portait que sur le saut ;
+    // la calculatrice « pour toute la séance » traversait les vacances. Les
+    // trois modes passent donc par la même porte, et l'écran du professeur y
+    // passe aussi (`overridesDeLaClasse`), sans quoi il listait des
+    // permissions que personne n'avait plus.
+    const SEANCE = lire('api/lib/seance.php');
+    assert.match(SEANCE, /\$sienne !== null && \$sienne !== \$imposeId/,
+        'le serveur ne filtre plus les permissions sur la séance imposée');
+    assert.match(SEANCE, /\$quand > 0 && \$quand <= \$maintenant/,
+        'le serveur ne ferme plus les permissions à la fin de la journée');
+    assert.match(SEANCE, /if \(!reglageEnVigueur\(\$o, \$imposeId\)\) continue;/,
+        'les trois modes ne passent plus par la même règle');
+    assert.match(lire('api/index.php'), /reglageEnVigueur\(\$o, \$imposeId\)/,
+        'la liste du professeur ne filtre plus : elle montrera des permissions mortes');
 });
 
 test('SANS RÉGLAGE, RIEN — ni saut, ni calculatrice', () => {
@@ -162,8 +175,15 @@ test('ET ILS VALENT POUR LA SÉANCE EN COURS — c\'est ce que Rémy a demandé'
     assert.ok(!EC.includes('data-parcours='),
         'le bouton ne doit plus porter le parcours : le serveur le sait mieux');
     const API = lire('api/index.php');
-    assert.match(API, /\$laSeance = \$mode === 'saut' \? imposeEncoreValide\(\$classe\) : null;/,
+    // DEUX GESTES SONT « DE L'HEURE », depuis que Rémy a redemandé la même
+    // chose pour la calculatrice : « pour une séance nouvelle, il faut
+    // réinitialiser les exercices que j'ai autorisé à passer ». « Retirer »
+    // reste hors de la règle, et c'est voulu — c'est le geste de celui qui a
+    // constaté que l'exercice plante.
+    assert.match(API, /\$deLHeure = \$mode === 'saut' \|\| \$mode === 'calculatrice';/,
+        'la calculatrice n\'est plus rattachée à la séance');
+    assert.match(API, /\$laSeance = \$deLHeure \? imposeEncoreValide\(\$classe\) : null;/,
         'le serveur n\'écrit plus la séance imposée sur la permission');
-    assert.match(API, /\$jusqua = \$mode === 'saut' \? finDeLaJourneeScolaire\(\) : null;/,
+    assert.match(API, /\$jusqua = \$deLHeure \? finDeLaJourneeScolaire\(\) : null;/,
         'le serveur n\'écrit plus d\'échéance sur la permission');
 });

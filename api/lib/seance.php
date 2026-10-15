@@ -97,6 +97,46 @@ function finDeLaJourneeScolaire(?int $maintenant = null): int
  *
  * @param array $classe une ligne `classes`
  */
+/**
+ * CE QU'ON A ACCORDÉ EN DIRECT MEURT AVEC L'HEURE — LES TROIS GESTES.
+ *
+ * ── CE QU'IL FAUT SAVOIR AVANT DE LIRE ───────────────────────────────────
+ *
+ * RÉMY, première fois, sur le saut : « est ce possible si sur un parcours, j'ai
+ * autorisé à passer l'exercice, sur un autre parcours, cette même exercice peut
+ * se passer aussi, j'ai l'impression que c'est ce qui est arrivé d'une séance
+ * sur l'autre ? » C'était mesuré : oui. Puis : « attache le à la séance ».
+ *
+ * RÉMY, deuxième fois, capture à l'appui : « pour une séance nouvelle, il faut
+ * réinitialiser les exercices que j'ai autorisé à passer ». La règle n'était
+ * posée QUE SUR LE SAUT : la calculatrice accordée « pour toute la séance » et
+ * l'exercice retiré pour tous survivaient aux vacances. Or son écran les
+ * montrait tous les trois côte à côte, et rien ne distinguait le vivant du
+ * mort. La règle est donc la même pour les trois.
+ *
+ * ON FILTRE ICI PLUTÔT QUE CHEZ L'ÉLÈVE : l'ardoise ne sait ni quand la séance
+ * imposée expire, ni laquelle est en cours. Et l'écran du professeur appelle
+ * la MÊME fonction (`overridesDeLaClasse`), sans quoi il listerait des
+ * permissions que personne n'a plus.
+ *
+ *   · l'heure est passée — `expire_le` est derrière nous ;
+ *   · ou l'on a changé de séance — `seance_id` ne désigne plus celle qui est
+ *     imposée (ni aucune, si plus rien n'est imposé).
+ *
+ * UNE LIGNE SANS SÉANCE NI ÉCHÉANCE VAUT ENCORE : ce sont celles d'avant cette
+ * règle, et celles qu'on accorde hors séance. Les éteindre d'un coup
+ * retirerait à une classe une permission qu'elle est en train d'utiliser.
+ */
+function reglageEnVigueur(array $o, ?string $imposeId, ?int $maintenant = null): bool
+{
+    $maintenant = $maintenant ?? time();
+    $quand = (int) ($o['expire_le'] ?? 0);
+    if ($quand > 0 && $quand <= $maintenant) return false;
+    $sienne = ($o['seance_id'] ?? '') !== '' ? (string) $o['seance_id'] : null;
+    if ($sienne !== null && $sienne !== $imposeId) return false;
+    return true;
+}
+
 function imposeEncoreValide(array $classe, ?int $maintenant = null): ?string
 {
     $id = $classe['impose_path_id'] ?? null;
@@ -183,36 +223,12 @@ function etatDeSeance(array $eleve): array
     // un groupe ou aux élèves ». L'exercice `*` veut dire « toute la séance ».
     $calculatrice = [];
     foreach ($s->fetchAll() as $o) {
+        if (!reglageEnVigueur($o, $imposeId)) continue;
         if ($o['mode'] === 'calculatrice') {
             $calculatrice[$o['exercise_id']] = true;
         } elseif ($o['mode'] === 'retire') {
             $retire[$o['exercise_id']] = true;
         } else {
-            // ── LE SAUT S'ÉTEINT AVEC LA SÉANCE, ET LE SERVEUR LE SAIT SEUL ──
-            //
-            // RÉMY : « est ce possible si sur un parcours, j'ai autorisé à
-            // passer l'exercice, sur un autre parcours, cette même exercice
-            // peut se passer aussi, j'ai l'impression que c'est ce qui est
-            // arrivé d'une séance sur l'autre ? » C'était mesuré : oui. Puis :
-            // « attache le à la séance, pour le parcours on a déjà des sauts
-            // optionnels ».
-            //
-            // ON FILTRE ICI PLUTÔT QUE CHEZ L'ÉLÈVE, et c'est tout le sens de
-            // sa correction : l'ardoise ne sait pas quand la séance imposée
-            // expire, ni laquelle est en cours. Elle reçoit donc une liste
-            // d'identifiants, comme avant, et n'a rien à décider.
-            //
-            //   · l'heure est passée — `expire_le` est derrière nous ;
-            //   · ou l'on a changé de séance — `seance_id` ne désigne plus
-            //     celle qui est imposée.
-            //
-            // UNE LIGNE SANS ÉCHÉANCE VAUT ENCORE : ce sont celles d'avant
-            // cette règle, et les éteindre d'un coup retirerait à une classe
-            // une permission qu'elle est en train d'utiliser.
-            $quand = (int) ($o['expire_le'] ?? 0);
-            if ($quand > 0 && $quand <= time()) continue;
-            $sienne = ($o['seance_id'] ?? '') !== '' ? (string) $o['seance_id'] : null;
-            if ($sienne !== null && $sienne !== $imposeId) continue;
             $saut[$o['exercise_id']] = true;
         }
     }

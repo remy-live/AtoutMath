@@ -829,6 +829,41 @@ $s = json('/session', [], $lea)['json']['session'];
 verifier('ET IL TOMBE DÈS QU\'ON IMPOSE UNE AUTRE SÉANCE',
     !$sauteur($s, 'calc-sous'), json_encode($s['skippable'] ?? null));
 
+// ── LA CALCULATRICE AUSSI S'ÉTEINT AVEC LA SÉANCE ───────────────────────────
+//
+// RÉMY, capture à l'appui : « pour une séance nouvelle, il faut réinitialiser
+// les exercices que j'ai autorisé à passer ». Sur son écran, trois vignettes se
+// suivaient : deux calculatrices « pour toute la séance » accordées un autre
+// jour, et un saut déjà mort. La règle n'était posée que sur le saut — et la
+// liste du professeur, elle, montrait TOUT, vivant ou mort.
+$calculette = fn (array $s) => in_array('*', $s['calculatrice'] ?? [], true);
+// LA LISTE DU PROFESSEUR PASSE PAR `/teacher/override`, pas par
+// `/teacher/reglages` — qui, lui, porte les réglages du SITE. L'essai s'y est
+// trompé une fois, et a cru mesurer une liste vide.
+$lesReglagesDe = fn () => json('/teacher/override',
+    ['classId' => $classId, 'action' => 'list'], $jetonProf)['json']['reglages'] ?? [];
+$combienDeReglages = fn () => count($lesReglagesDe());
+
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $premiereSeance], $jetonProf);
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => '*',
+                           'mode' => 'calculatrice'], $jetonProf);
+verifier('LA CALCULATRICE ACCORDÉE PENDANT LA SÉANCE VAUT PENDANT LA SÉANCE',
+    $calculette(json('/session', [], $lea)['json']['session']));
+$avecCalculette = $combienDeReglages();
+verifier('et le professeur la voit dans sa liste', $avecCalculette >= 1, (string) $avecCalculette);
+
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $deuxiemeParcours], $jetonProf);
+verifier('ET ELLE TOMBE DÈS QU\'ON IMPOSE UNE AUTRE SÉANCE',
+    !$calculette(json('/session', [], $lea)['json']['session']));
+$apresLaSeance = $lesReglagesDe();
+verifier('ET ELLE QUITTE LA LISTE DU PROFESSEUR AVEC ELLE',
+    count($apresLaSeance) < $avecCalculette,
+    'avant ' . $avecCalculette . ' · après ' . json_encode(array_map(
+        fn ($x) => $x['mode'] . ':' . $x['exerciseId'], $apresLaSeance)));
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer', 'pathId' => ''], $jetonProf);
+
 // ── LE DIRECT MONTRE LA SÉANCE EN COURS, PAS CELLE D'HIER ───────────────────
 //
 // RÉMY : « quand je mets une nouvelle séance en cours, pour le direct, ce sont
