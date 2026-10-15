@@ -661,6 +661,23 @@ Trois gestes à distinguer, et le logiciel doit les séparer :
 À vérifier dans le catalogue avant d'écrire quoi que ce soit : « Virgule ou
 Fraction ? » et « Dizaines, Centaines, Milliers » touchent déjà les rangs.
 
+**Fait, le 15 au soir — « Compter l'Argent », code dicté AC.** Neuf marches en
+trois temps : les centimes seuls, puis les euros ET les centimes, puis un TAS
+de vraies pièces à compter. L'élève TAPE la réponse, parce que « il faut
+marquer 0,07 » demande d'écrire le zéro qui tient le rang — choisir entre 0,07
+et 0,7 serait une question voisine, pas celle-là. Le second indice est le
+tableau des rangs, avec le chiffre à sa colonne et la colonne vide qui reçoit
+son zéro.
+
+Et sa demande du lendemain : « il faut que les billets et les pièces soit super
+réalistes stp ». Les diamètres sont les vrais, au millimètre — la pièce de 5
+centimes est donc plus GRANDE que celle de 10, et celle de 1 euro plus petite
+que celle de 2 —, les trois métaux y sont, les douze étoiles aussi, et les
+billets portent leur couleur, leur drapeau, leur arche et leur bande
+holographique. Deux échelles, et c'est un choix mesuré : à l'échelle vraie, un
+billet de 50 € fait 140 mm contre 16 pour une pièce de 1 centime, et sur un
+téléphone la pièce devient un point de huit pixels.
+
 ## 2. Le défi chronométré de la classe
 
 > « en fait tu vois je peux lancer un challenge chronométré, le plus de calcul

@@ -412,13 +412,19 @@ export function defiEnCours(maintenant = Math.floor(Date.now() / 1000)) {
     const VRAIE_HEURE = 1.5e9;
     const ecart = (etat.maintenant > VRAIE_HEURE && etat.recuA > VRAIE_HEURE)
         ? (etat.maintenant - etat.recuA) : 0;
-    const reste = d.fin - (maintenant + ecart);
+    const ici = maintenant + ecart;
+    const reste = d.fin - ici;
     if (reste <= 0) return null;
     return {
         exo: d.exo,
         graine: d.graine,
         mode: d.mode === 'saisie' ? 'saisie' : 'qcm',
         debut: d.debut,
+        // COMBIEN DE SECONDES AVANT LE DÉPART — le serveur annonce le défi
+        // douze secondes à l'avance pour que les trente ardoises l'aient reçu
+        // avant qu'il commence. Tant que c'est positif, on ne pose aucune
+        // question : on montre le compte à rebours de l'annonce.
+        avant: Math.max(0, d.debut - ici),
         reste,
         duree: Math.max(1, d.fin - d.debut)
     };

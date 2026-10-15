@@ -1529,14 +1529,30 @@ function handleTeacherClass(): void
         // qu'elle soit la même pour tous, et personne ne peut la choisir pour
         // retomber sur une série qu'il connaît déjà.
         $graine = bin2hex(random_bytes(6));
-        $debut = time();
+        // ── LE DÉFI S'ANNONCE AVANT DE COMMENCER ────────────────────────────
+        //
+        // RÉMY : « ça se lance pareil pour tout le monde ? au même moment ? ».
+        //
+        // NON, ET CE N'ÉTAIT PAS VRAI SANS CECI. L'ardoise de l'élève interroge
+        // le serveur toutes les DIX SECONDES ; celle qui vient de le faire
+        // apprend le défi dix secondes après celle du voisin. Avec une fin
+        // commune, elle avait dix secondes de moins — sur une minute, un
+        // sixième du défi, et le classement ne comparait plus la même épreuve.
+        //
+        // ON ANNONCE DONC LE DÉPART DOUZE SECONDES PLUS TARD. Toutes les
+        // ardoises l'ont reçu avant qu'il commence ; chacune affiche le compte
+        // à rebours de l'annonce, et toutes démarrent À LA MÊME SECONDE. Douze
+        // et non dix : il faut que la plus en retard ait reçu le défi, pas
+        // qu'elle le reçoive pile à l'instant du départ.
+        $debut = time() + 12;
         db()->prepare('UPDATE classes SET defi_exo = ?, defi_graine = ?, defi_mode = ?,
                               defi_debut = ?, defi_fin = ? WHERE id = ?')
             ->execute([$exo, $graine, $mode, $debut, $debut + $secondes, $classe['id']]);
         respond(['ok' => true,
                  'defi' => ['exo' => $exo, 'graine' => $graine, 'mode' => $mode,
                             'debut' => $debut, 'fin' => $debut + $secondes],
-                 'dit' => 'Défi lancé : ' . $secondes . ' secondes pour toute la classe.']);
+                 'dit' => 'Défi annoncé : départ dans 12 secondes, puis '
+                        . $secondes . ' secondes pour toute la classe.']);
     }
 
     // LE COMPTE À REBOURS, ET SES DEUX ISSUES. Rémy : « pour le compte à

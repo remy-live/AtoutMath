@@ -2775,6 +2775,15 @@ verifier('ET LES DEUX ÉLÈVES REÇOIVENT LA MÊME GRAINE ET LA MÊME MINUTE',
 verifier('LE SERVEUR ÉCRIT LES DEUX INSTANTS, PAS UNE DURÉE',
     ($chezZoe['fin'] ?? 0) - ($chezZoe['debut'] ?? 0) === 60,
     ($chezZoe['fin'] ?? 0) - ($chezZoe['debut'] ?? 0) . ' s');
+// ── LE DÉPART EST ANNONCÉ, IL N'EST PAS IMMÉDIAT ───────────────────────────
+//
+// RÉMY : « ça se lance pareil pour tout le monde ? au même moment ? ». Sans
+// annonce, non : l'ardoise interroge le serveur toutes les dix secondes, et
+// celle qui vient de le faire apprend le défi dix secondes après celle du
+// voisin — avec une fin commune, elle a dix secondes de MOINS.
+verifier('LE DÉPART EST ANNONCÉ À L\'AVANCE, POUR QUE TOUS COMMENCENT ENSEMBLE',
+    ($chezZoe['debut'] ?? 0) > time() + 5,
+    'départ dans ' . (($chezZoe['debut'] ?? 0) - time()) . ' s');
 verifier('UNE DURÉE ABSURDE EST REFUSÉE',
     ($defiProf(['exo' => 'calc-add', 'secondes' => 4000])['code'] ?? 0) === 400);
 verifier('PENDANT, IL N\'Y A PAS DE TABLEAU DE SCORES',

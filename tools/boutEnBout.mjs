@@ -573,12 +573,15 @@ ok('IL SE POSE À CÔTÉ, ET N\'OUVRE AUCUNE FENÊTRE',
 console.log('\nLE DÉFI CHRONOMÉTRÉ');
 console.log('─'.repeat(64));
 
-// QUINZE SECONDES, PAS SOIXANTE : on ne fait pas attendre un harnais une
+// QUARANTE SECONDES, PAS SOIXANTE : on ne fait pas attendre un harnais une
 // minute pour voir un tableau de scores. C'est le serveur qui écrit la fin,
-// donc la durée courte ne change rien au mécanisme qu'on éprouve.
+// donc la durée courte ne change rien au mécanisme qu'on éprouve. MAIS PAS
+// QUINZE NON PLUS, et c'est une leçon payée : le départ est annoncé douze
+// secondes à l'avance, si bien qu'un défi de quinze secondes n'en laissait
+// que trois pour répondre.
 const defiLance = await prof.evaluate(async (cid) => {
     const { lancerLeDefi } = await import('./js/core/espaceProf.js');
-    const r = await lancerLeDefi(cid, 'calc-add', 15, 'qcm');
+    const r = await lancerLeDefi(cid, 'calc-add', 40, 'qcm');
     return !!(r && r.ok);
 }, classe.id);
 ok('le professeur lance le défi', defiLance);
@@ -596,8 +599,24 @@ ok('le défi arrive chez l\'élève, avec sa graine et son temps',
     !!arrive && arrive.exo === 'calc-add' && arrive.reste > 0 && arrive.graine,
     JSON.stringify(arrive));
 
+// LE DÉPART EST ANNONCÉ AVANT D'ARRIVER, et c'est la moitié du mécanisme.
+//
+// RÉMY : « ça se lance pareil pour tout le monde ? au même moment ? ».
+// L'ardoise interroge le serveur toutes les DIX secondes : sans annonce, celle
+// qui vient de le faire apprend le défi dix secondes après celle du voisin et
+// perd ces dix secondes-là. Le serveur fixe donc le départ douze secondes plus
+// tard, et chacun regarde le même compte à rebours tomber.
+await eleve.waitForTimeout(2500);
+const annonce = await eleve.evaluate(() => {
+    const a = document.querySelector('.defi-voile--annonce');
+    return { la: !!a, compte: a ? (a.querySelector('[data-compte]') || {}).textContent : '' };
+});
+ok('le départ est annoncé, et le compte à rebours tourne',
+    annonce.la && Number(annonce.compte) > 0, JSON.stringify(annonce));
+
 // L'ÉCRAN SE POSE PAR-DESSUS — et ce qu'il faisait reste monté DESSOUS.
-await eleve.waitForTimeout(3200);   // les trois secondes du départ, et la marge
+// ON ATTEND LE DÉPART ANNONCÉ : douze secondes, plus la marge.
+await eleve.waitForTimeout(11500);
 // ET L'ON EN GARDE UNE IMAGE : un compte de boutons dit que l'écran n'est pas
 // vide, jamais qu'il est lisible. C'est la photo qu'on regarde, pas le chiffre.
 await eleve.screenshot({ path: 'tools/tmp/defi-eleve.png' }).catch(() => {});

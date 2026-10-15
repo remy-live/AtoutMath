@@ -485,6 +485,21 @@ const BASE = {
             + '305/100 a deux zéros, donc deux décimales, donc 3,05. Attention au zéro qui '
             + 'tient le rang : 7/100 n\'est pas 0,7 mais 0,07.'
     },
+    'num.decimal.argent': {
+        label: 'Écrire un prix en euros',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.SIXIEME],
+        prereqs: ['num.numeration.rang'],
+        descriptor: 'Écrire en euros un montant donné en centimes, et compter un tas de pièces.',
+        lesson: 'Il faut CENT centimes pour faire un euro : un centime est donc un '
+            + 'CENTIÈME d\'euro, et le prix s\'écrit avec DEUX chiffres après la virgule. '
+            + '7 centimes, c\'est 7 centièmes : le 7 va dans la colonne des centièmes, et '
+            + 'la colonne des dixièmes, qui reste vide, reçoit un zéro — 0,07 €. Écrire '
+            + '0,7 € voudrait dire 7 dixièmes d\'euro, c\'est-à-dire 70 centimes. Dans '
+            + 'l\'autre sens : 70 centimes, ce sont 7 dixièmes, donc 0,70 €. Et quand il y '
+            + 'a des euros devant, rien ne change à droite de la virgule : 2 € et 5 '
+            + 'centimes font 2,05 €, pas 2,5 €.'
+    },
     'num.decimal.zeros': {
         label: 'Zéros inutiles',
         chemin: [D.NUMERIQUE, SD.DECIMAUX],

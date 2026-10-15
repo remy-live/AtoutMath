@@ -160,6 +160,32 @@ export const numerationExercises = [
         instruction: "Enlève les zéros inutiles — mais seulement ceux qui ne changent rien !"
     },
 
+    {
+        // COMPTER L'ARGENT — Rémy : « j'aimerai bien aussi un exercice où il
+        // faut compter l'argent et par exemple si j'ai 7 centimes, il faut
+        // marquer 0,07 ».
+        //
+        // CE N'EST PAS UN EXERCICE SUR L'ARGENT, C'EST L'EXERCICE SUR LES
+        // RANGS DÉCIMAUX — et l'euro en est le meilleur support qui existe :
+        // il a exactement deux décimales, la pièce de 1 centime EST le
+        // centième, et l'élève a déjà tenu ces pièces dans sa main.
+        //
+        // IL FAUT TAPER LA RÉPONSE, ET C'EST LE SUJET. Un QCM où l'on choisit
+        // entre 0,07 et 0,7 pose une question VOISINE mais pas celle-là : « il
+        // faut marquer 0,07 » demande d'ÉCRIRE le zéro qui tient le rang. D'où
+        // le pavé numérique, et sa virgule (`meta.decimal`).
+        id: 'num-argent',
+        cree: '2026-10-15',
+        consignePapier: 'Écris le prix en euros.',
+        colonnesPapier: 3,
+        title: 'Compter l\'Argent',
+        generatorId: 'num.argent', activityId: 'numpad',
+        motsClefs: ['argent', 'euros', 'centimes', 'prix', 'monnaie', 'pièces',
+            'billets', 'centièmes', 'dixièmes', 'virgule'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME] },
+        instruction: "Neuf marches, en trois temps. On écrit d'abord des centimes seuls (7 centimes, c'est 0,07 € — le zéro des dixièmes n'est pas décoratif), puis des dizaines de centimes, qui sont le piège INVERSE (70 centimes, c'est 0,70 € et non 0,07 €), puis des euros ET des centimes. LE DERNIER TEMPS COMPTE DE VRAIES PIÈCES : un tas est dessiné, à sa vraie taille et dans son vrai métal, et il faut trouver le total — c'est la seule façon de rencontrer les pièces de 20 et de 2 centimes. Le deuxième indice est un tableau de rangs qui montre où va chaque chiffre."
+    },
+
     // --- Décomposition et conversions (fiche § 10, 11, 18, 20, 21) ---
     {
         id: 'num-decomposition',

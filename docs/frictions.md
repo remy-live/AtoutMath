@@ -4625,3 +4625,26 @@ lignes** — 2026-10-01
 - *Ce qui manque* : fait. Le lecteur PHP range maintenant les DEUX formes du
   nom, entière et coupée au premier « — ». Il ne peut pas choisir : dans la
   course où elle tombe, l'épreuve n'imprime jamais son nom nu.
+
+---
+
+**La sonde ne sait pas RÉPONDRE : chaque exercice mesuré redemande la même
+trentaine de lignes** — 15 octobre 2026
+
+- *Ce que je voulais faire* : voir « Compter l'Argent » par le chemin de
+  l'élève, c'est-à-dire traverser ses neuf marches — un énoncé en toutes
+  lettres, un tas de pièces, un tableau de rangs sous l'indice. Donc répondre
+  JUSTE à chaque question, huit fois de suite.
+- *Ce qui a coûté* : trois essais ratés avant que la sonde avance d'une seule
+  question. Il a fallu retrouver que la réponse attendue se lit dans
+  `window.__sondeRunner.session.item.answer`, que les touches du pavé portent
+  `[data-key]` et le bouton `[data-validate]`, que la carte de correction
+  bloque le clic suivant tant qu'on n'a pas cliqué `.fb-close` — ce qui
+  ressemble à « element is not visible » et fait chercher ailleurs —, et que
+  `page.click` échoue là où un `.click()` dans `evaluate` passe.
+- *Combien de fois* : ||| (la même boucle réécrite pour le tableau croisé, pour
+  le détour par le nombre rond, et pour celui-ci)
+- *Ce qui manque* : `s.repondreJuste()` dans `tools/sonde.mjs` — elle lit la
+  réponse dans le meneur, la tape sur le pavé OU clique le bon choix selon
+  l'activité, ferme la carte de correction et rend la question suivante. Trois
+  exercices sur trois en ont eu besoin ; le quatrième l'écrira aussi.

@@ -57,6 +57,10 @@ export const CODES_EXERCICES = {
     'num-relatifs-melange':       'SX',   // Somme ou produit ? — Somme et le signe ×
     'num-relatifs-melange-sprint': 'RX',  // Réflexe des signes — le même, contre la montre
     'num-relatifs-melange-arcade': 'VX',  // Attrape le bon signe — le même, en arcade
+    // « CA » (Canon des compléments) et « AR » (Additionner des Relatifs) étaient
+    // pris, et toutes les initiales de « Compter » aussi : A comme Argent, C
+    // comme Centimes.
+    'num-argent':                 'AC',   // Compter l'Argent — les Centimes
     'calc-detour-rond':           'DN',   // le Détour par le Nombre rond
     'calc-detour-sprint':         'DJ',   // Détour express — le même, chrono
     'calc-detour-arcade':         'NB',   // attrape le détour — Nombre à Battre

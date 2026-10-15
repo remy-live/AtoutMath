@@ -130,17 +130,25 @@ async function jouer(defi) {
         <div class="defi-carte">
             <div class="defi-titre">⚡ DÉFI DE LA CLASSE</div>
             <div class="defi-exo">${echapper(exo ? exo.title : defi.exo)}</div>
-            <div class="defi-compte" data-compte>3</div>
-            <div class="defi-sous">Tout le monde répond en même temps.</div>
-        </div>`);
-    // TROIS SECONDES AVANT DE COMMENCER : sans elles, l'élève qui était en
-    // train d'écrire voit une question apparaître sous ses doigts et répond au
-    // hasard. Le compte à rebours ne mange pas son temps — l'horloge du défi
-    // part du serveur, et ces trois secondes-là sont les mêmes pour tous.
+            <div class="defi-compte" data-compte>${Math.max(1, defi.avant)}</div>
+            <div class="defi-sous">Tout le monde commence en même temps.</div>
+        </div>`, 'defi-voile--annonce');
+    // L'ANNONCE, ET ELLE EST LA MOITIÉ DU MÉCANISME.
+    //
+    // RÉMY : « ça se lance pareil pour tout le monde ? au même moment ? ».
+    // L'ardoise interroge le serveur toutes les DIX secondes : sans annonce,
+    // celle qui vient de le faire apprenait le défi dix secondes après celle du
+    // voisin, et perdait ces dix secondes-là. Le serveur fixe donc le départ
+    // douze secondes plus tard, et chacun regarde le même compte à rebours
+    // tomber. ON LE RELIT SUR L'HORLOGE DU SERVEUR à chaque tour, pour la même
+    // raison qu'ailleurs : un onglet en arrière-plan fige les minuteurs.
     const compte = voile.querySelector('[data-compte]');
-    for (let i = 3; i > 0; i--) {
-        compte.textContent = String(i);
-        await dormir(700);
+    for (;;) {
+        const d = defiEnCours();
+        if (!d) { voile.remove(); enCours = false; return; }
+        if (d.avant <= 0) break;
+        compte.textContent = String(d.avant);
+        await dormir(250);
     }
     voile.remove();
     await questionner(defi, exo);
@@ -182,7 +190,9 @@ async function questionner(defi, exo) {
     // de plus que son voisin.
     const tic = setInterval(() => {
         const d = defiEnCours();
-        const reste = d ? d.reste : 0;
+        // APRÈS L'ANNONCE, `reste` compte la vraie minute : le défi a commencé
+        // à la seconde où le serveur l'avait dit, chez les trente.
+        const reste = d ? Math.min(d.reste, defi.duree) : 0;
         el('[data-reste]').textContent = String(Math.max(0, reste));
         el('[data-jauge]').style.width = `${Math.max(0, Math.min(100, (reste / defi.duree) * 100))}%`;
         if (reste <= 0 && !fini) { fini = true; terminer(); }
