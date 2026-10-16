@@ -60,7 +60,7 @@
 // c'est l'écran qui les peint.
 
 import {
-    imageFigure, memeFigure, cleFigure, decrire, nommerAxe, ecrireDemi, SENS
+    imageFigure, memeFigure, cleFigure, decrire, nommerAxe, ecrireDemi, sensDe
 } from './transformations.js';
 import { makeRng } from './ids.js';
 
@@ -144,7 +144,14 @@ export function direTransformation(t) {
         // « et de ${direLeSens(…)} » donnait « et de LE sens direct » : direLeSens
         // rend déjà l'article. On prend le mot seul — et c'est exactement la
         // formule de la fiche de Rémy, « d'angle 90° de sens indirect ».
-        return `la rotation de centre ${t.nomCentre}, d'angle 90° et de sens ${SENS[((t.quarts % 4) + 4) % 4].nom}`;
+        // L'ORDONNÉE MONTE SUR UNE MOSAÏQUE, à l'écran comme sur la feuille :
+        // `Y(y) = y1 - y` dans l'activité, `y0 + (bo.y1 - y) * pas` sur la
+        // fiche. Le sens VU est donc l'inverse de celui du quadrillage, et
+        // c'est `sensDe` qui porte la question — voir le commentaire qu'elle
+        // emporte, et la mesure de Rémy : « je pense que tu fais une erreur sur
+        // le sens direct et indirect », douze fois sur douze.
+        return `la rotation de centre ${t.nomCentre}, d'angle 90° et de sens `
+            + sensDe(t.quarts, { ordonneeMonte: true }).nom;
     }
     return decrire(t);
 }

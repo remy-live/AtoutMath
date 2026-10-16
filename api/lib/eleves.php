@@ -456,11 +456,55 @@ function derniereActivite(string $eleveId, ?string $identiteSeance = null,
         return false;
     };
     $s = db()->prepare(
-        'SELECT type, ts, payload FROM events WHERE student_id = ?
+        'SELECT seq, type, ts, payload FROM events WHERE student_id = ?
          ORDER BY seq DESC LIMIT 200'
     );
     $s->execute([$eleveId]);
     $lignes = $s->fetchAll();
+
+    // ── ET LES BORNES DES TRAVAUX PLUS ANCIENS QUE LA FENÊTRE ──────────────
+    //
+    // RÉMY : « j'ai l'impression que quand un élève a fini et qu'il joue à
+    // autre chose cela marque pas commencé sur le direct ».
+    //
+    // C'EST LE REVERS DE LA CORRECTION DE LA VEILLE. Depuis qu'on ne regarde
+    // plus que les travaux DE LA SÉANCE, il faut en trouver un — et on les
+    // cherchait dans les deux cents derniers événements. Celui qui a FINI puis
+    // qui joue en produit bien davantage : son propre travail sortait de la
+    // fenêtre, plus rien ne correspondait à la séance, et la barre retombait à
+    // « Pas commencé ». L'élève qui a tout fait est le dernier qu'on doive
+    // afficher comme n'ayant rien fait. MESURÉ : 250 événements de jeu après
+    // une séance terminée suffisaient, et c'est une fin d'heure ordinaire.
+    //
+    // ON N'ÉLARGIT PAS LA FENÊTRE, ON AJOUTE LES BORNES. Lire mille événements
+    // par élève et par battement, pour trente élèves toutes les cinq secondes,
+    // coûterait trente fois plus de déchiffrements pour une information qui
+    // tient dans trois événements. Les types qui DÉLIMITENT un travail —
+    // son départ (qui porte le plan et le nom), ses étapes, sa fin — sont peu
+    // nombreux : deux par parcours, plus une par étape. Cent cinquante en
+    // couvrent une dizaine, soit plusieurs semaines de séances.
+    //
+    // ET ON GARDE LES DEUX : la fenêtre récente porte les `attempt`, dont
+    // l'avancement a besoin pour dire « 7 questions sur 10 » d'un travail EN
+    // COURS ; les bornes portent les travaux ANCIENS, dont il suffit de savoir
+    // qu'ils sont finis.
+    if ($identiteSeance !== null || ($nomSeance !== null && $nomSeance !== '')) {
+        $b = db()->prepare(
+            "SELECT seq, type, ts, payload FROM events WHERE student_id = ?
+               AND type IN ('run_started', 'run_finished', 'step_completed')
+             ORDER BY seq DESC LIMIT 150"
+        );
+        $b->execute([$eleveId]);
+        $vus = [];
+        foreach ($lignes as $l) $vus[(int) $l['seq']] = true;
+        foreach ($b->fetchAll() as $l) {
+            if (isset($vus[(int) $l['seq']])) continue;
+            $lignes[] = $l;
+        }
+        // DU PLUS RÉCENT AU PLUS ANCIEN, comme la première requête les rendait :
+        // la boucle de l'exercice en cours compte là-dessus.
+        usort($lignes, fn ($a, $c) => (int) $c['seq'] <=> (int) $a['seq']);
+    }
 
     // Les événements remis À L'ENDROIT pour la projection : `runsOf` lit une
     // histoire, pas une pile.

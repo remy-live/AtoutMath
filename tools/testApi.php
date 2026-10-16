@@ -876,6 +876,56 @@ $s = json('/session', [], $lea)['json']['session'];
 verifier('ET IL TOMBE DÈS QU\'ON IMPOSE UNE AUTRE SÉANCE',
     !$sauteur($s, 'calc-sous'), json_encode($s['skippable'] ?? null));
 
+// ── MAIS « RETIRER » NE S'ÉTEINT PAS, ET IL TRAVERSE LES PARCOURS ──────────
+//
+// RÉMY : « il faut que des exercices dispensé sur un parcours soient dispensé
+// dans un autre parcours. Parfois un exercice bugge et je ne peux pas le
+// retirer dans dispenser toute la classe d'un exercice car il n'apparait pas
+// dans la liste déroulante ».
+//
+// LA RÈGLE QU'IL DEMANDE EXISTAIT DÉJÀ, et c'est ce qui rendait sa remarque
+// difficile à lire : le saut et la calculatrice sont des gestes de l'heure,
+// « retirer » non — un exercice qu'on retire parce qu'il PLANTE plante aussi
+// la semaine prochaine. Ce qui manquait n'était pas la règle, c'était le
+// MOYEN DE L'ATTEINDRE : la liste déroulante ne proposait que les exercices de
+// la séance en cours, donc jamais celui d'un parcours qu'on n'a pas encore
+// donné. Voir `groupesDExercices` dans js/ui/espaceClasses.js.
+//
+// ON LE MESURE QUAND MÊME, parce qu'une règle qu'on croit acquise est une
+// règle que personne ne garde : celle-ci tient à une seule ligne
+// (`$deLHeure`), et la prochaine demande d'échéance l'emporterait sans bruit.
+$retire = fn (array $s, string $exo) => in_array($exo, $s['removed'] ?? [], true);
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $premiereSeance], $jetonProf);
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'num-egypte',
+                           'mode' => 'retire'], $jetonProf);
+verifier('UN EXERCICE RETIRÉ L\'EST POUR LA CLASSE',
+    $retire(json('/session', [], $lea)['json']['session'], 'num-egypte'));
+
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $deuxiemeParcours], $jetonProf);
+verifier('ET IL LE RESTE SUR LE PARCOURS SUIVANT — il bugge aussi là-bas',
+    $retire(json('/session', [], $lea)['json']['session'], 'num-egypte'),
+    json_encode(json('/session', [], $lea)['json']['session']['removed'] ?? null));
+
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer', 'pathId' => ''], $jetonProf);
+verifier('ET MÊME SANS AUCUNE SÉANCE IMPOSÉE',
+    $retire(json('/session', [], $lea)['json']['session'], 'num-egypte'));
+
+// ET IL S'ANNULE, SINON ce serait un aller sans retour : l'exercice corrigé
+// resterait retiré pour toujours.
+$laLigne = null;
+foreach (json('/teacher/override', ['classId' => $classId, 'action' => 'list'],
+              $jetonProf)['json']['reglages'] ?? [] as $x) {
+    if (($x['mode'] ?? '') === 'retire' && ($x['exerciseId'] ?? '') === 'num-egypte') $laLigne = $x;
+}
+verifier('IL FIGURE DANS LA LISTE DU PROFESSEUR, AVEC SA CROIX',
+    is_array($laLigne) && ($laLigne['id'] ?? '') !== '', json_encode($laLigne));
+json('/teacher/override', ['classId' => $classId, 'action' => 'cancel',
+                           'overrideId' => $laLigne['id'] ?? ''], $jetonProf);
+verifier('ET L\'ANNULER LE REND À LA CLASSE',
+    !$retire(json('/session', [], $lea)['json']['session'], 'num-egypte'));
+
 // ── LA CALCULATRICE AUSSI S'ÉTEINT AVEC LA SÉANCE ───────────────────────────
 //
 // RÉMY, capture à l'appui : « pour une séance nouvelle, il faut réinitialiser
@@ -976,6 +1026,72 @@ $apres = $avDeLea();
 verifier('ET IL SUIT CELLE DU JOUR DÈS QU\'ELLE L\'OUVRE',
     is_array($apres) && ($apres['pathName'] ?? '') === 'La séance d\'aujourd\'hui',
     json_encode($apres));
+
+// ── CELUI QUI A FINI ET QUI JOUE À AUTRE CHOSE N'A PAS « RIEN COMMENCÉ » ───
+//
+// RÉMY : « j'ai l'impression que quand un élève a fini et qu'il joue à autre
+// chose cela marque pas commencé sur le direct ».
+//
+// C'EST LE REVERS DE LA CORRECTION DE LA VEILLE. Le direct ne regarde plus que
+// les travaux DE LA SÉANCE en cours — il le fallait, « tjs un bug pour la
+// séance en cours il me montre l'ancienne » —, et il les cherche dans les deux
+// cents derniers événements de l'élève. Celui qui a FINI sa séance puis joue
+// pousse son propre travail hors de cette fenêtre : le serveur ne trouve plus
+// rien de la séance, et la barre retombe à « Pas commencé ». L'élève qui a tout
+// fait est le dernier qu'on doive afficher comme n'ayant rien fait.
+//
+// ON FABRIQUE EXACTEMENT CELA : une séance terminée, puis du bruit.
+$seanceFinie = $unParcours('La séance qu\'on termine');
+json('/teacher/assign', ['pathId' => $seanceFinie, 'classId' => $classId,
+                         'pathIdentity' => 'path_cFINIE'], $jetonProf);
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $seanceFinie], $jetonProf);
+
+$ev = [];
+$num = 0;
+$unId = function () use (&$num) {
+    $num++;
+    return sprintf('%08d-7777-4222-8333-%012d', $num, $num);
+};
+$ev[] = ['id' => $unId(), 'type' => 'run_started', 'ts' => $msNow + 1000,
+         'payload' => ['runId' => 'run-fini', 'pathId' => 'path_cFINIE',
+                       'pathName' => 'La séance qu\'on termine', 'mode' => 'entrainement',
+                       'stepCount' => 1,
+                       'plan' => [['questions' => 2, 'requis' => 2, 'titre' => 'Un']]]];
+$ev[] = ['id' => $unId(), 'type' => 'step_completed', 'ts' => $msNow + 1001,
+         'payload' => ['runId' => 'run-fini', 'stepId' => 'z1', 'passed' => true,
+                       'exerciseId' => 'calc-add']];
+$ev[] = ['id' => $unId(), 'type' => 'run_finished', 'ts' => $msNow + 1002,
+         'payload' => ['runId' => 'run-fini', 'pathId' => 'path_cFINIE', 'aborted' => false]];
+// PUIS IL JOUE : deux cent cinquante événements d'un autre travail, ce qui est
+// une fin d'heure ordinaire pour celui qui a terminé avant les autres.
+$ev[] = ['id' => $unId(), 'type' => 'run_started', 'ts' => $msNow + 2000,
+         'payload' => ['runId' => 'run-apres', 'pathId' => 'path_cAILLEURS',
+                       'pathName' => 'Ses exercices à lui', 'mode' => 'entrainement',
+                       'stepCount' => 1,
+                       'plan' => [['questions' => 250, 'requis' => 1, 'titre' => 'Un']]]];
+for ($i = 0; $i < 250; $i++) {
+    $ev[] = ['id' => $unId(), 'type' => 'attempt', 'ts' => $msNow + 2001 + $i,
+             'payload' => ['runId' => 'run-apres', 'exerciseId' => 'calc-prio',
+                           'correct' => true, 'skillId' => 'num.priorites']];
+}
+// PAR PAQUETS : le serveur borne la taille d'un envoi, et une sonde qui
+// l'ignore mesure un refus plutôt qu'un comportement.
+foreach (array_chunk($ev, 100) as $paquet) {
+    json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => $paquet], $sacha);
+}
+
+$ligneDeSacha = function () use ($classId, $jetonProf) {
+    $r = json('/teacher/live', ['classId' => $classId], $jetonProf);
+    foreach ($r['json']['eleves'] ?? [] as $x) {
+        if (($x['prenom'] ?? '') === 'Sacha') return $x;
+    }
+    return [];
+};
+$av = $ligneDeSacha()['avancement'] ?? null;
+verifier('CELUI QUI A FINI SA SÉANCE EST MONTRÉ COMME AYANT FINI',
+    is_array($av) && ($av['etat'] ?? '') === 'fini', json_encode($av));
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer', 'pathId' => ''], $jetonProf);
 
 // ── UNE SÉANCE NEUVE EFFACE LE COMPTE À REBOURS DE LA PRÉCÉDENTE ───────────
 //

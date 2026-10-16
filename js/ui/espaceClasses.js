@@ -2801,7 +2801,13 @@ function outilTableau(info, ch, enCours, defiCourt) {
                 <div class="ec-pilote-bloc">
                     <span class="ec-pilote-eti">Dispenser TOUTE la classe d'un exercice</span>
                     <p class="ec-note">Pour un seul élève, cliquez sur son nom : c'est presque
-                       toujours ce qu'il faut. Ici, c'est quand l'exercice lui-même pose problème.</p>
+                       toujours ce qu'il faut. Ici, c'est quand l'exercice lui-même pose problème.
+                       <!-- LA LISTE NE S'ARRÊTE PLUS À LA SÉANCE EN COURS, et il faut le
+                            dire : Rémy a cherché un exercice qui buggait sans le trouver,
+                            et rien ne lui disait que la liste était courte exprès. -->
+                       La liste va jusqu'au catalogue entier&nbsp;: tapez les premières
+                       lettres pour y descendre. <b>« Le retirer pour tous » vaut pour tous
+                       vos parcours</b>, et jusqu'à ce que vous l'annuliez ci-dessous.</p>
                     <div class="ec-champ-ligne">
                         <!-- ON CHOISIT L'EXERCICE, ON NE L'ÉCRIT PLUS.
                              Rémy : « il faudrait pouvoir de façon globale
@@ -2814,9 +2820,10 @@ function outilTableau(info, ch, enCours, defiCourt) {
                              plus tard. -->
                         <select id="ec-exo" class="ec-champ"
                                 aria-label="L'exercice dont on dispense la classe">
-                            ${exercicesSousLaMain().map(x =>
-        `<option value="${esc(x.id)}">${esc(x.titre)}${x.ou ? ` — ${esc(x.ou)}` : ''}</option>`)
-        .join('') || '<option value="">Aucun exercice en cours</option>'}
+                            ${groupesDExercices().map(g => `<optgroup label="${esc(g.nom)}">${
+            g.items.map(x => `<option value="${esc(x.id)}">${esc(x.titre)}${
+                x.ou ? ` — ${esc(x.ou)}` : ''}</option>`).join('')}</optgroup>`).join('')
+        || '<option value="">Aucun exercice au catalogue</option>'}
                         </select>
                         <!-- DEUX GESTES QUI N'ONT PAS LA MÊME PORTÉE, ET QUI
                              se ressemblaient trop. « Autoriser le saut » ouvre
@@ -2983,6 +2990,66 @@ function exercicesSousLaMain() {
         out.push({ id: e.exo, titre: nomDExercice(e.exo), ou: 'ouvert par un élève' });
     });
     return out;
+}
+
+/**
+ * LA LISTE DÉROULANTE DE « DISPENSER », EN TROIS GROUPES.
+ *
+ * ── CE QU'ELLE NE PROPOSAIT PAS ────────────────────────────────────────────
+ *
+ * RÉMY : « parfois un exercice bugge et je ne peux pas le retirer dans
+ * dispenser toute la classe d'un exercice car il n'apparaît pas dans la liste
+ * déroulante ».
+ *
+ * Elle ne montrait que les exercices de la séance EN COURS, plus ceux qu'un
+ * élève avait sous les yeux à cet instant. C'était le bon raccourci pour le
+ * geste courant — « celui-là, laissez tomber » — et c'était la mauvaise liste
+ * pour le geste rare qui compte le plus : retirer un exercice QUI PLANTE. Un
+ * exercice qui plante plante partout, et il faut pouvoir le sortir avant de
+ * donner le parcours qui le contient, pas après.
+ *
+ * ── POURQUOI TOUT LE CATALOGUE, ET POURQUOI EN DERNIER ─────────────────────
+ *
+ * Deux cent trente-six entrées dans un menu, c'est beaucoup. Mais un menu
+ * incomplet coûte plus cher qu'un menu long : il ne dit pas qu'il est
+ * incomplet, et l'on cherche la panne ailleurs — c'est exactement ce qui vient
+ * de se passer. Les groupes gardent le geste court là où il l'était : ce qu'il
+ * a sous la main reste EN TÊTE et pré-sélectionné, le reste est dessous pour
+ * qui le cherche. Un `<select>` natif accepte la frappe au clavier : taper
+ * « piz » descend sur la Pizzeria.
+ *
+ * ON N'INVENTE PAS DE RECHERCHE À NOUS. Le champ de recherche du catalogue
+ * existe ailleurs, il est bon, et le refaire ici en ferait deux à tenir
+ * d'accord — alors qu'un menu natif sait déjà faire ce qu'on lui demande.
+ */
+function groupesDExercices() {
+    const souslaMain = exercicesSousLaMain();
+    const vus = new Set(souslaMain.map(x => x.id));
+
+    // CE QUI EST DANS SES AUTRES PARCOURS : c'est là qu'il range son travail,
+    // et c'est le premier endroit où chercher un exercice qui n'est pas sous
+    // la main. Rangés par nom de parcours, pour qu'il reconnaisse le sien.
+    const ailleurs = [];
+    for (const p of (state.teacherPaths || [])) {
+        for (const st of ((p && p.steps) || [])) {
+            const id = st && st.exerciseId;
+            if (!id || vus.has(id)) continue;
+            vus.add(id);
+            ailleurs.push({ id, titre: nomDExercice(id), ou: p.name || '' });
+        }
+    }
+    ailleurs.sort((a, b) => (a.titre || '').localeCompare(b.titre || '', 'fr'));
+
+    const reste = catalogueComplet
+        .filter(e => e && e.id && !vus.has(e.id))
+        .map(e => ({ id: e.id, titre: e.title || e.id }))
+        .sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+
+    return [
+        { nom: 'Sous la main', items: souslaMain },
+        { nom: 'Dans vos autres parcours', items: ailleurs },
+        { nom: 'Tout le catalogue', items: reste }
+    ].filter(g => g.items.length);
 }
 
 /**

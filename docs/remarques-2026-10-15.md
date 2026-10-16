@@ -594,3 +594,85 @@ qui travaille. Chacun reprend son nom, et la pause est un geste à part entière
 MESURÉ de bout en bout : l'élève travaillait sur « 3 + 6 = ? », son écran s'est
 couvert du mot du professeur, sa question est restée dessous, et il l'a
 retrouvée à l'identique quand Rémy a rendu la main.
+
+# Quinzième passe — dispenser d'un exercice qui bugge
+
+> « il faut que des exercices dispensé sur un parcours soient dispensé dans un
+> autre parcours. Parfois un exercice bugge et je ne peux pas le retrire dans
+> dispenser toute la classe d'un exercice car il n'apparait pas dans la liste
+> déroulante »
+
+**Deux choses, et la seconde corrige un arbitrage que j'avais pris sans lui.**
+
+La liste déroulante ne propose que les exercices de la séance EN COURS : un
+exercice qui bugge ailleurs est donc hors d'atteinte. Et le retrait, lui,
+expire avec la séance — c'est moi qui l'avais étendu aux trois réglages le
+15 octobre, en lisant « pour une séance nouvelle, il faut réinitialiser les
+exercices que j'ai autorisé à passer ». Il parlait du SAUT. Un exercice retiré
+parce qu'il bugge n'est pas un geste de l'heure : il bugge aussi la semaine
+prochaine.
+
+# Seizième passe — « placer un point » bloque après une erreur
+
+> « pour l'exercice placer un point. Si l'élève se trompe, on ne peut plus
+> cliquer, en fait l'exercice bloque »
+
+**Un blocage en classe, donc prioritaire.** C'est la deuxième fois que ce genre
+de panne apparaît — « dans ce genre d'exercice on peut se retrouver bloqué »,
+sur le codage. Là-bas, la cause était un retour anticipé qui n'appelait pas
+`submit`, et tous les filets pendent à `submit`.
+
+# Dix-septième passe — la mosaïque : centre de rotation, et sens direct
+
+> « sur la mosaique des transformations quand tu fais une rotation fais le sur
+> un point qui colle la figure sinon c'est hyper dur et aussi je pense que tu
+> fais une erreur sur le sens direct et indirect »
+
+**Deux choses, et la seconde est une faute de mathématiques** si elle est
+avérée : le sens DIRECT est le sens inverse des aiguilles d'une montre. On la
+vérifie par le calcul avant de toucher à quoi que ce soit — et on la vérifie
+dans le sens qui compte : ce que l'élève VOIT à l'écran.
+
+# Dix-huitième passe — « pas commencé » pour celui qui a FINI
+
+> « j'ai l'impression que quand un élève a fini et qu'il joue à autre chose cela
+> marque pas commencé sur le direct »
+
+**C'est le revers de la correction du 15 octobre** — « tjs un bug pour la séance
+en cours il me montre l'ancienne ». On a scopé le direct sur la séance en
+cours ; l'élève qui a FINI et qui joue à autre chose a son dernier travail
+ailleurs, et la barre retombe donc à « Pas commencé ». Un élève qui a tout fait
+est le dernier qu'on doit afficher comme n'ayant rien fait.
+
+## Ce qui a été fait, pour les quatre dernières
+
+**15. Dispenser d'un exercice qui bugge.** La règle qu'il demandait existait
+déjà — « retirer » n'a ni séance ni échéance, contrairement au saut et à la
+calculatrice. Ce qui manquait était le MOYEN DE L'ATTEINDRE : la liste
+déroulante ne proposait que les exercices de la séance en cours. Elle va
+maintenant jusqu'au catalogue entier, en trois groupes — sous la main, dans
+vos autres parcours, tout le catalogue —, le geste court reste en tête, et
+cinq vérifications d'API gardent la règle (vues rouges avec le défaut remis).
+
+**16. « Placer un point » bloquait.** MESURÉ : après un clic faux, 36 cibles,
+ZÉRO cliquable, et cela ne changeait plus. La grille se fige à la réponse —
+c'est voulu — et trois chemins sortaient de là : juste, plus d'essai… et le
+troisième, « faux mais il reste un essai », n'était écrit nulle part. C'est le
+plus fréquent des trois en entraînement. L'épreuve regarde les TROIS activités
+qui figent leur plateau, pas seulement celle qu'on vient de corriger.
+
+**17. La mosaïque.** Le sens annoncé était l'inverse de celui qu'on voit :
+**douze questions sur douze**. La cause n'est pas une erreur de signe, c'est
+une convention partagée à tort — le quadrillage dessine avec l'ordonnée qui
+DESCEND, la mosaïque la retourne, et les deux lisaient la même table. La
+question « de quel côté est-ce que je regarde ? » se pose maintenant à un seul
+endroit. Et le centre de rotation : sur 126 rotations, 14 seulement touchaient
+la pièce ; l'élève reçoit désormais un centre à 0,5 ou 1,5 carreau, jamais
+plus.
+
+**18. « Pas commencé » pour celui qui a fini.** MESURÉ, et c'était bien le
+revers de la correction de la veille : le direct cherche le travail de la
+séance dans les deux cents derniers événements, et celui qui a terminé puis
+joue en produit davantage. On n'élargit pas la fenêtre — trente élèves toutes
+les cinq secondes —, on ajoute les ÉVÉNEMENTS QUI DÉLIMITENT un travail, qui
+sont deux par parcours plus un par étape.

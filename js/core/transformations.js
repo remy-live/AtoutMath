@@ -84,9 +84,43 @@ export const SENS = {
     3: { nom: 'direct', aiguilles: 'dans le sens inverse des aiguilles d\'une montre' }
 };
 
+/**
+ * LE SENS VU, SELON LE SENS DE L'ORDONNÉE DU DESSIN.
+ *
+ * ── CE QUE RÉMY A VU, ET QUE LE CALCUL CONFIRME ────────────────────────────
+ *
+ * RÉMY, sur la Mosaïque des Transformations : « je pense que tu fais une
+ * erreur sur le sens direct et indirect ». Il avait raison, et sur DOUZE
+ * questions sur douze.
+ *
+ * `SENS` ci-dessus décrit ce qu'on voit sur un dessin dont l'ORDONNÉE DESCEND
+ * — celui du quadrillage, et celui d'un SVG laissé à son repère naturel. La
+ * mosaïque, elle, retourne l'ordonnée pour dessiner : `Y(y) = y1 - y` dans
+ * l'activité, `y0 + (bo.y1 - y) * pas` sur la feuille imprimée. Le MÊME quart
+ * de tour s'y voit donc tourner dans l'autre sens, et le mot l'appelait quand
+ * même « indirect ».
+ *
+ * MESURÉ, et non relu : `tools/sensDeLaRotation.mjs` prend chaque question,
+ * calcule le produit vectoriel du trajet dans le repère de l'ÉCRAN, et compare
+ * au mot de l'énoncé. Douze désaccords sur douze pour la mosaïque, zéro sur
+ * douze pour le quadrillage.
+ *
+ * ON NE CHOISIT PAS UNE CONVENTION UNIQUE, parce qu'il n'y en a pas une qui
+ * soit juste : les deux dessins sont bons, ils ne regardent simplement pas le
+ * plan du même côté. Ce qui doit être unique, c'est l'endroit où la question
+ * « de quel côté est-ce que je regarde ? » se pose — et c'est ici.
+ */
+export function sensDe(quarts, { ordonneeMonte = false } = {}) {
+    const n = ((Math.round(quarts) % 4) + 4) % 4;
+    // Retourner l'ordonnée retourne le sens : un quart de tour de 1 devient
+    // celui de 3, et réciproquement.
+    const vu = ordonneeMonte ? ((4 - n) % 4) : n;
+    return SENS[vu] || SENS[1];
+}
+
 /** « le sens indirect (dans le sens des aiguilles d'une montre) ». */
-export function direLeSens(quarts, { avecAiguilles = true } = {}) {
-    const s = SENS[((Math.round(quarts) % 4) + 4) % 4] || SENS[1];
+export function direLeSens(quarts, { avecAiguilles = true, ordonneeMonte = false } = {}) {
+    const s = sensDe(quarts, { ordonneeMonte });
     return avecAiguilles ? `le sens ${s.nom} (${s.aiguilles})` : `le sens ${s.nom}`;
 }
 

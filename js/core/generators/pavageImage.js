@@ -60,6 +60,52 @@ function listeDeGenres(brut) {
 /** Les cases d'une pièce, en points — le fichier de données les range à plat. */
 const enPoints = (cases) => cases.map(([x, y]) => ({ x, y }));
 
+/**
+ * ── LE CENTRE D'UNE ROTATION DOIT TOUCHER LA PIÈCE ─────────────────────────
+ *
+ * RÉMY : « quand tu fais une rotation fais le sur un point qui colle la figure
+ * sinon c'est hyper dur ».
+ *
+ * IL A RAISON, ET C'EST MESURABLE. Une rotation se suit en choisissant un coin
+ * de la pièce et en regardant où il tombe — c'est le conseil que l'énoncé donne
+ * lui-même. Quand le centre touche la pièce, ce coin-là est à un carreau du
+ * centre et le quart de tour se lit d'un coup d'œil. Quand il est à cinq
+ * carreaux, il faut tenir dans sa tête un rayon de cinq et le faire pivoter :
+ * ce n'est plus de la géométrie, c'est de la mémoire de travail.
+ *
+ * MESURÉ sur les seize mosaïques : 126 rotations, dont 14 SEULEMENT avec un
+ * centre collé à la pièce de départ. Les autres s'écartaient de 1,5 à 6,5
+ * carreaux. L'exercice tirait au hasard dans le tas.
+ *
+ * L'ÉCART SE MESURE EN TCHEBYCHEV — le plus grand des deux écarts — parce que
+ * c'est la distance en CARREAUX : une case en diagonale est voisine d'une
+ * case, pas de 1,41.
+ *
+ * ON NE SUPPRIME PAS LES AUTRES, ON LES CLASSE. Deux mosaïques n'ont aucune
+ * rotation à centre proche ; les interdire reviendrait à retirer leurs
+ * rotations du catalogue. On prend donc les plus proches de ce que la mosaïque
+ * tirée sait offrir, et l'on choisit d'abord une mosaïque qui sait en offrir
+ * une bonne.
+ */
+const TOUCHE = 0.5;          // le centre est un coin d'une case de la pièce
+const UN_CARREAU = 1.5;      // il en est séparé par un carreau au plus
+
+export function ecartDuCentre(mosaique, relation) {
+    if (!relation || relation.t.genre !== 'rotation') return Infinity;
+    const p = (mosaique.pieces || []).find(x => x.n === relation.depuis);
+    if (!p || !p.cases.length) return Infinity;
+    return Math.min(...p.cases.map(c => Math.max(
+        Math.abs(c.x - relation.t.centre.x), Math.abs(c.y - relation.t.centre.y))));
+}
+
+/** Cette mosaïque sait-elle poser une rotation qu'on puisse SUIVRE ? */
+function aUneRotationSuivable(brut) {
+    const m = lireMosaique(brut);
+    const rot = (m.relations || []).filter(r => r.t.genre === 'rotation');
+    if (!rot.length) return false;
+    return rot.some(r => ecartDuCentre(m, r) <= UN_CARREAU);
+}
+
 /** Un pavage, relu sous la forme que le noyau manipule. */
 export function lireMosaique(brut) {
     return {
@@ -113,13 +159,32 @@ export const generator = {
         // mosaïques qui n'en ont pas, et le générateur rendrait alors une
         // question d'un genre que le professeur avait décoché.
         const possibles = MOSAIQUES.filter(p => p.relations.some(r => genres.includes(r.t.genre)));
-        const brut = possibles.length
-            ? possibles[rng.int(0, possibles.length - 1)]
+        // ET QUAND ON NE DEMANDE QUE DES ROTATIONS, on préfère une mosaïque qui
+        // en a une SUIVABLE : deux des seize n'en ont aucune, et les tirer
+        // n'offrirait que des centres lointains. Voir `ecartDuCentre`.
+        const queDesRotations = genres.length === 1 && genres[0] === 'rotation';
+        const bonnes = queDesRotations ? possibles.filter(aUneRotationSuivable) : [];
+        const dansQuoi = bonnes.length ? bonnes : possibles;
+        const brut = dansQuoi.length
+            ? dansQuoi[rng.int(0, dansQuoi.length - 1)]
             : MOSAIQUES[rng.int(0, MOSAIQUES.length - 1)];
         const mosaique = lireMosaique(brut);
 
         const candidates = mosaique.relations.filter(r => genres.includes(r.t.genre));
-        const liste = candidates.length ? candidates : mosaique.relations;
+        const toutes = candidates.length ? candidates : mosaique.relations;
+        // LES ROTATIONS SONT TRIÉES PAR CE QU'ELLES COÛTENT À SUIVRE, les autres
+        // genres ne le sont pas : un axe ou un vecteur se lisent où qu'ils
+        // soient. On garde celles dont le centre touche la pièce ; à défaut,
+        // les plus proches que cette mosaïque sache offrir.
+        const rotations = toutes.filter(r => r.t.genre === 'rotation');
+        const autres = toutes.filter(r => r.t.genre !== 'rotation');
+        let retenues = [];
+        if (rotations.length) {
+            const ecarts = rotations.map(r => ecartDuCentre(mosaique, r));
+            const seuil = Math.max(Math.min(...ecarts), TOUCHE);
+            retenues = rotations.filter((r, i) => ecarts[i] <= seuil);
+        }
+        const liste = [...autres, ...retenues];
         const q = liste[rng.int(0, liste.length - 1)];
 
         const dit = direTransformation(q.t);
