@@ -64,6 +64,7 @@ import {
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
     creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis, fermerHorsSeance,
+    lesConnexions,
     accorderLaCalculatrice, retirerLaCalculatrice,
     imposerLaSeance, lancerLeChrono, arreterLeChrono, lancerLeDefi, auServeur, reglagesDuSite,
     lesSignalements, photoDuSignalement, classerSignalement, effacerSignalement
@@ -265,7 +266,10 @@ export async function ouvrirEspaceClasses() {
         // Il survit au battement de dix secondes (les cases sont redessinées
         // d'après lui) mais pas au changement de classe.
         choisis: new Set(),
-            bilans: null, seances: null, occupe: false };
+            bilans: null, seances: null,
+        // LE JOURNAL DES CONNEXIONS — `null` tant qu'on n'est pas allé le voir,
+        // ce qui n'est pas « aucune connexion ».
+        connexions: null, occupe: false };
 
     // UNE PIÈCE, PAS UNE FENÊTRE.
     //
@@ -1751,7 +1755,12 @@ function quandLisible(quand) {
 const SOUS_BILANS = [
     ['ensemble', 'D\'ensemble'],
     ['seance', 'Par séance'],
-    ['conseils', 'Conseils']
+    ['conseils', 'Conseils'],
+    // CONNEXIONS — RÉMY : « J'aimerai aussi que tu enregistres les connexions
+    // que je puisse suivre ce qu'ils font ». Il est dans les bilans parce que
+    // c'est la posture APRÈS : on vient y regarder ce qui s'est passé, et non
+    // régler quoi que ce soit.
+    ['connexions', 'Connexions']
 ];
 
 function bilansHtml() {
@@ -1773,6 +1782,7 @@ function bilansHtml() {
 
     if (quel === 'seance') return barre + detailParExerciceHtml(lignes);
     if (quel === 'conseils') return barre + conseilsHtml(lignes);
+    if (quel === 'connexions') return barre + connexionsHtml();
 
     const r = resumeDeClasse(lignes);
     const notions = notionsAReprendre(lignes);
@@ -1782,6 +1792,73 @@ function bilansHtml() {
         + reprendreHtml(notions, r.eleves)
         + comprisHtml(notionsComprises(lignes), r.eleves)
         + tableauBilanHtml(lignes);
+}
+
+/**
+ * LE JOURNAL DES CONNEXIONS — qui est entré, quand, et D'OÙ.
+ *
+ * RÉMY : « J'aimerai aussi que tu enregistres les connexions que je puisse
+ * suivre ce qu'ils font », et la raison, dite la veille : « pour le moment je
+ * veux suivre ce qu'ils font et voir le debug ».
+ *
+ * LE CONTEXTE EST LA COLONNE QUI COMPTE, et c'est pour cela qu'il est en
+ * couleur. Savoir que Tom s'est connecté à 21 h 40 ne vaut que si l'on sait
+ * qu'il n'y avait pas cours. Le serveur le tranche au moment où il ouvre — il
+ * est le seul à savoir si une séance était imposée et si la porte était
+ * fermée —, l'écran ne fait que le nommer.
+ *
+ * UNE LIGNE PAR IDENTIFICATION, jamais par battement : voir la table
+ * `connexions` dans api/lib/schema.php, qui dit pourquoi, et pourquoi l'on n'y
+ * range aucune adresse réseau.
+ */
+const MOTS_DE_CONTEXTE = {
+    seance: ['en classe', 'ec-cnx--seance'],
+    maison: ['à la maison', 'ec-cnx--maison'],
+    libre: ['hors séance', 'ec-cnx--libre']
+};
+
+function connexionsHtml() {
+    if (!vue.connexions) return '<div class="ec-vide">On relit les connexions…</div>';
+    if (vue.connexions.erreur) return `<div class="ec-vide">${esc(vue.connexions.erreur)}</div>`;
+    const lignes = vue.connexions.connexions || [];
+    if (!lignes.length) {
+        return `<div class="ec-vide ec-vide--invite">
+            <p class="ec-vide-grand">Aucune connexion enregistrée.</p>
+            <p>Le journal commence à la mise à jour : les entrées d'avant n'y sont pas.</p>
+        </div>`;
+    }
+    // RANGÉES PAR JOUR, parce que c'est ainsi qu'on les lit — « hier soir,
+    // combien ? ». Deux cents lignes à la file ne répondent à rien.
+    const parJour = new Map();
+    for (const l of lignes) {
+        const d = new Date(l.quand);
+        const jour = Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR',
+            { weekday: 'long', day: 'numeric', month: 'long' });
+        if (!parJour.has(jour)) parJour.set(jour, []);
+        parJour.get(jour).push({ ...l, d });
+    }
+    const jours = [...parJour.entries()].map(([jour, liste]) => {
+        const maison = liste.filter(x => x.contexte === 'maison').length;
+        return `<div class="ec-cnx-jour">
+            <h4 class="ec-cnx-titre">${esc(jour || 'À une date inconnue')}
+                <span class="ec-note">${liste.length} connexion${liste.length > 1 ? 's' : ''}${
+                    maison ? ` · ${maison} à la maison` : ''}</span></h4>
+            <ul class="ec-cnx-liste">${liste.map(x => {
+            const [mot, classe] = MOTS_DE_CONTEXTE[x.contexte] || MOTS_DE_CONTEXTE.libre;
+            const h = Number.isNaN(x.d.getTime()) ? ''
+                : x.d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            return `<li class="ec-cnx"><span class="ec-cnx-h">${esc(h)}</span>
+                <b>${esc(x.prenom || '?')}</b>
+                <span class="ec-cnx-ou ${classe}">${esc(mot)}</span></li>`;
+        }).join('')}</ul>
+        </div>`;
+    }).join('');
+    return `<section class="ec-bloc">
+        <p class="ec-note ec-note--bloc">Une ligne à chaque fois qu'un élève
+           <b>s'identifie</b> — pas à chaque page qu'il ouvre. « À la maison »
+           veut dire&nbsp;: la porte était fermée et il est quand même venu.</p>
+        ${jours}
+    </section>`;
 }
 
 /**
@@ -2700,7 +2777,59 @@ function outilMaison(info, ch, enCours, defiCourt) {
                        value="${esc(info.hors_seance_mot || '')}"
                        data-valide-sur-entree="data-maison-mot">
                 <button type="button" class="ec-pilote-btn" data-maison-mot>Enregistrer</button>
-            </span>`;
+            </span>
+            ${exosLibresHtml(info)}`;
+}
+
+/**
+ * LES EXERCICES LAISSÉS LIBRES MALGRÉ LA PORTE FERMÉE.
+ *
+ * ── LA DEMANDE DE RÉMY, MOT POUR MOT ───────────────────────────────────────
+ *
+ * « si il est bloqué chez lui car j'empêche l'accès, je peux laisser libre qqs
+ * exercices que j'aurais défini mais attention c'est la seule chose qu'il peut
+ * faire, il ne peut pas aller sur son profil ou autre », et : « si j'empêche
+ * l'accès pour une classe, je peux autoriser des exercices spécifiquement pour
+ * cette classe ».
+ *
+ * ── POURQUOI CE N'EST PAS UN `<select multiple>` ───────────────────────────
+ *
+ * Deux cent trente-six entrées dans une liste à sélection multiple se parcourt
+ * en faisant défiler, et l'on perd ce qu'on avait coché au premier clic
+ * maladroit. On ajoute donc UN par UN — un menu natif, qui accepte la frappe au
+ * clavier (« piz » descend sur la Pizzeria) — et ce qui est choisi reste SOUS
+ * LES YEUX, en pastilles qu'on retire d'une croix. C'est la forme déjà employée
+ * pour les dispenses.
+ *
+ * ET LA LISTE NE PARAÎT QUE SI LA PORTE EST FERMÉE : proposer de laisser libres
+ * des exercices quand tout est ouvert ne veut rien dire, et ferait croire que
+ * la liste RESTREINT quelque chose.
+ */
+function exosLibresHtml(info) {
+    if (!info.hors_seance) return '';
+    const choisis = (info.hors_seance_exos || []).filter(Boolean);
+    const dedans = new Set(choisis);
+    const reste = catalogueComplet
+        .filter(e => e && e.id && !dedans.has(e.id))
+        .map(e => ({ id: e.id, titre: e.title || e.id }))
+        .sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+    return `<span class="ec-pilote-dit ec-pilote-dit--libres">Et malgré la porte
+               fermée, <b>ces exercices-là restent ouverts</b> — c'est alors la
+               seule chose que l'élève peut faire&nbsp;: ni profil, ni catalogue,
+               ni bac à sable.</span>
+            <span class="ec-pilote-cadre" role="group" aria-label="Exercices laissés libres">
+                <select class="ec-champ" data-libre-choix aria-label="Un exercice à laisser libre">
+                    <option value="">Ajouter un exercice…</option>
+                    ${reste.map(e => `<option value="${esc(e.id)}">${esc(e.titre)}</option>`).join('')}
+                </select>
+                <button type="button" class="ec-pilote-btn" data-libre-ajout>Ajouter</button>
+            </span>
+            ${choisis.length ? `<span class="ec-libres">${choisis.map(id =>
+                `<span class="ec-libre">${esc(nomDExercice(id))}<button type="button"
+                    class="ec-libre-x" data-libre-retire="${esc(id)}"
+                    title="Ne plus laisser « ${esc(nomDExercice(id))} » ouvert"
+                    aria-label="Retirer ${esc(nomDExercice(id))}">×</button></span>`).join('')}</span>`
+                : '<span class="ec-pilote-dit">Aucun pour l\'instant : la porte est close.</span>'}`;
 }
 
 /** ⚡ Défi de la classe — corps de l'onglet. */
@@ -3315,6 +3444,7 @@ async function brancher(e, redessiner) {
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
         + '[data-ordre-direct], [data-ordre-bilan], [data-sous-bilan], [data-bilan-pdf],'
         + '[data-outil], [data-forme-direct], [data-gerer],'
+        + '[data-libre-ajout], [data-libre-retire],'
         + '[data-effacer-signal]');
     if (!el) return;
     const d = el.dataset;
@@ -3374,6 +3504,20 @@ async function brancher(e, redessiner) {
     if (d.sousBilan !== undefined) {
         vue.sousBilan = d.sousBilan;
         redessiner();
+        // LES CONNEXIONS SONT LE SEUL ONGLET QUI DEMANDE QUELQUE CHOSE AU
+        // SERVEUR. Les trois autres se calculent avec ce que `/teacher/report`
+        // a déjà rendu ; ce journal-ci vient d'une table à part, et on ne le
+        // réclame qu'au moment où on le regarde — la plupart des heures, on ne
+        // l'ouvre pas.
+        if (d.sousBilan === 'connexions') {
+            // `vue.classe.id` ET NON `cid` : `cid` est déclaré plus bas dans
+            // cette même fonction, et y toucher ici jette « Cannot access
+            // 'cid' before initialization » — mesuré, l'onglet restait sur
+            // « On relit les connexions… » sans un mot.
+            const r = await lesConnexions(vue.classe && vue.classe.id);
+            vue.connexions = r.erreur ? { erreur: r.erreur } : r;
+            redessiner();
+        }
         return;
     }
 
@@ -4219,15 +4363,39 @@ async function brancher(e, redessiner) {
     // Les deux crochets mènent ici : cocher la case, ou valider le message.
     // Dans les deux cas on envoie l'ÉTAT COMPLET — c'est ce qui évite qu'un
     // message enregistré rouvre la classe sans qu'on l'ait demandé.
-    if (d.maison !== undefined || d.maisonMot !== undefined) {
+    if (d.maison !== undefined || d.maisonMot !== undefined
+        || d.libreAjout !== undefined || d.libreRetire !== undefined) {
         const zone = el.closest('.ec-pilote') || document;
         const case_ = zone.querySelector('[data-maison]');
         const champ = zone.querySelector('#ec-maison-mot');
         const ferme = !!(case_ && case_.checked);
         const mot = champ ? champ.value.trim() : '';
-        await fait(fermerHorsSeance(cid, ferme, mot), (r) => {
+        const info0 = (vue.liste && vue.liste.classe) || {};
+        // ── LA LISTE DES EXERCICES LAISSÉS LIBRES ──────────────────────────
+        //
+        // ON NE L'ENVOIE QUE SI CE GESTE-LÀ LA CONCERNE. Cocher la case ou
+        // réenregistrer le message ne doit pas la toucher : le serveur traite
+        // l'absence de `exos` comme « ne touche pas », et c'est ce qui évite
+        // d'effacer les exercices choisis en changeant une virgule au message.
+        let exos;
+        if (d.libreAjout !== undefined) {
+            const menu = zone.querySelector('[data-libre-choix]');
+            const quoi = menu ? menu.value : '';
+            if (!quoi) { showToast('Choisissez d\'abord un exercice.', 'info'); return; }
+            exos = [...(info0.hors_seance_exos || []), quoi];
+        } else if (d.libreRetire !== undefined) {
+            exos = (info0.hors_seance_exos || []).filter(x => x !== d.libreRetire);
+        }
+        await fait(fermerHorsSeance(cid, ferme, mot, exos), (r) => {
             const info = (vue.liste && vue.liste.classe);
-            if (info) { info.hors_seance = !!r.ferme; info.hors_seance_mot = mot; }
+            if (info) {
+                info.hors_seance = !!r.ferme;
+                info.hors_seance_mot = mot;
+                // LE SERVEUR REND LA LISTE QU'IL A VRAIMENT RANGÉE — y compris
+                // quand on ne la lui a pas envoyée. On la relit de lui plutôt
+                // que de deviner ce qu'il a fait de ce qu'on a demandé.
+                if (Array.isArray(r.exos)) info.hors_seance_exos = r.exos;
+            }
         });
         return;
     }

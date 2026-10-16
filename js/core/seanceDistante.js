@@ -37,6 +37,11 @@ const VIDE = {
     // connecte, on leur dit que pour l'instant ce n'est disponible qu'au
     // collège (je peux mettre le message de mon choix) ».
     horsSeance: false, horsSeanceMot: '',
+    // CE QU'ON LAISSE PASSER MALGRÉ LA PORTE FERMÉE. Rémy : « je peux laisser
+    // libre qqs exercices que j'aurais défini mais attention c'est la seule
+    // chose qu'il peut faire, il ne peut pas aller sur son profil ou autre ».
+    // Vide = rien ne passe, qui est le comportement d'avant et le défaut.
+    horsSeanceExos: [],
     messages: [], skippable: [], removed: [],
     // LES EXERCICES OÙ LE PROFESSEUR VIENT D'ACCORDER LA CALCULATRICE — et
     // l'exercice `*`, qui veut dire « toute la séance ». Voir
@@ -228,7 +233,14 @@ export function estEcarte() {
  * @returns {{ferme: boolean, mot: string}}
  */
 export function fermeHorsSeance() {
-    return { ferme: !!etat.horsSeance, mot: etat.horsSeanceMot || '' };
+    return {
+        ferme: !!etat.horsSeance,
+        mot: etat.horsSeanceMot || '',
+        // LA LISTE EST EXCLUSIVE : ce qui n'y est pas ne s'ouvre pas, et il n'y
+        // a rien d'autre à l'écran. Le serveur ne l'envoie QUE quand la porte
+        // est fermée — hors de ce moment-là, elle ne voudrait rien dire.
+        exos: Array.isArray(etat.horsSeanceExos) ? etat.horsSeanceExos : []
+    };
 }
 
 export function consigneDuProf() {

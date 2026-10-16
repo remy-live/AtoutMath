@@ -182,11 +182,16 @@ function majFerme(ferme) {
     }
     const mot = (ferme.mot || '').trim()
         || 'Pour l\'instant, AtoutMath ne s\'ouvre qu\'au collège, pendant le cours.';
+    const exos = (ferme.exos || []).filter(Boolean);
     if (voile) {
         // Le mot peut changer sans que le voile parte : le professeur le
         // réécrit depuis son écran, et l'élève doit lire le nouveau.
         const p = voile.querySelector('.eleve-ecarte-mot');
         if (p && p.textContent !== mot) p.textContent = mot;
+        // ET LA LISTE AUSSI PEUT CHANGER, pendant que l'élève a le voile sous
+        // les yeux. On la redessine seulement si elle a bougé — sinon on
+        // reconstruirait des boutons sous les doigts à chaque battement.
+        if (voile.dataset.exos !== exos.join(',')) poserLesExos(voile, exos);
         return;
     }
     voile = document.createElement('div');
@@ -197,12 +202,127 @@ function majFerme(ferme) {
             <div class="eleve-ecarte-icone" aria-hidden="true">🏫</div>
             <h2>C'est fermé pour le moment.</h2>
             <p class="eleve-ecarte-mot"></p>
+            <div class="eleve-ecarte-exos" hidden></div>
         </div>`;
     // `textContent` ET PAS `innerHTML` : ce mot vient d'un champ de formulaire,
     // et un champ de formulaire est du texte, jamais du balisage. (La même
     // règle que la consigne, trente lignes plus haut.)
     voile.querySelector('.eleve-ecarte-mot').textContent = mot;
     document.body.appendChild(voile);
+    poserLesExos(voile, exos);
+}
+
+/**
+ * LES EXERCICES LAISSÉS LIBRES, SUR LE VOILE — et rien d'autre.
+ *
+ * ── LA DEMANDE DE RÉMY, MOT POUR MOT ───────────────────────────────────────
+ *
+ * « si il est bloqué chez lui car j'empêche l'accès, je peux laisser libre qqs
+ * exercices que j'aurais défini mais ATTENTION C'EST LA SEULE CHOSE QU'IL PEUT
+ * FAIRE, il ne peut pas aller sur son profil ou autre. »
+ *
+ * C'EST POUR CELA QUE LES BOUTONS SONT SUR LE VOILE, ET NON DERRIÈRE. Rouvrir
+ * l'application en n'autorisant que quelques exercices demanderait de fermer
+ * une à une toutes les autres portes — le profil, le catalogue, la carte, le
+ * bac à sable, le menu — et il suffirait d'en oublier une. Le voile, lui, est
+ * déjà la fermeture de TOUT : on y perce exactement les trous nommés.
+ *
+ * ── CE QUI SE PASSE PENDANT L'EXERCICE ─────────────────────────────────────
+ *
+ * La couche de jeu est à `z-index: 10000`, le voile à 10100 : sans rien faire,
+ * il couvrirait l'exercice qu'il vient de lancer. On l'efface donc le temps du
+ * jeu et on le remet en sortant — c'est `onExit`, que le meneur appelle quel
+ * que soit le chemin de sortie (fin normale, croix, abandon).
+ */
+function poserLesExos(voile, exos) {
+    const zone = voile.querySelector('.eleve-ecarte-exos');
+    if (!zone) return;
+    voile.dataset.exos = exos.join(',');
+    if (!exos.length) { zone.hidden = true; zone.innerHTML = ''; return; }
+    zone.hidden = false;
+    zone.innerHTML = '<p class="eleve-ecarte-sous">Tu peux quand même faire&nbsp;:</p>'
+        + '<div class="eleve-ecarte-liste"></div>';
+    const liste = zone.querySelector('.eleve-ecarte-liste');
+    // LE CATALOGUE SE CHARGE À LA DEMANDE : la plupart des élèves ne verront
+    // jamais ce voile, et il ne doit rien coûter à ceux-là.
+    import('../data/catalog.js').then(({ getExerciseById }) => {
+        exos.forEach((id) => {
+            const exo = getExerciseById(id);
+            if (!exo) return;   // retiré du catalogue depuis : on ne propose pas un vide
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn-toggle active eleve-ecarte-exo';
+            b.textContent = exo.title || id;
+            b.onclick = () => lancerLExoLibre(voile, exo);
+            liste.appendChild(b);
+        });
+        if (!liste.children.length) { zone.hidden = true; }
+    }).catch(() => { zone.hidden = true; });
+}
+
+/**
+ * ON REMET LE VOILE QUAND LA COUCHE DE JEU DISPARAÎT — et non quand le meneur
+ * dit qu'il a fini.
+ *
+ * MESURÉ, ET C'EST POURQUOI CE N'EST PAS `onExit`. La croix rouge
+ * (`#btn-close-game`, js/app.js) N'APPELLE PAS `exit()` : elle abandonne le
+ * meneur et cache la couche elle-même. Avec `onExit` seul, l'élève qui ferme
+ * par la croix se retrouvait dans l'application ENTIÈRE, porte fermée —
+ * exactement ce que « c'est la seule chose qu'il peut faire » interdit. La
+ * boîte à jeux a payé ce même piège avant nous (voir `finirLaPartie` dans
+ * ui/boiteUI.js, qui le raconte).
+ *
+ * ON ÉCOUTE DONC LE FAIT, PAS LE CHEMIN : la couche de jeu est cachée, donc
+ * l'exercice est terminé, quelle que soit la porte par laquelle il est sorti.
+ * Un observateur sur son attribut `style` répond dans l'image qui suit, là où
+ * le battement de dix secondes laisserait l'écran ouvert dix secondes.
+ */
+function remettreLeVoileALaFin(voile) {
+    const gl = document.getElementById('game-layer');
+    const remettre = () => { voile.hidden = false; };
+    if (!gl) { remettre(); return; }
+    const obs = new MutationObserver(() => {
+        if (getComputedStyle(gl).display === 'none') {
+            obs.disconnect();
+            remettre();
+        }
+    });
+    obs.observe(gl, { attributes: true, attributeFilter: ['style', 'class'] });
+    // CEINTURE : si le voile part pour une autre raison — le professeur rouvre
+    // la porte pendant qu'il joue —, l'observateur n'a plus d'objet.
+    return obs;
+}
+
+async function lancerLExoLibre(voile, exo) {
+    const [{ Runner }, { makePath, makeStep }, { politiquePerso }] = await Promise.all([
+        import('../core/runner.js'), import('../core/path.js'),
+        import('../core/mesExercices.js')
+    ]);
+    const pas = makeStep(exo.id, {}, { stepId: 'libre' });
+    voile.hidden = true;
+    const obs = remettreLeVoileALaFin(voile);
+    try {
+        const r = new Runner({
+            path: makePath(exo.title || 'Exercice', [pas], politiquePerso()),
+            deviceMode: 'none',
+            // ON GARDE `onExit` EN PLUS DE L'OBSERVATEUR : il ferme le cas de
+            // la fin normale sans attendre une mutation, et il EMPÊCHE le
+            // meneur de naviguer vers la carte ou le catalogue en sortant —
+            // ce qu'il fait par défaut, et qui rouvrirait la maison.
+            onExit: () => {
+                if (obs) obs.disconnect();
+                const gl = document.getElementById('game-layer');
+                if (gl) gl.style.display = 'none';
+                voile.hidden = false;
+            }
+        });
+        r.start();
+    } catch (e) {
+        // SI LE MENEUR NE PART PAS, LE VOILE REVIENT. Un élève devant un écran
+        // vide, porte fermée, n'a aucun moyen de s'en sortir.
+        if (obs) obs.disconnect();
+        voile.hidden = false;
+    }
 }
 
 /* ---------------------------------------------------------------- Les mots */

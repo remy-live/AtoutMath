@@ -159,6 +159,51 @@ function imposeEncoreValide(array $classe, ?int $maintenant = null): ?string
  *
  * @param array $eleve la ligne `students` enrichie par requireStudent()
  */
+/**
+ * UNE COLONNE D'IDENTIFIANTS SÉPARÉS PAR DES VIRGULES, en tableau.
+ *
+ * `null` et la chaîne vide rendent la même chose — un tableau vide. C'est la
+ * différence avec `bac_jeux`, où `null` veut dire « la liste par défaut » :
+ * ici, rien d'autorisé veut dire porte close, qui est le comportement d'avant.
+ */
+function listeDIdentifiants($brut): array
+{
+    $t = trim((string) ($brut ?? ''));
+    if ($t === '') return [];
+    $out = [];
+    foreach (explode(',', $t) as $x) {
+        $x = trim($x);
+        if ($x !== '') $out[] = $x;
+    }
+    return array_values(array_unique($out));
+}
+
+/**
+ * ON ÉCRIT QU'IL EST ENTRÉ, ET D'OÙ.
+ *
+ * RÉMY : « J'aimerai aussi que tu enregistres les connexions que je puisse
+ * suivre ce qu'ils font ».
+ *
+ * UNE LIGNE PAR IDENTIFICATION, jamais par battement : le battement frappe
+ * toutes les dix secondes, et en écrire une ligne ferait un journal qu'on ne
+ * lit pas. Voir la table `connexions` dans api/lib/schema.php, qui explique
+ * aussi pourquoi l'on ne range AUCUNE adresse réseau.
+ *
+ * ET ON NE LAISSE JAMAIS LE JOURNAL EMPÊCHER D'ENTRER : une table manquante —
+ * base d'avant cette colonne, migration en retard — ne doit pas refuser sa
+ * classe à un élève. On avale, c'est tout.
+ */
+function noterLaConnexion(array $student, array $session): void
+{
+    $contexte = !empty($session['impose']) ? 'seance'
+        : (!empty($session['horsSeance']) ? 'maison' : 'libre');
+    try {
+        db()->prepare('INSERT INTO connexions (id, student_id, class_id, le, contexte)
+                       VALUES (?, ?, ?, ' . sqlMaintenant() . ', ?)')
+            ->execute([uuidv4(), $student['id'], $student['class_id'] ?? null, $contexte]);
+    } catch (Throwable $t) { /* le journal ne ferme la porte à personne */ }
+}
+
 function etatDeSeance(array $eleve): array
 {
     $pdo = db();
@@ -167,6 +212,7 @@ function etatDeSeance(array $eleve): array
     // requireStudent(), pour que cette fonction soit utilisable seule (elle
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
+                              hors_seance_exos,
                               impose_jusqu_a, impose_plein_ecran, chrono_fin, chrono_a_zero,
                               pause_mot, bac_ferme, bac_minutes, bac_jeux,
                               hors_seance, hors_seance_mot,
@@ -343,6 +389,19 @@ function etatDeSeance(array $eleve): array
             ? (string) $classe['hors_seance_mot']
             : 'Pour l\'instant, AtoutMath ne s\'ouvre qu\'au collège, '
                 . 'pendant le cours. À tout à l\'heure !',
+        // CE QU'ON LAISSE PASSER MALGRÉ LA PORTE FERMÉE.
+        //
+        // RÉMY : « je peux laisser libre qqs exercices que j'aurais défini mais
+        // attention c'est la seule chose qu'il peut faire, il ne peut pas aller
+        // sur son profil ou autre ».
+        //
+        // ON NE L'ENVOIE QUE QUAND LA PORTE EST FERMÉE. Hors de ce moment-là,
+        // la liste ne veut rien dire — tout est ouvert — et l'envoyer quand
+        // même inviterait le navigateur à en déduire quelque chose. Même règle
+        // que pour `horsSeance` juste au-dessus : le serveur tranche, l'écran
+        // obéit.
+        'horsSeanceExos' => (!empty($classe['hors_seance']) && !$imposeId)
+            ? listeDIdentifiants($classe['hors_seance_exos'] ?? null) : [],
         // LE BAC À SABLE : ouvert par défaut, et c'est délibéré. Une fonction
         // qu'il faut allumer pour la découvrir n'est jamais découverte.
         'bacFerme'  => (bool) ($classe['bac_ferme'] ?? 0),

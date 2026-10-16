@@ -255,6 +255,29 @@ function lesTablesDuSchema(bool $sqlite): array
         --     de mon choix » — c'est donc le sien, et il y a un défaut pour
         --     celui qui coche sans écrire.
         hors_seance_mot $txtNull,
+        --   · hors_seance_exos : CE QU'ON LAISSE PASSER MALGRÉ LA PORTE FERMÉE.
+        --
+        --     RÉMY : « si il est bloqué chez lui car j'empêche l'accès, je
+        --     peux laisser libre qqs exercices que j'aurais défini mais
+        --     attention c'est la seule chose qu'il peut faire, il ne peut pas
+        --     aller sur son profil ou autre », puis : « si j'empêche l'accès
+        --     pour une classe, je peux autoriser des exercices spécifiquement
+        --     pour cette classe ».
+        --
+        --     LA LISTE EST EXCLUSIVE, ET C'EST TOUT LE SUJET. Porte fermée ne
+        --     devient pas porte entrouverte sur le logiciel : le voile reste,
+        --     et il ne laisse passer que ce qu'il nomme. Pas de profil, pas de
+        --     catalogue, pas de bac à sable — l'élève ouvre un de ces
+        --     exercices, le fait, et revient au voile.
+        --
+        --     DES IDENTIFIANTS SÉPARÉS PAR DES VIRGULES, comme `bac_jeux` :
+        --     on n'y range que des identifiants du catalogue, qui n'ont ni
+        --     virgule ni espace.
+        --
+        --     NULL ET VIDE SONT LA MÊME CHOSE ICI, contrairement à `bac_jeux` :
+        --     rien d'autorisé veut dire porte close, qui est le comportement
+        --     d'avant et le défaut.
+        hors_seance_exos $txtNull,
         chrono_fin     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         chrono_a_zero  $txtNull,
         --   · pause_mot : LA CLASSE EST EN PAUSE, TOUT DE SUITE.
@@ -519,6 +542,41 @@ function lesTablesDuSchema(bool $sqlite): array
     // ELLE NE S'EFFACE PAS APRÈS COUP, et c'est voulu : un élève qui ouvre son
     // poste trois jours plus tard doit l'apprendre aussi. Une ligne par remise
     // à zéro et par parcours, c'est quelques octets par an et par élève.
+    // ── LE JOURNAL DES CONNEXIONS ─────────────────────────────────────────
+    //
+    // RÉMY : « J'aimerai aussi que tu enregistres les connexions que je puisse
+    // suivre ce qu'ils font ».
+    //
+    // UNE LIGNE PAR ENTRÉE, ET SEULEMENT À L'ENTRÉE. Le battement de l'élève
+    // frappe le serveur toutes les dix secondes : en écrire une ligne ferait
+    // trois cent soixante lignes par heure et par élève, c'est-à-dire un
+    // journal qu'on ne lit pas. On écrit donc quand il S'IDENTIFIE — le moment
+    // qui répond à sa question.
+    //
+    // ET L'ON RANGE LE CONTEXTE, parce que c'est lui qui l'intéresse. « pour le
+    // moment je veux suivre ce qu'ils font et voir le debug » : savoir que Tom
+    // s'est connecté à 21 h 40 ne vaut que si l'on sait qu'il n'y avait pas
+    // cours. Trois valeurs, décidées par le serveur au moment où il ouvre :
+    //
+    //     'seance'  une séance était imposée — il est en classe ;
+    //     'maison'  la porte était fermée — il arrive de chez lui, et il n'a
+    //               trouvé que le voile (ou les exercices laissés libres) ;
+    //     'libre'   ni l'un ni l'autre — le cas ordinaire hors de l'heure.
+    //
+    // AUCUNE ADRESSE RÉSEAU, et c'est délibéré. Elle ne dirait pas « chez
+    // lui » — un téléphone dans la cour sort par la 4G, et le collège entier
+    // sort par une seule adresse — et elle serait une donnée personnelle de
+    // plus à garder sur des mineurs. Le contexte répond à la question posée ;
+    // l'adresse n'y répondrait pas, et coûterait cher.
+    $tables['connexions'] = "
+        id         $id,
+        student_id $ref,
+        class_id   $refNull,
+        le         $date,
+        contexte   $txtNull,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
+
     $tables['reinitialisations'] = "
         id         $id,
         student_id $ref,
@@ -714,6 +772,9 @@ function migrerLaSuite(PDO $pdo, bool $sqlite, array $tables): void
         'idx_signal_class'     => 'signalements(class_id, created_at)',
         'idx_over_class'       => 'overrides(class_id)',
         'idx_over_student'     => 'overrides(student_id)',
+        // Le journal des connexions se lit PAR CLASSE et du plus récent au
+        // plus ancien — c'est sa seule lecture, comme pour les signalements.
+        'idx_cnx_class'        => 'connexions(class_id, le)',
     ] as $nom => $cible) {
         try {
             $pdo->exec("CREATE INDEX IF NOT EXISTS $nom ON $cible");

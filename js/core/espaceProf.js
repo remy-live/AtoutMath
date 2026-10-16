@@ -148,6 +148,15 @@ export const reglagesDuSite = (changements = {}) =>
  * pour un écran qui en ouvrira peut-être une. On la demande quand on la
  * regarde, et pas avant.
  */
+/**
+ * LE JOURNAL DES CONNEXIONS D'UNE CLASSE — les deux cents dernières.
+ *
+ * Rémy : « J'aimerai aussi que tu enregistres les connexions que je puisse
+ * suivre ce qu'ils font ».
+ */
+export const lesConnexions = (classId) =>
+    auServeur('/teacher/connexions', { classId });
+
 export const lesSignalements = () => auServeur('/teacher/signalements', { action: 'list' });
 export const photoDuSignalement = (id) => auServeur('/teacher/signalements', { action: 'photo', id });
 export const classerSignalement = (id, traite) =>
@@ -313,8 +322,16 @@ export const retirerUnProfesseur = (teacherId, classes = 'reprendre', confirmati
  * LES DEUX ENSEMBLE, EN UN SEUL ALLER-RETOUR : fermer d'abord et écrire ensuite
  * laisserait une minute où l'élève voit une porte close sans savoir pourquoi.
  */
-export const fermerHorsSeance = (classId, ferme, mot = '') =>
-    auServeur('/teacher/class', { classId, action: 'maison', ferme: !!ferme, mot });
+/**
+ * @param {Array<string>} [exos] les exercices laissés libres MALGRÉ la porte
+ *   fermée. Rémy : « je peux laisser libre qqs exercices que j'aurais défini ».
+ *   LAISSER CE PARAMÈTRE DE CÔTÉ VEUT DIRE « NE TOUCHE PAS À LA LISTE », et le
+ *   serveur l'entend ainsi : sans cela, réenregistrer le message depuis l'autre
+ *   écran effacerait les exercices choisis.
+ */
+export const fermerHorsSeance = (classId, ferme, mot = '', exos = undefined) =>
+    auServeur('/teacher/class', { classId, action: 'maison', ferme: !!ferme, mot,
+        ...(exos === undefined ? {} : { exos }) });
 
 /**
  * LANCER LE DÉFI CHRONOMÉTRÉ DE LA CLASSE.

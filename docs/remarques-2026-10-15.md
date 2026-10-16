@@ -958,3 +958,33 @@ Il veut un journal des connexions — qui s'est connecté, quand — et il le ve
 maintenant pour la même raison que la porte : « pour le moment je veux suivre
 ce qu'ils font et voir le debug ». Ce qui l'intéresse n'est donc pas seulement
 l'heure : c'est **où** — pendant la séance, ou chez eux.
+
+**Ce qui a été construit.** Une colonne `hors_seance_exos` par classe, des
+identifiants séparés par des virgules comme `bac_jeux`. Le professeur les
+choisit dans l'onglet « 🏠 À la maison », un par un dans un menu natif — deux
+cent trente-six entrées dans une liste à cocher se perdent au premier clic
+maladruit —, et ce qui est choisi reste sous les yeux en pastilles qu'on retire
+d'une croix.
+
+**Les boutons sont SUR le voile, et c'est la décision qui porte tout.** Rouvrir
+l'application en n'autorisant que quelques exercices demanderait de fermer une à
+une toutes les autres portes — le profil, le catalogue, la carte, le bac à
+sable, le menu — et il suffirait d'en oublier une. Le voile, lui, est déjà la
+fermeture de TOUT : on y perce exactement les trous nommés. Mesuré en demandant
+au navigateur qui est sous le doigt : profil, parcours et catalogue restent
+inatteignables pendant que l'exercice, lui, s'ouvre.
+
+**Et il revient quand l'exercice se termine, par n'importe quelle porte.** Ma
+première version s'appuyait sur `onExit` du meneur. Mesuré : la croix rouge
+n'appelle pas `exit()` — elle abandonne le meneur et cache la couche elle-même —
+et l'élève se retrouvait dans l'application entière, porte fermée. La boîte à
+jeux avait déjà payé ce piège. On écoute donc le FAIT (la couche de jeu a
+disparu) et non le chemin.
+
+**Le journal des connexions** écrit une ligne à chaque identification — jamais
+au battement, qui frappe toutes les dix secondes — avec le CONTEXTE décidé par
+le serveur : « en classe » (séance imposée), « à la maison » (porte fermée, et
+il est quand même venu), « hors séance ». Aucune adresse réseau : elle ne dirait
+pas « chez lui » — un téléphone dans la cour sort par la 4G, le collège entier
+par une seule adresse — et serait une donnée personnelle de plus sur des
+mineurs. Il se lit dans **Les bilans → Connexions**, rangé par jour.

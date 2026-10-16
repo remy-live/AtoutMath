@@ -1844,10 +1844,11 @@ $tables = array_column(db()->query(
 // déploiement ne se voit qu'au moment où une route l'interroge — c'est-à-dire
 // en classe. On la met à jour à la main à chaque table neuve, et c'est le prix
 // à payer pour que l'oubli crie ici plutôt que là-bas.
-verifier('les quatorze tables sont là',
-    $tables === ['assignments', 'classes', 'defi_scores', 'events', 'message_reads',
-                 'messages', 'overrides', 'paths', 'reglages', 'reinitialisations',
-                 'signalements', 'student_tokens', 'students', 'teachers'],
+verifier('les quinze tables sont là',
+    $tables === ['assignments', 'classes', 'connexions', 'defi_scores', 'events',
+                 'message_reads', 'messages', 'overrides', 'paths', 'reglages',
+                 'reinitialisations', 'signalements', 'student_tokens', 'students',
+                 'teachers'],
     implode(', ', $tables));
 
 titre('12 bis. La liste : lire un vrai fichier de professeur');
@@ -3015,9 +3016,110 @@ $s = $saSeance();
 verifier('COCHER SANS ÉCRIRE LAISSE QUAND MÊME UNE PHRASE',
     mb_strlen((string) ($s['horsSeanceMot'] ?? '')) > 20, $s['horsSeanceMot'] ?? '(rien)');
 
+// ── LA PORTE ENTROUVERTE : CE QU'ON LAISSE PASSER MALGRÉ TOUT ──────────────
+//
+// RÉMY : « si il est bloqué chez lui car j'empêche l'accès, je peux laisser
+// libre qqs exercices que j'aurais défini mais ATTENTION C'EST LA SEULE CHOSE
+// QU'IL PEUT FAIRE », puis : « si j'empêche l'accès pour une classe, je peux
+// autoriser des exercices spécifiquement pour cette classe ».
+$rLibre = json('/teacher/class', ['classId' => $idApp, 'action' => 'maison',
+                                  'ferme' => true, 'mot' => 'On se voit au collège.',
+                                  'exos' => ['calc-add', 'num-frac']], $jetonNotre);
+verifier('ON LAISSE DES EXERCICES LIBRES MALGRÉ LA PORTE FERMÉE',
+    ($rLibre['json']['exos'] ?? []) === ['calc-add', 'num-frac'],
+    json_encode($rLibre['json']['exos'] ?? null));
+$s = $saSeance();
+verifier('ET L\'ÉLÈVE LES REÇOIT',
+    ($s['horsSeanceExos'] ?? []) === ['calc-add', 'num-frac'],
+    json_encode($s['horsSeanceExos'] ?? null));
+
+// RÉENREGISTRER LE MESSAGE NE DOIT PAS EFFACER LA LISTE. L'écran du direct
+// envoie la case et le mot sans connaître les exercices : si l'absence valait
+// « plus aucun », changer une virgule au message les perdrait tous.
+$rMot = json('/teacher/class', ['classId' => $idApp, 'action' => 'maison',
+                                'ferme' => true, 'mot' => 'Autre mot.'], $jetonNotre);
+verifier('RÉENREGISTRER LE MESSAGE NE TOUCHE PAS À LA LISTE',
+    ($rMot['json']['exos'] ?? []) === ['calc-add', 'num-frac'],
+    json_encode($rMot['json']['exos'] ?? null));
+
+// MAIS UNE LISTE VIDE EXPLICITE REFERME POUR DE BON : c'est le geste « je
+// retire le dernier », et il doit valoir.
+$rVide = json('/teacher/class', ['classId' => $idApp, 'action' => 'maison',
+                                 'ferme' => true, 'mot' => 'Autre mot.',
+                                 'exos' => []], $jetonNotre);
+verifier('UNE LISTE VIDE EXPLICITE REFERME LA PORTE EN ENTIER',
+    ($rVide['json']['exos'] ?? null) === [], json_encode($rVide['json']['exos'] ?? null));
+
+// ET PORTE OUVERTE, LA LISTE NE VEUT RIEN DIRE : on ne l'envoie pas, sans quoi
+// le navigateur en déduirait une restriction qui n'existe pas.
+json('/teacher/class', ['classId' => $idApp, 'action' => 'maison',
+                        'ferme' => true, 'exos' => ['calc-add']], $jetonNotre);
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours],
+    $jetonNotre);
+enBase()->prepare('UPDATE classes SET impose_jusqu_a = NULL WHERE id = ?')->execute([$idApp]);
+$s = $saSeance();
+verifier('PORTE OUVERTE, AUCUNE LISTE N\'EST ENVOYÉE',
+    ($s['horsSeance'] ?? null) === false && ($s['horsSeanceExos'] ?? null) === [],
+    json_encode([$s['horsSeance'] ?? null, $s['horsSeanceExos'] ?? null]));
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
+
 json('/teacher/class', ['classId' => $idApp, 'action' => 'maison', 'ferme' => false], $jetonNotre);
 $s = $saSeance();
 verifier('et décocher rouvre pour de bon', ($s['horsSeance'] ?? null) === false);
+
+// ── LE JOURNAL DES CONNEXIONS ──────────────────────────────────────────────
+//
+// RÉMY : « J'aimerai aussi que tu enregistres les connexions que je puisse
+// suivre ce qu'ils font ».
+//
+// CE QUI L'INTÉRESSE N'EST PAS L'HEURE, C'EST LE CONTEXTE : savoir que Tom
+// s'est connecté à 21 h 40 ne vaut que si l'on sait qu'il n'y avait pas cours.
+// On éprouve donc les trois cas, et surtout qu'ils ne se confondent pas.
+$billetApp = json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre);
+$unEleve = ($billetApp['json']['eleves'] ?? [])[0] ?? null;
+$entrer = function () use ($unEleve) {
+    if (!$unEleve) return null;
+    return json('/login', ['login' => $unEleve['login'], 'code' => $unEleve['code']]);
+};
+$journal = fn () => json('/teacher/connexions', ['classId' => $idApp], $jetonNotre)
+    ['json']['connexions'] ?? [];
+
+// ON RETIENT LES LIGNES D'AVANT PAR LEUR IDENTIFIANT, et non par leur nombre :
+// `le` est à la seconde, et trois identifications dans la même seconde ne se
+// départagent pas. C'est sans importance pour Rémy — il lit des heures et des
+// minutes — mais une épreuve qui compterait sur cet ordre serait verte ou rouge
+// au hasard.
+$avantIds = array_flip(array_column($journal(), 'id'));
+// 1. PORTE OUVERTE, PAS DE SÉANCE : « hors séance », le cas ordinaire.
+$entrer();
+// 2. PORTE FERMÉE : « à la maison » — la ligne qu'il cherche.
+json('/teacher/class', ['classId' => $idApp, 'action' => 'maison', 'ferme' => true], $jetonNotre);
+$entrer();
+// 3. SÉANCE IMPOSÉE : « en classe ».
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours],
+    $jetonNotre);
+enBase()->prepare('UPDATE classes SET impose_jusqu_a = NULL WHERE id = ?')->execute([$idApp]);
+$entrer();
+
+$cnx = $journal();
+$neuves = array_values(array_filter($cnx, fn($l) => !isset($avantIds[$l['id']])));
+verifier('CHAQUE IDENTIFICATION LAISSE UNE LIGNE', count($neuves) === 3,
+    count($neuves) . ' ligne(s) neuve(s) pour 3 attendues');
+$contextes = array_column($neuves, 'contexte');
+sort($contextes);
+verifier('ET ELLE DIT D\'OÙ IL VENAIT — en classe, à la maison, hors séance',
+    $contextes === ['libre', 'maison', 'seance'], implode(', ', $contextes));
+verifier('le prénom est déchiffré, comme partout ailleurs',
+    ($neuves[0]['prenom'] ?? '') !== ''
+    && !str_contains((string) ($neuves[0]['prenom'] ?? ''), '{'),
+    (string) ($neuves[0]['prenom'] ?? '(rien)'));
+
+// ET LE JOURNAL D'UNE AUTRE CLASSE N'EXISTE PAS POUR CE PROFESSEUR-CI.
+verifier('un professeur ne lit pas les connexions d\'une autre classe',
+    json('/teacher/connexions', ['classId' => $notreClasse], $jetonAutre)['code'] === 404);
+
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
+json('/teacher/class', ['classId' => $idApp, 'action' => 'maison', 'ferme' => false], $jetonNotre);
 json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
 
 // ────────── LE PLEIN ÉCRAN DE LA SÉANCE IMPOSÉE ───────────────────────────

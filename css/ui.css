@@ -1467,6 +1467,22 @@ body.classe-verrouillee #btn-role {
     display: flex; align-items: center; justify-content: center;
     padding: 24px;
 }
+/* IL FAUT CETTE LIGNE POUR QUE `voile.hidden = true` FASSE QUELQUE CHOSE.
+   La règle `[hidden] { display: none }` du navigateur a la même spécificité que
+   `.eleve-ecarte` ci-dessus, et une règle d'auteur l'emporte sur celle de la
+   feuille par défaut : sans elle, le voile reste affiché PAR-DESSUS l'exercice
+   qu'il vient de laisser passer (il est à 10100, la couche de jeu à 10000). */
+.eleve-ecarte[hidden] { display: none; }
+/* LES EXERCICES LAISSÉS LIBRES — Rémy : « je peux laisser libre qqs exercices
+   que j'aurais défini ». Ils sont SUR le voile, et non derrière : c'est ce qui
+   garantit que rien d'autre n'est atteignable. */
+.eleve-ecarte-exos { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+.eleve-ecarte-sous { font-size: .9rem; font-weight: 700; color: var(--text-main); margin: 0 0 10px; }
+.eleve-ecarte-liste { display: flex; flex-direction: column; gap: 8px; }
+/* UN BOUTON PAR LIGNE, ET LARGE. Le titre d'un exercice fait jusqu'à trente
+   signes — « Multiplier des Relatifs, pas à pas » — et deux par ligne les
+   couperaient au milieu sur un téléphone. On n'en propose jamais beaucoup. */
+.eleve-ecarte-exo { width: 100%; min-height: 44px; }
 .eleve-ecarte-carte {
     background: var(--bg-panel); color: var(--text-main);
     border-radius: 18px; padding: 30px 26px; max-width: 420px; text-align: center;
@@ -5402,6 +5418,50 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     flex: 1 1 100%; font-size: .8rem; color: var(--text-muted); line-height: 1.35;
 }
 .ec-pilote-dit b { color: var(--text-main); }
+.ec-pilote-dit--libres { margin-top: 4px; }
+/* LES EXERCICES LAISSÉS LIBRES, EN PASTILLES QU'ON RETIRE D'UNE CROIX. C'est la
+   forme déjà employée pour les dispenses : ce qui est choisi reste sous les
+   yeux, et se défait d'un geste. */
+.ec-libres { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; }
+.ec-libre {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: .8rem; font-weight: 700; padding: 4px 6px 4px 10px;
+    border-radius: 999px; background: var(--bg-app); color: var(--text-main);
+    border: 1px solid var(--border);
+}
+/* LE JOURNAL DES CONNEXIONS. Le CONTEXTE est la colonne qui compte — savoir
+   que Tom s'est connecté à 21 h 40 ne vaut que si l'on sait qu'il n'y avait pas
+   cours —, et c'est la seule qui porte une couleur. */
+.ec-cnx-jour { margin-bottom: 18px; }
+.ec-cnx-titre {
+    font-size: .95rem; margin: 0 0 6px; color: var(--text-main);
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    text-transform: capitalize;
+}
+.ec-cnx-liste { list-style: none; margin: 0; padding: 0; }
+.ec-cnx {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 5px 2px; border-bottom: 1px solid var(--border); font-size: .9rem;
+}
+.ec-cnx-h { color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 46px; }
+.ec-cnx-ou {
+    margin-left: auto; font-size: .78rem; font-weight: 700;
+    padding: 2px 9px; border-radius: 999px;
+}
+.ec-cnx--seance { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success-texte); }
+/* « À la maison » veut dire : la porte était fermée et il est quand même venu.
+   C'est la ligne que Rémy cherche — elle se voit. */
+.ec-cnx--maison { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning-texte); }
+.ec-cnx--libre { background: var(--bg-hover); color: var(--text-muted); }
+
+.ec-libre-x {
+    font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
+    background: none; border: none; color: var(--text-muted);
+    min-width: 24px; min-height: 24px; border-radius: 999px;
+}
+@media (hover: hover) {
+    .ec-libre-x:hover { background: var(--bg-hover); color: var(--danger-texte); }
+}
 
 /* LE TITRE EST UN BOUTON, ET IL DOIT RESTER UN TITRE. Un `<button>` porte par
    défaut un fond, une bordure et la police du système : on les retire tous,

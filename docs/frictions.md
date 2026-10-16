@@ -4903,3 +4903,20 @@ le résultat n'existe pas** — 15 octobre 2026
   (`JSON.stringify(r).slice(0, 400)`) — deux secondes, et la forme est sous les
   yeux. À défaut, un commentaire de type sur les helpers d'`espaceProf.js` qui
   ne suivent pas la forme enveloppée.
+
+**Un bouton de sortie a trois chemins, et deux ne préviennent personne** — 16 octobre 2026
+
+- *Ce que je voulais faire* : remettre le voile de la porte fermée quand l'élève
+  termine l'exercice qu'on lui avait laissé.
+- *Ce qui a coûté* : j'ai branché `onExit` du meneur, qui est la porte
+  documentée. La croix rouge (`#btn-close-game`, js/app.js) NE L'APPELLE PAS :
+  elle abandonne le meneur et cache la couche de jeu elle-même. L'élève sortait
+  donc dans l'application entière, porte fermée — exactement ce que la demande
+  interdisait. `ui/boiteUI.js` raconte ce même piège en quinze lignes, trente
+  commits plus tôt : je ne l'ai lu qu'après.
+- *Combien de fois* : || (la boîte à jeux d'abord, le voile ensuite)
+- *Ce qui manque* : `exit()` n'est pas LA sortie du meneur, c'en est une sur
+  trois. Tant que `#btn-close-game` ne passe pas par elle, tout ce qui doit
+  arriver « à la fin » doit écouter le FAIT — la couche de jeu est cachée — et
+  non le chemin. Un `MutationObserver` de six lignes le fait ; une épreuve qui
+  interdirait à `app.js` de cacher `#game-layer` lui-même le ferait mieux.

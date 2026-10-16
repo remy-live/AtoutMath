@@ -131,6 +131,7 @@ switch ($route) {
     case '/teacher/signup':  handleTeacherSignup(); break;
     case '/teacher/override': handleTeacherOverride(); break;
     case '/teacher/signalements': handleTeacherSignalements(); break;
+    case '/teacher/connexions':  handleTeacherConnexions(); break;
     // LES RÉGLAGES DU SITE. En lecture, la route est PUBLIQUE — et il le faut :
     // le mode libre décide de ce qu'un visiteur voit sur la porte d'entrée,
     // c'est-à-dire avant qu'il ait le moindre jeton. En écriture, il faut être
@@ -326,13 +327,22 @@ function handleLogin(): void
         ->execute([hashToken($token), $student['id']]);
     elaguerJetons($student['id']);
 
+    // ON ÉCRIT QU'IL EST ENTRÉ, ET D'OÙ — voir `noterLaConnexion` dans
+    // api/lib/seance.php. Rémy : « J'aimerai aussi que tu enregistres les
+    // connexions que je puisse suivre ce qu'ils font ».
+    //
+    // APRÈS L'ÉTAT, ET NON AVANT : c'est l'état qui dit s'il y avait une
+    // séance imposée ou une porte fermée, et c'est cela qui l'intéresse.
+    $session = etatDeSeance($student);
+    noterLaConnexion($student, $session);
+
     respond([
         'studentId' => $student['id'],
         'token' => $token,
         'classCode' => $student['join_code'],
         'className' => $student['class_name'],
         'firstName' => dechiffrer($student['first_name']),
-        'session' => etatDeSeance($student),
+        'session' => $session,
     ]);
 }
 
@@ -1504,10 +1514,48 @@ function handleTeacherClass(): void
     if ($action === 'maison') {
         $on = !empty($body['ferme']) ? 1 : 0;
         $mot = trim((string) ($body['mot'] ?? ''));
-        db()->prepare('UPDATE classes SET hors_seance = ?, hors_seance_mot = ? WHERE id = ?')
-            ->execute([$on, $mot !== '' ? mb_substr($mot, 0, 300) : null, $classe['id']]);
-        respond(['ok' => true, 'ferme' => (bool) $on, 'mot' => $mot, 'dit' => $on
-            ? 'Fermé hors séance : vos élèves ne peuvent travailler que lorsque vous imposez une séance.'
+        // ── CE QU'ON LAISSE PASSER MALGRÉ LA PORTE FERMÉE ──────────────────
+        //
+        // RÉMY : « je peux laisser libre qqs exercices que j'aurais défini mais
+        // attention c'est la seule chose qu'il peut faire », puis « si
+        // j'empêche l'accès pour une classe, je peux autoriser des exercices
+        // spécifiquement pour cette classe ».
+        //
+        // ON NE L'ÉCRIT QUE SI ON LA REÇOIT. L'écran du direct envoie l'état
+        // complet (case + mot) sans connaître cette liste : écrire un tableau
+        // vide par défaut effacerait les exercices choisis dès qu'on
+        // réenregistre le message depuis l'autre écran. Absent veut donc dire
+        // « ne touche pas », et un tableau vide explicite veut dire « plus
+        // aucun ».
+        $garderLaListe = !array_key_exists('exos', $body);
+        $exos = [];
+        foreach ((array) ($body['exos'] ?? []) as $x) {
+            $x = trim((string) $x);
+            // UN IDENTIFIANT DU CATALOGUE N'A NI VIRGULE NI ESPACE : la colonne
+            // les sépare par des virgules, et l'on refuse donc ce qui la
+            // casserait plutôt que de ranger une liste qu'on ne saura pas
+            // relire.
+            if ($x !== '' && !preg_match('/[,\s]/', $x)) $exos[] = $x;
+        }
+        $exos = array_slice(array_values(array_unique($exos)), 0, 24);
+        if ($garderLaListe) {
+            db()->prepare('UPDATE classes SET hors_seance = ?, hors_seance_mot = ? WHERE id = ?')
+                ->execute([$on, $mot !== '' ? mb_substr($mot, 0, 300) : null, $classe['id']]);
+            $exos = listeDIdentifiants($classe['hors_seance_exos'] ?? null);
+        } else {
+            db()->prepare('UPDATE classes SET hors_seance = ?, hors_seance_mot = ?,
+                                  hors_seance_exos = ? WHERE id = ?')
+                ->execute([$on, $mot !== '' ? mb_substr($mot, 0, 300) : null,
+                           $exos ? implode(',', $exos) : null, $classe['id']]);
+        }
+        $combien = count($exos);
+        respond(['ok' => true, 'ferme' => (bool) $on, 'mot' => $mot, 'exos' => $exos,
+            'dit' => $on
+            ? ($combien
+                ? 'Fermé hors séance, sauf ' . $combien . ' exercice'
+                    . ($combien > 1 ? 's' : '') . ' laissé'
+                    . ($combien > 1 ? 's' : '') . ' libre' . ($combien > 1 ? 's' : '') . '.'
+                : 'Fermé hors séance : vos élèves ne peuvent travailler que lorsque vous imposez une séance.')
             : 'Rouvert : vos élèves peuvent travailler même sans séance imposée.']);
     }
 
@@ -1984,6 +2032,11 @@ function handleTeacherRoster(): void
             // ci-dessus : une case qui ne montre pas son état se recoche.
             'hors_seance' => (bool) ($classe['hors_seance'] ?? 0),
             'hors_seance_mot' => (string) ($classe['hors_seance_mot'] ?? ''),
+            // CE QU'ON LAISSE PASSER MALGRÉ LA PORTE FERMÉE. L'écran du direct
+            // doit pouvoir montrer la liste pour la modifier, et surtout la
+            // RENVOYER telle quelle : sans elle, enregistrer le message
+            // effacerait les exercices choisis.
+            'hors_seance_exos' => listeDIdentifiants($classe['hors_seance_exos'] ?? null),
             'chrono_fin' => $classe['chrono_fin'] ?? null,
             'chrono_a_zero' => $classe['chrono_a_zero'] ?? null,
             'bac_ferme' => (bool) ($classe['bac_ferme'] ?? 0),
@@ -2233,6 +2286,60 @@ function handleTeacherMessage(): void
  * peut-être une. Chaque ligne dit seulement SI elle en a une, et la route la
  * sert à la demande.
  */
+/**
+ * LE JOURNAL DES CONNEXIONS D'UNE CLASSE.
+ *
+ * RÉMY : « J'aimerai aussi que tu enregistres les connexions que je puisse
+ * suivre ce qu'ils font ».
+ *
+ * ON REND LES DEUX CENTS DERNIÈRES, du plus récent au plus ancien. Deux cents
+ * couvre une semaine d'une classe de trente ; au-delà, ce n'est plus un journal
+ * qu'on lit, c'est une archive — et l'écran qui la lirait ne saurait pas quoi
+ * en faire.
+ *
+ * L'APPARTENANCE SE VÉRIFIE DANS LA REQUÊTE, pas après : la jointure sur
+ * `classes.teacher_id` fait que la connexion d'une autre classe n'existe tout
+ * simplement pas pour ce professeur-ci.
+ *
+ * LE PRÉNOM EST DÉCHIFFRÉ ICI, comme partout ailleurs — il est rangé chiffré,
+ * et c'est cette route qui a le droit de le lire.
+ */
+function handleTeacherConnexions(): void
+{
+    $teacher = requireTeacher();
+    $body = jsonBody();
+    $classId = (string) ($body['classId'] ?? '');
+
+    $q = db()->prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?');
+    $q->execute([$classId, $teacher['id']]);
+    if (!$q->fetch()) fail(404, 'class_not_found', 'Classe introuvable.');
+
+    // UNE TABLE QUI N'EXISTE PAS N'EST PAS UNE PANNE : une base d'avant cette
+    // version n'a pas encore migré, et l'écran doit dire « rien pour l'instant »
+    // plutôt que « le serveur a refusé ».
+    $lignes = [];
+    try {
+        $st = db()->prepare(
+            'SELECT x.id, x.le, x.contexte, s.first_name
+               FROM connexions x JOIN students s ON s.id = x.student_id
+              WHERE x.class_id = ?
+              ORDER BY x.le DESC, x.id DESC
+              LIMIT 200'
+        );
+        $st->execute([$classId]);
+        foreach ($st->fetchAll() as $l) {
+            $lignes[] = [
+                'id'       => $l['id'],
+                'quand'    => $l['le'],
+                'contexte' => (string) ($l['contexte'] ?? 'libre'),
+                'prenom'   => dechiffrer($l['first_name']),
+            ];
+        }
+    } catch (Throwable $t) { $lignes = []; }
+
+    respond(['connexions' => $lignes]);
+}
+
 function handleTeacherSignalements(): void
 {
     $teacher = requireTeacher();
