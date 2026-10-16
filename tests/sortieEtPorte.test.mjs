@@ -127,3 +127,47 @@ test('la seconde sortie du menu n\'existe que dans le cas double', () => {
     assert.ok(i > 0, 'le bouton est déclaré dans la page');
     assert.match(PAGE.slice(i, PAGE.indexOf('>', i)), /\bhidden\b/);
 });
+
+// ────────────── APRÈS LA DÉCONNEXION, LE NAVIGATEUR N'EST PLUS CET ÉLÈVE ──
+//
+// RÉMY : « quand je déconnecte du compte d'élèves, je garde — car ça doit être
+// sur le navigateur — le profil de l'élève, alors que j'aimerai revenir à
+// l'écran d'identification ».
+//
+// MESURÉ (`tools/retourAuPortail.mjs`) : jeton parti, séance encore là, porte
+// fermée. `portailNecessaire()` refuse d'ouvrir quand `aUneSeance()` répond
+// oui, et `aUneSeance()` relit `state.studentPath`, qui se recalcule depuis le
+// journal du profil local. L'application se rouvrait donc sous le nom de
+// l'élève comme s'il n'était jamais parti.
+
+const SYNC = lire('js/core/sync.js');
+
+test('SE DÉCONNECTER BASCULE SUR UN PROFIL NEUF', () => {
+    const i = SYNC.indexOf('ON NE RESTE PAS L\'ÉLÈVE QU\'ON VIENT DE QUITTER');
+    assert.ok(i > 0, 'le basculement existe');
+    const bloc = SYNC.slice(i, i + 2600);
+    assert.match(bloc, /const neuf = vierge \|\| await createProfile\('Mon profil'\);/);
+    assert.match(bloc, /await aller\(neuf\.id\);/);
+    // ET LE PROFIL DE L'ÉLÈVE NE PART QUE S'IL L'A DEMANDÉ : se déconnecter
+    // n'est pas s'effacer.
+    assert.match(bloc, /if \(effacerLeTravail\) await deleteProfile\(sien\);/);
+});
+
+test('ET LES PROFILS VIERGES NE S\'EMPILENT PAS', () => {
+    // Trois allers-retours sur le poste de la salle ne doivent pas laisser
+    // trois « Mon profil » dans « Qui travaille ? ».
+    const i = SYNC.indexOf('ON RÉUTILISE LE PROFIL VIERGE');
+    assert.ok(i > 0);
+    const bloc = SYNC.slice(i, i + 700);
+    assert.match(bloc, /!\(p\.remote && p\.remote\.login\)/);
+});
+
+test('L\'ÉLÈVE QUI REVIENT RETROUVE SON PROFIL, il n\'en crée pas un second', () => {
+    // MESURÉ sans cette recherche : deux « Bernard Tom » dans la liste après un
+    // aller-retour, et un de plus à chaque fois. On le reconnaît à son
+    // identifiant de connexion, que la déconnexion laisse exprès sur le profil.
+    assert.match(SYNC, /const sien = listProfiles\(\)\.find\(p => p && p\.remote\s*\n\s*&& p\.remote\.login === String\(login\)\.trim\(\)/);
+    assert.match(SYNC, /if \(sien\) await setActiveProfile\(sien\.id\);/);
+    // ET LA MARQUE NE SURVIT PAS À UN EFFACEMENT DEMANDÉ.
+    assert.match(SYNC, /login: effacerLeTravail \? null :/);
+});

@@ -15,7 +15,8 @@
 
 import { journal } from './journal.js';
 import { globalStore } from './store.js';
-import { getActiveProfile, getDeviceId, attachRemote, getActiveProfileId } from './profile.js';
+import { getActiveProfile, getDeviceId, attachRemote, getActiveProfileId,
+    listProfiles, setActiveProfile } from './profile.js';
 import { appliquerEtat } from './seanceDistante.js';
 import { ceQuOnVoit } from './ecran.js';
 
@@ -267,7 +268,24 @@ export async function loginEleve({ apiUrl, login, code }) {
         code: String(code).trim().toUpperCase(),
         deviceId: getDeviceId()
     });
-    await attachRemote(getActiveProfileId(), {
+
+    // ── IL REVIENT CHEZ LUI, IL NE S'INSTALLE PAS À CÔTÉ ───────────────────
+    //
+    // Se déconnecter bascule sur un profil neuf (voir `deconnecterEleve`, qui
+    // dit pourquoi). Sans cette recherche, se reconnecter renommerait ce profil
+    // neuf du prénom de l'élève et en laisserait un second, vide d'histoire, à
+    // côté de l'ancien : MESURÉ, deux « Bernard Tom » dans la liste après un
+    // aller-retour, et un de plus à chaque fois.
+    //
+    // ON LE RECONNAÎT À SON IDENTIFIANT DE CONNEXION, que la déconnexion laisse
+    // exprès sur le profil. Son journal est donc là, son score aussi, et la
+    // synchronisation reprend où elle en était au lieu de tout retélécharger.
+    const sien = listProfiles().find(p => p && p.remote
+        && p.remote.login === String(login).trim() && p.id !== getActiveProfileId());
+    if (sien) await setActiveProfile(sien.id);
+    const ou = getActiveProfileId();
+
+    await attachRemote(ou, {
         studentId: data.studentId,
         token: data.token,
         classCode: data.classCode,
@@ -287,7 +305,7 @@ export async function loginEleve({ apiUrl, login, code }) {
     // affiché partout où l'application dit « qui travaille ».
     if (data.firstName) {
         const { renameProfile } = await import('./profile.js');
-        await renameProfile(getActiveProfileId(), data.firstName);
+        await renameProfile(ou, data.firstName);
     }
     if (data.session) appliquerEtat(data.session);
     await syncNow({ silent: true });
@@ -340,10 +358,63 @@ export async function deconnecterEleve({ force = false, effacerLeTravail = false
         } catch (e) { /* un stockage récalcitrant n'empêche pas de partir */ }
     }
 
+    // ON GARDE `login` QUAND ON NE S'EFFACE PAS, ET C'EST CE QUI PERMET DE
+    // REVENIR CHEZ SOI. Il ne sert plus à rien d'autre : le jeton est parti,
+    // donc il n'ouvre plus rien. C'est une MARQUE — « ce profil-ci était le
+    // sien » — et `loginEleve` la relit pour rebrancher l'élève sur SON profil
+    // plutôt que d'en empiler un neuf à chaque retour. Mesuré sans elle : deux
+    // profils « Bernard Tom » dans la liste après un aller-retour, et un de
+    // plus à chaque fois.
     await attachRemote(getActiveProfileId(), {
         studentId: null, token: null, classCode: null, className: null,
-        login: null, cursor: 0, lastSyncAt: null
+        login: effacerLeTravail ? null : ((getActiveProfile() || {}).remote || {}).login || null,
+        cursor: 0, lastSyncAt: null
     });
+
+    // ── ON NE RESTE PAS L'ÉLÈVE QU'ON VIENT DE QUITTER ─────────────────────
+    //
+    // RÉMY : « quand je déconnecte du compte d'élèves, je garde — car ça doit
+    // être sur le navigateur — le profil de l'élève, alors que j'aimerai
+    // revenir à l'écran d'identification ».
+    //
+    // DÉTACHER LE JETON NE SUFFIT PAS, ET C'EST LE DÉFAUT. Le PROFIL LOCAL
+    // reste : il porte le prénom de l'élève, son journal, son score. Or
+    // `portailNecessaire()` (core/portail.js) refuse d'ouvrir la porte quand
+    // `aUneSeance()` répond oui — et `aUneSeance()` relit `state.studentPath`,
+    // qui se recalcule depuis ce journal. MESURÉ (`tools/retourAuPortail.mjs`) :
+    // jeton parti, séance encore là, porte fermée, et l'application se rouvre
+    // sous le nom de l'élève comme s'il n'était jamais parti.
+    //
+    // ON BASCULE DONC SUR UN PROFIL NEUF. Espace de rangement neuf, donc
+    // journal vide, donc plus de séance, donc la porte s'ouvre — et le nom
+    // affiché n'est plus celui de l'élève.
+    //
+    // SON PROFIL RESTE DANS LA LISTE : se déconnecter n'est pas s'effacer, et
+    // c'est la case « Effacer aussi mon travail sur cet appareil » qui tranche.
+    // Cochée, on retire le profil ENTIER — sans quoi il resterait une coquille
+    // vide portant son prénom, ce qui est précisément ce qu'on ne veut pas
+    // laisser au suivant sur un poste partagé.
+    try {
+        const { createProfile, listProfiles: tous, setActiveProfile: aller,
+                deleteProfile } = await import('./profile.js');
+        const sien = getActiveProfileId();
+        // ON RÉUTILISE LE PROFIL VIERGE S'IL Y EN A DÉJÀ UN. Sans cela, chaque
+        // aller-retour en laisse un de plus : MESURÉ, deux « Mon profil » dans
+        // la liste après deux déconnexions, et un de plus à chaque fois. Un
+        // profil vierge est un profil que personne n'a jamais rattaché — pas
+        // d'identifiant de connexion — et qui porte encore son nom de départ.
+        const vierge = tous().find(p => p && p.id !== sien
+            && !(p.remote && p.remote.login) && p.name === 'Mon profil');
+        const neuf = vierge || await createProfile('Mon profil');
+        await aller(neuf.id);
+        if (effacerLeTravail) await deleteProfile(sien);
+    } catch (e) {
+        // UN PROFIL QU'ON NE PEUT PAS BASCULER NE RETIENT PERSONNE : le jeton
+        // est déjà parti, l'élève est déconnecté. On le dit au journal de la
+        // console plutôt que de refuser le départ.
+        console.info('[sync] profil non basculé à la déconnexion :', e && e.message);
+    }
+
     await setSyncConfig({ enabled: false });
     document.dispatchEvent(new CustomEvent('eleve_deconnecte'));
     return { parti: true, reste: 0 };

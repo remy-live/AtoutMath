@@ -1015,3 +1015,46 @@ nomme la classe qu'on quitte.
 **Le chemin de secours sur la version déjà déployée**, vérifié aussi : quitter
 d'abord le mode professeur fait réapparaître « Se déconnecter de 6e B » dans le
 même menu.
+
+# Vingt-septième passe — après la déconnexion, on reste l'élève
+
+> « par contre, sur le même navigateur, je quitte le mode professeur. Je mets
+> sur un compte d'élève. Quand je déconnecte du compte d'élèves, je garde car ça
+> doit être sur le navigateur le profil de l'élève alors que j'aimerai revenir
+> à l'écran d'identification »
+
+Se déconnecter détache bien le compte du serveur, mais le PROFIL LOCAL reste —
+il porte le prénom de l'élève, son travail, son score — et l'application
+continue donc de s'ouvrir sous son nom. Ce qu'il attend : retomber sur l'écran
+d'identification, celui où l'on entre son billet.
+
+**Ce que la mesure a dit.** `tools/retourAuPortail.mjs` monte son chemin mot
+pour mot : il quitte son mode, entre comme élève, se déconnecte. Résultat avant
+correction, **avec une séance en cours** :
+
+```
+   {"profil":"Bernard Tom","rattache":false,"aUneSeance":true,
+    "porteNecessaire":false,"porteVisible":false}
+```
+
+Le jeton est bien parti — la déconnexion « marchait ». Mais le profil local
+reste, son journal avec, et `portailNecessaire()` refuse d'ouvrir la porte
+quand `aUneSeance()` répond oui. L'application se rouvrait donc sous le nom de
+l'élève, avec sa séance, comme s'il n'était jamais parti. **Et la première
+version de la sonde, sans séance, donnait tout vert** : c'est le journal local
+qui tient la porte fermée, et il faut une séance pour qu'il y ait quelque chose
+dedans.
+
+**La correction** bascule sur un profil neuf en partant : espace de rangement
+neuf, donc journal vide, donc plus de séance, donc la porte s'ouvre — et le nom
+affiché n'est plus celui de l'élève. Son profil reste dans la liste : se
+déconnecter n'est pas s'effacer, et c'est la case « Effacer aussi mon travail »
+qui tranche. Cochée, le profil part **en entier**, et non en coquille vide
+portant son prénom.
+
+**Deux défauts trouvés en vérifiant ce que je n'avais pas le droit de
+supposer.** L'élève qui se reconnecte retrouve-t-il son travail ? Oui — mais il
+se créait un SECOND profil à son nom à chaque aller-retour. On le reconnaît
+maintenant à son identifiant de connexion, que la déconnexion laisse exprès sur
+le profil. Et les profils vierges s'empilaient de la même façon : on réutilise
+celui qui existe.
