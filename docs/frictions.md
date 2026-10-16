@@ -4920,3 +4920,21 @@ le résultat n'existe pas** — 15 octobre 2026
   arriver « à la fin » doit écouter le FAIT — la couche de jeu est cachée — et
   non le chemin. Un `MutationObserver` de six lignes le fait ; une épreuve qui
   interdirait à `app.js` de cacher `#game-layer` lui-même le ferait mieux.
+
+**Une identité qui en cache une autre** — 16 octobre 2026
+
+- *Ce que je voulais faire* : donner à Rémy une porte de sortie du compte élève
+  qu'il venait d'essayer.
+- *Ce qui a coûté* : j'avais posé la veille un bouton « Se déconnecter » dans
+  son profil, mesuré visible et cliquable — et il ne lui servait à rien, parce
+  qu'il nommait le PROFESSEUR. `quiEstLa()` rend une identité là où il peut y en
+  avoir deux, et ma sonde de la veille n'avait mesuré que le cas simple : un
+  élève sur un poste partagé, qui n'a jamais deux jetons. J'avais donc vérifié
+  le bouton sur la seule situation où il n'y avait pas de défaut.
+- *Combien de fois* : || (même famille que « une sonde qui traverse tout droit
+  ne voit pas ce qui se casse en revenant »)
+- *Ce qui manque* : une règle pour les sondes d'identité — **mesurer les
+  combinaisons, pas les rôles**. Dès qu'un écran dépend de « qui est là »,
+  l'éprouver au moins sur : personne, élève seul, professeur seul, et LES DEUX.
+  Le quatrième cas est celui du professeur qui essaie son logiciel, c'est-à-dire
+  de l'utilisateur qu'on a sous la main tous les jours.

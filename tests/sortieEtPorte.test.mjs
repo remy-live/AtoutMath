@@ -35,11 +35,12 @@ test('UN SEUL GESTE POUR LES DEUX BOUTONS DE SORTIE', () => {
     // Le menu « ⋯ » et « Mon profil » déclenchent la même chose. Recopier le
     // choix du rôle à deux endroits est la façon connue de les voir diverger :
     // ce dépôt l'a déjà payé trois fois (voir docs/frictions.md).
-    assert.match(DECO, /export function seDeconnecter\(\)/);
-    assert.match(DECO, /getElementById\('btn-deconnexion'\);\s*\n\s*if \(b\) b\.onclick = seDeconnecter;/);
-    assert.match(DECO, /getElementById\('btn-sortie-profil'\);\s*\n\s*if \(p\) p\.onclick = seDeconnecter;/);
-    // ET LE CHOIX DU RÔLE N'EST ÉCRIT QU'UNE FOIS.
-    const fois = (DECO.match(/if \(qui\.role === 'prof'\) deconnecterLeProf\(\);/g) || []).length;
+    assert.match(DECO, /export function seDeconnecter\(role = null\)/);
+    assert.match(DECO, /if \(b\) b\.onclick = \(\) => seDeconnecter\(\);/);
+    assert.match(DECO, /if \(be\) be\.onclick = \(\) => seDeconnecter\('eleve'\);/);
+    assert.match(DECO, /if \(p\) p\.onclick = \(\) => seDeconnecter\(p\.dataset\.role \|\| null\);/);
+    // ET LE CHOIX DU RÔLE N'EST ÉCRIT QU'UNE FOIS — trois boutons, une règle.
+    const fois = (DECO.match(/if \(voulu === 'prof'\) deconnecterLeProf\(\);/g) || []).length;
     assert.equal(fois, 1, 'le dispatch de rôle est écrit une seule fois');
 });
 
@@ -71,4 +72,58 @@ test('APRÈS AVOIR FERMÉ, ON RELIT LA LISTE AU SERVEUR', () => {
     // ON S'ARRÊTE AVANT LA CARTE : elle est cliquable en entier, et fermer la
     // maison ouvrirait la classe par la même occasion.
     assert.match(bloc, /e\.stopPropagation\(\);/);
+});
+
+// ──────────────────── DEUX IDENTITÉS SUR LA MÊME MACHINE, ET DEUX SORTIES ──
+//
+// RÉMY : « je suis désolé, je me suis mis sur un compte élève mais je ne
+// trouve pas où me déconnecter ».
+//
+// IL N'Y AVAIT PAS À ÊTRE DÉSOLÉ : la porte n'existait pas. `quiEstLa()` rendait
+// UNE identité, celle du professeur dès qu'un jeton de professeur existait — et
+// sur sa machine les deux existent. Les deux boutons proposaient « Quitter le
+// mode professeur », qui ne défait pas le rattachement de l'élève. Mesuré
+// (`tools/deuxIdentites.mjs`) : deux jetons, zéro geste pour sortir.
+
+test('LES DEUX RATTACHEMENTS SE LISENT, PAS SEULEMENT LE PREMIER', () => {
+    const i = DECO.indexOf('export function lesIdentites()');
+    assert.ok(i > 0, 'la fonction existe');
+    const bloc = DECO.slice(i, i + 800);
+    // LE PROFESSEUR S'AJOUTE, IL NE COURT-CIRCUITE PAS. C'est LE défaut : un
+    // `return` ici et l'élève n'existe plus pour personne, ce qui enfermait
+    // Rémy dans le compte de son élève sans aucune porte.
+    assert.match(bloc, /if \(jetonProf\(\)\) out\.push\(/);
+    assert.ok(!/if \(jetonProf\(\)\)\s*return/.test(bloc),
+        'le professeur ne doit pas court-circuiter la lecture de l\'élève');
+    // ET `quiEstLa` EST BÂTIE DESSUS : deux définitions de « qui est là »
+    // finiraient par répondre deux choses, et c'est ce qui vient de se passer.
+    assert.match(DECO, /export function quiEstLa\(\) \{\s*\n\s*return lesIdentites\(\)\[0\]/);
+});
+
+test('« MON PROFIL » PROPOSE DE SORTIR DE L\'ÉLÈVE, PAS DU PROFESSEUR', () => {
+    // « Qui travaille ? » est la ligne de l'identité de l'ÉLÈVE : y proposer de
+    // quitter le mode professeur, c'est répondre à côté — et c'est exactement
+    // ce qui enfermait Rémy dans le compte de son élève.
+    const i = DECO.indexOf("getElementById('btn-sortie-profil')");
+    assert.ok(i > 0);
+    const bloc = DECO.slice(i, i + 400);
+    assert.match(bloc, /const ici = eleve \|\| qui;/);
+    assert.match(bloc, /p\.dataset\.role = ici\.role;/);
+});
+
+test('ET LA FENÊTRE NOMME LA CLASSE QU\'ON QUITTE', () => {
+    // `quiEstLa()` rendrait celle du professeur : la fenêtre disait « Tu vas te
+    // déconnecter » tout court, sans nommer la classe — c'est précisément le
+    // renseignement qui manque quand on a deux comptes.
+    assert.match(DECO,
+        /const qui = lesIdentites\(\)\.find\(x => x\.role === 'eleve'\) \|\| quiEstLa\(\);/);
+});
+
+test('la seconde sortie du menu n\'existe que dans le cas double', () => {
+    // Une classe entière d'élèves ne doit jamais voir deux boutons de sortie :
+    // eux n'ont qu'une identité, et la première la nomme déjà.
+    assert.match(DECO, /be\.hidden = !\(eleve && toutes\.length > 1\);/);
+    const i = PAGE.indexOf('id="btn-deconnexion-eleve"');
+    assert.ok(i > 0, 'le bouton est déclaré dans la page');
+    assert.match(PAGE.slice(i, PAGE.indexOf('>', i)), /\bhidden\b/);
 });

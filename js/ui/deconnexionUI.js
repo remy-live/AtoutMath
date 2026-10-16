@@ -37,16 +37,43 @@ const esc = (t) => String(t == null ? '' : t)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** À quoi est-on rattaché, et sous quel nom ? */
-export function quiEstLa() {
-    const prof = jetonProf();
-    if (prof) return { role: 'prof', nom: nomDuProf() };
+/**
+ * TOUTES LES IDENTITÉS RATTACHÉES À CET APPAREIL, et il peut y en avoir DEUX.
+ *
+ * ── CE QUE ÇA A COÛTÉ ──────────────────────────────────────────────────────
+ *
+ * RÉMY : « je suis désolé, je me suis mis sur un compte élève mais je ne
+ * trouve pas où me déconnecter ».
+ *
+ * IL N'Y AVAIT PAS À ÊTRE DÉSOLÉ : LA PORTE N'EXISTAIT PAS. `quiEstLa()` rendait
+ * UNE identité, et elle rendait celle du PROFESSEUR dès qu'un jeton de
+ * professeur existait. Or sur SA machine les deux existent — il est professeur,
+ * et il vient d'entrer avec le billet d'un élève pour essayer. Les deux boutons
+ * de sortie proposaient donc « Quitter le mode professeur », qui ne défait pas
+ * le rattachement de l'élève. MESURÉ (`tools/deuxIdentites.mjs`) : deux jetons
+ * présents, zéro geste pour sortir du compte élève.
+ *
+ * L'ORDRE EST CELUI DE LA PRIORITÉ quand on n'en montre qu'une : le professeur
+ * d'abord, parce que c'est le rattachement qui donne le plus de droits sur la
+ * machine qu'on quitte.
+ *
+ * @returns {Array<{role:string, nom:string, classe?:string}>}
+ */
+export function lesIdentites() {
+    const out = [];
+    if (jetonProf()) out.push({ role: 'prof', nom: nomDuProf() });
     const p = getActiveProfile();
     const r = p && p.remote;
     if (r && r.token) {
-        return { role: 'eleve', nom: p.name || 'Élève',
-            classe: r.className || r.classCode || '' };
+        out.push({ role: 'eleve', nom: p.name || 'Élève',
+            classe: r.className || r.classCode || '' });
     }
-    return { role: 'personne', nom: '' };
+    return out;
+}
+
+/** À quoi est-on rattaché EN PREMIER — l'ancienne question, pour qui n'en veut qu'une. */
+export function quiEstLa() {
+    return lesIdentites()[0] || { role: 'personne', nom: '' };
 }
 
 function direDeQuoi(qui) {
@@ -59,12 +86,25 @@ function direDeQuoi(qui) {
 }
 
 function majBouton() {
-    const qui = quiEstLa();
+    const toutes = lesIdentites();
+    const qui = toutes[0] || { role: 'personne', nom: '' };
+    // L'ÉLÈVE, S'IL Y EN A UN — et il peut y en avoir un SOUS le professeur.
+    const eleve = toutes.find(x => x.role === 'eleve') || null;
     const b = document.getElementById('btn-deconnexion');
     if (b) {
         b.hidden = qui.role === 'personne';
         const mot = document.getElementById('btn-deconnexion-mot');
         if (mot) mot.textContent = direDeQuoi(qui);
+    }
+    // LA SECONDE SORTIE DU MENU N'EXISTE QUE DANS LE CAS DOUBLE, qui est
+    // justement celui qui n'avait aucune porte. Une classe entière d'élèves ne
+    // verra jamais ce bouton : eux n'ont qu'une identité, et la première la
+    // nomme déjà.
+    const be = document.getElementById('btn-deconnexion-eleve');
+    if (be) {
+        be.hidden = !(eleve && toutes.length > 1);
+        const mote = document.getElementById('btn-deconnexion-eleve-mot');
+        if (mote && eleve) mote.textContent = direDeQuoi(eleve);
     }
 
     // ── ET LA MÊME SORTIE DANS « MON PROFIL » ──────────────────────────────
@@ -87,10 +127,17 @@ function majBouton() {
     // c'est la ligne de l'IDENTITÉ, donc l'endroit où l'on cherche « ce n'est
     // pas moi » et « je m'en vais ». Le menu garde la sienne — un professeur
     // qui connaît le menu ne doit pas la perdre.
+    //
+    // ET C'EST L'ÉLÈVE QU'ELLE NOMME QUAND IL Y EN A UN. « Qui travaille ? » est
+    // la ligne de l'identité de l'ÉLÈVE : y proposer de quitter le mode
+    // professeur serait répondre à côté — et c'est exactement ce qui enfermait
+    // Rémy dans le compte de son élève.
     const p = document.getElementById('btn-sortie-profil');
     if (p) {
-        p.hidden = qui.role === 'personne';
-        p.textContent = direDeQuoi(qui);
+        const ici = eleve || qui;
+        p.hidden = ici.role === 'personne';
+        p.textContent = direDeQuoi(ici);
+        p.dataset.role = ici.role;
     }
 }
 
@@ -147,7 +194,11 @@ function corpsEleve(qui, verdict, force) {
 }
 
 async function deconnecterLEleve() {
-    const qui = quiEstLa();
+    // L'IDENTITÉ DE L'ÉLÈVE, ET NON LA PREMIÈRE. Sur la machine du professeur,
+    // `quiEstLa()` rend la sienne : la fenêtre disait « Tu vas te déconnecter »
+    // tout court, sans nommer la classe qu'on quitte — mesuré, et c'est
+    // précisément le renseignement qui manque quand on a deux comptes.
+    const qui = lesIdentites().find(x => x.role === 'eleve') || quiEstLa();
     const enTrain = !!(window.__atoutmathEnJeu
         || (await import('../core/state.js')).state.activeSequenceRunner);
     const verdict = peutSeDeconnecter(resteAEnvoyer(), {
@@ -205,19 +256,24 @@ let pose = false;
  * celui de « Mon profil » — et recopier le choix du rôle à deux endroits est la
  * façon connue de les voir diverger (voir docs/frictions.md).
  */
-export function seDeconnecter() {
-    const qui = quiEstLa();
-    if (qui.role === 'prof') deconnecterLeProf();
-    else if (qui.role === 'eleve') deconnecterLEleve();
+export function seDeconnecter(role = null) {
+    const voulu = role || (quiEstLa().role);
+    if (voulu === 'prof') deconnecterLeProf();
+    else if (voulu === 'eleve') deconnecterLEleve();
 }
 
 export function initDeconnexionUI() {
     if (pose || typeof document === 'undefined') return;
     pose = true;
     const b = document.getElementById('btn-deconnexion');
-    if (b) b.onclick = seDeconnecter;
+    if (b) b.onclick = () => seDeconnecter();
+    const be = document.getElementById('btn-deconnexion-eleve');
+    if (be) be.onclick = () => seDeconnecter('eleve');
+    // LA SORTIE DE « Mon profil » SORT DE CE QU'ELLE NOMME, et elle nomme
+    // l'élève quand il y en a un : sans ce `dataset`, elle aurait dit « Se
+    // déconnecter de 6e B » et quitté le mode professeur.
     const p = document.getElementById('btn-sortie-profil');
-    if (p) p.onclick = seDeconnecter;
+    if (p) p.onclick = () => seDeconnecter(p.dataset.role || null);
     // LE BOUTON SUIT L'ÉTAT, et il faut le rafraîchir autrement que sur un
     // événement : le passage en mode professeur ne s'annonce par AUCUN
     // événement dans l'application — c'est une classe posée sur `<body>`.

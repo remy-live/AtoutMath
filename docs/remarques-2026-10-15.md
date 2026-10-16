@@ -988,3 +988,30 @@ il est quand même venu), « hors séance ». Aucune adresse réseau : elle ne d
 pas « chez lui » — un téléphone dans la cour sort par la 4G, le collège entier
 par une seule adresse — et serait une donnée personnelle de plus sur des
 mineurs. Il se lit dans **Les bilans → Connexions**, rangé par jour.
+
+# Vingt-sixième passe — le professeur enfermé dans le compte de son élève
+
+> « je suis désolé, je me suis mis sur un compte élève mais je ne trouve pas où
+> me déconnecter »
+
+Il n'y avait pas à être désolé : **la porte n'existait pas**. Reproduit
+(`tools/deuxIdentites.mjs`) : sur SA machine, les deux rattachements coexistent
+— il est professeur, et il vient d'entrer avec le billet d'un élève pour
+essayer. `quiEstLa()` rendait UNE identité et rendait celle du professeur dès
+qu'un jeton de professeur existait ; les deux boutons de sortie proposaient donc
+« Quitter le mode professeur », qui ne défait pas le rattachement de l'élève.
+Deux jetons, zéro geste.
+
+Il s'en est sorti en changeant de navigateur — c'était la bonne réaction.
+
+**La correction** lit les DEUX rattachements. La sortie de « Mon profil » nomme
+l'élève quand il y en a un — « Qui travaille ? » est sa ligne d'identité, y
+proposer de quitter le mode professeur, c'est répondre à côté — et une seconde
+entrée paraît dans le menu « ⋯ », **uniquement dans le cas double** : une classe
+entière d'élèves n'a qu'une identité et ne verra jamais deux boutons. Mesuré
+jusqu'au bout : l'élève est détaché, le professeur reste connecté, et la fenêtre
+nomme la classe qu'on quitte.
+
+**Le chemin de secours sur la version déjà déployée**, vérifié aussi : quitter
+d'abord le mode professeur fait réapparaître « Se déconnecter de 6e B » dans le
+même menu.
