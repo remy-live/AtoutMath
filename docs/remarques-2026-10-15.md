@@ -797,3 +797,15 @@ sort pas des exercices de la séance — la sonde avait trouvé une révision de
 « la règle du signe » qui ouvrait « Priorités et relatifs », un exercice que
 Rémy n'avait pas choisi. Mesuré sur trois scènes (il s'est trompé, il a tout
 réussi, et le même bilan sur un téléphone de 390 px).
+
+**L'arbitrage sur l'interrogation.** Je lui avais signalé que « M'améliorer »
+paraît aussi à la fin d'une évaluation, alors qu'il avait demandé le contraire
+pour le bouton du bilan d'ÉTAPE. Sa réponse :
+
+> « oui mais en interrogation ça ne changera pas la note »
+
+Donc on garde. Les deux règles ne portent pas sur le même bouton : « Refaire
+pour m'améliorer » rejoue l'étape NOTÉE, « M'améliorer » ouvre un parcours
+d'entraînement à part, après la note. C'est écrit dans `startAmelioration`, et
+une épreuve garde l'absence de condition — c'est exactement le genre de ligne
+qu'une main pressée « corrigerait » en croyant appliquer l'autre règle.

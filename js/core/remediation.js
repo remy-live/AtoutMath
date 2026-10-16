@@ -51,9 +51,23 @@ async function run(path, opts = {}) {
  *
  * ET C'EST UN PARCOURS À PART, jamais la séance du professeur : `makePath` lui
  * donne son propre identifiant, donc rien de ce qu'on y fait ne touche aux
- * étapes validées de la séance, ni à la note déjà rendue. C'est aussi ce qui le
- * distingue du bouton « Refaire pour m'améliorer » du bilan d'ÉTAPE, qui rejoue
- * l'étape notée elle-même — et que Rémy ne veut pas en interrogation.
+ * étapes validées de la séance, ni à la note déjà rendue.
+ *
+ * ── IL PARAÎT AUSSI EN INTERROGATION, ET C'EST RÉMY QUI L'A TRANCHÉ ────────
+ *
+ * Il avait posé une règle voisine sur le bilan d'ÉTAPE : « en mode
+ * interrogation, il ne faut pas proposer à la fin de refaire l'exercice »
+ * (voir `peutRefaire` dans core/runner.js). Celle-là tient toujours, et elle ne
+ * s'applique pas ici : le bouton « Refaire pour m'améliorer » rejoue L'ÉTAPE
+ * NOTÉE elle-même, alors que « M'améliorer » ouvre un parcours d'entraînement
+ * séparé, après que la note est rendue.
+ *
+ * Posé la question, sa réponse mot pour mot : « oui mais en interrogation ça ne
+ * changera pas la note ». Donc pas de condition sur `bilan.mode` ici — et c'est
+ * le moment du devoir rendu que l'élève a le plus de raisons de vouloir
+ * reprendre. Une épreuve le garde (`tests/mAmeliorer.test.mjs`), parce que
+ * c'est exactement le genre de ligne qu'une main pressée « corrigerait » en
+ * croyant appliquer l'autre règle.
  */
 export function startAmelioration(bilan) {
     const steps = etapesDAmelioration(bilan);

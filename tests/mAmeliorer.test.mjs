@@ -141,3 +141,26 @@ test('et un parcours de révision ne dépasse pas huit étapes', () => {
         ratee({ seed: 'g' + i, exerciseId: i % 2 ? EXO : AUTRE, skillId: 'sk_' + i }));
     assert.ok(etapesDAmelioration(bilan({ aRetravailler: beaucoup })).length <= 8);
 });
+
+test('EN INTERROGATION AUSSI — « ça ne changera pas la note »', () => {
+    // RÉMY a tranché, mot pour mot : « oui mais en interrogation ça ne changera
+    // pas la note ».
+    //
+    // CETTE ÉPREUVE GARDE UNE ABSENCE, et c'est pour cela qu'elle existe. Il y a
+    // une règle VOISINE et contraire sur le bilan d'ÉTAPE — « en mode
+    // interrogation, il ne faut pas proposer à la fin de refaire l'exercice »,
+    // voir `peutRefaire` dans core/runner.js — qui porte sur un bouton qui
+    // rejoue l'épreuve NOTÉE. Celui-ci ouvre un parcours d'entraînement à part,
+    // après la note. Sans cette épreuve, la prochaine main ajouterait
+    // `bilan.mode !== 'evaluation'` en croyant appliquer l'autre règle, et
+    // l'élève perdrait le bouton au moment où il a le plus de raisons de
+    // vouloir reprendre.
+    const b = bilan({
+        mode: 'evaluation', note: 8, sur: 20,
+        aRetravailler: [ratee()], parCompetence: [competence()]
+    });
+    assert.ok(ilYAQuoiAmeliorer(b) > 0, 'le bouton paraît');
+    const steps = etapesDAmelioration(b);
+    assert.equal(steps.length, 1);
+    assert.equal(steps[0].forceSeed, 'graine-1', 'et la question du devoir se rejoue');
+});
