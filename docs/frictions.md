@@ -4766,3 +4766,41 @@ le résultat n'existe pas** — 15 octobre 2026
   qu'il faut est le même balayage pour tout le dépôt. À défaut, un réflexe :
   avant d'écrire une fonction, `grep -rn "function <nom>" js/` — deux secondes
   contre dix minutes.
+
+**Répondre à une question, dans une sonde, n'a pas UN geste mais deux** — 16 octobre 2026
+
+- *Ce que je voulais faire* : traverser un parcours comme un élève, en répondant
+  juste à chaque question, pour relire les deux compteurs du haut.
+- *Ce qui a coûté* : j'ai envoyé un `pointerdown` sur `.bubble` — la correction
+  apprise la veille sur les bulles QUI MONTENT (`surAppui`,
+  `core/cibleQuiBouge.js`). Les propositions d'un QCM n'écoutent pas cet
+  événement : `activities/choice.js` pose un `el.onclick`. La sonde a tourné
+  vingt-huit tours sur « 0 / 2 » sans rien signaler — une réponse qui n'arrive
+  pas ressemble exactement à un logiciel qui ne compte pas, et j'ai d'abord
+  cherché le défaut dans le compteur. Puis, le clic réparé, elle s'est arrêtée
+  au bout de deux questions : entre deux étapes il y a DEUX écrans à pousser
+  (`#btn-run-next`, puis `.world-map-play` sur la carte), et aucun des deux ne
+  porte un libellé devinable.
+- *Combien de fois* : || (déjà payé sur le clic d'une cible qui bouge)
+- *Ce qui manque* : dans `tools/sonde.mjs`, un `repondre()` et un
+  `avancerDansLaSeance()` qui portent ces trois gestes une fois pour toutes —
+  `el.click()` (qui vaut AUSSI pour `surAppui`, lequel écoute le clic au clavier,
+  `detail === 0`), l'attente de la correction qui tient les clics, et les deux
+  écrans d'entre-deux-étapes. Trois sondes au moins auront à les refaire.
+
+**Une sonde qui traverse tout droit ne voit pas ce qui se casse en revenant** — 16 octobre 2026
+
+- *Ce que je voulais faire* : mesurer la barre d'étape que Rémy voyait pleine à
+  mi-chemin.
+- *Ce qui a coûté* : la première version du relevé traversait le parcours tout
+  droit, et les deux compteurs s'accordaient à chaque question — 4 %, 8 %,
+  13 %… Verdict tout vert sur un défaut que Rémy avait sous les yeux. Il fallait
+  une SECONDE scène, celle où l'élève **refait** une étape, pour que l'écart
+  paraisse. Sans ce doute, j'aurais conclu « rien à corriger ».
+- *Combien de fois* : |
+- *Ce qui manque* : une habitude écrite plutôt qu'un outil — tout relevé de
+  parcours se fait en DEUX scènes, droit puis en revenant sur ses pas (refaire,
+  réessayer, choisir hors de l'ordre). La seconde phrase du journal — « une
+  mesure qui ne regarde que ce qu'on a corrigé ne voit pas ce qu'on a cassé » —
+  a une jumelle : *une mesure qui ne suit que le chemin prévu ne voit pas celui
+  que l'élève prend.*

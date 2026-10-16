@@ -289,3 +289,91 @@ test('un run sans point de départ se comporte comme avant', () => {
     assert.equal(a.etapeEnCours.rang, 0);
     assert.deepEqual(a.detailEtapes, []);
 });
+
+// ──────────────────────────── L'ÉTAPE QU'ON REFAIT, ET LA BARRE QUI MENTAIT ──
+//
+// RÉMY : « dans l'épreuve multiplier des relatifs pas à pas, quand on a fait
+// 12/24 et bien la barre de progression qui est dans les barres en haut est
+// pleine alors qu'elle devrait être à la moitié ».
+//
+// MESURÉ, `tools/barreDeLEtape.mjs` : traversé TOUT DROIT, le parcours donne
+// les deux compteurs d'accord à chaque question — c'est pour cela que le défaut
+// a vécu des mois. Il suffit de REFAIRE une étape pour qu'ils divergent, et
+// « Refaire pour m'améliorer » s'offre à qui a validé sans être parfait.
+
+const refait = (ts, stepId, questions, solved) => ({
+    stepId, title: stepId, questions, solved, required: 7,
+    passed: solved >= 7, ts
+});
+const serie = (stepId, combien, depuis, pas = 1000) =>
+    Array.from({ length: combien }, (_, i) => ({
+        ...essai(stepId, i + Math.round(depuis / 1000)), ts: depuis + pas * i
+    }));
+
+test('UNE ÉTAPE REFAITE NE COMPTE QU\'UNE FOIS', () => {
+    // Deux clôtures pour une seule étape faite. `faites` passait à deux, et
+    // tout ce qui se repère au COMPTE désignait l'étape d'après : le fil
+    // éclairait la troisième case pendant que l'élève travaillait la deuxième,
+    // et comptait ses questions sur le total de la troisième.
+    const a = avancementDuRun(unRun({
+        etapes: 3,
+        steps: [refait(T0 + 60_000, 'sc_0', 10, 8), refait(T0 + 120_000, 'sc_0', 10, 10)],
+        attempts: [
+            ...serie('sc_0', 10, T0),
+            ...serie('sc_0', 10, T0 + 70_000),
+            ...serie('sc_1', 4, T0 + 130_000)
+        ]
+    }), T0 + 200_000);
+    assert.equal(a.faites, 1, 'une étape faite, et non deux');
+    assert.equal(a.etapeEnCours.rang, 1, 'il travaille la deuxième');
+    assert.equal(a.etapeEnCours.titre, 'Étape 2');
+    assert.equal(a.etapeEnCours.prevues, 10, 'sur le total de la deuxième');
+    assert.equal(a.etapeEnCours.posees, 4);
+    // ET LE COMPTE GLOBAL NE DOUBLE PAS NON PLUS : dix questions faites, pas
+    // vingt. Une barre qui compte deux fois le même travail dépasse, et une
+    // barre qui dépasse ne veut plus rien dire.
+    assert.equal(a.questions, 14);
+    assert.equal(a.detailEtapes.length, 1);
+});
+
+test('PENDANT QU\'IL LA REFAIT, LE FIL MONTRE L\'ÉTAPE QU\'IL REFAIT', () => {
+    // Et il compte à partir de la DERNIÈRE clôture : les dix questions du
+    // premier passage sont encore au journal, avec d'autres graines. Les
+    // compter donnait « 13 / 10 ».
+    const a = avancementDuRun(unRun({
+        etapes: 3,
+        steps: [refait(T0 + 60_000, 'sc_0', 10, 8)],
+        attempts: [...serie('sc_0', 10, T0), ...serie('sc_0', 3, T0 + 70_000)]
+    }), T0 + 100_000);
+    assert.equal(a.etapeEnCours.rang, 0, 'la première, celle qu\'il a sous les yeux');
+    assert.equal(a.etapeEnCours.prevues, 10);
+    assert.equal(a.etapeEnCours.posees, 3, 'trois de ce passage-ci, pas treize');
+    assert.equal(a.faites, 1);
+});
+
+test('L\'ÉTAPE EN COURS SE NOMME, ELLE NE SE COMPTE PAS', () => {
+    // L'ordre libre laisse l'élève CHOISIR par où il commence. Une seule étape
+    // close, la troisième, et il travaille la cinquième : le compte aurait
+    // désigné la deuxième, et compté sur le total de la deuxième.
+    const a = avancementDuRun(unRun({
+        etapes: 6,
+        steps: [refait(T0 + 60_000, 'sc_2', 10, 9)],
+        attempts: [...serie('sc_2', 10, T0), ...serie('sc_4', 2, T0 + 70_000)]
+    }), T0 + 100_000);
+    assert.equal(a.etapeEnCours.rang, 4);
+    assert.equal(a.etapeEnCours.titre, 'Étape 5');
+    assert.equal(a.etapeEnCours.posees, 2);
+});
+
+test('et l\'élève qui refait la DERNIÈRE étape n\'est pas nulle part', () => {
+    // `faites` valait déjà le nombre d'étapes : le fil se taisait pendant qu'il
+    // travaillait, puisque « en cours » se décidait au compte.
+    const a = avancementDuRun(unRun({
+        etapes: 2,
+        steps: [refait(T0 + 30_000, 'sc_0', 10, 10), refait(T0 + 60_000, 'sc_1', 10, 8)],
+        attempts: [...serie('sc_1', 10, T0), ...serie('sc_1', 2, T0 + 70_000)]
+    }), T0 + 100_000);
+    assert.ok(a.etapeEnCours, 'il est bien quelque part');
+    assert.equal(a.etapeEnCours.rang, 1);
+    assert.equal(a.etapeEnCours.posees, 2);
+});

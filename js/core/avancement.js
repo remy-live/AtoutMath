@@ -65,15 +65,97 @@ export function questionsPosees(tentatives) {
  * afficherait une barre PLEINE, ce qui est le seul message qu'une barre ne doit
  * jamais donner par erreur.
  */
-function planDu(run) {
+function planDu(run, closes) {
     const plan = Array.isArray(run.plan) ? run.plan : [];
     if (plan.length) return plan;
-    const closes = (run.steps || []).length;
     let combien = Number(run.stepCount) || closes || 0;
     if (!run.finishedAt) combien = Math.max(combien, closes + 1);
     return Array.from({ length: combien }, (_, i) => ({
         stepId: null, titre: '', questions: 0, requis: 0, _devine: true, _rang: i
     }));
+}
+
+/**
+ * LES CLÔTURES, UNE PAR ÉTAPE — et c'est ici que la barre de Rémy se remplissait.
+ *
+ * RÉMY : « dans l'épreuve multiplier des relatifs pas à pas, quand on a fait
+ * 12/24 et bien la barre de progression qui est dans les barres en haut est
+ * pleine alors qu'elle devrait être à la moitié ».
+ *
+ * MESURÉ, `tools/barreDeLEtape.mjs` : le parcours traversé TOUT DROIT donne les
+ * deux compteurs d'accord, question par question — c'est pour cela que le
+ * défaut a vécu si longtemps. IL SUFFIT DE REFAIRE UNE ÉTAPE pour qu'ils
+ * divergent, et « Refaire pour m'améliorer » est proposé à qui a validé sans
+ * être parfait, c'est-à-dire à la moitié d'une classe. L'étape écrit alors une
+ * SECONDE clôture : `faites` passait à deux pour une seule étape faite, et tout
+ * ce qui se repère au COMPTE désignait l'étape d'après. Relevé : l'élève
+ * travaille la deuxième étape, le fil éclaire la troisième et compte ses
+ * vingt-quatre questions sur les six de celle-là — pleine au quart.
+ *
+ * ON GARDE LA DERNIÈRE CLÔTURE, pas la meilleure : c'est celle qu'il vient de
+ * vivre, et cet écran raconte où il en est. `computeAssignedPath`, lui, garde
+ * la MEILLEURE, et c'est juste là-bas : elle décide d'ouvrir un jeu gagné, qui
+ * ne se retire pas parce qu'on a retenté.
+ *
+ * LA POSITION RESTE CELLE DE LA PREMIÈRE CLÔTURE (`Map.set` ne déplace pas une
+ * clé existante) : `detailEtapes` se lit dans l'ordre où les étapes se sont
+ * fermées, et une étape refaite n'a pas changé de place dans ce récit.
+ */
+function closesUneFois(finies) {
+    const parId = new Map();
+    const sansId = [];
+    for (const s of finies || []) {
+        if (!s) continue;
+        if (!s.stepId) { sansId.push(s); continue; }
+        parId.set(s.stepId, s);
+    }
+    return [...parId.values(), ...sansId];
+}
+
+/**
+ * L'ÉTAPE OÙ L'ÉLÈVE EST VRAIMENT — par son identifiant, et non par un compte.
+ *
+ * `plan[faites]` suppose que les étapes faites sont les PREMIÈRES du parcours,
+ * dans l'ordre. C'est vrai d'une séance traversée tout droit ; c'est faux dès
+ * qu'une étape se refait, se rate et se reprend, ou se choisit (ordre libre).
+ * LA DERNIÈRE TENTATIVE, ELLE, NOMME L'ÉTAPE : elle porte son `stepId`.
+ *
+ * DEUX CAS, ET LE SECOND EST CELUI QUI RESTE AU COMPTE :
+ *
+ *   · la dernière tentative appartient à une étape QUI N'A PAS ÉTÉ REFERMÉE
+ *     depuis — c'est celle qu'il a sous les yeux, et on la nomme ;
+ *   · elle a été refermée : il vient de finir une étape et n'a pas encore
+ *     répondu à la suivante. Le compte répond alors juste, parce qu'une étape
+ *     de plus a bien été faite.
+ *
+ * IL RESTE UN TROU, ET IL FAUT LE DIRE : entre le clic sur « Refaire » et la
+ * première réponse du second passage, aucune tentative ne nomme l'étape et le
+ * compte désigne encore la suivante. Le journal porte bien un `step_started`
+ * qui le dirait, mais ni `computeRuns` ni le miroir PHP ne le collectent, et le
+ * serveur ne le relit pas dans ses deux cents derniers événements. Quelques
+ * secondes sur un écran de bilan, contre trois fichiers à tenir d'accord : on
+ * laisse, et l'on sait pourquoi.
+ *
+ * @returns {{rang:number, entree:object, depuis:number, nomme:boolean}|null}
+ */
+function etapeEnTrain(plan, finies, attempts, faites) {
+    const liste = attempts || [];
+    for (let i = liste.length - 1; i >= 0; i--) {
+        const t = liste[i];
+        if (!t || !t.stepId) continue;
+        const clotures = finies.filter(s => s.stepId === t.stepId);
+        const refermee = clotures.some(s => (s.ts || 0) >= (t.ts || 0));
+        if (refermee) break;
+        const rang = plan.findIndex(e => e && e.stepId === t.stepId);
+        if (rang < 0) break;   // un plan devine n'a pas d'identifiants
+        // DEPUIS QUAND IL Y TRAVAILLE. Une étape refaite garde ses anciennes
+        // tentatives au journal, avec d'autres graines : les compter donnait
+        // « 7 / 6 », qui est l'autre moitié du défaut.
+        const depuis = clotures.reduce((m, s) => Math.max(m, s.ts || 0), 0);
+        return { rang, entree: plan[rang], depuis, nomme: true };
+    }
+    const e = plan[faites] || null;
+    return e ? { rang: faites, entree: e, depuis: 0, nomme: false } : null;
 }
 
 /**
@@ -88,8 +170,9 @@ function planDu(run) {
  */
 export function avancementDuRun(run, maintenant = Date.now()) {
     if (!run) return null;
-    const plan = planDu(run);
-    const finies = run.steps || [];
+    // LES CLÔTURES D'ABORD, DÉDOUBLONNÉES : le plan deviné se compte dessus.
+    const finies = closesUneFois(run.steps);
+    const plan = planDu(run, finies.length);
 
     // CE QUI ÉTAIT DÉJÀ FAIT AVANT CE RUN COMPTE AUSSI.
     //
@@ -104,7 +187,7 @@ export function avancementDuRun(run, maintenant = Date.now()) {
     //
     // ON N'EN COMPTE PAS UNE DEUX FOIS : une étape reprise et refermée dans ce
     // run-ci apparaît dans les deux listes, et c'est l'identifiant qui tranche.
-    const dejaIds = (run.dejaFaites || []).filter(Boolean);
+    const dejaIds = [...new Set((run.dejaFaites || []).filter(Boolean))];
     const closIci = new Set(finies.map(s => s.stepId).filter(Boolean));
     const avant = dejaIds.filter(id => !closIci.has(id));
     const faites = avant.length + finies.length;
@@ -116,19 +199,33 @@ export function avancementDuRun(run, maintenant = Date.now()) {
     // pas — et l'on dira alors l'avancement en ÉTAPES, pas en questions.
     const prevues = plan.reduce((n, e) => n + (Number(e.questions) || 0), 0);
 
-    // L'étape en cours est celle qui suit les étapes terminées.
-    const enPlan = plan[faites] || null;
+    // L'ÉTAPE EN COURS SE NOMME, ELLE NE SE COMPTE PAS — voir `etapeEnTrain`.
+    const enTrain = etapeEnTrain(plan, finies, run.attempts, faites);
+    const enPlan = enTrain ? enTrain.entree : null;
     const idsFinis = new Set(finies.map(s => s.stepId).filter(Boolean));
-    const encore = (run.attempts || []).filter(t => !t.stepId || !idsFinis.has(t.stepId));
+    // SES TENTATIVES À ELLE, ET DEPUIS SA DERNIÈRE CLÔTURE. Sans l'identifiant,
+    // on retombe sur l'ancienne règle — tout ce qui n'appartient à aucune étape
+    // close — qui est ce qu'on peut dire d'un plan sans identifiants.
+    const idEnCours = enPlan ? enPlan.stepId : null;
+    const encore = (run.attempts || []).filter(t => (idEnCours
+        ? ((t.stepId === idEnCours || !t.stepId) && (t.ts || 0) >= enTrain.depuis)
+        : (!t.stepId || !idsFinis.has(t.stepId))));
     const poseesIci = questionsPosees(encore);
     const justesIci = encore.filter(t => t.correct && !t.partiel && !t.attemptIndex).length;
 
     const fini = !!run.finishedAt && !run.aborted;
     const abandonne = !!run.finishedAt && !!run.aborted;
-    const enCoursVraiment = !run.finishedAt && faites < plan.length;
+    // EN TRAIN DE TRAVAILLER : soit une étape est NOMMÉE par ses tentatives et
+    // n'a pas été refermée — il y est, quoi que dise le compte —, soit le compte
+    // désigne encore une étape du plan. Sans la première moitié, l'élève qui
+    // refait la dernière étape de sa séance n'était plus nulle part : `faites`
+    // valait déjà le nombre d'étapes, et le fil se taisait pendant qu'il
+    // travaillait.
+    const enCoursVraiment = !run.finishedAt
+        && !!enTrain && (enTrain.nomme || faites < plan.length);
 
     const etapeEnCours = enCoursVraiment && enPlan ? {
-        rang: faites,
+        rang: enTrain.rang,
         titre: enPlan.titre || '',
         posees: poseesIci,
         prevues: Number(enPlan.questions) || 0,
@@ -141,8 +238,13 @@ export function avancementDuRun(run, maintenant = Date.now()) {
     // LES QUESTIONS D'AVANT SE LISENT DANS LE PLAN, pas dans ce run : elles ont
     // été répondues dans le précédent. Sans elles, la barre d'un élève qui a
     // fait trois exercices sur douze repartirait à zéro en reprenant.
-    const questionsAvant = avant.reduce((n, _, i) =>
-        n + (Number((plan[i] || {}).questions) || 0), 0);
+    // ON LES CHERCHE PAR LEUR IDENTIFIANT, et par leur rang seulement à défaut :
+    // `avant[i]` n'est l'étape de rang `i` que si l'élève a tout fait dans
+    // l'ordre, ce que rien ne garantit.
+    const questionsAvant = avant.reduce((n, id, i) => {
+        const e = plan.find(x => x && x.stepId === id) || plan[i] || {};
+        return n + (Number(e.questions) || 0);
+    }, 0);
     const questionsCloses = questionsAvant
         + finies.reduce((n, s) => n + (Number(s.questions) || 0), 0);
     const questions = questionsCloses + (etapeEnCours ? poseesIci : 0);

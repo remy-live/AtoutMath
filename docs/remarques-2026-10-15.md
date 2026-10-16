@@ -736,3 +736,37 @@ arrive à chaque aller-retour JSON, donc à chaque synchronisation — passaient
 pour différentes, et l'ajout n'arrivait jamais. Trois épreuves l'ont dit d'un
 coup. Une règle écrite deux fois finit toujours par diverger ; celle-ci a
 divergé avant d'être relue.
+
+# Vingt-et-unième passe — la barre d'étape pleine à mi-chemin
+
+> « dans l'épreuve multiplier des relatifs pas à pas, quand on a fait 12/24 et
+> bien la barre de progression qui est dans les barres en haut est pleine alors
+> qu'elle devrait être à la moitié »
+
+Capture à l'appui : le fil du haut montre treize segments, « Étape 1 sur 13 »,
+et le PREMIER segment est déjà plein alors que la ligne du dessous dit
+« 0 / 10 questions ». Le segment de l'étape EN COURS ne suit donc pas les
+questions : il est plein dès qu'on y entre.
+
+**Ce que la mesure a dit, et ce n'était pas ma première idée.**
+`tools/barreDeLEtape.mjs` relit les deux compteurs du haut à CHAQUE réponse —
+celui du meneur (`itemsResolved / nbItems`) et celui du fil, qui recompte le
+journal. Traversé **tout droit**, le parcours les donne d'accord, question par
+question : 4 %, 8 %, 13 %… C'est pour cela que le défaut a vécu des mois, et
+c'est aussi pourquoi aucune épreuve ne le voyait.
+
+Il suffit de **refaire une étape** pour qu'ils divergent. « Refaire pour
+m'améliorer » est proposé à qui a validé sans être parfait, c'est-à-dire à la
+moitié d'une classe ; l'étape écrit alors une **seconde clôture**. `faites`
+passait à deux pour une seule étape faite, et tout ce qui se repérait au
+COMPTE — `plan[faites]` — désignait l'étape d'après. Relevé : l'élève travaille
+la deuxième étape, le fil éclaire la troisième case et compte ses vingt-quatre
+questions sur les six de celle-là. **Pleine au quart.**
+
+La correction tient en une phrase : **l'étape en cours se nomme, elle ne se
+compte pas.** La dernière tentative porte son `stepId` ; on la cherche dans le
+plan, et l'on ne compte que ses questions à elle, depuis sa dernière clôture.
+Les clôtures, elles, se dédoublonnent par étape. Quatre épreuves vues tomber
+d'un côté, trois de l'autre — le serveur fait le même calcul, et il fallait
+corriger les deux sous peine que le professeur et l'élève lisent deux choses du
+même travail.

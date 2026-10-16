@@ -173,6 +173,35 @@ const HISTOIRES = {
 
     'une étape ratée': [debut(), etape(0, 10, 9), etape(1, 10, 2)],
 
+    // L'ÉTAPE REFAITE — « Refaire pour m'améliorer ». Deux clôtures pour une
+    // seule étape faite : c'est le défaut que Rémy a vu sur sa barre, et les
+    // deux côtés doivent le dédoublonner de la même façon.
+    'une étape refaite pour s\'améliorer': [
+        debut(3), etape(0, 10, 8),
+        { id: 'sc0bis', type: 'step_completed', ts: T0 + 120_000,
+          payload: { runId: 'r1', pathId: 'p1', stepId: 'sc_0', title: 'Étape 1',
+                     questions: 10, solved: 10, required: 7, passed: true } },
+        { id: 'q1a', type: 'attempt', ts: T0 + 130_000,
+          payload: { runId: 'r1', stepId: 'sc_1', itemSeed: 'sc_1:a', correct: true,
+                     attemptIndex: 0, exerciseId: 'calc-add' } }
+    ],
+
+    'pendant qu\'il refait la première étape': [
+        debut(3), question('sc_0', 0), etape(0, 10, 8),
+        { id: 'q0bis', type: 'attempt', ts: T0 + 70_000,
+          payload: { runId: 'r1', stepId: 'sc_0', itemSeed: 'sc_0:z', correct: true,
+                     attemptIndex: 0, exerciseId: 'calc-add' } }
+    ],
+
+    // L'ORDRE LIBRE : une seule étape close, la troisième, et il travaille la
+    // cinquième. Le compte aurait désigné la deuxième.
+    'une étape choisie hors de l\'ordre': [
+        debut(6), etape(2, 10, 9),
+        { id: 'q4a', type: 'attempt', ts: T0 + 190_000,
+          payload: { runId: 'r1', stepId: 'sc_4', itemSeed: 'sc_4:a', correct: true,
+                     attemptIndex: 0, exerciseId: 'calc-add' } }
+    ],
+
     'rien du tout': []
 };
 
