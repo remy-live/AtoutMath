@@ -257,6 +257,28 @@ function lesTablesDuSchema(bool $sqlite): array
         hors_seance_mot $txtNull,
         chrono_fin     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         chrono_a_zero  $txtNull,
+        --   · pause_mot : LA CLASSE EST EN PAUSE, TOUT DE SUITE.
+        --
+        --     RÉMY : « je n'ai pas réussi à mettre toute la classe en pause ».
+        --
+        --     Il n'y arrivait pas parce que cela n'existait pas. Le voile de
+        --     pause existait bien — celui qui couvre l'écran de l'élève et lui
+        --     garde son travail dessous —, mais il ne pouvait être déclenché
+        --     que par un COMPTE À REBOURS arrivé à zéro avec `chrono_a_zero =
+        --     'pause'`. Pour reprendre la parole maintenant, il fallait donc
+        --     lancer une minuterie et l'attendre. Et le bouton qui s'appelait
+        --     « Mettre en pause » faisait tout autre chose : il fermait le
+        --     catalogue (`locked`), ce qui ne se voit pas chez l'élève qui
+        --     travaille déjà. Deux gestes, le même mot, et aucun des deux ne
+        --     faisait ce qu'il demandait.
+        --
+        --     UNE COLONNE DE TEXTE ET NON UN DRAPEAU : la chaîne vide dit
+        --     « pas en pause », et tout le reste est le mot qu'il veut y
+        --     écrire — « on corrige au tableau », « rangez vos cahiers ». Un
+        --     drapeau aurait demandé une seconde colonne le jour où il aurait
+        --     voulu dire pourquoi, et il le veut toujours : c'est déjà vrai de
+        --     `hors_seance_mot` juste au-dessus.
+        pause_mot      $txtNull,
         --   · bac_ferme : le bac à sable de ceux qui ont fini. Ouvert par
         --     défaut — une fonction qu'il faut allumer pour la découvrir n'est
         --     jamais découverte. Il y a des heures où l'on veut que celui qui a

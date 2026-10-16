@@ -462,6 +462,18 @@ export const state = {
             name: meta.name || 'Parcours assigné',
             code: meta.code || null,
             policy: meta.policy || null,
+            // DE QUELLE SÉANCE IMPOSÉE CELA VIENT, quand cela vient d'une.
+            //
+            // L'identifiant STABLE du serveur (`paths.id`), à côté de
+            // `pathId` qui est l'empreinte du contenu. Les deux sont
+            // nécessaires et ne disent pas la même chose : l'un répond « est-ce
+            // le même travail ? » — c'est lui qui regroupe les bilans —,
+            // l'autre « est-ce la même séance ? ». Le professeur qui retouche
+            // une option change le premier sans changer le second, et c'est
+            // tout le sujet : voir `fautIlOuvrir` dans ui/leMoment.js.
+            //
+            // IL PART AU JOURNAL, donc il survit au rechargement de la page.
+            seanceId: meta.seanceId || null,
             steps: steps.map((s, i) => ({ ...s, stepId: s.stepId || `${pathId}_s${i}` }))
         });
         invalidate();

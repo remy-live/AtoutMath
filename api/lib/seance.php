@@ -168,7 +168,7 @@ function etatDeSeance(array $eleve): array
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
                               impose_jusqu_a, impose_plein_ecran, chrono_fin, chrono_a_zero,
-                              bac_ferme, bac_minutes, bac_jeux,
+                              pause_mot, bac_ferme, bac_minutes, bac_jeux,
                               hors_seance, hors_seance_mot,
                               defi_exo, defi_graine, defi_mode, defi_debut, defi_fin
                          FROM classes WHERE id = ?');
@@ -277,10 +277,27 @@ function etatDeSeance(array $eleve): array
         ];
     }
 
+    // ── LA CLASSE EST-ELLE EN PAUSE, MAINTENANT ? ───────────────────────────
+    //
+    // RÉMY : « je n'ai pas réussi à mettre toute la classe en pause ».
+    //
+    // ON ENVOIE LA CONCLUSION, PAS LE RÉGLAGE, comme pour « fermé hors séance »
+    // et pour le compte à rebours : `null` veut dire « travaille », un objet
+    // veut dire « arrête-toi, et voici pourquoi ». L'ardoise n'a aucune règle à
+    // appliquer — trente ardoises qui en appliqueraient une finiraient par
+    // diverger du serveur.
+    //
+    // ET LE MOT A UN DÉFAUT : un voile muet se lit comme une panne. C'est la
+    // même leçon que `hors_seance_mot`.
+    $enPause = trim((string) ($classe['pause_mot'] ?? '')) !== ''
+        ? ['mot' => (string) $classe['pause_mot']]
+        : null;
+
     return [
         'className' => $classe['name'],
         'classCode' => $classe['join_code'],
         'locked'    => (bool) $classe['locked'],
+        'pause'     => $enPause,
         'notice'    => $classe['notice'] !== null && $classe['notice'] !== '' ? $classe['notice'] : null,
         'blocked'   => (bool) ($eleve['blocked'] ?? 0),
         // ── FERMÉ HORS SÉANCE, ET CE QU'ON LIT ALORS ────────────────────────

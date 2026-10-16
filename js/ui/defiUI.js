@@ -43,7 +43,7 @@
 
 import { defiEnCours, tableauDuDefi } from '../core/seanceDistante.js';
 import { state } from '../core/state.js';
-import { apiEleve } from '../core/sync.js';
+import { apiEleve, rafraichirSeance } from '../core/sync.js';
 import { makeRng } from '../core/ids.js';
 import { getExerciseById } from '../data/catalog.js';
 import { getGenerator } from '../core/registry.js';
@@ -73,6 +73,40 @@ function noter(quoi) {
 
 let enCours = false;
 
+// ── « TU N'AS PAS PARTICIPÉ » DIT À CEUX QUI VENAIENT DE JOUER ─────────────
+//
+// RÉMY, en classe, avec ses élèves : « pour le défi, on l'a fait avec les
+// élèves une fois fini, on a eu le classement des 3 premiers mais les autres
+// c'était noté, tu n'as pas participé à ce défi ».
+//
+// CE QUI SE PASSAIT. Le tableau est une PHOTO prise par le serveur à l'instant
+// où l'ardoise l'interroge, et il ne s'affiche qu'une fois (`dejaVu`). Or le
+// score de l'élève part dans une requête séparée, à la seconde où le défi
+// tombe. Celui dont la photo arrive AVANT que son score ne soit rangé n'y
+// figure pas — et il lisait alors, définitivement, qu'il n'avait pas joué. Le
+// serveur, lui, avait bien son score : MESURÉ, trois élèves, trois scores en
+// base, et l'un des trois lisant « Tu n'as pas participé à ce défi » dix-huit
+// secondes après la fin, sans que l'écran se corrige jamais.
+//
+// DEUX CORRECTIONS, ET LA PREMIÈRE SUFFIRAIT PRESQUE :
+//
+//   · on REDEMANDE l'état dès que le score est parti, au lieu d'attendre le
+//     battement suivant — la photo est alors prise après, par construction ;
+//   · et l'on n'affiche pas une photo qui nous oublie quand on sait avoir
+//     joué : on laisse passer quelques battements. La phrase « tu n'as pas
+//     participé » reste vraie pour qui n'a vraiment pas joué, et c'est tout ce
+//     qu'elle doit dire.
+//
+// POURQUOI NE PAS SE CONTENTER D'ATTENDRE ? Parce qu'un réseau qui tombe au
+// mauvais moment remettrait l'élève dans le cas d'avant, sans rien à l'écran.
+// Au bout de ATTENTES_MAX battements on montre le tableau quand même — avec,
+// pour celui qui a joué, sa ligne telle qu'il l'a vécue plutôt qu'un démenti.
+const ATTENTES_MAX = 4;
+const attentes = new Map();
+
+/** Ce que CET appareil a compté pendant le défi, pour le cas où le serveur tarde. */
+let monScore = null;
+
 function regarder() {
     // LE PROFESSEUR NE SE LANCE PAS UN DÉFI À LUI-MÊME. Son navigateur a servi
     // à essayer le côté élève et en garde le rattachement — c'est la même règle
@@ -86,9 +120,23 @@ function regarder() {
     }
     const t = tableauDuDefi();
     if (t && !dejaVu('t' + t.debut)) {
+        // J'AI JOUÉ ET LE TABLEAU NE ME VOIT PAS : mon score n'est pas encore
+        // arrivé. On laisse passer le battement — et l'on ne NOTE rien, sans
+        // quoi le tableau juste, celui d'après, ne s'afficherait jamais.
+        const joue = dejaVu('d' + t.debut);
+        if (!t.moi && joue) {
+            const n = (attentes.get(t.debut) || 0) + 1;
+            attentes.set(t.debut, n);
+            if (n <= ATTENTES_MAX) return;
+        }
         noter('t' + t.debut);
-        montrerLeTableau(t);
+        montrerLeTableau(t, joue ? monScore : null);
+        return;
     }
+    // LE TABLEAU DÉJÀ OUVERT SUIT LES SCORES QUI ARRIVENT : voir
+    // `rafraichirLeTableau`. Sans cela, le premier servi garde un podium d'un
+    // prénom pendant les cinq minutes d'affichage.
+    if (t) rafraichirLeTableau(t, dejaVu('d' + t.debut) ? monScore : null);
 }
 
 /* ------------------------------------------------------------ Le plateau --- */
@@ -201,10 +249,25 @@ async function questionner(defi, exo) {
     const terminer = async () => {
         clearInterval(tic);
         voile.remove();
+        // CE QUE CET APPAREIL A COMPTÉ, gardé avant tout aller-retour : si le
+        // serveur tarde, l'élève lira au moins son propre score plutôt qu'un
+        // démenti. Voir `ATTENTES_MAX` plus haut.
+        monScore = { bonnes, total };
         // ON ENVOIE LE SCORE, ET L'ÉCHEC N'EST PAS GRAVE : le serveur accepte
         // le renvoi, et il garde le meilleur.
         try {
             await apiEleve('/defi/score', { bonnes, total, ms });
+            // PUIS ON REDEMANDE L'ÉTAT TOUT DE SUITE.
+            //
+            // C'est la moitié qui compte de la correction de Rémy — « les
+            // autres c'était noté, tu n'as pas participé à ce défi ». Sans
+            // cette ligne, le tableau arrive au battement suivant, jusqu'à dix
+            // secondes plus tard ; et s'il arrive AVANT que le score ne soit
+            // rangé, il oublie celui qui vient de jouer. En le redemandant
+            // ici, la photo est prise après l'enregistrement, par
+            // construction — et le tableau s'affiche sans attendre, ce qui est
+            // de toute façon ce qu'on veut à la seconde où le défi tombe.
+            await rafraichirSeance();
         } catch (e) { /* le réseau a hoqueté : on retentera au prochain état */ }
     };
 
@@ -261,7 +324,21 @@ async function questionner(defi, exo) {
 
 /* ------------------------------------------------------------ Le tableau --- */
 
-function montrerLeTableau(t) {
+// LE TABLEAU OUVERT, pour pouvoir le remettre à jour sans le rouvrir.
+//
+// TRENTE ÉLÈVES FINISSENT DANS LA MÊME SECONDE, et chacun reçoit la photo que
+// le serveur a prise au moment où SON ardoise a demandé. Les premiers servis
+// voyaient donc un podium d'un ou deux prénoms, figé pour les cinq minutes
+// d'affichage. MESURÉ, trois élèves : « Toi : 1e sur 1 » chez l'une,
+// « 2e sur 2 » chez l'autre, pour le même défi et au même instant.
+//
+// Le tableau se redessine donc tant qu'il est à l'écran, à chaque état qui
+// descend. Ce n'est pas un rafraîchissement de confort : un classement qui
+// change sous les yeux est gênant une seconde, un classement faux l'est toute
+// l'heure — et c'est de ce tableau-là que Rémy parle ensuite à sa classe.
+let tableauOuvert = null;
+
+function corpsDuTableau(t, monScoreLocal) {
     const marches = ['🥇', '🥈', '🥉'];
     const podium = (t.podium || []).map((p, i) =>
         `<div class="defi-marche"><span class="defi-medaille">${marches[i] || ''}</span>`
@@ -274,14 +351,49 @@ function montrerLeTableau(t) {
         ? `<div class="defi-moi">Toi : <b>${t.moi.rang}<sup>e</sup></b> sur `
             + `${t.participants} — <b>${t.moi.bonnes}</b> bonne${t.moi.bonnes > 1 ? 's' : ''} `
             + `réponse${t.moi.bonnes > 1 ? 's' : ''}</div>`
-        : '<div class="defi-moi">Tu n\'as pas participé à ce défi.</div>';
-    const voile = plateau(`
+        // ON NE DÉMENT PAS CELUI QUI VIENT DE JOUER. Son score n'est pas
+        // remonté — le réseau, le plus souvent —, et lui dire qu'il n'a pas
+        // participé serait faux là où il est le mieux placé pour le savoir.
+        : (monScoreLocal
+            ? `<div class="defi-moi">Toi : <b>${monScoreLocal.bonnes}</b> `
+                + `bonne${monScoreLocal.bonnes > 1 ? 's' : ''} `
+                + `réponse${monScoreLocal.bonnes > 1 ? 's' : ''} — ton classement `
+                + 'n\'a pas pu être calculé.</div>'
+            : '<div class="defi-moi">Tu n\'as pas participé à ce défi.</div>');
+    return `
         <div class="defi-carte defi-carte--fin">
             <div class="defi-titre">🏆 LE DÉFI EST FINI</div>
             <div class="defi-podium">${podium || '<div class="defi-moi">Personne n’a marqué.</div>'}</div>
             ${moi}
             <button type="button" class="defi-valider" data-fermer>On continue !</button>
-        </div>`);
-    voile.querySelector('[data-fermer]').onclick = () => voile.remove();
-    voile.querySelector('[data-fermer]').focus();
+        </div>`;
+}
+
+/** Pose les gestes du tableau : il n'y en a qu'un, et il le ferme. */
+function brancherLeTableau(voile) {
+    const b = voile.querySelector('[data-fermer]');
+    if (!b) return;
+    b.onclick = () => { voile.remove(); tableauOuvert = null; };
+}
+
+/**
+ * REMET À JOUR LE TABLEAU DÉJÀ OUVERT, s'il parle bien du même défi.
+ *
+ * ON NE REND PAS LE FOYER AU BOUTON à chaque mise à jour : l'élève qui vient
+ * d'appuyer sur « On continue ! » le verrait se rallumer sous son doigt.
+ */
+function rafraichirLeTableau(t, monScoreLocal) {
+    if (!tableauOuvert || tableauOuvert.debut !== t.debut) return false;
+    if (!document.body.contains(tableauOuvert.voile)) { tableauOuvert = null; return false; }
+    tableauOuvert.voile.innerHTML = corpsDuTableau(t, monScoreLocal);
+    brancherLeTableau(tableauOuvert.voile);
+    return true;
+}
+
+function montrerLeTableau(t, monScoreLocal = null) {
+    const voile = plateau(corpsDuTableau(t, monScoreLocal));
+    tableauOuvert = { debut: t.debut, voile };
+    brancherLeTableau(voile);
+    const b = voile.querySelector('[data-fermer]');
+    if (b) b.focus();
 }

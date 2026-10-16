@@ -1279,6 +1279,9 @@ export const calculExercises = [
                     + 'laisse le temps de lire et de taper ; Rapide s\'adresse à qui connaît déjà '
                     + 'ses tables.',
                 options: [
+                    // Voir `core/duel.js` : Rémy a redemandé un cran plus lent
+                    // que le plus lent, et c'était la troisième fois.
+                    { value: 'ralenti', label: 'Au ralenti — neuf secondes au départ' },
                     { value: 'tranquille', label: 'Tranquille — on a le temps de penser' },
                     { value: 'normal', label: 'Normal' },
                     { value: 'rapide', label: 'Rapide — pour qui sait ses tables' }

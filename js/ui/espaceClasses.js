@@ -58,7 +58,8 @@ import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
     nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, renommerLEleve,
     corrigerLePrenom, leDirect,
-    renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
+    renommerClasse, fermerLeCatalogue, mettreLaClasseEnPause, rendreLaMain,
+    poserConsigne, viderClasse, supprimerClasse,
     seancesDeLaClasse,
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
     creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
@@ -2581,13 +2582,38 @@ function barrePiloteHtml() {
     </div>`;
 }
 
-/** La rangée qui ne se replie jamais : la pause, et le mot à toute la classe. */
+/**
+ * La rangée qui ne se replie jamais : la pause, et le mot à toute la classe.
+ *
+ * ── DEUX GESTES PORTAIENT LE MÊME MOT ──────────────────────────────────────
+ *
+ * RÉMY : « je n'ai pas réussi à mettre toute la classe en pause ».
+ *
+ * Ce bouton disait « ⏸ Mettre en pause » et fermait le CATALOGUE. C'est utile,
+ * mais cela ne se voit pas chez l'élève qui travaille déjà : il appuyait, rien
+ * ne changeait à l'écran de ses élèves, et il concluait que ça ne marchait pas.
+ * Pendant ce temps, le vrai voile de pause n'existait que comme issue d'un
+ * compte à rebours arrivé à zéro.
+ *
+ * CHACUN REPREND SON NOM. Le verrou dit « catalogue », la pause dit « pause »,
+ * et c'est elle qui est en premier : c'est le geste qu'on fait en pleine heure,
+ * d'une main, en parlant.
+ */
 function rangeeDuHaut(info) {
+    // LA PAUSE VIENT DU DIRECT, pas de la fiche de classe : c'est un état de
+    // l'instant, et c'est le battement du direct qui le rapporte.
+    const p = vue.direct && vue.direct.pause;
+    const enPause = !!(p && p.mot);
     return `<div class="ec-pilote-rangee">
+            <button type="button" class="ec-pilote-btn${enPause ? ' ec-pilote-btn--actif' : ''}"
+                    data-pause-classe="${enPause ? '0' : '1'}"
+                    title="L'écran de chaque élève se couvre, et son travail reste dessous : il le retrouvera exactement où il l'a laissé.">
+                ${enPause ? '▶ Rendre la main' : '⏸ Mettre la classe en pause'}
+            </button>
             <button type="button" class="ec-pilote-btn${info.locked ? ' ec-pilote-btn--actif' : ''}"
                     data-pause="${info.locked ? '0' : '1'}"
-                    title="En pause, les élèves ne voient plus que ce que vous leur donnez : le catalogue disparaît.">
-                ${info.locked ? '▶ Rouvrir la classe' : '⏸ Mettre en pause'}
+                    title="Les élèves ne voient plus que ce que vous leur donnez : le catalogue disparaît de leur écran.">
+                ${info.locked ? '📚 Rouvrir le catalogue' : '📕 Fermer le catalogue'}
             </button>
 
             <span class="ec-pilote-mot">
@@ -3087,7 +3113,7 @@ async function brancher(e, redessiner) {
         + '[data-seance-ajouter], [data-seance-retirer], [data-bac-jeux],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
-        + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
+        + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-pause-classe], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
@@ -4342,10 +4368,22 @@ async function brancher(e, redessiner) {
     }
 
     if (d.pause) {
-        await fait(mettreEnPause(cid, d.pause === '1'), (r) => {
+        await fait(fermerLeCatalogue(cid, d.pause === '1'), (r) => {
             if (vue.liste && vue.liste.classe) vue.liste.classe.locked = !!r.locked;
             const c = (vue.classes || []).find(x => x.id === cid);
             if (c) c.locked = r.locked ? 1 : 0;
+        });
+        return;
+    }
+
+    // METTRE TOUTE LA CLASSE EN PAUSE, MAINTENANT — le geste que Rémy
+    // cherchait. On pose la réponse dans `vue.direct` tout de suite : le
+    // battement du direct ne revient que dans quelques secondes, et un bouton
+    // qui ne change pas d'état se presse une seconde fois.
+    if (d.pauseClasse) {
+        const metEnPause = d.pauseClasse === '1';
+        await fait(metEnPause ? mettreLaClasseEnPause(cid) : rendreLaMain(cid), (r) => {
+            if (vue.direct) vue.direct.pause = r.pause || null;
         });
         return;
     }
@@ -4487,7 +4525,8 @@ function signatureDuPilote() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
     const df = vue.direct && vue.direct.defi;
-    return [!!info.locked, !!bacDeLaClasse(), chronoQuiTourne(ch), (ch && ch.quoi) || '',
+    return [!!info.locked, !!(vue.direct && vue.direct.pause),
+        !!bacDeLaClasse(), chronoQuiTourne(ch), (ch && ch.quoi) || '',
         // L'ONGLET OUVERT FAIT PARTIE DE LA FORME DE LA BARRE : sans lui, le
         // battement la laisserait telle quelle alors qu'on vient d'en changer.
         vue.outil || '',

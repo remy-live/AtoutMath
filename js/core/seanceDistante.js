@@ -44,6 +44,11 @@ const VIDE = {
     calculatrice: [],
     // LE MOMENT EN COURS : la séance imposée, et le compte à rebours.
     impose: null, chrono: null,
+    // LA CLASSE EST-ELLE EN PAUSE, MAINTENANT ? `null` = elle travaille ; un
+    // objet `{mot}` = elle s'arrête, et voici ce qu'on lui dit. Rémy : « je
+    // n'ai pas réussi à mettre toute la classe en pause » — il n'y arrivait pas
+    // parce que seul un compte à rebours arrivé à zéro savait le faire.
+    pause: null,
     // Le bac à sable de ceux qui ont fini. FERMÉ est le cas particulier :
     // ouvert par défaut, une fonction qu'il faut allumer n'est pas découverte.
     bacFerme: false,
@@ -188,6 +193,20 @@ export function etatSeance() {
 
 export function estVerrouille() {
     return !!etat.locked;
+}
+
+/**
+ * LA CLASSE EST-ELLE EN PAUSE, et que lui dit-on ?
+ *
+ * `null` quand elle travaille. Le serveur a déjà tranché — on ne recalcule
+ * rien ici, c'est la même règle que pour `horsSeance` : une conclusion
+ * recalculée sur trente ardoises finit par diverger de celle du serveur.
+ *
+ * @returns {{mot:string}|null}
+ */
+export function classeEnPause() {
+    const p = etat.pause;
+    return p && typeof p.mot === 'string' && p.mot ? p : null;
 }
 
 export function estEcarte() {

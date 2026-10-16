@@ -122,3 +122,71 @@ test('LE VOILE PEINT VRAIMENT SON FOND', () => {
             + 'la règle sera ignorée en silence et l\'exercice restera visible dessous.');
     }
 });
+
+// ── « TU N'AS PAS PARTICIPÉ », DIT À CEUX QUI VENAIENT DE JOUER ─────────────
+//
+// RÉMY, en classe : « pour le défi, on l'a fait avec les élèves une fois fini,
+// on a eu le classement des 3 premiers mais les autres c'était noté, tu n'as
+// pas participé à ce défi ».
+//
+// MESURÉ AVANT, trois élèves dans trois navigateurs : les trois scores étaient
+// en base, et l'un des trois lisait « Tu n'as pas participé à ce défi »
+// dix-huit secondes après la fin, sans que l'écran se corrige jamais. Le
+// tableau est une photo prise par le serveur ; elle peut être prise avant que
+// le score ne soit rangé, et elle ne s'affiche qu'une fois.
+//
+// CES TROIS ÉPREUVES LISENT LA SOURCE, et c'est assumé : la règle vit dans un
+// module d'interface qui ne se monte que dans un navigateur. `boutEnBout.mjs`
+// joue le défi en vrai ; celles-ci gardent les trois charnières de la décision.
+
+import { readFileSync } from 'node:fs';
+const DEFI_UI = readFileSync('js/ui/defiUI.js', 'utf8');
+
+test('LE SCORE PARTI, ON REDEMANDE L\'ÉTAT — on n\'attend pas le battement', () => {
+    // L'APPEL, pas l'import : importer `rafraichirSeance` sans l'appeler
+    // laisserait l'épreuve verte sur un logiciel inchangé.
+    const bloc = /const terminer = async \(\) => \{[\s\S]*?\n    \};/.exec(DEFI_UI);
+    assert.ok(bloc, 'le bloc `terminer` a changé de forme');
+    assert.match(bloc[0], /apiEleve\('\/defi\/score'/, 'le score ne part plus');
+    assert.match(bloc[0], /await rafraichirSeance\(\)/,
+        'le score part, mais l\'état n\'est pas redemandé : le tableau peut '
+        + 'encore être pris avant l\'enregistrement');
+    // ET DANS CET ORDRE. Redemander AVANT d'envoyer ne corrigerait rien.
+    assert.ok(bloc[0].indexOf('/defi/score') < bloc[0].indexOf('rafraichirSeance'),
+        'l\'état est redemandé avant que le score ne soit parti');
+});
+
+test('UN TABLEAU QUI M\'OUBLIE N\'EST PAS AFFICHÉ TOUT DE SUITE', () => {
+    const bloc = /const t = tableauDuDefi\(\);[\s\S]*?\n\}/.exec(DEFI_UI);
+    assert.ok(bloc, 'le bloc qui montre le tableau a changé de forme');
+    // « j'ai joué » se lit sur la mémoire du défi lui-même — `d` + début.
+    assert.match(bloc[0], /dejaVu\('d' \+ t\.debut\)/,
+        'rien ne distingue celui qui a joué de celui qui n\'a pas joué');
+    assert.match(bloc[0], /!t\.moi && joue/,
+        'le tableau s\'affiche même quand il oublie celui qui vient de jouer');
+    // ET L'ON NE NOTE RIEN EN ATTENDANT : noter marquerait ce défi comme vu, et
+    // le tableau juste — celui d'après — ne s'afficherait jamais.
+    const avantNoter = bloc[0].slice(0, bloc[0].indexOf("noter('t'"));
+    assert.ok(/return;/.test(avantNoter),
+        'on attend sans sortir : le tableau serait noté « vu » avant d\'être juste');
+});
+
+test('ET AU BOUT DE L\'ATTENTE, ON NE LE DÉMENT PAS', () => {
+    // Le réseau peut tomber. On montre alors le tableau quand même — mais avec
+    // ce que l'appareil a compté, pas avec « tu n'as pas participé ».
+    assert.match(DEFI_UI, /monScore = \{ bonnes, total \}/,
+        'l\'appareil ne garde pas ce qu\'il a compté');
+    assert.match(DEFI_UI, /monScoreLocal\s*\n?\s*\?/,
+        'le repli sur le score local n\'existe pas');
+    // DANS LA MÊME EXPRESSION, et non quelque part dans le fichier : c'est
+    // l'ordre des deux branches qui décide ce que l'élève lit.
+    const bloc = /const moi = t\.moi[\s\S]*?\n        : \([\s\S]*?\);/.exec(DEFI_UI);
+    assert.ok(bloc, 'la ligne « Toi : … » a changé de forme');
+    // DANS LA SOURCE, l'apostrophe est échappée — « Tu n\\'as pas participé ».
+    // Chercher la phrase telle qu'on la LIT à l'écran rend −1, et l'épreuve
+    // tombe sur un logiciel juste. On cherche donc le morceau sans apostrophe.
+    const faux = bloc[0].indexOf('as pas participé à ce défi');
+    const repli = bloc[0].indexOf('monScoreLocal');
+    assert.ok(repli >= 0 && faux >= 0 && repli < faux,
+        '« Tu n\'as pas participé » reste la seule réponse possible');
+});

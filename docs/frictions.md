@@ -4727,3 +4727,20 @@ le résultat n'existe pas** — 15 octobre 2026
   mesure de classe en a besoin : le défi, le direct, le mur, le compte à
   rebours. Et, à défaut, une ligne dans l'en-tête de `sonde.mjs` : un élève,
   un contexte.
+
+**`.path-ouvrir-seance` n'est pas le bouton « Jouer »** — 16 octobre 2026
+
+- *Ce que je voulais faire* : faire jouer un élève depuis sa séance imposée, dans
+  deux sondes différentes (la largeur du parcours, puis la pause de classe).
+- *Ce qui a coûté* : deux sondes rendues inutilisables, environ dix minutes. Le
+  crochet EXISTE dans `js/ui/pathView.js` — je l'y avais lu — mais sur une autre
+  branche que celle qu'un élève emprunte. Le bouton du bas de la carte est
+  `.world-map-play`. Un sélecteur qui existe dans la source et rend 0 à l'écran
+  est pire qu'un sélecteur inventé : `doitExister` l'aurait attrapé, mais j'avais
+  la preuve textuelle sous les yeux et je ne l'ai pas employé.
+- *Combien de fois* : ||
+- *Ce qui manque* : `s.jouerLaSeance()` dans la sonde — elle ouvre la séance
+  imposée par le chemin de l'élève et jette si elle n'y arrive pas. Quatre sondes
+  réécrivent déjà ces huit lignes. Et, plus généralement : `doitExister` doit
+  s'employer même — surtout — quand on a LU le crochet dans la source, parce que
+  lire ne dit pas sur quelle branche il est rendu.

@@ -40,7 +40,13 @@ import { surAppui, CSS_CIBLE_QUI_BOUGE } from '../core/cibleQuiBouge.js';
  * double presque le temps de traversée : au premier niveau, un astéroïde met
  * une vingtaine de secondes à descendre au lieu d'une douzaine.
  */
-const ALLURES = { tranquille: 0.55, posee: 0.75, normale: 1, rapide: 1.35 };
+//
+// ICI LE NOMBRE EST UNE VITESSE, PAS UNE DURÉE — c'est l'inverse de
+// `core/allure.js`, et il fallait le dire : 0,55 veut dire « moitié moins
+// vite », donc presque le double de temps. « Au ralenti » (Rémy : « une option
+// qui est plus lente que le plus bas ») vaut donc 0,4 — l'inverse des 2,5 de
+// la table commune, au centième près.
+const ALLURES = { ralenti: 0.4, tranquille: 0.55, posee: 0.75, normale: 1, rapide: 1.35 };
 
 const COMPETENCE = 'num.complement';
 

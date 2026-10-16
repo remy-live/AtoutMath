@@ -566,6 +566,53 @@ json('/teacher/class', ['classId' => $classId, 'action' => 'lock', 'locked' => f
 $r = json('/session', [], $lea);
 verifier('et le déverrouillage aussi', ($r['json']['session']['locked'] ?? null) === false);
 
+// ── METTRE TOUTE LA CLASSE EN PAUSE, MAINTENANT ────────────────────────────
+//
+// RÉMY : « je n'ai pas réussi à mettre toute la classe en pause ».
+//
+// IL N'Y ARRIVAIT PAS PARCE QUE CELA N'EXISTAIT PAS. Le voile de pause — celui
+// qui couvre l'écran de l'élève en lui gardant son travail dessous — ne pouvait
+// être déclenché que par un COMPTE À REBOURS arrivé à zéro. Et le bouton qui
+// portait les mots « Mettre en pause » faisait tout autre chose : il fermait le
+// CATALOGUE (le verrou ci-dessus), ce qui ne se voit pas chez l'élève qui
+// travaille déjà. Deux gestes, le même mot, et aucun des deux ne faisait ce
+// qu'il demandait.
+$pauseDe = fn () => json('/session', [], $lea)['json']['session']['pause'] ?? null;
+verifier('AU DÉPART, LA CLASSE N\'EST PAS EN PAUSE', $pauseDe() === null, json_encode($pauseDe()));
+
+$r = json('/teacher/class', ['classId' => $classId, 'action' => 'pause',
+                             'on' => true, 'mot' => 'On corrige au tableau.'], $jetonProf);
+verifier('le professeur met toute la classe en pause', $r['code'] === 200, $r['brut']);
+$p = $pauseDe();
+verifier('ET LA PAUSE ARRIVE JUSQU\'À L\'ÉLÈVE',
+    is_array($p) && str_contains($p['mot'] ?? '', 'corrige au tableau'), json_encode($p));
+
+// LE VERROU ET LA PAUSE SONT DEUX CHOSES, et c'est tout le sujet de la
+// remarque : mettre en pause ne doit pas fermer le catalogue au passage, sans
+// quoi on aurait seulement renommé l'ancien geste.
+verifier('ET ELLE N\'A PAS FERMÉ LE CATALOGUE AU PASSAGE',
+    (json('/session', [], $lea)['json']['session']['locked'] ?? null) === false);
+
+// UN VOILE MUET SE LIT COMME UNE PANNE : il y a donc un défaut.
+json('/teacher/class', ['classId' => $classId, 'action' => 'pause', 'on' => false], $jetonProf);
+json('/teacher/class', ['classId' => $classId, 'action' => 'pause', 'on' => true, 'mot' => ''], $jetonProf);
+$p = $pauseDe();
+verifier('UNE PAUSE SANS MOT EN PORTE UN QUAND MÊME',
+    is_array($p) && trim($p['mot'] ?? '') !== '', json_encode($p));
+
+$r = json('/teacher/class', ['classId' => $classId, 'action' => 'pause', 'on' => false], $jetonProf);
+verifier('ET LE PROFESSEUR REND LA MAIN', $pauseDe() === null, json_encode($pauseDe()));
+
+// ET ELLE VOYAGE AVEC LE DIRECT, parce que c'est l'écran où il la pose : un
+// bouton qui ne dit pas son état se presse deux fois.
+json('/teacher/class', ['classId' => $classId, 'action' => 'pause', 'on' => true,
+                        'mot' => 'Rangez vos cahiers.'], $jetonProf);
+$direct = json('/teacher/live', ['classId' => $classId], $jetonProf)['json'];
+verifier('LE DIRECT DIT QUE LA CLASSE EST EN PAUSE',
+    is_array($direct['pause'] ?? null)
+    && str_contains($direct['pause']['mot'] ?? '', 'Rangez'), json_encode($direct['pause'] ?? null));
+json('/teacher/class', ['classId' => $classId, 'action' => 'pause', 'on' => false], $jetonProf);
+
 // --- La consigne
 json('/teacher/class', ['classId' => $classId, 'action' => 'notice',
                         'notice' => 'Aujourd\'hui : les fractions.'], $jetonProf);

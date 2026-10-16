@@ -23,6 +23,22 @@
 // « plus lentement ».
 
 export const ALLURES = {
+    // ── UN CRAN DE PLUS, PARCE QUE LE PLUS LENT NE L'ÉTAIT PAS ASSEZ ───────
+    //
+    // RÉMY : « il faudrait aussi pour les exercices à chrono rajouter encore
+    // une option qui est plus lente que le plus bas ».
+    //
+    // C'est la troisième fois que le même constat revient sur ce sujet — « c'est
+    // hyper rapide au départ ! ralentis », puis l'invention de l'allure
+    // elle-même, puis ceci. À chaque fois, le cran le plus lent a été calibré
+    // sur ce qu'un adulte trouve lent. Il ne l'est pas pour l'élève qui pose
+    // « −7 + 4 » dans sa tête, et c'est exactement celui pour qui on règle.
+    //
+    // DEUX FOIS ET DEMIE LE TEMPS, et non 1,8 : un cran qui ne se sent pas
+    // n'est pas un cran. L'écart avec « Tranquille » (1,6) est du même ordre
+    // que celui entre « Tranquille » et « Normale » — un vrai palier de plus,
+    // au bout d'une échelle qui en compte maintenant cinq.
+    ralenti: 2.5,
     tranquille: 1.6,
     posee: 1.3,
     normale: 1,
@@ -61,6 +77,7 @@ export const PARAM_ALLURE = {
         + '« Posée » en laisse un tiers de plus : c\'est souvent ce qu\'il faut '
         + 'la première fois.',
     options: [
+        { value: 'ralenti', label: 'Au ralenti — deux fois et demie le temps' },
         { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
         { value: 'posee', label: 'Posée — un tiers de temps en plus' },
         { value: 'normale', label: 'Normale' },

@@ -192,8 +192,30 @@ export const seancesDeLaClasse = (classId) =>
 export const renommerClasse = (classId, name, level) =>
     auServeur('/teacher/class', { classId, action: 'rename', name, level })
         .then(r => { laListeABouge(); return r; });
-export const mettreEnPause = (classId, locked) =>
-    auServeur('/teacher/class', { classId, action: 'lock', locked });
+/**
+ * FERMER LE CATALOGUE — ce geste s'appelait « mettre en pause », et ce n'en
+ * était pas une.
+ *
+ * RÉMY : « je n'ai pas réussi à mettre toute la classe en pause ». Il avait ce
+ * bouton sous les yeux, portant exactement ces mots, et il ne faisait pas cela :
+ * il cache le CATALOGUE, ce qui ne se voit pas chez l'élève qui travaille déjà.
+ * Le nom disait la chose voisine, donc personne ne cherchait ailleurs.
+ */
+export const fermerLeCatalogue = (classId, ferme) =>
+    auServeur('/teacher/class', { classId, action: 'lock', locked: ferme });
+
+/**
+ * METTRE TOUTE LA CLASSE EN PAUSE, MAINTENANT — le vrai geste.
+ *
+ * L'écran de chaque élève se couvre d'un voile qui porte le mot du professeur,
+ * et SON TRAVAIL RESTE DESSOUS : quand on rend la main, il retrouve sa question
+ * là où elle était. Un mot vide prend le défaut du serveur.
+ */
+export const mettreLaClasseEnPause = (classId, mot = '') =>
+    auServeur('/teacher/class', { classId, action: 'pause', on: true, mot });
+
+export const rendreLaMain = (classId) =>
+    auServeur('/teacher/class', { classId, action: 'pause', on: false });
 export const poserConsigne = (classId, notice) =>
     auServeur('/teacher/class', { classId, action: 'notice', notice });
 export const viderClasse = (classId, confirmation) =>

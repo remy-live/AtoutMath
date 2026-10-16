@@ -230,3 +230,43 @@ test('ON NE RAMASSE PAS DE COPIES — il n\'y en a pas', () => {
     assert.ok(!/\(on ramasse les copies\)/.test(PROF),
         'la métaphore est restée là où elle est née : elle repoussera');
 });
+
+// ── UNE SÉANCE RETOUCHÉE EN PLEINE HEURE NE REPART PAS DE ZÉRO ──────────────
+//
+// RÉMY : « j'ai modifié un parcours pendant une séance avec mes élèves et ils
+// travaillaient sur le parcours en modifiant le parcours (juste une option),
+// ça a remis à zéro tous les élèves ».
+//
+// L'identité d'un parcours est une empreinte de son CONTENU : une option
+// changée la change. La séance était donc rouverte, un nouveau PATH_ASSIGNED
+// émis, et les étapes faites — qui se recomptent en filtrant le journal sur
+// cette identité — disparaissaient toutes.
+
+test('LA MÊME SÉANCE RETOUCHÉE NE SE ROUVRE PAS — le travail reste', () => {
+    const avant = unParcours();
+    const apres = unParcours();
+    // Une option de plus : le contenu change, donc l'empreinte.
+    apres.steps[0] = { ...apres.steps[0], nbItems: (apres.steps[0].nbItems || 5) + 1 };
+    const chargee = identiteDeParcours(normalizePath(avant, avant.name));
+
+    const i = impose(apres);
+    i.pathId = 'p-seance-du-jour';
+    const d = fautIlOuvrir(i, chargee, false, 'p-seance-du-jour');
+    assert.equal(d.ouvrir, false, 'la séance retouchée a été rouverte : tout repart à zéro');
+    assert.equal(d.pourquoi, 'meme-seance');
+});
+
+test('MAIS UNE AUTRE SÉANCE S\'OUVRE BIEN — on n\'a pas tout gelé', () => {
+    // Le contraire de la règle ci-dessus doit rester vrai, sans quoi la
+    // correction aurait tué la séance imposée au lieu de la protéger.
+    const i = impose(unParcours());
+    i.pathId = 'p-seance-d-apres';
+    const d = fautIlOuvrir(i, 'path_cAUTRE', false, 'p-seance-du-jour');
+    assert.equal(d.ouvrir, true, d.pourquoi);
+});
+
+test('ET SANS SÉANCE CHARGÉE, RIEN NE CHANGE — le premier chargement s\'ouvre', () => {
+    const i = impose(unParcours());
+    i.pathId = 'p-seance-du-jour';
+    assert.equal(fautIlOuvrir(i, null, false, null).ouvrir, true);
+});

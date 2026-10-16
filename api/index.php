@@ -1470,6 +1470,41 @@ function handleTeacherClass(): void
             : 'Rouvert : vos élèves peuvent travailler même sans séance imposée.']);
     }
 
+    // ── METTRE TOUTE LA CLASSE EN PAUSE, MAINTENANT ─────────────────────────
+    //
+    // RÉMY : « je n'ai pas réussi à mettre toute la classe en pause ».
+    //
+    // CE GESTE N'EXISTAIT PAS. Le voile de pause — celui qui couvre l'écran de
+    // l'élève en lui gardant son travail dessous — ne pouvait être déclenché
+    // que par un compte à rebours arrivé à zéro. Pour reprendre la parole
+    // maintenant, il fallait lancer une minuterie et l'attendre finir.
+    //
+    // ET IL EXISTE DÉJÀ UN BOUTON QUI S'APPELLE « Mettre en pause » : c'est
+    // `lock`, qui ferme le CATALOGUE. Deux choses sous le même mot, dont
+    // aucune ne faisait ce qu'il demandait. `lock` est donc renommé à ce qu'il
+    // fait, et ce geste-ci prend le nom.
+    //
+    // ON N'ARRACHE RIEN, ON COUVRE. C'est la règle écrite dans `ui/leMoment.js`
+    // le jour où le compte à rebours a eu sa pause : « quand il rend la main,
+    // l'élève doit retrouver sa question exactement où elle était. Une pause
+    // qui perd le travail en cours n'est pas une pause, c'est une punition. »
+    if ($action === 'pause') {
+        $mot = trim((string) ($body['mot'] ?? ''));
+        $on = !empty($body['on']);
+        if (!$on) {
+            db()->prepare('UPDATE classes SET pause_mot = NULL WHERE id = ?')
+                ->execute([$classe['id']]);
+            respond(['ok' => true, 'pause' => null, 'dit' => 'La classe reprend.']);
+        }
+        // UN VOILE MUET SE LIT COMME UNE PANNE : il y a donc un défaut, et
+        // c'est la phrase qui dit à l'élève ce qui se passe et quoi faire.
+        if ($mot === '') $mot = 'On s\'arrête un instant : écoutez.';
+        db()->prepare('UPDATE classes SET pause_mot = ? WHERE id = ?')
+            ->execute([mb_substr($mot, 0, 300), $classe['id']]);
+        respond(['ok' => true, 'pause' => ['mot' => $mot],
+                 'dit' => 'Toute la classe est en pause. Leur travail est gardé.']);
+    }
+
     if ($action === 'notice') {
         $mot = trim((string) ($body['notice'] ?? ''));
         db()->prepare('UPDATE classes SET notice = ? WHERE id = ?')
@@ -2030,6 +2065,11 @@ function handleTeacherLive(): void
                      'locked' => (bool) $classe['locked'], 'notice' => $classe['notice']],
         'chrono' => $chronoFin ? ['finAt' => (int) $chronoFin,
                                   'aZero' => $classe['chrono_a_zero'] ?: 'terminer'] : null,
+        // LA PAUSE DE CLASSE VOYAGE AVEC LE DIRECT, comme le compte à rebours :
+        // c'est l'écran où le professeur la pose et la lève, et un bouton qui
+        // ne dit pas son état se presse deux fois.
+        'pause' => trim((string) ($classe['pause_mot'] ?? '')) !== ''
+            ? ['mot' => (string) $classe['pause_mot']] : null,
         // L'HEURE DU SERVEUR, ET NON CELLE DU NAVIGATEUR. « en ligne » se
         // décide en comparant deux instants ; s'ils viennent de deux horloges
         // différentes, une tablette mal réglée fait disparaître toute la classe.

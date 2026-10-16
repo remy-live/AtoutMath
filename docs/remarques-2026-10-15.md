@@ -529,3 +529,68 @@ les PROPRIÉTÉS de la figure, pas son codage.
 En classe, en vrai, avec ses élèves. Le podium s'affichait ; tous ceux qui
 n'étaient pas dessus lisaient qu'ils n'avaient pas joué — alors qu'ils
 venaient de jouer.
+
+# Douzième passe — modifier un parcours EN SÉANCE remet les élèves à zéro
+
+> « j'ai modifié un parcours pendant une séance avec mes élèves et ils
+> travaillaient sur le parcours en modifiant le parcours (juste une option),
+> ça a remis à zéro tous les élèves »
+
+**C'est la plus grave de la journée** : du travail d'élève perdu, en classe,
+pendant l'heure. Et c'est la même mécanique que celle qui m'a piégé ce matin
+en écrivant la sonde du compte à rebours — `identiteDeParcours` est une
+empreinte du CONTENU. Changer une option change le contenu, donc l'empreinte,
+donc — pour le logiciel — la séance.
+
+# Treizième passe — un cran plus lent pour les exercices chronométrés
+
+> « il faudrait aussi pour les exercices a chrono rajouter encore un option qui
+> est plus lente que le plus bas »
+
+Le réglage le plus lent n'est pas assez lent pour une partie de ses élèves. On
+regarde d'abord où vit ce réglage, et combien d'exercices le portent.
+
+# Quatorzième passe — « je n'ai pas réussi à mettre toute la classe en pause »
+
+> « je n'ai pas réussi à mettre toute la classe en pause »
+
+Le geste existe — `mettreEnPause` / `action: 'lock'` — et `boutEnBout` le garde.
+Ce n'est donc probablement pas qu'il ne marche pas : c'est qu'il ne se trouve
+pas. On le cherche comme lui, depuis l'écran de la classe.
+
+## Ce qui a été fait, pour les quatre dernières
+
+**11. Le défi.** Le tableau est une PHOTO prise par le serveur à l'instant où
+l'ardoise interroge, et il ne s'affichait qu'une fois. Le score, lui, part dans
+une requête séparée à la seconde où le défi tombe : qui recevait sa photo
+avant que son score ne soit rangé lisait, définitivement, qu'il n'avait pas
+joué. MESURÉ, trois élèves dans trois navigateurs : les trois scores en base,
+et l'un des trois démenti dix-huit secondes après la fin. Trois corrections :
+on redemande l'état dès que le score est parti ; on n'affiche pas une photo qui
+nous oublie quand on sait avoir joué ; et le tableau ouvert suit les scores qui
+arrivent, au lieu de figer un podium d'un prénom.
+
+**12. Le parcours modifié en séance.** L'identité d'un parcours est une
+empreinte de son CONTENU : une option changée la change. `fautIlOuvrir` ne
+reconnaissait donc plus le parcours chargé, rouvrait la séance, émettait un
+nouveau `PATH_ASSIGNED` — et les étapes faites, qui se recomptent en filtrant le
+journal sur cette identité, disparaissaient toutes. On compare désormais
+l'identifiant STABLE de la séance (`paths.id`), qui ne bouge pas quand on
+retouche le contenu. L'élève qui a déjà ouvert garde sa version ; celui qui
+ouvre après reçoit la nouvelle.
+
+**13. Un cran plus lent.** « Au ralenti », ×2,5 — l'écart avec « Tranquille »
+est du même ordre que celui entre « Tranquille » et « Normale ». Posé dans la
+table commune ET dans les trois listes écrites à part, qui sont le vrai piège :
+une option absente de leur menu est inatteignable là où il la demande. Pour le
+duel, les trois nombres bougent ensemble — départ, plancher et pente —, parce
+qu'« un départ lent suivi d'une accélération brutale redonne exactement le même
+sentiment ».
+
+**14. La pause de classe.** Elle n'existait pas : le voile ne pouvait être
+déclenché que par un compte à rebours arrivé à zéro, et le bouton qui disait
+« Mettre en pause » fermait le CATALOGUE — ce qui ne se voit pas chez l'élève
+qui travaille. Chacun reprend son nom, et la pause est un geste à part entière.
+MESURÉ de bout en bout : l'élève travaillait sur « 3 + 6 = ? », son écran s'est
+couvert du mot du professeur, sa question est restée dessous, et il l'a
+retrouvée à l'identique quand Rémy a rendu la main.

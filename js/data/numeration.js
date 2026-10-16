@@ -41,6 +41,12 @@ const NINJA_REGLAGES = (mode) => ([
                 id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
                 aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
                 options: [
+                    // UN CRAN DE PLUS QUE « Tranquille ». Rémy : « il faudrait
+                    // aussi pour les exercices à chrono rajouter encore une
+                    // option qui est plus lente que le plus bas ». Le facteur
+                    // vit dans `core/allure.js` ; cette liste n'est que le
+                    // menu, et les deux doivent offrir les mêmes crans.
+                    { value: 'ralenti', label: 'Au ralenti — deux fois et demie le temps' },
                     { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
                     { value: 'posee', label: 'Posée — un tiers de temps en plus' },
                     { value: 'normale', label: 'Normale' },
@@ -449,6 +455,9 @@ export const numerationExercises = [
                 id: 'vitesse', type: 'select', label: 'Allure',
                 aide: 'Le temps de descente d\'un astéroïde, pas la difficulté du calcul. « Tranquille » laisse presque le double de temps — c\'est souvent ce qu\'il faut pour découvrir les compléments à 100.',
                 options: [
+                    // Voir `core/allure.js` : le cran le plus lent n'était pas
+                    // assez lent, et c'est la troisième fois qu'on l'entend.
+                    { value: 'ralenti', label: 'Au ralenti — deux fois et demie le temps' },
                     { value: 'tranquille', label: 'Tranquille — tout le temps de calculer' },
                     { value: 'posee', label: 'Posée — un quart de temps en plus' },
                     { value: 'normale', label: 'Normale' },

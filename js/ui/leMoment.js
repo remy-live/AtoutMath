@@ -30,7 +30,7 @@
 
 import { state } from '../core/state.js';
 import {
-    etatSeance, seanceImposee, tempsRestant
+    etatSeance, seanceImposee, tempsRestant, classeEnPause
 } from '../core/seanceDistante.js';
 import { normalizePath } from '../core/path.js';
 import { resolvePolicy } from '../core/policy.js';
@@ -61,9 +61,38 @@ export function enMinutes(secondes) {
  *
  * @returns {{ouvrir:boolean, pourquoi:string}}
  */
-export function fautIlOuvrir(impose, parcoursCharge, enTrainDeTravailler) {
+export function fautIlOuvrir(impose, parcoursCharge, enTrainDeTravailler, seanceChargee = null) {
     if (!impose || !impose.path) return { ouvrir: false, pourquoi: 'rien-impose' };
     if (enTrainDeTravailler) return { ouvrir: false, pourquoi: 'il-travaille' };
+    // ── LA SÉANCE RETOUCHÉE EN PLEINE HEURE NE REPART PAS DE ZÉRO ──────────
+    //
+    // RÉMY : « j'ai modifié un parcours pendant une séance avec mes élèves et
+    // ils travaillaient sur le parcours en modifiant le parcours (juste une
+    // option), ça a remis à zéro tous les élèves ».
+    //
+    // CE QUI SE PASSAIT, ET POURQUOI C'ÉTAIT INÉVITABLE. L'identité d'un
+    // parcours est une empreinte de son CONTENU (`identiteDeParcours`) :
+    // changer une option change l'empreinte. Trois lignes plus bas, la
+    // comparaison ne reconnaissait donc plus le parcours chargé, et la séance
+    // était rouverte — un nouveau `PATH_ASSIGNED`, une nouvelle identité. Or
+    // les étapes faites se recomptent en filtrant le journal sur cette
+    // identité (`computeAssignedPath`, js/core/projections.js) : elles
+    // disparaissaient toutes, d'un coup, chez toute la classe.
+    //
+    // ON COMPARE DONC LA SÉANCE, PAS SON CONTENU. `impose.pathId` est
+    // l'identifiant de la LIGNE du parcours au serveur (`paths.id`) : il ne
+    // bouge pas quand on retouche le contenu, et c'est exactement ce qu'il
+    // faut ici — « est-ce la même séance ? » et non « est-ce le même texte ? ».
+    //
+    // CE QUE CELA COÛTE, ET POURQUOI ON LE PAIE. L'élève qui a DÉJÀ ouvert la
+    // séance garde la version qu'il a ; la retouche ne l'atteint plus pendant
+    // l'heure. Celui qui l'ouvre après, lui, reçoit la nouvelle — c'est le cas
+    // « + un exercice », qui continue de marcher. Entre « la retouche arrive à
+    // tout le monde » et « personne ne perd son travail », la règle du dépôt
+    // tranche depuis le début : ON N'ARRACHE JAMAIS CE QUI EST COMMENCÉ.
+    if (seanceChargee && impose.pathId && seanceChargee === impose.pathId) {
+        return { ouvrir: false, pourquoi: 'meme-seance' };
+    }
     const identite = identiteDeParcours(normalizePath(impose.path, impose.name));
     if (parcoursCharge && parcoursCharge === identite) {
         return { ouvrir: false, pourquoi: 'deja-dessus' };
@@ -77,6 +106,12 @@ function ouvrirLaSeanceImposee(impose) {
     state.setStudentPath(parcours.steps, {
         pathId: id,
         name: parcours.name || impose.name || 'Séance',
+        // DE QUELLE SÉANCE CELA VIENT — l'identifiant stable du serveur, à côté
+        // de l'empreinte du contenu. Il part au journal, donc il survit au
+        // rechargement de la page : sans cela, un élève dont l'onglet se
+        // recharge en pleine heure retomberait dans le défaut qu'on vient de
+        // corriger. Voir `fautIlOuvrir`.
+        seanceId: impose.pathId || null,
         policy: resolvePolicy(parcours.policy)
     });
     dernierImpose = id;
@@ -113,11 +148,26 @@ function voile(afficher, texte) {
 }
 
 function dessiner() {
+    // ── LA PAUSE DEMANDÉE MAINTENANT PASSE AVANT TOUT ──────────────────────
+    //
+    // RÉMY : « je n'ai pas réussi à mettre toute la classe en pause ». Le voile
+    // n'existait que comme ISSUE d'un compte à rebours ; il est maintenant un
+    // geste à part entière, et il doit couvrir l'écran même s'il n'y a aucune
+    // minuterie en cours — c'est précisément le cas où il le demande.
+    //
+    // ET IL L'EMPORTE SUR LE COMPTE À REBOURS : quand le professeur reprend la
+    // parole, il reprend la parole. Les secondes continuent de courir dessous,
+    // et le bandeau revient quand il rend la main.
+    const p = classeEnPause();
     const t = tempsRestant();
     const el = bandeau();
+    if (p) {
+        voile(true, p.mot);
+        if (!t) { el.hidden = true; return; }
+    }
     if (!t) {
         el.hidden = true;
-        voile(false);
+        if (!p) voile(false);
         return;
     }
     el.hidden = false;
@@ -131,7 +181,11 @@ function dessiner() {
         voile(true, 'Le professeur a repris la parole.');
         return;
     }
-    voile(false);
+    // ON NE LÈVE PAS LE VOILE QUE LE PROFESSEUR VIENT DE POSER : sans ce
+    // garde-fou, un compte à rebours qui court le rouvrirait quatre fois par
+    // seconde, et la classe ne pourrait plus être mise en pause pendant une
+    // minuterie — c'est-à-dire pendant l'heure.
+    if (!p) voile(false);
     if (fini) {
         el.innerHTML = '<span class="moment-chrono">Temps écoulé</span>'
             + '<span class="moment-quoi">On s\'arrête là.</span>';
@@ -162,6 +216,10 @@ function dessiner() {
  */
 function battre() {
     dessiner();
+    // EN PAUSE, ON NE TERMINE RIEN. Le professeur a pris la parole ; que le
+    // compte à rebours tombe pendant qu'il parle ne doit pas clore la séance
+    // sous le voile, là où l'élève ne verrait même pas son bilan.
+    if (classeEnPause()) return;
     const t = tempsRestant();
     if (t && t.reste <= 0 && t.aZero === 'terminer') terminerLeTravail();
 }
@@ -199,7 +257,8 @@ function surEtat() {
     const impose = seanceImposee();
     const charge = state.studentPath ? state.studentPath.pathId : null;
     const travaille = !!state.activeSequenceRunner;
-    const d = fautIlOuvrir(impose, charge, travaille);
+    const seance = state.studentPath ? (state.studentPath.seanceId || null) : null;
+    const d = fautIlOuvrir(impose, charge, travaille, seance);
     if (d.ouvrir) ouvrirLaSeanceImposee(impose);
     // Un nouveau chrono remet le droit de terminer : sans cela, une séance
     // chronométrée le matin empêcherait celle de l'après-midi de se clore.
