@@ -10,6 +10,15 @@
 
 import { appreciation, ceQuiVaEtCeQuiReste } from '../core/grading.js';
 import { porteHtml as porteDuBac } from './bacASable.js';
+// AU CHARGEMENT POUR SAVOIR S'IL FAUT LE BOUTON, À LA DEMANDE POUR PARTIR.
+// Le libellé porte le NOMBRE d'exercices proposés : il faut donc le savoir au
+// moment de peindre, sans quoi le bouton apparaîtrait une image plus tard au
+// milieu d'une rangée d'actions — et un bouton qui pousse « Terminer » de côté
+// se clique par erreur.
+// `amelioration.js` ne connaît que le catalogue : il est léger et il répond
+// tout de suite, ce qu'il faut pour peindre un libellé. `remediation.js`, lui,
+// monte un meneur — il attend le clic.
+import { ilYAQuoiAmeliorer } from '../core/amelioration.js';
 
 /**
  * @param {string} [opts.enTete] une phrase posée AU-DESSUS du bilan, quand il
@@ -39,7 +48,8 @@ export function showRunReport(bilan, { onClose, enTete = '' } = {}) {
     modal.innerHTML = `<div class="glass-panel modal-panel-md report-panel">${
         enTete ? `<p class="report-entete">${escapeHtml(enTete)}</p>` : ''}${reportHtml(bilan)}
         ${porte ? `<div class="report-bac">${porte}</div>` : ''}
-        <div class="modal-actions-center">
+        <div class="modal-actions-center report-actions">
+            ${boutonAmeliorer(bilan)}
             <button id="btn-report-close" class="btn-toggle glass-btn primary active report-close-btn">Terminer</button>
         </div>
     </div>`;
@@ -93,8 +103,70 @@ export function showRunReport(bilan, { onClose, enTete = '' } = {}) {
         };
     }
 
-    wireReplay(modal, bilan);
+    brancherAmeliorer(modal, bilan, onClose);
     return modal;
+}
+
+/**
+ * LE BOUTON « M'AMÉLIORER », SUR LE BILAN DE FIN DE SÉANCE.
+ *
+ * RÉMY : « à la fin d'un parcours, lors du bilan envoyé à l'élève, il faut
+ * qu'il ait sur son écran un bouton M'améliorer où tu crées un parcours de
+ * révision, est ce clair ? »
+ *
+ * IL EXISTAIT DÉJÀ UN BOUTON, ET IL NE RÉPONDAIT PAS. « Rejouer ces questions »
+ * vivait au BAS de la liste « À retravailler » — donc après huit encadrés
+ * rouges, donc sous la ligne de flottaison sur un téléphone — et seulement
+ * quand il restait des questions DÉFINITIVEMENT ratées. Un élève qui avait tout
+ * rattrapé au second essai en sortant avec une compétence à 60 % n'avait aucun
+ * bouton du tout. Celui-ci se range avec « Terminer », là où l'élève regarde
+ * quand il a fini, et il dit ce qu'il va faire.
+ *
+ * IL SE TAIT QUAND IL N'Y A RIEN À AMÉLIORER — voir `ilYAQuoiAmeliorer`. Sous un
+ * bilan parfait, « M'améliorer » ne dit pas « bravo », il dit « ce n'était pas
+ * encore assez ».
+ *
+ * LE COMPTE EST DANS LE LIBELLÉ, et c'est la moitié de ce qu'on gagne à mettre
+ * un bouton ici : « M'améliorer — 3 exercices » se décide en une seconde, là où
+ * un bouton muet demande à être cliqué pour savoir ce qu'il fait.
+ */
+function boutonAmeliorer(bilan) {
+    let combien = 0;
+    // JAMAIS AU DÉTRIMENT DU BILAN. Le bilan est ce que l'élève a gagné ; une
+    // erreur en calculant une PROPOSITION ne doit pas l'effacer.
+    try { combien = ilYAQuoiAmeliorer(bilan); } catch (e) { combien = 0; }
+    if (!combien) return '';
+    const quoi = `${combien} exercice${combien > 1 ? 's' : ''}`;
+    return `<button type="button" class="btn-toggle glass-btn active report-ameliorer-btn"
+        data-ameliorer title="Un parcours de révision fait pour toi : les questions
+que tu as manquées, puis ce qui n'est pas encore acquis"
+        >M’améliorer <span class="report-ameliorer-quoi">${quoi}</span></button>`;
+}
+
+/**
+ * LE CLIC : on ferme le bilan, et l'on ouvre le parcours de révision.
+ *
+ * ON FERME D'ABORD, ET L'ON APPELLE `onClose` : sans lui, le meneur de la
+ * séance qui vient de finir reste monté derrière — c'est `exit()` qu'il
+ * attend —, et le parcours de révision s'ouvrirait par-dessus un écran de jeu
+ * qui n'a pas été démonté. Même famille de piège que la porte du bac à sable
+ * juste au-dessus.
+ */
+function brancherAmeliorer(root, bilan, onClose) {
+    const btn = root.querySelector('[data-ameliorer]');
+    if (!btn) return;
+    btn.onclick = async (e) => {
+        e.stopPropagation();
+        root.remove();
+        if (onClose) onClose();
+        try {
+            const { startAmelioration } = await import('../core/remediation.js');
+            await startAmelioration(bilan);
+        } catch (err) {
+            const { showAlert } = await import('./modal.js');
+            showAlert('Le parcours de révision n’a pas pu s’ouvrir. Réessaie dans un instant.');
+        }
+    };
 }
 
 /** Rendu réutilisable (fin de parcours, profil élève, tableau de bord prof). */
@@ -175,8 +247,13 @@ export function reportHtml(bilan, { compact = false } = {}) {
                     <div class="report-miss-a">Ta réponse : <b>${escapeHtml(q.donne)}</b> — attendu : <b>${escapeHtml(q.attendu)}</b></div>
                     ${q.diagnostic ? `<div class="report-miss-why">${escapeHtml(q.diagnostic)}</div>` : ''}
                 </li>`).join('')}
-        </ul>
-        <button class="btn-toggle glass-btn report-replay-btn" data-replay>Rejouer ces questions</button>` : '';
+        </ul>` : '';
+    // LE BOUTON QUI ÉTAIT ICI EST MONTÉ DANS LA RANGÉE D'ACTIONS, sous le nom
+    // que Rémy lui a donné — voir `boutonAmeliorer`. Il était au BAS de cette
+    // liste, donc après huit encadrés rouges, donc sous la ligne de flottaison
+    // d'un téléphone ; et il ne paraissait que s'il restait des questions
+    // DÉFINITIVEMENT ratées, ce qui laissait sans rien l'élève qui avait tout
+    // rattrapé au second essai en sortant avec une compétence à 60 %.
 
     return `
         <h2 class="report-title">${bilan.mode === 'evaluation' ? 'Évaluation terminée' : 'Parcours terminé'}</h2>
@@ -255,16 +332,6 @@ function nb(value) {
 // Relancer directement les questions ratées : la correction ne sert que si on
 // la remet en pratique. Les graines sont conservées, donc ce sont exactement
 // les mêmes questions.
-function wireReplay(root, bilan) {
-    const btn = root.querySelector('[data-replay]');
-    if (!btn) return;
-    btn.onclick = async () => {
-        const { startRemediation } = await import('../core/remediation.js');
-        root.remove();
-        startRemediation(bilan.aRetravailler.filter(q => !q.resolue));
-    };
-}
-
 function statTile(label, value) {
     return `<div class="report-stat"><div class="report-stat-value">${value}</div><div class="report-stat-label">${label}</div></div>`;
 }

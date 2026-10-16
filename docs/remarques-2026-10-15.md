@@ -770,3 +770,30 @@ Les clôtures, elles, se dédoublonnent par étape. Quatre épreuves vues tomber
 d'un côté, trois de l'autre — le serveur fait le même calcul, et il fallait
 corriger les deux sous peine que le professeur et l'élève lisent deux choses du
 même travail.
+
+# Vingt-deuxième passe — le bouton « M'améliorer »
+
+> « on va rester ainsi, à la fin d'un parcours, lors du bilan envoyé à l'élève,
+> il faut qu'il ait sur son écran un bouton M'améliorer où tu crées un parcours
+> de révision, est ce clair ? »
+
+Oui. Il y avait déjà un bouton, et il ne répondait pas : « Rejouer ces
+questions » vivait au BAS de la liste « À retravailler » — donc après huit
+encadrés rouges, donc sous la ligne de flottaison d'un téléphone — et il ne
+paraissait que s'il restait des questions **définitivement** ratées. Un élève
+qui a tout rattrapé au second essai et qui sort avec une compétence à 50 %
+n'avait aucun bouton du tout, alors que c'est exactement celui qui vient
+demander.
+
+Le nouveau se range **avec « Terminer »**, dit combien d'exercices il propose
+(« M'améliorer — 3 exercices »), et se tait sous un bilan parfait : « M'améliorer »
+là où il n'y a rien à améliorer ne dit pas « bravo », il dit « ce n'était pas
+encore assez ».
+
+Le parcours qu'il ouvre vient de **deux sources** : les questions ratées,
+rejouées à l'identique grâce à leur graine puis en variante ; puis les
+compétences qui n'ont pas tenu, qu'aucune question ratée ne signalait. Et il ne
+sort pas des exercices de la séance — la sonde avait trouvé une révision de
+« la règle du signe » qui ouvrait « Priorités et relatifs », un exercice que
+Rémy n'avait pas choisi. Mesuré sur trois scènes (il s'est trompé, il a tout
+réussi, et le même bilan sur un téléphone de 390 px).

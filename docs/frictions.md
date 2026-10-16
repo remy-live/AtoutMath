@@ -4804,3 +4804,23 @@ le résultat n'existe pas** — 15 octobre 2026
   mesure qui ne regarde que ce qu'on a corrigé ne voit pas ce qu'on a cassé » —
   a une jumelle : *une mesure qui ne suit que le chemin prévu ne voit pas celui
   que l'élève prend.*
+
+**Un identifiant inventé dans une épreuve la rend verte pour la mauvaise raison** — 16 octobre 2026
+
+- *Ce que je voulais faire* : garder la règle « le parcours de révision ne sort
+  pas des exercices de la séance ».
+- *Ce qui a coûté* : l'épreuve nommait la compétence « num.relatifs.oppose »,
+  qui n'existe pas. `exercisesForSkill` rendait une liste vide, le repli
+  catalogue ne rendait donc RIEN, et deux épreuves passaient sans rien garder —
+  dont celle qui prétendait distinguer l'exercice de la séance de celui du
+  catalogue, alors qu'elle ne distinguait rien. `epreuveTombe.mjs` l'a dit en
+  une ligne (« CETTE ÉPREUVE NE GARDE RIEN ») ; sans lui, la garantie était
+  fausse et je l'aurais crue.
+- *Combien de fois* : || (même famille que le sélecteur inventé : un
+  identifiant qui ne désigne rien rend la même réponse qu'un logiciel cassé)
+- *Ce qui manque* : `tools/nouvelExercice.mjs` vérifie déjà qu'une compétence
+  CITÉE PAR UN EXERCICE existe. Rien ne le vérifie pour une compétence ou un
+  identifiant d'exercice cité dans une ÉPREUVE. Un balayage de `tests/` qui
+  relève les chaînes en forme d'identifiant (`num.…`, `calc-…`) et dit
+  lesquelles ne sont dans aucun catalogue coûterait quelques secondes et
+  fermerait la famille entière.
