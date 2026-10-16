@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import './helpers.mjs';
 import '../js/core/activities/index.js';
-import { fautIlOuvrir, enMinutes } from '../js/ui/leMoment.js';
+import { fautIlOuvrir, enMinutes, etapesEnPlus } from '../js/ui/leMoment.js';
 import { appliquerEtat, tempsRestant, seanceImposee } from '../js/core/seanceDistante.js';
 import { makePath, makeStep, normalizePath } from '../js/core/path.js';
 import { defaultPolicy } from '../js/core/policy.js';
@@ -269,4 +269,73 @@ test('ET SANS SÉANCE CHARGÉE, RIEN NE CHANGE — le premier chargement s\'ouvr
     const i = impose(unParcours());
     i.pathId = 'p-seance-du-jour';
     assert.equal(fautIlOuvrir(i, null, false, null).ouvrir, true);
+});
+
+// ── LA SÉANCE IMPOSÉE QUI GRANDIT PAR LA FIN ───────────────────────────────
+//
+// RÉMY : « et si je rajoute un exercice dans le parcours qui est en cours
+// (donc hors classe dans la rubrique préparer) ça le rajoute au parcours en
+// cours sans tout écraser ? »
+//
+// Une séance DONNÉE savait déjà se compléter (`majDeSeance`, mesuré par
+// `tools/seanceQuiChange.mjs`). Une séance IMPOSÉE, non : hier elle écrasait
+// tout, ce matin elle ne bougeait plus. Elle suit maintenant la même règle —
+// ce qui est protégé n'est pas le début du parcours, c'est ce qui est FAIT.
+
+test('UN EXERCICE AJOUTÉ À LA FIN ARRIVE, et le travail fait reste', () => {
+    const avant = unParcours();
+    const apres = makePath(avant.name, [
+        makeStep('calc-add', {}, { stepId: 'a', nbItems: 5, threshold: 4 }),
+        makeStep('calc-prio', {}, { stepId: 'b', nbItems: 5, threshold: 4 })
+    ], defaultPolicy());
+    const i = impose(apres);
+    i.pathId = 'p-seance-du-jour';
+    const charge = { steps: avant.steps, completed: ['a'], pathId: 'path_cVIEUX' };
+    const neuf = etapesEnPlus(i, charge);
+    assert.ok(neuf, 'l\'exercice ajouté n\'arrive pas chez l\'élève');
+    assert.equal(neuf.length, 2);
+    // L'ÉTAPE FAITE GARDE SON PROPRE OBJET, donc son `stepId` : c'est lui qui
+    // rattache son travail au bilan.
+    assert.equal(neuf[0], avant.steps[0]);
+    assert.equal(neuf[1].exerciseId, 'calc-prio');
+});
+
+test('MAIS ON NE TOUCHE PAS À UNE ÉTAPE DÉJÀ FAITE', () => {
+    // Remplacer le premier exercice d'un élève qui l'a terminé ferait désigner
+    // à son bilan un exercice qu'il n'a jamais vu.
+    const avant = unParcours();
+    const apres = makePath(avant.name, [
+        makeStep('calc-prio', {}, { stepId: 'a', nbItems: 5, threshold: 4 }),
+        makeStep('calc-sub', {}, { stepId: 'b', nbItems: 5, threshold: 4 })
+    ], defaultPolicy());
+    const i = impose(apres);
+    i.pathId = 'p-seance-du-jour';
+    assert.equal(etapesEnPlus(i, { steps: avant.steps, completed: ['a'] }), null);
+});
+
+test('ET CE QU\'IL N\'A PAS ENCORE FAIT, LE PROFESSEUR PEUT LE CHANGER', () => {
+    // La règle protège le TRAVAIL, pas le parcours : personne n'a travaillé
+    // sur une étape que personne n'a ouverte.
+    const avant = makePath('Devoir du mardi', [
+        makeStep('calc-add', {}, { stepId: 'a', nbItems: 5, threshold: 4 }),
+        makeStep('calc-sub', {}, { stepId: 'b', nbItems: 5, threshold: 4 })
+    ], defaultPolicy());
+    const apres = makePath('Devoir du mardi', [
+        makeStep('calc-add', {}, { stepId: 'a', nbItems: 5, threshold: 4 }),
+        makeStep('calc-mul', {}, { stepId: 'b', nbItems: 5, threshold: 4 })
+    ], defaultPolicy());
+    const i = impose(apres);
+    i.pathId = 'p-seance-du-jour';
+    const neuf = etapesEnPlus(i, { steps: avant.steps, completed: ['a'] });
+    assert.ok(neuf, 'une étape non commencée aurait dû pouvoir changer');
+    assert.equal(neuf[1].exerciseId, 'calc-mul');
+});
+
+test('ET RIEN N\'A BOUGÉ VEUT DIRE RIEN À ÉCRIRE', () => {
+    // Sans cette sortie, chaque battement réécrirait la séance : trente fois
+    // par classe et par minute.
+    const p = unParcours();
+    const i = impose(p);
+    i.pathId = 'p-seance-du-jour';
+    assert.equal(etapesEnPlus(i, { steps: p.steps, completed: [] }), null);
 });

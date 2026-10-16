@@ -33,6 +33,13 @@ import {
     etatSeance, seanceImposee, tempsRestant, classeEnPause
 } from '../core/seanceDistante.js';
 import { normalizePath } from '../core/path.js';
+// LA MÊME DÉFINITION QUE LE NOYAU, ET NON UNE SECONDE. J'en avais écrit une
+// ici, sans trier les clés : deux étapes identiques écrites dans un ordre
+// différent — ce qui arrive après un simple aller-retour JSON, donc à CHAQUE
+// synchronisation — passaient pour différentes, et l'ajout n'arrivait jamais.
+// Trois épreuves l'ont dit d'un coup. Une règle écrite deux fois finit
+// toujours par diverger ; celle-ci a divergé avant même d'être relue.
+import { memeEtape } from '../core/seances.js';
 import { resolvePolicy } from '../core/policy.js';
 import { identiteDeParcours } from '../core/shortcodes.js';
 
@@ -98,6 +105,91 @@ export function fautIlOuvrir(impose, parcoursCharge, enTrainDeTravailler, seance
         return { ouvrir: false, pourquoi: 'deja-dessus' };
     }
     return { ouvrir: true, pourquoi: 'a-ouvrir' };
+}
+
+/**
+ * LA SÉANCE IMPOSÉE A-T-ELLE SIMPLEMENT GRANDI PAR LA FIN ?
+ *
+ * ── LA QUESTION DE RÉMY, MOT POUR MOT ──────────────────────────────────────
+ *
+ * « et si je rajoute un exercice dans le parcours qui est en cours (donc hors
+ * classe dans la rubrique préparer) ça le rajoute au parcours en cours sans
+ * tout écraser ? »
+ *
+ * LA RÉPONSE ÉTAIT « OUI, MAIS PAS PAR CETTE PORTE-LÀ ». Une séance DONNÉE se
+ * complète déjà — `complementDeSeance` dans `core/seances.js`, mesuré par
+ * `tools/seanceQuiChange.mjs`. Une séance IMPOSÉE, non : elle passe par ici,
+ * et ici on ne savait que deux choses, ouvrir ou ne rien faire. Hier elle
+ * écrasait tout (« ça a remis à zéro tous les élèves ») ; depuis ce matin elle
+ * ne bouge plus du tout — ce qui est mieux, et insuffisant : l'exercice ajouté
+ * n'atteignait plus personne.
+ *
+ * ON REPREND DONC LA RÈGLE DE `majDeSeance` (core/seances.js), QUI EST LA PLUS
+ * FINE DES DEUX : ce qui est protégé n'est pas tout le début du parcours,
+ * c'est CE QUE L'ÉLÈVE A DÉJÀ FAIT.
+ *
+ *   · les étapes jusqu'à la dernière terminée doivent se retrouver
+ *     IDENTIQUES, à la même place — sinon on ne touche à rien, et son bilan
+ *     continuerait sans cela de désigner d'autres exercices que les siens ;
+ *   · au-delà, le professeur fait ce qu'il veut : ajouter, remplacer,
+ *     rerégler. Personne n'y a encore travaillé.
+ *
+ * ET ON COMPARE LE CONTENU, PAS `stepId` : un parcours réenregistré garde ses
+ * identifiants, un parcours réimporté en refabrique, et refuser alors un ajout
+ * légitime serait le genre de défaut qui se diagnostique « ça ne marche jamais
+ * chez moi ».
+ *
+ * POURQUOI NE PAS APPELER `majDeSeance` DIRECTEMENT : elle travaille sur une
+ * SÉANCE — un objet qui a une échéance, un état, une date de retrait. Une
+ * séance imposée n'a rien de tout cela : elle vit le temps de l'heure, et
+ * `etatSeance` n'aurait pas de quoi répondre. On garde la règle, pas l'objet.
+ *
+ * @returns {Array|null} les étapes complètes à charger, ou `null`
+ */
+export function etapesEnPlus(impose, charge) {
+    if (!impose || !impose.path || !charge) return null;
+    const avant = charge.steps || [];
+    const apres = (normalizePath(impose.path, impose.name).steps) || [];
+    if (!avant.length || !apres.length) return null;
+
+    // JUSQU'OÙ IL EST ALLÉ : le rang de la dernière étape terminée.
+    const faites = new Set(charge.completed || []);
+    let garde = 0;
+    for (let i = 0; i < avant.length; i++) {
+        if (faites.has(avant[i] && avant[i].stepId)) garde = i + 1;
+    }
+    if (apres.length < garde) return null;
+    for (let i = 0; i < garde; i++) {
+        if (!memeEtape(avant[i], apres[i])) return null;
+    }
+    // RIEN N'A BOUGÉ ? RIEN À ÉCRIRE. Sans cette sortie, chaque battement
+    // réécrirait la séance — trente fois par classe et par minute.
+    if (apres.length === avant.length && avant.every((e, i) => memeEtape(e, apres[i]))) {
+        return null;
+    }
+    // CE QU'IL A FAIT GARDE SES PROPRES ÉTAPES, avec leurs `stepId` : ce sont
+    // eux qui rattachent son travail.
+    return apres.map((e, i) => (i < garde ? avant[i] : e));
+}
+
+/**
+ * CHARGE LES ÉTAPES EN PLUS, SANS CHANGER D'IDENTITÉ.
+ *
+ * C'EST L'IDENTITÉ QUI PORTE LE TRAVAIL FAIT. `computeAssignedPath` recompte
+ * les étapes terminées en filtrant le journal sur `pathId` — l'empreinte du
+ * contenu. Réécrire la séance avec une empreinte NEUVE est exactement ce qui a
+ * remis la classe de Rémy à zéro. On garde donc celle qu'il avait, qui est
+ * aussi celle que le serveur a figée dans `assignments.path_identity` : les
+ * trois restent d'accord, et l'étape ajoutée apparaît au bout du chemin.
+ */
+function completerLaSeanceImposee(impose, etapes, charge) {
+    const parcours = normalizePath(impose.path, impose.name);
+    state.setStudentPath(etapes, {
+        pathId: charge.pathId,
+        name: charge.name || parcours.name || impose.name || 'Séance',
+        seanceId: impose.pathId || charge.seanceId || null,
+        policy: resolvePolicy(parcours.policy)
+    });
 }
 
 function ouvrirLaSeanceImposee(impose) {
@@ -260,6 +352,18 @@ function surEtat() {
     const seance = state.studentPath ? (state.studentPath.seanceId || null) : null;
     const d = fautIlOuvrir(impose, charge, travaille, seance);
     if (d.ouvrir) ouvrirLaSeanceImposee(impose);
+    // ── LA MÊME SÉANCE, MAIS PLUS LONGUE ────────────────────────────────────
+    //
+    // « ça le rajoute au parcours en cours sans tout écraser ? » — oui, et
+    // c'est ici que ça se passe pour une séance IMPOSÉE. Seulement quand il ne
+    // travaille pas : le meneur tient son propre parcours, et le changer sous
+    // lui au milieu d'une question n'ajouterait rien, cela perdrait sa réponse.
+    // Il recevra l'étape de plus en revenant sur la carte, ce qui est dans la
+    // minute.
+    else if (d.pourquoi === 'meme-seance' && !travaille) {
+        const etapes = etapesEnPlus(impose, state.studentPath);
+        if (etapes) completerLaSeanceImposee(impose, etapes, state.studentPath);
+    }
     // Un nouveau chrono remet le droit de terminer : sans cela, une séance
     // chronométrée le matin empêcherait celle de l'après-midi de se clore.
     const t = tempsRestant();

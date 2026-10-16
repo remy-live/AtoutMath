@@ -676,3 +676,63 @@ séance dans les deux cents derniers événements, et celui qui a terminé puis
 joue en produit davantage. On n'élargit pas la fenêtre — trente élèves toutes
 les cinq secondes —, on ajoute les ÉVÉNEMENTS QUI DÉLIMITENT un travail, qui
 sont deux par parcours plus un par étape.
+
+# Dix-neuvième passe — « M'améliorer » au bout du parcours
+
+> « on va rester ainsi, à la fin d'un parcours, lors du bilan envoyé à l'élève,
+> il faut qu'il ait sur son écran un bouton M'améliorer où tu crées un parcours
+> de révision »
+
+L'écran de parcours ne bouge pas : il a regardé les quatre maquettes et garde
+ce qu'il a. Ce qu'il veut, c'est **la suite** — le bilan de fin de parcours ne
+dit que ce qui s'est passé, et il doit proposer quoi faire ensuite.
+
+La machinerie existe déjà pour l'écran « Mon profil » (`core/remediation.js` :
+`startErrorReview`, `startSkillSession`, `startRecommendedSession`). Ce qui
+manque est le bouton **là où l'élève est**, au moment où il vient de voir ses
+erreurs.
+
+# Vingtième passe — la liste de « Dispenser », et l'ajout en pleine séance
+
+> « pour le mot au tableau - dispenses, dans la liste déroulante, il faut
+> simplement les exercices du parcours en cours (même ceux que les élèves n'ont
+> pas fait) »
+>
+> « et si je rajoute un exercice dans le parcours qui est en cours (donc hors
+> classe dans la rubrique préparer) ca le rajoute au parcours en cours sans tout
+> écraser ? »
+
+**J'avais élargi la liste à tout le catalogue, et c'était la mauvaise
+correction.** Il ne voulait pas le catalogue : il voulait les exercices DU
+PARCOURS EN COURS, y compris ceux que personne n'a encore ouverts. Ce qui veut
+dire que ceux-là n'y étaient pas — et il faut comprendre pourquoi avant de
+remettre le bon périmètre.
+
+La seconde est une question, et elle touche exactement ce qu'on a corrigé ce
+matin (« ça a remis à zéro tous les élèves »).
+
+## Ce qui a été fait — la liste de « Dispenser », et l'ajout en pleine séance
+
+**20a. La liste.** Ma première correction était à côté : j'avais élargi au
+catalogue entier (236 entrées) en croyant que le périmètre était le problème.
+Il ne l'était pas — la SOURCE l'était. On cherchait la séance imposée dans
+`state.teacherPaths`, c'est-à-dire dans le tiroir LOCAL du navigateur : un
+parcours préparé sur un autre poste ne s'y trouve pas, `imposee` valait `null`,
+et il ne restait dans le menu que les exercices qu'un élève avait ouverts à cet
+instant. D'où sa phrase exacte : « même ceux que les élèves n'ont pas fait ».
+On lit désormais `vue.seances`, que le serveur remplit (`exercices` par séance,
+ajouté exprès pour cet écran), avec le tiroir local en secours seulement.
+
+**20b. L'ajout en pleine séance.** Mesuré avec `tools/seanceQuiChange.mjs` :
+pour une séance **donnée**, le complément arrive déjà (Tom 2 étapes → 3, Emma
+3, et la MÊME identité de travail). Pour une séance **imposée**, non : hier
+elle écrasait tout, ce matin elle ne bougeait plus du tout. Elle suit
+maintenant la même règle que `majDeSeance` — ce qui est protégé n'est pas le
+début du parcours, c'est **ce que l'élève a déjà fait**.
+
+Et j'avais recopié `memeEtape` au lieu de l'importer. Ma copie ne triait pas
+les clés : deux étapes identiques écrites dans un ordre différent — ce qui
+arrive à chaque aller-retour JSON, donc à chaque synchronisation — passaient
+pour différentes, et l'ajout n'arrivait jamais. Trois épreuves l'ont dit d'un
+coup. Une règle écrite deux fois finit toujours par diverger ; celle-ci a
+divergé avant d'être relue.

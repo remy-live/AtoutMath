@@ -4744,3 +4744,25 @@ le résultat n'existe pas** — 15 octobre 2026
   réécrivent déjà ces huit lignes. Et, plus généralement : `doitExister` doit
   s'employer même — surtout — quand on a LU le crochet dans la source, parce que
   lire ne dit pas sur quelle branche il est rendu.
+
+**Une règle recopiée diverge avant même d'être relue** — 16 octobre 2026
+
+- *Ce que je voulais faire* : appliquer à la séance IMPOSÉE la règle de
+  complément qui existait déjà pour la séance DONNÉE (`majDeSeance`,
+  `memeEtape`, dans `core/seances.js`).
+- *Ce qui a coûté* : `memeEtape` n'était pas exportée. Plutôt que de l'exporter,
+  j'en ai écrit une copie de six lignes dans `ui/leMoment.js` — sans trier les
+  clés, alors que l'originale le fait et explique pourquoi en trois lignes de
+  commentaire juste au-dessus. Résultat : deux étapes identiques écrites dans un
+  ordre différent passaient pour différentes, donc l'ajout n'arrivait JAMAIS.
+  Trois épreuves rouges, dix minutes, et le commentaire que je n'avais pas lu
+  disait exactement la cause.
+- *Combien de fois* : ||| (déjà payé sur `cadreDApercu`, où la même règle vivait
+  dans `builder.js` et `engine.js`, et sur `previewMode` ; c'est la troisième
+  fois que la copie est le défaut)
+- *Ce qui manque* : une épreuve qui repère les fonctions JUMELLES — même nom,
+  deux fichiers, corps proches — et demande laquelle est l'originale.
+  `tests/cadreDApercu.test.mjs` le fait déjà pour UNE règle, à la main ; ce
+  qu'il faut est le même balayage pour tout le dépôt. À défaut, un réflexe :
+  avant d'écrire une fonction, `grep -rn "function <nom>" js/` — deux secondes
+  contre dix minutes.

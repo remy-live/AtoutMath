@@ -2802,12 +2802,12 @@ function outilTableau(info, ch, enCours, defiCourt) {
                     <span class="ec-pilote-eti">Dispenser TOUTE la classe d'un exercice</span>
                     <p class="ec-note">Pour un seul élève, cliquez sur son nom : c'est presque
                        toujours ce qu'il faut. Ici, c'est quand l'exercice lui-même pose problème.
-                       <!-- LA LISTE NE S'ARRÊTE PLUS À LA SÉANCE EN COURS, et il faut le
-                            dire : Rémy a cherché un exercice qui buggait sans le trouver,
-                            et rien ne lui disait que la liste était courte exprès. -->
-                       La liste va jusqu'au catalogue entier&nbsp;: tapez les premières
-                       lettres pour y descendre. <b>« Le retirer pour tous » vaut pour tous
-                       vos parcours</b>, et jusqu'à ce que vous l'annuliez ci-dessous.</p>
+                       <!-- ON DIT CE QUE LA LISTE CONTIENT, et c'est ce qui manquait : Rémy
+                            a cherché un exercice sans le trouver, et rien ne lui disait ni
+                            ce que le menu montrait, ni jusqu'où le retrait valait. -->
+                       La liste montre <b>tous les exercices de la séance en cours</b>, même
+                       ceux que personne n'a encore ouverts. <b>« Le retirer pour tous » vaut
+                       pour tous vos parcours</b>, et jusqu'à ce que vous l'annuliez ci-dessous.</p>
                     <div class="ec-champ-ligne">
                         <!-- ON CHOISIT L'EXERCICE, ON NE L'ÉCRIT PLUS.
                              Rémy : « il faudrait pouvoir de façon globale
@@ -2972,18 +2972,62 @@ function etapeDeLaSeance(exerciceId) {
  * et le professeur pense « le troisième », pas « num-arrondi ». Puis ceux que
  * des élèves ont ouverts sans être dans la séance, qui existent aussi.
  */
+/**
+ * LES EXERCICES DE LA SÉANCE EN COURS — tous, et dans l'ordre.
+ *
+ * ── CE QU'ELLE NE PROPOSAIT PAS, ET POURQUOI ───────────────────────────────
+ *
+ * RÉMY : « parfois un exercice bugge et je ne peux pas le retirer dans
+ * dispenser toute la classe d'un exercice car il n'apparaît pas dans la liste
+ * déroulante », puis, quand j'ai élargi la liste à tout le catalogue : « il
+ * faut simplement les exercices du parcours en cours (même ceux que les élèves
+ * n'ont pas fait) ».
+ *
+ * IL AVAIT RAISON LES DEUX FOIS, ET MA PREMIÈRE CORRECTION ÉTAIT À CÔTÉ. Le
+ * périmètre voulu était le bon depuis le début ; c'est la SOURCE qui était
+ * mauvaise. On cherchait la séance imposée dans `state.teacherPaths`,
+ * c'est-à-dire dans le tiroir LOCAL du navigateur : un parcours préparé sur un
+ * autre poste — ou simplement un tiroir qui n'a pas encore été relu — ne s'y
+ * trouve pas. `imposee` valait alors `null`, la boucle ne posait rien, et il ne
+ * restait dans le menu que les exercices qu'un élève avait sous les yeux à cet
+ * instant. D'où sa phrase : ceux que personne n'avait encore ouverts
+ * manquaient.
+ *
+ * ON LIT DONC LA LISTE DU SERVEUR. `vue.seances` porte, pour chaque séance
+ * donnée, le champ `exercices` — les identifiants de ses étapes, dans l'ordre
+ * (voir `handleTeacherAssign` dans api/index.php, qui l'a ajouté exprès pour
+ * cet écran). Elle ne dépend d'aucun tiroir local, et elle est à jour même
+ * quand le professeur vient d'ajouter un exercice depuis un autre poste.
+ *
+ * ET CE QU'UN ÉLÈVE A OUVERT RESTE EN QUEUE : c'est le cas du jeu lancé hors
+ * séance qui plante, et il n'a pas d'autre porte.
+ */
 function exercicesSousLaMain() {
     const info = (vue.liste && vue.liste.classe) || {};
-    const imposee = info.impose_path_id
-        ? (state.teacherPaths || []).find(p => p && p.id === info.impose_path_id) : null;
     const out = [];
     const vus = new Set();
-    ((imposee && imposee.steps) || []).forEach((st, i) => {
-        const id = st && st.exerciseId;
+
+    const laSeance = info.impose_path_id
+        ? ((vue.seances && vue.seances.seances) || [])
+            .find(s => s && s.pathId === info.impose_path_id)
+        : null;
+    ((laSeance && laSeance.exercices) || []).forEach((id, i) => {
         if (!id || vus.has(id)) return;
         vus.add(id);
         out.push({ id, titre: `${i + 1}. ${nomDExercice(id)}` });
     });
+    // LE TIROIR LOCAL EN SECOURS, et seulement en secours : il a l'avantage
+    // d'être là avant que la liste des séances ne revienne du serveur.
+    if (!out.length && info.impose_path_id) {
+        const local = (state.teacherPaths || []).find(p => p && p.id === info.impose_path_id);
+        ((local && local.steps) || []).forEach((st, i) => {
+            const id = st && st.exerciseId;
+            if (!id || vus.has(id)) return;
+            vus.add(id);
+            out.push({ id, titre: `${i + 1}. ${nomDExercice(id)}` });
+        });
+    }
+
     ((vue.direct && vue.direct.eleves) || []).forEach(e => {
         if (!e.exo || vus.has(e.exo)) return;
         vus.add(e.exo);
@@ -2993,62 +3037,29 @@ function exercicesSousLaMain() {
 }
 
 /**
- * LA LISTE DÉROULANTE DE « DISPENSER », EN TROIS GROUPES.
+ * LA LISTE DÉROULANTE DE « DISPENSER ».
  *
- * ── CE QU'ELLE NE PROPOSAIT PAS ────────────────────────────────────────────
+ * RÉMY, après une première correction trop large : « il faut simplement les
+ * exercices du parcours en cours (même ceux que les élèves n'ont pas fait) ».
  *
- * RÉMY : « parfois un exercice bugge et je ne peux pas le retirer dans
- * dispenser toute la classe d'un exercice car il n'apparaît pas dans la liste
- * déroulante ».
+ * ON S'EN TIENT DONC À LA SÉANCE EN COURS. J'avais ouvert le menu à tout le
+ * catalogue — deux cent trente-six entrées — en croyant que le périmètre était
+ * le problème ; il ne l'était pas, la SOURCE l'était (voir
+ * `exercicesSousLaMain`). Un menu de deux cent trente-six lignes pour un geste
+ * qui porte toujours sur la séance de l'heure fait chercher au lieu de
+ * choisir.
  *
- * Elle ne montrait que les exercices de la séance EN COURS, plus ceux qu'un
- * élève avait sous les yeux à cet instant. C'était le bon raccourci pour le
- * geste courant — « celui-là, laissez tomber » — et c'était la mauvaise liste
- * pour le geste rare qui compte le plus : retirer un exercice QUI PLANTE. Un
- * exercice qui plante plante partout, et il faut pouvoir le sortir avant de
- * donner le parcours qui le contient, pas après.
- *
- * ── POURQUOI TOUT LE CATALOGUE, ET POURQUOI EN DERNIER ─────────────────────
- *
- * Deux cent trente-six entrées dans un menu, c'est beaucoup. Mais un menu
- * incomplet coûte plus cher qu'un menu long : il ne dit pas qu'il est
- * incomplet, et l'on cherche la panne ailleurs — c'est exactement ce qui vient
- * de se passer. Les groupes gardent le geste court là où il l'était : ce qu'il
- * a sous la main reste EN TÊTE et pré-sélectionné, le reste est dessous pour
- * qui le cherche. Un `<select>` natif accepte la frappe au clavier : taper
- * « piz » descend sur la Pizzeria.
- *
- * ON N'INVENTE PAS DE RECHERCHE À NOUS. Le champ de recherche du catalogue
- * existe ailleurs, il est bon, et le refaire ici en ferait deux à tenir
- * d'accord — alors qu'un menu natif sait déjà faire ce qu'on lui demande.
+ * ET LE SECOND GROUPE RESTE, parce qu'il répond à l'autre moitié de sa
+ * demande : « parfois un exercice bugge ». Un exercice ouvert par un élève
+ * hors séance n'a pas d'autre porte pour être retiré.
  */
 function groupesDExercices() {
-    const souslaMain = exercicesSousLaMain();
-    const vus = new Set(souslaMain.map(x => x.id));
-
-    // CE QUI EST DANS SES AUTRES PARCOURS : c'est là qu'il range son travail,
-    // et c'est le premier endroit où chercher un exercice qui n'est pas sous
-    // la main. Rangés par nom de parcours, pour qu'il reconnaisse le sien.
-    const ailleurs = [];
-    for (const p of (state.teacherPaths || [])) {
-        for (const st of ((p && p.steps) || [])) {
-            const id = st && st.exerciseId;
-            if (!id || vus.has(id)) continue;
-            vus.add(id);
-            ailleurs.push({ id, titre: nomDExercice(id), ou: p.name || '' });
-        }
-    }
-    ailleurs.sort((a, b) => (a.titre || '').localeCompare(b.titre || '', 'fr'));
-
-    const reste = catalogueComplet
-        .filter(e => e && e.id && !vus.has(e.id))
-        .map(e => ({ id: e.id, titre: e.title || e.id }))
-        .sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
-
+    const items = exercicesSousLaMain();
+    const duParcours = items.filter(x => !x.ou);
+    const ouverts = items.filter(x => x.ou);
     return [
-        { nom: 'Sous la main', items: souslaMain },
-        { nom: 'Dans vos autres parcours', items: ailleurs },
-        { nom: 'Tout le catalogue', items: reste }
+        { nom: 'La séance en cours', items: duParcours },
+        { nom: 'Ouverts par un élève', items: ouverts }
     ].filter(g => g.items.length);
 }
 

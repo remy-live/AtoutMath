@@ -294,7 +294,7 @@ export function complementDeSeance(seance, parcours, maintenant = Date.now()) {
  * quota d'une étape déjà donnée N'EST PAS un complément : un élève l'a peut-
  * être déjà validée sous l'ancien, et le bilan en compterait deux versions.
  */
-function memeEtape(a, b) {
+export function memeEtape(a, b) {
     if (!a || !b) return false;
     if (a.exerciseId !== b.exerciseId) return false;
     const sansId = (s) => {
