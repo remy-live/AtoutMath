@@ -4687,3 +4687,43 @@ le résultat n'existe pas** — 15 octobre 2026
   un, une erreur nommée sinon. Et, tant qu'à faire, `s.rejouerJusqua(predicat)`
   qui retire une question jusqu'à ce qu'elle remplisse une condition : c'est la
   même boucle de quinze lignes dans trois sondes.
+
+**La décision est écrite d'un côté, le défaut est de l'autre** — 16 octobre 2026
+
+- *Ce que je voulais faire* : corriger « temps écoulé » qui traversait une séance
+  neuve. Le défaut est au serveur (`api/lib/seance.php` envoie `chrono` sans
+  condition) ; la raison pour laquelle on ne l'effaçait pas était écrite — très
+  bien écrite, quinze lignes — dans `js/core/seanceDistante.js`, l'autre moitié
+  de la même règle.
+- *Ce qui a coûté* : j'avais déjà rédigé le fichier de paires qui ajoutait un
+  **délai de grâce**, c'est-à-dire exactement ce que ce commentaire explique être
+  faux (« ce n'est pas une question de DURÉE, c'est une question de QUI »). Deux
+  vérifications écrites pour rien, et il a fallu les retirer. Je ne l'ai lu que
+  parce que je cherchais la forme de `tempsRestant()`, par chance.
+- *Combien de fois* : || (déjà payé sur `avancement.js` ↔ `projections.php` :
+  « calculé avec les mêmes règles que chez l'élève » n'est écrit que d'un côté)
+- *Ce qui manque* : un outil qui, pour un fichier qu'on s'apprête à toucher, dit
+  **qui parle de lui ailleurs** — les fichiers qui le nomment dans un commentaire
+  ou un `↔`. Trois paires au moins vivent ainsi en miroir (`avancement.js` ↔
+  `projections.php`, `seanceDistante.js` ↔ `seance.php`, `bilan.js` ↔ le direct),
+  et rien n'oblige à lire les deux. À défaut d'outil : un `↔ api/lib/seance.php`
+  dans l'en-tête de chaque moitié, que `node tools/miroirs.mjs` saurait vérifier.
+
+**Trois élèves à la fois, c'est trois navigateurs** — 16 octobre 2026
+
+- *Ce que je voulais faire* : mesurer un défi de classe, où le classement n'a de
+  sens qu'à plusieurs. J'ai ouvert trois onglets du même contexte Playwright,
+  chacun avec le billet d'un élève et `?poste=1`.
+- *Ce qui a coûté* : une sonde complète perdue, environ sept minutes — le défi
+  dure une minute, et il faut l'attendre. Le serveur ne gardait qu'un score et
+  les trois écrans affichaient la même ligne, « Toi : 1er sur 1 ». J'ai
+  d'abord cru tenir le défaut de Rémy. `?poste=1` range bien le poste à part
+  (`boutEnBout` le garde : « les deux tiroirs existent côte à côte »), mais il
+  n'y a qu'UN tiroir de poste par navigateur : le troisième billet avait écrasé
+  les deux premiers.
+- *Combien de fois* : |
+- *Ce qui manque* : `s.eleves(n)` dans la sonde — n contextes, n billets pris
+  dans la classe d'essai, et la page de chacun déjà ouverte et prête. Toute
+  mesure de classe en a besoin : le défi, le direct, le mur, le compte à
+  rebours. Et, à défaut, une ligne dans l'en-tête de `sonde.mjs` : un élève,
+  un contexte.

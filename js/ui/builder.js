@@ -1826,8 +1826,31 @@ function initNePlieRien() {
     });
 }
 
+/**
+ * ── L'APERÇU S'OUVRE SUR L'APPAREIL OÙ L'ON EST ────────────────────────────
+ *
+ * RÉMY : « pourquoi à l'ordi le parcours ne prend pas tout l'écran et juste
+ * une fenêtre ».
+ *
+ * Parce que ce réglage valait « mobile » au démarrage. Son parcours s'ouvrait
+ * donc dans `#game-layer.device-simulator` — 400 px de large, 90 % de hauteur,
+ * posé au milieu de son 1440 — c'est-à-dire la fenêtre qu'il décrit. Le cadre
+ * n'est pas un défaut : il sert à vérifier la présentation du téléphone depuis
+ * un ordinateur, et les trois boutons restent là pour cela. C'était le DÉFAUT
+ * qui était mal choisi.
+ *
+ * ON MONTRE D'ABORD CE QU'ON A SOUS LA MAIN. Celui qui teste sur son ordinateur
+ * veut voir sa séance ; celui qui veut la voir en téléphone le demande, et le
+ * demander est un clic. L'inverse coûtait un clic AUSSI, mais il fallait
+ * d'abord comprendre pourquoi l'écran était petit — ce que Rémy a mis des
+ * semaines à demander, et qu'un élève n'aurait jamais demandé.
+ *
+ * ET SUR UN TÉLÉPHONE, RIEN NE CHANGE : `cadreDApercu` rend déjà 'none' quel
+ * que soit le réglage dès que la présentation est celle du doigt. Voir
+ * `tests/cadreDApercu.test.mjs`, qui garde ce point depuis le 13 octobre.
+ */
 function initPreviewModes() {
-    state.previewDeviceMode = 'mobile';
+    state.previewDeviceMode = 'desktop';
     document.querySelectorAll('.preview-mode-btn').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();

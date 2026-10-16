@@ -22,7 +22,7 @@ import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import {
     construireFigure, classesDeLongueur, anglesDroitsDe, canoniser,
-    verifierCodage, bornesDe, NOM_TYPE
+    verifierCodage, bornesDe, NOM_TYPE, direLeCodage, direLeCodageAttendu
 } from '../codage.js';
 import { codageSvg, jetonSvg, jetonAngleSvg } from '../codageSvg.js';
 import { meneurDemo } from '../meneurDemo.js';
@@ -216,7 +216,12 @@ export function mount(container, session) {
             }
 
             const result = session.submit(canoniser(pose, ids, pts), {
-                misconception: bilan.correct ? '' : bilan.problemes[0].message
+                misconception: bilan.correct ? '' : bilan.problemes[0].message,
+                // CE QUI PART AU CARNET EST UNE PHRASE, pas la chaîne qui a
+                // jugé. Rémy : « le carnet d'erreur code la figure ne veut
+                // rien dire » — il y lisait « ta réponse : 11223300/ABD ».
+                dire: { given: direLeCodage(pose, ids, pts),
+                        expected: direLeCodageAttendu(fig, ids, pts) }
             });
             if (result.ignored) return;
 

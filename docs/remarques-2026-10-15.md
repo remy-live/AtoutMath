@@ -389,3 +389,143 @@ droite en plus petit.
 Une épreuve ancienne a dû être rebraquée (« L'ONGLET QUI CONTIENT DES ÉLÈVES
 S'APPELLE LES ÉLÈVES ») : elle épinglait l'appel à `onglet('liste', …)` à deux
 arguments. Le nom qu'elle garde n'a pas changé ; sa forme, si.
+
+# Sixième passe — « temps écoulé » en travers d'une séance neuve
+
+> « petit bug. Les élèves on tfait une nouvelle séance. Certains étaient déjà
+> connecté et mlagré la nouvelle séance c'était donné temps écoulé »
+
+**« Temps écoulé · On s'arrête là » ne vient pas de la séance, il vient du
+compte à rebours** (`js/ui/leMoment.js`). Et le compte à rebours est une donnée
+de **classe** : `classes.chrono_fin`. Rien ne l'effaçait quand il tombait à
+zéro — et c'était **délibéré**, pour une raison déjà écrite dans
+`tempsRestant` (`js/core/seanceDistante.js`) :
+
+> « Trente élèves interrogent la classe toutes les dix secondes : le premier à
+> constater zéro effacerait le chrono des vingt-neuf autres, qui le
+> regardaient. »
+
+La règle posée à l'époque — **« on ne l'annonce qu'à ceux qui l'ont vu
+courir »** — répondait à la plainte précédente de Rémy (le second groupe qui se
+connecte et trouve « temps écoulé »). Mais cette mémoire-là vit dans l'onglet :
+elle protège celui qui **arrive après**, et pas du tout celui qui **ne s'est
+jamais déconnecté**. C'est exactement le cas que Rémy décrit : « certains
+étaient déjà connectés ». Pour eux, la séance neuve s'ouvrait sous un bandeau
+rouge qui disait de s'arrêter — et `terminerLeTravail()` clôturait le parcours
+qu'ils venaient d'ouvrir.
+
+## Pourquoi pas un délai de grâce
+
+La tentation était d'effacer le chrono passé un quart d'heure. Le commentaire
+d'origine dit déjà pourquoi c'est faux : « ce n'est pas une question de DURÉE,
+c'est une question de QUI ». Entre deux groupes il y a cinq minutes
+d'interclasse, moins que n'importe quel délai qu'on oserait écrire.
+
+**C'est devenu une question de QUELLE SÉANCE** — la même règle que pour les
+permissions (`reglageEnVigueur`, cinquième passe) : ce qui a été réglé pour
+l'heure d'avant ne vaut plus pour celle-ci. Changer la séance imposée éteint le
+compte à rebours de la précédente, **une seule fois, pour toute la classe à la
+fois**, à l'endroit où le professeur agit — et non trente fois, depuis trente
+ardoises qui se marcheraient dessus.
+
+## Ce que la correction a failli casser
+
+La case **« plein écran »** repasse par la même action `imposer`, **avec la même
+séance** (`js/ui/espaceClasses.js`, branche `d.ecranSeance`). Effacer le chrono
+à chaque appel l'aurait fait disparaître parce qu'on a coché une case au milieu
+de l'heure. On n'éteint donc que si la séance **change vraiment**, et une
+vérification garde ce point (« COCHER LE PLEIN ÉCRAN NE L'EFFACE PAS »).
+
+## Vu échouer avant d'être cru
+
+`php tools/testApi.php`, avant la correction :
+
+```
+✗ MAIS UNE SÉANCE NEUVE L'EFFACE — {"finAt":1792131666,"aZero":"terminer"}
+✗ ET RETIRER LA SÉANCE L'EFFACE AUSSI — {"finAt":1792132566,"aZero":"terminer"}
+```
+
+Les deux autres vérifications du même bloc — celle qui exige qu'un chrono
+écoulé **continue** d'être envoyé tant que c'est la même heure, et celle du
+plein écran — étaient vertes avant comme après : ce sont elles qui empêchent la
+correction d'être trop large. Après : **506 vérifications, tout passe.**
+
+# Septième passe — « à l'ordi le parcours ne prend pas tout l'écran »
+
+> « et aussi pourquoi à 'lordi le parcours ne prend pas tout l'écran et juste
+> une fenêtre, tu pourrais améliorer un peu le design du parcours ? »
+
+Deux demandes : **pourquoi** (une question), et **le design du parcours** (un
+travail). La première se mesure avant de répondre quoi que ce soit.
+
+# Huitième passe — « l'explication pour les pizzas des fractions est une horreur »
+
+> « l'explication pour les pizzas des fractions est une horreur »
+
+À mesurer avant de toucher : quelle explication, à quel moment de l'exercice,
+et qu'est-ce qu'un élève de sixième en lit.
+
+# Neuvième passe — la question « combien d'égalités donne le codage »
+
+> « retire aussi dans l'exercice que donne le codage, la question, comment
+> d'égalités donne le codage, car ce n'est pas clair et je pense que c'est
+> faux »
+
+Deux reproches dans la même phrase, et le second est le plus grave : **une
+question qui compte faux apprend du faux**. On vérifie donc le compte avant de
+retirer quoi que ce soit — si elle est fausse, elle l'est peut-être ailleurs.
+
+# Dixième passe — « le carnet d'erreur code la figure ne veut rien dire »
+
+> « le carnet d'erreur code la figure ne veut rien dire »
+
+L'exercice « Code la figure » rend une GRILLE de marques, pas un nombre ni un
+mot. Ce que le carnet d'erreurs en écrit est donc à regarder avant tout
+raisonnement.
+
+## Ce qui a été fait, pour les cinq remarques de la journée
+
+**6. Le compte à rebours.** `imposer` éteint le compte à rebours quand la
+séance CHANGE — et seulement alors, parce que la case « plein écran » repasse
+par la même action avec la même séance. Deux vérifications d'API vues rouges
+avant la correction ; une sonde qui suit l'élève de bout en bout, et qui a
+trouvé en chemin que mes deux séances d'essai, de contenu identique, étaient
+pour le logiciel la MÊME séance.
+
+**7. « À l'ordi, juste une fenêtre ».** Le réglage d'aperçu valait « mobile »
+au démarrage : le parcours s'ouvrait dans un cadre de **400 px** au milieu d'un
+écran de 1440. Le cadre reste — il sert à voir la présentation du téléphone —
+mais il se demande maintenant. Le bouton allumé et le réglage sont tenus
+ensemble par une épreuve : deux vérités qui se contredisent seraient pires
+qu'une seule fausse.
+
+**8. L'explication des pizzas.** Mesurée : 90 mots d'un bloc, ouverts sur une
+négation à propos de l'addition — que cet exercice ne demande pas —, « PPCM »
+crié en pastille (hors programme de sixième), « 2/3 = (2×4)/(3×4) = 8/12 » sur
+une ligne, et la pizza citée en DERNIER. Réécrite en trois temps nommés — le
+découpage, le compte, la règle —, 406 px dans une zone de 406 : elle ne défile
+plus. La bulle de correction du jeu disait « 2 × 4 = 8 » sans dire d'où venait
+le 4 ; elle écrit maintenant la division d'abord, comme le robot avait déjà
+appris à le faire.
+
+**9. « Combien d'égalités ».** Retirée. Le compte était celui des PAIRES —
+trois segments de même marque en donnaient trois —, alors que le codage
+n'apporte que DEUX informations : la troisième se déduit. L'élève qui répondait
+2 avait la meilleure des deux idées et était compté faux.
+
+**10. Le carnet d'erreurs du codage.** Il écrivait la forme CANONIQUE :
+« ta réponse : 11223300/ABD, attendu : 11223344/ABCD ». Elle reste pour juger ;
+une seconde forme, lisible, part au journal — « [AB] = [CD] ; [BC] = [DA] ;
+sans marque : [BO], [OD] — angles droits en A, B ». Dans l'organigramme des
+quadrilatères, « attendu » répondait en plus à une autre question : il citait
+les PROPRIÉTÉS de la figure, pas son codage.
+
+# Onzième passe — « tu n'as pas participé à ce défi », dit à ceux qui ont joué
+
+> « pour le défi, on l'a fait avec les élèves une fois fini, on a eu le
+> classement des 3 premiers mais les autres c'était noté, tu n'a pas participé
+> à ce défi »
+
+En classe, en vrai, avec ses élèves. Le podium s'affichait ; tous ceux qui
+n'étaient pas dessus lisaient qu'ils n'avaient pas joué — alors qu'ils
+venaient de jouer.

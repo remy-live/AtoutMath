@@ -42,7 +42,7 @@ import {
 } from '../core/quadrilateres.js';
 import {
     construireFigure, verifierCodage, canoniser, segmentsDe, pointsAngleDe, PROPRIETES,
-    classesDeLongueur, anglesDroitsDe, codageAttendu
+    classesDeLongueur, anglesDroitsDe, codageAttendu, direLeCodage, direLeCodageAttendu
 } from '../core/codage.js';
 import { codageSvg, jetonSvg, jetonAngleSvg } from '../core/codageSvg.js';
 import { ajusterAuRectangle } from '../core/dominos.js';
@@ -2250,11 +2250,20 @@ class Organigramme extends BaseGame {
         if (manque) return this.note(manque.message);
         const nom = familleDe(e.figure).nom.toLowerCase();
         if (!bilan.correct) {
+            // LA PHRASE, PAS LA CHAÎNE QUI JUGE. Rémy : « le carnet d'erreur
+            // code la figure ne veut rien dire ». On y lisait « ta réponse :
+            // 11223300/ABD ». Et « attendu » répondait à côté : il citait les
+            // PROPRIÉTÉS de la figure — « les quatre côtés sont égaux » —,
+            // c'est-à-dire la raison du codage et non le codage lui-même. Les
+            // deux moitiés de la ligne parlaient de deux choses différentes.
             this.onWrongAnswer(null, {
                 concept: COMPETENCE,
                 questionText: `Organigramme — coder le ${nom}`,
-                input: canoniser(c.pose, c.ids, c.pts),
-                expected: (PROPRIETES[e.figure] || []).join(' ; '),
+                input: direLeCodage(c.pose, c.ids, c.pts),
+                expected: direLeCodageAttendu(c.fig, c.ids, c.pts),
+                // LA RAISON RESTE, à sa place : le carnet l'affiche sous la
+                // ligne, là où il met le diagnostic.
+                customMessage: (PROPRIETES[e.figure] || []).join(' ; '),
                 partiel: true, silencieux: true
             });
             return this.rater(bilan.problemes[0].message);   // le défaut est SUR la figure

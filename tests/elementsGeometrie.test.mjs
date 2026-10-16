@@ -398,3 +398,28 @@ test('une figure codée n\'est jamais plus haute que large', () => {
         }
     }
 });
+
+test('la notion « codage » ne demande plus de COMPTER les égalités', () => {
+    // RÉMY : « retire aussi dans l'exercice que donne le codage, la question,
+    // combien d'égalités donne le codage, car ce n'est pas clair et je pense
+    // que c'est faux ».
+    //
+    // ELLE SORTAIT UNE FOIS SUR TROIS — `rng.bool(0.3)` —, donc une épreuve
+    // qui tirerait trois items pourrait ne jamais la croiser et passer au vert
+    // sans rien garder. On en tire deux cents : la probabilité d'en manquer
+    // une qui sortirait à ce rythme est de l'ordre de 10⁻³⁰.
+    let vus = 0;
+    for (let i = 0; i < 200; i++) {
+        const it = G.generate({ notion: 'codage' }, { rng: makeRng(`cq_${i}`) });
+        if (!it) continue;
+        vus++;
+        const dit = [it.prompt && it.prompt.text, it.prompt && it.prompt.html,
+                     it.prompt && it.prompt.papier].join(' ');
+        assert.ok(!/combien/i.test(dit), `cq_${i} : ${it.prompt && it.prompt.text}`);
+        // ET LA RÉPONSE N'EST PLUS UN NOMBRE DE PAIRES : c'est le défaut de
+        // fond, et il survivrait à un simple changement de formulation.
+        assert.ok(!/^\d+$/.test(String(it.answer)),
+            `cq_${i} : la réponse est le nombre ${it.answer}`);
+    }
+    assert.ok(vus > 150, `seulement ${vus} items tirés : l'épreuve ne mesure rien`);
+});

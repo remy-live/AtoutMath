@@ -930,6 +930,66 @@ verifier('ET IL SUIT CELLE DU JOUR DÈS QU\'ELLE L\'OUVRE',
     is_array($apres) && ($apres['pathName'] ?? '') === 'La séance d\'aujourd\'hui',
     json_encode($apres));
 
+// ── UNE SÉANCE NEUVE EFFACE LE COMPTE À REBOURS DE LA PRÉCÉDENTE ───────────
+//
+// RÉMY : « Les élèves ont fait une nouvelle séance. Certains étaient déjà
+// connectés et malgré la nouvelle séance c'était donné temps écoulé ».
+//
+// CE QUI SE PASSAIT : le compte à rebours de l'heure d'avant tombait à zéro,
+// et le serveur continuait de l'envoyer. L'élève DÉJÀ CONNECTÉ — celui qui l'a
+// vu courir — gardait donc « Temps écoulé · On s'arrête là » en travers de sa
+// séance NEUVE. Celui qui arrivait après ne voyait rien : la règle « on ne
+// l'annonce qu'à ceux qui l'ont vu courir » existait déjà, mais elle ne
+// protège pas celui qui ne s'est jamais déconnecté.
+//
+// ON NE TOUCHE NI À UN DÉLAI DE GRÂCE NI À L'HORLOGE DE L'ÉLÈVE : la réponse
+// est écrite depuis la première fois, dans `tempsRestant` — « ce n'est pas une
+// question de DURÉE, c'est une question de QUI ». Elle devient ici une question
+// de QUELLE SÉANCE, qui est la même règle que pour les permissions
+// (`reglageEnVigueur`) : ce qui a été réglé pour l'heure d'avant ne vaut plus.
+//
+// ON RECULE L'ÉCHÉANCE EN BASE pour avancer l'horloge sans attendre dix minutes.
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $premiereSeance], $jetonProf);
+json('/teacher/class', ['classId' => $classId, 'action' => 'chrono',
+                        'minutes' => 10, 'aZero' => 'terminer'], $jetonProf);
+enBase()->prepare('UPDATE classes SET chrono_fin = ? WHERE id = ?')
+    ->execute([time() - 300, $classId]);
+$chronoDe = fn () => json('/session', [], $lea)['json']['session']['chrono'] ?? null;
+verifier('UN COMPTE À REBOURS ÉCOULÉ CONTINUE D\'ÊTRE ENVOYÉ',
+    is_array($chronoDe()), json_encode($chronoDe()));
+
+// ET IL DOIT LE RESTER TANT QUE C'EST LA MÊME SÉANCE : « Temps écoulé » a un
+// sens pour celui qui a vu les minutes descendre, et c'est encore son heure.
+//
+// CELLE-CI GARDE LA CORRECTION D'ÊTRE TROP LARGE, et ce n'est pas une crainte
+// en l'air : la case « plein écran » repasse par `imposer` AVEC LA MÊME SÉANCE
+// (js/ui/espaceClasses.js, branche `d.ecranSeance`). Effacer le compte à
+// rebours à chaque appel le ferait donc disparaître parce qu'on a coché une
+// case au milieu de l'heure.
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $premiereSeance, 'pleinEcran' => true], $jetonProf);
+verifier('COCHER LE PLEIN ÉCRAN NE L\'EFFACE PAS',
+    is_array($chronoDe()), json_encode($chronoDe()));
+
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $deuxiemeParcours], $jetonProf);
+verifier('MAIS UNE SÉANCE NEUVE L\'EFFACE',
+    $chronoDe() === null, json_encode($chronoDe()));
+
+// ET RETIRER LA SÉANCE L'EFFACE AUSSI : « plus de séance » est la fin de
+// l'heure, pas une heure qui continue sans séance.
+json('/teacher/class', ['classId' => $classId, 'action' => 'chrono',
+                        'minutes' => 10, 'aZero' => 'terminer'], $jetonProf);
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer', 'pathId' => ''], $jetonProf);
+verifier('ET RETIRER LA SÉANCE L\'EFFACE AUSSI',
+    $chronoDe() === null, json_encode($chronoDe()));
+
+// ON REMET LA SÉANCE DU JOUR EN COURS : ce qui suit mesure le direct, qui n'a
+// de séance à montrer que s'il y en a une.
+json('/teacher/class', ['classId' => $classId, 'action' => 'imposer',
+                        'pathId' => $duJour], $jetonProf);
+
 // ET UNE SÉANCE COMPLÉTÉE EN ROUTE RESTE LA MÊME SÉANCE.
 //
 // « + un exercice » en pleine heure change le CONTENU du parcours, donc son

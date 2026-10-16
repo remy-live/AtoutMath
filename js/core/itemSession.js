@@ -388,6 +388,29 @@ export class ItemSession {
 
     /**
      * Soumet une réponse.
+     *
+     * ── CE QUI JUGE N'EST PAS TOUJOURS CE QUI SE LIT ───────────────────────
+     *
+     * RÉMY : « le carnet d'erreur code la figure ne veut rien dire ».
+     *
+     * Une activité qui juge une FIGURE compare des formes canoniques —
+     * « 11223300/ABD » pour un codage. C'est ce qu'il faut pour trancher, et
+     * c'est illisible : le carnet d'erreurs écrivait ces deux chaînes sous
+     * « ta réponse » et « attendu », et la ligne ne disait rien à personne.
+     *
+     * `opts.dire` porte donc la version LISIBLE des deux, et c'est elle qui
+     * part au journal. La forme canonique continue de juger ; elle n'avait
+     * simplement rien à faire sous les yeux d'un élève.
+     *
+     * ON NE DEVINE PAS LA PHRASE ICI. Seule l'activité sait ce qu'elle a fait
+     * comparer — un codage, un tracé, une grille —, et une traduction écrite
+     * dans le noyau serait à refaire à chaque nouvelle activité.
+     *
+     * @param {*} given la réponse, dans la forme que l'item sait juger
+     * @param {Object} [opts]
+     * @param {string} [opts.misconception] le diagnostic calculé par l'activité
+     * @param {{given:string, expected:string}} [opts.dire] les deux mêmes
+     *   réponses, en français, pour le carnet et pour l'écran du professeur
      * @returns {{correct:boolean, expected:*, misconception:?string,
      *            explanation:string, revealed:boolean, done:boolean, attemptsLeft:number}}
      */
@@ -424,8 +447,11 @@ export class ItemSession {
         if (!this.isDemo && !this.sansTrace) {
             state.recordAttempt({
                 correct: verdict.correct,
-                given,
-                expected: this.item.answer,
+                // LA PHRASE QUAND IL Y EN A UNE, la forme canonique sinon :
+                // les deux champs voyagent ensemble ou pas du tout, sans quoi
+                // le carnet comparerait une phrase à une chaîne de chiffres.
+                given: opts.dire ? opts.dire.given : given,
+                expected: opts.dire ? opts.dire.expected : this.item.answer,
                 questionText: this.item.prompt.text,
                 skillId: this.item.skillId,
                 itemSeed: this.item.seed,

@@ -314,3 +314,77 @@ export const PROPRIETES = {
         'ni angle droit, ni diagonales de même longueur : c\'est ce qui le distingue des autres'
     ]
 };
+
+/**
+ * LE CODAGE, DIT EN FRANÇAIS — pour le carnet d'erreurs et pour le professeur.
+ *
+ * RÉMY : « le carnet d'erreur code la figure ne veut rien dire ».
+ *
+ * CE QU'IL LISAIT. Le codage se compare sous forme CANONIQUE — « 11223300/ABD »
+ * —, une suite de chiffres qui dit « les deux premiers segments portent la même
+ * marque, les deux suivants une autre… ». C'est exactement ce qu'il faut pour
+ * juger, et c'est illisible pour un humain : le carnet affichait
+ *
+ *     Code le rectangle ABCD — ta réponse : 11223300/ABD, attendu : 11223344/ABCD
+ *
+ * Deux chaînes que personne ne peut relire, sous une question qui désigne une
+ * figure que le carnet ne dessine pas. La ligne entière ne disait rien.
+ *
+ * ON NE TOUCHE PAS À LA FORME QUI JUGE. Elle est juste, elle est éprouvée, et
+ * la changer casserait la correction pour gagner de la lisibilité au mauvais
+ * endroit. On en fabrique une SECONDE, destinée à être LUE, et c'est elle qui
+ * part au journal — voir `opts.dire` dans `core/itemSession.js`.
+ *
+ * ON NOMME LES SEGMENTS AVEC LEURS CROCHETS. [AB] est le segment, AB sa
+ * longueur : ici on parle des objets qu'on a marqués, donc des segments.
+ *
+ * @param {{marques:Object, angles:Object}} pose
+ * @returns {string} « [AB] = [CD] ; [BC] = [DA] ; sans marque : [AO] — angles droits : A, B »
+ */
+export function direLeCodage(pose, ids = ORDRE_SEGMENTS, points = POINTS_ANGLE) {
+    const marques = (pose && pose.marques) || {};
+    const angles = (pose && pose.angles) || {};
+
+    const paquets = new Map();
+    const nus = [];
+    for (const id of ids) {
+        const m = marques[id];
+        if (m === null || m === undefined || m === '') { nus.push(id); continue; }
+        if (!paquets.has(m)) paquets.set(m, []);
+        paquets.get(m).push(id);
+    }
+
+    const dits = [];
+    for (const liste of paquets.values()) {
+        // UNE MARQUE TOUTE SEULE NE DIT RIEN, et c'est une faute fréquente :
+        // l'élève pose un trait sur un segment sans le poser sur son égal. La
+        // phrase doit donc la montrer comme telle, et non la taire.
+        dits.push(liste.length >= 2
+            ? liste.map(nomSegment).join(' = ')
+            : `${nomSegment(liste[0])} marqué seul`);
+    }
+    if (nus.length) dits.push(`sans marque : ${nus.map(nomSegment).join(', ')}`);
+    if (!dits.length) dits.push('aucune marque');
+
+    const droits = points.filter(p => angles[p]);
+    return `${dits.join(' ; ')} — ${droits.length
+        ? `angle${droits.length > 1 ? 's' : ''} droit${droits.length > 1 ? 's' : ''} en ${droits.join(', ')}`
+        : 'aucun angle droit'}`;
+}
+
+/**
+ * La même phrase, à partir de la figure : ce qu'il FALLAIT coder.
+ *
+ * `codageAttendu` rend la forme canonique ; celle-ci rend la forme lisible, et
+ * les deux se calculent sur les mêmes paquets — une seule vérité, dite deux
+ * fois, et non deux vérités qui pourraient diverger.
+ */
+export function direLeCodageAttendu(fig, ids = ORDRE_SEGMENTS, points = POINTS_ANGLE) {
+    const marques = {};
+    classesDeLongueur(fig, ids).forEach((classe, i) => {
+        classe.forEach(id => { marques[id] = i + 1; });
+    });
+    const angles = {};
+    anglesDroitsDe(fig, points).forEach(p => { angles[p] = true; });
+    return direLeCodage({ marques, angles }, ids, points);
+}

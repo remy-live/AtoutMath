@@ -128,3 +128,30 @@ test('LA RÈGLE DU CADRE NE S\'ÉCRIT QU\'À UN SEUL ENDROIT', () => {
         + 'Appeler `cadreDApercu(state.previewDeviceMode, state.isMobileView)`.\n'
         + copies.join('\n'));
 });
+
+// ── LE DÉFAUT DE L'APERÇU : L'APPAREIL OÙ L'ON EST ──────────────────────────
+//
+// RÉMY : « pourquoi à l'ordi le parcours ne prend pas tout l'écran et juste une
+// fenêtre ». Le réglage valait « mobile » au démarrage : son parcours s'ouvrait
+// dans un cadre de 400 px au milieu de son 1440. Le cadre reste disponible —
+// c'est l'épreuve ci-dessus qui le garde — mais il se DEMANDE.
+
+test('L\'APERÇU S\'OUVRE SANS CADRE, et le bouton allumé le dit', () => {
+    const builder = readFileSync('js/ui/builder.js', 'utf8');
+    // L'AFFECTATION, pas une mention dans un commentaire : c'est elle qui agit.
+    const m = /state\.previewDeviceMode\s*=\s*'([a-z]+)'\s*;/.exec(builder);
+    assert.ok(m, 'aucune affectation de previewDeviceMode dans builder.js');
+    assert.equal(cadreDApercu(m[1], false), 'none',
+        `le réglage de départ « ${m[1] }» pose encore un cadre sur un grand écran`);
+
+    // ET LE BOUTON ALLUMÉ DOIT DÉSIGNER LE MÊME APPAREIL. Deux vérités qui se
+    // contredisent sont pires qu'une seule fausse : le professeur verrait le
+    // téléphone allumé et son parcours en plein écran, et ne saurait plus sur
+    // quoi appuyer. C'est la raison d'être de cette moitié-là de l'épreuve.
+    const html = readFileSync('index.html', 'utf8');
+    const actifs = (html.match(/id="preview-mode-([a-z]+)"[^>]*class="preview-mode-btn active"/g) || [])
+        .map(s => /preview-mode-([a-z]+)"/.exec(s)[1]);
+    assert.equal(actifs.length, 1, `${actifs.length} bouton(s) d'aperçu allumé(s) : ${actifs}`);
+    assert.equal(actifs[0], m[1],
+        `le bouton allumé est « ${actifs[0]} » et le réglage « ${m[1]} »`);
+});

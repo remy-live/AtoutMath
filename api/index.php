@@ -1496,10 +1496,51 @@ function handleTeacherClass(): void
         // `impose_jusqu_a`), et le plein écran reviendrait tout seul la
         // semaine suivante sur une séance pour laquelle il ne l'a pas demandé.
         $pleinEcran = !empty($body['pleinEcran']) ? 1 : 0;
+        // ── CHANGER DE SÉANCE ÉTEINT LE COMPTE À REBOURS DE LA PRÉCÉDENTE ───
+        //
+        // RÉMY : « Les élèves ont fait une nouvelle séance. Certains étaient
+        // déjà connectés et malgré la nouvelle séance c'était donné temps
+        // écoulé ».
+        //
+        // Le compte à rebours est une donnée de CLASSE, et rien ne l'effaçait
+        // quand il tombait à zéro — à dessein : « on ne l'annonce qu'à ceux qui
+        // l'ont vu courir » (voir `tempsRestant`, js/core/seanceDistante.js),
+        // et cette mémoire-là est sur l'appareil, parce que trente élèves
+        // interrogent la même classe et que le premier à constater zéro
+        // l'effacerait pour les vingt-neuf qui le regardent. Elle protège donc
+        // celui qui se connecte APRÈS, et elle ne protège pas celui qui ne
+        // s'est JAMAIS déconnecté : lui gardait « Temps écoulé · On s'arrête
+        // là » en travers de sa séance neuve.
+        //
+        // CE N'EST PAS UNE QUESTION DE DURÉE — un délai de grâce ne sait pas
+        // distinguer les cinq minutes d'interclasse d'une vraie fin d'heure —,
+        // c'est une question de QUELLE SÉANCE, exactement comme pour les
+        // permissions (`reglageEnVigueur`) : ce qui a été réglé pour l'heure
+        // d'avant ne vaut plus pour celle-ci. Et c'est ici que la séance
+        // change, une seule fois, pour toute la classe à la fois.
+        //
+        // SEULEMENT SI ELLE CHANGE VRAIMENT. La case « plein écran » repasse
+        // par cette même action avec la MÊME séance (js/ui/espaceClasses.js,
+        // branche `d.ecranSeance`) : effacer à chaque appel ferait disparaître
+        // le compte à rebours de l'heure en cours parce qu'on a coché une case
+        // au milieu de l'heure.
+        //
+        // ↔ `js/core/seanceDistante.js`, `tempsRestant` — l'autre moitié de
+        //   cette règle, et celle qui dit pourquoi le chrono ne s'efface pas
+        //   depuis l'ardoise. Les deux se lisent ensemble.
+        $changeDeSeance = (string) ($classe['impose_path_id'] ?? '') !== $pathId;
+        $eteindreLeChrono = function () use ($classe, $changeDeSeance) {
+            if (!$changeDeSeance) return;
+            db()->prepare('UPDATE classes SET chrono_fin = NULL, chrono_a_zero = NULL
+                           WHERE id = ?')->execute([$classe['id']]);
+        };
         if ($pathId === '') {
             db()->prepare('UPDATE classes SET impose_path_id = NULL, impose_jusqu_a = NULL,
                                   impose_plein_ecran = 0
                            WHERE id = ?')->execute([$classe['id']]);
+            // « PLUS DE SÉANCE » EST LA FIN DE L'HEURE, pas une heure qui
+            // continue sans séance : le compte à rebours s'en va avec elle.
+            $eteindreLeChrono();
             respond(['ok' => true, 'impose' => null, 'jusqua' => null, 'pleinEcran' => false,
                      'dit' => 'La séance n\'est plus imposée : chacun choisit.']);
         }
@@ -1507,6 +1548,10 @@ function handleTeacherClass(): void
         $q->execute([$pathId, $teacher['id']]);
         $p = $q->fetch();
         if (!$p) fail(404, 'path_not_found', 'Parcours introuvable.');
+        // APRÈS LA VÉRIFICATION D'APPARTENANCE, et pas avant : un identifiant
+        // de parcours inventé ne doit pas pouvoir éteindre le compte à rebours
+        // d'une classe qui travaille.
+        $eteindreLeChrono();
         // ELLE S'ÉTEINT TOUTE SEULE À LA FIN DE LA JOURNÉE.
         //
         // Rémy : « si je ne clos pas une séance, à la maison l'élève aura

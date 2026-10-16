@@ -368,10 +368,28 @@ export function seanceImposee() {
  * « Temps écoulé » a un sens pour celui qui a vu les minutes descendre, et
  * aucun pour celui qui arrive après.
  *
- * ON NE L'EFFACE PAS AU SERVEUR NON PLUS. Trente élèves interrogent la classe
- * toutes les dix secondes : le premier à constater zéro effacerait le chrono
- * des vingt-neuf autres, qui le regardaient. La mémoire est donc sur
- * l'appareil, où elle appartient.
+ * ON NE L'EFFACE PAS AU SERVEUR NON PLUS — pas depuis ICI, en tout cas. Trente
+ * élèves interrogent la classe toutes les dix secondes : le premier à constater
+ * zéro effacerait le chrono des vingt-neuf autres, qui le regardaient. La
+ * mémoire est donc sur l'appareil, où elle appartient.
+ *
+ * ── CE QUI MANQUAIT À CETTE RÈGLE ───────────────────────────────────────────
+ *
+ * RÉMY, plus tard : « Les élèves ont fait une nouvelle séance. Certains étaient
+ * déjà connectés et malgré la nouvelle séance c'était donné temps écoulé ».
+ *
+ * `vuCourir` protège celui qui ARRIVE APRÈS, et lui seul. Celui qui ne s'est
+ * JAMAIS déconnecté a bel et bien vu les minutes descendre : il gardait donc le
+ * bandeau rouge en travers de sa séance neuve, et `terminerLeTravail()` clôturait
+ * le parcours qu'il venait d'ouvrir. La réponse ne pouvait pas être écrite ici —
+ * ce n'est plus une question de QUI, c'est une question de QUELLE SÉANCE, et
+ * l'ardoise ne sait pas laquelle est en cours. Elle est donc au serveur, et au
+ * seul endroit où la séance change : l'action `imposer` éteint le compte à
+ * rebours de la précédente, une fois, pour toute la classe à la fois.
+ *
+ * ↔ `api/index.php`, action « imposer » — l'autre moitié de cette règle. Ces
+ *   deux commentaires sont à lire ensemble ; l'un sans l'autre fait écrire un
+ *   délai de grâce, qui ne réglerait ni l'un ni l'autre des deux cas.
  *
  * @returns {{reste:number, aZero:string}|null} `reste` en secondes, jamais négatif
  */

@@ -380,27 +380,33 @@ function phraseExplication(sc, t) {
 // noir sur blanc : « Pour parler de la longueur de [AB], on note AB ». Un des
 // leurres porte précisément cette confusion.
 
+// ── « COMBIEN D'ÉGALITÉS ? » A ÉTÉ RETIRÉE ─────────────────────────────────
+//
+// RÉMY : « retire aussi dans l'exercice que donne le codage, la question,
+// combien d'égalités donne le codage, car ce n'est pas clair et je pense que
+// c'est faux ».
+//
+// IL A RAISON SUR LES DEUX POINTS, ET LE SECOND EST LE PLUS GRAVE. Le compte
+// était celui des PAIRES : trois segments de même marque en donnaient trois
+// (AB = CD, AB = EF, CD = EF). Mais le codage n'apporte alors que DEUX
+// informations — la troisième égalité se déduit des deux premières, elle n'est
+// pas lue sur la figure. « Combien d'égalités » et « combien d'informations »
+// n'ont donc pas la même réponse, et la question ne disait pas laquelle elle
+// posait. Un élève qui répondait 2 était compté faux pour avoir eu la
+// meilleure des deux idées.
+//
+// ON NE LA RÉPARE PAS, ON LA RETIRE. C'est ce qu'il demande, et c'est aussi ce
+// qui se défend : pour la lever il faudrait trancher ce que sa fiche appelle
+// une information — c'est son cours, pas le nôtre. La notion « codage » garde
+// sa vraie question, « que donne le codage ? », qui demande de LIRE la figure
+// au lieu de compter des paires.
 function genCodage(rng, params) {
-    const compter = params.notion === 'codage' && rng.bool(0.3);
-    // COMBIEN D'ÉGALITÉS ? PAS SIX.
-    //
-    // Vu à l'écran : avec trois branches dans chacun des deux groupes, la
-    // réponse est 3 + 3 = 6, et les leurres 5, 7, 8. Compter six égalités deux
-    // à deux sur six segments, c'est de la combinatoire — pas la question de
-    // sa fiche, qui demande de LIRE un codage. Une famille de trois et une
-    // paire donnent 3 + 1 = 4 : le piège reste entier (trois segments égaux ne
-    // font pas deux égalités mais trois) et le compte reste celui d'un élève
-    // de sixième.
     const trois = String(params.familles || 'melange') !== 'paires';
-    const fig = compter
-        ? etoile(rng, { tailles: trois ? [3, 2] : [2, 2] })
-        : etoile(rng, { tailles: trois && rng.bool(0.35) ? [3, 2] : [2, 2] });
+    const fig = etoile(rng, { tailles: trois && rng.bool(0.35) ? [3, 2] : [2, 2] });
     if (!fig) return null;
     const egalites = egalitesDe(fig);
     if (egalites.length < 2) return null;
     const svg = figureCodeeSvg(fig);
-
-    if (compter) return itemCompter(rng, fig, egalites, svg);
 
     // Une égalité VRAIE, et trois qui ne le sont pas — mais qu'on pourrait
     // croire, parce qu'elles nomment des segments de la figure.
@@ -457,59 +463,6 @@ function genCodage(rng, params) {
         explanation: `Le codage donne ${egalites.map(([p, q]) => `${p} = ${q}`).join(', ')}. `
             + 'On écrit les LONGUEURS, sans crochets.',
         difficulty: 2,
-        // LA FIGURE VOYAGE AVEC L'ITEM : le papier la dessine en traits et
-        // en points, il ne sait pas lire un SVG. Voir `planFigureCodee`.
-        meta: { notion: 'codage', figure: fig }
-    });
-}
-
-/**
- * COMBIEN D'INFORMATIONS LE CODAGE DONNE-T-IL ?
- *
- * Sa fiche le dit ainsi : « le nombre de lignes correspond au nombre
- * d'informations fournies par le codage ». Trois segments de même longueur
- * donnent TROIS égalités — AB = CD, AB = EF, CD = EF — et non deux : une
- * information est une comparaison, et l'élève qui les compte doit toutes les
- * voir.
- */
-function itemCompter(rng, fig, egalites, svg) {
-    const n = egalites.length;
-    const autres = [n + 1, n - 1, n + 2, Math.max(1, n - 2)]
-        .filter(v => v >= 1 && v !== n)
-        .filter((v, i, arr) => arr.indexOf(v) === i)
-        .slice(0, 3);
-    if (autres.length < 3) return null;
-
-    return makeItem({
-        seed: rng.seed,
-        generatorId: 'geo.elements',
-        skillId: 'geo.codage.lire',
-        answerKind: 'choice',
-        prompt: {
-            text: 'Combien d\'égalités de longueurs ce codage donne-t-il ?',
-            html: '<div class="game-question pd-consigne">Combien d\'égalités de '
-                + 'longueurs ce codage donne-t-il&nbsp;?</div>' + figure(svg),
-            papier: 'Combien d\'égalités de longueurs ce codage donne-t-il ?'
-        },
-        answer: String(n),
-        reponsePapier: String(n),
-        choices: finalizeChoices(rng, [
-            { value: String(n), label: String(n), texte: String(n), correct: true },
-            ...autres.map(v => ({ value: String(v), label: String(v), texte: String(v),
-                correct: false,
-                why: 'Compte les PAIRES de segments qui portent la même marque : trois '
-                    + 'segments marqués pareil donnent trois égalités, pas deux.' }))
-        ], { count: 4 }),
-        hints: [
-            'Une information, c\'est une comparaison entre DEUX segments.',
-            'Trois segments qui portent la même marque donnent trois égalités : le '
-                + 'premier avec le deuxième, le premier avec le troisième, le deuxième '
-                + 'avec le troisième.'
-        ],
-        schemas: ['', figure(svg)],
-        explanation: `Le codage donne ${n} égalité${n > 1 ? 's' : ''} : `
-            + egalites.map(([p, q]) => `${p} = ${q}`).join(', ') + '.',
-        difficulty: 3,
         // LA FIGURE VOYAGE AVEC L'ITEM : le papier la dessine en traits et
         // en points, il ne sait pas lire un SVG. Voir `planFigureCodee`.
         meta: { notion: 'codage', figure: fig }

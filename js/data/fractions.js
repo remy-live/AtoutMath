@@ -466,7 +466,13 @@ export const fractionsExercises = [
         ],
         skills: ['num.frac.denominateur-commun'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Une commande arrive : « les deux tiers de champignons et le quart de sauce tomate ». Les deux dénominateurs ne sont pas les mêmes, alors la pizza est coupée en autant de parts que leur PPCM — douze pour 3 et 4. À toi de trouver combien de parts font les deux tiers, et combien font le quart. Choisis un ingrédient et tape les parts (tu peux balayer pour en garnir plusieurs), ou fais glisser l'ingrédient depuis la caisse. Puis au four !"
+        // PAS DE PPCM DANS LA CONSIGNE. Rémy : « l'explication pour les pizzas
+        // des fractions est une horreur ». Le mot criait au milieu de la
+        // première chose que l'élève lit, alors qu'il ne lui sert à rien ici :
+        // la pizza est DÉJÀ coupée quand il arrive, le découpage n'est pas la
+        // question qu'on lui pose. Elle dit donc ce qu'il a sous les yeux et ce
+        // qu'il doit chercher — combien de parts —, et rien de plus.
+        instruction: "Une commande arrive : « les deux tiers de champignons et le quart de sauce tomate ». Les tiers et les quarts ne sont pas les mêmes parts, alors la pizza est coupée pour les deux à la fois : en douze parts, puisque douze se divise par 3 et par 4. À toi de trouver combien de ces parts font les deux tiers, et combien font le quart. Choisis un ingrédient et tape les parts (tu peux balayer pour en garnir plusieurs), ou fais glisser l'ingrédient depuis la caisse. Puis au four !"
     },
     {
         id: 'dec-compare',

@@ -239,7 +239,49 @@ const BASE = {
         niveaux: [N.SIXIEME, N.CINQUIEME],
         prereqs: ['num.frac.sens'],
         descriptor: 'Trouver le PPCM de deux dénominateurs et convertir chaque fraction sur ce découpage commun.',
-        lesson: 'Deux fractions de dénominateurs différents ne se comparent ni ne s\'additionnent telles quelles : elles ne comptent pas la même chose. On cherche donc le PLUS PETIT découpage qui convient aux deux — le PPCM des dénominateurs. Pour 3 et 4, c\'est 12. On convertit ensuite chaque fraction sur ce découpage en multipliant le numérateur par le même facteur que le dénominateur : 2/3 = (2×4)/(3×4) = 8/12, et 1/4 = (1×3)/(4×3) = 3/12. Sur une pizza coupée en 12 parts, les deux tiers font bien 8 parts et le quart 3 parts.'
+        // ── LA LEÇON D'UN EXERCICE DE PIZZAS NE PARLAIT PAS DE PIZZA ───────
+        //
+        // RÉMY : « l'explication pour les pizzas des fractions est une
+        // horreur ». Mesurée à l'écran, l'ancienne faisait 90 mots d'une
+        // seule venue et accumulait quatre défauts :
+        //
+        //   · elle OUVRAIT SUR UNE NÉGATION — « ne se comparent ni ne
+        //     s'additionnent » — à propos d'une opération que l'exercice ne
+        //     demande pas : on y pose des parts, on n'additionne rien ;
+        //   · elle criait PPCM en pastille de couleur, un mot que l'élève de
+        //     sixième rencontre ici pour la première fois et qui n'est pas au
+        //     programme de son année ;
+        //   · elle écrivait « 2/3 = (2×4)/(3×4) = 8/12 », des parenthèses
+        //     imbriquées sur une seule ligne, là où le geste se compte en
+        //     parts de pizza ;
+        //   · et elle ne nommait la pizza qu'à la DERNIÈRE phrase, comme une
+        //     illustration de ce qui précède, alors que c'est elle qui est à
+        //     l'écran.
+        //
+        // CELLE-CI PART DE LA PIZZA ET SUIT LE GESTE. Trois temps nommés — le
+        // découpage, le compte, la règle —, parce que l'élève bloqué cherche
+        // « j'en suis où ? » et doit le trouver en balayant la page : c'est
+        // la mise en page que `core/lecon.js` sait fabriquer à partir d'un
+        // intertitre en capitales suivi de deux-points.
+        //
+        // ET LA DIVISION EST ÉCRITE. « 2 × 4 = 8 » tombait du ciel ; le robot
+        // du jeu avait déjà appris à dire d'OÙ vient le 4 (« explication du
+        // robot pas claire ») — la leçon, elle, ne l'avait pas appris.
+        //
+        // UN INTERTITRE NE PORTE PAS DE VIRGULE. Mesuré : « LE COMPTE, PART
+        // PAR PART : » ressortait en gras AVEC ses deux-points au fil du
+        // texte, pendant que ses deux voisins devenaient de vraies entrées à
+        // pastille. `core/lecon.js` n\'ouvre un cas que sur des capitales
+        // d\'affilée — une virgule coupe la suite, et le titre redevient une
+        // phrase. On n\'y touche pas : trois titres sur quatre mots valent
+        // mieux qu\'une règle de plus dans le découpeur.
+        //
+        // ET ELLE TIENT SANS DÉFILER. Première réécriture mesurée à 181 mots,
+        // 512 px dans une zone de 492 : l\'élève arrivait au bas de la boîte
+        // avant la fin de la leçon. Un texte qu\'il faut faire défiler pour
+        // finir une phrase n\'est pas plus lu qu\'un pavé — c\'est le même
+        // reproche sous une autre forme.
+        lesson: 'Des tiers et des quarts ne sont pas les mêmes parts : tant que la pizza n\'est pas coupée pour les deux à la fois, il n\'y a rien à comparer ni à additionner. LE DÉCOUPAGE COMMUN : on cherche le premier nombre de parts qui convient aux deux dénominateurs. Les tiers vont avec 3, 6, 9, 12… et les quarts avec 4, 8, 12… : le premier des deux listes est 12. LE COMPTE : sur 12 parts, un tiers en vaut 12 ÷ 3 = 4, donc deux tiers en valent 2 × 4 = 8 ; un quart en vaut 12 ÷ 4 = 3. On écrit 2/3 = 8/12 et 1/4 = 3/12. LE HAUT ET LE BAS : on multiplie les deux par le même nombre, jamais l\'un sans l\'autre — chaque part coupée en 4, c\'est la même pizza, recoupée.'
     },
     'num.frac.simplification': {
         label: 'Simplifier une fraction',
