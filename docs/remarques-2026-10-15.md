@@ -338,3 +338,54 @@ la même seconde, les mêmes données : seule la forme change.
 **≡ en lignes · ▦ en tuiles**, au bout de la rangée « Ranger ». Les tuiles
 gardent leur tri par urgence — c'est le seul affichage qu'on lit debout, de
 loin, et l'ordre y est l'information.
+
+---
+
+# Cinquième passe — « la partie classe est fouillis »
+
+> « Je trouve que la partie classe avec direct séance et autre est fouillis
+> qu en penses tu » — puis, après mon diagnostic : « oui fais les 3 ».
+
+**Ce que la mesure a dit**, les quatre onglets ouverts et comptés :
+
+| écran | hauteur | boutons visibles | champs |
+| --- | --- | --- | --- |
+| Le direct | 725 px | 27 (pour **6** élèves) | 7 |
+| Les séances | 217 px | 0 (site d'essai vide) | 0 |
+| Les élèves | 596 px | **40** (pour 6 élèves) | 0 |
+| Les bilans | 686 px | 6 | 0 |
+
+Rapporté à sa classe de trente : **190 boutons** sur « Les élèves », 75 sur « Le
+direct ». Et avant le premier élève du direct, **quatre bandeaux empilés** qui
+disent la même chose sous trois formes.
+
+Trois corrections, qu'il a validées d'un mot :
+
+**A.** L'en-tête du direct : quatre étages → **une ligne**. La jauge et les
+trois pastilles n'apparaissent que s'il y a une séance en cours.
+
+**B.** « Les élèves » : six boutons par ligne → **un seul**, qui déplie la fiche
+de l'élève sous sa ligne — le geste que le direct emploie déjà. Et les sept
+boutons du haut rangés en trois familles nommées : la liste, les codes, la salle.
+
+**C.** Les onglets rangés par **moment** — pendant l'heure, avant, après — et
+« Les élèves » détaché à droite, puisqu'on y va trois fois par an.
+
+## Ce qui a été fait, et ce que la mesure dit
+
+| | avant | après |
+| --- | --- | --- |
+| bandeaux dans l'en-tête du direct | 3 | **1** |
+| pixels avant le premier élève | 333 | **225** |
+| jauge de classe quand personne ne travaille | affichée, vide | **cachée** |
+| boutons dans « Les élèves » (6 élèves) | 40 | **15** |
+| boutons par ligne d'élève | 6 | **1** |
+| familles nommées en haut | 0 | **3** (la liste, les codes, la salle) |
+
+Les onglets disent maintenant leur moment — **PENDANT L'HEURE**, **AVANT
+L'HEURE**, **APRÈS** — et « Les élèves », qu'on ouvre trois fois par an, part à
+droite en plus petit.
+
+Une épreuve ancienne a dû être rebraquée (« L'ONGLET QUI CONTIENT DES ÉLÈVES
+S'APPELLE LES ÉLÈVES ») : elle épinglait l'appel à `onglet('liste', …)` à deux
+arguments. Le nom qu'elle garde n'a pas changé ; sa forme, si.

@@ -157,3 +157,71 @@ test('LES BILANS SE LISENT EN TROIS ONGLETS', () => {
     assert.match(source, /quel === 'conseils'\) return barre \+ conseilsHtml/,
         'l\'onglet « Conseils » ne mène plus aux conseils');
 });
+
+test('L\'EN-TÊTE DU DIRECT TIENT SUR UNE LIGNE', () => {
+    // RÉMY : « Je trouve que la partie classe avec direct séance et autre est
+    // fouillis ». MESURÉ avant : trois bandeaux empilés dans l'en-tête, et le
+    // premier élève à 333 px du haut de l'écran — alors que c'est lui qu'on
+    // vient voir. Après : un seul bandeau, 225 px.
+    assert.match(source, /const entete = `<p class="ec-compte ec-entete">/,
+        'l\'en-tête du direct n\'est plus une ligne unique');
+    // LA JAUGE NE S'AFFICHE QUE QUAND ELLE A QUELQUE CHOSE À DIRE : vide, elle
+    // occupait toute la largeur pour annoncer « rien », sous un titre « La
+    // séance » qui ne nommait aucune séance.
+    assert.match(source, /const aDire = !!info\.impose_path_id \|\| \(cl\.finis \+ cl\.enCours\) > 0;/,
+        'la jauge de classe s\'affiche à nouveau quand il n\'y a rien à montrer');
+    assert.match(source, /const avance = !aDire \? '' :/,
+        'la jauge n\'est plus conditionnée');
+    // ET LE TITRE NE SE RÉPÈTE PAS : il ne nomme le travail que lorsque ce
+    // qu'ils FONT diffère de ce qu'on a imposé.
+    assert.match(source, /quoiFait && quoiFait !== nomImpose/,
+        'le direct répète le nom de la séance imposée sous elle-même');
+});
+
+test('UN SEUL BOUTON PAR LIGNE DANS « LES ÉLÈVES »', () => {
+    // MESURÉ : six boutons par ligne, soit quarante boutons visibles pour six
+    // élèves — cent quatre-vingt-dix sur une classe de trente, pour des gestes
+    // qu'on fait une fois par trimestre. Après : un par ligne, et quinze en
+    // tout.
+    const liste = source.slice(source.indexOf('function listeHtml'),
+        source.indexOf('function reglagesClasseHtml'));
+    assert.match(liste, /data-gerer="\$\{esc\(e\.id\)\}"/,
+        'la ligne d\'un élève ne porte plus son bouton « gérer »');
+    // LES SIX GESTES SONT DANS LA FICHE DÉPLIÉE, et nulle part ailleurs.
+    const rangee = liste.slice(liste.indexOf('<td class="ec-actions">'),
+        liste.indexOf('</tbody>'));
+    for (const geste of ['data-poste', 'data-billet', 'data-pseudo', 'data-code',
+        'data-ecarter', 'data-retirer']) {
+        const ou = rangee.indexOf(geste);
+        assert.ok(ou > rangee.indexOf('ec-gestes-eleve'),
+            `« ${geste} » est ressorti sur la ligne : la colonne d'actions se repeuple`);
+    }
+    // UNE SEULE FICHE À LA FOIS : trois ouvertes et la liste ne tient plus.
+    assert.match(source, /vue\.eleveOuvert = vue\.eleveOuvert === d\.gerer \? null : d\.gerer;/,
+        'les fiches d\'élèves ne se referment plus l\'une l\'autre');
+    // ET LES SEPT BOUTONS DU HAUT SONT RANGÉS EN TROIS FAMILLES NOMMÉES.
+    const familles = liste.match(/class="ec-groupe-eti">/g) || [];
+    assert.equal(familles.length, 3,
+        `${familles.length} familles au lieu de trois : la liste, les codes, la salle`);
+});
+
+test('LES ONGLETS SONT RANGÉS PAR MOMENT', () => {
+    // RÉMY : quatre portes de même poids pour quatre usages qui n'ont rien à
+    // voir. Elles disent maintenant LEUR MOMENT, et celle qu'on ouvre trois
+    // fois par an est mise à part, à droite.
+    const nav = source.slice(source.indexOf('<nav class="ec-onglets">'),
+        source.indexOf('</nav>'));
+    const ordre = [...nav.matchAll(/onglet\('(\w+)'/g)].map(m => m[1]);
+    assert.deepEqual(ordre, ['direct', 'seances', 'bilans', 'liste'],
+        'l\'ordre des onglets ne suit plus les moments de l\'heure');
+    assert.match(nav, /onglet\('liste', 'Les élèves', true\)/,
+        '« Les élèves » n\'est plus mis à part');
+    // L'APOSTROPHE EST ÉCHAPPÉE DANS LA SOURCE : chercher « PENDANT L'HEURE »
+    // dans le fichier ne trouve rien, puisqu'il porte « PENDANT L\\'HEURE ».
+    // L'épreuve s'y est fait prendre à sa première écriture.
+    const dit = source.slice(source.indexOf('const DIT_ONGLET'),
+        source.indexOf('// --- Onglet « Le direct »')).replace(/\\'/g, "'");
+    for (const moment of ['PENDANT L\'HEURE', 'AVANT L\'HEURE', 'APRÈS', 'TROIS FOIS PAR AN']) {
+        assert.ok(dit.includes(moment), `le moment « ${moment} » n'est plus écrit`);
+    }
+});

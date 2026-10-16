@@ -252,6 +252,9 @@ export async function ouvrirEspaceClasses() {
         // c'est le départ : la barre fait alors deux lignes au-dessus de la
         // liste des élèves, qui est ce qu'on vient regarder.
         outil: null,
+        // L'ÉLÈVE DONT LA FICHE EST DÉPLIÉE DANS « Les élèves ». Un seul à la
+        // fois : trois fiches ouvertes et la liste ne tient plus à l'écran.
+        eleveOuvert: null,
         seanceDetail: null,
         // Et celui dont la ligne est dépliée dans Les bilans. Les deux écrans
         // ne se partagent pas ce souvenir : on n'y cherche pas la même chose.
@@ -823,8 +826,18 @@ function classeHtml() {
         + `<span class="ec-sous-sep">·</span>${eleves.length} élève${eleves.length > 1 ? 's' : ''}`
         + (info.locked ? '<span class="ec-sous-sep">·</span><b>en pause</b>' : '');
 
-    const onglet = (cle, texte) => `<button type="button"
-        class="ec-onglet${vue.onglet === cle ? ' ec-onglet--actif' : ''}"
+    // LES ONGLETS SONT RANGÉS PAR MOMENT, ET LE DERNIER EST À PART.
+    //
+    // RÉMY : « Je trouve que la partie classe avec direct séance et autre est
+    // fouillis ». Quatre portes de même poids, pour quatre usages qui n'ont
+    // rien à voir : on ouvre « Le direct » en classe, « Les séances » avant,
+    // « Les bilans » après — et « Les élèves » trois fois dans l'année.
+    //
+    // CELUI-LÀ PART DONC À DROITE, en plus petit : il ne se dispute plus l'oeil
+    // avec les trois qu'on ouvre vraiment, et il reste à un clic.
+    const onglet = (cle, texte, apart) => `<button type="button"
+        class="ec-onglet${vue.onglet === cle ? ' ec-onglet--actif' : ''}${
+            apart ? ' ec-onglet--apart' : ''}"
         data-onglet="${cle}">${texte}</button>`;
 
     let corps = '';
@@ -837,8 +850,8 @@ function classeHtml() {
     <nav class="ec-onglets">
         ${onglet('direct', 'Le direct')}
         ${onglet('seances', 'Les séances')}
-        ${onglet('liste', 'Les élèves')}
         ${onglet('bilans', 'Les bilans')}
+        ${onglet('liste', 'Les élèves', true)}
     </nav>
     <!-- CE QUE CHAQUE ÉCRAN EST, ÉCRIT SOUS SON ONGLET.
          RÉMY : « J'ai du mal à voir la différence avec les murs et le
@@ -858,13 +871,13 @@ function classeHtml() {
  * Rémy entre le direct et le mur, qui montrent pourtant la même classe.
  */
 const DIT_ONGLET = {
-    direct: 'Qui travaille en ce moment, et où il en est — en lignes pour le '
-        + 'détail, en tuiles pour lire la classe du fond de la salle.',
-    seances: 'Ce que vous avez donné à cette classe. Celle qui est en cours est '
-        + 'sur fond coloré.',
-    liste: 'Les prénoms, les identifiants et les codes — et c\'est ici qu\'on '
-        + 'ajoute un élève.',
-    bilans: 'Ce que la classe a travaillé, et ce qu\'il faudrait reprendre.'
+    direct: 'PENDANT L\'HEURE — qui travaille, où il en est, et les commandes de '
+        + 'la classe. En lignes pour le détail, en tuiles pour lire du fond de la salle.',
+    seances: 'AVANT L\'HEURE — ce que vous donnez à cette classe. Celle qui est en '
+        + 'cours est sur fond coloré.',
+    bilans: 'APRÈS — ce que la classe a travaillé, et ce qu\'il faudrait reprendre.',
+    liste: 'TROIS FOIS PAR AN — les prénoms, les identifiants et les codes, et '
+        + 'c\'est ici qu\'on ajoute un élève.'
 };
 
 // --- Onglet « Le direct » ---------------------------------------------------
@@ -919,20 +932,48 @@ function directHtml() {
     // On sépare donc ce qui change TOUT SEUL — l'alarme, les compteurs, les
     // rangs — de ce que le professeur MANIPULE. Le battement ne touche plus
     // qu'au premier.
-    return `<div class="ec-direct-haut">` + alarmeHtml(eleves, maintenant) + `
-    <p class="ec-compte">${enLigne} en ligne sur ${eleves.length}
-       <span class="ec-note">— actualisé tout seul</span></p>
-    ${info.impose_path_id
-        ? `<p class="ec-note ec-note--bloc ec-encours-fil">Séance en cours :
-            <b>${esc(imposee ? imposee.nom : 'une séance imposée')}</b> — elle s'ouvre toute
-            seule chez eux, ${esc(jusquaDit())}.</p>`
-        : `<p class="ec-note ec-note--bloc ec-encours-fil">Aucune séance imposée : chacun
-            choisit dans sa liste. Pour en imposer une, allez dans
-            <b>Les séances</b>.</p>`}
-    <div class="ec-classe-avance">
+    // ── UNE SEULE LIGNE D'EN-TÊTE, ET NON QUATRE ÉTAGES ────────────────────
+    //
+    // RÉMY : « Je trouve que la partie classe avec direct séance et autre est
+    // fouillis ». MESURÉ avant d'en juger : au-dessus du premier élève se
+    // suivaient « 0 en ligne sur 6 », « Aucune séance imposée… », une carte
+    // « La séance » avec sa jauge VIDE et ses trois pastilles, la barre de
+    // pilotage, puis la rangée « Ranger / Montrer ». Quatre bandeaux pour
+    // trois informations, et l'élève numéro un sous la ligne de flottaison —
+    // alors que c'est LUI qu'on vient voir.
+    //
+    // QUI EST LÀ, ET SUR QUOI : les deux tiennent sur une ligne. L'échéance de
+    // la séance passe en infobulle — on la lit une fois en l'imposant, pas
+    // trente fois dans l'heure.
+    const nomImpose = info.impose_path_id
+        ? (imposee ? imposee.nom : 'une séance imposée') : '';
+    const entete = `<p class="ec-compte ec-entete">
+        <b>${enLigne} en ligne</b> <span class="ec-note">sur ${eleves.length}</span>
+        <span class="ec-note">·</span>
+        ${nomImpose
+            ? `<span title="Elle s'ouvre toute seule chez eux, ${esc(jusquaDit())}."
+                >Séance : <b>${esc(nomImpose)}</b></span>`
+            : `<span class="ec-note">Aucune séance imposée — chacun choisit dans sa
+                liste. Pour en imposer une, allez dans <b>Les séances</b>.</span>`}
+        <span class="ec-note ec-entete-fin">actualisé tout seul</span>
+    </p>`;
+
+    // LA JAUGE NE S'AFFICHE QUE QUAND ELLE A QUELQUE CHOSE À DIRE.
+    //
+    // Vide, elle occupait toute la largeur pour annoncer « rien », sous un
+    // titre « La séance » qui ne nommait aucune séance. On la montre donc
+    // lorsqu'une séance est imposée, ou que quelqu'un travaille.
+    //
+    // ET LE TITRE NE SE RÉPÈTE PAS : il ne nomme le travail que lorsque ce
+    // qu'ils FONT diffère de ce qu'on a imposé. Rémy : « Dans la classe, on ne
+    // voit que le parcours découverte » — c'est le cas qu'il faut dire, et lui
+    // seul.
+    const quoiFait = fait ? fait.pathName : '';
+    const aDire = !!info.impose_path_id || (cl.finis + cl.enCours) > 0;
+    const avance = !aDire ? '' : `<div class="ec-classe-avance">
         <div class="ec-classe-ligne">
-            <b>${fait ? esc(fait.pathName) : 'La séance'}</b>
-            <span class="ec-note">— ce qu'ils font</span>
+            ${quoiFait && quoiFait !== nomImpose
+                ? `<b>${esc(quoiFait)}</b><span class="ec-note">— ce qu'ils font</span>` : ''}
             <span class="ec-classe-chiffres">
                 <span class="ec-pastille ec-pastille--fini">${cl.finis} ${
                     cl.finis > 1 ? 'ont fini' : 'a fini'}</span>
@@ -944,7 +985,10 @@ function directHtml() {
         <div class="ec-jauge" title="${pourcent} % du travail de la classe">
             <i style="width:${pourcent}%"></i>
         </div>
-    </div>
+    </div>`;
+
+    return `<div class="ec-direct-haut">` + alarmeHtml(eleves, maintenant)
+        + entete + avance + `
     </div>
     ${barrePiloteHtml()}
     <!-- CEUX QU'IL FAUT ALLER VOIR SONT EN HAUT.
@@ -2150,7 +2194,16 @@ function listeHtml() {
     const sans = eleves.filter(e => e.sansBillet);
 
     const outils = `
-    <div class="ec-outils">
+    <!-- TROIS FAMILLES, ET LEUR NOM ÉCRIT DESSUS.
+
+         RÉMY : « la partie classe […] est fouillis ». Sept boutons se
+         suivaient sur une ligne, séparés par le même écart : peupler la liste,
+         fabriquer des codes et ouvrir un poste de la salle n'ont pourtant rien
+         à voir, et l'on ne les fait ni le même jour ni pour la même raison.
+         C'est la règle que la barre de pilotage avait déjà apprise — « cinq
+         commandes de rôles différents sur une ligne, et rien ne disait
+         lesquelles allaient ensemble ». -->
+    <div class="ec-outils ec-outils--familles">
         <!-- UN ÉLÈVE À LA FOIS, ET C'EST UN BOUTON À PART.
 
              Rémy : « j'ai l'impression qu'on ne peut pas ajouter un élève dans
@@ -2166,16 +2219,24 @@ function listeHtml() {
              arrivé par le code de la classe est donc rattaché à son travail,
              l'homonyme est signalé, l'identifiant est fabriqué — tout ce que
              l'import sait faire, et rien de réécrit. -->
+        <span class="ec-groupe">
+        <span class="ec-groupe-eti">La liste</span>
         <button type="button" class="ec-bouton" data-ajouter-eleve
                 title="Un seul élève, sans toucher aux autres : son identifiant et son code sont fabriqués, et vous verrez l'aperçu avant que rien ne soit écrit"
                 >+ Ajouter un élève</button>
         <button type="button" class="ec-bouton ec-bouton--doux" data-coller
                 title="Toute une classe d'un coup, depuis Pronote ou un tableur. Les élèves déjà là gardent leur code : une liste collée AJOUTE, elle n'efface jamais."
                 >Coller une liste d'élèves</button>
+        </span>
         ${avec.length ? `
+        <span class="ec-groupe">
+        <span class="ec-groupe-eti">Les codes</span>
         <button type="button" class="ec-bouton ec-bouton--doux" data-imprimer>Imprimer les billets</button>
         <button type="button" class="ec-bouton ec-bouton--doux" data-codes-communs>Un même code pour tous</button>
-        <button type="button" class="ec-bouton ec-bouton--doux" data-codes-chacun>Refaire tous les codes</button>` : ''}
+        <button type="button" class="ec-bouton ec-bouton--doux" data-codes-chacun>Refaire tous les codes</button>
+        </span>` : ''}
+        <span class="ec-groupe">
+        <span class="ec-groupe-eti">La salle</span>
         <button type="button" class="ec-bouton ec-bouton--doux" data-poste=""
                 title="Une seconde fenêtre, vierge, qui se comporte comme le poste d'un élève"
                 >Ouvrir un poste élève</button>${avec.length > 1 ? `
@@ -2191,6 +2252,7 @@ function listeHtml() {
         <button type="button" class="ec-bouton ec-bouton--doux" data-mur-postes="4"
                 title="Une fenêtre qui montre les postes des ${Math.min(4, avec.length)} premiers élèves de la liste, côte à côte. Pour un élève précis, « Ouvrir son poste » est sur sa ligne."
                 >Ouvrir plusieurs postes</button>` : ''}
+        </span>
     </div>`;
 
     if (!eleves.length) {
@@ -2221,32 +2283,53 @@ function listeHtml() {
                 ><span class="ec-code ec-code--petit">${esc(e.code)}</span></td>
             <td class="ec-note">${esc(depuis(e.vu, Math.floor(Date.now() / 1000)))}</td>
             <td class="ec-actions">
+                <!-- UN SEUL BOUTON PAR LIGNE, ET SIX GESTES DESSOUS.
+
+                     RÉMY : « la partie classe […] est fouillis ». MESURÉ : six
+                     boutons par ligne, soit cent quatre-vingts sur sa classe de
+                     trente — pour des gestes qu'on fait une fois par trimestre
+                     (changer un code, réimprimer un billet, mettre de côté).
+
+                     LA FICHE SE DÉPLIE SOUS LA LIGNE, comme dans Le direct, et
+                     non dans une fenêtre : les six boutons gardent alors leurs
+                     attributs ET leur gestionnaire — c'est le même écouteur,
+                     posé sur la racine, qui les reçoit. Une fenêtre vit hors
+                     de cette racine : il aurait fallu rebrancher six gestes,
+                     c'est-à-dire en réécrire six. -->
+                <button type="button" class="ec-mini" data-gerer="${esc(e.id)}"
+                        aria-expanded="${vue.eleveOuvert === e.id ? 'true' : 'false'}"
+                        title="Son poste, son billet, son identifiant, son code — et le retirer"
+                        >${vue.eleveOuvert === e.id ? '▾ gérer' : '⋯ gérer'}</button>
+            </td>
+        </tr>${vue.eleveOuvert === e.id ? `
+        <tr class="ec-tr-gestes"><td colspan="5">
+            <div class="ec-gestes-eleve">
                 <button type="button" class="ec-mini" data-poste="${esc(e.login)}"
                         data-poste-code="${esc(e.code || '')}"
                         title="Une seconde fenêtre qui se comporte comme SON poste, connecté sous son nom. C'est plus fort que « Son exercice, chez moi » du Direct : ici vous êtes lui."
                         >Ouvrir son poste</button>
                 <button type="button" class="ec-mini" data-billet="${esc(e.id)}"
                         title="Réimprimer CE billet, sans changer son code"
-                        >billet</button>
+                        >Réimprimer son billet</button>
                 <button type="button" class="ec-mini" data-pseudo="${esc(e.id)}"
                         data-pseudo-actuel="${esc(e.login || '')}"
                         data-prenom="${esc(e.prenom)}"
                         title="Changer l'identifiant avec lequel il se connecte. Son code et son travail ne changent pas."
-                        >renommer</button>
+                        >Changer son identifiant</button>
                 <button type="button" class="ec-mini" data-code="${esc(e.id)}"
                         data-prenom="${esc(e.prenom)}"
                         data-code-actuel="${esc(e.code || '')}"
                         title="Changer son code : en accepter un tiré au hasard, ou écrire le vôtre. L'ancien billet ne vaudra plus rien."
-                        >code</button>
+                        >Changer son code</button>
                 <button type="button" class="ec-mini" data-ecarter="${esc(e.id)}"
                         data-etat="${e.ecarte ? '1' : '0'}"
                         title="${e.ecarte ? 'Le laisser revenir' : 'Il ne pourra plus se rattacher'}"
-                        >${e.ecarte ? 'réactiver' : 'de côté'}</button>
+                        >${e.ecarte ? 'Le laisser revenir' : 'Le mettre de côté'}</button>
                 <button type="button" class="ec-mini ec-mini--rouge" data-retirer="${esc(e.id)}"
                         data-prenom="${esc(e.prenom)}"
-                        title="Le retirer, avec tout son travail">retirer</button>
-            </td>
-        </tr>`).join('')}
+                        title="Le retirer, avec tout son travail">Le retirer de la classe</button>
+            </div>
+        </td></tr>` : ''}`).join('')}
         </tbody>
     </table></div>` : '')
     + (sans.length ? `
@@ -3016,7 +3099,7 @@ async function brancher(e, redessiner) {
         + '[data-calc-eleve], [data-saut-tout], [data-bilan-eleve],'
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
         + '[data-ordre-direct], [data-ordre-bilan], [data-sous-bilan], [data-bilan-pdf],'
-        + '[data-outil], [data-forme-direct],'
+        + '[data-outil], [data-forme-direct], [data-gerer],'
         + '[data-effacer-signal]');
     if (!el) return;
     const d = el.dataset;
@@ -3075,6 +3158,19 @@ async function brancher(e, redessiner) {
     // de suite.
     if (d.sousBilan !== undefined) {
         vue.sousBilan = d.sousBilan;
+        redessiner();
+        return;
+    }
+
+    // ── LA FICHE D'UN ÉLÈVE, DANS « LES ÉLÈVES » ───────────────────────────
+    //
+    // Six boutons par ligne faisaient cent quatre-vingts boutons sur une
+    // classe de trente, pour des gestes qu'on fait une fois par trimestre.
+    // Ils se déplient maintenant sous la ligne — et un seul à la fois, comme
+    // dans Le direct : trois fiches ouvertes et la liste ne tient plus à
+    // l'écran.
+    if (d.gerer !== undefined) {
+        vue.eleveOuvert = vue.eleveOuvert === d.gerer ? null : d.gerer;
         redessiner();
         return;
     }

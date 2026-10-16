@@ -50,8 +50,11 @@ test('L\'ONGLET QUI CONTIENT DES ÉLÈVES S\'APPELLE LES ÉLÈVES', () => {
     // « La classe » à l'intérieur de l'écran d'une classe ne distingue rien de
     // ses quatre voisins — Le direct, Le mur, Les séances, Les bilans parlent
     // tous de la classe. Celui-ci est le seul qui liste des NOMS.
-    assert.match(EC, /\$\{onglet\('liste', 'Les élèves'\)\}/);
-    assert.ok(!/onglet\('liste', 'La classe'\)/.test(EC));
+    // (Il est MIS À PART depuis que les onglets sont rangés par moment — on
+    // l'ouvre trois fois par an —, d'où le troisième argument. Son NOM, lui,
+    // n'a pas changé, et c'est ce que cette épreuve garde.)
+    assert.match(EC, /\$\{onglet\('liste', 'Les élèves', true\)\}/);
+    assert.ok(!/onglet\('liste', 'La classe'/.test(EC));
     // Et les renvois d'un écran à l'autre suivent, sinon le nom change à un
     // endroit et le mode d'emploi continue de citer l'ancien.
     assert.match(EC, /« Ouvrir son poste », dans l'onglet Les élèves/);

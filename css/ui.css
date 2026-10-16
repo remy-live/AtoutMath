@@ -191,6 +191,51 @@
 
 /* --- Le direct ------------------------------------------------------------ */
 .ec-compte { margin: 0 0 14px; font-weight: 700; color: var(--text-main); }
+/* L'EN-TÊTE DU DIRECT TIENT SUR UNE LIGNE.
+
+   RÉMY : « la partie classe avec direct séance et autre est fouillis ».
+   Quatre bandeaux se suivaient avant le premier élève — qui est pourtant ce
+   qu'on vient voir. Qui est là, et sur quoi : les deux tiennent côte à côte,
+   et le reste (l'échéance de la séance) passe en infobulle. */
+.ec-entete {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+    margin: 0 0 10px; font-weight: 600;
+}
+.ec-entete b { font-weight: 800; }
+/* « actualisé tout seul » se range à droite : c'est une note de bas de page,
+   pas une information qu'on relit. */
+.ec-entete-fin { margin-left: auto; font-weight: 400; }
+
+/* LES FAMILLES DE BOUTONS DE « LES ÉLÈVES » — même langage que les cadres de
+   la barre de pilotage : un groupe, un nom écrit dessus. */
+.ec-outils--familles { align-items: flex-start; gap: 10px; }
+.ec-groupe {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 6px 10px; border-radius: 10px;
+    background: var(--bg-app); border: 1px solid var(--border);
+}
+.ec-groupe-eti {
+    font-size: .78rem; font-weight: 700; color: var(--text-muted);
+    white-space: nowrap;
+}
+/* L'ONGLET QU'ON OUVRE TROIS FOIS PAR AN, mis à part : il part à droite et
+   parle moins fort. Il reste à un clic — c'est un rangement, pas un repli. */
+.ec-onglet--apart {
+    margin-left: auto; font-size: .84rem; opacity: .75;
+}
+.ec-onglet--apart.ec-onglet--actif { opacity: 1; }
+/* LA FICHE D'UN ÉLÈVE, DÉPLIÉE SOUS SA LIGNE.
+
+   Six boutons par ligne faisaient cent quatre-vingts boutons sur une classe de
+   trente, pour des gestes qu'on fait une fois par trimestre. Dépliés, ils
+   portent leur nom en entier — « Changer son identifiant » plutôt que
+   « renommer » —, ce qu'une colonne de six boutons ne permettait pas. */
+.ec-tr-gestes > td { padding: 0 10px 10px; }
+.ec-gestes-eleve {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px; border-radius: 10px;
+    background: var(--bg-app); border: 1px solid var(--border);
+}
 .ec-rangs { display: flex; flex-direction: column; gap: 6px; }
 /* SIX COLONNES, PARCE QUE LA LIGNE A SIX ENFANTS — et la panne est revenue.
    La note ci-dessous (« LES DEUX BOUTONS TIENNENT DANS UNE SEULE CELLULE »)
