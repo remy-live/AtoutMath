@@ -4824,3 +4824,50 @@ le résultat n'existe pas** — 15 octobre 2026
   relève les chaînes en forme d'identifiant (`num.…`, `calc-…`) et dit
   lesquelles ne sont dans aucun catalogue coûterait quelques secondes et
   fermerait la famille entière.
+
+**Une règle CSS juste, placée trop tôt, ne fait rien et ne le dit pas** — 16 octobre 2026
+
+- *Ce que je voulais faire* : donner à la phrase de présentation de l'écran de
+  classe la même marge que le reste, sur ordinateur ET sur téléphone.
+- *Ce qui a coûté* : j'ai ajouté `.ec-onglet-dit` à la liste des sélecteurs que
+  la requête `max-width: 560px` rentre à 15 px. Cette liste vit ligne 951 ;
+  la règle de base, `padding: 0 26px`, ligne 5043. Même spécificité, donc c'est
+  la DERNIÈRE écrite qui gagne — la correction n'a RIEN changé, et rien ne l'a
+  signalé. Mesuré : 26 px contre 15 pour les onglets, exactement comme avant.
+- *Combien de fois* : |
+- *Ce qui manque* : une sonde d'ALIGNEMENT plutôt qu'une relecture de règles —
+  `tools/alignementDeLaClasse.mjs` compare désormais les bords gauches RENDUS
+  des quatre blocs, aux deux largeurs. C'est elle qui a dit que ma première
+  correction ne corrigeait rien. Le réflexe à garder : une marge se vérifie sur
+  `getBoundingClientRect`, jamais sur la feuille de style.
+
+**Une sonde gardée rouille en silence quand l'écran qu'elle pilote est refait** — 16 octobre 2026
+
+- *Ce que je voulais faire* : relancer `tools/fermeHorsSeance.mjs` pour vérifier
+  qu'un réglage déjà construit marchait toujours.
+- *Ce qui a coûté* : elle cliquait `[data-maison]` directement. Depuis, la barre
+  de pilotage a été désencombrée en ONGLETS repliés (`vue.outil: null`) : la
+  case n'est plus dans la page tant qu'on n'a pas ouvert son onglet. `doitExister`
+  a jeté avec le bon message — sans lui, la sonde aurait annoncé un réglage
+  cassé, et j'aurais cherché le défaut dans le serveur.
+- *Combien de fois* : |
+- *Ce qui manque* : les sondes gardées ne tournent jamais ensemble. Trois des
+  harnais tournent avant chaque commit ; les trente sondes de `tools/`, non.
+  Un `node tools/toutesLesSondes.mjs` qui les lance à la suite et ne rapporte
+  que celles qui JETTENT (crochet disparu, pas assertion rouge) dirait en une
+  fois lesquelles ont rouillé.
+
+**Un réglage nommé d'après son drapeau en base ne se retrouve pas** — 16 octobre 2026
+
+- *Ce que je voulais faire* : répondre à « je ne sais pas comment on fait pour
+  que les élèves ne se connectent pas à la maison ».
+- *Ce qui a coûté* : rien à construire — le réglage existait, et c'est LUI qui
+  l'avait demandé quelques jours plus tôt. Il s'appelait « Hors séance »,
+  c'est-à-dire du nom de la colonne `hors_seance`. Il cherchait « la maison ».
+  Une demi-heure à relire du code pour conclure qu'il n'y avait rien à écrire.
+- *Combien de fois* : || (déjà payé sur « Mettre en pause », qui fermait le
+  catalogue)
+- *Ce qui manque* : une règle, pas un outil — **un réglage porte le nom de la
+  question qu'on se pose en le cherchant**, jamais celui de la donnée qu'il
+  écrit. Et son état se lit dans les DEUX sens quand le défaut est celui qui
+  gêne : « · ouverte » autant que « · fermée ».

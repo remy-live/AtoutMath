@@ -1125,6 +1125,38 @@ function handleTeacherReport(): void
     $class = $stmt->fetch();
     if (!$class) fail(404, 'class_not_found', 'Classe introuvable.');
 
+    // ── LE PONT ENTRE DEUX NOMS DE LA MÊME SÉANCE ─────────────────────────
+    //
+    // RÉMY, capture de son onglet « Par séance » à l'appui : « aucun retour
+    // sur cette page ». Trente élèves, huit colonnes, PAS UNE CASE REMPLIE.
+    //
+    // MESURÉ (`tools/bilanParSeance.mjs`) : l'écran cherchait
+    // `path_1792150030223_UWJ9` — l'identifiant du parcours du PROFESSEUR,
+    // celui d'`assignments.path_id` — et le serveur avait rangé le travail
+    // sous `path_cCLAVVV`, l'empreinte du CONTENU que l'élève enregistre en
+    // ouvrant une séance IMPOSÉE (`ouvrirLaSeanceImposee`, js/ui/leMoment.js).
+    // Les deux ne peuvent pas se rencontrer, et imposer est exactement la
+    // façon dont Rémy travaille en classe : le tableau était vide à chaque
+    // heure.
+    //
+    // ON NE TOUCHE À AUCUNE DES DEUX IDENTITÉS, et surtout pas à celle de
+    // l'élève : c'est elle qui porte son travail fait (`computeAssignedPath`
+    // filtre les étapes terminées dessus), et la changer remettrait la classe
+    // à zéro — le défaut d'hier, « ça a remis à zéro tous les élèves ».
+    //
+    // LE PONT EXISTE DÉJÀ EN BASE : `assignments.path_identity` porte
+    // l'empreinte du contenu, figée quand la séance a été donnée, et
+    // `lib/eleves.php` s'en sert déjà pour le direct. On lit la table une
+    // fois, et l'on range le travail sous le nom que l'écran demande.
+    $pont = [];
+    $qa = db()->prepare('SELECT path_id, path_identity FROM assignments
+                         WHERE class_id = ? AND path_identity IS NOT NULL');
+    $qa->execute([$classId]);
+    foreach ($qa->fetchAll() as $a) {
+        $ident = (string) ($a['path_identity'] ?? '');
+        if ($ident !== '') $pont[$ident] = (string) $a['path_id'];
+    }
+
     $stmt = db()->prepare('SELECT id, first_name, last_seen_at FROM students WHERE class_id = ?');
     $stmt->execute([$classId]);
     // Le tri se fait après déchiffrement : `ORDER BY` sur du texte chiffré
@@ -1193,10 +1225,19 @@ function handleTeacherReport(): void
         // SANS parcours — un entraînement libre, un jeu — n'entrent dans
         // aucune colonne, et c'est juste : elles n'appartiennent à aucune
         // séance.
+        //
+        // ET LA CLÉ EST CELLE DE LA SÉANCE, PAS CELLE DU RUN. Voir `$pont`
+        // plus haut : une séance imposée arrive sous l'empreinte de son
+        // contenu, une séance donnée sous l'identifiant du parcours. Les deux
+        // désignent le même travail, et l'écran n'en connaît qu'un. On
+        // traduit ici, une fois, plutôt que dans chaque écran qui lira ce
+        // tableau — un même travail rangé sous deux noms finit toujours par en
+        // perdre un.
         $parSeance = [];
         foreach ($runs as $run) {
             $pid = (string) ($run['pathId'] ?? '');
             if ($pid === '') continue;
+            $pid = $pont[$pid] ?? $pid;
             foreach ($run['attempts'] as $a) {
                 $ex = (string) ($a['exerciseId'] ?? '');
                 if ($ex === '') continue;

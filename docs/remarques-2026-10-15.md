@@ -809,3 +809,84 @@ pour m'améliorer » rejoue l'étape NOTÉE, « M'améliorer » ouvre un parcour
 d'entraînement à part, après la note. C'est écrit dans `startAmelioration`, et
 une épreuve garde l'absence de condition — c'est exactement le genre de ligne
 qu'une main pressée « corrigerait » en croyant appliquer l'autre règle.
+
+# Vingt-troisième passe — les bilans vides, le « APRÈS » collé, le code, et la maison
+
+Quatre remarques, dans l'ordre où il les a écrites, avec deux captures : l'onglet
+« Les bilans » → « Par séance » de sa 4C, et un gros plan sur la ligne de
+présentation.
+
+> « aucun retour sur cette page. »
+
+Le tableau « Par séance » est **entièrement vide** : trente élèves en lignes,
+huit exercices en colonnes, pas une seule case remplie, et l'avertissement
+« 12 exercices n'ont été atteints par personne » — alors que sa classe a
+travaillé « Avant les vacances - 4ème » toute l'heure.
+
+> « Le après est collé à gauche, ce n'est pas beau. »
+
+La ligne « APRÈS — ce que la classe a travaillé, et ce qu'il faudrait
+reprendre. » commence au bord gauche de la fenêtre, hors de l'alignement des
+onglets juste au-dessus. Sur sa capture, le A est même rogné.
+
+> « Pour les classes, le code ne me sert pas, ne le rend pas cliquables »
+
+Le code de classe (QVSWPZ) sous le titre « 4C » a l'air d'un lien — couleur
+d'accent, et il réagit au clic. Il ne lui sert pas.
+
+> « je ne sais pas comment on fait pour que les élèves ne se connectent pas à la
+> maison avec leur compte car pour l'instant on est en debug, et je veux des
+> retours de ce que l'on fait en classe »
+
+Il veut pouvoir **fermer l'accès hors de la classe**. Deux raisons, et la
+seconde est celle qui presse : le logiciel est encore en rodage, et les
+remontées qu'il regarde doivent être celles de l'heure de cours, pas d'un
+travail du soir.
+
+**Ce que la mesure a dit.** `tools/bilanParSeance.mjs` monte une classe, donne
+une séance, l'IMPOSE, fait travailler un élève, puis compare les deux noms :
+
+```
+   les séances que l'écran propose : path_1792150030223_UWJ9  « La séance imposée »
+   les clés que le serveur a rangées : path_cCLAVVV
+```
+
+L'écran cherchait l'identifiant du parcours du professeur
+(`assignments.path_id`), le serveur avait rangé le travail sous l'empreinte du
+CONTENU que l'élève calcule en ouvrant une séance imposée. **Les deux ne
+pouvaient pas se rencontrer** — et imposer est exactement la façon dont il
+travaille en classe. Pour une séance *donnée*, les deux coïncidaient : c'est
+pourquoi la fonction paraissait marcher quand on l'a construite.
+
+Deux corrections, et il fallait les deux. L'identité **voyage maintenant avec la
+séance imposée** au lieu d'être recalculée par chaque élève — le même défaut que
+celui déjà corrigé sur les séances données (« Tom path_cDPF7NX, Emma
+path_cK8LZGE, même séance, même contenu »). Et le serveur **traduit à
+l'écriture**, par `assignments.path_identity`, qui était déjà le pont. On n'a
+touché à aucune des deux identités : changer celle de l'élève aurait remis la
+classe à zéro, le défaut d'avant-hier.
+
+**La ligne « APRÈS ».** L'en-tête, les onglets et le corps portent tous 26 px de
+marge ; cette phrase-là n'en avait aucune. Mesuré après correction : 26 px
+contre 26 sur l'ordinateur, 15 contre 15 sur un téléphone
+(`tools/alignementDeLaClasse.mjs`).
+
+**Le code de classe** n'est plus un bouton. C'était un bouton de COPIE posé au
+milieu d'une carte qui s'ouvre au clic : viser la classe et tomber sur le code
+ne faisait rien d'utile. Il reste affiché — on le dicte encore, et il porte
+l'état de la porte d'inscription.
+
+**La maison : elle existait, et il ne l'a pas trouvée.** C'est le réglage qu'il
+avait lui-même demandé il y a quelques jours (« Je peux choisir qu'il ne puisse
+avoir accès à rien à la maison pour la simple raison que pour le moment je veux
+suivre ce qu'ils font et voir le debug »), et il s'appelait « Hors séance » —
+le nom du drapeau en base, pas celui du geste. Il cherchait « la maison ».
+
+L'onglet s'appelle maintenant **« 🏠 À la maison »** et dit son état DANS LES
+DEUX SENS (« · ouverte » / « · fermée ») : ici, « ouvert » est la réponse qui le
+gêne, et c'était le défaut. La case se lit « Rien à la maison : ils ne
+travaillent que pendant la séance », et « maison fermée » paraît sous le nom de
+la classe. Le mécanisme, lui, marche : mesuré de bout en bout
+(`tools/fermeHorsSeance.mjs`) — l'élève qui se connecte hors séance ne lit que
+son message, et la porte s'ouvre toute seule dès qu'il met une séance en cours,
+sans que l'élève recharge quoi que ce soit.

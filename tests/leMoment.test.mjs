@@ -339,3 +339,37 @@ test('ET RIEN N\'A BOUGÉ VEUT DIRE RIEN À ÉCRIRE', () => {
     i.pathId = 'p-seance-du-jour';
     assert.equal(etapesEnPlus(i, { steps: p.steps, completed: [] }), null);
 });
+
+// ──────────────────────── L'IDENTITÉ VIENT DU SERVEUR, ELLE NE SE RECALCULE PAS
+
+test('UNE SÉANCE IMPOSÉE SE RECONNAÎT À L\'IDENTITÉ QUE LE SERVEUR A FIGÉE', () => {
+    // RÉMY, capture de l'onglet « Par séance » : « aucun retour sur cette
+    // page ». Mesuré (`tools/bilanParSeance.mjs`) : l'élève rangeait son
+    // travail sous une empreinte qu'il recalculait à la réception, et l'écran
+    // du professeur cherchait l'identifiant du parcours. Rien ne se
+    // rencontrait.
+    //
+    // C'EST LE MÊME DÉFAUT QUE CELUI DÉJÀ CORRIGÉ SUR LES SÉANCES DONNÉES :
+    // « Tom path_cDPF7NX, Emma path_cK8LZGE, même séance, même contenu » (voir
+    // `path_identity` dans api/lib/schema.php). Une identité qu'on recalcule
+    // n'est pas une identité.
+    const p = unParcours();
+    const duServeur = { ...impose(p), identite: 'path_cFIGEE' };
+    // L'élève qui travaille DÉJÀ sous l'identité du serveur est dessus : on ne
+    // rouvre pas, donc on n'efface pas son travail.
+    const d = fautIlOuvrir(duServeur, 'path_cFIGEE', false);
+    assert.equal(d.ouvrir, false);
+    assert.equal(d.pourquoi, 'deja-dessus');
+});
+
+test('et à défaut, on retombe sur l\'empreinte du contenu', () => {
+    // Une séance imposée sans avoir été donnée, ou donnée avant que la colonne
+    // n'existe, n'a pas d'identité au serveur. Le repli doit valoir, sans quoi
+    // la mise à jour casserait les séances d'avant.
+    const p = unParcours();
+    const sansIdentite = impose(p);
+    const calculee = identiteDeParcours(normalizePath(sansIdentite.path, sansIdentite.name));
+    const d = fautIlOuvrir(sansIdentite, calculee, false);
+    assert.equal(d.ouvrir, false);
+    assert.equal(d.pourquoi, 'deja-dessus');
+});

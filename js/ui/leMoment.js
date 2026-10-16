@@ -100,7 +100,12 @@ export function fautIlOuvrir(impose, parcoursCharge, enTrainDeTravailler, seance
     if (seanceChargee && impose.pathId && seanceChargee === impose.pathId) {
         return { ouvrir: false, pourquoi: 'meme-seance' };
     }
-    const identite = identiteDeParcours(normalizePath(impose.path, impose.name));
+    // LA MÊME RÈGLE QUE POUR L'OUVERTURE, ET IL FAUT QUE CE SOIT LA MÊME :
+    // `ouvrirLaSeanceImposee` range le travail sous l'identité FIGÉE par le
+    // serveur quand il y en a une. Comparer ici à une empreinte recalculée
+    // reviendrait à se demander « est-ce le même parcours ? » avec une autre
+    // définition que celle qui a servi à l'enregistrer.
+    const identite = identiteImposee(impose, normalizePath(impose.path, impose.name));
     if (parcoursCharge && parcoursCharge === identite) {
         return { ouvrir: false, pourquoi: 'deja-dessus' };
     }
@@ -192,9 +197,29 @@ function completerLaSeanceImposee(impose, etapes, charge) {
     });
 }
 
+/**
+ * SOUS QUEL NOM L'ÉLÈVE RANGE LE TRAVAIL D'UNE SÉANCE IMPOSÉE.
+ *
+ * CELLE QUE LE SERVEUR A FIGÉE, QUAND IL EN A UNE. L'identité est une empreinte
+ * du CONTENU, et la recalculer à la réception donne des valeurs différentes
+ * d'un élève à l'autre dès que la séance a été complétée entre-temps —
+ * « Tom path_cDPF7NX, Emma path_cK8LZGE, même séance, même contenu » (voir
+ * `path_identity` dans api/lib/schema.php). Les séances DONNÉES utilisent déjà
+ * celle du serveur (`parcoursServeur.js`) ; les imposées la recalculaient
+ * encore, et c'est ce qui vidait l'onglet « Par séance » du professeur —
+ * mesuré par `tools/bilanParSeance.mjs`.
+ *
+ * ON GARDE LE REPLI : une séance imposée sans avoir été donnée, ou donnée
+ * avant que la colonne n'existe, n'a pas d'identité au serveur. On recalcule
+ * alors, exactement comme avant.
+ */
+function identiteImposee(impose, parcours) {
+    return (impose && impose.identite) || identiteDeParcours(parcours);
+}
+
 function ouvrirLaSeanceImposee(impose) {
     const parcours = normalizePath(impose.path, impose.name);
-    const id = identiteDeParcours(parcours);
+    const id = identiteImposee(impose, parcours);
     state.setStudentPath(parcours.steps, {
         pathId: id,
         name: parcours.name || impose.name || 'Séance',

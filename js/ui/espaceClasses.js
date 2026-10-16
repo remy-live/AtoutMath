@@ -638,9 +638,20 @@ function carteClasseHtml(c) {
              réponse était un interrupteur dans un AUTRE écran. Voir
              js/core/codeDeClasse.js, qui tient la règle. -->
         <div class="ec-carte-code${porte.ouvert === false ? ' ec-carte-code--ferme' : ''}">
+            <!-- LE CODE NE SE CLIQUE PLUS.
+
+                 RÉMY : « Pour les classes, le code ne me sert pas, ne le rend
+                 pas cliquables ». C'était un bouton de COPIE, posé au milieu
+                 d'une carte qui s'ouvre au clic : viser la classe et tomber
+                 sur le code ne faisait rien d'utile, et il fallait recliquer
+                 à côté. Un geste que personne n'utilise, placé exactement là
+                 où l'on vise autre chose, coûte plus qu'il ne rend.
+
+                 IL RESTE AFFICHÉ, et en gros : on le DICTE encore, et il
+                 porte l'état de la porte d'inscription. Simplement, il est
+                 redevenu du texte. -->
             <span class="ec-code-eti">${esc(porte.etiquette)}</span>
-            <button type="button" class="ec-code ec-code--copie" data-copier="${esc(c.join_code)}"
-                    title="${esc(porte.dit)}">${esc(c.join_code)}</button>
+            <span class="ec-code" title="${esc(porte.dit)}">${esc(c.join_code)}</span>
             ${porte.quoiFaire ? `<button type="button" class="ec-code-ouvrir"
                     data-inscription-libre="0"
                     title="${esc(porte.dit)}">${esc(porte.quoiFaire)}</button>` : ''}
@@ -825,7 +836,16 @@ function classeHtml() {
             ? '<span class="ec-sous-sep">\u00b7</span><span class="ec-ferme-mot">porte ferm\u00e9e</span>'
             : '')
         + `<span class="ec-sous-sep">·</span>${eleves.length} élève${eleves.length > 1 ? 's' : ''}`
-        + (info.locked ? '<span class="ec-sous-sep">·</span><b>en pause</b>' : '');
+        + (info.locked ? '<span class="ec-sous-sep">·</span><b>en pause</b>' : '')
+        // LA PORTE DE LA MAISON SE LIT SOUS LE NOM DE LA CLASSE.
+        //
+        // RÉMY : « je ne sais pas comment on fait pour que les élèves ne se
+        // connectent pas à la maison ». Le réglage existait — et il l'avait
+        // demandé —, mais rien ne disait, en entrant dans la classe, s'il
+        // était mis. Un réglage qui agit sur trente élèves et qu'on ne voit
+        // qu'en dépliant un onglet se reclique à l'aveugle.
+        + (info.hors_seance
+            ? '<span class="ec-sous-sep">·</span><b>maison fermée</b>' : '');
 
     // LES ONGLETS SONT RANGÉS PAR MOMENT, ET LE DERNIER EST À PART.
     //
@@ -2519,9 +2539,21 @@ function chronoQuiTourne(ch) {
  * jamais cacher ce qui AGIT sur la classe.
  */
 const OUTILS_DE_LHEURE = [
+    // LE NOM EST CELUI DE LA QUESTION QU'IL SE POSE, PAS CELUI DU RÉGLAGE.
+    //
+    // RÉMY, alors que l'outil existait déjà et qu'il l'avait lui-même demandé :
+    // « je ne sais pas comment on fait pour que les élèves ne se connectent pas
+    // à la maison avec leur compte ». Il cherchait « la maison » et lisait
+    // « Hors séance » — le nom du DRAPEAU en base, pas celui du geste. Un
+    // réglage qu'on ne retrouve pas n'existe pas.
+    //
+    // ET SON ÉTAT SE LIT DANS LES DEUX SENS, contrairement aux autres onglets :
+    // ici, « ouvert » est la réponse qui le gêne, et c'est le défaut. Ne
+    // marquer que « fermé » laissait la porte grande ouverte sans un mot.
     { cle: 'maison',
-      titre: (info, ch, enCours, defiCourt) => `🏠 Hors séance${info.hors_seance
-                ? ' <b class="ec-pilote-outil-vif">· fermé</b>' : ''}`,
+      titre: (info, ch, enCours, defiCourt) => `🏠 À la maison${info.hors_seance
+                ? ' <b class="ec-pilote-outil-vif">· fermée</b>'
+                : ' <b class="ec-pilote-outil-vif">· ouverte</b>'}`,
       corps: outilMaison },
     { cle: 'defi',
       titre: (info, ch, enCours, defiCourt) => `⚡ Défi de la classe${defiCourt
@@ -2628,10 +2660,25 @@ function rangeeDuHaut(info) {
 
 /** 🏠 Hors séance — corps de l'onglet. */
 function outilMaison(info, ch, enCours, defiCourt) {
-    return `<label class="ec-pilote-case">
+    return `<!-- LA CASE DIT CE QU'ELLE FAIT, en entier.
+
+             RÉMY : « je ne sais pas comment on fait pour que les élèves ne se
+             connectent pas à la maison avec leur compte car pour l'instant on
+             est en debug, et je veux des retours de ce que l'on fait en
+             classe ». C'est exactement cette case — il ne l'a pas reconnue
+             sous « Fermé hors séance ».
+
+             ET LA PHRASE DIT CE QUI OUVRE LA PORTE : c'est la séance imposée,
+             pas une heure ni une adresse réseau (voir hors_seance dans
+             api/lib/schema.php). Sans cela, on coche et l'on croit avoir
+             fermé pour toujours. -->
+            <label class="ec-pilote-case">
                 <input type="checkbox" data-maison${info.hors_seance ? ' checked' : ''}>
-                <span>Fermé hors séance</span>
+                <span>Rien à la maison : ils ne travaillent que pendant la séance</span>
             </label>
+            <span class="ec-pilote-dit">C'est la séance <b>mise en cours</b> qui
+               ouvre la porte. Hors de ce moment-là, l'élève qui se connecte ne
+               lit que votre message.</span>
             <span class="ec-pilote-mot">
                 <input type="text" id="ec-maison-mot" class="ec-champ" maxlength="300"
                        placeholder="Ce que l'élève lira quand c'est fermé…"
@@ -3158,9 +3205,10 @@ function modifierDansLaCellule(cellule, redessiner) {
 }
 
 async function brancher(e, redessiner) {
-    // LE CODE SE COPIE SANS OUVRIR LA CLASSE. Il est DANS la carte, et la carte
-    // entière est cliquable : sans cette sortie anticipée, copier le code
-    // ouvrirait la classe par la même occasion.
+    // LA COPIE DU CODE A ÉTÉ RETIRÉE — Rémy : « le code ne me sert pas, ne le
+    // rend pas cliquables ». Ce chemin ne reçoit plus rien ; il reste parce
+    // qu'une classe donnée avant la mise à jour peut encore porter l'attribut
+    // dans un écran déjà peint, et parce qu'il ne coûte qu'une ligne.
     const copie = e.target.closest('[data-copier]');
     if (copie) {
         e.stopPropagation();

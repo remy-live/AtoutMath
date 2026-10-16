@@ -119,13 +119,12 @@
     color: var(--primary-texte);
 }
 .ec-code--petit { font-size: .95rem; letter-spacing: .09em; }
-/* Le code est un bouton parce qu'on le copie ; il ne doit pas en avoir l'air. */
+/* Le code N'EST PLUS UN BOUTON — Rémy : « le code ne me sert pas, ne le rend
+   pas cliquables ». La règle reste pour les écrans déjà peints avant une mise
+   à jour, mais sans la main ni le survol : plus rien n'y invite le clic. */
 .ec-code--copie {
-    background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
-    text-align: left; border-radius: 6px; transition: .15s;
-}
-@media (hover: hover) {
-    .ec-code--copie:hover { background: var(--bg-hover); box-shadow: 0 0 0 5px var(--bg-hover); }
+    background: none; border: none; padding: 0; font-family: inherit;
+    text-align: left; border-radius: 6px;
 }
 /* LA PORTE FERMÉE SE VOIT, SANS CRIER.
    Le code reste gros — on le dicte toujours, et on le dictera dès la porte
@@ -5039,9 +5038,26 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .ec-poche-eleve code { font-size: .78rem; color: var(--text-muted); }
 .ec-poche-eleve--ecarte { opacity: .5; }
 /* CE QUE CHAQUE ÉCRAN EST, sous sa rangée d'onglets. Discret : c'est une
-   phrase qu'on lit UNE fois, le jour où l'on se demande à quoi sert l'autre. */
+   phrase qu'on lit UNE fois, le jour où l'on se demande à quoi sert l'autre.
+
+   ELLE S'ALIGNE SUR LE RESTE DE L'ÉCRAN, et c'est ce qui manquait.
+   RÉMY, capture à l'appui : « Le après est collé à gauche, ce n'est pas beau ».
+   Il avait raison au pixel près : l'en-tête, les onglets et le corps portent
+   tous les 26 px de marge de cet écran (`.ec-tete`, `.ec-onglets`,
+   `.ec-corps`) ; cette phrase-ci, glissée entre les deux, n'en avait aucune.
+   Elle commençait donc au bord de la fenêtre, et son « A » s'y écrasait. */
 .ec-onglet-dit {
-    margin: 2px 0 10px; font-size: .82rem; color: var(--text-muted);
+    margin: 2px 0 10px; padding: 0 26px;
+    font-size: .82rem; color: var(--text-muted);
+}
+/* SA MARGE DE TÉLÉPHONE EST ICI, ET NON AVEC LES AUTRES.
+   La règle qui rentre tout l'écran à 15 px sous 560 px vit deux mille lignes
+   plus haut. Y ajouter ce sélecteur ne changeait RIEN — mesuré : 26 px contre
+   15 pour les onglets — parce que les deux règles ont la même spécificité et
+   que c'est la DERNIÈRE écrite qui gagne, ici le `padding` ci-dessus. Une
+   règle juste, placée trop tôt, ne fait rien et ne le dit pas. */
+@media (max-width: 560px) {
+    .ec-onglet-dit { padding-left: 15px; padding-right: 15px; }
 }
 /* LES TROIS ONGLETS DES BILANS. Plus discrets que ceux de la classe : on est
    déjà dans « Les bilans », ceux-ci ne font que choisir la lecture. */
@@ -5361,6 +5377,13 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     accent-color: var(--primary); cursor: pointer;
 }
 .ec-pilote-rangee--maison .ec-pilote-mot { flex: 1 1 260px; }
+/* LA PHRASE QUI DIT CE QUI OUVRE LA PORTE. Elle prend sa ligne entière : posée
+   à côté de la case, elle poussait le champ du message hors de la rangée sur un
+   écran de portable. */
+.ec-pilote-dit {
+    flex: 1 1 100%; font-size: .8rem; color: var(--text-muted); line-height: 1.35;
+}
+.ec-pilote-dit b { color: var(--text-main); }
 
 /* LE TITRE EST UN BOUTON, ET IL DOIT RESTER UN TITRE. Un `<button>` porte par
    défaut un fond, une bordure et la police du système : on les retire tous,

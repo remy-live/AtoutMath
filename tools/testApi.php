@@ -1027,6 +1027,41 @@ verifier('ET IL SUIT CELLE DU JOUR DÈS QU\'ELLE L\'OUVRE',
     is_array($apres) && ($apres['pathName'] ?? '') === 'La séance d\'aujourd\'hui',
     json_encode($apres));
 
+// ── LE TABLEAU « PAR SÉANCE » RANGE SOUS LE NOM QUE L'ÉCRAN CHERCHE ────────
+//
+// RÉMY, capture de son onglet « Les bilans » → « Par séance » : « aucun retour
+// sur cette page ». Trente élèves, huit colonnes, pas une case remplie.
+//
+// LES DEUX CÔTÉS NE PARLAIENT PAS DU MÊME NOM. L'élève range son travail sous
+// l'identité du CONTENU (`path_cDUJOUR` ici, `identiteDeParcours` chez lui) ;
+// l'écran interroge `parSeance[seance.pathId]`, où `pathId` est
+// `assignments.path_id` — l'identifiant du parcours du professeur. Pour une
+// séance DONNÉE les deux coïncidaient ; pour une séance IMPOSÉE, jamais. Et
+// imposer est la façon dont il travaille en classe.
+//
+// LE PONT EXISTAIT DÉJÀ EN BASE : `assignments.path_identity`. Le serveur
+// traduit maintenant à l'écriture, une fois, plutôt que dans chaque écran qui
+// lira ce tableau.
+json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => [[
+    'id' => 'aaaaaaaa-8888-4222-8333-000000000001',
+    'type' => 'attempt', 'ts' => $msNow + 2,
+    'payload' => ['runId' => 'run-jour', 'exerciseId' => 'calc-add',
+                  'skillId' => 'calc.add.entiers', 'correct' => true,
+                  'attemptIndex' => 0],
+]]], $lea);
+$rapport = json('/teacher/report', ['classId' => $classId], $jetonProf);
+$saLigne = [];
+foreach ($rapport['json']['students'] ?? [] as $x) {
+    if (($x['firstName'] ?? '') === 'Léa') { $saLigne = $x; break; }
+}
+$clefs = array_keys($saLigne['parSeance'] ?? []);
+verifier('LE DÉTAIL PAR SÉANCE EST RANGÉ SOUS L\'IDENTIFIANT DU PARCOURS',
+    isset($saLigne['parSeance'][$duJour]['calc-add']),
+    'cherché ' . $duJour . ' · rangé sous ' . implode(', ', $clefs));
+verifier('ET PLUS SOUS L\'EMPREINTE DU CONTENU, que l\'écran ne connaît pas',
+    !in_array('path_cDUJOUR', $clefs, true),
+    implode(', ', $clefs));
+
 // ── CELUI QUI A FINI ET QUI JOUE À AUTRE CHOSE N'A PAS « RIEN COMMENCÉ » ───
 //
 // RÉMY : « j'ai l'impression que quand un élève a fini et qu'il joue à autre

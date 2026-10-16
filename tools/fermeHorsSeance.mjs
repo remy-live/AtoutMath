@@ -56,7 +56,21 @@ await s.page.evaluate(() => {
 });
 await dormir(2000);
 
-await s.doitExister('[data-maison]', 'la case « Fermé hors séance »');
+// LA BARRE DE PILOTAGE EST EN ONGLETS DEPUIS QU'ELLE A ÉTÉ DÉSENCOMBRÉE, et
+// ils sont REPLIÉS en arrivant (`vue.outil: null`). Cette sonde cliquait
+// directement la case, qui n'est plus dans la page tant que l'onglet est
+// fermé : `doitExister` a jeté, ce qui est exactement son travail — sans lui,
+// elle aurait annoncé un réglage cassé.
+await s.doitExister('[data-outil="maison"]', 'l\'onglet « À la maison »');
+const nomDeLOnglet = await s.page.evaluate(() =>
+    (document.querySelector('[data-outil="maison"]').textContent || '')
+        .replace(/\s+/g, ' ').trim());
+dire('L\'ONGLET SE NOMME COMME SA QUESTION, et dit son état',
+    /à la maison/i.test(nomDeLOnglet) && /(ouverte|fermée)/i.test(nomDeLOnglet),
+    nomDeLOnglet);
+await s.cliquer('[data-outil="maison"]', 'l\'onglet « À la maison »');
+await dormir(900);
+await s.doitExister('[data-maison]', 'la case « Rien à la maison »');
 await s.page.click('[data-maison]');
 await s.page.fill('#ec-maison-mot', MOT);
 await s.page.click('[data-maison-mot]');

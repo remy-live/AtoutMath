@@ -250,7 +250,33 @@ function etatDeSeance(array $eleve): array
         $q->execute([$imposeId]);
         $p = $q->fetch();
         if ($p) {
+            // L'IDENTITÉ DU TRAVAIL VOYAGE AVEC LA SÉANCE, ELLE NE SE
+            // RECALCULE PLUS CHEZ CHAQUE ÉLÈVE.
+            //
+            // RÉMY, capture de l'onglet « Par séance » : « aucun retour sur
+            // cette page ». Mesuré (`tools/bilanParSeance.mjs`) : l'élève
+            // rangeait son travail sous une empreinte qu'il calculait
+            // lui-même à la réception, et l'écran du professeur cherchait
+            // l'identifiant du parcours. Rien ne pouvait se rencontrer.
+            //
+            // C'EST LE MÊME DÉFAUT QUE CELUI DÉJÀ CORRIGÉ SUR LES SÉANCES
+            // DONNÉES, et pour la même raison : « Tom path_cDPF7NX, Emma
+            // path_cK8LZGE, même séance, même contenu » (voir
+            // `path_identity` dans api/lib/schema.php). Une identité qu'on
+            // recalcule n'est pas une identité. On rend donc celle qui a été
+            // FIGÉE quand la séance a été donnée.
+            //
+            // NULL QUAND ON NE L'A PAS — une séance imposée sans avoir été
+            // donnée, ou donnée avant que la colonne n'existe. L'élève
+            // retombe alors sur son calcul d'avant : rien de neuf ne casse.
+            $qi = $pdo->prepare('SELECT path_identity FROM assignments
+                                 WHERE path_id = ? AND class_id = ? AND student_id IS NULL');
+            $qi->execute([$imposeId, $classe['id']]);
+            $identite = $qi->fetchColumn();
+
             $impose = ['pathId' => $p['id'], 'name' => $p['name'],
+                       'identite' => $identite !== false && $identite !== null
+                           ? (string) $identite : null,
                        // LE PLEIN ÉCRAN VOYAGE DANS LA SÉANCE IMPOSÉE, et non à
                        // côté d'elle : c'est elle que l'élève reçoit, et un
                        // drapeau rangé ailleurs serait à retrouver au bon
