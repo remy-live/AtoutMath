@@ -146,6 +146,24 @@
     .ec-code-ouvrir:hover { background: var(--bg-hover); }
 }
 .ec-carte-bas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* LA PORTE DE LA MAISON, SUR LA CARTE. Elle part à droite : la carte entière
+   s'ouvre au clic, et un bouton posé au milieu vole la visée — c'est
+   exactement ce que Rémy reprochait au code de classe. Au bout de la ligne, on
+   le trouve quand on le cherche et on ne le rencontre pas autrement. */
+.ec-maison-btn {
+    margin-left: auto; font: inherit; font-size: .78rem; font-weight: 700;
+    min-height: 32px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    background: var(--bg-panel); color: var(--text-muted);
+    border: 1px solid var(--border); white-space: nowrap;
+}
+/* FERMÉE, ELLE SE VOIT — c'est l'état qui agit sur trente élèves. */
+.ec-maison-btn--ferme {
+    color: var(--primary-texte); border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
+}
+@media (hover: hover) {
+    .ec-maison-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+}
 .ec-eff { font-size: .85rem; color: var(--text-muted); font-weight: 600; }
 .ec-pastille {
     font-size: .7rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;

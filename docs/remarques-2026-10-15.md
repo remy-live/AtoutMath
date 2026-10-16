@@ -890,3 +890,71 @@ la classe. Le mécanisme, lui, marche : mesuré de bout en bout
 (`tools/fermeHorsSeance.mjs`) — l'élève qui se connecte hors séance ne lit que
 son message, et la porte s'ouvre toute seule dès qu'il met une séance en cours,
 sans que l'élève recharge quoi que ce soit.
+
+# Vingt-quatrième passe — la porte de la maison au bon endroit, et la sortie de l'élève
+
+> « mais pour l'instant je me connecte avec un compte élève, il a accès à son
+> compte chez lui mais pour le moment j'aimerai bloquer son accès chez lui, on
+> peut le mettre dans l'onglet mes classes, là où tu affiches la liste de
+> classe. »
+
+Le réglage existe et il marche — c'est celui qu'on vient de renommer « 🏠 À la
+maison ». Il est dans **Le direct**, c'est-à-dire DANS une classe, derrière un
+onglet replié. Or le geste qu'il décrit se fait **avant** l'heure, et sur
+plusieurs classes à la fois : il le veut donc sur l'écran qui les montre
+toutes.
+
+> « Dans la partie élève il n'y a pas d'endroit pour se déconnecter »
+
+Il essaie le logiciel avec un vrai compte d'élève, et il ne peut pas en
+ressortir.
+
+**La porte, sur la carte de chaque classe.** Un bouton `🏠 Maison ouverte` /
+`🏠 Maison fermée` au bout de la ligne du bas, qui porte l'ÉTAT et non l'action :
+sur six cartes, on lit d'un coup d'œil lesquelles sont fermées. C'est le MÊME
+réglage que celui du direct — les deux écrivent `hors_seance` — et non un
+second, parce que deux gestes portant le même nom et faisant deux choses
+différentes, ce dépôt l'a déjà payé. Il part à droite pour ne pas voler le clic
+qui ouvre la classe : mesuré, il couvre 7 % de la carte et s'arrête avant elle.
+
+**Et il a fallu deux mesures pour qu'il marche.** Ma première version écrivait
+`c.hors_seance` dans la liste qu'on a en mémoire puis redessinait. Le serveur
+enregistrait — vérifié — et la carte disait toujours « Maison ouverte » :
+`mesClasses()` rend le TABLEAU des classes, pas un objet qui le contient, et
+l'écriture tombait à côté sans un mot. On relit donc la liste au serveur après
+avoir fermé. Un écran qui ment sur un réglage qu'on vient de poser est pire que
+pas de réglage : on reclique, et l'on rouvre ce qu'on venait de fermer.
+
+**La sortie de l'élève.** Elle existait, dans le menu « ⋯ » de la barre du
+haut — c'est-à-dire derrière le bouton dont le commentaire d'`index.html` dit
+qu'il existe POUR CACHER les outils aux élèves (« quand l'élève arrive là, ça
+fait peur »). Mesuré avant d'y toucher : sur l'écran de l'élève, le bouton
+existe, n'est pas caché, et reste invisible — son menu l'est.
+
+Elle se pose maintenant dans **« Qui travaille ? »**, la ligne de l'identité de
+« Mon profil », avec le même libellé qu'ailleurs : « Se déconnecter de 6e B ».
+Le geste est écrit une seule fois pour les deux boutons. Mesuré : visible,
+cliquable, et la demande de confirmation s'ouvre — « Tu vas te déconnecter de la
+classe « 6e B ». Tout ton travail est enregistré. »
+
+# Vingt-cinquième passe — la porte entrouverte, et le journal des connexions
+
+> « mais par contre si il est bloqué chez lui car j'empêche l'accès, je peux
+> laisser libre qqs exercices que j'aurais défini mais attention c'est la seule
+> chose qu'il peut faire, il ne peut pas aller sur son profil ou autre. »
+>
+> « donc si j'empêche l'accès pour une classe, je peux autoriser des exercices
+> spécifiquement pour cette classe »
+
+Oui, et les deux phrases disent la même chose : la liste est **par classe**, et
+elle est **exclusive**. Porte fermée ne devient pas porte entrouverte sur tout
+le logiciel : le voile reste, et il ne laisse passer que ce qu'il a nommé. Pas
+de profil, pas de catalogue, pas de bac à sable.
+
+> « J'aimerai aussi que tu enregistres les connexions que je puisse suivre ce
+> qu'ils font »
+
+Il veut un journal des connexions — qui s'est connecté, quand — et il le veut
+maintenant pour la même raison que la porte : « pour le moment je veux suivre
+ce qu'ils font et voir le debug ». Ce qui l'intéresse n'est donc pas seulement
+l'heure : c'est **où** — pendant la séance, ou chez eux.

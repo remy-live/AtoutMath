@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1037">
-    <link rel="stylesheet" href="css/layout.css?v=1037">
-    <link rel="stylesheet" href="css/ui.css?v=1037">
-    <link rel="stylesheet" href="css/games.css?v=1037">
-    <link rel="stylesheet" href="css/components.css?v=1037">
-    <link rel="stylesheet" href="css/modules.css?v=1037">
+    <link rel="stylesheet" href="css/base.css?v=1038">
+    <link rel="stylesheet" href="css/layout.css?v=1038">
+    <link rel="stylesheet" href="css/ui.css?v=1038">
+    <link rel="stylesheet" href="css/games.css?v=1038">
+    <link rel="stylesheet" href="css/components.css?v=1038">
+    <link rel="stylesheet" href="css/modules.css?v=1038">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1276,6 +1276,26 @@
                             <div id="profile-switcher" class="profile-switcher"></div>
                             <button id="btn-add-profile" class="btn-toggle btn-toggle--sm"
                                 title="Plusieurs élèves peuvent utiliser ce poste : chacun garde sa progression et ses statistiques séparément.">➕ Nouveau profil</button>
+                            <!-- LA SORTIE EST ICI PARCE QUE C'EST ICI QU'ON LA CHERCHE.
+
+                                 Rémy : « Dans la partie élève il n'y a pas d'endroit
+                                 pour se déconnecter ». Il y en avait un — dans le menu
+                                 « ⋯ » de la barre du haut, c'est-à-dire derrière le
+                                 bouton dont le commentaire, trois cents lignes plus
+                                 haut, dit qu'il existe POUR CACHER les outils aux
+                                 élèves. Mesuré sur l'écran de l'élève : le bouton
+                                 existe, n'est pas caché, et reste invisible.
+
+                                 « Qui travaille ? » est la ligne de l'IDENTITÉ : on y
+                                 change de profil, on y lit son prénom. C'est donc là
+                                 qu'on cherche « ce n'est pas moi » et « je m'en vais ».
+                                 Le libellé dit de quoi on part — « Se déconnecter de
+                                 6e B » —, et le bouton n'apparaît que si l'on est
+                                 rattaché à quelque chose (voir ui/deconnexionUI.js). -->
+                            <button id="btn-sortie-profil" class="btn-toggle btn-toggle--sm profile-sortie"
+                                type="button" hidden
+                                title="Quitter ce compte sur cet appareil. Ton travail est envoyé avant de partir."
+                                >Se déconnecter</button>
                         </div>
 
                         <!-- QUATRE ONGLETS PLUTÔT QU'UNE COLONNE DE QUATRE MÈTRES.

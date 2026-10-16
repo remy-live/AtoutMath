@@ -660,6 +660,20 @@ function carteClasseHtml(c) {
             <span class="ec-eff">${n} élève${n > 1 ? 's' : ''}</span>
             ${Number(c.locked) ? '<span class="ec-pastille ec-pastille--pause">en pause</span>' : ''}
             ${c.notice ? '<span class="ec-pastille ec-pastille--mot">consigne</span>' : ''}
+            <!-- LA PORTE DE LA MAISON, SUR LA CARTE — voir brancher(), qui dit
+                 pourquoi elle est ici en plus d'être dans Le direct. Le libellé
+                 porte l'ÉTAT, pas l'action : « Maison ouverte » se lit d'un
+                 coup d'œil sur six cartes, « Fermer la maison » demande de
+                 déduire l'état de ce qu'on propose. -->
+            <button type="button" class="ec-maison-btn${Number(c.hors_seance)
+                    ? ' ec-maison-btn--ferme' : ''}"
+                    data-maison-classe="${esc(c.id)}"
+                    data-ferme="${Number(c.hors_seance) ? '1' : '0'}"
+                    data-mot="${esc(c.hors_seance_mot || '')}"
+                    title="${Number(c.hors_seance)
+                        ? 'Fermé : hors de la séance en cours, l\'élève ne lit que votre message. Cliquer pour rouvrir.'
+                        : 'Ouvert : vos élèves peuvent travailler chez eux. Cliquer pour fermer.'}"
+                    >🏠 ${Number(c.hors_seance) ? 'Maison fermée' : 'Maison ouverte'}</button>
             <!-- SUPPRIMER DEPUIS LA LISTE, LÀ OÙ ON LES VOIT TOUTES.
                  Rémy : « il faudrait pouvoir supprimer les classes ». Le geste
                  existait — au fond de l'onglet « La séance », À L'INTÉRIEUR de
@@ -3205,6 +3219,55 @@ function modifierDansLaCellule(cellule, redessiner) {
 }
 
 async function brancher(e, redessiner) {
+    // ── LA PORTE DE LA MAISON, DEPUIS LA LISTE DES CLASSES ─────────────────
+    //
+    // RÉMY : « j'aimerai bloquer son accès chez lui, on peut le mettre dans
+    // l'onglet mes classes, là où tu affiches la liste de classe ».
+    //
+    // LE RÉGLAGE EXISTE, ET IL ÉTAIT AU MAUVAIS MOMENT. Il vit dans Le direct,
+    // c'est-à-dire DANS une classe, derrière un onglet replié : on l'y trouve
+    // pendant l'heure. Or ce geste-ci se fait AVANT, et sur plusieurs classes
+    // à la suite — « je ferme tout, on verra lundi ». L'écran qui les montre
+    // toutes est donc le bon.
+    //
+    // C'EST LE MÊME RÉGLAGE, PAS UN SECOND : les deux écrivent `hors_seance`
+    // et lisent la même réponse. Deux gestes portant le même nom et faisant
+    // deux choses différentes, ce dépôt l'a déjà payé (voir « Mettre en
+    // pause », qui fermait le catalogue).
+    //
+    // ON S'ARRÊTE AVANT LA CARTE : elle est cliquable en entier, et fermer la
+    // maison ouvrirait la classe par la même occasion.
+    const maison = e.target.closest('[data-maison-classe]');
+    if (maison) {
+        e.stopPropagation();
+        const cid = maison.dataset.maisonClasse;
+        const ferme = maison.dataset.ferme !== '1';
+        // LE MOT DU PROFESSEUR VOYAGE AVEC : `fermerHorsSeance` envoie l'ÉTAT
+        // COMPLET, et poster une chaîne vide effacerait le message qu'il a
+        // écrit ailleurs.
+        const mot = maison.dataset.mot || '';
+        const r = await fermerHorsSeance(cid, ferme, mot);
+        if (r && r.erreur) { showToast(r.erreur, 'error'); return; }
+        // ON RELIT LA LISTE AU SERVEUR PLUTÔT QUE DE RETOUCHER CELLE QU'ON A.
+        //
+        // Ma première version écrivait `c.hors_seance` dans `vue.classes` puis
+        // redessinait. MESURÉ : le serveur avait bien enregistré, et la carte
+        // disait toujours « Maison ouverte ». Un écran qui ment sur un réglage
+        // qu'on vient de poser est pire que pas de réglage : on reclique, et
+        // l'on rouvre ce qu'on venait de fermer.
+        //
+        // La liste coûte une requête et arrive en quelques dizaines de
+        // millisecondes ; elle a l'avantage de ne pouvoir mentir sur rien.
+        const l = await mesClasses();
+        if (!l.erreur) vue.classes = l;
+        redessiner();
+        showToast(r.ferme
+            ? '🏠 Porte fermée : ils ne travaillent que pendant la séance.'
+            : '🏠 Porte ouverte : ils peuvent travailler à la maison.',
+            r.ferme ? 'info' : 'success');
+        return;
+    }
+
     // LA COPIE DU CODE A ÉTÉ RETIRÉE — Rémy : « le code ne me sert pas, ne le
     // rend pas cliquables ». Ce chemin ne reçoit plus rien ; il reste parce
     // qu'une classe donnée avant la mise à jour peut encore porter l'attribut

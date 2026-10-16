@@ -114,6 +114,17 @@
 .profile-qui { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
 .profile-qui-label { font-weight: 800; color: var(--text-main); font-size: .95rem; }
 .profile-qui .profile-switcher { margin: 0; }
+/* LA SORTIE PART À DROITE DE LA LIGNE, et elle n'a pas la couleur des autres :
+   c'est le seul bouton de cet écran qui FAIT PARTIR. Discret au repos — on ne
+   le propose pas, on le rend trouvable —, net au survol. */
+.profile-sortie { margin-left: auto; color: var(--danger-texte); }
+.profile-sortie[hidden] { display: none; }
+@media (hover: hover) {
+    .profile-sortie:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+}
+@media (max-width: 560px) {
+    .profile-sortie { margin-left: 0; width: 100%; }
+}
 
 /* `clamp` : 2.5rem débordait de l'écran d'un téléphone — « Mon Parcours
    Actuel » se coupait. Le titre suit la largeur disponible. */

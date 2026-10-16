@@ -49,19 +49,49 @@ export function quiEstLa() {
     return { role: 'personne', nom: '' };
 }
 
-function majBouton() {
-    const b = document.getElementById('btn-deconnexion');
-    if (!b) return;
-    const qui = quiEstLa();
-    b.hidden = qui.role === 'personne';
-    const mot = document.getElementById('btn-deconnexion-mot');
-    if (!mot) return;
+function direDeQuoi(qui) {
     // ON DIT DE QUOI ON SE DÉCONNECTE. « Se déconnecter » tout court laisse la
     // question ouverte sur une machine où le professeur et l'élève passent
     // l'un après l'autre — et c'est exactement la machine où l'on clique.
-    mot.textContent = qui.role === 'prof'
+    return qui.role === 'prof'
         ? 'Quitter le mode professeur'
         : (qui.classe ? `Se déconnecter de ${qui.classe}` : 'Se déconnecter');
+}
+
+function majBouton() {
+    const qui = quiEstLa();
+    const b = document.getElementById('btn-deconnexion');
+    if (b) {
+        b.hidden = qui.role === 'personne';
+        const mot = document.getElementById('btn-deconnexion-mot');
+        if (mot) mot.textContent = direDeQuoi(qui);
+    }
+
+    // ── ET LA MÊME SORTIE DANS « MON PROFIL » ──────────────────────────────
+    //
+    // RÉMY : « Dans la partie élève il n'y a pas d'endroit pour se
+    // déconnecter ».
+    //
+    // IL Y EN AVAIT UN, ET PERSONNE NE POUVAIT LE TROUVER. La sortie vit dans
+    // le menu « ⋯ » de la barre du haut — un bouton sans libellé, dont tout
+    // le commentaire d'index.html dit qu'il existe POUR CACHER les outils aux
+    // élèves (« quand l'élève arrive là, ça fait peur »). C'était le bon
+    // rangement pour six outils d'auteur, et le mauvais pour la seule porte de
+    // sortie.
+    //
+    // MESURÉ avant d'y toucher : sur l'écran de l'élève, `#btn-deconnexion`
+    // existe, n'est pas caché, et reste invisible — son menu l'est. Rien
+    // d'autre à l'écran ne nomme la déconnexion.
+    //
+    // ELLE SE POSE DANS « Qui travaille ? », à côté du changement de profil :
+    // c'est la ligne de l'IDENTITÉ, donc l'endroit où l'on cherche « ce n'est
+    // pas moi » et « je m'en vais ». Le menu garde la sienne — un professeur
+    // qui connaît le menu ne doit pas la perdre.
+    const p = document.getElementById('btn-sortie-profil');
+    if (p) {
+        p.hidden = qui.role === 'personne';
+        p.textContent = direDeQuoi(qui);
+    }
 }
 
 // ──────────────────────────────────────────────────── LE PROFESSEUR ─────────
@@ -170,17 +200,24 @@ async function deconnecterLEleve() {
 // ─────────────────────────────────────────────────────────── LE FIL ─────────
 
 let pose = false;
+/**
+ * LE GESTE, UNE SEULE FOIS. Deux boutons le déclenchent — celui du menu et
+ * celui de « Mon profil » — et recopier le choix du rôle à deux endroits est la
+ * façon connue de les voir diverger (voir docs/frictions.md).
+ */
+export function seDeconnecter() {
+    const qui = quiEstLa();
+    if (qui.role === 'prof') deconnecterLeProf();
+    else if (qui.role === 'eleve') deconnecterLEleve();
+}
+
 export function initDeconnexionUI() {
     if (pose || typeof document === 'undefined') return;
     pose = true;
     const b = document.getElementById('btn-deconnexion');
-    if (b) {
-        b.onclick = () => {
-            const qui = quiEstLa();
-            if (qui.role === 'prof') deconnecterLeProf();
-            else if (qui.role === 'eleve') deconnecterLEleve();
-        };
-    }
+    if (b) b.onclick = seDeconnecter;
+    const p = document.getElementById('btn-sortie-profil');
+    if (p) p.onclick = seDeconnecter;
     // LE BOUTON SUIT L'ÉTAT, et il faut le rafraîchir autrement que sur un
     // événement : le passage en mode professeur ne s'annonce par AUCUN
     // événement dans l'application — c'est une classe posée sur `<body>`.

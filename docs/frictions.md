@@ -4871,3 +4871,35 @@ le résultat n'existe pas** — 15 octobre 2026
   question qu'on se pose en le cherchant**, jamais celui de la donnée qu'il
   écrit. Et son état se lit dans les DEUX sens quand le défaut est celui qui
   gêne : « · ouverte » autant que « · fermée ».
+
+**« Exister » et « se voir » sont deux questions, et une seule était la sienne** — 16 octobre 2026
+
+- *Ce que je voulais faire* : répondre à « dans la partie élève il n'y a pas
+  d'endroit pour se déconnecter ».
+- *Ce qui a coûté* : rien de cassé — le bouton existait, `hidden` valait `false`,
+  et `quiEstLa()` répondait bien « élève ». Il était simplement dans un menu
+  replié, derrière une icône sans libellé. Une première lecture du code aurait
+  conclu « c'est déjà fait ». Ce qui a tranché, c'est une mesure qui demandait
+  `getBoundingClientRect` plutôt que `.hidden` : **visible: false**.
+- *Combien de fois* : || (même famille que « le réglage nommé d'après son
+  drapeau » : la fonction est là, la porte ne l'est pas)
+- *Ce qui manque* : un réflexe écrit — pour toute demande de la forme « il n'y a
+  pas de X », on mesure la VISIBILITÉ de X (boîte rendue, et pas `hidden`), et
+  l'on liste ce qui est cliquable à l'écran. Le dire en une ligne vaut mieux que
+  relire trois modules.
+
+**Un tableau rendu tel quel se lit comme un objet, et personne ne le dit** — 16 octobre 2026
+
+- *Ce que je voulais faire* : rafraîchir la carte d'une classe après avoir fermé
+  sa porte.
+- *Ce qui a coûté* : `mesClasses()` rend le TABLEAU des classes. J'ai écrit
+  `(vue.classes && vue.classes.classes)` — par analogie avec les autres routes,
+  qui enveloppent — et la recherche tombait sur une liste vide, en silence. Le
+  serveur enregistrait, la carte ne bougeait pas, et j'ai d'abord cherché le
+  défaut dans le clic, puis dans le serveur : trois sondes pour une faute de
+  forme. Rien n'avertit, parce qu'un `|| []` rend la ligne parfaitement valide.
+- *Combien de fois* : |
+- *Ce qui manque* : le réflexe de DUMPER la réponse brute avant de la lire
+  (`JSON.stringify(r).slice(0, 400)`) — deux secondes, et la forme est sous les
+  yeux. À défaut, un commentaire de type sur les helpers d'`espaceProf.js` qui
+  ne suivent pas la forme enveloppée.
