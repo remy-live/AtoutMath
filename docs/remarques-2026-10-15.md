@@ -1242,3 +1242,64 @@ serait abandonnée partout. Non fait : il n'a rien demandé pour l'ordinateur.
 **Et la pastille `v1041` qui recouvre « Préparer » sur sa capture** n'est pas un
 défaut du logiciel : c'est sa palette d'auteur repliée (`#debug-toolbar`), qui
 se déplace par sa poignée.
+
+## 7. Un mode brouillon, à côté du robot
+
+> « NE CODE RIEN, je veux un avis et une maquette :
+> Dans le menu à côté du robot, avoir un mode brouillon pour poser son calcul.
+> On peut poser une opération (tu as déjà des modules, il faut t'en servir),
+> mettre des notes
+> Dessiner en suivant les carreaux au crayon libre (et une grille aimanté) »
+
+Rien n'a été codé : un avis, et une maquette à regarder (canevas de quatre
+plans, publié à part).
+
+**Oui, et c'est la pièce qui manque.** Devant une soustraction posée, l'élève
+n'a aujourd'hui aucune surface pour chercher : il calcule de tête — et l'on
+mesure alors un calcul mental qu'on n'avait pas l'intention d'évaluer — ou il
+prend une feuille à côté du clavier, ce qui va en classe et ne va pas chez lui,
+sur un téléphone.
+
+**La ligne rouge tient, à une condition, et elle n'est pas technique.** Une
+grille aimantée est à un pas de l'outil de construction virtuel qu'on s'est
+interdit. Ce qui nous garde du bon côté est une règle sur la SURFACE : rien de
+ce qui est tracé dans le brouillon n'est envoyé, corrigé ni noté. C'est une
+surface pour PENSER, jamais pour RÉPONDRE. Conséquence directe : **pas de bouton
+« Valider » sur le brouillon**, jamais, et aucun exercice n'accepte un tracé du
+brouillon comme réponse.
+
+**Un réglage par exercice, comme la calculatrice.** Le précédent est déjà dans
+`index.html`, avec son raisonnement : « sur un exercice de tables de
+multiplication, elle rendrait l'exercice inutile. C'est donc un réglage de
+l'exercice (`calculatrice: true`), cochable dans la revue du catalogue ». Dans
+« Calcul mental », poser l'opération est précisément ce qu'on demande de ne pas
+faire : c'est donc l'outil « Poser » qui s'éteint par exercice. La note et le
+crayon, eux, ne trichent jamais — ils restent toujours là.
+
+**Où il vit.** Au téléphone, une feuille qui monte du bas et laisse l'énoncé
+lisible ; sur ordinateur, un volet à droite. **Jamais un plein écran** : un
+brouillon qui cache la question oblige à le fermer pour relire, et l'on perd ce
+qu'on était en train d'y écrire.
+
+**Ce qu'il garde.** Par question, avec un bouton « garder pour la suivante ».
+Rien ne part au serveur : le brouillon n'a pas de référence, il est éphémère —
+c'est la réponse la plus simple à « la base de données est la référence ».
+
+**Ce que je n'y mettrais pas** : ni couleurs, ni palette de formes, ni règle, ni
+compas (ligne rouge), ni historique d'annulation. Et **le professeur ne le voit
+pas** : le jour où un brouillon est regardé, il cesse d'être un brouillon. C'est
+le seul point où je vais contre son habitude de vouloir suivre ce qu'ils font,
+et il doit trancher.
+
+**Les modules sont tous là** — il a raison. `core/poser.js` (`poser()` et ses
+quatre `colonnes*`, les deux méthodes de retenue, la grille `po-case` avec ses
+marques), `core/quadrillageSvg.js` (les carreaux), `activities/glisser.js`
+(`peindreAuGlisse`, le balayage du doigt, déjà employé dans « Tracer l'image »),
+`core/calculatrice.js`. Le brouillon n'ajoute aucun moteur : il les pose côte à
+côte sur une feuille. Reste à écrire la feuille, la bascule des trois outils, et
+le trait du crayon libre.
+
+**Quatre questions pour lui** : la persistance (par question ? par exercice ?) ;
+le brouillon est-il visible du professeur (je dis non) ; « Poser » éteint par
+exercice (je dis oui) ; et le crayon libre reste-t-il, ou s'en tient-on à
+l'aimanté, qui est plus loin de la ligne rouge ?
