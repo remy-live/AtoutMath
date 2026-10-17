@@ -570,6 +570,83 @@
 /* CE QUI AGIT EN CE MOMENT, écrit sur la pastille repliée. En ambre : c'est
    la couleur que ce dépôt réserve à « regarde ici ». */
 .ec-pilote-outil-vif { color: var(--warning-texte); font-weight: 800; }
+
+/* ────────────── SUR UN TÉLÉPHONE, CE NE SONT PLUS DES ONGLETS ──────────────
+
+   RÉMY, capture de son iPhone à l'appui : « Sur portable la zone direct est
+   moche quand même que faudrait il faire ? »
+
+   RIEN NE DÉBORDE, ET C'EST BIEN LE PROBLÈME : on cherche un défaut d'espace
+   là où il y a un défaut de FORME. Un onglet suppose une RANGÉE, posée au bord
+   de son panneau. Mesuré à 390 px (`tools/piloteAuDoigt.mjs`) :
+
+       7 commandes sur 5 lignes · 4 bords gauches différents
+       6 des 7 sans cadre ni fond
+       l'onglet ouvert finit à 689 px, son panneau commence à 802 px
+       — 113 px de vide entre les deux, et 159 px d'écart entre leurs bords
+
+   Trois conséquences, et aucune n'est une affaire de goût :
+
+     · PLUS RIEN NE S'ALIGNE. Quatre bords gauches différents, c'est-à-dire
+       aucune colonne à suivre des yeux. C'est ce qui se lit « en vrac ».
+     · SIX COMMANDES SUR SEPT NE RESSEMBLENT PAS À DES BOUTONS. Un onglet
+       inactif n'a ni fond ni bordure — sur un ordinateur le survol le révèle,
+       sur un téléphone il n'y a pas de survol, donc rien.
+     · L'ONGLET OUVERT N'EST PLUS ATTACHÉ À RIEN. Son `margin-bottom: -9px` ne
+       mord sur le filet du panneau que s'il est sur la DERNIÈRE ligne. Au
+       milieu du tas, c'est une boîte posée au hasard, à 113 px de son contenu.
+
+   EN COLONNE, LES SEPT ÉTATS SE LISENT D'UN COUP. C'est ce qu'un professeur
+   vient voir — maison fermée ? bac ouvert ? chrono ? — et c'est le seul
+   rangement où les sept réponses tombent l'une sous l'autre, à droite.
+
+   ET L'ORDRE NE BOUGE JAMAIS, ce qui est l'arbitrage que Rémy avait rendu
+   contre les pastilles dépliantes : « la rangée changeait de forme à chaque
+   clic ». Une colonne ne se replie pas : ouvrir une commande pousse les
+   suivantes vers le bas, il n'en déplace aucune latéralement. */
+@media (max-width: 560px) {
+    /* ET LA RANGÉE DU HAUT SUIT LA MÊME COLONNE. Les deux gestes qu'on fait
+       sans y penser — mettre en pause, fermer le catalogue — tombaient chacun
+       sur sa ligne, à des largeurs différentes : trois bords droits en
+       escalier au-dessus d'une liste parfaitement alignée, c'est le désordre
+       qu'on venait de retirer, remis trois lignes plus haut. */
+    .ec-pilote > .ec-pilote-rangee { flex-direction: column; align-items: stretch; }
+    .ec-pilote > .ec-pilote-rangee > .ec-pilote-btn { width: 100%; min-height: 44px; }
+    .ec-pilote-onglets {
+        display: flex; flex-direction: column; align-items: stretch; gap: 0;
+        /* LE FILET DU BAS DISPARAÎT : il dessinait le bord d'une rangée
+           d'onglets, et il n'y a plus de rangée. La liste porte son propre
+           cadre, un seul, pour les sept. */
+        border: 1px solid var(--border); border-radius: 10px;
+        padding-bottom: 0; overflow: hidden;
+    }
+    .ec-pilote-onglet {
+        width: 100%; border-radius: 0; border: 0;
+        border-bottom: 1px solid var(--border);
+        /* LE NOM À GAUCHE, L'ÉTAT À DROITE : c'est ce qui met les sept états
+           en colonne. Le `<b>` de l'état est le second enfant du bouton. */
+        justify-content: space-between; text-align: left; gap: 10px;
+        padding: 0 12px; background: var(--bg-panel); color: var(--text-main);
+        /* « Le mot au tableau · dispenses » fait 29 signes : il a le droit de
+           passer à la ligne plutôt que de pousser l'état hors de l'écran. */
+        white-space: normal;
+    }
+    .ec-pilote-onglet:last-child { border-bottom: 0; }
+    .ec-pilote-onglet--actif {
+        /* NI DÉBORDEMENT NI COIN ARRONDI : la ligne ouverte ne prétend plus
+           être attachée à un panneau qui est quinze lignes plus bas. Elle se
+           marque comme ce qu'elle est — la ligne choisie — par son fond et par
+           un trait à gauche, qui est la marque la plus lisible au doigt. */
+        margin-bottom: 0; padding-bottom: 0;
+        background: var(--bg-app);
+        box-shadow: inset 3px 0 0 var(--primary);
+    }
+    .ec-pilote-panneau {
+        /* Il devient une carte à part entière, détachée de la liste. */
+        border-top: 1px solid var(--border); border-radius: 10px;
+        margin-top: 8px;
+    }
+}
 /* LE CADRE INTÉRIEUR PERD SON SECOND BORD : la pastille en porte déjà un, et
    deux traits à deux pixels l'un de l'autre font une bordure sale. */
 .ec-pilote-panneau > .ec-pilote-cadre { border: 0; background: none; padding: 0; }

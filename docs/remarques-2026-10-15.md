@@ -1187,3 +1187,58 @@ Et l'on vérifie aussi l'autre bout : se déconnecter n'ouvre **rien de plus** q
 le voile. Le portail n'a que deux portes — rejoindre sa classe, saisir un code —
 et le mode libre est éteint. La sortie ne peut donc pas devenir la porte que le
 professeur venait de fermer.
+
+## 6. « sur portable la zone direct est moche »
+
+> « Sur portable la zone direct est moche quand même que faudrait il faire ? »
+
+Capture d'écran à l'appui, sur son iPhone, en v1041 : le pilote de la classe,
+ouvert sur « La classe », en 5G, à 15 h 01.
+
+**Rien ne déborde, et c'est bien le problème** : on cherche un défaut d'espace
+là où il y a un défaut de FORME. Les sept commandes de l'heure sont des
+ONGLETS, et un onglet suppose une RANGÉE, posée au bord de son panneau.
+Mesuré à 390 px (`tools/piloteAuDoigt.mjs`) :
+
+```
+7 commandes sur 5 lignes · 4 bords gauches différents
+6 des 7 sans cadre ni fond
+l'onglet ouvert finit à 689 px, son panneau commence à 802 px
+```
+
+Trois conséquences, et aucune n'est une affaire de goût :
+
+- **plus rien ne s'aligne.** Quatre bords gauches, c'est-à-dire aucune colonne à
+  suivre des yeux. C'est ce qui se lit « en vrac » ;
+- **six commandes sur sept ne ressemblent pas à des boutons.** Un onglet inactif
+  n'a ni fond ni bordure : sur un ordinateur le survol le révèle, sur un
+  téléphone il n'y a pas de survol, donc rien ;
+- **l'onglet ouvert n'est plus attaché à rien.** Son débordement d'un pixel sur
+  le filet du panneau ne mord que s'il est sur la DERNIÈRE ligne. Au milieu du
+  tas, c'est une boîte posée au hasard, 113 px au-dessus de son contenu et
+  159 px à côté.
+
+**Ce qui a été fait.** Sous 560 px, ce ne sont plus des onglets : une COLONNE,
+un cadre pour les sept, le nom à gauche et l'état à droite — les sept états
+tombent ainsi l'un sous l'autre, ce qui est exactement ce qu'un professeur vient
+lire d'un coup d'oeil (maison fermée ? bac ouvert ? chrono ?). La ligne ouverte
+se marque d'un trait bleu à gauche au lieu de prétendre toucher un panneau qui
+est six lignes plus bas, et l'on fait défiler jusqu'au panneau qu'on vient
+d'ouvrir. La rangée du haut suit la même colonne : les deux boutons prennent
+toute la largeur. Mesuré après : **1 bord gauche, 0 commande sans cadre, une
+ligne par commande.**
+
+Et l'ordre ne bouge jamais, ce qui était son arbitrage contre les pastilles
+dépliantes — « la rangée changeait de forme à chaque clic ». Une colonne ne se
+replie pas.
+
+**Ce qui reste, et qu'il doit trancher.** La rangée d'onglets est bancale à
+TOUTES les largeurs, pas seulement au téléphone : mesurée à 1024 px, elle fait
+encore trois lignes, et l'onglet ouvert reste à 63 px de son panneau. Deux
+sorties possibles — étendre la colonne jusqu'aux tablettes, ou garder des
+pastilles encadrées de même hauteur sur ordinateur, où la forme « onglet »
+serait abandonnée partout. Non fait : il n'a rien demandé pour l'ordinateur.
+
+**Et la pastille `v1041` qui recouvre « Préparer » sur sa capture** n'est pas un
+défaut du logiciel : c'est sa palette d'auteur repliée (`#debug-toolbar`), qui
+se déplace par sa poignée.

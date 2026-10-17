@@ -3540,8 +3540,24 @@ async function brancher(e, redessiner) {
     // ouvert le referme — c'est ce qui rend la barre à deux lignes quand on
     // n'a plus rien à régler, et la liste des élèves est juste dessous.
     if (d.outil !== undefined) {
-        vue.outil = vue.outil === d.outil ? null : d.outil;
+        const ouvre = vue.outil !== d.outil;
+        vue.outil = ouvre ? d.outil : null;
         redessiner();
+        // ET SUR UN TÉLÉPHONE, ON VA VOIR CE QU'ON VIENT D'OUVRIR.
+        //
+        // RÉMY : « sur portable la zone direct est moche ». Les sept commandes
+        // y sont en COLONNE (voir css/ui.css) : le panneau de celle qu'on
+        // ouvre est donc jusqu'à six lignes plus bas, et sur sa capture le
+        // contenu du panneau était déjà sous le bord de l'écran. Un réglage
+        // qu'on ouvre et qu'on ne voit pas s'ouvrir se reclique.
+        //
+        // `block: 'nearest'` NE FAIT RIEN QUAND C'EST DÉJÀ VISIBLE : sur un
+        // ordinateur, où le panneau suit la rangée, la page ne bouge pas d'un
+        // pixel. Pas de réglage, pas de seconde mécanique.
+        if (ouvre) {
+            const p = document.querySelector('.ec-pilote-panneau');
+            if (p && p.scrollIntoView) p.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
         return;
     }
 

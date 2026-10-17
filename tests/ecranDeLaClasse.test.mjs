@@ -61,7 +61,13 @@ test('LES OUTILS DE L\'HEURE SONT DE VRAIS ONGLETS', () => {
     assert.equal(corps.length, cles.length, 'un onglet n\'a pas de corps');
     // ET UN SECOND CLIC REFERME : c'est ce qui rend la barre à deux lignes
     // au-dessus de la liste des élèves, qui est ce qu'on vient regarder.
-    assert.match(source, /vue\.outil = vue\.outil === d\.outil \? null : d\.outil;/,
+    //
+    // LA BASCULE S'ÉCRIT EN DEUX TEMPS DEPUIS QUE LE TÉLÉPHONE EXISTE : il faut
+    // savoir si l'on OUVRE pour aller voir le panneau (les sept commandes y
+    // sont en colonne, et le panneau peut être six lignes plus bas). Le sens
+    // n'a pas changé d'un cheveu — `ouvre` est faux quand on reclique la
+    // commande déjà ouverte, et `vue.outil` retombe alors à `null`.
+    assert.match(source, /const ouvre = vue\.outil !== d\.outil;\s*\n\s*vue\.outil = ouvre \? d\.outil : null;/,
         'l\'onglet ouvert ne se referme plus : la barre reste dépliée');
 });
 
