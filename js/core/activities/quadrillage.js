@@ -23,8 +23,8 @@ import { hintBar, wireHint } from './choice.js';
 // pas le balayage, qui est le geste naturel pour colorier plusieurs cases.
 import { peindreAuGlisse } from './glisser.js';
 import { quadrillageSvg, gesteDuFilm } from '../quadrillageSvg.js';
-import { cleFigure, comparer } from '../transformations.js';
-import { imageAttendue } from '../generators/transfoQuadrillage.js';
+import { cleFigure, comparer, decalageEntre, direLeDecalage } from '../transformations.js';
+import { direLesCases, imageAttendue } from '../generators/transfoQuadrillage.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { meneurDemo } from '../meneurDemo.js';
 
@@ -389,7 +389,8 @@ export function mount(container, session) {
             return;
         }
 
-        const bilan = comparer(imageAttendue(item.meta), posees);
+        const attendue = imageAttendue(item.meta);
+        const bilan = comparer(attendue, posees);
 
         // DEUX ÉLÈVES QUI ÉCHOUENT NE SE RESSEMBLENT PAS.
         //
@@ -422,7 +423,18 @@ export function mount(container, session) {
         }
         refus = 0;
 
-        const result = session.submit(cleFigure(posees), { misconception: diagnostic(bilan) });
+        // LE CARNET D'ERREURS LIT, IL NE DÉCODE PAS.
+        //
+        // RÉMY : « deux explications compliqués et fausses. C'est dans le
+        // "Mes erreurs" ». La carte écrivait « ta réponse : 7|3/8|3/7|4/8|4/8|5,
+        // attendu : 8|2/9|2/8|3/9|3/9|4 » — la forme canonique, celle qui juge,
+        // posée telle quelle sous les yeux d'un élève. Elle garde son travail
+        // de juge ; `dire` porte la version qui se lit, en colonnes et lignes
+        // comptées à partir de 1, comme la correction les donne déjà.
+        const result = session.submit(cleFigure(posees), {
+            misconception: diagnostic(bilan, attendue),
+            dire: { given: direLesCases(posees), expected: direLesCases(attendue) }
+        });
         if (result.ignored) return;
 
         result.dismissed.then(() => {
@@ -459,13 +471,71 @@ export function mount(container, session) {
         }
     }
 
-    /** Ce qui ne va pas, dit en cases — jamais « faux ». */
-    function diagnostic(bilan) {
+    /**
+     * CE QUI NE VA PAS — jamais « faux », et jamais à côté de l'erreur.
+     *
+     * ── POURQUOI LE COMPTE DE CASES NE SUFFIT PAS ──────────────────────────
+     *
+     * RÉMY, capture à l'appui : « deux explications compliqués et fausses ».
+     *
+     * Sur sa capture, l'élève avait colorié LA BONNE FIGURE, un carreau trop à
+     * gauche et un carreau trop bas, et la carte disait « 1 case juste, 4
+     * oubliées, 4 en trop ». C'est vrai au carreau près, et cela décrit un
+     * élève qui colorie au hasard. Mesuré sur d'autres tirages du même décalage
+     * (`tools/carnetDesTransformations.mjs`) : « 5 oubliées, 5 en trop » —
+     * c'est-à-dire « rien de juste » — à qui avait tout compris sauf la place.
+     *
+     * DEUX ERREURS SE DISENT DONC AVANT LE COMPTE, parce qu'elles nomment ce
+     * que l'élève a fait au lieu de mesurer l'écart :
+     *
+     *   · LA BONNE FORME, MAL POSÉE : il a compté de travers, une fois, et tout
+     *     reporté fidèlement à partir de là. Le geste est bon ;
+     *   · LA FIGURE GLISSÉE AU LIEU D'ÊTRE RETOURNÉE : c'est l'erreur de fond
+     *     de la symétrie, et elle a sa propre phrase. Les deux cas s'excluent —
+     *     l'image d'un miroir est renversée, celle d'un glissement non — donc
+     *     aucune des deux phrases ne peut prendre la place de l'autre.
+     *
+     * Le compte reste pour tout le reste : quand la figure n'a ni la bonne
+     * forme ni la bonne allure, il n'y a rien à nommer, et dire où sont les
+     * cases est alors la seule aide honnête.
+     */
+    function diagnostic(bilan, attendue) {
+        const glisse = decalageEntre(attendue, posees);
+        if (glisse) {
+            return `Ta figure a la bonne forme : elle est seulement posée `
+                + `${direLeDecalage(glisse)}. Reprends UNE case, place-la juste, `
+                + `et reporte les autres autour d'elle.`;
+        }
+        const recopiee = item.meta.genre !== 'translation'
+            && decalageEntre(item.meta.depart || [], posees);
+        if (recopiee) return aGlisseAuLieuDeRetourner();
+
         const bouts = [];
         if (bilan.justes) bouts.push(`${bilan.justes} case${bilan.justes > 1 ? 's' : ''} juste${bilan.justes > 1 ? 's' : ''}`);
         if (bilan.oublies.length) bouts.push(`${bilan.oublies.length} oubliée${bilan.oublies.length > 1 ? 's' : ''}`);
         if (bilan.enTrop.length) bouts.push(`${bilan.enTrop.length} en trop`);
         return bouts.length ? `${bouts.join(', ')}. Reprends case par case.` : '';
+    }
+
+    /**
+     * L'erreur de fond : la figure a été DÉPLACÉE là où il fallait la
+     * retourner. Chaque transformation la commet à sa façon, et la phrase doit
+     * nommer le geste qui manquait — « ce n'est pas la bonne place » ne dirait
+     * rien à qui croit avoir fait une symétrie.
+     */
+    function aGlisseAuLieuDeRetourner() {
+        const g = item.meta.genre;
+        const debut = 'Tu as fait GLISSER la figure sans la transformer : ';
+        if (g === 'centrale') {
+            return `${debut}la symétrie de centre lui fait faire un DEMI-TOUR, `
+                + 'donc elle arrive à l\'envers dans les deux sens.';
+        }
+        if (g === 'rotation') {
+            return `${debut}le quart de tour la fait BASCULER, donc ce qui était `
+                + 'couché se met debout.';
+        }
+        return `${debut}la symétrie d'axe la RETOURNE comme un miroir, donc la case `
+            + 'la plus proche de l\'axe devient la plus proche de l\'autre côté.';
     }
 
     /**

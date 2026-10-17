@@ -27,7 +27,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { quadrillageSvg } from '../quadrillageSvg.js';
 import {
-    cleElement, ecrireElement, lireElement
+    cleElement, direElement, ecrireElement, lireElement
 } from '../elementSymetrie.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { meneurDemo } from '../meneurDemo.js';
@@ -299,9 +299,26 @@ export function mount(container, session, opts = {}) {
     }
 
     function conclure(cleDonnee, info) {
+        const m = item.meta;
+        const donne = info.choisi || info.lu;
         const result = session.submit(cleDonnee, {
             element: info.element || null,
-            misconception: diagnostic(cleDonnee, info)
+            misconception: diagnostic(cleDonnee, info),
+            // LE CARNET D'ERREURS LIT, IL NE DÉCODE PAS.
+            //
+            // RÉMY : « deux explications compliqués et fausses. C'est dans le
+            // "Mes erreurs" ». La carte y écrivait « ta réponse : axe:v:8.5,
+            // attendu : axe:v:5.5 » : la forme canonique, en coordonnées de
+            // CASE, c'est-à-dire des nombres qui ne sont pas ceux que l'élève
+            // lit sur la figure. Elle garde son travail de juge ; `dire` porte
+            // la version qui se lit — voir `direElement`.
+            //
+            // LES DEUX CHAMPS VOYAGENT ENSEMBLE OU PAS DU TOUT : sans réponse
+            // lisible, le carnet comparerait une phrase à une clé.
+            dire: donne ? {
+                given: direElement(m.hauteur, donne, m.candidats),
+                expected: direElement(m.hauteur, m.bon, m.candidats)
+            } : undefined
         });
         if (result.ignored) return;
 

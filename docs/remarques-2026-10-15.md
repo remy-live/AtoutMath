@@ -1058,3 +1058,132 @@ se créait un SECOND profil à son nom à chaque aller-retour. On le reconnaît
 maintenant à son identifiant de connexion, que la déconnexion laisse exprès sur
 le profil. Et les profils vierges s'empilaient de la même façon : on réutilise
 celui qui existe.
+
+## 4. « deux explications compliqués et fausses » — le carnet d'erreurs
+
+> « deux explications compliqués et fausses. C'est dans le "Mes erreurs" »
+
+Deux captures d'écran, prises sur le carnet d'un élève. Transcrites ici : une
+capture ne se retrouve pas dans un historique, et c'est le texte qui est en
+cause.
+
+**« Reconnaître la transformation »** — avec la mosaïque, ses pièces A, B, C, D
+et ses droites candidates (d₁), (d₂), (d₄) et le point O₃ :
+
+> Par rapport à quoi la pièce B est-elle le symétrique de la pièce C ? —
+> ta réponse : **axe:v:8.5**, attendu : **axe:v:5.5**
+>
+> La bonne espèce, mais pas la bonne droite. Prends un point et son image : la
+> droite cherchée passe exactement au milieu des deux.
+
+**« Tracer l'image par une translation »** — avec le quadrillage, la figure
+bleue et la flèche rouge :
+
+> Colorie l'image de la figure bleue par la translation que montre la flèche
+> rouge. — ta réponse : **7|3/8|3/7|4/8|4/8|5**,
+> attendu : **8|2/9|2/8|3/9|3/9|4**
+>
+> 1 case juste, 4 oubliées, 4 en trop. Reprends case par case.
+
+**Les deux griefs sont justes, et le second ne se voyait pas.** Ces chaînes sont
+les formes CANONIQUES, celles qui jugent. Illisibles, d'accord — mais surtout,
+**leurs nombres ne sont pas ceux de l'élève**. Mesuré sur six tirages
+(`tools/carnetDesTransformations.mjs`) :
+
+| la carte écrivait | la figure portait |
+| --- | --- |
+| `axe:v:7.5` | `(d₁) x = 8` |
+| `point:5.5:3.5` | `O₁ (6 ; 6)` |
+
+La droite est décalée d'un demi-carreau ; pour le point, l'ordonnée n'est même
+pas décalée, elle est **retournée** — le repère de l'élève monte, les lignes du
+quadrillage se comptent de haut en bas. `core/elementSymetrie.js` prévient en
+tête de fichier qu'une droite « écrite x = 4 par la question et lue x = 4,5 par
+la correction serait un exercice qui donne tort à qui a raison ». Le carnet le
+faisait.
+
+**Et le compte de cases décrit une erreur qui n'a pas eu lieu.** Son élève avait
+colorié LA BONNE FIGURE, un carreau trop à gauche et un carreau trop bas : les
+deux listes de la carte sont exactement dans ce rapport, vérifié case par case.
+La phrase « 1 case juste, 4 oubliées, 4 en trop » est vraie, et elle décrit un
+élève qui colorie au hasard. Sur d'autres tirages du même décalage, elle dit
+même « 5 oubliées, 5 en trop » — c'est-à-dire « rien de juste » — à quelqu'un
+qui avait tout compris sauf la place.
+
+**Ce qui a été fait.** La forme qui juge ne change pas d'un caractère : on en
+fabrique une seconde, destinée à être LUE, et c'est elle qui part au journal
+(`opts.dire`, le même chemin que le codage des figures en septembre). La carte
+dit maintenant :
+
+> ta réponse : **O₁ (2 ; 4)**, attendu : **O₄ (5 ; 4)**
+>
+> ta réponse : **(5 ; 6), (4 ; 7), (5 ; 7), (4 ; 8), (5 ; 8)**,
+> attendu : **(6 ; 5), (5 ; 6), (6 ; 6), (5 ; 7), (6 ; 7)**
+>
+> Ta figure a la bonne forme : elle est seulement posée 1 carreau trop à gauche
+> et 1 trop bas. Reprends UNE case, place-la juste, et reporte les autres autour
+> d'elle.
+
+Les cases sont comptées en colonne et ligne À PARTIR DE 1, comme la correction
+les donnait déjà et comme le quadrillage les annonce aux lecteurs d'écran
+(« Colonne 8, ligne 4 ») : une seule vérité, et une épreuve garde que les deux
+ne divergent pas. Le diagnostic, lui, regarde la FORME avant de compter : la
+bonne figure mal posée se dit comme telle, et la figure glissée au lieu d'être
+retournée — l'erreur de fond de la symétrie — a sa propre phrase.
+
+**Une réserve, et elle se voit à l'écran.** Les cartes déjà enregistrées gardent
+leurs codes : le journal stocke le texte, pas la recette. Celles de ses captures
+ne changeront donc qu'à la prochaine réponse sur la même question — ou en les
+retirant du carnet par la petite corbeille.
+
+## 5. « il faut toujours pouvoir se déconnecter »
+
+> « Quand c'est noté sur l'écran, c'est fermé pour le moment. Je ne peux
+> déconnecter. En fait, il faut toujours pouvoir se déconnecter, j'ai besoin de
+> tester avec un élève puis revenir à mon compte prof. Par contre si l'élève ne
+> se déconnecte pas chez lui, il peut travailler. La référence est ce qui est
+> sur la base de données prioritairement (on garde de côté le local storage pour
+> une future application hors ligne) est ce clair »
+
+Trois choses dans ce message, et la première est un blocage immédiat.
+
+**La porte close n'a pas de sortie.** Le voile « C'est fermé pour le moment »
+couvre tout l'écran — c'était la demande, mot pour mot : « ATTENTION C'EST LA
+SEULE CHOSE QU'IL PEUT FAIRE, il ne peut pas aller sur son profil ou autre ».
+Or la sortie de l'élève vit justement dans « Mon profil », c'est-à-dire derrière
+le voile. En fermant la maison de sa classe, il s'est enfermé lui-même dans le
+compte de son élève. Le voile doit donc porter sa propre sortie.
+
+**Et se déconnecter n'est pas une obligation.** « si l'élève ne se déconnecte pas
+chez lui, il peut travailler » : le bouton s'ajoute, il n'impose rien. L'élève
+qui reste connecté garde ce que la porte lui laisse.
+
+**La référence, c'est la base de données.** Le stockage local est mis de côté
+« pour une future application hors ligne » : quand les deux se contredisent,
+c'est le serveur qui a raison. Écrit en §9 de `docs/architecture.md`, avec ce
+qui en découle — une conclusion ne se recalcule pas sur l'ardoise, un état local
+ne tient pas une porte fermée tout seul, et le travail de l'élève, lui, n'est
+pas un cache : on l'envoie avant de partir.
+
+**Et le logout de la porte close n'est pas le logout ordinaire** — « oui mais
+attention c'est le mode porte fermé donc ça doit être différent pour le logout ».
+La sortie ordinaire négocie : finis d'abord ta question, voilà ce qui n'est pas
+parti, veux-tu effacer ton travail. Toutes ces questions supposent qu'on puisse
+RESTER et continuer ; derrière un voile, il n'y a rien à continuer, et le retenir
+pour lui demander de finir une question qui n'existe pas EST l'enfermement dont
+il se plaint. Celle-ci ne se refuse donc jamais, n'efface rien, et dit où l'on
+atterrit.
+
+**Ce que la mesure a trouvé** (`tools/sortieDuVoile.mjs`), et qui ne se lisait
+pas dans le code : la fenêtre de confirmation s'ouvrait **derrière le voile**.
+`.modal-overlay` est à `z-index: 100000` dans la feuille de style — mais
+`showModal` repose son étage EN LIGNE, à 9999, et un style en ligne l'emporte
+sur la classe. On lisait le texte à travers le voile, et le bouton n'était pas
+celui qu'on touchait : un bouton visible et mort, livré à quelqu'un qui est déjà
+bloqué. C'est `document.elementFromPoint` au centre du bouton qui a nommé le
+coupable, et non la lecture des deux feuilles de style.
+
+Et l'on vérifie aussi l'autre bout : se déconnecter n'ouvre **rien de plus** que
+le voile. Le portail n'a que deux portes — rejoindre sa classe, saisir un code —
+et le mode libre est éteint. La sortie ne peut donc pas devenir la porte que le
+professeur venait de fermer.

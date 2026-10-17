@@ -283,17 +283,28 @@ function indices(t) {
 }
 
 /**
- * La correction : ce qu'il fallait faire, et où.
+ * LES CASES D'UNE FIGURE, DITES COMME ON LES DÉSIGNE DEVANT UNE GRILLE.
  *
- * Les cases sont données EN COLONNE ET LIGNE COMPTÉES À PARTIR DE 1 — c'est
- * ainsi qu'on les désigne à voix haute devant une grille (« troisième colonne,
- * deuxième ligne »), et non par les indices du programme, qui commencent à
- * zéro et ne veulent rien dire pour un élève.
+ * EN COLONNE ET LIGNE COMPTÉES À PARTIR DE 1 — « troisième colonne, deuxième
+ * ligne » —, et non par les indices du programme, qui commencent à zéro et ne
+ * veulent rien dire pour un élève.
+ *
+ * ET CETTE PHRASE-LÀ SERT AUSSI AU CARNET D'ERREURS. Rémy : « deux explications
+ * compliqués et fausses. C'est dans le "Mes erreurs" ». La carte y écrivait la
+ * forme canonique, celle qui JUGE — « 8|2/9|2/8|3/9|3/9|4 » — sous les yeux
+ * d'un élève. Une seule vérité, dite une seule fois : si la correction et le
+ * carnet comptaient les colonnes autrement l'un de l'autre, l'un des deux
+ * mentirait, et l'on ne saurait pas lequel.
  */
-function explication(t, image) {
-    const ou = [...image]
+export function direLesCases(cases) {
+    return [...(cases || [])]
         .sort((a, b) => (a.y - b.y) || (a.x - b.x))
         .map(p => `(${p.x + 1} ; ${p.y + 1})`).join(', ');
+}
+
+/** La correction : ce qu'il fallait faire, et où. */
+function explication(t, image) {
+    const ou = direLesCases(image);
     const quoi = t.genre === 'axiale' ? `par rapport à ${nommerAxe(t.axe)}`
         : t.genre === 'centrale' ? 'par rapport au centre O'
             : t.genre === 'translation' ? `en glissant de ${direVecteur(t.vecteur)}`

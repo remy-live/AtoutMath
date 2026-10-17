@@ -254,6 +254,47 @@ export function comparer(attendue, posee) {
     };
 }
 
+/**
+ * LA MÊME FIGURE, POSÉE AILLEURS — de combien de carreaux, ou `null`.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, deux captures du carnet d'erreurs à l'appui : « deux explications
+ * compliqués et fausses ».
+ *
+ * CE QUE LE COMPTE DE CASES NE VOIT PAS. Sur sa capture, l'élève avait colorié
+ * la BONNE FIGURE, un carreau trop à gauche et un carreau trop bas, et la carte
+ * annonçait « 1 case juste, 4 oubliées, 4 en trop ». La phrase est vraie — on
+ * l'a vérifiée au carreau près (`tools/carnetDesTransformations.mjs`) — et elle
+ * décrit un élève qui colorie au hasard. Mesuré sur quatre autres tirages du
+ * même décalage : « 5 oubliées, 5 en trop », c'est-à-dire « rien de juste », à
+ * un élève qui avait tout compris sauf où poser sa figure.
+ *
+ * `comparer` compte des cases et ne peut rien en dire : deux figures décalées
+ * n'ont presque aucune case commune, et le compte le dit fidèlement. Il faut
+ * donc comparer les figures COMME FORMES, ce que fait cette fonction.
+ *
+ * UN SEUL DÉCALAGE EST POSSIBLE, et c'est ce qui rend la recherche immédiate :
+ * si les deux figures se superposent par glissement, alors leur coin haut-gauche
+ * se correspond. On essaie celui-là, et un seul.
+ *
+ * @returns {{dx:number, dy:number}|null} `null` si ce n'est pas un glissement,
+ *   et `null` aussi quand les deux figures sont déjà au même endroit — il n'y a
+ *   alors rien à dire sur la place.
+ */
+export function decalageEntre(reference, posee) {
+    if (!reference || !posee) return null;
+    if (!reference.length || reference.length !== posee.length) return null;
+    const coin = (f) => f.reduce((m, p) => ({
+        x: Math.min(m.x, p.x), y: Math.min(m.y, p.y)
+    }), { x: Infinity, y: Infinity });
+    const a = coin(reference), b = coin(posee);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    if (!dx && !dy) return null;
+    const glissee = reference.map(p => ({ x: p.x + dx, y: p.y + dy }));
+    return memeFigure(glissee, posee) ? { dx, dy } : null;
+}
+
 // --- Reconnaître la transformation entre deux pièces --------------------------
 //
 // C'est l'exercice 9 de la fiche — le damier — généralisé à n'importe quel
@@ -397,6 +438,26 @@ export function direVecteur(v) {
     if (v.x) bouts.push(`${Math.abs(v.x)} carreau${Math.abs(v.x) > 1 ? 'x' : ''} vers la ${v.x > 0 ? 'droite' : 'gauche'}`);
     if (v.y) bouts.push(`${Math.abs(v.y)} vers le ${v.y > 0 ? 'bas' : 'haut'}`);
     return bouts.length ? bouts.join(' et ') : 'aucun déplacement';
+}
+
+/**
+ * LE MÊME ÉCART, DIT COMME UNE FAUTE : « 1 carreau trop à gauche et 1 trop
+ * bas ».
+ *
+ * `direVecteur` dit un DÉPLACEMENT demandé — « glisse de 3 carreaux vers la
+ * droite » —, celle-ci dit un ÉCART constaté. Les mots changent parce que le
+ * propos change : on ne demande pas à l'élève de refaire ce glissement, on lui
+ * dit de combien sa figure a manqué sa place.
+ */
+export function direLeDecalage(d) {
+    if (!d) return '';
+    const bouts = [];
+    if (d.dx) {
+        bouts.push(`${Math.abs(d.dx)} carreau${Math.abs(d.dx) > 1 ? 'x' : ''}`
+            + ` trop à ${d.dx > 0 ? 'droite' : 'gauche'}`);
+    }
+    if (d.dy) bouts.push(`${Math.abs(d.dy)} trop ${d.dy > 0 ? 'bas' : 'haut'}`);
+    return bouts.join(' et ');
 }
 
 /** La transformation, telle qu'on l'écrit dans une consigne ou une correction. */
