@@ -31,16 +31,50 @@ const PAD = 30;       // marge pour les graduations et les flèches
  * @param {string} [classe] - portée par le groupe, pour la couleur
  * @param {number} [taille] - demi-longueur des branches, en unités du viewBox
  */
-export function marqueurPoint(x, y, classe = '', taille = 6) {
+/**
+ * LES TRAITS D'UNE MARQUE DE POINT, EN DONNÉES.
+ *
+ * `marqueurPoint` rend du SVG où les trois marques sont dessinées et où le CSS
+ * en cache deux — c'est ce qui permet au réglage de s'appliquer à l'instant où
+ * on le touche, sans redessiner. Le PAPIER ne peut pas faire ça : jsPDF n'a pas
+ * de feuille de style, et il faut lui dire quoi tracer.
+ *
+ * RÉMY : « il faut se fier au paramètre, sur le pdf un point est représenté par
+ * un point alors que dans mes options j'avais mis une croix ». La fiche
+ * dessinait un disque en dur, avec un commentaire qui le justifiait — et le
+ * réglage qu'il avait choisi ne la concernait pas.
+ *
+ * D'où cette fonction : la MÊME géométrie, rendue en segments plutôt qu'en
+ * balises, pour que les deux dessins ne puissent pas diverger.
+ *
+ * @returns {{disque:boolean, rayon:number,
+ *            traits:{x1:number,y1:number,x2:number,y2:number}[]}}
+ */
+export function traitsDuPoint(x, y, style = 'croix', taille = 6) {
     const t = taille;
-    const d = t * 0.72;                // branches obliques : même encombrement
+    const d = t * 0.72;
+    if (style === 'disque') return { disque: true, rayon: t * 0.85, traits: [] };
+    const traits = style === 'plus'
+        ? [{ x1: x - t, y1: y, x2: x + t, y2: y },
+            { x1: x, y1: y - t, x2: x, y2: y + t }]
+        : [{ x1: x - d, y1: y - d, x2: x + d, y2: y + d },
+            { x1: x - d, y1: y + d, x2: x + d, y2: y - d }];
+    return { disque: false, rayon: 0, traits };
+}
+
+export function marqueurPoint(x, y, classe = '', taille = 6) {
     const n = (v) => Number(v).toFixed(2);
+    // LES TROIS ÉCRITURES SORTENT DE `traitsDuPoint`, COMME CELLE DU PAPIER.
+    // Les mêmes nombres recopiés à deux endroits finissent par ne plus être les
+    // mêmes — c'est exactement ce qui venait d'arriver : la fiche avait son
+    // disque en dur pendant que l'écran suivait le réglage.
+    const rond = traitsDuPoint(x, y, 'disque', taille);
+    const segments = (style, cls) => traitsDuPoint(x, y, style, taille).traits
+        .map(s => `<line class="${cls}" x1="${n(s.x1)}" y1="${n(s.y1)}"`
+            + ` x2="${n(s.x2)}" y2="${n(s.y2)}"/>`).join('');
     return `<g class="pt-marque ${classe}">
-        <circle class="pt-disque" cx="${n(x)}" cy="${n(y)}" r="${n(t * 0.85)}"/>
-        <line class="pt-croix" x1="${n(x - d)}" y1="${n(y - d)}" x2="${n(x + d)}" y2="${n(y + d)}"/>
-        <line class="pt-croix" x1="${n(x - d)}" y1="${n(y + d)}" x2="${n(x + d)}" y2="${n(y - d)}"/>
-        <line class="pt-plus" x1="${n(x - t)}" y1="${n(y)}" x2="${n(x + t)}" y2="${n(y)}"/>
-        <line class="pt-plus" x1="${n(x)}" y1="${n(y - t)}" x2="${n(x)}" y2="${n(y + t)}"/>
+        <circle class="pt-disque" cx="${n(x)}" cy="${n(y)}" r="${n(rond.rayon)}"/>
+        ${segments('croix', 'pt-croix')}${segments('plus', 'pt-plus')}
     </g>`;
 }
 

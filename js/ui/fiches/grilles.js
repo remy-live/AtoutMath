@@ -1672,6 +1672,12 @@ export const RENDUS_GRILLES = {
     },
     dominos: {
         titre: 'Dominos',
+        // UN SEUL JEU PAR FEUILLE. Rémy : « pour les dominos ne mets qu'un
+        // exercice par défaut ». Une planche, c'est le plateau vide ET les
+        // pièces à découper en dessous : deux demi-pages. En mettre deux par
+        // défaut remplissait une feuille entière d'un jeu qu'on joue une fois,
+        // et dont on découpe les pièces — on ne découpe pas deux jeux.
+        unique: true,
         consigne: (items) => `Découpe les ${(items[0] && items[0].meta.pieces.length) || ''} pièces du bas `
             + 'et colle-les le long du parcours, bout à bout : chaque question doit TOUCHER sa '
             + 'réponse. On part de DÉPART, on calcule le bout ouvert, on cherche ce résultat sur une '

@@ -27,6 +27,7 @@ import {
     normaliser as normaliserQuotidien, entreeDuJour, apercu as apercuQuotidien
 } from '../data/quotidien.js';
 import { figureSvg } from '../data/enigmesFigures.js';
+import { copierOuMontrer, telechargerTexte, jourPourFichier } from './exporter.js';
 
 const CLE_VERDICTS = 'atoutmath.quotidien.verdicts';
 
@@ -130,7 +131,21 @@ export function quotidienHtml() {
             avec le code (<code>js/data/${g === 'enigme' ? 'enigmes' : g + 's'}.js</code>).</div>
         <div class="banc-q-actions">
             <button type="button" class="banc-chip" data-tri-copier>📋 Copier les verdicts</button>
-            <button type="button" class="banc-chip" data-tri-vider>Tout remettre à zéro</button>
+            <!-- LE FICHIER EST LE CHEMIN SÛR, ET IL EST NEUF.
+
+                 Rémy : « j'ai mis copier les verdicts, ça ne copie rien, et
+                 j'ai tout trié dans tout le quotidien. » Un presse-papiers
+                 dépend du protocole, du navigateur et de la fenêtre au premier
+                 plan ; un téléchargement ne dépend de rien. Il atterrit dans
+                 « Téléchargements » et se joint à un message — y compris depuis
+                 un iPhone, où le presse-papiers d'une page web se perd d'une
+                 application à l'autre. -->
+            <button type="button" class="banc-chip" data-tri-fichier>⤓ En fichier</button>
+            <!-- CE BOUTON EFFACE UN APRÈS-MIDI DE TRAVAIL. Il DEMANDE
+                 maintenant : le premier appui pose la question, le second
+                 efface, et la question se retire toute seule. Pas de fenêtre
+                 native (« tu utilises des alert et prompt, on évite ! »). -->
+            <button type="button" class="banc-chip banc-chip--prudent" data-tri-vider>Tout remettre à zéro</button>
             <span class="banc-q-compte" data-tri-compte></span>
         </div>
         <ol class="banc-q-tout banc-q-tri">${LISTES[g].map((e, i) => {
@@ -175,26 +190,42 @@ export function brancherQuotidien(zone, redessiner) {
             : 'Aucune relue pour l\'instant.';
     }
     const copier = zone.querySelector('[data-tri-copier]');
-    if (copier) copier.onclick = async () => {
-        const texte = verdictsEnTexte(genre);
-        try {
-            await navigator.clipboard.writeText(texte);
-            copier.textContent = '✓ Copié — colle-le-moi';
-        } catch {
-            // Le presse-papiers est refusé hors HTTPS et sur certains
-            // navigateurs : on montre alors le texte, il reste sélectionnable.
-            copier.textContent = '📋 Copier les verdicts';
-            const boite = document.createElement('textarea');
-            boite.className = 'banc-q-export';
-            boite.readOnly = true;
-            boite.value = texte;
-            copier.parentElement.after(boite);
-            boite.select();
-        }
-        setTimeout(() => { copier.textContent = '📋 Copier les verdicts'; }, 2500);
+    if (copier) copier.onclick = () =>
+        copierOuMontrer(copier, verdictsEnTexte(genre), '📋 Copier les verdicts',
+            copier.parentElement);
+
+    const fichier = zone.querySelector('[data-tri-fichier]');
+    if (fichier) fichier.onclick = () => {
+        telechargerTexte(`verdicts-${genre}-${jourPourFichier()}.txt`,
+            verdictsEnTexte(genre), 'text/plain');
+        fichier.textContent = '✓ Dans tes téléchargements';
+        setTimeout(() => { fichier.textContent = '⤓ En fichier'; }, 3600);
     };
+
+    // ── REMETTRE À ZÉRO : EN DEUX APPUIS, JAMAIS EN UN ─────────────────────
+    //
+    // Ce bouton efface deux cents verdicts posés un par un. Il était à côté du
+    // bouton « Copier » qui, lui, pouvait ne rien faire — c'est-à-dire que la
+    // seule façon de « réessayer » menait le doigt juste à côté de la
+    // destruction. Le premier appui pose la question, le second seulement
+    // efface, et la question se retire au bout de six secondes.
     const vider = zone.querySelector('[data-tri-vider]');
     if (vider) vider.onclick = () => {
+        const n = Object.keys(verdicts[genre] || {}).length;
+        if (!n) return;
+        if (!vider.dataset.arme) {
+            vider.dataset.arme = '1';
+            vider.textContent = `Effacer les ${n} verdicts ? Appuie encore`;
+            vider.classList.add('banc-chip--arme');
+            clearTimeout(brancherQuotidien._t);
+            brancherQuotidien._t = setTimeout(() => {
+                delete vider.dataset.arme;
+                vider.textContent = 'Tout remettre à zéro';
+                vider.classList.remove('banc-chip--arme');
+            }, 6000);
+            return;
+        }
+        clearTimeout(brancherQuotidien._t);
         delete verdicts[genre];
         garderVerdicts();
         redessiner();

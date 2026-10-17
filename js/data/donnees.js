@@ -1,4 +1,8 @@
 import { TAGS } from './tags.js';
+// LES PALIERS DU TABLEAU CROISÉ VIENNENT DU NOYAU, on ne les recopie pas : les
+// libellés affichés et les vrais réglages doivent dire la même chose, et deux
+// listes jumelles finissent toujours par se contredire.
+import { PALIERS, TAILLES } from '../core/tableauCroise.js';
 
 // Domaine « Organisation de données » : ouvert par l'École du Tableur,
 // portée de l'ancien projet. D'autres exercices (lecture de tableaux, de
@@ -26,7 +30,8 @@ export const donneesExercises = [
         // utilisation pour le début de la calculatrice » — puis elle s'éteint :
         // l'obstacle est le raisonnement, pas l'addition, jusqu'au moment où
         // c'est justement l'addition en colonne qu'on veut faire travailler.
-        id: 'don-tableau-croise', title: 'Le Tableau à Double Entrée',
+        id: 'don-tableau-croise',
+        jeu: false, title: 'Le Tableau à Double Entrée',
         cree: '2026-08-31',
         activityId: 'tableau-croise',
         printable: 'tableau-croise', printGeneratorId: 'donnees.tableau-croise',
@@ -37,15 +42,32 @@ export const donneesExercises = [
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
-                aide: 'La difficulté tient au nombre de lignes à relire pour trouver la prochaine à '
-                    + 'un seul trou, pas aux calculs. La calculatrice accompagne les premiers '
-                    + 'paliers, puis s\'éteint.',
-                options: [
-                    { value: 'decouverte', label: 'Petit tableau, peu de trous — avec la calculatrice' },
-                    { value: 'facile', label: 'Comme sur la fiche — 2 lignes, 4 colonnes' },
-                    { value: 'moyen', label: '3 lignes, 4 colonnes — tous les totaux cachés' },
-                    { value: 'difficile', label: '4 lignes, 4 colonnes — sans calculatrice' }
-                ]
+                aide: 'Monte le tableau à balayer, et la taille des nombres — petits au '
+                    + 'début. La calculatrice s\'éteint au dernier palier, où l\'addition en '
+                    + 'colonne fait partie du travail.',
+                options: Object.entries(PALIERS)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            },
+            {
+                // DEUX DIFFICULTÉS INDÉPENDANTES, DEUX RÉGLAGES.
+                //
+                // RÉMY : « il faudrait que dans les premiers niveaux, les
+                // calculs soient plus simples (dans les réglages) ».
+                //
+                // Les premiers paliers donnent maintenant ce que leur
+                // étiquette promet — c'était un défaut, et il est corrigé dans
+                // `bornesDuTirage`. Mais il reste une chose que le palier seul
+                // ne permet pas : un GRAND tableau avec de PETITS nombres.
+                // C'est pourtant l'exercice qu'on veut pour un élève qui
+                // apprend la méthode et bute sur l'addition — et l'inverse,
+                // pour celui qui maîtrise la méthode et doit s'entraîner à
+                // additionner. Le tableau travaille le balayage ; les nombres
+                // ne décident que de la charge de calcul.
+                id: 'taille', type: 'select', label: 'La taille des nombres', default: 'auto',
+                affiner: true,
+                aide: 'Indépendante de la taille du tableau. « Selon le niveau » suit la '
+                    + 'difficulté choisie — c\'est ce qui se passe si on n\'y touche pas.',
+                options: Object.entries(TAILLES).map(([value, t]) => ({ value, label: t.label }))
             },
             {
                 // CE QUE L'EXERCICE DEMANDE VRAIMENT. Rémy : « j'aimerais bien
@@ -72,7 +94,8 @@ export const donneesExercises = [
         instruction: "Complète les cases vides du tableau. Ne commence pas par la première case venue : cherche à chaque fois la LIGNE ou la COLONNE où il ne manque qu'une seule information — celle-là, tu peux la boucler tout de suite. Si la case qui manque est un total, tu additionnes toute la ligne ; si elle est dans le corps du tableau, tu pars du total et tu retires ce qui est déjà écrit. Le nombre que tu viens d'écrire en ouvre alors d'autres, et de proche en proche tout se remplit. On n'a jamais besoin de deviner."
     },
     {
-        id: 'don-tableur', title: "L'École du Tableur",
+        id: 'don-tableur',
+        jeu: false, title: "L'École du Tableur",
         cree: '2026-08-04',
         activityId: 'tableur',
         // SUR LE PAPIER, RIEN NE CALCULE À LA PLACE DE L'ÉLÈVE. Devant le
@@ -84,7 +107,32 @@ export const donneesExercises = [
         consignePapier: "Écris le nom exact, avec la majuscule de la colonne.",
         params: { startLevel: 1, goal: 3 },
         paramSchema: [
-            { id: 'startLevel', type: 'number', label: 'Leçon de départ', min: 1, max: 9, default: 1 },
+            {
+                // NEUF NUMÉROS NE DISENT RIEN. Le réglage demandait « Leçon de
+                // départ » entre 1 et 9, et rien, nulle part, ne disait ce
+                // qu'est la leçon 5. Un professeur qui vient de faire les
+                // formules en classe veut commencer aux formules ; il devait
+                // ouvrir le jeu neuf fois pour savoir laquelle c'est.
+                // LES NOMS SONT CEUX DES CONSIGNES DU JEU, mot pour mot — voir
+                // `js/games/spreadsheet.js`, la suite des `this.level === n`.
+                // On garde le numéro devant : il reste la seule chose que
+                // l'élève et le professeur voient en commun à l'écran.
+                id: 'startLevel', type: 'select', label: 'Leçon de départ', default: 1,
+                echelle: true,
+                aide: 'Les neuf leçons s\'enchaînent ensuite jusqu\'à la dernière. '
+                    + 'On entre au milieu quand le début a été fait en classe.',
+                options: [
+                    { value: 1, label: '1 — Cliquer sur une case (B3)', court: '1' },
+                    { value: 2, label: '2 — Sélectionner une plage (A1:B2)', court: '2' },
+                    { value: 3, label: '3 — Peindre des cases : le pixel art', court: '3' },
+                    { value: 4, label: '4 — Écrire un nombre dans une case', court: '4' },
+                    { value: 5, label: '5 — La formule qui additionne : =A1+B1', court: '5' },
+                    { value: 6, label: '6 — La formule qui multiplie : =A2*B2', court: '6' },
+                    { value: 7, label: '7 — =SOMME() sur une plage', court: '7' },
+                    { value: 8, label: '8 — =MOYENNE() sur une plage', court: '8' },
+                    { value: 9, label: '9 — La facture : plusieurs formules et le total', court: '9' }
+                ]
+            },
             { id: 'goal', type: 'number', label: 'Réussites par leçon', min: 2, max: 6, default: 3 }
         ],
         skills: ['don.tableur.reperage', 'don.tableur.formules'],

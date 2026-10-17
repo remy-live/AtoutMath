@@ -23,6 +23,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { spellInteger, formatFr } from '../core/numberWords.js';
 import { voixDisponible, preparerVoix, parler, taire, aDire, debit, setDebit } from '../core/voix.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const PALIERS = {
     milliers: { label: 'Jusqu\'à 99 999', min: 1000, max: 99999 },
@@ -74,8 +75,10 @@ class Dictee extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 6px 12px;
                 }
-                .di-btn:hover { background: var(--bg-hover); }
-                .di-btn--on { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .di-btn:hover { background: var(--bg-hover); }
+                }
+                .di-btn--on { border-color: var(--primary); color: var(--primary-texte); }
                 .di-champ {
                     font-size: clamp(24px, 7cqw, 44px); font-weight: 900;
                     letter-spacing: 2px; min-width: 5ch; text-align: center;
@@ -274,22 +277,30 @@ class Dictee extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Ici, le nombre n\'est pas écrit : il est DIT. Il faut le reconstruire — combien de milliers, combien de centaines, et surtout où sont les zéros.', this.container);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
+        // UNE IDÉE PAR BULLE, et les justifications tombent (« une dictée dont on
+        // n'entend pas un morceau ne mesure rien ») : au-delà de 110 caractères la
+        // bulle se lit si longtemps qu'on croit la démonstration figée.
+        cur.say('Ici, le nombre n\'est pas écrit : il est DIT.', this.container);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Je le reconstruis : combien de milliers, combien de centaines, et où sont les zéros.', this.container);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        if (!await robot.tour()) return fin();
         if (this.btnEcouter) {
-            cur.say('J\'appuie sur le haut-parleur. On peut réécouter autant de fois qu\'on veut : une dictée dont on n\'entend pas un morceau ne mesure rien.', this.btnEcouter);
-            if (!await cur.tap(this.btnEcouter)) return fin();
+            cur.say('J\'appuie sur le haut-parleur : on peut réécouter autant de fois qu\'on veut.', this.btnEcouter);
+            if (!await robot.toucher(this.btnEcouter)) return fin();
             await this.dire();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`J'ai entendu « ${spellInteger(this.valeur)} ». Je pose donc ${formatFr(this.valeur)}.`, this.champ);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
         for (const c of String(this.valeur)) {
             const t = this.container.querySelector(`[data-touche="${c}"]`);
@@ -299,9 +310,9 @@ class Dictee extends BaseGame {
         const ok = this.container.querySelector('[data-touche="OK"]');
         if (ok && !await cur.tap(ok)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('La correction montre le nombre en lettres À CÔTÉ des chiffres : c\'est en comparant les deux qu\'on voit ce qu\'on avait mal entendu.', this.container);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('La correction montre le nombre en lettres À CÔTÉ des chiffres : je compare les deux.', this.container);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

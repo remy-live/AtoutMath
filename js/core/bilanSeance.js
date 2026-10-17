@@ -85,9 +85,68 @@ export function evenementsDeLaSeance(seance, evenements = []) {
     return evenements.filter(e => e.payload && runs.has(e.payload.runId));
 }
 
+/**
+ * LES ÉTAPES QUE CET ÉLÈVE A TERMINÉES DANS CETTE SÉANCE-LÀ.
+ *
+ * ── POURQUOI ON LA LIT DANS LE JOURNAL, ET NON DANS `state.studentPath` ────
+ *
+ * `studentPath` ne porte qu'UN parcours : le dernier ouvert. Un élève qui a
+ * fait cinq exercices de la séance de lundi puis ouvert celle de mardi n'a
+ * plus, en mémoire vive, la moindre trace de lundi — et une retouche de lundi
+ * passerait alors pour arrivant sur une séance que personne n'a commencée.
+ * Le journal, lui, garde tout, et `evenementsDeLaSeance` sait déjà en extraire
+ * ce qui appartient à CETTE séance.
+ *
+ * C'EST LA FONCTION QUI REND `majDeSeance` SÛRE : sans elle, on relâcherait la
+ * règle sur des étapes qu'un élève a bel et bien faites.
+ *
+ * @param {Object} seance
+ * @param {Array} evenements  le journal complet de l'élève
+ * @returns {Set<string>} les `stepId` terminés
+ */
+export function etapesFaitesDeLaSeance(seance, evenements = []) {
+    const faites = new Set();
+    for (const e of evenementsDeLaSeance(seance, evenements)) {
+        if (e.type !== A.STEP_COMPLETED) continue;
+        const sid = (e.payload || {}).stepId;
+        if (sid) faites.add(sid);
+    }
+    return faites;
+}
+
 /** A-t-il seulement commencé ? La question qui décide d'afficher un lien bilan. */
 export function aTravaille(seance, evenements = []) {
     return runsDeLaSeance(seance, evenements).size > 0;
+}
+
+/**
+ * CETTE CLASSE PORTE-T-ELLE LES JOURNAUX DE SES ÉLÈVES ?
+ *
+ * ── POURQUOI CETTE QUESTION EXISTE ──────────────────────────────────────────
+ *
+ * Parce que `aTravaille` répond NON de deux façons qu'on ne distingue pas :
+ * « il n'a rien fait » et « je n'en sais rien ». Les deux sortent `false`, et
+ * tout écran qui s'y fie prend le second pour le premier.
+ *
+ * MESURÉ : le panneau « Donner à une classe » lit sa liste d'élèves par la
+ * route « roster », qui rend des noms et des codes, PAS les événements. Toute
+ * la classe s'y affichait donc « n'a pas commencé » — y compris un élève qui
+ * venait de finir.
+ *
+ * ET CE N'ÉTAIT PAS QU'UN AFFICHAGE. Retirer une séance y prenait TOUJOURS la
+ * branche « personne n'a encore commencé », qui SUPPRIME la séance de la
+ * bibliothèque au lieu de la retirer — et le bilan de cette séance avec elle.
+ * Un professeur qui retire une séance travaillée perdait son bilan, sur la foi
+ * d'une phrase que l'écran n'avait aucun moyen de savoir vraie.
+ *
+ * ON NE DEVINE PAS, ON DEMANDE : un élève dont le journal est un TABLEAU est
+ * un élève sur lequel on sait quelque chose, fût-il vide. Un élève sans champ
+ * `evenements` est un élève dont on n'a rien reçu.
+ */
+export function onSaitQuiATravaille(classe) {
+    const eleves = (classe && classe.eleves) || [];
+    if (!eleves.length) return false;
+    return eleves.some(e => Array.isArray(e && e.evenements));
 }
 
 /** Le bilan d'UN élève, borné à cette séance. */

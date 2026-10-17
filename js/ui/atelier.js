@@ -31,7 +31,7 @@
 
 import { exercices } from '../data/catalog.js';
 import { paramSchemaOf } from '../data/catalog.js';
-import { fieldHtml, readParams, wireTips } from '../games/configUI.js';
+import { fieldHtml, readParams, wireTips, valeurDeChamp } from '../games/configUI.js';
 import {
     estJeuCatalogue, jeuRevu, aChangeJeu, statutRevu, aChange, calcRevu, aChangeCalc,
     lireRevue, nouvelleRevue, ficheDe, decider, consigneJeux, consigneStatuts, consigneCalc
@@ -40,6 +40,9 @@ import { STATUS, STATUS_LABELS } from '../data/status.js';
 import { isGame } from '../core/gameAccess.js';
 import { aUneFichePapier, getActivity, getGenerator } from '../core/registry.js';
 import { journalConsole } from './consoleLog.js';
+// L'aperçu du professeur vit dans l'état commun : c'est lui que les volets
+// doivent suivre. Voir `appareilDuProf`.
+import { state } from '../core/state.js';
 import { FORMATS, sonder, rapportEnTexte } from './controle.js';
 import { piloter, piloteEnTexte } from './pilote.js';
 
@@ -217,10 +220,33 @@ function consigneDuCarnet() {
 }
 
 /** L'adresse d'un volet : la même page, avec ce qu'elle doit ouvrir. */
-function adresse(quoi) {
+/**
+ * L'APPAREIL QUE LE PROFESSEUR A CHOISI, tel qu'un volet doit le recevoir.
+ *
+ * Rémy : « j'avais mis l'aperçu en mode ordinateur, quand j'ai cliqué sur le
+ * robot, l'aperçu est passé en mode téléphone ».
+ *
+ * MESURÉ, ET C'ÉTAIT PLUS LARGE QUE LE ROBOT : page mère à « desktop », les
+ * DEUX volets à « mobile ». Chaque volet est un CADRE, c'est-à-dire une autre
+ * page, avec son propre `core/state.js` ; `cadreDe()` y lit
+ * `state.previewDeviceMode`, qui vaut « mobile » au démarrage — et personne ne
+ * clique les boutons d'aperçu DANS le cadre. Le choix ne pouvait pas voyager.
+ *
+ * Il voyage donc par l'adresse, comme les réglages : c'est le seul chemin
+ * qu'une page a vers une autre.
+ */
+function appareilDuProf() {
+    // `cadreDe()` attend 'none' pour le plein écran, là où le bouton dit
+    // 'desktop'. On traduit ici, une fois, plutôt que dans chaque volet.
+    const m = state.previewDeviceMode;
+    return m === 'desktop' || !m ? 'none' : m;
+}
+
+function adresse(quoi, appareil) {
     const p = new URLSearchParams();
     p.set('atelier', quoi);
     p.set('exo', exoCourant.id);
+    p.set('appareil', appareil || appareilDuProf());
     // Les réglages voyagent en clair : ce sont des valeurs simples, et l'URL
     // lisible se copie dans un onglet à part quand on veut voir un volet en
     // grand sur un vrai écran.
@@ -318,7 +344,9 @@ function assurerPanneau() {
                 border-radius: 9px; padding: 6px 10px; font: inherit; font-size: .8rem;
                 cursor: pointer; min-height: 34px; flex: 0 0 auto;
             }
-            .atl-pas:hover { background: var(--bg-hover); }
+            @media (hover: hover) {
+                .atl-pas:hover { background: var(--bg-hover); }
+            }
             .atl-pas:disabled { opacity: .35; cursor: default; }
 
             /* TROIS VOLETS ET UN RAIL, ET CHACUN S'ÉTEINT.
@@ -364,7 +392,9 @@ function assurerPanneau() {
                 cursor: pointer; font-size: .9rem; line-height: 1; padding: 3px 5px;
                 border-radius: 6px;
             }
-            .atl-volet-tete .atl-mini:hover { background: var(--bg-hover); color: var(--text-main); }
+            @media (hover: hover) {
+                .atl-volet-tete .atl-mini:hover { background: var(--bg-hover); color: var(--text-main); }
+            }
             .atl-volet-tete .atl-espace { margin-left: auto; }
             .atl-cadre { flex: 1 1 auto; width: 100%; border: 0; background: #fff; min-height: 0; }
             .atl-eteint {
@@ -397,8 +427,9 @@ function assurerPanneau() {
                 background: transparent; color: var(--text-main);
                 font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer;
             }
-            .atl-rang-select:hover, .atl-rang-select:focus {
-                border-color: var(--border); background: var(--bg-app);
+            .atl-rang-select:focus { border-color: var(--border); background: var(--bg-app); }
+            @media (hover: hover) {
+                .atl-rang-select:hover { border-color: var(--border); background: var(--bg-app); }
             }
             .atl-diff {
                 font-size: .66rem; font-weight: 800; letter-spacing: .02em;
@@ -752,8 +783,7 @@ function peindreReglages() {
             + 'Cet exercice n\'a pas de réglage.</div>';
         return;
     }
-    zone.innerHTML = schema.map(p => fieldHtml(p,
-        paramsCourants[p.id] !== undefined ? paramsCourants[p.id] : p.default)).join('');
+    zone.innerHTML = schema.map(p => fieldHtml(p, valeurDeChamp(p, paramsCourants))).join('');
     wireTips(zone);
     const relire = () => {
         paramsCourants = { ...paramsCourants, ...readParams(zone, schema) };
@@ -1095,8 +1125,13 @@ async function controler() {
                 dit.textContent = `${exoCourant.title} — ${etape.quoi} en ${format.nom.toLowerCase()}`
                     + ` (${format.l} × ${format.h})`;
                 peindreControle(`${format.nom} · ${etape.quoi} — en cours…`);
+                // LE CONTRÔLE IMPOSE SON PROPRE FORMAT, et le cadre qu'il
+                // ouvre FAIT déjà la taille de l'appareil. Lui laisser en plus
+                // le simulateur du professeur, c'était mesurer un téléphone
+                // DANS une fenêtre d'ordinateur — deux cadres empilés, et
+                // « trois vraies mises en page » n'en était plus une seule.
                 bilans.push(await sonder({
-                    url: adresse(etape.quoi), format, scene, quoi: etape.quoi
+                    url: adresse(etape.quoi, 'none'), format, scene, quoi: etape.quoi
                 }));
                 peindreControle();
             }
@@ -1461,7 +1496,12 @@ export async function ouvrirVoletAtelier(quoi, params) {
     if (!exo) return;
     let regles = {};
     try { regles = JSON.parse(decodeURIComponent(params.get('p') || '{}')) || {}; } catch (e) { regles = {}; }
-    const complet = { ...exo, params: { ...(exo.params || {}), ...regles } };
+    // L'APPAREIL VIENT DE L'ADRESSE — voir `appareilDuProf`. `apercuAppareil`
+    // est le chemin que `cadreDe()` respecte avant tout le reste ; il existait
+    // déjà pour le contrôle, qui lance le même exercice dans trois formats.
+    const appareil = params.get('appareil');
+    const complet = { ...exo, params: { ...(exo.params || {}), ...regles },
+        ...(appareil ? { apercuAppareil: appareil } : {}) };
     document.documentElement.classList.add('volet-atelier');
     // Le volet dit LEQUEL il est — l'en-tête de la page l'a déjà posé, mais
     // celui-ci s'ouvre aussi sans passer par l'URL (le contrôle en cadre).
@@ -1484,6 +1524,36 @@ export async function ouvrirVoletAtelier(quoi, params) {
     // volet pose la lecture sur `window`. Voir ui/cadreAtelier.js, qui la lit.
     const { state: etatDuVolet } = await import('../core/state.js');
     window.__runnerAtelier = () => etatDuVolet.activeSequenceRunner || null;
+
+    // ── L'APPAREIL CHOISI S'ASSIED DANS L'ÉTAT DU VOLET ─────────────────
+    //
+    // RÉMY : « je suis dans la zone prof, j'ai mis aperçu en ordinateur, je
+    // commence à faire l'exercice, je clique sur le robot et là ça se met en
+    // mode téléphone ».
+    //
+    // TROIS PAS, ET LE RÉGLAGE SE PERDAIT AU DEUXIÈME :
+    //
+    //   1. le volet lance bien l'exercice avec `apercuAppareil`, que
+    //      `cadreDe()` respecte avant tout le reste — l'écran est juste ;
+    //   2. le Runner démarre et fait `state.activeExo = step.exercise`, qui
+    //      est l'entrée BRUTE du catalogue : la copie portant l'appareil est
+    //      remplacée, et personne ne s'en aperçoit tant qu'on ne redemande
+    //      pas le cadre ;
+    //   3. le robot appelle `openDemo(state.activeExo)`, donc `cadreDe()` sur
+    //      cette entrée brute. Il retombe sur `state.previewDeviceMode` — qui
+    //      vaut « mobile » AU DÉMARRAGE, et personne ne clique les boutons
+    //      d'aperçu DANS un cadre. D'où le téléphone.
+    //
+    // LE COMMENTAIRE D'`appareilDuProf` DÉCRIVAIT DÉJÀ CE PIÈGE pour un autre
+    // chemin : « chaque volet est un CADRE, avec son propre core/state.js […]
+    // le choix ne pouvait pas voyager ». On l'avait fait voyager par
+    // l'adresse ; il n'ARRIVAIT nulle part. Il s'assied donc ici, une fois, et
+    // tout ce qui lira `previewDeviceMode` dans ce volet — le robot comme le
+    // reste — trouvera ce que le professeur a choisi.
+    //
+    // `cadreDe()` attend « none » pour le plein écran là où le bouton dit
+    // « desktop » : c'est la traduction inverse de celle d'`appareilDuProf`.
+    if (appareil) etatDuVolet.previewDeviceMode = appareil === 'none' ? 'desktop' : appareil;
     const { ItemSession } = await import('../core/itemSession.js');
     if (!ItemSession.prototype.__relaisAtelier) {
         ItemSession.prototype.__relaisAtelier = true;

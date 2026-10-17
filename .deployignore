@@ -17,6 +17,10 @@ imports
 docs
 # La marche à suivre est pour Rémy, sur son ordinateur — pas pour le web.
 INSTALLER.md
+# Comment on travaille dans ce dépôt : c'est une note interne, et elle se
+# retrouvait publiée à la racine du site. Trouvée en relisant le contenu d'un
+# paquet avant de l'envoyer, le 28 septembre.
+CLAUDE.md
 _jeu.mjs
 package.json
 package-lock.json

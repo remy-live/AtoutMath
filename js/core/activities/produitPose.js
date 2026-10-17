@@ -50,6 +50,7 @@ import {
 } from '../produitPose.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { showModal } from '../../ui/modal.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Les touches, dans l'ordre où on les lit — pas celui d'une calculatrice. */
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
@@ -115,7 +116,16 @@ export function mount(container, session, opts = {}) {
                 </span>
             </span>`;
         }
-        const classes = ['pp-jeton', `pp-jeton--${etage}`];
+        // UN JETON EST UN NOMBRE DANS UNE LIGNE DE CALCUL, pas un bouton de
+        // barre d'outils : sa taille est celle du texte qui l'entoure.
+        //
+        // Trouvé par `tools/boutonsEtires.mjs` en cherchant le défaut que Rémy
+        // signale sur les retenues : au doigt, ces jetons mesuraient 18 × 44 px
+        // — deux fois et demie plus hauts que larges — parce que le plancher
+        // tactile de 44 px s'applique à tout bouton de jeu qui ne déclare pas
+        // sa forme. Un « 3 × 11 × 45 » dont chaque facteur fait deux
+        // centimètres de haut n'est plus un produit, c'est une colonne.
+        const classes = ['btn-carre', 'pp-jeton', `pp-jeton--${etage}`];
         if (t.barre) classes.push('pp-jeton--barre');
         if (choisi === t.id) classes.push('pp-jeton--choisi');
         return `<button type="button" class="${classes.join(' ')}" data-jeton="${t.id}"
@@ -488,7 +498,8 @@ export function mount(container, session, opts = {}) {
     async function appuyer(selecteur, action) {
         const el = container.querySelector(selecteur);
         if (!el || destroyed) return false;
-        if (!await cursor.tap(el, DEMO_SPEED.move)) return false;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.toucher(el, DEMO_SPEED.move)) return false;
         if (destroyed) return false;
         action();
         return !destroyed;
@@ -505,10 +516,11 @@ export function mount(container, session, opts = {}) {
     async function runDemo() {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
         const souffler = (ms) => cursor.pause(ms);
         const vise = (sel) => container.querySelector(sel);
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         if (!await souffler(600) || destroyed) return;
         cursor.say('Tout ce qui est en haut se multiplie, tout ce qui est en bas aussi.',
             vise('[data-expr]'));
@@ -524,7 +536,7 @@ export function mount(container, session, opts = {}) {
                 if (mode !== 'barrer' && !await appuyer('[data-mode="barrer"]', () => {
                     mode = 'barrer'; choisi = null; render();
                 })) return;
-                if (!await gate.waitTurn() || destroyed) return;
+                if (!await robot.tour()) return;
                 cursor.say(`${geste.haut.v} est écrit en haut ET en bas : je le barre.`,
                     vise(`[data-jeton="${geste.haut.id}"]`));
                 if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
@@ -536,7 +548,7 @@ export function mount(container, session, opts = {}) {
                 if (mode !== 'decomposer' && !await appuyer('[data-mode="decomposer"]', () => {
                     mode = 'decomposer'; choisi = null; render();
                 })) return;
-                if (!await gate.waitTurn() || destroyed) return;
+                if (!await robot.tour()) return;
                 cursor.say(`Aucun nombre n’est écrit deux fois. Mais ${geste.v} = `
                     + `${geste.x} × ${geste.y} : je le décompose.`,
                     vise(`[data-jeton="${geste.id}"]`));
@@ -553,7 +565,7 @@ export function mount(container, session, opts = {}) {
             if (!await souffler(320) || destroyed) return;
         }
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say('Plus rien à barrer. Je multiplie ce qui reste.', vise('[data-fini]'));
         if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
         if (!await appuyer('[data-fini]', declarerFini)) return;
@@ -564,7 +576,7 @@ export function mount(container, session, opts = {}) {
             && !await appuyer('[data-case="b"]', () => { saisie.actif = 'b'; render(); })) return;
         if (!await ecrire(r.d)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(`${r.n} sur ${r.d} : tout ce qui restait, en haut et en bas.`,
             vise('[data-expr]'));
         if (!await souffler(DEMO_SPEED.between) || destroyed) return;

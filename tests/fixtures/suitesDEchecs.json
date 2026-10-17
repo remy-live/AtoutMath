@@ -1,0 +1,106 @@
+{
+  "pourquoi": [
+    "UNE SEULE VÉRITÉ, LUE PAR LES DEUX HARNAIS.",
+    "",
+    "`js/core/memoireCourte.js` décide quand pousser un indice gratuit.",
+    "`api/lib/blocages.php` compte, sur les séances réelles de Rémy, à quelle",
+    "fréquence ce seuil serait franchi — et c'est sur ces comptes qu'il choisira",
+    "entre deux et trois.",
+    "",
+    "SI LES DEUX NE COMPTENT PAS LA MÊME CHOSE, LA MESURE NE PRÉDIT RIEN, et le",
+    "seuil choisi dessus est faux. Les deux comptages sont écrits dans deux",
+    "langages, dans deux fichiers, par deux chemins : rien ne les tient d'accord",
+    "sauf ce fichier, que `tests/memoireCourte.test.mjs` et",
+    "`php tools/testApi.php` lisent tous les deux.",
+    "",
+    "Chaque cas donne une suite de QUESTIONS CONCLUES, dans l'ordre où l'élève",
+    "les a faites, et ce que les deux doivent en dire."
+  ],
+  "legende": {
+    "questions": "c = compétence · r = réussie du premier coup (true) ou non",
+    "echecsDeSuite": "la longueur de la suite d'échecs EN COURS, sur la compétence de la dernière question",
+    "suiteLaPlusLongue": "la plus longue suite d'échecs sur une même compétence, où qu'elle soit"
+  },
+  "cas": [
+    {
+      "nom": "rien du tout",
+      "questions": [],
+      "echecsDeSuite": 0,
+      "suiteLaPlusLongue": 0
+    },
+    {
+      "nom": "un seul échec n'est pas une suite",
+      "questions": [{ "c": "num.add", "r": false }],
+      "echecsDeSuite": 1,
+      "suiteLaPlusLongue": 0
+    },
+    {
+      "nom": "deux échecs de suite sur la même compétence",
+      "questions": [
+        { "c": "num.add", "r": false },
+        { "c": "num.add", "r": false }
+      ],
+      "echecsDeSuite": 2,
+      "suiteLaPlusLongue": 2
+    },
+    {
+      "nom": "UNE RÉUSSITE REMET LE COMPTEUR À ZÉRO",
+      "questions": [
+        { "c": "num.add", "r": false },
+        { "c": "num.add", "r": false },
+        { "c": "num.add", "r": true }
+      ],
+      "echecsDeSuite": 0,
+      "suiteLaPlusLongue": 2
+    },
+    {
+      "nom": "UN CHANGEMENT DE COMPÉTENCE AUSSI — deux questions difficiles, pas un blocage",
+      "questions": [
+        { "c": "num.add", "r": false },
+        { "c": "geo.aire", "r": false }
+      ],
+      "echecsDeSuite": 1,
+      "suiteLaPlusLongue": 0
+    },
+    {
+      "nom": "la suite reprend après une réussite",
+      "questions": [
+        { "c": "num.add", "r": false },
+        { "c": "num.add", "r": true },
+        { "c": "num.add", "r": false },
+        { "c": "num.add", "r": false }
+      ],
+      "echecsDeSuite": 2,
+      "suiteLaPlusLongue": 2
+    },
+    {
+      "nom": "trois de suite, et c'est bien trois",
+      "questions": [
+        { "c": "num.add", "r": false },
+        { "c": "num.add", "r": false },
+        { "c": "num.add", "r": false }
+      ],
+      "echecsDeSuite": 3,
+      "suiteLaPlusLongue": 3
+    },
+    {
+      "nom": "une question sans compétence déclarée ne fait pas de suite",
+      "questions": [
+        { "c": null, "r": false },
+        { "c": null, "r": false }
+      ],
+      "echecsDeSuite": 0,
+      "suiteLaPlusLongue": 0
+    },
+    {
+      "nom": "une compétence sans nom coupe la suite plutôt que de la prolonger",
+      "questions": [
+        { "c": "num.add", "r": false },
+        { "c": null, "r": false },
+        { "c": "num.add", "r": false }
+      ],
+      "echecsDeSuite": 1,
+      "suiteLaPlusLongue": 0
+    }
+  ]
+}

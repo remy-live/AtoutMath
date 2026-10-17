@@ -26,9 +26,30 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { tirerExpression, operationPrioritaire, naif, critiquer, ecrire } from '../priorites.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const SKILL = 'num.prio.relatifs';
 const OPTS = { relatifs: true };
+
+// ── LES QUATRE DIFFICULTÉS, EN CASES À COCHER ───────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral. »
+//
+// Comme aux priorités simples, les cases remplacent DEUX réglages : le menu
+// « Difficulté » et la case « Commencer plus facile » qui en changeait le
+// sens. Ici cette case était cochée par défaut — deux règles se rencontrent
+// sur ce chapitre —, et c'est exactement ce que dit la colonne entière cochée.
+const MARCHES_PRIO = [
+    { id: '1', nom: '1. 5 − 3 × (−2), trois nombres' },
+    { id: '2', nom: '2. 5 − 3 × (−2) + 4, jusqu\'à quatre nombres' },
+    { id: '3', nom: '3. 3 × (−4 + 5), les parenthèses arrivent' },
+    { id: '4', nom: '4. (−2 + 6) × (3 − 7), deux groupes' }
+];
+/** Le réglage d'avant les cases — voir `marchesCochees`. */
+const ANCIEN_PRIO = { cle: 'niveau', jusqua: (p) => !p || p.progressif !== false };
 
 /**
  * LE VRAI SIGNE MOINS DANS CE QUI S'AFFICHE — U+2212, pas le trait d'union.
@@ -116,16 +137,10 @@ export const prioritesRelatifsGenerator = {
     skills: [SKILL],
     answerKinds: ['choice'],
     ecrit: true,
+    // LA LONGUEUR SUIT LE NOMBRE DE NIVEAUX COCHÉS — voir core/duree.js.
+    conseil: (p) => conseilProgression(marchesCochees(p, MARCHES_PRIO, ANCIEN_PRIO).length),
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
-            options: [
-                { value: 1, label: '1 — Trois nombres, deux opérations' },
-                { value: 2, label: '2 — Jusqu\'à quatre nombres' },
-                { value: 3, label: '3 — Les parenthèses arrivent' },
-                { value: 4, label: '4 — Deux groupes de parenthèses' }
-            ]
-        },
+        paramMarches({ marches: MARCHES_PRIO, mot: 'niveau', ancien: ANCIEN_PRIO }),
         {
             id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: false,
             aide: 'Attention : les parenthèses d\'un nombre négatif — « (−2) » — sont '
@@ -141,23 +156,19 @@ export const prioritesRelatifsGenerator = {
             aide: 'Désigner l\'opération est plus facile : on ne calcule rien, on '
                 + 'applique seulement la règle de priorité. C\'est le bon départ quand '
                 + 'les signes brouillent déjà la lecture.'
-        },
-        {
-            id: 'progressif', type: 'checkbox', label: 'Commencer plus facile', default: true,
-            aide: 'Les premières questions restent à trois nombres, puis la difficulté monte '
-                + 'd\'un cran. Sur ce chapitre, deux règles se rencontrent : mieux vaut les voir '
-                + 'arriver une à une.'
         }
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
         params = params || {};
-        const plafond = Math.max(1, Math.min(4, Number(params.niveau) || 2));
-        const niveau = params.progressif === false
-            ? plafond
-            : Math.min(plafond,
-                1 + Math.floor((Number(ctx.index) || 0) / 4));
+        // LES NIVEAUX COCHÉS SE PARTAGENT LES QUESTIONS, dans l'ordre — voir
+        // core/progression.js. C'est la montée d'avant, mais c'est le
+        // professeur qui dit où elle commence et combien de questions chaque
+        // cran reçoit.
+        const niveau = Math.max(1, Math.min(4, Number(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, MARCHES_PRIO, ANCIEN_PRIO),
+            totalDe(ctx, params), params)) || 2));
 
         const e = tirerExpression({
             rng, niveau, relatifs: true,
@@ -178,6 +189,9 @@ export const prioritesRelatifsGenerator = {
             meta: {
                 eq: e.texte, right: prioritaire, value: e.resultat,
                 etapes: e.etapes, avecParentheses: e.avecParentheses, theme: e.texte,
+                // La marche voyage avec la question : c'est elle que la frise
+                // du panneau relit pour montrer où en est l'exercice.
+                marche: String(niveau),
                 // LA TOUCHE « ± » DU PAVÉ, POUR TOUTES LES QUESTIONS — y compris
                 // celles dont la réponse est positive. Quand l'aide passe au
                 // clavier, une réponse négative doit pouvoir s'écrire ; et si la

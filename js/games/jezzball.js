@@ -12,6 +12,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerPartie, avancerBalle, lancerMur, pousserMur, murTouche, casserMur, pourcentage
 } from '../core/jezzball.js';
@@ -22,6 +23,9 @@ const CIBLE = 75;
 class JezzBall extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'jezzball');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.rng = makeRng(this.params.seed);
         this.viesDepart = Number(this.params.vies) || 4;
         this.niveau = 1;
@@ -49,7 +53,18 @@ class JezzBall extends BaseGame {
                 .jz-pc { font-weight: 900; min-width: 3.2em; text-align: right; }
                 canvas.jz-toile {
                     border: 2.5px solid var(--text-main); border-radius: 10px;
-                    width: min(94cqw, 640px); touch-action: none; cursor: crosshair;
+                    /* LE TERRAIN SUIT L'ÉCRAN, DANS LES DEUX SENS.
+                       Il n'était borné que par la LARGEUR : à 1440 x 900 il
+                       faisait 640 x 419 dans un plateau de 830, soit 270 px de
+                       vide en dessous ; à 360 x 640, 286 x 188 — trente-deux
+                       pour cent de la hauteur, avec cent trente pixels vides
+                       sous la consigne. Le jeu restait jouable, mais on jouait
+                       petit sans raison.
+                       La hauteur disponible entre ici : environ deux cents
+                       pixels pour l'entête, la barre et la note, et le reste
+                       pour le terrain, dans sa proportion. */
+                    width: min(94cqw, 820px, calc((100cqh - 200px) * 1.53));
+                    touch-action: none; cursor: crosshair;
                     background: var(--bg-panel); display: block;
                 }
                 .jz-barre { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
@@ -283,28 +298,34 @@ class JezzBall extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.p) this.poser();
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say(`La jauge est un POURCENTAGE d'aire : la part du terrain déjà conquise. `
             + `Le trait rouge marque la cible, ${CIBLE} %.`, this.container.querySelector('.jz-jauge'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Je lance un mur LOIN des balles : il pousse des deux côtés, et s\'il arrive au bout '
-            + 'sans être touché, toute région sans balle est conquise.', this.toile);
+        if (!await robot.tour()) return fin();
+        // DEUX IDÉES, DONC DEUX BULLES : le geste avant le lancer, ce qu'il
+        // rapporte pendant que le mur avance. En une seule, 138 caractères à lire
+        // d'un coup.
+        cur.say('Je lance un mur LOIN des balles : il pousse des deux côtés.', this.toile);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
         // Un mur dans le tiers le plus vide.
         const x = this.p.balles.every(b => b.x > this.p.cols / 2) ? 4 : this.p.cols - 5;
         lancerMur(this.p, x, Math.floor(this.p.lignes / 2), true);
-        if (!await cur.pause(2600) || !this.isRunning) return fin();
+        cur.say('S\'il arrive au bout sans être touché, toute région sans balle est conquise.', this.toile);
+        if (!await robot.pause(2600)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const pc = pourcentage(this.p);
         cur.say(`${pc} % : chaque coupe se lit en proportion. Couper le reste en deux rapporte `
             + `la moitié de ce qui reste — c'est pour ça que la fin est plus dure que le début.`,
             this.container.querySelector('[data-pc]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

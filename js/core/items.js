@@ -10,6 +10,12 @@
 // La compatibilité se lit sur un seul champ : `answerKind`. Une activité
 // déclare les genres de réponse qu'elle sait présenter (`accepts`), un
 // générateur ceux qu'il sait produire.
+//
+// LE SEUL IMPORT DE CE FICHIER, et il est là pour une raison qu'on peut écrire :
+// tout item passe par `makeItem`, donc la notation de la multiplication se pose
+// ici une fois pour tout le dépôt plutôt que dans les cent soixante-six
+// fichiers qui écrivent un « × ». Voir `notationDeLItem`, plus bas.
+import { avecSigne, sansSigne, signeChoisi, SIGNE_PAR_DEFAUT } from './signeFois.js';
 
 /**
  * @typedef {'choice'|'numeric'|'text'|'point'|'pair'|'grid'} AnswerKind
@@ -30,6 +36,8 @@
  * @property {{text:string, html?:string, sub?:string}} prompt
  * @property {string|number} answer
  * @property {Choice[]} [choices]
+ * @property {boolean} [ecritureExacte] - la réponse est une ÉCRITURE, pas un
+ *   nombre : « 53,300 » ne vaut alors plus « 53,3 ». Voir `makeItem`.
  * @property {string[]} hints       - aides graduées, de la plus légère à la plus explicite
  * @property {string} explanation   - correction affichée après coup
  * @property {string} [reponsePapier] - la réponse telle qu'on l'écrit dans le
@@ -83,6 +91,46 @@ export function makeItem(spec) {
         // accompagne `hints[i]`. Les entrées vides sont la règle : un indice
         // qui n'a rien à montrer n'en a pas besoin.
         schemas: spec.schemas || [],
+        /**
+         * COMMENT ON JUGE UNE RÉPONSE TAPÉE, quand la comparer au texte attendu
+         * ne suffit pas.
+         *
+         * Rémy : « on ne peut jamais taper la réponse, c'est toujours un QCM,
+         * quel dommage ». Le clavier existait pourtant — mais `choice.js` n'y
+         * passait que si la réponse était un NOMBRE. Pour une expression, il
+         * n'y avait aucune route.
+         *
+         * Et pour une expression, la comparaison de chaînes ne convient pas :
+         * (x − 3)(x + 3) et (x + 3)(x − 3) sont tous deux justes, et aucun
+         * n'est « la » réponse. Un item peut donc apporter sa propre règle —
+         * pour une factorisation, comparer les POLYNÔMES et exiger qu'elle
+         * aille jusqu'au bout.
+         *
+         * @type {?(saisie: string) => (boolean | {juste: boolean, pourquoi?: string})}
+         */
+        verifieTexte: spec.verifieTexte || null,
+        /**
+         * QUAND C'EST L'ÉCRITURE QUI EST LA RÉPONSE.
+         *
+         * RÉMY : « dans les zéros inutiles, tu considères comme bon comme
+         * réponse 53,300 ; par exemple 0530,060 = 530,06 ».
+         *
+         * `sameAnswer` compare les NOMBRES : 53,300 et 53,3 sont le même
+         * nombre, donc la réponse passait. C'est voulu presque partout — un
+         * quotient écrit « 25,0 » est juste, et refuser le zéro de trop
+         * ferait perdre un point pour une broutille. Mais « La Chasse aux
+         * Zéros » demande précisément d'ENLEVER ces zéros : la réponse n'est
+         * pas un nombre, c'est une ÉCRITURE. Mesuré avant correction, sur
+         * quarante questions : 54 réponses encore chargées de zéros sur 54
+         * étaient comptées justes — y compris RECOPIER LA QUESTION, qui
+         * rapportait un point pour n'avoir rien fait.
+         *
+         * L'exercice qui juge une écriture le déclare donc, et c'est le seul
+         * endroit où on se le permet : le défaut reste la tolérance.
+         *
+         * @type {boolean}
+         */
+        ecritureExacte: !!spec.ecritureExacte,
         explanation: spec.explanation || '',
         // Vide = l'explication de l'écran convient au papier. C'est le cas
         // général : on ne double que les corrections qui décrivent une image.
@@ -99,6 +147,58 @@ export function makeItem(spec) {
         throw new Error(`[item] ${item.generatorId}: un item 'choice' doit avoir une réponse correcte parmi ses choix`);
     }
     if (!item.prompt.html) item.prompt.html = `<div class="game-question">${item.prompt.text}</div>`;
+    return notationDeLItem(item);
+}
+
+/**
+ * LA NOTATION DE LA MULTIPLICATION, POSÉE UNE SEULE FOIS POUR TOUT LE DÉPÔT.
+ *
+ * Rémy : « dans les paramètres d'affichage, propose aussi le x (le signe fois
+ * français) ou l'astérisque […] évidemment ce rendu est valable dans les
+ * écritures et input ».
+ *
+ * TOUT ITEM PASSE PAR `makeItem`. C'est ce qui permet de n'écrire la règle
+ * qu'ici : les deux cents générateurs continuent d'écrire « × », les cent
+ * soixante-six fichiers qui en contiennent ne bougent pas, et un exercice écrit
+ * l'an prochain respectera le réglage sans que son auteur ait à le savoir.
+ * Compté avant de commencer : 1 001 chaînes portent un « × ».
+ *
+ * ON NE TOUCHE QUE CE QUI S'AFFICHE, et la liste est courte exprès :
+ *
+ *   · `prompt.text` / `prompt.html`  l'énoncé ;
+ *   · `explanation`, `explicationPapier`, `hints`  ce qu'on lit après coup ;
+ *   · le LIBELLÉ des propositions, jamais leur `value`.
+ *
+ * CE QU'ON NE TOUCHE PAS, ET C'EST LA MOITIÉ DE LA RÈGLE. `answer`,
+ * `choices[].value`, `diagnostics[].value`, `reponsePapier` : ce sont des
+ * VALEURS, elles se comparent. Les retoucher ferait qu'un élève dont le
+ * professeur a choisi l'astérisque verrait sa bonne réponse refusée, ou qu'un
+ * travail enregistré deviendrait illisible pour un appareil réglé autrement.
+ * La saisie, elle, accepte les trois notations quoi qu'il arrive — voir
+ * `js/core/signeFois.js`.
+ *
+ * AU DÉFAUT, CETTE FONCTION NE FAIT RIEN : `avecSigne` rend son argument tel
+ * quel tant que le signe choisi est « × ». Tout le monde passe ici, personne
+ * ne paie rien.
+ */
+function notationDeLItem(item) {
+    if (signeChoisi() === SIGNE_PAR_DEFAUT) return item;
+    item.prompt.text = avecSigne(item.prompt.text);
+    item.prompt.html = avecSigne(item.prompt.html);
+    item.explanation = avecSigne(item.explanation);
+    item.explicationPapier = avecSigne(item.explicationPapier);
+    item.hints = (item.hints || []).map(avecSigne);
+    if (Array.isArray(item.choices)) {
+        item.choices = item.choices.map(c => ({
+            ...c,
+            label: avecSigne(c.label),
+            // `texte` EST CE QU'IMPRIME LA FICHE (voir `printQuestions.js`) :
+            // c'est de l'affichage lui aussi, et l'oublier donnerait une feuille
+            // qui ne ressemble pas à l'écran.
+            texte: avecSigne(c.texte),
+            why: avecSigne(c.why)
+        }));
+    }
     return item;
 }
 
@@ -158,7 +258,13 @@ export function finalizeChoices(rng, choices, { count = 4, filler = null } = {})
 /** Comparaison tolérante : "12" == 12, " 3,5 " == "3.5". */
 export function sameAnswer(a, b) {
     const norm = v => {
-        let s = String(v === undefined || v === null ? '' : v).trim().replace(',', '.').toLowerCase();
+        // LES TROIS SIGNES DE MULTIPLICATION VALENT LE MÊME. Sans cette
+        // ramenée, un professeur qui choisit l'astérisque verrait la bonne
+        // réponse de ses élèves refusée : le pavé écrit « 3*4 », la réponse
+        // attendue dit « 3×4 », et la comparaison est une comparaison de
+        // CHAÎNES. Le réglage change l'affichage, il ne doit rien casser.
+        let s = sansSigne(String(v === undefined || v === null ? '' : v))
+            .trim().replace(',', '.').toLowerCase();
         // « 62 307 » ET « 62307 » SONT LE MÊME NOMBRE. Depuis qu'on écrit les
         // grands nombres par groupes de trois — c'est la règle, et c'est ce
         // qui permet de les lire —, une réponse qui porte ses espaces doit
@@ -186,6 +292,25 @@ export function sameAnswer(a, b) {
     return Math.abs(parseFloat(na) - parseFloat(nb)) < 1e-9;
 }
 
+/**
+ * MÊME ÉCRITURE, et pas seulement même valeur.
+ *
+ * On garde les tolérances qui ne touchent pas à ce qu'on travaille : les
+ * espaces autour, la virgule ou le point (c'est une affaire de clavier, pas
+ * de numération), les espaces de milliers, la casse. On abandonne la seule
+ * qui compte ici : l'égalité numérique. « 53,30 » n'est donc plus « 53,3 »,
+ * et « 0147 » n'est plus « 147 ».
+ */
+export function memeEcriture(a, b) {
+    const norm = (v) => {
+        let s = String(v === undefined || v === null ? '' : v).trim().replace(',', '.').toLowerCase();
+        const nu = s.replace(/[\s\u00A0\u202F]/g, '');
+        if (/^[-+]?\d*\.?\d+$/.test(nu)) s = nu;
+        return s;
+    };
+    return norm(a) === norm(b);
+}
+
 /** La chaîne est-elle un nombre, et RIEN QUE lui ? */
 const estNombreEntier = (s) => /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/.test(s);
 
@@ -195,17 +320,23 @@ const estNombreEntier = (s) => /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/.test(s);
  * qui transforme un « faux » en diagnostic.
  */
 export function evaluate(item, given) {
-    const correct = sameAnswer(given, item.answer);
+    // UN SEUL COMPARATEUR POUR TOUT L'ITEM — le verdict ET les diagnostics.
+    // Sinon un item jugé sur l'écriture irait chercher son « pourquoi » avec
+    // la règle tolérante, et le distracteur « il reste des zéros à la fin »,
+    // qui vaut le même nombre que la bonne réponse, serait reconnu... comme
+    // la bonne réponse.
+    const pareil = item.ecritureExacte ? memeEcriture : sameAnswer;
+    const correct = pareil(given, item.answer);
     let misconception = null;
     if (!correct && item.choices) {
-        const picked = item.choices.find(c => sameAnswer(c.value, given));
+        const picked = item.choices.find(c => pareil(c.value, given));
         if (picked && picked.why) misconception = picked.why;
     }
     // Puis les diagnostics de saisie — voir `makeItem`. Ils ne prennent jamais
     // la place d'un distracteur reconnu : celui-là a été CHOISI, celui-ci est
     // deviné d'après ce qui a été tapé.
     if (!correct && !misconception && Array.isArray(item.diagnostics)) {
-        const vu = item.diagnostics.find(d => sameAnswer(d.value, given));
+        const vu = item.diagnostics.find(d => pareil(d.value, given));
         if (vu && vu.why) misconception = vu.why;
     }
     return {

@@ -65,3 +65,33 @@ test('LE PANNEAU DE RÉGLAGES PASSE DEVANT LA FICHE, ET SEULEMENT ALORS', () => 
     assert.match(bloc, /print-sheet-modal', 'print-questions-modal/);
     assert.match(bloc, /display !== 'none'/, 'la classe ne dépend pas de ce qui est affiché');
 });
+
+// --- L'EXPOSANT NE FAIT PAS DESCENDRE SA LIGNE ------------------------------
+
+test('UN EXPOSANT NE DÉCALE PAS L\'ÉNONCÉ SOUS SON NUMÉRO', () => {
+    // RÉMY, capture d'un aperçu de fiche : « pour l'impression des calculs en
+    // puissance, le nombre en puissance est décalé par rapport aux numéros ».
+    // Le « 163. » était sur sa ligne, le « 2³ = » un peu plus bas.
+    //
+    // MESURÉ dans le navigateur, la fiche des puissances contre une fiche
+    // d'additions :
+    //
+    //   · avec exposants : la ligne fait 17,5 px de haut au lieu de 14, les
+    //     deux boîtes partent du même `top`, et la BASE de l'énoncé tombe
+    //     3,5 px plus bas que celle du numéro — sur les huit questions
+    //     mesurées, sans exception ;
+    //   · sans exposants : 0 px d'écart.
+    //
+    // La cause est que chaque ligne est posée en ABSOLU à un `top` fixe : un
+    // `<sup>` sans style agrandit la boîte de ligne vers le haut, et ces
+    // pixels-là s'ajoutent au-dessus de la base. `line-height: 0` rend
+    // l'exposant transparent à ce calcul ; son décalage vers le haut reste
+    // celui du navigateur, qui est déjà ce que le PDF dessine de son côté.
+    //
+    // Mesuré après correction : 0 px, et l'exposant reste lisible.
+    const css = lire('../css/ui.css');
+    assert.match(css, /\.fx-haut \{ line-height: 0; \}/,
+        'l\'exposant agrandit de nouveau la ligne, et la base redescend');
+    // La classe existe bien, et c'est elle que l'aperçu pose sur ses exposants.
+    assert.match(lire('../js/ui/ficheRendu.js'), /<sup class="fx-haut">/);
+});

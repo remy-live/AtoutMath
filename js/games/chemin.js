@@ -18,6 +18,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { memeCase, adjacentes, clef } from '../core/relier.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     TAILLES, CONSIGNE, genererParcours, traceVide, repereEn, peutAvancer,
     avancer, couperEn, verifier, conseil, solutionComplete
@@ -370,16 +371,17 @@ class CheminNumerote extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.grille) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say('Un seul chemin, du 1 jusqu\'au dernier nombre, dans l\'ordre — et à la fin, '
             + 'AUCUNE case ne doit rester vide.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         const caseEl = ([x, y]) => this.svg.querySelector(`[data-x="${x}"][data-y="${y}"]`);
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Je pose le doigt sur le 1 et je glisse : le chemin suit les cases.',
             caseEl(this.grille.solution[0]) || this.svg);
         const depart = caseEl(this.grille.solution[0]);
@@ -390,14 +392,19 @@ class CheminNumerote extends BaseGame {
         for (let i = 1; i < jusqua; i++) {
             this.trace = this.grille.solution.slice(0, i + 1);
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Je ne fonce pas au nombre suivant : je regarde les COINS. Un coin n\'a que '
-            + 'deux voisines — si le chemin ne le prend pas en passant, il ne pourra plus '
-            + 'jamais y aller.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Je ne fonce pas au nombre suivant : je regarde les COINS.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        // POURQUOI LES COINS : gardé, mais dans sa propre bulle. Au-delà de 110 caractères
+        // la bulle se lit si lentement qu'on croit la démonstration plantée
+        // (js/core/activities/choice.js, COURT).
+        cur.say('Un coin n\'a que deux voisines : si le chemin ne le prend pas en passant, c\'est perdu.',
+            this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

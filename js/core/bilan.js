@@ -389,8 +389,23 @@ export function consigneDe(b) {
 
     const durs = (b.difficultes || []).slice(0, 2).map(c => c.nom);
     if (durs.length) {
-        return `Doit réviser ${durs.length > 1 ? ' : ' : ''}${durs.join(' et ')}.`
-            .replace('Doit réviser  : ', 'Doit réviser : ');
+        // LE DEUX-POINTS DANS TOUS LES CAS, MAINTENANT. Rémy, sur la liste des
+        // points ouverts : « fais tout ».
+        //
+        // Il n'y en avait pas pour une seule notion, et c'était un choix gardé
+        // par un essai. Un audit l'avait signalé, et la remarque n'était pas
+        // sans fondement : dans le PDF du bilan, « Maël — Doit réviser Aire
+        // d'un rectangle. » voisinait avec « Anaïs — Doit réviser : Diviser et
+        // Additionner des entiers. », et la première avait l'air d'un ordre
+        // tronqué, parce que la notion commence par une majuscule.
+        //
+        // CE QUI TRANCHE, C'EST L'USAGE DE CETTE PHRASE. Elle n'est pas lue
+        // une par une : elle tient sur la ligne d'un tableau de vingt-six
+        // élèves, qu'on BALAIE du regard pour repérer les cinq qui ont le même
+        // mot. Un préfixe fixe — « Doit réviser : » — fait commencer toutes
+        // les notions à la même place ; c'est justement ce que l'oeil suit. La
+        // variante sans deux-points décalait une ligne sur deux.
+        return `Doit réviser : ${durs.join(' et ')}.`;
     }
     // AUCUNE DIFFICULTÉ FIABLE : on distingue quand même « tout est acquis » de
     // « on a fait le tour ». Un élève qui réussit tout n'a pas besoin qu'on le
@@ -422,6 +437,97 @@ export function consigneClasse(b) {
     }
     const noms = durs.slice(0, 2).map(c => c.nom).join(' et ');
     return `Revoir avec toute la classe : ${noms}.`;
+}
+
+/**
+ * UN CONSEIL PAR ÉLÈVE, SUR LE TERME — et non sur une séance.
+ *
+ * RÉMY : « Et pour les bilans, propose des onglets, fais le au parcours, de
+ * manière globale, une conseil pour chaque élève. »
+ *
+ * ── POURQUOI UNE DEUXIÈME FONCTION, APRÈS `consigneDe` ───────────────────
+ *
+ * `consigneDe` lit le bilan d'UNE SÉANCE — questions, étapes inachevées,
+ * erreur têtue. Celle-ci lit la ligne du RAPPORT DE CLASSE, qui ne porte ni
+ * séance ni étapes : des compétences fragiles, un taux, des erreurs jamais
+ * reprises, une dernière venue. Ce ne sont pas les mêmes données, et une
+ * fonction qui prétendrait lire les deux formes mentirait sur l'une.
+ *
+ * L'ORDRE DES CAS EST L'ORDRE DES PRIORITÉS, comme pour `consigneDe` :
+ *
+ *   1. il n'est jamais venu — aucun conseil de travail n'a de sens tant que
+ *      l'élève n'est pas entré ; ce qui manque est son code, pas une notion ;
+ *   2. il n'a rien fait — rien à réviser tant qu'on n'a pas travaillé ;
+ *   3. trop peu de questions pour conclure — dire « 40 % » sur six questions
+ *      est un chiffre juste et une conclusion fausse ;
+ *   4. les notions fragiles, NOMMÉES — et le nombre d'erreurs en souffrance
+ *      rangé derrière, entre parenthèses ;
+ *   5. pas de notion fragile mais des erreurs jamais reprises : on nomme les
+ *      notions de CES erreurs-là ;
+ *   6. rien de fragile : on peut ouvrir la suite.
+ *
+ * LE NOMBRE NE DIT PAS QUOI REPRENDRE. Première écriture : le compte d'erreurs
+ * ouvertes passait AVANT les notions, et sept élèves d'affilée portaient « 67
+ * erreurs jamais reprises : les revoir avec lui ou elle ». Rémy : « il faut
+ * plutôt préciser en quoi ça doit être retravaillé ». Une phrase qui ne nomme
+ * rien ne se recopie nulle part.
+ *
+ * ELLE NOMME LA NOTION, JAMAIS L'ÉLÈVE : « Doit réviser : les relatifs » se
+ * recopie sur un cahier de textes, « est en difficulté » n'apprend rien à
+ * personne et ne se recopie nulle part.
+ *
+ * ELLE REND SON RANG AVEC SA PHRASE, et c'est tout le point : l'écran range
+ * les élèves par urgence et teinte le filet de chaque ligne. S'il redérivait
+ * ce rang de son côté, il y aurait deux échelles à tenir d'accord — et la
+ * première fois qu'elles ont divergé, « trop peu de questions » s'affichait
+ * en VERT, c'est-à-dire « rien à signaler ».
+ *
+ * @returns {{rang:number, phrase:string}} 0 = le plus urgent, 5 = rien à faire
+ */
+export function conseilDuRapport(ligne) {
+    const l = ligne || {};
+    const questions = Number(l.totalQuestions || 0);
+    if (!l.lastSeenAt && !questions) {
+        return { rang: 0, phrase: 'Ne s\'est jamais connecté : lui redonner son code.' };
+    }
+    if (!questions) {
+        return { rang: 1, phrase: 'N\'a pas encore travaillé : commencer par une séance courte.' };
+    }
+    if (questions < RELIABLE_MIN_ATTEMPTS) {
+        return { rang: 4, phrase: `${questions} question${questions > 1 ? 's' : ''} seulement : `
+            + 'trop tôt pour conclure.' };
+    }
+    // LE NOMBRE D'ERREURS NE DIT PAS QUOI REPRENDRE — LA NOTION, SI.
+    //
+    // RÉMY, devant la colonne : « il faut plutôt préciser en quoi ça doit être
+    // retravaillé ». Sept élèves d'affilée portaient « 67 erreurs jamais
+    // reprises : les revoir avec lui ou elle » — sept fois la même phrase, qui
+    // ne nomme rien et ne se recopie nulle part. Le compte passe donc APRÈS la
+    // notion, et seulement comme détail.
+    const ouvertes = Number(l.openErrors || 0);
+    const detail = ouvertes ? ` (${ouvertes} erreur${ouvertes > 1 ? 's' : ''} à reprendre)` : '';
+    const faibles = (l.weakSkills || []).map(w => nomCompetence(w.skillId)).filter(Boolean);
+    if (faibles.length) {
+        return { rang: 2, phrase: `Doit réviser : ${faibles.slice(0, 2).join(' et ')}${detail}.` };
+    }
+    // PAS DE NOTION FRAGILE, MAIS DES ERREURS EN SOUFFRANCE : on nomme alors
+    // les notions de CES erreurs-là. Elles ne sont pas les mêmes que les
+    // compétences fragiles — une notion peut être acquise et garder deux
+    // questions ratées qu'on n'a jamais rouvertes.
+    const desErreurs = (l.openSkills || []).map(s => nomCompetence(s.skillId)).filter(Boolean);
+    if (desErreurs.length) {
+        return { rang: 3, phrase: `À reprendre : ${desErreurs.slice(0, 2).join(' et ')}${detail}.` };
+    }
+    if (ouvertes > 0) {
+        return { rang: 3, phrase: `${ouvertes} erreur${ouvertes > 1 ? 's' : ''} jamais reprise`
+            + `${ouvertes > 1 ? 's' : ''}, sans notion qui ressorte : les revoir avec lui ou elle.` };
+    }
+    const taux = l.successRate;
+    if (typeof taux === 'number' && taux < 0.5) {
+        return { rang: 3, phrase: 'Beaucoup d\'erreurs, sans notion qui ressorte : '
+            + 'reprendre avec lui ou elle.' };
+    }
+    return { rang: 5, phrase: 'Rien à reprendre : on peut ouvrir de nouvelles notions.' };
 }
 
 /** La couleur d'une case du tableau, du plus fragile au plus sûr. */

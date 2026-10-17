@@ -54,12 +54,36 @@ export function monterPanneauContenu(el, { exo, schemaCatalogue, generator, regl
     if (!schema.length) return () => { };
 
     let detache = () => { };
-    import('../games/configUI.js').then(({ fieldHtml, readParams, wireTips }) => {
+    import('../games/configUI.js').then(({
+        fieldHtml, readParams, wireTips, valeurDeChamp,
+        brancherMarches, rafraichirBarreMarches
+    }) => {
         const peindre = () => {
             el.innerHTML = '<span class="fp-contenu-titre">Contenu</span>'
-                + schema.map(p => fieldHtml(p,
-                    reglages[p.id] !== undefined ? reglages[p.id] : p.default)).join('');
+                // `valeurDeChamp` et non `reglages[p.id] ?? p.default` : une
+                // liste de marches se lit à travers `marchesCochees`, sinon un
+                // exercice réglé avant les cases s'affiche tout coché — voir
+                // games/configUI.js.
+                + schema.map(p => fieldHtml(p, valeurDeChamp(p, reglages))).join('');
             wireTips(el);
+            // LA BARRE DES MARCHES, SUR LE PAPIER AUSSI.
+            //
+            // MESURÉ, SUR QUATRE FEUILLES : les cases à cocher s'y dessinaient,
+            // les trois boutons y agissaient — ils ne cherchent que le champ —,
+            // mais la BARRE restait vide, du début à la fin. C'est-à-dire que
+            // la moitié du réglage manquait là où il compte le plus : huit des
+            // quatorze progressions converties n'existent QUE sur le papier.
+            // Le professeur cochait trois crans sans voir comment ses seize
+            // calculs se partageaient entre eux, et sans pouvoir en donner plus
+            // au premier qu'au dernier — le geste que Rémy a demandé (« tu as
+            // la frise […] entre chaque zone tu as un trait que tu peux
+            // bouger »).
+            //
+            // `brancherMarches` pose aussi le champ caché du partage : sans
+            // lui, le bouton « Tout, à parts égales » ne faisait que la moitié
+            // de ce que son nom dit.
+            brancherMarches(el, schema, reglages, (exo && exo.id) || '', { fiche: true });
+            rafraichirBarreMarches(el);
         };
         peindre();
 
@@ -69,6 +93,7 @@ export function monterPanneauContenu(el, { exo, schemaCatalogue, generator, regl
             // sens qu'en division. On ne redessine que dans ce cas-là.
             const suivant = schemaPour();
             if (signature(suivant) !== signature(schema)) { schema = suivant; peindre(); }
+            else rafraichirBarreMarches(el);
             if (onChange) onChange();
         };
         el.addEventListener('change', relire);
@@ -76,9 +101,18 @@ export function monterPanneauContenu(el, { exo, schemaCatalogue, generator, regl
         // global ne fait que basculer la classe. On repasse derrière lui.
         const clic = (ev) => { if (ev.target.closest('.cfg-on')) setTimeout(relire, 0); };
         el.addEventListener('click', clic);
+        // ET LE NOMBRE DE BLOCS EST EN TÊTE DE LA MODALE, PAS ICI. La barre
+        // découpe CE nombre-là : tant qu'on ne l'écoute pas, taper « 16 » dans
+        // le champ du haut laisse la barre sur son découpage d'avant, et le
+        // dessin ment sur ce qu'on va imprimer.
+        const cadre = el.closest('.modal-overlay');
+        const combien = cadre && cadre.querySelector('#fp-combien, #fq-nb');
+        const suitLeCompte = () => rafraichirBarreMarches(el);
+        if (combien) combien.addEventListener('input', suitLeCompte);
         detache = () => {
             el.removeEventListener('change', relire);
             el.removeEventListener('click', clic);
+            if (combien) combien.removeEventListener('input', suitLeCompte);
         };
     });
     return () => detache();

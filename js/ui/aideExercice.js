@@ -150,6 +150,8 @@ function vueExemple(exo, corps, lecons) {
     corps.innerHTML = `
         <p class="aide-exemple-intro">Une question comme celles de cet exercice, résolue pas à pas.</p>
         <div class="aide-question">${esc(exemple.question)}</div>
+        ${exemple.figures
+        ? `<div class="aide-figure">${exemple.figures}</div>` : ''}
         <ol class="aide-etapes">${exemple.etapes.slice(0, devoiles)
         .map(e => `<li>${esc(e)}</li>`).join('')}</ol>
         ${montreReponse ? `<div class="aide-reponse">

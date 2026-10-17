@@ -81,10 +81,26 @@ $c2 = uuidv4();
 db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code, level) VALUES (?,?,?,?,?)')
     ->execute([$c2, $prof, '5e A', 'W8DT4N', '5e']);
 
+// LA POLITIQUE DE SÉCURITÉ DU VRAI SITE, LUE LÀ OÙ ELLE PART EN PRODUCTION.
+//
+// RÉMY : « pourquoi j'ai cela » — les trois volets de l'Atelier refusaient de
+// se charger EN LIGNE, et aucune sonde ne pouvait le dire : `.htaccess` est
+// appliqué par Apache, et le serveur intégré de PHP l'ignore. Toutes nos
+// mesures tournaient donc sur un site sans ses en-têtes.
+//
+// ON LIT LE FICHIER, ON NE RECOPIE PAS LA LIGNE : une recopie aurait divergé au
+// premier `node tools/csp.mjs --ecrire`.
+$CSP = '';
+$ht = @file_get_contents($RACINE . '/.htaccess');
+if ($ht && preg_match('/Header always set Content-Security-Policy "([^"]+)"/', $ht, $m)) {
+    $CSP = $m[1];
+}
+
 $serveur = proc_open(
-    [PHP_BINARY, '-S', "127.0.0.1:$PORT", '-t', $RACINE],
+    [PHP_BINARY, '-S', "127.0.0.1:$PORT", '-t', $RACINE, $RACINE . '/tools/routeurEssai.php'],
     [1 => ['file', $BAC . '/log', 'a'], 2 => ['file', $BAC . '/log', 'a']], $t, $RACINE,
-    ['ATOUTMATH_CONFIG' => $CONFIG, 'PATH' => getenv('PATH') ?: '/usr/bin:/bin',
+    ['ATOUTMATH_CONFIG' => $CONFIG, 'ATOUTMATH_CSP' => $CSP,
+     'PATH' => getenv('PATH') ?: '/usr/bin:/bin',
      'PHP_CLI_SERVER_WORKERS' => '4']);
 
 for ($i = 0; $i < 100; $i++) {

@@ -33,6 +33,7 @@ import { planDuJour } from '../core/aujourdhui.js';
 import { startErrorReview } from '../core/remediation.js';
 import { openGameLayer } from '../games/engine.js';
 import { instantane, ouvrirMaSeance, ouvrirMesSeances, ouvrirRejoindre } from './maSeance.js';
+import { modeLibre } from '../core/portail.js';
 
 const CLE_PREMIERE = 'mathbox-derniere-visite';
 const CLE_CATALOGUE = 'mathbox-catalogue-ouvert';
@@ -144,6 +145,28 @@ export function ouvrirCatalogue() {
  * ouvertes, étapes faites) ont pu changer pendant l'exercice, et un accueil qui
  * annonce « 3 à revoir » alors qu'on vient d'en corriger deux ment.
  */
+/**
+ * « EXPLORER TOUS LES EXERCICES » — seulement si on a le droit d'explorer.
+ *
+ * Le bouton était écrit sans condition, et il ouvrait les 172 cartes du
+ * catalogue à un élève pour qui le mode libre est ÉTEINT — c'est-à-dire à qui
+ * la porte (`core/portail.js`) refuse justement cet accès, et à qui la feuille
+ * de style prend la peine de fermer le tiroir et l'onglet. Trois gardes, et
+ * une quatrième porte laissée ouverte à côté.
+ *
+ * Rémy éteint le mode libre pour que l'élève fasse SON travail, pas pour qu'il
+ * choisisse. Un bouton qui contredit ce réglage rend le réglage inutile.
+ */
+function explorerHtml() {
+    if (!modeLibre()) return '';
+    return `<button type="button" class="auj-explorer" data-explorer>
+            <span data-explorer-mot>Explorer tous les exercices</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                 stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/></svg>
+        </button>`;
+}
+
 export function rendreAujourdhui() {
     if (state.isTeacherMode) return;
     const b = boite();
@@ -165,7 +188,9 @@ export function rendreAujourdhui() {
         // LA SÉANCE DONNÉE PAR LE PROFESSEUR — l'instantané, pas une lecture.
         // L'accueil se dessine d'un trait ; `maSeance.js` relit le stockage en
         // fond et redemande un dessin quand il a du neuf.
-        seance: instantane().etat
+        seance: instantane().etat,
+        // Le noyau ne lit pas le réglage lui-même : on le lui dit.
+        libre: modeLibre()
     });
 
     const a = plan.action;
@@ -194,12 +219,7 @@ export function rendreAujourdhui() {
         </div>
         ${salleDeJeuxHtml()}
         ${lienRejoindreHtml()}
-        <button type="button" class="auj-explorer" data-explorer>
-            <span data-explorer-mot>Explorer tous les exercices</span>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-                 stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="m6 9 6 6 6-6"/></svg>
-        </button>`;
+        ${explorerHtml()}`;
 
     const go = b.querySelector('[data-go]');
     if (go && a) go.onclick = () => lancer(a);

@@ -14,6 +14,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL = 'num.logique.dichotomie';
 
@@ -235,7 +236,8 @@ class Vault extends BaseGame {
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
         const gate = createDemoGate(this.container.querySelector('.vault-wrapper') || this.container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => this.isRunning, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
         const tape = async (texte) => {
             this.demoTape = true;
@@ -253,11 +255,11 @@ class Vault extends BaseGame {
             return true;
         };
 
-        if (!await cursor.pause(800) || !this.isRunning) return fin();
+        if (!await robot.pause(800)) return fin();
 
         while (this.isRunning && this.isDemo) {
             if (this.finDeCoffre) { await cursor.pause(1200); continue; }
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
 
             const milieu = Math.floor((this.borneMin + this.borneMax) / 2);
             const nb = this.borneMax - this.borneMin + 1;
@@ -272,12 +274,12 @@ class Vault extends BaseGame {
             if (!await tape(milieu)) return fin();
             if (this.finDeCoffre) {
                 cursor.say(`Trouvé en ${this.attempts - this.restants} essai${this.attempts - this.restants > 1 ? 's' : ''} ! La dichotomie trouve toujours le code en moins de ${Math.ceil(Math.log2(this.maxNumber)) + 1} essais.`, this.ui.screen);
-                if (!await cursor.pause(DEMO_SPEED.between + 1400)) return fin();
+                if (!await robot.pause(DEMO_SPEED.between + 1400)) return fin();
                 continue;
             }
             const elimines = (avantMax - avantMin + 1) - (this.borneMax - this.borneMin + 1);
             cursor.say(`« ${this.ui.sub.textContent.includes('PLUS (+)') ? "C'est plus" : "C'est moins"} » : j'élimine ${elimines} nombres d'un coup. Reste ${this.borneMin}–${this.borneMax}.`, this.ui.screen);
-            if (!await cursor.pause(1600) || !this.isRunning) return fin();
+            if (!await robot.pause(1600)) return fin();
         }
         fin();
     }

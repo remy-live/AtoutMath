@@ -17,6 +17,7 @@ import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { OPS } from '../generators/kenken.js';
 import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 // Le vérificateur est LIMITÉ : vérifier doit rester un choix qui se paie, pas
 // un oracle qu'on presse après chaque case.
@@ -407,13 +408,14 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.kk-board'));
         const gate = createDemoGate(container.querySelector('.kenken-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        if (!await robot.pause(600)) return fin();
         while (!destroyed) {
             const coup = prochainCoupKenken(grille, item.meta);
             if (!coup) break;
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const el = celluleEl(coup.r, coup.c);
             if (!el) return fin();
             // LE ROBOT MONTRE CE QU'IL REGARDE AVANT DE CONCLURE : la zone
@@ -421,18 +423,18 @@ export function mount(container, session, opts = {}) {
             // endroit que l'élève doit d'abord retrouver.
             montrerZone(coup.zone);
             cursor.say(coup.motif, el);
-            if (!await cursor.pause(900) || destroyed) return fin();
-            if (!await cursor.tap(el, 340) || destroyed) return fin();
+            if (!await robot.pause(900)) return fin();
+            if (!await robot.toucher(el, 340)) return fin();
             effacerZone();
             grille[coup.r][coup.c] = solution[coup.r][coup.c];
             el.querySelector('.kk-val').textContent = solution[coup.r][coup.c];
             el.classList.add('demo-target');
-            if (!await cursor.pause(900) || destroyed) return fin();
+            if (!await robot.pause(900)) return fin();
         }
         fin();
         if (destroyed) return;
         container.querySelector('.kk-board').classList.add('kk-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

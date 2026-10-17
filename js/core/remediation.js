@@ -3,7 +3,7 @@
 // Quatre points d'entrée, tous produisant un parcours d'entraînement classique
 // (donc joué par le même moteur, tracé de la même façon) :
 //
-//   startRemediation(questions)  — rejouer les questions ratées d'un bilan
+//   startAmelioration(bilan)     — le bouton « M'améliorer » du bilan de séance
 //   startErrorReview()           — le carnet d'erreurs complet
 //   startSkillSession(skillId)   — travailler une compétence précise
 //   startRecommendedSession()    — la séance conseillée par le modèle de maîtrise
@@ -15,8 +15,12 @@
 
 import { state } from './state.js';
 import { makePath, makeStep } from './path.js';
+// LA RÈGLE DU PARCOURS DE RÉVISION VIT À PART, pour qu'une épreuve puisse la
+// lire : ce module-ci importe `state.js`, qui a besoin d'un `document`.
+import { etapesDAmelioration, firstExerciseForSkill, exerciseForQuestion }
+    from './amelioration.js';
 import { defaultPolicy } from './policy.js';
-import { exercisesForSkill, getExerciseById, estRevisable } from '../data/catalog.js';
+import { getExerciseById, estRevisable } from '../data/catalog.js';
 import { openErrors } from './projections.js';
 import { cleQuestion } from './carnet.js';
 import { journal } from './journal.js';
@@ -38,20 +42,39 @@ async function run(path, opts = {}) {
     return runner.start();
 }
 
-/** Rejoue les questions ratées d'un bilan, à l'identique puis en variante. */
-export function startRemediation(questions) {
-    const steps = [];
-    for (const q of (questions || []).slice(0, 8)) {
-        const exoId = exerciseForQuestion(q);
-        if (!exoId) continue;
-        steps.push(makeStep(exoId, {}, {
-            nbItems: 2,        // la question ratée, puis une similaire
-            threshold: 2,
-            forceSeed: q.seed || null
-        }));
-    }
-    const path = makePath('Remédiation', steps, REVISION_POLICY);
-    return run(path);
+/**
+ * LE BOUTON « M'AMÉLIORER » : on ouvre le parcours de révision.
+ *
+ * IL PORTE LE NOM DE LA SÉANCE D'OÙ IL SORT. « Remédiation » ne disait rien à
+ * personne ; « M'améliorer — Avant les vacances » se reconnaît dans une liste
+ * et dans un bilan.
+ *
+ * ET C'EST UN PARCOURS À PART, jamais la séance du professeur : `makePath` lui
+ * donne son propre identifiant, donc rien de ce qu'on y fait ne touche aux
+ * étapes validées de la séance, ni à la note déjà rendue.
+ *
+ * ── IL PARAÎT AUSSI EN INTERROGATION, ET C'EST RÉMY QUI L'A TRANCHÉ ────────
+ *
+ * Il avait posé une règle voisine sur le bilan d'ÉTAPE : « en mode
+ * interrogation, il ne faut pas proposer à la fin de refaire l'exercice »
+ * (voir `peutRefaire` dans core/runner.js). Celle-là tient toujours, et elle ne
+ * s'applique pas ici : le bouton « Refaire pour m'améliorer » rejoue L'ÉTAPE
+ * NOTÉE elle-même, alors que « M'améliorer » ouvre un parcours d'entraînement
+ * séparé, après que la note est rendue.
+ *
+ * Posé la question, sa réponse mot pour mot : « oui mais en interrogation ça ne
+ * changera pas la note ». Donc pas de condition sur `bilan.mode` ici — et c'est
+ * le moment du devoir rendu que l'élève a le plus de raisons de vouloir
+ * reprendre. Une épreuve le garde (`tests/mAmeliorer.test.mjs`), parce que
+ * c'est exactement le genre de ligne qu'une main pressée « corrigerait » en
+ * croyant appliquer l'autre règle.
+ */
+export function startAmelioration(bilan) {
+    const steps = etapesDAmelioration(bilan);
+    if (!steps.length) return Promise.resolve(false);
+    const nom = (bilan && bilan.pathName)
+        ? `M'améliorer — ${bilan.pathName}` : 'M\'améliorer';
+    return run(makePath(nom, steps, REVISION_POLICY));
 }
 
 /**
@@ -184,19 +207,4 @@ export function buildRecommendedPreview(limit = 3) {
 function masteryValue(skillId) {
     const e = state.masteryMap.get(skillId);
     return e ? e.mastery : 0;
-}
-
-function firstExerciseForSkill(skillId) {
-    if (!skillId) return null;
-    const list = exercisesForSkill(skillId);
-    if (!list.length) return null;
-    // On privilégie un exercice non chronométré : en remédiation, la pression
-    // temporelle nuit à la compréhension.
-    const calm = list.find(e => !(e.params && e.params.timeLimit));
-    return (calm || list[0]).id;
-}
-
-function exerciseForQuestion(q) {
-    if (q.exerciseId && getExerciseById(q.exerciseId)) return q.exerciseId;
-    return firstExerciseForSkill(q.skillId);
 }

@@ -18,6 +18,10 @@
 // écran sur iOS, il faut installer l'application depuis « Partager → Sur
 // l'écran d'accueil ».
 
+import { seanceImposee } from '../core/seanceDistante.js';
+import { identiteDeParcours } from '../core/shortcodes.js';
+import { normalizePath } from '../core/path.js';
+
 const CLE = 'mathbox-plein-ecran';
 
 const racine = () => document.documentElement;
@@ -92,6 +96,90 @@ function conseilIOS() {
         'Ce navigateur ne donne pas le plein écran complet. Astuce : Partager → « Sur l\'écran d\'accueil » '
         + 'installe AtoutMath comme une application, sans barre d\'adresse.', 'info', 9000
     )).catch(() => { /* pas de toast disponible : tant pis, ce n'est qu'un conseil */ });
+}
+
+/**
+ * LE PLEIN ÉCRAN AU PREMIER APPUI, QUAND LA SÉANCE EST IMPOSÉE.
+ *
+ * RÉMY : « est ce que lorsque j'impose une séance, et que l'élève découvre la
+ * carte du monde je peux forcer le plein écran ? », puis, la contrainte
+ * expliquée : « oui si la séance est imposée et laisse le bouton ».
+ *
+ * ── ON NE PEUT PAS LE FORCER, ET CE N'EST PAS LE LOGICIEL QUI REFUSE ───────
+ *
+ * `requestFullscreen()` n'est accordé qu'à la suite d'un GESTE de l'élève. Une
+ * demande déclenchée par l'apparition de la carte, sans qu'il ait touché
+ * l'écran, est rejetée — c'est écrit deux fois dans ce fichier, et c'est une
+ * règle du web, pas un manque.
+ *
+ * Mais son premier appui EST un geste : celui par lequel il ouvre sa séance.
+ * On s'y accroche donc, et il y reste tout le temps qu'elle dure.
+ *
+ * ── CINQ CONDITIONS, ET CHACUNE FERME UN DÉFAUT ───────────────────────────
+ *
+ * 0. SEULEMENT SI RÉMY L'A COCHÉ. « Après peut être vaut il mieux le mettre en
+ *    paramètre » — et il a raison : ma première écriture mettait en plein écran
+ *    dès qu'une séance était imposée, sans qu'il puisse dire non. Or cela
+ *    dépend de la salle : une 6e sur les postes de la salle informatique, oui ;
+ *    une 3e sur ses propres téléphones, c'est à lui de voir. La case est à côté
+ *    de « mettre en cours », et le drapeau voyage DANS la séance imposée.
+ *
+ * 1. SEULEMENT SI UNE SÉANCE EST IMPOSÉE, parce que c'est ce qu'il a demandé.
+ *    Un élève qui révise chez lui le soir garde la main sur son écran : le
+ *    plein écran est un geste de CLASSE, décidé par le professeur qui conduit
+ *    l'heure.
+ *
+ * 2. ET SEULEMENT SI C'EST ELLE QU'ON OUVRE. Un élève peut avoir une séance
+ *    imposée ET taper un code dicté pour autre chose : demander « y a-t-il une
+ *    séance imposée ? » mettrait alors en plein écran un parcours qui n'a rien
+ *    à voir. On compare donc les IDENTITÉS, comme `fautIlOuvrir` le fait déjà
+ *    dans `ui/leMoment.js` — et la question se pose ICI, une seule fois, parce
+ *    qu'une règle écrite dans ses deux appelants finit par n'être corrigée que
+ *    dans l'un des deux (payé le 13 octobre avec le cadre d'aperçu).
+ *
+ * 3. SEULEMENT SI LE NAVIGATEUR LE DONNE POUR DE VRAI. Sur iPhone et iPad,
+ *    Safari ne l'accorde qu'aux vidéos — et `basculerPleinEcran` y répond par
+ *    un conseil : « Partager → Sur l'écran d'accueil ». Ce conseil est juste,
+ *    mais il serait adressé À UN ÉLÈVE DE SIXIÈME, qui n'installe rien sur la
+ *    tablette de la salle. On se tait donc complètement plutôt que de lui
+ *    donner une consigne qu'il ne peut pas suivre. Le bouton, lui, continue de
+ *    la donner à Rémy quand c'est LUI qui appuie.
+ *
+ * 4. ET ON NE RÉPÈTE PAS. Il ouvre, il quitte, il reprend : le ramener de
+ *    force après qu'il en est sorti serait se battre avec lui. La sortie par
+ *    Échap ou par le geste du navigateur est écoutée par `initPleinEcran`, qui
+ *    retire la classe — `estEnPleinEcran()` dit donc la vérité ici.
+ *
+ * ET LE BOUTON RESTE — Rémy : « laisse le bouton ». On n'en cache aucun, et
+ * `majBoutons` leur fait dire « Quitter le plein écran » : l'élève projeté en
+ * grand a de quoi en sortir sans connaître Échap.
+ *
+ * ELLE S'APPELLE DANS LE CLIC, AVANT TOUT `await`. Un `await import()` rend la
+ * main au navigateur, et la demande qui suit n'est plus reconnue comme venant
+ * d'un geste — elle échoue en silence, sans rien casser et sans rien faire.
+ * C'est pourquoi les deux appelants la placent à leur PREMIÈRE ligne, et
+ * pourquoi une épreuve garde cet ordre.
+ *
+ * @param {object} parcours - celui que l'élève vient d'ouvrir.
+ * @returns {boolean} vrai si le plein écran a été demandé.
+ */
+export function pleinEcranSiSeanceImposee(parcours) {
+    if (!parcours) return false;
+    if (estEnPleinEcran()) return false;
+    if (!pleinEcranNatifPossible()) return false;
+    let impose = null;
+    try { impose = seanceImposee(); } catch (e) { return false; }
+    if (!impose || !impose.path) return false;
+    // LE RÉGLAGE DE RÉMY, ET IL EST LE PREMIER À REGARDER. Une séance imposée
+    // sans la case cochée ne change rien à l'écran de l'élève.
+    if (!impose.pleinEcran) return false;
+    try {
+        const lui = identiteDeParcours(normalizePath(parcours, parcours.name));
+        const elle = identiteDeParcours(normalizePath(impose.path, impose.name));
+        if (lui !== elle) return false;
+    } catch (e) { return false; }
+    basculerPleinEcran(true);
+    return true;
 }
 
 function majBoutons() {

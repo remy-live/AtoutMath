@@ -48,7 +48,10 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
+import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
+import { MARCHES_TRIGO, ANCIEN_TRIGO } from '../core/trigonometrie.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     ROLES, LIBELLES, COURTS, tirerTriangle, rolesDe, pointsDe, questionsDe,
     verifier, conseil, laLecon, sommetDroit, sommetVise, memeCote, nomCote,
@@ -58,6 +61,10 @@ import {
 
 /** Les trois façons de poser la même figure. */
 const PALIERS = { REPERER: 'reperer', ECRIRE: 'ecrire', FORMULE: 'formule' };
+
+// Les trois paliers à cocher vivent dans le NOYAU (core/trigonometrie.js) :
+// le catalogue les déclare, et js/data/ ne doit jamais importer js/games/.
+
 
 // L'AIDE DU DÉPART DURE DEUX FIGURES. Assez pour que le rapport s'installe,
 // pas assez pour qu'on prenne l'habitude de le lire au lieu de le savoir. Elle
@@ -87,8 +94,15 @@ class Trigonometrie extends BaseGame {
         this.rng = makeRng(this.params.seed);
         // « Tourner » se règle : en découverte, une figure droite se lit mieux.
         this.tourner = this.params.tourner !== false;
-        this.palier = Object.values(PALIERS).includes(this.params.palier)
-            ? this.params.palier : PALIERS.REPERER;
+        // LE PALIER SE CHOISIT MAINTENANT PAR FIGURE — voir `poser()`. On garde
+        // ici une valeur de départ pour tout ce qui lit `this.palier` avant la
+        // première question : l'en-tête, la consigne, l'aperçu du catalogue.
+        this.cochees = marchesCochees(this.params, MARCHES_TRIGO, ANCIEN_TRIGO);
+        this.palier = (this.cochees[0] && this.cochees[0].id) || PALIERS.REPERER;
+        // ON COMPTE LES FIGURES POSÉES, pas les réussies : une figure ratée
+        // reste une figure, et la progression ne doit pas piétiner sur l'élève
+        // qui bute.
+        this.poses = 0;
         this.trouves = {};
         // Le compteur des figures aidées : voir FIGURES_AIDEES.
         this.figures = 0;
@@ -110,7 +124,7 @@ class Trigonometrie extends BaseGame {
                     text-align: center; flex: 0 0 auto; max-width: 640px; line-height: 1.35;
                     font-size: clamp(12px, 2.8cqw, 15px);
                 }
-                .tg-consigne b { color: var(--primary); }
+                .tg-consigne b { color: var(--primary-texte); }
                 /* LA SCÈNE MESURE LA FIGURE, PAS LE PLATEAU. Un carré calé sur la
                    hauteur du plateau entier se réserverait une place déjà prise
                    par la consigne, les étiquettes et la note. */
@@ -179,7 +193,7 @@ class Trigonometrie extends BaseGame {
                     gap: 6px; flex-wrap: wrap; font-weight: 800;
                     font-size: clamp(15px, 3.4cqw, 20px);
                 }
-                .tg-gauche { color: var(--primary); font-variant-numeric: tabular-nums; }
+                .tg-gauche { color: var(--primary-texte); font-variant-numeric: tabular-nums; }
                 /* LA FRACTION SE DESSINE COMME UNE FRACTION : un trait, un champ
                    au-dessus, un champ en dessous. Sur une ligne, « a/b » se lit
                    comme une division ; ici c'est un RAPPORT, et l'élève doit voir
@@ -196,7 +210,7 @@ class Trigonometrie extends BaseGame {
                 .tg-champ:focus { outline: none; border-color: var(--primary); }
                 .tg-champ--vise { border-color: var(--primary); }
                 .tg-rappel {
-                    font-size: .82rem; font-weight: 700; color: var(--primary);
+                    font-size: .82rem; font-weight: 700; color: var(--primary-texte);
                     background: color-mix(in srgb, var(--primary) 10%, transparent);
                     border-radius: 8px; padding: 4px 10px; text-align: center;
                 }
@@ -209,7 +223,9 @@ class Trigonometrie extends BaseGame {
                     background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer;
                 }
-                .tg-touche:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .tg-touche:hover { border-color: var(--primary); color: var(--primary-texte); }
+                }
                 .tg-touche--signe { color: var(--text-muted); font-weight: 700; }
                 .tg-touche--eff { color: var(--warning); }
                 .tg-valider {
@@ -217,7 +233,9 @@ class Trigonometrie extends BaseGame {
                     background: var(--primary); color: #fff; font: inherit; font-weight: 800;
                     cursor: pointer;
                 }
-                .tg-valider:hover { filter: brightness(1.07); }
+                @media (hover: hover) {
+                    .tg-valider:hover { filter: brightness(1.07); }
+                }
 
                 .tg-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
                 .tg-btn {
@@ -275,6 +293,13 @@ class Trigonometrie extends BaseGame {
     showNext() { return this.poser(); }
 
     poser() {
+        // LE PALIER DE CETTE FIGURE-CI. Les paliers cochés se partagent les
+        // figures dans l'ordre (core/progression.js) : sur douze figures et
+        // deux paliers cochés, six de chaque. Le jeu lisait `params.palier`
+        // une seule fois, au constructeur, et toute la partie restait dessus.
+        const suivant = marcheAuRang(this.poses++, this.cochees,
+            totalDe(null, this.params), this.params);
+        if (suivant) this.palier = suivant;
         this.triangle = tirerTriangle(this.rng, { tourner: this.tourner });
         this.figures += 1;
         // UNE FONCTION PAR FIGURE au palier des formules, et non les trois.
@@ -690,12 +715,13 @@ class Trigonometrie extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.triangle) this.poser();
         const t = this.triangle;
         const r = rolesDe(t);
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         // LA DÉMONSTRATION DE LA FORMULE EST UNE AUTRE DÉMONSTRATION. Refaire le
         // repérage devant un élève à qui l'on demande d'écrire cos(G) lui montre
@@ -715,35 +741,36 @@ class Trigonometrie extends BaseGame {
                 + `${f.fonction.memo} — ${f.rappel}. Deux gestes, dans cet ordre : `
                 + 'se tromper de rapport et se tromper de côté ne sont pas la même faute.',
             this.saisieEl || this.figEl);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(`Au numérateur, ${LIBELLES[f.haut]} de l'angle en ${f.angle} : `
                 + `c'est [${f.attenduHaut}].`,
             this.figEl.querySelector(`[data-trait="${f.attenduHaut}"]`) || this.figEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             // ON MARQUE SANS REDESSINER : un redessin refabrique les deux cases
             // et efface ce que le robot vient d'y écrire — or c'est justement
             // l'écriture qu'il doit montrer.
             marquer(f.attenduHaut);
             ecrire('haut', `[${f.attenduHaut}]`);
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
 
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(`Au dénominateur, ${LIBELLES[f.bas]} : [${f.attenduBas}]. `
                 + `Donc ${f.texte}.`,
             this.figEl.querySelector(`[data-trait="${f.attenduBas}"]`) || this.figEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             marquer(f.attenduBas);
             ecrire('bas', `[${f.attenduBas}]`);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
             return fin();
         }
 
-        cur.say('Avant toute formule, il faut savoir QUEL côté est lequel. C\'est là qu\'on '
-            + 'se trompe : un cosinus juste appliqué au mauvais côté donne un nombre faux '
-            + 'que rien ne rattrape.', this.figEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        // LA SUITE ÉTAIT UNE LEÇON SUR LA FAUTE, PAS UN GESTE : les trois étapes qui
+        // viennent juste après nomment chaque côté, ce qui la rend inutile. 169
+        // caractères avant même le premier geste.
+        cur.say('Avant toute formule, il faut savoir QUEL côté est lequel.', this.figEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         const etapes = [
             { role: ROLES.HYPOTENUSE, dit: `Je cherche l'angle droit : il est en ${sommetDroit(t)}. `
@@ -755,32 +782,32 @@ class Trigonometrie extends BaseGame {
                 + `Deux côtés touchent l'angle, l'un est l'hypoténuse — reste ${r[ROLES.ADJACENT]}.` }
         ];
         for (const e of etapes) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const cible = this.figEl.querySelector(`[data-trait="${r[e.role]}"]`);
             cur.say(e.dit, cible || this.figEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             // AU PALIER ÉCRIT, LE ROBOT ÉCRIT. Montrer le côté sans jamais le
             // taper, c'est démontrer l'exercice d'avant : l'élève doit voir la
             // réponse SE FORMER dans le champ, crochets compris.
             const champ = this.saisieEl && this.saisieEl.querySelector('[data-haut]');
             if (champ) {
                 champ.value = `[${r[e.role]}]`;
-                if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.press)) return fin();
             }
             this.trouves[e.role] = r[e.role];
             this.rang += 1;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle / 2) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle / 2)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(this.ecrit
             ? 'À toi de les ÉCRIRE : deux lettres, celles des deux extrémités — et les '
                 + 'crochets si tu les connais, [AB] est le segment. Le triangle suivant sera '
                 + 'tourné autrement : c\'est la figure qu\'on lit, pas une image qu\'on reconnaît.'
             : 'Et le triangle suivant sera tourné autrement : c\'est la figure qu\'on lit, '
                 + 'pas une image qu\'on reconnaît.', this.figEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

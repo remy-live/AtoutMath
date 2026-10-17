@@ -204,6 +204,51 @@ export function convertir(valeur, famille, depart, arrivee) {
     };
 }
 
+/**
+ * CE QU'ON PROPOSE DOIT POUVOIR S'ÉCRIRE DANS LE TABLEAU.
+ *
+ * RÉMY : « dans le tableau de conversion, quand tu proposes 18km ça sort du
+ * tableau (et on ne voit pas tout) ».
+ *
+ * MESURÉ AVANT DE CORRIGER : un tirage sur cinq, et jusqu'à un sur quatre avec
+ * les décimales (81/400 en longueur, 100/400 avec virgule). « 187 km » occupe
+ * les colonnes 5, 4 et 3 ; le tableau s'arrête à km, qui est la colonne 3. Les
+ * deux premiers chiffres tombent donc HORS du tableau, et l'élève lit « 7 » là
+ * où l'énoncé dit 187 — mesuré à l'écran, c'est bien « 7 » qui s'affiche, seul.
+ *
+ * ON NE RÉTRÉCIT PAS LE NOMBRE, ON ÉCARTE LE TIRAGE. Un tableau de conversion
+ * a sept colonnes parce que le système décimal en a sept ; l'élargir pour
+ * loger 187 km inventerait des unités qui n'existent pas. Et raboter la valeur
+ * donnerait des conversions toujours petites. Le générateur tire déjà deux
+ * cents fois : il lui en coûte de retirer.
+ *
+ * IL SUFFIT DE REGARDER LES CHIFFRES, ET J'AI MIS UNE ÉPREUVE À LE COMPRENDRE.
+ *
+ * J'avais écrit une seconde vérification, sur l'étendue ÉCRITE cette fois — la
+ * virgule et les zéros de comblement, que `convertir` rend —, en me disant
+ * qu'elle pouvait déborder là où les chiffres tiennent. `epreuveTombe.mjs` a
+ * refusé l'épreuve : elle restait VERTE quand je retirais cette seconde
+ * moitié. La raison, une fois cherchée, est nette — la colonne de la virgule
+ * est celle de l'unité DEMANDÉE, donc toujours une colonne de la famille, donc
+ * toujours dans le tableau ; et `colonneHaute`/`colonneBasse` ne sont que le
+ * maximum et le minimum des chiffres ET de cette colonne-là. Les deux
+ * vérifications étaient la même, écrite deux fois.
+ *
+ * On n'en garde qu'une. Une ligne qui ne garde rien coûte la confiance qu'on
+ * met dans les autres.
+ */
+export function tientDansLeTableau(valeur, famille, depart, arrivee) {
+    const f = familleDe(famille);
+    const uD = uniteDe(famille, depart), uA = uniteDe(famille, arrivee);
+    if (!uD || !uA) return false;
+    const rangs = f.unites.map(u => u.rang);
+
+    const colonnes = chiffresDansLeTableau(valeur, famille, depart).map(p => p.colonne);
+    if (!colonnes.length) return false;
+    return Math.max(...colonnes) <= Math.max(...rangs)
+        && Math.min(...colonnes) >= Math.min(...rangs);
+}
+
 /** La réponse attendue, seule — pour vérifier ce que l'élève écrit. */
 export function reponse(valeur, famille, depart, arrivee) {
     const c = convertir(valeur, famille, depart, arrivee);
@@ -242,6 +287,10 @@ export function tirerConversion({ rng, famille = 'longueur', ecart = 3, decimale
         // On écarte les résultats illisibles : 0,000345 se recopie mal et
         // n'apprend rien de plus que 0,0345.
         if (Math.abs(c.valeur) < 0.0001 || Math.abs(c.valeur) > 999999) continue;
+        // ET CE QUI NE TIENT PAS DANS LE TABLEAU NE SE POSE PAS. C'est le
+        // défaut que Rémy a vu : un tirage sur cinq débordait, et l'élève
+        // lisait un seul chiffre là où l'énoncé en montrait trois.
+        if (!tientDansLeTableau(valeur, famille, uD.symbole, uA.symbole)) continue;
 
         return {
             famille, valeur, depart: uD.symbole, arrivee: uA.symbole,

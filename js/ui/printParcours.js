@@ -24,13 +24,17 @@
 // manœuvrer — sont ANNONCÉES comme telles plutôt que silencieusement omises.
 
 import { hydratePath } from '../core/path.js';
+import { replierApercuSiEtroit } from './modal.js';
 import { ficheSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { generateurDeFiche } from '../core/registry.js';
 import { paramSchemaOf } from '../data/catalog.js';
-import { fieldHtml, readParams, wireTips, brancherMarches } from '../games/configUI.js';
+import { fieldHtml, readParams, wireTips, brancherMarches, valeurDeChamp } from '../games/configUI.js';
 import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
-import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
+import {
+    composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction,
+    degagerLePrefixe, consigneAvecPrefixe
+} from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
 /**
  * UN JEU À DÉCOUPER NE SE TIRE QU'À UN EXEMPLAIRE.
@@ -69,6 +73,33 @@ const proportionsRendu = (rendu, tire) => (typeof rendu.proportions === 'functio
  * utile — le bloc épouse la page au lieu de s'inscrire dans un carré.
  */
 const EST_PLEIN = (rendu, tire) => proportionsRendu(rendu, tire) === 'plein';
+
+/**
+ * LE RAPPORT HAUTEUR / LARGEUR D'UN BLOC — ET C'EST UNE DIVISION.
+ *
+ * RÉMY : « le champ de trèfles tout seul part sur une page presque blanche ».
+ * Mesuré, la cause n'était pas la pose des blocs : c'était une erreur de
+ * calcul, une ligne plus haut. On lisait `proportions.h` TOUT COURT là où il
+ * faut `h / w`.
+ *
+ * Tant que `w` vaut 1 — c'est le cas de presque tous les rendus — les deux
+ * sont le même nombre, et rien ne se voyait. Le champ de trèfles déclare
+ * `{ w: 4, h: 3 }`, c'est-à-dire un bloc une fois et un tiers plus LARGE que
+ * haut. On en déduisait un bloc TROIS FOIS PLUS HAUT QUE LARGE : 234 mm au
+ * lieu de 58, donc plus rien ne tenait sous la consigne, donc un saut de page
+ * à chaque fois — et le titre restait seul sur une feuille.
+ *
+ * Deux rendus seulement déclarent une largeur différente de 1 : le champ de
+ * trèfles et la planche de la Tour de Hanoï. Les deux sont de ceux dont Rémy
+ * a dit qu'ils gaspillaient la page.
+ */
+export function rapportDuBloc(rendu, tire) {
+    const p = proportionsRendu(rendu, tire);
+    if (!p || typeof p !== 'object') return 1;
+    const w = Number(p.w) > 0 ? Number(p.w) : 1;
+    const h = Number(p.h) > 0 ? Number(p.h) : 1;
+    return h / w;
+}
 // La consigne de repli se coupe comme sur la fiche d'un exercice seul : même
 // règle, même fonction — deux copies auraient divergé au premier ajustement.
 import { premierePhrase } from './printQuestions.js';
@@ -77,6 +108,7 @@ import { retenirRepli } from './repli.js';
 import { brancherFicheDirecte } from './ficheDirecte.js';
 import { MODES, resolvePolicy } from '../core/policy.js';
 import { chargerJsPDF } from './printSheet.js';
+import { poserContre } from './poserContre.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
     cartoucheDe, hauteurEntete1, apercuSolutions, pdfSolutions,
@@ -91,6 +123,20 @@ export function analyserParcours(chemin) {
     const { steps } = hydratePath(chemin);
     const papier = [], ecran = [];
     for (const s of steps) {
+        // UN MOT DU PROFESSEUR N'EST PAS UN EXERCICE, ET IL FAISAIT TOMBER LA
+        // FICHE.
+        //
+        // `s.exercise` vaut `null` sur une étape de genre « message » (voir
+        // `hydratePath`), et la ligne suivante lit `s.exercise.printable` : la
+        // fiche entière partait en erreur, pas seulement le message. Un seul
+        // mot dans une séance, et plus rien ne s'imprimait.
+        //
+        // IL N'EST PAS ENCORE SUR LE PAPIER, et c'est une limite assumée, pas
+        // un oubli : la feuille se compose par les GÉNÉRATEURS de fiche, qu'un
+        // message n'a pas. L'y poser demande un bloc de texte libre dans le
+        // moteur de mise en page — un vrai morceau, pas une ligne. On le dit
+        // plutôt que de le faire à moitié.
+        if (!s.exercise) continue;
         const gen = generateurDeFiche(s.exercise);
         // Deux façons d'aller sur le papier, et la seconde manquait : un
         // sudoku, un binairo, un garam n'ont pas de « questions » mais des
@@ -125,7 +171,10 @@ export function analyserParcours(chemin) {
         if (gen && (gen.ecrit || grille)) papier.push({ ...s, params, generator: gen, grille });
         else ecran.push(s);
     }
-    return { papier, ecran, total: steps.length };
+    // LE TOTAL COMPTE LES EXERCICES, pas les étapes : le mot du professeur
+    // n'est ni sur le papier ni sur l'écran, et l'annoncer dans « N exercices »
+    // ferait chercher une activité qui n'existe pas.
+    return { papier, ecran, total: papier.length + ecran.length };
 }
 
 /**
@@ -187,8 +236,7 @@ function schemaPapier(etape) {
 function blocContenu(e, id) {
     const sch = schemaPapier(e);
     if (!sch.length) return '';
-    const champs = sch.map(p => fieldHtml(p,
-        e.params[p.id] !== undefined ? e.params[p.id] : p.default)).join('');
+    const champs = sch.map(p => fieldHtml(p, valeurDeChamp(p, e.params))).join('');
     return '<div class="pp-etape-contenu" data-contenu="' + id + '">'
         + '<span class="pp-etape-sous-titre">Contenu des questions</span>'
         + champs + '</div>';
@@ -204,6 +252,27 @@ function grillesDe(etape, nb) {
         out.push({
             cle: etape.grille,
             item: etape.generator.generate(etape.params, {
+                // `papier: true` — IL MANQUAIT ICI, ET NULLE PART AILLEURS.
+                //
+                // RÉMY, sa feuille à la main : « on ne comprend pas le 851 ».
+                // Sur son poly, l'exercice de valeur absolue posait
+                // « |x − 3| se lit : ………… » — une question dont la réponse est
+                // un CHOIX entre quatre phrases, et les quatre phrases ne
+                // s'impriment pas. Le générateur sait déjà l'éviter :
+                // `if (marche === 'lire' && ctx.papier) return itemRepresenter(…)`.
+                // Il ne le savait pas parce qu'on ne le lui disait pas.
+                //
+                // DEUX CHEMINS MÈNENT AU PAPIER DANS CE FICHIER, et un seul
+                // disait qu'il était le papier : `questionsDe` passait
+                // `papier: true`, `grillesDe` l'avait oublié. Tout exercice
+                // qui déclare un `printable` passe par ici — c'est-à-dire
+                // TOUS ceux qui s'impriment en dessin —, et tous recevaient
+                // donc leur question d'écran.
+                //
+                // La leçon, pour la suite : deux portes vers le même dehors
+                // doivent porter la même pancarte, sans quoi l'une d'elles
+                // ment pendant des mois sans que rien ne le dise.
+                papier: true,
                 index: i, rng: makeRng(),
                 themesExclus: out.map(g => g.item.meta && g.item.meta.theme).filter(Boolean)
             })
@@ -386,9 +455,12 @@ function assurerModale() {
                         </select></label>
                 </div>
             </details>
+            <details class="fp-apercu-repli" open>
+                <summary>L’aperçu de la feuille</summary>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu fq-apercu" id="pp-apercu"></div>
             </div>
+            </details>
             <div class="fp-note" id="pp-note"></div>
             <div class="modal-actions-center">
                 <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="pp-fermer">Fermer</button>
@@ -396,6 +468,7 @@ function assurerModale() {
             </div>
         </div>`;
     document.body.appendChild(m);
+    replierApercuSiEtroit(m);
     return m;
 }
 
@@ -482,7 +555,14 @@ export function ouvrirFicheParcours(chemin) {
     const points = {};
     papier.forEach(e => {
         const n = Math.max(1, Math.min(40, e.nbItems || (e.grille ? 2 : 5)));
-        quantites[e.stepId] = unExemplaire(e) ? 1 : (e.grille ? Math.min(6, n) : n);
+        // UN RENDU PEUT SAVOIR COMBIEN IL LUI EN FAUT, et c'est alors lui qui
+        // a raison : un memory se compte par rangées pleines (huit paires,
+        // seize, vingt-quatre), pas par le plafond général de six. Sans ce
+        // vœu, la feuille de Rémy sortait quatre paires sur une rangée et deux
+        // sur la suivante.
+        const voulu = e.grille && RENDUS[e.grille] && RENDUS[e.grille].parDefaut;
+        quantites[e.stepId] = unExemplaire(e) ? 1
+            : (e.grille ? (voulu || Math.min(6, n)) : n);
     });
     // LA MISE EN PAGE, EXERCICE PAR EXERCICE. Pour les questions c'est un
     // nombre de colonnes, pour les grilles un nombre par ligne : dans les deux
@@ -494,6 +574,43 @@ export function ouvrirFicheParcours(chemin) {
     papier.forEach(e => {
         colonnes[e.stepId] = unExemplaire(e) ? 1 : (e.exercise.colonnesPapier || 'auto');
     });
+    // UN DERNIER RANG À MOITIÉ VIDE N'EST PAS UNE MISE EN PAGE.
+    //
+    // RÉMY : « pour les poser une multiplication ou addition, tu as souvent
+    // 6 calculs pour 4 colonnes. Du coup ça fait une ligne à 4 calculs et une
+    // ligne à deux calculs. C'est idiot car déséquilibré. Pour les endroits où
+    // tu mets 4 calculs par ligne, mets juste 4 questions plutôt que 6. » Et,
+    // deux lignes plus bas : « pour le slitherlink aussi ».
+    //
+    // LE SIX N'EST PAS SON CHOIX, C'EST NOTRE PLAFOND — `Math.min(6, n)`,
+    // quinze lignes plus haut. Le `nbItems` de l'étape, lui, est le compte
+    // conseillé pour l'ÉCRAN (vingt calculs de réflexe), pas pour une feuille.
+    // On ramène donc notre propre plafond au multiple du nombre de colonnes :
+    // six grilles sur quatre colonnes deviennent quatre, six sur trois restent
+    // six.
+    //
+    // ON NE DESCEND JAMAIS SOUS UNE RANGÉE PLEINE, et l'on ne touche pas à ce
+    // qui tient déjà en moins d'une rangée : trois grilles sur quatre colonnes
+    // font un rang de trois, et en ajouter une changerait son exercice.
+    //
+    // Et ce n'est qu'un DÉFAUT : c'est le nombre qu'il trouve en ouvrant le
+    // panneau d'impression, où il reste libre de le changer.
+    papier.forEach(e => {
+        // LE NOMBRE PAR LIGNE SE LIT AU MÊME ENDROIT QUE PLUS BAS, et c'est le
+        // seul endroit où il existe. Première version : `Number(colonnes[...])`
+        // tout court. Or `colonnes` vaut « auto » pour presque tous les
+        // exercices — `Number('auto')` est NaN —, et le cas même dont Rémy
+        // parle, les opérations posées, est un cas « auto ». La correction ne
+        // mordait donc sur rien. C'est `parLigneDefaut`, posé par le rendu, qui
+        // dit alors combien il en met par rangée (voir `grillesParLigne`).
+        const rendu = e.grille ? RENDUS[e.grille] : null;
+        const parLigne = Number(colonnes[e.stepId]) || (rendu && rendu.parLigneDefaut) || 0;
+        if (!e.grille || !(parLigne > 1)) return;
+        const combien = quantites[e.stepId];
+        if (combien <= parLigne || combien % parLigne === 0) return;
+        quantites[e.stepId] = Math.max(parLigne, Math.floor(combien / parLigne) * parLigne);
+    });
+
     // NUMÉROTER, OU NON, EXERCICE PAR EXERCICE. Par défaut oui — c'est ce
     // qu'on attend d'une fiche. Mais six grilles de sudoku appelées « 7. » à
     // « 12. » n'y gagnent rien : ce qu'on écrit dedans n'est pas la réponse à
@@ -806,6 +923,10 @@ export function ouvrirFicheParcours(chemin) {
 
     const fermerRoue = () => {
         if (!panneau) return;
+        // L'ŒIL SE FERME AVEC LE PANNEAU. Un `ResizeObserver` laissé branché
+        // sur un élément retiré tient cet élément en mémoire — et rouvrir la
+        // roue cent fois dans une séance en laisserait cent.
+        if (panneau.__oeil) { panneau.__oeil.disconnect(); panneau.__oeil = null; }
         panneau.remove();
         panneau = null;
         document.removeEventListener('pointerdown', surClicDehors, true);
@@ -944,13 +1065,7 @@ export function ouvrirFicheParcours(chemin) {
 
     /** Collé à ce qu'on retouche, et rabattu s'il devait sortir de l'écran. */
     function placerPanneau(cible) {
-        const r = cible.getBoundingClientRect();
-        const large = panneau.offsetWidth, haut = panneau.offsetHeight;
-        const x = Math.max(8, Math.min(r.left, window.innerWidth - large - 8));
-        const y = r.bottom + 6 + haut > window.innerHeight
-            ? Math.max(8, r.top - haut - 6) : r.bottom + 6;
-        panneau.style.left = `${x}px`;
-        panneau.style.top = `${y}px`;
+        poserContre(panneau, cible);
     }
 
     function ouvrirRoue(bouton, id) {
@@ -984,21 +1099,10 @@ export function ouvrirFicheParcours(chemin) {
                     min="0" max="40" value="${points[id]}">`)}</label>
             ${schema.length ? `<div class="pp-roue-contenu" data-r-contenu>
                 <div class="pp-roue-sous-titre">Contenu des questions</div>
-                ${schema.map(p => fieldHtml(p,
-        e.params[p.id] !== undefined ? e.params[p.id] : p.default)).join('')}
+                ${schema.map(p => fieldHtml(p, valeurDeChamp(p, e.params))).join('')}
             </div>` : ''}
             <button type="button" class="pp-roue-autres" data-r-neuf>${refaireSvg(15)} Autres questions</button>`;
         document.body.appendChild(panneau);
-
-        // COLLÉ À L'ENGRENAGE, et rabattu s'il devait sortir de l'écran : un
-        // panneau à moitié hors du cadre ne se règle pas, il se subit.
-        const r = bouton.getBoundingClientRect();
-        const large = panneau.offsetWidth, haut = panneau.offsetHeight;
-        const x = Math.max(8, Math.min(r.left, window.innerWidth - large - 8));
-        const y = r.bottom + 6 + haut > window.innerHeight
-            ? Math.max(8, r.top - haut - 6) : r.bottom + 6;
-        panneau.style.left = `${x}px`;
-        panneau.style.top = `${y}px`;
 
         brancherPas(panneau);
         const nb = panneau.querySelector('[data-r-nb]');
@@ -1067,6 +1171,30 @@ export function ouvrirFicheParcours(chemin) {
                 if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
             });
         }
+        // COLLÉ À L'ENGRENAGE, ET PLACÉ EN DERNIER — voir `poserContre`.
+        //
+        // RÉMY : « sur le 9, 10, 11 les paramètres ne sont toujours pas
+        // accessibles. Depuis tout le temps ! »
+        //
+        // L'ordre était le coupable, et c'est une correction PRÉCÉDENTE qui
+        // l'avait créé. `brancherMarches`, ajouté quand Rémy avait signalé que
+        // la frise de ces trois exercices ne s'affichait pas, GARNIT le bloc
+        // du contenu — mesuré, il le fait passer de 265 à 340 px. Le panneau
+        // était placé AVANT, sur une hauteur de 532 px qu'il n'aurait plus une
+        // milliseconde plus tard : 607. Soixante-quinze pixels de trop, et le
+        // bas du panneau passait sous le bord de l'écran.
+        //
+        // On place donc quand tout est garni. Et l'observateur ci-dessous
+        // rattrape ce qu'on ne sait pas prévoir — une police qui arrive, une
+        // frise qui se redessine, un réglage qui ajoute une ligne : le panneau
+        // se repose au lieu de sortir de l'écran.
+        poserContre(panneau, bouton);
+        if (typeof ResizeObserver === 'function') {
+            const oeil = new ResizeObserver(() => poserContre(panneau, bouton));
+            oeil.observe(panneau);
+            panneau.__oeil = oeil;
+        }
+
         nb.focus();
         nb.select();
         document.addEventListener('pointerdown', surClicDehors, true);
@@ -1116,7 +1244,7 @@ export function ouvrirFicheParcours(chemin) {
                 // s'appliquent au moment de composer. Retirer une autre
                 // question au sort les emporte donc avec l'ancienne, ce qui
                 // est le bon comportement.
-                const tire = (blocs.get(id) || []).slice(0, quantites[id]).map((q, rang) => {
+                let tire = (blocs.get(id) || []).slice(0, quantites[id]).map((q, rang) => {
                     const r = retouches.get(cleRetouche(id, rang));
                     if (!r) return q;
                     // UNE GRILLE SE RÉCRIT AUTREMENT QU'UNE QUESTION : on ne
@@ -1133,6 +1261,24 @@ export function ouvrirFicheParcours(chemin) {
                     }
                     return { ...q, texte: r.texte, reponse: r.reponse, retouchee: true };
                 });
+                // L'ÉNONCÉ QUI SE RÉPÈTE MONTE EN TÊTE DE L'EXERCICE.
+                //
+                // RÉMY, sur `cf-ensemble` : « laisse de la place et ne remets
+                // pas l'énoncé à chaque question sur la version imprimé ». Dix
+                // questions écrivaient dix fois « Simplifier : ». Sur un cahier
+                // la consigne est donnée une fois ; la place gagnée est celle où
+                // l'élève écrit.
+                //
+                // ON NE TOUCHE PAS AUX GRILLES : une grille n'a pas d'énoncé
+                // par question, elle a une règle du jeu.
+                let hisse = ['', ''];
+                if (!e.grille && tire.length > 1) {
+                    const d = degagerLePrefixe(tire.map(q => q.texte));
+                    if (d.prefixe || d.suffixe) {
+                        hisse = [d.prefixe, d.suffixe];
+                        tire = tire.map((q, i) => ({ ...q, texte: d.textes[i] }));
+                    }
+                }
                 // Une grille n'a pas de consigne écrite par le professeur :
                 // c'est la règle du jeu, et elle se déduit de la grille tirée.
                 const consigneGrille = e.grille && tire.length && RENDUS[e.grille].consigne
@@ -1145,7 +1291,10 @@ export function ouvrirFicheParcours(chemin) {
                     // ouvrira les bons réglages.
                     id,
                     titre: titres[id] ?? e.title,
-                    consigne: o.interrogation ? '' : (e.grille ? consigneGrille : consignes[id]),
+                    // LA CONSIGNE RECUEILLE CE QU'ON A ÔTÉ DES QUESTIONS — et
+                    // une seule fois : si elle le disait déjà, on ne bégaie pas.
+                    consigne: o.interrogation ? '' : (e.grille ? consigneGrille
+                        : consigneAvecPrefixe(consignes[id], ...hisse)),
                     points: o.interrogation ? (points[id] || null) : null,
                     numeroter: numeroter[id] !== false,
                     insecable: estInsecable(id),
@@ -1167,8 +1316,7 @@ export function ouvrirFicheParcours(chemin) {
                     // La proportion peut être une FONCTION des grilles tirées
                     // (le tableau de conversion la calcule sur son nombre de
                     // lignes) : on la résout ici, pas plus loin.
-                    grilleRatio: e.grille
-                        ? (proportionsRendu(RENDUS[e.grille], tire)?.h ?? 1) : 1,
+                    grilleRatio: e.grille ? rapportDuBloc(RENDUS[e.grille], tire) : 1,
                     // Le plancher que le rendu s'est fixé, quand il en a un.
                     grilleHauteurMin: e.grille ? (RENDUS[e.grille].hauteurMin ?? 0) : 0,
                     // « PLEIN » : LA PAGE ENTIÈRE. Ce n'est pas une proportion
@@ -1193,8 +1341,24 @@ export function ouvrirFicheParcours(chemin) {
         // La feuille de solutions ne porte que ce qui a une réponse écrite :
         // une grille se corrige sur son propre dessin, pas dans une liste.
         const toutes = exos.flatMap(x => x.questions);
-        const sections = exos.filter(x => x.questions.length)
-            .map(x => ({ titre: x.titre, points: x.points, questions: x.questions, numeroter: x.numeroter }));
+        // LE CORRIGÉ GARDE LES NUMÉROS DE LA FEUILLE — d'exercice et de question.
+        //
+        // Rémy, corrigé en main : « je pense qu'il y a un bug […] j'ai
+        // l'impression d'un problème d'ordre ». Il avait raison deux fois. Sa
+        // feuille portait « Exercice 1 — Les Amis de Dix » (un appariement,
+        // questions 1 et 2), « Exercice 2 — Amis de 10 » (questions 3 à 17) ;
+        // son corrigé disait « Exercice 1 — Amis de 10 », numéroté de 1 à 15.
+        //
+        // La cause est la même pour les deux : un appariement se corrige sur son
+        // propre dessin, il n'entre donc pas dans cette liste — mais il OCCUPE
+        // des numéros sur la feuille. On garde donc le rang réel de l'exercice
+        // et le premier numéro qu'il a posé, tels que `composerBlocs` les a
+        // comptés. `depart` est rempli juste après, quand la feuille est mise
+        // en page : c'est elle qui sait, et deux compteurs pour la même
+        // numérotation finissent toujours par compter différemment.
+        const sections = exos.map((x, i) => ({ titre: x.titre, points: x.points,
+                questions: x.questions, numeroter: x.numeroter, rang: i + 1, _i: i }))
+            .filter(x => x.questions.length);
         // LES BLOCS SE CORRIGENT SUR LEUR PROPRE DESSIN. Un sudoku rempli, une
         // rédaction écrite : leur solution est une figure, pas une ligne dans
         // une liste. La vue « solutions » est donc en deux temps — la liste des
@@ -1220,12 +1384,32 @@ export function ouvrirFicheParcours(chemin) {
         // c'est la même règle, toujours.
         const avecSolutions = o.ouSolution !== 'sans';
         const mise = composerBlocs(exos, o, mesurer);
+        // On rapporte à chaque section le premier numéro que la feuille lui a
+        // donné. Sans cette ligne, « 1. 8 + 2 = 10 » renverrait à une question
+        // que la feuille n'a pas.
+        sections.forEach(sec => { sec.depart = (mise.departs || [])[sec._i] || 0; });
         const listeSol = (avecSolutions && toutes.length)
             ? composerSolutions(toutes, { mode: o.modeSolution, orientation: o.orientation, sections,
                 numerotation: o.numerotation, colonnesSolutions: o.colonnesSolutions }, mesurer)
             : null;
+        // LA PAGE DES BLOCS CORRIGÉS PORTE UN EN-TÊTE, DONC ELLE LUI GARDE SA PLACE.
+        //
+        // Rémy, corrigé en main : sur la page de l'appariement corrigé, le filet
+        // de l'en-tête passait EN TRAVERS de la consigne. On composait cette
+        // page avec `enteteH1: 0` — pour gagner la hauteur d'un bandeau et ne
+        // pas pousser une planche de vignettes sur la page suivante —, mais
+        // l'en-tête était dessiné quand même. Réserver zéro pour ce qu'on
+        // dessine, c'est écrire par-dessus.
+        //
+        // ON RÉSERVE CE QUI EST VRAIMENT DESSINÉ, et rien de plus : un titre et
+        // son filet, sans le cartouche (pas de nom ni de date sur un corrigé) et
+        // sans consigne de feuille. C'est bien moins que l'en-tête de la
+        // première page, donc la planche garde l'essentiel de la place gagnée.
+        const enteteSolution = hauteurEntete1(mise.page || pageDe(o.orientation), false,
+            { titre: o.entete.titre || 'Solutions', champs: [], consigne: '', mesurer });
         const blocsSol = (avecSolutions && aGrilles.length)
-            ? composerBlocs(aGrilles, { ...o, solution: true, interrogation: false, enteteH1: 0 }, mesurer)
+            ? composerBlocs(aGrilles, { ...o, solution: true, interrogation: false,
+                enteteH1: enteteSolution }, mesurer)
             : null;
         const pg = mise.page || pageDe(o.orientation);
 
@@ -1523,8 +1707,16 @@ function telecharger(modal, chemin, lire) {
                 }
                 // Les blocs corrigés : le sudoku rempli, la rédaction écrite.
                 if (aGrilles.length) {
+                    // MÊME RÉSERVE QUE DANS L'APERÇU, et pour la même raison :
+                    // `entetePdf` dessine un titre et son filet juste en
+                    // dessous. Avec `enteteH1: 0`, le filet passait EN TRAVERS
+                    // de la consigne du premier bloc — mesuré sur le corrigé
+                    // que Rémy a imprimé.
+                    const hEnt = hauteurEntete1(pageDe(options.orientation), false,
+                        { titre: nom || 'Solutions', champs: [], consigne: '', mesurer });
                     const bs = composerBlocs(aGrilles,
-                        { ...options, solution: true, interrogation: false, enteteH1: 0 }, mesurer);
+                        { ...options, solution: true, interrogation: false,
+                          enteteH1: hEnt }, mesurer);
                     bs.pages.forEach((page) => {
                         nouvelle();
                         entetePdf(doc, nom, 'Solutions', '', null, bs.page, { champs: [] });

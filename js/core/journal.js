@@ -19,6 +19,25 @@ export const EventTypes = {
     ERROR_DISMISSED: 'error_dismissed', // une erreur retirée du carnet
     RUN_STARTED: 'run_started',
     RUN_FINISHED: 'run_finished',
+    // UNE ÉTAPE VIENT DE S'OUVRIR — ET C'EST CE QUI MANQUAIT AU DIRECT.
+    //
+    // Rémy : « on ne peut plus voir l'écran de l'élève sur l'interface prof ? »
+    // puis « peut-on rendre la synchronisation plus réactive ? ». Les deux
+    // avaient la même cause, et ce n'était pas un délai.
+    //
+    // MESURÉ : l'élève commence sa séance, l'exercice est à son écran, et
+    // quinze secondes plus tard le direct du professeur affiche encore « Pas
+    // commencé » avec `exo` vide — donc « Son exercice, chez moi » GRISÉ.
+    // Côté serveur, `derniereActivite` cherche un `exerciseId` dans les
+    // derniers événements ; `run_started` n'en porte pas — il parle du
+    // parcours —, et le premier à en porter était `attempt`, c'est-à-dire la
+    // première RÉPONSE. Le professeur ne pouvait donc pas voir l'écran de
+    // celui qui n'a encore rien répondu : exactement l'élève qu'il regarde.
+    //
+    // Aucune ligne de serveur à changer : il lit déjà tout payload portant un
+    // `exerciseId`. Charge utile : { runId, pathId, pathName, stepId,
+    // exerciseId, bac }.
+    STEP_STARTED: 'step_started',
     STEP_COMPLETED: 'step_completed',
     TIME_SPENT: 'time_spent',
     BADGE_GRANTED: 'badge_granted',
@@ -92,6 +111,47 @@ export class Journal {
     /** Événements pas encore poussés au serveur. */
     pending() {
         return this.events.filter(e => !e.synced);
+    }
+
+    /**
+     * OUBLIER DES ÉVÉNEMENTS — le seul endroit du logiciel qui en retire.
+     *
+     * RÉMY : « je réinitialise la séance depuis mon poste comme s'il ne
+     * l'avait jamais commencée ».
+     *
+     * ── POURQUOI UN JOURNAL EN APPEND-ONLY SAIT QUAND MÊME OUBLIER ────────
+     *
+     * Il n'oublie jamais de lui-même : c'est ce qui rend la synchronisation
+     * commutative et idempotente (voir `merge`). Il n'oublie QUE sur ordre du
+     * serveur, qui vient du professeur, et qui a déjà effacé les mêmes
+     * événements de son côté — sans quoi ils redescendraient au premier
+     * appareil neuf et la remise à zéro n'aurait duré qu'une synchro.
+     *
+     * ON NE TOUCHE PAS À CE QUI N'EST PAS ENCORE POUSSÉ, et c'est la
+     * précaution qui évite de perdre du travail : un élève qui a travaillé
+     * hors ligne pendant que le professeur remettait à zéro garde ce qu'il
+     * vient de faire. Le serveur, lui, le recevra ensuite — et le professeur
+     * verra que l'élève a retravaillé depuis.
+     *
+     * @param {(e: object) => boolean} estAOublier
+     * @returns {number} combien ont été retirés
+     */
+    oublier(estAOublier) {
+        if (typeof estAOublier !== 'function') return 0;
+        const avant = this.events.length;
+        this.events = this.events.filter(e => !(e.synced && estAOublier(e)));
+        const partis = avant - this.events.length;
+        if (partis) {
+            this._dirty = true;
+            this._scheduleSave();
+            // LE MÊME SIGNAL QU'UN AJOUT : tout ce qui dérive du journal
+            // (`state.studentPath`, le fil, la carte) écoute celui-là pour
+            // jeter ses mémos. Un oubli qui ne le dit pas laisserait l'écran
+            // montrer un travail que le journal ne porte plus.
+            document.dispatchEvent(new CustomEvent('journal_appended',
+                { detail: { type: 'oubli', partis } }));
+        }
+        return partis;
     }
 
     markSynced(ids) {

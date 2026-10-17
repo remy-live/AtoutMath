@@ -20,6 +20,7 @@
 //    qui sort de l'imprimante.
 
 import { generateurDeFiche } from '../core/registry.js';
+import { replierApercuSiEtroit } from './modal.js';
 import { crayonSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { equiperFenetre } from './flottant.js';
 // Le détachement est un outil d'auteur : l'interrupteur vit dans la palette.
@@ -279,9 +280,12 @@ function assurerModale() {
                     </select></label>
             </div>
             </details>
+            <details class="fp-apercu-repli" open>
+                <summary>L’aperçu de la feuille</summary>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu fq-apercu" id="fq-apercu"></div>
             </div>
+            </details>
             <div class="fp-note" id="fq-note"></div>
             <div class="modal-actions-center">
                 <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="fq-fermer">Fermer</button>
@@ -289,6 +293,7 @@ function assurerModale() {
             </div>
         </div>`;
     document.body.appendChild(modal);
+    replierApercuSiEtroit(modal);
     // Ancrer / détacher, et replier les réglages : les deux commandes vivent
     // dans le titre, comme sur la fiche de grilles.
     fenetreFiche = equiperFenetre(modal, CLE_FENETRE, { peutDetacher: fenetresDetachables });

@@ -558,3 +558,119 @@ export function plafonnerClavier(aide, params = {}) {
     const dernier = [...ECHELONS].reverse().find(e => !e.clavier) || ECHELONS[0];
     return { ...dernier };
 }
+
+// --- LE CLAVIER EST-IL SEULEMENT POSSIBLE DANS CET EXERCICE ? -----------------
+//
+// Rémy : « dans le mot juste, dans les réglages, le clavier est proposé mais le
+// jeu ne propose jamais le clavier non ? »
+//
+// LE RÉGLAGE « AUTORISER LE CLAVIER » EST OFFERT PAR L'ACTIVITÉ, donc à tous les
+// exercices à propositions — soixante-dix. Mais le pavé ne prend la main que si
+// la réponse est un NOMBRE, ou si l'item se déclare composable (une notation, un
+// tracé, une expression littérale). « somme », « différence », « oui », « [AB) »
+// ne sont rien de tout cela.
+//
+// MESURÉ sur le catalogue (`tools/reglagesMuets.mjs`, qui tire de vraies
+// questions) : dans VINGT-SIX exercices sur soixante-dix, le réglage ne décide
+// de rien — vingt et un parce qu'aucune réponse n'est un nombre, cinq parce
+// qu'on y va de toute façon. Le professeur y décoche un réglage pour protéger
+// une classe qui découvre, et croit avoir agi. Un réglage qui ne fait rien est
+// pire qu'un réglage absent.
+//
+// LA RÈGLE EST ÉCRITE ICI, UNE FOIS. `activities/choice.js` l'applique pour
+// décider quel module pose la question, et le panneau de réglages l'interroge
+// pour savoir s'il doit montrer la case. Deux copies de cette règle, et le jour
+// où l'une bouge, le panneau ment.
+
+/** Cette question-là peut-elle se taper plutôt que se choisir ? */
+export function itemPeutAllerAuClavier(item) {
+    const m = (item && item.meta) || {};
+    if (m.composable) return true;
+    // `saisieSeule` va au clavier DÈS LA PREMIÈRE QUESTION : ce n'est pas
+    // l'escalier qui l'y mène, et le réglage ne le retient pas non plus.
+    if (m.saisieSeule) return false;
+    if (!item || item.answer === null || item.answer === undefined || item.answer === '') {
+        return false;
+    }
+    return Number.isFinite(Number(item.answer));
+}
+
+/**
+ * LE RÉGLAGE « AUTORISER LE CLAVIER » A-T-IL PRISE SUR CETTE QUESTION-LÀ ?
+ *
+ * CE N'EST PAS LA MÊME QUESTION QUE « le clavier est-il possible », et les
+ * confondre m'a fait cacher le réglage au mauvais endroit. Relire l'ordre des
+ * lignes de `moduleVoulu`, dans `activities/choice.js` :
+ *
+ *     if (m.saisieSeule) return compose || null;   // le réglage n'est PAS lu
+ *     if (!aideIci.clavier) return null;           // ici, il décide
+ *
+ * Une question `saisieSeule` — les « pas à pas » du développement, de la
+ * factorisation — va au clavier DÈS LA PREMIÈRE, et le réglage n'est même pas
+ * consulté. Le clavier y est donc parfaitement possible, et le réglage
+ * parfaitement muet.
+ */
+export function reglageClavierAgit(item) {
+    if (!item || (item.meta && item.meta.saisieSeule)) return false;
+    return itemPeutAllerAuClavier(item);
+}
+
+/** Cette question-là peut-elle se poser en PROPOSITIONS ? */
+export function itemPeutEtreChoisi(item) {
+    // `saisieSeule` dit « celle-ci ne se pose pas en vignettes » : « Trace
+    // [AB) » ne se choisit pas parmi quatre images, et c'est ce QCM-là que
+    // Rémy trouvait bête. Tout le reste commence par des propositions.
+    return !!item && !(item.meta && item.meta.saisieSeule);
+}
+
+/**
+ * ET CET EXERCICE-LÀ ? On le demande au générateur, on ne le devine pas.
+ *
+ * On tire de vraies questions : c'est la seule réponse juste, puisqu'un même
+ * exercice peut mêler des volets chiffrés et des volets de vocabulaire — « Le
+ * Mot Juste » en a un sur six qui se tape, et cinq qui ne se tapent pas.
+ *
+ * @param {Object} exo l'exercice du catalogue
+ * @param {Object} gen son générateur (le registre n'est pas connu d'ici)
+ * @param {Function} rngPour fabrique un tirage à partir d'une graine
+ * @param {number} [tirages]
+ */
+export function clavierPossible(exo, gen, rngPour, tirages = 18) {
+    return formesPossibles(exo, gen, rngPour, tirages).clavier;
+}
+
+/** Et les propositions ? Même question, même tirage. */
+export function propositionsPossibles(exo, gen, rngPour, tirages = 18) {
+    return formesPossibles(exo, gen, rngPour, tirages).propositions;
+}
+
+/**
+ * LES DEUX QUESTIONS EN UN SEUL TIRAGE.
+ *
+ * Le panneau de réglages les pose toutes les deux ; les poser séparément, c'est
+ * faire tourner le générateur trente-six fois au lieu de dix-huit à chaque
+ * ouverture. Et surtout : deux tirages différents pourraient ne pas voir les
+ * mêmes volets, donc ne pas répondre sur le même exercice.
+ */
+export function formesPossibles(exo, gen, rngPour, tirages = 18) {
+    if (!gen || typeof gen.generate !== 'function' || typeof rngPour !== 'function') {
+        // On ne sait pas : on MONTRE les réglages. Cacher une commande sur un
+        // doute, c'est retirer au professeur une décision qu'il avait.
+        return { clavier: true, propositions: true };
+    }
+    let clavier = false;
+    let propositions = false;
+    for (let i = 0; i < tirages; i++) {
+        let item = null;
+        try {
+            item = gen.generate({ ...(exo.params || {}) },
+                { rng: rngPour('clav' + i), weakTables: [], difficulty: null, index: i });
+        } catch (e) {
+            return { clavier: true, propositions: true };   // dans le doute, on montre
+        }
+        if (reglageClavierAgit(item)) clavier = true;
+        if (itemPeutEtreChoisi(item)) propositions = true;
+        if (clavier && propositions) break;
+    }
+    return { clavier, propositions };
+}

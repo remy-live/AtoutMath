@@ -36,7 +36,6 @@ export const CONSEILS = [
     'Un énoncé long n\'est pas un énoncé difficile. Coupe-le en phrases et traite-les une par une.',
     'Souligne les nombres ET leur unité. « 3 » et « 3 cm » ne se manipulent pas pareil.',
     'Repère le mot qui commande : calcule, trace, justifie, compare. Il dit ce qu\'on attend de toi.',
-    '« Au moins », « au plus », « exactement » : ces trois mots changent toute la réponse. Ne les saute pas.',
     'Si l\'énoncé donne une figure, cherche dessus ce que la phrase vient de dire. C\'est là que se cachent les données.',
     'Un énoncé qui te semble impossible cache presque toujours une donnée que tu n\'as pas encore utilisée. Cherche-la.',
     'Recopie la question dans ta tête avec tes mots. Si tu n\'y arrives pas, c\'est qu\'il faut la relire.',
@@ -80,7 +79,6 @@ export const CONSEILS = [
 
     // --- L'erreur -------------------------------------------------------------
     'Se tromper puis comprendre pourquoi vaut mieux que réussir sans savoir comment.',
-    'Une erreur notée dans ton carnet n\'est pas une mauvaise note : c\'est une question que tu vas apprendre à refaire.',
     'Quand tu te trompes, cherche à quel moment exactement. « J\'ai tout faux » n\'apprend rien ; « j\'ai inversé à la troisième ligne » apprend tout.',
     'La même erreur qui revient trois fois n\'est pas de l\'étourderie : c\'est une règle mal comprise. Va la revoir.',
     'Refais l\'exercice raté le lendemain, pas tout de suite. Si tu sais encore le faire demain, tu l\'as compris.',
@@ -262,10 +260,7 @@ export const CONSEILS = [
     'Devant un problème de vitesse, écris les trois grandeurs et entoure celle qu\'on cherche.',
     'Note le nombre de solutions attendues. « Trouve les nombres » au pluriel n\'a pas la même réponse que « le nombre ».',
     'Quand tu appliques une formule, écris-la d\'abord en lettres, puis remplace. Cela évite d\'inverser deux données.',
-    'Un résultat qui tombe rond n\'est pas forcément juste, et un résultat qui ne tombe pas rond n\'est pas forcément faux.',
-    'Devant un tableau de valeurs, cherche ce qui reste constant : c\'est presque toujours là qu\'est la clé.',
     'Une longueur, une aire et un volume ne se comparent jamais entre elles. Vérifie tes unités avant de conclure.',
     'Quand tu construis une figure, fais un croquis à main levée d\'abord. La construction propre vient après.',
-    'Devant une question ouverte, écris une phrase de réponse. Un nombre seul ne répond jamais à une question posée en mots.',
     'Si tu dois choisir entre deux méthodes, prends celle que tu sais expliquer.'
 ];

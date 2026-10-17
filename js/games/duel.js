@@ -21,6 +21,7 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, dureeDemo } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerPartie, servir, repondre, manquer, pointSuivant, composerFrappe,
     dureeVol, longueurReponse, tablesValides, BORNES_COMPOSE
@@ -31,6 +32,9 @@ const NOMS = ['Joueur 1', 'Joueur 2'];
 class Duel extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'duel');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.partie = creerPartie({
             tables: tablesValides(this.params.tables),
             operations: this.params.operations === 'muldiv' ? ['mul', 'div'] : ['mul'],
@@ -465,7 +469,37 @@ class Duel extends BaseGame {
                        HAUTES, ce qui donne une cible de 33 × 58 — un pouce
                        s'appuie large et court, pas l'inverse — et le couloir
                        récupère soixante pixels. */
-                    .du-pave, .du-tables { height: clamp(48px, 11cqh, 74px); }
+                    /* LA FORME AVAIT DÉRIVÉ DE SA PROPRE DÉCISION, et c'est
+                       tools/boutonsEtires.mjs qui l'a dit : le commentaire
+                       ci-dessus annonce une cible de 33 × 58, on en mesurait
+                       27 × 74. Rémy, le 13 octobre, a tranché « oui, à
+                       corriger ».
+
+                       OÙ PASSAIENT LES SIX PIXELS DE LARGE — démonté sur
+                       390 × 844, et la cause n'était pas devinable :
+
+                         écran                390 px
+                         marges du côté      − 20 px  (10 de chaque bord)
+                         pavé                 370 px
+                         dix espaces         − 59 px  ← ici
+                         pour onze touches    311 px → 28,3 px chacune
+
+                       L'espace se déclarait clamp(2px, .8cqh, 6px), et cqh se
+                       mesure sur la HAUTEUR du conteneur : sur un téléphone
+                       tenu debout, le plateau fait 736 px, donc .8cqh vaut
+                       5,9 px et le clamp est au plafond. SEIZE POUR CENT du
+                       clavier partait en air, exactement là où chaque pixel
+                       manque.
+
+                       ON NE CONTREDIT PAS LA DÉCISION, ON LA REJOINT : 2 px
+                       d'espace rendent 39 px aux touches, et le plafond de
+                       hauteur ramené à 58 px rend 16 px au couloir PAR CAMP —
+                       ce que Rémy demandait deux fois (« une seule rangée de
+                       chiffres et tout le reste le plateau de jeu »). La
+                       touche devient plus LARGE et moins haute, et 58 px reste
+                       au-dessus du plancher tactile de 44 px : on ne rogne pas
+                       la règle qui a produit les ovales. */
+                    .du-pave, .du-tables { height: clamp(48px, 11cqh, 58px); gap: 2px; }
                     /* TOUT CE QUE L'ÉCRAN A. Rémy, deux bancs de suite : « on ne
                        voit toujours pas bien pour le duel ». Sur un iPhone, le
                        plateau perdait quarante pixels de large et autant de haut
@@ -1054,26 +1088,30 @@ class Duel extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.plateau);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
         const p = this.partie;
         this.startGameLoop();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Un duel à deux sur la même tablette : elle se pose à plat entre vous, et la moitié du haut est retournée pour que chacun lise à l\'endroit.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
+        cur.say('Un duel à deux : la tablette à plat entre vous, le haut retourné pour que chacun lise à l\'endroit.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const bouton = this.container.querySelector(`[data-cote="${p.serveur}"] [data-table="${p.tables[Math.min(2, p.tables.length - 1)]}"]`);
         cur.say('Le serveur choisit sa table. C\'est là qu\'on chambre : on attaque là où l\'autre est le moins sûr.', bouton || this.plateau);
-        if (!await cur.tap(bouton || this.plateau) || !this.isRunning) return fin();
+        if (!await robot.toucher(bouton || this.plateau)) return fin();
         servir(p, Number(bouton ? bouton.dataset.table : p.tables[0]), Math.random);
         this.lancerVol();
         this.majEcran();
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('La balle porte l\'opération. Celui qui la reçoit tape le résultat avant qu\'elle n\'atteigne sa ligne — le pavé valide tout seul au bon nombre de chiffres.', this.terrain);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('La balle porte l\'opération : je tape le résultat avant qu\'elle n\'atteigne ma ligne.', this.terrain);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        cur.say('Le pavé valide tout seul, au bon nombre de chiffres.', this.terrain);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Six échanges : de quoi voir la balle changer de camp et accélérer.
         for (let i = 0; i < 6; i++) {
@@ -1086,30 +1124,33 @@ class Duel extends BaseGame {
                 if (t) { this.enfoncer(t); }
                 this.saisie[cote] += chiffre;
                 this.majSaisie(cote);
-                if (!await cur.pause(dureeDemo(210)) || !this.isRunning) return fin();
+                if (!await robot.pause(dureeDemo(210))) return fin();
             }
             this.saisie[cote] = '';
             repondre(p, Number(attendu), Math.random);
             this.lancerVol();
             this.majEcran();
             if (i === 1) {
-                cur.say('Et voilà l\'échange : elle repart aussitôt avec un autre produit de la MÊME table, vers l\'autre joueur. Les deux calculent, sans arrêt.', this.terrain);
+                cur.say('Et voilà l\'échange : elle repart avec un autre produit de la MÊME table, vers l\'autre joueur.', this.terrain);
             }
             if (i === 3) {
-                cur.say('À chaque renvoi elle va un peu plus vite. Un point se joue en cinq, dix, quinze échanges — c\'est ça qui use les tables.', this.terrain);
+                cur.say('À chaque renvoi elle va un peu plus vite : cinq, dix, quinze échanges dans un point.', this.terrain);
             }
-            if (!await cur.pause(dureeDemo(i === 1 || i === 3 ? DEMO_SPEED.between : 700)) || !this.isRunning) return fin();
+            if (!await robot.pause(dureeDemo(i === 1 || i === 3 ? DEMO_SPEED.between : 700))) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Une erreur ou une balle laissée passer, et le point va à l\'autre. Le perdant du point sert le suivant : on peut toujours revenir.', this.terrain);
+        if (!await robot.tour()) return fin();
+        // ON NE RÉCITE PLUS LE RÈGLEMENT DANS LA BULLE (qui sert le point
+        // suivant, ce que le carnet garde ou non) : au-delà de 110 caractères la
+        // démonstration se fige. Le service suivant se voit à l'écran juste après.
+        cur.say('Une erreur ou une balle laissée passer, et le point va à l\'autre.', this.terrain);
         const pt = manquer(p);
         this.finDePoint(pt);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Rien n\'est enregistré dans le carnet : à deux sur un seul profil, on ne saurait pas à qui attribuer les réponses. Un duel se joue, et il s\'oublie.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Rien n\'est enregistré dans le carnet : un duel se joue, et il s\'oublie.', this.plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 
