@@ -248,6 +248,91 @@ async function deconnecterLEleve() {
     };
 }
 
+// ───────────────────────────── LA SORTIE DEPUIS LA PORTE CLOSE ──────────────
+//
+// RÉMY, après avoir demandé qu'on puisse toujours se déconnecter : « oui mais
+// attention c'est le mode porte fermé donc ça doit être différent pour le
+// logout ».
+//
+// CE QUI DIFFÈRE, ET POURQUOI. La sortie ordinaire NÉGOCIE, et elle a raison de
+// le faire : elle refuse de partir au milieu d'une question (« finis d'abord »),
+// elle chiffre ce qui n'est pas parti, elle propose d'effacer son travail sur un
+// poste partagé. Toutes ces questions supposent qu'on puisse RESTER et
+// continuer. Sur la porte close, on ne peut rien continuer : l'écran est un
+// voile, et l'y retenir pour lui demander de finir une question qui n'existe pas
+// est exactement l'enfermement dont il se plaint.
+//
+//   · ELLE NE SE REFUSE JAMAIS. On pousse ce qu'on peut, puis on part.
+//   · ELLE NE PROPOSE PAS D'EFFACER LE TRAVAIL. Rémy : « la référence est ce
+//     qui est sur la base de données prioritairement » — le travail de l'élève
+//     est chez lui, et le profil local qui reste est ce qui lui rend son nom
+//     quand il se reconnecte. Et : « si l'élève ne se déconnecte pas chez lui,
+//     il peut travailler » : partir n'efface rien.
+//   · ELLE DIT OÙ L'ON ATTERRIT. « j'ai besoin de tester avec un élève puis
+//     revenir à mon compte prof » : c'est l'écran d'identification qu'il
+//     cherche, et le dire évite d'hésiter devant le bouton.
+//
+// LE PORTAIL N'A QUE DEUX PORTES — rejoindre sa classe, ou saisir un code (voir
+// `ui/portailUI.js`, `MODE_LIBRE` à faux) : se déconnecter ne donne donc accès à
+// RIEN de plus que le voile. C'est ce qui rend ce bouton sûr sur la porte close,
+// et c'est vérifié, pas supposé (`tools/sortieDuVoile.mjs`).
+
+/**
+ * L'ÉTAGE DE LA FENÊTRE, AU-DESSUS DU VOILE — et c'est la sonde qui l'a trouvé.
+ *
+ * MESURÉ (`tools/sortieDuVoile.mjs`) : la fenêtre s'ouvrait, on lisait son
+ * texte, et son bouton « Se déconnecter » n'était PAS celui qu'on touchait.
+ * `document.elementFromPoint` au centre du bouton nommait le coupable :
+ * `eleve-ecarte-carte`, c'est-à-dire le voile lui-même.
+ *
+ * POURQUOI, ET POURQUOI ON NE L'AURAIT PAS DEVINÉ : `.modal-overlay` est à
+ * `z-index: 100000` dans css/components.css, donc bien au-dessus du voile — mais
+ * `showModal` repose son étage EN LIGNE (`z-index: 9999` par défaut, voir
+ * ui/modal.js), et un style en ligne l'emporte sur la classe. La fenêtre
+ * passait donc sous le voile, qui est à 10100 (`.eleve-ecarte`, css/ui.css).
+ *
+ * Le bouton aurait été VISIBLE ET MORT — l'écran dit « se déconnecter », le
+ * clic ne fait rien, et l'on retourne chercher le défaut dans la déconnexion.
+ */
+const ETAGE_SUR_LE_VOILE = 10200;
+
+export async function sortirDeLaPorteClose() {
+    const qui = lesIdentites().find(x => x.role === 'eleve') || quiEstLa();
+    const f = showModal('Se déconnecter', corpsPorteClose(qui),
+        { width: '440px', zIndex: ETAGE_SUR_LE_VOILE });
+    f.element.querySelector('[data-dx-non]').onclick = () => f.close();
+    f.element.querySelector('[data-dx-ok]').onclick = async () => {
+        const bouton = f.element.querySelector('[data-dx-ok]');
+        bouton.disabled = true;
+        bouton.textContent = 'On envoie…';
+        // ON ENVOIE D'ABORD CE QUI RESTE, puis l'on part quoi qu'il arrive.
+        // L'ordre compte : forcer tout de suite jetterait du travail qu'une
+        // seconde de réseau aurait sauvé.
+        const r = await deconnecterEleve({});
+        if (!r.parti) await deconnecterEleve({ force: true });
+        f.close();
+        showToast('Déconnecté.', 'info');
+        majBouton();
+        setTimeout(() => window.location.reload(), 700);
+    };
+}
+
+function corpsPorteClose(qui) {
+    const reste = resteAEnvoyer();
+    const dit = peutSeDeconnecter(reste, {}).dire;
+    return `
+        <p class="dx-mot">${esc(qui.classe
+            ? `Tu vas te déconnecter de la classe « ${qui.classe} ».`
+            : 'Tu vas te déconnecter.')}</p>
+        <p class="dx-note">Tu reviendras à l'écran d'identification : c'est là qu'on
+            entre son identifiant, avec ce compte ou avec un autre.</p>
+        <p class="dx-note">${esc(dit)}</p>
+        <div class="dx-boutons">
+            <button type="button" class="dx-bouton dx-bouton--sortie" data-dx-ok>Se déconnecter</button>
+            <button type="button" class="dx-bouton dx-bouton--doux" data-dx-non>Rester</button>
+        </div>`;
+}
+
 // ─────────────────────────────────────────────────────────── LE FIL ─────────
 
 let pose = false;

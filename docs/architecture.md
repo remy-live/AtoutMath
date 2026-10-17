@@ -477,6 +477,41 @@ L'application est **local-first** : elle fonctionne intégralement hors ligne, l
 serveur n'est jamais une dépendance de rendu. Il ne fait que deux choses :
 recevoir des événements, et en renvoyer.
 
+### Mais quand les deux se contredisent, c'est la base qui a raison
+
+Arbitrage de Rémy, 17 octobre 2026 :
+
+> « La référence est ce qui est sur la base de données prioritairement (on garde
+> de côté le local storage pour une future application hors ligne) est ce
+> clair »
+
+**Local-first décrit le RENDU, pas la vérité.** L'application doit s'ouvrir et
+fonctionner sans réseau — cela ne change pas. Mais dès qu'une question a deux
+réponses possibles, celle de la base l'emporte, et le stockage local n'est
+qu'un **cache de la dernière réponse du serveur**.
+
+Ce qui en découle, et qui était déjà écrit à trois endroits sans être énoncé
+une fois :
+
+- **une conclusion ne se recalcule pas sur l'ardoise.** La porte close, l'accès
+  en pause, la séance imposée, le verrou : le serveur a déjà tranché — il
+  connaît le réglage de la classe ET la séance en cours. « Redériver cela sur
+  trente appareils, c'est se préparer trente réponses différentes »
+  (`core/seanceDistante.js`) ;
+- **un état local n'a pas le droit de tenir une porte fermée tout seul.** Ce qui
+  reste en mémoire appartient au rattachement : sans jeton, il n'existe pas, et
+  il s'efface. C'est pourquoi se déconnecter bascule sur un profil neuf — sans
+  quoi le journal de l'élève rouvrait l'application sous son nom ;
+- **le travail de l'élève, lui, n'est pas un cache.** Il part par lots, et c'est
+  la seule donnée qu'on protège dans l'autre sens : on envoie avant de quitter.
+  « Si l'élève ne se déconnecte pas chez lui, il peut travailler » — partir
+  n'efface rien, et le profil local qui reste est ce qui lui rend son nom quand
+  il revient.
+
+Un appareil hors ligne garde donc le dernier état connu : il ne s'ouvre pas
+parce qu'il n'a pas pu demander. La sortie, elle, marche toujours — c'est la
+seule chose qui ne dépende de personne.
+
 ```
 POST /sync  { deviceId, cursor, events[] }
          →  { accepted[], events[], cursor, assignments[] }

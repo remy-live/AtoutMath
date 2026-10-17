@@ -1488,6 +1488,26 @@ body.classe-verrouillee #btn-role {
     border-radius: 18px; padding: 30px 26px; max-width: 420px; text-align: center;
     box-shadow: 0 20px 50px rgba(0,0,0,.4);
 }
+/* LA SORTIE, SUR LE VOILE LUI-MÊME. Rémy : « il faut toujours pouvoir se
+   déconnecter, j'ai besoin de tester avec un élève puis revenir à mon compte
+   prof ». Elle est DISCRÈTE et non principale : pour un élève, ce que le voile
+   propose est l'exercice laissé libre, pas la porte de sortie. Mais elle existe,
+   elle se lit, et elle se touche au doigt — 44 px, comme les boutons des
+   exercices juste au-dessus. */
+.eleve-ecarte-sortie {
+    margin-top: 18px; min-height: 44px; padding: 10px 16px;
+    background: none; border: 1px solid var(--border); border-radius: 10px;
+    /* `--danger-texte` ET NON `--danger` : le second est la couleur de FOND
+       d'un bouton rouge, et il ne tient pas le contraste en texte (voir
+       tests/contraste.test.mjs). */
+    color: var(--danger-texte); font: inherit; font-weight: 600; cursor: pointer;
+}
+/* `@media (hover: hover)` — un survol qui change le FOND reste collé sous le
+   doigt sur un téléphone, et raconte un appui qui n'a pas eu lieu. L'épreuve
+   `tests/survolTactile.test.mjs` l'a attrapé dans la minute. */
+@media (hover: hover) {
+    .eleve-ecarte-sortie:hover { background: var(--bg-hover); }
+}
 .eleve-ecarte-icone { font-size: 2.6rem; line-height: 1; margin-bottom: 10px; }
 .eleve-ecarte-carte h2 { font-size: 1.15rem; margin: 0 0 10px; }
 .eleve-ecarte-carte p { color: var(--text-muted); margin: 0; font-size: .95rem; }

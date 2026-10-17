@@ -171,3 +171,85 @@ test('L\'ÉLÈVE QUI REVIENT RETROUVE SON PROFIL, il n\'en crée pas un second',
     // ET LA MARQUE NE SURVIT PAS À UN EFFACEMENT DEMANDÉ.
     assert.match(SYNC, /login: effacerLeTravail \? null :/);
 });
+
+// ───────────── ET DERRIÈRE LE VOILE, LA SORTIE EXISTE AUSSI ─────────────────
+//
+// RÉMY : « Quand c'est noté sur l'écran, c'est fermé pour le moment. Je ne peux
+// déconnecter. En fait, il faut toujours pouvoir se déconnecter, j'ai besoin de
+// tester avec un élève puis revenir à mon compte prof. » Puis, aussitôt : « oui
+// mais attention c'est le mode porte fermé donc ça doit être différent pour le
+// logout ».
+//
+// C'EST SA PROPRE DEMANDE QUI L'AVAIT ENFERMÉ : le voile couvre tout l'écran —
+// « ATTENTION C'EST LA SEULE CHOSE QU'IL PEUT FAIRE, il ne peut pas aller sur
+// son profil ou autre » — et la sortie de l'élève vit dans « Mon profil ».
+//
+// MESURÉ (`tools/sortieDuVoile.mjs`), et deux choses y ont été trouvées qu'on
+// n'aurait pas devinées : le bouton manquait, et la fenêtre de confirmation
+// s'ouvrait DERRIÈRE le voile.
+
+const VOILE = lire('js/ui/seanceDistanteUI.js');
+
+test('LES DEUX VOILES PORTENT UNE SORTIE', () => {
+    // La porte close ET l'accès mis en pause : un accès en pause enferme tout
+    // autant, et n'avoir corrigé qu'un des deux voiles serait le genre d'oubli
+    // qu'on ne voit qu'en classe.
+    const fois = (VOILE.match(/\$\{HTML_SORTIE\}/g) || []).length;
+    assert.equal(fois, 2, 'le bouton est sur les deux voiles');
+    assert.match(VOILE, /data-voile-sortie/);
+    const brches = (VOILE.match(/brancherLaSortie\(voile\);/g) || []).length;
+    assert.equal(brches, 2, 'et il est branché sur les deux');
+});
+
+test('ET CE N\'EST PAS LA SORTIE ORDINAIRE', () => {
+    // Rémy : « ça doit être différent pour le logout ». La sortie ordinaire
+    // négocie — finis ta question, voilà ce qui n'est pas parti, veux-tu
+    // effacer ton travail —, et toutes ces questions supposent qu'on puisse
+    // RESTER et continuer. Derrière un voile, il n'y a rien à continuer.
+    assert.match(VOILE, /const \{ sortirDeLaPorteClose \} = await import\('\.\/deconnexionUI\.js'\);/);
+    assert.ok(!/seDeconnecter\('eleve'\)/.test(VOILE),
+        'le voile n\'appelle pas la sortie ordinaire');
+});
+
+test('LA SORTIE DE LA PORTE CLOSE NE SE REFUSE JAMAIS', () => {
+    const i = DECO.indexOf('export async function sortirDeLaPorteClose()');
+    assert.ok(i > 0, 'la fonction existe');
+    const bloc = DECO.slice(i, i + 1200);
+    // ON ENVOIE D'ABORD, PUIS ON PART QUOI QU'IL ARRIVE. L'ordre compte :
+    // forcer tout de suite jetterait du travail qu'une seconde de réseau
+    // aurait sauvé.
+    assert.match(bloc, /const r = await deconnecterEleve\(\{\}\);/);
+    assert.match(bloc, /if \(!r\.parti\) await deconnecterEleve\(\{ force: true \}\);/);
+    // ET ELLE N'A PAS DE RETOUR QUI LAISSE L'ÉLÈVE DEVANT LE VOILE : pas de
+    // branche « en-plein-travail », qui est un cul-de-sac ici.
+    assert.ok(!/en-plein-travail/.test(bloc), 'aucun cul-de-sac derrière le voile');
+});
+
+test('elle n\'efface rien — la base de données est la référence', () => {
+    // Rémy : « La référence est ce qui est sur la base de données
+    // prioritairement (on garde de côté le local storage pour une future
+    // application hors ligne) », et « si l'élève ne se déconnecte pas chez lui,
+    // il peut travailler » : partir n'efface pas son travail.
+    const i = DECO.indexOf('function corpsPorteClose(qui)');
+    assert.ok(i > 0);
+    const bloc = DECO.slice(i, i + 900);
+    assert.ok(!/dx-effacer/.test(bloc), 'pas de case « effacer mon travail » ici');
+    assert.match(bloc, /écran d'identification/);
+});
+
+test('ET SA FENÊTRE S\'OUVRE AU-DESSUS DU VOILE', () => {
+    // MESURÉ, et c'est le second défaut de ce chantier : `.modal-overlay` est à
+    // `z-index: 100000` dans la feuille, mais `showModal` repose son étage EN
+    // LIGNE — 9999 par défaut —, et un style en ligne l'emporte sur la classe.
+    // La fenêtre passait donc sous le voile (10100) : on lisait son texte, et
+    // son bouton n'était pas celui qu'on touchait. Un bouton VISIBLE ET MORT.
+    assert.match(DECO, /const ETAGE_SUR_LE_VOILE = 102\d\d;/);
+    assert.match(DECO, /\{ width: '440px', zIndex: ETAGE_SUR_LE_VOILE \}/);
+    // Et l'étage choisi passe vraiment au-dessus de celui du voile, qui est
+    // écrit dans la feuille de style.
+    const css = lire('css/ui.css');
+    const m = css.match(/\.eleve-ecarte \{[^}]*z-index: (\d+)/);
+    assert.ok(m, 'le voile a bien un étage dans css/ui.css');
+    const etage = Number((DECO.match(/const ETAGE_SUR_LE_VOILE = (\d+);/) || [])[1]);
+    assert.ok(etage > Number(m[1]), `${etage} doit dépasser ${m[1]}`);
+});

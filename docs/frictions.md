@@ -4938,3 +4938,42 @@ le résultat n'existe pas** — 15 octobre 2026
   l'éprouver au moins sur : personne, élève seul, professeur seul, et LES DEUX.
   Le quatrième cas est celui du professeur qui essaie son logiciel, c'est-à-dire
   de l'utilisateur qu'on a sous la main tous les jours.
+
+**Un bouton visible, lisible, et mort : `showModal` repose son étage en ligne**
+— 17 octobre 2026
+
+- *Ce que je voulais faire* : poser « Se déconnecter » sur le voile de la porte
+  close, parce que Rémy s'y était enfermé lui-même.
+- *Ce qui a coûté* : vingt minutes et une fausse conclusion. J'avais VÉRIFIÉ
+  avant d'écrire : `.modal-overlay` est à `z-index: 100000` dans
+  css/components.css, le voile à 10100 dans css/ui.css, donc la fenêtre de
+  confirmation passe devant — c'était écrit noir sur blanc dans la feuille de
+  style, et c'était faux. `showModal` repose son étage **en ligne**
+  (`z-index: 9999` par défaut), et un style en ligne l'emporte sur la classe. La
+  fenêtre s'ouvrait DERRIÈRE le voile : on lisait son texte à travers, et son
+  bouton n'était pas celui qu'on touchait. Sans
+  `document.elementFromPoint`, la sonde aurait dit « la fenêtre s'ouvre », et
+  j'aurais livré un bouton mort à quelqu'un qui est déjà bloqué.
+- *Combien de fois* : || (même famille que « 9999 suffisait tant qu'on restait
+  dans la page », déjà payée sur la couche de jeu à 10000 — c'est le même
+  défaut, et le commentaire qui le raconte est DANS `ui/modal.js`)
+- *Ce qui manque* : une règle, et elle vaut pour tout ce dépôt — **une feuille
+  de style ne dit pas qui est devant ; seul le navigateur le dit.** Dès qu'un
+  écran se superpose à un autre, on ne compare pas deux `z-index` lus dans deux
+  fichiers : on demande `document.elementFromPoint` au centre du bouton, et il
+  nomme QUI est là. Les deux défauts de ce chantier ont été trouvés comme ça.
+
+**Un `<rect>` SVG n'a pas de méthode `click()`** — 17 octobre 2026
+
+- *Ce que je voulais faire* : colorier cinq cases d'un quadrillage depuis une
+  sonde, pour rejouer l'erreur d'un élève.
+- *Ce qui a coûté* : un essai perdu, et un message qui n'aide pas —
+  « h.click is not a function » sur un élément parfaitement trouvé. `click()`
+  appartient à `HTMLElement`, pas à `SVGElement` : le bouton d'indice, qui est
+  un `<button>`, marchait très bien trois lignes plus haut, ce qui rend le
+  piège discret.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à construire — la règle est **sur un dessin, on clique
+  avec la souris de Playwright** (`page.locator(sel).click()`), jamais avec
+  `element.click()` dans la page. C'est aussi le vrai chemin de l'élève, qui
+  n'appelle pas de méthode.

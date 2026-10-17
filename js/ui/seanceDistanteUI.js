@@ -128,6 +128,60 @@ function majVerrou(actif) {
     }
 }
 
+/* --------------------------------------------------- La sortie, sur le voile */
+
+/**
+ * ON PEUT TOUJOURS SE DÉCONNECTER — Y COMPRIS QUAND TOUT EST FERMÉ.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « Quand c'est noté sur l'écran, c'est fermé pour le moment. Je ne peux
+ * déconnecter. En fait, il faut toujours pouvoir se déconnecter, j'ai besoin de
+ * tester avec un élève puis revenir à mon compte prof. »
+ *
+ * CE QUI S'EST PASSÉ, ET C'EST SA PROPRE DEMANDE QUI L'A CAUSÉ. Le voile
+ * couvre tout l'écran : « ATTENTION C'EST LA SEULE CHOSE QU'IL PEUT FAIRE, il
+ * ne peut pas aller sur son profil ou autre ». Or la sortie de l'élève vit
+ * justement dans « Mon profil ». En fermant la maison de sa classe, il s'est
+ * enfermé lui-même dans le compte de l'élève qu'il essayait.
+ *
+ * LA SORTIE EST DONC SUR LE VOILE, comme les exercices laissés libres, et pour
+ * la même raison : un trou percé exactement là où on le veut vaut mieux que
+ * trente portes à refermer. Et elle est sur LES DEUX voiles — l'accès mis en
+ * pause enferme tout autant que la porte close.
+ *
+ * ELLE N'IMPOSE RIEN. Rémy : « si l'élève ne se déconnecte pas chez lui, il
+ * peut travailler ». Un élève qui reste connecté garde ce que la porte lui
+ * laisse ; le bouton ne fait que donner le choix.
+ *
+ * LA FENÊTRE DE CONFIRMATION PASSE BIEN AU-DESSUS : `.modal-overlay` est à
+ * `z-index: 100000`, le voile à 10100 (css/components.css et css/ui.css). Un
+ * bouton qui ouvrirait sa demande DERRIÈRE le voile serait un bouton mort, et
+ * c'est le genre de chose qu'on vérifie avant d'y croire.
+ *
+ * ET CE N'EST PAS LA SORTIE ORDINAIRE. Rémy : « oui mais attention c'est le
+ * mode porte fermé donc ça doit être différent pour le logout ». La sortie
+ * ordinaire négocie — finis ta question, voilà ce qui n'est pas parti, veux-tu
+ * effacer ton travail —, et toutes ces questions supposent qu'on puisse RESTER
+ * et continuer. Derrière un voile, il n'y a rien à continuer. D'où
+ * `sortirDeLaPorteClose`, qui ne se refuse jamais et n'efface rien ; les deux
+ * voiles l'emploient, parce qu'un accès mis en pause enferme tout autant qu'une
+ * porte close.
+ */
+const HTML_SORTIE = '<button type="button" class="eleve-ecarte-sortie" '
+    + 'data-voile-sortie>Se déconnecter</button>';
+
+function brancherLaSortie(voile) {
+    const b = voile.querySelector('[data-voile-sortie]');
+    if (!b) return;
+    // CHARGÉ À LA DEMANDE, comme le catalogue des exercices libres : la plupart
+    // des élèves ne verront jamais ce voile.
+    b.onclick = async () => {
+        const { sortirDeLaPorteClose } = await import('./deconnexionUI.js');
+        sortirDeLaPorteClose();
+    };
+}
+
 /* ------------------------------------------------------------------- Écarté */
 
 function majEcarte(actif) {
@@ -148,8 +202,10 @@ function majEcarte(actif) {
             <h2>Ton professeur a mis ton accès en pause.</h2>
             <p>Ton travail est conservé. Préviens-le : il peut te réactiver
                en un clic.</p>
+            ${HTML_SORTIE}
         </div>`;
     document.body.appendChild(voile);
+    brancherLaSortie(voile);
 }
 
 /* -------------------------------------------------------- Fermé hors séance */
@@ -203,6 +259,7 @@ function majFerme(ferme) {
             <h2>C'est fermé pour le moment.</h2>
             <p class="eleve-ecarte-mot"></p>
             <div class="eleve-ecarte-exos" hidden></div>
+            ${HTML_SORTIE}
         </div>`;
     // `textContent` ET PAS `innerHTML` : ce mot vient d'un champ de formulaire,
     // et un champ de formulaire est du texte, jamais du balisage. (La même
@@ -210,6 +267,10 @@ function majFerme(ferme) {
     voile.querySelector('.eleve-ecarte-mot').textContent = mot;
     document.body.appendChild(voile);
     poserLesExos(voile, exos);
+    // APRÈS `poserLesExos`, ET CE N'EST PAS UN DÉTAIL D'ORDRE : celle-ci
+    // réécrit `.eleve-ecarte-exos`, pas le bouton, qui est son frère — mais la
+    // sortie doit être branchée même quand la liste est vide.
+    brancherLaSortie(voile);
 }
 
 /**
