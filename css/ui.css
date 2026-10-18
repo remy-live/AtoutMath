@@ -5862,6 +5862,36 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     content: ''; position: absolute; left: 5px; right: 5px; top: 50%; height: 2px;
     background: var(--danger-texte); transform: rotate(-16deg);
 }
+/* LE PAVÉ DIT OÙ IL ÉCRIT. Rémy : « fais un vrai pavé numérique plutôt que
+   prendre les chiffres de l'énoncé (qui peut s'activer ou se désactiver avec un
+   bouton) ». Un seul pavé pour les deux usages — la ligne de calcul et les
+   cases de la grille — et une phrase qui dit lequel, parce qu'un pavé qui
+   écrit ailleurs qu'on ne croit est pire que pas de pavé. */
+.br-pave-tete { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.br-pave-dit { flex: 1 1 auto; font-size: .76rem; color: var(--text-muted); }
+.br-pave-dit b { color: var(--text-main); }
+.br-pave-btn {
+    min-height: 36px; padding: 0 10px; font: inherit; font-size: .76rem; font-weight: 700;
+    cursor: pointer; color: var(--text-muted); background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 9px;
+}
+.br-touche--signe { color: var(--primary-texte); }
+.br-touche[disabled] { opacity: .4; cursor: default; }
+
+/* REPLIER UNE OPÉRATION. Rémy : « de replier les opérations ». Avec trois
+   calculs sur la feuille, celui qu'on a fini n'a plus besoin de sa grille —
+   mais il garde sa ligne, pour qu'on sache qu'il est là. */
+.br-replier {
+    width: 30px; min-height: 30px; font: inherit; font-size: .9rem; cursor: pointer;
+    color: var(--text-muted); background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 8px;
+}
+
+/* LE VERDICT DE « VÉRIFIER » — il dit OÙ, jamais QUOI. */
+.br-verdict { margin: 0; font-size: .8rem; font-weight: 700; line-height: 1.4; }
+.br-verdict--faux { color: var(--danger-texte); }
+.br-verdict--juste { color: var(--success-texte); }
+.br-case--faux { outline: 2.5px solid var(--danger); outline-offset: -1px; }
 .br-crayon--petit { font-size: .76rem; }
 .br-crayon[disabled] { opacity: .45; cursor: default; }
 .br-case--active { outline: 3px solid var(--primary); outline-offset: -1px; }

@@ -1423,3 +1423,53 @@ deux calculs qui coexistent, les deux méthodes et le chiffre barré, le trait
 aimanté sur les nœuds et sans courbe, le trait libre courbé et hors des nœuds,
 défaire/refaire/gommer — et toujours **zéro événement au journal, zéro clef dans
 le stockage**.
+
+> « fais un vrai pavé numérique plutôt que prendre les chiffre de l'énoncé (qui
+> peut s'activer ou se désactiver avec un bouton) et, de replier les opérations
+> (tu peux rajouter un option vérifier ausi mais qui ne donne jamais la réponse
+> et indique l'erreur) »
+
+**Un vrai pavé, et un seul.** Les nombres de l'énoncé s'en vont : c'était
+commode et devinatoire — sur un exercice à propositions, un nombre offert
+pouvait être une réponse. À la place, un pavé de seize touches — dix chiffres,
+la virgule, l'effacement et les quatre signes, que le clavier d'un téléphone ne
+porte pas sur sa première planche. Il écrit dans la case choisie s'il y en a
+une, dans la ligne de calcul sinon, **et une phrase dit laquelle** : un pavé qui
+écrit ailleurs qu'on ne croit est pire que pas de pavé. Un bouton le masque.
+
+**Les signes n'ont pas de touche morte.** Mesuré : éteints tant qu'une case
+était choisie, on appuyait et rien ne se passait, sans que rien ne dise qu'il
+fallait d'abord toucher la ligne. Un signe rend donc toujours le pavé à la ligne
+— c'est ce que « j'écris une opération » veut dire.
+
+**Replier une opération** retire sa grille et garde sa ligne : avec trois
+calculs sur la feuille, celui qu'on a fini n'a plus besoin de ses colonnes, mais
+on doit savoir qu'il est là.
+
+**Vérifier, sans jamais donner la réponse.** La règle change de forme, pas de
+sens : on disait « le brouillon ne calcule pas », la règle exacte était qu'il ne
+calcule pas À LA PLACE DE L'ÉLÈVE. Vérifier demande évidemment de calculer ; ce
+qui reste interdit est d'en DIRE le résultat. Ce qui sort de la vérification est
+donc une phrase sans aucun chiffre — « Reprends la colonne des unités. » — et
+des CLÉS DE CASES, jamais des valeurs. Une épreuve garde cette sortie, et la
+sonde vérifie qu'après avoir appuyé, la grille contient exactement ce qu'elle
+contenait avant.
+
+**On ne montre que la première colonne fautive**, en partant de la droite.
+Trois raisons : c'est ce qu'un professeur dit ; une erreur de retenue FABRIQUE
+les erreurs des colonnes suivantes, et toutes les signaler ferait croire à cinq
+fautes là où il y en a une ; et cela limite ce qu'on peut tirer du bouton —
+marquer d'un coup toutes les cases fausses inviterait à essayer les dix chiffres
+jusqu'au vert. Ce n'est pas une serrure, c'est le choix du tableau : on montre
+OÙ, on ne dit pas QUOI.
+
+**Et il ne gronde pas un travail en cours** : une case vide — ou vidée — n'est
+pas une faute. « Tout ce que tu as écrit est juste. Il reste des cases à
+remplir. »
+
+**Deux fausses assurances attrapées en chemin.** Mon épreuve du glissé passait
+au vert sur `if (false) rendreGlissable(…)`, le texte cherché s'y retrouvant
+tel quel. Et la sonde cherchait les marques de la compensation avec un
+`.br-case` de trop : m0 et b1 n'étaient jamais écrites, et le verdict « Tout ce
+que tu as écrit est juste » contenait le mot « juste » — l'épreuve passait donc
+sur un travail inachevé.

@@ -68,6 +68,21 @@ async function poser(ligne) {
     await dormir(600);
 }
 
+/** Le même calcul, écrit AU PAVÉ : c'est le chemin du téléphone. */
+async function poserAuPave(touches) {
+    // ON TOUCHE D'ABORD LA LIGNE : c'est le geste de l'élève — le grand champ
+    // « Écris ton calcul » est là pour ça —, et c'est lui qui rend le pavé à
+    // la ligne quand il écrivait dans une case.
+    await s.page.click('.br-saisie');
+    await dormir(200);
+    for (const t of touches) {
+        await s.page.click(`#brouillon .br-touche[data-br-touche="${t}"]`);
+        await dormir(80);
+    }
+    await s.cliquer('[data-br-poser]', 'le bouton « Poser »');
+    await dormir(600);
+}
+
 // ── 1. LE BOUTON EXISTE, ET LA FEUILLE S'OUVRE ─────────────────────────────
 console.log('\n\x1b[1mIL OUVRE SON BROUILLON\x1b[0m');
 const raté = await s.ouvrirExercice(AVEC);
@@ -98,8 +113,9 @@ const ouverte = await s.page.evaluate(() => {
         // L'ÉNONCÉ RESTE-T-IL LISIBLE ? C'est la promesse de la feuille qui
         // monte du bas plutôt que de couvrir.
         enonce: rq ? { bas: Math.round(rq.bottom), hautFeuille: Math.round(r.top) } : null,
-        // ET LES NOMBRES DE L'ÉNONCÉ SONT À PORTÉE DE DOIGT.
-        chiffresOfferts: [...f.querySelectorAll('[data-br-nombre]')].map(b => b.textContent.trim())
+        // ET LE PAVÉ EST LÀ, AVEC SES SIGNES.
+        pave: f.querySelectorAll('.br-touche').length,
+        ditOu: (f.querySelector('.br-pave-dit') || {}).textContent
     };
 });
 console.log(`   ${JSON.stringify(ouverte)}`);
@@ -108,8 +124,10 @@ dire('elle porte les trois outils', ouverte.onglets.length === 3, ouverte.onglet
 dire('ET L\'ÉNONCÉ RESTE LISIBLE AU-DESSUS',
     !!ouverte.enonce && ouverte.enonce.bas <= ouverte.enonce.hautFeuille,
     JSON.stringify(ouverte.enonce));
-dire('les nombres de l\'énoncé sont offerts', ouverte.chiffresOfferts.length >= 1,
-    ouverte.chiffresOfferts.join(' · '));
+dire('LE PAVÉ EST UN VRAI PAVÉ — chiffres, virgule, effacement et les quatre signes',
+    ouverte.pave === 16, `${ouverte.pave} touches`);
+dire('et il dit qu\'il écrit dans le calcul', /dans ton calcul/.test(ouverte.ditOu || ''),
+    ouverte.ditOu);
 
 // ── 2. IL TAPE SON CALCUL, À PLUSIEURS MEMBRES ─────────────────────────────
 console.log('\n\x1b[1mIL ÉCRIT « 12 + 34 + 5 »\x1b[0m');
@@ -141,7 +159,7 @@ dire('LA GRILLE NE CALCULE RIEN', pose.remplies === 0, `${pose.remplies} case(s)
 dire('LES RETENUES ONT LEUR CASE, ET ELLE SE VOIT',
     pose.retenues >= 2 && pose.bordRetenue === 'dashed',
     `${pose.retenues} case(s), bord « ${pose.bordRetenue} »`);
-dire('le pavé de chiffres est dans la feuille', pose.pave === 12, `${pose.pave} touches`);
+dire('le pavé de chiffres est dans la feuille', pose.pave === 16, `${pose.pave} touches`);
 
 // ── 3. LES TROIS GESTES DU CHIFFRE ─────────────────────────────────────────
 console.log('\n\x1b[1mTOUCHER, TAPER, GLISSER\x1b[0m');
@@ -253,6 +271,105 @@ const barre = await s.page.evaluate((k) => {
 }, emprunt.cle);
 dire('ÉCRIRE AU-DESSUS BARRE LE CHIFFRE — c\'est le geste de l\'emprunt',
     barre >= 1, `${barre} chiffre(s) barré(s)`);
+
+// ── 4 bis. LE PAVÉ, REPLIER, VÉRIFIER ─────────────────────────────────────
+console.log('\n\x1b[1mLE PAVÉ, REPLIER, VÉRIFIER\x1b[0m');
+
+// ON ÉCRIT UN TROISIÈME CALCUL ENTIÈREMENT AU PAVÉ — le chemin du téléphone,
+// où le clavier du système ne porte ni × ni ÷.
+await poserAuPave(['5', '3', '-', '1', '7']);
+const auPave = await s.page.evaluate(() => {
+    const f = document.getElementById('brouillon');
+    const cadres = [...f.querySelectorAll('.br-calcul')];
+    return { cadres: cadres.length,
+        dernier: cadres.length ? cadres[cadres.length - 1].querySelector('.br-calcul-dit').textContent.trim() : '' };
+});
+dire('ON ÉCRIT SON CALCUL ENTIÈREMENT AU PAVÉ', auPave.dernier === '53 − 17', auPave.dernier);
+
+// LE PAVÉ SE MASQUE ET REVIENT.
+await s.cliquer('[data-br-pave]', 'le bouton du pavé');
+await dormir(400);
+const masque = await s.page.evaluate(() =>
+    document.querySelectorAll('#brouillon .br-touche').length);
+await s.cliquer('[data-br-pave]', 'le bouton du pavé');
+await dormir(400);
+const revenu = await s.page.evaluate(() =>
+    document.querySelectorAll('#brouillon .br-touche').length);
+dire('LE PAVÉ SE MASQUE ET REVIENT', masque === 0 && revenu === 16, `${masque} puis ${revenu}`);
+
+// REPLIER : la grille s'en va, la ligne reste.
+const idDernier = await s.page.evaluate(() => {
+    const c = [...document.querySelectorAll('#brouillon .br-calcul')].pop();
+    return c.dataset.brCalcul;
+});
+await s.cliquer(`[data-br-replier="${idDernier}"]`, 'replier le calcul');
+await dormir(500);
+const replie = await s.page.evaluate((id) => {
+    const c = document.querySelector(`#brouillon [data-br-calcul="${id}"]`);
+    return { grille: c.querySelectorAll('.br-grille').length,
+        ligne: c.querySelector('.br-calcul-dit').textContent.trim() };
+}, idDernier);
+dire('REPLIER RETIRE LA GRILLE ET GARDE LA LIGNE',
+    replie.grille === 0 && replie.ligne === '53 − 17', JSON.stringify(replie));
+await s.cliquer(`[data-br-replier="${idDernier}"]`, 'déplier le calcul');
+await dormir(500);
+
+// VÉRIFIER : on écrit un résultat FAUX dans la soustraction 53 − 17 (= 36) et
+// l'on regarde ce que le bouton dit. Il doit nommer la colonne, marquer la
+// case, et ne JAMAIS écrire le bon chiffre.
+const verdict = await s.page.evaluate((id) => {
+    const c = document.querySelector(`#brouillon [data-br-calcul="${id}"]`);
+    const t0 = c.querySelector('.br-case[data-br-case="t0"]');
+    t0.click();
+    [...document.querySelectorAll('#brouillon .br-touche')]
+        .find(x => x.textContent.trim() === '9').click();
+    const apres = document.querySelector(`#brouillon [data-br-calcul="${id}"]`);
+    window.__brAvant = [...apres.querySelectorAll('.br-case[data-br-case]')]
+        .map(x => (x.textContent || '').trim()).filter(Boolean).join('');
+    apres.querySelector('[data-br-verifier]').click();
+    const fini = document.querySelector(`#brouillon [data-br-calcul="${id}"]`);
+    const cases = [...fini.querySelectorAll('.br-case[data-br-case]')];
+    return {
+        dit: (fini.querySelector('.br-verdict') || {}).textContent || '',
+        marquees: fini.querySelectorAll('.br-case--faux').length,
+        // CE QUI EST ÉCRIT DANS LES CASES, AVANT et APRÈS la vérification :
+        // elle ne doit rien y avoir ajouté.
+        ecrit: cases.map(x => (x.textContent || '').trim()).filter(Boolean).join(''),
+        avant: window.__brAvant
+    };
+}, idDernier);
+console.log(`   ${JSON.stringify(verdict)}`);
+dire('VÉRIFIER DIT OÙ ÇA COINCE', /colonne des unités/.test(verdict.dit), verdict.dit);
+dire('IL MARQUE LA CASE FAUTIVE', verdict.marquees === 1, `${verdict.marquees} case(s)`);
+dire('ET IL NE DONNE JAMAIS LA RÉPONSE — ni dans la phrase, ni dans la grille',
+    !/[0-9]/.test(verdict.dit) && verdict.ecrit === verdict.avant,
+    `« ${verdict.dit} » · grille « ${verdict.avant} » → « ${verdict.ecrit} »`);
+
+// ET QUAND C'EST JUSTE, IL LE DIT.
+const juste = await s.page.evaluate((id) => {
+    const frappe = (cle, chiffre) => {
+        // SANS `.br-case` : les marques de la compensation sont des
+        // `.br-marque`. Avec le préfixe, m0 et b1 n'étaient jamais écrites —
+        // et le verdict « Tout ce que tu as écrit est juste » contenait le mot
+        // « juste », donc l'épreuve passait au vert sur un travail inachevé.
+        const c = document.querySelector(`#brouillon [data-br-calcul="${id}"] [data-br-case="${cle}"]`);
+        if (!c) return;
+        c.click();
+        [...document.querySelectorAll('#brouillon .br-touche')]
+            .find(x => x.textContent.trim() === chiffre).click();
+    };
+    frappe('t0', '6');
+    frappe('t1', '3');
+    frappe('m0', '1');
+    frappe('b1', '1');
+    document.querySelector(`#brouillon [data-br-calcul="${id}"] [data-br-verifier]`).click();
+    const fini = document.querySelector(`#brouillon [data-br-calcul="${id}"]`);
+    return { dit: (fini.querySelector('.br-verdict') || {}).textContent || '',
+        marquees: fini.querySelectorAll('.br-case--faux').length };
+}, idDernier);
+console.log(`   ${JSON.stringify(juste)}`);
+dire('ET QUAND TOUT EST JUSTE, IL LE DIT',
+    /Ton opération est juste/.test(juste.dit) && juste.marquees === 0, juste.dit);
 
 // ── 5. RIEN N'EN SORT ──────────────────────────────────────────────────────
 console.log('\n\x1b[1mCE QUI EN SORT\x1b[0m');

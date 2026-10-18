@@ -16,7 +16,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
-import { poserOffert, lireLeCalcul, chemin } from '../js/ui/brouillon.js';
+import { poserOffert, lireLeCalcul, chemin, verifierLaPose } from '../js/ui/brouillon.js';
 
 const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const SOURCE = lire('js/ui/brouillon.js');
@@ -107,19 +107,71 @@ test('ET IL NE PORTE PAS DE BOUTON « VALIDER »', () => {
 
 // ─────────────────────────── LA GRILLE NE CALCULE PAS ───────────────────────
 
-test('LA GRILLE N\'EMPRUNTE AU NOYAU QUE LES RANGS', () => {
-    // La maquette montrait la soustraction POSÉE ET FAITE — résultat et
-    // retenues compris. Une grille qui calcule n'est pas un brouillon, c'est
-    // une calculatrice, et celle-ci existe déjà derrière son propre réglage.
-    // Rémy a écrit « poser SON calcul ».
+test('VÉRIFIER NE DONNE JAMAIS LA RÉPONSE', () => {
+    // RÉMY : « tu peux rajouter un option vérifier aussi mais qui ne donne
+    // jamais la réponse et indique l'erreur ».
     //
-    // `etendue` RANGE DES COLONNES, elle ne calcule rien ; `poser`,
-    // `colonnesAddition` et leurs sœurs, elles, rendent le résultat. Les
-    // importer serait l'avoir sous la main — et un jour, l'afficher.
-    const imports = SOURCE.match(/import \{([^}]*)\} from '\.\.\/core\/poser\.js';/);
-    assert.ok(imports, 'le brouillon emprunte bien au noyau des opérations');
-    const noms = imports[1].split(',').map(s => s.trim()).filter(Boolean);
-    assert.deepEqual(noms, ['etendue']);
+    // LA RÈGLE CHANGE DE FORME, PAS DE SENS. On gardait « le brouillon ne
+    // calcule pas » en interdisant d'importer `poser` ; la règle exacte était
+    // qu'il ne calcule pas À LA PLACE DE L'ÉLÈVE. Vérifier demande de
+    // calculer — ce qui reste interdit est d'en DIRE le résultat. Cette
+    // épreuve-ci garde donc la SORTIE, qui est le vrai verrou : des clés de
+    // cases et une phrase, jamais une valeur.
+    const c = {
+        id: 'c1', op: '+', nombres: [12, 34, 5], methode: 'compensation',
+        // 12 + 34 + 5 = 51 : il a écrit 3 aux unités, et rien d'autre.
+        cases: { t0: '3' }, replie: false, dit: '', fautes: []
+    };
+    const v = verifierLaPose(c);
+    assert.equal(v.etat, 'faux');
+    // IL DIT OÙ — la colonne —, et sa phrase ne porte AUCUN chiffre.
+    assert.match(v.dit, /colonne des unités/);
+    assert.ok(!/[0-9]/.test(v.dit), v.dit);
+    // ET CE QU'IL DÉSIGNE SONT DES CASES QUE L'ÉLÈVE A REMPLIES, pas des
+    // valeurs : chaque faute est une clé de son propre tableau.
+    assert.deepEqual(v.fautes, ['t0']);
+    v.fautes.forEach(k => assert.ok(k in c.cases, k));
+    // ET VÉRIFIER N'ÉCRIT RIEN DANS LA GRILLE.
+    assert.deepEqual(c.cases, { t0: '3' });
+});
+
+test('et il ne gronde pas un travail en cours', () => {
+    const base = { id: 'c1', op: '+', nombres: [12, 34, 5], methode: 'compensation',
+        replie: false, dit: '', fautes: [] };
+    // Une case vide n'est pas une faute : c'est un travail en cours.
+    const juste = verifierLaPose({ ...base, cases: { t0: '1' } });
+    assert.equal(juste.etat, 'incomplet');
+    assert.match(juste.dit, /reste des cases/);
+    // Rien d'écrit : rien à vérifier.
+    assert.equal(verifierLaPose({ ...base, cases: {} }).etat, 'vide');
+    // ET UNE CASE VIDÉE N'EST PAS UNE CASE FAUSSE. Celui qui écrit un chiffre
+    // puis l'efface ne doit pas s'entendre répondre « reprends cette
+    // colonne » : il est en train de réfléchir.
+    const efface = verifierLaPose({ ...base, cases: { t0: '1', t1: '' } });
+    assert.equal(efface.etat, 'incomplet', JSON.stringify(efface));
+    assert.deepEqual(efface.fautes, []);
+    // Et tout juste se dit sans réserve. 12 + 34 + 5 = 51, retenue 1 aux
+    // dizaines.
+    const fini = verifierLaPose({ ...base, cases: { t0: '1', t1: '5', t2: '', r1: '1' } });
+    assert.equal(fini.etat, 'juste', JSON.stringify(fini));
+});
+
+test('ET LA SOUSTRACTION SE VÉRIFIE DANS SES DEUX MÉTHODES', () => {
+    // 53 − 17 = 36. Par compensation : un petit 1 devant le 3 (qui devient 13)
+    // et un petit 1 devant le 1 du bas. Par emprunt : le 5 barré devient 4, et
+    // le 3 devient 13.
+    const base = { id: 'c1', op: '-', nombres: [53, 17], replie: false, dit: '', fautes: [] };
+    const comp = verifierLaPose({ ...base, methode: 'compensation',
+        cases: { t0: '6', t1: '3', t2: '', m0: '1', b1: '1' } });
+    assert.equal(comp.etat, 'juste', JSON.stringify(comp));
+    const emp = verifierLaPose({ ...base, methode: 'emprunt',
+        cases: { t0: '6', t1: '3', t2: '', e0: '13', e1: '4' } });
+    assert.equal(emp.etat, 'juste', JSON.stringify(emp));
+    // ET UNE SOUSTRACTION QUI NE SE POSE PAS SE DIT, sans accuser l'élève.
+    const dur = verifierLaPose({ ...base, nombres: [27, 52], methode: 'compensation',
+        cases: { t0: '5' } });
+    assert.equal(dur.etat, 'impossible');
+    assert.ok(!/[0-9]/.test(dur.dit), dur.dit);
 });
 
 // ─────────────────────────── LE MENEUR LE RÈGLE ET L'OUBLIE ─────────────────
@@ -237,4 +289,43 @@ test('ET LE DESSIN SE DÉFAIT, Y COMPRIS L\'EFFACEMENT', () => {
     assert.match(CODE, /function noterLeDessin\(traits\)/);
     assert.match(CODE, /etat\.histoire = etat\.histoire\.slice\(0, etat\.rang \+ 1\);/);
     assert.match(CODE, /if \(d\.brGomme !== undefined\) \{ noterLeDessin\(\[\]\);/);
+});
+
+// ════════ TROISIÈME PASSE : un vrai pavé, replier, vérifier ════════════════
+//
+// RÉMY : « fais un vrai pavé numérique plutôt que prendre les chiffre de
+// l'énoncé (qui peut s'activer ou se désactiver avec un bouton) et, de replier
+// les opérations (tu peux rajouter un option vérifier ausi mais qui ne donne
+// jamais la réponse et indique l'erreur) ».
+
+test('LE PAVÉ REMPLACE LES CHIFFRES DE L\'ÉNONCÉ', () => {
+    // On lisait les nombres de la question — et jusque dans les textes de la
+    // figure. C'était commode et c'était devinatoire : sur un exercice à
+    // propositions, les nombres offerts pouvaient être des réponses. Un pavé
+    // ne devine rien.
+    assert.ok(!/nombresDeLEnonce/.test(CODE));
+    assert.ok(!/game-board svg/.test(CODE));
+    // LES QUATRE SIGNES SONT DANS LE PAVÉ : le clavier d'un téléphone ne
+    // porte ni × ni ÷ sur sa première planche.
+    assert.match(CODE, /const signes = \['\+', '-', '×', '÷'\];/);
+});
+
+test('ET IL S\'AFFICHE OU SE MASQUE D\'UN BOUTON', () => {
+    assert.match(CODE, /if \(d\.brPave !== undefined\) \{ etat\.pave = !etat\.pave;/);
+    assert.match(CODE, /\$\{etat\.pave \? `<div class="br-pave"/);
+});
+
+test('LE MÊME PAVÉ ÉCRIT DANS LA CASE OU DANS LA LIGNE, ET LE DIT', () => {
+    // Un pavé qui écrit ailleurs qu'on ne croit est pire que pas de pavé.
+    assert.match(CODE, /dansUneCase \? 'dans la case choisie' : 'dans ton calcul'/);
+    assert.match(CODE, /if \(etat\.active\) \{\s*\n\s*ecrire\(etat\.active\.c, etat\.active\.k,/);
+    assert.match(CODE, /ecrireDansLaLigne\(d\.brTouche\);/);
+});
+
+test('ON REPLIE UNE OPÉRATION, ET SA LIGNE RESTE', () => {
+    // Avec trois calculs sur la feuille, celui qu'on a fini n'a plus besoin de
+    // sa grille — mais il garde sa ligne, pour qu'on sache qu'il est là.
+    assert.match(CODE, /if \(c\) c\.replie = !c\.replie;/);
+    assert.match(CODE, /\$\{c\.replie \? '' : `<div class="br-grille">/);
+    assert.match(CODE, /data-br-replier=/);
 });

@@ -59,7 +59,8 @@
 // — et le cadre se pose dessous. Plusieurs calculs tiennent sur la feuille,
 // comme sur une vraie page de brouillon.
 
-import { etendue } from '../core/poser.js';
+import { etendue, poser } from '../core/poser.js';
+import { nomRang } from '../core/virgule.js';
 import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
 
 /** Les trois outils, dans l'ordre où ils se présentent. */
@@ -85,6 +86,7 @@ const CARREAUX_H = 8;
 // neuf, et c'est tout ce que « pas de persistance » demande.
 
 const vierge = () => ({
+    pave: true,       // le pavé de chiffres est-il déplié ?
     saisie: '',       // la ligne qu'il est en train d'écrire
     dit: '',          // ce qu'on lui répond quand elle ne se lit pas
     calculs: [],      // les opérations posées, dans l'ordre où il les a posées
@@ -351,6 +353,145 @@ export function lireLeCalcul(texte) {
     return { op, nombres };
 }
 
+// ── VÉRIFIER, SANS JAMAIS DONNER LA RÉPONSE ────────────────────────────────
+
+/**
+ * RÉMY : « tu peux rajouter un option vérifier aussi mais qui ne donne jamais
+ * la réponse et indique l'erreur ».
+ *
+ * ── LA RÈGLE CHANGE DE FORME, PAS DE SENS ──────────────────────────────────
+ *
+ * On disait « le brouillon ne calcule pas ». La règle exacte était : il ne
+ * calcule pas À LA PLACE DE L'ÉLÈVE. Vérifier demande évidemment de calculer —
+ * ce qui est interdit est d'en DIRE le résultat. D'où la forme de ce qui sort
+ * d'ici : des CLÉS DE CASES et un nom de colonne. Jamais un chiffre. Une
+ * épreuve garde que l'objet rendu ne porte aucune valeur attendue.
+ *
+ * ── ON NE MONTRE QUE LA PREMIÈRE COLONNE FAUTIVE ───────────────────────────
+ *
+ * En partant de la droite, c'est-à-dire dans l'ordre où l'on calcule. Trois
+ * raisons, et la troisième n'est pas la moindre :
+ *
+ *   · c'est ce qu'un professeur dit — « reprends ta colonne des unités » ;
+ *   · une erreur de retenue FABRIQUE les erreurs des colonnes suivantes :
+ *     toutes les signaler ferait croire à cinq fautes là où il y en a une ;
+ *   · et cela limite ce qu'on peut tirer du bouton. Marquer d'un coup toutes
+ *     les cases fausses invite à essayer les dix chiffres jusqu'au vert ;
+ *     colonne par colonne, il faut avoir refait le calcul pour avancer. Ce
+ *     n'est pas une serrure — rien ici n'en est une —, c'est le même choix
+ *     qu'au tableau : on montre OÙ, on ne dit pas QUOI.
+ *
+ * ── CE QU'ON NE REPROCHE PAS ───────────────────────────────────────────────
+ *
+ * Une case vide n'est pas une faute : c'est un travail en cours. On ne juge
+ * que ce qui est écrit, et l'on dit « il reste des cases » quand tout le reste
+ * est juste — un brouillon qu'on gronde parce qu'il n'est pas fini est un
+ * brouillon qu'on n'ouvre plus.
+ *
+ * @param {Object} c - un calcul posé de la feuille
+ * @returns {{etat:string, dit:string, fautes:string[]}}
+ */
+export function verifierLaPose(c) {
+    const ecrites = Object.keys(c.cases).filter(k => String(c.cases[k]).trim() !== '');
+    if (!ecrites.length) {
+        return { etat: 'vide', fautes: [],
+            dit: 'Écris d\'abord quelque chose : je ne vérifie que ce que tu as posé.' };
+    }
+
+    let tableau = null;
+    try {
+        tableau = poser(c.op, c.nombres, { methode: c.methode });
+    } catch (e) {
+        // 27 − 52 ne se pose pas : le noyau le refuse, et il a raison. Ce
+        // n'est pas une faute de l'élève, c'est un calcul qu'on n'écrit pas
+        // en colonnes à ce niveau-là.
+        return { etat: 'impossible', fautes: [],
+            dit: 'Cette opération-là ne se pose pas en colonnes.' };
+    }
+
+    const attendu = casesAttendues(c, tableau);
+    if (!attendu) {
+        return { etat: 'impossible', fautes: [],
+            dit: 'Je sais vérifier les additions et les soustractions posées, '
+                + 'et le résultat des autres.' };
+    }
+
+    // DU RANG LE PLUS FAIBLE AU PLUS FORT : l'ordre de l'algorithme.
+    const rangs = [...new Set(Object.keys(attendu).map(k => Number(k.slice(1))))]
+        .sort((a, b) => a - b);
+    for (const rang of rangs) {
+        const ici = Object.keys(attendu).filter(k => Number(k.slice(1)) === rang);
+        const fautes = ici.filter(k => {
+            const mis = c.cases[k];
+            if (mis === undefined || String(mis).trim() === '') return false;
+            return String(mis) !== String(attendu[k]);
+        });
+        if (fautes.length) {
+            return { etat: 'faux', fautes,
+                dit: `Reprends la colonne des ${nomRang(rang)}.` };
+        }
+    }
+
+    // UNE CASE QUI DOIT RESTER VIDE N'EST PAS UNE CASE QUI MANQUE. La colonne
+    // de réserve, à gauche, n'est remplie que si le résultat va jusque-là :
+    // sans cette ligne, une addition parfaitement juste s'entendait répondre
+    // « il reste des cases à remplir », et l'on cherchait laquelle.
+    const manque = Object.keys(attendu).some(k => {
+        if (String(attendu[k]) === '') return false;
+        const mis = c.cases[k];
+        return mis === undefined || String(mis).trim() === '';
+    });
+    return manque
+        ? { etat: 'incomplet', fautes: [],
+            dit: 'Tout ce que tu as écrit est juste. Il reste des cases à remplir.' }
+        : { etat: 'juste', fautes: [], dit: 'Ton opération est juste.' };
+}
+
+/**
+ * CE QU'IL FAUDRAIT TROUVER DANS CHAQUE CASE — et ce tableau-là ne sort jamais
+ * de ce module.
+ *
+ * On ne décrit que les cases dont le SENS est sans ambiguïté : le résultat, et
+ * les retenues de chaque méthode. Les produits partiels d'une multiplication
+ * et les descentes d'une division s'écrivent de plusieurs façons également
+ * correctes — les juger reviendrait à imposer une mise en page.
+ */
+function casesAttendues(c, tableau) {
+    const out = {};
+    const chiffresDu = (v, rangs) => {
+        rangs.forEach(r => { out[`t${r}`] = chiffre(v, r); });
+    };
+    const rangs = rangsDuCadre(c.nombres);
+
+    if (c.op === '+') {
+        chiffresDu(tableau.resultat, rangs);
+        tableau.colonnes.forEach(col => {
+            if (col.retenueEntrante) out[`r${col.rang}`] = String(col.retenueEntrante);
+        });
+        return out;
+    }
+    if (c.op === '-') {
+        chiffresDu(tableau.resultat, rangs);
+        tableau.colonnes.forEach(col => {
+            if (c.methode === 'emprunt') {
+                if (col.hautCorrige !== null && col.hautCorrige !== undefined) {
+                    out[`e${col.rang}`] = String(col.hautCorrige);
+                }
+            } else {
+                if (col.retenueHaut) out[`m${col.rang}`] = String(col.retenueHaut);
+                if (col.retenueBas) out[`b${col.rang}`] = String(col.retenueBas);
+            }
+        });
+        return out;
+    }
+    // LA MULTIPLICATION ET LA DIVISION : seul le résultat se juge.
+    const valeur = c.op === '×' ? tableau.resultat : tableau.quotient;
+    if (valeur === undefined) return null;
+    if (c.op === '÷') return null;   // la potence s'écrit de trop de façons
+    chiffresDu(valeur, rangs);
+    return out;
+}
+
 // ── POSER ──────────────────────────────────────────────────────────────────
 
 function poserHtml() {
@@ -361,43 +502,13 @@ function poserHtml() {
                    placeholder="Écris ton calcul : 12 + 34 + 5">
             <button type="button" class="br-poser" data-br-poser>Poser</button>
         </div>
-        <div class="br-aides">
-            ${['+', '-', '×', '÷'].map(o => `<button type="button" class="br-aide"
-                data-br-signe="${esc(o)}" aria-label="Le signe ${SIGNES[o]}">${SIGNES[o]}</button>`).join('')}
-            ${nombresDeLEnonce().map(n => `<button type="button" class="br-aide br-aide--nombre"
-                data-br-nombre="${esc(n)}">${esc(n)}</button>`).join('')}
-        </div>
         ${etat.dit ? `<p class="br-dit br-dit--refus">${esc(etat.dit)}</p>` : ''}
         ${etat.calculs.length
-            ? etat.calculs.map(calculHtml).join('') + paveHtml()
+            ? etat.calculs.map(calculHtml).join('')
             : '<p class="br-vide">Écris ton calcul là-haut, et le cadre se pose tout seul,'
               + ' aux bonnes colonnes. Le calcul, lui, reste à faire. Tu peux en poser'
-              + ' plusieurs les uns sous les autres.</p>'}`;
-}
-
-/**
- * LES NOMBRES DE L'ÉNONCÉ, À PORTÉE DE DOIGT.
- *
- * On LIT l'énoncé affiché — `.game-question`, le crochet que toutes les
- * activités posent — et les textes du DESSIN quand la phrase n'en porte pas :
- * mesuré sur « Le Tour du Rectangle », la question dit « quel est le
- * périmètre ? » et les deux longueurs sont écrites sur la figure.
- *
- * ON NE PREND PAS TOUT LE PLATEAU : les propositions d'un exercice à bulles
- * sont des nombres elles aussi, et en offrir une reviendrait à souffler.
- */
-function nombresDeLEnonce() {
-    const q = document.querySelector('#game-board .game-question, #game-board .question-text');
-    let texte = q ? (q.textContent || '') : '';
-    if ((texte.match(/\d/g) || []).length < 2) {
-        const svg = document.querySelector('#game-board svg');
-        const dessin = svg
-            ? [...svg.querySelectorAll('text, tspan')].map(t => t.textContent).join(' ')
-            : '';
-        texte = `${texte} ${dessin}`;
-    }
-    const tous = (texte.replace(/[  ]/g, '').match(/\d+(?:[.,]\d+)?/g) || []);
-    return [...new Set(tous)].slice(0, 4);
+              + ' plusieurs les uns sous les autres.</p>'}
+        ${paveHtml()}`;
 }
 
 /** Les rangs du cadre — demandés au noyau, qui range des colonnes. */
@@ -426,7 +537,8 @@ const estActive = (c, k) => !!etat.active && etat.active.c === c.id && etat.acti
 /** Une case qu'on remplit : on la touche, on y glisse un chiffre, on la tape. */
 function caseHtml(c, cle, classe = '') {
     const v = c.cases[cle] || '';
-    return `<span class="br-case ${classe}${estActive(c, cle) ? ' br-case--active' : ''}"
+    return `<span class="br-case ${classe}${estActive(c, cle) ? ' br-case--active' : ''}${
+        (c.fautes || []).includes(cle) ? ' br-case--faux' : ''}"
         data-br-case="${esc(cle)}" data-br-c="${esc(c.id)}" tabindex="0" role="button"
         aria-label="Case ${esc(cle)}">${esc(v)}</span>`;
 }
@@ -541,20 +653,29 @@ function calculHtml(c) {
 
     return `<div class="br-calcul" data-br-calcul="${esc(c.id)}">
         <div class="br-calcul-tete">
+            <button type="button" class="br-replier" data-br-replier="${esc(c.id)}"
+                aria-expanded="${!c.replie}"
+                aria-label="${c.replie ? 'Déplier' : 'Replier'} ce calcul">${
+                c.replie ? '▸' : '▾'}</button>
             <span class="br-calcul-dit">${esc(c.nombres.join(` ${SIGNES[c.op]} `))}</span>
-            ${c.op === '-' ? `<button type="button" class="br-methode" data-br-methode="${esc(c.id)}"
+            ${c.op === '-' && !c.replie ? `<button type="button" class="br-methode" data-br-methode="${esc(c.id)}"
                 title="L'autre façon d'écrire les retenues">⇄ ${
                 c.methode === 'emprunt' ? 'par emprunt' : 'par compensation'}</button>` : ''}
+            ${c.replie ? '' : `<button type="button" class="br-methode" data-br-verifier="${esc(c.id)}"
+                title="Je dis où ça coince, jamais la réponse">Vérifier</button>`}
             <button type="button" class="br-oter" data-br-oter="${esc(c.id)}"
                 aria-label="Retirer ce calcul">✕</button>
         </div>
-        <div class="br-grille"><div class="br-pose">${dedans}</div></div>
+        ${c.replie ? '' : `<div class="br-grille"><div class="br-pose">${dedans}</div></div>`}
+        ${c.dit && !c.replie ? `<p class="br-verdict br-verdict--${
+            c.fautes.length ? 'faux' : 'juste'}">${esc(c.dit)}</p>` : ''}
     </div>`;
 }
 
 /** La petite marque posée DEVANT un chiffre — la compensation s'écrit ainsi. */
 function marqueHtml(c, cle) {
-    return `<span class="br-marque${estActive(c, cle) ? ' br-marque--active' : ''}"
+    return `<span class="br-marque${estActive(c, cle) ? ' br-marque--active' : ''}${
+        (c.fautes || []).includes(cle) ? ' br-case--faux' : ''}"
         data-br-case="${esc(cle)}" data-br-c="${esc(c.id)}" tabindex="0" role="button"
         aria-label="Retenue ${esc(cle)}">${esc(c.cases[cle] || '')}</span>`;
 }
@@ -593,16 +714,46 @@ function potenceHtml(c) {
  * clavier, la case ayant le foyer.
  */
 function paveHtml() {
+    const dansUneCase = !!etat.active;
     const touches = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ',', '⌫'];
-    return `<div class="br-pave" role="group" aria-label="Les chiffres">${
-        touches.map(t => `<button type="button" class="br-touche" data-br-touche="${esc(t)}"
-            ${t === '⌫' ? 'aria-label="Effacer le chiffre"' : ''}>${t}</button>`).join('')}</div>`;
+    const signes = ['+', '-', '×', '÷'];
+    return `
+        <div class="br-pave-tete">
+            <span class="br-pave-dit">Le pavé écrit <b>${
+                dansUneCase ? 'dans la case choisie' : 'dans ton calcul'}</b></span>
+            <button type="button" class="br-pave-btn" data-br-pave
+                aria-pressed="${etat.pave}">${etat.pave ? 'Masquer' : 'Afficher'} le pavé</button>
+        </div>
+        ${etat.pave ? `<div class="br-pave" role="group" aria-label="Le pavé de chiffres">${
+            touches.map(t => `<button type="button" class="br-touche" data-br-touche="${esc(t)}"
+                ${t === '⌫' ? 'aria-label="Effacer"' : ''}>${t}</button>`).join('')}${
+            signes.map(o => `<button type="button" class="br-touche br-touche--signe"
+                data-br-touche="${esc(o)}"
+                aria-label="Le signe ${SIGNES[o]}">${SIGNES[o]}</button>`).join('')}</div>` : ''}`;
+}
+
+/**
+ * LE PAVÉ SE RAFRAÎCHIT SEUL, sans refaire toute la feuille : il dit OÙ il
+ * écrit, et cela change dès qu'on touche une case ou la ligne de calcul.
+ * Tout redessiner volerait le foyer du champ qu'on est en train de remplir.
+ */
+function majPave() {
+    const zone = feuille && feuille.querySelector('.br-corps');
+    if (!zone || outil !== 'poser') return;
+    const tete = zone.querySelector('.br-pave-tete');
+    if (!tete) return;
+    const pave = zone.querySelector('.br-pave');
+    if (pave) pave.remove();
+    tete.outerHTML = paveHtml();
+    brancherLeGlisse();
 }
 
 /** Chaque touche du pavé se glisse dans une case. */
 function brancherLeGlisse() {
     feuille.querySelectorAll('.br-touche').forEach(t => {
-        if (t.dataset.brTouche === '⌫') return;
+        // NI L'EFFACEMENT NI LES SIGNES NE SE GLISSENT : une case de grille ne
+        // porte qu'un chiffre, et glisser un « + » dedans n'aurait pas de sens.
+        if (!/^[0-9,]$/.test(t.dataset.brTouche || '')) return;
         rendreGlissable(t, {
             cibles: '.br-case[data-br-case], .br-marque[data-br-case]',
             deposer: (cible) => {
@@ -814,6 +965,7 @@ function redessinerLesCalculs() {
     brancherLeGlisse();
     // LE FOYER SUIT LA CASE ACTIVE : sans cela, taper deux chiffres de suite
     // demanderait de la retoucher entre les deux.
+    majPave();
     const active = zone.querySelector('.br-case--active, .br-marque--active');
     if (active && active.focus) active.focus({ preventScroll: true });
 }
@@ -850,6 +1002,11 @@ function surTouche(e) {
 
 /** Le foyer et la case active ne font qu'un. */
 function surFoyer(e) {
+    if (e.target.closest('[data-br-saisie]')) {
+        // ON REVIENT À LA LIGNE : le pavé doit cesser d'écrire dans la case.
+        if (etat.active) { etat.active = null; majPave(); }
+        return;
+    }
     const cible = e.target.closest('[data-br-case]');
     if (!cible) return;
     const deja = etat.active;
@@ -861,8 +1018,8 @@ function surFoyer(e) {
 function surClic(e) {
     const el = e.target.closest('[data-br-outil], [data-br-case], [data-br-touche],'
         + '[data-br-crayon], [data-br-gomme], [data-br-effacer], [data-br-fermer],'
-        + '[data-br-poser], [data-br-signe], [data-br-nombre], [data-br-oter], [data-br-methode],'
-        + '[data-br-defaire], [data-br-refaire]');
+        + '[data-br-poser], [data-br-oter], [data-br-methode], [data-br-pave],'
+        + '[data-br-replier], [data-br-verifier], [data-br-defaire], [data-br-refaire]');
     if (!el) return;
     const d = el.dataset;
 
@@ -885,7 +1042,23 @@ function surClic(e) {
         return;
     }
     if (d.brPoser !== undefined) { poserLeCalcul(); return; }
-    if (d.brSigne || d.brNombre) { ajouterALaSaisie(d.brSigne || d.brNombre); return; }
+    if (d.brPave !== undefined) { etat.pave = !etat.pave; dessiner(); return; }
+    if (d.brReplier) {
+        const c = etat.calculs.find(x => x.id === d.brReplier);
+        if (c) c.replie = !c.replie;
+        dessiner();
+        return;
+    }
+    if (d.brVerifier) {
+        const c = etat.calculs.find(x => x.id === d.brVerifier);
+        if (c) {
+            const v = verifierLaPose(c);
+            c.dit = v.dit;
+            c.fautes = v.fautes;
+        }
+        redessinerLesCalculs();
+        return;
+    }
     if (d.brOter) {
         etat.calculs = etat.calculs.filter(c => c.id !== d.brOter);
         etat.active = null;
@@ -907,16 +1080,37 @@ function surClic(e) {
     }
     if (d.brCase) { etat.active = { c: d.brC, k: d.brCase }; redessinerLesCalculs(); return; }
     if (d.brTouche) {
-        if (!etat.active) return;
-        ecrire(etat.active.c, etat.active.k, d.brTouche === '⌫' ? null : d.brTouche);
+        // LE MÊME PAVÉ POUR LES DEUX, ET C'EST CE QUI LE REND LISIBLE : il
+        // écrit dans la case choisie s'il y en a une, dans la ligne de calcul
+        // sinon — et la phrase au-dessus dit laquelle des deux.
+        // UN SIGNE NE VA JAMAIS DANS UNE CASE : il appartient à la ligne de
+        // calcul, et le toucher veut dire « j'écris une opération ». Mesuré
+        // (`tools/leBrouillon.mjs`) : éteint tant qu'une case était choisie,
+        // il devenait une touche morte — on appuyait, rien ne se passait, et
+        // rien ne disait qu'il fallait d'abord toucher la ligne.
+        if (/^[+\-×÷]$/.test(d.brTouche)) {
+            etat.active = null;
+            ecrireDansLaLigne(d.brTouche);
+            majPave();
+            return;
+        }
+        if (etat.active) {
+            ecrire(etat.active.c, etat.active.k, d.brTouche === '⌫' ? null : d.brTouche);
+            return;
+        }
+        ecrireDansLaLigne(d.brTouche);
     }
 }
 
-function ajouterALaSaisie(morceau) {
-    etat.saisie = `${etat.saisie}${morceau}`;
+function ecrireDansLaLigne(morceau) {
+    etat.saisie = morceau === '⌫'
+        ? etat.saisie.slice(0, -1)
+        : `${etat.saisie}${morceau}`;
     etat.dit = '';
     const champ = feuille && feuille.querySelector('[data-br-saisie]');
     if (champ) { champ.value = etat.saisie; champ.focus({ preventScroll: true }); }
+    const refus = feuille && feuille.querySelector('.br-dit--refus');
+    if (refus) refus.remove();
 }
 
 /**
@@ -936,7 +1130,8 @@ function poserLeCalcul() {
     compteur += 1;
     etat.calculs.push({
         id: `c${compteur}`, op: lu.op, nombres: lu.nombres,
-        methode: 'compensation', cases: {}
+        methode: 'compensation', cases: {},
+        replie: false, dit: '', fautes: []
     });
     etat.saisie = '';
     etat.dit = '';
