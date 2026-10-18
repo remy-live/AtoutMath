@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1044">
-    <link rel="stylesheet" href="css/layout.css?v=1044">
-    <link rel="stylesheet" href="css/ui.css?v=1044">
-    <link rel="stylesheet" href="css/games.css?v=1044">
-    <link rel="stylesheet" href="css/components.css?v=1044">
-    <link rel="stylesheet" href="css/modules.css?v=1044">
+    <link rel="stylesheet" href="css/base.css?v=1045">
+    <link rel="stylesheet" href="css/layout.css?v=1045">
+    <link rel="stylesheet" href="css/ui.css?v=1045">
+    <link rel="stylesheet" href="css/games.css?v=1045">
+    <link rel="stylesheet" href="css/components.css?v=1045">
+    <link rel="stylesheet" href="css/modules.css?v=1045">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1629,6 +1629,27 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M4 21V4.5a1 1 0 0 1 .6-.9c2.6-1.1 4.9.9 7.4 0 2.5-.9 4.8 1.1 7.4 0a1 1 0 0 1 1.4.9v8.7a1 1 0 0 1-.6.9c-2.6 1.1-4.9-.9-7.4 0-2.5.9-4.8-1.1-7.4 0" />
+                        </svg>
+                    </button>
+                    <!-- LE BROUILLON — Rémy : « Dans le menu à côté du robot,
+                         avoir un mode brouillon pour poser son calcul. On peut
+                         poser une opération […], mettre des notes. Dessiner en
+                         suivant les carreaux au crayon libre (et une grille
+                         aimanté) ».
+
+                         IL EXISTE SUR TOUT EXERCICE, contrairement à la
+                         calculatrice : une note et un gribouillage ne trichent
+                         jamais. Seul l'outil « Poser » s'éteint, exercice par
+                         exercice — voir `poserOffert` dans ui/brouillon.js. Et
+                         rien de ce qu'on y écrit n'est envoyé, corrigé ni noté :
+                         c'est une surface pour penser, pas pour répondre. -->
+                    <button id="btn-game-brouillon" class="game-icon-btn game-icon-btn--neutre" hidden
+                        data-brouillon aria-pressed="false"
+                        title="Brouillon" aria-label="Ouvrir le brouillon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10l2 2h6.5A1.5 1.5 0 0 1 20 7.5v11A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5z" />
+                            <path d="M8 11h5" /><path d="M8 15h8" />
                         </svg>
                     </button>
                     <button id="btn-show-instruction" class="game-icon-btn game-icon-btn--info" title="Aide" aria-label="Afficher l'aide">

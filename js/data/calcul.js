@@ -526,6 +526,10 @@ export const calculExercises = [
         // Les deux règles sont dites dans la consigne, l'une après l'autre.
         id: 'calc-poser',
         jeu: false, title: 'Poser une opération',
+        // LE BROUILLON NE PROPOSE PAS « POSER » ICI : sa grille SERAIT
+        // l'exercice. Ce n'est pas du calcul mental — le tag ne l'aurait donc
+        // pas écarté —, c'est le seul cas où il faut le dire à la main.
+        poserAuBrouillon: false,
         colonnesPapier: 5,
         cree: '2026-08-14',
         revisions: [

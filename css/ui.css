@@ -5718,3 +5718,170 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .ec-defi-classement b { color: var(--primary-texte); }
 .ec-defi-classement small { color: var(--text-muted); font-weight: 600; }
 .ec-defi-vide { color: var(--text-muted); font-size: .85rem; font-weight: 600; }
+
+/* ══════════════════════════ LE BROUILLON ══════════════════════════════════
+   RÉMY : « Dans le menu à côté du robot, avoir un mode brouillon pour poser
+   son calcul. […] Dessiner en suivant les carreaux au crayon libre (et une
+   grille aimanté) ».
+
+   LA FEUILLE MONTE DU BAS, ELLE NE COUVRE PAS. Au doigt, elle prend les deux
+   tiers de l'écran et laisse l'énoncé lisible au-dessus : un brouillon qui
+   cache la question oblige à le fermer pour relire, et l'on perd alors ce
+   qu'on était en train d'y écrire. Sur un écran large, elle devient un VOLET à
+   droite, et la couche de jeu lui fait sa place au lieu d'être recouverte. */
+.br-feuille {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    z-index: 20; max-height: 72%;
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 6px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-panel); color: var(--text-main);
+    border-top: 1px solid var(--border); border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 28px rgba(15, 23, 42, .12);
+}
+/* La même règle que le voile de la porte close, et pour la même raison : sans
+   elle, `feuille.hidden = true` ne cache rien — `[hidden] { display: none }`
+   de la feuille du navigateur a la même spécificité que la règle ci-dessus. */
+.br-feuille[hidden] { display: none; }
+
+.br-poignee { flex: 0 0 auto; height: 4px; width: 44px; margin: 2px auto 0;
+    border-radius: 2px; background: var(--border); }
+.br-tete { display: flex; align-items: center; gap: 8px; }
+.br-titre { flex: 1 1 auto; font-size: 1rem; font-weight: 800; }
+.br-effacer, .br-fermer {
+    font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+    min-height: 36px; padding: 0 12px; border-radius: 10px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    color: var(--danger-texte);
+}
+.br-fermer { width: 36px; padding: 0; font-size: 1rem; color: var(--text-muted); }
+
+.br-onglets { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+    gap: 4px; padding: 4px; background: var(--bg-hover); border-radius: 12px; }
+.br-onglet {
+    font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+    min-height: 44px; border-radius: 9px;
+    background: none; border: 1px solid transparent; color: var(--text-muted);
+}
+.br-onglet--actif { background: var(--bg-panel); border-color: var(--border); color: var(--text-main); }
+
+.br-corps { flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px; }
+.br-mot { flex: 0 0 auto; margin: 0; font-size: .74rem; line-height: 1.45; color: var(--text-muted); }
+
+/* --- Poser --------------------------------------------------------------- */
+.br-reglages { display: flex; align-items: center; gap: 8px; }
+.br-ops { display: flex; gap: 4px; padding: 3px; background: var(--bg-hover); border-radius: 10px; }
+.br-op {
+    width: 40px; height: 40px; font: inherit; font-size: 1.05rem; font-weight: 800;
+    cursor: pointer; border-radius: 8px;
+    background: none; border: 1px solid transparent; color: var(--text-muted);
+}
+.br-op--actif { background: var(--bg-panel); border-color: var(--primary); color: var(--primary-texte); }
+.br-reprendre {
+    flex: 1 1 auto; min-height: 44px; padding: 0 10px;
+    font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer;
+    color: var(--primary-texte); background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 10px;
+}
+.br-nombres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.br-champ-eti { display: flex; flex-direction: column; gap: 4px;
+    font-size: .72rem; font-weight: 700; color: var(--text-muted); }
+.br-champ {
+    width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 10px;
+    font: inherit; font-size: 1rem; font-weight: 700; color: var(--text-main);
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
+}
+.br-vide { margin: 0; font-size: .82rem; line-height: 1.5; color: var(--text-muted); }
+
+.br-grille { display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 12px 8px; background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; }
+/* RIEN NE SE COMPRIME DANS LA GRILLE. MESURÉ (`tools/leBrouillon.mjs`) : le
+   trait du résultat faisait 344 px de large et ZÉRO de haut. Une colonne
+   flexible rétrécit ses éléments quand le contenu déborde, et un trait de 2 px
+   est le premier à disparaître — sans un mot, et c'est lui qui dit où s'arrête
+   l'opération et où commence le résultat. */
+.br-pose > *, .br-ligne > * { flex: 0 0 auto; }
+/* LE TRAIT NE DÉBORDE PAS DE L'OPÉRATION. Posé dans la boîte, il courait d'un
+   bord à l'autre pendant que les chiffres tenaient dans trois colonnes à
+   droite : sur une feuille, on tire le trait sous ce qu'on additionne, pas
+   sous toute la page. Cette enveloppe-ci fait la largeur des colonnes, et le
+   trait en prend 100 %. */
+.br-pose { display: flex; flex-direction: column; gap: 4px; }
+.br-ligne { display: flex; align-items: center; gap: 2px; }
+.br-ligne--retenues { opacity: .9; }
+.br-signe { width: 26px; text-align: center; font-size: 1.2rem; font-weight: 700; color: var(--text-muted); }
+.br-case {
+    width: 38px; height: 42px; display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: 700; cursor: pointer;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px;
+}
+/* LES CHIFFRES DONNÉS NE SE TOUCHENT PAS : ce sont les nombres que l'élève
+   vient d'écrire lui-même dans les deux champs ; les reprendre dans la grille
+   n'aurait aucun sens, et une case qui bouge sans raison fait douter. */
+.br-case--donnee { cursor: default; background: var(--bg-hover); }
+.br-case--petite { width: 38px; height: 26px; font-size: .85rem; color: var(--warning-texte);
+    background: none; border-color: transparent; }
+.br-case--active { outline: 3px solid var(--primary); outline-offset: -1px; }
+.br-case--virgule { position: relative; }
+.br-case--virgule::after {
+    content: ','; position: absolute; right: -4px; bottom: -2px;
+    font-size: 1.1rem; font-weight: 800; color: var(--text-main);
+}
+.br-barre { width: 100%; height: 2px; margin: 2px 0; background: var(--text-main); border-radius: 1px; }
+.br-potence { display: flex; flex-direction: column; gap: 4px; }
+.br-potence-haut { display: flex; align-items: flex-start; gap: 6px; }
+.br-potence-mur { width: 2px; align-self: stretch; background: var(--text-main); border-radius: 1px; }
+.br-potence-droite { display: flex; flex-direction: column; gap: 4px; }
+.br-barre--quotient { margin: 0; }
+
+.br-pave { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.br-touche {
+    min-height: 44px; font: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text-main);
+}
+
+/* --- Noter --------------------------------------------------------------- */
+.br-note {
+    flex: 1 1 auto; min-height: 160px; width: 100%; box-sizing: border-box;
+    padding: 10px 12px; font: inherit; font-size: 1rem; line-height: 28px;
+    color: var(--text-main); background: var(--bg-panel);
+    border: 1px solid var(--border); border-radius: 12px; resize: none;
+}
+
+/* --- Dessiner ------------------------------------------------------------ */
+.br-crayons { display: flex; gap: 6px; }
+.br-crayon {
+    flex: 1 1 auto; min-height: 44px; font: inherit; font-size: .82rem; font-weight: 700;
+    cursor: pointer; border-radius: 10px;
+    background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted);
+}
+.br-crayon--actif { background: var(--bg-app); border-color: var(--primary); color: var(--primary-texte); }
+.br-dit { margin: 0; font-size: .78rem; color: var(--text-muted); }
+.br-papier { display: flex; justify-content: center; padding: 8px;
+    background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px; }
+/* `touch-action: none` : sans lui, le premier geste de dessin fait défiler la
+   feuille au lieu d'écrire, et le trait ne commence jamais. */
+.br-papier svg { touch-action: none; max-width: 100%; height: auto;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text-main); }
+.br-carreaux { stroke: var(--border); stroke-width: 1; }
+
+@media (hover: hover) {
+    .br-onglet:not(.br-onglet--actif):hover { color: var(--primary-texte); }
+    .br-touche:hover, .br-case:not(.br-case--donnee):hover { border-color: var(--primary); }
+}
+
+/* SUR UN ÉCRAN LARGE, UN VOLET — et la couche de jeu lui fait sa place.
+   Recouvrir le tiers droit de l'exercice reviendrait à cacher la question une
+   fois sur deux, selon l'exercice ; un décalage, lui, ne cache jamais rien. */
+@media (min-width: 900px) {
+    .br-feuille {
+        top: 0; bottom: 0; left: auto; width: 420px; max-height: none;
+        border-radius: 0; border-top: 0; border-left: 1px solid var(--border);
+        box-shadow: -12px 0 28px rgba(15, 23, 42, .08);
+    }
+    .br-poignee { display: none; }
+    #game-layer.br-ouvert { padding-right: 420px; }
+}

@@ -635,6 +635,11 @@ function initGameControls() {
             // La calculatrice flotte sur <body>, pas dans la couche de jeu :
             // sans ce balayage elle resterait posée sur la page d'accueil.
             import('./ui/calculatrice.js').then(m => m.reglerCalculatrice(null));
+            // LE BROUILLON, LUI, VIT DANS LA COUCHE DE JEU : la cacher le cache
+            // avec elle. Mais son bouton est dans l'en-tête, et son contenu en
+            // mémoire — on éteint donc les deux, sans quoi l'élève retrouverait
+            // ses trois lignes sous l'exercice suivant.
+            import('./ui/brouillon.js').then(m => m.reglerBrouillon(null));
             // ET LE FANTÔME D'UN JETON QU'ON GLISSAIT, pour la même raison —
             // c'est le TROISIÈME élément posé sur <body> qu'il faut balayer ici.
             // Rémy a vu le mot « Quadrilatère » rester en haut de l'écran, puis
@@ -664,6 +669,15 @@ function initGameControls() {
     if (calc) {
         calc.onclick = () => import('./ui/calculatrice.js')
             .then(m => m.basculerCalculatrice());
+    }
+
+    // LE BROUILLON. Il existe sur TOUT exercice — une note et un gribouillage
+    // ne trichent jamais —, et c'est `reglerBrouillon` (appelé par le meneur)
+    // qui décide si l'outil « Poser » y est offert.
+    const brouillon = document.getElementById('btn-game-brouillon');
+    if (brouillon) {
+        brouillon.onclick = () => import('./ui/brouillon.js')
+            .then(m => m.basculerBrouillon());
     }
 
     const demo = document.getElementById('btn-toggle-demo');

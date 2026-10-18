@@ -1303,3 +1303,67 @@ le trait du crayon libre.
 le brouillon est-il visible du professeur (je dis non) ; « Poser » éteint par
 exercice (je dis oui) ; et le crayon libre reste-t-il, ou s'en tient-on à
 l'aimanté, qui est plus loin de la ligne rouge ?
+
+### Son arbitrage, dans l'ordre
+
+> « magnifique. 1/ pas de persistance. 2/ Non, 3/ ok, 4 oui »
+
+1. **Pas de persistance.** La page blanche revient à chaque question. Ce qui
+   est fermé puis rouvert SUR LA MÊME question se retrouve — fermer n'est pas
+   effacer —, mais passer à la question suivante efface.
+2. **Le professeur ne le voit pas.** Il va contre son habitude de vouloir
+   suivre ce qu'ils font, et c'est ce qui fait du brouillon un brouillon.
+3. **« Poser » s'éteint par exercice**, comme la calculatrice et pour la raison
+   déjà écrite dans `index.html`.
+4. **Le crayon libre reste.**
+
+**Les trois décisions se renforcent, et elles simplifient tout** : rien n'est
+gardé, rien n'est regardé, rien n'est envoyé. Le brouillon ne touche donc NI le
+journal, NI le serveur, NI le stockage local — il vit en mémoire, le temps
+d'une question. C'est la seule pièce du logiciel dont on puisse dire cela, et
+c'est ce qui la met hors de portée de la ligne rouge.
+
+**Une garde en découlera**, parce que c'est précisément ce qui se défait en
+silence : aucune activité ne doit pouvoir LIRE le contenu du brouillon. Le jour
+où une seule le fait, un tracé devient une réponse.
+
+### Ce qui a été construit, et les trois défauts que la sonde a trouvés
+
+**La maquette montrait la soustraction posée ET FAITE** — résultat et retenues
+compris. C'était un défaut de la maquette, pas une option : une grille qui
+calcule n'est pas un brouillon, c'est une calculatrice, et celle-ci existe déjà
+derrière son propre réglage. Rémy a écrit « poser SON calcul ». Le logiciel
+donne donc le cadre aux bonnes colonnes — les rangs viennent de `etendue()`,
+qui range des colonnes et ne calcule rien — et laisse TOUTES les cases vides.
+Une épreuve garde que `poser()` et ses quatre `colonnes*` ne sont même pas
+importés : les avoir sous la main, c'est un jour les afficher.
+
+**Trois défauts trouvés par `tools/leBrouillon.mjs`**, et aucun ne se lisait
+dans le code :
+
+1. **la feuille restait ouverte par-dessus l'exercice suivant**, lui couvrant
+   les deux tiers de l'écran — l'élève arrivait sur une page blanche avant
+   d'avoir lu la question. On ouvre son brouillon quand on en a besoin ; ce
+   n'est pas un état dans lequel on entre ;
+2. **« Reprendre les nombres » ne reprenait rien** sur « Le Tour du
+   Rectangle » : la question dit « quel est le périmètre ? » et les deux
+   longueurs sont ÉCRITES SUR LA FIGURE. On lit donc aussi les textes du
+   dessin — mais pas tout le plateau, car les propositions d'un exercice à
+   bulles sont des nombres elles aussi, et en reprendre une serait souffler ;
+3. **le trait du résultat faisait 344 px de large et ZÉRO de haut.** Une
+   colonne flexible rétrécit ses éléments quand le contenu déborde, et un
+   trait de 2 px est le premier à disparaître — sans un mot.
+
+**Mesuré, par le chemin de l'élève** : le bouton est dans la barre et se touche
+au doigt ; l'énoncé reste lisible au-dessus de la feuille ; le cadre se pose aux
+bonnes colonnes et aucune case libre n'est remplie ; le crayon aimanté tombe sur
+les nœuds (tous multiples du carreau) et le crayon libre, lui, n'y tombe pas ;
+**zéro événement parti au journal, zéro clef posée dans le stockage** avant et
+après avoir rempli les trois outils ; la page blanche revient ; et sur
+« Additions Mystères », l'outil « Poser » n'est pas là tandis que les deux
+autres restent.
+
+**Ce qui n'est pas fait, faute de demande** : la case à cocher dans la revue du
+catalogue, qui laisserait Rémy éteindre « Poser » exercice par exercice de sa
+propre main. Le tag « Calcul mental » couvre les trente exercices concernés, et
+`poserAuBrouillon` tranche le reste.

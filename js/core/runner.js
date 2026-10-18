@@ -30,6 +30,10 @@ import { uuid, shortId } from './ids.js';
 import { direQuOnVoit, oublierLEcran } from './ecran.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
+// LE BROUILLON SUIT LA MÊME MÉCANIQUE QUE LA CALCULATRICE, aux trois mêmes
+// endroits : il se règle à l'étape, il s'oublie à chaque question, il s'en va
+// avec l'exercice. Rémy : « pas de persistance ».
+import { reglerBrouillon, oublierLeBrouillon } from '../ui/brouillon.js';
 import { surveillerEnonces } from '../ui/enonce.js';
 import { oublierLaSeance } from './memoireCourte.js';
 import { filtrerEtapes, peutSauter, estRetire, calculatriceAccordee } from './seanceDistante.js';
@@ -814,6 +818,7 @@ export class Runner {
         this.stopTimer();
         state.activeExo = null;
         reglerCalculatrice(null);
+        reglerBrouillon(null);
 
         const [carte, fete] = await Promise.all([
             import('../ui/pathView.js'), import('../ui/ouverture.js')
@@ -1093,6 +1098,10 @@ export class Runner {
             params: step.params,
             accordee: calculatriceAccordee(step.exercise && step.exercise.id)
         });
+        // ET LE BROUILLON, QUI N'A QU'UNE PORTE : le catalogue. Il n'y a rien à
+        // accorder depuis Le direct — le professeur ne le voit pas, c'est son
+        // arbitrage, et un outil invisible ne se pilote pas.
+        reglerBrouillon(step.exercise);
         this.updateProgress();
         this.updateStepNavigation();
 
@@ -1497,6 +1506,8 @@ export class Runner {
             // de la question précédente — l'afficher sous une question neuve
             // est un piège, pas un service.
             signalerNouvelleQuestion();
+            // « pas de persistance » : la page blanche revient avec la question.
+            oublierLeBrouillon();
             // Le compte à rebours par question repart avec elle.
             if (this.timerScope === 'question') this.runTimerCycle(this.currentTimeLimit);
         }
