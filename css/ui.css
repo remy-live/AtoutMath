@@ -5768,30 +5768,47 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     display: flex; flex-direction: column; gap: 10px; }
 .br-mot { flex: 0 0 auto; margin: 0; font-size: .74rem; line-height: 1.45; color: var(--text-muted); }
 
-/* --- Poser --------------------------------------------------------------- */
-.br-reglages { display: flex; align-items: center; gap: 8px; }
-.br-ops { display: flex; gap: 4px; padding: 3px; background: var(--bg-hover); border-radius: 10px; }
-.br-op {
-    width: 40px; height: 40px; font: inherit; font-size: 1.05rem; font-weight: 800;
-    cursor: pointer; border-radius: 8px;
-    background: none; border: 1px solid transparent; color: var(--text-muted);
-}
-.br-op--actif { background: var(--bg-panel); border-color: var(--primary); color: var(--primary-texte); }
-.br-reprendre {
-    flex: 1 1 auto; min-height: 44px; padding: 0 10px;
-    font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer;
-    color: var(--primary-texte); background: var(--bg-app);
-    border: 1px solid var(--border); border-radius: 10px;
-}
-.br-nombres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.br-champ-eti { display: flex; flex-direction: column; gap: 4px;
-    font-size: .72rem; font-weight: 700; color: var(--text-muted); }
-.br-champ {
-    width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 10px;
+/* --- Poser ---------------------------------------------------------------
+   RÉMY, deuxième passe : « l'élève tape son calcul (une addition peut avoir
+   plusieurs membres) et on peut avoir plusieurs calculs dans le brouillon ».
+   On n'écrit donc plus dans deux champs : on écrit une LIGNE, et le cadre se
+   pose dessous. Les calculs s'empilent, comme sur une vraie page. */
+.br-saisie-ligne { display: flex; gap: 8px; }
+.br-saisie {
+    flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 0 12px;
     font: inherit; font-size: 1rem; font-weight: 700; color: var(--text-main);
     background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
 }
+.br-poser {
+    min-height: 44px; padding: 0 16px; font: inherit; font-size: .9rem; font-weight: 800;
+    cursor: pointer; color: #fff; background: var(--primary);
+    border: 1px solid var(--primary); border-radius: 10px;
+}
+/* LES SIGNES SOUS LE DOIGT : sur un téléphone, le clavier qui s'ouvre pour un
+   champ de texte ne porte ni × ni ÷, et aller les chercher dans la troisième
+   planche de touches décourage avant la première addition. Les nombres de
+   l'énoncé suivent, pour ne pas les recopier. */
+.br-aides { display: flex; flex-wrap: wrap; gap: 6px; }
+.br-aide {
+    min-width: 44px; min-height: 40px; padding: 0 10px;
+    font: inherit; font-size: .95rem; font-weight: 800; cursor: pointer;
+    color: var(--text-main); background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 9px;
+}
+.br-aide--nombre { color: var(--primary-texte); font-size: .85rem; }
 .br-vide { margin: 0; font-size: .82rem; line-height: 1.5; color: var(--text-muted); }
+.br-dit--refus { color: var(--danger-texte); font-weight: 600; }
+
+.br-calcul { display: flex; flex-direction: column; gap: 6px; }
+.br-calcul-tete { display: flex; align-items: center; gap: 8px; }
+.br-calcul-dit { flex: 1 1 auto; min-width: 0; font-size: .85rem; font-weight: 800;
+    color: var(--text-muted); }
+.br-methode, .br-oter {
+    font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer;
+    min-height: 32px; padding: 0 8px; border-radius: 8px;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-muted);
+}
+.br-oter { width: 32px; padding: 0; color: var(--danger-texte); }
 
 .br-grille { display: flex; flex-direction: column; align-items: center; gap: 4px;
     padding: 12px 8px; background: var(--bg-app);
@@ -5820,8 +5837,33 @@ body.classe-ouverte #bottom-nav { display: none !important; }
    vient d'écrire lui-même dans les deux champs ; les reprendre dans la grille
    n'aurait aucun sens, et une case qui bouge sans raison fait douter. */
 .br-case--donnee { cursor: default; background: var(--bg-hover); }
+/* LA CASE DE RETENUE SE VOIT, MÊME VIDE. Rémy : « tu oublies les retenues » —
+   elles étaient là, en bordure transparente, donc invisibles tant qu'on n'avait
+   rien écrit dedans. Une case qu'on ne voit pas est une case qui n'existe pas. */
 .br-case--petite { width: 38px; height: 26px; font-size: .85rem; color: var(--warning-texte);
-    background: none; border-color: transparent; }
+    background: none; border: 1px dashed var(--border); }
+.br-case--fantome { width: 38px; height: 26px; background: none; border-color: transparent;
+    cursor: default; }
+/* LA COMPENSATION S'ÉCRIT DEVANT LE CHIFFRE, pas au-dessus : un petit 1 collé
+   à gauche, sur la ligne du haut comme sur celle du bas. C'est l'écriture de
+   la grille de « Poser une opération », et un élève doit la reconnaître. */
+.br-case--porte { position: relative; }
+.br-marque {
+    position: absolute; left: 1px; top: 2px; min-width: 15px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .72rem; font-weight: 800; color: var(--warning-texte); cursor: pointer;
+    background: var(--bg-panel); border: 1px dashed var(--border); border-radius: 4px;
+}
+.br-marque--active { border-color: var(--primary); border-style: solid; }
+/* L'EMPRUNT BARRE LE CHIFFRE : on écrit sa nouvelle valeur au-dessus, et
+   l'ancienne se raye. Le trait est en biais, comme au crayon. */
+.br-case--barree { position: relative; }
+.br-case--barree::after {
+    content: ''; position: absolute; left: 5px; right: 5px; top: 50%; height: 2px;
+    background: var(--danger-texte); transform: rotate(-16deg);
+}
+.br-crayon--petit { font-size: .76rem; }
+.br-crayon[disabled] { opacity: .45; cursor: default; }
 .br-case--active { outline: 3px solid var(--primary); outline-offset: -1px; }
 .br-case--virgule { position: relative; }
 .br-case--virgule::after {

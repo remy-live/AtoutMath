@@ -7,9 +7,9 @@
 // servir), mettre des notes. Dessiner en suivant les carreaux au crayon libre
 // (et une grille aimanté) ».
 //
-// CE QUE ÇA RÉPARE. Devant une soustraction posée, l'élève n'a aujourd'hui
-// aucune surface pour chercher : il calcule de tête — et l'on mesure alors un
-// calcul mental qu'on n'avait pas l'intention d'évaluer — ou il prend une
+// CE QUE ÇA RÉPARE. Devant une soustraction posée, l'élève n'avait aucune
+// surface pour chercher : il calculait de tête — et l'on mesurait alors un
+// calcul mental qu'on n'avait pas l'intention d'évaluer — ou il prenait une
 // feuille à côté du clavier, ce qui va en classe et ne va pas chez lui.
 //
 // ── LES QUATRE ARBITRAGES DE RÉMY, QUI SONT LA MOITIÉ DE CE FICHIER ────────
@@ -20,9 +20,9 @@
 //   4. le crayon libre reste.
 //
 // LES TROIS PREMIERS SE RENFORCENT, ET ILS SIMPLIFIENT TOUT : rien n'est gardé,
-// rien n'est regardé, rien n'est envoyé. Le brouillon ne touche donc NI le
-// journal, NI le serveur, NI le stockage local. Il vit dans la mémoire de cette
-// page, le temps d'une question. C'est la seule pièce du logiciel dont on
+// rien n'est regardé, rien n'est envoyé. Ce module ne touche donc AUCUNE des
+// trois façons de faire durer quelque chose ici. Il vit dans la mémoire de
+// cette page, le temps d'une question. C'est la seule pièce du logiciel dont on
 // puisse le dire, et c'est ce qui la met hors de portée de la ligne rouge :
 //
 //   « Je ne veux pas de construction géométrique avec des outils virtuels.
@@ -30,8 +30,8 @@
 //
 // Une grille aimantée est à un pas de l'outil interdit. Ce qui nous garde du
 // bon côté n'est pas technique, c'est une règle sur la SURFACE : le brouillon
-// sert à PENSER, jamais à RÉPONDRE. D'où, littéralement : aucun bouton
-// « Valider » ici, et aucune activité ne lit ce fichier.
+// sert à PENSER, jamais à RÉPONDRE. D'où, littéralement : aucun bouton qui
+// soumette quoi que ce soit, et aucune activité n'importe ce fichier.
 //
 // ── ET LA GRILLE NE CALCULE RIEN ───────────────────────────────────────────
 //
@@ -44,8 +44,23 @@
 // Ce fichier n'additionne, ne soustrait, ne multiplie et ne divise NULLE PART.
 // Il ne demande au noyau que les RANGS — quelles colonnes, et où tombe la
 // virgule (`etendue`, core/poser.js) — et laisse toutes les cases vides.
+//
+// ── DEUXIÈME PASSE, APRÈS L'AVOIR ESSAYÉ ───────────────────────────────────
+//
+// RÉMY : « pour les chiffres des opérations du brouillon, il faudrait pouvoir
+// les taper, tu oublies les retenues et il y a deux méthodes pour les
+// soustractions et les chiffres je préfère du drag drop en supplément du clic
+// pour le nombres. Pour le calcul, l'élève tape son calcul (une addition peut
+// avoir plusieurs membres) et on peut avoir plusieurs calculs dans le
+// brouillon ».
+//
+// Cinq demandes, et la dernière renverse la table : on ne choisit plus une
+// opération dans un menu avec deux champs, on ÉCRIT son calcul — « 12 + 34 + 5 »
+// — et le cadre se pose dessous. Plusieurs calculs tiennent sur la feuille,
+// comme sur une vraie page de brouillon.
 
 import { etendue } from '../core/poser.js';
+import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
 
 /** Les trois outils, dans l'ordre où ils se présentent. */
 export const OUTILS = ['poser', 'noter', 'dessiner'];
@@ -70,14 +85,24 @@ const CARREAUX_H = 8;
 // neuf, et c'est tout ce que « pas de persistance » demande.
 
 const vierge = () => ({
-    op: '+',
-    a: '',
-    b: '',
-    cases: {},        // les chiffres écrits par l'élève, par clé de case
-    active: null,     // la case qui reçoit le prochain chiffre
+    saisie: '',       // la ligne qu'il est en train d'écrire
+    dit: '',          // ce qu'on lui répond quand elle ne se lit pas
+    calculs: [],      // les opérations posées, dans l'ordre où il les a posées
+    active: null,     // { c: <id du calcul>, k: <clé de case> }
     note: '',
     crayon: 'aimante',
-    traits: []        // chaque trait : une liste de points {x, y}
+    // ── L'HISTOIRE DU DESSIN ───────────────────────────────────────────────
+    //
+    // RÉMY : « pour le dessiner autorise le undo redo ».
+    //
+    // ON GARDE DES ÉTATS, PAS DES GESTES. Une pile de traits qu'on dépile
+    // saurait défaire un trait, mais pas un « Gommer » — et c'est précisément
+    // l'effacement qu'on regrette. Une suite d'états rend les deux au même
+    // prix : trois traits sur une feuille pèsent quelques centaines d'octets,
+    // et tout cela meurt avec la question.
+    traits: [],       // chaque trait : { aimante, points: [{x, y}] }
+    histoire: [[]],
+    rang: 0
 });
 
 let etat = vierge();
@@ -86,6 +111,7 @@ let poserPermis = true;
 let feuille = null;
 let ouverte = false;
 let enTrain = null;   // le trait qu'on est en train de dessiner
+let compteur = 0;
 
 // ── LE RÉGLAGE PAR EXERCICE ────────────────────────────────────────────────
 
@@ -212,10 +238,21 @@ function monter() {
     feuille.hidden = true;
     couche.appendChild(feuille);
 
+    // LA FEUILLE DE STYLE DU GLISSÉ EST CELLE DE TOUT LE MONDE : le fantôme
+    // qui suit le doigt, la cible qui s'allume. Elle s'injecte une fois.
+    if (!document.getElementById('br-css-glisser')) {
+        const style = document.createElement('style');
+        style.id = 'br-css-glisser';
+        style.textContent = CSS_GLISSER;
+        document.head.appendChild(style);
+    }
+
     // UN SEUL ÉCOUTEUR POUR TOUTE LA FEUILLE : elle se redessine souvent, et
     // des écouteurs reposés à chaque dessin finissent par s'empiler.
     feuille.addEventListener('click', surClic);
     feuille.addEventListener('input', surSaisie);
+    feuille.addEventListener('keydown', surTouche);
+    feuille.addEventListener('focusin', surFoyer);
 }
 
 function dessiner() {
@@ -236,6 +273,7 @@ function dessiner() {
         <p class="br-mot">Ton brouillon ne part nulle part&nbsp;: il n'est ni envoyé, ni
            corrigé, ni noté — et la page blanche revient à chaque question.</p>`;
     if (outil === 'dessiner') brancherLeCrayon();
+    if (outil === 'poser') brancherLeGlisse();
 }
 
 function ongletHtml(cle, mot) {
@@ -254,56 +292,120 @@ function corpsHtml() {
     return poserHtml();
 }
 
-// ── POSER ──────────────────────────────────────────────────────────────────
-
 const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** Le nombre tapé, ou `null` : on ne pose pas ce qu'on ne lit pas. */
-function lire(t) {
-    const s = String(t || '').trim().replace(',', '.').replace(/\s/g, '');
-    if (!s || !/^\d+(\.\d+)?$/.test(s)) return null;
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
+// ── LIRE LE CALCUL QU'IL A ÉCRIT ───────────────────────────────────────────
+
+/**
+ * « 12 + 34 + 5 » → une opération à poser, ou un refus qui dit pourquoi.
+ *
+ * RÉMY : « l'élève tape son calcul (une addition peut avoir plusieurs
+ * membres) ». D'où une lecture, et non un menu : on est large sur la FORME —
+ * `x` et `*` pour une multiplication, `:` et `/` pour une division, la virgule
+ * ou le point pour les décimaux — et stricte sur le FOND.
+ *
+ * DEUX REFUS, ET CHACUN DIT CE QU'IL FAUT FAIRE :
+ *
+ *   · ON NE MÉLANGE PAS LES SIGNES. « 3 + 4 × 5 » ne se pose pas en colonnes —
+ *     c'est un calcul à priorités, et le poser reviendrait à inventer un ordre
+ *     que l'élève n'a pas écrit ;
+ *   · SEULE L'ADDITION ACCEPTE PLUS DE DEUX MEMBRES. On n'aligne pas trois
+ *     nombres sous une barre de soustraction : « 20 − 5 − 3 » se pose en deux
+ *     opérations, et c'est précisément ce que la feuille permet maintenant.
+ *
+ * @param {string} texte
+ * @returns {{op:string, nombres:number[]}|{erreur:string}}
+ */
+export function lireLeCalcul(texte) {
+    const t = String(texte == null ? '' : texte)
+        .replace(/[  \s]/g, '')
+        .replace(/[x*]/gi, '×')
+        .replace(/[:/]/g, '÷')
+        .replace(/[−–]/g, '-');
+    if (!t) return { erreur: '' };
+    if (!/^\d/.test(t)) return { erreur: 'Un calcul commence par un nombre.' };
+
+    const morceaux = t.split(/([+\-×÷])/);
+    const nombres = [];
+    const signes = [];
+    for (let i = 0; i < morceaux.length; i++) {
+        const m = morceaux[i];
+        if (i % 2 === 0) {
+            if (!/^\d+([.,]\d+)?$/.test(m)) {
+                return { erreur: 'Je ne reconnais pas ce calcul. Un exemple : 12 + 34 + 5' };
+            }
+            nombres.push(Number(m.replace(',', '.')));
+        } else signes.push(m);
+    }
+    if (!signes.length) return { erreur: 'Il manque un signe : + − × ou ÷' };
+    if (new Set(signes).size > 1) {
+        return { erreur: 'Une opération posée ne mélange pas les signes. '
+            + 'Pose-les l\'une après l\'autre.' };
+    }
+    const op = signes[0];
+    if (op !== '+' && nombres.length > 2) {
+        return { erreur: `On ne pose que deux nombres à la fois avec ${SIGNES[op]}. `
+            + 'Seule l\'addition en accepte plusieurs.' };
+    }
+    return { op, nombres };
 }
 
+// ── POSER ──────────────────────────────────────────────────────────────────
+
 function poserHtml() {
-    const a = lire(etat.a), b = lire(etat.b);
     return `
-        <div class="br-reglages">
-            <div class="br-ops" role="group" aria-label="L'opération">
-                ${Object.keys(SIGNES).map(op => `<button type="button"
-                    class="br-op${etat.op === op ? ' br-op--actif' : ''}"
-                    aria-pressed="${etat.op === op}"
-                    data-br-op="${esc(op)}">${SIGNES[op]}</button>`).join('')}
-            </div>
-            <button type="button" class="br-reprendre" data-br-reprendre>Reprendre les nombres</button>
+        <div class="br-saisie-ligne">
+            <input type="text" class="br-saisie" data-br-saisie inputmode="text"
+                   value="${esc(etat.saisie)}" aria-label="Écris ton calcul"
+                   placeholder="Écris ton calcul : 12 + 34 + 5">
+            <button type="button" class="br-poser" data-br-poser>Poser</button>
         </div>
-        <div class="br-nombres">
-            <label class="br-champ-eti">Premier nombre
-                <input type="text" inputmode="decimal" class="br-champ" data-br-a
-                       value="${esc(etat.a)}" aria-label="Premier nombre"></label>
-            <label class="br-champ-eti">Second nombre
-                <input type="text" inputmode="decimal" class="br-champ" data-br-b
-                       value="${esc(etat.b)}" aria-label="Second nombre"></label>
+        <div class="br-aides">
+            ${['+', '-', '×', '÷'].map(o => `<button type="button" class="br-aide"
+                data-br-signe="${esc(o)}" aria-label="Le signe ${SIGNES[o]}">${SIGNES[o]}</button>`).join('')}
+            ${nombresDeLEnonce().map(n => `<button type="button" class="br-aide br-aide--nombre"
+                data-br-nombre="${esc(n)}">${esc(n)}</button>`).join('')}
         </div>
-        ${(a === null || b === null)
-            ? '<p class="br-vide">Écris tes deux nombres : le cadre se pose tout seul, '
-              + 'aux bonnes colonnes. Le calcul, lui, reste à faire.</p>'
-            : `<div class="br-grille"><div class="br-pose">${
-                grilleHtml(etat.op, a, b)}</div></div>${paveHtml()}`}`;
+        ${etat.dit ? `<p class="br-dit br-dit--refus">${esc(etat.dit)}</p>` : ''}
+        ${etat.calculs.length
+            ? etat.calculs.map(calculHtml).join('') + paveHtml()
+            : '<p class="br-vide">Écris ton calcul là-haut, et le cadre se pose tout seul,'
+              + ' aux bonnes colonnes. Le calcul, lui, reste à faire. Tu peux en poser'
+              + ' plusieurs les uns sous les autres.</p>'}`;
 }
 
 /**
- * LE CADRE, ET RIEN QUE LE CADRE.
+ * LES NOMBRES DE L'ÉNONCÉ, À PORTÉE DE DOIGT.
  *
- * On demande au noyau les RANGS des deux nombres — `etendue` ne calcule rien,
- * elle range des colonnes — et l'on ajoute UNE colonne à gauche : c'est la
- * place que le résultat peut demander (998 + 7 tient sur quatre colonnes), et
- * elle est ajoutée SANS regarder le résultat, donc sans rien en dire.
+ * On LIT l'énoncé affiché — `.game-question`, le crochet que toutes les
+ * activités posent — et les textes du DESSIN quand la phrase n'en porte pas :
+ * mesuré sur « Le Tour du Rectangle », la question dit « quel est le
+ * périmètre ? » et les deux longueurs sont écrites sur la figure.
+ *
+ * ON NE PREND PAS TOUT LE PLATEAU : les propositions d'un exercice à bulles
+ * sont des nombres elles aussi, et en offrir une reviendrait à souffler.
  */
-function rangsDuCadre(a, b) {
-    const e = etendue([a, b], a);
+function nombresDeLEnonce() {
+    const q = document.querySelector('#game-board .game-question, #game-board .question-text');
+    let texte = q ? (q.textContent || '') : '';
+    if ((texte.match(/\d/g) || []).length < 2) {
+        const svg = document.querySelector('#game-board svg');
+        const dessin = svg
+            ? [...svg.querySelectorAll('text, tspan')].map(t => t.textContent).join(' ')
+            : '';
+        texte = `${texte} ${dessin}`;
+    }
+    const tous = (texte.replace(/[  ]/g, '').match(/\d+(?:[.,]\d+)?/g) || []);
+    return [...new Set(tous)].slice(0, 4);
+}
+
+/** Les rangs du cadre — demandés au noyau, qui range des colonnes. */
+function rangsDuCadre(nombres) {
+    const e = etendue(nombres, nombres[0]);
+    // UNE COLONNE DE PLUS À GAUCHE : c'est la place que le résultat peut
+    // demander (998 + 7 tient sur quatre colonnes), et elle est ajoutée SANS
+    // regarder le résultat, donc sans rien en dire.
     return [e.haut + 1, ...e.rangs];
 }
 
@@ -319,72 +421,159 @@ function chiffre(v, rang) {
     return j < dec.length ? dec[j] : '';
 }
 
-const caseHtml = (cle, texte, classe = '') => `<span class="br-case ${classe}${
-    etat.active === cle ? ' br-case--active' : ''}"${cle ? ` data-br-case="${cle}"` : ''}
-    >${esc(texte)}</span>`;
+const estActive = (c, k) => !!etat.active && etat.active.c === c.id && etat.active.k === k;
 
-const videHtml = (rangs, prefixe, classe = '') => rangs.map(r =>
-    caseHtml(`${prefixe}${r}`, etat.cases[`${prefixe}${r}`] || '', classe)).join('');
-
-function grilleHtml(op, a, b) {
-    const rangs = rangsDuCadre(a, b);
-    const virgule = (r) => (r === 0 && rangs.some(x => x < 0) ? ' br-case--virgule' : '');
-
-    // LA POTENCE EST UNE AUTRE FIGURE, et la forcer dans des colonnes ne
-    // servirait personne : le dividende à gauche, le diviseur à droite, le
-    // quotient sous lui, et les soustractions successives dessous.
-    if (op === '÷') return potenceHtml(a, b, rangs.length);
-
-    const lignes = [];
-    // La rangée des retenues : des cases plus petites, au-dessus.
-    lignes.push(`<div class="br-ligne br-ligne--retenues">
-        <span class="br-signe"></span>${videHtml(rangs, 'r', 'br-case--petite')}</div>`);
-    lignes.push(`<div class="br-ligne"><span class="br-signe"></span>${
-        rangs.map(r => caseHtml('', chiffre(a, r), 'br-case--donnee' + virgule(r))).join('')}</div>`);
-    lignes.push(`<div class="br-ligne"><span class="br-signe">${SIGNES[op]}</span>${
-        rangs.map(r => caseHtml('', chiffre(b, r), 'br-case--donnee' + virgule(r))).join('')}</div>`);
-    lignes.push('<div class="br-barre"></div>');
-
-    // LA MULTIPLICATION S'ÉCRIT EN LIGNES, pas en une seule : un produit
-    // partiel par chiffre du multiplicateur, puis leur somme. On donne donc
-    // autant de rangées vides qu'il y a de chiffres, et une dernière pour le
-    // total quand il y en a plusieurs.
-    if (op === '×') {
-        const combien = String(b).replace('.', '').replace(/^0+/, '').length || 1;
-        for (let i = 0; i < combien; i++) {
-            lignes.push(`<div class="br-ligne"><span class="br-signe"></span>${
-                videHtml(rangs, `p${i}:`)}</div>`);
-        }
-        if (combien > 1) {
-            lignes.push('<div class="br-barre"></div>');
-            lignes.push(`<div class="br-ligne"><span class="br-signe"></span>${
-                videHtml(rangs, 't')}</div>`);
-        }
-        return lignes.join('');
-    }
-
-    lignes.push(`<div class="br-ligne"><span class="br-signe"></span>${
-        rangs.map(r => caseHtml(`t${r}`, etat.cases[`t${r}`] || '', virgule(r))).join('')}</div>`);
-    return lignes.join('');
+/** Une case qu'on remplit : on la touche, on y glisse un chiffre, on la tape. */
+function caseHtml(c, cle, classe = '') {
+    const v = c.cases[cle] || '';
+    return `<span class="br-case ${classe}${estActive(c, cle) ? ' br-case--active' : ''}"
+        data-br-case="${esc(cle)}" data-br-c="${esc(c.id)}" tabindex="0" role="button"
+        aria-label="Case ${esc(cle)}">${esc(v)}</span>`;
 }
 
-function potenceHtml(a, b, largeur) {
+/** Une case donnée par l'énoncé : elle se lit, elle ne se touche pas. */
+function donneeHtml(texte, classe = '') {
+    return `<span class="br-case br-case--donnee ${classe}">${esc(texte)}</span>`;
+}
+
+/**
+ * LES RETENUES ÉTAIENT OUBLIÉES, ET C'EST LE PREMIER REPROCHE DE RÉMY.
+ *
+ * ── OÙ ELLES SE POSENT, ET POURQUOI PAS TOUJOURS AU MÊME ENDROIT ───────────
+ *
+ * À L'ADDITION ET À LA MULTIPLICATION, EN HAUT : la retenue s'ajoute aux
+ * chiffres du dessus, et c'est là qu'on l'écrit au tableau.
+ *
+ * À LA SOUSTRACTION, ÇA DÉPEND DE LA MÉTHODE — et il y en a deux, enseignées
+ * toutes les deux en France. Rémy, en septembre déjà : « j'ai des élèves qui
+ * font une autre méthode où pour 53 − 17, il mette le 1 à 3 et au lieu du 5,
+ * il barre et mette 4 ».
+ *
+ *   · PAR COMPENSATION : on ajoute dix en haut et un en bas. Deux petites
+ *     marques DEVANT les chiffres, l'une sur la ligne du haut, l'autre sur
+ *     celle du bas, décalées d'une colonne.
+ *   · PAR EMPRUNT : on barre le chiffre du haut et l'on écrit sa nouvelle
+ *     valeur AU-DESSUS. Écrire dans la case du dessus barre donc celle du
+ *     dessous — c'est le geste même, et il ne demande aucun bouton.
+ *
+ * ── ET LA COLONNE DES UNITÉS N'EN PORTE JAMAIS ─────────────────────────────
+ *
+ * La règle vient du noyau (`porteUneRetenue`, core/poser.js), et Rémy l'avait
+ * signalée sur 554 + 448 : « normalement, il ne devrait pas pour l'addition
+ * avoir une retenue sur la première colonne non ? » Non : la retenue d'une
+ * colonne VIENT de la colonne à sa droite, et la colonne des unités n'a rien à
+ * sa droite. Symétriquement, la colonne de gauche n'a personne à qui emprunter.
+ *
+ * ON NE DIT PAS LESQUELLES EN PORTENT VRAIMENT : ce serait répondre. Toutes
+ * les colonnes qui PEUVENT en porter ont leur case, vide.
+ */
+function retenuesHtml(c, rangs) {
+    const sansLaDerniere = rangs.slice(0, -1);
+    return `<div class="br-ligne br-ligne--retenues"><span class="br-signe"></span>${
+        sansLaDerniere.map(r => caseHtml(c, `r${r}`, 'br-case--petite')).join('')
+    }<span class="br-case br-case--fantome"></span></div>`;
+}
+
+function calculHtml(c) {
+    const rangs = rangsDuCadre(c.nombres);
+    const virgule = (r) => (r === 0 && rangs.some(x => x < 0) ? ' br-case--virgule' : '');
+    const ligneDonnee = (v, signe, classes) => `<div class="br-ligne">
+        <span class="br-signe">${signe}</span>${
+        rangs.map(r => donneeHtml(chiffre(v, r), (classes ? classes(r) : '') + virgule(r))).join('')}</div>`;
+
+    let dedans = '';
+    if (c.op === '÷') {
+        dedans = potenceHtml(c);
+    } else if (c.op === '-' && c.methode === 'emprunt') {
+        // L'EMPRUNT : une rangée au-dessus du premier nombre, et le chiffre
+        // barré dès qu'on écrit au-dessus de lui.
+        dedans = `<div class="br-ligne br-ligne--retenues"><span class="br-signe"></span>${
+            rangs.slice(0, -1).map((r, i) => caseHtml(c, `e${rangs[i + 1]}`, 'br-case--petite')).join('')
+        }<span class="br-case br-case--fantome"></span></div>`
+            + ligneDonnee(c.nombres[0], '', (r) => (c.cases[`e${r}`] ? ' br-case--barree' : ''))
+            + ligneDonnee(c.nombres[1], SIGNES['-'])
+            + '<div class="br-barre"></div>'
+            + `<div class="br-ligne"><span class="br-signe"></span>${
+                rangs.map(r => caseHtml(c, `t${r}`, virgule(r))).join('')}</div>`;
+    } else if (c.op === '-') {
+        // LA COMPENSATION : dix devant le chiffre du haut, un devant celui du
+        // bas de la colonne suivante.
+        const marques = (prefixe, saufDerniere) => (r, i) => {
+            void i;
+            const horsJeu = saufDerniere ? r === rangs[rangs.length - 1] : r === rangs[0];
+            return horsJeu ? '' : marqueHtml(c, `${prefixe}${r}`);
+        };
+        dedans = `<div class="br-ligne"><span class="br-signe"></span>${
+            rangs.map(r => `<span class="br-case br-case--donnee${virgule(r)} br-case--porte">${
+                marques('m', false)(r)}${esc(chiffre(c.nombres[0], r))}</span>`).join('')}</div>`
+            + `<div class="br-ligne"><span class="br-signe">${SIGNES['-']}</span>${
+                rangs.map(r => `<span class="br-case br-case--donnee${virgule(r)} br-case--porte">${
+                    marques('b', true)(r)}${esc(chiffre(c.nombres[1], r))}</span>`).join('')}</div>`
+            + '<div class="br-barre"></div>'
+            + `<div class="br-ligne"><span class="br-signe"></span>${
+                rangs.map(r => caseHtml(c, `t${r}`, virgule(r))).join('')}</div>`;
+    } else {
+        // L'ADDITION — plusieurs membres — ET LA MULTIPLICATION.
+        const lignes = [retenuesHtml(c, rangs)];
+        c.nombres.forEach((v, i) => {
+            lignes.push(ligneDonnee(v, i === c.nombres.length - 1 ? SIGNES[c.op] : ''));
+        });
+        lignes.push('<div class="br-barre"></div>');
+        if (c.op === '×') {
+            // LA MULTIPLICATION S'ÉCRIT EN LIGNES : un produit partiel par
+            // chiffre du multiplicateur, puis leur somme.
+            const combien = String(c.nombres[1]).replace('.', '').replace(/^0+/, '').length || 1;
+            for (let i = 0; i < combien; i++) {
+                lignes.push(`<div class="br-ligne"><span class="br-signe"></span>${
+                    rangs.map(r => caseHtml(c, `p${i}:${r}`)).join('')}</div>`);
+            }
+            if (combien > 1) {
+                lignes.push('<div class="br-barre"></div>');
+                lignes.push(`<div class="br-ligne"><span class="br-signe"></span>${
+                    rangs.map(r => caseHtml(c, `t${r}`)).join('')}</div>`);
+            }
+        } else {
+            lignes.push(`<div class="br-ligne"><span class="br-signe"></span>${
+                rangs.map(r => caseHtml(c, `t${r}`, virgule(r))).join('')}</div>`);
+        }
+        dedans = lignes.join('');
+    }
+
+    return `<div class="br-calcul" data-br-calcul="${esc(c.id)}">
+        <div class="br-calcul-tete">
+            <span class="br-calcul-dit">${esc(c.nombres.join(` ${SIGNES[c.op]} `))}</span>
+            ${c.op === '-' ? `<button type="button" class="br-methode" data-br-methode="${esc(c.id)}"
+                title="L'autre façon d'écrire les retenues">⇄ ${
+                c.methode === 'emprunt' ? 'par emprunt' : 'par compensation'}</button>` : ''}
+            <button type="button" class="br-oter" data-br-oter="${esc(c.id)}"
+                aria-label="Retirer ce calcul">✕</button>
+        </div>
+        <div class="br-grille"><div class="br-pose">${dedans}</div></div>
+    </div>`;
+}
+
+/** La petite marque posée DEVANT un chiffre — la compensation s'écrit ainsi. */
+function marqueHtml(c, cle) {
+    return `<span class="br-marque${estActive(c, cle) ? ' br-marque--active' : ''}"
+        data-br-case="${esc(cle)}" data-br-c="${esc(c.id)}" tabindex="0" role="button"
+        aria-label="Retenue ${esc(cle)}">${esc(c.cases[cle] || '')}</span>`;
+}
+
+function potenceHtml(c) {
     const chiffresDe = (v) => String(v).replace('.', ',').split('');
-    const gauche = chiffresDe(a);
-    const droite = chiffresDe(b);
-    const vides = (prefixe) => Array.from({ length: gauche.length }, (_, i) =>
-        caseHtml(`${prefixe}${i}`, etat.cases[`${prefixe}${i}`] || '')).join('');
-    void largeur;
+    const gauche = chiffresDe(c.nombres[0]);
+    const droite = chiffresDe(c.nombres[1]);
+    const vides = (prefixe) => gauche.map((_, i) => caseHtml(c, `${prefixe}${i}`)).join('');
     return `
         <div class="br-potence">
             <div class="br-potence-haut">
-                <div class="br-ligne">${gauche.map(c => caseHtml('', c, 'br-case--donnee')).join('')}</div>
+                <div class="br-ligne">${gauche.map(x => donneeHtml(x)).join('')}</div>
                 <div class="br-potence-mur"></div>
                 <div class="br-potence-droite">
-                    <div class="br-ligne">${droite.map(c => caseHtml('', c, 'br-case--donnee')).join('')}</div>
+                    <div class="br-ligne">${droite.map(x => donneeHtml(x)).join('')}</div>
                     <div class="br-barre br-barre--quotient"></div>
-                    <div class="br-ligne">${Array.from({ length: droite.length + 1 }, (_, i) =>
-                        caseHtml(`q${i}`, etat.cases[`q${i}`] || '')).join('')}</div>
+                    <div class="br-ligne">${droite.concat(['']).map((_, i) =>
+                        caseHtml(c, `q${i}`)).join('')}</div>
                 </div>
             </div>
             ${[0, 1, 2, 3].map(n => `<div class="br-ligne">${vides(`d${n}:`)}</div>`).join('')}
@@ -396,14 +585,31 @@ function potenceHtml(a, b, largeur) {
  *
  * Celui du système, sur un téléphone, recouvre la moitié de l'écran — donc le
  * brouillon qu'on est en train de remplir. C'est la raison écrite dans
- * `ui/gameChrome.js` pour le pavé des exercices, et elle vaut mot pour mot
- * ici. On touche une case, on touche un chiffre.
+ * `ui/gameChrome.js` pour le pavé des exercices, et elle vaut mot pour mot ici.
+ *
+ * TROIS GESTES POUR LE MÊME CHIFFRE, et Rémy les a demandés tous les trois :
+ * on touche une case puis un chiffre ; on GLISSE un chiffre dans une case
+ * (« je préfère du drag drop en supplément du clic ») ; ou l'on TAPE au
+ * clavier, la case ayant le foyer.
  */
 function paveHtml() {
     const touches = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ',', '⌫'];
     return `<div class="br-pave" role="group" aria-label="Les chiffres">${
         touches.map(t => `<button type="button" class="br-touche" data-br-touche="${esc(t)}"
             ${t === '⌫' ? 'aria-label="Effacer le chiffre"' : ''}>${t}</button>`).join('')}</div>`;
+}
+
+/** Chaque touche du pavé se glisse dans une case. */
+function brancherLeGlisse() {
+    feuille.querySelectorAll('.br-touche').forEach(t => {
+        if (t.dataset.brTouche === '⌫') return;
+        rendreGlissable(t, {
+            cibles: '.br-case[data-br-case], .br-marque[data-br-case]',
+            deposer: (cible) => {
+                ecrire(cible.dataset.brC, cible.dataset.brCase, t.dataset.brTouche);
+            }
+        });
+    });
 }
 
 // ── NOTER ──────────────────────────────────────────────────────────────────
@@ -428,7 +634,14 @@ function dessinerHtml() {
                 aria-pressed="${etat.crayon === 'libre'}" data-br-crayon="libre">Crayon libre</button>
             <button type="button" class="br-crayon${etat.crayon === 'aimante' ? ' br-crayon--actif' : ''}"
                 aria-pressed="${etat.crayon === 'aimante'}" data-br-crayon="aimante">Aimanté</button>
-            <button type="button" class="br-crayon" data-br-gomme>Gommer</button>
+        </div>
+        <div class="br-crayons" role="group" aria-label="Revenir en arrière">
+            <button type="button" class="br-crayon br-crayon--petit" data-br-defaire
+                ${etat.rang > 0 ? '' : 'disabled'} aria-label="Défaire">↶ Défaire</button>
+            <button type="button" class="br-crayon br-crayon--petit" data-br-refaire
+                ${etat.rang < etat.histoire.length - 1 ? '' : 'disabled'} aria-label="Refaire">↷ Refaire</button>
+            <button type="button" class="br-crayon br-crayon--petit" data-br-gomme
+                ${etat.traits.length ? '' : 'disabled'}>Gommer</button>
         </div>
         <p class="br-dit">${etat.crayon === 'aimante'
             ? 'Le trait saute de nœud en nœud&nbsp;: il suit les carreaux.'
@@ -442,7 +655,46 @@ function dessinerHtml() {
         </div>`;
 }
 
-const chemin = (points) => points.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
+/**
+ * LE TRAIT LIBRE EST LISSÉ, L'AIMANTÉ NE L'EST PAS.
+ *
+ * RÉMY : « lisse le trait libre ». Un doigt échantillonné à soixante images
+ * par seconde rend une ligne brisée : à l'écran, cela se voit comme un
+ * tremblement, et sur une figure de brouillon cela ressemble à une main qui
+ * hésite. On fait donc passer une courbe par les points — chaque point devient
+ * le point de CONTRÔLE d'une quadratique dont les extrémités sont les milieux
+ * de ses segments, qui est la façon la plus courte d'obtenir une courbe
+ * continue sans rien déplacer de visible.
+ *
+ * ET SURTOUT PAS SUR L'AIMANTÉ. Lisser un trait qui saute de nœud en nœud le
+ * ferait passer À CÔTÉ des nœuds — c'est-à-dire défaire exactement ce que
+ * l'aimantation vient de faire. Le trait garde donc la mémoire du crayon qui
+ * l'a tracé, et non le réglage du moment : changer de crayon ne doit pas
+ * redessiner ce qui est déjà sur la feuille.
+ */
+export function chemin(trait) {
+    const points = Array.isArray(trait) ? trait : (trait.points || []);
+    const droit = Array.isArray(trait) ? true : !!trait.aimante;
+    if (!points.length) return '';
+    if (droit || points.length < 3) {
+        return points.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
+    }
+    const milieu = (a, b) => `${Math.round((a.x + b.x) / 2)} ${Math.round((a.y + b.y) / 2)}`;
+    let d = `M${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length - 1; i++) {
+        d += ` Q${points[i].x} ${points[i].y} ${milieu(points[i], points[i + 1])}`;
+    }
+    const fin = points[points.length - 1];
+    return `${d} L${fin.x} ${fin.y}`;
+}
+
+/** Un état de plus dans l'histoire du dessin — et l'on efface ce qui suivait. */
+function noterLeDessin(traits) {
+    etat.traits = traits;
+    etat.histoire = etat.histoire.slice(0, etat.rang + 1);
+    etat.histoire.push(traits);
+    etat.rang = etat.histoire.length - 1;
+}
 
 /**
  * LE CRAYON, ET LA GRILLE AIMANTÉE.
@@ -492,7 +744,10 @@ function brancherLeCrayon() {
         if (!p) return;
         e.preventDefault();
         if (svg.setPointerCapture) svg.setPointerCapture(e.pointerId);
-        enTrain = [p];
+        // LE TRAIT RETIENT SON CRAYON. Changer de crayon ne doit pas
+        // redessiner ce qui est déjà sur la feuille — et lisser après coup un
+        // trait aimanté le ferait passer à côté de ses nœuds.
+        enTrain = { aimante: etat.crayon === 'aimante', points: [p] };
         tracer();
     });
 
@@ -500,12 +755,18 @@ function brancherLeCrayon() {
         if (!enTrain) return;
         const p = point(e);
         if (!p) return;
+        const d = enTrain.points[enTrain.points.length - 1];
         // DEUX POINTS IDENTIQUES NE FONT PAS UN TRAIT : en aimanté, le doigt
         // passe dix fois dans le même carreau, et chacun de ces points
         // rallongerait le chemin pour rien.
-        const d = enTrain[enTrain.length - 1];
-        if (d.x === p.x && d.y === p.y) return;
-        enTrain.push(p);
+        //
+        // ET AU CRAYON LIBRE, ON ÉCHANTILLONNE PLUS LARGE : un point tous les
+        // deux pixels suffit à suivre la main, et c'est la moitié du lissage —
+        // la courbe n'a plus à absorber le tremblement de soixante points par
+        // seconde, elle n'a qu'à passer par ceux qui restent.
+        const ecart = Math.abs(d.x - p.x) + Math.abs(d.y - p.y);
+        if (ecart === 0 || (!enTrain.aimante && ecart < 3)) return;
+        enTrain.points.push(p);
         tracer();
     });
 
@@ -513,7 +774,7 @@ function brancherLeCrayon() {
         if (!enTrain) return;
         // UN POINT SEUL N'EST PAS UN TRAIT, mais on le garde quand même : en
         // aimanté, toucher un nœud est le geste qui pose un repère.
-        etat.traits.push(enTrain);
+        noterLeDessin(etat.traits.concat([enTrain]));
         enTrain = null;
         dessiner();
     };
@@ -523,103 +784,162 @@ function brancherLeCrayon() {
 
 // ── LES GESTES ─────────────────────────────────────────────────────────────
 
+/** Écrit un chiffre dans une case, d'où qu'il vienne. */
+function ecrire(idCalcul, cle, valeur) {
+    const c = etat.calculs.find(x => x.id === idCalcul);
+    if (!c) return;
+    if (valeur === null) delete c.cases[cle];
+    else c.cases[cle] = valeur;
+    etat.active = { c: idCalcul, k: cle };
+    redessinerLesCalculs();
+}
+
+/** On ne refait QUE les calculs : la ligne de saisie garde son foyer. */
+function redessinerLesCalculs() {
+    const zone = feuille && feuille.querySelector('.br-corps');
+    if (!zone || outil !== 'poser') return;
+    const ancien = [...zone.querySelectorAll('.br-calcul')];
+    const pave = zone.querySelector('.br-pave');
+    const html = etat.calculs.map(calculHtml).join('');
+    if (ancien.length) {
+        ancien.slice(1).forEach(e => e.remove());
+        ancien[0].outerHTML = html || '';
+    } else if (html) {
+        if (pave) pave.insertAdjacentHTML('beforebegin', html);
+        else zone.insertAdjacentHTML('beforeend', html + paveHtml());
+    }
+    const vide = zone.querySelector('.br-vide');
+    if (etat.calculs.length && vide) vide.remove();
+    if (!etat.calculs.length && pave) pave.remove();
+    brancherLeGlisse();
+    // LE FOYER SUIT LA CASE ACTIVE : sans cela, taper deux chiffres de suite
+    // demanderait de la retoucher entre les deux.
+    const active = zone.querySelector('.br-case--active, .br-marque--active');
+    if (active && active.focus) active.focus({ preventScroll: true });
+}
+
 function surSaisie(e) {
     const el = e.target;
     if (el.matches('[data-br-note]')) { etat.note = el.value; return; }
-    // ON NE REDESSINE PAS PENDANT QU'IL TAPE SES NOMBRES : le cadre apparaît
-    // quand les deux sont lisibles, et redessiner à chaque frappe volerait le
-    // foyer du champ.
-    if (el.matches('[data-br-a]')) { etat.a = el.value; majCadre(); return; }
-    if (el.matches('[data-br-b]')) { etat.b = el.value; majCadre(); }
+    if (el.matches('[data-br-saisie]')) { etat.saisie = el.value; }
 }
 
-/** Le cadre se refait, les deux champs gardent leur foyer. */
-function majCadre() {
-    const zone = feuille && feuille.querySelector('.br-corps');
-    if (!zone || outil !== 'poser') return;
-    const a = lire(etat.a), b = lire(etat.b);
-    const ancienne = zone.querySelector('.br-grille');
-    const pave = zone.querySelector('.br-pave');
-    if (a === null || b === null) {
-        if (ancienne) ancienne.remove();
-        if (pave) pave.remove();
-        if (!zone.querySelector('.br-vide')) {
-            zone.insertAdjacentHTML('beforeend',
-                '<p class="br-vide">Écris tes deux nombres : le cadre se pose tout seul, '
-                + 'aux bonnes colonnes. Le calcul, lui, reste à faire.</p>');
-        }
-        return;
+/**
+ * TAPER LES CHIFFRES — première demande de Rémy.
+ *
+ * L'écouteur est sur la FEUILLE, et les cases portent `tabindex` : les touches
+ * n'arrivent donc que lorsqu'une case a le foyer. Un écouteur sur le document
+ * volerait les touches à l'exercice qui est dessous — c'est tout le contraire
+ * d'un brouillon, qui ne doit jamais gêner la question.
+ */
+function surTouche(e) {
+    const cible = e.target.closest('[data-br-case]');
+    if (!cible) return;
+    const id = cible.dataset.brC, cle = cible.dataset.brCase;
+    if (/^[0-9]$/.test(e.key)) { e.preventDefault(); ecrire(id, cle, e.key); return; }
+    if (e.key === ',' || e.key === '.') { e.preventDefault(); ecrire(id, cle, ','); return; }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault(); ecrire(id, cle, null); return;
     }
-    const mot = zone.querySelector('.br-vide');
-    if (mot) mot.remove();
-    const html = `<div class="br-grille"><div class="br-pose">${
-        grilleHtml(etat.op, a, b)}</div></div>`;
-    if (ancienne) ancienne.outerHTML = html;
-    else zone.insertAdjacentHTML('beforeend', html);
-    if (!zone.querySelector('.br-pave')) zone.insertAdjacentHTML('beforeend', paveHtml());
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        etat.active = { c: id, k: cle };
+        redessinerLesCalculs();
+    }
+}
+
+/** Le foyer et la case active ne font qu'un. */
+function surFoyer(e) {
+    const cible = e.target.closest('[data-br-case]');
+    if (!cible) return;
+    const deja = etat.active;
+    if (deja && deja.c === cible.dataset.brC && deja.k === cible.dataset.brCase) return;
+    etat.active = { c: cible.dataset.brC, k: cible.dataset.brCase };
+    redessinerLesCalculs();
 }
 
 function surClic(e) {
-    const el = e.target.closest('[data-br-outil], [data-br-op], [data-br-case], [data-br-touche],'
-        + '[data-br-crayon], [data-br-gomme], [data-br-effacer], [data-br-fermer], [data-br-reprendre]');
+    const el = e.target.closest('[data-br-outil], [data-br-case], [data-br-touche],'
+        + '[data-br-crayon], [data-br-gomme], [data-br-effacer], [data-br-fermer],'
+        + '[data-br-poser], [data-br-signe], [data-br-nombre], [data-br-oter], [data-br-methode],'
+        + '[data-br-defaire], [data-br-refaire]');
     if (!el) return;
     const d = el.dataset;
 
     if (d.brFermer !== undefined) { fermerBrouillon(); return; }
     if (d.brEffacer !== undefined) { oublierLeBrouillon(); return; }
     if (d.brOutil) { outil = d.brOutil; etat.active = null; dessiner(); return; }
-    if (d.brOp) { etat.op = d.brOp; etat.cases = {}; etat.active = null; dessiner(); return; }
     if (d.brCrayon) { etat.crayon = d.brCrayon; dessiner(); return; }
-    if (d.brGomme !== undefined) { etat.traits = []; enTrain = null; dessiner(); return; }
-    if (d.brReprendre !== undefined) { reprendreLesNombres(); return; }
-
-    if (d.brCase) {
-        etat.active = etat.active === d.brCase ? null : d.brCase;
-        majCadre();
+    if (d.brGomme !== undefined) { noterLeDessin([]); enTrain = null; dessiner(); return; }
+    if (d.brDefaire !== undefined) {
+        if (etat.rang > 0) { etat.rang -= 1; etat.traits = etat.histoire[etat.rang]; }
+        dessiner();
         return;
     }
-
+    if (d.brRefaire !== undefined) {
+        if (etat.rang < etat.histoire.length - 1) {
+            etat.rang += 1;
+            etat.traits = etat.histoire[etat.rang];
+        }
+        dessiner();
+        return;
+    }
+    if (d.brPoser !== undefined) { poserLeCalcul(); return; }
+    if (d.brSigne || d.brNombre) { ajouterALaSaisie(d.brSigne || d.brNombre); return; }
+    if (d.brOter) {
+        etat.calculs = etat.calculs.filter(c => c.id !== d.brOter);
+        etat.active = null;
+        dessiner();
+        return;
+    }
+    if (d.brMethode) {
+        const c = etat.calculs.find(x => x.id === d.brMethode);
+        // LES RETENUES DÉJÀ ÉCRITES NE SE TRADUISENT PAS d'une méthode à
+        // l'autre : elles ne sont pas aux mêmes endroits et ne disent pas la
+        // même chose. On les retire, plutôt que de laisser des marques qui ne
+        // veulent plus rien dire.
+        if (c) {
+            c.methode = c.methode === 'emprunt' ? 'compensation' : 'emprunt';
+            Object.keys(c.cases).forEach(k => { if (/^[emb]/.test(k)) delete c.cases[k]; });
+        }
+        dessiner();
+        return;
+    }
+    if (d.brCase) { etat.active = { c: d.brC, k: d.brCase }; redessinerLesCalculs(); return; }
     if (d.brTouche) {
         if (!etat.active) return;
-        if (d.brTouche === '⌫') delete etat.cases[etat.active];
-        else etat.cases[etat.active] = d.brTouche;
-        majCadre();
+        ecrire(etat.active.c, etat.active.k, d.brTouche === '⌫' ? null : d.brTouche);
     }
 }
 
+function ajouterALaSaisie(morceau) {
+    etat.saisie = `${etat.saisie}${morceau}`;
+    etat.dit = '';
+    const champ = feuille && feuille.querySelector('[data-br-saisie]');
+    if (champ) { champ.value = etat.saisie; champ.focus({ preventScroll: true }); }
+}
+
 /**
- * LES NOMBRES DE L'ÉNONCÉ, REPRIS SANS LES RETAPER.
+ * PLUSIEURS CALCULS SUR LA MÊME FEUILLE — dernière demande de Rémy.
  *
- * On LIT l'énoncé affiché — `.game-question`, le crochet que toutes les
- * activités posent — et l'on prend les deux premiers nombres qu'il contient.
- * C'est une commodité, jamais une réponse : si l'énoncé n'en porte pas deux,
- * on ne devine pas, on ne remplit rien.
+ * Une vraie page de brouillon porte l'addition, puis la soustraction qu'elle
+ * appelle, puis la vérification. Chacune garde sa place et ses retenues ; la
+ * croix en retire une quand elle n'a rien donné.
  */
-function reprendreLesNombres() {
-    const q = document.querySelector('#game-board .game-question, #game-board .question-text');
-    let texte = q ? (q.textContent || '') : '';
-    // ET LES NOMBRES DU DESSIN COMPTENT AUSSI. MESURÉ sur « Le Tour du
-    // Rectangle » : la question dit « Quel est le périmètre ? » et les deux
-    // longueurs sont ÉCRITES SUR LA FIGURE. Chercher dans la seule phrase ne
-    // trouvait rien, et le bouton ne faisait rien — ce qui est la pire des
-    // réponses, puisqu'on ne sait pas si c'est lui ou soi.
-    //
-    // ON NE PREND QUE LES TEXTES DU DESSIN, pas tout le plateau : les
-    // propositions d'un exercice à bulles sont des nombres elles aussi, et
-    // reprendre une réponse possible serait souffler.
-    if ((texte.match(/\d/g) || []).length < 2) {
-        const svg = document.querySelector('#game-board svg');
-        const dessin = svg
-            ? [...svg.querySelectorAll('text, tspan')].map(t => t.textContent).join(' ')
-            : '';
-        texte = `${texte} ${dessin}`;
+function poserLeCalcul() {
+    const lu = lireLeCalcul(etat.saisie);
+    if (lu.erreur !== undefined) {
+        etat.dit = lu.erreur || 'Écris d\'abord ton calcul.';
+        dessiner();
+        return;
     }
-    const nombres = (texte.replace(/ | /g, '').match(/\d+(?:[.,]\d+)?/g) || []);
-    if (nombres.length >= 2) {
-        etat.a = nombres[0];
-        etat.b = nombres[1];
-        etat.cases = {};
-        etat.active = null;
-    }
+    compteur += 1;
+    etat.calculs.push({
+        id: `c${compteur}`, op: lu.op, nombres: lu.nombres,
+        methode: 'compensation', cases: {}
+    });
+    etat.saisie = '';
+    etat.dit = '';
+    etat.active = null;
     dessiner();
 }

@@ -1367,3 +1367,59 @@ autres restent.
 catalogue, qui laisserait Rémy éteindre « Poser » exercice par exercice de sa
 propre main. Le tag « Calcul mental » couvre les trente exercices concernés, et
 `poserAuBrouillon` tranche le reste.
+
+## 8. Le brouillon, deuxième passe : taper, les retenues, le glissé
+
+> « pour les chiffres des opérations du brouillon, il faudrait pouvoir les
+> taper, tu oublies les retenues et il y a deux méthodes pour les soustractions
+> et les chiffres je préfère du drag drop en supplément du clic pour le nombres.
+> Pour le calcul, l'élève tape son calcul (une addition peut avoir plusieurs
+> membres) et on peut avoir plusieurs calculs dans le brouillon »
+
+Cinq demandes dans trois phrases, et la dernière renverse la table de « Poser ».
+
+> « et pour le dessiner autorise le undo redo, et lisse le trait libre »
+
+**« Poser » change de forme.** On n'écrit plus dans deux champs avec un menu
+d'opérations : on écrit une LIGNE — « 12 + 34 + 5 » — et le cadre se pose
+dessous. Plusieurs calculs tiennent sur la feuille, chacun avec ses retenues et
+sa croix pour l'ôter. La lecture est large sur la forme (`x` et `*`, `:` et `/`,
+la virgule comme le point) et stricte sur le fond : on ne mélange pas les signes
+— « 3 + 4 × 5 » est un calcul à priorités, le poser inventerait un ordre que
+l'élève n'a pas écrit —, et seule l'addition accepte plus de deux membres.
+
+**Les retenues étaient là, mais invisibles** : bordure transparente tant qu'on
+n'avait rien écrit dedans. Une case qu'on ne voit pas est une case qui n'existe
+pas. Elles sont maintenant en pointillé ambre, sur toutes les colonnes qui
+PEUVENT en porter — jamais celle des unités, qui n'a rien à sa droite, la règle
+étant celle du noyau et celle que Rémy avait signalée sur 554 + 448.
+
+**Les deux méthodes de soustraction**, celles qu'il décrivait en septembre : par
+compensation, deux petites marques DEVANT les chiffres, l'une en haut l'autre en
+bas ; par emprunt, une case au-dessus du chiffre du haut — et y écrire BARRE le
+chiffre, ce qui est le geste même. Changer de méthode retire les marques déjà
+posées : elles ne sont pas aux mêmes endroits et ne diraient plus rien.
+
+**Trois gestes pour le même chiffre** : on touche une case puis un chiffre, on
+TAPE au clavier (la case a le foyer — l'écouteur est sur la feuille et non sur
+le document, sans quoi il volerait les touches à l'exercice), ou l'on GLISSE une
+touche du pavé dans une case, par `rendreGlissable`, le même geste que partout
+ailleurs dans le logiciel.
+
+**Le dessin se défait.** On garde des ÉTATS et non des gestes : une pile de
+traits saurait défaire un trait, mais pas un « Gommer » — et c'est précisément
+l'effacement qu'on regrette. Défaire, refaire, et l'effacement se défait aussi.
+
+**Le trait libre est lissé**, par une quadratique dont les extrémités sont les
+milieux des segments ; il part et arrive aux mêmes points, on lisse le
+tremblement sans déplacer le trait. **L'aimanté, lui, ne l'est pas** : une
+courbe le ferait passer À CÔTÉ des nœuds, c'est-à-dire défaire exactement ce que
+l'aimantation vient de faire. Chaque trait retient donc le crayon qui l'a tracé,
+et changer de crayon ne redessine pas ce qui est déjà sur la feuille.
+
+**Mesuré** (`tools/leBrouillon.mjs`, 26 vérifications) : les trois membres
+alignés, les retenues visibles (bord « dashed »), les trois gestes du chiffre,
+deux calculs qui coexistent, les deux méthodes et le chiffre barré, le trait
+aimanté sur les nœuds et sans courbe, le trait libre courbé et hors des nœuds,
+défaire/refaire/gommer — et toujours **zéro événement au journal, zéro clef dans
+le stockage**.
