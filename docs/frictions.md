@@ -5046,3 +5046,37 @@ le résultat n'existe pas** — 15 octobre 2026
   rend le PDF, l'image, les VRAIES teintes du fichier et le compte des champs
   remplissables. Il choisit tout seul entre la fiche et la liste de questions
   selon que l'exercice a un `printable`.
+
+**Un réglage `type: 'checkbox'` n'est pas une case à cocher dans la page** — 19 octobre 2026
+
+- *Ce que je voulais faire* : vérifier, depuis une sonde, que l'option
+  « Montrer les traits de séparation » de la fiche « Lis la Fraction » dessine
+  vraiment les pointillés.
+- *Ce qui a coûté* : quatre allers-retours. Le schéma de réglage déclare
+  `type: 'checkbox'`, et la page en fait une PAIRE DE BOUTONS Oui / Non
+  (`.cfg-oui-non`, `[data-bool]`). `querySelector('input[type=checkbox]')` rend
+  donc `null` — c'est-à-dire la même réponse qu'un réglage absent, et l'on
+  cherche le défaut dans la déclaration du paramètre.
+- *Combien de fois* : |
+- *Ce qui manque* : la règle tient en une ligne — **un réglage booléen se
+  bascule par `[data-param="x"] [data-bool="true"]`**, jamais par une case. Et
+  le constat général est celui de `doitExister` : un sélecteur qui ne désigne
+  rien rend la même chose qu'un logiciel cassé.
+
+**jsPDF applique `align` et `baseline` AVANT de tourner le texte** — 19 octobre 2026
+
+- *Ce que je voulais faire* : centrer un mot vertical sur un point, pour les
+  dingbats « deux mots qui se croisent » et « un mot autour d'une forme ».
+- *Ce qui a coûté* : une feuille entière où « DROITE » vertical grimpait
+  par-dessus le titre de son bloc, et vingt minutes à soupçonner le calcul du
+  corps. Avec `angle`, jsPDF décale d'abord le texte de la moitié de sa
+  largeur — dans la direction de la PAGE —, puis tourne le tout : le mot part
+  donc d'une demi-longueur sur le côté. `baseline: 'middle'` souffre du même
+  mal, perpendiculairement.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à construire, une règle — **sous rotation, on ne
+  demande pas l'alignement à jsPDF, on calcule le point de départ** : reculer
+  d'une demi-largeur le long de (cos A, −sin A), descendre d'une demi-capitale
+  le long de (sin A, cos A). Et la façon de le mesurer vaut d'être redite :
+  une CROIX dessinée à l'endroit demandé, le mot écrit par-dessus, et l'on
+  regarde. Trois minutes, contre vingt à raisonner.

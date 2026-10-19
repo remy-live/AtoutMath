@@ -15,6 +15,10 @@ import { boiteDessin, cubesAPeindre, facesCube } from '../../core/cubes.js';
 import { decimales as decimalesPose, enFrancais, rangsDe as rangsPose } from '../../core/poser.js';
 import { dessinerChemin } from '../../core/cheminSvg.js';
 import { ecrire as ecrireProp } from '../../core/proportion.js';
+// `colonnesPour` : la forme d'un pavage de n cases. La fiche doit retrouver
+// EXACTEMENT celle de l'écran, sans quoi la figure imprimée n'est plus la
+// figure vue — on prend donc la fonction du générateur, pas une copie.
+import { colonnesPour } from '../../core/generators/lireUneFraction.js';
 import { encre, polycopieEnCouleur, pourPdf } from '../ficheRendu.js';
 import { marqueSvg as marqueSvgRelier } from '../../core/relier.js';
 import { relire as relirePriorites } from '../../core/priorites.js';
@@ -2798,6 +2802,432 @@ function dessinerGraduationPdf(doc, item, slot, solution, champ) {
     });
 }
 
+// --- LIRE LA FRACTION D'UNE FIGURE --------------------------------------------
+//
+// RÉMY : « Faire le pdf pour Lis la fraction ». L'exercice existait depuis le
+// 15 octobre et n'avait AUCUNE version imprimée : son générateur portait même
+// `ecrit: false`, avec le commentaire qui dit pourquoi — « une consigne qui
+// renvoie à une figure absente ne demande rien ». C'est cette figure-là qu'on
+// dessine ici.
+//
+// ── UNE SEULE DESCRIPTION DE LA FIGURE, DEUX DESSINS ───────────────────────
+//
+// `formesDeLaFigure` rend des FORMES — des secteurs, des rectangles, des
+// coupes —, et l'aperçu comme le PDF les posent chacun à sa manière. C'est le
+// tour qu'a pris `bandesDuStrimko` dans `latins.js`, et pour la même raison :
+// deux descriptions à tenir d'accord finissent toujours par diverger, et c'est
+// l'imprimée qui diverge, puisque personne ne la regarde.
+//
+// ── « ET POUR L'INDICE, DESSINE LES TRAITS DE SÉPARATION » ─────────────────
+//
+// Sur un écran, l'indice se demande ; sur une feuille, il se donne ou non au
+// moment d'imprimer. D'où la case « Montrer les traits de séparation » dans le
+// contenu de la fiche : cochée, chaque figure porte en pointillés les coupes
+// qui lui manquent, et un élève qui ne voit pas qu'un gros morceau en vaut deux
+// les compte alors sans aide. Décochée, c'est l'exercice entier.
+//
+// ET LA PAGE DES SOLUTIONS LES MONTRE TOUJOURS : une correction où le
+// professeur devrait lui-même redécouper la figure pour vérifier son corrigé
+// n'est pas une correction. C'est la leçon du champ de trèfles, écrite dans
+// `casseTete.js` — « un corrigé qu'il faut résoudre n'est pas un corrigé ».
+
+/** Le découpage d'un secteur en polygone : un sommet tous les six degrés. */
+const PAS_ARC = Math.PI / 30;
+
+/**
+ * LES FORMES D'UNE FIGURE, dans la boîte qu'on lui donne.
+ *
+ * `plein` dit si la part est coloriée ; `coupe` est un trait pointillé, à
+ * tracer par-dessus tout le reste.
+ */
+function formesDeLaFigure(m, zone, finesse) {
+    const morceaux = m.morceaux || [];
+    const n = m.n;
+    const out = [];
+
+    if (m.support === 'camembert') {
+        const r = Math.max(2, Math.min(zone.w, zone.h) / 2 - 0.6);
+        const cx = zone.x + zone.w / 2;
+        const cy = zone.y + zone.h / 2;
+        // L'ANGLE PART DU HAUT ET TOURNE DANS LE SENS DES AIGUILLES : c'est
+        // ainsi qu'on coupe un gâteau, et c'est ce que fait l'écran.
+        const angle = (u) => (u / n) * Math.PI * 2 - Math.PI / 2;
+        let u = 0;
+        for (const p of morceaux) {
+            out.push({ genre: 'secteur', cx, cy, r, de: angle(u), a: angle(u + p.poids),
+                plein: p.plein, tour: p.poids === n });
+            u += p.poids;
+        }
+        if (finesse) {
+            // À QUEL MORCEAU APPARTIENT CHAQUE UNITÉ — et non pas seulement « y
+            // a-t-il déjà un trait ici ». MESURÉ sur la page des solutions :
+            // un pointillé gris tracé à travers un secteur violet ne se voit
+            // plus, et c'est précisément là qu'il sert — un gros morceau
+            // COLORIÉ est celui qu'on redécoupe. La coupe emporte donc le
+            // `plein` de son morceau, et le rendu l'écrit en clair dessus.
+            const bords = new Set();
+            const aQui = [];
+            let v = 0;
+            for (const p of morceaux) {
+                bords.add(v);
+                for (let j = 0; j < p.poids; j++) aQui[v + j] = p.plein;
+                v += p.poids;
+            }
+            for (let i = 0; i < n; i++) {
+                if (bords.has(i)) continue;
+                const a = angle(i);
+                out.push({ genre: 'coupe', plein: !!aQui[i], x1: cx, y1: cy,
+                    x2: cx + Math.cos(a) * r, y2: cy + Math.sin(a) * r });
+            }
+        }
+        return out;
+    }
+
+    const cols = colonnesPour(n);
+    const lignes = Math.ceil(n / cols);
+    const c = Math.min(zone.w / cols, zone.h / lignes);
+    const x0 = zone.x + (zone.w - c * cols) / 2;
+    const y0 = zone.y + (zone.h - c * lignes) / 2;
+    let x = 0;
+    let y = 0;
+    const poses = [];
+    for (const p of morceaux) {
+        if (x + p.poids > cols) { x = 0; y += 1; }
+        poses.push({ ...p, x, y });
+        out.push({ genre: 'rect', x: x0 + x * c, y: y0 + y * c,
+            w: p.poids * c, h: c, plein: p.plein });
+        x += p.poids;
+    }
+    if (finesse) {
+        for (const p of poses) {
+            for (let i = 1; i < p.poids; i++) {
+                out.push({ genre: 'coupe', plein: !!p.plein,
+                    x1: x0 + (p.x + i) * c, y1: y0 + p.y * c,
+                    x2: x0 + (p.x + i) * c, y2: y0 + (p.y + 1) * c });
+            }
+        }
+    }
+    return out;
+}
+
+/** Le polygone d'un secteur, pour jsPDF — qui ne sait pas tracer un arc. */
+function pointsDuSecteur(f) {
+    const pts = f.tour ? [] : [[f.cx, f.cy]];
+    const pas = Math.max(2, Math.ceil(Math.abs(f.a - f.de) / PAS_ARC));
+    for (let i = 0; i <= pas; i++) {
+        const t = f.de + (f.a - f.de) * (i / pas);
+        pts.push([f.cx + Math.cos(t) * f.r, f.cy + Math.sin(t) * f.r]);
+    }
+    return pts;
+}
+
+/** Le même secteur en chemin SVG, qui lui sait tracer un arc. */
+function cheminDuSecteur(f, T) {
+    const px = (t) => [f.cx + Math.cos(t) * f.r, f.cy + Math.sin(t) * f.r];
+    const [x1, y1] = px(f.de);
+    const [x2, y2] = px(f.a);
+    const grand = Math.abs(f.a - f.de) > Math.PI ? 1 : 0;
+    // UNE PART QUI FAIT LE TOUR N'EST PAS UN SECTEUR : deux points confondus
+    // sur un arc ne décrivent rien, et le disque entier disparaissait. On le
+    // trace alors en deux demi-tours.
+    if (f.tour) {
+        return `M ${T(f.cx - f.r)} ${T(f.cy)} A ${T(f.r)} ${T(f.r)} 0 1 1 ${T(f.cx + f.r)} ${T(f.cy)} `
+            + `A ${T(f.r)} ${T(f.r)} 0 1 1 ${T(f.cx - f.r)} ${T(f.cy)} Z`;
+    }
+    return `M ${T(f.cx)} ${T(f.cy)} L ${T(x1)} ${T(y1)} `
+        + `A ${T(f.r)} ${T(f.r)} 0 ${grand} 1 ${T(x2)} ${T(y2)} Z`;
+}
+
+/**
+ * LA GÉOMÉTRIE DU BLOC : la figure en haut, la fraction à écrire dessous.
+ *
+ * LA FRACTION N'EST PAS UNE LIGNE DE POINTILLÉS. Deux nombres l'un sur l'autre
+ * ne s'écrivent pas sur une ligne : c'est la FORME qui enseigne, et un élève à
+ * qui l'on donne « ...... » écrit « 3 sur 8 » ou « 3/8 » — deux écritures qu'on
+ * passe ensuite l'année à démêler. Deux cases et un trait entre elles, donc.
+ */
+function geoLireFraction(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    // La case d'un chiffre écrit à la main : jamais sous six millimètres, sinon
+    // on écrit à côté. C'est elle qui commande la hauteur de la fraction.
+    const caseC = Math.max(6, Math.min(b.h * 0.15, b.w * 0.2, 9));
+    const hFrac = caseC * 2.5;
+    return {
+        m, b, caseC, hFrac,
+        zone: { x: b.x, y: b.y, w: b.w, h: Math.max(8, b.h - hFrac) },
+        fracX: b.x + b.w / 2,
+        fracY: b.y + Math.max(8, b.h - hFrac) + caseC * 0.3
+    };
+}
+
+function lireFractionPreviewHtml(item, slot, k, solution) {
+    const g = geoLireFraction(item, slot);
+    const m = g.m;
+    const T = (v) => (v * k).toFixed(2);
+    const teinte = m.teinte || '#4f46e5';
+    // LES COUPES SE VOIENT TOUJOURS SUR LA CORRECTION — voir l'en-tête.
+    const finesse = solution || !!m.aide;
+    let d = '';
+    for (const f of formesDeLaFigure(m, g.zone, finesse)) {
+        if (f.genre === 'coupe') continue;
+        const remplissage = f.plein ? teinte : '#ffffff';
+        d += f.genre === 'secteur'
+            ? `<path d="${cheminDuSecteur(f, T)}" fill="${remplissage}"
+                stroke="rgb(${ENCRE.trait.join(',')})" stroke-width="${T(0.4)}"/>`
+            : `<rect x="${T(f.x)}" y="${T(f.y)}" width="${T(f.w)}" height="${T(f.h)}"
+                fill="${remplissage}" stroke="rgb(${ENCRE.trait.join(',')})"
+                stroke-width="${T(0.4)}"/>`;
+    }
+    // LES POINTILLÉS PAR-DESSUS : ils traversent une part coloriée, et dessous
+    // ils disparaîtraient justement là où ils servent.
+    for (const f of formesDeLaFigure(m, g.zone, finesse)) {
+        if (f.genre !== 'coupe') continue;
+        d += `<line x1="${T(f.x1)}" y1="${T(f.y1)}" x2="${T(f.x2)}" y2="${T(f.y2)}"
+            stroke="${f.plein ? '#ffffff' : `rgb(${ENCRE.gris.join(',')})`}"
+            stroke-width="${T(f.plein ? 0.45 : 0.35)}"
+            stroke-dasharray="${T(1.3)} ${T(1.1)}"/>`;
+    }
+
+    const c = g.caseC;
+    const x = g.fracX;
+    const cases = [solution ? String(m.k) : '', solution ? String(m.n) : ''];
+    let html = `<svg class="fx-abs" style="position:absolute; left:0; top:0; overflow:visible"
+        width="1" height="1">${d}</svg>`;
+    cases.forEach((texte, i) => {
+        html += `<div class="fx-lf-case" style="left:${T(x - c / 2)}px;
+            top:${T(g.fracY + i * c * 1.35)}px; width:${T(c)}px; height:${T(c)}px;
+            font-size:${T(c * 0.72)}px">${echapperSheet(texte)}</div>`;
+    });
+    html += `<div class="fx-lf-barre" style="left:${T(x - c * 0.78)}px;
+        top:${T(g.fracY + c * 1.17)}px; width:${T(c * 1.56)}px"></div>`;
+    return html;
+}
+
+function dessinerLireFractionPdf(doc, item, slot, solution, champ) {
+    const g = geoLireFraction(item, slot);
+    const m = g.m;
+    const teinte = m.teinte || '#4f46e5';
+    const finesse = solution || !!m.aide;
+    const formes = formesDeLaFigure(m, g.zone, finesse);
+
+    doc.setLineWidth(0.4);
+    for (const f of formes) {
+        if (f.genre === 'coupe') continue;
+        if (f.plein) doc.setFillColor(teinte); else doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...ENCRE.trait);
+        if (f.genre === 'rect') { doc.rect(f.x, f.y, f.w, f.h, 'FD'); continue; }
+        const pts = pointsDuSecteur(f);
+        const suite = pts.slice(1).map(([px, py], j) => [px - pts[j][0], py - pts[j][1]]);
+        doc.lines(suite, pts[0][0], pts[0][1], [1, 1], 'FD', true);
+    }
+    if (doc.setLineDashPattern) doc.setLineDashPattern([1.3, 1.1], 0);
+    for (const f of formes) {
+        if (f.genre !== 'coupe') continue;
+        // EN CLAIR SUR UNE PART COLORIÉE, en gris sur une part vide : voir
+        // `formesDeLaFigure`. Le blanc traverse `teindreDoc` sans changer,
+        // puisqu'un gris n'a pas de saturation à perdre.
+        if (f.plein) { doc.setDrawColor(255, 255, 255); doc.setLineWidth(0.45); }
+        else { doc.setDrawColor(...ENCRE.gris); doc.setLineWidth(0.35); }
+        doc.line(f.x1, f.y1, f.x2, f.y2);
+    }
+    if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+
+    // LA FRACTION : deux cases et un trait.
+    const c = g.caseC;
+    const x = g.fracX;
+    [solution ? String(m.k) : '', solution ? String(m.n) : ''].forEach((texte, i) => {
+        const cy = g.fracY + i * c * 1.35;
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setFillColor(255, 255, 255);
+        doc.setLineWidth(0.3);
+        doc.rect(x - c / 2, cy, c, c, 'FD');
+        if (texte) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(c * 2.0);
+            doc.setTextColor(...ENCRE.trait);
+            doc.text(texte, x, cy + c * 0.72, { align: 'center' });
+        } else if (champ) {
+            champ(x - c / 2 + 0.3, cy + 0.3, c - 0.6, c - 0.6);
+        }
+    });
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.line(x - c * 0.78, g.fracY + c * 1.17, x + c * 0.78, g.fracY + c * 1.17);
+}
+
+// --- VIRGULE OU FRACTION ? ----------------------------------------------------
+//
+// RÉMY : « Faire le pdf pour … Virgule ou fractions ». L'exercice s'imprimait
+// déjà — en LIGNE DE TEXTE, par la fiche de questions —, et c'est de cette
+// ligne-là que venait sa capture d'écran du `\ldots`. Une ligne, pourtant, ne
+// montre pas ce que l'exercice enseigne.
+//
+// ── POURQUOI UNE LIGNE NE SUFFIT PAS ICI ───────────────────────────────────
+//
+// « 441/100 = … » écrit à plat demande exactement ce que l'exercice existe pour
+// empêcher : lire une fraction comme deux nombres séparés par une barre. Le
+// trait de fraction est une DIVISION et il se trace à l'horizontale — c'est en
+// le voyant que l'élève comprend que le dénominateur est « en dessous », et
+// c'est ce que l'écran montre depuis le premier jour (`fractionHtml`).
+//
+// LA FEUILLE POSE DONC LA MÊME ÉGALITÉ QUE L'ÉCRAN, avec son trait, et la case
+// à remplir est à la place EXACTE du nombre qui manque — sous le trait quand
+// c'est un dénominateur, dessus quand c'est un numérateur, à droite du signe
+// égal quand c'est l'écriture à virgule.
+
+/** La géométrie d'une égalité : trois colonnes — à gauche, le « = », à droite. */
+function geoFractionDecimale(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    // LE CORPS SE DÉDUIT DU PLUS LONG NOMBRE. « 2543 » au même corps que « 7 »
+    // sortait de sa case : c'est le nombre le plus long qui commande, et les
+    // deux côtés de l'égalité s'écrivent au même corps — une égalité dont les
+    // deux membres n'ont pas la même taille ne se lit plus comme une égalité.
+    const long = Math.max(String(m.numerateur).length, String(m.denominateur).length,
+        String(m.ecriture).length, 3);
+    // C'EST LE TOTAL QU'ON MESURE, PAS UN MORCEAU.
+    //
+    // MESURÉ SUR LA PREMIÈRE FEUILLE, et le défaut se voyait au premier coup
+    // d'œil : le corps était déduit de la boîte morceau par morceau, si bien
+    // que trois morceaux de cette taille-là faisaient DEUX FOIS la largeur du
+    // bloc. Les égalités débordaient sur leurs voisines et la colonne de
+    // droite sortait de la page. Une égalité est un objet d'un seul tenant :
+    // elle se dimensionne d'un seul tenant.
+    //
+    //   largeur = 2 × caseW + 1,4 × corps (le « = ») + 2 × 0,5 × corps (les écarts)
+    //           = corps × (1,24 × (long + 1) + 2,4)
+    //
+    // On prend un dixième de marge sur ce diviseur, et la HAUTEUR a son mot à
+    // dire aussi : une fraction, c'est deux étages et leur écart.
+    const parLargeur = b.w / (1.24 * (long + 1) + 2.6);
+    const parHauteur = (b.h - 2) / 3.4;
+    // ET UN PLAFOND : sans lui, « 7,5 = 75/10 » seul dans un grand bloc
+    // s'écrivait en corps 17 — on ne lit pas une égalité de deux centimètres
+    // de haut, on la subit.
+    const corps = Math.max(2.4, Math.min(parLargeur, parHauteur, 7));
+    // Une case où un élève écrit : jamais sous cinq millimètres de haut.
+    const caseH = Math.max(5, corps * 1.45);
+    return {
+        m, b, corps, caseH,
+        caseW: Math.max(caseH, corps * 0.62 * (long + 1)),
+        cy: b.y + b.h / 2
+    };
+}
+
+/**
+ * LES TROIS MORCEAUX D'UNE ÉGALITÉ, de gauche à droite.
+ *
+ * Chacun est soit un NOMBRE écrit à plat, soit une FRACTION — deux étages et
+ * un trait —, soit une CASE à remplir. Les deux rendus consomment cette même
+ * liste : c'est le seul moyen qu'ils posent le signe « égal » au même endroit.
+ */
+function morceauxDeLEgalite(m) {
+    const num = m.trou === 'numerateur' ? null : m.numerateur;
+    const den = m.trou === 'denominateur' ? null : m.denominateur;
+    // `trou: 'virgule'` — la fraction est donnée, c'est l'écriture qu'on cherche.
+    if (m.trou === 'virgule') {
+        return [{ genre: 'fraction', num: m.numerateur, den: m.denominateur },
+            { genre: 'egal' }, { genre: 'case', reponse: m.ecriture }];
+    }
+    return [{ genre: 'nombre', texte: m.ecriture }, { genre: 'egal' },
+        { genre: 'fraction', num, den,
+            reponse: m.trou === 'numerateur' ? m.numerateur : m.denominateur }];
+}
+
+function fractionDecimalePreviewHtml(item, slot, k, solution) {
+    const g = geoFractionDecimale(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const parts = morceauxDeLEgalite(g.m);
+    // LES LARGEURS D'ABORD, LA POSE ENSUITE : on centre l'égalité entière dans
+    // le bloc, et pour cela il faut la mesurer avant d'en poser le premier
+    // morceau. Posée de gauche à droite sans mesurer, elle s'appuyait au bord
+    // gauche et laissait un blanc à droite qui changeait d'une question à
+    // l'autre — neuf égalités désalignées sur une page.
+    const large = (p) => (p.genre === 'egal' ? g.corps * 1.4 : g.caseW);
+    const total = parts.reduce((s, p) => s + large(p), 0) + g.corps * 0.5 * (parts.length - 1);
+    let x = g.b.x + Math.max(0, (g.b.w - total) / 2);
+    let html = '';
+
+    for (const p of parts) {
+        const w = large(p);
+        if (p.genre === 'egal') {
+            html += `<div class="fx-vf-egal" style="left:${T(x)}px; top:${T(g.cy - g.corps)}px;
+                width:${T(w)}px; height:${T(g.corps * 2)}px;
+                font-size:${T(g.corps)}px">=</div>`;
+        } else if (p.genre === 'nombre') {
+            html += `<div class="fx-vf-nombre" style="left:${T(x)}px; top:${T(g.cy - g.corps)}px;
+                width:${T(w)}px; height:${T(g.corps * 2)}px;
+                font-size:${T(g.corps)}px">${echapperSheet(p.texte)}</div>`;
+        } else if (p.genre === 'case') {
+            html += `<div class="fx-vf-case" style="left:${T(x)}px; top:${T(g.cy - g.caseH / 2)}px;
+                width:${T(w)}px; height:${T(g.caseH)}px;
+                font-size:${T(g.corps)}px">${solution ? echapperSheet(p.reponse) : ''}</div>`;
+        } else {
+            const etage = (valeur, haut) => {
+                const y = g.cy + (haut ? -g.caseH - 0.6 : 0.6);
+                if (valeur != null) {
+                    return `<div class="fx-vf-nombre" style="left:${T(x)}px; top:${T(y)}px;
+                        width:${T(w)}px; height:${T(g.caseH)}px;
+                        font-size:${T(g.corps)}px">${valeur}</div>`;
+                }
+                return `<div class="fx-vf-case" style="left:${T(x + (w - g.caseW * 0.8) / 2)}px;
+                    top:${T(y)}px; width:${T(g.caseW * 0.8)}px; height:${T(g.caseH)}px;
+                    font-size:${T(g.corps)}px">${solution ? p.reponse : ''}</div>`;
+            };
+            html += etage(p.num, true) + etage(p.den, false);
+            html += `<div class="fx-vf-barre" style="left:${T(x)}px; top:${T(g.cy)}px;
+                width:${T(w)}px"></div>`;
+        }
+        x += w + g.corps * 0.5;
+    }
+    return html;
+}
+
+function dessinerFractionDecimalePdf(doc, item, slot, solution, champ) {
+    const g = geoFractionDecimale(item, slot);
+    const parts = morceauxDeLEgalite(g.m);
+    const large = (p) => (p.genre === 'egal' ? g.corps * 1.4 : g.caseW);
+    const total = parts.reduce((s, p) => s + large(p), 0) + g.corps * 0.5 * (parts.length - 1);
+    let x = g.b.x + Math.max(0, (g.b.w - total) / 2);
+
+    // 1 pt ≈ 0,3528 mm : le corps se dit en points, la boîte en millimètres.
+    const poser = (texte, cx, cy) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(g.corps / 0.3528 * 0.95);
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(pourPdf(String(texte)), cx, cy, { align: 'center' });
+    };
+    const caseVide = (cx, cy, w, h, reponse) => {
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setFillColor(255, 255, 255);
+        doc.setLineWidth(0.3);
+        doc.rect(cx, cy, w, h, 'FD');
+        if (solution) poser(reponse, cx + w / 2, cy + h * 0.72);
+        else if (champ) champ(cx + 0.3, cy + 0.3, w - 0.6, h - 0.6);
+    };
+
+    for (const p of parts) {
+        const w = large(p);
+        if (p.genre === 'egal') poser('=', x + w / 2, g.cy + g.corps * 0.3);
+        else if (p.genre === 'nombre') poser(p.texte, x + w / 2, g.cy + g.corps * 0.3);
+        else if (p.genre === 'case') caseVide(x, g.cy - g.caseH / 2, w, g.caseH, p.reponse);
+        else {
+            [[p.num, true], [p.den, false]].forEach(([valeur, haut]) => {
+                const y = g.cy + (haut ? -g.caseH - 0.6 : 0.6);
+                if (valeur != null) poser(valeur, x + w / 2, y + g.caseH * 0.72);
+                else caseVide(x + (w - g.caseW * 0.8) / 2, y, g.caseW * 0.8, g.caseH, p.reponse);
+            });
+            // LE TRAIT DE FRACTION, et il est FRANC : c'est une division, pas
+            // une séparation. Sur la feuille de Rémy il n'existait pas du tout.
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(0.5);
+            doc.line(x, g.cy, x + w, g.cy);
+        }
+        x += w + g.corps * 0.5;
+    }
+}
+
 export const RENDUS_NOMBRES = {
     pyramideNombres: {
         titre: 'La Pyramide des nombres',
@@ -3223,6 +3653,48 @@ export const RENDUS_NOMBRES = {
         proportions: { w: 1, h: 0.62 },
         disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
         parLigneDefaut: 2
+    },
+    fractionDecimale: {
+        titre: 'Virgule ou Fraction ?',
+        consigne: () => 'Complète chaque égalité. Un nombre à virgule EST une fraction '
+            + 'décimale : le NUMÉRATEUR est le nombre écrit sans sa virgule, et le '
+            + 'DÉNOMINATEUR porte autant de zéros qu\'il y a de chiffres après la virgule. '
+            + 'Attention au zéro qui tient le rang : 7/100 fait 0,07, pas 0,7.',
+        previewGrille: fractionDecimalePreviewHtml,
+        pdfGrille: dessinerFractionDecimalePdf,
+        nomBloc: 'Égalité', nomBlocs: 'égalités',
+        // UNE ÉGALITÉ EST LARGE ET BASSE : trois nombres sur une ligne, dont
+        // un à deux étages. Lui donner un bloc carré gaspillerait la moitié de
+        // la feuille — et douze par page, c'est la longueur d'un rituel de
+        // début d'heure.
+        proportions: { w: 1, h: 0.34 },
+        disposition: { cols: 2, rows: 4, maxCols: 3, maxRows: 6 },
+        parLigneDefaut: 2
+    },
+    lireFraction: {
+        titre: 'Lis la fraction',
+        consigne: (items) => {
+            const aide = items.some(i => i.meta && i.meta.aide);
+            const inegal = items.some(i => i.meta && i.meta.inegal);
+            return 'Sous chaque figure, écris la fraction coloriée : en BAS le nombre de '
+                + 'parts ÉGALES, en HAUT combien sont coloriées.'
+                // « SUR CERTAINES », et non « les morceaux » : une planche
+                // mélange les deux familles de marches, et prévenir au pluriel
+                // ferait chercher un piège là où il n'y en a pas.
+                + (inegal ? ' Attention : sur certaines figures, les morceaux ne sont pas '
+                    + 'tous de la même taille — compte alors en parts égales, celles du '
+                    + 'plus petit morceau.' : '')
+                + (aide ? ' Les traits en pointillés montrent les coupes qui manquent.' : '');
+        },
+        previewGrille: lireFractionPreviewHtml,
+        pdfGrille: dessinerLireFractionPdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        // NEUF PAR PAGE. Un camembert de douze parts sous trois centimètres a
+        // des parts de huit millimètres de pointe : on les compte encore. En
+        // dessous, non — et c'est les COMPTER, tout l'exercice.
+        proportions: { w: 1, h: 1.15 },
+        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
+        parLigneDefaut: 3
     },
     horloge: {
         titre: 'La pendule',

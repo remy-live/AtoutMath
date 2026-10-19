@@ -26,7 +26,7 @@ import assert from 'node:assert/strict';
 import { makeRng } from '../js/core/ids.js';
 import {
     pgcd, numerateursPossibles, decouper, choisirPleins, colonnesPour,
-    camembertSvg, pavageSvg, question, ETAPES, lireUneFractionGenerator
+    camembertSvg, pavageSvg, question, ETAPES, lireUneFractionGenerator, TEINTES_FIGURE
 } from '../js/core/generators/lireUneFraction.js';
 import '../js/core/activities/index.js';
 import { exercices } from '../js/data/catalog.js';
@@ -111,24 +111,60 @@ test('UNE MARCHE « PARTS INÉGALES » EST VRAIMENT INÉGALE', () => {
     }
 });
 
-test('LE SECOND INDICE NE MONTRE LA DÉCOUPE QUE S\'IL Y A QUELQUE CHOSE À DÉCOUPER', () => {
-    // VU SUR LA PLANCHE : aux parts égales, le second indice remontrait la
-    // MÊME figure en annonçant « voilà toutes ses coupes ». Un indice qui ne
-    // montre rien de neuf en promettant le contraire est pire que pas
-    // d'indice — l'élève le lit, ne voit pas la différence, et conclut qu'il
-    // n'a pas compris.
+test('LE SECOND INDICE DESSINE TOUJOURS — ET JAMAIS LA MÊME FIGURE', () => {
+    // RÉMY : « pour l'indice, dessine les traits de séparation ».
+    //
+    // MESURÉ AVANT, dans un navigateur, sur les deux familles de marches : aux
+    // parts INÉGALES le second indice redécoupait déjà la figure, et aux parts
+    // ÉGALES il ne montrait RIEN. Or les trois premières marches sont les
+    // marches égales : c'est celles-là qu'on voit en ouvrant l'exercice.
+    //
+    // ET LA RÈGLE D'AVANT TIENT TOUJOURS, c'est elle qu'on garde ici : un
+    // indice qui remontre la MÊME figure en promettant du neuf est pire que
+    // pas d'indice. Ce qu'on exige n'est donc pas « un dessin », c'est un
+    // dessin DIFFÉRENT de celui de la question — pointillés quand il y a à
+    // redécouper, numéros quand il n'y a plus qu'à compter.
     for (const e of ETAPES) {
         const it = unItem(e.id, 'indice');
         const dessin = (it.schemas || [])[1] || '';
         assert.equal((it.schemas || [])[0], '', `${e.id} : le premier indice porte un dessin`);
+        assert.match(dessin, /^<svg /, `${e.id} : le second indice ne dessine rien`);
+        assert.notEqual(dessin, it.prompt.html.match(/<svg [\s\S]*?<\/svg>/)[0],
+            `${e.id} : l'indice remontre EXACTEMENT la figure de la question`);
         if (e.inegal) {
-            assert.match(dessin, /^<svg /, `${e.id} : l'indice ne montre pas la découpe`);
             assert.ok(dessin.includes('stroke-dasharray'),
                 `${e.id} : la découpe n'a aucun trait en pointillés`);
         } else {
-            assert.equal(dessin, '', `${e.id} : l'indice remontre la même figure`);
+            // Rien à redécouper : pas de pointillé, mais les parts numérotées
+            // de 1 au dénominateur.
+            assert.ok(!dessin.includes('stroke-dasharray'),
+                `${e.id} : des pointillés sur une figure déjà coupée en parts égales`);
+            const numeros = [...dessin.matchAll(/paint-order="stroke">(\d+)</g)].map(m => +m[1]);
+            assert.deepEqual(numeros, Array.from({ length: it.meta.n }, (_, i) => i + 1),
+                `${e.id} : les parts ne sont pas numérotées de 1 à ${it.meta.n}`);
         }
     }
+});
+
+test('LA TEINTE DE LA FIGURE CHANGE, ET NE CHANGE PAS ENTRE DEUX RENDUS', () => {
+    // RÉMY : « Pour Lis la fraction, n'hésite pas à changer de couleur. »
+    // Elle valait `var(--primary)` sur toutes les figures.
+    const teintes = new Set();
+    for (let g = 0; g < 40; g++) {
+        const q = question(marche('melange-egal'), makeRng(`teinte-${g}`));
+        assert.ok(TEINTES_FIGURE.includes(q.teinte), `teinte inconnue : ${q.teinte}`);
+        assert.ok(q.figure.includes(q.teinte), 'la figure ne porte pas sa teinte');
+        assert.ok(!q.figure.includes('var(--primary)'),
+            'la figure est encore peinte de la couleur de l\'application');
+        teintes.add(q.teinte);
+    }
+    assert.ok(teintes.size >= 4, `${teintes.size} teinte(s) sur 40 tirages`);
+
+    // ET LA MÊME QUESTION REDONNE LA MÊME TEINTE : la fiche dessine l'aperçu
+    // puis le PDF puis la page des solutions, et ce doit être la même figure.
+    const a = question(marche('camembert-egal'), makeRng('stable'));
+    const b = question(marche('camembert-egal'), makeRng('stable'));
+    assert.equal(a.teinte, b.teinte, 'deux tirages de la même graine changent de teinte');
 });
 
 test('LE PIÈGE DU COMPTAGE DE MORCEAUX A UN NOM', () => {

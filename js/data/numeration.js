@@ -126,6 +126,13 @@ export const numerationExercises = [
     {
         id: 'num-fraction-decimale', title: 'Virgule ou Fraction ?',
         cree: '2026-10-13',
+        // LA FICHE, AVEC UN VRAI TRAIT DE FRACTION — Rémy : « Faire le pdf
+        // pour … Virgule ou fractions ». L'exercice s'imprimait déjà, mais en
+        // LIGNE DE TEXTE : « 441/100 = … » écrit à plat demande exactement ce
+        // que cet exercice existe pour empêcher — lire une fraction comme deux
+        // nombres séparés par une barre. Voir `fractionDecimale` dans
+        // `js/ui/fiches/nombres.js`.
+        printable: 'fractionDecimale',
         consignePapier: 'Complète l\'égalité entre l\'écriture à virgule et la fraction.',
         colonnesPapier: 3,
         generatorId: 'num.fraction-decimale', activityId: 'numpad',

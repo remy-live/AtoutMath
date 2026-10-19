@@ -1534,3 +1534,23 @@ trois exercices n'ont pas de version imprimée du tout.
 **Vérifié avant de commencer** : `logi-dingbats`, et les deux exercices de
 fractions, n'ont pas de champ `printable` ; ils ne figurent donc dans aucune
 liste de l'atelier d'impression.
+
+**Ce qui a été fait** — les trois fiches existent, et la seconde phrase a reçu
+les deux réponses qu'elle pouvait appeler :
+
+- **Lis la Fraction** : fiche neuf figures par page, camemberts et pavages
+  redessinés en jsPDF. La part coloriée prend une des SIX teintes tirée avec la
+  question (elle était `var(--primary)` partout) ; la page des solutions trace
+  toujours les coupes manquantes en pointillés, et une option « Montrer les
+  traits de séparation » les met sur la feuille d'exercice quand le professeur
+  le veut — sur le papier, l'élève ne peut pas demander d'indice.
+- **À L'ÉCRAN AUSSI**, le second indice dessine maintenant toujours : les
+  coupes quand il y a à redécouper, les parts NUMÉROTÉES sinon. Mesuré avant :
+  sur les trois premières marches — celles qu'on voit en ouvrant l'exercice —
+  il ne montrait rien du tout.
+- **Virgule ou Fraction ?** : fiche douze égalités, avec un VRAI trait de
+  fraction et la case à remplir à la place exacte du nombre qui manque.
+  L'exercice s'imprimait déjà, mais en ligne de texte — « 441/100 = … » écrit à
+  plat demande précisément ce que l'exercice existe pour empêcher.
+- **Dingbats** : fiche six énigmes par page. La mise en page vit dans
+  `js/core/dingbatPlan.js` et sert aux DEUX rendus, aperçu et PDF.

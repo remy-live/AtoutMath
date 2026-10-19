@@ -8986,6 +8986,67 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .fx-pz-parts { color: #6e7684; font-weight: 700; padding-left: 1.9em; }
 .fx-pz-cle { flex: 0 0 auto; overflow: visible; align-self: center; }
 
+/* --- Fiche « Dingbats » --------------------------------------------------
+   Les mots sont posés un par un, à leur place exacte : la mise en page vient
+   de `core/dingbatPlan.js`, qui sert AUSSI au PDF. L'aperçu ne réemploie donc
+   pas le HTML de l'écran — il montrerait une mise en page que l'imprimante ne
+   sortira jamais. */
+.fx-dg-mot {
+    position: absolute; font-weight: 700; letter-spacing: 0;
+    white-space: nowrap; color: #1a202c; line-height: 1;
+    /* LA POLICE DE L'APERÇU EST CELLE DU PDF, et c'est tout l'enjeu.
+       MESURÉ : avec la police de l'application, « 3,14159 » aux lettres
+       serrées s'empilait en bouillie à l'écran alors que le PDF le rendait
+       juste, et « NOMBRE » débordait de son bloc à l'écran seulement. Les
+       positions viennent de `core/dingbatPlan.js`, qui les calcule pour les
+       métriques d'Helvetica — faire dessiner une AUTRE police à ces
+       coordonnées-là, c'est juger une mise en page en en regardant une
+       autre. */
+    font-family: Helvetica, Arial, sans-serif;
+}
+/* LE MOT PÂLE RESTE DE L'ENCRE, PLUS CLAIRE : une opacité ne survit pas à la
+   photocopieuse, un gris moyen oui. C'est la même nuance que dans le PDF. */
+.fx-dg-mot--pale { color: #b0b6c5; }
+/* La ligne de réponse : un dingbat se répond en FRANÇAIS, pas en un chiffre —
+   c'est une ligne qu'il faut, et large. */
+.fx-dg-ligne {
+    position: absolute; border-bottom: .3px solid #b0b6c5;
+    display: flex; align-items: flex-end; justify-content: center;
+    color: #1a202c; font-weight: 700; padding-bottom: .15em;
+}
+
+/* --- Fiche « Virgule ou Fraction ? » -------------------------------------
+   Une égalité posée en trois morceaux : un nombre, le signe, une fraction à
+   deux étages — ou l'inverse. La case à remplir est à la place EXACTE du
+   nombre qui manque, sous le trait pour un dénominateur, dessus pour un
+   numérateur : c'est la POSITION qui enseigne, pas le mot. */
+.fx-vf-nombre, .fx-vf-egal {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    color: #1a202c; font-weight: 700; box-sizing: border-box; white-space: nowrap;
+}
+.fx-vf-egal { color: #2d3748; font-weight: 400; }
+.fx-vf-case {
+    position: absolute; box-sizing: border-box; border: .35px solid #b0b6c5;
+    background: #fff; display: flex; align-items: center; justify-content: center;
+    color: #1a202c; font-weight: 700;
+}
+/* Le trait de fraction est FRANC : c'est une division, pas une séparation. */
+.fx-vf-barre { position: absolute; border-top: .5px solid #1a202c; }
+
+/* --- Fiche « Lis la fraction » -------------------------------------------
+   La figure est un SVG posé en absolu ; sous elle, la fraction à écrire.
+
+   DEUX CASES ET UN TRAIT, ET NON UNE LIGNE DE POINTILLÉS. Deux nombres l'un
+   sur l'autre ne s'écrivent pas sur une ligne : c'est la FORME qui enseigne.
+   Un élève à qui l'on donne « ...... » écrit « 3 sur 8 » ou « 3/8 » — deux
+   écritures qu'on passe ensuite l'année à démêler. */
+.fx-lf-case {
+    position: absolute; box-sizing: border-box; border: .35px solid #b0b6c5;
+    background: #fff; display: flex; align-items: center; justify-content: center;
+    color: #1a202c; font-weight: 700;
+}
+.fx-lf-barre { position: absolute; border-top: .5px solid #1a202c; }
+
 /* --- Fiche « Tableaux de proportionnalité » ------------------------------
    Deux lignes d'un vrai tableau : l'en-tête porte son unité sur fond gris, les
    cases à compléter restent blanches et bordées — on écrit dedans au crayon. */

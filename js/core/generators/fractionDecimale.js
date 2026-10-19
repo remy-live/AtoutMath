@@ -236,7 +236,11 @@ export const fractionDecimaleGenerator = {
                 // exister. Sans ce drapeau, le pavé ne la montre pas et la
                 // question devient impossible — le défaut serait ici, et
                 // l'élève le verrait là-bas.
-                meta: { decimal: true, rang, sens, avecZero, enonce: texte }
+                // LES MORCEAUX DE L'ÉGALITÉ, pour la fiche papier : elle la
+                // redessine avec un VRAI trait de fraction, et n'a aucun moyen
+                // de retrouver ces nombres dans la chaîne de l'énoncé.
+                meta: { decimal: true, rang, sens, avecZero, enonce: texte,
+                    numerateur, denominateur, ecriture, decimales, trou: 'virgule' }
             });
         }
 
@@ -292,7 +296,8 @@ export const fractionDecimaleGenerator = {
             // ICI LA RÉPONSE EST UN ENTIER — un numérateur ou un dénominateur.
             // Montrer la touche virgule inviterait à écrire 3,5 là où l'on
             // attend 35.
-            meta: { decimal: false, rang, sens, trou, avecZero, enonce: texte }
+            meta: { decimal: false, rang, sens, trou, avecZero, enonce: texte,
+                numerateur, denominateur, ecriture, decimales }
         });
     }
 };

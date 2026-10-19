@@ -13,6 +13,9 @@ import { THEMES as THEMES_MOTCODE } from '../../core/motCode.js';
 import { encre, pourPdf } from '../ficheRendu.js';
 import { pointsAngleDroit as pointsAngleDroitCodage, pointsProjetes as pointsProjetesCodage, traitsDeMarque as traitsDeMarqueCodage } from '../../core/codageSvg.js';
 import { silhouette } from '../../core/blocScratch.js';
+// LA MISE EN PAGE D'UN DINGBAT SUR LE PAPIER : des formes en millimètres,
+// consommées par l'aperçu ET par le PDF. Voir l'en-tête du module.
+import { planDuDingbat } from '../../core/dingbatPlan.js';
 
 /** « un losange » -> « Un losange » : le mot se pose sous la figure. */
 const nomTypeCodage = (type) => {
@@ -1038,7 +1041,278 @@ function dessinerCodagePdf(doc, item, slot, solution) {
         g.b.x + g.b.w / 2, g.b.y + g.b.h - 1.2, { align: 'center' });
 }
 
+// --- LES DINGBATS SUR PAPIER --------------------------------------------------
+//
+// RÉMY : « Faire le pdf pour … Ding Bats ». C'est le jeu du catalogue qui
+// demandait le moins à l'écran et qui n'avait pourtant aucune feuille : rien
+// n'y est animé, rien ne s'y clique, on REGARDE et l'on dit ce qu'on lit. Un
+// dingbat sur une photocopie de début d'heure, c'est son usage naturel — et au
+// tableau, c'est celui d'où il vient.
+//
+// LA MISE EN PAGE VIENT DE `core/dingbatPlan.js`, qui rend des formes en
+// millimètres : l'aperçu et le PDF consomment la MÊME liste. L'aperçu ne
+// réemploie donc PAS le HTML de l'écran — il montrerait une mise en page que
+// l'imprimante ne sortira jamais, et l'on jugerait l'une pour valider l'autre.
+//
+// LA MESURE DES TEXTES EST CELLE DU SOCLE (`largeurTexte`), des deux côtés :
+// c'est ce qui garantit que l'aperçu et le PDF posent les mots au même
+// endroit. Une estimation partagée vaut mieux qu'une mesure exacte d'un seul
+// côté.
+
+/** La largeur d'un texte, en millimètres, pour un corps donné en millimètres. */
+const mesurerDingbat = (texte, corps) => String(texte).length * corps * 0.58;
+
+/**
+ * LA GÉOMÉTRIE D'UN BLOC : l'énigme en haut, la ligne de réponse en bas.
+ *
+ * LA LIGNE DE RÉPONSE N'EST PAS UNE CASE. Un dingbat se répond en FRANÇAIS —
+ * « racine carrée », « droites parallèles » —, pas en un chiffre : c'est une
+ * ligne qu'il faut, et large. La règle est écrite dans `css/modules.css` à
+ * propos de `.dg-champ`, et elle vaut tout autant sur le papier.
+ */
+function geoDingbat(item, slot) {
+    const b = boiteDe(slot);
+    const ligne = Math.max(7, Math.min(b.h * 0.2, 11));
+    return {
+        // L'ÉNIGME ELLE-MÊME voyage dans `meta.dingbat` ; la réponse est celle
+        // qu'on écrit au tableau — `reponsePapier` —, pas la liste des
+        // variantes que le juge accepte.
+        enigme: item.meta.dingbat,
+        reponse: item.reponsePapier || item.answer || '',
+        b, ligne,
+        scene: { x: b.x + 2, y: b.y, w: b.w - 4, h: b.h - ligne },
+        ligneY: b.y + b.h - ligne * 0.45
+    };
+}
+
+/** Le cadre d'une forme, en chemin SVG — les mêmes sommets que le PDF. */
+function sommetsDeLaForme(f) {
+    const { x, y, w, h } = f;
+    switch (f.forme) {
+    case 'triangle': return [[x + w / 2, y], [x + w, y + h], [x, y + h]];
+    case 'losange': return [[x + w / 2, y], [x + w, y + h / 2], [x + w / 2, y + h], [x, y + h / 2]];
+    // LE CUBE N'EST PAS UN CARRÉ, et c'est toute la différence entre « racine
+    // carrée » et « racine cubique ». Les mêmes proportions qu'à l'écran.
+    case 'cube': return [[x + w * 0.22, y + h * 0.10], [x + w, y + h * 0.10],
+        [x + w, y + h * 0.78], [x + w * 0.78, y + h], [x, y + h], [x, y + h * 0.32]];
+    // LE COIN : deux traits, et rien d'autre. C'est l'équerre de l'angle droit.
+    case 'coin': return null;
+    default: return null;
+    }
+}
+
+function dingbatPreviewHtml(item, slot, k, solution) {
+    const g = geoDingbat(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const plan = planDuDingbat(g.enigme, g.scene, mesurerDingbat);
+    const encreTrait = `rgb(${ENCRE.trait.join(',')})`;
+    const encreGris = `rgb(${ENCRE.gris.join(',')})`;
+    let d = '';
+
+    for (const f of plan.formes) {
+        if (f.t === 'forme') {
+            const pts = sommetsDeLaForme(f);
+            if (f.forme === 'cercle') {
+                d += `<ellipse cx="${T(f.x + f.w / 2)}" cy="${T(f.y + f.h / 2)}"
+                    rx="${T(f.w / 2)}" ry="${T(f.h / 2)}" fill="none"
+                    stroke="${encreTrait}" stroke-width="${T(0.6)}"/>`;
+            } else if (f.forme === 'coin') {
+                d += `<path d="M ${T(f.x)} ${T(f.y)} L ${T(f.x)} ${T(f.y + f.h)} `
+                    + `L ${T(f.x + f.w)} ${T(f.y + f.h)}" fill="none" stroke="${encreTrait}"
+                    stroke-width="${T(0.8)}"/>`;
+            } else if (pts) {
+                d += `<polygon points="${pts.map(([px, py]) => `${T(px)},${T(py)}`).join(' ')}"
+                    fill="none" stroke="${encreTrait}" stroke-width="${T(0.6)}"/>`;
+            } else {
+                d += `<rect x="${T(f.x)}" y="${T(f.y)}" width="${T(f.w)}" height="${T(f.h)}"
+                    rx="${T(0.6)}" fill="none" stroke="${encreTrait}" stroke-width="${T(0.6)}"/>`;
+            }
+        } else if (f.t === 'trait' || f.t === 'barre') {
+            const x1 = f.t === 'barre' ? f.cx - f.w / 2 : f.x1;
+            const x2 = f.t === 'barre' ? f.cx + f.w / 2 : f.x2;
+            const y1 = f.t === 'barre' ? f.cy : f.y1;
+            const y2 = f.t === 'barre' ? f.cy : f.y2;
+            d += `<line x1="${T(x1)}" y1="${T(y1)}" x2="${T(x2)}" y2="${T(y2)}"
+                stroke="${f.marque || f.t === 'barre' ? encreGris : encreTrait}"
+                stroke-width="${T(f.epaisseur || 0.4)}"
+                ${f.pointille ? `stroke-dasharray="${T(1.2)} ${T(1)}"` : ''}/>`;
+        } else if (f.t === 'point') {
+            d += `<circle cx="${T(f.cx)}" cy="${T(f.cy)}" r="${T(f.r)}" fill="${encreGris}"/>`;
+        } else if (f.t === 'fleche') {
+            const p = Math.max(0.6, (f.epaisseur || 0.4) * 3);
+            d += `<line x1="${T(f.x1)}" y1="${T(f.y1)}" x2="${T(f.x2 - p)}" y2="${T(f.y2)}"
+                stroke="${encreGris}" stroke-width="${T(f.epaisseur || 0.4)}"/>`;
+            d += `<polygon points="${T(f.x2)},${T(f.y2)} ${T(f.x2 - p)},${T(f.y2 - p * 0.6)}
+                ${T(f.x2 - p)},${T(f.y2 + p * 0.6)}" fill="${encreGris}"/>`;
+        }
+    }
+
+    let html = `<svg class="fx-abs" style="position:absolute; left:0; top:0; overflow:visible"
+        width="1" height="1">${d}</svg>`;
+    for (const f of plan.formes) {
+        if (f.t !== 'mot') continue;
+        // LE MIROIR ET LA ROTATION SONT DES TRANSFORMATIONS DU DESSIN, pas du
+        // texte : on les pose sur la boîte, autour de son centre, exactement
+        // comme le PDF les posera.
+        const tr = [];
+        if (f.angle) tr.push(`rotate(${f.angle}deg)`);
+        if (f.miroir) tr.push('scaleX(-1)');
+        // LE CORPS PASSE PAR LE MÊME FACTEUR QUE DANS LE PDF — 0,72 — sans
+        // quoi l'aperçu dessine des lettres QUARANTE POUR CENT plus grosses
+        // aux mêmes coordonnées : mesuré, « 3,14159 » aux lettres serrées
+        // s'empilait en bouillie à l'écran et sortait juste sur la feuille.
+        html += `<div class="fx-dg-mot${f.pale ? ' fx-dg-mot--pale' : ''}"
+            style="left:${T(f.cx)}px; top:${T(f.cy)}px; font-size:${T(f.corps * 0.72)}px;
+            transform:translate(-50%,-50%)${tr.length ? ' ' + tr.join(' ') : ''}"
+            >${echapperSheet(f.texte)}</div>`;
+    }
+    // LA LIGNE DE RÉPONSE, et sur la correction la réponse elle-même.
+    html += `<div class="fx-dg-ligne" style="left:${T(g.b.x + g.b.w * 0.12)}px;
+        top:${T(g.ligneY)}px; width:${T(g.b.w * 0.76)}px;
+        font-size:${T(Math.min(g.ligne * 0.62, 4.2))}px">${
+    solution ? echapperSheet(g.reponse) : ''}</div>`;
+    return html;
+}
+
+function dessinerDingbatPdf(doc, item, slot, solution, champ) {
+    const g = geoDingbat(item, slot);
+    const plan = planDuDingbat(g.enigme, g.scene, mesurerDingbat);
+
+    for (const f of plan.formes) {
+        if (f.t === 'forme') {
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(f.forme === 'coin' ? 0.8 : 0.6);
+            if (f.forme === 'cercle') {
+                doc.ellipse(f.x + f.w / 2, f.y + f.h / 2, f.w / 2, f.h / 2, 'S');
+            } else if (f.forme === 'coin') {
+                doc.line(f.x, f.y, f.x, f.y + f.h);
+                doc.line(f.x, f.y + f.h, f.x + f.w, f.y + f.h);
+            } else {
+                const pts = sommetsDeLaForme(f);
+                if (!pts) { doc.roundedRect(f.x, f.y, f.w, f.h, 0.6, 0.6, 'S'); continue; }
+                const suite = pts.slice(1).concat([pts[0]])
+                    .map(([px, py], j) => [px - pts[j][0], py - pts[j][1]]);
+                doc.lines(suite, pts[0][0], pts[0][1], [1, 1], 'S', true);
+            }
+        } else if (f.t === 'trait' || f.t === 'barre') {
+            doc.setDrawColor(...(f.marque || f.t === 'barre' ? ENCRE.gris : ENCRE.trait));
+            doc.setLineWidth(f.epaisseur || 0.4);
+            if (f.pointille && doc.setLineDashPattern) doc.setLineDashPattern([1.2, 1], 0);
+            if (f.t === 'barre') doc.line(f.cx - f.w / 2, f.cy, f.cx + f.w / 2, f.cy);
+            else doc.line(f.x1, f.y1, f.x2, f.y2);
+            if (f.pointille && doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+        } else if (f.t === 'point') {
+            doc.setFillColor(...ENCRE.gris);
+            doc.circle(f.cx, f.cy, f.r, 'F');
+        } else if (f.t === 'fleche') {
+            const p = Math.max(0.6, (f.epaisseur || 0.4) * 3);
+            doc.setDrawColor(...ENCRE.gris);
+            doc.setLineWidth(f.epaisseur || 0.4);
+            doc.line(f.x1, f.y1, f.x2 - p, f.y2);
+            doc.setFillColor(...ENCRE.gris);
+            doc.lines([[-p, -p * 0.6], [0, p * 1.2], [p, -p * 0.6]], f.x2, f.y2, [1, 1], 'F', true);
+        }
+    }
+
+    for (const f of plan.formes) {
+        if (f.t !== 'mot') continue;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(f.corps / 0.3528 * 0.72);
+        // LE MOT PÂLE RESTE DE L'ENCRE, PLUS CLAIRE. L'opacité n'existe pas
+        // dans un PDF sans état graphique ; un gris moyen dit la même chose et
+        // survit mieux à la photocopieuse.
+        doc.setTextColor(...(f.pale ? ENCRE.grille : ENCRE.trait));
+        // ── CENTRER UN MOT TOURNÉ : ON NE PEUT PAS LE DEMANDER À jsPDF ────
+        //
+        // MESURÉ, une croix rouge posée à l'endroit demandé et le mot écrit
+        // par-dessus : avec `angle`, jsPDF applique le décalage de `align`
+        // AVANT de tourner. Un mot vertical sortait donc décalé d'une
+        // demi-longueur SUR LE CÔTÉ, et c'est ce qui faisait grimper
+        // « DROITE » par-dessus le titre du bloc.
+        //
+        // On calcule donc le point de départ nous-mêmes : la ligne d'écriture
+        // part dans la direction (cos A, −sin A) — l'angle de jsPDF tourne
+        // dans l'autre sens que celui du CSS, d'où le signe. À zéro degré, le
+        // calcul retombe exactement sur `align: 'center'`.
+        const A = -(f.angle || 0);
+        const rad = A * Math.PI / 180;
+        const large = doc.getTextWidth(pourPdf(f.texte));
+        // ET `baseline: 'middle'` SOUFFRE DU MÊME MAL que `align` : sous
+        // rotation, le décalage perpendiculaire part dans la direction de la
+        // PAGE au lieu de celle du texte, et un mot vertical sortait décalé
+        // d'une demi-hauteur de capitale sur le côté. On reste donc sur la
+        // ligne d'écriture — le réglage par défaut — et l'on pose le point de
+        // départ soi-même, dans les deux directions.
+        //
+        //   · le long de la ligne   (cos A, −sin A) : reculer d'une demi-largeur ;
+        //   · perpendiculairement   (sin A,  cos A) : descendre d'une demi-capitale,
+        //     puisque le milieu visuel d'une majuscule est au-dessus de sa ligne.
+        const demiCap = f.corps * 0.72 * 0.36;
+        const sx = f.cx - Math.cos(rad) * large / 2 + Math.sin(rad) * demiCap;
+        const sy = f.cy + Math.sin(rad) * large / 2 + Math.cos(rad) * demiCap;
+        const options = {};
+        if (A) options.angle = A;
+        // LE MIROIR N'EXISTE PAS EN jsPDF. On le fait à la main avec la
+        // matrice de transformation du PDF — `\-1 0 0 1 2x 0 cm` renvoie
+        // l'abscisse de part et d'autre de x. Sans lui, « un mot RETOURNÉ
+        // comme dans un miroir » s'imprimait à l'endroit, et l'énigme n'avait
+        // plus de réponse.
+        // ── LE MIROIR N'EXISTE PAS EN jsPDF ───────────────────────────────
+        //
+        // On le fait avec la matrice de transformation du PDF lui-même :
+        // `-1 0 0 1 2X 0 cm` renvoie l'abscisse de part et d'autre de X, donc
+        // le mot se retourne sans bouger de place. Sans elle, « un mot
+        // RETOURNÉ comme dans un miroir » s'imprimait à l'endroit et l'énigme
+        // n'avait plus de réponse.
+        //
+        // ON ENCADRE PAR `q` ET `Q` : la matrice vaudrait sinon pour tout ce
+        // qu'on dessine ensuite, et la feuille entière partirait à l'envers.
+        if (f.miroir && doc.internal && typeof doc.internal.write === 'function') {
+            const k = doc.internal.scaleFactor;
+            doc.internal.write('q');
+            doc.internal.write(`-1 0 0 1 ${(f.cx * 2 * k).toFixed(3)} 0 cm`);
+            doc.text(pourPdf(f.texte), sx, sy, options);
+            doc.internal.write('Q');
+            continue;
+        }
+        doc.text(pourPdf(f.texte), sx, sy, options);
+    }
+
+    // LA LIGNE DE RÉPONSE : des pointillés larges, pas une case.
+    const x = g.b.x + g.b.w * 0.12;
+    const w = g.b.w * 0.76;
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.3);
+    doc.line(x, g.ligneY + g.ligne * 0.25, x + w, g.ligneY + g.ligne * 0.25);
+    if (solution) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.min(g.ligne * 0.62, 4.2) / 0.3528 * 0.8);
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(pourPdf(g.reponse), x + w / 2, g.ligneY + g.ligne * 0.1, { align: 'center' });
+    } else if (champ) {
+        champ(x, g.ligneY - g.ligne * 0.35, w, g.ligne * 0.6);
+    }
+}
+
 export const RENDUS_MOTS = {
+    dingbat: {
+        titre: 'Dingbats',
+        consigne: () => 'Chaque énigme cache une expression dans la FAÇON dont les mots '
+            + 'sont posés : rien n\'est dessiné, c\'est leur place qui parle. Regarde '
+            + 'd\'abord le MOT, puis ce qui lui arrive — il est dans une forme, autour '
+            + 'd\'une forme, répété, retourné, coupé, écarté. Dis-le à voix haute : '
+            + 'beaucoup se résolvent par l\'oreille. Écris ensuite ce que tu lis.',
+        previewGrille: dingbatPreviewHtml,
+        pdfGrille: dessinerDingbatPdf,
+        nomBloc: 'Énigme', nomBlocs: 'énigmes',
+        // SIX PAR PAGE, EN DEUX COLONNES. Un dingbat se REGARDE : « RACINE »
+        // dans un carré de deux centimètres n'est plus une énigme, c'est un
+        // test de vue. Et il lui faut sa ligne de réponse en français, qui est
+        // large par nature.
+        proportions: { w: 1, h: 0.62 },
+        disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
+        parLigneDefaut: 2
+    },
     codage: {
         titre: 'Coder les figures',
         consigne: () => 'CODE CHAQUE FIGURE. Pose la MÊME marque — un trait, deux traits, trois '

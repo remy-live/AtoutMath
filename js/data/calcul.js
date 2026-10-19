@@ -1573,6 +1573,13 @@ export const calculExercises = [
         id: 'voc-dingbats', title: 'Dingbats',
         cree: '2026-10-06',
         generatorId: 'jeu.dingbat', activityId: 'dingbat',
+        // LA FICHE PAPIER — Rémy : « Faire le pdf pour … Ding Bats ». C'est le
+        // jeu du catalogue qui demandait le moins à l'écran et qui n'avait
+        // pourtant aucune feuille : rien n'y est animé, rien ne s'y clique, on
+        // REGARDE et l'on dit ce qu'on lit. La mise en page vient de
+        // `js/core/dingbatPlan.js`, qui sert aux DEUX rendus.
+        printable: 'dingbat',
+        colonnesPapier: 2,
         // UNE ÉNIGME NE SE RÉVISE PAS. Une fois qu’on a vu que RACINE dans un
         // carré se lit « racine carrée », on le sait pour toujours : la reposer
         // en révision ne mesure plus rien. Comme les mots croisés et le Jardin,

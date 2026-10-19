@@ -429,6 +429,13 @@ export const fractionsExercises = [
         cree: '2026-10-15',
         title: 'Lis la Fraction',
         generatorId: 'frac.lire', activityId: 'numpad',
+        // LA FICHE PAPIER — Rémy : « Faire le pdf pour Lis la fraction ». Le
+        // rendu redessine le camembert ou le pavage en jsPDF à partir des
+        // morceaux rangés dans `meta` ; voir `lireFraction` dans
+        // `js/ui/fiches/nombres.js`.
+        printable: 'lireFraction',
+        // NEUF FIGURES PAR PAGE, en trois colonnes.
+        colonnesPapier: 3,
         motsClefs: ['fraction', 'camembert', 'pavage', 'numérateur', 'dénominateur',
             'parts égales', 'lire une fraction', 'partage', 'colorié'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],

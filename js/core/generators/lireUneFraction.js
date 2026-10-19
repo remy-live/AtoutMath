@@ -158,9 +158,41 @@ function tailles(total, rng, inegal) {
 
 // ── LES DEUX DESSINS ───────────────────────────────────────────────────────
 
+// ── LA COULEUR DE LA PART COLORIÉE ────────────────────────────────────────
+//
+// RÉMY : « Pour Lis la fraction, n'hésite pas à changer de couleur. »
+//
+// Elle valait `var(--primary)` — la couleur de l'application — sur TOUTES les
+// figures. Deux raisons de la changer, et la seconde est la vraie : neuf
+// camemberts du même bleu sur une feuille ne font pas une planche d'exercices,
+// ils font un motif ; et ce bleu-là dit « ceci est un bouton » partout ailleurs
+// dans le logiciel.
+//
+// SIX TEINTES, TIRÉES AVEC LA FIGURE. Franches et sombres, parce qu'un trait
+// noir les borde et qu'un pastel s'y perdrait. Le tirage est celui de la
+// question — donc stable d'un rendu à l'autre, et l'aperçu de la feuille montre
+// exactement ce que le PDF imprimera.
+//
+// LA COULEUR NE PORTE RIEN : ce qui distingue une part coloriée d'une part
+// vide, c'est qu'elle est PLEINE. Sur un polycopié en noir et blanc, le rendu
+// de fiche la remplace par un gris franc, et la figure se lit pareil.
+export const TEINTES_FIGURE = ['#4f46e5', '#0d9488', '#c2410c', '#be123c',
+    '#15803d', '#7c3aed'];
+
 const PLEIN = 'var(--primary)';
 const VIDE = 'var(--bg-panel)';
 const TRAIT = 'currentColor';
+
+/**
+ * LES TROIS ENCRES D'UNE FIGURE, complétées par celles de l'écran.
+ *
+ * Le papier n'a pas de `var(--bg-panel)` : la fiche passe donc ses propres
+ * encres, et l'écran ne passe rien. Un seul chemin pour les deux dessins —
+ * c'est ce qui garantit qu'une figure imprimée est la figure vue.
+ */
+const encresDe = (o = {}) => ({
+    plein: o.plein || PLEIN, vide: o.vide || VIDE, trait: o.trait || TRAIT
+});
 
 /**
  * LE CAMEMBERT — un disque coupé en secteurs.
@@ -169,7 +201,8 @@ const TRAIT = 'currentColor';
  * @param {number} n  le total en unités fines
  * @param {boolean} finesse  tracer AUSSI les coupes qui manquent (l'indice)
  */
-export function camembertSvg(morceaux, n, finesse = false) {
+export function camembertSvg(morceaux, n, finesse = false, o = {}) {
+    const E = encresDe(o);
     const R = 76;
     const cx = 84;
     const cy = 84;
@@ -187,7 +220,7 @@ export function camembertSvg(morceaux, n, finesse = false) {
         const grand = m.poids / n > 0.5 ? 1 : 0;
         dessin += `<path d="M ${cx} ${cy} L ${x1.toFixed(1)} ${y1.toFixed(1)} `
             + `A ${R} ${R} 0 ${grand} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" `
-            + `fill="${m.plein ? PLEIN : VIDE}" stroke="${TRAIT}" stroke-width="2"/>`;
+            + `fill="${m.plein ? E.plein : E.vide}" stroke="${E.trait}" stroke-width="2"/>`;
         u += m.poids;
     }
     // LES COUPES QUI MANQUENT, en pointillés : c'est tout l'indice. On ne les
@@ -200,7 +233,20 @@ export function camembertSvg(morceaux, n, finesse = false) {
             if (bords.has(i)) continue;
             const [x, y] = point(i);
             dessin += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" `
-                + `stroke="${TRAIT}" stroke-width="1.6" stroke-dasharray="5 4" opacity=".75"/>`;
+                + `stroke="${E.trait}" stroke-width="1.6" stroke-dasharray="5 4" opacity=".75"/>`;
+        }
+    }
+    // LES PARTS NUMÉROTÉES — l'autre moitié de l'indice, celle qui manquait.
+    // Voir `numeroterDit` plus bas : sur une figure aux parts DÉJÀ égales, il
+    // n'y a aucune coupe à ajouter, et le second indice ne montrait donc rien.
+    if (o.numeroter) {
+        for (let i = 0; i < n; i++) {
+            const a = ((i + 0.5) / n) * Math.PI * 2 - Math.PI / 2;
+            const x = cx + Math.cos(a) * R * 0.66, y = cy + Math.sin(a) * R * 0.66;
+            dessin += `<text x="${x.toFixed(1)}" y="${(y + 6).toFixed(1)}" text-anchor="middle" `
+                + `font-size="18" font-weight="700" fill="${o.encreNumero || '#fff'}" `
+                + `stroke="${o.halo || 'rgba(0,0,0,.45)'}" stroke-width="3" `
+                + `paint-order="stroke">${i + 1}</text>`;
         }
     }
     return `<svg class="lf-figure" viewBox="0 0 168 168" width="100%" `
@@ -216,7 +262,8 @@ export function camembertSvg(morceaux, n, finesse = false) {
  * plus comme un morceau. Quand il ne tient pas dans la fin de ligne, on passe
  * à la ligne suivante — le trou qui reste est une case vide ordinaire.
  */
-export function pavageSvg(morceaux, n, finesse = false) {
+export function pavageSvg(morceaux, n, finesse = false, o = {}) {
+    const E = encresDe(o);
     const colonnes = colonnesPour(n);
     const lignes = Math.ceil(n / colonnes);
     const C = 34;
@@ -234,15 +281,27 @@ export function pavageSvg(morceaux, n, finesse = false) {
         if (x + m.poids > colonnes) { x = 0; y += 1; }
         poses.push({ ...m, x, y });
         dessin += `<rect x="${x * C}" y="${y * C}" width="${m.poids * C}" height="${C}" `
-            + `fill="${m.plein ? PLEIN : VIDE}" stroke="${TRAIT}" stroke-width="2"/>`;
+            + `fill="${m.plein ? E.plein : E.vide}" stroke="${E.trait}" stroke-width="2"/>`;
         x += m.poids;
     }
     if (finesse) {
         for (const m of poses) {
             for (let i = 1; i < m.poids; i++) {
                 dessin += `<line x1="${(m.x + i) * C}" y1="${m.y * C}" `
-                    + `x2="${(m.x + i) * C}" y2="${(m.y + 1) * C}" stroke="${TRAIT}" `
+                    + `x2="${(m.x + i) * C}" y2="${(m.y + 1) * C}" stroke="${E.trait}" `
                     + 'stroke-width="1.6" stroke-dasharray="5 4" opacity=".75"/>';
+            }
+        }
+    }
+    if (o.numeroter) {
+        let u = 0;
+        for (const m of poses) {
+            for (let i = 0; i < m.poids; i++) {
+                u++;
+                dessin += `<text x="${(m.x + i + 0.5) * C}" y="${(m.y + 0.5) * C + 6}" `
+                    + `text-anchor="middle" font-size="18" font-weight="700" `
+                    + `fill="${o.encreNumero || '#fff'}" stroke="${o.halo || 'rgba(0,0,0,.45)'}" `
+                    + `stroke-width="3" paint-order="stroke">${u}</text>`;
             }
         }
     }
@@ -321,12 +380,20 @@ export function question(etape, rng) {
             morceaux = decouper(n, k, rng, true, largeur);
         }
     }
-    const dessiner = (fin) => (support === 'camembert'
-        ? camembertSvg(morceaux, n, fin) : pavageSvg(morceaux, n, fin));
+    // LA TEINTE EST TIRÉE AVEC LA FIGURE, pas choisie au moment de dessiner :
+    // c'est ce qui fait qu'un item redessiné — l'aperçu, puis le PDF, puis la
+    // page des solutions — montre trois fois la MÊME figure.
+    const teinte = TEINTES_FIGURE[rng.int(0, TEINTES_FIGURE.length - 1)];
+    const dessiner = (fin, o = {}) => (support === 'camembert'
+        ? camembertSvg(morceaux, n, fin, { plein: teinte, ...o })
+        : pavageSvg(morceaux, n, fin, { plein: teinte, ...o }));
     return {
-        n, k, morceaux, support, inegal,
+        n, k, morceaux, support, inegal, teinte,
         figure: dessiner(false),
         decoupe: dessiner(true),
+        // LA FIGURE NUMÉROTÉE — le second indice d'une figure aux parts déjà
+        // égales, où il n'y a aucune coupe à ajouter.
+        numerotee: dessiner(false, { numeroter: true }),
         visibles: morceaux.length
     };
 }
@@ -342,13 +409,42 @@ export const lireUneFractionGenerator = {
     label: 'Lire la fraction d\'une figure',
     skills: [SKILL],
     answerKinds: ['text'],
-    // LA FEUILLE PORTE LA FIGURE AUTANT QUE L'ÉCRAN — mais elle demande un
-    // générateur de fiche à elle, qui sait dessiner en PDF. Tant qu'il
-    // n'existe pas, l'exercice reste un exercice d'écran : une consigne qui
-    // renvoie à une figure absente ne demande rien.
+    // LA FEUILLE PORTE LA FIGURE AUTANT QUE L'ÉCRAN, ET ELLE LA PORTE
+    // MAINTENANT. Rémy : « Faire le pdf pour Lis la fraction ». Le rendu est
+    // dans `js/ui/fiches/nombres.js` sous le nom `lireFraction` ; il retrace la
+    // figure en jsPDF à partir de `meta.morceaux` et de `meta.teinte`.
+    //
+    // `ecrit` RESTE FAUX, et ce n'est pas un oubli : il dit « cet exercice sait
+    // s'imprimer comme une LIGNE DE TEXTE », et celui-ci ne le sait toujours
+    // pas — une consigne qui renvoie à une figure absente ne demande rien.
+    // C'est `printable` qui ouvre la fiche, et c'est autre chose.
     ecrit: false,
     conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES).length),
-    params: [paramMarches({ marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT })],
+    params: [
+        paramMarches({ marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT }),
+        // ── L'INDICE, SUR LE PAPIER ───────────────────────────────────────
+        //
+        // RÉMY : « Et pour l'indice, dessine les traits de séparation ».
+        //
+        // À l'écran, l'indice se DEMANDE — l'élève clique quand il bloque. Sur
+        // une feuille, personne ne peut cliquer : l'aide se donne ou non au
+        // moment d'imprimer, et c'est le professeur qui choisit. D'où cette
+        // case, décochée par défaut — avec elle, une figure aux morceaux
+        // inégaux porte en pointillés les coupes qui lui manquent.
+        //
+        // ELLE NE CHANGE RIEN AUX MARCHES ÉGALES, où il n'y a aucune coupe à
+        // ajouter : la cocher pour une planche de temps A ne dessine rien, et
+        // c'est la vérité de la figure, pas un défaut.
+        {
+            id: 'aide', type: 'checkbox', label: 'Montrer les traits de séparation',
+            default: false,
+            // L'AIDE DIT CE QUE LE RÉGLAGE CHANGE, et rien de plus : deux cents
+            // caractères, c'est la règle de la maison (`aidesReglages.test.mjs`).
+            // Le pourquoi est juste au-dessus, où il se lit une fois.
+            aide: 'Chaque figure montre alors en pointillés les coupes qui lui manquent. '
+                + 'La page des solutions les montre toujours.'
+        }
+    ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
@@ -404,16 +500,43 @@ export const lireUneFractionGenerator = {
                 // voit pas la différence, et conclut qu'il n'a pas compris.
                 q.inegal
                     ? 'Voilà la figure avec toutes ses coupes. Compte maintenant.'
-                    : `Compte D'ABORD toutes les parts : ce nombre va EN BAS. `
-                        + 'Puis compte celles qui sont coloriées : il va en haut.'
+                    : 'Voilà les parts numérotées. Le dernier numéro va EN BAS ; '
+                        + 'compte les coloriées pour celui du HAUT.'
             ],
-            schemas: ['', q.inegal ? q.decoupe : ''],
+            // ── LE SECOND INDICE DESSINE TOUJOURS ─────────────────────────
+            //
+            // RÉMY : « pour l'indice, dessine les traits de séparation ».
+            //
+            // MESURÉ AVANT, dans un vrai navigateur, sur les deux familles de
+            // marches : aux parts INÉGALES le second indice redécoupait déjà
+            // la figure (deux traits pointillés sur un camembert de 6), et aux
+            // parts ÉGALES il ne montrait RIEN — juste « Compte D'ABORD toutes
+            // les parts ». Or les trois premières marches sont justement les
+            // marches égales : c'est celles-là qu'on voit en ouvrant
+            // l'exercice, et c'est de celles-là qu'il parle.
+            //
+            // ET IL N'Y A RIEN À REDÉCOUPER QUAND LES PARTS SONT DÉJÀ ÉGALES —
+            // le commentaire d'origine avait raison, et c'est pour cela qu'il
+            // n'y avait pas de dessin. L'aide qui manquait n'est pas la
+            // coupe, c'est le COMPTAGE : sur un camembert de douze parts, se
+            // perdre en comptant est l'erreur la plus banale, et elle n'a rien
+            // à voir avec la fraction. Le second indice numérote donc les
+            // parts — il montre où l'on en est, il ne dit pas la réponse.
+            schemas: ['', q.inegal ? q.decoupe : q.numerotee],
             explanation: `La figure vaut ${q.n} parts égales, et ${q.k} ${q.k > 1 ? 'sont' : 'est'} `
                 + `coloriée${q.k > 1 ? 's' : ''} : c'est ${q.k}/${q.n}.`,
             difficulty: etape.temps === 'A' ? 1 : 3,
             meta: {
                 marche: etape.id, temps: etape.temps, titre: etape.titre,
                 n: q.n, k: q.k, support: q.support, visibles: q.visibles, inegal: q.inegal,
+                // CE QU'IL FAUT POUR REDESSINER LA FIGURE AILLEURS : la fiche
+                // papier la retrace en jsPDF, qui ne sait pas lire du SVG.
+                // Les morceaux et la teinte suffisent — le reste se recalcule.
+                morceaux: q.morceaux, teinte: q.teinte,
+                // L'AIDE EST UN RÉGLAGE DE FICHE, donc elle voyage dans `meta`
+                // et non dans le dessin : l'écran a ses indices, qui ne s'en
+                // servent pas.
+                aide: !!params.aide,
                 // DEUX TROUS : c'est `meta` que le pavé lit, comme pour
                 // « Image et Antécédent ».
                 trous: 2

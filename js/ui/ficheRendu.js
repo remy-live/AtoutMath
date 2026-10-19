@@ -699,6 +699,21 @@ const HORS_TABLE = {
     // d'un seul tenant, il respire seulement un peu plus.
     '\u202F': '\u00A0',
     '\u2212': '-',      // le vrai signe moins
+    // LES POINTS DE SUSPENSION, ÉCRITS EN TROIS POINTS.
+    //
+    // `…` EST dans WinAnsi — jsPDF l'écrit, à l'octet 133 — et c'est bien ce
+    // qui trompe : le caractère part dans le fichier, donc rien ne rougit.
+    // MESURÉ en regardant le PDF rendu : il sort en TROIS CARRÉS VIDES, parce
+    // que 133 est une position que les polices standard d'un PDF ne
+    // garnissent pas toujours. C'est exactement l'histoire du U+2212 de la
+    // ligne au-dessus, et celle du ≈ de `fiches/latins.js`.
+    //
+    // TROUVÉ SUR LE DINGBAT « … … … … », dont les quatre mots sont des points
+    // de suspension : la feuille montrait douze carrés noirs. Mais les CENT
+    // QUARANTE-CINQ énoncés de papier qui écrivent « = … » étaient dans le
+    // même cas — et c'est précisément ce que Rémy a signalé le 19 octobre, à
+    // un détail près : il avait vu la commande LaTeX, pas les carrés.
+    '\u2026': '...',
     // ⊥ ≠ ≤ ≥ √ → ← ≈ ≡ ∞ ∈ ∠ π ne sont plus translittérés : ils sont ÉCRITS,
     // avec la police Symbol. Voir la table SYMBOLE et `ecrireSymboles`.
     // Les indices ₀-₉ ne le sont plus non plus : ils sont dessinés.
