@@ -10,7 +10,7 @@ import {
 import { BANDE_NOM as BANDE_NOM_Q, CASE_H as CASE_H_Q, CASE_L as CASE_L_Q, COND_H as COND_H_Q, COND_L as COND_L_Q, COULEURS_FAMILLE as COULEURS_Q, COULEUR_BANDE as BANDE_Q, COULEUR_FIGURE as FIGURE_Q, FAMILLES as FAMILLES_Q, FLECHES as FLECHES_Q, PLAN_H as PLAN_H_Q, PLAN_L as PLAN_L_Q, POSITIONS as POSITIONS_Q, cleFleche as cleFlecheQ, codageDiagonales as codageDiagQ, coinsArrondis as coinsArrondisQ, pointeDe as pointeDeQ, posEtiquette as posEtiquetteQ, traitsDeCondition as traitsQ } from '../../core/quadrilateres.js';
 import { U as UBLOC, gelule, largeurChamp, largeurTexte as largeurTexteBloc, silhouette, versPdf as blocVersPdf, versSvg as blocVersSvg } from '../../core/blocScratch.js';
 import { ajusterAuRectangle } from '../../core/dominos.js';
-import { encre, modePolycopie, polycopieEnCouleur, pourPdf } from '../ficheRendu.js';
+import { encre, polycopieEnCouleur, polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 
 // --- LE CHAT GÉOMÈTRE ----------------------------------------------------------
 //
@@ -673,8 +673,10 @@ const GRIS_COND = {
     raccourci: { fond: '#c6c6c6', encre: '#111111' }
 };
 
-const paletteCond = () => (['couleur', 'intense'].includes(modePolycopie())
-    ? COULEURS_Q : GRIS_COND);
+// LA LISTE DES DEUX MODES N'EST PLUS ÉCRITE ICI : le Strimko puis les boules
+// de Brahma ont redemandé le même partage, et au troisième il a pris un nom —
+// `polycopieEnVraieCouleur`, dans `ficheRendu.js`, qui dit pourquoi.
+const paletteCond = () => (polycopieEnVraieCouleur() ? COULEURS_Q : GRIS_COND);
 
 const teinteCond = (f) => (paletteCond()[f] || paletteCond().cotes).fond;
 

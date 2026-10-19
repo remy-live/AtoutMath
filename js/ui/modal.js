@@ -276,8 +276,40 @@ export function quandLEcranEstLibre(faire, restant = 34) {
  *
  * Les trois fenêtres d'impression partagent cette mise en page ; elles
  * partagent donc cette fonction, pour qu'il n'y en ait pas trois versions.
+ *
+ * ── SAUF DANS UN VOLET D'ATELIER, OÙ L'APERÇU EST TOUT LE SUJET ───────────
+ *
+ * RÉMY : « dans l'atelier, il faut que l'on voit l'apercu pour l'impression à
+ * chaque fois c'est replié ».
+ *
+ * MESURÉ, ET LA CAUSE EST ICI. Le volet « La feuille » de l'Atelier est un
+ * CADRE, et `window.innerWidth` y vaut la largeur du cadre, pas celle de
+ * l'écran. Sur un portable de 1280 px, les trois volets côte à côte donnent au
+ * cadre de la feuille 463 px : la règle du téléphone se déclenche, le tiroir se
+ * ferme, et l'aperçu tombe à ZÉRO pixel de haut. Sur 1500 px le cadre en fait
+ * 573 et rien ne se passe — d'où « à chaque fois » chez lui et « jamais » chez
+ * moi, qui mesurais large.
+ *
+ * ET LA RAISON DU REPLI NE VAUT PAS LÀ. Elle dit : sur un téléphone, l'aperçu
+ * n'est plus qu'une tache grise entre les réglages et le bouton, et il mange
+ * l'écran. Dans un volet d'atelier, l'aperçu N'EST PAS entre deux choses — il
+ * EST le volet, c'est la seule raison de l'avoir ouvert, et les réglages sont
+ * déjà repliés dans leur propre tiroir (voir `replierOptionsFiche`).
+ *
+ * LE VOLET DEMANDÉ EN FORMAT TÉLÉPHONE GARDE LE REPLI, lui : le professeur qui
+ * choisit « téléphone » veut voir ce qu'un téléphone montre, repli compris.
+ * C'est le même `?appareil=` qui a déjà servi à l'aperçu du jeu.
  */
+function voletAtelierPleineFeuille() {
+    const racine = document.documentElement;
+    if (!racine || !racine.classList.contains('volet-atelier')) return false;
+    let appareil = null;
+    try { appareil = new URLSearchParams(window.location.search).get('appareil'); }
+    catch (e) { appareil = null; }
+    return appareil !== 'telephone';
+}
+
 export function replierApercuSiEtroit(racine) {
     const d = (racine || document).querySelector('.fp-apercu-repli');
-    if (d && window.innerWidth <= 560) d.open = false;
+    if (d && window.innerWidth <= 560 && !voletAtelierPleineFeuille()) d.open = false;
 }

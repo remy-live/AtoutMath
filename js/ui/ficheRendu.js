@@ -169,6 +169,31 @@ export function polycopieEnCouleur() {
     return modePolycopie() !== 'nb';
 }
 
+/**
+ * ET L'AUTRE QUESTION, CELLE QUI A MIS TROIS FICHES À SE FORMULER : LA FEUILLE
+ * SORT-ELLE EN VRAIE COULEUR ?
+ *
+ * `polycopieEnCouleur` répond « dessine-t-on les aplats ? », et « Niveaux de
+ * gris » répond oui — c'est bien ce qu'on veut d'un aplat, qui devient un gris
+ * franc et se lit. Mais une PALETTE n'est pas un aplat : quand sept teintes
+ * doivent se distinguer LES UNES DES AUTRES, les niveaux de gris les font
+ * toutes tomber au même endroit, et l'on perd l'information qu'on croyait
+ * ajouter. Mesuré sur les ruisseaux du Strimko : sept pastels passés au filtre
+ * tombent entre 160 et 210 — sept gris clairs qu'on ne distingue pas, là où UNE
+ * bande franche se suit du doigt.
+ *
+ * Les deux modes qui portent vraiment une palette sont donc « Couleur » —
+ * l'imprimante de la maison — et « Affiche » — ce qu'on projette ou qu'on
+ * punaise, qui ne passe par aucune photocopieuse. C'est exactement le partage
+ * que `algorithmes.js` avait écrit à la main pour ses conditionnelles, et que
+ * les ruisseaux puis les boules de Brahma ont redemandé : au troisième, le nom
+ * vient ici. Trois copies d'une même liste de deux mots, c'est un lecteur qui
+ * cherche la règle et qui en trouve trois.
+ */
+export function polycopieEnVraieCouleur() {
+    return ['couleur', 'intense'].includes(modePolycopie());
+}
+
 // Les coefficients de la luminance sRGB — les mêmes que ceux des filtres CSS
 // `grayscale()` et `saturate()`, pour que l'aperçu à l'écran et le PDF
 // tombent sur la même nuance.

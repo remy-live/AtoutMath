@@ -134,6 +134,43 @@ test('un générateur qui écrit des fractions le déclare', async () => {
     assert.deepEqual(fautifs, []);
 });
 
+test('AUCUNE COMMANDE LATEX NE FUIT SUR UNE FICHE', async () => {
+    // RÉMY, capture d'une fiche imprimée à l'appui : « problème ». On y lisait
+    //
+    //     2543/1000 = \\ldots        4,41 = 441/\\ldots
+    //
+    // en toutes lettres, au milieu de l'exercice « Virgule ou Fraction ? ».
+    //
+    // LA COMMANDE VENAIT D'UN MONDE QUE CE DÉPÔT N'HABITE PAS : la feuille est
+    // dessinée en HTML puis imprimée par le navigateur — personne n'y compile
+    // du LaTeX, et `\\ldots` s'y imprime tel quel. Les cent quarante-cinq
+    // autres énoncés de papier écrivaient déjà le caractère « … ».
+    //
+    // ON L'ÉPROUVE SUR LES ÉNONCÉS ENGENDRÉS, et non sur le texte des sources :
+    // un `\\ldots` assemblé à la volée — c'était le cas de deux des trois —
+    // échapperait à une lecture du code.
+    const { generateurDeFiche } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+    const latex = /\\(ldots|dots|cdot|frac|times|div|text|left|right|begin|end|mathrm)\b/;
+    const fautifs = [];
+    for (const exo of exercices) {
+        const g = generateurDeFiche(exo);
+        if (!g || !g.ecrit) continue;
+        const reglages = { ...(exo.params || {}), ...(exo.printParams || {}) };
+        for (let i = 0; i < 12; i++) {
+            let it;
+            try { it = g.generate(reglages, { rng: makeRng(`tex_${exo.id}_${i}`), index: i }); }
+            catch { break; }
+            const p = it.prompt || {};
+            const morceaux = [p.papier, p.text, it.explicationPapier, it.explanation];
+            const fautif = morceaux.find(t => typeof t === 'string' && latex.test(t));
+            if (fautif) { fautifs.push(`${g.id} : « ${fautif} »`); break; }
+        }
+    }
+    assert.deepEqual(fautifs, []);
+});
+
 // --- Ce qui est de l'écran ne va pas sur la feuille --------------------------
 
 test('aucun réglage d\'écran n\'atteint le panneau d\'impression', async () => {

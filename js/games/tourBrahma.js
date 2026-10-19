@@ -25,13 +25,10 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointe
 import { meneurDemo } from '../core/meneurDemo.js';
 import {
     departBrahma, coupValide, jouer, estGagneBrahma, coupsRestants,
-    prochainCoupBrahma, minimumBrahma, qualiteBrahma, TAILLES_BRAHMA
+    prochainCoupBrahma, minimumBrahma, qualiteBrahma, TAILLES_BRAHMA, teinteBoule
 } from '../core/tourBrahma.js';
 
 const COMPETENCE = 'defi.recursion';
-
-/** Les teintes des boules, de la plus petite à la plus grosse. */
-const TEINTES = ['#7c3aed', '#c1274a', '#2f855a', '#e0a020', '#3182ce', '#b7791f'];
 
 class TourBrahma extends BaseGame {
     constructor(container, isDemo, params) {
@@ -230,7 +227,7 @@ class TourBrahma extends BaseGame {
         const p = this.part(b);
         return `<div class="tb-boule" style="width:calc(var(--tb-d) * ${p});
             height:calc(var(--tb-d) * ${p}); font-size:calc(var(--tb-d) * ${p} * .46);
-            background:${TEINTES[(b - 1) % TEINTES.length]}">${b}</div>`;
+            background:${teinteBoule(b)}">${b}</div>`;
     }
 
     /** Toucher un conduit : on prend sa boule du dessus, ou l'on pose la sienne. */

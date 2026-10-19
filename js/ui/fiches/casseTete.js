@@ -8,10 +8,10 @@ import {
     ENCRE, boiteDe, couperEnLignes, echapperSheet, planchePasAPas, titrePasAPas
 } from './socle.js';
 import { courbesDuCoeur, courbesDuPedoncule } from '../../core/champDeTrefles.js';
-import { etapesBrahma } from '../../core/tourBrahma.js';
+import { etapesBrahma, teinteBoule } from '../../core/tourBrahma.js';
 import { etapesGrenouilles } from '../../core/grenouilles.js';
 import { etapesParking } from '../../core/parking.js';
-import { polycopieEnCouleur, pourPdf } from '../ficheRendu.js';
+import { polycopieEnCouleur, polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 
 // --- LES JEUX À DÉCOUPER : LA TOUR DE BRAHMA ET LES GRENOUILLES ----------------
 //
@@ -83,6 +83,29 @@ function miniTour(x, y, w, h, piles, n) {
  */
 const rapportTour = (n) => 3 / (0.86 * sommeParts(n));
 
+/**
+ * L'ENCRE D'UNE BOULE, ET CELLE DE SON NUMÉRO.
+ *
+ * RÉMY : « Vérifie aussi les autres pour les couleurs. » Mesuré, et c'était la
+ * fiche la plus sourde du lot : les six boules à découper sortaient du MÊME
+ * lavande pâle (`ENCRE.donnee`), et la solution pas à pas en trente et une
+ * vignettes de galets blancs — un professeur qui corrige doit alors comparer
+ * des DIAMÈTRES d'une vignette à la suivante pour voir quelle boule a bougé.
+ * La teinte le lui dit d'un coup d'œil.
+ *
+ * LE NUMÉRO PASSE AU BLANC AVEC ELLE, comme à l'écran : sur le violet et le
+ * grenat, un numéro d'encre sombre ne se lit plus.
+ *
+ * ET LA PHOTOCOPIEUSE GARDE SES RONDS VIDES, « Niveaux de gris » comprise —
+ * c'est la leçon du Mastermind, écrite dans `jeux.js` : « un aplat gris
+ * derrière une lettre blanche ne survit pas toujours à la photocopie, et la
+ * lettre est ce qui porte l'information ». D'où `polycopieEnVraieCouleur` et
+ * non `polycopieEnCouleur`, qui dit oui aux niveaux de gris.
+ */
+const encresBoule = () => (polycopieEnVraieCouleur()
+    ? { fond: teinteBoule, numero: '#ffffff' }
+    : { fond: () => '#ffffff', numero: `rgb(${ENCRE.trait.join(',')})` });
+
 /** LA SOLUTION DE LA TOUR, en vignettes — aperçu. */
 function brahmaSolutionHtml(item, slot, k) {
     const b = boiteDe(slot);
@@ -91,6 +114,7 @@ function brahmaSolutionHtml(item, slot, k) {
     const pl = planchePasAPas(b, etapes.length, rapportTour(n));
     if (!pl) return '';
     const T = (v) => (v * k).toFixed(2);
+    const encres = encresBoule();
     let html = `<div class="fx-pas-titre" style="left:${T(b.x)}px; top:${T(b.y)}px;
         width:${T(b.w)}px; font-size:${T(4)}px">${titrePasAPas(etapes.length - 1)}</div>`;
     etapes.forEach((piles, i) => {
@@ -105,7 +129,8 @@ function brahmaSolutionHtml(item, slot, k) {
         });
         mini.boules.forEach(o2 => {
             html += `<div class="fx-tb-miniboule" style="left:${T(o2.cx - o2.w / 2)}px;
-                top:${T(o2.cy - o2.hh / 2)}px; width:${T(o2.w)}px; height:${T(o2.hh)}px"></div>`;
+                top:${T(o2.cy - o2.hh / 2)}px; width:${T(o2.w)}px; height:${T(o2.hh)}px;
+                background:${encres.fond(o2.b)}"></div>`;
         });
     });
     return html;
@@ -118,7 +143,7 @@ function dessinerBrahmaSolutionPdf(doc, item, slot) {
     const etapes = etapesBrahma(n);
     const pl = planchePasAPas(b, etapes.length, rapportTour(n));
     if (!pl) return;
-    const aplat = polycopieEnCouleur();
+    const encres = encresBoule();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(4 / 0.3528);
     doc.setTextColor(...ENCRE.texte);
@@ -135,7 +160,7 @@ function dessinerBrahmaSolutionPdf(doc, item, slot) {
         mini.cadres.forEach(c => doc.roundedRect(c.x, c.y, c.w, c.h, 0.5, 0.5));
         mini.boules.forEach(o2 => {
             doc.setDrawColor(...ENCRE.trait);
-            doc.setFillColor(...(aplat ? ENCRE.donnee : [255, 255, 255]));
+            doc.setFillColor(encres.fond(o2.b));
             doc.setLineWidth(0.25);
             doc.roundedRect(o2.cx - o2.w / 2, o2.cy - o2.hh / 2, o2.w, o2.hh,
                 o2.hh / 2, o2.hh / 2, 'FD');
@@ -341,6 +366,7 @@ function brahmaPreviewHtml(item, slot, k, solution) {
     if (solution) return brahmaSolutionHtml(item, slot, k);
     const g = geoBrahma(item, slot);
     const T = (v) => (v * k).toFixed(2);
+    const encres = encresBoule();
     let html = `<div class="fx-tb-socle" style="left:${T(g.socle.x)}px; top:${T(g.socle.y)}px;
         width:${T(g.socle.w)}px; height:${T(g.socle.h)}px"></div>`;
     for (let p = 0; p < 3; p++) {
@@ -363,7 +389,8 @@ function brahmaPreviewHtml(item, slot, k, solution) {
         const d = D * partBoule(taille, g.n);
         html += `<div class="fx-tb-boule" style="left:${T(g.pieces.x + (g.pieces.w - d) / 2)}px;
             top:${T(y)}px; width:${T(d)}px; height:${T(d)}px;
-            font-size:${T(d * 0.46)}px">${taille}</div>`;
+            font-size:${T(d * 0.46)}px; background:${encres.fond(taille)};
+            color:${encres.numero}">${taille}</div>`;
         y += d;
     }
     // Les quatre vignettes.
@@ -382,7 +409,8 @@ function brahmaPreviewHtml(item, slot, k, solution) {
         mini.boules.forEach(o => {
             html += `<div class="fx-tb-miniboule${v.faute ? ' fx-tb-miniboule--ko' : ''}"
                 style="left:${T(o.cx - o.w / 2)}px; top:${T(o.cy - o.hh / 2)}px;
-                width:${T(o.w)}px; height:${T(o.hh)}px"></div>`;
+                width:${T(o.w)}px; height:${T(o.hh)}px;
+                background:${encres.fond(o.b)}"></div>`;
         });
     });
     return html;
@@ -391,6 +419,9 @@ function brahmaPreviewHtml(item, slot, k, solution) {
 function dessinerBrahmaPdf(doc, item, slot, solution) {
     if (solution) return dessinerBrahmaSolutionPdf(doc, item, slot);
     const g = geoBrahma(item, slot);
+    const encres = encresBoule();
+    // Le socle et les conduits gardent leur aplat très pâle, qui n'est pas une
+    // palette : il dit « ceci est le plateau », et un gris le dit aussi bien.
     const aplat = polycopieEnCouleur();
 
     doc.setLineWidth(0.4);
@@ -428,10 +459,10 @@ function dessinerBrahmaPdf(doc, item, slot, solution) {
         yb += d;
         doc.setLineWidth(0.4);
         doc.setDrawColor(...ENCRE.trait);
-        doc.setFillColor(...(aplat ? ENCRE.donnee : [255, 255, 255]));
+        doc.setFillColor(encres.fond(taille));
         doc.circle(cx, cy, d / 2, 'FD');
         doc.setFontSize(Math.max(6, d * 1.2));
-        doc.setTextColor(...ENCRE.trait);
+        doc.setTextColor(encres.numero);
         doc.text(String(taille), cx, cy + d * 0.16, { align: 'center' });
     }
 
@@ -449,7 +480,7 @@ function dessinerBrahmaPdf(doc, item, slot, solution) {
         mini.cadres.forEach(c => doc.roundedRect(c.x, c.y, c.w, c.h, 0.8, 0.8));
         mini.boules.forEach(o => {
             doc.setDrawColor(...(v.faute ? [197, 48, 48] : ENCRE.trait));
-            doc.setFillColor(...(aplat ? ENCRE.donnee : [255, 255, 255]));
+            doc.setFillColor(encres.fond(o.b));
             doc.setLineWidth(0.3);
             doc.roundedRect(o.cx - o.w / 2, o.cy - o.hh / 2, o.w, o.hh, o.hh / 2, o.hh / 2, 'FD');
         });

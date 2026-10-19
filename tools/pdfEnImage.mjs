@@ -17,10 +17,19 @@
 // on la photographie.
 //
 //     node tools/pdfEnImage.mjs <fichier.pdf> <image.png> [échelle] [page]
+//     node tools/pdfEnImage.mjs <fichier.pdf> <image.png> 5 1 --zone=0.16,0.54,0.46,0.18
 //
 // L'échelle vaut 2 par défaut : une A4 paysage sort alors en 1683 × 1190, de
 // quoi juger un écart d'un millimètre. À 1, on juge la mise en page ; à 4, une
 // jonction de traits.
+//
+// ET `--zone` DÉCOUPE, parce que monter l'échelle ne suffit pas. Une page
+// rendue à 5 fait 4209 × 2976 ; qui la regarde la voit RÉDUITE à la largeur de
+// sa fenêtre, c'est-à-dire exactement à la résolution qu'on venait de quitter.
+// On a monté l'échelle trois fois de suite en se demandant pourquoi le trait
+// ne se précisait pas. La zone est donnée en FRACTIONS de la page — `x,y,w,h`
+// entre 0 et 1 —, parce qu'on la lit sur l'image entière qu'on vient de
+// regarder, et non en pixels d'une échelle qu'on changera au prochain essai.
 //
 // POUR OBTENIR LE PDF : la sonde `tools/sonde.mjs` accepte les téléchargements,
 // et chaque fiche a son bouton « Télécharger le PDF ». Voir par exemple
@@ -29,7 +38,14 @@
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
 
-const [chemin, sortie, echelle = '2', numero = '1'] = process.argv.slice(2);
+const nus = process.argv.slice(2).filter(a => !a.startsWith('--'));
+const zoneArg = process.argv.slice(2).find(a => a.startsWith('--zone='));
+const ZONE = zoneArg ? zoneArg.slice(7).split(',').map(Number) : null;
+if (ZONE && (ZONE.length !== 4 || ZONE.some(v => !Number.isFinite(v)))) {
+    console.error('--zone attend quatre nombres : --zone=x,y,largeur,hauteur (fractions de 0 à 1)');
+    process.exit(2);
+}
+const [chemin, sortie, echelle = '2', numero = '1'] = nus;
 if (!chemin || !sortie) {
     console.error('emploi : node tools/pdfEnImage.mjs <fichier.pdf> <image.png> [échelle] [page]');
     process.exit(2);
@@ -68,7 +84,7 @@ await page.route('**/polices-standard/*', async (route) => {
             headers: { 'content-type': 'font/otf' } });
     } catch (e) { await route.fulfill({ status: 404, body: '' }); }
 });
-await page.setContent('<canvas id="toile"></canvas>');
+await page.setContent('<canvas id="toile"></canvas><canvas id="decoupe"></canvas>');
 // L'OUVRIER EST INJECTÉ DANS LA PAGE, pas chargé par le réseau : le site
 // d'essai a une CSP, et de toute façon on ne dépend pas d'Internet pour
 // regarder une feuille.
@@ -104,8 +120,35 @@ if (taille.erreur) {
     await nav.close();
     process.exit(1);
 }
-await page.locator('#toile').screenshot({ path: sortie });
+// LA DÉCOUPE SE FAIT DANS UNE SECONDE TOILE, et non en demandant un rectangle
+// à Playwright.
+//
+// MESURÉ, ET C'EST LE PIÈGE EXACT QUE CE DÉPÔT CONNAÎT DÉJÀ : l'option `clip`
+// de `locator.screenshot()` est ACCEPTÉE ET IGNORÉE — seule `page.screenshot()`
+// la lit. La première version imprimait donc fièrement « découpé à 1684 × 417 »
+// en écrivant la page entière, et l'on regardait l'image en se demandant
+// pourquoi la jonction de traits ne se précisait pas. Un outil qui annonce ce
+// qu'on lui a DEMANDÉ plutôt que ce qu'il a FAIT ment à son lecteur ; la ligne
+// ci-dessous lit donc la toile qu'on photographie vraiment.
+const zone = await page.evaluate(([z, w, h]) => {
+    const src = document.getElementById('toile');
+    const d = document.getElementById('decoupe');
+    if (!z) { d.remove(); return null; }
+    const x = Math.max(0, Math.round(z[0] * w)), y = Math.max(0, Math.round(z[1] * h));
+    const lw = Math.max(1, Math.min(w - x, Math.round(z[2] * w)));
+    const lh = Math.max(1, Math.min(h - y, Math.round(z[3] * h)));
+    d.width = lw; d.height = lh;
+    const ctx = d.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, lw, lh);
+    ctx.drawImage(src, x, y, lw, lh, 0, 0, lw, lh);
+    src.remove();
+    return { x, y, w: lw, h: lh };
+}, [ZONE, taille.w, taille.h]);
+
+await page.locator(zone ? '#decoupe' : '#toile').screenshot({ path: sortie });
 await nav.close();
 
-console.log(`${sortie} — page ${numero}/${taille.pages}, ${taille.w} × ${taille.h} px`);
+console.log(`${sortie} — page ${numero}/${taille.pages}, ${taille.w} × ${taille.h} px`
+    + (zone ? `, découpé en (${zone.x}, ${zone.y}) sur ${zone.w} × ${zone.h}` : ''));
 erreurs.forEach(e => console.log('  \x1b[33merreur de page\x1b[0m :', e));

@@ -191,7 +191,16 @@ export const fractionDecimaleGenerator = {
                 answerKind: 'numeric',
                 prompt: {
                     text: `Écris ${numerateur}/${denominateur} avec une virgule.`,
-                    papier: `${numerateur}/${denominateur} = \\ldots`,
+                    // `…` ET NON `\\ldots` : la fiche n'est pas du LaTeX.
+                    //
+                    // RÉMY, capture d'une fiche imprimée à l'appui : « problème ».
+                    // On y lisait « 2543/1000 = \\ldots » en toutes lettres, et
+                    // « 4,41 = 441/\\ldots ». La commande venait d'un monde que
+                    // ce dépôt n'habite pas : la feuille est dessinée en HTML
+                    // puis imprimée, personne n'y compile du LaTeX. Les cent
+                    // quarante-cinq autres énoncés de papier écrivent déjà le
+                    // caractère « … », et c'est tout ce qu'il fallait faire.
+                    papier: `${numerateur}/${denominateur} = …`,
                     html: `<div class="game-question">Écris ce nombre avec une virgule :</div>
                            <div class="frac-egalite">${fractionHtml(numerateur, denominateur)}
                            <span class="frac-signe">=</span>
@@ -246,8 +255,8 @@ export const fractionDecimaleGenerator = {
             answerKind: 'numeric',
             prompt: {
                 text: `Complète : ${texte}`,
-                papier: `${ecriture} = ${trou === 'numerateur' ? '\\ldots' : numerateur}/`
-                    + `${trou === 'numerateur' ? denominateur : '\\ldots'}`,
+                papier: `${ecriture} = ${trou === 'numerateur' ? '…' : numerateur}/`
+                    + `${trou === 'numerateur' ? denominateur : '…'}`,
                 html: `<div class="game-question">Complète l'égalité :</div>
                        <div class="frac-egalite"><span class="frac-nombre">${ecriture}</span>
                        <span class="frac-signe">=</span>

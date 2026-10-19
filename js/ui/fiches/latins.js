@@ -34,12 +34,66 @@
 import { boiteDe, echapperSheet } from './socle.js';
 // `pourPdf` : la translittération des caractères que les polices d'un PDF
 // ne portent pas. Voir l'opérateur de l'Approxdoku, plus bas.
-import { pourPdf } from '../ficheRendu.js';
+// `polycopieEnVraieCouleur` décide de la couleur des ruisseaux — voir
+// `encreDuRuisseau`.
+import { polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 // L'encre vient du module feuille — voir `fiches/encre.js`.
 import { GRIS, TRAIT } from './encre.js';
 
 /** Le gris des bandes de ruisseau : visible, mais dessous. */
 const BANDE = [218, 222, 232];
+
+/**
+ * ET QUAND ON MET DE LA COULEUR DANS L'IMPRIMANTE, ON MET LES COULEURS.
+ *
+ * RÉMY : « pour le strimko, quand on choisit les coulerus pour l'impression,
+ * ca ne met pas les couleurs. »
+ *
+ * Il a raison, et le commentaire en tête de ce fichier disait pourquoi sans
+ * s'en apercevoir : il explique que la feuille ne peut pas transposer les sept
+ * teintes de l'écran PARCE QU'ELLE PASSE À LA PHOTOCOPIEUSE. C'est vrai de la
+ * photocopieuse — ce n'est pas vrai de l'imprimante couleur du professeur, ni
+ * d'une affiche qu'on projette. La bande grise était donc dessinée en gris
+ * QUOI QU'ON COCHE, et le sélecteur ne servait à rien sur cette feuille.
+ *
+ * Le filtre général (`teindreHtml`, `teindreDoc`) ne pouvait rien y faire : il
+ * DÉSATURE ce que le rendu a posé, il n'invente pas une couleur qui n'a jamais
+ * été écrite. C'est la règle de la maison, écrite en tête de `encre()` — la
+ * distinction se décide là où l'on SAIT ce qu'on dessine. Les trèfles ont payé
+ * exactement la même friction trois semaines plus tôt (`casseTete.js`).
+ *
+ * LES SEPT TEINTES SONT CELLES DE L'ÉCRAN, relevées dans `css/modules.css`
+ * (`.st-ruisseau--0` à `--6`) : un Strimko de la feuille et un Strimko du jeu
+ * doivent être le même Strimko. Pâles à dessein — là aussi c'est l'écran qui
+ * décide —, parce que le chiffre de l'élève s'écrit par-dessus et que c'est
+ * LUI qu'on doit lire en premier.
+ *
+ * DEUX MODES SEULEMENT, ET LE GRIS N'EN EST PAS — c'est la question que
+ * `polycopieEnVraieCouleur` pose, et c'est ici qu'elle s'est formulée. En
+ * « Niveaux de gris », les sept pastels repassent par `encre()` et tombent
+ * entre 160 et 210 : sept gris clairs qu'on ne distingue pas, à la place d'UNE
+ * bande franche qui se suit du doigt. On garderait la lettre de la demande en
+ * perdant ce qu'elle cherche. La couleur est donc pour « Couleur » et
+ * « Affiche », et la photocopieuse garde sa bande.
+ *
+ * ET LA COULEUR NE PORTE TOUJOURS RIEN TOUTE SEULE : c'est le CHEMIN qui dit
+ * l'appartenance, la couleur ne fait que reposer l'œil. Un élève daltonien lit
+ * la feuille en couleur exactement comme la feuille grise.
+ */
+const TEINTES_RUISSEAU = [
+    [191, 219, 254], [254, 215, 170], [187, 247, 208], [233, 213, 255],
+    [254, 205, 211], [253, 230, 138], [165, 243, 252]
+];
+
+/** L'encre de la bande du ruisseau n° i. */
+function encreDuRuisseau(i) {
+    if (!polycopieEnVraieCouleur()) return BANDE;
+    // LE MODULO N'EST PAS DE LA PRUDENCE DÉCORATIVE : l'écran déclare sept
+    // teintes parce qu'une grille va jusqu'à sept ruisseaux. Si le générateur
+    // en produit huit un jour, la huitième bande reprend la première au lieu de
+    // sortir en `rgb(undefined)` — c'est-à-dire en NOIR, par-dessus les ronds.
+    return TEINTES_RUISSEAU[i % TEINTES_RUISSEAU.length];
+}
 
 /**
  * LA GÉOMÉTRIE D'UNE GRILLE À RONDS, pour les deux rendus.
@@ -87,12 +141,22 @@ function chiffreDe(g, r, c, solution) {
  * joint leurs centres. On la rend en SEGMENTS plutôt qu'en polyligne pour que
  * jsPDF et le SVG en tracent exactement les mêmes : jsPDF n'a pas de
  * `polyline`, et deux descriptions à tenir d'accord finissent par diverger.
+ *
+ * CHAQUE SEGMENT PORTE SON ENCRE, et non son numéro de ruisseau : les deux
+ * rendus posaient jusqu'ici la couleur UNE FOIS avant la boucle, et c'est
+ * précisément ce qui ne marche plus quand elle change d'un ruisseau à l'autre.
+ * La décider ici, c'est la décider une seule fois pour le SVG et pour le PDF.
  */
 function bandesDuStrimko(g) {
     const out = [];
-    (g.m.ruisseaux || []).forEach(ruisseau => {
-        for (let i = 0; i + 1 < ruisseau.length; i++) {
-            out.push([g.C(ruisseau[i].r, ruisseau[i].c), g.C(ruisseau[i + 1].r, ruisseau[i + 1].c)]);
+    (g.m.ruisseaux || []).forEach((ruisseau, i) => {
+        const encreBande = encreDuRuisseau(i);
+        for (let j = 0; j + 1 < ruisseau.length; j++) {
+            out.push({
+                p: g.C(ruisseau[j].r, ruisseau[j].c),
+                q: g.C(ruisseau[j + 1].r, ruisseau[j + 1].c),
+                encre: encreBande
+            });
         }
     });
     return out;
@@ -104,9 +168,9 @@ function strimkoPreviewHtml(item, slot, k, solution) {
     let d = '';
     // 1. LES BANDES D'ABORD : elles passent DERRIÈRE les ronds. Dessinées
     //    après, elles barreraient les chiffres.
-    bandesDuStrimko(g).forEach(([p, q]) => {
+    bandesDuStrimko(g).forEach(({ p, q, encre: e }) => {
         d += `<line x1="${mm(p.x)}" y1="${mm(p.y)}" x2="${mm(q.x)}" y2="${mm(q.y)}"
-            stroke="rgb(${BANDE.join(',')})" stroke-width="${mm(g.rayon * 1.5)}"
+            stroke="rgb(${e.join(',')})" stroke-width="${mm(g.rayon * 1.5)}"
             stroke-linecap="round"/>`;
     });
     // 2. PUIS LES RONDS, remplis de blanc.
@@ -128,9 +192,12 @@ function strimkoPreviewHtml(item, slot, k, solution) {
 function dessinerStrimkoPdf(doc, item, slot, solution, champ) {
     const g = plantDuCarre(item, slot);
     doc.setLineCap('round');
-    doc.setDrawColor(...BANDE);
     doc.setLineWidth(g.rayon * 1.5);
-    bandesDuStrimko(g).forEach(([p, q]) => doc.line(p.x, p.y, q.x, q.y));
+    // L'ENCRE SE POSE DANS LA BOUCLE, pas avant : voir `bandesDuStrimko`.
+    bandesDuStrimko(g).forEach(({ p, q, encre: e }) => {
+        doc.setDrawColor(...e);
+        doc.line(p.x, p.y, q.x, q.y);
+    });
 
     doc.setLineCap('butt');
     for (let r = 0; r < g.n; r++) for (let c = 0; c < g.n; c++) {
@@ -271,9 +338,13 @@ export const RENDUS_LATINS = {
         titre: 'Strimko',
         consigne: (items) => {
             const n = (items[0] && items[0].meta.n) || 4;
+            // LA CONSIGNE DIT LA COULEUR DE LA FEUILLE QU'ON TIENT. Elle disait
+            // « la bande grise » même sur la feuille en couleur : un élève qui
+            // cherche du gris sur une feuille qui n'en a pas cherche longtemps.
+            const bande = polycopieEnVraieCouleur() ? 'la bande colorée' : 'la bande grise';
             return `Écris les nombres de 1 à ${n} dans les ronds : chacun une seule fois `
                 + 'par LIGNE, une seule fois par COLONNE, et une seule fois par RUISSEAU — '
-                + 'le ruisseau est la bande grise qui relie les ronds entre eux.';
+                + `le ruisseau est ${bande} qui relie les ronds entre eux.`;
         },
         previewGrille: strimkoPreviewHtml,
         pdfGrille: dessinerStrimkoPdf,

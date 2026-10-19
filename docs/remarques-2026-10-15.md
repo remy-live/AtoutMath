@@ -1473,3 +1473,64 @@ tel quel. Et la sonde cherchait les marques de la compensation avec un
 `.br-case` de trop : m0 et b1 n'étaient jamais écrites, et le verdict « Tout ce
 que tu as écrit est juste » contenait le mot « juste » — l'épreuve passait donc
 sur un travail inachevé.
+
+## 9. Une rafale de huit — 19 octobre
+
+> « j'aimerai bien ce genre d'exercices (tu peux mettre des couleurs) »
+> *(capture : « Dénombrer des cubes par tranche », un empilement de cubes en
+> perspective, « Quel est le nombre de cubes ? », avec un bouton 90° pour
+> tourner)*
+>
+> « problème »
+> *(capture d'une fiche imprimée : « Exercice 1 — Virgule ou Fraction ? », où
+> l'on lit `= \ldots` et `441/\ldots` en toutes lettres)*
+>
+> « dans l'atelier, il faut que l'on voit l'apercu pour l'impression à chaque
+> fois c'est replié »
+>
+> « Pour Lis la fraction, n'hésite pas à changer de couleur. Et pour l'indice,
+> dessine les traits de séparation »
+>
+> « pour les calculs sur les impressions, n'hésite à proposer une option tableau
+> ou c'est présenté sous forme de tableau (dans les options d'impression) avec
+> alternances des couleurs ou non. »
+>
+> « pour le strimko, quand on choisit les coulerus pour l'impression, ca ne met
+> pas les couleurs. Vérifie aussi les autres pour les couleurs »
+>
+> « pour les trèfles, tu peux rendre le parterre plus dense »
+>
+> « pour le mode apprentissage pour les exercices, c'est tellement long, même
+> pour moi, je n'ai pas envie de lire cela. Il faut faire plus court, plus
+> simple, un exemple, pas si sérré, proposer un exemple facultatif animé (avec
+> le robot par exemple) »
+> *(capture du mode apprentissage du « Détour par le Nombre Rond » : un pavé de
+> douze lignes justifiées, puis un encadré de huit lignes de plus)*
+
+Puis : « Go ».
+
+**L'ordre choisi** : ce qui est CASSÉ d'abord — le `\ldots` qui fuit dans les
+PDF, les couleurs du Strimko qui ne sortent pas, l'aperçu replié —, puis les
+réglages, puis les deux gros chantiers (le ton du mode apprentissage, et
+l'exercice des cubes).
+
+## 10. Trois fiches qui n'existent pas — 19 octobre, en cours de rafale
+
+Arrivé pendant le travail sur le Strimko :
+
+> « Faire le pdf pour
+>
+> Lis la fraction
+> Virgule ou fractions
+> Ding Bats
+>
+> Pour Lis la fraction, n'hésite pas à changer de couleur. Et pour l'indice,
+> dessine les traits de séparation »
+
+La seconde phrase est le point n° 4 de la rafale, répété — donc il y tient, et
+il le place là où il doit l'être : SUR LA FICHE. Le premier point est neuf : ces
+trois exercices n'ont pas de version imprimée du tout.
+
+**Vérifié avant de commencer** : `logi-dingbats`, et les deux exercices de
+fractions, n'ont pas de champ `printable` ; ils ne figurent donc dans aucune
+liste de l'atelier d'impression.

@@ -13,6 +13,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 
 // `ficheRendu` et les rendus touchent `document` au chargement : on leur en
 // donne un qui ne sert à rien, comme `tools/caracteresPerdus.mjs`.
@@ -25,11 +26,26 @@ const { reglerModePolycopie } = await import('../js/ui/ficheRendu.js');
 const { RENDUS_CASSETETE } = await import('../js/ui/fiches/casseTete.js');
 const { RENDUS_REPERAGE } = await import('../js/ui/fiches/reperage.js');
 const { RENDUS_THEOREMES } = await import('../js/ui/fiches/theoremes.js');
+const { RENDUS_LATINS } = await import('../js/ui/fiches/latins.js');
 const { getGenerator } = await import('../js/core/registry.js');
 await import('../js/core/activities/index.js');
 const { exercices } = await import('../js/data/catalog.js');
 const { makeRng } = await import('../js/core/ids.js');
 const { TEINTES } = await import('../js/core/teintesPieces.js');
+
+/**
+ * LES SEPT TEINTES DES RUISSEAUX, LUES DANS LA FEUILLE DE STYLE DE L'ÉCRAN.
+ *
+ * On ne les recopie PAS ici, et c'est tout l'intérêt : la promesse qu'on garde
+ * est « un Strimko de la feuille et un Strimko du jeu sont le même Strimko ».
+ * Une liste recopiée dans l'épreuve garderait que la feuille est colorée ; elle
+ * ne garderait pas qu'elle est colorée COMME L'ÉCRAN, et les deux listes
+ * divergeraient au premier changement de palette sans que rien ne rougisse.
+ */
+const TEINTES_RUISSEAU_RVB = [...fs
+    .readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8')
+    .matchAll(/\.st-ruisseau--\d+\s*\{\s*--st-teinte:\s*#([0-9a-f]{6})/gi)]
+    .map(m => [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)).join(','));
 
 const tirer = (id, i = 0) => {
     const e = exercices.find(x => x.id === id);
@@ -156,4 +172,48 @@ test('EN COULEUR, LES PIÈCES DU PAVAGE ET DE LA MOSAÏQUE PRENNENT LEUR TEINTE'
         assert.ok(!TEINTES.some(t => nb.includes(t)),
             `${id} : une teinte de pièce sort en noir et blanc`);
     }
+});
+
+test('EN COULEUR, LES RUISSEAUX DU STRIMKO PRENNENT LES SEPT TEINTES DE L\'ÉCRAN', () => {
+    // RÉMY : « pour le strimko, quand on choisit les coulerus pour
+    // l'impression, ca ne met pas les couleurs. » Le rendu ne consultait pas le
+    // mode du tout : la bande sortait grise quoi qu'on coche.
+    //
+    // CE QU'ON MESURE, ET POURQUOI C'EST CELA : les teintes viennent de
+    // `css/modules.css` (`.st-ruisseau--0` à `--6`) et l'épreuve les cite en
+    // RVB, comme la feuille les écrit. Elle exige DEUX teintes distinctes — une
+    // seule couleur sur tous les ruisseaux, ce serait la bande grise repeinte,
+    // pas la demande.
+    const item = tirer('logi-strimko');
+    const slot = { boite: { x: 10, y: 10, w: 90, h: 90 } };
+    const bandes = (html) => [...html.matchAll(/<line[^>]*stroke="rgb\((\d+),(\d+),(\d+)\)"/g)]
+        .map(m => `${m[1]},${m[2]},${m[3]}`);
+
+    const couleur = dessiner('couleur',
+        () => RENDUS_LATINS.strimko.previewGrille(item, slot, 1, false));
+    const teintes = new Set(bandes(couleur));
+    assert.ok(teintes.size >= 2,
+        `en couleur, les ruisseaux se partagent ${teintes.size} teinte(s) : ${[...teintes]}`);
+    assert.ok([...teintes].every(t => TEINTES_RUISSEAU_RVB.includes(t)),
+        `une bande sort d'une teinte inconnue : ${[...teintes]}`);
+
+    // ET LA PHOTOCOPIEUSE GARDE SA BANDE UNIQUE. Le commentaire en tête de
+    // `latins.js` tient toujours : sept pastels passés au gris donnent sept
+    // gris clairs qu'on ne distingue pas, là où UNE bande franche se suit du
+    // doigt. « Niveaux de gris » est donc du côté du noir et blanc.
+    for (const mode of ['nb', 'gris']) {
+        const sobre = new Set(bandes(dessiner(mode,
+            () => RENDUS_LATINS.strimko.previewGrille(item, slot, 1, false))));
+        assert.equal(sobre.size, 1, `en « ${mode} », ${sobre.size} teintes de bande`);
+    }
+});
+
+test('ET LA CONSIGNE DU STRIMKO NE PARLE PAS DE GRIS SUR UNE FEUILLE EN COULEUR', () => {
+    // Un élève qui cherche du gris sur une feuille qui n'en a pas cherche
+    // longtemps. La consigne est lue au moment du rendu, donc elle sait.
+    const items = [tirer('logi-strimko')];
+    const dit = (mode) => dessiner(mode, () => RENDUS_LATINS.strimko.consigne(items));
+    assert.match(dit('nb'), /bande grise/);
+    assert.match(dit('couleur'), /bande colorée/);
+    assert.doesNotMatch(dit('couleur'), /grise/);
 });

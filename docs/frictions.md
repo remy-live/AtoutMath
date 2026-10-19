@@ -4977,3 +4977,72 @@ le résultat n'existe pas** — 15 octobre 2026
   avec la souris de Playwright** (`page.locator(sel).click()`), jamais avec
   `element.click()` dans la page. C'est aussi le vrai chemin de l'élève, qui
   n'appelle pas de méthode.
+
+**Une mesure de fiche qui saute `teindreHtml` accuse soixante innocents** — 19 octobre 2026
+
+- *Ce que je voulais faire* : répondre à « Vérifie aussi les autres pour les
+  couleurs », c'est-à-dire trouver les fiches que le mode couleur laisse
+  indifférentes.
+- *Ce qui a coûté* : un outil écrit, lancé, et un verdict faux —
+  **61 fiches sourdes sur 79**, dont le Mastermind, qui écrit pourtant onze
+  couleurs. Je comparais ce que le RENDU rend ; l'aperçu de Rémy, lui, passe par
+  `teindreHtml` (`printSheet.js:810`), et le PDF par `teindreDoc`. Un rendu n'a
+  pas à consulter le mode pour être coloré. Une fois la mesure posée au bon
+  endroit : 19 fiches, dont 2 à corriger. Vingt minutes à soupçonner le code de
+  six familles de rendus.
+- *Combien de fois* : |
+- *Ce qui manque* : rien de neuf à construire — `tools/couleursDesFiches.mjs`
+  existe maintenant et passe par le bon chemin. La règle est la vieille :
+  **une mesure qui n'emprunte pas le chemin de l'utilisateur ne mesure pas son
+  problème**, et le chemin d'une fiche ne s'arrête pas au rendu.
+
+**`locator.screenshot({ clip })` accepte le découpage et l'ignore** — 19 octobre 2026
+
+- *Ce que je voulais faire* : regarder la jonction de deux dominos imprimés,
+  donc découper un morceau de la page rendue à grande échelle.
+- *Ce qui a coûté* : deux allers-retours, et surtout un outil qui MENTAIT — il
+  imprimait « découpé à 1684 × 417 » en écrivant la page entière de
+  4209 × 2976. Seul `page.screenshot()` lit `clip` ; sur un `locator`, l'option
+  est avalée sans un mot. Et monter l'échelle ne remplace pas le découpage :
+  qui regarde une image de 4209 px la voit réduite à la largeur de sa fenêtre,
+  c'est-à-dire exactement à la résolution qu'on venait de quitter.
+- *Combien de fois* : |
+- *Ce qui manque* : c'est fait — `tools/pdfEnImage.mjs` accepte
+  `--zone=x,y,w,h` en fractions de page et découpe dans une seconde toile. La
+  règle derrière : **un outil annonce ce qu'il a FAIT, jamais ce qu'on lui a
+  demandé** — la ligne de sortie se lit sur l'objet qu'on photographie.
+
+**Mesurer large ne reproduit pas ce que l'autre voit** — 19 octobre 2026
+
+- *Ce que je voulais faire* : reproduire « dans l'atelier, il faut que l'on voit
+  l'apercu pour l'impression à chaque fois c'est replié ».
+- *Ce qui a coûté* : une première sonde entièrement verte. En 1500 × 1000 — la
+  taille que toutes les sondes de ce dépôt ouvrent par défaut — le cadre de la
+  feuille fait 573 px et le repli ne se déclenche pas (le seuil est 560). En
+  1280 × 820, un portable ordinaire, il fait 463 px et l'aperçu tombe à ZÉRO
+  pixel de haut. Le défaut était « à chaque fois » chez lui et « jamais » chez
+  moi.
+- *Combien de fois* : |
+- *Ce qui manque* : une habitude plus qu'un outil — **quand un défaut dépend de
+  la place, on le cherche à 1280 d'abord**, qui est l'écran d'un professeur,
+  et non à 1500 qui est celui de personne. Et dans un CADRE, `window.innerWidth`
+  n'est pas la largeur de l'écran : c'est celle du cadre, et toute règle de
+  média s'y trompe de contexte.
+
+**Obtenir le PDF d'une fiche se réécrivait à chaque sonde** — 19 octobre 2026
+
+- *Ce que je voulais faire* : regarder la feuille imprimée du Strimko en
+  couleur, puis celle de la Tour de Brahma, puis celle des dominos.
+- *Ce qui a coûté* : les mêmes soixante lignes pour la troisième fois dans ce
+  dépôt (après `polyDu12Octobre.mjs` et `feuillesDu12OctobreSoir`), avec les
+  mêmes pièges repayés : le réglage de couleur qui dort dans un `<details>`
+  fermé, le défaut du logiciel qui est NOIR ET BLANC — donc une sonde qui ne
+  touche à rien mesure toujours une feuille en noir et blanc, alors qu'on
+  venait justement regarder la couleur —, et le bouton qui ne s'appelle pas
+  pareil selon qu'on imprime une grille (`#fp-telecharger`) ou des questions
+  (`#fq-telecharger`).
+- *Combien de fois* : |||
+- *Ce qui manque* : c'est fait — `tools/ficheEnPdf.mjs <id> --couleur=couleur`
+  rend le PDF, l'image, les VRAIES teintes du fichier et le compte des champs
+  remplissables. Il choisit tout seul entre la fiche et la liste de questions
+  selon que l'exercice a un `printable`.

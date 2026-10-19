@@ -95,3 +95,60 @@ test('UN EXPOSANT NE DÉCALE PAS L\'ÉNONCÉ SOUS SON NUMÉRO', () => {
     // La classe existe bien, et c'est elle que l'aperçu pose sur ses exposants.
     assert.match(lire('../js/ui/ficheRendu.js'), /<sup class="fx-haut">/);
 });
+
+// ── « dans l'atelier … à chaque fois c'est replié » ────────────────────────
+//
+// Le repli de l'aperçu sur écran étroit est une bonne règle, et elle se
+// déclenchait au mauvais endroit : le volet « La feuille » de l'Atelier est un
+// CADRE, où `window.innerWidth` vaut la largeur du cadre. MESURÉ dans un vrai
+// navigateur : sur un portable de 1280 px, les trois volets côte à côte
+// donnent 463 px au cadre de la feuille — le tiroir se fermait, et l'aperçu
+// tombait à ZÉRO pixel de haut. Sur 1500 px le cadre en fait 573 et rien ne se
+// passait : d'où « à chaque fois » chez Rémy et « jamais » chez moi.
+//
+// ON PILOTE LA VRAIE FONCTION, et non le texte du fichier : c'est une décision
+// de trois conditions, et une épreuve qui cherche `volet-atelier` dans la
+// source resterait verte sur n'importe quel branchement de ces trois-là.
+{
+    const { replierApercuSiEtroit } = await import('../js/ui/modal.js');
+
+    /** Joue le repli dans un décor donné, et dit si le tiroir est resté ouvert. */
+    const ouvertApres = ({ largeur, classes = [], appareil = null }) => {
+        const tiroir = { open: true };
+        const racine = { querySelector: (s) => (s === '.fp-apercu-repli' ? tiroir : null) };
+        const avantW = globalThis.window, avantD = globalThis.document;
+        globalThis.window = {
+            innerWidth: largeur,
+            location: { search: appareil ? `?atelier=fiche&appareil=${appareil}` : '?atelier=fiche' }
+        };
+        globalThis.document = { documentElement: { classList: {
+            contains: (c) => classes.includes(c) } } };
+        try { replierApercuSiEtroit(racine); } finally {
+            globalThis.window = avantW; globalThis.document = avantD;
+        }
+        return tiroir.open;
+    };
+
+    test('SUR TÉLÉPHONE, L\'APERÇU DE LA FEUILLE SE REPLIE', () => {
+        assert.equal(ouvertApres({ largeur: 390 }), false,
+            'à 390 px, l\'aperçu n\'est qu\'une tache grise et doit se replier');
+        assert.equal(ouvertApres({ largeur: 900 }), true,
+            'à 900 px, il n\'y a aucune raison de replier');
+    });
+
+    test('MAIS DANS UN VOLET D\'ATELIER, L\'APERÇU RESTE OUVERT', () => {
+        // Rémy : « dans l'atelier, il faut que l'on voit l'apercu pour
+        // l'impression à chaque fois c'est replié ». Le volet EST l'aperçu :
+        // c'est la seule raison de l'avoir ouvert, et les réglages sont déjà
+        // rangés dans leur propre tiroir.
+        assert.equal(ouvertApres({ largeur: 463, classes: ['volet-atelier', 'volet-atelier--fiche'] }),
+            true, 'le volet d\'atelier replie encore son aperçu');
+    });
+
+    test('ET LE VOLET DEMANDÉ EN FORMAT TÉLÉPHONE GARDE SON REPLI', () => {
+        // Qui choisit « téléphone » veut voir ce qu'un téléphone montre.
+        assert.equal(ouvertApres({ largeur: 390, appareil: 'telephone',
+            classes: ['volet-atelier', 'volet-atelier--fiche'] }), false,
+        'l\'aperçu en format téléphone ne montre plus le repli qu\'un élève verrait');
+    });
+}
