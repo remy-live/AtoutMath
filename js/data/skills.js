@@ -1535,6 +1535,74 @@ const BASE = {
         descriptor: 'Retrouver les valeurs manquantes d\'un tableau croisé en bouclant, une par une, les lignes et les colonnes où il ne manque qu\'une information.',
         lesson: 'Dans un tableau à double entrée, chaque ligne se termine par son total et chaque colonne aussi ; la case du coin porte le total général, et on l\'obtient aussi bien en additionnant la dernière colonne que la dernière ligne. Pour le compléter, on ne commence JAMAIS par la première case vide : on cherche la ligne ou la colonne où il ne manque qu\'UNE SEULE information. Si la case qui manque est un total, on additionne le reste de la ligne ; si elle est dans le corps du tableau, on part du total et on retire ce qui est déjà écrit. Le nombre qu\'on vient d\'écrire en ouvre alors d\'autres, et de proche en proche tout se remplit — sans jamais deviner. À la fin, on vérifie : la dernière ligne et la dernière colonne doivent toutes deux tomber sur le total général.'
     },
+    // ── STATISTIQUES ET PROBABILITÉS ───────────────────────────────────────
+    //
+    // RÉMY, progression de quatrième : « Statistique (Médiane, moyenne,
+    // étendue, fréquence: listes) » et « Probabilités ». Deux chapitres sans
+    // une seule compétence déclarée jusqu'ici.
+    //
+    // QUATRE COMPÉTENCES POUR LES STATISTIQUES, ET NON UNE. Un élève qui
+    // calcule très bien une moyenne et se trompe de médiane n'a pas « raté les
+    // statistiques » : il a raté UNE chose, et c'est toujours la même — on ne
+    // range pas la série avant de chercher le milieu. Un bilan qui dit
+    // « statistiques : non acquis » ne lui apprend rien ; un bilan qui dit
+    // « médiane : non acquis » lui dit quoi relire.
+    'don.stat.lire': {
+        label: 'Lire une série et son étendue',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Compter l\'effectif d\'une valeur dans une série, et calculer l\'étendue.',
+        lesson: 'L\'EFFECTIF d\'une valeur, c\'est le nombre de fois où elle apparaît. L\'ÉTENDUE, c\'est la plus grande valeur MOINS la plus petite : elle ne dit pas où sont les données, elle dit si elles sont serrées ou éparpillées. Deux classes peuvent avoir la même moyenne et des étendues très différentes — l\'une est régulière, l\'autre pas.'
+    },
+    'don.stat.moyenne': {
+        label: 'Calculer une moyenne',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.stat.lire'],
+        descriptor: 'Calculer la moyenne d\'une série, et retrouver une valeur manquante quand la moyenne est donnée.',
+        lesson: 'La moyenne, c\'est la somme de toutes les valeurs DIVISÉE PAR LEUR NOMBRE. On additionne tout, on divise par combien il y en a — et l\'on n\'oublie aucune valeur, pas même celles qui se répètent. Si la moyenne est donnée et qu\'une valeur manque, on fait le chemin à l\'envers : la somme vaut la moyenne MULTIPLIÉE par le nombre de valeurs, et l\'on retire ce qu\'on connaît déjà.'
+    },
+    'don.stat.mediane': {
+        label: 'Déterminer une médiane',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.stat.lire'],
+        descriptor: 'Ranger une série puis en donner la médiane, série paire comprise.',
+        lesson: 'ON RANGE D\'ABORD. La médiane de 7 ; 2 ; 9 vaut 7, pas 2 : c\'est la valeur du milieu de la série RANGÉE, et prendre le terme du milieu de la liste telle qu\'elle est écrite donne un nombre qui ne veut rien dire. ET SI LA SÉRIE A UN NOMBRE PAIR DE VALEURS, la médiane n\'est pas dans la série : il y a DEUX valeurs au milieu, et la médiane est leur moyenne — pour 10 ; 11 ; 12 ; 13, elle vaut 11,5.'
+    },
+    'don.stat.frequence': {
+        label: 'Calculer une fréquence',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.stat.lire'],
+        descriptor: 'Donner la fréquence d\'une valeur, en pourcentage de l\'effectif total.',
+        lesson: 'La fréquence répond à « quelle PART du total ? », pas à « combien ? ». Trois élèves sur douze, c\'est 3 ÷ 12 = 0,25, donc 25 %. L\'effectif dépend de la taille du groupe ; la fréquence, non — c\'est elle qui permet de comparer deux classes de tailles différentes.'
+    },
+    'don.proba.vocabulaire': {
+        label: 'Le vocabulaire des probabilités',
+        chemin: [D.DONNEES, SD.PROBABILITES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Dire si un événement est certain, impossible ou possible, et reconnaître ce qui peut être une probabilité.',
+        lesson: 'Une probabilité se place entre 0 et 1, bornes comprises. 0, c\'est IMPOSSIBLE ; 1, c\'est CERTAIN ; entre les deux, c\'est possible, et plus le nombre est grand, plus l\'événement a de chances d\'arriver. Un nombre plus grand que 1 — ou négatif — n\'est donc JAMAIS une probabilité, quelle que soit la façon dont on l\'a obtenu : si le calcul en donne un, c\'est le calcul qui est faux.'
+    },
+    'don.proba.calculer': {
+        label: 'Calculer une probabilité',
+        chemin: [D.DONNEES, SD.PROBABILITES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.proba.vocabulaire'],
+        descriptor: 'Donner la probabilité d\'un événement dans une situation d\'équiprobabilité : dé, urne, roue.',
+        lesson: 'Quand toutes les issues ont la même chance, la probabilité d\'un événement est le nombre de cas FAVORABLES divisé par le nombre de cas POSSIBLES. Sur un dé à six faces, obtenir un nombre pair, c\'est 3 cas favorables sur 6 possibles. Le dénominateur ne change pas : c\'est le nombre total d\'issues, et l\'on ne le recompte pas à chaque question.'
+    },
+    'don.proba.contraire': {
+        label: 'L\'événement contraire',
+        chemin: [D.DONNEES, SD.PROBABILITES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.proba.calculer'],
+        descriptor: 'Passer de la probabilité d\'un événement à celle de son contraire.',
+        lesson: 'Un événement arrive, ou il n\'arrive pas : il n\'y a pas de troisième possibilité. Les deux probabilités font donc 1 à elles deux, et celle du contraire vaut 1 MOINS celle de l\'événement. C\'est souvent le chemin le plus court : « au moins une rouge » est long à compter, « aucune rouge » ne l\'est pas.'
+    },
     'geo.cercle.vocabulaire': {
         label: 'Le vocabulaire du cercle',
         // Rangé avec la notation des segments et des droites : c'est le même

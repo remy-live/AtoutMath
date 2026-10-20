@@ -2058,3 +2058,73 @@ servir DEUX niveaux :
 
 Les deux plus gros morceaux sont les **statistiques** et les **probabilités** :
 deux chapitres sans une seule ligne dans le catalogue.
+
+### Son ordre de travail — 20 octobre
+
+> « bloc 17-18-10-12-7-15 »
+
+**Ce sont les blocs de QUATRIÈME**, et non de sixième : les six numéros sont un
+sous-ensemble exact de la table des trous que je venais de lui donner, et ils
+s'ouvrent sur 17 et 18 — les deux que j'avais nommés « les plus gros ». La
+sixième attendra donc son tour ; son ordre à elle (1, 11, 18, 10, 5, 3, 8)
+reste noté au §15.
+
+| Dans l'ordre | Ce qu'il faut écrire |
+| --- | --- |
+| **17** | **Statistiques** — moyenne, médiane, étendue, fréquence, sur des listes. Rien n'existe. |
+| **18** | **Probabilités**. Rien n'existe. |
+| **10** | **Diviser par une fraction** : n'existe qu'en seconde. |
+| **12** | Le **tracé** d'une fonction dans un repère — l'image et l'antécédent sont déjà là. |
+| **7** | La **réciproque de Pythagore** : « ce triangle est-il rectangle ? ». |
+| **15** | **Tester** si un nombre est solution, et les **programmes de calcul** type brevet. |
+
+Livré par lots : 17 et 18 ensemble (même domaine, et ce sont les deux
+chapitres entiers), puis 10 et 12, puis 7 et 15.
+
+### Ce qui a été fait pour les blocs 17 et 18
+
+**Deux chapitres entiers, et un module de noyau pour les porter.**
+`js/core/statistiques.js` — moyenne, médiane, étendue, effectif, fréquence,
+tableau d'effectifs — pur, éprouvé sous Node, et réutilisable : le tableur sait
+déjà écrire `=MOYENNE(A1:A4)`, et la fiche voudra les mêmes nombres.
+
+**Les statistiques : neuf marches, dont TROIS médianes.** Ce n'est pas un
+excès. Les trois autres notions se CALCULENT ; la médiane se CHERCHE, et on la
+cherche mal de deux façons — en oubliant de ranger la série (la médiane de
+7 ; 2 ; 9 vaut 7, pas 2), et quand la série est paire (deux valeurs au milieu,
+médiane entre les deux, absente de la série). Une marche par piège, pour que le
+bilan nomme celui qui coince.
+
+**Les probabilités : sept marches, et une décision qui commande tout le
+fichier.** La probabilité d'obtenir un nombre pair avec un dé vaut 3/6, et vaut
+aussi 1/2. Les deux sont justes, un professeur accepte les deux, et un logiciel
+doit en choisir UN — quel que soit son choix, la moitié des élèves qui ont
+raison seraient comptés faux. **On fabrique donc les situations pour que la
+fraction soit DÉJÀ irréductible.** Le prix est assumé et écrit : l'élève ne
+rencontre pas ici le moment où l'on simplifie une probabilité ; ce moment
+appartient au chapitre des fractions, et il y a ses exercices.
+
+**Quatre séries de défauts, tous trouvés en LISANT la sortie ou en REGARDANT
+le PDF :**
+
+1. **Les accords et les élisions.** « Combien de élèves », « 10 zones TOUS DE
+   MÊME TAILLE », « c'est tirer l'boule jaune », « Élèves : ils sont 5 » devant
+   des joueuses.
+2. **Une note de 26 sur 20.** La série se construit à partir de sa moyenne — on
+   part de la réponse pour qu'elle tombe juste — et le DERNIER écart rattrapait
+   toute la somme : six écarts dans [−4 ; 4] peuvent faire −14. Tous les
+   calculs étaient justes, et la série était impossible. La somme courante est
+   maintenant bornée à chaque tirage, ce qui tient toutes les valeurs dans
+   l'écart demandé, la dernière comprise. **Attrapé par une épreuve écrite pour
+   autre chose.**
+3. **« Laquelle de ces valeurs ne peut PAS être une probabilité ? » — et aucune
+   valeur sur la feuille**, trois fois sur la même page. Exactement le défaut
+   de « Lequel de ces nombres divise 50 ? », deux heures plus tôt.
+4. **« … 171 ; 159 ; 165 Quelle est l'étendue ? »** — la série collée à la
+   question. Exactement le défaut de « … = 2⁴ × 3 Quel est le PGCD », le matin.
+
+Les deux derniers se répétaient : ils ont donc **deux gardes du catalogue**, qui
+valent pour les 240 exercices. Et comme aucune garde ne fermera le prochain
+défaut de papier qu'on n'a pas encore rencontré, `tools/nouvelExercice.mjs`
+rappelle désormais, à l'endroit et au moment où l'on ajoute un exercice, le
+seul geste qui le fermerait : imprimer la fiche et la regarder.

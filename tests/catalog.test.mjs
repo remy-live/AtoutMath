@@ -194,6 +194,116 @@ test('AUCUN ÉNONCÉ N\'AFFICHE UNE FRACTION À LA BARRE OBLIQUE', async () => {
     assert.deepEqual(fautifs, []);
 });
 
+test('SUR UNE FEUILLE, UN NOMBRE NE SE COLLE PAS À LA QUESTION', async () => {
+    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // LE DÉFAUT, ET IL EST TOMBÉ DEUX FOIS :
+    //
+    //   « 84 = 2² × 3 × 7 et 120 = 2³ × 3 × 5 Quel est le PGCD de 84 et 120 ? »
+    //   « … 166 ; 171 ; 159 ; 165 Quelle est l'étendue de cette série ? »
+    //
+    // À L'ÉCRAN, RIEN NE SE TOUCHE : l'énoncé et la question vivent dans deux
+    // blocs séparés, et le défaut n'existe pas. Sur la feuille, les deux sont
+    // collés bout à bout — et le dernier nombre de l'énoncé se lit comme le
+    // premier mot de la question. On ne le voit qu'en REGARDANT le PDF.
+    //
+    // LA LISTE DES MOTS EST CELLE QUI OUVRE UNE QUESTION en français, et elle
+    // est volontairement étroite : « 5 Mars » ou « 3 Pythagore » ne sont pas
+    // des fautes, et une règle qui interdirait toute majuscule après un chiffre
+    // en inventerait.
+    const { generateurDeFiche } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+
+    const COLLE = new RegExp('[0-9\u2070-\u2079\u00b2\u00b3\u00b9]\\s+'
+        + '(Quel|Quelle|Quels|Quelles|Combien|Laquelle|Lequel|Calcule|Donne|'
+        + 'Écris|Rends|Complète|Trouve|Dans quel|Range|Dis )');
+    const fautifs = [];
+    for (const exo of exercices) {
+        if (exo.printable) continue;
+        const g = generateurDeFiche(exo);
+        if (!g || typeof g.generate !== 'function') continue;
+        const marches = Array.isArray(exo.params && exo.params.marches) ? exo.params.marches : null;
+        const essais = marches ? marches.length * 2 : 10;
+        for (let i = 0; i < essais; i++) {
+            const reglages = marches
+                ? { ...exo.params, marches: [marches[i % marches.length]] }
+                : (exo.params || {});
+            let it;
+            try { it = g.generate(reglages, { rng: makeRng(`col_${exo.id}_${i}`), index: i, total: essais }); }
+            catch { break; }
+            const papier = (it && it.prompt && (it.prompt.papier || it.prompt.text)) || '';
+            const m = papier.match(COLLE);
+            if (m) { fautifs.push(`${exo.id} : « …${m[0]}… » dans « ${papier.slice(0, 90)} »`); break; }
+        }
+    }
+    assert.deepEqual(fautifs, []);
+});
+
+test('UNE QUESTION QUI DIT « CES » ÉCRIT CE QU\'ELLE MONTRE', async () => {
+    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // LE DÉFAUT, ET IL EST TOMBÉ DEUX FOIS DANS LA MÊME JOURNÉE.
+    //
+    //   « Lequel de ces nombres divise 50 ? »  — et aucun nombre sur la feuille.
+    //   « Laquelle de ces valeurs ne peut PAS être une probabilité ? » — idem,
+    //   et trois fois sur la même page.
+    //
+    // Les propositions sont des BOUTONS, et une feuille imprimée n'a pas de
+    // boutons. La question n'est alors pas difficile : elle est SANS RÉPONSE
+    // POSSIBLE. Rien ne plante, rien ne prévient, et cela ne se voit qu'en
+    // regardant le PDF — à l'écran tout va bien.
+    //
+    // LA RÈGLE EST ÉTROITE ET C'EST VOULU. On ne peut pas exiger qu'un énoncé
+    // à choix recopie toujours ses propositions : « 15 et 28 sont-ils premiers
+    // entre eux ? » n'a besoin ni de « oui » ni de « non » pour être
+    // répondable. Ce qu'on garde, c'est la promesse que la QUESTION fait :
+    // quand elle dit « de ces », elle annonce une liste, et cette liste doit
+    // exister sur le papier.
+    const { generateurDeFiche } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+
+    const ANNONCE = /(lequel|laquelle|lesquels|lesquelles|parmi) +(de +)?ces/i;
+    const fautifs = [];
+    for (const exo of exercices) {
+        // UN EXERCICE QUI A SON PROPRE RENDU DE FICHE EST HORS DE CETTE RÈGLE.
+        //
+        // `printable` désigne un dessinateur à lui — « Le Vocabulaire du
+        // Cercle » en a un, qui TRACE le cercle, ses rayons et ses cordes sur
+        // la feuille. « Parmi ces tracés, lequel est un rayon ? » y est
+        // parfaitement répondable, et la liste des propositions n'a rien à
+        // faire dans le texte : elle est dans le dessin.
+        //
+        // Ce qu'on garde ici est la feuille ORDINAIRE, celle qui n'imprime que
+        // du texte — et c'est là que le défaut est tombé deux fois.
+        if (exo.printable) continue;
+        const g = generateurDeFiche(exo);
+        if (!g || typeof g.generate !== 'function') continue;
+        const marches = Array.isArray(exo.params && exo.params.marches) ? exo.params.marches : null;
+        const essais = marches ? marches.length * 2 : 10;
+        for (let i = 0; i < essais; i++) {
+            const reglages = marches
+                ? { ...exo.params, marches: [marches[i % marches.length]] }
+                : (exo.params || {});
+            let it;
+            try { it = g.generate(reglages, { rng: makeRng(`ces_${exo.id}_${i}`), index: i, total: essais }); }
+            catch { break; }
+            if (!it || !Array.isArray(it.choices) || !it.choices.length) continue;
+            const papier = (it.prompt && (it.prompt.papier || it.prompt.text)) || '';
+            if (!ANNONCE.test(papier)) continue;
+            const absentes = it.choices
+                .map(c => String(c.label !== undefined ? c.label : c.value))
+                .filter(v => !papier.includes(v));
+            if (absentes.length) {
+                fautifs.push(`${exo.id} : « ${papier.slice(0, 80)} » ne montre pas ${absentes.join(', ')}`);
+                break;
+            }
+        }
+    }
+    assert.deepEqual(fautifs, []);
+});
+
 test('AUCUNE COMMANDE LATEX NE FUIT SUR UNE FICHE', async () => {
     // RÉMY, capture d'une fiche imprimée à l'appui : « problème ». On y lisait
     //

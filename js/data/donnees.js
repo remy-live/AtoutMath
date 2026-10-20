@@ -138,5 +138,53 @@ export const donneesExercises = [
         skills: ['don.tableur.reperage', 'don.tableur.formules'],
         tags: { chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.TABLEUR], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Neuf leçons pour devenir un pro du tableur : nommer les cases (B3), sélectionner des plages (A1:B2), dessiner en pixel art, saisir des données, puis calculer avec des formules — =A1+B1, =SOMME(), =MOYENNE() — jusqu'à la facture finale. Règle d'or : une formule utilise les références des cases, jamais les nombres recopiés !"
+    },
+
+    // --- Statistiques et probabilités : les deux chapitres qui manquaient ---
+    //
+    // RÉMY, progression de quatrième : « Statistique (Médiane, moyenne,
+    // étendue, fréquence: listes) » et « Probabilités ». Mesuré avant d'écrire
+    // une ligne : zéro exercice sur 238 pour l'un comme pour l'autre. Ce sont
+    // les deux qu'il a mis en tête de sa liste de travail.
+    {
+        id: 'don-statistiques',
+        cree: '2026-10-20',
+        title: 'Moyenne, Médiane, Étendue',
+        generatorId: 'don.statistiques', activityId: 'numpad',
+        consignePapier: 'Lis bien la série, puis réponds.',
+        // UNE SEULE COLONNE SUR LE PAPIER. Une série de huit nombres plus sa
+        // question ne tient pas dans une demi-largeur de page : coupée en
+        // deux, la liste se lit en escalier et l'on ne voit plus où elle
+        // s'arrête.
+        colonnesPapier: 1,
+        lignesReponsePapier: 2,
+        params: { marches: ['effectif', 'etendue', 'moyenne', 'mediane-rangee',
+            'mediane-desordre', 'mediane-paire', 'frequence', 'moyenne-manquante',
+            'comparer'] },
+        motsClefs: ['statistiques', 'moyenne', 'médiane', 'étendue', 'fréquence',
+            'effectif', 'série', 'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.STATISTIQUES],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Neuf marches, et trois d'entre elles sont des médianes — ce n'est pas un hasard. La moyenne, l'étendue et la fréquence se CALCULENT : on additionne, on soustrait, on divise. La médiane, elle, se CHERCHE, et on la cherche mal de deux façons. D'abord en oubliant de RANGER la série : la médiane de 7 ; 2 ; 9 vaut 7, pas 2, et le terme du milieu de la liste telle qu'elle est écrite est juste un nombre de la série. Ensuite quand la série a un nombre PAIR de valeurs : il y a alors deux valeurs au milieu, la médiane est leur moyenne, et elle n'est pas dans la série. Une marche par piège, pour que le bilan dise lequel coince. La dernière question est celle qui compte : deux groupes de même moyenne, et c'est l'étendue qui les sépare."
+    },
+    {
+        id: 'don-probabilites',
+        cree: '2026-10-20',
+        title: 'Les Probabilités',
+        generatorId: 'don.probabilites', activityId: 'numpad',
+        consignePapier: 'Compte les cas, puis écris la probabilité.',
+        colonnesPapier: 1,
+        lignesReponsePapier: 2,
+        params: { marches: ['certain', 'echelle', 'sac', 'roue', 'pas-cette-couleur',
+            'contraire', 'comparer'] },
+        motsClefs: ['probabilité', 'hasard', 'certain', 'impossible', 'événement',
+            'contraire', 'urne', 'dé', 'roue', 'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.PROBABILITES],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Sept marches. On commence par ce qu'une probabilité peut VALOIR — certain, impossible, possible, et un nombre entre 0 et 1 : un élève qui trouve 8/3 n'a pas besoin de la correction pour savoir qu'il s'est trompé. On compte ensuite les cas favorables et les cas possibles, et c'est là qu'est la faute du chapitre : « 3 rouges et 5 bleues » donne 3/5 au lieu de 3/8, parce qu'on oublie de compter les rouges dans le total. Chaque énoncé dit donc combien il y a d'objets EN TOUT. Aucune fraction ne se simplifie ici, et c'est voulu : 3/6 et 1/2 sont tous les deux justes, et un logiciel qui en choisit un compte faux la moitié des élèves qui ont raison. Les situations sont donc fabriquées pour que la fraction soit déjà irréductible."
     }
 ];

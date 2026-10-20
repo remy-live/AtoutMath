@@ -179,6 +179,26 @@ if (!problemes.length) {
     console.log('\u001b[32mLes quatre pièges sont évités.\u001b[0m '
         + `${vus.size} codes dictés, ${Object.keys(SKILLS).length} compétences, `
         + `${exercices.length} exercices.`);
+    // ── LE CINQUIÈME PIÈGE, QUE CET OUTIL NE SAIT PAS VOIR ─────────────────
+    //
+    // Trois fois dans la même journée, un exercice neuf était JUSTE à l'écran
+    // et FAUX sur le papier : « Lequel de ces nombres divise 50 ? » sans
+    // aucun nombre, « Laquelle de ces valeurs… » sans aucune valeur, et une
+    // série de huit nombres collée à sa question. Aucun des trois ne pouvait
+    // se voir autrement qu'en REGARDANT le PDF — l'écran les montre tous les
+    // trois impeccables, parce qu'il a des boutons et des blocs séparés, et
+    // que la feuille n'a ni l'un ni l'autre.
+    //
+    // Deux gardes du catalogue ferment ces trois cas-là. Elles ne fermeront
+    // pas le quatrième, qu'on n'a pas encore rencontré. Le seul geste qui le
+    // ferme est de regarder la feuille, et c'est celui qu'on oublie — alors
+    // on le rappelle ici, à l'endroit et au moment où l'on ajoute un exercice.
+    if (cible) {
+        console.log('\nPour un exercice NEUF, il reste un geste que cet outil ne fait pas :');
+        console.log(`  node tools/ficheEnPdf.mjs ${cible} --items=9 --echelle=2 --sortie=tools/tmp`);
+        console.log('  puis REGARDER l\'image. Un énoncé juste à l\'écran peut être sans');
+        console.log('  réponse possible sur le papier — c\'est arrivé trois fois le 20 octobre.');
+    }
     process.exit(0);
 }
 dire();

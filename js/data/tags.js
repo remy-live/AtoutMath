@@ -78,6 +78,18 @@ export const TAGS = {
         PERIMETRE_AIRE: "Périmètre et aire",
         ESPACE: "Géométrie dans l'espace",
         TABLEUR: "Tableur",
+        // LES DEUX CHAPITRES QUE LE CATALOGUE N'AVAIT PAS DU TOUT. Rémy, dans sa
+        // progression de quatrième : « Statistique (Médiane, moyenne, étendue,
+        // fréquence: listes) » et « Probabilités ». Mesuré avant d'écrire une
+        // ligne : zéro exercice sur 238 pour l'un comme pour l'autre.
+        //
+        // DEUX RUBRIQUES ET NON UNE, bien que les programmes les annoncent
+        // ensemble (« Statistiques et probabilités »). Elles ne se répondent
+        // pas : une statistique RÉSUME ce qui est arrivé, une probabilité
+        // PRÉVOIT ce qui peut arriver. Les ranger sous un même nom obligerait
+        // l'élève qui cherche « médiane » à traverser les tirages de dés.
+        STATISTIQUES: "Statistiques",
+        PROBABILITES: "Probabilités",
         DUREES: "Heures et durées",
         PROBLEMES: "Résolution de problèmes",
         // Les deux familles de défis, et elles ne se mélangent pas : un

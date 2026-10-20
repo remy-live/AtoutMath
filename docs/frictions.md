@@ -5279,3 +5279,28 @@ le résultat n'existe pas** — 15 octobre 2026
   Le troisième argument manquait, et il manquera pour autre chose : si une
   mesure a besoin d'un réglage d'étape (le seuil, le mélange), il a désormais
   une place où aller.
+
+**Un exercice neuf est juste à l'écran et faux sur le papier, trois fois dans la journée** — 20 octobre 2026
+
+- *Ce que je voulais faire* : livrer quatre exercices neufs (PGCD, problèmes,
+  statistiques, probabilités).
+- *Ce qui a coûté* : **trois défauts que l'écran ne pouvait pas montrer**, et
+  qui rendaient des questions SANS RÉPONSE POSSIBLE sur la feuille.
+  1. « Lequel de ces nombres divise 50 ? » — les quatre propositions sont des
+     boutons, et une feuille n'a pas de boutons.
+  2. « Laquelle de ces valeurs ne peut PAS être une probabilité ? » — le même,
+     trois fois sur la même page.
+  3. « … 171 ; 159 ; 165 Quelle est l'étendue ? » — l'énoncé et la question
+     sont deux blocs séparés à l'écran, collés bout à bout sur la feuille.
+  Chacun n'a été vu qu'en REGARDANT le PDF, après coup. `npm test` était vert,
+  la sonde ne voyait rien, et l'exercice marchait parfaitement sur l'écran.
+- *Combien de fois* : |||
+- *Ce qui manque* : **deux gardes du catalogue, écrites aujourd'hui** — « une
+  question qui dit « de ces » écrit ce qu'elle montre » et « un nombre ne se
+  colle pas à la question ». Elles ferment ces trois-là pour tout le dépôt.
+  **Mais la vraie friction est en amont** : rien n'oblige à regarder la feuille
+  d'un exercice neuf. `tools/nouvelExercice.mjs` dit en deux cents
+  millisecondes ce que `npm test` met quatre minutes à dire ; il pourrait,
+  pour un identifiant donné, **imprimer la fiche et rendre l'image** — c'est le
+  dernier geste qu'on oublie, et le seul que la machine ne fait pas à notre
+  place.
