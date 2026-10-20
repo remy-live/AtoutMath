@@ -182,10 +182,121 @@ const normaliser = (s) => String(s).toLowerCase()
     .replace(/[×x*]/g, '×');
 
 /**
+ * CE QUI NE REGARDE QUE LE PROFESSEUR : « Dix marches. », « Trois temps. »
+ *
+ * RÉMY, devant le nouvel écran d'apprentissage : « tu vois tu écris dix
+ * marches, etc, on s'en fiche en tant qu'élève ».
+ *
+ * Il a raison, et c'est une question de DESTINATAIRE. Le champ `instruction`
+ * du catalogue est écrit pour lui : il dit comment l'exercice est bâti, par où
+ * il monte, ce qu'il travaille. Ces phrases-là sont exactement ce qu'il faut
+ * savoir pour CHOISIR un exercice, et exactement ce dont un enfant de onze ans
+ * n'a rien à faire au moment de commencer.
+ *
+ * MESURÉ sur les 236 exercices du catalogue : 21 consignes ouvrent sur une
+ * phrase de cinq mots ou moins, et huit d'entre elles ne font qu'annoncer la
+ * structure — « Onze marches. », « Douze marches, deux questions chacune. »,
+ * « Six étapes qui se cochent. » On les reconnaît à ce qu'elles COMPTENT
+ * quelque chose du dispositif, et c'est tout ce qu'elles font.
+ */
+// `\b` NE MARCHE PAS DEVANT UN ACCENT, et c'est un piège silencieux : en
+// JavaScript, `\b` se calcule sur [A-Za-z0-9_], donc « é » est un caractère
+// NON-mot — il n'y a aucune frontière entre l'espace et le « é » de
+// « étapes », et /\bétapes\b/ ne trouve jamais rien. Mesuré : « Six étapes
+// qui se cochent. » passait au travers. On écrit donc les bornes à la main,
+// avec les lettres accentuées dedans.
+const MOTS_DE_STRUCTURE = new RegExp(
+    '(?:^|[^a-zà-öø-ÿ])'
+    + '(marches?|paliers?|niveaux?|temps|étapes?|usages?|barreaux|séries?|manches?)'
+    + '(?![a-zà-öø-ÿ])', 'i');
+
+const compterLesMots = (t) => String(t || '').trim().split(/\s+/).filter(Boolean).length;
+
+const estDuRangement = (phrase) =>
+    compterLesMots(phrase) <= 6 && MOTS_DE_STRUCTURE.test(phrase);
+
+/**
+ * LA PHRASE QU'ON MONTRE À L'ÉLÈVE AVANT DE COMMENCER.
+ *
+ * RÉMY : « il faut vraiment vraiment être court ».
+ *
+ * ON PREND LA CONSIGNE DE PAPIER QUAND ELLE EXISTE, et c'est le point : elle
+ * est déjà écrite pour un élève, puisqu'elle s'imprime en tête de sa feuille.
+ * MESURÉ : 134 exercices en ont une, 8 mots en médiane — contre 95 mots pour
+ * la consigne du « Détour par le Nombre Rond ». On ne réécrit donc rien : on
+ * cesse d'aller chercher le mauvais champ.
+ *
+ * SANS ELLE, la première phrase de la consigne du professeur, le rangement
+ * écarté. Et si tout est du rangement, on rend la première phrase quand même :
+ * mieux vaut une phrase qui ne sert qu'à moitié qu'un écran muet.
+ */
+export function phrasePourLEleve(exo, plafond = 20) {
+    if (!exo) return '';
+    // ON NE COUPE PAS AU MOT PRÈS : une phrase amputée ne veut plus rien dire.
+    // On ajoute des phrases ENTIÈRES tant qu'on reste sous le plafond, et la
+    // première passe toujours — mieux vaut une phrase trop longue qu'un écran
+    // muet. MESURÉ sur les 236 exercices : 9 mots en médiane.
+    const assembler = (liste) => {
+        const out = [];
+        let n = 0;
+        for (const p of liste) {
+            if (out.length && n + compterLesMots(p) > plafond) break;
+            out.push(p);
+            n += compterLesMots(p);
+        }
+        return out.join(' ');
+    };
+    const papier = String(exo.consignePapier || '').trim();
+    if (papier) return assembler(phrases(papier));
+    const p = phrases(exo.instruction).filter(x => !estDuRangement(x));
+    return assembler(p.length ? p : phrases(exo.instruction));
+}
+
+/**
  * Un exemple est-il possible ? Il faut un générateur — un jeu de plateau n'a
  * pas de « question » à montrer, il a un robot.
  */
 export const peutMontrerUnExemple = (exo) => !!(exo && exo.generatorId);
+
+/**
+ * UNE QUESTION COMME CELLES DE CET EXERCICE, choisie pour ce qu'elle MONTRE.
+ *
+ * ON EN TIRE PLUSIEURS ET L'ON GARDE LA PLUS INSTRUCTIVE. Un tirage au hasard
+ * tombe volontiers sur « 2 × 2 = ? » : c'est une question valable de
+ * l'exercice, et un exemple inutile — il n'a rien à expliquer. Celle qui porte
+ * le plus d'indices est celle qui a le plus à dire.
+ *
+ * CETTE FONCTION VIT ICI, ET NON DANS LE PANNEAU D'AIDE, depuis que l'écran
+ * d'apprentissage en a besoin lui aussi. Rémy : « il faut faire plus court,
+ * plus simple, un exemple ». Deux copies auraient donné deux exemples
+ * différents du même exercice selon la porte par laquelle on arrive — et
+ * surtout, l'une des deux aurait cessé d'évoluer avec l'autre.
+ *
+ * @param {Object} exo        l'exercice du catalogue
+ * @param {Object} generateur le générateur, déjà résolu : le noyau de l'aide
+ *                            ne connaît pas le registre, et c'est ce qui le
+ *                            garde éprouvable sans DOM.
+ * @param {Function} faireRng (graine) => rng
+ * @param {string} graine     de quoi redonner le MÊME exemple, ou un autre
+ */
+export function meilleurExemple(exo, generateur, faireRng, graine = '', candidats = 4) {
+    if (!exo || !generateur || typeof generateur.generate !== 'function') return null;
+    let meilleur = null;
+    for (let k = 0; k < candidats; k++) {
+        try {
+            const item = generateur.generate({ ...(exo.params || {}) }, {
+                rng: faireRng(`exemple-${exo.id}-${graine}-${k}`),
+                weakTables: [],
+                difficulty: (exo.params && exo.params.difficulty) || null,
+                index: k
+            });
+            const ex = etapesExemple(item);
+            if (!ex || !ex.question) continue;
+            if (!meilleur || ex.etapes.length > meilleur.etapes.length) meilleur = ex;
+        } catch (e) { /* ce tirage-là ne passe pas, un autre passera */ }
+    }
+    return meilleur;
+}
 
 /** Les rappels de cours, sans doublon et bornés : trois suffisent à relire. */
 export function leconsDe(liste, maximum = 3) {

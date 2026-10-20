@@ -1589,3 +1589,115 @@ demande. On commence par le défaut.
   tableau numérique, qui se ramène tout seul sur l'étape en cours. L'aperçu est
   dessiné par le VRAI rendu, réduit : une vignette peinte à part aurait vieilli
   à la première retouche d'un habillage.
+
+## 12. « fais tout le reste » — et quatre décors de saison — 20 octobre
+
+> « ah mais oui fais tout le reste et mets aussi des thèmes (Noël, Halloween,
+> Paques, Robot) »
+
+« Tout le reste », ce sont les quatre points de la rafale du 19 qui attendaient
+encore :
+
+- **#5** — « pour les calculs sur les impressions, n'hésite à proposer une
+  option tableau ou c'est présenté sous forme de tableau (dans les options
+  d'impression) avec alternances des couleurs ou non. »
+- **#7** — « pour les trèfles, tu peux rendre le parterre plus dense »
+- **#8** — « pour le mode apprentissage pour les exercices, c'est tellement
+  long, même pour moi, je n'ai pas envie de lire cela. Il faut faire plus
+  court, plus simple, un exemple, pas si serré, proposer un exemple facultatif
+  animé (avec le robot par exemple) »
+- **#1** — « j'aimerai bien ce genre d'exercices (tu peux mettre des
+  couleurs) » *(capture : un empilement de cubes à dénombrer)*
+
+Et la demande neuve : quatre thèmes nommés.
+
+**UN DÉCOR N'EST PAS UN HABILLAGE, et ce n'est pas un détail de rangement.**
+Mis dans la même liste que « Chemin d'étapes » et « Damier », « Noël »
+remplacerait la mise en page : l'élève qui a besoin du damier — le parcours de
+quatorze étapes qui ne tient pas sur un écran — perdrait Noël, et le professeur
+qui veut Noël perdrait le damier. Les deux choix ne répondent pas à la même
+question : l'habillage dit COMMENT on lit le parcours, le décor dit de quoi il
+a l'air. On en fait donc deux axes, et les vingt combinaisons existent.
+
+**ET LE DÉCOR NE TOUCHE PAS AU PICTOGRAMME.** Remplacer 🍕 par un flocon ferait
+joli et coûterait l'information : le picto dit la notion travaillée, et c'est à
+ça qu'il sert — « on reconnaît les angles ou l'heure d'un coup d'œil ». Un
+décor change les couleurs, le sol, le sentier et les ornements qui ne portent
+rien.
+
+**Ce qui a été fait** :
+
+- **Quatre décors, sur un AXE À PART.** `damier` et `ruban` sont des mises en
+  page ; Noël, Halloween, Pâques et Robot sont des DÉCORS, et les vingt
+  combinaisons existent. Un décor ne touche pas au pictogramme de l'étape — il
+  dit la notion travaillée —, ni à l'or d'une étape réussie : un élève qui
+  change de décor ne doit pas réapprendre à lire sa propre carte. Les quatre
+  teintes sont MESURÉES sur les pixels rendus (le blanc du numéro d'étape
+  dessus) : 6,66 · 6,91 · 4,91 · 5,66 pour un seuil de 4,5. La liste classique
+  garde les couleurs et refuse les ornements : six emoji derrière un
+  paragraphe se paient en lisibilité. Imposable par la séance comme
+  l'habillage, « Sans décor » compris pour une interrogation, et visible dans
+  l'aperçu du professeur.
+- **#7, le parterre de trèfles.** La cause était dans un nom : `densite`
+  comptait les DISQUES, pas la page — et les trèfles se chevauchent. Mesuré en
+  comptant des points sur le champ rendu : le « pré » annoncé à 62 % n'en
+  couvrait que 52. Et le champ était de rapport 4/3 dans un cadre de 1,84,
+  donc 530 px de blanc de chaque côté sur 1900 : il flotte au lieu d'occuper
+  ses bords. Après : 51 / 70 / 84 / 88 % de vert, et le champ prend la forme
+  de sa place.
+- **#5, les calculs en tableau.** Un filet autour de ce qui était déjà posé —
+  les questions se rangeaient déjà en rangées et en colonnes, le tableau
+  existait sans être dessiné. Les cases se TOUCHENT (une gouttière de 9 mm en
+  aurait fait un damier), l'alternance compte les RANGÉES et non les questions
+  (sinon c'est un damier, par l'autre bout), et le réglage est aux DEUX
+  panneaux d'impression — celui d'un exercice et celui d'un parcours.
+- **#1, les cubes.** L'exercice existait (« Combien de cubes ? ») ; ce qui
+  manquait, c'est ce que Rémy a mis entre parenthèses. Les étages sont
+  maintenant colorés DÈS L'ÉNONCÉ — cela défait son choix d'août (« couleurs
+  par étage via l'indice »), et c'est sa demande la plus récente qui compte.
+  Et le bouton 90° de sa capture existe : un outil montre le solide vu des
+  quatre coins, **décoché par défaut** — qui peut tourner voit les cubes
+  cachés et n'a plus rien à déduire, c'est un exercice plus facile, et c'est
+  au professeur de décider lequel il donne.
+- **#8, le mode apprentissage.** MESURÉ sur l'exercice qu'il a photographié,
+  par le chemin de l'élève : **239 mots à l'écran, contre 76 après**. On ne
+  montre plus que la première phrase de la consigne ; le reste et les leçons
+  passent sous « Tout ce qu'il faut savoir », replié. Un EXEMPLE est engendré
+  comme l'exercice l'engendrerait, et se dévoile étape par étape — un exemple
+  entièrement affiché est une correction, on la lit, on ne la cherche pas. Le
+  bouton du robot existait déjà mais SOUS le mur : il est maintenant dans la
+  boîte de l'exemple, là où l'on se pose justement la question. Et « pas si
+  serré » tient en trois nombres : colonne de 34 em, interligne 1,75, et
+  surtout plus de justification — c'est elle qui creusait des rivières de
+  blanc au milieu des lignes.
+
+**Puis, l'écran refait sous ses yeux** :
+
+> « tu vois tu écris dix marches, etc, on s'en fiche en tant qu'élève »
+>
+> « il faut vraiment vraiment être court voire même mettre des schémas qui
+> bougent »
+
+Il avait raison deux fois, et la première est une erreur de DESTINATAIRE. Le
+champ `instruction` du catalogue est écrit POUR LUI : il dit comment
+l'exercice est bâti, par où il monte, ce qu'il travaille — exactement ce qu'il
+faut pour CHOISIR un exercice, et exactement ce dont un enfant de onze ans n'a
+rien à faire au moment de commencer. MESURÉ sur les 236 exercices : 21
+consignes ouvrent sur une phrase de cinq mots ou moins, et huit d'entre elles
+ne font qu'annoncer la structure.
+
+- **La phrase vient maintenant de la CONSIGNE DE PAPIER** quand elle existe —
+  celle qui s'imprime déjà en tête de la feuille d'un élève, donc déjà écrite
+  pour lui. 134 exercices en ont une, 8 mots en médiane. Sans elle, la
+  première phrase de la consigne du professeur, le rangement écarté. MESURÉ
+  après : **10 mots en médiane pour les 236 exercices**, aucun muet.
+  « Dix marches. » est devenu « Passe par le nombre rond, puis fais le petit
+  pas qui reste. »
+- **Et l'exemple se joue tout seul** : la question, puis chaque étape, puis la
+  réponse, une ligne toutes les 1,6 seconde — le temps de LIRE celle qui vient
+  d'arriver, pas seulement de la voir arriver. Un clic rend la main,
+  `prefers-reduced-motion` l'arrête, et le robot reste à côté pour qui veut
+  voir faire en vrai.
+
+MESURÉ par le chemin de l'élève, sur l'exercice qu'il avait photographié :
+**239 mots à l'écran avant, 12 au repos après** — plus un exemple qui s'écrit.

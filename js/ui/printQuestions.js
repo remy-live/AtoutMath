@@ -257,6 +257,21 @@ function assurerModale() {
                         <option value="3">3 lignes — « Je sais que… »</option>
                         <option value="5">5 lignes — rédaction complète</option>
                     </select></label>
+                <!-- LES QUESTIONS EN TABLEAU. Remy : « pour les calculs sur les
+                     impressions, n'hesite a proposer une option tableau ou c'est
+                     presente sous forme de tableau (dans les options
+                     d'impression) avec alternances des couleurs ou non. »
+
+                     UN SEUL MENU POUR LES DEUX : l'alternance n'a aucun sens
+                     sans le tableau, et deux reglages dont l'un n'agit que si
+                     l'autre est mis se decochent toujours dans le mauvais
+                     ordre. (Sans accent grave ici : il fermerait le gabarit.) -->
+                <label>Présentation
+                    <select id="fq-tableau" class="cfg-input">
+                        <option value="liste">En liste</option>
+                        <option value="tableau">En tableau</option>
+                        <option value="zebre">En tableau, une ligne sur deux teintée</option>
+                    </select></label>
                 <label class="fq-case"><input type="checkbox" id="fq-champs">
                     Champs remplissables (PDF)</label>
                 <label class="fq-case"><input type="checkbox" id="fq-numeroter" checked>
@@ -349,6 +364,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     const couleurEl = modal.querySelector('#fq-couleur');
     retenirRepli(modal.querySelector('#fq-plus'), 'questions');
     const colsEl = modal.querySelector('#fq-colonnes');
+    const tabEl = modal.querySelector('#fq-tableau');
     const champsEl = modal.querySelector('#fq-champs');
     const numEl = modal.querySelector('#fq-numeroter');
     // L'EN-TÊTE SE RÈGLE SUR LA FEUILLE, ICI AUSSI. Cette fenêtre-là n'offrait
@@ -391,6 +407,10 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         champs: champsEl.checked,
         numeroter: numEl.checked,
         colonnes: colsEl.value === 'auto' ? null : Number(colsEl.value),
+        // Un seul menu, deux réglages : « zébré » veut dire « tableau » ET
+        // « alterné ». Voir le commentaire du menu.
+        tableau: tabEl.value !== 'liste',
+        zebre: tabEl.value === 'zebre',
         // LA PLACE POUR RÉDIGER. Un « Je sais que… / or… / donc… » ne tient
         // pas au bout d'une ligne de pointillés : il lui faut trois lignes
         // pleine largeur, et c'est au professeur de le décider — lui seul sait
@@ -429,6 +449,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         numeroter: o.numeroter
     }], {
         avecChoix: o.avecChoix, orientation: o.orientation, champs: o.champs,
+        tableau: o.tableau, zebre: o.zebre,
         // `lignesReponse` passe AUSSI à la mise en page : c'est elle qui trace
         // les traits, un par ligne demandée. Sans lui, on réservait la hauteur
         // de trois lignes et l'on n'en dessinait qu'une, tout au fond.

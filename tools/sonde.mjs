@@ -316,6 +316,14 @@ export async function ouvrirSonde(o = {}) {
         async photo(selecteur, chemin, marge = 8) {
             const el = page.locator(selecteur).first();
             if (!await el.count()) return null;
+            // ON LE RAMÈNE DANS L'ÉCRAN D'ABORD. La découpe se fait sur ce que
+            // la FENÊTRE montre : un élément entièrement sous le bord rend un
+            // rectangle vide, et Playwright répond « Expected options.clip
+            // .height to be greater than 0 » — ce qui ressemble à un élément
+            // effondré, pas à un élément hors champ. MESURÉ : une barre posée
+            // à 958 px dans une fenêtre haute de 844 a coûté deux essais et
+            // une fausse piste de mise en page.
+            try { await el.scrollIntoViewIfNeeded({ timeout: 2000 }); } catch (e) { /* fixe */ }
             let r = await el.boundingBox();
             if (!r || r.width < 2 || r.height < 2) return null;
             const t = page.viewportSize();

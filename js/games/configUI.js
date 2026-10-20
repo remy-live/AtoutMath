@@ -24,7 +24,7 @@ import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePol
 // LES HABILLAGES ET CE QUE CHACUN PROMET — une seule liste, celle qui sert
 // aussi à les dessiner. Deux listes de présentations finiraient par offrir
 // ici un habillage que l'écran de l'élève ne sait pas rendre.
-import { HABILLAGES } from '../ui/pathView.js';
+import { HABILLAGES, DECORS } from '../ui/pathView.js';
 import { reglagesQuiChangent as ecartsDeReglages } from '../core/reglagesDUsine.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
@@ -3552,6 +3552,27 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             <div class="cfg-apercu" id="cfg-presentation-apercu" aria-live="polite"></div>
             <p class="cfg-help">Tant que vous en imposez une, les boutons d'habillage disparaissent de son écran : un bouton qui ne change rien est pire qu'un bouton absent.</p>
         </div>
+        <!-- LE DÉCOR, un axe À PART de la présentation. Rémy : « mets aussi
+             des thèmes (Noel, Halloween, Paques, Robot) ».
+
+             Rangés dans la liste du dessus, ces quatre auraient remplacé la
+             mise en page : l'eleve qui a besoin du damier pour un parcours de
+             quatorze etapes aurait perdu Noel, et qui veut Noel aurait perdu
+             le damier. Les deux reglages ne repondent pas a la meme question.
+
+             ET « LAISSER L'ELEVE CHOISIR » EST LE DEFAUT ICI, contrairement a
+             la presentation : le decor ne change rien a ce qu'on travaille.
+             (Sans accent grave dans ce commentaire : il fermerait le gabarit
+             qui l'entoure.) -->
+        <div class="cfg-field cfg-field--wide">
+            <label class="cfg-label" for="cfg-decor">Décor</label>
+            <select id="cfg-decor" class="cfg-input">
+                <option value="libre" ${p.decor === 'libre' || !p.decor ? 'selected' : ''}>Laisser l'élève choisir</option>
+                ${DECORS.map(d => `<option value="${d.id}"${
+        p.decor === d.id ? ' selected' : ''}>${d.icon} ${d.label} — ${d.dit}</option>`).join('')}
+            </select>
+            <p class="cfg-help">Le décor ne touche pas aux pictogrammes des étapes : ils disent la notion travaillée. Imposez « Sans décor » pour une interrogation.</p>
+        </div>
 
         <div class="cfg-group ${isEval ? '' : 'cfg-group--muted'}">
             <div class="cfg-group-title">Barème</div>
@@ -3645,6 +3666,7 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             adaptive: document.getElementById('cfg-adaptive').checked,
             ordreLibre: document.getElementById('cfg-ordre-libre').checked,
             presentation: (document.getElementById('cfg-presentation') || {}).value || base.presentation,
+            decor: (document.getElementById('cfg-decor') || {}).value || base.decor,
             // Ce que l'ordinateur fait après chaque réponse. `resolvePolicy`
             // en déduira `showCorrection` : c'est le mot qui commande.
             correction: (document.getElementById('cfg-correction') || {}).value || base.correction,
@@ -3702,14 +3724,20 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
         // écrit « n questions » dessous, et une étape sans compte s'affichait
         // « undefined question » — dans l'aperçu que le professeur regarde
         // justement pour juger de l'allure.
+        // LES ÉTIQUETTES SONT LES VRAIES, mot pour mot. MESURÉ : écrites
+        // « Numérique » et « Géométrie » — les mots qu'on emploie en parlant —,
+        // aucune ne trouvait son pictogramme et l'aperçu alignait CINQ crayons
+        // identiques. Il montrait donc exactement ce que le décor ne doit pas
+        // faire : des étapes qu'on ne distingue plus. Le vocabulaire est celui
+        // de `js/data/tags.js`, qui prend les mots des programmes.
         { stepId: 'a1', title: 'Calcul mental', nbItems: 10,
-            exercise: { title: 'Calcul mental', tags: { chemin: ['Numérique'] } } },
+            exercise: { title: 'Calcul mental', tags: { chemin: ['Calcul mental'] } } },
         { stepId: 'a2', title: 'Fractions', nbItems: 8,
-            exercise: { title: 'Fractions', tags: { chemin: ['Numérique'] } } },
-        { stepId: 'a3', title: 'Symétrie', nbItems: 6,
-            exercise: { title: 'Symétrie', tags: { chemin: ['Géométrie'] } } },
-        { stepId: 'a4', title: 'Problèmes', nbItems: 5,
-            exercise: { title: 'Problèmes', tags: { chemin: ['Numérique'] } } },
+            exercise: { title: 'Fractions', tags: { chemin: ['Fractions'] } } },
+        { stepId: 'a3', title: 'Angles', nbItems: 6,
+            exercise: { title: 'Angles', tags: { chemin: ['Angles'] } } },
+        { stepId: 'a4', title: 'Durées', nbItems: 5,
+            exercise: { title: 'Durées', tags: { chemin: ['Heures et durées'] } } },
         { stepId: 'a5', title: 'Un jeu', bonus: true, nbItems: 1,
             exercise: { title: 'Un jeu', tags: { chemin: ['Logique'] } } }
     ];
@@ -3718,12 +3746,19 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
         const boite = document.getElementById('cfg-presentation-apercu');
         const choix = document.getElementById('cfg-presentation');
         if (!boite || !choix) return;
+        // LE DÉCOR SE VOIT DANS LE MÊME APERÇU. Deux vignettes côte à côte
+        // auraient coûté la moitié de la place à chacune, et c'est la carte
+        // ENTIÈRE qu'on vient regarder ici.
+        const quelDecor = (document.getElementById('cfg-decor') || {}).value || 'libre';
+        const nomDuDecor = (DECORS.find(d => d.id === quelDecor) || {}).label;
         // « Laisser l'élève choisir » n'a pas d'aperçu : ce qu'il verra dépend
         // de lui. On le DIT, plutôt que de montrer un habillage au hasard —
-        // ce serait promettre celui-là.
+        // ce serait promettre celui-là. Mais on dit aussi ce qui s'appliquera
+        // QUAND MÊME : un décor imposé ne dépend pas de son choix d'habillage.
         if (choix.value === 'libre') {
             boite.textContent = "L'élève choisira lui-même, avec les boutons "
-                + "d'habillage en haut de sa séance.";
+                + "d'habillage en haut de sa séance."
+                + (nomDuDecor ? ` Le décor « ${nomDuDecor} » s'appliquera de toute façon.` : '');
             boite.className = 'cfg-apercu cfg-apercu--vide';
             boite.style.height = '';
             return;
@@ -3735,6 +3770,9 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
         // justement ce qui distingue les habillages les uns des autres.
         const carte = construireCarte(ETAPES_APERCU, {
             style: choix.value,
+            // `libre` n'est pas un décor : l'aperçu montre alors la carte nue,
+            // qui est ce que voit l'élève qui n'a rien choisi.
+            decor: quelDecor === 'libre' ? 'aucun' : quelDecor,
             doneIds: new Set(['a1', 'a2']),
             currentIndex: 2,
             montrerCadeaux: true,
@@ -3783,10 +3821,12 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
         // hauteur n'est pas définitive à l'instant où l'on pose la carte.
         requestAnimationFrame(ajuster);
     };
-    const choix = root.querySelector('#cfg-presentation');
-    // `change` remonte déjà jusqu'à `root` pour `commit` ; on s'accroche au
-    // sélecteur lui-même pour ne redessiner que quand c'est lui qui bouge.
-    if (choix) choix.addEventListener('change', majApercu);
+    // `change` remonte déjà jusqu'à `root` pour `commit` ; on s'accroche aux
+    // DEUX sélecteurs eux-mêmes pour ne redessiner que quand l'un d'eux bouge.
+    ['#cfg-presentation', '#cfg-decor'].forEach(sel => {
+        const el = root.querySelector(sel);
+        if (el) el.addEventListener('change', majApercu);
+    });
     majApercu();
 }
 

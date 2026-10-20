@@ -22,11 +22,14 @@ import { seuilRequis } from './seuilEtape.js';
 import { etatRecompenses, prochaineObligatoire } from './recompenses.js';
 import { skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
+import {
+    decouperConsigne, meilleurExemple, peutMontrerUnExemple, phrasePourLEleve
+} from './aideExercice.js';
 import { hydratePath, estUnMessage } from './path.js';
 import { messageEnHtml, titreNettoye } from './messageEtape.js';
 import { gradeRun } from './grading.js';
 import { computeRuns } from './projections.js';
-import { uuid, shortId } from './ids.js';
+import { uuid, shortId, makeRng } from './ids.js';
 import { direQuOnVoit, oublierLEcran } from './ecran.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
@@ -894,6 +897,7 @@ export class Runner {
 
         const rendu = carte.construireCarte(this.steps, {
             style: carte.styleDeLaSeance(this.policy),
+            decor: carte.decorDeLaSeance(this.policy),
             doneIds: faites,
             currentIndex: prochaine,
             recompenses: parJeu,
@@ -1341,32 +1345,209 @@ export class Runner {
         };
     }
 
+    /**
+     * L'ÉCRAN D'ACCUEIL DU MODE APPRENTISSAGE — refait le 20 octobre.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * RÉMY : « pour le mode apprentissage pour les exercices, c'est tellement
+     * long, même pour moi, je n'ai pas envie de lire cela. Il faut faire plus
+     * court, plus simple, un exemple, pas si serré, proposer un exemple
+     * facultatif animé (avec le robot par exemple) ».
+     *
+     * CE QU'IL AVAIT SOUS LES YEUX : la consigne ENTIÈRE du catalogue en un
+     * seul paragraphe justifié — celle du « Détour par le Nombre Rond » fait
+     * 95 mots —, puis jusqu'à deux leçons dépliées par-dessus. Un enfant de
+     * onze ans devant ce mur appuie sur « C'est parti » sans rien lire, et
+     * l'écran qui existait pour l'aider lui aura seulement coûté trois
+     * secondes.
+     *
+     * QUATRE CHANGEMENTS, UN PAR DEMANDE :
+     *
+     *   · PLUS COURT — on ne montre que l'ESSENTIEL, c'est-à-dire la première
+     *     phrase (`decouperConsigne`, déjà employée par le panneau d'aide). Le
+     *     reste ne disparaît pas : il passe sous « Tout ce qu'il faut
+     *     savoir », replié. Ce qui est caché est à un clic, ce qui est écrit
+     *     se lit.
+     *   · UN EXEMPLE — une vraie question de l'exercice, engendrée comme
+     *     l'exercice l'engendrerait, et SANS SA RÉPONSE : on dévoile étape par
+     *     étape. Un exemple entièrement affiché est une correction ; on la
+     *     lit, on ne la cherche pas.
+     *   · PAS SI SERRÉ — la mise en page est en CSS (`.learn-essentiel`) :
+     *     colonne bornée, interligne large, et surtout PLUS DE JUSTIFICATION,
+     *     qui creusait des rivières de blanc au milieu des lignes.
+     *   · L'EXEMPLE ANIMÉ RESTE FACULTATIF — le bouton du robot existait, mais
+     *     sous le mur : personne ne descendait jusqu'à lui. Il est maintenant
+     *     dans la boîte de l'exemple, là où l'on se pose justement la question
+     *     « et si je le voyais faire ? ».
+     */
     showLearningIntro(step) {
         const exo = step.exercise;
         const lecons = [...new Set(
             skillsOf(exo).map(id => (getSkill(id) || {}).lesson).filter(Boolean)
         )].slice(0, 2);
 
-        const consigne = exo.instruction
-            ? `<p class="run-screen-text">${escapeHtml(exo.instruction)}</p>` : '';
-        // MISE EN PAGE, PAS UN PAVÉ. C'est l'écran que l'élève lit AVANT de
-        // commencer : s'il ne donne pas envie d'être lu, il ne sert à rien.
-        // Voir `ui/leconHtml.js`.
+        // UNE PHRASE, ÉCRITE POUR L'ÉLÈVE — voir `phrasePourLEleve`.
+        //
+        // RÉMY, devant la première version de cet écran : « tu vois tu écris
+        // dix marches, etc, on s'en fiche en tant qu'élève », puis « il faut
+        // vraiment vraiment être court ». On prenait la première phrase de la
+        // consigne du PROFESSEUR, qui dit comment l'exercice est bâti — « Dix
+        // marches. » Désormais on va chercher la consigne de PAPIER quand elle
+        // existe : elle s'imprime déjà en tête de la feuille d'un élève.
+        // MESURÉ sur les 236 exercices : 10 mots en médiane.
+        const consigneEleve = phrasePourLEleve(exo);
+        const consigne = consigneEleve
+            ? `<p class="learn-essentiel">${escapeHtml(consigneEleve)}</p>` : '';
+        // Et tout ce qui n'est pas montré part dans le repli, consigne du
+        // professeur comprise : rien ne se perd, tout attend un clic.
+        const { essentiel, details } = decouperConsigne(exo.instruction);
+        const reste = (essentiel && essentiel !== consigneEleve)
+            ? [essentiel, ...details] : details;
+        // MISE EN PAGE, PAS UN PAVÉ — voir `ui/leconHtml.js`. Les leçons
+        // rejoignent le repli : ce sont des rappels de cours, utiles à qui en
+        // a besoin, et ils ne doivent pas se mettre entre l'élève et sa
+        // première question.
         const blocsLecon = lecons.map(l =>
             `<div class="learn-lesson">${leconHtml(l)}</div>`).join('');
+        const plus = (reste.length || blocsLecon)
+            ? `<details class="learn-plus">
+                   <summary>Tout ce qu'il faut savoir</summary>
+                   ${reste.length ? `<ul class="learn-details">${reste
+        .map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : ''}
+                   ${blocsLecon}
+               </details>`
+            : '';
+
+        this._exemple = this._exempleDe(exo);
+        this._devoiles = 0;
+        this._exempleJoue = false;
 
         this.canvas.innerHTML = `
             <div class="run-screen run-screen--learn">
                 <div class="run-screen-icon" aria-hidden="true">🌱</div>
                 <h2 class="run-screen-title">${escapeHtml(step.title)}</h2>
                 ${consigne}
-                ${blocsLecon}
+                <div class="learn-exemple" id="learn-exemple"></div>
+                ${plus}
                 <div class="learn-actions">
-                    <button id="btn-learn-watch" class="btn-toggle glass-btn">👀 Regarder le robot d'abord</button>
                     <button id="btn-learn-go" class="btn-toggle active">🚀 C'est parti !</button>
                 </div>
             </div>`;
 
+        this._peindreExemple(exo);
+        // ET IL SE JOUE TOUT SEUL. Rémy : « il faut vraiment vraiment être
+        // court voire même mettre des schémas qui bougent ». Un exemple qui
+        // attend un clic est un texte de plus ; celui-ci s'écrit sous les yeux
+        // de l'élève, ligne après ligne, sans qu'il ait rien à faire.
+        this._jouerLExemple(exo);
+        const go = document.getElementById('btn-learn-go');
+        if (go) go.onclick = () => {
+            this._skipIntro = true;
+            this.runStep();
+        };
+    }
+
+    /**
+     * L'EXEMPLE S'ÉCRIT TOUT SEUL, une ligne toutes les 1,6 seconde.
+     *
+     * RÉMY : « voire même mettre des schémas qui bougent ». Ce qui bouge ici
+     * est l'exemple lui-même : la question, puis chaque étape, puis la
+     * réponse. On n'anime pas pour décorer — on anime parce qu'un
+     * raisonnement est une SUITE, et qu'une suite montrée d'un bloc redevient
+     * un paragraphe.
+     *
+     * 1,6 SECONDE, ET NON 0,8 : il faut le temps de LIRE la ligne qui vient
+     * d'arriver, pas seulement de la voir arriver.
+     *
+     * ON S'ARRÊTE DÈS QUE L'ÉLÈVE TOUCHE À QUELQUE CHOSE — le bouton d'étape,
+     * le repli, « C'est parti ». Une animation qui continue pendant qu'on lit
+     * autre chose est un bruit.
+     *
+     * ET ELLE NE SE JOUE PAS POUR QUI N'EN VEUT PAS : `prefers-reduced-motion`
+     * laisse l'exemple au premier pas, avec son bouton. Le mouvement est un
+     * confort pour la plupart et une gêne pour certains.
+     */
+    _jouerLExemple(exo) {
+        const ex = this._exemple;
+        if (!ex || this._exempleJoue) return;
+        try {
+            if (window.matchMedia
+                && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        } catch (e) { /* pas de matchMedia : on joue */ }
+        const pas = () => {
+            // L'écran a changé sous nos pieds — l'élève a commencé, ou il est
+            // reparti. On s'arrête sans rien toucher.
+            if (this._exempleJoue || !document.getElementById('learn-exemple')) return;
+            if (this._devoiles > ex.etapes.length) return;
+            this._devoiles++;
+            this._peindreExemple(exo);
+            regTimeout(pas, 1600);
+        };
+        regTimeout(pas, 1200);
+    }
+
+    /** Une question comme celles de l'exercice, ou `null` pour un jeu de plateau. */
+    _exempleDe(exo) {
+        if (!peutMontrerUnExemple(exo)) return null;
+        return meilleurExemple(exo, getGenerator(exo.generatorId), makeRng, 'apprentissage');
+    }
+
+    /**
+     * L'EXEMPLE, DÉVOILÉ UNE ÉTAPE À LA FOIS — et le robot à côté.
+     *
+     * La réponse est une marche de plus, jamais la conséquence de la dernière
+     * étape : sans cela, un exercice sans indice montrerait la question et sa
+     * réponse ensemble, c'est-à-dire ne laisserait pas une seconde pour
+     * chercher — tout ce qu'on demande à un exemple.
+     */
+    _peindreExemple(exo) {
+        const boite = document.getElementById('learn-exemple');
+        if (!boite) return;
+        const robot = `<button type="button" id="btn-learn-watch" class="learn-btn">
+            ▶ Voir le robot le faire</button>`;
+        const ex = this._exemple;
+        if (!ex) {
+            // UN JEU DE PLATEAU N'A PAS DE « QUESTION » À MONTRER, il a un
+            // plateau. Le robot est alors le seul exemple possible, et c'est
+            // lui qu'on propose — pas une boîte vide.
+            boite.innerHTML = `<p class="learn-exemple-mot">Celui-ci est un jeu : le mieux
+                est de regarder le robot y jouer une fois.</p>
+                <div class="learn-exemple-actions">${robot}</div>`;
+        } else {
+            const total = ex.etapes.length;
+            const vu = this._devoiles;
+            const montreReponse = vu > total;
+            const libelle = vu < total
+                ? (vu === 0 ? (total ? 'Montre-moi la première étape' : 'Montre-moi la réponse')
+                    : `Étape suivante (${vu + 1}/${total})`)
+                : 'Voir la réponse';
+            boite.innerHTML = `
+                <p class="learn-exemple-mot">Un exemple, comme les questions qui viennent.</p>
+                <div class="learn-question">${escapeHtml(ex.question)}</div>
+                ${ex.figures ? `<div class="learn-figure">${ex.figures}</div>` : ''}
+                <ol class="learn-etapes">${ex.etapes.slice(0, vu)
+        .map((e, i) => `<li${i === vu - 1 ? ' class="learn-etape--neuve"' : ''}
+            >${escapeHtml(e)}</li>`).join('')}</ol>
+                ${montreReponse ? `<div class="learn-reponse">
+                    <span class="learn-reponse-etiq">Réponse</span>
+                    <strong>${escapeHtml(ex.reponse)}</strong>
+                    ${ex.explication ? `<p>${escapeHtml(ex.explication)}</p>` : ''}
+                </div>` : ''}
+                <div class="learn-exemple-actions">
+                    ${montreReponse ? '' : `<button type="button" id="btn-learn-etape"
+                        class="learn-btn learn-btn--fort">${libelle}</button>`}
+                    ${robot}
+                </div>`;
+            const suivant = document.getElementById('btn-learn-etape');
+            // UN CLIC ARRÊTE LE DÉFILEMENT : à partir de là, c'est l'élève qui
+            // mène. Deux moteurs sur la même liste la feraient sauter de deux.
+            if (suivant) suivant.onclick = () => {
+                this._exempleJoue = true;
+                this._devoiles++;
+                this._peindreExemple(exo);
+            };
+        }
         // « Regarder le robot » réutilise le bouton de démonstration de
         // l'en-tête : il capture le parcours en cours et, au retour, reprend
         // cette étape sans repasser par cet écran.
@@ -1375,11 +1556,6 @@ export class Runner {
             this._skipIntro = true;
             const demoBtn = document.getElementById('btn-toggle-demo');
             if (demoBtn) demoBtn.click();
-        };
-        const go = document.getElementById('btn-learn-go');
-        if (go) go.onclick = () => {
-            this._skipIntro = true;
-            this.runStep();
         };
     }
 

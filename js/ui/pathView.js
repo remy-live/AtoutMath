@@ -181,6 +181,115 @@ function memoriserStyle(id) {
     try { localStorage.setItem(STYLE_KEY, id); } catch (e) { /* mode privé */ }
 }
 
+// ── LES DÉCORS : UN AXE À PART DE L'HABILLAGE ─────────────────────────────
+//
+// RÉMY : « mets aussi des thèmes (Noël, Halloween, Paques, Robot) ».
+//
+// POURQUOI PAS DANS LA LISTE DES HABILLAGES. Rangé là, « Noël » remplacerait
+// la mise en page : l'élève qui a besoin du damier — le parcours de quatorze
+// étapes qui ne tient pas sur un écran — perdrait Noël, et le professeur qui
+// veut Noël perdrait le damier. Les deux réglages ne répondent pas à la même
+// question : l'habillage dit COMMENT on lit le parcours, le décor dit de quoi
+// il a l'air. Deux axes, donc, et les vingt combinaisons existent.
+//
+// ET LE DÉCOR NE TOUCHE PAS AU PICTOGRAMME. Remplacer 🍕 par un flocon ferait
+// joli et coûterait l'information : le picto dit la notion travaillée, et
+// c'est à ça qu'il sert — « on reconnaît les angles ou l'heure d'un coup
+// d'œil ». Un décor change les couleurs, le sol, le sentier, et les ornements
+// qui ne portent rien.
+const DECOR_KEY = 'mathbox-path-decor';
+const DECOR_PAR_DEFAUT = 'aucun';
+
+/**
+ * Les décors proposés. `ornements` est la poignée d'emoji semée au fond de la
+ * carte ; « sans décor » n'en a pas, et c'est ce qui le définit.
+ */
+export const DECORS = [
+    { id: 'aucun', icon: '🎨', label: 'Sans décor',
+        dit: 'Les couleurs du logiciel.' },
+    { id: 'noel', icon: '🎄', label: 'Noël',
+        dit: 'Rouge et sapin, et il neige derrière les étapes.',
+        ornements: ['❄️', '🎁', '🎄', '⭐', '🔔', '❄️'] },
+    { id: 'halloween', icon: '🎃', label: 'Halloween',
+        dit: 'Violet et citrouille, toiles d\'araignée aux angles.',
+        ornements: ['🕸️', '🦇', '🎃', '👻', '🕷️', '🕸️'] },
+    { id: 'paques', icon: '🐣', label: 'Pâques',
+        dit: 'Vert tendre et œufs peints.',
+        ornements: ['🥚', '🐣', '🌷', '🐰', '🌼', '🥚'] },
+    { id: 'robot', icon: '🤖', label: 'Robot',
+        dit: 'Bleu acier et circuits imprimés.',
+        ornements: ['⚙️', '🔧', '🤖', '🔌', '⚡', '⚙️'] }
+];
+
+function getPathDecor() {
+    try {
+        const v = localStorage.getItem(DECOR_KEY);
+        return DECORS.some(d => d.id === v) ? v : DECOR_PAR_DEFAUT;
+    } catch (e) { return DECOR_PAR_DEFAUT; }
+}
+
+/** Retient le décor choisi sur ce poste, sans rien redessiner. */
+function memoriserDecor(id) {
+    try { localStorage.setItem(DECOR_KEY, id); } catch (e) { /* mode privé */ }
+}
+
+/**
+ * Le décor IMPOSÉ par la séance, ou `null` si elle rend la main à l'élève.
+ *
+ * `aucun` EST UNE IMPOSITION, et c'est voulu : « pas de décor » est un choix
+ * que le professeur doit pouvoir faire pour une interrogation — sans quoi
+ * l'élève garderait ses guirlandes pendant le contrôle. Rendre la main se dit
+ * `libre`, comme pour l'habillage, et c'est le défaut : un parcours enregistré
+ * avant ce réglage ne se met pas à imposer dans le dos de son auteur.
+ */
+export function decorImpose(policy) {
+    const v = policy && policy.decor;
+    return DECORS.some(d => d.id === v) ? v : null;
+}
+
+/** Le décor à employer pour CETTE séance : le sien, sinon celui du poste. */
+export function decorDeLaSeance(policy) {
+    return decorImpose(policy) || getPathDecor();
+}
+
+/**
+ * Pose le décor sur une carte déjà construite.
+ *
+ * LE DÉCOR EST UNE CLASSE, PAS UN DESSIN. Les quatre habillages illustrés
+ * teignent leur ciel avec `--primary` et `--accent` en `color-mix` : redéfinir
+ * ces deux jetons sur la carte repeint d'un coup le fond, le sentier, la
+ * pastille en cours et le fanion « C'est ici ! ». Les vingt combinaisons
+ * existent donc sans une ligne de plus par habillage — c'est la raison pour
+ * laquelle le décor est un axe à part et pas un sixième habillage.
+ *
+ * LES ORNEMENTS NE VONT PAS SUR LA LISTE CLASSIQUE : elle se lit en toutes
+ * lettres, et semer six emoji derrière un paragraphe se paie en lisibilité
+ * sans rien apporter. Elle garde les couleurs.
+ */
+function poserLeDecor(carte, id) {
+    const decor = DECORS.find(d => d.id === id);
+    if (!decor || !decor.ornements) return carte;
+    carte.classList.add('decor', `decor--${decor.id}`);
+    if (carte.classList.contains('path-timeline')) return carte;
+    // LE RUBAN DÉFILE, ET SON CADRE N'EST PAS SA PISTE. Les ornements se posent
+    // sur la boîte qui porte les pastilles ; sur le cadre, ils resteraient
+    // collés à la fenêtre pendant que le parcours glisse dessous.
+    const sol = carte.classList.contains('ruban-path')
+        ? carte.querySelector('.ruban-piste') : carte;
+    if (!sol) return carte;
+    const nappe = document.createElement('div');
+    nappe.className = 'decor-nappe';
+    nappe.setAttribute('aria-hidden', 'true');
+    decor.ornements.forEach(o => {
+        const s = document.createElement('span');
+        s.className = 'decor-ornement';
+        s.textContent = o;
+        nappe.appendChild(s);
+    });
+    sol.insertBefore(nappe, sol.firstChild);
+    return carte;
+}
+
 /**
  * L'habillage IMPOSÉ par la séance, ou `null` si elle rend la main à l'élève.
  *
@@ -213,20 +322,54 @@ export function styleDeLaSeance(policy) {
  * même endroit.
  */
 export function barreDeStyles(onChange, policy = null) {
-    if (presentationImposee(policy)) return null;
+    // ON NE CACHE QUE CE QUI EST IMPOSÉ, rangée par rangée. Une séance peut
+    // fixer l'habillage et laisser le décor libre — ou l'inverse : retirer les
+    // deux rangées dès que l'une est imposée enlèverait à l'élève un choix
+    // qu'on lui laisse. Et si les deux sont imposées, il n'y a plus de barre :
+    // laisser des boutons qui n'obéissent pas est le pire des deux mondes.
+    const groupes = [];
+    if (!presentationImposee(policy)) {
+        groupes.push(groupeDeBoutons(STYLES, 'Présentation', getPathStyle(),
+            id => { memoriserStyle(id); onChange(id); }));
+    }
+    if (!decorImpose(policy)) {
+        groupes.push(groupeDeBoutons(DECORS, 'Décor', getPathDecor(),
+            id => { memoriserDecor(id); onChange(id); }));
+    }
+    if (!groupes.length) return null;
     const box = document.createElement('div');
     box.className = 'path-style-switcher';
-    STYLES.forEach(s => {
+    groupes.forEach(g => box.appendChild(g));
+    return box;
+}
+
+/**
+ * Une rangée de boutons-pastilles : un choix, celui qui est actif marqué.
+ *
+ * DEUX RANGÉES PLUTÔT QU'UNE DE DIX. Mesuré sur un téléphone de 390 px : dix
+ * pastilles de 36 px font 420 px et débordent de l'écran. Deux groupes de cinq
+ * passent à la ligne tout seuls, et chacun reste lisible comme un choix.
+ */
+function groupeDeBoutons(liste, quoi, actif, choisir) {
+    const groupe = document.createElement('div');
+    groupe.className = 'path-style-groupe';
+    groupe.setAttribute('role', 'group');
+    groupe.setAttribute('aria-label', quoi);
+    liste.forEach(s => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'path-style-btn' + (s.id === getPathStyle() ? ' path-style-btn--active' : '');
+        btn.className = 'path-style-btn' + (s.id === actif ? ' path-style-btn--active' : '');
         btn.textContent = s.icon;
         btn.title = s.label;
-        btn.setAttribute('aria-label', `Présentation : ${s.label}`);
-        btn.onclick = () => { memoriserStyle(s.id); onChange(s.id); };
-        box.appendChild(btn);
+        btn.setAttribute('aria-label', `${quoi} : ${s.label}`);
+        // `aria-pressed` DIT CE QUE LA PASTILLE GRISÉE DIT À L'ŒIL. Sans lui,
+        // le lecteur d'écran annonce cinq boutons identiques et l'élève ne sait
+        // pas lequel est le sien.
+        btn.setAttribute('aria-pressed', s.id === actif ? 'true' : 'false');
+        btn.onclick = () => choisir(s.id);
+        groupe.appendChild(btn);
     });
-    return box;
+    return groupe;
 }
 
 function styleSwitcher(policy) {
@@ -441,6 +584,9 @@ function assignedSection() {
         // ET SON HABILLAGE AUSSI. `styleDeLaSeance` rend celui que la séance
         // impose, ou celui du poste quand elle laisse le choix.
         style: styleDeLaSeance(policy),
+        // ET SON DÉCOR, de la même façon : imposé par la séance, ou celui que
+        // l'élève a choisi sur ce poste.
+        decor: decorDeLaSeance(policy),
         ouverture,
         gagnes,
         onNodeClick: (i, statut) => {
@@ -888,11 +1034,15 @@ export function construireCarte(steps, opts = {}) {
     // il faut regarder ce qui la précède. Injecté ici, donc les trois
     // habillages en héritent sans y penser.
     const o = { steps, ...opts };
-    if (style === 'classique') return buildClassicTimeline(steps, o);
-    if (style === 'chemin') return buildDuoPath(steps, o);
-    if (style === 'damier') return buildDamier(steps, o);
-    if (style === 'ruban') return buildRuban(steps, o);
-    return buildWorldMap(steps, o);
+    let carte;
+    if (style === 'classique') carte = buildClassicTimeline(steps, o);
+    else if (style === 'chemin') carte = buildDuoPath(steps, o);
+    else if (style === 'damier') carte = buildDamier(steps, o);
+    else if (style === 'ruban') carte = buildRuban(steps, o);
+    else carte = buildWorldMap(steps, o);
+    // ET LE DÉCOR PAR-DESSUS, quel que soit l'habillage : c'est tout l'intérêt
+    // de l'avoir mis sur un axe à part.
+    return poserLeDecor(carte, o.decor || DECOR_PAR_DEFAUT);
 }
 
 /** L'habillage du POSTE, pour qui veut le lire sans le changer. Hors séance,

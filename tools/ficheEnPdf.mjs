@@ -51,6 +51,7 @@ const ids = args.filter(a => !a.startsWith('--'));
 if (!ids.length) {
     console.error('emploi : node tools/ficheEnPdf.mjs <id> [<id>…] [--couleur=nb|gris|couleur|intense]');
     console.error('         [--items=12] [--solutions] [--champs] [--page=1] [--echelle=2] [--sortie=dossier]');
+    console.error('         [--tableau=liste|tableau|zebre] [--colonnes=auto|1…6]');
     process.exit(2);
 }
 const MODE = option('couleur', 'couleur');
@@ -58,6 +59,13 @@ const ITEMS = Number(option('items', 12));
 const PAGE = Number(option('page', 1));
 const ECHELLE = option('echelle', '2');
 const DOSSIER = option('sortie', 'tools/tmp/fiches');
+// LA PRÉSENTATION DES QUESTIONS, et le nombre de colonnes. Rémy a demandé
+// l'option tableau le 20 octobre ; sans ces deux lignes, l'outil qui sert
+// justement à REGARDER une feuille imprimée ne savait pas l'atteindre, et il
+// fallait réécrire une sonde à la main — exactement la friction que cet outil
+// existe pour fermer.
+const TABLEAU = option('tableau', '');
+const COLONNES = option('colonnes', '');
 const SOLUTIONS = args.includes('--solutions');
 const CHAMPS = args.includes('--champs');
 
@@ -113,7 +121,15 @@ for (const id of ids) {
             return 'fiche';
         }
         const pq = await import('./js/ui/printQuestions.js');
-        pq.ouvrirFicheQuestions(e, { ...(e.params || {}) }, null,
+        // LE TROISIÈME ARGUMENT EST LE CHARGEUR DE jsPDF, pas une option. Passé
+        // à `null`, la modale s'ouvrait, l'aperçu se dessinait, le bouton
+        // existait — et le clic levait « chargerJsPDF is not a function » dans
+        // la page, donc AUCUN téléchargement. L'outil attendait alors trente
+        // secondes et mourait sur un délai dépassé, qui ne dit pas ce qui
+        // manque. Deux fiches de questions mesurées pour rien avant de voir
+        // que le défaut était dans la sonde et non dans le logiciel.
+        const ps2 = await import('./js/ui/printSheet.js');
+        pq.ouvrirFicheQuestions(e, { ...(e.params || {}) }, ps2.chargerJsPDF,
             { flottant: false, nbItems: n });
         return 'questions';
     }, [id, ITEMS]);
@@ -129,6 +145,20 @@ for (const id of ids) {
         await s.deplier(selecteur);
         await s.page.selectOption(selecteur, MODE);
         await dormir(1800);
+    }
+    // LA PRÉSENTATION — liste ou tableau, zébré ou non. Elle dort sous le même
+    // volet que la couleur, donc `deplier` l'a déjà ouvert ; on garde l'appel
+    // quand même, puisqu'une fiche à grilles n'a pas de sélecteur de couleur
+    // et n'aurait alors rien déplié du tout.
+    if (TABLEAU && await s.page.$('#fq-tableau')) {
+        await s.deplier('#fq-tableau');
+        await s.page.selectOption('#fq-tableau', TABLEAU);
+        await dormir(1800);
+    }
+    if (COLONNES && await s.page.$('#fq-colonnes')) {
+        await s.deplier('#fq-colonnes');
+        await s.page.selectOption('#fq-colonnes', COLONNES);
+        await dormir(1500);
     }
     if (SOLUTIONS) {
         const b = await s.page.$('#fp-voir-sol') || await s.page.$('#fq-voir-sol');

@@ -259,6 +259,97 @@
 .learn-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 22px; }
 .run-screen--learn .run-screen-title { color: var(--primary-texte); }
 
+/* ═══ L'ÉCRAN D'ACCUEIL D'UNE ÉTAPE, REFAIT ══════════════════════════════════
+   RÉMY : « c'est tellement long, même pour moi, je n'ai pas envie de lire
+   cela. Il faut faire plus court, plus simple, un exemple, pas si serré ».
+
+   « PAS SI SERRÉ » SE RÈGLE ICI, et c'est une affaire de trois nombres : une
+   colonne bornée à 46 caractères environ, un interligne de 1,75, et SURTOUT
+   pas de justification — c'est elle qui creusait des rivières de blanc au
+   milieu des lignes et faisait du paragraphe un bloc gris. Le reste — ce qui
+   est montré et ce qui est replié — se décide dans `showLearningIntro`. */
+.learn-essentiel {
+    max-width: 34em; margin: 4px auto 0; text-align: left;
+    font-size: 1.12rem; line-height: 1.75; color: var(--text-main);
+    text-align: start;
+}
+
+/* LE REPLI. Ce qui est caché est à un clic ; ce qui est écrit se lit. */
+.learn-plus { max-width: 34em; margin: 18px auto 0; text-align: left; width: 100%; }
+/* LE TRIANGLE EST ÉCRIT À LA MAIN. MESURÉ à l'écran : `list-style: revert`
+   ne rend aucun marqueur ici — la feuille du logiciel retire les puces plus
+   haut —, et un repli sans triangle ressemble à un titre. On ne découvre
+   jamais qu'il y avait quelque chose dessous. */
+.learn-plus > summary {
+    cursor: pointer; font-weight: 700; color: var(--primary-texte);
+    padding: 8px 2px; list-style: none; display: flex; align-items: center; gap: 8px;
+}
+.learn-plus > summary::-webkit-details-marker { display: none; }
+.learn-plus > summary::before {
+    content: '\25B8'; font-size: .95em; transition: transform .18s;
+}
+.learn-plus[open] > summary::before { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+    .learn-plus > summary::before { transition: none; }
+}
+.learn-details { margin: 6px 0 0; padding-left: 1.2em; }
+.learn-details li { margin-bottom: 10px; line-height: 1.7; color: var(--text-muted); }
+
+/* L'EXEMPLE. Une boîte, parce que c'est un objet qu'on regarde et non une
+   phrase de plus : l'œil doit pouvoir sauter directement dessus. */
+.learn-exemple {
+    max-width: 34em; width: 100%; margin: 20px auto 0; text-align: left;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px 16px;
+}
+.learn-exemple-mot { margin: 0 0 10px; font-size: .86rem; color: var(--text-muted); }
+.learn-question {
+    font-size: 1.22rem; font-weight: 800; color: var(--text-main); line-height: 1.5;
+}
+.learn-figure { margin: 10px 0; }
+.learn-figure svg { max-width: 100%; height: auto; }
+.learn-etapes { margin: 10px 0 0; padding-left: 1.3em; }
+.learn-etapes li { margin-bottom: 9px; line-height: 1.65; }
+/* LA LIGNE QUI VIENT D'ARRIVER SE SIGNALE. Rémy : « voire même mettre des
+   schémas qui bougent ». Sans ce mouvement, l'exemple qui se déroule tout
+   seul ressemble à un texte qui s'allonge : l'œil ne sait pas OÙ regarder.
+   Un glissement court, une seule fois, sur la dernière ligne seulement. */
+.learn-etape--neuve { animation: learn-arrive .42s cubic-bezier(.22, 1, .36, 1); }
+@keyframes learn-arrive {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .learn-etape--neuve { animation: none; }
+}
+.learn-reponse {
+    margin-top: 12px; padding: 10px 12px; border-radius: 12px;
+    background: color-mix(in srgb, var(--success) 12%, var(--bg-hover));
+    border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border));
+}
+.learn-reponse-etiq {
+    display: block; font-size: .74rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--success-texte);
+}
+.learn-reponse strong { font-size: 1.15rem; }
+.learn-reponse p { margin: 6px 0 0; font-size: .92rem; line-height: 1.6; color: var(--text-muted); }
+.learn-exemple-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.learn-btn {
+    flex: 0 1 auto; padding: 9px 15px; border-radius: 999px; cursor: pointer;
+    background: var(--bg-hover); color: var(--text-main);
+    border: 1px solid var(--border); font-weight: 700; font-size: .93rem;
+}
+.learn-btn--fort {
+    background: color-mix(in srgb, var(--primary) 14%, var(--bg-hover));
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+@media (hover: hover) {
+    .learn-btn:hover { border-color: var(--primary); }
+}
+/* DANS LE REPLI, une leçon n'a plus à se battre pour sa place : elle prend
+   toute la largeur de la colonne de lecture. */
+.learn-plus .learn-lesson { max-width: none; }
+
 .btn-hint {
     display: inline-flex; align-items: center; gap: 8px;
     background: var(--bg-hover); color: var(--text-main);
@@ -4262,7 +4353,12 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     display: flex; justify-content: space-between; align-items: flex-start;
     gap: 12px; flex-wrap: wrap;
 }
-.path-style-switcher {
+/* DEUX RANGÉES, PAS UNE DE DIX. Mesuré sur un téléphone de 390 px : dix
+   pastilles de 36 px font 420 px et débordent. Les deux groupes passent à la
+   ligne tout seuls, et chacun se lit comme un choix à part — l'habillage dit
+   comment on lit le parcours, le décor de quoi il a l'air. */
+.path-style-switcher { display: flex; gap: 8px; flex-wrap: wrap; }
+.path-style-groupe {
     display: flex; gap: 4px; background: var(--bg-app);
     border: 1px solid var(--border); border-radius: 999px; padding: 3px;
 }
@@ -4349,6 +4445,107 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     position: relative; isolation: isolate; width: max-content; min-width: 100%;
 }
 .ruban-node { flex: 0 0 auto; width: 118px; }
+
+/* ═══ LES DÉCORS DE SAISON ═══════════════════════════════════════════════════
+   Rémy : « mets aussi des thèmes (Noël, Halloween, Paques, Robot) ».
+
+   UN DÉCOR EST DEUX JETONS ET UNE NAPPE, et c'est tout. Les quatre habillages
+   illustrés teignent leur ciel avec `color-mix(--primary / --accent, fond)` :
+   redéfinir ces deux jetons sur la carte repeint d'un coup le fond, le
+   sentier, la pastille en cours et le fanion « C'est ici ! ». Les vingt
+   combinaisons habillage × décor existent donc sans une règle de plus par
+   habillage — c'est la raison pour laquelle le décor est un axe à part et non
+   un sixième habillage.
+
+   CE QUI NE BOUGE PAS : L'OR D'UNE ÉTAPE RÉUSSIE. Il est écrit en dur dans
+   `.world-node--done`, et il y reste. Un élève qui change de décor ne doit pas
+   réapprendre à lire sa propre carte, et « c'est fait » est l'état qui mérite
+   le plus de rester stable. La pastille en cours, elle, peut changer de teinte
+   sans rien coûter : elle rebondit, elle a son halo et son fanion.
+
+   LES COULEURS SONT MESURÉES, pas choisies à l'œil : la gommette de rang et le
+   fanion écrivent du BLANC sur `--primary`, donc chacune doit tenir 4,5. */
+.decor--noel { --primary: #b3123a; --accent: #1b7a4b; }
+.decor--halloween { --primary: #6d28d9; --accent: #e2680c; }
+.decor--paques { --primary: #2a7d4f; --accent: #db6aa0; }
+.decor--robot { --primary: #0369a1; --accent: #0891b2; }
+
+/* La nappe d'ornements : SOUS les pastilles et sous le sentier (qui est à
+   -1), jamais au-dessus. Un décor qui passe devant le travail n'est plus un
+   décor. */
+.decor-nappe {
+    position: absolute; inset: 0; z-index: -2;
+    pointer-events: none; overflow: hidden; border-radius: inherit;
+}
+.decor-ornement {
+    position: absolute; font-size: 2.1rem; line-height: 1; opacity: .2;
+}
+/* Six places fixes, aux angles et sur les bords : le milieu de la carte
+   appartient aux pastilles. Les pourcentages suivent la hauteur réelle, donc
+   le damier (court) et le chemin (long) sont semés pareil. */
+.decor-ornement:nth-child(1) { top: 4%; left: 3%; }
+.decor-ornement:nth-child(2) { top: 8%; right: 4%; font-size: 1.7rem; }
+.decor-ornement:nth-child(3) { top: 44%; left: 5%; font-size: 2.6rem; }
+.decor-ornement:nth-child(4) { top: 50%; right: 5%; }
+.decor-ornement:nth-child(5) { bottom: 8%; left: 9%; font-size: 1.8rem; }
+.decor-ornement:nth-child(6) { bottom: 4%; right: 8%; }
+
+/* NOËL : il neige. Trois semis de points blancs à des tailles différentes,
+   qui descendent à trois vitesses — le parallaxe donne la profondeur pour le
+   prix de trois dégradés. */
+.decor--noel .decor-nappe::before {
+    content: ''; position: absolute; inset: -40% 0;
+    background:
+        radial-gradient(circle at 20% 10%, #fff 1.6px, transparent 2px) 0 0 / 70px 90px,
+        radial-gradient(circle at 70% 40%, #fff 2.3px, transparent 2.8px) 0 0 / 110px 130px,
+        radial-gradient(circle at 45% 75%, #fff 1.2px, transparent 1.6px) 0 0 / 50px 60px;
+    opacity: .75;
+    animation: decorNeige 14s linear infinite;
+}
+@keyframes decorNeige {
+    from { transform: translateY(0); }
+    to { transform: translateY(90px); }
+}
+
+/* HALLOWEEN : une toile dans l'angle. Les rayons sont un dégradé conique
+   répété, les fils un dégradé radial répété — deux déclarations pour une
+   toile, plutôt qu'un fichier image de plus. */
+.decor--halloween .decor-nappe::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 170px; height: 170px; opacity: .3;
+    background:
+        repeating-conic-gradient(from 0deg at 0 0,
+            #6d28d9 0deg .5deg, transparent .5deg 11.25deg),
+        repeating-radial-gradient(circle at 0 0,
+            transparent 0 21px, #6d28d9 21px 22px);
+}
+
+/* PÂQUES : un ruban pastel au pied de la carte, comme le papier d'un panier. */
+.decor--paques .decor-nappe::after {
+    content: ''; position: absolute; inset: auto 0 0 0; height: 14px;
+    opacity: .55;
+    background: repeating-linear-gradient(90deg,
+        #a7f3d0 0 18px, #fde68a 18px 36px, #fbcfe8 36px 54px, #bfdbfe 54px 72px);
+}
+
+/* ROBOT : un circuit imprimé. La trame fine dit la carte électronique, les
+   pastilles claires aux croisements disent les soudures. */
+.decor--robot .decor-nappe::before {
+    /* OPACITÉ .3 ET MAILLE DE 58, mesuré à l'écran : à .45 sur 48 px, la trame
+       se lisait comme du PAPIER QUADRILLÉ et se battait avec le semis de
+       points du ciel. Un circuit imprimé se devine, il ne se compte pas. */
+    content: ''; position: absolute; inset: 0; opacity: .3;
+    background:
+        radial-gradient(circle at 0 0, #0891b2 2.4px, transparent 2.8px) 0 0 / 58px 58px,
+        linear-gradient(90deg, #0891b2 0 1px, transparent 1px 58px) 0 0 / 58px 58px,
+        linear-gradient(180deg, #0891b2 0 1px, transparent 1px 58px) 0 0 / 58px 58px;
+}
+
+/* La neige s'arrête pour qui l'a demandé. Le décor reste : c'est le MOUVEMENT
+   qui gêne, pas la couleur. */
+@media (prefers-reduced-motion: reduce) {
+    .decor--noel .decor-nappe::before { animation: none; }
+}
 
 /* Parcours du professeur listés côté élève. */
 .teacher-path-list { display: flex; flex-direction: column; gap: 10px; }
@@ -14334,3 +14531,20 @@ body.en-boite > #app-container { background: none; }
     display: block; font-size: .62em; font-weight: 800; line-height: 1.3;
     color: var(--primary-texte);
 }
+
+/* LES QUATRE VUES DE L'OUTIL « Tourner » — Rémy, devant « Dénombrer des cubes
+   par tranche » : « j'aimerai bien ce genre d'exercices ». L'exercice qu'il a
+   photographié porte un bouton 90° ; on montre les quatre coins d'un coup,
+   parce que ce qu'on veut vraiment est COMPARER deux vues, pas en faire
+   défiler quatre. Elles passent à la ligne toutes seules : sur un téléphone,
+   deux par deux. */
+.cu-vues {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+}
+.cu-vue {
+    margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    flex: 1 1 130px; max-width: 180px;
+}
+.cu-vue figcaption { font-size: .78rem; color: var(--text-muted); font-weight: 700; }
+.cu-svg--vue { width: 100%; height: auto; max-height: 150px; }
+.cu-vues-mot { margin: 0 0 8px; font-size: .86rem; color: var(--text-muted); }

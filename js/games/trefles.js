@@ -146,7 +146,20 @@ class Trefles extends BaseGame {
     }
 
     poser() {
-        this.champ = semerLeChamp({ rng: this.rng, palier: this.palier });
+        // LE CHAMP PREND LA FORME DE SON CADRE. Mesuré sur l'écran du
+        // professeur : un champ de rapport 4/3 dans un cadre de 1,84 laissait
+        // 530 px de blanc de chaque côté — le parterre flottait au milieu de
+        // la page au lieu d'en occuper les bords, et c'est la moitié de ce que
+        // Rémy voyait quand il l'a trouvé trop clairsemé.
+        //
+        // ON MESURE LA PAGE, PAS LE SVG : le `<svg>` porte `height: 100 %`
+        // d'une boîte souple, donc sa hauteur ne vaut quelque chose qu'une
+        // fois la mise en page faite. `semerLeChamp` se défend d'un rapport
+        // absurde ; si la mesure ne vaut rien, on retombe sur 4/3.
+        const page = this.container.querySelector('.tr-page');
+        const boite = page && page.getBoundingClientRect();
+        const rapport = boite && boite.height > 0 ? boite.width / boite.height : 4 / 3;
+        this.champ = semerLeChamp({ rng: this.rng, palier: this.palier, rapport });
         this.trouves = new Set();
         this.erreurs = 0;
         this.fini = false;

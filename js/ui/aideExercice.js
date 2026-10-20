@@ -24,7 +24,7 @@
 import { state } from '../core/state.js';
 import { getGenerator } from '../core/registry.js';
 import { makeRng } from '../core/ids.js';
-import { decouperConsigne, etapesExemple, peutMontrerUnExemple, leconsDe, ongletsPour } from '../core/aideExercice.js';
+import { decouperConsigne, meilleurExemple, peutMontrerUnExemple, leconsDe, ongletsPour } from '../core/aideExercice.js';
 // La leçon mise en page — voir `ui/leconHtml.js`.
 import { leconHtml } from './leconHtml.js';
 
@@ -191,19 +191,10 @@ const CANDIDATS = 4;
 
 function engendrer(exo) {
     exemplePour = exo.id;
-    const g = getGenerator(exo.generatorId);
-    if (!g) return null;
-    let meilleur = null;
-    for (let k = 0; k < CANDIDATS; k++) {
-        try {
-            const item = g.generate({ ...(exo.params || {}) }, {
-                rng: makeRng(`aide-${exo.id}-${tirage}-${k}`),
-                weakTables: [], difficulty: (exo.params && exo.params.difficulty) || null, index: k
-            });
-            const ex = etapesExemple(item);
-            if (!ex || !ex.question) continue;
-            if (!meilleur || ex.etapes.length > meilleur.etapes.length) meilleur = ex;
-        } catch (e) { /* ce tirage-là ne passe pas, un autre passera */ }
-    }
-    return meilleur;
+    // LE TIRAGE VIT DANS `core/aideExercice.js` depuis que l'écran
+    // d'apprentissage montre lui aussi un exemple. Deux copies auraient donné
+    // deux exemples différents du même exercice selon la porte par laquelle on
+    // arrive, et l'une des deux aurait cessé d'évoluer avec l'autre.
+    return meilleurExemple(exo, getGenerator(exo.generatorId), makeRng,
+        String(tirage), CANDIDATS);
 }

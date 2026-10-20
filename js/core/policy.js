@@ -86,7 +86,18 @@ export function defaultPolicy() {
         //
         // `libre` rend la main à l'élève — c'est l'ancien comportement, et il
         // reste utile pour un plan de travail qu'on refait toute l'année.
-        presentation: 'chemin',  // 'chemin' | 'mondes' | 'classique' | 'libre'
+        presentation: 'chemin',  // 'chemin' | 'mondes' | 'damier' | 'ruban' | 'classique' | 'libre'
+        // LE DÉCOR, un axe à part de la présentation — voir `DECORS` dans
+        // ui/pathView.js. Rémy : « mets aussi des thèmes (Noël, Halloween,
+        // Paques, Robot) ».
+        //
+        // `libre` PAR DÉFAUT, et c'est le contraire de la présentation juste
+        // au-dessus. La présentation a un défaut imposé parce que le
+        // professeur a composé sa séance dans une forme précise ; le décor,
+        // lui, ne change rien à ce qu'on travaille — autant le laisser à
+        // l'élève, qui est celui que ça amuse. Le professeur le fixe quand il
+        // le veut, « aucun » compris pour une interrogation.
+        decor: 'libre',          // 'aucun' | 'noel' | 'halloween' | 'paques' | 'robot' | 'libre'
         allowRetryStep: true,   // réessayer une étape ratée
         pointsPerItem: 10,
         hintPenalty: 0.25,      // part de points perdue par aide utilisée

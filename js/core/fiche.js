@@ -553,7 +553,33 @@ export const DEFAUTS_BLOCS = {
     // (« question 27 » se trouve sans compter les exercices) ; « exercice »
     // repart à 1 à chaque exercice, ce qui est la convention des manuels et
     // des contrôles — « exercice 3, question 2 » y est plus court à dire.
-    numerotation: 'continue'
+    numerotation: 'continue',
+    // ── LES QUESTIONS EN TABLEAU ───────────────────────────────────────────
+    //
+    // RÉMY : « pour les calculs sur les impressions, n'hésite à proposer une
+    // option tableau où c'est présenté sous forme de tableau (dans les options
+    // d'impression) avec alternances des couleurs ou non. »
+    //
+    // CE N'EST PAS UNE AUTRE MISE EN PAGE, c'est un TRAIT AUTOUR DE CE QUI EST
+    // DÉJÀ POSÉ. Les questions se rangent déjà en rangées et en colonnes — le
+    // tableau existait, il n'était simplement pas dessiné. En faire une
+    // composition à part aurait donné deux mises en page à garder d'accord,
+    // c'est-à-dire une qui finit par mentir sur l'autre.
+    //
+    // POURQUOI ÇA CHANGE QUELQUE CHOSE POUR UN ÉLÈVE : sur une feuille de
+    // calcul mental à quatre colonnes, rien ne dit où finit une question et où
+    // commence la suivante — l'œil saute d'une colonne à l'autre en cours de
+    // ligne, et l'élève répond au mauvais numéro. Le filet ferme chaque case.
+    tableau: false,
+    // L'ALTERNANCE, séparément : « avec alternances des couleurs ou non ». Une
+    // rangée sur deux teintée, pour suivre une ligne de l'œil sans règle. Elle
+    // suit le mode d'impression — en noir et blanc elle devient un gris très
+    // pâle, qui ne mange pas l'encre et se lit encore.
+    zebre: false,
+    // L'air entre le filet et le texte. Il sert aussi d'écart entre deux
+    // cases : les cadres se touchent alors EXACTEMENT, et la feuille porte une
+    // vraie grille au lieu de cases qui flottent.
+    padTableau: 1.7
 };
 
 /**
@@ -573,6 +599,17 @@ export const DEFAUTS_BLOCS = {
  */
 export function composerBlocs(exos, opts, mesurer) {
     const o = { ...DEFAUTS_BLOCS, ...(opts || {}) };
+    // LES CASES D'UN TABLEAU SE TOUCHENT. Une gouttière de 9 mm entre deux
+    // colonnes et 4,4 mm entre deux rangées donneraient des cases séparées par
+    // du blanc — un damier, pas un tableau, et le filet n'y servirait plus à
+    // rien puisque c'est le blanc qui dirait déjà la séparation. On ramène
+    // donc les deux écarts à DEUX FOIS la marge intérieure : chaque cadre
+    // déborde de `padTableau` de son côté, et les bords se superposent au
+    // millimètre près.
+    if (o.tableau) {
+        o.gouttiere = o.padTableau * 2;
+        o.entreQuestions = o.padTableau * 2;
+    }
     const page0 = o.page || pageDe(o.orientation);
     // LA PREMIÈRE PAGE PEUT AVOIR UN EN-TÊTE PLUS HAUT QUE LES SUIVANTES.
     //
@@ -1222,6 +1259,20 @@ export function composerBlocs(exos, opts, mesurer) {
                 page.items.push({
                     type: 'q', n: numerote ? numero : null,
                     tableau,
+                    // LE CADRE DE LA CASE, quand la fiche est en tableau. Il
+                    // déborde de `padTableau` de chaque côté : deux cases
+                    // voisines partagent alors exactement leur filet.
+                    //
+                    // `bande` COMPTE LES RANGÉES, PAS LES QUESTIONS. Alterner
+                    // par question teindrait une case sur deux en damier sur
+                    // une feuille à trois colonnes — on ne suivrait plus une
+                    // ligne, qui est précisément ce que l'alternance sert à
+                    // faire.
+                    cadre: o.tableau ? {
+                        x: x - o.padTableau, y: y - o.padTableau,
+                        w: cellW + o.padTableau * 2, h: rangeeH + o.padTableau * 2,
+                        bande: o.zebre ? Math.floor(debut / cols) % 2 : 0
+                    } : null,
                     // D'où vient cette question : de quel exercice, à quel rang.
                     exoId: exo.id ?? null, iQ: cell.iQ,
                     lignes: cell.lignes, x, y, dy: cell.dy, texteX, texteW,

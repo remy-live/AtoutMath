@@ -410,6 +410,20 @@ function assurerModale() {
                         </select></label>
                     <label>Impression
                         <select id="pp-couleur" class="cfg-input"></select></label>
+                    <!-- EN TABLEAU, comme sur la fiche d'un exercice seul.
+                         Remy : « pour les calculs sur les impressions, n'hesite
+                         a proposer une option tableau ou c'est presente sous
+                         forme de tableau (dans les options d'impression) avec
+                         alternances des couleurs ou non. » Le meme reglage aux
+                         deux endroits : une feuille de parcours est surtout
+                         faite de calculs, et c'est elle qu'il imprime le plus.
+                         (Sans accent grave : il fermerait le gabarit.) -->
+                    <label>Présentation
+                        <select id="pp-tableau" class="cfg-input">
+                            <option value="liste">En liste</option>
+                            <option value="tableau">En tableau</option>
+                            <option value="zebre">En tableau, une ligne sur deux teintée</option>
+                        </select></label>
                     <label class="fq-case"><input type="checkbox" id="pp-champs">
                         Champs remplissables (PDF)</label>
                     <label>Numéros
@@ -519,6 +533,7 @@ export function ouvrirFicheParcours(chemin) {
     const noteSurEl = m.querySelector('#pp-note-sur');
     const noteSurChamp = m.querySelector('#pp-note-sur-champ');
     const numEl = m.querySelector('#pp-numerotation');
+    const tabEl = m.querySelector('#pp-tableau');
 
     // LE PARCOURS A DÉJÀ RÉPONDU À DEUX DE CES QUESTIONS. Rémy : « j'ai
     // l'impression que pour la fiche de parcours on fait des doublons ». En
@@ -738,6 +753,12 @@ export function ouvrirFicheParcours(chemin) {
         orientation: orientEl.value,
         champs: champsEl.checked,
         numerotation: numEl.value,
+        // Un seul menu, deux réglages : « zébré » veut dire « tableau » ET
+        // « alterné ». L'alternance n'a aucun sens sans le tableau, et deux
+        // cases dont l'une n'agit que si l'autre est mise se décochent
+        // toujours dans le mauvais ordre.
+        tableau: tabEl.value !== 'liste',
+        zebre: tabEl.value === 'zebre',
         noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20)),
         // L'EN-TÊTE EST À LA CLASSE, PAS AU LOGICIEL. Le titre par défaut est le
         // nom du parcours, mais « Tout sur papier (72 exercices) » n'est pas ce
@@ -1551,6 +1572,11 @@ export function ouvrirFicheParcours(chemin) {
     majRepli();
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
+    // MESURÉ : sans cette ligne, le menu changeait de valeur et la feuille
+    // restait en liste. Un réglage qui se souvient de son choix sans le
+    // montrer est pire qu'un réglage absent — le professeur croit que le
+    // logiciel est cassé, et il a raison.
+    tabEl.onchange = rendre;
     noteSurEl.oninput = () => {
         // LA NOTE TAPÉE EST LA SIENNE : on cesse de la recalculer. Sans cela,
         // le premier changement de quantité l'écrasait par le total du barème,

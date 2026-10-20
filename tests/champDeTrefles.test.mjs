@@ -19,6 +19,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { makeRng } from '../js/core/ids.js';
 import {
     PALIERS, RAYON, TROP_PRES, semerLeChamp, cachesParLaSuite, tailleDuChamp,
@@ -206,4 +207,77 @@ test('le seuil de recouvrement est celui qu\'on mesure', () => {
         assert.ok(apres.every(a => distance(t, a) >= seuil),
             `un voisin à ${Math.min(...apres.map(a => distance(t, a))).toFixed(1)}`);
     }
+});
+
+// ──────────────────────────── LE PARTERRE EST DENSE, ET ÇA SE COMPTE ────────
+
+/**
+ * LA PART DU CHAMP VRAIMENT COUVERTE, en comptant des points.
+ *
+ * On ne peut PAS la déduire du semis : les trèfles se chevauchent, donc deux
+ * disques posés au même endroit comptent deux fois dans le semis et une seule
+ * fois sur la page. C'est exactement l'erreur qui a rendu le premier parterre
+ * trop clairsemé — « densité 0,62 » voulait dire 52 % de vert, pas 62 %.
+ */
+function couverture(champ, pas = 3) {
+    let total = 0, dedans = 0;
+    for (let y = 0; y < champ.hauteur; y += pas) {
+        for (let x = 0; x < champ.largeur; x += pas) {
+            total++;
+            if (champ.trefles.some(t => (t.x - x) ** 2 + (t.y - y) ** 2 < RAYON * RAYON)) dedans++;
+        }
+    }
+    return dedans / total;
+}
+
+test('LE PARTERRE EST DENSE — Rémy : « rends le parterre plus dense »', () => {
+    // MESURÉ avant la correction, en comptant des points : 38 % de vert à la
+    // promenade, 52 % au pré, 61 % au champ, 66 % au grand pré — quand la page
+    // de la revue en montre près de 80. Le semis avait été réglé comme si
+    // c'était la couverture, et les chevauchements mangeaient la différence.
+    //
+    // CE QU'ON GARDE ICI EST UN PLANCHER, pas une valeur : on doit pouvoir
+    // retoucher le réglage sans casser l'épreuve, mais pas revenir à un pré
+    // où l'on voit le fond entre les trèfles.
+    const PLANCHERS = { promenade: 0.45, pre: 0.62, champ: 0.76, foret: 0.82 };
+    for (const palier of NOMS) {
+        assert.ok(PLANCHERS[palier] !== undefined,
+            `palier « ${palier} » sans plancher de densité : ajoutez-le ici`);
+        const vu = couverture(semerLeChamp({ rng: makeRng('densite-' + palier), palier }));
+        assert.ok(vu >= PLANCHERS[palier],
+            `${palier} : ${Math.round(vu * 100)} % de vert, il en faut ${
+                Math.round(PLANCHERS[palier] * 100)}`);
+    }
+});
+
+test('ET LE CHAMP PREND LA FORME DE SA PLACE', () => {
+    // MESURÉ sur l'écran du professeur : un champ de rapport 4/3 arrivait dans
+    // un cadre de 1,84 et le navigateur le posait au milieu — 530 px de blanc
+    // de chaque côté sur 1900. Le parterre flottait, et c'est l'autre moitié
+    // de ce que Rémy voyait. Le semis ne change pas, la forme suit.
+    const large = semerLeChamp({ rng: makeRng('forme'), palier: 'pre', rapport: 1.84 });
+    assert.ok(Math.abs(large.largeur / large.hauteur - 1.84) < 0.06,
+        `rapport ${(large.largeur / large.hauteur).toFixed(2)} pour 1,84 demandé`);
+    const carre = semerLeChamp({ rng: makeRng('forme'), palier: 'pre', rapport: 1 });
+    assert.ok(Math.abs(carre.largeur / carre.hauteur - 1) < 0.06);
+    // ET L'AIRE NE BOUGE PAS : c'est la densité qu'on garde, pas la largeur.
+    assert.ok(Math.abs(large.largeur * large.hauteur
+        - carre.largeur * carre.hauteur) / (carre.largeur * carre.hauteur) < 0.02);
+    // UN RAPPORT ABSURDE NE PASSE PAS. Une boîte mesurée avant la mise en page
+    // rend 0 ; `Math.sqrt(aire × 0)` donnerait un champ de largeur nulle, tous
+    // les trèfles au même endroit, et un jeu mort sans aucune erreur affichée.
+    for (const fou of [0, -3, 40, NaN, undefined]) {
+        const c = semerLeChamp({ rng: makeRng('fou'), palier: 'pre', rapport: fou });
+        assert.ok(c.largeur > 50 && c.hauteur > 50, `rapport ${fou} : ${c.largeur}×${c.hauteur}`);
+    }
+});
+
+test('LE JEU MESURE LA PLACE QU\'IL A AVANT DE SEMER', () => {
+    // Le module sait prendre la forme de son cadre ; encore faut-il que
+    // quelqu'un la lui donne. Sans cette ligne, la correction ci-dessus ne
+    // change rien à l'écran — et c'est le genre d'oubli qu'aucune épreuve de
+    // calcul ne voit.
+    const JEU = readFileSync(new URL('../js/games/trefles.js', import.meta.url), 'utf8');
+    assert.match(JEU, /const page = this\.container\.querySelector\('\.tr-page'\);/);
+    assert.match(JEU, /semerLeChamp\(\{ rng: this\.rng, palier: this\.palier, rapport \}\)/);
 });

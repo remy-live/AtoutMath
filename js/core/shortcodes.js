@@ -808,7 +808,12 @@ const CLES_POLITIQUE = {
     // La présentation voyage avec la séance, sinon le parcours envoyé par
     // code n'aurait pas l'habillage que le professeur a choisi — et un
     // réglage qui ne suit pas le lien n'est pas un réglage de la séance.
-    presentation: 'pv'
+    presentation: 'pv',
+    // Et le décor avec elle. Il est à `libre` dans toutes les politiques de
+    // mode, donc un parcours d'avant ce réglage n'émet RIEN de plus : son
+    // empreinte de contenu — et donc le code que ses élèves ont déjà — ne
+    // bouge pas d'un caractère.
+    decor: 'dc'
 };
 const CLES_BAREME = {
     scale: 's', rule: 'r', penalties: 'p', arrondi: 'a',

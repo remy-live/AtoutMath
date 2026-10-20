@@ -5114,3 +5114,98 @@ le résultat n'existe pas** — 15 octobre 2026
   (`align-items: flex-start`). Et l'on remesure à la frame suivante : les
   écarts en `clamp(…vw…)` et les sentiers SVG ne sont pas posés à l'instant du
   `appendChild`.
+
+**Un argument manquant qui sort en « délai dépassé », trente secondes plus tard** — 20 octobre 2026
+
+- *Ce que je voulais faire* : regarder le PDF d'une fiche de QUESTIONS, pour
+  juger l'option tableau que Rémy venait de demander.
+- *Ce qui a coûté* : vingt minutes et deux fausses pistes. `tools/ficheEnPdf.mjs`
+  appelait `ouvrirFicheQuestions(e, params, null, …)` — le troisième argument
+  est le CHARGEUR de jsPDF, pas une option. La modale s'ouvrait, l'aperçu se
+  dessinait, le bouton existait, et le clic levait `chargerJsPDF is not a
+  function` DANS LA PAGE. L'outil, lui, attendait l'événement `download` et
+  mourait trente secondes plus tard sur « Timeout exceeded » — un message qui
+  ne nomme ni la fonction, ni le fichier, ni l'argument. J'ai d'abord soupçonné
+  ma propre correction, puis remisé mes modifications pour mesurer sans elles.
+- *Combien de fois* : |
+- *Ce qui manque* : **toute sonde qui attend un `download` doit d'abord lire
+  `s.erreurs`.** Une erreur de page explique le silence en une ligne, là où le
+  délai dépassé ne dit rien. À mettre dans `sonde.mjs` : si l'attente échoue et
+  que `s.erreurs` n'est pas vide, les imprimer AVANT de lever.
+
+**Un `!important` dans la feuille bat un style en ligne — et la mesure rend 0** — 20 octobre 2026
+
+- *Ce que je voulais faire* : mesurer les boutons d'habillage et de décor sur
+  un téléphone, c'est-à-dire montrer la vue de l'élève depuis un compte
+  professeur.
+- *Ce qui a coûté* : deux allers-retours. `vue.style.display = 'block'` ne
+  faisait rien — `.student-only { display: none !important }` gagne. Les dix
+  boutons se construisaient correctement et mesuraient tous **0 px de large**,
+  c'est-à-dire la réponse « tout tient » quoi qu'il arrive : une mesure qui ne
+  peut pas échouer.
+- *Combien de fois* : |
+- *Ce qui manque* : deux réflexes. **Pour forcer un affichage depuis une sonde,
+  `el.style.setProperty('display', 'block', 'important')`** ; et **toute mesure
+  de largeur refuse 0** — une boîte à zéro n'est pas une boîte qui tient, c'est
+  une boîte qu'on ne mesure pas.
+
+**Un getter calculé qu'on affecte en silence** — 20 octobre 2026
+
+- *Ce que je voulais faire* : poser une séance d'essai sur le compte élève
+  d'une sonde, avec `state.studentPath = { … }`.
+- *Ce qui a coûté* : un aller-retour entier à chercher pourquoi l'écran
+  affichait « Pas de séance pour l'instant » avec une séance posée. C'est un
+  **getter** : il se recalcule à partir du journal, et l'affectation disparaît
+  sans un mot. Le chemin du logiciel est `state.setStudentPath(steps, meta)`.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à fabriquer — une règle. **Dans `state.js`, on écrit
+  par les méthodes, jamais par affectation** ; une sonde qui pose un état doit
+  emprunter la porte du logiciel, ce qui est de toute façon la doctrine de
+  mesure du dépôt.
+
+**Une photo d'un élément sous la ligne de flottaison rend « hauteur 0 »** — 20 octobre 2026
+
+- *Ce que je voulais faire* : photographier la barre de boutons d'un parcours,
+  posée à 958 px dans une fenêtre haute de 844.
+- *Ce qui a coûté* : deux essais et une fausse piste de mise en page.
+  `s.photo` découpe sur ce que la FENÊTRE montre : un élément entièrement sous
+  le bord rend un rectangle vide, et Playwright répond « Expected
+  options.clip.height to be greater than 0 » — ce qui ressemble à un élément
+  effondré, pas à un élément hors champ.
+- *Combien de fois* : |
+- *Ce qui manque* : **`sonde.photo` devrait faire `scrollIntoView` tout seul**
+  avant de découper, ou dire « il est à 958 px, la fenêtre fait 844 » plutôt
+  que « hauteur 0 ». En attendant, on ramène l'élément à l'écran avant.
+
+**`\b` ne voit pas les accents, et se tait** — 20 octobre 2026
+
+- *Ce que je voulais faire* : écarter les phrases de rangement qui ouvrent une
+  consigne — « Dix marches. », « Six étapes qui se cochent. »
+- *Ce qui a coûté* : un aller-retour et une fausse piste dans le découpage des
+  phrases. `/\b(marches?|étapes?|…)\b/i` attrapait « marches » et laissait
+  passer « étapes » : en JavaScript, `\b` se calcule sur `[A-Za-z0-9_]`, donc
+  « é » est un caractère NON-mot — il n'y a aucune frontière entre l'espace et
+  le « é », et `\bétapes` ne trouve JAMAIS rien. L'expression ne lève pas, elle
+  ne prévient pas : elle rend simplement moins que ce qu'on croit.
+- *Combien de fois* : |
+- *Ce qui manque* : une règle à écrire une fois pour toutes. **Dans ce dépôt,
+  tout mot français cherché dans une expression régulière s'écrit avec des
+  bornes à la main** — `(?:^|[^a-zà-öø-ÿ])…(?![a-zà-öø-ÿ])` — et jamais `\b`.
+  La moitié du vocabulaire porte un accent ; `\b` en perd silencieusement une
+  partie. Une garde dans `npm test` sur les `\b` suivis d'une lettre accentuée
+  fermerait la friction pour de bon.
+
+**Une épreuve qui garde le moteur, pas le démarreur** — 20 octobre 2026
+
+- *Ce que je voulais faire* : garder l'exemple qui se joue tout seul sur
+  l'écran d'apprentissage.
+- *Ce qui a coûté* : rien, parce que `epreuveTombe.mjs` l'a dit tout de suite —
+  mais la faute mérite d'être notée parce qu'elle est SYSTÉMATIQUE. L'épreuve
+  vérifiait le corps de `_jouerLExemple` (le minuteur, la borne, le repli
+  `prefers-reduced-motion`) et pas la ligne qui l'APPELLE. Retirer l'appel
+  laissait tout au vert et l'écran immobile.
+- *Combien de fois* : ||
+- *Ce qui manque* : rien à fabriquer. **Une épreuve sur une fonction neuve
+  garde DEUX choses : ce qu'elle fait, et que quelqu'un l'appelle.** C'est le
+  même oubli que l'outil déclaré hors de `meta.outils` — un objet parfait que
+  personne ne va chercher.

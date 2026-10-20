@@ -57,34 +57,60 @@ export const RAYON = 10;
  * un champ dense, les feuilles des voisins s'emmêlent aux siennes, et c'est
  * précisément là que la recherche devient un travail d'œil.
  *
- * `densite` est donc la part de la page couverte par les disques des trèfles,
- * et c'est ELLE qui décide de la taille du champ — pas l'inverse.
+ * `densite` est le SEMIS : la somme des aires des disques divisée par l'aire de
+ * la page. C'est ELLE qui décide de la taille du champ — pas l'inverse.
+ *
+ * ── ET CE N'EST PAS LA PART COUVERTE, ce que j'ai cru en l'écrivant ──────────
+ *
+ * RÉMY, 20 octobre : « pour les trèfles, tu peux rendre le parterre plus
+ * dense ». Il avait raison, et la cause était dans ce nom-là : les trèfles se
+ * CHEVAUCHENT, donc deux disques posés au même endroit comptent deux fois dans
+ * le semis et une seule fois sur la page. Un semis de 0,62 ne couvrait que la
+ * moitié du pré.
+ *
+ * MESURÉ en comptant des points sur le champ rendu (`tools/trefles.mjs`) :
+ *
+ *                  semis   couverture réelle       après
+ *   promenade      0,42          38 %         0,60 →  51 %
+ *   pré            0,62          52 %         0,95 →  70 %
+ *   champ          0,76          61 %         1,30 →  84 %
+ *   grand pré      0,84          66 %         1,50 →  88 %
+ *
+ * Le semis peut donc dépasser 1 sans que rien ne déborde : c'est le compte des
+ * disques, pas celui de l'encre.
  */
 export const PALIERS = {
     promenade: {
         label: 'La promenade — 40 trèfles, tous droits, bien espacés',
-        combien: 40, aTrouver: 2, rotation: 0, densite: 0.42
+        combien: 40, aTrouver: 2, rotation: 0, densite: 0.60
     },
     pre: {
         label: 'Le pré — 90 trèfles tournés dans tous les sens',
-        combien: 90, aTrouver: 3, rotation: 1, densite: 0.62
+        combien: 90, aTrouver: 3, rotation: 1, densite: 0.95
     },
     champ: {
         label: 'Le champ — 160 trèfles serrés, qui se chevauchent',
-        combien: 160, aTrouver: 3, rotation: 1, densite: 0.76
+        combien: 160, aTrouver: 3, rotation: 1, densite: 1.30
     },
     foret: {
         label: 'Le grand pré — 240 trèfles, et 5 à trouver',
-        combien: 240, aTrouver: 5, rotation: 1, densite: 0.84
+        combien: 240, aTrouver: 5, rotation: 1, densite: 1.50
     }
 };
 
 /**
  * LA TAILLE DU CHAMP SE DÉDUIT DE LA DENSITÉ VOULUE.
  *
- * On veut que les disques des trèfles couvrent `densite` de la page. L'aire
- * d'un trèfle vaut π R², il en faut `combien` : la page fait donc
- * `combien × π R² / densite`, et on lui donne les proportions d'un écran.
+ * On veut un semis de `densite` : l'aire d'un trèfle vaut π R², il en faut
+ * `combien`, la page fait donc `combien × π R² / densite`.
+ *
+ * ET LE RAPPORT EST CELUI DE LA PLACE QU'ON A. Fixé à 4/3, le champ arrivait
+ * dans un cadre de 1,84 (l'écran du professeur, le jeu ouvert) et le
+ * navigateur le posait au milieu : MESURÉ, 530 px de blanc à gauche et à
+ * droite, sur 1900. Le parterre n'était pas seulement clairsemé — il ne
+ * touchait pas les bords, ce qui est l'autre moitié de la remarque de Rémy.
+ * L'aire ne change pas, seule la forme suit : la densité est la même, la page
+ * est pleine.
  */
 export function tailleDuChamp(P, rapport = 4 / 3) {
     const aire = P.combien * Math.PI * RAYON * RAYON / P.densite;
@@ -119,14 +145,23 @@ export const TROP_PRES = 0.55;
  * @param {number} [o.largeur]  la largeur du champ — déduite de la densité si
  *                              on ne la donne pas
  * @param {number} [o.hauteur]  la hauteur du champ
+ * @param {number} [o.rapport]  largeur / hauteur de la place disponible, quand
+ *                              l'appelant la connaît. Le champ prend alors la
+ *                              forme de son cadre au lieu d'y flotter.
  * @returns {{trefles: Array, largeur: number, hauteur: number, aTrouver: number}}
  *   chaque trèfle : { i, x, y, feuilles, angle, ordre }
  */
-export function semerLeChamp({ rng = makeRng(1), palier = 'pre', largeur = null, hauteur = null } = {}) {
+export function semerLeChamp({ rng = makeRng(1), palier = 'pre', largeur = null,
+    hauteur = null, rapport = 4 / 3 } = {}) {
     const P = PALIERS[palier] || PALIERS.pre;
     const n = P.combien;
     if (largeur === null || hauteur === null) {
-        const t = tailleDuChamp(P);
+        // UN RAPPORT ABSURDE NE PASSE PAS. Une boîte mesurée avant la mise en
+        // page rend 0, et `Math.sqrt(aire × 0)` donne un champ de largeur
+        // nulle : tous les trèfles au même endroit, et le jeu est mort sans
+        // qu'aucune erreur ne s'affiche.
+        const r = (rapport > 0.2 && rapport < 5) ? rapport : 4 / 3;
+        const t = tailleDuChamp(P, r);
         largeur = t.largeur; hauteur = t.hauteur;
     }
 

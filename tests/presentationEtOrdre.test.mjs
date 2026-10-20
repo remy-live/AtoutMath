@@ -112,7 +112,7 @@ test('TOUTES LES VALEURS EXISTENT, DONT CELLE QUI REND LA MAIN', () => {
     // offrir ici un habillage que l'écran de l'élève ne sait pas rendre.
     const CFG = lire('js/games/configUI.js');
     assert.match(CFG, /\$\{HABILLAGES\.map\(h => /);
-    assert.match(CFG, /import \{ HABILLAGES \} from '\.\.\/ui\/pathView\.js';/);
+    assert.match(CFG, /import \{ HABILLAGES, DECORS \} from '\.\.\/ui\/pathView\.js';/);
     assert.ok(/<option value="libre"/.test(CFG), 'libre');
     // Et chaque habillage dit ce qu'il promet : un nom seul ne dit pas ce que
     // « damier » fait, et l'on ne donne pas une séance à six classes pour le
@@ -137,7 +137,13 @@ test('QUAND LA SÉANCE IMPOSE, LES BOUTONS D\'HABILLAGE DISPARAISSENT', () => {
     // mondes : l'élève appuierait trois fois avant de comprendre qu'on lui
     // ment. MESURÉ : 0 bouton sur les trois habillages imposés, 3 sur « libre ».
     const PV = lire('js/ui/pathView.js');
-    assert.match(PV, /export function barreDeStyles\(onChange, policy = null\) \{\s*\n\s*if \(presentationImposee\(policy\)\) return null;/);
+    // LA RANGÉE NE SE CONSTRUIT PAS QUAND LA SÉANCE IMPOSE. Depuis que la barre
+    // porte DEUX choix — l'habillage et le décor, voir decorsDeSaison —, chacun
+    // se cache pour son compte ; et la barre entière disparaît quand il ne
+    // reste plus rien à choisir.
+    assert.match(PV, /export function barreDeStyles\(onChange, policy = null\) \{/);
+    assert.match(PV, /if \(!presentationImposee\(policy\)\) \{\s*\n\s*groupes\.push\(groupeDeBoutons\(STYLES,/);
+    assert.match(PV, /if \(!groupes\.length\) return null;/);
     // Les deux appelants doivent tester le retour : `appendChild(null)` lève,
     // et c'est toute la vue qui s'arrêterait.
     assert.match(PV, /const boutonsDHabillage = styleSwitcher\(policy\);\s*\n\s*if \(boutonsDHabillage\)/);

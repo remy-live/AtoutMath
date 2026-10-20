@@ -5957,3 +5957,17 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     .br-poignee { display: none; }
     #game-layer.br-ouvert { padding-right: 420px; }
 }
+
+/* LES CASES D'UNE FICHE EN TABLEAU — Rémy : « une option tableau où c'est
+   présenté sous forme de tableau avec alternances des couleurs ou non ».
+
+   LE CADRE PASSE DERRIÈRE : il est posé avant le texte dans la chaîne de
+   l'aperçu, et il n'a pas de `z-index` — c'est l'ordre du document qui suffit.
+   La couleur est écrite ici plutôt qu'en style en ligne pour que le filtre de
+   teinte (`fx-teinte--gris`, `fx-teinte--nb`) la ramène au gris comme le reste
+   de la feuille. */
+/* `fq-cellule`, et SURTOUT PAS `fq-case` : ce nom-là est déjà celui des
+   étiquettes à cocher du panneau d'impression, et leur donner `position:
+   absolute` aurait empilé les trois cases à cocher au même endroit. */
+.fq-cellule { position: absolute; border: 1px solid #cbd2dc; box-sizing: border-box; }
+.fq-cellule--bande { background: #f0f4fa; }

@@ -576,7 +576,13 @@ export const ENCRE = {
     trait: [26, 32, 44],
     pointille: [168, 176, 191],
     bandeau: [238, 241, 245],
-    bandeauTrait: [203, 210, 220]
+    bandeauTrait: [203, 210, 220],
+    // UNE RANGÉE SUR DEUX, quand la fiche est en tableau zébré. Plus pâle que
+    // le bandeau d'exercice, et c'est voulu : la bande ne doit pas peser plus
+    // que le titre qui la surplombe, et il faut encore pouvoir écrire dessus
+    // au crayon à papier. En gris et en noir et blanc, `teindreDoc` la ramène
+    // au gris correspondant, qui reste au-dessus du blanc sans manger d'encre.
+    bandeZebre: [240, 244, 250]
 };
 
 /**
@@ -1403,6 +1409,14 @@ export function apercuItems(page, k, o) {
             continue;
         }
         // type 'q'
+        // LE CADRE DE LA CASE D'ABORD, puisqu'il passe DERRIÈRE. Les blocs de
+        // l'aperçu sont posés en absolu dans l'ordre où on les écrit : le
+        // tracer après le texte le couvrirait d'un rectangle opaque.
+        if (it.cadre) {
+            html += `<div class="fq-cellule${it.cadre.bande ? ' fq-cellule--bande' : ''}"
+                style="left:${it.cadre.x * k}px; top:${it.cadre.y * k}px;
+                width:${it.cadre.w * k}px; height:${it.cadre.h * k}px"></div>`;
+        }
         if (it.n != null) {
             // LE NUMÉRO EST SUR LA LIGNE DE L'ÉNONCÉ, pas au-dessus. Il était
             // posé à `y` quand le texte commençait à `y + dy` : dès qu'une
@@ -2114,6 +2128,20 @@ export function pdfItems(pdf, page, o) {
                     !!o.solution, champ);
             }
             continue;
+        }
+        // LE CADRE DE LA CASE, avant tout le reste : un rectangle rempli
+        // posé après le texte l'effacerait. Le fond puis le filet, et non un
+        // seul `FD` : deux cases voisines partagent leur bord, et un
+        // remplissage qui déborde d'un dixième de millimètre mangerait le
+        // filet du voisin.
+        if (it.cadre) {
+            if (it.cadre.bande) {
+                pdf.setFillColor(...ENCRE.bandeZebre);
+                pdf.rect(it.cadre.x, it.cadre.y, it.cadre.w, it.cadre.h, 'F');
+            }
+            pdf.setDrawColor(...ENCRE.bandeauTrait);
+            pdf.setLineWidth(0.2);
+            pdf.rect(it.cadre.x, it.cadre.y, it.cadre.w, it.cadre.h, 'S');
         }
         pdf.setTextColor(...ENCRE.texte);
         pdf.setFont('helvetica', 'bold');
