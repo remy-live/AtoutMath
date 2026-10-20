@@ -291,6 +291,42 @@ const BASE = {
         descriptor: 'Rendre une fraction irréductible en divisant numérateur et dénominateur par leurs facteurs communs.',
         lesson: 'On cherche un diviseur commun au numérateur et au dénominateur : 36/48 = (12×3)/(12×4) = 3/4. Quand il n\'y a plus aucun diviseur commun, la fraction est irréductible.'
     },
+    // DEUX COMPÉTENCES POUR LA DIVISION, ET NON UNE. Rémy, progression de
+    // quatrième : « Multiplication et division de fraction ». Un élève qui
+    // rate une division par une fraction se trompe presque toujours AVANT de
+    // diviser : il retourne la mauvaise fraction, ou les deux. « Division de
+    // fractions : non acquis » ne lui dit pas lequel des deux gestes manque ;
+    // « l'inverse d'un nombre : non acquis » si.
+    // LA RÉCIPROQUE EST UNE AUTRE COMPÉTENCE QUE LE THÉORÈME, et non un niveau
+    // de plus. Le théorème part d'un triangle rectangle et donne une longueur ;
+    // la réciproque part de trois longueurs et dit s'il est rectangle. Un élève
+    // qui applique l'un là où il faut l'autre écrit « donc BC = 10 » alors
+    // qu'on lui donnait BC — il ne lui manque pas un calcul, il lui manque de
+    // savoir ce qu'il cherche. Le bilan doit pouvoir le nommer.
+    'geo.pythagore.reciproque': {
+        label: 'La réciproque de Pythagore',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Dire si un triangle est rectangle à partir de ses trois longueurs, et nommer le sommet de l\'angle droit.',
+        lesson: 'ON COMPARE LE CARRÉ DU PLUS LONG CÔTÉ À LA SOMME DES CARRÉS DES DEUX AUTRES. S\'ils sont ÉGAUX, le triangle est rectangle — et il l\'est au sommet qui n\'est pas sur le plus long côté, car l\'angle droit est toujours EN FACE de l\'hypoténuse. S\'ils sont différents, il ne l\'est pas : il n\'y a pas de « presque rectangle ». Le piège est de prendre les côtés dans l\'ordre de l\'énoncé au lieu de chercher le plus long ; on compare alors n\'importe quoi, et l\'on conclut faux sans qu\'aucun calcul ne soit faux.'
+    },
+    'num.frac.inverse': {
+        label: 'L\'inverse d\'un nombre',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.frac.multiplication'],
+        descriptor: 'Donner l\'inverse d\'une fraction ou d\'un entier, et reconnaître deux nombres dont le produit vaut 1.',
+        lesson: 'L\'inverse d\'une fraction, c\'est la même fraction RETOURNÉE : l\'inverse de 3/5 est 5/3. Deux nombres sont inverses l\'un de l\'autre quand leur produit vaut 1 — c\'est la définition, et c\'est aussi la façon de vérifier. ET TOUT ENTIER EST UNE FRACTION : 4 s\'écrit 4/1, son inverse est donc 1/4. C\'est là qu\'on bloque, parce qu\'on ne voit pas de fraction à retourner.'
+    },
+    'num.frac.division': {
+        label: 'Diviser par une fraction',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.frac.inverse'],
+        descriptor: 'Diviser une fraction par une fraction ou un entier, et reconnaître une division dans un problème de partage.',
+        lesson: 'DIVISER PAR UN NOMBRE, C\'EST MULTIPLIER PAR SON INVERSE. On garde la première fraction telle quelle, on retourne LA SECONDE, et on multiplie : 3/4 ÷ 2/3 = 3/4 × 3/2 = 9/8. On ne retourne que la seconde — retourner les deux est la faute la plus fréquente du chapitre. Et attention au sens : diviser ne rend pas toujours plus petit. Quand le diviseur est inférieur à 1, le résultat est plus GRAND que le nombre de départ ; « combien de demis dans 3 ? » en fait six.'
+    },
     'num.frac.multiplication': {
         label: 'Multiplier deux fractions',
         chemin: [D.NUMERIQUE, SD.FRACTIONS],

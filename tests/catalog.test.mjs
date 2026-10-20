@@ -194,6 +194,52 @@ test('AUCUN ÉNONCÉ N\'AFFICHE UNE FRACTION À LA BARRE OBLIQUE', async () => {
     assert.deepEqual(fautifs, []);
 });
 
+test('UN ÉNONCÉ DE PAPIER NE SE RÉPÈTE PAS', async () => {
+    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // VU SUR LE PDF : « Dans le triangle MNP, MN = 20 cm, MP = 21 cm et
+    // NP = 29 cm. Dans le triangle MNP, MN = 20 cm, MP = 21 cm et NP = 29 cm.
+    // Quel est le côté le plus long ? » — l'énoncé écrit DEUX FOIS.
+    //
+    // LA CAUSE SE REPRODUIRA, parce qu'elle est dans la forme même des
+    // générateurs : la feuille compose son texte comme « énoncé + question »,
+    // et un générateur qui écrit un champ `papier` CONTENANT DÉJÀ l'énoncé se
+    // le voit ajouter une seconde fois. À l'écran rien ne paraît, puisque
+    // l'écran lit les deux champs séparément et n'affiche `papier` jamais.
+    //
+    // On compare les trente premiers caractères : c'est assez pour reconnaître
+    // un énoncé recopié, et trop pour qu'une tournure courante — « Calcule »,
+    // « Dans le triangle » — y suffise toute seule.
+    const { generateurDeFiche } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+
+    const fautifs = [];
+    for (const exo of exercices) {
+        if (exo.printable) continue;
+        const g = generateurDeFiche(exo);
+        if (!g || typeof g.generate !== 'function') continue;
+        const marches = Array.isArray(exo.params && exo.params.marches) ? exo.params.marches : null;
+        const essais = marches ? marches.length * 2 : 8;
+        for (let i = 0; i < essais; i++) {
+            const reglages = marches
+                ? { ...exo.params, marches: [marches[i % marches.length]] }
+                : (exo.params || {});
+            let it;
+            try { it = g.generate(reglages, { rng: makeRng(`rep_${exo.id}_${i}`), index: i, total: essais }); }
+            catch { break; }
+            const papier = (it && it.prompt && it.prompt.papier) || '';
+            if (papier.length < 70) continue;
+            const debut = papier.slice(0, 30);
+            if (papier.indexOf(debut, 1) > 0) {
+                fautifs.push(`${exo.id} : « ${debut}… » écrit deux fois`);
+                break;
+            }
+        }
+    }
+    assert.deepEqual(fautifs, []);
+});
+
 test('SUR UNE FEUILLE, UN NOMBRE NE SE COLLE PAS À LA QUESTION', async () => {
     // ─────────────────────────────────────────────────────────────────────────
     //

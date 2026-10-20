@@ -2128,3 +2128,68 @@ valent pour les 240 exercices. Et comme aucune garde ne fermera le prochain
 défaut de papier qu'on n'a pas encore rencontré, `tools/nouvelExercice.mjs`
 rappelle désormais, à l'endroit et au moment où l'on ajoute un exercice, le
 seul geste qui le fermerait : imprimer la fiche et la regarder.
+
+### Les quatre critères — 20 octobre
+
+> « Oui fais tout il faut que ce soit simple beau progressif et qu on puisse
+> imprimer »
+
+Quatre mots, et ce sont des conditions de recette, pas des souhaits. Ils valent
+pour les quatre blocs qui restent — 10, 12, 7, 15 — et pour ce qui viendra
+après.
+
+- **SIMPLE** : une question pose UNE chose. Si deux difficultés arrivent
+  ensemble, elles font deux marches.
+- **BEAU** : l'énoncé respire, la fraction s'empile, les accords tiennent. Le
+  texte est à la taille de la place disponible — c'est la remarque de ce matin,
+  et elle reste vraie pour tout ce qu'on ajoute.
+- **PROGRESSIF** : un petit bain, et il est EN TÊTE. C'est la leçon du PGCD :
+  « bien trop difficile » venait d'une progression qui commençait par la fin.
+  Un parcours court doit jouer les marches faciles sans qu'on règle rien.
+- **QU'ON PUISSE IMPRIMER** : il le dit juste après que je lui ai signalé
+  quatre défauts de papier dans la même journée. **Ce n'est donc pas une
+  option : une question qui ne se répond pas sur la feuille est une question
+  cassée.** Les deux gardes du catalogue le tiennent pour les cas connus ; pour
+  les autres, on imprime et on REGARDE, à chaque exercice neuf.
+
+### Ce qui a été fait pour les blocs 10 et 7
+
+**Diviser par une fraction** (`frac-division`, code dicté `FD`) — sept marches,
+et **les trois premières ne divisent pas une seule fois**. Diviser demande deux
+gestes, retourner puis multiplier, et l'élève qui se trompe rate presque
+toujours le premier : il retourne la mauvaise fraction, ou les deux. Le temps A
+ne fait donc que retourner. « L'inverse d'un entier » y a sa marche : on sait
+retourner 3/5 et l'on bloque devant 4, faute de voir la fraction — il faut
+d'abord lire 4 comme 4/1, et c'est une idée, pas une technique.
+
+**La réciproque de Pythagore** (`geo-pythagore-reciproque`, code dicté `VS`) —
+six marches, et **la première ne calcule rien**. Les six niveaux de l'exercice
+voisin sont tous du calcul : « ce triangle est-il rectangle ? » n'y était nulle
+part. La marche d'ouverture repère le PLUS LONG côté, sans rien calculer, parce
+que c'est là que tout se joue — celui qui prend les côtés dans l'ordre de
+l'énoncé compare n'importe quoi et conclut faux sans qu'aucun de ses calculs
+soit faux.
+
+**Six défauts trouvés en lisant la sortie ou en regardant le PDF :**
+
+1. « vérifier que **une** dalle », « Une jardinière […] **Il** mesure »,
+   « Cette dalle est-**il** bien rectangulaire ? » — deux genres dans la même
+   phrase, celui de la personne et celui de l'objet, et je les avais confondus.
+2. « la longueur : **80** cm, la largeur : **150** cm » — les triplets sont
+   écrits dans l'ordre croissant, et rien ne disait que le premier fût la
+   longueur.
+3. Un **point médian** entre deux carrés, qui sur un écran de mathématiques se
+   lit comme une multiplication. Troisième fois dans la journée.
+4. « 6 ÷ 3/4 = 8 **parts** » sous un énoncé qui parlait de **sachets**.
+5. **L'énoncé écrit DEUX FOIS sur la feuille.** La feuille compose son texte
+   comme « énoncé + question » ; un générateur qui écrit un champ `papier`
+   contenant déjà l'énoncé se le voit ajouter une seconde fois. Invisible à
+   l'écran, qui lit les deux champs séparément.
+6. « des bouteilles de **2/3** de litre » — une fraction à la barre oblique
+   dans un énoncé, donc contre la règle de Rémy. **Attrapée par la garde du
+   catalogue écrite ce matin**, et non par moi.
+
+Le cinquième se reproduira, parce qu'il est dans la forme même des générateurs.
+Il a donc sa garde : « un énoncé de papier ne se répète pas ». Trois gardes du
+catalogue en tout, maintenant, pour les trois façons dont une feuille peut
+mentir.

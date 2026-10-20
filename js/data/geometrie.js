@@ -480,6 +480,30 @@ export const geometrieExercises = [
         // écrire l'égalité pour SON triangle, calculer l'hypoténuse, calculer
         // un côté (on soustrait), rédiger en entier. On ne demande jamais deux
         // choses nouvelles à la fois — le modèle des exercices de rédaction.
+        // --- La réciproque : le trou de la quatrième ---
+        //
+        // RÉMY : « Réciproque du théorème de Pythagore ». Mesuré avant
+        // d'écrire : les SIX niveaux de l'exercice voisin vont de « montrer
+        // l'hypoténuse » à « rédiger en entier », et tous sont du CALCUL. « Ce
+        // triangle est-il rectangle ? » n'y était nulle part.
+        id: 'geo-pythagore-reciproque',
+        cree: '2026-10-20',
+        title: 'La Réciproque de Pythagore',
+        generatorId: 'geo.pythagore-reciproque', activityId: 'numpad',
+        consignePapier: 'Compare le carré du plus long côté à la somme des deux autres.',
+        colonnesPapier: 1,
+        lignesReponsePapier: 2,
+        params: { marches: ['le-plus-long', 'les-deux-carres', 'conclure-donne',
+            'conclure', 'le-sommet', 'probleme'] },
+        motsClefs: ['pythagore', 'réciproque', 'rectangle', 'triangle', 'hypoténuse',
+            'équerre', 'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Six marches, et la première ne calcule rien. Le théorème et sa réciproque ne servent pas à la même chose : le théorème part d'un triangle qu'on SAIT rectangle et donne une longueur ; la réciproque part de trois longueurs et dit s'il EST rectangle. Un élève qui les confond écrit « donc BC = 10 » alors qu'on lui donnait BC — il ne lui manque pas un calcul, il lui manque de savoir ce qu'il cherche. D'où la marche d'ouverture : repérer le PLUS LONG côté, sans rien calculer. C'est là que tout se joue, parce que celui qui prend les côtés dans l'ordre de l'énoncé compare n'importe quoi et conclut faux sans qu'aucun de ses calculs soit faux. Vient ensuite la comparaison, puis la conclusion — et le sommet de l'angle droit, qui est toujours EN FACE de l'hypoténuse. La dernière marche dit à quoi ça sert : vérifier un angle droit avec un mètre et rien d'autre."
+    },
+    {
         id: 'geo-pythagore', title: 'Le Théorème de Pythagore',
         cree: '2026-08-12',
         revisions: [{

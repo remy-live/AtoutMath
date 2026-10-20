@@ -72,6 +72,8 @@ export const CODES_EXERCICES = {
     'num-pgcd-ppcm-problemes':    'MP',   // probleMes de Pgcd et ppcm
     'don-statistiques':           'SA',   // StAtistiques
     'don-probabilites':           'HZ',   // haZard — « PB » et « PR » étaient pris
+    'frac-division':              'FD',   // Fraction, Division
+    'geo-pythagore-reciproque':   'VS',   // la réciproque : le théorème à l'enVerS
     'calc-detour-rond':           'DN',   // le Détour par le Nombre rond
     'calc-detour-sprint':         'DJ',   // Détour express — le même, chrono
     'calc-detour-arcade':         'NB',   // attrape le détour — Nombre à Battre

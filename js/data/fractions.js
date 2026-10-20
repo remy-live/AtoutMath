@@ -491,5 +491,29 @@ export const fractionsExercises = [
         params: { decimales: 2 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Compare les deux nombres décimaux rang par rang."
+    },
+
+    // --- Diviser par une fraction : le trou de la quatrième ---
+    //
+    // RÉMY : « Multiplication et division de fraction ». Multiplier existait,
+    // DIVISER n'existait qu'en seconde — et la quatrième est l'année où la
+    // règle s'apprend.
+    {
+        id: 'frac-division',
+        cree: '2026-10-20',
+        title: 'Diviser par une Fraction',
+        generatorId: 'frac.division', activityId: 'numpad',
+        consignePapier: 'Retourne, puis multiplie.',
+        colonnesPapier: 2,
+        lignesReponsePapier: 2,
+        params: { marches: ['inverse', 'inverse-entier', 'produit-un', 'par-un-entier',
+            'par-une-fraction', 'entier-par', 'probleme'] },
+        motsClefs: ['division', 'fraction', 'inverse', 'quotient', 'diviser',
+            'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Sept marches, et les trois premières ne divisent pas une seule fois. Diviser par une fraction demande DEUX gestes — retourner le diviseur, puis multiplier — et l'élève qui se trompe rate presque toujours le premier : il retourne la mauvaise fraction, ou les deux. Le temps A ne fait donc que retourner. « L'inverse d'un entier » y a sa marche à lui, parce que c'est le piège du chapitre : on sait retourner 3/5 et on bloque devant 4, faute de voir la fraction — il faut d'abord lire 4 comme 4/1. Le temps B divise, dans l'ordre : par un entier, par une fraction, puis un entier par une fraction — et là le résultat est plus GRAND que le nombre de départ, ce qui surprend et doit surprendre. Aucun résultat ne se simplifie : 8/12 et 2/3 sont tous les deux justes, et un logiciel qui en choisit un compte faux la moitié des élèves qui ont raison."
     }
 ];
