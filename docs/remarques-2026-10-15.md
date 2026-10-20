@@ -2006,3 +2006,55 @@ Vérifié au téléphone (390 × 844), sur le plus long problème de chaque fami
 bloc de 378 px de large dans 390, 520 px au-dessus de la ligne de flottaison,
 aucun défilement latéral. « Histoires d'Argent » en profite autant que le PGCD :
 les deux familles d'exercices à problème étaient logées à la même enseigne.
+
+## 16. La progression de quatrième — 20 octobre
+
+> « et voici mon programme de 4ème : […] »
+
+Dix-sept blocs, relus un par un contre les **81 exercices tagués quatrième**
+(sur 238). Comme pour la sixième, rien n'est codé : c'est une lecture.
+
+**Ce qui est déjà servi, et bien.** Les priorités et les relatifs (sept
+exercices de priorités, neuf de relatifs) ; les puissances, écriture
+scientifique et préfixes compris, cinq exercices ; le développement simple et
+double avec sa version pas à pas ; Thalès et sa rédaction ; les fonctions
+(image, antécédent, programme, tableau) ; les quatre transformations —
+**la rotation y est vraiment**, en quart de tour, dans « Tracer l'Image d'une
+Figure » et « La Mosaïque des Transformations ».
+
+**Et un bloc qui n'est pas un trou, contrairement à ce que la liste suggère.**
+Le bloc 6, « additions et soustractions de fractions » : « Poser une Addition
+de Fractions » porte déjà un réglage « L'opération » — additions, soustractions
+ou les deux — et il monte des dénominateurs multiples jusqu'au PPCM. C'est lui
+qui dit « d'abord des dénominateurs multiples puis après trouver le PPCM », mot
+pour mot ce que Rémy avait demandé. Il n'y a qu'à le régler.
+
+**Les trous réels :**
+
+| Bloc | Ce qui manque |
+| --- | --- |
+| **5** | Le **cercle circonscrit au triangle rectangle**. Rien. |
+| **7** | La **réciproque de Pythagore**. Les six niveaux de l'exercice vont de « montrer l'hypoténuse » à « rédiger en entier », et **tous sont du calcul** : « ce triangle est-il rectangle ? » n'y est pas. C'est un chapitre entier. |
+| **9** | **Longitude et latitude** : rien. Les patrons et le dénombrement sur un solide existent mais s'arrêtent à la cinquième — un tag à ouvrir pour le rappel. |
+| **10** | **Diviser par une fraction** : n'existe qu'en seconde. |
+| **11** | La proportionnalité **autrement que par un tableau** : ni graphique, ni « est-ce proportionnel ? ». |
+| **12** | Le **tracé** d'une fonction dans un repère. Et « Placer un Point » / « Lire des Coordonnées » s'arrêtent à la cinquième. |
+| **13** | **Cône et pyramide** : ni la nature, ni les patrons, ni les volumes. Rien sur les volumes tout court. |
+| **15** | **Tester** si un nombre est solution, et les **programmes de calcul type brevet**. « La Balance des Équations » résout, elle ne teste pas. |
+| **17** | **Statistiques** — moyenne, médiane, étendue, fréquence. Rien du tout. |
+| **18** | **Probabilités**. Rien du tout. |
+
+**Et quatre trous se recoupent avec ceux de la sixième** — c'est l'information
+la plus utile de cette lecture, parce qu'elle dit quoi écrire UNE fois pour
+servir DEUX niveaux :
+
+- le **cercle circonscrit** (sixième bloc 16, quatrième bloc 5) ;
+- les **volumes et les solides** (le pavé en sixième, le cône et la pyramide en
+  quatrième) ;
+- la **proportionnalité sans tableau** — la flèche, le passage par l'unité, le
+  graphique (sixième bloc 15, quatrième bloc 11) ;
+- le **repérage**, qui s'arrête à la cinquième et dont la quatrième a besoin
+  pour tracer une fonction.
+
+Les deux plus gros morceaux sont les **statistiques** et les **probabilités** :
+deux chapitres sans une seule ligne dans le catalogue.
