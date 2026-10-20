@@ -90,6 +90,32 @@ export function facteursPremiers(n) {
 }
 
 /**
+ * TOUS LES DIVISEURS, DANS L'ORDRE : 12 → [1, 2, 3, 4, 6, 12].
+ *
+ * ON MONTE JUSQU'À LA RACINE ET L'ON RANGE LES DEUX BOUTS À LA FOIS, parce que
+ * c'est exactement ce qu'on apprend à l'élève : les diviseurs vont PAR PAIRES,
+ * 12 = 1 × 12 = 2 × 6 = 3 × 4, et l'on s'arrête quand les deux membres de la
+ * paire se croisent. Une boucle de 1 à n rendrait la même liste et
+ * n'enseignerait rien.
+ *
+ * `d * d === n` est le cas du carré parfait : 36 = 6 × 6, et 6 ne doit figurer
+ * qu'une fois. Sans ce test, 36 rendrait deux « 6 » — et la question « combien
+ * de diviseurs ? » deviendrait fausse sur les carrés, c'est-à-dire sur les
+ * nombres qu'on choisit exprès pour ce chapitre.
+ */
+export function diviseurs(n) {
+    n = Math.abs(Math.round(n));
+    if (n < 1) return [];
+    const petits = [], grands = [];
+    for (let d = 1; d * d <= n; d++) {
+        if (n % d) continue;
+        petits.push(d);
+        if (d * d !== n) grands.push(n / d);
+    }
+    return petits.concat(grands.reverse());
+}
+
+/**
  * LA MÊME, GROUPÉE : 360 → [{ p: 2, e: 3 }, { p: 3, e: 2 }, { p: 5, e: 1 }].
  *
  * C'est sous cette forme que le PGCD et le PPCM se LISENT — le plus petit

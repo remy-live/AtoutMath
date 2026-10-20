@@ -5244,3 +5244,38 @@ le résultat n'existe pas** — 15 octobre 2026
   et ça se vérifie en trois lignes sur `allGenerators()`. À écrire dans
   `tests/catalog.test.mjs`, à côté de « un générateur qui écrit des fractions
   le déclare », qui garde exactement la même famille de promesse non tenue.
+
+**Un `\n` écrit sur la ligne de commande devient un commentaire, et la syntaxe tient** — 20 octobre 2026
+
+- *Ce que je voulais faire* : insérer trois lignes de commentaire et une ligne
+  de code (`if (…) continue;`) dans une épreuve, avec
+  `node tools/remplacer.mjs <fichier> <ancien> <nouveau>`.
+- *Ce qui a coûté* : l'épreuve est tombée, et j'ai cherché le défaut dans le
+  GÉNÉRATEUR pendant deux tours. `remplacer.mjs` n'interprète pas `\n` dans un
+  argument de ligne de commande : les quatre lignes sont arrivées sur UNE, donc
+  entièrement derrière le `//` du premier commentaire — y compris le
+  `continue`. **Et `node --check` a dit « la syntaxe tient »**, parce qu'un
+  commentaire très long est du JavaScript parfaitement valide. L'outil a
+  annoncé « 1 remplacement écrit » et il avait raison.
+- *Combien de fois* : |
+- *Ce qui manque* : `remplacer.mjs` refuse déjà le texte multiligne sur la
+  ligne de commande — mais `\n` n'EST pas du texte multiligne, c'est deux
+  caractères. **Il devrait refuser tout argument contenant la séquence
+  littérale `\n` (ou `\t`) et renvoyer vers `--depuis`** : personne n'a jamais
+  voulu écrire ces deux caractères dans du code français. Un mot d'une ligne
+  dans l'outil, contre un défaut que la vérification de syntaxe ne peut pas
+  voir.
+
+**La sonde jouait huit questions, en dur** — 20 octobre 2026
+
+- *Ce que je voulais faire* : regarder les dix-sept marches d'un exercice à
+  progression, à l'écran, dans l'ordre où l'élève les reçoit.
+- *Ce qui a coûté* : `ouvrirExercice` montait l'étape avec `nbItems: 8`, écrit
+  en dur et sans réglage. Les neuf marches suivantes rendaient un écran vide —
+  `textContent` nul, zéro touche —, c'est-à-dire **exactement ce que rendrait
+  un exercice cassé**. J'ai relu le générateur avant de relire la sonde.
+- *Combien de fois* : |
+- *Ce qui manque* : rien — c'est fait. `ouvrirExercice(id, params, { questions: 17 })`.
+  Le troisième argument manquait, et il manquera pour autre chose : si une
+  mesure a besoin d'un réglage d'étape (le seuil, le mélange), il a désormais
+  une place où aller.

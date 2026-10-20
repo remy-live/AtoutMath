@@ -248,13 +248,27 @@ export const numerationExercises = [
         colonnesPapier: 2,
         title: 'Décomposer, PGCD et PPCM',
         generatorId: 'num.pgcd-ppcm', activityId: 'numpad',
-        params: { marches: ['premier', 'decomposer', 'recomposer', 'pgcd', 'ppcm',
+        // DIX-SEPT MARCHES, ET LE PETIT BAIN D'ABORD. Rémy, une heure après la
+        // première version : « le décomposer pgcd et ppcm est bien trop
+        // difficile ! ». Les sept marches d'alors étaient toutes au niveau d'un
+        // exercice de fin de chapitre, et la première était la plus dure — « 91
+        // est-il premier ? ».
+        //
+        // ON NE DÉCOUPE PAS EN DEUX EXERCICES pour autant : `decoupeMarches`
+        // partage les questions DANS L'ORDRE de la progression, et en donne une
+        // chacune aux PREMIÈRES quand il y en a moins que de marches. Dix
+        // questions sur dix-sept marches jouent donc les dix premières, c'est-à-
+        // dire le petit bain, sans aucun réglage ; et le temps C se coche d'un
+        // geste quand on veut le haut de l'escalier.
+        params: { marches: ['divisible', 'qui-divise', 'liste-diviseurs', 'premier-petit',
+            'par-quoi', 'le-quotient', 'decomposer-petit', 'premier', 'decomposer',
+            'recomposer', 'pgcd-liste', 'ppcm-liste', 'exposant', 'pgcd', 'ppcm',
             'entre-eux', 'irreductible'] },
         motsClefs: ['pgcd', 'ppcm', 'décomposition', 'facteurs premiers', 'premier',
             'diviseur', 'multiple', 'irréductible', 'premiers entre eux', 'arithmétique',
-            'troisième', '3ème'],
+            'divisibilité', 'critère', 'troisième', '3ème'],
         tags: { chemin: [D, MENTAL], niveaux: [TROISIEME] },
-        instruction: "Sept marches de technique. On commence par décomposer — reconnaître un nombre premier, casser un nombre en facteurs, et relire une décomposition dans l'autre sens —, puis on calcule les deux : le PGCD garde les facteurs COMMUNS au plus PETIT exposant, le PPCM garde TOUS les facteurs au plus GRAND. Les deux décompositions sont données à ces marches-là : c'est la règle des exposants qu'on travaille, pas la décomposition, qui a ses marches à elle juste avant. Les deux dernières sont les deux usages du PGCD en troisième : « premiers entre eux ? » et la fraction irréductible."
+        instruction: "Dix-sept marches, et un escalier qui commence en bas. Le temps A se répond SANS MÉTHODE, par les tables : divisible ou non, lequel divise, la liste des diviseurs, premier ou non sous trente. Le temps B décompose, et en deux gestes d'abord — par quel premier commencer, puis la première division — avant de demander l'écriture entière. Le temps C calcule le PGCD et le PPCM, et là encore il commence par le SENS : les deux listes de diviseurs sont écrites, on y cherche le plus grand commun ; les deux listes de multiples aussi, on y cherche le premier commun. La règle des exposants ne vient qu'après, et une marche la fait LIRE avant qu'on l'applique. Les deux dernières sont les deux usages du PGCD en troisième : « premiers entre eux ? » et la fraction irréductible. Un parcours court joue les premières marches : il suffit de régler le nombre de questions."
     },
     {
         id: 'num-pgcd-ppcm-problemes',
@@ -264,7 +278,7 @@ export const numerationExercises = [
         colonnesPapier: 1,
         title: 'Problèmes de PGCD et de PPCM',
         generatorId: 'num.pgcd-ppcm', activityId: 'numpad',
-        params: { marches: ['paquets', 'ensemble', 'carre'] },
+        params: { marches: ['melange'] },
         motsClefs: ['problème', 'pgcd', 'ppcm', 'paquets', 'bouquets', 'ensemble',
             'carrelage', 'dalles', 'troisième', '3ème'],
         tags: { chemin: [D, MENTAL], niveaux: [TROISIEME] },

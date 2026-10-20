@@ -129,6 +129,37 @@ if (iDepuis >= 0) {
         process.exit(2);
     }
 
+    // ET « \n » ÉCRIT EN DEUX CARACTÈRES N'EST PAS DU MULTILIGNE — c'est le
+    // piège que le refus ci-dessus laissait grand ouvert.
+    //
+    // MESURÉ, et ce n'est pas une précaution théorique. Quatre lignes — trois
+    // de commentaire et un `if (…) continue;` — sont passées en un seul
+    // argument séparé par des « \n ». L'outil a écrit UNE ligne, donc tout
+    // derrière le « // » du premier commentaire, `continue` compris. Il a
+    // annoncé « 1 remplacement écrit », et il avait raison.
+    //
+    // ET `node --check` A DIT QUE LA SYNTAXE TENAIT, parce qu'un commentaire
+    // très long est du JavaScript parfaitement valide. Le garde-fou le plus
+    // solide de cet outil était donc aveugle : la seule chose qui a parlé est
+    // une épreuve tombée vingt minutes plus tard, et j'ai d'abord cherché le
+    // défaut dans le code mesuré.
+    //
+    // PERSONNE N'A JAMAIS VOULU ÉCRIRE CES DEUX CARACTÈRES dans du code ou de
+    // la prose française. Les refuser ne coûte donc rien, et les accepter coûte
+    // une demi-heure la première fois.
+    const faussementMulti = reste.find((t) => /\\[nt]/.test(t));
+    if (faussementMulti !== undefined) {
+        console.error('Une séquence « \\n » ou « \\t » écrite EN DEUX CARACTÈRES :');
+        console.error(`  « ${faussementMulti.slice(0, 70)}… »`);
+        console.error('');
+        console.error('La ligne de commande ne l\'interprète pas : tout arriverait sur UNE');
+        console.error('seule ligne — et si la première est un commentaire, le reste part');
+        console.error('derrière le « // » sans que « node --check » puisse le voir.');
+        console.error('Écrire les paires dans un fichier JSON, puis :');
+        console.error('  node tools/remplacer.mjs ' + fichier + ' --depuis tools/tmp/paires.json');
+        process.exit(2);
+    }
+
     for (let i = 0; i < reste.length; i += 2) paires.push([reste[i], reste[i + 1]]);
 }
 

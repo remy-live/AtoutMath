@@ -1835,7 +1835,7 @@ de fin de chapitre, et la première est la plus dure de toutes.
 | Marche | Ce qu'elle demande vraiment |
 | --- | --- |
 | `premier` | « **91** est-il premier ? » — LE piège du chapitre (7 × 13), en première question. Puis 101, qui demande d'essayer 2, 3, 5, 7 et de savoir qu'on s'arrête à 10. |
-| `decomposer` | « Complète la décomposition de **198** » sur un squelette `2ᵃ × 3ᵇ × 11ᶜ`. Les lettres en exposant ajoutent une couche d'algèbre PAR-DESSUS l'arithmétique — et pendant ce temps le vrai travail (trouver QUELS premiers) est déjà fait dans l'énoncé. Dur à lire, et à côté de la cible. |
+| `decomposer` | « Complète la décomposition de **198** » — et les premiers 2, 3, 11 sont DÉJÀ dans l'écriture à remplir. Il ne reste que les exposants, c'est-à-dire la moitié facile ; le vrai travail, trouver QUELS premiers interviennent, n'est demandé nulle part. (J'avais d'abord écrit ici que l'énoncé portait un squelette `2ᵃ × 3ᵇ × 11ᶜ` : c'était mon brouillon, pas le fichier livré — les lettres en avaient déjà été retirées.) |
 | `recomposer` | 2 × 3 × 5 × 7 = 210, de tête, sans brouillon. |
 | `pgcd` · `ppcm` | PPCM(91 ; 143) = **1001** : trois facteurs premiers à multiplier de tête. PPCM(63 ; 84) = 252. Les décompositions sont données — c'est bien —, mais le produit final reste lourd. |
 | `entre-eux` | 132 et 198. |
@@ -1875,3 +1875,134 @@ Dix-huit blocs, dans son ordre. Elle n'est PAS une demande d'exercices : il
 demande ce qu'on devrait faire. Elle est relue bloc par bloc contre le
 catalogue (158 exercices tagués sixième) dans la réponse qui suit ce message ;
 ce qui en sortira de décidé reviendra ici.
+
+### Ses deux réponses — 20 octobre, dans la minute
+
+> « oui pour le 1 »
+
+Le petit bain du PGCD/PPCM est validé : les six gestes du §15 sont à faire.
+La question qui restait — garder les marches dures après les faciles, ou les
+sortir ailleurs — est tranchée par le silence et par la mécanique du dépôt :
+**un seul exercice, dix-sept marches en trois temps**. `decoupeMarches` partage
+les questions DANS L'ORDRE de la progression, et `partageEgal` donne une
+question chacune aux premières quand il y en a moins que de marches : un
+parcours de dix questions sur dix-sept marches joue donc les dix premières,
+c'est-à-dire le petit bain. Le professeur qui veut le haut de l'escalier coche
+le temps C, d'un geste. Deux exercices auraient demandé deux entrées au
+catalogue pour la même progression, coupée en deux au milieu.
+
+> « fais le bloc 1,11,18,10,5,3,8, »
+
+Sept blocs de sa progression de sixième, et **dans son ordre** — qui n'est pas
+celui de l'année : c'est un ordre de priorité, et on le suit.
+
+| Bloc | Ce qu'il faut faire |
+| --- | --- |
+| **1** | Les milliards. « Dictée de Grands Nombres » plafonne à 9 999 999 ; son premier chapitre va aux centaines de milliards. Deux paliers, et vérifier le même plafond sur « Chasse au Chiffre » et « Décomposer, Recomposer ». |
+| **11** | Les angles. « La Valeur Manquante » (somme des angles d'un triangle) et « Le Nom des Angles » (adjacents, supplémentaires) existent et sont tagués 5ème/4ème : **un tag à ouvrir**, pas un exercice à écrire. Manquent la bissectrice et les angles opposés par le sommet. |
+| **18** | Multiplier une fraction par un nombre : « Multiplier des Fractions » multiplie DEUX fractions. Le cas de sixième est un réglage. |
+| **10** | Placer une fraction sur une droite graduée : « La Loupe sur la Droite » ne place que des décimaux. Un réglage. |
+| **5** | Les conversions d'aires et de volumes. Il l'avait repéré lui-même : « ← À voir 1 m = 100 cm, 1 m² = 100 dm² ». Le tableau ne connaît que l'échelon DIX. |
+| **3** | Inégalité large ou stricte : ⩽ ou <, et encadrer. Rien n'existe. |
+| **8** | Critères de divisibilité (2-5-10), division euclidienne (quotient ET reste), calcul de durées. Rien n'existe. |
+
+**Et le bloc 8 recoupe le petit bain du PGCD.** Les quatre marches d'entrée
+écrites pour la troisième — divisibilité par 2, 5, 10 ; « lequel divise 24 ? » ;
+la liste des diviseurs ; « 13 est-il premier ? » — sont EXACTEMENT du programme
+de sixième. Elles seront donc écrites une fois et servies deux fois.
+
+### Ce qui a été fait pour le petit bain
+
+**Dix-sept marches au lieu de sept, en quatre temps.**
+
+| Temps | Marches | Ce qu'on y répond |
+| --- | --- | --- |
+| **A — pour commencer** | divisible · lequel divise · la liste des diviseurs · premier sous trente | par les TABLES, sans aucune méthode |
+| **B — décomposer** | par quel premier · la première division · décomposer un petit nombre · premier (91, 101…) · décomposer · lire une décomposition | l'escalier, marche par marche avant d'être demandé en entier |
+| **C — PGCD et PPCM** | le PGCD en listant · le PPCM en listant · quel exposant · PGCD · PPCM · premiers entre eux · fraction irréductible | le SENS d'abord (les deux listes sont écrites), la règle ensuite |
+| **D — les problèmes** | lequel des deux ? · paquets · rythmes · carré | la notion, sur de petits nombres |
+
+**Et c'est la mécanique du dépôt qui fait le reste.** `decoupeMarches` partage
+les questions DANS L'ORDRE de la progression, et `partageEgal` en donne une
+chacune aux PREMIÈRES quand il y en a moins que de marches. MESURÉ : un
+parcours de dix questions joue les dix premières marches, dans l'ordre, et ne
+sort pas des temps A et B. Rien à régler ; et le professeur qui veut le haut de
+l'escalier coche le temps C d'un geste.
+
+**Trois défauts trouvés en REGARDANT, et aucun ne se lisait dans le code :**
+
+1. **« Lequel de ces nombres divise 50 ? » — et aucun nombre sur la feuille.**
+   Les quatre propositions sont des BOUTONS, et une feuille imprimée n'a pas de
+   boutons. La question n'était pas difficile, elle était sans réponse possible.
+   Vu sur le PDF, invisible à l'écran.
+2. **Une feuille de vingt questions ne visitait que les DIX PREMIÈRES marches.**
+   `tirerQuestions` n'annonçait pas sa longueur au générateur : celui-ci
+   retombait sur son compte d'avant les réglages — deux par marche — et la
+   feuille était pleine avant d'arriver au PGCD. **Le titre promettait ce que la
+   feuille ne contenait pas**, et cela valait pour les treize exercices à
+   progression, pas seulement celui-ci.
+3. **Les problèmes n'étaient pas mélangés** — six « paquets » à la file, puis
+   sept « rythmes », puis sept « carrés ». L'instruction du catalogue promettait
+   pourtant « ils sont MÉLANGÉS exprès ». Après deux énoncés de paquets, le
+   troisième se reconnaît sans être lu : c'est exactement ce que l'exercice
+   existe pour empêcher. Une marche « lequel des deux ? » tire désormais au sort
+   parmi les trois, et c'est elle que l'exercice coche par défaut ; les trois
+   restent cochables à part pour qui veut en faire travailler une seule.
+
+Et un quatrième, de ma main, attrapé par une épreuve : écrit
+`ETAPES.find(e => e.id === choisir([…], rng))`, **le tirage se refait à chaque
+élément parcouru**. La comparaison portait sur un nom différent à chaque tour et
+ne tombait presque jamais juste.
+
+### « les fractions en colonne » et le texte trop petit — 20 octobre
+
+> « ecris toujours les fractions en colonne, attention aux textex pour le pgdc
+> qui est petit au vue de l'espace »
+
+**Deux remarques, et la première est une règle générale** — « TOUJOURS », pas
+« dans cet exercice ». Sur le papier elle était déjà tenue : le drapeau
+`fractions: true` dit au rendu d'empiler, et la feuille écrit bien 24 sur 36,
+trait au milieu. **À l'écran, non** : l'énoncé de la marche « fraction
+irréductible » affiche « Rends la fraction 91/143 irréductible. » — barre
+oblique —, pendant que la réponse juste en dessous, elle, s'empile. Le même
+écran enseigne donc les deux écritures à la fois, et celle qu'on lit en premier
+est la mauvaise.
+
+**La seconde est une mesure à faire, pas une supposition.** Sur la photo de
+l'écran prise pendant le travail, la question occupe une bande mince au milieu
+d'un grand vide, et l'énoncé — « 96 = 2⁵ × 3 et 144 = 2⁴ × 3². » — est
+nettement plus petit que la question qui le suit. Il reste de la place partout
+autour. À vérifier sur les pixels, et à corriger là où le texte peut grandir
+sans que la plus longue question déborde.
+
+**Ce qui a été fait pour les deux remarques.**
+
+**Les fractions en colonne, partout.** Mesuré sur les 238 exercices du
+catalogue, **marche par marche** — et c'est ce détail qui fait la différence
+entre une mesure et une illusion : douze questions tirées d'un exercice à
+dix-sept marches ne montrent que les douze premières, et la fraction était à la
+dix-septième. La première mesure rendait « un seul exercice coupable », et elle
+avait tort. **Deux** l'étaient : « Poser un Produit de Fractions », dont
+l'énoncé n'avait aucun `html` et retombait donc sur le texte nu — « 2/3 × 6/5 =
+? » —, et la marche « fraction irréductible ». Les deux sont corrigés, et une
+épreuve du catalogue garde désormais la règle pour tout le monde, à côté de
+celle qui garde déjà la feuille imprimée. Zéro sur 238.
+
+**Le texte trop petit — et le défaut n'était pas dans le PGCD.** Mesuré sur les
+pixels : un problème était réduit **deux fois**. Une première par sa classe de
+longueur (`ui/enonce.js` compte les caractères ; un problème dépasse toujours
+le palier, donc `game-question--tres-long`, plafonnée à 1,4 rem). Une seconde
+par les rapports de `.ap-situation` et `.ap-question`, qui reprenaient la
+moitié par-dessus. Sur un écran de 1280 × 900 : **énoncé 15 px, question
+19 px**, dans une colonne de 560 px dont 800 px de haut restaient vides.
+
+La classe de longueur a déjà fait le travail ; reprendre encore la moitié,
+c'est punir deux fois la même phrase. Les rapports passent à `.72em` et
+`.95em` : **énoncé 22 px, question 28 px**. Et `.pp-reponse`, qui était à
+`1.5rem` en dur, suit maintenant la question — l'écriture à trous était devenue
+plus petite que l'énoncé juste au-dessus.
+
+Vérifié au téléphone (390 × 844), sur le plus long problème de chaque famille :
+bloc de 378 px de large dans 390, 520 px au-dessus de la ligne de flottaison,
+aucun défilement latéral. « Histoires d'Argent » en profite autant que le PGCD :
+les deux familles d'exercices à problème étaient logées à la même enseigne.

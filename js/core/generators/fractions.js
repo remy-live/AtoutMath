@@ -322,6 +322,20 @@ export const fracProduitPoseGenerator = {
             answerKind: 'text',
             prompt: {
                 text: `${p.a}/${p.b} × ${p.c}/${p.d} = ?`,
+                // RÉMY : « ecris toujours les fractions en colonne ».
+                //
+                // Cet énoncé n'avait AUCUN `html` : l'écran retombait donc sur
+                // `text`, et affichait « 2/3 × 6/5 = ? » à la barre oblique.
+                // Sur la feuille imprimée la même question s'empile toute
+                // seule — le rendu sait le faire —, si bien que l'exercice
+                // enseignait deux écritures selon le support, et la mauvaise à
+                // l'écran, qui est le support le plus vu.
+                //
+                // MESURÉ sur les 238 exercices du catalogue, marche par
+                // marche : il n'en restait que deux dans ce cas.
+                html: `<div class="compare-line">`
+                    + `${fracHtml(p.a, p.b)} <span class="compare-op">×</span> `
+                    + `${fracHtml(p.c, p.d)} <span class="compare-op">=</span> ?</div>`,
                 consigne: 'Décompose et barre, puis écris le résultat.',
                 // Sur le papier il n'y a ni bouton ni table : on écrit le
                 // calcul à la main, ce qui est exactement le même travail.

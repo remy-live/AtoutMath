@@ -134,6 +134,66 @@ test('un générateur qui écrit des fractions le déclare', async () => {
     assert.deepEqual(fautifs, []);
 });
 
+test('AUCUN ÉNONCÉ N\'AFFICHE UNE FRACTION À LA BARRE OBLIQUE', async () => {
+    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // RÉMY : « ecris toujours les fractions en colonne ». TOUJOURS — pas « sur
+    // le papier », et pas « dans cet exercice-là ».
+    //
+    // L'épreuve juste au-dessus garde la FEUILLE ; celle-ci garde l'ÉCRAN, qui
+    // est le support le plus vu. Les deux sont nécessaires et aucune ne
+    // remplace l'autre : le rendu du papier empile « a/b » tout seul dès que le
+    // générateur déclare `fractions: true`, l'écran non — il affiche le `html`
+    // de l'énoncé tel qu'il est écrit, et retombe sur le `text` nu quand il n'y
+    // a pas de `html`.
+    //
+    // DEUX EXERCICES ÉTAIENT DANS CE CAS sur les 238 du catalogue : « Poser un
+    // Produit de Fractions », dont l'énoncé n'avait aucun `html` et affichait
+    // « 2/3 × 6/5 = ? », et la marche « fraction irréductible » de
+    // « Décomposer, PGCD et PPCM », qui écrivait « Rends la fraction 91/143
+    // irréductible » À LA BARRE pendant que la réponse juste en dessous
+    // s'empilait. Le même écran enseignait les deux écritures à la fois.
+    //
+    // ON PARCOURT MARCHE PAR MARCHE, et c'est ce qui fait la différence entre
+    // une mesure et une illusion : douze questions tirées d'un exercice à
+    // dix-sept marches ne montrent que les douze premières — et la fraction
+    // était à la dix-septième. La première mesure rendait « un seul exercice
+    // coupable », et elle avait tort.
+    const { generateurDeFiche } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+
+    // Ce qui ressemble à une fraction sans en être une : les unités composées.
+    const UNITES = /\b(km|m|cm|mm|g|kg|L|mL|€)\s*\/\s*(h|s|min|m|L|kg|mois|an)\b/i;
+    const FRACTION = /(?<![\d\/])(\d{1,4})\s*\/\s*(\d{1,4})(?![\d\/])/;
+    const fautifs = [];
+
+    for (const exo of exercices) {
+        const g = generateurDeFiche(exo);
+        if (!g || typeof g.generate !== 'function') continue;
+        const marches = Array.isArray(exo.params && exo.params.marches) ? exo.params.marches : null;
+        const essais = marches ? marches.length * 2 : 10;
+        for (let i = 0; i < essais; i++) {
+            const reglages = marches
+                ? { ...exo.params, marches: [marches[i % marches.length]] }
+                : (exo.params || {});
+            let it;
+            try { it = g.generate(reglages, { rng: makeRng(`col_${exo.id}_${i}`), index: i, total: essais }); }
+            catch { break; }
+            const html = (it && it.prompt && (it.prompt.html || it.prompt.text)) || '';
+            // Une fraction DÉJÀ empilée ne compte pas : on cherche la barre
+            // oblique dans du texte, pas dans la balise qui porte le trait.
+            const nu = html
+                .replace(/<span class="fraction[^"]*">[\s\S]*?<\/span>\s*<\/span>/g, ' ')
+                .replace(/<[^>]*>/g, ' ');
+            if (UNITES.test(nu)) continue;
+            const m = nu.match(FRACTION);
+            if (m) { fautifs.push(`${exo.id} : « ${m[0]} » dans « ${nu.trim().slice(0, 70)} »`); break; }
+        }
+    }
+    assert.deepEqual(fautifs, []);
+});
+
 test('AUCUNE COMMANDE LATEX NE FUIT SUR UNE FICHE', async () => {
     // RÉMY, capture d'une fiche imprimée à l'appui : « problème ». On y lisait
     //

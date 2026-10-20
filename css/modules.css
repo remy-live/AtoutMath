@@ -14516,19 +14516,37 @@ body.en-boite > #app-container { background: none; }
 .lf-figure { display: block; margin: 0 auto; }
 
 .ap-probleme { display: flex; flex-direction: column; align-items: center; gap: .5em; }
-/* LA SITUATION SE LIT COMME UN TEXTE, pas comme un énoncé de calcul : à la
-   taille du corps, alignée à gauche, et pas plus large que ce qu'un œil suit
-   d'une ligne à l'autre — 46 caractères, la même mesure que les aides aérées. */
+/* LA SITUATION SE LIT COMME UN TEXTE, pas comme un énoncé de calcul : alignée
+   à gauche, et pas plus large que ce qu'un œil suit d'une ligne à l'autre —
+   46 caractères, la même mesure que les aides aérées.
+
+   MAIS PAS À LA TAILLE DU CORPS. Rémy, sur « Décomposer, PGCD et PPCM » :
+   « attention aux textes pour le pgcd qui est petit au vue de l'espace ».
+
+   MESURÉ SUR LES PIXELS, et le défaut n'était pas dans cet exercice-là : un
+   problème est RÉDUIT DEUX FOIS. Une première par la classe de longueur —
+   `game-question--tres-long` plafonne à 1,4 rem, et un problème dépasse
+   toujours le palier —, une seconde par ce rapport. Résultat sur un écran de
+   1280 × 900 : l'énoncé à 15 px et la question à 19 px, dans une colonne de
+   560 px de large dont 800 px de haut restaient vides. Les trois exercices à
+   `ap-probleme` étaient logés à la même enseigne — « Histoires d'Argent » et
+   les problèmes de PGCD aussi, pas seulement celui qu'il a vu.
+
+   LA CLASSE DE LONGUEUR A DÉJÀ FAIT LE TRAVAIL : elle a calmé la question
+   parce qu'elle est longue. Reprendre encore la moitié par-dessus, c'est
+   punir deux fois la même phrase. */
 .ap-situation {
-    display: block; font-size: .5em; font-weight: 600; line-height: 1.45;
+    display: block; font-size: .72em; font-weight: 600; line-height: 1.45;
     text-align: left; max-width: 46ch; color: var(--text-main);
 }
 .ap-sous { display: block; }
 .ap-argent { display: block; margin: 0 auto; }
 /* LA QUESTION, ELLE, SE RELIT DIX FOIS : c'est elle qu'on doit retrouver d'un
-   coup d'œil après avoir regardé le dessin. */
+   coup d'œil après avoir regardé le dessin. Elle est donc à la taille que la
+   classe de longueur a décidée, sans réduction supplémentaire — et elle reste
+   plus grande que la situation, qui ne se lit qu'une fois. */
 .ap-question {
-    display: block; font-size: .62em; font-weight: 800; line-height: 1.3;
+    display: block; font-size: .95em; font-weight: 800; line-height: 1.3;
     color: var(--primary-texte);
 }
 
@@ -14553,6 +14571,15 @@ body.en-boite > #app-container { background: none; }
    L'élève remplit l'écriture elle-même — les exposants d'une décomposition, le
    haut et le bas d'une fraction — au lieu de reporter des nombres dans des
    cases anonymes. Voir `trou()` dans js/core/generators/pgcdPpcm.js. */
-.pp-reponse { display: block; margin-top: 14px; font-size: 1.5rem; }
+/* CE QUE L'ÉLÈVE REMPLIT EST AU MOINS AUSSI GROS QUE CE QU'IL LIT.
+
+   `1.5rem` était posé en dur, et c'était sans conséquence tant que l'énoncé
+   lui-même était petit. Depuis que la question d'un problème n'est plus
+   réduite deux fois, l'écriture à trous se retrouvait PLUS PETITE que la
+   fraction de l'énoncé juste au-dessus — vu sur la capture : « Rends la
+   fraction 132/198 irréductible » en grand, et les deux cases à remplir en
+   dessous, deux fois plus menues. On la rapporte donc à la question, qui est
+   déjà dimensionnée par sa longueur. */
+.pp-reponse { display: block; margin-top: 14px; font-size: 1.05em; }
 .pp-ecriture { font-weight: 800; letter-spacing: .01em; }
 .pp-ecriture sup { font-size: .62em; }

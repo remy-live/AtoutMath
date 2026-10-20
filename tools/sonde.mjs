@@ -271,8 +271,20 @@ export async function ouvrirSonde(o = {}) {
         },
 
         /** Ouvre un exercice comme le meneur le ferait, et clique « JOUER ». */
-        async ouvrirExercice(id, params = {}) {
-            const raté = await page.evaluate(async ([exoId, p]) => {
+        /**
+         * MONTE LE MENEUR SUR UN EXERCICE ET CLIQUE « JOUER ».
+         *
+         * `options.questions` DIT COMBIEN DE QUESTIONS DURE L'ESSAI, et ce
+         * n'était pas réglable : huit, en dur. Un exercice à progression en
+         * compte dix-sept (« Décomposer, PGCD et PPCM ») : la sonde ne pouvait
+         * donc voir que ses huit premières marches, et les neuf suivantes
+         * rendaient un écran vide que rien ne distinguait d'un exercice cassé.
+         * Mesuré en cherchant pourquoi dix questions sur dix-huit étaient
+         * nulles.
+         */
+        async ouvrirExercice(id, params = {}, options = {}) {
+            const combien = Math.max(1, Math.round(Number(options.questions)) || 8);
+            const raté = await page.evaluate(async ([exoId, p, n]) => {
                 if (window.__sondeRunner) { try { window.__sondeRunner.exit(); } catch (e) {} }
                 await new Promise(ok => setTimeout(ok, 260));
                 const { getExerciseById } = await import('./js/data/catalog.js');
@@ -281,12 +293,12 @@ export async function ouvrirSonde(o = {}) {
                 const { makeStep, makePath } = await import('./js/core/path.js');
                 const { politiquePerso } = await import('./js/core/mesExercices.js');
                 const { Runner } = await import('./js/core/runner.js');
-                const pas = makeStep(exo.id, p, { stepId: 's1', nbItems: 8, threshold: 0 });
+                const pas = makeStep(exo.id, p, { stepId: 's1', nbItems: n, threshold: 0 });
                 window.__sondeRunner = new Runner({
                     path: makePath('Sonde', [pas], politiquePerso()), deviceMode: 'none' });
                 window.__sondeRunner.start();
                 return null;
-            }, [id, params]);
+            }, [id, params, combien]);
             if (raté) return raté;
             await dormir(1600);
             // Les jeux à canevas s'ouvrent sur un écran « JOUER » : sans ce

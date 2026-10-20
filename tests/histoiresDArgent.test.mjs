@@ -20,6 +20,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { makeRng } from '../js/core/ids.js';
 import {
     ARTICLES, PRENOMS, unArticle, majuscule, pluriel, billetPour,
@@ -203,4 +204,49 @@ test('L\'EXERCICE EST AU CATALOGUE, AVEC SON PAVÉ', () => {
     assert.ok(exo, 'l\'exercice n\'est pas au catalogue');
     assert.equal(exo.generatorId, 'num.argent-problemes');
     assert.equal(exo.activityId, 'numpad');
+});
+
+test('LA QUESTION D\'UN PROBLÈME N\'EST PAS RÉDUITE DEUX FOIS', () => {
+    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // RÉMY, sur « Décomposer, PGCD et PPCM » : « attention aux textes pour le
+    // pgcd qui est petit au vue de l'espace ».
+    //
+    // MESURÉ SUR LES PIXELS, et le défaut n'était pas dans cet exercice-là : un
+    // problème est réduit DEUX FOIS. Une première par sa classe de longueur —
+    // `ui/enonce.js` compte les caractères, et un problème dépasse toujours le
+    // palier, donc `game-question--tres-long`, plafonnée à 1,4 rem. Une seconde
+    // par les rapports de `.ap-situation` et `.ap-question`, qui reprenaient la
+    // moitié par-dessus.
+    //
+    // Résultat sur un écran de 1280 × 900 : l'énoncé à 15 px et la question à
+    // 19 px, dans une colonne de 560 px de large dont 800 px de haut restaient
+    // vides. Les deux familles à `ap-probleme` étaient logées à la même
+    // enseigne — « Histoires d'Argent » comme les problèmes de PGCD.
+    //
+    // LA CLASSE DE LONGUEUR A DÉJÀ FAIT LE TRAVAIL. Reprendre encore la moitié
+    // par-dessus, c'est punir deux fois la même phrase.
+    const css = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
+    const taille = (selecteur) => {
+        const bloc = css.match(new RegExp(`\\${selecteur}\\s*\\{[^}]*\\}`));
+        assert.ok(bloc, `${selecteur} a disparu de la feuille de style`);
+        const m = bloc[0].match(/font-size:\s*([\d.]+)em/);
+        assert.ok(m, `${selecteur} ne donne plus sa taille en « em »`);
+        return Number(m[1]);
+    };
+    const situation = taille('.ap-situation');
+    const question = taille('.ap-question');
+    assert.ok(question >= 0.9,
+        `.ap-question à ${question}em : la question est réduite une seconde fois`);
+    assert.ok(situation >= 0.7,
+        `.ap-situation à ${situation}em : l'énoncé est réduit une seconde fois`);
+    // ET LA QUESTION RESTE PLUS GRANDE QUE LA SITUATION : on lit l'une une
+    // fois, on relit l'autre dix fois.
+    assert.ok(question > situation,
+        `question ${question}em et situation ${situation}em : la hiérarchie est perdue`);
+    // ENFIN, CE QUE L'ÉLÈVE REMPLIT EST AU MOINS AUSSI GROS QUE CE QU'IL LIT.
+    const reponse = taille('.pp-reponse');
+    assert.ok(reponse >= question,
+        `.pp-reponse à ${reponse}em sous une question à ${question}em : `
+        + 'l\'écriture à trous est plus petite que l\'énoncé');
 });

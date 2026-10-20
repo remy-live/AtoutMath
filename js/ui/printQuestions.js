@@ -83,7 +83,25 @@ function tirerQuestions(generator, params, nb) {
         // pouvait pas s'en charger : les réglages du catalogue le recouvrent —
         // voir plus bas, c'est ce qui rendait dix-sept exercices insensibles à
         // leurs propres réglages.)
-        const item = generator.generate(params, { index: out.length, rng: makeRng(), papier: true });
+        // `total: nb` — LA FEUILLE DIT COMBIEN DE QUESTIONS ELLE PORTE.
+        //
+        // Elle ne le disait pas, et le générateur retombait alors sur son
+        // compte d'avant les réglages : DEUX questions par marche, dans
+        // l'ordre. Une feuille de vingt questions ne montrait donc jamais que
+        // les DIX PREMIÈRES marches de la progression, quel que soit le partage
+        // réglé par le professeur et quel que soit le nombre de marches.
+        //
+        // MESURÉ EN REGARDANT LE PDF : « Décomposer, PGCD et PPCM » compte
+        // dix-sept marches ; sa feuille s'arrêtait à « lire une décomposition »
+        // et ne posait AUCUNE question de PGCD ni de PPCM. Le titre promettait
+        // ce que la feuille ne contenait pas.
+        //
+        // Cela vaut pour les treize exercices à progression, pas seulement
+        // celui-ci : tous partagent désormais leurs questions sur la feuille
+        // comme ils le font à l'écran, en honorant les cases cochées et la
+        // barre de répartition.
+        const item = generator.generate(params,
+            { index: out.length, total: nb, rng: makeRng(), papier: true });
         // `papier` : la même question, écrite pour la feuille — sans la
         // consigne répétée devant chaque ligne. À défaut, le texte d'écran.
         const texte = (item.prompt && (item.prompt.papier || item.prompt.text)) || '';

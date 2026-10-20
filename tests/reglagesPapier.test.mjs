@@ -74,3 +74,43 @@ test('les réglages du papier restent des réglages du papier', () => {
     assert.ok(repetes.length <= 2,
         `trop de défauts papier qui divergent de l'écran :\n${repetes.join('\n')}`);
 });
+
+// ── LA FEUILLE DIT SA LONGUEUR AU GÉNÉRATEUR ────────────────────────────────
+
+test('UNE FEUILLE D\'EXERCICE À PROGRESSION COUVRE TOUTES SES MARCHES', async () => {
+    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // LE DÉFAUT, VU EN REGARDANT UN PDF. « Décomposer, PGCD et PPCM » compte
+    // dix-sept marches. Sa feuille de vingt questions s'arrêtait à « lire une
+    // décomposition » et ne posait AUCUNE question de PGCD ni de PPCM : le
+    // titre promettait ce que la feuille ne contenait pas.
+    //
+    // LA CAUSE : `tirerQuestions` appelait le générateur sans lui dire combien
+    // de questions la feuille portait. `totalDe` rendait alors zéro, et
+    // `marcheAuRang` retombait sur son compte d'avant les réglages — DEUX
+    // questions par marche, dans l'ordre. Dix marches, et la feuille était
+    // pleine. Le partage réglé par le professeur, lui, n'était jamais lu.
+    //
+    // Cela valait pour les treize exercices à progression, pas seulement
+    // celui-ci.
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync(new URL('../js/ui/printQuestions.js', import.meta.url), 'utf8');
+    assert.match(source, /generate\(params,\s*\{[^}]*total:\s*nb/,
+        'la feuille n\'annonce plus sa longueur au générateur');
+
+    // ET LA CONSÉQUENCE SE MESURE, pas seulement la ligne. Vingt questions
+    // tirées comme la feuille les tire doivent visiter plus de dix marches —
+    // c'est exactement ce que le compte d'avant les réglages ne pouvait pas
+    // faire.
+    const { makeRng } = await import('../js/core/ids.js');
+    const { getGenerator } = await import('../js/core/registry.js');
+    const exo = exercices.find(e => e.id === 'num-pgcd-ppcm');
+    const gen = getGenerator(exo.generatorId);
+    const marches = new Set();
+    for (let k = 0; k < 20; k++) {
+        marches.add(gen.generate(exo.params,
+            { index: k, total: 20, rng: makeRng('feuille' + k), papier: true }).meta.marche);
+    }
+    assert.ok(marches.size > 10,
+        `une feuille de vingt questions ne visite que ${marches.size} marches sur ${exo.params.marches.length}`);
+});
