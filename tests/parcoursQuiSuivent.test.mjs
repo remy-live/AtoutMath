@@ -153,8 +153,16 @@ test('LE RAPATRIEMENT DÉBALLE, ET ÉCARTE CE QUE LE LOGICIEL SÈME', () => {
         'une modification faite sur l\'autre machine ne descendrait jamais');
     // ET L'ENTRÉE RANGÉE EST UNE ENVELOPPE, parce que c'est ce que l'explorateur
     // lit — `name`, `folderId`, `timestamp`.
-    assert.match(corps, /folderId: brut\.folderId \|\| 'root'/,
-        'un parcours nu entrerait dans la bibliothèque sans dossier ni date');
+    //
+    // LE DOSSIER VIENT DE SA COLONNE DEPUIS LE 21 OCTOBRE. Il se lisait
+    // `brut.folderId || 'root'`, c'est-à-dire dans le PARCOURS, où il n'était
+    // jamais : le serveur ne le recevait pas. Rémy : « j'ai créé des dossiers
+    // pour y mettre des parcours à ma session précédente, il ne sont pas
+    // restés ». Voir `paths.folder_id` et `tests/arbitrageParcours.test.mjs`.
+    assert.match(corps, /folderId: ligne\.folder_id \|\| brut\.folderId \|\| null,/,
+        'le dossier ne vient plus de sa colonne : le rangement se reperd');
+    assert.match(corps, /name: brut\.name \|\| parcours\.name,/,
+        'un parcours nu entrerait dans la bibliothèque sans nom d\'enveloppe');
 });
 
 test('LA MONTÉE N\'ENVOIE PAS CE QUE LE LOGICIEL SE DONNE', () => {

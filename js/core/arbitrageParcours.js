@@ -67,9 +67,16 @@ import { empreinte } from './empreinteParcours.js';
  * LA FORME QUE LE SERVEUR RANGE — et la seule qu'on ait le droit de comparer.
  *
  * `monterUnParcours` déballe l'enveloppe avant d'envoyer : le serveur reçoit
- * le PARCOURS, avec l'identifiant et le nom de l'enveloppe. Le `folderId` et
- * le `timestamp`, eux, ne partent pas — ce sont des choix de rangement propres
- * à chaque machine.
+ * le PARCOURS, avec l'identifiant et le nom de l'enveloppe. Le `timestamp` ne
+ * part pas : c'est l'heure de CETTE machine, et le serveur tient la sienne.
+ *
+ * LE `folderId`, LUI, PART MAINTENANT — à côté, dans sa colonne. Il était
+ * traité ici comme « un choix de rangement propre à chaque machine », et c'est
+ * ce qui a coûté à Rémy sa bibliothèque rangée : « j'ai créé des dossiers pour
+ * y mettre des parcours à ma session précédente, il ne sont pas restés ». Il
+ * reste HORS de cette forme-ci, parce que `data` est le parcours que l'élève
+ * reçoit et qu'un rangement n'y a rien à faire ; c'est `sceauDeParcours` qui
+ * le compte, pour qu'un déplacement déclenche bien une montée.
  *
  * COMPARER DEUX FORMES DIFFÉRENTES REND « DIFFÉRENT » À TOUS LES COUPS, et une
  * règle qui dit toujours « ça a changé » ne décide de rien. On passe donc les
@@ -82,10 +89,20 @@ export function formeEnvoyee(entree) {
     return { ...dedans, id: entree.id, name: entree.name || dedans.name };
 }
 
-/** L'empreinte de ce que le serveur a (ou aurait) pour cette entrée. */
+/**
+ * L'empreinte de ce que le serveur a (ou aurait) pour cette entrée.
+ *
+ * LE DOSSIER EN FAIT PARTIE, bien qu'il ne soit pas dans `data` : sans lui,
+ * déplacer un parcours d'un dossier à l'autre ne changeait pas l'empreinte,
+ * donc `monterUnParcours` repartait aussitôt — « déjà monté » — et le
+ * déplacement ne quittait jamais la machine. C'est le même défaut que celui
+ * qu'on corrige, par l'autre bout.
+ */
 export const sceauDeParcours = (entree) => {
     const forme = formeEnvoyee(entree);
-    return forme ? empreinte(forme) : null;
+    if (!forme) return null;
+    const dossier = (entree && entree.folderId) || 'root';
+    return `${empreinte(forme)}|${dossier}`;
 };
 
 /**
@@ -124,19 +141,24 @@ export function quiGagne({ local, serveur, connu } = {}) {
 /**
  * CE QU'ON ÉCRIT LOCALEMENT QUAND LE SERVEUR GAGNE.
  *
- * LE DOSSIER ET LA DATE RESTENT CEUX D'ICI, et ce n'est pas un détail : le
- * serveur ne reçoit pas le `folderId` (voir `formeEnvoyee`). Prendre le sien —
- * c'est-à-dire aucun — renverrait à la racine un parcours que le professeur
- * avait rangé dans « Sixièmes » sur ce poste, à chaque démarrage, sans qu'il
- * comprenne pourquoi son classement se défait.
+ * LE DOSSIER VIENT DU SERVEUR QUAND IL EN A UN. Il n'en avait AUCUN avant
+ * cette version — d'où la règle précédente, qui gardait celui d'ici à tout
+ * prix pour qu'un démarrage ne renvoie pas à la racine un parcours rangé dans
+ * « Sixièmes ». Maintenant que le rangement voyage, le garder d'ici ferait
+ * l'inverse : un dossier choisi au collège ne descendrait jamais à la maison.
  *
- * @param {object} locale    l'entrée actuelle, pour son rangement
+ * ON NE RETOMBE SUR CELUI D'ICI QUE SI LE SERVEUR NE DIT RIEN — une entrée
+ * montée par une version d'avant, qui n'a pas encore de `folder_id`. Sans ce
+ * repli, la première mise à jour viderait tous les dossiers d'un coup.
+ *
+ * @param {object} locale    l'entrée actuelle
  * @param {object} fraiche   l'entrée reconstruite depuis le serveur
  */
 export function fondreDansLeLocal(locale, fraiche) {
+    const duServeur = fraiche && fraiche.folderId;
     return {
         ...fraiche,
-        folderId: (locale && locale.folderId) || fraiche.folderId || 'root',
+        folderId: duServeur || (locale && locale.folderId) || 'root',
         timestamp: Date.now()
     };
 }

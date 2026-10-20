@@ -2624,6 +2624,119 @@ verifier('IL PORTE SES DEUX ÉTAPES, UN NIVEAU PLUS BAS',
 verifier('et la ligne garde son nom et sa date',
     ($laLigne['name'] ?? '') === 'ENVELOPPE À DÉBALLER' && !empty($laLigne['updated_at']));
 
+// ─────────────────────────── LES DOSSIERS DE LA BIBLIOTHÈQUE ────────────────
+//
+// RÉMY : « j'ai créé des dossiers pour y mettre des parcours à ma session
+// précédente, il ne sont pas restés ».
+//
+// MESURÉ avant (tools/dossiersDeParcours.mjs) : le serveur ne rendait que
+// `id, name, data, updated_at` — le rangement de la bibliothèque n'existait
+// que dans le navigateur. Vider le navigateur, c'était perdre une année de
+// classement. Ces vérifications gardent le trajet complet.
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_dans_un_dossier', 'name' => 'RANGÉ',
+               'data' => ['id' => 'p_in', 'version' => 2, 'name' => 'RANGÉ', 'steps' => []]],
+    'folderId' => 'folder_6e'], $jetonNotre);
+$avecDossier = null;
+foreach (json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['paths'] ?? [] as $l) {
+    if (($l['id'] ?? '') === 'path_dans_un_dossier') { $avecDossier = $l; break; }
+}
+verifier('UN PARCOURS GARDE SON DOSSIER', ($avecDossier['folder_id'] ?? null) === 'folder_6e',
+    'reçu : ' . var_export($avecDossier['folder_id'] ?? null, true));
+
+// LA RACINE N'EST PAS UN DOSSIER : on range `null`, et non la chaîne « root ».
+// Deux écritures pour « nulle part » donneraient deux racines à l'écran.
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_a_la_racine', 'name' => 'RACINE',
+               'data' => ['id' => 'p_root', 'version' => 2, 'name' => 'RACINE', 'steps' => []]],
+    'folderId' => 'root'], $jetonNotre);
+$aLaRacine = null;
+foreach (json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['paths'] ?? [] as $l) {
+    if (($l['id'] ?? '') === 'path_a_la_racine') { $aLaRacine = $l; break; }
+}
+// `??` NE DISTINGUE PAS « NUL » DE « ABSENT », et c'est précisément ce qu'on
+// mesure ici : `$ligne['folder_id'] ?? 'x'` rend 'x' quand la colonne vaut
+// NULL, c'est-à-dire quand le logiciel a RAISON. L'épreuve échouait sur la
+// bonne valeur. Même famille que le `+` au lieu d'`array_merge` plus haut :
+// un opérateur qui a l'air de dire ce qu'on pense, et qui dit autre chose.
+verifier('ET « root » SE RANGE COMME UNE ABSENCE DE DOSSIER',
+    $aLaRacine !== null && array_key_exists('folder_id', $aLaRacine)
+        && $aLaRacine['folder_id'] === null,
+    'reçu : ' . var_export($aLaRacine === null ? 'ligne absente' : $aLaRacine['folder_id'], true));
+
+// DÉPLACER, C'EST RÉÉCRIRE : le parcours change de dossier et non de contenu.
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_dans_un_dossier', 'name' => 'RANGÉ',
+               'data' => ['id' => 'p_in', 'version' => 2, 'name' => 'RANGÉ', 'steps' => []]],
+    'folderId' => 'folder_5e'], $jetonNotre);
+$deplace = null;
+foreach (json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['paths'] ?? [] as $l) {
+    if (($l['id'] ?? '') === 'path_dans_un_dossier') { $deplace = $l; break; }
+}
+verifier('UN PARCOURS DÉPLACÉ CHANGE DE DOSSIER AU SERVEUR',
+    ($deplace['folder_id'] ?? null) === 'folder_5e',
+    'reçu : ' . var_export($deplace['folder_id'] ?? null, true));
+
+// LA LISTE DES DOSSIERS, qui n'a pas de table à elle : voir la route.
+json('/teacher/paths', ['action' => 'dossiers', 'dossiers' => [
+    ['id' => 'folder_6e', 'name' => 'Sixièmes', 'timestamp' => 1700000000000],
+    ['id' => 'folder_5e', 'name' => 'Cinquièmes', 'timestamp' => 1700000000001, 'replie' => true],
+]], $jetonNotre);
+$rendus = json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['dossiers'] ?? [];
+verifier('LA LISTE DES DOSSIERS REDESCEND AVEC LA BIBLIOTHÈQUE', count($rendus) === 2,
+    count($rendus) . ' dossier(s)');
+verifier('ET ELLE GARDE LE NOM ET LE PLI',
+    ($rendus[0]['name'] ?? '') === 'Sixièmes' && ($rendus[1]['replie'] ?? false) === true);
+
+// LES DOSSIERS D'UN PROFESSEUR NE SONT PAS CEUX D'UN AUTRE. Le réglage est
+// rangé sous son identifiant ; sans cela, un second professeur sur ce serveur
+// hériterait du classement du premier.
+$siens = json('/teacher/paths', ['action' => 'list'], $jetonAutre)['json']['dossiers'] ?? [];
+verifier('UN AUTRE PROFESSEUR N\'HÉRITE PAS DES DOSSIERS', count($siens) === 0,
+    count($siens) . ' dossier(s) chez l\'autre');
+
+// UNE LISTE QUI ARRIVE ABÎMÉE NE CASSE RIEN : on garde ce qui a un
+// identifiant et un nom, on jette le reste, et l'on borne.
+json('/teacher/paths', ['action' => 'dossiers', 'dossiers' => [
+    ['id' => 'folder_ok', 'name' => 'Bon'],
+    ['name' => 'sans identifiant'],
+    'pas un objet',
+    ['id' => 'folder_sans_nom'],
+]], $jetonNotre);
+$filtres = json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['dossiers'] ?? [];
+verifier('UNE LISTE DE DOSSIERS ABÎMÉE EST FILTRÉE, PAS REFUSÉE',
+    count($filtres) === 1 && ($filtres[0]['id'] ?? '') === 'folder_ok',
+    count($filtres) . ' gardé(s)');
+
+// ─────────────────────────── LE DÉCOR DU MOMENT ─────────────────────────────
+//
+// RÉMY : « j'aimerai bien que ce soit moi qui choissisent le thème » — et, au
+// choix proposé : « Les deux : un réglage global, et l'élève peut encore
+// jouer. » Un réglage de SITE, donc, qui s'applique aux séances DÉJÀ DONNÉES
+// sans en rouvrir aucune.
+json('/teacher/reglages', ['decorDuMoment' => 'noel'], $jetonNotre);
+$pub = json('/reglages', [])['json']['reglages'] ?? [];
+verifier('LE DÉCOR DU MOMENT EST PUBLIC — c\'est l\'élève qui doit le lire',
+    ($pub['decorDuMoment'] ?? '') === 'noel',
+    'reçu : ' . var_export($pub['decorDuMoment'] ?? null, true));
+
+// UNE VALEUR INCONNUE N'ENTRE PAS. La liste est écrite au SERVEUR : un réglage
+// qu'on accepte sans le lire finit par porter ce qu'un autre a voulu, et le
+// nom du décor devient une classe CSS sur l'écran de trente élèves.
+json('/teacher/reglages', ['decorDuMoment' => 'pirate'], $jetonNotre);
+$pub2 = json('/reglages', [])['json']['reglages'] ?? [];
+verifier('ET UNE VALEUR INCONNUE L\'EFFACE PLUTÔT QUE DE S\'INSTALLER',
+    ($pub2['decorDuMoment'] ?? 'x') === '',
+    'reçu : ' . var_export($pub2['decorDuMoment'] ?? null, true));
+
+// ET IL SE RETIRE. « Aucun décor » est un choix, pas une absence de choix.
+json('/teacher/reglages', ['decorDuMoment' => 'paques'], $jetonNotre);
+json('/teacher/reglages', ['decorDuMoment' => ''], $jetonNotre);
+verifier('LE DÉCOR SE RETIRE',
+    ((json('/reglages', [])['json']['reglages'] ?? [])['decorDuMoment'] ?? 'x') === '');
+
+
+
 // ─── LA CORBEILLE : JETER, RESTAURER, VIDER ────────────────────────────────
 //
 // Rémy : « supprimer en bloc, mettre dans la corbeille ».

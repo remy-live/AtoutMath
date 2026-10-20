@@ -480,6 +480,25 @@ function lesTablesDuSchema(bool $sqlite): array
         name       $txt,
         data       $json,
         updated_at $date,
+        --   · folder_id : LE DOSSIER OÙ LE PROFESSEUR L'A RANGÉ.
+        --
+        --     Rémy : « j'ai créé des dossiers pour y mettre des parcours à ma
+        --     session précédente, il ne sont pas restés ».
+        --
+        --     MESURÉ (tools/dossiersDeParcours.mjs) : on crée « Sixièmes », on
+        --     y range un parcours, on vide le navigateur, on recharge — le
+        --     dossier n'existe plus et le parcours est revenu à la racine. Le
+        --     serveur ne rendait que `id, name, data, updated_at` : le
+        --     rangement était un choix LOCAL, par décision explicite d'une
+        --     version précédente (« des choix de rangement propres à chaque
+        --     machine »).
+        --
+        --     CETTE DÉCISION ÉTAIT FAUSSE, et c'est Rémy qui l'a dit le
+        --     premier, à propos des classes : « la référence est ce qui est
+        --     sur la base de données prioritairement ». Un professeur qui
+        --     range sa bibliothèque au collège la veut rangée chez lui. NULL
+        --     ou 'root' = à la racine.
+        folder_id  $txtNull,
         --   · supprime_le : LA CORBEILLE, et c'est une SUPPRESSION DOUCE.
         --
         --     Rémy : « supprimer en bloc, mettre dans la corbeille ».

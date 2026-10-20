@@ -346,6 +346,23 @@ export async function ouvrirEspaceClasses() {
     // se redessinerait avec l'ancienne séance. On écoute donc « change », et
     // seulement pour lui.
     racine.addEventListener('change', (e) => {
+        // LE DÉCOR DU MOMENT — un menu, pas un interrupteur : il a cinq états.
+        // On croit le SERVEUR et non le menu, comme pour les trois
+        // interrupteurs au-dessus : la route rend ce qu'elle a écrit.
+        const decor = e.target.closest('[data-decor-moment]');
+        if (decor) {
+            const choisi = decor.value;
+            reglagesDuSite({ decorDuMoment: choisi }).then((r) => {
+                if (r.erreur) { showToast(r.erreur, 'error'); return; }
+                vue.reglagesSite = r.reglages || vue.reglagesSite;
+                noterReglagesSite(vue.reglagesSite);
+                showToast(choisi
+                    ? 'Décor du moment posé. Vos élèves le verront à leur prochaine ouverture.'
+                    : 'Décor retiré : les parcours reprennent les couleurs du logiciel.',
+                    'success');
+            });
+            return;
+        }
         const sel = e.target.closest('[data-seance-detail]');
         if (!sel) return;
         vue.seanceDetail = sel.value || null;
@@ -771,7 +788,8 @@ function inscriptionHtml() {
                 : (actif ? 'Chacun peut s\'inscrire' : 'Billet obligatoire')}</span>
         </button>
     </section>
-    ${signalementReglageHtml()}`;
+    ${signalementReglageHtml()}
+    ${decorDuMomentHtml()}`;
 }
 
 /**
@@ -811,6 +829,50 @@ function signalementReglageHtml() {
         <p class="ec-note ec-note--bloc">
             <button type="button" class="ec-lien" data-signalements>Voir ce qui a été signalé</button>
         </p>
+    </section>`;
+}
+
+/**
+ * LE DÉCOR DU MOMENT — « Les deux : un réglage global, et l'élève peut encore
+ * jouer. »
+ *
+ * RÉMY : « j'aimerai bien que ce soit moi qui choissisent le thème ». La
+ * question lui a été posée en trois réponses ; c'est celle-ci qu'il a prise.
+ *
+ * POURQUOI ICI ET NON DANS CHAQUE SÉANCE. Le décor de la séance existe aussi
+ * (fenêtre « Mode et barème »), et il reste le dernier mot. Mais changer de
+ * saison demanderait alors de rouvrir chaque parcours un par un — « sans
+ * avoir à ouvrir chacune », disait la réponse qu'il a choisie. Un réglage de
+ * site s'applique d'un coup, y compris aux séances DÉJÀ DONNÉES.
+ *
+ * ET L'ÉLÈVE GARDE SES BOUTONS. C'est la seconde moitié de son choix : le
+ * décor du moment est ce qu'il voit s'il ne touche à rien. S'il préfère
+ * Halloween en avril, c'est son écran.
+ */
+function decorDuMomentHtml() {
+    const su = vue.reglagesSite !== null;
+    const actuel = (vue.reglagesSite && vue.reglagesSite.decorDuMoment) || '';
+    const CHOIX = [
+        ['', '— Aucun décor —'],
+        ['noel', '🎄 Noël'],
+        ['halloween', '🎃 Halloween'],
+        ['paques', '🐣 Pâques'],
+        ['robot', '🤖 Robot']
+    ];
+    return `
+    <section class="ec-bloc ec-bloc--site">
+        <h3 class="ec-h3">Le décor du moment</h3>
+        <p class="ec-note ec-note--bloc">Il habille le parcours de TOUS vos élèves, y compris
+           les séances déjà données — vous n'avez aucun parcours à rouvrir. L'élève peut
+           encore en changer sur son écran ; une séance qui impose son propre décor
+           (fenêtre « Mode et barème ») l'emporte sur les deux.</p>
+        <label class="ec-champ-ligne">
+            <span class="ec-champ-mot">Décor</span>
+            <select class="cfg-input" data-decor-moment ${su ? '' : 'disabled'}>
+                ${CHOIX.map(([v, mot]) => `<option value="${v}"${
+        v === actuel ? ' selected' : ''}>${mot}</option>`).join('')}
+            </select>
+        </label>
     </section>`;
 }
 

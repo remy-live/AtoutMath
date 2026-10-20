@@ -5209,3 +5209,18 @@ le résultat n'existe pas** — 15 octobre 2026
   garde DEUX choses : ce qu'elle fait, et que quelqu'un l'appelle.** C'est le
   même oubli que l'outil déclaré hors de `meta.outils` — un objet parfait que
   personne ne va chercher.
+
+**`??` ne distingue pas « nul » de « absent », et l'épreuve accuse le bon code** — 21 octobre 2026
+
+- *Ce que je voulais faire* : vérifier qu'un parcours rangé à la racine porte
+  `folder_id = NULL` au serveur, et non la chaîne « root ».
+- *Ce qui a coûté* : un aller-retour complet du harnais PHP. `$ligne['folder_id']
+  ?? 'pas nul'` rend `'pas nul'` quand la colonne vaut **NULL** — c'est-à-dire
+  exactement quand le logiciel a raison. L'épreuve échouait sur la bonne
+  valeur, et le message disait « reçu : 'absent' » pour une ligne parfaitement
+  présente. J'ai cherché dans la route avant de regarder l'épreuve.
+- *Combien de fois* : |
+- *Ce qui manque* : une règle, de la même famille que le `+` au lieu
+  d'`array_merge` déjà payé dans ce fichier. **Quand on mesure une colonne qui
+  peut valoir NULL, on écrit `array_key_exists(…) && … === null`, jamais `??`.**
+  Les deux opérateurs ont l'air de dire ce qu'on pense et disent autre chose.

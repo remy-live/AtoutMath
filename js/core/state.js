@@ -696,8 +696,19 @@ export const state = {
         this.saveTeacherPaths();
     },
 
-    saveTeacherFolders() {
+    /**
+     * @param {object} [o]
+     * @param {boolean} [o.monter] — `false` quand c'est le SERVEUR qui vient de
+     *   nous donner ces dossiers. Sans ce frein, redescendre la bibliothèque
+     *   déclencherait la montée des mêmes dossiers deux secondes plus tard :
+     *   un aller-retour par démarrage, pour rien.
+     */
+    saveTeacherFolders(o = {}) {
         if (profileStore) profileStore.set('teacherFolders', this.teacherFolders);
+        if (o.monter === false) {
+            document.dispatchEvent(new CustomEvent('teacherFolders_recus'));
+            return;
+        }
         document.dispatchEvent(new CustomEvent('teacherFolders_updated'));
     }
 };

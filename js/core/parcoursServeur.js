@@ -124,7 +124,11 @@ export async function monterUnParcours(parcours) {
     const sceau = empreinte(aEnvoyer);
     if (dejaMonte.get(parcours.id) === sceau) return { monte: true };
 
-    const r = await auServeur('/teacher/paths', { action: 'save', path: aEnvoyer });
+    // LE DOSSIER À CÔTÉ DU PARCOURS, et non dedans : `data` est ce que l'élève
+    // reçoit. Voir la colonne `paths.folder_id`.
+    const r = await auServeur('/teacher/paths', {
+        action: 'save', path: aEnvoyer, folderId: parcours.folderId || 'root'
+    });
     if (r.erreur) return { monte: false, erreur: r.erreur };
     dejaMonte.set(parcours.id, sceau);
     await globalStore.set(CLE_MONTEE, Object.fromEntries(dejaMonte)).catch(() => {});
@@ -255,13 +259,17 @@ export async function ramenerLaBibliotheque() {
             id: brut.id,
             name: brut.name || parcours.name,
             data: parcours,
-            folderId: brut.folderId || 'root',
+            // LE DOSSIER VIENT DE SA COLONNE, pas du parcours : c'est une
+            // donnée de rangement, elle n'a jamais été dans `data`. On lit
+            // quand même `brut.folderId` derrière, pour les quelques entrées
+            // qu'une version d'avant y aurait laissé traîner.
+            folderId: ligne.folder_id || brut.folderId || null,
             timestamp: brut.timestamp || Date.now()
         };
 
         const rang = rangDe.get(brut.id);
         if (rang === undefined) {
-            state.teacherPaths.push(fraiche);
+            state.teacherPaths.push({ ...fraiche, folderId: fraiche.folderId || 'root' });
             // L'EMPREINTE DE CE QU'ON VIENT DE POSER, pas de ce qui est arrivé :
             // `normalizePath` a pu compléter des champs, et retenir l'autre
             // ferait croire, au démarrage suivant, à une retouche locale.
@@ -288,12 +296,56 @@ export async function ramenerLaBibliotheque() {
             dejaMonte.set(brut.id, sceauDeParcours(fraiche));
         }
     }
+    // ── LES DOSSIERS REDESCENDENT AVEC LA BIBLIOTHÈQUE ────────────────────
+    //
+    // RÉMY : « j'ai créé des dossiers pour y mettre des parcours à ma session
+    // précédente, il ne sont pas restés ». Les parcours revenaient, leur
+    // rangement non : la liste des dossiers n'existait que dans le navigateur.
+    //
+    // ON AJOUTE, ON N'ÉCRASE PAS. Un dossier créé ici et pas encore monté — la
+    // montée est différée de deux secondes — disparaîtrait au premier
+    // rafraîchissement, c'est-à-dire pendant qu'on le remplit. Le serveur
+    // complète ce qu'on a ; il ne le remplace pas.
+    const dossiersRecus = Array.isArray(r.dossiers) ? r.dossiers : [];
+    let dossiersAjoutes = 0;
+    if (dossiersRecus.length) {
+        const connus = new Set((state.teacherFolders || []).map(f => f && f.id));
+        for (const d of dossiersRecus) {
+            if (!d || !d.id || connus.has(d.id)) continue;
+            state.teacherFolders.push({
+                id: String(d.id), name: String(d.name || 'Dossier'),
+                timestamp: Number(d.timestamp) || Date.now(),
+                replie: !!d.replie
+            });
+            dossiersAjoutes++;
+        }
+        if (dossiersAjoutes) state.saveTeacherFolders({ monter: false });
+    }
+
     if (ramenes || rafraichis) state.saveTeacherPaths();
     if (ramenes || rafraichis || gardes) {
         await globalStore.set(CLE_MONTEE, Object.fromEntries(dejaMonte)).catch(() => {});
     }
     if (jetes) await globalStore.set(CLE_MONTEE, Object.fromEntries(dejaMonte)).catch(() => {});
-    return { ramenes, rafraichis, gardes, jetes, erreur: '' };
+    return { ramenes, rafraichis, gardes, jetes, dossiers: dossiersAjoutes, erreur: '' };
+}
+
+/**
+ * MONTER LA LISTE DES DOSSIERS.
+ *
+ * ELLE PART ENTIÈRE, et c'est le plus simple des trois choix possibles : elle
+ * tient en quelques lignes, elle n'a pas d'historique à ménager, et un dossier
+ * supprimé doit disparaître des autres postes — ce qu'une liste complète dit
+ * sans avoir à envoyer une suppression à part.
+ */
+export async function monterLesDossiers() {
+    if (!enPosteDeProf()) return { monte: false };
+    const liste = (state.teacherFolders || [])
+        .filter(f => f && f.id)
+        .map(f => ({ id: f.id, name: f.name || 'Dossier',
+            timestamp: f.timestamp || 0, replie: !!f.replie }));
+    const r = await auServeur('/teacher/paths', { action: 'dossiers', dossiers: liste });
+    return { monte: !r.erreur, erreur: r.erreur || '' };
 }
 
 /**
@@ -464,6 +516,7 @@ export async function retirerDuServeur(parcours, classId, studentId = '') {
  * requêtes. Deux secondes après la dernière retouche suffisent.
  */
 let minuteur = null;
+let minuteurDossiers = null;
 let veille = false;
 
 export function veillerSurLaBibliotheque() {
@@ -473,6 +526,14 @@ export function veillerSurLaBibliotheque() {
         if (!enPosteDeProf()) return;
         clearTimeout(minuteur);
         minuteur = setTimeout(() => { monterLaBibliotheque(); }, 2000);
+    });
+    // LES DOSSIERS ONT LEUR PROPRE BATTEMENT, parce qu'ils ont leur propre
+    // avis : renommer un dossier ne touche aucun parcours, et n'aurait donc
+    // rien envoyé si l'on s'était accroché au seul avis des parcours.
+    document.addEventListener('teacherFolders_updated', () => {
+        if (!enPosteDeProf()) return;
+        clearTimeout(minuteurDossiers);
+        minuteurDossiers = setTimeout(() => { monterLesDossiers(); }, 2000);
     });
 }
 

@@ -268,3 +268,58 @@ test('ET LES BOUTONS DE L\'ÉLÈVE SE CACHENT RANGÉE PAR RANGÉE', () => {
     assert.match(corps, /if \(!decorImpose\(policy\)\) \{/);
     assert.match(corps, /if \(!groupes\.length\) return null;/);
 });
+
+// ── 6 · LE DÉCOR DU MOMENT, POSÉ PAR LE PROFESSEUR ──────────────────────────
+//
+// RÉMY : « j'aimerai bien que ce soit moi qui choissisent le thème ». La
+// question lui a été posée en trois réponses ; il a pris « Les deux : un
+// réglage global, et l'élève peut encore jouer ».
+//
+// MESURÉ de bout en bout (tools/decorDuMoment.mjs) : le professeur pose
+// « noel » dans sa zone, le réglage public le rend, et la carte d'un élève
+// QUI N'A RIEN IMPOSÉ ni rien choisi sort en « duo-path decor decor--noel »
+// avec ses six ornements.
+
+test('« JE N\'AI RIEN CHOISI » N\'EST PAS « J\'AI CHOISI SANS DÉCOR »', () => {
+    // LA DIFFÉRENCE PORTE TOUT LE RÉGLAGE. Rendre « aucun » dans les deux cas
+    // rendait le choix du professeur invisible pour tout élève n'ayant jamais
+    // touché aux boutons — c'est-à-dire pour presque tous.
+    assert.match(PV, /function decorChoisiIci\(\) \{/);
+    const corps = PV.slice(PV.indexOf('function decorChoisiIci() {'),
+        PV.indexOf('\n}', PV.indexOf('function decorChoisiIci() {')));
+    assert.match(corps, /return DECORS\.some\(d => d\.id === v\) \? v : null;/);
+    assert.ok(!/DECOR_PAR_DEFAUT/.test(corps),
+        'un élève qui n\'a rien choisi répond « aucun décor »');
+});
+
+test('ET L\'ORDRE EST : LA SÉANCE, PUIS L\'ÉLÈVE, PUIS LE PROFESSEUR', () => {
+    // Une séance qui impose l'emporte sur tout — c'est le cas de
+    // l'interrogation. Vient ensuite ce que l'élève a choisi sur SON écran :
+    // c'est la moitié « l'élève peut encore jouer ». Et en dernier le décor du
+    // moment, qui est ce qu'il voit s'il ne touche à rien.
+    const corps = PV.slice(PV.indexOf('function getPathDecor() {'),
+        PV.indexOf('\n}', PV.indexOf('function getPathDecor() {')));
+    assert.match(corps, /return decorChoisiIci\(\) \|\| decorDuMoment\(\) \|\| DECOR_PAR_DEFAUT;/);
+    assert.match(PV, /return decorImpose\(policy\) \|\| getPathDecor\(\);/);
+    // LE DÉCOR DU MOMENT VIENT DU SERVEUR, et non d'un réglage de ce poste :
+    // c'est ce qui le fait s'appliquer aux séances DÉJÀ DONNÉES, sans en
+    // rouvrir aucune.
+    assert.match(PV, /import \{ reglageSite \} from '\.\.\/core\/reglagesSite\.js';/);
+    const moment = PV.slice(PV.indexOf('function decorDuMoment() {'),
+        PV.indexOf('\n}', PV.indexOf('function decorDuMoment() {')));
+    assert.match(moment, /const v = reglageSite\('decorDuMoment'\);/);
+    assert.match(moment, /return DECORS\.some\(d => d\.id === v\) \? v : null;/);
+});
+
+test('LE PROFESSEUR LE CHOISIT DANS SA ZONE, ET IL EST DIT CE QU\'IL FAIT', () => {
+    const EC = lire('js/ui/espaceClasses.js');
+    assert.match(EC, /function decorDuMomentHtml\(\) \{/);
+    assert.match(EC, /\$\{decorDuMomentHtml\(\)\}/, 'la section n\'est posée nulle part');
+    assert.match(EC, /data-decor-moment/);
+    // ET IL DIT CE QU'IL FAIT. Un menu sans conséquence écrite est un menu
+    // qu'on bascule pour voir — celui-ci change l'écran de toute une classe.
+    assert.match(EC, /y compris\s*\n?\s*les séances déjà données/);
+    // On croit le SERVEUR et non le menu : la route rend ce qu'elle a écrit.
+    assert.match(EC, /reglagesDuSite\(\{ decorDuMoment: choisi \}\)/);
+    assert.match(EC, /noterReglagesSite\(vue\.reglagesSite\);/);
+});

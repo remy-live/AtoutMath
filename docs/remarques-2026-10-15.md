@@ -1701,3 +1701,72 @@ ne font qu'annoncer la structure.
 
 MESURÉ par le chemin de l'élève, sur l'exercice qu'il avait photographié :
 **239 mots à l'écran avant, 12 au repos après** — plus un exemple qui s'écrit.
+
+## 13. Les dossiers de parcours qui ne restent pas — 21 octobre
+
+> « j'ai créé des dossiers pour y mettre des parcours à ma session précédente,
+> il ne sont pas restés »
+
+Un DÉFAUT, et de la même famille que celui des classes oubliées : ce qu'on a
+rangé doit se retrouver. Un rangement qui disparaît est pire qu'une absence de
+rangement — on refait le travail, et la deuxième fois on n'y croit plus.
+
+« À ma session précédente » est le mot important : les dossiers ont survécu
+assez longtemps pour qu'il les remplisse, et ils n'ont pas survécu à la
+fermeture. C'est donc l'ENREGISTREMENT qu'on va regarder, pas l'affichage.
+
+## 14. Deux demandes pendant le travail sur les dossiers — 21 octobre
+
+> « j'aimerai bien que ce soit moi qui choissisent le thème »
+
+Réponse à la question posée : **« Les deux : un réglage global, et l'élève peut
+encore jouer. »** Donc un décor du moment, rangé dans son compte, qui s'applique
+à toutes ses séances sans qu'il ait à ouvrir chacune — et l'élève garde ses
+boutons, sauf là où une séance impose vraiment.
+
+> « J'aimerai bien des exercices pour décomposer un nombre et pgcd et ppcm
+> niveau 3ème. Des exercices d'application direct et des petits problèmes »
+
+Trois notions, deux formes chacune. « Application directe » et « petits
+problèmes » ne sont pas deux difficultés du même exercice : ce sont deux
+compétences. Décomposer 360 est une technique ; savoir que « des paquets
+identiques, le plus gros possible » appelle le PGCD et que « deux cars qui
+repartent ensemble » appelle le PPCM est le vrai travail de troisième — et
+c'est celui qui manque au contrôle.
+
+**Ce qui a été fait** :
+
+- **MESURÉ AVANT** (`tools/dossiersDeParcours.mjs`, le chemin complet : créer,
+  ranger, vider le navigateur, recharger) : le serveur ne rendait que
+  `["id","name","data","updated_at","donne"]`. Ni le dossier d'un parcours, ni
+  la liste des dossiers. Après vidage : `dossiers: []`, et TOUS les parcours
+  revenus à la racine. Le rangement n'avait jamais quitté le navigateur.
+- **Et c'était écrit noir sur blanc dans le code** : « le `folderId` et le
+  `timestamp` ne partent pas — ce sont des choix de rangement propres à chaque
+  machine ». Une décision prise, assumée, et fausse. Rémy l'avait déjà
+  tranchée pour les classes : « la référence est ce qui est sur la base de
+  données prioritairement ».
+- **La colonne `paths.folder_id`** porte le dossier d'un parcours, à CÔTÉ du
+  parcours et non dedans : `data` est ce que l'élève reçoit, un rangement n'y
+  a rien à faire. **La liste des dossiers** voyage dans `reglages`, sous
+  l'identifiant du professeur — pas de table à elle : un dossier porte un nom,
+  un rang et un pli, rien qu'on interroge, rien qu'on joigne.
+- **Deux pièges fermés en route.** L'empreinte d'un parcours ne comptait pas
+  son dossier : déplacer un parcours ne changeait donc rien, `monterUnParcours`
+  répondait « déjà monté », et le déplacement ne partait jamais. Et la descente
+  AJOUTE les dossiers au lieu de les remplacer : la montée est différée de deux
+  secondes, donc un dossier qu'on vient de créer disparaîtrait au premier
+  rafraîchissement — c'est-à-dire pendant qu'on le remplit.
+- **MESURÉ APRÈS**, même trajet : le serveur rend `folder_id` et la liste ;
+  après vidage, `dossiers: ["Sixièmes"]` et « Révisions » est dans son dossier.
+
+**Et le décor du moment** — sa réponse : « Les deux : un réglage global, et
+l'élève peut encore jouer. » C'est un réglage de SITE, posé dans sa zone
+professeur, donc il s'applique aux séances **déjà données** sans en rouvrir
+aucune. L'ordre est : ce qu'une séance IMPOSE, puis ce que l'élève a choisi sur
+son écran, puis le décor du moment. La différence qui porte tout : « je n'ai
+rien choisi » n'est plus « j'ai choisi sans décor » — sinon le réglage du
+professeur restait invisible pour tout élève n'ayant jamais touché aux boutons,
+c'est-à-dire presque tous. MESURÉ de bout en bout : le professeur pose
+« Noël », et la carte d'un élève qui n'a rien imposé ni rien choisi sort en
+`decor--noel` avec ses six ornements.

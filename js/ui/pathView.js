@@ -18,6 +18,7 @@ import { pleinEcranSiSeanceImposee } from './fullscreen.js';
 import { estRattache } from '../core/portail.js';
 import { getExerciseById } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
+import { reglageSite } from '../core/reglagesSite.js';
 import { hydratePath, normalizePath } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
 import { journal } from '../core/journal.js';
@@ -221,11 +222,37 @@ export const DECORS = [
         ornements: ['⚙️', '🔧', '🤖', '🔌', '⚡', '⚙️'] }
 ];
 
-function getPathDecor() {
+/**
+ * CE QUE L'ÉLÈVE A CHOISI SUR CE POSTE — ou `null` s'il n'a rien choisi.
+ *
+ * `null` ET NON `aucun`, et la différence porte tout le réglage de Rémy. « Je
+ * n'ai rien choisi » doit laisser passer le décor du moment ; « j'ai choisi
+ * sans décor » doit le refuser. Rendre `aucun` dans les deux cas rendait le
+ * réglage du professeur invisible pour tout élève n'ayant jamais touché aux
+ * boutons — c'est-à-dire pour presque tous.
+ */
+function decorChoisiIci() {
     try {
         const v = localStorage.getItem(DECOR_KEY);
-        return DECORS.some(d => d.id === v) ? v : DECOR_PAR_DEFAUT;
-    } catch (e) { return DECOR_PAR_DEFAUT; }
+        return DECORS.some(d => d.id === v) ? v : null;
+    } catch (e) { return null; }
+}
+
+/**
+ * LE DÉCOR DU MOMENT, posé par le professeur pour tout le site.
+ *
+ * RÉMY, au choix proposé : « Les deux : un réglage global, et l'élève peut
+ * encore jouer. » Il le pose une fois dans sa zone ; il vaut pour toutes les
+ * séances, y compris celles déjà données — sans en rouvrir aucune.
+ */
+function decorDuMoment() {
+    const v = reglageSite('decorDuMoment');
+    return DECORS.some(d => d.id === v) ? v : null;
+}
+
+/** Le décor effectif sur ce poste : ce que l'élève a choisi, sinon celui du moment. */
+function getPathDecor() {
+    return decorChoisiIci() || decorDuMoment() || DECOR_PAR_DEFAUT;
 }
 
 /** Retient le décor choisi sur ce poste, sans rien redessiner. */

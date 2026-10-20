@@ -29,6 +29,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
     formeEnvoyee, sceauDeParcours, quiGagne, fondreDansLeLocal
 } from '../js/core/arbitrageParcours.js';
@@ -127,27 +128,50 @@ test('AUCUNE HORLOGE N\'INTERVIENT', () => {
     assert.equal(quiGagne({ local: recent, serveur: formeEnvoyee(vieux), connu: undefined }), 'rien');
 });
 
-test('RANGER DANS UN DOSSIER N\'EST PAS UNE MODIFICATION', () => {
-    // Le `folderId` ne part pas au serveur : c'est un choix de rangement propre
-    // à chaque poste. Le compter comme une différence ferait remonter un
-    // parcours à chaque fois qu'on le déplace dans le tiroir — et, pire, le
-    // ferait redescendre sans dossier sur l'autre machine.
+test('RANGER DANS UN DOSSIER EST UNE MODIFICATION — et ça a changé', () => {
+    // CETTE ÉPREUVE DISAIT LE CONTRAIRE, et c'est Rémy qui a tranché : « j'ai
+    // créé des dossiers pour y mettre des parcours à ma session précédente, il
+    // ne sont pas restés ». Le `folderId` était traité comme un choix propre à
+    // chaque poste, donc il ne partait pas, donc il ne revenait pas.
+    //
+    // IL EST DANS L'EMPREINTE, bien qu'il ne soit PAS dans la forme envoyée :
+    // il voyage à côté, dans sa colonne. Sans cela, déplacer un parcours ne
+    // changeait pas l'empreinte, `monterUnParcours` répondait « déjà monté »,
+    // et le déplacement ne quittait jamais la machine.
     const range = enveloppe({ etapes: 2, dossier: 'sixiemes' });
     const racine = enveloppe({ etapes: 2, dossier: 'root' });
-    assert.equal(sceauDeParcours(range), sceauDeParcours(racine));
-    assert.equal(quiGagne({ local: range, serveur: formeEnvoyee(racine), connu: undefined }), 'rien');
+    assert.notEqual(sceauDeParcours(range), sceauDeParcours(racine));
+    // ET LA FORME ENVOYÉE, ELLE, NE CHANGE PAS : `data` est le parcours que
+    // l'élève reçoit, et un rangement n'y a rien à faire.
+    assert.deepEqual(formeEnvoyee(range), formeEnvoyee(racine));
 });
 
-test('LE DOSSIER D\'ICI SURVIT QUAND LE SERVEUR GAGNE', () => {
-    // Sinon le parcours que Rémy avait rangé dans « Sixièmes » sur ce poste
-    // remonte à la racine à chaque démarrage, et son classement se défait sans
-    // qu'il comprenne pourquoi.
+test('LE DOSSIER DU SERVEUR L\'EMPORTE — c\'est lui la référence', () => {
+    // Rémy, à propos des classes : « la référence est ce qui est sur la base de
+    // données prioritairement ». Un dossier choisi au collège doit descendre à
+    // la maison ; garder celui d'ici à tout prix — ce que faisait la version
+    // d'avant — l'en empêchait.
     const locale = enveloppe({ etapes: 2, dossier: 'sixiemes' });
-    const fraiche = enveloppe({ etapes: 3, dossier: 'root' });
+    const fraiche = enveloppe({ etapes: 3, dossier: 'cinquiemes' });
     const fondue = fondreDansLeLocal(locale, fraiche);
-    assert.equal(fondue.folderId, 'sixiemes');
+    assert.equal(fondue.folderId, 'cinquiemes');
     assert.equal(fondue.data.steps.length, 3, 'le contenu, lui, vient bien du serveur');
     assert.equal(fondue.id, locale.id);
+});
+
+test('MAIS UN SERVEUR QUI NE DIT RIEN NE VIDE PAS LES DOSSIERS', () => {
+    // LE CAS DE LA PREMIÈRE MISE À JOUR : les entrées montées par une version
+    // d'avant n'ont pas de `folder_id`. Prendre « rien » pour une réponse
+    // renverrait TOUTE la bibliothèque à la racine d'un coup — c'est-à-dire
+    // referait, en une fois, le dégât qu'on corrige.
+    const locale = enveloppe({ etapes: 2, dossier: 'sixiemes' });
+    const muette = { ...enveloppe({ etapes: 3 }), folderId: null };
+    assert.equal(fondreDansLeLocal(locale, muette).folderId, 'sixiemes');
+    const vide = { ...enveloppe({ etapes: 3 }) };
+    delete vide.folderId;
+    assert.equal(fondreDansLeLocal(locale, vide).folderId, 'sixiemes');
+    // Et sans rien d'aucun côté, la racine.
+    assert.equal(fondreDansLeLocal(null, muette).folderId, 'root');
 });
 
 test('fondreDansLeLocal supporte une entrée locale cassée', () => {
@@ -186,4 +210,57 @@ test('formeEnvoyee supporte le vide', () => {
     assert.equal(formeEnvoyee(null), null);
     assert.equal(formeEnvoyee('un texte'), null);
     assert.equal(sceauDeParcours(null), null);
+});
+
+// ──────────────────────── LE TRAJET DU RANGEMENT, DE BOUT EN BOUT ───────────
+//
+// RÉMY : « j'ai créé des dossiers pour y mettre des parcours à ma session
+// précédente, il ne sont pas restés ».
+//
+// MESURÉ avant (tools/dossiersDeParcours.mjs) : le serveur rendait
+// ["id","name","data","updated_at","donne"] — ni le dossier d'un parcours, ni
+// la liste des dossiers. Après vidage du navigateur : `dossiers: []`, et tous
+// les parcours revenus à la racine.
+//
+// CES GARDES SONT TEXTUELLES, et c'est assumé : le trajet traverse le réseau
+// et une base, donc il se mesure au navigateur (`tools/dossiersDeParcours.mjs`)
+// et au harnais PHP (`tools/testApi.php`). Ce qu'on garde ici, ce sont les
+// quatre lignes sans lesquelles ces deux mesures ne peuvent pas réussir — et
+// dont aucune ne proteste quand elle disparaît.
+
+test('LE DOSSIER PART AVEC LE PARCOURS, ET REVIENT DE SA COLONNE', () => {
+    const PS = readFileSync(new URL('../js/core/parcoursServeur.js', import.meta.url), 'utf8');
+    // IL MONTE — à côté du parcours, pas dedans.
+    assert.match(PS, /action: 'save', path: aEnvoyer, folderId: parcours\.folderId \|\| 'root'/);
+    // IL DESCEND — depuis `folder_id`, la colonne, et non depuis `data`.
+    assert.match(PS, /folderId: ligne\.folder_id \|\| brut\.folderId \|\| null,/);
+});
+
+test('LA LISTE DES DOSSIERS MONTE ET DESCEND, ET ELLE NE S\'ÉCRASE PAS', () => {
+    const PS = readFileSync(new URL('../js/core/parcoursServeur.js', import.meta.url), 'utf8');
+    assert.match(PS, /export async function monterLesDossiers\(\)/);
+    assert.match(PS, /action: 'dossiers', dossiers: liste/);
+    // ON AJOUTE, ON N'ÉCRASE PAS. Un dossier créé ici et pas encore monté — la
+    // montée est différée de deux secondes — disparaîtrait au premier
+    // rafraîchissement, c'est-à-dire pendant qu'on le remplit.
+    const descente = PS.slice(PS.indexOf('const dossiersRecus'),
+        PS.indexOf('if (ramenes || rafraichis) state.saveTeacherPaths();'));
+    assert.match(descente, /if \(!d \|\| !d\.id \|\| connus\.has\(d\.id\)\) continue;/);
+    assert.ok(!/state\.teacherFolders = /.test(descente),
+        'la descente remplace la liste au lieu de la compléter');
+    // ET ELLE NE REPART PAS AUSSITÔT : sans ce frein, redescendre la
+    // bibliothèque déclencherait la montée des mêmes dossiers deux secondes
+    // plus tard, un aller-retour par démarrage, pour rien.
+    assert.match(descente, /state\.saveTeacherFolders\(\{ monter: false \}\)/);
+});
+
+test('ET LES DOSSIERS ONT LEUR PROPRE BATTEMENT', () => {
+    // Renommer un dossier ne touche AUCUN parcours : accroché au seul avis des
+    // parcours, le renommage n'aurait jamais quitté la machine.
+    const PS = readFileSync(new URL('../js/core/parcoursServeur.js', import.meta.url), 'utf8');
+    assert.match(PS, /document\.addEventListener\('teacherFolders_updated', \(\) => \{/);
+    assert.match(PS, /minuteurDossiers = setTimeout\(\(\) => \{ monterLesDossiers\(\); \}, 2000\);/);
+    const ST = readFileSync(new URL('../js/core/state.js', import.meta.url), 'utf8');
+    assert.match(ST, /saveTeacherFolders\(o = \{\}\) \{/);
+    assert.match(ST, /if \(o\.monter === false\) \{/);
 });

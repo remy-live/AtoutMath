@@ -729,11 +729,48 @@ function handleTeacherPaths(): void
             fail(403, 'path_not_yours', "Ce parcours appartient à un autre professeur.");
         }
 
+        // LE DOSSIER VOYAGE À CÔTÉ DU PARCOURS, et non dedans : `data` est le
+        // parcours lui-même, celui que l'élève reçoit, et le rangement de la
+        // bibliothèque n'a rien à y faire. Une colonne pour une donnée de
+        // rangement, c'est aussi ce qui permet de la lire sans décoder le JSON.
+        $dossier = trim((string) ($body['folderId'] ?? $path['folderId'] ?? ''));
+        if ($dossier === '' || $dossier === 'root') $dossier = null;
+        if ($dossier !== null && mb_strlen($dossier) > 64) $dossier = null;
+
         db()->prepare(
-            'INSERT INTO paths (id, teacher_id, name, data) VALUES (?, ?, ?, ?) '
-            . sqlSurConflit('id', ['name', 'data'])
-        )->execute([$id, $teacher['id'], $path['name'], json_encode($path, JSON_UNESCAPED_UNICODE)]);
+            'INSERT INTO paths (id, teacher_id, name, data, folder_id) VALUES (?, ?, ?, ?, ?) '
+            . sqlSurConflit('id', ['name', 'data', 'folder_id'])
+        )->execute([$id, $teacher['id'], $path['name'],
+            json_encode($path, JSON_UNESCAPED_UNICODE), $dossier]);
         respond(['pathId' => $id]);
+    }
+
+    // ─── LA LISTE DES DOSSIERS ────────────────────────────────────────────
+    //
+    // ELLE N'A PAS DE TABLE À ELLE, et c'est un choix mesuré : un dossier
+    // porte un nom, un rang et un pli — rien qu'on interroge, rien qu'on
+    // joigne. Une table de plus aurait demandé une route de plus, une
+    // migration de plus et une résolution de conflit de plus pour trois
+    // champs qui voyagent toujours ensemble. Le réglage est rangé SOUS
+    // L'IDENTIFIANT DU PROFESSEUR : un second professeur sur ce serveur
+    // n'héritera pas des dossiers du premier.
+    if ($action === 'dossiers') {
+        $liste = [];
+        foreach ((array) ($body['dossiers'] ?? []) as $d) {
+            if (!is_array($d) || empty($d['id']) || !isset($d['name'])) continue;
+            $liste[] = [
+                'id' => mb_substr((string) $d['id'], 0, 64),
+                'name' => mb_substr((string) $d['name'], 0, 120),
+                'timestamp' => (int) ($d['timestamp'] ?? 0),
+                'replie' => !empty($d['replie']),
+            ];
+            // ON BORNE, comme partout : une liste sans fin arrivant d'un
+            // navigateur n'est pas une liste, c'est une surface d'attaque.
+            if (count($liste) >= 200) break;
+        }
+        ecrireReglage('prof.' . $teacher['id'] . '.dossiers',
+            json_encode($liste, JSON_UNESCAPED_UNICODE));
+        respond(['ok' => true, 'combien' => count($liste)]);
     }
 
     // ─── LA CORBEILLE ─────────────────────────────────────────────────────
@@ -799,7 +836,7 @@ function handleTeacherPaths(): void
     // jamais au moment de gérer. On demandait sinon une requête par parcours,
     // soit trente allers-retours pour une fenêtre qui s'ouvre : la liste les
     // porte donc toutes, en une jointure comptée.
-    $stmt = db()->prepare('SELECT p.id, p.name, p.data, p.updated_at,
+    $stmt = db()->prepare('SELECT p.id, p.name, p.data, p.updated_at, p.folder_id,
                                (SELECT COUNT(*) FROM assignments a WHERE a.path_id = p.id) AS donne
                             FROM paths p
                             WHERE p.teacher_id = ? AND p.supprime_le IS NULL
@@ -835,6 +872,12 @@ function handleTeacherPaths(): void
             $stmt->fetchAll()
         ),
         'corbeille' => $c->fetchAll(),
+        // LES DOSSIERS DESCENDENT AVEC LA BIBLIOTHÈQUE, parce qu'ils ne
+        // servent qu'à la ranger : deux appels pour deux moitiés du même
+        // écran, c'est une moitié qui arrive sans l'autre un jour sur dix.
+        'dossiers' => json_decode(
+            lireReglage('prof.' . $teacher['id'] . '.dossiers', '[]') ?? '[]', true
+        ) ?: [],
         // COMBIEN DE JOURS ELLE GARDE, dit par le serveur et non recopié dans
         // l'écran : deux nombres à tenir d'accord finissent toujours par
         // diverger, et c'est celui qui EFFACE qui a raison.
@@ -2628,6 +2671,20 @@ function handleReglages(): void
         // Savoir que le bouton existe n'apprend rien à personne ; c'est ce qu'on
         // voit en regardant l'écran.
         'signalement' => lireReglage('site.signalement', '0') === '1',
+        // LE DÉCOR DU MOMENT — Rémy, au choix proposé : « Les deux : un
+        // réglage global, et l'élève peut encore jouer. »
+        //
+        // PUBLIC POUR LA MÊME RAISON QUE LES TROIS AUTRES : il décide de
+        // l'allure de l'écran de l'élève, et l'application doit le savoir
+        // avant d'avoir ouvert quoi que ce soit. Savoir qu'on est en décor de
+        // Noël n'apprend rien à personne — c'est ce qu'on voit en regardant.
+        //
+        // UN RÉGLAGE DE SITE ET NON DE SÉANCE, et c'est tout l'intérêt : il
+        // s'applique aux séances DÉJÀ DONNÉES, sans en rouvrir aucune. C'est
+        // ce que Rémy a demandé mot pour mot — « sans avoir à ouvrir chacune ».
+        // Une séance qui impose son décor l'emporte quand même : voir
+        // `decorDeLaSeance`.
+        'decorDuMoment' => lireReglage('site.decorDuMoment', '') ?: '',
     ]]);
 }
 
@@ -2675,10 +2732,20 @@ function handleTeacherReglages(): void
     if (array_key_exists('signalement', $body)) {
         ecrireReglage('site.signalement', $body['signalement'] ? '1' : '0');
     }
+    // LE DÉCOR DU MOMENT. La liste est écrite ICI et non reprise du navigateur :
+    // un réglage qu'on accepte sans le lire est un réglage qui finit par porter
+    // ce qu'un autre a voulu. Une valeur inconnue efface le décor plutôt que de
+    // s'installer — « je ne sais pas » vaut mieux que « n'importe quoi ».
+    if (array_key_exists('decorDuMoment', $body)) {
+        $d = (string) $body['decorDuMoment'];
+        $connus = ['noel', 'halloween', 'paques', 'robot'];
+        ecrireReglage('site.decorDuMoment', in_array($d, $connus, true) ? $d : '');
+    }
     respond(['ok' => true, 'reglages' => [
         'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
         'inscriptionLibre' => lireReglage('site.inscriptionLibre', '0') === '1',
         'signalement' => lireReglage('site.signalement', '0') === '1',
+        'decorDuMoment' => lireReglage('site.decorDuMoment', '') ?: '',
     ]]);
 }
 
