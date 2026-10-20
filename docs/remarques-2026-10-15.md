@@ -1702,7 +1702,7 @@ ne font qu'annoncer la structure.
 MESURÉ par le chemin de l'élève, sur l'exercice qu'il avait photographié :
 **239 mots à l'écran avant, 12 au repos après** — plus un exemple qui s'écrit.
 
-## 13. Les dossiers de parcours qui ne restent pas — 21 octobre
+## 13. Les dossiers de parcours qui ne restent pas — 20 octobre
 
 > « j'ai créé des dossiers pour y mettre des parcours à ma session précédente,
 > il ne sont pas restés »
@@ -1715,7 +1715,7 @@ rangement — on refait le travail, et la deuxième fois on n'y croit plus.
 assez longtemps pour qu'il les remplisse, et ils n'ont pas survécu à la
 fermeture. C'est donc l'ENREGISTREMENT qu'on va regarder, pas l'affichage.
 
-## 14. Deux demandes pendant le travail sur les dossiers — 21 octobre
+## 14. Deux demandes pendant le travail sur les dossiers — 20 octobre
 
 > « j'aimerai bien que ce soit moi qui choissisent le thème »
 
@@ -1816,3 +1816,62 @@ c'est-à-dire presque tous. MESURÉ de bout en bout : le professeur pose
 Et deux gardes du dépôt ont rattrapé deux autres fautes avant moi : un exercice
 daté du lendemain, et une fraction écrite « 96/144 » sur le papier — où elle
 doit s'empiler, numérateur sur dénominateur.
+
+## 15. « bien trop difficile », et la progression de sixième — 20 octobre
+
+**Deux messages, dans cet ordre.** Le premier donne sa progression de sixième
+— dix-huit blocs, dans l'ordre de l'année — et demande explicitement :
+« Ne fais rien mais que devrait-on faire ? ». Le second, pendant que je
+regardais le catalogue :
+
+> « le décomposer pgcd et ppcm est bien trop difficile ! »
+
+### Ce que la mesure dit — les dix marches, relues une par une
+
+Les questions ont été ENGENDRÉES et LUES, pas devinées. Verdict :
+**l'exercice n'a pas de petit bain.** Chaque marche est au niveau d'un exercice
+de fin de chapitre, et la première est la plus dure de toutes.
+
+| Marche | Ce qu'elle demande vraiment |
+| --- | --- |
+| `premier` | « **91** est-il premier ? » — LE piège du chapitre (7 × 13), en première question. Puis 101, qui demande d'essayer 2, 3, 5, 7 et de savoir qu'on s'arrête à 10. |
+| `decomposer` | « Complète la décomposition de **198** » sur un squelette `2ᵃ × 3ᵇ × 11ᶜ`. Les lettres en exposant ajoutent une couche d'algèbre PAR-DESSUS l'arithmétique — et pendant ce temps le vrai travail (trouver QUELS premiers) est déjà fait dans l'énoncé. Dur à lire, et à côté de la cible. |
+| `recomposer` | 2 × 3 × 5 × 7 = 210, de tête, sans brouillon. |
+| `pgcd` · `ppcm` | PPCM(91 ; 143) = **1001** : trois facteurs premiers à multiplier de tête. PPCM(63 ; 84) = 252. Les décompositions sont données — c'est bien —, mais le produit final reste lourd. |
+| `entre-eux` | 132 et 198. |
+| `irreductible` | 63/84. |
+| `paquets` · `ensemble` · `carre` | 78 et 117 (PGCD 39 : il faut voir 39 = 3 × 13). Et trois difficultés empilées : lire, CHOISIR la notion, calculer. |
+
+**Il manque tout ce qui est en dessous de la méthode.** Pas une marche ne
+demande « 12 est-il divisible par 3 ? », « cite un diviseur de 20 », « 2 × 2 × 3
+= ? ». Une progression qui commence par la fin n'est pas une progression —
+et c'est exactement ce que Rémy a vu en une phrase.
+
+### Ce qu'il faudrait faire (à arbitrer avec lui)
+
+1. **Un temps 0, de quatre marches**, où la réponse s'atteint SANS méthode :
+   divisibilité par 2, 5, 10 ; « cite un diviseur de 20 » ; les diviseurs d'un
+   petit nombre ; « 7 est-il premier ? » sous 30.
+2. **Décomposer en DEUX gestes**, pas un : « par quel premier peut-on commencer
+   à diviser 84 ? », puis « 84 ÷ 2 = ? ». L'escalier, marche par marche. La
+   décomposition entière seulement sur 12, 18, 20, 24, 36.
+3. **Enlever les lettres `ᵃ ᵇ ᶜ`** : « Complète : 198 = 2^□ × 3^□ × 11^□ »,
+   les trous déjà en place, sans « donne a, b, c ».
+4. **PGCD et PPCM d'abord sur de petits couples** — (8 ; 12), (6 ; 9),
+   (10 ; 15) — qu'on trouve en LISTANT, avant toute décomposition. Le sens
+   avant la technique.
+5. **Lire la règle avant de l'appliquer** : « Dans 2²×3 et 2×3², quels facteurs
+   sont communs ? » avant de demander le produit.
+6. **Les problèmes du temps C sur de petits nombres** : la notion EST la
+   difficulté, l'arithmétique n'a pas à s'y ajouter.
+
+Et une question qui reste la sienne : faut-il garder les marches dures **après**
+les faciles dans le même exercice, ou les sortir dans un second exercice
+« pour aller plus loin » ?
+
+### La progression de sixième — gardée telle quelle
+
+Dix-huit blocs, dans son ordre. Elle n'est PAS une demande d'exercices : il
+demande ce qu'on devrait faire. Elle est relue bloc par bloc contre le
+catalogue (158 exercices tagués sixième) dans la réponse qui suit ce message ;
+ce qui en sortira de décidé reviendra ici.
