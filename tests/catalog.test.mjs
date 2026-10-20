@@ -194,6 +194,65 @@ test('AUCUN ÉNONCÉ N\'AFFICHE UNE FRACTION À LA BARRE OBLIQUE', async () => {
     assert.deepEqual(fautifs, []);
 });
 
+test('UN ÉNONCÉ N\'ÉCRIT PAS LES DEUX SIGNES MOINS', async () => {
+    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // VU À L'ÉCRAN, DANS UNE SEULE PHRASE : « On donne f(x) = 2x − 2. On part
+    // du point (0 ; -2)… » Le premier moins est le vrai (U+2212), écrit par la
+    // fonction qui compose l'expression ; le second est un trait d'union,
+    // parce que `${b}` sur le nombre −2 rend ce que JavaScript sait rendre.
+    // Ils n'ont ni la même longueur ni la même hauteur, et ils sont à vingt
+    // caractères l'un de l'autre.
+    //
+    // QUATRE EXERCICES SUR 244 ÉTAIENT DANS CE CAS, dont TROIS qui existaient
+    // déjà : « Réduire une expression » (« 3a et −2a donnent a ; 3 et -1
+    // donnent 2 ») et les deux « Calculer avec des puissances », dont
+    // l'explication écrivait « 10^(-8 − (-3)) » sous une démonstration qui
+    // écrivait « 10^(−8 − (−3)) ».
+    //
+    // LES TROIS AVAIENT LA MÊME CAUSE : le fichier possédait DÉJÀ sa fonction
+    // d'écriture, employée pour la démonstration et oubliée dans
+    // l'explication. La règle vit maintenant dans `js/core/signeMoins.js`.
+    //
+    // LA GARDE NE S'ALLUME QUE SI LE TEXTE EMPLOIE DÉJÀ LE VRAI MOINS : un
+    // énoncé qui n'écrit que des traits d'union est peut-être à corriger, mais
+    // il n'est pas INCOHÉRENT, et c'est l'incohérence qui s'apprend. Et l'on
+    // ne regarde que le tiret qui suit un blanc ou une ouvrante ET précède un
+    // chiffre : « a-t-il », « c'est-à-dire » et « 10-3 » n'ont rien à craindre.
+    const { generateurDeFiche } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+
+    const TIRET = /(^|[\s(\[;:=])-\d/;
+    const fautifs = [];
+    for (const exo of exercices) {
+        const g = generateurDeFiche(exo);
+        if (!g || typeof g.generate !== 'function') continue;
+        const marches = Array.isArray(exo.params && exo.params.marches) ? exo.params.marches : null;
+        const essais = marches ? marches.length * 3 : 15;
+        for (let i = 0; i < essais; i++) {
+            const reglages = marches
+                ? { ...exo.params, marches: [marches[i % marches.length]] }
+                : (exo.params || {});
+            let it;
+            try { it = g.generate(reglages, { rng: makeRng(`mm_${exo.id}_${i}`), index: i, total: essais }); }
+            catch { break; }
+            // LES BALISES PARTENT AVANT LA MESURE, et la parenthèse compte :
+            // écrite sans elle, la coupure ne portait que sur la SECONDE moitié
+            // de la concaténation, et les attributs du `html` — `data-c="-3,2"`,
+            // les styles en ligne — comptaient comme des énoncés. L'épreuve
+            // neuve est tombée là-dessus avant d'avoir servi une fois.
+            const t = (`${(it && it.prompt && (it.prompt.html || it.prompt.text)) || ''} `
+                + `${(it && it.explanation) || ''}`).replace(/<[^>]*>/g, ' ');
+            if (t.includes('\u2212') && TIRET.test(t)) {
+                fautifs.push(`${exo.id} : « ${t.match(TIRET)[0].trim()} » dans « ${t.trim().slice(0, 80)} »`);
+                break;
+            }
+        }
+    }
+    assert.deepEqual(fautifs, []);
+});
+
 test('UN ÉNONCÉ DE PAPIER NE SE RÉPÈTE PAS', async () => {
     // ─────────────────────────────────────────────────────────────────────────
     //

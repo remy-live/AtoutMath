@@ -79,6 +79,7 @@ export const CODES_EXERCICES = {
     'calc-detour-sprint':         'DJ',   // Détour express — le même, chrono
     'calc-detour-arcade':         'NB',   // attrape le détour — Nombre à Battre
     'alg-fonctions':              'FN',   // Les Fonctions : Image et Antécédent
+    'alg-fonction-repere':        'FT',   // Fonction Tracée
     'num-litteral-reduire':       'SR',   // Simplifier et Réduire
     'num-litteral-puissances':    'CR',   // Carrés, Cubes et Réduction
     'num-virgule':                'VD',   // La Virgule qui se décale

@@ -589,7 +589,12 @@ export const geometrieExercises = [
         printParams: { mode: 'placer', points: 6 }, activityId: 'repere',
         params: { relatifs: 'positives', max: 5, mode: 'placer' },
         motsClefs: ['relatifs', 'négatifs', 'abscisse', 'ordonnée', 'coordonnées'],
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        // ET IL VA JUSQU'À LA QUATRIÈME. Ce n'est pas un rappel : on ne trace
+        // pas une fonction dans un repère qu'on ne sait pas lire, et le bloc 12
+        // de la progression de quatrième de Rémy en a besoin tel quel. Le
+        // repérage s'arrêtait à la cinquième, donc le chapitre des fonctions
+        // n'avait rien pour s'y appuyer.
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Clique dans le repère à l'endroit indiqué par les coordonnées. On lit l'abscisse en premier. "
             + "Le réglage « Coordonnées » fait passer le repère dans les négatifs : attention alors aux signes."
     },
@@ -603,7 +608,9 @@ export const geometrieExercises = [
         printParams: { mode: 'lire', points: 6 }, activityId: 'repere-lecture',
         params: { relatifs: 'positives', max: 5, mode: 'lire' },
         motsClefs: ['relatifs', 'négatifs', 'abscisse', 'ordonnée', 'coordonnées'],
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        // Jusqu'à la quatrième, pour la même raison que « Placer un Point » :
+        // lire des coordonnées est le socle du tracé de fonction.
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Lis les coordonnées du point tracé et choisis le bon couple. "
             + "Avec « Coordonnées » sur les relatives, il ne faut plus oublier les signes."
     },
@@ -1836,7 +1843,11 @@ export const geometrieExercises = [
         cree: '2026-08-03',
         generatorId: 'geo.repere', activityId: 'repere-lecture',
         params: { relatifs: 'relatives', max: 5, mode: 'lire' },
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME] },
+        // LES QUATRE QUADRANTS VONT JUSQU'À LA QUATRIÈME, et c'est celui-là qui
+        // comptait le plus : une droite affine descend sous l'axe dès que son
+        // coefficient est négatif, et un élève qui n'a lu que des coordonnées
+        // positives ne sait pas où la suivre.
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Lis les coordonnées du point, sans oublier les signes."
     },
     {

@@ -1684,6 +1684,14 @@ const BASE = {
         descriptor: 'Remonter le programme de calcul à l\'envers pour retrouver le nombre de départ.',
         lesson: 'Chercher un antécédent, c\'est faire le chemin INVERSE. Calculer une image consiste à appliquer les opérations dans l\'ordre ; chercher un antécédent consiste à les DÉFAIRE dans l\'ordre inverse, en remplaçant chacune par son contraire. Pour f(x) = 3x − 5, le programme est « multiplie par 3, puis enlève 5 » ; pour remonter de 7, on commence par la fin : on ajoute 5 (on obtient 12), puis on divise par 3 (on obtient 4). Et l\'on vérifie : f(4) = 7. Toujours vérifier — c\'est gratuit, et cela attrape l\'erreur d\'ordre, qui est la plus fréquente.'
     },
+    'alg.fonction.graphique': {
+        label: 'Lire et placer un point de la droite',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['alg.fonction.image', 'geo.repere.relatifs'],
+        descriptor: 'Passer de l\'écriture d\'une fonction affine à son dessin, et retour.',
+        lesson: 'Une fonction affine se DESSINE, et son écriture dit tout du dessin. Les points de coordonnées (x ; f(x)) sont ALIGNÉS : ils forment une DROITE, et deux points suffisent donc à la tracer — le troisième ne sert qu\'à vérifier. Dans « f(x) = ax + b », les deux nombres se LISENT sur le dessin au lieu de se calculer. Le nombre tout seul, b, est l\'ordonnée du point où la droite coupe l\'axe VERTICAL : c\'est f(0), et c\'est le point de départ. Le nombre devant le x, a, est un PAS : un carreau vers la droite, et la droite monte de a carreaux — ou descend, si a est négatif. Avec ces deux-là, on trace sans aucun tableau de valeurs. Et dans l\'autre sens : l\'endroit où la droite coupe l\'axe HORIZONTAL est celui où f(x) = 0, ce qui est une équation à résoudre. Attention à ne pas confondre les deux axes — sur l\'un c\'est l\'abscisse qui est nulle, sur l\'autre c\'est l\'ordonnée.'
+    },
     // LE CHAPITRE « ÉQUATIONS » DE 4e NE DÉCLARAIT AUCUNE COMPÉTENCE.
     //
     // Il n'était pas « à venir » : il était structurellement inatteignable —

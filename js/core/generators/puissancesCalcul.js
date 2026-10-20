@@ -28,6 +28,7 @@
 // Module pur : ni DOM, ni horloge. Il se teste sous Node.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { relatif, relatifEnPar } from '../signeMoins.js';
 import { puissanceTexte, valeurPuissance, grouper } from '../puissances.js';
 import * as fx from '../maths/formule.js';
 import { garnirEtapesNombres } from '../maths/etapesNombres.js';
@@ -57,7 +58,12 @@ const EXPOSANTS = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5
  * ligne devenait intapable. C'est le piège du « ² » du barreau 3 de la
  * factorisation, et il ne se voit qu'en essayant de taper.
  */
-const nbT = (v) => (v < 0 ? '\u2212' + Math.abs(v) : String(v));
+// `nbT` ÉTAIT ÉCRIT ICI ET N'ÉTAIT EMPLOYÉ QUE POUR LES LIGNES DE DÉMONSTRATION.
+// Les explications et les indices, juste à côté, interpolaient le nombre nu :
+// l'élève voyait « 10^(−8 − (−3)) » dans la démonstration et
+// « 10^(-8 − (-3)) » dans l'explication, deux signes moins pour le même calcul.
+// La règle vit maintenant dans `signeMoins.js`, où TOUT LE MONDE passe.
+const nbT = relatif;
 
 /** « 2⁵ », « a³ » — une puissance de base quelconque, avec un vrai exposant. */
 export const puissance = (base, n) =>
@@ -304,7 +310,7 @@ const MARCHES = {
                     aide: 'Un exposant négatif s\'ajoute comme un relatif.' }
             ],
             titreFinal: 'On calcule l\'exposant',
-            explanation: `${ecrit} = 10^(${x} + ${y}) = ${puissanceTexte(juste)}. Un exposant `
+            explanation: `${ecrit} = 10^(${nbT(x)} + ${relatifEnPar(y)}) = ${puissanceTexte(juste)}. Un exposant `
                 + 'négatif n\'ajoute aucune règle : il applique celle du produit avec des relatifs.',
             difficulty: 3
         };
@@ -322,13 +328,13 @@ const MARCHES = {
             choices: [
                 { value: puissanceTexte(juste), correct: true },
                 { value: puissanceTexte(a + b),
-                    why: `On SOUSTRAIT : ${a} − (${b}), et soustraire un négatif revient à ajouter.` },
+                    why: `On SOUSTRAIT : ${nbT(a)} − (${nbT(b)}), et soustraire un négatif revient à ajouter.` },
                 { value: puissanceTexte(b - a), why: 'C\'est le premier moins le second, pas l\'inverse.' },
                 { value: puissanceTexte(Math.abs(a) - Math.abs(b)),
                     why: 'On garde les signes des exposants : ils sont tous les deux négatifs.' }
             ],
             filler: voisine(juste),
-            hints: [`On soustrait : ${a} − (${b}). Retirer un nombre négatif revient à l'ajouter.`],
+            hints: [`On soustrait : ${nbT(a)} − (${nbT(b)}). Retirer un nombre négatif revient à l'ajouter.`],
             lignes: [
                 { titre: 'On SOUSTRAIT les exposants, signes compris',
                     montrer: `10^(${nbT(a)} \u2212 (${nbT(b)}))`,
@@ -336,7 +342,7 @@ const MARCHES = {
                     aide: 'Retirer un nombre négatif revient à l\'ajouter.' }
             ],
             titreFinal: 'On calcule l\'exposant',
-            explanation: `${ecrit} = 10^(${a} − (${b})) = ${puissanceTexte(juste)}. Soustraire un `
+            explanation: `${ecrit} = 10^(${nbT(a)} − (${nbT(b)})) = ${puissanceTexte(juste)}. Soustraire un `
                 + 'exposant négatif revient à l\'ajouter — c\'est la règle des relatifs, appliquée '
                 + 'aux exposants.',
             difficulty: 3

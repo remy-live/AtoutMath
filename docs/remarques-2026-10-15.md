@@ -2211,3 +2211,31 @@ la feuille ? Sa réponse est **les deux**, et elle se tient :
 
 « Le reste » veut dire : les blocs 15 et 12 de quatrième, PUIS la progression
 de sixième — 1, 11, 18, 10, 5, 3, 8 — qui attend depuis ce matin.
+
+### Ce que « les deux » a donné — 20 octobre
+
+Deux exercices là où j'en attendais un, et ils ne se recouvrent pas :
+
+- **à l'écran**, « Tracer une Fonction » pose SIX marches et un seul geste —
+  cliquer un nœud du repère. Ce qui monte est le chemin : on calcule une image,
+  puis on LIT ce que l'écriture montre sur le dessin (le nombre tout seul est
+  l'endroit où la droite coupe l'axe vertical ; le nombre devant le x est un
+  PAS), puis on REMONTE de l'ordonnée vers l'abscisse ;
+- **sur la feuille**, le repère est imprimé avec son quadrillage, le tableau de
+  valeurs est vide, et l'élève TIRE LA DROITE À LA RÈGLE. Le logiciel n'en
+  trace aucune.
+
+Et **le repérage va désormais jusqu'à la quatrième** — « Placer un Point »,
+« Lire des Coordonnées » et « Coordonnées Négatives » s'arrêtaient à la
+cinquième. Ce n'est pas un rappel : on ne trace pas une fonction dans un repère
+qu'on ne sait pas lire.
+
+**Un défaut trouvé par ricochet, et il touchait trois exercices déjà en ligne.**
+À l'écran : « On donne f(x) = 2x − 2. On part du point (0 ; -2)… » Deux signes
+moins différents dans la même phrase — le vrai, et le trait d'union. En
+mesurant le dépôt entier : QUATRE exercices sur 244, dont « Réduire une
+expression » et les deux « Calculer avec des puissances ». Les trois anciens
+avaient la même cause : le fichier possédait DÉJÀ sa fonction d'écriture,
+employée pour la démonstration et oubliée dans l'explication juste à côté. La
+règle vit maintenant dans `js/core/signeMoins.js`, et une garde du catalogue
+la tient pour tout le dépôt.

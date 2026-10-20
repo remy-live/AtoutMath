@@ -9169,6 +9169,18 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
             currentColor calc(50% + .7px), transparent calc(50% + .7px));
 }
 .fx-rp-etiq { position: absolute; font-weight: 800; color: #1a202c; }
+/* TRACER LA DROITE D'UNE FONCTION. L'écriture de f est EN TÊTE du bloc : on la
+   lit avant de regarder le repère, sans quoi on ne sait pas quoi y placer. Les
+   deux en-têtes du tableau — « x » et « f(x) » — portent le même gras, parce
+   que ce sont des noms de lignes et non des valeurs. */
+.fx-fn-tete {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #1a202c; white-space: nowrap;
+}
+.fx-fn-tete-cell { font-weight: 800; }
+/* LA CASE DES IMAGES OCCUPE TOUTE SA LARGEUR : le pointillé doit aller d'un
+   filet à l'autre, sinon l'élève hésite sur l'endroit où écrire. */
+.fx-fn-trou { width: 100%; }
 /* --- Fiche « Les angles remarquables » -------------------------------------
    La figure occupe le bloc, les deux mesures sont posées sur leur secteur, et
    la ligne « ? = …… » attend la réponse en bas. */

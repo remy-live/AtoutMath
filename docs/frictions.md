@@ -5320,3 +5320,20 @@ le résultat n'existe pas** — 15 octobre 2026
   `"toutes": true` sur la paire, ou mieux, un `"combien": 3` qui EXIGE le
   nombre annoncé. Dire combien on en attend est une vérification, pas un
   contournement : la paire qui en trouve quatre doit encore refuser.
+
+## Une garde du catalogue ne voit que les marches que le CATALOGUE déclare
+
+- *Ce qui s'est passé* : les gardes qui parcourent tout le dépôt tirent marche
+  par marche en lisant `exo.params.marches` — pas la liste du générateur. Un
+  exercice neuf à six marches dont l'entrée de catalogue ne déclarait aucun
+  `params` a donc été mesuré sur quinze tirages tout-venant au lieu de six fois
+  trois par marche. La garde des deux signes moins, écrite le jour même, a
+  déclaré vert un énoncé qui portait le défaut : « l'abscisse est -2 », dans la
+  PREMIÈRE marche. C'est une épreuve de fichier, écrite plus tard, qui l'a vu.
+- *Combien de fois* : |
+- *Ce qui manque* : `tools/nouvelExercice.mjs` sait déjà lire le générateur et
+  l'entrée de catalogue côte à côte. Il lui suffirait de dire : « ce générateur
+  a un réglage `marches` de six valeurs, l'entrée de catalogue n'en déclare
+  aucune — les gardes du dépôt ne verront qu'un échantillon ». Deux cents
+  millisecondes, là où il faut aujourd'hui se souvenir tout seul d'une
+  convention que rien n'écrit.

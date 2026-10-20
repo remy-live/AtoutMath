@@ -1123,6 +1123,46 @@ export const numerationExercises = [
         instruction: "Une fonction est une machine : on lui donne un nombre, elle en rend un autre. « f(3) = 11 » se lit « 11 est l'IMAGE de 3 », et donc aussi « 3 est un ANTÉCÉDENT de 11 ». Retiens le sens de la marche : on PART du nombre entre parenthèses, on ARRIVE au résultat — c'est le seul moyen de ne pas inverser les deux mots. Pour calculer une image, tu REMPLACES x par le nombre donné, puis tu calcules. Pour chercher un antécédent, tu fais le chemin INVERSE : tu reprends le programme de calcul et tu le défais en commençant par la fin, chaque opération remplacée par son contraire. Et tu vérifies toujours en recalculant l'image — c'est gratuit, et cela attrape l'erreur d'ordre, qui est la plus fréquente."
     },
     {
+        // TRACER UNE FONCTION — et la réponse de Rémy tient le fichier.
+        //
+        // Bloc 12 de sa progression de quatrième : « Tracé de fonction ». La
+        // question que je lui ai posée touchait LA LIGNE ROUGE — l'écran a-t-il
+        // le droit de faire placer un point, ou le tracé doit-il rester sur la
+        // feuille ? SA RÉPONSE : « les deux ».
+        //
+        // D'OÙ DEUX MOITIÉS QUI NE SE RECOUVRENT PAS. À l'écran, l'élève CALCULE
+        // une image et CLIQUE un nœud du repère : ni règle, ni compas, ni tracé
+        // à la souris — « Placer un Point » fait déjà ce geste depuis la
+        // sixième. Sur la feuille (`printable`), il complète un tableau de
+        // valeurs, marque ses croix et TIRE LA DROITE À LA RÈGLE. Le logiciel
+        // n'en trace aucune.
+        id: 'alg-fonction-repere',
+        cree: '2026-10-20',
+        title: 'Tracer une Fonction',
+        generatorId: 'alg.fonction-repere', activityId: 'repere',
+        // LA FEUILLE A SON PROPRE GÉNÉRATEUR, et ce n'est pas un détail de
+        // mise en page : l'écran pose UNE question par point, la feuille en
+        // pose CINQ sur le même repère — en imprimer un par question gâcherait
+        // la page et ferait retracer des axes au lieu de tracer des droites.
+        printable: 'fonction', printGeneratorId: 'alg.fonction-fiche',
+        printParams: { max: 6 },
+        // LES SIX MARCHES SONT ÉCRITES ICI, et ce n'est pas une redite du
+        // générateur : les gardes du catalogue tirent marche par marche EN LES
+        // LISANT. Sans cette ligne elles n'en voient qu'un échantillon, et
+        // celle des deux signes moins a laissé passer « l'abscisse est -2 »
+        // dans la première marche. C'est aussi ce que le professeur voit
+        // coché en ouvrant le panneau.
+        params: { marches: ['image', 'image-relatifs', 'ordonnee-origine', 'le-pas',
+            'antecedent', 'zero'] },
+        motsClefs: ['fonction', 'affine', 'droite', 'repère', 'coefficient',
+            'ordonnée à l\'origine', 'tracer', 'graphique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LITTERAL],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Une fonction affine se DESSINE, et son écriture dit tout du dessin. Les points de coordonnées (x ; f(x)) sont ALIGNÉS : ils forment une DROITE. Ici on en place un à la fois — on calcule d'abord, on clique ensuite, et le premier nombre est toujours l'ABSCISSE. Les deux marches du milieu sont celles qui font gagner du temps toute l'année : dans « f(x) = 2x − 3 », le nombre tout seul (−3) est l'endroit où la droite coupe l'axe VERTICAL — on le lit, on ne le calcule pas ; et le nombre devant le x (2) est un PAS — un carreau vers la droite, deux carreaux vers le haut. Avec ces deux-là, une droite se trace en dix secondes et sans tableau. Les deux dernières marches font le chemin inverse : on donne la hauteur, on cherche où aller sur l'axe horizontal. Et sur l'axe horizontal l'ordonnée est NULLE, ce qui transforme la question en équation : on résout f(x) = 0. Sur la feuille imprimée, c'est toi qui traces la droite à la règle — vérifie que tes points sont alignés avant de poser la règle, un point hors de la ligne signale un calcul faux."
+    },
+    {
         // SIMPLIFIER ET RÉDUIRE. Rémy : « j'aimerais bien un exercice qui
         // entraîne à simplifier et à réduire des expressions littérales
         // (d'abord 2*x = 2x) — ATTENTION ON UTILISE LE SIGNE FOIS. »

@@ -52,6 +52,8 @@ import { divisionFractionsGenerator } from '../generators/divisionFractions.js';
 import { pythagoreReciproqueGenerator } from '../generators/pythagoreReciproque.js';
 import { equationsGenerator } from '../generators/equations.js';
 import { probabilitesGenerator } from '../generators/probabilites.js';
+import { fonctionRepereGenerator } from '../generators/fonctionRepere.js';
+import { fonctionFicheGenerator } from '../generators/fonctionFiche.js';
 import { litteralReduireGenerator } from '../generators/litteral.js';
 import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js';
 import { balanceFicheGenerator } from '../generators/balanceFiche.js';
@@ -176,6 +178,13 @@ import {
     pythagoreReciproqueGenerator,
     equationsGenerator,
     probabilitesGenerator,
+    // DEUX GÉNÉRATEURS POUR UN SEUL CHAPITRE, et c'est la réponse de Rémy :
+    // « les deux ». L'écran fait CALCULER puis CLIQUER un point ; la feuille
+    // fait COMPLÉTER un tableau, placer des croix et TRACER à la règle. Un
+    // seul générateur aurait dû rendre les deux à la fois, et l'un des deux
+    // aurait été une réduction de l'autre.
+    fonctionRepereGenerator,
+    fonctionFicheGenerator,
     litteralPuissancesGenerator,
     // La balance n'a pas de générateur — elle a une activité. Sa fiche en a un.
     // Les Serpents sont dans le même cas, et pour la même raison : le jeu se
