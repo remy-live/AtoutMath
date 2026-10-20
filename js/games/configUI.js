@@ -21,6 +21,10 @@ import {
     cleParMarche, lireParMarche, ecrireParMarche, valeurParMarche
 } from '../core/progression.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
+// LES HABILLAGES ET CE QUE CHACUN PROMET — une seule liste, celle qui sert
+// aussi à les dessiner. Deux listes de présentations finiraient par offrir
+// ici un habillage que l'écran de l'élève ne sait pas rendre.
+import { HABILLAGES } from '../ui/pathView.js';
 import { reglagesQuiChangent as ecartsDeReglages } from '../core/reglagesDUsine.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
@@ -3536,12 +3540,17 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
         <div class="cfg-field cfg-field--wide">
             <label class="cfg-label" for="cfg-presentation">Présentation</label>
             <select id="cfg-presentation" class="cfg-input">
-                <option value="chemin" ${p.presentation === 'chemin' ? 'selected' : ''}>Chemin d'étapes (une étape après l'autre)</option>
-                <option value="mondes" ${p.presentation === 'mondes' ? 'selected' : ''}>Carte des mondes (façon jeu de plateau)</option>
-                <option value="classique" ${p.presentation === 'classique' ? 'selected' : ''}>Liste classique (titres et consignes)</option>
+                ${HABILLAGES.map(h => `<option value="${h.id}"${
+        p.presentation === h.id ? ' selected' : ''}>${h.icon} ${h.label} — ${h.dit}</option>`).join('')}
                 <option value="libre" ${p.presentation === 'libre' ? 'selected' : ''}>Laisser l'élève choisir</option>
             </select>
-            <p class="cfg-help">Tant que vous en imposez une, les trois boutons d'habillage disparaissent de son écran : un bouton qui ne change rien est pire qu'un bouton absent.</p>
+            <!-- L'APERÇU — Rémy : « on pourrait avoir l'apercu, ce serait cool ».
+                 Il est dessiné par le VRAI rendu ; voir majApercu, plus bas.
+                 (Pas d'accent grave dans ce commentaire : il fermerait le
+                 gabarit qui l'entoure, et l'erreur désignerait une autre
+                 ligne — le piège le plus cher du dépôt.) -->
+            <div class="cfg-apercu" id="cfg-presentation-apercu" aria-live="polite"></div>
+            <p class="cfg-help">Tant que vous en imposez une, les boutons d'habillage disparaissent de son écran : un bouton qui ne change rien est pire qu'un bouton absent.</p>
         </div>
 
         <div class="cfg-group ${isEval ? '' : 'cfg-group--muted'}">
@@ -3672,6 +3681,113 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
         };
     });
     root.addEventListener('change', commit);
+
+    // ── L'APERÇU DE LA PRÉSENTATION ───────────────────────────────────────
+    //
+    // RÉMY : « on pourrait avoir l'apercu, ce serait cool ». Le nom d'un
+    // habillage ne dit pas ce qu'il fait — « carte des mondes » et « damier »
+    // se ressemblent sur le papier et pas du tout à l'écran —, et l'on ne va
+    // pas donner une séance à six classes pour découvrir ce qu'on a choisi.
+    //
+    // IL EST DESSINÉ PAR LE VRAI RENDU, avec de fausses étapes : une vignette
+    // peinte à la main aurait vieilli à la première retouche d'un habillage,
+    // et montrerait alors autre chose que ce que l'élève verra.
+    //
+    // CINQ FAUSSES ÉTAPES, DONT UN JEU. Assez pour que le damier fasse deux
+    // rangées et que le ruban dépasse ; le jeu en dernier parce que c'est la
+    // forme ordinaire d'un parcours de Rémy, et qu'un cadeau se dessine
+    // autrement.
+    const ETAPES_APERCU = [
+        // `nbItems` EST OBLIGATOIRE, même sur de fausses étapes : la pastille
+        // écrit « n questions » dessous, et une étape sans compte s'affichait
+        // « undefined question » — dans l'aperçu que le professeur regarde
+        // justement pour juger de l'allure.
+        { stepId: 'a1', title: 'Calcul mental', nbItems: 10,
+            exercise: { title: 'Calcul mental', tags: { chemin: ['Numérique'] } } },
+        { stepId: 'a2', title: 'Fractions', nbItems: 8,
+            exercise: { title: 'Fractions', tags: { chemin: ['Numérique'] } } },
+        { stepId: 'a3', title: 'Symétrie', nbItems: 6,
+            exercise: { title: 'Symétrie', tags: { chemin: ['Géométrie'] } } },
+        { stepId: 'a4', title: 'Problèmes', nbItems: 5,
+            exercise: { title: 'Problèmes', tags: { chemin: ['Numérique'] } } },
+        { stepId: 'a5', title: 'Un jeu', bonus: true, nbItems: 1,
+            exercise: { title: 'Un jeu', tags: { chemin: ['Logique'] } } }
+    ];
+
+    const majApercu = async () => {
+        const boite = document.getElementById('cfg-presentation-apercu');
+        const choix = document.getElementById('cfg-presentation');
+        if (!boite || !choix) return;
+        // « Laisser l'élève choisir » n'a pas d'aperçu : ce qu'il verra dépend
+        // de lui. On le DIT, plutôt que de montrer un habillage au hasard —
+        // ce serait promettre celui-là.
+        if (choix.value === 'libre') {
+            boite.textContent = "L'élève choisira lui-même, avec les boutons "
+                + "d'habillage en haut de sa séance.";
+            boite.className = 'cfg-apercu cfg-apercu--vide';
+            boite.style.height = '';
+            return;
+        }
+        boite.className = 'cfg-apercu cfg-apercu--carte';
+        const { construireCarte } = await import('../ui/pathView.js');
+        // DEUX ÉTAPES FAITES, UNE EN COURS : un aperçu tout gris ne montrerait
+        // ni la pastille du moment ni le sentier parcouru, c'est-à-dire
+        // justement ce qui distingue les habillages les uns des autres.
+        const carte = construireCarte(ETAPES_APERCU, {
+            style: choix.value,
+            doneIds: new Set(['a1', 'a2']),
+            currentIndex: 2,
+            montrerCadeaux: true,
+            onNodeClick: () => {}
+        });
+        boite.innerHTML = '';
+        boite.appendChild(carte);
+        // ── LA BOÎTE PREND LA HAUTEUR DE CE QU'ELLE MONTRE ────────────────
+        //
+        // Il faut la lui dire : `scale()` rapetisse le DESSIN, pas la place
+        // qu'il occupe. Sans cette ligne, un damier de deux rangées laissait
+        // cent pixels de gris sous lui.
+        //
+        // ET LA RÉDUCTION S'AJUSTE POUR QUE TOUT TIENNE. Mesuré : un chemin de
+        // cinq étapes fait mille pixels de haut, donc cinq cent soixante une
+        // fois réduit — on n'en voyait que les deux premières pastilles, dans
+        // l'aperçu qui sert justement à comparer les habillages ENTIERS. Un
+        // aperçu coupé compare deux débuts.
+        // ── LA LARGEUR EST FIXE, ET C'EST CE QUI REND LA MESURE POSSIBLE ──
+        //
+        // Première version : la carte prenait `100 % / zoom` de large, et l'on
+        // calculait le zoom d'après sa hauteur. Les deux dépendaient l'un de
+        // l'autre — on mesurait une hauteur, on changeait la largeur, la
+        // hauteur changeait, et le chemin se faisait couper aux trois quarts
+        // dans l'aperçu qui sert justement à le voir en entier.
+        //
+        // On fige donc la largeur à celle d'une colonne d'élève. La carte se
+        // met en page UNE fois, à une taille connue, et il ne reste qu'à la
+        // regarder d'assez loin pour qu'elle tienne dans la boîte.
+        const LARGEUR = 760;
+        const PLAFOND = 300;
+        carte.style.width = `${LARGEUR}px`;
+        const ajuster = () => {
+            // ON REND SA HAUTEUR LIBRE AVANT DE LA MESURER : la boîte porte encore
+            // celle de l'habillage précédent, et la carte s'y conformerait.
+            boite.style.height = 'auto';
+            const haut = Math.max(1, carte.offsetHeight);
+            const place = boite.clientWidth || LARGEUR;
+            const zoom = Math.min(place / LARGEUR, PLAFOND / haut);
+            boite.style.setProperty('--cfg-zoom', zoom.toFixed(3));
+            boite.style.height = `${Math.round(haut * zoom) + 6}px`;
+        };
+        ajuster();
+        // Et une seconde fois à la frame suivante : les écarts entre pastilles
+        // sont en `clamp(…, 3.5vw, …)` et le sentier se trace en SVG, donc la
+        // hauteur n'est pas définitive à l'instant où l'on pose la carte.
+        requestAnimationFrame(ajuster);
+    };
+    const choix = root.querySelector('#cfg-presentation');
+    // `change` remonte déjà jusqu'à `root` pour `commit` ; on s'accroche au
+    // sélecteur lui-même pour ne redessiner que quand c'est lui qui bouge.
+    if (choix) choix.addEventListener('change', majApercu);
+    majApercu();
 }
 
 function intVal(id, fallback) {

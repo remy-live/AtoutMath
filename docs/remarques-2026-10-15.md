@@ -1554,3 +1554,38 @@ les deux réponses qu'elle pouvait appeler :
   plat demande précisément ce que l'exercice existe pour empêcher.
 - **Dingbats** : fiche six énigmes par page. La mise en page vit dans
   `js/core/dingbatPlan.js` et sert aux DEUX rendus, aperçu et PDF.
+
+## 11. Les classes oubliées, et les thèmes de présentation — 20 octobre
+
+> « dans mes parcours, quand j'ai donné un parcours à des classes, et que je
+> recharge le parcours, je ne vois plus les classes à qui j'ai donné les
+> parcours. »
+> *(capture : le volet « À qui ce parcours est donné », six classes, AUCUNE
+> cochée, et la phrase « Pas encore donné. Cochez une classe, ou dépliez-la
+> pour choisir des élèves. » sur un parcours « Avant les vacances - 4ème » qui
+> porte pourtant « Enregistré 08:08 »)*
+>
+> « Pour la présentation du parcours, serait-il possible d'avoir d'autres
+> thèmes ? et on pourrait avoir l'apercu, ce serait cool »
+> *(capture : la fenêtre « Mode et barème », réglage « Présentation : Chemin
+> d'étapes (une étape après l'autre) »)*
+
+Le premier est un DÉFAUT : ce qui a été donné doit se relire. Le second est une
+demande. On commence par le défaut.
+
+**Ce qui a été fait** :
+
+- **Les classes retrouvées.** MESURÉ avant : l'identité d'une séance est celle
+  du CONTENU du parcours, donc toute retouche la perd — cinq gestes sur six, et
+  le sélecteur de mode qui la perd est DANS le panneau qui affiche les classes.
+  La séance retient désormais aussi l'identité de son ATELIER, qui ne bouge
+  pas ; et la case suit ce que le SERVEUR sert, qui n'avait jamais rien perdu —
+  ce qui rattrape aussi les séances données d'un autre poste. Une classe que
+  seul le serveur connaissait pouvait d'ailleurs se cocher sans jamais pouvoir
+  se décocher : c'est réparé par la même occasion.
+- **Deux habillages de plus, et leur aperçu.** Le DAMIER — tout le parcours sur
+  un écran : mesuré sur huit étapes au téléphone, 394 px de haut contre 1013 au
+  chemin serpentin. Et le RUBAN — une seule ligne qui défile de côté, pour un
+  tableau numérique, qui se ramène tout seul sur l'étape en cours. L'aperçu est
+  dessiné par le VRAI rendu, réduit : une vignette peinte à part aurait vieilli
+  à la première retouche d'un habillage.

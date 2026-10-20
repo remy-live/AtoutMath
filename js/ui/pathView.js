@@ -125,12 +125,47 @@ function demanderLaCle(step, onOuvert) {
 // choisir », et hors séance, dans son propre parcours.
 
 const STYLE_KEY = 'mathbox-path-style';
+// ── CINQ HABILLAGES, ET CHACUN RÉPOND À UNE SITUATION ─────────────────────
+//
+// RÉMY : « Pour la présentation du parcours, serait-il possible d'avoir
+// d'autres thèmes ? »
+//
+// ON N'EN AJOUTE PAS POUR LE DÉCOR. Les trois premiers existaient ; les deux
+// qui arrivent répondent à deux gênes qu'on peut nommer :
+//
+//   · LE DAMIER, parce qu'un parcours LONG ne tient pas sur un écran. Sa
+//     séance « Avant les vacances » porte QUATORZE étapes : en chemin
+//     serpentin, l'élève fait défiler quatre hauteurs d'écran et perd la vue
+//     d'ensemble — « combien il m'en reste » devient une question. Le damier
+//     les montre toutes d'un coup, sans sentier : ce qu'on y lit n'est plus
+//     la route, c'est le PLAN DE TRAVAIL.
+//   · LE RUBAN, parce qu'un tableau numérique est LARGE et court. Au TBI ou
+//     sur une tablette couchée, une colonne verticale gaspille les deux tiers
+//     de l'écran et il faut défiler devant la classe. Le ruban se lit de
+//     gauche à droite, à hauteur d'yeux.
+//
 // L'ORDRE DE CETTE LISTE EST CELUI DES BOUTONS. Le chemin d'abord : c'est le
 // défaut, et le premier bouton est celui qu'on vise sans lire.
 const STYLES = [
     { id: 'chemin', icon: '🐾', label: 'Chemin d\'étapes' },
     { id: 'mondes', icon: '🗺️', label: 'Carte des mondes' },
+    { id: 'damier', icon: '🎛️', label: 'Damier' },
+    { id: 'ruban', icon: '🎞️', label: 'Ruban' },
     { id: 'classique', icon: '📋', label: 'Liste classique' }
+];
+
+/** Ce que chaque habillage promet, en une phrase — pour l'aperçu du professeur. */
+export const HABILLAGES = [
+    { id: 'chemin', icon: '🐾', label: 'Chemin d\'étapes',
+        dit: 'Une étape après l\'autre, qui serpente. On voit où l\'on va.' },
+    { id: 'mondes', icon: '🗺️', label: 'Carte des mondes',
+        dit: 'Par rangées de trois, façon jeu de plateau.' },
+    { id: 'damier', icon: '🎛️', label: 'Damier',
+        dit: 'Tout tient sur un écran. Pour un parcours long, ou un plan de travail.' },
+    { id: 'ruban', icon: '🎞️', label: 'Ruban',
+        dit: 'De gauche à droite, sur une seule ligne. Pour un écran large ou un TBI.' },
+    { id: 'classique', icon: '📋', label: 'Liste classique',
+        dit: 'Les titres et les consignes, en toutes lettres.' }
 ];
 const PAR_DEFAUT = 'chemin';
 
@@ -853,9 +888,11 @@ export function construireCarte(steps, opts = {}) {
     // il faut regarder ce qui la précède. Injecté ici, donc les trois
     // habillages en héritent sans y penser.
     const o = { steps, ...opts };
-    return style === 'classique' ? buildClassicTimeline(steps, o)
-        : style === 'chemin' ? buildDuoPath(steps, o)
-            : buildWorldMap(steps, o);
+    if (style === 'classique') return buildClassicTimeline(steps, o);
+    if (style === 'chemin') return buildDuoPath(steps, o);
+    if (style === 'damier') return buildDamier(steps, o);
+    if (style === 'ruban') return buildRuban(steps, o);
+    return buildWorldMap(steps, o);
 }
 
 /** L'habillage du POSTE, pour qui veut le lire sans le changer. Hors séance,
@@ -967,6 +1004,70 @@ export function buildDuoPath(steps, opts = {}) {
     chemin.__ouvertureRang = rangDansLaCarte(montres, opts.ouverture);
     tracerSentier(chemin, chemin.__ouvertureRang);
     return chemin;
+}
+
+/**
+ * DAMIER : toutes les étapes d'un coup, et AUCUN sentier.
+ *
+ * L'absence de sentier est la décision, pas un oubli. Un trait qui relie
+ * quatorze cases rangées en grille passe trois fois sur lui-même et ne décrit
+ * plus de route ; ce qu'on vient chercher ici n'est pas le chemin, c'est le
+ * NOMBRE — ce qui est fait, ce qui reste, en un regard. L'état de chaque case
+ * se lit sur la pastille, qui le porte déjà.
+ *
+ * La grille se règle en CSS (`--damier-colonnes`) : trois de front sur un
+ * téléphone, jusqu'à six sur un écran large, sans que ce module ait à
+ * mesurer quoi que ce soit.
+ */
+export function buildDamier(steps, opts = {}) {
+    const grille = document.createElement('div');
+    grille.className = 'damier-path';
+    etapesMontrees(steps, opts).forEach(({ step, i, numero }) => {
+        const node = creerNoeud(step, i, statutEtape(step, i, opts), opts, numero);
+        node.classList.add('damier-node');
+        grille.appendChild(node);
+    });
+    return grille;
+}
+
+/**
+ * RUBAN : une seule ligne, de gauche à droite, qui défile latéralement.
+ *
+ * LE SENTIER RESTE, lui, parce qu'ici il décrit vraiment la route : une ligne
+ * droite d'une pastille à la suivante, qui se remplit au fur et à mesure.
+ * `tracerSentier` travaille sur les positions réelles des pastilles — il n'a
+ * rien à savoir du sens de lecture.
+ *
+ * ET L'ÉTAPE EN COURS SE RAMÈNE SOUS LES YEUX : sur un ruban, ce qui dépasse
+ * à droite n'existe pas tant qu'on n'a pas poussé. Un parcours de quatorze
+ * étapes s'ouvrirait sur la première alors que l'élève en est à la neuvième.
+ */
+export function buildRuban(steps, opts = {}) {
+    const ruban = document.createElement('div');
+    ruban.className = 'ruban-path';
+    const piste = document.createElement('div');
+    piste.className = 'ruban-piste';
+    ruban.appendChild(piste);
+
+    const montres = etapesMontrees(steps, opts);
+    montres.forEach(({ step, i, numero }) => {
+        const node = creerNoeud(step, i, statutEtape(step, i, opts), opts, numero);
+        node.classList.add('ruban-node');
+        piste.appendChild(node);
+    });
+    piste.__ouvertureRang = rangDansLaCarte(montres, opts.ouverture);
+    tracerSentier(piste, piste.__ouvertureRang);
+    // Le sentier est posé sur la PISTE, qui porte les pastilles ; c'est elle
+    // qu'on retrace et qu'on mesure. Le cadre extérieur ne fait que défiler.
+    ruban.__sentierDefinitif = () => piste.__sentierDefinitif && piste.__sentierDefinitif();
+    requestAnimationFrame(() => {
+        const cible = piste.querySelector('.world-node--current')
+            || piste.querySelector('.world-node--open');
+        if (cible && typeof cible.scrollIntoView === 'function') {
+            cible.scrollIntoView({ block: 'nearest', inline: 'center' });
+        }
+    });
+    return ruban;
 }
 
 // --- Parcours du professeur (sur ce poste) ----------------------------------

@@ -39,7 +39,7 @@ import { Shortcodes, identiteDeParcours } from '../core/shortcodes.js';
 import {
     donnerSeance, seancesDe, etatSeance, direSeance, ETATS,
     clore, rouvrir, retirer, remettre, estRetiree, elevesDe,
-    poserMot, aRattraper
+    poserMot, aRattraper, estLaSeanceDe
 } from '../core/seances.js';
 import { bilanSeance, bilanEleveSeance, aTravaille,
     onSaitQuiATravaille } from '../core/bilanSeance.js';
@@ -114,7 +114,7 @@ function direAQui(classes, combienNommes) {
  *   · séance vivante         → case cochée, état et bilan ;
  *   · séance retirée         → case vide et grise, bilan encore là.
  */
-function etatClasse(classe, seances, pathId, maintenant = Date.now()) {
+function etatClasse(classe, seances, pathId, maintenant = Date.now(), sourceId = null) {
     const toutes = seancesDe(seances, classe.id);
     // UN PARCOURS SANS IDENTIFIANT N'EST DONNÉ À PERSONNE — la ceinture, en
     // plus des bretelles. `normalizePath` en pose désormais un à tout parcours
@@ -122,7 +122,27 @@ function etatClasse(classe, seances, pathId, maintenant = Date.now()) {
     // le montrerait « donné » à toutes les classes ayant reçu un autre parcours
     // sans identifiant. Une comparaison d'inconnus ne vaut rien : on ne la fait
     // pas plutôt que d'y croire.
-    const siennes = pathId ? toutes.filter(s => s.pathId === pathId) : [];
+    // ── DEUX FAÇONS DE RECONNAÎTRE SA SÉANCE, ET IL FAUT LES DEUX ─────────
+    //
+    // RÉMY : « je recharge le parcours, je ne vois plus les classes à qui j'ai
+    // donné les parcours. »
+    //
+    // `pathId` est l'identité du CONTENU : elle change dès qu'on touche au
+    // parcours — le mode, une étape, le nombre de questions, un message.
+    // MESURÉ : cinq retouches sur six font perdre toutes les classes, et le
+    // sélecteur de mode est DANS ce panneau-ci. `sourceId` est l'identité de
+    // l'ATELIER, celle que le parcours garde d'un bout à l'autre de sa vie et
+    // que le serveur emploie déjà (`donnerAuServeur` envoie `parcours.id`).
+    //
+    // ON GARDE LES DEUX plutôt que de remplacer l'une par l'autre : les
+    // séances données avant cette version n'ont pas de `sourceId`, et elles
+    // doivent continuer de se reconnaître par leur contenu.
+    //
+    // LA RÈGLE VIT DANS `core/seances.js`, avec la donnée qu'elle lit : c'est
+    // là qu'elle s'éprouve sous Node, et un écran n'a pas à redéfinir ce qui
+    // fait qu'une séance est celle de ce parcours-ci.
+    const siennes = (pathId || sourceId)
+        ? toutes.filter(s => estLaSeanceDe(s, pathId, sourceId)) : [];
     const vivante = siennes.find(s => !estRetiree(s)) || null;
     const retiree = siennes.find(s => estRetiree(s)) || null;
     const seance = vivante || retiree;
@@ -147,6 +167,31 @@ function etatClasse(classe, seances, pathId, maintenant = Date.now()) {
         // le lien par `origine`, ce qui permet de le retrouver — c'est-à-dire
         // de lire son bilan — sans jamais mélanger les deux.
         rattrapages: toutes.filter(s => s.origine === pathId && !estRetiree(s))
+    };
+}
+
+/**
+ * ET CE QUE LE SERVEUR SERT, QUAND LES DEUX NE DISENT PAS LA MÊME CHOSE.
+ *
+ * Le navigateur ne connaît que ce qu'il a donné LUI-MÊME. Le serveur, lui,
+ * sait tout — l'autre poste de la salle des profs, et les séances données
+ * avant que la séance ne retienne l'identité de son atelier. Quand il dit
+ * qu'une classe a le travail, c'est vrai, même sans séance locale.
+ *
+ * `donnee` reste « il y a une séance ICI » — c'est d'elle que viennent l'état,
+ * le bilan et le bouton « clore ». `servie` est « le serveur le lui donne ».
+ * La case suit les deux ; le reste de la ligne suit `donnee`, et dit
+ * pourquoi quand les deux divergent.
+ */
+function completerAuServeur(info, servie) {
+    return {
+        ...info,
+        servie: !!servie,
+        cochee: info.donnee || !!servie,
+        // LA SÉANCE EST AILLEURS : donnée, mais pas sur cet appareil. On le
+        // DIT plutôt que de montrer une case cochée sans état ni bilan —
+        // c'est exactement le genre de silence qui fait recocher.
+        ailleurs: !!servie && !info.donnee
     };
 }
 
@@ -179,13 +224,16 @@ function ligneClasseHtml(classe, info) {
     <div class="pc-classe${info.retiree ? ' pc-classe--retiree' : ''}" data-classe="${esc(classe.id)}">
         <div class="pc-ligne">
             <label class="pc-case">
-                <input type="checkbox" data-donner="${esc(classe.id)}"${info.donnee ? ' checked' : ''}>
+                <input type="checkbox" data-donner="${esc(classe.id)}"${info.cochee ? ' checked' : ''}>
                 <span class="pc-nom">${esc(classe.nom)}</span>
                 ${classe.homonyme ? `<span class="pc-code"
                     title="Deux classes portent ce nom : voici son code">${esc(classe.code || '?')}</span>` : ''}
             </label>
             <span class="pc-eff">${n}</span>
             ${puce ? `<span class="pc-puce ${puce[1]}">${puce[0]}</span>` : ''}
+            ${info.ailleurs ? `<span class="pc-puce pc-calme"
+                title="Le serveur sert ce travail à cette classe, mais la séance n'est pas sur cet appareil : donnée depuis un autre poste, ou avant que l'atelier ne sache la retrouver. Le bilan se lit depuis le poste qui l'a donnée, ou par La classe."
+                >Donné ailleurs</span>` : ''}
             ${info.travaille
         ? `<button type="button" class="pc-bilan" data-bilan-classe="${esc(classe.id)}"
                    title="Le bilan de cette séance, et de cette séance seulement">bilan</button>` : ''}
@@ -525,6 +573,9 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     // l'élève recalcule de son code — et non l'identifiant d'atelier, qui ne
     // vaut que dans la bibliothèque de ce navigateur-ci.
     const pathId = identiteDeParcours(parcours);
+    // ET L'IDENTITÉ DE L'ATELIER, qui ne bouge pas quand on retouche le
+    // parcours — voir `etatClasse`. C'est elle que le serveur emploie déjà.
+    const sourceId = parcours && parcours.id;
 
     // DEUX CLASSES DU MÊME NOM NE DOIVENT PAS SE RESSEMBLER.
     //
@@ -566,13 +617,19 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         const defilement = panel.scrollTop;
         const mode = resolvePolicy(parcours.policy).mode;
         const infos = new Map(classes.map(c => {
-            const info = etatClasse(c, seances, pathId);
+            const info = completerAuServeur(
+                etatClasse(c, seances, pathId, Date.now(), sourceId),
+                classesServies.has(c.id));
             // Les élèves de CETTE classe à qui on l'a donné nommément.
             info.nommes = new Set((c.eleves || []).map(e => e.id).filter(id => nommes.has(id)));
             info.combienNommes = [...nommes].length;
             return [c.id, info];
         }));
-        const donnees = classes.filter(c => infos.get(c.id).donnee);
+        // LA PHRASE DU BAS COMPTE CE QUE LA CASE MONTRE. Compter les séances
+        // locales sous des cases cochées par le serveur, ce serait le « Pas
+        // encore donné » sous trois cases cochées qu'on a déjà corrigé une
+        // fois — la même contradiction, par l'autre bout.
+        const donnees = classes.filter(c => infos.get(c.id).cochee);
 
         panel.innerHTML = `
             <button id="mob-close-props" class="props-close" aria-label="Fermer">✕</button>
@@ -861,7 +918,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
             liste.innerHTML = '<p class="pc-vide">On va chercher les élèves…</p>';
             classe.eleves = await elevesDeLaClasse(classe);
         }
-        const info = etatClasse(classe, seances, pathId);
+        const info = etatClasse(classe, seances, pathId, Date.now(), sourceId);
         info.nommes = new Set((classe.eleves || []).map(x => x.id)
             .filter(id => nommes.has(id)));
         info.servieAuServeur = classesServies.has(classe.id);
@@ -933,7 +990,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         panel.querySelectorAll('[data-clore]').forEach(b => {
             b.onclick = async () => {
                 const classe = classes.find(c => c.id === b.dataset.clore);
-                const info = etatClasse(classe, seances, pathId);
+                const info = etatClasse(classe, seances, pathId, Date.now(), sourceId);
                 if (!info.seance) return;
                 const ferme = info.etat === ETATS.CLOSE;
                 seances = seances.map(x => (x.id === info.seance.id
@@ -959,7 +1016,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         panel.querySelectorAll('[data-bilan-classe]').forEach(b => {
             b.onclick = () => {
                 const classe = classes.find(c => c.id === b.dataset.bilanClasse);
-                const info = etatClasse(classe, seances, pathId);
+                const info = etatClasse(classe, seances, pathId, Date.now(), sourceId);
                 if (!info.seance) return;
                 montrer(bilanClasseHtml(bilanSeance(info.seance, classe)),
                     { seance: info.seance, classe });
@@ -1017,7 +1074,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     function brancherRemisesAZero(liste, classe) {
         liste.querySelectorAll('[data-reinit-eleve]').forEach(b => {
             b.onclick = () => {
-                const info = etatClasse(classe, seances, pathId);
+                const info = etatClasse(classe, seances, pathId, Date.now(), sourceId);
                 const eleve = (classe.eleves || []).find(e => e.id === b.dataset.reinitEleve);
                 remettreAZero(eleve, info.seance, async () => {
                     // ON REDESSINE EN REDEMANDANT LA LISTE AU SERVEUR.
@@ -1038,7 +1095,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     function brancherBilansEleves(liste, classe) {
         liste.querySelectorAll('[data-bilan-eleve]').forEach(b => {
             b.onclick = () => {
-                const info = etatClasse(classe, seances, pathId);
+                const info = etatClasse(classe, seances, pathId, Date.now(), sourceId);
                 const eleve = (classe.eleves || []).find(e => e.id === b.dataset.bilanEleve);
                 if (!info.seance || !eleve) return;
                 // LE CONTEXTE VOYAGE MÊME PAR CE CHEMIN-LÀ. Sans lui, le champ
@@ -1194,7 +1251,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
     async function basculer(classe, caseEl) {
         if (!classe) return;
-        const info = etatClasse(classe, seances, pathId);
+        const info = etatClasse(classe, seances, pathId, Date.now(), sourceId);
 
         if (caseEl.checked) {
             // ON MONTE D'ABORD, ON RANGE ENSUITE. Si le serveur refuse, la case
@@ -1216,7 +1273,19 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 })];
                 showToast(`Donné à ${classe.nom}.`, 'success');
             }
-        } else if (info.seance) {
+        } else if (!info.seance) {
+            // ── DÉCOCHER UNE CLASSE QUE SEUL LE SERVEUR CONNAÎT ──────────────
+            //
+            // Le cas existe depuis qu'on coche d'après le serveur : la séance
+            // a été donnée d'un autre poste, ou avant que l'atelier ne sache
+            // la retrouver. Sans cette branche, décocher ne faisait RIEN — la
+            // case revenait cochée au redessin suivant et le travail restait
+            // chez les élèves. Une case qui refuse de se décocher sans un mot
+            // est le même mensonge qu'une case qui se coche sans rien envoyer.
+            if (!classesServies.has(classe.id)) { dessiner(); return; }
+            if (!await auServeurRetirer(classe)) { caseEl.checked = true; return; }
+            showToast(`${classe.nom} : séance reprise.`, 'info');
+        } else {
             // RETIRER, C'EST RETIRER DE CHEZ LES ÉLÈVES. Sans cela, la séance
             // quittait l'écran du professeur et restait en base : les élèves
             // auraient continué de la recevoir à chaque synchronisation.

@@ -5080,3 +5080,37 @@ le résultat n'existe pas** — 15 octobre 2026
   le long de (sin A, cos A). Et la façon de le mesurer vaut d'être redite :
   une CROIX dessinée à l'endroit demandé, le mot écrit par-dessus, et l'on
   regarde. Trois minutes, contre vingt à raisonner.
+
+**Le défaut DÉDUIT qui n'existait pas : l'identité d'un parcours sauvegardé** — 20 octobre 2026
+
+- *Ce que je voulais faire* : trouver pourquoi « quand je recharge le parcours,
+  je ne vois plus les classes à qui je l'ai donné ».
+- *Ce qui a coûté* : peu, et c'est le propos. En lisant le code j'ai DÉDUIT que
+  l'aller-retour par la bibliothèque devait changer l'identité du parcours
+  (`normalizePath` matérialise des défauts). Six lignes de mesure avant d'écrire
+  la moindre correction : l'identité est la MÊME avant, après, et après deux
+  tours. La vraie cause était ailleurs — toute RETOUCHE la change, et le
+  sélecteur de mode qui la change est dans le panneau qui affiche les classes.
+- *Combien de fois* : ||
+- *Ce qui manque* : rien — c'est la règle de `epreuveTombe.mjs` appliquée à la
+  main, et elle a encore payé. **Un défaut déduit en lisant le code se mesure
+  AVANT qu'on écrive la correction.** Trois minutes de mesure contre une demi-
+  journée à corriger ce qui marchait.
+
+**Une boîte qui se mesure d'après ce qu'elle contient se mord la queue** — 20 octobre 2026
+
+- *Ce que je voulais faire* : l'aperçu d'un habillage de parcours — la vraie
+  carte, réduite pour tenir dans le panneau de réglages.
+- *Ce qui a coûté* : quatre allers-retours, parce que deux boucles se cachaient
+  l'une derrière l'autre. (1) La carte prenait `100 % / zoom` de large et le
+  zoom se calculait sur sa hauteur : on mesurait, on changeait la largeur, la
+  hauteur changeait. (2) Puis le conteneur est passé en `display: flex` : avec
+  l'étirement par défaut, la carte prenait la hauteur de la BOÎTE — celle qu'on
+  venait de calculer d'après la carte —, et le chemin tombait de 769 px à 58.
+- *Combien de fois* : |
+- *Ce qui manque* : une règle, et elle vaut pour tout aperçu réduit —
+  **on fige une dimension (ici la largeur, à celle d'une colonne d'élève), on
+  mesure l'autre, et le conteneur ne doit JAMAIS étirer ce qu'il mesure**
+  (`align-items: flex-start`). Et l'on remesure à la frame suivante : les
+  écarts en `clamp(…vw…)` et les sentiers SVG ne sont pas posés à l'instant du
+  `appendChild`.

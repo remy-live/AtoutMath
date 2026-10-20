@@ -4300,6 +4300,56 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
    d'avant poussaient les pastilles hors du cadre. */
 .duo-node { position: relative; left: var(--duo-decalage, 0); width: 150px; }
 
+/* --- DAMIER : tout le parcours sur un écran -------------------------------
+   Rémy : « serait-il possible d'avoir d'autres thèmes ? » Celui-ci répond à
+   une gêne précise : un parcours de quatorze étapes fait quatre hauteurs
+   d'écran en chemin serpentin, et « combien il m'en reste » devient une
+   question. Ici tout tient d'un coup.
+
+   PAS DE SENTIER, ET C'EST VOULU — voir `buildDamier`. Un trait qui relie
+   quatorze cases en grille repasse sur lui-même et ne décrit plus de route.
+
+   LE NOMBRE DE COLONNES VIENT DE LA LARGEUR DISPONIBLE, pas d'un compte écrit
+   ici : `auto-fill` pose ce qui rentre, trois de front sur un téléphone et
+   jusqu'à six sur un écran large. */
+.damier-path {
+    display: grid; gap: clamp(10px, 2vw, 18px);
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    justify-items: center; align-items: start;
+    padding: 20px 12px; margin-bottom: 10px;
+    position: relative; isolation: isolate;
+    border-radius: 22px; border: 1px solid var(--border);
+    background:
+        linear-gradient(165deg,
+            color-mix(in srgb, var(--primary) 8%, var(--bg-panel)),
+            color-mix(in srgb, var(--accent) 7%, var(--bg-panel)));
+}
+.damier-node { width: 100%; max-width: 124px; }
+
+/* --- RUBAN : une seule ligne, de gauche à droite --------------------------
+   Pour un tableau numérique ou une tablette couchée : l'écran y est large et
+   court, et une colonne verticale en gaspille les deux tiers.
+
+   LE DÉFILEMENT EST SUR LE CADRE, LE SENTIER SUR LA PISTE. Le SVG du sentier
+   est dimensionné sur la boîte qui porte les pastilles ; le poser sur un
+   conteneur qui défile lui donnerait la largeur de la fenêtre, et le trait
+   s'arrêterait au bord. */
+.ruban-path {
+    overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
+    padding: 6px 2px 14px; margin-bottom: 10px;
+    border-radius: 22px; border: 1px solid var(--border);
+    background:
+        linear-gradient(165deg,
+            color-mix(in srgb, var(--primary) 9%, var(--bg-panel)),
+            color-mix(in srgb, var(--accent) 8%, var(--bg-panel)));
+}
+.ruban-piste {
+    display: flex; align-items: flex-start; gap: clamp(16px, 3vw, 34px);
+    padding: 22px clamp(14px, 4vw, 34px);
+    position: relative; isolation: isolate; width: max-content; min-width: 100%;
+}
+.ruban-node { flex: 0 0 auto; width: 118px; }
+
 /* Parcours du professeur listés côté élève. */
 .teacher-path-list { display: flex; flex-direction: column; gap: 10px; }
 .teacher-path-card {
@@ -5539,6 +5589,50 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     container-type: inline-size;
 }
 .cfg-apercu:empty { display: none; }
+
+/* --- L'APERÇU D'UN HABILLAGE DE PARCOURS ---------------------------------
+   Rémy : « on pourrait avoir l'apercu, ce serait cool ».
+
+   ON MONTRE LE VRAI RENDU, RÉDUIT — pas une vignette dessinée à part, qui
+   aurait vieilli à la première retouche d'un habillage. D'où la mise à
+   l'échelle : la carte est construite à sa taille normale, puis regardée de
+   loin.
+
+   LA LARGEUR COMPENSE LA RÉDUCTION. `scale()` ne change pas la place que
+   l'élément occupe dans la mise en page : sans ces 1/0,56 de largeur, la
+   carte réduite laisserait 44 % de blanc à droite et se serpenterait dans un
+   couloir trop étroit pour elle. */
+.cfg-apercu--carte {
+    --cfg-zoom: .56;
+    /* La hauteur est posée par `majApercu`, qui connaît la taille réelle de
+       la carte et la réduction qu'il lui applique. */
+    padding: 0; overflow: hidden; position: relative;
+    /* CENTRÉ, parce que la réduction suit la HAUTEUR quand c'est elle qui
+       serre : un chemin de cinq étapes sort alors moins large que la boîte, et
+       collé à gauche il avait l'air posé de travers. Le conteneur centre, et
+       `transform-origin: top center` fait rétrécir la carte vers son propre
+       milieu — donc vers celui de la boîte. */
+    /* `flex-start` EN HAUTEUR, et c'est indispensable : avec l'étirement
+       par défaut, la carte prend la hauteur de la BOÎTE — celle qu'on
+       vient de calculer d'après la carte. Mesuré, le serpent se mordait
+       la queue et le chemin tombait à 58 px. */
+    display: flex; justify-content: center; align-items: flex-start;
+}
+.cfg-apercu--carte > * {
+    flex: 0 0 auto;
+    transform: scale(var(--cfg-zoom)); transform-origin: top center;
+    /* L'APERÇU NE SE CLIQUE PAS : c'est une image de ce que l'élève aura, et
+       une pastille qui s'enfonce sous le doigt du professeur lui ferait
+       croire qu'il règle quelque chose. */
+    pointer-events: none;
+}
+/* Le bas de la carte est coupé quand le parcours dépasse : on le dit par un
+   dégradé plutôt que par un trait net, qui aurait l'air d'un défaut. */
+/* Plus de dégradé de coupure : la réduction s'ajuste pour que tout tienne,
+   donc il n'y a plus rien à couper — voir `majApercu`. */
+.cfg-apercu--vide {
+    color: var(--text-muted); font-size: .9rem; line-height: 1.5;
+}
 .cfg-apercu-titre {
     font-size: .78rem; font-weight: 800; letter-spacing: .04em;
     text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;

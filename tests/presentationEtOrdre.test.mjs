@@ -86,20 +86,41 @@ test('LA PRÉSENTATION EST UN RÉGLAGE DE LA SÉANCE, ET PAR DÉFAUT LE CHEMIN',
     assert.equal(apprentissagePolicy().presentation, 'chemin');
 });
 
-test('LES QUATRE VALEURS EXISTENT, DONT CELLE QUI REND LA MAIN', () => {
+test('TOUTES LES VALEURS EXISTENT, DONT CELLE QUI REND LA MAIN', () => {
     const PV = lire('js/ui/pathView.js');
-    ['chemin', 'mondes', 'classique'].forEach(id =>
-        assert.ok(new RegExp(`id: '${id}'`).test(PV), id));
+    // RÉMY, 20 octobre : « serait-il possible d'avoir d'autres thèmes ? » —
+    // deux de plus, et chacun répond à une gêne nommée : le damier pour un
+    // parcours trop long pour un écran, le ruban pour un tableau numérique.
+    const ATTENDUS = ['chemin', 'mondes', 'damier', 'ruban', 'classique'];
+    ATTENDUS.forEach(id => assert.ok(new RegExp(`id: '${id}'`).test(PV), id));
     // `libre` n'est pas un habillage : c'est l'absence d'imposition. Il ne doit
     // donc PAS figurer dans la liste des habillages, sinon on dessinerait une
     // carte « libre » qui n'existe pas.
     assert.ok(!/id: 'libre'/.test(PV));
     assert.match(PV, /export function presentationImposee\(policy\) \{/);
     assert.match(PV, /return STYLES\.some\(s => s\.id === v\) \? v : null;/);
-    // Les quatre choix du professeur, eux, sont bien là.
+
+    // ET CHACUN SAIT SE DESSINER. Un habillage proposé que `construireCarte`
+    // ne sait pas rendre retomberait en silence sur la carte des mondes : le
+    // professeur choisirait « damier » et sa classe verrait autre chose.
+    const aiguillage = PV.slice(PV.indexOf('export function construireCarte'),
+        PV.indexOf('export function construireCarte') + 900);
+    ATTENDUS.filter(id => id !== 'mondes').forEach(id =>
+        assert.ok(aiguillage.includes(`'${id}'`), `construireCarte ne connaît pas « ${id} »`));
+
+    // LE CHOIX DU PROFESSEUR SORT DE LA MÊME LISTE : deux listes finiraient par
+    // offrir ici un habillage que l'écran de l'élève ne sait pas rendre.
     const CFG = lire('js/games/configUI.js');
-    ['chemin', 'mondes', 'classique', 'libre'].forEach(v =>
-        assert.ok(new RegExp(`<option value="${v}"`).test(CFG), v));
+    assert.match(CFG, /\$\{HABILLAGES\.map\(h => /);
+    assert.match(CFG, /import \{ HABILLAGES \} from '\.\.\/ui\/pathView\.js';/);
+    assert.ok(/<option value="libre"/.test(CFG), 'libre');
+    // Et chaque habillage dit ce qu'il promet : un nom seul ne dit pas ce que
+    // « damier » fait, et l'on ne donne pas une séance à six classes pour le
+    // découvrir.
+    const liste = PV.slice(PV.indexOf('export const HABILLAGES = ['),
+        PV.indexOf('export const HABILLAGES = [') + 1400);
+    ATTENDUS.forEach(id => assert.ok(new RegExp(`id: '${id}'[\\s\\S]{0,200}?dit:`).test(liste),
+        `« ${id} » ne dit pas ce qu'il fait`));
 });
 
 test('LE CHEMIN EST LE PREMIER BOUTON, PARCE QU\'IL EST LE DÉFAUT', () => {
@@ -167,7 +188,12 @@ test('LE PROFESSEUR VOIT CE QUE SON CHOIX FAIT', () => {
     // voir. Celui-ci fait disparaître trois boutons de l'écran d'un enfant.
     const CFG = lire('js/games/configUI.js');
     assert.match(CFG, /<label class="cfg-label" for="cfg-presentation">Présentation<\/label>/);
-    assert.match(CFG, /les trois boutons d'habillage disparaissent de son écran/);
+    assert.match(CFG, /les boutons d'habillage disparaissent de son écran/);
+    // ET IL LE VOIT, maintenant. Rémy : « on pourrait avoir l'apercu, ce
+    // serait cool ». L'aperçu est dessiné par le VRAI rendu — une vignette
+    // peinte à part aurait vieilli à la première retouche d'un habillage.
+    assert.match(CFG, /id="cfg-presentation-apercu"/);
+    assert.match(CFG, /const \{ construireCarte \} = await import\('\.\.\/ui\/pathView\.js'\);/);
     // Et il est enregistré : un réglage qui s'affiche sans se sauver est pire
     // qu'un réglage absent.
     assert.match(CFG, /presentation: \(document\.getElementById\('cfg-presentation'\) \|\| \{\}\)\.value \|\| base\.presentation,/);

@@ -66,6 +66,35 @@ export const ETATS = { A_VENIR: 'a_venir', EN_COURS: 'en_cours', CLOSE: 'close' 
 export const PORTEES = { CLASSE: 'classe', ELEVES: 'eleves' };
 
 /**
+ * CETTE SÉANCE EST-ELLE CELLE DE CE PARCOURS ? Deux identités, et il faut les
+ * deux.
+ *
+ * RÉMY : « dans mes parcours, quand j'ai donné un parcours à des classes, et
+ * que je recharge le parcours, je ne vois plus les classes à qui j'ai donné
+ * les parcours. »
+ *
+ * MESURÉ sur un parcours donné puis retouché : la séance garde l'identité du
+ * CONTENU qu'elle avait au moment du don, et l'atelier en recalcule une neuve
+ * à chaque retouche. Cinq gestes sur six faisaient disparaître les classes —
+ * changer le mode, ajouter une étape, changer le nombre de questions, ajouter
+ * un message —, et le sélecteur de mode est DANS le panneau qui les affiche.
+ *
+ * `pathId` (le contenu) est la seule identité que l'élève sache recalculer, et
+ * celle qui rassemble les travaux d'un bilan : on la garde en premier.
+ * `sourceId` (l'atelier) est la seule qui survive à une retouche : c'est celle
+ * dont le professeur a besoin pour relire ce qu'il a donné.
+ *
+ * ON NE DEVINE PAS : sans `sourceId` des deux côtés, on ne compare rien.
+ * Une séance d'avant cette version n'en a pas, et se reconnaît par son contenu
+ * comme avant — pas par un rapprochement de circonstance.
+ */
+export function estLaSeanceDe(seance, pathId, sourceId) {
+    if (!seance) return false;
+    if (pathId && seance.pathId === pathId) return true;
+    return !!(sourceId && seance.sourceId && seance.sourceId === sourceId);
+}
+
+/**
  * Donner un parcours à une classe, ou à un groupe dans cette classe.
  *
  * @param {Object} classe   la classe visée
@@ -94,6 +123,36 @@ export function donnerSeance(classe, parcours, opts = {}) {
         // `identiteDeParcours` est LA définition, celle-là même dont le code se
         // sert (core/shortcodes.js). Deux appareils, deux chemins, un seul nom.
         pathId: identiteDeParcours(path),
+        // ── ET L'IDENTITÉ DE L'ATELIER, QUI NE BOUGE PAS, ELLE ──────────────
+        //
+        // RÉMY : « dans mes parcours, quand j'ai donné un parcours à des
+        // classes, et que je recharge le parcours, je ne vois plus les classes
+        // à qui j'ai donné les parcours. »
+        //
+        // MESURÉ, et la cause est juste au-dessus. `pathId` est l'identité du
+        // CONTENU : elle change dès qu'on touche au parcours. Relevé sur un
+        // parcours donné puis retouché — la séance garde `path_cQP4FFX` et
+        // l'atelier calcule :
+        //
+        //     on renomme                       path_cQP4FFX   (reconnu)
+        //     on change le MODE                path_cDAG2WV   PERDU
+        //     on ajoute une étape              path_c12U9HU0  PERDU
+        //     on change le nombre de questions path_c4JIY4K   PERDU
+        //     on ajoute un message             path_c8SS8CV   PERDU
+        //
+        // Et le sélecteur de mode est DANS le panneau qui montre les classes :
+        // on pouvait donc les faire disparaître depuis l'écran même qui les
+        // affiche.
+        //
+        // LES DEUX IDENTITÉS SONT JUSTES, ET IL FAUT LES DEUX. Celle du
+        // contenu est la seule que l'ÉLÈVE sache recalculer — son code n'en
+        // transporte aucune autre —, et c'est elle qui rassemble les travaux
+        // dans un bilan : on n'y touche pas. Celle de l'atelier est la seule
+        // qui survive à une retouche, et c'est celle dont le PROFESSEUR a
+        // besoin pour relire ce qu'il a donné. C'est d'ailleurs déjà la clef
+        // du serveur (`donnerAuServeur` envoie `parcours.id`), ce qui fait que
+        // le serveur, lui, n'a jamais rien perdu.
+        sourceId: (parcours && parcours.id) || (path && path.id) || null,
         // LA COPIE, et non la référence — voir l'en-tête du module.
         path,
         // Le code de partage, quand il y en a un. Il reste facultatif : dans une
