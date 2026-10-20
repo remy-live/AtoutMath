@@ -2225,6 +2225,31 @@ Deux exercices là où j'en attendais un, et ils ne se recouvrent pas :
   valeurs est vide, et l'élève TIRE LA DROITE À LA RÈGLE. Le logiciel n'en
   trace aucune.
 
+### Ce que la sixième a montré, en l'ouvrant — 20 octobre
+
+La table des trous du §15 annonçait, pour les blocs 11, 18 et 10, « un tag à
+ouvrir » et « un réglage ». **Deux de ces trois estimations étaient fausses**,
+et il a fallu lire le code pour s'en apercevoir :
+
+- **bloc 11, les angles — l'estimation tenait**, mais pas pour la raison
+  écrite. Les deux exercices tirent SIX relations, mesuré sur quarante
+  tirages, et deux d'entre elles — correspondants, alternes-internes —
+  demandent deux parallèles et une sécante, qui arrivent en cinquième. Le tag
+  seul aurait servi de la cinquième à des sixièmes. Ce qui sauve, c'est que le
+  réglage « Les relations travaillées » existe depuis le premier jour : on
+  ouvre le tag ET l'instruction dit lesquelles décocher. Et « les angles
+  opposés par le sommet » ne manquaient pas — ils sont là depuis le début ;
+  c'est ma lecture d'hier qui était fausse.
+- **bloc 18, la fraction par un entier — ce n'était PAS un réglage.** Les
+  leurres, les indices et le corrigé supposent tous deux fractions :
+  « multiplier en croix » n'a aucun sens face à un entier, tandis que
+  « multiplier aussi le dénominateur » est L'erreur du chapitre et n'existe
+  pas entre deux fractions. Le cas de sixième a donc son chemin à lui.
+- **bloc 10, la fraction sur une droite graduée — ce n'est pas un réglage non
+  plus.** L'axe écrit ses graduations en décimaux ; les écrire en fractions
+  demande de les EMPILER, à l'écran comme sur la feuille imprimée. C'est un lot
+  à lui seul, et il reste à faire.
+
 Et **le repérage va désormais jusqu'à la quatrième** — « Placer un Point »,
 « Lire des Coordonnées » et « Coordonnées Négatives » s'arrêtaient à la
 cinquième. Ce n'est pas un rappel : on ne trace pas une fonction dans un repère

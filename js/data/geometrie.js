@@ -95,9 +95,24 @@ export const geometrieExercises = [
         motsClefs: ['angles', 'opposés par le sommet', 'correspondants', 'alternes-internes',
             'complémentaires', 'supplémentaires', 'parallèles', 'sécante',
             '90', '180', '360', 'degrés', 'tour complet', 'angle plat', 'angle droit'],
+        // ET IL VA JUSQU'À LA SIXIÈME, PARCE QUE LE RÉGLAGE EXISTE DÉJÀ.
+        //
+        // RÉMY, onzième bloc de sa progression de sixième : les angles. Mesuré
+        // sur quarante tirages, l'exercice sert six relations — opposés,
+        // correspondants, alternes-internes, complémentaires, supplémentaires,
+        // et la chaîne. DEUX D'ENTRE ELLES NE SONT PAS DE SIXIÈME :
+        // correspondants et alternes-internes demandent deux parallèles et une
+        // sécante, qui arrivent en cinquième.
+        //
+        // ON NE COUPE PAS L'EXERCICE EN DEUX POUR AUTANT. « Les relations
+        // travaillées » est un réglage qui existe depuis le premier jour : le
+        // professeur décoche les deux, d'un geste, et l'instruction dit
+        // lesquelles. C'est la décision déjà prise pour le PGCD — deux entrées
+        // de catalogue pour la même notion se mettent à diverger, et celle qui
+        // reçoit la correction suivante n'est jamais les deux.
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
-            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
         // LE PARALLÉLISME S'ÉCRIT, IL NE SE CODE PLUS SUR LE TRAIT. Rémy, deux
         // fois : « je ne comprends pas pourquoi tu mets des flèches », puis
@@ -109,7 +124,11 @@ export const geometrieExercises = [
         instruction: 'Un angle est donné, un autre est à trouver. Cherche d\'abord COMMENT '
             + 'les deux sont placés : c\'est la relation qui donne la réponse. Les deux '
             + 'droites tracées EN POINTILLÉS sont PARALLÈLES ; celle qui les coupe est la '
-            + 'sécante. C\'est de là que tout part.'
+            + 'sécante. C\'est de là que tout part. EN SIXIÈME, on décoche « correspondants » '
+            + 'et « alternes-internes » dans « Les relations travaillées » : celles-là '
+            + 'demandent les parallèles, qui arrivent en cinquième. Restent les opposés par '
+            + 'le sommet, les complémentaires et les supplémentaires, qui se lisent sur un '
+            + 'seul croisement.'
     },
 
     // L'AUTRE MOITIÉ DU CHAPITRE, et la première dans l'ordre : l'exercice 8,
@@ -126,12 +145,19 @@ export const geometrieExercises = [
         skills: ['geo.angles.relations'],
         motsClefs: ['angles', 'adjacents', 'opposés par le sommet', 'correspondants',
             'alternes-internes', 'complémentaires', 'supplémentaires', 'nommer', 'vocabulaire'],
+        // Jusqu'à la sixième, pour la même raison que « La Valeur Manquante » :
+        // le réglage des relations existe, et NOMMER vient avant CALCULER — un
+        // élève qui ne sait pas nommer ne peut pas calculer.
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
-            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
         instruction: 'Rien à mesurer : tout est dans la POSITION des deux angles l\'un '
-            + 'par rapport à l\'autre. Commence toujours par le sommet.'
+            + 'par rapport à l\'autre. Commence toujours par le sommet. EN SIXIÈME, on '
+            + 'décoche « correspondants » et « alternes-internes » dans « Les relations '
+            + 'travaillées » : ces deux-là demandent de repérer des parallèles, qui arrivent '
+            + 'en cinquième. Les quatre autres — adjacents, opposés par le sommet, '
+            + 'complémentaires et supplémentaires — se lisent sur un seul croisement.'
     },
 
     // --- Les familles de quadrilatères ---

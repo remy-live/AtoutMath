@@ -60,17 +60,41 @@ export const fractionsExercises = [
         // tenir en même temps que la première.
         id: 'frac-produit', title: 'Multiplier des Fractions',
         cree: '2026-09-05',
-        consignePapier: 'Calcule le produit. Simplifie avant de multiplier quand c\'est possible.',
+        // LA CONSIGNE VAUT POUR LES DEUX RÉGLAGES. Vu sur la feuille imprimée
+        // du cas de sixième : « Simplifie avant de multiplier quand c'est
+        // possible » au-dessus de vingt « 3 × 1/2 », où rien ne se simplifie
+        // jamais. Une consigne fausse envoie l'élève chercher ce qui n'existe
+        // pas, et c'est pire qu'une consigne absente.
+        consignePapier: 'Calcule. Avec deux fractions, on peut simplifier en diagonale avant '
+            + 'de multiplier ; avec un entier, le dénominateur ne bouge pas.',
         colonnesPapier: 4,
         generatorId: 'frac.produit', activityId: 'bubbles',
-        params: { decomposition: 'sans', maxDen: 9, maxNum: 10 },
+        params: { decomposition: 'sans', maxDen: 9, maxNum: 10, facteurs: 'deux-fractions' },
         motsClefs: ['multiplier des fractions', 'produit de fractions', 'simplifier avant',
-            'décomposition', 'barrer en diagonale'],
+            'décomposition', 'barrer en diagonale', 'fraction par un entier'],
+        // ET IL DESCEND JUSQU'À LA SIXIÈME, par le réglage « Ce qu'on
+        // multiplie ». RÉMY, dix-huitième bloc de sa progression de sixième :
+        // « multiplier une fraction par un nombre ».
+        //
+        // LE CAS DE SIXIÈME N'EST PAS UNE VERSION FACILE DU CAS DE CINQUIÈME :
+        // « 3 × 2/5 », c'est « 2/5 + 2/5 + 2/5 ». Le nombre de parts est
+        // multiplié, leur TAILLE ne change pas — donc le dénominateur ne bouge
+        // pas. Un élève qui écrit 6/15 n'a pas raté une règle de calcul : il a
+        // cru que le 3 agissait sur les deux étages. Les leurres, les indices
+        // et le corrigé sont donc les siens, et non ceux du produit de deux
+        // fractions.
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
-            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        instruction: 'Multiplier deux fractions ne demande AUCUN dénominateur commun — c\'est '
+        instruction: 'LE RÉGLAGE « Ce qu\'on multiplie » OUVRE LE CAS DE SIXIÈME : une '
+            + 'fraction par un ENTIER. Ce n\'est pas le même geste. 3 × 2/5, c\'est '
+            + '2/5 + 2/5 + 2/5 : on prend trois fois deux cinquièmes. Le NOMBRE de parts est '
+            + 'multiplié, leur TAILLE ne change pas — donc le dénominateur ne bouge pas, et '
+            + 'la réponse est 6/5. Qui écrit 6/15 a multiplié les deux étages, et retombe sur '
+            + '2/5, c\'est-à-dire le nombre de départ : la multiplication n\'aurait servi à '
+            + 'rien. '
+            + 'Multiplier deux fractions ne demande AUCUN dénominateur commun — c\'est '
             + 'ce qui la sépare de l\'addition, et ce qu\'on oublie le plus vite. On multiplie '
             + 'les numérateurs entre eux, les dénominateurs entre eux : 2/3 × 5/7 = 10/21. Le '
             + 'réglage « Décomposer avant de calculer » change ce qui se passe ensuite. Sans, '
