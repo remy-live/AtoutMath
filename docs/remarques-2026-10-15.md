@@ -2193,3 +2193,21 @@ Le cinquième se reproduira, parce qu'il est dans la forme même des générateu
 Il a donc sa garde : « un énoncé de papier ne se répète pas ». Trois gardes du
 catalogue en tout, maintenant, pour les trois façons dont une feuille peut
 mentir.
+
+### « les deux » — l'écran place, et la feuille trace — 20 octobre
+
+> « oui fais le reste, les deux pour ta question »
+
+La question portait sur le bloc 12 et sur la LIGNE ROUGE : l'écran a-t-il le
+droit de faire PLACER un point dans un repère, ou le tracé doit-il rester sur
+la feuille ? Sa réponse est **les deux**, et elle se tient :
+
+- **à l'écran**, l'élève lit une courbe et place un point. Ce n'est pas de la
+  construction géométrique — il n'y a ni règle ni compas, et « Placer un
+  Point » fait déjà ce geste depuis la sixième ;
+- **sur la feuille**, le repère est imprimé avec son quadrillage, et l'élève
+  trace à la main. **C'est là que le geste reste entier**, et c'est pour cela
+  que la feuille n'est pas une consolation : elle est l'autre moitié.
+
+« Le reste » veut dire : les blocs 15 et 12 de quatrième, PUIS la progression
+de sixième — 1, 11, 18, 10, 5, 3, 8 — qui attend depuis ce matin.

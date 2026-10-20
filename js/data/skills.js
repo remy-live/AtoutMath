@@ -1691,6 +1691,27 @@ const BASE = {
     // peut s'accrocher à rien. La carte des chapitres l'annonçait donc comme
     // une notion « qu'AtoutMath ne couvre pas encore », ce qui resterait vrai
     // même en ajoutant dix exercices d'équations.
+    // TESTER N'EST PAS UNE PETITE RÉSOLUTION, et c'est pour cela que c'est une
+    // compétence à part. Résoudre demande d'isoler l'inconnue — une technique,
+    // avec un ordre de gestes. Tester ne demande rien de tout cela : on
+    // remplace, on calcule, on compare. C'est aussi le geste qui VÉRIFIE une
+    // résolution, celui qu'on ne fait jamais.
+    'alg.equation.tester': {
+        label: 'Tester si un nombre est solution',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Remplacer l\'inconnue par un nombre et dire si l\'égalité est vraie.',
+        lesson: 'Tester ne demande AUCUNE technique : on remplace x par le nombre, on calcule le membre de gauche, on calcule celui de droite, et l\'on regarde s\'ils sont égaux. S\'ils le sont, le nombre est solution ; sinon, il ne l\'est pas. C\'est aussi la façon de VÉRIFIER une résolution — on remplace dans l\'équation de DÉPART, pas dans une ligne intermédiaire, et cela attrape l\'erreur de signe, qui est la plus fréquente.'
+    },
+    'alg.equation.programme': {
+        label: 'Les programmes de calcul',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.litteral.reduire'],
+        descriptor: 'Dérouler un programme de calcul, le remonter à partir du résultat, et l\'écrire avec une lettre.',
+        lesson: 'ON SUIT LES LIGNES DANS L\'ORDRE OÙ ELLES SONT ÉCRITES, et tout le chapitre tient dans cette phrase : « multiplie par 3 puis ajoute 4 » s\'écrit 3x + 4, tandis que « ajoute 4 puis multiplie par 3 » s\'écrit 3(x + 4). Les deux se ressemblent et ne valent jamais la même chose. LES PARENTHÈSES DISENT L\'ORDRE : si l\'on multiplie en premier il n\'en faut pas, si l\'on multiplie en dernier il en faut — sinon la multiplication ne porterait que sur x. Pour REMONTER un programme, on part de la fin et l\'on défait chaque ligne par son contraire : l\'inverse d\'« ajoute 4 » est « retire 4 », celui de « multiplie par 3 » est « divise par 3 ».'
+    },
     'alg.equation.resoudre': {
         label: 'Résoudre une équation du premier degré',
         chemin: [D.NUMERIQUE, SD.LITTERAL],

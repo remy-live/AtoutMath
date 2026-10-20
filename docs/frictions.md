@@ -5304,3 +5304,19 @@ le résultat n'existe pas** — 15 octobre 2026
   pour un identifiant donné, **imprimer la fiche et rendre l'image** — c'est le
   dernier geste qu'on oublie, et le seul que la machine ne fait pas à notre
   place.
+
+## `remplacer.mjs` refuse la paire qu'il trouve trois fois, et n'offre rien
+
+- *Ce qui s'est passé* : une phrase d'en-tête écrite à l'identique dans trois
+  branches voisines d'un générateur — « Voici un programme de calcul : » — se
+  raccourcit d'un mot. L'outil compte trois occurrences, refuse la paire, et
+  n'écrit RIEN du tout : les cinq autres paires du même fichier, justes,
+  tombent avec elle. Il a fallu réécrire le fichier de paires en donnant à
+  chacune des trois un contexte qui la distingue — trois paires là où une
+  suffisait, et quarante lignes de JSON recopiées.
+- *Combien de fois* : |
+- *Ce qui manque* : le refus est le bon réflexe — « j'en vois trois, lequel ? »
+  est exactement la question qui sauve. Ce qui manque est la réponse : un
+  `"toutes": true` sur la paire, ou mieux, un `"combien": 3` qui EXIGE le
+  nombre annoncé. Dire combien on en attend est une vérification, pas un
+  contournement : la paire qui en trouve quatre doit encore refuser.

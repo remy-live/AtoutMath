@@ -999,6 +999,29 @@ export const numerationExercises = [
         // partage pas en deux — 5 et 17 sont impairs —, et le bouton le dit.
         // C'est exactement pourquoi on retire les poids AVANT de diviser :
         // la règle n'est pas récitée, elle est rencontrée.
+        // --- Tester, et les programmes de calcul : le trou de la quatrième ---
+        //
+        // RÉMY : « Equations (tester et retour - Résolution et programme de
+        // calcul (Exercices type de brevet)) ». Mesuré avant d'écrire : la
+        // Balance RÉSOUT, et ne fait ni l'un ni l'autre des deux autres.
+        id: 'alg-equations',
+        cree: '2026-10-20',
+        title: 'Tester, Programmes et Équations',
+        generatorId: 'alg.equations', activityId: 'numpad',
+        consignePapier: 'Remplace, déroule, ou résous — selon ce qu\'on demande.',
+        colonnesPapier: 1,
+        lignesReponsePapier: 2,
+        params: { marches: ['tester', 'lequel', 'programme-direct', 'programme-retour',
+            'programme-ecrire', 'resoudre', 'probleme'] },
+        motsClefs: ['équation', 'solution', 'tester', 'programme de calcul', 'inconnue',
+            'brevet', 'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LITTERAL],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Sept marches, et les deux premières ne résolvent rien. TESTER n'est pas une petite résolution : résoudre demande d'isoler l'inconnue, avec un ordre de gestes à respecter ; tester ne demande que de remplacer, calculer, comparer. C'est le petit bain parfait — et c'est aussi le geste qui VÉRIFIE une résolution, celui qu'on ne fait jamais et qui attrape l'erreur de signe. Viennent ensuite les programmes de calcul, et tout le chapitre tient dans une confusion : « multiplie par 3 puis ajoute 4 » s'écrit 3x + 4, « ajoute 4 puis multiplie par 3 » s'écrit 3(x + 4). Les deux se ressemblent et ne valent jamais la même chose. La marche qui demande l'expression propose donc toujours les quatre programmes possibles avec les MÊMES nombres : rien d'autre que l'ordre des lignes ne départage les réponses. Les deux dernières résolvent, puis posent l'équation à partir d'un énoncé — l'exercice du brevet."
+    },
+    {
         id: 'alg-balance',
         jeu: false,
         cree: '2026-09-04',

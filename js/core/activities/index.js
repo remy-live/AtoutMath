@@ -50,6 +50,7 @@ import { pgcdPpcmGenerator } from '../generators/pgcdPpcm.js';
 import { statistiquesGenerator } from '../generators/statistiques.js';
 import { divisionFractionsGenerator } from '../generators/divisionFractions.js';
 import { pythagoreReciproqueGenerator } from '../generators/pythagoreReciproque.js';
+import { equationsGenerator } from '../generators/equations.js';
 import { probabilitesGenerator } from '../generators/probabilites.js';
 import { litteralReduireGenerator } from '../generators/litteral.js';
 import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js';
@@ -173,6 +174,7 @@ import {
     statistiquesGenerator,
     divisionFractionsGenerator,
     pythagoreReciproqueGenerator,
+    equationsGenerator,
     probabilitesGenerator,
     litteralPuissancesGenerator,
     // La balance n'a pas de générateur — elle a une activité. Sa fiche en a un.

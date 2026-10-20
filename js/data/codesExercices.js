@@ -74,6 +74,7 @@ export const CODES_EXERCICES = {
     'don-probabilites':           'HZ',   // haZard — « PB » et « PR » étaient pris
     'frac-division':              'FD',   // Fraction, Division
     'geo-pythagore-reciproque':   'VS',   // la réciproque : le théorème à l'enVerS
+    'alg-equations':              'TS',   // TeSter, et les programmes de calcul
     'calc-detour-rond':           'DN',   // le Détour par le Nombre rond
     'calc-detour-sprint':         'DJ',   // Détour express — le même, chrono
     'calc-detour-arcade':         'NB',   // attrape le détour — Nombre à Battre
