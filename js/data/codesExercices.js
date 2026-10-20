@@ -68,6 +68,8 @@ export const CODES_EXERCICES = {
     // « HA » est le Hashi et « HP » les Histoires en Pagaille : on garde
     // « HG », Histoires d'arGent.
     'num-argent-problemes':       'HG',   // Histoires d'arGent
+    'num-pgcd-ppcm':              'DP',   // Décomposer, Pgcd et ppcm
+    'num-pgcd-ppcm-problemes':    'MP',   // probleMes de Pgcd et ppcm
     'calc-detour-rond':           'DN',   // le Détour par le Nombre rond
     'calc-detour-sprint':         'DJ',   // Détour express — le même, chrono
     'calc-detour-arcade':         'NB',   // attrape le détour — Nombre à Battre

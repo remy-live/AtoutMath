@@ -46,6 +46,7 @@ import { detourRondGenerator } from '../generators/detourRond.js';
 import { argentGenerator } from '../generators/argent.js';
 import { lireUneFractionGenerator } from '../generators/lireUneFraction.js';
 import { argentProblemesGenerator } from '../generators/argentProblemes.js';
+import { pgcdPpcmGenerator } from '../generators/pgcdPpcm.js';
 import { litteralReduireGenerator } from '../generators/litteral.js';
 import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js';
 import { balanceFicheGenerator } from '../generators/balanceFiche.js';
@@ -164,6 +165,7 @@ import {
     relatifsAdditionGenerator, relatifsProduitGenerator, relatifsMelangeGenerator,
     detourRondGenerator, argentGenerator, lireUneFractionGenerator,
     argentProblemesGenerator, litteralReduireGenerator,
+    pgcdPpcmGenerator,
     litteralPuissancesGenerator,
     // La balance n'a pas de générateur — elle a une activité. Sa fiche en a un.
     // Les Serpents sont dans le même cas, et pour la même raison : le jeu se

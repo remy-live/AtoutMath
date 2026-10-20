@@ -1770,3 +1770,49 @@ professeur restait invisible pour tout élève n'ayant jamais touché aux bouton
 c'est-à-dire presque tous. MESURÉ de bout en bout : le professeur pose
 « Noël », et la carte d'un élève qui n'a rien imposé ni rien choisi sort en
 `decor--noel` avec ses six ornements.
+
+**Ce qui a été fait pour les exercices de troisième** :
+
+- **Un module d'arithmétique nommé** (`js/core/arithmetique.js`). `pgcd` était
+  écrit SEPT fois dans le dépôt — ce qui ne coûtait rien tant qu'il n'était
+  qu'un outil pour simplifier une fraction au passage. Il devient le SUJET :
+  il a donc un endroit, pur, éprouvé pour lui-même, et `core/pizza.js`
+  réexporte d'ici plutôt que d'en garder une copie.
+- **Dix marches, trois temps.** A : reconnaître un premier, décomposer, relire
+  une décomposition. B : PGCD, PPCM, « premiers entre eux ? », fraction
+  irréductible. C : les trois petits problèmes.
+- **Et le temps C MÉLANGE les deux notions, exprès.** C'est la décision qui
+  commande tout le fichier : calculer PGCD(84 ; 120) est une technique qui
+  s'automatise ; savoir que « le plus grand nombre de bouquets identiques »
+  appelle le PGCD et que « dans combien de minutes repartiront-ils ensemble »
+  appelle le PPCM est une AUTRE compétence, et c'est celle qui manque au
+  contrôle. Ranger les problèmes de PGCD ensemble puis ceux de PPCM ensemble
+  apprendrait à lire le titre du paragraphe, pas l'énoncé.
+- **Deux compétences au bilan**, et non une. Un élève qui calcule très bien les
+  deux et se trompe de notion a zéro : son bilan doit le DIRE, sinon le
+  professeur relit « n'a pas acquis le PGCD » pour quelqu'un qui le calcule
+  parfaitement.
+- **Les couples sont écrits, pas tirés.** Deux nombres au hasard sont premiers
+  entre eux six fois sur dix : PGCD égal à 1, PPCM égal au produit, et le
+  problème des bouquets devient « un bouquet par fleur ».
+
+**Cinq défauts trouvés en REGARDANT — la feuille imprimée et l'écran** :
+
+1. « en utilisant **toutes ses** stylos », « des trousses **TOUS**
+   IDENTIQUES », « des carreaux **toutes posées** […] sans en couper
+   **aucune** ». Chaque nom porte son genre maintenant.
+2. « 110 = 2 × 5 × 11 **·** 132 = 2² × 3 × 11 » — sur une feuille de
+   mathématiques, le point médian est un signe de MULTIPLICATION.
+3. « … = 2⁴ × 3 **Quel est le PGCD** » — l'énoncé collait à la question, faute
+   d'un point final. Invisible à l'écran, où ils sont dans deux blocs.
+4. Des briques de **91 cm sur 143 cm**, et un car qui part **toutes les 132
+   minutes**. Le calcul est juste, l'objet n'existe pas, et l'élève décroche.
+5. **Le plus grave, et le plus silencieux** : une réponse à deux nombres ne
+   fabrique PAS deux cases. Le pavé compte les trous que l'ÉNONCÉ déclare —
+   sans eux, l'élève n'avait qu'un champ et aurait dû y taper « 3|4 ». Rien ne
+   plantait, rien ne prévenait : la question était simplement impossible. Les
+   exposants et la fraction se remplissent maintenant EN PLACE.
+
+Et deux gardes du dépôt ont rattrapé deux autres fautes avant moi : un exercice
+daté du lendemain, et une fraction écrite « 96/144 » sur le papier — où elle
+doit s'empiler, numérateur sur dénominateur.

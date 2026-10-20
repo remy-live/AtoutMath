@@ -5224,3 +5224,23 @@ le résultat n'existe pas** — 15 octobre 2026
   d'`array_merge` déjà payé dans ce fichier. **Quand on mesure une colonne qui
   peut valoir NULL, on écrit `array_key_exists(…) && … === null`, jamais `??`.**
   Les deux opérateurs ont l'air de dire ce qu'on pense et disent autre chose.
+
+**Une réponse à plusieurs nombres n'ouvre pas de cases toute seule** — 20 octobre 2026
+
+- *Ce que je voulais faire* : demander une fraction irréductible et les
+  exposants d'une décomposition — deux, puis trois nombres à donner.
+- *Ce qui a coûté* : la question était IMPOSSIBLE à répondre, et rien ne le
+  disait. Une réponse `'3|4'` est bien comprise par le pavé numérique côté
+  CORRECTION, mais le nombre de CASES vient d'ailleurs : des `[data-trou]`
+  que l'ÉNONCÉ déclare (`aTrous`, dans `core/activities/numeric.js`). Sans
+  eux, un seul écran, où il faudrait taper « 3|4 » — ce que le pavé ne permet
+  pas. Vu en ouvrant l'exercice, pas en relisant le code ; une relecture
+  attentive du générateur ne pouvait pas le montrer, puisque le défaut est
+  dans ce qu'il N'ÉCRIT PAS.
+- *Combien de fois* : |
+- *Ce qui manque* : une garde qui vaut pour tous les générateurs, pas une
+  épreuve par exercice. **Dès qu'une réponse contient une barre, l'énoncé doit
+  déclarer autant de `[data-trou]` qu'il y a de morceaux** — c'est vrai partout
+  et ça se vérifie en trois lignes sur `allGenerators()`. À écrire dans
+  `tests/catalog.test.mjs`, à côté de « un générateur qui écrit des fractions
+  le déclare », qui garde exactement la même famille de promesse non tenue.

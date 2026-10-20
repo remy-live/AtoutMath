@@ -230,6 +230,47 @@ export const numerationExercises = [
         instruction: "Huit situations qu'on rencontre vraiment à une caisse. On commence par une seule opération — le total de deux achats, ce qu'il reste, la monnaie rendue —, puis on multiplie et on partage : plusieurs articles identiques, le prix d'un seul, et combien on peut en acheter avec ce qu'on a. Les deux dernières demandent DEUX calculs : payer deux choses avec un billet, et savoir combien il manque. Les prix sont des décimaux, et c'est tout le sujet : la monnaie rendue sur un billet de 10 € est l'endroit où l'on écrit 3,60 au lieu de 2,60."
     },
 
+    // ── DÉCOMPOSER, PGCD ET PPCM — LE CHAPITRE DE TROISIÈME ────────────────
+    //
+    // RÉMY : « J'aimerai bien des exercices pour décomposer un nombre et pgcd
+    // et ppcm niveau 3ème. Des exercices d'application direct et des petits
+    // problèmes ».
+    //
+    // DEUX ENTRÉES, ET C'EST SA DEMANDE MOT POUR MOT. Le même générateur, deux
+    // portes : l'une ouvre sur les marches de technique, l'autre sur les
+    // problèmes seuls. Un seul exercice portant les dix marches aurait obligé
+    // à décocher sept cases pour donner un travail de problèmes — c'est-à-dire
+    // à faire à la main, chaque fois, ce qu'une seconde entrée fait une fois.
+    {
+        id: 'num-pgcd-ppcm',
+        cree: '2026-10-20',
+        consignePapier: 'Décompose, puis réponds.',
+        colonnesPapier: 2,
+        title: 'Décomposer, PGCD et PPCM',
+        generatorId: 'num.pgcd-ppcm', activityId: 'numpad',
+        params: { marches: ['premier', 'decomposer', 'recomposer', 'pgcd', 'ppcm',
+            'entre-eux', 'irreductible'] },
+        motsClefs: ['pgcd', 'ppcm', 'décomposition', 'facteurs premiers', 'premier',
+            'diviseur', 'multiple', 'irréductible', 'premiers entre eux', 'arithmétique',
+            'troisième', '3ème'],
+        tags: { chemin: [D, MENTAL], niveaux: [TROISIEME] },
+        instruction: "Sept marches de technique. On commence par décomposer — reconnaître un nombre premier, casser un nombre en facteurs, et relire une décomposition dans l'autre sens —, puis on calcule les deux : le PGCD garde les facteurs COMMUNS au plus PETIT exposant, le PPCM garde TOUS les facteurs au plus GRAND. Les deux décompositions sont données à ces marches-là : c'est la règle des exposants qu'on travaille, pas la décomposition, qui a ses marches à elle juste avant. Les deux dernières sont les deux usages du PGCD en troisième : « premiers entre eux ? » et la fraction irréductible."
+    },
+    {
+        id: 'num-pgcd-ppcm-problemes',
+        cree: '2026-10-20',
+        consignePapier: 'Lis bien, écris ton calcul, puis la réponse.',
+        lignesReponsePapier: 2,
+        colonnesPapier: 1,
+        title: 'Problèmes de PGCD et de PPCM',
+        generatorId: 'num.pgcd-ppcm', activityId: 'numpad',
+        params: { marches: ['paquets', 'ensemble', 'carre'] },
+        motsClefs: ['problème', 'pgcd', 'ppcm', 'paquets', 'bouquets', 'ensemble',
+            'carrelage', 'dalles', 'troisième', '3ème'],
+        tags: { chemin: [D, MENTAL], niveaux: [TROISIEME] },
+        instruction: "Trois situations, et elles sont MÉLANGÉES exprès : savoir calculer les deux ne sert à rien si l'on ne sait pas lequel l'énoncé demande, et c'est là que le contrôle se joue. La règle tient en une phrase : on PARTAGE en parts égales sans reste, donc on cherche un diviseur commun, donc le PGCD — et la réponse est plus PETITE que les nombres de départ ; on ATTEND que deux rythmes se retrouvent, ou l'on AGRANDIT jusqu'à ce que ça tombe juste, donc un multiple commun, donc le PPCM — et la réponse est plus GRANDE. Un élève dont la réponse est du mauvais côté s'est trompé de notion, pas de calcul."
+    },
+
     // --- Décomposition et conversions (fiche § 10, 11, 18, 20, 21) ---
     {
         id: 'num-decomposition',

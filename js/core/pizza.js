@@ -15,21 +15,21 @@
 // Ce module ne connaît ni le SVG ni les ingrédients dessinés : il tient les
 // nombres, tire des commandes qui TIENNENT sur une pizza, et juge une garniture.
 
-/** Plus grand commun diviseur, par soustractions successives d'Euclide. */
-export function pgcd(a, b) {
-    a = Math.abs(a); b = Math.abs(b);
-    while (b) { [a, b] = [b, a % b]; }
-    return a || 1;
-}
-
-export function ppcm(a, b) {
-    return Math.abs(a * b) / pgcd(a, b);
-}
-
-/** Le découpage commun à toute une liste de dénominateurs. */
-export function ppcmListe(liste) {
-    return liste.reduce((m, d) => ppcm(m, d), 1);
-}
+// LE PGCD ET LE PPCM VIENNENT DE `core/arithmetique.js` DEPUIS LE 21 OCTOBRE.
+//
+// Ils étaient écrits ici, et dans six autres fichiers — ce qui ne coûtait rien
+// tant qu'ils n'étaient qu'un outil pour découper une pizza en parts égales.
+// Ils sont devenus le SUJET d'un exercice de troisième, donc ils ont un
+// endroit nommé, et celui-là s'éprouve pour lui-même. On réexporte plutôt que
+// de garder une copie : une de moins à tenir d'accord.
+//
+// ON IMPORTE *ET* ON RÉEXPORTE, et ce n'est pas une redondance : un
+// `export … from` ne met RIEN dans la portée du module. Ce fichier appelle
+// `pgcd` chez lui — `simplifier`, le tirage des commandes —, et la seule
+// réexportation rendait « pgcd is not defined » à l'exécution, sans que
+// `node --check` n'y trouve rien à redire. Sept épreuves l'ont dit d'un coup.
+import { pgcd, ppcm, ppcmListe } from './arithmetique.js';
+export { pgcd, ppcm, ppcmListe };
 
 /** La fraction sous sa forme la plus simple. */
 export function simplifier(num, den) {

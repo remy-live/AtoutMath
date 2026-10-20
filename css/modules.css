@@ -14548,3 +14548,11 @@ body.en-boite > #app-container { background: none; }
 .cu-vue figcaption { font-size: .78rem; color: var(--text-muted); font-weight: 700; }
 .cu-svg--vue { width: 100%; height: auto; max-height: 150px; }
 .cu-vues-mot { margin: 0 0 8px; font-size: .86rem; color: var(--text-muted); }
+
+/* LES CASES À REMPLIR DE « Décomposer, PGCD et PPCM ».
+   L'élève remplit l'écriture elle-même — les exposants d'une décomposition, le
+   haut et le bas d'une fraction — au lieu de reporter des nombres dans des
+   cases anonymes. Voir `trou()` dans js/core/generators/pgcdPpcm.js. */
+.pp-reponse { display: block; margin-top: 14px; font-size: 1.5rem; }
+.pp-ecriture { font-weight: 800; letter-spacing: .01em; }
+.pp-ecriture sup { font-size: .62em; }

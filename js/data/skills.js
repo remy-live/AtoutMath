@@ -637,6 +637,34 @@ const BASE = {
         descriptor: 'Trouver un diviseur d\'un nombre, et le casser jusqu\'à ses facteurs premiers.',
         lesson: 'Un nombre PREMIER n\'a que deux diviseurs : 1 et lui-même. Tous les autres se cassent : 60 = 4 × 15 = 4 × 3 × 5 = 2 × 2 × 3 × 5. On s\'arrête quand il ne reste que des premiers — et l\'on trouve toujours les mêmes, quel que soit l\'ordre où l\'on s\'y prend.'
     },
+    // ── LE PGCD ET LE PPCM, DEUX COMPÉTENCES ET NON UNE ────────────────────
+    //
+    // RÉMY : « J'aimerai bien des exercices pour décomposer un nombre et pgcd
+    // et ppcm niveau 3ème. Des exercices d'application direct et des petits
+    // problèmes ».
+    //
+    // DEUX ENTRÉES PARCE QUE L'ÉCHEC EST DIFFÉRENT. Un élève qui calcule très
+    // bien les deux et qui, devant un problème, prend le PGCD là où il fallait
+    // le PPCM a zéro — et son bilan doit le DIRE, sinon le professeur relit
+    // « n'a pas acquis le PGCD » pour quelqu'un qui le calcule parfaitement.
+    // Une compétence unique « PGCD et PPCM » mélangerait les deux diagnostics
+    // en un seul, qui n'en est plus un.
+    'num.arith.pgcd': {
+        label: 'PGCD : partager en parts égales',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.TROISIEME],
+        prereqs: ['num.arith.decomposition'],
+        descriptor: 'Calculer un PGCD, et reconnaître un problème qui en demande un.',
+        lesson: 'Le PGCD se lit sur les deux décompositions : on garde les facteurs COMMUNS, au plus PETIT exposant. Il DIVISE les deux nombres, donc il est plus petit qu\'eux. Dans un problème, il arrive quand on PARTAGE en parts égales sans qu\'il reste rien — le nombre de parts divise les deux quantités.'
+    },
+    'num.arith.ppcm': {
+        label: 'PPCM : quand deux rythmes se retrouvent',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.TROISIEME],
+        prereqs: ['num.arith.decomposition'],
+        descriptor: 'Calculer un PPCM, et reconnaître un problème qui en demande un.',
+        lesson: 'Le PPCM se lit sur les deux décompositions : on garde TOUS les facteurs, au plus GRAND exposant. Il est un MULTIPLE des deux nombres, donc plus grand qu\'eux. Dans un problème, il arrive quand on ATTEND que deux cycles retombent ensemble, ou qu\'on AGRANDIT jusqu\'à ce que ça tombe juste.'
+    },
     'num.vocabulaire.multiples': {
         label: 'Double, triple, moitié, tiers',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
