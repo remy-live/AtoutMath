@@ -25,11 +25,35 @@ import { spellInteger, formatFr } from '../core/numberWords.js';
 import { voixDisponible, preparerVoix, parler, taire, aDire, debit, setDebit } from '../core/voix.js';
 import { meneurDemo } from '../core/meneurDemo.js';
 
+// LES PALIERS MONTENT JUSQU'AUX CENTAINES DE MILLIARDS.
+//
+// RÉMY, premier bloc de sa progression de sixième : les grands nombres y vont
+// « jusqu'aux centaines de milliards ». La dictée plafonnait à 9 999 999 —
+// sept chiffres, c'est-à-dire la moitié de son chapitre.
+//
+// ET LES DEUX PALIERS NEUFS NE SONT PAS UN SIMPLE ÉLARGISSEMENT : un nombre à
+// douze chiffres s'entend par CLASSES — « trois cent cinq milliards quarante-
+// deux millions six cent sept » —, et c'est exactement ce que la dictée
+// travaille, puisqu'il faut décider seul combien de zéros poser entre les
+// classes qu'on n'entend pas.
 const PALIERS = {
     milliers: { label: 'Jusqu\'à 99 999', min: 1000, max: 99999 },
     grands: { label: 'Jusqu\'à 999 999', min: 10000, max: 999999 },
-    millions: { label: 'Jusqu\'aux millions', min: 100000, max: 9999999 }
+    millions: { label: 'Jusqu\'aux millions', min: 100000, max: 9999999 },
+    centaines_millions: { label: 'Jusqu\'aux centaines de millions', min: 10000000, max: 999999999 },
+    milliards: { label: 'Jusqu\'aux centaines de milliards', min: 1000000000, max: 999999999999 }
 };
+
+/**
+ * COMBIEN DE CHIFFRES ON PEUT TAPER — DÉDUIT DU PALIER, JAMAIS ÉCRIT EN DUR.
+ *
+ * Le clavier refusait la neuvième frappe, quel que soit le palier : un `8`
+ * écrit à la main dans `frappe`, juste assez pour les sept chiffres d'alors.
+ * Avec les milliards, l'élève entend le nombre, tape huit chiffres, et le
+ * clavier cesse de répondre — un logiciel cassé et une règle du jeu se
+ * ressemblent beaucoup vu de sa place.
+ */
+const combienDeChiffres = (palier) => String(PALIERS[palier].max).length;
 
 class Dictee extends BaseGame {
     constructor(container, isDemo, params) {
@@ -213,7 +237,7 @@ class Dictee extends BaseGame {
         if (!this.isRunning || this.fige) return;
         if (k === '⌫') this.saisie = this.saisie.slice(0, -1);
         else if (k === 'OK') return this.valider();
-        else if (this.saisie.length < 8) this.saisie += k;
+        else if (this.saisie.length < combienDeChiffres(this.palier)) this.saisie += k;
         this.peindre();
     }
 

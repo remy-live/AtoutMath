@@ -5337,3 +5337,24 @@ le résultat n'existe pas** — 15 octobre 2026
   aucune — les gardes du dépôt ne verront qu'un échantillon ». Deux cents
   millisecondes, là où il faut aujourd'hui se souvenir tout seul d'une
   convention que rien n'écrit.
+
+## Un plafond de saisie écrit en dur ne se voit qu'en tapant
+
+- *Ce qui s'est passé* : deux plafonds de frappe, écrits à la main et à des
+  années d'intervalle — huit chiffres dans la dictée, SEPT dans le pavé
+  numérique —, ne regardaient pas la question posée. En montant les nombres
+  aux milliards, les deux sont devenus des culs-de-sac muets : l'élève entend,
+  calcule juste, et le clavier cesse de répondre. Aucun des trois harnais ne
+  pouvait le dire, parce qu'aucun ne TAPE : `npm test` lit des générateurs
+  purs, le bout-en-bout suit un parcours sans jamais remplir un grand nombre.
+  Et le pavé n'avait AUCUN plafond au clavier physique : deux élèves, deux
+  logiciels, pendant des mois.
+- *Combien de fois* : ||
+- *Ce qui manque* : ce qu'une garde du catalogue sait faire — « aucune réponse
+  n'a plus de chiffres que le pavé n'en accepte » — est maintenant écrit, et
+  elle balaie chaque OPTION déclarée, pas seulement les réglages par défaut
+  (sa première version était verte sur le défaut même qui l'a motivée). Reste
+  la famille entière : largeur d'un champ, longueur d'une étiquette, nombre de
+  colonnes d'un tableau. Un outil qui, pour un exercice, confronterait ce que
+  le générateur PRODUIT à ce que l'activité ACCEPTE fermerait les trois d'un
+  coup.

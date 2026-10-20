@@ -28,8 +28,35 @@ function randomDecimal(rng, { intDigits = 4, decDigits = 2 } = {}) {
 
 // --- 1. Chiffre d'un rang ---------------------------------------------------
 
-const RANKS_ENTIER = [0, 1, 2, 3];
 const RANKS_DECIMAL = [-1, -2, -3];
+
+/**
+ * LA TAILLE DES NOMBRES, ET POURQUOI LES GRANDS N'ONT PAS DE DÉCIMALES.
+ *
+ * RÉMY, premier bloc de sa progression de sixième : les grands nombres vont
+ * « jusqu'aux centaines de milliards ». L'exercice tirait quatre chiffres —
+ * 9 999 au plus —, soit le quart de son chapitre.
+ *
+ * ET LA PARTIE DÉCIMALE DISPARAÎT AU-DELÀ DES MILLIERS. Deux raisons, et la
+ * seconde est un défaut qui ne se voit pas :
+ *
+ *   · le chapitre des grands nombres est celui des ENTIERS ; les décimaux
+ *     arrivent plus tard, et mêler les deux ferait du rang un terrain glissant
+ *     là où l'on veut d'abord qu'il soit solide ;
+ *   · douze chiffres entiers et trois décimales font QUINZE chiffres
+ *     significatifs, c'est-à-dire la limite même du nombre à virgule flottante
+ *     de JavaScript. `digitAtRank` lit `value.toFixed(6)` : au-delà, il
+ *     rendrait des chiffres inventés, et l'exercice compterait faux un élève
+ *     qui a raison. Les tailles au-dessus des milliers n'ont donc PAS de
+ *     décimales, et ce n'est pas un choix de confort.
+ */
+const TAILLES = {
+    milliers: { label: 'Jusqu\'à 9 999', chiffres: 4, decimales: true },
+    millions: { label: 'Jusqu\'aux centaines de millions', chiffres: 9, decimales: false },
+    milliards: { label: 'Jusqu\'aux centaines de milliards', chiffres: 12, decimales: false }
+};
+
+const rangsEntiers = (chiffres) => Array.from({ length: chiffres }, (_, i) => i);
 
 /**
  * LE TABLEAU DE NUMÉRATION, À LA DEMANDE.
@@ -90,6 +117,72 @@ const OUTIL_TABLEAU = {
     id: 'tableau', label: 'Tableau de numération', html: TABLEAU_HTML
 };
 
+/**
+ * LE MÊME TABLEAU POUR LES GRANDS NOMBRES — ET IL CHANGE DE FORME, PARCE QUE
+ * LA PLACE L'EXIGE.
+ *
+ * Sept colonnes nommées en toutes lettres tiennent dans un téléphone, et la
+ * feuille de style le dit chiffres à l'appui : 45,4 px par colonne à 390 px,
+ * quand « centièmes » en demande 52,4 à sa taille d'origine — d'où son clamp
+ * à 2,7 cqi, et l'avertissement que la marge y est MINCE. DOUZE COLONNES EN
+ * DONNENT 26, et quinze 21 : aucun de ces noms n'y entre, à aucune taille
+ * encore lisible.
+ *
+ * Au-delà des milliers, le tableau prend donc la forme qu'ont tous les manuels
+ * de sixième et que Rémy trace au tableau : LES CLASSES EN BANDEAU — milliards,
+ * millions, mille, unités — et sous chacune trois colonnes « c d u ». Une
+ * lettre tient dans 21 px, le bandeau porte le nom en entier au-dessus de ses
+ * trois colonnes, et l'élève y retrouve le tableau de son cahier.
+ *
+ * LES CLASSES SONT TOUJOURS COMPLÈTES, même quand le nombre n'a pas de quoi
+ * les remplir : un nombre de sept chiffres laisse vides les deux premières
+ * colonnes de la classe des millions, et c'est exactement ce qu'on veut lui
+ * faire voir — une classe incomplète est une classe qui commence par des zéros
+ * qu'on n'écrit pas.
+ */
+const CLASSES = ['unités', 'mille', 'millions', 'milliards'];
+const CDU = ['c', 'd', 'u'];
+const DEC_COURT = ['d', 'c', 'm'];
+
+function tableauParClasses(intDigits, decDigits) {
+    const combien = Math.min(CLASSES.length, Math.ceil(intDigits / 3));
+    const noms = CLASSES.slice(0, combien).reverse();
+    const tetes = noms.map(n => `<th class="tn-classe" colspan="3">${n}</th>`).join('')
+        + (decDigits ? `<th class="tn-classe tn-dec" colspan="${decDigits}">décimales</th>` : '');
+    const sous = noms.map((n, i) => CDU.map((l, j) => {
+        // LA VIRGULE EST UNE FRONTIÈRE : elle se dessine sur le bord droit de
+        // la colonne des unités, la dernière de la dernière classe entière.
+        // SANS DÉCIMALE, PAS DE VIRGULE À MARQUER. Le trait rouge tombait
+        // alors sur le bord DROIT du tableau, où il ne sépare plus rien : vu
+        // sur la photo au doigt, il se lit comme une erreur d'affichage.
+        const virgule = decDigits > 0 && i === noms.length - 1 && j === CDU.length - 1;
+        return `<th${virgule ? ' class="tn-avant-virgule"' : ''}>${l}</th>`;
+    }).join('')).join('')
+        + DEC_COURT.slice(0, decDigits).map(l => `<th class="tn-dec">${l}</th>`).join('');
+
+    // Les cases, de la plus grande à la plus petite : le rang de chacune sert
+    // à l'étiquette que lit un lecteur d'écran.
+    const rangs = [];
+    for (let r = combien * 3 - 1; r >= 0; r--) rangs.push(r);
+    for (let d = 1; d <= decDigits; d++) rangs.push(-d);
+    const cases = rangs.map(r => `<td class="${r < 0 ? 'tn-dec' : ''}${
+        r === 0 && decDigits > 0 ? ' tn-avant-virgule' : ''}"><input class="tn-case" type="text"
+        inputmode="numeric" maxlength="1" autocomplete="off" data-case-outil
+        aria-label="Chiffre des ${RANK_NAMES[r]}"></td>`).join('');
+
+    return `<div class="tn-cadre tn-cadre--classes"><table class="tn-tab tn-tab--classes">
+        <thead><tr>${tetes}</tr><tr>${sous}</tr></thead>
+        <tbody><tr>${cases}</tr></tbody></table></div>
+<p class="tn-mot">Pose ton nombre : un chiffre par colonne, en partant des unités.</p>`;
+}
+
+/** L'outil qui convient à la taille des nombres de l'exercice. */
+function outilTableau(intDigits, decDigits) {
+    return intDigits <= 4
+        ? OUTIL_TABLEAU
+        : { id: 'tableau', label: 'Tableau de numération', html: tableauParClasses(intDigits, decDigits) };
+}
+
 export const chiffreRangGenerator = {
     id: 'num.chiffre-rang',
     label: 'Chiffre d\'un rang donné',
@@ -97,12 +190,23 @@ export const chiffreRangGenerator = {
     answerKinds: ['choice', 'numeric'],
     ecrit: true,
     params: [
+        {
+            id: 'taille', type: 'select', label: 'Taille des nombres', default: 'milliers',
+            options: Object.entries(TAILLES).map(([value, t]) => ({ value, label: t.label }))
+        },
         { id: 'partie', type: 'select', label: 'Rangs interrogés', options: ['entière', 'décimale', 'les deux'], default: 'les deux' },
         { id: 'decimales', type: 'number', label: 'Nombre de décimales', default: 3, min: 1, max: 3 }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const decDigits = params.decimales || 3;
+        const taille = TAILLES[params.taille] || TAILLES.milliers;
+        const intDigits = taille.chiffres;
+        // AU-DELÀ DES MILLIERS, AUCUNE DÉCIMALE — voir `TAILLES`. Un réglage
+        // « Rangs interrogés » resté sur « décimale » demanderait alors un rang
+        // qui n'existe pas dans le nombre, et `digitAtRank` rendrait 0 pour
+        // toutes les questions.
+        const decDigits = taille.decimales ? (params.decimales || 3) : 0;
+        const RANKS_ENTIER = rangsEntiers(intDigits);
         // UN NOMBRE ASSEZ VARIÉ POUR PORTER SES PROPRES LEURRES.
         //
         // Les propositions sont désormais tirées des chiffres DU NOMBRE (voir
@@ -113,11 +217,11 @@ export const chiffreRangGenerator = {
         // tirés au hasard, en avoir quatre distincts est le cas ordinaire.
         let value;
         for (let essai = 0; essai < 10; essai++) {
-            value = randomDecimal(rng, { intDigits: 4, decDigits }).value;
+            value = randomDecimal(rng, { intDigits, decDigits }).value;
             if (new Set(String(value).replace(/[^0-9]/g, '')).size >= 4) break;
         }
 
-        const pool = params.partie === 'entière' ? RANKS_ENTIER
+        const pool = (params.partie === 'entière' || !decDigits) ? RANKS_ENTIER
             : params.partie === 'décimale' ? RANKS_DECIMAL
                 : [...RANKS_ENTIER, ...RANKS_DECIMAL.slice(0, decDigits)];
         const rank = rng.pick(pool);
@@ -209,7 +313,7 @@ export const chiffreRangGenerator = {
             ],
             explanation: `Dans ${affiche}, le chiffre des ${RANK_NAMES[rank]} est ${answer}.`,
             difficulty: rank < 0 ? 3 : 2,
-            meta: { value, rank, decimal: false, outils: [OUTIL_TABLEAU] }
+            meta: { value, rank, decimal: false, outils: [outilTableau(intDigits, decDigits)] }
         });
     }
 };
@@ -474,6 +578,27 @@ export const conversionGenerator = {
 
 // --- 5. Décomposition additive ----------------------------------------------
 
+/**
+ * LES RANGS OÙ L'ON PEUT POSER UN TERME, selon la taille choisie.
+ *
+ * Les trois tailles sont celles de « Chasse au Chiffre », et ce n'est pas une
+ * coïncidence : les deux exercices servent le même bloc de la progression de
+ * sixième, et un professeur qui règle l'un sur les milliards doit retrouver le
+ * même mot dans l'autre.
+ */
+const TAILLES_DECOMPO = {
+    milliers: { label: 'Jusqu\'à 99 999', rangs: [1, 10, 100, 1000, 10000] },
+    millions: {
+        label: 'Jusqu\'aux centaines de millions',
+        rangs: [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000]
+    },
+    milliards: {
+        label: 'Jusqu\'aux centaines de milliards',
+        rangs: [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000,
+            1000000000, 10000000000, 100000000000]
+    }
+};
+
 export const decompositionGenerator = {
     id: 'num.decomposition',
     label: 'Décomposer un nombre',
@@ -481,12 +606,28 @@ export const decompositionGenerator = {
     answerKinds: ['numeric', 'choice'],
     ecrit: true,
     params: [
-        { id: 'sens', type: 'select', label: 'Sens', options: ['recomposer', 'terme manquant', 'libre'], default: 'libre' }
+        { id: 'sens', type: 'select', label: 'Sens', options: ['recomposer', 'terme manquant', 'libre'], default: 'libre' },
+        {
+            id: 'taille', type: 'select', label: 'Taille des nombres', default: 'milliers',
+            options: Object.entries(TAILLES_DECOMPO).map(([value, t]) => ({ value, label: t.label }))
+        }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
         // Trois à quatre rangs non nuls, comme dans les exercices de la fiche.
-        const rangs = rng.shuffle([1, 10, 100, 1000, 10000]).slice(0, rng.int(3, 4)).sort((a, b) => b - a);
+        //
+        // ET LES RANGS DISPONIBLES MONTENT JUSQU'AUX MILLIARDS. RÉMY, premier
+        // bloc de sa progression de sixième : les grands nombres y vont
+        // « jusqu'aux centaines de milliards ». L'exercice s'arrêtait aux
+        // dizaines de mille — 99 999 au plus, mesuré sur quatre-vingts tirages.
+        //
+        // ON NE PREND QUE TROIS À QUATRE RANGS, quelle que soit la taille : une
+        // décomposition de douze termes ne se lit plus, et ce n'est pas ce que
+        // le chapitre demande. Les rangs sont tirés DANS toute l'étendue
+        // choisie, ce qui fait des nombres troués — « 400 000 000 + 7 000 + 60 »
+        // — et le trou est justement ce qui se travaille.
+        const taille = TAILLES_DECOMPO[params.taille] || TAILLES_DECOMPO.milliers;
+        const rangs = rng.shuffle(taille.rangs).slice(0, rng.int(3, 4)).sort((a, b) => b - a);
         const termes = rangs.map(r => rng.int(1, 9) * r);
         const total = termes.reduce((s, t) => s + t, 0);
 

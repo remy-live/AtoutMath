@@ -2049,6 +2049,56 @@ html[data-point="plus"] .pt-croix { display: none; }
     line-height: 1.15; padding: 5px 2px; white-space: nowrap;
 }
 .tn-tab td { height: 2.4em; }
+/* LE TABLEAU DES GRANDS NOMBRES — DOUZE COLONNES, DONC DES LETTRES.
+   ==================================================================
+   Sept colonnes nommées en toutes lettres tiennent dans un téléphone : c'est
+   mesuré plus haut, 45,4 px par colonne à 390 px, et « centièmes » en demande
+   52,4 à sa taille d'origine. DOUZE COLONNES EN DONNENT 26, et quinze 21 :
+   aucun de ces noms n'y entre, à aucune taille encore lisible.
+
+   D'où la forme du cahier, celle de tous les manuels de sixième : les CLASSES
+   en bandeau — milliards, millions, mille, unités — et sous chacune trois
+   colonnes « c d u ». Une lettre tient dans 21 px ; le nom de la classe, lui,
+   dispose de la largeur de SES TROIS colonnes réunies, soit 78 px, où
+   « milliards » entre largement.
+
+   Le bandeau porte un fond, et ce n'est pas une décoration : il dit que les
+   trois colonnes en dessous vont ensemble, ce qui est exactement l'idée de
+   classe. Et le filet entre deux classes est plus épais que les autres — c'est
+   la frontière qu'on lit quand on découpe un grand nombre par paquets de trois
+   pour le dire à voix haute. */
+.tn-tab--classes th:not(.tn-classe) { font-size: clamp(.5rem, 3.4cqi, .8rem); }
+/* LE SÉLECTEUR PORTE DEUX CLASSES, ET IL LE FAUT.
+
+   Écrit `.tn-classe` tout seul, il ne s'appliquait PAS : `.tn-tab th`, plus
+   haut dans cette feuille, pèse une classe ET un élément, donc davantage.
+   Mesuré au doigt, la taille restait à 8,64 px — 2,7 cqi d'un cadre de 320,
+   c'est-à-dire la règle d'en face, pas la mienne. C'est la collision de
+   cascade contre laquelle ce fichier met en garde, et elle est silencieuse :
+   la page s'affiche, simplement pas comme on l'a écrit.
+
+   MESURÉ AU DOIGT : le bandeau dispose de la largeur de SES TROIS colonnes
+   réunies — 79,5 px sur un écran de 390 — et « milliards » n'en occupait que
+   la moitié. On le laisse grandir jusqu'à remplir sa part. */
+.tn-tab--classes .tn-classe {
+    background: var(--bg-hover, #eef1f5); font-size: clamp(.46rem, 4.1cqi, .82rem);
+    letter-spacing: .02em;
+}
+.tn-tab--classes .tn-classe + .tn-classe,
+.tn-tab--classes thead tr:last-child th:nth-child(3n+1):not(:first-child) {
+    border-left: 2px solid var(--border);
+}
+.tn-tab--classes tbody td:nth-child(3n+1):not(:first-child) {
+    border-left: 2px solid var(--border);
+}
+/* LE PANNEAU S'ÉLARGIT AVEC LE TABLEAU. Les 420 px du tableau à sept colonnes
+   donneraient 35 px par colonne sur douze : la lettre tiendrait, mais la CASE
+   où l'élève tape descendrait sous la cible de 40 px de la maison. Sur un
+   écran large on prend donc la place ; sur un téléphone, `100%` reprend la
+   main et `.tn-cadre` fait défiler — un tableau de douze colonnes qu'on fait
+   glisser du doigt reste un tableau, une case de 26 px où l'on tape à côté,
+   non. */
+.np-outil:has(.tn-cadre--classes) { width: min(680px, 100%); }
 /* LA CASE OÙ L'ÉLÈVE POSE SON CHIFFRE. Rémy : « dans cet exercice, on ne peut
    mettre le nombre » — et la phrase sous le tableau disait pourtant « pose ton
    nombre ». Elle occupe TOUTE la cellule : une case plus petite que son carreau

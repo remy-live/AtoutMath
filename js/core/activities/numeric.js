@@ -40,6 +40,24 @@ const enFrancais = (v) => String(v).replace('.', ',');
 const COURT = 110;
 const tientEnUneBulle = (t) => typeof t === 'string' && t.trim() && t.trim().length <= COURT;
 
+/**
+ * COMBIEN DE CHIFFRES LE PAVÉ ACCEPTE.
+ *
+ * IL EN ACCEPTAIT SEPT, écrits à la main dans le gestionnaire de touche, et
+ * c'était assez tant que le plus grand nombre du catalogue tenait dans les
+ * millions. RÉMY, premier bloc de sa progression de sixième : les grands
+ * nombres y vont « jusqu'aux centaines de milliards » — douze chiffres.
+ * L'élève aurait entendu la question, calculé juste, et le pavé aurait cessé
+ * de répondre au huitième chiffre. De sa place, un plafond muet et un logiciel
+ * cassé ne se distinguent pas.
+ *
+ * TREIZE, ET NON « LA LONGUEUR DE LA RÉPONSE » : un plafond ajusté à la
+ * réponse dirait combien de chiffres elle a, ce qui est un renseignement qu'on
+ * ne donne pas. Treize laisse passer 999 999 999 999 et garde le pavé contre
+ * l'enfant qui s'amuse à tenir la touche.
+ */
+const CHIFFRES_MAX = 13;
+
 function phraseDepart(item) {
     const indice = (item.hints || [])[0];
     if (tientEnUneBulle(indice)) return indice.trim();
@@ -444,7 +462,7 @@ export function mount(container, session, opts = {}) {
                 // π clôt le nombre : rien ne s'écrit après lui, et il ne
                 // s'écrit pas seul en tête — « π25 » n'est pas un produit.
                 else if (k === PI) { if (!buffer.includes(PI) && buffer !== '') setBuffer(buffer + PI); }
-                else if (!buffer.includes(PI) && buffer.replace('-', '').length < 7) setBuffer(buffer + k);
+                else if (!buffer.includes(PI) && buffer.replace('-', '').length < CHIFFRES_MAX) setBuffer(buffer + k);
             };
         });
         container.querySelector('[data-validate]').onclick = validate;
@@ -455,7 +473,13 @@ export function mount(container, session, opts = {}) {
         container.onkeydown = (e) => {
             if (session.locked) return;
             if (/^[0-9]$/.test(e.key)) {
-                if (!buffer.includes(PI)) setBuffer(buffer + e.key);
+                // LE MÊME PLAFOND QU'AU DOIGT. Il n'y en avait AUCUN ici : un
+                // élève au clavier pouvait taper quinze chiffres quand celui
+                // du téléphone était arrêté au septième. Deux élèves, deux
+                // logiciels.
+                if (!buffer.includes(PI) && buffer.replace('-', '').length < CHIFFRES_MAX) {
+                    setBuffer(buffer + e.key);
+                }
                 e.preventDefault();
             }
             // « p » comme pi : la lettre du clavier physique la plus proche du

@@ -109,9 +109,7 @@ export const numerationExercises = [
         params: { partie: 'entière', decimales: 2 },
         motsClefs: ['rang', 'dizaines', 'dixièmes', 'centièmes', 'partie décimale'],
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
-        instruction: "Trouve le chiffre qui occupe le rang demandé. "
-            + "Passe « Rangs interrogés » sur « les deux » pour affronter le piège du chapitre : "
-            + "dizaines et dixièmes ne sont pas le même rang."
+        instruction: "Trouve le chiffre qui occupe le rang demandé. Passe « Rangs interrogés » sur « les deux » pour affronter le piège du chapitre : dizaines et dixièmes ne sont pas le même rang. Et le réglage « Taille des nombres » monte jusqu'aux centaines de milliards : le tableau de numération change alors de forme et prend celle du cahier — les CLASSES en bandeau (milliards, millions, mille, unités) et sous chacune trois colonnes c, d, u. Au-delà des milliers il n'y a plus de décimales : le chapitre des grands nombres est celui des entiers."
     },
 
     // --- La fraction décimale (demandée après une séance) ---
@@ -293,9 +291,9 @@ export const numerationExercises = [
         title: 'Décomposer, Recomposer',
         generatorId: 'num.decomposition', activityId: 'numpad',
         params: { sens: 'libre' },
-        motsClefs: ['décomposition'],
+        motsClefs: ['décomposition', 'grands nombres', 'milliards', 'millions'],
         tags: { chemin: [D, NUM], niveaux: [SIXIEME] },
-        instruction: "Retrouve le nombre, ou le terme qui manque dans sa décomposition."
+        instruction: "Retrouve le nombre, ou le terme qui manque dans sa décomposition. Le réglage « Taille des nombres » monte jusqu'aux centaines de milliards. On ne pose jamais plus de quatre termes, quelle que soit la taille : ce sont donc des nombres TROUÉS — « 100 000 000 + 80 000 000 + 8 » —, et les zéros qu'on ne voit pas sont exactement ce qui se travaille."
     },
     {
         id: 'num-conversion', title: 'Dizaines, Centaines, Milliers',
@@ -599,7 +597,9 @@ export const numerationExercises = [
                 options: [
                     { value: 'milliers', label: 'Jusqu\'à 99 999' },
                     { value: 'grands', label: 'Jusqu\'à 999 999' },
-                    { value: 'millions', label: 'Jusqu\'aux millions' }
+                    { value: 'millions', label: 'Jusqu\'aux millions' },
+                    { value: 'centaines_millions', label: 'Jusqu\'aux centaines de millions' },
+                    { value: 'milliards', label: 'Jusqu\'aux centaines de milliards' }
                 ],
                 default: 'grands'
             }
