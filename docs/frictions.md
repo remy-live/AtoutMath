@@ -5550,3 +5550,21 @@ le résultat n'existe pas** — 15 octobre 2026
 - *Ce qui manque* : une aide `tools/lirePdf.mjs` — texte et nombre de pages
   d'un PDF, par `pdfjs`, sans binaire externe. Elle est aujourd'hui recopiée
   dans `tutoTablettes.mjs` ; à la deuxième copie, on la sort.
+
+## Un cache mesuré trop tôt dit le contraire d'un cache mesuré trop tard
+
+- *Ce que je voulais faire* : savoir ce qu'une tablette préparée garde en
+  mémoire après une mise à jour, pour répondre à « Si je mets à jour atout math
+  et que je réinstalle ça se met bien à jour ».
+- *Ce qui a coûté* : une sonde complète lancée DEUX fois, soit dix minutes, et
+  la première a failli me faire répondre le contraire de la vérité. Mesuré à
+  trois secondes du rechargement : 19 fichiers, l'application ne démarre même
+  pas hors ligne. Mesurée à quarante : 257 fichiers, et le jeu tourne. Entre
+  les deux, le rattrapage de huit secondes d'`index.html`. Aucune des deux
+  mesures n'est fausse ; une seule des deux répond à la question.
+- *Combien de fois* : ||
+- *Ce qui manque* : une aide `s.cacheAuCalme()` dans la sonde — elle
+  échantillonne le cache du service worker jusqu'à ce que le compte cesse de
+  bouger (deux relevés égaux à cinq secondes), et rend la courbe ET le palier.
+  `preparerTablette.js` a déjà écrit `attendreLeRangement` pour la page ; la
+  sonde la réécrit à la main à chaque fois.

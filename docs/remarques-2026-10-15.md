@@ -2675,3 +2675,67 @@ n'a pas toujours un vidéoprojecteur quand elle prépare.
 
 Fabriqué par `node tools/tutoTablettes.mjs [adresse]`, pour qu'il se refasse
 le jour où l'application change.
+
+### 22 sexies. « Si je mets à jour et que je réinstalle, ça se met bien à jour ? »
+
+> « Si je mets à jour atout math et que je réinstalle ça se met bien à jour »
+
+**Oui pour la mise à jour, NON pour la préparation — et c'est mesuré**, sur le
+chemin exact : une tablette préparée, un dépôt, un rechargement.
+
+```
+tablette préparée          cache atoutmath-v1009, 581 fichiers, 91 de js/games/
+                           verdict « prête à travailler sans internet »
+
+node tools/version.mjs     ?v=1070 → 1071, CACHE v1009 → v1010
+
+elle recharge, à  2 s      v1009, 588 fichiers   (l'ancien worker tient encore)
+                 10 s      v1010,  19 fichiers   ← le NOYAU, et RIEN d'autre
+                 15 s      v1010, 257 fichiers, 2 de js/games/
+                 25 s      v1010, 257 fichiers, 2 de js/games/
+                 40 s      v1010, 257 fichiers, 2 de js/games/
+```
+
+**LA MISE À JOUR ELLE-MÊME EST PROPRE** : le nouveau worker s'installe, prend
+la main, et `activate` efface l'ancien cache en entier. Pas de mélange de
+versions, pas de « v49 ». C'est exactement ce que le rituel de version est là
+pour garantir, et il le garantit.
+
+**MAIS LA PRÉPARATION EST PERDUE.** 91 modules de jeu avant, DEUX après — et les deux sont `engine.js` et
+`configUI.js`, c'est-à-dire PAS UN SEUL JEU (mesuré : sans leurs noms, la
+phrase d'après ne serait qu'une déduction). La
+tablette n'a plus en mémoire que ce que la page d'accueil vient de recharger —
+le rattrapage de huit secondes d'`index.html` remonte de 19 à 257 fichiers,
+puis s'arrête, parce qu'il ne range que ce que la page a demandé, et la page
+d'accueil ne demande pas les jeux.
+
+**ET ELLE N'EN A PAS L'AIR.** Mesuré deux fois de suite, réseau coupé après la
+mise à jour :
+
+- dix secondes après le rechargement : « L'application n'a pas démarré » ;
+- quarante secondes après : le Tasuko tourne — **par chance**, depuis le cache
+  du navigateur, celui que personne ne contrôle. `tasuko.js` n'est pas dans le
+  nôtre : les deux seuls fichiers de `js/games/` qui y restent sont le moteur
+  et l'écran de réglages. C'est le piège déjà écrit en
+  22 quater, revenu par une autre porte.
+
+**RÉINSTALLER N'Y CHANGE RIEN**, et c'est le point contre-intuitif : l'icône
+n'est qu'un raccourci ; le contenu vit dans le cache du service worker, qui
+appartient au site et survit à la désinstallation comme à la réinstallation.
+Supprimer puis remettre l'icône ne vide rien et ne remplit rien.
+
+**CE QUI REMET EN ÉTAT** : rouvrir `?preparer`. Mesuré — 586 fichiers, 91 de
+js/games/, verdict « prête », et le Tasuko tourne réseau coupé.
+
+**DEUX RÉPARATIONS POSSIBLES**, et le choix lui appartient :
+
+1. *Le worker réapprovisionne tout seul.* À `activate`, avant d'effacer
+   l'ancien cache, on relit la liste de ses adresses et on garnit le nouveau
+   avec. Une tablette préparée reste préparée, sans geste. Coût : elle
+   retélécharge l'application entière à chaque dépôt (`js/` pèse 16 Mo), sur
+   vingt-cinq tablettes.
+2. *La tablette le DIT.* Au chargement, si le cache contient moins de jeux
+   qu'une tablette préparée, un bandeau « cette tablette a été préparée avec
+   une version précédente — refaire la préparation » avec le bouton. Coût : un
+   geste par tablette et par mise à jour, mais rien ne se télécharge sans
+   qu'on l'ait voulu.
