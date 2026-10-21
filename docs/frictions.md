@@ -5534,3 +5534,19 @@ le résultat n'existe pas** — 15 octobre 2026
   devrait REFAIRE la capture une fois après une image d'attente avant de le
   déclarer. Un `s.photo` qui insiste coûte 16 ms et ferme une piste qui m'a
   coûté quarante-cinq minutes.
+
+## `pdftotext` n'existe pas ici, et l'outil l'apprend après avoir écrit le PDF
+
+- *Ce que je voulais faire* : relire la notice des tablettes dans le PDF que je
+  venais d'écrire, pour ne pas livrer une feuille dont je n'aurais vu que le
+  gabarit.
+- *Ce qui a coûté* : dix minutes et un `ENOENT` au milieu d'une pile
+  d'exceptions, APRÈS avoir produit un PDF parfaitement correct. Poppler n'est
+  pas installé et ne peut pas l'être — `tools/pdfEnImage.mjs` l'écrit noir sur
+  blanc en tête de fichier, et je ne l'avais pas relu. `pdfjs-dist` est dans
+  `node_modules` et sait extraire le texte (`getTextContent`), à condition
+  d'injecter son ouvrier dans la page, ce que `pdfEnImage` fait aussi.
+- *Combien de fois* : |
+- *Ce qui manque* : une aide `tools/lirePdf.mjs` — texte et nombre de pages
+  d'un PDF, par `pdfjs`, sans binaire externe. Elle est aujourd'hui recopiée
+  dans `tutoTablettes.mjs` ; à la deuxième copie, on la sort.

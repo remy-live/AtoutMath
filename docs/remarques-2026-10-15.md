@@ -2663,3 +2663,15 @@ exercices chargés, mais rien n'est gardé ». `index.html` connaissait déjà c
 piège et envoie la liste au worker au bout de huit secondes ; la préparation
 le fait elle-même, puis ATTEND que le rangement cesse de grossir avant de
 rendre son verdict.
+
+### 22 quinquies. Un tuto PDF pour les tablettes
+
+> « Tu me fais un petit tuto pdf pour l installation sur plusieurs tablettes »
+
+Pour sa sœur, qui fera la préparation vingt-cinq fois sans personne à côté
+d'elle. Donc : court, imprimable, et **avec le QR code dedans** — une feuille
+qu'on pose sur la table se scanne aussi bien qu'un vidéoprojecteur, et elle
+n'a pas toujours un vidéoprojecteur quand elle prépare.
+
+Fabriqué par `node tools/tutoTablettes.mjs [adresse]`, pour qu'il se refasse
+le jour où l'application change.
