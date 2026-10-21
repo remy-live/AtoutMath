@@ -86,7 +86,26 @@ class Tasuko extends BaseGame {
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                     position: relative; z-index: 2;
                 }
-                .tk-case--depart { background: rgba(109, 92, 246, .18); }
+                /* LA CASE CHOISIE SE VOIT DE LOIN.
+
+                   RÉMY : « la selection n'est pas terrible je trouve ». Le fond
+                   violet à 18 % sur le blanc de la grille donnait
+                   rgb(229, 226, 253) — MESURÉ : 1,26 de contraste avec une
+                   case ordinaire, dont la bordure, elle, ne changeait pas
+                   du tout.
+                   C'est-à-dire rien sur un vidéoprojecteur, et rien sur une
+                   tablette au soleil.
+
+                   ON GARDE LE FOND, un peu plus franc, ET ON AJOUTE LE CADRE :
+                   c'est lui qui se voit — 7,07 de contraste sur le blanc —, et il
+                   ne coûte pas un pixel de place puisqu'il est posé À
+                   L'INTÉRIEUR — la grille ne bouge pas d'un cheveu quand on
+                   choisit une case. */
+                .tk-case--depart {
+                    background: rgba(109, 92, 246, .26);
+                    box-shadow: inset 0 0 0 3px #4c3fd4;
+                    z-index: 3;
+                }
                 .tk-case--montre { background: rgba(183, 121, 31, .28); }
                 .tk-case--faute { background: rgba(197, 48, 48, .22); }
                 /* LES CAPSULES SONT SOUS LES CHIFFRES, dans un calque à part :
