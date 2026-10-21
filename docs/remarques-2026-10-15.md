@@ -2731,9 +2731,14 @@ js/games/, verdict « prête », et le Tasuko tourne réseau coupé.
 
 1. *Le worker réapprovisionne tout seul.* À `activate`, avant d'effacer
    l'ancien cache, on relit la liste de ses adresses et on garnit le nouveau
-   avec. Une tablette préparée reste préparée, sans geste. Coût : elle
-   retélécharge l'application entière à chaque dépôt (`js/` pèse 16 Mo), sur
-   vingt-cinq tablettes.
+   avec. Une tablette préparée reste préparée, sans geste. Coût : 580 requêtes
+   à chaque dépôt, sur vingt-cinq tablettes. `garnir` demande déjà avec
+   `cache: 'no-cache'`, c'est-à-dire en REVALIDANT : chez un hébergeur Apache,
+   les fichiers inchangés répondent 304 et ne descendent pas — seuls ceux que
+   le dépôt a modifiés coûtent leurs octets. CE POINT-LÀ N'EST PAS MESURÉ : le
+   serveur d'essai de PHP n'envoie pas de `Last-Modified` et répond 200 à un
+   `If-Modified-Since` (mesuré, lui), donc ici la revalidation ne se voit pas.
+   Au pire, c'est l'application entière, dont `js/` pèse 16 Mo.
 2. *La tablette le DIT.* Au chargement, si le cache contient moins de jeux
    qu'une tablette préparée, un bandeau « cette tablette a été préparée avec
    une version précédente — refaire la préparation » avec le bouton. Coût : un
