@@ -2727,7 +2727,29 @@ Supprimer puis remettre l'icône ne vide rien et ne remplit rien.
 **CE QUI REMET EN ÉTAT** : rouvrir `?preparer`. Mesuré — 586 fichiers, 91 de
 js/games/, verdict « prête », et le Tasuko tourne réseau coupé.
 
-**DEUX RÉPARATIONS POSSIBLES**, et le choix lui appartient :
+**CE QU'IL A CHOISI** : « Les deux ». Fait, et mesuré (commit 73983a0) — une
+tablette préparée garde ses 582 fichiers et ses 91 jeux dix secondes après le
+dépôt, au lieu de 257 et deux.
+
+**ET LE TOUT PREMIER DÉPÔT REPREND DÉJÀ.** J'avais averti le contraire en
+livrant le paquet — « les tablettes déjà préparées sont à repasser une fois » —
+par déduction, et c'était FAUX. Mesuré sur le montage exact : tablette
+préparée par le worker d'AVANT la correction, puis la correction déposée.
+
+```
+préparée par l'ancien worker   v1009, 582 fichiers, 91 jeux
+la correction est déposée
+elle recharge,  à  3 s         v1010,  58 fichiers  (le nouveau s'active)
+                  10 s         v1010, 582 fichiers, 91 jeux
+                  60 s         v1010, 582 fichiers, 91 jeux
+puis réseau coupé              l'application démarre
+```
+
+C'est le NOUVEAU worker qui exécute `activate` : il porte donc déjà le code qui
+reprend. Vingt-cinq préparations épargnées à sa sœur, pour avoir mesuré ce que
+je croyais savoir.
+
+**LES DEUX RÉPARATIONS, TELLES QU'ELLES ÉTAIENT POSÉES :**
 
 1. *Le worker réapprovisionne tout seul.* À `activate`, avant d'effacer
    l'ancien cache, on relit la liste de ses adresses et on garnit le nouveau
