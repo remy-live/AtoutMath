@@ -2826,3 +2826,28 @@ cache de navigateur si. MESURÉ : refusé (`false`) dans un navigateur sans
 engagement ni installation, ce qui est normal et attendu ; Chrome l'accorde
 d'autant plus volontiers que l'application est sur l'écran d'accueil — raison de
 plus pour que la préparation demande l'installation EN PREMIER.
+
+### 23. L'essai sur tablette, hors ligne — quatre remarques
+
+> « nous avons testé la hors ligne sur tablette, si c'est hors ligne, il faut
+> que la caméra se lance directement. Si c'est en ligne, il faut sur l'écran
+> d'ailleurs un bouton pour scanner directement le qr code, car là il faut
+> passer par le code puis le qr code c'est trop long. Quand on rescanne à
+> nouveau, si le parcours est identique au précédente, l'élève choisit ou non
+> de redémarrer à zéro. Est il possible que les élèves aient accès à tout les
+> exercices du parcours sans réussir les précédents. »
+
+Un vrai essai, sur de vraies tablettes. Quatre points :
+
+1. **HORS LIGNE, LA CAMÉRA SE LANCE DIRECTEMENT.** Une tablette sans réseau
+   n'a qu'une chose à faire : scanner le QR de la maîtresse. Lui demander de
+   traverser un écran d'accueil avant est du temps de classe perdu.
+2. **EN LIGNE, UN BOUTON QUI SCANNE DIRECTEMENT**, sur l'écran d'entrée. « il
+   faut passer par le code puis le qr code c'est trop long » : le scanner est
+   aujourd'hui DANS la fenêtre du code, donc à deux gestes.
+3. **RESCANNER LE MÊME PARCOURS NE DOIT PAS TOUT EFFACER.** Si le code scanné
+   est celui du parcours en cours, on demande : reprendre où l'on en était, ou
+   recommencer à zéro. Aujourd'hui, c'est recommencé sans rien demander.
+4. **ET UNE QUESTION** : « est-il possible que les élèves aient accès à tous
+   les exercices du parcours sans réussir les précédents ». C'est le
+   déverrouillage du parcours ; à vérifier si un réglage existe déjà.

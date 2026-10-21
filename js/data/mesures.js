@@ -126,6 +126,28 @@ export const mesuresExercises = [
         instruction: "Calcule l'aire du rectangle et saisis ta réponse."
     },
     {
+        // CALCULER AVEC DES DURÉES — sixième, bloc 8 de sa progression.
+        //
+        // RÉMY : la pendule se lit déjà dans le logiciel ; rien n'y faisait
+        // ADDITIONNER 1 h 45 et 2 h 30.
+        //
+        // PARCE QUE LA RETENUE NE VAUT PLUS DIX. 45 + 30 = 75, et 75 minutes
+        // ne s'écrivent pas : ce sont 1 h 15. L'élève qui a passé cinq ans à
+        // retenir « au-delà de 9, je retiens 1 » répond « 3 h 75 ». C'est donc
+        // un chapitre de BASE SOIXANTE déguisé en chapitre d'horloge — le seul
+        // endroit du programme où l'on calcule dans une base qui n'est pas
+        // dix, et ce qu'on y apprend resservira pour les angles.
+        id: 'mes-duree',
+        cree: '2026-10-21',
+        consignePapier: 'Calcule.',
+        colonnesPapier: 3,
+        title: 'Heures et Minutes',
+        generatorId: 'mes.durees', activityId: 'bubbles',
+        motsClefs: ['durée', 'heure', 'minute', 'ajouter', 'retenue', 'soixante'],
+        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "La retenue ne vaut plus dix, elle vaut SOIXANTE. 1 h 45 + 2 h 30 : les heures font 3, les minutes font 75 — mais 75 minutes ne s'écrivent pas, ce sont 1 h 15, et cette heure-là se reporte. Résultat : 4 h 15. Dans l'autre sens, on emprunte soixante minutes, pas dix. Et pour passer des minutes aux heures, c'est une division euclidienne par 60 : le quotient donne les heures, le reste donne les minutes."
+    },
+    {
         // LE TABLEAU DE CONVERSION, en trois temps. Chaque \u00e9tape isole une
         // erreur : l'ordre des unit\u00e9s, le rang du nombre, la place de la
         // virgule. Les m\u00e9langer, c'est ne jamais savoir laquelle a co\u00fbt\u00e9 la

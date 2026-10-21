@@ -178,6 +178,10 @@ export const CODES_EXERCICES = {
     'frac-produit':               'FP',   // Multiplier des Fractions
     'frac-produit-pose':          'BF',   // Poser un Produit de Fractions (Barrer)
     'frac-graduation':            'FR',   // FRaction sur la droite graduée
+    'num-encadrement':            'NE',   // Inégalités et Encadrement
+    'num-euclidienne':            'EF',   // Euclidienne : quotient et reste
+    'mes-duree':                  'DH',   // Durées en Heures
+    'num-divisibilite':           'CJ',   // Critères de divisibilité
     'frac-somme-posee':           'AN',   // Poser une Addition de Fractions
     'frac-probleme':              'HF',   // Histoires de Fractions
     'frac-samurai':               'SF',   // Le Samouraï des Fractions

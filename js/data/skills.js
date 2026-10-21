@@ -1281,6 +1281,14 @@ const BASE = {
         descriptor: 'Placer les deux aiguilles d\'une pendule sur une heure donnée, y compris en 24 heures.',
         lesson: 'On place d\'abord la GRANDE aiguille : les minutes divisées par 5 donnent le nombre visé (35 min → le 7). Puis la petite sur l\'heure. Elle ne reste pas pile sur le nombre : les minutes l\'entraînent vers le suivant, et c\'est ainsi qu\'une pendule fonctionne. Pour une heure de l\'après-midi, on retire 12 : 15 h se place comme 3 h.'
     },
+    'mes.duree.calcul': {
+        label: 'Calculer avec des durées',
+        chemin: [D.GRANDEURS, SD.DUREES],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['mes.heure.lire'],
+        descriptor: 'Additionner et soustraire des durées, et passer des minutes aux heures.',
+        lesson: 'LA RETENUE NE VAUT PLUS DIX, ELLE VAUT SOIXANTE, et c\'est tout le chapitre. 1 h 45 + 2 h 30 : les heures font 3, les minutes font 75 — mais 75 minutes ne s\'écrivent pas. Ce sont 1 h 15, et cette heure-là se reporte : le résultat est 4 h 15. Dans l\'autre sens, on EMPRUNTE soixante minutes et non dix. Et pour passer de minutes à heures, on fait une division euclidienne par 60 : le quotient donne les heures, le reste donne les minutes. C\'est le seul endroit du programme où l\'on calcule dans une base qui n\'est pas dix — ce qu\'on y apprend resservira pour les angles.'
+    },
     'num.relatifs.sens': {
         label: 'Comprendre un nombre relatif (position et déplacement)',
         chemin: [D.NUMERIQUE, SD.RELATIFS],

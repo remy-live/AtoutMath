@@ -402,6 +402,81 @@ export const numerationExercises = [
             + 'même résultat une fois sur deux, ce qui laisse croire longtemps qu\'on sait faire.'
     },
 
+    // --- Les critères de divisibilité (sixième, bloc 8) ---
+    //
+    // RÉMY, dans sa progression de sixième : « les critères de divisibilité
+    // par 2, 5, 10 ». Et ma note de travail disait déjà comment le faire —
+    // « réutiliser les marches d'entrée du PGCD ».
+    //
+    // ON NE RÉÉCRIT DONC PAS UN GÉNÉRATEUR. « Décomposer, PGCD et PPCM »
+    // ouvre par trois marches qui sont exactement ce chapitre-ci — est-ce
+    // divisible, lequel divise, la liste des diviseurs — mais cet exercice est
+    // étiqueté TROISIÈME, et un professeur de sixième ne le voit pas. Un
+    // second exercice, sur le même générateur, avec ces trois marches cochées
+    // et la bonne étiquette de niveau : il travaille, et il se trouve.
+    //
+    // C'EST LE MÊME GÉNÉRATEUR, DONC LA MÊME PROGRESSION. Le jour où les
+    // marches d'entrée changent, les deux exercices changent ensemble — ce
+    // qu'une copie n'aurait jamais fait.
+    {
+        id: 'num-divisibilite',
+        cree: '2026-10-21',
+        consignePapier: 'Réponds.',
+        colonnesPapier: 3,
+        title: 'Divisible, oui ou non ?',
+        generatorId: 'num.pgcd-ppcm', activityId: 'bubbles',
+        params: { marches: ['divisible', 'qui-divise', 'liste-diviseurs'] },
+        motsClefs: ['divisible', 'diviseur', 'critère', 'multiple', 'pair'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Un nombre est divisible par 2 s'il se termine par 0, 2, 4, 6 ou 8 ; par 5 s'il se termine par 0 ou 5 ; par 10 s'il se termine par 0 ; par 3 si la somme de ses chiffres est elle-même divisible par 3. Ces critères se lisent sur l'ÉCRITURE du nombre, sans poser la moindre division — c'est ce qui les rend utiles. Les mêmes marches ouvrent « Décomposer, PGCD et PPCM », en troisième : ce sont les mêmes questions, apprises ici pour elles-mêmes."
+    },
+
+    // --- La division euclidienne (sixième, bloc 8) ---
+    //
+    // RÉMY, dans sa progression de sixième. Le logiciel savait poser une
+    // division et savait les fractions ; il ne savait pas ce qui les RELIE —
+    // le reste.
+    //
+    // 47 = 6 × 7 + 5, AVEC 0 ⩽ 5 < 6. La condition sur le reste n'est pas une
+    // formalité d'adulte : c'est elle qui rend le couple unique, et c'est elle
+    // qui attrape l'erreur la plus fréquente — un quotient trop petit laisse
+    // un reste plus GRAND que le diviseur, et la division n'est pas finie.
+    // La dernière marche donne son sens à tout le reste : 47/6 n'est pas
+    // « 7 et des poussières », c'est 7 + 5/6, exactement.
+    {
+        id: 'num-euclidienne',
+        cree: '2026-10-21',
+        consignePapier: 'Complète.',
+        colonnesPapier: 2,
+        title: 'Quotient et Reste',
+        generatorId: 'num.euclidienne', activityId: 'bubbles',
+        motsClefs: ['division euclidienne', 'quotient', 'reste', 'dividende', 'diviseur', 'fraction'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Une division euclidienne donne DEUX nombres : un quotient et un reste, liés par l'égalité « dividende = diviseur × quotient + reste ». Le reste est toujours PLUS PETIT que le diviseur — s'il ne l'est pas, la division n'est pas finie, et c'est l'erreur la plus fréquente. La dernière marche montre le lien avec les fractions : 47 = 6 × 7 + 5 s'écrit aussi 47/6 = 7 + 5/6."
+    },
+
+    // --- Inégalité large ou stricte, et encadrement (sixième, bloc 3) ---
+    //
+    // RÉMY, dans sa progression de sixième. Le logiciel savait COMPARER deux
+    // nombres — choisir entre <, = et > — mais jamais distinguer < de ⩽.
+    //
+    // « 7 ⩽ 7 » EST VRAI, et c'est la phrase qui fait trébucher une classe
+    // entière. Elle n'est pas un détail de notation : tout le collège s'appuie
+    // dessus — un encadrement, une condition d'arrêt, plus tard un
+    // intervalle. L'élève qui lit ⩽ comme « strictement plus petit, ou alors
+    // je ne sais pas » se trompera sur chacun.
+    {
+        id: 'num-encadrement',
+        cree: '2026-10-21',
+        consignePapier: 'Réponds par VRAI ou FAUX, et complète les encadrements.',
+        colonnesPapier: 2,
+        title: 'Plus Petit, Plus Grand… ou Égal',
+        generatorId: 'num.encadrement', activityId: 'bubbles',
+        motsClefs: ['inégalité', 'stricte', 'large', 'encadrer', 'encadrement', 'comparer', 'ou égal'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "La barre SOUS le signe veut dire « ou égal » : ⩽ se lit « plus petit OU ÉGAL ». C'est pour cela que « 7 ⩽ 7 » est VRAI alors que « 7 < 7 » est faux — et une question sur trois porte justement sur deux nombres égaux, parce que c'est le seul cas où les deux signes ne disent pas la même chose. Encadrer, ensuite, c'est écrire DEUX inégalités d'un coup : on cherche le voisin juste en dessous, puis celui juste au-dessus, au rang demandé."
+    },
+
     // --- La loupe sur la droite graduée (fiche 4ᵉ § C) ---
     // Entre 3 et 4 les dixièmes, entre 3,5 et 3,6 les centièmes : le même
     // geste à deux échelles. C'est ainsi qu'on installe l'idée qu'entre deux
