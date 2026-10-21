@@ -177,6 +177,70 @@ console.log('le QR du tableau :', CODE.slice(0, 40), '…');
     });
     await s.page.waitForTimeout(600);
 
+    // ── F. LA BARRE DU BAS, HORS LIGNE ────────────────────────────────────
+    //
+    // RÉMY : « en hors ligne, ce serait cool de rajouter l'icone qr code à côté
+    // de code, parcours, profil ». On regarde donc la barre DANS LES DEUX ÉTATS
+    // du mode libre : celui de la copie d'essai (il est ouvert, six boutons —
+    // le pire cas) et celui des élèves de Rémy (il est fermé, et la barre ne
+    // porte que les trois qu'il nomme).
+    const lireLaBarre = () => s.page.evaluate(() => {
+        const vus = [...document.querySelectorAll('#bottom-nav .bottom-nav-btn')]
+            .filter(b => b.offsetParent !== null);
+        return {
+            boutons: vus.map(b => (b.querySelector('span') || {}).textContent),
+            largeurs: vus.map(b => Math.round(b.getBoundingClientRect().width)),
+            hauteur: vus.length ? Math.round(vus[0].getBoundingClientRect().height) : 0,
+            // UN MOT TRONQUÉ NE SE VOIT PAS DANS LE DOM : il faut comparer ce
+            // que le texte MESURE à la place qu'on lui laisse.
+            tronques: vus.map(b => b.querySelector('span')).filter(sp => sp
+                && sp.scrollWidth > sp.clientWidth + 1)
+                .map(sp => sp.textContent),
+            scanLa: !!document.querySelector('#mob-btn-scan:not([hidden])')
+        };
+    });
+    console.log('F barre (mode libre ouvert) :', JSON.stringify(await lireLaBarre()));
+    await s.photo('#bottom-nav', 'tools/tmp/tablette-barre-6.png', 0);
+
+    // LE MODE LIBRE FERMÉ, c'est-à-dire l'état de ses élèves : « Explorer » et
+    // « Exercices » disparaissent (body.sans-mode-libre), et il reste Code,
+    // Parcours, Profil — exactement ce que Rémy nomme.
+    await s.page.evaluate(() => localStorage.setItem('atoutmath-mode-libre', '0'));
+    await s.page.reload();
+    await s.page.waitForFunction(() => window.__atoutmathPret === true, { timeout: 30000 });
+    await s.page.waitForTimeout(800);
+    console.log('F barre (mode libre fermé)  :', JSON.stringify(await lireLaBarre()));
+    await s.photo('#bottom-nav', 'tools/tmp/tablette-barre-4.png', 0);
+
+    // ET LE BOUTON SCANNE VRAIMENT, depuis la barre.
+    const t1 = Date.now();
+    await s.page.click('#mob-btn-scan');
+    await s.page.waitForSelector('#scan-video', { timeout: 8000 });
+    console.log('F la barre scanne : caméra en', Date.now() - t1, 'ms');
+    await s.page.evaluate(() => {
+        const v = [...document.querySelectorAll('.modal-overlay')]
+            .filter(m => m.querySelector('#scan-video')).pop();
+        const b = v && v.querySelector('.modal-close-btn');
+        if (b) b.click();
+    });
+    await s.page.waitForTimeout(600);
+
+    // EN LIGNE, LA BARRE NE BOUGE PAS. Le même écran, le réseau revenu : le
+    // bouton doit repartir sans rechargement — c'est l'écouteur `online`.
+    await s.page.evaluate(() => {
+        Object.defineProperty(Navigator.prototype, 'onLine',
+            { get: () => true, configurable: true });
+        window.dispatchEvent(new Event('online'));
+    });
+    await s.page.waitForTimeout(400);
+    console.log('F de retour en ligne        :', JSON.stringify(await lireLaBarre()));
+    await s.page.evaluate(() => {
+        Object.defineProperty(Navigator.prototype, 'onLine',
+            { get: () => false, configurable: true });
+        window.dispatchEvent(new Event('offline'));
+    });
+    await s.page.waitForTimeout(400);
+
     // ON RESCANNE LE MÊME QR, par le seul chemin qui existe aujourd'hui.
     await s.page.evaluate(() => {
         const m = document.getElementById('code-modal');

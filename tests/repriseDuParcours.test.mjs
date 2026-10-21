@@ -25,6 +25,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { sansCommentaires } from './helpers.mjs';
+import { lireFeuille, corpsDeLaRegle, declare } from './aidesCss.mjs';
 import { computeAssignedPath } from '../js/core/projections.js';
 import { etapesDeTravail } from '../js/core/recompenses.js';
 import { Shortcodes } from '../js/core/shortcodes.js';
@@ -159,10 +160,58 @@ test('HORS LIGNE, LA CAMÉRA S\'OUVRE SEULE — ET UNE SEULE FOIS', () => {
     // quand les réglages du serveur arrivent (`porteASuivre`), ce qui la
     // rouvrirait sans ce drapeau.
     const P = sansCommentaires(lire('js/ui/portailUI.js'));
-    assert.match(P, /if \(!cameraDejaOuverte && laCameraEstPossible\(\)\s*\n?\s*&& typeof navigator !== 'undefined' && navigator\.onLine === false\) \{/,
+    assert.match(P, /if \(!cameraDejaOuverte && scannerEstLeSeulChemin\(\)\) \{/,
         'la caméra ne doit s\'ouvrir seule que hors ligne');
     assert.match(P, /cameraDejaOuverte = true;\s*\n/);
     // AU NIVEAU DU MODULE, et non dans `dessiner()` : un drapeau local
     // repartirait à zéro à chaque redessin.
     assert.match(P, /^let cameraDejaOuverte = false;/m);
+});
+
+test('LA CONDITION « HORS LIGNE » N\'EST ÉCRITE QU\'UNE FOIS', () => {
+    // DEUX ÉCRANS LA POSENT — la porte d'entrée, qui ouvre la caméra d'
+    // elle-même, et la barre du bas, qui montre son icône. Écrite deux fois,
+    // c'est une des deux qu'on oublierait de corriger.
+    const S = sansCommentaires(lire('js/ui/scannerQr.js'));
+    assert.match(S, /export function scannerEstLeSeulChemin\(\) \{/);
+    assert.match(S, /return laCameraEstPossible\(\) && navigator\.onLine === false;/);
+    // ET PERSONNE NE LA RÉÉCRIT À CÔTÉ.
+    for (const f of ['js/ui/portailUI.js', 'js/app.js', 'js/ui/pathView.js']) {
+        assert.ok(!/navigator\.onLine === false/.test(sansCommentaires(lire(f))),
+            `${f} réécrit la condition au lieu d'appeler scannerEstLeSeulChemin`);
+    }
+});
+
+test('L\'ICÔNE DU QR CODE EST DANS LA BARRE DU BAS, ET SEULEMENT HORS LIGNE', () => {
+    // RÉMY : « en hors ligne, ce serait cool de rajouter l'icone qr code à côté
+    // de code, parcours, profil ». La barre du bas est la seule qui suive
+    // l'élève sur tous les écrans — le bouton posé sous le parcours, lui,
+    // demande d'être SUR le parcours.
+    const H = lire('index.html');
+    assert.match(H, /<button class="bottom-nav-btn" id="mob-btn-scan" hidden>/,
+        'le bouton doit être caché tant qu\'on ne sait pas si l\'on est hors ligne');
+    // JUSTE APRÈS « CODE » : c'est le même geste par l'autre bout, et les deux
+    // destinations — Parcours, Profil — gardent la place que la main a apprise.
+    assert.ok(H.indexOf('id="mob-btn-code"') < H.indexOf('id="mob-btn-scan"'));
+    assert.ok(H.indexOf('id="mob-btn-scan"') < H.indexOf('id="mob-btn-path"'));
+    const A = sansCommentaires(lire('js/app.js'));
+    assert.match(A, /btnScan\.hidden = !scannerEstLeSeulChemin\(\);/);
+    // ET LA BARRE SE REMESURE QUAND LE RÉSEAU CHANGE : une tablette qui perd le
+    // Wi-Fi au milieu de l'heure ne recharge pas la page.
+    assert.match(A, /window\.addEventListener\('online', revoirLeScan\);/);
+    assert.match(A, /window\.addEventListener\('offline', revoirLeScan\);/);
+});
+
+test('UN BOUTON « hidden » DE LA BARRE DU BAS DISPARAÎT VRAIMENT', () => {
+    // LE PIÈGE DÉJÀ PAYÉ SUR `.game-icon-btn` : la règle du navigateur —
+    // [hidden] { display: none } — pèse moins qu'une classe, et
+    // `.bottom-nav-btn` impose `display: flex`.
+    //
+    // MESURÉ ICI : réseau revenu, `hidden` posé, le bouton occupait encore ses
+    // 98 px dans la barre. Le code faisait ce qu'il annonçait, et l'écran
+    // disait le contraire.
+    const regle = corpsDeLaRegle(lireFeuille('css/ui.css'), '.bottom-nav-btn[hidden]');
+    assert.ok(regle, 'aucune règle ne cache un .bottom-nav-btn[hidden]');
+    assert.ok(declare(regle, 'display', 'none'),
+        'la règle existe mais ne pose pas display: none');
 });

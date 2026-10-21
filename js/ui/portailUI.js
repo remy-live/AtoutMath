@@ -18,7 +18,7 @@
 
 import { joinClass, loginEleve } from '../core/sync.js';
 import { applyCode, scannerUnCodeDeSeance } from './studentCodeUI.js';
-import { laCameraEstPossible } from './scannerQr.js';
+import { laCameraEstPossible, scannerEstLeSeulChemin } from './scannerQr.js';
 import { modeLibre, inscriptionLibre, portailNecessaire, adresseApiDeduite } from '../core/portail.js';
 import { copieDEssai } from '../core/copieDEssai.js';
 import { versionLisible } from '../core/versionDuSite.js';
@@ -657,8 +657,7 @@ function dessiner() {
     // UNE SEULE FOIS PAR CHARGEMENT. L'élève qui referme la fenêtre a dit non
     // ; la rouvrir serait la seule chose qu'on ne doit jamais faire à un refus.
     // Le bouton reste là, et la phrase sous la case dit quoi faire.
-    if (!cameraDejaOuverte && laCameraEstPossible()
-        && typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (!cameraDejaOuverte && scannerEstLeSeulChemin()) {
         cameraDejaOuverte = true;
         dire('portail-etat-code', 'Pas de connexion : scanne le QR code de ton '
             + 'professeur, ou tape le code de la séance.');

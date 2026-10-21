@@ -1028,6 +1028,44 @@ function initNavButtons() {
         if (b) b.onclick = ouvrirCode;
     });
 
+    // ── L'ICÔNE DU QR CODE, HORS LIGNE ────────────────────────────────────
+    //
+    // RÉMY, après l'essai sur tablette : « en hors ligne, ce serait cool de
+    // rajouter l'icone qr code à côté de code, parcours, profil ».
+    //
+    // UN SEUL GESTE, DEPUIS N'IMPORTE QUEL ÉCRAN. La barre du bas est la seule
+    // qui suive l'élève partout ; le bouton posé sous le parcours (remarque 23)
+    // demande d'être SUR le parcours. Sans réseau, le QR code n'est pas un
+    // raccourci : c'est le seul chemin par lequel du travail entre.
+    //
+    // LA CONDITION VIT DANS `scannerEstLeSeulChemin`, avec la porte d'entrée
+    // qui ouvre la caméra d'elle-même : même règle, même endroit.
+    //
+    // ET ELLE SE REMESURE QUAND LE RÉSEAU CHANGE. Une tablette qui perd le
+    // Wi-Fi au milieu de l'heure — ou qui le retrouve — ne recharge pas la
+    // page ; sans ces deux écouteurs, la barre garderait la forme qu'elle avait
+    // au démarrage, c'est-à-dire la mauvaise, et précisément le jour où ça
+    // compte.
+    const btnScan = document.getElementById('mob-btn-scan');
+    if (btnScan) {
+        const revoirLeScan = async () => {
+            const { scannerEstLeSeulChemin } = await import('./ui/scannerQr.js');
+            btnScan.hidden = !scannerEstLeSeulChemin();
+        };
+        btnScan.onclick = async () => {
+            const { scannerUnCodeDeSeance } = await import('./ui/studentCodeUI.js');
+            scannerUnCodeDeSeance({
+                // LE PARCOURS S'OUVRE TOUT SEUL : on ne parle que si ça rate.
+                surEchec: () => import('./ui/modal.js').then(m => m.showToast(
+                    'Ce QR code vient bien d\'AtoutMath, mais son parcours ne '
+                    + 's\'ouvre pas. Montre-le à ton professeur.', 'error'))
+            });
+        };
+        window.addEventListener('online', revoirLeScan);
+        window.addEventListener('offline', revoirLeScan);
+        revoirLeScan();
+    }
+
     // Tiroir du catalogue (professeur sur téléphone) : la poignée et le ☰
     // ouvrent et ferment la même feuille coulissante.
     const setDrawer = (ouvert) => {

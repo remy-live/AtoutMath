@@ -5670,3 +5670,20 @@ le résultat n'existe pas** — 15 octobre 2026
   blanc, qui laisse la fenêtre ouverte aussi longtemps qu'on veut. La règle
   générale est plus large et vaut d'être retenue : **pour mesurer un écran, il
   faut une entrée qui ne le fasse pas changer.**
+
+## `[hidden]` ne cache rien quand une classe pose `display` — 2026-10-21
+
+- *Ce que je voulais faire* : montrer un bouton de la barre du bas seulement
+  hors ligne, en posant et retirant l'attribut `hidden`.
+- *Ce qui a coûté* : une reprise de la sonde, dix minutes. `.bottom-nav-btn`
+  impose `display: flex`, et la règle du navigateur — `[hidden] { display:
+  none }` — pèse moins qu'une classe : l'attribut était mis, et le bouton
+  occupait toujours ses 98 px. Le dépôt porte DÉJÀ ce piège, écrit noir sur
+  blanc au-dessus de `.game-icon-btn[hidden]` dans `css/games.css` — la
+  calculatrice restée sur soixante-cinq exercices.
+- *Combien de fois* : ||
+- *Ce qui manque* : une épreuve de la maison qui parcourt les feuilles, relève
+  toute classe posant `display:` sur un sélecteur employé avec `hidden` dans
+  `index.html`, et exige la règle `[hidden]` correspondante. Ce piège ne se
+  voit jamais en relisant : le code fait ce qu'il annonce, c'est l'écran qui
+  ment.

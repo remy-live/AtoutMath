@@ -102,6 +102,29 @@ export function laCameraEstPossible() {
     return !!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function');
 }
 
+/**
+ * SANS RÉSEAU, LE QR CODE EST LE SEUL CHEMIN — et c'est ce qui change l'écran.
+ *
+ * RÉMY, après l'essai sur tablette : « si c'est hors ligne, il faut que la
+ * caméra se lance directement », puis « en hors ligne, ce serait cool de
+ * rajouter l'icone qr code à côté de code, parcours, profil ».
+ *
+ * DEUX ÉCRANS POSENT LA MÊME QUESTION — la porte d'entrée, qui ouvre alors la
+ * caméra d'elle-même, et la barre du bas, qui montre alors son icône. Deux
+ * conditions écrites deux fois, c'est une des deux qu'on oublie de corriger.
+ *
+ * POURQUOI HORS LIGNE ET PAS TOUJOURS : sans réseau, aucune séance n'arrive
+ * par la synchronisation, et les deux portes qui passent par le serveur ne
+ * s'ouvrent pas. Le QR code n'est plus un raccourci, c'est le seul chemin. En
+ * ligne, la barre ne bouge pas : le bouton qui scanne est déjà sous le
+ * parcours, et une barre qui change de forme selon le réseau serait une barre
+ * qu'on n'apprend jamais.
+ */
+export function scannerEstLeSeulChemin() {
+    if (typeof navigator === 'undefined') return false;
+    return laCameraEstPossible() && navigator.onLine === false;
+}
+
 /** Ce qu'on dit quand la caméra refuse — en français, et en disant quoi faire. */
 function phraseDeLErreur(err) {
     const nom = (err && err.name) || '';

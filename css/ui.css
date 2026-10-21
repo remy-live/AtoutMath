@@ -2237,6 +2237,16 @@ body.mobile-view .sidebar-top-controls > .select-wrap,
     .bottom-nav-btn:hover { color: var(--text-main); }
 }
 .bottom-nav-btn.active { color: var(--primary-texte); font-weight: 600; transform: translateY(-2px); }
+/* UN BOUTON `hidden` DOIT DISPARAÎTRE, et le `display: flex` ci-dessus le
+   ramenait. C'est le piège déjà payé sur `.game-icon-btn` (voir css/games.css,
+   la calculatrice qui restait sur soixante-cinq exercices) : la règle du
+   navigateur — [hidden] { display: none } — pèse moins qu'une classe.
+
+   MESURÉ ICI SUR L'ICÔNE DU QR CODE, qui ne doit paraître que hors ligne :
+   réseau revenu, `hidden` posé, le bouton occupait encore ses 98 px dans la
+   barre. Le code faisait exactement ce qu'il annonçait, et l'écran disait le
+   contraire. */
+.bottom-nav-btn[hidden] { display: none; }
 
 /* --- SYSTEME ARBORESCENCE --- */
 #nav-container { flex-grow: 1; overflow-y: auto; padding: 15px; }

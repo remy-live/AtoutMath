@@ -2889,3 +2889,44 @@ que la séance n'ait jamais été commencée.
 options de la séance, la case « Laisser l'élève choisir l'ordre des étapes »
 (`ordreLibre`) ouvre tout le parcours d'un coup. Elle est décochée par défaut —
 l'ordre est imposé — et il suffit de la cocher, séance par séance.
+
+### 24. Hors ligne, l'icône du QR code dans la barre du bas
+
+> « en hors ligne, ce serait cool de rajouter l'icone qr code à côté de code,
+> parcours, profil »
+
+La suite immédiate de la remarque 23, et il nomme exactement ce que voit un
+élève : avec le mode libre éteint — le défaut —, la barre du bas ne porte que
+**Code, Parcours, Profil** (`#mob-btn-grid` et `#mob-btn-drill-acc` sont
+masqués par `body.sans-mode-libre`). C'est la seule barre présente sur tous les
+écrans ; un bouton posé là est atteignable où que l'élève se trouve, y compris
+depuis un exercice fermé ou son profil.
+
+**Hors ligne**, comme il le demande : sans réseau, aucune séance n'arrive par
+la synchronisation, et le QR code est le seul chemin par lequel du travail
+entre. En ligne, la barre ne bouge pas — le bouton « Scanner le QR code » est
+déjà sous le parcours (remarque 23).
+
+#### Fait — et un piège que seule la mesure a vu
+
+`node tools/sondeTablette.mjs`, section F — la barre du bas d'une tablette de
+390 × 844, hors ligne :
+
+| | Boutons | Largeur | Tronqué |
+| --- | --- | --- | --- |
+| Hors ligne | Code · **Scanner** · Parcours · Profil | 98 px | rien |
+| En ligne | Code · Parcours · Profil | 130 px | rien |
+| À 360 px | les quatre | 90 px | rien |
+| À 320 px | les quatre | 80 px | rien |
+
+La caméra s'ouvre **en 85 ms** depuis la barre, et le bouton part et revient
+quand le réseau change **sans recharger la page** — une tablette qui perd le
+Wi-Fi au milieu de l'heure n'a pas à être relancée.
+
+**LE PIÈGE** : `hidden` ne cachait rien. `.bottom-nav-btn` impose
+`display: flex`, et la règle du navigateur — `[hidden] { display: none }` —
+pèse moins qu'une classe : réseau revenu, l'attribut posé, le bouton occupait
+toujours ses 98 px. C'est exactement le défaut déjà payé sur la calculatrice
+des exercices (`.game-icon-btn`, css/games.css), au même endroit du même
+raisonnement. Le code faisait ce qu'il annonçait, et l'écran disait le
+contraire ; il a fallu compter les boutons à l'écran pour le voir.

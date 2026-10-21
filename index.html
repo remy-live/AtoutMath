@@ -86,12 +86,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1075">
-    <link rel="stylesheet" href="css/layout.css?v=1075">
-    <link rel="stylesheet" href="css/ui.css?v=1075">
-    <link rel="stylesheet" href="css/games.css?v=1075">
-    <link rel="stylesheet" href="css/components.css?v=1075">
-    <link rel="stylesheet" href="css/modules.css?v=1075">
+    <link rel="stylesheet" href="css/base.css?v=1076">
+    <link rel="stylesheet" href="css/layout.css?v=1076">
+    <link rel="stylesheet" href="css/ui.css?v=1076">
+    <link rel="stylesheet" href="css/games.css?v=1076">
+    <link rel="stylesheet" href="css/components.css?v=1076">
+    <link rel="stylesheet" href="css/modules.css?v=1076">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1490,6 +1490,39 @@
                     <polyline points="8 6 2 12 8 18" />
                 </svg>
                 <span>Code</span>
+            </button>
+            <!-- LE QR CODE, HORS LIGNE, DANS LA BARRE DU BAS.
+
+                 RÉMY, après l'essai sur tablette : « en hors ligne, ce serait
+                 cool de rajouter l'icone qr code à côté de code, parcours,
+                 profil ».
+
+                 IL NOMME EXACTEMENT CE QUE VOIT UN ÉLÈVE. Avec le mode libre
+                 éteint — le défaut —, « Explorer » et « Exercices » sont
+                 masqués (voir body.sans-mode-libre dans css/ui.css) : la barre
+                 ne porte que Code, Parcours, Profil. C'est la seule barre
+                 présente sur TOUS les écrans ; un bouton posé là est
+                 atteignable d'où que l'élève soit.
+
+                 JUSTE APRÈS « CODE », parce que c'est le même geste par
+                 l'autre bout : l'un tape le code, l'autre le lit. Les deux
+                 destinations — Parcours, Profil — restent à leur place, celle
+                 que la main a apprise.
+
+                 CACHÉ PAR DÉFAUT, et montré par js/app.js seulement hors ligne
+                 ET si l'appareil sait scanner. En ligne, la barre ne bouge pas :
+                 le bouton qui scanne est déjà sous le parcours. -->
+            <button class="bottom-nav-btn" id="mob-btn-scan" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                    <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                    <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                    <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                    <rect x="7" y="7" width="4" height="4" />
+                    <rect x="13" y="13" width="4" height="4" />
+                </svg>
+                <span>Scanner</span>
             </button>
             <button class="bottom-nav-btn" id="mob-btn-path">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
