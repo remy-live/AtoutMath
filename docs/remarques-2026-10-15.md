@@ -2605,3 +2605,45 @@ un QR étranger                « Ce QR code ne vient pas d'AtoutMath », et la
                               fenêtre RESTE ouverte
 erreurs de page 0             fenêtres natives 0
 ```
+
+### 22 quater. « Chaque tablette est indépendante »
+
+> « Non chaque tablette est indépendante »
+
+Pas de gestionnaire d'école, donc **aucun raccourci à pousser sur les
+vingt-cinq**. La préparation se fait tablette par tablette, une fois : ouvrir
+l'adresse, appuyer sur « Installer ». Vingt secondes chacune avec du wifi, dix
+minutes pour une classe.
+
+CE QUE CELA DÉPLACE : le seul moment où tout peut rater devient cette
+préparation-là, et elle est SILENCIEUSE. Une tablette où l'on a ouvert la page
+sans rien faire d'autre a l'air prête — et ne l'est pas forcément.
+
+**MESURÉ** (`tools/tmp/sonde-prepa3.mjs` et `sonde-prepa4.mjs`), sur le vrai
+chemin — on ouvre la page, on ne fait rien d'autre, on coupe le réseau :
+
+```
+cache du service worker   258 fichiers, dont 124 générateurs
+de js/games/              DEUX fichiers : engine.js et configUI.js
+et il ne grossit pas      même compte à 2, 5, 10, 20, 35 et 60 secondes
+hors ligne, un parcours   s'ouvre et se joue, JEU COMPRIS, 0 erreur
+```
+
+**LES DEUX LIGNES SE CONTREDISENT, ET C'EST LA DÉCOUVERTE.** `js/games/` pèse
+3,4 Mo en 91 fichiers et n'est PAS dans le noyau ; le jeu tourne pourtant hors
+ligne. Il ne vient donc pas de notre cache à nous, mais du cache du
+NAVIGATEUR — celui que personne ne contrôle, et le premier qu'un système vide
+quand la place manque.
+
+D'ailleurs une sonde plus pressée (`sonde-horsligne-vrai.mjs`, coupure au bout
+de six secondes) a vu `import('./js/games/tasuko.js')` ÉCHOUER hors ligne. Le
+même geste, deux résultats, selon ce que le navigateur avait eu le temps de
+ranger.
+
+**CE QUI MARCHE AUJOURD'HUI MARCHE DONC PAR CHANCE**, et la chance se retire
+sans prévenir — exactement le genre de panne qu'on ne peut pas déboguer dans
+une salle de classe. Deux pistes, à lui proposer :
+
+1. **Installer** épingle le cache (c'est fait, v1068) ;
+2. une page « préparer cette tablette » qui tire TOUT dans le cache du service
+   worker et dit « prête », au lieu de laisser croire.

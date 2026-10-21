@@ -5499,3 +5499,21 @@ le résultat n'existe pas** — 15 octobre 2026
   les violations de CSP AVEC les erreurs de page. Toutes les sondes impriment
   déjà `s.erreurs`, et le verdict de `boutEnBout` les compte : une liste de
   plus serait une liste que personne ne regarde.
+
+## Deux sondes, deux réponses contraires, et c'est l'une d'elles qui mentait
+
+- *Ce que je voulais faire* : savoir si une tablette qui a seulement ouvert la
+  page peut jouer HORS LIGNE.
+- *Ce qui a coûté* : une demi-heure, et c'est le désaccord qui l'a coûtée. Une
+  sonde disait oui, une autre disait que le module du jeu ne se chargeait même
+  pas. La différence tenait à TROIS LIGNES de la sonde elle-même : la première
+  calculait le code du parcours en faisant `import()` DANS la page, ce qui
+  tirait des modules dans le cache du navigateur AVANT la coupure. Une
+  maîtresse n'importe pas de modules. La sonde mesurait son propre échauffement.
+- *Combien de fois* : |
+- *Ce qui manque* : la règle, qu'on écrira sans doute encore : **tout ce qu'une
+  sonde fait faire à la page AVANT la mesure fait partie de la mesure.** Quand
+  on prépare un essai hors ligne, on calcule ce qu'on peut HORS de la page —
+  `sonde-prepa4.mjs` encode le code côté node, et c'est ce qui a tranché. Un
+  `s.couper()` qui jetterait si la page a importé quoi que ce soit depuis
+  l'ouverture serait l'outil ; en attendant, la note.
