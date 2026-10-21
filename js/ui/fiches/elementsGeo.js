@@ -360,7 +360,7 @@ export function dessinerElementsGeoPdf(doc, item, slot, solution, champ) {
         // s'imprime aussi, et sans ses carrés il n'y a plus de QCM sur le
         // papier —, et la vraie case se pose dessus. Voir `champ.coche`.
         if (!solution && champ && typeof champ.coche === 'function') {
-            champ.coche(x, y, cote, String(c).slice(0, 18));
+            champ.coche(x, y, cote);
         }
         doc.setTextColor(...TRAIT);
         // `doc.text` NE COUPE PAS : la phrase débordait sur la colonne d'à

@@ -1949,42 +1949,92 @@ function champSaisie(pdf, rep, index) {
 // une case du premier sudoku et voyait son chiffre apparaître dans le second.
 let compteurChamps = 0;
 
+/** La classe AcroForm demandée, qu'on soit dans la page ou dans un essai. */
+const deJsPdf = (pdf, nom) =>
+    ((typeof window !== 'undefined' && window.jspdf && window.jspdf[nom]) || pdf[nom]);
+
 /**
- * UNE VRAIE CASE À COCHER, pas un carré dessiné.
+ * UN QCM EST UN GROUPE DE BOUTONS RADIO — et non quatre cases du même nom.
  *
  * RÉMY : « et pour les QCM, il faut que le champ remplissable soit une
  * checkbox ». Le carré tracé est le bon choix pour une feuille qu'on IMPRIME
  * — le caractère ☐ n'existe pas dans les polices standard du PDF, voir le
  * commentaire du dessin. Mais sur une fiche REMPLISSABLE, un carré dessiné
- * n'est qu'un dessin : l'élève ne peut pas le cocher, et il ne lui reste que
- * la case de texte d'à côté, qui ne correspond à rien.
+ * n'est qu'un dessin : l'élève ne peut pas le cocher.
  *
  * ON POSE DONC LES DEUX : le carré reste tracé — une fiche remplissable
- * s'imprime aussi —, et la case à cocher se pose dessus.
+ * s'imprime aussi —, et la case se pose dessus.
  *
- * LE NOM DU CHAMP PORTE LA QUESTION, et c'est ce qui rend les cases
- * EXCLUSIVES entre elles : deux cases du même nom et de valeurs différentes
- * forment un groupe de boutons radio dans un lecteur PDF. Un QCM où l'on peut
- * cocher les quatre réponses n'est pas un QCM.
+ * ── CE QUE LA PREMIÈRE VERSION FAISAIT, ET QUE RÉMY A VU ──────────────────
+ *
+ * « quand je clique sur un champ checkbox, les autres se remplissent de
+ *   caractères spéciaux »
+ *
+ * Elle posait quatre `AcroFormCheckBox` du MÊME nom de champ, en croyant que
+ * « même nom, valeurs différentes » suffisait à faire un groupe exclusif. LU
+ * DANS LES OCTETS DU PDF :
+ *
+ *     /FT /Btn /T (choix_g0) /V /On /AS /Off /MK << /CA (U) >>
+ *     /FT /Btn /T (choix_g0) /V /On /AS /Off /MK << /CA (F) >>
+ *
+ * Même nom ET même état « on » : ce ne sont pas quatre cases, c'est UNE case
+ * à quatre apparences. Cocher l'une les coche toutes — ce qui est exactement
+ * ce qu'il décrit. Un groupe exclusif se fait avec un champ `/Ff` radio dont
+ * chaque enfant porte son PROPRE état d'apparence ; c'est ce que
+ * `createOption` construit.
+ *
+ * ET LE `caption` N'EST PAS UNE VALEUR, C'EST UN GLYPHE. Dans jsPDF il nomme
+ * un caractère de ZapfDingbats — la police des cases à cocher. On y passait
+ * la première lettre de la proposition : « U » et « F » y dessinent une
+ * étoile et des cercles. Les « caractères spéciaux » de sa phrase sont des
+ * dingbats, et ils étaient écrits par nous.
+ *
+ * TROISIÈME DÉFAUT DANS LA MÊME LIGNE : `AcroFormCheckBox` naît avec
+ * `value = 'On'`, et poser `appearanceState = 'Off'` ne touche que `/AS`.
+ * Chaque case arrivait donc avec `/V /On` — déclarée cochée avant qu'on y
+ * touche —, et le premier clic ne faisait que remettre l'apparence d'accord
+ * avec la valeur. C'est pourquoi tout paraissait d'un coup.
+ *
+ * LA CROIX PLUTÔT QUE LE ROND. Un bouton radio se dessine en pastille par
+ * défaut ; le carré, lui, est déjà TRACÉ autour. Une pastille dans un carré
+ * ne ressemble à rien de ce qu'un élève fait à la main — une croix, si.
  */
-function champCoche(pdf, x, y, cote, nom, valeur) {
-    const Coche = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormCheckBox)
-        || (pdf.AcroFormCheckBox);
-    if (typeof Coche !== 'function' || typeof pdf.addField !== 'function') return false;
-    const champ = new Coche();
-    champ.Rect = [x, y, cote, cote];
-    champ.fieldName = nom;
-    champ.appearanceState = 'Off';
-    if (valeur != null) champ.caption = String(valeur).slice(0, 1);
-    pdf.addField(champ);
-    return true;
+function groupeDeCases(pdf, nom) {
+    const Radio = deJsPdf(pdf, 'AcroFormRadioButton');
+    const Allure = deJsPdf(pdf, 'AcroFormAppearance');
+    if (typeof Radio !== 'function' || typeof pdf.addField !== 'function') return null;
+    const groupe = new Radio();
+    // UN jsPDF À MOITIÉ POSÉ rend une fonction pour TOUT — les essais en
+    // montent un de papier, bâti sur un `Proxy` —, si bien que
+    // `typeof Radio === 'function'` ne prouve rien. Ce qu'on vérifie, c'est
+    // qu'elle sache fabriquer une option.
+    if (typeof groupe.createOption !== 'function') return null;
+    groupe.fieldName = nom;
+    // LE CHAMP D'ABORD, LES OPTIONS ENSUITE : `createOption` enregistre
+    // l'enfant dans la PORTÉE du groupe, que `addField` vient de poser.
+    pdf.addField(groupe);
+    let rang = 0;
+    return (x, y, cote) => {
+        const option = groupe.createOption(`c${++rang}`);
+        option.Rect = [x, y, cote, cote];
+        // RIEN N'EST COCHÉ À L'OUVERTURE. Le constructeur le fait déjà ; on
+        // l'écrit quand même, parce que c'est précisément la valeur par
+        // défaut d'une classe voisine qui a causé le défaut d'avant.
+        option.appearanceState = 'Off';
+        if (Allure && Allure.RadioButton && Allure.RadioButton.Cross) {
+            // Repasse sur TOUS les enfants : chaque option reçoit son propre
+            // flux d'apparence, nommé d'après son propre état.
+            groupe.setAppearance(Allure.RadioButton.Cross);
+        }
+        return true;
+    };
 }
 
 /**
  * LE CRAYON DES CHAMPS REMPLISSABLES, fabriqué en un seul endroit.
  *
  * Il écrit — `champ(x, y, w, h)` pose une case de saisie — et il coche —
- * `champ.coche(x, y, côté, valeur)` pose une vraie case à cocher.
+ * `champ.coche(x, y, côté)` ajoute une proposition au QCM de ce crayon.
  *
  * POURQUOI UNE FABRIQUE PLUTÔT QUE DEUX COPIES : il y a TROIS portes vers le
  * papier dans ce logiciel — la fiche d'un exercice (`printSheet`), celle des
@@ -1992,17 +2042,29 @@ function champCoche(pdf, x, y, cote, nom, valeur) {
  * et c'est exactement le genre d'endroit où une correction se pose sur une
  * seule des trois. Le dépôt a payé cette leçon cinq fois.
  *
+ * UN CRAYON, UNE QUESTION, UN GROUPE. Les deux appelants en fabriquent un par
+ * BLOC de la feuille : le groupe vit donc dans ce crayon, et les propositions
+ * d'une question s'excluent sans pouvoir toucher celles de la voisine.
+ *
  * @param {object} pdf le document jsPDF
- * @param {string} groupe le nom du groupe de cases à cocher. Deux cases du
- *   MÊME nom et de valeurs différentes forment un groupe de boutons radio
- *   dans un lecteur PDF : c'est ce qui rend les propositions d'une question
- *   exclusives entre elles. Un QCM où l'on peut cocher les quatre réponses
- *   n'est pas un QCM.
+ * @param {string} [groupe] un nom lisible pour le groupe. LE COMPTEUR, ET NON
+ *   CE NOM, garantit l'unicité : deux champs homonymes n'en font qu'un seul
+ *   pour un lecteur PDF, et c'est ainsi que l'élève tapait dans une case du
+ *   premier sudoku et voyait son chiffre paraître dans le second. Le même
+ *   piège a mordu deux fois ; le nom n'est plus qu'une étiquette.
  */
 export function crayonDeChamps(pdf, groupe) {
     const champ = (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`);
-    champ.coche = (x, y, cote, valeur) =>
-        champCoche(pdf, x, y, cote, groupe || `choix_g${++compteurChamps}`, valeur);
+    // PARESSEUX : quarante rendus sur quarante-deux n'ont pas de QCM, et un
+    // groupe fabriqué d'avance laisserait un champ sans aucune case dans
+    // chacun de leurs PDF.
+    let cocher;
+    champ.coche = (x, y, cote) => {
+        if (cocher === undefined) {
+            cocher = groupeDeCases(pdf, `${groupe || 'choix'}_${++compteurChamps}`);
+        }
+        return cocher ? cocher(x, y, cote) : false;
+    };
     return champ;
 }
 

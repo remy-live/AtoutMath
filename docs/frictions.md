@@ -5413,3 +5413,35 @@ le résultat n'existe pas** — 15 octobre 2026
   cherche l'ABSENCE d'un motif dans une source devrait le faire sur le code
   seul ; une aide `codeSeul('js/…')` à côté de `lire(…)`, et la bonne porte
   serait la plus courte.
+
+## La structure d'un PDF ne se mesure ni à l'image, ni dans une épreuve
+
+- *Ce que je voulais faire* : comprendre « quand je clique sur un champ
+  checkbox, les autres se remplissent de caractères spéciaux ».
+- *Ce qui a coûté* : la cause n'était NULLE PART ailleurs que dans les octets
+  du PDF — quatre widgets du même nom de champ et du même état « on ». Ni
+  l'aperçu, ni l'image du PDF, ni aucune épreuve ne pouvaient le dire, et jsPDF
+  ne se charge pas hors navigateur (son paquet UMD rend un objet vide), donc on
+  ne peut pas non plus fabriquer la structure dans un essai. Trois `node -e`
+  écrits à la main dans la même heure pour lire la même chose.
+- *Combien de fois* : |
+- *Ce qui manque* : rien désormais — `node tools/champsDuPdf.mjs <fiche.pdf>`
+  imprime les champs, leurs états, leurs glyphes, et nomme les trois pièges
+  (noms en double, états partagés, champ déjà coché). Vérifié sur l'ANCIEN PDF
+  avant de le garder : il dit les trois défauts, et se tait sur le nouveau.
+
+## `clip` d'une capture Playwright se compte en pixels d'APPAREIL
+
+- *Ce que je voulais faire* : découper les quatre cases d'une question dans la
+  capture du visionneur PDF, pour montrer la correction à Rémy.
+- *Ce qui a coûté* : trois découpes — une noire, deux blanches — avant de
+  comprendre. Les coordonnées venaient d'une capture PLEINE PAGE, lue en
+  pixels CSS ; avec `deviceScaleFactor: 2`, `clip` les interprète en pixels
+  d'appareil et la fenêtre tombe deux fois trop loin. Rien ne le signale :
+  on obtient une image, simplement pas la bonne — le même symptôme qu'un
+  réglage absent qui se tait.
+- *Combien de fois* : |
+- *Ce qui manque* : une aide `s.photoZone(x, y, w, h)` qui divise par le
+  `deviceScaleFactor` de la sonde, et qui JETTE si la zone sort de la page ou
+  si l'image obtenue est unie — `s.photo` sait déjà dire « UNIE », et c'est
+  exactement ce signal qui manquait ici.

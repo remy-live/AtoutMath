@@ -2441,3 +2441,86 @@ d'aperçu, la toque, la grille, la carte, jouer, envoyer, lien, imprimer.
    des exercices — pas la page entière — qui défile. Sur 197 exercices, la
    barre est à huit écrans de hauteur du bas de la liste : pour imprimer, il
    faut remonter.
+
+## 20. Les cases à cocher d'une fiche remplissable — le 21 octobre
+
+> « quand je clique sur un champ checkbox, les autres se remplissent de
+> caractères spéciaux »
+
+Capture à l'appui, sur une fiche **remplissable** d'« Éléments de géométrie » :
+les quatre cases des affirmations. Au lieu de quatre carrés vides, on voit
+quatre dessins différents — une coche dans un carré à bordure pointillée (celle
+qu'il vient de cliquer), une coche dans un carré gris, une **étoile à six
+branches**, et un carré rempli de **petits cercles**.
+
+```
+☑ N ∉ (RD)        ☑ S ∉ (LR)
+✡ A ∈ (RL)        ⁛ D ∈ [RN]
+```
+
+**CE QUE CES DESSINS SONT** : les glyphes de ZapfDingbats, la police que les
+PDF emploient pour les cases à cocher. Un seul clic les a tous fait paraître à
+la fois — donc le clic n'a pas seulement coché UNE case : il a réveillé
+l'apparence des quatre.
+
+## 21. La sélection du Tasuko — le 21 octobre
+
+> « pour le tasuko, la selection n'est pas terrible je trouve »
+
+MESURÉ AVANT DE TOUCHER À QUOI QUE CE SOIT (`tools/tmp/sonde-tasuko2.mjs`), et
+ce n'est pas une question de goût :
+
+```
+au départ          rien de choisi, la consigne s'affiche
+après UN clic      rien de choisi, et la consigne a DISPARU
+après DEUX clics   rien de choisi
+après un GLISSÉ    « 4 + 3 = 7 ✓ », une capsule posée
+```
+
+**ON NE PEUT PAS JOUER EN CLIQUANT.** Le clic-clic — appuyer sur une case, puis
+sur sa voisine — ne pose jamais rien : la première case se choisit et se
+déchoisit dans le même clic. Seul le glissé fonctionne, et c'est celui-là que
+Rémy a dû trouver tout seul. « Pas terrible » est un euphémisme de professeur.
+
+**ET LA MARQUE DE LA CASE CHOISIE** est un fond violet à 18 % d'opacité sur du
+blanc — quand elle tient, on la voit à peine.
+
+## 22. AtoutMath hors ligne, pour sa sœur institutrice — le 21 octobre
+
+> « ma soeur qui est instit aimerait avoir atout math mais sur des ordinateurs
+> en hors ligne, comment on pourrait faire, elle a des tablettes. L'idéal, elle
+> fait la séance sur son ordi, elle projette le qr code et les élèves qui ont
+> des tablettes sans internet mais qui peuvent prendre en photo pour avoir le
+> parcours. On en parle d'abord »
+
+**« ON EN PARLE D'ABORD »** : rien n'est construit. Ce qui suit est mesuré.
+
+MESURÉ (`tools/tmp/sonde-horsligne2.mjs`), réseau coupé pour de vrai avec
+`context.setOffline(true)` :
+
+```
+service worker   actif, 257 fichiers en cache (atoutmath-v1004)
+hors ligne       navigator.onLine = false
+on ouvre ?code=  « Séance du jour — Étape 1 sur 2 », la couche de jeu s'ouvre
+erreurs de page  0        fenêtres natives  0
+```
+
+**LE PARCOURS VOYAGE DANS LE CODE, PAS DANS LE SERVEUR.** C'est la décision de
+`shortcodes.js` — « le parcours est sérialisé en JSON compact puis encodé en
+base64url » — et c'est elle qui rend tout le reste possible : rien à aller
+chercher, donc rien à aller chercher EN LIGNE.
+
+TAILLE DU LIEN (`tools/tmp/mesure-code.mjs`), exercices pris tels quels :
+
+```
+ 8 exercices   lien  58 caractères
+15 exercices   lien  86 caractères
+30 exercices   lien 146 caractères
+```
+
+Un QR de version 10 suffit pour les trente. Projeté au tableau, il se scanne
+de loin.
+
+**CE QUI NE PASSE PAS** : les résultats. L'API est explicitement exclue du
+cache (« des données de classe périmées sont pires que pas de données »). Sans
+réseau, chaque tablette garde son bilan pour elle.
