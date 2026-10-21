@@ -52,8 +52,20 @@ if (!ids.length) {
     console.error('emploi : node tools/ficheEnPdf.mjs <id> [<id>…] [--couleur=nb|gris|couleur|intense]');
     console.error('         [--items=12] [--solutions] [--champs] [--page=1] [--echelle=2] [--sortie=dossier]');
     console.error('         [--tableau=liste|tableau|zebre] [--colonnes=auto|1…6]');
+    console.error('         [--orientation=portrait|paysage]');
     process.exit(2);
 }
+// L'ORIENTATION EST UN CHEMIN D'UTILISATEUR, ET IL FAUT POUVOIR LE PRENDRE.
+//
+// RÉMY, capture à l'appui : « pour l'impression du milieu d'un segment, les
+// lettres se superposent ». Sa feuille était en A4 PORTRAIT ; la même, en
+// paysage, n'avait AUCUN défaut — les blocs y sont larges et les phrases
+// tiennent sur une ligne. Mesurée en paysage, elle était parfaite ; mesurée
+// sur son chemin à lui, elle se chevauchait.
+//
+// « Une mesure qui n'emprunte pas le chemin de l'utilisateur ne mesure pas son
+// problème. » Il manquait un demi-chemin à cet outil.
+const ORIENTATION = option('orientation', '');
 const MODE = option('couleur', 'couleur');
 const ITEMS = Number(option('items', 12));
 const PAGE = Number(option('page', 1));
@@ -154,6 +166,30 @@ for (const id of ids) {
         await s.deplier('#fq-tableau');
         await s.page.selectOption('#fq-tableau', TABLEAU);
         await dormir(1800);
+    }
+    // L'ORIENTATION D'ABORD : elle change la largeur des blocs, donc la
+    // disposition entière. Réglée après les colonnes, elle les recalculerait.
+    if (ORIENTATION) {
+        // ON NE SE TAIT PAS QUAND LE RÉGLAGE N'EXISTE PAS. Première version :
+        // `if (ORIENTATION && await s.page.$(…))` — le sélecteur absent, la
+        // feuille sortait en paysage sans un mot, et j'ai regardé pendant dix
+        // minutes une image qui ne montrait pas ce que j'avais demandé. C'est
+        // la friction que `doitExister` ferme pour les sondes : un réglage
+        // qu'on croit avoir posé et qui ne l'est pas rend la même image qu'un
+        // logiciel qui va bien.
+        // DEUX MODALES, DEUX PRÉFIXES. La fiche à grilles — celle des figures,
+        // des repères, des potences — ouvre `#fp-…` ; la fiche de questions
+        // écrites ouvre `#fq-…`. Le reste de cet outil le savait déjà pour la
+        // couleur et pour le bouton de téléchargement ; l'orientation, écrite
+        // après, ne regardait que `#fq-` et se taisait.
+        const id = await s.page.$('#fp-orientation') ? '#fp-orientation' : '#fq-orientation';
+        const sel = await s.page.$(id);
+        if (!sel) throw new Error('aucun sélecteur d\'orientation dans cette fiche');
+        await s.deplier(id);
+        await sel.selectOption(ORIENTATION);
+        await dormir(2200);
+        const vu = await sel.inputValue();
+        if (vu !== ORIENTATION) throw new Error(`orientation restée sur « ${vu} »`);
     }
     if (COLONNES && await s.page.$('#fq-colonnes')) {
         await s.deplier('#fq-colonnes');

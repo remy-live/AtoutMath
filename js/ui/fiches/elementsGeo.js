@@ -35,7 +35,7 @@
 // papier les met à son échelle, et c'est tout.
 
 import { planDeLaScene, planFigureCodee, TYPO } from '../../core/pointsDroitesSvg.js';
-import { boiteDe, echapperSheet } from './socle.js';
+import { boiteDe, couperEnLignes, echapperSheet } from './socle.js';
 import { traitsDuPoint } from '../../core/figures.js';
 
 /**
@@ -83,12 +83,49 @@ function plantDeLaFigure(item, slot) {
     // flèche.
     const plan0 = dessiner(null);
 
-    // LA PLACE DES AFFIRMATIONS SE CALCULE SUR LEUR NOMBRE, pas sur un
-    // pourcentage : deux lignes de deux, plus un peu d'air.
+    // LA PLACE DES AFFIRMATIONS SUIT LE NOMBRE DE LIGNES QU'ELLES PRENNENT,
+    // ET NON LE NOMBRE DE RANGS.
+    //
+    // RÉMY, capture à l'appui : « pour l'impression du milieu d'un segment,
+    // les lettres se superposent ». Sur sa feuille — A4 PORTRAIT, donc des
+    // blocs étroits — « D n'est pas le milieu de [CS] » ne tient pas sur une
+    // ligne. L'aperçu la coupait en deux, mais la hauteur du rang, elle,
+    // valait une ligne et demie quoi qu'il arrive : la seconde ligne tombait
+    // SUR la proposition d'en dessous, lettre pour lettre.
+    //
+    // ET LE PDF AVAIT LE DÉFAUT INVERSE, invisible en paysage : `doc.text` ne
+    // coupe pas, donc la phrase débordait sur la colonne d'à côté au lieu de
+    // passer à la ligne. Deux rendus, deux façons de rater la même chose —
+    // c'est pour cela que la coupe se décide ICI, une fois, et que les deux
+    // écrivent les lignes qu'on leur donne.
+    //
+    // LA COUPE SE COMPTE EN CARACTÈRES, comme partout ailleurs dans ces
+    // rendus : la largeur disponible divisée par un demi-corps. Le 0,50 est un
+    // peu plus prudent que le 0,47 des autres fiches, parce qu'ici c'est
+    // l'aperçu HTML — en police proportionnelle — qui doit tomber d'accord
+    // avec le PDF : une ligne qui déborderait d'un cheveu s'y couperait une
+    // seconde fois, et le chevauchement reviendrait par la fenêtre.
     const choix = (item.choices || []).map(c => String(c.label ?? c.texte ?? ''));
-    const lignesChoix = Math.ceil(choix.length / 2);
     const taille = Math.max(2.3, Math.min(b.w * 0.040, 3.4));
-    const hChoix = choix.length ? lignesChoix * (taille * 1.75) + 1.2 : 0;
+    const colW = (b.w - 3) / 2 - 1;
+    const cote = taille * 0.9;
+    const parLigne = Math.max(8, Math.floor((colW - cote - 0.8) / (taille * 0.50)));
+    const lignesDe = choix.map(c => couperEnLignes(c, parLigne, 3));
+    const interligne = taille * 1.35;
+    // CHAQUE RANG EST AUSSI HAUT QUE SA PROPOSITION LA PLUS LONGUE : les deux
+    // colonnes d'un même rang partagent une ligne de base, sans quoi elles ne
+    // se liraient plus comme une paire.
+    const rangs = Math.ceil(choix.length / 2);
+    const hautDuRang = [];
+    for (let r = 0; r < rangs; r++) {
+        hautDuRang.push(Math.max(1, ...lignesDe
+            .filter((_, i) => Math.floor(i / 2) === r).map(l => l.length)));
+    }
+    const AIR = 0.9;
+    const yDeRang = [];
+    let cumul = 0;
+    for (const n of hautDuRang) { yDeRang.push(cumul); cumul += n * interligne + AIR; }
+    const hChoix = choix.length ? cumul + 1.2 : 0;
     const dispoH = b.h - hChoix;
 
     // La figure entre dans ce qui reste, sans jamais s'agrandir au-delà : une
@@ -133,6 +170,7 @@ function plantDeLaFigure(item, slot) {
 
     return {
         m, b, plan, choix, taille, hChoix, dispoH, k,
+        lignesDe, interligne, yDeRang, cote, colW,
         // Du repère de l'écran (y descend déjà) à celui du papier.
         P: (x, y) => ({ x: x0 + x * k, y: y0 + y * k }),
         yChoix: b.y + dispoH
@@ -239,15 +277,24 @@ export function elementsGeoPreviewHtml(item, slot, k, solution) {
     const cases = g.choix.map((c, i) => {
         const col = i % 2, lig = Math.floor(i / 2);
         const x = g.b.x + 1.5 + col * (g.b.w - 3) / 2;
-        const y = g.yChoix + lig * (g.taille * 1.75);
+        const y = g.yChoix + g.yDeRang[lig];
         const coche = solution && i === bonne;
+        // LES LIGNES SONT CELLES QUE LA MISE EN PAGE A COMPTÉES, et on les
+        // écrit avec des `<br>` au lieu de laisser le navigateur couper où il
+        // veut : c'est le seul moyen que l'aperçu et le PDF montrent la même
+        // feuille. `white-space: nowrap` sur chaque ligne empêche une coupe
+        // de plus, qui ferait revenir le chevauchement.
+        const texte = g.lignesDe[i]
+            .map(l => `<span style="display:block; white-space:nowrap">${echapperSheet(l)}</span>`)
+            .join('');
         return `<div class="fx-abs" style="position:absolute; left:${T(x)}px; top:${T(y)}px;
-            width:${T((g.b.w - 3) / 2 - 1)}px; font-size:${T(g.taille)}px; line-height:1.25">
-            <span style="display:inline-block; width:${T(g.taille * 0.9)}px;
-                height:${T(g.taille * 0.9)}px; border:${T(0.25)}px solid rgb(${TRAIT.join(',')});
-                margin-right:${T(0.8)}px; vertical-align:-10%;
-                background:${coche ? `rgb(${TRAIT.join(',')})` : 'transparent'}"></span>${
-    echapperSheet(c)}</div>`;
+            width:${T(g.colW)}px; font-size:${T(g.taille)}px;
+            line-height:${T(g.interligne)}px; display:flex; align-items:flex-start">
+            <span style="flex:none; display:inline-block; width:${T(g.cote)}px;
+                height:${T(g.cote)}px; border:${T(0.25)}px solid rgb(${TRAIT.join(',')});
+                margin-right:${T(0.8)}px; margin-top:${T(g.interligne * 0.22)}px;
+                background:${coche ? `rgb(${TRAIT.join(',')})` : 'transparent'}"></span>
+            <span style="flex:1; min-width:0">${texte}</span></div>`;
     }).join('');
 
     return svg + cases;
@@ -304,8 +351,8 @@ export function dessinerElementsGeoPdf(doc, item, slot, solution, champ) {
     g.choix.forEach((c, i) => {
         const col = i % 2, lig = Math.floor(i / 2);
         const x = g.b.x + 1.5 + col * (g.b.w - 3) / 2;
-        const y = g.yChoix + lig * (g.taille * 1.75);
-        const cote = g.taille * 0.9;
+        const y = g.yChoix + g.yDeRang[lig];
+        const cote = g.cote;
         doc.setLineWidth(0.25);
         doc.setDrawColor(...TRAIT);
         doc.rect(x, y, cote, cote, solution && i === bonne ? 'FD' : 'S');
@@ -316,7 +363,13 @@ export function dessinerElementsGeoPdf(doc, item, slot, solution, champ) {
             champ.coche(x, y, cote, String(c).slice(0, 18));
         }
         doc.setTextColor(...TRAIT);
-        doc.text(String(c), x + cote + 0.8, y + cote * 0.85);
+        // `doc.text` NE COUPE PAS : la phrase débordait sur la colonne d'à
+        // côté, et cela ne se voyait qu'en portrait, où les blocs sont
+        // étroits. On écrit donc les lignes que la mise en page a comptées,
+        // une par une, au même interligne que l'aperçu.
+        g.lignesDe[i].forEach((ligne, j) => {
+            doc.text(ligne, x + cote + 0.8, y + cote * 0.85 + j * g.interligne);
+        });
     });
 }
 

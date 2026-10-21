@@ -2395,3 +2395,49 @@ Une moyenne de sept notes ne se fait pas de tête, et la lui faire faire de têt
 mesure le calcul mental, pas la statistique. La calculatrice existe dans le
 dépôt (`mes-vitesse`, `geo-pythagore`, `mes-disque` l'ont) : il suffit de la
 déclarer.
+
+## 18. « les lettres se superposent » — la fiche du milieu, le 21 octobre
+
+> « pour l'impression du milieu d'un segment, les lettres se superposent »
+
+Capture à l'appui, sur une **fiche de parcours** — 600 questions, 517 grilles,
+130 pages. Ce ne sont pas les étiquettes des POINTS qui se chevauchent : D, S,
+K, Z, C, V, M, R et B sont à leur place sur les deux figures. Ce sont **les
+propositions à cocher, sous la figure** :
+
+```
+☐ D n'est pas le milieu de        ☐ C est le milieu de [DZ]
+[CS]
+☐ S n'est pas le milieu de        ☐ V est le milieu de [DS]
+[DK]
+```
+
+La deuxième ligne de la première proposition tombe SUR la première ligne de la
+proposition d'en dessous. Deux textes se recouvrent lettre pour lettre, et
+l'élève ne peut plus lire ni l'un ni l'autre.
+
+**CE QUI SE VOIT DÈS LA CAPTURE** : les propositions sont posées à une hauteur
+FIXE — rang 0, rang 1 —, et leur texte, lui, prend une ou deux lignes selon sa
+longueur. « C est le milieu de [DZ] » tient sur une ligne ; « D n'est pas le
+milieu de [CS] » n'y tient pas. La mise en page compte des rangs, le texte
+compte des lignes, et les deux ne se parlent pas.
+
+## 19. La barre d'outils du parcours — le 21 octobre
+
+> « le que font les icones est toujours ouvert de base et ce serait cool
+> d'avoir la barre fixe et la partie des exercices scroallable »
+
+Capture à l'appui : la barre d'un parcours de **197 exercices**, titre « Tout
+sur papier (197 exerc… » tronqué, un pastille « 197 », un chevron, puis seize
+boutons — loupe, bulle, fiche, aide, dossier, retour, les trois largeurs
+d'aperçu, la toque, la grille, la carte, jouer, envoyer, lien, imprimer.
+
+**DEUX DEMANDES, ET ELLES VONT ENSEMBLE** :
+
+1. Le panneau qui explique **ce que font les icônes** s'ouvre tout seul. Il
+   rend service une fois ; ensuite il prend la place et il faut le replier à
+   chaque visite.
+2. La barre doit **rester** quand on descend dans la liste, et c'est la liste
+   des exercices — pas la page entière — qui défile. Sur 197 exercices, la
+   barre est à huit écrans de hauteur du bas de la liste : pour imprimer, il
+   faut remonter.

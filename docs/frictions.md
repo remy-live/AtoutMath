@@ -5376,3 +5376,24 @@ le résultat n'existe pas** — 15 octobre 2026
   dans un commentaire sur la foi d'une seule recherche. Un commentaire qui
   affirme une mesure qu'on n'a pas faite est pire qu'un commentaire absent : le
   suivant le croira.
+
+## Un réglage absent se tait, et rend la même image qu'un logiciel qui va bien
+
+- *Ce que je voulais faire* : reproduire « pour l'impression du milieu d'un
+  segment, les lettres se superposent ». Sa capture montre une fiche en A4
+  PORTRAIT ; `tools/ficheEnPdf.mjs` sort du paysage.
+- *Ce qui a coûté* : vingt minutes à regarder un PDF correct en croyant
+  mesurer son défaut. J'ai ajouté `--orientation`, posé le réglage sur
+  `#fq-orientation` — le sélecteur du modal des QUESTIONS —, et la fiche est
+  sortie en paysage sans un mot : le modal des FICHES s'appelle
+  `#fp-orientation`. Un `querySelector` qui ne trouve rien rend `null`, on
+  passe le réglage, et l'image obtenue est exactement celle d'un logiciel sans
+  défaut. Le défaut, lui, n'était qu'en portrait.
+- *Combien de fois* : || (déjà payé sur `#pp-champs`, où le réglage était dans
+  un `<details>` fermé — même symptôme, cause opposée)
+- *Ce qui manque* : la règle est écrite dans `ficheEnPdf.mjs` maintenant (il
+  JETTE si le sélecteur manque, et relit la valeur après l'avoir posée), mais
+  elle vaut pour toute sonde : `s.doitExister` ferme ce trou pour un crochet
+  qu'on LIT, et rien ne le ferme pour un réglage qu'on POSE. Un
+  `s.regler(selecteur, valeur)` qui exige le sélecteur, pose la valeur et la
+  relise fermerait la famille entière.
