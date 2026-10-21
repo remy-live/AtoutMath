@@ -9,18 +9,18 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v1005';
+const CACHE = 'atoutmath-v1006';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=1066',
-    './css/layout.css?v=1066',
-    './css/ui.css?v=1066',
-    './css/games.css?v=1066',
-    './css/components.css?v=1066',
-    './css/modules.css?v=1066',
+    './css/base.css?v=1067',
+    './css/layout.css?v=1067',
+    './css/ui.css?v=1067',
+    './css/games.css?v=1067',
+    './css/components.css?v=1067',
+    './css/modules.css?v=1067',
     './icones/icon-192.png',
     './icones/icon-512.png',
     // LES BIBLIOTHÈQUES, désormais servies avec l'application. Elles sont dans
@@ -30,6 +30,11 @@ const NOYAU = [
     './vendor/localforage/localforage.min.js',
     './vendor/confetti/confetti.browser.js',
     './vendor/jspdf/jspdf.umd.min.js',
+    // LE LECTEUR DE QR CODE. Dans le NOYAU et non chargé à la demande, pour la
+    // raison qui justifie toute cette liste : on scanne le QR du tableau dans
+    // une salle SANS RÉSEAU, et un décodeur qu'il faudrait alors aller
+    // chercher serait un décodeur absent le jour où il sert.
+    './vendor/jsqr/jsQR.js',
     './vendor/outfit/outfit.css',
     './vendor/outfit/outfit-latin-400-normal.woff2',
     './vendor/outfit/outfit-latin-700-normal.woff2',

@@ -1499,3 +1499,45 @@ body.mobile-view #toast-container {
     .dv-expression { font-size: 1.3rem; }
     .dv-svg { max-width: 100%; }
 }
+
+/* --- LE SCANNER DE QR CODE -------------------------------------------------
+   Voir `js/ui/scannerQr.js`. Rémy, pour les tablettes hors ligne de sa sœur :
+   « avoir une fenêtre intégré dans l appli ce serait le mieux ».
+
+   LE CADRE EST NOIR, ET IL GARDE SA PLACE AVANT QUE L'IMAGE ARRIVE. Une
+   caméra met entre une demi-seconde et deux secondes à démarrer ; sans
+   `aspect-ratio`, la fenêtre naîtrait plate puis bondirait à la première
+   image, sous les doigts de l'élève en train de viser. */
+.scan-wrap { display: flex; flex-direction: column; gap: 12px; }
+.scan-cadre {
+    position: relative; width: 100%; aspect-ratio: 4 / 3;
+    background: #0f172a; border-radius: 12px; overflow: hidden;
+}
+/* `cover` et non `contain` : on remplit le cadre. Le QR est au centre de ce
+   que l'élève vise, et le viseur lui dit où. */
+.scan-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* LE VISEUR NE REND PAS LA LECTURE PLUS SÛRE — on décode l'image ENTIÈRE, et
+   c'est volontaire : un élève qui doit cadrer au pixel près abandonne. Il dit
+   seulement où regarder. D'où les quatre coins plutôt qu'un rectangle plein,
+   qui, lui, se lirait comme une limite. */
+.scan-viseur {
+    position: absolute; inset: 14%; pointer-events: none;
+    border-radius: 10px;
+    background:
+        linear-gradient(#fff, #fff) 0 0 / 22px 3px no-repeat,
+        linear-gradient(#fff, #fff) 0 0 / 3px 22px no-repeat,
+        linear-gradient(#fff, #fff) 100% 0 / 22px 3px no-repeat,
+        linear-gradient(#fff, #fff) 100% 0 / 3px 22px no-repeat,
+        linear-gradient(#fff, #fff) 0 100% / 22px 3px no-repeat,
+        linear-gradient(#fff, #fff) 0 100% / 3px 22px no-repeat,
+        linear-gradient(#fff, #fff) 100% 100% / 22px 3px no-repeat,
+        linear-gradient(#fff, #fff) 100% 100% / 3px 22px no-repeat;
+    opacity: .9;
+}
+/* DEUX LIGNES DE HAUT, RÉSERVÉES : le message change — « vise le tableau »,
+   puis « approche-toi », puis l'erreur de caméra —, et une fenêtre qui
+   grandit à chaque phrase est une fenêtre qui bouge pendant qu'on vise. */
+.scan-mot {
+    margin: 0; min-height: 2.8em; text-align: center;
+    color: var(--text-muted); font-size: .95rem; line-height: 1.4;
+}

@@ -5445,3 +5445,38 @@ le résultat n'existe pas** — 15 octobre 2026
   `deviceScaleFactor` de la sonde, et qui JETTE si la zone sort de la page ou
   si l'image obtenue est unie — `s.photo` sait déjà dire « UNIE », et c'est
   exactement ce signal qui manquait ici.
+
+## Une fenêtre qui s'ouvre DERRIÈRE celle qui l'a ouverte
+
+- *Ce que je voulais faire* : ouvrir le scanner de QR code depuis la fenêtre
+  « J'ai un code ».
+- *Ce qui a coûté* : vingt minutes, et c'est le symptôme qui les a coûtées. La
+  sonde disait TOUT JUSTE : la caméra tournait, la vidéo faisait 640 × 480, le
+  viseur était posé, le décodeur lisait un QR et le refusait avec la bonne
+  phrase. Seule la PHOTO a montré le défaut — on voyait la fenêtre du code.
+  `showModal` pose `z-index: 9999` EN LIGNE, et `.modal-overlay` vaut 100 000
+  dans la feuille : l'inline l'emporte sur la classe, donc la fenêtre
+  fabriquée se range sous les fenêtres déclarées. Le commentaire de
+  `showModal` prévient déjà pour la couche de jeu (10 000) ; il ne pouvait pas
+  prévenir pour celle-ci.
+- *Combien de fois* : ||
+- *Ce qui manque* : une sonde demande `elementFromPoint` au centre de ce
+  qu'elle croit regarder. C'est la ligne que `deplier` avait déjà apprise
+  (« avant de douter de l'outil, on demande QUI est là »), et elle vaut pour
+  toute fenêtre : `s.estDevant(selecteur)` qui JETTE quand autre chose est au
+  premier plan fermerait la famille. Une mesure qui interroge le DOM ne voit
+  pas l'empilement.
+
+## Une sonde qui a besoin d'un drapeau de navigateur devait tout réécrire
+
+- *Ce que je voulais faire* : mesurer le scanner, donc remplacer la caméra par
+  un fichier (`--use-file-for-fake-video-capture`).
+- *Ce qui a coûté* : `ouvrirSonde` lançait Chromium sans aucun argument et
+  n'en acceptait pas. Pour un drapeau, il fallait refaire `monterLeSite`, le
+  contexte, les écouteurs d'erreurs et de fenêtres natives — c'est-à-dire tout
+  ce que `sonde.mjs` existe pour ne plus réécrire.
+- *Combien de fois* : |
+- *Ce qui manque* : rien désormais — `ouvrirSonde({ args: [...] })`. Et la
+  caméra de papier est dans `tools/tmp/faireY4m.mjs` : quarante lignes, aucune
+  dépendance, qui écrivent un Y4M montrant un QR fabriqué par le dépôt
+  lui-même. À garder si l'on remesure le scanner.

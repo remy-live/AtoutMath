@@ -2547,3 +2547,37 @@ un décodeur, c'est-à-dire une dépendance : à peser.
 Le `scope: "./"` couvre bien `?code=…`, donc le lien scanné tombe dans
 l'application installée (capture de lien sur Android ; sur iPad la caméra ouvre
 Safari, et c'est donc dans Safari qu'il faut l'avoir installée).
+
+### 22 ter. « Une fenêtre intégrée dans l'appli » — le scanner
+
+> « Mais du coup on ne peut pas ne pas passer par l application du qr code et
+> avoir une fenêtre intégré dans l appli ce serait le mieux »
+
+Il a raison, et pour une raison plus forte que le confort : **passer par
+l'application caméra, c'est passer par le NAVIGATEUR PAR DÉFAUT**, et rien ne
+garantit que ce soit celui où l'application a été mise en cache. L'élève
+tombe alors sur une page blanche, hors ligne, sans un mot d'explication. Un
+scanner dans l'application supprime la question : l'élève ouvre AtoutMath —
+qui est déjà sur son écran d'accueil —, vise le tableau, et c'est fini.
+
+**ET LE QR PEUT ALORS PORTER LE CODE NU**, plus une adresse : aucune
+navigation, aucun chargement de page, rien qui puisse échouer hors ligne. En
+pratique on garde l'adresse — le même QR sert alors au téléphone de la maison
+et à la tablette de la classe —, et c'est `codeDansLeTexte` qui en tire le
+code.
+
+**FAIT** (v1067). `js/ui/scannerQr.js`, et `vendor/jsqr/` pour le décodeur.
+
+MESURÉ DE BOUT EN BOUT, caméra remplacée par un fichier montrant un QR
+fabriqué par le dépôt lui-même :
+
+```
+le bouton paraît              « Scanner le QR code »
+la fenêtre s'ouvre            vidéo 640 × 480, viseur, décodeur chargé
+le QR est lu, ça s'ouvre      « Séance du jour », couche de jeu
+du doigt au parcours          561 ms
+à la fermeture                le flux est COUPÉ
+un QR étranger                « Ce QR code ne vient pas d'AtoutMath », et la
+                              fenêtre RESTE ouverte
+erreurs de page 0             fenêtres natives 0
+```

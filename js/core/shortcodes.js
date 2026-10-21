@@ -1165,6 +1165,38 @@ export const Shortcodes = {
         return `${window.location.origin}${window.location.pathname}?code=${encodeURIComponent(code)}`;
     },
 
+    /**
+     * LE CODE CONTENU DANS CE QU'ON VIENT DE LIRE — un code nu, ou une adresse.
+     *
+     * Le QR que le professeur projette porte une ADRESSE (`shareUrl`), parce
+     * qu'un téléphone qui le scanne depuis son appareil photo n'a rien d'autre
+     * à en faire. Le scanner de l'application, lui, reçoit cette même adresse
+     * et n'a aucune raison de naviguer : le code est dedans.
+     *
+     * ON EXTRAIT, ON NE JUGE PAS. Cette fonction ne dit pas si le code est bon
+     * — `decodePath` est le seul juge, et il l'est déjà pour le code tapé à la
+     * main. Dédoubler le jugement, c'est le voir diverger.
+     *
+     * ET L'ON NE DÉCOUPE PAS SUR LES ESPACES : la fenêtre de saisie promet à
+     * l'élève que « les majuscules, les espaces et les tirets n'ont pas
+     * d'importance », et c'est la normalisation du décodeur qui tient cette
+     * promesse. Couper ici la lui retirerait pour le seul scanner.
+     *
+     * @param {string} texte ce que le scanner a lu
+     * @returns {string} un code CANDIDAT, ou la chaîne vide
+     */
+    codeDansLeTexte(texte) {
+        const brut = String(texte == null ? '' : texte).trim();
+        if (!brut) return '';
+        const m = /[?&]code=([^&#\s]+)/.exec(brut);
+        if (!m) return brut;
+        // Une adresse porte son code PERCENT-ENCODÉ (`shareUrl` l'encode). Si
+        // le décodage échoue — un `%` isolé dans un QR abîmé —, on rend la
+        // chaîne telle quelle plutôt que de jeter : `decodePath` la refusera
+        // proprement, avec le message que l'élève connaît déjà.
+        try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
+    },
+
     // --- Compatibilité avec l'ancienne API ---
     encodeSequence(steps) {
         return this.encodePath(Array.isArray(steps) ? { steps } : steps);

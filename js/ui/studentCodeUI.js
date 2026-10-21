@@ -5,6 +5,7 @@
 // barème, ce qui était impossible avec l'ancien format à 2 lettres par jeu.
 
 import { Shortcodes } from '../core/shortcodes.js';
+import { laCameraEstPossible, ouvrirLeScanner } from './scannerQr.js';
 import { hydratePath } from '../core/path.js';
 import { resolvePolicy } from '../core/policy.js';
 import { showAlert, showToast } from './modal.js';
@@ -32,6 +33,34 @@ export function initStudentCodeUI() {
 
     const btnClose = document.getElementById('btn-close-code');
     if (btnClose) btnClose.onclick = () => { if (modal) modal.style.display = 'none'; };
+
+    // ── LE SCANNER ────────────────────────────────────────────────────────
+    //
+    // RÉMY, pour les tablettes hors ligne de sa sœur : « on ne peut pas ne pas
+    // passer par l application du qr code et avoir une fenêtre intégré dans
+    // l appli ce serait le mieux ». L'appareil photo passe le lien au
+    // NAVIGATEUR PAR DÉFAUT, qui n'est pas forcément celui où l'application
+    // est en cache : hors ligne, l'élève tombe alors sur une page blanche.
+    //
+    // LE BOUTON NE PARAÎT QUE S'IL PEUT SERVIR. Voir `laCameraEstPossible` :
+    // hors contexte sécurisé, `getUserMedia` n'existe pas du tout.
+    const btnScan = document.getElementById('btn-scanner-code');
+    if (btnScan && laCameraEstPossible()) {
+        btnScan.hidden = false;
+        btnScan.onclick = () => ouvrirLeScanner({
+            // ON REND `false` QUAND CE N'EST PAS UN CODE D'ATOUTMATH, et le
+            // scanner CONTINUE de chercher. Un élève qui balaie le tableau
+            // attrape parfois l'affiche d'à côté ; refermer la fenêtre à
+            // chaque fois le punirait de viser.
+            surCode: (texte) => {
+                const code = Shortcodes.codeDansLeTexte(texte);
+                if (!code || !applyCode(code)) return false;
+                if (input) input.value = '';
+                if (modal) modal.style.display = 'none';
+                return true;
+            }
+        });
+    }
 }
 
 /**

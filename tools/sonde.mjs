@@ -70,7 +70,18 @@ export async function ouvrirSonde(o = {}) {
 
     const { port, info, serveur } = await monterLeSite();
 
-    const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+    // DES DRAPEAUX DE NAVIGATEUR, QUAND LA MESURE EN DEMANDE.
+    //
+    // Le scanner de QR code ne se mesure pas sans `--use-file-for-fake-video-
+    // capture` : il faut une CAMÉRA, et la seule caméra d'un serveur est un
+    // fichier qu'on lui donne. Sans cette ligne, une telle sonde devait
+    // réécrire `monterLeSite`, le contexte, les écouteurs d'erreur et de
+    // fenêtres natives — c'est-à-dire tout ce que ce fichier existe pour ne
+    // plus réécrire.
+    const nav = await chromium.launch({
+        executablePath: '/opt/pw-browsers/chromium',
+        args: o.args || []
+    });
     const ctx = await nav.newContext({
         viewport: { width: largeur, height: hauteur },
         deviceScaleFactor: 2, hasTouch: doigt, isMobile: doigt,
