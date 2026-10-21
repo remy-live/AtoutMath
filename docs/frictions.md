@@ -5517,3 +5517,20 @@ le résultat n'existe pas** — 15 octobre 2026
   `sonde-prepa4.mjs` encode le code côté node, et c'est ce qui a tranché. Un
   `s.couper()` qui jetterait si la page a importé quoi que ce soit depuis
   l'ouverture serait l'outil ; en attendant, la note.
+
+## Une capture peut être vide alors que l'écran ne l'est pas
+
+- *Ce que je voulais faire* : montrer la page de préparation à Rémy.
+- *Ce qui a coûté* : trois quarts d'heure. La capture rendait UNE SEULE
+  teinte ; le DOM, lui, disait tout juste — titre 508 × 40, couleur
+  rgb(15, 23, 42), `visibility: visible`, et `elementFromPoint` au centre
+  nommait bien la page. J'ai cherché un voile par-dessus, une police qui ne
+  charge pas, un module qui repeint la page. Il n'y avait rien : le fil
+  principal était occupé, et Playwright rendait la DERNIÈRE image composée.
+  Ce qui a tranché : photographier l'ÉLÉMENT (240 teintes) pendant que la
+  page entière en rendait 1. Deux captures du même instant, deux réponses.
+- *Combien de fois* : |
+- *Ce qui manque* : une sonde qui dit « UNIE » — et `s.photo` le dit déjà —
+  devrait REFAIRE la capture une fois après une image d'attente avant de le
+  déclarer. Un `s.photo` qui insiste coûte 16 ms et ferme une piste qui m'a
+  coûté quarante-cinq minutes.

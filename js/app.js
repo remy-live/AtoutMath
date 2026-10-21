@@ -237,6 +237,30 @@ window.addEventListener('DOMContentLoaded', async () => {
             new URLSearchParams(window.location.search)));
     }
 
+    // PRÉPARER UNE TABLETTE, pour une classe sans internet.
+    //
+    // RÉMY, pour sa sœur institutrice : « Non chaque tablette est
+    // indépendante ». Vingt-cinq préparations à la main, et une tablette mal
+    // préparée a exactement l'air d'une tablette prête — on ne le découvre
+    // qu'en classe. Cette adresse-là fait le travail et DIT ce qu'elle a
+    // obtenu. Voir `ui/preparerTablette.js`.
+    //
+    // AVANT LE CODE DE PARCOURS, et c'est voulu : les deux ne se mélangent
+    // pas, et une tablette qu'on prépare n'a pas de séance à ouvrir.
+    if (new URLSearchParams(window.location.search).has('preparer')) {
+        import('./ui/preparerTablette.js').then(m => {
+            m.ouvrirLaPreparation();
+            // LE DRAPEAU DE « PAGE PRÊTE », MÊME ICI. L'écran de chargement
+            // l'attend pour s'effacer, et toute sonde qui vient ensuite
+            // l'attend aussi : sans lui, la préparation s'afficherait sous
+            // le voile, et une mesure resterait pendue trente secondes sur
+            // une page parfaitement montée.
+            window.__atoutmathPret = true;
+            document.dispatchEvent(new CustomEvent('atoutmath_pret'));
+        });
+        return;
+    }
+
     const code = new URLSearchParams(window.location.search).get('code');
     if (code) {
         const ouvert = applyCode(code, { autoStart: true });

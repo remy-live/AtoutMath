@@ -1570,3 +1570,55 @@ body.mobile-view #toast-container {
    dépôt où l'ordre est une information. */
 .inst-pas { margin: 0; padding-left: 1.3em; line-height: 1.7; color: var(--text-main); }
 .inst-pas li + li { margin-top: 8px; }
+
+/* --- PRÉPARER UNE TABLETTE -------------------------------------------------
+   Voir `js/ui/preparerTablette.js`. Rémy, pour sa sœur : « Non chaque tablette
+   est indépendante ».
+
+   CETTE PAGE N'EST QUE CELA. Elle remplace l'application, parce qu'une
+   tablette qu'on prépare n'a rien d'autre à montrer — et parce qu'on y arrive
+   par un QR projeté, sans personne pour expliquer où cliquer ensuite. */
+.prep-page {
+    max-width: 34rem; margin: 0 auto; padding: 24px 18px 48px;
+    color: var(--text-main);
+}
+.prep-h1 { font-size: clamp(1.5rem, 6vw, 2rem); margin: 0 0 6px; }
+.prep-sous { margin: 0 0 24px; color: var(--text-muted); line-height: 1.5; }
+.prep-liste { list-style: none; margin: 0; padding: 0; display: flex;
+              flex-direction: column; gap: 18px; }
+.prep-ligne { display: flex; gap: 14px; align-items: flex-start; }
+/* LA PASTILLE D'ÉTAT GARDE SA PLACE DÈS LE DÉPART : elle passe du rond vide à
+   la coche, et une ligne qui s'élargit en cours de route fait sauter les
+   trois autres sous le doigt de celle qui lit. */
+.prep-etat {
+    flex: 0 0 auto; width: 26px; height: 26px; margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 2px solid var(--border); color: #fff;
+}
+.prep-rond { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.prep-etat[data-etat="encours"] { border-color: var(--primary); }
+.prep-etat[data-etat="encours"] .prep-rond { background: var(--primary); }
+.prep-etat[data-etat="fait"] { background: #2f855a; border-color: #2f855a; }
+.prep-etat[data-etat="rate"] { background: #c53030; border-color: #c53030; }
+.prep-corps { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.prep-titre { font-size: 1.05rem; }
+.prep-mot { color: var(--text-muted); line-height: 1.45; }
+.prep-geste:empty { display: none; }
+.prep-geste { margin-top: 8px; }
+.prep-bouton { align-self: flex-start; }
+/* LE VERDICT EST LA SEULE LIGNE QU'ON LIRA VINGT-CINQ FOIS. Il est grand, il
+   est en couleur, et il dit « prête » ou « PAS prête » — jamais autre chose. */
+.prep-verdict {
+    margin: 28px 0 0; padding: 14px 16px; border-radius: 12px;
+    font-weight: 700; font-size: 1.05rem; text-align: center;
+}
+.prep-verdict:empty { display: none; }
+.prep-verdict[data-etat="ok"] { background: color-mix(in srgb, #2f855a 14%, transparent); color: #2f855a; }
+.prep-verdict[data-etat="rate"] { background: color-mix(in srgb, #c53030 14%, transparent); color: #c53030; }
+.prep-qr { margin: 36px 0 0; text-align: center; }
+.prep-qr-mot { margin: 0 0 12px; color: var(--text-muted); }
+.prep-qr svg { width: min(220px, 60vw); height: auto; border-radius: 8px; }
+.prep-adresse {
+    display: block; margin-top: 10px; color: var(--text-muted);
+    font-size: .85rem; word-break: break-all;
+}

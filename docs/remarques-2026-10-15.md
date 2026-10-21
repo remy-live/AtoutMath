@@ -2642,8 +2642,24 @@ ranger.
 
 **CE QUI MARCHE AUJOURD'HUI MARCHE DONC PAR CHANCE**, et la chance se retire
 sans prévenir — exactement le genre de panne qu'on ne peut pas déboguer dans
-une salle de classe. Deux pistes, à lui proposer :
+une salle de classe.
 
-1. **Installer** épingle le cache (c'est fait, v1068) ;
-2. une page « préparer cette tablette » qui tire TOUT dans le cache du service
-   worker et dit « prête », au lieu de laisser croire.
+**FAIT** (v1069), sur son « Oui » : l'adresse `?preparer`.
+
+MESURÉ sur une tablette remise à NEUF — ni service worker, ni cache — qui
+ouvre directement cette adresse :
+
+```
+« 126 exercices gardés — 0 puis 407 fichiers en mémoire. »
+407 fichiers, dont 91 de js/games/ (il y en avait DEUX)
+« Cette tablette est prête à travailler sans internet. »
+puis, réseau coupé : le Tasuko tourne. 0 erreur, 0 fenêtre native.
+```
+
+**ET LE PIÈGE QU'ELLE A FAIT APPARAÎTRE** : charger les modules ne suffit PAS
+à les garder. Un service worker ne voit pas les requêtes faites avant son
+activation — au premier passage, toutes. La page affichait fidèlement « 126
+exercices chargés, mais rien n'est gardé ». `index.html` connaissait déjà ce
+piège et envoie la liste au worker au bout de huit secondes ; la préparation
+le fait elle-même, puis ATTEND que le rangement cesse de grossir avant de
+rendre son verdict.
