@@ -5634,3 +5634,39 @@ le résultat n'existe pas** — 15 octobre 2026
   n'est pas au catalogue » quand on lui en passe un qu'il ne trouve pas. Un
   outil de vérification qui félicite sur une question qu'il n'a pas comprise
   est pire qu'un outil absent.
+
+## `remplacer.mjs` ne dit pas combien de lignes il efface — 2026-10-21
+
+- *Ce que je voulais faire* : remplacer un bloc d'une quinzaine de lignes dans
+  `js/ui/portailUI.js`, bloc que j'avais découpé entre deux ancres avec un
+  petit script Python.
+- *Ce qui a coûté* : vingt minutes, et il s'en est fallu d'un `git diff`. Mon
+  ancre de fin était plus bas que je ne le croyais : le bloc faisait 6 609
+  caractères et emportait 77 lignes — `ressembleAUneSeance`, `ressembleAUnBillet`
+  et toute la fonction `connecter`. `remplacer.mjs` a répondu « ok paire 1 :
+  1 occurrence(s) » en imprimant les cinquante premiers caractères du motif, et
+  `node --check` a confirmé que « la syntaxe tient » : une fonction supprimée
+  dont l'appel reste ne casse rien à la compilation, elle jette à l'exécution,
+  c'est-à-dire en classe.
+- *Combien de fois* : |
+- *Ce qui manque* : que `remplacer.mjs` annonce le VOLUME quand il dépasse
+  quelques lignes — « −77 lignes, +12 » — et, au-delà d'un seuil, demande
+  confirmation ou exige un drapeau. Un outil qui imprime cinquante caractères
+  d'un motif de six mille ne montre pas ce qu'il fait.
+
+## Une sonde qui regarde l'écran d'AVANT arrive toujours trop tard — 2026-10-21
+
+- *Ce que je voulais faire* : mesurer la porte d'entrée d'une tablette hors
+  ligne — le bouton du scanner, la phrase sous la case, la caméra qui s'ouvre
+  seule — avec une caméra de papier (`--use-file-for-fake-video-capture`).
+- *Ce qui a coûté* : deux reprises de la sonde, une quinzaine de minutes. La
+  caméra montrait le bon QR : il est décodé en moins de 300 ms, donc le
+  parcours était DÉJÀ ouvert quand la sonde regardait la porte, et la mesure
+  annonçait « bouton ABSENT » devant un logiciel qui marchait. Deuxième essai
+  avec un QR étranger : il referme le scanner lui aussi, et écrase la phrase
+  qu'on voulait lire.
+- *Combien de fois* : ||
+- *Ce qui manque* : c'est fait — `tools/qrEnCamera.mjs --blanc` fabrique un mur
+  blanc, qui laisse la fenêtre ouverte aussi longtemps qu'on veut. La règle
+  générale est plus large et vaut d'être retenue : **pour mesurer un écran, il
+  faut une entrée qui ne le fasse pas changer.**

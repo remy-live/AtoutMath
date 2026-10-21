@@ -67,6 +67,7 @@ réécrivait à chaque fois, et chacune de ses lignes ferme une friction payée.
 ```js
 import { ouvrirSonde } from './tools/sonde.mjs';
 const s = await ouvrirSonde({ largeur: 390, hauteur: 844 });  // < 768 px → au doigt
+//     … ouvrirSonde({ horsLigne: true })  // navigator.onLine ment, le site reste debout
 await s.identifier();                       // s'identifie PUIS recharge
 await s.ouvrirExercice('calc-add');         // monte le meneur, clique « JOUER »
 await s.photo('.title', 'tools/tmp/t.png'); // découpe la page, dit si l'image est UNIE
@@ -96,6 +97,18 @@ qu'il n'est pas vide, jamais qu'il est juste :
 ```sh
 node tools/pdfEnImage.mjs <fiche.pdf> <image.png> [échelle] [page]
 ```
+
+Et pour mesurer ce qui passe par la **caméra** — le scanner de QR code —, une
+caméra de papier : un fichier que Chromium sert à la place de l'appareil.
+
+```sh
+node tools/qrEnCamera.mjs "https://atout-math.fr/?code=SUD" tools/tmp/cam.y4m
+node tools/qrEnCamera.mjs --blanc tools/tmp/blanc.y4m   # pour mesurer l'écran d'AVANT
+node tools/sondeTablette.mjs      # l'essai de Rémy en entier : hors ligne, au doigt
+```
+
+Le mur blanc n'est pas un luxe : **un QR est lu en moins de 300 ms**, et une
+sonde qui veut regarder l'écran d'avant arrive toujours trop tard.
 
 À la main, `php tools/siteEssai.php <PORT>` monte un site d'essai complet et
 imprime une ligne JSON avec `port`, `email: 'remy@essai.test'`,

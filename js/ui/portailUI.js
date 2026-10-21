@@ -17,7 +17,8 @@
 // parce qu'un logiciel ne doit pas avoir de passage secret.
 
 import { joinClass, loginEleve } from '../core/sync.js';
-import { applyCode } from './studentCodeUI.js';
+import { applyCode, scannerUnCodeDeSeance } from './studentCodeUI.js';
+import { laCameraEstPossible } from './scannerQr.js';
 import { modeLibre, inscriptionLibre, portailNecessaire, adresseApiDeduite } from '../core/portail.js';
 import { copieDEssai } from '../core/copieDEssai.js';
 import { versionLisible } from '../core/versionDuSite.js';
@@ -342,6 +343,31 @@ function dessiner() {
                      autocapitalize="none" autocorrect="off"
                      placeholder="colle le code ici"></label>
             <button id="portail-ouvrir" class="portail-bouton">Ouvrir le parcours</button>
+            <!-- LE SCANNER, SUR L'ÉCRAN D'ENTRÉE.
+
+                 RÉMY, après l'essai sur tablette : "il faut sur l'écran
+                 d'ailleurs un bouton pour scanner directement le qr code, car
+                 là il faut passer par le code puis le qr code c'est trop
+                 long".
+
+                 Il avait raison au geste près. Le scanner existait déjà, mais
+                 seulement DANS la fenêtre du code : ouvrir cette fenêtre, puis
+                 viser. Deux gestes, pour trente élèves, au début de l'heure.
+                 Le QR code est pourtant le chemin le PLUS court — il n'y a
+                 rien à taper, donc rien à se tromper — et c'était celui qu'on
+                 avait rangé le plus loin.
+
+                 CACHÉ PAR DÉFAUT, et montré seulement si l'appareil peut
+                 vraiment scanner : hors contexte sécurisé ou sans caméra,
+                 getUserMedia n'existe pas du tout, et un bouton qui ouvre une
+                 fenêtre pour y annoncer "impossible" est un bouton qu'il ne
+                 fallait pas montrer. (Pas d'accent grave ni de chevrons dans
+                 ce commentaire : il est DANS un gabarit, et le premier accent
+                 grave qu'on y pose le ferme.) -->
+            <button id="portail-scanner" class="portail-bouton portail-bouton--doux" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/></svg>
+                Scanner le QR code
+            </button>
             <p class="portail-etat" id="portail-etat-code"></p>
           </section>
         </div>
@@ -440,6 +466,19 @@ function dessiner() {
         dire('portail-etat-code', "Ce code ne correspond à aucun parcours. Vérifie-le avec ton professeur.", true);
     };
 
+    // --- Scanner le QR code, depuis l'écran d'entrée
+    //
+    // RÉMY, après l'essai sur tablette : « il faut sur l'écran d'ailleurs un
+    // bouton pour scanner directement le qr code, car là il faut passer par le
+    // code puis le qr code c'est trop long ».
+    //
+    // UN SEUL ENDROIT SAIT OUVRIR UN CODE SCANNÉ : `scannerUnCodeDeSeance`
+    // (ui/studentCodeUI.js), qui dit pourquoi en entier. Ce que la porte
+    // d'entrée ajoute, c'est ce qu'elle fait de la réponse — et elle a de quoi
+    // le dire, puisqu'elle a une case et une ligne sous la case.
+    //
+    // LE CODE RESTE VISIBLE DANS LA CASE quand il n'ouvre rien : l'élève a sous
+    // les yeux ce que la caméra a lu, et peut le comparer au tableau.
     /**
      * CE CODE EST-IL UN CODE DE SÉANCE, GLISSÉ DANS LA MAUVAISE CASE ?
      *
@@ -519,6 +558,16 @@ function dessiner() {
         }
     };
 
+    const scanner = () => scannerUnCodeDeSeance({
+        surCodeOuvert: () => fermerPortail(),
+        surEchec: (code) => {
+            const champ = document.getElementById('portail-code');
+            if (champ) champ.value = code;
+            dire('portail-etat-code', 'Ce QR code vient bien d\'AtoutMath, mais son '
+                + 'parcours ne s\'ouvre pas. Montre-le à ton professeur.', true);
+        }
+    });
+
     document.getElementById('portail-connecter').onclick = connecter;
     el.querySelectorAll('#portail-login, #portail-code-eleve').forEach(i => {
         i.onkeydown = (e) => { if (e.key === 'Enter') connecter(); };
@@ -532,6 +581,13 @@ function dessiner() {
         i.onkeydown = (e) => { if (e.key === 'Enter') rejoindre(); };
     });
     document.getElementById('portail-code').onkeydown = (e) => { if (e.key === 'Enter') ouvrir(); };
+
+    // LE BOUTON NE PARAÎT QUE S'IL PEUT SERVIR (voir `laCameraEstPossible`).
+    const btnScan = document.getElementById('portail-scanner');
+    if (btnScan && laCameraEstPossible()) {
+        btnScan.hidden = false;
+        btnScan.onclick = scanner;
+    }
 
     const libre = document.getElementById('portail-libre');
     if (libre) libre.onclick = () => { fermerPortail(); };
@@ -575,7 +631,50 @@ function dessiner() {
     };
 
     document.getElementById('portail-login').focus();
+
+    // HORS LIGNE, LA CAMÉRA S'OUVRE D'ELLE-MÊME.
+    //
+    // RÉMY, après l'essai sur tablette : « si c'est hors ligne, il faut que la
+    // caméra se lance directement ».
+    //
+    // ── ET CELA CONTREDIT UNE RÈGLE DE LA MAISON, QUI TIENT AILLEURS ──────
+    //
+    // `ui/scannerQr.js` dit : « ON NE DEMANDE LA CAMÉRA QU'AU CLIC. Jamais au
+    // démarrage : une demande d'autorisation qui surgit sans qu'on ait rien
+    // demandé s'apprend à refuser. » La règle est juste, et elle suppose
+    // quelque chose qui n'est plus vrai ici : qu'il y ait AUTRE CHOSE à faire
+    // sur cet écran.
+    //
+    // HORS LIGNE, IL N'Y EN A PAS. Les deux portes de gauche — le billet, le
+    // code de classe — passent toutes deux par le serveur : sans réseau, elles
+    // ne s'ouvrent pas. Reste le code de séance, qu'aucun élève ne tape à la
+    // main quand un QR code est projeté au tableau. La demande n'est donc pas
+    // « sans qu'on ait rien demandé » : c'est le seul geste de l'écran, et
+    // l'élève vient de lancer l'application pour le faire.
+    //
+    // EN LIGNE, LA RÈGLE TIENT TOUJOURS : le bouton attend le clic.
+    //
+    // UNE SEULE FOIS PAR CHARGEMENT. L'élève qui referme la fenêtre a dit non
+    // ; la rouvrir serait la seule chose qu'on ne doit jamais faire à un refus.
+    // Le bouton reste là, et la phrase sous la case dit quoi faire.
+    if (!cameraDejaOuverte && laCameraEstPossible()
+        && typeof navigator !== 'undefined' && navigator.onLine === false) {
+        cameraDejaOuverte = true;
+        dire('portail-etat-code', 'Pas de connexion : scanne le QR code de ton '
+            + 'professeur, ou tape le code de la séance.');
+        scanner();
+    }
 }
+
+/**
+ * LA CAMÉRA NE S'EST OUVERTE TOUTE SEULE QU'UNE FOIS.
+ *
+ * Au niveau du module, et non dans `dessiner()` : la porte se REDESSINE quand
+ * les réglages du serveur arrivent (`porteASuivre`), et un drapeau local
+ * repartirait à zéro — la caméra se rouvrirait sur un élève qui venait de la
+ * refermer.
+ */
+let cameraDejaOuverte = false;
 
 /** Une panne de réseau, un mauvais code, un accès en pause : trois phrases. */
 function messageClair(err) {

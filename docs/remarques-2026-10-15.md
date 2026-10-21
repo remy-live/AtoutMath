@@ -2851,3 +2851,41 @@ Un vrai essai, sur de vraies tablettes. Quatre points :
 4. **ET UNE QUESTION** : « est-il possible que les élèves aient accès à tous
    les exercices du parcours sans réussir les précédents ». C'est le
    déverrouillage du parcours ; à vérifier si un réglage existe déjà.
+
+#### Fait — et deux choses que la mesure a corrigées
+
+`node tools/sondeTablette.mjs` : une tablette de 390 × 844, hors ligne, dont la
+caméra est un fichier qui montre le QR du tableau.
+
+| Ce qu'on a vu | Avant | Après |
+| --- | --- | --- |
+| La caméra sur la porte d'entrée, hors ligne | il fallait la demander | elle s'ouvre seule |
+| De l'ouverture de l'application au parcours | — | **366 ms**, sans un geste |
+| Le bouton qui scanne, sur l'écran d'entrée | absent | 46 px de haut, sous « Ouvrir le parcours » |
+| Depuis l'écran du parcours | deux gestes | **un** — la caméra s'ouvre en 67 ms |
+| Rescanner le même parcours | reprenait en silence | « Reprendre où j'en étais » / « Recommencer à zéro » |
+
+**1. CE QUE JE CROYAIS DE LA REMARQUE 3 ÉTAIT FAUX.** J'avais écrit ci-dessus
+« aujourd'hui, c'est recommencé sans rien demander ». Mesuré avant d'écrire la
+correction — deux `path_assigned` autour de deux `step_completed` — c'est
+l'inverse : rescanner REPREND, et garde tout. C'est d'ailleurs le bon défaut.
+Ce qui manquait, c'était le CHOIX de repartir de zéro, qui n'existait nulle
+part : il fallait demander au professeur une remise à zéro depuis son poste.
+
+**2. ET LA REMARQUE 2 ÉTAIT PLUS LARGE QU'ELLE N'EN AVAIT L'AIR.** La porte
+d'entrée disparaît dès qu'un élève a une séance (`portailNecessaire`) : un
+bouton posé là ne sert donc que le premier jour. Pour la classe de sa sœur, où
+le QR code est le SEUL chemin par lequel du travail arrive, la deuxième séance
+était à deux gestes — exactement ce dont il se plaint. Le bouton est donc aussi
+sous le parcours en cours, sur l'écran où l'élève arrive.
+
+**La remise à zéro de l'élève n'efface rien** : elle pose une borne de temps
+dans le journal (`path_reset`). Le premier passage reste dans le bilan du
+professeur, qui voit que l'élève a REFAIT sa séance — c'est toute la différence
+avec la remise à zéro qu'il ordonne lui-même, qui retire des événements pour
+que la séance n'ait jamais été commencée.
+
+**Et la remarque 4 n'a rien à corriger : le réglage existe déjà.** Dans les
+options de la séance, la case « Laisser l'élève choisir l'ordre des étapes »
+(`ordreLibre`) ouvre tout le parcours d'un coup. Elle est décochée par défaut —
+l'ordre est imposé — et il suffit de la cocher, séance par séance.

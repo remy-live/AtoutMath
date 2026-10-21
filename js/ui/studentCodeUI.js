@@ -58,20 +58,62 @@ export function initStudentCodeUI() {
     const btnScan = document.getElementById('btn-scanner-code');
     if (btnScan && laCameraEstPossible()) {
         btnScan.hidden = false;
-        btnScan.onclick = () => ouvrirLeScanner({
-            // ON REND `false` QUAND CE N'EST PAS UN CODE D'ATOUTMATH, et le
-            // scanner CONTINUE de chercher. Un élève qui balaie le tableau
-            // attrape parfois l'affiche d'à côté ; refermer la fenêtre à
-            // chaque fois le punirait de viser.
-            surCode: (texte) => {
-                const code = Shortcodes.codeDansLeTexte(texte);
-                if (!code || !applyCode(code)) return false;
+        btnScan.onclick = () => scannerUnCodeDeSeance({
+            surCodeOuvert: () => {
                 if (input) input.value = '';
                 if (modal) modal.style.display = 'none';
-                return true;
-            }
+            },
+            surEchec: () => showAlert('Ce QR code vient bien d\'AtoutMath, mais son '
+                + 'parcours ne s\'ouvre pas. Montre-le à ton professeur.')
         });
     }
+}
+
+/**
+ * SCANNER UN CODE DE SÉANCE, ET L'OUVRIR — le seul endroit qui sache le faire.
+ *
+ * ── POURQUOI CETTE FONCTION EXISTE ────────────────────────────────────────
+ *
+ * Le scanner s'ouvre maintenant de TROIS endroits : la fenêtre du code, la
+ * porte d'entrée (Rémy : « il faut sur l'écran d'ailleurs un bouton pour
+ * scanner directement le qr code »), et l'écran du parcours — sans quoi un
+ * élève qui a déjà une séance n'a plus aucun moyen d'en recevoir une autre
+ * hors ligne. Trois copies de la même dizaine de lignes, c'est deux de trop :
+ * la leçon mesurée ci-dessous n'aurait été corrigée que dans l'une d'elles.
+ *
+ * ── LES TROIS RÉPONSES, ET ELLES NE SE DEVINENT PAS ───────────────────────
+ *
+ * 1. CE N'EST PAS UN CODE D'ATOUTMATH → on rend `false`, et le scanner
+ *    CONTINUE de chercher : un élève qui balaie le tableau attrape parfois
+ *    l'affiche d'à côté, et refermer la fenêtre le punirait d'avoir visé.
+ *
+ *    ET C'EST `Shortcodes.codeDeSeanceLu` QUI TRANCHE, pas le fait d'avoir lu
+ *    quelque chose : il n'accepte que ce qui se DÉCODE. Il vit dans le noyau,
+ *    avec son explication et son épreuve — la leçon a été payée ici, mais elle
+ *    vaut pour tout appelant.
+ *
+ * 2. C'EST UN CODE DE CHEZ NOUS, ET IL S'OUVRE → `surCodeOuvert`, puis on
+ *    ferme.
+ *
+ * 3. C'EST UN CODE DE CHEZ NOUS ET IL NE S'OUVRE PAS → `surEchec`, et l'on
+ *    ferme QUAND MÊME. Continuer à viser relirait le même QR code dix fois par
+ *    seconde sans jamais rien changer, et l'appelant a quelque chose à dire.
+ *
+ * @param {object} [o]
+ * @param {(code:string)=>void} [o.surCodeOuvert]
+ * @param {(code:string)=>void} [o.surEchec]
+ * @returns {{close:Function}|null} null si l'appareil ne peut pas scanner
+ */
+export function scannerUnCodeDeSeance({ surCodeOuvert, surEchec } = {}) {
+    return ouvrirLeScanner({
+        surCode: (texte) => {
+            const code = Shortcodes.codeDeSeanceLu(texte);
+            if (!code) return false;
+            if (applyCode(code)) { if (surCodeOuvert) surCodeOuvert(code); }
+            else if (surEchec) surEchec(code);
+            return true;
+        }
+    });
 }
 
 /**
@@ -104,13 +146,6 @@ export function applyCode(code, { autoStart = true } = {}) {
         showToast(`${missing.length} exercice(s) de ce parcours n'existent plus.`, 'error');
     }
 
-    state.setStudentPath(path.steps, {
-        pathId: path.id,
-        name: path.name,
-        code,
-        policy: resolvePolicy(path.policy)
-    });
-
     // PAS DE MESSAGE DE CONFIRMATION, ET C'EST UNE SUPPRESSION VOULUE.
     //
     // Rémy, capture de l'écran d'accueil d'un élève : « même le toast est
@@ -128,16 +163,71 @@ export function applyCode(code, { autoStart = true } = {}) {
     //
     // L'AVERTISSEMENT, LUI, RESTE : « 3 exercices de ce parcours n'existent
     // plus » n'est écrit nulle part ailleurs.
-
+    //
     // Le code décodé, l'élève voyait la première question avant d'avoir vu son
     // parcours. Le parcours s'ouvre donc sur SA CARTE, plein écran, et c'est
     // lui qui donne le départ ; s'il préfère attendre, le parcours reste
     // chargé dans « Mon Parcours ».
-    import('./navigation.js').then(m => m.setTopNavMode('path'));
-    if (autoStart) {
-        import('../core/runner.js').then(({ Runner }) => {
-            new Runner({ path, deviceMode: 'none', isStudentPath: true }).start();
+    const poser = () => {
+        state.setStudentPath(path.steps, {
+            pathId: path.id,
+            name: path.name,
+            code,
+            policy: resolvePolicy(path.policy)
         });
+        import('./navigation.js').then(m => m.setTopNavMode('path'));
+        if (autoStart) {
+            import('../core/runner.js').then(({ Runner }) => {
+                new Runner({ path, deviceMode: 'none', isStudentPath: true }).start();
+            });
+        }
+    };
+
+    // LE MÊME PARCOURS, UNE SECONDE FOIS — ET C'EST SA QUESTION.
+    //
+    // RÉMY, après l'essai sur tablette : « Quand on rescanne à nouveau, si le
+    // parcours est identique au précédente, l'élève choisit ou non de
+    // redémarrer à zéro. »
+    //
+    // LES TROIS CHEMINS PASSENT ICI, et c'est pourquoi la question est ici et
+    // non dans le scanner : le code tapé à la main, le QR code visé au
+    // tableau, et le lien ouvert deux fois. Dans les trois cas l'élève revient
+    // sur la même séance, et dans les trois cas il doit pouvoir choisir.
+    //
+    // ELLE NE SE POSE QUE S'IL Y A QUELQUE CHOSE À REPRENDRE. Scanner deux
+    // fois de suite sans rien avoir fait entre les deux arrive — on vise mal,
+    // on recommence — et une fenêtre dont les deux réponses font la même chose
+    // apprend à cliquer sans lire.
+    //
+    // ON COMPTE SUR LES ÉTAPES DU PARCOURS EN COURS, et non sur celles qu'on
+    // vient de décoder : ce sont elles qui portent les `stepId` auxquels les
+    // étapes faites se réfèrent. Le parcours étant le même — `pathId` est
+    // l'empreinte du contenu —, les deux listes se correspondent une à une.
+    const encours = state.studentPath;
+    const dejaFait = (encours && encours.pathId && encours.pathId === path.id)
+        ? (encours.completed || []) : [];
+    if (!dejaFait.length) {
+        poser();
+        return true;
     }
+
+    // LE VOILE DU LIEN NE RESTE PAS DERRIÈRE LA QUESTION. Arrivé par
+    // `?code=`, l'écran porte « Chargement du parcours… » (voir
+    // `html.depuis-code` dans css/layout.css) : on lirait la question
+    // par-dessus une page qui se déclare en train de charger, alors que c'est
+    // nous qui attendons une réponse.
+    document.documentElement.classList.add('parcours-pret');
+    import('./repriseDuParcours.js')
+        .then(m => m.demanderLaReprise({
+            nom: path.name, steps: encours.steps, faites: dejaFait
+        }))
+        .then(choix => {
+            if (choix === 'zero') state.recommencerLeParcours(path.id);
+            poser();
+        })
+        // UNE FENÊTRE QUI NE S'OUVRE PAS NE DOIT PAS AVALER LA SÉANCE : on
+        // reprend, c'est-à-dire exactement ce que le logiciel faisait avant que
+        // cette question existe.
+        .catch(() => poser());
     return true;
 }

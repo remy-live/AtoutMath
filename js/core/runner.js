@@ -19,7 +19,7 @@ import { getActivity, getGenerator, uniteDe } from './registry.js';
 import { ItemSession } from './itemSession.js';
 import { resolvePolicy, isEvaluation, isApprentissage, describePolicy } from './policy.js';
 import { seuilRequis } from './seuilEtape.js';
-import { etatRecompenses, prochaineObligatoire } from './recompenses.js';
+import { etatRecompenses, prochaineObligatoire, etapesDeTravail } from './recompenses.js';
 import { skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
 import {
@@ -958,8 +958,7 @@ export class Runner {
      * et les effacer une fois faites lui volerait son travail.
      */
     travailCompte(faites) {
-        return this.steps.filter(
-            s => !s.bonus && (!s.facultatif || faites.has(s.stepId)));
+        return etapesDeTravail(this.steps, faites);
     }
 
     /** L'en-tête compte les ÉTAPES tant qu'aucune question n'est posée. */
@@ -2182,8 +2181,7 @@ export class Runner {
         const faites = this.etapesFaites();
         const travail = this.travailCompte(faites);
         if (travail.length < 2) return '';
-        const faitJusqua = this.steps.slice(0, this.index)
-            .filter(s => !s.bonus && (!s.facultatif || faites.has(s.stepId))).length;
+        const faitJusqua = etapesDeTravail(this.steps.slice(0, this.index), faites).length;
         const pastilles = travail.map((s, i) => {
             const etat = i < faitJusqua ? 'faite' : (i === faitJusqua ? 'suivante' : 'avenir');
             return `<span class="run-fil-pas run-fil-pas--${etat}"

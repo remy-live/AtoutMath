@@ -1390,6 +1390,16 @@
 .portail-bouton--doux { background: var(--bg-app); color: var(--text-main);
     border: 1px solid var(--border); font-weight: 600; }
 
+/* LE BOUTON DU SCANNER porte une icône ET un mot : sans flex, l'icône se pose
+   sur la ligne de base du texte et dépasse de deux pixels sous elle. Il est
+   plus bas que « Ouvrir le parcours » dans la carte, et c'est l'ordre juste :
+   le QR code est le chemin le plus court, mais c'est le code dicté que le
+   professeur annonce en premier. */
+#portail-scanner {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 8px;
+}
+
 .portail-pied {
     display: flex; justify-content: center; align-items: center; gap: 10px;
     flex-wrap: wrap; margin: 24px 0 0;

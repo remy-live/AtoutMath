@@ -481,6 +481,26 @@ export const state = {
     },
 
     /**
+     * REFAIRE SA SÉANCE DEPUIS LE DÉBUT — sur décision de l'élève.
+     *
+     * RÉMY, après l'essai sur tablette : « Quand on rescanne à nouveau, si le
+     * parcours est identique au précédent, l'élève choisit ou non de redémarrer
+     * à zéro. »
+     *
+     * UNE LIGNE DE PLUS, PAS UNE DE MOINS : voir `EventTypes.PATH_RESET` et
+     * `computeAssignedPath`, qui ne compte plus comme faites les étapes
+     * refermées AVANT cette ligne. Le travail du premier passage reste au
+     * journal, donc dans le bilan du professeur — c'est la différence avec la
+     * remise à zéro qu'il ordonne lui-même.
+     */
+    recommencerLeParcours(pathId) {
+        if (!pathId) return;
+        journal.emit(EventTypes.PATH_RESET, { pathId });
+        invalidate();
+        document.dispatchEvent(new CustomEvent('studentPath_updated'));
+    },
+
+    /**
      * L'ÉLÈVE VIENT DE DONNER LA BONNE CLÉ.
      *
      * On écrit au journal, et non dans un réglage : l'ouverture se synchronise

@@ -51,6 +51,13 @@
 //
 // ON NE DEMANDE LA CAMÉRA QU'AU CLIC. Jamais au démarrage : une demande
 // d'autorisation qui surgit sans qu'on ait rien demandé s'apprend à refuser.
+//
+// UNE EXCEPTION, UNE SEULE, ET ELLE EST ÉCRITE AILLEURS. Hors ligne, la porte
+// d'entrée ouvre cette fenêtre d'elle-même : les deux autres portes passent par
+// le serveur et ne s'ouvrent donc pas, et la demande n'est plus « sans qu'on ait
+// rien demandé » — c'est le seul geste de l'écran. Rémy, après l'essai sur
+// tablette : « si c'est hors ligne, il faut que la caméra se lance
+// directement ». Voir `ui/portailUI.js`, qui dit pourquoi en entier.
 
 import { showModal } from './modal.js';
 

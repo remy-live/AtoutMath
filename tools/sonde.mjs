@@ -92,6 +92,28 @@ export async function ouvrirSonde(o = {}) {
         // forme d'un `waitForEvent('download')` qui expire sans raison visible.
         acceptDownloads: true
     });
+
+    // HORS LIGNE, SANS COUPER LE SERVEUR.
+    //
+    // Les tablettes de la sœur de Rémy travaillent sans réseau, et le logiciel
+    // s'y comporte autrement : la porte d'entrée ouvre le scanner d'elle-même,
+    // les deux portes qui passent par le serveur ne peuvent pas servir, le
+    // paquet hors ligne ne se redemande pas. Tout cela se décide sur
+    // `navigator.onLine`, et rien de tout cela ne se mesurait sans réécrire la
+    // même ligne dans chaque sonde.
+    //
+    // ON NE COUPE PAS VRAIMENT LE RÉSEAU, et c'est délibéré : `ctx.setOffline`
+    // empêcherait la page de se charger, donc d'exister — ce n'est pas ce
+    // qu'on mesure. On fait dire au navigateur ce qu'il dirait sans réseau, et
+    // l'on regarde ce que le logiciel en fait. Pour couper vraiment, après le
+    // chargement, `s.ctx.setOffline(true)` reste là.
+    if (o.horsLigne) {
+        await ctx.addInitScript(() => {
+            Object.defineProperty(Navigator.prototype, 'onLine',
+                { get: () => false, configurable: true });
+        });
+    }
+
     const page = await ctx.newPage();
 
     const erreurs = [];

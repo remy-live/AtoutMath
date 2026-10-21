@@ -35,6 +35,8 @@ import {
     LONGUEUR_CLE, normaliserCle, verifierCle, finDe, etatVerrou, clefOuverture, direFermeture
 } from '../core/verrou.js';
 import { showModal, showToast, showAlert } from './modal.js';
+import { laCameraEstPossible } from './scannerQr.js';
+import { scannerUnCodeDeSeance } from './studentCodeUI.js';
 
 /**
  * LA CLÉ QU'ON TAPE — quatre caractères dictés en classe.
@@ -423,6 +425,16 @@ export function renderStudentPathView() {
     container.innerHTML = '';
 
     container.appendChild(assignedSection());
+    // LA PORTE D'UN AUTRE CODE, ET SEULEMENT QUAND UN PARCOURS EST DÉJÀ LÀ :
+    // l'écran « Pas de séance » porte déjà ses deux boutons, et les répéter
+    // ferait quatre boutons pour deux gestes.
+    //
+    // JUSTE SOUS LE PARCOURS, ET NON TOUT EN BAS DE LA PAGE. Le travail du
+    // jour passe d'abord — c'est pour cela qu'elle n'est pas en tête — mais
+    // l'élève qui arrive devant un QR projeté doit la VOIR sans chercher : au
+    // bas d'une page qui porte les séances du professeur, les conseils, ses
+    // propres exercices et son dernier bilan, personne ne descend.
+    if (state.studentPath) container.appendChild(porteSousLeParcours());
     const teacher = teacherPathsSection();
     if (teacher) container.appendChild(teacher);
     const conseils = recommendedSection();
@@ -489,15 +501,13 @@ function sectionSansParcours(box) {
             <h2 class="path-section-title">Pas de séance pour l'instant</h2>
             <div class="empty-state-msg">Ton professeur ne t'a rien donné pour le moment.
             S'il t'a dicté un code, tape-le ici.</div>
-            <button type="button" class="btn-toggle active path-ouvrir-code" data-ouvrir-code>
-                J'ai un code</button>`;
-        const bouton = box.querySelector('[data-ouvrir-code]');
-        if (bouton) bouton.onclick = () => {
-            const fenetre = document.getElementById('code-modal');
-            if (fenetre) fenetre.style.display = 'flex';
-            const champ = document.getElementById('student-code-input');
-            if (champ) { champ.value = ''; champ.focus(); }
-        };
+            <div class="path-autre-code-boutons"></div>`;
+        // LE SCANNER D'ABORD, ET C'EST L'ORDRE DU GESTE : devant un QR projeté
+        // au tableau, il n'y a rien à taper, donc rien à se tromper.
+        const rangee = box.querySelector('.path-autre-code-boutons');
+        const scan = boutonScannerLeCode();
+        if (scan) rangee.appendChild(scan);
+        rangee.appendChild(boutonTaperLeCode('btn-toggle active'));
         // ET L'INSTALLATION, ICI PLUTÔT QU'AILLEURS.
         //
         // C'est l'écran sur lequel tombe une tablette NEUVE : rien à faire
@@ -541,6 +551,100 @@ function sectionSansParcours(box) {
     btn.onclick = () => ouvrirSeance(etat.seance);
     box.appendChild(btn);
     return box;
+}
+
+/**
+ * LA PORTE D'UN AUTRE CODE — et pourquoi elle est sur CET écran.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, après l'essai sur tablette : « il faut sur l'écran d'ailleurs un bouton
+ * pour scanner directement le qr code, car là il faut passer par le code puis
+ * le qr code c'est trop long. »
+ *
+ * ── CE QUI A ÉTÉ MESURÉ, ET QUI N'EST PAS CE QUE JE CROYAIS ────────────────
+ *
+ * J'ai d'abord cru qu'un élève ayant déjà une séance n'avait plus AUCUN moyen
+ * d'entrer un code. Faux : la barre du bas porte « Code » (`#mob-btn-code`) et
+ * la barre du haut son onglet. Ma sonde ne cherchait que `[data-ouvrir-code]`,
+ * et un sélecteur trop étroit rend la même réponse qu'un logiciel cassé.
+ *
+ * CE QUI EST VRAI EST PLUS PETIT, ET C'EST EXACTEMENT SA PHRASE : il faut DEUX
+ * gestes — ouvrir la fenêtre du code, puis toucher « Scanner ». Pour trente
+ * élèves au début de l'heure, devant un QR déjà projeté, c'est un geste de
+ * trop. Le bouton est donc ICI, sur l'écran où l'élève arrive.
+ *
+ * ── ET HORS LIGNE, CE N'EST PLUS DU CONFORT ────────────────────────────────
+ *
+ * Sans réseau, aucune séance n'arrive par la synchronisation : le QR code est
+ * le SEUL chemin par lequel la classe de sa sœur reçoit du travail. La porte
+ * d'entrée, elle, a disparu dès la première séance — `portailNecessaire()`
+ * s'éteint quand l'élève a de quoi travailler. Sans ce bouton, la caméra qui
+ * s'ouvre toute seule sur la porte ne sert qu'une fois, le premier jour.
+ */
+function porteDUnAutreCode(titre, aide) {
+    const box = document.createElement('section');
+    box.className = 'path-section path-autre-code';
+    box.innerHTML = `
+        <h2 class="path-section-title">${titre}</h2>
+        <p class="path-section-sub">${aide}</p>`;
+    const rangee = document.createElement('div');
+    rangee.className = 'path-autre-code-boutons';
+    const scan = boutonScannerLeCode();
+    if (scan) rangee.appendChild(scan);
+    // LES DEUX PORTENT `active`, ET CE N'EST PAS UN OUBLI. Mesuré en photo :
+    // un `.btn-toggle` sans `active` a une bordure transparente et la couleur
+    // des textes secondaires — « J'ai un code à taper » se lisait comme une
+    // phrase, pas comme un bouton. Ce qui les distingue est l'ordre et
+    // l'icône, pas l'effacement de l'un des deux.
+    rangee.appendChild(boutonTaperLeCode('btn-toggle active'));
+    box.appendChild(rangee);
+    return box;
+}
+
+/** Ouvre la fenêtre du code — le chemin qui existait déjà, et le seul. */
+function ouvrirLaFenetreDuCode() {
+    const fenetre = document.getElementById('code-modal');
+    if (fenetre) fenetre.style.display = 'flex';
+    const champ = document.getElementById('student-code-input');
+    if (champ) { champ.value = ''; champ.focus(); }
+}
+
+function boutonTaperLeCode(classe) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = classe + ' path-ouvrir-code';
+    b.setAttribute('data-ouvrir-code', '');
+    // ENTRE GUILLEMETS DROITS DOUBLES, ET CE N'EST PAS UN CAPRICE : une
+    // épreuve de la maison cherche « J'ai un code » dans la SOURCE de ce
+    // fichier (tests/accueilEleve.test.mjs), et l'apostrophe échappée d'une
+    // chaîne à guillemets simples y écrit « J\'ai un code », que son motif ne
+    // reconnaît pas. Elle est tombée là-dessus.
+    b.textContent = "J'ai un code à taper";
+    b.onclick = ouvrirLaFenetreDuCode;
+    return b;
+}
+
+/**
+ * LE BOUTON QUI SCANNE, EN UN SEUL GESTE — ou rien du tout.
+ *
+ * `null` quand l'appareil ne peut pas scanner : hors contexte sécurisé ou sans
+ * caméra, `getUserMedia` n'existe pas, et un bouton qui ouvre une fenêtre pour
+ * y annoncer « impossible » est un bouton qu'il ne fallait pas montrer.
+ */
+function boutonScannerLeCode() {
+    if (!laCameraEstPossible()) return null;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn-toggle active path-scanner-code';
+    b.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/></svg> Scanner le QR code`;
+    b.onclick = () => scannerUnCodeDeSeance({
+        // LE PARCOURS S'OUVRE TOUT SEUL : `applyCode` monte le meneur, et il
+        // n'y a rien à dire de plus. On ne parle que quand ça ne marche pas.
+        surEchec: () => showToast('Ce QR code vient bien d\'AtoutMath, mais son '
+            + 'parcours ne s\'ouvre pas. Montre-le à ton professeur.', 'error')
+    });
+    return b;
 }
 
 function assignedSection() {
@@ -670,6 +774,19 @@ function assignedSection() {
     const salle = salleDeJeux(path, steps, etatJeux);
     if (salle) box.appendChild(salle);
     return box;
+}
+
+/**
+ * LA PORTE D'UN AUTRE CODE, SOUS LE PARCOURS EN COURS.
+ *
+ * EN BAS, ET C'EST VOULU : le travail du jour passe d'abord. Mais elle est là,
+ * sur l'écran où l'élève arrive, et c'est tout ce que Rémy demandait — un seul
+ * geste pour viser le tableau.
+ */
+function porteSousLeParcours() {
+    return porteDUnAutreCode('Une autre séance&nbsp;?',
+        'Si ton professeur en donne une nouvelle, scanne son QR code '
+        + 'ou tape son code.');
 }
 
 /**

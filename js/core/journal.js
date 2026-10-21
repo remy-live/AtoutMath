@@ -42,6 +42,19 @@ export const EventTypes = {
     TIME_SPENT: 'time_spent',
     BADGE_GRANTED: 'badge_granted',
     PATH_ASSIGNED: 'path_assigned',
+    // L'ÉLÈVE A CHOISI DE REFAIRE SA SÉANCE DEPUIS LE DÉBUT.
+    //
+    // RÉMY, après l'essai sur tablette : « Quand on rescanne à nouveau, si le
+    // parcours est identique au précédent, l'élève choisit ou non de redémarrer
+    // à zéro. »
+    //
+    // C'EST UNE BORNE, PAS UN EFFACEMENT, et la différence est tout le sujet :
+    // la remise à zéro du professeur (`core/oublis.js`) retire des événements
+    // pour que la séance n'ait jamais été commencée ; celle de l'élève ajoute
+    // une ligne pour que le professeur voie qu'il l'a REFAITE. Le journal reste
+    // en append-only, la synchronisation reste commutative, et le premier
+    // passage reste dans le bilan. Charge utile : { pathId }.
+    PATH_RESET: 'path_reset',
     // UNE ÉTAPE SOUS CLÉ VIENT D'ÊTRE OUVERTE. C'est un événement du journal
     // comme les autres, et pas un réglage à part : il se synchronise donc tout
     // seul entre les appareils de l'élève, et le professeur voit à quelle heure

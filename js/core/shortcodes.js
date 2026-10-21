@@ -1197,6 +1197,35 @@ export const Shortcodes = {
         try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
     },
 
+    /**
+     * CE QUE LA CAMÉRA A LU EST-IL UN CODE DE SÉANCE ?
+     *
+     * ── CE QUE `codeDansLeTexte` NE PEUT PAS DIRE ─────────────────────────
+     *
+     * Il rend le texte NU quand il n'y a pas de « ?code= » dedans — c'est ce
+     * qu'il faut faire d'un code DICTÉ, qu'on peut écrire sans adresse autour.
+     * Mais devant une caméra, cela veut dire que l'affiche du couloir fait un
+     * « code » parfaitement valide à ses yeux.
+     *
+     * MESURÉ, sonde hors ligne devant un QR étranger : le scanner se refermait
+     * en annonçant « Ce code ne correspond à aucun parcours. Vérifie-le avec
+     * ton professeur. » — on envoyait l'élève douter d'un code qu'il n'a
+     * jamais tapé, au lieu de continuer à chercher celui du tableau.
+     *
+     * LA SEULE RÉPONSE SÛRE EST DE L'OUVRIR. Un code de chez nous se décode ;
+     * rien d'autre ne le fait. On ne devine pas sur la forme — un code court
+     * fait trois lettres, et « SUD » ressemble à n'importe quoi.
+     *
+     * @param {string} texte ce que le scanner a lu
+     * @returns {string} le code, ou la chaîne vide si ce n'est pas de chez nous
+     */
+    codeDeSeanceLu(texte) {
+        const code = this.codeDansLeTexte(texte);
+        if (!code) return '';
+        const path = this.decodePath(code);
+        return (path && path.steps && path.steps.length) ? code : '';
+    },
+
     // --- Compatibilité avec l'ancienne API ---
     encodeSequence(steps) {
         return this.encodePath(Array.isArray(steps) ? { steps } : steps);

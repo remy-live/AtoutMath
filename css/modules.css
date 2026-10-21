@@ -4756,6 +4756,33 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
    ensemble. Il porte sa propre classe pour qu'on puisse les distinguer — dans
    la feuille de style comme dans les épreuves. */
 .path-ouvrir-code { font-size: 1rem; padding: 12px 22px; min-height: 44px; margin-top: 12px; }
+
+/* LA PORTE D'UN AUTRE CODE — deux boutons côte à côte, et l'un peut manquer.
+
+   RÉMY, après l'essai sur tablette : « il faut sur l'écran d'ailleurs un bouton
+   pour scanner directement le qr code, car là il faut passer par le code puis
+   le qr code c'est trop long. »
+
+   `flex-wrap` plutôt que deux colonnes : le bouton du scanner n'existe pas sur
+   un appareil sans caméra (voir `boutonScannerLeCode`), et une grille à deux
+   colonnes laisserait alors une colonne vide à côté d'un bouton étiré.
+
+   LA RANGÉE NE S'ÉTIRE PAS. Les 43 boutons étirés de la revue de Rémy sont
+   passés par là : `align-items: flex-start` et des boutons qui font leur
+   largeur, pas celle de la page. */
+.path-autre-code-boutons {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start;
+    margin-top: 12px;
+}
+.path-autre-code-boutons > button { margin-top: 0; }
+.path-scanner-code {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 1rem; padding: 12px 22px; min-height: 44px;
+}
+/* Plus discrète que le parcours lui-même : c'est une sortie de secours, pas le
+   travail du jour. Le trait du haut dit « ceci est autre chose ». */
+.path-autre-code { border-top: 1px solid var(--border); padding-top: 18px; }
+.path-autre-code .path-section-title { font-size: 1.05rem; }
 .timeline-step-meta { font-size: .82rem; color: var(--text-muted); margin: 2px 0 8px; }
 .path-complete-banner {
     margin-top: 14px; padding: 12px; text-align: center; font-weight: 700;
