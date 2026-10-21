@@ -2643,8 +2643,24 @@ function geoGraduation(item, slot) {
     const marge = b.w * 0.06;
     const x0 = b.x + marge;
     const larg = b.w - 2 * marge;
-    const pas = larg / 10;
-    const cran = Math.min(b.h * 0.15, pas * 0.65);
+    // DIX INTERVALLES ÉTAIT ÉCRIT EN DUR, et c'est ce qui rendait la droite des
+    // FRACTIONS impossible à dessiner : pour lire 3/4, l'axe est coupé en
+    // QUATRE. Le nombre vient donc du bloc, et vaut dix quand il ne dit rien —
+    // c'est le cas de tous les axes de décimaux déjà enregistrés.
+    const nb = Math.max(1, Number(m.intervalles) || 10);
+    // ET TOUS LES COMBIEN UN TRAIT EST GRAND : à chaque unité. Sans cela, un
+    // axe de 0 à 2 en quarts montre huit traits identiques, et personne ne
+    // voit où tombe le 1.
+    const grand = Math.max(1, Number(m.grandsTous) || nb);
+    const pas = larg / nb;
+    // UN CRAN A UNE TAILLE RAISONNABLE, ET C'EST UN PLAFOND EN MILLIMÈTRES.
+    //
+    // MESURÉ sur la droite des FRACTIONS : avec quatre intervalles au lieu de
+    // dix, `pas` double, et un cran proportionnel au pas devient un trait de
+    // sept millimètres surmonté d'une croix de la taille d'un timbre. Sur la
+    // feuille, les croix mangeaient les traits voisins. Quatre millimètres
+    // suffisent — c'est la hauteur d'un cran tracé à la règle.
+    const cran = Math.min(b.h * 0.15, pas * 0.65, 4);
     // UN POINT, OU PLUSIEURS QUI ONT CHACUN LEUR LETTRE. La fiche en pose deux
     // ou trois par axe (voir `pointsPapier`) ; les parcours enregistrés et
     // l'écran n'en ont qu'un, sans lettre, et continuent de marcher.
@@ -2652,7 +2668,11 @@ function geoGraduation(item, slot) {
         ? m.points
         : [{ lettre: '', crans: m.crans, valeur: m.valeur }];
     return {
-        m, rang, x0, larg, pas, cran, boite: b, points,
+        m, rang, x0, larg, pas, cran, boite: b, points, nb, grand,
+        // UNE RÉPONSE EST-ELLE UNE FRACTION ? Si oui, le corrigé l'écrit
+        // empilée, et la ligne à remplir est plus haute : on n'écrit pas un
+        // numérateur sur un dénominateur dans la hauteur d'un chiffre.
+        fractions: !!m.fractions,
         // L'axe en haut du bloc, les nombres dessous, la réponse tout en bas.
         yAxe: b.y + b.h * 0.30,
         yNombres: b.y + b.h * 0.30 + cran + Math.max(2.2, b.h * 0.16),
@@ -2670,7 +2690,12 @@ function graduationPreviewHtml(item, slot, k, solution) {
     let html = '';
 
     // L'axe, et la flèche : sans elle, c'est un trait, pas un axe.
-    const bout = g.pas * 0.5;
+    //
+    // LA POINTE DÉPASSE D'UNE LONGUEUR FIXE, ET NON D'UN DEMI-INTERVALLE.
+    // MESURÉ sur la droite des demis : deux intervalles font un `pas` égal à
+    // la moitié du bloc, et la flèche sortait de la feuille — le trait
+    // continuait au-delà du bord droit, pointe comprise.
+    const bout = Math.min(g.pas * 0.5, 6);
     html += `<div style="position:absolute; left:${g.x0 * k}px; top:${g.yAxe * k}px;
         width:${(g.larg + bout) * k}px; height:${Math.max(1, 0.5 * k)}px; background:#1a202c"></div>`;
     html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
@@ -2678,22 +2703,27 @@ function graduationPreviewHtml(item, slot, k, solution) {
                  l ${(-g.cran * 0.55 * k).toFixed(2)} ${(-g.cran * 0.3 * k).toFixed(2)}
                  l 0 ${(g.cran * 0.6 * k).toFixed(2)} Z" fill="#1a202c"/></svg>`;
 
-    // Onze traits : les dix intervalles, et les deux bouts plus longs.
-    for (let i = 0; i <= 10; i++) {
-        const grand = i === 0 || i === 10;
+    // Un trait par intervalle, plus un : les traits d'unité sont plus longs.
+    for (let i = 0; i <= g.nb; i++) {
+        const grand = i % g.grand === 0;
         const h = grand ? g.cran : g.cran * 0.5;
         html += `<div style="position:absolute; left:${g.px(i) * k}px;
             top:${(g.yAxe - h) * k}px; width:${Math.max(1, 0.45 * k)}px;
             height:${2 * h * k}px; background:#1a202c"></div>`;
     }
 
-    // Seuls les deux bouts sont chiffrés : tout le reste EST la question.
+    // LES ÉTIQUETTES, ET ELLES NE SONT PAS TOUJOURS LES DEUX BOUTS. Sur une
+    // droite de fractions, ce sont les ENTIERS — 0, 1, 2 — qu'on écrit : ils
+    // disent où est l'unité, c'est-à-dire ce que le dénominateur partage.
     const police = g.pt * 0.3528 * k;
-    [[0, m.debut], [10, m.fin]].forEach(([i, v]) => {
+    const etiq = Array.isArray(m.etiquettes) && m.etiquettes.length
+        ? m.etiquettes.map(e => [e.i, e.texte])
+        : [[0, ecrireDecimal(m.debut, g.rang)], [g.nb, ecrireDecimal(m.fin, g.rang)]];
+    etiq.forEach(([i, t]) => {
         html += `<div style="position:absolute; left:${(g.px(i) - g.pas) * k}px;
             top:${(g.yNombres - g.pt * 0.3528) * k}px; width:${2 * g.pas * k}px;
             text-align:center; font-size:${police}px; font-weight:700;
-            color:#1a202c">${ecrireDecimal(v, g.rang)}</div>`;
+            color:#1a202c">${echapperSheet(String(t))}</div>`;
     });
 
     // Les croix marquent les points : elles désignent le trait sans le
@@ -2732,7 +2762,20 @@ function graduationPreviewHtml(item, slot, k, solution) {
             font-weight:700; color:#1a202c; white-space:nowrap">${etiq}</div>`;
         const xTrait = x + g.pt * 0.3528 * (p.lettre ? 2.2 : 5.4);
         const lTrait = Math.max(8, large - g.pt * 0.3528 * (p.lettre ? 4.2 : 6.4));
-        if (solution) {
+        if (solution && g.fractions) {
+            // LA FRACTION DU CORRIGÉ S'ÉCRIT EMPILÉE, comme au tableau. « 3/4 »
+            // sur une ligne serait plus simple à poser et n'apprendrait pas
+            // l'écriture qu'on vient justement de demander.
+            // LA BARRE PASSE AU-DESSUS DU DÉNOMINATEUR, PAS DEDANS. Premier
+            // jet : elle tombait à mi-hauteur du chiffre du bas et le barrait —
+            // sur la feuille, « 2/4 » se lisait « 2 » avec un 4 raturé.
+            const w = police * 1.5;
+            html += `<div style="position:absolute; left:${xTrait * k}px;
+                top:${(g.yEcrit - g.pt * 0.3528 * 2.1) * k}px; width:${w}px;
+                text-align:center; font-size:${police * 0.8}px; font-weight:800;
+                line-height:1.15; color:#2f855a">${p.num}<div style="border-top:
+                ${Math.max(1, 0.4 * k)}px solid #2f855a; margin:1px 0"></div>${p.den}</div>`;
+        } else if (solution) {
             html += `<div style="position:absolute; left:${xTrait * k}px;
                 top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
                 font-weight:800; color:#2f855a">${ecrireDecimal(p.valeur, g.rang)}</div>`;
@@ -2753,7 +2796,8 @@ function graduationPreviewHtml(item, slot, k, solution) {
 function dessinerGraduationPdf(doc, item, slot, solution, champ) {
     const g = geoGraduation(item, slot);
     const m = g.m;
-    const bout = g.pas * 0.5;
+    // Une longueur FIXE, et non un demi-intervalle — voir l'aperçu.
+    const bout = Math.min(g.pas * 0.5, 6);
 
     doc.setDrawColor(...ENCRE.trait);
     doc.setLineWidth(0.5);
@@ -2764,15 +2808,17 @@ function dessinerGraduationPdf(doc, item, slot, solution, champ) {
         g.x0 + g.larg + bout - g.cran * 0.55, g.yAxe + g.cran * 0.3, 'F');
 
     doc.setLineWidth(0.45);
-    for (let i = 0; i <= 10; i++) {
-        const h = (i === 0 || i === 10) ? g.cran : g.cran * 0.5;
+    for (let i = 0; i <= g.nb; i++) {
+        const h = (i % g.grand === 0) ? g.cran : g.cran * 0.5;
         doc.line(g.px(i), g.yAxe - h, g.px(i), g.yAxe + h);
     }
 
     doc.setTextColor(...ENCRE.texte);
     doc.setFontSize(g.pt);
-    doc.text(ecrireDecimal(m.debut, g.rang), g.px(0), g.yNombres, { align: 'center' });
-    doc.text(ecrireDecimal(m.fin, g.rang), g.px(10), g.yNombres, { align: 'center' });
+    const etiq = Array.isArray(m.etiquettes) && m.etiquettes.length
+        ? m.etiquettes.map(e => [e.i, String(e.texte)])
+        : [[0, ecrireDecimal(m.debut, g.rang)], [g.nb, ecrireDecimal(m.fin, g.rang)]];
+    etiq.forEach(([i, t]) => doc.text(pourPdf(t), g.px(i), g.yNombres, { align: 'center' }));
 
     // Les croix des points, à l'encre du trait : une photocopie ne garde pas la
     // couleur, et une croix rouge devenue grise doit rester la plus marquée.
@@ -2803,7 +2849,22 @@ function dessinerGraduationPdf(doc, item, slot, solution, champ) {
         doc.text(p.lettre ? `${p.lettre} (` : 'Abscisse :', x, g.yEcrit);
         const xTrait = x + g.pt * 0.3528 * (p.lettre ? 2.2 : 5.4);
         const lTrait = Math.max(8, large - g.pt * 0.3528 * (p.lettre ? 4.2 : 6.4));
-        if (solution) {
+        if (solution && g.fractions) {
+            // EMPILÉE, comme au tableau — voir l'aperçu.
+            doc.setTextColor(...ENCRE.gris);
+            // LA BARRE PASSE AU-DESSUS DU DÉNOMINATEUR, PAS DEDANS. Un
+            // chiffre de `pt` points monte d'environ 0,7 × pt au-dessus de sa
+            // ligne de base : une barre posée à 0,55 le traversait, et le
+            // corrigé imprimait un dénominateur raturé.
+            const mm = g.pt * 0.3528;
+            const w = doc.getTextWidth(String(p.den)) + 1.4;
+            doc.text(String(p.num), xTrait + w / 2, g.yEcrit - mm * 1.35,
+                { align: 'center' });
+            doc.setDrawColor(...ENCRE.gris);
+            doc.setLineWidth(0.35);
+            doc.line(xTrait, g.yEcrit - mm * 0.95, xTrait + w, g.yEcrit - mm * 0.95);
+            doc.text(String(p.den), xTrait + w / 2, g.yEcrit, { align: 'center' });
+        } else if (solution) {
             doc.setTextColor(...ENCRE.gris);
             doc.text(ecrireDecimal(p.valeur, g.rang), xTrait, g.yEcrit);
         } else {
@@ -3350,8 +3411,25 @@ export const RENDUS_NOMBRES = {
         parLigneDefaut: 4
     },
     graduation: {
-        titre: 'La loupe sur la droite graduée',
+        // LE TITRE DIT CE QUE LA FEUILLE DEMANDE, et ce rendu sert maintenant
+        // DEUX exercices : la loupe sur les décimaux, et la fraction sur la
+        // droite. « La loupe sur la droite graduée » au-dessus d'une feuille de
+        // fractions annonce autre chose que ce qui suit.
+        titre: (items) => ((items || []).length
+            && items.every(it => it && it.meta && it.meta.fractions)
+            ? 'La fraction sur la droite graduée'
+            : 'La loupe sur la droite graduée'),
         consigne: (items) => {
+            // LA DROITE DES FRACTIONS NE SE LIT PAS COMME CELLE DES DÉCIMAUX :
+            // l'axe n'est pas coupé en dix, et ce qu'on écrit n'est pas un
+            // nombre à virgule. Une consigne qui dirait « coupé en DIX » sur
+            // une droite coupée en quatre enverrait l'élève compter faux.
+            if (items.every(it => it && it.meta && it.meta.fractions)) {
+                return 'L\'unité — de 0 au trait suivant — est coupée en parts ÉGALES. '
+                    + 'Le dénominateur dit en combien ; le numérateur, combien d\'intervalles '
+                    + 'on parcourt depuis 0. Écris la fraction de chaque point marqué d\'une '
+                    + 'croix, entre les parenthèses qui portent sa lettre.';
+            }
             const zooms = new Set(items.map(it => it.meta && it.meta.zoom));
             // LA CONSIGNE COMPTE LES POINTS QU'ELLE ANNONCE. Un axe en porte
             // maintenant deux ou trois, nommés ; « le point marqué d'une croix »

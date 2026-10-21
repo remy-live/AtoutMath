@@ -7,6 +7,41 @@ import { TAGS } from './tags.js';
 
 export const fractionsExercises = [
     {
+        // LA FRACTION SUR LA DROITE GRADUÉE — sixième, bloc 10 de sa
+        // progression.
+        //
+        // « La Loupe sur la Droite » existait déjà, mais elle ne place que des
+        // DÉCIMAUX, et son axe écrit ses graduations en décimaux. Trois choses
+        // changent ici, et aucune n'est un réglage : l'axe n'a plus dix
+        // intervalles mais autant que le dénominateur, l'étiquette est une
+        // fraction EMPILÉE, et la réponse se choisit au lieu de se taper —
+        // « 3/4 » au pavé numérique n'est pas une réponse, c'est une
+        // négociation avec le clavier.
+        //
+        // ET C'EST LÀ QU'ON VOIT QU'UNE FRACTION EST UN NOMBRE. Beaucoup
+        // d'élèves de sixième la lisent comme deux nombres superposés ; posée
+        // sur une droite, entre 0 et 1, elle prend une PLACE — et le palier
+        // « au-delà de 1 » achève de le montrer.
+        id: 'frac-graduation',
+        cree: '2026-10-21',
+        consignePapier: 'Écris la fraction de chaque point.',
+        // DEUX AXES DE FRONT, comme la droite des décimaux. MESURÉ : à un seul
+        // par rangée, la feuille portait DEUX axes et deux tiers de blanc ;
+        // à deux, elle en porte dix, chacun lisible. C'est Rémy qui a posé la
+        // règle, sur cet exercice-là : « car là ça gâche du papier ».
+        colonnesPapier: 2,
+        title: 'La Fraction sur la Droite',
+        generatorId: 'frac.graduation', activityId: 'bubbles',
+        // SUR LE PAPIER, C'EST LE MÊME RENDU QUE LA DROITE DES DÉCIMAUX : un
+        // axe, ses crans, deux ou trois croix nommées, et une ligne par point.
+        // Il a appris à compter autre chose que dix intervalles et à écrire
+        // une fraction empilée dans le corrigé.
+        printable: 'graduation',
+        motsClefs: ['fraction', 'droite graduée', 'abscisse', 'partage', 'unité', 'numérateur', 'dénominateur'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "L'unité, c'est le segment de 0 au trait suivant. Le DÉNOMINATEUR dit en combien de parts égales on l'a coupée : compte les INTERVALLES d'une unité, jamais les traits. Le NUMÉRATEUR dit combien d'intervalles on parcourt depuis 0. Le réglage des paliers ajoute les dénominateurs jusqu'à dix, puis les fractions qui dépassent 1 — car une fraction est un nombre, et rien ne l'oblige à rester sous l'unité."
+    },
+    {
         // Le réglage « Dénominateurs » EST la progression : identiques d'abord
         // (on compare les numérateurs, rien d'autre), puis différents. C'était
         // deux entrées de catalogue pour ce seul mot ; on part du plus facile,

@@ -1272,6 +1272,10 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .ax-cran { stroke: #94a3b8; stroke-width: 1.4; }
 .ax-cran--bout { stroke: var(--text-main); stroke-width: 2.6; }
 .ax-nb { fill: var(--text-main); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* LA BARRE D'UNE FRACTION EMPILÉE, sous l'axe. On l'écrit ainsi et non
+   « 3/4 » sur une ligne : ce n'est pas l'écriture du tableau, et c'est
+   justement celle qu'on apprend en sixième. */
+.ax-barre { stroke: var(--text-main); stroke-width: 2; stroke-linecap: round; }
 .ax-point line { stroke: #dc2626; stroke-width: 3.4; stroke-linecap: round; }
 
 /* --- Mode apprentissage : la leçon ---------------------------
@@ -14707,3 +14711,4 @@ body.en-boite > #app-container { background: none; }
 .pp-reponse { display: block; margin-top: 14px; font-size: 1.05em; }
 .pp-ecriture { font-weight: 800; letter-spacing: .01em; }
 .pp-ecriture sup { font-size: .62em; }
+

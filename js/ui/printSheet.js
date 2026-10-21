@@ -479,7 +479,11 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
         // porte les DOS des cartes, et l'appeler « Solutions » ferait croire
         // à une feuille de réponses qu'on garde pour soi.
         const rang = feuilles.length > 1 ? ` (${iFeuille + 1}/${feuilles.length})` : '';
-        entetePdf(doc, titre || rendu.titre,
+        // `rendu.titre` PEUT ÊTRE UNE FONCTION — un rendu qui sert deux
+        // exercices n'a pas un seul titre. Passée telle quelle à l'entête, elle
+        // s'imprimerait « (items) => … » en haut de la feuille.
+        entetePdf(doc, titre || (typeof rendu.titre === 'function'
+            ? rendu.titre(items || []) : rendu.titre),
             (solution ? (rendu.nomSolutions || 'Solutions') : '') + rang,
             solution ? '' : rendu.consigne(items),
             avecPieces ? MENTION_PIECES : '');

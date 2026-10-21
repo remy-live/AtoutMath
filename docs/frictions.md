@@ -5618,3 +5618,19 @@ le résultat n'existe pas** — 15 octobre 2026
   JavaScript, mais pas pour HTML. La vraie règle est plus simple et vaudrait
   d'être écrite dans `epreuveTombe` quand il annonce une épreuve creuse :
   **chercher la FORME exécutable** (`import('./x.js')`), jamais le nom seul.
+
+## `nouvelExercice.mjs` ne dit pas qu'il ne connaît pas l'identifiant
+
+- *Ce que je voulais faire* : vérifier le nouvel exercice `frac-graduation`
+  avec l'outil prévu pour ça, juste après l'avoir ajouté au catalogue.
+- *Ce qui a coûté* : dix minutes et une fausse assurance. L'ajout avait ÉCHOUÉ
+  — `remplacer.mjs` n'avait pas trouvé son point d'ancrage —, et l'outil a
+  répondu « Les quatre pièges sont évités. 244 exercices » sans un mot sur
+  l'identifiant qu'il venait de recevoir et qui n'existe nulle part. J'ai cru
+  l'exercice en place ; c'est l'impression de la fiche, plus loin, qui a fini
+  par tomber.
+- *Combien de fois* : |
+- *Ce qui manque* : que `tools/nouvelExercice.mjs` dise « cet identifiant
+  n'est pas au catalogue » quand on lui en passe un qu'il ne trouve pas. Un
+  outil de vérification qui félicite sur une question qu'il n'a pas comprise
+  est pire qu'un outil absent.

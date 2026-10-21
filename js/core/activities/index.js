@@ -75,6 +75,7 @@ import { elementsGeometrieGenerator } from '../generators/elementsGeometrie.js';
 import { anglesManquantsGenerator } from '../generators/anglesManquants.js';
 import { anglesNommerGenerator } from '../generators/anglesNommer.js';
 import { graduationsGenerator } from '../generators/graduations.js';
+import { graduationFractionGenerator } from '../generators/graduationFraction.js';
 import { transfoQuadrillageGenerator } from '../generators/transfoQuadrillage.js';
 import { pavageGenerator } from '../generators/pavage.js';
 import { generator as pavageImageGenerator } from '../generators/pavageImage.js';
@@ -196,7 +197,8 @@ import {
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
     elementsGeometrieGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,
-    graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator, pavageImageGenerator,
+    graduationsGenerator, graduationFractionGenerator,
+    transfoQuadrillageGenerator, pavageGenerator, pavageImageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, cubesGenerator,
     repereFicheGenerator,
