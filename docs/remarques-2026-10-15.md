@@ -2524,3 +2524,26 @@ de loin.
 **CE QUI NE PASSE PAS** : les résultats. L'API est explicitement exclue du
 cache (« des données de classe périmées sont pires que pas de données »). Sans
 réseau, chaque tablette garde son bilan pour elle.
+
+### 22 bis. « Qqch qui s'installe tout seul », et la caméra
+
+> « Et on peut pas faire qqch qui s installe tout seul sur la tablette. Et
+> après elle peut bien scanner avec la caméra ? »
+
+**CE QUI EST DÉJÀ EN PLACE** (vérifié dans le dépôt) : `manifest.webmanifest`
+complet — nom, `start_url`, `scope: "./"`, `display: standalone`, trois icônes
+qui existent sur le disque — et un service worker actif qui garde 257 fichiers.
+L'application est donc **installable** telle quelle.
+
+**CE QUI MANQUE** : aucun `beforeinstallprompt` dans le dépôt, donc **aucun
+bouton « Installer »**. Sur Android, le navigateur propose la chose de
+lui-même, quand il veut ; sur iPad, c'est « Partager → Sur l'écran d'accueil »,
+à la main. `fullscreen.js` écrit déjà cette phrase-là pour le plein écran.
+
+**POUR LA CAMÉRA** : `js/core/qrcode.js` n'exporte que `qrcode` et `qrcodeSVG`
+— il FABRIQUE des QR, il n'en LIT pas. Scanner depuis l'application demanderait
+un décodeur, c'est-à-dire une dépendance : à peser.
+
+Le `scope: "./"` couvre bien `?code=…`, donc le lien scanné tombe dans
+l'application installée (capture de lien sur Android ; sur iPad la caméra ouvre
+Safari, et c'est donc dans Safari qu'il faut l'avoir installée).
