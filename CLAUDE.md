@@ -108,7 +108,10 @@ node tools/sondeTablette.mjs      # l'essai de Rémy en entier : hors ligne, au 
 ```
 
 Le mur blanc n'est pas un luxe : **un QR est lu en moins de 300 ms**, et une
-sonde qui veut regarder l'écran d'avant arrive toujours trop tard.
+sonde qui veut regarder l'écran d'avant arrive toujours trop tard. La règle a
+été payée trois fois, et elle dépasse les caméras :
+
+> **Pour mesurer un écran, il faut une entrée qui ne le fasse pas changer.**
 
 À la main, `php tools/siteEssai.php <PORT>` monte un site d'essai complet et
 imprime une ligne JSON avec `port`, `email: 'remy@essai.test'`,

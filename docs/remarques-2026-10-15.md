@@ -2930,3 +2930,49 @@ toujours ses 98 px. C'est exactement le défaut déjà payé sur la calculatrice
 des exercices (`.game-icon-btn`, css/games.css), au même endroit du même
 raisonnement. Le code faisait ce qu'il annonçait, et l'écran disait le
 contraire ; il a fallu compter les boutons à l'écran pour le voir.
+
+### 25. On ne revient pas à l'écran d'accueil, et il n'y lit pas de QR code
+
+> « mais on ne peut revenir à l'écran d'accueil. et sur l'écran d'accueil, il
+> faudrait qu'il y ait lecture de qr code »
+
+Deux choses, et la première est la plus grave : **l'élève entré par un QR code
+reste dans son parcours**. La couche de jeu est plein écran — elle recouvre la
+barre du bas, donc l'icône « Scanner » qu'on vient d'y poser. Sans chemin de
+retour, tout ce qui est en dehors du parcours est hors d'atteinte.
+
+La seconde : sur l'écran où il revient, il veut pouvoir **lire un QR code**.
+Le bouton y est depuis la remarque 23 (« Une autre séance ? », sous le
+parcours) — reste à savoir s'il se VOIT : une carte de parcours est haute, et
+ce qui vit sous elle peut demander de défiler.
+
+À mesurer avant de corriger, dans cet ordre.
+
+#### Fait — l'accueil revient, et il revient avec sa caméra
+
+**Mesuré d'abord** (`node tools/sondeTablette.mjs`, bloc G) : l'écran d'accueil
+ne revenait jamais. `portailNecessaire()` s'éteint dès que l'élève a une
+séance — ce qui est juste au CHARGEMENT, et faux ensuite. Et dans le parcours,
+la couche de jeu est en plein écran : elle recouvre la barre du bas, donc
+l'icône « Scanner » qu'on venait d'y poser. Le bloc « Une autre séance ? » de
+la remarque 23, lui, est à **y = 917** sur une vitre de 844 — hors de l'écran.
+
+**Après :**
+
+| | |
+| --- | --- |
+| La barre du bas, hors ligne | **Accueil** · Code · Scanner · Parcours · Profil — 78 px à 390, 72 à 360, 64 à 320, rien de tronqué |
+| Toucher « Accueil » | l'écran du début revient en 1,3 s, **et sa caméra s'ouvre toute seule** |
+| En tête de cet écran | « Revenir à ma séance », à y = 120, visible sans défiler |
+| Ce retour | la séance est intacte, avec tout ce qui a été fait |
+| En ligne | la barre ne bouge pas : Code · Parcours · Profil |
+
+**La caméra se réarme à chaque retour** : revenir à l'accueil hors ligne, c'est
+venir scanner. Et le clavier ne monte plus devant elle — le foyer n'est plus
+posé sur « Identifiant » quand le scanner s'ouvre.
+
+**Le piège, pour la troisième fois :** la sonde a d'abord conclu que rien ne
+marchait. Avec le QR devant l'objectif, on touche « Accueil », l'écran revient,
+sa caméra s'ouvre, relit le QR — toujours projeté — et rouvre le parcours. En
+1,3 s, la sonde ne voyait qu'une couche de jeu. **Pour mesurer un écran, il
+faut une entrée qui ne le fasse pas changer.**

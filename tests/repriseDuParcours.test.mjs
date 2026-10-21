@@ -195,7 +195,11 @@ test('L\'ICÔNE DU QR CODE EST DANS LA BARRE DU BAS, ET SEULEMENT HORS LIGNE', (
     assert.ok(H.indexOf('id="mob-btn-code"') < H.indexOf('id="mob-btn-scan"'));
     assert.ok(H.indexOf('id="mob-btn-scan"') < H.indexOf('id="mob-btn-path"'));
     const A = sansCommentaires(lire('js/app.js'));
-    assert.match(A, /btnScan\.hidden = !scannerEstLeSeulChemin\(\);/);
+    // LES DEUX BOUTONS HORS LIGNE SE DÉCIDENT ENSEMBLE — l'icône du QR code et
+    // le retour à l'accueil viennent de la même phrase de Rémy, et de la même
+    // règle : `scannerEstLeSeulChemin`.
+    assert.match(A, /const horsLigne = scannerEstLeSeulChemin\(\);/);
+    assert.match(A, /if \(btnScan\) btnScan\.hidden = !horsLigne;/);
     // ET LA BARRE SE REMESURE QUAND LE RÉSEAU CHANGE : une tablette qui perd le
     // Wi-Fi au milieu de l'heure ne recharge pas la page.
     assert.match(A, /window\.addEventListener\('online', revoirLeScan\);/);

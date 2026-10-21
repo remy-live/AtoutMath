@@ -280,3 +280,96 @@ console.log('le QR du tableau :', CODE.slice(0, 40), '…');
     s.erreurs.slice(0, 6).forEach(e => console.log('  ⚠', e));
     await s.fermer();
 }
+
+
+// ── G. REVENIR À L'ÉCRAN D'ACCUEIL ──────────────────────────────────────────
+//
+// RÉMY : « mais on ne peut revenir à l'écran d'accueil. et sur l'écran
+// d'accueil, il faudrait qu'il y ait lecture de qr code ». Il parle du PREMIER
+// écran, celui au gros titre — il l'appelle déjà ainsi ailleurs.
+//
+// LA CAMÉRA EST UN MUR BLANC ICI, et c'est la troisième fois que ce piège se
+// présente : avec le QR devant l'objectif, on touche « Accueil », l'écran
+// revient, sa caméra s'ouvre toute seule, relit le QR et rouvre le parcours —
+// en 1,3 s, la sonde ne voyait qu'une couche de jeu et concluait que rien
+// n'avait marché. Pour mesurer un écran, il faut une entrée qui ne le fasse
+// pas changer. On entre donc par le CODE : `applyCode` est le même chemin, au
+// décodeur près, et le décodeur est mesuré au bloc B.
+{
+    const s = await ouvrirSonde({ largeur: 390, hauteur: 844, horsLigne: true,
+        args: DRAPEAUX(BLANCHE) });
+    const fermerLeScanner = () => s.page.evaluate(() => {
+        const v = [...document.querySelectorAll('.modal-overlay')]
+            .filter(m => m.querySelector('#scan-video')).pop();
+        const b = v && v.querySelector('.modal-close-btn');
+        if (b) { b.click(); return true; }
+        return false;
+    });
+    await s.page.waitForTimeout(900);
+    console.log('G la caméra s\'ouvre seule :', await fermerLeScanner());
+    await s.page.waitForTimeout(400);
+
+    await s.page.evaluate(async (code) => {
+        const { applyCode } = await import('./js/ui/studentCodeUI.js');
+        applyCode(code);
+    }, CODE);
+    await s.page.waitForFunction(() => {
+        const g = document.getElementById('game-layer');
+        return g && getComputedStyle(g).display !== 'none';
+    }, { timeout: 20000 });
+    await s.page.waitForTimeout(500);
+    await s.page.evaluate(() => document.getElementById('btn-close-game').click());
+    await s.page.waitForTimeout(800);
+
+    const barre = await s.page.evaluate(() => {
+        const vus = [...document.querySelectorAll('#bottom-nav .bottom-nav-btn')]
+            .filter(b => b.offsetParent !== null);
+        return { boutons: vus.map(b => (b.querySelector('span') || {}).textContent),
+            largeurs: vus.map(b => Math.round(b.getBoundingClientRect().width)),
+            tronques: vus.map(b => b.querySelector('span'))
+                .filter(sp => sp && sp.scrollWidth > sp.clientWidth + 1)
+                .map(sp => sp.textContent) };
+    });
+    console.log('G la barre    :', JSON.stringify(barre));
+
+    await s.doitExister('#mob-btn-accueil', 'le bouton Accueil de la barre du bas');
+    const t0 = Date.now();
+    await s.page.click('#mob-btn-accueil');
+    await s.page.waitForTimeout(1200);
+    const accueil = await s.page.evaluate(() => {
+        const p = document.getElementById('portail');
+        const r = document.getElementById('portail-reprendre');
+        return {
+            ecranDAccueil: !!p,
+            titre: p ? (p.querySelector('.portail-titre') || {}).textContent : null,
+            revenirAMaSeance: r ? { visible: r.offsetParent !== null,
+                y: Math.round(r.getBoundingClientRect().top) } : 'ABSENT',
+            cameraRouverte: !!document.querySelector('#scan-video'),
+            clavierAuFoyer: document.activeElement
+                ? (document.activeElement.id || document.activeElement.tagName) : null,
+            coucheDeJeu: (() => { const g = document.getElementById('game-layer');
+                return g ? getComputedStyle(g).display : 'absente'; })()
+        };
+    });
+    console.log('G l\'accueil  :', JSON.stringify(accueil), '—', Date.now() - t0, 'ms');
+    await s.photo('#portail', 'tools/tmp/tablette-accueil.png', 0);
+
+    await fermerLeScanner();
+    await s.page.waitForTimeout(400);
+    // L'ÉCRAN TEL QU'IL EST QUAND LA CAMÉRA SE REFERME : c'est celui que
+    // l'élève regarde s'il ne veut pas scanner tout de suite.
+    await s.photo('#portail', 'tools/tmp/tablette-accueil-nu.png', 0);
+    await s.doitExister('#portail-reprendre', 'le retour vers la séance');
+    await s.page.click('#portail-reprendre');
+    await s.page.waitForTimeout(900);
+    const retour = await s.page.evaluate(async () => {
+        const { state } = await import('./js/core/state.js');
+        return { ecranDAccueil: !!document.getElementById('portail'),
+            parcoursGarde: !!state.studentPath,
+            ecran: document.body.innerText.replace(/\s+/g, ' ').slice(0, 80) };
+    });
+    console.log('G le retour   :', JSON.stringify(retour));
+    console.log(`G erreurs : ${s.erreurs.length} | fenêtres natives : ${s.fenetresNatives.length}`);
+    s.erreurs.slice(0, 4).forEach(e => console.log('  ⚠', e));
+    await s.fermer();
+}

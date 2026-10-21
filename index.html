@@ -86,12 +86,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1076">
-    <link rel="stylesheet" href="css/layout.css?v=1076">
-    <link rel="stylesheet" href="css/ui.css?v=1076">
-    <link rel="stylesheet" href="css/games.css?v=1076">
-    <link rel="stylesheet" href="css/components.css?v=1076">
-    <link rel="stylesheet" href="css/modules.css?v=1076">
+    <link rel="stylesheet" href="css/base.css?v=1077">
+    <link rel="stylesheet" href="css/layout.css?v=1077">
+    <link rel="stylesheet" href="css/ui.css?v=1077">
+    <link rel="stylesheet" href="css/games.css?v=1077">
+    <link rel="stylesheet" href="css/components.css?v=1077">
+    <link rel="stylesheet" href="css/modules.css?v=1077">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1483,6 +1483,32 @@
                  sous 900 px) et le ☰ n'ouvre que l'arbre du catalogue. Un élève
                  sur téléphone ou sur tablette NE POUVAIT PAS entrer de code, du
                  tout. C'est précisément le geste de la séance. -->
+            <!-- L'ACCUEIL, HORS LIGNE.
+
+                 RÉMY, après l'essai sur tablette : « mais on ne peut revenir à
+                 l'écran d'accueil. et sur l'écran d'accueil, il faudrait qu'il
+                 y ait lecture de qr code ». Il parle du PREMIER écran, celui au
+                 gros titre — il l'appelle déjà ainsi dans sa remarque sur les
+                 champs d'identifiant. Et cet écran ne revenait jamais :
+                 portailNecessaire() s'éteint dès que l'élève a de quoi
+                 travailler. Hors ligne, c'est pourtant le seul endroit d'où
+                 l'on scanne le QR du tableau.
+
+                 EN PREMIER DANS LA BARRE, à gauche, comme partout ailleurs :
+                 une maison ne se cherche pas.
+
+                 CACHÉ PAR DÉFAUT, et montré par js/app.js sous la même règle
+                 que l'icône du QR code : hors ligne, et si l'appareil sait
+                 scanner. En ligne, la barre ne bouge pas. -->
+            <button class="bottom-nav-btn" id="mob-btn-accueil" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 10.5 12 3l9 7.5" />
+                    <path d="M5 9.5V21h14V9.5" />
+                    <path d="M10 21v-6h4v6" />
+                </svg>
+                <span>Accueil</span>
+            </button>
             <button class="bottom-nav-btn" id="mob-btn-code">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

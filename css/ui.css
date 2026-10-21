@@ -1322,6 +1322,16 @@
 }
 .portail-sous { text-align: center; color: var(--text-muted); margin: 0 0 26px; }
 
+/* TA SÉANCE EST TOUJOURS LÀ — en tête de l'écran d'accueil, quand il revient
+   sur demande (voir `ouvrirLAccueil`). Rémy : « mais on ne peut revenir à
+   l'écran d'accueil ». Le chemin du retour existe maintenant ; celui du retour
+   DU retour doit exister aussi, et se voir sans défiler : le pied de la page
+   est sous les deux cartes, donc hors de l'écran sur une tablette. */
+.portail-reprise {
+    max-width: 420px; margin: 0 auto 26px;
+}
+.portail-aide--centre { text-align: center; margin: 8px 0 0; }
+
 .portail-portes { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 @media (max-width: 700px) { .portail-portes { grid-template-columns: 1fr; } }
 

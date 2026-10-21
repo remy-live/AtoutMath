@@ -1046,13 +1046,31 @@ function initNavButtons() {
     // page ; sans ces deux écouteurs, la barre garderait la forme qu'elle avait
     // au démarrage, c'est-à-dire la mauvaise, et précisément le jour où ça
     // compte.
+    // ── L'ACCUEIL, HORS LIGNE ─────────────────────────────────────────────
+    //
+    // RÉMY : « mais on ne peut revenir à l'écran d'accueil ». Le premier écran
+    // ne revenait jamais — `portailNecessaire()` s'éteint dès que l'élève a de
+    // quoi travailler. Hors ligne, c'est pourtant de là qu'on scanne le QR du
+    // tableau, et l'élève qui a fini sa séance n'avait aucun moyen d'en
+    // recevoir une autre.
+    //
+    // MÊME RÈGLE QUE L'ICÔNE DU QR CODE, et les deux boutons se remesurent
+    // ensemble : c'est la même phrase de Rémy, et la même raison.
+    const btnAccueil = document.getElementById('mob-btn-accueil');
+    if (btnAccueil) {
+        btnAccueil.onclick = () => import('./ui/portailUI.js')
+            .then(m => m.ouvrirLAccueil());
+    }
+
     const btnScan = document.getElementById('mob-btn-scan');
-    if (btnScan) {
+    if (btnScan || btnAccueil) {
         const revoirLeScan = async () => {
             const { scannerEstLeSeulChemin } = await import('./ui/scannerQr.js');
-            btnScan.hidden = !scannerEstLeSeulChemin();
+            const horsLigne = scannerEstLeSeulChemin();
+            if (btnScan) btnScan.hidden = !horsLigne;
+            if (btnAccueil) btnAccueil.hidden = !horsLigne;
         };
-        btnScan.onclick = async () => {
+        if (btnScan) btnScan.onclick = async () => {
             const { scannerUnCodeDeSeance } = await import('./ui/studentCodeUI.js');
             scannerUnCodeDeSeance({
                 // LE PARCOURS S'OUVRE TOUT SEUL : on ne parle que si ça rate.

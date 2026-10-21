@@ -5687,3 +5687,21 @@ le résultat n'existe pas** — 15 octobre 2026
   `index.html`, et exige la règle `[hidden]` correspondante. Ce piège ne se
   voit jamais en relisant : le code fait ce qu'il annonce, c'est l'écran qui
   ment.
+
+## Pour mesurer un écran, il faut une entrée qui ne le fasse pas changer — 2026-10-21
+
+- *Ce que je voulais faire* : regarder l'écran d'accueil qui revient quand
+  l'élève touche « Accueil », sur une tablette hors ligne.
+- *Ce qui a coûté* : une reprise de sonde, dix minutes — et la sonde
+  ANNONÇAIT UN LOGICIEL CASSÉ. La caméra de papier montrait le QR du tableau ;
+  l'écran d'accueil revient, sa caméra s'ouvre toute seule, relit le QR qui est
+  toujours devant l'objectif, et rouvre le parcours. En 1,3 s il ne restait
+  qu'une couche de jeu, et la mesure disait « l'écran d'accueil ne revient
+  pas ».
+- *Combien de fois* : ||| (la même famille : caméra trop rapide, QR étranger
+  qui referme le scanner, et maintenant QR qui rouvre ce qu'on venait de
+  quitter)
+- *Ce qui manque* : rien à fabriquer — `tools/qrEnCamera.mjs --blanc` existe
+  depuis la deuxième fois. C'est la RÈGLE qui manquait, et elle vaut au-delà
+  des caméras : **pour mesurer un écran, il faut une entrée qui ne le fasse pas
+  changer.** Elle est maintenant écrite dans CLAUDE.md, à côté de l'outil.

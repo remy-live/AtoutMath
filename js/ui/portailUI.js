@@ -19,7 +19,7 @@
 import { joinClass, loginEleve } from '../core/sync.js';
 import { applyCode, scannerUnCodeDeSeance } from './studentCodeUI.js';
 import { laCameraEstPossible, scannerEstLeSeulChemin } from './scannerQr.js';
-import { modeLibre, inscriptionLibre, portailNecessaire, adresseApiDeduite } from '../core/portail.js';
+import { modeLibre, inscriptionLibre, portailNecessaire, aUneSeance, adresseApiDeduite } from '../core/portail.js';
 import { copieDEssai } from '../core/copieDEssai.js';
 import { versionLisible } from '../core/versionDuSite.js';
 import { state } from '../core/state.js';
@@ -61,7 +61,19 @@ export function majPortail() {
     // JavaScript, c'est un oubli au premier redessin.
     document.body.classList.toggle('sans-mode-libre', !modeLibre() && !state.isTeacherMode);
 
-    const ilFaut = portailNecessaire();
+    // L'ACCUEIL S'OUVRE AUSSI PARCE QU'ON LE DEMANDE.
+    //
+    // RÉMY, après l'essai sur tablette : « mais on ne peut revenir à l'écran
+    // d'accueil ». Et c'était vrai : `portailNecessaire()` s'éteint dès que
+    // l'élève a de quoi travailler — ce qui est juste au CHARGEMENT, et faux
+    // ensuite. Sur la tablette d'une classe sans réseau, cet écran est le seul
+    // endroit d'où l'on scanne le QR du tableau ; ne jamais pouvoir y revenir,
+    // c'est ne jamais pouvoir recevoir la séance suivante.
+    //
+    // ON NE TOUCHE PAS À `portailNecessaire`, et c'est délibéré : elle répond à
+    // « faut-il montrer la porte à qui arrive ? », une question de démarrage.
+    // Celle d'ici est une autre : « l'élève la demande-t-il ? ».
+    const ilFaut = portailNecessaire() || ouvertALaDemande;
     seSouvenir(ilFaut);
     leverLeVoile();
 
@@ -193,8 +205,45 @@ function leverLeVoile() {
 }
 
 export function fermerPortail() {
+    // ON OUBLIE LA DEMANDE EN MÊME TEMPS QU'ON FERME, sans quoi la porte
+    // reviendrait au premier `studentPath_updated` — c'est-à-dire juste après
+    // le code que l'élève vient de scanner, par-dessus la séance qui s'ouvre.
+    ouvertALaDemande = false;
     const el = document.getElementById(ID);
     if (el) el.remove();
+}
+
+/**
+ * REVENIR À L'ÉCRAN D'ACCUEIL — celui du début, avec le gros titre.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, après l'essai sur tablette : « mais on ne peut revenir à l'écran
+ * d'accueil. et sur l'écran d'accueil, il faudrait qu'il y ait lecture de qr
+ * code ». Les deux moitiés tiennent ensemble : hors ligne, cet écran EST
+ * l'endroit où l'on scanne — la caméra s'y ouvre toute seule.
+ *
+ * ── CE QUE CETTE FONCTION FERME AVANT D'OUVRIR ────────────────────────────
+ *
+ * LA COUCHE DE JEU, s'il y en a une. Mesuré : elle est en plein écran et
+ * recouvre la barre du bas — donc le bouton qui appelle cette fonction. On ne
+ * peut pas l'atteindre de là aujourd'hui, mais une fonction qui laisserait un
+ * parcours ouvert DERRIÈRE l'écran d'accueil serait un piège posé pour plus
+ * tard. On passe par la croix de l'en-tête, qui fait déjà tout le ménage —
+ * le meneur arrêté, les moteurs libérés, le journal écrit.
+ *
+ * ET LA CAMÉRA SE RÉARME. Revenir à l'accueil hors ligne, c'est venir scanner :
+ * `cameraDejaOuverte` est remis à faux pour que `dessiner()` rouvre le
+ * scanner, exactement comme au premier lancement.
+ */
+export function ouvrirLAccueil() {
+    const couche = document.getElementById('game-layer');
+    if (couche && couche.style.display && couche.style.display !== 'none') {
+        document.getElementById('btn-close-game')?.click();
+    }
+    ouvertALaDemande = true;
+    cameraDejaOuverte = false;
+    majPortail();
 }
 
 /**
@@ -242,6 +291,25 @@ function dessiner() {
              change selon le mode libre. Une phrase qui dépend d'un décompte
              finit toujours par mentir ; celle-ci dit ce qu'on fait ici. -->
         <p class="portail-sous">Choisis par où tu entres.</p>
+
+        <!-- TA SÉANCE EST TOUJOURS LÀ.
+
+             Cet écran revient maintenant sur demande (voir ouvrirLAccueil), et
+             il revient donc parfois chez quelqu'un qui travaille déjà. Sans ce
+             bouton, l'élève qui touche Accueil par erreur se retrouve devant
+             deux portes dont aucune ne le ramène à ce qu'il faisait : il
+             rescannerait le QR pour retrouver sa place, en se demandant s'il a
+             tout perdu.
+
+             EN HAUT, ET NON DANS LE PIED. Le pied est sous les deux cartes,
+             c'est-à-dire hors de l'écran sur une tablette tenue à la verticale
+             (mesuré : 823 px de boîte pour 844 px de vitre). Ce qui répare une
+             erreur doit se voir sans défiler. -->
+        ${aUneSeance() ? `<div class="portail-reprise">
+          <button id="portail-reprendre" class="portail-bouton">Revenir à ma séance</button>
+          <p class="portail-aide portail-aide--centre">Elle est toujours là, avec tout
+             ce que tu as déjà fait.</p>
+        </div>` : ''}
 
         <div class="portail-portes">
           <section class="portail-porte">
@@ -589,6 +657,11 @@ function dessiner() {
         btnScan.onclick = scanner;
     }
 
+    // REVENIR À SA SÉANCE : on referme, et rien d'autre. L'application est
+    // restée dessous, intacte.
+    const reprendre = document.getElementById('portail-reprendre');
+    if (reprendre) reprendre.onclick = () => fermerPortail();
+
     const libre = document.getElementById('portail-libre');
     if (libre) libre.onclick = () => { fermerPortail(); };
 
@@ -630,7 +703,13 @@ function dessiner() {
         document.getElementById('btn-role')?.click();
     };
 
-    document.getElementById('portail-login').focus();
+    // LE CURSEUR NE VA PAS DANS LE CHAMP QUAND LA CAMÉRA S'OUVRE.
+    //
+    // Poser le foyer sur « Identifiant » fait monter le clavier de la tablette.
+    // En temps normal c'est ce qu'il faut — c'est la première chose à remplir.
+    // Mais hors ligne, la ligne suivante ouvre le scanner : on aurait le
+    // clavier par-dessus la caméra, sur un écran où il n'y a rien à taper.
+    if (!scannerEstLeSeulChemin()) document.getElementById('portail-login').focus();
 
     // HORS LIGNE, LA CAMÉRA S'OUVRE D'ELLE-MÊME.
     //
@@ -674,6 +753,14 @@ function dessiner() {
  * refermer.
  */
 let cameraDejaOuverte = false;
+
+/**
+ * L'ÉCRAN D'ACCUEIL A-T-IL ÉTÉ DEMANDÉ ?
+ *
+ * Au niveau du module, pour la même raison que le drapeau du dessus : la porte
+ * se redessine (`porteASuivre`), et une variable locale repartirait à zéro.
+ */
+let ouvertALaDemande = false;
 
 /** Une panne de réseau, un mauvais code, un accès en pause : trois phrases. */
 function messageClair(err) {
