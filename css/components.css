@@ -1622,3 +1622,44 @@ body.mobile-view #toast-container {
     display: block; margin-top: 10px; color: var(--text-muted);
     font-size: .85rem; word-break: break-all;
 }
+
+/* --- « CETTE TABLETTE N'EST PLUS PRÊTE » -----------------------------------
+   Voir `js/ui/prepaPerdue.js`. Il ne se montre que sur une tablette qui a été
+   préparée un jour ET qui a perdu plus de la moitié de ses jeux : en pratique,
+   après une mise à jour dont le réapprovisionnement n'est pas allé au bout.
+
+   EN BAS DE L'ÉCRAN, ET FIXE, ET C'EST UNE MESURE QUI L'A DÉCIDÉ. Posé en
+   tête du `body`, il poussait la page vers le bas — ce qui est plus doux — mais
+   la sonde l'a mesuré INVISIBLE : la porte d'entrée (`.portail`) est
+   `position: fixed; inset: 0; z-index: 9000` et le recouvrait entièrement. Un
+   bandeau qu'on ne voit pas sur le premier écran de la tablette ne sert à rien.
+
+   `z-index: 9500` : AU-DESSUS de la porte (9000), SOUS les fenêtres (9999) et
+   sous la couche de jeu (10000). Il se montre donc sur le premier écran, et
+   jamais devant un exercice en cours ni devant une fenêtre de réglages.
+
+   IL NE FLOTTE PAS, ET DEUX MESURES L'ONT DÉCIDÉ. Fixé en bas de l'écran, il
+   faisait 390 × 179 — un cinquième d'une tablette — et la sonde a nommé ce
+   qu'il rendait inatteignable : « Ouvrir le parcours », « Je suis le
+   professeur », et les trois onglets du bas. C'est-à-dire tout ce que l'élève
+   vient faire. Fixé en HAUT, il ne coûtait rien à la porte d'entrée (perdus :
+   aucun) mais mangeait la barre du logiciel : « ☰ », « Préparer »,
+   « La classe ». Un avertissement qui coûte le menu n'est pas un
+   avertissement, c'est une panne de plus.
+
+   IL EST DONC DANS LE FLUX, et `prepaPerdue.js` le pose là où on le verra :
+   dans la boîte de la porte quand la porte est là, en tête du corps sinon.
+   Mesuré ainsi : plus rien d'inatteignable, ni à la porte, ni dans le logiciel.
+
+   ET IL N'EST PAS ROUGE : rien n'est cassé pour l'élève qui a du réseau —
+   c'est demain, sans réseau, que cela compte. */
+.prepa-perdue {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    margin: 0 0 18px; padding: 13px 16px;
+    background: color-mix(in srgb, #b7791f 16%, var(--bg-card));
+    border: 1px solid #b7791f; border-radius: 12px;
+    color: var(--text-main);
+}
+.prepa-perdue-mot { margin: 0; flex: 1 1 15rem; line-height: 1.4; min-width: 0;
+                    font-size: .95rem; }
+.prepa-perdue-gestes { display: flex; gap: 10px; flex-wrap: wrap; }

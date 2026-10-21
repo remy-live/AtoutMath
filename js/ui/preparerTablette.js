@@ -44,6 +44,7 @@
 import { allActivities } from '../core/registry.js';
 import { qrcodeSVG } from '../core/qrcode.js';
 import { peutSInstaller, proposerLInstallation, estDejaInstallee } from './installer.js';
+import { marquerLaPreparation, compterLesJeuxGardes } from './prepaPerdue.js';
 
 /** La page a-t-elle été ouverte pour préparer une tablette ? */
 export function cEstUnePreparation(recherche) {
@@ -342,5 +343,12 @@ export async function ouvrirLaPreparation(racine = document.body) {
         null);
     verdict.dataset.etat = v.etat;
     verdict.textContent = v.mot;
-    return { avant, apres, ...r, gardien: !!gardien };
+
+    // LA MARQUE, ET SEULEMENT SUR UN BON VERDICT. C'est elle qui autorisera le
+    // bandeau de `prepaPerdue.js` à parler le jour où une mise à jour n'aura
+    // pas tout reprise. Posée sur un échec, elle ferait crier ce bandeau au
+    // rechargement suivant — pour une préparation qui n'a jamais eu lieu.
+    const jeux = v.etat === 'ok' ? await compterLesJeuxGardes() : 0;
+    if (jeux) marquerLaPreparation(jeux);
+    return { avant, apres, ...r, gardien: !!gardien, jeux };
 }

@@ -418,6 +418,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     // n'était encore monté. D'où ce second drapeau, qui ne ment pas.
     window.__atoutmathPret = true;
     document.dispatchEvent(new CustomEvent('atoutmath_pret'));
+
+    // ── LA TABLETTE PRÉPARÉE EST-ELLE ENCORE PRÊTE ? ───────────────────────
+    //
+    // APRÈS le drapeau, et chargé à la demande : ce bandeau ne concerne que
+    // les tablettes de l'institutrice, et pas une classe de Rémy en salle
+    // informatique. Le module ne dit rien du tout sans la marque qu'une
+    // préparation réussie a laissée — il sort au premier `if`.
+    //
+    // ET LE DRAPEAU PASSE AVANT : une sonde qui attend `__atoutmathPret`
+    // n'a pas à attendre, en plus, une lecture de cache.
+    import('./ui/prepaPerdue.js')
+        .then(m => m.verifierLaPreparation())
+        .catch(() => { /* le bandeau est un secours, pas un dû */ });
 });
 
 /**

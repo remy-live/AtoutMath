@@ -9,18 +9,18 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v1008';
+const CACHE = 'atoutmath-v1009';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=1069',
-    './css/layout.css?v=1069',
-    './css/ui.css?v=1069',
-    './css/games.css?v=1069',
-    './css/components.css?v=1069',
-    './css/modules.css?v=1069',
+    './css/base.css?v=1070',
+    './css/layout.css?v=1070',
+    './css/ui.css?v=1070',
+    './css/games.css?v=1070',
+    './css/components.css?v=1070',
+    './css/modules.css?v=1070',
     './icones/icon-192.png',
     './icones/icon-512.png',
     // LES BIBLIOTHÈQUES, désormais servies avec l'application. Elles sont dans
@@ -49,12 +49,89 @@ self.addEventListener('install', (e) => {
     );
 });
 
+/**
+ * CE QUE L'ANCIEN CACHE GARDAIT, LE NOUVEAU LE REPREND.
+ *
+ * ── LE DÉFAUT, ET IL EST MESURÉ ────────────────────────────────────────────
+ *
+ * RÉMY : « Si je mets à jour atout math et que je réinstalle ça se met bien à
+ * jour ». `node tools/sondeMiseAJour.mjs`, sur le chemin exact de sa sœur —
+ * une tablette préparée, un dépôt, un rechargement :
+ *
+ *     tablette préparée      580 fichiers, 91 de js/games/
+ *     elle recharge,  à 10 s  19 fichiers  ← le NOYAU, et RIEN d'autre
+ *                       15 s 257 fichiers, 2 de js/games/
+ *                       40 s 257 fichiers, 2 de js/games/   (le palier)
+ *
+ * La mise à jour, elle, était PROPRE : c'est bien ce que ce cache nommé par
+ * version garantit. Mais la PRÉPARATION était perdue — 91 modules de jeu
+ * avant, deux après, et les deux sont `engine.js` et `configUI.js`, c'est-à-
+ * dire pas un seul jeu. Le rattrapage de huit secondes d'`index.html` ne range
+ * que ce que la page a demandé, et la page d'accueil ne demande pas les jeux.
+ *
+ * ET LA TABLETTE N'EN AVAIT PAS L'AIR : réseau coupé, le jeu tournait encore —
+ * depuis le cache du NAVIGATEUR, que personne ne contrôle. La même sonde,
+ * mesurant dix secondes plus tôt, voyait « L'application n'a pas démarré ».
+ *
+ * ── CE QU'ON FAIT, ET DANS CET ORDRE ──────────────────────────────────────
+ *
+ * On relit les ADRESSES de l'ancien cache avant de l'effacer, puis on garnit
+ * le nouveau avec. Une tablette préparée reste donc préparée, sans un geste.
+ *
+ * ON EFFACE TOUJOURS AVANT DE REMPLIR, et ce n'est pas un détail : garder les
+ * deux caches le temps du remplissage ferait cohabiter deux versions, et le
+ * secours hors ligne (`caches.match`, qui cherche dans TOUS les caches)
+ * pourrait rendre un fichier de l'ancienne. C'est exactement le défaut « v49 »
+ * décrit plus bas, et ce cache par version existe pour l'empêcher. On ne perd
+ * rien à effacer d'abord : une mise à jour ne se produit QUE si le réseau
+ * vient de servir un `sw.js` neuf — il est donc là pour le remplissage.
+ *
+ * ET S'IL S'EN VA EN COURS DE ROUTE, la tablette ne le devine pas : c'est le
+ * bandeau de `js/ui/prepaPerdue.js` qui le dit, avec le bouton qui refait la
+ * préparation. Les deux moitiés sont nécessaires — celle-ci évite le geste,
+ * celle-là évite de croire qu'il a eu lieu.
+ *
+ * ON NE REPREND PAS LES ADRESSES À QUESTION. Les six feuilles de style sont
+ * gardées sous le `?v=` de la version précédente ; la nouvelle leur en donne un
+ * autre, et `install` vient de les mettre en cache sous celui-là. Reprendre les
+ * anciennes clés ajouterait six entrées que personne ne demandera jamais.
+ *
+ * ET L'ON N'ÉCRIT PAS DE NUMÉRO DE VERSION DANS CE COMMENTAIRE : le rituel
+ * compte les `?v=NNN` du fichier et refuse de monter quoi que ce soit s'il en
+ * trouve deux différents. Un exemple chiffré ici bloque donc le dépôt, et le
+ * message d'erreur accuse `sw.js` sans dire que c'est une phrase.
+ */
+async function reprendreLAncien() {
+    const noms = (await caches.keys()).filter(k => k !== CACHE);
+    // LES ADRESSES D'ABORD, L'EFFACEMENT ENSUITE. Après `caches.delete`, il n'y
+    // a plus de liste à relire : l'ordre inverse perdrait la préparation pour
+    // de bon, et sans rien signaler.
+    const liste = [];
+    for (const nom of noms) {
+        try {
+            for (const req of await (await caches.open(nom)).keys()) {
+                const u = new URL(req.url);
+                if (u.origin !== self.location.origin) continue;
+                if (u.search) continue;
+                if (u.pathname.includes('/api/')) continue;
+                liste.push(u.href);
+            }
+        } catch (err) { /* un cache illisible n'empêche pas les autres */ }
+    }
+    await Promise.all(noms.map(k => caches.delete(k)));
+    // ON PREND LA MAIN AVANT DE REMPLIR : la page n'a aucune raison d'attendre
+    // six cents fichiers pour être pilotée. C'est `waitUntil`, plus bas, qui
+    // tient le worker en vie pendant le remplissage.
+    await self.clients.claim();
+    if (liste.length) await garnir(liste);
+    return liste.length;
+}
+
 self.addEventListener('activate', (e) => {
-    e.waitUntil(
-        caches.keys()
-            .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
-            .then(() => self.clients.claim())
-    );
+    // LE `catch` REPREND LA MAIN QUOI QU'IL ARRIVE. Un worker qui n'appelle pas
+    // `clients.claim()` laisse la page sous l'ANCIEN worker jusqu'au prochain
+    // chargement : la mise à jour aurait l'air de ne pas être arrivée.
+    e.waitUntil(reprendreLAncien().catch(() => self.clients.claim()));
 });
 
 /**

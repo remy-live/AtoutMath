@@ -5568,3 +5568,19 @@ le résultat n'existe pas** — 15 octobre 2026
   bouger (deux relevés égaux à cinq secondes), et rend la courbe ET le palier.
   `preparerTablette.js` a déjà écrit `attendreLeRangement` pour la page ; la
   sonde la réécrit à la main à chaque fois.
+
+## Un numéro de version cité dans un commentaire bloque le rituel
+
+- *Ce que je voulais faire* : expliquer dans `sw.js`, à la place où la décision
+  se prend, pourquoi on ne reprend pas les adresses portant un `?v=` périmé —
+  avec l'exemple chiffré, comme tout le reste du dépôt.
+- *Ce qui a coûté* : une sonde de dix minutes morte au milieu, sur
+  « ON NE MONTE RIEN : sw.js porte 2 numéros différents (1069, 1070) ». Le
+  rituel compte les `?v=NNN` du FICHIER ENTIER, commentaires inclus ; mes deux
+  exemples étaient donc deux versions contradictoires. Le message accuse
+  `sw.js` et ne dit pas que la contradiction est une phrase — on relit six
+  occurrences de balises avant de penser à sa propre prose.
+- *Combien de fois* : |
+- *Ce qui manque* : que `tools/version.mjs` dise OÙ sont les numéros qu'il
+  trouve (ligne et texte autour) quand il refuse. Trois lignes de plus dans le
+  message, et la piste est immédiate au lieu d'être une relecture.

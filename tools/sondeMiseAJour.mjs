@@ -58,7 +58,16 @@ const remettre = () => {
     }
 };
 
-/** Ce que le navigateur garde : les caches, leur contenu, et les jeux dedans. */
+/**
+ * Ce que le navigateur garde : les caches, leur contenu, et les jeux dedans —
+ * ET L'ÉTAT DES WORKERS, qui a tranché une fois.
+ *
+ * Sans les états, la mesure disait « les deux caches coexistent à 40 s » sans
+ * dire POURQUOI, et j'ai cherché le défaut dans `reprendreLAncien` — où il
+ * n'était pas. `installing` / `waiting` / `active` nomment le coupable en une
+ * ligne : un worker qui attend n'a pas encore effacé, et ce n'est pas la même
+ * chose qu'un worker qui efface mal.
+ */
 const etatDuCache = (page) => page.evaluate(async () => {
     const noms = await caches.keys();
     const detail = {};
@@ -68,7 +77,11 @@ const etatDuCache = (page) => page.evaluate(async () => {
         detail[n] = cles.length;
         jeux += cles.filter(r => /\/js\/games\//.test(r.url)).length;
     }
-    return { noms, detail, jeux };
+    const reg = await navigator.serviceWorker.getRegistration();
+    const quoi = (w) => (w ? w.state : null);
+    return { noms, detail, jeux,
+        sw: [quoi(reg && reg.installing), quoi(reg && reg.waiting),
+             quoi(reg && reg.active)].filter(Boolean).join('/') };
 });
 
 const attendreLeVerdict = (page) => page.waitForFunction(() => {
