@@ -496,6 +496,62 @@ export async function ouvrirSonde(o = {}) {
             return { pixels: n, part: n / total };
         },
 
+        /**
+         * COMBIEN DE REQUÊTES LE SERVEUR A-T-IL VRAIMENT SERVIES ?
+         *
+         * ── LA FRICTION QUE CES DEUX LIGNES FERMENT, PAYÉE QUATRE FOIS ────
+         *
+         * Mesurer ce qui traverse le réseau est un piège à trois étages, et
+         * les trois réponses fausses ont l'air justes :
+         *
+         *   `page.on('request')`     compte ce que la page DEMANDE, y compris
+         *                            ce que le service worker sert depuis son
+         *                            cache sans toucher au réseau. 578 là où
+         *                            le serveur en a vu 38.
+         *   `performance` +          une réponse rendue PAR un service worker
+         *   `transferSize`           porte TOUJOURS `transferSize: 0`, qu'il
+         *                            soit allé au réseau ou non ; et ses
+         *                            propres requêtes ne sont pas dans le
+         *                            `performance` de la page. Annonçait 1.
+         *   le tampon de             250 entrées par défaut. Plein, il cesse
+         *   `performance`            d'enregistrer sans rien dire, et l'on
+         *                            prend son silence pour un zéro.
+         *
+         * Le seul qui sache est celui qui répond : `siteEssai.php` journalise
+         * chaque requête servie, et l'on compte ses lignes.
+         */
+        requetesServies() {
+            if (!info || !info.bac) return 0;
+            try {
+                return (readFileSync(info.bac + '/log', 'utf8')
+                    .match(/\]: (GET|POST) /g) || []).length;
+            } catch (e) { return 0; }
+        },
+
+        /**
+         * ATTEND QUE LE SERVEUR SE TAISE, avant de prendre un repère.
+         *
+         * QUATRIÈME COMPTAGE FAUX, ET C'EST LE MÊME COUPABLE QUE PARTOUT
+         * AILLEURS DANS CE FICHIER : la page déjà chargée garde son service
+         * worker, qui RANGE en arrière-plan pendant une dizaine de secondes
+         * (`index.html` lui envoie la liste à huit secondes). Un repère pris
+         * aussitôt compte ce rangement-là dans la mesure suivante : 271
+         * requêtes annoncées pour une préparation qui en fait 38.
+         *
+         * @returns {Promise<number>} le compte, une fois qu'il ne bouge plus
+         */
+        async attendreLeCalme(plafondMs = 60000) {
+            let n = this.requetesServies();
+            const fin = Date.now() + plafondMs;
+            while (Date.now() < fin) {
+                await dormir(1500);
+                const m = this.requetesServies();
+                if (m === n) return n;
+                n = m;
+            }
+            return n;
+        },
+
         async fermer() {
             await nav.close();
             // ON NE TUE QUE CE QU'ON A LANCÉ — ET TOUT CE QU'ON A LANCÉ.

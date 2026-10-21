@@ -2766,3 +2766,63 @@ je croyais savoir.
    une version précédente — refaire la préparation » avec le bouton. Coût : un
    geste par tablette et par mise à jour, mais rien ne se télécharge sans
    qu'on l'ait voulu.
+
+### 22 septies. « Un apk ou un zip que la tablette pourrait télécharger ? »
+
+> « Ne le fais pas mais est ce que le logiciel serait capable de produire soit
+> un apk soit un zip que l tablette pourrait télécharger quand elle est en
+> ligne ? »
+
+Puis, la recommandation faite : **« Oui je suis tes recommandations »**.
+
+**L'APK : techniquement possible, mauvaise porte.** Un TWA n'embarque rien (il
+ouvre le site dans Chrome) ; un emballage Capacitor embarque bien les fichiers,
+mais demande la chaîne Android complète (ici `java` et `gradle` sont là,
+`sdkmanager` et `adb` sont absents), une clé de signature à garder des années,
+l'adresse de l'API à retravailler, « sources inconnues » à activer sur chacune
+des vingt-cinq tablettes — souvent verrouillé sur du matériel d'école — et un
+APK à RÉINSTALLER à chaque mise à jour. Et si sa sœur a des iPad, la question
+est close.
+
+**LE ZIP DÉCOMPRESSÉ SUR LA TABLETTE : impasse.** Un dossier ouvert en `file://`
+ne démarre pas — l'application est faite de modules natifs, que tous les
+navigateurs refusent sous ce schéma, et il n'y a pas de service worker.
+
+**LE ZIP QUE LA PAGE AVALE : fait.** `api/horslige.php` fabrique le paquet,
+`js/ui/paquetHorsLigne.js` le lit avec `DecompressionStream('deflate-raw')` —
+mesuré présent dans le navigateur, donc aucune bibliothèque nouvelle — et pose
+chaque fichier dans le cache du service worker.
+
+```
+tablette neuve qui ouvre ?preparer   sans le paquet      avec
+requêtes servies                          599             38
+fichiers en mémoire                       584            686
+modules de jeu                             91             91
+durée                                       5 s            6 s
+```
+
+**LE GAIN EST EN ALLERS-RETOURS, PAS EN OCTETS**, et je l'avais annoncé de
+travers. Le `.htaccess` active `mod_deflate` sur le JavaScript : servis un par
+un, les fichiers arrivent compressés eux aussi, et le ZIP pèse à peu près leur
+somme. Sur le wifi d'une école, ce sont les allers-retours qui coûtent.
+
+**ET LE PAQUET DOIT ARRIVER AVANT L'APPLICATION**, ce que le premier montage ne
+faisait pas. Mesuré : monter la page de préparation coûte **520 requêtes à elle
+seule** — `js/core` compte 415 fichiers, et `app.js` importe le catalogue tout
+en haut. Le paquet renvoyait ensuite les mêmes fichiers : chez Rémy, où Apache
+compresse déjà, il COÛTAIT des octets. `index.html` le demande maintenant avant
+de charger `js/app.js`.
+
+**CE QUE CE DÉPLACEMENT A CASSÉ, ET QUI NE SE VOYAIT PAS** : `app.js` posait son
+écouteur `DOMContentLoaded`, qui est déjà passé quand un `import()` dynamique le
+charge. Symptôme : `__atoutmathDemarre` à `true` — le module s'est bien chargé —
+et `__atoutmathPret` jamais posé. Une page qui a tout téléchargé et qui ne monte
+rien, sans une ligne rouge. Il regarde maintenant `document.readyState`.
+
+**ET LA MÉMOIRE QU'ON NE VIDE PAS** : `navigator.storage.persist()` est demandé
+à la fin de la préparation. C'est la parade au seul vrai avantage d'un APK — les
+fichiers d'une application installée ne s'effacent pas quand la place manque, un
+cache de navigateur si. MESURÉ : refusé (`false`) dans un navigateur sans
+engagement ni installation, ce qui est normal et attendu ; Chrome l'accorde
+d'autant plus volontiers que l'application est sur l'écran d'accueil — raison de
+plus pour que la préparation demande l'installation EN PREMIER.

@@ -5584,3 +5584,37 @@ le résultat n'existe pas** — 15 octobre 2026
 - *Ce qui manque* : que `tools/version.mjs` dise OÙ sont les numéros qu'il
   trouve (ligne et texte autour) quand il refuse. Trois lignes de plus dans le
   message, et la piste est immédiate au lieu d'être une relecture.
+
+## Compter les requêtes réseau : trois outils, trois réponses fausses
+
+- *Ce que je voulais faire* : savoir combien de requêtes une tablette envoie
+  pour se préparer, avant et après le paquet hors ligne. C'est le chiffre qui
+  justifiait toute la tâche.
+- *Ce qui a coûté* : quatre mesures et près d'une heure, et chacune avait l'air
+  juste. `page.on('request')` : 578 — il compte ce que la page DEMANDE, y
+  compris ce que le service worker sert depuis son cache. `performance` +
+  `transferSize` : 1 — une réponse rendue PAR un service worker porte toujours
+  `transferSize: 0`, et les requêtes du worker ne sont pas dans le
+  `performance` de la page. Le tampon de `performance` : 250 entrées, plein, il
+  cesse d'enregistrer sans rien dire. Et enfin le journal du serveur, pris trop
+  tôt : 271, parce que la page précédente rangeait encore en arrière-plan. La
+  vraie réponse était 38.
+- *Combien de fois* : ||||
+- *Ce qui manque* : c'est fait — `s.requetesServies()` et `s.attendreLeCalme()`
+  sont dans `tools/sonde.mjs`, avec les trois pièges écrits à côté. Toute sonde
+  qui voudra compter des requêtes les retrouvera tendus.
+
+## Un garde qui cherche un nom de fichier trouve son propre commentaire
+
+- *Ce que je voulais faire* : garder l'ordre de chargement dans `index.html` —
+  le paquet hors ligne AVANT `js/app.js`, sans quoi il coûte au lieu de gagner.
+- *Ce qui a coûté* : un aller-retour d'`epreuveTombe`, qui a dit « CETTE
+  ÉPREUVE NE GARDE RIEN ». L'épreuve cherchait `amorcePreparation.js` dans
+  `index.html` et trouvait le COMMENTAIRE que je venais d'écrire au-dessus des
+  lignes à garder. Deuxième fois dans la journée qu'un garde mesure ma prose :
+  l'autre cherchait `.keys()` et trouvait `caches.keys()`.
+- *Combien de fois* : ||
+- *Ce qui manque* : rien de neuf — `sansCommentaires` existe pour les sources
+  JavaScript, mais pas pour HTML. La vraie règle est plus simple et vaudrait
+  d'être écrite dans `epreuveTombe` quand il annonce une épreuve creuse :
+  **chercher la FORME exécutable** (`import('./x.js')`), jamais le nom seul.

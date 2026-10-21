@@ -85,7 +85,21 @@ function refreshViews() {
     renderDrilldown();
 }
 
-window.addEventListener('DOMContentLoaded', async () => {
+// `DOMContentLoaded` PEUT ÊTRE DÉJÀ PASSÉ, ET ALORS RIEN NE DÉMARRE.
+//
+// MESURÉ, et le symptôme ne désigne pas la cause : `__atoutmathDemarre` à
+// `true` — donc le module s'est bien chargé — et `__atoutmathPret` jamais posé.
+// Une page qui a tout téléchargé et qui ne monte rien.
+//
+// POURQUOI MAINTENANT : `index.html` ne charge plus ce fichier par un
+// `<script type="module" src>` — qui s'exécute, lui, AVANT `DOMContentLoaded`
+// — mais par un `import()` dynamique, pour pouvoir poser le paquet hors ligne
+// d'abord. Un import dynamique se résout APRÈS l'événement, et l'écouteur
+// arrivait à un train déjà parti.
+//
+// On regarde donc l'état du document au lieu de parier dessus. C'est la forme
+// qu'il fallait depuis le début : elle est juste dans les deux cas.
+const demarrerLApplication = async () => {
     initDeviceMode();
     initGamificationEngine();
     initGamificationUI();
@@ -420,6 +434,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.dispatchEvent(new CustomEvent('atoutmath_pret'));
 
     // ── LA TABLETTE PRÉPARÉE EST-ELLE ENCORE PRÊTE ? ───────────────────────
+    // (voir plus bas pour la mise en route elle-même)
     //
     // APRÈS le drapeau, et chargé à la demande : ce bandeau ne concerne que
     // les tablettes de l'institutrice, et pas une classe de Rémy en salle
@@ -431,7 +446,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     import('./ui/prepaPerdue.js')
         .then(m => m.verifierLaPreparation())
         .catch(() => { /* le bandeau est un secours, pas un dû */ });
-});
+};
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', demarrerLApplication);
+} else {
+    demarrerLApplication();
+}
 
 /**
  * LE MENU DES OUTILS RARES, en haut à droite.

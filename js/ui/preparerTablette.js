@@ -45,6 +45,44 @@ import { allActivities } from '../core/registry.js';
 import { qrcodeSVG } from '../core/qrcode.js';
 import { peutSInstaller, proposerLInstallation, estDejaInstallee } from './installer.js';
 import { marquerLaPreparation, compterLesJeuxGardes } from './prepaPerdue.js';
+import { poserLePaquet, demanderUneMemoireDurable, leNavigateurSaitLire }
+    from './paquetHorsLigne.js';
+import { paquetDejaPose, ADRESSE_DU_PAQUET } from './amorcePreparation.js';
+
+export { ADRESSE_DU_PAQUET };
+
+/**
+ * LE PAQUET D'ABORD, LES SIX CENTS REQUÊTES EN SECOURS.
+ *
+ * MESURÉ : 599 requêtes servies deviennent 38, et le cache finit PLUS complet
+ * (686 fichiers contre 584). Mais le paquet demande PHP, et l'application sait
+ * vivre sans — une copie sur GitHub Pages, par exemple, rendrait la source du
+ * script ou une page d'erreur. On essaie donc, et l'on retombe sans bruit sur
+ * le chemin qui a fait ses preuves : une préparation plus bavarde vaut mieux
+ * qu'une préparation qui échoue.
+ *
+ * @returns {Promise<{fichiers:number, octets:number}|null>} null = pas de paquet
+ */
+export async function essayerLePaquet(dire, adresse) {
+    // L'AMORCE L'A DÉJÀ FAIT, DANS LA QUASI-TOTALITÉ DES CAS. `index.html`
+    // demande le paquet AVANT de charger l'application, précisément pour que
+    // les cinq cents modules du catalogue sortent du cache. Le redemander ici
+    // téléchargerait six mégaoctets une seconde fois.
+    const deja = paquetDejaPose();
+    if (deja) {
+        const r = await deja;
+        if (r) return r;
+    }
+    if (!leNavigateurSaitLire()) return null;
+    try {
+        return await poserLePaquet(adresse || ADRESSE_DU_PAQUET, dire);
+    } catch (e) {
+        // ON NE JETTE PAS, ET ON NE SE TAIT PAS NON PLUS : la console dira
+        // pourquoi le jour où Rémy la regardera, et la préparation continue.
+        console.warn('[preparation] paquet hors ligne indisponible :', e.message);
+        return null;
+    }
+}
 
 /** La page a-t-elle été ouverte pour préparer une tablette ? */
 export function cEstUnePreparation(recherche) {
@@ -252,7 +290,8 @@ export async function ouvrirLaPreparation(racine = document.body) {
                 ${ligne('installer', 'Mettre AtoutMath sur l\'écran d\'accueil',
         'Pour la retrouver sans taper d\'adresse — et pour que la mémoire ne s\'efface pas.')}
                 ${ligne('memoire', 'Mettre tous les exercices en mémoire',
-        'Environ 3 Mo. C\'est ce qui manque le plus souvent, et cela ne se voit pas.')}
+        'Un paquet d\'environ 6 Mo, en une seule fois. C\'est ce qui manque le '
+        + 'plus souvent, et cela ne se voit pas.')}
                 ${ligne('camera', 'Autoriser la caméra',
         'Pour scanner le QR code de la maîtresse sans être interrompu en classe.')}
             </ol>
@@ -326,6 +365,20 @@ export async function ouvrirLaPreparation(racine = document.body) {
     //       celui qu'on oublierait de lancer.
     const verdict = racine.querySelector('[data-verdict]');
     poser('memoire', 'encours', 'En cours…', null);
+
+    // ── LE PAQUET, S'IL EST LÀ : une requête au lieu de six cents ───────
+    const paquet = await essayerLePaquet((faits, total, etape) => {
+        poser('memoire', 'encours', etape === 'telechargement'
+            ? 'Téléchargement du paquet (environ 6 Mo)…'
+            : `Mise en mémoire : ${faits} sur ${total} fichiers…`);
+    });
+
+    // ── ET L'ON OUVRE QUAND MÊME CHAQUE EXERCICE ───────────────────────
+    //
+    // Le paquet a posé des FICHIERS ; cela ne dit pas qu'ils s'exécutent. Les
+    // charger les ouvre vraiment, et c'est ce qui donne `manques` — le nom de
+    // l'exercice qui ne s'ouvrira pas jeudi. Après le paquet, ils viennent du
+    // cache : plus aucune requête, et la vérification est quasi gratuite.
     const r = await chargerToutesLesActivites((faits, total) => {
         poser('memoire', 'encours', `${faits} sur ${total} exercices…`);
     });
@@ -335,11 +388,15 @@ export async function ouvrirLaPreparation(racine = document.body) {
 
     // LE SERVICE WORKER EST-IL SEULEMENT LÀ ? Sans lui, tout ce qu'on vient de
     // charger est dans le cache du navigateur, c'est-à-dire nulle part de sûr.
-    const gardien = envoyes > 0;
+    // LE PAQUET COMPTE AUTANT QUE LE MESSAGE : il a écrit dans le cache
+    // lui-même, et un cache qui a grossi EST un gardien, même si le worker
+    // n'a pas encore pris la main.
+    const gardien = envoyes > 0 || (!!paquet && apres > avant);
 
     const v = direLeVerdict({ faits: r.faits, manques: r.manques, gardien });
     poser('memoire', v.etat === 'ok' ? 'fait' : 'rate',
-        v.memoire || `${r.faits} exercices gardés — ${avant} puis ${apres} fichiers en mémoire.`,
+        v.memoire || `${r.faits} exercices gardés — ${avant} puis ${apres} fichiers `
+            + 'en mémoire' + (paquet ? ', en une seule requête.' : '.'),
         null);
     verdict.dataset.etat = v.etat;
     verdict.textContent = v.mot;
@@ -350,5 +407,14 @@ export async function ouvrirLaPreparation(racine = document.body) {
     // rechargement suivant — pour une préparation qui n'a jamais eu lieu.
     const jeux = v.etat === 'ok' ? await compterLesJeuxGardes() : 0;
     if (jeux) marquerLaPreparation(jeux);
-    return { avant, apres, ...r, gardien: !!gardien, jeux };
+
+    // ── ET L'ON DEMANDE QUE CETTE MÉMOIRE NE SOIT PAS VIDÉE ────────────
+    //
+    // C'est la parade au seul vrai avantage d'un APK : les fichiers d'une
+    // application installée ne s'effacent pas quand la place manque, un cache
+    // de navigateur si. Demandé APRÈS l'installation et après le rangement —
+    // Chrome accorde le statut durable d'autant plus volontiers que
+    // l'application est sur l'écran d'accueil et qu'elle a été utilisée.
+    const durable = await demanderUneMemoireDurable();
+    return { avant, apres, ...r, gardien: !!gardien, jeux, paquet, durable };
 }

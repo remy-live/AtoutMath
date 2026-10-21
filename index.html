@@ -86,12 +86,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1070">
-    <link rel="stylesheet" href="css/layout.css?v=1070">
-    <link rel="stylesheet" href="css/ui.css?v=1070">
-    <link rel="stylesheet" href="css/games.css?v=1070">
-    <link rel="stylesheet" href="css/components.css?v=1070">
-    <link rel="stylesheet" href="css/modules.css?v=1070">
+    <link rel="stylesheet" href="css/base.css?v=1071">
+    <link rel="stylesheet" href="css/layout.css?v=1071">
+    <link rel="stylesheet" href="css/ui.css?v=1071">
+    <link rel="stylesheet" href="css/games.css?v=1071">
+    <link rel="stylesheet" href="css/components.css?v=1071">
+    <link rel="stylesheet" href="css/modules.css?v=1071">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1980,8 +1980,14 @@
                 : (e && e.message) || 'erreur inconnue');
         }, true);
 
-        setTimeout(() => {
+        window.__atoutmathPaquet = false;
+        const surveiller = () => setTimeout(() => {
             if (window.__atoutmathDemarre) return;
+            // LE PAQUET HORS LIGNE PEUT DURER PLUS DE SIX SECONDES, et c'est
+            // normal : il pèse près de six mégaoctets. Sans ce report, la
+            // tablette qu'on prépare affiche « L'application n'a pas démarré »
+            // par-dessus le mot d'attente — un faux diagnostic, au pire moment.
+            if (window.__atoutmathPaquet) return surveiller();
             // Le voile d'avant-porte se lève AVANT ce panneau : il masque les
             // barres, et il masquerait aussi bien l'explication de la panne.
             document.documentElement.classList.remove('avant-porte');
@@ -2005,8 +2011,37 @@
                 + 'le cache : <b>Ctrl+Maj+R</b> (ou &#8984;+Maj+R).</p>';
             document.body.appendChild(el);
         }, 6000);
+        surveiller();
     </script>
-    <script type="module" src="js/app.js"></script>
+    <!-- LE PAQUET HORS LIGNE AVANT L'APPLICATION, SUR `?preparer` SEULEMENT.
+
+         MESURÉ, et c'est ce qui a fait écrire ces lignes : monter la page de
+         préparation coûte 520 requêtes AVANT que le paquet ne soit demandé —
+         `js/core` compte 415 fichiers, et `app.js` importe le catalogue et le
+         registre tout en haut. Le paquet renvoyait ensuite les mêmes fichiers.
+
+         Demandé ICI, il arrive le premier, et les cinq cents modules sortent
+         ensuite du cache sans toucher au réseau. Voir
+         `js/ui/amorcePreparation.js`, qui porte la mesure en entier.
+
+         ET L'APPLICATION DÉMARRE QUOI QU'IL ARRIVE : le `catch` ne garde rien
+         pour lui. Un paquet absent — un hébergement sans PHP — doit coûter une
+         préparation plus lente, jamais une page blanche. -->
+    <script type="module">
+        (async () => {
+            try {
+                if (new URLSearchParams(location.search).has('preparer')) {
+                    window.__atoutmathPaquet = true;
+                    const m = await import('./js/ui/amorcePreparation.js');
+                    await m.poserLePaquetAuDemarrage();
+                }
+            } catch (e) {
+                console.warn('[amorce]', e && e.message);
+            }
+            window.__atoutmathPaquet = false;
+            await import('./js/app.js');
+        })();
+    </script>
     <script>
         // Init theme immediately to prevent flash
         const savedTheme = localStorage.getItem('mathbox-theme') || 'light';
