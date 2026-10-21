@@ -80,16 +80,21 @@ test('TOUTES LES MARCHES RÉPONDENT JUSTE', () => {
                     `${essai} contre ${vrai} : l'essai est trop loin`);
             }
             if (e.id === 'lequel') {
-                const nb = nombresDe(t);
-                const [p1, p2, p3, p4, a, b, c] = nb;
-                const quatre = [p1, p2, p3, p4];
+                // L'ÉQUATION SE LIT DANS LA QUESTION D'ÉCRAN, qui ne porte
+                // plus que l'équation — Rémy : « comme c'est un qcm, ne mets
+                // pas les propositions dans la question ».
+                const [a, b, c] = nombresDe(t);
+                const quatre = it.choices.map(ch => Number(ch.value));
                 const solutions = quatre.filter(v => a * v + b === c);
                 assert.equal(solutions.length, 1,
                     `${solutions.length} solutions parmi ${quatre} pour ${a}x + ${b} = ${c}`);
                 assert.equal(Number(it.answer), solutions[0], t);
-                // ET LES QUATRE SONT ÉCRITS DANS L'ÉNONCÉ : la feuille n'a pas
-                // de boutons.
-                const papier = it.prompt.papier || t;
+                // L'ÉCRAN NE RÉPÈTE PAS SES BOUTONS…
+                assert.doesNotMatch(t, /Parmi/,
+                    `l'écran écrit encore ses propositions : « ${t} »`);
+                // … ET LA FEUILLE LES ÉCRIT, puisqu'elle n'a pas de boutons.
+                const papier = it.prompt.papier;
+                assert.ok(papier && papier !== t, 'la feuille n\'a pas sa propre phrase');
                 it.choices.forEach(ch => assert.ok(papier.includes(String(ch.value)),
                     `${ch.value} n'est pas dans l'énoncé de papier`));
             }
@@ -141,6 +146,99 @@ test('TOUTES LES MARCHES RÉPONDENT JUSTE', () => {
             }
         }
     }
+});
+
+test('SA REVUE DU 21 OCTOBRE — CE QU\'ELLE A CHANGÉ', () => {
+    // Quatre demandes de Rémy, quatre règles. Elles tiennent ensemble parce
+    // qu'elles viennent du même retour, et qu'aucune n'a de sens sans les
+    // autres : l'écran se dégage, la feuille garde ce qu'elle seule doit
+    // porter.
+
+    // 1 · LE PROGRAMME S'ÉCRIT LIGNE À LIGNE. Rémy : « Écris le programme de
+    //     calcul ligne à ligne. » D'un seul tenant entre guillemets, l'ORDRE
+    //     des lignes ne se voit pas — or c'est tout le chapitre.
+    for (const id of ['programme-direct', 'programme-retour', 'programme-ecrire']) {
+        const it = G.generate({ marches: [id] }, { rng: makeRng('rv-' + id) });
+        const lignes = (it.prompt.html.match(/<li>/g) || []).length;
+        assert.equal(lignes, 3, `${id} : ${lignes} ligne(s) dans le programme`);
+        // ET LA FEUILLE LE GARDE D'UN SEUL TENANT : une ligne de fiche est une
+        // ligne, et son rendu compose son texte en prose.
+        assert.match(it.prompt.papier, /« Choisis un nombre\./, it.prompt.papier);
+        assert.doesNotMatch(it.prompt.papier, /<li>/);
+    }
+
+    // 2 · ON CALCULE LE MEMBRE DE GAUCHE AVANT DE CONCLURE. Rémy : « Ce serait
+    //     bien que l'élève calcule à gauche et à droite avec le membre de
+    //     gauche et le membre de droite. »
+    for (let k = 0; k < 40; k++) {
+        const it = G.generate({ marches: ['membre-gauche'] },
+            { rng: makeRng('mg' + k), index: k, total: 40 });
+        const [essai, a, b, c] = nombresDe(it.prompt.text);
+        assert.equal(Number(it.answer), a * essai + b, it.prompt.text);
+        assert.equal(it.answerKind, 'numeric');
+        assert.match(it.prompt.text, /membre de GAUCHE/, it.prompt.text);
+        // LE MEMBRE DE DROITE EST NOMMÉ DANS L'EXPLICATION : c'est le mot
+        // qu'on apprend ici, et il ne s'apprend qu'en étant dit.
+        assert.match(it.explanation, /membre de droite/, it.explanation);
+        assert.ok(c > 0);
+    }
+
+    // 3 · ON ÉCRIT L'ÉQUATION, ON NE DONNE PAS LA RÉPONSE. Rémy : « Il faudrait
+    //     juste pouvoir écrire l'équation qui correspond à un problème. »
+    for (let k = 0; k < 60; k++) {
+        const it = G.generate({ marches: ['ecrire-equation'] },
+            { rng: makeRng('ee' + k), index: k, total: 60 });
+        const [fixe, par, total] = nombresDe(it.prompt.text);
+        assert.equal(it.answer, `${par}x + ${fixe} = ${total}`, it.prompt.text);
+        assert.equal(it.choices.length, 4, it.prompt.text);
+        // LE FIXE ET LE RÉPÉTÉ NE SONT JAMAIS LE MÊME NOMBRE : sinon le leurre
+        // qui les ÉCHANGE vaut la bonne réponse, et il ne reste que trois
+        // propositions sur une question dont tout le travail est de les
+        // distinguer. Vu sur la sortie : « 2 € de prise en charge, puis 2 €
+        // par kilomètre ».
+        assert.notEqual(fixe, par, it.prompt.text);
+        assert.equal(new Set(it.choices.map(c => String(c.value))).size, 4,
+            it.choices.map(c => c.value).join(' | '));
+    }
+
+    // 4 · « DE » S'ÉLIDE DEVANT UNE VOYELLE. Lu sur la sortie : « le nombre de
+    //     heures ». La règle vit dans `core/accord.js`, une seule fois.
+    const unites = new Set();
+    for (let k = 0; k < 60; k++) {
+        const t = G.generate({ marches: ['ecrire-equation'] },
+            { rng: makeRng('el' + k), index: k, total: 60 }).prompt.text;
+        assert.doesNotMatch(t, /nombre de (h|[aeiouéè])/i, t);
+        unites.add((t.match(/nombre d[e'] ?(\S+?)\./) || [])[1]);
+    }
+    assert.ok(unites.has('heures'), `aucune unité à voyelle en soixante tirages : ${[...unites]}`);
+});
+
+test('LA FEUILLE DE STYLE TIENT CE QUE L\'ÉCRAN A MONTRÉ', async () => {
+    // DEUX RÈGLES MESURÉES AU NAVIGATEUR, et qu'aucune épreuve de générateur ne
+    // peut voir : elles ne sont ni dans l'énoncé ni dans la réponse, elles
+    // sont dans la MISE EN PAGE. On garde donc la feuille de style elle-même,
+    // comme le fait déjà l'épreuve des problèmes d'argent.
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
+
+    // 1 · LE PROGRAMME PASSE À LA LIGNE SOUS SON TITRE. Écrit `inline-block`,
+    //     il flottait À CÔTÉ de « Programme de calcul : », qui se retrouvait
+    //     aligné sur sa DERNIÈRE ligne — vu sur la photo : « Programme de
+    //     calcul :3. Multiplie le résultat par 5. »
+    const prog = (css.match(/\.ap-programme \{[^}]*\}/) || [''])[0];
+    assert.ok(prog, 'la liste du programme n\'a plus de style');
+    assert.match(prog, /display: block/, prog);
+    assert.doesNotMatch(prog, /display: inline/, prog);
+
+    // 2 · DANS UN PROBLÈME, LES DEUX BORDS GAUCHES SE RÉPONDENT. Rémy :
+    //     « Présentation de texte à revoir. » MESURÉ : ce n'était pas la
+    //     taille — 21,5 px et 28,4 px — mais l'ALIGNEMENT : l'énoncé à gauche,
+    //     la question centrée. Mesuré au navigateur après correction : les
+    //     deux bords à 182 px.
+    const pb = (css.match(/\.ap-probleme \.ap-situation,\s*\n\.ap-probleme \.ap-question \{[^}]*\}/) || [''])[0];
+    assert.ok(pb, 'l\'énoncé et la question du problème n\'ont plus de largeur commune');
+    assert.match(pb, /width: 100%/, pb);
+    assert.match(pb, /text-align: left/, pb);
 });
 
 test('LES MARCHES FERMÉES NE RÉPONDENT PAS TOUJOURS PAREIL', () => {

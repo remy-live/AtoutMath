@@ -35,6 +35,7 @@
 // Pur : aucune dépendance au DOM, il se teste sous Node.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { deDevant } from '../accord.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
@@ -106,7 +107,9 @@ const choisir = (liste, rng) => liste[rng.int(0, liste.length - 1)];
  * cinquième non — et c'est exactement le genre de faute qu'on ne voit plus
  * après l'avoir lue trois fois.
  */
-const deDevant = (mot) => (/^[aeiouyàâéèêëîïôöûüh]/i.test(mot) ? `d'${mot}` : `de ${mot}`);
+// `deDevant` VIT MAINTENANT DANS `core/accord.js` : les équations en ont eu
+// besoin à leur tour — « le nombre de heures » —, et une règle de langue
+// écrite à deux endroits finit par diverger.
 
 /** La série telle qu'on l'écrit dans un énoncé : séparée par des points-virgules. */
 const ecrireSerie = (serie) => serie.join(' ; ');

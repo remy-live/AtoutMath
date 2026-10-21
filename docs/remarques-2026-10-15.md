@@ -2264,3 +2264,134 @@ avaient la même cause : le fichier possédait DÉJÀ sa fonction d'écriture,
 employée pour la démonstration et oubliée dans l'explication juste à côté. La
 règle vit maintenant dans `js/core/signeMoins.js`, et une garde du catalogue
 la tient pour tout le dépôt.
+
+## 17. Sa revue du catalogue — v1060, le 21 octobre
+
+> « @revue-2026-10-21.md » — six remarques, deux images.
+
+**C'EST LE PREMIER RETOUR TERRAIN SUR CE QUE J'AI ÉCRIT HIER.** Cinq des six
+exercices commentés datent du 20 octobre ; il les a ouverts, joués, et dit ce
+qui n'allait pas. Chaque remarque est recopiée telle quelle avant d'être
+travaillée.
+
+### 17.1 — « Décomposer, PGCD et PPCM » : trop dur, et la potence
+
+> « Quel est le plus petit nombre premier qui divise 91 ? <- c'est pas facile,
+> Quel est le plus petit nombre premier qui divise 198 ? idem.
+> Complète la décomposition de 24 en facteurs premiers
+> Il faudrait plutôt le faire en colonne »
+
+**ET IL JOINT LA PHOTO DE SON CAHIER** : la potence, telle qu'on l'écrit au
+tableau — le nombre à gauche, le diviseur à droite d'un trait vertical, et l'on
+descend.
+
+```
+120 | 2
+ 60 | 2
+ 30 | 2
+ 15 |
+```
+
+C'est la DEUXIÈME fois qu'il demande la même chose sous une autre forme : hier
+c'était « bien trop difficile » pour tout le chapitre, aujourd'hui c'est le
+geste d'écriture lui-même. La décomposition ne se « complète » pas dans un
+trou au milieu d'une ligne : elle SE POSE, et la colonne est ce qui fait voir
+qu'on divise encore et encore par le même nombre tant qu'on peut.
+
+Et 91 (= 7 × 13) comme 198 (= 2 × 9 × 11) demandent de chercher au-delà des
+tables : 91 n'est divisible ni par 2, ni par 3, ni par 5, et le 7 ne se voit
+pas. Ce n'est pas la marche d'entrée qu'on croyait.
+
+### 17.2 — « Tester, Programmes et Équations » : cinq demandes
+
+> « On considère l'équation 4x + 3 = 11. Le nombre 3 est-il solution ?
+> Ce serait bien que l'élève calcule à gauche et à droite avec le membre de
+> gauche et le membre de droite. »
+
+> « Programme de calcul : « Choisis un nombre. Multiplie-le par 4. Ajoute 8. »
+> Écris le programme de calcul ligne à ligne. »
+
+> « Parmi 4x + 5 ; 4(x + 5) ; 4x − 5 et 4(x − 5), quelle expression traduit ce
+> programme ? Pour la question comme c'est un qcm, ne mets pas les propositions
+> dans la question. Je te joins un screenshot, je trouve que niveau design de
+> texte, c'est pas terrible. »
+
+**LA CAPTURE MONTRE EXACTEMENT LE DÉFAUT** : les quatre expressions sont
+écrites DEUX FOIS sur le même écran — dans la question, en bleu, sur deux
+lignes ; et dans les quatre boutons, à droite. Le texte de la question prend
+alors toute la place et l'œil ne sait plus où lire.
+
+C'est moi qui les avais mises dans la question, et pour une raison qui était
+bonne : une feuille imprimée n'a pas de boutons, donc les propositions doivent
+être écrites. Mais j'ai écrit UN SEUL texte pour les deux supports. **L'écran
+et la feuille ne demandent pas la même phrase.**
+
+> « Résous l'équation 2x + 1 = 9.
+> Tu peux mettre un mode assisté propre et beau où on enlève des x ou des
+> valeurs à gauche et à droite. »
+
+> « Un loueur de vélos demande 6 € de frais de dossier, puis 4 € par heure. La
+> location a coûté 18 €. Combien d'heures le vélo a-t-il été loué ?
+> Présentation de texte à revoir.
+> Il faudrait juste pouvoir écrire l'équation qui correspond à un problème. »
+
+Le problème demande la RÉPONSE ; il dit que le travail est d'écrire
+l'ÉQUATION. C'est exactement ce que le brevet demande, et ce que l'exercice
+escamotait en passant directement au nombre.
+
+### 17.3 — « Tracer une Fonction » : une marche à retirer
+
+> « On donne f(x) = −x + 1. On part du point (0 ; 1), où la droite coupe l'axe
+> vertical, et l'on avance de 1 vers la droite. Place le point de la droite où
+> l'on arrive. <- incompréhensible. ne le fait pas »
+
+Sans appel, et il a raison : la phrase fait trois lignes pour dire un geste
+qui se MONTRE en une seconde au tableau. J'avais écrit la marche parce que le
+coefficient directeur est un PAS — l'idée est juste, la question ne l'est pas.
+
+> « On donne f(x) = −3x − 1. Place le point de la droite dont l'ordonnée est 5.
+> <- il faut résoudre une équation, c'est dur quand même. »
+
+> « On pourrait faire dessiner la courbe, on on complète un tableau de valeur »
+
+Et **c'est la feuille imprimée qu'il décrit** — celle qui existe déjà, avec son
+tableau de valeurs à compléter et sa droite à tracer à la règle. Soit il ne l'a
+pas vue, soit il la veut aussi à l'écran. À lui demander.
+
+### 17.4 — « Diviser par une Fraction » : la ligne intermédiaire
+
+> « Il faudrait forcer l'élève quand on fait 3/4 : 5/6 à aller à la ligne et que
+> l'on puisse écrire 3/4 * 6/5 »
+
+LE GESTE DU CHAPITRE EST LA TRANSFORMATION, pas le résultat. Un élève qui écrit
+directement 18/20 a peut-être retourné la bonne fraction — ou pas, et on ne le
+saura jamais. Écrire la ligne « 3/4 × 6/5 » EST la réponse qu'on évalue.
+
+### 17.5 — « La Réciproque de Pythagore » : les trois étapes de la rédaction
+
+> « Je pense que pour prouver qu'un triangle est rectangle ou non, il faut 3
+> étapes, je sais que : ABC est un triangle
+> Or
+> On calcule d'un côté et de l'autre en séparant
+> AB^2 = BC^2 + CA^2 (ou pas égal)
+> Donc, le triangle est rectangle en ... (ou pas rectangle) »
+
+C'est la rédaction du cahier, et elle a un nom : JE SAIS QUE / OR / DONC. Le
+dépôt sait déjà la faire — « Thalès : la Rédaction » et « Le Théorème de
+Pythagore » ont leurs amorces. La réciproque n'en avait pas.
+
+**ET « ON CALCULE D'UN CÔTÉ ET DE L'AUTRE EN SÉPARANT »** est la phrase la plus
+importante des six : on ne calcule pas « AB² = BC² + CA² », on calcule AB²
+D'UN CÔTÉ, BC² + CA² DE L'AUTRE, et l'on COMPARE. Écrire l'égalité avant de
+l'avoir vérifiée, c'est supposer ce qu'on démontre.
+
+### 17.6 — « Moyenne, Médiane, Étendue » : le brouillon et la calculatrice
+
+> « Il faut pouvoir encourager le brouillon et autoriser la calculatrice par
+> défaut. Pour la médiane, il faut expliquer qu'il faut ranger dans l'ordre
+> croissant pour la médiane »
+
+Une moyenne de sept notes ne se fait pas de tête, et la lui faire faire de tête
+mesure le calcul mental, pas la statistique. La calculatrice existe dans le
+dépôt (`mes-vitesse`, `geo-pythagore`, `mes-disque` l'ont) : il suffit de la
+déclarer.

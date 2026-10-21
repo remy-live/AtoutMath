@@ -100,11 +100,32 @@ const dansLaGrille = (v) => Math.abs(v) <= MAX;
 
 // ── LES SIX MARCHES ────────────────────────────────────────────────────────
 
+// LA MARCHE DU PAS A ÉTÉ RETIRÉE, ET C'EST RÉMY QUI L'A TRANCHÉ.
+//
+// Elle disait : « On part du point (0 ; 1), où la droite coupe l'axe vertical,
+// et l'on avance de 1 vers la droite. Place le point de la droite où l'on
+// arrive. » Son verdict : « incompréhensible. ne le fait pas ».
+//
+// IL A RAISON, ET L'IDÉE RESTE JUSTE. Le coefficient directeur EST un pas —
+// un carreau à droite, a carreaux en haut —, et c'est ce qui permet de tracer
+// une droite affine en dix secondes. Mais ce geste SE MONTRE au tableau en une
+// seconde, et l'écrire demandait trois lignes de consigne pour une question
+// dont la réponse est un seul clic. Une consigne plus longue que son geste est
+// une consigne qu'on ne lit pas.
+//
+// L'idée n'est pas perdue : elle reste dans l'instruction de l'exercice, où
+// elle est une MÉTHODE à employer, et non une question à répondre.
+//
+// ET L'ANTÉCÉDENT A SON PETIT BAIN. Rémy, sur « f(x) = −3x − 1, place le point
+// dont l'ordonnée est 5 » : « il faut résoudre une équation, c'est dur quand
+// même ». Défaire DEUX opérations dans le bon ordre quand on vient d'apprendre
+// à en faire deux, c'est en effet une marche de trop. La première remontée ne
+// défait donc qu'UNE opération : f(x) = 3x, l'ordonnée vaut 6, on divise.
 export const ETAPES = [
     { id: 'image', temps: 'A', titre: 'Calculer l\'image, puis la placer', skill: S_IMAGE },
     { id: 'image-relatifs', temps: 'A', titre: 'Un point dans les négatifs', skill: S_IMAGE },
     { id: 'ordonnee-origine', temps: 'B', titre: 'Où la droite coupe l\'axe vertical', skill: S_GRAPHIQUE },
-    { id: 'le-pas', temps: 'B', titre: 'Le pas de la droite', skill: S_GRAPHIQUE },
+    { id: 'antecedent-simple', temps: 'C', titre: 'Remonter d\'un seul pas', skill: S_ANTECEDENT },
     { id: 'antecedent', temps: 'C', titre: 'Remonter : on donne l\'ordonnée', skill: S_ANTECEDENT },
     { id: 'zero', temps: 'C', titre: 'Où la droite coupe l\'axe horizontal', skill: S_ANTECEDENT }
 ];
@@ -169,30 +190,41 @@ export function question(etape, rng) {
         };
     }
 
-    if (etape.id === 'le-pas') {
-        // a EST UN PAS, PAS UN NOMBRE ABSTRAIT : un carreau à droite, a carreaux
-        // vers le haut. C'est la seule façon de tracer une droite affine sans
-        // tableau de valeurs, et c'est ce qui rend le coefficient visible.
-        const { a, b } = tirerFonction(rng, (a2, b2) =>
-            dansLaGrille(b2) && dansLaGrille(a2 + b2));
-        return {
-            a, b, x: 1, y: a + b,
-            question: `On donne f(x) = ${ecrireAffine(a, b)}. On part du point (0 ; ${relatif(b)}), `
-                + 'où la droite coupe l\'axe vertical, et l\'on avance de 1 vers la droite. '
-                + 'Place le point de la droite où l\'on arrive.',
-            pourquoi: `Avancer de 1 vers la droite fait passer de l'abscisse 0 à l'abscisse 1. `
-                + `Et f(1) = ${relatif(a)} × 1 ${b < 0 ? '−' : '+'} ${Math.abs(b)} = `
-                + `${relatif(a + b)}. On arrive donc en (1 ; ${relatif(a + b)}) : on a `
-                + `${a < 0 ? 'descendu' : 'monté'} de ${Math.abs(a)} `
-                + `carreau${Math.abs(a) > 1 ? 'x' : ''}. Ce ${relatif(a)} est le nombre qui `
-                + 'accompagne le x.',
-            aide: 'LE NOMBRE DEVANT LE x EST UN PAS. Un carreau vers la droite, et la droite '
-                + 'monte de ce nombre de carreaux — ou DESCEND, s\'il est négatif. Avec ce pas '
-                + 'et le point de départ sur l\'axe vertical, on trace la droite sans aucun calcul.'
-        };
-    }
+    // ── LA MARCHE DU PAS N'EXISTE PLUS ─────────────────────────────────────
+    //
+    // RÉMY, sur « On part du point (0 ; 1) […] et l'on avance de 1 vers la
+    // droite. Place le point de la droite où l'on arrive. » : « incompréhensible.
+    // ne le fait pas ». Trois lignes de consigne pour un geste qui se montre
+    // en une seconde au tableau — une consigne plus longue que son geste est
+    // une consigne qu'on ne lit pas. L'idée reste dans l'instruction de
+    // l'exercice, où elle est une MÉTHODE et non une question.
 
     // ── TEMPS C : REMONTER VERS L'ABSCISSE ─────────────────────────────────
+
+    if (etape.id === 'antecedent-simple') {
+        // ON NE DÉFAIT QU'UNE SEULE OPÉRATION. RÉMY, sur la marche d'à côté :
+        // « il faut résoudre une équation, c'est dur quand même ». Défaire DEUX
+        // opérations dans le bon ordre quand on vient d'apprendre à en faire
+        // deux, c'est une marche de trop — et l'ordre est justement ce qui se
+        // rate. Ici la fonction n'a pas de terme constant : f(x) = 3x, on donne
+        // l'ordonnée, on divise. Un seul geste, et c'est l'inverse d'un seul.
+        const a = choisir([-3, -2, 2, 3], rng);
+        const xs = [-3, -2, -1, 1, 2, 3].filter(v => dansLaGrille(a * v));
+        const x = choisir(xs, rng);
+        const y = a * x;
+        return {
+            a, b: 0, x, y,
+            question: `On donne f(x) = ${ecrireAffine(a, 0)}. Place le point de la droite `
+                + `dont l'ordonnée est ${relatif(y)}.`,
+            pourquoi: `On cherche le nombre dont l'image est ${relatif(y)}. Il n'y a qu'une `
+                + `opération à défaire : multiplier par ${relatif(a)} se défait en DIVISANT `
+                + `par ${relatif(a)}. Donc x = ${relatif(y)} ÷ ${relatif(a)} = ${relatif(x)}, `
+                + `et le point est (${relatif(x)} ; ${relatif(y)}).`,
+            aide: 'ICI LA FONCTION NE FAIT QU\'UNE CHOSE : elle multiplie. Pour remonter, on '
+                + 'fait le contraire — on divise. Et l\'on vérifie en redescendant : la '
+                + 'multiplication doit retomber sur l\'ordonnée donnée.'
+        };
+    }
 
     if (etape.id === 'antecedent') {
         // ON CHOISIT L'ABSCISSE, PUIS ON CALCULE L'ORDONNÉE QU'ON ANNONCE. En

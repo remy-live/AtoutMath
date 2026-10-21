@@ -69,3 +69,23 @@ export const feminin = (mot) => FEMININS.has(String(mot || '').trim().toLowerCas
 /** « travaillé » accordé : `accorde('travaillé', 'figure')` → « travaillée ». */
 export const accorde = (participe, mot, pluriels = true) =>
     `${participe}${feminin(mot) ? 'e' : ''}${pluriels ? 's' : ''}`;
+
+/**
+ * « DE » QUI S'ÉLIDE DEVANT UNE VOYELLE : « le nombre d'heures », pas « de
+ * heures ».
+ *
+ * LU SUR LA SORTIE, DEUX FOIS EN DEUX JOURS — « Combien de élèves » dans les
+ * statistiques, « le nombre de heures » dans les équations. La règle vivait
+ * dans `generators/statistiques.js`, privée, et le second fichier qui en a eu
+ * besoin ne pouvait que la recopier. C'est exactement ce que `signeMoins.js` a
+ * fermé hier pour le signe moins, et la même conclusion : une règle de langue
+ * écrite à deux endroits finit par diverger.
+ *
+ * LE « H » EST TRAITÉ COMME UNE VOYELLE, et c'est faux pour le h ASPIRÉ : on
+ * écrit « d'heures » mais « de haricots ». Les mots de ce logiciel sont des
+ * unités et des personnes — heures, élèves, enfants, objets —, et aucun n'a de
+ * h aspiré. Le jour où l'un arrive, c'est ICI qu'on ajoute sa liste, et nulle
+ * part ailleurs.
+ */
+export const deDevant = (mot) =>
+    (/^[aeiouyàâéèêëîïôöûüh]/i.test(String(mot || '')) ? `d'${mot}` : `de ${mot}`);

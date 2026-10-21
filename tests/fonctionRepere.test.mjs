@@ -81,13 +81,27 @@ test('LE POINT EST SUR LA DROITE, ET C\'EST CELUI QU\'ON DEMANDE', () => {
                 assert.equal(x, 0, `${t} → l'axe des ordonnées est en x = 0`);
                 assert.notEqual(y, 0, `${t} : la droite passerait par l'origine, et la question n'apprendrait rien`);
             }
-            if (e.id === 'le-pas') {
-                assert.equal(x, 1, `${t} → un carreau à droite de l'axe vertical, donc x = 1`);
-            }
-            if (e.id === 'antecedent') {
+            if (e.id === 'antecedent-simple' || e.id === 'antecedent') {
                 const vise = Number(t.match(/ordonnée est (−?\d+)/)[1].replace('−', '-'));
                 assert.equal(y, vise, t);
                 assert.notEqual(x, 0, `${t} : l'antécédent serait sur l'axe, ce qui est l'autre marche`);
+            }
+            if (e.id === 'antecedent-simple') {
+                // RÉMY : « il faut résoudre une équation, c'est dur quand même ».
+                // Le petit bain ne défait qu'UNE opération : la fonction n'a
+                // donc pas de terme constant, et son écriture ne doit porter ni
+                // « + » ni « − ». Si un b se glissait là, la marche
+                // redeviendrait celle d'à côté sans que rien ne le dise.
+                // ON LIT L'EXPRESSION, PAS LA PHRASE. Écrite `/[+−]/` sur le
+                // début du texte, la garde prenait le signe du COEFFICIENT pour
+                // un terme constant et refusait « f(x) = −2x », qui est
+                // pourtant exactement ce que la marche doit produire.
+                const expr = t.match(/f\(x\) = (.+?)\./)[1];
+                assert.match(expr, /^−?\d*x$/,
+                    `${t} : la fonction du petit bain porte un terme constant`);
+                assert.equal(a * x, y, t);
+                assert.ok(Math.abs(a) >= 2,
+                    `${t} : un coefficient de 1 rend la division inexistante`);
             }
             if (e.id === 'zero') {
                 assert.equal(y, 0, `${t} → l'axe des abscisses est en y = 0`);
@@ -122,6 +136,12 @@ test('LES TEMPS SE SUIVENT, ET TROIS COMPÉTENCES SONT DISTINGUÉES', () => {
     const temps = ETAPES.map(e => e.temps);
     assert.deepEqual([...temps].sort(), temps, `les temps ne se suivent pas : ${temps.join('')}`);
     assert.equal(temps[0], 'A');
+    // ET LA MARCHE DU PAS N'EST PLUS LÀ. Rémy : « incompréhensible. ne le
+    // fait pas ». Une épreuve qui la nommerait encore passerait au vert sans
+    // rien mesurer — un identifiant inventé rend `undefined`, et `ETAPES[0]`
+    // prend alors sa place en silence.
+    assert.ok(!ETAPES.some(e => e.id === 'le-pas'), 'la marche du pas est revenue');
+    assert.equal(ETAPES.length, 6);
     const vues = new Set(ETAPES.map(e =>
         G.generate({ marches: [e.id] }, { rng: makeRng('s' + e.id), index: 0, total: 1 }).skillId));
     assert.deepEqual([...vues].sort(),

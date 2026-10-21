@@ -194,6 +194,64 @@ test('AUCUN ÉNONCÉ N\'AFFICHE UNE FRACTION À LA BARRE OBLIQUE', async () => {
     assert.deepEqual(fautifs, []);
 });
 
+test('UN QCM NE RECOPIE PAS SES BOUTONS DANS LA QUESTION D\'ÉCRAN', async () => {
+    // ─────────────────────────────────────────────────────────────────────────
+    //
+    // RÉMY, CAPTURE À L'APPUI : « Pour la question comme c'est un qcm, ne mets
+    // pas les propositions dans la question. Je te joins un screenshot, je
+    // trouve que niveau design de texte, c'est pas terrible. »
+    //
+    // Sur sa capture, les quatre expressions — 4x + 5 ; 4(x + 5) ; 4x − 5 et
+    // 4(x − 5) — sont écrites DEUX FOIS sur le même écran : dans la question,
+    // en bleu, sur deux lignes ; et dans les quatre boutons, juste à droite.
+    // La question prend alors toute la place, et l'œil ne sait plus où lire.
+    //
+    // LA CAUSE SE REPRODUIRA, parce qu'elle vient d'une bonne raison : une
+    // feuille imprimée n'a PAS de boutons, donc les propositions doivent y
+    // être écrites — c'est une autre garde de ce fichier qui l'exige. J'avais
+    // donc écrit UN SEUL texte pour les deux supports. L'écran et la feuille
+    // ne demandent pas la même phrase, et `prompt.papier` existe pour cela.
+    //
+    // LA RÈGLE EST L'ÉNUMÉRATION, PAS LES VALEURS, et c'est la mesure qui l'a
+    // dit. Un premier jet refusait toute proposition présente dans la
+    // question : il attrapait « Priorité ? 4 + 5 × 7 + 4 », dont les boutons
+    // SONT les sous-expressions, « Chiffre des dizaines de 2 471,38 ? », dont
+    // les leurres sortent du nombre exprès, et « quel est le côté le plus
+    // long ? », qui doit nommer ses trois côtés. Quatre faux coupables sur
+    // cinq. Ce qu'on interdit est la LISTE recopiée — « Parmi A ; B ; C et
+    // D, … » — juste à côté des boutons qui la répètent.
+    const { generateurDeFiche } = await import('../js/core/registry.js');
+    const { makeRng } = await import('../js/core/ids.js');
+    await import('../js/core/activities/index.js');
+
+    const fautifs = [];
+    for (const exo of exercices) {
+        const g = generateurDeFiche(exo);
+        if (!g || typeof g.generate !== 'function') continue;
+        const marches = Array.isArray(exo.params && exo.params.marches) ? exo.params.marches : null;
+        const essais = marches ? marches.length * 2 : 12;
+        for (let i = 0; i < essais; i++) {
+            const reglages = marches
+                ? { ...exo.params, marches: [marches[i % marches.length]] }
+                : (exo.params || {});
+            let it;
+            try { it = g.generate(reglages, { rng: makeRng(`q_${exo.id}_${i}`), index: i, total: essais }); }
+            catch { break; }
+            if (!it || it.answerKind !== 'choice' || !Array.isArray(it.choices)) continue;
+            if (it.choices.length < 3) continue;
+            const ecran = String((it.prompt && (it.prompt.html || it.prompt.text)) || '')
+                .replace(/<[^>]*>/g, ' ');
+            const liste = /\bParmi\b[^?]*\bet\b/.test(ecran)
+                && it.choices.every(c => ecran.includes(String(c.value).trim()));
+            if (liste) {
+                fautifs.push(`${exo.id} : « ${ecran.trim().slice(0, 90)} »`);
+                break;
+            }
+        }
+    }
+    assert.deepEqual(fautifs, []);
+});
+
 test('UN ÉNONCÉ N\'ÉCRIT PAS LES DEUX SIGNES MOINS', async () => {
     // ─────────────────────────────────────────────────────────────────────────
     //

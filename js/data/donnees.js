@@ -151,7 +151,21 @@ export const donneesExercises = [
         cree: '2026-10-20',
         title: 'Moyenne, Médiane, Étendue',
         generatorId: 'don.statistiques', activityId: 'numpad',
-        consignePapier: 'Lis bien la série, puis réponds.',
+        // LA CALCULATRICE EST OUVERTE, ET C'EST RÉMY QUI L'A DEMANDÉ.
+        //
+        // « Il faut pouvoir encourager le brouillon et autoriser la
+        // calculatrice par défaut. »
+        //
+        // Il a raison, et la raison est de métier : UNE MOYENNE DE HUIT NOTES
+        // NE SE FAIT PAS DE TÊTE. La faire faire de tête mesure le calcul
+        // mental, pas la statistique — et un élève qui sait parfaitement ce
+        // qu'est une moyenne se verrait compté faux pour une addition ratée.
+        // Le chapitre travaille le SENS : ce qu'on additionne, par combien on
+        // divise, et pourquoi la médiane ne se calcule pas du tout.
+        calculatrice: true,
+        consignePapier: 'Lis bien la série, puis réponds. RANGE d\'abord la série dans '
+            + 'l\'ordre croissant quand on te demande la médiane. Calculatrice autorisée, '
+            + 'et pose tes calculs au brouillon.',
         // UNE SEULE COLONNE SUR LE PAPIER. Une série de huit nombres plus sa
         // question ne tient pas dans une demi-largeur de page : coupée en
         // deux, la liste se lit en escalier et l'on ne voit plus où elle
@@ -167,7 +181,7 @@ export const donneesExercises = [
             chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.STATISTIQUES],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Neuf marches, et trois d'entre elles sont des médianes — ce n'est pas un hasard. La moyenne, l'étendue et la fréquence se CALCULENT : on additionne, on soustrait, on divise. La médiane, elle, se CHERCHE, et on la cherche mal de deux façons. D'abord en oubliant de RANGER la série : la médiane de 7 ; 2 ; 9 vaut 7, pas 2, et le terme du milieu de la liste telle qu'elle est écrite est juste un nombre de la série. Ensuite quand la série a un nombre PAIR de valeurs : il y a alors deux valeurs au milieu, la médiane est leur moyenne, et elle n'est pas dans la série. Une marche par piège, pour que le bilan dise lequel coince. La dernière question est celle qui compte : deux groupes de même moyenne, et c'est l'étendue qui les sépare."
+        instruction: "LA CALCULATRICE EST AUTORISÉE, et le brouillon est ton meilleur outil : une moyenne de huit notes ne se fait pas de tête, et ce chapitre ne mesure pas ton calcul mental. AVANT TOUTE MÉDIANE, RANGE LA SÉRIE DANS L'ORDRE CROISSANT au brouillon, puis barre les valeurs deux par deux — une à gauche, une à droite — jusqu'à ce qu'il n'en reste qu'une au milieu. Neuf marches, et trois d'entre elles sont des médianes — ce n'est pas un hasard. La moyenne, l'étendue et la fréquence se CALCULENT : on additionne, on soustrait, on divise. La médiane, elle, se CHERCHE, et on la cherche mal de deux façons. D'abord en oubliant de RANGER la série : la médiane de 7 ; 2 ; 9 vaut 7, pas 2, et le terme du milieu de la liste telle qu'elle est écrite est juste un nombre de la série. Ensuite quand la série a un nombre PAIR de valeurs : il y a alors deux valeurs au milieu, la médiane est leur moyenne, et elle n'est pas dans la série. Une marche par piège, pour que le bilan dise lequel coince. La dernière question est celle qui compte : deux groupes de même moyenne, et c'est l'étendue qui les sépare."
     },
     {
         id: 'don-probabilites',

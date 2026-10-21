@@ -32,6 +32,7 @@
 // Pur : aucune dépendance au DOM, il se teste sous Node.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { deDevant } from '../accord.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
@@ -41,6 +42,23 @@ const S_PROGRAMME = 'alg.equation.programme';
 const S_RESOUDRE = 'alg.equation.resoudre';
 
 const choisir = (liste, rng) => liste[rng.int(0, liste.length - 1)];
+
+/**
+ * LE PROGRAMME DE CALCUL S'ÉCRIT LIGNE À LIGNE.
+ *
+ * RÉMY : « Écris le programme de calcul ligne à ligne. » Il était écrit d'un
+ * seul tenant entre guillemets — « Choisis un nombre. Multiplie-le par 4.
+ * Ajoute 8. » —, ce qui est exactement la forme sous laquelle l'ORDRE DES
+ * LIGNES ne se voit pas. Or l'ordre des lignes EST tout le chapitre : « ×4
+ * puis +8 » et « +8 puis ×4 » ne valent jamais la même chose.
+ *
+ * NUMÉROTÉES, parce que c'est l'ordre qu'on lit, et que les sujets de brevet
+ * les numérotent. Sur la feuille imprimée, en revanche, le programme reste
+ * d'un seul tenant : une ligne de fiche est une ligne, et le rendu compose son
+ * texte en prose.
+ */
+const lignesHtml = (lignes) =>
+    `<ol class="ap-programme">${lignes.map(l => `<li>${l}</li>`).join('')}</ol>`;
 
 /**
  * LES QUATRE PROGRAMMES, ET ILS VONT PAR PAIRES.
@@ -93,6 +111,27 @@ export const PROGRAMMES = [
  */
 const quatreExpressions = (a, b) => PROGRAMMES.map(p => p.ecrire(a, b));
 
+/**
+ * LE PRIX FIXE ET LE PRIX RÉPÉTÉ, ET ILS NE SONT JAMAIS LE MÊME NOMBRE.
+ *
+ * Vu sur la sortie : « Un taxi demande 2 € de prise en charge, puis 2 € par
+ * kilomètre. » Le leurre qui ÉCHANGE les deux rôles vaut alors la bonne
+ * réponse, et il ne reste que trois propositions — sur une question dont tout
+ * le travail est justement de distinguer celui qui s'ajoute de celui qui se
+ * multiplie.
+ *
+ * C'est le même défaut que « Multiplie-le par 4. Ajoute 4. » d'hier, et il se
+ * reproduira chaque fois que deux nombres d'un même énoncé jouent des rôles
+ * différents. Le tirage vit donc ici, une fois, pour les deux marches qui en
+ * ont besoin.
+ */
+function tirerTarif(rng) {
+    const par = rng.int(2, 5);
+    const fixe = choisir([2, 3, 4, 5, 6].filter(v => v !== par), rng);
+    const n = rng.int(3, 12);
+    return { fixe, par, n, total: fixe + par * n };
+}
+
 /** Des situations où l'équation sort d'un énoncé, comme au brevet. */
 const SITUATIONS = [
     { qui: 'Un taxi', fixe: 'de prise en charge', par: 'par kilomètre',
@@ -109,12 +148,14 @@ const SITUATIONS = [
 // ── LES SEPT MARCHES ───────────────────────────────────────────────────────
 
 export const ETAPES = [
+    { id: 'membre-gauche', temps: 'A', titre: 'Calculer le membre de gauche', skill: S_TESTER },
     { id: 'tester', temps: 'A', titre: 'Ce nombre est-il solution ?', skill: S_TESTER },
     { id: 'lequel', temps: 'A', titre: 'Lequel des quatre est solution ?', skill: S_TESTER },
     { id: 'programme-direct', temps: 'B', titre: 'Dérouler un programme', skill: S_PROGRAMME },
     { id: 'programme-retour', temps: 'B', titre: 'Remonter un programme', skill: S_PROGRAMME },
     { id: 'programme-ecrire', temps: 'B', titre: 'Écrire le programme avec x', skill: S_PROGRAMME },
     { id: 'resoudre', temps: 'C', titre: 'Résoudre une équation', skill: S_RESOUDRE },
+    { id: 'ecrire-equation', temps: 'C', titre: 'Problème : écrire l\'équation', skill: S_RESOUDRE },
     { id: 'probleme', temps: 'C', titre: 'Problème : poser l\'équation', skill: S_RESOUDRE }
 ];
 
@@ -128,6 +169,39 @@ const TEMPS = {
 export function question(etape, rng) {
 
     // ── TEMPS A : TESTER, SANS RÉSOUDRE ────────────────────────────────────
+
+    if (etape.id === 'membre-gauche') {
+        // ON CALCULE AVANT DE CONCLURE, ET LES DEUX CÔTÉS ONT UN NOM.
+        //
+        // RÉMY : « Ce serait bien que l'élève calcule à gauche et à droite avec
+        // le membre de gauche et le membre de droite. » La marche d'à côté
+        // demandait « oui » ou « non » : un élève peut y répondre juste une
+        // fois sur deux sans avoir rien remplacé, et surtout sans jamais écrire
+        // le calcul — qui est pourtant TOUT le geste.
+        //
+        // ET LE MEMBRE DE DROITE NE SE DEMANDE PAS : il est déjà écrit, c'est
+        // un nombre. Ce qui s'apprend ici, c'est que l'égalité a DEUX CÔTÉS
+        // qui portent chacun un nom, et qu'on les compare après les avoir
+        // calculés séparément — jamais avant.
+        const a = rng.int(2, 6), b = rng.int(1, 12), x = rng.int(2, 9);
+        const c = a * x + b;
+        const essai = rng.int(0, 1) === 1 ? x : x + choisir([-2, -1, 1, 2], rng);
+        const gauche = a * essai + b;
+        return {
+            enonce: `On teste si ${essai} est solution de l'équation ${a}x + ${b} = ${c}.`,
+            question: `On remplace x par ${essai}. Combien vaut le membre de GAUCHE ?`,
+            kind: 'numeric', reponse: gauche,
+            pourquoi: `Le membre de gauche est ${a}x + ${b}. On y remplace x par ${essai} : `
+                + `${a} × ${essai} + ${b} = ${gauche}. Le membre de droite, lui, vaut ${c} `
+                + `— il n'y a rien à y calculer. Et maintenant on peut comparer : `
+                + (gauche === c
+                    ? `${gauche} = ${c}, donc ${essai} EST solution.`
+                    : `${gauche} ≠ ${c}, donc ${essai} n'est PAS solution.`),
+            aide: 'LE MEMBRE DE GAUCHE EST CE QUI EST ÉCRIT AVANT LE SIGNE ÉGAL, le membre de '
+                + 'droite ce qui est écrit après. On remplace x dans celui de gauche, on '
+                + 'calcule, et l\'on regarde ensuite s\'il tombe sur celui de droite.'
+        };
+    }
 
     if (etape.id === 'tester') {
         // AUCUN CALCUL LITTÉRAL ICI : on remplace, on calcule, on compare.
@@ -168,7 +242,21 @@ export function question(etape, rng) {
         const quatre = [x, ...leurres].sort((p, q) => p - q);
         return {
             enonce: '',
-            question: `Parmi ${quatre.slice(0, 3).join(', ')} et ${quatre[3]}, lequel est `
+            // L'ÉCRAN NE RÉPÈTE PAS SES BOUTONS, LA FEUILLE LES ÉCRIT.
+            //
+            // RÉMY, capture à l'appui : « comme c'est un qcm, ne mets pas les
+            // propositions dans la question […] niveau design de texte, c'est
+            // pas terrible ». Les quatre nombres étaient écrits DEUX FOIS sur
+            // le même écran — dans la question, et sur les quatre boutons —,
+            // et le texte prenait alors toute la place.
+            //
+            // J'AVAIS ÉCRIT UN SEUL TEXTE POUR LES DEUX SUPPORTS, et la raison
+            // était bonne : une feuille imprimée n'a pas de boutons, donc les
+            // propositions doivent y être écrites — c'est la garde du catalogue
+            // qui le dit depuis hier. Mais L'ÉCRAN ET LA FEUILLE NE DEMANDENT
+            // PAS LA MÊME PHRASE, et c'est à cela que sert `papier`.
+            question: `Quel nombre est solution de ${a}x + ${b} = ${c} ?`,
+            papier: `Parmi ${quatre.slice(0, 3).join(', ')} et ${quatre[3]}, lequel est `
                 + `solution de ${a}x + ${b} = ${c} ?`,
             kind: 'choice', reponse: String(x), choix: quatre.map(String),
             pourquoi: `On essaie chacun. Avec ${x} : ${a} × ${x} + ${b} = ${c} — c'est le bon. `
@@ -206,6 +294,7 @@ export function question(etape, rng) {
         if (etape.id === 'programme-direct') {
             return {
                 enonce: `Programme de calcul : ${ecrit}`,
+                enonceHtml: `Programme de calcul :${lignesHtml(programme)}`,
                 question: `On choisit ${x}. Quel résultat obtient-on ?`,
                 kind: 'numeric', reponse: r,
                 pourquoi: `On part de ${x}, et l'on suit les lignes DANS L'ORDRE : `
@@ -220,6 +309,7 @@ export function question(etape, rng) {
         if (etape.id === 'programme-retour') {
             return {
                 enonce: `Programme de calcul : ${ecrit}`,
+                enonceHtml: `Programme de calcul :${lignesHtml(programme)}`,
                 question: `On obtient ${r}. Quel nombre avait-on choisi ?`,
                 kind: 'numeric', reponse: x,
                 pourquoi: `On REMONTE le programme en faisant l'inverse de chaque ligne, `
@@ -233,7 +323,12 @@ export function question(etape, rng) {
         const options = quatreExpressions(a, b);
         return {
             enonce: `Programme de calcul : ${ecrit}`,
-            question: `Parmi ${options.slice(0, 3).join(' ; ')} et ${options[3]}, `
+            enonceHtml: `Programme de calcul :${lignesHtml(programme)}`,
+            // MÊME PARTAGE QUE POUR « lequel » : l'écran a ses boutons, la
+            // feuille a besoin de la liste. C'est la capture d'écran de Rémy
+            // qui a montré les quatre expressions écrites deux fois.
+            question: 'Quelle expression traduit ce programme ?',
+            papier: `Parmi ${options.slice(0, 3).join(' ; ')} et ${options[3]}, `
                 + 'quelle expression traduit ce programme ?',
             kind: 'choice', reponse: p.ecrire(a, b), choix: options,
             // LES TROIS LEURRES SONT LES TROIS AUTRES PROGRAMMES, avec les
@@ -281,14 +376,50 @@ export function question(etape, rng) {
         };
     }
 
+    if (etape.id === 'ecrire-equation') {
+        // ÉCRIRE L'ÉQUATION EST LE TRAVAIL, ET ON LE SAUTAIT.
+        //
+        // RÉMY : « Il faudrait juste pouvoir écrire l'équation qui correspond à
+        // un problème. » La marche d'à côté demande le NOMBRE d'heures : un
+        // élève peut le trouver en tâtonnant, sans jamais poser l'équation — et
+        // c'est pourtant elle que le brevet évalue. On s'arrête donc avant de
+        // résoudre, et l'on ne demande que la traduction.
+        //
+        // LES TROIS LEURRES SONT LES TROIS ERREURS, et la première est celle
+        // qui coûte le plus cher : ÉCHANGER LE FIXE ET LE RÉPÉTÉ. Les deux
+        // nombres sont dans l'énoncé, les deux sont des euros, et rien dans
+        // leur apparence ne dit lequel se multiplie.
+        const s = choisir(SITUATIONS, rng);
+        const { fixe, par, n, total } = tirerTarif(rng);
+        return {
+            enonce: `${s.qui} demande ${fixe} € ${s.fixe}, puis ${par} € ${s.par}. `
+                + `${s.total} ${total} €.`,
+            question: `On appelle x le nombre ${deDevant(s.unite)}. Quelle équation traduit `
+                + 'cette situation ?',
+            kind: 'choice', reponse: `${par}x + ${fixe} = ${total}`,
+            choix: [
+                `${par}x + ${fixe} = ${total}`,
+                `${fixe}x + ${par} = ${total}`,
+                `${par}x − ${fixe} = ${total}`,
+                `${par + fixe}x = ${total}`
+            ],
+            pourquoi: `Le prix ${s.fixe} se paie UNE fois, quel que soit le nombre de `
+                + `${s.unite} : c'est le ${fixe}, et il s'ajoute tout seul. Le prix `
+                + `${s.par} se paie AUTANT DE FOIS qu'il y a de ${s.unite} : c'est lui qui `
+                + `se multiplie par x. L'équation s'écrit donc ${par}x + ${fixe} = ${total}.`,
+            aide: 'DEUX QUESTIONS, DANS CET ORDRE. Lequel des deux prix se paie UNE SEULE '
+                + 'FOIS ? Celui-là s\'ajoute. Lequel se répète ? Celui-là se multiplie par x. '
+                + 'Une fois les deux repérés, l\'équation s\'écrit toute seule.'
+        };
+    }
+
     // 'probleme'
     //
     // L'ÉQUATION SORT D'UN ÉNONCÉ, et c'est l'exercice du brevet. Le travail
     // n'est pas de résoudre — on sait — mais de reconnaître ce qui est FIXE et
     // ce qui se répète, puis de l'écrire.
     const s = choisir(SITUATIONS, rng);
-    const fixe = rng.int(2, 6), par = rng.int(2, 5), n = rng.int(3, 12);
-    const total = fixe + par * n;
+    const { fixe, par, n, total } = tirerTarif(rng);
     return {
         enonce: `${s.qui} demande ${fixe} € ${s.fixe}, puis ${par} € ${s.par}. `
             + `${s.total} ${total} €.`,
@@ -340,7 +471,11 @@ export const equationsGenerator = {
                 text: `${enonce} ${q.question}`.trim(),
                 papier: `${enonce} ${q.papier || q.question}`.trim(),
                 html: '<div class="game-question ap-probleme">'
-                    + (enonce ? `<span class="ap-situation">${enonce}</span>` : '')
+                    // `enonceHtml` QUAND IL EXISTE : le programme de calcul s'y
+                // écrit ligne à ligne, ce qu'une chaîne de texte ne sait pas
+                // porter. Le champ `enonce` reste celui du papier et de la
+                // lecture à voix haute.
+                + (enonce ? `<span class="ap-situation">${q.enonceHtml || enonce}</span>` : '')
                     + `<span class="ap-question">${q.question}</span></div>`
             },
             answer: q.reponse,

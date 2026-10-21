@@ -1152,15 +1152,15 @@ export const numerationExercises = [
         // celle des deux signes moins a laissé passer « l'abscisse est -2 »
         // dans la première marche. C'est aussi ce que le professeur voit
         // coché en ouvrant le panneau.
-        params: { marches: ['image', 'image-relatifs', 'ordonnee-origine', 'le-pas',
-            'antecedent', 'zero'] },
+        params: { marches: ['image', 'image-relatifs', 'ordonnee-origine',
+            'antecedent-simple', 'antecedent', 'zero'] },
         motsClefs: ['fonction', 'affine', 'droite', 'repère', 'coefficient',
             'ordonnée à l\'origine', 'tracer', 'graphique'],
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LITTERAL],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Une fonction affine se DESSINE, et son écriture dit tout du dessin. Les points de coordonnées (x ; f(x)) sont ALIGNÉS : ils forment une DROITE. Ici on en place un à la fois — on calcule d'abord, on clique ensuite, et le premier nombre est toujours l'ABSCISSE. Les deux marches du milieu sont celles qui font gagner du temps toute l'année : dans « f(x) = 2x − 3 », le nombre tout seul (−3) est l'endroit où la droite coupe l'axe VERTICAL — on le lit, on ne le calcule pas ; et le nombre devant le x (2) est un PAS — un carreau vers la droite, deux carreaux vers le haut. Avec ces deux-là, une droite se trace en dix secondes et sans tableau. Les deux dernières marches font le chemin inverse : on donne la hauteur, on cherche où aller sur l'axe horizontal. Et sur l'axe horizontal l'ordonnée est NULLE, ce qui transforme la question en équation : on résout f(x) = 0. Sur la feuille imprimée, c'est toi qui traces la droite à la règle — vérifie que tes points sont alignés avant de poser la règle, un point hors de la ligne signale un calcul faux."
+        instruction: "Une fonction affine se DESSINE, et son écriture dit tout du dessin. Les points de coordonnées (x ; f(x)) sont ALIGNÉS : ils forment une DROITE. Ici on en place un à la fois — on calcule d'abord, on clique ensuite, et le premier nombre est toujours l'ABSCISSE. DEUX CHOSES SE LISENT SANS CALCUL, et elles font gagner du temps toute l'année. Dans « f(x) = 2x − 3 », le nombre tout seul (−3) est l'endroit où la droite coupe l'axe VERTICAL : c'est une marche de l'exercice. Et le nombre devant le x (2) est un PAS — un carreau vers la droite, deux carreaux vers le haut : avec ce pas et ce point de départ, une droite se trace en dix secondes et sans tableau de valeurs. Les trois dernières marches font le chemin INVERSE : on donne la hauteur, on cherche où aller sur l'axe horizontal. La première ne défait qu'une opération ; la suivante en défait deux, dans l'ordre inverse ; la dernière demande où la droite coupe l'axe horizontal, c'est-à-dire là où l'ordonnée est NULLE — la question devient alors une équation, on résout f(x) = 0. Sur la feuille imprimée, c'est toi qui traces la droite à la règle, après avoir complété un tableau de valeurs — vérifie que tes points sont alignés avant de poser la règle, un point hors de la ligne signale un calcul faux."
     },
     {
         // SIMPLIFIER ET RÉDUIRE. Rémy : « j'aimerais bien un exercice qui

@@ -156,6 +156,21 @@ export const A_DECOMPOSER_PETIT = [
  * questions. Chacun des quatre premiers critères — 2, 3, 5, 7 — est le bon pour
  * au moins trois nombres de la liste.
  */
+/**
+ * LES NOMBRES PAR LESQUELS ON OUVRE L'ESCALIER.
+ *
+ * Deux chiffres, et leur plus petit facteur premier est 2, 3 ou 5 — c'est-à-
+ * dire l'un des trois critères qu'on vient d'apprendre. Les trois cas sont
+ * représentés : pairs, multiples de 3 mais impairs, et multiples de 5 ni
+ * pairs ni multiples de 3. Sans ce dernier, le critère de 5 ne servirait
+ * jamais à cette marche.
+ */
+export const A_OUVRIR = [
+    12, 18, 24, 28, 32, 34, 38, 46, 52, 58, 62, 68, 74, 82, 86, 94,
+    21, 27, 33, 39, 51, 57, 63, 69, 87, 93, 99,
+    25, 35, 55, 65, 85, 95
+];
+
 export const A_ESCALADER = [
     84, 90, 132, 198,            // 2
     45, 63, 75, 81, 105, 135,    // 3
@@ -507,7 +522,26 @@ export function question(etape, rng) {
     // ── TEMPS B : DÉCOMPOSER ───────────────────────────────────────────────
 
     if (etape.id === 'par-quoi' || etape.id === 'le-quotient') {
-        const n = choisir(A_ESCALADER, rng);
+        // CETTE MARCHE OUVRE L'ESCALIER : elle tire dans SA liste, pas dans
+        // celle du sommet.
+        //
+        // RÉMY : « Quel est le plus petit nombre premier qui divise 91 ? <-
+        // c'est pas facile. Quel est le plus petit nombre premier qui divise
+        // 198 ? idem. » Elle tirait dans `A_ESCALADER`, la liste de la marche
+        // « décomposer » — celle du HAUT de l'escalier —, où l'on trouve 49,
+        // 77, 91 et 119, dont le plus petit facteur est 7 ou 11. Or l'aide de
+        // cette marche dit « on essaie dans l'ordre : 2, puis 3, puis 5, puis
+        // 7 » : elle décrit un réflexe, et on la faisait travailler sur les
+        // nombres qui mettent ce réflexe EN DÉFAUT.
+        //
+        // ET 198 EST DU MÊME TONNEAU, même si sa réponse est 2 : trois chiffres
+        // à la première marche de l'escalier, cela arrête un élève avant qu'il
+        // ait regardé le chiffre des unités.
+        //
+        // La leçon « quand 2, 3 et 5 échouent, il faut essayer 7 » n'est pas
+        // perdue : c'est exactement ce que travaille la marche « ce nombre
+        // est-il premier ? », deux crans plus loin, sur 49, 77, 91 et 119.
+        const n = choisir(etape.id === 'par-quoi' ? A_OUVRIR : A_ESCALADER, rng);
         const p = facteursPremiers(n)[0];
         if (etape.id === 'par-quoi') {
             return {
