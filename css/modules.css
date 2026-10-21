@@ -9230,6 +9230,33 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    sur sa DERNIÈRE ligne — vu sur la photo : « Programme de calcul :3.
    Multiplie le résultat par 5. » L'œil lisait alors le titre au milieu du
    programme. */
+/* LA POTENCE — LA DÉCOMPOSITION POSÉE EN COLONNE.
+   =================================================
+   Rémy, photo de son cahier à l'appui : « Il faudrait plutôt le faire en
+   colonne. » Le nombre à gauche, le diviseur à droite d'un TRAIT VERTICAL, et
+   l'on descend. Ce trait est tout le dessin : il sépare ce qu'on divise de ce
+   par quoi on divise, et c'est lui qu'on trace en premier au tableau.
+
+   LES DEUX COLONNES SONT ALIGNÉES À DROITE ET À GAUCHE DU TRAIT, comme sur sa
+   photo : les nombres finissent contre le trait, les diviseurs commencent
+   après. Centrées, les unités ne tomberaient pas les unes sous les autres et
+   la colonne cesserait d'être une colonne. */
+/* LA LIGNE DE LA DIVISION DE FRACTIONS, D'UN BOUT À L'AUTRE. Rémy : « il
+   faudrait forcer l'élève […] à aller à la ligne et que l'on puisse écrire
+   3/4 * 6/5 ». Elle porte trois fractions empilées et deux signes, donc elle
+   est LARGE : sur un téléphone elle passe à la ligne au lieu de déborder, et
+   les morceaux restent alignés sur leur milieu — une fraction empilée coupée
+   en deux ne se lit plus. */
+.pp-ligne-division {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: .15em .35em; line-height: 1.2;
+}
+
+.pp-potence { border-collapse: collapse; margin: .2em auto 0; }
+.pp-potence td { padding: .12em .5em; font-weight: 800; line-height: 1.35; }
+.pp-pot-n { text-align: right; border-right: 2px solid var(--text-main); }
+.pp-pot-d { text-align: left; min-width: 3.2em; }
+
 .ap-programme {
     list-style: decimal inside; margin: .35em 0 0; padding: 0 0 0 1.1em;
     text-align: left; display: block;

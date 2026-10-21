@@ -96,8 +96,16 @@ test('TOUTES LES MARCHES DE LA DIVISION RÉPONDENT JUSTE', () => {
                 assert.equal(it.answer, `${a}|${b * n}`, `${a}/${b} ÷ ${n}`);
             }
             if (e.id === 'par-une-fraction') {
+                // LA RÉPONSE EST LA LIGNE ENTIÈRE depuis la revue de Rémy du
+                // 21 octobre : la multiplication qui remplace la division,
+                // PUIS le résultat. L'épreuve d'ensemble, plus bas, en garde
+                // le détail ; ici on vérifie seulement que le résultat final
+                // est juste, comme pour les autres marches.
                 const [a, b, c, d] = nb;
-                assert.equal(it.answer, `${a * d}|${b * c}`, `${a}/${b} ÷ ${c}/${d}`);
+                const cases = it.answer.split('|');
+                assert.equal(cases.length, 6, it.answer);
+                assert.equal(cases.slice(4).join('|'), `${a * d}|${b * c}`,
+                    `${a}/${b} ÷ ${c}/${d}`);
             }
             if (e.id === 'entier-par') {
                 const [n, c, d] = nb;
@@ -130,6 +138,57 @@ test('TOUTES LES MARCHES DE LA DIVISION RÉPONDENT JUSTE', () => {
 });
 
 // ─────────────────────── LA RÉCIPROQUE DE PYTHAGORE ─────────────────────────
+
+test('SA REVUE DU 21 OCTOBRE — LA LIGNE, ET LES TROIS ÉTAPES', async () => {
+    const { divisionFractionsGenerator: D } = await import('../js/core/generators/divisionFractions.js');
+    const { pythagoreReciproqueGenerator: P } = await import('../js/core/generators/pythagoreReciproque.js');
+
+    // 1 · LA LIGNE INTERMÉDIAIRE NE SE SAUTE PLUS. Rémy : « Il faudrait forcer
+    //     l'élève quand on fait 3/4 : 5/6 à aller à la ligne et que l'on puisse
+    //     écrire 3/4 * 6/5. » Le geste du chapitre est la TRANSFORMATION : un
+    //     élève qui écrit directement 18/20 a peut-être retourné la bonne
+    //     fraction — ou les deux — et on ne le saura jamais.
+    for (let k = 0; k < 60; k++) {
+        const it = D.generate({ marches: ['par-une-fraction'] },
+            { rng: makeRng('li' + k), index: k, total: 60 });
+        const cases = it.answer.split('|').map(Number);
+        assert.equal(cases.length, 6, `${it.prompt.text} → ${it.answer}`);
+        const [a, b, d, c, n, m] = cases;
+        // LA PREMIÈRE FRACTION SE RECOPIE, LA SECONDE SE RETOURNE : c'est la
+        // faute du chapitre, et c'est elle qu'on évalue.
+        assert.equal(n, a * d, it.answer);
+        assert.equal(m, b * c, it.answer);
+        // ET L'ÉNONCÉ DIT BIEN QUELLE DIVISION ON POSE.
+        const lus = (it.prompt.text.match(/\d+/g) || []).map(Number);
+        assert.deepEqual(lus.slice(0, 4), [a, b, c, d], it.prompt.text);
+        // SIX CASES À L'ÉCRAN, autant que la réponse en attend : une de moins
+        // et l'élève ne peut pas valider sans savoir pourquoi.
+        assert.equal((it.prompt.html.match(/data-trou/g) || []).length, 6);
+    }
+
+    // 2 · LA RÉDACTION EN TROIS ÉTAPES. Rémy : « je sais que : ABC est un
+    //     triangle / Or / On calcule d'un côté et de l'autre EN SÉPARANT /
+    //     AB² = BC² + CA² (ou pas égal) / Donc, le triangle est rectangle
+    //     en … » C'est la copie qui rapporte les points, pas le « oui ».
+    const conclusions = new Set();
+    for (let k = 0; k < 60; k++) {
+        const it = P.generate({ marches: ['conclure'] },
+            { rng: makeRng('rd' + k), index: k, total: 60 });
+        const e = it.explanation;
+        assert.match(e, /^JE SAIS QUE : /, e.slice(0, 40));
+        assert.match(e, /\bOR, on calcule séparément\b/, e);
+        assert.match(e, /\bDONC, d'après la (réciproque|contraposée)\b/, e);
+        // LES DEUX CÔTÉS SONT CALCULÉS SÉPARÉMENT, et l'égalité n'est jamais
+        // posée d'avance : écrire « AB² = BC² + CA² » avant de l'avoir
+        // vérifiée, c'est supposer ce qu'on démontre.
+        assert.match(e, /d'un côté ;/, e);
+        assert.match(e, /de l'autre\./, e);
+        conclusions.add(it.answer);
+    }
+    // ET LES DEUX CONCLUSIONS SORTENT : une rédaction qui ne dirait jamais
+    // « n'est PAS rectangle » n'apprendrait que la moitié du geste.
+    assert.deepEqual([...conclusions].sort(), ['non', 'oui']);
+});
 
 test('LES TRIPLETS DÉCRIVENT DE VRAIS TRIANGLES', () => {
     // ─────────────────────────────────────────────────────────────────────────

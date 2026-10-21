@@ -5358,3 +5358,21 @@ le résultat n'existe pas** — 15 octobre 2026
   colonnes d'un tableau. Un outil qui, pour un exercice, confronterait ce que
   le générateur PRODUIT à ce que l'activité ACCEPTE fermerait les trois d'un
   coup.
+
+## Une recherche qui ne regarde que `js/` conclut qu'un champ est mort
+
+- *Ce qui s'est passé* : en écrivant une marche neuve, j'ai cherché qui lisait
+  `meta.cases` — un nombre de cases que le générateur ANNONCE —, trouvé
+  personne, et retiré le champ en écrivant dans le code « rien ne lit un tel
+  champ dans le dépôt, vérifié ». La recherche portait sur `js/`. Il est lu
+  dans `tests/`, par une garde qui confronte TROIS sources : les morceaux de
+  la réponse, les `[data-trou]` du HTML, et ce champ. Le retirer n'enlevait
+  pas une redite — cela enlevait la vérification. `npm test` l'a dit tout de
+  suite, mais le commentaire faux aurait survécu si l'épreuve n'avait pas
+  existé.
+- *Combien de fois* : |
+- *Ce qui manque* : rien d'outillage — la leçon est de chercher dans `tests/`
+  AUSSI avant de déclarer un champ mort, et surtout de ne pas écrire « vérifié »
+  dans un commentaire sur la foi d'une seule recherche. Un commentaire qui
+  affirme une mesure qu'on n'a pas faite est pire qu'un commentaire absent : le
+  suivant le croira.

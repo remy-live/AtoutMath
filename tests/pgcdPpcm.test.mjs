@@ -522,6 +522,49 @@ test('LES PROBLÈMES SONT MÉLANGÉS, ET LES DEUX NOTIONS Y SONT', () => {
     assert.equal(vus.size, 2, `une série de douze ne montre qu'une notion : ${[...vus]}`);
 });
 
+test('LA MARCHE QUI OUVRE L\'ESCALIER TIRE DANS SA PROPRE LISTE', () => {
+    // RÉMY : « Quel est le plus petit nombre premier qui divise 91 ? <- c'est
+    // pas facile. Quel est le plus petit nombre premier qui divise 198 ?
+    // idem. »
+    //
+    // Elle tirait dans `A_ESCALADER`, la liste de la marche « décomposer » —
+    // celle du HAUT de l'escalier —, où l'on trouve 49, 77, 91 et 119, dont le
+    // plus petit facteur est 7 ou 11. Or son aide dit « on essaie dans
+    // l'ordre : 2, puis 3, puis 5, puis 7 » : elle décrit un RÉFLEXE, et on la
+    // faisait travailler sur les nombres qui mettent ce réflexe en défaut.
+    //
+    // LA LEÇON « QUAND 2, 3 ET 5 ÉCHOUENT, IL FAUT ESSAYER 7 » N'EST PAS
+    // PERDUE : c'est exactement ce que travaille la marche « ce nombre est-il
+    // premier ? », deux crans plus loin — et l'épreuve le vérifie aussi, sans
+    // quoi on aurait seulement déplacé le trou.
+    const vus = new Set();
+    for (let k = 0; k < 200; k++) {
+        const t = G.generate({ marches: ['par-quoi'] },
+            { rng: makeRng('ouvre' + k), index: k, total: 200 }).prompt.text;
+        const n = Number(t.match(/divise (\d+)/)[1]);
+        assert.ok(n < 100, `${n} a trois chiffres à la première marche de l'escalier`);
+        const p = facteursPremiers(n)[0];
+        assert.ok([2, 3, 5].includes(p),
+            `${n} : son plus petit facteur est ${p}, hors des trois critères appris`);
+        vus.add(p);
+    }
+    // LES TROIS CRITÈRES SERVENT, et pas seulement celui de 2 : une marche qui
+    // ne tirerait que des nombres pairs n'apprendrait qu'à regarder le dernier
+    // chiffre.
+    assert.deepEqual([...vus].sort(), [2, 3, 5]);
+
+    // ET LES NOMBRES DURS SONT AILLEURS, pas disparus.
+    const durs = new Set();
+    for (let k = 0; k < 120; k++) {
+        const t = G.generate({ marches: ['premier'] },
+            { rng: makeRng('dur' + k), index: k, total: 120 }).prompt.text;
+        const n = Number(t.match(/(\d+) est-il/)[1]);
+        if (![2, 3, 5].includes(facteursPremiers(n)[0])) durs.add(n);
+    }
+    assert.ok(durs.size > 0,
+        'plus aucun nombre ne résiste aux critères de 2, 3 et 5 : la leçon a disparu');
+});
+
 test('UNE RÉPONSE À PLUSIEURS NOMBRES DÉCLARE SES CASES', () => {
     // LE DÉFAUT QUE CECI GARDE, ET QUI NE DISAIT RIEN. Une réponse « 3|4 » ne
     // fabrique PAS deux champs toute seule : le pavé compte les `[data-trou]`

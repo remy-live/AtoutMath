@@ -45,6 +45,39 @@ const S_RECIPROQUE = 'geo.pythagore.reciproque';
 const choisir = (liste, rng) => liste[rng.int(0, liste.length - 1)];
 
 /**
+ * LA RÉDACTION EN TROIS ÉTAPES — JE SAIS QUE, OR, DONC.
+ *
+ * RÉMY, mot pour mot : « Je pense que pour prouver qu'un triangle est
+ * rectangle ou non, il faut 3 étapes, je sais que : ABC est un triangle / Or /
+ * On calcule d'un côté et de l'autre en séparant / AB² = BC² + CA² (ou pas
+ * égal) / Donc, le triangle est rectangle en … (ou pas rectangle) »
+ *
+ * C'EST LA COPIE QUI RAPPORTE LES POINTS, pas le « oui ». Un élève qui répond
+ * juste sans écrire ces trois lignes perd la moitié du barème au contrôle, et
+ * c'est au CORRIGÉ qu'il faut la lui montrer — c'est le seul endroit où il
+ * lit un modèle qu'il peut recopier.
+ *
+ * ET « ON CALCULE D'UN CÔTÉ ET DE L'AUTRE EN SÉPARANT » est la phrase la plus
+ * importante des six qu'il a écrites : on ne calcule PAS « AB² = BC² + CA² »,
+ * on calcule AB² d'un côté, BC² + CA² de l'autre, et l'on COMPARE. Écrire
+ * l'égalité avant de l'avoir vérifiée, c'est supposer ce qu'on démontre — et
+ * c'est la faute de rédaction que tous les correcteurs sanctionnent.
+ */
+function redaction(t, egaux) {
+    const [u, v] = t.autres;
+    return `JE SAIS QUE : dans le triangle ${t.nom}, le plus long côté est `
+        + `${t.plusLong.nom}. OR, on calcule séparément : ${t.plusLong.nom}² = `
+        + `${t.plusLong.lg}² = ${t.carreLong} d'un côté ; ${u.nom}² + ${v.nom}² = `
+        + `${u.lg}² + ${v.lg}² = ${u.lg * u.lg} + ${v.lg * v.lg} = ${t.sommeCarres} de `
+        + `l'autre. ` + (egaux
+            ? `Les deux sont ÉGAUX. DONC, d'après la réciproque du théorème de Pythagore, `
+                + `le triangle ${t.nom} est rectangle en ${t.sommet}.`
+            : `${t.carreLong} ≠ ${t.sommeCarres} : les deux sont DIFFÉRENTS. DONC, d'après `
+                + `la contraposée du théorème de Pythagore, le triangle ${t.nom} n'est PAS `
+                + 'rectangle.');
+}
+
+/**
  * LES TRIPLETS QUI DONNENT UN TRIANGLE RECTANGLE.
  *
  * Ils sont écrits : un triplet pythagoricien ne se tire pas au hasard, et les
@@ -219,15 +252,11 @@ export function question(etape, rng) {
             enonce: `Dans le triangle ${t.nom}, ${direLesCotes(t)}.`,
             question: `Le triangle ${t.nom} est-il rectangle ?`,
             kind: 'choice', reponse: egaux ? 'oui' : 'non', choix: ['oui', 'non'],
-            pourquoi: `Le plus long côté est ${t.plusLong.nom}. ${t.plusLong.nom}² = `
-                + `${t.carreLong}, et ${t.autres[0].nom}² + ${t.autres[1].nom}² = `
-                + `${t.sommeCarres}. ` + (egaux
-                    ? `Les deux sont égaux : d'après la réciproque du théorème de Pythagore, `
-                        + `${t.nom} est rectangle en ${t.sommet}.`
-                    : 'Les deux sont différents : le triangle n\'est pas rectangle.'),
-            aide: 'TROIS GESTES, DANS CET ORDRE : repérer le plus long côté, calculer son '
-                + 'carré d\'un côté et la somme des deux autres carrés de l\'autre, puis '
-                + 'comparer.'
+            pourquoi: redaction(t, egaux),
+            aide: 'TROIS ÉTAPES, ET ON LES ÉCRIT. JE SAIS QUE : quel est le plus long côté. '
+                + 'OR : son carré d\'un côté, la somme des deux autres carrés DE L\'AUTRE — '
+                + 'séparément, jamais en posant l\'égalité d\'avance. DONC : égaux, il est '
+                + 'rectangle, et on dit OÙ ; différents, il ne l\'est pas.'
         };
     }
 

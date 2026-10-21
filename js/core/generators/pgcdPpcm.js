@@ -131,6 +131,16 @@ export const COUPLES_FACILES = [
 export const COUPLES_RYTHME = COUPLES_FACILES.filter(([a, b]) => ppcm(a, b) <= 90);
 
 /** Les nombres à décomposer : jamais premiers, toujours instructifs. */
+/**
+ * LES NOMBRES QU'ON POSE EN COLONNE : trois ou quatre facteurs premiers, pas
+ * plus. Cinq feraient neuf cases à remplir sur un pavé numérique, et c'est la
+ * longueur qui deviendrait l'exercice.
+ */
+export const A_POSER = [
+    12, 18, 20, 24, 28, 30, 36, 40, 42, 44, 45, 50, 52, 54, 56,
+    63, 66, 68, 70, 75, 76, 78, 81, 88, 92, 98, 99, 102, 105, 110
+];
+
 export const A_DECOMPOSER = [
     36, 48, 60, 72, 84, 90, 96, 120, 126, 132, 140, 150,
     168, 180, 198, 200, 210, 225, 240, 252, 280, 300, 315, 360
@@ -262,6 +272,7 @@ export const ETAPES = [
     { id: 'le-quotient', temps: 'B', titre: 'La première division', skill: S_DECOMP },
     { id: 'decomposer-petit', temps: 'B', titre: 'Décomposer un petit nombre', skill: S_DECOMP },
     { id: 'premier', temps: 'B', titre: 'Ce nombre est-il premier ?', skill: S_DECOMP },
+    { id: 'potence', temps: 'B', titre: 'Poser la décomposition en colonne', skill: S_DECOMP },
     { id: 'decomposer', temps: 'B', titre: 'Décomposer en facteurs premiers', skill: S_DECOMP },
     { id: 'recomposer', temps: 'B', titre: 'Lire une décomposition', skill: S_DECOMP },
     { id: 'pgcd-liste', temps: 'C', titre: 'Le PGCD, en listant', skill: S_PGCD },
@@ -354,6 +365,54 @@ const choisir = (liste, rng) => liste[rng.int(0, liste.length - 1)];
  * rien ne prévient, et la question est simplement impossible.
  */
 const trou = (i) => `<u class="np-trou" data-trou="${i}">&nbsp;?&nbsp;</u>`;
+
+/**
+ * LA POTENCE — LA DÉCOMPOSITION POSÉE EN COLONNE.
+ *
+ * RÉMY, photo de son cahier à l'appui : « Il faudrait plutôt le faire en
+ * colonne. » Sa photo montre exactement cela — le nombre à gauche, le diviseur
+ * à droite d'un trait vertical, et l'on descend :
+ *
+ *     120 │ 2
+ *      60 │ 2
+ *      30 │ 2
+ *      15 │
+ *
+ * ON REMPLIT LES DEUX COLONNES, et c'est la différence entre poser une
+ * division et lire une réponse. Montrer les quotients tout faits donnerait les
+ * diviseurs par simple division ; ne montrer que le premier nombre et le 1
+ * final oblige à faire ce que le cahier fait faire — choisir le premier qui
+ * divise, poser le quotient, recommencer.
+ *
+ * L'ORDRE DES TROUS EST L'ORDRE DE LECTURE : diviseur, puis quotient, puis
+ * diviseur… C'est aussi l'ordre dans lequel on les écrit à la main.
+ *
+ * LE 1 FINAL EST ÉCRIT, et il n'est pas décoratif : c'est le signal d'arrêt.
+ * Un élève qui ne sait pas où s'arrêter divise encore, ou s'arrête trop tôt.
+ */
+function potenceHtml(n, facteurs) {
+    let reste = n, i = 0;
+    const lignes = facteurs.map((f, k) => {
+        const gauche = k === 0 ? String(n) : trou(i++);
+        const droite = trou(i++);
+        reste /= f;
+        return `<tr><td class="pp-pot-n">${gauche}</td><td class="pp-pot-d">${droite}</td></tr>`;
+    });
+    lignes.push('<tr><td class="pp-pot-n">1</td><td class="pp-pot-d"></td></tr>');
+    return `<table class="pp-potence"><tbody>${lignes.join('')}</tbody></table>`;
+}
+
+/** Les cases de la potence, dans l'ordre où on les remplit. */
+function potenceReponse(n, facteurs) {
+    const cases = [];
+    let reste = n;
+    facteurs.forEach((f, k) => {
+        if (k > 0) cases.push(String(reste));
+        cases.push(String(f));
+        reste /= f;
+    });
+    return cases.join('|');
+}
 
 /** « 4 + 5 » — la somme des chiffres, écrite comme on la pose. */
 const chiffresAdditionnes = (n) => String(n).split('').join(' + ');
@@ -571,6 +630,55 @@ export function question(etape, rng) {
                     : ` : on recommence maintenant sur ${q}`}.`,
             aide: 'ON DIVISE PAR LE PLUS PETIT PREMIER, puis on RECOMMENCE sur le quotient. '
                 + 'L\'escalier s\'arrête quand le quotient est lui-même premier.'
+        };
+    }
+
+    if (etape.id === 'potence') {
+        // RÉMY, PHOTO DE SON CAHIER À L'APPUI : « Il faudrait plutôt le faire en
+        // colonne. » La marche d'à côté demande les EXPOSANTS — c'est le
+        // résultat écrit, et c'est juste. Mais le geste qui y mène, celui
+        // qu'on fait au tableau et dans le cahier, est la POTENCE : on divise,
+        // on pose le quotient, on recommence.
+        //
+        // LES DEUX RESTENT, DANS CET ORDRE. Poser la colonne est COMMENT on
+        // trouve ; écrire 2³ × 3 × 5 est COMMENT on l'écrit. Une marche qui
+        // donne le résultat sans le geste laisse l'élève sans méthode ; une
+        // marche qui fait le geste sans l'écriture le laisse sans réponse.
+        //
+        // TROIS OU QUATRE FACTEURS : cinq feraient neuf cases à remplir sur un
+        // pavé numérique, et la longueur deviendrait l'exercice.
+        const n = choisir(A_POSER, rng);
+        const facteurs = facteursPremiers(n);
+        const etapes = [];
+        let reste = n;
+        for (const f of facteurs) { etapes.push(`${reste} ÷ ${f} = ${reste / f}`); reste /= f; }
+        return {
+            enonce: '',
+            question: `Pose la décomposition de ${n} en colonne.`,
+            papier: `Décompose ${n} en colonne, puis écris le produit de facteurs premiers.`,
+            htmlReponse: potenceHtml(n, facteurs),
+            // `cases` EST UNE DÉCLARATION QU'UNE ÉPREUVE CONFRONTE À L'ÉNONCÉ.
+            //
+            // J'avais commencé par le retirer, en écrivant que personne ne le
+            // lisait : le pavé, lui, COMPTE les `[data-trou]` du HTML
+            // (`activities/numeric.js`), et ma recherche n'avait regardé que
+            // `js/`. Elle est lue dans `tests/` — « une réponse à plusieurs
+            // nombres déclare ses cases » compare les trois : le nombre de
+            // morceaux de la réponse, le nombre de trous du HTML, et ce champ.
+            // Trois sources qui doivent dire la même chose, et une épreuve qui
+            // rougit dès que l'une dérive. Le retirer n'enlevait pas une
+            // redite : cela enlevait la vérification.
+            kind: 'numeric', reponse: potenceReponse(n, facteurs),
+            cases: facteurs.length * 2 - 1,
+            pourquoi: `On divise, on pose le quotient, on recommence tant qu'on peut : `
+                + `${etapes.join(' ; ')}. On s'arrête à 1. Les diviseurs de la colonne de `
+                + `droite SONT la décomposition : ${n} = ${facteurs.join(' × ')}.`,
+            aide: 'À CHAQUE LIGNE, LA MÊME QUESTION : quel est le plus petit nombre premier '
+                + 'qui divise celui de gauche ? On l\'écrit à droite du trait, on pose le '
+                + 'quotient en dessous, et l\'on recommence. ON S\'ARRÊTE QUAND ON TOMBE '
+                + 'SUR 1 — et l\'on peut diviser PLUSIEURS FOIS par le même premier. Si le '
+                + 'nombre de gauche est lui-même PREMIER, on le divise par lui-même : il '
+                + 'descend à 1 et c\'est fini.'
         };
     }
 

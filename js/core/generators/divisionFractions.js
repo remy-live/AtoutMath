@@ -56,9 +56,30 @@ const fraction = (n, d) => '<span class="fraction frac-dans-texte">'
     + `<span class="fraction-den">${d}</span></span>`;
 
 /** La fraction à remplir, numérateur sur dénominateur. */
-const fractionATrous = () => '<span class="fraction fraction--grande">'
-    + `<span class="fraction-num">${trou(0)}</span>`
-    + `<span class="fraction-den">${trou(1)}</span></span>`;
+const fractionATrous = (i = 0) => '<span class="fraction fraction--grande">'
+    + `<span class="fraction-num">${trou(i)}</span>`
+    + `<span class="fraction-den">${trou(i + 1)}</span></span>`;
+
+/**
+ * LA LIGNE ENTIÈRE, DE LA DIVISION AU RÉSULTAT — ET C'EST RÉMY QUI L'A
+ * DEMANDÉE.
+ *
+ * « Il faudrait forcer l'élève quand on fait 3/4 : 5/6 à aller à la ligne et
+ * que l'on puisse écrire 3/4 * 6/5. »
+ *
+ * IL A RAISON, ET LA RAISON EST DE MÉTIER : le geste du chapitre est la
+ * TRANSFORMATION, pas le résultat. Un élève qui écrit directement 18/20 a
+ * peut-être retourné la bonne fraction — ou les deux, ou la mauvaise — et on
+ * ne le saura jamais. La ligne « 3/4 × 6/5 » EST la réponse qu'on évalue ;
+ * celle d'après n'est plus qu'un produit, qu'il sait faire depuis la cinquième.
+ *
+ * SIX CASES, et c'est le prix. La première fraction se RECOPIE — c'est elle
+ * qu'on ne retourne pas, et la recopier est une décision, pas une corvée.
+ */
+const ligneDeDivision = (a, b, c, d) =>
+    '<span class="pp-ligne-division">'
+    + `${fraction(a, b)} ÷ ${fraction(c, d)} = ${fractionATrous(0)}`
+    + ` × ${fractionATrous(2)} = ${fractionATrous(4)}</span>`;
 
 // ── LES NOMBRES, ÉCRITS ET NON TIRÉS ───────────────────────────────────────
 //
@@ -255,14 +276,24 @@ export function question(etape, rng) {
         const [a, b, c, d] = choisir(DIVISIONS, rng);
         const n = a * d, m = b * c;
         return {
-            question: `Calcule ${a}/${b} ÷ ${c}/${d}.`,
-            questionHtml: `Calcule ${fraction(a, b)} ÷ ${fraction(c, d)}.`,
-            htmlReponse: fractionATrous(),
-            kind: 'numeric', reponse: `${n}|${m}`, cases: 2,
+            // ON ÉCRIT LA LIGNE ENTIÈRE, ET L'ON NE PEUT PAS LA SAUTER. Rémy :
+            // « Il faudrait forcer l'élève […] à aller à la ligne et que l'on
+            // puisse écrire 3/4 * 6/5. » Les deux premières fractions à
+            // remplir SONT la transformation — la première recopiée, la
+            // seconde retournée —, et c'est elle qu'on évalue : le produit qui
+            // suit, il sait le faire depuis la cinquième.
+            question: `Calcule ${a}/${b} ÷ ${c}/${d}. Écris d'abord la multiplication `
+                + 'qui la remplace.',
+            questionHtml: `Calcule ${fraction(a, b)} ÷ ${fraction(c, d)}. `
+                + 'Écris d\'abord la multiplication qui la remplace.',
+            htmlReponse: ligneDeDivision(a, b, c, d),
+            kind: 'numeric', reponse: `${a}|${b}|${d}|${c}|${n}|${m}`,
             pourquoi: `On garde la première et l'on multiplie par l'INVERSE de la seconde : `
-                + `${a}/${b} × ${d}/${c} = ${n}/${m}.`,
-            aide: 'ON NE RETOURNE QUE LA SECONDE. La première ne bouge pas — c\'est la faute '
-                + 'la plus fréquente du chapitre, avec celle de retourner les deux.'
+                + `${a}/${b} ÷ ${c}/${d} = ${a}/${b} × ${d}/${c} = ${n}/${m}.`,
+            aide: 'ON NE RETOURNE QUE LA SECONDE. La première se RECOPIE telle quelle — la '
+                + 'retourner, ou retourner les deux, sont les deux fautes du chapitre. '
+                + 'Écris la multiplication en entier AVANT de calculer : c\'est elle qu\'on '
+                + 'regarde.'
         };
     }
 
