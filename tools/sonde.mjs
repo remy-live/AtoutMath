@@ -97,6 +97,19 @@ export async function ouvrirSonde(o = {}) {
     const erreurs = [];
     const fenetresNatives = [];
     page.on('pageerror', e => erreurs.push(String(e).slice(0, 160)));
+    // UNE VIOLATION DE CSP N'EST PAS UNE ERREUR DE PAGE, et c'est précisément
+    // ce qui la rend chère : le navigateur refuse le script, l'écrit dans la
+    // console, et `pageerror` ne dit rien. Mesuré ce jour-là : un script écrit
+    // dans la page, ajouté après le dernier `csp.mjs --ecrire`, ne s'exécutait
+    // pas — et la sonde annonçait « erreurs : 0 » devant un bouton absent.
+    //
+    // On les range AVEC les erreurs : toutes les sondes impriment déjà
+    // `s.erreurs`, et le verdict de `boutEnBout` les compte. Une liste de plus
+    // serait une liste que personne ne regarde.
+    page.on('console', m => {
+        const t = m.text();
+        if (/Content Security Policy/i.test(t)) erreurs.push('CSP : ' + t.slice(0, 150));
+    });
     // « tu utilises des alert et prompt, on évite ! » — une sonde qui n'écoute
     // pas les fenêtres natives ne verra jamais celle qui reviendra.
     page.on('dialog', async d => { fenetresNatives.push(d.message()); await d.dismiss(); });

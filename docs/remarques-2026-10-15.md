@@ -2548,6 +2548,30 @@ Le `scope: "./"` couvre bien `?code=…`, donc le lien scanné tombe dans
 l'application installée (capture de lien sur Android ; sur iPad la caméra ouvre
 Safari, et c'est donc dans Safari qu'il faut l'avoir installée).
 
+**FAIT** (v1068), sur son « Oui ». `js/ui/installer.js`, et la capture de
+l'offre écrite dans l'en-tête de la page — `beforeinstallprompt` ne se
+redemande pas, et les modules se chargent trop tard pour l'attraper.
+
+Le bouton est à DEUX endroits : l'écran vide du parcours — là où tombe une
+tablette neuve — et la fenêtre « J'ai un code », le seul écran toujours
+atteignable. Il ne paraît que s'il peut servir.
+
+MESURÉ, l'offre du navigateur fabriquée avec la forme exacte qu'il lui donne :
+
+```
+au chargement        la capture est en place, rien à proposer, pas de bouton
+l'offre arrive       le bouton paraît, « Installer sur cet appareil »
+au clic              `prompt()` appelé une fois, l'offre jetée, bouton parti
+au doigt (390 px)    44 px de haut, 209 de large, ne déborde pas
+la notice d'Apple    ses deux pas, à l'étage 999 999, au premier plan
+erreurs de page 0    fenêtres natives 0
+```
+
+IL RESTE DEUX CHOSES À LUI DEMANDER : si les tablettes de sa sœur sont pilotées
+par un outil d'école (alors un raccourci poussé sur les vingt-cinq règle tout
+sans code), et ce que valent pour sa classe les 95 exercices sur 244 qui
+portent l'étiquette CM2.
+
 ### 22 ter. « Une fenêtre intégrée dans l'appli » — le scanner
 
 > « Mais du coup on ne peut pas ne pas passer par l application du qr code et

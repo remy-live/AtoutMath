@@ -1541,3 +1541,32 @@ body.mobile-view #toast-container {
     margin: 0; min-height: 2.8em; text-align: center;
     color: var(--text-muted); font-size: .95rem; line-height: 1.4;
 }
+
+/* --- METTRE ATOUTMATH SUR L'ÉCRAN D'ACCUEIL --------------------------------
+   Voir `js/ui/installer.js`. Rémy, pour les tablettes de sa sœur : « on peut
+   pas faire qqch qui s installe tout seul sur la tablette ».
+
+   LE BOUTON EST DISCRET, ET C'EST UNE DÉCISION. Il ne doit pas disputer la
+   place à « J'ai un code », qui est ce que l'élève vient faire : l'un est le
+   geste du jour, l'autre se fait une fois pour toutes. Contour plutôt que
+   fond plein, et la même hauteur tactile que tout le reste. */
+.inst-zone:empty { display: none; }
+.inst-bouton {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--border); font-weight: 600;
+}
+/* LE SURVOL EST SOUS `@media (hover: hover)`, et une épreuve de la maison
+   l'exige : au doigt, il n'y a pas de survol — il y a un appui qui RESTE.
+   Sans cette protection, le bouton garderait son allure de survol après le
+   tap, sur l'appareil même dont il est question ici. */
+@media (hover: hover) {
+    .inst-bouton:hover { color: var(--text-main); border-color: var(--text-muted); }
+}
+.inst-texte { margin: 0 0 14px; color: var(--text-main); line-height: 1.5; }
+.inst-texte--apres { margin: 14px 0 0; color: var(--text-muted); }
+/* DEUX PAS NUMÉROTÉS, et la numérotation dit quelque chose de vrai : sur iPad
+   il faut faire le premier AVANT le second. C'est une des rares listes de ce
+   dépôt où l'ordre est une information. */
+.inst-pas { margin: 0; padding-left: 1.3em; line-height: 1.7; color: var(--text-main); }
+.inst-pas li + li { margin-top: 8px; }

@@ -44,6 +44,17 @@ export function initStudentCodeUI() {
     //
     // LE BOUTON NE PARAÎT QUE S'IL PEUT SERVIR. Voir `laCameraEstPossible` :
     // hors contexte sécurisé, `getUserMedia` n'existe pas du tout.
+    // L'INSTALLATION EST AUSSI ICI, et c'est le second écran où elle compte :
+    // le professeur dit « tape ton code » ou « scanne », l'élève ouvre cette
+    // fenêtre, et c'est le seul endroit TOUJOURS atteignable — l'écran vide,
+    // lui, disparaît dès qu'une séance arrive.
+    const btnInstall = document.getElementById('btn-installer-zone');
+    if (btnInstall) {
+        import('./installer.js')
+            .then(m => m.poserDesQuePossible(btnInstall))
+            .catch(() => { /* la fenêtre du code vaut mieux sans que cassée */ });
+    }
+
     const btnScan = document.getElementById('btn-scanner-code');
     if (btnScan && laCameraEstPossible()) {
         btnScan.hidden = false;

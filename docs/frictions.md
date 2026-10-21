@@ -5480,3 +5480,22 @@ le résultat n'existe pas** — 15 octobre 2026
   caméra de papier est dans `tools/tmp/faireY4m.mjs` : quarante lignes, aucune
   dépendance, qui écrivent un Y4M montrant un QR fabriqué par le dépôt
   lui-même. À garder si l'on remesure le scanner.
+
+## Une sonde ne voit pas une violation de CSP — elle voit un bouton absent
+
+- *Ce que je voulais faire* : mesurer le bouton « Installer », dont l'offre est
+  attrapée par un script écrit dans la page.
+- *Ce qui a coûté* : vingt minutes. Le script ne s'exécutait pas — son
+  empreinte n'était pas dans `.htaccess`, puisque j'avais ajouté le script
+  APRÈS le dernier `csp.mjs --ecrire`. Le serveur d'essai applique la vraie CSP
+  (c'est une correction d'il y a trois semaines, et une bonne), donc le
+  navigateur refusait le script, l'écrivait dans la CONSOLE, et la sonde
+  annonçait « erreurs : 0 » devant un bouton absent. `pageerror` ne voit pas
+  une violation de CSP. `npm test` l'aurait dit — `tests/csp.test.mjs` garde
+  que chaque script de la page est signé —, mais quatre minutes après, et
+  seulement si j'y étais allé.
+- *Combien de fois* : |
+- *Ce qui manque* : rien désormais — `sonde.mjs` écoute la console et range
+  les violations de CSP AVEC les erreurs de page. Toutes les sondes impriment
+  déjà `s.erreurs`, et le verdict de `boutEnBout` les compte : une liste de
+  plus serait une liste que personne ne regarde.

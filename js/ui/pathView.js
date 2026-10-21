@@ -498,6 +498,19 @@ function sectionSansParcours(box) {
             const champ = document.getElementById('student-code-input');
             if (champ) { champ.value = ''; champ.focus(); }
         };
+        // ET L'INSTALLATION, ICI PLUTÔT QU'AILLEURS.
+        //
+        // C'est l'écran sur lequel tombe une tablette NEUVE : rien à faire
+        // encore, et tout à préparer. Posée maintenant, l'application garde
+        // son cache et s'ouvre sans adresse à taper — c'est la différence
+        // entre « ça marchait la semaine dernière » et « ça marche ».
+        //
+        // Le bouton ne paraît que s'il peut servir : `poserLeBouton…` ne pose
+        // rien quand l'application est déjà installée, ni sur un navigateur
+        // qui ne sait ni installer ni expliquer comment.
+        import('./installer.js')
+            .then(m => m.poserLeBoutonDInstallation(box))
+            .catch(() => { /* l'écran vaut mieux sans que cassé par son extra */ });
         return box;
     }
 
