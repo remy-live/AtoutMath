@@ -25,10 +25,27 @@
 // une unité de départ au rang u, tombe dans la colonne u + r. Toute la
 // conversion tient dans cette addition.
 //
-// LES AIRES ET LES VOLUMES NE SONT PAS ICI. Leur tableau a deux (ou trois)
-// sous-colonnes par unité, parce qu'on passe de m² à dm² en multipliant par
-// cent. Les faire entrer dans ce moule-ci donnerait un mauvais compromis pour
-// les deux : c'est un second tableau, pas un réglage.
+// LES AIRES ET LES VOLUMES SONT ICI, ET ILS N'ONT RIEN COÛTÉ AU MODÈLE.
+//
+// Ce fichier a longtemps porté le contraire : « leur tableau a deux (ou trois)
+// sous-colonnes par unité […] c'est un second tableau, pas un réglage ».
+// C'était vrai de l'AFFICHAGE, et faux du calcul — et j'ai écrit le second
+// avant de m'en apercevoir.
+//
+// Le rang est une puissance de dix ABSOLUE. Le mètre carré vaut 0, le
+// décimètre carré −2 (puisque 1 m² = 100 dm²), le centimètre carré −4. Toute
+// l'arithmétique de ce fichier — `u.rang + r`, la virgule, les zéros — tient
+// alors SANS UNE LIGNE DE PLUS. Ce qui change, et seulement cela : une unité
+// n'occupe plus une colonne mais `echelon` colonnes consécutives, et son
+// étiquette les coiffe.
+//
+// D'où `echelon` dans chaque famille, et `colonnesDuTableau` pour la liste
+// complète des colonnes. Le reste est inchangé.
+//
+// RÉMY, dans sa progression de sixième : « ← À voir 1 m = 100 cm,
+// 1 m² = 100 dm² ». C'est là que les élèves se trompent le plus : ils
+// appliquent au carré la règle du simple, et perdent un facteur dix par
+// colonne.
 
 import { chiffreAuRang, rangsDe, decimales } from './poser.js';
 
@@ -38,7 +55,7 @@ import { chiffreAuRang, rangsDe, decimales } from './poser.js';
  */
 export const FAMILLES = {
     longueur: {
-        id: 'longueur', nom: 'Longueurs', base: 'm',
+        id: 'longueur', nom: 'Longueurs', base: 'm', echelon: 1,
         unites: [
             { symbole: 'km', nom: 'kilomètre', rang: 3 },
             { symbole: 'hm', nom: 'hectomètre', rang: 2 },
@@ -50,7 +67,7 @@ export const FAMILLES = {
         ]
     },
     masse: {
-        id: 'masse', nom: 'Masses', base: 'g',
+        id: 'masse', nom: 'Masses', base: 'g', echelon: 1,
         unites: [
             { symbole: 'kg', nom: 'kilogramme', rang: 3 },
             { symbole: 'hg', nom: 'hectogramme', rang: 2 },
@@ -62,7 +79,7 @@ export const FAMILLES = {
         ]
     },
     capacite: {
-        id: 'capacite', nom: 'Contenances', base: 'L',
+        id: 'capacite', nom: 'Contenances', base: 'L', echelon: 1,
         unites: [
             { symbole: 'hL', nom: 'hectolitre', rang: 2 },
             { symbole: 'daL', nom: 'décalitre', rang: 1 },
@@ -70,6 +87,39 @@ export const FAMILLES = {
             { symbole: 'dL', nom: 'décilitre', rang: -1 },
             { symbole: 'cL', nom: 'centilitre', rang: -2 },
             { symbole: 'mL', nom: 'millilitre', rang: -3 }
+        ]
+    },
+    // LES AIRES : DEUX COLONNES PAR UNITÉ, parce qu'on passe de m² à dm² en
+    // multipliant par CENT. Le rang reste la puissance de dix : dm² vaut −2,
+    // cm² vaut −4. Une unité de rang r occupe les colonnes r et r+1 — sa
+    // colonne des unités est r, celle des dizaines r+1.
+    aire: {
+        id: 'aire', nom: 'Aires', base: 'm²', echelon: 2,
+        unites: [
+            { symbole: 'km²', nom: 'kilomètre carré', rang: 6 },
+            { symbole: 'hm²', nom: 'hectomètre carré', rang: 4 },
+            { symbole: 'dam²', nom: 'décamètre carré', rang: 2 },
+            { symbole: 'm²', nom: 'mètre carré', rang: 0 },
+            { symbole: 'dm²', nom: 'décimètre carré', rang: -2 },
+            { symbole: 'cm²', nom: 'centimètre carré', rang: -4 },
+            { symbole: 'mm²', nom: 'millimètre carré', rang: -6 }
+        ]
+    },
+    // LES VOLUMES S'ARRÊTENT AU MÈTRE CUBE, ET C'EST UN CHOIX.
+    //
+    // Le tableau complet irait du km³ au mm³ : avec trois colonnes par unité,
+    // cela fait VINGT ET UNE colonnes, qu'aucune feuille ni aucun écran de
+    // tablette ne porte lisiblement. Et personne ne convertit en kilomètres
+    // cubes au collège. Les quatre unités d'ici — m³, dm³, cm³, mm³ — sont
+    // celles du programme de sixième, et ce sont elles qui portent le lien
+    // avec les contenances : 1 dm³ = 1 L.
+    volume: {
+        id: 'volume', nom: 'Volumes', base: 'm³', echelon: 3,
+        unites: [
+            { symbole: 'm³', nom: 'mètre cube', rang: 0 },
+            { symbole: 'dm³', nom: 'décimètre cube', rang: -3 },
+            { symbole: 'cm³', nom: 'centimètre cube', rang: -6 },
+            { symbole: 'mm³', nom: 'millimètre cube', rang: -9 }
         ]
     }
 };
@@ -79,6 +129,38 @@ export const NOMS_FAMILLES = Object.keys(FAMILLES);
 export const familleDe = (id) => FAMILLES[id] || FAMILLES.longueur;
 export const uniteDe = (famille, symbole) =>
     familleDe(famille).unites.find(u => u.symbole === symbole) || null;
+
+/** Combien de colonnes une unité occupe : 1 pour une longueur, 2 pour une aire. */
+export const echelonDe = (famille) => familleDe(famille).echelon || 1;
+
+/**
+ * TOUTES LES COLONNES DU TABLEAU, de la plus haute à la plus basse.
+ *
+ * Pour une longueur, c'est exactement la liste des rangs des unités. Pour une
+ * aire, il y en a DEUX par unité : le mètre carré (rang 0) occupe les colonnes
+ * 1 et 0, et le décamètre carré (rang 2) les colonnes 3 et 2.
+ *
+ * C'EST CETTE LISTE QUI DIT CE QUI TIENT DANS LE TABLEAU, et non les rangs des
+ * unités. La confondre avec eux fait déborder le nombre d'une colonne par
+ * unité — invisible en longueur, où les deux listes sont la même.
+ */
+export function colonnesDuTableau(famille) {
+    const f = familleDe(famille);
+    const e = f.echelon || 1;
+    const rangs = f.unites.map(u => u.rang);
+    const haut = Math.max(...rangs) + e - 1;
+    const bas = Math.min(...rangs);
+    const out = [];
+    for (let c = haut; c >= bas; c--) out.push(c);
+    return out;
+}
+
+/** L'unité qui coiffe une colonne donnée — celle dont la colonne fait partie. */
+export function uniteDeLaColonne(famille, colonne) {
+    const f = familleDe(famille);
+    const e = f.echelon || 1;
+    return f.unites.find(u => colonne >= u.rang && colonne <= u.rang + e - 1) || null;
+}
 
 // --- Étape 1 : placer les unités ------------------------------------------------------
 
@@ -238,15 +320,18 @@ export function convertir(valeur, famille, depart, arrivee) {
  * met dans les autres.
  */
 export function tientDansLeTableau(valeur, famille, depart, arrivee) {
-    const f = familleDe(famille);
     const uD = uniteDe(famille, depart), uA = uniteDe(famille, arrivee);
     if (!uD || !uA) return false;
-    const rangs = f.unites.map(u => u.rang);
+    // LES COLONNES DU TABLEAU, ET NON LES RANGS DES UNITÉS. En longueur les
+    // deux listes sont la même, et la distinction ne se voit pas ; en aire,
+    // le km² est au rang 6 mais le tableau monte jusqu'à la colonne 7 — s'en
+    // tenir aux rangs écarterait des tirages parfaitement écrivables.
+    const toutes = colonnesDuTableau(famille);
 
     const colonnes = chiffresDansLeTableau(valeur, famille, depart).map(p => p.colonne);
     if (!colonnes.length) return false;
-    return Math.max(...colonnes) <= Math.max(...rangs)
-        && Math.min(...colonnes) >= Math.min(...rangs);
+    return Math.max(...colonnes) <= toutes[0]
+        && Math.min(...colonnes) >= toutes[toutes.length - 1];
 }
 
 /** La réponse attendue, seule — pour vérifier ce que l'élève écrit. */

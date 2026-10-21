@@ -34,16 +34,24 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../js/core/ids.js';
 import {
-    FAMILLES, familleDe, tirerConversion, chiffresDansLeTableau, convertir,
+    FAMILLES, familleDe, tirerConversion, chiffresDansLeTableau, convertir, colonnesDuTableau,
     tientDansLeTableau
 } from '../js/core/conversion.js';
 
 const FAMILLES_NOMMEES = Object.keys(FAMILLES);
 
-/** Les colonnes réellement dessinées pour une famille. */
+/**
+ * Les colonnes réellement dessinées pour une famille.
+ *
+ * ON NE PREND PAS LES RANGS DES UNITÉS, et cette fonction en a fait la preuve :
+ * écrite ainsi, elle a fait tomber deux épreuves le jour où les aires sont
+ * arrivées. Une unité d'aire coiffe DEUX colonnes — le km² est au rang 6, et
+ * le tableau monte jusqu'à la colonne 7. En longueur les deux listes sont la
+ * même, et c'est pour cela que l'erreur a pu dormir ici sans rien casser.
+ */
 function bornes(famille) {
-    const rangs = familleDe(famille).unites.map(u => u.rang);
-    return { haut: Math.max(...rangs), bas: Math.min(...rangs) };
+    const cols = colonnesDuTableau(famille);
+    return { haut: cols[0], bas: cols[cols.length - 1] };
 }
 
 // ────────────────────────────────────────────── LA RÈGLE, SEULE ─────────────

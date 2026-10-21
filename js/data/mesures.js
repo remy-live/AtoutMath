@@ -149,7 +149,14 @@ export const mesuresExercises = [
                 options: [
                     { value: 'longueur', label: 'Longueurs (km \u2192 mm)' },
                     { value: 'masse', label: 'Masses (kg \u2192 mg)' },
-                    { value: 'capacite', label: 'Contenances (hL \u2192 mL)' }
+                    { value: 'capacite', label: 'Contenances (hL \u2192 mL)' },
+                    // DEUX COLONNES PAR UNITÉ, ET C'EST TOUT LE SUJET. Rémy, dans
+                    // sa progression de sixième : « ← À voir 1 m = 100 cm,
+                    // 1 m² = 100 dm² ». L'élève qui applique au carré la règle du
+                    // simple perd un facteur dix PAR COLONNE — et le tableau est le
+                    // seul endroit où cela se voit.
+                    { value: 'aire', label: 'Aires (km² → mm²) — deux colonnes par unité' },
+                    { value: 'volume', label: 'Volumes (m³ → mm³) — trois colonnes par unité' }
                 ],
                 default: 'longueur'
             },

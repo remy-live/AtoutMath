@@ -22,7 +22,8 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     FAMILLES, familleDe, uniteDe, melangerUnites, verifierUnites,
-    apercuPlacement, verifierNombre, convertir, tirerConversion
+    apercuPlacement, verifierNombre, convertir, tirerConversion,
+    echelonDe, colonnesDuTableau
 } from '../core/conversion.js';
 
 const COMPETENCE = 'num.conversion';
@@ -40,7 +41,14 @@ class Conversion extends BaseGame {
         this.unitesPosees = {};
     }
 
-    get colonnes() { return familleDe(this.famille).unites.map(u => u.rang); }
+    // TOUTES LES COLONNES, ET NON LES RANGS DES UNITÉS.
+    //
+    // En longueur les deux listes sont la même, et c'est ce qui rend la
+    // confusion indétectable là-bas. En aire, une unité coiffe DEUX colonnes :
+    // le km² est au rang 6, et le tableau monte jusqu'à la colonne 7. Prendre
+    // les rangs ferait croire au débordement d'un nombre qui tient.
+    get colonnes() { return colonnesDuTableau(this.famille); }
+    get echelon() { return echelonDe(this.famille); }
 
     render() {
         this.container.innerHTML = `
@@ -71,13 +79,30 @@ class Conversion extends BaseGame {
                     font-variant-numeric: tabular-nums;
                 }
 
-                /* LE TABLEAU. Une colonne par unité, la virgule entre deux. */
+                /* LE TABLEAU. Une colonne par unité pour les longueurs ; DEUX
+                   pour les aires, TROIS pour les volumes — voir « echelon » dans
+                   core/conversion.js. La virgule se pose entre deux colonnes. */
                 .cv-table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
                 .cv-table th, .cv-table td {
                     border: 2px solid var(--text-main); text-align: center;
                     width: clamp(38px, 11cqw, 62px); height: clamp(34px, 9cqw, 52px);
                     padding: 0; font-weight: 800; font-size: clamp(15px, 4cqw, 22px);
                 }
+                /* QUATORZE COLONNES NE TIENNENT PAS DANS 390 PIXELS, et le
+                   tableau d'une aire en a quatorze. Les cases rétrécissent
+                   d'abord ; au-delà, le tableau DÉFILE dans sa propre boîte
+                   plutôt que de pousser la page entière de travers. */
+                .cv-large .cv-table th, .cv-large .cv-table td {
+                    width: clamp(26px, 6.5cqw, 44px);
+                    font-size: clamp(13px, 3.2cqw, 19px);
+                }
+                .cv-large .cv-table th { font-size: clamp(9px, 2.4cqw, 13px); }
+                .cv-defile { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+                /* LE TRAIT ÉPAIS SÉPARE LES UNITÉS, PAS LES SOUS-COLONNES.
+                   Sans lui, un tableau d'aires est une rangée de quatorze cases
+                   identiques, et le groupement par deux — qui EST la leçon —
+                   ne se voit nulle part. */
+                .cv-table td.cv-bord-unite { border-left-width: 4px; }
                 .cv-table th { background: var(--bg-hover); font-size: clamp(11px, 3cqw, 15px); }
                 .cv-tete-vide { background: color-mix(in srgb, var(--danger) 12%, transparent); }
                 .cv-tete-vide.cv-cible { outline: 3px dashed var(--primary); outline-offset: -4px; }
@@ -217,7 +242,7 @@ class Conversion extends BaseGame {
                 </div>
                 <div class="cv-etape" data-etape></div>
                 <div class="cv-enonce" data-enonce></div>
-                <table class="cv-table"><tbody data-table></tbody></table>
+                <div class="cv-defile"><table class="cv-table"><tbody data-table></tbody></table></div>
                 <div class="cv-etiquettes" data-etiquettes></div>
                 <div data-zone></div>
                 <p class="cv-note" data-note></p>
@@ -342,8 +367,15 @@ class Conversion extends BaseGame {
         // case, et tout glisserait d'un cran.
         const poignees = document.createElement('tr');
         poignees.className = 'cv-poignees';
+        // UNE UNITÉ COIFFE `echelon` COLONNES. Pour une longueur c'est une, et
+        // le tableau est celui qu'on connaît ; pour une aire c'est deux, pour un
+        // volume trois — parce qu'on passe de m² à dm² en multipliant par cent,
+        // et c'est exactement ce que l'élève doit VOIR. Rémy : « 1 m = 100 cm,
+        // 1 m² = 100 dm² ».
+        const e = this.echelon;
         f.unites.forEach(u => {
             const th = document.createElement('th');
+            if (e > 1) th.colSpan = e;
             const pose = this.unitesPosees[u.rang];
             th.textContent = pose || '';
             th.className = pose ? '' : 'cv-tete-vide';
@@ -371,20 +403,35 @@ class Conversion extends BaseGame {
             }
             entetes.appendChild(th);
 
-            const td = document.createElement('td');
-            td.dataset.rang = u.rang;
-            if (this.virgule === u.rang) td.classList.add('cv-virgule');
-            const contenu = this.contenuCase(u.rang);
-            td.innerHTML = contenu.html;
-            cases.appendChild(td);
+            // LES COLONNES DE CETTE UNITÉ, de la plus haute à la plus basse. La
+            // DERNIÈRE est celle des unités — c'est elle qui porte le rang, la
+            // virgule et la cible du glissement ; les précédentes sont les
+            // dizaines (et les centaines pour un volume).
+            for (let k = e - 1; k >= 0; k--) {
+                const col = u.rang + k;
+                const td = document.createElement('td');
+                td.dataset.rang = col;
+                // LE TRAIT ÉPAIS SÉPARE LES UNITÉS, PAS LES SOUS-COLONNES.
+                // Sans lui, un tableau d'aires est une rangée de quatorze cases
+                // identiques, et le groupement par deux — qui EST la leçon —
+                // ne se voit nulle part.
+                if (k === e - 1 && e > 1) td.classList.add('cv-bord-unite');
+                if (this.virgule === col) td.classList.add('cv-virgule');
+                const contenu = this.contenuCase(col);
+                td.innerHTML = contenu.html;
+                cases.appendChild(td);
 
-            const poi = document.createElement('td');
-            poi.className = 'cv-poignee' + (this.virgule === u.rang ? ' cv-poignee--mise' : '');
-            poi.dataset.virgule = u.rang;
-            poi.setAttribute('role', 'button');
-            poi.tabIndex = this.etape === 3 ? 0 : -1;
-            poi.setAttribute('aria-label', `Poser la virgule après la colonne des ${u.symbole}`);
-            poignees.appendChild(poi);
+                const poi = document.createElement('td');
+                poi.className = 'cv-poignee'
+                    + (this.virgule === col ? ' cv-poignee--mise' : '')
+                    + (k === e - 1 && e > 1 ? ' cv-bord-unite' : '');
+                poi.dataset.virgule = col;
+                poi.setAttribute('role', 'button');
+                poi.tabIndex = this.etape === 3 ? 0 : -1;
+                poi.setAttribute('aria-label',
+                    `Poser la virgule après cette colonne des ${u.symbole}`);
+                poignees.appendChild(poi);
+            }
         });
         this.tableEl.innerHTML = '';
         this.tableEl.appendChild(entetes);
@@ -393,6 +440,11 @@ class Conversion extends BaseGame {
         // La classe porte l'étape : c'est elle qui allume les poignées, et
         // elle évite d'écrire deux fois la même condition en JavaScript.
         this.tableEl.parentElement.classList.toggle('cv-etape3', this.etape === 3);
+        // LES CASES RÉTRÉCISSENT QUAND LES COLONNES SE MULTIPLIENT. Un tableau
+        // d'aires en a quatorze, un de volumes douze ; aux 38 pixels des
+        // longueurs, cela fait 532 pixels sur un écran qui en a 390.
+        const wrap = this.container.querySelector('.cv-wrap');
+        if (wrap) wrap.classList.toggle('cv-large', this.colonnes.length > 8);
 
         this.etiquettesEl.innerHTML = '';
         this.zoneEl.innerHTML = '';
@@ -417,7 +469,16 @@ class Conversion extends BaseGame {
 
     dessinerEtape1() {
         if (!this.melange) this.melange = melangerUnites(this.famille, this.rng);
-        this.note('Chaque étiquette va dans SA colonne. Attention : hecto vient avant déca.');
+        // ET L'ON DIT COMBIEN DE COLONNES COIFFE UNE ÉTIQUETTE. Devant un
+        // tableau d'aires, « SA colonne » est faux : le mètre carré en coiffe
+        // deux, et c'est précisément ce qu'il faut avoir compris avant de
+        // poser quoi que ce soit.
+        const e = this.echelon;
+        this.note(e === 1
+            ? 'Chaque étiquette va dans SA colonne. Attention : hecto vient avant déca.'
+            : `Chaque étiquette coiffe ${e === 2 ? 'DEUX' : 'TROIS'} colonnes — on passe `
+                + `d'une unité à la suivante en multipliant par ${e === 2 ? 'cent' : 'mille'}. `
+                + 'Attention : hecto vient avant déca.');
         this.melange.etiquettes.forEach(sym => {
             const el = document.createElement('div');
             el.className = 'cv-etiquette';

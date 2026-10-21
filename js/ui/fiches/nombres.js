@@ -1799,7 +1799,12 @@ const RH_SANS_TABLEAU = 11;
 function geoConversion(item, slot) {
     const m = item.meta;
     const b = slot.boite;
-    const nCol = m.unites.length;
+    // UNE UNITÉ COIFFE `echelon` COLONNES : une pour une longueur, DEUX pour une
+    // aire, TROIS pour un volume. Le tableau d'une aire a donc quatorze
+    // colonnes là où celui des longueurs en a sept — et c'est pour cela qu'il
+    // s'imprime seul sur sa rangée (voir `parLigneDefaut`).
+    const ech = Math.max(1, Number(m.echelon) || 1);
+    const nCol = m.unites.length * ech;
     const nLignes = m.conversions.length;
     // L'énoncé « 505 mm = ……… m » à gauche, le tableau à droite. L'énoncé
     // prend le tiers : moins, il passe à la ligne et le tableau se décale.
@@ -1920,7 +1925,7 @@ function geoConversion(item, slot) {
         (s, ch) => s + (ch === '…' ? 1 : (/[\s.,]/.test(ch) ? 0.3 : 0.56)), 0);
     const pire = Math.max(1, ...m.conversions.map(c => largeurEm(c.enonce)));
     return {
-        m, b, nCol, nLignes, cw, rh, x0, y0, enonceW, avecTableau, taille,
+        m, b, nCol, nLignes, cw, rh, x0, y0, enonceW, avecTableau, taille, ech,
         colonnes, parColonne,
         // Où tombe la conversion de rang `r` : une seule colonne avec le
         // tableau, plusieurs sans lui. Les deux rendus — l'aperçu et le PDF —
@@ -1970,6 +1975,20 @@ function geoConversion(item, slot) {
  */
 const TEINTES_RANG = ['#dbeafe', '#eef2f7', '#f7f9fc'];
 
+/**
+ * CE TABLEAU A-T-IL PLUS D'UNE COLONNE PAR UNITÉ ?
+ *
+ * Deux sources, et il en faut deux : les blocs déjà tirés portent `echelon`
+ * dans leur `meta` ; mais la fiche autonome choisit sa mise en page AVANT de
+ * tirer quoi que ce soit, et seule la famille d'unités de l'exercice est alors
+ * connue. Une seule des deux suffirait la moitié du temps.
+ */
+function tableauLarge(items, exo) {
+    if ((items || []).some(i => i && i.meta && Number(i.meta.echelon) > 1)) return true;
+    const p = exo && (exo.params || exo.printParams);
+    return !!p && (p.famille === 'aire' || p.famille === 'volume');
+}
+
 function conversionPreviewHtml(item, slot, k, solution) {
     const g = geoConversion(item, slot);
     const m = g.m;
@@ -1977,17 +1996,22 @@ function conversionPreviewHtml(item, slot, k, solution) {
     if (g.avecTableau) {
         // LES COLONNES TEINTÉES, SOUS LE QUADRILLAGE. Les aplats se posent en
         // premier : le trait passe par-dessus, sinon la teinte mange la grille.
+        // LA TEINTE SUIT L'UNITÉ, PAS LA SOUS-COLONNE : c'est le groupement
+        // par deux (ou par trois) qui est la leçon d'un tableau d'aires.
         m.unites.forEach((u, c) => {
-            html += `<div style="position:absolute; left:${(g.x0 + c * g.cw) * k}px;
-                top:${g.y0 * k}px; width:${g.cw * k}px;
+            html += `<div style="position:absolute; left:${(g.x0 + c * g.ech * g.cw) * k}px;
+                top:${g.y0 * k}px; width:${g.cw * g.ech * k}px;
                 height:${((g.nLignes + 1) * g.rh) * k}px;
                 background:${TEINTES_RANG[c % 3]}"></div>`;
         });
-        // Le quadrillage.
+        // Le quadrillage — et le trait ÉPAIS aux frontières d'unité, sans quoi
+        // un tableau d'aires n'est qu'une rangée de quatorze cases identiques.
         for (let c = 0; c <= g.nCol; c++) {
             const x = g.x0 + c * g.cw;
+            const frontiere = c % g.ech === 0;
             html += `<div style="position:absolute; left:${x * k}px; top:${g.y0 * k}px;
-                width:1px; height:${((g.nLignes + 1) * g.rh) * k}px; background:#8d94a5"></div>`;
+                width:${frontiere ? 2 : 1}px; height:${((g.nLignes + 1) * g.rh) * k}px;
+                background:${frontiere ? '#4a5160' : '#b8bdc8'}"></div>`;
         }
         for (let r = 0; r <= g.nLignes + 1; r++) {
             const y = g.y0 + r * g.rh;
@@ -1998,8 +2022,8 @@ function conversionPreviewHtml(item, slot, k, solution) {
         // Les en-têtes — donnés, ou à écrire.
         m.unites.forEach((u, c) => {
             const texte = (m.entetes || solution) ? u : '';
-            html += `<div style="position:absolute; left:${(g.x0 + c * g.cw) * k}px; top:${g.y0 * k}px;
-                width:${g.cw * k}px; height:${g.rh * k}px; display:flex; align-items:center;
+            html += `<div style="position:absolute; left:${(g.x0 + c * g.ech * g.cw) * k}px; top:${g.y0 * k}px;
+                width:${g.cw * g.ech * k}px; height:${g.rh * k}px; display:flex; align-items:center;
                 justify-content:center; font-weight:800;
                 color:${m.entetes ? '#1a202c' : '#6e7684'};
                 font-size:${g.tailleEntete * 0.3528 * k}px">${echapperSheet(texte)}</div>`;
@@ -2046,12 +2070,14 @@ function dessinerConversionPdf(doc, item, slot, solution, champ) {
         const hex = (t) => [1, 3, 5].map(i => parseInt(t.slice(i, i + 2), 16));
         m.unites.forEach((u, c) => {
             doc.setFillColor(...encre(hex(TEINTES_RANG[c % 3])));
-            doc.rect(g.x0 + c * g.cw, g.y0, g.cw, (g.nLignes + 1) * g.rh, 'F');
+            doc.rect(g.x0 + c * g.ech * g.cw, g.y0, g.cw * g.ech, (g.nLignes + 1) * g.rh, 'F');
         });
-        doc.setDrawColor(...ENCRE.grille);
-        doc.setLineWidth(0.25);
         for (let c = 0; c <= g.nCol; c++) {
             const x = g.x0 + c * g.cw;
+            // LE TRAIT ÉPAIS SÉPARE LES UNITÉS, le fin les sous-colonnes.
+            const frontiere = c % g.ech === 0;
+            doc.setDrawColor(...(frontiere ? ENCRE.trait : ENCRE.grille));
+            doc.setLineWidth(frontiere ? 0.4 : 0.2);
             doc.line(x, g.y0, x, g.y0 + (g.nLignes + 1) * g.rh);
         }
         for (let r = 0; r <= g.nLignes + 1; r++) {
@@ -2067,7 +2093,8 @@ function dessinerConversionPdf(doc, item, slot, solution, champ) {
         m.unites.forEach((u, c) => {
             if (!m.entetes && !solution) return;
             doc.setTextColor(...(m.entetes ? ENCRE.trait : ENCRE.gris));
-            doc.text(pourPdf(u), g.x0 + (c + 0.5) * g.cw, g.y0 + g.rh * 0.68, { align: 'center' });
+            doc.text(pourPdf(u), g.x0 + (c * g.ech + g.ech / 2) * g.cw,
+                g.y0 + g.rh * 0.68, { align: 'center' });
         });
     }
     doc.setFont('helvetica', 'normal');
@@ -3473,8 +3500,23 @@ export const RENDUS_NOMBRES = {
         // loin : à trois de front, il ne restait pas trois millimètres par
         // colonne. Deux blocs de 93 mm laissent au tableau de quoi être un
         // tableau, et la feuille porte encore seize conversions par rangée.
-        disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 3 },
-        parLigneDefaut: 2,
+        // UN SEUL TABLEAU PAR RANGÉE QUAND LES COLONNES SE MULTIPLIENT.
+        //
+        // Un tableau d'AIRES a quatorze colonnes (deux par unité), un de
+        // volumes douze. MESURÉ dans la géométrie : à deux blocs de front, le
+        // bloc fait 93 mm, l'énoncé en prend 26 au plancher, et il reste
+        // 4,6 mm par case. On n'écrit pas un chiffre à la main dans 4,6 mm —
+        // c'est le « tableau tellement compressé, horrible » de Rémy, en pire.
+        // Seul sur sa rangée, le bloc fait 190 mm et la case 9,4.
+        //
+        // LA RÉPONSE DÉPEND DONC DE CE QU'ON DESSINE, et ces deux champs sont
+        // devenus des fonctions pour cela (voir `valeurDuRendu`). Les blocs
+        // déjà tirés le disent par leur `echelon` ; avant le tirage, c'est
+        // l'exercice qui le dit par sa famille d'unités.
+        disposition: (items, exo) => (tableauLarge(items, exo)
+            ? { cols: 1, rows: 1, maxCols: 2, maxRows: 3 }
+            : { cols: 2, rows: 1, maxCols: 3, maxRows: 3 }),
+        parLigneDefaut: (items, exo) => (tableauLarge(items, exo) ? 1 : 2),
         separateurs: true,
         grilleMax: 300
     },

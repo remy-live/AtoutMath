@@ -48,6 +48,22 @@ const option = (nom, defaut) => {
     return t ? t.slice(nom.length + 3) : defaut;
 };
 const ids = args.filter(a => !a.startsWith('--'));
+
+// LES RÉGLAGES DE L'EXERCICE, DEPUIS LA LIGNE DE COMMANDE.
+//
+// `--reglage=famille=aire` — autant de fois qu'on veut. Sans cela, on ne peut
+// regarder que la feuille du réglage inscrit au catalogue : pour voir le
+// tableau de conversion des AIRES, il fallait modifier `printParams` dans
+// `js/data/mesures.js`, imprimer, puis remettre le fichier. Trois gestes et un
+// risque d'oubli, à chaque regard.
+const reglages = {};
+for (const a of args.filter(x => x.startsWith('--reglage='))) {
+    const [cle, ...reste] = a.slice('--reglage='.length).split('=');
+    if (!cle) continue;
+    const brut = reste.join('=');
+    reglages[cle] = brut === 'true' ? true : brut === 'false' ? false
+        : (brut !== '' && !Number.isNaN(Number(brut)) ? Number(brut) : brut);
+}
 if (!ids.length) {
     console.error('emploi : node tools/ficheEnPdf.mjs <id> [<id>…] [--couleur=nb|gris|couleur|intense]');
     console.error('         [--items=12] [--solutions] [--champs] [--page=1] [--echelle=2] [--sortie=dossier]');
@@ -118,7 +134,7 @@ for (const id of ids) {
     await s.page.evaluate(() => {
         document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
     });
-    const ouvert = await s.page.evaluate(async ([exoId, n]) => {
+    const ouvert = await s.page.evaluate(async ([exoId, n, reglages]) => {
         const cat = await import('./js/data/catalog.js');
         const e = cat.exercices.find(x => x.id === exoId);
         if (!e) return 'inconnu';
@@ -128,7 +144,7 @@ for (const id of ids) {
         // rendu pendant un quart d'heure.
         if (e.printable) {
             const ps = await import('./js/ui/printSheet.js');
-            ps.ouvrirFicheModal(e, { ...(e.params || {}) }, null,
+            ps.ouvrirFicheModal(e, { ...(e.params || {}), ...reglages }, null,
                 { flottant: false, nbItems: n });
             return 'fiche';
         }
@@ -144,7 +160,7 @@ for (const id of ids) {
         pq.ouvrirFicheQuestions(e, { ...(e.params || {}) }, ps2.chargerJsPDF,
             { flottant: false, nbItems: n });
         return 'questions';
-    }, [id, ITEMS]);
+    }, [id, ITEMS, reglages]);
 
     if (ouvert === 'inconnu') { console.log(`  ?  ${id} : pas au catalogue`); continue; }
     await dormir(3000);

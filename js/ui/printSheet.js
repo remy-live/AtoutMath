@@ -629,7 +629,11 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     const dispo = exo.colonnesPapier > 0
         ? dispositionEnColonnes(exo.colonnesPapier, rendu, PAGE,
             { proportions: proportionsStatiques, colles: !!rendu.blocsColles })
-        : dispositionDuRendu(rendu);
+        // L'EXERCICE EST PASSÉ, ET IL EST LE SEUL À SAVOIR. Au moment où la
+        // fiche autonome choisit sa mise en page, rien n'est encore tiré :
+        // `exo.printParams` dit pourtant déjà qu'il s'agit d'aires, donc d'un
+        // tableau de quatorze colonnes, donc d'un bloc par rangée.
+        : dispositionDuRendu(rendu, [], exo);
     const combienDefaut = Math.max(1, (dispo.cols || 3) * (dispo.rows || 4));
     // PLUSIEURS FEUILLES, QUAND LE RENDU LE PERMET.
     //

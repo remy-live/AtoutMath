@@ -31,6 +31,7 @@ import { paramSchemaOf } from '../data/catalog.js';
 import { fieldHtml, readParams, wireTips, brancherMarches, valeurDeChamp } from '../games/configUI.js';
 import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
+import { parLigneDuRendu } from '../core/dispositionFiche.js';
 import {
     composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction,
     degagerLePrefixe, consigneAvecPrefixe
@@ -619,7 +620,8 @@ export function ouvrirFicheParcours(chemin) {
         // mordait donc sur rien. C'est `parLigneDefaut`, posé par le rendu, qui
         // dit alors combien il en met par rangée (voir `grillesParLigne`).
         const rendu = e.grille ? RENDUS[e.grille] : null;
-        const parLigne = Number(colonnes[e.stepId]) || (rendu && rendu.parLigneDefaut) || 0;
+        const parLigne = Number(colonnes[e.stepId])
+            || parLigneDuRendu(rendu, null, e) || 0;
         if (!e.grille || !(parLigne > 1)) return;
         const combien = quantites[e.stepId];
         if (combien <= parLigne || combien % parLigne === 0) return;
@@ -1324,7 +1326,9 @@ export function ouvrirFicheParcours(chemin) {
                     colonnes: e.grille ? null : col,
                     // « auto » demande au rendu ce qui lui convient : une grille
                     // remplit la largeur, une rédaction veut deux par ligne.
-                    grillesParLigne: e.grille ? (col ?? RENDUS[e.grille].parLigneDefaut ?? null) : null,
+                    grillesParLigne: e.grille
+                        ? (col ?? parLigneDuRendu(RENDUS[e.grille], tire, e) ?? null)
+                        : null,
                     // Certains blocs demandent plus large que le plafond commun.
                     grilleMax: e.grille
                         ? (EST_PLEIN(RENDUS[e.grille], tire) ? 400
