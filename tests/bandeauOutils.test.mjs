@@ -25,9 +25,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sansCommentaires } from './helpers.mjs';
 
 const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const B = lire('js/ui/bandeauOutils.js');
+// LE CODE SEUL, SANS SA PROSE. Chercher l'ABSENCE d'une chose dans un fichier
+// qui EXPLIQUE pourquoi elle est partie, c'est mesurer le commentaire : la
+// première version de l'épreuve ci-dessous est tombée là-dessus, sur le mot
+// « localStorage » écrit dans la phrase qui raconte qu'il n'y en a plus.
+const CODE_B = sansCommentaires(B);
 const CSS = lire('css/components.css');
 
 test('LA LÉGENDE SE CONSTRUIT À PARTIR DES BOUTONS, JAMAIS À LA MAIN', () => {
@@ -64,15 +70,29 @@ test('ELLE SE REFAIT QUAND LES OUTILS APPARAISSENT', () => {
         < BU.indexOf('poserLeBandeauDesOutils()'));
 });
 
-test('ELLE PART POUR DE BON', () => {
-    // Un bandeau d'aide qui revient est un bandeau qu'on apprend à ignorer,
-    // puis à détester. Mesuré : absent après le clic, absent au rechargement.
-    assert.match(B, /const CLEF = 'atoutmath-bandeau-outils';/);
-    assert.match(B, /if \(congedie\(\) && !montreeALaDemande\) \{ if \(ancienne\) ancienne\.remove\(\); return; \}/);
-    assert.match(B, /compris\.onclick = \(\) => \{ congedier\(\); montreeALaDemande = false; retirer\(\); \};/);
-    // Le mode privé ne doit pas faire tomber le rendu du parcours avec lui.
-    assert.match(B, /try \{ return localStorage\.getItem\(CLEF\) === 'vu'; \} catch \(e\) \{ return false; \}/);
-    assert.match(B, /try \{ localStorage\.setItem\(CLEF, 'vu'\); \} catch \(e\)/);
+test('ELLE NE S\'INVITE PLUS : SEUL LE « ? » L\'OUVRE', () => {
+    // RÉMY, capture d'un parcours de 197 exercices : « le que font les icones
+    // est toujours ouvert de base ».
+    //
+    // MESURÉ AVANT DE CORRIGER, parce que « toujours » pouvait vouloir dire que
+    // le congé ne tenait pas (`tools/tmp/sonde-barre.mjs`) : il tenait. Clic
+    // sur « J'ai compris », clef à « vu », rechargement, bande absente. Ce
+    // n'était donc pas un défaut — c'est qu'ON NE CLIQUE PAS UN BOUTON D'AIDE
+    // QU'ON N'A PAS DEMANDÉ : on le saute des yeux, et la bande revient à
+    // chaque navigateur, à chaque poste, à chaque session neuve.
+    //
+    // LA GARDE EST DONC CELLE-CI : la seule condition d'ouverture est qu'on
+    // l'ait appelée. Remettre un `congedie() &&` — ou n'importe quelle autre
+    // condition — la ramènerait chez lui au prochain navigateur.
+    assert.match(B, /if \(!montreeALaDemande\) \{ if \(ancienne\) ancienne\.remove\(\); return; \}/);
+    // ET IL N'Y A PLUS DE CONGÉ À RETENIR : une bande qui ne s'ouvre jamais
+    // seule n'a rien à oublier. Une sauvegarde relue ici serait la trace d'un
+    // affichage automatique revenu par la bande.
+    assert.ok(!/localStorage/.test(CODE_B),
+        'la légende relit une sauvegarde : elle n\'a plus d\'état à garder');
+    // Et le bouton du pied dit ce qu'il fait, et rien de plus : il ferme.
+    assert.match(B, /compris\.textContent = 'Fermer';/);
+    assert.match(B, /compris\.onclick = \(\) => \{ montreeALaDemande = false; retirer\(\); \};/);
 });
 
 test('AU DOIGT, LA LÉGENDE EST DU TEXTE — ET C\'EST CE QUI LA REND TENABLE', () => {
@@ -108,19 +128,18 @@ test('ELLE NE PEUT PAS APPARAÎTRE CHEZ L\'ÉLÈVE', () => {
 // RÉMY : « je mettrai éventuellement un petit ? à côté de nouveau parcours pour
 // voir justement ce qui correspond aux icônes. »
 //
-// C'EST LUI QUI REND « J'AI COMPRIS » SANS REGRET. Un bandeau d'aide qu'on ne
-// peut plus rappeler, on hésite à le fermer : il traîne des mois au-dessus du
-// travail et l'on finit par ne plus le voir, ce qui est l'état qu'on voulait
-// éviter. Ma réponse d'avant — « la poubelle de la barre de debug le ramène » —
-// n'en était pas une : personne ne vide sa sauvegarde locale pour relire une
-// légende.
+// C'EST LUI QUI PERMET À LA BANDE DE NE PLUS S'INVITER. Elle s'imposait parce
+// qu'elle n'avait aucun autre moyen d'être trouvée : « huit boutons d'icône à
+// l'écran, et AUCUN ne porte un mot ». Le « ? » en porte un, et c'est le
+// pictogramme que tout le monde sait lire. Une aide qu'on peut appeler n'a plus
+// besoin de s'imposer — et c'était le seul argument qu'elle avait.
 //
-// MESURÉ (`tools/tmp/voirBandeau2.mjs`), après un congé définitif :
+// MESURÉ (`tools/tmp/sonde-barre2.mjs`), sur un parcours de vingt exercices :
 //
-//   clic sur « ? »          la bande revient, 5 outils nommés, aria-expanded=true
-//   puis un exercice ajouté elle TIENT, et passe à 11 outils nommés
+//   à l'arrivée             absente, sans qu'on ait rien congédié
+//   clic sur « ? »          elle paraît, 12 outils nommés, aria-expanded=true
+//   puis un exercice ajouté elle TIENT — c'est tout l'objet de l'état interne
 //   second clic sur « ? »   elle se ferme, aria-expanded=false
-//   redessin après          absente — le congé n'a pas été annulé
 
 test('LE « ? » EST À CÔTÉ DE « NOUVEAU PARCOURS », ET IL NE BOUGE JAMAIS', () => {
     const HTML = lire('index.html');
@@ -139,24 +158,20 @@ test('LE « ? » EST À CÔTÉ DE « NOUVEAU PARCOURS », ET IL NE BOUGE JAMAIS'
 });
 
 test('IL BASCULE — IL N\'OUVRE PAS SEULEMENT', () => {
-    // Sans bascule, qui clique le « ? » par curiosité n'aurait plus que
-    // « J'ai compris » pour s'en défaire : un congé définitif pour une question
-    // passagère.
+    // Le « ? » qu'on a cliqué par curiosité est le bouton qu'on recliquera pour
+    // refermer : c'est le geste qu'on essaie en premier, et il doit répondre.
     assert.match(B, /export function basculerLeBandeauDesOutils\(\) \{\s*\n\s*if \(document\.getElementById\(ID\)\) \{/);
     assert.match(B, /montreeALaDemande = true;\s*\n\s*poserLeBandeauDesOutils\(\);/);
     assert.match(lire('js/ui/builder.js'), /if \(btnAide\) btnAide\.onclick = basculerLeBandeauDesOutils;/);
 });
 
 test('RAPPELÉE, ELLE SURVIT AU REDESSIN SUIVANT', () => {
-    // LE PIÈGE, et c'est pour lui que `montreeALaDemande` existe : ajouter un
-    // exercice rappelle `poserLeBandeauDesOutils`, qui lirait le congé et
-    // retirerait la bande sous les yeux du professeur en train de s'en servir
-    // pour trouver un bouton. Mesuré : elle tient, et passe de 5 à 11 noms.
+    // LE PIÈGE, et c'est pour lui que `montreeALaDemande` existe :
+    // `poserLeBandeauDesOutils` est rappelée à CHAQUE redessin du parcours —
+    // ajouter un exercice en est un — et elle retirerait la bande sous les yeux
+    // du professeur en train de s'en servir pour trouver un bouton. Mesuré :
+    // elle tient, et passe de 5 à 12 noms.
     assert.match(B, /let montreeALaDemande = false;/);
-    // Mais le « ? » n'ANNULE PAS le congé : on ne rouvre pas une porte en
-    // jetant sa clef. Un `localStorage.removeItem` ici serait le raccourci qui
-    // ferait revenir la bande toute seule au prochain démarrage.
-    assert.ok(!/removeItem/.test(B), 'le « ? » ne doit pas effacer le congé');
 });
 
 test('LE « ? » NE SE NOMME PAS LUI-MÊME DANS LA LISTE', () => {
@@ -172,6 +187,8 @@ test('ET ON DIT OÙ LA RETROUVER, DANS LE BOUTON QUI LA FERME', () => {
     // C'est le seul instant où le professeur se pose la question, et le seul où
     // la réponse tient en cinq mots.
     assert.match(B, /rappel\.textContent = 'Pour la revoir : le « \? » de la barre\.';/);
+    // Et le titre ne dit plus « une fois pour toutes » : elle revient autant de
+    // fois qu'on l'appelle.
     // Le titre ne promet plus « une fois pour toutes » : depuis le « ? », elle
     // revient, et la phrase doit valoir les deux fois. On vérifie le titre
     // EXACT et non l'absence de la vieille formule dans le fichier — elle y est

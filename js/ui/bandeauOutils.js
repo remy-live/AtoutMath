@@ -26,23 +26,29 @@
 // exercice ajouté, les nouveaux boutons arrivent avec leur nom. C'est
 // exactement le moment où l'on en a besoin.
 //
-// ET ELLE PART POUR DE BON — MAIS ELLE SE RAPPELLE.
+// ET ELLE NE S'INVITE PLUS : C'EST LE « ? » QUI L'APPELLE.
 //
-// Un bandeau d'aide qui revient tout seul est un bandeau qu'on apprend à
-// ignorer, puis à détester : « J'ai compris » le congédie pour de bon sur ce
-// poste. Restait le revers, et c'est Rémy qui l'a vu : « je mettrai
-// éventuellement un petit ? à côté de nouveau parcours pour voir justement ce
-// qui correspond aux icônes. »
+// RÉMY, capture de la barre d'un parcours de 197 exercices : « le que font les
+// icones est toujours ouvert de base ».
 //
-// UN BANDEAU QU'ON NE PEUT PLUS RAPPELER, ON HÉSITE À LE FERMER. On le garde
-// « au cas où », il traîne des mois au-dessus du travail, et l'on finit par ne
-// plus le voir — ce qui est exactement l'état qu'on voulait éviter. Le « ? »
-// de la barre le ramène à la demande ; c'est lui qui rend le congé sans
-// regret. Ma réponse précédente — « la poubelle de la barre de debug le
-// ramène » — n'en était pas une : personne ne vide sa sauvegarde locale pour
-// relire une légende.
+// MESURÉ AVANT DE CORRIGER, parce que « toujours » pouvait vouloir dire que le
+// congé ne tenait pas (`tools/tmp/sonde-barre.mjs`) : il tenait. Clic sur
+// « J'ai compris », la clef passe à « vu », rechargement, bande absente. Ce
+// n'était donc pas un défaut — c'est qu'ON NE CLIQUE PAS UN BOUTON D'AIDE
+// QU'ON N'A PAS DEMANDÉ : on le saute des yeux, et la bande revient à chaque
+// navigateur, à chaque poste, à chaque session neuve.
+//
+// LE « ? » N'EXISTAIT PAS QUAND CETTE BANDE A ÉTÉ ÉCRITE, et c'est tout ce qui
+// a changé. Elle s'invitait parce qu'elle n'avait aucun autre moyen d'être
+// trouvée : « huit boutons d'icône à l'écran, et AUCUN ne porte un mot ». Le
+// « ? » en porte un — « Que font ces icônes ? » —, et c'est le pictogramme que
+// tout le monde sait lire. Une aide qu'on peut appeler n'a plus besoin de
+// s'imposer, et c'était le seul argument qu'elle avait.
+//
+// IL N'Y A DONC PLUS DE CONGÉ À RETENIR. La clef de `localStorage` qui le
+// gardait n'a plus de lecteur : une bande qui ne s'ouvre jamais seule n'a rien
+// à oublier.
 
-const CLEF = 'atoutmath-bandeau-outils';
 const ID = 'bandeau-outils';
 // LE BOUTON QUI L'APPELLE ne se nomme pas lui-même dans la liste : il n'est
 // pas un outil du parcours, il est la POIGNÉE de la liste. L'y faire figurer
@@ -51,23 +57,13 @@ const ID = 'bandeau-outils';
 // qu'il a sous les yeux.
 const POIGNEE = 'btn-aide-outils';
 
-// MONTRÉE À LA DEMANDE : le « ? » passe outre le congé, mais il ne l'annule
-// pas — on ne rouvre pas une porte en jetant sa clef.
+// MONTRÉE À LA DEMANDE, ET SEULEMENT AINSI.
 //
-// Sans cet état, la bande rappelée disparaîtrait au premier redessin : ajouter
-// un exercice rappelle `poserLeBandeauDesOutils`, qui lirait le congé et la
-// retirerait sous les yeux du professeur en train de s'en servir pour trouver
-// un bouton.
+// Cet état n'est pas un confort : `poserLeBandeauDesOutils` est rappelée à
+// CHAQUE redessin du parcours — ajouter un exercice en est un. Sans lui, la
+// bande s'effacerait sous les yeux du professeur en train de s'en servir pour
+// trouver un bouton.
 let montreeALaDemande = false;
-
-/** A-t-on déjà dit « j'ai compris » ? */
-function congedie() {
-    try { return localStorage.getItem(CLEF) === 'vu'; } catch (e) { return false; }
-}
-
-function congedier() {
-    try { localStorage.setItem(CLEF, 'vu'); } catch (e) { /* navigation privée */ }
-}
 
 /**
  * Les outils visibles de la barre, avec leur nom.
@@ -93,12 +89,15 @@ function outilsNommes() {
 /**
  * Pose — ou retire — la bande sous la barre d'outils du constructeur.
  *
- * Appelée à chaque rendu du parcours. Sans effet une fois congédiée, et sans
- * effet hors de l'espace professeur, où la barre n'existe pas.
+ * Appelée à chaque rendu du parcours. Sans effet tant qu'on ne l'a pas
+ * demandée par le « ? », et sans effet hors de l'espace professeur, où la
+ * barre n'existe pas.
  */
 export function poserLeBandeauDesOutils() {
     const ancienne = document.getElementById(ID);
-    if (congedie() && !montreeALaDemande) { if (ancienne) ancienne.remove(); return; }
+    // ELLE NE S'OUVRE QUE SI ON L'A APPELÉE. Rémy : « le que font les icones
+    // est toujours ouvert de base ».
+    if (!montreeALaDemande) { if (ancienne) ancienne.remove(); return; }
 
     const outils = outilsNommes();
     // Moins de deux outils : on est sur un écran qui n'a pas fini de se monter,
@@ -163,8 +162,12 @@ export function poserLeBandeauDesOutils() {
     const compris = document.createElement('button');
     compris.type = 'button';
     compris.className = 'bandeau-outils-compris';
-    compris.textContent = 'J\'ai compris';
-    compris.onclick = () => { congedier(); montreeALaDemande = false; retirer(); };
+    // « J'AI COMPRIS » PROMETTAIT UN CONGÉ DÉFINITIF, et ce n'est plus ce que
+    // fait ce bouton : la bande ne reviendra que si on la rappelle. Un bouton
+    // qui annonce autre chose que ce qu'il fait est une petite trahison de
+    // plus à chaque clic.
+    compris.textContent = 'Fermer';
+    compris.onclick = () => { montreeALaDemande = false; retirer(); };
     pied.appendChild(compris);
 
     // ON DIT OÙ LA RETROUVER, DANS LE BOUTON QU'ON S'APPRÊTE À FERMER. C'est le
@@ -199,9 +202,9 @@ function marquerLaPoignee(ouverte) {
 /**
  * Le « ? » de la barre : montre la légende, ou la referme si elle est là.
  *
- * Une bascule et non une ouverture : sans elle, le professeur qui clique le
- * « ? » par curiosité n'aurait plus que « J'ai compris » pour s'en défaire —
- * c'est-à-dire un congé définitif pour une question passagère.
+ * Une bascule et non une ouverture : le « ? » qu'on a cliqué par curiosité est
+ * le bouton qu'on recliquera pour refermer. C'est le geste qu'on essaie en
+ * premier, et il doit répondre.
  */
 export function basculerLeBandeauDesOutils() {
     if (document.getElementById(ID)) {

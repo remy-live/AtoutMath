@@ -5397,3 +5397,19 @@ le résultat n'existe pas** — 15 octobre 2026
   qu'on LIT, et rien ne le ferme pour un réglage qu'on POSE. Un
   `s.regler(selecteur, valeur)` qui exige le sélecteur, pose la valeur et la
   relise fermerait la famille entière.
+
+## Une épreuve qui cherche l'ABSENCE d'un mot le trouve dans le commentaire
+
+- *Ce que je voulais faire* : garder qu'une légende d'aide ne relit plus aucune
+  sauvegarde, maintenant qu'elle ne s'ouvre plus d'elle-même.
+- *Ce qui a coûté* : l'épreuve est tombée tout de suite, et sur rien — le mot
+  `localStorage` était dans la PHRASE qui explique qu'il n'y en a plus. Le
+  fichier d'épreuves portait déjà la leçon, écrite trois mois plus tôt sur un
+  autre mot : « un test qui lit les commentaires mesure la prose, pas le
+  produit ». Je l'ai relue après être tombé dedans.
+- *Combien de fois* : ||
+- *Ce qui manque* : `sansCommentaires` existe dans `tests/helpers.mjs`, et rien
+  ne pousse à s'en servir — on ne le découvre qu'après. Toute épreuve qui
+  cherche l'ABSENCE d'un motif dans une source devrait le faire sur le code
+  seul ; une aide `codeSeul('js/…')` à côté de `lire(…)`, et la bonne porte
+  serait la plus courte.

@@ -330,7 +330,10 @@ body.mobile-view .desktop-only { display: none !important; }
    elle repousse à nouveau tout le monde vers le bas. */
 #builder-view { display: none; flex-direction: row; padding: 0; flex: 1 1 auto; min-height: 0; width: 100%; }
 body.mobile-view #builder-view { flex-direction: column; }
-#builder-center-col { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
+/* LE REMBOURRAGE DU HAUT EST PASSÉ DANS LA BARRE, qui y colle — voir
+   `.path-header-toggle` dans `components.css`. Laissé ici, il laissait vingt
+   pixels de vide au-dessus de la barre collée, et la liste défilait dedans. */
+#builder-center-col { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 20px 20px; overflow-y: auto; border-right: 1px solid var(--border); }
 #view-path { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); flex: 1 1 auto; min-height: 0; overflow-y: auto; align-items: center; }
 #view-profile { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 /* Le contenu du parcours ne doit jamais dépasser la largeur du téléphone. */

@@ -197,7 +197,36 @@
 .timeline-step-status { color: var(--text-muted); font-size: 0.9rem; }
 
 /* --- BUILDER (EDITEUR DE PARCOURS) --- */
-.path-header-toggle { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; cursor: pointer; flex-wrap: wrap; gap: 15px; }
+
+/* LA BARRE RESTE, ET C'EST LA LISTE QUI DÉFILE.
+
+   RÉMY, capture d'un parcours de 197 exercices : « ce serait cool d'avoir la
+   barre fixe et la partie des exercices scrollable ».
+
+   MESURÉ AVANT (`tools/tmp/sonde-barre.mjs`), avec seulement VINGT exercices :
+   la colonne mesure 790 px de haut pour 2 425 px de contenu, et une fois
+   descendu en bas de la liste la barre est à −1 505 px — c'est-à-dire deux
+   écrans au-dessus. Pour imprimer, pour jouer, pour donner à une classe, il
+   faut remonter. Sur ses 197 exercices, c'est dix écrans.
+
+   LE REMBOURRAGE DU HAUT PASSE DE LA COLONNE À LA BARRE. Laissé sur la
+   colonne, il devenait une bande de vingt pixels AU-DESSUS de la barre collée,
+   par laquelle on voyait défiler la liste — `top: 0` se mesure depuis la boîte
+   de rembourrage du conteneur qui défile, pas depuis sa bordure. La barre
+   porte donc son rembourrage elle-même, et des marges négatives sur les côtés
+   pour aller d'un bord à l'autre : sans elles, la liste défilerait dans les
+   vingt pixels restés à gauche et à droite.
+
+   ET UN FOND OPAQUE, PRIS À `--bg-app` : mesuré, c'est la couleur de
+   `#main-area`, le premier ancêtre qui en peigne une. Sans fond, la liste se
+   lit À TRAVERS la barre. */
+.path-header-toggle {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; flex-wrap: wrap; gap: 15px;
+    position: sticky; top: 0; z-index: 6;
+    margin: 0 -20px 20px; padding: 20px 20px 14px;
+    background: var(--bg-app); border-bottom: 1px solid var(--border);
+}
 .path-header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .path-header-title { margin: 0; font-size: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
 #path-name-input { font-size: 1.5rem; font-weight: bold; color: var(--text-main); background: transparent; border: none; outline: none; border-bottom: 1px dashed var(--border); padding: 2px 0; min-width: 150px; max-width: 300px; }
@@ -225,10 +254,23 @@
    « Tester » plus large que tous ses voisins, seul carré de la barre à ne pas
    être carré. */
 .builder-header-actions { display: flex; gap: 10px; align-items: center; }
+/* ET L'APERÇU « TÉLÉPHONE » MONTRE CE QUE MONTRE UN TÉLÉPHONE. Dans cet
+   aperçu, la colonne passe en hauteur libre : elle reste la boîte de
+   défilement de référence sans jamais défiler, et la barre y collerait sans
+   bouger — c'est-à-dire pas du tout. Autant l'écrire. */
+body.mobile-view .path-header-toggle { position: static; padding-top: 20px; }
 /* Sur téléphone, les neuf outils — désormais tous en icône seule — tiennent
    sur UNE ligne compacte au lieu des deux rangées de boutons à libellé. */
 @media (max-width: 700px) {
-    .path-header-toggle { gap: 8px 6px; margin-bottom: 12px; }
+    /* AU DOIGT, ELLE NE COLLE PAS — et c'est une mesure, pas un oubli.
+
+       MESURÉ sur 390 × 844 : la barre y occupe TROIS rangées, 171 px, pour une
+       boîte qui défile de 741 px. La coller, c'est retirer 23 % de l'écran à
+       la liste, en permanence, sur l'appareil qui en a le moins. On le dit
+       donc ici au lieu de laisser un `position: sticky` qui ne collerait pas :
+       un réglage inerte qu'on n'a pas écrit se relit comme un défaut. */
+    .path-header-toggle { gap: 8px 6px; margin-bottom: 12px; padding: 20px 20px 10px;
+                          position: static; }
     .path-header-left, .builder-header-actions { gap: 6px; }
     .toolbar-icon-btn { width: 36px; height: 36px; border-radius: 10px; }
 }
