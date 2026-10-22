@@ -298,10 +298,30 @@ export function meilleurExemple(exo, generateur, faireRng, graine = '', candidat
     return meilleur;
 }
 
-/** Les rappels de cours, sans doublon et bornés : trois suffisent à relire. */
+/**
+ * Les rappels de cours, sans doublon et bornés : trois suffisent à relire.
+ *
+ * ON ACCEPTE LA PHRASE **OU** LA COMPÉTENCE ENTIÈRE, et l'on rend ce qu'on a
+ * reçu. Une compétence peut porter un CROQUIS en plus de sa phrase — Rémy :
+ * « il faut que tant que faire se peut que ce soit visuel pour les
+ * explications » —, et `ui/leconHtml.js` ne peut le dessiner que si on le lui
+ * passe. Réduire ici à la phrase, comme avant, jetait la figure avant même
+ * d'arriver à l'affichage.
+ *
+ * LE DOUBLON SE JUGE TOUJOURS SUR LA PHRASE : deux compétences qui partagent
+ * leur leçon ne doivent pas l'afficher deux fois, croquis ou non.
+ */
 export function leconsDe(liste, maximum = 3) {
-    return [...new Set((liste || []).map(l => String(l || '').trim()).filter(Boolean))]
-        .slice(0, maximum);
+    const vues = new Set();
+    const gardees = [];
+    for (const l of liste || []) {
+        const texte = String((l && l.lesson !== undefined ? l.lesson : l) || '').trim();
+        if (!texte || vues.has(texte)) continue;
+        vues.add(texte);
+        gardees.push(l && l.lesson !== undefined ? l : texte);
+        if (gardees.length === maximum) break;
+    }
+    return gardees;
 }
 
 /**

@@ -254,7 +254,7 @@ function renderPlan() {
         const def = getSkill(r.skillId);
         // LA LEÇON EST MISE EN PAGE, pas jetée en un paragraphe — voir
         // `ui/leconHtml.js`. Rémy : « ça donne pas envie de lire ».
-        const lecon = def && def.lesson ? `<div class="plan-lecon">${leconHtml(def.lesson)}</div>` : '';
+        const lecon = def && def.lesson ? `<div class="plan-lecon">${leconHtml(def)}</div>` : '';
         const exos = exercisesForSkill(r.skillId).slice(0, 3);
         const liens = exos.length
             ? `<div class="plan-exos">${exos.map(e =>
@@ -349,7 +349,7 @@ function group(title, skills, actionable) {
 function skillRow(skill, actionable) {
     const pct = Math.round(skill.mastery * 100);
     const def = getSkill(skill.skillId);
-    const lesson = def && def.lesson ? `<div class="skill-lesson">${leconHtml(def.lesson)}</div>` : '';
+    const lesson = def && def.lesson ? `<div class="skill-lesson">${leconHtml(def)}</div>` : '';
     return `
     <div class="skill-row">
         <div class="skill-main">

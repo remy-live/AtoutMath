@@ -1165,7 +1165,20 @@ const BASE = {
         niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
         prereqs: [],
         descriptor: 'Tracer l\'image d\'une figure par une symétrie axiale, sur quadrillage.',
-        lesson: 'Le miroir. On travaille CASE PAR CASE : pour chacune, on compte les carreaux qui la séparent de l\'axe, et on reporte le même nombre de l\'autre côté. Attention, le miroir INVERSE l\'ordre : la case la plus proche de l\'axe reste la plus proche, donc la figure se retourne. Un axe vertical échange la gauche et la droite sans rien changer aux lignes ; un axe horizontal échange le haut et le bas sans rien changer aux colonnes ; un axe à 45° échange la ligne et la colonne, donc ce qui était couché se retrouve debout.'
+        lesson: 'Le miroir. On travaille CASE PAR CASE : pour chacune, on compte les carreaux qui la séparent de l\'axe, et on reporte le même nombre de l\'autre côté. Attention, le miroir INVERSE l\'ordre : la case la plus proche de l\'axe reste la plus proche, donc la figure se retourne. Un axe vertical échange la gauche et la droite sans rien changer aux lignes ; un axe horizontal échange le haut et le bas sans rien changer aux colonnes ; un axe à 45° échange la ligne et la colonne, donc ce qui était couché se retrouve debout.',
+        // LE CROQUIS : un exemple FAIT, là où la leçon décrit. Rémy : « il faut
+        // que tant que faire se peut que ce soit visuel pour les explications ».
+        // L'image n'est pas écrite ici — elle est calculée par le code qui
+        // corrige l'exercice (voir `croquisHtml` dans `ui/leconHtml.js`) : des
+        // coordonnées recopiées à la main finiraient par contredire la
+        // correction, et c'est la leçon qui aurait l'air d'avoir raison.
+        croquis: {
+            largeur: 9, hauteur: 7,
+            depart: [[2, 3], [2, 4], [2, 5], [3, 5]],
+            transfo: { genre: 'axiale', axe: { type: 'v', a: 5 } },
+            repere: [2, 3],
+            legende: 'La case marquée est à 3 carreaux de l\'axe : son image aussi, de l\'autre côté, sur la même ligne.'
+        }
     },
     'geo.transfo.centrale': {
         label: 'Tracer un symétrique par rapport à un point',
@@ -1173,7 +1186,14 @@ const BASE = {
         niveaux: [N.CINQUIEME, N.QUATRIEME],
         prereqs: ['geo.transfo.axiale'],
         descriptor: 'Tracer l\'image d\'une figure par une symétrie centrale, sur quadrillage.',
-        lesson: 'Le demi-tour. Chaque case part vers le centre O et continue de l\'autre côté, à la même distance : si une case est 3 carreaux à droite et 2 au-dessus de O, son image est 3 carreaux à gauche et 2 au-dessous. La figure se retrouve à l\'envers DANS LES DEUX SENS À LA FOIS — c\'est ce qui la distingue du miroir, qui n\'en retourne qu\'un. Autre nom du même geste : la rotation d\'un demi-tour.'
+        lesson: 'Le demi-tour. Chaque case part vers le centre O et continue de l\'autre côté, à la même distance : si une case est 3 carreaux à droite et 2 au-dessus de O, son image est 3 carreaux à gauche et 2 au-dessous. La figure se retrouve à l\'envers DANS LES DEUX SENS À LA FOIS — c\'est ce qui la distingue du miroir, qui n\'en retourne qu\'un. Autre nom du même geste : la rotation d\'un demi-tour.',
+        croquis: {
+            largeur: 9, hauteur: 7,
+            depart: [[2, 3], [2, 4], [2, 5], [3, 5]],
+            transfo: { genre: 'centrale', centre: { x: 5, y: 4 } },
+            repere: [2, 3],
+            legende: 'La case marquée est à 3 carreaux à gauche de O et 1 au-dessus ; son image est à 3 à droite et 1 au-dessous. Tout se retourne, dans les deux sens à la fois.'
+        }
     },
     'geo.transfo.translation': {
         label: 'Tracer l\'image par une translation',
@@ -1181,7 +1201,14 @@ const BASE = {
         niveaux: [N.QUATRIEME, N.TROISIEME],
         prereqs: ['geo.transfo.axiale'],
         descriptor: 'Tracer l\'image d\'une figure par une translation, sur quadrillage.',
-        lesson: 'Le glissement. TOUTES les cases font exactement le même déplacement — tant de carreaux horizontalement, tant verticalement — et la figure ne tourne pas et ne se retourne pas : elle garde son allure. Le plus sûr est de déplacer UNE case, puis de redessiner la figure autour d\'elle. C\'est la seule des quatre transformations qui ne change rien au sens de la figure.'
+        lesson: 'Le glissement. TOUTES les cases font exactement le même déplacement — tant de carreaux horizontalement, tant verticalement — et la figure ne tourne pas et ne se retourne pas : elle garde son allure. Le plus sûr est de déplacer UNE case, puis de redessiner la figure autour d\'elle. C\'est la seule des quatre transformations qui ne change rien au sens de la figure.',
+        croquis: {
+            largeur: 9, hauteur: 7,
+            depart: [[2, 3], [2, 4], [2, 5], [3, 5]],
+            transfo: { genre: 'translation', vecteur: { x: 4, y: -1 } },
+            repere: [2, 3],
+            legende: 'La flèche part de la case marquée : 4 carreaux à droite et 1 vers le haut. Toutes les autres font exactement le même trajet.'
+        }
     },
     'geo.transfo.rotation': {
         label: 'Tracer l\'image par un quart de tour',
@@ -1189,7 +1216,14 @@ const BASE = {
         niveaux: [N.QUATRIEME, N.TROISIEME],
         prereqs: ['geo.transfo.centrale'],
         descriptor: 'Tracer l\'image d\'une figure par une rotation d\'un quart de tour, sur quadrillage.',
-        lesson: 'Le quart de tour fait BASCULER la figure : ce qui était couché se met debout. La règle qui ne trompe pas : repère une case par ses deux écarts au centre O — tant de carreaux en largeur, tant en hauteur — et après un quart de tour ces deux nombres S\'ÉCHANGENT, l\'un d\'eux changeant de signe selon le sens. Et n\'appelle jamais « rotation » un demi-tour : un demi-tour est une symétrie centrale, et les deux mots désignent le même geste.'
+        lesson: 'Le quart de tour fait BASCULER la figure : ce qui était couché se met debout. La règle qui ne trompe pas : repère une case par ses deux écarts au centre O — tant de carreaux en largeur, tant en hauteur — et après un quart de tour ces deux nombres S\'ÉCHANGENT, l\'un d\'eux changeant de signe selon le sens. Et n\'appelle jamais « rotation » un demi-tour : un demi-tour est une symétrie centrale, et les deux mots désignent le même geste.',
+        croquis: {
+            largeur: 9, hauteur: 7,
+            depart: [[2, 3], [2, 4], [2, 5], [3, 5]],
+            transfo: { genre: 'rotation', centre: { x: 5, y: 5 }, quarts: 1 },
+            repere: [2, 3],
+            legende: 'La case marquée est à 3 carreaux à gauche de O et 2 au-dessus ; son image est à 2 à droite et 3 au-dessus. Les deux nombres se sont échangés.'
+        }
     },
     'geo.transfo.quart-tour': {
         label: 'Anticiper un quart de tour',

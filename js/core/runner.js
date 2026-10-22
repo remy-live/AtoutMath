@@ -1382,9 +1382,18 @@ export class Runner {
      */
     showLearningIntro(step) {
         const exo = step.exercise;
-        const lecons = [...new Set(
-            skillsOf(exo).map(id => (getSkill(id) || {}).lesson).filter(Boolean)
-        )].slice(0, 2);
+        // LA COMPÉTENCE ENTIÈRE, ET NON SA SEULE PHRASE : c'est elle qui porte
+        // le croquis des transformations, que `ui/leconHtml.js` dessine. Le
+        // doublon se juge toujours sur la phrase — deux compétences qui
+        // partagent leur leçon ne la montrent pas deux fois.
+        const vues = new Set();
+        const lecons = [];
+        for (const def of skillsOf(exo).map(id => getSkill(id))) {
+            if (!def || !def.lesson || vues.has(def.lesson)) continue;
+            vues.add(def.lesson);
+            lecons.push(def);
+            if (lecons.length === 2) break;
+        }
 
         // UNE PHRASE, ÉCRITE POUR L'ÉLÈVE — voir `phrasePourLEleve`.
         //

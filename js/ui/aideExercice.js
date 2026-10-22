@@ -64,7 +64,9 @@ async function leconsDeLExercice(exo) {
     const [{ skillsOf }, { getSkill }] = await Promise.all([
         import('../data/catalog.js'), import('../data/skills.js')
     ]);
-    return leconsDe(skillsOf(exo).map(id => (getSkill(id) || {}).lesson));
+    // LA COMPÉTENCE ENTIÈRE, ET NON SA SEULE PHRASE : c'est elle qui porte le
+    // croquis des transformations. Voir `leconsDe`, qui garde l'une ou l'autre.
+    return leconsDe(skillsOf(exo).map(id => getSkill(id)).filter(Boolean));
 }
 
 // --- Peindre ----------------------------------------------------------------

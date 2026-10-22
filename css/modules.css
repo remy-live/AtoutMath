@@ -12621,6 +12621,31 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .lc { display: flex; flex-direction: column; gap: 9px; }
 .lc-p { margin: 0; line-height: 1.55; }
 
+/* LE CROQUIS D'UNE TRANSFORMATION — voir `croquisHtml` dans `ui/leconHtml.js`.
+   Rémy : « Et tracer l'image par quart de tour ce n'est pas clair. Il faut que
+   tant que faire se peut que ce soit visuel pour les explications. »
+   MESURÉ avant : les trois leçons de transformations de son plan de révision
+   faisaient 254 mots, 22 lignes, et ZÉRO figure. */
+.lc-croquis { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* LE DESSIN GARDE SA TAILLE DE CROQUIS.
+   MESURÉ : `.qd-svg { width: 100% }` — juste, là où le quadrillage est
+   l'exercice — étirait le croquis sur les 667 px de la carte, qui passait de
+   165 px de haut à 745. Une leçon de trois paragraphes devenait une page.
+   228 px, c'est la taille naturelle du dessin : 9 carreaux de 24 px et ses
+   deux marges. Le `min()` le laisse rétrécir sur un téléphone, jamais
+   grandir. */
+.lc-croquis .qd-svg { width: min(100%, 228px); height: auto; }
+.lc-croquis-dit {
+    font-size: .82rem; line-height: 1.45; color: var(--text-muted);
+    text-align: center; max-width: 42ch;
+}
+
+/* LA CASE REPÈRE, celle dont la légende compte les carreaux. Un liseré épais
+   et non une autre couleur : elle doit rester BLEUE au départ et VERTE à
+   l'arrivée — c'est ce qui dit qu'elle appartient aux deux figures — tout en
+   se distinguant de ses voisines. */
+.lc-repere { stroke: var(--text-fort, #0f172a); stroke-width: 3; stroke-dasharray: 5 3; }
+
 /* Ce qu'il faut retenir. L'auteur l'écrit déjà en capitales : on ne fait que
    le rendre visible sans crier — la couleur porte, le gras suffit. */
 .lc-fort { font-weight: 800; color: var(--primary-texte); }
