@@ -3105,3 +3105,77 @@ Trois captures, trois défauts, et une demande d'ergonomie.
 4. **LA ZONE DE DÉPÔT DU PARCOURS S'ARRÊTE AU CADRE.** Sous le cadre qui porte
    les exercices, la page ne réagit plus : il faut viser le cadre. La zone qui
    ACCEPTE devrait descendre jusqu'en bas — le cadre, lui, ne bouge pas.
+
+### 29. « Complète la décomposition de 12 » : rien à taper, et pas progressif
+
+> « Ce n'est pas très progressif et aussi on ne peut rien taper »
+
+Capture d'un iPhone, sur **atout-math.fr en v1083** — c'est donc la version
+déployée, chez lui, en vrai.
+
+Ce que la capture montre, mot pour mot :
+
+```
+Complète la décomposition de 12 en facteurs premiers.
+
+                 12 = 2 ?  ×  3 ?
+
+        [💡 Un indice]   [🤝 Montre-moi]
+```
+
+1. **AUCUN CHAMP, AUCUN PAVÉ.** Sous la question il n'y a que les deux boutons
+   d'aide. Les deux « ? » en exposant ne sont pas des cases où l'on écrit, et
+   rien d'autre n'attend une réponse : l'élève ne peut pas répondre. Un
+   exercice où l'on ne peut rien taper n'est pas « difficile », il est cassé —
+   et il est en ligne.
+2. **DEUX TROUS DANS UNE QUESTION QUI N'EN ACCEPTE QU'UN.** La marche demande
+   les DEUX exposants à la fois ; l'activité `numpad` prend une réponse.
+   À vérifier : c'est l'hypothèse la plus probable, pas une mesure.
+3. **« PAS TRÈS PROGRESSIF ».** `num-pgcd-ppcm` porte dix-sept marches et
+   l'escalier était censé commencer en bas (le petit bain du 20 octobre).
+   Tomber sur la décomposition entière de 12 — avec exposants — dès l'écran
+   qu'il photographie veut dire que l'ordre ou le partage des marches ne fait
+   pas ce qu'on croit. À MESURER avant de toucher quoi que ce soit : quelles
+   marches tombent réellement, dans quel ordre, pour un parcours court.
+
+#### Ce que la mesure dit — 22 octobre
+
+**L'ESCALIER : UNE QUESTION PAR MARCHE, ET C'EST TOUT.** `decoupeMarches`
+partage les questions à ÉGALITÉ entre les marches, dans l'ordre. Mesuré sur
+`num-pgcd-ppcm` (17 marches) :
+
+| questions | marches jouées | ce que l'élève fait |
+| --- | --- | --- |
+| 8  | 8  | une question sur chacune des 8 premières |
+| 10 | 10 | une question sur chacune des 10 premières |
+| 17 | 17 | une question sur chacune des 17 |
+
+Sa capture est donc la **septième** question : `divisible`, `qui-divise`,
+`liste-diviseurs`, `premier-petit`, `par-quoi`, `le-quotient`, puis
+`decomposer-petit`. Six notions différentes en six questions, jamais deux fois
+la même, et la septième demande deux exposants d'un coup. **Ce n'est pas un
+escalier, c'est une visite** : rien ne se répète, rien ne se consolide. Le
+réglage existe pourtant — `repartitionMarches`, lu par `decoupeMarches` — et
+personne ne s'en sert.
+
+**« ON NE PEUT RIEN TAPER » : NON REPRODUIT, en douze configurations.**
+Chemin élève et chemin professeur (par l'œil du catalogue), hauteurs de vitre
+de 540 à 844 px, palette d'auteur demandée, et surtout LE GESTE : on appuie sur
+la touche « 2 » et le chiffre tombe dans le premier trou, qui est déjà choisi
+(`np-trou--vise`). Douze touches, toutes atteignables, partout.
+
+Trois pistes écartées, chacune par une mesure :
+
+- *la hauteur* — le pavé rétrécit avec la vitre et reste entier jusqu'à 540 px ;
+- *le mode d'aperçu* — `cadreDApercu` rend `none` dès que la présentation est
+  celle du doigt, et la mesure le confirme ;
+- *un module qui ne se charge pas sur son Safari* — cinq expressions à
+  lookbehind existent dans `js/core/` (Safari les refuse avant iOS 16.4), mais
+  AUCUN chemin d'import statique ne mène du pavé jusqu'à elles ; et `lecon.js`
+  en porte une, or le meneur en dépend : si son Safari les refusait, l'énoncé
+  ne se serait pas affiché non plus.
+
+**CE QUE JE N'AI PAS SU MESURER** : sa palette d'auteur réellement ouverte.
+`?auteur=1` ne la monte pas dans la sonde, et une sonde qui mesure une palette
+absente rend exactement la même réponse qu'une palette sans effet. C'est la
+seule case non cochée, et c'est celle de sa capture.

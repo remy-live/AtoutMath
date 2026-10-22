@@ -226,7 +226,7 @@ export function decoupeMarches(marches, total, params) {
     const n = Math.max(1, Math.round(Number(total)) || 1);
     if (!liste.length) return [];
     const parts = lireLongueurs((params || {}).repartitionMarches, liste.length, n)
-        || partageEgal(liste.length, n);
+        || partageEnBas(liste.length, n);
 
     let rang = 1;
     return liste.map((m, k) => {
@@ -235,6 +235,74 @@ export function decoupeMarches(marches, total, params) {
         rang += p;
         return { ...m, n: p, de, a: rang - 1 };
     });
+}
+
+/**
+ * LE PARTAGE PAR DÉFAUT : ON RESTE EN BAS DE L'ESCALIER.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, capture de son iPhone à l'appui, sur « Décomposer, PGCD et PPCM » :
+ * « Ce n'est pas très progressif ».
+ *
+ * MESURÉ : `partageEgal` donnait UNE question à chacune des premières marches.
+ * Sur les dix-sept marches de cet exercice, un parcours de dix questions
+ * faisait donc dix notions différentes en dix questions — « divisible »,
+ * « qui divise », « la liste des diviseurs », « premier ou non », « par quoi
+ * commencer », « le quotient », puis la décomposition entière. Jamais deux
+ * fois la même. Ce n'est pas un escalier, c'est une VISITE : rien ne se répète,
+ * donc rien ne s'installe, et la septième question tombe sur un élève qui n'a
+ * encore rien automatisé.
+ *
+ * CE QU'IL A TRANCHÉ : « rester en bas plus longtemps ». Trois questions sur
+ * une marche avant de passer à la suivante, puis deux, puis une — l'escalier
+ * monte, mais il s'attarde là où l'on apprend.
+ *
+ *     dix questions, dix-sept marches   →  3, 3, 4          (3 marches)
+ *     dix-sept questions                →  3, 3, 3, 2, 2, 2, 1, 1
+ *
+ * ET L'ESCALIER COURT GARDE SON PARTAGE ÉGAL. Dès qu'il y a DEUX questions par
+ * marche pour tout le monde, chacune est déjà répétée : s'attarder encore
+ * amputerait la fin du chapitre sans rien apprendre de plus. Un exercice de
+ * quatre marches joué en huit questions fait donc toujours 2, 2, 2, 2.
+ *
+ * LE RESTE VA À LA DERNIÈRE MARCHE JOUÉE, et non à une marche de plus : une
+ * marche qui n'aurait qu'une seule question serait exactement ce qu'on vient
+ * de corriger. Dix questions font 3, 3, 4 — pas 3, 3, 3, 1.
+ *
+ * ET LE PROFESSEUR GARDE LA MAIN : `params.repartitionMarches` l'emporte sur
+ * tout ceci, et c'est ce que la barre écrit quand il tire une borne.
+ */
+export function partageEnBas(nbMarches, total) {
+    const m = Math.max(1, Math.round(Number(nbMarches)) || 1);
+    const n = Math.max(1, Math.round(Number(total)) || 1);
+    // ON NE S'ATTARDE QUE LÀ OÙ L'ESCALIER NE TIENT PAS DANS LE PARCOURS.
+    //
+    // DEUX MESURES ONT BORNÉ CETTE RÈGLE, et toutes deux ont failli passer
+    // inaperçues :
+    //
+    //   · DIX DES DIX-SEPT exercices à marches en ont cinq ou moins. Un
+    //     parcours ordinaire leur donne déjà deux questions par marche ;
+    //     s'y attarder couperait la fin du chapitre — qui en est souvent le
+    //     SUJET — pour répéter ce qui l'est déjà.
+    //   · ET CERTAINS ESCALIERS SONT FAITS POUR ÊTRE BALAYÉS. « Révision —
+    //     les quatre opérations » donne huit questions pour huit barreaux,
+    //     et `geo.scratch` conseille douze questions pour douze marches :
+    //     une chacune, exprès. S'y attarder les aurait amputés des deux
+    //     tiers, et c'est `tests/progression.test.mjs` qui l'a dit.
+    //
+    // Reste le cas de Rémy, et il est net : MOINS DE QUESTIONS QUE DE
+    // MARCHES. Là, l'ancien partage donnait une question à chacune des
+    // premières et ZÉRO aux suivantes — des notions vues une fois, puis un
+    // chapitre qui s'arrête au milieu.
+    if (m <= 5 || n >= m) return partageEgal(m, n);
+
+    // TROIS QUESTIONS PAR MARCHE, ET L'ON MONTE AUSSI HAUT QUE LE COMPTE LE
+    // PERMET. C'est le seuil de Rémy : « 3 ou 4 sur chacune des 3 premières ».
+    // En dessous de trois, une notion est vue et aussitôt quittée.
+    const jouees = Math.min(m, Math.max(1, Math.floor(n / 3)));
+    const dessus = partageEgal(jouees, n);
+    return Array.from({ length: m }, (_, k) => (k < jouees ? dessus[k] : 0));
 }
 
 /** Le partage à parts égales, le reste aux dernières. */

@@ -117,15 +117,35 @@ test('LA SOMME EST TOUJOURS LE TOTAL — l\'invariant qui compte', () => {
     }
 });
 
-test('MOINS DE QUESTIONS QUE DE MARCHES : les dernières restent en creux', () => {
-    // On ne triche pas. La barre montre les marches sans question, et c'est ce
-    // qui dit au professeur qu'il faut rallonger ou décocher.
+test('MOINS DE QUESTIONS QUE DE MARCHES : ON RESTE EN BAS DE L\'ESCALIER', () => {
+    // RÉMY, capture de son iPhone à l'appui, sur « Décomposer, PGCD et PPCM » :
+    // « Ce n'est pas très progressif ».
+    //
+    // CETTE ÉPREUVE GARDAIT LA DÉCISION D'AVANT, et c'était une question
+    // chacune aux dix premières marches : dix notions différentes en dix
+    // questions, jamais deux fois la même, puis un chapitre qui s'arrête au
+    // milieu. Il a tranché le 22 octobre : « rester en bas plus longtemps ».
+    //
+    // TROIS QUESTIONS PAR MARCHE, et l'on monte aussi haut que le compte le
+    // permet. Dix questions ne font donc plus dix marches à une question,
+    // mais trois marches à trois ou quatre.
     const c = decoupeMarches(DOUZE, 10, {});
     assert.equal(c.length, 12, 'les douze restent dans la barre');
-    assert.deepEqual(c.map(z => z.n), [...Array(10).fill(1), 0, 0]);
+    assert.deepEqual(c.map(z => z.n), [3, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    assert.ok(!c.some(z => z.n === 1),
+        'une marche vue UNE SEULE FOIS est exactement ce qu\'il a refusé');
+    // ON NE TRICHE PAS POUR AUTANT : la barre montre les marches sans
+    // question, et c'est ce qui dit au professeur qu'il faut rallonger ou
+    // décocher. Il y en a maintenant NEUF au lieu de deux — la phrase doit le
+    // dire, sans quoi il croirait son chapitre couvert.
     const mots = (marches, total, params) => motsDeCoupe(decoupeMarches(marches, total, params));
-    assert.match(mots(DOUZE, 10, {}), /10 marches sur 12/);
+    assert.match(mots(DOUZE, 10, {}), /3 marches sur 12/);
     assert.match(mots(DOUZE, 10, {}), /aucune question/);
+    // ET L'ESCALIER QU'ON PEUT MONTER SE MONTE ENTIER : douze questions pour
+    // douze marches, c'est un BALAYAGE, et certains exercices sont écrits pour
+    // cela — « Révision — les quatre opérations » donne huit questions pour
+    // huit barreaux. S'y attarder les amputerait des deux tiers.
+    assert.deepEqual(decoupeMarches(DOUZE, 12, {}).map(z => z.n), Array(12).fill(1));
     // ET LA PHRASE SUIT LA BORNE. Vider une marche à la main doit s'entendre
     // dans le texte comme cela se voit dans la barre : c'est le défaut qui a
     // fait passer la phrase du couple (marches, total) au découpage.

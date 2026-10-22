@@ -2008,9 +2008,10 @@ document.addEventListener('click', (e) => {
         : !cases.every(c => c.checked);
     cases.forEach(c => { c.checked = tout; });
     majCasesDeTemps(hote);
-    // ET LE PARTAGE REPART À ÉGALITÉ quand on le demande — voir le bouton
+    // ET LE PARTAGE REPART AU DÉFAUT quand on le demande — voir le bouton
     // express plus haut. Le champ caché porte les longueurs sur mesure ; le
-    // vider, c'est rendre la main à `partageEgal`, qui est le défaut.
+    // vider, c'est rendre la main à `partageEnBas` : à parts égales sur un
+    // escalier court, et trois questions par marche sur un escalier long.
     if (btn.dataset.equitable === '1') {
         const rep = hote.querySelector('[data-repartition-marches]');
         if (rep) rep.value = '';

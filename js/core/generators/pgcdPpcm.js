@@ -32,11 +32,17 @@
 // La question s'est posée : garder les marches dures derrière les faciles, ou
 // les sortir dans un second exercice ? Un seul exercice, parce que
 // `decoupeMarches` (core/progression.js) partage les questions DANS L'ORDRE de
-// la progression, et que `partageEgal` en donne une chacune aux PREMIÈRES quand
-// il y en a moins que de marches. Un parcours de dix questions sur dix-sept
-// marches joue donc les dix premières — le petit bain — sans qu'on ait rien à
-// régler ; et le professeur qui veut le haut de l'escalier coche le temps D
-// d'un seul geste.
+// la progression, et que `partageEnBas` s'attarde sur les PREMIÈRES. Un
+// parcours de dix questions sur dix-sept marches joue donc les trois premières,
+// trois ou quatre fois chacune — le petit bain, répété — sans qu'on ait rien à
+// régler.
+//
+// RÉMY A TRANCHÉ CE DOSAGE le 22 octobre, capture à l'appui : la version
+// d'avant donnait UNE question à chacune des dix premières marches, et il l'a
+// jugée « pas très progressive ». Dix notions en dix questions, jamais deux
+// fois la même. COMPTER TROIS QUESTIONS PAR MARCHE est la règle à retenir pour
+// atteindre le haut de l'escalier ; et le professeur qui le veut tout de suite
+// coche le temps D d'un seul geste.
 //
 // ── « APPLICATION DIRECTE » ET « PETIT PROBLÈME » NE SONT PAS DEUX NIVEAUX ──
 //
