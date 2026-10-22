@@ -3016,3 +3016,63 @@ la LIGNE, et chacun garde ce dont il a besoin.
 La liste « Présentation » est épargnée : ses options sont des phrases entières,
 et elle affiche enfin « Chemin d'étapes — Une étape après l'autre, qui serpente.
 On voit où l'on va. » au lieu de « … qui serp ».
+
+### 27. L'espace élève : les explications doivent être VISUELLES
+
+> « ca c'est ce que je retrouve sur un profil élève, c'est pas clair pour les
+> transformations, il faut montrer la figure de base et la solutions. Et tracer
+> l'image par quart de tour ce n'est pas clair. Il faut que tant que faire se
+> peut que ce soit visuel pour les explications. Dans ce que tu dois réviser,
+> tu peux mettre un bouton Tout réviser.
+>
+> Que penses tu de l'espace élève, y a-t-il trop de rubrique ? Est-ce trop ou
+> pas assez détaillé ? »
+
+Quatre demandes et une question, sur cinq captures du profil d'un vrai élève
+(Kais, 4C — 86 erreurs au carnet, 8 compétences à réviser).
+
+1. **LE CARNET D'ERREURS DES TRANSFORMATIONS NE MONTRE PAS LA RÉPONSE.** La
+   carte porte la figure de l'énoncé, « ta réponse : point:0.5:4.5 » et
+   « attendu : point:4.5:4.5 ». L'élève doit décoder des coordonnées écrites en
+   langage de machine pour comprendre ce qu'il a raté, alors que la figure est
+   là, sous ses yeux. Il faut **montrer la figure de base ET la solution**.
+2. **« Tracer l'image par un quart de tour » n'est pas clair.** Son explication
+   est un paragraphe de trois phrases, sans un dessin.
+3. **LA RÈGLE GÉNÉRALE, et c'est elle qui compte** : « il faut que tant que
+   faire se peut que ce soit visuel pour les explications ».
+4. **Un bouton « Tout réviser »** dans l'onglet « À réviser ». Le carnet
+   d'erreurs en a un (« Réviser mes 79 erreurs ») ; la liste des compétences à
+   revoir, non — il faut lancer les huit l'une après l'autre.
+
+Et la question, à laquelle on répond par des chiffres avant d'avoir un avis :
+quatre onglets (À réviser 8 · Mes progrès 24 · Mes erreurs 86 · Badges 16),
+est-ce trop ? Est-ce assez détaillé ?
+
+#### Fait — la carte dessine la correction, et elle répare le passé
+
+**MESURÉ D'ABORD, et c'est ce qui a changé le travail** : le défaut était déjà
+corrigé. Depuis le 17 octobre, l'activité envoie au journal la version qui se
+lit (`direElement`). Mais **le carnet rejoue ce qui a été écrit LE JOUR de
+l'erreur** : les 86 erreurs de Kais portent la forme canonique, et la
+porteraient toujours — même après le dépôt de la dernière version.
+
+On relit donc la clé À LA LECTURE. Deux fonctions neuves, `elementDepuisLaCle`
+et `figureDepuisLaCle`, et les cartes d'hier se lisent comme celles de demain.
+
+| | Avant | Après |
+| --- | --- | --- |
+| « Par rapport à quoi ? » | `point:0.5:4.5` / `axe:v:8.5` | « (d₁) y = 8 » / « O₃ (4 ; 6) » |
+| « Colorie l'image » | `7\|3/8\|3/7\|4/8\|4/8\|5` | « (7 ; 9), (6 ; 10), (7 ; 10)… » |
+| La figure | celle de la question, muette | **la correction dessinée** |
+
+**La correction est un dessin, pas une phrase.** Sur le pavage : la bonne
+droite en vert plein et plus épaisse, celle qu'il a désignée en rouge
+pointillé, les autres candidats effacés. Sur le tracé : l'image attendue en
+vert cerclé, et **seules les cases en trop** en rouge hachuré — une case juste
+n'est jamais peinte en rouge, sans quoi la figure contredirait le diagnostic
+(« 3 cases justes ») écrit juste en dessous.
+
+**Le générateur dessine sa propre correction**, par deux fonctions
+facultatives (`figureCorrigee`, `lireUneReponse`) : le carnet n'a pas à
+connaître les pavages, et le prochain exercice qui en voudra une n'aura pas à
+toucher à l'interface.

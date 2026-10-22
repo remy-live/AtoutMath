@@ -30,8 +30,8 @@
 
 import { makeItem } from '../items.js';
 import {
-    NOMS, appliquer, cleFigure, direLeSens, direVecteur, imageFigure, memeFigure,
-    nommerAxe
+    NOMS, appliquer, cleFigure, direLeSens, direVecteur, figureDepuisLaCle,
+    imageFigure, memeFigure, nommerAxe
 } from '../transformations.js';
 import { quadrillageSvg } from '../quadrillageSvg.js';
 import { figure } from '../figures.js';
@@ -318,6 +318,60 @@ function explication(t, image) {
 export const transfoQuadrillageGenerator = {
     id: 'geo.transfo.quadrillage',
     label: 'Tracer l\'image sur le quadrillage',
+
+    /**
+     * LA FIGURE DU CORRIGÉ — les deux tracés, l'un sur l'autre.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * RÉMY, capture du carnet d'un élève : « il faut montrer la figure de base
+     * et la solutions ». La carte écrivait « ta réponse : 7|3/8|3/7|4/8|4/8|5,
+     * attendu : 8|2/9|2/8|3/9|3/9|4 » sous une figure qui ne montrait que le
+     * départ et la flèche. Pour savoir ce qui n'allait pas, l'élève devait
+     * placer dix couples de coordonnées à la main.
+     *
+     * ICI ON REDESSINE LES DEUX : l'image attendue en vert, les cases qu'il a
+     * posées EN TROP en rouge. Les cases qu'il avait justes ne paraissent pas
+     * en rouge — elles sont déjà vertes, et les redire fausses serait faux.
+     *
+     * LA FLÈCHE ET LE DÉPART RESTENT : c'est « la figure de base » qu'il
+     * demande, et sans elle la correction ne dit pas d'où l'on part.
+     *
+     * @param {Object} item l'item refabriqué depuis la graine
+     * @param {Object} [o]
+     * @param {Array<{x,y}>} [o.donne] les cases posées par l'élève
+     * @returns {string} le HTML de la figure, ou une chaîne vide
+     */
+    /**
+     * RELIRE UNE RÉPONSE ENREGISTRÉE — la clé qui juge, remise en français.
+     *
+     * Même convention que le pavage : le carnet garde « 7|3/8|3/7|4 », et seul
+     * le générateur sait que ce sont des cases, comptées à partir de zéro.
+     *
+     * @returns {{objet: Array, dit: string}|null}
+     */
+    lireUneReponse(cle) {
+        const cases = figureDepuisLaCle(cle);
+        if (!cases.length) return null;
+        return { objet: cases, dit: direLesCases(cases) };
+    },
+
+    figureCorrigee(item, { donne } = {}) {
+        const m = (item && item.meta) || {};
+        if (!m.depart || !m.image) return '';
+        const attendues = new Set(m.image.map(p => `${p.x}|${p.y}`));
+        const enTrop = (donne || []).filter(p => !attendues.has(`${p.x}|${p.y}`));
+        const figures = [
+            { cases: m.depart, classe: 'qd-depart' },
+            { cases: m.image, classe: 'qd-attendue' }
+        ];
+        if (enTrop.length) figures.push({ cases: enTrop, classe: 'qd-en-trop' });
+        return figure(quadrillageSvg({
+            largeur: m.largeur, hauteur: m.hauteur,
+            figures, transfo: m.transfo, ancre: m.ancre
+        }));
+    },
+
     skills: ['geo.transfo.axiale', 'geo.transfo.centrale', 'geo.transfo.translation', 'geo.transfo.rotation'],
     answerKinds: ['grid'],
     params: [

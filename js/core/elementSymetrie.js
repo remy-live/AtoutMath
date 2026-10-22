@@ -64,6 +64,37 @@ export function cleElement(el) {
 export const memeElement = (a, b) => !!a && !!b && cleElement(a) === cleElement(b);
 
 /**
+ * L'INVERSE DE `cleElement` — et ce qui le rend nécessaire.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, capture du carnet d'un élève à l'appui : « c'est pas clair pour les
+ * transformations, il faut montrer la figure de base et la solutions ». Sa
+ * capture montre « ta réponse : point:0.5:4.5, attendu : point:4.5:4.5 ».
+ *
+ * CE DÉFAUT EST DÉJÀ CORRIGÉ, ET IL EST QUAND MÊME LÀ. Depuis ea55257,
+ * l'activité envoie au journal la version qui se lit (voir `direElement`). Mais
+ * LE CARNET REJOUE CE QUI A ÉTÉ ÉCRIT LE JOUR DE L'ERREUR : les quatre-vingts
+ * erreurs déjà au carnet de cet élève portent la forme canonique, et la
+ * porteront toujours. Une correction qui ne vaut que pour l'avenir laisse
+ * l'élève devant l'écran d'hier.
+ *
+ * ON RÉPARE DONC À LA LECTURE. Cette fonction relit la clé, le carnet la
+ * repasse par `direElement`, et la carte d'hier se lit comme celle de demain.
+ *
+ * @param {string} cle « axe:v:7.5 » ou « point:5.5:3.5 »
+ * @returns {Object|null} l'élément, en coordonnées de CASE
+ */
+export function elementDepuisLaCle(cle) {
+    const t = String(cle ?? '').trim();
+    const axe = /^axe:([vh]):(-?[\d.]+)$/.exec(t);
+    if (axe) return { genre: 'axe', axe: { type: axe[1], a: Number(axe[2]) } };
+    const pt = /^point:(-?[\d.]+):(-?[\d.]+)$/.exec(t);
+    if (pt) return { genre: 'point', centre: { x: Number(pt[1]), y: Number(pt[2]) } };
+    return null;
+}
+
+/**
  * Ce que l'élève doit ÉCRIRE : « x = 4 », « y = 7 », « (4 ; 7) ».
  *
  * Les candidats sont posés sur les lignes du quadrillage et sur ses nœuds, de

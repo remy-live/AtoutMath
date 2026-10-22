@@ -18,7 +18,7 @@ import { getSkill, skillLabel } from '../data/skills.js';
 import { exercisesForSkill, getExerciseById, estRevisable } from '../data/catalog.js';
 import { isGame } from '../core/gameAccess.js';
 import { grouperParExercice, questionsOuvertes, fusionnerDoublons } from '../core/carnet.js';
-import { visuelDe } from '../core/visuelQuestion.js';
+import { visuelDe, corrigeDe } from '../core/visuelQuestion.js';
 import {
     startErrorReview, startSkillSession, startRecommendedSession, buildRecommendedPreview
 } from '../core/remediation.js';
@@ -504,13 +504,35 @@ function errorBody(err) {
         ? `<div class="error-why">${escapeHtml(q.misconception)}</div>`
         : (q.customMessage ? `<div class="error-why">${escapeHtml(q.customMessage)}</div>` : '');
     const skill = err.skillId ? `<div class="error-skill">${escapeHtml(skillLabel(err.skillId))}</div>` : '';
+
+    // LA CORRECTION DESSINÉE, quand le générateur sait la dessiner.
+    //
+    // RÉMY, capture du carnet d'un élève de 4e : « c'est pas clair pour les
+    // transformations, il faut montrer la figure de base et la solutions. […]
+    // Il faut que tant que faire se peut que ce soit visuel. »
+    //
+    // Elle REMPLACE la figure de l'énoncé — c'est la même, avec la réponse
+    // dessus — et elle rend aussi les deux réponses en français, ce qui répare
+    // les erreurs enregistrées AVANT que l'activité ne les écrive lisibles.
+    // Voir `corrigeDe` dans core/visuelQuestion.js.
+    const corrige = corrigeDe(q, err.exoId);
+    const donne = (corrige && corrige.given) || q.input;
+    const attendu = (corrige && corrige.expected) || q.expected;
+    const dessin = corrige
+        ? `<div class="error-figure error-figure--corrige">${corrige.html}
+             <p class="error-legende">
+               <span class="error-legende-juste">vert</span> : la bonne réponse ·
+               <span class="error-legende-faux">rouge</span> : la tienne</p>
+           </div>`
+        : figureDeLErreur(err);
+
     return `
         <div class="error-item-detail">
             <b>${escapeHtml(q.questionText || '')}</b>${repeat} — ta réponse :
-            <b class="error-given">${escapeHtml(q.input)}</b>, attendu :
-            <b class="error-expected">${escapeHtml(q.expected)}</b>
+            <b class="error-given">${escapeHtml(donne)}</b>, attendu :
+            <b class="error-expected">${escapeHtml(attendu)}</b>
         </div>
-        ${figureDeLErreur(err)}${why}${skill}`;
+        ${dessin}${why}${skill}`;
 }
 
 function correctedBadge() {

@@ -225,6 +225,28 @@ export function cleFigure(figure) {
 }
 
 /**
+ * L'INVERSE DE `cleFigure` — et ce qui le rend nécessaire.
+ *
+ * RÉMY, capture du carnet d'un élève : « il faut montrer la figure de base et
+ * la solutions ». La carte y écrivait « ta réponse : 7|3/8|3/7|4/8|4/8|5,
+ * attendu : 8|2/9|2/8|3/9|3/9|4 » — la forme qui JUGE, posée sous les yeux
+ * d'un enfant.
+ *
+ * LE CARNET REJOUE CE QUI A ÉTÉ ÉCRIT LE JOUR DE L'ERREUR : les erreurs déjà
+ * enregistrées portent cette forme et la porteront toujours. On la relit donc,
+ * et le carnet redessine les deux figures au lieu de les épeler.
+ *
+ * @param {string} cle « 7|3/8|3/7|4 »
+ * @returns {Array<{x:number,y:number}>} les cases, ou une liste vide
+ */
+export function figureDepuisLaCle(cle) {
+    return String(cle ?? '').split('/')
+        .map(c => /^(-?\d+)\|(-?\d+)$/.exec(c.trim()))
+        .filter(Boolean)
+        .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
+}
+
+/**
  * Deux figures sont-elles la MÊME ? L'ordre des cases ne compte pas : on ne
  * demande pas à l'élève de les poser dans un ordre, on lui demande un dessin.
  */

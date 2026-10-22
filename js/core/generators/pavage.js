@@ -35,7 +35,7 @@ import { makeItem, finalizeChoices } from '../items.js';
 import { imageFigure, memeFigure, parAxe, parCentre } from '../transformations.js';
 import { quadrillageSvg } from '../quadrillageSvg.js';
 import {
-    cleElement, ecrireElement, memeElement, nommerCandidat
+    cleElement, direElement, ecrireElement, elementDepuisLaCle, memeElement, nommerCandidat
 } from '../elementSymetrie.js';
 import { figure } from '../figures.js';
 
@@ -287,6 +287,76 @@ export const pavageGenerator = {
             ]
         }
     ],
+
+    /**
+     * LA FIGURE DU CORRIGÉ — la question, avec la réponse dessus.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * RÉMY, capture du carnet d'un élève : « c'est pas clair pour les
+     * transformations, il faut montrer la figure de base et la solutions ».
+     *
+     * La carte du carnet montrait la figure de la QUESTION — donc quatre
+     * candidats identiques — et, sous elle, deux chaînes de coordonnées. Pour
+     * savoir ce qu'il fallait trouver, l'élève devait convertir « point:4.5:4.5 »
+     * en un point de la figure. C'est le travail de l'exercice, refait à
+     * l'envers, et sans la figure.
+     *
+     * ICI LA RÉPONSE EST SUR LE DESSIN : le bon élément en vert et plus épais,
+     * celui que l'élève a désigné en rouge pointillé, les autres effacés. C'est
+     * ce qu'un professeur trace au tableau, et cela se lit sans une phrase.
+     *
+     * LE GÉNÉRATEUR SAIT DESSINER SA PROPRE CORRECTION, et c'est pour cela
+     * qu'elle vit ici : le carnet, lui, n'a pas à connaître les pavages. Il
+     * appelle `figureCorrigee` quand elle existe — voir core/visuelQuestion.js.
+     *
+     * @param {Object} item l'item refabriqué depuis la graine
+     * @param {Object} [o]
+     * @param {Object} [o.donne] l'élément désigné par l'élève, en coordonnées
+     *   de case (voir `elementDepuisLaCle`)
+     * @returns {string} le HTML de la figure, ou une chaîne vide
+     */
+    /**
+     * RELIRE UNE RÉPONSE ENREGISTRÉE — la clé qui juge, remise en français.
+     *
+     * Le carnet garde ce qui a été écrit le jour de l'erreur, et la forme qui
+     * JUGE est en coordonnées de CASE : « point:4.5:4.5 ». Le générateur est
+     * le seul à savoir la relire — le carnet, lui, n'a pas à connaître les
+     * pavages. Voir core/visuelQuestion.js, qui appelle les deux.
+     *
+     * @returns {{objet: Object, dit: string}|null}
+     */
+    lireUneReponse(cle, item) {
+        const m = (item && item.meta) || {};
+        const el = elementDepuisLaCle(cle);
+        if (!el || !m.hauteur) return null;
+        return { objet: el, dit: direElement(m.hauteur, el, m.candidats) };
+    },
+
+    figureCorrigee(item, { donne } = {}) {
+        const m = (item && item.meta) || {};
+        if (!m.candidats || !m.bon || !m.pieces) return '';
+        const noms = m.noms || [];
+        const svg = quadrillageSvg({
+            largeur: m.largeur, hauteur: m.hauteur, repere: true,
+            figures: m.pieces.map((cases, i) => ({
+                cases, etiquette: noms[i],
+                classe: `qd-piece qd-piece-${i % 6}`
+                    + (i === m.de ? ' qd-piece--source' : '')
+                    + (i === m.vers ? ' qd-piece--cible' : '')
+            })),
+            // TROIS ÉTATS, ET « pale » EST LE DÉFAUT : les candidats qui ne
+            // sont ni la solution ni la réponse de l'élève ne comptent plus,
+            // mais ils restent lisibles — c'est parmi EUX qu'il fallait
+            // choisir.
+            elements: m.candidats.map(c => ({
+                ...c,
+                etat: memeElement(c, m.bon) ? 'juste'
+                    : (donne && memeElement(c, donne) ? 'faux' : 'pale')
+            }))
+        });
+        return figure(svg);
+    },
 
     generate(params, ctx) {
         const rng = ctx.rng;

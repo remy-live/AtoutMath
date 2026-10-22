@@ -1723,6 +1723,18 @@ html[data-point="plus"] .pt-croix { display: none; }
 .qd-case { stroke: none; }
 .qd-depart { fill: rgba(99, 102, 241, .55); }
 .qd-posee { fill: rgba(22, 163, 74, .58); }
+/* LE CORRIGÉ DU CARNET : l'image attendue, et ce que l'élève a posé en trop.
+
+   RÉMY, capture du carnet d'un élève : « il faut montrer la figure de base et
+   la solutions ». La carte épelait dix couples de coordonnées ; elle dessine
+   maintenant les deux tracés l'un sur l'autre.
+
+   L'ATTENDUE EST CERCLÉE, PAS SEULEMENT VERTE : un élève qui distingue mal le
+   vert du rouge lit le trait. Et les cases EN TROP sont hachurées de rouge,
+   pour la même raison. */
+.qd-attendue { fill: rgba(22, 163, 74, .45); stroke: #15803d; stroke-width: 2.4; }
+.qd-en-trop { fill: rgba(220, 38, 38, .3); stroke: #dc2626; stroke-width: 2.4;
+    stroke-dasharray: 5 4; }
 /* LA CASE DONNÉE PAR L'INDICE. Elle compte comme une case tracée — sinon
    l'aide ne servirait à rien — mais elle porte un liseré pointillé : en
    regardant la figure finie, on doit pouvoir distinguer ce qu'on a trouvé de
@@ -1771,6 +1783,35 @@ html[data-point="plus"] .pt-croix { display: none; }
 .qd-el-hit:focus-visible { fill: rgba(220, 38, 38, .22); }
 .qd-el-hit.sy-juste { fill: rgba(22, 163, 74, .3); }
 .qd-el-hit.sy-faux { fill: rgba(220, 38, 38, .28); }
+
+/* LES TROIS ÉTATS D'UN CORRIGÉ — et ils n'existent QUE là.
+
+   RÉMY, capture du carnet d'un élève : « c'est pas clair pour les
+   transformations, il faut montrer la figure de base et la solutions ».
+
+   Sur la question, tous les candidats sont identiques : c'est l'exercice. Sur
+   la correction, l'élève doit voir trois choses d'un coup d'œil — ce qu'il
+   fallait trouver, ce qu'il a désigné, et le reste qui ne compte plus.
+
+   LE VERT EST PLUS ÉPAIS QUE LE ROUGE, et pas seulement d'une autre couleur :
+   un élève daltonien (un garçon sur douze) distingue mal le rouge du vert. Le
+   trait de la solution est donc aussi le plus gros, et il est le seul à porter
+   des tirets ronds. */
+.qd-candidat--juste { stroke: #16a34a; stroke-width: 3.4; }
+.qd-candidat-point.qd-candidat--juste line { stroke: #16a34a; stroke-width: 4.2; }
+/* LE NOM NE GROSSIT PAS : la place réservée à droite du quadrillage est
+   calculée sur 14 px (voir `marge` dans quadrillageSvg), et un nom plus gros
+   sortait du viewBox — mesuré en photo, « (d₃) » rogné par le bord. */
+.qd-candidat-nom.qd-candidat--juste { fill: #15803d; }
+.qd-candidat--faux { stroke: #dc2626; stroke-width: 2.6; stroke-dasharray: 5 4; }
+.qd-candidat-point.qd-candidat--faux line { stroke: #dc2626; }
+.qd-candidat-nom.qd-candidat--faux { fill: #dc2626; }
+/* CE QUI NE COMPTE PLUS S'EFFACE SANS DISPARAÎTRE : les autres candidats
+   restent lisibles — c'est parmi EUX qu'il fallait choisir —, mais ils ne
+   concurrencent plus les deux qu'on regarde. */
+.qd-candidat--pale { stroke: #94a3b8; stroke-width: 1.6; opacity: .55; }
+.qd-candidat-point.qd-candidat--pale line { stroke: #94a3b8; opacity: .55; }
+.qd-candidat-nom.qd-candidat--pale { fill: #94a3b8; font-weight: 600; }
 
 /* --- « Par rapport à quoi ? » : les trois façons de répondre -------------- */
 
@@ -3671,6 +3712,26 @@ html[data-point="plus"] .pt-croix { display: none; }
 .error-given { color: var(--danger-texte); }
 .error-expected { color: var(--success-texte); }
 .error-repeat { color: var(--warning-texte); font-weight: 700; font-size: .85rem; }
+/* LA CORRECTION DESSINÉE, dans la carte du carnet.
+
+   RÉMY : « il faut montrer la figure de base et la solutions […] il faut que
+   tant que faire se peut que ce soit visuel pour les explications. »
+
+   La légende est en TEXTE sous la figure, et pas seulement en couleur : un
+   élève qui distingue mal le vert du rouge lit les deux mots, et le trait
+   plein ou pointillé de la figure le lui confirme. */
+/* LA LÉGENDE SE POSE SOUS LA FIGURE, pas à côté. `.error-figure` est une
+   rangée (`display: flex`) : la légende partait donc à droite du dessin, à
+   l'autre bout de la carte — mesuré sur une carte de 746 px. Le corrigé est
+   une COLONNE : le dessin, puis ce qu'il faut en lire. */
+.error-figure--corrige { flex-direction: column; align-items: flex-start; }
+.error-legende {
+    margin: 4px 0 0; text-align: left;
+    font-size: .82rem; color: var(--text-muted);
+}
+.error-legende-juste { color: #15803d; font-weight: 700; }
+.error-legende-faux { color: #dc2626; font-weight: 700; }
+
 .error-why { font-size: .88rem; color: var(--warning-texte); margin-top: 4px; line-height: 1.4; }
 .error-skill { font-size: .78rem; color: var(--text-muted); margin-top: 3px; }
 

@@ -335,6 +335,15 @@ function dessinerCandidat(el, i, { L, H, px, py, u, interactive }) {
     const cible = [];
     const id = el.id ?? i;
     const nom = esc(el.nom || '');
+    // L'ÉTAT D'UN CANDIDAT — et il n'existe QUE sur un corrigé.
+    //
+    // RÉMY, capture du carnet d'un élève : « il faut montrer la figure de base
+    // et la solutions ». Sur la question, les candidats sont tous dessinés
+    // pareil, et c'est le cœur de l'exercice : si le bon se distinguait, il
+    // n'y aurait plus rien à chercher. Sur la CORRECTION, c'est l'inverse —
+    // l'élève doit voir d'un coup d'œil lequel était le bon, et lequel il a
+    // désigné. Voir `figureCorrigee` dans le générateur du pavage.
+    const etat = el.etat ? ` qd-candidat--${el.etat}` : '';
     const large = u * 0.5;
     const dit = el.dit ? ` data-dit="${esc(el.dit)}"` : '';
     // UNE ZONE QUI N'EST PAS CLIQUABLE NE SE PREND PAS POUR UN BOUTON : pas de
@@ -349,13 +358,13 @@ function dessinerCandidat(el, i, { L, H, px, py, u, interactive }) {
         const vert = el.axe.type === 'v';
         const q = versDessin(el.axe.a);
         const [x1, y1, x2, y2] = vert ? [q, 0, q, H] : [0, q, L, q];
-        out.push(`<line class="qd-candidat" x1="${px(x1)}" y1="${py(y1)}"
+        out.push(`<line class="qd-candidat${etat}" x1="${px(x1)}" y1="${py(y1)}"
             x2="${px(x2)}" y2="${py(y2)}"/>`);
         // Le nom se pose au bout de la droite, hors de la zone des figures.
         out.push(vert
-            ? `<text class="qd-candidat-nom" x="${px(q)}" y="${py(0) - u * 0.18}"
+            ? `<text class="qd-candidat-nom${etat}" x="${px(q)}" y="${py(0) - u * 0.18}"
                 text-anchor="middle">${nom}</text>`
-            : `<text class="qd-candidat-nom" x="${px(L) + u * 0.15}" y="${py(q)}"
+            : `<text class="qd-candidat-nom${etat}" x="${px(L) + u * 0.15}" y="${py(q)}"
                 dominant-baseline="central">${nom}</text>`);
         if (zone) {
             cible.push(`<rect class="qd-el-hit" data-el="${esc(id)}"${dit}${role}
@@ -368,11 +377,11 @@ function dessinerCandidat(el, i, { L, H, px, py, u, interactive }) {
 
     if (el.genre === 'point' && el.centre) {
         const cx = versDessin(el.centre.x), cy = versDessin(el.centre.y);
-        out.push(`<g class="qd-candidat-point">`
+        out.push(`<g class="qd-candidat-point${etat}">`
             + `<line x1="${px(cx - 0.26)}" y1="${py(cy - 0.26)}" x2="${px(cx + 0.26)}" y2="${py(cy + 0.26)}"/>`
             + `<line x1="${px(cx - 0.26)}" y1="${py(cy + 0.26)}" x2="${px(cx + 0.26)}" y2="${py(cy - 0.26)}"/>`
             + `</g>`);
-        out.push(`<text class="qd-candidat-nom" x="${px(cx + 0.32)}" y="${py(cy - 0.32)}">${nom}</text>`);
+        out.push(`<text class="qd-candidat-nom${etat}" x="${px(cx + 0.32)}" y="${py(cy - 0.32)}">${nom}</text>`);
         if (zone) {
             cible.push(`<circle class="qd-el-hit" data-el="${esc(id)}"${dit}${role}
                 aria-label="Le point ${nom}"
