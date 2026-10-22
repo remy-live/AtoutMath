@@ -4674,6 +4674,56 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     .presentation-nav button { padding: 6px 18px; font-size: 1.1rem; }
 }
 
+/* LA FENÊTRE « MODE & BARÈME » PREND LA PLACE QU'ELLE A.
+
+   RÉMY, capture à l'appui : « pourquoi cette fenetre sur l'écran prof sur ordi
+   est si étroite ».
+
+   MESURÉ (tools/largeurDUneFenetre.mjs), sur un écran de 1440 px : le panneau
+   faisait 500 px — `.modal-panel-md` les pose en dur — et laissait 940 px de
+   vide sur les côtés. Les trois cartes de mode tombaient à 138 px chacune, et
+   la description d'« Apprentissage » s'étalait sur SEPT lignes, « Montre-moi »
+   coupé au tiret. Sur un téléphone de 390 px, ces mêmes cartes font 267 px :
+   la fenêtre du professeur était DEUX FOIS plus serrée que celle de l'élève.
+
+   LA RÈGLE NE VAUT QUE POUR CETTE FENÊTRE-CI, et c'est délibéré : elle est la
+   seule en `.modal-panel-md` à porter une grille de trois colonnes. Le bilan
+   d'exercice et la fenêtre d'accès du bâtisseur sont du texte et un formulaire
+   court — 500 px y est une bonne largeur de lecture, pas une contrainte.
+
+   `calc(100vw - 32px)` GARDE LES BORDS : sur une fenêtre étroite d'ordinateur,
+   le panneau se resserre au lieu de déborder. Et sur téléphone, c'est la règle
+   `.glass-panel { width: 90% !important }` de games.css qui gagne — un
+   `!important` sous media query bat un sélecteur d'identifiant —, donc rien ne
+   change là où rien n'allait mal. */
+/* `html:not(.volet-atelier)` LAISSE LE VOLET GAGNER. Quand l'atelier est
+   ouvert, une fenêtre remplit le volet entier (voir css/layout.css) ; un
+   sélecteur d'identifiant battrait cette règle-là sans le vouloir, et la
+   fenêtre se recroquevillerait au milieu d'un cadre fait pour elle. */
+html:not(.volet-atelier) #path-policy-modal .glass-panel {
+    width: min(900px, calc(100vw - 32px));
+}
+
+/* ET LES RÉGLAGES SIMPLES NE S'ÉTIRENT PAS AVEC ELLE.
+
+   La même leçon que `#student-config-modal` plus haut : « un panneau de 680 px
+   pour trois réglages laissait une trentaine de centimètres de vide entre
+   chaque libellé et son champ : l'œil devait traverser le panneau pour relier
+   les deux. » À 900 px, « Essais autorisés par question » et sa case se
+   retrouvaient séparés de plus de mille pixels.
+
+   LÀ-BAS ON A BORNÉ LE PANNEAU ; ICI ON NE PEUT PAS — ce sont les trois cartes
+   de mode qui réclament la largeur. On borne donc la LIGNE, et chacun garde ce
+   dont il a besoin : les cartes respirent, le libellé reste à côté de son
+   champ.
+
+   `--wide` EST ÉPARGNÉ : c'est la liste « Présentation », dont les options
+   sont des phrases entières (« Chemin d'étapes — Une étape après l'autre, qui
+   serpente. On voit où l'on va. »). Elle a été écrite pour prendre la ligne. */
+#path-policy-modal .cfg-field:not(.cfg-field--wide):not(.cfg-field--long) {
+    max-width: 520px;
+}
+
 /* Le bouton de sortie du panneau « Mode & barème » reste COLLÉ au bas du
    panneau. Le panneau défile — la croix de fermeture, elle, partait vers le
    haut hors de l'écran dès le premier coup de doigt, et plus rien ne disait

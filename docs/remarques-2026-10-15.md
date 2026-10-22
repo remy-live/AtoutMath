@@ -2976,3 +2976,43 @@ marchait. Avec le QR devant l'objectif, on touche « Accueil », l'écran revien
 sa caméra s'ouvre, relit le QR — toujours projeté — et rouvre le parcours. En
 1,3 s, la sonde ne voyait qu'une couche de jeu. **Pour mesurer un écran, il
 faut une entrée qui ne le fasse pas changer.**
+
+### 26. La fenêtre « Mode & barème » est trop étroite sur ordinateur
+
+> « pourquoi cette fenetre sur l'écran prof sur ordi est si étroite »
+
+Capture à l'appui : les trois cartes — Apprentissage, Entraînement, Évaluation
+— se serrent en colonnes de quelques mots, « Montre-moi » se coupe en deux, et
+le réglage suivant passe sous le pied collant. Sur un écran d'ordinateur, la
+place est là et on ne s'en sert pas.
+
+À mesurer : la largeur réelle du panneau, celle des cartes, et ce qui est
+coupé — avant de toucher à quoi que ce soit.
+
+#### Fait — 500 px de marbre dans un écran de 1440
+
+`node tools/largeurDUneFenetre.mjs` ouvre la fenêtre par le chemin du
+professeur, sur trois écrans à la fois :
+
+| | Avant | Après |
+| --- | --- | --- |
+| Le panneau, à 1440 px | 500 px, **940 px de vide** sur les côtés | 900 px |
+| Les trois cartes | 138 px | **271 px** |
+| La description d'« Apprentissage » | **7 lignes**, « Montre-moi » coupé au tiret | 3 lignes |
+| La hauteur d'une carte | 217 px | 143 px |
+| Sur un téléphone de 390 px | 267 px par carte | inchangé |
+
+La fenêtre du professeur était donc **deux fois plus serrée que celle de
+l'élève** : `.modal-panel-md` pose 500 px en dur, et rien ne les rendait à
+l'écran qui les avait.
+
+**Ce qui a été borné, en revanche** : à 900 px, « Essais autorisés par
+question » et sa case se retrouvaient séparés de plus de mille pixels. C'est la
+leçon déjà écrite au-dessus de `#student-config-modal` — « l'œil devait
+traverser le panneau pour relier les deux ». Là-bas on avait borné le panneau ;
+ici on ne peut pas, ce sont les cartes qui réclament la largeur. On borne donc
+la LIGNE, et chacun garde ce dont il a besoin.
+
+La liste « Présentation » est épargnée : ses options sont des phrases entières,
+et elle affiche enfin « Chemin d'étapes — Une étape après l'autre, qui serpente.
+On voit où l'on va. » au lieu de « … qui serp ».
