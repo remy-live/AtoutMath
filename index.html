@@ -86,12 +86,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1081">
-    <link rel="stylesheet" href="css/layout.css?v=1081">
-    <link rel="stylesheet" href="css/ui.css?v=1081">
-    <link rel="stylesheet" href="css/games.css?v=1081">
-    <link rel="stylesheet" href="css/components.css?v=1081">
-    <link rel="stylesheet" href="css/modules.css?v=1081">
+    <link rel="stylesheet" href="css/base.css?v=1082">
+    <link rel="stylesheet" href="css/layout.css?v=1082">
+    <link rel="stylesheet" href="css/ui.css?v=1082">
+    <link rel="stylesheet" href="css/games.css?v=1082">
+    <link rel="stylesheet" href="css/components.css?v=1082">
+    <link rel="stylesheet" href="css/modules.css?v=1082">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1380,7 +1380,16 @@
                         <section class="prof-panneau" data-panneau="reviser" role="tabpanel">
                             <div class="section-header-row">
                                 <h3 class="section-title">Ce que tu dois réviser</h3>
-                                <button id="btn-seance-conseillee" class="btn-toggle">▶ Lancer la séance conseillée</button>
+                                <!-- MESURÉ : ce bouton existait, mais il n'était pas un bouton.
+                                     Fond transparent, bordure transparente, texte gris sur le
+                                     fond du panneau — 180 × 36 px, à côté des « ▶ Réviser »
+                                     pleins de 667 × 41. Rémy demandait « un bouton Tout
+                                     réviser » : il demandait celui-ci, qu'on ne voyait pas.
+                                     « active » est la convention de la maison pour l'action
+                                     principale — voir « reco-start-all » dans pathView.js.
+                                     Son libellé est écrit par renderPlan, seul à connaître le
+                                     nombre de notions affichées. -->
+                                <button id="btn-seance-conseillee" class="btn-toggle active">▶ Tout réviser</button>
                             </div>
                             <div id="revision-plan-container"></div>
                         </section>

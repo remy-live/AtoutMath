@@ -229,8 +229,28 @@ for (const [vieux] of paires) {
     }
 }
 
-/** Le fichier, avec le défaut remis. */
-const abime = () => paires.reduce((t, [vieux, neuf]) => t.replace(vieux, neuf), avant);
+/**
+ * Le fichier, avec le défaut remis.
+ *
+ * ON NE PASSE JAMAIS `neuf` DIRECTEMENT À `replace`.
+ *
+ * `String.replace` interprète `$&`, `` $` ``, `$'` et `$1` DANS LE TEXTE DE
+ * REMPLACEMENT. Un défaut qui en contient — et le code de ce dépôt en contient,
+ * ne serait-ce que `str.replace(/…/g, '\\$&')` pour échapper un sélecteur —
+ * était donc écrit AUTREMENT qu'on ne l'avait demandé : `$&` se changeait en
+ * l'ancien texte tout entier.
+ *
+ * ET L'OUTIL ANNONÇAIT ALORS « L'ÉPREUVE RESTE VERTE », c'est-à-dire exactement
+ * le verdict qui fait jeter une garde saine. Mesuré le 22 octobre sur
+ * `tests/aidesCss.test.mjs` : la garde tombait parfaitement quand on remettait
+ * le défaut à la main, et cet outil disait le contraire. C'est le pire défaut
+ * possible dans l'outil dont tout le reste dépend pour être cru.
+ *
+ * Une FONCTION de remplacement ne subit aucune substitution : ce qu'elle rend
+ * est écrit tel quel. (`tools/remplacer.mjs` était déjà à l'abri — il emploie
+ * `split().join()`.)
+ */
+const abime = () => paires.reduce((t, [vieux, neuf]) => t.replace(vieux, () => neuf), avant);
 
 console.log(`épreuve  : ${essai}`);
 console.log(`on abîme : ${source}`);

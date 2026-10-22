@@ -1547,7 +1547,13 @@ function recommendedSection() {
     // le logiciel propose, ce qui n'est pas la même chose et ne doit pas porter
     // le même nom.
     all.textContent = `Faire les ${recos.length} exercices`;
-    all.onclick = () => startRecommendedSession(3);
+    // ON LUI DONNE LA LISTE QU'ON VIENT D'AFFICHER, et non le nombre 3.
+    // L'étiquette comptait `recos.length` pendant que le clic en demandait
+    // trois : deux listes recalculées séparément, qui n'ont aucune raison de
+    // coïncider quand une notion recommandée n'a pas d'exercice —
+    // `buildRecommendedPreview` l'écarte, `getRecommendations` non. Le bouton
+    // annonçait alors deux exercices et en lançait d'autres.
+    all.onclick = () => startRecommendedSession(recos);
     box.appendChild(all);
 
     return box;

@@ -41,8 +41,10 @@ export function initProfileUI() {
     const btnRevision = document.getElementById('btn-start-revision');
     if (btnRevision) btnRevision.onclick = () => startErrorReview();
 
-    const btnSeance = document.getElementById('btn-seance-conseillee');
-    if (btnSeance) btnSeance.onclick = () => startRecommendedSession();
+    // LE BOUTON « TOUT RÉVISER » SE BRANCHE DANS `renderPlan`, et non ici :
+    // c'est là qu'on sait ce qui est affiché, donc ce que « tout » désigne.
+    // Branché ici, il relancerait une liste recalculée — voir
+    // `startRecommendedSession`.
 
     ['profile-group-exo', 'profile-show-games'].forEach(id => {
         const el = document.getElementById(id);
@@ -211,7 +213,33 @@ function renderPlan() {
         if (btn) btn.style.display = 'none';
         return;
     }
-    if (btn) btn.style.display = 'inline-flex';
+    // ── « TOUT RÉVISER » ────────────────────────────────────────────────────
+    //
+    // Rémy : « Dans ce que tu dois réviser, tu peux mettre un bouton Tout
+    // réviser. »
+    //
+    // LE GESTE EXISTAIT ; C'EST LE NOM QUI MANQUAIT. Mesuré sur l'écran de
+    // l'élève (tools/tmp/ceQueTuDoisReviser.mjs) : trois cartes, trois boutons
+    // « ▶ Réviser », et au-dessus « ▶ Lancer la séance conseillée » — qui
+    // enchaîne précisément ces trois-là. Rien ne le disait. Rémy, qui a écrit
+    // tout ce logiciel avec moi, ne l'avait pas reconnu : un élève de sixième
+    // ne le reconnaîtra pas davantage.
+    //
+    // LE COMPTE EST DANS LE NOM, comme « Réviser mes 79 erreurs » dans
+    // l'onglet voisin : « tout » tout seul ne dit pas si l'on s'engage pour
+    // trois minutes ou pour une heure. Et c'est `plan.length`, le nombre de
+    // cartes RÉELLEMENT affichées — pas une constante qui lui ressemble.
+    //
+    // À UNE SEULE NOTION, ON SE TAIT : le bouton ferait exactement ce que fait
+    // le « ▶ Réviser » de l'unique carte, dix pixels plus bas. Deux boutons
+    // voisins qui promettent la même chose, c'est le défaut qu'on a déjà payé
+    // sur la barre d'outils du professeur.
+    if (btn) {
+        const seul = plan.length < 2;
+        btn.style.display = seul ? 'none' : 'inline-flex';
+        btn.textContent = `▶ Tout réviser : ${plan.length} notions`;
+        btn.onclick = () => startRecommendedSession(plan);
+    }
 
     // DEUX LIGNES ET UN BOUTON.
     //

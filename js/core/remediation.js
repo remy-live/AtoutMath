@@ -177,18 +177,43 @@ export function startSkillSession(skillId, { includePrereq = true } = {}) {
     return run(makePath(`Réviser : ${skillLabel(skillId)}`, steps, REVISION_POLICY));
 }
 
-/** Séance du jour, construite à partir du modèle de maîtrise. */
-export function startRecommendedSession(limit = 3) {
-    const recos = getRecommendations({ niveaux: state.selectedNiveaux, limit });
+/**
+ * Séance du jour, construite à partir du modèle de maîtrise.
+ *
+ * ON PEUT LUI DONNER LA LISTE QU'ON A DÉJÀ MONTRÉE, et c'est le point.
+ *
+ * Rémy : « Dans ce que tu dois réviser, tu peux mettre un bouton Tout
+ * réviser. » Un bouton qui dit « tout » doit faire TOUT CE QUI EST À L'ÉCRAN,
+ * et pas une liste refabriquée à côté. Avec un simple nombre, les deux listes
+ * se recalculent séparément : mesuré, 68 notions sont recommandées pour un
+ * élève qui en voit trois, et `buildRecommendedPreview` écarte en plus celles
+ * qui n'ont aucun exercice. Il suffit qu'une notion sans exercice soit en tête
+ * pour que l'élève voie les n° 2 et 3 et travaille les n° 1 et 2.
+ *
+ * @param {number|Array<{skillId:string, reason?:string, exerciseId?:string}>} quoi
+ *   un nombre (on recommande nous-mêmes) ou les notions déjà affichées.
+ */
+export function startRecommendedSession(quoi = 3) {
+    const recos = Array.isArray(quoi)
+        ? quoi
+        : getRecommendations({ niveaux: state.selectedNiveaux, limit: quoi });
     const steps = recos.map(r => {
-        const exoId = firstExerciseForSkill(r.skillId);
+        const exoId = r.exerciseId || firstExerciseForSkill(r.skillId);
         if (!exoId) return null;
         const nb = r.reason === 'nouveau' ? 6 : 5;
         return makeStep(exoId, {}, { nbItems: nb, threshold: Math.ceil(nb * 0.7) });
     }).filter(Boolean);
 
     if (!steps.length) return Promise.resolve(false);
-    return run(makePath('Séance conseillée', steps, REVISION_POLICY));
+    // LE PARCOURS PORTE LE MOT DE L'ÉLÈVE, PAS CELUI DU PROFESSEUR.
+    //
+    // Le même arbitrage qu'en face, dans `ui/pathView.js` : « “Séance” est le
+    // mot du professeur […] et ne doit pas porter le même nom ». Le bouton y
+    // avait été corrigé ; le PARCOURS, lui, s'appelait encore « Séance
+    // conseillée » — et c'est ce titre-là que l'élève lit en haut de son écran
+    // pendant toute la révision, puis sur son bilan. Mesuré : on appuie sur
+    // « Tout réviser » et l'on arrive sur « Séance conseillée · Étape 1 sur 3 ».
+    return run(makePath('Ce que je dois réviser', steps, REVISION_POLICY));
 }
 
 export function buildRecommendedPreview(limit = 3) {
