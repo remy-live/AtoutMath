@@ -329,3 +329,51 @@ test('ON REPLIE UNE OPÉRATION, ET SA LIGNE RESTE', () => {
     assert.match(CODE, /\$\{c\.replie \? '' : `<div class="br-grille">/);
     assert.match(CODE, /data-br-replier=/);
 });
+
+// ── CE QUE RÉMY A VU SUR SA CAPTURE, LE 22 OCTOBRE ──────────────────────────
+//
+//   « Dans le brouillon, les retenues sur les soustraction cachent les
+//     nombres, utilise la même chose que poser une opération. Pour les
+//     divisions dans le brouillons, il n'y a aucun ligne en dessous du 567 »
+
+test('LA MARQUE D\'UNE COMPENSATION NE COUVRE PAS LE CHIFFRE', () => {
+    // MESURÉ AVANT (tools/tmp/brouillonVu.mjs) : la pastille faisait 15 × 18 px
+    // et commençait à DEUX pixels du bord INTÉRIEUR d'une case de 38. Fond
+    // opaque, bordure pointillée permanente : elle mordait le tiers gauche du
+    // chiffre, sur chacune des huit colonnes.
+    const feuille = lire('css/ui.css');
+    const corps = feuille.slice(feuille.indexOf('.br-marque {'),
+        feuille.indexOf('.br-marque--vide'));
+    // ELLE DÉBORDE, DONC ELLE N'EST PAS DEDANS : c'est le signe qui ne trompe
+    // pas, et c'est ce que fait « Poser une opération » (`po-marque--devant`).
+    const gauche = /left:\s*(-?[\d.]+)px/.exec(corps);
+    assert.ok(gauche, 'la marque n\'a plus de position à gauche');
+    assert.ok(Number(gauche[1]) < 0,
+        `left: ${gauche[1]}px — la marque est POSÉE SUR le chiffre`);
+    // ET PAS DE BORDURE PERMANENTE : écrite, elle redevient un chiffre au
+    // crayon. La bordure pointillée n'est là que pour la case VIDE.
+    assert.match(corps, /border:\s*0/);
+    const vide = feuille.slice(feuille.indexOf('.br-marque--vide'),
+        feuille.indexOf('.br-marque--active'));
+    assert.match(vide, /dashed/);
+    // LE JS POSE LA CLASSE, sans quoi la règle du dessus ne s'appliquerait
+    // jamais.
+    assert.match(lire('js/ui/brouillon.js'), /const vide = !c\.cases\[cle\];/);
+});
+
+test('UNE DIVISION POSÉE A SES TRAITS, SOUS CHAQUE PRODUIT', () => {
+    // MESURÉ AVANT : `barresAGauche: 0` — quatre rangées de cases vides sous
+    // « 567 », et pas un seul trait. Sur le cahier, c'est lui qui dit « ce qui
+    // suit est une différence » ; « Poser une division » le tire dès que le
+    // produit est posé.
+    const js = lire('js/ui/brouillon.js');
+    assert.match(js, /n % 2 === 0 \? '<div class="br-barre br-barre--repere"><\/div>' : ''/,
+        'les traits doivent alterner avec les rangées de reste');
+    // ET ILS NE DÉPASSENT PAS LE DIVIDENDE : mesuré en photo, 612 px de trait
+    // pour 236 px de dividende avant cette enveloppe.
+    assert.match(js, /<div class="br-potence-bas">/);
+    const css = lire('css/ui.css');
+    const corps = css.slice(css.indexOf('.br-potence-bas {'),
+        css.indexOf('.br-potence-bas {') + 160);
+    assert.match(corps, /width:\s*max-content/);
+});

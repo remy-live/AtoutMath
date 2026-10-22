@@ -673,8 +673,32 @@ function calculHtml(c) {
 }
 
 /** La petite marque posée DEVANT un chiffre — la compensation s'écrit ainsi. */
+/**
+ * LA MARQUE D'UNE COMPENSATION — celle qu'on écrit au crayon, dans la marge.
+ *
+ * RÉMY, capture du brouillon à l'appui : « les retenues sur les soustraction
+ * cachent les nombres, utilise la même chose que poser une opération ».
+ *
+ * MESURÉ : la pastille faisait 15 × 18 px et commençait à DEUX pixels du bord
+ * intérieur d'une case de 38 px — fond opaque, bordure pointillée permanente.
+ * Elle mordait donc le tiers gauche du chiffre, sur chacune des huit colonnes.
+ *
+ * « Poser une opération » écrit la même chose autrement (voir `po-marque` dans
+ * js/games/poserOperation.js), et sa règle tient en deux lignes :
+ *
+ *   · la marque DÉBORDE à gauche, hors de la case — c'est ainsi qu'on l'écrit
+ *     entre deux colonnes, et c'est ce débordement qui dit à quel chiffre elle
+ *     s'ajoute ;
+ *   · VIDE elle se montre, en pointillé pâle ; ÉCRITE elle perd sa bordure et
+ *     redevient un chiffre au crayon.
+ *
+ * On ne recopie pas son CSS : on en reprend la forme, avec les mesures de
+ * cette grille-ci (38 px de case au lieu d'une largeur en `cqw`).
+ */
 function marqueHtml(c, cle) {
-    return `<span class="br-marque${estActive(c, cle) ? ' br-marque--active' : ''}${
+    const vide = !c.cases[cle];
+    return `<span class="br-marque${vide ? ' br-marque--vide' : ''}${
+        estActive(c, cle) ? ' br-marque--active' : ''}${
         (c.fautes || []).includes(cle) ? ' br-case--faux' : ''}"
         data-br-case="${esc(cle)}" data-br-c="${esc(c.id)}" tabindex="0" role="button"
         aria-label="Retenue ${esc(cle)}">${esc(c.cases[cle] || '')}</span>`;
@@ -697,7 +721,24 @@ function potenceHtml(c) {
                         caseHtml(c, `q${i}`)).join('')}</div>
                 </div>
             </div>
-            ${[0, 1, 2, 3].map(n => `<div class="br-ligne">${vides(`d${n}:`)}</div>`).join('')}
+            <div class="br-potence-bas">${[0, 1, 2, 3].map(n => `<div class="br-ligne">${vides(`d${n}:`)}</div>`
+        // LE TRAIT DE LA SOUSTRACTION, SOUS CHAQUE PRODUIT.
+        //
+        // RÉMY : « Pour les divisions dans le brouillons, il n'y a aucun ligne
+        // en dessous du 567 ». Mesuré : quatre rangées de cases vides, et pas
+        // un seul trait — `barresAGauche: 0`.
+        //
+        // UNE DIVISION POSÉE ALTERNE PRODUIT ET RESTE, et le trait se trace
+        // entre les deux : c'est lui qui dit « ce qui suit est une
+        // différence ». « Poser une division » le tire dès que le produit est
+        // posé — Rémy, déjà : « tu oublies la barre sous le 5 − 4 ». Le
+        // brouillon, lui, ne sait pas ce que l'élève écrira : il montre donc
+        // les traits comme il montre les cases de retenue, vides mais
+        // présentes. Une ligne qu'on ne voit pas est une ligne qu'on oublie.
+        //
+        // PÂLE ET FIN : ce sont des repères, pas le trait du résultat, qui
+        // reste plein.
+        + (n % 2 === 0 ? '<div class="br-barre br-barre--repere"></div>' : '')).join('')}</div>
         </div>`;
 }
 

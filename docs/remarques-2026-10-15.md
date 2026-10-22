@@ -3076,3 +3076,32 @@ n'est jamais peinte en rouge, sans quoi la figure contredirait le diagnostic
 facultatives (`figureCorrigee`, `lireUneReponse`) : le carnet n'a pas à
 connaître les pavages, et le prochain exercice qui en voudra une n'aura pas à
 toucher à l'interface.
+
+### 28. Le brouillon : les retenues cachent les chiffres, et la division n'a pas de ligne
+
+> « Dans le brouillon, les retenues sur les soustraction cachent les nombres,
+> utilise la même chose que poser une opération.
+> Pour les divisions dans le brouillons, il n'y a aucun ligne en dessous du 567,
+> Pour poser une division, on a déjà un exercice qui le fait bien.
+> et enfin dans la zone de création de parcours, la zone ou on dragge pourrait
+> aller jusqu'en bas mais le cadre autour des exercices restent tel quel, est
+> ce clair, c'est juste que sous le cadre qui a les exercices du parcours, ca
+> ne réagit pas quand on glisse un exercice »
+
+Trois captures, trois défauts, et une demande d'ergonomie.
+
+1. **LES RETENUES DU BROUILLON RECOUVRENT LES CHIFFRES.** Sa capture : sous
+   « 123, » et « −  12,7 », chaque case porte une pastille en pointillés
+   POSÉE SUR le chiffre. Dans « Poser une opération » — troisième capture —
+   la retenue est un petit « +1 » rouge accroché AU COIN de la case, qui ne
+   couvre rien. C'est celle-là qu'il veut.
+2. **LA DIVISION DU BROUILLON N'A PAS DE TRAIT SOUS LE DIVIDENDE.** Sa
+   capture : « 567 │ 7 », le trait vertical est là, le trait horizontal sous
+   le quotient aussi, et sous 567 il n'y a rien — les cases de la soustraction
+   flottent sous un nombre qu'aucune ligne ne ferme.
+3. **ET L'EXERCICE, LUI, LE FAIT BIEN** : « Poser une division » existe et pose
+   la division correctement. Le brouillon doit emprunter son rendu plutôt
+   qu'en tenir un second.
+4. **LA ZONE DE DÉPÔT DU PARCOURS S'ARRÊTE AU CADRE.** Sous le cadre qui porte
+   les exercices, la page ne réagit plus : il faut viser le cadre. La zone qui
+   ACCEPTE devrait descendre jusqu'en bas — le cadre, lui, ne bouge pas.

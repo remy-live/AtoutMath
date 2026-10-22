@@ -5877,14 +5877,24 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 /* LA COMPENSATION S'ÉCRIT DEVANT LE CHIFFRE, pas au-dessus : un petit 1 collé
    à gauche, sur la ligne du haut comme sur celle du bas. C'est l'écriture de
    la grille de « Poser une opération », et un élève doit la reconnaître. */
-.br-case--porte { position: relative; }
+/* ELLE DÉBORDE À GAUCHE, HORS DE LA CASE, et `overflow: visible` est ce qui
+   le permet : rognée au bord, elle redeviendrait une pastille posée SUR le
+   chiffre. */
+.br-case--porte { position: relative; overflow: visible; }
 .br-marque {
-    position: absolute; left: 1px; top: 2px; min-width: 15px; height: 18px;
+    position: absolute; left: -3px; top: 16%; min-width: 14px; padding: 0 1px;
     display: flex; align-items: center; justify-content: center;
-    font-size: .72rem; font-weight: 800; color: var(--warning-texte); cursor: pointer;
-    background: var(--bg-panel); border: 1px dashed var(--border); border-radius: 4px;
+    font-size: .74rem; font-weight: 900; line-height: 1.15;
+    color: var(--danger-texte); cursor: pointer;
+    background: var(--bg-panel); border: 0; border-radius: 3px;
 }
-.br-marque--active { border-color: var(--primary); border-style: solid; }
+/* VIDE, ELLE DOIT SE VOIR : sans repère, l'élève ne sait pas où écrire.
+   Pointillée et pâle, elle s'efface dès qu'il a écrit — et le dessin redevient
+   celui du cahier. C'est la règle de `po-marque--vide`, mot pour mot. */
+.br-marque--vide {
+    border: 1.5px dashed var(--danger); opacity: .5; min-height: 14px;
+}
+.br-marque--active { border: 1.5px solid var(--primary); opacity: 1; }
 /* L'EMPRUNT BARRE LE CHIFFRE : on écrit sa nouvelle valeur au-dessus, et
    l'ancienne se raye. Le trait est en biais, comme au crayon. */
 .br-case--barree { position: relative; }
@@ -5936,6 +5946,16 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .br-potence-mur { width: 2px; align-self: stretch; background: var(--text-main); border-radius: 1px; }
 .br-potence-droite { display: flex; flex-direction: column; gap: 4px; }
 .br-barre--quotient { margin: 0; }
+/* LES TRAITS D'UNE DIVISION POSÉE : un sous chaque produit, là où la
+   soustraction se fait. Ils sont PÂLES — ce sont des repères offerts, pas le
+   trait du résultat qu'on tire soi-même — et ils ne font que la largeur du
+   dividende, comme sur le cahier. */
+.br-barre--repere { height: 1.5px; background: var(--border); opacity: .9; }
+/* ET ILS NE DÉPASSENT PAS LE DIVIDENDE. `br-barre` fait 100 % de son parent ;
+   sous la potence, ce parent portait AUSSI la colonne du diviseur, et le trait
+   filait sous le quotient — mesuré en photo, 612 px de trait pour 236 px de
+   dividende. Cette enveloppe-ci se taille sur ses rangées. */
+.br-potence-bas { display: flex; flex-direction: column; gap: 4px; width: max-content; }
 
 .br-pave { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .br-touche {
