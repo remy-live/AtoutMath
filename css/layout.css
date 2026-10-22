@@ -338,6 +338,17 @@ body.mobile-view #builder-view { flex-direction: column; }
 #view-profile { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 /* Le contenu du parcours ne doit jamais dépasser la largeur du téléphone. */
 #view-path > *, #view-profile > * { max-width: 100%; min-width: 0; }
+/* LA ZONE DE DÉPÔT DESCEND JUSQU'EN BAS, LE CADRE RESTE TEL QUEL.
+   Rémy : « la zone ou on dragge pourrait aller jusqu'en bas mais le cadre
+   autour des exercices restent tel quel […] sous le cadre qui a les exercices
+   du parcours, ca ne réagit pas quand on glisse un exercice ».
+   MESURÉ (tools/tmp/zoneDeDepot.mjs, 1440 × 900, deux étapes) : le cadre
+   s'arrêtait à 585 px pour une colonne qui descend à 900 — 315 px où l'on amène
+   un exercice sans que personne n'écoute. C'est l'ENVELOPPE qui prend la place
+   qui reste ; `#path-container` garde sa hauteur de contenu, puisqu'un enfant
+   de colonne flexible ne grandit pas de lui-même. Voir
+   `js/ui/zoneDeDepotParcours.js`, qui écoute ici et allume là. */
+#path-collapsible-wrapper { display: flex; flex-direction: column; flex: 1 0 auto; }
 body.mobile-view #builder-center-col { flex: none !important; height: auto !important; border-right: none !important; }
 body.mobile-view #path-collapsible-wrapper { display: block; }
 body.mobile-view #path-toggle-icon { display: block !important; }

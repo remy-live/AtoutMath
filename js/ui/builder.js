@@ -40,6 +40,7 @@ import {
 } from '../games/configUI.js';
 import { lireZones, normaliserZones, zonesDuMode, modeZone } from '../core/aide.js';
 import { showToast, showAlert, showConfirm, showModal } from './modal.js';
+import { laZoneDeDepot } from './zoneDeDepotParcours.js';
 
 let selectedStepId = null;
 
@@ -51,9 +52,29 @@ export function initBuilder() {
 
     if (!state.currentPath.policy) state.currentPath.policy = resolvePolicy(null);
 
-    pathBox.ondragover = (e) => { e.preventDefault(); pathBox.classList.add('drag-over'); };
-    pathBox.ondragleave = () => pathBox.classList.remove('drag-over');
-    pathBox.ondrop = (e) => handleDrop(e, pathBox);
+    // LE DÉPÔT ÉCOUTE SUR LA ZONE, L'ŒIL REGARDE LE CADRE.
+    //
+    // Rémy : « la zone ou on dragge pourrait aller jusqu'en bas mais le cadre
+    // autour des exercices restent tel quel ». Les deux sont donc deux
+    // éléments, et c'est `zoneDeDepotParcours.js` qui les nomme — le glisser au
+    // doigt y lit la même règle.
+    //
+    // ON ALLUME QUAND MÊME LE CADRE quand on survole le vide sous lui : c'est
+    // le seul signe qui dise « ton exercice tombera là ». L'éteindre dans les
+    // 315 px du bas rendrait la zone muette, c'est-à-dire indiscernable de
+    // celle d'avant la correction.
+    const zone = laZoneDeDepot();
+    zone.ondragover = (e) => { e.preventDefault(); pathBox.classList.add('drag-over'); };
+    zone.ondragleave = (e) => {
+        // `dragleave` part AUSSI quand on passe du vide à un exercice, parce
+        // qu'on entre alors dans un enfant de la zone. Mesuré : le cadre
+        // clignotait à chaque ligne traversée. On ne l'éteint donc que si le
+        // curseur a vraiment quitté la zone.
+        if (!e.relatedTarget || !zone.contains(e.relatedTarget)) {
+            pathBox.classList.remove('drag-over');
+        }
+    };
+    zone.ondrop = (e) => handleDrop(e, pathBox);
 
     initNePlieRien();
     initNameInput();

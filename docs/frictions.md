@@ -5705,3 +5705,35 @@ le résultat n'existe pas** — 15 octobre 2026
   depuis la deuxième fois. C'est la RÈGLE qui manquait, et elle vaut au-delà
   des caméras : **pour mesurer un écran, il faut une entrée qui ne le fasse pas
   changer.** Elle est maintenant écrite dans CLAUDE.md, à côté de l'outil.
+
+## Une carte du catalogue existe sans se voir — 2026-10-22
+
+- *Ce que je voulais faire* : glisser un exercice de la bibliothèque jusqu'au
+  parcours, dans une sonde, pour mesurer où le dépôt est accepté.
+- *Ce qui a coûté* : trente secondes de sonde, puis dix minutes à chercher le
+  défaut dans le logiciel. `doitExister('.exo-list-item')` passait au VERT —
+  les 252 cartes sont bien dans la page —, et Playwright répétait ensuite
+  cinquante-huit fois « element is not visible » sur la première d'entre elles.
+  Leur accordéon `#view-accordion` est en `display: none` tant qu'on n'a pas
+  cherché. Un `elementFromPoint` a nommé le coupable en une ligne.
+- *Combien de fois* : ||| (la famille de `doitExister` et de `deplier` : un
+  crochet qui existe, qui se mesure « présent », et qui ne se voit pas)
+- *Ce qui manque* : fait — `s.chercherDansLeCatalogue(mot)` dans
+  `tools/sonde.mjs` tape dans le champ comme le professeur, exige qu'au moins
+  une carte paraisse, et rend les titres. Une sonde ne retombera plus dedans.
+
+## Une commande refusée au milieu d'une chaîne laisse mesurer le code d'avant — 2026-10-22
+
+- *Ce que je voulais faire* : vérifier qu'une sonde neuve devient ROUGE sur
+  l'ancien code — remettre le défaut, lancer la sonde, remettre le fichier.
+- *Ce qui a coûté* : un faux verdict, et il était rassurant. `remplacer.mjs` a
+  refusé le texte multiligne passé en ligne de commande (il a raison, c'est sa
+  garantie), mais les commandes suivantes de la même chaîne se sont exécutées
+  quand même : la sonde a mesuré le code INTACT et annoncé « ON PEUT DÉPOSER
+  JUSQU'EN BAS ». J'allais croire avoir vu la sonde tomber.
+- *Combien de fois* : |
+- *Ce qui manque* : `epreuveTombe.mjs` fait déjà tout cela correctement pour
+  une ÉPREUVE — il abîme, relance, exige la chute, et remet le fichier quoi
+  qu'il arrive. Il ne sait pas lancer une SONDE (qui veut un serveur et un
+  navigateur). Si le cas revient, ce sera l'outil à fabriquer : `sondeTombe`,
+  même garantie, pour ce qui se mesure dans la vitre.

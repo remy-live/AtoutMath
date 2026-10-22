@@ -290,6 +290,39 @@ export async function ouvrirSonde(o = {}) {
         },
 
         /**
+         * OUVRE LA BIBLIOTHÈQUE SUR UN MOT, ET REND LES CARTES VISIBLES.
+         *
+         * LA TROISIÈME COUSINE DE `doitExister` ET DE `deplier`, et elle coûte
+         * aussi cher : les 252 cartes `.exo-list-item` SONT dans la page au
+         * chargement, mais leur accordéon `#view-accordion` est en
+         * `display: none`. `doitExister('.exo-list-item')` passe donc au vert,
+         * et Playwright répète ensuite « element is not visible » — mesuré :
+         * cinquante-huit fois en trente secondes — sur une carte parfaitement
+         * présente. On cherche alors le défaut dans le logiciel.
+         *
+         * LE PROFESSEUR, LUI, TAPE DANS LE CHAMP. C'est son geste le plus
+         * fréquent (voir `tools/leTrajetDuProf.mjs`), et c'est lui qui montre
+         * les cartes. La sonde fait pareil, et rend les titres trouvés.
+         *
+         * @param {string} mot ce qu'on tape, comme un professeur pressé
+         * @returns {Promise<string[]>} les titres affichés, dans l'ordre
+         */
+        async chercherDansLeCatalogue(mot) {
+            await this.doitExister('#sidebar-search-input', 'le champ de recherche du catalogue');
+            await page.fill('#sidebar-search-input', mot);
+            await dormir(900);
+            const titres = await page.evaluate(() =>
+                [...document.querySelectorAll('#drill-content .exo-list-item')]
+                    .filter(e => e.offsetParent)
+                    .map(e => ((e.querySelector('.exo-item-titre') || {}).textContent || '').trim()));
+            if (!titres.length) {
+                throw new Error(`« ${mot} » ne montre aucune carte dans la bibliothèque :`
+                    + ' la suite mesurerait un catalogue fermé.');
+            }
+            return titres;
+        },
+
+        /**
          * CLIQUE, ET JETTE SI LE CROCHET NE DÉSIGNE RIEN.
          *
          * `doitExister` ferme le piège du crochet inventé pour ce qu'on

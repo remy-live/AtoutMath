@@ -10,6 +10,7 @@ import { estJeuCatalogue } from '../core/revue.js';
 import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE, familleSiNumerote }
     from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
+import { dansLaZoneDeDepot } from './zoneDeDepotParcours.js';
 import { montrerApercu, fermerApercu, laisserPartir, retenir, glissementEnCours } from './apercuTiroir.js';
 import { pendantLeGlissement, arreterLeDefilement, brancherDefilementGlisse }
     from './defilementGlisse.js';
@@ -316,25 +317,18 @@ function enableTouchDragToPath(item, auDepot) {
         // ce qui est déjà à l'écran — et comme lâcher DÉPOSE, il faudrait
         // d'abord déposer au mauvais endroit pour aller voir plus loin.
         pendantLeGlissement(e.clientX, e.clientY);
+        // LA MÊME ZONE QU'À LA SOURIS, LUE AU MÊME ENDROIT. Elle descend
+        // jusqu'au bas de la colonne — Rémy : « sous le cadre qui a les
+        // exercices du parcours, ca ne réagit pas quand on glisse un
+        // exercice » —, et c'est le CADRE qui s'allume, lui qui reste « tel
+        // quel ». Comparer au cadre ici rendrait au doigt le défaut qu'on
+        // vient de corriger à la souris.
         const box = pathBox();
-        if (box) {
-            const r = box.getBoundingClientRect();
-            const over = e.clientX >= r.left && e.clientX <= r.right
-                && e.clientY >= r.top && e.clientY <= r.bottom;
-            box.classList.toggle('drag-over', over);
-        }
+        if (box) box.classList.toggle('drag-over', dansLaZoneDeDepot(e.clientX, e.clientY));
     });
 
     const finish = (e) => {
-        if (dragging) {
-            const box = pathBox();
-            if (box) {
-                const r = box.getBoundingClientRect();
-                const over = e.clientX >= r.left && e.clientX <= r.right
-                    && e.clientY >= r.top && e.clientY <= r.bottom;
-                if (over) auDepot();
-            }
-        }
+        if (dragging && dansLaZoneDeDepot(e.clientX, e.clientY)) auDepot();
         cleanup();
     };
     item.addEventListener('pointerup', finish);
