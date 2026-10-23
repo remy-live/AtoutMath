@@ -13,7 +13,8 @@
 import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
-import { aideSelonEtat, reduireChoix, itemPeutAllerAuClavier } from '../aide.js';
+import { aideSelonEtat, reduireChoix, itemPeutAllerAuClavier,
+    reponseEnPlusieursCases } from '../aide.js';
 import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
 import { meneurDemo } from '../meneurDemo.js';
 
@@ -152,6 +153,16 @@ export function mount(container, session, opts = {}) {
         const m = (item && item.meta) || {};
         const compose = MODULES[m.composable];
         if (m.saisieSeule) return compose || null;
+        // UNE RÉPONSE À PLUSIEURS CASES PASSE AU PAVÉ DÈS LA PREMIÈRE QUESTION,
+        // et le réglage « Autoriser le clavier » ne la retient pas — exactement
+        // comme `saisieSeule`, et pour la même raison : il n'y a pas de marche
+        // plus basse où redescendre. La décrocher du clavier ne la ramène pas
+        // aux propositions, elle la fait disparaître.
+        //
+        // Rémy : « Et pour la décompoisiton, il n'y a pas de clavier ». MESURÉ
+        // (`tools/clavierDesMarches.mjs') : quatre marches de `num.pgcd-ppcm`
+        // n'offraient ni pavé ni proposition dans « Divisible, oui ou non ? ».
+        if (reponseEnPlusieursCases(item)) return compose || './numeric.js';
         if (!aideIci.clavier) return null;
         if (compose) return compose;
         // LA RÈGLE VIT DANS `core/aide.js`, ET ELLE Y VIT SEULE. Le panneau de
@@ -171,8 +182,12 @@ export function mount(container, session, opts = {}) {
      * factorisations, où elle occupait en plus les 60 px qui manquaient au
      * bouton « Valider » sur un téléphone.
      */
+    // ET UNE RÉPONSE À PLUSIEURS CASES EST DANS LE MÊME CAS : elle n'a jamais
+    // eu de propositions non plus, donc « plus de propositions » annoncerait un
+    // changement qui n'a pas eu lieu — sur la toute première question.
     const avisPour = (module, item) =>
-        ((item && item.meta && item.meta.saisieSeule) ? '' : (AVIS[module] || ''));
+        ((item && item.meta && item.meta.saisieSeule) || reponseEnPlusieursCases(item)
+            ? '' : (AVIS[module] || ''));
 
     const AVIS = {
         './numeric.js': 'À toi d\'écrire : plus de propositions, tu tapes le résultat.',

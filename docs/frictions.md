@@ -5782,3 +5782,28 @@ le résultat n'existe pas** — 15 octobre 2026
   c'est un `s.attendreLeToast(/motif/)` à ajouter à `sonde.mjs` — quinze
   lignes, et une friction de moins. Pas encore fabriqué : deux occurrences
   suffiront.
+
+## `accept="image/*"` rendait 95 lignes invisibles à toutes les épreuves — 2026-10-23
+
+- *Ce que je voulais faire* : garder par une épreuve le bouton « Tout effacer »
+  que je venais d'ajouter au panneau de l'Atelier.
+- *Ce qui a coûté* : **une épreuve rouge sur un code juste, et vingt minutes à
+  chercher pourquoi.** `tests/helpers.mjs` retirait les commentaires avec
+  `/\/\*[\s\S]*?\*\//g`. Dans `js/ui/atelier.js`, l'attribut
+  `accept="image/*"` d'un champ de fichier ouvre alors un commentaire qui
+  court jusqu'au `*/` suivant : **quatre-vingt-quinze lignes avalées**, toute
+  la fin du gabarit du panneau et le début des branchements. `atl-jouer`,
+  `atl-controler-tout` et mon bouton neuf existaient dans le fichier et
+  n'existaient pour aucune épreuve.
+- *Combien de fois* : | (mais la zone avalée portait déjà deux identifiants
+  d'avant-hier : le piège était posé depuis le jour où le champ de fichier est
+  arrivé, et personne ne l'avait payé encore)
+- *Ce qui manque* : rien à fabriquer, c'était un défaut de l'outil et il est
+  corrigé — un `/*` n'ouvre un commentaire que s'il est en tête de ligne ou
+  suit une espace, une parenthèse, une virgule, un `=`, un `{`, un `;` ou un
+  `:`. **Ce qu'il faut RETENIR dépasse la correction** : une épreuve
+  POSITIVE sur une zone avalée rougit, on la voit, on cherche. Une épreuve
+  NÉGATIVE — « ce motif ne doit PAS être là » — y passe au vert sans rien
+  garder, et personne ne le sait jamais. C'est la même famille que « une
+  épreuve verte qui ne garde rien », et `epreuveTombe.mjs` reste la seule
+  façon de s'en apercevoir.

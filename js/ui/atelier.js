@@ -39,7 +39,7 @@ import {
 import { STATUS, STATUS_LABELS } from '../data/status.js';
 import { isGame } from '../core/gameAccess.js';
 import { aUneFichePapier, getActivity, getGenerator } from '../core/registry.js';
-import { journalConsole } from './consoleLog.js';
+import { journalConsole, viderJournal } from './consoleLog.js';
 // L'aperçu du professeur vit dans l'état commun : c'est lui que les volets
 // doivent suivre. Voir `appareilDuProf`.
 import { state } from '../core/state.js';
@@ -357,6 +357,10 @@ function assurerPanneau() {
                 font-size: .8rem; cursor: pointer; min-height: 34px;
             }
             .atl-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+            /* EFFACER NE SE CLIQUE PAS PAR DISTRACTION : la couleur dit
+               que ce bouton retire quelque chose, sans crier non plus —
+               c'est un geste ordinaire d'atelier, pas une alarme. */
+            .atl-btn--effacer { color: var(--danger, #c0392b); border-color: var(--danger, #c0392b); }
             .atl-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
             .atl-volets { display: flex; gap: 4px; align-items: center; }
             .atl-chip {
@@ -689,6 +693,17 @@ function assurerPanneau() {
                         <button class="atl-btn" id="atl-jouer"
                             title="Le pilote joue l'exercice jusqu'au bout et dit ce qui a cassé"
                             >▶ Jouer tout seul</button>
+                        <!-- REMY : « dans l'atelier, comment effacer tout le
+                             compte rendu ». Il n'y avait aucun moyen, sauf
+                             recharger la page — ce qui coûtait aussi l'exercice
+                             choisi et les volets ouverts. Un relevé est une
+                             PREUVE, et une preuve qui traine des mesures faites
+                             il y a une heure sur un autre reglage ne prouve
+                             rien. Le bouton DIT ce qu'il va effacer avant de le
+                             faire : c'est aussi la reponse a sa question. -->
+                        <button class="atl-btn atl-btn--effacer" id="atl-tout-effacer"
+                            title="Vider le compte rendu : contrôles, captures, carnet, console"
+                            >✕ Tout effacer</button>
                     </div>
                 </div>
             </div>
@@ -760,6 +775,7 @@ function assurerPanneau() {
     panneau.querySelector('#atl-telecharger').onclick = telechargerReleve;
     panneau.querySelector('#atl-controler').onclick = controler;
     panneau.querySelector('#atl-controler-tout').onclick = controlerTout;
+    panneau.querySelector('#atl-tout-effacer').onclick = toutEffacer;
     brancherLeDepot();
     panneau.querySelector('#atl-jouer').onclick = jouerToutSeul;
     panneau.querySelector('#atl-controle-stop').onclick = () => { controleArrete = true; };
@@ -1475,6 +1491,78 @@ function catalogueEnTexte() {
             + (soucis ? ` — ${soucis} souci(s)` : ''));
     });
     return lignes.join('\n');
+}
+
+/**
+ * TOUT EFFACER — ET DIRE CE QU'ON EFFACE AVANT DE LE FAIRE.
+ *
+ * Rémy : « dans l'atelier, comment effacer tout le compte rendu ».
+ *
+ * Il n'y avait aucun moyen. Ce qui s'accumulait et ne partait jamais : les
+ * bilans du contrôle, le passage du pilote, les bilans de tout le catalogue,
+ * les captures glissées, le texte du carnet, le journal de console. Changer
+ * d'exercice n'en vidait qu'une partie ; recharger la page les vidait tous,
+ * mais coûtait aussi l'exercice choisi et les volets ouverts.
+ *
+ * POURQUOI ÇA COMPTE : un relevé est une PREUVE. Une preuve qui traîne des
+ * mesures faites il y a une heure sur un autre réglage ne prouve rien — et
+ * c'est MOI qui la lirais, sans savoir que la moitié est périmée.
+ *
+ * ON DEMANDE, ET LA QUESTION EST LA RÉPONSE À LA SIENNE. Une tournée du
+ * catalogue coûte quarante-neuf minutes : l'effacer d'un clic distrait serait
+ * cher. La fenêtre énumère donc ce qu'elle va retirer, ligne par ligne — et
+ * cette liste est exactement ce que « tout le compte rendu » veut dire.
+ */
+async function toutEffacer() {
+    const notes = panneau.querySelector('#atl-notes');
+    const lignesConsole = journalConsole().length;
+    const quoi = [];
+    if (bilans.length) quoi.push(`le contrôle de cet exercice — ${bilans.length} sondage(s)`);
+    if (bilanPilote) quoi.push('le passage du pilote');
+    if (bilansCatalogue) {
+        quoi.push(`le contrôle du catalogue — ${bilansCatalogue.length} exercice(s)`);
+    }
+    if (photos.length) quoi.push(`${photos.length} capture(s) glissée(s)`);
+    if (notes.value.trim()) quoi.push('le texte du carnet');
+    if (lignesConsole) quoi.push(`${lignesConsole} ligne(s) de console`);
+
+    const { showModal, showToast } = await import('./modal.js');
+    if (!quoi.length) {
+        showToast('Le compte rendu est déjà vide.', 'info');
+        return;
+    }
+    const oui = await new Promise((resolve) => {
+        const f = showModal('Tout effacer', `<div class="atl-tout-dit">
+            <p>Ceci part définitivement :</p>
+            <ul>${quoi.map(q => `<li>${echapper(q)}</li>`).join('')}</ul>
+            <p>L'exercice choisi, ses réglages et les volets ouverts RESTENT.</p>
+            <div class="atl-actions">
+                <button class="atl-btn atl-btn--effacer" data-effacer="oui">✕ Tout effacer</button>
+                <button class="atl-btn atl-btn--fort" data-effacer="">Annuler</button>
+            </div></div>`, { onClose: () => resolve(false) });
+        // ON RÉPOND AVANT DE FERMER. `close()` appelle `onClose`, qui répond
+        // « non » : fermer d'abord, c'est annuler à chaque clic. Le défaut a
+        // déjà été payé une fois sur « Tout contrôler », et il ne se voyait pas.
+        f.element.querySelectorAll('[data-effacer]').forEach(b => {
+            b.onclick = () => { resolve(b.dataset.effacer === 'oui'); f.close(); };
+        });
+    });
+    if (!oui) return;
+
+    bilans = [];
+    bilanPilote = null;
+    bilansCatalogue = null;
+    photos = [];
+    peindrePhotos();
+    notes.value = '';
+    // LE CARNET SURVIT À LA PAGE : il est rangé dans le navigateur. L'effacer
+    // à l'écran sans retirer la clef le ferait revenir au prochain F5, et l'on
+    // croirait le bouton cassé.
+    try { localStorage.removeItem(CLE_NOTES); } catch (e) { /* privé */ }
+    panneau.querySelector('#atl-controle').innerHTML = '';
+    panneau.querySelector('#atl-bloc-controle').hidden = true;
+    viderJournal();
+    showToast('Compte rendu effacé — l\'exercice et les volets sont restés.', 'success');
 }
 
 async function controler() {

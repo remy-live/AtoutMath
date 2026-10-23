@@ -422,7 +422,12 @@ export const numerationExercises = [
         id: 'num-divisibilite',
         cree: '2026-10-21',
         consignePapier: 'Réponds.',
-        colonnesPapier: 3,
+        // DEUX COLONNES, ET C'EST LUI QUI L'A VU SUR PAPIER. Rémy, carnet de
+        // son relevé du 23 octobre : « met l'impression sur deux colonnes ».
+        // Trois colonnes coupaient les questions les plus longues de ce
+        // chapitre — « Les diviseurs de 42 sont : 1, 2, 3, 6, 7, 14, ?, 42 » —
+        // en quatre lignes hachées.
+        colonnesPapier: 2,
         title: 'Divisible, oui ou non ?',
         generatorId: 'num.pgcd-ppcm', activityId: 'bubbles',
         params: { marches: ['divisible', 'qui-divise', 'liste-diviseurs'] },

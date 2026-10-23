@@ -582,6 +582,50 @@ export function plafonnerClavier(aide, params = {}) {
 // pour savoir s'il doit montrer la case. Deux copies de cette règle, et le jour
 // où l'une bouge, le panneau ment.
 
+/**
+ * UNE RÉPONSE EN PLUSIEURS CASES — « 2|3 », « 45|3|15|3|5 ».
+ *
+ * Rémy, carnet de son relevé du 23 octobre : « Et pour la décompoisiton, il
+ * n'y a pas de clavier ». Deux captures : « Complète la décomposition de 63 en
+ * facteurs premiers » et « Pose la décomposition de 56 en colonne », et sous
+ * chacune les deux boutons d'aide — RIEN D'AUTRE. L'élève ne peut pas
+ * répondre.
+ *
+ * MESURÉ (`tools/clavierDesMarches.mjs`, les 22 marches de `num.pgcd-ppcm`
+ * montées une par une sur les deux exercices qui l'emploient) : quatre marches
+ * — `decomposer-petit`, `potence`, `decomposer`, `irreductible` — n'offrent
+ * NI pavé NI proposition dans « Divisible, oui ou non ? », et les quatre
+ * mêmes marchent parfaitement dans « Décomposer, PGCD et PPCM ». La seule
+ * différence entre les deux exercices est l'activité : `bubbles` contre
+ * `numpad`.
+ *
+ * CE QUI SE PASSAIT, ET POURQUOI ÇA NE CRIAIT PAS. La réponse d'une question à
+ * plusieurs cases s'écrit « 2|3 » — c'est une PAIRE RANGÉE, pas deux nombres
+ * indépendants. `Number('2|3')` vaut NaN, donc la règle d'en dessous répondait
+ * « cette question ne se tape pas » et le pavé ne prenait jamais la main. Mais
+ * elle ne se CHOISIT pas non plus : on ne fabrique pas quatre propositions
+ * pour une réponse à cinq morceaux, donc aucune bulle n'était construite. Ni
+ * l'un ni l'autre : un écran muet, zéro erreur de page. Le logiciel ne se
+ * plaignait pas, il se taisait — et c'est la panne la plus chère, puisqu'elle
+ * ne ressemble pas à une panne.
+ *
+ * ON NE CHERCHAIT PAS LÀ. Le signalement venait d'un iPhone (« on ne peut rien
+ * taper »), et l'on a passé une journée sur l'appareil : douze configurations,
+ * la piste des unités `cqh`/`cqw` que Safari ne sert qu'à partir de la 16.
+ * Ce n'était pas l'appareil. On avait cherché la cause du côté de ce qui était
+ * inhabituel dans le SIGNALEMENT, alors que ce qui était inhabituel dans la
+ * QUESTION suffisait : les marches sans clavier sont exactement celles qui
+ * demandent PLUSIEURS réponses à la fois.
+ */
+export function reponseEnPlusieursCases(item) {
+    if (!item || item.answer === null || item.answer === undefined) return false;
+    const morceaux = String(item.answer).split('|');
+    // Chaque morceau doit être un nombre : c'est ce que le pavé sait écrire.
+    // Une réponse à trous qui porterait du texte n'irait nulle part, et il
+    // vaut mieux le savoir ici que devant la classe.
+    return morceaux.length > 1 && morceaux.every(v => v !== '' && Number.isFinite(Number(v)));
+}
+
 /** Cette question-là peut-elle se taper plutôt que se choisir ? */
 export function itemPeutAllerAuClavier(item) {
     const m = (item && item.meta) || {};
@@ -592,6 +636,10 @@ export function itemPeutAllerAuClavier(item) {
     if (!item || item.answer === null || item.answer === undefined || item.answer === '') {
         return false;
     }
+    // LE PAVÉ EST LE SEUL À SAVOIR POSER UNE QUESTION À PLUSIEURS CASES : il
+    // compte les `[data-trou]` de l'énoncé et écrit dans celui qui est visé.
+    // Lui refuser le clavier, c'est ne laisser AUCUNE façon de répondre.
+    if (reponseEnPlusieursCases(item)) return true;
     return Number.isFinite(Number(item.answer));
 }
 
@@ -620,7 +668,13 @@ export function itemPeutEtreChoisi(item) {
     // `saisieSeule` dit « celle-ci ne se pose pas en vignettes » : « Trace
     // [AB) » ne se choisit pas parmi quatre images, et c'est ce QCM-là que
     // Rémy trouvait bête. Tout le reste commence par des propositions.
-    return !!item && !(item.meta && item.meta.saisieSeule);
+    if (!item || (item.meta && item.meta.saisieSeule)) return false;
+    // ET UNE RÉPONSE À PLUSIEURS CASES NON PLUS. On ne fabrique pas quatre
+    // vignettes pour « 45|3|15|3|5 » : la réponse n'est pas une valeur parmi
+    // d'autres, c'est une suite de cases à remplir dans l'ordre. C'est cette
+    // ligne-là qui manquait — l'escalier croyait pouvoir commencer par des
+    // propositions, n'en construisait aucune, et laissait l'écran muet.
+    return !reponseEnPlusieursCases(item);
 }
 
 /**

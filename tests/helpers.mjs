@@ -121,7 +121,25 @@ export function sourceDesFiches() {
  */
 export function sansCommentaires(texte) {
     return String(texte)
-        .replace(/\/\*[\s\S]*?\*\//g, '')
+        // UN « /* » N'OUVRE UN COMMENTAIRE QUE S'IL EN A LE DROIT.
+        //
+        // MESURÉ dans `js/ui/atelier.js` : l'attribut `accept="image/*"` d'un
+        // champ de fichier ouvrait un commentaire qui courait jusqu'au `*/`
+        // suivant — QUATRE-VINGT-QUINZE lignes avalées, toute la fin du
+        // gabarit du panneau et le début des branchements. Trois identifiants
+        // qui existent bel et bien dans le fichier (`atl-jouer`,
+        // `atl-controler-tout`, `atl-tout-effacer`) étaient donc invisibles à
+        // toute épreuve lisant `sansCommentaires`.
+        //
+        // ET LE DANGER N'EST PAS CELUI QU'ON CROIT. Une épreuve POSITIVE
+        // écrite sur cette zone échoue, on la voit, on cherche. Une épreuve
+        // NÉGATIVE — « ce motif ne doit PAS être là » — passe au vert sans
+        // rien garder, et personne ne le saura jamais.
+        //
+        // Un vrai début de commentaire est en tête de ligne ou suit une
+        // espace, une parenthèse, une virgule, un `=`, un `{`, un `;` ou un
+        // `:` ; celui d'un chemin ou d'un type MIME suit une lettre.
+        .replace(/(^|[\s(,={};:])\/\*[\s\S]*?\*\//g, '$1')
         .split('\n')
         .filter(l => !/^\s*(\/\/|\*|#)/.test(l))
         .join('\n');

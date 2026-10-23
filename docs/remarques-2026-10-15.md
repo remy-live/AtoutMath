@@ -3248,3 +3248,106 @@ fichier porte la trace entière. Les deux lisent les mêmes mesures.
 **ET LE NOM DU FICHIER** : il reste `atelier-<exercice>-<date>.html` même
 quand il porte le catalogue entier. Le titre à l'intérieur le dit, le nom non
 — et c'est le nom qu'on voit dans ses téléchargements.
+
+---
+
+### 32. Son relevé du 23 octobre, et « comment effacer tout le compte rendu »
+
+> « j'ai ca et aussi dans l'atelier, comment effacer tout le compte rendu »
+
+Fichier reçu : `atelier-num-divisibilite-2026-10-23-12-20.html`, 877 Ko, deux
+captures glissées, deux volets photographiés, le contrôle des trois formats —
+**le carnet de l'Atelier a servi en vrai, et il a rapporté quelque chose que
+trois sondes n'avaient pas trouvé.**
+
+#### a) LA DÉCOMPOSITION N'A PAS DE CLAVIER — et ce n'était JAMAIS l'iPhone
+
+Son carnet, mot pour mot : « Et pour la décompoisiton, il ny' a pas de
+clavier ».
+
+Et les deux captures le montrent, **sur son Mac, dans un volet de 1120 px, en
+v1087** :
+
+```
+Complète la décomposition de 63 en facteurs premiers.
+            63 = 3 ?   × 7 ?
+     [💡 Un indice]  [🤝 Montre-moi]          ← et RIEN d'autre
+
+Pose la décomposition de 56 en colonne.
+            56 │ ?
+             ? │ ?
+             ? │ ?
+             ? │ ?
+             1 │
+     [💡 Un indice]  [🤝 Montre-moi]          ← et RIEN d'autre
+```
+
+**CELA FERME LA REMARQUE 29, ET DANS L'AUTRE SENS QUE CELUI QU'ON CHERCHAIT.**
+On a passé la journée du 22 à chercher pourquoi « on ne peut rien taper » sur
+SON iPhone : douze configurations sondées, la piste des unités `cqh`/`cqw` que
+Safari ne sert qu'à partir de la 16, et une question sur sa version d'iOS
+restée sans réponse. Ce n'était pas l'appareil. **Les marches `exposant` et
+`potence` de `num.pgcd-ppcm` ne montent aucun pavé, nulle part** — sur un Mac
+de 1120 px comme sur un iPhone. Les réglages du relevé disent pourtant
+`"clavier":true`.
+
+La leçon est plus large que le défaut : *on a cherché la cause du côté de ce
+qui était INHABITUEL dans le signalement — un téléphone — alors que ce qui
+était inhabituel dans la QUESTION suffisait.* Les deux marches qui n'ont pas
+de clavier sont justement les deux qui demandent PLUSIEURS réponses à la fois.
+
+À MESURER d'abord, pas à déduire : quelle activité ces deux marches montent,
+et ce que cette activité fait d'une question à plusieurs trous.
+
+#### b) La fiche de « Divisible, oui ou non ? » sur deux colonnes
+
+Son carnet : « met l'impression sur deux colonnes ». Quarante-quatre questions
+courtes (« 56 est-il divisible par 5 ? ») sur une colonne, c'est trois pages
+de papier pour ce qui en tient une.
+
+#### c) EFFACER LE COMPTE RENDU — sa question
+
+Il n'y a aucun moyen de le faire. Ce qui s'accumule dans l'Atelier et ne part
+jamais, sauf à recharger la page : les bilans du contrôle, le bilan du pilote,
+les bilans de tout le catalogue, les captures glissées, le texte du carnet, et
+le journal de console. Changer d'exercice ne vide que les captures.
+
+**Pourquoi ça compte** : un relevé est une PREUVE, et une preuve qui traîne des
+mesures faites il y a une heure sur un autre réglage ne prouve rien. On veut
+pouvoir dire « je repars de zéro sur celui-ci » sans perdre la page.
+
+#### d) L'Atelier ne montre pas l'écran d'AVANT l'exercice
+
+> « et pour l'atelier, je n'ai pas accès à l'explication avant l'écran ce que
+> l'élève a avant l'exercice »
+
+Les trois volets montrent le JEU, la FICHE et le ROBOT. L'élève, lui, voit
+d'abord autre chose : l'écran d'accueil de l'exercice, avec son titre, sa
+consigne et le bouton pour commencer. C'est le premier écran qu'il lit, et
+c'est le seul que l'Atelier ne sait pas montrer — donc le seul que Rémy ne
+peut ni relire ni photographier ni m'envoyer.
+
+#### LA MESURE QUI TRANCHE (a) — ce n'est PAS l'iPhone, c'est l'activité
+
+`node tools/tmp/clavierDesMarches.mjs` : les 22 marches de `num.pgcd-ppcm`,
+montées une par une sur les DEUX exercices qui l'emploient, dans un vrai
+navigateur de 1120 px.
+
+| marche | `num-pgcd-ppcm` (numpad) | `num-divisibilite` (bulles) |
+| --- | --- | --- |
+| `decomposer-petit` | pavé, 2 trous | **RIEN** — 2 trous, 0 choix, 0 pavé |
+| `potence` | pavé, 7 trous | **RIEN** — 5 trous, 0 choix, 0 pavé |
+| `decomposer` | pavé, 2 trous | **RIEN** — 3 trous, 0 choix, 0 pavé |
+| `irreductible` | pavé, 2 trous | **RIEN** — 2 trous, 0 choix, 0 pavé |
+| les 18 autres | pavé ou propositions | pavé ou propositions |
+
+**LA RÈGLE QUE CELA DÉGAGE** : une question dont la réponse tient en PLUSIEURS
+cases ne peut se poser qu'au pavé. L'activité « Bulles » sait servir une
+question `numeric` — elle en fait des propositions — mais elle ne sait pas
+faire des propositions pour une réponse à deux ou cinq morceaux ; elle n'en
+fabrique donc aucune, et il ne reste rien à l'écran. Zéro erreur de page :
+**le logiciel ne se plaint pas, il se tait.** C'est exactement la forme de
+panne la plus chère — elle ne ressemble pas à une panne.
+
+Ce n'était donc ni Safari, ni les unités `cqh`/`cqw`, ni la version d'iOS.
+C'est une combinaison exercice × marche, et elle est en ligne.

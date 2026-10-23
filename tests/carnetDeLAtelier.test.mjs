@@ -170,3 +170,44 @@ test('ET LE NOM DU FICHIER DIT CE QU\'IL PORTE', () => {
     assert.ok(!/a\.download = `atelier-\$\{exoCourant\.id\}-\$\{new Date/.test(corps),
         'le nom ne doit plus venir du seul exercice affiché');
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// ET ON PEUT TOUT EFFACER — 23 octobre.
+//
+// RÉMY : « et aussi dans l'atelier, comment effacer tout le compte rendu »
+//
+// Il n'y avait aucun moyen, sauf recharger la page — ce qui coûtait aussi
+// l'exercice choisi et les volets ouverts. Un relevé est une PREUVE, et une
+// preuve qui traîne des mesures faites il y a une heure sur un autre réglage
+// ne prouve rien.
+
+test('ON PEUT TOUT EFFACER, ET LA FENÊTRE DIT QUOI', () => {
+    assert.match(A, /id="atl-tout-effacer"/);
+    assert.match(A, /panneau\.querySelector\('#atl-tout-effacer'\)\.onclick = toutEffacer;/);
+    const corps = A.slice(A.indexOf('async function toutEffacer'),
+        A.indexOf('async function controler()'));
+    assert.ok(corps.length > 200, 'toutEffacer doit exister avant controler');
+    // LES SIX CHOSES QUI S'ACCUMULENT. En oublier une, c'est laisser dans le
+    // relevé suivant une mesure périmée que personne ne saura dater.
+    for (const [quoi, motif] of [
+        ['les bilans du contrôle', /bilans = \[\];/],
+        ['le pilote', /bilanPilote = null;/],
+        ['le catalogue', /bilansCatalogue = null;/],
+        ['les captures', /photos = \[\];/],
+        ['le carnet', /notes\.value = '';/],
+        ['la console', /viderJournal\(\);/]
+    ]) {
+        assert.match(corps, motif, `« tout effacer » doit effacer ${quoi}`);
+    }
+    // LE CARNET SURVIT À LA PAGE : il est rangé dans le navigateur. L'effacer
+    // à l'écran sans retirer la clef le ferait revenir au prochain F5, et l'on
+    // croirait le bouton cassé.
+    assert.match(corps, /localStorage\.removeItem\(CLE_NOTES\)/);
+    // ON RÉPOND AVANT DE FERMER — le défaut déjà payé sur « Tout contrôler ».
+    assert.match(corps, /resolve\(b\.dataset\.effacer === 'oui'\); f\.close\(\);/);
+    // ET L'EXERCICE RESTE. C'est toute la différence avec un F5 : on efface le
+    // compte rendu, pas la préparation.
+    assert.ok(!/exoCourant = null/.test(corps) && !/paramsCourants = \{\}/.test(corps),
+        'effacer le compte rendu ne doit pas perdre l\'exercice choisi');
+});
