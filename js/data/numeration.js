@@ -473,7 +473,13 @@ export const numerationExercises = [
     {
         id: 'num-encadrement',
         cree: '2026-10-21',
-        consignePapier: 'Réponds par VRAI ou FAUX, et complète les encadrements.',
+        // LA CONSIGNE SUIT CE QUE LA FEUILLE DEMANDE VRAIMENT. Elle annonçait
+        // « VRAI ou FAUX » du temps où la feuille recopiait les bulles de
+        // l'écran ; depuis que le signe est à compléter (voir
+        // `core/generators/encadrement.js`), elle décrivait un exercice qui
+        // n'y est plus. Une consigne fausse coûte plus cher qu'une consigne
+        // absente : l'élève la croit.
+        consignePapier: 'Complète par <, > ou =, puis complète les encadrements.',
         colonnesPapier: 2,
         title: 'Plus Petit, Plus Grand… ou Égal',
         generatorId: 'num.encadrement', activityId: 'bubbles',

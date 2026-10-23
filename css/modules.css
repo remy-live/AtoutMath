@@ -12589,6 +12589,19 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    font que naviguer. */
 .game-icon-btn--ok { color: #1f7a4d; border-color: rgba(31, 122, 77, .35); }
 .game-icon-btn--ko { color: #b83a2c; border-color: rgba(184, 58, 44, .35); }
+
+/* ARMÉ, LE BOUTON EST PLEIN — Rémy : « il faudrait qu'il soit persistant d'une
+   question sur l'autre. Comme cela je peux passer rapidement en voyant ce que
+   ça fait d'être bon. » Un clic répond ET arme : chaque question suivante se
+   répond toute seule. Un régime qui DURE doit se voir, sinon on enchaîne vingt
+   questions sans comprendre pourquoi elles se répondent — et c'est la même
+   raison qui a fait colorer le régime de saut de la palette d'auteur. */
+.game-icon-btn--ok.preview-arme { background: #1f7a4d; border-color: #1f7a4d; color: #fff; }
+.game-icon-btn--ko.preview-arme { background: #b83a2c; border-color: #b83a2c; color: #fff; }
+@media (hover: hover) {
+    .game-icon-btn--ok.preview-arme:hover:not(:disabled) { background: #19633e; }
+    .game-icon-btn--ko.preview-arme:hover:not(:disabled) { background: #9a3024; }
+}
 @media (hover: hover) {
     .game-icon-btn--ok:hover:not(:disabled) { background: rgba(31, 122, 77, .10); }
 }

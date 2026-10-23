@@ -330,6 +330,52 @@ function lireVolets() {
     } catch (e) { /* privé */ }
 }
 
+/**
+ * LE CARNET EST PROPRE À L'EXERCICE — Rémy : « dans l'atelier, le carnet doit
+ * être propre à l'exercice ».
+ *
+ * Les captures glissées s'en allaient déjà avec l'exercice : « une photo du
+ * Sudoku rangée sous Additions Mystères décrirait un défaut qui n'y est pas ».
+ * Le TEXTE, lui, était rangé sous une clef unique, donc commun aux 249 : on
+ * notait quelque chose sur l'encadrement, on passait à l'exercice suivant pour
+ * vérifier autre chose, et la note était encore là — prête à partir dans le
+ * relevé sous le mauvais titre. Le même défaut, resté sur la moitié qui était
+ * rangée ailleurs.
+ */
+const cleDesNotes = () => `${CLE_NOTES}-${exoCourant ? exoCourant.id : 'sans'}`;
+
+/**
+ * L'ANCIEN CARNET N'EST PAS JETÉ : il est ADOPTÉ par l'exercice qu'on rouvre.
+ *
+ * Rémy a des notes en cours au moment de la mise à jour, et elles parlent de
+ * l'exercice qu'il regardait — l'Atelier rouvre justement celui-là. Les
+ * effacer en passant aux clefs par exercice lui prendrait un travail fait,
+ * sans un mot. On les reprend une fois, puis la vieille clef disparaît.
+ */
+function reprendreLAncienCarnet() {
+    try {
+        const vieux = localStorage.getItem(CLE_NOTES);
+        if (!vieux) return;
+        if (!localStorage.getItem(cleDesNotes())) localStorage.setItem(cleDesNotes(), vieux);
+        localStorage.removeItem(CLE_NOTES);
+    } catch (e) { /* privé */ }
+}
+
+/**
+ * Le carnet de l'exercice courant, remis dans la case.
+ *
+ * ON NE RÉÉCRIT QUE SI C'EST DIFFÉRENT : `rafraichir` passe ici à chaque
+ * changement de réglage, et réaffecter `value` renverrait le curseur à la fin
+ * au milieu d'une phrase qu'on est en train de taper.
+ */
+function chargerLesNotes() {
+    const notes = panneau && panneau.querySelector('#atl-notes');
+    if (!notes) return;
+    let v = '';
+    try { v = localStorage.getItem(cleDesNotes()) || ''; } catch (e) { v = ''; }
+    if (notes.value !== v) notes.value = v;
+}
+
 function ecrireVolets() {
     try { localStorage.setItem(CLE_VOLETS, JSON.stringify(volets)); } catch (e) { /* privé */ }
 }
@@ -812,9 +858,10 @@ function assurerPanneau() {
     };
     const notes = panneau.querySelector('#atl-notes');
     notes.oninput = () => {
-        try { localStorage.setItem(CLE_NOTES, notes.value); } catch (e) { /* privé */ }
+        try { localStorage.setItem(cleDesNotes(), notes.value); } catch (e) { /* privé */ }
     };
-    try { notes.value = localStorage.getItem(CLE_NOTES) || ''; } catch (e) { /* privé */ }
+    reprendreLAncienCarnet();
+    chargerLesNotes();
     surveillerTailles();
     panneau.querySelector('#atl-photo').onclick = photo;
     panneau.querySelector('#atl-releve').onclick = releve;
@@ -1038,6 +1085,9 @@ function choisir(id) {
 
 function rafraichir(opts = {}) {
     if (!opts.garderSelection) peindreListe();
+    // LE CARNET SUIT L'EXERCICE. Il est rangé sous une clef par exercice, et
+    // c'est ici qu'on remet la bonne dans la case.
+    chargerLesNotes();
     peindreReglages();
     peindreRangement();
     majVolets();
@@ -1611,7 +1661,7 @@ async function toutEffacer() {
     // LE CARNET SURVIT À LA PAGE : il est rangé dans le navigateur. L'effacer
     // à l'écran sans retirer la clef le ferait revenir au prochain F5, et l'on
     // croirait le bouton cassé.
-    try { localStorage.removeItem(CLE_NOTES); } catch (e) { /* privé */ }
+    try { localStorage.removeItem(cleDesNotes()); } catch (e) { /* privé */ }
     panneau.querySelector('#atl-controle').innerHTML = '';
     panneau.querySelector('#atl-bloc-controle').hidden = true;
     viderJournal();

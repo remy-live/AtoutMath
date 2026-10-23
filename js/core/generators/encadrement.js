@@ -123,6 +123,21 @@ const NOM_DU_RANG = {
     0.1: 'deux dixièmes'
 };
 
+/**
+ * LE MÊME RANG, DIT COURT — pour la feuille, et pour elle seule.
+ *
+ * Rémy, capture de la fiche à l'appui : « Et un énoncé du genre encadre à
+ * l'unité ». « Encadre 31,6 entre deux entiers qui se suivent : » tenait sur
+ * deux lignes, poussait les pointillés à la ligne suivante, et répétait dix
+ * fois ce qu'une consigne dit une fois.
+ *
+ * ON GARDE LE RANG DANS L'ÉNONCÉ, et c'est volontaire : une même feuille mêle
+ * les trois paliers — unité, dizaine, dixième —, donc la consigne de
+ * l'exercice ne peut pas le dire pour toutes les questions. Trois mots par
+ * ligne suffisent à le rappeler.
+ */
+const COURT_DU_RANG = { 10: 'à la dizaine', 1: 'à l\'unité', 0.1: 'au dixième' };
+
 export const encadrementGenerator = {
     id: 'num.encadrement',
     label: 'Inégalité large ou stricte, et encadrement',
@@ -142,6 +157,60 @@ export const encadrementGenerator = {
         if (marche === 'large-strict') {
             const aff = tirerAffirmation(rng);
             const phrase = `${aff.a} ${aff.signe} ${aff.b}`;
+
+            // ── SUR LE PAPIER, C'EST LE SIGNE QU'ON ÉCRIT ────────────────
+            //
+            // RÉMY, capture de la fiche à l'appui : « Mets juste plutôt le
+            // signe inégalité à compléter sur les exercices à imprimers. »
+            //
+            // « Vrai ou faux : 30 < 21 ……… » n'est pas un exercice de papier.
+            // À l'écran, deux bulles VRAI/FAUX font le travail ; sur une
+            // feuille, l'élève écrit « vrai » sur une ligne de points et
+            // n'écrit AUCUN signe — alors que le signe EST le geste du
+            // chapitre.
+            //
+            // LE GÉNÉRATEUR SAIT POUR QUI IL ÉCRIT (`ctx.papier`), donc ce
+            // n'est pas le même énoncé rhabillé : c'en est un AUTRE, avec sa
+            // propre réponse. C'est ce qui garde le corrigé honnête — changer
+            // seulement le libellé aurait imprimé « vrai » sous une question
+            // qui demande un signe, exactement le piège de la fiche des
+            // formules (« la bonne réponse est =A1+B1 pas 17 »).
+            //
+            // CE QU'ON PERD, ET IL FAUT LE DIRE : la feuille ne distingue plus
+            // `<` de `⩽`, puisqu'on complète par <, > ou =. L'écran garde
+            // cette marche entière — c'est là qu'elle s'apprend, une question
+            // sur trois portant sur deux nombres égaux —, et la feuille
+            // entraîne la comparaison. C'est l'arbitrage de Rémy.
+            if (ctx.papier) {
+                const signe = aff.a < aff.b ? '<' : aff.a > aff.b ? '>' : '=';
+                return makeItem({
+                    seed: rng.seed,
+                    generatorId: 'num.encadrement',
+                    skillId: COMPETENCE,
+                    answerKind: 'choice',
+                    prompt: {
+                        text: `Complète : ${aff.a} … ${aff.b}`,
+                        papier: `${aff.a} ……… ${aff.b}`
+                    },
+                    answer: signe,
+                    // LES TROIS SIGNES RESTENT OFFERTS quand la feuille est
+                    // tirée en QCM : une question à compléter dont on ne
+                    // donnerait pas les signes possibles n'aurait plus de
+                    // version à choix.
+                    choices: [
+                        { value: '<', label: '<', correct: signe === '<' },
+                        { value: '>', label: '>', correct: signe === '>' },
+                        { value: '=', label: '=', correct: signe === '=' }
+                    ],
+                    explanation: aff.egaux
+                        ? `${aff.a} et ${aff.b} sont ÉGAUX : on écrit =.`
+                        : `${aff.a} est plus ${aff.a < aff.b ? 'petit' : 'grand'} que `
+                            + `${aff.b} : on écrit ${signe}.`,
+                    difficulty: aff.egaux ? 2 : 1,
+                    meta: { marche, a: aff.a, b: aff.b, signe, egaux: aff.egaux,
+                        theme: `signe-${signe}` }
+                });
+            }
             return makeItem({
                 seed: rng.seed,
                 generatorId: 'num.encadrement',
@@ -210,8 +279,8 @@ export const encadrementGenerator = {
                 text: `Encadre ${fr(e.valeur)} entre ${NOM_DU_RANG[e.pas]}.`,
                 html: `<div class="game-question">Encadre <b>${fr(e.valeur)}</b> `
                     + `entre ${NOM_DU_RANG[e.pas]}.</div>`,
-                papier: `Encadre ${fr(e.valeur)} entre ${NOM_DU_RANG[e.pas]} : `
-                    + '……… < ' + fr(e.valeur) + ' < ………'
+                // L'ÉNONCÉ COURT SUR LA FEUILLE — voir `COURT_DU_RANG`.
+                papier: `Encadre ${COURT_DU_RANG[e.pas]} : ……… < ${fr(e.valeur)} < ………`
             },
             answer: bonne,
             choices: finalizeChoices(rng, [

@@ -203,11 +203,63 @@ test('ON PEUT TOUT EFFACER, ET LA FENÊTRE DIT QUOI', () => {
     // LE CARNET SURVIT À LA PAGE : il est rangé dans le navigateur. L'effacer
     // à l'écran sans retirer la clef le ferait revenir au prochain F5, et l'on
     // croirait le bouton cassé.
-    assert.match(corps, /localStorage\.removeItem\(CLE_NOTES\)/);
+    // LA CLEF DE CET EXERCICE-LÀ, depuis que le carnet est propre à chacun :
+    // vider la clef commune n'effacerait plus rien.
+    assert.match(corps, /localStorage\.removeItem\(cleDesNotes\(\)\)/);
     // ON RÉPOND AVANT DE FERMER — le défaut déjà payé sur « Tout contrôler ».
     assert.match(corps, /resolve\(b\.dataset\.effacer === 'oui'\); f\.close\(\);/);
     // ET L'EXERCICE RESTE. C'est toute la différence avec un F5 : on efface le
     // compte rendu, pas la préparation.
     assert.ok(!/exoCourant = null/.test(corps) && !/paramsCourants = \{\}/.test(corps),
         'effacer le compte rendu ne doit pas perdre l\'exercice choisi');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// ET LE CARNET EST PROPRE À L'EXERCICE — 23 octobre.
+//
+// RÉMY : « dans l'atelier, le carnet doit être propre à l'exercice »
+//
+// Les captures s'en allaient déjà avec l'exercice (« une photo du Sudoku
+// rangée sous Additions Mystères décrirait un défaut qui n'y est pas »). Le
+// TEXTE, lui, était rangé sous une clef unique : on notait quelque chose sur
+// l'encadrement, on passait à l'exercice suivant, et la note était encore là,
+// prête à partir dans le relevé sous le mauvais titre. Le même défaut, resté
+// sur la moitié qui était rangée ailleurs.
+
+test('LE CARNET EST RANGÉ SOUS SON EXERCICE', () => {
+    assert.match(A, /const cleDesNotes = \(\) =>/);
+    assert.match(BRUT, /\$\{CLE_NOTES\}-\$\{exoCourant \? exoCourant\.id : 'sans'\}/);
+    // ON ÉCRIT ET ON RELIT SOUS LA MÊME CLEF : écrire par exercice en
+    // relisant la clef commune donnerait un carnet qui se vide tout seul.
+    assert.match(A, /localStorage\.setItem\(cleDesNotes\(\), notes\.value\)/);
+    assert.match(A, /localStorage\.getItem\(cleDesNotes\(\)\) \|\| ''/);
+    assert.ok(!/localStorage\.setItem\(CLE_NOTES,/.test(A),
+        'plus personne ne doit écrire sous la clef commune');
+    // ET IL SUIT L'EXERCICE : `rafraichir` passe à chaque changement.
+    const raf = A.slice(A.indexOf('function rafraichir'), A.indexOf('function rafraichir') + 400);
+    assert.match(raf, /chargerLesNotes\(\);/);
+});
+
+test('ON NE REND PAS LE CURSEUR À LA FIN D\'UNE PHRASE QU\'ON TAPE', () => {
+    // `rafraichir` passe aussi à CHAQUE changement de réglage. Réaffecter
+    // `value` sans condition renverrait le curseur à la fin au milieu d'un mot
+    // — et cela ne se voit qu'en tapant, jamais en relisant le code.
+    const corps = A.slice(A.indexOf('function chargerLesNotes'),
+        A.indexOf('function chargerLesNotes') + 400);
+    assert.match(corps, /if \(notes\.value !== v\) notes\.value = v;/);
+});
+
+test('L\'ANCIEN CARNET EST ADOPTÉ, PAS JETÉ', () => {
+    // Rémy a des notes en cours au moment de la mise à jour, et elles parlent
+    // de l'exercice qu'il regardait — l'Atelier rouvre justement celui-là. Les
+    // perdre en passant aux clefs par exercice lui prendrait un travail fait,
+    // sans un mot.
+    const corps = A.slice(A.indexOf('function reprendreLAncienCarnet'),
+        A.indexOf('function chargerLesNotes'));
+    assert.match(corps, /const vieux = localStorage\.getItem\(CLE_NOTES\);/);
+    assert.match(corps, /if \(!localStorage\.getItem\(cleDesNotes\(\)\)\) localStorage\.setItem\(/);
+    // ET LA VIEILLE CLEF DISPARAÎT : sans cela l'adoption se referait à chaque
+    // ouverture, et écraserait le carnet de l'exercice qu'on vient d'ouvrir.
+    assert.match(corps, /localStorage\.removeItem\(CLE_NOTES\);/);
 });

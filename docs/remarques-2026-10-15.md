@@ -3351,3 +3351,62 @@ panne la plus chère — elle ne ressemble pas à une panne.
 
 Ce n'était donc ni Safari, ni les unités `cqh`/`cqw`, ni la version d'iOS.
 C'est une combinaison exercice × marche, et elle est en ligne.
+
+---
+
+### 33. Le carnet, la barre de passage, et la fiche de « Plus Petit, Plus Grand »
+
+Trois remarques en une, capture de l'Atelier v1089 à l'appui.
+
+#### a) LE CARNET DOIT ÊTRE PROPRE À L'EXERCICE
+
+> « dans l'atelier, le carnet doit être propre à l'exercice »
+
+Les captures glissées s'en vont avec l'exercice depuis le 23 octobre — « une
+photo du Sudoku rangée sous *Additions Mystères* décrirait un défaut qui n'y
+est pas ». Le TEXTE du carnet, lui, est resté commun à tous : une seule clef
+`mathbox-atelier-notes` dans le navigateur. On écrit une note sur
+l'encadrement, on passe à l'exercice suivant pour vérifier autre chose, et la
+note est encore là — collée sous le mauvais titre dans le relevé suivant.
+
+C'est exactement le défaut qu'on avait corrigé pour les photos, resté sur le
+texte parce qu'il était rangé ailleurs.
+
+#### b) LA BARRE DE PASSAGE : LE ✓ ET LE ✗ DOIVENT RESTER ARMÉS
+
+> « Dans ce qui permet de passer la question, tu as un check vert et une
+> croix. il faudrait qu'il soit persistant d'une question sur l'autre. Comme
+> cela je peux passer rapidement en voyant ce que ça fait d'être bon. »
+
+La barre `« 1/12 ✓ ✗ »` répond juste ou faux à la question courante, puis
+rend la main. Pour voir DOUZE bonnes réponses d'affilée — ce que l'élève verra
+—, il faut douze clics, et l'on regarde son doigt au lieu de l'écran.
+
+Ce qu'il veut : **un état qui reste**. On clique ✓ une fois, et chaque
+question suivante se répond juste toute seule ; on reclique pour désarmer.
+C'est la différence entre « déclencher » et « armer », et c'est la seconde qui
+sert à REGARDER.
+
+#### c) LA FICHE DE « PLUS PETIT, PLUS GRAND… OU ÉGAL » EST CURIEUSE
+
+> « Mets juste plutôt le signe inégalité à compléter sur les exercices à
+> imprimers. Et un énoncé du genre encadre à l'unité »
+
+Ce que la fiche imprime aujourd'hui :
+
+```
+1.  Vrai ou faux : 30 < 21   ..................
+6.  Encadre 31,6 entre deux entiers qui se suivent : ...... < 31,6 < ......
+```
+
+DEUX CHOSES CLOCHENT, et ce sont deux choses différentes :
+
+1. **« Vrai ou faux : 30 < 21 » n'est pas un exercice de papier.** À l'écran,
+   deux bulles VRAI/FAUX font le travail ; sur papier, l'élève écrit « vrai »
+   ou « faux » sur une ligne de points, ce qui ne lui fait écrire AUCUN signe.
+   Rémy veut ce qu'un cahier demande : `30 ⬚ 21`, et l'on complète le signe.
+   C'est le geste du chapitre.
+2. **L'énoncé de l'encadrement est trop long, et répété dix fois.** « Encadre
+   31,6 entre deux entiers qui se suivent » prend deux lignes, pousse les
+   pointillés à la ligne suivante, et dit à chaque question ce que la consigne
+   de l'exercice devrait dire une fois : « Encadre à l'unité ».

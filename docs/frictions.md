@@ -5856,3 +5856,23 @@ le résultat n'existe pas** — 15 octobre 2026
   chargement de module survenus dans les 500 ms suivant un changement de `src`
   d'un cadre, et qu'il DISE combien il en a écartés. Pas fabriqué : une seule
   occurrence.
+
+## Découper un fichier « de tel repère à tel autre » sans vérifier l'ordre — 2026-10-23
+
+- *Ce que je voulais faire* : isoler le corps d'une fonction dans une épreuve,
+  avec `A.slice(A.indexOf('function X'), A.indexOf('function Y'))`.
+- *Ce qui a coûté* : **deux fois dans la même heure, une épreuve rouge sur un
+  code juste.** `Y` était DÉCLARÉE plus haut que `X` dans le fichier (ou son
+  nom apparaissait d'abord comme un APPEL, `this.Y()`), si bien que la découpe
+  rendait une chaîne vide ou tronquée. L'épreuve annonçait alors un défaut qui
+  n'existait pas — « rafraichir doit recharger avant », « basculerAuto doit
+  enchaîner » —, et l'on relit le code trois fois avant de soupçonner l'outil.
+- *Combien de fois* : ||
+- *Ce qui manque* : la règle, qui tient en une phrase : **une découpe part d'un
+  repère et avance d'une LONGUEUR, ou s'arrête à un repère qu'on a vérifié
+  postérieur.** Et un repère de fin se cherche avec son accolade —
+  `'peindreAuto() {'`, pas `'peindreAuto()'` — sans quoi c'est le premier APPEL
+  qui l'arrête. Si le cas revient une troisième fois, ce sera un
+  `corpsDeLaFonction(source, nom)` dans `tests/helpers.mjs` : il existe déjà
+  pour le CSS (`corpsDeLaRegle`), et il a été écrit pour exactement la même
+  raison.

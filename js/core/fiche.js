@@ -94,7 +94,41 @@ export function texteImprime(texte, reponse) {
     // c'est son VOISINAGE — un opérateur ou un signe d'égalité à côté, comme
     // dans « 8 + ? = 10 » —, jamais un mot. Les points de suspension et les
     // suites de points, eux, ne servent qu'à cela : ils restent des trous.
-    t = t.replace(/(…|\.{2,})(?=\s*\S)/g, trou);
+    //
+    // UNE SUITE DE POINTS EST UN SEUL TROU, PAS UN PAR POINT.
+    //
+    // RÉMY, capture de la fiche à l'appui : « tu vois que la présentation à
+    // l'impression est curieuse ». Elle l'était : « 22 ……… 22 » sortait avec
+    // TROIS petites lignes pointillées au lieu d'une, parce que le motif
+    // remplaçait chaque « … » séparément et que la mise en page dessine un
+    // trou par suite d'espaces. L'élève lit alors trois choses à écrire là où
+    // on en demande une. Quatre générateurs écrivaient leurs trous ainsi
+    // (durées, conversions, notation, valeur absolue) : c'est le motif qu'il
+    // fallait corriger, pas les quatre.
+    //
+    // ET UN TROU PEUT FINIR L'ÉNONCÉ.
+    //
+    // « Encadre à l'unité : … < 8,8 < … » laissait le DERNIER « … » tel quel,
+    // imprimé en toutes lettres : le motif exigeait quelque chose derrière
+    // (« (?=\s*\S) »), et il n'y a rien derrière une fin de ligne. On voyait
+    // donc, sur la feuille, deux lignes à remplir puis trois points de
+    // suspension. Mêmes victimes : « Note la figure ci-dessus : …… »,
+    // « 7/10 = … ». Le drapeau `trouFinal` existe justement pour que le
+    // rognage de fin de ligne ne reprenne pas ce qu'on vient de poser.
+    // LA FIN D'ABORD, ET L'ORDRE EST TOUTE LA CORRECTION.
+    //
+    // Écrites dans l'autre sens, les deux règles se marchaient dessus : sur
+    // « … < 8,8 < ……… », le « + » gourmand prenait les trois points finaux,
+    // la vue avant « (?=\s*\S) » échouait en fin de ligne, le moteur revenait
+    // d'un cran et acceptait « …… » SUIVI d'un « … » — qui compte comme un
+    // caractère non blanc. La règle du milieu posait donc un trou, et celle
+    // de la fin en posait un SECOND juste derrière. Mesuré dans l'aperçu :
+    // trois pointillés sur une ligne qui en demande deux.
+    //
+    // En traitant la fin d'abord, il ne reste plus de points à la fin quand
+    // la règle du milieu passe, et elle ne peut plus rien couper en deux.
+    t = t.replace(/(?:\u2026|\.{2,})+\s*$/, () => { trouFinal = true; return trou; });
+    t = t.replace(/(?:\u2026|\.{2,})+(?=\s*\S)/g, trou);
     t = t.replace(/\?(?=\s*\S)/g, (m, i) => {
         const avant = t.slice(0, i).replace(/[\s\u00A0]+$/, '').slice(-1);
         const apres = t.slice(i + 1).replace(/^[\s\u00A0]+/, '').slice(0, 1);

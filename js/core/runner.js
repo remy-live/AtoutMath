@@ -42,6 +42,32 @@ import { oublierLaSeance } from './memoireCourte.js';
 import { filtrerEtapes, peutSauter, estRetire, calculatriceAccordee } from './seanceDistante.js';
 import { majFilSeance, cacherFilSeance } from '../ui/filSeance.js';
 
+// --- LE RÉGIME DU ✓ ET DU ✗, QUI RESTE ARMÉ -----------------------------------
+//
+// Rémy : « il faudrait qu'il soit persistant d'une question sur l'autre. Comme
+// cela je peux passer rapidement en voyant ce que ça fait d'être bon. »
+//
+// Rangé dans le navigateur, comme le régime de saut de la palette d'auteur :
+// l'Atelier recharge son volet à chaque changement d'exercice, et un régime
+// gardé en mémoire s'éteindrait justement là.
+
+const CLE_AUTO = 'mathbox-apercu-auto';
+
+/** true (tout juste), false (tout faux) ou null (désarmé). */
+function regimeAuto() {
+    try {
+        const v = localStorage.getItem(CLE_AUTO);
+        return v === 'juste' ? true : v === 'faux' ? false : null;
+    } catch (e) { return null; }
+}
+
+function armerAuto(valeur) {
+    try {
+        if (valeur === null) localStorage.removeItem(CLE_AUTO);
+        else localStorage.setItem(CLE_AUTO, valeur ? 'juste' : 'faux');
+    } catch (e) { /* navigation privée */ }
+}
+
 export class Runner {
     /**
      * @param {Object} cfg
@@ -271,6 +297,77 @@ export class Runner {
 
     // --- Navigation entre activités (test professeur) -----------------------
 
+    /**
+     * LE ✓ ET LE ✗ RESTENT ARMÉS — Rémy : « Dans ce qui permet de passer la
+     * question, tu as un check vert et une croix. il faudrait qu'il soit
+     * persistant d'une question sur l'autre. Comme cela je peux passer
+     * rapidement en voyant ce que ça fait d'être bon. »
+     *
+     * UN CLIC RÉPONDAIT, PUIS RENDAIT LA MAIN. Pour voir douze bonnes réponses
+     * d'affilée — c'est-à-dire ce que l'élève verra —, il fallait douze clics,
+     * et l'on regarde son doigt au lieu de l'écran. C'est la différence entre
+     * DÉCLENCHER et ARMER, et c'est la seconde qui sert à regarder.
+     *
+     * Un clic répond ET arme ; le même bouton recliqué désarme. Le régime est
+     * rangé dans le navigateur comme celui de la palette d'auteur
+     * (voir ui/debugBar.js), parce que l'Atelier recharge son volet à chaque
+     * changement d'exercice : un régime gardé en mémoire s'éteindrait
+     * justement au moment où l'on passe à l'exercice suivant.
+     */
+    basculerAuto(juste) {
+        const neuf = regimeAuto() === juste ? null : juste;
+        armerAuto(neuf);
+        this.peindreAuto();
+        // DÉSARMER NE RÉPOND PAS. Le second clic sert à ARRÊTER ; s'il
+        // répondait encore, on ne pourrait jamais s'arrêter sur une question.
+        if (neuf !== null) this.repondrePour(juste, { enchainer: true });
+    }
+
+    /** L'état du bouton se VOIT : armé, il est plein. */
+    peindreAuto() {
+        const r = regimeAuto();
+        [['btn-preview-juste', true, 'juste', 'Répondre juste, pour voir ce que l\'élève lira'],
+            ['btn-preview-faux', false, 'faux', 'Répondre faux, pour voir le message d\'erreur']
+        ].forEach(([id, valeur, mot, repos]) => {
+            const b = document.getElementById(id);
+            if (!b) return;
+            const arme = r === valeur;
+            b.classList.toggle('preview-arme', arme);
+            b.setAttribute('aria-pressed', String(arme));
+            b.title = arme
+                ? `Chaque question se répond ${mot} toute seule — cliquer pour arrêter`
+                : repos;
+        });
+    }
+
+    /**
+     * LA QUESTION SUIVANTE SE RÉPOND TOUTE SEULE, tant que c'est armé.
+     *
+     * UNE DEMI-SECONDE AVANT DE RÉPONDRE, et ce n'est pas un ornement : ce
+     * qu'on vient regarder, c'est l'enchaînement question → réponse → retour.
+     * Répondre dans la même image que l'affichage ne montrerait que le retour,
+     * et l'on ne saurait même pas à quoi.
+     *
+     * LE RANG SERT DE VERROU. updateStepNavigation est appelée une douzaine de
+     * fois par question — après chaque soumission, chaque rendu, chaque
+     * changement d'étape. Sans ce verrou, la même question serait répondue
+     * plusieurs fois, et le profil enregistrerait des tentatives qui n'ont pas
+     * eu lieu.
+     */
+    repondreToutSeul(dispo) {
+        const r = regimeAuto();
+        if (r === null || !dispo || !this.allowStepNavigation || !this.session) return;
+        const rang = `${this.index}:${this.session.history.length}`;
+        if (this.__autoRang === rang) return;
+        this.__autoRang = rang;
+        clearTimeout(this.__autoMinuteur);
+        this.__autoMinuteur = setTimeout(() => {
+            // On relit le régime : une demi-seconde suffit à cliquer « arrêter ».
+            if (regimeAuto() === null) return;
+            this.repondrePour(r, { enchainer: true });
+        }, 550);
+    }
+
     setupStepNavigation() {
         const nav = document.getElementById('preview-step-nav');
         const navQ = document.getElementById('preview-question-nav');
@@ -325,8 +422,9 @@ export class Runner {
         // ÉPROUVER LES DEUX RETOURS — voir `repondrePour`.
         const juste = document.getElementById('btn-preview-juste');
         const faux = document.getElementById('btn-preview-faux');
-        if (juste) juste.onclick = () => this.repondrePour(true);
-        if (faux) faux.onclick = () => this.repondrePour(false);
+        if (juste) juste.onclick = () => this.basculerAuto(true);
+        if (faux) faux.onclick = () => this.basculerAuto(false);
+        this.peindreAuto();
 
         // LES INFOBULLES DE LA BARRE. Rémy : « je pense qu'il faut rajouter des
         // tooltip ». Les `title` du HTML n'en sont pas : ils attendent une
@@ -405,6 +503,8 @@ export class Runner {
             const b = document.getElementById(id);
             if (b) b.hidden = !dispo;
         });
+        this.peindreAuto();
+        this.repondreToutSeul(dispo);
     }
 
     /**
@@ -426,7 +526,7 @@ export class Runner {
      * piéger —, parce que c'est LUI qui déclenche le diagnostic. Une réponse
      * absurde tomberait dans le message générique et n'apprendrait rien.
      */
-    repondrePour(juste) {
+    repondrePour(juste, options = {}) {
         if (!this.session || !this.session.current || this.session.locked) return;
         const item = this.session.item;
         if (!item) return;
@@ -443,8 +543,34 @@ export class Runner {
             valeur = juste ? bonne
                 : (typeof bonne === 'number' ? bonne + 1 : `${bonne}\u2009?`);
         }
-        this.session.submit(valeur, {});
+        const result = this.session.submit(valeur, {});
         this.updateStepNavigation();
+
+        // ── EN RÉGIME ARMÉ, ON ENCHAÎNE SUR LA QUESTION SUIVANTE ────────
+        //
+        // RÉPONDRE NE FAISAIT PAS AVANCER, et c'est ce qui rendait le bouton
+        // deux fois plus cher qu'il n'en avait l'air. `repondrePour` appelle
+        // `session.submit` directement, sans passer par le clic de l'élève :
+        // l'activité ne l'apprend donc jamais, et c'est elle qui enchaîne
+        // (`result.dismissed.then(renderNext)` dans `activities/choice.js`).
+        // Il fallait répondre, PUIS cliquer « ❯ ». MESURÉ avant d'écrire une
+        // ligne : le compteur restait sur 1/12 neuf secondes après un clic sur
+        // le ✓ armé.
+        //
+        // ON ATTEND LA FERMETURE DU RETOUR, PAS UN MINUTEUR. C'est le contrat
+        // de `announce` (`core/itemSession.js`) : une réussite s'efface toute
+        // seule, une erreur attend qu'on la ferme. Enchaîner là-dessus donne
+        // donc le bon rythme dans les deux régimes — et c'est VOULU que le ✗
+        // s'arrête sur le message d'erreur : c'est lui qu'on vient lire.
+        if (options.enchainer && result && result.dismissed) {
+            result.dismissed.then(() => {
+                // On relit le régime : on a pu désarmer pendant la lecture.
+                if (regimeAuto() === null || this.etapeClose) return;
+                if (this.handle && this.handle.showNext) this.handle.showNext();
+                this.updateStepNavigation();
+            });
+        }
+        return result;
     }
 
     /**
