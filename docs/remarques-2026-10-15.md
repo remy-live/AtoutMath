@@ -3410,3 +3410,35 @@ DEUX CHOSES CLOCHENT, et ce sont deux choses différentes :
    31,6 entre deux entiers qui se suivent » prend deux lignes, pousse les
    pointillés à la ligne suivante, et dit à chaque question ce que la consigne
    de l'exercice devrait dire une fois : « Encadre à l'unité ».
+
+#### e) SUITE : armé, mais ça n'avance pas tout seul — 23 octobre
+
+> « oui enfin il est armé mais ca n'avance pas tout seul qd même pour le check
+> vert ! »
+
+Ma sonde demandait « le rang a-t-il avancé d'au moins DEUX ? ». Elle a répondu
+« 1 → 3 » et je l'ai crue. **Un seuil n'est pas une mesure** : deux questions
+sur douze satisfont « au moins deux » exactement comme douze, et c'est la
+différence entre « ça marche » et « ça démarre puis ça cale ».
+
+À MESURER avant de toucher quoi que ce soit : le rang, relevé seconde par
+seconde sur une minute, pour voir OÙ il s'arrête.
+
+> « en fait ca avance tout seul des que je clique sur le vert »
+
+Il se corrige lui-même, et la mesure lui donne raison : relevé seconde par
+seconde sur « Décomposer, PGCD et PPCM », le rang passe de 1/34 à 32/34 sans
+qu'on y retouche, à peu près une question et demie par seconde.
+
+**CE QUI RESTE À CORRIGER EST DONC MA SONDE, PAS LE CODE.** Elle demandait
+« le rang a-t-il avancé d'au moins DEUX ? » et répondait « 1 → 3 : ok ». Deux
+questions sur douze satisfont ce seuil exactement comme douze — c'est-à-dire
+qu'une série qui démarre puis cale serait passée au vert. Un seuil n'est pas
+une mesure : la promesse est « ça défile jusqu'au bout », donc c'est le BOUT
+qu'il faut mesurer.
+
+**ET UNE CHOSE À LUI DIRE** : la barre ✓/✗ n'existe pas sur les jeux autonomes
+(« Additions Mystères », les transformations…). Ils ne posent pas une suite de
+questions au meneur, ils mènent une partie : il n'y a pas de « question
+suivante » à armer. Mesuré sur les cinq exercices essayés : trois ont la barre,
+deux ne l'ont pas.

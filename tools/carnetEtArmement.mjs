@@ -125,10 +125,25 @@ await dansLeJeu(`d.getElementById('btn-preview-juste').click(); return true;`);
 const arme = await attendre(v => v.arme, 4000);
 dire('un clic l\'arme, et ça se voit', arme.arme, arme.titre);
 
-const avance = await attendre(v => Number(v.rang.split('/')[0]) >= depart + 2, 25000);
+// ON MESURE LE BOUT, PAS UN SEUIL.
+//
+// RÉMY : « oui enfin il est armé mais ca n'avance pas tout seul qd même pour
+// le check vert ! » — puis, après avoir réessayé : « en fait ca avance tout
+// seul des que je clique sur le vert ».
+//
+// Il avait raison les deux fois, et c'est la SONDE qui était en cause. Elle
+// demandait « le rang a-t-il avancé d'au moins DEUX ? » et répondait « 1 → 3 :
+// ok ». Deux questions sur douze satisfont ce seuil exactement comme douze :
+// une série qui démarre puis cale serait passée au vert, et j'aurais répondu
+// « c'est mesuré » à quelqu'un qui voyait le contraire.
+//
+// La promesse est « ça défile jusqu'au bout » — on attend donc la DERNIÈRE
+// question, et l'on dit où l'on s'est arrêté quand ce n'est pas elle.
+const total = Number(vu.rang.split('/')[1]);
+const avance = await attendre(v => Number(v.rang.split('/')[0]) >= total, 90000);
 const arrive = Number(avance.rang.split('/')[0]);
-dire('les questions suivantes se répondent toutes seules', arrive >= depart + 2,
-    `${depart} → ${arrive} sans un clic de plus`);
+dire('elles se répondent toutes seules JUSQU\'À LA DERNIÈRE', arrive >= total,
+    `${depart} → ${arrive} sur ${total}, sans un clic de plus`);
 dire('et il est toujours armé', avance.arme);
 
 await dansLeJeu(`d.getElementById('btn-preview-juste').click(); return true;`);

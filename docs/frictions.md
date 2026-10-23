@@ -5876,3 +5876,27 @@ le résultat n'existe pas** — 15 octobre 2026
   `corpsDeLaFonction(source, nom)` dans `tests/helpers.mjs` : il existe déjà
   pour le CSS (`corpsDeLaRegle`), et il a été écrit pour exactement la même
   raison.
+
+## Un seuil n'est pas une mesure — 2026-10-23
+
+- *Ce que je voulais faire* : vérifier que le ✓ armé répond aux questions
+  suivantes tout seul, et le dire à Rémy.
+- *Ce qui a coûté* : **un aller-retour avec lui, et une affirmation fausse de
+  ma part.** Ma sonde demandait « le rang a-t-il avancé d'au moins DEUX ? ».
+  Elle a répondu « 1 → 3 : ok », je l'ai crue, et j'ai écrit « mesuré : le
+  compteur passe de 1 à 3 ». Rémy a répondu « il est armé mais ça n'avance pas
+  tout seul » — puis, en réessayant, « en fait ça avance ». Les deux fois il
+  disait vrai ; c'est ma mesure qui ne répondait pas à la question. Deux
+  questions sur douze satisfont « au moins deux » exactement comme douze : une
+  série qui démarre puis cale serait passée au vert.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à fabriquer, une règle à tenir. **Quand la promesse
+  est « ça va jusqu'au bout », on mesure le BOUT**, pas un progrès. Le seuil
+  est tentant parce qu'il rend la sonde rapide ; il rend surtout son verdict
+  plus faible que la phrase qu'on écrira ensuite. La règle a une sœur déjà
+  dans ce journal — « une épreuve verte qui ne garde rien donne une assurance
+  qui n'existe pas » — et c'en est la version mesurée : **une sonde ne doit
+  jamais promettre plus que ce qu'elle a regardé.**
+- *Et le réflexe qui l'attrape* : relire le `dire(...)` et la phrase qu'on
+  s'apprête à écrire dans le message de commit. Si la phrase est plus forte
+  que la condition, c'est la condition qu'il faut monter.
