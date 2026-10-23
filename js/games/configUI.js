@@ -3279,7 +3279,17 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     // justement ce qu'on vient y régler. Le rôle demandé compte autant que le
     // mode global ; la barre de débogage n'existe que pour celui qui prépare.
     const complet = paramSchemaOf(exo);
-    const prepare = state.isTeacherMode || opts.role === 'auteur';
+    // ET « ÉLÈVE » EST UN RÔLE QU'ON PEUT DEMANDER, MÊME EN MODE PROFESSEUR.
+    //
+    // Rémy : « je n'ai pas accès à l'explication avant l'écran ce que l'élève a
+    // avant l'exercice ». Le volet « Avant l'exercice » de l'Atelier ouvre ce
+    // panneau depuis une session de PROFESSEUR : sans ce rôle explicite, il
+    // aurait montré les commandes de préparation — jusqu'à trente et une sur
+    // un exercice à progression — là où l'élève en voit deux. Ce n'est pas le
+    // même écran, et c'est l'écran de l'élève qu'il demandait.
+    const prepare = opts.role === 'eleve'
+        ? false
+        : (state.isTeacherMode || opts.role === 'auteur');
     const schema = prepare ? complet : complet.filter(p => !p.prof);
     const current = { ...(exo.params || {}) };
 

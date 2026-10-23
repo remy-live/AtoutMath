@@ -5807,3 +5807,52 @@ le résultat n'existe pas** — 15 octobre 2026
   garder, et personne ne le sait jamais. C'est la même famille que « une
   épreuve verte qui ne garde rien », et `epreuveTombe.mjs` reste la seule
   façon de s'en apercevoir.
+
+## Un sélecteur qui désigne QUELQU'UN D'AUTRE — `#atl-avant` — 2026-10-23
+
+- *Ce que je voulais faire* : ajouter un quatrième volet à l'Atelier, avec son
+  cadre `<iframe id="atl-avant">`.
+- *Ce qui a coûté* : **une heure, et quatre sondes complètes pour rien.** Le
+  volet restait blanc. Pas d'erreur de page, pas de fenêtre native, la pastille
+  allumée, la section visible et bien dimensionnée, `recharger('avant')`
+  appelée — vérifié en instrumentant la fonction — et le `src` du cadre vide.
+  `atl-avant` est pris depuis toujours : c'est le bouton « exercice
+  PRÉCÉDENT » de la barre du haut. `cadre.src = adresse()` posait donc une
+  propriété JavaScript sur un `<button>`, **qui l'accepte sans broncher et ne
+  la reflète dans aucun attribut**.
+- *Combien de fois* : |
+- *Ce qui manque* : **`doitExister` ne couvre pas ce cas, et c'est la leçon.**
+  Il ferme « un sélecteur inventé rend `false` » ; celui-ci rend `true` en
+  désignant quelqu'un d'autre, ce qui est pire — la mesure se fait, elle est
+  crédible, elle est fausse. Une épreuve le garde désormais à la source
+  (« aucun identifiant n'est écrit deux fois dans l'Atelier », qui lit les
+  `id="…"` du fichier et refuse les doublons), et c'est le bon endroit : un
+  doublon d'identifiant est une faute du CODE, pas de la sonde. Le jour où le
+  cas revient ailleurs, c'est la même épreuve à recopier sur l'autre fichier —
+  ou, si cela se répète, un outil qui la passe sur tout le dépôt.
+- *Et le symptôme, pour le reconnaître plus vite* : une affectation qui ne
+  change rien et ne jette rien sur un élément trouvé. Avant de chercher dans
+  la logique, compter les porteurs du sélecteur :
+  `document.querySelectorAll(sel).length`.
+
+## Une erreur de page intermittente dans l'Atelier, et le verdict qui vacille — 2026-10-23
+
+- *Ce que je voulais faire* : relire le verdict de `tools/atelierCarnet.mjs`
+  après avoir ajouté un quatrième volet.
+- *Ce qui a coûté* : **un aller-retour, et un doute qui coûte toujours plus
+  cher que la mesure.** Un passage sur deux rend « fenêtres natives et erreurs
+  de page : 1 », avec « Failed to fetch dynamically imported module
+  …/js/app.js ». Ce n'est pas un défaut du logiciel : l'Atelier change le
+  `src` de ses cadres à chaque changement d'exercice, et un cadre dont les
+  modules sont encore en vol voit sa requête annulée — le navigateur appelle
+  cela une erreur. Quatre cadres au lieu de trois rendent la course un peu
+  plus probable.
+- *Combien de fois* : |
+- *Ce qui manque* : une façon de distinguer **l'erreur qu'on a provoquée en
+  rechargeant** de celle qui dit quelque chose. Aujourd'hui `s.erreurs` les
+  mélange, donc un verdict « 1 » oblige à relancer pour savoir s'il est vrai —
+  et un verdict qui demande une seconde exécution pour être cru n'est pas un
+  verdict. Piste, si cela se reproduit : que `sonde.mjs` écarte les échecs de
+  chargement de module survenus dans les 500 ms suivant un changement de `src`
+  d'un cadre, et qu'il DISE combien il en a écartés. Pas fabriqué : une seule
+  occurrence.

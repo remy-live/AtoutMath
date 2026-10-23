@@ -299,14 +299,33 @@ function reglerRobot(actif) {
  * volet n'est que le raccourci « celui-là, tout seul ». Le choix survit à la
  * fermeture, parce qu'on rouvre l'Atelier pour continuer ce qu'on regardait.
  */
-const VOLETS = ['jeu', 'fiche', 'robot'];
-let volets = { jeu: true, fiche: true, robot: true };
+// RÉMY : « et pour l'atelier, je n'ai pas accès à l'explication avant l'écran
+// ce que l'élève a avant l'exercice ».
+//
+// LE QUATRIÈME VOLET EST EN TÊTE, parce que c'est l'écran que l'élève voit en
+// PREMIER : le titre, la consigne, les réglages qui lui sont offerts, et le
+// bouton qui lance. Les trois autres montrent ce qui vient APRÈS.
+//
+// Il est allumé d'office. On aurait pu l'éteindre pour ne pas rétrécir les
+// trois volets qu'il regarde déjà, mais sa phrase dit « je n'ai pas accès » :
+// une pastille qu'il faudrait trouver ne répondrait qu'à moitié. Le choix se
+// retient dès qu'il y touche.
+const VOLETS = ['avant', 'jeu', 'fiche', 'robot'];
+let volets = { avant: true, jeu: true, fiche: true, robot: true };
 
 function lireVolets() {
     try {
         const brut = JSON.parse(localStorage.getItem(CLE_VOLETS) || 'null');
         if (brut && VOLETS.some(v => brut[v])) {
-            VOLETS.forEach(v => { volets[v] = !!brut[v]; });
+            // ON NE LIT QUE LES VOLETS QUE LE RÉGLAGE CONNAÎT.
+            //
+            // Le réglage de Rémy a été enregistré AVANT que le volet « avant »
+            // existe : il ne porte que jeu, fiche et robot. Relu en bloc, il
+            // aurait éteint le volet neuf — « !!undefined » vaut faux — et la
+            // réponse à sa demande serait arrivée invisible chez la seule
+            // personne qui l'a demandée. Le piège se repose à chaque volet
+            // qu'on ajoutera.
+            VOLETS.forEach(v => { if (v in brut) volets[v] = !!brut[v]; });
         }
     } catch (e) { /* privé */ }
 }
@@ -316,8 +335,16 @@ function ecrireVolets() {
 }
 
 /** Le cadre d'un volet, pour ceux qui en ont un. */
-const cadreDuVolet = (quoi) => panneau.querySelector(
-    quoi === 'jeu' ? '#atl-jeu' : quoi === 'robot' ? '#atl-robot' : '#atl-fiche');
+// ET LE CADRE DU VOLET « AVANT » NE S'APPELLE PAS 'atl-avant'.
+// Cet identifiant-là est pris depuis toujours : c'est le bouton « exercice
+// PRÉCÉDENT » de la barre du haut. Le volet neuf l'a porté une heure, et le
+// symptôme n'avait aucun rapport avec un doublon — « cadre.src = adresse() »
+// posait une propriété JavaScript sur un <button>, qui l'accepte sans broncher
+// et ne la reflète dans aucun attribut. Le volet restait blanc, sans erreur,
+// sans rien. Un sélecteur qui DÉSIGNE QUELQUE CHOSE D'AUTRE est pire qu'un
+// sélecteur inventé : doitExister le trouve.
+const CADRES = { avant: '#atl-ecran-avant', jeu: '#atl-jeu', robot: '#atl-robot', fiche: '#atl-fiche' };
+const cadreDuVolet = (quoi) => panneau.querySelector(CADRES[quoi] || CADRES.fiche);
 
 const echapper = (s) => String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -401,6 +428,10 @@ function assurerPanneau() {
                en occupait 883. */
             .atl-gauche > .atl-volet { flex: 1 1 0; min-height: 0; }
             .atl-volet--fiche { flex: 1 1 0; min-width: 0; }
+            /* L'ÉCRAN D'AVANT EST UN PANNEAU DE TEXTE ET DE CASES : il n'a pas
+               besoin de la place d'un plateau de jeu, et la lui prendre
+               rétrécirait justement ce qu'on vient regarder. */
+            .atl-gauche > .atl-volet--avant { flex: 0 1 auto; min-height: 240px; }
             .atl-rail {
                 flex: 0 0 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
             }
@@ -598,6 +629,9 @@ function assurerPanneau() {
             <button class="atl-mini atl-pas" id="atl-apres"
                 title="L'exercice suivant dans la liste" aria-label="Suivant">▶</button>
             <span class="atl-volets" role="group" aria-label="Les volets à l'écran">
+                <button class="atl-chip" data-volet="avant"
+                    title="Montrer ou cacher l'écran que l'élève voit AVANT de commencer"
+                    >Avant l'exercice</button>
                 <button class="atl-chip" data-volet="jeu" title="Montrer ou cacher le jeu">Le jeu</button>
                 <button class="atl-chip" data-volet="fiche" title="Montrer ou cacher la feuille">La feuille</button>
                 <button class="atl-chip" data-volet="robot" title="Montrer ou cacher le robot">Le robot</button>
@@ -607,6 +641,18 @@ function assurerPanneau() {
         </div>
         <div class="atl-corps" id="atl-corps">
             <div class="atl-gauche" id="atl-gauche">
+                <!-- L'ÉCRAN D'AVANT L'EXERCICE. Rémy : « je n'ai pas accès a
+                     l'explication avant l'écran ce que l'élève a avant
+                     l'exercice ». Les trois autres volets montrent ce qui vient
+                     APRÈS ; celui-ci montre le premier écran qu'un élève lit. -->
+                <section class="atl-volet atl-volet--avant" id="atl-volet-avant">
+                    <header class="atl-volet-tete">Avant l'exercice
+                        <span class="atl-espace"></span>
+                        <button class="atl-mini" data-relancer="avant" title="Relancer ce volet">⟳</button>
+                        <button class="atl-mini" data-agrandir="avant" title="Ce volet en grand">⤢</button>
+                    </header>
+                    <iframe class="atl-cadre" id="atl-ecran-avant" title="L'écran d'avant l'exercice"></iframe>
+                </section>
                 <section class="atl-volet atl-volet--jeu" id="atl-volet-jeu">
                     <header class="atl-volet-tete">Le jeu
                         <span class="atl-espace"></span>
@@ -802,7 +848,8 @@ function majVolets() {
     });
     // La colonne de gauche disparaît quand ses deux volets sont éteints,
     // sinon elle garderait sa moitié d'écran pour ne rien montrer.
-    panneau.querySelector('#atl-gauche').hidden = !volets.jeu && !volets.robot;
+    panneau.querySelector('#atl-gauche').hidden =
+        !volets.avant && !volets.jeu && !volets.robot;
 }
 
 /**
@@ -994,6 +1041,12 @@ function rafraichir(opts = {}) {
     peindreReglages();
     peindreRangement();
     majVolets();
+    // CHAQUE VOLET SE RECHARGE ICI, NOMMÉMENT. majVolets ne recharge que
+    // ce qui CHANGE d'état : à l'ouverture, rien ne change, et un volet qui
+    // ne serait pas dans cette liste resterait un cadre vide — mesuré sur le
+    // volet « avant », dont le src restait vide pendant que la pastille
+    // s'allumait.
+    recharger('avant');
     recharger('jeu');
     recharger('fiche');
     majRobot();
@@ -1044,7 +1097,7 @@ async function photo() {
  */
 async function imagesDesVolets() {
     const out = [];
-    for (const quoi of ['fiche', 'jeu', 'robot']) {
+    for (const quoi of ['fiche', 'avant', 'jeu', 'robot']) {
         // Un volet fermé n'a rien à dire : on ne le mentionne même pas.
         if (!volets[quoi]) continue;
         const cadre = cadreDuVolet(quoi);
@@ -1724,7 +1777,7 @@ function texteReleve() {
         lignes.push('## Consigne à reporter dans le code');
         lignes.push(consigne);
     }
-    ['jeu', 'fiche', 'robot'].forEach(quoi => {
+    ['avant', 'jeu', 'fiche', 'robot'].forEach(quoi => {
         const cadre = cadreDuVolet(quoi);
         lignes.push('');
         lignes.push(`## Volet « ${quoi} »`);
@@ -1733,6 +1786,12 @@ function texteReleve() {
         const d = cadre.contentDocument;
         lignes.push(`taille du cadre : ${Math.round(cadre.clientWidth)} × ${Math.round(cadre.clientHeight)}`);
         const q = d.querySelector('.game-question, .fp-apercu, #fp-apercu, #fq-apercu')
+            // L'ÉCRAN D'AVANT N'A NI QUESTION NI APERÇU : ce qu'il porte vit
+            // dans le panneau de réglages de l'élève. Sans cette ligne, le
+            // volet neuf aurait rempli le relevé d'une taille de cadre et de
+            // rien d'autre.
+            || d.querySelector('#student-config-content')
+            || d.querySelector('.atl-sans-avant')
             || d.querySelector('#game-board');
         if (q) lignes.push(`à l'écran : ${(q.innerText || '').trim().slice(0, 400).replace(/\s+/g, ' ')}`);
         deborde(d).forEach(t => lignes.push(`DÉBORDE : ${t}`));
@@ -1961,7 +2020,7 @@ export function fermerAtelier() {
     // Les cadres continueraient à tourner derrière — un robot qui joue tout
     // seul dans une page fermée, c'est du travail pour rien et des sons qui
     // sortent de nulle part.
-    ['#atl-jeu', '#atl-fiche', '#atl-robot'].forEach(s => {
+    ['#atl-ecran-avant', '#atl-jeu', '#atl-fiche', '#atl-robot'].forEach(s => {
         const c = panneau.querySelector(s);
         if (c) c.removeAttribute('src');
     });
@@ -2059,8 +2118,73 @@ export async function ouvrirVoletAtelier(quoi, params) {
         replierOptionsFiche();
         return;
     }
+    // ── L'ÉCRAN D'AVANT L'EXERCICE ──────────────────────────────────────
+    //
+    // RÉMY : « et pour l'atelier, je n'ai pas accès à l'explication avant
+    // l'écran ce que l'élève a avant l'exercice ».
+    //
+    // IL NE POUVAIT PAS, ET C'ÉTAIT ÉCRIT NOIR SUR BLANC : les trois volets
+    // montent le jeu avec internalStudentConfig, qui SAUTE exactement cet
+    // écran-là. Le réglage est juste pour les trois autres — on vient y voir
+    // le jeu, pas un panneau de cases —, mais il rendait le premier écran de
+    // l'élève invisible au seul outil fait pour regarder.
+    //
+    // ON N'OUVRE PAS LE JEU ICI : on appelle le panneau d'avant-partie
+    // directement. Passer par openGameLayer ferait au mieux la même chose, au
+    // pire refuser un jeu verrouillé avec une pastille à la place de l'écran.
+    //
+    // ET ON DEMANDE LA VUE DE L'ÉLÈVE, pas celle du professeur. Le panneau
+    // filtre les reglages de préparation sur state.isTeacherMode — dans un
+    // volet d'Atelier, le professeur EST en mode professeur, donc il aurait vu
+    // ses trente et une commandes au lieu des deux de l'élève. C'est la
+    // différence entre « ce que je règle » et « ce qu'il lit », et c'est la
+    // seconde qu'il demande.
+    if (quoi === 'avant') {
+        const { aApprentissage } = await import('../core/apprentissage.js');
+        const schema = paramSchemaOf(complet) || [];
+        // UN EXERCICE SANS RÉGLAGE N'A PAS D'ÉCRAN D'AVANT : l'élève entre
+        // directement. Le dire est une information, pas une panne — et un
+        // volet vide se lirait comme un volet cassé.
+        if (!schema.length && !aApprentissage(complet)) {
+            direQuIlNYAPasDEcranDAvant(complet);
+            return;
+        }
+        const { ouvrirReglagesAvantPartie } = await import('../games/configUI.js');
+        const { openGameLayer: ouvrirLeJeu } = await import('../games/engine.js');
+        const { lancerApprentissage } = await import('../games/engine.js');
+        ouvrirReglagesAvantPartie(complet,
+            (params) => ouvrirLeJeu({ ...complet, internalStudentConfig: true, params }),
+            { role: 'eleve', onApprendre: () => lancerApprentissage(complet) });
+        return;
+    }
     const { openGameLayer } = await import('../games/engine.js');
     openGameLayer({ ...complet, internalStudentConfig: true }, quoi === 'demo');
+}
+
+/**
+ * « CET EXERCICE N'A PAS D'ÉCRAN D'AVANT » — et c'est une information.
+ *
+ * Un volet resté blanc se lit comme un volet cassé : on relance, on cherche,
+ * on finit par ouvrir la console. Le volet DIT donc ce qu'il a constaté, et
+ * pourquoi — un exercice sans aucun réglage et sans mode apprentissage envoie
+ * l'élève directement dans la première question.
+ *
+ * On écrit à la main plutôt que d'emprunter une feuille de style : ce volet
+ * est une page entière de l'application, dont tout le reste est caché, et un
+ * message de trois lignes ne vaut pas une classe de plus dans le CSS commun.
+ */
+function direQuIlNYAPasDEcranDAvant(exo) {
+    const mot = document.createElement('div');
+    mot.className = 'atl-sans-avant';
+    mot.style = 'position:fixed; inset:0; display:flex; align-items:center; '
+        + 'justify-content:center; padding:24px; text-align:center; '
+        + 'font:15px/1.6 system-ui, -apple-system, sans-serif; background:var(--bg-app,#fff); '
+        + 'color:var(--text-muted,#555); z-index:50';
+    mot.innerHTML = '<div><strong style="display:block;margin-bottom:8px;color:var(--text-main,#222)">'
+        + 'Pas d\'écran avant l\'exercice</strong>'
+        + echapper(exo.title) + ' n\'a ni réglage à proposer ni mode apprentissage :<br>'
+        + 'l\'élève entre directement dans la première question.</div>';
+    document.body.appendChild(mot);
 }
 
 // Les deux fenêtres d'impression n'ont ni le même identifiant ni les mêmes
