@@ -3203,3 +3203,29 @@ le tiroir « Les options de la feuille ». Un repli dans un repli : à vérifier
 navigateur, mais s'il faut deux clics et que le nom du premier ne dit ni
 couleur ni colonnes, Rémy ne peut pas les trouver — et c'est exactement ce
 qu'il vient de dire.
+
+### 31. L'Atelier : tout contrôler d'un coup, et glisser une photo
+
+> « oui j'aimerai bien faire tous les tests et exporter en un fichier, tu me
+> rajoutes une zone ou je peux glisser une image (c'est cool avec le mac, je
+> prends une photo et je peux glisser) aussi pour l'exercice en cours »
+
+Deux demandes, et la seconde explique la première : il veut m'envoyer UN
+fichier qui dise tout.
+
+1. **TOUT CONTRÔLER, ET UN SEUL FICHIER.** « Contrôler » ne tourne aujourd'hui
+   que sur `exoCourant`, et le relevé ne décrit que lui. Il veut la tournée sur
+   TOUT le catalogue, et un seul fichier à m'envoyer. À MESURER avant d'écrire
+   quoi que ce soit : combien de temps prend UNE tournée, et donc combien en
+   prendraient 199. Un bouton qui promet « tous les tests » et qui gèle son
+   navigateur une heure serait pire que pas de bouton.
+2. **UNE ZONE OÙ GLISSER UNE PHOTO.** « c'est cool avec le mac, je prends une
+   photo et je peux glisser ». Son geste : capture d'écran (⇧⌘4), puis glisser
+   la vignette du bureau dans la page. L'image doit rejoindre le relevé de
+   L'EXERCICE EN COURS, et donc ressortir dans le `.html` téléchargé, à côté
+   des photos des volets.
+
+   À NOTER : `js/ui/deposerFichier.js` existe déjà, écrit pour un autre dépôt
+   — Rémy, à l'époque : « j'ai passé 3 plombes à chercher le bouton d'import et
+   les zones de drop n'ont pas semblé fonctionner. » On emprunte ce chemin-là
+   plutôt que d'en écrire un second.

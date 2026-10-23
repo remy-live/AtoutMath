@@ -5737,3 +5737,21 @@ le résultat n'existe pas** — 15 octobre 2026
   qu'il arrive. Il ne sait pas lancer une SONDE (qui veut un serveur et un
   navigateur). Si le cas revient, ce sera l'outil à fabriquer : `sondeTombe`,
   même garantie, pour ce qui se mesure dans la vitre.
+
+## `atelier.js` est un seul gabarit : tout commentaire qu'on y écrit est dedans — 2026-10-23
+
+- *Ce que je voulais faire* : ajouter une zone de dépôt et un bouton au carnet
+  de l'Atelier, avec les commentaires que la maison demande.
+- *Ce qui a coûté* : **deux fois** le piège de l'accent grave, dans la même
+  heure. `atelier.js` construit son panneau ET ses styles dans un seul gabarit
+  de six cents lignes : un commentaire HTML, un commentaire CSS, tout ce qu'on
+  y écrit est À L'INTÉRIEUR. Citer un fichier ou une fonction entre accents
+  graves — ce qu'on fait partout ailleurs — ferme le gabarit. La première fois
+  `remplacer.mjs` a refusé et remis le fichier ; la seconde, `node --check` a
+  désigné « Unexpected identifier 'tests' » vingt lignes plus loin.
+- *Combien de fois* : || (dans ce fichier ; sept autres avant lui, ailleurs)
+- *Ce qui manque* : rien de neuf à fabriquer — le hook et `remplacer.mjs`
+  attrapent déjà. Ce qui manquait est la RÈGLE, et elle est locale : **dans
+  `atelier.js`, on cite sans accents graves.** Écrite ici pour qu'on la
+  retrouve, parce que c'est le seul fichier du dépôt où elle s'applique à
+  CHAQUE commentaire.

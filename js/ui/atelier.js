@@ -60,6 +60,32 @@ let controleArrete = false;
 let controleEnCours = false;
 
 /**
+ * LES IMAGES QUE RÉMY GLISSE, pour l'exercice en cours.
+ *
+ * Rémy : « tu me rajoutes une zone ou je peux glisser une image (c'est cool
+ * avec le mac, je prends une photo et je peux glisser) aussi pour l'exercice
+ * en cours ».
+ *
+ * Son geste : ⇧⌘4, puis la vignette du bureau glissée dans la page. Ce qu'il
+ * photographie n'est PAS ce que « 📷 Photo » sait prendre — celle-ci ne rend
+ * que les dessins des volets, et son écran à lui porte aussi ce qui les
+ * entoure : un PDF ouvert à côté, un cahier d'élève, une fenêtre de travers.
+ * Les deux se complètent.
+ *
+ * ELLES VIVENT AVEC L'EXERCICE et s'en vont avec lui : une capture rangée
+ * sous le mauvais titre décrirait un défaut qui n'y est pas.
+ */
+let photos = [];
+
+/**
+ * LE CONTRÔLE DE TOUT LE CATALOGUE — null tant qu'on ne l'a pas demandé.
+ *
+ * Rémy : « j'aimerai bien faire tous les tests et exporter en un fichier ».
+ * Chaque entrée vaut { id, titre, bilans }. Voir `controlerTout`.
+ */
+let bilansCatalogue = null;
+
+/**
  * LES EXERCICES DU PLUS NEUF AU PLUS ANCIEN.
  *
  * Rémy : « rangé dans l'ordre inverse de leur création ». C'est le seul ordre
@@ -454,6 +480,50 @@ function assurerPanneau() {
                 background: var(--bg-app); color: var(--text-main); line-height: 1.4;
             }
             .atl-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+
+            /* LA ZONE OU L'ON GLISSE UNE CAPTURE. Rémy : « c'est cool avec le
+               mac, je prends une photo et je peux glisser ». Un cadre en
+               pointillés, parce qu'une zone de dépôt qui ne se voit pas ne se
+               devine pas — il a déjà perdu « 3 plombes » sur une zone de drop
+               qu'il ne trouvait pas. */
+            .atl-depot {
+                margin-top: 6px; padding: 10px 8px; border: 2px dashed var(--border);
+                border-radius: 10px; text-align: center; cursor: pointer;
+                color: var(--text-muted); font-size: .74rem; line-height: 1.35;
+                transition: border-color .15s, background .15s;
+            }
+            /* LE SURVOL SOUS SON MÉDIA. Une bordure qui s'allume est un ÉTAT, et
+               sur un téléphone il COLLE : le doigt part, la bordure reste, et
+               l'on croit la zone armée. La maison garde cette règle par une
+               épreuve — tests/survolTactile.test.mjs —, et elle m'a repris
+               ici avant que Rémy ne le voie. */
+            .atl-depot:focus-visible { border-color: var(--primary); }
+            @media (hover: hover) {
+                .atl-depot:hover { border-color: var(--primary); }
+            }
+            .atl-depot--vise {
+                border-color: var(--primary);
+                background: color-mix(in srgb, var(--primary) 8%, transparent);
+            }
+            .atl-depot-dit { display: block; font-weight: 700; }
+            .atl-depot-dit small { display: block; font-weight: 500; opacity: .8; }
+            .atl-photos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+            .atl-photo { position: relative; margin: 0; }
+            /* LA VIGNETTE EST PETITE EXPRÈS : elle dit QU'il y a une capture et
+               laquelle, pas ce qu'elle montre — c'est le fichier téléchargé qui
+               la rend en grand. */
+            .atl-photo img {
+                width: 74px; height: 56px; object-fit: cover; display: block;
+                border: 1px solid var(--border); border-radius: 7px; background: var(--bg-panel);
+            }
+            .atl-photo-x {
+                position: absolute; top: -5px; right: -5px; width: 18px; height: 18px;
+                border-radius: 50%; border: 1px solid var(--border); cursor: pointer;
+                background: var(--bg-panel); color: var(--danger-texte);
+                font-size: .66rem; line-height: 1; padding: 0;
+            }
+            .atl-tout-dit { padding: 4px 2px; }
+            .atl-tout-dit p { margin: 0 0 10px; }
             .atl-controle { font-size: .74rem; line-height: 1.4; }
             .atl-controle-ligne { margin-bottom: 5px; }
             .atl-controle-nom { font-weight: 800; }
@@ -585,6 +655,21 @@ function assurerPanneau() {
                     <div class="atl-bloc-titre">Le carnet</div>
                     <textarea class="atl-notes" id="atl-notes"
                         placeholder="Ce qu'on voit, ce qu'on veut changer…"></textarea>
+                    <!-- GLISSER UNE CAPTURE. Rémy : « tu me rajoutes une zone
+                         ou je peux glisser une image (c'est cool avec le mac,
+                         je prends une photo et je peux glisser) aussi pour
+                         l'exercice en cours ».
+                         ON NE PASSE PAS PAR brancherDepotDeFichier : celui-là
+                         écoute le DOCUMENT entier et route tout fichier déposé
+                         vers l'import d'un parcours. Ici on veut une zone, des
+                         images, et qu'elles restent. -->
+                    <div class="atl-depot" id="atl-depot" tabindex="0"
+                         title="Glisse une capture d'écran ici, ou colle-la avec ⌘V">
+                        <span class="atl-depot-dit">Glisse une capture ici
+                            <small>ou ⌘V · elle partira avec le relevé</small></span>
+                        <input type="file" id="atl-depot-fichier" accept="image/*" multiple hidden>
+                    </div>
+                    <div class="atl-photos" id="atl-photos"></div>
                     <div class="atl-actions">
                         <button class="atl-btn" id="atl-photo" title="Enregistrer l'image du volet">📷 Photo</button>
                         <button class="atl-btn atl-btn--fort" id="atl-releve"
@@ -595,6 +680,12 @@ function assurerPanneau() {
                         <button class="atl-btn" id="atl-controler"
                             title="Lancer l'exercice en téléphone, tablette et ordinateur, et mesurer"
                             >🔎 Contrôler</button>
+                        <!-- MESURÉ AVANT DE L'ÉCRIRE : 11,7 s par exercice, donc
+                             49 minutes pour les 249 du catalogue. Le bouton le
+                             DIT avant de partir, et il s'arrête quand on veut. -->
+                        <button class="atl-btn" id="atl-controler-tout"
+                            title="Contrôler TOUS les exercices du catalogue, et tout exporter en un fichier"
+                            >🔎 Tout contrôler</button>
                         <button class="atl-btn" id="atl-jouer"
                             title="Le pilote joue l'exercice jusqu'au bout et dit ce qui a cassé"
                             >▶ Jouer tout seul</button>
@@ -668,6 +759,8 @@ function assurerPanneau() {
     panneau.querySelector('#atl-releve').onclick = releve;
     panneau.querySelector('#atl-telecharger').onclick = telechargerReleve;
     panneau.querySelector('#atl-controler').onclick = controler;
+    panneau.querySelector('#atl-controler-tout').onclick = controlerTout;
+    brancherLeDepot();
     panneau.querySelector('#atl-jouer').onclick = jouerToutSeul;
     panneau.querySelector('#atl-controle-stop').onclick = () => { controleArrete = true; };
     return panneau;
@@ -868,6 +961,11 @@ function choisir(id) {
     // changé ferait lire le verdict du précédent sur le suivant.
     bilans = [];
     bilanPilote = null;
+    // LES CAPTURES S'EN VONT AVEC L'EXERCICE, pour la même raison que le
+    // contrôle : une photo du Sudoku rangée sous « Additions Mystères »
+    // décrirait un défaut qui n'y est pas.
+    photos = [];
+    peindrePhotos();
     panneau.querySelector('#atl-bloc-controle').hidden = true;
     exoCourant = exo;
     paramsCourants = { ...(exo.params || {}) };
@@ -1105,6 +1203,245 @@ const TOURNEE = [
     }
 ];
 
+/**
+ * LES CAPTURES GLISSÉES — les ranger, les montrer, les retirer.
+ *
+ * Rémy : « tu me rajoutes une zone ou je peux glisser une image (c'est cool
+ * avec le mac, je prends une photo et je peux glisser) aussi pour l'exercice
+ * en cours ».
+ *
+ * TROIS CHEMINS POUR LE MÊME GESTE, et il en faut trois : le glisser (le sien),
+ * le coller (⌘V, quand la capture est allée au presse-papier plutôt qu'au
+ * bureau), et le clic (qui ouvre le sélecteur de fichiers — sur une tablette,
+ * il n'y a rien à glisser). Un seul chemin, et le geste manque à qui ne l'a
+ * pas.
+ */
+function ajouterDesPhotos(fichiers) {
+    const images = [...fichiers].filter(f => f && /^image\//.test(f.type));
+    if (!images.length) {
+        import('./modal.js').then(({ showToast }) =>
+            showToast('Ce n\'est pas une image — glisse une capture d\'écran.', 'warning'));
+        return;
+    }
+    images.forEach(f => {
+        const lecteur = new FileReader();
+        lecteur.onload = () => {
+            photos.push({ nom: f.name || 'capture', url: String(lecteur.result) });
+            peindrePhotos();
+        };
+        // ON LIT EN data: ET NON EN blob:. Le relevé téléchargé est un fichier
+        // autonome : une adresse `blob:` y pointerait vers une mémoire qui
+        // n'existe plus dès l'onglet fermé, et l'image serait un carré vide.
+        lecteur.readAsDataURL(f);
+    });
+}
+
+/** Les vignettes, avec de quoi en retirer une qu'on a glissée par erreur. */
+function peindrePhotos() {
+    const zone = panneau && panneau.querySelector('#atl-photos');
+    if (!zone) return;
+    zone.innerHTML = photos.map((p, i) =>
+        `<figure class="atl-photo">
+            <img src="${p.url}" alt="${echapper(p.nom)}">
+            <button type="button" class="atl-photo-x" data-photo="${i}"
+                    title="Retirer cette capture" aria-label="Retirer ${echapper(p.nom)}">✕</button>
+         </figure>`).join('');
+    zone.querySelectorAll('[data-photo]').forEach(b => {
+        b.onclick = () => { photos.splice(Number(b.dataset.photo), 1); peindrePhotos(); };
+    });
+}
+
+/** Le glisser, le coller et le clic, branchés sur la zone. */
+function brancherLeDepot() {
+    const zone = panneau.querySelector('#atl-depot');
+    const champ = panneau.querySelector('#atl-depot-fichier');
+    if (!zone || !champ) return;
+    // `dragover` DOIT appeler `preventDefault`, sinon le navigateur refuse le
+    // dépôt et ouvre l'image à la place de la page. C'est la moitié du défaut
+    // d'origine dans `ui/deposerFichier.js`, et elle se repaie à chaque zone.
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        zone.classList.add('atl-depot--vise');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('atl-depot--vise'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('atl-depot--vise');
+        ajouterDesPhotos((e.dataTransfer && e.dataTransfer.files) || []);
+    });
+    zone.addEventListener('click', () => champ.click());
+    zone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); champ.click(); }
+    });
+    champ.onchange = () => { ajouterDesPhotos(champ.files || []); champ.value = ''; };
+    // LE COLLER ÉCOUTE LE PANNEAU, PAS LA ZONE : on ne pense pas à cliquer un
+    // cadre avant de coller, et un ⌘V qui ne colle rien passe pour une panne.
+    panneau.addEventListener('paste', (e) => {
+        const items = [...((e.clipboardData && e.clipboardData.items) || [])]
+            .filter(i => /^image\//.test(i.type));
+        if (!items.length) return;
+        e.preventDefault();
+        ajouterDesPhotos(items.map(i => i.getAsFile()).filter(Boolean));
+    });
+}
+
+/**
+ * CONTRÔLER TOUT LE CATALOGUE, ET TOUT EXPORTER EN UN FICHIER.
+ *
+ * Rémy : « j'aimerai bien faire tous les tests et exporter en un fichier ».
+ *
+ * MESURÉ AVANT D'ÉCRIRE (tools/tmp/coutDuControle.mjs) : la tournée complète
+ * d'UN exercice prend 11,7 secondes en moyenne — donc QUARANTE-NEUF MINUTES
+ * pour les 249 du catalogue. Un bouton qui promet « tous les tests » et qui
+ * gèle le navigateur trois quarts d'heure sans prévenir serait pire que pas de
+ * bouton. Trois choses en découlent, et aucune n'est cosmétique :
+ *
+ *   · ON LE DIT AVANT DE PARTIR, avec le chiffre, et l'on demande.
+ *   · LA TOURNÉE RAPIDE EXISTE : le jeu en ordinateur seulement, un sondage au
+ *     lieu de quatre. C'est la passe qui trouve les grosses pannes — un
+ *     exercice qui ne se dessine pas du tout — et elle coûte le quart.
+ *   · ON PEUT ARRÊTER, et CE QUI EST FAIT RESTE. Le bouton « ■ Arrêter »
+ *     existait déjà pour une tournée ; il sert ici à vingt minutes de travail
+ *     qu'on ne veut pas perdre.
+ *
+ * ET L'EXERCICE COURANT EST RENDU À LA FIN. On emprunte `exoCourant` le temps
+ * de la tournée — c'est lui que lit `adresse()` —, et on le remet quoi qu'il
+ * arrive : revenir d'un contrôle sur un autre exercice que celui qu'on
+ * regardait serait une trahison silencieuse.
+ */
+async function controlerTout() {
+    if (controleEnCours) return;
+    const { showModal, showToast } = await import('./modal.js');
+    const minutes = Math.round((exercices.length * 11.7) / 60);
+    // LE CHIFFRE AVANT LE GESTE. `showModal` rend { close, element } et ne
+    // décide de rien : on pose les trois boutons nous-mêmes et l'on attend.
+    const choix = await new Promise(resolve => {
+        const f = showModal('Contrôler tout le catalogue',
+            '<div class="atl-tout-dit"><p>Mesuré : <b>11,7 s par exercice</b>. '
+            + 'Les ' + exercices.length + ' du catalogue prennent donc environ <b>'
+            + minutes + ' minutes</b> en tournée complète, et le quart en tournée '
+            + 'rapide — le jeu sur ordinateur seulement, la passe qui trouve les '
+            + 'exercices qui ne se dessinent pas.</p>'
+            + '<p>On peut arrêter en route : ce qui est fait reste, et part dans le '
+            + 'relevé.</p>'
+            + '<div class="modal-actions-center">'
+            + '<button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" data-tout="">Annuler</button>'
+            + '<button type="button" class="btn-toggle glass-btn modal-btn-flex" data-tout="complete">Tournée complète</button>'
+            + '<button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" data-tout="rapide">Tournée rapide</button>'
+            + '</div></div>', { width: '560px', onClose: () => resolve(null) });
+        f.element.querySelectorAll('[data-tout]').forEach(b => {
+            // ON RÉPOND AVANT DE FERMER, et l'ordre n'est pas un détail :
+            // `close()` appelle `onClose`, qui répond `null`. Fermer d'abord,
+            // c'était donc répondre « annuler » à chaque clic — la tournée ne
+            // partait jamais, et rien ne le disait. Mesuré par la sonde.
+            b.onclick = () => { resolve(b.dataset.tout || null); f.close(); };
+        });
+    });
+    if (!choix) return;
+
+    const rapide = choix === 'rapide';
+    const tournee = rapide ? [{ quoi: 'jeu', formats: ['ordinateur'] }] : TOURNEE;
+    const garde = exoCourant;
+    const gardeParams = paramsCourants;
+
+    controleEnCours = true;
+    controleArrete = false;
+    bilansCatalogue = [];
+    const voile = panneau.querySelector('#atl-controle-voile');
+    const scene = panneau.querySelector('#atl-controle-scene');
+    const dit = panneau.querySelector('#atl-controle-dit');
+    voile.hidden = false;
+    panneau.querySelector('#atl-controle-stop').hidden = false;
+    panneau.querySelector('#atl-bloc-controle').hidden = false;
+    const depart = Date.now();
+    try {
+        for (let i = 0; i < exercices.length; i++) {
+            if (controleArrete) break;
+            const exo = exercices[i];
+            exoCourant = exo;
+            paramsCourants = { ...(exo.params || {}) };
+            // LE RESTE ESTIMÉ SE CALCULE SUR CE QU'ON A DÉJÀ FAIT, et non sur
+            // une moyenne écrite en dur : le catalogue n'est pas homogène, et
+            // une estimation qui ment une fois ne se croit plus.
+            const faits = i || 1;
+            const reste = Math.round(((Date.now() - depart) / faits) * (exercices.length - i) / 1000);
+            dit.textContent = `${i + 1} / ${exercices.length} — ${exo.title}`
+                + `   (reste ~${reste > 90 ? Math.round(reste / 60) + ' min' : reste + ' s'})`;
+            const siens = [];
+            for (const etape of tournee) {
+                if (etape.si && !etape.si(exo)) continue;
+                for (const id of etape.formats) {
+                    if (controleArrete) break;
+                    const format = FORMATS.find(f => f.id === id);
+                    siens.push(await sonder({
+                        url: adresse(etape.quoi, 'none'), format, scene, quoi: etape.quoi
+                    }));
+                }
+            }
+            bilansCatalogue.push({ id: exo.id, titre: exo.title, bilans: siens });
+        }
+    } finally {
+        exoCourant = garde;
+        paramsCourants = gardeParams;
+        voile.hidden = true;
+        panneau.querySelector('#atl-controle-stop').hidden = true;
+        controleEnCours = false;
+        peindreControleCatalogue();
+    }
+    const fautifs = bilansCatalogue.filter(e => e.bilans.some(b => b.soucis.length)).length;
+    showToast(`${bilansCatalogue.length} exercice(s) contrôlé(s) — ${fautifs} avec quelque chose `
+        + 'à signaler. « ⤓ Télécharger » emporte tout en un fichier.',
+    fautifs ? 'warning' : 'success', 7000);
+}
+
+/** Le verdict du catalogue, à l'écran : d'abord ce qui cloche. */
+function peindreControleCatalogue() {
+    const zone = panneau && panneau.querySelector('#atl-controle');
+    if (!zone || !bilansCatalogue) return;
+    const fautifs = bilansCatalogue.filter(e => e.bilans.some(b => b.soucis.length));
+    // CE QUI CLOCHE D'ABORD, ET SEUL. Deux cent quarante-neuf lignes « rien à
+    // signaler » noieraient les douze qui comptent — c'est la leçon du carnet
+    // d'erreurs, et elle vaut ici.
+    // ON RÉEMPLOIE LE VOCABULAIRE DU CONTRÔLE D'UN EXERCICE — `atl-controle-nom`,
+    // `-ko`, `-detail` — plutôt que d'inventer des classes jumelles : deux
+    // habillages pour la même chose, c'est l'un des deux qu'on oublie de
+    // corriger le jour où l'autre change.
+    zone.innerHTML = `<div class="atl-controle-ligne"><span class="atl-controle-nom">`
+        + `${bilansCatalogue.length} exercice(s) contrôlé(s)</span> `
+        + (fautifs.length
+            ? `<span class="atl-controle-ko">${fautifs.length} à regarder</span>`
+            : '<span class="atl-controle-ok">✓ rien à signaler</span>')
+        + '</div>'
+        + fautifs.map(e => `<div class="atl-controle-ligne">`
+            + `<span class="atl-controle-nom">${echapper(e.titre)}</span> `
+            + `<span class="atl-controle-attente">${echapper(e.id)}</span>`
+            + e.bilans.filter(b => b.soucis.length).map(b => b.soucis.map(s =>
+                `<span class="atl-controle-detail">· ${echapper(b.nom)} · `
+                + `${echapper(b.quoi)} : ${echapper(s)}</span>`).join('')).join('')
+            + '</div>').join('');
+}
+
+/** Le contrôle du catalogue, en texte — c'est lui qui part dans le relevé. */
+function catalogueEnTexte() {
+    const fautifs = bilansCatalogue.filter(e => e.bilans.some(b => b.soucis.length));
+    const lignes = [`${bilansCatalogue.length} exercice(s) contrôlé(s), `
+        + `${fautifs.length} avec quelque chose à signaler.`];
+    if (bilansCatalogue.length < exercices.length) {
+        lignes.push(`(Arrêté en route : ${exercices.length - bilansCatalogue.length} `
+            + 'exercice(s) n\'ont pas été vus.)');
+    }
+    fautifs.forEach(e => {
+        lignes.push('');
+        lignes.push(`### ${e.titre} (${e.id})`);
+        e.bilans.filter(b => b.soucis.length).forEach(b => {
+            lignes.push(`- ${b.nom} · ${b.quoi}${b.ms === null ? '' : ` · ${b.ms} ms`} :`);
+            b.soucis.forEach(s => lignes.push(`    · ${s}`));
+        });
+    });
+    return lignes.join('\n');
+}
+
 async function controler() {
     if (controleEnCours) return;
     controleEnCours = true;
@@ -1287,8 +1624,24 @@ function texteReleve() {
         lignes.push('## Le pilote');
         lignes.push(piloteEnTexte(bilanPilote));
     }
+    // LE CONTRÔLE DU CATALOGUE, QUAND IL A ÉTÉ DEMANDÉ. Il ne parle pas de
+    // l'exercice courant mais des 249 : il passe donc AVANT le carnet, qui
+    // est le mot de la fin.
+    if (bilansCatalogue) {
+        lignes.push('');
+        lignes.push('## Le contrôle de TOUT le catalogue');
+        lignes.push(catalogueEnTexte());
+    }
     const notes = panneau.querySelector('#atl-notes').value.trim();
     if (notes) { lignes.push(''); lignes.push('## Le carnet'); lignes.push(notes); }
+    // LES CAPTURES GLISSÉES SE DISENT DANS LE TEXTE, et se montrent plus bas.
+    // Un relevé copié au presse-papier n'emporte pas les images : il doit au
+    // moins dire qu'elles existent, sans quoi on les croit perdues.
+    if (photos.length) {
+        lignes.push('');
+        lignes.push(`## Captures glissées (${photos.length})`);
+        photos.forEach(p => lignes.push(`- ${p.nom}`));
+    }
     const journal = journalConsole().slice(-25);
     if (journal.length) {
         lignes.push('');
@@ -1368,9 +1721,11 @@ function releveEnPage(texte, images) {
        border: 1px solid #dcdce6; border-radius: 10px; }
  .rien { color: #6b6b80; font-style: italic; margin: 0; }
 </style></head><body>
-<h1>Atelier — ${echapper(exoCourant.title)}</h1>
+<h1>Atelier — ${echapper(exoCourant.title)}${bilansCatalogue ? ' + tout le catalogue' : ''}</h1>
 <div class="quand">${echapper(exoCourant.id)} — ${echapper(quand)}</div>
 <pre>${echapper(texte)}</pre>
+${photos.map((p, k) => `<figure><figcaption>Capture ${k + 1} — ${echapper(p.nom)}</figcaption>
+<img alt="Capture glissée : ${echapper(p.nom)}" src="${p.url}"></figure>`).join('\n')}
 ${images.map(i => `<figure><figcaption>Volet « ${echapper(i.quoi)} »</figcaption>
 ${i.url ? `<img alt="Le dessin du volet ${echapper(i.quoi)}" src="${i.url}">`
         : `<p class="rien">Pas d'image : ${echapper(i.pourquoi)}.</p>`}</figure>`).join('\n')}
