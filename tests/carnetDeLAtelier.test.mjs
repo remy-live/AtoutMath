@@ -124,3 +124,49 @@ test('ET TOUT PART DANS LE MÊME FICHIER', () => {
     // lirait comme un rapport sur deux cent quarante-neuf serait un mensonge.
     assert.match(A, /Arrêté en route/);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// ET LE FICHIER PORTE TOUT, PAS SEULEMENT CE QUI CLOCHE — 23 octobre.
+//
+// RÉMY, après avoir balayé le catalogue :
+//
+//   « oui mais du tout si je balaye tout je ne peux aps telecharger un seul
+//     fichier de tous les bilans clairement plein d'exercices fonctionnent »
+//
+// L'ÉCRAN ET LE FICHIER N'ONT PAS LE MÊME MÉTIER. `peindreControleCatalogue`
+// ne montre que les fautifs, et il a raison : deux cent quarante-neuf lignes
+// « rien à signaler » noieraient les douze qui comptent. Mais le fichier n'est
+// pas un tableau de bord, c'est un COMPTE RENDU — celui qu'il m'envoie, et sur
+// lequel il veut pouvoir dire « regarde, tout ça marche ».
+
+test('LE RELEVÉ PORTE TOUS LES BILANS, PAS SEULEMENT LES FAUTIFS', () => {
+    const corps = A.slice(A.indexOf('function catalogueEnTexte'),
+        A.indexOf('async function controler()'));
+    // LA LISTE ENTIÈRE, ET ELLE DIT SA LONGUEUR : un titre « Tous les bilans »
+    // sous lequel il n'y aurait que les fautifs serait un mensonge pire que le
+    // silence d'avant.
+    assert.match(corps, /### Tous les bilans \(\$\{bilansCatalogue\.length\}\)/);
+    assert.match(corps, /bilansCatalogue\.forEach\(e => \{/,
+        'la liste doit parcourir TOUT bilansCatalogue, pas la liste des fautifs');
+    // UNE COCHE OU UNE CROIX PAR LIGNE : c'est ce qui rend deux cent cinquante
+    // lignes relisables d'un coup d'œil.
+    assert.match(corps, /soucis \? '✗' : '✓'/);
+    // ET LE DÉTAIL DE CE QUI CLOCHE RESTE, EN TÊTE. On lit un rapport du haut,
+    // et ce qui demande une décision passe devant ce qui n'en demande aucune.
+    assert.ok(corps.indexOf('### Ce qui cloche') < corps.indexOf('### Tous les bilans'),
+        'ce qui cloche se lit AVANT la liste entière');
+});
+
+test('ET LE NOM DU FICHIER DIT CE QU\'IL PORTE', () => {
+    // LE DÉFAUT EXACT QU'IL A VU : le fichier s'appelait
+    // `atelier-num-pgcd-ppcm-2026-10-23.html` alors qu'il portait les 249
+    // exercices. Le nom décrivait l'exercice AFFICHÉ, pas le contenu — et
+    // c'est le nom qu'on lit six mois plus tard dans un dossier de
+    // téléchargements, quand on ne se souvient plus de rien.
+    const corps = A.slice(A.indexOf('function enFichier'), A.indexOf('function deborde'));
+    assert.match(corps, /const quoiDedans = bilansCatalogue \? 'catalogue' : exoCourant\.id;/);
+    assert.match(corps, /a\.download = `atelier-\$\{quoiDedans\}-/);
+    assert.ok(!/a\.download = `atelier-\$\{exoCourant\.id\}-\$\{new Date/.test(corps),
+        'le nom ne doit plus venir du seul exercice affiché');
+});

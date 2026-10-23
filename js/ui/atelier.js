@@ -1422,7 +1422,26 @@ function peindreControleCatalogue() {
             + '</div>').join('');
 }
 
-/** Le contrôle du catalogue, en texte — c'est lui qui part dans le relevé. */
+/**
+ * LE CONTRÔLE DU CATALOGUE, EN TEXTE — c'est lui qui part dans le relevé.
+ *
+ * ET IL PORTE TOUT, PAS SEULEMENT CE QUI CLOCHE.
+ *
+ * Rémy : « si je balaye tout je ne peux pas télécharger un seul fichier de
+ * tous les bilans ; clairement plein d'exercices fonctionnent ».
+ *
+ * L'ÉCRAN ET LE FICHIER N'ONT PAS LE MÊME MÉTIER, et c'est toute la décision.
+ * `peindreControleCatalogue` ne montre que les fautifs, et il a raison : deux
+ * cent quarante-neuf lignes « rien à signaler » noieraient les douze qui
+ * comptent. Mais le fichier n'est pas un tableau de bord, c'est un COMPTE
+ * RENDU — celui qu'il m'envoie, et sur lequel il veut pouvoir dire « regarde,
+ * tout ça marche ». Un rapport qui tait ce qui va bien ne dit pas ce qui a
+ * été vérifié.
+ *
+ * D'ABORD LE DÉTAIL DE CE QUI CLOCHE, ENSUITE LA LISTE ENTIÈRE. L'ordre
+ * compte : on lit un rapport du haut, et ce qui demande une décision passe
+ * devant ce qui n'en demande aucune.
+ */
 function catalogueEnTexte() {
     const fautifs = bilansCatalogue.filter(e => e.bilans.some(b => b.soucis.length));
     const lignes = [`${bilansCatalogue.length} exercice(s) contrôlé(s), `
@@ -1431,13 +1450,29 @@ function catalogueEnTexte() {
         lignes.push(`(Arrêté en route : ${exercices.length - bilansCatalogue.length} `
             + 'exercice(s) n\'ont pas été vus.)');
     }
-    fautifs.forEach(e => {
+    if (fautifs.length) {
         lignes.push('');
-        lignes.push(`### ${e.titre} (${e.id})`);
-        e.bilans.filter(b => b.soucis.length).forEach(b => {
-            lignes.push(`- ${b.nom} · ${b.quoi}${b.ms === null ? '' : ` · ${b.ms} ms`} :`);
-            b.soucis.forEach(s => lignes.push(`    · ${s}`));
+        lignes.push('### Ce qui cloche');
+        fautifs.forEach(e => {
+            lignes.push('');
+            lignes.push(`#### ${e.titre} (${e.id})`);
+            e.bilans.filter(b => b.soucis.length).forEach(b => {
+                lignes.push(`- ${b.nom} · ${b.quoi}${b.ms === null ? '' : ` · ${b.ms} ms`} :`);
+                b.soucis.forEach(s => lignes.push(`    · ${s}`));
+            });
         });
+    }
+    // TOUS LES BILANS, UN PAR LIGNE. Une croix, une coche, le temps du plus
+    // lent sondage : de quoi relire deux cent cinquante lignes d'un coup d'œil
+    // et repérer celui qui met trois secondes à se dessiner.
+    lignes.push('');
+    lignes.push(`### Tous les bilans (${bilansCatalogue.length})`);
+    bilansCatalogue.forEach(e => {
+        const soucis = e.bilans.reduce((n, b) => n + b.soucis.length, 0);
+        const lent = e.bilans.reduce((m, b) => Math.max(m, b.ms || 0), 0);
+        lignes.push(`${soucis ? '✗' : '✓'} ${e.id} — ${e.titre}`
+            + ` — ${e.bilans.length} sondage(s)${lent ? `, le plus lent ${lent} ms` : ''}`
+            + (soucis ? ` — ${soucis} souci(s)` : ''));
     });
     return lignes.join('\n');
 }
@@ -1694,10 +1729,15 @@ async function telechargerReleve() {
     const nom = enFichier(page, 'html', 'text/html');
     const ko = Math.round(page.length / 1024);
     const n = images.filter(i => i.url).length;
+    // ON DIT CE QU'IL Y A DEDANS, pas seulement qu'il est parti. Après une
+    // tournée de quarante minutes, la question n'est pas « est-ce enregistré ? »
+    // mais « est-ce que les deux cent quarante-neuf bilans sont dedans ? ».
+    const tout = bilansCatalogue
+        ? ` Les ${bilansCatalogue.length} bilans du catalogue sont dedans.` : '';
     showToast(n
         ? `Relevé enregistré (${nom}) — ${n} image${n > 1 ? 's' : ''} dedans, ${ko} Ko. `
-          + 'Un seul fichier à m\'envoyer.'
-        : `Relevé enregistré (${nom}) — aucun dessin photographiable dans les volets ouverts.`,
+          + 'Un seul fichier à m\'envoyer.' + tout
+        : `Relevé enregistré (${nom}) — aucun dessin photographiable dans les volets ouverts.${tout}`,
     'success');
 }
 
@@ -1741,7 +1781,14 @@ function enFichier(texte, ext = 'txt', mime = 'text/plain') {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([texte], { type: `${mime};charset=utf-8` }));
     // Daté : on en garde plusieurs d'affilée, avant et après un réglage.
-    a.download = `atelier-${exoCourant.id}-${new Date().toISOString().slice(0, 16)
+    // ET NOMMÉ D'APRÈS CE QU'IL PORTE. Rémy, en relisant un relevé de toute la
+    // tournée : « si je balaye tout je ne peux pas télécharger un seul fichier
+    // de tous les bilans ». Le fichier s'appelait `atelier-num-pgcd-ppcm-…`
+    // alors qu'il portait les 249 exercices — le nom décrivait l'exercice
+    // affiché, pas le contenu, et c'est le nom qu'on lit six mois plus tard
+    // dans un dossier de téléchargements.
+    const quoiDedans = bilansCatalogue ? 'catalogue' : exoCourant.id;
+    a.download = `atelier-${quoiDedans}-${new Date().toISOString().slice(0, 16)
         .replace(/[:T]/g, '-')}.${ext}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 30000);

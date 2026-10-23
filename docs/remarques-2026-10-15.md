@@ -3229,3 +3229,22 @@ fichier qui dise tout.
    — Rémy, à l'époque : « j'ai passé 3 plombes à chercher le bouton d'import et
    les zones de drop n'ont pas semblé fonctionner. » On emprunte ce chemin-là
    plutôt que d'en écrire un second.
+
+#### Suite : le fichier doit porter TOUS les bilans — 23 octobre
+
+> « oui mais du coup si je balaye tout je ne peux pas télécharger un seul
+> fichier de tous les bilans ; clairement plein d'exercices fonctionnent »
+
+**CE QUE LE FICHIER FAISAIT** : la section du catalogue comptait les exercices
+contrôlés, puis ne détaillait QUE les fautifs. Les exercices sains étaient
+comptés, jamais nommés. À l'écran c'est juste — « deux cent quarante-neuf
+lignes *rien à signaler* noieraient les douze qui comptent » —, mais le
+FICHIER n'a pas le même métier : il est le compte rendu, pas le tableau de
+bord. Rémy balaie tout, et veut pouvoir me dire « regarde, tout ça marche ».
+
+**LA DISTINCTION À TENIR** : l'écran montre ce sur quoi il faut agir ; le
+fichier porte la trace entière. Les deux lisent les mêmes mesures.
+
+**ET LE NOM DU FICHIER** : il reste `atelier-<exercice>-<date>.html` même
+quand il porte le catalogue entier. Le titre à l'intérieur le dit, le nom non
+— et c'est le nom qu'on voit dans ses téléchargements.

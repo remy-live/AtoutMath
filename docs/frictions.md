@@ -5755,3 +5755,30 @@ le résultat n'existe pas** — 15 octobre 2026
   `atelier.js`, on cite sans accents graves.** Écrite ici pour qu'on la
   retrouve, parce que c'est le seul fichier du dépôt où elle s'applique à
   CHAQUE commentaire.
+
+## Un toast se mesure en l'attendant, jamais en le cueillant — 2026-10-23
+
+- *Ce que je voulais faire* : vérifier dans un vrai navigateur que le fichier
+  téléchargé par l'Atelier s'appelle bien `atelier-catalogue-<date>.html` quand
+  il porte la tournée complète. Le nom passe par un toast ; j'ai lu le toast.
+- *Ce qui a coûté* : **une sonde complète pour rien — une minute de tournée,
+  puis deux mesures RATÉES sur un code parfaitement juste.** Le conteneur de
+  toasts était vide trois secondes après le clic, pour deux raisons qui
+  s'additionnent : `telechargerReleve` photographie les trois volets avant
+  d'écrire le fichier (donc le toast arrive tard), et un toast s'efface tout
+  seul au bout de quelques secondes (donc il peut déjà être parti). Entre les
+  deux, la fenêtre de lecture est étroite et mobile — et un toast absent rend
+  exactement la même réponse qu'un nom de fichier faux.
+- *Combien de fois* : |||| (c'est la quatrième forme de la même règle : le mur
+  blanc du QR code, le `<details>` fermé, l'écran d'avant, et maintenant le
+  toast)
+- *Ce qui manque* : la règle de la maison vaut aussi pour les messages fugaces
+  — **« pour mesurer un écran, il faut une entrée qui ne le fasse pas
+  changer »**, et un toast ne tient pas en place. Deux formes selon le cas :
+  quand le navigateur porte l'information lui-même, on la lui demande
+  (`page.waitForEvent('download')` rend `suggestedFilename()`, sans horloge) ;
+  sinon on ATTEND le toast dans la page au lieu de le cueillir
+  (`for (…) { si présent, rendre ; sinon dormir 250 ms }`). Si le cas revient,
+  c'est un `s.attendreLeToast(/motif/)` à ajouter à `sonde.mjs` — quinze
+  lignes, et une friction de moins. Pas encore fabriqué : deux occurrences
+  suffiront.

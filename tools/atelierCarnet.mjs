@@ -169,6 +169,50 @@ if (fenetre) {
     dire('et il dit combien d\'exercices n\'ont pas été vus',
         /Arrêté en route/.test(dansLeReleve),
         (/\(Arrêté en route[^)]*\)/.exec(dansLeReleve) || [''])[0]);
+
+    console.log('\nET IL PORTE TOUS LES BILANS, PAS SEULEMENT LES FAUTIFS\n' + '─'.repeat(64));
+    // RÉMY : « si je balaye tout je ne peux pas télécharger un seul fichier de
+    // tous les bilans ; clairement plein d'exercices fonctionnent ». On COMPTE
+    // les lignes sous le titre et on les compare au nombre annoncé : un titre
+    // « Tous les bilans » sous lequel il n'y aurait que les fautifs serait un
+    // mensonge pire que le silence d'avant.
+    const bloc = dansLeReleve.slice(dansLeReleve.indexOf('### Tous les bilans'));
+    const annonce = Number((/### Tous les bilans \((\d+)\)/.exec(bloc) || [0, 0])[1]);
+    const comptees = (bloc.match(/^[✓✗] /gm) || []).length;
+    dire('le relevé liste TOUS les bilans, un par ligne',
+        annonce > 0 && comptees === annonce, `${comptees} ligne(s) pour ${annonce} annoncé(s)`);
+    dire('et il dit lesquels vont bien', /^✓ /m.test(bloc),
+        (bloc.match(/^[✓✗] [^\n]+/gm) || []).slice(0, 2).join(' | '));
+
+    // LE NOM DU FICHIER DIT CE QU'IL PORTE. Il s'appelait
+    // « atelier-num-pgcd-ppcm-2026-10-23.html » alors qu'il portait les 249
+    // exercices : le nom décrivait l'exercice AFFICHÉ, pas le contenu.
+    // ON NE LIT PAS LE NOM DANS LE TOAST : mesuré, le conteneur était VIDE
+    // trois secondes après le clic, et la mesure disait « pas de nom » sur un
+    // téléchargement parfaitement nommé. Deux raisons qui s'additionnent :
+    // `imagesDesVolets()` photographie les trois volets avant d'écrire le
+    // fichier, et un toast s'efface tout seul. « Pour mesurer un écran, il faut
+    // une entrée qui ne le fasse pas changer » — ici l'entrée est l'événement
+    // de téléchargement du navigateur, qui porte le nom du fichier lui-même et
+    // n'a pas d'horloge.
+    const attendu = s.page.waitForEvent('download', { timeout: 60000 });
+    await s.cliquer('#atl-telecharger', 'le bouton de téléchargement');
+    let nomFichier = '';
+    try { nomFichier = (await attendu).suggestedFilename(); } catch (e) { nomFichier = ''; }
+    dire('le fichier téléchargé s\'appelle « atelier-catalogue-… »',
+        /^atelier-catalogue-\d{4}/.test(nomFichier), nomFichier || '(aucun téléchargement)');
+    // ET LE TOAST, QU'ON ATTEND AU LIEU DE LE CUEILLIR AU VOL.
+    const nomDit = await s.page.evaluate(async () => {
+        for (let i = 0; i < 60; i++) {
+            const t = (document.getElementById('toast-container') || {}).textContent || '';
+            if (/Relevé enregistré/.test(t)) return t;
+            await new Promise(r => setTimeout(r, 250));
+        }
+        return '';
+    });
+    dire('et le toast dit combien de bilans sont dedans',
+        /\d+ bilans du catalogue sont dedans/.test(nomDit),
+        (/Les \d+ bilans[^.]*\./.exec(nomDit) || ['(toast introuvable)'])[0]);
 }
 
 console.log(await s.photo('#atl-depot', 'tools/tmp/atelier-depot.png', 6));
