@@ -1606,9 +1606,31 @@ function replierOptionsFiche(reste = 60) {
         const tiroir = document.createElement('details');
         tiroir.id = 'atl-options-fiche';
         tiroir.className = 'fp-repli';
-        tiroir.innerHTML = '<summary>Les options de la feuille</summary>';
+        // ET LE NOM DIT CE QU'IL Y A DEDANS. « Les options de la feuille » est
+        // vrai et n'apprend rien : on n'ouvre pas un tiroir pour voir s'il
+        // contient ce qu'on cherche. Rémy demandait la couleur et les
+        // colonnes, qui y étaient déjà.
+        tiroir.innerHTML = '<summary>Les options de la feuille '
+            + '<span class="atl-options-dit">contenu · colonnes · couleur · format</span>'
+            + '</summary>';
         els[0].before(tiroir);
-        els.forEach(el => tiroir.appendChild(el));
+        els.forEach(el => {
+            tiroir.appendChild(el);
+            // UN REPLI DANS UN REPLI SE PAIE DEUX FOIS.
+            //
+            // Rémy : « pour l'aperçu de la feuille, il faudrait que je puisse
+            // choisir les options (couleur/colonne) pour vérifier ». Elles
+            // EXISTENT — `#fq-couleur` et `#fq-colonnes` — et il ne les
+            // trouvait pas. MESURÉ (tools/optionsDeLaFeuille.mjs) : DEUX
+            // clics, et le nom du premier repli — « Les options de la
+            // feuille » — ne dit ni couleur ni colonnes, pendant que le
+            // second s'appelle « Papier et corrigé ».
+            //
+            // On ouvre donc ce qu'on vient de ranger. Le tiroir de l'Atelier
+            // cache déjà tout : replier une seconde fois à l'intérieur ne
+            // cache plus rien, cela ne fait qu'ajouter un clic à l'aveugle.
+            if (el.tagName === 'DETAILS') el.open = true;
+        });
         return;
     }
     // LA FENÊTRE N'EST PAS TOUJOURS LÀ AU RETOUR. Un exercice sans grille

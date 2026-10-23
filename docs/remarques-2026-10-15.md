@@ -3179,3 +3179,27 @@ Trois pistes écartées, chacune par une mesure :
 `?auteur=1` ne la monte pas dans la sonde, et une sonde qui mesure une palette
 absente rend exactement la même réponse qu'une palette sans effet. C'est la
 seule case non cochée, et c'est celle de sa capture.
+
+### 30. L'Atelier : le relevé, et les options de la feuille
+
+> « dans l'atelier, le téléchargement pour les erreurs est exercice par
+> exercice ou pour tous ? »
+>
+> « et pour l'apercu de la feuille, il faudrait que je puisse choisir les
+> options (couleur/colonne) pour vérifier »
+
+**LA PREMIÈRE EST UNE QUESTION, ET LA RÉPONSE EST : EXERCICE PAR EXERCICE.**
+`texteReleve()` décrit `exoCourant` — un seul : son rangement, ses trois volets
+(jeu, feuille, robot), le bilan de « Contrôler » qui ne tourne que sur lui, le
+carnet et les vingt-cinq dernières lignes de console. « ⤓ Télécharger (avec les
+images) » emporte ce relevé-là plus les photos de ses volets, dans un seul
+`.html`. Rien n'y parle des 198 autres exercices.
+
+**LA SECONDE EST À MESURER AVANT DE CODER.** Les deux réglages EXISTENT :
+`#fq-couleur` (« Impression ») et `#fq-colonnes` (auto, 1 à 6) sur la fiche
+d'exercices, `#fp-couleur` sur la fiche de grilles. Mais `replierOptionsFiche`
+range `#fq-plus` — lui-même un `<details>` nommé « Papier et corrigé » — DANS
+le tiroir « Les options de la feuille ». Un repli dans un repli : à vérifier au
+navigateur, mais s'il faut deux clics et que le nom du premier ne dit ni
+couleur ni colonnes, Rémy ne peut pas les trouver — et c'est exactement ce
+qu'il vient de dire.

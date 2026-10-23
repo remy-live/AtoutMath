@@ -2597,6 +2597,16 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     list-style: none; user-select: none;
 }
 .fp-repli > summary::-webkit-details-marker { display: none; }
+
+/* CE QUE LE TIROIR DE L'ATELIER CONTIENT, écrit à côté de son nom — voir
+   `replierOptionsFiche` dans `js/ui/atelier.js`. Rémy cherchait la couleur et
+   les colonnes, qui y étaient déjà : MESURÉ, deux clics et un nom qui ne les
+   annonçait pas. En gris et plus petit, pour rester une précision et non un
+   second titre. */
+.atl-options-dit {
+    font-weight: 500; font-size: .82em; color: var(--text-muted);
+    margin-left: .4em;
+}
 /* Le chevron, tracé plutôt qu'écrit : la flèche par défaut d'un `details`
    change de dessin d'un navigateur à l'autre. */
 .fp-repli > summary::before {
