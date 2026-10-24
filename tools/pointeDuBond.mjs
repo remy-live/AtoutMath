@@ -25,9 +25,10 @@
 // ON MESURE DEUX FOIS, ET LES DEUX SONT NÉCESSAIRES :
 //
 //   · SUR LE CHEMIN DE L'ÉLÈVE — on ouvre « Heures et Minutes » réglé sur la
-//     soustraction et l'on appuie sur « Schéma ». C'est la seule mesure qui dit
-//     que le bouton existe, qu'il ouvre quelque chose, et que les bulles
-//     tombent sur leurs arcs avec la vraie police et la vraie largeur.
+//     soustraction, on demande un indice, et l'on ferme la carte. C'est la
+//     seule mesure qui dit que le dessin RESTE sous l'énoncé quand la carte
+//     s'en va, et que les bulles tombent sur leurs arcs avec la vraie police
+//     et la vraie largeur.
 //   · SUR LES DEUX FORMES DU DESSIN — un bond et deux bonds. Une question tirée
 //     au hasard n'en montre qu'une, et c'est l'arc COURT qui arrive le plus de
 //     biais : le débord de la pointe s'y projette le moins horizontalement.
@@ -131,16 +132,28 @@ if (raté) {
 }
 
 console.log(`\n── sur le chemin de l'élève`);
-await s.doitExister('.np-outils', 'la barre des outils, sous l\'énoncé');
-const etiquette = await s.page.$eval('.np-outil-btn', b => b.textContent.trim());
 const calcul = await s.page.$eval('.game-question', q => q.textContent.trim());
-console.log(`    « ${calcul} » · le bouton sous le calcul : « ${etiquette} »`);
-await s.cliquer('.np-outil-btn', 'le bouton du schéma');
-await dormir(400);
-await s.doitExister('.np-outil .md-bonds-bloc', 'le schéma dans le panneau');
-const vrai = await s.page.evaluate(LIRE, ['.np-outil', DEBORD]);
+console.log(`    « ${calcul} » · on demande un indice`);
+await s.cliquer('[data-hint]', 'le bouton « Un indice »');
+await dormir(700);
+// ON FERME LA CARTE, ET C'EST LA MOITIÉ DE LA MESURE : le dessin doit rester.
+// C'est la plainte que Rémy a faite deux fois — « je ne vois pas le schéma » —
+// et elle ne se voit QUE si l'on referme.
+await s.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.fb-close')]
+        .find(x => x.getBoundingClientRect().width > 0);
+    if (b) b.click();
+});
+await dormir(600);
+await s.doitExister('.hint-schema--pose .md-bonds-bloc',
+    'le schéma posé sous l\'énoncé, carte fermée');
+const combien = await s.page.evaluate(() =>
+    document.querySelectorAll('.md-bonds-bloc').length);
+console.log(`    schémas à l'écran : ${combien}`
+    + (combien === 1 ? '' : '  \x1b[31m← il n\'en faut qu\'un\x1b[0m'));
+const vrai = await s.page.evaluate(LIRE, ['.hint-schema--pose', DEBORD]);
 dire(vrai);
-await s.photo('.np-outil', 'tools/tmp/bond-outil.png', 14).catch(() => {});
+await s.photo('.hint-schema--pose', 'tools/tmp/bond-pose.png', 14).catch(() => {});
 
 // ── 2. LES DEUX FORMES, POSÉES DANS LA PAGE RÉELLE ───────────────────────────
 //
@@ -158,9 +171,9 @@ for (const voulu of [2, 3]) {
         for (let i = 0; i < 400 && !html; i++) {
             const it = dureesGenerator.generate({ marches: ['difference'] },
                 { index: i, rng: makeRng('pointe-' + i) });
-            const o = it && it.meta && it.meta.outils;
-            if (!o) continue;
-            if (arretsDesBonds(it.meta.y, it.meta.x).length === combien) html = o[0].html;
+            const dessin = it && it.meta && it.meta.schemaPose;
+            if (!dessin) continue;
+            if (arretsDesBonds(it.meta.y, it.meta.x).length === combien) html = dessin;
         }
         if (!html) return false;
         let bac = document.querySelector('#sonde-bac');
@@ -194,7 +207,7 @@ for (const voulu of [2, 3]) {
 const mesures = [vrai, ...formes].filter(m => !m.vide);
 const airs = mesures.flatMap(m => m.ecarts.map(e => e.air));
 const deborde = mesures.flatMap(m => m.bulles).filter(b => b.horsScene > 0).length;
-const ok = airs.length && airs.every(a => a >= 2 && a <= 15) && !deborde;
+const ok = airs.length && airs.every(a => a >= 2 && a <= 15) && !deborde && combien === 1;
 console.log(ok
     ? `\n\x1b[32mLa pointe laisse de l'air\x1b[0m sans lâcher son arrêt, `
         + `et les ${mesures.flatMap(m => m.bulles).length} bulles tiennent dans la scène.`

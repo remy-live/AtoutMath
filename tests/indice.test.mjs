@@ -173,8 +173,19 @@ test('LE DESSIN RESTE SOUS L\'ÉNONCÉ QUAND LA CARTE SE FERME', () => {
         'le dessin ne se range plus sous l\'énoncé');
     // ON REMPLACE, ON N'EMPILE PAS : un second indice qui dessine aussi
     // donnerait deux fois la même figure l'une sous l'autre.
-    assert.match(bloc, /pose\.innerHTML = session\.schemaIndice;/,
+    assert.match(bloc, /pose\.innerHTML = dessin;/,
         'deux indices qui dessinent empileraient deux figures');
+    // MAIS ON NE REMPLACE QUE SI LE DESSIN CHANGE, et cette seconde moitié est
+    // arrivée après : depuis que le dessin posé porte des CASES (Rémy, « il
+    // faut pouvoir écrire dans les bulles »), le réécrire vide ce que l'élève
+    // y a tapé — et un second indice le ferait sans un mot.
+    assert.match(bloc, /if \(deja !== dessin\) \{/,
+        'un second indice efface ce que l\'élève a écrit dans le dessin');
+    // ET SES CASES SONT BRANCHÉES : le dessin est un descendant du conteneur,
+    // qui écoute le clavier. Sans la barrière de `activities/outils.js`, taper
+    // « 40 » dans une bulle répondrait AUSSI à la question.
+    assert.match(bloc, /brancherCasesPosees\(pose\);/,
+        'les frappes du dessin posé arrivent à l\'activité');
     // ET LE STYLE EXISTE : sans lui, le dessin arrive pleine largeur au
     // milieu de la question.
     const css = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');

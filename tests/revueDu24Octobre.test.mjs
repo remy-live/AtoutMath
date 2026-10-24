@@ -329,23 +329,33 @@ test('LA SOUSTRACTION DE DURÉES SE FAIT PAR BONDS', () => {
     }
 });
 
-test('LE SCHÉMA S\'OUVRE À UN BOUTON, ET L\'ON ÉCRIT DANS SES BULLES', () => {
-    // RÉMY, deux messages du 24 octobre : « mets un bouton shéma sous le calcul
-    // de soustraction et on pourra compléter les pointillés », puis, l'ayant
-    // sous les yeux : « et il faut pouvoir écrire dans les bulles ».
+test('LE SCHÉMA SE POSE SOUS L\'ÉNONCÉ, ET L\'ON ÉCRIT DEDANS', () => {
+    // TROIS MESSAGES DE RÉMY EN DEUX JOURS, et le troisième défait une partie
+    // du premier :
     //
-    // POURQUOI UN OUTIL ET NON UN INDICE. La carte d'indice se REFERME : une
-    // case qu'elle porte s'efface dès qu'on la quitte, et l'on remplirait des
-    // pointillés pour rien. Les outils restent ouverts et gardent ce qu'on y
-    // pose — c'est tout l'objet de `activities/outils.js`.
+    //   « mets un bouton shéma sous le calcul de soustraction et on pourra
+    //     compléter les pointillés »
+    //   « et il faut pouvoir écrire dans les bulles »
+    //   « petit bug quand on demande l'incide, enlève le bouton shéma
+    //     finalement »
+    //
+    // CE QU'IL VOYAIT SUR SA CAPTURE : le schéma DEUX FOIS. Une fois posé sous
+    // l'énoncé par l'indice, en pointillés morts ; une fois dans le panneau du
+    // bouton, avec ses cases. Deux dessins de la même chose, dont un seul
+    // répondait quand on écrivait dedans.
+    //
+    // CE QUE GARDE CETTE ÉPREUVE : un seul dessin, celui qui se pose — et
+    // c'est LUI qui porte les cases.
     for (let i = 0; i < 8; i++) {
         const it = dureesGenerator.generate({ marches: ['difference'] },
             { index: i, total: 8, rng: makeRng('o' + i) });
-        const outils = (it.meta && it.meta.outils) || [];
-        assert.equal(outils.length, 1, `pas d'outil sur ${it.prompt.text}`);
-        assert.match(outils[0].label, /Schéma/, 'le bouton ne dit pas son nom');
-        const html = outils[0].html;
-        assert.match(html, /<svg class="md-bonds"/, 'le bouton n\'ouvre pas le schéma');
+        // LE BOUTON EST PARTI, et une épreuve doit le dire : sans cela, le
+        // jour où quelqu'un le remet, rien ne bronche et le doublon revient.
+        assert.ok(!(it.meta && it.meta.outils),
+            `le bouton « Schéma » est revenu sur ${it.prompt.text}`);
+        const html = (it.meta && it.meta.schemaPose) || '';
+        assert.match(html, /<svg class="md-bonds"/,
+            `rien à poser sous ${it.prompt.text}`);
         // AUTANT DE CASES QUE DE BONDS, plus celle du total quand il y en a deux
         // à ajouter. Elles sont de TEXTE : on y écrit « 40 min », pas un
         // chiffre — le filtre des cases d'outils est né pour le tableau de
@@ -359,10 +369,14 @@ test('LE SCHÉMA S\'OUVRE À UN BOUTON, ET L\'ON ÉCRIT DANS SES BULLES', () => 
         // PAS DE `placeholder` : photographié, son pointillé se posait sur le
         // pointillé qui souligne la case, et l'on voyait deux rangées de points.
         assert.ok(!/placeholder=/.test(html), 'la case a repris un marque-page');
-        // ET LA CARTE D'INDICE, ELLE, NE DEMANDE RIEN À ÉCRIRE.
+        // ET LA CARTE D'INDICE, ELLE, NE DEMANDE RIEN À ÉCRIRE : elle est
+        // MODALE, une case qu'elle porterait s'effacerait dès « Merci ! ».
+        // C'est pour cela que `schemaPose` est un dessin DIFFÉRENT de
+        // `schemas[]`, et non le même passé deux fois.
         const indice = (it.schemas || [])[0] || '';
         assert.ok(!/<input/.test(indice),
             'une case dans la carte d\'indice s\'efface dès qu\'on la referme');
+        assert.notEqual(html, indice, 'le dessin posé et celui de la carte sont le même');
         // ── LA POINTE S'ARRÊTE AVANT LE POINT, SANS LÂCHER LA LIGNE ────────
         //
         // RÉMY : « l'extrémité de la pointe de la flèche arrive sur le cercle ».
@@ -388,18 +402,29 @@ test('LE SCHÉMA S\'OUVRE À UN BOUTON, ET L\'ON ÉCRIT DANS SES BULLES', () => 
     for (let i = 0; i < 6; i++) {
         const it = dureesGenerator.generate({ marches: ['somme'] },
             { index: i, total: 6, rng: makeRng('s' + i) });
-        assert.ok(!(it.meta && it.meta.outils),
-            `la somme a reçu un bouton schéma — ${it.prompt.text}`);
+        assert.ok(!(it.meta && it.meta.schemaPose),
+            `la somme a reçu un schéma — ${it.prompt.text}`);
     }
-    // LE CHAÎNON SANS LEQUEL LA DÉCLARATION EST MUETTE : c'est `choice` qui pose
-    // la barre des outils, et il la pose JUSTE APRÈS L'ÉNONCÉ — « sous le
-    // calcul de soustraction », mot pour mot.
+    // ── LES TROIS CHAÎNONS SANS LESQUELS LA DÉCLARATION EST MUETTE ─────────
     const CH = readFileSync(new URL('../js/core/activities/choice.js', import.meta.url), 'utf8');
-    assert.match(CH, /\$\{item\.prompt\.html\}\$\{barreOutils\(item\)\}/,
-        'la barre des outils n\'est plus sous l\'énoncé');
+    // 1. C'EST `schemaPose` QU'ON POSE quand il existe, et non le dessin de la
+    //    carte : sans cette ligne, le dessin posé redevient muet et personne ne
+    //    peut plus rien y écrire.
+    assert.match(CH, /session\.current\.meta\.schemaPose\) \|\| session\.schemaIndice;/,
+        'le dessin posé ne reprend plus celui qui porte les cases');
+    // 2. ON NE LE REPOSE PAS PAR-DESSUS LUI-MÊME. Un second indice réécrivait
+    //    le dessin, donc vidait les bulles — sans un mot.
+    assert.match(CH, /if \(deja !== dessin\) \{/,
+        'un second indice efface ce que l\'élève a écrit');
+    // 3. ET LES FRAPPES NE DOIVENT PAS ARRIVER À L'ACTIVITÉ : le dessin est un
+    //    descendant du conteneur, qui écoute le clavier. Sans la barrière,
+    //    taper « 40 » dans une bulle répondrait AUSSI à la question.
+    assert.match(CH, /brancherCasesPosees\(pose\);/,
+        'les cases du dessin posé ne sont pas branchées');
+    const OU = readFileSync(new URL('../js/core/activities/outils.js', import.meta.url), 'utf8');
+    assert.match(OU, /export function brancherCasesPosees\(racine\) \{/);
     // ET LE RÉGIME DE CASE LIBRE, sans quoi « 40 min » perd cinq caractères sur
     // six : le filtre d'origine ne garde qu'UN chiffre par case.
-    const OU = readFileSync(new URL('../js/core/activities/outils.js', import.meta.url), 'utf8');
     assert.match(OU, /const libre = \(c\) => c\.dataset\.caseOutil === 'texte';/);
     assert.equal((OU.match(/if \(libre\(c\)\)/g) || []).length, 2,
         'la case de texte doit échapper AU FILTRE et AUX FLÈCHES');

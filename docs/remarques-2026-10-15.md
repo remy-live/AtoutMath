@@ -3694,3 +3694,25 @@ mort. Mesuré avant la correction : un `……` écrit en dur, aucun champ. Les
 bulles portent maintenant une case où l'on tape une DURÉE — « 40 min »,
 « 1 h 25 » —, et non un chiffre : le filtre des cases d'outils, né pour le
 tableau de numération, n'en gardait qu'un seul et effaçait la frappe.
+
+
+---
+
+## 27. Deux schémas à l'écran, et le bouton qu'on retire — 24 octobre
+
+> « petit bug quand on demande l'incide, enlève le bouton shéma finalement »
+
+LA CAPTURE MONTRE LE DÉFAUT ENTIER : sur « 2 h 25 − 20 min », le schéma est
+posé DEUX FOIS. Une fois sous l'énoncé — c'est l'indice, qui dépose son dessin
+et le laisse —, une fois dans le panneau du bouton « Schéma ». Et les deux ne se
+ressemblent pas : celui du haut porte des pointillés morts, celui du bas des
+cases où il a tapé « 40 ». Deux dessins de la même chose, dont un seul répond
+quand on écrit dedans.
+
+SON ARBITRAGE EST LE BON, ET IL EST PLUS SIMPLE QUE LE MIEN : un seul schéma,
+celui que l'indice dépose. Le bouton partait d'une idée juste — ne pas faire
+payer un indice pour voir le dessin — mais il a créé un doublon, et un doublon
+coûte plus cher qu'un indice.
+
+CE QUI DOIT SURVIVRE DU BOUTON : les cases. « il faut pouvoir écrire dans les
+bulles », hier. C'est donc le schéma POSÉ qui devient remplissable.

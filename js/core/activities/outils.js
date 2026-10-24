@@ -125,6 +125,29 @@ function brancherLesCases(boite, memoire, i) {
         boite.addEventListener(quoi, (e) => e.stopPropagation()));
 }
 
+/**
+ * LES MÊMES CASES, MAIS POSÉES À DEMEURE SOUS L'ÉNONCÉ.
+ *
+ * RÉMY a fait retirer le bouton « Schéma » — « enlève le bouton shéma
+ * finalement » — après avoir vu le dessin DEUX FOIS à l'écran : une fois posé
+ * par l'indice, une fois dans le panneau du bouton. Le dessin posé a donc
+ * hérité des cases, et il lui fallait ce que le panneau avait tout seul.
+ *
+ * CE QUI COMPTE ICI, C'EST LA BARRIÈRE. Le dessin posé est un descendant du
+ * conteneur de l'activité, qui écoute le clavier : sans `stopPropagation`,
+ * taper « 40 » dans une bulle répondrait AUSSI à la question. Le reste — le
+ * régime de case libre, la mémoire — vient avec, et c'est bien le but : un
+ * second code pour les mêmes cases finirait par ne plus leur ressembler.
+ *
+ * PAS DE MÉMOIRE À GARDER, elle : ce dessin-ci n'est posé qu'une fois par
+ * question (`wireHint` refuse de le reposer), donc les `<input>` gardent ce
+ * qu'on y tape tout seuls. La carte qu'on passe sert au régime, pas au
+ * souvenir.
+ */
+export function brancherCasesPosees(racine) {
+    brancherLesCases(racine, new Map(), 0);
+}
+
 /** Branche les boutons sur le panneau. À rappeler après chaque rendu. */
 export function brancherOutils(container, item) {
     const outils = outilsDe(item);

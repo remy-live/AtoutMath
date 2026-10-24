@@ -408,34 +408,33 @@ export const dureesGenerator = {
                 difficulty: deborde ? 3 : 1,
                 meta: {
                     marche, x, y, total, deborde, theme: `${marche}-${deborde}`,
-                    // ── LE BOUTON « SCHÉMA », SOUS LE CALCUL ──────────────
+                    // ── LE DESSIN QUI SE POSE, ET QUI SE REMPLIT ──────────
                     //
-                    // RÉMY : « mets un bouton shéma sous le calcul de
-                    // soustraction et on pourra compléter les pointillés ».
+                    // IL Y A EU UN BOUTON « SCHÉMA » ICI, pendant une version.
+                    // RÉMY, capture à l'appui : « petit bug quand on demande
+                    // l'incide, enlève le bouton shéma finalement ».
                     //
-                    // POURQUOI UN OUTIL ET PAS UN INDICE. Le dessin n'arrivait
-                    // qu'avec « Un indice », donc au prix d'un indice — et la
-                    // carte se refermait. On n'y tapait rien : une case dans
-                    // une carte qui disparaît est une case qu'on remplit pour
-                    // rien. Les outils, eux, sont GRATUITS, restent ouverts, et
-                    // leurs cases gardent ce qu'on y pose — voir
-                    // `activities/outils.js`. `choice` pose leur barre juste
-                    // après l'énoncé : « sous le calcul », mot pour mot.
+                    // CE QU'IL VOYAIT : le schéma posé sous l'énoncé par
+                    // l'indice, en pointillés morts, ET le même schéma dans le
+                    // panneau du bouton, avec ses cases. Deux dessins de la
+                    // même chose, dont un seul répondait quand on écrivait
+                    // dedans. Le bouton partait d'une idée juste — ne pas faire
+                    // payer un indice pour voir le dessin — mais un doublon
+                    // coûte plus cher qu'un indice.
                     //
-                    // PAS SUR LA SOMME. Une addition de durées se pose ;
-                    // avancer par bonds n'y apprend rien, et un bouton qui ne
-                    // sert à rien apprend à ne pas appuyer sur les boutons.
+                    // CE QUI SURVIT DU BOUTON, CE SONT LES CASES. « il faut
+                    // pouvoir écrire dans les bulles », la veille. C'est donc
+                    // le dessin POSÉ qui les porte.
                     //
-                    // LA CLÉ N'EXISTE PAS QUAND IL N'Y A PAS D'OUTIL :
-                    // `outils: undefined` est une clé PRÉSENTE, et l'épreuve
-                    // « aucun meta ne porte de code » la refuse.
-                    ...(somme ? {} : {
-                        outils: [{
-                            id: 'bonds',
-                            label: '📐 Schéma',
-                            html: schemaBonds(y, x, { cases: true })
-                        }]
-                    })
+                    // ET IL EST DISTINCT DE `schemas[]`, qui part dans la carte
+                    // d'indice : la carte est MODALE, une case qu'elle
+                    // porterait s'effacerait dès « Merci ! ». Voir
+                    // `wireHint` dans `activities/choice.js`.
+                    //
+                    // LA CLÉ N'EXISTE PAS SUR LA SOMME : `undefined` est une
+                    // clé PRÉSENTE, et l'épreuve « aucun meta ne porte de
+                    // code » la refuse.
+                    ...(somme ? {} : { schemaPose: schemaBonds(y, x, { cases: true }) })
                 }
             });
         }

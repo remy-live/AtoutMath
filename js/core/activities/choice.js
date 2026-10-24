@@ -15,7 +15,7 @@ import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { aideSelonEtat, reduireChoix, itemPeutAllerAuClavier,
     reponseEnPlusieursCases } from '../aide.js';
-import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
+import { barreOutils, boiteOutils, brancherOutils, brancherCasesPosees } from './outils.js';
 import { meneurDemo } from '../meneurDemo.js';
 
 /**
@@ -611,6 +611,9 @@ export function wireHint(container, session) {
     wireShowMe(container, session);
     const btn = container.querySelector('[data-hint]');
     if (!btn) return;
+    // LE DESSIN DÉJÀ POSÉ, pour ne pas le reposer par-dessus lui-même. Voir
+    // plus bas : le reposer effacerait ce que l'élève y a écrit.
+    let deja = null;
     btn.onclick = () => {
         const h = session.hint();
         if (!h) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; return; }
@@ -672,7 +675,23 @@ export function wireHint(container, session) {
         // ENTRE L'ÉNONCÉ ET LES PROPOSITIONS, et non à la fin : c'est la place
         // que `opts.context` occupe déjà pour les supports visuels, et c'est
         // là qu'on regarde avant de choisir.
-        if (session.schemaIndice) {
+        // ── ET C'EST CE DESSIN-LÀ QUI PORTE LES CASES, PAS LA CARTE ───────
+        //
+        // RÉMY, capture à l'appui : « petit bug quand on demande l'incide,
+        // enlève le bouton shéma finalement ».
+        //
+        // CE QU'IL VOYAIT : ce dessin-ci, en pointillés morts, ET le même
+        // dessin dans le panneau d'un bouton « Schéma », avec ses cases. Deux
+        // fois la même figure, dont une seule répondait quand on écrivait
+        // dedans. Le bouton est parti ; les cases sont restées, ici.
+        //
+        // `meta.schemaPose` EST UN AUTRE DESSIN QUE `session.schemaIndice`, et
+        // c'est voulu : la carte d'indice est MODALE. Une case qu'elle
+        // porterait s'effacerait dès « Merci ! » — on demanderait d'écrire
+        // dans quelque chose qui va disparaître.
+        const dessin = (session.current && session.current.meta
+            && session.current.meta.schemaPose) || session.schemaIndice;
+        if (dessin) {
             const ou = container.querySelector('.game-question');
             let pose = container.querySelector('.hint-schema--pose');
             if (!pose) {
@@ -681,9 +700,19 @@ export function wireHint(container, session) {
                 if (ou) ou.insertAdjacentElement('afterend', pose);
                 else container.prepend(pose);
             }
-            // ON REMPLACE, ON N'EMPILE PAS : un second indice qui dessine
-            // aussi donnerait deux fois la même figure l'une sous l'autre.
-            pose.innerHTML = session.schemaIndice;
+            // ON REMPLACE, ON N'EMPILE PAS : un second indice qui dessine aussi
+            // donnerait deux fois la même figure l'une sous l'autre. MAIS ON NE
+            // RÉÉCRIT QUE SI LE DESSIN CHANGE : le réécrire viderait les cases,
+            // et un second indice le ferait sans un mot.
+            if (deja !== dessin) {
+                deja = dessin;
+                pose.innerHTML = dessin;
+                // LES FRAPPES NE DOIVENT PAS ARRIVER À L'ACTIVITÉ : `bubbles`
+                // écoute le clavier sur le conteneur, dont ce dessin est un
+                // descendant. Sans la barrière, taper « 40 » dans une bulle
+                // répondrait AUSSI à la question. Voir `activities/outils.js`.
+                brancherCasesPosees(pose);
+            }
         }
         if (!session.hintsAvailable) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; }
     };
