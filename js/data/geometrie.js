@@ -517,7 +517,12 @@ export const geometrieExercises = [
         title: 'La Réciproque de Pythagore',
         generatorId: 'geo.pythagore-reciproque', activityId: 'numpad',
         consignePapier: 'Compare le carré du plus long côté à la somme des deux autres.',
-        colonnesPapier: 1,
+        // DEUX COLONNES, PAS UNE. Rémy, carnet du 24 octobre : « par défaut,
+        // mets 2 colonnes dans l'impression ». Une seule colonne laissait la
+        // moitié droite de la feuille vide sur des questions qui tiennent en
+        // une ligne — et une feuille à moitié blanche se lit comme un
+        // exercice inachevé, pas comme de la place pour réfléchir.
+        colonnesPapier: 2,
         lignesReponsePapier: 2,
         params: { marches: ['le-plus-long', 'les-deux-carres', 'conclure-donne',
             'conclure', 'le-sommet', 'probleme'] },

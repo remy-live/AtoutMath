@@ -197,6 +197,32 @@ const TEMPS = {
     C: 'C — s\'en servir'
 };
 
+/**
+ * SUR LE PAPIER, ON ÉCRIT LA LIGNE À COMPLÉTER — pas une question suivie
+ * de deux lignes vides.
+ *
+ * RÉMY, carnet du 24 octobre :
+ *
+ *   « Pour la feuille à imrpimer écris juste inverse de 7/3 : ..../....
+ *     Pas deux lignes en dessous.
+ *     Pour une division simple tu écris :
+ *     3/2 : 6/7 = .../... * .../.... = »
+ *
+ * CE QUE LA FEUILLE FAISAIT : « Quel est l'inverse de 9/2 ? » et, dessous,
+ * deux longues lignes de pointillés. Deux lignes ne demandent pas une
+ * fraction, elles demandent une phrase — et l'élève y écrit « 2/9 » en
+ * travers, ou pire, un nombre à virgule. LA FORME DE LA PLACE À REMPLIR
+ * ENSEIGNE CE QU'ON ATTEND : c'est la même leçon que la droite graduée,
+ * le même jour, dans le même carnet.
+ *
+ * COMMENT ON L'ÉCRIT : « …/… » suffit. La mise en page reconnaît un étage
+ * de fraction vide (voir ETAGE dans core/fiche.js) et empile les deux
+ * cases sous une barre. On ne dessine rien ici, on écrit la ligne.
+ *
+ * L'ÉCRAN NE BOUGE PAS. Il pose la question en toutes lettres et offre un
+ * pavé : c'est sa forme à lui, et elle est juste.
+ */
+
 /** Une question d'une marche : l'énoncé, la réponse, la correction. */
 export function question(etape, rng) {
 
@@ -207,6 +233,7 @@ export function question(etape, rng) {
         return {
             question: `Quel est l'inverse de ${a}/${b} ?`,
             questionHtml: `Quel est l'inverse de ${fraction(a, b)} ?`,
+            papier: `Inverse de ${a}/${b} : …/…`,
             htmlReponse: fractionATrous(),
             kind: 'numeric', reponse: `${b}|${a}`, cases: 2,
             pourquoi: `On RETOURNE la fraction : l'inverse de ${a}/${b} est ${b}/${a}. `
@@ -225,6 +252,7 @@ export function question(etape, rng) {
         const n = rng.int(2, 9);
         return {
             question: `Quel est l'inverse de ${n} ?`,
+            papier: `Inverse de ${n} : …/…`,
             htmlReponse: fractionATrous(),
             kind: 'numeric', reponse: `1|${n}`, cases: 2,
             pourquoi: `${n} s'écrit ${n}/1 — tout nombre entier est une fraction de `
@@ -245,6 +273,11 @@ export function question(etape, rng) {
             question: `Par quelle fraction faut-il multiplier ${a}/${b} pour obtenir 1 ?`,
             questionHtml: `Par quelle fraction faut-il multiplier ${fraction(a, b)} `
                 + 'pour obtenir 1 ?',
+            // SUR LE PAPIER, LA QUESTION EST L'ÉGALITÉ. « Par quelle fraction
+            // faut-il multiplier 2/3 pour obtenir 1 ? » tient en deux lignes et
+            // demande une phrase ; « 2/3 × …/… = 1 » tient en une et demande
+            // exactement ce qu'on veut lire.
+            papier: `${a}/${b} × …/… = 1`,
             htmlReponse: fractionATrous(),
             kind: 'numeric', reponse: `${b}|${a}`, cases: 2,
             pourquoi: `${a}/${b} × ${b}/${a} = ${a * b}/${a * b} = 1. Deux nombres dont le `
@@ -263,6 +296,7 @@ export function question(etape, rng) {
         return {
             question: `Calcule ${a}/${b} ÷ ${n}.`,
             questionHtml: `Calcule ${fraction(a, b)} ÷ ${n}.`,
+            papier: `${a}/${b} ÷ ${n} = …/…`,
             htmlReponse: fractionATrous(),
             kind: 'numeric', reponse: `${a}|${b * n}`, cases: 2,
             pourquoi: `Diviser par ${n}, c'est multiplier par 1/${n} : `
@@ -286,6 +320,12 @@ export function question(etape, rng) {
                 + 'qui la remplace.',
             questionHtml: `Calcule ${fraction(a, b)} ÷ ${fraction(c, d)}. `
                 + 'Écris d\'abord la multiplication qui la remplace.',
+            // LA LIGNE QU'IL A ÉCRITE DANS SON CARNET, mot pour mot :
+            // « 3/2 : 6/7 = .../... * .../.... = ». Les trois fractions vides
+            // sont les trois cases de la réponse — la première recopiée, la
+            // seconde retournée, le résultat — et c'est la transformation
+            // qu'on évalue, pas le produit.
+            papier: `${a}/${b} ÷ ${c}/${d} = …/… × …/… = …/…`,
             htmlReponse: ligneDeDivision(a, b, c, d),
             kind: 'numeric', reponse: `${a}|${b}|${d}|${c}|${n}|${m}`,
             pourquoi: `On garde la première et l'on multiplie par l'INVERSE de la seconde : `

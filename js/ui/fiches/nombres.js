@@ -2779,13 +2779,49 @@ function graduationPreviewHtml(item, slot, k, solution) {
             html += `<div style="position:absolute; left:${xTrait * k}px;
                 top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
                 font-weight:800; color:#2f855a">${ecrireDecimal(p.valeur, g.rang)}</div>`;
+        } else if (g.fractions) {
+            // ── ON DEMANDE UNE FRACTION : ON LAISSE LA PLACE D'UNE FRACTION ──
+            //
+            // RÉMY, carnet du 24 octobre : « comme c'est sous forme de
+            // fraction écris plutôt qu'un long A(...........) — écris
+            // A(.../...) mais tu écris la fraction en colonne. »
+            //
+            // UN LONG TRAIT DEMANDE UN NOMBRE, et c'est exactement ce qu'on
+            // ne veut pas faire écrire : l'élève qui lit une ligne y pose
+            // « 0,75 » là où le cours demande trois quarts. La forme de la
+            // place à remplir ENSEIGNE ce qu'on attend — c'est la même
+            // leçon que le corrigé empilé, deux branches plus haut, et il
+            // était seul à l'avoir apprise.
+            // UNE FRACTION GARDE SA FORME DE FRACTION. Sans plafond, un axe
+            // qui ne porte qu'UN point donne toute la largeur du bloc : la
+            // place à remplir faisait alors trois fois celle de ses voisines,
+            // et deux traits longs de six centimètres ne ressemblent plus à
+            // une fraction, ils ressemblent à deux lignes de réponse.
+            const w = Math.min(police * 4.2, Math.max(police * 1.6, lTrait * k * 0.45));
+            html += `<div style="position:absolute; left:${xTrait * k}px;
+                top:${(g.yEcrit - g.pt * 0.3528 * 2.1) * k}px; width:${w}px;
+                line-height:1.15">
+                <div style="height:${police * 0.95}px; border-bottom:
+                    ${Math.max(1, 0.4 * k)}px dotted #a8b0bf"></div>
+                <div style="height:${Math.max(1, 0.5 * k)}px; background:#1a202c;
+                    margin:${Math.max(1, 0.6 * k)}px 0"></div>
+                <div style="height:${police * 0.95}px; border-bottom:
+                    ${Math.max(1, 0.4 * k)}px dotted #a8b0bf"></div></div>`;
         } else {
             html += `<div style="position:absolute; left:${xTrait * k}px; top:${g.yEcrit * k}px;
                 width:${lTrait * k}px; height:0;
                 border-top:${Math.max(1, 0.4 * k)}px dotted #a8b0bf"></div>`;
         }
         if (p.lettre) {
-            html += `<div style="position:absolute; left:${(xTrait + lTrait + 0.6) * k}px;
+            // LA PARENTHÈSE SUIT LA PLACE QU'ON VIENT DE DESSINER, et c'est
+            // le détail qui décide si « A ( … ) » se lit comme une notation
+            // ou comme deux signes égarés. Une fraction empilée prend moins
+            // de large qu'un long trait : posée sur l'ancienne largeur, la
+            // fermante flottait à deux centimètres de ce qu'elle ferme.
+            const fin = g.fractions
+                ? xTrait + Math.min(police * 4.2, Math.max(police * 1.6, lTrait * k * 0.45)) / k + 0.6
+                : xTrait + lTrait + 0.6;
+            html += `<div style="position:absolute; left:${fin * k}px;
                 top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
                 font-weight:700; color:#1a202c">)</div>`;
         }
@@ -2867,6 +2903,29 @@ function dessinerGraduationPdf(doc, item, slot, solution, champ) {
         } else if (solution) {
             doc.setTextColor(...ENCRE.gris);
             doc.text(ecrireDecimal(p.valeur, g.rang), xTrait, g.yEcrit);
+        } else if (g.fractions) {
+            // LA MÊME FORME QUE L'APERÇU — voir le commentaire là-haut.
+            // Deux traits pointillés séparés d'une barre : la place dit
+            // qu'on attend une fraction, pas un nombre à virgule.
+            const mm = g.pt * 0.3528;
+            // Le même plafond que l'aperçu : une fraction garde sa forme.
+            const w = Math.min(mm * 6.5, Math.max(mm * 2.4, lTrait * 0.45));
+            doc.setDrawColor(...ENCRE.gris);
+            doc.setLineWidth(0.35);
+            doc.setLineDashPattern([0.8, 0.8], 0);
+            doc.line(xTrait, g.yEcrit - mm * 1.45, xTrait + w, g.yEcrit - mm * 1.45);
+            doc.line(xTrait, g.yEcrit, xTrait + w, g.yEcrit);
+            doc.setLineDashPattern([], 0);
+            doc.setDrawColor(...ENCRE.texte);
+            doc.setLineWidth(0.45);
+            doc.line(xTrait, g.yEcrit - mm * 0.72, xTrait + w, g.yEcrit - mm * 0.72);
+            // DEUX CASES À REMPLIR, PAS UNE : sur une fiche remplissable,
+            // le numérateur et le dénominateur se tapent séparément.
+            if (typeof champ === 'function') {
+                const h = Math.max(3.2, mm * 1.05);
+                champ(xTrait, g.yEcrit - mm * 1.45 - h * 0.78, w, h);
+                champ(xTrait, g.yEcrit - h * 0.78, w, h);
+            }
         } else {
             // `ENCRE.gris`, et non un `ENCRE.pointille` qui n'a jamais existé :
             // l'étalement d'une clef absente lève une TypeError, et c'est la
@@ -2884,8 +2943,13 @@ function dessinerGraduationPdf(doc, item, slot, solution, champ) {
             }
         }
         if (p.lettre) {
+            // LA PARENTHÈSE SUIT LA PLACE — voir l'aperçu.
+            const mm = g.pt * 0.3528;
+            const fin = g.fractions
+                ? xTrait + Math.min(mm * 6.5, Math.max(mm * 2.4, lTrait * 0.45)) + 0.6
+                : xTrait + lTrait + 0.6;
             doc.setTextColor(...ENCRE.texte);
-            doc.text(')', xTrait + lTrait + 0.6, g.yEcrit);
+            doc.text(')', fin, g.yEcrit);
         }
     });
 }

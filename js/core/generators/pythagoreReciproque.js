@@ -164,6 +164,34 @@ const TEMPS = {
     C: 'C — s\'en servir'
 };
 
+/**
+ * COMBIEN DE LIGNES CHAQUE MARCHE DEMANDE SUR LA FEUILLE.
+ *
+ * RÉMY, carnet du 24 octobre : « Quand tu demandes quel est le côté le
+ * plus long, une seule ligne suffit pour répondre. Quand on demande si le
+ * triangle est rectangle (et qu'il faut calculer), tu peux laisser un peu
+ * plus de ligne (6 de pointillé) ».
+ *
+ * LA PLACE DÉPEND DE CE QU'ON ÉCRIT, PAS DE LA FEUILLE. Le réglage
+ * « lignes de réponse » du menu d'impression donne la même place à toutes
+ * les questions ; or cet exercice-ci mêle une réponse en un mot — « BC » —
+ * et un raisonnement en trois temps : « JE SAIS QUE… OR… DONC… ». Leur
+ * donner la même place, c'est gâcher une demi-page sur l'une ou étrangler
+ * l'autre.
+ *
+ * SIX LIGNES POUR CONCLURE, et c'est son chiffre : le raisonnement tient
+ * en trois phrases, mais une phrase de rédaction prend deux lignes à la
+ * main dès qu'on écrit « BC² = 20² = 400 » en toutes lettres.
+ */
+const LIGNES_PAPIER = {
+    'le-plus-long': 1,
+    'les-deux-carres': 2,
+    'conclure-donne': 6,
+    conclure: 6,
+    'le-sommet': 1,
+    probleme: 6
+};
+
 /** Une question d'une marche. */
 export function question(etape, rng) {
 
@@ -381,6 +409,9 @@ export const pythagoreReciproqueGenerator = {
             meta: {
                 marche: etape.id, temps: etape.temps, titre: etape.titre,
                 decimal: false,
+                // LA PLACE QUE CETTE QUESTION-LÀ DEMANDE — voir LIGNES_PAPIER.
+                // Lue par `printQuestions.js`, appliquée par `core/fiche.js`.
+                lignesPapier: LIGNES_PAPIER[etape.id] || null,
                 ...(q.cases ? { cases: q.cases } : {})
             }
         });

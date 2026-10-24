@@ -119,6 +119,11 @@ function tirerQuestions(generator, params, nb) {
             // cours. Le générateur le déclare (`fractions: true`) ; la fiche
             // du parcours le lisait déjà, celle-ci l'oubliait.
             fractions: !!generator.fractions && porteUneFraction(texte, item.answer),
+            // COMBIEN DE LIGNES CETTE QUESTION-LÀ DEMANDE. Une question à un
+            // mot et un raisonnement en trois temps ne veulent pas la même
+            // place ; le réglage de la feuille ne sait pas les distinguer, le
+            // générateur si. Voir `placeDemandee` dans core/fiche.js.
+            lignes: (item.meta && item.meta.lignesPapier) || null,
             // LE MÊME PIÈGE QUE POUR LA RÉPONSE, un cran plus loin : le
             // libellé d'une proposition est fait pour l'ÉCRAN. Une fraction y
             // est du HTML — deux span empilés —, et une égalité de Thalès

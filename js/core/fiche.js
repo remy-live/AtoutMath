@@ -996,7 +996,7 @@ export function composerBlocs(exos, opts, mesurer) {
         }
         // Faute de mieux, on aligne par le bas : toutes les réponses dessous.
         if (exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) {
-            for (const c of cellules) if (c.memeLigne) { c.memeLigne = false; c.h += ligneRep; }
+            for (const c of cellules) if (c.memeLigne) { c.memeLigne = false; c.h += c.hRep || ligneRep; }
         }
         colonnesParExo.push(cols);
 
@@ -1069,7 +1069,29 @@ export function composerBlocs(exos, opts, mesurer) {
             //
             // Dès que `lignesReponse` est demandé, on descend donc toujours
             // sous l'énoncé. Sans réglage, rien ne change.
-            const placeDemandee = Math.round(Number(o.lignesReponse) || 0) > 0;
+            // ── LA PLACE PEUT ÊTRE DEMANDÉE PAR LA QUESTION ELLE-MÊME ────────
+            //
+            // RÉMY, carnet du 24 octobre, sur la réciproque de Pythagore :
+            // « Quand tu demandes quel est le côté le plus long, une seule
+            // ligne suffit pour répondre. Quand on demande si le triangle
+            // est rectangle (et qu'il faut calculer), tu peux laisser un peu
+            // plus de ligne (6 de pointillé) ».
+            //
+            // `lignesReponse` est un réglage de FEUILLE : il donne la même
+            // place à toutes les questions. Or le même exercice mêle une
+            // question à un mot et un raisonnement en trois temps — leur
+            // donner la même place, c'est gâcher une demi-page sur l'une ou
+            // étrangler l'autre. La question sait, elle, ce qu'elle attend :
+            // elle le déclare (`meta.lignesPapier`), et ce qu'elle déclare
+            // passe devant le réglage de la feuille.
+            const nRepQ = Math.max(0, Math.round(Number(q.lignes) || 0));
+            const nRep = nRepQ || Math.max(0, Math.round(Number(o.lignesReponse) || 0));
+            const placeDemandee = nRep > 0;
+            // UNE LIGNE D'ÉCRITURE VAUT SEPT MILLIMÈTRES — le même chiffre
+            // que le menu de la feuille (`7 * o.lignesReponse`), pour que six
+            // lignes demandées ici et six lignes demandées là-bas donnent la
+            // même hauteur.
+            const hRep = nRepQ ? Math.max(o.ligneReponse, 7 * nRepQ) : ligneRep;
             // LA PLACE QU'IL FAUT DÉPEND DE CE QU'ON ÉCRIT DEDANS.
             //
             // `repMin` vaut onze millimètres — de quoi poser deux ou trois
@@ -1117,12 +1139,15 @@ export function composerBlocs(exos, opts, mesurer) {
             const h = supp + hauteurDesLignes(o, lignes.length, !!q.fractions)
                 + (choix ? o.interligne : 0)
                 + (tableau ? o.avantTableau + tableau.h + o.apresTableau : 0)
-                + (sansPointilles ? 0 : ligneRep);
+                + (sansPointilles ? 0 : hRep);
             // `iQ` : le rang de la question DANS SON EXERCICE. C'est la seule
             // chose qui permette, depuis l'aperçu, de désigner celle qu'on
             // veut retirer ou retirer au sort — le numéro imprimé, lui, court
             // sur toute la feuille et saute les exercices non numérotés.
             return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, trouDessine, tableau, sansPointilles, h,
+                // CE QUE LA QUESTION A DEMANDÉ voyage avec sa cellule : le
+                // traceur, plus bas, n'a plus accès à `q`.
+                nRep, hRep,
                 dy: supp, mes, iQ, fractions: !!q.fractions };
         }); }
 
@@ -1262,8 +1287,8 @@ export function composerBlocs(exos, opts, mesurer) {
                     // la réponse ». On demandait trois lignes et l'on obtenait
                     // trois lignes de VIDE avec un unique trait au fond : on écrit
                     // sur des lignes, on n'écrit pas dans une marge.
-                    const nRep = Math.max(1, Math.round(Number(o.lignesReponse) || 1));
-                    const pas = ligneRep / nRep;
+                    const nRep = Math.max(1, cell.nRep || 1);
+                    const pas = (cell.hRep || ligneRep) / nRep;
                     rep = {
                         x: texteX,
                         y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)

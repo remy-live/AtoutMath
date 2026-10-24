@@ -859,7 +859,13 @@ export const numerationExercises = [
         id: 'num-relatifs-melange-sprint',
         cree: '2026-10-15',
         consignePapier: 'Donne le SIGNE du résultat, sans calculer.',
-        colonnesPapier: 4,
+        // TROIS COLONNES, PAS QUATRE. Rémy, carnet du 24 octobre :
+        // « en impression , 3 colonnes de base ». Les énoncés de cet
+        // exercice tiennent sur une ligne — « (−7) × (+3) » — mais à quatre
+        // colonnes la place pour écrire le signe se réduit à quelques
+        // millimètres, et un élève de cinquième écrit au crayon, pas au
+        // millimètre.
+        colonnesPapier: 3,
         title: 'Réflexe des Signes',
         generatorId: 'num.relatifs.melange', activityId: 'sprint',
         params: { marches: ['signe-somme', 'signe-produit', 'signe-melange', 'signe-simple'] },
@@ -942,7 +948,11 @@ export const numerationExercises = [
         id: 'calc-detour-rond',
         cree: '2026-10-15',
         consignePapier: 'Passe par le nombre rond, puis fais le petit pas qui reste.',
-        colonnesPapier: 4,
+        // TROIS COLONNES, PAS QUATRE — Rémy, carnet du 24 octobre :
+        // « en impression, 3 colonnes de base ». Même raison que pour
+        // « Réflexe des Signes » : le calcul est court, la RÉPONSE a besoin
+        // de place, et la quatrième colonne la prend.
+        colonnesPapier: 3,
         title: 'Le Détour par le Nombre Rond',
         generatorId: 'calc.detour', activityId: 'buttons',
         // LES NOMBRES SONT DES MOTS-CLEFS, et c'est Rémy qui l'a vu : « le nom
