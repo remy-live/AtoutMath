@@ -95,6 +95,140 @@ function casIrreductibles(rng, totalMin = 7, totalMax = 12) {
     return { total, favorables };
 }
 
+// ── LES ILLUSTRATIONS ──────────────────────────────────────────────────────
+//
+// RÉMY, carnet du 24 octobre : « Je trouve que tu pourrais faire des
+// illustrations avec des roues de couleurs, des urnes etc. »
+//
+// IL REPREND UNE PHRASE QUI ÉTAIT DÉJÀ ÉCRITE ICI, en tête des situations :
+// « la roue se lit sur un dessin qu'on n'a pas, donc son énoncé doit dire les
+// secteurs un par un ». On avait contourné le manque par des mots ; il
+// demande de combler le manque.
+//
+// ET CE N'EST PAS DE L'ORNEMENT. Un énoncé de probabilité décrit une
+// situation matérielle — un sac, une roue — et tout le travail consiste à
+// voir les cas possibles D'UN COUP. « 5 boules rouges et 4 bleues » demande
+// de se représenter neuf boules ; le dessin les montre, et l'élève compte
+// au lieu de reconstruire.
+//
+// LA COULEUR NE PORTE AUCUNE INFORMATION QUE LE TEXTE NE PORTE PAS. Un élève
+// daltonien lit « 5 boules rouges et 4 boules bleues » dans l'énoncé et
+// répond exactement comme les autres : le dessin aide, il ne décide pas.
+// C'est la même règle que les pièces du pavage (voir `core/teintesPieces.js`),
+// et elle se garde en écrivant le compte DANS la phrase, jamais seulement
+// dans le dessin.
+
+/**
+ * L'ENCRE D'UNE COULEUR NOMMÉE, masculin ou féminin, singulier ou pluriel.
+ *
+ * On compare un PRÉFIXE et non le mot entier : les situations écrivent
+ * « blanches », « verte », « gris », et une table à double entrée pour chaque
+ * accord serait sept fois plus longue pour la même chose. Une couleur
+ * inconnue rend un gris pâle plutôt que rien : un dessin sans fond se lit
+ * encore, un dessin qui jette ne se lit pas.
+ */
+function encreDe(mot) {
+    const m = String(mot || '').toLowerCase();
+    if (m.startsWith('roug')) return '#ef4444';
+    if (m.startsWith('bleu')) return '#3b82f6';
+    if (m.startsWith('vert')) return '#22c55e';
+    if (m.startsWith('jaun')) return '#eab308';
+    if (m.startsWith('noir')) return '#1f2937';
+    if (m.startsWith('blanc')) return '#ffffff';
+    if (m.startsWith('gris')) return '#9ca3af';
+    return '#cbd5e1';
+}
+
+/**
+ * LE SAC, ET CE QU'IL Y A DEDANS — « des urnes etc. »
+ *
+ * LES BOULES SONT RANGÉES, ET C'EST VOULU : quatre par rangée, alignées. Un
+ * sac de douze boules jetées au hasard se recompte trois fois avant que
+ * l'élève soit sûr de son dénominateur, et c'est justement le dénominateur
+ * qui se trompe le plus souvent dans ce chapitre.
+ *
+ * LE CONTOUR SOMBRE SERT À DEUX CHOSES : il détache les boules blanches du
+ * fond blanc — la boîte de jetons en a —, et il tient la figure quand on
+ * imprime en noir et blanc.
+ */
+function sacSvg(favorables, autres, couleurA, couleurB) {
+    const total = favorables + autres;
+    const parRangee = 4;
+    const rangees = Math.ceil(total / parRangee);
+    const r = 11, pas = 28;
+    const H = 72 + rangees * pas;
+    const boules = [];
+    for (let k = 0; k < total; k++) {
+        const ligne = Math.floor(k / parRangee);
+        const dansLaLigne = Math.min(parRangee, total - ligne * parRangee);
+        const col = k % parRangee;
+        // CHAQUE RANGÉE EST CENTRÉE SUR ELLE-MÊME : la dernière en compte
+        // souvent moins, et collée à gauche elle donne l'air d'un sac qui
+        // penche.
+        const x = 100 - (dansLaLigne - 1) * pas / 2 + col * pas;
+        const y = 60 + ligne * pas;
+        // LA CLASSE N'EST PAS DÉCORATIVE : c'est par elle qu'on compte les
+        // boules sans attraper autre chose. L'épreuve qui les comptait par
+        // `<circle` ramassait aussi l'axe de la roue, et celle qui comptait
+        // les secteurs par `<path` ramassait la flèche — 12 pour 11.
+        boules.push(`<circle class="pb-boule" cx="${x}" cy="${y}" r="${r}" fill="${
+            k < favorables ? couleurA : couleurB
+        }" stroke="#1f2937" stroke-width="1.5"/>`);
+    }
+    return `<svg class="pb-sac" viewBox="0 0 200 ${H}" width="100%" role="img"
+        aria-label="Un sac contenant ${favorables} et ${autres} objets de deux couleurs.">
+        <path d="M 34 26 L 34 ${H - 30} Q 34 ${H - 8} 56 ${H - 8}
+            L 144 ${H - 8} Q 166 ${H - 8} 166 ${H - 30} L 166 26"
+            fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        <line x1="26" y1="26" x2="174" y2="26" stroke="currentColor" stroke-width="3"
+            stroke-linecap="round"/>
+        ${boules.join('')}</svg>`;
+}
+
+/**
+ * LA ROUE — « des roues de couleurs ».
+ *
+ * TOUS LES SECTEURS ONT LA MÊME OUVERTURE, et c'est le fond du sujet : la
+ * règle « cas favorables sur cas possibles » ne vaut QUE si toutes les issues
+ * ont la même chance. L'énoncé le dit en toutes lettres (« TOUS DE MÊME
+ * TAILLE ») ; le dessin doit le MONTRER, sinon il contredit la phrase qui le
+ * surplombe.
+ *
+ * LA FLÈCHE EST UN REPÈRE, pas un résultat : elle montre où l'on lit, et elle
+ * pointe toujours vers le haut. Une flèche posée sur un secteur coloré
+ * laisserait croire que la roue s'est déjà arrêtée.
+ */
+function roueSvg(favorables, autres, couleurA, couleurB) {
+    const total = favorables + autres;
+    const R = 62, cx = 80, cy = 80;
+    const parts = [];
+    for (let k = 0; k < total; k++) {
+        // ON PART DU HAUT ET ON TOURNE DANS LE SENS DES AIGUILLES : le
+        // premier secteur est alors celui que la flèche désigne, ce qui fait
+        // lire le dessin dans le même ordre que la phrase.
+        //
+        // ET LA ROUE EST TOURNÉE D'UN DEMI-SECTEUR. Vu sur l'image : sans ce
+        // décalage, le haut tombe sur la LIMITE entre le premier secteur et le
+        // dernier, et la flèche semble désigner un trait plutôt qu'une zone.
+        // Une roue de loterie se lit au milieu d'un secteur, pas sur sa coupe.
+        const depart = -Math.PI / 2 - Math.PI / total;
+        const a1 = depart + (2 * Math.PI * k) / total;
+        const a2 = depart + (2 * Math.PI * (k + 1)) / total;
+        const x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
+        const x2 = cx + R * Math.cos(a2), y2 = cy + R * Math.sin(a2);
+        parts.push(`<path class="pb-secteur" d="M ${cx} ${cy} L ${x1.toFixed(1)} ${y1.toFixed(1)}
+            A ${R} ${R} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z"
+            fill="${k < favorables ? couleurA : couleurB}"
+            stroke="#1f2937" stroke-width="1.5" stroke-linejoin="round"/>`);
+    }
+    return `<svg class="pb-roue" viewBox="0 0 160 164" width="100%" role="img"
+        aria-label="Une roue partagée en ${total} secteurs de même taille,
+            dont ${favorables} d'une couleur et ${autres} de l'autre.">
+        ${parts.join('')}
+        <circle cx="${cx}" cy="${cy}" r="6" fill="currentColor"/>
+        <path d="M ${cx} 4 L ${cx - 9} 20 L ${cx + 9} 20 Z" fill="currentColor"/></svg>`;
+}
+
 // ── LES SEPT MARCHES ───────────────────────────────────────────────────────
 
 export const ETAPES = [
@@ -229,6 +363,9 @@ export function question(etape, rng) {
                 ? `Quelle est la probabilité de NE PAS tirer de ${objet} ${h.singulier[i]} ?`
                 : `Quelle est la probabilité de tirer ${article} ${objet} ${h.singulier[i]} ?`,
             htmlReponse: fractionATrous(),
+            // LE DESSIN DE LA SITUATION — « des urnes etc. ». Les favorables
+            // d'abord, pour que le dessin se lise dans l'ordre de la phrase.
+            figure: sacSvg(favorables, autres, encreDe(h.singulier[i]), encreDe(h.singulier[j])),
             kind: 'numeric', reponse: `${num}|${total}`, cases: 2,
             pourquoi: pasCelle
                 ? `Ne pas tirer ${article} ${objet} ${h.singulier[i]}, c'est en tirer ${article} `
@@ -259,6 +396,10 @@ export function question(etape, rng) {
             question: `Quelle est la probabilité de s'arrêter sur ${h.genre === 'f' ? 'une' : 'un'} ${
                 h.secteurs.replace(/s$/, '')} ${h.singulier[i]} ?`,
             htmlReponse: fractionATrous(),
+            // LA ROUE, ENFIN DESSINÉE — « des roues de couleurs ». Le
+            // commentaire des situations disait « la roue se lit sur un dessin
+            // qu'on n'a pas » : elle en a un.
+            figure: roueSvg(favorables, autres, encreDe(h.singulier[i]), encreDe(h.singulier[j])),
             kind: 'numeric', reponse: `${favorables}|${total}`, cases: 2,
             pourquoi: `${favorables} ${h.secteurs} favorables sur ${total} : la probabilité vaut `
                 + `${favorables}/${total}.`,
@@ -377,6 +518,10 @@ export const probabilitesGenerator = {
                 papier: `${aPlat} ${q.papier || q.question}`.trim(),
                 html: '<div class="game-question ap-probleme">'
                     + lignes.filter(Boolean).map(l => `<span class="ap-situation">${l}</span>`).join('')
+                    // LE DESSIN ENTRE LA SITUATION ET LA QUESTION, et pas
+                    // ailleurs : il illustre ce qui vient d'être décrit, et
+                    // c'est en le regardant qu'on lit la question.
+                    + (q.figure ? `<span class="pb-figure">${q.figure}</span>` : '')
                     + `<span class="ap-question">${q.question}</span>`
                     + (q.htmlReponse ? `<span class="pp-reponse">${q.htmlReponse}</span>` : '')
                     + '</div>'

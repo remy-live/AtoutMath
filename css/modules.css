@@ -310,6 +310,13 @@
 .learn-figure svg { max-width: 100%; height: auto; }
 .learn-etapes { margin: 10px 0 0; padding-left: 1.3em; }
 .learn-etapes li { margin-bottom: 9px; line-height: 1.65; }
+/* LE DESSIN D'UNE ÉTAPE — le même que dans le panneau d'aide, voir
+   `.aide-etape-figure` dans components.css et la remarque de Rémy du
+   24 octobre. L'exemple de cet écran-ci se déroule tout seul : une figure
+   trop haute ferait sauter la ligne suivante hors du champ au moment même
+   où elle arrive. */
+.learn-etape-figure { display: block; margin: 8px 0 2px; }
+.learn-etape-figure svg { max-width: 190px; max-height: 140px; height: auto; }
 /* LA LIGNE QUI VIENT D'ARRIVER SE SIGNALE. Rémy : « voire même mettre des
    schémas qui bougent ». Sans ce mouvement, l'exemple qui se déroule tout
    seul ressemble à un texte qui s'allonge : l'œil ne sait pas OÙ regarder.
@@ -376,6 +383,39 @@
 }
 .hint-schema svg { width: 100%; max-width: 260px; height: auto; display: block; }
 .hint-schema .fs-legende { font-size: .84rem; line-height: 1.35; margin: 0; opacity: .92; }
+
+/* LES BONDS D'UNE SOUSTRACTION DE DURÉES. Rémy : « 1:48 --> 2:00 --> 3:17 avec
+   +.... au-dessus de chaque flèche. Avec flèche et bulle, qqch de propre pour
+   bien montrer. »
+
+   PLUS LARGE QUE LES AUTRES SCHÉMAS — 320 px contre 260 : celui-ci porte
+   TROIS étiquettes de temps côte à côte (« 1 h 48 », « 2 h », « 3 h 17 ») plus
+   deux « + …… » au-dessus. À 260 px, les étiquettes des bulles voisines se
+   touchent. */
+.hint-schema svg.md-bonds { max-width: 320px; }
+
+/* LA TABLE DE SOIXANTE — « en indice une table de 60 pour trouver le nombre
+   d'heure ». En colonne, chiffres alignés, et la dernière ligne qui NE DÉPASSE
+   PAS se signale : sans elle, la table est juste et ne montre rien. */
+.md-table-60 {
+    list-style: none; margin: 0; padding: 0; display: grid; gap: 2px;
+    font-variant-numeric: tabular-nums; font-size: .95rem;
+}
+.md-table-60 li { padding: 2px 10px; border-radius: 6px; opacity: .55; }
+.md-table-60 .md-table-tient { opacity: 1; font-weight: 700; background: var(--bg-hover); }
+
+/* L'URNE ET LA ROUE DES PROBABILITÉS. Rémy : « Je trouve que tu pourrais faire
+   des illustrations avec des roues de couleurs, des urnes etc. »
+
+   LE DESSIN SE POSE ENTRE LA SITUATION ET LA QUESTION — il illustre ce qu'on
+   vient de lire, et c'est en le regardant qu'on lit la question. BORNÉ EN
+   HAUTEUR : un sac de douze boules fait trois rangées, et sur un téléphone en
+   portrait il pousserait la question et le pavé hors de l'écran. */
+.pb-figure { display: block; margin: 10px auto 4px; max-width: 230px; }
+.pb-figure svg { width: 100%; height: auto; display: block; max-height: 200px; }
+/* LA ROUE EST PLUS PETITE QUE LE SAC : elle est carrée, lui est en hauteur.
+   À largeur égale, la roue mange deux fois plus de place verticale. */
+.pb-figure svg.pb-roue { max-width: 175px; margin: 0 auto; }
 
 /* --- Pavé numérique ----------------------------------------
    Les touches étaient des capsules étroites et hautes : dans un conteneur

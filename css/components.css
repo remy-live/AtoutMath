@@ -640,6 +640,17 @@ body.mobile-view #toast-container {
 
 .aide-etapes { margin: 0 0 12px; padding-left: 22px; display: grid; gap: 10px; }
 .aide-etapes li { line-height: 1.5; }
+
+/* LE DESSIN D'UNE ÉTAPE. Rémy, sur « Lis la Fraction » : « dans le montre moi,
+   la figure n'est pas divisée avec ses parts ». Onze générateurs redessinent
+   la figure dans un indice (`item.schemas`) ; l'exemple n'en montrait aucun.
+
+   PLUS PETITE QUE CELLE DE LA QUESTION — 140 px contre 180 : elle vient SOUS
+   une ligne de texte, dans une liste numérotée, et à taille égale elle
+   chasserait l'étape suivante hors de l'écran. C'est la même raison qui borne
+   déjà `.aide-figure`. */
+.aide-etape-figure { display: block; margin: 8px 0 2px; }
+.aide-etape-figure svg { max-width: 190px; max-height: 140px; height: auto; }
 /* Chaque étape arrive : sans cela, une ligne de plus apparaît d'un coup au
    milieu du texte et l'on ne voit pas laquelle est neuve. */
 .aide-etapes li:last-child { animation: aide-arrive .28s ease-out; }

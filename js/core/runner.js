@@ -1633,9 +1633,15 @@ export class Runner {
                 <p class="learn-exemple-mot">Un exemple, comme les questions qui viennent.</p>
                 <div class="learn-question">${escapeHtml(ex.question)}</div>
                 ${ex.figures ? `<div class="learn-figure">${ex.figures}</div>` : ''}
+                <!-- LE DESSIN DE L'ETAPE, quand elle en a un. Voir
+                     etapesExemple dans core/aideExercice.js : onze generateurs
+                     redessinent la figure dans un indice, et cet ecran-ci ne
+                     montrait que le texte. (Pas un seul accent grave ici : il
+                     fermerait le gabarit qui entoure ce commentaire.) -->
                 <ol class="learn-etapes">${ex.etapes.slice(0, vu)
         .map((e, i) => `<li${i === vu - 1 ? ' class="learn-etape--neuve"' : ''}
-            >${escapeHtml(e)}</li>`).join('')}</ol>
+            >${escapeHtml(e)}${(ex.dessins || [])[i]
+        ? `<span class="learn-etape-figure">${(ex.dessins || [])[i]}</span>` : ''}</li>`).join('')}</ol>
                 ${montreReponse ? `<div class="learn-reponse">
                     <span class="learn-reponse-etiq">Réponse</span>
                     <strong>${escapeHtml(ex.reponse)}</strong>

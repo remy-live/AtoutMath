@@ -155,7 +155,8 @@ function vueExemple(exo, corps, lecons) {
         ${exemple.figures
         ? `<div class="aide-figure">${exemple.figures}</div>` : ''}
         <ol class="aide-etapes">${exemple.etapes.slice(0, devoiles)
-        .map(e => `<li>${esc(e)}</li>`).join('')}</ol>
+        .map((e, i) => `<li>${esc(e)}${(exemple.dessins || [])[i]
+            ? `<span class="aide-etape-figure">${(exemple.dessins || [])[i]}</span>` : ''}</li>`).join('')}</ol>
         ${montreReponse ? `<div class="aide-reponse">
                 <span class="aide-reponse-etiq">Réponse</span>
                 <strong>${esc(exemple.reponse)}</strong>

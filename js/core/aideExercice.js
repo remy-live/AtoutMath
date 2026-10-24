@@ -168,10 +168,38 @@ export function etapesExemple(item) {
     const memeChose = (a, b) => normaliser(a) === normaliser(b);
     const etapes = bruts.filter((h, i) =>
         !(i === bruts.length - 1 && explication && memeChose(h, explication)));
+    // ── UNE ÉTAPE QUI DESSINE GARDE SON DESSIN ────────────────────────────
+    //
+    // RÉMY, carnet du 24 octobre, sur « Lis la Fraction » : « dans le montre
+    // moi, la figure n'est pas divisée avec ses parts ».
+    //
+    // CE QUI SE PASSAIT : le second indice de cet exercice-là REDÉCOUPE la
+    // figure — les traits qui manquaient apparaissent, ou les parts se
+    // numérotent. C'est tout ce qu'il a à montrer, et c'est Rémy lui-même qui
+    // l'avait demandé (« pour l'indice, dessine les traits de séparation »).
+    // Le dessin voyage dans `item.schemas`, à l'index de son indice. Cet
+    // exemple-ci ne lisait QUE `item.hints` : l'élève lisait « Voilà la figure
+    // avec toutes ses coupes » sous la figure SANS ses coupes.
+    //
+    // ONZE GÉNÉRATEURS POSENT DES `schemas` — la factorisation, les
+    // intervalles, les cubes, l'argent, les racines… Tous les onze ne
+    // montraient rien ici, et c'est la troisième fois que la même chose
+    // arrive sur cet écran : « dans l'aide j'ai cela, mais il manque le
+    // schéma », puis « quand il y a quelque chose de visuel, il faut afficher
+    // ce visuel ». Le dessin suit donc son étape, par construction.
+    //
+    // ON GARDE L'INDEX D'ORIGINE : `etapes` a pu perdre le dernier indice
+    // (celui qui redit l'explication), et un `map` sur la liste filtrée
+    // décalerait tous les dessins d'un cran.
+    const schemas = item.schemas || [];
+    const dessins = bruts.map((h, i) => schemas[i] || '')
+        .filter((d, i) => etapes.includes(bruts[i]));
     return {
         question: String(question).trim(),
         figures: figuresDe(item.prompt && item.prompt.html),
         etapes,
+        // Un dessin par étape, aligné sur `etapes` — vide quand il n'y en a pas.
+        dessins,
         reponse: item.answer === undefined || item.answer === null ? '' : String(item.answer),
         explication
     };

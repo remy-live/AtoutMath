@@ -42,6 +42,10 @@ import {
 import {
     moyenne, mediane, etendue, effectif, frequence, rangee, enFrancais, serieDeMoyenne
 } from '../statistiques.js';
+// LE NOMBRE ÉCRIT EN LETTRES, et il ne sert qu'à UN énoncé — voir
+// `moyenne-manquante`, où « On en connaît 3 » se lisait comme une valeur
+// de la série.
+import { spellInteger } from '../numberWords.js';
 
 const S_LIRE = 'don.stat.lire';
 const S_MOYENNE = 'don.stat.moyenne';
@@ -176,7 +180,8 @@ export function question(etape, rng) {
             pourquoi: `On compte : ${valeur} apparaît ${combien} fois dans la série. `
                 + 'C\'est l\'EFFECTIF de cette valeur.',
             aide: 'On barre les valeurs au fur et à mesure qu\'on les compte : c\'est le seul '
-                + 'moyen de ne pas en oublier une ni d\'en compter une deux fois.'
+                + 'moyen de ne pas en oublier une ni d\'en compter une deux fois.',
+            calcul: `Je compte combien de fois ${valeur} apparaît, en barrant au fur et à mesure.`
         };
     }
 
@@ -191,7 +196,9 @@ export function question(etape, rng) {
                 Math.min(...serie)} : l'étendue vaut ${Math.max(...serie)} − ${
                 Math.min(...serie)} = ${e}${s.unite ? ' ' + s.unite : ''}.`,
             aide: 'L\'étendue est une SOUSTRACTION : la plus grande moins la plus petite. '
-                + 'Elle ne dit pas où sont les valeurs, elle dit si elles sont serrées.'
+                + 'Elle ne dit pas où sont les valeurs, elle dit si elles sont serrées.',
+            calcul: `Je repère la plus grande et la plus petite, puis je soustrais : ${
+                Math.max(...serie)} − ${Math.min(...serie)}.`
         };
     }
 
@@ -212,7 +219,9 @@ export function question(etape, rng) {
                 + `${somme} ÷ ${serie.length} = ${enFrancais(vraie)}${s.unite ? ' ' + s.unite : ''}.`,
             aide: 'On additionne TOUTES les valeurs — y compris celles qui se répètent — puis '
                 + 'on divise par leur NOMBRE, pas par la plus grande ni par le nombre de '
-                + 'valeurs différentes.'
+                + 'valeurs différentes.',
+            calcul: `J'additionne les ${serie.length} valeurs, puis je divise la somme par ${
+                serie.length}.`
         };
     }
 
@@ -262,15 +271,40 @@ export function question(etape, rng) {
                     + `(${tri[demi - 1]} + ${tri[demi]}) ÷ 2 = ${enFrancais(m)}.`
                 : `On range : ${ecrireSerie(tri)}. Il y a ${tri.length} valeurs, la médiane est `
                     + `la ${demi + 1}ᵉ : ${m}. Il y en a ${demi} avant et ${demi} après.`,
+            // ── « IL FAUT DIRE QU'IL FAUT RANGER DANS L'ORDRE CROISSANT » ──────
+            //
+            // RÉMY, carnet du 24 octobre : « Quand on demande la médiane, en
+            // indice, il faut dire qu'il faut ranger les nombres dans l'ordre
+            // croissant ».
+            //
+            // LA MARCHE PAIRE NE LE DISAIT PAS DU TOUT, et c'est la pire des
+            // trois : elle donne la série EN DÉSORDRE (voir `serie` ci-dessus,
+            // seule `mediane-rangee` est triée) et son indice ne parlait que du
+            // nombre pair de valeurs. Un élève qui le suit à la lettre prend les
+            // deux du milieu de la liste TELLE QU'ELLE EST ÉCRITE et calcule leur
+            // moyenne — il a fait exactement ce qu'on lui disait, et il a faux.
             aide: paire
-                ? 'ATTENTION : la série a un nombre PAIR de valeurs. Il y a donc DEUX valeurs au '
-                    + 'milieu, et la médiane est leur moyenne — elle n\'est pas forcément dans '
-                    + 'la série.'
+                ? 'ON RANGE D\'ABORD, DANS L\'ORDRE CROISSANT. Puis ATTENTION : la série a un '
+                    + 'nombre PAIR de valeurs, il y a donc DEUX valeurs au milieu, et la '
+                    + 'médiane est leur moyenne — elle n\'est pas forcément dans la série.'
                 : etape.id === 'mediane-rangee'
-                    ? 'La série est déjà rangée : la médiane est la valeur qui a autant de '
-                        + 'valeurs avant elle qu\'après elle.'
-                    : 'ON RANGE D\'ABORD. Le terme du milieu de la liste telle qu\'elle est '
-                        + 'écrite n\'est pas la médiane — c\'est juste un nombre de la série.'
+                    ? 'La série est déjà rangée dans l\'ordre croissant : la médiane est la '
+                        + 'valeur qui a autant de valeurs avant elle qu\'après elle.'
+                    : 'ON RANGE D\'ABORD, DANS L\'ORDRE CROISSANT. Le terme du milieu de la '
+                        + 'liste telle qu\'elle est écrite n\'est pas la médiane — c\'est juste '
+                        + 'un nombre de la série.',
+            // ET LE ROBOT MONTRE LE GESTE. « le robot doit aussi montrer comment
+            // on calcule la moyenne et montrer comment on trouve une médiane » :
+            // c'est le DERNIER indice qu'il prononce juste avant de taper (voir
+            // `phraseCalcul` dans activities/numeric.js), et il doit donc POSER
+            // le calcul sans le faire.
+            calcul: paire
+                ? `Je range dans l'ordre croissant : ${tri.length} valeurs, donc la moyenne `
+                    + 'des DEUX du milieu.'
+                : etape.id === 'mediane-rangee'
+                    ? `Elle est déjà rangée : je prends la ${demi + 1}ᵉ valeur sur ${tri.length}.`
+                    : `Je range dans l'ordre croissant, puis je prends la ${demi + 1}ᵉ valeur `
+                        + `sur ${tri.length}.`
         };
     }
 
@@ -302,7 +336,8 @@ export function question(etape, rng) {
             pourquoi: `${combien} fois sur ${total} : ${combien} ÷ ${total} = ${
                 enFrancais(combien / total)}, soit ${enFrancais(f)} %.`,
             aide: 'La fréquence répond à « quelle PART du total ? », pas à « combien ? ». '
-                + 'On divise l\'effectif par le total, puis on multiplie par 100.'
+                + 'On divise l\'effectif par le total, puis on multiplie par 100.',
+            calcul: `Je compte combien de ${valeur}, je divise par ${total}, je multiplie par 100.`
         };
     }
 
@@ -319,10 +354,31 @@ export function question(etape, rng) {
         // est de 14. » Deux fautes d'un coup — une phrase qui ne se dit pas, et
         // « ils » collé devant « joueuses ». En parlant des NOTES plutôt que des
         // élèves, le genre est celui de `quoiNu`, qui est écrit à côté de lui.
+        // ── « ON A L'IMPRESSION QUE LE 3 FAIT PARTIE DE LA SÉRIE » ─────────
+        //
+        // RÉMY, carnet du 24 octobre, en recopiant l'énoncé tel qu'il le lit :
+        //
+        //     « La moyenne des 4 notes de la classe est de 12. On en connaît
+        //       3 : 12 ; 9 ; 11. »
+        //
+        //     « On a l'impresion que le 3 fait partie de la série. »
+        //
+        // IL A RAISON, ET LA FAUTE EST TYPOGRAPHIQUE. Le « 3 » est un COMPTE,
+        // les « 12 ; 9 ; 11 » sont des VALEURS, et rien ne les distingue : même
+        // police, même ligne, un deux-points entre les deux comme il y en a un
+        // entre « notes » et la liste partout ailleurs dans cet exercice. Un
+        // élève lit quatre nombres là où il n'y en a que trois.
+        //
+        // DEUX CORRECTIONS, ET IL FAUT LES DEUX : le compte s'écrit EN LETTRES
+        // — un mot ne peut pas se confondre avec un nombre de la série —, et la
+        // série passe sur SA PROPRE LIGNE, comme dans les huit autres marches.
+        // Écrire seulement le compte en lettres laisserait « On en connaît
+        // trois : 12 ; 9 ; 11 » sur une ligne, où la liste reste accrochée à la
+        // phrase.
         return {
             enonce: `La moyenne des ${serie.length} ${s.quoiNu} ${s.de} est de ${m}${
                 s.unite ? ' ' + s.unite : ''}. `
-                + `On en connaît ${serie.length - 1} : ${ecrireSerie(connues)}.`,
+                + `On en connaît ${spellInteger(serie.length - 1)} :\n${ecrireSerie(connues)}`,
             question: 'Quelle est la valeur qui manque ?',
             kind: 'numeric', reponse: cachee, serie, unite: s.unite,
             pourquoi: `La somme de toutes les valeurs vaut ${serie.length} × ${m} = ${somme}. `
@@ -330,7 +386,12 @@ export function question(etape, rng) {
                 + `Il reste ${somme} − ${connues.reduce((a, b) => a + b, 0)} = ${cachee}.`,
             aide: 'ON REMONTE LE CALCUL. La moyenne s\'obtient en divisant la somme par le '
                 + 'nombre de valeurs : la somme s\'obtient donc en MULTIPLIANT la moyenne par '
-                + 'ce nombre. Ensuite on retire ce qu\'on connaît déjà.'
+                + 'ce nombre. Ensuite on retire ce qu\'on connaît déjà.',
+            // « Aide davantage pour calculer la valeur manquante. » Le dernier
+            // indice POSE le calcul avec les vrais nombres — c'est lui que le
+            // robot prononce avant de taper.
+            calcul: `La somme de toutes vaut ${serie.length} × ${m} = ${somme}. J'en retire `
+                + `les ${spellInteger(serie.length - 1)} connues.`
         };
     }
 
@@ -358,7 +419,8 @@ export function question(etape, rng) {
             + 'son étendue est la plus petite.',
         aide: 'LA MOYENNE NE DIT PAS TOUT. Pour savoir si une équipe est régulière, on regarde '
             + 'l\'ÉTENDUE : plus elle est petite, plus les valeurs sont serrées autour de la '
-            + 'moyenne.'
+            + 'moyenne.',
+        calcul: 'Je calcule l\'étendue de chaque équipe : la plus petite, c\'est la plus régulière.'
     };
 }
 
@@ -424,11 +486,29 @@ export const statistiquesGenerator = {
             },
             answer: q.reponse,
             choices: choix,
+            // ── LE DERNIER INDICE POSE LE CALCUL ───────────────────────────
+            //
+            // RÉMY : « le robot doit aussi montrer comment on calcule la
+            // moyenne et montrer comment on trouve une médiane ».
+            //
+            // POURQUOI IL NE MONTRAIT RIEN : sur le pavé numérique, le robot
+            // prononce le DERNIER indice juste avant de taper (`phraseCalcul`
+            // dans activities/numeric.js), et seulement s'il tient en cent dix
+            // caractères. Le dernier indice était ici « Recopie la série sur
+            // ton brouillon… », cent trente-trois caractères ET une phrase de
+            // GESTE. Le robot retombait donc sur « Je tape 12 chiffre par
+            // chiffre » — exactement ce que Rémy avait déjà refusé sur les
+            // pourcentages : « Le robot n'explique rien. Il faut qu'il donne le
+            // calcul plutôt que juste taper la réponse. »
+            //
+            // Chaque marche porte maintenant son `calcul` : il POSE l'opération
+            // avec les vrais nombres, sans la faire, et il tient dans la bulle.
             hints: [
                 q.aide,
                 'Recopie la série sur ton brouillon : on ne range pas une liste de huit nombres '
-                    + 'de tête, et c\'est là que les fautes arrivent.'
-            ],
+                    + 'de tête, et c\'est là que les fautes arrivent.',
+                q.calcul
+            ].filter(Boolean),
             explanation: q.pourquoi,
             difficulty: DIFFICULTE[etape.temps] || 2,
             meta: {

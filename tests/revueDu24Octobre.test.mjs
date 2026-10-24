@@ -25,6 +25,11 @@ import pythagoreReciproqueGenerator from '../js/core/generators/pythagoreRecipro
 import { texteImprime } from '../js/core/fiche.js';
 import { reglagesDeFiche } from '../js/core/reglagesFiche.js';
 import { pgcdPpcmGenerator } from '../js/core/generators/pgcdPpcm.js';
+import { statistiquesGenerator, ETAPES as ETAPES_STAT } from '../js/core/generators/statistiques.js';
+import { lireUneFractionGenerator } from '../js/core/generators/lireUneFraction.js';
+import { etapesExemple } from '../js/core/aideExercice.js';
+import { dureesGenerator } from '../js/core/generators/durees.js';
+import probabilitesGenerator from '../js/core/generators/probabilites.js';
 // L'IMPORT SANS LEQUEL LA MESURE MENT. Sans le registre, `paramSchemaOf` ne
 // trouve pas le générateur et rend une liste VIDE — c'est-à-dire la même
 // réponse qu'un réglage absent, et l'épreuve accuse alors le code.
@@ -151,6 +156,227 @@ test('ET ON PEUT LE DEMANDER DEPUIS LA FEUILLE', () => {
     // de « Décomposer, PGCD et PPCM » ne comptent pas « mélange ».
     assert.ok(!surLaFeuille('num-pgcd-ppcm').includes('genreProbleme'),
         'un réglage qui ne change rien à la feuille n\'y a pas sa place');
+});
+
+// ── GROUPE C : CE QU'UN INDICE DIT, CE QU'UNE FIGURE MONTRE ────────────────
+
+test('TOUTE MÉDIANE DIT DE RANGER DANS L\'ORDRE CROISSANT', () => {
+    // RÉMY : « Quand on demande la médiane, en indice, il faut dire qu'il faut
+    // ranger les nombres dans l'ordre croissant ».
+    //
+    // LA MARCHE PAIRE NE LE DISAIT PAS DU TOUT, et c'est la pire des trois :
+    // elle donne la série EN DÉSORDRE, et son premier indice ne parlait que du
+    // nombre pair de valeurs. L'élève qui le suit à la lettre prend les deux du
+    // milieu de la liste TELLE QU'ELLE EST ÉCRITE, et il a faux en ayant fait
+    // exactement ce qu'on lui disait.
+    // ON REGARDE LE PREMIER INDICE, PAS LA RÉUNION DES TROIS.
+    //
+    // Première version de cette épreuve : elle joignait tous les indices et
+    // cherchait « ordre croissant » dedans. `epreuveTombe` a dit « CETTE
+    // ÉPREUVE NE GARDE RIEN » — en retirant la phrase du PREMIER indice, le
+    // DERNIER la portait encore et l'épreuve restait verte. Or le premier est
+    // celui qu'on touche quand on sèche ; le dernier, celui que le robot dit
+    // en jouant tout seul. Ce sont deux moments, et la phrase doit être aux
+    // deux.
+    const MEDIANES = ['mediane-rangee', 'mediane-desordre', 'mediane-paire'];
+    MEDIANES.forEach(marche => {
+        const it = statistiquesGenerator.generate({ marches: [marche] },
+            { index: 0, total: 1, rng: makeRng('m' + marche) });
+        const h = it.hints || [];
+        assert.match(String(h[0]), /ordre croissant/i,
+            `${marche} : le PREMIER indice ne dit pas de ranger dans l'ordre croissant`);
+        assert.match(String(h[h.length - 1]), /rangée|range/i,
+            `${marche} : le robot ne parle pas de ranger avant de taper`);
+    });
+});
+
+test('LE ROBOT POSE LE CALCUL, IL NE DÉCRIT PAS UN GESTE', () => {
+    // RÉMY : « le robot doit aussi montrer comment on calcule la moyenne et
+    // montrer comment on trouve une médiane ».
+    //
+    // SUR LE PAVÉ NUMÉRIQUE, LE ROBOT PRONONCE LE DERNIER INDICE juste avant
+    // de taper — et seulement s'il tient en cent dix caractères (`COURT` dans
+    // activities/numeric.js). Au-delà, il retombe sur « Je tape 12 chiffre par
+    // chiffre », qui est un commentaire de GESTE. Le dernier indice de cet
+    // exercice faisait cent trente-trois caractères.
+    //
+    // L'ÉPREUVE REGARDE LES NEUF MARCHES, et pas seulement celles qu'il a
+    // citées : la remarque vaut pour toutes, et une marche ajoutée demain
+    // doit la respecter sans que personne ait à y penser.
+    const COURT = 110;
+    const numeric = readFileSync(new URL('../js/core/activities/numeric.js', import.meta.url), 'utf8');
+    assert.match(numeric, new RegExp(`const COURT = ${COURT};`),
+        'la bulle du robot a changé de taille : cette épreuve mesure l\'ancienne');
+    ETAPES_STAT.forEach(e => {
+        const it = statistiquesGenerator.generate({ marches: [e.id] },
+            { index: 0, total: 1, rng: makeRng('c' + e.id) });
+        const h = it.hints || [];
+        const dernier = String(h[h.length - 1] || '');
+        assert.ok(dernier.length > 0 && dernier.length <= COURT,
+            `${e.id} : dernier indice de ${dernier.length} caractères — le robot se taira`);
+        assert.ok(!/brouillon/i.test(dernier),
+            `${e.id} : le dernier indice parle du GESTE, pas du calcul`);
+    });
+});
+
+test('« ON EN CONNAÎT TROIS » NE SE LIT PLUS COMME UNE VALEUR', () => {
+    // RÉMY, en recopiant son énoncé : « La moyenne des 4 notes de la classe est
+    // de 12. On en connaît 3 : 12 ; 9 ; 11. » puis « On a l'impresion que le 3
+    // fait partie de la série. »
+    //
+    // DEUX CORRECTIONS, ET IL FAUT LES DEUX : le compte en LETTRES, et la série
+    // sur SA PROPRE LIGNE comme dans les huit autres marches. L'une sans
+    // l'autre laisse la liste accrochée à la phrase.
+    for (let i = 0; i < 12; i++) {
+        const it = statistiquesGenerator.generate({ marches: ['moyenne-manquante'] },
+            { index: i, total: 12, rng: makeRng('q' + i) });
+        const texte = it.prompt.text;
+        assert.match(texte, /On en connaît (trois|quatre) :/,
+            `le compte doit être écrit en lettres — « ${texte.slice(0, 80)}… »`);
+        assert.ok(!/On en connaît \d/.test(texte),
+            `un chiffre devant les deux-points : « ${texte.slice(0, 80)}… »`);
+        // ET LA SÉRIE A SA LIGNE : le HTML la pose dans son propre bloc.
+        assert.match(it.prompt.html, /<span class="st-serie">[^<]*\d/);
+    }
+});
+
+test('UNE ÉTAPE QUI DESSINE GARDE SON DESSIN DANS L\'EXEMPLE', () => {
+    // RÉMY, sur « Lis la Fraction » : « dans le montre moi, la figure n'est pas
+    // divisée avec ses parts ».
+    //
+    // Le second indice de cet exercice REDÉCOUPE la figure — Rémy l'avait
+    // demandé lui-même (« pour l'indice, dessine les traits de séparation »).
+    // Le dessin voyage dans `item.schemas` ; l'exemple ne lisait que
+    // `item.hints`, et affichait « Voilà la figure avec toutes ses coupes »
+    // sous la figure SANS ses coupes.
+    const it = lireUneFractionGenerator.generate({},
+        { index: 0, total: 1, rng: makeRng('lf') });
+    assert.ok((it.schemas || []).some(Boolean), 'le générateur ne dessine plus rien');
+    const ex = etapesExemple(it);
+    assert.equal(ex.dessins.length, ex.etapes.length,
+        'un dessin par étape, sinon ils glissent d\'un cran');
+    assert.ok(ex.dessins.some(d => d && d.includes('<svg')),
+        'aucune étape ne porte son dessin');
+    // ET LE DESSIN SUIT SON ÉTAPE, même quand le dernier indice a été écarté
+    // parce qu'il redisait l'explication : c'est là que l'alignement se perd.
+    const iDessin = ex.dessins.findIndex(Boolean);
+    assert.match(ex.etapes[iDessin], /Voilà/,
+        "le dessin n'est pas sous l'étape qui l'annonce");
+});
+
+test('ET LES DEUX ÉCRANS DE L\'EXEMPLE LE DESSINENT', () => {
+    // Le panneau d'aide et le mode apprentissage montrent le MÊME exemple par
+    // deux chemins. C'est la troisième fois qu'une correction n'est posée que
+    // sur l'un des deux ; l'épreuve regarde donc les deux dans la même boucle.
+    [['js/ui/aideExercice.js', 'aide-etape-figure'],
+        ['js/core/runner.js', 'learn-etape-figure']].forEach(([f, classe]) => {
+        const S = readFileSync(new URL('../' + f, import.meta.url), 'utf8');
+        assert.ok(S.includes(classe), `${f} ne dessine pas le schéma de l'étape`);
+        assert.match(S, /dessins \|\| \[\]/, f);
+    });
+    const CSS = readFileSync(new URL('../css/components.css', import.meta.url), 'utf8');
+    assert.match(CSS, /\.aide-etape-figure svg \{[^}]*max-height/);
+    const MOD = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
+    assert.match(MOD, /\.learn-etape-figure svg \{[^}]*max-height/);
+});
+
+test('LA SOUSTRACTION DE DURÉES SE FAIT PAR BONDS', () => {
+    // RÉMY : « Moi j'aimerai bien que si on calcule 3:17-1:48 / On ait le schéma
+    // suiavt, 1:48 --> 2:00 --> 3:17 avec +.... au-dessus de chaque flèche /
+    // Avec flèche et bulle, qqch de propre pour bien montrer. »
+    //
+    // CE N'EST PAS UNE ILLUSTRATION, C'EST UNE MÉTHODE. On ne pose pas une
+    // soustraction de durées en colonnes — la retenue y vaut soixante et non
+    // dix, et c'est l'erreur que cet exercice existe pour attraper.
+    for (let i = 0; i < 8; i++) {
+        const it = dureesGenerator.generate({ marches: ['difference'] },
+            { index: i, total: 8, rng: makeRng('b' + i) });
+        const dessin = (it.schemas || [])[1] || '';
+        assert.match(dessin, /<svg class="md-bonds"/, `pas de schéma — ${it.prompt.text}`);
+        // DES BULLES ET DES FLÈCHES, et autant de flèches que de bonds.
+        const bulles = (dessin.match(/<circle /g) || []).length;
+        const fleches = (dessin.match(/marker-end=/g) || []).length;
+        assert.ok(bulles >= 2, `${bulles} bulle(s) : il en faut au moins deux`);
+        assert.equal(fleches, bulles - 1, 'une flèche entre deux bulles, pas plus');
+        // LES POINTILLÉS, PAS LES VALEURS : son « +.... ». Un schéma qui porte
+        // les deux gains EST la correction, et il n'y a plus rien à chercher.
+        assert.equal((dessin.match(/\+ ……/g) || []).length, fleches,
+            'chaque flèche doit porter son « + …… » à remplir');
+        // ET LES INDICES NE DISENT PLUS DE POSER LE CALCUL : « additionne les
+        // heures d'un côté » est précisément ce qu'il ne faut PAS faire ici.
+        assert.ok(!/Additionne les heures/.test((it.hints || []).join(' ')),
+            'la différence a gardé les indices de la somme');
+    }
+});
+
+test('ET LA TABLE DE SOIXANTE AIDE À TROUVER LES HEURES', () => {
+    // RÉMY : « Et aussi en indice une table de 60 pour trouver le nombre
+    // d'heure ».
+    //
+    // ELLE N'AIDE QUE SI ELLE MONTRE OÙ ÇA S'ARRÊTE : la dernière ligne qui ne
+    // dépasse pas donne les heures, et ce qui manque pour y arriver donne les
+    // minutes. Une table juste qui ne signale rien est une colonne de chiffres.
+    for (let i = 0; i < 8; i++) {
+        const it = dureesGenerator.generate({ marches: ['vers-heures'] },
+            { index: i, total: 8, rng: makeRng('t' + i) });
+        const table = (it.schemas || [])[2] || '';
+        assert.match(table, /<ul class="md-table-60">/, `pas de table — ${it.prompt.text}`);
+        const total = Number(it.prompt.text.match(/(\d+) minutes/)[1]);
+        const tiennent = [...table.matchAll(/md-table-tient">(\d+) h = (\d+) min/g)];
+        assert.equal(tiennent.length, Math.floor(total / 60),
+            `${total} min : ${tiennent.length} ligne(s) signalée(s)`);
+        // ET LA TABLE VA PLUS LOIN QUE LA RÉPONSE : sans une ligne au-dessus,
+        // rien ne dit pourquoi on s'arrête là.
+        const toutes = [...table.matchAll(/<li[^>]*>(\d+) h =/g)].map(m => Number(m[1]));
+        assert.ok(Math.max(...toutes) > Math.floor(total / 60),
+            'la table s\'arrête sur la réponse : elle ne montre pas l\'encadrement');
+    }
+});
+
+test('LE SAC ET LA ROUE SE VOIENT', () => {
+    // RÉMY : « Je trouve que tu pourrais faire des illustrations avec des roues
+    // de couleurs, des urnes etc. »
+    //
+    // IL REPREND UNE PHRASE QUI ÉTAIT DÉJÀ ÉCRITE DANS LE GÉNÉRATEUR : « la
+    // roue se lit sur un dessin qu'on n'a pas, donc son énoncé doit dire les
+    // secteurs un par un ». On avait contourné le manque par des mots.
+    const MARCHES = ['sac', 'roue', 'pas-cette-couleur'];
+    MARCHES.forEach(marche => {
+        for (let i = 0; i < 4; i++) {
+            const it = probabilitesGenerator.generate({ marches: [marche] },
+                { index: i, total: 4, rng: makeRng('z' + marche + i) });
+            const fig = (it.prompt.html.match(/<span class="pb-figure">([\s\S]*?)<\/span>/) || [])[1];
+            assert.ok(fig, `${marche} : aucune illustration`);
+            // LE DESSIN COMPTE CE QUE LA PHRASE ANNONCE. Un sac de dix boules
+            // sous un énoncé qui en annonce douze apprendrait à ne pas regarder.
+            const total = Number(it.prompt.text.match(/soit (\d+) |partagée en (\d+) /)
+                ?.slice(1).find(Boolean));
+            assert.ok(Number.isFinite(total), `${marche} : total illisible`);
+            // ON COMPTE PAR LA CLASSE, PAS PAR LA BALISE : la roue porte aussi
+            // une flèche en <path> et un axe en <circle>. La première version de
+            // cette épreuve annonçait « 12 dessinés pour 11 annoncés » — un
+            // défaut de la MESURE, pas du dessin.
+            const pieces = (fig.match(marche === 'roue'
+                ? /class="pb-secteur"/g : /class="pb-boule"/g) || []).length;
+            assert.equal(pieces, total,
+                `${marche} : ${pieces} dessinés pour ${total} annoncés`);
+        }
+    });
+});
+
+test('ET LE DESSIN SE RANGE ENTRE LA SITUATION ET LA QUESTION', () => {
+    // Il illustre ce qu'on vient de lire, et c'est en le regardant qu'on lit la
+    // question. Posé après, il arrive trop tard ; posé avant la situation, il
+    // montre quelque chose qu'on n'a pas encore décrit.
+    const it = probabilitesGenerator.generate({ marches: ['sac'] },
+        { index: 0, total: 1, rng: makeRng('ordre') });
+    const h = it.prompt.html;
+    assert.ok(h.indexOf('ap-situation') < h.indexOf('pb-figure'));
+    assert.ok(h.indexOf('pb-figure') < h.indexOf('ap-question'));
+    // ET LA FEUILLE IMPRIMÉE N'EN VEUT PAS : elle ne sait pas tracer du SVG,
+    // et sa phrase dit déjà les comptes. Un `<svg` dans `papier` sortirait en
+    // balises sur le papier.
+    assert.ok(!/<svg|<span/.test(it.prompt.papier), 'du balisage sur la feuille');
 });
 
 test('LA FEUILLE HONORE CE QUE LA QUESTION DEMANDE', () => {
