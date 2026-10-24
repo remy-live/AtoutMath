@@ -1358,6 +1358,47 @@ function tableauApercu(t, k, o) {
     return html;
 }
 
+/**
+ * LE SCHÉMA DES BONDS, DANS L'APERÇU.
+ *
+ * UN SEUL `<svg>`, ET SON REPÈRE EST LE MILLIMÈTRE. `viewBox="0 0 w h"` avec w
+ * et h en millimètres, posé dans une boîte de w × k pixels : à l'intérieur, on
+ * écrit EXACTEMENT les nombres que `mesurerBonds` a calculés, et le traceur du
+ * PDF écrit les mêmes. Sans ce repère il faudrait multiplier chaque coordonnée
+ * par `k` ici et pas là-bas — c'est-à-dire tenir deux fois la même géométrie.
+ *
+ * LE TEXTE EST DANS LE SVG, LUI AUSSI. Posé en `<div>` à côté, il faudrait
+ * convertir les lignes de base en `top` de boîte, et une étiquette se
+ * retrouverait un millimètre plus bas dans l'aperçu que sur la feuille.
+ */
+function bondsApercu(b, k, o) {
+    const d = (n) => Number(n).toFixed(2);
+    const arcs = b.arcs.map(a =>
+        `<path d="M ${d(a.x1)} ${d(a.y1)} Q ${d(a.cx)} ${d(a.cy)} ${d(a.x2)} ${d(a.y2)}"
+            fill="none" stroke="#1a202c" stroke-width=".3"/>`
+        + `<polygon points="${a.pointe.map(p => d(p[0]) + ',' + d(p[1])).join(' ')}"
+            fill="#1a202c"/>`).join('');
+    const points = b.xs.map((x, i) =>
+        `<circle cx="${d(x)}" cy="${d(b.yLigne)}" r="${d(b.R)}" fill="#1a202c"/>`
+        + `<text x="${d(x)}" y="${d(b.yEtiq)}" text-anchor="middle"
+            font-size="${d(o.taille)}" fill="#1a202c">${echapper(b.arrets[i])}</text>`).join('');
+    const gains = b.gains.map(g =>
+        `<text x="${d(g.x)}" y="${d(g.y)}" font-size="${d(o.taille)}"
+            fill="#1a202c">+</text>`
+        // LE TROU SE DESSINE, il ne s'écrit pas en points : une suite de « . »
+        // dépend de la police, et le PDF, lui, trace un trait en tirets. Deux
+        // façons de faire le même pointillé, c'est un pointillé différent.
+        + `<line x1="${d(g.x + g.wPlus)}" y1="${d(g.y + 0.55)}"
+            x2="${d(g.x + g.wPlus + g.wTrou)}" y2="${d(g.y + 0.55)}"
+            stroke="#9aa3b2" stroke-width=".25" stroke-dasharray=".7 1.1"/>`).join('');
+    return `<svg class="fq-bonds" viewBox="0 0 ${d(b.w)} ${d(b.h)}"
+        style="position:absolute; left:${b.x * k}px; top:${b.y * k}px;
+        width:${b.w * k}px; height:${b.h * k}px" aria-hidden="true">
+        <line x1="0" y1="${d(b.yLigne)}" x2="${d(b.w)}" y2="${d(b.yLigne)}"
+            stroke="#1a202c" stroke-width=".25"/>
+        ${arcs}${points}${gains}</svg>`;
+}
+
 export function apercuItems(page, k, o) {
     let html = '';
     for (const it of page.items) {
@@ -1540,6 +1581,7 @@ export function apercuItems(page, k, o) {
                 font-size:${o.taille * k * .9}px">${it.choix.map(c => '☐ ' + echapper(c)).join('&nbsp;&nbsp;')}</div>`;
         }
         if (it.tableau) html += tableauApercu(it.tableau, k, o);
+        if (it.bonds) html += bondsApercu(it.bonds, k, o);
         if (it.rep && !it.rep.dansLeTexte) {
             // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
             // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
@@ -2193,6 +2235,58 @@ function tableauPdf(pdf, t, o) {
     pdf.setTextColor(...ENCRE.texte);
 }
 
+/**
+ * LE SCHÉMA DES BONDS, DANS LE PDF.
+ *
+ * jsPDF ne connaît que des cubiques : `lines` prend six nombres par segment,
+ * RELATIFS au point précédent. Une quadratique s'y convertit sans perte —
+ * c₁ = p₀ + ⅔(c − p₀), c₂ = p₂ + ⅔(c − p₂) —, et c'est la conversion exacte,
+ * pas une approximation : toute courbe quadratique EST une cubique.
+ */
+function bondsPdf(pdf, b, o) {
+    pdf.setDrawColor(...ENCRE.trait);
+    pdf.setLineWidth(0.25);
+    pdf.line(b.x, b.y + b.yLigne, b.x + b.w, b.y + b.yLigne);
+    pdf.setLineWidth(0.3);
+    b.arcs.forEach(a => {
+        const c1x = a.x1 + (2 / 3) * (a.cx - a.x1), c1y = a.y1 + (2 / 3) * (a.cy - a.y1);
+        const c2x = a.x2 + (2 / 3) * (a.cx - a.x2), c2y = a.y2 + (2 / 3) * (a.cy - a.y2);
+        pdf.lines([[c1x - a.x1, c1y - a.y1, c2x - a.x1, c2y - a.y1, a.x2 - a.x1, a.y2 - a.y1]],
+            b.x + a.x1, b.y + a.y1, [1, 1], 'S');
+        // LA POINTE EST UN TRIANGLE PLEIN, calculé avec le reste : une pointe
+        // posée par le traceur aurait sa propre orientation et son propre
+        // débord, et l'on recommencerait la mesure de l'écran.
+        const p = a.pointe;
+        pdf.setFillColor(...ENCRE.trait);
+        pdf.triangle(b.x + p[0][0], b.y + p[0][1], b.x + p[1][0], b.y + p[1][1],
+            b.x + p[2][0], b.y + p[2][1], 'F');
+    });
+    b.xs.forEach((x, i) => {
+        pdf.setFillColor(...ENCRE.trait);
+        pdf.circle(b.x + x, b.y + b.yLigne, b.R, 'F');
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(o.taille * 2.83);
+        pdf.setTextColor(...ENCRE.texte);
+        pdf.text(pourPdf(b.arrets[i]), b.x + x, b.y + b.yEtiq, { align: 'center' });
+    });
+    b.gains.forEach((g) => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(o.taille * 2.83);
+        pdf.setTextColor(...ENCRE.texte);
+        pdf.text('+', b.x + g.x, b.y + g.y);
+        pointilles(pdf, b.x + g.x + g.wPlus, b.y + g.y + 0.55, g.wTrou);
+        // CE QU'ON AJOUTE À CHAQUE BOND EST UNE CASE À REMPLIR : au stylo sur
+        // la feuille, au clavier dans le PDF remplissable.
+        if (o.champs && !o.solution) {
+            champCase(pdf, b.x + g.x + g.wPlus, b.y + g.y - o.taille * 0.95,
+                g.wTrou, o.taille * 1.5, `bond_${++compteurChamps}`);
+        }
+    });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...ENCRE.texte);
+    pdf.setDrawColor(...ENCRE.trait);
+}
+
 /** Les items d'une page, dans le PDF. */
 export function pdfItems(pdf, page, o) {
     let nChamp = 0;
@@ -2326,6 +2420,7 @@ export function pdfItems(pdf, page, o) {
             pdf.setTextColor(...ENCRE.texte);
         }
         if (it.tableau) tableauPdf(pdf, it.tableau, o);
+        if (it.bonds) bondsPdf(pdf, it.bonds, o);
         if (it.rep) {
             // SUR UN QCM, LA RÉPONSE EST LA CASE COCHÉE, pas une seconde
             // saisie. Rémy : « pour les QCM, il faut que le champ remplissable

@@ -317,6 +317,114 @@ export function mesurerTableau(t, dispo, o, mes) {
     };
 }
 
+/**
+ * LE SCHÉMA DES BONDS, MESURÉ POUR LA FEUILLE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, en choisissant le dessin de l'écran : « tu me fera aussi une version
+ * imprimé pour les schémas ».
+ *
+ * CE N'EST PAS UNE IMAGE QU'ON COLLE. L'aperçu et le PDF ne partagent aucune
+ * ligne de code de dessin — l'un pose des `<div>`, l'autre appelle jsPDF — et
+ * c'est ici, UNE FOIS, qu'on décide où tombe chaque trait. Les deux traceurs
+ * ne font ensuite que recopier ces nombres. Tout ce qu'on calculerait chez eux
+ * finirait par diverger, et l'élève verrait à l'écran une feuille qui n'est
+ * pas celle qu'on lui imprime.
+ *
+ * TOUT EST EN MILLIMÈTRES, comme le reste de la composition, et l'origine est
+ * le coin haut-gauche du schéma : le traceur y ajoute le coin où il le pose.
+ *
+ * CE QU'ON NE MET PAS : la ligne « en tout ». Sur l'écran elle reçoit la
+ * réponse ; sur le papier, la réponse a déjà sa place — les pointillés qui
+ * suivent le « = » de l'énoncé. Deux endroits pour la même réponse, c'est la
+ * faute que `sansPointilles` existe pour empêcher ailleurs. Le schéma est le
+ * BROUILLON ; il ne remplace pas la ligne de réponse, et ne la supprime pas.
+ *
+ * @param {{arrets:string[]}} b  les arrêts, déjà écrits (« 1 h 45 », « 2 h »)
+ * @param {number} dispo  la largeur de la colonne, en mm
+ */
+export function mesurerBonds(b, dispo, o, mes) {
+    const arrets = ((b && b.arrets) || []).map(t => String(t));
+    if (arrets.length < 2) return null;
+    // PLUS ÉTROIT QUE LA COLONNE, ET BORNÉ. Au-delà de 76 mm les arcs
+    // s'aplatissent et le dessin cesse de dire « on saute » ; en dessous de la
+    // place qu'il faut aux étiquettes, deux heures voisines se touchent.
+    const w = Math.min(dispo, 76);
+    // LA MARGE DE CHAQUE CÔTÉ EST LA DEMI-ÉTIQUETTE : c'est elle qui empêche
+    // « 2 h 45 » de dépasser du schéma, aux deux bouts.
+    //
+    // LE PLAFOND NE MORD PAS, ET C'EST VÉRIFIÉ, pas supposé. J'ai cru voir un
+    // défaut ici — en trois colonnes la place tombe à 56 mm, et `w / (2 × 3)`
+    // ramène la marge à 9,3 mm — et j'ai remis l'ancienne formule avant
+    // d'écrire la nouvelle (`tools/epreuveTombe.mjs`). L'épreuve est restée
+    // VERTE : la plus longue étiquette de cet exercice, « 3 h 45 », demande
+    // 5 mm de demi-largeur, très loin des 9,3. Le défaut n'existait pas, et la
+    // correction aurait changé un dessin juste. On n'y touche que le jour où
+    // une étiquette passera les 17 mm.
+    const demi = Math.min(
+        Math.max(...arrets.map(t => mes(t, o.taille))) / 2 + 0.6,
+        w / (2 * arrets.length));
+    const pas = (w - 2 * demi) / (arrets.length - 1);
+    const xs = arrets.map((_, i) => demi + i * pas);
+    const hArc = Math.max(5.5, o.taille * 1.7);
+    const yGain = o.taille;                   // la ligne de base du « + …… »
+    const yLigne = yGain + 1.4 + hArc;        // l'axe du temps
+    const yEtiq = yLigne + 1.6 + o.taille;    // la ligne de base des arrêts
+    const R = 0.85;                           // le rayon d'un arrêt
+    // LE « + » ET SON TROU SONT UN SEUL GROUPE. Mesuré sur la feuille agrandie
+    // quatre fois : avec la largeur de « + » SUIVI D'UNE ESPACE, le trou partait
+    // un millimètre et demi plus loin et l'on voyait un plus d'un côté, un trait
+    // de l'autre. On mesure donc le signe seul et l'on ajoute l'air qu'on veut.
+    const wPlus = mes('+', o.taille) + 0.7;
+    const arcs = [];
+    const gains = [];
+    for (let i = 0; i < arrets.length - 1; i++) {
+        const x1 = xs[i] + R + 0.9;
+        // LA POINTE S'ARRÊTE AVANT L'ARRÊT, et c'est la remarque de Rémy sur
+        // l'écran, reportée ici avant qu'elle ne se repose : « l'extrémité de
+        // la pointe de la flèche arrive sur le cercle ». Deux millimètres
+        // d'air, mesurés sur la feuille imprimée.
+        const x2 = xs[i + 1] - R - 1.8;
+        const y0 = yLigne - 0.6;
+        // LE SOMMET D'UNE QUADRATIQUE EST À (y₀ + 2·y_c + y₁) / 4 : on part du
+        // sommet VOULU et l'on en déduit le point de contrôle, au lieu de
+        // régler ce dernier à l'œil jusqu'à ce que ça tombe juste.
+        const yc = 2 * (yLigne - hArc) - y0;
+        const cx = (x1 + x2) / 2;
+        // LA TANGENTE À L'ARRIVÉE, pour orienter la pointe : pour une
+        // quadratique, elle va du point de contrôle vers le point final.
+        const dx = x2 - cx, dy = y0 - yc;
+        const n = Math.hypot(dx, dy) || 1;
+        const ux = dx / n, uy = dy / n;
+        const L = 1.7, D = 0.62;   // la pointe : longueur et demi-largeur
+        arcs.push({
+            x1, y1: y0, cx, cy: yc, x2, y2: y0,
+            pointe: [
+                [x2, y0],
+                [x2 - L * ux - D * uy, y0 - L * uy + D * ux],
+                [x2 - L * ux + D * uy, y0 - L * uy - D * ux]
+            ]
+        });
+        const milieu = (xs[i] + xs[i + 1]) / 2;
+        // LE TROU À REMPLIR FAIT LA MOITIÉ DU BOND, borné : sur un bond étroit
+        // il déborderait sur le voisin, sur un bond large il offrirait trois
+        // centimètres pour écrire « 15 min ».
+        // LE TROU À REMPLIR : de quoi écrire « 10 min » à la main, soit un peu
+        // plus d'un centimètre au corps de la feuille. Mesuré sur l'image : à
+        // treize millimètres, « 1 h 25 » touchait les deux bouts.
+        const wTrou = Math.max(9, Math.min(pas * 0.55, 15));
+        gains.push({ x: milieu - (wPlus + wTrou) / 2, y: yGain, wPlus, wTrou });
+    }
+    return {
+        arrets, xs, w, R, demi, yGain, yLigne, yEtiq, arcs, gains,
+        h: yEtiq + 1.4,
+        // CHAQUE BOND EST UNE CASE À REMPLIR : dans un PDF remplissable, elles
+        // deviennent des champs, comme les cases vides d'un tableau.
+        aRemplir: true
+    };
+}
+
 
 export const DEFAUTS = {
     colonnes: 2,
@@ -1142,6 +1250,10 @@ export function composerBlocs(exos, opts, mesurer) {
             // texte, et c'est LUI qu'on remplit — la réponse ne va donc ni au
             // bout de la ligne ni sur des pointillés en dessous.
             const tableau = q.tableau ? mesurerTableau(q.tableau, texteW, o, mes) : null;
+            // LE SCHÉMA DES BONDS, s'il y en a un. Il se mesure comme le
+            // tableau et se pose comme lui ; mais lui NE PREND PAS la place de
+            // la réponse — voir `mesurerBonds`.
+            const bonds = q.bonds ? mesurerBonds(q.bonds, texteW, o, mes) : null;
             // LA PLACE DEMANDÉE L'EMPORTE SUR LA PLACE DISPONIBLE.
             //
             // Rémy, sur la fiche des grandeurs composées : « pourquoi tu mets
@@ -1214,7 +1326,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // tient pas dans huit descend, et y trouve toute la largeur.
             const besoinRep = Math.min(o.repMin,
                 Math.max(8, mes(String(q.reponse ?? ''), o.taille) + 3));
-            const memeLigne = !placeDemandee && !trou && !trouDessine && !choix && !tableau && lignes.length === 1
+            const memeLigne = !placeDemandee && !trou && !trouDessine && !choix && !tableau && !bonds && lignes.length === 1
                 && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= besoinRep;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
             // numérateur au-dessus du trait, le dénominateur dessous. Il leur
@@ -1227,15 +1339,21 @@ export function composerBlocs(exos, opts, mesurer) {
             // sont pas seulement inutiles, elles proposent un second endroit
             // pour la même réponse.
             const sansPointilles = trou || trouDessine || memeLigne || (tableau && tableau.aRemplir);
+            // LES MÊMES MARGES QUE LE TABLEAU, et pas deux réglages de plus :
+            // un dessin posé sous un énoncé a le même besoin d'air qu'un
+            // tableau posé sous un énoncé, et deux boutons pour une seule
+            // question se répondent un jour l'un à l'autre.
+            const hBonds = bonds ? o.avantTableau + bonds.h + o.apresTableau : 0;
             const h = supp + hauteurDesLignes(o, lignes.length, !!q.fractions)
                 + (choix ? o.interligne : 0)
                 + (tableau ? o.avantTableau + tableau.h + o.apresTableau : 0)
+                + hBonds
                 + (sansPointilles ? 0 : hRep);
             // `iQ` : le rang de la question DANS SON EXERCICE. C'est la seule
             // chose qui permette, depuis l'aperçu, de désigner celle qu'on
             // veut retirer ou retirer au sort — le numéro imprimé, lui, court
             // sur toute la feuille et saute les exercices non numérotés.
-            return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, trouDessine, tableau, sansPointilles, h,
+            return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, trouDessine, tableau, bonds, hBonds, sansPointilles, h,
                 // CE QUE LA QUESTION A DEMANDÉ voyage avec sa cellule : le
                 // traceur, plus bas, n'a plus accès à `q`.
                 nRep, hRep,
@@ -1245,7 +1363,7 @@ export function composerBlocs(exos, opts, mesurer) {
         /** Vingt questions du même moule : une ligne, pas de trou, pas de QCM. */
         function exerciceHomogene(cells) {
             return cells.length > 1
-                && cells.every(c => !c.trou && !c.choix && !c.tableau && c.lignes.length === 1);
+                && cells.every(c => !c.trou && !c.choix && !c.tableau && !c.bonds && c.lignes.length === 1);
         }
         /** Les réponses sont-elles toutes au même endroit ? */
         function reponsesRegulieres(cells) {
@@ -1382,8 +1500,12 @@ export function composerBlocs(exos, opts, mesurer) {
                     const pas = (cell.hRep || ligneRep) / nRep;
                     rep = {
                         x: texteX,
+                        // `hBonds` EST DANS CE CALCUL, sans quoi les pointillés
+                        // de la réponse se posent EN PLEIN MILIEU du schéma :
+                        // la hauteur était comptée dans la cellule, mais pas
+                        // dans l'endroit où la réponse commence.
                         y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
-                            + (cell.choix ? o.interligne : 0) + pas * 0.72,
+                            + (cell.choix ? o.interligne : 0) + (cell.hBonds || 0) + pas * 0.72,
                         w: texteW, lignes: nRep, pas
                     };
                 }
@@ -1406,9 +1528,18 @@ export function composerBlocs(exos, opts, mesurer) {
                     y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
                         + (cell.choix ? o.interligne : 0) + o.avantTableau
                 } : null;
+                // LE SCHÉMA, POSÉ. Même coin que le tableau — ils ne cohabitent
+                // pas sur une même question, et le jour où ça arriverait, c'est
+                // ici qu'on les empilerait.
+                const bonds = cell.bonds ? {
+                    ...cell.bonds,
+                    x: texteX,
+                    y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
+                        + (cell.choix ? o.interligne : 0) + o.avantTableau
+                } : null;
                 page.items.push({
                     type: 'q', n: numerote ? numero : null,
-                    tableau,
+                    tableau, bonds,
                     // LE CADRE DE LA CASE, quand la fiche est en tableau. Il
                     // déborde de `padTableau` de chaque côté : deux cases
                     // voisines partagent alors exactement leur filet.

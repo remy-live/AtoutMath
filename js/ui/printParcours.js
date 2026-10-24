@@ -304,6 +304,12 @@ function questionsDe(etape, nb) {
             texte,
             // Le tableau de l'énoncé, dessiné par la mise en page.
             tableau: (item.prompt && item.prompt.tableau) || null,
+            // LE SCHÉMA DES BONDS VOYAGE PAR LE MÊME CHEMIN QUE LE TABLEAU, et
+            // il faut l'écrire ICI ET DANS `printParcours.js` : les deux
+            // panneaux d'impression recopient l'item à la main, et un chaînon
+            // posé dans un seul rend la déclaration muette dans l'autre — ce
+            // qui est arrivé au menu « Présentation » la semaine dernière.
+            bonds: (item.prompt && item.prompt.bonds) || null,
             // LE MÊME PIÈGE QUE POUR LA RÉPONSE, un cran plus loin : le
             // libellé d'une proposition est fait pour l'ÉCRAN. Une fraction y
             // est du HTML — deux span empilés —, et une égalité de Thalès

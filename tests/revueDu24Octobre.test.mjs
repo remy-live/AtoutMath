@@ -22,13 +22,13 @@ import { exercices } from '../js/data/catalog.js';
 import { makeRng } from '../js/core/ids.js';
 import { divisionFractionsGenerator } from '../js/core/generators/divisionFractions.js';
 import pythagoreReciproqueGenerator from '../js/core/generators/pythagoreReciproque.js';
-import { texteImprime } from '../js/core/fiche.js';
+import { texteImprime, mesurerBonds, DEFAUTS } from '../js/core/fiche.js';
 import { reglagesDeFiche } from '../js/core/reglagesFiche.js';
 import { pgcdPpcmGenerator } from '../js/core/generators/pgcdPpcm.js';
 import { statistiquesGenerator, ETAPES as ETAPES_STAT } from '../js/core/generators/statistiques.js';
 import { lireUneFractionGenerator } from '../js/core/generators/lireUneFraction.js';
 import { etapesExemple } from '../js/core/aideExercice.js';
-import { dureesGenerator } from '../js/core/generators/durees.js';
+import { dureesGenerator, arretsDesBonds, ecrireDuree } from '../js/core/generators/durees.js';
 import probabilitesGenerator from '../js/core/generators/probabilites.js';
 // L'IMPORT SANS LEQUEL LA MESURE MENT. Sans le registre, `paramSchemaOf` ne
 // trouve pas le générateur et rend une liste VIDE — c'est-à-dire la même
@@ -403,6 +403,139 @@ test('LE SCHÉMA S\'OUVRE À UN BOUTON, ET L\'ON ÉCRIT DANS SES BULLES', () => 
     assert.match(OU, /const libre = \(c\) => c\.dataset\.caseOutil === 'texte';/);
     assert.equal((OU.match(/if \(libre\(c\)\)/g) || []).length, 2,
         'la case de texte doit échapper AU FILTRE et AUX FLÈCHES');
+});
+
+test('ET LE SCHÉMA DESCEND SUR LA FEUILLE IMPRIMÉE', () => {
+    // RÉMY, en choisissant le dessin de l'écran : « tu me fera aussi une version
+    // imprimé pour les schémas ».
+    //
+    // CE N'EST PAS LE DESSIN DE L'ÉCRAN QUI VOYAGE. La feuille mesure en
+    // millimètres et trace DEUX FOIS — l'aperçu en HTML, le PDF en jsPDF. Le
+    // générateur n'envoie donc que les ARRÊTS, et `mesurerBonds` décide où
+    // tombe chaque trait, une fois, pour les deux traceurs.
+    for (let i = 0; i < 8; i++) {
+        const it = dureesGenerator.generate({ marches: ['difference'] },
+            { index: i, total: 8, rng: makeRng('p' + i) });
+        const b = it.prompt.bonds;
+        assert.ok(b && b.arrets, `pas de schéma papier sur ${it.prompt.text}`);
+        // LE PAPIER MONTRE LE MÊME CHEMIN QUE L'ÉCRAN, et pas un chemin qui lui
+        // ressemble : c'est `arretsDesBonds` qui répond aux deux.
+        assert.deepEqual(b.arrets, arretsDesBonds(it.meta.y, it.meta.x).map(ecrireDuree),
+            `l'écran et la feuille ne s'arrêtent pas aux mêmes endroits`);
+    }
+    // ET IL SE RETIRE. Deux centimètres par question : sur une feuille de vingt
+    // calculs rapides, le professeur voudra le laisser au vestiaire.
+    const sans = dureesGenerator.generate(
+        { marches: ['difference'], schemaPapier: false },
+        { index: 0, total: 4, rng: makeRng('x') });
+    assert.ok(!sans.prompt.bonds, 'le réglage « schéma » ne retire rien');
+    // PAS SUR LA SOMME : on la pose, et avancer par bonds n'y apprend rien.
+    const somme = dureesGenerator.generate({ marches: ['somme'] },
+        { index: 0, total: 4, rng: makeRng('y') });
+    assert.ok(!somme.prompt.bonds, 'la somme a reçu un schéma');
+
+    // ── LE CHAÎNON, DANS LES DEUX PANNEAUX D'IMPRESSION ────────────────────
+    //
+    // On COMPTE, on ne cherche pas : `printQuestions.js` et `printParcours.js`
+    // recopient l'item à la main, et un `assert.match` qui trouve la ligne dans
+    // le premier se déclare content pendant que le second reste muet. C'est
+    // exactement ce qui est arrivé au menu « Présentation ».
+    const panneaux = ['js/ui/printQuestions.js', 'js/ui/printParcours.js']
+        .map(f => readFileSync(new URL('../' + f, import.meta.url), 'utf8'));
+    panneaux.forEach((S, k) => assert.match(S,
+        /bonds: \(item\.prompt && item\.prompt\.bonds\) \|\| null,/,
+        `le panneau ${k + 1} ne transmet pas le schéma`));
+
+    // ── ET LES DEUX TRACEURS ───────────────────────────────────────────────
+    const R = readFileSync(new URL('../js/ui/ficheRendu.js', import.meta.url), 'utf8');
+    assert.match(R, /if \(it\.bonds\) html \+= bondsApercu\(it\.bonds, k, o\);/);
+    assert.match(R, /if \(it\.bonds\) bondsPdf\(pdf, it\.bonds, o\);/);
+    // AUCUN DES DEUX NE RECALCULE UNE COORDONNÉE. Le jour où l'un d'eux
+    // s'autorise un `Math.` de son cru, l'aperçu et le PDF commencent à
+    // diverger, et personne ne s'en aperçoit avant une photocopie.
+    const traceurs = R.slice(R.indexOf('function bondsApercu'));
+    const pdfPart = traceurs.slice(traceurs.indexOf('function bondsPdf'),
+        traceurs.indexOf('/** Les items d\'une page, dans le PDF. */'));
+    const apercuPart = traceurs.slice(0, traceurs.indexOf('export function apercuItems'));
+    [apercuPart, pdfPart].forEach((bout, k) => assert.ok(!/Math\.(min|max|hypot|PI)/.test(bout),
+        `le traceur ${k + 1} calcule une géométrie au lieu de la lire`));
+});
+
+test('LA GÉOMÉTRIE DU SCHÉMA IMPRIMÉ TIENT DANS SA BOÎTE', () => {
+    // UNE MESURE DE TEXTE DE PACOTILLE suffit : on garde la FORME, pas la
+    // police. Ce que l'on vérifie ne dépend pas de la largeur exacte d'un
+    // « 1 h 45 », mais du fait que rien ne sorte et que la pointe s'arrête.
+    const mes = (t, taille) => String(t).length * taille * 0.55;
+    const o = { ...DEFAUTS };
+    [['45 min', '1 h', '1 h 45'], ['1 h 20', '1 h 40']].forEach(arrets => {
+        const b = mesurerBonds({ arrets }, 76, o, mes);
+        assert.equal(b.arcs.length, arrets.length - 1);
+        assert.equal(b.gains.length, arrets.length - 1);
+        b.arcs.forEach((a, i) => {
+            // ── LA POINTE S'ARRÊTE AVANT L'ARRÊT ──────────────────────────
+            //
+            // La remarque que Rémy a faite sur l'écran — « l'extrémité de la
+            // pointe de la flèche arrive sur le cercle » — se reposerait ici
+            // mot pour mot, et sur du papier on ne la corrige plus après coup.
+            const air = b.xs[i + 1] - b.R - a.x2;
+            assert.ok(air >= 1.5 && air <= 4,
+                `${air.toFixed(2)} mm entre la pointe et l'arrêt (on veut 1,5 à 4)`);
+            // LA POINTE REGARDE L'ARRÊT : ses deux autres sommets sont DERRIÈRE
+            // son bout. Un triangle retourné dessinerait une flèche qui recule.
+            assert.equal(a.pointe[0][0], a.x2);
+            assert.ok(a.pointe[1][0] < a.x2 && a.pointe[2][0] < a.x2,
+                'la pointe est retournée');
+            // LE SOMMET DE L'ARC EST ENTRE LE TROU ET LA LIGNE. Au-dessus, il
+            // traverse le « + …… » ; en dessous, il n'y a plus de saut.
+            const sommet = (a.y1 + 2 * a.cy + a.y2) / 4;
+            assert.ok(sommet > b.yGain && sommet < b.yLigne,
+                `le sommet de l'arc tombe à ${sommet.toFixed(2)}`);
+        });
+        // RIEN NE SORT DE LA BOÎTE, ni par les côtés ni par le bas : le
+        // traceur y ajoute le coin où il pose le schéma, et ce qui déborde
+        // s'imprime sur la question d'à côté.
+        b.gains.forEach(g => {
+            assert.ok(g.x >= 0, 'un « + …… » déborde à gauche');
+            assert.ok(g.x + g.wPlus + g.wTrou <= b.w + 0.01, 'un « + …… » déborde à droite');
+        });
+        assert.ok(b.xs[0] >= 0 && b.xs[b.xs.length - 1] <= b.w);
+        assert.ok(b.yEtiq < b.h, 'les étiquettes sortent par le bas');
+        // ── ET EN TROIS COLONNES, où la place tombe à 56 mm ───────────────
+        //
+        // C'est le réglage déclaré de « Heures et Minutes » : on y repasse pour
+        // vérifier que le dessin tient encore dans sa boîte, et PAS que les
+        // étiquettes y tiennent — cette seconde épreuve-là, écrite puis mise à
+        // l'épreuve d'un défaut remis, restait verte avec l'ancien code comme
+        // avec le neuf. Elle ne gardait rien. Voir le commentaire de
+        // `mesurerBonds` : le plafond ne mord pas à ces tailles-là.
+        const etroit = mesurerBonds({ arrets }, 56, o, mes);
+        assert.ok(etroit.w <= 56, 'le schéma déborde de la colonne');
+        assert.ok(etroit.xs[0] >= 0
+            && etroit.xs[etroit.xs.length - 1] <= etroit.w + 0.01,
+            'un arrêt sort de la colonne');
+        etroit.gains.forEach(g => assert.ok(
+            g.x >= 0 && g.x + g.wPlus + g.wTrou <= etroit.w + 0.01,
+            'un « + …… » sort de la colonne étroite'));
+    });
+    // DEUX ARRÊTS AU MOINS, sinon il n'y a pas de bond à dessiner.
+    assert.equal(mesurerBonds({ arrets: ['1 h'] }, 76, o, mes), null);
+});
+
+test('ET LA LIGNE DE RÉPONSE PASSE SOUS LE SCHÉMA, PAS DEDANS', () => {
+    // LE SCHÉMA EST LE BROUILLON, PAS LA RÉPONSE. Un tableau à remplir PREND la
+    // place de la réponse (`sansPointilles`) ; le schéma, non — on y pose ses
+    // bonds, puis on écrit le résultat sur la ligne, comme au cahier.
+    //
+    // ET SA HAUTEUR DOIT ENTRER DANS LE CALCUL DE CETTE LIGNE. Elle était
+    // comptée dans la hauteur de la cellule mais pas dans l'endroit où la
+    // réponse commence : les pointillés se posaient alors EN PLEIN MILIEU du
+    // dessin.
+    const F = readFileSync(new URL('../js/core/fiche.js', import.meta.url), 'utf8');
+    assert.match(F, /const sansPointilles = trou \|\| trouDessine \|\| memeLigne \|\| \(tableau && tableau\.aRemplir\);/,
+        'le schéma a pris la place de la ligne de réponse');
+    assert.match(F, /\+ \(cell\.choix \? o\.interligne : 0\) \+ \(cell\.hBonds \|\| 0\) \+ pas \* 0\.72,/,
+        'la ligne de réponse ignore la hauteur du schéma');
+    assert.match(F, /const bonds = q\.bonds \? mesurerBonds\(q\.bonds, texteW, o, mes\) : null;/);
 });
 
 test('ET LA TABLE DE SOIXANTE AIDE À TROUVER LES HEURES', () => {

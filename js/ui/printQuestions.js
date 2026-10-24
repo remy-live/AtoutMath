@@ -115,6 +115,12 @@ function tirerQuestions(generator, params, nb) {
             // LE TABLEAU DE L'ÉNONCÉ, quand le générateur en pose un : la mise
             // en page le DESSINE au lieu de l'écrire en texte suivi.
             tableau: (item.prompt && item.prompt.tableau) || null,
+            // LE SCHÉMA DES BONDS VOYAGE PAR LE MÊME CHEMIN QUE LE TABLEAU, et
+            // il faut l'écrire ICI ET DANS `printParcours.js` : les deux
+            // panneaux d'impression recopient l'item à la main, et un chaînon
+            // posé dans un seul rend la déclaration muette dans l'autre — ce
+            // qui est arrivé au menu « Présentation » la semaine dernière.
+            bonds: (item.prompt && item.prompt.bonds) || null,
             // SUR LE PAPIER, UNE FRACTION S'ÉCRIT EN COLONNE — numérateur sur
             // dénominateur, séparés d'un trait. La barre oblique est une
             // commodité d'écran ; ce n'est pas ce qu'on demande d'écrire à

@@ -242,7 +242,32 @@ export const dureesGenerator = {
     answerKinds: ['choice'],
     ecrit: true,
     conseil: (p) => conseilProgression(marchesCochees(p, MARCHES, ANCIEN).length, 3),
-    params: [paramMarches({ marches: MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN })],
+    params: [
+        paramMarches({ marches: MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN }),
+        {
+            // ── LE SCHÉMA SUR LA FEUILLE ──────────────────────────────────
+            //
+            // RÉMY, après avoir choisi le dessin de l'écran : « tu me fera
+            // aussi une version imprimé pour les schémas ».
+            //
+            // COCHÉ PAR DÉFAUT, PARCE QUE C'EST LA MÉTHODE. On ne pose pas une
+            // soustraction de durées en colonnes ; le schéma n'est pas une
+            // illustration, c'est la façon de la faire. Mais il prend deux
+            // centimètres par question : sur une feuille de vingt calculs
+            // rapides, le professeur voudra le retirer.
+            //
+            // `papier: true` : ce réglage ne change RIEN à l'écran — le bouton
+            // « Schéma » y est toujours là —, donc il n'a sa place que dans le
+            // panneau d'impression. Voir `core/reglagesFiche.js`, qui existe
+            // pour empêcher les boutons qui ne changent rien.
+            id: 'schemaPapier', type: 'checkbox', papier: true,
+            label: 'Le schéma des bonds sous les soustractions', default: true,
+            visibleSi: (r) => marchesCochees(r, MARCHES, ANCIEN)
+                .some(m => m.id === 'difference'),
+            aide: 'La ligne du temps avec ses deux bonds à compléter. Décoché, '
+                + 'il ne reste que le calcul et sa ligne de réponse.'
+        }
+    ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
@@ -291,7 +316,30 @@ export const dureesGenerator = {
                     text: `${ecrireDuree(x)} ${somme ? '+' : '−'} ${ecrireDuree(y)} = ?`,
                     html: `<div class="game-question">${ecrireDuree(x)} `
                         + `${somme ? '+' : '−'} ${ecrireDuree(y)} =&nbsp;?</div>`,
-                    papier: `${ecrireDuree(x)} ${somme ? '+' : '−'} ${ecrireDuree(y)} =`
+                    papier: `${ecrireDuree(x)} ${somme ? '+' : '−'} ${ecrireDuree(y)} =`,
+                    // ── LE SCHÉMA SUR LA FEUILLE ──────────────────────────
+                    //
+                    // ON ENVOIE LES ARRÊTS, PAS LE DESSIN. La feuille mesure en
+                    // millimètres et trace DEUX FOIS — l'aperçu en HTML, le PDF
+                    // en jsPDF ; un SVG d'écran n'entre ni dans l'un ni dans
+                    // l'autre, et une image collée sortirait floue. Voir
+                    // `mesurerBonds` dans `core/fiche.js`, qui décide où tombe
+                    // chaque trait, une fois, pour les deux traceurs.
+                    //
+                    // ET C'EST `arretsDesBonds` QUI RÉPOND, la fonction que
+                    // l'écran emploie déjà : le papier montre donc le MÊME
+                    // chemin que le bouton « Schéma », par construction et non
+                    // par recopie.
+                    //
+                    // ON NE JOINT PAS LES RÉPONSES POUR LE CORRIGÉ, et c'est
+                    // une chose vérifiée plutôt que supposée : `composerSolutions`
+                    // ne redessine RIEN de la feuille — ni tableau ni schéma —,
+                    // elle compose une liste de réponses. Du code qui aurait
+                    // écrit les bonds en gris sur un corrigé n'aurait jamais pu
+                    // s'exécuter, et un commentaire l'aurait pourtant expliqué.
+                    ...(somme || p.schemaPapier === false ? {} : {
+                        bonds: { arrets: arretsDesBonds(y, x).map(ecrireDuree) }
+                    })
                 },
                 answer: bonne,
                 choices: finalizeChoices(rng, [
