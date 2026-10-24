@@ -1,27 +1,33 @@
-// LE ✓ ET LE ✗ DE LA BARRE DU PROFESSEUR RESTENT ARMÉS.
+// LE ✓ ET LE ✗ DE LA BARRE DU PROFESSEUR SE COCHENT ; LE ❯ LES APPLIQUE.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// RÉMY :
+// RÉMY, d'abord :
 //
 //   « Dans ce qui permet de passer la question, tu as un check vert et une
 //     croix. il faudrait qu'il soit persistant d'une question sur l'autre.
 //     Comme cela je peux passer rapidement en voyant ce que ça fait d'être
 //     bon. »
 //
-// UN CLIC RÉPONDAIT, PUIS RENDAIT LA MAIN. Pour voir douze bonnes réponses
-// d'affilée — c'est-à-dire ce que l'élève verra —, il fallait douze clics, et
-// l'on regarde son doigt au lieu de l'écran.
+// J'AI LU « PERSISTANT » ET J'AI ENTENDU « AUTOMATIQUE ». La première version
+// répondait toute seule, question après question. Sa précision, le lendemain :
+//
+//   « en fait je voulais juste que ce soit sélectionné et que quand on appuie
+//     suivant, ca passe à la question suivante en ayant bon (si on a coché
+//     vert) ou en ayant faux (si on a coché rouge) »
+//
+// Ce n'est pas la même chose : il garde la MAIN sur l'avancement — un appui
+// sur ❯ par question — et dit seulement d'avance COMMENT la question sera
+// comptée. Répondre tout seul lui retirait précisément ce qu'il demandait.
 //
 // ── CE QUE CETTE ÉPREUVE GARDE ─────────────────────────────────────────────
 //
-// Pas le bouton, qui se voit. Les trois décisions qu'on ne voit pas et qui
-// font tomber l'outil en silence :
+// Pas les boutons, qui se voient. Les quatre décisions qui ne se voient pas :
 //
-//   · le régime survit au rechargement du volet ;
-//   · répondre ENCHAÎNE, sinon rien n'avance ;
-//   · et le verrou de rang, sans lequel la même question serait répondue
-//     douze fois et le profil enregistrerait des tentatives imaginaires.
+//   · cocher ne répond pas et n'avance pas ;
+//   · le ❯ passe par le mécanisme qui compte VRAIMENT la question ;
+//   · le choix survit au rechargement du volet ;
+//   · et la dernière question reste atteignable.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,8 +37,8 @@ import { sansCommentaires } from './helpers.mjs';
 const R = sansCommentaires(readFileSync(new URL('../js/core/runner.js', import.meta.url), 'utf8'));
 const CSS = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
 
-test('LE RÉGIME EST RANGÉ DANS LE NAVIGATEUR, PAS EN MÉMOIRE', () => {
-    // L'Atelier RECHARGE son volet à chaque changement d'exercice : un régime
+test('LE CHOIX EST RANGÉ DANS LE NAVIGATEUR, PAS EN MÉMOIRE', () => {
+    // L'Atelier RECHARGE son volet à chaque changement d'exercice : un choix
     // gardé en mémoire s'éteindrait justement au moment où l'on passe à
     // l'exercice suivant, c'est-à-dire là où « persistant » sert.
     assert.match(R, /const CLE_AUTO = 'mathbox-apercu-auto';/);
@@ -41,60 +47,59 @@ test('LE RÉGIME EST RANGÉ DANS LE NAVIGATEUR, PAS EN MÉMOIRE', () => {
     assert.match(R, /localStorage\.removeItem\(CLE_AUTO\)/);
 });
 
-test('UN CLIC ARME ET RÉPOND, LE SECOND ARRÊTE', () => {
-    const corps = R.slice(R.indexOf('basculerAuto(juste)'), R.indexOf('peindreAuto() {'));
+test('COCHER NE RÉPOND PAS, ET N\'AVANCE PAS', () => {
+    // C'EST TOUTE LA CORRECTION DU 24 OCTOBRE, et elle tient en l'absence de
+    // deux lignes : `basculerAuto` ne doit NI répondre NI faire avancer.
+    const debut = R.indexOf('basculerAuto(juste)');
+    const corps = R.slice(debut, R.indexOf('peindreAuto() {', debut));
     assert.match(corps, /const neuf = regimeAuto\(\) === juste \? null : juste;/);
-    // DÉSARMER NE RÉPOND PAS : si le second clic répondait encore, on ne
-    // pourrait jamais s'arrêter sur une question.
-    assert.match(corps, /if \(neuf !== null\) this\.repondrePour\(juste, \{ enchainer: true \}\);/);
+    assert.match(corps, /armerAuto\(neuf\);/);
+    assert.ok(!/repondrePour|showNext|sauterQuestion/.test(corps),
+        'cocher ne doit rien déclencher : c\'est une sélection');
+    // ET PLUS RIEN NE PART TOUT SEUL : la version d'avant répondait sur un
+    // minuteur, ce qui retirait à Rémy le contrôle du rythme.
+    assert.ok(!/repondreToutSeul/.test(R), 'la réponse automatique doit avoir disparu');
+    assert.ok(!/repondrePour\s*\(/.test(R),
+        'le chemin « je réponds à la place de l\'élève » n\'est plus appelé');
 });
 
-test('RÉPONDRE ENCHAÎNE, SINON RIEN N\'AVANCE', () => {
-    // LE DÉFAUT MESURÉ AVANT D'ÉCRIRE UNE LIGNE DE PLUS : le compteur restait
-    // sur 1/12 neuf secondes après un clic sur le ✓ armé. `repondrePour`
-    // appelle `session.submit` directement, sans passer par le clic de
-    // l'élève : l'activité ne l'apprend jamais, et c'est ELLE qui enchaîne.
-    const corps = R.slice(R.indexOf('repondrePour(juste, options = {})'),
-        R.indexOf('goToStep(index) {'));
-    assert.match(corps, /if \(options\.enchainer && result && result\.dismissed\)/);
-    assert.match(corps, /this\.handle\.showNext\(\)/);
-    // ON ATTEND LA FERMETURE DU RETOUR, PAS UN MINUTEUR : c'est le contrat de
-    // `announce` — une réussite s'efface seule, une erreur attend qu'on la
-    // ferme. Le ✗ s'arrête donc sur le message d'erreur, et c'est voulu :
-    // c'est lui qu'on vient lire.
-    assert.ok(!/setTimeout\([^)]*showNext/.test(corps),
-        'l\'enchaînement ne doit pas dépendre d\'un minuteur');
+test('C\'EST LE ❯ QUI APPLIQUE CE QUI EST COCHÉ', () => {
+    const debut = R.indexOf('goToQuestion(sens) {');
+    const corps = R.slice(debut, debut + 900);
+    assert.match(corps, /const regime = regimeAuto\(\);/);
+    // ON PASSE PAR `sauterQuestion`, et c'est mesuré, pas choisi par goût :
+    // par le chemin de l'élève, le vert marchait (+10 points, 1/12 → 2/12)
+    // mais le rouge s'arrêtait sur une carte d'erreur à fermer, et la question
+    // n'était pas comptée même une fois la carte fermée.
+    assert.match(corps,
+        /if \(sens > 0 && regime !== null && this\.sauterQuestion\(regime\)\) return;/);
+    // RIEN COCHÉ : le ❯ garde son ancien métier, sauter sans rien enregistrer.
+    assert.match(corps, /if \(sens > 0 && this\.handle\.showNext\) this\.handle\.showNext\(\);/);
 });
 
-test('LE RANG SERT DE VERROU — une question n\'est répondue qu\'une fois', () => {
-    // `updateStepNavigation` est appelée une douzaine de fois par question —
-    // après chaque soumission, chaque rendu, chaque changement d'étape. Sans
-    // verrou, la même question partirait douze fois au journal, et le profil
-    // de l'élève enregistrerait des tentatives qui n'ont pas eu lieu.
-    const corps = R.slice(R.indexOf('repondreToutSeul(dispo)'),
-        R.indexOf('setupStepNavigation() {'));
-    assert.match(corps, /if \(this\.__autoRang === rang\) return;/);
-    assert.match(corps, /this\.__autoRang = rang;/);
-    // ET LE RANG PORTE L'ÉTAPE : deux étapes d'un même parcours repassent par
-    // la question n° 1, et un rang nu les confondrait.
-    assert.match(corps, /\$\{this\.index\}:\$\{this\.session\.history\.length\}/);
-    // ON RELIT LE RÉGIME APRÈS L'ATTENTE : une demi-seconde suffit à cliquer
-    // « arrêter », et répondre quand même serait une réponse qu'on a refusée.
-    assert.match(corps, /if \(regimeAuto\(\) === null\) return;/);
+test('LA DERNIÈRE QUESTION RESTE ATTEIGNABLE', () => {
+    // Le ❯ s'éteignait sur la dernière : il ne savait que SAUTER, et il n'y a
+    // rien après la dernière. Depuis qu'un régime coché lui fait COMPTER la
+    // question, l'éteindre là voudrait dire que la douzième d'un exercice de
+    // douze n'est jamais comptée — celle qui conclut l'étape, montre le bilan
+    // et valide le palier, c'est-à-dire l'écran qu'on vient voir.
+    assert.match(R,
+        /nextQ\.disabled = vue >= total && !\(regimeAuto\(\) !== null && dispo\);/);
 });
 
-test('ET L\'ÉTAT ARMÉ SE VOIT', () => {
-    // Un régime qui DURE doit se voir, sinon on enchaîne vingt questions sans
-    // comprendre pourquoi elles se répondent — c'est la même raison qui a fait
-    // colorer le régime de saut de la palette d'auteur.
+test('ET L\'ÉTAT COCHÉ SE VOIT', () => {
+    // Un choix qui DURE doit se voir, sinon on enchaîne vingt questions sans
+    // comprendre pourquoi elles sont comptées — c'est la même raison qui a
+    // fait colorer le régime de saut de la palette d'auteur.
     assert.match(R, /b\.classList\.toggle\('preview-arme', arme\);/);
     assert.match(R, /b\.setAttribute\('aria-pressed', String\(arme\)\);/);
+    // ET L'INFOBULLE DIT CE QUE LE ❯ FERA, pas ce que le bouton ferait.
+    assert.match(R, /comptera la question/);
     assert.match(CSS, /\.game-icon-btn--ok\.preview-arme \{[^}]*background: #1f7a4d/);
     assert.match(CSS, /\.game-icon-btn--ko\.preview-arme \{[^}]*background: #b83a2c/);
     // ET LE SURVOL RESTE DANS SON MÉDIA : aucune règle de survol ne s'applique
     // sur un téléphone, et la maison le garde partout.
     const survol = /\.game-icon-btn--ok\.preview-arme:hover/.exec(CSS);
     assert.ok(survol, 'la règle de survol doit exister');
-    const avant = CSS.slice(0, survol.index);
-    assert.match(avant.slice(-120), /@media \(hover: hover\) \{/);
+    assert.match(CSS.slice(0, survol.index).slice(-120), /@media \(hover: hover\) \{/);
 });

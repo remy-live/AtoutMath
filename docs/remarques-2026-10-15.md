@@ -3442,3 +3442,22 @@ qu'il faut mesurer.
 questions au meneur, ils mènent une partie : il n'y a pas de « question
 suivante » à armer. Mesuré sur les cinq exercices essayés : trois ont la barre,
 deux ne l'ont pas.
+
+#### f) SUITE : c'était une SÉLECTION, pas un défilement — 24 octobre
+
+> « oui ca s'arme mais en fait je voulais juste que ce soit sélectionné et que
+> quand on appuie suivant, ca passe à la question suivante en ayant bon (si on
+> a coché vert) ou en ayant faux (si on a coché rouge) »
+
+**J'ai lu « persistant » et j'ai entendu « automatique ».** Ce n'est pas la
+même chose, et la différence est entière : il veut garder la MAIN sur
+l'avancement — un appui sur ❯ par question — et seulement dire d'avance
+COMMENT la question sera comptée. Ce que j'ai fait répondait tout seul, ce qui
+lui retire précisément ce qu'il demandait : le contrôle du rythme.
+
+C'est d'ailleurs le réglage que la palette d'auteur offre déjà pour son propre
+« suivant » (`db-saut-mode`, trois positions : neutre, juste, faux). Il
+demande le même geste sur la barre du professeur, à côté du compteur.
+
+**À CORRIGER** : le ✓ et le ✗ ne répondent plus et ne lancent plus rien — ils
+se cochent. C'est le ❯ qui applique le régime coché.

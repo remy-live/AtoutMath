@@ -5900,3 +5900,28 @@ le résultat n'existe pas** — 15 octobre 2026
 - *Et le réflexe qui l'attrape* : relire le `dire(...)` et la phrase qu'on
   s'apprête à écrire dans le message de commit. Si la phrase est plus forte
   que la condition, c'est la condition qu'il faut monter.
+
+## « Persistant » n'est pas « automatique » — 2026-10-24
+
+- *Ce que je voulais faire* : rendre le ✓ / ✗ de la barre du professeur
+  « persistant d'une question sur l'autre », comme Rémy le demandait.
+- *Ce qui a coûté* : **une fonctionnalité entière, écrite, mesurée, gardée par
+  une épreuve, livrée — et à refaire le lendemain.** J'ai lu « persistant » et
+  j'ai entendu « automatique » : ma version répondait toute seule, question
+  après question. Sa précision : « en fait je voulais juste que ce soit
+  sélectionné et que quand on appuie suivant, ca passe à la question suivante
+  en ayant bon ». Il voulait garder la MAIN sur le rythme ; j'avais construit
+  exactement ce qui la lui retire.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à fabriquer. Le signe avant-coureur était là et je ne
+  l'ai pas lu : **la maison avait DÉJÀ ce geste**, sous la forme d'un
+  interrupteur à trois positions dans la palette d'auteur (`db-saut-mode`,
+  branché sur son propre « suivant »). Quand une demande ressemble à quelque
+  chose qui existe ailleurs dans le dépôt, la bonne question n'est pas
+  « comment l'écrire » mais « est-ce le même geste ? » — et s'il l'est, on le
+  branche au lieu de l'inventer. J'ai fini par brancher `sauterQuestion`, qui
+  était là depuis le début et portait déjà ses commentaires.
+- *Et la seconde leçon, plus chère* : un mot d'utilisateur qui admet deux
+  lectures (« persistant » : qui dure, ou qui agit seul ?) se tranche en une
+  phrase de question, pas en trois heures de code. Le coût de demander est
+  toujours plus bas que celui de livrer la mauvaise moitié.

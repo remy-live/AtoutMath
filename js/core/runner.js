@@ -42,14 +42,31 @@ import { oublierLaSeance } from './memoireCourte.js';
 import { filtrerEtapes, peutSauter, estRetire, calculatriceAccordee } from './seanceDistante.js';
 import { majFilSeance, cacherFilSeance } from '../ui/filSeance.js';
 
-// --- LE RÉGIME DU ✓ ET DU ✗, QUI RESTE ARMÉ -----------------------------------
+// --- LE RÉGIME DU ✓ ET DU ✗ : UNE CASE COCHÉE, PAS UN AUTOMATE ----------------
 //
-// Rémy : « il faudrait qu'il soit persistant d'une question sur l'autre. Comme
-// cela je peux passer rapidement en voyant ce que ça fait d'être bon. »
+// Rémy, d'abord : « il faudrait qu'il soit persistant d'une question sur
+// l'autre. Comme cela je peux passer rapidement en voyant ce que ça fait
+// d'être bon. »
 //
-// Rangé dans le navigateur, comme le régime de saut de la palette d'auteur :
-// l'Atelier recharge son volet à chaque changement d'exercice, et un régime
-// gardé en mémoire s'éteindrait justement là.
+// J'AI LU « PERSISTANT » ET J'AI ENTENDU « AUTOMATIQUE ». La première version
+// répondait toute seule, question après question. Sa précision :
+//
+//   « en fait je voulais juste que ce soit sélectionné et que quand on appuie
+//     suivant, ca passe à la question suivante en ayant bon (si on a coché
+//     vert) ou en ayant faux (si on a coché rouge) »
+//
+// Ce n'est pas la même chose, et la différence est entière : il garde la MAIN
+// sur l'avancement — un appui sur ❯ par question — et dit seulement d'avance
+// COMMENT la question sera comptée. Répondre tout seul lui retirait
+// précisément ce qu'il demandait, le contrôle du rythme.
+//
+// C'est le geste que la palette d'auteur offre déjà pour SON « suivant »
+// (db-saut-mode, trois positions). Ici il vit sur la barre du professeur,
+// à côté du compteur, avec ses deux boutons au lieu d'un cycle.
+//
+// Rangé dans le navigateur, comme celui de la palette : l'Atelier recharge
+// son volet à chaque changement d'exercice, et un régime gardé en mémoire
+// s'éteindrait justement là.
 
 const CLE_AUTO = 'mathbox-apercu-auto';
 
@@ -318,9 +335,6 @@ export class Runner {
         const neuf = regimeAuto() === juste ? null : juste;
         armerAuto(neuf);
         this.peindreAuto();
-        // DÉSARMER NE RÉPOND PAS. Le second clic sert à ARRÊTER ; s'il
-        // répondait encore, on ne pourrait jamais s'arrêter sur une question.
-        if (neuf !== null) this.repondrePour(juste, { enchainer: true });
     }
 
     /** L'état du bouton se VOIT : armé, il est plein. */
@@ -335,37 +349,9 @@ export class Runner {
             b.classList.toggle('preview-arme', arme);
             b.setAttribute('aria-pressed', String(arme));
             b.title = arme
-                ? `Chaque question se répond ${mot} toute seule — cliquer pour arrêter`
+                ? `Le « ❯ » comptera la question ${mot} — cliquer pour décocher`
                 : repos;
         });
-    }
-
-    /**
-     * LA QUESTION SUIVANTE SE RÉPOND TOUTE SEULE, tant que c'est armé.
-     *
-     * UNE DEMI-SECONDE AVANT DE RÉPONDRE, et ce n'est pas un ornement : ce
-     * qu'on vient regarder, c'est l'enchaînement question → réponse → retour.
-     * Répondre dans la même image que l'affichage ne montrerait que le retour,
-     * et l'on ne saurait même pas à quoi.
-     *
-     * LE RANG SERT DE VERROU. updateStepNavigation est appelée une douzaine de
-     * fois par question — après chaque soumission, chaque rendu, chaque
-     * changement d'étape. Sans ce verrou, la même question serait répondue
-     * plusieurs fois, et le profil enregistrerait des tentatives qui n'ont pas
-     * eu lieu.
-     */
-    repondreToutSeul(dispo) {
-        const r = regimeAuto();
-        if (r === null || !dispo || !this.allowStepNavigation || !this.session) return;
-        const rang = `${this.index}:${this.session.history.length}`;
-        if (this.__autoRang === rang) return;
-        this.__autoRang = rang;
-        clearTimeout(this.__autoMinuteur);
-        this.__autoMinuteur = setTimeout(() => {
-            // On relit le régime : une demi-seconde suffit à cliquer « arrêter ».
-            if (regimeAuto() === null) return;
-            this.repondrePour(r, { enchainer: true });
-        }, 550);
     }
 
     setupStepNavigation() {
@@ -419,7 +405,8 @@ export class Runner {
         document.getElementById('btn-preview-next-q').onclick = () => this.goToQuestion(1);
         document.getElementById('btn-preview-prev-q').onclick = () => this.goToQuestion(-1);
 
-        // ÉPROUVER LES DEUX RETOURS — voir `repondrePour`.
+        // LE ✓ ET LE ✗ SE COCHENT — voir `basculerAuto`. C'est le ❯ qui les
+        // applique, un appui par question.
         const juste = document.getElementById('btn-preview-juste');
         const faux = document.getElementById('btn-preview-faux');
         if (juste) juste.onclick = () => this.basculerAuto(true);
@@ -441,6 +428,32 @@ export class Runner {
      */
     goToQuestion(sens) {
         if (!this.allowStepNavigation || !this.handle) return;
+        // ── LE « ❯ » APPLIQUE LE RÉGIME COCHÉ ───────────────────────────
+        //
+        // Rémy : « quand on appuie suivant, ca passe à la question suivante en
+        // ayant bon (si on a coché vert) ou en ayant faux (si on a coché
+        // rouge) ».
+        //
+        // C'EST MOT POUR MOT CE QUE FAIT DÉJÀ sauterQuestion(verdict) — le
+        // saut de la palette d'auteur : il écrit une VRAIE tentative (donc le
+        // barème, le carnet d'erreurs et l'escalier la voient), il franchit
+        // une étape interne quand le jeu en a une, il respecte la fin d'étape,
+        // puis il montre la question suivante. On ne réécrit pas ce
+        // mécanisme-là, on le branche sur le ❯ de la barre du professeur.
+        //
+        // J'AVAIS D'ABORD PRIS L'AUTRE CHEMIN, celui de l'élève
+        // (repondrePour → session.submit), pour que le message de retour
+        // s'affiche. MESURÉ : au vert il marche (+10 points, 1/12 → 2/12) ;
+        // au ROUGE la carte d'erreur attend un clic, et même une fois fermée
+        // la question n'est pas comptée — le compteur restait à 2/12 après
+        // deux croix. Deux colorations, deux comportements, et un balayage
+        // qui n'arrive jamais au bout : ce n'est pas ce qu'il a demandé.
+        //
+        // CE QU'ON PERD, ET IL FAUT LE DIRE : le ❯ ne montre plus le message
+        // que l'élève lirait. C'est le prix du geste rapide, et le message
+        // reste accessible — il suffit de répondre pour de bon à la question.
+        const regime = regimeAuto();
+        if (sens > 0 && regime !== null && this.sauterQuestion(regime)) return;
         if (sens > 0 && this.handle.showNext) this.handle.showNext();
         else if (sens < 0 && this.handle.showPrevious) this.handle.showPrevious();
         // Le chrono par question repart avec la nouvelle question.
@@ -494,84 +507,44 @@ export class Runner {
         const prevQ = document.getElementById('btn-preview-prev-q');
         const nextQ = document.getElementById('btn-preview-next-q');
         if (prevQ) prevQ.disabled = vue < 2;
-        if (nextQ) nextQ.disabled = vue >= total;
 
         // Les deux boutons de réponse n'existent que là où il y a une question
         // à laquelle répondre — et pas quand elle est déjà jouée.
         const dispo = !!(this.session && this.session.current && !this.session.locked);
+        // LA DERNIÈRE QUESTION SE RÉPOND AUSSI.
+        //
+        // Le ❯ s'éteignait sur la dernière : il ne savait que SAUTER, et il n'y
+        // a rien après la dernière. Depuis qu'un régime coché lui fait
+        // RÉPONDRE, l'éteindre là voudrait dire que la douzième question d'un
+        // exercice de douze ne peut jamais être comptée — celle qui conclut
+        // l'étape, montre le bilan et valide le palier. C'est justement
+        // l'écran qu'on vient voir.
+        if (nextQ) nextQ.disabled = vue >= total && !(regimeAuto() !== null && dispo);
         ['btn-preview-juste', 'btn-preview-faux'].forEach(id => {
             const b = document.getElementById(id);
             if (b) b.hidden = !dispo;
         });
         this.peindreAuto();
-        this.repondreToutSeul(dispo);
     }
 
     /**
-     * RÉPONDRE JUSTE, OU FAUX, POUR VOIR CE QUE L'ÉLÈVE LIRA.
+     * CE QUI A REMPLACÉ « repondrePour », ET POURQUOI IL N'EST PLUS LÀ.
      *
-     * Rémy : « quand le prof teste, faut-il rajouter un bouton bonne ou
-     * mauvaise réponse comme pour le début ». Oui — et c'est le message
-     * d'ERREUR qui compte le plus. C'est lui qui doit expliquer sans donner la
-     * réponse, et c'est le seul qu'on ne voit jamais quand on relit ses propres
-     * exercices : pour l'obtenir il fallait se tromper exprès, et sur un QCM à
-     * deux propositions on tombe juste une fois sur deux.
+     * Il répondait à la place de l'élève — `session.submit` — pour montrer au
+     * professeur le message que l'élève lirait. Rémy a demandé autre chose le
+     * 24 octobre : « quand on appuie suivant, ca passe à la question suivante
+     * en ayant bon (si on a coché vert) ou en ayant faux (si on a coché
+     * rouge) ». C'est `sauterQuestion(verdict)`, juste dessous, qui le fait —
+     * et qui le faisait déjà pour la palette d'auteur.
      *
-     * On passe par `session.submit`, le même chemin que l'élève : un bouton qui
-     * afficherait le message par un raccourci montrerait ce qu'on a écrit, pas
-     * ce que l'exercice fait.
-     *
-     * LA MAUVAISE RÉPONSE EST CELLE D'UN ÉLÈVE, pas n'importe laquelle. On
-     * prend le premier distracteur — celui que le générateur a fabriqué pour
-     * piéger —, parce que c'est LUI qui déclenche le diagnostic. Une réponse
-     * absurde tomberait dans le message générique et n'apprendrait rien.
+     * ON NE GARDE PAS LES DEUX. Mesuré avant de trancher : par le chemin de
+     * l'élève, le vert marchait (+10 points, 1/12 → 2/12) mais le rouge
+     * s'arrêtait sur une carte d'erreur à fermer, et la question n'était même
+     * pas comptée une fois la carte fermée — le compteur restait à 2/12 après
+     * deux croix. Deux couleurs, deux comportements, et un balayage qui
+     * n'arrive jamais au bout. Un code qui n'est plus appelé n'est pas une
+     * réserve, c'est un piège pour qui le lira ensuite.
      */
-    repondrePour(juste, options = {}) {
-        if (!this.session || !this.session.current || this.session.locked) return;
-        const item = this.session.item;
-        if (!item) return;
-        let valeur;
-        if (Array.isArray(item.choices) && item.choices.length) {
-            const c = juste
-                ? item.choices.find(x => x.correct)
-                : item.choices.find(x => !x.correct);
-            valeur = c ? (c.value ?? c.label) : null;
-        } else {
-            // Sans propositions, la bonne réponse est celle de l'item ; la
-            // fausse est prise à côté, ce qui suffit à déclencher la correction.
-            const bonne = item.answer;
-            valeur = juste ? bonne
-                : (typeof bonne === 'number' ? bonne + 1 : `${bonne}\u2009?`);
-        }
-        const result = this.session.submit(valeur, {});
-        this.updateStepNavigation();
-
-        // ── EN RÉGIME ARMÉ, ON ENCHAÎNE SUR LA QUESTION SUIVANTE ────────
-        //
-        // RÉPONDRE NE FAISAIT PAS AVANCER, et c'est ce qui rendait le bouton
-        // deux fois plus cher qu'il n'en avait l'air. `repondrePour` appelle
-        // `session.submit` directement, sans passer par le clic de l'élève :
-        // l'activité ne l'apprend donc jamais, et c'est elle qui enchaîne
-        // (`result.dismissed.then(renderNext)` dans `activities/choice.js`).
-        // Il fallait répondre, PUIS cliquer « ❯ ». MESURÉ avant d'écrire une
-        // ligne : le compteur restait sur 1/12 neuf secondes après un clic sur
-        // le ✓ armé.
-        //
-        // ON ATTEND LA FERMETURE DU RETOUR, PAS UN MINUTEUR. C'est le contrat
-        // de `announce` (`core/itemSession.js`) : une réussite s'efface toute
-        // seule, une erreur attend qu'on la ferme. Enchaîner là-dessus donne
-        // donc le bon rythme dans les deux régimes — et c'est VOULU que le ✗
-        // s'arrête sur le message d'erreur : c'est lui qu'on vient lire.
-        if (options.enchainer && result && result.dismissed) {
-            result.dismissed.then(() => {
-                // On relit le régime : on a pu désarmer pendant la lecture.
-                if (regimeAuto() === null || this.etapeClose) return;
-                if (this.handle && this.handle.showNext) this.handle.showNext();
-                this.updateStepNavigation();
-            });
-        }
-        return result;
-    }
 
     /**
      * Saute directement à une activité. Contrairement à `endStep()`, aucune
