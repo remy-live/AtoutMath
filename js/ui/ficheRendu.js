@@ -1057,8 +1057,18 @@ function largeurFraction(pdf, m) {
     // l'aperçu le dit de son côté (trois `ch`), et deux planchers exprimés dans
     // deux unités finissent par ne plus valoir la même chose quand la taille
     // du corps change.
+    // DEUX TROUS FACE À FACE NE SE MESURENT PAS L'UN L'AUTRE.
+    //
+    // RÉMY, capture de la feuille « Diviser par une Fraction » : « mets moins
+    // de pointillés ». Un étage vide prenait la largeur de son vis-à-vis — et
+    // quand le vis-à-vis est VIDE LUI AUSSI, cette largeur est celle de ses
+    // ESPACES, c'est-à-dire la place à remplir que `texteImprime` a posée.
+    // Sur « …/… », les deux étages se gonflaient donc mutuellement : onze
+    // tirets de part et d'autre pour un chiffre à écrire.
     const large = (t, autre) => (etageEstUnTrou(t)
-        ? Math.max(pdf.getTextWidth(autre), pdf.getTextWidth('000')) : pdf.getTextWidth(t));
+        ? Math.max(etageEstUnTrou(autre) ? 0 : pdf.getTextWidth(autre),
+            pdf.getTextWidth('000'))
+        : pdf.getTextWidth(t));
     return Math.max(large(m.num, m.den), large(m.den, m.num)) + 1.6;
 }
 
@@ -1094,12 +1104,23 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions, champ) {
             const w = largeurFraction(pdf, m);
             // L'ÉTAGE À REMPLIR, en pointillés : le même trait qu'ailleurs sur
             // la feuille, mais posé DANS la fraction, à son étage.
-            const etagePdf = (t, yEtage) => {
+            // LE NUMÉRATEUR N'A PAS DE POINTILLÉ À LUI : LA BARRE EST SA LIGNE.
+            //
+            // RÉMY : « avec des drôle de pointillé ». MESURÉ sur la feuille : le
+            // pointillé du numérateur tombe à 0,22 corps au-dessus de la barre de
+            // fraction — moins d'un millimètre. On imprimait donc un trait DOUBLE,
+            // pointillé contre plein, qui ne ressemble à rien de ce qu'on écrit au
+            // tableau.
+            //
+            // AU TABLEAU, LE NUMÉRATEUR S'ÉCRIT SUR LA BARRE. Elle lui sert de
+            // ligne, et c'est exactement ce qu'il faut dire à l'élève. Seul le
+            // dénominateur, qui n'a rien sous lui, garde son pointillé.
+            const etagePdf = (t, yEtage, dessous) => {
                 if (!etageEstUnTrou(t)) {
                     pdf.text(t, x + (w - pdf.getTextWidth(t)) / 2, yEtage);
                     return;
                 }
-                pointilles(pdf, x + 0.6, yEtage + o.taille * 0.06, w - 1.2);
+                if (dessous) pointilles(pdf, x + 0.6, yEtage + o.taille * 0.06, w - 1.2);
                 // La boîte est À CHEVAL sur ce pointillé, comme partout
                 // ailleurs : c'est là que l'élève écrirait à la main.
                 if (typeof champ === 'function') {
@@ -1112,8 +1133,8 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions, champ) {
             // ligne plus bas. Numérateur dessus, dénominateur dessous, à
             // distance égale du trait.
             const yTrait = y;
-            etagePdf(m.num, yTrait - o.taille * 0.28);
-            etagePdf(m.den, yTrait + o.taille * 0.98);
+            etagePdf(m.num, yTrait - o.taille * 0.28, false);
+            etagePdf(m.den, yTrait + o.taille * 0.98, true);
             pdf.setLineWidth(0.28);
             pdf.setDrawColor(...ENCRE.texte);
             pdf.line(x + 0.4, yTrait, x + w - 0.4, yTrait);
@@ -1195,12 +1216,23 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
         // choses différentes de la même fraction — et c'est l'aperçu que Rémy
         // regarde avant d'imprimer. On écrit ici la MÊME règle, dans l'unité
         // de l'aperçu : le `ch`, qui est la largeur d'un chiffre.
-        const chDuTrou = (autre) => Math.max(String(autre ?? '').trim().length, 3);
-        const etage = (t, autre) => (etageEstUnTrou(t)
-            ? `<span class="${trouCls} fx-frac-trou" style="width:${chDuTrou(autre)}ch"></span>`
+        // LA MÊME RÈGLE QUE LE PDF, et il faut les deux : c'est l'aperçu que
+        // Rémy regarde avant d'imprimer. Deux trous face à face prennent la
+        // largeur de trois chiffres, et non celle des espaces de l'autre.
+        const chDuTrou = (autre) => (etageEstUnTrou(autre)
+            ? 3 : Math.max(String(autre ?? '').trim().length, 3));
+        // ET LE NUMÉRATEUR N'A PAS DE POINTILLÉ : `fx-frac-n` porte déjà la
+        // barre de fraction en bordure basse, à un cheveu de là. Les deux
+        // ensemble donnaient le trait double de sa capture. Le crayon de la
+        // fiche remplissable, lui, reste aux deux étages — c'est une place où
+        // l'on tape, pointillé ou pas.
+        const champCls = opts.champs ? ' fx-trou--champ' : '';
+        const etage = (t, autre, dessous) => (etageEstUnTrou(t)
+            ? `<span class="${dessous ? trouCls : 'fx-trou--nu' + champCls} fx-frac-trou"
+                style="width:${chDuTrou(autre)}ch"></span>`
             : echapper(t));
-        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num, m.den)}</span>`
-            + `<span class="fx-frac-d">${etage(m.den, m.num)}</span></span>`;
+        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num, m.den, false)}</span>`
+            + `<span class="fx-frac-d">${etage(m.den, m.num, true)}</span></span>`;
     }).join('');
 }
 

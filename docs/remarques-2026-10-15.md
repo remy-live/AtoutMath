@@ -3601,3 +3601,42 @@ C'est la SUITE de sa remarque du carnet : « comme c'est sous forme de fraction
 fraction en colonne. » J'ai empilé la fraction sans redimensionner ce qui
 l'entoure.
 
+
+
+---
+
+## 24. Le schéma qu'on ne voit pas, et les fractions à pointillés — 24 octobre
+
+Deux captures, à une heure d'écart, sur ce que je venais de livrer.
+
+**« je ne vois pas les schémas pour les heures et minutes »** puis, en v1096,
+**« je ne vois pas le shéma »**.
+
+Il avait raison DEUX fois, et la seconde était la vraie.
+
+1. Le dessin attendait le DEUXIÈME indice (la table de 60, le TROISIÈME).
+   Corrigé en v1096 : les deux arrivent dès le premier.
+2. **Et même au premier, il repart avec la carte.** La carte d'indice est
+   MODALE : on la lit, on appuie sur « Merci ! », et le dessin disparaît. Il
+   reste une question, deux boutons, et plus rien à regarder — c'est-à-dire
+   exactement ce qu'il décrit. MESURÉ : le dessin ÉTAIT bien dans la carte,
+   300 × 80 px, propre.
+
+   **UN TEXTE SE RETIENT, UN DESSIN SE REGARDE PENDANT QU'ON CALCULE.** Sa
+   demande était « qqch de propre pour bien montrer » : montrer deux secondes,
+   ce n'est pas montrer.
+
+**« pour les fractions tu écris ...../..... avec des drole de pointillé et mets
+moins de pointillés »**
+
+Sur la feuille de « Diviser par une Fraction ». Deux défauts :
+
+1. **le trait double** — le pointillé du numérateur tombe à 0,22 corps
+   au-dessus de la barre de fraction, moins d'un millimètre. On imprimait donc
+   un pointillé contre un plein. Au tableau, le numérateur s'écrit SUR la
+   barre : elle lui sert de ligne.
+2. **des pointillés trop longs** — un étage vide prenait la largeur de son
+   vis-à-vis, et quand le vis-à-vis est vide LUI AUSSI, cette largeur est
+   celle de ses espaces. Sur « …/… », les deux étages se gonflaient
+   mutuellement : onze tirets de part et d'autre pour un chiffre à écrire.
+

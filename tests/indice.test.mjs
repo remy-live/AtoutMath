@@ -143,6 +143,44 @@ test('LE BOUTON « UN INDICE » PASSE PAR LA CARTE, COMME « MONTRE-MOI »', () 
         'sans carte montée, l\'indice serait perdu sans un mot');
 });
 
+test('LE DESSIN RESTE SOUS L\'ÉNONCÉ QUAND LA CARTE SE FERME', () => {
+    // RÉMY, capture à l'appui, deux fois en deux jours : « je ne vois pas le
+    // schéma », sur « Heures et Minutes ».
+    //
+    // MESURÉ : le dessin ÉTAIT dans la carte — 300 × 80 px, propre. Mais la
+    // carte est MODALE : on la lit, on appuie sur « Merci ! », et le dessin
+    // part avec elle. Il reste une question, deux boutons, et plus rien à
+    // regarder. Un texte se retient ; un dessin se regarde PENDANT qu'on
+    // calcule.
+    //
+    // CETTE ÉPREUVE GARDE LA FORME. Que le dessin TOMBE au bon endroit se
+    // mesure au navigateur, et c'est fait : `tools/tmp/posee.mjs` a relevé
+    // « carte fermée → posée : 1, juste sous l'énoncé ».
+    const src = readFileSync(new URL('../js/core/activities/choice.js', import.meta.url), 'utf8');
+    const i = src.indexOf('export function wireHint');
+    const bloc = src.slice(i, src.indexOf('\nexport function wireShowMe', i));
+    // ON COMPTE LES DEUX : le `querySelector` qui le retrouve ET la classe
+    // qu'on lui donne. `epreuveTombe` l'a dit — en retirant la classe, le
+    // `querySelector` portait encore le motif et l'épreuve restait verte.
+    // C'est la troisième fois cette semaine : dans ce dépôt, un motif qui
+    // vit à deux endroits se COMPTE, il ne se cherche pas.
+    assert.equal((bloc.match(/hint-schema--pose/g) || []).length, 2,
+        'le dessin de l\'indice repart avec la carte');
+    // SOUS L'ÉNONCÉ, ET NON À LA FIN : c'est la place que `opts.context`
+    // occupe déjà pour les supports visuels, et c'est là qu'on regarde avant
+    // de choisir.
+    assert.match(bloc, /querySelector\('\.game-question'\)/,
+        'le dessin ne se range plus sous l\'énoncé');
+    // ON REMPLACE, ON N'EMPILE PAS : un second indice qui dessine aussi
+    // donnerait deux fois la même figure l'une sous l'autre.
+    assert.match(bloc, /pose\.innerHTML = session\.schemaIndice;/,
+        'deux indices qui dessinent empileraient deux figures');
+    // ET LE STYLE EXISTE : sans lui, le dessin arrive pleine largeur au
+    // milieu de la question.
+    const css = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
+    assert.match(css, /\.hint-schema--pose \{[^}]*max-width/);
+});
+
 test('LA CARTE SAIT AFFICHER UN INDICE ET SON DESSIN', () => {
     // L'autre bout du contrat : ce que `wireHint` envoie, la carte doit
     // savoir le rendre.

@@ -381,6 +381,19 @@
     margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;
     white-space: normal;
 }
+/* LE DESSIN POSÉ SOUS L'ÉNONCÉ. Rémy, deux fois en deux jours : « je ne vois
+   pas le schéma ». Il ÉTAIT dans la carte d'indice — mesurée à 300 × 80 px —,
+   mais la carte est modale : on appuie sur « Merci ! » et le dessin part avec
+   elle. Un texte se retient, un dessin se regarde PENDANT qu'on calcule.
+
+   IL S'ANNONCE SANS CLIGNOTER : une apparition douce dit qu'il vient
+   d'arriver, et `prefers-reduced-motion` la retire. */
+.hint-schema--pose {
+    margin: 10px auto 14px; max-width: 340px;
+    animation: hint-pose .35s ease-out both;
+}
+@keyframes hint-pose { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .hint-schema--pose { animation: none; } }
 .hint-schema svg { width: 100%; max-width: 260px; height: auto; display: block; }
 .hint-schema .fs-legende { font-size: .84rem; line-height: 1.35; margin: 0; opacity: .92; }
 

@@ -653,6 +653,38 @@ export function wireHint(container, session) {
                 box.appendChild(dessin);
             }
         }
+        // ── LE DESSIN RESTE SOUS L'ÉNONCÉ QUAND LA CARTE SE FERME ──────────
+        //
+        // RÉMY, capture à l'appui, deux fois en deux jours : « je ne vois pas
+        // le schéma ».
+        //
+        // MESURÉ : le schéma EST dans la carte d'indice — 300 × 80 px, propre.
+        // Mais la carte est MODALE : on la lit, on appuie sur « Merci ! », et
+        // le dessin part avec elle. Il reste alors une question, deux boutons,
+        // et plus rien à regarder — c'est-à-dire exactement ce qu'il décrit.
+        //
+        // UN TEXTE SE RETIENT, UN DESSIN SE REGARDE PENDANT QU'ON CALCULE. Sa
+        // demande était « qqch de propre pour bien montrer » : montrer deux
+        // secondes, ce n'est pas montrer. Le dessin se POSE donc sous l'énoncé
+        // et y reste jusqu'à la question suivante — `container.innerHTML` est
+        // réécrit à chaque rendu, il n'y a rien à nettoyer.
+        //
+        // ENTRE L'ÉNONCÉ ET LES PROPOSITIONS, et non à la fin : c'est la place
+        // que `opts.context` occupe déjà pour les supports visuels, et c'est
+        // là qu'on regarde avant de choisir.
+        if (session.schemaIndice) {
+            const ou = container.querySelector('.game-question');
+            let pose = container.querySelector('.hint-schema--pose');
+            if (!pose) {
+                pose = document.createElement('div');
+                pose.className = 'hint-schema hint-schema--pose';
+                if (ou) ou.insertAdjacentElement('afterend', pose);
+                else container.prepend(pose);
+            }
+            // ON REMPLACE, ON N'EMPILE PAS : un second indice qui dessine
+            // aussi donnerait deux fois la même figure l'une sous l'autre.
+            pose.innerHTML = session.schemaIndice;
+        }
         if (!session.hintsAvailable) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; }
     };
 }

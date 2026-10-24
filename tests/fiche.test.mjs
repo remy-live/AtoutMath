@@ -1326,6 +1326,44 @@ test('PAS DE PAGE ENTIÈRE POUR UNE SEULE QUESTION', async () => {
     assert.deepEqual(orphelines, [], 'un bandeau seul en bas de page');
 });
 
+test('UN ÉTAGE VIDE N\'A PAS SON PROPRE POINTILLÉ', () => {
+    // RÉMY, capture de « Diviser par une Fraction » : « pour les fractions tu
+    // écris ...../..... avec des drole de pointillé et mets moins de pointillés ».
+    //
+    // MESURÉ sur la feuille : le pointillé du NUMÉRATEUR tombe à 0,22 corps
+    // au-dessus de la barre de fraction — moins d'un millimètre. On imprimait
+    // donc un trait DOUBLE, pointillé contre plein. Au tableau, le numérateur
+    // s'écrit SUR la barre : elle lui sert de ligne, et seul le dénominateur,
+    // qui n'a rien sous lui, garde son pointillé.
+    const R = readFileSync(new URL('../js/ui/ficheRendu.js', import.meta.url), 'utf8');
+    assert.match(R, /if \(dessous\) pointilles\(pdf,/,
+        'le numérateur imprime encore son propre pointillé sous la barre');
+    assert.match(R, /etagePdf\(m\.num, yTrait - o\.taille \* 0\.28, false\);/);
+    assert.match(R, /etagePdf\(m\.den, yTrait \+ o\.taille \* 0\.98, true\);/);
+    // ET L'APERÇU DIT LA MÊME CHOSE : c'est lui qu'on regarde avant d'imprimer.
+    assert.match(R, /fx-trou--nu/, 'l\'aperçu garde le pointillé du numérateur');
+    const CSS = readFileSync(new URL('../css/ui.css', import.meta.url), 'utf8');
+    assert.match(CSS, /\.fx-trou--nu \{[^}]*inline-block/);
+    assert.ok(!/\.fx-trou--nu \{[^}]*dotted/.test(CSS),
+        'la place nue a repris un pointillé');
+});
+
+test('DEUX ÉTAGES VIDES NE SE MESURENT PAS L\'UN L\'AUTRE', () => {
+    // « mets moins de pointillés ». Un étage vide prenait la largeur de son
+    // vis-à-vis — et quand le vis-à-vis est VIDE LUI AUSSI, cette largeur est
+    // celle de ses ESPACES, c'est-à-dire la place à remplir que `texteImprime`
+    // a posée. Sur « …/… », les deux étages se gonflaient mutuellement : onze
+    // tirets de part et d'autre pour un chiffre à écrire.
+    const R = readFileSync(new URL('../js/ui/ficheRendu.js', import.meta.url), 'utf8');
+    assert.match(R, /etageEstUnTrou\(autre\) \? 0 : pdf\.getTextWidth\(autre\)/,
+        'le PDF mesure encore un trou sur les espaces de son vis-à-vis');
+    assert.match(R, /etageEstUnTrou\(autre\)\s*\n?\s*\? 3 :/,
+        'l\'aperçu mesure encore un trou sur les espaces de son vis-à-vis');
+    // TROIS CHIFFRES DE PART ET D'AUTRE, et le plancher reste le même des deux
+    // côtés : deux planchers dans deux unités finissent par diverger.
+    assert.match(R, /pdf\.getTextWidth\('000'\)/);
+});
+
 test('…et l\'on n\'emporte les deux dernières rangées que si elles tiennent', () => {
     // Le garde ne doit pas repousser à l'infini : si les deux rangées ne
     // tiennent pas ensemble sur une page VIDE, on ne bouge pas — sinon la

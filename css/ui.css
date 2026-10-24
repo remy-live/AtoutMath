@@ -3271,6 +3271,15 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 /* LE TROU À REMPLIR, écrit dans la ligne : impossible qu'il dérive. */
 .fx-trou { border-bottom: 1px dotted #9aa3b2; }
 .fx-trou--champ { background: rgba(99, 102, 241, .10); border-bottom-color: #6366f1; }
+/* LA PLACE À REMPLIR SANS SON POINTILLÉ — le numérateur d'une fraction.
+
+   Rémy, capture de « Diviser par une Fraction » : « avec des drôle de
+   pointillé ». Le pointillé du numérateur tombait à moins d'un millimètre de
+   la barre de fraction, qui est la bordure basse de `.fx-frac-n` : on
+   imprimait un trait DOUBLE, pointillé contre plein.
+
+   AU TABLEAU, LE NUMÉRATEUR S'ÉCRIT SUR LA BARRE. Elle lui sert de ligne. */
+.fx-trou--nu { display: inline-block; }
 
 .fq-num { position: absolute; font-weight: 700; color: #1a202c; line-height: 1.05; }
 .fq-ligne { position: absolute; line-height: 1.05; white-space: pre; }
