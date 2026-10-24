@@ -3640,3 +3640,28 @@ Sur la feuille de « Diviser par une Fraction ». Deux défauts :
    celle de ses espaces. Sur « …/… », les deux étages se gonflaient
    mutuellement : onze tirets de part et d'autre pour un chiffre à écrire.
 
+
+
+---
+
+## 25. Un bouton « schéma », et des pointillés qu'on remplit — 24 octobre
+
+> « mets un bouton shéma sous le calcul de soustraction et on pourra compléter
+> les pointillés et aussi avant de te lancer propose moi plusieurs design pour
+> ce schéma avec des résultat entouré »
+
+Trois demandes, et la troisième est une CONSIGNE DE MÉTHODE :
+
+1. **un bouton « schéma »**, sous le calcul — le schéma ne dépend plus du
+   bouton « Un indice ». C'est un OUTIL, pas une aide : on l'ouvre quand on
+   veut s'en servir, et le demander ne doit pas coûter un indice.
+2. **on remplit les pointillés** — les « + …… » deviennent des cases où l'on
+   tape. Le schéma cesse d'être une image : il devient le brouillon.
+3. **le résultat entouré** — la réponse se détache, comme on l'entoure au
+   crayon.
+
+ET « avant de te lancer propose moi plusieurs design ». C'est la première fois
+qu'il le demande explicitement, et c'est à retenir : sur ce qui se REGARDE, il
+veut choisir avant que ce soit écrit. Les maquettes coûtent une heure ; une
+mise en page refaite trois fois en coûte six.
+
