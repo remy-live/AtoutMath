@@ -75,8 +75,22 @@ function brancherLesCases(boite, memoire, i) {
     const gardees = memoire.get(i) || [];
     cases.forEach((c, n) => { c.value = gardees[n] || ''; });
     const retenir = () => memoire.set(i, cases.map(c => c.value));
+    // ── DEUX SORTES DE CASES, ET LA SECONDE EST ARRIVÉE APRÈS ──────────────
+    //
+    // RÉMY, sur le schéma des durées : « on pourra compléter les pointillés ».
+    //
+    // CE QU'ON Y ÉCRIT N'EST PAS UN CHIFFRE, c'est une durée — « 40 min »,
+    // « 1 h 25 ». Le filtre d'origine ne gardait qu'UN chiffre par case : il
+    // est né pour le tableau de numération, où une colonne porte un chiffre et
+    // où l'on veut avancer tout seul. Appliqué ici, il effaçait la frappe au
+    // fur et à mesure.
+    //
+    // `data-case-outil="texte"` DIT L'AUTRE RÉGIME : on garde ce qui est tapé,
+    // et l'on n'avance pas tout seul — il n'y a pas de colonne suivante.
+    const libre = (c) => c.dataset.caseOutil === 'texte';
     cases.forEach((c, n) => {
         c.addEventListener('input', () => {
+            if (libre(c)) { retenir(); return; }
             // UN CHIFFRE, ET RIEN D'AUTRE. `maxlength` ne filtre pas ce qu'on
             // tape, il n'en limite que le nombre : sans cette ligne, une
             // lettre resterait dans la case.
@@ -88,6 +102,11 @@ function brancherLesCases(boite, memoire, i) {
             if (c.value && cases[n + 1]) cases[n + 1].focus({ preventScroll: true });
         });
         c.addEventListener('keydown', (e) => {
+            // LES FLÈCHES ET L'EFFACEMENT NE NAVIGUENT QU'ENTRE DES COLONNES.
+            // Dans une case de texte libre, la flèche gauche DÉPLACE LE CURSEUR
+            // dans ce qu'on écrit : la détourner rendrait une durée de cinq
+            // caractères impossible à corriger.
+            if (libre(c)) return;
             if (e.key === 'Backspace' && !c.value && cases[n - 1]) {
                 cases[n - 1].focus({ preventScroll: true });
                 cases[n - 1].value = '';

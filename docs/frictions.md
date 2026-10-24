@@ -6047,3 +6047,35 @@ le résultat n'existe pas** — 15 octobre 2026
   texte remis existe en PLUSIEURS exemplaires dans le fichier, les abîme TOUS
   — ou le dise. Aujourd'hui il n'en abîme qu'un, donc il ne mesure qu'un.
 
+
+
+## Une photo d'un élément couvert photographie ce qui le couvre — 2026-10-24
+
+- *Ce que je voulais faire* : regarder le schéma des bonds posé dans un bac
+  d'essai, pour juger si la pointe de la flèche touchait encore le point.
+- *Ce qui a coûté* : un tour complet de sonde — deux minutes de navigateur —
+  pour une image montrant le titre « Heures et Minutes » et rien d'autre. Le bac
+  était en `position: fixed; z-index: 9`, donc SOUS l'en-tête de l'application.
+  `photo()` découpe la page aux coordonnées de l'élément (et elle a raison de le
+  faire : c'est ce qui sauve les dégradés découpés dans le texte), si bien
+  qu'elle rend fidèlement ce qui est peint PAR-DESSUS. L'image n'était ni unie
+  ni vide : le garde-fou « UNIE » ne pouvait rien dire.
+- *Combien de fois* : |
+- *Ce qui manque* : que `photo()` demande `document.elementFromPoint` au centre
+  de la découpe et le dise quand ce n'est PAS un descendant de la cible —
+  « attention, c'est `header.app-bar` qui est devant ». C'est exactement le
+  geste que `deplier` a appris à faire pour les clics ; il manque à l'image.
+
+## Un sélecteur d'état large attrape le bandeau « Prof » — 2026-10-24
+
+- *Ce que je voulais faire* : vérifier qu'une frappe dans la case du schéma ne
+  répond pas à la place de l'élève — donc qu'AUCUNE proposition n'est choisie.
+- *Ce qui a coûté* : une sonde rouge et une fausse piste. `[aria-pressed="true"]`
+  attrape la pastille de rôle de l'en-tête, qui est « enfoncée » en permanence.
+  Compter rendait 1 avant comme après ; j'ai cru à une fuite de frappe.
+- *Combien de fois* : || (même famille que `doitExister` : un crochet qu'on n'a
+  pas LU dans la source rend la réponse d'un logiciel cassé)
+- *Ce qui manque* : la règle tient en une ligne et elle est déjà à moitié dans
+  `CLAUDE.md` — **un état se COMPARE avant/après, il ne se compte pas.** Ce qui
+  l'automatiserait : une `s.avantApres(selecteur)` dans la sonde, qui prend
+  l'état, rend une fonction, et ne dit que la DIFFÉRENCE.

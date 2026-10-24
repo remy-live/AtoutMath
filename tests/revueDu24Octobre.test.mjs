@@ -329,6 +329,82 @@ test('LA SOUSTRACTION DE DURÉES SE FAIT PAR BONDS', () => {
     }
 });
 
+test('LE SCHÉMA S\'OUVRE À UN BOUTON, ET L\'ON ÉCRIT DANS SES BULLES', () => {
+    // RÉMY, deux messages du 24 octobre : « mets un bouton shéma sous le calcul
+    // de soustraction et on pourra compléter les pointillés », puis, l'ayant
+    // sous les yeux : « et il faut pouvoir écrire dans les bulles ».
+    //
+    // POURQUOI UN OUTIL ET NON UN INDICE. La carte d'indice se REFERME : une
+    // case qu'elle porte s'efface dès qu'on la quitte, et l'on remplirait des
+    // pointillés pour rien. Les outils restent ouverts et gardent ce qu'on y
+    // pose — c'est tout l'objet de `activities/outils.js`.
+    for (let i = 0; i < 8; i++) {
+        const it = dureesGenerator.generate({ marches: ['difference'] },
+            { index: i, total: 8, rng: makeRng('o' + i) });
+        const outils = (it.meta && it.meta.outils) || [];
+        assert.equal(outils.length, 1, `pas d'outil sur ${it.prompt.text}`);
+        assert.match(outils[0].label, /Schéma/, 'le bouton ne dit pas son nom');
+        const html = outils[0].html;
+        assert.match(html, /<svg class="md-bonds"/, 'le bouton n\'ouvre pas le schéma');
+        // AUTANT DE CASES QUE DE BONDS, plus celle du total quand il y en a deux
+        // à ajouter. Elles sont de TEXTE : on y écrit « 40 min », pas un
+        // chiffre — le filtre des cases d'outils est né pour le tableau de
+        // numération, où une colonne porte un chiffre et un seul.
+        const fleches = (html.match(/marker-end=/g) || []).length;
+        const bulles = (html.match(/class="md-bulle"/g) || []).length;
+        assert.equal(bulles, fleches, 'une bulle par flèche, pas plus');
+        assert.equal((html.match(/data-case-outil="texte"/g) || []).length,
+            fleches + (fleches > 1 ? 1 : 0),
+            `cases comptées sur ${it.prompt.text}`);
+        // PAS DE `placeholder` : photographié, son pointillé se posait sur le
+        // pointillé qui souligne la case, et l'on voyait deux rangées de points.
+        assert.ok(!/placeholder=/.test(html), 'la case a repris un marque-page');
+        // ET LA CARTE D'INDICE, ELLE, NE DEMANDE RIEN À ÉCRIRE.
+        const indice = (it.schemas || [])[0] || '';
+        assert.ok(!/<input/.test(indice),
+            'une case dans la carte d\'indice s\'efface dès qu\'on la referme');
+        // ── LA POINTE S'ARRÊTE AVANT LE POINT, SANS LÂCHER LA LIGNE ────────
+        //
+        // RÉMY : « l'extrémité de la pointe de la flèche arrive sur le cercle ».
+        // La première correction a reculé la fin de la courbe EN HAUTEUR, et la
+        // flèche flottait alors au-dessus de son arrêt — c'est la photo qui l'a
+        // dit, pas la mesure. Les deux bornes gardent donc les deux défauts.
+        const finX = [...html.matchAll(/Q [\d.]+ [\d.]+\s+([\d.]+) ([\d.]+)"/g)]
+            .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
+        const points = [...html.matchAll(/<circle cx="([\d.]+)" cy="([\d.]+)"/g)]
+            .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
+        assert.equal(finX.length, fleches, 'les fins de courbe ne se lisent plus');
+        finX.forEach((fin, n) => {
+            const vise = points[n + 1];
+            assert.ok(vise.x - fin.x >= 12,
+                `la courbe finit à ${(vise.x - fin.x).toFixed(1)} du centre : la pointe touche`);
+            assert.ok(vise.y - fin.y <= 6,
+                `la courbe finit ${(vise.y - fin.y).toFixed(1)} au-dessus de la ligne : elle flotte`);
+        });
+    }
+    // ET PAS SUR LA SOMME. Une addition de durées se pose ; avancer par bonds
+    // n'y apprend rien, et un bouton qui ne sert à rien apprend à ne pas
+    // appuyer sur les boutons.
+    for (let i = 0; i < 6; i++) {
+        const it = dureesGenerator.generate({ marches: ['somme'] },
+            { index: i, total: 6, rng: makeRng('s' + i) });
+        assert.ok(!(it.meta && it.meta.outils),
+            `la somme a reçu un bouton schéma — ${it.prompt.text}`);
+    }
+    // LE CHAÎNON SANS LEQUEL LA DÉCLARATION EST MUETTE : c'est `choice` qui pose
+    // la barre des outils, et il la pose JUSTE APRÈS L'ÉNONCÉ — « sous le
+    // calcul de soustraction », mot pour mot.
+    const CH = readFileSync(new URL('../js/core/activities/choice.js', import.meta.url), 'utf8');
+    assert.match(CH, /\$\{item\.prompt\.html\}\$\{barreOutils\(item\)\}/,
+        'la barre des outils n\'est plus sous l\'énoncé');
+    // ET LE RÉGIME DE CASE LIBRE, sans quoi « 40 min » perd cinq caractères sur
+    // six : le filtre d'origine ne garde qu'UN chiffre par case.
+    const OU = readFileSync(new URL('../js/core/activities/outils.js', import.meta.url), 'utf8');
+    assert.match(OU, /const libre = \(c\) => c\.dataset\.caseOutil === 'texte';/);
+    assert.equal((OU.match(/if \(libre\(c\)\)/g) || []).length, 2,
+        'la case de texte doit échapper AU FILTRE et AUX FLÈCHES');
+});
+
 test('ET LA TABLE DE SOIXANTE AIDE À TROUVER LES HEURES', () => {
     // RÉMY : « Et aussi en indice une table de 60 pour trouver le nombre
     // d'heure ».

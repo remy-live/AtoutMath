@@ -3665,3 +3665,32 @@ qu'il le demande explicitement, et c'est à retenir : sur ce qui se REGARDE, il
 veut choisir avant que ce soit écrit. Les maquettes coûtent une heure ; une
 mise en page refaite trois fois en coûte six.
 
+
+
+---
+
+## 26. Le choix du dessin, et la pointe qui touche — 24 octobre
+
+> « le C très bien, par contre l'extrémité de la pointe de la flèche arrive sur
+> le cercle, tu me fera aussi une version imprimé pour les schémas »
+
+Trois choses dans une phrase :
+
+1. **le C** — « Les bulles », parmi les quatre maquettes. Chaque bond dans une
+   bulle colorée au-dessus de sa flèche, et le total dans une pastille entourée
+   au bout.
+2. **la pointe touche le cercle.** Elle le touchait pour deux raisons qui
+   s'ajoutent, et la seconde ne se lit pas dans le code : une pointe SVG
+   DÉBORDE du bout de sa courbe. `tools/pointeDuBond.mjs` est né de là.
+3. **« une version imprimé pour les schémas ».** Le dessin sur la feuille, cases
+   vides, sous chaque soustraction.
+
+Puis, le même jour :
+
+> « et il faut pouvoir écrire dans les bulles »
+
+C'est la demande du 25 relue à l'écran : ses « + …… » étaient restés du texte
+mort. Mesuré avant la correction : un `……` écrit en dur, aucun champ. Les
+bulles portent maintenant une case où l'on tape une DURÉE — « 40 min »,
+« 1 h 25 » —, et non un chiffre : le filtre des cases d'outils, né pour le
+tableau de numération, n'en gardait qu'un seul et effaçait la frappe.

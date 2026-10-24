@@ -403,9 +403,75 @@
 
    PLUS LARGE QUE LES AUTRES SCHÉMAS — 320 px contre 260 : celui-ci porte
    TROIS étiquettes de temps côte à côte (« 1 h 48 », « 2 h », « 3 h 17 ») plus
-   deux « + …… » au-dessus. À 260 px, les étiquettes des bulles voisines se
-   touchent. */
-.hint-schema svg.md-bonds { max-width: 320px; }
+   deux bulles au-dessus. À 260 px, deux étiquettes voisines se touchent.
+
+   LA SCÈNE PORTE LA LARGEUR, PAS LE DESSIN. Les bulles sont posées en
+   POURCENTAGE de la scène, chacune en regard de sa flèche ; si le SVG était
+   plus étroit que son parent, chaque bulle glisserait à côté de son arc. Les
+   deux partagent donc la même boîte — d'où le `max-width: none`, qui défait la
+   borne de 260 px que `.hint-schema svg` pose sur TOUS les schémas. */
+.md-bonds-bloc { margin: 0 auto; }
+.md-scene { position: relative; max-width: 320px; margin: 0 auto; }
+.md-scene svg.md-bonds { display: block; width: 100%; max-width: none; height: auto; }
+
+/* LA BULLE SE POSE SUR LE SOMMET DE SON ARC, et 42 % est CALCULÉ, pas réglé à
+   l'œil : le sommet d'une courbe quadratique est à (y₀ + 2·y_c + y₁) / 4, soit
+   (114 + 120 + 114) / 4 = 87 dans une boîte de 150 — 58 % depuis le haut. Le
+   dessin garde ses proportions quelle que soit la largeur, et la bulle suit
+   sans qu'on y revienne. Ce nombre change avec la courbe : si l'on touche à
+   `yLigne` ou au point de contrôle dans `durees.js`, `tools/pointeDuBond.mjs`
+   dit de combien la bulle a glissé. */
+.md-bulle {
+    position: absolute; bottom: 42%; transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+    padding: 2px 9px; border-radius: 12px; font-weight: 700; font-size: .92rem;
+    color: var(--primary-texte);
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+    border: 1.5px solid color-mix(in srgb, var(--primary) 32%, var(--border));
+}
+
+/* LA CASE OÙ L'ON TAPE. Rémy : « on pourra compléter les pointillés ». Elle
+   GARDE son pointillé, en dessous : c'est lui qui dit qu'il y a quelque chose à
+   écrire, et une case pleinement encadrée ressemblerait à une réponse à
+   valider. Elle prend la couleur de ce qui l'entoure — indigo dans une bulle,
+   vert dans l'ovale du total — par `currentColor`, et non par deux règles qui
+   divergeraient. */
+.md-case {
+    font: inherit; font-weight: 700; text-align: center; color: inherit;
+    width: 3.4em; min-width: 0; padding: 0 2px;
+    border: 0; border-bottom: 2px dotted currentColor; background: transparent;
+    border-radius: 3px 3px 0 0;
+}
+.md-case:focus {
+    outline: none; border-bottom-style: solid;
+    background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+/* LE TOTAL, ENTOURÉ. Rémy, en demandant les maquettes : « propose moi plusieurs
+   design pour ce schéma avec des résultat entouré ». L'ovale ENTOURE au lieu de
+   surligner — c'est le geste du cahier —, et il est au crayon vert, la couleur
+   dont le logiciel se sert déjà pour dire « c'est juste ». */
+.md-total {
+    margin: 8px 0 0; text-align: center; font-weight: 700;
+    color: var(--text-muted); font-size: .95rem;
+}
+.md-entoure {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: 4px; padding: 3px 14px; border-radius: 999px;
+    color: var(--success-texte);
+    border: 2.5px solid color-mix(in srgb, var(--success) 70%, var(--border));
+    background: color-mix(in srgb, var(--success) 10%, var(--bg-panel));
+}
+/* DANS L'OVALE, LE SOULIGNEMENT S'EFFACE SANS DISPARAÎTRE. Photographié : à
+   plein contraste, deux traits verts se superposent — le pourtour de l'ovale et
+   le soulignement de la case —, et l'ovale dit déjà qu'il y a quelque chose à
+   écrire là. Mais sans AUCUN trait, l'ovale est une pastille vide dont rien ne
+   dit qu'on peut y taper : photographié aussi, et c'était pire. */
+.md-entoure .md-case {
+    width: 3.2em;
+    border-bottom-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+.md-entoure .md-case:focus { border-bottom-color: currentColor; }
 
 /* LA TABLE DE SOIXANTE — « en indice une table de 60 pour trouver le nombre
    d'heure ». En colonne, chiffres alignés, et la dernière ligne qui NE DÉPASSE

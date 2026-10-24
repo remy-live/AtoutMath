@@ -60,6 +60,18 @@ function tirerDuree(rng, hMax = 4) {
 }
 
 /**
+ * LES ARRÊTS D'UNE SOUSTRACTION DE DURÉES — écrits une fois pour les trois.
+ *
+ * L'écran, le papier et les épreuves ont besoin de la MÊME liste. Recopiée,
+ * elle finirait par ne plus l'être, et la feuille imprimée montrerait un
+ * autre chemin que l'écran sur la même question.
+ */
+export function arretsDesBonds(petit, grand) {
+    const palier = Math.ceil(petit / 60) * 60;
+    return (palier > petit && palier < grand) ? [petit, palier, grand] : [petit, grand];
+}
+
+/**
  * LE SCHÉMA DES BONDS — « 1:48 → 2:00 → 3:17 », et un « + …… » par flèche.
  *
  * RÉMY, carnet du 24 octobre :
@@ -86,46 +98,115 @@ function tirerDuree(rng, hMax = 4) {
  *
  * @param {number} petit  en minutes
  * @param {number} grand  en minutes, strictement plus grand
+ * @param {object} [o]  `o.cases: true` remplace les pointillés par des cases
+ *     où l'on tape — c'est l'outil « Schéma », que l'élève ouvre et qui reste
+ *     ouvert. Sans elle, le dessin est muet : c'est ce qu'il faut dans la
+ *     carte d'indice, qui se referme et où taper ne servirait à rien.
  */
-function schemaBonds(petit, grand) {
-    const palier = Math.ceil(petit / 60) * 60;
-    const arrets = (palier > petit && palier < grand)
-        ? [petit, palier, grand] : [petit, grand];
-    const W = 440, H = 118;
+function schemaBonds(petit, grand, o = {}) {
+    const arrets = arretsDesBonds(petit, grand);
+    // LA BOÎTE A GRANDI PAR LE HAUT — 150 au lieu de 124. Les bulles se posent
+    // sur le sommet des arcs, et ce sommet était à 25 px du bord : une bulle qui
+    // porte une case en fait 28. Elle débordait du dessin, donc de la carte.
+    const W = 440, H = 150;
     // LA LIGNE EST SCHÉMATIQUE, PAS GRADUÉE : les arrêts sont régulièrement
     // espacés. À l'échelle, le premier bond — douze minutes contre une heure
     // dix-sept — ferait trois pixels de large, et son « + …… » ne tiendrait
     // pas dessus. Ce dessin dit QUAND on s'arrête, pas combien c'est long.
     const xs = arrets.map((_, i) => 46 + i * ((W - 92) / (arrets.length - 1)));
-    const yLigne = 86;
-    const bulles = arrets.map((v, i) => 
-        `<circle cx="${xs[i]}" cy="${yLigne}" r="6" fill="currentColor"/>`
+    const yLigne = 118;
+    const R = 6;
+    const points = arrets.map((v, i) =>
+        `<circle cx="${xs[i]}" cy="${yLigne}" r="${R}" fill="currentColor"/>`
         + `<text x="${xs[i]}" y="${yLigne + 24}" text-anchor="middle" font-size="15"
             fill="currentColor">${ecrireDuree(v)}</text>`).join('');
+    // ── LA POINTE S'ARRÊTE AVANT LE POINT, SANS LÂCHER LA LIGNE ───────────
+    //
+    // RÉMY, en choisissant ce dessin : « l'extrémité de la pointe de la
+    // flèche arrive sur le cercle ».
+    //
+    // ELLE Y ARRIVAIT POUR DEUX RAISONS QUI S'AJOUTENT. La courbe finissait à
+    // dix unités du centre, c'est-à-dire à QUATRE du bord d'un point de rayon
+    // six ; et une pointe SVG DÉBORDE du bout de la courbe — avec `refX="9"`
+    // sur un gabarit de 10 et un marqueur large de six fois l'épaisseur du
+    // trait, 1,2 unité passe devant. Il restait trois unités, et la courbe
+    // arrive de biais : à l'écran, la pointe touchait.
+    //
+    // LA PREMIÈRE CORRECTION A ÉTÉ TROP LOIN, et c'est la PHOTO qui l'a dit,
+    // pas la mesure : en reculant la fin de la courbe à douze unités AU-DESSUS
+    // de la ligne, la flèche ne descendait plus jusqu'à son arrêt — elle
+    // flottait, et le dessin ne disait plus « on arrive ICI ». Mesuré :
+    // 14,4 unités d'air, soit dix pixels à l'écran. Dans la maquette que Rémy
+    // a choisie, l'arc finit AU RAS de l'axe, et c'est exactement pour cela
+    // que la pointe y touchait le cercle.
+    //
+    // ON GARDE DONC L'ATTERRISSAGE et l'on recule À L'HORIZONTALE : la courbe
+    // finit quatre unités au-dessus de la ligne, à `R + 8` du centre. Mesuré
+    // par `tools/pointeDuBond.mjs`, qui demande au navigateur le bout de la
+    // courbe, sa tangente, et y ajoute le débord du marqueur : 7,4 unités
+    // d'air, cinq pixels — un trait blanc entre la pointe et le point.
     const fleches = xs.slice(0, -1).map((x, i) => {
         const x2 = xs[i + 1];
         const milieu = (x + x2) / 2;
-        // UNE COURBE, PAS UN SEGMENT : le bond se voit comme un saut. La
-        // pointe s'arrête six pixels avant la bulle pour ne pas la percer.
-        return `<path d="M ${x + 8} ${yLigne - 10} Q ${milieu} ${yLigne - 54} ${x2 - 10} ${yLigne - 10}"
-            fill="none" stroke="currentColor" stroke-width="2" marker-end="url(#md-pointe)"/>`
-            + `<text x="${milieu}" y="${yLigne - 46}" text-anchor="middle" font-size="15"
-                font-weight="700" fill="currentColor">+ ……</text>`;
+        return `<path d="M ${x + R + 6} ${yLigne - 4} Q ${milieu} ${yLigne - 58}
+            ${x2 - R - 8} ${yLigne - 4}" fill="none" stroke="currentColor"
+            stroke-width="2" marker-end="url(#md-pointe)"/>`;
     }).join('');
-    // LA POINTE DE FLÈCHE EST UN `marker`, et son identifiant est propre à ce
-    // dessin : deux schémas sur la même page partageraient sinon la même
-    // définition, ce qui marche — jusqu'au jour où l'un des deux change.
     // LA PHRASE POUR QUI NE VOIT PAS LE DESSIN, calculée à part : imbriquée
     // dans le gabarit, elle demanderait des apostrophes dans des apostrophes.
     const dit = arrets.map(ecrireDuree).join(' puis ');
-    return `<svg class="md-bonds" viewBox="0 0 ${W} ${H}" width="100%" role="img"
+    // LA POINTE DE FLÈCHE EST UN `marker`, et son identifiant est propre à ce
+    // dessin : deux schémas sur la même page partageraient sinon la même
+    // définition, ce qui marche — jusqu'au jour où l'un des deux change.
+    const dessin = `<svg class="md-bonds" viewBox="0 0 ${W} ${H}" width="100%" role="img"
         aria-label="On avance par bonds : ${dit}.">
         <defs><marker id="md-pointe" viewBox="0 0 10 10" refX="9" refY="5"
             markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/></marker></defs>
         <line x1="30" y1="${yLigne}" x2="${W - 30}" y2="${yLigne}"
             stroke="currentColor" stroke-width="1.5" opacity=".45"/>
-        ${fleches}${bulles}</svg>`;
+        ${fleches}${points}</svg>`;
+
+    // ── LES BULLES SONT EN HTML, PAS DANS LE SVG ──────────────────────────
+    //
+    // RÉMY a choisi le dessin « C — Les bulles » parmi quatre maquettes, et
+    // il a demandé en même temps « on pourra compléter les pointillés ». Une
+    // case où l'on tape est un `<input>` : dans un SVG il faudrait un
+    // `<foreignObject>`, que tout le monde ne rend pas pareil. On pose donc
+    // les bulles PAR-DESSUS, en pourcentage de la scène — le SVG garde ses
+    // proportions quand la largeur change, et les bulles suivent.
+    //
+    // `data-case-outil="texte"` : la case garde ce qu'on tape (« 40 min »),
+    // et les frappes n'arrivent pas à l'exercice. Voir `activities/outils.js`.
+    const cases = !!o.cases;
+    // PAS DE `placeholder` DANS LA CASE. Photographié : le pointillé du
+    // marque-page se posait AU-DESSUS du pointillé qui souligne la case, et
+    // l'on voyait deux rangées de points l'une sur l'autre. C'est le reproche
+    // que Rémy avait déjà fait à la fiche des fractions — « tu écris
+    // ...../..... avec des drole de pointillé et mets moins de pointillés ».
+    // Le soulignement suffit à dire qu'il y a quelque chose à écrire.
+    const trou = (quoi) => (cases
+        ? `<input class="md-case" type="text" maxlength="8" data-case-outil="texte"
+            aria-label="${quoi}">`
+        : '……');
+    const bulles = xs.slice(0, -1).map((x, i) => {
+        const centre = ((x + xs[i + 1]) / 2 / W) * 100;
+        return `<span class="md-bulle" style="left:${centre.toFixed(2)}%">+ ${
+            trou(`Ce qu'on ajoute au bond ${i + 1}`)}</span>`;
+    }).join('');
+    // ── « EN TOUT », SEULEMENT QUAND IL Y A DEUX BONDS ────────────────────
+    //
+    // PHOTOGRAPHIÉ sur « 1 h 05 − 45 min » : un seul bond, et la ligne du total
+    // demandait de RECOPIER le nombre qu'on venait d'écrire au-dessus de la
+    // flèche. Un élève à qui l'on fait écrire deux fois la même chose cherche
+    // ce qu'il n'a pas compris. Quand il n'y a qu'un bond, ce bond EST la
+    // différence, et l'ovale n'ajoute rien — il retire.
+    const total = xs.length > 2
+        ? `<div class="md-total">en tout :
+            <span class="md-entoure">${trou('Le total des bonds')}</span></div>`
+        : '';
+    return `<div class="md-bonds-bloc">
+        <div class="md-scene">${dessin}${bulles}</div>${total}</div>`;
 }
 
 /**
@@ -277,7 +358,37 @@ export const dureesGenerator = {
                         + `une retenue de SOIXANTE minutes, pas de dix. Le résultat est ${bonne}.`
                     : `Les heures entre elles, les minutes entre elles : ${bonne}.`,
                 difficulty: deborde ? 3 : 1,
-                meta: { marche, x, y, total, deborde, theme: `${marche}-${deborde}` }
+                meta: {
+                    marche, x, y, total, deborde, theme: `${marche}-${deborde}`,
+                    // ── LE BOUTON « SCHÉMA », SOUS LE CALCUL ──────────────
+                    //
+                    // RÉMY : « mets un bouton shéma sous le calcul de
+                    // soustraction et on pourra compléter les pointillés ».
+                    //
+                    // POURQUOI UN OUTIL ET PAS UN INDICE. Le dessin n'arrivait
+                    // qu'avec « Un indice », donc au prix d'un indice — et la
+                    // carte se refermait. On n'y tapait rien : une case dans
+                    // une carte qui disparaît est une case qu'on remplit pour
+                    // rien. Les outils, eux, sont GRATUITS, restent ouverts, et
+                    // leurs cases gardent ce qu'on y pose — voir
+                    // `activities/outils.js`. `choice` pose leur barre juste
+                    // après l'énoncé : « sous le calcul », mot pour mot.
+                    //
+                    // PAS SUR LA SOMME. Une addition de durées se pose ;
+                    // avancer par bonds n'y apprend rien, et un bouton qui ne
+                    // sert à rien apprend à ne pas appuyer sur les boutons.
+                    //
+                    // LA CLÉ N'EXISTE PAS QUAND IL N'Y A PAS D'OUTIL :
+                    // `outils: undefined` est une clé PRÉSENTE, et l'épreuve
+                    // « aucun meta ne porte de code » la refuse.
+                    ...(somme ? {} : {
+                        outils: [{
+                            id: 'bonds',
+                            label: '📐 Schéma',
+                            html: schemaBonds(y, x, { cases: true })
+                        }]
+                    })
+                }
             });
         }
 
