@@ -526,6 +526,30 @@ export function teindreDoc(doc) {
 }
 
 /**
+ * LE FILET D'UNE CASE DE TABLEAU, en CSS.
+ *
+ * Rémy, carnet du 24 octobre : « bordure, épaisseur, couleur bordure, couleur
+ * alternance/ bords extérieurs ou non ». Les cinq arrivent dans le cadre,
+ * calculés par `styleTableau` ; il ne reste qu'à les écrire.
+ *
+ * UN DEMI-PIXEL AU MINIMUM : à l'échelle de l'aperçu, un dixième de
+ * millimètre vaut moins d'un pixel, et un `border` de 0 ne se voit pas du
+ * tout — l'aperçu montrerait une feuille sans filet là où le PDF en a un.
+ *
+ * `cotes` à `null` veut dire les quatre côtés : voir le commentaire du cadre
+ * dans `core/fiche.js`.
+ */
+function styleDuCadre(cadre, k) {
+    const rvb = (c, defaut) => `rgb(${(c || defaut).join(',')})`;
+    const px = Math.max(0.5, (cadre.trait || 0.2) * k);
+    const filet = `${px}px solid ${rvb(cadre.filet, ENCRE.bandeauTrait)}`;
+    const cote = (ou) => (!cadre.cotes || cadre.cotes[ou] ? filet : '0');
+    const bords = `border-top:${cote('h')}; border-bottom:${cote('b')};`
+        + ` border-left:${cote('g')}; border-right:${cote('d')};`;
+    return bords + (cadre.bande ? ` background:${rvb(cadre.fond, ENCRE.bandeZebre)}` : '');
+}
+
+/**
  * LE MÊME FILTRE POUR L'APERÇU, en une classe.
  *
  * L'aperçu est du HTML : ses couleurs sont écrites dans deux cents styles en
@@ -1413,9 +1437,20 @@ export function apercuItems(page, k, o) {
         // l'aperçu sont posés en absolu dans l'ordre où on les écrit : le
         // tracer après le texte le couvrirait d'un rectangle opaque.
         if (it.cadre) {
-            html += `<div class="fq-cellule${it.cadre.bande ? ' fq-cellule--bande' : ''}"
-                style="left:${it.cadre.x * k}px; top:${it.cadre.y * k}px;
-                width:${it.cadre.w * k}px; height:${it.cadre.h * k}px"></div>`;
+            // LE STYLE VIENT DE LA CELLULE, PLUS DE LA FEUILLE DE STYLE.
+            //
+            // Rémy a demandé de régler l'épaisseur et les deux couleurs ; elles
+            // étaient écrites en dur ICI et une seconde fois dans le PDF, et
+            // rien n'obligeait les deux à dire la même chose. `core/fiche.js`
+            // les calcule une fois (voir `styleTableau`) et les pose dans le
+            // cadre ; les deux rendus n'ont plus qu'à les lire.
+            //
+            // `box-sizing: border-box` est dans la feuille de style : le
+            // rectangle garde sa taille quelle que soit l'épaisseur, donc deux
+            // cases voisines continuent de partager exactement leur filet.
+            html += `<div class="fq-cellule" style="left:${it.cadre.x * k}px;
+                top:${it.cadre.y * k}px; width:${it.cadre.w * k}px;
+                height:${it.cadre.h * k}px; ${styleDuCadre(it.cadre, k)}"></div>`;
         }
         if (it.n != null) {
             // LE NUMÉRO EST SUR LA LIGNE DE L'ÉNONCÉ, pas au-dessus. Il était
@@ -2197,13 +2232,23 @@ export function pdfItems(pdf, page, o) {
         // remplissage qui déborde d'un dixième de millimètre mangerait le
         // filet du voisin.
         if (it.cadre) {
-            if (it.cadre.bande) {
-                pdf.setFillColor(...ENCRE.bandeZebre);
-                pdf.rect(it.cadre.x, it.cadre.y, it.cadre.w, it.cadre.h, 'F');
+            const c = it.cadre;
+            if (c.bande) {
+                pdf.setFillColor(...(c.fond || ENCRE.bandeZebre));
+                pdf.rect(c.x, c.y, c.w, c.h, 'F');
             }
-            pdf.setDrawColor(...ENCRE.bandeauTrait);
-            pdf.setLineWidth(0.2);
-            pdf.rect(it.cadre.x, it.cadre.y, it.cadre.w, it.cadre.h, 'S');
+            pdf.setDrawColor(...(c.filet || ENCRE.bandeauTrait));
+            pdf.setLineWidth(c.trait || 0.2);
+            if (!c.cotes) pdf.rect(c.x, c.y, c.w, c.h, 'S');
+            else {
+                // SANS BORDS EXTÉRIEURS, on ne trace que les côtés qui
+                // SÉPARENT deux questions : `pdf.rect` ne sait pas n'en faire
+                // que trois. Voir le cadre dans `core/fiche.js`.
+                if (c.cotes.h) pdf.line(c.x, c.y, c.x + c.w, c.y);
+                if (c.cotes.b) pdf.line(c.x, c.y + c.h, c.x + c.w, c.y + c.h);
+                if (c.cotes.g) pdf.line(c.x, c.y, c.x, c.y + c.h);
+                if (c.cotes.d) pdf.line(c.x + c.w, c.y, c.x + c.w, c.y + c.h);
+            }
         }
         pdf.setTextColor(...ENCRE.texte);
         pdf.setFont('helvetica', 'bold');

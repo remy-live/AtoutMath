@@ -6023,9 +6023,20 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 
    LE CADRE PASSE DERRIÈRE : il est posé avant le texte dans la chaîne de
    l'aperçu, et il n'a pas de `z-index` — c'est l'ordre du document qui suffit.
-   La couleur est écrite ici plutôt qu'en style en ligne pour que le filtre de
-   teinte (`fx-teinte--gris`, `fx-teinte--nb`) la ramène au gris comme le reste
-   de la feuille. */
+   LA COULEUR ET L'ÉPAISSEUR SONT MAINTENANT EN STYLE EN LIGNE, et ce n'est pas
+   un recul : Rémy les a demandées réglables — « bordure, épaisseur, couleur
+   bordure, couleur alternance/ bords extérieurs ou non » —, donc elles ne
+   peuvent plus être écrites dans une feuille de style. ELLES SONT TEINTES QUAND
+   MÊME, et pas par le filtre `fx-teinte` : c'est `teindreHtml` qui réécrit
+   CHAQUE couleur de la chaîne de l'aperçu, quelle que soit sa forme — donc un
+   style en ligne aussi bien qu'une règle. MESURÉ : un filet réglé sur orange
+   sort `rgb(137, 137, 137)` dans le style calculé en mode noir et blanc, soit
+   exactement le gris que le PDF imprimera. C'est `styleDuCadre` dans
+   ui/ficheRendu.js qui écrit la couleur, et `teindreHtml`, juste après, qui la
+   ramène au mode d'impression choisi.
+
+   LES VALEURS CI-DESSOUS RESTENT LE REPLI, au chiffre près : une fiche composée
+   avant ce changement n'a pas de couleur dans son cadre. */
 /* `fq-cellule`, et SURTOUT PAS `fq-case` : ce nom-là est déjà celui des
    étiquettes à cocher du panneau d'impression, et leur donner `position:
    absolute` aurait empilé les trois cases à cocher au même endroit. */

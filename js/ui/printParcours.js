@@ -111,6 +111,10 @@ import { MODES, resolvePolicy } from '../core/policy.js';
 import { chargerJsPDF } from './printSheet.js';
 import { poserContre } from './poserContre.js';
 import {
+    champsStyleTableau, brancherStyleTableau, lireStyleTableau,
+    lireAffinageTableau, montrerStyleTableau
+} from './styleTableauUI.js';
+import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
     cartoucheDe, hauteurEntete1, apercuSolutions, pdfSolutions,
     polycopieEnCouleur, modePolycopie, reglerModePolycopie, teindreDoc, poserTeinte, teindreHtml, optionsPolycopie
@@ -425,6 +429,13 @@ function assurerModale() {
                             <option value="tableau">En tableau</option>
                             <option value="zebre">En tableau, une ligne sur deux teintée</option>
                         </select></label>
+                    <!-- DE QUOI A L'AIR LE FILET, pour toute la feuille. Remy :
+                         « on peut faire un reglage globale et affiner selon
+                         l'exercice ». Ceci est le GLOBAL ; l'affinage est dans la
+                         roue de chaque exercice, plus bas. Les memes commandes aux
+                         deux endroits, ecrites une fois dans ui/styleTableauUI.js.
+                         (Sans accent grave : il fermerait le gabarit.) -->
+                    ${champsStyleTableau('pp')}
                     <label class="fq-case"><input type="checkbox" id="pp-champs">
                         Champs remplissables (PDF)</label>
                     <label>Numéros
@@ -679,6 +690,16 @@ export function ouvrirFicheParcours(chemin) {
     papier.forEach(e => { if (unExemplaire(e)) insecables[e.stepId] = true; });
     const estInsecable = (id) => insecables[id] ?? insecEl.checked;
 
+    // ── « AFFINER SELON L'EXERCICE » ───────────────────────────────────────
+    //
+    // RÉMY : « on peut faire un réglage globale et affiner selon l'exercice ».
+    // Chaque entrée est un CORRECTIF — les seules clés qu'on a touchées dans
+    // la roue de cet exercice — et non un jeu complet de valeurs : sans cela,
+    // ouvrir une roue sans rien toucher figerait l'exercice sur les valeurs du
+    // moment, et changer la feuille ensuite ne le suivrait plus. Même règle
+    // que `reglagesQuiChangent` pour les réglages de contenu.
+    const presentations = {};
+
     // LES QUESTIONS RÉÉCRITES À LA MAIN, par étape et par rang.
     //
     // On refusait jusqu'ici de toucher à un énoncé : la réponse vient du
@@ -761,6 +782,9 @@ export function ouvrirFicheParcours(chemin) {
         // toujours dans le mauvais ordre.
         tableau: tabEl.value !== 'liste',
         zebre: tabEl.value === 'zebre',
+        // L'ALLURE DU FILET POUR TOUTE LA FEUILLE — chaque exercice peut
+        // en reprendre ce qui lui convient (voir `presentations`).
+        ...lireStyleTableau(m, 'pp'),
         noteSur: Math.max(5, Math.min(100, Number(noteSurEl.value) || 20)),
         // L'EN-TÊTE EST À LA CLASSE, PAS AU LOGICIEL. Le titre par défaut est le
         // nom du parcours, mais « Tout sur papier (72 exercices) » n'est pas ce
@@ -1117,6 +1141,15 @@ export function ouvrirFicheParcours(chemin) {
                 <input type="checkbox" data-r-num ${numeroter[id] ? 'checked' : ''}> Numéroter</label>
             <label class="pp-roue-case" title="Cet exercice commence alors en haut d'une page plutôt que d'être coupé en deux.">
                 <input type="checkbox" data-r-insec ${estInsecable(id) ? 'checked' : ''}> Ne pas couper l'exercice</label>
+            ${tabEl.value === 'liste' ? '' : `<div class="pp-roue-contenu">
+                <div class="pp-roue-sous-titre">Le filet de cet exercice</div>
+                <label class="pp-roue-champ">Présentation
+                    <select class="cfg-input" id="ppx-presence">
+                        <option value="">Comme la feuille</option>
+                        <option value="sans">Sans filet</option>
+                    </select></label>
+                ${champsStyleTableau('ppx', { heritage: true, valeurs: presentations[id] || {} })}
+            </div>`}
             <label class="pp-roue-champ" data-r-bareme ${interro.checked ? '' : 'hidden'}>Barème
                 ${pas('pts', id, `<input type="number" class="cfg-input cfg-input--num" data-r-pts
                     min="0" max="40" value="${points[id]}">`)}</label>
@@ -1146,6 +1179,23 @@ export function ouvrirFicheParcours(chemin) {
             insecables[id] = ev.target.checked;
             rendre(id);
         };
+        // LE FILET DE CET EXERCICE. Les cinq commandes rendent un correctif ;
+        // vide, on efface la clé plutôt que d'écrire un objet vide — « comme
+        // la feuille » est une ABSENCE de réglage, pas un réglage.
+        const presence = panneau.querySelector('#ppx-presence');
+        if (presence) {
+            presence.value = presentations[id] && presentations[id].filet === false
+                ? 'sans' : '';
+            const relireFilet = () => {
+                const patch = lireAffinageTableau(panneau, 'ppx') || {};
+                if (presence.value === 'sans') patch.filet = false;
+                if (Object.keys(patch).length) presentations[id] = patch;
+                else delete presentations[id];
+                rendre(id);
+            };
+            presence.onchange = relireFilet;
+            brancherStyleTableau(panneau, 'ppx', relireFilet);
+        }
         const pts = panneau.querySelector('[data-r-pts]');
         pts.oninput = () => {
             points[id] = Math.max(0, Math.min(40, Number(pts.value) || 0));
@@ -1320,6 +1370,9 @@ export function ouvrirFicheParcours(chemin) {
                         : consigneAvecPrefixe(consignes[id], ...hisse)),
                     points: o.interrogation ? (points[id] || null) : null,
                     numeroter: numeroter[id] !== false,
+                    // CE QUE CET EXERCICE AFFINE DU FILET DE LA FEUILLE. Lu par
+                    // `styleTableau` dans core/fiche.js.
+                    presentation: presentations[id] || null,
                     insecable: estInsecable(id),
                     questions: e.grille ? [] : tire,
                     grilles: e.grille ? tire : [],
@@ -1580,7 +1633,17 @@ export function ouvrirFicheParcours(chemin) {
     // restait en liste. Un réglage qui se souvient de son choix sans le
     // montrer est pire qu'un réglage absent — le professeur croit que le
     // logiciel est cassé, et il a raison.
-    tabEl.onchange = rendre;
+    //
+    // ET LE MÊME DÉFAUT VIVAIT DANS L'AUTRE PANNEAU D'IMPRESSION, celui
+    // d'un exercice seul, où il a tenu jusqu'au 24 octobre : la correction
+    // avait été posée ici et nulle part ailleurs. Mesuré là-bas avant de la
+    // reporter : zéro cadre avant, zéro cadre après être passé à « zébré ».
+    tabEl.onchange = () => {
+        montrerStyleTableau(m, 'pp', tabEl.value);
+        rendre();
+    };
+    brancherStyleTableau(m, 'pp', rendre);
+    montrerStyleTableau(m, 'pp', tabEl.value);
     noteSurEl.oninput = () => {
         // LA NOTE TAPÉE EST LA SIENNE : on cesse de la recalculer. Sans cela,
         // le premier changement de quantité l'écrasait par le total du barème,

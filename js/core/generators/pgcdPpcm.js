@@ -476,8 +476,11 @@ function pourquoiCePremier(n, p) {
  * décide de la forme, et la feuille imprimée lit les mêmes champs.
  *
  * `skill` est optionnel, et une seule marche s'en sert : voir `exposant`.
+ *
+ * `genre` ne sert qu'à la marche « mélange », qui tire une situation parmi
+ * trois : voir le réglage « Les problèmes » plus bas.
  */
-export function question(etape, rng) {
+export function question(etape, rng, genre = 'les-deux') {
 
     // ── TEMPS A : CE QUI SE RÉPOND SANS MÉTHODE ────────────────────────────
 
@@ -965,9 +968,25 @@ export function question(etape, rng) {
         // différent à chaque tour et ne tombait presque jamais juste.
         // `find` rendait alors `undefined`, et six épreuves se sont arrêtées
         // sur « Cannot read properties of undefined ».
-        const quoi = choisir(['paquets', 'ensemble', 'carre'], rng);
+        // ── PGCD SEULEMENT, PPCM SEULEMENT, OU LES DEUX ────────────────────
+        //
+        // RÉMY, carnet du 24 octobre : « Il faudrait pour les problèmes
+        // pouvoir choisir entre problème de PPCM ou problème de PGCD (ou les
+        // deux), on ne peut le faire pour l'impression. »
+        //
+        // « Des paquets identiques » est un PGCD ; « quand se retrouvent-ils »
+        // et « le plus petit carré » sont des PPCM. C'est la table ci-dessous,
+        // et elle est la SEULE place du fichier où ce partage soit écrit :
+        // ailleurs il se déduit de la compétence de chaque marche, ce qui
+        // oblige à la connaître pour s'en servir.
+        //
+        // LE MÉLANGE RESTE LE DÉFAUT, parce que c'est lui qui fait travailler
+        // la seule chose qui compte ici — reconnaître la notion. On ne sépare
+        // que pour préparer un contrôle d'une notion à la fois.
+        const SITUATIONS = { pgcd: ['paquets'], ppcm: ['ensemble', 'carre'] };
+        const quoi = choisir(SITUATIONS[genre] || ['paquets', 'ensemble', 'carre'], rng);
         const sous = ETAPES.find(e => e.id === quoi);
-        return { ...question(sous, rng), skill: sous.skill };
+        return { ...question(sous, rng, genre), skill: sous.skill };
     }
 
     //
@@ -1052,14 +1071,57 @@ export const pgcdPpcmGenerator = {
     // à la barre oblique.
     fractions: true,
     conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES).length),
-    params: [paramMarches({ marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT })],
+    params: [
+        paramMarches({ marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT }),
+        {
+            // ── « LES PROBLÈMES » : PGCD, PPCM, OU LES DEUX ──────────────────
+            //
+            // RÉMY, carnet du 24 octobre : « Il faudrait pour les problèmes
+            // pouvoir choisir entre problème de PPCM ou problème de PGCD (ou
+            // les deux), on ne peut le faire pour l'impression. »
+            //
+            // IL AVAIT RAISON À LA LETTRE, et la mesure est plus sévère que la
+            // remarque : le panneau d'impression de « Problèmes de PGCD et de
+            // PPCM » n'offrait QU'UN réglage, la liste des vingt marches. Pour
+            // dire « PGCD seulement », il fallait y décocher « Problème :
+            // lequel des deux ? » et cocher « Problème : des paquets
+            // identiques » — c'est-à-dire SAVOIR que les paquets sont un PGCD
+            // et que les rythmes et le carré sont des PPCM. Un professeur qui
+            // prépare un contrôle de PGCD ne veut pas chercher laquelle des
+            // vingt lignes porte la notion ; il veut dire « PGCD ».
+            //
+            // `papier: true` EST LA MOITIÉ DE SA PHRASE. C'est le défaut, et
+            // on l'écrit quand même : c'est sur la feuille d'un contrôle que
+            // le choix compte le plus, et le jour où quelqu'un retirera des
+            // réglages de la fiche, celui-ci doit se défendre tout seul.
+            id: 'genreProbleme', type: 'select', label: 'Les problèmes',
+            default: 'les-deux', papier: true,
+            options: [
+                { value: 'les-deux', label: 'PGCD et PPCM mélangés' },
+                { value: 'pgcd', label: 'PGCD seulement' },
+                { value: 'ppcm', label: 'PPCM seulement' }
+            ],
+            // IL NE S'AFFICHE QUE S'IL A QUELQUE CHOSE À FAIRE. Le même
+            // générateur sert « Décomposer, PGCD et PPCM », dont les dix-sept
+            // marches ne comptent pas « mélange » : là-bas, ce menu serait un
+            // bouton qui ne change rien à ce qu'on imprime — exactement ce que
+            // `core/reglagesFiche.js` existe pour empêcher.
+            visibleSi: (r) => marchesCochees(r, LISTE_MARCHES)
+                .some(m => m.id === 'melange'),
+            aide: 'Le MÉLANGE est la difficulté du chapitre : savoir calculer '
+                + 'les deux ne sert à rien si l\'on ne sait pas lequel l\'énoncé '
+                + 'demande. On ne sépare que pour travailler une notion à la fois.'
+        }
+    ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
         const id = marcheAuRang(ctx.index ?? 0, marchesCochees(params, LISTE_MARCHES),
             totalDe(ctx, params), params);
         const etape = ETAPES.find(e => e.id === id) || ETAPES[0];
-        const q = question(etape, rng);
+        // LE RÉGLAGE DE RÉMY VOYAGE JUSQU'À LA MARCHE. Seule « mélange »
+        // s'en sert ; les dix-neuf autres l'ignorent sans le savoir.
+        const q = question(etape, rng, (params || {}).genreProbleme || 'les-deux');
         // AUTANT DE BOUTONS QUE LA MARCHE EN PROPOSE, ET LE LIBELLÉ EST LA
         // VALEUR.
         //

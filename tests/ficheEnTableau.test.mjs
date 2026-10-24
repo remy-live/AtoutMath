@@ -29,7 +29,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { composerBlocs, DEFAUTS_BLOCS } from '../js/core/fiche.js';
+import {
+    composerBlocs, DEFAUTS_BLOCS, styleTableau, TEINTES_TABLEAU, EPAISSEURS_TABLEAU
+} from '../js/core/fiche.js';
 
 const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const mesurer = (t, taille) => t.length * taille * 0.5;
@@ -140,8 +142,13 @@ test('LES DEUX RENDUS DESSINENT LA CASE, ET DERRIÈRE LE TEXTE', () => {
     // réglage. Ici l'oubli serait silencieux — l'aperçu montrerait un tableau
     // et le PDF sortirait une liste.
     const FR = lire('js/ui/ficheRendu.js');
-    assert.match(FR, /html \+= `<div class="fq-cellule\$\{it\.cadre\.bande \? ' fq-cellule--bande' : ''\}"/);
-    assert.match(FR, /pdf\.rect\(it\.cadre\.x, it\.cadre\.y, it\.cadre\.w, it\.cadre\.h, 'S'\);/);
+    assert.match(FR, /html \+= `<div class="fq-cellule" style="left:/);
+    // ET LES DEUX LISENT LE MÊME CADRE. L'épaisseur et les couleurs étaient
+    // écrites en dur aux deux endroits ; c'est `styleTableau` qui les calcule
+    // maintenant, une fois, et les pose dans la cellule.
+    assert.match(FR, /\$\{styleDuCadre\(it\.cadre, k\)\}/);
+    assert.match(FR, /pdf\.setLineWidth\(c\.trait \|\| 0\.2\);/);
+    assert.match(FR, /if \(!c\.cotes\) pdf\.rect\(c\.x, c\.y, c\.w, c\.h, 'S'\);/);
     // DERRIÈRE LE TEXTE, et c'est une question d'ORDRE : les blocs de l'aperçu
     // sont posés en absolu dans l'ordre où on les écrit, et un rectangle plein
     // tracé après l'énoncé l'effacerait purement et simplement.
@@ -149,7 +156,7 @@ test('LES DEUX RENDUS DESSINENT LA CASE, ET DERRIÈRE LE TEXTE', () => {
     assert.ok(q.indexOf('it.cadre') < q.indexOf('class="fq-num"'),
         'l\'aperçu dessine la case APRÈS le numéro : elle le couvrirait');
     const pdfQ = FR.slice(FR.indexOf('if (it.cadre) {', FR.indexOf('export function pdfItems')));
-    assert.ok(pdfQ.indexOf('pdf.rect(it.cadre') < pdfQ.indexOf('pdf.text(`${it.n}.`'),
+    assert.ok(pdfQ.indexOf('pdf.rect(c.x, c.y') < pdfQ.indexOf('pdf.text(`${it.n}.`'),
         'le PDF dessine la case APRÈS le numéro : elle le couvrirait');
 });
 
@@ -178,9 +185,121 @@ test('LES DEUX PANNEAUX D\'IMPRESSION PROPOSENT LE RÉGLAGE', () => {
     // son choix sans le transmettre est pire qu'un menu absent : le professeur
     // choisit, voit l'aperçu inchangé, et croit que le logiciel est cassé.
     assert.match(lire('js/ui/printQuestions.js'), /tableau: o\.tableau, zebre: o\.zebre,/);
-    // ET LE MENU DU PARCOURS REDESSINE. MESURÉ au navigateur : sans cette
-    // ligne, le menu passait bien à « zébré » et la feuille restait en liste —
-    // trente questions, zéro case. Le panneau du parcours n'a pas d'écouteur
-    // général : chaque réglage branche le sien, et celui-là manquait.
-    assert.match(lire('js/ui/printParcours.js'), /tabEl\.onchange = rendre;/);
+    // ET LES DEUX MENUS REDESSINENT. MESURÉ au navigateur, deux fois à cinq
+    // jours d'écart : sans cette ligne, le menu passait bien à « zébré » et la
+    // feuille restait en liste — vingt questions, zéro case. Ces panneaux n'ont
+    // pas d'écouteur général : chaque réglage branche le sien.
+    //
+    // LA PREMIÈRE FOIS, LA CORRECTION N'A ÉTÉ POSÉE QUE SUR LE PARCOURS, et le
+    // défaut a vécu cinq jours de plus dans la fiche d'un exercice seul. Cette
+    // épreuve regarde donc LES DEUX, et c'est tout ce qu'elle a de neuf.
+    ['js/ui/printQuestions.js', 'js/ui/printParcours.js'].forEach(f => {
+        assert.match(lire(f), /tabEl\.onchange = /, f);
+    });
+});
+
+test('LE FILET SE RÈGLE — épaisseur, couleurs, bords extérieurs', () => {
+    // RÉMY, carnet du 24 octobre : « il faudrait pouvoir choisir de manière
+    // globale pour les exercices à tableau la présentation en tableau (bordure,
+    // épaisseur, couleur bordure, couleur alternance/ bords extérieurs ou non).
+    // on peut faire un réglage globale et affiner selon l'exercice »
+    //
+    // LES CINQ ARRIVENT DANS LA CELLULE, et ce sont les deux rendus qui les y
+    // lisent : sans cela, le réglage existerait dans le panneau et nulle part
+    // ailleurs — exactement ce dont il se plaignait.
+    const q = casesDe(feuille({
+        tableau: true, zebre: true, traitTableau: 0.7,
+        couleurTableau: 'orange', couleurBandeTableau: 'vert'
+    }));
+    assert.ok(q.length >= 20);
+    assert.ok(q.every(it => it.cadre.trait === 0.7), "l'épaisseur n'arrive pas");
+    assert.deepEqual(q[0].cadre.filet, TEINTES_TABLEAU.orange.filet);
+    assert.deepEqual(q[0].cadre.fond, TEINTES_TABLEAU.vert.bande);
+    // ET LES VALEURS D'AVANT SONT LE DÉFAUT, au chiffre près : une feuille
+    // déjà réglée doit sortir identique après ce changement.
+    const avant = casesDe(feuille({ tableau: true }));
+    assert.equal(avant[0].cadre.trait, 0.2);
+    assert.deepEqual(avant[0].cadre.filet, [203, 210, 220]);
+    assert.deepEqual(avant[0].cadre.fond, [240, 244, 250]);
+    // LES QUATRE ÉPAISSEURS OFFERTES SE VOIENT LES UNES DES AUTRES : un menu
+    // dont deux crans donnent le même trait est un menu qui ment.
+    const mm = EPAISSEURS_TABLEAU.map(e => e.valeur);
+    assert.equal(new Set(mm).size, mm.length);
+    assert.ok(mm.every(v => v >= 0.05 && v <= 1.5), 'une épaisseur hors de ce qui s\'imprime');
+});
+
+test('SANS BORDS EXTÉRIEURS, IL NE RESTE QUE LES TRAITS QUI SÉPARENT', () => {
+    // « bords extérieurs ou non ». Un côté est extérieur quand il n'a pas de
+    // voisin ; sans eux, le tableau garde sa grille et perd son cadre — la
+    // présentation des manuels, plus légère à la photocopie.
+    const q = casesDe(feuille({ tableau: true, bordsExterieurs: false }));
+    assert.ok(q.every(it => it.cadre.cotes), 'les côtés ne sont pas déclarés');
+    // La toute première case n'a ni haut ni gauche, et elle a bien un bas et
+    // une droite : sinon on aurait simplement effacé le filet.
+    assert.equal(q[0].cadre.cotes.h, false);
+    assert.equal(q[0].cadre.cotes.g, false);
+    assert.equal(q[0].cadre.cotes.b, true);
+    assert.equal(q[0].cadre.cotes.d, true);
+    // AUCUN CÔTÉ EXTÉRIEUR NULLE PART : on regarde la géométrie, pas les
+    // indices — c'est la seule façon de voir la dernière rangée, qui est
+    // parfois incomplète.
+    const g = Math.min(...q.map(it => it.cadre.x));
+    const d = Math.max(...q.map(it => it.cadre.x + it.cadre.w));
+    q.forEach(it => {
+        if (Math.abs(it.cadre.x - g) < 0.1) assert.equal(it.cadre.cotes.g, false);
+        if (Math.abs(it.cadre.x + it.cadre.w - d) < 0.1) assert.equal(it.cadre.cotes.d, false);
+    });
+    // ET AVEC LES BORDS, on ne déclare rien : `null` veut dire les quatre.
+    const avec = casesDe(feuille({ tableau: true }));
+    assert.ok(avec.every(it => it.cadre.cotes === null));
+});
+
+test('UN EXERCICE AFFINE LE FILET DE LA FEUILLE', () => {
+    // RÉMY : « on peut faire un réglage globale et affiner selon l'exercice ».
+    // Un exercice ne REMPLACE pas le réglage de la feuille, il le corrige : ce
+    // qu'il ne dit pas, il le prend d'elle. Sans cette règle, ouvrir la roue
+    // d'un exercice sans rien toucher le figerait sur les valeurs du moment.
+    const feuilleReglee = {
+        ...DEFAUTS_BLOCS, tableau: true, zebre: true, traitTableau: 0.4,
+        couleurTableau: 'bleu', couleurBandeTableau: 'bleu', bordsExterieurs: true
+    };
+    const herite = styleTableau(feuilleReglee, {});
+    assert.equal(herite.trait, 0.4);
+    assert.deepEqual(herite.filet, TEINTES_TABLEAU.bleu.filet);
+    assert.equal(herite.bords, true);
+    // Un correctif ne touche QUE ce qu'il nomme.
+    const affine = styleTableau(feuilleReglee, { presentation: { couleur: 'vert' } });
+    assert.deepEqual(affine.filet, TEINTES_TABLEAU.vert.filet);
+    assert.equal(affine.trait, 0.4, 'un correctif a emporté une valeur qu\'il ne nommait pas');
+    assert.deepEqual(affine.fond, TEINTES_TABLEAU.bleu.bande);
+    // UN EXERCICE PEUT RETIRER SON FILET sur une feuille en tableau.
+    assert.equal(styleTableau(feuilleReglee, { presentation: { filet: false } }), null);
+    // ET UNE FEUILLE EN LISTE NE TRACE RIEN, correctif ou pas.
+    assert.equal(styleTableau({ ...DEFAUTS_BLOCS }, {}), null);
+    // L'ÉPAISSEUR EST BORNÉE : la valeur peut venir d'un fichier de parcours
+    // relu, et un trait de douze millimètres effacerait la feuille.
+    assert.ok(styleTableau(feuilleReglee, { presentation: { trait: 99 } }).trait <= 1.5);
+    assert.ok(styleTableau(feuilleReglee, { presentation: { trait: 'bleu' } }).trait > 0);
+    // UNE COULEUR INCONNUE RETOMBE SUR LE GRIS, elle ne fait pas tomber la
+    // feuille : un parcours enregistré avec une teinte qu'on aurait retirée
+    // doit encore s'imprimer.
+    assert.deepEqual(styleTableau(feuilleReglee, { presentation: { couleur: 'fuchsia' } }).filet,
+        TEINTES_TABLEAU.gris.filet);
+});
+
+test('LES CINQ COMMANDES SONT ÉCRITES UNE FOIS, ET LUES AUX TROIS ENDROITS', () => {
+    // LA FICHE D'UN EXERCICE, LA FEUILLE D'UN PARCOURS, ET LA ROUE D'UN
+    // EXERCICE DANS CETTE FEUILLE — la dernière étant le « affiner selon
+    // l'exercice » de sa phrase. Les écrire trois fois, c'est accepter qu'un
+    // jour l'une des trois n'ait plus la même liste de couleurs.
+    ['js/ui/printQuestions.js', 'js/ui/printParcours.js'].forEach(f => {
+        assert.match(lire(f), /from '\.\/styleTableauUI\.js'/, f);
+    });
+    const PP = lire('js/ui/printParcours.js');
+    assert.match(PP, /\$\{champsStyleTableau\('pp'\)\}/);
+    assert.match(PP, /champsStyleTableau\('ppx', \{ heritage: true/);
+    assert.match(lire('js/ui/printQuestions.js'), /\$\{champsStyleTableau\('fq'\)\}/);
+    // ET CE QUE LA ROUE RÈGLE ARRIVE AU BLOC : sans cette ligne, le correctif
+    // se garderait en mémoire sans jamais atteindre la mise en page.
+    assert.match(PP, /presentation: presentations\[id\] \|\| null,/);
 });

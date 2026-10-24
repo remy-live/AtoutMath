@@ -23,6 +23,13 @@ import { makeRng } from '../js/core/ids.js';
 import { divisionFractionsGenerator } from '../js/core/generators/divisionFractions.js';
 import pythagoreReciproqueGenerator from '../js/core/generators/pythagoreReciproque.js';
 import { texteImprime } from '../js/core/fiche.js';
+import { reglagesDeFiche } from '../js/core/reglagesFiche.js';
+import { pgcdPpcmGenerator } from '../js/core/generators/pgcdPpcm.js';
+// L'IMPORT SANS LEQUEL LA MESURE MENT. Sans le registre, `paramSchemaOf` ne
+// trouve pas le générateur et rend une liste VIDE — c'est-à-dire la même
+// réponse qu'un réglage absent, et l'épreuve accuse alors le code.
+import '../js/core/activities/index.js';
+import { paramSchemaOf } from '../js/data/catalog.js';
 
 test('LES COLONNES QU\'IL A DEMANDÉES', () => {
     // « en impression, 3 colonnes de base » — deux fois, mot pour mot. Et
@@ -94,6 +101,56 @@ test('CHAQUE QUESTION DEMANDE LA PLACE QU\'IL FAUT', () => {
     assert.equal(vues.get('conclure'), 6);
     assert.equal(vues.get('conclure-donne'), 6);
     assert.equal(vues.get('probleme'), 6);
+});
+
+test('ON PEUT DEMANDER DU PGCD SEUL, OU DU PPCM SEUL', () => {
+    // RÉMY : « Il faudrait pour les problèmes pouvoir choisir entre problème
+    // de PPCM ou problème de PGCD (ou les deux), on ne peut le faire pour
+    // l'impression. »
+    //
+    // ON MESURE LA COMPÉTENCE DE L'ITEM, pas le nom de la situation : c'est
+    // elle qui dit si la question est un PGCD ou un PPCM, et c'est sur elle
+    // que le bilan de l'élève se range. Une épreuve qui comparerait
+    // `meta.marche` à « paquets » passerait au vert le jour où l'on
+    // ajouterait une seconde situation de PGCD.
+    const notions = (genre) => {
+        const vues = new Set();
+        for (let i = 0; i < 40; i++) {
+            const it = pgcdPpcmGenerator.generate(
+                { marches: ['melange'], genreProbleme: genre },
+                { index: i, total: 40, rng: makeRng('g' + genre + i) });
+            vues.add(it.skillId);
+        }
+        return [...vues].sort();
+    };
+    assert.deepEqual(notions('pgcd'), ['num.arith.pgcd']);
+    assert.deepEqual(notions('ppcm'), ['num.arith.ppcm']);
+    // ET LE DÉFAUT MÊLE TOUJOURS LES DEUX : c'est la difficulté du chapitre,
+    // et la séparation ne sert qu'à préparer un contrôle d'une notion.
+    assert.deepEqual(notions('les-deux'), ['num.arith.pgcd', 'num.arith.ppcm']);
+    assert.deepEqual(notions(undefined), ['num.arith.pgcd', 'num.arith.ppcm']);
+});
+
+test('ET ON PEUT LE DEMANDER DEPUIS LA FEUILLE', () => {
+    // « on ne peut le faire pour l'impression » — c'est la moitié de sa
+    // phrase, et c'est la moitié qui manquait. MESURÉ AVANT : le panneau
+    // d'impression de « Problèmes de PGCD et de PPCM » n'offrait QU'UN
+    // réglage, la liste des vingt marches.
+    const surLaFeuille = (id) => {
+        const e = exercices.find(x => x.id === id);
+        assert.ok(e, `l'exercice ${id} doit exister`);
+        return reglagesDeFiche({
+            schemaCatalogue: paramSchemaOf(e) || [],
+            paramsGenerateur: pgcdPpcmGenerator.params || [],
+            reglages: e.params || {}
+        }).map(p => p.id);
+    };
+    assert.ok(surLaFeuille('num-pgcd-ppcm-problemes').includes('genreProbleme'),
+        'le réglage doit s\'offrir sur la feuille des problèmes');
+    // ET IL NE S'AFFICHE PAS LÀ OÙ IL NE FERAIT RIEN : les dix-sept marches
+    // de « Décomposer, PGCD et PPCM » ne comptent pas « mélange ».
+    assert.ok(!surLaFeuille('num-pgcd-ppcm').includes('genreProbleme'),
+        'un réglage qui ne change rien à la feuille n\'y a pas sa place');
 });
 
 test('LA FEUILLE HONORE CE QUE LA QUESTION DEMANDE', () => {

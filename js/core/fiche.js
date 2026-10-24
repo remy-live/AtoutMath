@@ -613,8 +613,96 @@ export const DEFAUTS_BLOCS = {
     // L'air entre le filet et le texte. Il sert aussi d'écart entre deux
     // cases : les cadres se touchent alors EXACTEMENT, et la feuille porte une
     // vraie grille au lieu de cases qui flottent.
-    padTableau: 1.7
+    padTableau: 1.7,
+    // ── DE QUOI A L'AIR LE FILET ───────────────────────────────────────────
+    //
+    // RÉMY, carnet du 24 octobre : « il faudrait pouvoir choisir de manière
+    // globale pour les exercices à tableau la présentation en tableau
+    // (bordure, épaisseur, couleur bordure, couleur alternance/ bords
+    // extérieurs ou non). on peut faire un réglage globale et affiner selon
+    // l'exercice »
+    //
+    // Les cinq étaient écrits en dur, chacun à DEUX endroits — un dans
+    // l'aperçu HTML, un dans le PDF — et les deux pouvaient diverger sans
+    // que rien ne le dise. Ils vivent maintenant ici, et les deux rendus les
+    // lisent dans la cellule.
+    traitTableau: 0.2,            // épaisseur du filet, en mm
+    couleurTableau: 'gris',       // une clé de TEINTES_TABLEAU
+    couleurBandeTableau: 'gris',  // l'alternance, idem
+    // LE CADRE AUTOUR DE TOUT. Sans lui, il ne reste que les traits qui
+    // SÉPARENT — la présentation des manuels, plus légère à la photocopie.
+    bordsExterieurs: true
 };
+
+/**
+ * LES COULEURS DU TABLEAU, une famille par entrée.
+ *
+ * DEUX USAGES POUR UNE SEULE TABLE : `filet` est la couleur du trait, `bande`
+ * celle d'une rangée teintée. Elles vont ensemble parce qu'un filet bleu sur
+ * une bande verte ne se voit nulle part dans un manuel ; mais on peut les
+ * choisir séparément, et Rémy les a demandées séparément.
+ *
+ * LES DEUX PREMIÈRES VALEURS SONT CELLES D'AVANT, au chiffre près : une
+ * feuille déjà réglée doit sortir identique après ce changement.
+ *
+ * CES COULEURS PASSENT PAR LE MODE D'IMPRESSION. `teindreDoc` intercepte
+ * `setDrawColor` et `setFillColor` dans le PDF, et un filtre CSS fait le même
+ * calcul dans l'aperçu : en gris ou en noir et blanc, un filet vert devient
+ * le gris de même luminance. On ne prévoit donc rien ici pour cela.
+ */
+export const TEINTES_TABLEAU = {
+    gris: { nom: 'Gris', filet: [203, 210, 220], bande: [240, 244, 250] },
+    ardoise: { nom: 'Ardoise', filet: [100, 116, 139], bande: [226, 232, 240] },
+    bleu: { nom: 'Bleu', filet: [96, 165, 250], bande: [224, 239, 254] },
+    vert: { nom: 'Vert', filet: [52, 180, 120], bande: [223, 247, 234] },
+    violet: { nom: 'Violet', filet: [167, 139, 250], bande: [238, 233, 254] },
+    orange: { nom: 'Orange', filet: [249, 146, 60], bande: [255, 238, 215] }
+};
+
+/**
+ * LES ÉPAISSEURS OFFERTES, en millimètres, et le mot qui les dit.
+ *
+ * ON NE DONNE PAS UN CHAMP LIBRE : au-dessus d'un millimètre le filet mange
+ * la case, au-dessous d'un dixième l'imprimante ne le sort plus. Quatre
+ * crans suffisent, et chacun se voit.
+ */
+export const EPAISSEURS_TABLEAU = [
+    { valeur: 0.1, nom: 'Fin' },
+    { valeur: 0.2, nom: 'Normal' },
+    { valeur: 0.4, nom: 'Épais' },
+    { valeur: 0.7, nom: 'Très épais' }
+];
+
+/**
+ * LE STYLE DU FILET POUR UN EXERCICE — le réglage de la feuille, affiné.
+ *
+ * RÉMY : « on peut faire un réglage globale et affiner selon l'exercice ». La
+ * feuille porte les valeurs, un exercice en reprend celles qui lui manquent :
+ * `exo.presentation` ne dit que ce qui change, comme partout ailleurs dans ce
+ * logiciel (voir `reglagesQuiChangent`).
+ *
+ * CE QUI RESTE À LA FEUILLE SEULE : être en tableau ou en liste décide des
+ * GOUTTIÈRES, et les gouttières décident de la largeur des cellules, donc de
+ * la mise en page entière. Un exercice peut donc enlever son filet ou le
+ * changer ; il ne resserre pas la page pour les autres.
+ *
+ * Rend `null` quand il ne faut rien tracer : les appelants testent `cadre`.
+ */
+export function styleTableau(o, exo) {
+    const r = (exo && exo.presentation) || {};
+    if (r.filet === false || (r.filet === undefined && !o.tableau)) return null;
+    const famille = (nom) => TEINTES_TABLEAU[nom] || TEINTES_TABLEAU.gris;
+    const trait = Number(r.trait !== undefined ? r.trait : o.traitTableau);
+    return {
+        zebre: r.zebre !== undefined ? !!r.zebre : !!o.zebre,
+        // BORNÉE, parce que la valeur peut venir d'un fichier de parcours
+        // relu : un trait de douze millimètres effacerait la feuille.
+        trait: Math.max(0.05, Math.min(1.5, Number.isFinite(trait) ? trait : 0.2)),
+        bords: (r.bords !== undefined ? r.bords : o.bordsExterieurs) !== false,
+        filet: famille(r.couleur || o.couleurTableau).filet,
+        fond: famille(r.couleurBande || o.couleurBandeTableau).bande
+    };
+}
 
 /**
  * Compose une fiche en blocs d'exercices.
@@ -732,6 +820,9 @@ export function composerBlocs(exos, opts, mesurer) {
         // le « 3. » tombe sur la bordure de la carte suivante, et il n'a rien à
         // y faire : ce qu'on découpe, on le mélange.
         const numerote = exo.numeroter !== false && !exo.blocsColles;
+        // LE FILET DE CET EXERCICE-LÀ : celui de la feuille, affiné par
+        // `exo.presentation`. Voir `styleTableau`.
+        const styleT = styleTableau(o, exo);
         // Le premier numéro que CET exercice va poser sur la feuille. En
         // numérotation par exercice, on repart à 1 : c'est dit juste après.
         departsParExo[iExo] = numerote
@@ -1327,10 +1418,31 @@ export function composerBlocs(exos, opts, mesurer) {
                     // une feuille à trois colonnes — on ne suivrait plus une
                     // ligne, qui est précisément ce que l'alternance sert à
                     // faire.
-                    cadre: o.tableau ? {
+                    cadre: styleT ? {
                         x: x - o.padTableau, y: y - o.padTableau,
                         w: cellW + o.padTableau * 2, h: rangeeH + o.padTableau * 2,
-                        bande: o.zebre ? Math.floor(debut / cols) % 2 : 0
+                        bande: styleT.zebre ? Math.floor(debut / cols) % 2 : 0,
+                        // CE QU'IL FAUT POUR LE TRACER, et les deux rendus n'ont
+                        // plus rien à savoir : l'épaisseur en mm, les deux
+                        // couleurs en RVB.
+                        trait: styleT.trait, filet: styleT.filet, fond: styleT.fond,
+                        // QUELS CÔTÉS TRACER — `null` veut dire les quatre.
+                        //
+                        // « bords extérieurs ou non » : sans eux, il ne reste que
+                        // les traits qui SÉPARENT deux questions. Un côté est
+                        // extérieur quand il n'a pas de voisin — première rangée
+                        // en haut, dernière en bas, première colonne à gauche,
+                        // dernière à droite. La dernière rangée est parfois
+                        // incomplète : c'est donc `rangee.length` qui dit où elle
+                        // s'arrête, et non `cols`.
+                        //
+                        // ET UNE PAGE QUI SE COUPE OUVRE LE TABLEAU EN BAS. C'est
+                        // ce qu'on veut : le tableau n'a pas de cadre, donc il n'en
+                        // a pas davantage au bord d'une page.
+                        cotes: styleT.bords ? null : {
+                            h: debut > 0, b: debut + cols < cellules.length,
+                            g: iCell > 0, d: iCell < rangee.length - 1
+                        }
                     } : null,
                     // D'où vient cette question : de quel exercice, à quel rang.
                     exoId: exo.id ?? null, iQ: cell.iQ,

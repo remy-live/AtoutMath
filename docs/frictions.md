@@ -5962,3 +5962,66 @@ le résultat n'existe pas** — 15 octobre 2026
   mesure dans un navigateur, et les deux se complètent au lieu de se
   remplacer. L'épreuve le dit maintenant en tête, pour que personne ne lui
   prête une force qu'elle n'a pas.
+
+
+## Une correction posée sur UN des deux panneaux d'impression — 2026-10-24
+
+- *Ce que je voulais faire* : ajouter cinq réglages au filet d'une fiche en
+  tableau, demandés par Rémy.
+- *Ce qui a coûté* : vingt minutes, mais surtout cinq jours de défaut en
+  production. Le menu « Présentation » de la fiche d'UN exercice n'avait pas
+  de `onchange` : on choisissait « En tableau », l'aperçu ne bougeait pas, et
+  l'on en concluait que le réglage n'existait pas. MESURÉ : zéro cadre avant,
+  zéro cadre après. Or le même défaut avait été trouvé et corrigé le 19
+  octobre dans `printParcours.js` — le commentaire de la correction y est
+  encore, mot pour mot — et la correction n'a jamais été reportée.
+- *Combien de fois* : || (le même couple de fichiers : la frise des marches
+  non branchée dans l'aperçu avait déjà vécu ainsi, corrigée d'un côté
+  seulement)
+- *Ce qui manque* : ces deux panneaux font le MÊME travail sur deux chemins.
+  Tant qu'ils restent deux, toute épreuve qui regarde l'un doit regarder
+  l'autre dans la même boucle — `['printQuestions.js', 'printParcours.js']
+  .forEach(…)` —, et c'est ce que `tests/ficheEnTableau.test.mjs` fait
+  maintenant. L'outil qui manquerait vraiment : une épreuve qui RELÈVE les
+  commandes de chaque panneau et exige qu'elles soient branchées, au lieu de
+  nommer celles qu'on a pensé à citer.
+
+## `paramSchemaOf` rend une liste VIDE sans le registre — 2026-10-24
+
+- *Ce que je voulais faire* : mesurer ce que le panneau d'impression offre
+  sur « Problèmes de PGCD et de PPCM », pour vérifier la remarque de Rémy
+  « on ne peut le faire pour l'impression ».
+- *Ce qui a coûté* : deux fois dix minutes dans la même heure — une sonde
+  jetable, puis une épreuve neuve. Sans `import '../js/core/activities/
+  index.js'`, `getGenerator` ne trouve rien et `paramSchemaOf` rend `[]` :
+  ZÉRO RÉGLAGE, c'est-à-dire exactement la réponse qu'on venait chercher. La
+  première fois j'ai cru avoir mesuré le défaut ; la seconde, l'épreuve
+  accusait le code.
+- *Combien de fois* : ||| (c'est écrit en toutes lettres en tête de
+  `tests/aidesReglages.test.mjs`, depuis le jour où ça lui est arrivé : « 117
+  aides au lieu de 169, et le test croirait mesurer l'ensemble »)
+- *Ce qui manque* : que `paramSchemaOf` DISTINGUE « cet exercice n'a pas de
+  réglages » de « le registre n'est pas chargé ». Une liste vide est la même
+  réponse dans les deux cas, et c'est la famille de frictions que
+  `doitExister` a fermée pour les sondes. Un `getGenerator` qui jette quand on
+  lui demande un identifiant inscrit au catalogue mais absent du registre
+  coûterait une ligne et fermerait celle-ci.
+
+## La teinte de l'aperçu n'est pas un filtre : elle RÉÉCRIT les couleurs — 2026-10-24
+
+- *Ce que je voulais faire* : vérifier qu'un filet réglé sur orange sort
+  orange dans l'aperçu.
+- *Ce qui a coûté* : dix minutes à chercher d'où venait `rgb(137, 137, 137)`
+  dans le style calculé, et à recalculer trois fois la luminance de l'orange
+  pour voir si c'était « son » gris. Le mode d'impression par défaut est NOIR
+  ET BLANC, et `teindreHtml` réécrit chaque couleur de la chaîne de l'aperçu
+  avant de la poser — la couleur est donc grise DANS LE STYLE, pas seulement
+  à l'écran. Le commentaire que j'avais écrit dans le CSS disait « un filtre
+  CSS s'applique aux pixels » : faux, et je l'ai corrigé après mesure.
+- *Combien de fois* : |
+- *Ce qui manque* : une ligne dans la sonde plutôt qu'un outil — toute mesure
+  de couleur sur une feuille commence par mettre `#fq-couleur` (ou
+  `#pp-couleur`) sur « couleur ». C'est fait dans `tools/filetDuTableau.mjs`
+  et `tools/filetDuParcours.mjs`, commentaire à l'appui. Le jour où une
+  troisième sonde en aura besoin, cela devient `s.enCouleur()`.
+

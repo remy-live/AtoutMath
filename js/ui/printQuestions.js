@@ -32,6 +32,9 @@ import { brancherFicheDirecte } from './ficheDirecte.js';
 // c'est trente-quatre exercices dont on ne pouvait rien choisir une fois la
 // feuille ouverte — ni les tables, ni la difficulté, ni le niveau.
 import { monterPanneauContenu } from './panneauContenu.js';
+import {
+    champsStyleTableau, brancherStyleTableau, lireStyleTableau, montrerStyleTableau
+} from './styleTableauUI.js';
 import { paramSchemaOf } from '../data/catalog.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe, porteUneFraction } from '../core/fiche.js';
@@ -295,6 +298,14 @@ function assurerModale() {
                         <option value="tableau">En tableau</option>
                         <option value="zebre">En tableau, une ligne sur deux teintée</option>
                     </select></label>
+                <!-- DE QUOI A L'AIR LE FILET. Remy : « bordure, epaisseur,
+                     couleur bordure, couleur alternance/ bords exterieurs ou
+                     non ». Ecrites dans ui/styleTableauUI.js, parce que la
+                     feuille de parcours et la roue d'un exercice ont besoin
+                     des memes. Elles se cachent en mode « En liste » : il n'y
+                     a alors pas de filet a habiller.
+                     (Sans accent grave ici : il fermerait le gabarit.) -->
+                ${champsStyleTableau('fq')}
                 <label class="fq-case"><input type="checkbox" id="fq-champs">
                     Champs remplissables (PDF)</label>
                 <label class="fq-case"><input type="checkbox" id="fq-numeroter" checked>
@@ -434,6 +445,10 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         // « alterné ». Voir le commentaire du menu.
         tableau: tabEl.value !== 'liste',
         zebre: tabEl.value === 'zebre',
+        // L'ALLURE DU FILET — épaisseur, couleurs, bords extérieurs. Les noms
+        // rendus sont ceux de `DEFAUTS_BLOCS` : ils se répandent tels quels
+        // dans les options de la mise en page.
+        styleTableau: lireStyleTableau(modal, 'fq'),
         // LA PLACE POUR RÉDIGER. Un « Je sais que… / or… / donc… » ne tient
         // pas au bout d'une ligne de pointillés : il lui faut trois lignes
         // pleine largeur, et c'est au professeur de le décider — lui seul sait
@@ -473,6 +488,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     }], {
         avecChoix: o.avecChoix, orientation: o.orientation, champs: o.champs,
         tableau: o.tableau, zebre: o.zebre,
+        ...o.styleTableau,
         // `lignesReponse` passe AUSSI à la mise en page : c'est elle qui trace
         // les traits, un par ligne demandée. Sans lui, on réservait la hauteur
         // de trois lignes et l'on n'en dessinait qu'une, tout au fond.
@@ -569,6 +585,25 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
     ouSol.onchange = rendre;
+    // ── LE MENU « Présentation » NE REFAISAIT PAS L'APERÇU ──────────────────
+    //
+    // MESURÉ, sur `calc-add`, dans cette fenêtre : zéro cadre avant, le menu
+    // passé à « zébré », zéro cadre après — et aucune erreur de page. Les six
+    // autres commandes de ce panneau avaient leur `onchange`, celle-ci non :
+    // elle n'agissait qu'au téléchargement, qui relit `lire()`. Le professeur
+    // choisissait donc « En tableau », ne voyait rien changer, et en concluait
+    // que le réglage n'existait pas.
+    //
+    // C'est la moitié invisible de la remarque de Rémy sur les tableaux : il
+    // demandait de quoi régler le filet, et le réglage qui existait déjà ne se
+    // voyait pas agir.
+    const majTableau = () => {
+        montrerStyleTableau(modal, 'fq', tabEl.value);
+        rendre();
+    };
+    tabEl.onchange = majTableau;
+    brancherStyleTableau(modal, 'fq', rendre);
+    montrerStyleTableau(modal, 'fq', tabEl.value);
     modal.querySelector('#fq-regen').onclick = () => { questions = []; rendre(); };
 
     // --- ① QUOI : LES RÉGLAGES DE L'EXERCICE, sur la feuille elle-même -------
