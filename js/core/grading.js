@@ -44,10 +44,15 @@ export function gradeRun(run, policyOverride = null) {
                 itemSeed: a.itemSeed || null, exerciseId: a.exerciseId || null,
                 questionText: a.questionText || '', expected: a.expected,
                 tries: 0, hintsUsed: 0, solved: false, firstTry: false,
-                msElapsed: 0, given: a.given, misconception: null
+                msElapsed: 0, given: a.given, misconception: null,
+                // Une question ne devient « morceau » que si TOUTES ses
+                // tentatives le sont : la première décide, une suivante qui ne
+                // le serait pas la fait redevenir une vraie question.
+                partiel: true
             });
         }
         const it = items.get(key);
+        if (!a.partiel) it.partiel = false;
         it.tries++;
         it.hintsUsed = Math.max(it.hintsUsed, a.hintsUsed || 0);
         // `msElapsed` est un INTERVALLE — le temps écoulé depuis la tentative
@@ -63,7 +68,27 @@ export function gradeRun(run, policyOverride = null) {
             if (a.misconception) it.misconception = a.misconception;
         }
     }
-    const itemList = [...items.values()];
+    // --- CE QUI EST UNE QUESTION, ET CE QUI N'EN EST QU'UN MORCEAU -----------
+    //
+    // RÉMY : « comment juges-tu un exercice comme l'organigramme des
+    // quadrilatères en mode évaluation ? »
+    //
+    // `partiel` veut dire, depuis toujours : « cette tentative compte aux
+    // statistiques et au carnet d'erreurs, mais ce n'est pas une question de la
+    // série » — un chiffre posé dans une multiplication, un codage de
+    // l'organigramme. `runner.js` l'écartait bien de son compteur. LE BARÈME,
+    // LUI, NE LE SAVAIT PAS : l'élève lisait « 1 organigramme » en haut et sa
+    // note se calculait sur les onze morceaux qu'il avait traversés — un
+    // nombre qui changeait avec ses erreurs, puisqu'un morceau non tenté ne
+    // produit aucune tentative.
+    //
+    // La note compte donc les QUESTIONS. Les morceaux, eux, restent entiers là
+    // où ils valent quelque chose : le bilan par compétence et le carnet
+    // d'erreurs, qui n'ont que faire d'un découpage en questions et pour
+    // lesquels « il a raté le codage du losange » est précisément ce qu'on
+    // veut savoir.
+    const tousLesItems = [...items.values()];
+    const itemList = tousLesItems.filter(it => !it.partiel);
 
     // --- Crédit par question, selon la règle du barème ---
     const creditOf = (it) => {
@@ -119,7 +144,7 @@ export function gradeRun(run, policyOverride = null) {
 
     // --- Bilan par compétence ---
     const bySkill = new Map();
-    for (const it of itemList) {
+    for (const it of tousLesItems) {
         if (!it.skillId) continue;
         if (!bySkill.has(it.skillId)) {
             bySkill.set(it.skillId, { skillId: it.skillId, label: skillLabel(it.skillId), questions: 0, credit: 0, reussies: 0 });
@@ -189,7 +214,14 @@ export function gradeRun(run, policyOverride = null) {
         parCompetence,
         // Les questions ratées, avec leur diagnostic : c'est la partie que
         // le professeur lit en premier.
-        aRetravailler: itemList
+        //
+        // ELLE PREND LES MORCEAUX AUSSI, et c'est là qu'ils valent le plus :
+        // « il a raté le codage du losange » ou « il s'est trompé de retenue à
+        // la dizaine » est exactement ce qu'on veut lire. La note les écarte
+        // parce qu'elle compte des questions ; le carnet les garde parce qu'il
+        // cherche l'erreur, pas le compte. C'est ce que `partiel` promet depuis
+        // le début : « aux statistiques et au carnet d'erreurs ».
+        aRetravailler: tousLesItems
             .filter(it => !it.solved || !it.firstTry)
             .map(it => ({
                 questionText: it.questionText,
@@ -270,6 +302,82 @@ export function appreciation(bilan) {
     if (r >= 0.7) return 'Objectif atteint. Quelques points restent à consolider.';
     if (r >= 0.5) return 'En cours d\'acquisition : reprends les questions ratées.';
     return 'Notion à retravailler. Refais les exercices d\'entraînement avant l\'évaluation.';
+}
+
+// ── CE QUI A ÉTÉ BIEN, ET CE QUI RESTE À RETRAVAILLER ───────────────────────
+//
+// RÉMY : « est ce que dans le bilan pour l'élève à la fin de l'épreuve, tu
+// pourrais en une phrase lui dire ce qui a été bien et ce qui doit être
+// retravaillé ».
+//
+// `appreciation` ci-dessus dit le NIVEAU — « Objectif atteint », « En cours
+// d'acquisition » —, et c'est une information juste mais sans adresse : elle
+// serait la même pour un élève qui tient les priorités et bute sur les signes
+// que pour celui qui fait exactement l'inverse. Le bilan par compétence, lui,
+// porte le détail — mais sous forme de quatre barres colorées qu'un élève de
+// cinquième ne lit pas en sortant d'une évaluation.
+//
+// LA PHRASE NOMME DONC LES NOTIONS. C'est tout ce qu'elle fait de plus, et
+// c'est tout ce qui manquait.
+//
+// ── TROIS REFUS, ET CHACUN ÉVITE UN MENSONGE ────────────────────────────────
+//
+// UNE QUESTION N'EST PAS UNE PREUVE. Une compétence vue une seule fois ne dit
+// rien : juste du premier coup par chance, ou ratée sur une étourderie. On en
+// exige deux avant de prononcer un verdict sur elle.
+//
+// ON NE FÉLICITE PAS À MOITIÉ. « C'est acquis » se dit à partir de 80 %, pas
+// du meilleur score de la liste : sur un bilan entièrement raté, nommer « le
+// moins mauvais » comme une réussite est le genre d'encouragement qui apprend
+// à ne pas croire l'écran.
+//
+// ET QUAND IL N'Y A RIEN DE NET À DIRE, ON NE DIT RIEN. Un bilan où tout est
+// entre 50 et 80 % n'a ni réussite franche ni trou franc : la phrase rend ''
+// et l'appréciation globale suffit. Une phrase qui parle toujours finit par ne
+// plus rien vouloir dire.
+//
+// ── POURQUOI CETTE FORME ────────────────────────────────────────────────────
+//
+// « Additionner des entiers : c'est acquis. » — la notion d'abord, le verdict
+// après les deux points. Les intitulés de compétences n'ont ni genre ni
+// nombre prévisibles (« Sudoku », « Sens de la multiplication », « Diviser
+// (quotient exact) ») : toute tournure qui les accorde finit par écrire
+// « Sudoku sont acquises ». Celle-ci n'accorde rien.
+
+/** Il en faut deux pour qu'une compétence ait dit quelque chose. */
+const ASSEZ_DE_QUESTIONS = 2;
+/** Au-dessus, c'est acquis. En dessous de l'autre, c'est à reprendre. */
+const ACQUIS = 0.8;
+const A_REPRENDRE = 0.5;
+/** Deux notions au plus de chaque côté : au-delà, ce n'est plus une phrase. */
+const AU_PLUS = 2;
+
+/**
+ * UNE PHRASE QUI NOMME, ou rien.
+ *
+ * @param {Object} bilan celui de `gradeRun`
+ * @returns {string} la phrase, ou '' quand il n'y a rien de net à dire
+ */
+export function ceQuiVaEtCeQuiReste(bilan) {
+    const liste = ((bilan && bilan.parCompetence) || [])
+        .filter(c => c && c.label && Number(c.questions) >= ASSEZ_DE_QUESTIONS);
+    if (!liste.length) return '';
+
+    const bien = liste.filter(c => c.taux >= ACQUIS)
+        .sort((a, b) => b.taux - a.taux).slice(0, AU_PLUS);
+    const reste = liste.filter(c => c.taux < A_REPRENDRE)
+        .sort((a, b) => a.taux - b.taux).slice(0, AU_PLUS);
+
+    // PAS DE SORTIE ANTICIPÉE ICI, et c'est `epreuveTombe.mjs` qui l'a dit :
+    // j'avais écrit « si rien des deux côtés, rendre '' », et l'épreuve passait
+    // AVEC ET SANS cette ligne. Elle ne gardait rien — `bouts.join(' ')` rend
+    // déjà la chaîne vide quand `bouts` est vide. Une ligne qui rassure sans
+    // rien faire est pire qu'absente : la prochaine main la croira utile.
+    const nommer = (cs) => cs.map(c => c.label).join(' et ');
+    const bouts = [];
+    if (bien.length) bouts.push(`${nommer(bien)} : c'est acquis.`);
+    if (reste.length) bouts.push(`${nommer(reste)} : à retravailler.`);
+    return bouts.join(' ');
 }
 
 /** Niveau global de compétence (NA / EC / A / E) pour un bilan. */

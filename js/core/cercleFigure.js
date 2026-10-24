@@ -45,7 +45,20 @@ const arr = (v) => Math.round(v * 100) / 100;
  * la couleur ne porte jamais l'information toute seule.
  */
 export const COULEURS = ['#d62728', '#1f77b4', '#2ca02c', '#9467bd', '#e07b00', '#17a2b8'];
-export const ENCRE_FIG = '#1a202c';
+/**
+ * L'ENCRE DE LA FIGURE SUIT LE THÈME.
+ *
+ * Rémy, capture d'iPhone en thème sombre : « il faut faire attention aux
+ * contrastes selon les modes si on a pris mode nuit ou non ». Sur son écran, le
+ * cercle et les lettres A, B, C, D, O sont invisibles : ils étaient peints en
+ * #1a202c, un noir écrit en dur, sur le bleu nuit du plateau.
+ *
+ * `currentColor` est la seule valeur qu'un attribut de présentation SVG sait
+ * faire suivre — `var()` n'y est pas admis. La feuille pose la couleur sur le
+ * SVG (voir `.fig-cercle` dans css/modules.css) et tout le dessin la prend :
+ * les traits, les croix et les lettres.
+ */
+export const ENCRE_FIG = 'currentColor';
 
 /**
  * LES TRACÉS D'UNE FIGURE.
@@ -244,8 +257,13 @@ export function cercleSvg(traces, { taille = 300, cliquables = false } = {}) {
     let d = '';
     for (const t of traces) {
         if (t.k === 'cercle' && t.plein) {
+            // LES DISQUES PLEINS SE MÉLANGENT AU PLATEAU au lieu d'être des
+            // pastilles claires posées dessus : en thème sombre, une pastille
+            // claire sous une encre devenue blanche rendrait la lettre
+            // illisible — on déplacerait le défaut au lieu de le corriger.
+            // `style` et non un attribut : `var()` n'est admis que là.
             d += `<circle cx="${T(t.x)}" cy="${T(t.y)}" r="${T(t.r)}"
-                fill="${t.fort ? '#fde2e2' : '#eef2f9'}"/>`;
+                style="fill: color-mix(in srgb, ${t.fort ? 'var(--danger) 20%' : 'var(--primary) 12%'}, var(--bg-plateau))"/>`;
         } else if (t.k === 'cercle') {
             d += `<circle cx="${T(t.x)}" cy="${T(t.y)}" r="${T(t.r)}" fill="none"
                 stroke="${t.fort ? COULEURS[0] : ENCRE_FIG}" stroke-width="${T(t.fort ? 1.6 : 0.7)}"/>`;
@@ -264,6 +282,6 @@ export function cercleSvg(traces, { taille = 300, cliquables = false } = {}) {
     // Le calque de capture PAR-DESSUS tout : posé dessous, le dessin lui
     // volerait les clics là où les traits se croisent.
     if (cliquables) d += calqueDeCapture(traces, k, arr);
-    return `<svg viewBox="0 0 ${taille} ${taille}" width="${taille}" height="${taille}"
+    return `<svg class="fig-cercle" viewBox="0 0 ${taille} ${taille}" width="${taille}" height="${taille}"
         role="img" aria-label="figure du cercle">${d}</svg>`;
 }

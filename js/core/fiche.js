@@ -94,7 +94,41 @@ export function texteImprime(texte, reponse) {
     // c'est son VOISINAGE — un opérateur ou un signe d'égalité à côté, comme
     // dans « 8 + ? = 10 » —, jamais un mot. Les points de suspension et les
     // suites de points, eux, ne servent qu'à cela : ils restent des trous.
-    t = t.replace(/(…|\.{2,})(?=\s*\S)/g, trou);
+    //
+    // UNE SUITE DE POINTS EST UN SEUL TROU, PAS UN PAR POINT.
+    //
+    // RÉMY, capture de la fiche à l'appui : « tu vois que la présentation à
+    // l'impression est curieuse ». Elle l'était : « 22 ……… 22 » sortait avec
+    // TROIS petites lignes pointillées au lieu d'une, parce que le motif
+    // remplaçait chaque « … » séparément et que la mise en page dessine un
+    // trou par suite d'espaces. L'élève lit alors trois choses à écrire là où
+    // on en demande une. Quatre générateurs écrivaient leurs trous ainsi
+    // (durées, conversions, notation, valeur absolue) : c'est le motif qu'il
+    // fallait corriger, pas les quatre.
+    //
+    // ET UN TROU PEUT FINIR L'ÉNONCÉ.
+    //
+    // « Encadre à l'unité : … < 8,8 < … » laissait le DERNIER « … » tel quel,
+    // imprimé en toutes lettres : le motif exigeait quelque chose derrière
+    // (« (?=\s*\S) »), et il n'y a rien derrière une fin de ligne. On voyait
+    // donc, sur la feuille, deux lignes à remplir puis trois points de
+    // suspension. Mêmes victimes : « Note la figure ci-dessus : …… »,
+    // « 7/10 = … ». Le drapeau `trouFinal` existe justement pour que le
+    // rognage de fin de ligne ne reprenne pas ce qu'on vient de poser.
+    // LA FIN D'ABORD, ET L'ORDRE EST TOUTE LA CORRECTION.
+    //
+    // Écrites dans l'autre sens, les deux règles se marchaient dessus : sur
+    // « … < 8,8 < ……… », le « + » gourmand prenait les trois points finaux,
+    // la vue avant « (?=\s*\S) » échouait en fin de ligne, le moteur revenait
+    // d'un cran et acceptait « …… » SUIVI d'un « … » — qui compte comme un
+    // caractère non blanc. La règle du milieu posait donc un trou, et celle
+    // de la fin en posait un SECOND juste derrière. Mesuré dans l'aperçu :
+    // trois pointillés sur une ligne qui en demande deux.
+    //
+    // En traitant la fin d'abord, il ne reste plus de points à la fin quand
+    // la règle du milieu passe, et elle ne peut plus rien couper en deux.
+    t = t.replace(/(?:\u2026|\.{2,})+\s*$/, () => { trouFinal = true; return trou; });
+    t = t.replace(/(?:\u2026|\.{2,})+(?=\s*\S)/g, trou);
     t = t.replace(/\?(?=\s*\S)/g, (m, i) => {
         const avant = t.slice(0, i).replace(/[\s\u00A0]+$/, '').slice(-1);
         const apres = t.slice(i + 1).replace(/^[\s\u00A0]+/, '').slice(0, 1);
@@ -157,6 +191,26 @@ export function mesureurFractions(mesurer) {
  * leur numéro, pour une fraction qui n'y était pas. C'est le décalage que Rémy
  * a vu sur la feuille de problèmes.
  */
+/**
+ * LE PAS ENTRE DEUX LIGNES D'UNE MÊME CELLULE.
+ *
+ * Une fraction en colonne occupe presque deux lignes : numérateur, trait,
+ * dénominateur. Tant qu'un énoncé tenait sur UNE ligne, cela se réglait en
+ * descendant la cellule entière (`supp`). Depuis que les problèmes de
+ * fractions passent leur question à la ligne (Rémy : « Écris la question à la
+ * ligne »), il y a DEUX lignes — et le dénominateur de la première venait se
+ * poser sur le texte de la seconde.
+ *
+ * Le pas vaut donc une ligne et demie quand la cellule porte des fractions.
+ * Les trois lecteurs de `lignes` — la mise en page, l'aperçu et le PDF —
+ * passent par ici : c'est la seule façon qu'ils ne divergent pas.
+ */
+export const pasDeLigne = (o, fractions) => o.interligne * (fractions ? 1.85 : 1);
+
+/** La hauteur occupée par les lignes d'une cellule, pas compris. */
+export const hauteurDesLignes = (o, combien, fractions) =>
+    Math.max(0, combien - 1) * pasDeLigne(o, fractions) + o.interligne;
+
 export function porteUneFraction(...textes) {
     return textes.some(t => RE_FRACTION().test(String(t ?? '')));
 }
@@ -165,6 +219,33 @@ export function porteUneFraction(...textes) {
 export function trouDe(ligne) {
     const m = / {3,}/.exec(ligne || '');
     return m ? { debut: m.index, fin: m.index + m[0].length } : null;
+}
+
+/**
+ * CE TROU-LÀ EST-IL DÉJÀ DESSINÉ PAR UNE FRACTION ?
+ *
+ * RÉMY, sur « L'Égalité à Compléter » : la réponse est le terme manquant DANS
+ * la fraction, et un pointillé s'ajoutait à droite — « un second endroit pour
+ * la même réponse ».
+ *
+ * MESURÉ SUR LE PDF, et le défaut n'est pas celui qu'on croyait : le trou EST
+ * bien repéré, et la place à écrire EST bien posée « dans le texte ». Mais son
+ * abscisse se calcule en mesurant `ligne.slice(0, trou.debut)` — un bout de
+ * chaîne coupé AU MILIEU de la fraction, alors que la ligne, elle, s'imprime
+ * en COLONNE. La mesure ne correspond donc à rien de ce qui est dessiné, et le
+ * trait atterrissait après l'expression entière.
+ *
+ * Or cette place existe déjà : `dessinerLigne` pose des pointillés sur l'étage
+ * vide de la fraction (voir `etageEstUnTrou`). Il n'y a rien à ajouter — il
+ * faut s'abstenir. On reconnaît donc le cas, et l'on ne pose aucune ligne de
+ * réponse : ni dans le texte, ni au bout.
+ */
+export function trouDessineParUneFraction(ligne, trou) {
+    if (!trou) return false;
+    for (const m of String(ligne ?? '').matchAll(RE_FRACTION())) {
+        if (trou.debut >= m.index && trou.fin <= m.index + m[0].length) return true;
+    }
+    return false;
 }
 
 /**
@@ -233,6 +314,114 @@ export function mesurerTableau(t, dispo, o, mes) {
         // pointillés du dessous inutiles, et c'est elle qui devient un champ
         // dans un PDF remplissable.
         aRemplir: lignes.some(l => l.some(c => String(c ?? '') === ''))
+    };
+}
+
+/**
+ * LE SCHÉMA DES BONDS, MESURÉ POUR LA FEUILLE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, en choisissant le dessin de l'écran : « tu me fera aussi une version
+ * imprimé pour les schémas ».
+ *
+ * CE N'EST PAS UNE IMAGE QU'ON COLLE. L'aperçu et le PDF ne partagent aucune
+ * ligne de code de dessin — l'un pose des `<div>`, l'autre appelle jsPDF — et
+ * c'est ici, UNE FOIS, qu'on décide où tombe chaque trait. Les deux traceurs
+ * ne font ensuite que recopier ces nombres. Tout ce qu'on calculerait chez eux
+ * finirait par diverger, et l'élève verrait à l'écran une feuille qui n'est
+ * pas celle qu'on lui imprime.
+ *
+ * TOUT EST EN MILLIMÈTRES, comme le reste de la composition, et l'origine est
+ * le coin haut-gauche du schéma : le traceur y ajoute le coin où il le pose.
+ *
+ * CE QU'ON NE MET PAS : la ligne « en tout ». Sur l'écran elle reçoit la
+ * réponse ; sur le papier, la réponse a déjà sa place — les pointillés qui
+ * suivent le « = » de l'énoncé. Deux endroits pour la même réponse, c'est la
+ * faute que `sansPointilles` existe pour empêcher ailleurs. Le schéma est le
+ * BROUILLON ; il ne remplace pas la ligne de réponse, et ne la supprime pas.
+ *
+ * @param {{arrets:string[]}} b  les arrêts, déjà écrits (« 1 h 45 », « 2 h »)
+ * @param {number} dispo  la largeur de la colonne, en mm
+ */
+export function mesurerBonds(b, dispo, o, mes) {
+    const arrets = ((b && b.arrets) || []).map(t => String(t));
+    if (arrets.length < 2) return null;
+    // PLUS ÉTROIT QUE LA COLONNE, ET BORNÉ. Au-delà de 76 mm les arcs
+    // s'aplatissent et le dessin cesse de dire « on saute » ; en dessous de la
+    // place qu'il faut aux étiquettes, deux heures voisines se touchent.
+    const w = Math.min(dispo, 76);
+    // LA MARGE DE CHAQUE CÔTÉ EST LA DEMI-ÉTIQUETTE : c'est elle qui empêche
+    // « 2 h 45 » de dépasser du schéma, aux deux bouts.
+    //
+    // LE PLAFOND NE MORD PAS, ET C'EST VÉRIFIÉ, pas supposé. J'ai cru voir un
+    // défaut ici — en trois colonnes la place tombe à 56 mm, et `w / (2 × 3)`
+    // ramène la marge à 9,3 mm — et j'ai remis l'ancienne formule avant
+    // d'écrire la nouvelle (`tools/epreuveTombe.mjs`). L'épreuve est restée
+    // VERTE : la plus longue étiquette de cet exercice, « 3 h 45 », demande
+    // 5 mm de demi-largeur, très loin des 9,3. Le défaut n'existait pas, et la
+    // correction aurait changé un dessin juste. On n'y touche que le jour où
+    // une étiquette passera les 17 mm.
+    const demi = Math.min(
+        Math.max(...arrets.map(t => mes(t, o.taille))) / 2 + 0.6,
+        w / (2 * arrets.length));
+    const pas = (w - 2 * demi) / (arrets.length - 1);
+    const xs = arrets.map((_, i) => demi + i * pas);
+    const hArc = Math.max(5.5, o.taille * 1.7);
+    const yGain = o.taille;                   // la ligne de base du « + …… »
+    const yLigne = yGain + 1.4 + hArc;        // l'axe du temps
+    const yEtiq = yLigne + 1.6 + o.taille;    // la ligne de base des arrêts
+    const R = 0.85;                           // le rayon d'un arrêt
+    // LE « + » ET SON TROU SONT UN SEUL GROUPE. Mesuré sur la feuille agrandie
+    // quatre fois : avec la largeur de « + » SUIVI D'UNE ESPACE, le trou partait
+    // un millimètre et demi plus loin et l'on voyait un plus d'un côté, un trait
+    // de l'autre. On mesure donc le signe seul et l'on ajoute l'air qu'on veut.
+    const wPlus = mes('+', o.taille) + 0.7;
+    const arcs = [];
+    const gains = [];
+    for (let i = 0; i < arrets.length - 1; i++) {
+        const x1 = xs[i] + R + 0.9;
+        // LA POINTE S'ARRÊTE AVANT L'ARRÊT, et c'est la remarque de Rémy sur
+        // l'écran, reportée ici avant qu'elle ne se repose : « l'extrémité de
+        // la pointe de la flèche arrive sur le cercle ». Deux millimètres
+        // d'air, mesurés sur la feuille imprimée.
+        const x2 = xs[i + 1] - R - 1.8;
+        const y0 = yLigne - 0.6;
+        // LE SOMMET D'UNE QUADRATIQUE EST À (y₀ + 2·y_c + y₁) / 4 : on part du
+        // sommet VOULU et l'on en déduit le point de contrôle, au lieu de
+        // régler ce dernier à l'œil jusqu'à ce que ça tombe juste.
+        const yc = 2 * (yLigne - hArc) - y0;
+        const cx = (x1 + x2) / 2;
+        // LA TANGENTE À L'ARRIVÉE, pour orienter la pointe : pour une
+        // quadratique, elle va du point de contrôle vers le point final.
+        const dx = x2 - cx, dy = y0 - yc;
+        const n = Math.hypot(dx, dy) || 1;
+        const ux = dx / n, uy = dy / n;
+        const L = 1.7, D = 0.62;   // la pointe : longueur et demi-largeur
+        arcs.push({
+            x1, y1: y0, cx, cy: yc, x2, y2: y0,
+            pointe: [
+                [x2, y0],
+                [x2 - L * ux - D * uy, y0 - L * uy + D * ux],
+                [x2 - L * ux + D * uy, y0 - L * uy - D * ux]
+            ]
+        });
+        const milieu = (xs[i] + xs[i + 1]) / 2;
+        // LE TROU À REMPLIR FAIT LA MOITIÉ DU BOND, borné : sur un bond étroit
+        // il déborderait sur le voisin, sur un bond large il offrirait trois
+        // centimètres pour écrire « 15 min ».
+        // LE TROU À REMPLIR : de quoi écrire « 10 min » à la main, soit un peu
+        // plus d'un centimètre au corps de la feuille. Mesuré sur l'image : à
+        // treize millimètres, « 1 h 25 » touchait les deux bouts.
+        const wTrou = Math.max(9, Math.min(pas * 0.55, 15));
+        gains.push({ x: milieu - (wPlus + wTrou) / 2, y: yGain, wPlus, wTrou });
+    }
+    return {
+        arrets, xs, w, R, demi, yGain, yLigne, yEtiq, arcs, gains,
+        h: yEtiq + 1.4,
+        // CHAQUE BOND EST UNE CASE À REMPLIR : dans un PDF remplissable, elles
+        // deviennent des champs, comme les cases vides d'un tableau.
+        aRemplir: true
     };
 }
 
@@ -506,8 +695,122 @@ export const DEFAUTS_BLOCS = {
     // (« question 27 » se trouve sans compter les exercices) ; « exercice »
     // repart à 1 à chaque exercice, ce qui est la convention des manuels et
     // des contrôles — « exercice 3, question 2 » y est plus court à dire.
-    numerotation: 'continue'
+    numerotation: 'continue',
+    // ── LES QUESTIONS EN TABLEAU ───────────────────────────────────────────
+    //
+    // RÉMY : « pour les calculs sur les impressions, n'hésite à proposer une
+    // option tableau où c'est présenté sous forme de tableau (dans les options
+    // d'impression) avec alternances des couleurs ou non. »
+    //
+    // CE N'EST PAS UNE AUTRE MISE EN PAGE, c'est un TRAIT AUTOUR DE CE QUI EST
+    // DÉJÀ POSÉ. Les questions se rangent déjà en rangées et en colonnes — le
+    // tableau existait, il n'était simplement pas dessiné. En faire une
+    // composition à part aurait donné deux mises en page à garder d'accord,
+    // c'est-à-dire une qui finit par mentir sur l'autre.
+    //
+    // POURQUOI ÇA CHANGE QUELQUE CHOSE POUR UN ÉLÈVE : sur une feuille de
+    // calcul mental à quatre colonnes, rien ne dit où finit une question et où
+    // commence la suivante — l'œil saute d'une colonne à l'autre en cours de
+    // ligne, et l'élève répond au mauvais numéro. Le filet ferme chaque case.
+    tableau: false,
+    // L'ALTERNANCE, séparément : « avec alternances des couleurs ou non ». Une
+    // rangée sur deux teintée, pour suivre une ligne de l'œil sans règle. Elle
+    // suit le mode d'impression — en noir et blanc elle devient un gris très
+    // pâle, qui ne mange pas l'encre et se lit encore.
+    zebre: false,
+    // L'air entre le filet et le texte. Il sert aussi d'écart entre deux
+    // cases : les cadres se touchent alors EXACTEMENT, et la feuille porte une
+    // vraie grille au lieu de cases qui flottent.
+    padTableau: 1.7,
+    // ── DE QUOI A L'AIR LE FILET ───────────────────────────────────────────
+    //
+    // RÉMY, carnet du 24 octobre : « il faudrait pouvoir choisir de manière
+    // globale pour les exercices à tableau la présentation en tableau
+    // (bordure, épaisseur, couleur bordure, couleur alternance/ bords
+    // extérieurs ou non). on peut faire un réglage globale et affiner selon
+    // l'exercice »
+    //
+    // Les cinq étaient écrits en dur, chacun à DEUX endroits — un dans
+    // l'aperçu HTML, un dans le PDF — et les deux pouvaient diverger sans
+    // que rien ne le dise. Ils vivent maintenant ici, et les deux rendus les
+    // lisent dans la cellule.
+    traitTableau: 0.2,            // épaisseur du filet, en mm
+    couleurTableau: 'gris',       // une clé de TEINTES_TABLEAU
+    couleurBandeTableau: 'gris',  // l'alternance, idem
+    // LE CADRE AUTOUR DE TOUT. Sans lui, il ne reste que les traits qui
+    // SÉPARENT — la présentation des manuels, plus légère à la photocopie.
+    bordsExterieurs: true
 };
+
+/**
+ * LES COULEURS DU TABLEAU, une famille par entrée.
+ *
+ * DEUX USAGES POUR UNE SEULE TABLE : `filet` est la couleur du trait, `bande`
+ * celle d'une rangée teintée. Elles vont ensemble parce qu'un filet bleu sur
+ * une bande verte ne se voit nulle part dans un manuel ; mais on peut les
+ * choisir séparément, et Rémy les a demandées séparément.
+ *
+ * LES DEUX PREMIÈRES VALEURS SONT CELLES D'AVANT, au chiffre près : une
+ * feuille déjà réglée doit sortir identique après ce changement.
+ *
+ * CES COULEURS PASSENT PAR LE MODE D'IMPRESSION. `teindreDoc` intercepte
+ * `setDrawColor` et `setFillColor` dans le PDF, et un filtre CSS fait le même
+ * calcul dans l'aperçu : en gris ou en noir et blanc, un filet vert devient
+ * le gris de même luminance. On ne prévoit donc rien ici pour cela.
+ */
+export const TEINTES_TABLEAU = {
+    gris: { nom: 'Gris', filet: [203, 210, 220], bande: [240, 244, 250] },
+    ardoise: { nom: 'Ardoise', filet: [100, 116, 139], bande: [226, 232, 240] },
+    bleu: { nom: 'Bleu', filet: [96, 165, 250], bande: [224, 239, 254] },
+    vert: { nom: 'Vert', filet: [52, 180, 120], bande: [223, 247, 234] },
+    violet: { nom: 'Violet', filet: [167, 139, 250], bande: [238, 233, 254] },
+    orange: { nom: 'Orange', filet: [249, 146, 60], bande: [255, 238, 215] }
+};
+
+/**
+ * LES ÉPAISSEURS OFFERTES, en millimètres, et le mot qui les dit.
+ *
+ * ON NE DONNE PAS UN CHAMP LIBRE : au-dessus d'un millimètre le filet mange
+ * la case, au-dessous d'un dixième l'imprimante ne le sort plus. Quatre
+ * crans suffisent, et chacun se voit.
+ */
+export const EPAISSEURS_TABLEAU = [
+    { valeur: 0.1, nom: 'Fin' },
+    { valeur: 0.2, nom: 'Normal' },
+    { valeur: 0.4, nom: 'Épais' },
+    { valeur: 0.7, nom: 'Très épais' }
+];
+
+/**
+ * LE STYLE DU FILET POUR UN EXERCICE — le réglage de la feuille, affiné.
+ *
+ * RÉMY : « on peut faire un réglage globale et affiner selon l'exercice ». La
+ * feuille porte les valeurs, un exercice en reprend celles qui lui manquent :
+ * `exo.presentation` ne dit que ce qui change, comme partout ailleurs dans ce
+ * logiciel (voir `reglagesQuiChangent`).
+ *
+ * CE QUI RESTE À LA FEUILLE SEULE : être en tableau ou en liste décide des
+ * GOUTTIÈRES, et les gouttières décident de la largeur des cellules, donc de
+ * la mise en page entière. Un exercice peut donc enlever son filet ou le
+ * changer ; il ne resserre pas la page pour les autres.
+ *
+ * Rend `null` quand il ne faut rien tracer : les appelants testent `cadre`.
+ */
+export function styleTableau(o, exo) {
+    const r = (exo && exo.presentation) || {};
+    if (r.filet === false || (r.filet === undefined && !o.tableau)) return null;
+    const famille = (nom) => TEINTES_TABLEAU[nom] || TEINTES_TABLEAU.gris;
+    const trait = Number(r.trait !== undefined ? r.trait : o.traitTableau);
+    return {
+        zebre: r.zebre !== undefined ? !!r.zebre : !!o.zebre,
+        // BORNÉE, parce que la valeur peut venir d'un fichier de parcours
+        // relu : un trait de douze millimètres effacerait la feuille.
+        trait: Math.max(0.05, Math.min(1.5, Number.isFinite(trait) ? trait : 0.2)),
+        bords: (r.bords !== undefined ? r.bords : o.bordsExterieurs) !== false,
+        filet: famille(r.couleur || o.couleurTableau).filet,
+        fond: famille(r.couleurBande || o.couleurBandeTableau).bande
+    };
+}
 
 /**
  * Compose une fiche en blocs d'exercices.
@@ -526,6 +829,17 @@ export const DEFAUTS_BLOCS = {
  */
 export function composerBlocs(exos, opts, mesurer) {
     const o = { ...DEFAUTS_BLOCS, ...(opts || {}) };
+    // LES CASES D'UN TABLEAU SE TOUCHENT. Une gouttière de 9 mm entre deux
+    // colonnes et 4,4 mm entre deux rangées donneraient des cases séparées par
+    // du blanc — un damier, pas un tableau, et le filet n'y servirait plus à
+    // rien puisque c'est le blanc qui dirait déjà la séparation. On ramène
+    // donc les deux écarts à DEUX FOIS la marge intérieure : chaque cadre
+    // déborde de `padTableau` de son côté, et les bords se superposent au
+    // millimètre près.
+    if (o.tableau) {
+        o.gouttiere = o.padTableau * 2;
+        o.entreQuestions = o.padTableau * 2;
+    }
     const page0 = o.page || pageDe(o.orientation);
     // LA PREMIÈRE PAGE PEUT AVOIR UN EN-TÊTE PLUS HAUT QUE LES SUIVANTES.
     //
@@ -579,6 +893,20 @@ export function composerBlocs(exos, opts, mesurer) {
     // Ce que « auto » a finalement décidé, exercice par exercice : l'interface
     // le rend au professeur, pour qu'il sache de quoi il part avant de forcer.
     const colonnesParExo = [];
+    // OÙ CHAQUE EXERCICE A COMMENCÉ À NUMÉROTER — et pourquoi on le rapporte.
+    //
+    // Rémy, corrigé en main : « je pense qu'il y a un bug […] j'ai l'impression
+    // d'un problème d'ordre ». Sur sa feuille, l'exercice d'appariement prenait
+    // les numéros 1 et 2, et les questions écrites commençaient à 3. Le corrigé,
+    // lui, ne reçoit QUE les exercices qui ont des questions écrites — un
+    // appariement se corrige sur son propre dessin — et repartait donc à 1.
+    // « 1. 8 + 2 = 10 » ne renvoyait à rien : la feuille n'a pas de question 1
+    // dans cet exercice.
+    //
+    // ON NE RECALCULE PAS LA RÈGLE AILLEURS, ON RAPPORTE CE QU'ON A FAIT. Deux
+    // compteurs pour la même numérotation finiraient par compter différemment —
+    // c'est exactement ce qui vient d'arriver.
+    const departsParExo = [];
 
     // On ne pousse JAMAIS une page vide : une feuille blanche au milieu d'un
     // PDF ressemble à une erreur d'impression, et le professeur la photocopie
@@ -600,6 +928,13 @@ export function composerBlocs(exos, opts, mesurer) {
         // le « 3. » tombe sur la bordure de la carte suivante, et il n'a rien à
         // y faire : ce qu'on découpe, on le mélange.
         const numerote = exo.numeroter !== false && !exo.blocsColles;
+        // LE FILET DE CET EXERCICE-LÀ : celui de la feuille, affiné par
+        // `exo.presentation`. Voir `styleTableau`.
+        const styleT = styleTableau(o, exo);
+        // Le premier numéro que CET exercice va poser sur la feuille. En
+        // numérotation par exercice, on repart à 1 : c'est dit juste après.
+        departsParExo[iExo] = numerote
+            ? (o.numerotation === 'exercice' ? 1 : numero + 1) : null;
         // LA GOUTTIÈRE DU NUMÉRO SUIT LA LARGEUR DE LA CELLULE. Sept
         // millimètres et demi devant « 12. » sont justes dans une colonne
         // large ; dans une cellule de vingt-deux millimètres — six colonnes de
@@ -860,7 +1195,7 @@ export function composerBlocs(exos, opts, mesurer) {
         }
         // Faute de mieux, on aligne par le bas : toutes les réponses dessous.
         if (exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) {
-            for (const c of cellules) if (c.memeLigne) { c.memeLigne = false; c.h += ligneRep; }
+            for (const c of cellules) if (c.memeLigne) { c.memeLigne = false; c.h += c.hRep || ligneRep; }
         }
         colonnesParExo.push(cols);
 
@@ -888,10 +1223,15 @@ export function composerBlocs(exos, opts, mesurer) {
             // LE TROU DANS L'ÉNONCÉ. « 82 041 = 80 000 +      + 40 + 1 » porte
             // déjà la place où l'on écrit : lui ajouter des pointillés au bout
             // ferait deux endroits pour une seule réponse.
-            let trou = null;
-            for (let i = 0; i < lignes.length && !trou; i++) {
+            let trou = null, trouDessine = false;
+            for (let i = 0; i < lignes.length && !trou && !trouDessine; i++) {
                 const t = trouDe(lignes[i]);
-                if (t) trou = { ...t, ligne: i };
+                if (!t) continue;
+                // Un trou au milieu d'une FRACTION porte déjà sa place : la
+                // fraction la dessine à son étage. Voir
+                // `trouDessineParUneFraction`.
+                if (trouDessineParUneFraction(lignes[i], t)) trouDessine = true;
+                else trou = { ...t, ligne: i };
             }
             // La réponse va SUR la ligne de l'énoncé quand il reste assez de
             // pointillés ; sinon dessous, en pleine largeur de cellule.
@@ -910,6 +1250,10 @@ export function composerBlocs(exos, opts, mesurer) {
             // texte, et c'est LUI qu'on remplit — la réponse ne va donc ni au
             // bout de la ligne ni sur des pointillés en dessous.
             const tableau = q.tableau ? mesurerTableau(q.tableau, texteW, o, mes) : null;
+            // LE SCHÉMA DES BONDS, s'il y en a un. Il se mesure comme le
+            // tableau et se pose comme lui ; mais lui NE PREND PAS la place de
+            // la réponse — voir `mesurerBonds`.
+            const bonds = q.bonds ? mesurerBonds(q.bonds, texteW, o, mes) : null;
             // LA PLACE DEMANDÉE L'EMPORTE SUR LA PLACE DISPONIBLE.
             //
             // Rémy, sur la fiche des grandeurs composées : « pourquoi tu mets
@@ -928,7 +1272,29 @@ export function composerBlocs(exos, opts, mesurer) {
             //
             // Dès que `lignesReponse` est demandé, on descend donc toujours
             // sous l'énoncé. Sans réglage, rien ne change.
-            const placeDemandee = Math.round(Number(o.lignesReponse) || 0) > 0;
+            // ── LA PLACE PEUT ÊTRE DEMANDÉE PAR LA QUESTION ELLE-MÊME ────────
+            //
+            // RÉMY, carnet du 24 octobre, sur la réciproque de Pythagore :
+            // « Quand tu demandes quel est le côté le plus long, une seule
+            // ligne suffit pour répondre. Quand on demande si le triangle
+            // est rectangle (et qu'il faut calculer), tu peux laisser un peu
+            // plus de ligne (6 de pointillé) ».
+            //
+            // `lignesReponse` est un réglage de FEUILLE : il donne la même
+            // place à toutes les questions. Or le même exercice mêle une
+            // question à un mot et un raisonnement en trois temps — leur
+            // donner la même place, c'est gâcher une demi-page sur l'une ou
+            // étrangler l'autre. La question sait, elle, ce qu'elle attend :
+            // elle le déclare (`meta.lignesPapier`), et ce qu'elle déclare
+            // passe devant le réglage de la feuille.
+            const nRepQ = Math.max(0, Math.round(Number(q.lignes) || 0));
+            const nRep = nRepQ || Math.max(0, Math.round(Number(o.lignesReponse) || 0));
+            const placeDemandee = nRep > 0;
+            // UNE LIGNE D'ÉCRITURE VAUT SEPT MILLIMÈTRES — le même chiffre
+            // que le menu de la feuille (`7 * o.lignesReponse`), pour que six
+            // lignes demandées ici et six lignes demandées là-bas donnent la
+            // même hauteur.
+            const hRep = nRepQ ? Math.max(o.ligneReponse, 7 * nRepQ) : ligneRep;
             // LA PLACE QU'IL FAUT DÉPEND DE CE QU'ON ÉCRIT DEDANS.
             //
             // `repMin` vaut onze millimètres — de quoi poser deux ou trois
@@ -960,7 +1326,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // tient pas dans huit descend, et y trouve toute la largeur.
             const besoinRep = Math.min(o.repMin,
                 Math.max(8, mes(String(q.reponse ?? ''), o.taille) + 3));
-            const memeLigne = !placeDemandee && !trou && !choix && !tableau && lignes.length === 1
+            const memeLigne = !placeDemandee && !trou && !trouDessine && !choix && !tableau && !bonds && lignes.length === 1
                 && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= besoinRep;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
             // numérateur au-dessus du trait, le dénominateur dessous. Il leur
@@ -972,23 +1338,32 @@ export function composerBlocs(exos, opts, mesurer) {
             // tableau des fonctions : sous un tableau qu'on remplit, elles ne
             // sont pas seulement inutiles, elles proposent un second endroit
             // pour la même réponse.
-            const sansPointilles = trou || memeLigne || (tableau && tableau.aRemplir);
-            const h = supp + lignes.length * o.interligne
+            const sansPointilles = trou || trouDessine || memeLigne || (tableau && tableau.aRemplir);
+            // LES MÊMES MARGES QUE LE TABLEAU, et pas deux réglages de plus :
+            // un dessin posé sous un énoncé a le même besoin d'air qu'un
+            // tableau posé sous un énoncé, et deux boutons pour une seule
+            // question se répondent un jour l'un à l'autre.
+            const hBonds = bonds ? o.avantTableau + bonds.h + o.apresTableau : 0;
+            const h = supp + hauteurDesLignes(o, lignes.length, !!q.fractions)
                 + (choix ? o.interligne : 0)
                 + (tableau ? o.avantTableau + tableau.h + o.apresTableau : 0)
-                + (sansPointilles ? 0 : ligneRep);
+                + hBonds
+                + (sansPointilles ? 0 : hRep);
             // `iQ` : le rang de la question DANS SON EXERCICE. C'est la seule
             // chose qui permette, depuis l'aperçu, de désigner celle qu'on
             // veut retirer ou retirer au sort — le numéro imprimé, lui, court
             // sur toute la feuille et saute les exercices non numérotés.
-            return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, tableau, sansPointilles, h,
+            return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, trouDessine, tableau, bonds, hBonds, sansPointilles, h,
+                // CE QUE LA QUESTION A DEMANDÉ voyage avec sa cellule : le
+                // traceur, plus bas, n'a plus accès à `q`.
+                nRep, hRep,
                 dy: supp, mes, iQ, fractions: !!q.fractions };
         }); }
 
         /** Vingt questions du même moule : une ligne, pas de trou, pas de QCM. */
         function exerciceHomogene(cells) {
             return cells.length > 1
-                && cells.every(c => !c.trou && !c.choix && !c.tableau && c.lignes.length === 1);
+                && cells.every(c => !c.trou && !c.choix && !c.tableau && !c.bonds && c.lignes.length === 1);
         }
         /** Les réponses sont-elles toutes au même endroit ? */
         function reponsesRegulieres(cells) {
@@ -1049,7 +1424,38 @@ export function composerBlocs(exos, opts, mesurer) {
         for (let debut = 0; debut < cellules.length; debut += cols) {
             const rangee = cellules.slice(debut, debut + cols);
             const rangeeH = Math.max(...rangee.map(c => c.h));
-            if (y + rangeeH > basPage) {
+
+            // PAS DE VEUVE : UNE PAGE ENTIÈRE POUR UNE SEULE QUESTION.
+            //
+            // Mesuré en composant 287 pages — toutes les tailles d'exercice de
+            // 1 à 60 questions, en portrait, en paysage et en interrogation :
+            // trois fois, la DERNIÈRE rangée d'un exercice tombait seule sur
+            // une page neuve, sous un bandeau « (suite) ». Une feuille de
+            // photocopie pour une question, et le professeur qui la distribue
+            // le voit tout de suite.
+            //
+            // La règle typographique est vieille comme l'imprimerie : on ne
+            // laisse pas une ligne seule de l'autre côté du pli. Quand il ne
+            // reste que DEUX rangées et qu'elles ne tiennent pas ensemble ici,
+            // on les emmène toutes les deux sur la page suivante plutôt que
+            // d'en abandonner une.
+            //
+            // ON NE LE FAIT QUE SI LES DEUX TIENNENT SUR UNE PAGE VIDE :
+            // autrement on les repousserait indéfiniment, et la feuille
+            // n'aurait pas de fin. Et le coût est assumé : un blanc en bas de
+            // la page précédente, contre une page entière gaspillée.
+            const restantes = Math.ceil((cellules.length - debut) / cols);
+            let veuve = false;
+            if (restantes === 2) {
+                const derniere = cellules.slice(debut + cols);
+                const derniereH = Math.max(...derniere.map(c => c.h));
+                const ensemble = rangeeH + o.entreQuestions + derniereH;
+                veuve = (y + rangeeH <= basPage)          // celle-ci passerait…
+                    && (y + ensemble > basPage)           // …mais pas l'autre
+                    && (haut() + ensemble <= basPage);    // et les deux tiennent ailleurs
+            }
+
+            if (y + rangeeH > basPage || veuve) {
                 nouvellePage();
                 poserBandeau(true);
             }
@@ -1061,6 +1467,10 @@ export function composerBlocs(exos, opts, mesurer) {
                 let rep = null;
                 if (cell.tableau && cell.tableau.aRemplir) {
                     // Rien : le tableau est la place pour répondre.
+                } else if (cell.trouDessine) {
+                    // Rien non plus : la FRACTION porte sa propre place, à
+                    // l'étage vide. Rémy : « la réponse est le terme manquant
+                    // dans la fraction ».
                 } else if (cell.trou) {
                     // On écrit DANS l'énoncé, à l'endroit du trou : le trait à
                     // remplir se pose sous ce blanc, et le champ du PDF dessus.
@@ -1086,12 +1496,16 @@ export function composerBlocs(exos, opts, mesurer) {
                     // la réponse ». On demandait trois lignes et l'on obtenait
                     // trois lignes de VIDE avec un unique trait au fond : on écrit
                     // sur des lignes, on n'écrit pas dans une marge.
-                    const nRep = Math.max(1, Math.round(Number(o.lignesReponse) || 1));
-                    const pas = ligneRep / nRep;
+                    const nRep = Math.max(1, cell.nRep || 1);
+                    const pas = (cell.hRep || ligneRep) / nRep;
                     rep = {
                         x: texteX,
-                        y: y + cell.dy + cell.lignes.length * o.interligne
-                            + (cell.choix ? o.interligne : 0) + pas * 0.72,
+                        // `hBonds` EST DANS CE CALCUL, sans quoi les pointillés
+                        // de la réponse se posent EN PLEIN MILIEU du schéma :
+                        // la hauteur était comptée dans la cellule, mais pas
+                        // dans l'endroit où la réponse commence.
+                        y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
+                            + (cell.choix ? o.interligne : 0) + (cell.hBonds || 0) + pas * 0.72,
                         w: texteW, lignes: nRep, pas
                     };
                 }
@@ -1111,18 +1525,65 @@ export function composerBlocs(exos, opts, mesurer) {
                 const tableau = cell.tableau ? {
                     ...cell.tableau,
                     x: texteX,
-                    y: y + cell.dy + cell.lignes.length * o.interligne
+                    y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
+                        + (cell.choix ? o.interligne : 0) + o.avantTableau
+                } : null;
+                // LE SCHÉMA, POSÉ. Même coin que le tableau — ils ne cohabitent
+                // pas sur une même question, et le jour où ça arriverait, c'est
+                // ici qu'on les empilerait.
+                const bonds = cell.bonds ? {
+                    ...cell.bonds,
+                    x: texteX,
+                    y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
                         + (cell.choix ? o.interligne : 0) + o.avantTableau
                 } : null;
                 page.items.push({
                     type: 'q', n: numerote ? numero : null,
-                    tableau,
+                    tableau, bonds,
+                    // LE CADRE DE LA CASE, quand la fiche est en tableau. Il
+                    // déborde de `padTableau` de chaque côté : deux cases
+                    // voisines partagent alors exactement leur filet.
+                    //
+                    // `bande` COMPTE LES RANGÉES, PAS LES QUESTIONS. Alterner
+                    // par question teindrait une case sur deux en damier sur
+                    // une feuille à trois colonnes — on ne suivrait plus une
+                    // ligne, qui est précisément ce que l'alternance sert à
+                    // faire.
+                    cadre: styleT ? {
+                        x: x - o.padTableau, y: y - o.padTableau,
+                        w: cellW + o.padTableau * 2, h: rangeeH + o.padTableau * 2,
+                        bande: styleT.zebre ? Math.floor(debut / cols) % 2 : 0,
+                        // CE QU'IL FAUT POUR LE TRACER, et les deux rendus n'ont
+                        // plus rien à savoir : l'épaisseur en mm, les deux
+                        // couleurs en RVB.
+                        trait: styleT.trait, filet: styleT.filet, fond: styleT.fond,
+                        // QUELS CÔTÉS TRACER — `null` veut dire les quatre.
+                        //
+                        // « bords extérieurs ou non » : sans eux, il ne reste que
+                        // les traits qui SÉPARENT deux questions. Un côté est
+                        // extérieur quand il n'a pas de voisin — première rangée
+                        // en haut, dernière en bas, première colonne à gauche,
+                        // dernière à droite. La dernière rangée est parfois
+                        // incomplète : c'est donc `rangee.length` qui dit où elle
+                        // s'arrête, et non `cols`.
+                        //
+                        // ET UNE PAGE QUI SE COUPE OUVRE LE TABLEAU EN BAS. C'est
+                        // ce qu'on veut : le tableau n'a pas de cadre, donc il n'en
+                        // a pas davantage au bord d'une page.
+                        cotes: styleT.bords ? null : {
+                            h: debut > 0, b: debut + cols < cellules.length,
+                            g: iCell > 0, d: iCell < rangee.length - 1
+                        }
+                    } : null,
                     // D'où vient cette question : de quel exercice, à quel rang.
                     exoId: exo.id ?? null, iQ: cell.iQ,
                     lignes: cell.lignes, x, y, dy: cell.dy, texteX, texteW,
                     fractions: cell.fractions,
                     choix: cell.choix,
-                    choixY: cell.choix ? y + cell.dy + cell.lignes.length * o.interligne : null,
+                    choixY: cell.choix
+                        ? y + cell.dy
+                            + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
+                        : null,
                     rep
                 });
             });
@@ -1131,7 +1592,8 @@ export function composerBlocs(exos, opts, mesurer) {
     });
 
     if (page.items.length) pages.push(page);
-    return { pages, zone, opts: o, nbQuestions: total, page: page0, colonnes: colonnesParExo };
+    return { pages, zone, opts: o, nbQuestions: total, page: page0,
+        colonnes: colonnesParExo, departs: departsParExo };
 }
 
 /**
@@ -1288,7 +1750,21 @@ export function composerSolutions(questions, opts, mesurer) {
             const qs = sec.questions || [];
             if (!qs.length) return;
             const bareme = sec.points ? ` — ${sec.points} pt${sec.points > 1 ? 's' : ''}` : '';
-            items.push({ titre: true, texte: `Exercice ${i + 1} — ${sec.titre}${bareme}` });
+            // LE NUMÉRO D'EXERCICE EST CELUI DE LA FEUILLE, pas celui d'ici.
+            //
+            // Rémy : « j'ai l'impression d'un problème d'ordre ». Le corrigé ne
+            // reçoit que les exercices qui ont des questions écrites — un
+            // appariement se corrige sur son propre dessin — et il comptait
+            // 1, 2, 3 sur CETTE liste-là. Son « Exercice 1 » était donc
+            // l'exercice 2 de la feuille, et le professeur cherchait sur la
+            // mauvaise moitié de la page.
+            const rang = Number(sec.rang) || (i + 1);
+            items.push({ titre: true, texte: `Exercice ${rang} — ${sec.titre}${bareme}` });
+            // ET LES NUMÉROS DE QUESTION REPRENNENT LÀ OÙ LA FEUILLE LES A LAISSÉS.
+            // `depart` vient de `composerBlocs`, qui les a posés : on rapporte
+            // ce qui a été fait, on ne le recalcule pas — deux compteurs pour
+            // la même numérotation finissent par compter différemment.
+            if (Number(sec.depart) > 0) n = Number(sec.depart) - 1;
             if (o.numerotation === 'exercice') n = 0;
             const numerote = sec.numeroter !== false;
             // CE QUE VAUT UNE QUESTION. L'intertitre porte le total de
@@ -1507,3 +1983,110 @@ export const BAREME = (points) => {
 
 /** La ligne débarrassée de ses marques : pour mesurer, et pour les tests. */
 export const sansMarques = (t) => String(t ?? '').replace(/[\u0001-\u0006]/g, '');
+
+/**
+ * L'ÉNONCÉ QUI SE RÉPÈTE DEVANT CHAQUE QUESTION S'EN VA EN TÊTE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, sur `cf-ensemble` : « laisse de la place et ne remets pas l'énoncé à
+ * chaque question sur la version imprimé ».
+ *
+ * Une feuille de dix questions écrivait dix fois « Simplifier : », « Calculer :
+ * », « Dans chaque cas, … ». Sur un cahier d'écolier cela ne se fait pas : la
+ * consigne est donnée UNE fois, en tête, et les questions ne portent que ce qui
+ * les distingue. La place gagnée est celle où l'élève écrit.
+ *
+ * ── CE QU'ON DÉGAGE, ET CE QU'ON NE DÉGAGE PAS ─────────────────────────────
+ *
+ * On ne coupe qu'au bout d'un VRAI séparateur — « : », « — », « ? » — et
+ * seulement si toutes les questions le partagent. Couper au mot près donnerait
+ * « Simplifier : √64 » et « Simplifier : √(9 + 16) » réduits à « √64 » et
+ * « (9 + 16) » le jour où deux questions commenceraient par « Simplifier : √ ».
+ *
+ * ET IL DOIT RESTER QUELQUE CHOSE. Deux questions identiques au séparateur près
+ * se retrouveraient vides, numérotées devant une ligne blanche — ce qui est
+ * exactement le défaut qu'on répare, à l'envers.
+ *
+ * ON NE TOUCHE PAS À UNE QUESTION SEULE : un préfixe ne se « répète » pas à un
+ * exemplaire, et le dégager laisserait une question sans énoncé.
+ *
+ * @param {string[]} textes   les questions, telles qu'elles seraient écrites
+ * @returns {{prefixe: string, textes: string[]}}
+ */
+export function degagerLePrefixe(textes) {
+    const liste = (textes || []).map(t => String(t ?? ''));
+    const rien = { prefixe: '', suffixe: '', textes: liste };
+    if (liste.length < 2) return rien;
+
+    // ── LE DÉBUT COMMUN ────────────────────────────────────────────────────
+    let n = 0;
+    const court = Math.min(...liste.map(t => t.length));
+    while (n < court && liste.every(t => t[n] === liste[0][n])) n++;
+
+    let prefixe = '';
+    if (n) {
+        // ON RECULE JUSQU'AU DERNIER SÉPARATEUR. C'est lui qui fait d'un début
+        // commun un ÉNONCÉ ; sans lui on couperait au milieu d'un mot ou d'un
+        // nombre.
+        const m = liste[0].slice(0, n).match(/^(.*[:?\u2014\u00bb.][\s\u00a0]+)/);
+        // UN SÉPARATEUR N'EST PAS UN ÉNONCÉ. « : » tout seul, « Soit : »,
+        // « Et : » ne valent pas d'être hissés — et les retirer priverait la
+        // question du peu qu'elle disait. La plus courte consigne utile du
+        // catalogue est « Calcule : », qui fait neuf signes.
+        if (m && m[1].trim().length >= 8) prefixe = m[1];
+    }
+
+    // ── LA FIN COMMUNE ─────────────────────────────────────────────────────
+    //
+    // RÉMY, sur `cf-ensemble` : « ne remets pas l'énoncé à chaque question ».
+    // Son énoncé ne se répétait pas DEVANT mais DERRIÈRE — « …, puis préciser
+    // le plus petit ensemble auquel le résultat appartient. », dix fois, pour
+    // une consigne qui le disait déjà en tête. Une queue qui se répète est
+    // exactement aussi encombrante qu'une tête, et deux fois plus longue ici.
+    const reste0 = liste.map(t => t.slice(prefixe.length));
+    let k = 0;
+    const court2 = Math.min(...reste0.map(t => t.length));
+    while (k < court2 && reste0.every(t => t[t.length - 1 - k] === reste0[0][reste0[0].length - 1 - k])) k++;
+
+    let suffixe = '';
+    if (k) {
+        const queue = reste0[0].slice(reste0[0].length - k);
+        // ON AVANCE JUSQU'AU PREMIER DÉBUT DE MOT : une fin commune commence
+        // rarement sur une limite propre — « …ppartient. » est commun à toutes
+        // sans être une phrase.
+        const m2 = queue.match(/[\s\u00a0]([^\s\u00a0].*)$/s);
+        const candidat = m2 ? m2[1] : '';
+        // Assez long pour valoir la peine, et il doit rester la question.
+        if (candidat.trim().length >= 12) suffixe = candidat.trim();
+    }
+
+    const restes = reste0.map(t => (suffixe ? t.slice(0, t.length - suffixe.length) : t)
+        .replace(/[\s\u00a0,;]+$/, '').trim());
+    // ET IL DOIT RESTER QUELQUE CHOSE. Deux questions identiques au séparateur
+    // près se retrouveraient vides, numérotées devant une ligne blanche — le
+    // défaut qu'on répare, à l'envers.
+    if (!prefixe && !suffixe) return rien;
+    if (restes.some(r => !r)) return rien;
+    return { prefixe: prefixe.trim(), suffixe, textes: restes };
+}
+
+export function consigneAvecPrefixe(consigne, ...bouts) {
+    const net = (t) => String(t).toLowerCase().replace(/[^a-zà-ÿ]+/g, '');
+    let c = String(consigne || '').trim();
+    for (const bout of bouts) {
+        const b = String(bout || '').trim();
+        if (!b) continue;
+        // LE BÉGAIEMENT EST LE SEUL RISQUE. La consigne de `cf-ensemble` dit
+        // déjà « puis préciser le plus petit ensemble auquel appartient le
+        // résultat » — l'y remettre une seconde fois ne gagnerait rien et se
+        // lirait comme une erreur. On compare sur les LETTRES SEULES :
+        // « appartient le résultat » et « le résultat appartient » ne sont pas
+        // le même ordre, mais c'est la même phrase, et c'est ce qui compte.
+        const lettres = net(b).replace(/^(.{12,}?)$/, '$1');
+        if (c && (net(c).includes(lettres) || lettres.length > 20
+            && net(c).includes(lettres.slice(0, 20)))) continue;
+        c = c ? `${c} ${b}` : b;
+    }
+    return c;
+}

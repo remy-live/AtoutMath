@@ -11,6 +11,12 @@
 // `detail.handled` signale qu'un rendu a bien pris la main (sinon l'émetteur
 // résout immédiatement — cas des tests et de l'aperçu).
 
+// ON AÈRE CE QUE L'ÉLÈVE DOIT LIRE, et la fonction vit dans le noyau pour que
+// l'outil de mesure (tools/cequilFautLire.mjs) compte EXACTEMENT ce que la
+// carte affiche. Deux règles séparées dériveraient, et la mesure dirait alors
+// le contraire de ce que voit l'élève.
+import { aerer } from '../core/aideExercice.js';
+
 const SUCCESS_MESSAGES = ['Bonne réponse !', 'Bravo !', 'Exact !', 'Parfait !'];
 
 const ICON_OK = `<svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
@@ -18,6 +24,43 @@ const ICON_KO = `<svg viewBox="0 0 24 24" width="46" height="46" fill="none" str
 const ICON_HINT = `<svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>`;
 
 let current = null;
+
+/**
+ * À QUI RENDRE LE FOYER QUAND LA BANNIÈRE SE FERME.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « parfois le bouton valider est inactif ».
+ *
+ * MESURÉ, ET LA BANNIÈRE EN EST LA MOITIÉ. `showDismissable` donne le foyer à
+ * son bouton « J'ai compris » — c'est juste, l'élève au clavier doit pouvoir
+ * fermer sans viser à la souris. Mais ce bouton est ensuite RETIRÉ du document,
+ * et le foyer ne retombe sur personne : il va sur `<body>`, hors de l'activité.
+ * Les écrans de saisie écoutent le clavier sur LEUR conteneur ; à partir de là,
+ * l'élève tape et rien ne s'écrit.
+ *
+ * MESURÉ SUR « L'Égalité à Compléter » : après « Valider » et la fermeture de
+ * la bannière, foyer sur BODY, bouton éteint, clavier muet pour le reste de la
+ * question. La correction posée dans l'activité n'y suffisait pas — c'est la
+ * bannière qui avait pris le foyer, c'est à elle de le rendre.
+ *
+ * ON LE REND À CELUI QUI L'AVAIT, et à défaut au plateau de jeu : l'élément
+ * d'avant a pu disparaître entre-temps (une touche effacée par un nouveau
+ * rendu), et `focus()` sur un élément détaché échoue en SILENCE — c'est-à-dire
+ * de la même façon qu'un logiciel cassé.
+ */
+function rendreLeFoyerA(avant) {
+    const plateau = document.querySelector('#game-layer .canvas-area');
+    const vivant = avant && avant.isConnected && typeof avant.focus === 'function'
+        // UN ÉLÉMENT DÉSACTIVÉ NE PEUT PAS PRENDRE LE FOYER : le lui donner
+        // revient à le donner à `<body>`, c'est-à-dire à ne rien faire.
+        && !avant.disabled
+        && (!plateau || plateau.contains(avant));
+    const cible = vivant ? avant : plateau;
+    if (!cible) return;
+    if (!cible.hasAttribute('tabindex') && cible === plateau) cible.tabIndex = -1;
+    cible.focus({ preventScroll: true });
+}
 
 export function initGameFeedbackUI() {
     document.addEventListener('game_feedback', (e) => {
@@ -121,13 +164,15 @@ function showDismissable(d, done, isHint) {
     const card = build(`
         <div class="fb-icon ${isHint ? 'fb-icon--hint' : 'fb-icon--ko'}">${isHint ? ICON_HINT : ICON_KO}</div>
         <div class="fb-label">${label}</div>
-        <div class="fb-message">${messageHtml(d.msg)}</div>
+        <div class="fb-message${aere(d.msg)}">${messageHtml(d.msg)}</div>
         ${schema}
         ${detail}
         <button type="button" class="fb-close">${isHint ? 'Merci !' : 'J\'ai compris'}</button>`,
         isHint ? 'fb-card--hint' : 'fb-card--ko', true);
 
-    const finish = () => { close(card); done(); };
+    // QUI AVAIT LE FOYER AVANT NOUS — on le lui rendra. Voir `rendreLeFoyerA`.
+    const avant = document.activeElement;
+    const finish = () => { close(card); rendreLeFoyerA(avant); done(); };
 
     const btn = card.querySelector('.fb-close');
     btn.onclick = finish;
@@ -144,7 +189,7 @@ function showDismissable(d, done, isHint) {
 function showTransient(d, done, isHint) {
     const card = build(`
         <div class="fb-icon ${isHint ? 'fb-icon--hint' : 'fb-icon--ko'}">${isHint ? ICON_HINT : ICON_KO}</div>
-        <div class="fb-message">${messageHtml(d.msg)}</div>
+        <div class="fb-message${aere(d.msg)}">${messageHtml(d.msg)}</div>
         ${d.schema ? `<div class="hint-schema">${d.schema}</div>` : ''}`,
         isHint ? 'fb-card--hint' : 'fb-card--ko');
     setTimeout(() => { close(card); done(); }, 2200);
@@ -226,15 +271,40 @@ function escapeHtml(s) {
 // ligne, ce sont des phrases, pas des exemples.
 const EXEMPLE_CHIFFRE = /^[\d\s.,;=+×÷*/<>−–-]+\.?$/;
 
+/**
+ * UN BLOC DE PLUSIEURS LIGNES SE LIT À GAUCHE, PAS AU MILIEU.
+ *
+ * Vu sur la photo (tools/tmp/carte-aeree.png) une fois l'aération en place :
+ * trois idées, trois lignes, et trois départs à des abscisses différentes —
+ * l'œil doit CHERCHER le début de chaque ligne. Sur une phrase centrée d'une
+ * ligne cela ne coûte rien ; sur une liste, c'est du travail en plus, et il
+ * s'ajoute à celui de l'élève pour qui on a aéré.
+ *
+ * Seulement quand il y a plusieurs lignes : une phrase courte centrée est
+ * jolie et ne gêne personne.
+ */
+function aere(msg) {
+    return aerer(String(msg == null ? '' : msg)).includes('\n') ? ' fb-message--aere' : '';
+}
+
 function messageHtml(texte) {
+    // UNE IDÉE PAR LIGNE. Voir `aerer` : la carte affiche en `white-space:
+    // pre-line`, donc un retour à la ligne suffit — pas de balise à poser.
+    // C'est la correction qui vaut pour tout le catalogue d'un coup, et elle
+    // ne change pas un mot de ce que les exercices ont écrit.
+    //
+    // ON CHERCHE L'EXEMPLE CHIFFRÉ SUR LE TEXTE BRUT, ET SEULEMENT APRÈS ON
+    // AÈRE LE RESTE : `aerer` coupe elle aussi aux deux-points, et le « : » de
+    // l'exemple aurait disparu avant qu'on le cherche — la règle ci-dessous
+    // n'aurait plus jamais rien attrapé, sans que rien ne le signale.
     const brut = String(texte == null ? '' : texte);
     const coupe = brut.lastIndexOf(' : ');
     if (coupe > 0) {
         const exemple = brut.slice(coupe + 3).trim();
         if (exemple && EXEMPLE_CHIFFRE.test(exemple)) {
-            return escapeHtml(brut.slice(0, coupe) + ' :')
+            return escapeHtml(aerer(brut.slice(0, coupe)) + ' :')
                 + `<span class="fb-exemple">${escapeHtml(exemple)}</span>`;
         }
     }
-    return escapeHtml(brut);
+    return escapeHtml(aerer(brut));
 }

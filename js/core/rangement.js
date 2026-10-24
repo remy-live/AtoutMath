@@ -2,7 +2,7 @@
 //
 // Deux rangements, et un même arbre pour les afficher :
 //
-//   PAR DOMAINE   Numérique › Calcul Mental. C'est le rangement d'origine,
+//   PAR DOMAINE   Numérique › Calcul mental. C'est le rangement d'origine,
 //                 celui de la recherche : il dit de quoi parle l'exercice.
 //   PAR CHAPITRE  6ème › Fractions. C'est la progression du professeur : elle
 //                 dit QUAND on s'en sert. « Je choisis mon chapitre, et bam
@@ -53,7 +53,35 @@ export function setModeRangement(mode) {
  */
 export function cheminsDe(exo, mode = modeRangement(), classement = undefined) {
     if (!exo || !exo.tags) return [[]];
-    if (mode !== RANGEMENTS.CHAPITRE) return [exo.tags.chemin || []];
+    if (mode !== RANGEMENTS.CHAPITRE) {
+        // ── UN EXERCICE PEUT TENIR À DEUX ENDROITS DE L'ARBRE ──────────────
+        //
+        // RÉMY : « j'ai cherché l'exercice des nombres relatifs, il était dans
+        // priorités mais il peut être aussi dans nombre relatifs ».
+        //
+        // Il a raison, et ce n'est pas une hésitation de rangement :
+        // « −6 + 3 × (−2) » EST des priorités et EST des relatifs, et le
+        // professeur qui prépare l'un des deux chapitres doit l'y trouver. Le
+        // ranger sous un seul revient à parier sur le chapitre qu'il préparera.
+        //
+        // LE RANGEMENT PAR CHAPITRE LE FAISAIT DÉJÀ — un exercice y suit ses
+        // compétences, et `calc-prio-relatifs` apparaît sous « Priorités
+        // opératoires », « Relatifs » et « Produits de relatifs ». Seul le
+        // rangement par DOMAINE, celui par défaut, n'en connaissait qu'un.
+        // D'où sa recherche infructueuse.
+        //
+        // TOUT LE RESTE ÉTAIT DÉJÀ PRÊT : cette fonction rend une LISTE depuis
+        // le début, et les trois fonctions de l'arbre raisonnent sur « au moins
+        // un de ses chemins passe par ce dossier ». Il ne manquait qu'un second
+        // chemin à déclarer.
+        //
+        // LE PREMIER RESTE LE PRINCIPAL. `tags.chemin[0]` donne le domaine, et
+        // plusieurs écrans l'affichent tel quel — la pastille du catalogue, la
+        // colonne du bilan. Un exercice garde donc UN domaine ; ce sont ses
+        // sous-dossiers qui peuvent être deux.
+        const autres = Array.isArray(exo.tags.aussi) ? exo.tags.aussi : [];
+        return [exo.tags.chemin || [], ...autres.filter((c) => Array.isArray(c) && c.length)];
+    }
 
     const niveaux = exo.tags.niveaux || [];
     const siens = classement === undefined ? chapitresDe(exo) : chapitresDe(exo, classement);
@@ -83,6 +111,41 @@ function dedoublonner(chemins) {
         vus.add(cle);
         return true;
     });
+}
+
+/** Le titre porte-t-il un rang d'échelle — « 8. Diviser par une fraction » ? */
+export const TITRE_NUMEROTE = /^\d+\.\s/;
+
+/**
+ * LA FAMILLE D'UN TITRE NUMÉROTÉ, OU RIEN.
+ *
+ * RÉMY, devant les résultats de recherche : « pourquoi j'ai des noms
+ * d'exercices avec un numéro devant du genre 8. Diviser et le ... ».
+ *
+ * Vingt exercices portent un rang dans leur titre : les douze barreaux des
+ * fractions, les huit des racines. Ce rang est une place dans UNE échelle, et
+ * pas un ordre dans le catalogue. Dans l'arbre, le dossier au-dessus dit de
+ * laquelle il s'agit ; à PLAT — en recherche — rien ne le dit, et deux lignes
+ * commencent par « 8. » sans parler de la même chose.
+ *
+ * ON LIT LA FAMILLE DANS `tags.chemin`, QUI LA PORTE DÉJÀ. Un champ de plus à
+ * côté du titre aurait été une seconde vérité à tenir d'accord avec la
+ * première, et c'est toujours la seconde qui se périme. Le libellé du
+ * générateur ne pouvait pas servir non plus : « Calculer avec des fractions,
+ * jusqu'aux expressions du devoir » fait soixante-dix caractères, là où la
+ * ligne entière en affiche une trentaine.
+ *
+ * ET LE DOMAINE SEUL NE RÉPOND PAS. Un chemin réduit à « Numérique » ne nomme
+ * aucune échelle : on rend alors le vide plutôt qu'un mot qui ne répond pas à
+ * la question posée. L'épreuve exige qu'aucun titre numéroté n'y tombe — c'est
+ * elle qui attrapera la prochaine famille numérotée mal rangée.
+ *
+ * @returns {string} le sous-domaine, ou '' si le titre ne porte pas de rang
+ */
+export function familleSiNumerote(exo) {
+    if (!exo || !TITRE_NUMEROTE.test(exo.title || '')) return '';
+    const chemin = (exo.tags && exo.tags.chemin) || [];
+    return chemin.length >= 2 ? chemin[chemin.length - 1] : '';
 }
 
 /** L'exercice appartient-il au dossier `path` (ou à l'un de ses sous-dossiers) ? */

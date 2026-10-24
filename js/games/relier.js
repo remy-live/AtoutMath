@@ -19,6 +19,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     genererGrille, bornes, traceVide, poserTrace, occupant, reliee, verifier,
     solutionComplete, prochainPas, conseil, adjacentes, memeCase, clef, CONSIGNE,
@@ -115,6 +116,56 @@ class Relier extends BaseGame {
                 }
                 .rp-note--ok { color: var(--success); font-weight: 700; }
                 .rp-note--ko { color: var(--danger); font-weight: 600; }
+
+                /* SUR UN PLATEAU COURT, LE MOBILIER CÈDE AVANT LA GRILLE.
+                   =====================================================
+                   RÉMY A SIGNALÉ CE JEU DEUX FOIS, DANS DEUX SENS OPPOSÉS :
+                   « relier les points aussi [est tronqué] », puis, le
+                   13 octobre, « c'est petit ». Les deux sont vrais, et ils ne
+                   se règlent pas l'un par l'autre.
+
+                   MESURÉ dans un plateau de 354 px : le mobilier prend 252 px
+                   — titre 77, barre des boutons 144, note 31 — et la grille
+                   reçoit ce qui reste, 170 px. Pire, la barre ne tenait plus :
+                   QUATRE boutons sur cinq étaient hors de l'écran et 153 px de
+                   contenu étaient cachés. L'état d'avant cumulait donc les
+                   deux plaintes.
+
+                   On ne reprend pas la place des boutons — ce sont eux qu'on
+                   TOUCHE, et c'est leur disparition qui avait fait dire
+                   « tronqué ». On en fabrique :
+
+                   · LE TITRE ÉTAIT ÉCRIT DEUX FOIS. « Relie les points »
+                     s'affiche déjà dans la barre du haut, au-dessus du jeu —
+                     on le voit sur sa capture d'iPhone. Sur un écran court,
+                     une des deux est de trop ;
+                   · LES CINQ BOUTONS, EUX, NE BOUGENT PAS. Ils coûtent 144 px
+                     sur trois rangs, et c'est le poste le plus lourd — mais
+                     les resserrer demandait de passer sous le plancher
+                     tactile de 44 px, et ce plancher a déjà été contourné
+                     ailleurs : ce sont les ovales que Rémy a signalés deux
+                     fois. Un essai l'a d'ailleurs confirmé en refusant de
+                     s'appliquer, « #game-layer button » pesant plus lourd que
+                     « .rp-btn ». L'outil avait raison.
+
+                   MESURÉ APRÈS, à 560 px de fenêtre : 103 px de contenu caché
+                   deviennent 83. Au-dessus de 520 px de plateau, la règle ne
+                   s'applique pas : rien ne change pour l'élève sur son
+                   téléphone, où la grille fait déjà 330 px, soit 85 % de la
+                   largeur de l'écran — le maximum qu'une grille carrée puisse
+                   y prendre, les 60 px restants étant les marges du plateau
+                   et du cadre.
+
+                   CE QUI RESTE, ET QUE CE CORRECTIF NE RÉSOUT PAS : à 440 px
+                   de fenêtre — la hauteur qu'il reste à Rémy dans son aperçu —
+                   le contenu de ce jeu ne tient tout simplement pas. Le cadre
+                   défile (overflow-y: auto), donc rien n'est perdu, mais il
+                   faut glisser pour atteindre les boutons. C'est dit dans
+                   docs/remarques-2026-10-13.md plutôt que corrigé de travers. */
+                @container (max-height: 520px) {
+                    .rp-titre { display: none; }
+                    .rp-barre { gap: 5px; }
+                }
             </style>
             <div class="rp-wrap">
                 <div class="rp-tete">
@@ -391,18 +442,24 @@ class Relier extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.grille) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Deux points de même marque, un chemin de l\'un à l\'autre, sans diagonale. '
-            + 'Et la règle qu\'on oublie : à la fin, AUCUNE case ne doit rester vide.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
+        cur.say('Deux points de même marque, un chemin de l\'un à l\'autre, sans diagonale.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        // UNE IDÉE PAR BULLE, ICI ET PLUS BAS : le tracé d'abord, la case vide ensuite.
+        // Au-delà de 110 caractères la bulle se lit si lentement qu'on croit la
+        // démonstration plantée (js/core/activities/choice.js, COURT).
+        cur.say('Et à la fin, AUCUNE case ne doit rester vide.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 0; k < 2; k++) {
             const pas = prochainPas(this.grille, this.etat);
             if (!pas) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const p = this.grille.paires[pas.id];
             const depart = this.svg.querySelector(`[data-x="${p.a[0]}"][data-y="${p.a[1]}"]`);
             cur.say(k === 0
@@ -414,15 +471,17 @@ class Relier extends BaseGame {
             for (let i = 2; i <= p.solution.length; i++) {
                 this.etat = poserTrace(this.grille, this.etat, pas.id, p.solution.slice(0, i));
                 this.dessiner();
-                if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.press)) return fin();
             }
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Si une case reste vide à la fin, ce n\'est pas perdu : il suffit d\'allonger '
-            + 'un chemin pour qu\'il y passe. Commence toujours par les coins — un coin n\'a '
-            + 'que deux voisines.', this.container.querySelector('[data-verifier]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Une case reste vide ? J\'allonge un chemin pour qu\'il y passe.',
+            this.container.querySelector('[data-verifier]'));
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        cur.say('Je commence toujours par les coins : un coin n\'a que deux voisines.', this.svg);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

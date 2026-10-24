@@ -10,14 +10,20 @@ import {
 
 // --- Les familles ------------------------------------------------------------------
 
-test('chaque famille descend d\'une colonne à la fois, sans trou', () => {
+test('chaque famille descend d\'un échelon à la fois, sans trou', () => {
     for (const nom of NOMS_FAMILLES) {
         const f = FAMILLES[nom];
         const rangs = f.unites.map(u => u.rang);
-        // Les colonnes se suivent de gauche à droite, une puissance de dix par
-        // colonne : c'est ce qui fait que la conversion est un glissement.
+        // Les unités se suivent sans trou, d'un ÉCHELON à chaque fois : une
+        // colonne pour les longueurs, deux pour les aires, trois pour les
+        // volumes. C'est ce qui fait que la conversion est un glissement.
+        //
+        // CETTE ÉPREUVE DISAIT « − 1 », ET ELLE A EU RAISON DE TOMBER le jour
+        // où les aires sont arrivées : son « une colonne à la fois » était
+        // l'hypothèse de tout le fichier, et c'est elle qu'il a fallu lever.
+        const e = f.echelon || 1;
         for (let i = 1; i < rangs.length; i++) {
-            assert.equal(rangs[i], rangs[i - 1] - 1,
+            assert.equal(rangs[i], rangs[i - 1] - e,
                 `${nom} : trou entre ${f.unites[i - 1].symbole} et ${f.unites[i].symbole}`);
         }
         assert.ok(rangs.includes(0), `${nom} n'a pas d'unité de base`);

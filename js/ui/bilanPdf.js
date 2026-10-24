@@ -33,10 +33,17 @@ import { ecrireSymboles } from './ficheRendu.js';
 import { consigneDe, consigneClasse } from '../core/bilan.js';
 import { LEVELS } from '../core/mastery.js';
 
-const MARGE = 12;               // millimètres
-const A4 = { w: 210, h: 297 };
+// CES PRIMITIVES SORTENT DU MODULE, et c'est venu avec le second PDF.
+//
+// Le bilan de CLASSE (« Les bilans ») demandait la même page A4, les mêmes
+// marges, le même filet sous le titre, le même saut de page et les mêmes
+// teintes que le bilan de SÉANCE. Les recopier dans un second fichier aurait
+// donné deux papiers qui divergent au premier réglage — et c'est le genre de
+// divergence qu'on ne voit qu'à l'impression, c'est-à-dire chez Rémy.
+export const MARGE = 12;               // millimètres
+export const A4 = { w: 210, h: 297 };
 
-const ENCRE = {
+export const ENCRE = {
     titre: [26, 32, 44],
     texte: [45, 55, 72],
     gris: [110, 118, 132],
@@ -96,7 +103,7 @@ export function lisible(t) {
 }
 
 /** La lettre d'un niveau — ce qui survit à la photocopie en noir et blanc. */
-const lettreNiveau = (k) => (LEVELS[k] && LEVELS[k].key) || k || '·';
+export const lettreNiveau = (k) => (LEVELS[k] && LEVELS[k].key) || k || '·';
 
 /**
  * DE QUOI TENIR UNE PAGE : le curseur vertical, et le saut quand il déborde.
@@ -106,7 +113,7 @@ const lettreNiveau = (k) => (LEVELS[k] && LEVELS[k].key) || k || '·';
  * page suivante en réimprimant l'en-tête du tableau : sans elle, la deuxième
  * page est une liste de couleurs dont on ne sait plus ce qu'elles mesurent.
  */
-function feuille(doc) {
+export function feuille(doc) {
     let y = MARGE;
     return {
         get y() { return y; },
@@ -122,7 +129,7 @@ function feuille(doc) {
     };
 }
 
-function titre(doc, f, texte, sous) {
+export function titre(doc, f, texte, sous) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(...ENCRE.titre);
@@ -142,7 +149,7 @@ function titre(doc, f, texte, sous) {
 }
 
 /** Un paragraphe qui se replie tout seul dans la largeur utile. */
-function paragraphe(doc, f, texte, { gras = false, taille = 10, couleur = ENCRE.texte } = {}) {
+export function paragraphe(doc, f, texte, { gras = false, taille = 10, couleur = ENCRE.texte } = {}) {
     doc.setFont('helvetica', gras ? 'bold' : 'normal');
     doc.setFontSize(taille);
     doc.setTextColor(...couleur);

@@ -28,6 +28,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     FORMES, NOMS_FORMES, DESSINS, NOMS_DESSINS, cle, ouvert,
     creerDedale, creerDedaleDessin, avancer, partDessin, chemin
@@ -514,22 +515,23 @@ class Dedale extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.etat) this.poser();
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say('Le rond vert, c\'est toi ; l\'étoile, la sortie. Entre les deux, un seul '
             + 'chemin — ce dédale n\'a aucune boucle.', this.plateauEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(this.mode === 'dessin'
             ? 'Ici, le chemin de la sortie DESSINE quelque chose. Impossible de le voir '
               + 'd\'avance : il apparaît sous tes pas.'
             : 'Les flèches, la croix, ou ton doigt promené sur le dédale : trois façons '
               + 'd\'avancer, jamais à travers un mur.',
         this.container.querySelector('.dd-croix'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // On suit la vraie solution sur quelques cases : le fil se voit naître.
         const route = this.etat.solution;
@@ -544,13 +546,13 @@ class Dedale extends BaseGame {
             this.dessinerFil();
             this.placerHeros();
             this.majTete();
-            if (!await cur.pause(DEMO_SPEED.settle / 2)) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle / 2)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Et si je reviens sur mes pas, le fil se rembobine : seule la route que '
             + 'je garde reste tracée.', this.plateauEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

@@ -31,7 +31,7 @@
 
 import { exercices } from '../data/catalog.js';
 import { paramSchemaOf } from '../data/catalog.js';
-import { fieldHtml, readParams, wireTips } from '../games/configUI.js';
+import { fieldHtml, readParams, wireTips, valeurDeChamp } from '../games/configUI.js';
 import {
     estJeuCatalogue, jeuRevu, aChangeJeu, statutRevu, aChange, calcRevu, aChangeCalc,
     lireRevue, nouvelleRevue, ficheDe, decider, consigneJeux, consigneStatuts, consigneCalc
@@ -39,7 +39,10 @@ import {
 import { STATUS, STATUS_LABELS } from '../data/status.js';
 import { isGame } from '../core/gameAccess.js';
 import { aUneFichePapier, getActivity, getGenerator } from '../core/registry.js';
-import { journalConsole } from './consoleLog.js';
+import { journalConsole, viderJournal } from './consoleLog.js';
+// L'aperçu du professeur vit dans l'état commun : c'est lui que les volets
+// doivent suivre. Voir `appareilDuProf`.
+import { state } from '../core/state.js';
 import { FORMATS, sonder, rapportEnTexte } from './controle.js';
 import { piloter, piloteEnTexte } from './pilote.js';
 
@@ -55,6 +58,56 @@ let bilans = [];
 let bilanPilote = null;
 let controleArrete = false;
 let controleEnCours = false;
+
+/**
+ * LES IMAGES QUE RÉMY GLISSE, pour l'exercice en cours.
+ *
+ * Rémy : « tu me rajoutes une zone ou je peux glisser une image (c'est cool
+ * avec le mac, je prends une photo et je peux glisser) aussi pour l'exercice
+ * en cours ».
+ *
+ * Son geste : ⇧⌘4, puis la vignette du bureau glissée dans la page. Ce qu'il
+ * photographie n'est PAS ce que « 📷 Photo » sait prendre — celle-ci ne rend
+ * que les dessins des volets, et son écran à lui porte aussi ce qui les
+ * entoure : un PDF ouvert à côté, un cahier d'élève, une fenêtre de travers.
+ * Les deux se complètent.
+ *
+ * ELLES VIVENT AVEC L'EXERCICE et s'en vont avec lui : une capture rangée
+ * sous le mauvais titre décrirait un défaut qui n'y est pas.
+ */
+let photos = [];
+
+/**
+ * LES CAPTURES DES AUTRES EXERCICES — rangées, pas jetées.
+ *
+ * Rémy, après avoir relu douze exercices d'affilée : « je ne peux
+ * toujours pas TOUT télécharger comme rapport d'erreur dans l'atelier,
+ * je t'ai fait un par un ». Douze fichiers reçus, un par exercice.
+ *
+ * C'EST LA CONSÉQUENCE DIRECTE DE CE QU'ON VENAIT DE FAIRE. Le carnet est
+ * devenu propre à l'exercice la veille — c'est ce qu'il demandait, et
+ * c'est juste. Mais le relevé, lui, ne portait que l'exercice COURANT :
+ * on range les notes par exercice sans donner la porte de sortie qui va
+ * avec. Un rangement sans export est un rangement qui enferme.
+ *
+ * LE TEXTE EST DANS LE NAVIGATEUR (voir `cleDesNotes`), LES CAPTURES ICI,
+ * en mémoire : une image en `data:` pèse des centaines de kilo-octets, et
+ * douze d'entre elles feraient déborder le quota de `localStorage` — qui
+ * se refuse alors EN SILENCE, ce qui serait pire que de ne rien garder.
+ * Elles vivent donc le temps de la séance de travail, qui est exactement
+ * la durée pendant laquelle on relit le catalogue.
+ *
+ * Clef : l'identifiant de l'exercice. Valeur : son tableau de captures.
+ */
+const photosParExercice = new Map();
+
+/**
+ * LE CONTRÔLE DE TOUT LE CATALOGUE — null tant qu'on ne l'a pas demandé.
+ *
+ * Rémy : « j'aimerai bien faire tous les tests et exporter en un fichier ».
+ * Chaque entrée vaut { id, titre, bilans }. Voir `controlerTout`.
+ */
+let bilansCatalogue = null;
 
 /**
  * LES EXERCICES DU PLUS NEUF AU PLUS ANCIEN.
@@ -217,10 +270,33 @@ function consigneDuCarnet() {
 }
 
 /** L'adresse d'un volet : la même page, avec ce qu'elle doit ouvrir. */
-function adresse(quoi) {
+/**
+ * L'APPAREIL QUE LE PROFESSEUR A CHOISI, tel qu'un volet doit le recevoir.
+ *
+ * Rémy : « j'avais mis l'aperçu en mode ordinateur, quand j'ai cliqué sur le
+ * robot, l'aperçu est passé en mode téléphone ».
+ *
+ * MESURÉ, ET C'ÉTAIT PLUS LARGE QUE LE ROBOT : page mère à « desktop », les
+ * DEUX volets à « mobile ». Chaque volet est un CADRE, c'est-à-dire une autre
+ * page, avec son propre `core/state.js` ; `cadreDe()` y lit
+ * `state.previewDeviceMode`, qui vaut « mobile » au démarrage — et personne ne
+ * clique les boutons d'aperçu DANS le cadre. Le choix ne pouvait pas voyager.
+ *
+ * Il voyage donc par l'adresse, comme les réglages : c'est le seul chemin
+ * qu'une page a vers une autre.
+ */
+function appareilDuProf() {
+    // `cadreDe()` attend 'none' pour le plein écran, là où le bouton dit
+    // 'desktop'. On traduit ici, une fois, plutôt que dans chaque volet.
+    const m = state.previewDeviceMode;
+    return m === 'desktop' || !m ? 'none' : m;
+}
+
+function adresse(quoi, appareil) {
     const p = new URLSearchParams();
     p.set('atelier', quoi);
     p.set('exo', exoCourant.id);
+    p.set('appareil', appareil || appareilDuProf());
     // Les réglages voyagent en clair : ce sont des valeurs simples, et l'URL
     // lisible se copie dans un onglet à part quand on veut voir un volet en
     // grand sur un vrai écran.
@@ -247,16 +323,124 @@ function reglerRobot(actif) {
  * volet n'est que le raccourci « celui-là, tout seul ». Le choix survit à la
  * fermeture, parce qu'on rouvre l'Atelier pour continuer ce qu'on regardait.
  */
-const VOLETS = ['jeu', 'fiche', 'robot'];
-let volets = { jeu: true, fiche: true, robot: true };
+// RÉMY : « et pour l'atelier, je n'ai pas accès à l'explication avant l'écran
+// ce que l'élève a avant l'exercice ».
+//
+// LE QUATRIÈME VOLET EST EN TÊTE, parce que c'est l'écran que l'élève voit en
+// PREMIER : le titre, la consigne, les réglages qui lui sont offerts, et le
+// bouton qui lance. Les trois autres montrent ce qui vient APRÈS.
+//
+// Il est allumé d'office. On aurait pu l'éteindre pour ne pas rétrécir les
+// trois volets qu'il regarde déjà, mais sa phrase dit « je n'ai pas accès » :
+// une pastille qu'il faudrait trouver ne répondrait qu'à moitié. Le choix se
+// retient dès qu'il y touche.
+const VOLETS = ['avant', 'jeu', 'fiche', 'robot'];
+let volets = { avant: true, jeu: true, fiche: true, robot: true };
 
 function lireVolets() {
     try {
         const brut = JSON.parse(localStorage.getItem(CLE_VOLETS) || 'null');
         if (brut && VOLETS.some(v => brut[v])) {
-            VOLETS.forEach(v => { volets[v] = !!brut[v]; });
+            // ON NE LIT QUE LES VOLETS QUE LE RÉGLAGE CONNAÎT.
+            //
+            // Le réglage de Rémy a été enregistré AVANT que le volet « avant »
+            // existe : il ne porte que jeu, fiche et robot. Relu en bloc, il
+            // aurait éteint le volet neuf — « !!undefined » vaut faux — et la
+            // réponse à sa demande serait arrivée invisible chez la seule
+            // personne qui l'a demandée. Le piège se repose à chaque volet
+            // qu'on ajoutera.
+            VOLETS.forEach(v => { if (v in brut) volets[v] = !!brut[v]; });
         }
     } catch (e) { /* privé */ }
+}
+
+/**
+ * LE CARNET EST PROPRE À L'EXERCICE — Rémy : « dans l'atelier, le carnet doit
+ * être propre à l'exercice ».
+ *
+ * Les captures glissées s'en allaient déjà avec l'exercice : « une photo du
+ * Sudoku rangée sous Additions Mystères décrirait un défaut qui n'y est pas ».
+ * Le TEXTE, lui, était rangé sous une clef unique, donc commun aux 249 : on
+ * notait quelque chose sur l'encadrement, on passait à l'exercice suivant pour
+ * vérifier autre chose, et la note était encore là — prête à partir dans le
+ * relevé sous le mauvais titre. Le même défaut, resté sur la moitié qui était
+ * rangée ailleurs.
+ */
+const cleDesNotes = () => `${CLE_NOTES}-${exoCourant ? exoCourant.id : 'sans'}`;
+
+/**
+ * L'ANCIEN CARNET N'EST PAS JETÉ : il est ADOPTÉ par l'exercice qu'on rouvre.
+ *
+ * Rémy a des notes en cours au moment de la mise à jour, et elles parlent de
+ * l'exercice qu'il regardait — l'Atelier rouvre justement celui-là. Les
+ * effacer en passant aux clefs par exercice lui prendrait un travail fait,
+ * sans un mot. On les reprend une fois, puis la vieille clef disparaît.
+ */
+function reprendreLAncienCarnet() {
+    try {
+        const vieux = localStorage.getItem(CLE_NOTES);
+        if (!vieux) return;
+        if (!localStorage.getItem(cleDesNotes())) localStorage.setItem(cleDesNotes(), vieux);
+        localStorage.removeItem(CLE_NOTES);
+    } catch (e) { /* privé */ }
+}
+
+/**
+ * Le carnet de l'exercice courant, remis dans la case.
+ *
+ * ON NE RÉÉCRIT QUE SI C'EST DIFFÉRENT : `rafraichir` passe ici à chaque
+ * changement de réglage, et réaffecter `value` renverrait le curseur à la fin
+ * au milieu d'une phrase qu'on est en train de taper.
+ */
+/**
+ * TOUS LES CARNETS ÉCRITS — texte et captures, exercice par exercice.
+ *
+ * Le texte vit dans le navigateur sous une clef par exercice, les captures
+ * en mémoire. On relit les deux et l'on ne garde que ce qui porte quelque
+ * chose : un exercice ouvert puis quitté sans un mot n'a rien à dire.
+ *
+ * L'EXERCICE COURANT EST PRIS DANS SON ÉTAT VIVANT, pas dans ce qui est
+ * rangé : on écrit dans la case, et la case n'est pas encore rangée au
+ * moment où l'on clique « Télécharger ».
+ */
+function tousLesCarnets() {
+    const dehors = new Map();
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const clef = localStorage.key(i);
+            if (!clef || !clef.startsWith(CLE_NOTES + '-')) continue;
+            const id = clef.slice(CLE_NOTES.length + 1);
+            const texte = (localStorage.getItem(clef) || '').trim();
+            if (texte) dehors.set(id, { id, texte, photos: [] });
+        }
+    } catch (e) { /* navigation privée : on fait avec la mémoire */ }
+    photosParExercice.forEach((liste, id) => {
+        if (!liste || !liste.length) return;
+        const d = dehors.get(id) || { id, texte: '', photos: [] };
+        d.photos = liste;
+        dehors.set(id, d);
+    });
+    if (exoCourant) {
+        const champ = panneau && panneau.querySelector('#atl-notes');
+        const texte = champ ? champ.value.trim() : '';
+        if (texte || photos.length) {
+            dehors.set(exoCourant.id, { id: exoCourant.id, texte, photos });
+        } else {
+            dehors.delete(exoCourant.id);
+        }
+    }
+    return [...dehors.values()].map(d => {
+        const exo = exercices.find(e => e.id === d.id);
+        return { ...d, titre: exo ? exo.title : d.id };
+    }).sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+}
+
+function chargerLesNotes() {
+    const notes = panneau && panneau.querySelector('#atl-notes');
+    if (!notes) return;
+    let v = '';
+    try { v = localStorage.getItem(cleDesNotes()) || ''; } catch (e) { v = ''; }
+    if (notes.value !== v) notes.value = v;
 }
 
 function ecrireVolets() {
@@ -264,8 +448,16 @@ function ecrireVolets() {
 }
 
 /** Le cadre d'un volet, pour ceux qui en ont un. */
-const cadreDuVolet = (quoi) => panneau.querySelector(
-    quoi === 'jeu' ? '#atl-jeu' : quoi === 'robot' ? '#atl-robot' : '#atl-fiche');
+// ET LE CADRE DU VOLET « AVANT » NE S'APPELLE PAS 'atl-avant'.
+// Cet identifiant-là est pris depuis toujours : c'est le bouton « exercice
+// PRÉCÉDENT » de la barre du haut. Le volet neuf l'a porté une heure, et le
+// symptôme n'avait aucun rapport avec un doublon — « cadre.src = adresse() »
+// posait une propriété JavaScript sur un <button>, qui l'accepte sans broncher
+// et ne la reflète dans aucun attribut. Le volet restait blanc, sans erreur,
+// sans rien. Un sélecteur qui DÉSIGNE QUELQUE CHOSE D'AUTRE est pire qu'un
+// sélecteur inventé : doitExister le trouve.
+const CADRES = { avant: '#atl-ecran-avant', jeu: '#atl-jeu', robot: '#atl-robot', fiche: '#atl-fiche' };
+const cadreDuVolet = (quoi) => panneau.querySelector(CADRES[quoi] || CADRES.fiche);
 
 const echapper = (s) => String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -305,6 +497,10 @@ function assurerPanneau() {
                 font-size: .8rem; cursor: pointer; min-height: 34px;
             }
             .atl-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+            /* EFFACER NE SE CLIQUE PAS PAR DISTRACTION : la couleur dit
+               que ce bouton retire quelque chose, sans crier non plus —
+               c'est un geste ordinaire d'atelier, pas une alarme. */
+            .atl-btn--effacer { color: var(--danger, #c0392b); border-color: var(--danger, #c0392b); }
             .atl-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
             .atl-volets { display: flex; gap: 4px; align-items: center; }
             .atl-chip {
@@ -318,7 +514,9 @@ function assurerPanneau() {
                 border-radius: 9px; padding: 6px 10px; font: inherit; font-size: .8rem;
                 cursor: pointer; min-height: 34px; flex: 0 0 auto;
             }
-            .atl-pas:hover { background: var(--bg-hover); }
+            @media (hover: hover) {
+                .atl-pas:hover { background: var(--bg-hover); }
+            }
             .atl-pas:disabled { opacity: .35; cursor: default; }
 
             /* TROIS VOLETS ET UN RAIL, ET CHACUN S'ÉTEINT.
@@ -343,6 +541,10 @@ function assurerPanneau() {
                en occupait 883. */
             .atl-gauche > .atl-volet { flex: 1 1 0; min-height: 0; }
             .atl-volet--fiche { flex: 1 1 0; min-width: 0; }
+            /* L'ÉCRAN D'AVANT EST UN PANNEAU DE TEXTE ET DE CASES : il n'a pas
+               besoin de la place d'un plateau de jeu, et la lui prendre
+               rétrécirait justement ce qu'on vient regarder. */
+            .atl-gauche > .atl-volet--avant { flex: 0 1 auto; min-height: 240px; }
             .atl-rail {
                 flex: 0 0 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
             }
@@ -364,7 +566,9 @@ function assurerPanneau() {
                 cursor: pointer; font-size: .9rem; line-height: 1; padding: 3px 5px;
                 border-radius: 6px;
             }
-            .atl-volet-tete .atl-mini:hover { background: var(--bg-hover); color: var(--text-main); }
+            @media (hover: hover) {
+                .atl-volet-tete .atl-mini:hover { background: var(--bg-hover); color: var(--text-main); }
+            }
             .atl-volet-tete .atl-espace { margin-left: auto; }
             .atl-cadre { flex: 1 1 auto; width: 100%; border: 0; background: #fff; min-height: 0; }
             .atl-eteint {
@@ -397,8 +601,9 @@ function assurerPanneau() {
                 background: transparent; color: var(--text-main);
                 font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer;
             }
-            .atl-rang-select:hover, .atl-rang-select:focus {
-                border-color: var(--border); background: var(--bg-app);
+            .atl-rang-select:focus { border-color: var(--border); background: var(--bg-app); }
+            @media (hover: hover) {
+                .atl-rang-select:hover { border-color: var(--border); background: var(--bg-app); }
             }
             .atl-diff {
                 font-size: .66rem; font-weight: 800; letter-spacing: .02em;
@@ -423,6 +628,50 @@ function assurerPanneau() {
                 background: var(--bg-app); color: var(--text-main); line-height: 1.4;
             }
             .atl-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+
+            /* LA ZONE OU L'ON GLISSE UNE CAPTURE. Rémy : « c'est cool avec le
+               mac, je prends une photo et je peux glisser ». Un cadre en
+               pointillés, parce qu'une zone de dépôt qui ne se voit pas ne se
+               devine pas — il a déjà perdu « 3 plombes » sur une zone de drop
+               qu'il ne trouvait pas. */
+            .atl-depot {
+                margin-top: 6px; padding: 10px 8px; border: 2px dashed var(--border);
+                border-radius: 10px; text-align: center; cursor: pointer;
+                color: var(--text-muted); font-size: .74rem; line-height: 1.35;
+                transition: border-color .15s, background .15s;
+            }
+            /* LE SURVOL SOUS SON MÉDIA. Une bordure qui s'allume est un ÉTAT, et
+               sur un téléphone il COLLE : le doigt part, la bordure reste, et
+               l'on croit la zone armée. La maison garde cette règle par une
+               épreuve — tests/survolTactile.test.mjs —, et elle m'a repris
+               ici avant que Rémy ne le voie. */
+            .atl-depot:focus-visible { border-color: var(--primary); }
+            @media (hover: hover) {
+                .atl-depot:hover { border-color: var(--primary); }
+            }
+            .atl-depot--vise {
+                border-color: var(--primary);
+                background: color-mix(in srgb, var(--primary) 8%, transparent);
+            }
+            .atl-depot-dit { display: block; font-weight: 700; }
+            .atl-depot-dit small { display: block; font-weight: 500; opacity: .8; }
+            .atl-photos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+            .atl-photo { position: relative; margin: 0; }
+            /* LA VIGNETTE EST PETITE EXPRÈS : elle dit QU'il y a une capture et
+               laquelle, pas ce qu'elle montre — c'est le fichier téléchargé qui
+               la rend en grand. */
+            .atl-photo img {
+                width: 74px; height: 56px; object-fit: cover; display: block;
+                border: 1px solid var(--border); border-radius: 7px; background: var(--bg-panel);
+            }
+            .atl-photo-x {
+                position: absolute; top: -5px; right: -5px; width: 18px; height: 18px;
+                border-radius: 50%; border: 1px solid var(--border); cursor: pointer;
+                background: var(--bg-panel); color: var(--danger-texte);
+                font-size: .66rem; line-height: 1; padding: 0;
+            }
+            .atl-tout-dit { padding: 4px 2px; }
+            .atl-tout-dit p { margin: 0 0 10px; }
             .atl-controle { font-size: .74rem; line-height: 1.4; }
             .atl-controle-ligne { margin-bottom: 5px; }
             .atl-controle-nom { font-weight: 800; }
@@ -493,6 +742,9 @@ function assurerPanneau() {
             <button class="atl-mini atl-pas" id="atl-apres"
                 title="L'exercice suivant dans la liste" aria-label="Suivant">▶</button>
             <span class="atl-volets" role="group" aria-label="Les volets à l'écran">
+                <button class="atl-chip" data-volet="avant"
+                    title="Montrer ou cacher l'écran que l'élève voit AVANT de commencer"
+                    >Avant l'exercice</button>
                 <button class="atl-chip" data-volet="jeu" title="Montrer ou cacher le jeu">Le jeu</button>
                 <button class="atl-chip" data-volet="fiche" title="Montrer ou cacher la feuille">La feuille</button>
                 <button class="atl-chip" data-volet="robot" title="Montrer ou cacher le robot">Le robot</button>
@@ -502,6 +754,18 @@ function assurerPanneau() {
         </div>
         <div class="atl-corps" id="atl-corps">
             <div class="atl-gauche" id="atl-gauche">
+                <!-- L'ÉCRAN D'AVANT L'EXERCICE. Rémy : « je n'ai pas accès a
+                     l'explication avant l'écran ce que l'élève a avant
+                     l'exercice ». Les trois autres volets montrent ce qui vient
+                     APRÈS ; celui-ci montre le premier écran qu'un élève lit. -->
+                <section class="atl-volet atl-volet--avant" id="atl-volet-avant">
+                    <header class="atl-volet-tete">Avant l'exercice
+                        <span class="atl-espace"></span>
+                        <button class="atl-mini" data-relancer="avant" title="Relancer ce volet">⟳</button>
+                        <button class="atl-mini" data-agrandir="avant" title="Ce volet en grand">⤢</button>
+                    </header>
+                    <iframe class="atl-cadre" id="atl-ecran-avant" title="L'écran d'avant l'exercice"></iframe>
+                </section>
                 <section class="atl-volet atl-volet--jeu" id="atl-volet-jeu">
                     <header class="atl-volet-tete">Le jeu
                         <span class="atl-espace"></span>
@@ -554,6 +818,21 @@ function assurerPanneau() {
                     <div class="atl-bloc-titre">Le carnet</div>
                     <textarea class="atl-notes" id="atl-notes"
                         placeholder="Ce qu'on voit, ce qu'on veut changer…"></textarea>
+                    <!-- GLISSER UNE CAPTURE. Rémy : « tu me rajoutes une zone
+                         ou je peux glisser une image (c'est cool avec le mac,
+                         je prends une photo et je peux glisser) aussi pour
+                         l'exercice en cours ».
+                         ON NE PASSE PAS PAR brancherDepotDeFichier : celui-là
+                         écoute le DOCUMENT entier et route tout fichier déposé
+                         vers l'import d'un parcours. Ici on veut une zone, des
+                         images, et qu'elles restent. -->
+                    <div class="atl-depot" id="atl-depot" tabindex="0"
+                         title="Glisse une capture d'écran ici, ou colle-la avec ⌘V">
+                        <span class="atl-depot-dit">Glisse une capture ici
+                            <small>ou ⌘V · elle partira avec le relevé</small></span>
+                        <input type="file" id="atl-depot-fichier" accept="image/*" multiple hidden>
+                    </div>
+                    <div class="atl-photos" id="atl-photos"></div>
                     <div class="atl-actions">
                         <button class="atl-btn" id="atl-photo" title="Enregistrer l'image du volet">📷 Photo</button>
                         <button class="atl-btn atl-btn--fort" id="atl-releve"
@@ -564,9 +843,26 @@ function assurerPanneau() {
                         <button class="atl-btn" id="atl-controler"
                             title="Lancer l'exercice en téléphone, tablette et ordinateur, et mesurer"
                             >🔎 Contrôler</button>
+                        <!-- MESURÉ AVANT DE L'ÉCRIRE : 11,7 s par exercice, donc
+                             49 minutes pour les 249 du catalogue. Le bouton le
+                             DIT avant de partir, et il s'arrête quand on veut. -->
+                        <button class="atl-btn" id="atl-controler-tout"
+                            title="Contrôler TOUS les exercices du catalogue, et tout exporter en un fichier"
+                            >🔎 Tout contrôler</button>
                         <button class="atl-btn" id="atl-jouer"
                             title="Le pilote joue l'exercice jusqu'au bout et dit ce qui a cassé"
                             >▶ Jouer tout seul</button>
+                        <!-- REMY : « dans l'atelier, comment effacer tout le
+                             compte rendu ». Il n'y avait aucun moyen, sauf
+                             recharger la page — ce qui coûtait aussi l'exercice
+                             choisi et les volets ouverts. Un relevé est une
+                             PREUVE, et une preuve qui traine des mesures faites
+                             il y a une heure sur un autre reglage ne prouve
+                             rien. Le bouton DIT ce qu'il va effacer avant de le
+                             faire : c'est aussi la reponse a sa question. -->
+                        <button class="atl-btn atl-btn--effacer" id="atl-tout-effacer"
+                            title="Vider le compte rendu : contrôles, captures, carnet, console"
+                            >✕ Tout effacer</button>
                     </div>
                 </div>
             </div>
@@ -629,14 +925,18 @@ function assurerPanneau() {
     };
     const notes = panneau.querySelector('#atl-notes');
     notes.oninput = () => {
-        try { localStorage.setItem(CLE_NOTES, notes.value); } catch (e) { /* privé */ }
+        try { localStorage.setItem(cleDesNotes(), notes.value); } catch (e) { /* privé */ }
     };
-    try { notes.value = localStorage.getItem(CLE_NOTES) || ''; } catch (e) { /* privé */ }
+    reprendreLAncienCarnet();
+    chargerLesNotes();
     surveillerTailles();
     panneau.querySelector('#atl-photo').onclick = photo;
     panneau.querySelector('#atl-releve').onclick = releve;
     panneau.querySelector('#atl-telecharger').onclick = telechargerReleve;
     panneau.querySelector('#atl-controler').onclick = controler;
+    panneau.querySelector('#atl-controler-tout').onclick = controlerTout;
+    panneau.querySelector('#atl-tout-effacer').onclick = toutEffacer;
+    brancherLeDepot();
     panneau.querySelector('#atl-jouer').onclick = jouerToutSeul;
     panneau.querySelector('#atl-controle-stop').onclick = () => { controleArrete = true; };
     return panneau;
@@ -662,7 +962,8 @@ function majVolets() {
     });
     // La colonne de gauche disparaît quand ses deux volets sont éteints,
     // sinon elle garderait sa moitié d'écran pour ne rien montrer.
-    panneau.querySelector('#atl-gauche').hidden = !volets.jeu && !volets.robot;
+    panneau.querySelector('#atl-gauche').hidden =
+        !volets.avant && !volets.jeu && !volets.robot;
 }
 
 /**
@@ -752,8 +1053,7 @@ function peindreReglages() {
             + 'Cet exercice n\'a pas de réglage.</div>';
         return;
     }
-    zone.innerHTML = schema.map(p => fieldHtml(p,
-        paramsCourants[p.id] !== undefined ? paramsCourants[p.id] : p.default)).join('');
+    zone.innerHTML = schema.map(p => fieldHtml(p, valeurDeChamp(p, paramsCourants))).join('');
     wireTips(zone);
     const relire = () => {
         paramsCourants = { ...paramsCourants, ...readParams(zone, schema) };
@@ -838,6 +1138,16 @@ function choisir(id) {
     // changé ferait lire le verdict du précédent sur le suivant.
     bilans = [];
     bilanPilote = null;
+    // LES CAPTURES S'EN VONT AVEC L'EXERCICE — une photo du Sudoku rangée
+    // sous « Additions Mystères » décrirait un défaut qui n'y est pas —,
+    // MAIS ELLES NE SONT PLUS JETÉES : on les range sous leur exercice, et
+    // le relevé les ressort toutes. Voir `photosParExercice`.
+    if (exoCourant) {
+        if (photos.length) photosParExercice.set(exoCourant.id, photos);
+        else photosParExercice.delete(exoCourant.id);
+    }
+    photos = photosParExercice.get(id) || [];
+    peindrePhotos();
     panneau.querySelector('#atl-bloc-controle').hidden = true;
     exoCourant = exo;
     paramsCourants = { ...(exo.params || {}) };
@@ -847,9 +1157,18 @@ function choisir(id) {
 
 function rafraichir(opts = {}) {
     if (!opts.garderSelection) peindreListe();
+    // LE CARNET SUIT L'EXERCICE. Il est rangé sous une clef par exercice, et
+    // c'est ici qu'on remet la bonne dans la case.
+    chargerLesNotes();
     peindreReglages();
     peindreRangement();
     majVolets();
+    // CHAQUE VOLET SE RECHARGE ICI, NOMMÉMENT. majVolets ne recharge que
+    // ce qui CHANGE d'état : à l'ouverture, rien ne change, et un volet qui
+    // ne serait pas dans cette liste resterait un cadre vide — mesuré sur le
+    // volet « avant », dont le src restait vide pendant que la pastille
+    // s'allumait.
+    recharger('avant');
     recharger('jeu');
     recharger('fiche');
     majRobot();
@@ -900,7 +1219,7 @@ async function photo() {
  */
 async function imagesDesVolets() {
     const out = [];
-    for (const quoi of ['fiche', 'jeu', 'robot']) {
+    for (const quoi of ['fiche', 'avant', 'jeu', 'robot']) {
         // Un volet fermé n'a rien à dire : on ne le mentionne même pas.
         if (!volets[quoi]) continue;
         const cadre = cadreDuVolet(quoi);
@@ -1075,6 +1394,371 @@ const TOURNEE = [
     }
 ];
 
+/**
+ * LES CAPTURES GLISSÉES — les ranger, les montrer, les retirer.
+ *
+ * Rémy : « tu me rajoutes une zone ou je peux glisser une image (c'est cool
+ * avec le mac, je prends une photo et je peux glisser) aussi pour l'exercice
+ * en cours ».
+ *
+ * TROIS CHEMINS POUR LE MÊME GESTE, et il en faut trois : le glisser (le sien),
+ * le coller (⌘V, quand la capture est allée au presse-papier plutôt qu'au
+ * bureau), et le clic (qui ouvre le sélecteur de fichiers — sur une tablette,
+ * il n'y a rien à glisser). Un seul chemin, et le geste manque à qui ne l'a
+ * pas.
+ */
+function ajouterDesPhotos(fichiers) {
+    const images = [...fichiers].filter(f => f && /^image\//.test(f.type));
+    if (!images.length) {
+        import('./modal.js').then(({ showToast }) =>
+            showToast('Ce n\'est pas une image — glisse une capture d\'écran.', 'warning'));
+        return;
+    }
+    images.forEach(f => {
+        const lecteur = new FileReader();
+        lecteur.onload = () => {
+            photos.push({ nom: f.name || 'capture', url: String(lecteur.result) });
+            peindrePhotos();
+        };
+        // ON LIT EN data: ET NON EN blob:. Le relevé téléchargé est un fichier
+        // autonome : une adresse `blob:` y pointerait vers une mémoire qui
+        // n'existe plus dès l'onglet fermé, et l'image serait un carré vide.
+        lecteur.readAsDataURL(f);
+    });
+}
+
+/** Les vignettes, avec de quoi en retirer une qu'on a glissée par erreur. */
+function peindrePhotos() {
+    const zone = panneau && panneau.querySelector('#atl-photos');
+    if (!zone) return;
+    zone.innerHTML = photos.map((p, i) =>
+        `<figure class="atl-photo">
+            <img src="${p.url}" alt="${echapper(p.nom)}">
+            <button type="button" class="atl-photo-x" data-photo="${i}"
+                    title="Retirer cette capture" aria-label="Retirer ${echapper(p.nom)}">✕</button>
+         </figure>`).join('');
+    zone.querySelectorAll('[data-photo]').forEach(b => {
+        b.onclick = () => { photos.splice(Number(b.dataset.photo), 1); peindrePhotos(); };
+    });
+}
+
+/** Le glisser, le coller et le clic, branchés sur la zone. */
+function brancherLeDepot() {
+    const zone = panneau.querySelector('#atl-depot');
+    const champ = panneau.querySelector('#atl-depot-fichier');
+    if (!zone || !champ) return;
+    // `dragover` DOIT appeler `preventDefault`, sinon le navigateur refuse le
+    // dépôt et ouvre l'image à la place de la page. C'est la moitié du défaut
+    // d'origine dans `ui/deposerFichier.js`, et elle se repaie à chaque zone.
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        zone.classList.add('atl-depot--vise');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('atl-depot--vise'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('atl-depot--vise');
+        ajouterDesPhotos((e.dataTransfer && e.dataTransfer.files) || []);
+    });
+    zone.addEventListener('click', () => champ.click());
+    zone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); champ.click(); }
+    });
+    champ.onchange = () => { ajouterDesPhotos(champ.files || []); champ.value = ''; };
+    // LE COLLER ÉCOUTE LE PANNEAU, PAS LA ZONE : on ne pense pas à cliquer un
+    // cadre avant de coller, et un ⌘V qui ne colle rien passe pour une panne.
+    panneau.addEventListener('paste', (e) => {
+        const items = [...((e.clipboardData && e.clipboardData.items) || [])]
+            .filter(i => /^image\//.test(i.type));
+        if (!items.length) return;
+        e.preventDefault();
+        ajouterDesPhotos(items.map(i => i.getAsFile()).filter(Boolean));
+    });
+}
+
+/**
+ * CONTRÔLER TOUT LE CATALOGUE, ET TOUT EXPORTER EN UN FICHIER.
+ *
+ * Rémy : « j'aimerai bien faire tous les tests et exporter en un fichier ».
+ *
+ * MESURÉ AVANT D'ÉCRIRE (tools/tmp/coutDuControle.mjs) : la tournée complète
+ * d'UN exercice prend 11,7 secondes en moyenne — donc QUARANTE-NEUF MINUTES
+ * pour les 249 du catalogue. Un bouton qui promet « tous les tests » et qui
+ * gèle le navigateur trois quarts d'heure sans prévenir serait pire que pas de
+ * bouton. Trois choses en découlent, et aucune n'est cosmétique :
+ *
+ *   · ON LE DIT AVANT DE PARTIR, avec le chiffre, et l'on demande.
+ *   · LA TOURNÉE RAPIDE EXISTE : le jeu en ordinateur seulement, un sondage au
+ *     lieu de quatre. C'est la passe qui trouve les grosses pannes — un
+ *     exercice qui ne se dessine pas du tout — et elle coûte le quart.
+ *   · ON PEUT ARRÊTER, et CE QUI EST FAIT RESTE. Le bouton « ■ Arrêter »
+ *     existait déjà pour une tournée ; il sert ici à vingt minutes de travail
+ *     qu'on ne veut pas perdre.
+ *
+ * ET L'EXERCICE COURANT EST RENDU À LA FIN. On emprunte `exoCourant` le temps
+ * de la tournée — c'est lui que lit `adresse()` —, et on le remet quoi qu'il
+ * arrive : revenir d'un contrôle sur un autre exercice que celui qu'on
+ * regardait serait une trahison silencieuse.
+ */
+async function controlerTout() {
+    if (controleEnCours) return;
+    const { showModal, showToast } = await import('./modal.js');
+    const minutes = Math.round((exercices.length * 11.7) / 60);
+    // LE CHIFFRE AVANT LE GESTE. `showModal` rend { close, element } et ne
+    // décide de rien : on pose les trois boutons nous-mêmes et l'on attend.
+    const choix = await new Promise(resolve => {
+        const f = showModal('Contrôler tout le catalogue',
+            '<div class="atl-tout-dit"><p>Mesuré : <b>11,7 s par exercice</b>. '
+            + 'Les ' + exercices.length + ' du catalogue prennent donc environ <b>'
+            + minutes + ' minutes</b> en tournée complète, et le quart en tournée '
+            + 'rapide — le jeu sur ordinateur seulement, la passe qui trouve les '
+            + 'exercices qui ne se dessinent pas.</p>'
+            + '<p>On peut arrêter en route : ce qui est fait reste, et part dans le '
+            + 'relevé.</p>'
+            + '<div class="modal-actions-center">'
+            + '<button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" data-tout="">Annuler</button>'
+            + '<button type="button" class="btn-toggle glass-btn modal-btn-flex" data-tout="complete">Tournée complète</button>'
+            + '<button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" data-tout="rapide">Tournée rapide</button>'
+            + '</div></div>', { width: '560px', onClose: () => resolve(null) });
+        f.element.querySelectorAll('[data-tout]').forEach(b => {
+            // ON RÉPOND AVANT DE FERMER, et l'ordre n'est pas un détail :
+            // `close()` appelle `onClose`, qui répond `null`. Fermer d'abord,
+            // c'était donc répondre « annuler » à chaque clic — la tournée ne
+            // partait jamais, et rien ne le disait. Mesuré par la sonde.
+            b.onclick = () => { resolve(b.dataset.tout || null); f.close(); };
+        });
+    });
+    if (!choix) return;
+
+    const rapide = choix === 'rapide';
+    const tournee = rapide ? [{ quoi: 'jeu', formats: ['ordinateur'] }] : TOURNEE;
+    const garde = exoCourant;
+    const gardeParams = paramsCourants;
+
+    controleEnCours = true;
+    controleArrete = false;
+    bilansCatalogue = [];
+    const voile = panneau.querySelector('#atl-controle-voile');
+    const scene = panneau.querySelector('#atl-controle-scene');
+    const dit = panneau.querySelector('#atl-controle-dit');
+    voile.hidden = false;
+    panneau.querySelector('#atl-controle-stop').hidden = false;
+    panneau.querySelector('#atl-bloc-controle').hidden = false;
+    const depart = Date.now();
+    try {
+        for (let i = 0; i < exercices.length; i++) {
+            if (controleArrete) break;
+            const exo = exercices[i];
+            exoCourant = exo;
+            paramsCourants = { ...(exo.params || {}) };
+            // LE RESTE ESTIMÉ SE CALCULE SUR CE QU'ON A DÉJÀ FAIT, et non sur
+            // une moyenne écrite en dur : le catalogue n'est pas homogène, et
+            // une estimation qui ment une fois ne se croit plus.
+            const faits = i || 1;
+            const reste = Math.round(((Date.now() - depart) / faits) * (exercices.length - i) / 1000);
+            dit.textContent = `${i + 1} / ${exercices.length} — ${exo.title}`
+                + `   (reste ~${reste > 90 ? Math.round(reste / 60) + ' min' : reste + ' s'})`;
+            const siens = [];
+            for (const etape of tournee) {
+                if (etape.si && !etape.si(exo)) continue;
+                for (const id of etape.formats) {
+                    if (controleArrete) break;
+                    const format = FORMATS.find(f => f.id === id);
+                    siens.push(await sonder({
+                        url: adresse(etape.quoi, 'none'), format, scene, quoi: etape.quoi
+                    }));
+                }
+            }
+            bilansCatalogue.push({ id: exo.id, titre: exo.title, bilans: siens });
+        }
+    } finally {
+        exoCourant = garde;
+        paramsCourants = gardeParams;
+        voile.hidden = true;
+        panneau.querySelector('#atl-controle-stop').hidden = true;
+        controleEnCours = false;
+        peindreControleCatalogue();
+    }
+    const fautifs = bilansCatalogue.filter(e => e.bilans.some(b => b.soucis.length)).length;
+    showToast(`${bilansCatalogue.length} exercice(s) contrôlé(s) — ${fautifs} avec quelque chose `
+        + 'à signaler. « ⤓ Télécharger » emporte tout en un fichier.',
+    fautifs ? 'warning' : 'success', 7000);
+}
+
+/** Le verdict du catalogue, à l'écran : d'abord ce qui cloche. */
+function peindreControleCatalogue() {
+    const zone = panneau && panneau.querySelector('#atl-controle');
+    if (!zone || !bilansCatalogue) return;
+    const fautifs = bilansCatalogue.filter(e => e.bilans.some(b => b.soucis.length));
+    // CE QUI CLOCHE D'ABORD, ET SEUL. Deux cent quarante-neuf lignes « rien à
+    // signaler » noieraient les douze qui comptent — c'est la leçon du carnet
+    // d'erreurs, et elle vaut ici.
+    // ON RÉEMPLOIE LE VOCABULAIRE DU CONTRÔLE D'UN EXERCICE — `atl-controle-nom`,
+    // `-ko`, `-detail` — plutôt que d'inventer des classes jumelles : deux
+    // habillages pour la même chose, c'est l'un des deux qu'on oublie de
+    // corriger le jour où l'autre change.
+    zone.innerHTML = `<div class="atl-controle-ligne"><span class="atl-controle-nom">`
+        + `${bilansCatalogue.length} exercice(s) contrôlé(s)</span> `
+        + (fautifs.length
+            ? `<span class="atl-controle-ko">${fautifs.length} à regarder</span>`
+            : '<span class="atl-controle-ok">✓ rien à signaler</span>')
+        + '</div>'
+        + fautifs.map(e => `<div class="atl-controle-ligne">`
+            + `<span class="atl-controle-nom">${echapper(e.titre)}</span> `
+            + `<span class="atl-controle-attente">${echapper(e.id)}</span>`
+            + e.bilans.filter(b => b.soucis.length).map(b => b.soucis.map(s =>
+                `<span class="atl-controle-detail">· ${echapper(b.nom)} · `
+                + `${echapper(b.quoi)} : ${echapper(s)}</span>`).join('')).join('')
+            + '</div>').join('');
+}
+
+/**
+ * LE CONTRÔLE DU CATALOGUE, EN TEXTE — c'est lui qui part dans le relevé.
+ *
+ * ET IL PORTE TOUT, PAS SEULEMENT CE QUI CLOCHE.
+ *
+ * Rémy : « si je balaye tout je ne peux pas télécharger un seul fichier de
+ * tous les bilans ; clairement plein d'exercices fonctionnent ».
+ *
+ * L'ÉCRAN ET LE FICHIER N'ONT PAS LE MÊME MÉTIER, et c'est toute la décision.
+ * `peindreControleCatalogue` ne montre que les fautifs, et il a raison : deux
+ * cent quarante-neuf lignes « rien à signaler » noieraient les douze qui
+ * comptent. Mais le fichier n'est pas un tableau de bord, c'est un COMPTE
+ * RENDU — celui qu'il m'envoie, et sur lequel il veut pouvoir dire « regarde,
+ * tout ça marche ». Un rapport qui tait ce qui va bien ne dit pas ce qui a
+ * été vérifié.
+ *
+ * D'ABORD LE DÉTAIL DE CE QUI CLOCHE, ENSUITE LA LISTE ENTIÈRE. L'ordre
+ * compte : on lit un rapport du haut, et ce qui demande une décision passe
+ * devant ce qui n'en demande aucune.
+ */
+function catalogueEnTexte() {
+    const fautifs = bilansCatalogue.filter(e => e.bilans.some(b => b.soucis.length));
+    const lignes = [`${bilansCatalogue.length} exercice(s) contrôlé(s), `
+        + `${fautifs.length} avec quelque chose à signaler.`];
+    if (bilansCatalogue.length < exercices.length) {
+        lignes.push(`(Arrêté en route : ${exercices.length - bilansCatalogue.length} `
+            + 'exercice(s) n\'ont pas été vus.)');
+    }
+    if (fautifs.length) {
+        lignes.push('');
+        lignes.push('### Ce qui cloche');
+        fautifs.forEach(e => {
+            lignes.push('');
+            lignes.push(`#### ${e.titre} (${e.id})`);
+            e.bilans.filter(b => b.soucis.length).forEach(b => {
+                lignes.push(`- ${b.nom} · ${b.quoi}${b.ms === null ? '' : ` · ${b.ms} ms`} :`);
+                b.soucis.forEach(s => lignes.push(`    · ${s}`));
+            });
+        });
+    }
+    // TOUS LES BILANS, UN PAR LIGNE. Une croix, une coche, le temps du plus
+    // lent sondage : de quoi relire deux cent cinquante lignes d'un coup d'œil
+    // et repérer celui qui met trois secondes à se dessiner.
+    lignes.push('');
+    lignes.push(`### Tous les bilans (${bilansCatalogue.length})`);
+    bilansCatalogue.forEach(e => {
+        const soucis = e.bilans.reduce((n, b) => n + b.soucis.length, 0);
+        const lent = e.bilans.reduce((m, b) => Math.max(m, b.ms || 0), 0);
+        lignes.push(`${soucis ? '✗' : '✓'} ${e.id} — ${e.titre}`
+            + ` — ${e.bilans.length} sondage(s)${lent ? `, le plus lent ${lent} ms` : ''}`
+            + (soucis ? ` — ${soucis} souci(s)` : ''));
+    });
+    return lignes.join('\n');
+}
+
+/**
+ * TOUT EFFACER — ET DIRE CE QU'ON EFFACE AVANT DE LE FAIRE.
+ *
+ * Rémy : « dans l'atelier, comment effacer tout le compte rendu ».
+ *
+ * Il n'y avait aucun moyen. Ce qui s'accumulait et ne partait jamais : les
+ * bilans du contrôle, le passage du pilote, les bilans de tout le catalogue,
+ * les captures glissées, le texte du carnet, le journal de console. Changer
+ * d'exercice n'en vidait qu'une partie ; recharger la page les vidait tous,
+ * mais coûtait aussi l'exercice choisi et les volets ouverts.
+ *
+ * POURQUOI ÇA COMPTE : un relevé est une PREUVE. Une preuve qui traîne des
+ * mesures faites il y a une heure sur un autre réglage ne prouve rien — et
+ * c'est MOI qui la lirais, sans savoir que la moitié est périmée.
+ *
+ * ON DEMANDE, ET LA QUESTION EST LA RÉPONSE À LA SIENNE. Une tournée du
+ * catalogue coûte quarante-neuf minutes : l'effacer d'un clic distrait serait
+ * cher. La fenêtre énumère donc ce qu'elle va retirer, ligne par ligne — et
+ * cette liste est exactement ce que « tout le compte rendu » veut dire.
+ */
+async function toutEffacer() {
+    const notes = panneau.querySelector('#atl-notes');
+    const lignesConsole = journalConsole().length;
+    const quoi = [];
+    if (bilans.length) quoi.push(`le contrôle de cet exercice — ${bilans.length} sondage(s)`);
+    if (bilanPilote) quoi.push('le passage du pilote');
+    if (bilansCatalogue) {
+        quoi.push(`le contrôle du catalogue — ${bilansCatalogue.length} exercice(s)`);
+    }
+    if (photos.length) quoi.push(`${photos.length} capture(s) glissée(s)`);
+    if (notes.value.trim()) quoi.push('le texte du carnet');
+    // LES CARNETS DES AUTRES EXERCICES COMPTENT AUSSI. Depuis qu'ils sont
+    // rangés par exercice et qu'ils partent tous dans le même fichier, les
+    // oublier ici ferait un « Tout effacer » qui n'efface pas tout — et
+    // l'on retrouverait au relevé suivant des notes qu'on croyait jetées.
+    const ailleurs = tousLesCarnets().filter(c => !exoCourant || c.id !== exoCourant.id);
+    if (ailleurs.length) {
+        quoi.push(`les carnets de ${ailleurs.length} autre(s) exercice(s) : `
+            + ailleurs.map(c => c.titre).join(', '));
+    }
+    if (lignesConsole) quoi.push(`${lignesConsole} ligne(s) de console`);
+
+    const { showModal, showToast } = await import('./modal.js');
+    if (!quoi.length) {
+        showToast('Le compte rendu est déjà vide.', 'info');
+        return;
+    }
+    const oui = await new Promise((resolve) => {
+        const f = showModal('Tout effacer', `<div class="atl-tout-dit">
+            <p>Ceci part définitivement :</p>
+            <ul>${quoi.map(q => `<li>${echapper(q)}</li>`).join('')}</ul>
+            <p>L'exercice choisi, ses réglages et les volets ouverts RESTENT.</p>
+            <div class="atl-actions">
+                <button class="atl-btn atl-btn--effacer" data-effacer="oui">✕ Tout effacer</button>
+                <button class="atl-btn atl-btn--fort" data-effacer="">Annuler</button>
+            </div></div>`, { onClose: () => resolve(false) });
+        // ON RÉPOND AVANT DE FERMER. `close()` appelle `onClose`, qui répond
+        // « non » : fermer d'abord, c'est annuler à chaque clic. Le défaut a
+        // déjà été payé une fois sur « Tout contrôler », et il ne se voyait pas.
+        f.element.querySelectorAll('[data-effacer]').forEach(b => {
+            b.onclick = () => { resolve(b.dataset.effacer === 'oui'); f.close(); };
+        });
+    });
+    if (!oui) return;
+
+    bilans = [];
+    bilanPilote = null;
+    bilansCatalogue = null;
+    photos = [];
+    peindrePhotos();
+    notes.value = '';
+    // LE CARNET SURVIT À LA PAGE : il est rangé dans le navigateur. L'effacer
+    // à l'écran sans retirer la clef le ferait revenir au prochain F5, et l'on
+    // croirait le bouton cassé.
+    try {
+        // TOUTES LES CLEFS DE CARNET, pas seulement celle de l'exercice
+        // courant : la fenêtre vient d'annoncer qu'on les efface.
+        const aJeter = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const clef = localStorage.key(i);
+            if (clef && clef.startsWith(CLE_NOTES + '-')) aJeter.push(clef);
+        }
+        aJeter.forEach(clef => localStorage.removeItem(clef));
+    } catch (e) { /* privé */ }
+    photosParExercice.clear();
+    panneau.querySelector('#atl-controle').innerHTML = '';
+    panneau.querySelector('#atl-bloc-controle').hidden = true;
+    viderJournal();
+    showToast('Compte rendu effacé — l\'exercice et les volets sont restés.', 'success');
+}
+
 async function controler() {
     if (controleEnCours) return;
     controleEnCours = true;
@@ -1095,8 +1779,13 @@ async function controler() {
                 dit.textContent = `${exoCourant.title} — ${etape.quoi} en ${format.nom.toLowerCase()}`
                     + ` (${format.l} × ${format.h})`;
                 peindreControle(`${format.nom} · ${etape.quoi} — en cours…`);
+                // LE CONTRÔLE IMPOSE SON PROPRE FORMAT, et le cadre qu'il
+                // ouvre FAIT déjà la taille de l'appareil. Lui laisser en plus
+                // le simulateur du professeur, c'était mesurer un téléphone
+                // DANS une fenêtre d'ordinateur — deux cadres empilés, et
+                // « trois vraies mises en page » n'en était plus une seule.
                 bilans.push(await sonder({
-                    url: adresse(etape.quoi), format, scene, quoi: etape.quoi
+                    url: adresse(etape.quoi, 'none'), format, scene, quoi: etape.quoi
                 }));
                 peindreControle();
             }
@@ -1229,7 +1918,7 @@ function texteReleve() {
         lignes.push('## Consigne à reporter dans le code');
         lignes.push(consigne);
     }
-    ['jeu', 'fiche', 'robot'].forEach(quoi => {
+    ['avant', 'jeu', 'fiche', 'robot'].forEach(quoi => {
         const cadre = cadreDuVolet(quoi);
         lignes.push('');
         lignes.push(`## Volet « ${quoi} »`);
@@ -1238,6 +1927,12 @@ function texteReleve() {
         const d = cadre.contentDocument;
         lignes.push(`taille du cadre : ${Math.round(cadre.clientWidth)} × ${Math.round(cadre.clientHeight)}`);
         const q = d.querySelector('.game-question, .fp-apercu, #fp-apercu, #fq-apercu')
+            // L'ÉCRAN D'AVANT N'A NI QUESTION NI APERÇU : ce qu'il porte vit
+            // dans le panneau de réglages de l'élève. Sans cette ligne, le
+            // volet neuf aurait rempli le relevé d'une taille de cadre et de
+            // rien d'autre.
+            || d.querySelector('#student-config-content')
+            || d.querySelector('.atl-sans-avant')
             || d.querySelector('#game-board');
         if (q) lignes.push(`à l'écran : ${(q.innerText || '').trim().slice(0, 400).replace(/\s+/g, ' ')}`);
         deborde(d).forEach(t => lignes.push(`DÉBORDE : ${t}`));
@@ -1252,8 +1947,52 @@ function texteReleve() {
         lignes.push('## Le pilote');
         lignes.push(piloteEnTexte(bilanPilote));
     }
+    // LE CONTRÔLE DU CATALOGUE, QUAND IL A ÉTÉ DEMANDÉ. Il ne parle pas de
+    // l'exercice courant mais des 249 : il passe donc AVANT le carnet, qui
+    // est le mot de la fin.
+    if (bilansCatalogue) {
+        lignes.push('');
+        lignes.push('## Le contrôle de TOUT le catalogue');
+        lignes.push(catalogueEnTexte());
+    }
     const notes = panneau.querySelector('#atl-notes').value.trim();
     if (notes) { lignes.push(''); lignes.push('## Le carnet'); lignes.push(notes); }
+    // LES CAPTURES GLISSÉES SE DISENT DANS LE TEXTE, et se montrent plus bas.
+    // Un relevé copié au presse-papier n'emporte pas les images : il doit au
+    // moins dire qu'elles existent, sans quoi on les croit perdues.
+    if (photos.length) {
+        lignes.push('');
+        lignes.push(`## Captures glissées (${photos.length})`);
+        photos.forEach(p => lignes.push(`- ${p.nom}`));
+    }
+    // ── LES CARNETS DES AUTRES EXERCICES ────────────────────────────
+    //
+    // RÉMY : « je ne peux toujours pas TOUT télécharger comme rapport
+    // d'erreur dans l'atelier, je t'ai fait un par un ». Douze fichiers
+    // reçus, un par exercice, pour une relecture d'une matinée.
+    //
+    // ON RANGE LES NOTES PAR EXERCICE DEPUIS LA VEILLE — c'est ce qu'il
+    // demandait — mais le relevé ne portait que l'exercice COURANT. Un
+    // rangement sans porte de sortie est un rangement qui enferme, et
+    // c'est moi qui l'avais posée.
+    //
+    // L'EXERCICE QU'ON REGARDE RESTE EN TÊTE, dans son détail entier :
+    // réglages, volets, contrôle, débordements. Les autres n'ont que ce
+    // qui les concerne — ce qu'il a écrit, et ce qu'il a glissé.
+    const autres = tousLesCarnets().filter(c => !exoCourant || c.id !== exoCourant.id);
+    if (autres.length) {
+        lignes.push('');
+        lignes.push(`## Les carnets des autres exercices (${autres.length})`);
+        autres.forEach(c => {
+            lignes.push('');
+            lignes.push(`### ${c.titre} (${c.id})`);
+            if (c.texte) lignes.push(c.texte);
+            if (c.photos.length) {
+                lignes.push(`(${c.photos.length} capture(s) : ${
+                    c.photos.map(p => p.nom).join(', ')})`);
+            }
+        });
+    }
     const journal = journalConsole().slice(-25);
     if (journal.length) {
         lignes.push('');
@@ -1306,10 +2045,20 @@ async function telechargerReleve() {
     const nom = enFichier(page, 'html', 'text/html');
     const ko = Math.round(page.length / 1024);
     const n = images.filter(i => i.url).length;
+    // ON DIT CE QU'IL Y A DEDANS, pas seulement qu'il est parti. Après une
+    // tournée de quarante minutes, la question n'est pas « est-ce enregistré ? »
+    // mais « est-ce que les deux cent quarante-neuf bilans sont dedans ? ».
+    const carnets = tousLesCarnets().length;
+    const tout = (bilansCatalogue
+        ? ` Les ${bilansCatalogue.length} bilans du catalogue sont dedans.` : '')
+        // ET COMBIEN DE CARNETS. C'est la question qu'il se posait en
+        // téléchargeant douze fichiers un par un : est-ce que celui-ci les
+        // porte tous ?
+        + (carnets > 1 ? ` Les ${carnets} carnets écrits sont dedans.` : '');
     showToast(n
         ? `Relevé enregistré (${nom}) — ${n} image${n > 1 ? 's' : ''} dedans, ${ko} Ko. `
-          + 'Un seul fichier à m\'envoyer.'
-        : `Relevé enregistré (${nom}) — aucun dessin photographiable dans les volets ouverts.`,
+          + 'Un seul fichier à m\'envoyer.' + tout
+        : `Relevé enregistré (${nom}) — aucun dessin photographiable dans les volets ouverts.${tout}`,
     'success');
 }
 
@@ -1333,9 +2082,23 @@ function releveEnPage(texte, images) {
        border: 1px solid #dcdce6; border-radius: 10px; }
  .rien { color: #6b6b80; font-style: italic; margin: 0; }
 </style></head><body>
-<h1>Atelier — ${echapper(exoCourant.title)}</h1>
+<h1>Atelier — ${echapper(exoCourant.title)}${bilansCatalogue ? ' + tout le catalogue' : ''}</h1>
 <div class="quand">${echapper(exoCourant.id)} — ${echapper(quand)}</div>
 <pre>${echapper(texte)}</pre>
+${(() => {
+    // LES CAPTURES DES AUTRES EXERCICES, chacune sous son titre. Sans le
+    // titre on reçoit douze images sans savoir de quel exercice elles
+    // parlent — c'est-à-dire douze images inutilisables.
+    const ailleurs = tousLesCarnets().filter(c => (!exoCourant || c.id !== exoCourant.id)
+        && c.photos.length);
+    return ailleurs.map(c => c.photos.map((p, k) =>
+        `<figure><figcaption>${echapper(c.titre)} — capture ${k + 1} : `
+        + `${echapper(p.nom)}</figcaption>`
+        + `<img alt="${echapper(c.titre)} : ${echapper(p.nom)}" src="${p.url}"></figure>`
+    ).join('\n')).join('\n');
+})()}
+${photos.map((p, k) => `<figure><figcaption>Capture ${k + 1} — ${echapper(p.nom)}</figcaption>
+<img alt="Capture glissée : ${echapper(p.nom)}" src="${p.url}"></figure>`).join('\n')}
 ${images.map(i => `<figure><figcaption>Volet « ${echapper(i.quoi)} »</figcaption>
 ${i.url ? `<img alt="Le dessin du volet ${echapper(i.quoi)}" src="${i.url}">`
         : `<p class="rien">Pas d'image : ${echapper(i.pourquoi)}.</p>`}</figure>`).join('\n')}
@@ -1351,7 +2114,19 @@ function enFichier(texte, ext = 'txt', mime = 'text/plain') {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([texte], { type: `${mime};charset=utf-8` }));
     // Daté : on en garde plusieurs d'affilée, avant et après un réglage.
-    a.download = `atelier-${exoCourant.id}-${new Date().toISOString().slice(0, 16)
+    // ET NOMMÉ D'APRÈS CE QU'IL PORTE. Rémy, en relisant un relevé de toute la
+    // tournée : « si je balaye tout je ne peux pas télécharger un seul fichier
+    // de tous les bilans ». Le fichier s'appelait `atelier-num-pgcd-ppcm-…`
+    // alors qu'il portait les 249 exercices — le nom décrivait l'exercice
+    // affiché, pas le contenu, et c'est le nom qu'on lit six mois plus tard
+    // dans un dossier de téléchargements.
+    // ET « TOUS » QUAND IL PORTE PLUSIEURS CARNETS : on ne retrouve pas,
+    // six mois plus tard dans un dossier de téléchargements, le fichier qui
+    // portait les douze relectures sous le nom du treizième exercice.
+    const carnets = tousLesCarnets();
+    const quoiDedans = bilansCatalogue ? 'catalogue'
+        : carnets.length > 1 ? 'tous' : exoCourant.id;
+    a.download = `atelier-${quoiDedans}-${new Date().toISOString().slice(0, 16)
         .replace(/[:T]/g, '-')}.${ext}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 30000);
@@ -1436,7 +2211,7 @@ export function fermerAtelier() {
     // Les cadres continueraient à tourner derrière — un robot qui joue tout
     // seul dans une page fermée, c'est du travail pour rien et des sons qui
     // sortent de nulle part.
-    ['#atl-jeu', '#atl-fiche', '#atl-robot'].forEach(s => {
+    ['#atl-ecran-avant', '#atl-jeu', '#atl-fiche', '#atl-robot'].forEach(s => {
         const c = panneau.querySelector(s);
         if (c) c.removeAttribute('src');
     });
@@ -1461,7 +2236,12 @@ export async function ouvrirVoletAtelier(quoi, params) {
     if (!exo) return;
     let regles = {};
     try { regles = JSON.parse(decodeURIComponent(params.get('p') || '{}')) || {}; } catch (e) { regles = {}; }
-    const complet = { ...exo, params: { ...(exo.params || {}), ...regles } };
+    // L'APPAREIL VIENT DE L'ADRESSE — voir `appareilDuProf`. `apercuAppareil`
+    // est le chemin que `cadreDe()` respecte avant tout le reste ; il existait
+    // déjà pour le contrôle, qui lance le même exercice dans trois formats.
+    const appareil = params.get('appareil');
+    const complet = { ...exo, params: { ...(exo.params || {}), ...regles },
+        ...(appareil ? { apercuAppareil: appareil } : {}) };
     document.documentElement.classList.add('volet-atelier');
     // Le volet dit LEQUEL il est — l'en-tête de la page l'a déjà posé, mais
     // celui-ci s'ouvre aussi sans passer par l'URL (le contrôle en cadre).
@@ -1484,6 +2264,36 @@ export async function ouvrirVoletAtelier(quoi, params) {
     // volet pose la lecture sur `window`. Voir ui/cadreAtelier.js, qui la lit.
     const { state: etatDuVolet } = await import('../core/state.js');
     window.__runnerAtelier = () => etatDuVolet.activeSequenceRunner || null;
+
+    // ── L'APPAREIL CHOISI S'ASSIED DANS L'ÉTAT DU VOLET ─────────────────
+    //
+    // RÉMY : « je suis dans la zone prof, j'ai mis aperçu en ordinateur, je
+    // commence à faire l'exercice, je clique sur le robot et là ça se met en
+    // mode téléphone ».
+    //
+    // TROIS PAS, ET LE RÉGLAGE SE PERDAIT AU DEUXIÈME :
+    //
+    //   1. le volet lance bien l'exercice avec `apercuAppareil`, que
+    //      `cadreDe()` respecte avant tout le reste — l'écran est juste ;
+    //   2. le Runner démarre et fait `state.activeExo = step.exercise`, qui
+    //      est l'entrée BRUTE du catalogue : la copie portant l'appareil est
+    //      remplacée, et personne ne s'en aperçoit tant qu'on ne redemande
+    //      pas le cadre ;
+    //   3. le robot appelle `openDemo(state.activeExo)`, donc `cadreDe()` sur
+    //      cette entrée brute. Il retombe sur `state.previewDeviceMode` — qui
+    //      vaut « mobile » AU DÉMARRAGE, et personne ne clique les boutons
+    //      d'aperçu DANS un cadre. D'où le téléphone.
+    //
+    // LE COMMENTAIRE D'`appareilDuProf` DÉCRIVAIT DÉJÀ CE PIÈGE pour un autre
+    // chemin : « chaque volet est un CADRE, avec son propre core/state.js […]
+    // le choix ne pouvait pas voyager ». On l'avait fait voyager par
+    // l'adresse ; il n'ARRIVAIT nulle part. Il s'assied donc ici, une fois, et
+    // tout ce qui lira `previewDeviceMode` dans ce volet — le robot comme le
+    // reste — trouvera ce que le professeur a choisi.
+    //
+    // `cadreDe()` attend « none » pour le plein écran là où le bouton dit
+    // « desktop » : c'est la traduction inverse de celle d'`appareilDuProf`.
+    if (appareil) etatDuVolet.previewDeviceMode = appareil === 'none' ? 'desktop' : appareil;
     const { ItemSession } = await import('../core/itemSession.js');
     if (!ItemSession.prototype.__relaisAtelier) {
         ItemSession.prototype.__relaisAtelier = true;
@@ -1499,8 +2309,73 @@ export async function ouvrirVoletAtelier(quoi, params) {
         replierOptionsFiche();
         return;
     }
+    // ── L'ÉCRAN D'AVANT L'EXERCICE ──────────────────────────────────────
+    //
+    // RÉMY : « et pour l'atelier, je n'ai pas accès à l'explication avant
+    // l'écran ce que l'élève a avant l'exercice ».
+    //
+    // IL NE POUVAIT PAS, ET C'ÉTAIT ÉCRIT NOIR SUR BLANC : les trois volets
+    // montent le jeu avec internalStudentConfig, qui SAUTE exactement cet
+    // écran-là. Le réglage est juste pour les trois autres — on vient y voir
+    // le jeu, pas un panneau de cases —, mais il rendait le premier écran de
+    // l'élève invisible au seul outil fait pour regarder.
+    //
+    // ON N'OUVRE PAS LE JEU ICI : on appelle le panneau d'avant-partie
+    // directement. Passer par openGameLayer ferait au mieux la même chose, au
+    // pire refuser un jeu verrouillé avec une pastille à la place de l'écran.
+    //
+    // ET ON DEMANDE LA VUE DE L'ÉLÈVE, pas celle du professeur. Le panneau
+    // filtre les reglages de préparation sur state.isTeacherMode — dans un
+    // volet d'Atelier, le professeur EST en mode professeur, donc il aurait vu
+    // ses trente et une commandes au lieu des deux de l'élève. C'est la
+    // différence entre « ce que je règle » et « ce qu'il lit », et c'est la
+    // seconde qu'il demande.
+    if (quoi === 'avant') {
+        const { aApprentissage } = await import('../core/apprentissage.js');
+        const schema = paramSchemaOf(complet) || [];
+        // UN EXERCICE SANS RÉGLAGE N'A PAS D'ÉCRAN D'AVANT : l'élève entre
+        // directement. Le dire est une information, pas une panne — et un
+        // volet vide se lirait comme un volet cassé.
+        if (!schema.length && !aApprentissage(complet)) {
+            direQuIlNYAPasDEcranDAvant(complet);
+            return;
+        }
+        const { ouvrirReglagesAvantPartie } = await import('../games/configUI.js');
+        const { openGameLayer: ouvrirLeJeu } = await import('../games/engine.js');
+        const { lancerApprentissage } = await import('../games/engine.js');
+        ouvrirReglagesAvantPartie(complet,
+            (params) => ouvrirLeJeu({ ...complet, internalStudentConfig: true, params }),
+            { role: 'eleve', onApprendre: () => lancerApprentissage(complet) });
+        return;
+    }
     const { openGameLayer } = await import('../games/engine.js');
     openGameLayer({ ...complet, internalStudentConfig: true }, quoi === 'demo');
+}
+
+/**
+ * « CET EXERCICE N'A PAS D'ÉCRAN D'AVANT » — et c'est une information.
+ *
+ * Un volet resté blanc se lit comme un volet cassé : on relance, on cherche,
+ * on finit par ouvrir la console. Le volet DIT donc ce qu'il a constaté, et
+ * pourquoi — un exercice sans aucun réglage et sans mode apprentissage envoie
+ * l'élève directement dans la première question.
+ *
+ * On écrit à la main plutôt que d'emprunter une feuille de style : ce volet
+ * est une page entière de l'application, dont tout le reste est caché, et un
+ * message de trois lignes ne vaut pas une classe de plus dans le CSS commun.
+ */
+function direQuIlNYAPasDEcranDAvant(exo) {
+    const mot = document.createElement('div');
+    mot.className = 'atl-sans-avant';
+    mot.style = 'position:fixed; inset:0; display:flex; align-items:center; '
+        + 'justify-content:center; padding:24px; text-align:center; '
+        + 'font:15px/1.6 system-ui, -apple-system, sans-serif; background:var(--bg-app,#fff); '
+        + 'color:var(--text-muted,#555); z-index:50';
+    mot.innerHTML = '<div><strong style="display:block;margin-bottom:8px;color:var(--text-main,#222)">'
+        + 'Pas d\'écran avant l\'exercice</strong>'
+        + echapper(exo.title) + ' n\'a ni réglage à proposer ni mode apprentissage :<br>'
+        + 'l\'élève entre directement dans la première question.</div>';
+    document.body.appendChild(mot);
 }
 
 // Les deux fenêtres d'impression n'ont ni le même identifiant ni les mêmes
@@ -1536,9 +2411,31 @@ function replierOptionsFiche(reste = 60) {
         const tiroir = document.createElement('details');
         tiroir.id = 'atl-options-fiche';
         tiroir.className = 'fp-repli';
-        tiroir.innerHTML = '<summary>Les options de la feuille</summary>';
+        // ET LE NOM DIT CE QU'IL Y A DEDANS. « Les options de la feuille » est
+        // vrai et n'apprend rien : on n'ouvre pas un tiroir pour voir s'il
+        // contient ce qu'on cherche. Rémy demandait la couleur et les
+        // colonnes, qui y étaient déjà.
+        tiroir.innerHTML = '<summary>Les options de la feuille '
+            + '<span class="atl-options-dit">contenu · colonnes · couleur · format</span>'
+            + '</summary>';
         els[0].before(tiroir);
-        els.forEach(el => tiroir.appendChild(el));
+        els.forEach(el => {
+            tiroir.appendChild(el);
+            // UN REPLI DANS UN REPLI SE PAIE DEUX FOIS.
+            //
+            // Rémy : « pour l'aperçu de la feuille, il faudrait que je puisse
+            // choisir les options (couleur/colonne) pour vérifier ». Elles
+            // EXISTENT — `#fq-couleur` et `#fq-colonnes` — et il ne les
+            // trouvait pas. MESURÉ (tools/optionsDeLaFeuille.mjs) : DEUX
+            // clics, et le nom du premier repli — « Les options de la
+            // feuille » — ne dit ni couleur ni colonnes, pendant que le
+            // second s'appelle « Papier et corrigé ».
+            //
+            // On ouvre donc ce qu'on vient de ranger. Le tiroir de l'Atelier
+            // cache déjà tout : replier une seconde fois à l'intérieur ne
+            // cache plus rien, cela ne fait qu'ajouter un clic à l'aveugle.
+            if (el.tagName === 'DETAILS') el.open = true;
+        });
         return;
     }
     // LA FENÊTRE N'EST PAS TOUJOURS LÀ AU RETOUR. Un exercice sans grille

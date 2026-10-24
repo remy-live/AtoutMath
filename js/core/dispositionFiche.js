@@ -108,11 +108,35 @@ export function mesuresSlot(page, cols, rows, colles = false, proportions = null
  * commencer. Rien n'est perdu — on peut toujours en demander dix — mais ce
  * qu'on obtient sans rien régler est lisible.
  */
-export function dispositionDuRendu(rendu) {
-    if (rendu && rendu.disposition) return rendu.disposition;
-    const parLigne = rendu && rendu.parLigneDefaut;
+export function dispositionDuRendu(rendu, items, exo) {
+    const d = valeurDuRendu(rendu && rendu.disposition, items, exo);
+    if (d) return d;
+    const parLigne = parLigneDuRendu(rendu, items, exo);
     if (parLigne > 0) return { cols: parLigne, rows: 2, maxCols: parLigne, maxRows: 5 };
     return { cols: 3, rows: 4, maxCols: 5, maxRows: 5 };
+}
+
+/**
+ * UN RENDU PEUT RÉPONDRE DIFFÉREMMENT SELON CE QU'ON LUI DONNE À DESSINER.
+ *
+ * `proportions` le pouvait déjà — `printSheet` l'appelle quand c'est une
+ * fonction. `disposition` et `parLigneDefaut` ne le pouvaient pas, et il a
+ * fallu : le tableau de conversion tient à DEUX par rangée tant qu'il a sept
+ * colonnes, mais celui des AIRES en a quatorze, et deux de front laisseraient
+ * 4,6 mm par case — on n'y écrit pas un chiffre à la main. Mesuré : 9,4 mm à
+ * un par rangée, 4,6 à deux.
+ *
+ * La fonction reçoit les blocs à dessiner, et l'exercice quand on l'a : au
+ * moment où la fiche autonome choisit sa mise en page, rien n'est encore tiré,
+ * mais `exo.printParams` dit déjà de quelle famille d'unités il s'agit.
+ */
+export function valeurDuRendu(v, items, exo) {
+    return typeof v === 'function' ? v(items || [], exo || null) : v;
+}
+
+/** Combien de blocs par rangée ce rendu demande, pour ces blocs-là. */
+export function parLigneDuRendu(rendu, items, exo) {
+    return valeurDuRendu(rendu && rendu.parLigneDefaut, items, exo);
 }
 
 /**
@@ -167,7 +191,7 @@ export function lignesQuiRemplissent(cols, page, opts = {}) {
  * demande en silence.
  */
 export function dispositionEnColonnes(colonnes, rendu, page, opts = {}) {
-    const base = dispositionDuRendu(rendu);
+    const base = dispositionDuRendu(rendu, opts.items, opts.exo);
     const cols = Math.round(colonnes) || 0;
     if (cols < 1) return base;
     const rows = lignesQuiRemplissent(cols, page, opts);

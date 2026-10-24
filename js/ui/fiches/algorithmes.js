@@ -10,7 +10,7 @@ import {
 import { BANDE_NOM as BANDE_NOM_Q, CASE_H as CASE_H_Q, CASE_L as CASE_L_Q, COND_H as COND_H_Q, COND_L as COND_L_Q, COULEURS_FAMILLE as COULEURS_Q, COULEUR_BANDE as BANDE_Q, COULEUR_FIGURE as FIGURE_Q, FAMILLES as FAMILLES_Q, FLECHES as FLECHES_Q, PLAN_H as PLAN_H_Q, PLAN_L as PLAN_L_Q, POSITIONS as POSITIONS_Q, cleFleche as cleFlecheQ, codageDiagonales as codageDiagQ, coinsArrondis as coinsArrondisQ, pointeDe as pointeDeQ, posEtiquette as posEtiquetteQ, traitsDeCondition as traitsQ } from '../../core/quadrilateres.js';
 import { U as UBLOC, gelule, largeurChamp, largeurTexte as largeurTexteBloc, silhouette, versPdf as blocVersPdf, versSvg as blocVersSvg } from '../../core/blocScratch.js';
 import { ajusterAuRectangle } from '../../core/dominos.js';
-import { encre, modePolycopie, polycopieEnCouleur, pourPdf } from '../ficheRendu.js';
+import { encre, polycopieEnCouleur, polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 
 // --- LE CHAT GÉOMÈTRE ----------------------------------------------------------
 //
@@ -673,8 +673,10 @@ const GRIS_COND = {
     raccourci: { fond: '#c6c6c6', encre: '#111111' }
 };
 
-const paletteCond = () => (['couleur', 'intense'].includes(modePolycopie())
-    ? COULEURS_Q : GRIS_COND);
+// LA LISTE DES DEUX MODES N'EST PLUS ÉCRITE ICI : le Strimko puis les boules
+// de Brahma ont redemandé le même partage, et au troisième il a pris un nom —
+// `polycopieEnVraieCouleur`, dans `ficheRendu.js`, qui dit pourquoi.
+const paletteCond = () => (polycopieEnVraieCouleur() ? COULEURS_Q : GRIS_COND);
 
 const teinteCond = (f) => (paletteCond()[f] || paletteCond().cotes).fond;
 
@@ -1045,7 +1047,7 @@ function plancheVignettesSvg(g, k) {
     return out;
 }
 
-function dessinerOrganigrammePdf(doc, item, slot, solution) {
+function dessinerOrganigrammePdf(doc, item, slot, solution, champ) {
     const g = geoOrganigramme(item, slot);
 
     const tailleP = Math.max(1.6, g.wUtile * 0.011);
@@ -1133,6 +1135,11 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         doc.setTextColor(...ENCRE.texte);
         if (g.m.avecNoms || solution) {
             doc.text(pourPdf(fam.nom), c.x, y + hd + hb / 2, { align: 'center', baseline: 'middle' });
+        } else if (typeof champ === 'function') {
+            // LE BANDEAU SOUS LA FIGURE EST LA CASE DU NOM. Quand l'exercice
+            // ne donne pas les noms, c'est là que l'élève écrit
+            // « Parallélogramme » — le corrigé y met le sien, au même endroit.
+            champ(c.x - g.caseW / 2, y + hd, g.caseW, hb);
         }
     });
 
@@ -1168,6 +1175,10 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
             doc.setFontSize(Math.min(h * 0.62, 7) / 0.352778);
             doc.setTextColor(...rvbHex(ENCRE_COND(f.famille)));
             doc.text(g.m.parCle[cleFlecheQ(f)], e.x, e.y, { align: 'center', baseline: 'middle' });
+        } else if (typeof champ === 'function') {
+            // « on écrit dans la case teintée elle-même », dit le commentaire
+            // trois lignes plus haut : c'est donc elle, le champ.
+            champ(e.x - w / 2, e.y - h / 2, w, h);
         }
     });
 
@@ -1381,7 +1392,7 @@ function tableauCroisePreviewHtml(item, slot, k, solution) {
         overflow:visible; pointer-events:none">${d}</svg>`;
 }
 
-function dessinerTableauCroisePdf(doc, item, slot, solution) {
+function dessinerTableauCroisePdf(doc, item, slot, solution, champ) {
     const g = geoTableauCroise(item, slot);
     const m = g.m;
     const connus = new Set(m.depart === 'enonce' ? [] : m.connus);
@@ -1422,6 +1433,11 @@ function dessinerTableauCroisePdf(doc, item, slot, solution) {
     for (let r = 0; r <= m.R; r++) {
         for (let c = 0; c <= m.C; c++) {
             const donne = connus.has(`${r},${c}`);
+            // UNE CASE QUE L'ÉNONCÉ NE DONNE PAS EST UNE CASE À REMPLIR : c'est
+            // la définition même de cet exercice, et `connus` la porte déjà.
+            if (!donne && !solution && typeof champ === 'function') {
+                champ(g.xDe(c), g.yDe(r), g.wCol, g.rh);
+            }
             if (!donne && !solution) continue;
             doc.setTextColor(...(donne ? ENCRE.texte : ENCRE.gris));
             doc.text(String(m.valeurs[r][c]), g.xDe(c) + g.wCol / 2, g.yDe(r) + g.rh / 2,

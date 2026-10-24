@@ -25,7 +25,7 @@ import { exercices, getExerciseById, estADeux, filterByStatus } from '../data/ca
 import { estJeuCatalogue } from '../core/revue.js';
 import { chercher } from '../core/recherche.js';
 import { ficheDe } from './rechercheUI.js';
-import { showModal, showToast } from './modal.js';
+import { showModal, showToast, quandLEcranEstLibre } from './modal.js';
 import {
     LIMITES, LIMITE_DEFAUT, creerExercicePerso, decrireLimite, enParcours,
     meriteRecompense, parcoursRecompense
@@ -253,19 +253,13 @@ export async function jouerExercicePerso(entree) {
 }
 
 /**
- * Attend que plus aucune fenêtre ne soit ouverte, puis agit. Au-delà de dix
- * secondes on renonce : l'élève est passé à autre chose, et une récompense qui
- * surgit après coup n'en est plus une.
+ * Les jeux qu'on peut offrir : solo, et jouables en quelques minutes.
+ *
+ * `estADeux` veut dire « il FAUT être deux » — et depuis qu'on a séparé cette
+ * question de « il PEUT se jouer à deux », les six jeux de plateau entrent ici :
+ * réglés sur « une partie contre l'ordinateur », un élève seul les joue très
+ * bien. C'est six récompenses de plus, et aucune qu'on ne puisse ouvrir.
  */
-function quandLEcranEstLibre(faire, restant = 34) {
-    const occupe = [...document.querySelectorAll('.modal-overlay, #run-report-modal')]
-        .some(m => m.style.display !== 'none' && getComputedStyle(m).display !== 'none');
-    if (!occupe) { faire(); return; }
-    if (restant <= 0) return;
-    setTimeout(() => quandLEcranEstLibre(faire, restant - 1), 300);
-}
-
-/** Les jeux qu'on peut offrir : solo, et jouables en quelques minutes. */
 export function jeuxOffrables(limite = 3) {
     const jeux = filterByStatus(exercices, { only: 'valide', teacher: false })
         .filter(e => estJeuCatalogue(e) && !estADeux(e));

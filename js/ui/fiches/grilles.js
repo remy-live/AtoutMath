@@ -8,7 +8,7 @@ import {
     ENCRE, boiteDe, echapperSheet, largeurTexte
 } from './socle.js';
 import { ajusterAuCarre, boiteDe as boiteCaseDomino, cellulesDe, cheminSerpentin, insecable } from '../../core/dominos.js';
-import { encre, pourPdf } from '../ficheRendu.js';
+import { encre, polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 
 // --- Dessin d'une grille Mathdoku -------------------------------------------
 
@@ -913,6 +913,48 @@ const ordreDominos = (item, solution) => solution
 /** La taille du texte dans un carré de `cote` mm : la même règle qu'à l'écran. */
 const policeDomino = (texte, cote) => Math.max(1.7, cote * ajusterAuCarre(insecable(texte)));
 
+/**
+ * L'ENCRE D'UNE MOITIÉ : question, réponse, ou bout de chaîne.
+ *
+ * RÉMY : « Vérifie aussi les autres pour les couleurs. » Mesuré : la planche
+ * sortait en trente moitiés blanches identiques, alors que l'écran distingue
+ * depuis toujours la moitié QUESTION de la moitié RÉPONSE, et marque les deux
+ * BOUTS — qui ne se marient à rien et donnent donc le départ et l'arrivée.
+ *
+ * C'est une information sur le jeu, pas une décoration : « le pli entre deux
+ * pièces dit toujours la même chose, voici une question, voici sa réponse »
+ * (`core/dominos.js`). Sur la planche à découper, l'élève cherche quelle
+ * moitié présenter à quelle autre, et la couleur lui dit laquelle est laquelle
+ * du premier coup d'œil.
+ *
+ * LES TROIS TEINTES SONT CELLES DE L'ÉCRAN, à pleine valeur. L'écran les dilue
+ * à vingt-six pour cent parce qu'il les pose sur le fond de son panneau, qui
+ * participe ; le papier est blanc, et c'est la teinte pleine qui y retombe sur
+ * la même nuance. Le texte reste sombre — les trois sont des teintes claires.
+ *
+ * ET RIEN NE SE PERD SANS ELLES : la planche se lit exactement comme avant en
+ * noir et blanc, puisque chaque moitié porte son texte. D'où
+ * `polycopieEnVraieCouleur` : trois pastels passés en niveaux de gris tombent
+ * à trois blancs cassés qu'on ne distingue pas, et l'on aurait dépensé de
+ * l'encre pour rien.
+ */
+const ENCRES_DEMI = { question: '#fcd34d', reponse: '#7dd3fc', bout: '#c4b5fd' };
+const encreDemi = (type) => (polycopieEnVraieCouleur()
+    ? (ENCRES_DEMI[type] || '#ffffff') : '#ffffff');
+
+/**
+ * LES DEUX MOITIÉS DANS LE SENS OÙ ON LES DESSINE, texte et genre ensemble.
+ *
+ * Le chemin peut traverser une case À L'ENVERS, et les deux rendus échangeaient
+ * alors les textes sans rien savoir des genres : la moitié repeinte « question »
+ * aurait porté la réponse. Les deux listes se retournent donc du même geste, ici.
+ */
+const demisDuDomino = (p, inverse) => {
+    const d = p.demis || [];
+    const ordre = inverse ? [1, 0] : [0, 1];
+    return ordre.map(i => ({ texte: i ? p.droite : p.gauche, type: (d[i] || {}).type }));
+};
+
 function dominosPreviewHtml(item, slot, k, solution) {
     const b = slot.boite;
     const g = geometrieDominos(item, b);
@@ -926,15 +968,16 @@ function dominosPreviewHtml(item, slot, k, solution) {
     /** Une pièce dessinée, couchée ou debout, ses moitiés dans l'ordre voulu. */
     const poser = (p, x, y, opts = {}) => {
         const vertical = !!opts.vertical;
-        const textes = opts.inverse ? [p.droite, p.gauche] : [p.gauche, p.droite];
-        const demi = (t, cls) => `<div class="fx-dom-demi ${cls}"
-            style="font-size:${policeDomino(t, g.cote) * k}px">${echapperSheet(insecable(t))}</div>`;
+        const moities = demisDuDomino(p, opts.inverse);
+        const demi = (m, cls) => `<div class="fx-dom-demi ${cls}"
+            style="font-size:${policeDomino(m.texte, g.cote) * k}px;
+            background:${encreDemi(m.type)}">${echapperSheet(insecable(m.texte))}</div>`;
         return `<div class="fx-dom-piece ${vertical ? 'fx-dom-piece--v' : ''}"
             style="left:${x * k}px; top:${y * k}px;
             width:${(vertical ? g.cote : g.pieceW) * k}px;
             height:${(vertical ? g.pieceW : g.cote) * k}px">
-            ${demi(textes[0], 'fx-dom-demi--g')}
-            ${demi(textes[1], 'fx-dom-demi--d')}</div>`;
+            ${demi(moities[0], 'fx-dom-demi--g')}
+            ${demi(moities[1], 'fx-dom-demi--d')}</div>`;
     };
 
     // --- LE PLATEAU, c'est-à-dire le PARCOURS. Vide sur la fiche, rempli sur
@@ -991,15 +1034,24 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
         const vertical = !!opts.vertical;
         const w = vertical ? g.cote : g.pieceW;
         const h = vertical ? g.pieceW : g.cote;
-        const textes = opts.inverse ? [p.droite, p.gauche] : [p.gauche, p.droite];
+        const moities = demisDuDomino(p, opts.inverse);
+        const textes = moities.map(m => m.texte);
 
+        // LES DEUX MOITIÉS D'ABORD, chacune de son encre — et sans trait : le
+        // contour du ciseau passe par-dessus, d'un seul tenant. Deux carrés
+        // tracés séparément laisseraient leur frontière DEUX FOIS sur le
+        // papier, et c'est le pli qu'on verrait en gras.
+        moities.forEach((m, i) => {
+            doc.setFillColor(encreDemi(m.type));
+            if (vertical) doc.rect(x, y + i * g.cote, g.cote, g.cote, 'F');
+            else doc.rect(x + i * g.cote, y, g.cote, g.cote, 'F');
+        });
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.5);
-        doc.setFillColor(255, 255, 255);
         // Coins CARRÉS : deux pièces mises bord à bord ne doivent pas laisser
         // d'encoche entre leurs angles, sans quoi le trait à suivre au ciseau
         // se casse quatre fois par pièce.
-        doc.rect(x, y, w, h, 'FD');
+        doc.rect(x, y, w, h, 'S');
         // Le pli du domino : vertical sur une pièce couchée, horizontal sur
         // une pièce debout. PLUS FIN QUE LE CONTOUR — sur le parcours rempli
         // les pièces se touchent, et si le pli avait le même trait que la
@@ -1672,6 +1724,12 @@ export const RENDUS_GRILLES = {
     },
     dominos: {
         titre: 'Dominos',
+        // UN SEUL JEU PAR FEUILLE. Rémy : « pour les dominos ne mets qu'un
+        // exercice par défaut ». Une planche, c'est le plateau vide ET les
+        // pièces à découper en dessous : deux demi-pages. En mettre deux par
+        // défaut remplissait une feuille entière d'un jeu qu'on joue une fois,
+        // et dont on découpe les pièces — on ne découpe pas deux jeux.
+        unique: true,
         consigne: (items) => `Découpe les ${(items[0] && items[0].meta.pieces.length) || ''} pièces du bas `
             + 'et colle-les le long du parcours, bout à bout : chaque question doit TOUCHER sa '
             + 'réponse. On part de DÉPART, on calcule le bout ouvert, on cherche ce résultat sur une '

@@ -12,6 +12,7 @@ import { regTimeout } from '../timers.js';
 import { repereSvg, marqueurPoint } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 export function mount(container, session) {
     let destroyed = false;
@@ -67,7 +68,33 @@ export function mount(container, session) {
                 if (result.revealed) {
                     if (target) markPoint(svg, target, 'demo', formatCoord(item.answer));
                     regTimeout(renderNext, 1800);
+                    return;
                 }
+                // ── IL LUI RESTE UN ESSAI : ON ROUVRE LA GRILLE ────────────
+                //
+                // RÉMY : « pour l'exercice placer un point. Si l'élève se
+                // trompe, on ne peut plus cliquer, en fait l'exercice bloque ».
+                //
+                // IL AVAIT RAISON À LA LETTRE. La grille se fige au moment de
+                // la réponse — c'est voulu, un doigt posé sur un nœud ne doit
+                // pas répondre deux fois pendant la correction — et rien ne la
+                // rouvrait. Deux chemins sortaient d'ici : juste, on passe à la
+                // question suivante ; la correction révélée, on la montre puis
+                // on passe. Le TROISIÈME — faux, mais il reste un essai —
+                // n'était écrit nulle part, et c'est le plus fréquent des trois
+                // en entraînement, où la politique accorde deux essais.
+                //
+                // MESURÉ AVANT : 36 cibles, 0 cliquable, et cela ne changeait
+                // plus. L'élève restait devant « Place le point B (5 ; 3) »
+                // sans rien pouvoir toucher.
+                //
+                // ON EFFACE SA CROIX ROUGE EN ROUVRANT. Elle a fait son travail
+                // pendant la correction — « tu as cliqué en (2 ; 3) » est ce
+                // qui fait comprendre l'inversion —, et la garder empilerait
+                // une croix par essai sur un repère qu'il faut relire.
+                svg.classList.remove('rep-svg--repondu');
+                svg.querySelectorAll('.rep-mark--ko, .rep-mark-label--ko')
+                    .forEach(n => n.remove());
             });
         };
 
@@ -112,22 +139,23 @@ export function mount(container, session) {
         if (!target) { regTimeout(renderNext, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         // La règle de lecture, DITE avant le geste. Le pointeur allait droit au
         // point : on voyait où, jamais comment — or « d'abord l'abscisse, puis
         // l'ordonnée » est exactement ce qui s'oublie.
         cursor.say(phraseDepart(item), container.querySelector('.figure-wrap') || container);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.tap(target) || destroyed) return;
+        if (!await robot.tour()) return;
+        if (!await robot.toucher(target)) return;
         markPoint(svg, target, 'demo');
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(item), target);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

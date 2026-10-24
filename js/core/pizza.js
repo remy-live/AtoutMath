@@ -15,21 +15,21 @@
 // Ce module ne connaît ni le SVG ni les ingrédients dessinés : il tient les
 // nombres, tire des commandes qui TIENNENT sur une pizza, et juge une garniture.
 
-/** Plus grand commun diviseur, par soustractions successives d'Euclide. */
-export function pgcd(a, b) {
-    a = Math.abs(a); b = Math.abs(b);
-    while (b) { [a, b] = [b, a % b]; }
-    return a || 1;
-}
-
-export function ppcm(a, b) {
-    return Math.abs(a * b) / pgcd(a, b);
-}
-
-/** Le découpage commun à toute une liste de dénominateurs. */
-export function ppcmListe(liste) {
-    return liste.reduce((m, d) => ppcm(m, d), 1);
-}
+// LE PGCD ET LE PPCM VIENNENT DE `core/arithmetique.js` DEPUIS LE 21 OCTOBRE.
+//
+// Ils étaient écrits ici, et dans six autres fichiers — ce qui ne coûtait rien
+// tant qu'ils n'étaient qu'un outil pour découper une pizza en parts égales.
+// Ils sont devenus le SUJET d'un exercice de troisième, donc ils ont un
+// endroit nommé, et celui-là s'éprouve pour lui-même. On réexporte plutôt que
+// de garder une copie : une de moins à tenir d'accord.
+//
+// ON IMPORTE *ET* ON RÉEXPORTE, et ce n'est pas une redondance : un
+// `export … from` ne met RIEN dans la portée du module. Ce fichier appelle
+// `pgcd` chez lui — `simplifier`, le tirage des commandes —, et la seule
+// réexportation rendait « pgcd is not defined » à l'exécution, sans que
+// `node --check` n'y trouve rien à redire. Sept épreuves l'ont dit d'un coup.
+import { pgcd, ppcm, ppcmListe } from './arithmetique.js';
+export { pgcd, ppcm, ppcmListe };
 
 /** La fraction sous sa forme la plus simple. */
 export function simplifier(num, den) {
@@ -185,9 +185,30 @@ export function verifier(commande, garniture) {
     };
 }
 
-/** L'explication d'un compte qui tombe faux, en mots d'élève. */
+/**
+ * L'explication d'un compte qui tombe faux, en mots d'élève.
+ *
+ * ON DIT D'OÙ VIENT LE FACTEUR. Elle disait « les deux tiers de 12 parts,
+ * c'est 2 × 4 = 8 parts » : le 4 tombait du ciel, et l'élève qui ne l'a pas
+ * trouvé tout seul ne le trouve pas davantage en lisant la correction. C'est
+ * exactement le reproche que Rémy avait fait au robot — « explication du robot
+ * pas claire » —, et le robot l'a corrigé de son côté sans que cette phrase-ci
+ * l'apprenne. La division vient donc en premier : c'est elle qui transforme un
+ * dénominateur en un nombre de parts.
+ *
+ * ET ON NOMME LA FRACTION D'UNE SEULE PART comme la commande la dit — « le
+ * tiers », « le quart » —, jamais « un 3ᵉ » : c'est le mot que l'élève vient
+ * de lire en haut de son écran.
+ */
 export function expliquer(commande, d) {
     const facteur = commande.parts / d.den;
-    return `${direFraction(d.num, d.den)} de ${commande.parts} parts, c'est `
-        + `${d.num} × ${facteur} = ${parts(d.attendu)} — tu en as garni ${d.pose}.`;
+    const debut = `Sur ${commande.parts} parts, ${direFraction(1, d.den)} en vaut `
+        + `${commande.parts} ÷ ${d.den} = ${parts(facteur)}`;
+    // UN NUMÉRATEUR DE 1 NE SE MULTIPLIE PAS PAR 1 : « 1 × 4 = 4 » juste après
+    // avoir écrit « le quart en vaut 4 parts » redit la même chose en moins
+    // clair, et une correction qu'on relit deux fois n'est plus une correction.
+    const suite = d.num === 1 ? ''
+        : `, donc ${direFraction(d.num, d.den)} en valent `
+            + `${d.num} × ${facteur} = ${parts(d.attendu)}`;
+    return `${debut}${suite} — tu en as garni ${d.pose}.`;
 }

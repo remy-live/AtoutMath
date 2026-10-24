@@ -11,14 +11,20 @@
 //   3. le dernier bilan noté, pour que l'élève sache où il en est.
 
 import { state } from '../core/state.js';
+import { estUnMessage } from '../core/path.js';
 import { sectionMesExercices } from './mesExercicesUI.js';
+import { instantane, ouvrirSeance } from './maSeance.js';
+import { pleinEcranSiSeanceImposee } from './fullscreen.js';
+import { estRattache } from '../core/portail.js';
 import { getExerciseById } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
+import { reglageSite } from '../core/reglagesSite.js';
 import { hydratePath, normalizePath } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
 import { journal } from '../core/journal.js';
 import { computeRuns } from '../core/projections.js';
-import { gradeRun, baremeParEtape, direBareme } from '../core/grading.js';
+import { gradeRun, baremeParEtape } from '../core/grading.js';
+import { sousLaPastille } from '../core/ligneDEtape.js';
 import { buildRecommendedPreview, startRecommendedSession, startSkillSession } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
 import {
@@ -29,6 +35,8 @@ import {
     LONGUEUR_CLE, normaliserCle, verifierCle, finDe, etatVerrou, clefOuverture, direFermeture
 } from '../core/verrou.js';
 import { showModal, showToast, showAlert } from './modal.js';
+import { laCameraEstPossible } from './scannerQr.js';
+import { scannerUnCodeDeSeance } from './studentCodeUI.js';
 
 /**
  * LA CLÉ QU'ON TAPE — quatre caractères dictés en classe.
@@ -106,21 +114,69 @@ function demanderLaCle(step, onOuvert) {
 
 // --- Style de présentation du parcours --------------------------------------
 // Trois habillages pour le même parcours : liste classique, carte des mondes
-// (façon jeu de plateforme) ou chemin vertical (façon Duolingo). Le choix est
-// un réglage du poste, rangé dans le localStorage.
+// (façon jeu de plateforme) ou chemin vertical (façon Duolingo).
+//
+// QUI CHOISIT ? LA SÉANCE D'ABORD, L'ÉLÈVE ENSUITE.
+//
+// Rémy : « il faudrait pouvoir peut-être choisir la présentation » — puis,
+// la proposition faite : « par séance, et par défaut celle façon duolingo ».
+//
+// Le choix appartenait au POSTE : rangé dans le localStorage du navigateur,
+// invisible du professeur, impossible à fixer pour une interrogation. Il
+// appartient maintenant à la séance (`policy.presentation`), et le réglage du
+// poste ne sert plus que dans deux cas : quand la séance dit « laisser l'élève
+// choisir », et hors séance, dans son propre parcours.
 
 const STYLE_KEY = 'mathbox-path-style';
+// ── CINQ HABILLAGES, ET CHACUN RÉPOND À UNE SITUATION ─────────────────────
+//
+// RÉMY : « Pour la présentation du parcours, serait-il possible d'avoir
+// d'autres thèmes ? »
+//
+// ON N'EN AJOUTE PAS POUR LE DÉCOR. Les trois premiers existaient ; les deux
+// qui arrivent répondent à deux gênes qu'on peut nommer :
+//
+//   · LE DAMIER, parce qu'un parcours LONG ne tient pas sur un écran. Sa
+//     séance « Avant les vacances » porte QUATORZE étapes : en chemin
+//     serpentin, l'élève fait défiler quatre hauteurs d'écran et perd la vue
+//     d'ensemble — « combien il m'en reste » devient une question. Le damier
+//     les montre toutes d'un coup, sans sentier : ce qu'on y lit n'est plus
+//     la route, c'est le PLAN DE TRAVAIL.
+//   · LE RUBAN, parce qu'un tableau numérique est LARGE et court. Au TBI ou
+//     sur une tablette couchée, une colonne verticale gaspille les deux tiers
+//     de l'écran et il faut défiler devant la classe. Le ruban se lit de
+//     gauche à droite, à hauteur d'yeux.
+//
+// L'ORDRE DE CETTE LISTE EST CELUI DES BOUTONS. Le chemin d'abord : c'est le
+// défaut, et le premier bouton est celui qu'on vise sans lire.
 const STYLES = [
-    { id: 'mondes', icon: '🗺️', label: 'Carte des mondes' },
     { id: 'chemin', icon: '🐾', label: 'Chemin d\'étapes' },
+    { id: 'mondes', icon: '🗺️', label: 'Carte des mondes' },
+    { id: 'damier', icon: '🎛️', label: 'Damier' },
+    { id: 'ruban', icon: '🎞️', label: 'Ruban' },
     { id: 'classique', icon: '📋', label: 'Liste classique' }
 ];
+
+/** Ce que chaque habillage promet, en une phrase — pour l'aperçu du professeur. */
+export const HABILLAGES = [
+    { id: 'chemin', icon: '🐾', label: 'Chemin d\'étapes',
+        dit: 'Une étape après l\'autre, qui serpente. On voit où l\'on va.' },
+    { id: 'mondes', icon: '🗺️', label: 'Carte des mondes',
+        dit: 'Par rangées de trois, façon jeu de plateau.' },
+    { id: 'damier', icon: '🎛️', label: 'Damier',
+        dit: 'Tout tient sur un écran. Pour un parcours long, ou un plan de travail.' },
+    { id: 'ruban', icon: '🎞️', label: 'Ruban',
+        dit: 'De gauche à droite, sur une seule ligne. Pour un écran large ou un TBI.' },
+    { id: 'classique', icon: '📋', label: 'Liste classique',
+        dit: 'Les titres et les consignes, en toutes lettres.' }
+];
+const PAR_DEFAUT = 'chemin';
 
 function getPathStyle() {
     try {
         const v = localStorage.getItem(STYLE_KEY);
-        return STYLES.some(s => s.id === v) ? v : 'mondes';
-    } catch (e) { return 'mondes'; }
+        return STYLES.some(s => s.id === v) ? v : PAR_DEFAUT;
+    } catch (e) { return PAR_DEFAUT; }
 }
 
 /** Retient le choix d'habillage, sans rien redessiner. */
@@ -128,29 +184,225 @@ function memoriserStyle(id) {
     try { localStorage.setItem(STYLE_KEY, id); } catch (e) { /* mode privé */ }
 }
 
+// ── LES DÉCORS : UN AXE À PART DE L'HABILLAGE ─────────────────────────────
+//
+// RÉMY : « mets aussi des thèmes (Noël, Halloween, Paques, Robot) ».
+//
+// POURQUOI PAS DANS LA LISTE DES HABILLAGES. Rangé là, « Noël » remplacerait
+// la mise en page : l'élève qui a besoin du damier — le parcours de quatorze
+// étapes qui ne tient pas sur un écran — perdrait Noël, et le professeur qui
+// veut Noël perdrait le damier. Les deux réglages ne répondent pas à la même
+// question : l'habillage dit COMMENT on lit le parcours, le décor dit de quoi
+// il a l'air. Deux axes, donc, et les vingt combinaisons existent.
+//
+// ET LE DÉCOR NE TOUCHE PAS AU PICTOGRAMME. Remplacer 🍕 par un flocon ferait
+// joli et coûterait l'information : le picto dit la notion travaillée, et
+// c'est à ça qu'il sert — « on reconnaît les angles ou l'heure d'un coup
+// d'œil ». Un décor change les couleurs, le sol, le sentier, et les ornements
+// qui ne portent rien.
+const DECOR_KEY = 'mathbox-path-decor';
+const DECOR_PAR_DEFAUT = 'aucun';
+
 /**
- * Les trois boutons d'habillage. `onChange` dit quoi redessiner : la vue
- * « Parcours » se refait entière, la carte d'une séance en cours se refait
- * seule — c'est le même choix, rangé au même endroit.
+ * Les décors proposés. `ornements` est la poignée d'emoji semée au fond de la
+ * carte ; « sans décor » n'en a pas, et c'est ce qui le définit.
  */
-export function barreDeStyles(onChange) {
+export const DECORS = [
+    { id: 'aucun', icon: '🎨', label: 'Sans décor',
+        dit: 'Les couleurs du logiciel.' },
+    { id: 'noel', icon: '🎄', label: 'Noël',
+        dit: 'Rouge et sapin, et il neige derrière les étapes.',
+        ornements: ['❄️', '🎁', '🎄', '⭐', '🔔', '❄️'] },
+    { id: 'halloween', icon: '🎃', label: 'Halloween',
+        dit: 'Violet et citrouille, toiles d\'araignée aux angles.',
+        ornements: ['🕸️', '🦇', '🎃', '👻', '🕷️', '🕸️'] },
+    { id: 'paques', icon: '🐣', label: 'Pâques',
+        dit: 'Vert tendre et œufs peints.',
+        ornements: ['🥚', '🐣', '🌷', '🐰', '🌼', '🥚'] },
+    { id: 'robot', icon: '🤖', label: 'Robot',
+        dit: 'Bleu acier et circuits imprimés.',
+        ornements: ['⚙️', '🔧', '🤖', '🔌', '⚡', '⚙️'] }
+];
+
+/**
+ * CE QUE L'ÉLÈVE A CHOISI SUR CE POSTE — ou `null` s'il n'a rien choisi.
+ *
+ * `null` ET NON `aucun`, et la différence porte tout le réglage de Rémy. « Je
+ * n'ai rien choisi » doit laisser passer le décor du moment ; « j'ai choisi
+ * sans décor » doit le refuser. Rendre `aucun` dans les deux cas rendait le
+ * réglage du professeur invisible pour tout élève n'ayant jamais touché aux
+ * boutons — c'est-à-dire pour presque tous.
+ */
+function decorChoisiIci() {
+    try {
+        const v = localStorage.getItem(DECOR_KEY);
+        return DECORS.some(d => d.id === v) ? v : null;
+    } catch (e) { return null; }
+}
+
+/**
+ * LE DÉCOR DU MOMENT, posé par le professeur pour tout le site.
+ *
+ * RÉMY, au choix proposé : « Les deux : un réglage global, et l'élève peut
+ * encore jouer. » Il le pose une fois dans sa zone ; il vaut pour toutes les
+ * séances, y compris celles déjà données — sans en rouvrir aucune.
+ */
+function decorDuMoment() {
+    const v = reglageSite('decorDuMoment');
+    return DECORS.some(d => d.id === v) ? v : null;
+}
+
+/** Le décor effectif sur ce poste : ce que l'élève a choisi, sinon celui du moment. */
+function getPathDecor() {
+    return decorChoisiIci() || decorDuMoment() || DECOR_PAR_DEFAUT;
+}
+
+/** Retient le décor choisi sur ce poste, sans rien redessiner. */
+function memoriserDecor(id) {
+    try { localStorage.setItem(DECOR_KEY, id); } catch (e) { /* mode privé */ }
+}
+
+/**
+ * Le décor IMPOSÉ par la séance, ou `null` si elle rend la main à l'élève.
+ *
+ * `aucun` EST UNE IMPOSITION, et c'est voulu : « pas de décor » est un choix
+ * que le professeur doit pouvoir faire pour une interrogation — sans quoi
+ * l'élève garderait ses guirlandes pendant le contrôle. Rendre la main se dit
+ * `libre`, comme pour l'habillage, et c'est le défaut : un parcours enregistré
+ * avant ce réglage ne se met pas à imposer dans le dos de son auteur.
+ */
+export function decorImpose(policy) {
+    const v = policy && policy.decor;
+    return DECORS.some(d => d.id === v) ? v : null;
+}
+
+/** Le décor à employer pour CETTE séance : le sien, sinon celui du poste. */
+export function decorDeLaSeance(policy) {
+    return decorImpose(policy) || getPathDecor();
+}
+
+/**
+ * Pose le décor sur une carte déjà construite.
+ *
+ * LE DÉCOR EST UNE CLASSE, PAS UN DESSIN. Les quatre habillages illustrés
+ * teignent leur ciel avec `--primary` et `--accent` en `color-mix` : redéfinir
+ * ces deux jetons sur la carte repeint d'un coup le fond, le sentier, la
+ * pastille en cours et le fanion « C'est ici ! ». Les vingt combinaisons
+ * existent donc sans une ligne de plus par habillage — c'est la raison pour
+ * laquelle le décor est un axe à part et pas un sixième habillage.
+ *
+ * LES ORNEMENTS NE VONT PAS SUR LA LISTE CLASSIQUE : elle se lit en toutes
+ * lettres, et semer six emoji derrière un paragraphe se paie en lisibilité
+ * sans rien apporter. Elle garde les couleurs.
+ */
+function poserLeDecor(carte, id) {
+    const decor = DECORS.find(d => d.id === id);
+    if (!decor || !decor.ornements) return carte;
+    carte.classList.add('decor', `decor--${decor.id}`);
+    if (carte.classList.contains('path-timeline')) return carte;
+    // LE RUBAN DÉFILE, ET SON CADRE N'EST PAS SA PISTE. Les ornements se posent
+    // sur la boîte qui porte les pastilles ; sur le cadre, ils resteraient
+    // collés à la fenêtre pendant que le parcours glisse dessous.
+    const sol = carte.classList.contains('ruban-path')
+        ? carte.querySelector('.ruban-piste') : carte;
+    if (!sol) return carte;
+    const nappe = document.createElement('div');
+    nappe.className = 'decor-nappe';
+    nappe.setAttribute('aria-hidden', 'true');
+    decor.ornements.forEach(o => {
+        const s = document.createElement('span');
+        s.className = 'decor-ornement';
+        s.textContent = o;
+        nappe.appendChild(s);
+    });
+    sol.insertBefore(nappe, sol.firstChild);
+    return carte;
+}
+
+/**
+ * L'habillage IMPOSÉ par la séance, ou `null` si elle rend la main à l'élève.
+ *
+ * Un parcours enregistré avant ce réglage n'a pas de `presentation` : il ne
+ * doit pas se mettre à imposer quoi que ce soit dans le dos de son auteur, et
+ * `resolvePolicy` lui donnera de toute façon le défaut du mode. On ne lit donc
+ * que ce qui est écrit, et `libre` veut dire libre.
+ */
+export function presentationImposee(policy) {
+    const v = policy && policy.presentation;
+    return STYLES.some(s => s.id === v) ? v : null;
+}
+
+/**
+ * L'habillage à employer pour CETTE séance : le sien, sinon celui du poste.
+ */
+export function styleDeLaSeance(policy) {
+    return presentationImposee(policy) || getPathStyle();
+}
+
+/**
+ * Les trois boutons d'habillage — ou RIEN quand la séance impose le sien.
+ *
+ * Laisser les boutons en place et ignorer les clics serait le pire des deux
+ * mondes : l'élève appuierait trois fois avant de comprendre qu'on lui ment.
+ * L'appelant teste donc le retour, qui vaut `null` dans ce cas.
+ *
+ * `onChange` dit quoi redessiner : la vue « Parcours » se refait entière, la
+ * carte d'une séance en cours se refait seule — c'est le même choix, rangé au
+ * même endroit.
+ */
+export function barreDeStyles(onChange, policy = null) {
+    // ON NE CACHE QUE CE QUI EST IMPOSÉ, rangée par rangée. Une séance peut
+    // fixer l'habillage et laisser le décor libre — ou l'inverse : retirer les
+    // deux rangées dès que l'une est imposée enlèverait à l'élève un choix
+    // qu'on lui laisse. Et si les deux sont imposées, il n'y a plus de barre :
+    // laisser des boutons qui n'obéissent pas est le pire des deux mondes.
+    const groupes = [];
+    if (!presentationImposee(policy)) {
+        groupes.push(groupeDeBoutons(STYLES, 'Présentation', getPathStyle(),
+            id => { memoriserStyle(id); onChange(id); }));
+    }
+    if (!decorImpose(policy)) {
+        groupes.push(groupeDeBoutons(DECORS, 'Décor', getPathDecor(),
+            id => { memoriserDecor(id); onChange(id); }));
+    }
+    if (!groupes.length) return null;
     const box = document.createElement('div');
     box.className = 'path-style-switcher';
-    STYLES.forEach(s => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'path-style-btn' + (s.id === getPathStyle() ? ' path-style-btn--active' : '');
-        btn.textContent = s.icon;
-        btn.title = s.label;
-        btn.setAttribute('aria-label', `Présentation : ${s.label}`);
-        btn.onclick = () => { memoriserStyle(s.id); onChange(s.id); };
-        box.appendChild(btn);
-    });
+    groupes.forEach(g => box.appendChild(g));
     return box;
 }
 
-function styleSwitcher() {
-    return barreDeStyles(() => renderStudentPathView());
+/**
+ * Une rangée de boutons-pastilles : un choix, celui qui est actif marqué.
+ *
+ * DEUX RANGÉES PLUTÔT QU'UNE DE DIX. Mesuré sur un téléphone de 390 px : dix
+ * pastilles de 36 px font 420 px et débordent de l'écran. Deux groupes de cinq
+ * passent à la ligne tout seuls, et chacun reste lisible comme un choix.
+ */
+function groupeDeBoutons(liste, quoi, actif, choisir) {
+    const groupe = document.createElement('div');
+    groupe.className = 'path-style-groupe';
+    groupe.setAttribute('role', 'group');
+    groupe.setAttribute('aria-label', quoi);
+    liste.forEach(s => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'path-style-btn' + (s.id === actif ? ' path-style-btn--active' : '');
+        btn.textContent = s.icon;
+        btn.title = s.label;
+        btn.setAttribute('aria-label', `${quoi} : ${s.label}`);
+        // `aria-pressed` DIT CE QUE LA PASTILLE GRISÉE DIT À L'ŒIL. Sans lui,
+        // le lecteur d'écran annonce cinq boutons identiques et l'élève ne sait
+        // pas lequel est le sien.
+        btn.setAttribute('aria-pressed', s.id === actif ? 'true' : 'false');
+        btn.onclick = () => choisir(s.id);
+        groupe.appendChild(btn);
+    });
+    return groupe;
+}
+
+function styleSwitcher(policy) {
+    return barreDeStyles(() => renderStudentPathView(), policy);
 }
 
 /**
@@ -173,9 +425,20 @@ export function renderStudentPathView() {
     container.innerHTML = '';
 
     container.appendChild(assignedSection());
+    // LA PORTE D'UN AUTRE CODE, ET SEULEMENT QUAND UN PARCOURS EST DÉJÀ LÀ :
+    // l'écran « Pas de séance » porte déjà ses deux boutons, et les répéter
+    // ferait quatre boutons pour deux gestes.
+    //
+    // JUSTE SOUS LE PARCOURS, ET NON TOUT EN BAS DE LA PAGE. Le travail du
+    // jour passe d'abord — c'est pour cela qu'elle n'est pas en tête — mais
+    // l'élève qui arrive devant un QR projeté doit la VOIR sans chercher : au
+    // bas d'une page qui porte les séances du professeur, les conseils, ses
+    // propres exercices et son dernier bilan, personne ne descend.
+    if (state.studentPath) container.appendChild(porteSousLeParcours());
     const teacher = teacherPathsSection();
     if (teacher) container.appendChild(teacher);
-    container.appendChild(recommendedSection());
+    const conseils = recommendedSection();
+    if (conseils) container.appendChild(conseils);
     // LES EXERCICES QUE L'ÉLÈVE SE DONNE viennent APRÈS ce qu'on lui demande :
     // le devoir d'abord, la séance conseillée ensuite, et enfin ce qu'il
     // choisit. L'ordre de la page est l'ordre des priorités.
@@ -186,17 +449,211 @@ export function renderStudentPathView() {
 
 // --- 1. Parcours assigné ----------------------------------------------------
 
+/**
+ * QUAND AUCUN PARCOURS N'EST CHARGÉ — et c'était le pire écran du logiciel.
+ *
+ * Mesuré (tools/leTrajetDeLEleve.mjs) : le professeur donne une séance à sa
+ * classe ; Zoé entre avec son billet ; l'application l'envoie sur cet
+ * écran-ci — `app.js` fait `setTopNavMode('path')` pour tout élève — et la
+ * PREMIÈRE PHRASE qu'elle lit est :
+ *
+ *     « Aucun parcours assigné pour le moment. Saisis le code donné par ton
+ *       professeur avec le bouton « Code » en haut de l'écran. »
+ *
+ * — phrase qui, en plus, désignait un bouton qui se trouve EN BAS sur un
+ * téléphone. Elle a été remplacée par le bouton lui-même.
+ *
+ * C'était faux. Sa séance était bien arrivée, mais elle ne s'affichait que sur
+ * l'AUTRE accueil — celui du catalogue, que `aujourdhui.js` dessine — et cet
+ * écran-ci ne regardait que `state.studentPath`, qui ne vaut quelque chose
+ * qu'une fois la séance OUVERTE. Une séance reçue mais pas encore ouverte
+ * n'existait donc nulle part ici.
+ *
+ * Le dégât n'est pas l'affichage : c'est qu'un enfant de onze ans à qui l'on
+ * dit « tu n'as rien » et qui a quelque chose lève la main — et c'est le
+ * professeur qui traverse la salle. Trente fois.
+ *
+ * ON NE REFAIT PAS LE CALCUL ICI. `maSeance.js` tient déjà l'état de la séance
+ * du moment, et `ouvrirSeance` est le chemin par lequel passe aussi un code
+ * dicté. Deux chemins vers le même parcours, ce sont deux comportements à
+ * tenir d'accord ; on emprunte celui qui existe.
+ */
+function sectionSansParcours(box) {
+    const etat = instantane().etat;
+
+    // RIEN À FAIRE, POUR DE VRAI. C'est le seul cas où le message d'avant
+    // disait la vérité — et l'on peut alors parler de code, puisque c'est bien
+    // ce qui manque.
+    if (!etat || !etat.seance) {
+        // ON N'ENVOIE PLUS CHERCHER UN BOUTON AILLEURS — ON LE MET ICI.
+        //
+        // Le message disait « le bouton Code en haut de l'écran ». Mesuré : sur
+        // un téléphone, ce bouton est en BAS — c'est `#mob-btn-code`, dans la
+        // barre du bas ; celui du haut disparaît sous 900 px de large. On
+        // envoyait donc un enfant de onze ans chercher au mauvais endroit, à
+        // l'instant précis où il ne trouve déjà rien.
+        //
+        // Dire « en bas sur téléphone, en haut sinon » serait une phrase de
+        // plus à tenir d'accord avec la mise en page. Le bouton est ICI, sous
+        // la phrase qui en parle, et il ouvre la même fenêtre que les deux
+        // autres.
+        box.innerHTML = `
+            <h2 class="path-section-title">Pas de séance pour l'instant</h2>
+            <div class="empty-state-msg">Ton professeur ne t'a rien donné pour le moment.
+            S'il t'a dicté un code, tape-le ici.</div>
+            <div class="path-autre-code-boutons"></div>`;
+        // LE SCANNER D'ABORD, ET C'EST L'ORDRE DU GESTE : devant un QR projeté
+        // au tableau, il n'y a rien à taper, donc rien à se tromper.
+        const rangee = box.querySelector('.path-autre-code-boutons');
+        const scan = boutonScannerLeCode();
+        if (scan) rangee.appendChild(scan);
+        rangee.appendChild(boutonTaperLeCode('btn-toggle active'));
+        // ET L'INSTALLATION, ICI PLUTÔT QU'AILLEURS.
+        //
+        // C'est l'écran sur lequel tombe une tablette NEUVE : rien à faire
+        // encore, et tout à préparer. Posée maintenant, l'application garde
+        // son cache et s'ouvre sans adresse à taper — c'est la différence
+        // entre « ça marchait la semaine dernière » et « ça marche ».
+        //
+        // Le bouton ne paraît que s'il peut servir : `poserLeBouton…` ne pose
+        // rien quand l'application est déjà installée, ni sur un navigateur
+        // qui ne sait ni installer ni expliquer comment.
+        import('./installer.js')
+            .then(m => m.poserLeBoutonDInstallation(box))
+            .catch(() => { /* l'écran vaut mieux sans que cassé par son extra */ });
+        return box;
+    }
+
+    const dit = etat.close
+        ? 'Sa fenêtre est fermée, mais tu peux encore la faire.'
+        // « Étape » désigne une POSITION dans le parcours, pas une chose : on la
+        // garde là où elle dit ça (« étape 3 sur 5 », la carte), et l'on compte
+        // ici des EXERCICES, comme partout ailleurs.
+        : `${etat.total} exercice${etat.total > 1 ? 's' : ''} à faire.`;
+    box.innerHTML = `
+        <h2 class="path-section-title">${escapeHtml(etat.titre)}</h2>
+        <p class="path-section-sub">${etat.classeNom ? escapeHtml(etat.classeNom) + ' · ' : ''}${dit}</p>`;
+
+    // LE MOT DU PROFESSEUR PASSE AVANT LE BOUTON. S'il a écrit quelque chose à
+    // CET élève, c'est la consigne : la lire après avoir cliqué serait la lire
+    // trop tard.
+    if (etat.mot) {
+        const mot = document.createElement('p');
+        mot.className = 'path-section-mot';
+        mot.textContent = `« ${etat.mot} »`;
+        box.appendChild(mot);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-toggle active path-ouvrir-seance';
+    btn.type = 'button';
+    btn.textContent = etat.commence ? 'Reprendre ma séance' : 'Commencer ma séance';
+    btn.onclick = () => ouvrirSeance(etat.seance);
+    box.appendChild(btn);
+    return box;
+}
+
+/**
+ * LA PORTE D'UN AUTRE CODE — et pourquoi elle est sur CET écran.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, après l'essai sur tablette : « il faut sur l'écran d'ailleurs un bouton
+ * pour scanner directement le qr code, car là il faut passer par le code puis
+ * le qr code c'est trop long. »
+ *
+ * ── CE QUI A ÉTÉ MESURÉ, ET QUI N'EST PAS CE QUE JE CROYAIS ────────────────
+ *
+ * J'ai d'abord cru qu'un élève ayant déjà une séance n'avait plus AUCUN moyen
+ * d'entrer un code. Faux : la barre du bas porte « Code » (`#mob-btn-code`) et
+ * la barre du haut son onglet. Ma sonde ne cherchait que `[data-ouvrir-code]`,
+ * et un sélecteur trop étroit rend la même réponse qu'un logiciel cassé.
+ *
+ * CE QUI EST VRAI EST PLUS PETIT, ET C'EST EXACTEMENT SA PHRASE : il faut DEUX
+ * gestes — ouvrir la fenêtre du code, puis toucher « Scanner ». Pour trente
+ * élèves au début de l'heure, devant un QR déjà projeté, c'est un geste de
+ * trop. Le bouton est donc ICI, sur l'écran où l'élève arrive.
+ *
+ * ── ET HORS LIGNE, CE N'EST PLUS DU CONFORT ────────────────────────────────
+ *
+ * Sans réseau, aucune séance n'arrive par la synchronisation : le QR code est
+ * le SEUL chemin par lequel la classe de sa sœur reçoit du travail. La porte
+ * d'entrée, elle, a disparu dès la première séance — `portailNecessaire()`
+ * s'éteint quand l'élève a de quoi travailler. Sans ce bouton, la caméra qui
+ * s'ouvre toute seule sur la porte ne sert qu'une fois, le premier jour.
+ */
+function porteDUnAutreCode(titre, aide) {
+    const box = document.createElement('section');
+    box.className = 'path-section path-autre-code';
+    box.innerHTML = `
+        <h2 class="path-section-title">${titre}</h2>
+        <p class="path-section-sub">${aide}</p>`;
+    const rangee = document.createElement('div');
+    rangee.className = 'path-autre-code-boutons';
+    const scan = boutonScannerLeCode();
+    if (scan) rangee.appendChild(scan);
+    // LES DEUX PORTENT `active`, ET CE N'EST PAS UN OUBLI. Mesuré en photo :
+    // un `.btn-toggle` sans `active` a une bordure transparente et la couleur
+    // des textes secondaires — « J'ai un code à taper » se lisait comme une
+    // phrase, pas comme un bouton. Ce qui les distingue est l'ordre et
+    // l'icône, pas l'effacement de l'un des deux.
+    rangee.appendChild(boutonTaperLeCode('btn-toggle active'));
+    box.appendChild(rangee);
+    return box;
+}
+
+/** Ouvre la fenêtre du code — le chemin qui existait déjà, et le seul. */
+function ouvrirLaFenetreDuCode() {
+    const fenetre = document.getElementById('code-modal');
+    if (fenetre) fenetre.style.display = 'flex';
+    const champ = document.getElementById('student-code-input');
+    if (champ) { champ.value = ''; champ.focus(); }
+}
+
+function boutonTaperLeCode(classe) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = classe + ' path-ouvrir-code';
+    b.setAttribute('data-ouvrir-code', '');
+    // ENTRE GUILLEMETS DROITS DOUBLES, ET CE N'EST PAS UN CAPRICE : une
+    // épreuve de la maison cherche « J'ai un code » dans la SOURCE de ce
+    // fichier (tests/accueilEleve.test.mjs), et l'apostrophe échappée d'une
+    // chaîne à guillemets simples y écrit « J\'ai un code », que son motif ne
+    // reconnaît pas. Elle est tombée là-dessus.
+    b.textContent = "J'ai un code à taper";
+    b.onclick = ouvrirLaFenetreDuCode;
+    return b;
+}
+
+/**
+ * LE BOUTON QUI SCANNE, EN UN SEUL GESTE — ou rien du tout.
+ *
+ * `null` quand l'appareil ne peut pas scanner : hors contexte sécurisé ou sans
+ * caméra, `getUserMedia` n'existe pas, et un bouton qui ouvre une fenêtre pour
+ * y annoncer « impossible » est un bouton qu'il ne fallait pas montrer.
+ */
+function boutonScannerLeCode() {
+    if (!laCameraEstPossible()) return null;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn-toggle active path-scanner-code';
+    b.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/></svg> Scanner le QR code`;
+    b.onclick = () => scannerUnCodeDeSeance({
+        // LE PARCOURS S'OUVRE TOUT SEUL : `applyCode` monte le meneur, et il
+        // n'y a rien à dire de plus. On ne parle que quand ça ne marche pas.
+        surEchec: () => showToast('Ce QR code vient bien d\'AtoutMath, mais son '
+            + 'parcours ne s\'ouvre pas. Montre-le à ton professeur.', 'error')
+    });
+    return b;
+}
+
 function assignedSection() {
     const box = document.createElement('section');
     box.className = 'path-section';
 
     const assigned = state.studentPath;
     if (!assigned || !assigned.steps || !assigned.steps.length) {
-        box.innerHTML = `
-            <h2 class="path-section-title">Parcours du professeur</h2>
-            <div class="empty-state-msg">Aucun parcours assigné pour le moment.
-            Saisis le code donné par ton professeur avec le bouton « Code » en haut de l'écran.</div>`;
-        return box;
+        return sectionSansParcours(box);
     }
 
     const path = normalizePath({ id: assigned.pathId, name: assigned.name, policy: assigned.policy, steps: assigned.steps, version: 2 });
@@ -221,7 +678,8 @@ function assignedSection() {
                 <p class="path-section-sub ${isEvaluation(policy) ? 'path-section-sub--eval' : ''}">${describePolicy(policy)}</p>
             </div>
         </div>`;
-    box.querySelector('.path-section-head').appendChild(styleSwitcher());
+    const boutonsDHabillage = styleSwitcher(policy);
+    if (boutonsDHabillage) box.querySelector('.path-section-head').appendChild(boutonsDHabillage);
 
     // LA ROUTE QUI S'OUVRE. On revient d'une étape réussie : plutôt que de
     // redessiner la carte déjà à jour — le pointillé devenu trait sans que
@@ -257,10 +715,22 @@ function assignedSection() {
         // sur quoi. `null` hors évaluation notée — une étape d'entraînement
         // n'a pas de points, et en afficher serait mentir.
         bareme: baremeParEtape(steps, path.policy),
+        // CE QU'IL A FAIT DE CHAQUE ÉTAPE DÉJÀ TERMINÉE. Rémy, devant le
+        // plan : « on pourrait écrire la réussite aussi non ? ». La pastille
+        // disait ce qu'il y A à faire — quatorze questions, quatre points —
+        // et jamais ce qu'il EN A FAIT ; l'élève devait rouvrir son bilan
+        // pour savoir s'il avait tout trouvé à l'étape qu'il regardait.
+        resultats: assigned.resultats || {},
         recompenses: parJeu,
         seuilRecompense: etatJeux.seuil,
         // L'élève choisit-il son ordre ? C'est une règle de la séance.
         ordreLibre: !!policy.ordreLibre,
+        // ET SON HABILLAGE AUSSI. `styleDeLaSeance` rend celui que la séance
+        // impose, ou celui du poste quand elle laisse le choix.
+        style: styleDeLaSeance(policy),
+        // ET SON DÉCOR, de la même façon : imposé par la séance, ou celui que
+        // l'élève a choisi sur ce poste.
+        decor: decorDeLaSeance(policy),
         ouverture,
         gagnes,
         onNodeClick: (i, statut) => {
@@ -307,6 +777,19 @@ function assignedSection() {
 }
 
 /**
+ * LA PORTE D'UN AUTRE CODE, SOUS LE PARCOURS EN COURS.
+ *
+ * EN BAS, ET C'EST VOULU : le travail du jour passe d'abord. Mais elle est là,
+ * sur l'écran où l'élève arrive, et c'est tout ce que Rémy demandait — un seul
+ * geste pour viser le tableau.
+ */
+function porteSousLeParcours() {
+    return porteDUnAutreCode('Une autre séance&nbsp;?',
+        'Si ton professeur en donne une nouvelle, scanne son QR code '
+        + 'ou tape son code.');
+}
+
+/**
  * La salle de jeux : les récompenses ouvertes, offertes d'un bloc.
  * Rien tant qu'aucune n'est ouverte — une salle vide n'annonce que le manque.
  */
@@ -340,9 +823,53 @@ function salleDeJeux(path, steps, etat) {
     return box;
 }
 
+/**
+ * PARTIR DE LA CARTE — SANS LA REMONTRER.
+ *
+ * RÉMY : « il y a toujours l'écran d'accueil avec le monde puis on clique et on
+ * va sur le monde, il y a tjs deux étapes alors que si j'ouvre la séance, on
+ * devrait pouvoir toujours aller directement sans double clic au monde ».
+ *
+ * TOUT CE QUI AMÈNE ICI A DÉJÀ MONTRÉ LA CARTE. C'est ce fichier qui la
+ * dessine, entière, avec la règle de la séance et « C'est ici ! » sur la
+ * prochaine étape ; puis l'élève clique une étape, ou le bouton « Jouer », et
+ * le meneur la redessinait aussitôt avec un bouton « Continuer ». Deux écrans,
+ * la même image, et un clic pour rien.
+ *
+ * LA MÊME CORRECTION EXISTAIT DÉJÀ — AILLEURS. `ui/maSeance.js` passe
+ * `sansCarteDOuverture` depuis des mois, avec la phrase de Rémy en commentaire
+ * (« il y a deux mouvements »). Elle n'avait été posée que sur le bouton
+ * « Commencer ma séance ». Les clics depuis la carte, eux, gardaient le double
+ * écran — et ce sont ceux qu'on fait quand on REPREND une séance commencée,
+ * c'est-à-dire la plupart du temps.
+ *
+ * C'est la deuxième fois dans la même journée qu'une correction juste n'avait
+ * fermé qu'un chemin sur plusieurs (voir la corbeille des parcours). La
+ * sonde `tools/entreeDansLaSeance.mjs` mesure désormais LES DEUX entrées.
+ *
+ * L'ORDRE LIBRE GARDE SA CARTE, et ce n'est pas une exception posée ici : le
+ * meneur la lui rend lui-même (`runner.js`, `!(sansCarteDOuverture &&
+ * !policy.ordreLibre)`). Une séance dont tout l'intérêt est que l'élève
+ * choisisse par où commencer ne peut pas sauter l'écran du choix.
+ */
 async function launchAssigned(path, startIndex) {
+    // LE PLEIN ÉCRAN PART ICI, ET AVANT LE PREMIER `await` — Rémy : « oui si la
+    // séance est imposée et laisse le bouton ». Un `await import()` rend la
+    // main au navigateur, qui ne reconnaît alors plus le geste de l'élève et
+    // refuse le plein écran en silence. Voir `ui/fullscreen.js`, qui décide
+    // seul s'il y a lieu.
+    //
+    // CETTE FONCTION EST LA PORTE DE TOUS LES APPUIS DE LA CARTE : le bouton
+    // « Jouer », une étape cliquée, une étape sous clé une fois la clé donnée.
+    // La poser ici plutôt que sur chacun est ce qui évite qu'un chemin soit
+    // oublié — ce qui est déjà arrivé deux fois sur cet écran (voir le double
+    // écran de `sansCarteDOuverture` juste au-dessus).
+    pleinEcranSiSeanceImposee(path);
     const { Runner } = await import('../core/runner.js');
-    new Runner({ path, deviceMode: 'none', isStudentPath: true, startIndex }).start();
+    new Runner({
+        path, deviceMode: 'none', isStudentPath: true, startIndex,
+        sansCarteDOuverture: true
+    }).start();
 }
 
 // --- Habillage commun des parcours illustrés --------------------------------
@@ -375,6 +902,10 @@ const PICTOS = {
 };
 
 function pictoDe(step) {
+    // UN MOT DU PROFESSEUR PORTE SON PROPRE PICTO, et non le crayon par défaut.
+    // Sans lui, la case du mot se dessinait comme un exercice dont le domaine
+    // est inconnu : l'élève cliquait dessus en croyant jouer.
+    if (estUnMessage(step)) return '💬';
     const chemin = (step.exercise && step.exercise.tags && step.exercise.tags.chemin) || [];
     for (let i = chemin.length - 1; i >= 0; i--) {
         if (PICTOS[chemin[i]]) return PICTOS[chemin[i]];
@@ -410,11 +941,17 @@ function creerNoeud(step, i, statut, opts, numero = i + 1) {
                 : statut === 'locked' ? '🔒' : pictoDe(step);
     btn.innerHTML = `<span class="world-node-picto">${picto}</span>`;
     btn.title = step.title;
+    const mot = estUnMessage(step);
     const dit = statut === 'done' ? 'terminé'
         : statut === 'cadeau' ? 'jeu ouvert'
             : statut === 'cle' ? 'fermée, il faut la clé du professeur'
-                : (statut === 'locked' || statut === 'cadeau-ferme') ? 'à débloquer' : 'jouer';
-    btn.setAttribute('aria-label', `${cadeau ? 'Jeu' : 'Étape ' + numero} : ${step.title} — ${dit}`);
+                : (statut === 'locked' || statut === 'cadeau-ferme') ? 'à débloquer'
+                    // ON NE DIT PAS « jouer » SUR UN MOT À LIRE. C'est la seule
+                    // phrase que le lecteur d'écran annonce : elle doit dire ce
+                    // qui va se passer, et il ne va rien se jouer.
+                    : mot ? 'à lire' : 'jouer';
+    btn.setAttribute('aria-label',
+        `${cadeau ? 'Jeu' : mot ? 'Mot du professeur' : 'Étape ' + numero} : ${step.title} — ${dit}`);
     btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
 
     const rang = document.createElement('span');
@@ -469,11 +1006,21 @@ function creerNoeud(step, i, statut, opts, numero = i + 1) {
             ? 'À toi de jouer !'
             : direRecompense(jeu, opts.seuilRecompense ?? 0.75);
     } else {
-        // Le barème tient sous la pastille : « 5 q. • 4 pts ». C'est court, et
-        // c'est ce qu'un élève regarde avant de choisir où passer son temps.
-        const pts = opts.bareme && opts.bareme.get(step.stepId);
-        meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`
-            + (pts ? ` • ${direBareme(pts)}` : '');
+        // ── ON ÉCRIT « QUESTIONS », PAS « q. » ────────────────────────────
+        //
+        // RÉMY : « sur le plan ca écrite 14 q. par exemple écris 14
+        // questions ». L'abréviation gagnait six caractères sous une pastille
+        // de 124 px — et la vue en liste, elle, écrivait « questions » en
+        // entier depuis toujours : deux façons de dire la même chose dans le
+        // même parcours, selon le bouton qu'on avait pressé.
+        //
+        // ET LA RÉUSSITE, QUAND IL Y EN A UNE. Rémy, dans la foulée : « on
+        // pourrait écrire la réussite aussi non ? ». Une étape terminée ne
+        // dit plus ce qu'il y AVAIT à faire — l'élève le sait, il l'a fait —
+        // mais ce qu'il EN A FAIT. Le barème et le chronomètre s'effacent
+        // alors : annoncer « sur 4 pts » sous une étape finie, c'est annoncer
+        // une épreuve qui n'aura pas lieu.
+        meta.textContent = sousLaPastille(step, opts);
     }
 
     node.append(label, meta);
@@ -644,12 +1191,19 @@ export function construireCarte(steps, opts = {}) {
     // il faut regarder ce qui la précède. Injecté ici, donc les trois
     // habillages en héritent sans y penser.
     const o = { steps, ...opts };
-    return style === 'classique' ? buildClassicTimeline(steps, o)
-        : style === 'chemin' ? buildDuoPath(steps, o)
-            : buildWorldMap(steps, o);
+    let carte;
+    if (style === 'classique') carte = buildClassicTimeline(steps, o);
+    else if (style === 'chemin') carte = buildDuoPath(steps, o);
+    else if (style === 'damier') carte = buildDamier(steps, o);
+    else if (style === 'ruban') carte = buildRuban(steps, o);
+    else carte = buildWorldMap(steps, o);
+    // ET LE DÉCOR PAR-DESSUS, quel que soit l'habillage : c'est tout l'intérêt
+    // de l'avoir mis sur un axe à part.
+    return poserLeDecor(carte, o.decor || DECOR_PAR_DEFAUT);
 }
 
-/** L'habillage actif, pour qui veut le lire sans le changer. */
+/** L'habillage du POSTE, pour qui veut le lire sans le changer. Hors séance,
+ *  c'est le seul qui existe ; dans une séance, voir `styleDeLaSeance`. */
 export { getPathStyle as styleDeParcours };
 
 /**
@@ -701,9 +1255,9 @@ export function buildClassicTimeline(steps, opts = {}) {
                 ? 'Ta récompense : à toi de jouer !'
                 : direRecompense(jeu, opts.seuilRecompense ?? 0.75);
         } else {
-            const pts = opts.bareme && opts.bareme.get(step.stepId);
-            meta.textContent = `${step.nbItems} questions${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`
-                + (pts ? ` • sur ${direBareme(pts)}` : '');
+            // La même phrase que sous la pastille : deux vues du même
+            // parcours ne disent pas deux choses différentes.
+            meta.textContent = sousLaPastille(step, opts, { sur: true });
         }
         card.appendChild(meta);
 
@@ -759,6 +1313,70 @@ export function buildDuoPath(steps, opts = {}) {
     return chemin;
 }
 
+/**
+ * DAMIER : toutes les étapes d'un coup, et AUCUN sentier.
+ *
+ * L'absence de sentier est la décision, pas un oubli. Un trait qui relie
+ * quatorze cases rangées en grille passe trois fois sur lui-même et ne décrit
+ * plus de route ; ce qu'on vient chercher ici n'est pas le chemin, c'est le
+ * NOMBRE — ce qui est fait, ce qui reste, en un regard. L'état de chaque case
+ * se lit sur la pastille, qui le porte déjà.
+ *
+ * La grille se règle en CSS (`--damier-colonnes`) : trois de front sur un
+ * téléphone, jusqu'à six sur un écran large, sans que ce module ait à
+ * mesurer quoi que ce soit.
+ */
+export function buildDamier(steps, opts = {}) {
+    const grille = document.createElement('div');
+    grille.className = 'damier-path';
+    etapesMontrees(steps, opts).forEach(({ step, i, numero }) => {
+        const node = creerNoeud(step, i, statutEtape(step, i, opts), opts, numero);
+        node.classList.add('damier-node');
+        grille.appendChild(node);
+    });
+    return grille;
+}
+
+/**
+ * RUBAN : une seule ligne, de gauche à droite, qui défile latéralement.
+ *
+ * LE SENTIER RESTE, lui, parce qu'ici il décrit vraiment la route : une ligne
+ * droite d'une pastille à la suivante, qui se remplit au fur et à mesure.
+ * `tracerSentier` travaille sur les positions réelles des pastilles — il n'a
+ * rien à savoir du sens de lecture.
+ *
+ * ET L'ÉTAPE EN COURS SE RAMÈNE SOUS LES YEUX : sur un ruban, ce qui dépasse
+ * à droite n'existe pas tant qu'on n'a pas poussé. Un parcours de quatorze
+ * étapes s'ouvrirait sur la première alors que l'élève en est à la neuvième.
+ */
+export function buildRuban(steps, opts = {}) {
+    const ruban = document.createElement('div');
+    ruban.className = 'ruban-path';
+    const piste = document.createElement('div');
+    piste.className = 'ruban-piste';
+    ruban.appendChild(piste);
+
+    const montres = etapesMontrees(steps, opts);
+    montres.forEach(({ step, i, numero }) => {
+        const node = creerNoeud(step, i, statutEtape(step, i, opts), opts, numero);
+        node.classList.add('ruban-node');
+        piste.appendChild(node);
+    });
+    piste.__ouvertureRang = rangDansLaCarte(montres, opts.ouverture);
+    tracerSentier(piste, piste.__ouvertureRang);
+    // Le sentier est posé sur la PISTE, qui porte les pastilles ; c'est elle
+    // qu'on retrace et qu'on mesure. Le cadre extérieur ne fait que défiler.
+    ruban.__sentierDefinitif = () => piste.__sentierDefinitif && piste.__sentierDefinitif();
+    requestAnimationFrame(() => {
+        const cible = piste.querySelector('.world-node--current')
+            || piste.querySelector('.world-node--open');
+        if (cible && typeof cible.scrollIntoView === 'function') {
+            cible.scrollIntoView({ block: 'nearest', inline: 'center' });
+        }
+    });
+    return ruban;
+}
+
 // --- Parcours du professeur (sur ce poste) ----------------------------------
 // Les parcours construits dans l'éditeur de CE poste sont directement jouables
 // par l'élève, sans passer par un code : en classe, c'est le même appareil.
@@ -767,11 +1385,24 @@ function teacherPathsSection() {
     const paths = state.teacherPaths || [];
     if (!paths.length) return null;
 
+    // PAS CHEZ UN ÉLÈVE IDENTIFIÉ, et c'est la règle qui manquait.
+    //
+    // Mesuré : sur l'ordinateur de la salle, Zoé — entrée avec son billet —
+    // voyait sous sa séance « Tout sur papier (127 exercices) », un BROUILLON
+    // de Rémy, présenté comme « choisis-en un et lance-toi ! ». Cette section
+    // existe pour une bonne raison — en classe, le professeur construit et
+    // l'élève joue sur le même appareil — mais cette raison-là suppose un poste
+    // SANS élève rattaché. Dès qu'un billet a été présenté, le travail vient du
+    // serveur, et l'atelier du professeur ne regarde plus celui qui est assis.
+    if (estRattache()) return null;
+
     const box = document.createElement('section');
     box.className = 'path-section';
+    // « Parcours du professeur » était aussi le titre de la section du haut :
+    // deux sections, le même titre, et l'une disait le contraire de l'autre.
     box.innerHTML = `
-        <h2 class="path-section-title">Parcours du professeur</h2>
-        <p class="path-section-sub">Préparés sur ce poste — choisis-en un et lance-toi !</p>`;
+        <h2 class="path-section-title">Préparés sur cet ordinateur</h2>
+        <p class="path-section-sub">Des parcours d'essai, pour s'entraîner en attendant.</p>`;
 
     const list = document.createElement('div');
     list.className = 'teacher-path-list';
@@ -786,7 +1417,7 @@ function teacherPathsSection() {
         card.innerHTML = `
             <div class="teacher-path-info">
                 <div class="teacher-path-name">${escapeHtml(p.name)}</div>
-                <div class="teacher-path-sub">${normalized.steps.length} activité${normalized.steps.length > 1 ? 's' : ''}
+                <div class="teacher-path-sub">${normalized.steps.length} exercice${normalized.steps.length > 1 ? 's' : ''}
                     • ${isEvaluation(policy) ? 'Évaluation' : 'Entraînement'}</div>
             </div>`;
 
@@ -839,22 +1470,45 @@ function teacherPathsSection() {
 
 // --- 2. Séance conseillée ---------------------------------------------------
 
+/**
+ * CE QUE LE LOGICIEL CONSEILLE — et qui n'est PAS une séance.
+ *
+ * LE MOT « SÉANCE » APPARTIENT AU PROFESSEUR, et à lui seul. Cette section
+ * s'appelait « Ta séance du jour » ; l'accueil du catalogue appelle « Ta séance
+ * du jour » le travail RÉELLEMENT donné par le professeur. Deux écrans, le même
+ * titre, deux choses différentes — et sur celui-ci, c'est celle que le
+ * professeur n'a PAS donnée qui portait le plus gros bouton.
+ *
+ * Rémy lui-même a demandé, après des semaines sur ce logiciel : « une séance
+ * c'est un direct c'est cela ? » Si le vocabulaire fait hésiter celui qui l'a
+ * fabriqué, un élève de cinquième n'a aucune chance.
+ *
+ * LE LEXIQUE TENU PARTOUT, désormais, est de trois mots :
+ *   · un EXERCICE — ce qu'on ouvre et qu'on fait ;
+ *   · un PARCOURS — une suite d'exercices, l'objet que le professeur fabrique ;
+ *   · une SÉANCE — un parcours DONNÉ à une classe, à une date, avec ses trois
+ *     états (à venir, en cours, close).
+ * « Activité », « travail » et « étape » ne sont plus du vocabulaire élève.
+ *
+ * ET ON NE CONSEILLE RIEN À QUI N'A RIEN FAIT. « Choisie d'après tes
+ * résultats » posée devant un élève qui n'a aucun résultat est une phrase
+ * fausse, et elle mangeait la moitié de sa page le jour de la rentrée.
+ */
 function recommendedSection() {
     const box = document.createElement('section');
     box.className = 'path-section';
 
-    const recos = buildRecommendedPreview(3);
-    if (!recos.length) {
-        box.innerHTML = `
-            <h2 class="path-section-title">Ta séance du jour</h2>
-            <div class="empty-state-msg">Joue à quelques exercices : une séance sur mesure apparaîtra ici,
-            construite à partir de ce que tu maîtrises et de ce qui est à revoir.</div>`;
-        return box;
-    }
+    // Sans une seule tentative au journal, il n'y a rien à conseiller : on se
+    // tait plutôt que d'inventer trois conseils et de les dire mérités.
+    const aTravaille = (state.attemptHistory || []).length > 0;
+    const recos = aTravaille ? buildRecommendedPreview(3) : [];
+    // On rend `null` et non une section vide : une section vide garde sa marge
+    // et laisse un trou dans la page, ce qui se lit comme un défaut d'affichage.
+    if (!recos.length) return null;
 
     box.innerHTML = `
-        <h2 class="path-section-title">Ta séance du jour</h2>
-        <p class="path-section-sub">Choisie d'après tes résultats : ce qui est à revoir passe avant ce qui est nouveau.</p>`;
+        <h2 class="path-section-title">Ce que je te conseille</h2>
+        <p class="path-section-sub">D'après ce que tu as déjà fait : ce qui est à revoir passe avant ce qui est nouveau.</p>`;
 
     const list = document.createElement('div');
     list.className = 'reco-list';
@@ -889,8 +1543,17 @@ function recommendedSection() {
 
     const all = document.createElement('button');
     all.className = 'btn-toggle active reco-start-all';
-    all.textContent = 'Lancer la séance complète';
-    all.onclick = () => startRecommendedSession(3);
+    // « Séance » est le mot du professeur : ce bouton lance TROIS EXERCICES que
+    // le logiciel propose, ce qui n'est pas la même chose et ne doit pas porter
+    // le même nom.
+    all.textContent = `Faire les ${recos.length} exercices`;
+    // ON LUI DONNE LA LISTE QU'ON VIENT D'AFFICHER, et non le nombre 3.
+    // L'étiquette comptait `recos.length` pendant que le clic en demandait
+    // trois : deux listes recalculées séparément, qui n'ont aucune raison de
+    // coïncider quand une notion recommandée n'a pas d'exercice —
+    // `buildRecommendedPreview` l'écarte, `getRecommendations` non. Le bouton
+    // annonçait alors deux exercices et en lançait d'autres.
+    all.onclick = () => startRecommendedSession(recos);
     box.appendChild(all);
 
     return box;
@@ -939,6 +1602,13 @@ function escapeHtml(s) {
 }
 
 document.addEventListener('studentPath_updated', renderStudentPathView);
+// LA SÉANCE ARRIVE PAR LA SYNCHRONISATION, à n'importe quel moment. Sans cette
+// ligne, l'élève déjà posé sur cet écran continuait de lire « ton professeur ne
+// t'a rien donné » jusqu'au prochain rechargement de la page.
+document.addEventListener('seances_updated', () => {
+    const view = document.getElementById('view-path');
+    if (view && view.style.display !== 'none') renderStudentPathView();
+});
 document.addEventListener('attempts_updated', () => {
     const view = document.getElementById('view-path');
     if (view && view.style.display !== 'none') renderStudentPathView();

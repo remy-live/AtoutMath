@@ -70,6 +70,28 @@ const BASE = {
         descriptor: 'Calculer un quotient exact en s\'appuyant sur les tables.',
         lesson: '56 ÷ 8, c\'est chercher combien de fois 8 tient dans 56 : 7 fois.'
     },
+    'num.logique.strimko': {
+        label: 'D\u00e9duire sans calculer (Strimko)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Remplir une grille en croisant trois contraintes de placement \u2014 ligne, colonne et ruisseau \u2014 sans aucun calcul.',
+        lesson: "LE STRIMKO NE DEMANDE AUCUN CALCUL, ET C'EST TOUT SON INT\u00c9R\u00caT. Chaque ligne, chaque colonne et chaque RUISSEAU \u2014 la cha\u00eene de cases reli\u00e9es \u2014 portent les nombres de 1 \u00e0 n, une fois chacun. Il ne reste donc que la d\u00e9duction, toute nue : un \u00e9l\u00e8ve que le calcul encombre peut y r\u00e9ussir brillamment, et c'est souvent la premi\u00e8re fois qu'il se voit raisonner. LA M\u00c9THODE EST TOUJOURS LA M\u00caME, et elle ne consiste JAMAIS \u00e0 deviner : on cherche la case o\u00f9 il ne reste qu'UNE SEULE possibilit\u00e9. Pour cela on prend une case vide et l'on barre, dans sa t\u00eate, tous les nombres d\u00e9j\u00e0 pr\u00e9sents dans sa ligne, dans sa colonne ET dans son ruisseau \u2014 les trois, pas deux. S'il en reste un seul, il est forc\u00e9 ; s'il en reste plusieurs, on passe \u00e0 la case suivante et l'on y reviendra. LE RUISSEAU EST LA CONTRAINTE QU'ON OUBLIE, parce qu'il serpente : on le suit du doigt, perle apr\u00e8s perle, jusqu'au bout. Une case remplie en d\u00e9bloque d'autres, de proche en proche \u2014 et la grille se termine sans qu'on ait jamais essay\u00e9 au hasard."
+    },
+    // L'APPROXDOKU. Rémy : « et un approxdoku ».
+    //
+    // C'EST LA SEULE COMPÉTENCE DE LA FAMILLE « LOGIQUE » QUI TRAVAILLE LES
+    // PRIORITÉS, et c'est ce qui la distingue du Mathdoku d'à côté : là-bas on
+    // calcule une cage et l'on cherche où la poser ; ici on calcule DEUX côtés
+    // et l'on compare, en sachant qu'ils ne doivent surtout pas être égaux.
+    'num.logique.approxdoku': {
+        label: 'Approxdoku — rater de un',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Remplir un carré latin dont les chaînes de calcul doivent être fausses d\'exactement un.',
+        lesson: "LE « ≈ » NE VEUT PAS DIRE « ÉGAL » : il veut dire « à un près ». Les deux côtés d'une chaîne valent des entiers positifs qui SE SUIVENT — 6 et 5, 2 et 1. Une égalité parfaite est donc FAUSSE ici, et c'est tout le sel du jeu : il faut calculer juste pour rater de un. Par-dessus, chaque ligne et chaque colonne portent les nombres de 1 à n, une fois chacun, comme dans un sudoku. LES PRIORITÉS S'APPLIQUENT : dans « 2+3×4 », on fait d'abord 3×4. ET CHAQUE ÉTAPE DOIT TOMBER SUR UN ENTIER POSITIF — une division juste, jamais de soustraction qui passe sous zéro : « 5÷2 » et « 2−5 » n'existent pas dans ce jeu, ce qui élimine d'un coup des quantités de possibilités. COMMENCE PAR LA CHAÎNE LA PLUS LONGUE : plus elle a de cases, moins elle laisse de combinaisons possibles, et c'est elle qui se résout la première."
+    },
     'num.logique.mathodu': {
         label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
@@ -77,6 +99,35 @@ const BASE = {
         prereqs: ['num.add.entiers'],
         descriptor: 'Remplir une grille en croisant des contraintes de calcul et de placement.',
         lesson: 'Commence par les zones d\'une seule case, puis cherche les zones où une seule combinaison est possible.'
+    },
+    // DEUX ÉGALITÉS QUI SE CROISENT — la première marche vers les systèmes.
+    //
+    // Ce n'est pas un exercice de calcul : il n'y a pas de question, il y a une
+    // CONTRAINTE, et l'on cherche ce qui la satisfait. On essaie, ça ne tombe
+    // pas, on recommence ailleurs. Le chiffre du croisement appartient aux deux
+    // calculs à la fois, et c'est lui qui fait tout le raisonnement.
+    'num.logique.croises': {
+        label: 'Deux égalités qui se croisent',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Placer des chiffres pour rendre vraies deux égalités qui partagent une case.',
+        lesson: 'Commence par la case du CROISEMENT : son chiffre sert aux deux calculs, donc c\'est elle qui décide le plus. Essaie ensuite un chiffre, regarde si le calcul tombe juste, et recommence avec un autre — c\'est un essai ORGANISÉ, pas un essai au hasard : chaque chiffre posé en élimine d\'autres.'
+    },
+    // LE SERPENT SE COMPTE AVANT DE SE TRACER.
+    //
+    // Rangée avec les autres grilles de logique, parce que c'en est une — mais
+    // ce qu'elle demande en propre, c'est de tenir une LONGUEUR en tête :
+    // combien de cases, et où elles peuvent tenir sans que le serpent
+    // s'épaississe. Avec le réglage « calculs », la longueur n'est plus écrite,
+    // elle est calculée : « 2 × 3 » avant de savoir qu'on cherche six cases.
+    'num.logique.serpents': {
+        label: 'Serpents de longueur donnée (grille)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Remplir une grille de chemins dont la longueur est imposée, sans jamais les épaissir.',
+        lesson: 'Commence par les serpents les plus courts et par les coins : ce sont eux qui ont le moins de chemins possibles. Un serpent ne remplit jamais un carré de quatre cases — dès que tu en vois un, c\'est que deux serpents doivent passer là, ou que celui-ci doit tourner ailleurs.'
     },
     'num.logique.binairo': {
         label: 'Grilles binaires (Binairo)',
@@ -93,6 +144,14 @@ const BASE = {
         prereqs: ['num.add.entiers'],
         descriptor: 'Reconnaître rapidement les écritures d\'un nombre : sommes, différences, produits.',
         lesson: 'Un même nombre s\'écrit de mille façons : 12 = 8 + 4 = 15 − 3 = 3 × 4. Les reconnaître d\'un coup d\'œil, c\'est ça, le calcul mental.'
+    },
+    'num.calc.detour': {
+        label: 'Calculer de tête en passant par le nombre rond',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.calc.decomposition'],
+        descriptor: 'Ajouter ou retirer 9, 99, 11, 101… en passant par la dizaine ou la centaine, et compenser.',
+        lesson: 'AJOUTER 9, C\'EST AJOUTER 10 PUIS RETIRER 1. 76 + 9 = 76 + 10 − 1 = 86 − 1 = 85. Le détour par le nombre rond est facile ; le petit pas qui suit remet les comptes. ET IL CHANGE DE SENS AVEC L\'OPÉRATION, c\'est tout le piège : pour RETIRER 9, on retire 10 — donc 1 de trop — et on le rend. 156 − 9 = 156 − 10 + 1 = 146 + 1 = 147. La méthode ne vaut pas que pour 9 : 8 = 10 − 2, 11 = 10 + 1, 98 = 100 − 2, 101 = 100 + 1. On cherche le nombre rond le plus proche, et l\'on compense de l\'écart.'
     },
     'num.logique.sudoku': {
         label: 'Sudoku',
@@ -180,7 +239,49 @@ const BASE = {
         niveaux: [N.SIXIEME, N.CINQUIEME],
         prereqs: ['num.frac.sens'],
         descriptor: 'Trouver le PPCM de deux dénominateurs et convertir chaque fraction sur ce découpage commun.',
-        lesson: 'Deux fractions de dénominateurs différents ne se comparent ni ne s\'additionnent telles quelles : elles ne comptent pas la même chose. On cherche donc le PLUS PETIT découpage qui convient aux deux — le PPCM des dénominateurs. Pour 3 et 4, c\'est 12. On convertit ensuite chaque fraction sur ce découpage en multipliant le numérateur par le même facteur que le dénominateur : 2/3 = (2×4)/(3×4) = 8/12, et 1/4 = (1×3)/(4×3) = 3/12. Sur une pizza coupée en 12 parts, les deux tiers font bien 8 parts et le quart 3 parts.'
+        // ── LA LEÇON D'UN EXERCICE DE PIZZAS NE PARLAIT PAS DE PIZZA ───────
+        //
+        // RÉMY : « l'explication pour les pizzas des fractions est une
+        // horreur ». Mesurée à l'écran, l'ancienne faisait 90 mots d'une
+        // seule venue et accumulait quatre défauts :
+        //
+        //   · elle OUVRAIT SUR UNE NÉGATION — « ne se comparent ni ne
+        //     s'additionnent » — à propos d'une opération que l'exercice ne
+        //     demande pas : on y pose des parts, on n'additionne rien ;
+        //   · elle criait PPCM en pastille de couleur, un mot que l'élève de
+        //     sixième rencontre ici pour la première fois et qui n'est pas au
+        //     programme de son année ;
+        //   · elle écrivait « 2/3 = (2×4)/(3×4) = 8/12 », des parenthèses
+        //     imbriquées sur une seule ligne, là où le geste se compte en
+        //     parts de pizza ;
+        //   · et elle ne nommait la pizza qu'à la DERNIÈRE phrase, comme une
+        //     illustration de ce qui précède, alors que c'est elle qui est à
+        //     l'écran.
+        //
+        // CELLE-CI PART DE LA PIZZA ET SUIT LE GESTE. Trois temps nommés — le
+        // découpage, le compte, la règle —, parce que l'élève bloqué cherche
+        // « j'en suis où ? » et doit le trouver en balayant la page : c'est
+        // la mise en page que `core/lecon.js` sait fabriquer à partir d'un
+        // intertitre en capitales suivi de deux-points.
+        //
+        // ET LA DIVISION EST ÉCRITE. « 2 × 4 = 8 » tombait du ciel ; le robot
+        // du jeu avait déjà appris à dire d'OÙ vient le 4 (« explication du
+        // robot pas claire ») — la leçon, elle, ne l'avait pas appris.
+        //
+        // UN INTERTITRE NE PORTE PAS DE VIRGULE. Mesuré : « LE COMPTE, PART
+        // PAR PART : » ressortait en gras AVEC ses deux-points au fil du
+        // texte, pendant que ses deux voisins devenaient de vraies entrées à
+        // pastille. `core/lecon.js` n\'ouvre un cas que sur des capitales
+        // d\'affilée — une virgule coupe la suite, et le titre redevient une
+        // phrase. On n\'y touche pas : trois titres sur quatre mots valent
+        // mieux qu\'une règle de plus dans le découpeur.
+        //
+        // ET ELLE TIENT SANS DÉFILER. Première réécriture mesurée à 181 mots,
+        // 512 px dans une zone de 492 : l\'élève arrivait au bas de la boîte
+        // avant la fin de la leçon. Un texte qu\'il faut faire défiler pour
+        // finir une phrase n\'est pas plus lu qu\'un pavé — c\'est le même
+        // reproche sous une autre forme.
+        lesson: 'Des tiers et des quarts ne sont pas les mêmes parts : tant que la pizza n\'est pas coupée pour les deux à la fois, il n\'y a rien à comparer ni à additionner. LE DÉCOUPAGE COMMUN : on cherche le premier nombre de parts qui convient aux deux dénominateurs. Les tiers vont avec 3, 6, 9, 12… et les quarts avec 4, 8, 12… : le premier des deux listes est 12. LE COMPTE : sur 12 parts, un tiers en vaut 12 ÷ 3 = 4, donc deux tiers en valent 2 × 4 = 8 ; un quart en vaut 12 ÷ 4 = 3. On écrit 2/3 = 8/12 et 1/4 = 3/12. LE HAUT ET LE BAS : on multiplie les deux par le même nombre, jamais l\'un sans l\'autre — chaque part coupée en 4, c\'est la même pizza, recoupée.'
     },
     'num.frac.simplification': {
         label: 'Simplifier une fraction',
@@ -189,6 +290,42 @@ const BASE = {
         prereqs: ['num.frac.sens'],
         descriptor: 'Rendre une fraction irréductible en divisant numérateur et dénominateur par leurs facteurs communs.',
         lesson: 'On cherche un diviseur commun au numérateur et au dénominateur : 36/48 = (12×3)/(12×4) = 3/4. Quand il n\'y a plus aucun diviseur commun, la fraction est irréductible.'
+    },
+    // DEUX COMPÉTENCES POUR LA DIVISION, ET NON UNE. Rémy, progression de
+    // quatrième : « Multiplication et division de fraction ». Un élève qui
+    // rate une division par une fraction se trompe presque toujours AVANT de
+    // diviser : il retourne la mauvaise fraction, ou les deux. « Division de
+    // fractions : non acquis » ne lui dit pas lequel des deux gestes manque ;
+    // « l'inverse d'un nombre : non acquis » si.
+    // LA RÉCIPROQUE EST UNE AUTRE COMPÉTENCE QUE LE THÉORÈME, et non un niveau
+    // de plus. Le théorème part d'un triangle rectangle et donne une longueur ;
+    // la réciproque part de trois longueurs et dit s'il est rectangle. Un élève
+    // qui applique l'un là où il faut l'autre écrit « donc BC = 10 » alors
+    // qu'on lui donnait BC — il ne lui manque pas un calcul, il lui manque de
+    // savoir ce qu'il cherche. Le bilan doit pouvoir le nommer.
+    'geo.pythagore.reciproque': {
+        label: 'La réciproque de Pythagore',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Dire si un triangle est rectangle à partir de ses trois longueurs, et nommer le sommet de l\'angle droit.',
+        lesson: 'ON COMPARE LE CARRÉ DU PLUS LONG CÔTÉ À LA SOMME DES CARRÉS DES DEUX AUTRES. S\'ils sont ÉGAUX, le triangle est rectangle — et il l\'est au sommet qui n\'est pas sur le plus long côté, car l\'angle droit est toujours EN FACE de l\'hypoténuse. S\'ils sont différents, il ne l\'est pas : il n\'y a pas de « presque rectangle ». Le piège est de prendre les côtés dans l\'ordre de l\'énoncé au lieu de chercher le plus long ; on compare alors n\'importe quoi, et l\'on conclut faux sans qu\'aucun calcul ne soit faux.'
+    },
+    'num.frac.inverse': {
+        label: 'L\'inverse d\'un nombre',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.frac.multiplication'],
+        descriptor: 'Donner l\'inverse d\'une fraction ou d\'un entier, et reconnaître deux nombres dont le produit vaut 1.',
+        lesson: 'L\'inverse d\'une fraction, c\'est la même fraction RETOURNÉE : l\'inverse de 3/5 est 5/3. Deux nombres sont inverses l\'un de l\'autre quand leur produit vaut 1 — c\'est la définition, et c\'est aussi la façon de vérifier. ET TOUT ENTIER EST UNE FRACTION : 4 s\'écrit 4/1, son inverse est donc 1/4. C\'est là qu\'on bloque, parce qu\'on ne voit pas de fraction à retourner.'
+    },
+    'num.frac.division': {
+        label: 'Diviser par une fraction',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.frac.inverse'],
+        descriptor: 'Diviser une fraction par une fraction ou un entier, et reconnaître une division dans un problème de partage.',
+        lesson: 'DIVISER PAR UN NOMBRE, C\'EST MULTIPLIER PAR SON INVERSE. On garde la première fraction telle quelle, on retourne LA SECONDE, et on multiplie : 3/4 ÷ 2/3 = 3/4 × 3/2 = 9/8. On ne retourne que la seconde — retourner les deux est la faute la plus fréquente du chapitre. Et attention au sens : diviser ne rend pas toujours plus petit. Quand le diviseur est inférieur à 1, le résultat est plus GRAND que le nombre de départ ; « combien de demis dans 3 ? » en fait six.'
     },
     'num.frac.multiplication': {
         label: 'Multiplier deux fractions',
@@ -205,6 +342,186 @@ const BASE = {
             + 'C\'est pour cela qu\'on décompose avant : la méthode tient encore quand les '
             + 'nombres grandissent.'
     },
+    // --- Chapitre « Ensembles et intervalles » (2de) ---
+    //
+    // TROIS COMPÉTENCES ET NON UNE, parce que ce sont trois gestes distincts et
+    // qu'un élève peut en tenir un sans les autres. Celui qui LIT un axe sans
+    // hésiter écrit souvent ]2 ; 5[ pour [2 ; 5[ ; celui qui écrit juste ne
+    // sait pas toujours retrouver le dessin. Le bilan par compétence doit le
+    // dire au professeur, sinon il refait travailler les trois pour un seul.
+    'nb.intervalle.lire': {
+        label: 'Lire et représenter un intervalle sur un axe',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        // `num.relatifs.sens` et non un identifiant inventé : j'avais écrit
+        // `num.relatifs.comparaison`, qui n'existe pas. Un prérequis fantôme ne
+        // lève aucune erreur — il rend seulement la remédiation muette, ce qui
+        // est exactement ce qu'on ne verrait jamais.
+        prereqs: ['num.relatifs.sens'],
+        descriptor: 'Passer de la droite graduée à l\'intervalle, et retrouver le dessin à partir de l\'écriture.',
+        lesson: 'Un crochet tourné VERS L\'INTÉRIEUR prend la borne ; tourné vers l\'extérieur, il la laisse dehors. Vers l\'infini on dessine une flèche : on ne s\'arrête jamais.'
+    },
+    'nb.intervalle.ecrire': {
+        label: 'Écrire un intervalle avec les bons crochets',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        prereqs: ['nb.intervalle.lire'],
+        descriptor: 'Écrire l\'intervalle correspondant à une inégalité ou à un dessin, crochets compris.',
+        lesson: 'Du plus petit vers le plus grand. Crochet fermé [ ou ] quand la borne est PRISE, ouvert quand elle est laissée. Et le crochet de l\'infini est toujours ouvert : l\'infini n\'est pas un nombre, on ne l\'atteint jamais.'
+    },
+    'nb.intervalle.inegalite': {
+        label: 'Traduire un intervalle en inégalité',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        prereqs: ['nb.intervalle.lire'],
+        descriptor: 'Écrire la condition sur x — avec ⩽ ou < selon que la borne est prise ou non.',
+        lesson: '⩽ se lit « inférieur OU ÉGAL » : il prend la borne. < la laisse. [2 ; 5[ s\'écrit donc 2 ⩽ x < 5.'
+    },
+    'nb.intervalle.ensembliste': {
+        label: 'Union et intersection de deux intervalles',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        // Savoir ÉCRIRE un intervalle est le prérequis, pas savoir le lire :
+        // la réponse à « I ∩ J » est une écriture, crochets compris.
+        prereqs: ['nb.intervalle.ecrire'],
+        descriptor: 'Trouver la partie commune à deux intervalles, et leur réunion — y compris quand elle est vide ou en deux morceaux.',
+        lesson: '∩ garde ce qui est dans les DEUX ; ∪ garde ce qui est dans l\'un OU l\'autre. À une borne partagée, l\'intersection prend le crochet le plus SÉVÈRE et l\'union le plus GÉNÉREUX. Une intersection peut être vide (∅), et une union peut rester en deux morceaux.'
+    },
+    // ── LA VALEUR ABSOLUE, DEUX COMPÉTENCES ET NON UNE ──────────────────
+    //
+    // Elles se tiennent, mais un élève peut tenir la première sans la seconde,
+    // et le bilan doit le dire. Celui qui LIT « |x + 4| » comme la distance à
+    // −4 peut encore dessiner le segment du mauvais côté du crochet ; celui
+    // qui dessine juste par habitude ne sait pas forcément ce qu'il dessine.
+    // Les confondre ferait refaire travailler la lecture à qui ne rate que le
+    // crochet — la faute du chapitre PRÉCÉDENT.
+    'nb.valeur-absolue.distance': {
+        label: 'Lire |x − a| comme une distance',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        prereqs: ['num.relatifs.sens'],
+        descriptor: 'Reconnaître le centre : |x − a| est la distance entre x et a, et |x + 4| celle entre x et −4.',
+        lesson: 'Deux barres autour d\'une différence, c\'est une DISTANCE : |7 − 2| = 5, et 5 est bien ce qui sépare 2 de 7 sur la droite graduée. Le piège tient en un signe : |x + 4| s\'écrit aussi |x − (−4)|, donc son centre est −4, pas 4.'
+    },
+    'nb.valeur-absolue.representer': {
+        label: 'Représenter |x − a| ⋈ r sur un axe',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        // Lire la distance d'abord : sans le centre, il n'y a rien à dessiner.
+        // Et les crochets viennent du chapitre des intervalles, où ils se
+        // travaillent seuls.
+        prereqs: ['nb.valeur-absolue.distance', 'nb.intervalle.lire'],
+        descriptor: 'Dessiner l\'ensemble des x : deux points pour une égalité, un segment centré pour ⩽, deux morceaux pour ⩾.',
+        lesson: 'Le centre, puis le rayon, puis le signe. |x − a| = r donne DEUX nombres, a − r et a + r, et rien entre eux. |x − a| ⩽ r donne le segment centré sur a, de rayon r des deux côtés. |x − a| ⩾ r donne le contraire : ce qui est LOIN de a, donc deux morceaux et un trou au milieu.'
+    },
+    'nb.fractions.calculer': {
+        label: 'Calculer une expression avec des fractions',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.SECONDE],
+        // QUATRIÈME PRÉREQUIS FANTÔME DE LA SEMAINE, et j'écris le compte
+        // parce qu'il dit quelque chose : j'avais posé
+        // `frac.addition.denominateurs`, qui n'existe pas — comme
+        // `lit.developper.simple` hier et `num.relatifs.comparaison` avant.
+        // La cause est toujours la même : j'invente un identifiant qui SONNE
+        // juste au lieu d'ouvrir la liste. Et rien ne tombe : un prérequis
+        // fantôme ne lève aucune erreur, il rend seulement la remédiation
+        // muette — l'élève en difficulté ne se voit jamais proposer ce qui
+        // lui manque, et c'est précisément ce qu'on ne verrait jamais.
+        //
+        // Les deux vrais prérequis, lus dans la liste : mettre au même
+        // dénominateur, et multiplier deux fractions. Tout le reste de ce
+        // chapitre de Seconde s'appuie dessus.
+        prereqs: ['num.frac.denominateur-commun', 'num.frac.multiplication'],
+        descriptor: 'Mener un calcul à plusieurs étages — parenthèses, priorités, fraction de fractions — et donner un résultat réduit.',
+        lesson: 'Un dénominateur COMMUN pour additionner, jamais la somme des dénominateurs. Pour multiplier, on simplifie AVANT. Diviser, c\'est multiplier par l\'inverse. Et la grande barre d\'une fraction de fractions est une division : on calcule le haut, puis le bas, puis on divise.'
+    },
+    'lit.developper.simple': {
+        label: 'Développer avec la distributivité simple',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        // `num.litteral.reduire` — VÉRIFIÉ DANS LA LISTE. Qui ne sait pas que
+        // 3 × x s'écrit 3x ne peut pas écrire le résultat d'une distribution,
+        // et qui ne sait pas réduire ne peut pas finir le barreau 5.
+        prereqs: ['num.litteral.reduire'],
+        descriptor: 'Ouvrir une parenthèse précédée d\'un facteur, en multipliant CHAQUE terme, et réduire ce qu\'on obtient.',
+        lesson: 'k(a + b) = ka + kb. LE FACTEUR MULTIPLIE TOUT CE QUI EST DANS LA PARENTHÈSE, pas seulement le premier terme : c\'est la faute qui coûte le plus cher, et le dessin la montre. Car la distributivité EST une aire : 3(x + 2) est un rectangle de hauteur 3 et de largeur x + 2 ; on le coupe en deux morceaux, 3x et 6, et leur somme est l\'aire entière parce qu\'on a découpé sans rien changer. Un signe moins dans la parenthèse est un morceau qu\'on RETIRE ; un facteur négatif change le signe des DEUX morceaux — −2(x − 5) = −2x + 10, et le second devient positif.',
+        // Note : cet identifiant avait été écrit par erreur, puis retiré, avant
+        // d'exister vraiment. Il existe maintenant, et un test balaie tout le
+        // registre pour qu'aucun prérequis ne redevienne fantôme.
+    },
+    'lit.developper.double': {
+        label: 'Développer un produit de deux parenthèses',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.TROISIEME, N.SECONDE],
+        prereqs: ['lit.developper.simple', 'num.litteral.puissances'],
+        descriptor: 'Multiplier deux parenthèses terme à terme — quatre produits — puis réunir ceux qui portent le même x.',
+        lesson: '(a + b)(c + d) = ac + ad + bc + bd : QUATRE produits, pas deux. Le rectangle est coupé dans les deux sens, et les deux morceaux du MILIEU sont ceux qu\'on oublie — (x + 2)(x + 3) ne fait pas x² + 6, il fait x² + 5x + 6. Chaque case prend le signe du produit de ses deux bords : deux bords négatifs donnent une case POSITIVE, et c\'est là que le dessin vaut mieux qu\'une règle. Deux cas se reconnaissent ensuite à l\'œil : (x + a)² a un double produit au milieu — x² + 2ax + a², jamais x² + a² — et (x − a)(x + a) voit ses deux cases du milieu s\'annuler, ce qui ne laisse que x² − a². Ce dernier est l\'identité qu\'on utilise à l\'envers pour factoriser.'
+    },
+    'lit.factoriser.identite': {
+        label: 'Factoriser avec a² − b²',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.SECONDE],
+        // `num.litteral.reduire` ET NON UN IDENTIFIANT INVENTÉ. J'avais écrit
+        // `lit.developper.simple`, qui n'existe pas — la même faute que
+        // `num.relatifs.comparaison` il y a une semaine. Un prérequis fantôme
+        // ne lève AUCUNE erreur : il rend seulement la remédiation muette,
+        // c'est-à-dire qu'un élève en difficulté ne se voit jamais proposer
+        // ce qui lui manque. C'est exactement ce qu'on ne verrait jamais.
+        //
+        // Et le prérequis réel est bien celui-là : qui ne sait pas réduire
+        // une expression ne peut pas vérifier sa factorisation en la
+        // redéveloppant, donc apprend une règle au lieu d'un raisonnement.
+        prereqs: ['num.litteral.reduire'],
+        descriptor: 'Reconnaître une différence de deux carrés et l\'écrire comme un produit, même quand a et b sont des parenthèses.',
+        lesson: 'a² − b² = (a − b)(a + b). Le piège est de confondre avec (a − b)², qui a un double produit. Pour factoriser, on cherche CE QUI EST AU CARRÉ des deux côtés du moins : dans (6 − 5x)² − 1, a vaut 6 − 5x et b vaut 1.'
+    },
+    'lit.factoriser.commun': {
+        label: 'Factoriser par un facteur commun, même caché',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.SECONDE],
+        prereqs: ['lit.factoriser.identite'],
+        descriptor: 'Sortir ce qui est écrit dans tous les termes — quitte à factoriser un terme d\'abord pour le faire apparaître.',
+        lesson: 'k·A + k·B = k(A + B). Le facteur commun ne se voit pas toujours : x² − 9 cache (x − 3), et −4x + 12 cache −4(x − 3). On factorise d\'abord le morceau qui le dissimule, et le facteur commun apparaît dans tous les termes.'
+    },
+    'nb.racines.simplifier': {
+        label: 'Simplifier une racine carrée',
+        chemin: [D.NUMERIQUE, SD.RACINES],
+        niveaux: [N.SECONDE],
+        // `num.arith.decomposition` — VÉRIFIÉ DANS LA LISTE AVANT D'ÊTRE ÉCRIT.
+        // C'est la quatrième fois dans ce projet qu'un prérequis est inventé de
+        // bonne foi (`num.relatifs.comparaison`, `lit.developper.simple`,
+        // `frac.addition.denominateurs`) ; aucun ne lève d'erreur, ils rendent
+        // seulement la remédiation muette. Un test balaie désormais tout le
+        // registre, mais la vérification se fait d'abord ici.
+        //
+        // Et ce prérequis-là n'est pas décoratif : il EST la méthode. Simplifier
+        // √72, c'est décomposer 72 en facteurs premiers et voir quelles paires
+        // en sortent. Qui ne sait pas décomposer ne peut que reconnaître les
+        // cas qu'il a déjà vus.
+        prereqs: ['num.arith.decomposition'],
+        descriptor: 'Sortir de dessous la racine tout ce qui peut en sortir, et savoir qu\'on a fini.',
+        lesson: 'On décompose le nombre en facteurs premiers : chaque PAIRE de facteurs identiques sort un facteur, ce qui reste seul demeure dedans. √72 = √(2×2×2×3×3) = 2 × 3 × √2 = 6√2. On peut aussi s\'y prendre en plusieurs fois — sortir un carré, puis recommencer sur ce qui reste : c\'est plus long et c\'est juste. On a fini quand il ne reste plus aucun carré sous la racine ; 3√8 est exact mais pas terminé.'
+    },
+    'nb.racines.calculer': {
+        label: 'Calculer avec des racines carrées',
+        chemin: [D.NUMERIQUE, SD.RACINES],
+        niveaux: [N.SECONDE],
+        prereqs: ['nb.racines.simplifier'],
+        descriptor: 'Multiplier, additionner et diviser des racines — et ne pas distribuer la racine sur une somme.',
+        lesson: '√a × √b = √(ab) et √a ÷ √b = √(a/b) : la racine traverse le produit et le quotient. Elle NE TRAVERSE PAS l\'addition — √(9 + 16) = √25 = 5, et non 3 + 4 = 7 ; on a toujours √(a+b) < √a + √b. Pour additionner, il faut d\'abord simplifier : 2√8 + √18 = 4√2 + 3√2 = 7√2. Et l\'on ne laisse pas de racine au dénominateur : on multiplie en haut et en bas par cette racine.'
+    },
+    'nb.ensembles.appartenance': {
+        label: 'Le plus petit ensemble de nombres',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        // Le vrai prérequis n'est pas une définition, c'est de savoir CALCULER
+        // avant de classer : √64 vaut 8, −18/3 vaut −6. Sans cela on répond à
+        // la forme écrite au lieu de la valeur.
+        prereqs: ['nb.intervalle.lire'],
+        descriptor: 'Reconnaître si un nombre est entier, décimal, rationnel ou seulement réel — après l\'avoir calculé.',
+        lesson: 'ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ : chaque ensemble contient le précédent. On calcule D\'ABORD : √64 = 8 est un entier, pas un irrationnel. Un décimal est un nombre dont l\'écriture décimale S\'ARRÊTE ; 1/3 = 0,333… ne s\'arrête pas, mais reste un quotient d\'entiers, donc rationnel.'
+    },
+
     // --- Chapitre « Nombres entiers et décimaux » (6ᵉ) ---
     'num.ecriture.lettres': {
         label: 'Écrire un nombre en chiffres et en lettres',
@@ -229,6 +546,37 @@ const BASE = {
         prereqs: ['num.numeration.rang'],
         descriptor: 'Distinguer la partie entière de la partie décimale d\'un nombre.',
         lesson: 'Pour 125,16 : 125 est la partie entière, 0,16 la partie décimale. Un nombre entier a une partie décimale nulle.'
+    },
+    'num.decimal.fraction': {
+        label: 'Fraction décimale et écriture à virgule',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.SIXIEME],
+        prereqs: ['num.numeration.rang'],
+        descriptor: 'Passer de 3,5 à 35/10 et de 35/10 à 3,5.',
+        lesson: 'Un nombre à virgule EST une fraction décimale : ce sont deux écritures du '
+            + 'même nombre, pas deux nombres. 3,5 se lit « trente-cinq dixièmes », et '
+            + 'c\'est exactement 35/10. Pour passer de la virgule à la fraction, on compte '
+            + 'les chiffres APRÈS la virgule : un chiffre, c\'est un dénominateur 10 ; deux '
+            + 'chiffres, 100 ; trois, 1000 — et le numérateur est le nombre écrit sans sa '
+            + 'virgule. Ainsi 3,5 = 35/10, 3,05 = 305/100, et 0,7 = 7/10. Dans l\'autre '
+            + 'sens, le dénominateur dit combien de chiffres mettre après la virgule : '
+            + '305/100 a deux zéros, donc deux décimales, donc 3,05. Attention au zéro qui '
+            + 'tient le rang : 7/100 n\'est pas 0,7 mais 0,07.'
+    },
+    'num.decimal.argent': {
+        label: 'Écrire un prix en euros',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.SIXIEME],
+        prereqs: ['num.numeration.rang'],
+        descriptor: 'Écrire en euros un montant donné en centimes, et compter un tas de pièces.',
+        lesson: 'Il faut CENT centimes pour faire un euro : un centime est donc un '
+            + 'CENTIÈME d\'euro, et le prix s\'écrit avec DEUX chiffres après la virgule. '
+            + '7 centimes, c\'est 7 centièmes : le 7 va dans la colonne des centièmes, et '
+            + 'la colonne des dixièmes, qui reste vide, reçoit un zéro — 0,07 €. Écrire '
+            + '0,7 € voudrait dire 7 dixièmes d\'euro, c\'est-à-dire 70 centimes. Dans '
+            + 'l\'autre sens : 70 centimes, ce sont 7 dixièmes, donc 0,70 €. Et quand il y '
+            + 'a des euros devant, rien ne change à droite de la virgule : 2 € et 5 '
+            + 'centimes font 2,05 €, pas 2,5 €.'
     },
     'num.decimal.zeros': {
         label: 'Zéros inutiles',
@@ -325,6 +673,34 @@ const BASE = {
         descriptor: 'Trouver un diviseur d\'un nombre, et le casser jusqu\'à ses facteurs premiers.',
         lesson: 'Un nombre PREMIER n\'a que deux diviseurs : 1 et lui-même. Tous les autres se cassent : 60 = 4 × 15 = 4 × 3 × 5 = 2 × 2 × 3 × 5. On s\'arrête quand il ne reste que des premiers — et l\'on trouve toujours les mêmes, quel que soit l\'ordre où l\'on s\'y prend.'
     },
+    // ── LE PGCD ET LE PPCM, DEUX COMPÉTENCES ET NON UNE ────────────────────
+    //
+    // RÉMY : « J'aimerai bien des exercices pour décomposer un nombre et pgcd
+    // et ppcm niveau 3ème. Des exercices d'application direct et des petits
+    // problèmes ».
+    //
+    // DEUX ENTRÉES PARCE QUE L'ÉCHEC EST DIFFÉRENT. Un élève qui calcule très
+    // bien les deux et qui, devant un problème, prend le PGCD là où il fallait
+    // le PPCM a zéro — et son bilan doit le DIRE, sinon le professeur relit
+    // « n'a pas acquis le PGCD » pour quelqu'un qui le calcule parfaitement.
+    // Une compétence unique « PGCD et PPCM » mélangerait les deux diagnostics
+    // en un seul, qui n'en est plus un.
+    'num.arith.pgcd': {
+        label: 'PGCD : partager en parts égales',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.TROISIEME],
+        prereqs: ['num.arith.decomposition'],
+        descriptor: 'Calculer un PGCD, et reconnaître un problème qui en demande un.',
+        lesson: 'Le PGCD se lit sur les deux décompositions : on garde les facteurs COMMUNS, au plus PETIT exposant. Il DIVISE les deux nombres, donc il est plus petit qu\'eux. Dans un problème, il arrive quand on PARTAGE en parts égales sans qu\'il reste rien — le nombre de parts divise les deux quantités.'
+    },
+    'num.arith.ppcm': {
+        label: 'PPCM : quand deux rythmes se retrouvent',
+        chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
+        niveaux: [N.TROISIEME],
+        prereqs: ['num.arith.decomposition'],
+        descriptor: 'Calculer un PPCM, et reconnaître un problème qui en demande un.',
+        lesson: 'Le PPCM se lit sur les deux décompositions : on garde TOUS les facteurs, au plus GRAND exposant. Il est un MULTIPLE des deux nombres, donc plus grand qu\'eux. Dans un problème, il arrive quand on ATTEND que deux cycles retombent ensemble, ou qu\'on AGRANDIT jusqu\'à ce que ça tombe juste.'
+    },
     'num.vocabulaire.multiples': {
         label: 'Double, triple, moitié, tiers',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],
@@ -360,6 +736,35 @@ const BASE = {
         prereqs: ['geo.notation.ecrire'],
         descriptor: 'Retrouver le dessin que désigne [AB], (AB) ou [AB).',
         lesson: 'Dans [AB), le premier point nommé est l\'ORIGINE : le trait s\'arrête en A et continue au-delà de B. [BA) est une autre demi-droite.'
+    },
+    // ── LES TROIS NOTIONS DE SA FICHE « ÉLÉMENTS DE GÉOMÉTRIE » ─────────────
+    //
+    // Elles manquaient toutes les trois, et l'appartenance tient une page
+    // entière de sa fiche. Elles s'appuient sur la notation : on ne peut pas
+    // dire si un point est sur [AB] avant de savoir ce qu'est [AB].
+    'geo.appartenance': {
+        label: 'Dire si un point appartient à une droite, un segment, une demi-droite',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.notation.lire'],
+        descriptor: 'Écrire A ∈ (BC) ou A ∉ (BC) en lisant une figure.',
+        lesson: 'Un point peut être sur la DROITE sans être sur le SEGMENT : le segment s\'arrête à ses deux extrémités, la droite ne s\'arrête jamais. Et [AB) part de A : un point de l\'autre côté de A n\'y est pas.'
+    },
+    'geo.codage.lire': {
+        label: 'Lire un codage',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.notation.ecrire'],
+        descriptor: 'Dire quelles égalités de longueurs un codage donne.',
+        lesson: 'Deux segments qui portent la même marque ont la même longueur. On écrit AB = CD, sans crochets : [AB] est un objet, AB est un nombre — sa longueur.'
+    },
+    'geo.milieu': {
+        label: 'Reconnaître le milieu d\'un segment',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.codage.lire', 'geo.appartenance'],
+        descriptor: 'Dire si un point est le milieu d\'un segment, et pourquoi.',
+        lesson: 'Le milieu de [AB] demande DEUX choses : être SUR le segment, et être à égale distance de A et de B. Un point équidistant de A et de B qui n\'est pas sur [AB] n\'en est pas le milieu.'
     },
     'geo.notation.dire': {
         label: 'Lire une notation en toutes lettres',
@@ -484,6 +889,14 @@ const BASE = {
         descriptor: 'R\u00e9soudre un probl\u00e8me en le ramenant au m\u00eame probl\u00e8me avec un objet de moins, et compter les \u00e9tapes qui en r\u00e9sultent.',
         lesson: "IL Y A DES PROBL\u00c8MES QU'ON NE R\u00c9SOUT PAS EN AVAN\u00c7ANT, MAIS EN RECULANT. Pour amener quatre boules \u00e0 droite, inutile de chercher le premier coup : demande-toi plut\u00f4t ce qu'il faut AVANT de pouvoir d\u00e9placer la plus grosse. Il faut que le conduit de droite soit libre, donc que les trois autres boules soient ailleurs \u2014 et te voil\u00e0 avec le m\u00eame probl\u00e8me, une boule de moins. C'est cela, r\u00e9currer : ramener un probl\u00e8me \u00e0 lui-m\u00eame en plus petit, jusqu'\u00e0 un cas si simple qu'il n'y a plus rien \u00e0 faire \u2014 ici, UNE boule, qu'on pose directement. Le compte suit la m\u00eame logique : d\u00e9placer n boules co\u00fbte deux fois ce que co\u00fbtent n \u2212 1 boules, plus un coup pour la grosse. D'o\u00f9 1, 3, 7, 15, 31, 63 \u2014 le double plus un \u00e0 chaque fois, c'est-\u00e0-dire 2\u207f \u2212 1. Avec les soixante-quatre disques de la l\u00e9gende, cela fait plus de cinq cents milliards d'ann\u00e9es."
     },
+    'defi.trefles': {
+        label: 'Chercher en balayant, au lieu de chercher au hasard',
+        chemin: [D.DEFIS, SD.CASSE_TETE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Retrouver quelques formes différentes au milieu de deux cents semblables, en parcourant la page avec méthode plutôt qu’au hasard.',
+        lesson: "CE N'EST PAS UN EXERCICE DE MATHÉMATIQUES, ET POURTANT IL S'Y JOUE QUELQUE CHOSE QU'ON TRAVAILLE TOUTE L'ANNÉE. Chercher trois trèfles à quatre feuilles parmi deux cents à trois feuilles, au hasard, prend une éternité : on repasse vingt fois au même endroit sans le savoir, et l'on saute des zones entières. Les chercher LIGNE PAR LIGNE, de gauche à droite, prend trente secondes — et l'on sait, à la fin, qu'on a tout regardé. C'est exactement le geste qui manque à l'élève qui compte une collection en désordre : il en oublie, ou il en compte deux fois, et il ne peut pas dire lequel des deux. La leçon tient en une phrase : QUAND IL Y A BEAUCOUP DE CHOSES À REGARDER, CE N'EST PAS L'ŒIL QUI DÉCIDE, C'EST LE PARCOURS. On choisit un ordre, on s'y tient, et l'on n'a plus besoin de se souvenir de ce qu'on a déjà vu."
+    },
     'defi.grenouilles': {
         label: 'Anticiper un coup qui bloque tout',
         chemin: [D.DEFIS, SD.CASSE_TETE],
@@ -531,6 +944,22 @@ const BASE = {
         prereqs: [],
         descriptor: 'Retrouver une suite de couleurs cach\u00e9e \u00e0 partir du nombre de jetons bien plac\u00e9s et mal plac\u00e9s.',
         lesson: "ON NE DEVINE PAS UN CODE, ON L'\u00c9LIMINE. Au d\u00e9part il y a beaucoup de codes possibles \u2014 1296 pour quatre cases et six couleurs \u2014 et chaque r\u00e9ponse en supprime une partie. Le bon r\u00e9flexe n'est donc pas « quel code est-ce ? » mais « lesquels sont encore possibles ? ». Trois id\u00e9es suffisent. D'abord, le PREMIER essai ne sert pas \u00e0 trouver, il sert \u00e0 savoir : deux couleurs seulement, et la r\u00e9ponse dit d\u00e9j\u00e0 combien il y en a de chacune. Ensuite, le total \u00ab bien plac\u00e9s + mal plac\u00e9s \u00bb ne parle QUE des couleurs, pas des places : s'il vaut 2, il y a exactement deux jetons de ces couleurs-l\u00e0 dans le code, o\u00f9 qu'ils soient. Enfin, une r\u00e9ponse \u00e0 z\u00e9ro est la plus pr\u00e9cieuse de toutes : elle raye d'un coup toutes les couleurs de cette ligne. Attention \u00e0 un pi\u00e8ge : quand une couleur para\u00eet deux fois dans ta proposition mais une seule fois dans le code, elle ne compte qu'une fois \u2014 chaque jeton cach\u00e9 ne sert qu'\u00e0 un jeton propos\u00e9."
+    },
+    'num.dec.encadrer': {
+        label: 'Encadrer un d\u00e9cimal entre deux graduations',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Dire entre quelles graduations tombe un nombre \u00e0 virgule.',
+        lesson: "UNE ERREUR TR\u00c8S PR\u00c9CISE, ET C'EST PRESQUE TOUJOURS LA M\u00caME : on lit ce qu'il y a apr\u00e8s la virgule comme un nombre entier. 3,15 devient « trois et quinze », donc on le place vers 3,5, ou m\u00eame apr\u00e8s 3,9. Or apr\u00e8s la virgule, chaque chiffre a sa place et son nom : le PREMIER dit les dixi\u00e8mes, le deuxi\u00e8me les centi\u00e8mes, le troisi\u00e8me les milli\u00e8mes. Pour savoir entre quels dixi\u00e8mes tombe un nombre, il suffit donc de regarder LE PREMIER chiffre apr\u00e8s la virgule, et rien d'autre : 3,15 commence par 1, il est donc entre 3,1 et 3,2 \u2014 quoi qu'il y ait derri\u00e8re. Le m\u00eame raisonnement d'un cran plus fin : pour les centi\u00e8mes on regarde les DEUX premiers chiffres, 3,157 est entre 3,15 et 3,16. Et une v\u00e9rification qui ne trompe jamais : le nombre cherch\u00e9 doit \u00eatre plus grand que la borne de gauche et plus petit que celle de droite. Si ce n'est pas le cas, ce n'est pas le bon intervalle. Attention enfin aux n\u00e9gatifs, o\u00f9 tout se renverse : \u22124,7 est \u00c0 GAUCHE de \u22124,6, parce que plus on descend, plus c'est petit."
+    },
+    'num.logique.enquete': {
+        label: 'Déduire sur un plan',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Placer des personnages sur un quadrillage à partir d\'indices de position.',
+        lesson: "DEUX RÈGLES, ET ELLES NE BOUGENT JAMAIS : un seul personnage par rangée, un seul par colonne. Poser quelqu'un, c'est donc interdire toute une rangée et toute une colonne à tous les autres — c'est là qu'est la force de ce jeu, et c'est la première chose à se dire. Ensuite, le vocabulaire du plan : le nord est en HAUT, le sud en bas, l'ouest à gauche, l'est à droite ; « à côté » veut dire par un côté, jamais en diagonale ; et le nombre de pas se compte en se déplaçant comme dans un couloir — deux cases à droite et une en bas font trois pas, pas un. Enfin la méthode, qui est celle de tous les jeux de déduction : on n'écrit que ce qui est CERTAIN. Devant un indice, on ne cherche pas où quelqu'un est, on cherche où il NE PEUT PAS être, et l'on barre. Quand il ne reste qu'une case pour quelqu'un, ou qu'une personne pour une case, c'est gagné — même si aucun indice ne l'a dit en toutes lettres. Et si rien ne s'impose, ce n'est jamais qu'il faut deviner : c'est qu'un indice n'a pas encore été croisé avec un autre."
     },
     'num.logique.logigramme': {
         label: 'Déduire dans un logigramme',
@@ -736,7 +1165,20 @@ const BASE = {
         niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
         prereqs: [],
         descriptor: 'Tracer l\'image d\'une figure par une symétrie axiale, sur quadrillage.',
-        lesson: 'Le miroir. On travaille CASE PAR CASE : pour chacune, on compte les carreaux qui la séparent de l\'axe, et on reporte le même nombre de l\'autre côté. Attention, le miroir INVERSE l\'ordre : la case la plus proche de l\'axe reste la plus proche, donc la figure se retourne. Un axe vertical échange la gauche et la droite sans rien changer aux lignes ; un axe horizontal échange le haut et le bas sans rien changer aux colonnes ; un axe à 45° échange la ligne et la colonne, donc ce qui était couché se retrouve debout.'
+        lesson: 'Le miroir. On travaille CASE PAR CASE : pour chacune, on compte les carreaux qui la séparent de l\'axe, et on reporte le même nombre de l\'autre côté. Attention, le miroir INVERSE l\'ordre : la case la plus proche de l\'axe reste la plus proche, donc la figure se retourne. Un axe vertical échange la gauche et la droite sans rien changer aux lignes ; un axe horizontal échange le haut et le bas sans rien changer aux colonnes ; un axe à 45° échange la ligne et la colonne, donc ce qui était couché se retrouve debout.',
+        // LE CROQUIS : un exemple FAIT, là où la leçon décrit. Rémy : « il faut
+        // que tant que faire se peut que ce soit visuel pour les explications ».
+        // L'image n'est pas écrite ici — elle est calculée par le code qui
+        // corrige l'exercice (voir `croquisHtml` dans `ui/leconHtml.js`) : des
+        // coordonnées recopiées à la main finiraient par contredire la
+        // correction, et c'est la leçon qui aurait l'air d'avoir raison.
+        croquis: {
+            largeur: 9, hauteur: 7,
+            depart: [[2, 3], [2, 4], [2, 5], [3, 5]],
+            transfo: { genre: 'axiale', axe: { type: 'v', a: 5 } },
+            repere: [2, 3],
+            legende: 'La case marquée est à 3 carreaux de l\'axe : son image aussi, de l\'autre côté, sur la même ligne.'
+        }
     },
     'geo.transfo.centrale': {
         label: 'Tracer un symétrique par rapport à un point',
@@ -744,7 +1186,14 @@ const BASE = {
         niveaux: [N.CINQUIEME, N.QUATRIEME],
         prereqs: ['geo.transfo.axiale'],
         descriptor: 'Tracer l\'image d\'une figure par une symétrie centrale, sur quadrillage.',
-        lesson: 'Le demi-tour. Chaque case part vers le centre O et continue de l\'autre côté, à la même distance : si une case est 3 carreaux à droite et 2 au-dessus de O, son image est 3 carreaux à gauche et 2 au-dessous. La figure se retrouve à l\'envers DANS LES DEUX SENS À LA FOIS — c\'est ce qui la distingue du miroir, qui n\'en retourne qu\'un. Autre nom du même geste : la rotation d\'un demi-tour.'
+        lesson: 'Le demi-tour. Chaque case part vers le centre O et continue de l\'autre côté, à la même distance : si une case est 3 carreaux à droite et 2 au-dessus de O, son image est 3 carreaux à gauche et 2 au-dessous. La figure se retrouve à l\'envers DANS LES DEUX SENS À LA FOIS — c\'est ce qui la distingue du miroir, qui n\'en retourne qu\'un. Autre nom du même geste : la rotation d\'un demi-tour.',
+        croquis: {
+            largeur: 9, hauteur: 7,
+            depart: [[2, 3], [2, 4], [2, 5], [3, 5]],
+            transfo: { genre: 'centrale', centre: { x: 5, y: 4 } },
+            repere: [2, 3],
+            legende: 'La case marquée est à 3 carreaux à gauche de O et 1 au-dessus ; son image est à 3 à droite et 1 au-dessous. Tout se retourne, dans les deux sens à la fois.'
+        }
     },
     'geo.transfo.translation': {
         label: 'Tracer l\'image par une translation',
@@ -752,7 +1201,14 @@ const BASE = {
         niveaux: [N.QUATRIEME, N.TROISIEME],
         prereqs: ['geo.transfo.axiale'],
         descriptor: 'Tracer l\'image d\'une figure par une translation, sur quadrillage.',
-        lesson: 'Le glissement. TOUTES les cases font exactement le même déplacement — tant de carreaux horizontalement, tant verticalement — et la figure ne tourne pas et ne se retourne pas : elle garde son allure. Le plus sûr est de déplacer UNE case, puis de redessiner la figure autour d\'elle. C\'est la seule des quatre transformations qui ne change rien au sens de la figure.'
+        lesson: 'Le glissement. TOUTES les cases font exactement le même déplacement — tant de carreaux horizontalement, tant verticalement — et la figure ne tourne pas et ne se retourne pas : elle garde son allure. Le plus sûr est de déplacer UNE case, puis de redessiner la figure autour d\'elle. C\'est la seule des quatre transformations qui ne change rien au sens de la figure.',
+        croquis: {
+            largeur: 9, hauteur: 7,
+            depart: [[2, 3], [2, 4], [2, 5], [3, 5]],
+            transfo: { genre: 'translation', vecteur: { x: 4, y: -1 } },
+            repere: [2, 3],
+            legende: 'La flèche part de la case marquée : 4 carreaux à droite et 1 vers le haut. Toutes les autres font exactement le même trajet.'
+        }
     },
     'geo.transfo.rotation': {
         label: 'Tracer l\'image par un quart de tour',
@@ -760,7 +1216,14 @@ const BASE = {
         niveaux: [N.QUATRIEME, N.TROISIEME],
         prereqs: ['geo.transfo.centrale'],
         descriptor: 'Tracer l\'image d\'une figure par une rotation d\'un quart de tour, sur quadrillage.',
-        lesson: 'Le quart de tour fait BASCULER la figure : ce qui était couché se met debout. La règle qui ne trompe pas : repère une case par ses deux écarts au centre O — tant de carreaux en largeur, tant en hauteur — et après un quart de tour ces deux nombres S\'ÉCHANGENT, l\'un d\'eux changeant de signe selon le sens. Et n\'appelle jamais « rotation » un demi-tour : un demi-tour est une symétrie centrale, et les deux mots désignent le même geste.'
+        lesson: 'Le quart de tour fait BASCULER la figure : ce qui était couché se met debout. La règle qui ne trompe pas : repère une case par ses deux écarts au centre O — tant de carreaux en largeur, tant en hauteur — et après un quart de tour ces deux nombres S\'ÉCHANGENT, l\'un d\'eux changeant de signe selon le sens. Et n\'appelle jamais « rotation » un demi-tour : un demi-tour est une symétrie centrale, et les deux mots désignent le même geste.',
+        croquis: {
+            largeur: 9, hauteur: 7,
+            depart: [[2, 3], [2, 4], [2, 5], [3, 5]],
+            transfo: { genre: 'rotation', centre: { x: 5, y: 5 }, quarts: 1 },
+            repere: [2, 3],
+            legende: 'La case marquée est à 3 carreaux à gauche de O et 2 au-dessus ; son image est à 2 à droite et 3 au-dessus. Les deux nombres se sont échangés.'
+        }
     },
     'geo.transfo.quart-tour': {
         label: 'Anticiper un quart de tour',
@@ -851,6 +1314,14 @@ const BASE = {
         prereqs: ['mes.heure.lire'],
         descriptor: 'Placer les deux aiguilles d\'une pendule sur une heure donnée, y compris en 24 heures.',
         lesson: 'On place d\'abord la GRANDE aiguille : les minutes divisées par 5 donnent le nombre visé (35 min → le 7). Puis la petite sur l\'heure. Elle ne reste pas pile sur le nombre : les minutes l\'entraînent vers le suivant, et c\'est ainsi qu\'une pendule fonctionne. Pour une heure de l\'après-midi, on retire 12 : 15 h se place comme 3 h.'
+    },
+    'mes.duree.calcul': {
+        label: 'Calculer avec des durées',
+        chemin: [D.GRANDEURS, SD.DUREES],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['mes.heure.lire'],
+        descriptor: 'Additionner et soustraire des durées, et passer des minutes aux heures.',
+        lesson: 'LA RETENUE NE VAUT PLUS DIX, ELLE VAUT SOIXANTE, et c\'est tout le chapitre. 1 h 45 + 2 h 30 : les heures font 3, les minutes font 75 — mais 75 minutes ne s\'écrivent pas. Ce sont 1 h 15, et cette heure-là se reporte : le résultat est 4 h 15. Dans l\'autre sens, on EMPRUNTE soixante minutes et non dix. Et pour passer de minutes à heures, on fait une division euclidienne par 60 : le quotient donne les heures, le reste donne les minutes. C\'est le seul endroit du programme où l\'on calcule dans une base qui n\'est pas dix — ce qu\'on y apprend resservira pour les angles.'
     },
     'num.relatifs.sens': {
         label: 'Comprendre un nombre relatif (position et déplacement)',
@@ -1142,6 +1613,74 @@ const BASE = {
         descriptor: 'Retrouver les valeurs manquantes d\'un tableau croisé en bouclant, une par une, les lignes et les colonnes où il ne manque qu\'une information.',
         lesson: 'Dans un tableau à double entrée, chaque ligne se termine par son total et chaque colonne aussi ; la case du coin porte le total général, et on l\'obtient aussi bien en additionnant la dernière colonne que la dernière ligne. Pour le compléter, on ne commence JAMAIS par la première case vide : on cherche la ligne ou la colonne où il ne manque qu\'UNE SEULE information. Si la case qui manque est un total, on additionne le reste de la ligne ; si elle est dans le corps du tableau, on part du total et on retire ce qui est déjà écrit. Le nombre qu\'on vient d\'écrire en ouvre alors d\'autres, et de proche en proche tout se remplit — sans jamais deviner. À la fin, on vérifie : la dernière ligne et la dernière colonne doivent toutes deux tomber sur le total général.'
     },
+    // ── STATISTIQUES ET PROBABILITÉS ───────────────────────────────────────
+    //
+    // RÉMY, progression de quatrième : « Statistique (Médiane, moyenne,
+    // étendue, fréquence: listes) » et « Probabilités ». Deux chapitres sans
+    // une seule compétence déclarée jusqu'ici.
+    //
+    // QUATRE COMPÉTENCES POUR LES STATISTIQUES, ET NON UNE. Un élève qui
+    // calcule très bien une moyenne et se trompe de médiane n'a pas « raté les
+    // statistiques » : il a raté UNE chose, et c'est toujours la même — on ne
+    // range pas la série avant de chercher le milieu. Un bilan qui dit
+    // « statistiques : non acquis » ne lui apprend rien ; un bilan qui dit
+    // « médiane : non acquis » lui dit quoi relire.
+    'don.stat.lire': {
+        label: 'Lire une série et son étendue',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Compter l\'effectif d\'une valeur dans une série, et calculer l\'étendue.',
+        lesson: 'L\'EFFECTIF d\'une valeur, c\'est le nombre de fois où elle apparaît. L\'ÉTENDUE, c\'est la plus grande valeur MOINS la plus petite : elle ne dit pas où sont les données, elle dit si elles sont serrées ou éparpillées. Deux classes peuvent avoir la même moyenne et des étendues très différentes — l\'une est régulière, l\'autre pas.'
+    },
+    'don.stat.moyenne': {
+        label: 'Calculer une moyenne',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.stat.lire'],
+        descriptor: 'Calculer la moyenne d\'une série, et retrouver une valeur manquante quand la moyenne est donnée.',
+        lesson: 'La moyenne, c\'est la somme de toutes les valeurs DIVISÉE PAR LEUR NOMBRE. On additionne tout, on divise par combien il y en a — et l\'on n\'oublie aucune valeur, pas même celles qui se répètent. Si la moyenne est donnée et qu\'une valeur manque, on fait le chemin à l\'envers : la somme vaut la moyenne MULTIPLIÉE par le nombre de valeurs, et l\'on retire ce qu\'on connaît déjà.'
+    },
+    'don.stat.mediane': {
+        label: 'Déterminer une médiane',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.stat.lire'],
+        descriptor: 'Ranger une série puis en donner la médiane, série paire comprise.',
+        lesson: 'ON RANGE D\'ABORD. La médiane de 7 ; 2 ; 9 vaut 7, pas 2 : c\'est la valeur du milieu de la série RANGÉE, et prendre le terme du milieu de la liste telle qu\'elle est écrite donne un nombre qui ne veut rien dire. ET SI LA SÉRIE A UN NOMBRE PAIR DE VALEURS, la médiane n\'est pas dans la série : il y a DEUX valeurs au milieu, et la médiane est leur moyenne — pour 10 ; 11 ; 12 ; 13, elle vaut 11,5.'
+    },
+    'don.stat.frequence': {
+        label: 'Calculer une fréquence',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.stat.lire'],
+        descriptor: 'Donner la fréquence d\'une valeur, en pourcentage de l\'effectif total.',
+        lesson: 'La fréquence répond à « quelle PART du total ? », pas à « combien ? ». Trois élèves sur douze, c\'est 3 ÷ 12 = 0,25, donc 25 %. L\'effectif dépend de la taille du groupe ; la fréquence, non — c\'est elle qui permet de comparer deux classes de tailles différentes.'
+    },
+    'don.proba.vocabulaire': {
+        label: 'Le vocabulaire des probabilités',
+        chemin: [D.DONNEES, SD.PROBABILITES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Dire si un événement est certain, impossible ou possible, et reconnaître ce qui peut être une probabilité.',
+        lesson: 'Une probabilité se place entre 0 et 1, bornes comprises. 0, c\'est IMPOSSIBLE ; 1, c\'est CERTAIN ; entre les deux, c\'est possible, et plus le nombre est grand, plus l\'événement a de chances d\'arriver. Un nombre plus grand que 1 — ou négatif — n\'est donc JAMAIS une probabilité, quelle que soit la façon dont on l\'a obtenu : si le calcul en donne un, c\'est le calcul qui est faux.'
+    },
+    'don.proba.calculer': {
+        label: 'Calculer une probabilité',
+        chemin: [D.DONNEES, SD.PROBABILITES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.proba.vocabulaire'],
+        descriptor: 'Donner la probabilité d\'un événement dans une situation d\'équiprobabilité : dé, urne, roue.',
+        lesson: 'Quand toutes les issues ont la même chance, la probabilité d\'un événement est le nombre de cas FAVORABLES divisé par le nombre de cas POSSIBLES. Sur un dé à six faces, obtenir un nombre pair, c\'est 3 cas favorables sur 6 possibles. Le dénominateur ne change pas : c\'est le nombre total d\'issues, et l\'on ne le recompte pas à chaque question.'
+    },
+    'don.proba.contraire': {
+        label: 'L\'événement contraire',
+        chemin: [D.DONNEES, SD.PROBABILITES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.proba.calculer'],
+        descriptor: 'Passer de la probabilité d\'un événement à celle de son contraire.',
+        lesson: 'Un événement arrive, ou il n\'arrive pas : il n\'y a pas de troisième possibilité. Les deux probabilités font donc 1 à elles deux, et celle du contraire vaut 1 MOINS celle de l\'événement. C\'est souvent le chemin le plus court : « au moins une rouge » est long à compter, « aucune rouge » ne l\'est pas.'
+    },
     'geo.cercle.vocabulaire': {
         label: 'Le vocabulaire du cercle',
         // Rangé avec la notation des segments et des droites : c'est le même
@@ -1187,6 +1726,14 @@ const BASE = {
         descriptor: 'Remonter le programme de calcul à l\'envers pour retrouver le nombre de départ.',
         lesson: 'Chercher un antécédent, c\'est faire le chemin INVERSE. Calculer une image consiste à appliquer les opérations dans l\'ordre ; chercher un antécédent consiste à les DÉFAIRE dans l\'ordre inverse, en remplaçant chacune par son contraire. Pour f(x) = 3x − 5, le programme est « multiplie par 3, puis enlève 5 » ; pour remonter de 7, on commence par la fin : on ajoute 5 (on obtient 12), puis on divise par 3 (on obtient 4). Et l\'on vérifie : f(4) = 7. Toujours vérifier — c\'est gratuit, et cela attrape l\'erreur d\'ordre, qui est la plus fréquente.'
     },
+    'alg.fonction.graphique': {
+        label: 'Lire et placer un point de la droite',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['alg.fonction.image', 'geo.repere.relatifs'],
+        descriptor: 'Passer de l\'écriture d\'une fonction affine à son dessin, et retour.',
+        lesson: 'Une fonction affine se DESSINE, et son écriture dit tout du dessin. Les points de coordonnées (x ; f(x)) sont ALIGNÉS : ils forment une DROITE, et deux points suffisent donc à la tracer — le troisième ne sert qu\'à vérifier. Dans « f(x) = ax + b », les deux nombres se LISENT sur le dessin au lieu de se calculer. Le nombre tout seul, b, est l\'ordonnée du point où la droite coupe l\'axe VERTICAL : c\'est f(0), et c\'est le point de départ. Le nombre devant le x, a, est un PAS : un carreau vers la droite, et la droite monte de a carreaux — ou descend, si a est négatif. Avec ces deux-là, on trace sans aucun tableau de valeurs. Et dans l\'autre sens : l\'endroit où la droite coupe l\'axe HORIZONTAL est celui où f(x) = 0, ce qui est une équation à résoudre. Attention à ne pas confondre les deux axes — sur l\'un c\'est l\'abscisse qui est nulle, sur l\'autre c\'est l\'ordonnée.'
+    },
     // LE CHAPITRE « ÉQUATIONS » DE 4e NE DÉCLARAIT AUCUNE COMPÉTENCE.
     //
     // Il n'était pas « à venir » : il était structurellement inatteignable —
@@ -1194,6 +1741,27 @@ const BASE = {
     // peut s'accrocher à rien. La carte des chapitres l'annonçait donc comme
     // une notion « qu'AtoutMath ne couvre pas encore », ce qui resterait vrai
     // même en ajoutant dix exercices d'équations.
+    // TESTER N'EST PAS UNE PETITE RÉSOLUTION, et c'est pour cela que c'est une
+    // compétence à part. Résoudre demande d'isoler l'inconnue — une technique,
+    // avec un ordre de gestes. Tester ne demande rien de tout cela : on
+    // remplace, on calcule, on compare. C'est aussi le geste qui VÉRIFIE une
+    // résolution, celui qu'on ne fait jamais.
+    'alg.equation.tester': {
+        label: 'Tester si un nombre est solution',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Remplacer l\'inconnue par un nombre et dire si l\'égalité est vraie.',
+        lesson: 'Tester ne demande AUCUNE technique : on remplace x par le nombre, on calcule le membre de gauche, on calcule celui de droite, et l\'on regarde s\'ils sont égaux. S\'ils le sont, le nombre est solution ; sinon, il ne l\'est pas. C\'est aussi la façon de VÉRIFIER une résolution — on remplace dans l\'équation de DÉPART, pas dans une ligne intermédiaire, et cela attrape l\'erreur de signe, qui est la plus fréquente.'
+    },
+    'alg.equation.programme': {
+        label: 'Les programmes de calcul',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.litteral.reduire'],
+        descriptor: 'Dérouler un programme de calcul, le remonter à partir du résultat, et l\'écrire avec une lettre.',
+        lesson: 'ON SUIT LES LIGNES DANS L\'ORDRE OÙ ELLES SONT ÉCRITES, et tout le chapitre tient dans cette phrase : « multiplie par 3 puis ajoute 4 » s\'écrit 3x + 4, tandis que « ajoute 4 puis multiplie par 3 » s\'écrit 3(x + 4). Les deux se ressemblent et ne valent jamais la même chose. LES PARENTHÈSES DISENT L\'ORDRE : si l\'on multiplie en premier il n\'en faut pas, si l\'on multiplie en dernier il en faut — sinon la multiplication ne porterait que sur x. Pour REMONTER un programme, on part de la fin et l\'on défait chaque ligne par son contraire : l\'inverse d\'« ajoute 4 » est « retire 4 », celui de « multiplie par 3 » est « divise par 3 ».'
+    },
     'alg.equation.resoudre': {
         label: 'Résoudre une équation du premier degré',
         chemin: [D.NUMERIQUE, SD.LITTERAL],

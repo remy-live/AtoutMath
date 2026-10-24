@@ -53,6 +53,27 @@ const hauteurListe = (lignes, M = MC_DEF) => M.apresTitre + lignes * M.pas;
  * `null` si elle ne tient pas — une colonne de définitions trop haute pour le
  * bloc, par exemple.
  */
+/**
+ * LA CASE N'A PAS BESOIN DE GRANDIR SANS FIN — et c'est ce qui rend la place
+ * aux définitions.
+ *
+ * Rémy : « tu vois le gâchis de place pour les mots croisés ». Une fois le bloc
+ * élargi à la page entière, la recherche de disposition a donné TOUTE la
+ * largeur nouvelle à la grille : elle maximise la taille de case, et une
+ * colonne de texte plus large fait forcément une case plus petite. On obtenait
+ * des cases de neuf millimètres et demi — on y écrit UNE lettre — à côté d'un
+ * ruban de définitions de quatre centimètres, où chaque phrase prenait trois
+ * lignes.
+ *
+ * Huit millimètres, c'est déjà large pour une lettre écrite au stylo : c'est la
+ * taille d'une case de cahier à gros carreaux. Au-delà, la grille ne gagne plus
+ * rien de lisible, et tout ce qu'on lui ajoute est pris au texte. Le plafond
+ * transforme la comparaison : à case égale — et elles le sont toutes, une fois
+ * saturées —, c'est la colonne la plus large qui l'emporte, ce que la règle
+ * juste en dessous dit déjà.
+ */
+export const MC_COTE_MAX = 8;
+
 export function essaiDisposition(b, m, pose) {
     const marge = 2;
     if (pose === 'dessous') {
@@ -63,7 +84,7 @@ export function essaiDisposition(b, m, pose) {
             lignesDefs(m.verticales, demi)));
         const dispoH = b.h - h - 3;
         if (dispoH < 12) return null;
-        const cote = Math.min((b.w - marge) / m.largeur, dispoH / m.hauteur);
+        const cote = Math.min((b.w - marge) / m.largeur, dispoH / m.hauteur, MC_COTE_MAX);
         const w = cote * m.largeur, hg = cote * m.hauteur;
         // LA BANDE BLANCHE ENTRE LA GRILLE ET LES DÉFINITIONS N'A AUCUNE RAISON
         // D'EXISTER. C'était l'autre moitié de « la place perdue » que Rémy
@@ -100,7 +121,7 @@ export function essaiDisposition(b, m, pose) {
         if (h > b.h) continue;
         const dispoW = b.w - largeur - 4;
         if (dispoW < 12) continue;
-        const cote = Math.min(dispoW / m.largeur, (b.h - marge) / m.hauteur);
+        const cote = Math.min(dispoW / m.largeur, (b.h - marge) / m.hauteur, MC_COTE_MAX);
         // À TAILLE DE CASE ÉGALE, LA COLONNE LA PLUS LARGE. La grille ne gagne
         // plus rien à ce qu'on rétrécisse les définitions — elle est alors
         // bornée par la hauteur —, et une colonne étroite coupe les phrases en

@@ -5,13 +5,40 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, echapperSheet, geoQuadrillage, rvbCss
+    ENCRE, champSurLePointille, boiteDe, couperEnLignes, echapperSheet, geoQuadrillage, rvbCss
 } from './socle.js';
 import { SENS as SENS_ROTATION } from '../../core/transformations.js';
 import { caseCentrale } from '../../core/quadrillageSvg.js';
 import { dessinerPiecePdf, direPiece, pieceSvg } from '../piecesEchecs.js';
 import { ecrireElement } from '../../core/elementSymetrie.js';
 import { encre, polycopieEnCouleur, pourPdf } from '../ficheRendu.js';
+// LES TEINTES DES PIÈCES, CELLES DE L'ÉCRAN. Rémy : « Pour les pavages quand
+// c'est couleur pour le poly, mets de la couleur. » On ne refait pas une
+// palette : celle du jeu est déjà choisie claire pour qu'un numéro noir s'y
+// lise, et deux palettes pour le même objet finiraient par diverger.
+import { TEINTES as TEINTES_PIECE } from '../../core/teintesPieces.js';
+// LA CROIX VIENT DU MÊME ENDROIT QUE CELLE DU CERCLE. Rémy : « je te rappelle
+// qu'un point est représenté par une croix » — une règle, et donc un seul
+// code. Le dépôt a payé cinq fois la leçon inverse : une correction posée sur
+// un seul des chemins qui mènent au même endroit ne ferme rien.
+import { branchesCroix } from '../../core/cercleFigure.js';
+
+/**
+ * LA TAILLE D'UNE CROIX DE SOMMET, en millimètres, PRISE SUR LE QUADRILLAGE.
+ *
+ * Celle du cercle (`TAILLE_CROIX`) vaut 3,4 dans le repère de SA figure, qui
+ * fait cent unités de côté — ce n'est pas une mesure de feuille.
+ *
+ * ON A D'ABORD ÉCRIT 1,6 MM FIXES, ET C'ÉTAIT TROP PETIT. Mesuré sur le PDF
+ * du 12 octobre : les carreaux font près de cinq millimètres, et une croix de
+ * 1,6 mm en occupe le tiers — à côté d'une lettre de 2,4 mm, elle ne se lit
+ * plus comme une croix. La moitié du carreau se voit à l'œil nu sans jamais
+ * toucher le sommet voisin ; les bornes gardent les mosaïques très serrées
+ * (croix minuscule) comme les très larges (croix de pancarte).
+ */
+function tailleCroixSommet(g) {
+    return Math.max(1.8, Math.min(g.pas * 0.5, 3.2));
+}
 
 // --- Un repère, plusieurs points --------------------------------------------
 
@@ -70,21 +97,11 @@ const TAILLE_ETIQ_POINT = 0.38;
 function geoRepere(item, slot) {
     const m = item.meta;
     const mini = m.relatifs ? -m.max : 0;
-    const etendue = m.max - mini;
     // Le bas de l'emplacement porte le tableau des points : les coordonnées à
     // placer, ou les cases où écrire celles qu'on a lues.
     const { cols, rows } = grilleDesPoints(m.points.length);
     const hRang = slot.taille * (m.mode === 'placer' ? 0.105 : 0.125);
     const listeH = hRang * rows + slot.taille * 0.03;
-    const cote = slot.taille - listeH;
-    const marge = cote * 0.10;
-    const pas = (cote - 2 * marge) / etendue;
-    const x0 = slot.x + (slot.taille - cote) / 2 + marge;
-    const y0 = slot.y + marge;
-    // LE TABLEAU PREND TOUTE LA LARGEUR DU BLOC, pas seulement celle du repère :
-    // c'est là qu'on écrit, et deux millimètres de plus par case, ce sont deux
-    // millimètres de pointillés en plus.
-    const b = slot.boite || { x: slot.x, w: slot.taille };
     // LE CORPS DU TABLEAU, ÉCRIT UNE FOIS POUR LES DEUX RENDUS.
     //
     // Rémy : « écris les points dans le tableau un peu plus grand ». Il valait
@@ -94,29 +111,37 @@ function geoRepere(item, slot) {
     // fait huit millimètres de haut et trois centimètres de large ; « A (5 ; 2) »
     // à 3,8 mm y tient largement, et se lit à bout de bras.
     const corpsTab = Math.max(2.4, hRang * 0.46);
+    // LE CARRÉ, SES BORNES ET SES DEUX ÉCHELLES viennent de `geoAxes`, que la
+    // feuille des fonctions emploie aussi. Le tableau y prend TOUTE la largeur
+    // du bloc et non celle du repère : c'est là qu'on écrit, et deux
+    // millimètres de plus par case, ce sont deux millimètres de pointillés.
     return {
-        m, mini, pas, cote, listeH, cols, rows, hRang, corpsTab,
-        listeY: slot.y + cote + slot.taille * 0.03,
-        xGauche: slot.x + (slot.taille - cote) / 2,
-        tabX: b.x, tabW: b.w,
-        px: (x) => x0 + (x - mini) * pas,
-        py: (y) => y0 + (m.max - y) * pas
+        m, cols, rows, hRang, corpsTab,
+        ...geoAxes(slot, { mini, maxi: m.max, listeH })
     };
 }
 
-function reperePreviewHtml(item, slot, k, solution) {
-    const g = geoRepere(item, slot);
-    const m = g.m;
-    const montrer = m.mode === 'lire' || solution;      // les croix sont-elles tracées ?
-    const couleur = polycopieEnCouleur();
+/**
+ * LE QUADRILLAGE, LES DEUX AXES ET LEURS GRADUATIONS — ÉCRITS UNE SEULE FOIS.
+ *
+ * Deux feuilles les dessinent maintenant : le repère à points, et celui des
+ * fonctions. Or c'est précisément le morceau qui porte les décisions les plus
+ * chèrement acquises — la flèche qui dépasse le dernier carreau, le zéro posé
+ * À L'ORIGINE et non une largeur de carreau à gauche (il tombait alors en face
+ * du −1). Recopié, ce morceau dérive : la correction suivante n'arriverait que
+ * sur l'une des deux feuilles, et personne ne verrait l'autre vieillir.
+ *
+ * Il ne lit de la géométrie que `mini`, `maxi`, `pas`, `px` et `py` : il ne
+ * sait donc RIEN du contenu du bloc, et sert aussi bien six points qu'une
+ * droite.
+ */
+function grilleEtAxesHtml(g, k) {
     let html = '';
-
-    // Le quadrillage, puis les deux axes par-dessus.
-    for (let i = g.mini; i <= m.max; i++) {
-        html += `<div class="fx-rp-grille" style="left:${g.px(i) * k}px; top:${g.py(m.max) * k}px;
-            width:0; height:${(g.py(g.mini) - g.py(m.max)) * k}px"></div>`;
+    for (let i = g.mini; i <= g.maxi; i++) {
+        html += `<div class="fx-rp-grille" style="left:${g.px(i) * k}px; top:${g.py(g.maxi) * k}px;
+            width:0; height:${(g.py(g.mini) - g.py(g.maxi)) * k}px"></div>`;
         html += `<div class="fx-rp-grille" style="left:${g.px(g.mini) * k}px; top:${g.py(i) * k}px;
-            width:${(g.px(m.max) - g.px(g.mini)) * k}px; height:0"></div>`;
+            width:${(g.px(g.maxi) - g.px(g.mini)) * k}px; height:0"></div>`;
     }
     // LES DEUX AXES, ET ILS PORTENT UNE FLÈCHE. Sans elle, ce sont deux traits
     // du quadrillage un peu plus épais que les autres : l'élève ne voit pas
@@ -124,20 +149,20 @@ function reperePreviewHtml(item, slot, k, solution) {
     // La flèche dépasse le dernier carreau — c'est ainsi qu'on trace au tableau.
     const bout = g.pas * 0.55;
     html += `<div class="fx-rp-axe" style="left:${g.px(g.mini) * k}px; top:${g.py(0) * k}px;
-        width:${(g.px(m.max) - g.px(g.mini) + bout) * k}px; height:0"></div>`;
-    html += `<div class="fx-rp-axe" style="left:${g.px(0) * k}px; top:${(g.py(m.max) - bout) * k}px;
-        width:0; height:${(g.py(g.mini) - g.py(m.max) + bout) * k}px"></div>`;
+        width:${(g.px(g.maxi) - g.px(g.mini) + bout) * k}px; height:0"></div>`;
+    html += `<div class="fx-rp-axe" style="left:${g.px(0) * k}px; top:${(g.py(g.maxi) - bout) * k}px;
+        width:0; height:${(g.py(g.mini) - g.py(g.maxi) + bout) * k}px"></div>`;
     const fl = g.pas * 0.26;
     html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
-        <path d="M ${((g.px(m.max) + bout) * k).toFixed(2)} ${(g.py(0) * k).toFixed(2)}
+        <path d="M ${((g.px(g.maxi) + bout) * k).toFixed(2)} ${(g.py(0) * k).toFixed(2)}
                  l ${(-fl * k).toFixed(2)} ${(-fl * 0.5 * k).toFixed(2)}
                  l 0 ${(fl * k).toFixed(2)} Z" fill="#1a202c"/>
-        <path d="M ${(g.px(0) * k).toFixed(2)} ${((g.py(m.max) - bout) * k).toFixed(2)}
+        <path d="M ${(g.px(0) * k).toFixed(2)} ${((g.py(g.maxi) - bout) * k).toFixed(2)}
                  l ${(-fl * 0.5 * k).toFixed(2)} ${(fl * k).toFixed(2)}
                  l ${(fl * k).toFixed(2)} 0 Z" fill="#1a202c"/></svg>`;
 
     // Les graduations chiffrées : sans elles, on ne lit rien.
-    for (let i = g.mini; i <= m.max; i++) {
+    for (let i = g.mini; i <= g.maxi; i++) {
         if (i === 0) continue;
         html += `<div class="fx-rp-grad" style="left:${(g.px(i) - g.pas / 2) * k}px;
             top:${(g.py(0) + g.pas * 0.12) * k}px; width:${g.pas * k}px;
@@ -152,6 +177,45 @@ function reperePreviewHtml(item, slot, k, solution) {
     html += `<div class="fx-rp-grad" style="left:${(g.px(0) - g.pas * 0.62) * k}px;
         top:${(g.py(0) + g.pas * 0.06) * k}px; width:${g.pas * 0.5 * k}px;
         font-size:${g.pas * 0.42 * k}px">0</div>`;
+    return html;
+}
+
+/** Le même quadrillage, les mêmes axes, pour le PDF. */
+function grilleEtAxesPdf(doc, g) {
+    doc.setLineWidth(0.15);
+    doc.setDrawColor(...ENCRE.grille);
+    for (let i = g.mini; i <= g.maxi; i++) {
+        doc.line(g.px(i), g.py(g.maxi), g.px(i), g.py(g.mini));
+        doc.line(g.px(g.mini), g.py(i), g.px(g.maxi), g.py(i));
+    }
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(...ENCRE.trait);
+    const bout = g.pas * 0.55, fl = g.pas * 0.26;
+    doc.line(g.px(g.mini), g.py(0), g.px(g.maxi) + bout, g.py(0));
+    doc.line(g.px(0), g.py(g.maxi) - bout, g.px(0), g.py(g.mini));
+    // Les pointes : deux petits triangles pleins, comme au tableau.
+    doc.setFillColor(...ENCRE.trait);
+    doc.triangle(g.px(g.maxi) + bout, g.py(0), g.px(g.maxi) + bout - fl, g.py(0) - fl * 0.5,
+        g.px(g.maxi) + bout - fl, g.py(0) + fl * 0.5, 'F');
+    doc.triangle(g.px(0), g.py(g.maxi) - bout, g.px(0) - fl * 0.5, g.py(g.maxi) - bout + fl,
+        g.px(0) + fl * 0.5, g.py(g.maxi) - bout + fl, 'F');
+
+    doc.setFontSize(Math.max(4.5, g.pas * 1.1));
+    doc.setTextColor(...ENCRE.gris);
+    for (let i = g.mini; i <= g.maxi; i++) {
+        if (i === 0) continue;
+        doc.text(String(i), g.px(i), g.py(0) + g.pas * 0.62, { align: 'center' });
+        doc.text(String(i), g.px(0) - g.pas * 0.35, g.py(i) + g.pas * 0.18, { align: 'right' });
+    }
+    doc.text('0', g.px(0) - g.pas * 0.16, g.py(0) + g.pas * 0.52, { align: 'right' });
+}
+
+function reperePreviewHtml(item, slot, k, solution) {
+    const g = geoRepere(item, slot);
+    const m = g.m;
+    const montrer = m.mode === 'lire' || solution;      // les croix sont-elles tracées ?
+    const couleur = polycopieEnCouleur();
+    let html = grilleEtAxesHtml(g, k);
 
     // LES POINTS SE MARQUENT D'UNE CROIX : elle désigne exactement son centre,
     // là où un rond laisse hésiter entre son bord et son milieu.
@@ -202,38 +266,13 @@ function reperePreviewHtml(item, slot, k, solution) {
     return html;
 }
 
-function dessinerRepPdf(doc, item, slot, solution) {
+function dessinerRepPdf(doc, item, slot, solution, champ) {
     const g = geoRepere(item, slot);
     const m = g.m;
     const montrer = m.mode === 'lire' || solution;
     const couleur = polycopieEnCouleur();
 
-    doc.setLineWidth(0.15);
-    doc.setDrawColor(...ENCRE.grille);
-    for (let i = g.mini; i <= m.max; i++) {
-        doc.line(g.px(i), g.py(m.max), g.px(i), g.py(g.mini));
-        doc.line(g.px(g.mini), g.py(i), g.px(m.max), g.py(i));
-    }
-    doc.setLineWidth(0.5);
-    doc.setDrawColor(...ENCRE.trait);
-    const bout = g.pas * 0.55, fl = g.pas * 0.26;
-    doc.line(g.px(g.mini), g.py(0), g.px(m.max) + bout, g.py(0));
-    doc.line(g.px(0), g.py(m.max) - bout, g.px(0), g.py(g.mini));
-    // Les pointes : deux petits triangles pleins, comme au tableau.
-    doc.setFillColor(...ENCRE.trait);
-    doc.triangle(g.px(m.max) + bout, g.py(0), g.px(m.max) + bout - fl, g.py(0) - fl * 0.5,
-        g.px(m.max) + bout - fl, g.py(0) + fl * 0.5, 'F');
-    doc.triangle(g.px(0), g.py(m.max) - bout, g.px(0) - fl * 0.5, g.py(m.max) - bout + fl,
-        g.px(0) + fl * 0.5, g.py(m.max) - bout + fl, 'F');
-
-    doc.setFontSize(Math.max(4.5, g.pas * 1.1));
-    doc.setTextColor(...ENCRE.gris);
-    for (let i = g.mini; i <= m.max; i++) {
-        if (i === 0) continue;
-        doc.text(String(i), g.px(i), g.py(0) + g.pas * 0.62, { align: 'center' });
-        doc.text(String(i), g.px(0) - g.pas * 0.35, g.py(i) + g.pas * 0.18, { align: 'right' });
-    }
-    doc.text('0', g.px(0) - g.pas * 0.16, g.py(0) + g.pas * 0.52, { align: 'right' });
+    grilleEtAxesPdf(doc, g);
 
     if (montrer) {
         doc.setLineWidth(0.45);
@@ -291,6 +330,216 @@ function dessinerRepPdf(doc, item, slot, solution) {
         doc.text(pourPdf(p.label), x0, y);
         doc.setTextColor(...ENCRE.texte);
         doc.text(pourPdf(suite), x0 + wL, y);
+        // « A ( ...... ; ...... ) » : DEUX trous, l'abscisse et l'ordonnée.
+        // Un seul champ sur les deux, et l'élève taperait ses deux nombres au
+        // même endroit — ce n'est pas la question posée. En mode « placer »,
+        // la suite porte déjà les coordonnées : aucun trou, aucun champ, et
+        // c'est juste — on y trace une croix.
+        champSurLePointille(doc, champ, suite, x0 + wL, y,
+            { hauteur: Math.max(3, g.corpsTab * 1.15) });
+    });
+}
+
+// --- TRACER LA DROITE D'UNE FONCTION -------------------------------------------
+//
+// RÉMY : « les deux ». À l'écran l'élève CALCULE et CLIQUE un point ; ici il
+// complète un tableau de valeurs, marque ses croix et TIRE LA DROITE À LA
+// RÈGLE. Le logiciel n'en trace aucune — c'est la ligne rouge du dépôt, et
+// tracer une droite affine à la règle est précisément le geste du chapitre.
+//
+// LE BLOC SE LIT DE HAUT EN BAS : l'écriture de la fonction, le repère vide,
+// puis le tableau à deux rangs. Cet ordre n'est pas décoratif — c'est celui du
+// travail : on lit f, on calcule, on place.
+
+/** Le bloc d'une fonction : l'en-tête, le repère carré, le tableau du bas. */
+function geoFonction(item, slot) {
+    const m = item.meta;
+    // DEUX RANGS SEULEMENT, mais ils sont plus hauts que ceux du repérage : on
+    // y écrit des nombres relatifs au crayon, dans des cases étroites.
+    // LES DEUX RANGS SONT PLAFONNÉS. Ils valaient une part fixe du bloc ; sur
+    // un bloc de treize centimètres, cela donnait des rangs de onze
+    // millimètres pour y écrire un nombre à deux chiffres — et autant de
+    // moins pour le repère, qui est la seule chose qu'on ne peut pas réduire.
+    const hRang = Math.min(slot.taille * 0.085, 9);
+    const listeH = hRang * 2 + slot.taille * 0.03;
+    // L'EN-TÊTE PORTE « f(x) = … », et il est en haut : l'élève doit l'avoir
+    // lu avant de regarder le repère, sans quoi il ne sait pas quoi y placer.
+    const haut = Math.min(slot.taille * 0.1, 10);
+    const corpsTab = Math.max(2.4, hRang * 0.5);
+    return {
+        m, hRang, corpsTab, haut,
+        cols: m.xs.length + 1,
+        // LA MARGE NE LOGE QUE LA POINTE DES FLÈCHES : 0,6 carreau suffit, et
+        // les neuf dixièmes du côté vont au quadrillage.
+        ...geoAxes(slot, { mini: -m.max, maxi: m.max, listeH, haut, bord: 0.6 })
+    };
+}
+
+/**
+ * LA GÉOMÉTRIE D'UN REPÈRE DANS SON EMPLACEMENT, sans rien savoir du contenu.
+ *
+ * `haut` réserve une bande en tête du bloc — l'écriture de la fonction —, et
+ * `listeH` une bande en pied — le tableau. Entre les deux, un carré : un
+ * repère dont les carreaux ne sont pas carrés ment sur les pentes, et c'est
+ * exactement ce que cette feuille apprend à lire.
+ */
+function geoAxes(slot, { mini, maxi, listeH, haut = 0, bord = null }) {
+    const etendue = maxi - mini;
+    const cote = slot.taille - listeH - haut;
+    // `bord` EST LA MARGE AUTOUR DU QUADRILLAGE, COMPTÉE EN CARREAUX.
+    //
+    // Sans lui, elle vaut un dixième du côté DE CHAQUE CÔTÉ : un cinquième du
+    // bloc en blanc. Sur le repère à six graduations du repérage, cela ne se
+    // voit pas — les chiffres s'écrivent dans cette marge, sous l'axe et à sa
+    // gauche. Sur le repère des fonctions, les deux axes passent au MILIEU et
+    // les chiffres sont dedans : la marge ne sert plus qu'à loger la pointe
+    // des flèches, et le cinquième perdu ramenait le carreau sous quatre
+    // millimètres. MESURÉ sur le PDF : on n'y pose plus une règle.
+    const pas = bord === null
+        ? (cote - 2 * (cote * 0.1)) / etendue
+        : cote / (etendue + 2 * bord);
+    const marge = bord === null ? cote * 0.1 : pas * bord;
+    const x0 = slot.x + (slot.taille - cote) / 2 + marge;
+    const y0 = slot.y + haut + marge;
+    const b = slot.boite || { x: slot.x, w: slot.taille };
+    return {
+        mini, maxi, pas, cote, listeH,
+        listeY: slot.y + haut + cote + slot.taille * 0.03,
+        xGauche: slot.x + (slot.taille - cote) / 2,
+        tabX: b.x, tabW: b.w,
+        px: (x) => x0 + (x - mini) * pas,
+        py: (y) => y0 + (maxi - y) * pas
+    };
+}
+
+/**
+ * LES DEUX BOUTS DE LA DROITE, COUPÉS AU BORD DU REPÈRE.
+ *
+ * On ne joint pas le premier point au dernier : la droite d'une fonction
+ * affine traverse tout le repère, et s'arrêter aux points du tableau
+ * laisserait croire qu'elle commence et finit là. C'est la correction qu'on
+ * montre — elle doit ressembler à ce que l'élève a tracé à la règle.
+ */
+function boutsDeLaDroite(a, b, max) {
+    const bords = [(-max - b) / a, (max - b) / a];
+    const x1 = Math.max(-max, Math.min(...bords));
+    const x2 = Math.min(max, Math.max(...bords));
+    return [{ x: x1, y: a * x1 + b }, { x: x2, y: a * x2 + b }];
+}
+
+function fonctionPreviewHtml(item, slot, k, solution) {
+    const g = geoFonction(item, slot);
+    const m = g.m;
+    const b = slot.boite || { x: slot.x, w: slot.taille };
+
+    let html = `<div class="fx-fn-tete" style="left:${b.x * k}px; top:${slot.y * k}px;
+        width:${b.w * k}px; height:${g.haut * k}px;
+        font-size:${g.haut * 0.52 * k}px">f(x) = ${echapperSheet(m.ecriture)}</div>`;
+    html += grilleEtAxesHtml(g, k);
+
+    if (solution) {
+        // LA DROITE D'ABORD, LES CROIX PAR-DESSUS : une croix sous un trait
+        // n'est plus une croix, et c'est elle qui dit où sont les points.
+        const [p1, p2] = boutsDeLaDroite(m.a, m.b, m.max);
+        html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
+            <line x1="${(g.px(p1.x) * k).toFixed(2)}" y1="${(g.py(p1.y) * k).toFixed(2)}"
+                  x2="${(g.px(p2.x) * k).toFixed(2)}" y2="${(g.py(p2.y) * k).toFixed(2)}"
+                  stroke="#2f855a" stroke-width="${Math.max(1, 0.45 * k)}"/></svg>`;
+        m.points.forEach(pt => {
+            const r = g.pas * 0.11;
+            html += `<div class="fx-rp-croix" style="left:${(g.px(pt.x) - r) * k}px;
+                top:${(g.py(pt.y) - r) * k}px; width:${2 * r * k}px; height:${2 * r * k}px;
+                color:#2f855a"></div>`;
+        });
+    }
+
+    // LE TABLEAU À DEUX RANGS : la ligne des x est donnée, celle des images est
+    // à remplir. C'est l'inverse de la feuille de repérage, où les couples sont
+    // écrits : ici, les écrire vendrait la mèche.
+    const cellules = [`<div class="fx-rp-cell fx-fn-tete-cell">x</div>`];
+    m.xs.forEach(x => cellules.push(
+        `<div class="fx-rp-cell fx-rp-cell--filet-g">${x}</div>`));
+    cellules.push('<div class="fx-rp-cell fx-rp-cell--filet-h fx-fn-tete-cell">f(x)</div>');
+    m.points.forEach(pt => cellules.push(
+        `<div class="fx-rp-cell fx-rp-cell--filet-g fx-rp-cell--filet-h"
+            ><span class="fx-rp-trou fx-fn-trou">${solution ? pt.y : ''}</span></div>`));
+
+    html += `<div class="fx-rp-tab" style="left:${g.tabX * k}px; top:${g.listeY * k}px;
+        width:${g.tabW * k}px; height:${(g.hRang * 2) * k}px;
+        grid-template-columns:0.9fr repeat(${m.xs.length}, 1fr);
+        font-size:${g.corpsTab * k}px">${cellules.join('')}</div>`;
+    return html;
+}
+
+function dessinerFonctionPdf(doc, item, slot, solution, champ) {
+    const g = geoFonction(item, slot);
+    const m = g.m;
+    const boite = slot.boite || { x: slot.x, w: slot.taille };
+
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(Math.max(7, g.haut * 0.52 / 0.3528));
+    doc.text(pourPdf(`f(x) = ${m.ecriture}`), boite.x + boite.w / 2, slot.y + g.haut * 0.72,
+        { align: 'center' });
+    doc.setFont(undefined, 'normal');
+
+    grilleEtAxesPdf(doc, g);
+
+    if (solution) {
+        const [p1, p2] = boutsDeLaDroite(m.a, m.b, m.max);
+        doc.setLineWidth(0.5);
+        // LE VERT DE LA CORRECTION, celui de toutes les autres fiches : la
+        // solution se distingue de l'énoncé sans qu'on ait à la lire.
+        doc.setDrawColor(47, 133, 90);
+        doc.line(g.px(p1.x), g.py(p1.y), g.px(p2.x), g.py(p2.y));
+        doc.setLineWidth(0.45);
+        m.points.forEach(pt => {
+            const r = g.pas * 0.11, x = g.px(pt.x), y = g.py(pt.y);
+            doc.line(x - r, y - r, x + r, y + r);
+            doc.line(x - r, y + r, x + r, y - r);
+        });
+    }
+
+    // LE TABLEAU : filets intérieurs seulement, comme celui du repérage.
+    const n = m.xs.length;
+    const largTete = g.tabW * 0.9 / (0.9 + n);
+    const larg = (g.tabW - largTete) / n;
+    const xDe = (c) => g.tabX + (c === 0 ? 0 : largTete + (c - 1) * larg);
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(...ENCRE.grille);
+    for (let c = 1; c <= n; c++) doc.line(xDe(c), g.listeY, xDe(c), g.listeY + g.hRang * 2);
+    doc.line(g.tabX, g.listeY + g.hRang, g.tabX + g.tabW, g.listeY + g.hRang);
+
+    doc.setFontSize(g.corpsTab / 0.3528);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFont(undefined, 'bold');
+    doc.text('x', g.tabX + largTete / 2, g.listeY + g.hRang * 0.68, { align: 'center' });
+    doc.text(pourPdf('f(x)'), g.tabX + largTete / 2, g.listeY + g.hRang * 1.68, { align: 'center' });
+    doc.setFont(undefined, 'normal');
+
+    m.xs.forEach((x, i) => {
+        doc.text(pourPdf(String(x)), xDe(i + 1) + larg / 2, g.listeY + g.hRang * 0.68,
+            { align: 'center' });
+    });
+    // LA LIGNE DES IMAGES : des pointillés, et un champ saisissable par case.
+    // UN SEUL champ pour toute la ligne mettrait les cinq nombres au même
+    // endroit — ce n'est pas le tableau qu'on demande de remplir.
+    m.points.forEach((pt, i) => {
+        const y = g.listeY + g.hRang * 1.68;
+        const texte = solution ? String(pt.y) : null;
+        if (texte !== null) {
+            doc.setTextColor(47, 133, 90);
+            doc.text(pourPdf(texte), xDe(i + 1) + larg / 2, y, { align: 'center' });
+            doc.setTextColor(...ENCRE.texte);
+            return;
+        }
+        const unPoint = Math.max(0.4, doc.getTextWidth('.'));
+        const combien = Math.max(3, Math.floor((larg - 1.6) / unPoint));
+        const trou = '.'.repeat(combien);
+        const x0 = xDe(i + 1) + larg / 2 - doc.getTextWidth(pourPdf(trou)) / 2;
+        doc.text(pourPdf(trou), x0, y);
+        champSurLePointille(doc, champ, trou, x0, y,
+            { hauteur: Math.max(3, g.corpsTab * 1.15) });
     });
 }
 
@@ -857,6 +1106,29 @@ function dessinerQuadrillagePdf(doc, item, slot, solution) {
 // PARLE LA QUESTION sont cerclées de noir — sur cinq pièces éparpillées, les
 // retrouver prendrait plus de temps que de répondre.
 
+/**
+ * LA LETTRE D'UNE PIÈCE RESTE DANS LA FAMILLE DU TEXTE.
+ *
+ * RÉMY : « Comme symétrique par rapport à quoi. Essaie de garder une
+ * cohérence de taille de police. »
+ *
+ * MESURÉ sur quatre blocs d'un poly à trois colonnes : le texte des questions
+ * fait 1,94 mm PARTOUT, et la lettre de pièce va de 1,71 à 3,40 mm — du simple
+ * au double, sur la même page. Elle suivait le pas du quadrillage
+ * (`pas × 0,6`) : un pavage serré donnait une lettre plus PETITE que la
+ * question, un pavage large une lettre 75 % plus grosse.
+ *
+ * On garde le lien au quadrillage — une lettre doit tenir dans sa case — mais
+ * on l'enferme entre la taille du texte et une fois et demie celle-ci. Le
+ * lecteur voit alors une famille, pas une collection.
+ *
+ * @returns {number} la hauteur de la lettre, en millimètres.
+ */
+function tailleDeLettre(g) {
+    const texte = g.pt * 0.3528;
+    return Math.max(texte, Math.min(g.pas * 0.6, texte * 1.5));
+}
+
 function geoPavage(item, slot) {
     const m = item.meta || {};
     // AUTANT DE LIGNES QUE DE QUESTIONS, ET LA GRILLE RECULE D'AUTANT.
@@ -885,13 +1157,22 @@ function pavagePreviewHtml(item, slot, k, solution) {
     // AUCUNE PIÈCE N'EST DÉTOURÉE QUAND IL Y A PLUSIEURS QUESTIONS : le
     // détourage désignait la paire concernée, et il y en a maintenant deux. Les
     // lettres suffisent — c'est par elles que les questions les nomment.
+    // EN COULEUR, CHAQUE PIÈCE PREND SA TEINTE — celle de l'écran. RÉMY :
+    // « Pour les pavages quand c'est couleur pour le poly, mets de la
+    // couleur. » En noir et blanc on garde le gris d'avant : une photocopie
+    // n'en rend qu'un, et c'est la LETTRE qui nomme la pièce, jamais sa
+    // couleur — un élève daltonien fait l'exercice comme les autres.
+    const teintes = polycopieEnCouleur() ? TEINTES_PIECE : null;
     (m.pieces || []).forEach((cases, i) => {
         const vedette = g.lignes < 2 && (i === m.de || i === m.vers);
+        const fond = teintes
+            ? teintes[i % teintes.length]
+            : `rgba(120,128,150,${vedette ? '.34' : '.18'})`;
         cases.forEach(c => {
             html += `<div style="position:absolute;
                 left:${(g.x0 + c.x * g.pas) * k}px; top:${(g.y0 + c.y * g.pas) * k}px;
                 width:${g.pas * k}px; height:${g.pas * k}px;
-                background:rgba(120,128,150,${vedette ? '.34' : '.18'});
+                background:${fond};
                 ${vedette ? `outline:${Math.max(1, 0.45 * k)}px solid #1a202c; outline-offset:-1px;` : ''}"></div>`;
         });
         const c = caseCentrale(cases);
@@ -899,7 +1180,7 @@ function pavagePreviewHtml(item, slot, k, solution) {
             left:${(g.x0 + c.x * g.pas) * k}px; top:${(g.y0 + c.y * g.pas) * k}px;
             width:${g.pas * k}px; height:${g.pas * k}px; display:flex;
             align-items:center; justify-content:center;
-            font-size:${(g.pas * 0.6 * k).toFixed(2)}px; font-weight:800;
+            font-size:${(tailleDeLettre(g) * k).toFixed(2)}px; font-weight:800;
             color:#1a202c">${(m.noms || [])[i] || ''}</div>`;
     });
 
@@ -973,13 +1254,18 @@ const nomDuCandidat = (g, k, nom, x, y, centre) =>
         font-size="${(g.pt * 0.3528 * k).toFixed(2)}" font-weight="700"
         font-style="italic">${nom || ''}</text>`;
 
-function dessinerPavagePdf(doc, item, slot, solution) {
+function dessinerPavagePdf(doc, item, slot, solution, champ) {
     const g = geoPavage(item, slot);
     const m = g.m;
 
+    // Les mêmes teintes qu'à l'aperçu — voir le commentaire des pièces là-bas.
+    const rvb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const teintes = polycopieEnCouleur() ? TEINTES_PIECE : null;
     (m.pieces || []).forEach((cases, i) => {
         const vedette = g.lignes < 2 && (i === m.de || i === m.vers);
-        doc.setFillColor(...(vedette ? ENCRE.grille : ENCRE.donnee));
+        doc.setFillColor(...(teintes
+            ? rvb(teintes[i % teintes.length])
+            : (vedette ? ENCRE.grille : ENCRE.donnee)));
         cases.forEach(c => doc.rect(g.x0 + c.x * g.pas, g.y0 + c.y * g.pas, g.pas, g.pas, 'F'));
     });
 
@@ -998,7 +1284,8 @@ function dessinerPavagePdf(doc, item, slot, solution) {
     });
 
     doc.setTextColor(...ENCRE.trait);
-    doc.setFontSize(Math.max(7, g.pas * 1.6));
+    // La même règle qu'à l'aperçu, en points : voir `tailleDeLettre`.
+    doc.setFontSize(tailleDeLettre(g) / 0.3528);
     (m.pieces || []).forEach((cases, i) => {
         const c = caseCentrale(cases);
         doc.text(String((m.noms || [])[i] || ''),
@@ -1039,8 +1326,20 @@ function dessinerPavagePdf(doc, item, slot, solution) {
     questions.forEach((q, i) => {
         const dit = solution ? solutionDuPavage(m, q)
             : `${questionDuPavage(m, q)} ${'.'.repeat(20)}`;
-        doc.text(doc.splitTextToSize(pourPdf(dit), g.boite.w),
-            g.boite.x, g.yQuestion + i * g.hQuestion + g.pt * 0.3528);
+        const yQ = g.yQuestion + i * g.hQuestion + g.pt * 0.3528;
+        doc.text(doc.splitTextToSize(pourPdf(dit), g.boite.w), g.boite.x, yQ);
+        // SYMÉTRIQUE PAR RAPPORT À QUOI ? La réponse s'écrit sur les points de
+        // suspension qui terminent la question. Rémy les a sous les yeux dans
+        // sa revue du 12 octobre ; il n'y avait pas de champ dessus.
+        //
+        // On ne mesure PAS le texte replié : `splitTextToSize` peut le couper
+        // en deux lignes, et le trou tombe alors sur la dernière. On pose donc
+        // le champ sur la dernière ligne rendue, à son propre ordonnée.
+        const lignesQ = doc.splitTextToSize(pourPdf(dit), g.boite.w);
+        const derniere = lignesQ[lignesQ.length - 1];
+        const pas = doc.getLineHeight ? doc.getLineHeight() / doc.internal.scaleFactor : g.pt * 0.3528;
+        champSurLePointille(doc, champ, derniere, g.boite.x,
+            yQ + (lignesQ.length - 1) * pas, { hauteur: Math.max(3.2, g.pt * 0.3528 * 1.1) });
     });
 }
 
@@ -1164,7 +1463,340 @@ function dessinerColorierPdf(doc, item, slot, solution) {
     });
 }
 
+// ── LA MOSAÏQUE DES TRANSFORMATIONS ─────────────────────────────────────────
+//
+// RÉMY, dans sa revue : il voulait « un imprimé avec plusieurs questions pour
+// un même tableau de mosaïque ».
+//
+// MESURÉ AVANT : la feuille écrivait « Quelle est l'image de la pièce 10 par la
+// symétrie de centre K ? » suivi d'un pointillé, et RIEN d'autre — ni mosaïque,
+// ni pièces, ni point K. Une question dont l'énoncé entier a disparu n'est pas
+// incomplète, elle est INSOLUBLE, et elle occupait quand même sa place. C'est
+// le défaut qu'il avait déjà relevé sur les quatre fiches de géométrie.
+//
+// UNE MOSAÏQUE EST UN GRAND DESSIN : quinze pièces, onze points nommés. En
+// imprimer une par question en met quatre par page, chacune réduite à un timbre.
+// Quatre questions sur LA MÊME mosaïque tiennent à côté d'un dessin deux fois
+// plus grand — et relire la même figure sous quatre transformations est
+// l'exercice, pas une économie d'encre.
+//
+// CE QUI REND LA CHOSE POSSIBLE : LES LETTRES. « la symétrie d'axe (OD) », « de
+// centre G », « de vecteur IB » — ce sont les lettres des SOMMETS, qui sont
+// dessinés. Vérifié sur quarante tirages : aucune lettre citée ne manque au
+// dessin. Il n'y a donc rien à tracer de plus par question, et c'est pour cela
+// que quatre questions peuvent partager une figure sans la rendre illisible.
+
+/** La part de la largeur qui revient au dessin. Le reste est aux questions. */
+const PART_MOSAIQUE = 0.52;
+
+function geoMosaique(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta || {};
+    const bo = m.boite || { x0: 0, x1: 10, y0: 0, y1: 8 };
+    const L = bo.x1 - bo.x0, H = bo.y1 - bo.y0;
+    const marge = 2;
+    const dispoW = b.w * PART_MOSAIQUE - marge;
+    const dispoH = b.h - marge;
+    // LE PAVAGE GARDE SES PROPORTIONS : étiré, les carreaux cessent d'être des
+    // carrés et l'on ne reconnaît plus une rotation d'un quart de tour.
+    const pas = Math.min(dispoW / L, dispoH / H);
+    const x0 = b.x;
+    const y0 = b.y + (b.h - pas * H) / 2;
+    const questX = x0 + pas * L + marge * 2;
+    return {
+        b, m, bo, L, H, pas, x0, y0, marge,
+        questX, questW: b.x + b.w - questX,
+        // DU REPÈRE DE LA MOSAÏQUE AU PAPIER. `bo.y0` est en bas dans le repère
+        // du dessin et en haut sur la feuille : on retourne l'axe vertical ici,
+        // une fois, plutôt qu'à chaque appel.
+        P: (x, y) => ({ x: x0 + (x - bo.x0) * pas, y: y0 + (bo.y1 - y) * pas }),
+        taille: Math.max(1.9, Math.min(b.w * 0.019, 2.8))
+    };
+}
+
+/** Le centre d'une pièce, pour y poser son numéro. */
+function centreDeLaPiece(cases) {
+    const x = cases.reduce((s, c) => s + c.x, 0) / cases.length;
+    const y = cases.reduce((s, c) => s + c.y, 0) / cases.length;
+    // LE NUMÉRO VA DANS UNE CASE DE LA PIÈCE, pas à son centre de gravité :
+    // celui d'une pièce en L tombe dehors, et le numéro se lirait sur la pièce
+    // voisine. On prend la case la plus proche du centre.
+    let meilleure = cases[0], mieux = Infinity;
+    cases.forEach(c => {
+        const d = (c.x - x) ** 2 + (c.y - y) ** 2;
+        if (d < mieux) { mieux = d; meilleure = c; }
+    });
+    return meilleure;
+}
+
+function mosaiquePreviewHtml(item, slot, k, solution) {
+    const g = geoMosaique(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const encreT = `rgb(${ENCRE.trait.join(',')})`;
+    let d = '';
+
+    // 1. LE QUADRILLAGE, en gris clair : il porte les coordonnées sans les dire.
+    for (let i = 0; i <= g.L; i++) {
+        const a = g.P(g.bo.x0 + i, g.bo.y0), z = g.P(g.bo.x0 + i, g.bo.y1);
+        d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+            stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.18)}"/>`;
+    }
+    for (let j = 0; j <= g.H; j++) {
+        const a = g.P(g.bo.x0, g.bo.y0 + j), z = g.P(g.bo.x1, g.bo.y0 + j);
+        d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+            stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.18)}"/>`;
+    }
+
+    // 2. LES PIÈCES, chacune cernée d'un trait noir. C'est le CONTOUR qui fait
+    //    la pièce : un aplat gris ne se distingue pas de son voisin sur une
+    //    photocopie, et les pièces se touchent toutes.
+    //
+    //    EN COULEUR, L'APLAT REVIENT — et il est celui de l'écran. RÉMY : « Pour
+    //    les pavages quand c'est couleur pour le poly, mets de la couleur. »
+    //    Les teintes sont celles de `core/activities/pavageImage.js`, claires
+    //    exprès pour qu'un numéro noir s'y lise ; une pièce de la feuille et
+    //    une pièce du jeu doivent être la même pièce. Le contour reste : il
+    //    porte l'information, la couleur n'est qu'un confort.
+    const couleurs = polycopieEnCouleur() ? TEINTES_PIECE : null;
+    (g.m.pieces || []).forEach((p, iPiece) => {
+        if (couleurs) {
+            const t = couleurs[iPiece % couleurs.length];
+            p.cases.forEach(c => {
+                const a1 = g.P(c.x - 0.5, c.y - 0.5), a2 = g.P(c.x + 0.5, c.y + 0.5);
+                d += `<rect x="${T(Math.min(a1.x, a2.x))}" y="${T(Math.min(a1.y, a2.y))}"
+                    width="${T(Math.abs(a2.x - a1.x))}" height="${T(Math.abs(a2.y - a1.y))}"
+                    fill="${t}"/>`;
+            });
+        }
+        const dedans = new Set(p.cases.map(c => `${c.x},${c.y}`));
+        p.cases.forEach(c => {
+            const bords = [
+                [c.x - 0.5, c.y + 0.5, c.x + 0.5, c.y + 0.5, `${c.x},${c.y + 1}`],
+                [c.x - 0.5, c.y - 0.5, c.x + 0.5, c.y - 0.5, `${c.x},${c.y - 1}`],
+                [c.x - 0.5, c.y - 0.5, c.x - 0.5, c.y + 0.5, `${c.x - 1},${c.y}`],
+                [c.x + 0.5, c.y - 0.5, c.x + 0.5, c.y + 0.5, `${c.x + 1},${c.y}`]
+            ];
+            bords.forEach(([x1, y1, x2, y2, voisin]) => {
+                if (dedans.has(voisin)) return;      // bord intérieur : jamais tracé
+                const a = g.P(x1, y1), z = g.P(x2, y2);
+                d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+                    stroke="${encreT}" stroke-width="${T(0.5)}" stroke-linecap="square"/>`;
+            });
+        });
+        const c = centreDeLaPiece(p.cases);
+        const q = g.P(c.x, c.y);
+        d += `<text x="${T(q.x)}" y="${T(q.y + g.taille * 0.35)}" text-anchor="middle"
+            font-size="${T(g.taille)}" font-weight="700" fill="${encreT}"
+            font-family="Helvetica, Arial, sans-serif">${p.n}</text>`;
+    });
+
+    // 3. LES SOMMETS NOMMÉS : ce sont eux que les questions citent.
+    // UN SOMMET EST UNE CROIX, PAS UNE PASTILLE.
+    //
+    // RÉMY : « pour mosaïque des transformations, les points ne sont toujours
+    // pas des croix ». « Toujours pas » : la règle est dans le dépôt depuis
+    // qu'il l'a donnée — « je te rappelle qu'un point est représenté par une
+    // croix » —, et le cercle la respecte (`branchesCroix`). Elle n'était
+    // jamais descendue jusqu'ici.
+    //
+    // Ce n'est pas une préférence graphique : un disque plein OCCUPE une
+    // surface, alors qu'un point n'en a pas. C'est l'INTERSECTION des deux
+    // traits qui EST le point, et sur un quadrillage — où le sommet tombe
+    // pile sur un croisement — la différence se voit.
+    const croix = tailleCroixSommet(g);
+    (g.m.sommets || []).forEach(s => {
+        const p = g.P(s.x, s.y);
+        branchesCroix(p.x, p.y, croix).forEach(([a, b]) => {
+            d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(b.x)}" y2="${T(b.y)}"
+                stroke="${encreT}" stroke-width="${T(0.32)}" stroke-linecap="round"/>`;
+        });
+        // LA LETTRE SE POSE AU-DESSUS DE LA CROIX, JAMAIS DESSUS. Sur le PDF,
+        // le fond blanc qui la rend lisible effaçait la moitié haute de la
+        // croix ; l'aperçu, lui, la grignotait de son contour blanc. On
+        // remonte la lettre d'une demi-branche, et les deux se lisent.
+        d += `<text x="${T(p.x)}" y="${T(p.y - croix / 2 - 0.5)}" text-anchor="middle"
+            font-size="${T(g.taille * 0.95)}" font-weight="700" fill="${encreT}"
+            stroke="#ffffff" stroke-width="${T(0.45)}" paint-order="stroke"
+            font-family="Helvetica, Arial, sans-serif">${echapperSheet(s.nom)}</text>`;
+    });
+
+    // 4. LES QUESTIONS, à droite, avec leur ligne de réponse.
+    let html = '';
+    let y = g.b.y + g.marge;
+    (g.m.questions || []).forEach((q, i) => {
+        const lignes = couperEnLignes(`${i + 1}. ${q.texte}`,
+            Math.floor(g.questW / (g.taille * 0.47)), 4);
+        lignes.forEach((ligne, j) => {
+            html += `<div class="fx-abs" style="position:absolute; left:${T(g.questX)}px;
+                top:${T(y + j * g.taille * 1.3)}px; width:${T(g.questW)}px;
+                font-size:${T(g.taille)}px; line-height:1.25"
+                >${echapperSheet(ligne)}</div>`;
+        });
+        y += lignes.length * g.taille * 1.3;
+        const yl = y + g.taille * 0.9;
+        if (solution) {
+            html += `<div class="fx-abs" style="position:absolute; left:${T(g.questX + 3)}px;
+                top:${T(yl - g.taille)}px; font-size:${T(g.taille)}px; font-weight:700"
+                >la pièce ${q.vers}</div>`;
+        } else {
+            d += `<line x1="${T(g.questX + 3)}" y1="${T(yl)}"
+                x2="${T(g.questX + g.questW * 0.55)}" y2="${T(yl)}"
+                stroke="rgb(${ENCRE.gris.join(',')})" stroke-width="${T(0.25)}"/>`;
+        }
+        y = yl + g.taille * 0.9;
+    });
+
+    return html + `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`;
+}
+
+function dessinerMosaiquePdf(doc, item, slot, solution, champ) {
+    const g = geoMosaique(item, slot);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.18);
+    for (let i = 0; i <= g.L; i++) {
+        const a = g.P(g.bo.x0 + i, g.bo.y0), z = g.P(g.bo.x0 + i, g.bo.y1);
+        doc.line(a.x, a.y, z.x, z.y);
+    }
+    for (let j = 0; j <= g.H; j++) {
+        const a = g.P(g.bo.x0, g.bo.y0 + j), z = g.P(g.bo.x1, g.bo.y0 + j);
+        doc.line(a.x, a.y, z.x, z.y);
+    }
+
+    // LES APLATS D'ABORD, LES CONTOURS PAR-DESSUS — mêmes teintes qu'à l'aperçu
+    // et qu'à l'écran. Voir le commentaire des pièces dans l'aperçu.
+    if (polycopieEnCouleur()) {
+        const rvb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+        (g.m.pieces || []).forEach((p, iPiece) => {
+            doc.setFillColor(...rvb(TEINTES_PIECE[iPiece % TEINTES_PIECE.length]));
+            p.cases.forEach(c => {
+                const a1 = g.P(c.x - 0.5, c.y - 0.5), a2 = g.P(c.x + 0.5, c.y + 0.5);
+                doc.rect(Math.min(a1.x, a2.x), Math.min(a1.y, a2.y),
+                    Math.abs(a2.x - a1.x), Math.abs(a2.y - a1.y), 'F');
+            });
+        });
+    }
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    (g.m.pieces || []).forEach(p => {
+        const dedans = new Set(p.cases.map(c => `${c.x},${c.y}`));
+        p.cases.forEach(c => {
+            const bords = [
+                [c.x - 0.5, c.y + 0.5, c.x + 0.5, c.y + 0.5, `${c.x},${c.y + 1}`],
+                [c.x - 0.5, c.y - 0.5, c.x + 0.5, c.y - 0.5, `${c.x},${c.y - 1}`],
+                [c.x - 0.5, c.y - 0.5, c.x - 0.5, c.y + 0.5, `${c.x - 1},${c.y}`],
+                [c.x + 0.5, c.y - 0.5, c.x + 0.5, c.y + 0.5, `${c.x + 1},${c.y}`]
+            ];
+            bords.forEach(([x1, y1, x2, y2, voisin]) => {
+                if (dedans.has(voisin)) return;
+                const a = g.P(x1, y1), z = g.P(x2, y2);
+                doc.line(a.x, a.y, z.x, z.y);
+            });
+        });
+    });
+
+    doc.setTextColor(...ENCRE.trait);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille * 2.83);
+    (g.m.pieces || []).forEach(p => {
+        const c = centreDeLaPiece(p.cases);
+        const q = g.P(c.x, c.y);
+        doc.text(String(p.n), q.x, q.y + g.taille * 0.35, { align: 'center' });
+    });
+
+    doc.setFillColor(...ENCRE.trait);
+    doc.setFontSize(g.taille * 0.95 * 2.83);
+    // UN SOMMET EST UNE CROIX, PAS UNE PASTILLE.
+    //
+    // RÉMY : « pour mosaïque des transformations, les points ne sont toujours
+    // pas des croix ». « Toujours pas » : la règle est dans le dépôt depuis
+    // qu'il l'a donnée — « je te rappelle qu'un point est représenté par une
+    // croix » —, et le cercle la respecte (`branchesCroix`). Elle n'était
+    // jamais descendue jusqu'ici.
+    //
+    // Ce n'est pas une préférence graphique : un disque plein OCCUPE une
+    // surface, alors qu'un point n'en a pas. C'est l'INTERSECTION des deux
+    // traits qui EST le point, et sur un quadrillage — où le sommet tombe
+    // pile sur un croisement — la différence se voit.
+    doc.setLineWidth(0.32);
+    doc.setDrawColor(...ENCRE.trait);
+    // LE DÉFAUT N'ÉTAIT PAS DANS LE TRACÉ, IL ÉTAIT DANS L'ORDRE.
+    //
+    // Rémy, une deuxième fois : « les points ne sont toujours pas des croix ».
+    // La croix était pourtant bien tracée — on l'a regardée sur le PDF rendu
+    // en image : ce qui s'imprimait était un accent circonflexe. La pastille
+    // blanche posée SOUS la lettre, pour qu'elle ne soit pas barrée par le
+    // quadrillage, arrivait APRÈS la croix et en effaçait la moitié haute.
+    //
+    // Donc : la pastille d'abord, la lettre ensuite, la croix en dernier — et
+    // la lettre remonte d'une demi-branche pour ne plus la rencontrer.
+    const croix = tailleCroixSommet(g);
+    (g.m.sommets || []).forEach(s => {
+        const p = g.P(s.x, s.y);
+        const yTexte = p.y - croix / 2 - 0.6;
+        const demi = g.taille * 0.45;
+        doc.setFillColor(255, 255, 255);
+        doc.rect(p.x - demi, yTexte - g.taille * 0.8, demi * 2, g.taille * 0.95, 'F');
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(s.nom, p.x, yTexte, { align: 'center' });
+        branchesCroix(p.x, p.y, croix).forEach(([a, b]) => {
+            doc.line(a.x, a.y, b.x, b.y);
+        });
+        doc.setFillColor(...ENCRE.trait);
+    });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(g.taille * 2.83);
+    doc.setTextColor(...ENCRE.texte);
+    let y = g.b.y + g.marge + g.taille;
+    (g.m.questions || []).forEach((q, i) => {
+        const lignes = couperEnLignes(`${i + 1}. ${q.texte}`,
+            Math.floor(g.questW / (g.taille * 0.47)), 4);
+        lignes.forEach((ligne, j) => doc.text(ligne, g.questX, y + j * g.taille * 1.3));
+        y += lignes.length * g.taille * 1.3;
+        const yl = y + g.taille * 0.9;
+        if (solution) {
+            doc.setFont('helvetica', 'bold');
+            doc.text(`la pièce ${q.vers}`, g.questX + 3, yl);
+            doc.setFont('helvetica', 'normal');
+        } else {
+            doc.setDrawColor(...ENCRE.gris);
+            doc.setLineWidth(0.25);
+            doc.line(g.questX + 3, yl, g.questX + g.questW * 0.55, yl);
+            // LÀ OÙ LA FEUILLE TRACE UNE LIGNE, LA FICHE REMPLISSABLE POSE UN
+            // CHAMP. Rémy : « il faut que tu vérifies les exercices ». Celui-ci
+            // n'en posait aucun — et c'est pourtant une réponse qui s'écrit en
+            // deux caractères (« la pièce 7 »), le cas le plus simple qui soit.
+            if (typeof champ === 'function') {
+                champ(g.questX + 3, yl - g.taille, g.questW * 0.55 - 3, g.taille);
+            }
+        }
+        y = yl + g.taille * 0.9;
+    });
+}
+
 export const RENDUS_REPERAGE = {
+    mosaique: {
+        titre: 'La mosaïque des transformations',
+        consigne: () => 'Toutes les questions portent sur LE MÊME dessin. Pour chacune, '
+            + 'écris le numéro de la pièce image. Les axes, les centres et les vecteurs '
+            + 'sont nommés par les lettres des sommets, qui sont tracés sur la mosaïque. '
+            + 'Le conseil qui change tout : ne suis pas la pièce entière, choisis UN de '
+            + 'ses coins et cherche où il tombe — le reste se recopie.',
+        previewGrille: mosaiquePreviewHtml,
+        pdfGrille: dessinerMosaiquePdf,
+        nomBloc: 'Mosaïque', nomBlocs: 'mosaïques',
+        // DEUX PAR PAGE, et c'est tout le propos de la demande de Rémy : « un
+        // imprimé avec plusieurs questions pour un même tableau de mosaïque ».
+        // Une mosaïque par question en mettait quatre par page, chacune
+        // réduite à un timbre où l'on ne distingue plus les pièces.
+        disposition: { cols: 1, rows: 2, maxCols: 1, maxRows: 3 },
+        parLigneDefaut: 1,
+        proportions: { w: 1, h: 0.42 },
+        titreAGauche: true
+    },
     pavage: {
         titre: 'Symétrique par rapport à quoi ?',
         // SUR LE PAPIER, ON RÉPOND PAR LE NOM. Écrire « x = 4 » demanderait un
@@ -1222,6 +1854,35 @@ export const RENDUS_REPERAGE = {
         // centimètres, deux graduations voisines se touchent et l'on ne peut
         // plus tracer une croix entre elles.
         disposition: { cols: 2, rows: 2, maxCols: 3, maxRows: 3 },
+        parLigneDefaut: 2
+    },
+    fonction: {
+        titre: 'Tracer la droite d\'une fonction',
+        // LA CONSIGNE DIT LES TROIS GESTES, DANS L'ORDRE, ET LE DERNIER EST
+        // CELUI QUI COMPTE. Rémy : « les deux » — l'écran fait calculer et
+        // cliquer un point, la feuille fait TRACER. Si la consigne ne nommait
+        // pas la règle, l'élève joindrait ses croix à main levée et la feuille
+        // perdrait sa raison d'être.
+        consigne: () => 'Pour chaque fonction : COMPLÈTE le tableau de valeurs, PLACE les '
+            + 'points dans le repère en les marquant d\'une CROIX, puis TRACE LA DROITE À LA '
+            + 'RÈGLE. Elle traverse tout le repère, elle ne s\'arrête pas au dernier point. '
+            + 'Et une vérification gratuite : tes points doivent être ALIGNÉS — si l\'un sort '
+            + 'de la ligne, c\'est son calcul qui est faux, pas ton tracé.',
+        previewGrille: fonctionPreviewHtml,
+        pdfGrille: dessinerFonctionPdf,
+        nomBloc: 'Fonction', nomBlocs: 'fonctions',
+        // DEUX PAR PAGE, ET C'EST LA RÈGLE QUI COMMANDE.
+        //
+        // Un repère de fonction porte TREIZE graduations là où celui du
+        // repérage en porte six : à quatre blocs par page, le carreau tombait
+        // à quatre millimètres et demi — MESURÉ sur le PDF. On y lit encore
+        // les chiffres, mais on n'y pose plus une règle ni une croix, et c'est
+        // exactement ce que cette feuille demande de faire. À deux par page le
+        // carreau fait huit millimètres.
+        //
+        // Et deux suffisent : chacun est un exercice entier — cinq calculs,
+        // cinq points, un tracé.
+        disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 2 },
         parLigneDefaut: 2
     },
     mat: {

@@ -15,6 +15,7 @@ import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { unitesDe } from '../generators/sudoku.js';
 import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = 0;   // au sudoku, 0 n'est jamais une valeur
@@ -422,16 +423,17 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.su-board, .kk-board'));
         const gate = createDemoGate(container.querySelector('.kk-actions') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        if (!await robot.pause(600)) return fin();
         cursor.say(`Chaque chiffre de 1 à ${N()} n'apparaît qu'une fois par ligne, colonne et bloc. Je cherche les cases OBLIGÉES.`,
             container.querySelector('.su-board'));
-        if (!await cursor.pause(2200) || destroyed) return fin();
+        if (!await robot.pause(2200)) return fin();
 
         let coup;
         while ((coup = prochainCoup())) {
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const el = celluleEl(coup.i);
             if (!el) return fin();
             // LE ROBOT MONTRE CE QU'IL REGARDE AVANT DE DIRE CE QU'IL EN
@@ -448,8 +450,8 @@ export function mount(container, session, opts = {}) {
                     + `que le ${coup.v}.`
                 : `Dans ${m.det} ${m.nom}, le ${coup.v} manque encore — et une seule case vide `
                     + 'peut le recevoir : celle qui est allumée.', el);
-            if (!await cursor.pause(2600) || destroyed) return fin();
-            if (!await cursor.tap(el, 320) || destroyed) return fin();
+            if (!await robot.pause(2600)) return fin();
+            if (!await robot.toucher(el, 320)) return fin();
             valeurs[coup.i] = coup.v;
             el.querySelector('.kk-val').textContent = coup.v;
             el.classList.add('demo-target');
@@ -466,7 +468,7 @@ export function mount(container, session, opts = {}) {
         cursor.say('Grille terminée : aucune ligne, colonne ou bloc n\'a de doublon !',
             container.querySelector('.su-board'));
         container.querySelector('.su-board').classList.add('kk-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between + 600) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 600)) return fin();
         fin();
         renderNext();
     }

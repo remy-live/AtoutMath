@@ -30,8 +30,8 @@
 
 import { makeItem } from '../items.js';
 import {
-    NOMS, appliquer, cleFigure, direLeSens, direVecteur, imageFigure, memeFigure,
-    nommerAxe
+    NOMS, appliquer, cleFigure, direLeSens, direVecteur, figureDepuisLaCle,
+    imageFigure, memeFigure, nommerAxe
 } from '../transformations.js';
 import { quadrillageSvg } from '../quadrillageSvg.js';
 import { figure } from '../figures.js';
@@ -283,17 +283,28 @@ function indices(t) {
 }
 
 /**
- * La correction : ce qu'il fallait faire, et où.
+ * LES CASES D'UNE FIGURE, DITES COMME ON LES DÉSIGNE DEVANT UNE GRILLE.
  *
- * Les cases sont données EN COLONNE ET LIGNE COMPTÉES À PARTIR DE 1 — c'est
- * ainsi qu'on les désigne à voix haute devant une grille (« troisième colonne,
- * deuxième ligne »), et non par les indices du programme, qui commencent à
- * zéro et ne veulent rien dire pour un élève.
+ * EN COLONNE ET LIGNE COMPTÉES À PARTIR DE 1 — « troisième colonne, deuxième
+ * ligne » —, et non par les indices du programme, qui commencent à zéro et ne
+ * veulent rien dire pour un élève.
+ *
+ * ET CETTE PHRASE-LÀ SERT AUSSI AU CARNET D'ERREURS. Rémy : « deux explications
+ * compliqués et fausses. C'est dans le "Mes erreurs" ». La carte y écrivait la
+ * forme canonique, celle qui JUGE — « 8|2/9|2/8|3/9|3/9|4 » — sous les yeux
+ * d'un élève. Une seule vérité, dite une seule fois : si la correction et le
+ * carnet comptaient les colonnes autrement l'un de l'autre, l'un des deux
+ * mentirait, et l'on ne saurait pas lequel.
  */
-function explication(t, image) {
-    const ou = [...image]
+export function direLesCases(cases) {
+    return [...(cases || [])]
         .sort((a, b) => (a.y - b.y) || (a.x - b.x))
         .map(p => `(${p.x + 1} ; ${p.y + 1})`).join(', ');
+}
+
+/** La correction : ce qu'il fallait faire, et où. */
+function explication(t, image) {
+    const ou = direLesCases(image);
     const quoi = t.genre === 'axiale' ? `par rapport à ${nommerAxe(t.axe)}`
         : t.genre === 'centrale' ? 'par rapport au centre O'
             : t.genre === 'translation' ? `en glissant de ${direVecteur(t.vecteur)}`
@@ -307,6 +318,60 @@ function explication(t, image) {
 export const transfoQuadrillageGenerator = {
     id: 'geo.transfo.quadrillage',
     label: 'Tracer l\'image sur le quadrillage',
+
+    /**
+     * LA FIGURE DU CORRIGÉ — les deux tracés, l'un sur l'autre.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * RÉMY, capture du carnet d'un élève : « il faut montrer la figure de base
+     * et la solutions ». La carte écrivait « ta réponse : 7|3/8|3/7|4/8|4/8|5,
+     * attendu : 8|2/9|2/8|3/9|3/9|4 » sous une figure qui ne montrait que le
+     * départ et la flèche. Pour savoir ce qui n'allait pas, l'élève devait
+     * placer dix couples de coordonnées à la main.
+     *
+     * ICI ON REDESSINE LES DEUX : l'image attendue en vert, les cases qu'il a
+     * posées EN TROP en rouge. Les cases qu'il avait justes ne paraissent pas
+     * en rouge — elles sont déjà vertes, et les redire fausses serait faux.
+     *
+     * LA FLÈCHE ET LE DÉPART RESTENT : c'est « la figure de base » qu'il
+     * demande, et sans elle la correction ne dit pas d'où l'on part.
+     *
+     * @param {Object} item l'item refabriqué depuis la graine
+     * @param {Object} [o]
+     * @param {Array<{x,y}>} [o.donne] les cases posées par l'élève
+     * @returns {string} le HTML de la figure, ou une chaîne vide
+     */
+    /**
+     * RELIRE UNE RÉPONSE ENREGISTRÉE — la clé qui juge, remise en français.
+     *
+     * Même convention que le pavage : le carnet garde « 7|3/8|3/7|4 », et seul
+     * le générateur sait que ce sont des cases, comptées à partir de zéro.
+     *
+     * @returns {{objet: Array, dit: string}|null}
+     */
+    lireUneReponse(cle) {
+        const cases = figureDepuisLaCle(cle);
+        if (!cases.length) return null;
+        return { objet: cases, dit: direLesCases(cases) };
+    },
+
+    figureCorrigee(item, { donne } = {}) {
+        const m = (item && item.meta) || {};
+        if (!m.depart || !m.image) return '';
+        const attendues = new Set(m.image.map(p => `${p.x}|${p.y}`));
+        const enTrop = (donne || []).filter(p => !attendues.has(`${p.x}|${p.y}`));
+        const figures = [
+            { cases: m.depart, classe: 'qd-depart' },
+            { cases: m.image, classe: 'qd-attendue' }
+        ];
+        if (enTrop.length) figures.push({ cases: enTrop, classe: 'qd-en-trop' });
+        return figure(quadrillageSvg({
+            largeur: m.largeur, hauteur: m.hauteur,
+            figures, transfo: m.transfo, ancre: m.ancre
+        }));
+    },
+
     skills: ['geo.transfo.axiale', 'geo.transfo.centrale', 'geo.transfo.translation', 'geo.transfo.rotation'],
     answerKinds: ['grid'],
     params: [
@@ -495,7 +560,8 @@ function ancreLibre(q, t) {
     // `qNoeud` dans ui/printSheet.js). Les nœuds vont donc de 0 à t.l INCLUS,
     // et la distance se mesure au CENTRE des cases, décalé d'un demi-carreau.
     // LE BORD EXTÉRIEUR NE COMPTE PAS COMME UN TRAIT : la flèche s'y confond
-    // avec le cadre du quadrillage, et son étiquette « v » sort de la figure.
+    // avec le cadre du quadrillage. (L'étiquette « v » que cette ligne citait
+    // n'existe plus : voir `marquesDeTransfo`.)
     // On cherche donc d'abord parmi les traits INTÉRIEURS ; les bords ne
     // servent que de repli, pour un vecteur si long qu'il ne tient nulle part
     // ailleurs.

@@ -1,0 +1,140 @@
+# UNE COPIE D'ESSAI EN LIGNE, SUR GITHUB PAGES.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# RÉMY : « j'aimerai pouvoir tester sur github, tant pis pour la zone admin
+# juste dessus on peut la sauter, j'ai besoin de tester en ligne. »
+#
+# CE QUE CETTE COPIE EST, ET CE QU'ELLE N'EST PAS. GitHub Pages sert des
+# fichiers, et rien d'autre : pas de PHP, donc pas d'API. La copie sert donc à
+# essayer l'APPLICATION — le catalogue, l'atelier, les parcours, les aperçus,
+# les jeux — sur un vrai navigateur, à une vraie adresse, sans rien déposer
+# chez l'hébergeur. Elle ne sert PAS à essayer les classes, les élèves, la
+# synchronisation ni les bilans : ceux-là ont besoin du serveur, et Rémy le
+# dit lui-même — « tant pis pour la zone admin ».
+#
+# ELLE NE REMPLACE PAS LE DÉPLOIEMENT. `deploiement.yml` reste le seul chemin
+# vers le site des élèves, et il ne part que de `refonte-architecture`, après
+# les épreuves. Ici on publie une branche de travail, sans épreuves, parce que
+# c'est un brouillon qu'on regarde — pas un site qu'on livre.
+#
+# CE QUI NE MONTE PAS. Tout ce qui n'est pas l'application : les épreuves, les
+# outils de mesure, les notes, les archives. Et surtout `api/` et
+# `deposer.php` — le dépôt est public, leur source l'est donc déjà, mais il n'y
+# a aucune raison de les servir en plus à une adresse web où un moteur de
+# recherche ira les lire. Une copie sans serveur n'a pas besoin du code du
+# serveur.
+#
+# LA MARQUE `<meta>` EST ÉCRITE ICI, ET NULLE PART AILLEURS. C'est elle qui
+# ouvre l'atelier sans mot de passe sur cette copie-là — voir
+# `js/core/copieDEssai.js`, qui explique pourquoi c'est sûr, et
+# `tests/copieDEssai.test.mjs`, qui refuse qu'elle entre dans le dépôt.
+
+name: Copie d'essai en ligne
+
+on:
+  push:
+    branches:
+      - claude/atoutmath-bugs-improvements-s6k0j4
+  # Pour republier sans rien pousser — par exemple après avoir changé un
+  # réglage de Pages.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Une publication à la fois, et c'est la dernière qui compte : republier trois
+# fois de suite ne doit pas faire la queue, ni livrer un ordre imprévisible.
+concurrency:
+  group: pages-essai
+  cancel-in-progress: true
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publication.outputs.page_url }}
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Composer la copie
+        run: |
+          set -eu
+          mkdir -p _site
+          # ON DÉCRIT CE QU'ON EXCLUT, pas ce qu'on prend : un fichier ajouté
+          # plus tard à l'application monte alors tout seul, au lieu d'être
+          # oublié par une liste que personne n'a pensé à tenir.
+          #
+          # `tar` et non `rsync` : `tar` est partout — sur le runner comme sur
+          # ma machine —, et ce qu'on ne peut pas essayer avant de le pousser
+          # ne se vérifie qu'en production.
+          tar -cf - \
+            --exclude='./.git' \
+            --exclude='./.github' \
+            --exclude='./.claude' \
+            --exclude='./node_modules' \
+            --exclude='./tests' \
+            --exclude='./tools' \
+            --exclude='./outils' \
+            --exclude='./imports' \
+            --exclude='./docs' \
+            --exclude='./api' \
+            --exclude='./deposer.php' \
+            --exclude='*.zip' \
+            --exclude='./INSTALLER.md' \
+            --exclude='./_jeu.mjs' \
+            --exclude='./package.json' \
+            --exclude='./package-lock.json' \
+            --exclude='./AtoutMath.command' \
+            --exclude='./.deployignore' \
+            --exclude='./.gitignore' \
+            --exclude='./_site' \
+            . | tar -xf - -C _site
+
+          # Pages ne passe pas l'artéfact par Jekyll, mais un dossier commençant
+          # par un tiret bas resterait une mauvaise surprise le jour où cela
+          # changerait. Le fichier coûte zéro octet de réflexion.
+          touch _site/.nojekyll
+
+          # LA MARQUE. Elle est posée juste après le `charset`, donc dans les
+          # tout premiers octets : le navigateur la connaît avant d'exécuter la
+          # moindre ligne de script.
+          test -f _site/index.html
+          grep -q '<meta charset="UTF-8">' _site/index.html
+          sed -i '0,/<meta charset="UTF-8">/s||<meta charset="UTF-8">\n    <meta name="atoutmath-copie-essai" content="1">|' _site/index.html
+          grep -q 'atoutmath-copie-essai' _site/index.html
+
+          echo "Copie composée : $(find _site -type f | wc -l) fichiers, $(du -sh _site | cut -f1)"
+          echo "Ce qui ne monte pas :"
+          for interdit in api deposer.php tests tools node_modules; do
+            if [ -e "_site/$interdit" ]; then echo "  !! $interdit EST MONTÉ" && exit 1; fi
+          done
+          echo "  api/, deposer.php, tests/, tools/, node_modules/ — aucun n'est là."
+
+      - name: Préparer Pages
+        uses: actions/configure-pages@v5
+        with:
+          # Allume Pages si ce n'est pas déjà fait : sans cela, il faudrait un
+          # passage par les réglages du dépôt avant la première publication.
+          enablement: true
+
+      - name: Téléverser la copie
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publier
+        id: publication
+        uses: actions/deploy-pages@v4
+
+      - name: Dire où c'est
+        run: |
+          echo "### Copie d'essai publiée" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.publication.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Sans serveur : l'atelier s'ouvre sans mot de passe, les classes et la synchronisation ne fonctionnent pas." >> "$GITHUB_STEP_SUMMARY"

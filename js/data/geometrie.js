@@ -1,7 +1,14 @@
+import { elementsGeometrieGenerator } from '../core/generators/elementsGeometrie.js';
+import { casesDeSolides } from '../core/generators/solides.js';
 import { TAGS } from './tags.js';
 // Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
 // d'options qui se répondent finissent toujours par diverger.
 import { PALIERS as MORPH_PALIERS } from '../core/quadriMorph.js';
+// LES PALIERS DE LA TRIGONOMÉTRIE VIENNENT DU NOYAU, jamais du jeu : un
+// fichier de js/data/ qui importe js/games/ fait tomber TOUS les tests sur
+// « document is not defined ».
+import { MARCHES_TRIGO, ANCIEN_TRIGO } from '../core/trigonometrie.js';
+import { paramMarches } from '../core/progression.js';
 
 // Les anciens exercices « grille » (cases à cliquer dans un quadrillage) sont
 // remplacés par un vrai repère du plan : axes fléchés, origine, graduations
@@ -43,6 +50,26 @@ const NOTATIONS_APPRENTISSAGE = {
     ]
 };
 
+/**
+ * Les réglages qu'une notation de `geo.elements` gouverne vraiment.
+ *
+ * Le générateur sert trois notions et déclare les réglages des trois. Les
+ * poser tous sur chaque exercice donnerait à l'exercice du milieu un bouton
+ * « quels objets » qui ne change rien à sa feuille — et
+ * `ficheReglages.test.mjs` le refuse, à raison : « un bouton qui ne fait rien
+ * est pire qu'un bouton absent ».
+ *
+ * `notion` n'est jamais offerte : c'est l'exercice qui la fixe, et elle est
+ * dans son titre. La proposer reviendrait à offrir de changer d'exercice
+ * depuis l'exercice.
+ */
+function reglagesDeGeoElements(notion) {
+    const gen = () => (elementsGeometrieGenerator.params || []);
+    const garder = { appartenance: ['sortes'], codage: ['familles'], milieu: ['piege'] };
+    const veut = garder[notion] || [];
+    return gen().filter(p => veut.includes(p.id));
+}
+
 export const geometrieExercises = [
     // --- Les angles remarquables (fiche 5ᵉ « Les angles ») ---
     //
@@ -60,11 +87,32 @@ export const geometrieExercises = [
         consignePapier: 'Trouve la mesure de l\'angle vert. Les droites en pointillés sont parallèles.',
         params: { niveau: 'melange' },
         skills: ['geo.angles.relations'],
+        // LES TROIS TOTAUX SONT DES MOTS-CLEFS, pour la même raison que les
+        // nombres du Détour : « 360 » ne rendait AUCUN résultat alors que la
+        // première marche de cet exercice s'appelle « Une soustraction : 90°,
+        // 180° ou 360° ». Le nombre vivait dans le générateur et dans la tête
+        // de qui l'a écrit, nulle part sur la page.
         motsClefs: ['angles', 'opposés par le sommet', 'correspondants', 'alternes-internes',
-            'complémentaires', 'supplémentaires', 'parallèles', 'sécante'],
+            'complémentaires', 'supplémentaires', 'parallèles', 'sécante',
+            '90', '180', '360', 'degrés', 'tour complet', 'angle plat', 'angle droit'],
+        // ET IL VA JUSQU'À LA SIXIÈME, PARCE QUE LE RÉGLAGE EXISTE DÉJÀ.
+        //
+        // RÉMY, onzième bloc de sa progression de sixième : les angles. Mesuré
+        // sur quarante tirages, l'exercice sert six relations — opposés,
+        // correspondants, alternes-internes, complémentaires, supplémentaires,
+        // et la chaîne. DEUX D'ENTRE ELLES NE SONT PAS DE SIXIÈME :
+        // correspondants et alternes-internes demandent deux parallèles et une
+        // sécante, qui arrivent en cinquième.
+        //
+        // ON NE COUPE PAS L'EXERCICE EN DEUX POUR AUTANT. « Les relations
+        // travaillées » est un réglage qui existe depuis le premier jour : le
+        // professeur décoche les deux, d'un geste, et l'instruction dit
+        // lesquelles. C'est la décision déjà prise pour le PGCD — deux entrées
+        // de catalogue pour la même notion se mettent à diverger, et celle qui
+        // reçoit la correction suivante n'est jamais les deux.
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
-            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
         // LE PARALLÉLISME S'ÉCRIT, IL NE SE CODE PLUS SUR LE TRAIT. Rémy, deux
         // fois : « je ne comprends pas pourquoi tu mets des flèches », puis
@@ -76,7 +124,11 @@ export const geometrieExercises = [
         instruction: 'Un angle est donné, un autre est à trouver. Cherche d\'abord COMMENT '
             + 'les deux sont placés : c\'est la relation qui donne la réponse. Les deux '
             + 'droites tracées EN POINTILLÉS sont PARALLÈLES ; celle qui les coupe est la '
-            + 'sécante. C\'est de là que tout part.'
+            + 'sécante. C\'est de là que tout part. EN SIXIÈME, on décoche « correspondants » '
+            + 'et « alternes-internes » dans « Les relations travaillées » : celles-là '
+            + 'demandent les parallèles, qui arrivent en cinquième. Restent les opposés par '
+            + 'le sommet, les complémentaires et les supplémentaires, qui se lisent sur un '
+            + 'seul croisement.'
     },
 
     // L'AUTRE MOITIÉ DU CHAPITRE, et la première dans l'ordre : l'exercice 8,
@@ -93,12 +145,19 @@ export const geometrieExercises = [
         skills: ['geo.angles.relations'],
         motsClefs: ['angles', 'adjacents', 'opposés par le sommet', 'correspondants',
             'alternes-internes', 'complémentaires', 'supplémentaires', 'nommer', 'vocabulaire'],
+        // Jusqu'à la sixième, pour la même raison que « La Valeur Manquante » :
+        // le réglage des relations existe, et NOMMER vient avant CALCULER — un
+        // élève qui ne sait pas nommer ne peut pas calculer.
         tags: {
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
-            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
         instruction: 'Rien à mesurer : tout est dans la POSITION des deux angles l\'un '
-            + 'par rapport à l\'autre. Commence toujours par le sommet.'
+            + 'par rapport à l\'autre. Commence toujours par le sommet. EN SIXIÈME, on '
+            + 'décoche « correspondants » et « alternes-internes » dans « Les relations '
+            + 'travaillées » : ces deux-là demandent de repérer des parallèles, qui arrivent '
+            + 'en cinquième. Les quatre autres — adjacents, opposés par le sommet, '
+            + 'complémentaires et supplémentaires — se lisent sur un seul croisement.'
     },
 
     // --- Les familles de quadrilatères ---
@@ -137,7 +196,8 @@ export const geometrieExercises = [
         // famille. C'est l'idée que les élèves n'ont pas, et qu'aucun manuel ne
         // peut montrer parce qu'il faudrait que la figure bouge. Il vient donc
         // AVANT l'organigramme dans la progression, pas après.
-        id: 'geo-quadri-morph',        title: 'Le Quadrilatère qui se Transforme',
+        id: 'geo-quadri-morph',
+        jeu: false,        title: 'Le Quadrilatère qui se Transforme',
         cree: '2026-09-01',
         activityId: 'quadri-morph',
         sansRevision: true,
@@ -227,7 +287,7 @@ export const geometrieExercises = [
         ],
         motsClefs: ['programme de construction', 'construire', 'segment', 'droite', 'cercle',
             'milieu', 'médiatrice', 'perpendiculaire', 'parallèle', 'intersection', 'rédiger'],
-        tags: { chemin: ['Géométrique', 'Repérage'], niveaux: ['6ème', '5ème'] },
+        tags: { chemin: ['Espace et géométrie', 'Repérage'], niveaux: ['6ème', '5ème'] },
         instruction: 'Une figure est dessinée : à toi d\'écrire le PROGRAMME qui la construit. '
             + 'Tu composes chaque phrase EN CLIQUANT, mot après mot : d\'abord « Place » ou '
             + '« Trace », puis ce que tu traces — « le segment [__] », « le cercle de centre _ '
@@ -248,6 +308,7 @@ export const geometrieExercises = [
 
     {
         id: 'geo-quadrilateres',
+        jeu: false,
         cree: '2026-09-01',
         title: 'L\'Organigramme des Quadrilatères',
         activityId: 'quadrilateres',
@@ -312,8 +373,19 @@ export const geometrieExercises = [
             // demande de coder le parallélogramme. Puis on passe au rectangle
             // […]. On code le rectangle puis après on met les vignettes. »
             {
+                // PAS UNE ÉCHELLE : C'EST UNE FRÉQUENCE. « echelle: true »
+                // annonce une PROGRESSION, des barreaux qu'on gravit et qu'une
+                // colonne de cases sait composer. Ici on règle COMBIEN DE FOIS
+                // on demande de coder — aucune, la première, toutes — et une
+                // partie ne peut pas être « aucune et toutes ».
+                //
+                // LA VRAIE PROGRESSION DE CE JEU EST AILLEURS, et elle marche
+                // déjà : « partiesDe » rend une SUITE de moments qui
+                // s'enchaînent (placer les noms, construire pas à pas, tout
+                // reconstruire, répondre aux questions). C'est très exactement
+                // ce qu'une colonne de cases ferait — en moins bien, puisqu'il
+                // faudrait la cocher.
                 id: 'codage', type: 'select', label: 'Coder les figures', default: 'premier',
-                echelle: true,
                 aide: 'Quand une case apparaît, l\'élève code la figure : mêmes marques sur les '
                     + 'côtés égaux, petit carré sur les angles droits. Ne concerne que le mode '
                     + 'étape par étape.',
@@ -377,7 +449,7 @@ export const geometrieExercises = [
             chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        instruction: 'Deux questions différentes reviennent en alternance : dire ce que REPRÉSENTE un objet nommé — « que représente le segment [OA] ? » —, et TROUVER lequel des tracés porte le nom demandé. La seconde est la plus dure, parce que la corde et le diamètre sont alors sous les yeux en même temps. Pour t\'y retrouver, pose-toi toujours les deux mêmes questions : OÙ commence et où finit le tracé (au centre ? sur le cercle ? de part et d\'autre ?), et est-il DROIT ou COURBE. Et donne toujours le nom le plus précis : un diamètre est bien une corde, mais on l\'appelle un diamètre.'
+        instruction: 'Deux questions différentes reviennent en alternance : dire ce que REPRÉSENTE un objet nommé — « que représente le segment [OA] ? » —, et TROUVER lequel des tracés porte le nom demandé. La seconde est la plus dure, parce que la corde et le diamètre sont alors sous les yeux en même temps. Pour t\'y retrouver, pose-toi toujours les deux mêmes questions : OÙ commence et où finit le tracé (au centre ? sur le cercle ? de part et d\'autre ?), et est-il DROIT ou COURBE. Et donne toujours le nom le plus précis : un diamètre est bien une corde, mais on l\'appelle un diamètre. Enfin, quand tu ÉCRIS la réponse, écris-la comme on l\'écrit en mathématiques : [AB] est le SEGMENT qui joint A et B, alors que AB tout seul est une LONGUEUR, c\'est-à-dire un nombre. Un rayon est un segment : il s\'écrit [OA]. Un arc, lui, se nomme avec son mot — arc AB — parce qu\'il est courbe. Les touches sous le champ posent tout cela, pour ne pas le chercher au clavier.'
     },
 
     // --- La notation des objets de base (fiche 4ᵉ § G) ---
@@ -434,6 +506,35 @@ export const geometrieExercises = [
         // écrire l'égalité pour SON triangle, calculer l'hypoténuse, calculer
         // un côté (on soustrait), rédiger en entier. On ne demande jamais deux
         // choses nouvelles à la fois — le modèle des exercices de rédaction.
+        // --- La réciproque : le trou de la quatrième ---
+        //
+        // RÉMY : « Réciproque du théorème de Pythagore ». Mesuré avant
+        // d'écrire : les SIX niveaux de l'exercice voisin vont de « montrer
+        // l'hypoténuse » à « rédiger en entier », et tous sont du CALCUL. « Ce
+        // triangle est-il rectangle ? » n'y était nulle part.
+        id: 'geo-pythagore-reciproque',
+        cree: '2026-10-20',
+        title: 'La Réciproque de Pythagore',
+        generatorId: 'geo.pythagore-reciproque', activityId: 'numpad',
+        consignePapier: 'Compare le carré du plus long côté à la somme des deux autres.',
+        // DEUX COLONNES, PAS UNE. Rémy, carnet du 24 octobre : « par défaut,
+        // mets 2 colonnes dans l'impression ». Une seule colonne laissait la
+        // moitié droite de la feuille vide sur des questions qui tiennent en
+        // une ligne — et une feuille à moitié blanche se lit comme un
+        // exercice inachevé, pas comme de la place pour réfléchir.
+        colonnesPapier: 2,
+        lignesReponsePapier: 2,
+        params: { marches: ['le-plus-long', 'les-deux-carres', 'conclure-donne',
+            'conclure', 'le-sommet', 'probleme'] },
+        motsClefs: ['pythagore', 'réciproque', 'rectangle', 'triangle', 'hypoténuse',
+            'équerre', 'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Six marches, et la première ne calcule rien. Le théorème et sa réciproque ne servent pas à la même chose : le théorème part d'un triangle qu'on SAIT rectangle et donne une longueur ; la réciproque part de trois longueurs et dit s'il EST rectangle. Un élève qui les confond écrit « donc BC = 10 » alors qu'on lui donnait BC — il ne lui manque pas un calcul, il lui manque de savoir ce qu'il cherche. D'où la marche d'ouverture : repérer le PLUS LONG côté, sans rien calculer. C'est là que tout se joue, parce que celui qui prend les côtés dans l'ordre de l'énoncé compare n'importe quoi et conclut faux sans qu'aucun de ses calculs soit faux. Vient ensuite la comparaison, puis la conclusion — et le sommet de l'angle droit, qui est toujours EN FACE de l'hypoténuse. La dernière marche dit à quoi ça sert : vérifier un angle droit avec un mètre et rien d'autre."
+    },
+    {
         id: 'geo-pythagore', title: 'Le Théorème de Pythagore',
         cree: '2026-08-12',
         revisions: [{
@@ -519,7 +620,12 @@ export const geometrieExercises = [
         printParams: { mode: 'placer', points: 6 }, activityId: 'repere',
         params: { relatifs: 'positives', max: 5, mode: 'placer' },
         motsClefs: ['relatifs', 'négatifs', 'abscisse', 'ordonnée', 'coordonnées'],
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        // ET IL VA JUSQU'À LA QUATRIÈME. Ce n'est pas un rappel : on ne trace
+        // pas une fonction dans un repère qu'on ne sait pas lire, et le bloc 12
+        // de la progression de quatrième de Rémy en a besoin tel quel. Le
+        // repérage s'arrêtait à la cinquième, donc le chapitre des fonctions
+        // n'avait rien pour s'y appuyer.
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Clique dans le repère à l'endroit indiqué par les coordonnées. On lit l'abscisse en premier. "
             + "Le réglage « Coordonnées » fait passer le repère dans les négatifs : attention alors aux signes."
     },
@@ -533,7 +639,9 @@ export const geometrieExercises = [
         printParams: { mode: 'lire', points: 6 }, activityId: 'repere-lecture',
         params: { relatifs: 'positives', max: 5, mode: 'lire' },
         motsClefs: ['relatifs', 'négatifs', 'abscisse', 'ordonnée', 'coordonnées'],
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        // Jusqu'à la quatrième, pour la même raison que « Placer un Point » :
+        // lire des coordonnées est le socle du tracé de fonction.
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Lis les coordonnées du point tracé et choisis le bon couple. "
             + "Avec « Coordonnées » sur les relatives, il ne faut plus oublier les signes."
     },
@@ -848,6 +956,63 @@ export const geometrieExercises = [
     },
 
     {
+        // LA MOSAÏQUE DES TRANSFORMATIONS — et pourquoi c'est un TROISIÈME
+        // exercice, à côté de « Tracer l'image » et de « Symétrique par rapport
+        // à quoi ».
+        //
+        // RÉMY, photo de sa fiche à l'appui : « je sais que l'on a déjà un
+        // exercice sur les transformations mais tu pourrais refaire ce pavage et
+        // poser différentes questions et si l'élève se trompe, lui compter faux
+        // mais aussi montrer la transformation ».
+        //
+        // LES TROIS QUESTIONS NE SE RESSEMBLENT PAS, et c'est l'ordre d'un
+        // chapitre :
+        //
+        //   TRACER L'IMAGE        on donne la règle, l'élève l'APPLIQUE.
+        //   PAR RAPPORT À QUOI    on donne le résultat, l'élève RETROUVE la règle.
+        //   LA MOSAÏQUE           on donne la règle et une mosaïque entière, et
+        //                         l'élève doit SUIVRE la pièce des yeux.
+        //
+        // La troisième est la plus difficile des trois, et c'est celle d'un
+        // contrôle : rien à tracer, rien à comparer, il faut tenir une figure,
+        // un centre et un sens dans sa tête à la fois.
+        //
+        // ET LA CORRECTION EST UNE ANIMATION, parce qu'écrire « c'était la 9 »
+        // n'apprend rien ici : l'élève voit bien que ce n'est pas ce qu'il a
+        // touché, et il ne sait toujours pas pourquoi. Ce qui lui manque est le
+        // TRAJET — voir sa pièce passer de l'autre côté de l'axe et se poser.
+        id: 'geo-mosaique', title: 'La Mosaïque des Transformations',
+        cree: '2026-10-06',
+        // PLUSIEURS QUESTIONS POUR UN MÊME TABLEAU, demandé par Rémy dans sa
+        // revue du catalogue.
+        //
+        // La feuille écrivait « Quelle est l'image de la pièce 10 par la
+        // symétrie de centre K ? » suivi d'un pointillé, et RIEN d'autre — ni
+        // mosaïque, ni pièces, ni point K. La question était insoluble, et elle
+        // occupait quand même sa place : le défaut qu'il avait déjà relevé sur
+        // les quatre fiches de géométrie.
+        //
+        // `colonnesPapier` est parti avec : ce n'est plus une colonne de
+        // questions écrites, c'est un DESSIN avec ses questions à côté.
+        printable: 'mosaique', printGeneratorId: 'geo.mosaique-fiche',
+        generatorId: 'geo.transfo.pavageImage', activityId: 'pavage-image',
+        skills: ['geo.transfo.axiale', 'geo.transfo.centrale',
+            'geo.transfo.translation', 'geo.transfo.rotation'],
+        params: { genres: ['axiale', 'centrale', 'translation', 'rotation'], montrer: 'si-faux' },
+        motsClefs: ['pavage', 'mosaïque', 'image', 'symétrie', 'axe', 'centre',
+            'translation', 'vecteur', 'rotation', 'quart de tour', 'transformation'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Une pièce de la mosaïque est allumée, et l'énoncé donne une "
+            + "transformation. Touche la pièce sur laquelle elle se pose. L'axe, le centre "
+            + "ou le vecteur sont tracés sur le dessin : ils font partie de l'énoncé. Le "
+            + "conseil qui change tout : ne suis pas la pièce entière, choisis UN de ses "
+            + "coins et cherche où il tombe — le reste se recopie. Si tu te trompes, la "
+            + "pièce fera le trajet sous tes yeux."
+    },
+    {
         // L'EXERCICE INVERSE DU PRÉCÉDENT, et c'est tout son intérêt. Tracer,
         // c'est appliquer une règle qu'on vous donne ; reconnaître, c'est la
         // retrouver. Encore faut-il demander la bonne chose : une première
@@ -933,7 +1098,13 @@ export const geometrieExercises = [
         // rien ne s'exécute, et c'est exactement le « programme de
         // construction » du brevet.
         printable: 'chat', printGeneratorId: 'geo.chat-fiche',
-        printParams: { quoi: 'melange', niveau: 'moyen' },
+        // PAS DE `niveau` ICI. Il épinglait la feuille sur une bande de
+        // figures ; depuis que la fiche a sa colonne de cases, ne rien
+        // dire veut dire « les trois bandes », c'est-à-dire une feuille
+        // qui part du carré et finit sur l'étoile. `quoi` reste, lui :
+        // « mélangés » y veut dire un tirage à chaque figure, et c'est
+        // justement ce que des cases ne savent pas dire.
+        printParams: { quoi: 'melange' },
         consignePapier: "Trace au crayon, côté par côté, en comptant les carreaux.",
         params: { depart: 1, saisie: 'auto' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
@@ -1330,17 +1501,15 @@ export const geometrieExercises = [
         generatorId: 'geo.solides', printable: 'solides',
         params: { niveau: 'tous', aspect: 'tous', numeros: 'progressif', marques: 'progressif', facesColorees: true },
         paramSchema: [
+            // LA CARTE RÉÉCRIT SON PANNEAU, ELLE NE RÉÉCRIT PAS LA PROGRESSION
+            // — voir le logigramme, même cas. L'aide reste ici : c'est elle
+            // qui dit ce que chaque bande apporte.
             {
-                id: 'niveau', type: 'select', label: 'Les solides proposés',
+                ...casesDeSolides(),
+                label: 'Les solides proposés',
                 aide: 'Les solides usuels d\'abord — cube, pavé, prisme, pyramide. Les bases à cinq '
                     + 'et six côtés obligent à raisonner par familles ; l\'octaèdre force à vraiment '
-                    + 'regarder le dessin.',
-                options: [
-                    { value: 'facile', label: 'Les solides usuels' },
-                    { value: 'moyen', label: 'Jusqu\'aux bases pentagonales' },
-                    { value: 'tous', label: 'Tous, octaèdre compris' }
-                ],
-                default: 'tous'
+                    + 'regarder le dessin.'
             },
             {
                 id: 'aspect', type: 'select', label: 'Ce qu\'on demande de compter',
@@ -1405,7 +1574,8 @@ export const geometrieExercises = [
         // trois choses deviennent inévitables : il y a un endroit du programme
         // où l'on se trouve, la boucle y REMONTE, et la gauche est celle du
         // robot.
-        id: 'geo-automate', title: 'L\'Automate',
+        id: 'geo-automate',
+        jeu: false, title: 'L\'Automate',
         cree: '2026-08-11',
         activityId: 'automate',
         params: { niveau: 'moyen', mode: 'progressif' },
@@ -1598,7 +1768,8 @@ export const geometrieExercises = [
         // dépend de la précédente. Les deux formes ne tiennent pas dans le
         // même moule, et forcer la seconde dans le premier aurait donné quatre
         // questions sans rapport apparent au lieu d'une démonstration.
-        id: 'geo-thales-redaction',        title: 'Thalès : la Rédaction', cree: '2026-09-01',
+        id: 'geo-thales-redaction',
+        jeu: false,        title: 'Thalès : la Rédaction', cree: '2026-09-01',
         activityId: 'thales-redaction', sansRevision: true,
         // LA FICHE PAPIER A SON PROPRE GÉNÉRATEUR. Rémy : « et pour
         // l'impression, il faut aussi proposer un exercice de rédaction ».
@@ -1650,7 +1821,8 @@ export const geometrieExercises = [
     // copie est fausse. C'est pour cela que ce repérage mérite un exercice à
     // lui seul, et pas trois lignes d'introduction au chapitre suivant.
     {
-        id: 'geo-trigo-cotes',        title: 'Hypoténuse, Opposé, Adjacent',
+        id: 'geo-trigo-cotes',
+        jeu: false,        title: 'Hypoténuse, Opposé, Adjacent',
         colonnesPapier: 4,
         // LA FEUILLE N'EST PAS L'ÉCRAN. À l'écran on CLIQUE le côté ; sur le
         // papier on l'ÉCRIT — le premier palier n'a pas de traduction papier,
@@ -1666,22 +1838,22 @@ export const geometrieExercises = [
         skills: ['geo.trigo.cotes'],
         params: { palier: 'reperer', tourner: true },
         paramSchema: [
-            {
-                // TROIS PALIERS, LE MÊME TRIANGLE. Rémy : « tu peux aussi poser
-                // une question quel est le côté opposé à G […] et il peut aussi
-                // l'écrire avec les crochets. On pourrait y inclure l'écriture
-                // des formules, en aidant au départ. »
-                id: 'palier', type: 'select', label: 'Ce qu\'on demande',
-                default: 'reperer', echelle: true,
-                aide: 'Montrer prouve qu\'on a lu la figure ; écrire prouve en plus qu\'on sait '
-                    + 'nommer un segment par ses extrémités. Le troisième palier fait écrire cos, '
-                    + 'sin ou tan.',
-                options: [
-                    { value: 'reperer', label: 'Cliquer le côté sur la figure', court: 'Cliquer' },
-                    { value: 'ecrire', label: 'Écrire le nom du côté — [AB]', court: 'Écrire' },
-                    { value: 'formule', label: 'Écrire la formule — cos(G) = …', court: 'Formule' }
-                ]
-            },
+            // TROIS PALIERS, LE MÊME TRIANGLE. Rémy : « tu peux aussi poser une
+            // question quel est le côté opposé à G […] et il peut aussi
+            // l'écrire avec les crochets. On pourrait y inclure l'écriture des
+            // formules, en aidant au départ. »
+            //
+            // ILS SE COCHENT, ILS NE SE CHOISISSENT PLUS. Montrer prouve qu'on
+            // a lu la figure ; écrire prouve en plus qu'on sait nommer un
+            // segment par ses extrémités ; le troisième fait écrire cos, sin
+            // ou tan. Ce sont trois GESTES différents sur la même figure, et
+            // une séance de révision veut souvent les deux derniers sans le
+            // premier — ce qu'un menu à choix unique ne sait pas dire.
+            //
+            // La liste vient du jeu, où les paliers sont définis : une seconde
+            // liste écrite ici finirait par ne plus dire la même chose.
+            paramMarches({ marches: MARCHES_TRIGO, mot: 'palier',
+                ancien: ANCIEN_TRIGO }),
             {
                 id: 'tourner', type: 'boolean', label: 'Faire tourner la figure', default: true,
                 aide: 'Un triangle toujours posé l\'angle droit en bas à gauche enseigne une règle '
@@ -1702,7 +1874,11 @@ export const geometrieExercises = [
         cree: '2026-08-03',
         generatorId: 'geo.repere', activityId: 'repere-lecture',
         params: { relatifs: 'relatives', max: 5, mode: 'lire' },
-        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME] },
+        // LES QUATRE QUADRANTS VONT JUSQU'À LA QUATRIÈME, et c'est celui-là qui
+        // comptait le plus : une droite affine descend sous l'axe dès que son
+        // coefficient est négatif, et un élève qui n'a lu que des coordonnées
+        // positives ne sait pas où la suivre.
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Lis les coordonnées du point, sans oublier les signes."
     },
     {
@@ -1726,5 +1902,77 @@ export const geometrieExercises = [
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Crochet = la ligne s'arrête, parenthèse = elle continue. Réponds avant que la jauge ne se vide : elle se remplit de moins en moins longtemps à mesure que tu enchaînes.",
         apprentissage: NOTATIONS_APPRENTISSAGE
-    }
+    },
+    // ── LES ÉLÉMENTS DE GÉOMÉTRIE ───────────────────────────────────────────
+    //
+    // RÉMY, sa fiche de 6e à l'appui : « on pourrait faire quoi comme
+    // exercice ? » J'avais croisé ses vingt-cinq exercices avec le catalogue ;
+    // il a retenu l'appartenance, la lecture d'un codage et le milieu.
+    //
+    // CE QUI RESTE SUR SA FEUILLE : l'étoile, le badge, le pavage, les figures
+    // au compas. C'est sa ligne rouge — « rien ne remplace le geste ». L'écran
+    // prend ce qu'il fait mieux qu'une photocopie : une figure neuve à chaque
+    // question, et la correction qui NOMME la confusion.
+    ...[
+        ['geo-appartenance', 'appartenance', 'segment-droite',
+            'Le point est-il dessus ? (∈ et ∉)',
+            "Une figure, quatre affirmations, une seule vraie. Le cœur n'est pas le "
+            + "symbole : c'est qu'un point peut être sur la DROITE (AB) sans être sur le "
+            + "SEGMENT [AB], qui s'arrête à ses deux bouts."],
+        ['geo-appartenance-demi', 'appartenance', 'tous',
+            'Le point est-il dessus ? avec les demi-droites',
+            "Le même exercice, la demi-droite en plus. [AB) part de A et file du côté de "
+            + "B : un point de l'autre côté de A est sur la droite, mais pas sur la "
+            + "demi-droite. C'est la confusion la plus tenace du chapitre."],
+        ['geo-codage-lire', 'codage', 'tous',
+            'Lire un codage',
+            "L'application savait POSER un codage ; voici l'inverse — le lire. Deux "
+            + "segments qui portent la même marque ont la même longueur, et cela s'écrit "
+            + "AB = CD, sans crochets : [AB] est un objet, AB est un nombre."],
+        ['geo-milieu', 'milieu', 'tous',
+            'Le milieu d\'un segment',
+            "Être le milieu demande DEUX choses : être sur le segment, ET être à égale "
+            + "distance des deux bouts. Une question sur cinq pose le point équidistant "
+            + "qui n'est pas sur le segment — il n'est dans aucun manuel, et c'est lui "
+            + "qui sépare ceux qui savent la définition de ceux qui l'ont à moitié "
+            + "retenue."]
+    ].map(([id, notion, sortes, title, instruction]) => ({
+        id, title,
+        cree: '2026-09-24',
+        consignePapier: notion === 'milieu' ? 'Quelle phrase est vraie ?'
+            : (notion === 'codage' ? 'Que donne le codage ?'
+                : 'Quelle affirmation est vraie ?'),
+        // LA FIGURE S'IMPRIME, et il a fallu un rendu pour ça.
+        //
+        // RÉMY : « tu oublies toutes les figures sur la version imprimé ». La
+        // feuille tombait sur le rendu générique « questions écrites », qui
+        // n'écrit que `prompt.papier` — d'où dix lignes « Quelle affirmation
+        // est vraie ? » sans figure NI affirmations. Une question dont
+        // l'énoncé entier a disparu n'est pas incomplète, elle est insoluble.
+        printable: 'geoElements',
+        // ET PLUS DE `colonnesPapier` : c'est le RENDU qui dispose.
+        //
+        // Le « 1 » qui s'y trouvait datait du rendu générique, où un bloc ne
+        // portait qu'une ligne de texte. Depuis que la figure s'imprime, la
+        // forme d'un bloc n'est plus une affaire de colonnes mais de
+        // PROPORTIONS — une figure, puis quatre affirmations —, et seul le
+        // rendu les connaît.
+        generatorId: 'geo.elements', activityId: 'buttons',
+        params: { notion, sortes },
+        // CHAQUE EXERCICE N'OFFRE QUE LES RÉGLAGES QUI LE GOUVERNENT. Un
+        // générateur qui sert trois notions déclare les réglages des trois ;
+        // les poser tous sur chaque exercice donnerait à l'exercice du milieu
+        // un bouton « quels objets » qui ne change rien — ce que
+        // `ficheReglages.test.mjs` refuse, et à raison.
+        //
+        // `notion` n'y est jamais : c'est l'exercice qui la fixe, et elle est
+        // dans son titre. La proposer reviendrait à offrir de changer
+        // d'exercice depuis l'exercice.
+        paramSchema: reglagesDeGeoElements(notion),
+        motsClefs: ['appartient', 'appartenance', 'codage', 'milieu', 'segment', 'droite',
+            'demi-droite', 'point', 'notation', 'géométrie', 'sixième', 'aligné'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction
+    }))
 ];

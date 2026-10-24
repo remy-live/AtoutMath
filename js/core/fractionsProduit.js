@@ -191,3 +191,79 @@ export function corrigeProduit(p) {
         + `qu’il faut alors simplifier par ${total}. C’est ce ${total}-là qu’on `
         + `s’épargne en barrant avant de calculer.`;
 }
+
+// --- UNE FRACTION PAR UN ENTIER — le cas de sixième --------------------------
+//
+// RÉMY, dix-huitième bloc de sa progression de sixième : « multiplier une
+// fraction par un nombre ». L'exercice ne savait multiplier QUE deux fractions,
+// et il s'interdisait même explicitement le dénominateur 1 — « 1/1 et 3/1 ne
+// sont pas des fractions à multiplier », ce qui est juste et manquait le cas.
+//
+// ET CE N'EST PAS LE MÊME GESTE, malgré la ressemblance de l'écriture.
+// « 3 × 2/5 », c'est « 2/5 + 2/5 + 2/5 » : on prend TROIS FOIS deux cinquièmes.
+// Le nombre de parts est multiplié, LA TAILLE DES PARTS NE CHANGE PAS — donc
+// le dénominateur ne bouge pas. Un élève de sixième qui écrit 6/15 n'a pas
+// raté une règle de calcul : il a cru que le 3 agissait sur les deux étages.
+// C'est ce malentendu-là, et pas un autre, que l'exercice doit lui montrer.
+//
+// LE RÉSULTAT NE SE SIMPLIFIE JAMAIS, même décision que partout ailleurs dans
+// ce dépôt : 6/4 et 3/2 sont tous les deux justes, le logiciel doit en écrire
+// un, et quel que soit son choix la moitié des élèves qui ont raison seraient
+// comptés faux. Comme la fraction de départ est déjà irréductible, il suffit
+// que l'entier et le dénominateur n'aient rien en commun.
+
+/**
+ * UNE FRACTION MULTIPLIÉE PAR UN ENTIER.
+ *
+ * @returns {{a,b,k,entierDevant,reponse}} `entierDevant` dit de quel côté
+ *   l'entier est écrit : les deux s'écrivent dans les manuels, et n'en montrer
+ *   qu'un apprendrait que l'entier est toujours en tête.
+ */
+export function tirerParEntier(rng, opts = {}) {
+    const { maxDen = 9, maxEntier = 9 } = opts;
+    for (let essai = 0; essai < 200; essai++) {
+        const b = rng.int(2, Math.max(2, maxDen));
+        const a = rng.int(1, b - 1);
+        const k = rng.int(2, Math.max(2, maxEntier));
+        // LA FRACTION DE DÉPART EST IRRÉDUCTIBLE, comme dans un énoncé.
+        if (!estIrreductible(a, b)) continue;
+        // ET LE RÉSULTAT S'ÉCRIT D'UNE SEULE FAÇON : sans cela, « 2 × 3/4 »
+        // vaudrait 6/4 ET 3/2, et l'élève qui écrit l'autre serait compté faux.
+        if (pgcd(k, b) > 1) continue;
+        // On reste dans les tables : « 7 × 8/9 » fait 56/9, et le travail n'est
+        // plus la fraction mais une multiplication à retenir.
+        if (a * k > PRODUIT_MAX) continue;
+        return { a, b, k, entierDevant: rng.bool(), reponse: { n: a * k, d: b } };
+    }
+    return { a: 2, b: 5, k: 3, entierDevant: true, reponse: { n: 6, d: 5 } };
+}
+
+/** Ce que le robot dit, et ce que l'élève lit en cliquant « Aide ». */
+export function etapesParEntier(p) {
+    return [
+        // ON ÉCRIT LA SOMME EN ENTIER TANT QU'ELLE TIENT. Coupée à quatre
+        // termes quand il y en a cinq, elle montre des points de suspension
+        // là où l'élève aurait pu compter — et c'est le comptage qui fait
+        // comprendre que le dénominateur ne bouge pas.
+        `Multiplier par ${p.k}, c'est prendre ${p.k} FOIS la fraction : `
+            + `${Array(Math.min(p.k, 5)).fill(`${p.a}/${p.b}`).join(' + ')}`
+            + `${p.k > 5 ? ' + …' : ''}. Le nombre de parts est multiplié, leur TAILLE non.`,
+        `Donc on multiplie le numérateur par ${p.k} et l'on ne touche pas au `
+            + `dénominateur : (${p.a} × ${p.k})/${p.b}.`
+    ];
+}
+
+/** Le corrigé, écrit comme au tableau. */
+export function corrigeParEntier(p) {
+    // L'ORDRE D'ÉCRITURE NE S'INVERSE PAS D'UN CÔTÉ DE L'ÉGALITÉ À L'AUTRE.
+    // Le corrigé écrivait « 1/7 × 5 = (5 × 1)/7 » : juste, et illisible pour
+    // qui suit le calcul des yeux — un professeur de mathématiques le voit
+    // tout de suite.
+    const gauche = p.entierDevant ? `${p.k} × ${p.a}/${p.b}` : `${p.a}/${p.b} × ${p.k}`;
+    const haut = p.entierDevant ? `${p.k} × ${p.a}` : `${p.a} × ${p.k}`;
+    return `${gauche} = (${haut})/${p.b} = ${p.reponse.n}/${p.reponse.d}. `
+        + `LE DÉNOMINATEUR NE BOUGE PAS : les parts gardent la même taille, il y en a `
+        + `seulement ${p.k} fois plus. Si l'on avait aussi multiplié le ${p.b}, on aurait `
+        + `écrit ${p.a * p.k}/${p.b * p.k} — qui vaut exactement ${p.a}/${p.b}, c'est-à-dire `
+        + `le nombre de départ : la multiplication n'aurait servi à rien.`;
+}

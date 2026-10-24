@@ -27,8 +27,103 @@ import { Shortcodes } from '../core/shortcodes.js';
 const CLE_CLASSES = 'classes';
 const CLE_SEANCES = 'seances';
 
-export async function lireClasses() {
-    return (await globalStore.get(CLE_CLASSES, [])) || [];
+/**
+ * LES CLASSES DU PROFESSEUR — CELLES DU SERVEUR QUAND IL Y EN A UN.
+ *
+ * Rémy : « pourquoi je ne peux pas donner un parcours à d'autres classes, une
+ * seule apparaît ». Il en avait deux, et le panneau n'en montrait qu'une.
+ *
+ * IL Y AVAIT DEUX NOTIONS DE « CLASSE » DANS L'APPLICATION, ET CE PANNEAU
+ * LISAIT LA MAUVAISE.
+ *
+ *   · L'ANCIENNE, purement locale : une liste rangée sous la clé `classes` de
+ *     ce navigateur, héritée de l'époque où tout marchait hors ligne.
+ *   · LA VRAIE, sur le serveur : celles que le professeur crée et peuple par la
+ *     porte « La classe », avec ses trente élèves, leurs billets et leur
+ *     travail.
+ *
+ * `lireClasses()` rendait la première. Rémy créait ses classes dans la seconde.
+ * Le panneau montrait donc ce qui traînait d'un essai ancien — une classe — et
+ * pas celles qui existent. Aucune erreur ne s'affichait, ce qui est le pire des
+ * cas : rien ne dit qu'on regarde autre chose que ce qu'on croit.
+ *
+ * ON GARDE LE STOCK LOCAL EN REPLI, et seulement en repli : sans serveur,
+ * l'application doit continuer de marcher — c'est une promesse tenue depuis le
+ * début, et une salle sans réseau n'est pas un cas rare.
+ *
+ * LE COMPTE D'ÉLÈVES VIENT AVEC, mais pas la liste : trente élèves par classe,
+ * pour un panneau qui n'en montre aucun tant qu'on ne déplie pas, ce serait
+ * payer cher une information qu'on ne regarde pas. La liste se demande au
+ * dépliage (voir `elevesDeLaClasse` dans ui/parcoursClasses.js).
+ */
+let memoClasses = null;
+/** Vrai quand le serveur n'a pas répondu — voir `classesIllisibles`. */
+let echecDerniereLecture = false;
+let memoQuand = 0;
+const MEMO_MS = 15000;
+
+export async function lireClasses({ fraiches = false } = {}) {
+    const local = async () => (await globalStore.get(CLE_CLASSES, [])) || [];
+
+    const { jetonProf } = await import('../core/verrouProf.js');
+    if (!jetonProf()) return local();
+
+    if (!fraiches && memoClasses && Date.now() - memoQuand < MEMO_MS) return memoClasses;
+
+    const { mesClasses } = await import('../core/espaceProf.js');
+    const d = await mesClasses();
+    if (d && d.erreur) {
+        // LE SERVEUR A REFUSÉ : on ne remplace pas ses classes par une liste
+        // locale qui n'a rien à voir. Mieux vaut un panneau vide, qui dit
+        // qu'il n'y a rien, qu'un panneau qui montre autre chose.
+        //
+        // MAIS « VIDE » ET « MUET » NE SE DISENT PAS PAREIL, et c'est le
+        // défaut que Rémy a rencontré : « je n'ai plus les paramètres qui me
+        // permettent de donner un parcours à la classe ». Mesuré en coupant
+        // l'API : le panneau s'ouvre, les classes ont disparu, et il annonce
+        // « Vous n'avez pas encore de classe. Créez-en une ». C'est FAUX — il
+        // en a deux — et cela l'envoie en fabriquer une troisième.
+        //
+        // On retient donc l'échec. Le panneau dira « je n'ai pas pu les lire »
+        // et offrira de réessayer, au lieu d'affirmer une chose qu'il ne sait
+        // pas.
+        echecDerniereLecture = true;
+        return memoClasses || [];
+    }
+    echecDerniereLecture = false;
+    memoClasses = (Array.isArray(d) ? d : []).map(c => ({
+        id: c.id,
+        nom: c.name || c.nom || 'Classe',
+        code: c.join_code || '',
+        niveau: c.level || '',
+        effectif: Number(c.student_count) || 0,
+        eleves: [],              // demandés au dépliage, pas avant
+        serveur: true
+    }));
+    memoQuand = Date.now();
+    return memoClasses;
+}
+
+/**
+ * LA DERNIÈRE LECTURE A-T-ELLE ÉCHOUÉ ?
+ *
+ * Vrai quand le serveur n'a pas répondu — et donc que la liste rendue est un
+ * souvenir ou rien du tout, PAS un inventaire. Voir `lireClasses`.
+ */
+export function classesIllisibles() { return echecDerniereLecture; }
+
+/** Après un changement de classe, la prochaine lecture doit aller au serveur. */
+export function oublierLesClasses() {
+    memoClasses = null; memoQuand = 0; echecDerniereLecture = false;
+}
+
+// ET L'ON N'ATTEND PLUS QUE QUELQU'UN PENSE À NOUS LE DIRE. `oublierLesClasses`
+// n'était appelée qu'au moment de supprimer une classe : créer une classe puis
+// ouvrir « À qui ce parcours est donné » dans les quinze secondes montrait une
+// liste sans elle, sans que rien ne l'explique. Le noyau annonce désormais que
+// la liste a bougé ; il suffit d'écouter.
+if (typeof document !== 'undefined') {
+    document.addEventListener('classes_updated', oublierLesClasses);
 }
 
 export async function lireSeances() {
@@ -58,16 +153,25 @@ const esc = (t) => String(t == null ? '' : t)
  */
 export async function ouvrirDonnerSeance(parcours, onDonne) {
     if (!parcours || !(parcours.steps || []).length) {
-        return showAlert('Ajoutez au moins une activité avant de donner ce parcours.');
+        return showAlert('Ajoutez au moins un exercice avant de donner ce parcours.');
     }
     const classes = await lireClasses();
     if (!classes.length) {
+        // MUET N'EST PAS VIDE — voir `lireClasses`. Dire « vous n'avez pas de
+        // classe » à un professeur qui en a trois, parce que le serveur n'a
+        // pas répondu, l'envoie en fabriquer une quatrième.
+        if (classesIllisibles()) {
+            return showAlert('Je n\'ai pas pu lire vos classes : le serveur n\'a pas '
+                + 'répondu. Vos classes ne sont pas perdues — réessayez dans un instant.'
+                + '<br><br>En attendant, le bouton <b>lien</b> vous donne un code à '
+                + 'dicter : il marche sans serveur.');
+        }
         // ON NE DEMANDE PAS DE CRÉER UNE CLASSE ICI. Le professeur est en train
         // de donner un travail ; l'envoyer construire ses classes au milieu du
         // geste, c'est lui faire perdre le fil et le parcours. On lui dit où
         // aller, et il revient quand il est prêt.
-        return showAlert('Vous n\'avez pas encore de classe. Créez-en une dans '
-            + '<b>Mes outils → Mes classes</b>, puis revenez donner ce parcours.'
+        return showAlert('Vous n\'avez pas encore de classe. Créez-en une par la porte '
+            + '<b>La classe</b>, en haut, puis revenez donner ce parcours.'
             + '<br><br>En attendant, le bouton <b>lien</b> vous donne un code à dicter : '
             + 'il marche sans classe.');
     }
@@ -89,7 +193,7 @@ export async function ouvrirDonnerSeance(parcours, onDonne) {
     const modal = showModal('Donner ce parcours', `
         <div class="ds-boite">
             <p class="ds-titre-parcours">${esc(parcours.name || 'Parcours')}
-                <span class="ds-n">${(parcours.steps || []).length} activités</span></p>
+                <span class="ds-n">${(parcours.steps || []).length} exercices</span></p>
 
             ${niveaux.map(n => groupeHtml(classesDuNiveau(classes, n),
         n.replace(/^(\d)e$/, '$1ᵉ'), n)).join('')}

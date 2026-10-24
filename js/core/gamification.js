@@ -68,15 +68,18 @@ export const familles = [
 
 /** Les badges uniques : les moments qu'on ne vit qu'une fois. */
 const UNIQUES = {
-    first_step: { id: 'first_step', icon: '🌱', title: 'Premier Pas', description: 'Terminer ton tout premier exercice.' },
-    flawless: { id: 'flawless', icon: '💯', title: 'Parcours Parfait', description: 'Terminer un parcours complet sans aucune erreur.' },
-    marathon: { id: 'marathon', icon: '🏃', title: 'Marathonien', description: 'Atteindre le niveau 5 (500 XP).' },
-    mastery: { id: 'mastery', icon: '🏅', title: 'Notion Maîtrisée', description: 'Amener une compétence au niveau Expert.' },
-    explorer: { id: 'explorer', icon: '🌍', title: 'Grand Voyageur', description: 'Travailler des compétences dans trois domaines différents.' },
+    first_step: { id: 'first_step', icon: '🌱', title: 'Premier pas', description: 'Terminer ton tout premier exercice.' },
+    flawless: { id: 'flawless', icon: '💯', title: 'Parcours parfait', description: 'Terminer un parcours complet sans aucune erreur.' },
+    marathon: { id: 'marathon', icon: '🏃', title: 'Marathonien', description: 'Atteindre le niveau 5 (500 points).' },
+    mastery: { id: 'mastery', icon: '🏅', title: 'Notion maîtrisée', description: 'Amener une compétence au niveau Expert.' },
+    explorer: { id: 'explorer', icon: '🌍', title: 'Grand voyageur', description: 'Travailler des compétences dans trois domaines différents.' },
     centurion: { id: 'centurion', icon: '🏛️', title: 'Centurion', description: 'Réussir 500 questions au total.' }
 };
 
 /** Le catalogue complet, uniques d'abord puis les familles palier par palier. */
+// Les noms d'exploits s'écrivent comme le reste : majuscule au premier mot,
+// et c'est tout. « Premier Pas », « Notion Maîtrisée » étaient de la capitale
+// anglaise — voir la note en tête de js/data/tags.js.
 export const badgesCatalog = construireCatalogue();
 
 function construireCatalogue() {

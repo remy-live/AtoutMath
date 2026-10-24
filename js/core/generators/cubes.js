@@ -18,7 +18,7 @@
 // dessous ou derrière, jamais suspendu (voir core/cubes.js).
 
 import { makeItem, finalizeChoices } from '../items.js';
-import { construire, mesures, FAMILLES } from '../cubes.js';
+import { construire, mesures, FAMILLES, quartDeTour } from '../cubes.js';
 import { cubesSvg } from '../cubesSvg.js';
 import { figure as encadrer } from '../figures.js';
 
@@ -73,6 +73,39 @@ export const cubesGenerator = {
             aide: 'Trois questions sur le même dessin, et trois compétences : le volume, la '
                 + 'base, et la comparaison au pavé qui contient.',
             options: Object.values(QUESTIONS).map(q => ({ value: q.id, label: q.label }))
+        },
+        // ── LES ÉTAGES EN COULEUR, DÈS L'ÉNONCÉ ────────────────────────────
+        //
+        // RÉMY, 19 octobre : « j'aimerai bien ce genre d'exercices (tu peux
+        // mettre des couleurs) ».
+        //
+        // CELA DÉFAIT UN CHOIX QU'IL AVAIT LUI-MÊME FAIT, et c'est assumé :
+        // « couleurs par étage (via l'indice) » rangeait la couleur dans
+        // l'aide, parce qu'elle MONTRE LA MÉTHODE — compter par étages. Sa
+        // demande du 19 est plus récente, et elle a sa raison : douze
+        // empilements du même gris-bleu se ressemblent tous, et l'élève de
+        // sixième qui ne sait pas par où prendre le comptage ne demande pas
+        // d'indice, il compte au hasard et se trompe.
+        //
+        // L'INDICE GARDE SON AVANCE : il DÉPLIE l'empilement étage par étage,
+        // ce que la couleur ne fait pas. Colorer n'est pas découper.
+        {
+            id: 'couleurs', type: 'checkbox', label: 'Colorer les étages', default: true,
+            aide: 'Une teinte par étage, dès le dessin. Décochez pour le gris d\'origine : '
+                + 'la couleur montre par où prendre le comptage, ce qui aide — et simplifie.'
+        },
+        // ── TOURNER L'EMPILEMENT ───────────────────────────────────────────
+        //
+        // Le bouton 90° de l'exercice que Rémy a photographié. DÉCOCHÉ PAR
+        // DÉFAUT, et ce n'est pas de la prudence : « le dessin ne ment pas,
+        // mais il cache » EST l'exercice. Qui peut tourner voit les cubes
+        // cachés et n'a plus rien à déduire — c'est un autre exercice, plus
+        // facile, et c'est au professeur de décider lequel il donne.
+        {
+            id: 'tourner', type: 'checkbox', label: 'Laisser tourner l\'empilement', default: false,
+            aide: 'Un bouton montre le solide vu des quatre coins. Les cubes cachés se '
+                + 'voient alors, donc il n\'y a plus à les déduire : c\'est un exercice plus '
+                + 'facile, utile pour découvrir.'
         }
     ],
 
@@ -118,7 +151,10 @@ export const cubesGenerator = {
         // l'index, pas du hasard : sur une fiche de neuf dessins, le hasard en
         // donne parfois neuf pareils.
         const miroir = i % 3 === 2;
-        const dessin = cubesSvg(h, { miroir });
+        // LA COULEUR DES ÉTAGES SUIT LE RÉGLAGE DU PROFESSEUR, et elle est
+        // posée dès l'énoncé quand il la laisse. Voir le réglage `couleurs`.
+        const etages = p.couleurs !== false;
+        const dessin = cubesSvg(h, { miroir, etages });
         return makeItem({
             seed: rng.seed,
             generatorId: 'geo.cubes',
@@ -146,12 +182,54 @@ export const cubesGenerator = {
             difficulty: { petit: 1, moyen: 2, grand: 3 }[p.taille] || 2,
             meta: {
                 hauteurs: h, famille, question: q.id,
+                // L'OUTIL VOYAGE DANS `meta`, parce que c'est là que
+                // `core/activities/outils.js` va le chercher : « meta.outils =
+                // [{ id, label, html }] ». Un outil déclaré ailleurs ne
+                // s'afficherait nulle part, sans un mot.
+                //
+                // LA CLÉ N'EXISTE PAS QUAND IL N'Y A PAS D'OUTIL, et ce n'est
+                // pas une coquetterie : `outils: undefined` est une clé
+                // PRÉSENTE qui vaut `undefined`, et l'épreuve « aucun meta ne
+                // porte de code » la refuse — elle garde précisément les
+                // valeurs qui s'affichent en « undefined » sur l'écran d'un
+                // élève sans rien faire planter. Elle a servi ici.
+                ...(p.tourner ? { outils: [tournerOutil(h, miroir, etages)] } : {}),
                 total: m.total, sol: m.sol, caches: m.caches, aAjouter: m.aAjouter,
                 boite: m.boite, reponse: bon, theme: `${famille}-${q.id}`
             }
         });
     }
 };
+
+/**
+ * LE MÊME SOLIDE VU DES QUATRE COINS — l'outil « Tourner ».
+ *
+ * RÉMY avait photographié un exercice qui porte un bouton 90°. ON MONTRE LES
+ * QUATRE D'UN COUP plutôt que d'en faire tourner un : cliquer quatre fois pour
+ * revenir au départ fait perdre le fil du comptage, et ce qu'on veut
+ * réellement, c'est COMPARER deux vues — « ce que je ne voyais pas là, je le
+ * vois ici ».
+ *
+ * LA PREMIÈRE VUE EST CELLE DE L'ÉNONCÉ, au miroir près : sans elle, l'élève
+ * devrait retrouver de quel côté il regardait.
+ */
+function tournerOutil(h, miroir, etages) {
+    const vues = [];
+    let g = h;
+    for (let n = 0; n < 4; n++) {
+        vues.push(`<figure class="cu-vue">
+            ${cubesSvg(g, { miroir, etages, classe: 'cu-svg--vue' })}
+            <figcaption>${n === 0 ? 'Vue de l\'énoncé' : `Tourné de ${n * 90}°`}</figcaption>
+        </figure>`);
+        g = quartDeTour(g);
+    }
+    return {
+        id: 'tourner', label: '🔄 Tourner l\'empilement',
+        html: `<p class="cu-vues-mot">Le même empilement, vu des quatre coins. Il y a
+            toujours le même nombre de cubes.</p>
+            <div class="cu-vues">${vues.join('')}</div>`
+    };
+}
 
 /**
  * LES LEURRES SONT LES FAUTES DU CHAPITRE, pas des nombres voisins.

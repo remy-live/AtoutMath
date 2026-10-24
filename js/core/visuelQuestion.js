@@ -53,13 +53,13 @@ export function figuresDe(html) {
 }
 
 /**
- * Refabrique la question d'une erreur et rend son visuel.
+ * LA QUESTION, REFABRIQUÉE DEPUIS SA GRAINE — ou `null`.
  *
- * @param {Object} q - le `questionData` d'une entrée du carnet
- * @param {string} [exerciseId] - pour retrouver les réglages du catalogue
- * @returns {{html: string, exact: boolean} | null}
+ * L'énoncé refait doit être CELUI QU'ON A ENREGISTRÉ. Sinon la graine a
+ * rencontré d'autres réglages — le professeur a retouché l'exercice dans son
+ * parcours — et tout ce qu'on en tirerait illustrerait une AUTRE question.
  */
-export function visuelDe(q, exerciseId) {
+function refaireLItem(q, exerciseId) {
     if (!q || !q.generatorId || !q.itemSeed) return null;
     const gen = getGenerator(q.generatorId);
     if (!gen || typeof gen.generate !== 'function') return null;
@@ -76,14 +76,85 @@ export function visuelDe(q, exerciseId) {
         return null;
     }
     if (!item || !item.prompt) return null;
+    if (normaliserEnonce(item.prompt.text) !== normaliserEnonce(q.questionText)) return null;
+    return { gen, item };
+}
 
-    const figures = figuresDe(item.prompt.html);
+/**
+ * Refabrique la question d'une erreur et rend son visuel.
+ *
+ * @param {Object} q - le `questionData` d'une entrée du carnet
+ * @param {string} [exerciseId] - pour retrouver les réglages du catalogue
+ * @returns {{html: string, exact: boolean} | null}
+ */
+export function visuelDe(q, exerciseId) {
+    const refait = refaireLItem(q, exerciseId);
+    if (!refait) return null;
+    const figures = figuresDe(refait.item.prompt.html);
     if (!figures) return null;
-
-    // L'énoncé refait doit être CELUI QU'ON A ENREGISTRÉ. Sinon la graine a
-    // rencontré d'autres réglages, et le dessin illustrerait une autre question.
-    const exact = normaliserEnonce(item.prompt.text) === normaliserEnonce(q.questionText);
-    if (!exact) return null;
-
     return { html: figures, exact: true };
+}
+
+/**
+ * LA CORRECTION, DESSINÉE — et la réponse, en français.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, capture du carnet d'un élève de 4e : « c'est pas clair pour les
+ * transformations, il faut montrer la figure de base et la solutions. […] Il
+ * faut que tant que faire se peut que ce soit visuel pour les explications. »
+ *
+ * La carte montrait la figure de la QUESTION, et sous elle deux chaînes :
+ * « ta réponse : point:0.5:4.5, attendu : point:4.5:4.5 ». Pour comprendre ce
+ * qu'il avait raté, l'élève devait convertir des coordonnées de machine en
+ * points de la figure — c'est-à-dire refaire l'exercice à l'envers, sans la
+ * figure.
+ *
+ * ── POURQUOI LE CARNET NE SAIT PAS FAIRE ÇA TOUT SEUL ──────────────────────
+ *
+ * Parce que la clé qui juge n'a de sens que pour le générateur qui l'a écrite :
+ * « point:4.5:4.5 » est un centre en coordonnées de CASE, « 7|3/8|3 » est une
+ * liste de cases comptées à partir de zéro. Une table de traduction dans
+ * l'interface serait à refaire à chaque exercice, et elle se tromperait d'un
+ * demi-carreau le jour où l'on y penserait le moins — c'est exactement la
+ * faute que `core/elementSymetrie.js` annonce en tête de fichier.
+ *
+ * DEUX FONCTIONS FACULTATIVES, ET LE CARNET N'EN SAIT PAS PLUS :
+ *
+ *   `gen.lireUneReponse(cle, item)` → { objet, dit }
+ *   `gen.figureCorrigee(item, { donne })` → le HTML de la figure corrigée
+ *
+ * Un générateur qui n'en a pas laisse la carte telle qu'elle était.
+ *
+ * ET CELA RÉPARE LE PASSÉ, ce qui est tout l'intérêt : le carnet rejoue ce qui
+ * a été écrit LE JOUR de l'erreur, et les quatre-vingts erreurs déjà
+ * enregistrées de cet élève portent la forme canonique. Les corriger à la
+ * source ne les aurait pas touchées.
+ *
+ * @returns {{html: string, given: string, expected: string} | null}
+ */
+export function corrigeDe(q, exerciseId) {
+    const refait = refaireLItem(q, exerciseId);
+    if (!refait) return null;
+    const { gen, item } = refait;
+    if (typeof gen.figureCorrigee !== 'function') return null;
+
+    const lu = (cle) => (typeof gen.lireUneReponse === 'function'
+        ? gen.lireUneReponse(String(cle ?? ''), item) : null);
+    const donne = lu(q.input);
+    const bon = lu(q.expected);
+
+    let html = '';
+    try {
+        html = gen.figureCorrigee(item, { donne: donne ? donne.objet : null });
+    } catch (e) {
+        return null;
+    }
+    if (!html) return null;
+
+    return {
+        html,
+        given: donne ? donne.dit : '',
+        expected: bon ? bon.dit : ''
+    };
 }
