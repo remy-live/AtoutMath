@@ -223,22 +223,55 @@ export const dureesGenerator = {
                         'Additionne les heures d\'un côté, les minutes de l\'autre.',
                         'Puis regarde les minutes : au-delà de 60, elles font une heure de plus.'
                     ]
-                    // ── ON N'EN POSE PAS UNE, ON AVANCE ───────────────────
+                    // ── AVANCER, ET QUAND ÇA VAUT LA PEINE ────────────────
                     //
                     // RÉMY : « 1:48 --> 2:00 --> 3:17 avec +.... au-dessus de
                     // chaque flèche ». Les deux indices de la somme ne valaient
                     // rien pour la différence : « additionne les heures d'un
                     // côté » est précisément ce qu'il ne faut PAS faire quand
                     // les minutes du bas dépassent celles du haut.
-                    : [
-                        'On n\'en pose pas une : on AVANCE du plus petit vers le plus grand, '
-                            + 'en s\'arrêtant à l\'heure ronde.',
-                        'Deux bonds, et leur somme est la réponse. Combien pour atteindre '
-                            + 'l\'heure ronde ? Puis combien pour finir ?'
-                    ],
-                // LE DESSIN DU SECOND INDICE — voir `schemaBonds`. La somme n'en
-                // a pas : on la pose, et il n'y a rien à montrer qu'une addition.
-                schemas: somme ? [] : ['', schemaBonds(y, x)],
+                    //
+                    // MAIS ELLES NE LE DÉPASSENT PAS TOUJOURS. Vu sur SA
+                    // capture : « 3 h 15 − 5 min », où 15 est plus grand que 5.
+                    // Mon indice lui disait quand même « on n'en pose pas une »,
+                    // alors que c'est exactement ce qu'il fallait faire : les
+                    // heures entre elles, les minutes entre elles, sans retenue.
+                    // UN INDICE QUI DÉTOURNE D'UNE MÉTHODE JUSTE est pire qu'un
+                    // indice absent.
+                    //
+                    // LE DESSIN RESTE DANS LES DEUX CAS — avancer n'est jamais
+                    // FAUX, et c'est ce qu'il voulait voir. C'est la PHRASE qui
+                    // change, et elle dit laquelle des deux routes est la plus
+                    // courte ici.
+                    : deborde
+                        ? [
+                            'ON N\'EN POSE PAS UNE : les minutes du bas dépassent celles du '
+                                + 'haut. On AVANCE du plus petit vers le plus grand, en '
+                                + 's\'arrêtant à l\'heure ronde.',
+                            'Deux bonds, et leur somme est la réponse. Combien pour atteindre '
+                                + 'l\'heure ronde ? Puis combien pour finir ?'
+                        ]
+                        : [
+                            'Ici les minutes du haut sont les plus grandes : tu peux poser, '
+                                + 'les heures entre elles et les minutes entre elles.',
+                            'Et l\'autre route marche aussi : on AVANCE du plus petit vers le '
+                                + 'plus grand, et les deux bonds font la réponse.'
+                        ],
+                // ── LE DESSIN DÈS LE PREMIER INDICE ───────────────────────
+                //
+                // RÉMY, capture à l'appui : « je ne vois pas les schémas pour
+                // les heures et minutes ».
+                //
+                // MESURÉ sur son chemin : après UN clic sur « Un indice », le
+                // texte s'affiche et le schéma n'est pas là — il attendait le
+                // SECOND. Or les deux indices parlent des bonds, et un dessin
+                // qu'il faut demander deux fois est un dessin qu'on ne voit
+                // pas. C'était exactement sa demande : « qqch de propre pour
+                // bien montrer ».
+                //
+                // LA SOMME N'EN A PAS : on la pose, et il n'y a rien à montrer
+                // qu'une addition.
+                schemas: somme ? [] : [schemaBonds(y, x), schemaBonds(y, x)],
                 explanation: deborde
                     ? `${mx} ${somme ? '+' : '−'} ${my} minutes ${somme ? 'font' : 'demandent'} `
                         + `une retenue de SOIXANTE minutes, pas de dix. Le résultat est ${bonne}.`
@@ -313,7 +346,11 @@ export const dureesGenerator = {
                 'Lis la table : la dernière ligne qui ne dépasse pas donne les '
                     + 'heures, et ce qui manque pour y arriver donne les minutes.'
             ],
-            schemas: ['', '', tableDe60(total)],
+            // LA TABLE DÈS LE PREMIER INDICE, et de nouveau avec celui qui la
+            // nomme. Elle attendait le TROISIÈME : personne ne clique trois
+            // fois, et Rémy ne l'a jamais vue. Le second indice ne parle que du
+            // reste, il n'a rien à montrer.
+            schemas: [tableDe60(total), '', tableDe60(total)],
             explanation: `${total} = 60 × ${Math.floor(total / 60)} + ${total % 60}, `
                 + `donc ${total} min = ${bonne}. C'est une division euclidienne par 60 : `
                 + 'le quotient compte les heures, le reste les minutes.',

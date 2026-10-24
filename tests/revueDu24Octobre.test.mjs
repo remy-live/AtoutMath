@@ -291,8 +291,16 @@ test('LA SOUSTRACTION DE DURÉES SE FAIT PAR BONDS', () => {
     for (let i = 0; i < 8; i++) {
         const it = dureesGenerator.generate({ marches: ['difference'] },
             { index: i, total: 8, rng: makeRng('b' + i) });
-        const dessin = (it.schemas || [])[1] || '';
-        assert.match(dessin, /<svg class="md-bonds"/, `pas de schéma — ${it.prompt.text}`);
+        // ── LE SCHÉMA EST SUR LE PREMIER INDICE ────────────────────────────
+        //
+        // RÉMY, capture à l'appui : « je ne vois pas les schémas pour les heures
+        // et minutes ». MESURÉ sur son chemin, dans un navigateur : après UN clic
+        // sur « Un indice », le texte s'affiche et le dessin n'est pas là — il
+        // attendait le SECOND. Un dessin qu'il faut demander deux fois est un
+        // dessin qu'on ne voit pas.
+        const dessin = (it.schemas || [])[0] || '';
+        assert.match(dessin, /<svg class="md-bonds"/,
+            `rien au PREMIER indice — ${it.prompt.text}`);
         // DES BULLES ET DES FLÈCHES, et autant de flèches que de bonds.
         const bulles = (dessin.match(/<circle /g) || []).length;
         const fleches = (dessin.match(/marker-end=/g) || []).length;
@@ -302,10 +310,22 @@ test('LA SOUSTRACTION DE DURÉES SE FAIT PAR BONDS', () => {
         // les deux gains EST la correction, et il n'y a plus rien à chercher.
         assert.equal((dessin.match(/\+ ……/g) || []).length, fleches,
             'chaque flèche doit porter son « + …… » à remplir');
-        // ET LES INDICES NE DISENT PLUS DE POSER LE CALCUL : « additionne les
-        // heures d'un côté » est précisément ce qu'il ne faut PAS faire ici.
+        // ET L'INDICE DIT LA VÉRITÉ SUR CETTE SOUSTRACTION-LÀ.
+        //
+        // Vu sur sa capture : « 3 h 15 − 5 min », où les minutes du haut sont
+        // les plus grandes. L'indice lui disait quand même « on n'en pose pas
+        // une », alors que c'est exactement ce qu'il fallait faire. Un indice
+        // qui détourne d'une méthode JUSTE est pire qu'un indice absent.
+        const premier = String((it.hints || [])[0]);
         assert.ok(!/Additionne les heures/.test((it.hints || []).join(' ')),
             'la différence a gardé les indices de la somme');
+        if (it.meta.deborde) {
+            assert.match(premier, /N'EN POSE PAS UNE/,
+                `avec retenue, il faut avancer — ${it.prompt.text}`);
+        } else {
+            assert.match(premier, /tu peux poser/,
+                `sans retenue, poser est la route courte — ${it.prompt.text}`);
+        }
     }
 });
 
@@ -319,8 +339,11 @@ test('ET LA TABLE DE SOIXANTE AIDE À TROUVER LES HEURES', () => {
     for (let i = 0; i < 8; i++) {
         const it = dureesGenerator.generate({ marches: ['vers-heures'] },
             { index: i, total: 8, rng: makeRng('t' + i) });
-        const table = (it.schemas || [])[2] || '';
-        assert.match(table, /<ul class="md-table-60">/, `pas de table — ${it.prompt.text}`);
+        // AU PREMIER INDICE, pour la même raison que les bonds : elle attendait
+        // le TROISIÈME, et personne ne clique trois fois.
+        const table = (it.schemas || [])[0] || '';
+        assert.match(table, /<ul class="md-table-60">/,
+            `rien au PREMIER indice — ${it.prompt.text}`);
         const total = Number(it.prompt.text.match(/(\d+) minutes/)[1]);
         const tiennent = [...table.matchAll(/md-table-tient">(\d+) h = (\d+) min/g)];
         assert.equal(tiennent.length, Math.floor(total / 60),

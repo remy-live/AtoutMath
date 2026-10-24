@@ -151,6 +151,80 @@ test('LE RENDU IMPRIMÉ NE COMPTE PLUS DIX INTERVALLES EN DUR', () => {
         'l\'aperçu et le PDF doivent borner la pointe de la même façon');
 });
 
+test('« A ( …/… ) » SE POSE D\'UN SEUL BLOC', () => {
+    // RÉMY, capture de la feuille imprimée, 24 octobre : « très mal centrée et
+    // trop de pointillé pour les points, les parenthèses doivent être plus
+    // haute du coup, pour couvrir la fraction ».
+    //
+    // LES TROIS DÉFAUTS N'EN FONT QU'UN : la lettre, les deux parenthèses et la
+    // fraction étaient posées SÉPARÉMENT, chacune sur la ligne de base de
+    // l'ancienne réponse à une ligne. Empiler le contenu a doublé sa hauteur, et
+    // rien n'a suivi — les parenthèses couvraient la moitié basse.
+    //
+    // CETTE ÉPREUVE GARDE LA FORME, pas le pixel : elle vérifie qu'il n'y a plus
+    // qu'UNE boîte, centrée par `align-items`. Où les morceaux TOMBENT se mesure
+    // au navigateur — voir `tools/caseDeLaFraction.mjs`, qui le fait et le dit.
+    const N = sansCommentaires(lire('js/ui/fiches/nombres.js'));
+    // ON COMPTE, ON NE CHERCHE PAS UNE FOIS.
+    //
+    // Première version : `assert.match`. `epreuveTombe` a dit « CETTE ÉPREUVE
+    // NE GARDE RIEN » deux fois de suite — en défaisant le groupe de l'APERÇU,
+    // celui du PDF portait encore la même ligne et l'épreuve restait verte ; en
+    // rapetissant la parenthèse OUVRANTE, la fermante gardait sa taille. Un
+    // motif cherché une fois ne garde que le premier des deux endroits.
+    assert.equal(compter(N, /if \(g\.fractions && p\.lettre\) \{/g), 2,
+        'l\'aperçu ET le PDF doivent poser le groupe d\'un seul bloc');
+    assert.match(N, /display:flex; align-items:center/,
+        'rien ne centre plus la fraction entre ses parenthèses');
+    // LES PARENTHÈSES FONT DEUX FOIS LE TEXTE, dans les deux rendus : la
+    // fraction tient sur deux étages, elles doivent la couvrir. DEUX dans
+    // l'aperçu — l'ouvrante et la fermante —, une seule taille dans le PDF.
+    assert.equal(compter(N, /font-size:\$\{police \* 2\}px/g), 2,
+        'les deux parenthèses de l\'aperçu doivent couvrir la fraction');
+    assert.match(N, /const pt2 = g\.pt \* 2;/,
+        'la parenthèse du PDF a repris sa taille de texte');
+});
+
+test('ET LA PLACE À REMPLIR A LA TAILLE D\'UNE FRACTION', () => {
+    // « trop de pointillé pour les points ». MESURÉ AVANT, sur son aperçu :
+    // 41 pixels de pointillé par étage, pour un numérateur qui tient en un ou
+    // deux chiffres.
+    //
+    // LA LARGEUR EST ÉCRITE UNE FOIS pour les deux rendus : deux bornes
+    // recopiées finissent par diverger, et la parenthèse fermante se poserait
+    // alors à côté de ce qu'elle ferme.
+    const N = lire('js/ui/fiches/nombres.js');
+    assert.match(N, /const largeurEtageFraction = \(mm, lTrait\) =>/,
+        'la largeur d\'un étage n\'a plus de définition unique');
+    assert.equal(compter(N, /largeurEtageFraction\(mm, lTrait\)/g), 2,
+        'deux emplois, et deux seulement : l\'aperçu et le PDF');
+    // ET ELLE RESTE DANS CE QUI S'ÉCRIT À LA MAIN : entre six et douze
+    // millimètres pour un corps de dix points.
+    //
+    // ON LIT LES BORNES DANS LA SOURCE au lieu de les recopier ici : une
+    // épreuve qui réécrit la formule ne garde plus la formule, elle garde sa
+    // propre copie — et les deux dérivent le jour où l'on règle la largeur.
+    const bornes = N.match(
+        /Math\.min\(mm \* ([\d.]+), Math\.max\(mm \* ([\d.]+), lTrait \* [\d.]+\)\)/);
+    assert.ok(bornes, 'la borne de largeur a disparu de largeurEtageFraction');
+    const mm = 10 * 0.3528;   // un corps de dix points, en millimètres
+    assert.ok(mm * Number(bornes[1]) <= 12.1,
+        'un étage plus large qu\'un centimètre et demi redevient une ligne');
+    assert.ok(mm * Number(bornes[2]) >= 6.5,
+        'un étage trop étroit ne tient pas un dénominateur à deux chiffres');
+});
+
+test('LE CORRIGÉ SERRE SA BARRE AUTOUR DE SES CHIFFRES', () => {
+    // La place à remplir fait la largeur qu'on laisse à l'élève ; une fraction
+    // ÉCRITE fait la largeur de ses chiffres. Posée sur la première, « 1/2 »
+    // traçait une barre deux fois plus longue que le 1 et le 2 qu'elle sépare.
+    const N = sansCommentaires(lire('js/ui/fiches/nombres.js'));
+    assert.match(N, /const w = solution\s*\?\s*Math\.max\(doc\.getTextWidth/,
+        'le PDF du corrigé reprend la largeur de la place à remplir');
+    assert.match(N, /min-width:\$\{police \* 1\.2\}px/,
+        'l\'aperçu du corrigé reprend la largeur de la place à remplir');
+});
+
 test('LE TITRE DE LA FEUILLE DIT CE QU\'ELLE DEMANDE', () => {
     // LE MÊME RENDU SERT DEUX EXERCICES. « La loupe sur la droite graduée »
     // au-dessus d'une feuille de fractions annonce autre chose que ce qui suit.

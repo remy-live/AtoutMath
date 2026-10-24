@@ -3575,3 +3575,29 @@ Les onze remarques ne sont pas onze chantiers :
   doit montrer** (`frac-lire`, `don-probabilites`, `mes-duree`).
 * **DEUX RÉGLAGES QUI MANQUENT** : choisir PGCD ou PPCM dans les problèmes, et
   régler la présentation des tableaux globalement.
+
+
+---
+
+## 23. La fraction sous la droite graduée, telle qu'elle sort — 24 octobre
+
+Capture de la feuille `frac-graduation` imprimée, celle que je venais de lui
+livrer en v1090 :
+
+> « très mal centrée et trop de pointillé pour les points, les parenthèses
+> doivent être plus haute du coup, pour couvrir la fraction »
+
+Trois défauts dans la même case `A ( …/… )`, et ils se tiennent :
+
+1. **mal centrée** — le numérateur et le dénominateur n'ont ni la même largeur
+   ni le même centre ;
+2. **trop de pointillé** — les deux traits sont bien plus longs que le nombre
+   d'un ou deux chiffres qu'on y écrit ;
+3. **les parenthèses sont trop basses** — elles font la hauteur d'un caractère
+   et la fraction en fait deux : elles n'entourent que l'étage du bas.
+
+C'est la SUITE de sa remarque du carnet : « comme c'est sous forme de fraction
+écris plutôt qu'un long A(...........) Ecris A(.../...) mais tu écris la
+fraction en colonne. » J'ai empilé la fraction sans redimensionner ce qui
+l'entoure.
+

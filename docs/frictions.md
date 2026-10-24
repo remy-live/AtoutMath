@@ -6025,3 +6025,25 @@ le résultat n'existe pas** — 15 octobre 2026
   et `tools/filetDuParcours.mjs`, commentaire à l'appui. Le jour où une
   troisième sonde en aura besoin, cela devient `s.enCouleur()`.
 
+
+
+## Une épreuve de source qui ne cherche QU'UNE fois ne garde qu'un rendu — 2026-10-24
+
+- *Ce que je voulais faire* : garder la case « A ( …/… ) » recentrée, dans
+  l'aperçu ET dans le PDF.
+- *Ce qui a coûté* : deux allers-retours avec `epreuveTombe.mjs`, qui a dit
+  « CETTE ÉPREUVE NE GARDE RIEN » deux fois de suite. Les deux rendus portent
+  des lignes IDENTIQUES — `if (g.fractions && p.lettre) {` existe deux fois,
+  `font-size: 2 × police` aussi. Un `assert.match` trouve la première et se
+  déclare content : on peut défaire entièrement l'aperçu sans que l'épreuve
+  bronche, parce que le PDF porte encore le motif.
+- *Combien de fois* : ||| (la même semaine : le menu « Présentation » corrigé
+  dans un seul des deux panneaux d'impression, et les schémas d'étape absents
+  des deux écrans d'exemple alors qu'une seule ligne était citée)
+- *Ce qui manque* : la règle, et elle est courte — **dans ce dépôt, un motif
+  qui vit dans deux rendus se COMPTE, il ne se cherche pas.** `compter(N, /…/g)`
+  existe déjà dans `tests/helpers.mjs` ; c'est `assert.match` qui est le piège.
+  L'outil qui fermerait vraiment la friction : un `epreuveTombe` qui, quand le
+  texte remis existe en PLUSIEURS exemplaires dans le fichier, les abîme TOUS
+  — ou le dise. Aujourd'hui il n'en abîme qu'un, donc il ne mesure qu'un.
+

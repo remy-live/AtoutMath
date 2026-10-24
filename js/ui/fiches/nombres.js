@@ -2632,6 +2632,26 @@ function ecrireDecimal(v, rang) {
     return v.toFixed(rang).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
 }
 
+/**
+ * LA LARGEUR D'UN ÉTAGE DE LA FRACTION À REMPLIR, en millimètres.
+ *
+ * RÉMY, capture de la feuille, 24 octobre : « trop de pointillé pour les
+ * points ».
+ *
+ * MESURÉ AVANT, sur son aperçu : 41 pixels de pointillé par étage, pour un
+ * numérateur qui tient en un ou deux chiffres. L'ancienne borne était
+ * `min(mm × 6,5 ; max(mm × 2,4 ; lTrait × 0,45))`, soit jusqu'à vingt-trois
+ * millimètres — la largeur héritée de la réponse à UNE ligne, qui attendait
+ * un nombre à virgule. Une fraction n'a pas besoin de cette place, et la
+ * place qu’on laisse ENSEIGNE ce qu’on attend.
+ *
+ * DEUX CHIFFRES, ET UN PEU D'AIR : entre six et douze millimètres. En
+ * dessous, un dénominateur à deux chiffres déborde de ses parenthèses ; au-
+ * dessus, on retombe sur la ligne de réponse.
+ */
+const largeurEtageFraction = (mm, lTrait) =>
+    Math.min(mm * 3.4, Math.max(mm * 1.9, lTrait * 0.28));
+
 function geoGraduation(item, slot) {
     const m = item.meta || {};
     const rang = RANG_GRADUATION[m.zoom] ?? 1;
@@ -2756,12 +2776,74 @@ function graduationPreviewHtml(item, slot, k, solution) {
     const large = (g.boite.w * 0.88) / g.points.length;
     g.points.forEach((p, i) => {
         const x = xMot + i * large;
+        const mm = g.pt * 0.3528;
+        const xTrait = x + mm * (p.lettre ? 2.2 : 5.4);
+        const lTrait = Math.max(8, large - mm * (p.lettre ? 4.2 : 6.4));
+
+        // ── « A ( …/… ) » SE POSE D'UN SEUL BLOC ────────────────────────
+        //
+        // RÉMY, capture de la feuille imprimée, 24 octobre : « très mal
+        // centrée et trop de pointillé pour les points, les parenthèses
+        // doivent être plus haute du coup, pour couvrir la fraction ».
+        //
+        // MESURÉ AVANT, sur son aperçu, au pixel : la fraction occupe de
+        // y=115 à y=137 ; la lettre et les deux parenthèses sont à y=125,
+        // hautes de 11 px. Elles couvraient donc la MOITIÉ basse — celle du
+        // dénominateur — et la lettre « A » se lisait au niveau du bas de la
+        // fraction au lieu de sa barre. Et le trait à remplir faisait 41 px
+        // pour un numérateur à un chiffre.
+        //
+        // LA CAUSE EST D'AVOIR EMPILÉ LA FRACTION SANS TOUCHER À CE QUI
+        // L'ENTOURE. Les trois morceaux étaient posés en absolu, chacun sur
+        // la ligne de base de l'ancienne réponse à une ligne ; empiler le
+        // contenu a doublé sa hauteur, et rien ne suivait. On pose donc le
+        // groupe ENTIER d'un coup, en rangée centrée : la lettre, la
+        // parenthèse, la fraction, la parenthèse. Plus rien ne peut glisser
+        // les uns par rapport aux autres, parce qu'il n'y a plus de « les
+        // uns par rapport aux autres ».
+        if (g.fractions && p.lettre) {
+            const w = largeurEtageFraction(mm, lTrait) * k;
+            const pointille = `${Math.max(1, 0.4 * k)}px dotted #a8b0bf`;
+            const dedans = solution
+                ? `<div>${p.num}</div><div style="border-top:${Math.max(1, 0.4 * k)}px
+                    solid #2f855a; margin:${Math.max(1, 0.5 * k)}px 0"></div><div>${p.den}</div>`
+                : `<div style="height:${police * 0.9}px; border-bottom:${pointille}"></div>`
+                    + `<div style="height:${Math.max(1, 0.5 * k)}px; background:#1a202c;
+                        margin:${Math.max(1, 0.6 * k)}px 0"></div>`
+                    + `<div style="height:${police * 0.9}px; border-bottom:${pointille}"></div>`;
+            // LES PARENTHÈSES FONT DEUX FOIS LA TAILLE DU TEXTE, et c'est
+            // ce qu'il demande : elles doivent COUVRIR la fraction, qui
+            // tient sur deux étages. `line-height: 1` laisse le glyphe
+            // déborder de sa boîte, et c'est la boîte que `align-items:
+            // center` centre — le résultat se mesure, il ne se déduit pas.
+            html += `<div style="position:absolute; left:${x * k}px;
+                top:${(g.yEcrit - mm * 2.55) * k}px; height:${mm * 3.1 * k}px;
+                display:flex; align-items:center; gap:${Math.max(1, 0.45 * k)}px;
+                font-size:${police}px; font-weight:700; color:#1a202c;
+                white-space:nowrap">
+                <span>${p.lettre}</span>
+                <span style="font-weight:400; font-size:${police * 2}px;
+                    line-height:1">(</span>
+                <!-- LA BARRE DU CORRIGÉ SERRE SES CHIFFRES. La place à
+                     remplir fait la largeur qu'on laisse à l'eleve ; une
+                     fraction ECRITE fait la largeur de ses chiffres. Posee
+                     sur la premiere, « 1/2 » tracait une barre deux fois plus
+                     longue que le 1 et le 2 qu'elle separe.
+                     (Sans accent grave : il fermerait le gabarit.) -->
+                <div style="${solution
+        ? `min-width:${police * 1.2}px; padding:0 ${police * 0.25}px`
+        : `width:${w}px`}; text-align:center; line-height:1.05;
+                    font-size:${police * 0.85}px; font-weight:800;
+                    color:${solution ? '#2f855a' : '#1a202c'}">${dedans}</div>
+                <span style="font-weight:400; font-size:${police * 2}px;
+                    line-height:1">)</span></div>`;
+            return;
+        }
+
         const etiq = p.lettre ? `${p.lettre} (` : 'Abscisse :';
         html += `<div style="position:absolute; left:${x * k}px;
             top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
             font-weight:700; color:#1a202c; white-space:nowrap">${etiq}</div>`;
-        const xTrait = x + g.pt * 0.3528 * (p.lettre ? 2.2 : 5.4);
-        const lTrait = Math.max(8, large - g.pt * 0.3528 * (p.lettre ? 4.2 : 6.4));
         if (solution && g.fractions) {
             // LA FRACTION DU CORRIGÉ S'ÉCRIT EMPILÉE, comme au tableau. « 3/4 »
             // sur une ligne serait plus simple à poser et n'apprendrait pas
@@ -2815,12 +2897,14 @@ function graduationPreviewHtml(item, slot, k, solution) {
         if (p.lettre) {
             // LA PARENTHÈSE SUIT LA PLACE QU'ON VIENT DE DESSINER, et c'est
             // le détail qui décide si « A ( … ) » se lit comme une notation
-            // ou comme deux signes égarés. Une fraction empilée prend moins
-            // de large qu'un long trait : posée sur l'ancienne largeur, la
-            // fermante flottait à deux centimètres de ce qu'elle ferme.
-            const fin = g.fractions
-                ? xTrait + Math.min(police * 4.2, Math.max(police * 1.6, lTrait * k * 0.45)) / k + 0.6
-                : xTrait + lTrait + 0.6;
+            // ou comme deux signes égarés.
+            //
+            // ON N'ARRIVE PLUS ICI AVEC UNE FRACTION : depuis le 24 octobre,
+            // « A ( …/… ) » se pose d'un seul bloc plus haut et sort par un
+            // `return`. La branche qui calculait une fin de fraction a donc
+            // été retirée plutôt que gardée « au cas où » : un code mort qui a
+            // l'air vivant finit par être recopié.
+            const fin = xTrait + lTrait + 0.6;
             html += `<div style="position:absolute; left:${fin * k}px;
                 top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
                 font-weight:700; color:#1a202c">)</div>`;
@@ -2880,11 +2964,91 @@ function dessinerGraduationPdf(doc, item, slot, solution, champ) {
     doc.setFontSize(g.pt);
     g.points.forEach((p, i) => {
         const x = xMot + i * large;
+        const mm = g.pt * 0.3528;
+        const xTrait = x + mm * (p.lettre ? 2.2 : 5.4);
+        const lTrait = Math.max(8, large - mm * (p.lettre ? 4.2 : 6.4));
+
+        // ── « A ( …/… ) » : LE GROUPE ENTIER, CENTRÉ SUR LA BARRE ───────
+        //
+        // Le même raisonnement que dans l'aperçu, et il faut les deux :
+        // c'est le PDF que Rémy a photographié. Ici on n'a pas de boîte
+        // flexible — on pose chaque morceau à la main —, donc on calcule
+        // d'abord le milieu du groupe et tout s'y accroche.
+        //
+        // LA PARENTHÈSE EST ÉCRITE À DEUX FOIS LA TAILLE DU TEXTE. Dans
+        // Helvetica, le glyphe monte d'environ 0,73 em au-dessus de la
+        // ligne de base et descend de 0,21 : son milieu est donc à 0,26 em
+        // AU-DESSUS de la base, et c'est ce décalage qu'on retranche pour
+        // le centrer sur la barre de fraction. Mesuré sur la feuille
+        // ensuite, parce qu'une métrique de police se vérifie.
+        if (g.fractions && p.lettre) {
+            // LA MÊME RÈGLE QUE L'APERÇU : la place à remplir fait la largeur
+            // qu'on laisse à l'élève, une fraction ÉCRITE fait la largeur de
+            // ses chiffres. On mesure donc le texte AVANT de poser quoi que ce
+            // soit — `getTextWidth` dépend de la police courante.
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(g.pt);
+            const w = solution
+                ? Math.max(doc.getTextWidth(String(p.num)),
+                    doc.getTextWidth(String(p.den))) + mm * 0.9
+                : largeurEtageFraction(mm, lTrait);
+            const yHaut = g.yEcrit - mm * 1.45;   // le pointillé du numérateur
+            const yBarre = g.yEcrit - mm * 0.72;  // la barre de fraction
+            // LA LETTRE SE POSE SUR LA BARRE, pas sur le dénominateur : son
+            // milieu est à 0,36 em au-dessus de sa ligne de base.
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(g.pt);
+            doc.setTextColor(...ENCRE.texte);
+            const wLettre = doc.getTextWidth(p.lettre);
+            doc.text(p.lettre, x, yBarre + mm * 0.36);
+
+            const pt2 = g.pt * 2;
+            const mm2 = pt2 * 0.3528;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(pt2);
+            const wParen = doc.getTextWidth('(');
+            const yParen = yBarre + mm2 * 0.26;
+            const xOuvre = x + wLettre + mm * 0.5;
+            doc.text('(', xOuvre, yParen);
+            const xF = xOuvre + wParen + mm * 0.4;
+            doc.text(')', xF + w + mm * 0.4, yParen);
+            doc.setFontSize(g.pt);
+
+            if (solution) {
+                // LE CORRIGÉ ÉCRIT LES DEUX CHIFFRES À LA PLACE DES TRAITS.
+                doc.setTextColor(...ENCRE.gris);
+                doc.setFont('helvetica', 'bold');
+                doc.text(String(p.num), xF + w / 2, yBarre - mm * 0.25,
+                    { align: 'center' });
+                doc.setDrawColor(...ENCRE.gris);
+                doc.setLineWidth(0.35);
+                doc.line(xF, yBarre, xF + w, yBarre);
+                doc.text(String(p.den), xF + w / 2, g.yEcrit,
+                    { align: 'center' });
+            } else {
+                doc.setDrawColor(...ENCRE.gris);
+                doc.setLineWidth(0.35);
+                doc.setLineDashPattern([0.8, 0.8], 0);
+                doc.line(xF, yHaut, xF + w, yHaut);
+                doc.line(xF, g.yEcrit, xF + w, g.yEcrit);
+                doc.setLineDashPattern([], 0);
+                doc.setDrawColor(...ENCRE.texte);
+                doc.setLineWidth(0.45);
+                doc.line(xF, yBarre, xF + w, yBarre);
+                // DEUX CASES À REMPLIR, PAS UNE : sur une fiche
+                // remplissable, le haut et le bas se tapent séparément.
+                if (typeof champ === 'function') {
+                    const h = Math.max(3.2, mm * 1.05);
+                    champ(xF, yHaut - h * 0.78, w, h);
+                    champ(xF, g.yEcrit - h * 0.78, w, h);
+                }
+            }
+            return;
+        }
+
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...ENCRE.texte);
         doc.text(p.lettre ? `${p.lettre} (` : 'Abscisse :', x, g.yEcrit);
-        const xTrait = x + g.pt * 0.3528 * (p.lettre ? 2.2 : 5.4);
-        const lTrait = Math.max(8, large - g.pt * 0.3528 * (p.lettre ? 4.2 : 6.4));
         if (solution && g.fractions) {
             // EMPILÉE, comme au tableau — voir l'aperçu.
             doc.setTextColor(...ENCRE.gris);
@@ -2943,11 +3107,9 @@ function dessinerGraduationPdf(doc, item, slot, solution, champ) {
             }
         }
         if (p.lettre) {
-            // LA PARENTHÈSE SUIT LA PLACE — voir l'aperçu.
-            const mm = g.pt * 0.3528;
-            const fin = g.fractions
-                ? xTrait + Math.min(mm * 6.5, Math.max(mm * 2.4, lTrait * 0.45)) + 0.6
-                : xTrait + lTrait + 0.6;
+            // LA PARENTHÈSE SUIT LA PLACE — voir l'aperçu, y compris pour la
+            // branche de fraction qui n'existe plus ici.
+            const fin = xTrait + lTrait + 0.6;
             doc.setTextColor(...ENCRE.texte);
             doc.text(')', fin, g.yEcrit);
         }
