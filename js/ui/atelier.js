@@ -78,6 +78,30 @@ let controleEnCours = false;
 let photos = [];
 
 /**
+ * LES CAPTURES DES AUTRES EXERCICES — rangées, pas jetées.
+ *
+ * Rémy, après avoir relu douze exercices d'affilée : « je ne peux
+ * toujours pas TOUT télécharger comme rapport d'erreur dans l'atelier,
+ * je t'ai fait un par un ». Douze fichiers reçus, un par exercice.
+ *
+ * C'EST LA CONSÉQUENCE DIRECTE DE CE QU'ON VENAIT DE FAIRE. Le carnet est
+ * devenu propre à l'exercice la veille — c'est ce qu'il demandait, et
+ * c'est juste. Mais le relevé, lui, ne portait que l'exercice COURANT :
+ * on range les notes par exercice sans donner la porte de sortie qui va
+ * avec. Un rangement sans export est un rangement qui enferme.
+ *
+ * LE TEXTE EST DANS LE NAVIGATEUR (voir `cleDesNotes`), LES CAPTURES ICI,
+ * en mémoire : une image en `data:` pèse des centaines de kilo-octets, et
+ * douze d'entre elles feraient déborder le quota de `localStorage` — qui
+ * se refuse alors EN SILENCE, ce qui serait pire que de ne rien garder.
+ * Elles vivent donc le temps de la séance de travail, qui est exactement
+ * la durée pendant laquelle on relit le catalogue.
+ *
+ * Clef : l'identifiant de l'exercice. Valeur : son tableau de captures.
+ */
+const photosParExercice = new Map();
+
+/**
  * LE CONTRÔLE DE TOUT LE CATALOGUE — null tant qu'on ne l'a pas demandé.
  *
  * Rémy : « j'aimerai bien faire tous les tests et exporter en un fichier ».
@@ -368,6 +392,49 @@ function reprendreLAncienCarnet() {
  * changement de réglage, et réaffecter `value` renverrait le curseur à la fin
  * au milieu d'une phrase qu'on est en train de taper.
  */
+/**
+ * TOUS LES CARNETS ÉCRITS — texte et captures, exercice par exercice.
+ *
+ * Le texte vit dans le navigateur sous une clef par exercice, les captures
+ * en mémoire. On relit les deux et l'on ne garde que ce qui porte quelque
+ * chose : un exercice ouvert puis quitté sans un mot n'a rien à dire.
+ *
+ * L'EXERCICE COURANT EST PRIS DANS SON ÉTAT VIVANT, pas dans ce qui est
+ * rangé : on écrit dans la case, et la case n'est pas encore rangée au
+ * moment où l'on clique « Télécharger ».
+ */
+function tousLesCarnets() {
+    const dehors = new Map();
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const clef = localStorage.key(i);
+            if (!clef || !clef.startsWith(CLE_NOTES + '-')) continue;
+            const id = clef.slice(CLE_NOTES.length + 1);
+            const texte = (localStorage.getItem(clef) || '').trim();
+            if (texte) dehors.set(id, { id, texte, photos: [] });
+        }
+    } catch (e) { /* navigation privée : on fait avec la mémoire */ }
+    photosParExercice.forEach((liste, id) => {
+        if (!liste || !liste.length) return;
+        const d = dehors.get(id) || { id, texte: '', photos: [] };
+        d.photos = liste;
+        dehors.set(id, d);
+    });
+    if (exoCourant) {
+        const champ = panneau && panneau.querySelector('#atl-notes');
+        const texte = champ ? champ.value.trim() : '';
+        if (texte || photos.length) {
+            dehors.set(exoCourant.id, { id: exoCourant.id, texte, photos });
+        } else {
+            dehors.delete(exoCourant.id);
+        }
+    }
+    return [...dehors.values()].map(d => {
+        const exo = exercices.find(e => e.id === d.id);
+        return { ...d, titre: exo ? exo.title : d.id };
+    }).sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+}
+
 function chargerLesNotes() {
     const notes = panneau && panneau.querySelector('#atl-notes');
     if (!notes) return;
@@ -1071,10 +1138,15 @@ function choisir(id) {
     // changé ferait lire le verdict du précédent sur le suivant.
     bilans = [];
     bilanPilote = null;
-    // LES CAPTURES S'EN VONT AVEC L'EXERCICE, pour la même raison que le
-    // contrôle : une photo du Sudoku rangée sous « Additions Mystères »
-    // décrirait un défaut qui n'y est pas.
-    photos = [];
+    // LES CAPTURES S'EN VONT AVEC L'EXERCICE — une photo du Sudoku rangée
+    // sous « Additions Mystères » décrirait un défaut qui n'y est pas —,
+    // MAIS ELLES NE SONT PLUS JETÉES : on les range sous leur exercice, et
+    // le relevé les ressort toutes. Voir `photosParExercice`.
+    if (exoCourant) {
+        if (photos.length) photosParExercice.set(exoCourant.id, photos);
+        else photosParExercice.delete(exoCourant.id);
+    }
+    photos = photosParExercice.get(id) || [];
     peindrePhotos();
     panneau.querySelector('#atl-bloc-controle').hidden = true;
     exoCourant = exo;
@@ -1627,6 +1699,15 @@ async function toutEffacer() {
     }
     if (photos.length) quoi.push(`${photos.length} capture(s) glissée(s)`);
     if (notes.value.trim()) quoi.push('le texte du carnet');
+    // LES CARNETS DES AUTRES EXERCICES COMPTENT AUSSI. Depuis qu'ils sont
+    // rangés par exercice et qu'ils partent tous dans le même fichier, les
+    // oublier ici ferait un « Tout effacer » qui n'efface pas tout — et
+    // l'on retrouverait au relevé suivant des notes qu'on croyait jetées.
+    const ailleurs = tousLesCarnets().filter(c => !exoCourant || c.id !== exoCourant.id);
+    if (ailleurs.length) {
+        quoi.push(`les carnets de ${ailleurs.length} autre(s) exercice(s) : `
+            + ailleurs.map(c => c.titre).join(', '));
+    }
     if (lignesConsole) quoi.push(`${lignesConsole} ligne(s) de console`);
 
     const { showModal, showToast } = await import('./modal.js');
@@ -1661,7 +1742,17 @@ async function toutEffacer() {
     // LE CARNET SURVIT À LA PAGE : il est rangé dans le navigateur. L'effacer
     // à l'écran sans retirer la clef le ferait revenir au prochain F5, et l'on
     // croirait le bouton cassé.
-    try { localStorage.removeItem(cleDesNotes()); } catch (e) { /* privé */ }
+    try {
+        // TOUTES LES CLEFS DE CARNET, pas seulement celle de l'exercice
+        // courant : la fenêtre vient d'annoncer qu'on les efface.
+        const aJeter = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const clef = localStorage.key(i);
+            if (clef && clef.startsWith(CLE_NOTES + '-')) aJeter.push(clef);
+        }
+        aJeter.forEach(clef => localStorage.removeItem(clef));
+    } catch (e) { /* privé */ }
+    photosParExercice.clear();
     panneau.querySelector('#atl-controle').innerHTML = '';
     panneau.querySelector('#atl-bloc-controle').hidden = true;
     viderJournal();
@@ -1874,6 +1965,34 @@ function texteReleve() {
         lignes.push(`## Captures glissées (${photos.length})`);
         photos.forEach(p => lignes.push(`- ${p.nom}`));
     }
+    // ── LES CARNETS DES AUTRES EXERCICES ────────────────────────────
+    //
+    // RÉMY : « je ne peux toujours pas TOUT télécharger comme rapport
+    // d'erreur dans l'atelier, je t'ai fait un par un ». Douze fichiers
+    // reçus, un par exercice, pour une relecture d'une matinée.
+    //
+    // ON RANGE LES NOTES PAR EXERCICE DEPUIS LA VEILLE — c'est ce qu'il
+    // demandait — mais le relevé ne portait que l'exercice COURANT. Un
+    // rangement sans porte de sortie est un rangement qui enferme, et
+    // c'est moi qui l'avais posée.
+    //
+    // L'EXERCICE QU'ON REGARDE RESTE EN TÊTE, dans son détail entier :
+    // réglages, volets, contrôle, débordements. Les autres n'ont que ce
+    // qui les concerne — ce qu'il a écrit, et ce qu'il a glissé.
+    const autres = tousLesCarnets().filter(c => !exoCourant || c.id !== exoCourant.id);
+    if (autres.length) {
+        lignes.push('');
+        lignes.push(`## Les carnets des autres exercices (${autres.length})`);
+        autres.forEach(c => {
+            lignes.push('');
+            lignes.push(`### ${c.titre} (${c.id})`);
+            if (c.texte) lignes.push(c.texte);
+            if (c.photos.length) {
+                lignes.push(`(${c.photos.length} capture(s) : ${
+                    c.photos.map(p => p.nom).join(', ')})`);
+            }
+        });
+    }
     const journal = journalConsole().slice(-25);
     if (journal.length) {
         lignes.push('');
@@ -1929,8 +2048,13 @@ async function telechargerReleve() {
     // ON DIT CE QU'IL Y A DEDANS, pas seulement qu'il est parti. Après une
     // tournée de quarante minutes, la question n'est pas « est-ce enregistré ? »
     // mais « est-ce que les deux cent quarante-neuf bilans sont dedans ? ».
-    const tout = bilansCatalogue
-        ? ` Les ${bilansCatalogue.length} bilans du catalogue sont dedans.` : '';
+    const carnets = tousLesCarnets().length;
+    const tout = (bilansCatalogue
+        ? ` Les ${bilansCatalogue.length} bilans du catalogue sont dedans.` : '')
+        // ET COMBIEN DE CARNETS. C'est la question qu'il se posait en
+        // téléchargeant douze fichiers un par un : est-ce que celui-ci les
+        // porte tous ?
+        + (carnets > 1 ? ` Les ${carnets} carnets écrits sont dedans.` : '');
     showToast(n
         ? `Relevé enregistré (${nom}) — ${n} image${n > 1 ? 's' : ''} dedans, ${ko} Ko. `
           + 'Un seul fichier à m\'envoyer.' + tout
@@ -1961,6 +2085,18 @@ function releveEnPage(texte, images) {
 <h1>Atelier — ${echapper(exoCourant.title)}${bilansCatalogue ? ' + tout le catalogue' : ''}</h1>
 <div class="quand">${echapper(exoCourant.id)} — ${echapper(quand)}</div>
 <pre>${echapper(texte)}</pre>
+${(() => {
+    // LES CAPTURES DES AUTRES EXERCICES, chacune sous son titre. Sans le
+    // titre on reçoit douze images sans savoir de quel exercice elles
+    // parlent — c'est-à-dire douze images inutilisables.
+    const ailleurs = tousLesCarnets().filter(c => (!exoCourant || c.id !== exoCourant.id)
+        && c.photos.length);
+    return ailleurs.map(c => c.photos.map((p, k) =>
+        `<figure><figcaption>${echapper(c.titre)} — capture ${k + 1} : `
+        + `${echapper(p.nom)}</figcaption>`
+        + `<img alt="${echapper(c.titre)} : ${echapper(p.nom)}" src="${p.url}"></figure>`
+    ).join('\n')).join('\n');
+})()}
 ${photos.map((p, k) => `<figure><figcaption>Capture ${k + 1} — ${echapper(p.nom)}</figcaption>
 <img alt="Capture glissée : ${echapper(p.nom)}" src="${p.url}"></figure>`).join('\n')}
 ${images.map(i => `<figure><figcaption>Volet « ${echapper(i.quoi)} »</figcaption>
@@ -1984,7 +2120,12 @@ function enFichier(texte, ext = 'txt', mime = 'text/plain') {
     // alors qu'il portait les 249 exercices — le nom décrivait l'exercice
     // affiché, pas le contenu, et c'est le nom qu'on lit six mois plus tard
     // dans un dossier de téléchargements.
-    const quoiDedans = bilansCatalogue ? 'catalogue' : exoCourant.id;
+    // ET « TOUS » QUAND IL PORTE PLUSIEURS CARNETS : on ne retrouve pas,
+    // six mois plus tard dans un dossier de téléchargements, le fichier qui
+    // portait les douze relectures sous le nom du treizième exercice.
+    const carnets = tousLesCarnets();
+    const quoiDedans = bilansCatalogue ? 'catalogue'
+        : carnets.length > 1 ? 'tous' : exoCourant.id;
     a.download = `atelier-${quoiDedans}-${new Date().toISOString().slice(0, 16)
         .replace(/[:T]/g, '-')}.${ext}`;
     a.click();

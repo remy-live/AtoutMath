@@ -5925,3 +5925,40 @@ le résultat n'existe pas** — 15 octobre 2026
   lectures (« persistant » : qui dure, ou qui agit seul ?) se tranche en une
   phrase de question, pas en trois heures de code. Le coût de demander est
   toujours plus bas que celui de livrer la mauvaise moitié.
+
+## Ranger sans donner la porte de sortie — 2026-10-24
+
+- *Ce que je voulais faire* : rendre le carnet de l'Atelier propre à chaque
+  exercice, comme Rémy l'avait demandé.
+- *Ce qui a coûté* : **une matinée de SON temps.** Il a relu douze exercices,
+  écrit une note dans chacun, et m'a envoyé douze fichiers — un par exercice —
+  parce que le relevé ne portait que l'exercice courant. J'avais rangé les
+  notes par exercice la veille, et la veille le relevé portait tout ce qu'il y
+  avait : en rangeant, j'ai fermé la porte sans m'en apercevoir.
+- *Combien de fois* : |
+- *Ce qui manque* : la question à se poser au moment où l'on RANGE quelque
+  chose. **Ranger par A, c'est fermer l'accès par B** : le jour où l'on range
+  les notes par exercice, les captures par exercice, les bilans par étape, il
+  faut demander « et qui voulait les voir toutes ensemble ? ». Ici la réponse
+  était écrite deux jours plus tôt dans le même journal — « si je balaye tout
+  je ne peux pas télécharger un seul fichier de tous les bilans ». La même
+  phrase, sur le même outil, à quarante-huit heures d'écart, et je ne l'ai pas
+  reconnue.
+
+## Une épreuve qui lit la SOURCE ne voit pas une liste qui se vide — 2026-10-24
+
+- *Ce que je voulais faire* : garder « le relevé porte les carnets des autres
+  exercices » par une épreuve.
+- *Ce qui a coûté* : rien cette fois, parce que `epreuveTombe.mjs` l'a dit
+  immédiatement — « CETTE ÉPREUVE NE GARDE RIEN ». Le défaut remis remplaçait
+  `tousLesCarnets()` par `[]` : la section disparaissait à l'exécution, mais
+  son gabarit restait dans la source, et l'épreuve lisait la source.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à fabriquer — l'outil fait exactement son travail, et
+  c'est la deuxième fois cette semaine qu'il attrape une épreuve plus faible
+  que son titre. Ce qu'il faut RETENIR : **une épreuve de source garde une
+  forme, jamais un comportement.** Elle attrape une section retirée ou
+  renommée ; elle ne verra jamais une liste qui se vide. Le comportement se
+  mesure dans un navigateur, et les deux se complètent au lieu de se
+  remplacer. L'épreuve le dit maintenant en tête, pour que personne ne lui
+  prête une force qu'elle n'a pas.

@@ -66,11 +66,17 @@ test('LES CAPTURES S\'EN VONT AVEC L\'EXERCICE', () => {
     // Une photo du Sudoku rangée sous « Additions Mystères » décrirait un
     // défaut qui n'y est pas — et c'est moi qui la lirais.
     const corps = A.slice(A.indexOf('function choisir(id)'),
-        A.indexOf('function choisir(id)') + 700);
-    assert.match(corps, /photos = \[\];/);
+        A.indexOf('function choisir(id)') + 900);
+    // DEPUIS LE 24 OCTOBRE ELLES NE SONT PLUS JETÉES, ELLES SONT RANGÉES :
+    // le relevé les ressort toutes, sous leur exercice. L'intention de
+    // cette épreuve ne change pas d'un mot — l'écran ne doit jamais
+    // montrer la capture d'un autre exercice — seule la façon de l'obtenir
+    // change : on remplace le tableau au lieu de le vider.
+    assert.match(corps, /photos = photosParExercice\.get\(id\) \|\| \[\];/);
     assert.match(corps, /peindrePhotos\(\);/);
-    assert.ok(corps.indexOf('photos = [];') < corps.indexOf('exoCourant = exo;'),
-        'on vide les captures AVANT de changer d\'exercice');
+    assert.ok(corps.indexOf('photos = photosParExercice.get(id)')
+        < corps.indexOf('exoCourant = exo;'),
+        'on change les captures AVANT de changer d\'exercice');
 });
 
 test('« TOUT CONTRÔLER » DIT SON PRIX AVANT DE PARTIR', () => {
@@ -165,7 +171,10 @@ test('ET LE NOM DU FICHIER DIT CE QU\'IL PORTE', () => {
     // c'est le nom qu'on lit six mois plus tard dans un dossier de
     // téléchargements, quand on ne se souvient plus de rien.
     const corps = A.slice(A.indexOf('function enFichier'), A.indexOf('function deborde'));
-    assert.match(corps, /const quoiDedans = bilansCatalogue \? 'catalogue' : exoCourant\.id;/);
+    // TROIS NOMS DEPUIS LE 24 OCTOBRE : le catalogue, « tous » quand le
+    // fichier porte plusieurs carnets, et l'exercice sinon.
+    assert.match(corps, /bilansCatalogue \? 'catalogue'/);
+    assert.match(corps, /carnets\.length > 1 \? 'tous' : exoCourant\.id;/);
     assert.match(corps, /a\.download = `atelier-\$\{quoiDedans\}-/);
     assert.ok(!/a\.download = `atelier-\$\{exoCourant\.id\}-\$\{new Date/.test(corps),
         'le nom ne doit plus venir du seul exercice affiché');
@@ -203,9 +212,11 @@ test('ON PEUT TOUT EFFACER, ET LA FENÊTRE DIT QUOI', () => {
     // LE CARNET SURVIT À LA PAGE : il est rangé dans le navigateur. L'effacer
     // à l'écran sans retirer la clef le ferait revenir au prochain F5, et l'on
     // croirait le bouton cassé.
-    // LA CLEF DE CET EXERCICE-LÀ, depuis que le carnet est propre à chacun :
-    // vider la clef commune n'effacerait plus rien.
-    assert.match(corps, /localStorage\.removeItem\(cleDesNotes\(\)\)/);
+    // TOUTES LES CLEFS DE CARNET, depuis que le fichier les porte toutes :
+    // un « Tout effacer » qui n'en effacerait qu'une laisserait reparaître
+    // au relevé suivant des notes qu'on croyait jetées.
+    assert.match(corps, /clef\.startsWith\(CLE_NOTES \+ '-'\)/);
+    assert.match(corps, /aJeter\.forEach\(clef => localStorage\.removeItem\(clef\)\);/);
     // ON RÉPOND AVANT DE FERMER — le défaut déjà payé sur « Tout contrôler ».
     assert.match(corps, /resolve\(b\.dataset\.effacer === 'oui'\); f\.close\(\);/);
     // ET L'EXERCICE RESTE. C'est toute la différence avec un F5 : on efface le
@@ -262,4 +273,76 @@ test('L\'ANCIEN CARNET EST ADOPTÉ, PAS JETÉ', () => {
     // ET LA VIEILLE CLEF DISPARAÎT : sans cela l'adoption se referait à chaque
     // ouverture, et écraserait le carnet de l'exercice qu'on vient d'ouvrir.
     assert.match(corps, /localStorage\.removeItem\(CLE_NOTES\);/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// ET UN SEUL FICHIER LES PORTE TOUS — 24 octobre.
+//
+// RÉMY, après avoir relu douze exercices d'affilée :
+//
+//   « je ne peux toujours pas TOUT télécharger comme rapport d'erreur dans
+//     l'atelier, je t'ai fait un par un »
+//
+// Douze fichiers reçus, un par exercice, pour une relecture d'une matinée.
+// C'est la conséquence directe de la veille : le carnet est devenu propre à
+// l'exercice — c'est ce qu'il demandait — mais le relevé ne portait que
+// l'exercice COURANT. Un rangement sans porte de sortie est un rangement qui
+// enferme, et c'est moi qui l'avais posée.
+
+test('LES CAPTURES SE RANGENT PAR EXERCICE AU LIEU D\'ÊTRE JETÉES', () => {
+    assert.match(A, /const photosParExercice = new Map\(\);/);
+    const corps = A.slice(A.indexOf('function choisir(id)'),
+        A.indexOf('function choisir(id)') + 900);
+    // ON RANGE CELLES QU'ON QUITTE, ON REPREND CELLES QU'ON RETROUVE.
+    assert.match(corps, /photosParExercice\.set\(exoCourant\.id, photos\);/);
+    assert.match(corps, /photos = photosParExercice\.get\(id\) \|\| \[\];/);
+    // ET L'EXERCICE SANS CAPTURE NE LAISSE PAS D'ENTRÉE VIDE : sans cela, un
+    // exercice ouvert puis quitté compterait comme un carnet écrit, et le
+    // fichier annoncerait des carnets qui n'existent pas.
+    assert.match(corps, /photosParExercice\.delete\(exoCourant\.id\);/);
+});
+
+// CE QUE CETTE ÉPREUVE VOIT, ET CE QU'ELLE NE VOIT PAS.
+//
+// Elle lit la SOURCE. Elle attrape donc une section qu'on retire ou qu'on
+// renomme, pas une liste qui se vide à l'exécution : `epreuveTombe` l'a dit
+// tout net en remplaçant `tousLesCarnets()` par `[]` — « CETTE ÉPREUVE NE
+// GARDE RIEN ». La preuve vivante est ailleurs, dans `tools/tousLesCarnets.mjs`,
+// qui écrit trois carnets dans un vrai navigateur et compte ce qui ressort.
+// Les deux se complètent ; aucune ne remplace l'autre.
+test('LE RELEVÉ PORTE LES CARNETS DES AUTRES EXERCICES', () => {
+    assert.match(A, /function tousLesCarnets\(\)/);
+    // IL LIT LE NAVIGATEUR, pas seulement la mémoire : les notes survivent à
+    // un F5, et un relevé qui les oublierait serait pire qu'aucun relevé.
+    const lecture = A.slice(A.indexOf('function tousLesCarnets'),
+        A.indexOf('function chargerLesNotes'));
+    assert.match(lecture, /clef\.startsWith\(CLE_NOTES \+ '-'\)/);
+    assert.match(lecture, /photosParExercice\.forEach/);
+    // L'EXERCICE COURANT EST PRIS VIVANT, pas dans ce qui est rangé : on écrit
+    // dans la case, et la case n'est pas encore rangée quand on télécharge.
+    assert.match(lecture, /const champ = panneau && panneau\.querySelector\('#atl-notes'\);/);
+    // ET LE RELEVÉ LES SORT, SOUS LEUR TITRE.
+    assert.match(BRUT, /## Les carnets des autres exercices \(\$\{autres\.length\}\)/);
+    assert.match(BRUT, /### \$\{c\.titre\} \(\$\{c\.id\}\)/);
+});
+
+test('ET LE NOM DU FICHIER DIT QU\'IL EN PORTE PLUSIEURS', () => {
+    // On ne retrouve pas, six mois plus tard dans un dossier de
+    // téléchargements, le fichier qui portait les douze relectures sous le nom
+    // du treizième exercice.
+    const corps = A.slice(A.indexOf('function enFichier'), A.indexOf('function deborde'));
+    assert.match(corps, /carnets\.length > 1 \? 'tous' : exoCourant\.id;/);
+    assert.match(corps, /bilansCatalogue \? 'catalogue'/);
+});
+
+test('« TOUT EFFACER » EFFACE TOUS LES CARNETS, PAS SEULEMENT CELUI-CI', () => {
+    // Depuis qu'ils partent tous dans le même fichier, les oublier ici ferait
+    // un « Tout effacer » qui n'efface pas tout — et l'on retrouverait au
+    // relevé suivant des notes qu'on croyait jetées.
+    const corps = A.slice(A.indexOf('async function toutEffacer'),
+        A.indexOf('async function controler()'));
+    assert.match(corps, /les carnets de \$\{ailleurs\.length\} autre\(s\) exercice\(s\)/);
+    assert.match(corps, /aJeter\.forEach\(clef => localStorage\.removeItem\(clef\)\);/);
+    assert.match(corps, /photosParExercice\.clear\(\);/);
 });

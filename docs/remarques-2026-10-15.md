@@ -3461,3 +3461,117 @@ demande le même geste sur la barre du professeur, à côté du compteur.
 
 **À CORRIGER** : le ✓ et le ✗ ne répondent plus et ne lancent plus rien — ils
 se cochent. C'est le ❯ qui applique le régime coché.
+
+---
+
+### 34. Sa revue du 24 octobre — douze relevés, et un export qui manque
+
+> « je ne peux toujours pas TOUT télécharger comme rapport d'erreur dans
+> l'atelier, je t'ai fait un par un »
+
+Archive reçue : **douze relevés**, tous datés du 24 octobre entre 06:43 et
+06:44. Il a ouvert douze exercices, écrit une note dans le carnet de chacun,
+et téléchargé douze fichiers — un par exercice.
+
+#### a) LE DÉFAUT D'OUTIL, ET IL EST DE MA MAIN
+
+C'est la conséquence directe de ce que je venais de faire. Le carnet est
+devenu propre à l'exercice le 23 octobre — c'est ce qu'il demandait, et c'est
+juste. Mais le relevé, lui, ne porte que l'exercice COURANT : il n'y a aucun
+moyen de redescendre les douze carnets en un fichier. J'ai rangé les notes
+par exercice sans donner la porte de sortie qui va avec.
+
+**CE QU'IL FAUT** : un seul fichier qui porte TOUS les carnets écrits — et
+leurs captures —, pas seulement celui qu'on regarde. C'est la même phrase que
+le 23 octobre pour le catalogue : « si je balaye tout je ne peux pas
+télécharger un seul fichier de tous les bilans ».
+
+#### b) LES ONZE REMARQUES DES CARNETS, VERBATIM
+
+**Le Détour par le Nombre Rond** (`calc-detour-rond`)
+> « en impression, 3 colonnes de base »
+
+**Réflexe des Signes** (`num-relatifs-melange-sprint`)
+> « en impression , 3 colonnes de base »
+
+**Les Probabilités** (`don-probabilites`)
+> « Je trouve que tu pourrais faire des illustrations avec des roues de
+> couleurs, des urnes etc. »
+
+**Moyenne, Médiane, Étendue** (`don-statistiques`)
+> « Quand on demande la médiane, en indice, il faut dire qu'il faut ranger les
+> nombres dans l'ordre croissant, le robot doit aussi montrer comment on
+> calcule la moyenne et montrer comment on trouve une médiane.
+>
+> Quand tu écris :
+>
+> La moyenne des 4 notes de la classe est de 12. On en connaît 3 : 12 ; 9 ; 11.
+>
+> On a l'impresion que le 3 fait partie de la série. Aide davantage pour
+> calculer la valeur manquante. »
+
+**Diviser par une Fraction** (`frac-division`)
+> « Pour la feuille à imrpimer écris juste inverse de 7/3 : ..../....
+> Pas deux lignes en dessous.
+> Pour une division simple tu écris :
+> 3/2 : 6/7 = .../... * .../.... = »
+
+**La Fraction sur la Droite** (`frac-graduation`)
+> « comme c'est sous forme de fraction écris plutôt qu'un long A(...........)
+> Ecris A(.../...) mais tu écris la fraction en colonne. »
+
+**Lis la Fraction** (`frac-lire`)
+> « dans le montre moi, la figure n'est pas divisée avec ses parts »
+
+**La Réciproque de Pythagore** (`geo-pythagore-reciproque`)
+> « Quand tu demandes quel est le côté le plus long, une seule ligne suffit
+> pour répondre. Quand on demande si le triangle est rectangle (et qu'il faut
+> calculer), tu peux laisser un peu plus de ligne (6 de pointillé), et par
+> défaut, mets 2 colonnes dans l'impression »
+
+**Heures et Minutes** (`mes-duree`)
+> « Moi j'aimerai bien que si on calcule 3:17-1:48
+>
+> On ait le schéma suiavt,
+>
+> `1:48 --> 2:00 --> 3:17` avec `+....` au-dessus de chaque flèche
+>
+> Avec flèche et bulle, qqch de propre pour bien montrer. Et aussi en indice
+> une table de 60 pour trouver le nombre d'heure »
+
+**Problèmes de PGCD et de PPCM** (`num-pgcd-ppcm-problemes`)
+> « Il faudrait pour les problèmes pouvoir choisir entre problème de PPCM ou
+> problème de PGCD (ou les deux), on ne peut le faire pour l'impression. »
+
+**Somme ou Produit ?** (`num-relatifs-melange`)
+> « il faudrait pouvoir choisir de manière globale pour les exercices à
+> tableau la présentation en tableau (bordure, épaisseur, couleur bordure,
+> couleur alternance / bords extérieurs ou non). on peut faire un réglage
+> globale et affiner selon l'exercice »
+
+**La Mosaïque des Transformations** (`geo-mosaique`) — relevé sans note.
+
+#### c) CE QUE LE CONTRÔLE A DIT
+
+Rien. Les douze relevés portent « rien à signaler » sur tous leurs sondages :
+ce qu'il remonte ici n'est pas de la panne, c'est du MÉTIER — la présentation
+du papier, ce qu'un indice doit dire, ce qu'une figure doit montrer. Le
+contrôle automatique ne sait pas voir ça, et c'est exactement pourquoi ces
+douze relevés valent plus que les deux cent quarante-neuf sondages.
+
+#### d) CE QUI SE REGROUPE
+
+Les onze remarques ne sont pas onze chantiers :
+
+* **TROIS COLONNES PAR DÉFAUT** sur deux exercices de calcul mental
+  (`calc-detour-rond`, `num-relatifs-melange-sprint`), **DEUX** sur Pythagore :
+  c'est un réglage de catalogue, une ligne chacun.
+* **LA PLACE POUR RÉPONDRE** : une ligne pour « quel est le côté le plus
+  long », six pointillés pour un calcul, une fraction en colonne au lieu d'une
+  longue ligne de points (`frac-graduation`, `frac-division`,
+  `geo-pythagore-reciproque`). C'est la même question posée trois fois : la
+  feuille doit donner la place de CE qu'on demande d'écrire.
+* **CE QU'UN INDICE DOIT DIRE** (`don-statistiques`) et **ce qu'une figure
+  doit montrer** (`frac-lire`, `don-probabilites`, `mes-duree`).
+* **DEUX RÉGLAGES QUI MANQUENT** : choisir PGCD ou PPCM dans les problèmes, et
+  régler la présentation des tableaux globalement.
