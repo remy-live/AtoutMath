@@ -29,7 +29,11 @@ import { pgcd } from '../js/core/fractionsEquivalentes.js';
 import { tirerParEntier, corrigeParEntier } from '../js/core/fractionsProduit.js';
 import { fracProduitGenerator as G } from '../js/core/generators/fractions.js';
 
-const lire = (v) => String(v).split('/').map(Number);
+// LA VALEUR D'UNE PROPOSITION S'ÉCRIT « n|d » DEPUIS QU'UNE FRACTION SE TAPE.
+// Rémy : « du coup, tu le mets pour tous ? ». Les deux cases du pavé imposent
+// « 20|49 » comme forme JUGÉE ; « 20/49 » reste la forme LUE, sur l'étiquette.
+// On lit donc les deux, et l'épreuve garde la propriété, pas l'écriture.
+const lire = (v) => String(v).split(/[/|]/).map(Number);
 
 test('LE DÉNOMINATEUR NE BOUGE PAS, ET LE RÉSULTAT S\'ÉCRIT D\'UNE SEULE FAÇON', () => {
     for (let k = 0; k < 400; k++) {

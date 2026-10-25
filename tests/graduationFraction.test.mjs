@@ -85,7 +85,10 @@ test('LA FRACTION LUE EST LA BONNE, ET LE POINT N\'EST JAMAIS SUR UN ENTIER', ()
         for (let i = 0; i < 12; i++) {
             const it = gen.generate({}, { rng: makeRng(graine + i), index: i });
             const m = it.meta;
-            assert.equal(it.answer, `${m.num}/${m.den}`);
+            // « n|d » : les deux cases du pavé, depuis que la fraction se
+            // tape. L'étiquette, elle, dessine la fraction — voir le
+            // générateur.
+            assert.equal(it.answer, `${m.num}|${m.den}`);
             assert.equal(m.crans, m.den * m.unites);
             // JAMAIS SUR UN TRAIT D'UNITÉ : « lis le point posé sur 1 » ne
             // demande pas de compter, et sa réponse n'est pas une fraction.
@@ -105,7 +108,8 @@ test('LES LEURRES SONT LES TROIS ERREURS DU CHAPITRE, ET AUCUN N\'EST JUSTE', ()
         for (let i = 0; i < 20; i++) {
             const it = gen.generate({}, { rng: makeRng(graine + i), index: i });
             const m = it.meta;
-            const bonne = `${m.num}/${m.den}`;
+            // « n|d » : la forme JUGÉE, celle que le pavé envoie.
+            const bonne = `${m.num}|${m.den}`;
             const valeurs = it.choices.map(c => c.value);
             assert.equal(new Set(valeurs).size, valeurs.length,
                 `deux propositions identiques (${valeurs.join(' ')})`);
@@ -115,7 +119,7 @@ test('LES LEURRES SONT LES TROIS ERREURS DU CHAPITRE, ET AUCUN N\'EST JUSTE', ()
             // le pire des leurres, celui qui punit l'élève qui a raison.
             for (const c of it.choices) {
                 if (c.correct) continue;
-                const [n, d] = c.value.split('/').map(Number);
+                const [n, d] = String(c.value).split(/[/|]/).map(Number);
                 assert.notEqual(n / d, m.num / m.den,
                     `${c.value} vaut la bonne réponse ${bonne}`);
             }

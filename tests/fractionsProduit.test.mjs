@@ -130,8 +130,11 @@ test('AUCUNE PROPOSITION NE VAUT LA BONNE RÉPONSE', async () => {
             assert.equal(it.choices.length, 4, `${it.prompt.text} : ${it.choices.length} propositions`);
             assert.equal(it.choices.filter(c => c.correct).length, 1);
             assert.equal(it.choices.find(c => c.correct).value, it.answer);
+            // « n|d » DEPUIS QU'UNE FRACTION SE TAPE : les deux cases du pavé.
+            // On lit les DEUX écritures — l'épreuve garde la propriété (aucune
+            // proposition ne vaut la bonne), pas la forme de la chaîne.
             const valeurs = it.choices.map(c => {
-                const [n, d] = String(c.value).split('/').map(Number);
+                const [n, d] = String(c.value).split(/[/|]/).map(Number);
                 assert.ok(Number.isFinite(n) && Number.isFinite(d),
                     `« ${c.value} » n'est pas une fraction`);
                 // PAS DE « 6/1 » DANS LA LISTE : un entier écrit sur 1 se

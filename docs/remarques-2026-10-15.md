@@ -3787,3 +3787,41 @@ deux boutons.
 
 CE QUE ÇA TOUCHE : un seul endroit du code (`games/configUI.js`), et
 43 réglages du catalogue d'un coup.
+
+
+---
+
+## 32. Le clavier qui ne vient jamais — 25 octobre
+
+> « pour les fractions sur la droite, l'option clavier ne fonctionne jamais,
+> est ce le cas pour beaucoup d'exercices. »
+
+DEUX DEMANDES, ET LA SECONDE EST UN RECENSEMENT. Il ne demande pas de réparer
+un exercice : il demande COMBIEN sont dans ce cas. C'est la troisième fois en
+deux jours qu'il pose la question sous cette forme — les modales étroites, les
+réglages écrasés, et maintenant le clavier. Il faut donc mesurer TOUT le
+catalogue avant de corriger quoi que ce soit.
+
+CE QU'ON SAIT DÉJÀ : le passage au clavier exige
+`Number.isFinite(Number(item.answer))`, ou bien une réponse à plusieurs cases.
+Toute réponse qui n'est ni l'un ni l'autre — un mot, une écriture, « 3/4 » —
+reste en propositions pour toujours, et le réglage « Autoriser le clavier »
+devient un bouton qui ne fait rien.
+
+
+> « du coup, tu le mets pour tous (attention certains exercices ont parfois
+> besoin de la virgule) ? »
+
+PAS POUR TOUS, ET LA LISTE DIT POURQUOI. Sur les 70 où le clavier ne vient
+jamais, l'immense majorité ne DOIT pas se taper : une grille de sudoku se
+remplit case par case, « pair ou impair » se choisit, un programme Scratch
+s'assemble, « [AB) » se trace. Les seuls qui sont dans le même cas que la
+droite graduée sont ceux dont la réponse est une FRACTION — deux nombres, donc
+deux cases : « Addition de Fractions » et « Multiplier des Fractions ». Les
+trois « posées » ont déjà leur propre clavier.
+
+ET LA VIRGULE : elle est déjà décidée par la réponse elle-même
+(`numeric.js` : `decimal` vaut vrai dès qu'un morceau n'est pas entier), ou
+par l'exercice qui la demande. Sur une fraction, les deux cases sont entières
+et la touche ne doit PAS paraître — une virgule sous un dénominateur est une
+porte vers une réponse qui n'existe pas. On le mesure plutôt que de le croire.

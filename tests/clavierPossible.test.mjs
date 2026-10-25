@@ -65,8 +65,13 @@ test('LE RÉGLAGE NE SURVIT QUE LÀ OÙ IL AGIT, et on le demande au générateu
     assert.ok(muets.length > 0, 'la mesure du 28 septembre en trouvait 21');
 
     const id = (x) => x.id;
-    assert.ok(muets.map(id).includes('frac-add'),
-        'Addition de Fractions répond « 3/4 », qui ne se tape pas sur un pavé');
+    // « ADDITION DE FRACTIONS » A CHANGÉ DE CAMP, et c'est une CORRECTION, pas
+    // une régression. Rémy : « du coup, tu le mets pour tous ? ». Une fraction
+    // est DEUX nombres : elle se tape maintenant en deux cases, comme une
+    // durée, et son réglage agit donc pour de bon. Le témoin devient donc
+    // l'inverse : il doit avoir QUITTÉ la liste des muets.
+    assert.ok(!muets.map(id).includes('frac-add'),
+        'Addition de Fractions se tape maintenant en deux cases — voir frac-graduation');
     assert.ok(muets.map(id).includes('geo-notations'),
         'Segment, Droite, Demi-droite répond « [AB) »');
 

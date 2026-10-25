@@ -662,6 +662,71 @@ export function champsSchema(schema, valeurDe, options = {}) {
  * ouvre avant de jouer : « Comment l'élève répond » sur l'écran de l'élève
  * parlerait de quelqu'un d'autre que lui.
  */
+/**
+ * LE SCHÉMA DES RÉGLAGES, PRIVÉ DE CE QUI NE PEUT PAS AGIR.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * TROIS CAS, ET ILS SE DÉCIDENT EN TIRANT DE VRAIES QUESTIONS :
+ *
+ *   · ON NE CHOISIT JAMAIS parmi des propositions — `saisieSeule` : « Trace
+ *     [AB) » ne se pose pas en vignettes, donc « Toujours 2 propositions » ne
+ *     veut rien dire. Le réglage entier disparaît.
+ *   · ON NE TAPE JAMAIS : « 3/4 », « [AB) », « pair » ne se tapent pas sur un
+ *     pavé de chiffres. Le réglage reste — les propositions, elles, agissent —
+ *     mais son cran « Directement au clavier » s'en va, et « Progressive »
+ *     cesse de promettre un clavier qui ne viendra pas.
+ *   · LES DEUX SONT POSSIBLES : rien ne change, c'est le cas ordinaire.
+ *
+ * ON CACHE, ON NE DÉSACTIVE PAS : c'est la règle de la barre d'outils du
+ * constructeur, et pour la même raison — « un bouton grisé demande encore à
+ * être lu pour comprendre qu'il ne sert pas ; un bouton absent ne demande
+ * rien ». Et DANS LE DOUTE — générateur introuvable, question qui jette —
+ * `formesPossibles` rend les deux à `true` : on ne retire pas au professeur une
+ * décision sur un soupçon.
+ *
+ * ── POURQUOI C'EST UNE FONCTION, ET NON DIX LIGNES DANS UN PANNEAU ─────────
+ *
+ * RÉMY : « pour les fractions sur la droite, l'option clavier ne fonctionne
+ * jamais, est ce le cas pour beaucoup d'exercices. »
+ *
+ * OUI : 71 des 166 exercices à générateur (`tools/clavierDuCatalogue.mjs`).
+ * Ces dix lignes vivaient dans le panneau des ÉTAPES d'un parcours, et nulle
+ * part ailleurs — le panneau d'avant-partie, celui qu'on ouvre depuis le
+ * catalogue, offrait donc le clavier sur les soixante et onze. Une règle
+ * écrite une fois et appelée deux fois ne s'oublie pas à un endroit.
+ */
+export function selonLesFormes(schema, exo) {
+    const formes = formesPossibles(exo,
+        exo && exo.generatorId ? getGenerator(exo.generatorId) : null, makeRng);
+    return (schema || []).flatMap((c) => {
+        if (!c) return [];
+        if (c.id === 'clavier') return formes.clavier ? [c] : [];
+        // LA RÉPARTITION EST UN CHAMP CACHÉ, ET C'EST ELLE QUI TENAIT L'APERÇU.
+        // MESURÉ : après avoir retiré le rail des cinq « pas à pas », le
+        // panneau montrait encore DOUZE BANDES de frise — on avait retiré la
+        // commande et laissé le tableau de bord, ce qui est pire qu'avant. Le
+        // groupe « aide » se dessine dès qu'un de ses réglages survit ;
+        // `repartition` en fait partie.
+        if (c.id === 'repartition') return formes.propositions ? [c] : [];
+        if (c.id !== 'aide') return [c];
+        if (!formes.propositions) return [];
+        if (formes.clavier) return [c];
+        return [{
+            ...c,
+            options: (c.options || [])
+                .filter(o => o.value !== 'clavier')
+                .map(o => (o.value === 'progressive'
+                    ? { ...o, label: 'Progressive : 2 propositions, puis 4 (recommandé)' }
+                    : o)),
+            aide: 'En progressif, l\'exercice monte tout seul : deux propositions, '
+                + 'puis quatre. Ici la réponse n\'est pas un nombre — un mot, une '
+                + 'fraction, une notation — et le pavé ne peut pas la recevoir : '
+                + 'l\'escalier s\'arrête aux propositions.'
+        }];
+    });
+}
+
 const TITRES_GROUPE = {
     aide: 'Comment l\'élève répond'
 };
@@ -2957,34 +3022,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // rien ». Et DANS LE DOUTE — générateur introuvable, question qui jette —
     // `formesPossibles` rend les deux à `true` : on ne retire pas au professeur
     // une décision sur un soupçon.
-    const formes = formesPossibles(exo,
-        exo.generatorId ? getGenerator(exo.generatorId) : null, makeRng);
-    const schema = paramSchemaOf(exo).flatMap((c) => {
-        if (!c) return [];
-        if (c.id === 'clavier') return formes.clavier ? [c] : [];
-        // LA RÉPARTITION EST UN CHAMP CACHÉ, ET C'EST ELLE QUI TENAIT L'APERÇU.
-        // MESURÉ : après avoir retiré le rail des cinq « pas à pas », le
-        // panneau montrait encore DOUZE BANDES de frise — on avait retiré la
-        // commande et laissé le tableau de bord, ce qui est pire qu'avant. Le
-        // groupe « aide » se dessine dès qu'un de ses réglages survit ;
-        // `repartition` en fait partie.
-        if (c.id === 'repartition') return formes.propositions ? [c] : [];
-        if (c.id !== 'aide') return [c];
-        if (!formes.propositions) return [];
-        if (formes.clavier) return [c];
-        return [{
-            ...c,
-            options: (c.options || [])
-                .filter(o => o.value !== 'clavier')
-                .map(o => (o.value === 'progressive'
-                    ? { ...o, label: 'Progressive : 2 propositions, puis 4 (recommandé)' }
-                    : o)),
-            aide: 'En progressif, l\'exercice monte tout seul : deux propositions, '
-                + 'puis quatre. Ici la réponse n\'est pas un nombre — un mot, une '
-                + 'fraction, une notation — et le pavé ne peut pas la recevoir : '
-                + 'l\'escalier s\'arrête aux propositions.'
-        }];
-    });
+    const schema = selonLesFormes(paramSchemaOf(exo), exo);
     const current = { ...(exo.params || {}), ...(step.overrides || {}) };
     const nbEtape = step.nbItems || conseilEtape(step);
     const blocLongueur = glissiereDouble({
@@ -3308,7 +3346,22 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     // même le panneau de l'élève — sans la liste des marches, qui est
     // justement ce qu'on vient y régler. Le rôle demandé compte autant que le
     // mode global ; la barre de débogage n'existe que pour celui qui prépare.
-    const complet = paramSchemaOf(exo);
+    // ── LE MÊME FILTRE QUE L'AUTRE PANNEAU, ET IL MANQUAIT ICI ────────────
+    //
+    // RÉMY : « pour les fractions sur la droite, l'option clavier ne fonctionne
+    // jamais, est ce le cas pour beaucoup d'exercices. »
+    //
+    // OUI, ET LE RECENSEMENT LE DIT (`tools/clavierDuCatalogue.mjs`) : sur les
+    // 166 exercices à générateur, 71 ne peuvent JAMAIS aller au pavé — leur
+    // réponse est « 1/3 », « pair », « [AB) », une grille. Le panneau des
+    // étapes le savait et retirait le réglage ; CELUI-CI ne le savait pas, et
+    // offrait « Autoriser le clavier » et « Directement au clavier » sur les
+    // soixante et onze.
+    //
+    // UNE RÈGLE ÉCRITE DEUX FOIS EST UNE RÈGLE QU'ON OUBLIE À UN ENDROIT :
+    // c'est exactement ce qui s'est passé. Elle vit donc maintenant dans
+    // `selonLesFormes`, que les DEUX panneaux appellent.
+    const complet = selonLesFormes(paramSchemaOf(exo), exo);
     // ET « ÉLÈVE » EST UN RÔLE QU'ON PEUT DEMANDER, MÊME EN MODE PROFESSEUR.
     //
     // Rémy : « je n'ai pas accès à l'explication avant l'écran ce que l'élève a

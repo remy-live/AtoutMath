@@ -473,6 +473,53 @@
 }
 .md-entoure .md-case:focus { border-bottom-color: currentColor; }
 
+/* ── LA FRACTION À REMPLIR, SOUS LA DROITE GRADUÉE ────────────────────────
+
+   RÉMY : « il faut que le pavé numérique apparaissent pour ceux sur portable ».
+
+   MESURÉ sur un téléphone de 390 × 844, exercice au clavier
+   (`tools/tmp/quiPousse.mjs`) : en-tête 86 px + contexte 342 + pavé 473 = 901.
+   Soixante-treize de trop : la rangée du zéro et le bouton « Valider »
+   passaient sous le bord, et rien ne disait qu'il y avait quelque chose
+   dessous.
+
+   ET LE COUPABLE ÉTAIT LE BLOC NEUF : à lui seul, « ?/? » en grande fraction
+   pesait 90 px des 342. On le resserre sur un écran étroit — il reste lisible,
+   et le pavé rentre en entier. Le dessin de la droite graduée, lui, n'est pas
+   touché : c'est la question.
+
+   HORS TÉLÉPHONE ON NE CHANGE RIEN : la place ne manque pas, et une grande
+   fraction se lit mieux à deux mètres d'un vidéoprojecteur. */
+.gr-reponse { margin: 6px 0 0; }
+@media (max-width: 480px) {
+    .numpad-context .gr-reponse { margin: 0; }
+    .numpad-context .gr-reponse .fraction--grande { font-size: 1.05rem; }
+    /* ET LE RESTE DU CONTEXTE SE RESSERRE AVEC LUI. Après le seul bloc de
+       réponse il restait 43 px de trop. Les trois gagnés ici — le bandeau
+       d'annonce sur une ligne, les deux marges de question — les rendent, et
+       le pavé entre en entier, « Valider » compris.
+
+       CE N'EST QUE LA PREMIÈRE QUESTION AU CLAVIER qui porte le bandeau : il
+       « ne paraît qu'une fois ». C'est justement celle où l'on a le plus
+       besoin de voir le pavé en entier. */
+    .numpad-context .numpad-avis {
+        margin-bottom: 6px; padding: 5px 10px; font-size: .84rem;
+    }
+    .numpad-context .game-question { margin-bottom: 6px; }
+    .numpad-context .figure-wrap { margin-bottom: 2px; }
+    /* ET L'ÉCART ENTRE LE CONTEXTE ET LE PAVÉ : dix pixels sur un téléphone
+       sont dix pixels de pavé coupé. */
+    .numpad-layout { gap: 4px clamp(20px, 3vw, 40px); }
+    /* LA FIGURE A UN PLAFOND, et c'est lui qui FERME le compte. Les marges
+       grignotées une à une laissaient encore onze pixels de pavé dehors ;
+       surtout, elles ne protégeaient que CETTE figure-là. Un plafond en `vh`
+       vaut pour toutes : une droite graduée est large et basse, elle ne perd
+       rien à 9 % de la hauteur de l'écran, et une figure plus haute se
+       resserre au lieu de pousser le pavé dehors. */
+    .numpad-context .figure-wrap { max-height: 9vh; }
+    .numpad-context .figure-wrap svg { max-height: 9vh; }
+}
+
 /* LA TABLE DE SOIXANTE — « en indice une table de 60 pour trouver le nombre
    d'heure ». En colonne, chiffres alignés, et la dernière ligne qui NE DÉPASSE
    PAS se signale : sans elle, la table est juste et ne montre rien. */

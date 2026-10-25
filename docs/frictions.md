@@ -6098,3 +6098,27 @@ le résultat n'existe pas** — 15 octobre 2026
   sa largeur — « réglages · auteur · 1440 px ». Rémy photographie déjà la
   barre sans y penser : le numéro de version est sur ses captures depuis des
   semaines. Un mot de plus, et la capture se suffirait.
+
+
+## Rendre un exercice tapable casse les épreuves qui lisent sa valeur — 2026-10-25
+
+- *Ce que je voulais faire* : rendre « Addition de Fractions » et « Multiplier
+  des Fractions » tapables en deux cases, comme la droite graduée — donc
+  séparer la VALEUR (« 7|5 », ce que le pavé envoie) de l'ÉTIQUETTE (la
+  fraction dessinée, ce que l'élève lit sur le bouton).
+- *Ce qui a coûté* : cinq épreuves déjà écrites sont devenues rouges, et aucune
+  ne parlait de clavier. Elles lisaient `choice.value` comme si c'était ce que
+  l'élève VOIT — `/^\d+\/\d+$/` sur une valeur, un témoin nommé `frac-add`
+  dans une liste de muets qui venait de changer de camp. Quatre minutes de
+  `npm test` pour les trouver, puis un tour par épreuve pour décider, à chaque
+  fois, si le rouge était une régression ou une correction.
+- *Combien de fois* : || (même famille que la feuille de route des `answerKinds` :
+  le contrat « la valeur juge, l'étiquette se lit » n'est écrit nulle part, et
+  chaque générateur le redécouvre)
+- *Ce qui manque* : une épreuve de CONTRAT, une seule, qui passe tout le
+  catalogue et exige que la bonne proposition de chaque question soit comptée
+  juste par `evaluate` — et qu'aucune étiquette ne montre une forme interne
+  (`|`). Elle existe maintenant pour les trois exercices de fractions, dans
+  `tests/clavierPartout.test.mjs` ; elle devrait porter sur les 166. Alors
+  rendre un exercice tapable rendrait UNE épreuve rouge, à l'endroit qui nomme
+  la règle, au lieu de cinq qui parlent d'autre chose.

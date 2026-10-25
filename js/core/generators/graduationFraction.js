@@ -105,7 +105,13 @@ export const graduationFractionGenerator = {
     id: 'frac.graduation',
     label: 'Lire une fraction sur une droite graduée',
     skills: ['num.frac.sens'],
-    answerKinds: ['choice'],
+    // DEUX FAÇONS DE RÉPONDRE. RÉMY : « pour les fractions sur la droite,
+    // l'option clavier ne fonctionne jamais ». Une fraction n'est pas UN
+    // nombre — « 1/3 » n'en est pas un —, c'est DEUX : elle se tape donc en
+    // deux cases, comme une durée. Voir `casesDuree` dans `durees.js`, qui a
+    // ouvert la voie, et `itemPeutEtreChoisi` dans `core/aide.js`, qui a cessé
+    // de tenir « plusieurs cases » et « propositions » pour incompatibles.
+    answerKinds: ['choice', 'numeric'],
     ecrit: true,
     conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, 3),
     params: [
@@ -169,10 +175,15 @@ export const graduationFractionGenerator = {
         poser(num, den + 1, 'Le dénominateur compte les INTERVALLES de l\'unité, pas les '
             + `traits : il y en a ${den + 1} mais seulement ${den} intervalles.`);
 
+        // LA VALEUR JUGE, L'ÉTIQUETTE SE LIT. La bonne proposition doit porter
+        // EXACTEMENT ce que le pavé enverra — « 1|3 » —, sinon cliquer la bonne
+        // réponse serait compté FAUX ; le bouton, lui, montre la fraction
+        // dessinée. C'est le même partage que pour les durées.
+        const cases = (n, d) => `${n}|${d}`;
         const choix = [
-            { value: texteFraction(num, den), label: fractionHtml(num, den), correct: true },
+            { value: cases(num, den), label: fractionHtml(num, den), correct: true },
             ...leurres.map(l => ({
-                value: texteFraction(l.n, l.d), label: fractionHtml(l.n, l.d), why: l.why
+                value: cases(l.n, l.d), label: fractionHtml(l.n, l.d), why: l.why
             }))
         ];
 
@@ -187,14 +198,27 @@ export const graduationFractionGenerator = {
             answerKind: 'choice',
             prompt: {
                 text: `Quelle fraction est marquée par la croix rouge ?`,
+                // LES DEUX CASES SONT DANS L'ÉNONCÉ : le pavé compte les
+                // `[data-trou]` qu'il y trouve, et sans elles il n'en
+                // allumerait aucune. Elles disent aussi la FORME attendue —
+                // un numérateur sur un dénominateur — ce que « ? » ne dit pas.
                 html: '<div class="game-question">Quelle fraction est marquée '
-                    + 'par la croix rouge&nbsp;?</div>' + figure(dessin),
+                    + 'par la croix rouge&nbsp;?</div>' + figure(dessin)
+                    + '<div class="game-question gr-reponse">'
+                    + '<span class="fraction fraction--grande">'
+                    + '<span class="fraction-num"><u class="np-trou" data-trou="0">'
+                    + '&nbsp;?&nbsp;</u></span>'
+                    + '<span class="fraction-den"><u class="np-trou" data-trou="1">'
+                    + '&nbsp;?&nbsp;</u></span></span></div>',
                 papier: 'Écris la fraction marquée par chaque croix.'
             },
-            answer: texteFraction(num, den),
+            answer: cases(num, den),
             choices: finalizeChoices(rng, choix, {
                 count: 4,
-                filler: (r) => texteFraction(r.int(1, crans - 1), den)
+                filler: (r) => {
+                    const n = r.int(1, crans - 1);
+                    return { value: cases(n, den), label: fractionHtml(n, den) };
+                }
             }),
             hints: [
                 `L'unité — de 0 à 1 — est coupée en ${den} intervalles égaux : `
