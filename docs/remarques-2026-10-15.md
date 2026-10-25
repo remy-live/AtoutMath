@@ -3716,3 +3716,38 @@ coûte plus cher qu'un indice.
 
 CE QUI DOIT SURVIVRE DU BOUTON : les cases. « il faut pouvoir écrire dans les
 bulles », hier. C'est donc le schéma POSÉ qui devient remplissable.
+
+
+---
+
+## 28. Les modales étroites sur ordinateur — 25 octobre
+
+> « sur le réglages des exercices c'est écrasé d'ailleurs pourquoi sur ordi la
+> fenetre des réglages et si étroite et sur ordi, parfois certains modales sont
+> étroites, c'est dommage »
+
+SA CAPTURE MONTRE LE GÂCHIS : la fenêtre fait près de neuf cents pixels de
+large, et le contenu tient dans une colonne de trois cents. « COMMENT L'ÉLÈVE
+RÉPONDRA, SUR 7 QUESTIONS » s'écrit sur cinq lignes, « QUESTIONS 1 À 3 » sur
+deux, et la moitié droite de la fenêtre est vide.
+
+DEUX DEMANDES, PAS UNE. La seconde est la plus importante : « parfois certains
+modales sont étroites » — ce n'est pas un défaut d'un panneau, c'est une
+habitude du logiciel. Il faut donc MESURER TOUTES les modales sur un écran
+d'ordinateur, pas réparer celle de sa capture.
+
+
+---
+
+## 29. « Heures et Minutes » ne se tape pas — 25 octobre
+
+> « pour les heures et minutes, onne peut taper au clavier, ca semble forcément
+> un qcm, »
+
+L'exercice ne déclare qu'une façon de répondre (`answerKinds: ['choice']`), et
+le catalogue le monte en bulles. On choisit donc toujours parmi quatre durées.
+
+CE QUE ÇA COÛTE : sur quatre propositions, l'élève qui a mal posé sa retenue
+RECONNAÎT la bonne réponse sans jamais l'écrire — et c'est précisément écrire
+« 4 h 15 » et non « 3 h 75 » que ce chapitre existe pour apprendre. Le QCM
+enseigne à éliminer ; la frappe enseigne à écrire une durée.

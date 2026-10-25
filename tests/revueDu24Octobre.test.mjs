@@ -29,6 +29,8 @@ import { statistiquesGenerator, ETAPES as ETAPES_STAT } from '../js/core/generat
 import { lireUneFractionGenerator } from '../js/core/generators/lireUneFraction.js';
 import { etapesExemple } from '../js/core/aideExercice.js';
 import { dureesGenerator, arretsDesBonds, ecrireDuree } from '../js/core/generators/durees.js';
+import { itemPeutAllerAuClavier, itemPeutEtreChoisi } from '../js/core/aide.js';
+import { evaluate } from '../js/core/items.js';
 import probabilitesGenerator from '../js/core/generators/probabilites.js';
 // L'IMPORT SANS LEQUEL LA MESURE MENT. Sans le registre, `paramSchemaOf` ne
 // trouve pas le générateur et rend une liste VIDE — c'est-à-dire la même
@@ -428,6 +430,86 @@ test('LE SCHÉMA SE POSE SOUS L\'ÉNONCÉ, ET L\'ON ÉCRIT DEDANS', () => {
     assert.match(OU, /const libre = \(c\) => c\.dataset\.caseOutil === 'texte';/);
     assert.equal((OU.match(/if \(libre\(c\)\)/g) || []).length, 2,
         'la case de texte doit échapper AU FILTRE et AUX FLÈCHES');
+});
+
+test('HEURES ET MINUTES SE TAPE AUSSI, PAS SEULEMENT SE CHOISIT', () => {
+    // RÉMY : « pour les heures et minutes, on ne peut taper au clavier, ca
+    // semble forcément un qcm ».
+    //
+    // LA CAUSE N'ÉTAIT PAS DANS LE GÉNÉRATEUR. Le passage au clavier demande
+    // `Number.isFinite(Number(item.answer))`, et « 5 h 30 » n'est pas un
+    // nombre : AUCUNE des quatre marches ne pouvait se taper, quelle que soit
+    // la frise des réglages — elle montrait une zone « clavier » qui ne faisait
+    // rien. Une durée est DEUX nombres, et le pavé sait poser deux cases.
+    assert.ok(dureesGenerator.answerKinds.includes('numeric'),
+        'le générateur ne déclare plus qu\'on peut taper');
+    for (const marche of ['somme', 'difference', 'vers-minutes', 'vers-heures']) {
+        for (let i = 0; i < 6; i++) {
+            const it = dureesGenerator.generate({ marches: [marche] },
+                { index: i, total: 6, rng: makeRng('cl-' + marche + i) });
+            const ou = `${marche} — ${it.prompt.text}`;
+            // LES DEUX, ET C'EST TOUT L'ENJEU : le clavier SANS perdre les
+            // propositions, qui portent le « pourquoi » de chaque erreur de
+            // retenue et sont le cœur du chapitre.
+            assert.ok(itemPeutAllerAuClavier(it), `pas de clavier sur ${ou}`);
+            assert.ok(itemPeutEtreChoisi(it), `plus de propositions sur ${ou}`);
+            // LA BONNE PROPOSITION DOIT ÊTRE COMPTÉE JUSTE. Sa valeur part
+            // telle quelle dans `submit` : si elle ne vaut pas `answer`,
+            // cliquer la bonne réponse est compté FAUX — et c'est le genre de
+            // défaut qu'on découvre devant une classe.
+            const bon = (it.choices || []).find(c => c.correct);
+            assert.ok(bon, `aucune bonne proposition sur ${ou}`);
+            assert.ok(evaluate(it, bon.value).correct,
+                `la bonne proposition est comptée fausse sur ${ou}`);
+            // ET AUCUNE ÉTIQUETTE NE MONTRE LA FORME INTERNE. « 5|30 » est ce
+            // que le pavé envoie ; ce n'est pas ce qu'un élève doit lire sur un
+            // bouton. Les bouche-trous de `finalizeChoices` confondaient les
+            // deux, et c'est eux qui l'auraient affiché.
+            (it.choices || []).forEach(c => assert.ok(
+                !String(c.label).includes('|'),
+                `une proposition montre « ${c.label} » sur ${ou}`));
+            if (marche === 'vers-minutes') {
+                // UNE SEULE CASE, et l'unité écrite sur l'écran du pavé : sans
+                // elle, l'élève tape 125 sans savoir si on lui demande des
+                // minutes ou des heures, sur la seule marche où c'est toute la
+                // question.
+                assert.equal(it.meta.unit, 'min', `pas d'unité sur ${ou}`);
+                assert.ok(Number.isFinite(Number(it.answer)), `réponse non chiffrée sur ${ou}`);
+            } else {
+                // DEUX CASES DANS L'ÉNONCÉ : le pavé compte les `[data-trou]`
+                // qu'il y trouve. Sans elles il n'en allumerait aucune et
+                // rendrait un seul nombre pour une réponse qui en demande deux.
+                assert.equal((it.prompt.html.match(/data-trou=/g) || []).length, 2,
+                    `il n'y a pas deux cases à remplir sur ${ou}`);
+                assert.match(String(it.answer), /^\d+\|\d+$/, `réponse mal formée sur ${ou}`);
+            }
+        }
+    }
+});
+
+test('ET LES DEUX RÈGLES DU NOYAU QUI L\'INTERDISAIENT', () => {
+    // ELLES TENAIENT « réponse à plusieurs cases » ET « propositions » POUR
+    // INCOMPATIBLES. C'était vrai de ce qu'on sait FABRIQUER — on ne construit
+    // pas quatre vignettes à partir de « 45|3|15|3|5 » — et faux de ce qu'on
+    // sait AFFICHER : un générateur qui a écrit ses propositions en sait plus.
+    //
+    // MESURÉ AVANT D'Y TOUCHER (`tools/tmp/cumul.mjs`, 996 questions tirées
+    // dans tout le catalogue) : 26 réponses à plusieurs cases, et ZÉRO qui
+    // portait aussi des propositions. Aucune question d'hier ne change donc de
+    // comportement — et cette épreuve le garde.
+    const faux = { answer: '45|3|15', meta: {} };
+    assert.ok(!itemPeutEtreChoisi(faux),
+        'une réponse à cases SANS propositions ne se pose pas en vignettes');
+    const vrai = { answer: '5|30', meta: {}, choices: [{ value: '5|30', correct: true }] };
+    assert.ok(itemPeutEtreChoisi(vrai),
+        'une réponse à cases AVEC propositions doit pouvoir les montrer');
+    // ET `choice.js` POSE LA MÊME QUESTION, aux deux endroits où elle se pose :
+    // le module choisi ET le bandeau « à toi d'écrire ». Deux règles voisines
+    // qui divergeraient donneraient un bandeau sans passage, ou l'inverse.
+    const CH = readFileSync(new URL('../js/core/activities/choice.js', import.meta.url), 'utf8');
+    assert.equal(
+        (CH.match(/reponseEnPlusieursCases\(item\) && !itemPeutEtreChoisi\(item\)/g) || []).length, 2,
+        'le module et le bandeau ne se décident plus sur la même règle');
 });
 
 test('ET LE SCHÉMA DESCEND SUR LA FEUILLE IMPRIMÉE', () => {

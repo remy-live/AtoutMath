@@ -14,7 +14,7 @@ import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { aideSelonEtat, reduireChoix, itemPeutAllerAuClavier,
-    reponseEnPlusieursCases } from '../aide.js';
+    reponseEnPlusieursCases, itemPeutEtreChoisi } from '../aide.js';
 import { barreOutils, boiteOutils, brancherOutils, brancherCasesPosees } from './outils.js';
 import { meneurDemo } from '../meneurDemo.js';
 
@@ -162,7 +162,17 @@ export function mount(container, session, opts = {}) {
         // Rémy : « Et pour la décompoisiton, il n'y a pas de clavier ». MESURÉ
         // (`tools/clavierDesMarches.mjs') : quatre marches de `num.pgcd-ppcm`
         // n'offraient ni pavé ni proposition dans « Divisible, oui ou non ? ».
-        if (reponseEnPlusieursCases(item)) return compose || './numeric.js';
+        // ET ELLE N'Y VA DE FORCE QUE S'IL N'Y A VRAIMENT PAS DE MARCHE PLUS
+        // BASSE. Rémy, sur « Heures et Minutes » : « on ne peut taper au clavier,
+        // ca semble forcément un qcm ». Sa réponse se tape en deux cases —
+        // « 5 » puis « 30 » —, mais le générateur a AUSSI écrit quatre
+        // propositions, avec le « pourquoi » de chaque erreur de retenue. Lui
+        // imposer le pavé dès la première question jetterait ces quatre
+        // explications, qui sont le cœur du chapitre. Quand les propositions
+        // existent, l'escalier ordinaire s'applique : 2, puis 4, puis le pavé.
+        if (reponseEnPlusieursCases(item) && !itemPeutEtreChoisi(item)) {
+            return compose || './numeric.js';
+        }
         if (!aideIci.clavier) return null;
         if (compose) return compose;
         // LA RÈGLE VIT DANS `core/aide.js`, ET ELLE Y VIT SEULE. Le panneau de
@@ -185,8 +195,16 @@ export function mount(container, session, opts = {}) {
     // ET UNE RÉPONSE À PLUSIEURS CASES EST DANS LE MÊME CAS : elle n'a jamais
     // eu de propositions non plus, donc « plus de propositions » annoncerait un
     // changement qui n'a pas eu lieu — sur la toute première question.
+    //
+    // SAUF QUAND ELLE EN A EU. Depuis « Heures et Minutes », une réponse à deux
+    // cases peut avoir commencé en propositions : là, le passage au clavier EST
+    // un changement, et c'est même le seul moment où l'annoncer sert à quelque
+    // chose. On pose donc la même question que `moduleVoulu` juste au-dessus,
+    // et on la pose de la même façon — deux règles voisines qui divergeraient
+    // donneraient un bandeau sans passage, ou un passage sans bandeau.
     const avisPour = (module, item) =>
-        ((item && item.meta && item.meta.saisieSeule) || reponseEnPlusieursCases(item)
+        ((item && item.meta && item.meta.saisieSeule)
+            || (reponseEnPlusieursCases(item) && !itemPeutEtreChoisi(item))
             ? '' : (AVIS[module] || ''));
 
     const AVIS = {

@@ -153,14 +153,22 @@ test('LA RETENUE À DIX EST PROPOSÉE, ET ELLE EST FAUSSE', () => {
         // donc la réponse qu'écrit l'élève qui retient dix : cinquante
         // minutes d'écart, puisqu'une heure comptée pour dix en coûte
         // cinquante.
+        // LA VALEUR JUGE, L'ÉTIQUETTE SE LIT, ET DEPUIS QUE L'EXERCICE SE TAPE
+        // LES DEUX NE SONT PLUS LA MÊME CHAÎNE. Rémy : « on ne peut taper au
+        // clavier, ca semble forcément un qcm ». Une durée est DEUX nombres :
+        // elle se juge « 2|25 », pour les deux cases du pavé, et se lit
+        // « 2 h 25 ». C'est l'étiquette que l'élève cherche dans la liste.
         const dix = ecrireDuree(it.meta.total + 50);
-        const leurre = it.choices.find(c => !c.correct && c.value === dix);
+        const leurre = it.choices.find(c => !c.correct && c.label === dix);
         assert.ok(leurre, `la retenue à dix (${dix}) n'est pas proposée pour `
             + `${it.prompt.text}`);
         assert.match(leurre.why || '', /60|soixante/i,
             'le leurre de la retenue à dix n\'explique pas pourquoi');
-        // ET LA BONNE RÉPONSE EST BIEN LA SOMME, retenue comprise.
-        assert.equal(it.answer, ecrireDuree(it.meta.x + it.meta.y));
+        // ET LA BONNE RÉPONSE EST BIEN LA SOMME, retenue comprise — dans les
+        // DEUX écritures, parce qu'elles sont désormais deux.
+        const vrai = it.meta.x + it.meta.y;
+        assert.equal(it.answer, `${Math.floor(vrai / 60)}|${vrai % 60}`);
+        assert.equal(it.choices.find(c => c.correct).label, ecrireDuree(vrai));
     }
 });
 
@@ -168,7 +176,11 @@ test('PASSER DES MINUTES AUX HEURES, C\'EST DIVISER PAR SOIXANTE', () => {
     const vus = tirer(dureesGenerator).filter(it => it.meta.marche === 'vers-heures');
     assert.ok(vus.length >= 2);
     for (const it of vus) {
-        assert.equal(it.answer, ecrireDuree(it.meta.total));
+        // LES DEUX ÉCRITURES, ici aussi : « 1|21 » pour les deux cases du pavé,
+        // « 1 h 21 » pour l'œil.
+        assert.equal(it.answer,
+            `${Math.floor(it.meta.total / 60)}|${it.meta.total % 60}`);
+        assert.equal(it.choices.find(c => c.correct).label, ecrireDuree(it.meta.total));
         // LE LEURRE DE LA DIVISION PAR CENT EST PROPOSÉ : c'est la même erreur
         // que « 2 h 15 = 215 minutes », prise par l'autre bout.
         assert.ok(it.choices.some(c => !c.correct && /100|cent/i.test(c.why || '')),

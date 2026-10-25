@@ -43,6 +43,45 @@ const TEMPS = {};
 const MOT = 'palier';
 const ANCIEN = { cle: 'palier' };
 
+/**
+ * UNE DURÉE TELLE QU'ELLE SE JUGE : « 5|30 », deux cases pour le pavé.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « pour les heures et minutes, on ne peut taper au clavier, ca semble
+ * forcément un qcm ».
+ *
+ * IL AVAIT RAISON, ET LA CAUSE N'ÉTAIT PAS DANS CE FICHIER. Le passage au
+ * clavier demande `Number.isFinite(Number(item.answer))` — et « 5 h 30 » n'est
+ * pas un nombre. Aucune des quatre marches ne pouvait donc se taper, quelle que
+ * soit la frise des réglages : elle montrait une zone « clavier » qui ne
+ * faisait rien.
+ *
+ * UNE DURÉE EST DEUX NOMBRES, et le pavé sait déjà poser deux cases — c'est le
+ * format `a|b`, celui de « Lis la Fraction ». La réponse se JUGE donc « 5|30 »
+ * et se LIT « 5 h 30 » : la valeur et l'étiquette de chaque proposition sont
+ * séparées, ce qui est exactement ce à quoi elles servent.
+ *
+ * ET LES PROPOSITIONS RESTENT. Elles portent le « pourquoi » de chaque erreur
+ * de retenue — « 3 h 75 », la retenue à dix —, qui est le cœur du chapitre ;
+ * l'escalier ordinaire s'applique, 2 propositions puis 4 puis le pavé. Il a
+ * fallu pour cela relire deux règles du noyau, dans `core/aide.js` et
+ * `activities/choice.js` : elles tenaient « réponse à plusieurs cases » et
+ * « propositions » pour incompatibles.
+ */
+const casesDuree = (minutes) => `${Math.floor(minutes / 60)}|${minutes % 60}`;
+
+/**
+ * LES DEUX CASES, DANS L'ÉNONCÉ. Le pavé compte les `[data-trou]` que l'énoncé
+ * déclare et écrit dans celle qui est visée ; sans elles, il n'en allumerait
+ * aucune et rendrait un seul nombre pour une réponse qui en demande deux.
+ *
+ * ELLES RESTENT VISIBLES EN PROPOSITIONS, et c'est voulu : « = ? » ne dit pas
+ * ce qu'on attend, « = ?? h ?? min » le dit.
+ */
+const champsDuree = () => '<u class="np-trou" data-trou="0">&nbsp;?&nbsp;</u>&nbsp;h '
+    + '<u class="np-trou" data-trou="1">&nbsp;?&nbsp;</u>&nbsp;min';
+
 /** « 2 h 05 » — les minutes s'écrivent sur DEUX chiffres, comme sur une pendule. */
 export function ecrireDuree(totalMinutes) {
     const h = Math.floor(totalMinutes / 60);
@@ -239,7 +278,10 @@ export const dureesGenerator = {
     id: 'mes.durees',
     label: 'Calculer avec des durées',
     skills: [COMPETENCE],
-    answerKinds: ['choice'],
+    // DEUX FAÇONS DE RÉPONDRE, et c'est la seconde qui manquait. Voir
+    // `casesDuree` : « 5 h 30 » n'est pas un nombre, donc l'escalier ne montait
+    // jamais jusqu'au pavé.
+    answerKinds: ['choice', 'numeric'],
     ecrit: true,
     conseil: (p) => conseilProgression(marchesCochees(p, MARCHES, ANCIEN).length, 3),
     params: [
@@ -299,14 +341,23 @@ export const dureesGenerator = {
             // L'ERREUR N° 2 : la retenue de DIX au lieu de SOIXANTE.
             const dix = somme ? total + 50 : total - 50;
 
+            // L'ERREUR N° 1 EN CASES : ses minutes DÉPASSENT soixante — c'est
+            // tout son intérêt —, donc elle ne passe pas par `casesDuree`, qui
+            // les ramènerait en dessous et effacerait l'erreur.
+            const hBrut = somme
+                ? Math.floor(x / 60) + Math.floor(y / 60)
+                : Math.floor(x / 60) - Math.floor(y / 60);
+            const mBrut = somme ? mx + my : Math.abs(mx - my);
+            const horsRetenue = somme ? total + 60 : Math.max(0, total - 60);
             const leurres = [
-                { v: brut, why: deborde
+                { v: `${hBrut}|${mBrut}`, lab: brut, why: deborde
                     ? `Les minutes dépassent 60 : ${mx} + ${my} = ${mx + my}, c'est-à-dire `
                         + `1 h ${String((mx + my) - 60).padStart(2, '0')}. On reporte cette heure.`
                     : 'Les heures ne se retiennent pas ici — relis le calcul des minutes.' },
-                { v: ecrireDuree(Math.max(0, dix)), why: 'La retenue d\'une heure vaut SOIXANTE '
+                { v: casesDuree(Math.max(0, dix)), lab: ecrireDuree(Math.max(0, dix)),
+                    why: 'La retenue d\'une heure vaut SOIXANTE '
                     + 'minutes, pas dix : une pendule ne compte pas en base dix.' },
-                { v: ecrireDuree(somme ? total + 60 : Math.max(0, total - 60)),
+                { v: casesDuree(horsRetenue), lab: ecrireDuree(horsRetenue),
                     why: 'Une heure de trop (ou de moins) : la retenue a été comptée deux fois.' }
             ];
             const bonne = ecrireDuree(total);
@@ -315,7 +366,7 @@ export const dureesGenerator = {
                 prompt: {
                     text: `${ecrireDuree(x)} ${somme ? '+' : '−'} ${ecrireDuree(y)} = ?`,
                     html: `<div class="game-question">${ecrireDuree(x)} `
-                        + `${somme ? '+' : '−'} ${ecrireDuree(y)} =&nbsp;?</div>`,
+                        + `${somme ? '+' : '−'} ${ecrireDuree(y)} = ${champsDuree()}</div>`,
                     papier: `${ecrireDuree(x)} ${somme ? '+' : '−'} ${ecrireDuree(y)} =`,
                     // ── LE SCHÉMA SUR LA FEUILLE ──────────────────────────
                     //
@@ -341,12 +392,21 @@ export const dureesGenerator = {
                         bonds: { arrets: arretsDesBonds(y, x).map(ecrireDuree) }
                     })
                 },
-                answer: bonne,
+                // LA VALEUR JUGE, L'ÉTIQUETTE SE LIT. Voir `casesDuree` : la
+                // bonne proposition doit porter EXACTEMENT ce que le pavé
+                // enverra, sinon cliquer la bonne réponse serait compté faux.
+                answer: casesDuree(total),
                 choices: finalizeChoices(rng, [
-                    { value: bonne, label: bonne, correct: true },
-                    ...leurres.filter(l => l.v !== bonne)
-                        .map(l => ({ value: l.v, label: l.v, why: l.why }))
-                ], { count: 4, filler: (r) => ecrireDuree(Math.max(5, total + r.int(1, 3) * 15)) }),
+                    { value: casesDuree(total), label: bonne, correct: true },
+                    ...leurres.filter(l => l.v !== casesDuree(total))
+                        .map(l => ({ value: l.v, label: l.lab, why: l.why }))
+                ], {
+                    count: 4,
+                    filler: (r) => {
+                        const t = Math.max(5, total + r.int(1, 3) * 15);
+                        return { value: casesDuree(t), label: ecrireDuree(t) };
+                    }
+                }),
                 hints: somme
                     ? [
                         'Additionne les heures d\'un côté, les minutes de l\'autre.',
@@ -442,12 +502,16 @@ export const dureesGenerator = {
         if (marche === 'vers-minutes') {
             const d = tirerDuree(rng, 4) || 95;
             const h = Math.floor(d / 60), m = d % 60;
+            // ICI LA RÉPONSE EST UN SEUL NOMBRE, et c'est le pavé ordinaire qui
+            // la prend. On la juge donc comme un nombre — `125`, et non
+            // « 125 min » qui n'en est pas un et fermait le clavier — et c'est
+            // `meta.unit` qui écrit « min » sur l'écran du pavé.
             const bonne = `${d} min`;
             const leurres = [
-                { v: `${h * 100 + m} min`, why: 'Une heure vaut 60 minutes, pas 100 : '
+                { v: h * 100 + m, why: 'Une heure vaut 60 minutes, pas 100 : '
                     + `${h} h ${String(m).padStart(2, '0')} ne s'écrit pas ${h}${String(m).padStart(2, '0')}.` },
-                { v: `${h * 60} min`, why: 'Les minutes de la durée ont été oubliées.' },
-                { v: `${d + 60} min`, why: 'Une heure de trop.' }
+                { v: h * 60, why: 'Les minutes de la durée ont été oubliées.' },
+                { v: d + 60, why: 'Une heure de trop.' }
             ];
             return makeItem({
                 ...commun,
@@ -457,16 +521,25 @@ export const dureesGenerator = {
                         + `<b>${ecrireDuree(d)}</b>&nbsp;?</div>`,
                     papier: `${ecrireDuree(d)} = …… min`
                 },
-                answer: bonne,
+                answer: d,
                 choices: finalizeChoices(rng, [
-                    { value: bonne, label: bonne, correct: true },
-                    ...leurres.filter(l => l.v !== bonne)
-                        .map(l => ({ value: l.v, label: l.v, why: l.why }))
-                ], { count: 4, filler: (r) => `${d + r.int(1, 5) * 10} min` }),
+                    { value: d, label: bonne, correct: true },
+                    ...leurres.filter(l => l.v !== d)
+                        .map(l => ({ value: l.v, label: `${l.v} min`, why: l.why }))
+                ], {
+                    count: 4,
+                    filler: (r) => {
+                        const v = d + r.int(1, 5) * 10;
+                        return { value: v, label: `${v} min` };
+                    }
+                }),
                 hints: ['Une heure vaut 60 minutes.', `${h} × 60 = ${h * 60}, puis on ajoute ${m}.`],
                 explanation: `${h} h = ${h * 60} min, plus ${m} min : ${d} minutes en tout.`,
                 difficulty: 2,
-                meta: { marche, d, theme: `min-${d}` }
+                // `unit` ÉCRIT « min » SUR L'ÉCRAN DU PAVÉ : sans elle, l'élève
+                // tape 125 sans savoir si on lui demande des minutes ou des
+                // heures, sur la seule marche où c'est toute la question.
+                meta: { marche, d, unit: 'min', theme: `min-${d}` }
             });
         }
 
@@ -476,10 +549,14 @@ export const dureesGenerator = {
         const total = rng.int(70, 400);
         const bonne = ecrireDuree(total);
         const leurres = [
-            { v: `${Math.round(total / 60)} h`, why: 'On ne garde pas que les heures : '
+            { v: `${Math.round(total / 60)}|0`, lab: `${Math.round(total / 60)} h`,
+                why: 'On ne garde pas que les heures : '
                 + 'il reste des minutes, et elles comptent.' },
-            { v: ecrireDuree(total + 60), why: 'Une heure de trop.' },
-            { v: `${Math.floor(total / 100)} h ${String(total % 100).padStart(2, '0')}`,
+            { v: casesDuree(total + 60), lab: ecrireDuree(total + 60), why: 'Une heure de trop.' },
+            // CELUI-CI DIVISE PAR CENT, donc ses minutes peuvent dépasser
+            // soixante : il ne passe pas par `casesDuree`, qui les corrigerait.
+            { v: `${Math.floor(total / 100)}|${total % 100}`,
+                lab: `${Math.floor(total / 100)} h ${String(total % 100).padStart(2, '0')}`,
                 why: 'On divise par 60, pas par 100 : une heure vaut soixante minutes.' }
         ];
         return makeItem({
@@ -487,15 +564,21 @@ export const dureesGenerator = {
             prompt: {
                 text: `Écris ${total} minutes en heures et minutes.`,
                 html: `<div class="game-question">Écris <b>${total} minutes</b> en heures `
-                    + 'et minutes.</div>',
+                    + `et minutes :<br>${champsDuree()}</div>`,
                 papier: `${total} min = …… h …… min`
             },
-            answer: bonne,
+            answer: casesDuree(total),
             choices: finalizeChoices(rng, [
-                { value: bonne, label: bonne, correct: true },
-                ...leurres.filter(l => l.v !== bonne)
-                    .map(l => ({ value: l.v, label: l.v, why: l.why }))
-            ], { count: 4, filler: (r) => ecrireDuree(total + r.int(1, 4) * 15) }),
+                { value: casesDuree(total), label: bonne, correct: true },
+                ...leurres.filter(l => l.v !== casesDuree(total))
+                    .map(l => ({ value: l.v, label: l.lab, why: l.why }))
+            ], {
+                count: 4,
+                filler: (r) => {
+                    const t = total + r.int(1, 4) * 15;
+                    return { value: casesDuree(t), label: ecrireDuree(t) };
+                }
+            }),
             hints: [
                 'Divise par 60 : le quotient donne les heures.',
                 'Et le RESTE de cette division donne les minutes.',

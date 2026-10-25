@@ -669,6 +669,26 @@ export function itemPeutEtreChoisi(item) {
     // [AB) » ne se choisit pas parmi quatre images, et c'est ce QCM-là que
     // Rémy trouvait bête. Tout le reste commence par des propositions.
     if (!item || (item.meta && item.meta.saisieSeule)) return false;
+    // ── SAUF QUAND LE GÉNÉRATEUR EN A ÉCRIT, DES PROPOSITIONS ─────────────
+    //
+    // RÉMY, sur « Heures et Minutes » : « on ne peut taper au clavier, ca
+    // semble forcément un qcm ». La réponse « 5 h 30 » est deux nombres : pour
+    // la TAPER, il faut deux cases — et c'est justement ce que la ligne du
+    // dessous interdisait de combiner avec des propositions. L'exercice était
+    // donc condamné au QCM, frise des réglages comprise : elle montrait une
+    // zone « clavier » qui ne faisait rien.
+    //
+    // CE N'EST PAS UNE EXCEPTION, C'EST LA RÈGLE RELUE. Ce qu'on ne sait pas
+    // faire, c'est FABRIQUER quatre vignettes à partir de « 45|3|15|3|5 » —
+    // pas les afficher quand elles existent. Un générateur qui a écrit ses
+    // propositions, avec le « pourquoi » de chaque erreur, en sait plus que
+    // cette fonction.
+    //
+    // MESURÉ AVANT DE TOUCHER À LA RÈGLE (`tools/tmp/cumul.mjs`, 996 questions
+    // tirées dans tout le catalogue) : 26 réponses à plusieurs cases, et ZÉRO
+    // qui portait aussi des propositions. Aucune question d'aujourd'hui ne
+    // change donc de comportement.
+    if (item.choices && item.choices.length) return true;
     // ET UNE RÉPONSE À PLUSIEURS CASES NON PLUS. On ne fabrique pas quatre
     // vignettes pour « 45|3|15|3|5 » : la réponse n'est pas une valeur parmi
     // d'autres, c'est une suite de cases à remplir dans l'ordre. C'est cette

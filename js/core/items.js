@@ -242,14 +242,24 @@ export function finalizeChoices(rng, choices, { count = 4, filler = null } = {})
 
     let guard = 0;
     while (distractors.length < count - 1 && filler && guard++ < 300) {
-        const v = filler(rng);
+        const brut = filler(rng);
+        if (brut === null || brut === undefined) continue;
+        // UN BOUCHE-TROU PEUT DIRE SA VALEUR ET SON ÉTIQUETTE SÉPARÉMENT.
+        //
+        // Il les confondait, et c'était sans conséquence tant qu'une réponse
+        // s'écrivait comme elle se juge. « Heures et Minutes » a rompu cela :
+        // la réponse se JUGE « 5|30 » — deux cases à taper — et se LIT
+        // « 5 h 30 ». Un bouche-trou qui rend une seule chaîne afficherait
+        // donc « 5|30 » sur un bouton, devant la classe.
+        const v = (brut && typeof brut === 'object') ? brut.value : brut;
+        const lab = (brut && typeof brut === 'object') ? brut.label : brut;
         if (v === null || v === undefined) continue;
         const key = String(v);
         if (seen.has(key)) continue;
         seen.add(key);
         // Les bouche-trous passent APRÈS ceux que l'auteur a écrits : ils ne
         // portent pas d'explication, ce sont eux qu'on retire en premier.
-        distractors.push({ value: v, label: v, correct: false, rang: distractors.length });
+        distractors.push({ value: v, label: lab, correct: false, rang: distractors.length });
     }
 
     return rng.shuffle([{ label: correct.value, ...correct }, ...distractors.slice(0, count - 1)]);
