@@ -6079,3 +6079,22 @@ le résultat n'existe pas** — 15 octobre 2026
   `CLAUDE.md` — **un état se COMPARE avant/après, il ne se compte pas.** Ce qui
   l'automatiserait : une `s.avantApres(selecteur)` dans la sonde, qui prend
   l'état, rend une fonction, et ne dit que la DIFFÉRENCE.
+
+
+## On a cherché la fenêtre de sa capture pendant une heure — 2026-10-25
+
+- *Ce que je voulais faire* : retrouver, dans le logiciel, l'écran exact que
+  Rémy venait de photographier (« le réglages des exercices »).
+- *Ce qui a coûté* : quatre hypothèses successives et autant d'allers-retours
+  de sonde. Le mot « Relancer » du bouton m'a d'abord envoyé sur l'aperçu
+  tiroir, qui porte le même mot ; le panneau large à contenu étroit m'a envoyé
+  sur le volet de l'atelier, qui tourne dans un `<iframe>` et ne se laisse pas
+  ouvrir depuis la page du dessus. Une capture dit CE QU'ON VOIT, jamais D'OÙ
+  on le voit : ni la largeur de la fenêtre, ni le rôle, ni le volet.
+- *Combien de fois* : || (déjà, sur la feuille des fractions : « très mal
+  centrée » — restait à savoir laquelle des deux feuilles)
+- *Ce qui manque* : que le logiciel le dise LUI-MÊME. La barre d'auteur
+  pourrait porter, à côté de la version, un mot qui nomme l'écran courant et
+  sa largeur — « réglages · auteur · 1440 px ». Rémy photographie déjà la
+  barre sans y penser : le numéro de version est sur ses captures depuis des
+  semaines. Un mot de plus, et la capture se suffirait.

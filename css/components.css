@@ -368,11 +368,46 @@ body.mobile-view .path-header-toggle { position: static; padding-top: 20px; }
     max-height: calc(100dvh - 32px); overflow-y: auto;
 }
 
-.modal-panel-sm { width: 400px; padding: 30px; display: flex; flex-direction: column; gap: 20px; text-align: center; }
-.modal-panel-sm-left { width: 400px; padding: 30px; display: flex; flex-direction: column; gap: 20px; text-align: left; }
-.modal-panel-settings { width: 350px; padding: 25px; display: flex; flex-direction: column; gap: 15px; }
-.modal-panel-md { width: 500px; max-height: 80vh; padding: 30px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-.modal-panel-lg { width: 800px; max-height: 90vh; padding: 30px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+/* ── AUCUN PANNEAU N'A PLUS DE LARGEUR SÈCHE ───────────────────────────────
+
+   RÉMY : « sur ordi, parfois certains modales sont étroites, c'est dommage ».
+
+   LA CAUSE EST ICI, EN UNE LIGNE PAR VARIANTE : `width: 400px`. Un nombre de
+   pixels nu ne sait rien faire des deux bouts — il déborde d'un téléphone de
+   360 px et ne profite jamais d'un écran de 1440. `.modal-panel`, la classe
+   nue, employait déjà la bonne forme ; ses variantes ne l'avaient pas reprise,
+   et c'est à elles que les fenêtres étroites se raccrochent.
+
+   ON NE CHANGE PAS CE QU'ELLES VALENT SUR UN ORDINATEUR — une confirmation
+   d'une phrase n'a rien à gagner à faire 800 px. On leur donne seulement le
+   second terme, celui qui les retient sur un petit écran. Les panneaux qui
+   avaient VRAIMENT besoin de place sont élargis un par un, avec la mesure qui
+   le dit : voir `.modal-panel-settings` ci-dessous et `#student-config-modal`
+   dans `modules.css`. */
+.modal-panel-sm { width: min(400px, calc(100vw - 32px)); padding: 30px; display: flex; flex-direction: column; gap: 20px; text-align: center; }
+.modal-panel-sm-left { width: min(400px, calc(100vw - 32px)); padding: 30px; display: flex; flex-direction: column; gap: 20px; text-align: left; }
+/* 350 PX POUR TROIS CARTES CÔTE À CÔTE ET LEURS EXPLICATIONS.
+
+   RÉMY : « sur ordi, parfois certains modales sont étroites, c'est dommage ».
+
+   MESURÉ sur « Paramètres d'affichage », fenêtre de 1440 × 950
+   (`tools/modalesEtroites.mjs`) : le panneau faisait 350 px de large et 874 px
+   de HAUT — il remplissait l'écran par le bas faute de place sur les côtés.
+   « À la française » s'écrivait sur deux lignes, « Jamais confondu avec x » sur
+   trois, et les trois cartes de la marque des points tenaient dans 90 px
+   chacune. Sur un écran d'ordinateur, c'est du vide à droite payé par du
+   défilement.
+
+   `min(…, calc(100vw - 32px))` PLUTÔT QU'UNE LARGEUR SÈCHE : les variantes
+   voisines posaient un nombre de pixels nu, qui déborde d'un téléphone et ne
+   profite pas d'un grand écran. C'est la forme que `.modal-panel` emploie
+   déjà, et elle marche aux deux bouts. */
+.modal-panel-settings {
+    width: min(560px, calc(100vw - 32px));
+    padding: 25px; display: flex; flex-direction: column; gap: 15px;
+}
+.modal-panel-md { width: min(500px, calc(100vw - 32px)); max-height: 80vh; padding: 30px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+.modal-panel-lg { width: min(800px, calc(100vw - 32px)); max-height: 90vh; padding: 30px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
 .modal-footer-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 15px; border-top: 1px solid rgba(0,0,0,0.1); }
 .modal-actions-center { display: flex; justify-content: center; gap: 15px; margin-top: 10px; }
 .modal-btn-primary-lg { align-self: center; padding: 10px 30px; margin-top: 10px; font-size: 1rem; }

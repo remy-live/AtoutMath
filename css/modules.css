@@ -5257,8 +5257,35 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    du bas, et un trait gris en haut n'y voudrait rien dire. */
 .tiroir-poignee { display: none; }
 
-#student-config-modal .modal-panel-sm-left {
-    width: min(430px, 92vw);
+/* ── 430 PX AU MILIEU DE 1440, ET LE VOLET QUI NE GAGNAIT PAS ──────────────
+
+   RÉMY : « sur le réglages des exercices c'est écrasé d'ailleurs pourquoi sur
+   ordi la fenetre des réglages et si étroite et sur ordi, parfois certains
+   modales sont étroites, c'est dommage ».
+
+   MESURÉ (`tools/modalesEtroites.mjs`) : 430 px de panneau dans une fenêtre de
+   1440, soit 30 %. La borne de 430 venait d'un défaut REL : « un panneau de
+   680 px pour trois réglages laissait une trentaine de centimètres de vide
+   entre chaque libellé et son champ ». Le remède était bon, l'outil était le
+   mauvais — on avait borné le PANNEAU alors que c'est la LIGNE qui s'étirait.
+   Le panneau, lui, porte aussi la frise des marches, l'aperçu d'une question
+   et l'éditeur de zones : eux réclament de la place.
+
+   ON FAIT DONC ICI CE QU'ON A FINI PAR FAIRE POUR « MODE & BARÈME » : le
+   panneau respire, la ligne est bornée. Les deux règles sont désormais
+   voisines, et l'on voit qu'elles disent la même chose.
+
+   ET `html:not(.volet-atelier)` LAISSE LE VOLET GAGNER. Dans le cadre de
+   l'atelier, une fenêtre doit remplir le volet — c'est ce que dit
+   `css/layout.css`. Mais un sélecteur d'IDENTIFIANT (1,1,0) bat la règle du
+   volet (0,3,1) sans le vouloir : le panneau restait une colonne de 430 px
+   perdue au milieu d'un cadre fait pour elle. La même précaution est écrite
+   trois cents lignes plus haut pour `#path-policy-modal` ; elle manquait ici. */
+html:not(.volet-atelier) #student-config-modal .modal-panel-sm-left {
+    width: min(720px, 92vw);
+}
+#student-config-modal .cfg-field:not(.cfg-field--wide):not(.cfg-field--long) {
+    max-width: 520px;
 }
 #student-config-content { display: flex; flex-direction: column; gap: 2px; }
 .cfg-field--wide { grid-template-columns: minmax(0, 1fr); }
