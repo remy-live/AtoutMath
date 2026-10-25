@@ -3772,3 +3772,18 @@ avant que ce soit écrit.
 2. **les « Oui / Non » deviennent des interrupteurs.** Deux boutons côte à côte
    disent « choisis entre deux valeurs » ; un interrupteur dit « c'est allumé
    ou éteint », ce qui est exactement ce que ces réglages-là sont.
+
+
+---
+
+## 31. Son choix d'interrupteur — 25 octobre
+
+> « j'aime bien le C »
+
+LE C, C'EST « LE MOT DANS LA PISTE » : « OUI » et « NON » écrits DANS
+l'interrupteur, et le mot visible est celui de l'état. Une seule commande à la
+place de deux boutons — on garde les deux mots d'aujourd'hui sans garder les
+deux boutons.
+
+CE QUE ÇA TOUCHE : un seul endroit du code (`games/configUI.js`), et
+43 réglages du catalogue d'un coup.

@@ -812,9 +812,37 @@ export function fieldHtml(param, value, options = {}) {
         // n'importe quoi — le clavier du téléphone montait pour éditer un mot
         // anglais qui n'a aucun sens dans une salle de classe.
         const oui = value === true || value === 'true';
+        // ── UN INTERRUPTEUR, PLUS DEUX BOUTONS — la maquette « C » ────────
+        //
+        // RÉMY, après avoir vu cinq maquettes : « j'aime bien le C ». C'est
+        // « le mot dans la piste » : OUI et NON sont écrits DANS la commande,
+        // et le mot visible est celui de l'état.
+        //
+        // POURQUOI UN INTERRUPTEUR ET PAS DEUX BOUTONS. Deux boutons côte à
+        // côte disent « choisis entre deux valeurs » ; un interrupteur dit
+        // « c'est allumé ou éteint », ce qui est la question posée. Le même
+        // raisonnement est écrit depuis longtemps sous la palette d'outils
+        // d'auteur (`css/modules.css`, `.reglage-interrupteur`) — il valait
+        // pour les 43 réglages du catalogue, et il n'y était pas appliqué.
+        //
+        // ET LA CIBLE TACTILE. Mesuré sur le panneau : les deux boutons
+        // faisaient 67 px à eux deux — 33 chacun — pour 38 de haut, là où une
+        // cible se veut de 44. L'interrupteur en fait 84 × 44 à lui seul.
+        //
+        // `role="switch"` ET `aria-checked` : un lecteur d'écran annonce « case
+        // à cocher, cochée » pour un bouton pressé, et « interrupteur, activé »
+        // pour celui-ci. Le nom vient du libellé, que le `<label>` voisin porte
+        // sans `for` — les mots de la piste sont décoratifs.
         control = `<div class="cfg-oui-non" data-param="${param.id}" data-kind="bool" data-valeur="${oui}">
-            <button type="button" class="cfg-on ${oui ? 'cfg-on--actif' : ''}" data-bool="true">Oui</button>
-            <button type="button" class="cfg-on ${oui ? '' : 'cfg-on--actif'}" data-bool="false">Non</button>
+            <button type="button" class="cfg-inter${oui ? ' cfg-inter--oui' : ''}"
+                    role="switch" aria-checked="${oui}"
+                    aria-label="${escapeAttr(String(param.label || ''))}">
+                <span class="cfg-inter-piste" aria-hidden="true">
+                    <b class="cfg-inter-mot cfg-inter-mot--oui">OUI</b>
+                    <b class="cfg-inter-mot cfg-inter-mot--non">NON</b>
+                    <i class="cfg-inter-pastille"></i>
+                </span>
+            </button>
         </div>`;
     } else {
         control = `<input type="text" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="text" value="${value ?? ''}">`;
@@ -1730,15 +1758,17 @@ function pousser(input, delta) {
     input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-// Oui / Non : un seul écouteur délégué, comme les autres commandes du panneau.
+// L'interrupteur : un seul écouteur délégué, comme les autres commandes du
+// panneau. Il BASCULE — il n'y a plus deux boutons à départager.
 document.addEventListener('click', (e) => {
-    const b = e.target.closest('.cfg-on');
+    const b = e.target.closest('.cfg-inter');
     if (!b) return;
     e.preventDefault();
     const groupe = b.parentElement;
-    groupe.dataset.valeur = b.dataset.bool;
-    groupe.querySelectorAll('.cfg-on').forEach(x =>
-        x.classList.toggle('cfg-on--actif', x.dataset.bool === b.dataset.bool));
+    const oui = groupe.dataset.valeur !== 'true';
+    groupe.dataset.valeur = String(oui);
+    b.classList.toggle('cfg-inter--oui', oui);
+    b.setAttribute('aria-checked', String(oui));
     // UN OUI / NON DOIT S'ANNONCER COMME UN CHAMP. C'est `change` que le
     // panneau écoute pour enregistrer (`content.addEventListener('change',
     // commit)`) et pour refaire l'aperçu. Le nôtre ne le lançait pas : il

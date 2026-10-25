@@ -1247,7 +1247,7 @@ export function ouvrirFicheParcours(chemin) {
             // Les boutons « Oui / Non » n'émettent rien : leur écouteur global
             // ne fait que basculer la classe. On repasse derrière, après lui.
             contenu.addEventListener('click', (ev) => {
-                if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
+                if (ev.target.closest('.cfg-inter')) setTimeout(relire, 0);
             });
         }
         // COLLÉ À L'ENGRENAGE, ET PLACÉ EN DERNIER — voir `poserContre`.

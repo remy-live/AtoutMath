@@ -94,6 +94,78 @@ test('LE PANNEAU DES RÉGLAGES D\'UN EXERCICE RESPIRE', () => {
         'la règle de largeur doit s\'effacer devant le volet de l\'atelier');
 });
 
+test('UN RÉGLAGE À DEUX ÉTATS EST UN INTERRUPTEUR, PAS DEUX BOUTONS', () => {
+    // RÉMY, après cinq maquettes : « j'aime bien le C » — « le mot dans la
+    // piste », OUI et NON écrits DANS la commande, le mot visible étant celui
+    // de l'état.
+    //
+    // MESURÉ AVANT : les deux boutons faisaient 67 px à eux deux — 33 chacun —
+    // pour 38 de haut, là où une cible tactile se veut de 44. APRÈS : 84 × 44
+    // pour l'interrupteur seul, et le contraste du mot, relevé sur les PIXELS
+    // (`tools/tmp/voirBascule.mjs`), vaut 6,29 allumé, 5,24 éteint, 5,49 en
+    // thème sombre — au-dessus des 4,5 exigés dans les trois cas.
+    // LE NOM EST `cfg-inter`, PAS `cfg-bascule` : cette dernière classe existe
+    // depuis longtemps pour la frise des zones (`configUI.js`, « Comment l'élève
+    // répond ici »). Écrite une seconde fois ici, elle aurait donné à la frise
+    // la piste et la pastille de l'interrupteur — et réciproquement. Trouvé par
+    // l'épreuve, qui lisait la règle de la frise en croyant lire la nôtre.
+    const CFG = lireFeuille('js/games/configUI.js');
+    // LES DEUX BOUTONS NE DOIVENT PAS REVENIR. On cherche leur classe dans
+    // TOUT le dépôt servi, pas seulement là où on l'a retirée : trois autres
+    // fichiers l'écoutaient pour relire les réglages, et une classe oubliée
+    // chez eux est un panneau qui ne se met plus à jour, en silence.
+    const SERVIS = ['js/games/configUI.js', 'js/ui/panneauContenu.js',
+        'js/ui/atelier.js', 'js/ui/printParcours.js', 'css/modules.css', 'css/ui.css']
+        .map(f => [f, lireFeuille(f)]);
+    for (const [nom, texte] of SERVIS) {
+        // ON REFUSE LE NOM, PAS UNE DE SES ÉCRITURES. Premier jet :
+        // `/\.cfg-on['\"\s,{:]/` — il exigeait un caractère précis derrière, et
+        // `class="cfg-on${…}"`, écrit dans un gabarit, lui échappait.
+        // `epreuveTombe` l'a dit : « CETTE ÉPREUVE NE GARDE RIEN ».
+        assert.ok(!/cfg-on(?![a-z0-9])/i.test(texte.replace(/\/\*[\s\S]*?\*\//g, '')),
+            `les deux boutons « Oui / Non » sont revenus dans ${nom}`);
+    }
+    // ET LES TROIS ÉCOUTEURS SUIVENT. C'est le chaînon qu'on oublie : le
+    // panneau de contenu, l'atelier et la fiche du parcours relisent les
+    // réglages au clic sur la commande. Renommer la commande sans les prévenir
+    // les rend muets sans rien casser de visible.
+    const ecoutent = SERVIS.filter(([f]) => f !== 'js/games/configUI.js'
+        && !f.startsWith('css/'))
+        .filter(([, t]) => t.includes("closest('.cfg-inter')"));
+    assert.equal(ecoutent.length, 3,
+        `${ecoutent.length} écouteur(s) sur 3 suivent l'interrupteur`);
+    // L'INTERRUPTEUR S'ANNONCE COMME UN INTERRUPTEUR. Sans `role="switch"`, un
+    // lecteur d'écran dit « bouton » et ne lit jamais l'état ; les deux mots de
+    // la piste, eux, sont décoratifs et masqués.
+    assert.match(CFG, /role=\"switch\" aria-checked=/,
+        'l\'interrupteur ne dit plus ce qu\'il est');
+    assert.match(CFG, /class=\"cfg-inter-piste\" aria-hidden=\"true\"/,
+        'les mots de la piste doivent être décoratifs');
+    // ET IL BASCULE : il n'y a plus deux valeurs à départager, il y en a une à
+    // retourner. `aria-checked` et `data-valeur` changent ENSEMBLE — le premier
+    // pour qui écoute, le second pour qui enregistre.
+    assert.match(CFG, /const oui = groupe\.dataset\.valeur !== 'true';/);
+    assert.match(CFG, /b\.setAttribute\('aria-checked', String\(oui\)\);/);
+
+    // LA CIBLE TACTILE EST DANS LA RÈGLE, pour TOUTES les largeurs. Elle était
+    // posée dans une feuille de téléphone, donc absente sur un ordinateur — où
+    // la souris pardonne, mais où une tablette ne pardonne pas.
+    const bascule = corpsDeLaRegle(MODULES, '.cfg-inter', { ou: 'css/modules.css' });
+    assert.equal(valeurDe(bascule, 'min-height'), '44px',
+        'l\'interrupteur a perdu sa cible tactile');
+    // LA PASTILLE RESTE DANS LA PISTE : 84 de piste moins deux bordures de 2
+    // font 80 de contenu, moins 24 de pastille et 2 de marge, il reste 54.
+    const piste = corpsDeLaRegle(MODULES, '.cfg-inter-piste', { ou: 'css/modules.css' });
+    const past = corpsDeLaRegle(MODULES, '.cfg-inter-pastille', { ou: 'css/modules.css' });
+    const glisse = corpsDeLaRegle(MODULES, '.cfg-inter--oui .cfg-inter-pastille',
+        { ou: 'css/modules.css' });
+    const nb = (s) => Number(String(s || '').replace('px', ''));
+    const dedans = nb(valeurDe(piste, 'width')) - 2 * 2
+        - nb(valeurDe(past, 'width')) - nb(valeurDe(past, 'left'));
+    assert.equal(nb(valeurDe(glisse, 'left')), dedans,
+        `la pastille glisse à ${valeurDe(glisse, 'left')} alors que la piste en laisse ${dedans}`);
+});
+
 test('ET « COMMENT TU RÉPONDS » PREND LES DEUX COLONNES', () => {
     // RÉMY, la capture suivante : « pour quoi le comment tu réponds est encore
     // écrasé ». Élargir le panneau de 430 à 720 px ne l'avait pas dégagé.

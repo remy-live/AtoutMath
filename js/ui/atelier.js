@@ -1073,7 +1073,7 @@ function peindreReglages() {
     // que basculer la classe. On repasse derrière lui — même remède que dans
     // l'engrenage de la fiche du parcours.
     zone.onclick = (ev) => {
-        if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
+        if (ev.target.closest('.cfg-inter')) setTimeout(relire, 0);
     };
 }
 

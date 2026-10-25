@@ -6312,7 +6312,6 @@ html:not(.volet-atelier) #student-config-modal .modal-panel-sm-left {
     #student-config-modal .cfg-input { padding: 6px 10px; font-size: .95rem; }
     #student-config-modal .cfg-step { width: 36px; }
     #student-config-modal .cfg-glissiere { --cfg-bouton: 36px; }
-    #student-config-modal .cfg-on { padding: 7px 14px; }
     /* Pas de filet sous le dernier réglage — `:last-of-type` ne suffisait pas,
        le sélecteur portant sur le type d'élément et non sur la classe. */
     #student-config-modal .cfg-field:not(:has(~ .cfg-field)) { border-bottom: none; }
@@ -8735,17 +8734,65 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    tombait dans le champ texte : l'élève lisait un mot anglais, et en
    tapant dessus faisait monter le clavier du téléphone pour éditer une
    valeur qu'il pouvait casser. */
-.cfg-oui-non { display: flex; gap: 6px; }
-.cfg-on {
-    flex: 1; padding: 9px 0; border-radius: 10px; cursor: pointer;
-    border: 2px solid var(--border); background: var(--bg-panel);
-    color: var(--text-muted); font: inherit; font-weight: 700; font-size: .95rem;
-    transition: background .12s, color .12s, border-color .12s;
+/* ── L'INTERRUPTEUR D'UN RÉGLAGE À DEUX ÉTATS — « le mot dans la piste »
+
+   RÉMY, après cinq maquettes : « j'aime bien le C ». OUI et NON sont écrits
+   DANS la commande, et le mot visible est celui de l'état.
+
+   CE QU'IL Y AVAIT : deux boutons « Oui » et « Non », 67 px à eux deux — 33
+   chacun — pour 38 px de haut, là où une cible tactile se veut de 44. Et deux
+   boutons côte à côte posent la question « choisis entre deux valeurs », quand
+   la question est « allumé ou éteint ».
+
+   LA PASTILLE GLISSE DE 2 À 54 : la piste fait 84 px moins deux bordures de 2,
+   la pastille 24, donc 80 − 24 − 2 = 54. Si l'une des trois mesures change, les
+   trois changent ensemble — c'est pourquoi elles sont écrites l'une sous
+   l'autre.
+
+   LES MOTS SONT `aria-hidden` : ils décorent. C'est `role="switch"` et
+   `aria-checked` qui disent l'état à un lecteur d'écran, et le nom vient du
+   libellé voisin. */
+.cfg-oui-non { display: flex; justify-content: flex-end; }
+.cfg-inter {
+    border: 0; background: transparent; padding: 6px 0; cursor: pointer;
+    display: inline-flex; min-height: 44px; align-items: center; font: inherit;
 }
+.cfg-inter-piste {
+    position: relative; display: block; width: 84px; height: 32px;
+    border-radius: 999px; background: var(--bg-hover);
+    border: 2px solid var(--border);
+    transition: background .18s, border-color .18s;
+}
+.cfg-inter-mot {
+    position: absolute; top: 0; line-height: 28px;
+    font-size: .74rem; font-weight: 800; letter-spacing: .04em;
+    color: var(--text-muted); transition: opacity .18s, color .18s;
+}
+.cfg-inter-mot--oui { left: 11px; opacity: 0; }
+.cfg-inter-mot--non { right: 11px; }
+.cfg-inter-pastille {
+    position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+    transition: left .18s;
+}
+.cfg-inter--oui .cfg-inter-piste {
+    background: var(--primary); border-color: var(--primary);
+}
+.cfg-inter--oui .cfg-inter-mot--oui { opacity: 1; color: #fff; }
+.cfg-inter--oui .cfg-inter-mot--non { opacity: 0; }
+.cfg-inter--oui .cfg-inter-pastille { left: 54px; }
 @media (hover: hover) {
-    .cfg-on:hover { border-color: var(--primary); }
+    .cfg-inter:hover .cfg-inter-piste { border-color: var(--primary); }
 }
-.cfg-on--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
+/* LE FOYER SE VOIT SUR LA PISTE, pas sur le bouton : le bouton est
+   transparent et plus haut qu'elle, et son contour flottait dans le vide. */
+.cfg-inter:focus-visible { outline: none; }
+.cfg-inter:focus-visible .cfg-inter-piste {
+    outline: 3px solid var(--primary); outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .cfg-inter-piste, .cfg-inter-mot, .cfg-inter-pastille { transition: none; }
+}
 
 /* Le robot des modales : le MÊME dessin que le bouton « Mode démonstration ». */
 .ac-robot { color: var(--primary-texte); display: flex; justify-content: center; line-height: 0; }

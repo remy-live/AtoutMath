@@ -99,7 +99,7 @@ export function monterPanneauContenu(el, { exo, schemaCatalogue, generator, regl
         el.addEventListener('change', relire);
         // Les bascules « Oui / Non » n'émettent pas `change` : leur écouteur
         // global ne fait que basculer la classe. On repasse derrière lui.
-        const clic = (ev) => { if (ev.target.closest('.cfg-on')) setTimeout(relire, 0); };
+        const clic = (ev) => { if (ev.target.closest('.cfg-inter')) setTimeout(relire, 0); };
         el.addEventListener('click', clic);
         // ET LE NOMBRE DE BLOCS EST EN TÊTE DE LA MODALE, PAS ICI. La barre
         // découpe CE nombre-là : tant qu'on ne l'écoute pas, taper « 16 » dans

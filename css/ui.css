@@ -2030,8 +2030,11 @@ body.plein-ecran .pe-sortir { display: block; }
     .exo-list-item button.teacher-only, .path-step-toggle, .preview-mode-btn {
         min-width: 44px; min-height: 44px;
     }
+    /* `.cfg-on` A DISPARU AVEC LES DEUX BOUTONS « Oui / Non » : l'interrupteur
+       qui les remplace porte ses 44 px dans sa propre règle, pour TOUTES les
+       largeurs et pas seulement sur un téléphone. Voir `.cfg-bascule`. */
     #sidebar-search-input, #custom-niveau-select, #path-name-input,
-    .cfg-on, .path-step-actions button { min-height: 44px; }
+    .path-step-actions button { min-height: 44px; }
     #drawer-handle { min-height: 44px; }
     /* LA PORTE D'ENTRÉE DE L'ÉLÈVE, mesurée sur un téléphone de 390 : deux
        cibles trop petites, et ce sont les deux SEULES portes de secours —
