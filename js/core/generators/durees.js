@@ -302,7 +302,7 @@ export const dureesGenerator = {
             // « Schéma » y est toujours là —, donc il n'a sa place que dans le
             // panneau d'impression. Voir `core/reglagesFiche.js`, qui existe
             // pour empêcher les boutons qui ne changent rien.
-            id: 'schemaPapier', type: 'checkbox', papier: true,
+            id: 'schemaPapier', type: 'checkbox', papier: true, prof: true,
             label: 'Le schéma des bonds sous les soustractions', default: true,
             visibleSi: (r) => marchesCochees(r, MARCHES, ANCIEN)
                 .some(m => m.id === 'difference'),

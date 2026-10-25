@@ -6441,6 +6441,22 @@ html:not(.volet-atelier) #student-config-modal .modal-panel-sm-left {
        économiser. */
     #student-config-content .cfg-field--wide,
     #student-config-content .cfg-field--long,
+    /* ── ET « COMMENT TU RÉPONDS » AUSSI ───────────────────────────────
+
+       RÉMY, capture à l'appui : « pour quoi le comment tu réponds est encore
+       écrasé ». Élargir le panneau de 430 à 720 px ne l'avait pas dégagé, et
+       la mesure dit pourquoi : il vivait dans UNE des deux colonnes.
+
+       MESURÉ, panneau de 720 px : le sous-groupe faisait 315 px, et la grille
+       des deux cartes de mode — `repeat(auto-fit, minmax(150px, 1fr))` — n'en
+       recevait que 275. Il n'y tient qu'UNE colonne de 150 px : « L'exercice
+       s'adapte » et « Je définis » se posaient donc l'une SOUS l'autre, au
+       milieu d'un panneau deux fois trop large pour elles.
+
+       C'est le même cas que les deux lignes du dessus, et pour la même raison :
+       à demi-largeur, ces blocs regagnent en hauteur ce que la colonne fait
+       économiser. Celui-ci porte en plus la frise des marches et sa légende. */
+    #student-config-content .cfg-sous-groupe,
 
     #student-config-content .cfg-apprendre,
     #student-config-content .cfg-print-btn--seul { grid-column: 1 / -1; }

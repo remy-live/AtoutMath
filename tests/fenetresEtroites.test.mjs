@@ -93,3 +93,26 @@ test('LE PANNEAU DES RÉGLAGES D\'UN EXERCICE RESPIRE', () => {
     assert.ok(MODULES.includes('html:not(.volet-atelier) #student-config-modal'),
         'la règle de largeur doit s\'effacer devant le volet de l\'atelier');
 });
+
+test('ET « COMMENT TU RÉPONDS » PREND LES DEUX COLONNES', () => {
+    // RÉMY, la capture suivante : « pour quoi le comment tu réponds est encore
+    // écrasé ». Élargir le panneau de 430 à 720 px ne l'avait pas dégagé.
+    //
+    // MESURÉ : au-delà de 700 px le contenu passe en DEUX colonnes, et le
+    // sous-groupe vivait dans une seule — 315 px. La grille de ses deux cartes
+    // de mode, `repeat(auto-fit, minmax(150px, 1fr))`, n'en recevait que 275 :
+    // « L'exercice s'adapte » et « Je définis » se posaient l'une SOUS l'autre
+    // au milieu d'un panneau deux fois trop large. Après : 656 px, et les deux
+    // cartes ont la même ordonnée — elles sont côte à côte.
+    //
+    // ON LIT LA RÈGLE QUI EXISTE DÉJÀ pour ses voisins : trois blocs y sont
+    // dispensés des colonnes parce qu'ils « regagnent en hauteur ce que la
+    // colonne fait économiser ». Celui-ci était du lot et n'y figurait pas.
+    const bloc = /@media \(min-width: 700px\) \{([\s\S]*?)\n\}/.exec(MODULES);
+    assert.ok(bloc, 'la règle des deux colonnes a disparu de css/modules.css');
+    const pleine = /#student-config-content \.cfg-field--wide,[\s\S]*?grid-column: 1 \/ -1;/
+        .exec(bloc[1]);
+    assert.ok(pleine, 'plus personne ne traverse les deux colonnes');
+    assert.match(pleine[0], /#student-config-content \.cfg-sous-groupe,/,
+        '« Comment tu réponds » reste enfermé dans une colonne');
+});

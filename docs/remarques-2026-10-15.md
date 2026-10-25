@@ -3751,3 +3751,24 @@ CE QUE ÇA COÛTE : sur quatre propositions, l'élève qui a mal posé sa retenu
 RECONNAÎT la bonne réponse sans jamais l'écrire — et c'est précisément écrire
 « 4 h 15 » et non « 3 h 75 » que ce chapitre existe pour apprendre. Le QCM
 enseigne à éliminer ; la frappe enseigne à écrire une durée.
+
+
+---
+
+## 30. « Comment tu réponds » écrasé, et des interrupteurs à dessiner — 25 octobre
+
+> « pour quoi le comment tu réponds est encore écrasé, plutôt que des oui non,
+> mets des jolies switch stylisés mais fais moi des propositions d'abord »
+
+DEUX CHOSES, ET LA SECONDE EST UNE CONSIGNE DE MÉTHODE QU'IL RÉPÈTE : « fais
+moi des propositions d'abord ». C'est la deuxième fois en deux jours — il l'a
+déjà demandé pour le schéma des bonds. Sur ce qui se REGARDE, il veut choisir
+avant que ce soit écrit.
+
+1. **le bloc « Comment tu réponds » reste une colonne** alors que le panneau
+   s'est élargi : les deux cartes tiennent dans six cents pixels et la moitié
+   droite est vide. Élargir le panneau n'a donc pas suffi — quelque chose à
+   l'intérieur garde sa propre borne.
+2. **les « Oui / Non » deviennent des interrupteurs.** Deux boutons côte à côte
+   disent « choisis entre deux valeurs » ; un interrupteur dit « c'est allumé
+   ou éteint », ce qui est exactement ce que ces réglages-là sont.
