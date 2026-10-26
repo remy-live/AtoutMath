@@ -126,6 +126,13 @@ export const CODES_EXERCICES = {
     'calc-nova':                  'NV',   // Nova
     'calc-escadrille':            'ET',   // Escadrille des Tables
     'calc-sudoku':                'SU',   // Sudoku
+    // LES SIX JEUX DE LA NUIT DU 26 OCTOBRE.
+    'logi-kakuro':                   'KK',
+    'logi-yohaku':                   'YK',
+    'logi-suguru':                   'SZ',
+    'logi-gratte-ciel':              'AA',
+    'logi-chemin-nombres':           'AB',
+    'logi-allumettes':               'AH',
     'logi-shikaku':               'RT',   // RecTangles — « SK » est aux serpents, « RE » au carré
     'calc-garam':                 'GA',   // Garam
     'calc-course':                'CM',   // Course Mathématique

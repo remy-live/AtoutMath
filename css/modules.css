@@ -15282,3 +15282,191 @@ body.en-boite > #app-container { background: none; }
     .sk-board { width: 100%; --sk-jour: 2px; }
     .sk-context { font-size: .9rem; }
 }
+
+
+/* ═══ LES GRILLES DE NOMBRES — cinq jeux, une seule mise en page ══════════════
+
+   RÉMY : « tu me les fais tous […] que ça fonctionne sur ordi, tablette et
+   téléphone ». Le Kakuro, le Yohaku, le Suguru, les Gratte-ciel et le Chemin
+   des Nombres posent la même question — écris un nombre dans chaque case — et
+   ne diffèrent que par ce qu'on dessine autour. Une seule feuille, donc, et
+   une seule chose à corriger le jour où la saisie au doigt changera. */
+.gn-layout { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+.gn-context { text-align: center; max-width: 46ch; }
+.gn-consigne { font-size: 1rem; line-height: 1.35; }
+
+.gn-board {
+    display: grid;
+    grid-template-columns: repeat(var(--gn-cols), 1fr);
+    /* LA CASE EST CARRÉE, ET C'EST ELLE QUI DONNE SA HAUTEUR À LA RANGÉE.
+       Un `aspect-ratio` posé sur le PLATEAU se partage entre les cases et les
+       traits : mesuré 70 × 68 sur le Shikaku, soit des cases qui mentent de
+       deux pour cent sur leur forme. */
+    width: min(100%, 460px);
+    border-collapse: collapse;
+}
+.gn-cell, .gn-marge {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(.8rem, 3.6vw, 1.25rem);
+    min-width: 0;
+}
+.gn-cell {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    font-weight: 700;
+    color: var(--text-main);
+}
+/* LA CASE DONNÉE NE S'ÉCRIT PAS, et cela doit se VOIR avant qu'on essaie :
+   un fond légèrement teinté suffit, et c'est la convention du sudoku. */
+.gn-cell--donnee { background: var(--bg-hover); color: var(--text-main); }
+.gn-cell--mur, .gn-cell--indice { background: var(--text-main); border-color: var(--text-main); }
+.gn-cell--active { outline: 3px solid var(--primary); outline-offset: -3px; z-index: 2; }
+.gn-cell--corrige { background: color-mix(in srgb, var(--danger) 18%, transparent); }
+.gn-cell--demo { background: color-mix(in srgb, var(--primary) 14%, transparent); }
+
+/* LES BORDS DE ZONE DU SUGURU : épais entre deux zones, fin à l'intérieur.
+   C'est le seul dessin du jeu, et il porte toute la règle. */
+.gn-cell--haut { border-top: 3px solid var(--text-main); }
+.gn-cell--bas { border-bottom: 3px solid var(--text-main); }
+.gn-cell--gauche { border-left: 3px solid var(--text-main); }
+.gn-cell--droite { border-right: 3px solid var(--text-main); }
+
+/* LES DEUX SOMMES DU KAKURO, de part et d'autre d'une diagonale blanche : en
+   haut à droite la ligne qui part vers la droite, en bas à gauche la colonne
+   qui descend. C'est la convention de toutes les grilles publiées.
+
+   « TO TOP RIGHT » ET NON « TO BOTTOM RIGHT », et l'inverse se voit tout de
+   suite une fois qu'on a regardé la grille au lieu de compter ses cases : un
+   dégradé pose ses bandes PERPENDICULAIREMENT à son axe, donc « to bottom
+   right » traçait un trait qui monte de la gauche vers la droite — celui qui
+   passe EXACTEMENT par le coin haut-droit et par le coin bas-gauche, c'est-à-
+   dire par les deux endroits où sont écrites les sommes. Les deux chiffres
+   étaient barrés par le trait.
+
+   ET IL AVAIT L'AIR TROIS FOIS TROP LONG : deux cases d'indice voisines en
+   diagonale portaient deux traits alignés, qui se rejoignaient en une seule
+   longue balafre en travers du plateau. Rien ne débordait, pourtant : c'était
+   le même défaut vu de loin. Mesuré sur une photo ; aucun compte ne l'aurait
+   dit. */
+.gn-cell--indice { position: relative; }
+.gn-cell--indice::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to top right, transparent calc(50% - .7px),
+        var(--bg-panel) calc(50% - .7px), var(--bg-panel) calc(50% + .7px),
+        transparent calc(50% + .7px));
+}
+.gn-ind {
+    /* MESURÉ SUR UN 390 × 844 : à 2,1 vw la somme tombait à huit pixels, et
+       l'on ne lisait plus « 23 » dans son coin de case noire. C'est pourtant
+       le seul chiffre de l'énoncé. */
+    position: absolute; font-size: clamp(.68rem, 3.2vw, .9rem); font-weight: 800;
+    color: #fff; line-height: 1; z-index: 1;
+}
+.gn-ind--droite { top: 8%; right: 10%; }
+.gn-ind--bas { bottom: 8%; left: 10%; }
+
+/* LES MARGES — totaux du Yohaku, indices des Gratte-ciel. Elles sont DANS la
+   même grille que le damier : deux grilles côte à côte ne s'alignent que par
+   accident, une seule s'aligne par construction. */
+.gn-marge { font-weight: 800; color: var(--primary-texte); }
+.gn-marge--coin { color: transparent; }
+
+.gn-board--ok { outline: 3px solid var(--success); outline-offset: 3px; border-radius: 4px; }
+.gn-board--secoue { animation: gnSecoue .35s ease; }
+@keyframes gnSecoue {
+    20% { transform: translateX(-7px); } 40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); } 80% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) { .gn-board--secoue { animation: none; } }
+
+/* LA SAISIE : un vrai champ par case (voir `ui/champsGrille.js`), donc le pavé
+   numérique du téléphone, les flèches et l'avance automatique. */
+.gn-cell .kk-val { width: 100%; height: 100%; }
+.gn-cell input.kk-val {
+    border: 0; background: none; text-align: center; padding: 0;
+    font: inherit; color: var(--primary-texte); min-width: 0;
+}
+.gn-cell input.kk-val:focus { outline: 3px solid var(--primary); outline-offset: -3px; }
+.gn-cell span.kk-val { display: flex; align-items: center; justify-content: center; }
+
+.gn-palette { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.gn-jeton {
+    min-width: 44px; min-height: 44px;
+    border: 2px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-weight: 800; font-size: 1rem; cursor: pointer;
+}
+.gn-jeton:active, .gn-jeton:focus-visible { border-color: var(--primary); outline: none; }
+.gn-jeton--gomme { color: var(--danger-texte); }
+
+.gn-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.gn-btn {
+    min-height: 44px; padding: 0 18px;
+    border-radius: 12px; font-weight: 700; cursor: pointer;
+    border: 2px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+}
+.gn-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+.gn-btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+.gn-statut { min-height: 1.4em; font-weight: 600; text-align: center; color: var(--text-muted); }
+.gn-statut--ok { color: var(--success-texte); }
+.gn-statut--ko { color: var(--danger-texte); }
+
+/* AU DOIGT : la grille prend la largeur, et les jetons restent sous le pouce. */
+@media (max-width: 480px) {
+    .gn-board { width: 100%; }
+    .gn-context { font-size: .9rem; }
+    .gn-jeton { min-width: 40px; min-height: 44px; }
+}
+
+
+/* ═══ LE JEU DES ALLUMETTES ══════════════════════════════════════════════════
+
+   Le seul du lot qui ne soit pas une grille : une partie contre la machine.
+   Trois boutons, un tas qu'on voit descendre, et rien d'autre à l'écran —
+   surtout pas le reste dans la division par 4, qui EST la réponse. */
+.al-layout { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+.al-context { text-align: center; max-width: 46ch; }
+
+.al-tas { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.al-compte { font-size: clamp(1.4rem, 7vw, 2.4rem); font-weight: 800; color: var(--text-main); }
+.al-compte .al-mot { font-size: .5em; font-weight: 600; color: var(--text-muted); }
+
+/* UNE ALLUMETTE PAR ALLUMETTE. Le nombre est écrit au-dessus ; le dessin est
+   là pour qu'on puisse COMPTER — et c'est en comptant par paquets de quatre
+   qu'on trouve la règle. Le quatrième bâton de chaque paquet est donc un peu
+   détaché : on ne dit pas la règle, on rend le paquet visible. */
+.al-batons {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 5px; max-width: min(100%, 420px);
+}
+.al-baton {
+    display: block; width: 7px; height: 38px; border-radius: 3px;
+    background: linear-gradient(to bottom, var(--danger) 0 7px, #d9b382 7px 100%);
+}
+.al-baton--quatre { margin-right: 14px; }
+
+.al-choix { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.al-label { font-weight: 700; color: var(--text-muted); }
+.al-boutons { display: flex; gap: 8px; }
+.al-prise {
+    min-width: 56px; min-height: 48px;
+    border: 2px solid var(--primary); border-radius: 12px;
+    background: var(--primary); color: #fff;
+    font-size: 1.25rem; font-weight: 800; cursor: pointer;
+}
+.al-prise:disabled { background: var(--bg-hover); border-color: var(--border); color: var(--text-muted); cursor: default; }
+.al-prise:focus-visible { outline: 3px solid var(--text-main); outline-offset: 2px; }
+
+.al-journal { min-height: 3.6em; text-align: center; font-weight: 600; max-width: 42ch; }
+.al-ligne { color: var(--text-muted); }
+.al-ligne--moi { color: var(--primary-texte); }
+.al-ligne--gagne { color: var(--success-texte); font-weight: 800; }
+.al-ligne--perdu { color: var(--danger-texte); }
+
+@media (max-width: 480px) {
+    .al-baton { width: 6px; height: 30px; }
+    .al-baton--quatre { margin-right: 10px; }
+    .al-context { font-size: .9rem; }
+}

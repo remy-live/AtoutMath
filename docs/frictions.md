@@ -6182,3 +6182,123 @@ le résultat n'existe pas** — 15 octobre 2026
   `elementFromPoint` à côté des coordonnées, ce que j'ai fini par faire. Cela
   vaudrait une `s.tracerLePointeur(selecteur)` dans la sonde : elle pose les
   trois écouteurs, rend le journal, et dit QUI répond sous chaque point.
+
+
+## Une épreuve qui interroge le témoin ne mesure rien — 2026-10-26
+
+- *Ce que je voulais faire* : garder les indices des Gratte-ciel — « combien
+  d'immeubles voit-on depuis ce bord ». L'épreuve comparait les indices de la
+  grille à `indicesDe(solution)`.
+- *Ce qui a coûté* : rien, cette fois, et c'est tout l'intérêt.
+  `epreuveTombe.mjs` a répondu « CETTE ÉPREUVE NE GARDE RIEN » au premier
+  défaut remis : `indicesDe` est la fonction QUI A ÉCRIT ces indices, donc les
+  deux côtés de l'égalité bougeaient ensemble. L'épreuve aurait été verte sur
+  un compteur entièrement faux.
+- *Combien de fois* : || (même famille que la règle de la maison — « une
+  épreuve neuve se voit échouer avant qu'on la croie » — mais la cause est
+  plus précise, et elle mérite son nom)
+- *Ce qui manque* : une ligne dans `CLAUDE.md`, à côté de `epreuveTombe` —
+  **une épreuve ne doit jamais vérifier une valeur avec la fonction qui l'a
+  produite.** On recompte À LA MAIN dans l'épreuve, même si c'est cinq lignes
+  de plus. Ce qui l'automatiserait à moitié : qu'`epreuveTombe` dise, quand
+  une épreuve ne tombe pas, si le fichier abîmé est IMPORTÉ par l'épreuve —
+  c'est le signe le plus courant de ce piège, et il se lit en une regex.
+
+**`npm test` passe de 4 min à 25 min et ne dit pas qui la retient** — 26 octobre 2026
+
+- *Ce que je voulais faire* : committer six jeux neufs. La suite, qui tournait
+  en quatre minutes, en demandait plus de vingt-cinq.
+- *Ce qui a coûté* : deux suites tuées à la main (plus de 50 min de calcul
+  jetées), puis quatre mesures écrites une par une pour arriver au coupable.
+  La suite ne dit que « lent » ; la garde « AUCUN RÉGLAGE MORT » essaie chaque
+  valeur de chaque réglage de chaque exercice, donc n'importe lequel des 154
+  réglages de la famille logique pouvait être en cause.
+- *Combien de fois* : | (mais la cause — un générateur neuf dont une graine sur
+  quarante explose — se reproduira à chaque jeu ajouté)
+- *Ce qui manque* : il existe. `tools/vitesseDesJeux.mjs` chronomètre chaque
+  réglage de chaque exercice de logique, imprime médiane, neuvième décile ET
+  pire cas, dit quand le filet se déclenche, et rend 1 au-delà d'une seconde.
+  Trente secondes pour 154 réglages, là où `npm test` met quatre minutes sans
+  rien nommer. **À passer avant `npm test`, pas après.**
+
+**Une MOYENNE ne voit pas ce qui fait exploser une suite** — 26 octobre 2026
+
+- *Ce que je voulais faire* : vérifier que le Kakuro était assez rapide.
+- *Ce qui a coûté* : une première mesure sur cinq graines a répondu
+  « 1 068 ms par grille » — mauvais mais supportable, et j'ai failli m'en
+  contenter. Sur quarante graines : médiane 1 946 ms, neuvième décile
+  7 140 ms, **pire cas 141 268 ms pour UNE grille**. C'est cette graine-là,
+  seule, qui faisait la suite de vingt-cinq minutes.
+- *Combien de fois* : || (déjà vu sur le Shikaku, où un pavage sur trente
+  coûtait cent fois les autres)
+- *Ce qui manque* : rien de plus — `vitesseDesJeux.mjs` imprime les trois
+  chiffres côte à côte, et c'est pour cette raison. La règle à retenir :
+  **une médiane ne dit rien du temps d'une suite d'épreuves ; c'est la queue
+  qui la fait.**
+
+**J'ai plafonné la recherche qui pouvait réussir longtemps, pas celle qui pouvait échouer** — 26 octobre 2026
+
+- *Ce que je voulais faire* : borner le temps du Suguru, à sept secondes par
+  grille en 6 × 6.
+- *Ce qui a coûté* : une correction entière écrite au mauvais endroit —
+  masques de bits, voisinages mis en cache, budget de nœuds partagé sur la
+  preuve d'unicité. Rechronométré : **35 s avant, 35 s après**, pas une
+  milliseconde gagnée. Les sept secondes étaient dans `remplir`, qui ne
+  démontre pas qu'une grille EXISTE mais qu'une découpe n'en admet AUCUNE — et
+  ce `false`-là coûte un arbre entier. Vingt minutes pour la mauvaise moitié.
+- *Combien de fois* : | (puis évitée tout de suite après sur le Kakuro et le
+  Chemin des Nombres, où les deux recherches ont été plafonnées ensemble)
+- *Ce qui manque* : une ligne dans `CLAUDE.md`. **On plafonne toute recherche
+  par retour sur ses pas qui peut rendre « non », pas seulement celle qui peut
+  chercher trop loin** — un échec démontré coûte exactement aussi cher qu'une
+  réussite cherchée trop loin. Et, avant de corriger : chronométrer la
+  FONCTION, pas la grille, pour savoir où est le temps.
+
+**Un guetteur qui se reconnaît lui-même n'arrive jamais** — 26 octobre 2026
+
+- *Ce que je voulais faire* : attendre la fin de `npm test` en tâche de fond,
+  puis lire le verdict.
+- *Ce qui a coûté* : `until ! pgrep -f "node --test"; do sleep 15; done` ne
+  rend jamais la main — **la ligne de commande du guetteur contient elle-même
+  « node --test »**, donc `pgrep` le trouve toujours, lui. Trente-sept minutes
+  d'attente sur une suite déjà finie.
+- *Combien de fois* : |
+- *Ce qui manque* : une habitude plutôt qu'un outil — attendre un FICHIER qui
+  cesse de grossir, ou le marqueur de fin dans le journal
+  (`until grep -q "^# fail" <journal>`), jamais un processus désigné par un
+  motif que la commande d'attente contient.
+
+**Un chronomètre muet pendant qu'il mesure la chose lente** — 26 octobre 2026
+
+- *Ce que je voulais faire* : chronométrer les six jeux d'un coup.
+- *Ce qui a coûté* : l'outil s'est fait tuer au bout de 400 s **sans avoir
+  rien imprimé** — il écrivait le nom du réglage en cours avec un `\r`, que
+  Node tamponne dès que la sortie n'est pas un terminal. Deux relances pour
+  comprendre qu'il mesurait, et non qu'il plantait. C'est exactement le défaut
+  qu'on venait corriger dans `npm test`.
+- *Combien de fois* : |
+- *Ce qui manque* : la règle, maintenant écrite en commentaire dans
+  `vitesseDesJeux.mjs` — **un outil qui mesure quelque chose de lent écrit ce
+  qu'il mesure AVANT de le mesurer, sur une ligne entière**, jamais avec `\r`
+  ni sur `stdout` tamponné.
+
+**`epreuveTombe` confond « ça ne compile pas » et « ça ne rend pas la main »** — 26 octobre 2026
+
+- *Ce que je voulais faire* : voir tomber la garde qui plafonne la recherche du
+  chemin hamiltonien, en remettant `PLAFOND_CHEMIN = Infinity`.
+- *Ce qui a coûté* : deux relances et une vérification à la main. Le défaut
+  remis fait BOUCLER la suite, qui n'imprime donc aucune épreuve ; l'outil voit
+  « 0 épreuve(s) vues au lieu de 13 » et conclut « le texte de remplacement ne
+  compile sans doute pas — un `&&` échappé par le shell, une accolade en
+  trop ». On part chercher une accolade qui n'existe pas. Vérifié ensuite à la
+  main : la garde tombe bien (`not ok 1` en l'isolant), et le fichier entier
+  sort en 124 après 90 s.
+- *Combien de fois* : |
+- *Ce qui manque* : qu'`epreuveTombe` distingue les deux cas, qu'il peut lire
+  sans rien deviner — **si le fichier est tué par le délai, le dire** (« le
+  défaut remis fait boucler l'épreuve, ce qui EST un échec ») au lieu
+  d'accuser la syntaxe ; et, quand il voit zéro épreuve, passer d'abord
+  `node --check` sur le fichier abîmé pour savoir laquelle des deux causes
+  parler. Rangé aussi : **une garde qui répond en une milliseconde se déclare
+  AVANT celle qui met sept secondes et peut boucler** — les deux ont été
+  échangées dans `tests/sixJeux.test.mjs` pour cette raison.

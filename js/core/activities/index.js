@@ -28,6 +28,16 @@ import {
 } from '../generators/numeration.js';
 import { kenkenGenerator } from '../generators/kenken.js';
 import { shikakuGenerator } from '../generators/shikaku.js';
+// LES SIX JEUX DE LA NUIT DU 26 OCTOBRE. Rémy : « tout est une excellente
+// idée, tu me les fais tous ». Cinq posent la même question — écris un nombre
+// dans chaque case — et partagent donc UNE activité ; le sixième est une
+// partie contre la machine et a la sienne.
+import { kakuroGenerator } from '../generators/kakuro.js';
+import { yohakuGenerator } from '../generators/yohaku.js';
+import { suguruGenerator } from '../generators/suguru.js';
+import { gratteCielGenerator } from '../generators/gratteCiel.js';
+import { cheminNombresGenerator } from '../generators/cheminNombres.js';
+import { allumettesGenerator } from '../generators/allumettes.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -170,6 +180,8 @@ import {
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, shikakuGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
+    kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
+    cheminNombresGenerator, allumettesGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -478,6 +490,36 @@ registerActivity({
 // genre de réponse que le Mathdoku (`grid`) : l'élève construit un état
 // complet — le découpage — qu'on valide d'un bloc. Mais aucune saisie de
 // chiffre, donc pas de réglage de clavier : le geste est le glisser.
+// UNE SEULE ACTIVITÉ POUR CINQ JEUX. Le Kakuro, le Yohaku, le Suguru, les
+// Gratte-ciel et le Chemin des Nombres ne diffèrent que par ce qu'on dessine
+// AUTOUR des cases : des murs et des sommes en diagonale, des totaux en marge,
+// des zones aux bords épais, des indices hors de la grille. Cinq copies d'une
+// même activité, ce serait cinq endroits où corriger le jour où la saisie au
+// doigt changera.
+registerActivity({
+    id: 'grilleNombres',
+    unite: 'grille',
+    parDefaut: 3,
+    label: 'Grille de nombres',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [REGLAGE_SAISIE],
+    load: () => import('./grilleNombres.js')
+});
+
+// LES ALLUMETTES N'ONT PAS DE GRILLE : c'est une PARTIE, et le seul jeu du
+// lot où l'on joue contre quelqu'un. Pas de saisie au clavier non plus —
+// trois boutons suffisent, et ils tiennent sur un téléphone.
+registerActivity({
+    id: 'allumettes',
+    unite: 'partie',
+    parDefaut: 3,
+    label: 'Les Allumettes',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./allumettes.js')
+});
+
 registerActivity({
     id: 'shikaku',
     unite: 'grille',

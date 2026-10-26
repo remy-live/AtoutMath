@@ -1855,3 +1855,202 @@ RENDUS_GRILLES.shikaku = {
     previewGrille: shikakuPreviewHtml,
     pdfGrille: dessinerShikakuPdf
 };
+
+// ── LES CINQ GRILLES DE NOMBRES SUR PAPIER ───────────────────────────────────
+//
+// RÉMY, 26 octobre : « tu me les fais tous ». Le Kakuro, le Yohaku, le Suguru,
+// les Gratte-ciel et le Chemin des Nombres s'impriment de la même façon : un
+// damier, des cases écrites d'avance, parfois des marges, parfois des bords de
+// zone, parfois des cases noires à deux sommes. Un seul rendu, donc, paramétré
+// par ce que le générateur a décrit — exactement comme leur activité à l'écran.
+
+/** La case carrée la plus grande qui tienne dans l'emplacement, et son coin. */
+function poseGrilleNombres(item, slot) {
+    const m = item.meta.marges || {};
+    const mg = m.gauche ? 1 : 0, md = m.droite ? 1 : 0;
+    const mh = m.haut ? 1 : 0, mb = m.bas ? 1 : 0;
+    const cols = item.meta.colonnes + mg + md;
+    const rows = item.meta.lignes + mh + mb;
+    const s = Math.min(slot.taille / cols, slot.taille / rows);
+    return {
+        s, mg, md, mh, mb, cols, rows,
+        x: slot.x + (slot.taille - s * cols) / 2,
+        y: slot.y + (slot.taille - s * rows) / 2
+    };
+}
+
+const caseDeLaGrille = (item) => {
+    const par = new Map();
+    item.meta.cases.forEach(c => par.set(`${c.r},${c.c}`, c));
+    return par;
+};
+
+function grilleNombresPreviewHtml(item, slot, k, solution) {
+    const { lignes, colonnes, marges = {}, zones } = item.meta;
+    const { s, mg, mh, x, y } = poseGrilleNombres(item, slot);
+    const par = caseDeLaGrille(item);
+    const px = (v) => `${v * k}px`;
+    const boite = (cx, cy, dedans, style) => `<div style="position:absolute;
+        left:${px(x + cx * s)}; top:${px(y + cy * s)}; width:${px(s)}; height:${px(s)};
+        box-sizing:border-box; display:flex; align-items:center; justify-content:center;
+        font-size:${px(s * 0.44)}; font-weight:700; ${style}">${dedans}</div>`;
+
+    let html = '';
+    const etiq = (v) => (v === null || v === undefined ? '' : String(v));
+    (marges.haut || []).forEach((v, c) => { html += boite(c + mg, 0, etiq(v), 'color:#1d4ed8;'); });
+    (marges.bas || []).forEach((v, c) => {
+        html += boite(c + mg, lignes + mh, etiq(v), 'color:#1d4ed8;');
+    });
+    (marges.gauche || []).forEach((v, r) => { html += boite(0, r + mh, etiq(v), 'color:#1d4ed8;'); });
+    (marges.droite || []).forEach((v, r) => {
+        html += boite(colonnes + mg, r + mh, etiq(v), 'color:#1d4ed8;');
+    });
+
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const t = par.get(`${r},${c}`) || {};
+            // LE TRAIT ÉPAIS SÉPARE DEUX ZONES, le fin deux cases d'une même
+            // zone : c'est tout le dessin du Suguru, et il porte sa règle.
+            const bord = (dr, dc) => {
+                if (!zones) return '1px solid #475569';
+                const a = par.get(`${r + dr},${c + dc}`);
+                return (!a || a.zone !== t.zone) ? '2.4px solid #0f172a' : '0.7px solid #94a3b8';
+            };
+            if (t.type === 'mur' || t.type === 'indice') {
+                const sommes = t.type === 'indice'
+                    ? `<span style="position:absolute; top:4%; right:8%; font-size:${px(s * 0.3)};
+                         color:#fff;">${t.droite || ''}</span>
+                       <span style="position:absolute; bottom:4%; left:8%; font-size:${px(s * 0.3)};
+                         color:#fff;">${t.bas || ''}</span>
+                       <!-- « TO TOP RIGHT », comme à l'écran et comme le PDF : un dégradé
+                            pose ses bandes PERPENDICULAIREMENT à son axe, donc
+                            « to bottom right » traçait le trait qui passe exactement par
+                            les deux coins où sont écrites les sommes, et les barrait.
+                            L'aperçu et le PDF se contredisaient — le PDF, lui, trace
+                            (X,Y) vers (X+s,Y+s), qui est la bonne diagonale. -->
+                       <span style="position:absolute; inset:0; background:linear-gradient(
+                         to top right, transparent calc(50% - .5px), #fff calc(50% - .5px),
+                         #fff calc(50% + .5px), transparent calc(50% + .5px));"></span>`
+                    : '';
+                html += boite(c + mg, r + mh, sommes,
+                    'background:#0f172a; border:1px solid #0f172a; position:absolute;');
+                continue;
+            }
+            const donnee = t.type === 'donnee';
+            html += boite(c + mg, r + mh, (donnee || solution)
+                ? String(donnee ? t.valeur : item.meta.solution[r][c]) : '',
+            `border-top:${bord(-1, 0)}; border-bottom:${bord(1, 0)};`
+                + `border-left:${bord(0, -1)}; border-right:${bord(0, 1)};`
+                + (donnee ? 'background:#eef0fa;' : '')
+                + (!donnee && solution ? 'color:#1d4ed8;' : ''));
+        }
+    }
+    return html;
+}
+
+function dessinerGrilleNombresPdf(doc, item, slot, solution) {
+    const { lignes, colonnes, marges = {}, zones } = item.meta;
+    const { s, mg, mh, x, y } = poseGrilleNombres(item, slot);
+    const par = caseDeLaGrille(item);
+    const centre = (cx, cy, texte, taille) => {
+        doc.setFontSize(taille);
+        doc.text(String(texte), x + (cx + 0.5) * s, y + (cy + 0.5) * s,
+            { align: 'center', baseline: 'middle' });
+    };
+
+    // Les cases noires d'abord : tout le reste se dessine par-dessus.
+    doc.setFillColor(15, 23, 42);
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const t = par.get(`${r},${c}`) || {};
+            if (t.type === 'mur' || t.type === 'indice') {
+                doc.rect(x + (c + mg) * s, y + (r + mh) * s, s, s, 'F');
+            }
+        }
+    }
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.12);
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            doc.rect(x + (c + mg) * s, y + (r + mh) * s, s, s, 'S');
+        }
+    }
+    // LES BORDS DE ZONE, par-dessus le quadrillage fin.
+    if (zones) {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.55);
+        for (let r = 0; r < lignes; r++) {
+            for (let c = 0; c < colonnes; c++) {
+                const z = (par.get(`${r},${c}`) || {}).zone;
+                const X = x + (c + mg) * s, Y = y + (r + mh) * s;
+                const autre = (dr, dc) => {
+                    const a = par.get(`${r + dr},${c + dc}`);
+                    return !a || a.zone !== z;
+                };
+                if (autre(-1, 0)) doc.line(X, Y, X + s, Y);
+                if (autre(1, 0)) doc.line(X, Y + s, X + s, Y + s);
+                if (autre(0, -1)) doc.line(X, Y, X, Y + s);
+                if (autre(0, 1)) doc.line(X + s, Y, X + s, Y + s);
+            }
+        }
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    doc.rect(x + mg * s, y + mh * s, colonnes * s, lignes * s, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    // Les totaux de marge, en bleu : ils ne se confondent pas avec ce qu'on
+    // écrit dans la grille.
+    doc.setTextColor(29, 78, 216);
+    const etiq = (v, cx, cy) => {
+        if (v === null || v === undefined || v === '') return;
+        centre(cx, cy, v, Math.min(12, s * 1.1));
+    };
+    (marges.haut || []).forEach((v, c) => etiq(v, c + mg, 0));
+    (marges.bas || []).forEach((v, c) => etiq(v, c + mg, lignes + mh));
+    (marges.gauche || []).forEach((v, r) => etiq(v, 0, r + mh));
+    (marges.droite || []).forEach((v, r) => etiq(v, colonnes + mg, r + mh));
+
+    // Les deux sommes d'une case noire, en blanc sur le noir.
+    doc.setTextColor(255, 255, 255);
+    doc.setLineWidth(0.18);
+    doc.setDrawColor(255, 255, 255);
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const t = par.get(`${r},${c}`) || {};
+            if (t.type !== 'indice') continue;
+            const X = x + (c + mg) * s, Y = y + (r + mh) * s;
+            doc.line(X, Y, X + s, Y + s);
+            doc.setFontSize(Math.min(8, s * 0.62));
+            if (t.droite) doc.text(String(t.droite), X + s * 0.72, Y + s * 0.3, { align: 'center', baseline: 'middle' });
+            if (t.bas) doc.text(String(t.bas), X + s * 0.28, Y + s * 0.74, { align: 'center', baseline: 'middle' });
+        }
+    }
+
+    doc.setTextColor(...ENCRE.texte);
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const t = par.get(`${r},${c}`) || {};
+            if (t.type === 'donnee') { centre(c + mg, r + mh, t.valeur, Math.min(13, s * 1.2)); continue; }
+            if (t.type === 'vide' && solution) {
+                doc.setTextColor(29, 78, 216);
+                centre(c + mg, r + mh, item.meta.solution[r][c], Math.min(13, s * 1.2));
+                doc.setTextColor(...ENCRE.texte);
+            }
+        }
+    }
+}
+
+['kakuro', 'yohaku', 'suguru', 'gratteCiel', 'cheminNombres'].forEach(nom => {
+    RENDUS_GRILLES[nom] = {
+        titre: { kakuro: 'Kakuro', yohaku: 'Yohaku', suguru: 'Suguru',
+            gratteCiel: 'Les Gratte-ciel', cheminNombres: 'Le Chemin des Nombres' }[nom],
+        consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+        previewGrille: grilleNombresPreviewHtml,
+        pdfGrille: dessinerGrilleNombresPdf,
+        // DEUX PAR LIGNE : on ÉCRIT dans ces grilles, et à six par page les
+        // cases tombent sous les quatre millimètres. Même raison que le Garam.
+        parLigneDefaut: 2
+    };
+});

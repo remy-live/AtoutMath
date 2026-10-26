@@ -39,15 +39,19 @@ export const saisieActive = (params) => (params || {}).saisieClavier !== false;
  * @param {string} [o.aria]  - ce que la case s'appelle
  * @param {string} [o.motif] - ce qu'on accepte d'y taper (regex, sans les /)
  */
-export function contenuCase({ valeur, donnee, champ, aria = '', motif = '[0-9]' }) {
+export function contenuCase({ valeur, donnee, champ, aria = '', motif = '[0-9]', signes = 1 }) {
     const v = valeur === null || valeur === undefined ? '' : String(valeur);
     if (!champ || donnee) return `<span class="kk-val">${v}</span>`;
     // `inputmode` ouvre le pavé numérique du téléphone, pas le clavier entier ;
     // `maxlength` évite qu'on tape « 12 » dans une case qui n'attend qu'un
     // chiffre — la valeur serait refusée, mais après coup, ce qui déroute.
+    //
+    // `signes` EST À UN PARTOUT SAUF OÙ LA CASE ATTEND UN NOMBRE À DEUX
+    // CHIFFRES. Le Chemin des Nombres va jusqu'à 25 : une case d'un seul
+    // signe y refuserait la moitié des réponses, sans rien dire.
     return `<input class="kk-val kk-champ" type="text" inputmode="numeric"
-        maxlength="1" autocomplete="off" autocorrect="off" spellcheck="false"
-        value="${v}" data-motif="${motif}"
+        maxlength="${signes}" autocomplete="off" autocorrect="off" spellcheck="false"
+        value="${v}" data-motif="${motif}" data-signes="${signes}"
         aria-label="${aria}">`;
 }
 
@@ -74,14 +78,27 @@ export function brancherChamps(racine, { poser, cleDe, bloque = () => false }) {
             // On ne garde que le DERNIER signe tapé : dans une case d'un
             // caractère, retaper par-dessus est le geste naturel, et le
             // navigateur, lui, refuserait la frappe une fois la case pleine.
-            const brut = champ.value.slice(-1);
-            if (brut && !motif.test(brut)) { champ.value = ''; return; }
+            const signes = Math.max(1, Number(champ.dataset.signes) || 1);
+            const brut = champ.value.slice(-signes);
+            if (brut && !motif.test(brut)) {
+                // À DEUX SIGNES, ON NE JETTE PAS TOUT : « 2 » est un début
+                // valide de « 25 », et refuser la frappe effacerait le
+                // premier chiffre au moment où l'on tape le second.
+                const court = signes > 1 ? champ.value.slice(-1) : '';
+                if (!court || !motif.test(court)) { champ.value = ''; return; }
+                champ.value = court;
+                poser(cleDe(champ), court);
+                return;
+            }
             champ.value = brut;
             poser(cleDe(champ), brut);
             // ON AVANCE TOUT SEUL après un chiffre valide : remplir une grille
             // de quatre-vingt-une cases en appuyant sur Tab entre chaque est un
             // exercice de patience, pas de logique.
-            if (brut) suivant(rang + 1);
+            // ON N'AVANCE QUE QUAND LA CASE EST PLEINE : sur une case à deux
+            // signes, sauter après le premier chiffre empêcherait d'écrire
+            // le second.
+            if (brut && brut.length >= signes) suivant(rang + 1);
         });
 
         champ.addEventListener('keydown', (ev) => {

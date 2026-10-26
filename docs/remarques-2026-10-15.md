@@ -3921,3 +3921,29 @@ CE QU'IL FAUDRA TRANCHER (pas dans la capture) :
 ET LA LIGNE ROUGE NE S'Y OPPOSE PAS : on ne trace rien à la règle ni au
 compas, on découpe une grille de cases — le même geste que le Sudoku ou le
 Strimko, qui vivent déjà dans le logiciel.
+
+
+---
+
+## 35. Les six jeux de la nuit — 26 octobre
+
+> « Ah oui tout est une excellente idée, tu me les fais tous, avec des grilles
+> faciles, que ca fonctionne sur ordi, tablette et téléphone. Tu peux faire
+> les 6 cette nuit, je regarde demain matin. »
+
+LES SIX, dans l'ordre où je les propose et où il les accepte : le Kakuro, le
+Yohaku, le Suguru, les Gratte-ciel, le Chemin des Nombres, le Jeu des
+Allumettes.
+
+TROIS CONSIGNES DANS SA PHRASE, et les trois comptent :
+
+- « AVEC DES GRILLES FACILES ». Le réglage par défaut de chacun doit être le
+  plus accessible, pas le moyen. Un élève qui ouvre un jeu neuf doit le
+  RÉUSSIR la première fois, sinon il ne l'ouvre pas une seconde.
+- « SUR ORDI, TABLETTE ET TÉLÉPHONE ». Donc mesuré dans les trois largeurs,
+  pas seulement sur l'écran où je travaille. 390 × 844 est le plus dur : la
+  grille, la palette, les boutons et l'avis doivent tenir sans défilement.
+- « CETTE NUIT ». Donc une seule activité partagée plutôt que cinq copies :
+  cinq de ces jeux sont la même chose — une grille de cases où l'on écrit des
+  nombres — et ne diffèrent que par ce qui est dessiné AUTOUR. Le sixième,
+  les allumettes, n'est pas une grille du tout.

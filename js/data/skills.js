@@ -109,6 +109,68 @@ const BASE = {
             + 'toutes les façons de l\'écrire comme un produit de deux facteurs : un nombre '
             + 'premier n\'en a qu\'une, et c\'est par lui qu\'il faut commencer.'
     },
+    // LES SIX JEUX DE LA NUIT DU 26 OCTOBRE. Rémy : « tout est une excellente
+    // idée, tu me les fais tous ». Ils sont rangés en LOGIQUE, mais chacun
+    // porte une notion de calcul qui lui est propre — c'est elle qui les a
+    // fait choisir.
+    'num.logique.kakuro': {
+        label: 'Décomposer une somme (Kakuro)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Écrire une somme comme un total de chiffres tous différents.',
+        lesson: 'Certaines sommes n\'ont qu\'une écriture : 3 en deux cases c\'est 1 + 2, '
+            + '17 en deux cases c\'est 8 + 9, 24 en trois cases c\'est 7 + 8 + 9. Ce sont les '
+            + 'sommes EXTRÊMES qui décident, pas les moyennes.'
+    },
+    'num.logique.yohaku': {
+        label: 'Retrouver des nombres par leurs totaux (Yohaku)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Compléter une grille dont on connaît les sommes ou les produits.',
+        lesson: 'Commence par la rangée où il ne manque qu\'une case : son total donne le '
+            + 'nombre d\'un coup. En produit, décompose le total en facteurs — un total '
+            + 'impair interdit tous les nombres pairs de sa rangée.'
+    },
+    'num.logique.suguru': {
+        label: 'Zones et voisinages (Suguru)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.logique.sudoku'],
+        descriptor: 'Remplir des zones sans que deux nombres égaux se touchent.',
+        lesson: 'Une zone de n cases contient 1 à n. Un nombre interdit les HUIT cases autour '
+            + 'de lui, diagonales comprises — c\'est cette seconde règle qui fait tout le jeu.'
+    },
+    'num.logique.gratte-ciel': {
+        label: 'Raisonner sur un ordre (Gratte-ciel)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.logique.sudoku'],
+        descriptor: 'Déduire des hauteurs à partir du nombre d\'immeubles visibles.',
+        lesson: 'Un 1 au bord veut dire que le plus haut est juste là : il cache tout. Un n au '
+            + 'bord veut dire qu\'on les voit tous, donc qu\'ils montent dans l\'ordre.'
+    },
+    'num.logique.chemin': {
+        label: 'La chaîne des entiers (Chemin des Nombres)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Placer les entiers de 1 à n de proche en proche.',
+        lesson: 'Chaque nombre a un avant et un après, et les deux le touchent. Quand deux '
+            + 'nombres donnés sont proches, compte ce qui manque entre eux : le chemin est '
+            + 'souvent forcé.'
+    },
+    'num.logique.allumettes': {
+        label: 'Une stratégie gagnante (Allumettes)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.div.quotient'],
+        descriptor: 'Trouver et justifier la position gagnante d\'un jeu de retrait.',
+        lesson: 'Laisse toujours un multiple de 4 : quoi que l\'autre retire — 1, 2 ou 3 —, tu '
+            + 'complètes à 4. Le tas descend de quatre en quatre et arrive à zéro après TON '
+            + 'coup. Tout se lit dans le reste de la division par 4.'
+    },
     'num.logique.mathodu': {
         label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

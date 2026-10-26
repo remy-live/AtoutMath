@@ -1159,6 +1159,102 @@ export const calculExercises = [
         }
     },
     {
+        // LE KAKURO — une machine à décomposer les sommes.
+        //
+        // RÉMY, 26 octobre : « tout est une excellente idée, tu me les fais
+        // tous ». C'est celui que j'ai mis en tête de mes propositions : un
+        // élève qui en fait quatre connaît par cœur les décompositions
+        // forcées, et ce sont exactement celles qu'on travaille au tableau.
+        id: 'logi-kakuro', title: 'Kakuro',
+        cree: '2026-10-26',
+        generatorId: 'logique.kakuro', activityId: 'grilleNombres',
+        printable: 'kakuro',
+        sansRevision: true,
+        params: { nbQuestions: 2, format: 'petit', difficulte: 'facile' },
+        motsClefs: ['kakuro', 'sommes', 'croisés', 'décomposition', 'chiffres', 'logique', 'japonais'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Des mots croisés dont les mots sont des sommes. Chaque suite de cases blanches doit donner le total écrit dans la case noire qui la précède — à droite de la diagonale pour la ligne, en dessous pour la colonne — et tous les chiffres d'une même suite sont DIFFÉRENTS. Le zéro n'existe pas : chaque case vaut au moins 1. COMMENCE PAR LES SOMMES EXTRÊMES, ce sont elles qui ouvrent la grille : 3 en deux cases ne peut être que 1 + 2, 17 en deux cases que 8 + 9, 24 en trois cases que 7 + 8 + 9. Une somme moyenne, elle, a quatre écritures et ne décide rien. Chaque case appartient à DEUX suites à la fois : ce qu'une ligne interdit, la colonne l'élimine."
+    },
+    {
+        // LE YOHAKU — le meilleur rapport mathématiques / effort du lot.
+        //
+        // Neuf cases, six totaux, aucune règle à apprendre, et dix minutes de
+        // calcul mental dense. La version en PRODUIT est une machine à
+        // factoriser : une ligne qui fait 36 et une colonne qui fait 24 n'ont
+        // qu'une poignée de solutions communes.
+        id: 'logi-yohaku', title: 'Yohaku',
+        cree: '2026-10-26',
+        generatorId: 'logique.yohaku', activityId: 'grilleNombres',
+        printable: 'yohaku',
+        sansRevision: true,
+        params: { nbQuestions: 2, operation: 'somme', format: 'petit', difficulte: 'facile' },
+        motsClefs: ['yohaku', 'fubuki', 'sommes', 'produits', 'calcul mental', 'grille', 'logique'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Une grille, et en marge de chaque ligne et de chaque colonne son total. On écrit un nombre dans chaque case vide pour que tous les totaux tombent juste — et chaque nombre ne sert qu'UNE fois dans la grille. COMMENCE PAR LA RANGÉE OÙ IL NE MANQUE QU'UNE CASE : son total donne le nombre d'un coup, et il en débloque d'autres. En mode PRODUIT, il faut décomposer chaque total en facteurs : c'est bien plus difficile, et c'est le meilleur entraînement à la factorisation du catalogue. Un total impair interdit d'ailleurs tous les nombres pairs de sa rangée."
+    },
+    {
+        // LE SUGURU — le compagnon du Shikaku : même geste de zones,
+        // raisonnement tout différent. La règle tient en deux lignes et un CM2
+        // y entre seul ; la contrainte de VOISINAGE (les huit cases autour,
+        // diagonales comprises) travaille une notion que le sudoku ignore.
+        id: 'logi-suguru', title: 'Suguru',
+        cree: '2026-10-26',
+        generatorId: 'logique.suguru', activityId: 'grilleNombres',
+        printable: 'suguru',
+        sansRevision: true,
+        params: { nbQuestions: 2, format: 'petit', difficulte: 'facile' },
+        motsClefs: ['suguru', 'tectonic', 'zones', 'voisins', 'diagonale', 'logique', 'grille'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Deux règles, et c'est tout : une zone de n cases contient les nombres de 1 à n, une fois chacun ; et deux nombres ÉGAUX ne se touchent jamais, même en diagonale. COMMENCE PAR LES ZONES LES PLUS PETITES : une zone de deux cases ne contient que 1 et 2, il n'y a que deux façons de les poser. Ensuite, souviens-toi qu'un nombre interdit les HUIT cases autour de lui — c'est cette seconde règle, que le sudoku n'a pas, qui fait tout le jeu."
+    },
+    {
+        // LES GRATTE-CIEL — le seul jeu d'ici où l'on raisonne sur un
+        // ORDRE plutôt que sur une somme : « plus grand que tous les
+        // précédents ». Et il se dessine : on peut imaginer la rue.
+        id: 'logi-gratte-ciel', title: 'Les Gratte-ciel',
+        cree: '2026-10-26',
+        generatorId: 'logique.gratte-ciel', activityId: 'grilleNombres',
+        printable: 'gratteCiel',
+        sansRevision: true,
+        params: { nbQuestions: 2, format: 'petit', difficulte: 'facile' },
+        motsClefs: ['gratte-ciel', 'skyscrapers', 'hauteurs', 'carré latin', 'ordre', 'logique'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Chaque case porte la hauteur d'un immeuble, de 1 à n, une seule fois par ligne et par colonne. Les nombres écrits tout autour disent COMBIEN d'immeubles on voit depuis ce bord : un immeuble cache tous ceux qui sont derrière et moins hauts que lui. DEUX INDICES SE LISENT SANS CALCUL, et ils ouvrent la grille : un 1 au bord veut dire que le plus haut est juste là, contre le bord, et qu'il cache tout le reste ; un n au bord veut dire qu'on les voit tous, donc qu'ils montent dans l'ordre — toute la rangée d'un coup. Un 2, lui, interdit au plus haut d'être en première position."
+    },
+    {
+        // LE CHEMIN DES NOMBRES — celui que je donnerais aux élèves les
+        // plus fragiles. On ne calcule pas, on COMPTE, et la réussite est à
+        // portée dès la première grille. Ce qu'il travaille vraiment : la
+        // suite des entiers comme une CHAÎNE, où chacun a un avant et un
+        // après, plutôt que comme une liste qu'on récite.
+        id: 'logi-chemin-nombres', title: 'Le Chemin des Nombres',
+        cree: '2026-10-26',
+        generatorId: 'logique.chemin-nombres', activityId: 'grilleNombres',
+        printable: 'cheminNombres',
+        sansRevision: true,
+        params: { nbQuestions: 2, format: 'petit', difficulte: 'facile' },
+        motsClefs: ['hidato', 'chemin', 'suite', 'entiers', 'compter', 'logique', 'grille'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Écris tous les nombres de 1 jusqu'au dernier, de sorte que deux nombres qui SE SUIVENT occupent deux cases qui se touchent — par un côté ou par un coin. PARS DU 1 et cherche où peut aller le 2 : il n'y a souvent qu'une ou deux cases possibles. Puis regarde deux nombres donnés proches l'un de l'autre, 7 et 10 par exemple : il manque 8 et 9 entre eux, et le chemin qui les relie est presque forcé. Une case coincée dans un coin ne touche que trois voisines — c'est souvent elle qui décide."
+    },
+    {
+        // LE JEU DES ALLUMETTES (Nim) — une stratégie qui se DÉMONTRE.
+        //
+        // Ce n'est pas un jeu de calcul : c'est le seul du catalogue où
+        // l'élève doit trouver une RÈGLE et la justifier, et où la
+        // justification est une division euclidienne. Puissance 4, Othello et
+        // les Dames sont des jeux de stratégie, mais aucun ne se résout par un
+        // reste.
+        id: 'logi-allumettes', title: 'Le Jeu des Allumettes',
+        cree: '2026-10-26',
+        generatorId: 'logique.allumettes', activityId: 'allumettes',
+        sansRevision: true,
+        params: { nbQuestions: 3, format: 'court', robot: 'apprend' },
+        motsClefs: ['nim', 'allumettes', 'stratégie', 'multiple', 'division', 'reste', 'logique'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Un tas d'allumettes, deux joueurs. Chacun son tour, on en retire une, deux ou trois. Celui qui prend la DERNIÈRE a gagné. Il existe une façon de gagner à coup sûr, et c'est elle qu'il faut trouver : laisse toujours à la machine un MULTIPLE DE 4. Pourquoi cela marche — et c'est là que ce jeu devient des mathématiques : quoi qu'elle retire, 1, 2 ou 3, tu peux toujours compléter à 4. Le tas descend donc de quatre en quatre et arrive à zéro APRÈS ton coup. Tout se lit dans le reste de la division par 4. Au début, la machine se trompe une fois sur deux ; règle-la sur « parfaite » quand tu crois avoir trouvé."
+    },
+    {
         id: 'calc-sudoku', title: 'Sudoku',
         cree: '2026-08-04',
         generatorId: 'logique.sudoku', activityId: 'sudoku',
