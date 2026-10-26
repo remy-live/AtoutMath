@@ -522,6 +522,56 @@ function hauteurBloc(bloc, o) {
 }
 
 /**
+ * UNE COUPURE QUI CASSE UNE EXPRESSION — et pas une phrase qui va à la ligne.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « pour diviser par 2 fractions, par défaut mets 2 colonnes pour
+ * l'impression ».
+ *
+ * LE CATALOGUE LE DISAIT DÉJÀ — `colonnesPapier: 2` — et la feuille sortait
+ * en UNE colonne. Forcer le réglage à 2, puis à 3, ne changeait rien : mesuré
+ * trois fois sur l'aperçu, qui écrit lui-même ce qu'il a posé.
+ *
+ * D'OÙ ÇA VENAIT : une cellule à fraction ou à trou qui tient sur plusieurs
+ * lignes fait retirer une colonne, et la règle a raison quand elle vise ce
+ * qu'elle vise — « 5/6 + 2/6 = ..... » coupé après le « + » laisse la seconde
+ * fraction sous la première, et l'on ne sait plus ce qu'on compare. Mais elle
+ * frappait AUSSI les énoncés rédigés : un seul problème de fin de fiche,
+ * « Un ruban de 3/4 m est coupé… », passe à la ligne comme toute phrase, et
+ * faisait tomber les vingt questions à une colonne.
+ *
+ * UNE PHRASE SE COUPE ENTRE DEUX MOTS, ET C'EST SANS DOMMAGE. On regarde donc
+ * OÙ tombe la coupure, au lieu de compter les lignes : elle est dangereuse
+ * quand la fin d'une ligne ET le début de la suivante sont tous deux
+ * mathématiques — un opérateur, un nombre, une fraction, un trou. Entre deux
+ * mots, elle ne l'est pas.
+ *
+ * ET UNE LIGNE NE FINIT PAS SUR UN BLANC À REMPLIR. Deuxième mesure, sur
+ * « Heures et Minutes » à trois colonnes : « 119 min = ..... h ..... min »
+ * tombait en « 119 min = ..... h ..... » puis « min » toute seule dessous —
+ * le blanc des minutes d'un côté, son unité de l'autre. Le trou s'écrit en
+ * espaces (voir `texteImprime`), donc il DISPARAÎT au découpage en mots :
+ * c'est la ligne BRUTE qu'il faut regarder, et sa fin.
+ *
+ * @param {string[]} lignes les lignes déjà coupées à la largeur de la cellule
+ * @returns {boolean} vrai si une coupure sépare les morceaux d'un calcul
+ */
+export function coupureCasseUneExpression(lignes) {
+    // L'ESPACE INSÉCABLE EST DANS LA CLASSE : « 1 000 » s'écrit avec, et le
+    // découpage en mots ne le sépare donc jamais. Un nombre reste un mot.
+    const MATH = /^(?:[\d.,\u00A0]+|[^\s]*\/[^\s]*|[=+\-\u2212\u00D7\u00F7:<>\u2264\u2265]|\u2026|\.\.\.|\?)$/;
+    for (let i = 0; i + 1 < lignes.length; i++) {
+        const brute = String(lignes[i] ?? '');
+        if (/[\u00A0 ]{3,}$/.test(brute)) return true;
+        const avant = brute.trim().split(/\s+/).pop() || '';
+        const apres = String(lignes[i + 1] ?? '').trim().split(/\s+/)[0] || '';
+        if (MATH.test(avant) && MATH.test(apres)) return true;
+    }
+    return false;
+}
+
+/**
  * Répartit les questions en pages et en colonnes.
  *
  * @param {Array<{texte:string, choix?:string[]}>} questions
@@ -1174,7 +1224,32 @@ export function composerBlocs(exos, opts, mesurer) {
             texteW = cellW - gouttiereNum;
             cellules = mesurerCellules();
             if (cols <= 1) break;
-            if (cellules.some(c => c.coupee && (c.fractions || c.trou))) { cols--; continue; }
+            // ET LA COUPURE DOIT CASSER QUELQUE CHOSE. « Plusieurs lignes »
+            // n'est pas « illisible » : un problème rédigé passe à la ligne
+            // entre deux mots. Voir `coupureCasseUneExpression` — mesuré sur
+            // « Diviser par une Fraction », dont les huit derniers énoncés
+            // sont des problèmes rédigés de quatre-vingt-dix caractères.
+            //
+            // ET ELLE S'APPLIQUE AUSSI QUAND LE PROFESSEUR A NOMMÉ SON
+            // CHIFFRE — j'ai essayé le contraire, et la feuille l'a démenti.
+            // « Diviser par une Fraction » demande deux colonnes et sortait en
+            // une : rendre le réglage impératif lui a bien donné ses deux
+            // colonnes, et trois questions sur seize y sont devenues
+            // illisibles — « 2/5 ÷ 5/9 = …/… × » puis, seule au bord droit,
+            // une barre de fraction sans numérateur. Photographié. Le remède
+            // était dans l'énoncé, pas dans la règle : voir
+            // `divisionFractions.js`, où la multiplication passe maintenant à
+            // la ligne EXPRÈS.
+            //
+            // ET UN TROU NE SE NÉGOCIE PAS. Une épreuve déjà écrite l'a dit
+            // avant moi : « Six cent soixante + ? = mille cinquante-deux »
+            // sur quatre colonnes doit en perdre, quel que soit l'endroit de
+            // la coupure — dans un énoncé à compléter, la ligne ENTIÈRE est
+            // l'exercice. Le raffinement ne vaut donc que pour les cellules à
+            // fraction sans trou : ce sont elles, les problèmes rédigés.
+            if (cellules.some(c => c.coupee && (c.trou || (c.fractions && c.casse)))) {
+                cols--; continue;
+            }
             // UN TABLEAU RESSERRÉ EST UN TABLEAU OÙ L'ON N'ÉCRIT PLUS. Ses cases
             // se rétrécissent pour tenir dans la colonne ; en dessous d'un
             // centimètre et demi, l'élève n'a plus la place d'y poser un nombre
@@ -1353,7 +1428,9 @@ export function composerBlocs(exos, opts, mesurer) {
             // chose qui permette, depuis l'aperçu, de désigner celle qu'on
             // veut retirer ou retirer au sort — le numéro imprimé, lui, court
             // sur toute la feuille et saute les exercices non numérotés.
-            return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, trouDessine, tableau, bonds, hBonds, sansPointilles, h,
+            return { lignes, coupee: lignes.length > lignesVoulues,
+                casse: coupureCasseUneExpression(lignes),
+                choix, memeLigne, trou, trouDessine, tableau, bonds, hBonds, sansPointilles, h,
                 // CE QUE LA QUESTION A DEMANDÉ voyage avec sa cellule : le
                 // traceur, plus bas, n'a plus accès à `q`.
                 nRep, hRep,

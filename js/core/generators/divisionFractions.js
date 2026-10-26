@@ -325,7 +325,21 @@ export function question(etape, rng) {
             // sont les trois cases de la réponse — la première recopiée, la
             // seconde retournée, le résultat — et c'est la transformation
             // qu'on évalue, pas le produit.
-            papier: `${a}/${b} ÷ ${c}/${d} = …/… × …/… = …/…`,
+            //
+            // ET LA MULTIPLICATION PASSE À LA LIGNE, EXPRÈS. Sur une seule
+            // ligne, cet énoncé mesure 85 mm ; une colonne de fiche en fait
+            // 78. Il débordait donc, et la feuille reculait de deux colonnes à
+            // UNE pour le sauver — vingt questions sur deux pages, la moitié
+            // droite blanche. Forcer les deux colonnes sans rien changer
+            // d'autre a donné, photo à l'appui, « 2/5 ÷ 5/9 = …/… × » et,
+            // seule au bord droit, une barre de fraction sans numérateur.
+            //
+            // Le retour à la ligne est VOULU, et la feuille fait la
+            // différence (voir `lignesVoulues` dans `core/fiche.js`) : une
+            // ligne qu'on choisit ne coûte pas une colonne, une coupure subie
+            // oui. C'est aussi ce que l'élève écrit au tableau — la division
+            // d'abord, la multiplication qui la remplace dessous.
+            papier: `${a}/${b} ÷ ${c}/${d} =\n…/… × …/… =\n…/…`,
             htmlReponse: ligneDeDivision(a, b, c, d),
             kind: 'numeric', reponse: `${a}|${b}|${d}|${c}|${n}|${m}`,
             pourquoi: `On garde la première et l'on multiplie par l'INVERSE de la seconde : `

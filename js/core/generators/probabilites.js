@@ -353,15 +353,21 @@ export function question(etape, rng) {
         const article = h.genre === 'f' ? 'une' : 'un';
         const objet = h.objets.replace(/s$/, '');
         return {
-            enonce: `${h.contenant} contient ${favorables} ${h.objets} ${h.couleurs[i]} et ${
-                autres} ${h.objets} ${h.couleurs[j]}, soit ${total} ${h.objets} EN TOUT. `
-                + `On en tire ${article} au hasard, sans regarder.`,
+            // LE TOTAL RESTE ÉCRIT — c'est le dénominateur, et la correction y
+            // revient —, mais il tient entre parenthèses. Le nom de l'objet ne
+            // se répète plus trois fois, et « sans regarder » est passé dans
+            // l'aide : ce qui compte, « au hasard », est resté. 169 caractères
+            // mesurés, 112 après. Rémy : « les énoncés doivent être plus
+            // court, vraiment sans exception ».
+            enonce: `${h.contenant} : ${favorables} ${h.objets} ${h.couleurs[i]} et ${
+                autres} ${h.couleurs[j]} (${total} en tout). `
+                + `On en tire ${article} au hasard.`,
             question: pasCelle
                 // « NE PAS tirer DE boule verte » : après une négation, l'article
                 // indéfini devient « de ». « ne pas tirer une boule verte » se
                 // comprend, mais ne se dit pas.
-                ? `Quelle est la probabilité de NE PAS tirer de ${objet} ${h.singulier[i]} ?`
-                : `Quelle est la probabilité de tirer ${article} ${objet} ${h.singulier[i]} ?`,
+                ? `Probabilité de NE PAS tirer de ${objet} ${h.singulier[i]} ?`
+                : `Probabilité de tirer ${article} ${objet} ${h.singulier[i]} ?`,
             htmlReponse: fractionATrous(),
             // LE DESSIN DE LA SITUATION — « des urnes etc. ». Les favorables
             // d'abord, pour que le dessin se lise dans l'ordre de la phrase.

@@ -239,8 +239,15 @@ export function consigneDe(t, { motsDuVecteur = true } = {}) {
         return `Colorie l'image de la figure bleue par la translation qui la fait glisser de `
             + `${direVecteur(t.vecteur)}.`;
     }
+    // LA GLOSE DES AIGUILLES EST DANS L'INDICE, PAS DANS LA QUESTION.
+    // « le sens direct (dans le sens inverse des aiguilles d'une montre) »
+    // faisait 139 caractères à lui seul, et répétait deux fois le mot « sens ».
+    // Rémy : « les énoncés doivent être plus court, vraiment sans exception ».
+    // Le troisième indice de cette marche la redonne en entier, montre en
+    // main — et un indice se déplie quand l'élève en a besoin, une question
+    // non.
     return 'Colorie l\'image de la figure bleue par le quart de tour dans '
-        + `${direLeSens(t.quarts)}, autour de O.`;
+        + `${direLeSens(t.quarts, { avecAiguilles: false })}, autour de O.`;
 }
 
 /** L'aide qui apprend la MÉTHODE, pas la réponse. */

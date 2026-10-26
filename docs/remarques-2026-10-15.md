@@ -3825,3 +3825,65 @@ ET LA VIRGULE : elle est déjà décidée par la réponse elle-même
 par l'exercice qui la demande. Sur une fraction, les deux cases sont entières
 et la touche ne doit PAS paraître — une virgule sous un dénominateur est une
 porte vers une réponse qui n'existe pas. On le mesure plutôt que de le croire.
+
+
+---
+
+## 33. Quatre demandes et un relevé d'atelier — 26 octobre
+
+Il envoie d'abord un relevé de l'atelier (`atelier-tous-2026-10-26-07-30.html`,
+exercice « Plus Petit, Plus Grand… ou Égal »), puis quatre phrases.
+
+
+### a. « le tout effacer de l'atelier ne fonctionne pas »
+
+UN DÉFAUT, ET IL EST DANS L'OUTIL QUI SERT À MESURER LES AUTRES. Le relevé
+qu'il vient d'envoyer porte justement les carnets de treize autres exercices :
+il a donc essayé de les effacer, et ils sont toujours là. À MESURER AVANT DE
+TOUCHER AU CODE — le bouton existe, sa fenêtre énumère ce qu'elle va retirer,
+et le code retire bien les clefs : le défaut est ailleurs que là où on le
+croit.
+
+
+### b. « pour tracer une fonction, ce serait bien de pouvoir aussi avoir des
+### questions avec remplissage de tableau »
+
+LE TABLEAU DE VALEURS EST L'ÉTAPE QU'ON SAUTE. Pour tracer, on calcule
+d'abord f(−2), f(−1), f(0)… et c'est ce calcul-là qui se travaille. Aujourd'hui
+l'exercice demande le tracé (ou la lecture) ; il manque la question d'avant.
+
+### c. « pour diviser par 2 fractions, par défaut mets 2 colonnes pour
+### l'impression »
+
+« Diviser par une Fraction » (`frac-division`) : `colonnes` par défaut à 2.
+Même demande que pour « La Réciproque de Pythagore », « Le Détour par le
+Nombre Rond » et « Réflexe des Signes » — c'est la quatrième fois, et cela
+dit quelque chose : un calcul court tient à deux par ligne, et une fiche à une
+colonne gâche la moitié de la page.
+
+### d. « de manière générale, les énoncés doivent être plus court, vraiment
+### sans exception. On n'a pas à expliquer qu'il faut ranger dans l'ordre
+### croissant pour calculer une médiane »
+
+CELLE-LÀ VAUT POUR TOUT LE CATALOGUE, et « vraiment sans exception » est la
+partie qui compte. Un énoncé long n'est pas un énoncé généreux : il DONNE la
+méthode, et l'exercice ne mesure alors plus rien. « Range les nombres dans
+l'ordre croissant, puis trouve la médiane » n'est pas une question, c'est la
+correction.
+
+ET LA LIGNE DE PARTAGE EST CLAIRE, ELLE : la méthode appartient à l'INDICE et
+au ROBOT, pas à la question. Son propre carnet sur « Moyenne, Médiane,
+Étendue » le disait déjà — « quand on demande la médiane, EN INDICE, il faut
+dire qu'il faut ranger les nombres dans l'ordre croissant ». Même jour, deux
+phrases, aucune contradiction : l'aide se déplie, l'énoncé ne se déplie pas.
+
+À MESURER SUR TOUT LE CATALOGUE, pas à l'œil sur trois exercices.
+
+
+### Et son carnet, sur l'écran qu'il photographiait
+
+> « Pour les couleurs des lignes dans les tableaux, affiche des pastilles de
+> couleur et la possibilité de choisir dans une palette (un select color) »
+
+Suite de sa demande de réglages globaux de tableau (carnet de « Somme ou
+Produit ? »). Noté, pas encore fait.

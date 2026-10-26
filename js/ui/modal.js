@@ -81,6 +81,54 @@ export function showToast(message, type = 'success', duration = 3000) {
     return toast;
 }
 
+/**
+ * L'ÉTAGE D'UNE FENÊTRE SE CALCULE, IL NE SE DEVINE PLUS.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « le tout effacer de l'atelier ne fonctionne pas ».
+ *
+ * MESURÉ : le bouton ouvrait bien sa fenêtre — énoncé, liste de ce qui part,
+ * « ✕ Tout effacer » et « Annuler » étaient dans le document, à la bonne
+ * place, de la bonne taille. `document.elementFromPoint` au centre du bouton
+ * de confirmation répondait `div.atl-gauche` : le panneau de l'Atelier, qui
+ * vit à l'étage 100001 pour passer au-dessus de la palette d'auteur. La
+ * fenêtre, elle, était à 9999. On ne la voyait pas, on ne pouvait pas la
+ * cliquer, et le bouton paraissait mort.
+ *
+ * ET CE N'ÉTAIT PAS QUE CE BOUTON : « Tout contrôler » demande confirmation
+ * de la même façon, et les neuf avis de l'Atelier partaient dans le même
+ * trou. Un seul chiffre écrit en dur, neuf gestes muets.
+ *
+ * 9999 NE POUVAIT PAS SUFFIRE, et chaque fois on l'a rattrapé au cas par cas :
+ * la couche de jeu est à 10000, l'appelant qui le savait passait son
+ * `zIndex` ; l'Atelier est à 100001, et personne ne l'a su. Un étage écrit en
+ * dur est une promesse sur un voisin qu'on ne connaît pas encore.
+ *
+ * ON REGARDE DONC CE QUI EST PEINT. Les couches plein écran sont des enfants
+ * directs de `<body>` — une dizaine d'éléments, donc une mesure qui ne coûte
+ * rien — et l'on se place au-dessus de la plus haute qui soit VISIBLE.
+ * Une couche cachée ne compte pas, sinon l'étage ne redescendrait jamais.
+ *
+ * ET UNE COUCHE QUI NE PREND PAS LES CLICS NON PLUS : le porte-avis
+ * (`#toast-container`, `pointer-events: none`) est tout en haut par nature —
+ * un avis ne bloque rien et doit se lire par-dessus tout. Le compter
+ * pousserait chaque fenêtre un cran plus haut que lui, pour rien.
+ */
+export function etageLibre() {
+    let haut = 9998;
+    try {
+        for (const el of document.body.children) {
+            const st = getComputedStyle(el);
+            if (st.position === 'static' || st.display === 'none'
+                || st.visibility === 'hidden' || st.pointerEvents === 'none') continue;
+            const z = parseInt(st.zIndex, 10);
+            if (Number.isFinite(z) && z > haut) haut = z;
+        }
+    } catch (e) { /* une page sans corps : on garde le plancher */ }
+    return haut + 1;
+}
+
 export function showModal(title, contentHTML, options = {}) {
     const overlay = document.createElement('div');
     // LA MÊME CLASSE QUE LES AUTRES FENÊTRES, et ce n'est pas cosmétique.
@@ -102,7 +150,12 @@ export function showModal(title, contentHTML, options = {}) {
     // le contre-exemple était bien dans le document, avec son texte et son
     // dessin, et personne ne pouvait le voir. Un appelant qui sait qu'il est
     // dans la couche de jeu passe donc son étage.
-    const etage = options.zIndex || 9999;
+    //
+    // IL N'A PLUS BESOIN DE LE SAVOIR : `etageLibre` regarde ce qui est peint
+    // et se place au-dessus. Le `zIndex` passé l'emporte encore — un appelant
+    // qui veut un étage précis l'obtient —, mais ne rien passer ne range plus
+    // la fenêtre derrière le panneau d'où l'on vient de la demander.
+    const etage = options.zIndex || etageLibre();
     overlay.style = `position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:${etage}; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(4px); animation: fadeIn 0.2s ease;`;
     
     const width = options.width || '500px';

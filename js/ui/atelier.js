@@ -672,6 +672,12 @@ function assurerPanneau() {
             }
             .atl-tout-dit { padding: 4px 2px; }
             .atl-tout-dit p { margin: 0 0 10px; }
+            /* LA PHRASE QUI RASSURE NE DOIT PAS SE LIRE COMME UNE QUATRIÈME
+               LIGNE DE CE QUI PART. Vue sur la photo, « L'exercice choisi […]
+               RESTENT » se collait sous « 2 ligne(s) de console », alignée sur
+               le texte des puces : dans une fenêtre qui annonce un effacement,
+               c'est la pire ligne à confondre avec le reste. */
+            .atl-tout-dit ul { margin: 0 0 14px; }
             .atl-controle { font-size: .74rem; line-height: 1.4; }
             .atl-controle-ligne { margin-bottom: 5px; }
             .atl-controle-nom { font-weight: 800; }

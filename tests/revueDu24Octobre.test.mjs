@@ -68,10 +68,19 @@ test('SUR LE PAPIER, ON ÉCRIT LA LIGNE À COMPLÉTER', () => {
     assert.match(vues.get('inverse-entier'), /^Inverse de \d+ : …\/…$/);
     assert.match(vues.get('produit-un'), /^\d+\/\d+ × …\/… = 1$/);
     assert.match(vues.get('par-un-entier'), /^\d+\/\d+ ÷ \d+ = …\/…$/);
+    // LA DIVISION PAR UNE FRACTION POSE SA MULTIPLICATION À LA LIGNE.
+    //
+    // Sur UNE ligne, cet énoncé mesure 85 mm pour une colonne de fiche qui en
+    // fait 78 : il débordait, et la feuille reculait de deux colonnes à UNE
+    // pour le sauver — vingt questions sur deux pages, la moitié droite
+    // blanche. Rémy : « pour diviser par 2 fractions, par défaut mets 2
+    // colonnes pour l'impression ». Trois lignes VOULUES ne coûtent pas de
+    // colonne (voir `lignesVoulues` dans `core/fiche.js`), et c'est aussi ce
+    // que l'élève écrit au tableau.
     // LA LIGNE QU'IL A ÉCRITE DANS SON CARNET, mot pour mot :
     // « 3/2 : 6/7 = .../... * .../.... = ».
     assert.match(vues.get('par-une-fraction'),
-        /^\d+\/\d+ ÷ \d+\/\d+ = …\/… × …\/… = …\/…$/);
+        /^\d+\/\d+ ÷ \d+\/\d+ =\n…\/… × …\/… =\n…\/…$/);
     // ET L'ÉCRAN NE BOUGE PAS : il pose la question en toutes lettres.
     const ecran = divisionFractionsGenerator.generate({ marches: ['inverse'] },
         { index: 0, total: 1, rng: makeRng('e') });
@@ -688,7 +697,13 @@ test('LE SAC ET LA ROUE SE VOIENT', () => {
             assert.ok(fig, `${marche} : aucune illustration`);
             // LE DESSIN COMPTE CE QUE LA PHRASE ANNONCE. Un sac de dix boules
             // sous un énoncé qui en annonce douze apprendrait à ne pas regarder.
-            const total = Number(it.prompt.text.match(/soit (\d+) |partagée en (\d+) /)
+            // LE TOTAL S'ÉCRIT ENTRE PARENTHÈSES DEPUIS QU'ON A RACCOURCI.
+            // « … soit 7 stylos EN TOUT. » est devenu « … (7 en tout). » —
+            // 169 caractères mesurés, 112 après. Rémy : « les énoncés doivent
+            // être plus court, vraiment sans exception ». Le total reste
+            // écrit, parce que c'est le dénominateur.
+            const total = Number(it.prompt.text
+                .match(/\((\d+) en tout\)|soit (\d+) |partagée en (\d+) /)
                 ?.slice(1).find(Boolean));
             assert.ok(Number.isFinite(total), `${marche} : total illisible`);
             // ON COMPTE PAR LA CLASSE, PAS PAR LA BALISE : la roue porte aussi

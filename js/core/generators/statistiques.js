@@ -66,27 +66,27 @@ const SITUATIONS = [
     {
         quoiNu: 'notes', genre: 'f', unite: '', de: 'de la classe',
         qui: 'élèves', mesure: 'note', centre: 12, ecart: 4,
-        phrase: (n) => `Voici les notes sur 20 obtenues par ${n} élèves de la classe.`
+        phrase: (n) => `Notes sur 20 de ${n} élèves :`
     },
     {
         quoiNu: 'tailles', genre: 'f', unite: 'cm', de: 'de l\'équipe',
         qui: 'joueuses', mesure: 'taille', centre: 165, ecart: 9,
-        phrase: (n) => `Voici les tailles, en centimètres, des ${n} joueuses de l'équipe.`
+        phrase: (n) => `Tailles (cm) de ${n} joueuses :`
     },
     {
         quoiNu: 'âges', genre: 'm', unite: 'ans', de: 'du club',
         qui: 'membres', mesure: 'âge', centre: 14, ecart: 3,
-        phrase: (n) => `Voici les âges, en années, des ${n} membres du club d'échecs.`
+        phrase: (n) => `Âges (ans) de ${n} membres du club :`
     },
     {
         quoiNu: 'températures', genre: 'f', unite: '°C', de: 'de la semaine',
         qui: 'jours', mesure: 'température', centre: 18, ecart: 5,
-        phrase: (n) => `Voici les températures, en degrés, relevées pendant ${n} jours.`
+        phrase: (n) => `Températures (°C) de ${n} jours :`
     },
     {
         quoiNu: 'temps', genre: 'm', unite: 's', de: 'de la course',
         qui: 'coureurs', mesure: 'temps', centre: 45, ecart: 6,
-        phrase: (n) => `Voici les temps, en secondes, des ${n} coureurs de la finale.`
+        phrase: (n) => `Temps (s) de ${n} coureurs :`
     }
 ];
 
@@ -174,8 +174,12 @@ export function question(etape, rng) {
         const serie = rng.shuffle([...Array(combien).fill(valeur), ...autres]);
         return {
             enonce: `${s.phrase(serie.length)}\n${ecrireSerie(serie)}`,
-            question: `Combien ${deDevant(s.qui)} ont ${s.genre === 'f' ? 'une' : 'un'} ${
-                s.mesure} de ${valeur}${s.unite ? ' ' + s.unite : ''} ?`,
+            // ON NE REDIT PAS CE QUE L'ÉTIQUETTE VIENT DE DIRE. « Âges (ans)
+            // de 9 membres du club : … » puis « Combien de membres ont un âge
+            // de 16 ans ? » nomme deux fois les membres et deux fois les âges,
+            // pour une question qui tient en quatre mots. Rémy : « les énoncés
+            // doivent être plus court, vraiment sans exception ».
+            question: `Combien ont ${valeur}${s.unite ? ' ' + s.unite : ''} ?`,
             kind: 'numeric', reponse: combien, serie,
             pourquoi: `On compte : ${valeur} apparaît ${combien} fois dans la série. `
                 + 'C\'est l\'EFFECTIF de cette valeur.',
@@ -190,7 +194,7 @@ export function question(etape, rng) {
         const e = etendue(serie);
         return {
             enonce: `${s.phrase(serie.length)}\n${ecrireSerie(serie)}`,
-            question: 'Quelle est l\'étendue de cette série ?',
+            question: 'Étendue ?',
             kind: 'numeric', reponse: e, serie, unite: s.unite,
             pourquoi: `La plus grande valeur est ${Math.max(...serie)}, la plus petite ${
                 Math.min(...serie)} : l'étendue vaut ${Math.max(...serie)} − ${
@@ -213,7 +217,7 @@ export function question(etape, rng) {
         const somme = serie.reduce((a, b) => a + b, 0);
         return {
             enonce: `${s.phrase(serie.length)}\n${ecrireSerie(serie)}`,
-            question: 'Quelle est la moyenne de cette série ?',
+            question: 'Moyenne ?',
             kind: 'numeric', reponse: vraie, serie, unite: s.unite,
             pourquoi: `La somme vaut ${somme}, il y a ${serie.length} valeurs : `
                 + `${somme} ÷ ${serie.length} = ${enFrancais(vraie)}${s.unite ? ' ' + s.unite : ''}.`,
@@ -258,7 +262,7 @@ export function question(etape, rng) {
         const demi = Math.floor(tri.length / 2);
         return {
             enonce: `${s.phrase(serie.length)}\n${ecrireSerie(serie)}`,
-            question: 'Quelle est la médiane de cette série ?',
+            question: 'Médiane ?',
             kind: 'numeric', reponse: m, serie, unite: s.unite,
             // LA VIRGULE EST POSSIBLE SUR LA SÉRIE PAIRE, et sur elle seule :
             // la médiane y est la MOYENNE des deux valeurs du milieu, donc
@@ -331,7 +335,7 @@ export function question(etape, rng) {
         const f = frequence(serie, valeur);
         return {
             enonce: `${s.phrase(total)}\n${ecrireSerie(serie)}`,
-            question: `Quelle est la fréquence de la valeur ${valeur}, en pourcentage ?`,
+            question: `Fréquence de ${valeur}, en % ?`,
             kind: 'numeric', reponse: f, serie, unite: '%',
             pourquoi: `${combien} fois sur ${total} : ${combien} ÷ ${total} = ${
                 enFrancais(combien / total)}, soit ${enFrancais(f)} %.`,
@@ -379,7 +383,7 @@ export function question(etape, rng) {
             enonce: `La moyenne des ${serie.length} ${s.quoiNu} ${s.de} est de ${m}${
                 s.unite ? ' ' + s.unite : ''}. `
                 + `On en connaît ${spellInteger(serie.length - 1)} :\n${ecrireSerie(connues)}`,
-            question: 'Quelle est la valeur qui manque ?',
+            question: 'Valeur manquante ?',
             kind: 'numeric', reponse: cachee, serie, unite: s.unite,
             pourquoi: `La somme de toutes les valeurs vaut ${serie.length} × ${m} = ${somme}. `
                 + `Celles qu'on connaît font ${connues.reduce((a, b) => a + b, 0)}. `

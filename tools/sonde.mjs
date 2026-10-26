@@ -333,11 +333,59 @@ export async function ouvrirSonde(o = {}) {
          * chiffres parfaitement crédibles. Vu sur le tiroir du catalogue, où
          * trois crochets devinés mesuraient un panneau resté fermé.
          *
+         * ET IL JETTE AUSSI QUAND LE BOUTON EST RECOUVERT, ce qui est l'autre
+         * moitié du même piège. `element.click()` est un clic du DOM : il part
+         * même quand une couche est peinte par-dessus, et il réussit. La sonde
+         * voit donc une fenêtre s'ouvrir, des cases se cocher, un compte rendu
+         * s'effacer — pendant que personne, à l'écran, ne peut obtenir cela.
+         *
+         * MESURÉ, et c'est ce qui a payé cette ligne : « le tout effacer de
+         * l'atelier ne fonctionne pas » (Rémy, 26 octobre). La sonde dédiée
+         * était VERTE depuis des semaines. La fenêtre de confirmation existait,
+         * bien formée, et `document.elementFromPoint` au centre de son bouton
+         * répondait `div.atl-gauche` : le panneau de l'Atelier, à l'étage
+         * 100001, par-dessus une fenêtre restée à 9999.
+         *
+         * C'est la même question que `deplier` pose aux replis fermés, posée
+         * cette fois à TOUS les clics : avant de douter de l'outil, on demande
+         * à `elementFromPoint` QUI est là.
+         *
+         * ON NE JETTE PAS SI LE CENTRE EST HORS DE L'ÉCRAN : `elementFromPoint`
+         * ne rend alors rien, et « hors cadre » n'est pas « recouvert ». Une
+         * sonde qui clique un bouton plus bas que le pli reste légitime.
+         *
          * @param {string} selecteur
          * @param {string} [pourquoi] ce qu'on croyait ouvrir, pour le message
          */
         async cliquer(selecteur, pourquoi = '') {
             await this.doitExister(selecteur, pourquoi);
+            const devant = await page.evaluate((s) => {
+                const el = document.querySelector(s);
+                const r = el.getBoundingClientRect();
+                if (!r.width || !r.height) return null;
+                const x = r.left + r.width / 2, y = r.top + r.height / 2;
+                if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return null;
+                const la = document.elementFromPoint(x, y);
+                if (!la || la === el || el.contains(la) || la.contains(el)) return null;
+                const nommer = (n) => n.tagName.toLowerCase()
+                    + (n.id ? '#' + n.id : '')
+                    + (n.className && typeof n.className === 'string'
+                        ? '.' + n.className.trim().split(/\s+/)[0] : '');
+                const etage = (n) => {
+                    for (let p = n; p && p !== document.documentElement; p = p.parentElement) {
+                        const z = getComputedStyle(p).zIndex;
+                        if (z && z !== 'auto') return `${nommer(p)} à l'étage ${z}`;
+                    }
+                    return 'sans étage déclaré';
+                };
+                return { la: nommer(la), sonEtage: etage(la), cible: etage(el) };
+            }, selecteur);
+            if (devant) {
+                throw new Error(`« ${selecteur} »${pourquoi ? ` (${pourquoi})` : ''} est RECOUVERT :`
+                    + ` au centre de son rectangle, c'est « ${devant.la} » qui répond.`
+                    + `\n  devant : ${devant.sonEtage}\n  dessous : ${devant.cible}`
+                    + '\n  Un clic du DOM passerait quand même ; le doigt de Rémy, non.');
+            }
             await page.evaluate((s) => document.querySelector(s).click(), selecteur);
             await dormir(400);
         },

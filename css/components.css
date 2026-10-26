@@ -434,9 +434,19 @@ body.mobile-view .path-header-toggle { position: static; padding-top: 20px; }
    bords et centré. Ancré au seul bord droit, un message long grandissait vers
    la gauche jusqu'à toucher le bord de l'écran : 20 px de marge à droite, zéro
    à gauche. Et il se pose AU-DESSUS de la barre du bas, qu'il recouvrait. */
+/* UN AVIS SE LIT PAR-DESSUS TOUT, et 10000 ne suffisait pas.
+   Le panneau de l'Atelier vit à 100001 (il doit passer au-dessus de la
+   palette d'auteur) : les neuf avis qu'il donne — « Relevé copié »,
+   « Compte rendu effacé », « Photo du volet enregistrée » — étaient peints
+   derrière lui, donc invisibles. MESURÉ en même temps que le « Tout
+   effacer » qui ne faisait rien.
+   ON LE MET TOUT EN HAUT, ET C'EST SANS RISQUE : `pointer-events: none`,
+   un avis ne prend aucun clic et ne peut donc rien bloquer. C'est aussi
+   pourquoi `etageLibre` (ui/modal.js) ne le compte pas : une fenêtre n'a
+   pas à monter au-dessus d'une couche qui ne retient rien. */
 #toast-container {
     display: none; position: fixed; bottom: 20px; right: 20px; left: auto;
-    z-index: 10000; flex-direction: column; align-items: flex-end; gap: 10px;
+    z-index: 2000000; flex-direction: column; align-items: flex-end; gap: 10px;
     pointer-events: none;
 }
 #toast-container > * { max-width: 100%; box-sizing: border-box; }

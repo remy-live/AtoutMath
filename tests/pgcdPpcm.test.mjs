@@ -745,8 +745,13 @@ test('LES PROBLÈMES SONT VRAIMENT MÊLÉS SUR LA FEUILLE, PAS SEULEMENT DANS LA
         G.generate(exo.params, { rng: makeRng('mele' + k), index: k, total: 20 }));
 
     // LES TROIS SITUATIONS APPARAISSENT, et les deux notions avec elles.
+    // LA QUESTION DES PAQUETS A RACCOURCI — « Quel est le plus grand nombre de
+    // bouquets qu'il puisse faire ? » est devenu « Combien de bouquets au
+    // maximum ? ». Rémy : « les énoncés doivent être plus court, vraiment sans
+    // exception ». Cette épreuve lisait l'ANCIENNE fin de phrase et comptait
+    // alors deux situations au lieu de trois.
     const situations = new Set(suite.map(it => {
-        if (/puisse faire \?$/.test(it.prompt.text)) return 'paquets';
+        if (/au maximum \?$/.test(it.prompt.text)) return 'paquets';
         if (/carré/.test(it.prompt.text)) return 'carre';
         return 'ensemble';
     }));
@@ -759,7 +764,7 @@ test('LES PROBLÈMES SONT VRAIMENT MÊLÉS SUR LA FEUILLE, PAS SEULEMENT DANS LA
     // en donne beaucoup plus. Six est bas exprès : on garde le mélange, pas une
     // suite particulière du tirage.
     let changements = 0;
-    const type = (it) => (/puisse faire \?$/.test(it.prompt.text) ? 'p'
+    const type = (it) => (/au maximum \?$/.test(it.prompt.text) ? 'p'
         : /carré/.test(it.prompt.text) ? 'c' : 'e');
     for (let k = 1; k < suite.length; k++) {
         if (type(suite[k]) !== type(suite[k - 1])) changements++;

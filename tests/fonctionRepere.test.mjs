@@ -32,6 +32,18 @@ import { fonctionFicheGenerator as F, tirerFiche } from '../js/core/generators/f
 const MAX = 6;
 const point = (it) => it.answer.split(',').map(Number);
 
+/**
+ * LES MARCHES QUI POSENT UN POINT — c'est-à-dire toutes sauf une.
+ *
+ * RÉMY : « pour tracer une fonction, ce serait bien de pouvoir aussi avoir des
+ * questions avec remplissage de tableau ». Le tableau de valeurs se REMPLIT au
+ * clavier : il n'a pas de point, pas de `answer` en « x,y », et les épreuves
+ * ci-dessous le liraient comme « (NaN ; undefined) sort du repère ». Son
+ * contrat à elle est gardé dans `tests/tableauDeValeurs.test.mjs` — trois
+ * cases, trois morceaux de réponse, toutes les valeurs dans la grille.
+ */
+const POINTS = ETAPES.filter(e => e.id !== 'tableau');
+
 /** Relit « f(x) = −2x + 3 » pour en retirer a et b, sans croire le générateur. */
 function lireAffine(texte) {
     const m = texte.match(/f\(x\) = (−?)(\d*)x(?:\s*([+−])\s*(\d+))?/);
@@ -44,7 +56,7 @@ function lireAffine(texte) {
 test('AUCUN POINT NE SORT DU REPÈRE', () => {
     // UN POINT HORS GRILLE N'EST PAS CLIQUABLE, et l'élève ne peut pas le
     // savoir : il voit une question juste et un repère qui ne répond pas.
-    for (const e of ETAPES) {
+    for (const e of POINTS) {
         for (let k = 0; k < 60; k++) {
             const it = G.generate({ marches: [e.id] },
                 { rng: makeRng(`${e.id}-${k}`), index: k, total: 60 });
@@ -61,7 +73,7 @@ test('AUCUN POINT NE SORT DU REPÈRE', () => {
 });
 
 test('LE POINT EST SUR LA DROITE, ET C\'EST CELUI QU\'ON DEMANDE', () => {
-    for (const e of ETAPES) {
+    for (const e of POINTS) {
         for (let k = 0; k < 50; k++) {
             const it = G.generate({ marches: [e.id] },
                 { rng: makeRng(`j-${e.id}-${k}`), index: k, total: 50 });
@@ -141,7 +153,10 @@ test('LES TEMPS SE SUIVENT, ET TROIS COMPÉTENCES SONT DISTINGUÉES', () => {
     // rien mesurer — un identifiant inventé rend `undefined`, et `ETAPES[0]`
     // prend alors sa place en silence.
     assert.ok(!ETAPES.some(e => e.id === 'le-pas'), 'la marche du pas est revenue');
-    assert.equal(ETAPES.length, 6);
+    // SEPT MARCHES DEPUIS LE TABLEAU DE VALEURS, qui vient en premier parce
+    // qu'il vient avant le tracé : on calcule f(−2), f(0), f(3), PUIS on place.
+    assert.equal(ETAPES.length, 7);
+    assert.equal(ETAPES[0].id, 'tableau', 'le tableau de valeurs n\'ouvre plus l\'exercice');
     const vues = new Set(ETAPES.map(e =>
         G.generate({ marches: [e.id] }, { rng: makeRng('s' + e.id), index: 0, total: 1 }).skillId));
     assert.deepEqual([...vues].sort(),

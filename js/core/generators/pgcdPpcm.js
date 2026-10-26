@@ -331,17 +331,22 @@ const tousSes = (genre) => (genre === 'f' ? 'toutes ses' : 'tous ses');
 // commune, « À midi pile, ils sont ensemble ». Elle marche pour deux cars et
 // ne veut rien dire pour deux phares — lus sur le PDF imprimé : « Le phare du
 // port s'allume toutes les 20 secondes […] À midi pile, ils sont ensemble. »
+// COURTES, ET LA SITUATION TIENT ENCORE DEBOUT. Rémy : « les énoncés doivent
+// être plus court, vraiment sans exception ». Le phare mesurait 200 caractères
+// — le plus long du catalogue —, dont une moitié répétait l'unité et le verbe.
+// Ce qu'on garde : DEUX rythmes, et un départ COMMUN ; sans ce départ commun
+// la question n'a pas de réponse.
 const ENSEMBLE = [
-    { a: 'Le car bleu', b: 'Le car vert', unite: 'minutes', verbe: 'part de la gare',
-        debut: 'À midi pile, ils partent ensemble.',
-        repart: 'repartiront-ils en même temps' },
-    { a: 'Le phare du port', b: 'La bouée du large', unite: 'secondes', verbe: 's\'allume',
-        debut: 'À minuit pile, ils s\'allument en même temps.',
-        repart: 's\'allumeront-ils de nouveau ensemble' },
-    { a: 'La grande roue', b: 'Le petit engrenage', unite: 'secondes',
+    { a: 'Un car bleu', b: 'Un car vert', unite: 'minutes', verbe: 'part',
+        debut: 'Ils partent ensemble à midi.',
+        repart: 'repartiront-ils ensemble' },
+    { a: 'Un phare', b: 'Une bouée', unite: 'secondes', verbe: 's\'allume',
+        debut: 'Ils s\'allument ensemble à minuit.',
+        repart: 's\'allumeront-ils ensemble' },
+    { a: 'Une roue', b: 'Un engrenage', unite: 'secondes',
         verbe: 'passe par sa marque',
-        debut: 'Au départ, tous les deux sont à leur marque.',
-        repart: 'seront-ils de nouveau tous les deux à leur marque' }
+        debut: 'Au départ, les deux y sont.',
+        repart: 'y seront-ils ensemble' }
 ];
 
 //
@@ -1001,10 +1006,16 @@ export function question(etape, rng, genre = 'les-deux') {
         const d = pgcd(a, b);
         const identiques = h.gp === 'f' ? 'TOUTES IDENTIQUES' : 'TOUS IDENTIQUES';
         return {
+            // COURT, ET LA QUESTION RESTE ENTIÈRE. Rémy : « les énoncés
+            // doivent être plus court, vraiment sans exception ». « en
+            // utilisant toutes ses roses et toutes ses tulipes » devient
+            // « sans rien laisser » — c'est la même contrainte en trois mots,
+            // et c'est elle qui force le PGCD plutôt qu'un diviseur commun
+            // quelconque. 197 caractères mesurés, 123 après.
             enonce: `${h.qui} a ${a} ${h.a} et ${b} ${h.b}. ${
-                h.il === 'elle' ? 'Elle' : 'Il'} veut faire des ${h.paquet} `
-                + `${identiques}, en utilisant ${tousSes(h.ga)} ${h.a} et ${tousSes(h.gb)} ${h.b}.`,
-            question: `Quel est le plus grand nombre de ${h.paquet} qu'${h.il} puisse faire ?`,
+                h.il === 'elle' ? 'Elle' : 'Il'} fait des ${h.paquet} `
+                + `${identiques}, sans rien laisser.`,
+            question: `Combien de ${h.paquet} au maximum ?`,
             kind: 'numeric', reponse: d, nombres: [a, b],
             pourquoi: `Le nombre de ${h.paquet} divise ${a} ET ${b} : c'est un diviseur commun. `
                 + `Le plus grand est le PGCD : ${pgcdExplique(a, b).ecrit} = ${d}. `
@@ -1020,8 +1031,11 @@ export function question(etape, rng, genre = 'les-deux') {
         const [a, b] = choisir(COUPLES_RYTHME, rng);
         const m = ppcm(a, b);
         return {
+            // L'UNITÉ NE S'ÉCRIT QU'UNE FOIS : « toutes les 28 secondes, une
+            // bouée toutes les 42 » se lit sans hésiter, et la question la
+            // redit de toute façon.
             enonce: `${h.a} ${h.verbe} toutes les ${a} ${h.unite}, ${
-                h.b.toLowerCase()} toutes les ${b} ${h.unite}. ${h.debut}`,
+                h.b.toLowerCase()} toutes les ${b}. ${h.debut}`,
             question: `Dans combien de ${h.unite} ${h.repart} ?`,
             kind: 'numeric', reponse: m, unite: h.unite, nombres: [a, b],
             pourquoi: `Le moment cherché est un multiple de ${a} ET de ${b}. Le premier est le `
@@ -1037,10 +1051,12 @@ export function question(etape, rng, genre = 'les-deux') {
     const [a, b] = choisir(COUPLES_FACILES, rng);
     const m = ppcm(a, b);
     return {
-        enonce: `On pave ${h.lieu} avec des ${h.objet} rectangulaires de ${a} cm sur ${b} cm, `
-            + `${h.genre === 'f' ? 'toutes posées' : 'tous posés'} dans le même sens, `
-            + `sans en couper ${h.genre === 'f' ? 'aucune' : 'aucun'}.`,
-        question: 'Quel est le côté, en cm, du plus petit carré qu\'on puisse ainsi paver ?',
+        // « toutes posées dans le même sens, sans en couper aucune » tenait en
+        // une ligne et demie pour dire « on ne tourne pas, on ne coupe pas ».
+        // 198 caractères mesurés, 118 après.
+        enonce: `On pave ${h.lieu} avec des ${h.objet} de ${a} cm sur ${b} cm, `
+            + `${h.genre === 'f' ? 'toutes' : 'tous'} dans le même sens, sans en couper.`,
+        question: 'Côté, en cm, du plus petit carré ainsi pavé ?',
         kind: 'numeric', reponse: m, unite: 'cm', nombres: [a, b],
         pourquoi: `Le côté doit être un multiple de ${a} et de ${b} : le plus petit est le PPCM, `
             + `${ppcmExplique(a, b).ecrit} = ${m} cm. Il faudra ${(m / a) * (m / b)} ${h.objet}.`,

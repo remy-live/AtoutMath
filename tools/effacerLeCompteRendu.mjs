@@ -38,8 +38,18 @@ const dire = (q, ok, d = '') => {
 const PNG_ROUGE = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFElEQVR42mP8z8BQz0'
     + 'AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC';
 
+// LES CARNETS DES AUTRES EXERCICES, SEMÉS AVANT D'OUVRIR : c'est l'état de
+// Rémy, pas un état de laboratoire. Son relevé du 26 octobre portait
+// « Les carnets des autres exercices (13) » — et la sonde, qui ne remplissait
+// que celui de l'exercice courant, passait au vert sur un bouton mort.
+const PREFIXE = 'mathbox-atelier-notes';
+const AUTRES = ['dev-pas', 'frac-division', 'mes-duree', 'frac-graduation', 'frac-lire'];
+
 const s = await ouvrirSonde({ largeur: 1600, hauteur: 1000 });
 await s.identifier();
+await s.page.evaluate(({ p, ids }) => {
+    ids.forEach((id, i) => localStorage.setItem(`${p}-${id}`, `note numéro ${i + 1}`));
+}, { p: PREFIXE, ids: AUTRES });
 await s.page.evaluate(async () => {
     const m = await import('./js/ui/atelier.js');
     m.ouvrirAtelier('calc-add');
@@ -71,13 +81,26 @@ const plein = await s.page.evaluate(() => ({
     notes: (document.getElementById('atl-notes').value || '').trim().length,
     controle: document.querySelectorAll('#atl-controle .atl-controle-ligne').length,
     blocCache: document.getElementById('atl-bloc-controle').hidden,
-    rangee: (() => { try { return !!localStorage.getItem('mathbox-atelier-notes'); }
-        catch (e) { return false; } })(),
+    // TOUTES LES CLEFS DE CARNET, PAS « LA » CLEF. Le carnet est rangé par
+    // exercice depuis qu'une note prise sur l'encadrement repartait dans le
+    // relevé sous le titre du Sudoku. La sonde, elle, regardait encore
+    // l'ancienne clef unique — elle a donc annoncé RATÉ sur un carnet
+    // parfaitement rangé, et cette fausse alerte masquait le vrai défaut.
+    rangee: (() => {
+        try {
+            let n = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                if ((localStorage.key(i) || '').startsWith('mathbox-atelier-notes')) n++;
+            }
+            return n;
+        } catch (e) { return 0; }
+    })(),
     exo: (document.getElementById('atl-exo') || {}).value || ''
 }));
 dire('une capture est dedans', plein.photos === 1, `${plein.photos}`);
 dire('le carnet porte du texte', plein.notes > 0, `${plein.notes} caractère(s)`);
-dire('et il est rangé dans le navigateur', plein.rangee);
+dire('et les carnets sont rangés dans le navigateur', plein.rangee === AUTRES.length + 1,
+    `${plein.rangee} clef(s) pour ${AUTRES.length + 1} carnet(s)`);
 dire('le contrôle a rendu son verdict', plein.controle > 0 && !plein.blocCache,
     `${plein.controle} ligne(s)`);
 
@@ -99,7 +122,11 @@ if (fenetre) {
     dire('elle promet que l\'exercice reste', /RESTENT/.test(fenetre.texte));
     dire('et l\'on peut renoncer', fenetre.choix.some(c => /annuler/i.test(c)),
         fenetre.choix.join(' · '));
-    await s.page.evaluate(() => document.querySelector('[data-effacer="oui"]').click());
+    // ON CLIQUE COMME RÉMY, PAS COMME LE DOM. `element.click()` part même
+    // sous une couche peinte par-dessus : c'est ainsi que cette sonde est
+    // restée verte pendant que le bouton ne répondait à personne. `s.cliquer`
+    // demande maintenant à `elementFromPoint` qui est devant, et JETTE.
+    await s.cliquer('[data-effacer="oui"]', 'le « Tout effacer » de la fenêtre');
     await dormir(1200);
 }
 
@@ -109,8 +136,15 @@ const apres = await s.page.evaluate(() => ({
     notes: (document.getElementById('atl-notes').value || '').trim().length,
     controle: document.querySelectorAll('#atl-controle .atl-controle-ligne').length,
     blocCache: document.getElementById('atl-bloc-controle').hidden,
-    rangee: (() => { try { return !!localStorage.getItem('mathbox-atelier-notes'); }
-        catch (e) { return false; } })(),
+    rangee: (() => {
+        try {
+            let n = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                if ((localStorage.key(i) || '').startsWith('mathbox-atelier-notes')) n++;
+            }
+            return n;
+        } catch (e) { return 0; }
+    })(),
     exo: (document.getElementById('atl-exo') || {}).value || '',
     releve: ''
 }));
@@ -118,7 +152,8 @@ dire('les captures sont parties', apres.photos === 0, `${apres.photos} restante(
 dire('le carnet est vide', apres.notes === 0);
 // LA CLEF DU NAVIGATEUR AUSSI : l'effacer à l'écran sans la retirer ferait
 // revenir le carnet au prochain F5, et l'on croirait le bouton cassé.
-dire('et il ne reviendra pas au prochain F5', !apres.rangee);
+dire('et aucun ne reviendra au prochain F5', apres.rangee === 0,
+    `${apres.rangee} clef(s) restante(s)`);
 dire('le verdict du contrôle est parti', apres.controle === 0 && apres.blocCache,
     `${apres.controle} ligne(s), bloc ${apres.blocCache ? 'caché' : 'VISIBLE'}`);
 dire('mais l\'exercice choisi est resté', apres.exo === plein.exo && !!apres.exo,

@@ -1248,7 +1248,7 @@ export const numerationExercises = [
         // celle des deux signes moins a laissé passer « l'abscisse est -2 »
         // dans la première marche. C'est aussi ce que le professeur voit
         // coché en ouvrant le panneau.
-        params: { marches: ['image', 'image-relatifs', 'ordonnee-origine',
+        params: { marches: ['tableau', 'image', 'image-relatifs', 'ordonnee-origine',
             'antecedent-simple', 'antecedent', 'zero'] },
         motsClefs: ['fonction', 'affine', 'droite', 'repère', 'coefficient',
             'ordonnée à l\'origine', 'tracer', 'graphique'],

@@ -499,7 +499,7 @@ export const garamGenerator = {
             skillId: 'num.logique.garam',
             answerKind: 'grid',
             prompt: {
-                text: 'Complète les cases avec des chiffres pour que toutes les égalités soient vraies. Les égalités verticales donnent un nombre à deux chiffres : les dizaines au-dessus, les unités en dessous.',
+                text: 'Complète avec des chiffres pour que toutes les égalités soient vraies. À la verticale, le nombre a deux chiffres : dizaines en haut, unités en bas.',
                 html: '<div class="game-question kenken-consigne">Complète les cases pour que <b>toutes les égalités</b> soient vraies. Une égalité <b>verticale</b> donne un nombre à <b>deux chiffres</b> : dizaines au-dessus, unités en dessous.</div>'
             },
             // Préfixe « g » : l'égalité stricte, pas parseFloat (voir kenken.js).

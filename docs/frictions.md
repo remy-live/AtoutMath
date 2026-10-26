@@ -6122,3 +6122,38 @@ le résultat n'existe pas** — 15 octobre 2026
   `tests/clavierPartout.test.mjs` ; elle devrait porter sur les 166. Alors
   rendre un exercice tapable rendrait UNE épreuve rouge, à l'endroit qui nomme
   la règle, au lieu de cinq qui parlent d'autre chose.
+
+
+## Une sonde verte sur un bouton que personne ne pouvait cliquer — 2026-10-26
+
+- *Ce que je voulais faire* : comprendre « le tout effacer de l'atelier ne
+  fonctionne pas ». Une sonde dédiée existait, `effacerLeCompteRendu.mjs`, et
+  elle était VERTE — quatorze mesures, toutes bonnes.
+- *Ce qui a coûté* : la sonde cliquait `document.querySelector(…).click()`.
+  Un clic du DOM part même sous une couche peinte par-dessus, et il réussit :
+  la fenêtre s'ouvrait, le compte rendu s'effaçait, tout était vrai — et
+  personne, à l'écran, ne pouvait obtenir cela. `elementFromPoint` au centre du
+  bouton répondait `div.atl-gauche` : le panneau de l'Atelier (étage 100001)
+  par-dessus une fenêtre restée à 9999. **Le pire n'est pas le temps perdu,
+  c'est l'assurance** : cette sonde garantissait depuis des semaines un bouton
+  mort.
+- *Combien de fois* : ||| (même famille que `doitExister` et `deplier` : un
+  outil qui répond « oui » là où l'utilisateur ne peut rien faire)
+- *Ce qui manque* : plus rien, c'est fait. `s.cliquer` demande maintenant à
+  `elementFromPoint` qui est devant la cible et **JETTE** en le nommant, avec
+  les deux étages. Il ne jette pas quand le centre est hors de l'écran —
+  « hors cadre » n'est pas « recouvert ». La règle de la maison s'étend donc
+  d'un cran : **une mesure qui n'emprunte pas le chemin de l'utilisateur ne
+  mesure pas son problème — et `element.click()` n'est pas ce chemin.**
+
+## `ficheEnPdf.mjs --sortie=` attend un DOSSIER, et fabrique celui qu'on nomme — 2026-10-26
+
+- *Ce que je voulais faire* : imprimer une fiche dans `tools/tmp/fd.pdf`.
+- *Ce qui a coûté* : l'outil a créé un DOSSIER nommé `fd.pdf` et y a rangé
+  `frac-division-couleur.pdf`. Le convertisseur suivant a répondu « EISDIR:
+  illegal operation on a directory », une erreur qui ne nomme ni l'outil ni le
+  réglage fautif ; j'ai cru à un PDF corrompu.
+- *Combien de fois* : |
+- *Ce qui manque* : que `ficheEnPdf.mjs` refuse un `--sortie` qui finit par
+  `.pdf` en disant « c'est un DOSSIER que j'attends, le fichier s'appellera
+  <id>-<mode>.pdf ». Trois lignes, et l'erreur se lit au lieu de se deviner.

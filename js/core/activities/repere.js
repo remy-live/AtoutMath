@@ -18,10 +18,60 @@ export function mount(container, session) {
     let destroyed = false;
     let cursor = null;
     let gate = null;
+    /** Le pavé, quand la question demande d'écrire au lieu de pointer. */
+    let releve = null;
+
+    /**
+     * UNE QUESTION QUI SE REMPLIT, DANS UN EXERCICE QUI SE CLIQUE.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * RÉMY : « pour tracer une fonction, ce serait bien de pouvoir aussi
+     * avoir des questions avec remplissage de tableau ».
+     *
+     * LE TABLEAU DE VALEURS EST L'ÉTAPE QU'ON SAUTE. Pour tracer, on calcule
+     * d'abord f(−2), f(−1), f(0)… et c'est ce calcul-là qui se travaille ;
+     * l'exercice ne posait que le POINT, c'est-à-dire ce qui vient après.
+     * Sur la feuille imprimée le tableau existait déjà — à l'écran, non.
+     *
+     * UN TABLEAU NE SE POINTE PAS : il s'écrit, case par case. C'est le pavé
+     * qui sait faire cela (plusieurs trous, une réponse « a|b|c »), et le
+     * mécanisme est celui du QCM qui passe au clavier — même contrat,
+     * `rendreLaMain` compris. On ne le réécrit donc pas.
+     */
+    const auPave = (item) => !!(item && item.meta && item.meta.cases);
 
     function renderNext() {
         if (destroyed) return;
-        render(session.next());
+        const item = session.next();
+        if (auPave(item)) { passerAuPave(item); return; }
+        render(item);
+    }
+
+    /** Le pavé prend la main pour les questions à cases. */
+    async function passerAuPave(item) {
+        const mod = await import('./numeric.js');
+        if (destroyed) return;
+        if (cursor) { cursor.destroy(); cursor = null; }
+        if (gate) { gate.destroy(); gate = null; }
+        releve = mod.mount(container, session, { item, rendreLaMain });
+    }
+
+    /**
+     * ET LE REPÈRE REPREND LA MAIN à la question suivante qui se pointe.
+     *
+     * Le pavé appelle ceci avant chaque question ; `true` veut dire « arrête-
+     * toi là ». Sans cela, une marche « tableau » au milieu de l'exercice
+     * laisserait le clavier pour tout le reste, et l'on placerait des points
+     * en tapant leurs coordonnées — ce qui n'est pas l'exercice.
+     */
+    function rendreLaMain(item) {
+        if (destroyed) return false;
+        if (auPave(item)) return false;
+        if (releve && releve.destroy) releve.destroy();
+        releve = null;
+        render(item);
+        return true;
     }
 
     function render(item) {
@@ -168,6 +218,9 @@ export function mount(container, session) {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
             if (gate) { gate.destroy(); gate = null; }
+            // LE PAVÉ MEURT AVEC NOUS, sans quoi il garderait ses minuteurs et
+            // sa session ouverte derrière un exercice fermé.
+            if (releve && releve.destroy) { releve.destroy(); releve = null; }
             container.innerHTML = '';
             session.finish();
         }
