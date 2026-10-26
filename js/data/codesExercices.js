@@ -126,6 +126,7 @@ export const CODES_EXERCICES = {
     'calc-nova':                  'NV',   // Nova
     'calc-escadrille':            'ET',   // Escadrille des Tables
     'calc-sudoku':                'SU',   // Sudoku
+    'logi-shikaku':               'RT',   // RecTangles — « SK » est aux serpents, « RE » au carré
     'calc-garam':                 'GA',   // Garam
     'calc-course':                'CM',   // Course Mathématique
     'calc-tetris':                'MH',   // Math Tetris

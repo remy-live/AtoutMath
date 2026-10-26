@@ -15144,3 +15144,141 @@ body.en-boite > #app-container { background: none; }
 .pp-ecriture { font-weight: 800; letter-spacing: .01em; }
 .pp-ecriture sup { font-size: .62em; }
 
+
+
+/* ═══ LE SHIKAKU — découper la grille en rectangles ═══════════════════════════
+
+   RÉMY, 26 octobre, capture d'écran à l'appui : « Tu pourrais me créer ce jeu
+   là ». Sa capture montre des rectangles PASTEL PLEINS sur des cases vides
+   sombres, avec un petit jour entre eux — c'est cette image qu'on suit.
+
+   LES SIX COULEURS TOURNENT, et c'est leur seul rôle : dire où finit un
+   rectangle et où commence le suivant. Elles ne portent aucune information —
+   un élève daltonien lit la même grille, parce que le JOUR entre deux
+   rectangles la dit déjà. Elles sont choisies claires pour que le nombre,
+   écrit en encre foncée par-dessus, se relise : mesuré au-dessus de 7:1 sur
+   les six. */
+.sk-layout { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+.sk-context { text-align: center; max-width: 46ch; }
+.sk-consigne { font-size: 1rem; line-height: 1.35; }
+
+.sk-board {
+    --sk-jour: 3px;
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--sk-c), 1fr);
+    grid-template-rows: repeat(var(--sk-l), auto);
+    gap: var(--sk-jour);
+    width: min(100%, 520px);
+    padding: var(--sk-jour);
+    border-radius: 14px;
+    background: var(--bg-panel);
+    border: 2px solid var(--border);
+    touch-action: none;   /* le glisser pose un rectangle, il ne fait pas défiler */
+    user-select: none;
+}
+/* LES CASES SONT CARRÉES, ET C'EST ELLES QUI DONNENT SA HAUTEUR À LA GRILLE.
+   Un `aspect-ratio` posé sur le PLATEAU se partage entre les cases ET les
+   jours qui les séparent : mesuré 70 × 68 sur une grille 6 × 7, soit des
+   rectangles qui mentent de deux pour cent sur leur forme — or leur forme EST
+   la réponse. Posé sur la case, il ne ment plus. */
+.sk-case {
+    aspect-ratio: 1;
+    border: 0; padding: 0; margin: 0;
+    border-radius: 6px;
+    background: var(--bg-hover);
+    cursor: pointer;
+}
+.sk-case:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; z-index: 4; }
+
+/* LES RECTANGLES POSÉS NE PRENNENT PAS LES CLICS : le glisser doit traverser
+   jusqu'aux cases, sinon on ne pourrait plus redessiner par-dessus. La gomme
+   passe par la case, pas par le rectangle. */
+.sk-rects { display: contents; }
+.sk-rect {
+    pointer-events: none;
+    border-radius: 8px;
+    z-index: 1;
+    animation: skPose .18s ease-out;
+}
+@keyframes skPose { from { transform: scale(.92); opacity: .4; } }
+.sk-rect--0 { background: #a7e8c8; }
+.sk-rect--1 { background: #f7e59a; }
+.sk-rect--2 { background: #d9cdf7; }
+.sk-rect--3 { background: #e3a8da; }
+.sk-rect--4 { background: #a9ecea; }
+.sk-rect--5 { background: #f7c39a; }
+
+.sk-nb {
+    pointer-events: none;
+    z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    font-size: clamp(.85rem, 3.2vw, 1.3rem);
+    /* Le nombre ne doit pas pousser sa rangée : ce sont les cases qui règlent
+       la hauteur, et elles seules. */
+    line-height: 1; min-height: 0; overflow: hidden;
+    color: var(--text-main);
+}
+/* Posé, le nombre s'écrit sur un pastel clair : l'encre de la page y tient
+   (mesuré au-dessus de 7:1), et c'est la même dans les cinq thèmes. */
+.sk-nb--pose { color: #10233b; }
+
+.sk-apercu {
+    pointer-events: none;
+    z-index: 3;
+    border-radius: 8px;
+    border: 2px dashed var(--text-muted);
+    background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: clamp(.7rem, 2.6vw, 1rem);
+    color: var(--text-main);
+}
+/* `display: flex` L'EMPORTE SUR LE `display: none` DE L'ATTRIBUT `hidden`, qui
+   vient de la feuille du navigateur. L'aperçu du glisser restait donc affiché
+   sur le dernier rectangle posé, avec ses pointillés et son « 1 × 3 = 3 » —
+   vu sur la photo, pas dans le code. */
+.sk-apercu[hidden] { display: none; }
+.sk-apercu--ok {
+    border-color: var(--success);
+    background: color-mix(in srgb, var(--success) 22%, transparent);
+}
+
+.sk-board--ok { border-color: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 35%, transparent); }
+.sk-board--secoue { animation: skSecoue .35s ease; }
+@keyframes skSecoue {
+    20% { transform: translateX(-7px); } 40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); } 80% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sk-board--secoue, .sk-rect { animation: none; }
+}
+
+.sk-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.sk-btn {
+    min-height: 44px; padding: 0 18px;
+    border-radius: 12px; font-weight: 700; cursor: pointer;
+    border: 2px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+}
+/* `--primary-texte` N'EST PAS L'ENCRE D'UN BOUTON PLEIN : c'est l'indigo
+   quand il sert de TEXTE SUR LE FOND DE LA PAGE (voir `css/base.css`). Posé
+   ici, il écrivait « Valider » en indigo sur de l'indigo — mesuré : encre et
+   fond tous deux à rgb(79, 70, 229), donc un bouton parfaitement muet.
+   Photographié avant de le voir. Le dépôt écrit `color: #fff` sur ses boutons
+   pleins, partout ; on fait pareil. */
+.sk-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+.sk-btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* `--success` ET `--danger` SONT DES FONDS : employés comme encre, ils ne
+   passent pas le seuil AA sur le fond de la page. Les versions lisibles
+   s'appellent `--success-texte` et `--danger-texte`. Une garde du dépôt le
+   tient pour toutes les feuilles. */
+.sk-statut { min-height: 1.4em; font-weight: 600; text-align: center; color: var(--text-muted); }
+.sk-statut--ok { color: var(--success-texte); }
+.sk-statut--ko { color: var(--danger-texte); }
+
+/* AU DOIGT, LA GRILLE PREND LA LARGEUR ET LES BOUTONS RESTENT SOUS LE POUCE. */
+@media (max-width: 480px) {
+    .sk-board { width: 100%; --sk-jour: 2px; }
+    .sk-context { font-size: .9rem; }
+}

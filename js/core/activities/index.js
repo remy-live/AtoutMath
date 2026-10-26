@@ -27,6 +27,7 @@ import {
     egypteGenerator, complementGenerator, pariteGenerator
 } from '../generators/numeration.js';
 import { kenkenGenerator } from '../generators/kenken.js';
+import { shikakuGenerator } from '../generators/shikaku.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -168,7 +169,7 @@ import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
+    kenkenGenerator, shikakuGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -471,6 +472,22 @@ registerActivity({
 
 // Grilles logiques : genre de réponse 'grid' — l'élève construit un état
 // complet, validé d'un bloc, au lieu de répondre coup par coup.
+// LE SHIKAKU — on ne remplit pas des cases, on les DÉCOUPE.
+//
+// RÉMY, capture d'écran à l'appui : « Tu pourrais me créer ce jeu là ». Même
+// genre de réponse que le Mathdoku (`grid`) : l'élève construit un état
+// complet — le découpage — qu'on valide d'un bloc. Mais aucune saisie de
+// chiffre, donc pas de réglage de clavier : le geste est le glisser.
+registerActivity({
+    id: 'shikaku',
+    unite: 'grille',
+    parDefaut: 3,
+    label: 'Shikaku',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./shikaku.js')
+});
+
 registerActivity({
     id: 'kenken',
     unite: 'grille',

@@ -6157,3 +6157,28 @@ le résultat n'existe pas** — 15 octobre 2026
 - *Ce qui manque* : que `ficheEnPdf.mjs` refuse un `--sortie` qui finit par
   `.pdf` en disant « c'est un DOSSIER que j'attends, le fichier s'appellera
   <id>-<mode>.pdf ». Trois lignes, et l'erreur se lit au lieu de se deviner.
+
+
+## Une grille CSS range les cases dans ce que les autres lui laissent — 2026-10-26
+
+- *Ce que je voulais faire* : poser un rectangle en glissant sur la grille du
+  Shikaku. Les quarante-deux cases étaient des éléments de grille sans
+  position explicite ; les dix nombres, eux, en avaient une (`grid-area`).
+- *Ce qui a coûté* : une heure de fausses pistes. La grille place d'abord ce
+  qui est FIXE, puis range les éléments libres dans ce qui reste : les cases
+  glissaient d'un cran à chaque nombre rencontré, et la grille poussait des
+  rangées en trop. `document.elementFromPoint` au milieu du plateau répondait
+  « case [0,6] » là où l'on visait [1,1] — un rectangle juste se posait donc
+  sur deux nombres, et le logiciel disait « ce rectangle contient 2 nombres »,
+  ce qui était VRAI. Le message était juste, la cause était ailleurs. J'ai
+  d'abord soupçonné la capture du pointeur, puis le `pointer-events` des
+  calques, puis la sonde.
+- *Combien de fois* : || (même famille que `deplier` : la mesure disait vrai,
+  et ce qu'elle mesurait n'était pas ce qu'on croyait)
+- *Ce qui manque* : un réflexe à écrire quelque part, parce qu'il se
+  reproduira à chaque nouveau plateau — **dans une grille CSS où certains
+  enfants sont placés explicitement, TOUS doivent l'être.** Ce qui l'aurait
+  trouvé en trente secondes : tracer `pointerdown`/`pointermove` avec
+  `elementFromPoint` à côté des coordonnées, ce que j'ai fini par faire. Cela
+  vaudrait une `s.tracerLePointeur(selecteur)` dans la sonde : elle pose les
+  trois écouteurs, rend le journal, et dit QUI répond sous chaque point.

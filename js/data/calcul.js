@@ -1112,6 +1112,53 @@ export const calculExercises = [
         instruction: "Une escadrille descend, chaque appareil portant un nombre. Abats tout ce qui n'est PAS dans la table choisie et laisse passer les multiples — ce sont des amis. Glisse pour piloter, tape pour tirer. Tirer sur un ami coûte une vie ; laisser un intrus atteindre la base aussi."
     },
     {
+        // LE SHIKAKU — découper au lieu de remplir.
+        //
+        // RÉMY, 26 octobre, avec une capture d'écran d'une publicité : « Tu
+        // pourrais me créer ce jeu là ».
+        //
+        // CE N'EST PAS QU'UN JEU DE LOGIQUE, et c'est pour cela qu'il entre au
+        // catalogue plutôt qu'à la boîte à jeux : pour poser le rectangle d'un
+        // 12, il faut connaître ses diviseurs — 1 × 12, 2 × 6, 3 × 4 — puis
+        // choisir la forme qui tient à cet endroit. Décomposition en produit,
+        // diviseurs, aire du rectangle : trois notions de sixième dans un seul
+        // geste, et l'élève les redécouvre à chaque rectangle.
+        id: 'logi-shikaku', title: 'Shikaku',
+        cree: '2026-10-26',
+        generatorId: 'logique.shikaku', activityId: 'shikaku',
+        // Il se fait très bien au crayon : c'est même un jeu de papier.
+        printable: 'shikaku',
+        sansRevision: true,
+        params: { nbQuestions: 2, format: 'classique', difficulte: 'moyen' },
+        motsClefs: ['shikaku', 'rectangles', 'découper', 'aire', 'diviseurs',
+            'multiplication', 'produit', 'logique', 'grille', 'japonais'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Découpe TOUTE la grille en rectangles : chaque rectangle contient un seul nombre, et ce nombre est son nombre de cases. Aucun trou, aucun chevauchement. On glisse d'un coin à l'autre pour poser un rectangle, on appuie dessus pour l'effacer. COMMENCE PAR LES NOMBRES PREMIERS — 2, 3, 5, 7, 11, 13 : ils n'ont qu'une seule forme possible, une ligne ou une colonne de cases, et ils bloquent tout de suite leurs voisins. Pour les autres, cherche en combien de façons le nombre s'écrit « longueur × largeur » : 12 en a trois (1 × 12, 2 × 6, 3 × 4), et les bords de la grille en éliminent souvent deux. Quatre tailles de grille et trois difficultés — ce sont les GRANDS rectangles qui font chercher, pas les petits.",
+        apprentissage: {
+            intro: "Le Shikaku se joue à l'envers d'un sudoku : on ne remplit pas des cases, on les découpe. Chaque nombre est l'AIRE du rectangle qui le contient.",
+            regles: [
+                {
+                    titre: 'Le nombre dit combien de cases',
+                    texte: "Un rectangle contient un seul nombre, et ce nombre est son nombre de cases — c'est-à-dire longueur × largeur.",
+                    exemple: '<span class="lec-calcul">3 × 4 = <b class="lec-ok">12</b></span>'
+                },
+                {
+                    titre: 'Commence par les nombres premiers',
+                    texte: "2, 3, 5, 7, 11, 13 : ils ne s'écrivent que « 1 × le nombre ». Leur rectangle est donc une seule ligne ou une seule colonne — il n'y a presque rien à choisir.",
+                    exemple: '<span class="lec-calcul">7 = <b class="lec-ok">1 × 7</b></span>'
+                },
+                {
+                    titre: 'Toute la grille, sans trou',
+                    texte: "Il ne doit rester aucune case libre et aucun rectangle ne doit en recouvrir un autre. Une case que personne ne peut atteindre appartient au seul nombre qui peut la toucher : regarde les coins.",
+                    exemple: ''
+                }
+            ]
+        }
+    },
+    {
         id: 'calc-sudoku', title: 'Sudoku',
         cree: '2026-08-04',
         generatorId: 'logique.sudoku', activityId: 'sudoku',

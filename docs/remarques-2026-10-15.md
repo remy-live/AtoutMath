@@ -3887,3 +3887,37 @@ phrases, aucune contradiction : l'aide se déplie, l'énoncé ne se déplie pas.
 
 Suite de sa demande de réglages globaux de tableau (carnet de « Somme ou
 Produit ? »). Noté, pas encore fait.
+
+
+---
+
+## 34. Le Shikaku — 26 octobre
+
+> « Tu pourrais me créer ce jeu là » — avec une capture d'une publicité
+> Instagram (« The Almanac »), grille 7 × 6, chronomètre à 02:19.
+
+CE QUE MONTRE LA CAPTURE : une grille où certaines cases portent un nombre.
+On y a déjà posé cinq rectangles de couleur — un 5 vertical de 5 × 1, un 9 de
+3 × 3, un autre 9 de 3 × 3, un 8 de 4 × 2, un 3 vertical de 3 × 1 — et il
+reste des cases grises, dont un 12 et un 3 non encore entourés.
+
+LA RÈGLE, qui ne se lit pas sur l'image mais se déduit : découper TOUTE la
+grille en rectangles, chacun contenant exactement UN nombre, et ce nombre est
+l'AIRE du rectangle. Aucun chevauchement, aucune case laissée dehors.
+
+POURQUOI C'EST UN BON EXERCICE DE MATHS, et pas seulement un jeu : pour poser
+le rectangle d'un 12, il faut connaître les décompositions de 12 en produit de
+deux facteurs — 1 × 12, 2 × 6, 3 × 4 — c'est-à-dire ses DIVISEURS. Et l'on
+vérifie à chaque coup que longueur × largeur = aire. Division euclidienne,
+diviseurs, aire du rectangle : trois notions de sixième et de cinquième dans
+un seul geste.
+
+CE QU'IL FAUDRA TRANCHER (pas dans la capture) :
+- comment on pose un rectangle au doigt — glisser d'un coin à l'autre, ou
+  taper deux coins ;
+- la taille des grilles et leur progression ;
+- s'il s'imprime (il s'imprime très bien : c'est un jeu de papier à l'origine).
+
+ET LA LIGNE ROUGE NE S'Y OPPOSE PAS : on ne trace rien à la règle ni au
+compas, on découpe une grille de cases — le même geste que le Sudoku ou le
+Strimko, qui vivent déjà dans le logiciel.

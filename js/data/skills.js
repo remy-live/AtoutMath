@@ -92,6 +92,23 @@ const BASE = {
         descriptor: 'Remplir un carré latin dont les chaînes de calcul doivent être fausses d\'exactement un.',
         lesson: "LE « ≈ » NE VEUT PAS DIRE « ÉGAL » : il veut dire « à un près ». Les deux côtés d'une chaîne valent des entiers positifs qui SE SUIVENT — 6 et 5, 2 et 1. Une égalité parfaite est donc FAUSSE ici, et c'est tout le sel du jeu : il faut calculer juste pour rater de un. Par-dessus, chaque ligne et chaque colonne portent les nombres de 1 à n, une fois chacun, comme dans un sudoku. LES PRIORITÉS S'APPLIQUENT : dans « 2+3×4 », on fait d'abord 3×4. ET CHAQUE ÉTAPE DOIT TOMBER SUR UN ENTIER POSITIF — une division juste, jamais de soustraction qui passe sous zéro : « 5÷2 » et « 2−5 » n'existent pas dans ce jeu, ce qui élimine d'un coup des quantités de possibilités. COMMENCE PAR LA CHAÎNE LA PLUS LONGUE : plus elle a de cases, moins elle laisse de combinaisons possibles, et c'est elle qui se résout la première."
     },
+    // LE SHIKAKU — et ce n'est pas qu'un jeu de logique.
+    //
+    // RÉMY : « Tu pourrais me créer ce jeu là ». Pour poser le rectangle d'un
+    // 12, il faut savoir en combien de façons 12 s'écrit comme produit de
+    // deux facteurs — 1 × 12, 2 × 6, 3 × 4 —, puis choisir laquelle tient à
+    // cet endroit. C'est la recherche des DIVISEURS, et l'aire du rectangle,
+    // dans un seul geste.
+    'num.logique.shikaku': {
+        label: 'Découper en rectangles (Shikaku)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.mult.sens'],
+        descriptor: 'Découper une grille en rectangles dont l\'aire est donnée.',
+        lesson: 'L\'aire d\'un rectangle est longueur × largeur. Pour chaque nombre, cherche '
+            + 'toutes les façons de l\'écrire comme un produit de deux facteurs : un nombre '
+            + 'premier n\'en a qu\'une, et c\'est par lui qu\'il faut commencer.'
+    },
     'num.logique.mathodu': {
         label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

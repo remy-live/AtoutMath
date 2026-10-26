@@ -1763,3 +1763,95 @@ export const RENDUS_GRILLES = {
         pdfGrille: dessinerBinairoPdf
     }
 };
+
+// ── LE SHIKAKU SUR PAPIER ────────────────────────────────────────────────────
+//
+// RÉMY : « Tu pourrais me créer ce jeu là ». C'est un jeu de papier à
+// l'origine, et il s'imprime mieux que la plupart : il n'y a rien à ÉCRIRE,
+// seulement des traits à tracer à la main entre les cases. Une grille, des
+// nombres, et du blanc.
+//
+// LA GRILLE N'EST PAS CARRÉE, et l'emplacement qu'on lui donne l'est. On
+// garde donc des cases CARRÉES — leur forme est la réponse — et l'on centre
+// ce qui en résulte dans l'emplacement, plutôt que d'étirer la grille.
+
+/** La case carrée la plus grande qui tienne dans l'emplacement, et son coin. */
+function poseShikaku(item, slot) {
+    const { lignes, colonnes } = item.meta;
+    const s = Math.min(slot.taille / colonnes, slot.taille / lignes);
+    return {
+        s,
+        x: slot.x + (slot.taille - s * colonnes) / 2,
+        y: slot.y + (slot.taille - s * lignes) / 2
+    };
+}
+
+function shikakuPreviewHtml(item, slot, k, solution) {
+    const { lignes, colonnes, indices, solution: rects } = item.meta;
+    const { s, x, y } = poseShikaku(item, slot);
+    const nb = new Map(indices.map(i => [`${i.r},${i.c}`, i.n]));
+    let html = `<div class="fp-grille" style="position:absolute; left:${x * k}px; top:${y * k}px;
+        width:${s * colonnes * k}px; height:${s * lignes * k}px;
+        display:grid; grid-template-columns:repeat(${colonnes}, 1fr);
+        grid-template-rows:repeat(${lignes}, 1fr); border:2.4px solid #1a202c;">`;
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const v = nb.get(`${r},${c}`);
+            html += `<div style="border-right:0.8px solid #94a3b8; border-bottom:0.8px solid #94a3b8;
+                display:flex; align-items:center; justify-content:center;
+                font-weight:800; font-size:${s * k * 0.5}px; color:#1a202c;">${v || ''}</div>`;
+        }
+    }
+    html += '</div>';
+    // LE CORRIGÉ EST UN TRACÉ, pas des chiffres : on repasse les contours des
+    // rectangles, et c'est exactement ce que l'élève aura fait au crayon.
+    if (solution) {
+        html += rects.map(rec => `<div style="position:absolute;
+            left:${(x + rec.c0 * s) * k}px; top:${(y + rec.r0 * s) * k}px;
+            width:${(rec.c1 - rec.c0 + 1) * s * k}px; height:${(rec.r1 - rec.r0 + 1) * s * k}px;
+            border:2.2px solid #1d4ed8; box-sizing:border-box;"></div>`).join('');
+    }
+    return html;
+}
+
+function dessinerShikakuPdf(doc, item, slot, solution) {
+    const { lignes, colonnes, indices, solution: rects } = item.meta;
+    const { s, x, y } = poseShikaku(item, slot);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.12);
+    for (let i = 1; i < colonnes; i++) doc.line(x + i * s, y, x + i * s, y + lignes * s);
+    for (let i = 1; i < lignes; i++) doc.line(x, y + i * s, x + colonnes * s, y + i * s);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    doc.rect(x, y, colonnes * s, lignes * s, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(16, s * 1.5));
+    indices.forEach(i => {
+        doc.text(String(i.n), x + (i.c + 0.5) * s, y + (i.r + 0.5) * s,
+            { align: 'center', baseline: 'middle' });
+    });
+
+    if (solution) {
+        // Le trait du corrigé est plus épais que le quadrillage et plus fin
+        // que le cadre : il se lit par-dessus sans écraser les nombres.
+        doc.setDrawColor(29, 78, 216);
+        doc.setLineWidth(0.5);
+        rects.forEach(rec => doc.rect(x + rec.c0 * s, y + rec.r0 * s,
+            (rec.c1 - rec.c0 + 1) * s, (rec.r1 - rec.r0 + 1) * s, 'S'));
+    }
+}
+
+RENDUS_GRILLES.shikaku = {
+    titre: 'Shikaku',
+    // DEUX PAR LIGNE. Douze grilles sur une page donnaient des cases de trois
+    // millimètres : on n'y trace pas un trait au crayon entre deux cases, et
+    // c'est tout ce qu'on fait sur un Shikaku. Même raison que le Garam.
+    parLigneDefaut: 2,
+    consigne: () => 'Découpe toute la grille en rectangles : un seul nombre dans chacun, '
+        + 'et ce nombre est son nombre de cases. Aucun trou, aucun chevauchement.',
+    previewGrille: shikakuPreviewHtml,
+    pdfGrille: dessinerShikakuPdf
+};
