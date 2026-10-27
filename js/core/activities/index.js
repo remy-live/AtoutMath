@@ -41,6 +41,7 @@ import { allumettesGenerator } from '../generators/allumettes.js';
 import { allumettesEgaliteGenerator } from '../generators/allumettesEgalite.js';
 import { traverseeGenerator } from '../generators/traversee.js';
 import { penduGenerator } from '../generators/pendu.js';
+import { dessinGradueGenerator } from '../generators/dessinGradue.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -186,6 +187,7 @@ import {
     kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
     cheminNombresGenerator, allumettesGenerator,
     allumettesEgaliteGenerator, traverseeGenerator, penduGenerator,
+    dessinGradueGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -561,6 +563,20 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./pendu.js')
+});
+
+// LE DESSIN GRADUÉ — l'unité est le DESSIN, et un seul suffit par défaut :
+// placer douze points sur six échelles différentes prend déjà plusieurs
+// minutes, là où une grille de Shikaku se remplit en une. Pas de réglage de
+// saisie non plus : on touche la droite, il n'y a rien à taper.
+registerActivity({
+    id: 'dessinGradue',
+    unite: 'dessin',
+    parDefaut: 2,
+    label: 'Le Dessin Gradué',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./dessinGradue.js')
 });
 
 registerActivity({

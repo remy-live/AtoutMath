@@ -39,6 +39,7 @@ export const CODES_EXERCICES = {
     'num-arrondi':                'VA',   // Valeur Approchée
     'num-fraction-decimale':      'VF',   // Virgule ou Fraction ?
     'num-graduations':            'LD',   // La Loupe sur la Droite
+    'num-dessin-gradue':          'LP',   // Les Points à placer (DG est pris)
     'num-vocabulaire':            'MJ',   // Le Mot Juste
     'num-complement-10':          'AM',   // Amis de 10
     'num-amis-de-dix':            'AD',   // Les Amis de Dix

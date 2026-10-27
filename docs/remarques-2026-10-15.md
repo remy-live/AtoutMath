@@ -4081,3 +4081,51 @@ geste des jeux auxquels les élèves jouent sur leur téléphone.
 - au doigt, en 390 px, où la cible est petite ;
 - qu'un glisser raté ne CASSE rien — la case doit rester comme elle était ;
 - que le toucher et le clavier marchent encore exactement comme avant.
+
+
+---
+
+## 40. Les Dessins Gradués — 27 octobre
+
+> Quatre captures d'une publication « Profs de maths » : des « Dessins
+> Gradués ». « Tu pourrais créer ce genre d exercice pour vec des dessins
+> simplifiées pour téléphone portable et évidemment on peut relier les
+> points etc… »
+
+CE QU'EST L'EXERCICE, lu sur la capture qui porte la consigne :
+
+> « Pour découvrir le dessin gradué, vous devez placer les points A, B, C…
+> selon les indications du tableau. Par exemple, le point A est sur la
+> première ligne et son abscisse est 2. Quand vous aurez placé tous les
+> points : tracez les segments […]. Tracez puis coloriez l'intérieur des
+> polygones : ACGHSJIFEBD en rouge ; GMN en jaune ; […] »
+
+Une dizaine de droites graduées empilées, CHACUNE AVEC SON ÉCHELLE — 0 à 10,
+0 à 1, 0 à 100, 1 à 2, 10 à 30, 100 à 150, 19 à 20, 3 à 33, 7,1 à 7,2. On
+place une quarantaine de points, on relie, on colorie, et un coq, une
+citrouille ou une fleur apparaît.
+
+CE QUE ÇA TRAVAILLE, ET POURQUOI C'EST EXCELLENT : la même abscisse est
+demandée de six façons différentes — « 0,23 », « trente centièmes »,
+« 4/10 », « 17 + 13 », « quatre dizaines », « le double de 10 ». L'élève ne
+lit pas une droite graduée, il lit NEUF droites graduées d'échelles
+différentes, et c'est là que tout se joue : placer 0,4 sur une droite de 0 à 1
+et 40 sur une droite de 0 à 100, c'est le même geste et deux nombres
+différents.
+
+SES DEUX CONSIGNES, et elles commandent tout le reste :
+
+- **« DES DESSINS SIMPLIFIÉS POUR TÉLÉPHONE PORTABLE ».** Les modèles de la
+  publication ont neuf à douze droites et quarante points. Sur 390 px, une
+  droite touchable demande ses 44 px de haut et ses graduations ne peuvent
+  pas être à trente pixels l'une de l'autre. Donc : moins de droites, moins
+  de graduations, moins de points — et des dessins pensés pour ça, pas des
+  dessins de feuille rétrécis.
+- **« ON PEUT RELIER LES POINTS ».** Relier, oui. Mais la LIGNE ROUGE dit :
+  « je ne veux pas de construction géométrique avec des outils virtuels ».
+  Relier des points nommés dans un ordre donné n'est pas une construction à
+  la règle et au compas — c'est suivre une liste, comme « Relie les points »
+  et « Le Point à Point » qui sont déjà au catalogue. ET LE PARTAGE EST
+  CLAIR : l'élève PLACE les points, c'est là qu'est la mathématique ; le
+  dessin, lui, se trace tout seul au fur et à mesure. C'est la récompense,
+  pas le travail.

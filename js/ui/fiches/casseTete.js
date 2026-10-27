@@ -5,7 +5,7 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, boiteDe, couperEnLignes, echapperSheet, planchePasAPas, titrePasAPas
+    ENCRE, boiteDe, couperEnLignes, echapperSheet, enPoints, planchePasAPas, titrePasAPas
 } from './socle.js';
 import { courbesDuCoeur, courbesDuPedoncule } from '../../core/champDeTrefles.js';
 import { etapesBrahma, teinteBoule } from '../../core/tourBrahma.js';
@@ -1286,9 +1286,6 @@ function dessinerCheminPdf(doc, item, slot, solution) {
 //
 // Et « Trouve 240 » est posé dans une étiquette de la largeur de la grille : la
 // consigne de chaque bloc tient dans une forme, au lieu de flotter dessous.
-
-/** Le corps d'un texte, en points, pour un cadratin de `mm` millimètres. */
-const enPoints = (mm) => mm * 2.8346;
 
 // LE TRAIT DE LA SOLUTION EST PÂLE, ET C'EST UNE CORRECTION.
 //

@@ -6418,3 +6418,39 @@ le résultat n'existe pas** — 15 octobre 2026
   se calcule depuis la page** (le centre d'un élément dont on sait qu'il n'est
   pas une cible), jamais depuis un décalage en pixels. Un décalage est juste
   sur l'écran où on l'a écrit et faux sur les deux autres.
+
+
+**Un `viewBox` mis à l'échelle rend des textes de sept pixels, et tous les compteurs restent verts** — 27 octobre 2026
+
+- *Ce que je voulais faire* : dessiner six droites graduées, avec leurs
+  nombres, sur un écran de téléphone.
+- *Ce qui a coûté* : une réécriture entière de la géométrie de l'écran, soit
+  une quarantaine de minutes. J'avais posé un `viewBox` de mille unités mis à
+  l'échelle par le CSS — le réflexe, et il est faux ici : sur 390 px le plan
+  rend 358 px, donc une unité vaut 0,36 pixel et une borne écrite « 20 unités »
+  sort à sept pixels de haut. AUCUNE mesure chiffrée ne bronche : le nombre
+  est bien dans le DOM, à la bonne place, de la bonne couleur. Seul l'œil le
+  voit, et seulement si l'on pense à regarder.
+- *Combien de fois* : ||| (même famille que les sept segments à 0,22
+  d'opacité, et que le trait du Kakuro tiré dans le mauvais sens : trois fois
+  ce mois-ci, un écran vert et illisible)
+- *Ce qui manque* : une sonde qui relève, sur la page rendue, **la hauteur
+  réelle en pixels de chaque texte** et crie sous un plancher (11 px). Elle se
+  lit comme `contrasteRendu`, qui mesure déjà sur les PIXELS et pas sur les
+  règles CSS — c'est la même idée appliquée à la taille plutôt qu'à la
+  couleur, et elle attraperait ces trois-là d'un coup.
+
+**Une photo prise après une validation montre la question SUIVANTE** — 27 octobre 2026
+
+- *Ce que je voulais faire* : photographier le dessin coloré, juste après que
+  l'élève a validé.
+- *Ce qui a coûté* : une relance et deux minutes de doute. La photo arrivait
+  une seconde après le verdict — le temps que `photo()` fasse son
+  `scrollIntoView` et sa découpe — et le meneur avait déjà enchaîné sur la
+  question suivante. L'image rendue est un écran parfaitement NORMAL, vide et
+  net : rien n'y dit qu'elle a été prise trop tard, et l'on cherche pourquoi
+  le dessin ne se peint pas.
+- *Combien de fois* : || (déjà le 26 octobre, sur le Pendu)
+- *Ce qui manque* : dans `sonde.mjs`, un `photoDuVerdict(selecteur, chemin)`
+  qui **gèle l'enchaînement** le temps de la découpe — ou, à défaut, la règle
+  écrite une fois : après un `submit`, on photographie AVANT de compter.

@@ -15865,3 +15865,99 @@ body.en-boite > #app-container { background: none; }
     outline: 3px solid var(--primary); outline-offset: -3px;
     background: color-mix(in srgb, var(--primary) 16%, var(--bg-panel));
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LE DESSIN GRADUÉ — une pile de droites, et une image qui apparaît.
+
+   LE PLAN EST UN SVG EN PIXELS, pas un SVG mis à l'échelle : son `viewBox`
+   est fabriqué à la taille mesurée du cadre, donc une unité vaut un pixel et
+   `font-size: 13px` veut dire treize pixels. Le premier jet avait un
+   `viewBox` fixe de mille unités réduit par le CSS : sur un téléphone, une
+   borne écrite en vingt unités sortait à sept pixels de haut.
+
+   LES FORMES SONT TRANSPARENTES À 55 % : elles se peignent PAR-DESSUS les
+   droites, et un aplat opaque effacerait les graduations sur lesquelles
+   l'élève est en train de compter.
+   ───────────────────────────────────────────────────────────────────────── */
+.dg-layout { display: flex; flex-direction: column; align-items: center;
+    gap: 12px; width: 100%; }
+.dg-context { text-align: center; max-width: 48ch; }
+
+/* L'ORDRE DE MARCHE GARDE SA PLACE MÊME VIDE : sans `min-height`, tout le
+   plan remonte de vingt pixels à la validation, au moment précis où l'élève
+   regarde le dessin se colorer. */
+.dg-ordre { min-height: 2.8em; text-align: center; max-width: 46ch;
+    font-size: clamp(.95rem, 3.8vw, 1.1rem); line-height: 1.35;
+    color: var(--text-main); }
+.dg-ordre b { color: var(--primary-texte); }
+
+.dg-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.dg-chip {
+    min-width: 44px; padding: 0 6px;
+    border: 2px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1rem; font-weight: 800; cursor: pointer;
+}
+/* CE QUI EST DÉJÀ POSÉ S'EFFACE SANS DISPARAÎTRE : on doit pouvoir y revenir
+   pour corriger, donc la pastille reste lisible et cliquable. */
+.dg-chip--pose { border-style: dashed; color: var(--text-muted); }
+/* ENCRE BLANCHE SUR UNE PASTILLE PLEINE, jamais `--primary-texte` : ce jeton
+   est l'indigo qu'on écrit SUR le fond de la page. */
+.dg-chip--actif { background: var(--primary); border-color: var(--primary);
+    color: #fff; }
+/* `--danger-fond` ET NON `--danger` : le fond vif donne 3,76 avec du blanc,
+   la garde du dépôt le refuse, et elle a raison. */
+.dg-chip--faux { background: var(--danger-fond); border-color: var(--danger-fond);
+    color: #fff; border-style: solid; }
+.dg-chip:disabled { cursor: default; }
+@media (hover: hover) {
+    .dg-chip:not(:disabled):not(.dg-chip--actif):hover { background: var(--bg-hover); }
+}
+.dg-chip:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+.dg-plan {
+    width: 100%; max-width: 640px;
+    border: 2px solid var(--border); border-radius: 14px;
+    background: var(--bg-panel); overflow: hidden;
+}
+.dg-plan--ok { outline: 3px solid var(--success); outline-offset: 3px; }
+.dg-svg { display: block; width: 100%; height: auto; }
+
+.dg-axe { stroke: var(--text-main); stroke-width: 2; }
+.dg-cran { stroke: var(--text-main); stroke-width: 1.5; }
+.dg-borne { fill: var(--text-main); font-size: 13px; font-weight: 700; }
+/* LE NUMÉRO DE LA DROITE EST CE QUE L'ÉNONCÉ NOMME — « droite 3 ». Il est en
+   gris pour ne pas se confondre avec une graduation. */
+.dg-numero { fill: var(--text-muted); font-size: 13px; font-weight: 800; }
+
+.dg-forme { stroke: none; }
+.dg-forme--corps { fill: color-mix(in srgb, var(--primary) 55%, transparent); }
+.dg-forme--toit { fill: color-mix(in srgb, var(--warning) 55%, transparent); }
+.dg-forme--detail { fill: color-mix(in srgb, var(--accent) 60%, transparent); }
+.dg-trait { stroke: var(--primary); stroke-width: 3; stroke-linecap: round; }
+
+.dg-point line { stroke: var(--text-main); stroke-width: 2.5; stroke-linecap: round; }
+.dg-point text { fill: var(--text-main); font-size: 13px; font-weight: 800; }
+/* LE POINT EN COURS EST INDIGO, celui qui est faux est rouge, et les deux se
+   voient sur le dessin sans qu'on relise la liste. */
+.dg-point--actif line { stroke: var(--primary); stroke-width: 3.5; }
+.dg-point--actif text { fill: var(--primary-texte); }
+.dg-point--faux line { stroke: var(--danger-fond); stroke-width: 3.5; }
+.dg-point--faux text { fill: var(--danger-texte); }
+
+.dg-statut { min-height: 2.8em; text-align: center; font-weight: 600;
+    color: var(--text-muted); max-width: 46ch; }
+.dg-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.dg-btn {
+    min-height: 48px; padding: 0 18px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+.dg-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+.dg-btn:disabled { opacity: .5; cursor: default; }
+.dg-btn:focus-visible { outline: 3px solid var(--text-main); outline-offset: 2px; }
+
+@media (max-width: 480px) {
+    .dg-context { font-size: .9rem; }
+}

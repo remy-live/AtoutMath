@@ -5,10 +5,11 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, boiteDe, echapperSheet, largeurTexte
+    ENCRE, boiteDe, echapperSheet, enPoints, largeurTexte
 } from './socle.js';
 import { ajusterAuCarre, boiteDe as boiteCaseDomino, cellulesDe, cheminSerpentin, insecable } from '../../core/dominos.js';
 import { decorSvg } from '../../core/penduDecors.js';
+import { COLONNES, nombreFr } from '../../core/dessinsGradues.js';
 import { encre, polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 
 // --- Dessin d'une grille Mathdoku -------------------------------------------
@@ -2414,4 +2415,244 @@ RENDUS_GRILLES.pendu = {
     // DEUX PAR LIGNE : il faut de la place pour les tirets d'un mot long ET
     // pour l'alphabet en dessous.
     parLigneDefaut: 2
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LE DESSIN GRADUÉ, SUR LE PAPIER — et c'est sa forme d'origine.
+//
+// Rémy l'a demandé d'après quatre captures d'une publication de collègues :
+// c'est un exercice de PHOTOCOPIE, qu'on fait au crayon et à la règle. La
+// feuille porte donc exactement ce que portent ces modèles, et dans cet
+// ordre : le tableau des points, la pile des droites graduées, puis la liste
+// des polygones à relier.
+//
+// LA LISTE DES POLYGONES N'EST PAS UN ORNEMENT. À l'écran, le logiciel trace
+// tout seul dès que les sommets sont posés — l'élève ne sait pas, et n'a pas
+// besoin de savoir, lesquels vont ensemble. Sur le papier, sans cette liste,
+// la feuille demande un dessin sans dire lequel : elle est, mot pour mot,
+// impossible à faire. Oubliée au premier jet, vue en REGARDANT la fiche.
+//
+// ── POURQUOI LA BOÎTE ENTIÈRE, ET NON LE CARRÉ INSCRIT ──────────────────────
+//
+// La mise en page offre deux emplacements : le CARRÉ inscrit, pour une grille
+// carrée, et la BOÎTE complète. Premier jet sur le carré — REGARDÉ sur la
+// fiche imprimée : les droites occupaient la moitié de la largeur de la page,
+// et un intervalle faisait huit millimètres. Or ici la largeur EST l'exercice :
+// c'est elle qui décide si un élève peut viser une graduation au crayon. Avec
+// la boîte entière, un intervalle en fait dix-sept.
+//
+// LES DEUX BORNES S'ÉCRIVENT SOUS LES CRANS DES BOUTS, pas à côté de la
+// droite, pour la même raison : écrites à côté, elles mangent la largeur dont
+// les dix intervalles ont besoin.
+
+/** La place de chaque chose dans le bloc de la fiche, en millimètres. */
+function poseDessinGradue(item, slot) {
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const L = b.w, H = b.h;
+    const n = item.meta.droites.length;
+    const pts = item.meta.points;
+    // LA HAUTEUR DES LETTRES EST BORNÉE DES DEUX CÔTÉS. Elle ne peut pas
+    // suivre la largeur sans plafond — sur une page entière, « A (1) : 5 »
+    // sortirait en quatre millimètres de haut —, ni descendre sous 2,6 mm,
+    // qui est le plus petit corps qui survive à une photocopie.
+    const police = Math.max(2.6, Math.min(3.7, L * 0.022));
+    // DEUX COLONNES DÈS QUE L'ABSCISSE S'ÉCRIT EN MOTS : « H (4) : neuf
+    // dixièmes » fait vingt-cinq caractères, et quatre colonnes de cela
+    // débordent du bloc. Le tableau grandit alors en hauteur, pas en largeur.
+    const long = Math.max(...pts.map(p => String(p.enonce).length));
+    const colTab = long > 9 ? 2 : (pts.length > 8 ? 4 : 3);
+    const ligTab = Math.ceil(pts.length / colTab);
+    const pasTab = police * 1.55;
+    const hTab = ligTab * pasTab + police;
+    const hRelie = police * 2.6;
+    // x0 garde la place du numéro de droite, écrit à sa gauche.
+    const x0 = b.x + police * 2.4;
+    const x1 = b.x + L;
+    return {
+        L, H, n, pts, colTab, ligTab, pasTab, hTab, police,
+        x0, x1, x: b.x, large: L,
+        colonne: (x1 - x0) / COLONNES,
+        yTab: b.y + police,
+        largeurTab: L / colTab,
+        pas: (H - hTab - hRelie) / n,
+        y0: b.y + hTab + (H - hTab - hRelie) / n * 0.45,
+        yRelie: b.y + H - hRelie * 0.6
+    };
+}
+
+/** « A (1) : 5 » — le nom du point, sa droite, son abscisse. */
+const ligneTableau = (p) => `${p.nom} (${p.ligne}) : ${p.enonce}`;
+
+/** « B-C-E-D · A-B-C » — ce qu'il faut relier, dans l'ordre. */
+const aRelier = (item) => item.meta.formes
+    .map(f => [...f.sommets].join('-'))
+    .concat((item.meta.traits || []).map(([a, b]) => `${a}-${b}`))
+    .join('   ·   ');
+
+/** Les trois hauteurs de cran : les bouts, le milieu, et les autres. */
+const hauteurCran = (g, c) => (c === 0 || c === COLONNES) ? Math.min(g.pas * 0.17, 3)
+    : (c === COLONNES / 2 ? Math.min(g.pas * 0.13, 2.3) : Math.min(g.pas * 0.08, 1.5));
+
+function dessinGraduePreviewHtml(item, slot, k, solution) {
+    const g = poseDessinGradue(item, slot);
+    const px = (v) => `${v * k}px`;
+    const xDe = (c) => g.x0 + c * g.colonne;
+    const yDe = (i) => g.y0 + i * g.pas;
+    let html = '';
+
+    // ── LE TABLEAU DES POINTS ───────────────────────────────────────────────
+    g.pts.forEach((p, i) => {
+        const co = i % g.colTab, li = Math.floor(i / g.colTab);
+        html += `<div style="position:absolute;
+            left:${px(g.x + co * g.largeurTab)}; top:${px(g.yTab + li * g.pasTab)};
+            width:${px(g.largeurTab)}; font-size:${px(g.police)};
+            font-weight:600; color:#1a202c;">${echapperSheet(ligneTableau(p))}</div>`;
+    });
+
+    // ── LES FORMES, QUAND ON MONTRE LA SOLUTION ─────────────────────────────
+    //
+    // Elles se peignent AVANT les droites : un aplat posé par-dessus effacerait
+    // les graduations, et c'est sur elles que se lit la correction.
+    if (solution) {
+        const place = {};
+        g.pts.forEach(p => { place[p.nom] = { x: xDe(p.colonne), y: yDe(p.ligne - 1) }; });
+        const TEINTE = { corps: '#c7d2fe', toit: '#fde68a', detail: '#bae6fd' };
+        const calque = (dedans) => `<svg style="position:absolute; left:0; top:0;
+            overflow:visible; width:1px; height:1px;">${dedans}</svg>`;
+        item.meta.formes.forEach(f => {
+            const poly = [...f.sommets].map(s => `${place[s].x * k},${place[s].y * k}`).join(' ');
+            html += calque(`<polygon points="${poly}"
+                fill="${TEINTE[f.couleur] || TEINTE.corps}" stroke="#1d4ed8"
+                stroke-width="${Math.max(1, k * 0.3)}" />`);
+        });
+        (item.meta.traits || []).forEach(([a, c]) => {
+            html += calque(`<line x1="${place[a].x * k}" y1="${place[a].y * k}"
+                x2="${place[c].x * k}" y2="${place[c].y * k}" stroke="#1d4ed8"
+                stroke-width="${Math.max(1, k * 0.45)}" />`);
+        });
+    }
+
+    // ── LES DROITES, LEURS CRANS, LEURS BORNES ──────────────────────────────
+    item.meta.droites.forEach((d, i) => {
+        const y = yDe(i);
+        html += `<div style="position:absolute; left:${px(g.x0)}; top:${px(y)};
+            width:${px(g.x1 - g.x0)}; height:0;
+            border-top:${Math.max(1, k * 0.35)}px solid #1a202c;"></div>`;
+        html += `<div style="position:absolute; left:${px(g.x)}; top:${px(y - g.police * 0.7)};
+            width:${px(g.police * 1.8)}; text-align:center; font-size:${px(g.police)};
+            font-weight:700; color:#1a202c;">${i + 1}</div>`;
+        for (let c = 0; c <= COLONNES; c++) {
+            const h = hauteurCran(g, c);
+            html += `<div style="position:absolute; left:${px(xDe(c))}; top:${px(y - h)};
+                width:0; height:${px(h * 2)};
+                border-left:${Math.max(1, k * 0.3)}px solid #1a202c;"></div>`;
+        }
+        [[0, d.min], [COLONNES, d.max]].forEach(([c, v]) => {
+            html += `<div style="position:absolute; left:${px(xDe(c) - g.police * 2.5)};
+                top:${px(y + g.police * 0.9)}; width:${px(g.police * 5)}; text-align:center;
+                font-size:${px(g.police)}; font-weight:700;
+                color:#1a202c;">${nombreFr(v)}</div>`;
+        });
+    });
+
+    // ── LES POINTS, QUAND ON MONTRE LA SOLUTION ─────────────────────────────
+    if (solution) {
+        g.pts.forEach(p => {
+            html += `<div style="position:absolute;
+                left:${px(xDe(p.colonne) - g.police * 1.5)};
+                top:${px(yDe(p.ligne - 1) - g.police * 2)}; width:${px(g.police * 3)};
+                text-align:center; font-size:${px(g.police * 1.1)}; font-weight:800;
+                color:#1d4ed8;">${p.nom}</div>`;
+        });
+    }
+
+    // ── CE QU'IL FAUT RELIER ────────────────────────────────────────────────
+    html += `<div style="position:absolute; left:${px(g.x)}; top:${px(g.yRelie)};
+        width:${px(g.large)}; font-size:${px(g.police)}; font-weight:600;
+        color:#2d3748;">Relie : ${echapperSheet(aRelier(item))}</div>`;
+    return html;
+}
+
+function dessinerDessinGraduePdf(doc, item, slot, solution) {
+    const g = poseDessinGradue(item, slot);
+    const xDe = (c) => g.x0 + c * g.colonne;
+    const yDe = (i) => g.y0 + i * g.pas;
+
+    // ── LE TABLEAU DES POINTS ───────────────────────────────────────────────
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(enPoints(g.police));
+    g.pts.forEach((p, i) => {
+        const co = i % g.colTab, li = Math.floor(i / g.colTab);
+        doc.text(pourPdf(ligneTableau(p)),
+            g.x + co * g.largeurTab, g.yTab + li * g.pasTab + g.police);
+    });
+
+    // ── LES FORMES DE LA CORRECTION, SOUS LES DROITES ───────────────────────
+    if (solution) {
+        const place = {};
+        g.pts.forEach(p => { place[p.nom] = { x: xDe(p.colonne), y: yDe(p.ligne - 1) }; });
+        const TEINTE = { corps: [199, 210, 254], toit: [253, 230, 138], detail: [186, 230, 253] };
+        doc.setDrawColor(...encre([29, 78, 216]));
+        doc.setLineWidth(0.35);
+        item.meta.formes.forEach(f => {
+            const pts = [...f.sommets].map(s => place[s]);
+            doc.setFillColor(...encre(TEINTE[f.couleur] || TEINTE.corps));
+            // jsPDF ne sait pas tracer un polygone : on lui donne la suite des
+            // DÉPLACEMENTS d'un sommet au suivant, et l'on referme à la main.
+            const sauts = pts.slice(1).map((q, j) => [q.x - pts[j].x, q.y - pts[j].y]);
+            sauts.push([pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y]);
+            doc.lines(sauts, pts[0].x, pts[0].y, [1, 1], 'FD', true);
+        });
+        doc.setLineWidth(0.5);
+        (item.meta.traits || []).forEach(([a, c]) => {
+            doc.line(place[a].x, place[a].y, place[c].x, place[c].y);
+        });
+    }
+
+    // ── LES DROITES, LEURS CRANS, LEURS BORNES ──────────────────────────────
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(enPoints(g.police));
+    item.meta.droites.forEach((d, i) => {
+        const y = yDe(i);
+        doc.setLineWidth(0.4);
+        doc.line(g.x0, y, g.x1, y);
+        doc.text(String(i + 1), g.x + g.police * 0.9, y + g.police * 0.4, { align: 'center' });
+        doc.setLineWidth(0.3);
+        for (let c = 0; c <= COLONNES; c++) {
+            const h = hauteurCran(g, c);
+            doc.line(xDe(c), y - h, xDe(c), y + h);
+        }
+        [[0, d.min], [COLONNES, d.max]].forEach(([c, v]) => {
+            doc.text(pourPdf(nombreFr(v)), xDe(c), y + g.police * 1.9, { align: 'center' });
+        });
+    });
+
+    // ── LES LETTRES DE LA CORRECTION, PAR-DESSUS ────────────────────────────
+    if (solution) {
+        doc.setTextColor(...encre([29, 78, 216]));
+        doc.setFontSize(enPoints(g.police * 1.1));
+        g.pts.forEach(p => {
+            doc.text(pourPdf(p.nom), xDe(p.colonne), yDe(p.ligne - 1) - g.police * 1.2,
+                { align: 'center' });
+        });
+        doc.setTextColor(...ENCRE.texte);
+    }
+
+    // ── CE QU'IL FAUT RELIER ────────────────────────────────────────────────
+    doc.setFontSize(enPoints(g.police));
+    doc.splitTextToSize(pourPdf(`Relie : ${aRelier(item)}`), g.large).slice(0, 2)
+        .forEach((t, i) => doc.text(t, g.x, g.yRelie + g.police + i * g.police * 1.5));
+}
+
+RENDUS_GRILLES.dessinGradue = {
+    titre: 'Le Dessin Gradué',
+    nomBloc: 'Dessin',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: dessinGraduePreviewHtml,
+    pdfGrille: dessinerDessinGraduePdf,
+    // UN SEUL PAR LIGNE, et c'est la largeur qui l'impose : dix intervalles
+    // qu'on pointe au crayon demandent toute la page. À deux par ligne, un
+    // intervalle fait huit millimètres et la graduation ne se vise plus.
+    parLigneDefaut: 1
 };

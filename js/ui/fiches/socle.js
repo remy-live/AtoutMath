@@ -300,6 +300,16 @@ export const POINTE = 0.26;           // longueur de la pointe
 /** Une approximation de la largeur d'un texte en Helvetica, en millimètres. */
 export const largeurTexte = (s, pt) => String(s).length * pt * 0.48 * 0.3528;
 
+/**
+ * LE CORPS D'UN TEXTE EN POINTS, POUR UNE HAUTEUR VOULUE EN MILLIMÈTRES.
+ *
+ * Elle est ici parce qu'elle était écrite DEUX FOIS — dans les casse-tête et
+ * dans les grilles —, avec deux constantes différentes (2,8346 et 2,835). La
+ * garde du découpage l'a vu avant nous, et elle a raison : deux copies d'une
+ * fonction, ce sont deux comportements qui divergent au premier réglage.
+ */
+export const enPoints = (mm) => mm * 2.8346;
+
 export const echapperSheet = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 /**

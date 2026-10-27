@@ -511,6 +511,37 @@ export const numerationExercises = [
         instruction: "Entre les deux grands traits, l'axe est coupé en DIX. On compte les INTERVALLES depuis le trait de gauche, jamais les traits. Puis on recommence un cran plus bas : entre 3,5 et 3,6, il y a encore dix intervalles, et un intervalle vaut 0,01. Le réglage « Le pas de la graduation » permet de rester aux centièmes du début à la fin."
     },
 
+    // --- Le dessin gradué (demandé par Rémy le 27 octobre) ---
+    //
+    // RÉMY, quatre captures d'une publication de collègues : « Tu pourrais
+    // créer ce genre d'exercice pour vec des dessins simplifiées pour
+    // téléphone portable et évidemment on peut relier les points etc… »
+    //
+    // LA MÊME COMPÉTENCE QUE « La Loupe sur la Droite », juste au-dessus, et
+    // c'est voulu : les deux citent num.dec.graduations, pour que le bilan par
+    // compétence les réunisse. La Loupe fait LIRE une abscisse ; celui-ci fait
+    // POSER un point à une abscisse donnée — le même savoir dans l'autre
+    // sens, et c'est ce sens-là qui résiste.
+    {
+        id: 'num-dessin-gradue',
+        cree: '2026-10-27',
+        title: 'Le Dessin Gradué',
+        consignePapier: "Place les points, puis trace et colorie.",
+        colonnesPapier: 1,
+        printable: 'dessinGradue',
+        generatorId: 'num.dessin-gradue', activityId: 'dessinGradue',
+        // UN DESSIN NE SE RÉVISE PAS : refaire le même ne corrige pas la
+        // lecture d'échelle qui l'avait raté. Ce qu'on remonte, c'est le
+        // réglage des échelles, et cela se décide au catalogue — pas dans le
+        // carnet d'erreurs.
+        sansRevision: true,
+        params: { nbQuestions: 2, dessin: 'tous', echelles: 'entiers', ecriture: 'nombre' },
+        motsClefs: ['droite graduée', 'abscisse', 'graduation', 'échelle', 'placer',
+            'dessin', 'points', 'relier', 'décimaux', 'coloriage'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Chaque droite a SON échelle, et elle change d'une ligne à l'autre : lis d'abord les deux nombres écrits sous ses bouts. Placer 0,4 sur une droite de 0 à 1 et 40 sur une droite de 0 à 100, c'est le même geste et deux nombres différents. On compte les INTERVALLES depuis le bout gauche, jamais les traits. Touche la droite à l'endroit voulu : le point se range sur la graduation la plus proche, et son abscisse se relit en dessous — pour que tu puisses te corriger AVANT de valider. Quand tout est posé, le dessin apparaît. Le réglage « Comment l'abscisse est écrite » demande le même nombre de plusieurs façons : « 0,4 », « quatre dixièmes », « 4/10 », « le double de 0,2 »."
+    },
+
     // --- Le vocabulaire du calcul (fiche 4ᵉ § 4, 5, 6, N) ---
     // Le seul chapitre où la bonne réponse ne se déduit de rien : elle se sait.
     // Un élève qui ignore « différence » rate une soustraction qu'il savait
