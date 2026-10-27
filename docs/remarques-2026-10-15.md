@@ -4184,3 +4184,43 @@ CE QUI COMMANDE LA RÉALISATION :
 - **ET SUR UN TÉLÉPHONE.** Cinq cases en haut, quatre étages : il faut que
   cela tienne dans 390 px, et qu'on puisse taper un nombre négatif à
   virgule dans une case.
+
+
+## 42. La Traversée : « ça fait vieillot de fou » — 27 octobre
+
+Rémy, capture de l'écran de La Traversée à l'appui :
+
+> « ca fait vieillot de fou ! et il faudrait pouvoir dragdropper »
+
+DEUX DEMANDES, ET LA PREMIÈRE EST LA PLUS DURE. Le glisser-déposer se
+fabrique ; « vieillot », non — il faut d'abord comprendre ce qui fait
+vieillot, sinon on refait la même chose en d'autres couleurs.
+
+CE QUE LA CAPTURE MONTRE, en regardant froidement :
+
+- **Tout a le même poids.** Un cadre blanc à filet gris clair pour la
+  scène, des cartes blanches à filet gris clair pour les personnages, un
+  carré en pointillés pour la barque. Trois objets de natures différentes,
+  dessinés de la même façon. L'œil n'a aucune prise.
+- **La rivière n'est pas de l'eau**, c'est une bande lavande. Rien ne
+  coule, rien ne sépare vraiment — on dirait une colonne de tableau.
+- **La barque n'est pas une barque**, c'est un carré en pointillés, qui est
+  le dessin universel de « zone de dépôt vide » dans un formulaire. Et
+  c'est bien le problème : l'écran ressemble à un formulaire.
+- **Les personnages sont des étiquettes.** Emoji de 24 px + texte gras à
+  gauche : c'est la ligne d'une liste, pas un pion qu'on déplace.
+- **Rien ne dit qu'on peut agir.** Pas d'ombre, pas de relief, pas de
+  poignée — donc rien n'appelle le doigt, et c'est exactement ce que la
+  seconde demande vient corriger.
+
+CE QUE LE GLISSER-DÉPOSER CHANGE, AU-DELÀ DU CONFORT : embarquer devient un
+GESTE, et c'est le geste qui raconte l'énigme. Cliquer une étiquette puis
+un bouton « Traverser », c'est remplir un formulaire ; prendre la chèvre et
+la poser dans la barque, c'est jouer. Le dépôt existe déjà dans le dépôt —
+les jetons de la Grille de Nombres ont été faits le matin même (v1111) — et
+la règle qui s'y est payée vaut ici aussi : **tout élément qui porte un
+glisser doit avaler le clic qui suit**.
+
+ON NE SE LANCE PAS : Rémy a dit une fois pour toutes, à propos des schémas
+puis des interrupteurs, « fais moi des propositions d'abord ». Trois
+maquettes, donc, avant une ligne de code définitif.

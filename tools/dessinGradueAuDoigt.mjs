@@ -98,6 +98,7 @@ async function unePasse(taille) {
                 : `UN GLISSEMENT A POSÉ ${poses} POINT(S) — le plan ne se défile plus`);
         }
 
+        const placements = [];
         // ── ON PLACE LES POINTS, COMME UN ÉLÈVE ─────────────────────────────
         //
         // ON S'ARRÊTE SUR LE NOMBRE DE PASTILLES POSÉES, jamais sur l'ordre de
@@ -120,6 +121,7 @@ async function unePasse(taille) {
             if (!(colonne >= 0 && colonne <= 10)) {
                 throw new Error(`${nom} : abscisse ${abscisseT} hors de [${min} ; ${max}]`);
             }
+            placements.push({ nom, ligne, colonne });
             const c = d.crans[colonne];
             await s.page.mouse.move(c.x, c.y);
             await s.page.mouse.down();
@@ -133,6 +135,99 @@ async function unePasse(taille) {
             tours++;
         }
         dits.push(`${tours} points posés en lisant l'écran`);
+
+        // ── TOUTES LES DROITES TIENNENT DANS L'ÉCRAN ────────────────────────
+        //
+        // Rémy : « tous les axes doivent apparaitre à l'écran ». On ne mesure
+        // pas la hauteur du SVG — on regarde si son BAS est au-dessus du bord
+        // de la fenêtre, c'est-à-dire si l'élève voit la dernière droite sans
+        // faire défiler.
+        const cadre = await s.page.evaluate(() => {
+            const p = document.querySelector('.dg-plan');
+            const r = p.getBoundingClientRect();
+            return { bas: Math.round(r.bottom), fenetre: window.innerHeight,
+                droites: document.querySelectorAll('.dg-axe').length };
+        });
+        dits.push(cadre.bas <= cadre.fenetre
+            ? `les ${cadre.droites} droites tiennent dans l'écran `
+                + `(bas à ${cadre.bas} px pour ${cadre.fenetre})`
+            : `LA DERNIÈRE DROITE EST HORS DE L'ÉCRAN : bas à ${cadre.bas} px `
+                + `pour une fenêtre de ${cadre.fenetre}`);
+
+        // ── ON REPREND UN JETON, ON LE GLISSE, ET DEUX AU MÊME ENDROIT ──────
+        const jetonDe = (nom) => {
+            const p = placements.find(x => x.nom === nom);
+            return lirePlan(s).then(v => v.droites[p.ligne - 1].crans[p.colonne]);
+        };
+        const combienPoses = () => s.page.evaluate(
+            () => document.querySelectorAll('.dg-chip--pose').length);
+        const courantDuPlan = () => s.page.evaluate(
+            () => document.querySelector('.dg-plan').dataset.courant);
+
+        const premier = placements[0];
+        const avantReprise = await combienPoses();
+        let c = await jetonDe(premier.nom);
+        await s.page.mouse.move(c.x, c.y);
+        await s.page.mouse.down();
+        await s.page.mouse.up();
+        const apresReprise = await combienPoses();
+        const repris = await courantDuPlan();
+        dits.push((apresReprise === avantReprise - 1 && repris === premier.nom)
+            ? `toucher le jeton ${premier.nom} le reprend, et il redevient le point en cours`
+            : `TOUCHER UN JETON NE LE REPREND PAS (${avantReprise} → ${apresReprise}, `
+                + `en cours : ${repris})`);
+
+        // On le repose, puis on le GLISSE de deux crans : il doit bouger sans
+        // être repris — c'est tout l'écart entre un toucher et un glisser.
+        await s.page.mouse.move(c.x, c.y);
+        await s.page.mouse.down();
+        await s.page.mouse.up();
+        const vu2 = await lirePlan(s);
+        const d2 = vu2.droites[premier.ligne - 1];
+        // DEUX COLONNES D'ÉCART AU MOINS, et du bon côté : en visant toujours
+        // à droite, un point déjà en colonne 10 donnait une cible IDENTIQUE à
+        // son point de départ — le glisser devenait un toucher, le jeton était
+        // repris, et la sonde annonçait un défaut sur un logiciel qui marchait.
+        const colCible = premier.colonne <= 7 ? premier.colonne + 2 : premier.colonne - 2;
+        const cible = d2.crans[colCible];
+        await s.page.mouse.move(c.x, c.y);
+        await s.page.mouse.down();
+        await s.page.mouse.move(cible.x, cible.y, { steps: 8 });
+        await s.page.mouse.up();
+        const apresGlisse = await combienPoses();
+        const bouge = await s.page.evaluate((nom) => {
+            const g = document.querySelector(`.dg-plan [data-jeton="${nom}"]`);
+            return g ? Math.round(g.getBoundingClientRect().left) : null;
+        }, premier.nom);
+        dits.push((apresGlisse === avantReprise && bouge !== null)
+            ? `glisser ${premier.nom} le déplace sans le reprendre`
+            : `LE GLISSER NE DÉPLACE PAS (${apresGlisse} posés, jeton ${bouge})`);
+
+        // Et deux points au même endroit doivent se VOIR : sur la capture de
+        // Rémy, deux lettres empilées faisaient une tache noire illisible.
+        const second = placements.find(x => x.ligne === premier.ligne
+            && x.colonne !== premier.colonne) || placements[1];
+        const cSecond = await jetonDe(second.nom);
+        await s.page.mouse.move(cible.x, cible.y);
+        await s.page.mouse.down();
+        await s.page.mouse.move(cSecond.x, cSecond.y, { steps: 8 });
+        await s.page.mouse.up();
+        const doubles = await s.page.evaluate(
+            () => document.querySelectorAll('.dg-point--double').length);
+        dits.push(doubles === 1
+            ? 'deux points au même endroit font un jeton double, qui se lit'
+            : `DEUX POINTS AU MÊME ENDROIT NE SE VOIENT PAS (${doubles} jeton double)`);
+
+        // On remet le premier à sa place avant de valider : un toucher sur le
+        // tas reprend celui qu'on vient d'y poser, puis un toucher sur son cran
+        // le repose.
+        await s.page.mouse.move(cSecond.x, cSecond.y);
+        await s.page.mouse.down();
+        await s.page.mouse.up();
+        c = await jetonDe(premier.nom);
+        await s.page.mouse.move(c.x, c.y);
+        await s.page.mouse.down();
+        await s.page.mouse.up();
         await s.photo('.dg-plan', `tools/tmp/dg-${taille.nom}-pose.png`);
 
         // ── ON VALIDE, ET LE DESSIN DOIT APPARAÎTRE ─────────────────────────
@@ -171,7 +266,7 @@ for (const { t, r } of sorties) {
     console.log(`   erreurs de page : ${r.erreurs.length}, fenêtres natives : ${r.fenetres.length}`);
     r.erreurs.forEach(e => console.log(`     ! ${e}`));
     fautes += r.erreurs.length + r.fenetres.length;
-    if (r.dits.some(d => d.includes('NON') || d.startsWith('UN GLISSEMENT'))) fautes++;
+    fautes += r.dits.filter(d => /^[A-ZÀ-Ü ,']{12,}/.test(d) || d.includes('NON')).length;
 }
 console.log(fautes ? `\n${fautes} chose(s) à regarder.` : '\nTOUT PASSE.');
 process.exit(fautes ? 1 : 0);

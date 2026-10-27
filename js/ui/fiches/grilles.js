@@ -10,6 +10,9 @@ import {
 import { ajusterAuCarre, boiteDe as boiteCaseDomino, cellulesDe, cheminSerpentin, insecable } from '../../core/dominos.js';
 import { decorSvg } from '../../core/penduDecors.js';
 import { COLONNES, nombreFr } from '../../core/dessinsGradues.js';
+// LA GÉOMÉTRIE DES ALLUMETTES VIENT DU NOYAU, en bloc : l'écran et la
+// feuille lisent les mêmes rectangles, et rien ne peut diverger.
+import * as ALLU from '../../core/allumettesDessin.js';
 // `nombreArbre` ÉCRIT LE MOINS TYPOGRAPHIQUE, celui du manuel ; `nombreFr`
 // des droites graduées garde le trait d'union. Deux fonctions du même nom
 // dans deux noyaux, et c'est voulu — on les distingue ici, à l'import.
@@ -2099,88 +2102,82 @@ const SEPT_SEGMENTS = [
 /** La place de l'égalité sur la feuille : une rangée de cases deux fois hautes. */
 function poseAllumettes(item, slot) {
     const n = item.meta.cellules.length;
-    // Une case de chiffre est deux fois plus haute que large ; le signe et le
-    // « = » sont plus étroits, comme à l'écran et comme sur une feuille.
-    const etroite = (c) => c.t !== 'c';
-    const unites = item.meta.cellules.reduce((t, c) => t + (etroite(c) ? 0.55 : 1), 0);
+    // TOUTES LES CASES ONT LA MÊME LARGEUR, y compris le signe et le « = ».
+    //
+    // Elles étaient plus étroites pour les signes, ce qui raccourcissait leurs
+    // allumettes — et une allumette plus courte que les autres se voit du
+    // premier coup d'œil sur une feuille. C'est la même correction qu'à
+    // l'écran : les sept bâtons d'un chiffre, les deux d'un signe et les deux
+    // du « = » ont désormais rigoureusement la même longueur.
     const ecart = 0.18;
-    const total = unites + ecart * (n - 1);
-    const l = Math.min(slot.taille / total, slot.taille / 2.1);
-    return { l, total, ecart, etroite, x: slot.x + (slot.taille - l * total) / 2,
-        y: slot.y + (slot.taille - l * 2) / 2 };
+    const total = n + ecart * (n - 1);
+    // La vue d'une case fait 115 de large pour 215 de haut : la boîte des
+    // centres, plus la demi-épaisseur dont les bâtons dépassent.
+    const l = Math.min(slot.taille / total, slot.taille * ALLU.VUE.w / ALLU.VUE.h);
+    const h = l * ALLU.VUE.h / ALLU.VUE.w;
+    return { l, h, total, ecart, x: slot.x + (slot.taille - l * total) / 2,
+        y: slot.y + (slot.taille - h) / 2 };
+}
+
+/**
+ * LES RECTANGLES D'UNE CASE, en unités du noyau.
+ *
+ * Une seule source pour l'écran et pour le papier : `allumettesDessin.js`.
+ * Deux géométries écrites séparément finissent toujours par diverger — c'est
+ * exactement ce qui a produit le « un peu décalés » de Rémy.
+ */
+function rectsDeLaCase(cel) {
+    const dessine = (e) => {
+        const b = ALLU.baton(e);
+        return [{ ...b.corps, quoi: 'bois' }, { ...b.tete, quoi: 'tete' }];
+    };
+    if (cel.t === '=') return ALLU.batonsDuSigne('=').flatMap(dessine);
+    if (cel.t === 'o') {
+        return ALLU.batonsDuSigne('+')
+            .filter(e => (cel.m & (1 << e.i))).flatMap(dessine);
+    }
+    // SEULES LES ALLUMETTES POSÉES SE DESSINENT : un emplacement vide montré
+    // en pâle ferait lire « 8 » là où il n'y a pas de 8.
+    return ALLU.EMPLACEMENTS.filter(e => (cel.m & (1 << e.i))).flatMap(dessine);
 }
 
 function allumettesPreviewHtml(item, slot, k, solution) {
-    const { l, ecart, etroite, x, y } = poseAllumettes(item, slot);
+    const { l, ecart, x, y } = poseAllumettes(item, slot);
     const cellules = solution ? item.meta.solution : item.meta.cellules;
     const px = (v) => `${v * k}px`;
-    const ep = l * 0.11;
-    const baton = (bx, by, bl, horizontal, couleur) => `<div style="position:absolute;
-        left:${px(bx)}; top:${px(by)};
-        width:${px(horizontal ? bl : ep)}; height:${px(horizontal ? ep : bl)};
-        background:${couleur}; border-radius:${px(ep * 0.4)};"></div>`;
-
+    const u = l / ALLU.VUE.w;                       // une unité du noyau, en mm
     let html = '';
-    let cx = x;
     cellules.forEach((cel, i) => {
-        const large = etroite(cel) ? l * 0.55 : l;
-        const h = l * 2;
-        if (cel.t === '=') {
-            html += baton(cx + large * 0.08, y + h * 0.42, large * 0.84, true, '#1a202c');
-            html += baton(cx + large * 0.08, y + h * 0.58, large * 0.84, true, '#1a202c');
-        } else if (cel.t === 'o') {
-            html += baton(cx + large * 0.04, y + h * 0.5 - ep / 2, large * 0.92, true, '#1a202c');
-            if (cel.m & 0b10) {
-                html += baton(cx + large * 0.5 - ep / 2, y + h * 0.5 - large * 0.46,
-                    large * 0.92, false, '#1a202c');
-            }
-        } else {
-            SEPT_SEGMENTS.forEach((s, si) => {
-                // SEULES LES ALLUMETTES POSÉES SE DESSINENT, voir plus haut.
-                if (!(cel.m & (1 << si))) return;
-                const bl = s.h ? large * 0.68 : h * 0.36;
-                html += baton(cx + large * s.x - (s.h ? 0 : ep / 2), y + h * s.y,
-                    bl, s.h, solution ? '#1d4ed8' : '#1a202c');
-            });
+        const cx = x + i * (l + l * ecart);
+        for (const r of rectsDeLaCase(cel)) {
+            const couleur = r.quoi === 'tete'
+                ? (solution ? '#1d4ed8' : '#d81b4a')
+                : (solution ? '#93b4f5' : '#e3c296');
+            html += `<div style="position:absolute;
+                left:${px(cx + (r.x - ALLU.VUE.x) * u)};
+                top:${px(y + (r.y - ALLU.VUE.y) * u)};
+                width:${px(r.w * u)}; height:${px(r.h * u)};
+                background:${couleur};
+                border-radius:${px(ALLU.T * u * 0.5)};"></div>`;
         }
-        cx += large + l * ecart;
-        void i;
     });
     return html;
 }
 
 function dessinerAllumettesPdf(doc, item, slot, solution) {
-    const { l, ecart, etroite, x, y } = poseAllumettes(item, slot);
+    const { l, ecart, x, y } = poseAllumettes(item, slot);
     const cellules = solution ? item.meta.solution : item.meta.cellules;
-    const ep = l * 0.11;
-    if (solution) doc.setFillColor(29, 78, 216); else doc.setFillColor(...ENCRE.trait);
-    const baton = (bx, by, bl, horizontal) => {
-        const w = horizontal ? bl : ep, hh = horizontal ? ep : bl;
-        doc.roundedRect(bx, by, w, hh, ep * 0.4, ep * 0.4, 'F');
-    };
-    let cx = x;
-    for (const cel of cellules) {
-        const large = etroite(cel) ? l * 0.55 : l;
-        const h = l * 2;
-        if (cel.t === '=') {
-            doc.setFillColor(...ENCRE.trait);
-            baton(cx + large * 0.08, y + h * 0.42, large * 0.84, true);
-            baton(cx + large * 0.08, y + h * 0.58, large * 0.84, true);
-            if (solution) doc.setFillColor(29, 78, 216);
-        } else if (cel.t === 'o') {
-            baton(cx + large * 0.04, y + h * 0.5 - ep / 2, large * 0.92, true);
-            if (cel.m & 0b10) {
-                baton(cx + large * 0.5 - ep / 2, y + h * 0.5 - large * 0.46, large * 0.92, false);
-            }
-        } else {
-            SEPT_SEGMENTS.forEach((s, si) => {
-                if (!(cel.m & (1 << si))) return;
-                const bl = s.h ? large * 0.68 : h * 0.36;
-                baton(cx + large * s.x - (s.h ? 0 : ep / 2), y + h * s.y, bl, s.h);
-            });
+    const u = l / ALLU.VUE.w;
+    const BOIS = solution ? [147, 180, 245] : [227, 194, 150];
+    const TETE = solution ? [29, 78, 216] : [216, 27, 74];
+    cellules.forEach((cel, i) => {
+        const cx = x + i * (l + l * ecart);
+        for (const r of rectsDeLaCase(cel)) {
+            doc.setFillColor(...encre(r.quoi === 'tete' ? TETE : BOIS));
+            doc.roundedRect(cx + (r.x - ALLU.VUE.x) * u, y + (r.y - ALLU.VUE.y) * u,
+                r.w * u, r.h * u, ALLU.T * u * 0.5, ALLU.T * u * 0.5, 'F');
         }
-        cx += large + l * ecart;
-    }
+    });
     doc.setFillColor(...ENCRE.trait);
 }
 

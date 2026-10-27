@@ -6475,3 +6475,27 @@ le résultat n'existe pas** — 15 octobre 2026
   `epreuveTombe` dise, quand une épreuve ne tombe pas, s'il s'agit d'une
   épreuve d'échantillonnage — il voit déjà passer les deux exécutions, il
   pourrait comparer le nombre d'assertions au lieu du seul verdict.
+
+
+**`closest('[data-x]')` remonte jusqu'à `<html>`, qui porte des réglages** — 27 octobre 2026
+
+- *Ce que je voulais faire* : savoir si le doigt s'est posé sur un jeton du
+  plan, avec `e.target.closest('[data-point]')`.
+- *Ce qui a coûté* : vingt minutes et quatre fausses pistes. `state.js` pose le
+  style de point choisi par le professeur sur la RACINE du document —
+  `<html data-point="croix">`. Le `closest` remontait donc jusqu'à `<html>` et
+  trouvait TOUJOURS un jeton, nommé « croix ». Le premier toucher prenait en
+  main un point qui n'existe pas, plus rien ne se posait, et il n'y avait
+  AUCUNE erreur de page : le code faisait exactement ce qu'on lui demandait.
+  J'ai relu le code trois fois avant d'écrire l'état sur le DOM et de le lire.
+- *Combien de fois* : |
+- *Ce qui manque* : deux choses, et la seconde est la vraie.
+  **1.** La règle : un `closest` sur un attribut de données se BORNE au
+  conteneur (`cadre.contains(trouve)`), et son nom est propre à l'activité
+  (`data-jeton`, pas `data-point`) — `<html>` et `<body>` portent des réglages
+  d'application que personne ne regarde en écrivant une activité.
+  **2.** Le geste qui a fini par trouver : **écrire l'état interne sur le DOM**
+  (`plan.dataset.courant`) au lieu de le déduire de ce qui est affiché. Trois
+  indices — la pastille indigo, le texte de l'ordre, le compteur — disaient
+  chacun quelque chose de compatible avec quatre hypothèses différentes. Un
+  attribut l'a dit en une fois. À faire d'emblée sur toute activité à état.

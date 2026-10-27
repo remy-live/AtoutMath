@@ -15512,111 +15512,87 @@ body.en-boite > #app-container { background: none; }
     padding: clamp(8px, 2.5vw, 18px);
     background: var(--bg-panel); border: 2px solid var(--border); border-radius: 14px;
 }
-/* UN CHIFFRE EST HAUT : 1 pour 2,5. Ce n'est pas un choix d'esthétique mais
-   d'arithmétique — les sept zones se partagent la hauteur en CINQ bandes, et
-   pour que chacune fasse ses 44 px il faut 220 px de haut. À 1 pour 2, les
-   bandes tombaient à 31 px. */
-.ae-case { position: relative; flex: 1 1 0; aspect-ratio: 1 / 2.5; max-width: 96px; }
-/* Le signe et le « = » sont plus étroits qu'un chiffre : ils le sont sur une
-   feuille, et une égalité dont le + est aussi large qu'un 8 ne se lit plus. */
-.ae-case--op, .ae-case--egal { flex: 0 1 auto; width: clamp(24px, 7.5vw, 54px); }
+/* ── LA CASE EST LA BOÎTE DES CENTRES, ET SON FORMAT EST CELUI DE LA VUE ───
 
-/* ── LES SEPT ZONES, QUI PAVENT LA CASE ──────────────────────────────────── */
-/* `min-height: 0` N'EST PAS UNE COQUETTERIE. La feuille de style impose 44 px
-   de haut à TOUT bouton — une bonne règle, payée par « les 43 boutons
-   étirés » — et elle écrasait ici la hauteur de bande : les zones faisaient
-   44 px là où la bande en mesurait 31, et se recouvraient donc de 13 px.
-   Vingt-quatre paires, mesurées par la sonde. Un doigt qui visait le segment
-   du milieu enlevait celui du haut.
+   Rémy, 27 octobre : « les horizontals en haut et en bas sont un peu decales ».
+   Il avait raison, et la cause n'était pas une marge : la case était en
+   1 / 2,5. Or un chiffre à sept allumettes TOUTES DE MÊME LONGUEUR est
+   exactement deux fois plus haut que large — un bâton horizontal mesure la
+   largeur, un vertical la demi-hauteur. En 1 / 2,5, les horizontaux sont
+   forcément plus courts, et aucun réglage ne rattrape cela.
 
-   ON CHOISIT LE PAVAGE EXACT CONTRE LA TAILLE MINIMALE, et dans cet ordre :
-   deux zones qui se recouvrent sont un DÉFAUT — le logiciel fait autre chose
-   que ce qu'on lui demande —, alors qu'une zone un peu petite n'est qu'une
-   gêne. La case est donc dimensionnée pour que les bandes fassent leurs
-   44 px, et le pavage reste juste même quand l'écran les rétrécit. */
+   Le format écrit ici, 115 / 215, est celui de la VUE du SVG : la case des
+   centres (100 × 200) plus la demi-épaisseur dont les bâtons dépassent de
+   chaque côté. Voir `js/core/allumettesDessin.js`, qui la calcule. */
+.ae-case { position: relative; flex: 1 1 0; aspect-ratio: 115 / 215; max-width: 104px; }
+.ae-dessin { position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block; pointer-events: none; }
+
+/* ── DE VRAIES ALLUMETTES : du bois blond, une tête framboise ───────────────
+
+   Rémy : « fais des vraies allumettre ». Les jetons sont posés ici, et non
+   pris au thème : une allumette est un OBJET, pas une couleur d'interface.
+   Elle garde la même teinte en clair et en sombre, comme un emoji. */
+.ae-bois { fill: #e3c296; }
+.ae-reflet { fill: #f7e6cb; }
+.ae-tete { fill: #e11d48; }
+
+.ae-bat--pleine { opacity: 1; }
+/* UN EMPLACEMENT VIDE NE SE DESSINE PAS. Au premier jet, il était peint à
+   0,22 d'opacité : l'écran affichait alors « 8 + 8 = 8 » pour une égalité qui
+   n'avait aucun 8, parce que les sept bâtons d'un huit étaient tous là, les
+   uns pleins, les autres pâles. Il ne reparaît qu'allumette EN MAIN, pour
+   montrer où l'on peut la poser. */
+.ae-bat--vide { display: none; }
+.ae-plateau--main .ae-bat--vide, .ae-plateau--glisse .ae-bat--vide { display: block; }
+.ae-plateau--main .ae-bat--vide .ae-bois,
+.ae-plateau--glisse .ae-bat--vide .ae-bois { fill: var(--primary); opacity: .16; }
+.ae-plateau--main .ae-bat--vide .ae-tete,
+.ae-plateau--glisse .ae-bat--vide .ae-tete { fill: var(--primary); opacity: .3; }
+.ae-plateau--main .ae-bat--vide .ae-reflet,
+.ae-plateau--glisse .ae-bat--vide .ae-reflet { display: none; }
+
+/* LE TROU LAISSÉ PAR L'ALLUMETTE QU'ON TIENT, et la place où on l'a posée. */
+.ae-bat--trou { display: block; }
+.ae-bat--trou .ae-bois { fill: var(--danger); opacity: .18; }
+.ae-bat--trou .ae-tete { fill: var(--danger); opacity: .3; }
+.ae-bat--trou .ae-reflet { display: none; }
+.ae-bat--posee .ae-bois { fill: #eed2a8; }
+.ae-bat--posee .ae-tete { fill: #f43f5e; }
+.ae-bat--prise { opacity: .35; }
+
+/* ── LES ZONES DE TOUCHER, POSÉES PAR L'ACTIVITÉ ────────────────────────────
+
+   Elles ne dessinent plus rien : elles PAVENT la case, chacune autour de son
+   bâton et d'aucun autre. Leur place vient de `ZONES`, dans le noyau, parce
+   qu'une bande écrite ici et un bâton écrit là-bas finissent toujours par
+   diverger — c'est très exactement ce qui est arrivé.
+
+   `touch-action: none` EST OBLIGATOIRE pour le glisser : sans lui, le
+   navigateur décide qu'un doigt parti d'une allumette veut faire défiler la
+   page, il annule la suite des `pointermove`, et le glisser meurt au premier
+   pixel. Règle payée sur les jetons de la Grille de Nombres. */
 .ae-seg {
-    position: absolute; padding: 0; margin: 0; min-height: 0; min-width: 0;
-    border: 0; background: none; cursor: pointer;
+    position: absolute; padding: 0; border: 0; background: none;
+    cursor: pointer; touch-action: none; border-radius: 8px;
 }
-/* CINQ BANDES DE 20 %, ET ELLES PAVENT SANS SE RECOUVRIR — c'est la seule
-   disposition qui tienne, et le premier jet ne tenait pas : les zones
-   verticales mordaient sur les horizontales, 24 paires qui se recouvraient,
-   mesurées par la sonde. Un doigt qui vise un segment tombait sur son voisin.
-
-   LA ZONE ET LE BÂTON SONT DEUX CHOSES DIFFÉRENTES : la zone pave, le bâton
-   DÉBORDE de sa zone pour aller toucher ses voisins — un chiffre dont les
-   segments ne se rejoignent pas ne se lit pas. Comme le ::after ne reçoit
-   aucun clic, le dessin peut sortir sans que la zone bouge. */
-.ae-seg--h { left: 0; width: 100%; height: 20%; }
-.ae-seg--v { width: 50%; height: 20%; }
-.ae-s0 { top: 0; }
-.ae-s5 { left: 0; top: 20%; }
-.ae-s1 { right: 0; top: 20%; }
-.ae-s6 { top: 40%; }
-.ae-s4 { left: 0; top: 60%; }
-.ae-s2 { right: 0; top: 60%; }
-.ae-s3 { top: 80%; }
-
-/* ── LE BÂTON, DESSINÉ DANS SA ZONE MAIS PAS ENFERMÉ DEDANS ──────────────── */
-.ae-seg::after {
-    content: ''; position: absolute; border-radius: 3px;
-    background: var(--text-main);
-}
-.ae-seg--h::after { left: 12%; right: 12%; height: 7px; }
-.ae-s0::after { top: 14%; }
-.ae-s6::after { top: 50%; transform: translateY(-50%); }
-.ae-s3::after { bottom: 14%; }
-/* Les barres verticales montent et descendent hors de leur bande pour
-   rejoindre les horizontales : sans ce débordement, le 0 ressemble à six
-   traits posés côte à côte. */
-.ae-seg--v::after { top: -34%; bottom: -34%; width: 7px; }
-.ae-s5::after, .ae-s4::after { left: 10%; }
-.ae-s1::after, .ae-s2::after { right: 10%; }
-
-/* UN EMPLACEMENT VIDE NE SE DESSINE PAS DU TOUT, tant qu'on n'a rien en main.
-
-   Premier jet : il se devinait, à 0,22 d'opacité. REGARDÉ SUR UNE PHOTO en
-   390 px, et c'était sans appel — les trois chiffres de l'égalité se lisaient
-   « 8 + 8 = 8 ». Sept emplacements pâles autour de quelques bâtons noirs, et
-   l'œil reconstitue le 8, qui est le seul chiffre où tout est allumé. Aucune
-   des mesures chiffrées ne le disait : rien ne débordait, aucune zone ne se
-   recouvrait, les bâtons étaient au bon endroit. Il n'y avait plus d'énigme,
-   voilà tout.
-
-   LE PAPIER AVAIT RAISON AVANT L'ÉCRAN : le rendu imprimé, lui, ne dessine
-   que les allumettes posées — on ne peut pas imprimer un emplacement vide
-   sans transformer chaque chiffre en 8. L'écran fait pareil, et il ne montre
-   les emplacements libres QU'AU MOMENT où l'on tient une allumette, c'est-à-
-   dire au seul moment où la question « où puis-je la poser ? » se pose. */
-.ae-seg--vide::after { background: none; }
-.ae-seg--pleine::after { background: var(--text-main); }
-/* LE TROU LAISSÉ PAR L'ALLUMETTE EN MAIN : il reste visible, en pointillé,
-   pour qu'on puisse la remettre d'où elle vient sans avoir à tout reprendre. */
-.ae-seg--trou::after { background: var(--danger); opacity: .3; }
-.ae-seg--posee::after { background: var(--primary); }
-.ae-seg:focus-visible { outline: 3px solid var(--primary); outline-offset: -2px; border-radius: 6px; }
 .ae-seg:disabled { cursor: default; }
+.ae-seg:focus-visible { outline: 3px solid var(--primary); outline-offset: -2px; }
+/* L'EMPLACEMENT VISÉ PENDANT QU'ON TIENT L'ALLUMETTE : sans lui on lâche au
+   jugé, et l'on découvre après coup que c'était la place d'à côté. */
+.ae-seg--cible { background: color-mix(in srgb, var(--primary) 22%, transparent); }
+/* La barre verticale du « + » couvre le milieu de sa case. */
+.ae-seg--ov { left: 25%; top: 25%; width: 50%; height: 50%; }
 
-/* PENDANT QU'ON TIENT L'ALLUMETTE, les emplacements libres s'éclairent : sans
-   cela on cherche où elle peut aller, et l'on clique au hasard. */
-.ae-plateau--main .ae-seg--vide::after { background: var(--primary); opacity: .34; }
-/* ET LE TROU GARDE SA COULEUR À LUI, qui n'est pas celle des emplacements
-   libres. Le trou EST un emplacement libre — il porte donc aussi la classe
-   `--vide` —, et la règle du dessus, plus spécifique, le repeignait en violet
-   pâle comme les autres. Regardé sur une photo : on ne distinguait plus « d'où
-   je l'ai prise » de « où je peux la poser », et c'est précisément ce qu'il
-   faut distinguer pour remettre une allumette en place. */
-.ae-seg.ae-seg--trou::after { background: var(--danger); opacity: .5; }
-
-/* ── LE SIGNE ET LE « = », qui ne sont pas des chiffres ──────────────────── */
-.ae-barre { position: absolute; background: var(--text-main); border-radius: 3px; }
-.ae-barre--oh { left: 4%; right: 4%; top: 50%; height: 7px; transform: translateY(-50%); }
-.ae-barre--eh { left: 4%; right: 4%; top: 42%; height: 7px; }
-.ae-barre--eb { left: 4%; right: 4%; top: 58%; height: 7px; }
-/* LA BARRE VERTICALE DU SIGNE PREND TOUTE LA LARGEUR de sa case : à 50 %
-   elle mesurait 18 px au doigt, mesuré — on ne vise pas 18 px. */
-.ae-seg--ov { left: 0; width: 100%; top: 25%; height: 50%; }
-.ae-seg--ov::after { top: 8%; bottom: 8%; left: 50%; width: 7px; transform: translateX(-50%); }
+/* LE FANTÔME suit le doigt. Il est TRANSPARENT AUX ÉVÉNEMENTS, sinon
+   `elementFromPoint` le trouverait lui — il est sous le doigt par
+   construction — et l'on ne viserait jamais un emplacement. */
+.ae-fantome {
+    position: fixed; z-index: 2000001; pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-8deg);
+    width: 92px; filter: drop-shadow(0 6px 10px rgb(0 0 0 / .35));
+}
+.ae-fantome svg { width: 100%; height: auto; display: block; }
 
 .ae-statut { min-height: 2.6em; text-align: center; font-weight: 600;
     color: var(--text-muted); max-width: 44ch; }
@@ -15643,8 +15619,6 @@ body.en-boite > #app-container { background: none; }
 @media (prefers-reduced-motion: reduce) { .ae-plateau--secoue { animation: none; } }
 
 @media (max-width: 480px) {
-    .ae-seg--h::after, .ae-barre--oh, .ae-barre--eh, .ae-barre--eb { height: 5px; }
-    .ae-seg--v::after, .ae-seg--ov::after { width: 5px; }
     .ae-context { font-size: .9rem; }
 }
 
@@ -15936,14 +15910,31 @@ body.en-boite > #app-container { background: none; }
 .dg-forme--detail { fill: color-mix(in srgb, var(--accent) 60%, transparent); }
 .dg-trait { stroke: var(--primary); stroke-width: 3; stroke-linecap: round; }
 
-.dg-point line { stroke: var(--text-main); stroke-width: 2.5; stroke-linecap: round; }
-.dg-point text { fill: var(--text-main); font-size: 13px; font-weight: 800; }
-/* LE POINT EN COURS EST INDIGO, celui qui est faux est rouge, et les deux se
-   voient sur le dessin sans qu'on relise la liste. */
-.dg-point--actif line { stroke: var(--primary); stroke-width: 3.5; }
-.dg-point--actif text { fill: var(--primary-texte); }
-.dg-point--faux line { stroke: var(--danger-fond); stroke-width: 3.5; }
-.dg-point--faux text { fill: var(--danger-texte); }
+/* LE JETON A REMPLACÉ LA CROIX, et c'est une demande de Rémy : « on pourrait
+   glisser les points ». Une croix de quatorze pixels avec sa lettre flottant
+   au-dessus est petite à viser, laide quand deux se touchent, et impossible à
+   saisir du doigt. Un jeton de vingt-quatre pixels portant sa lettre se voit,
+   se prend, et dit tout seul qu'on peut le déplacer.
+
+   `touch-action: none` SUR LE JETON SEULEMENT, et c'est obligatoire : sans
+   lui, le navigateur décide qu'un doigt qui part d'un jeton veut faire défiler
+   la page, il annule la suite des `pointermove`, et le glisser meurt au
+   premier pixel. Posé sur le plan entier, il interdirait de faire défiler la
+   page depuis un plan de quatre cents pixels de haut — on perd le défilement
+   AU DÉPART D'UN JETON, et nulle part ailleurs. Règle payée sur les jetons de
+   la Grille de Nombres, le 27 octobre au matin. */
+.dg-point { cursor: grab; touch-action: none; }
+.dg-point * { touch-action: none; }
+.dg-point rect { fill: var(--text-main); stroke: var(--bg-panel); stroke-width: 2; }
+.dg-point text { fill: #fff; font-size: 13px; font-weight: 800; }
+/* LE POINT EN COURS EST INDIGO, celui qu'on tient aussi mais plus marqué,
+   celui qui est faux est rouge — et deux points au MÊME endroit passent à
+   l'ambre, parce qu'un dessin n'a jamais deux points sur une même case et
+   qu'une tache noire illisible ne dit rien à personne. */
+.dg-point--actif rect { fill: var(--primary); }
+.dg-point--tenu rect { fill: var(--primary); stroke-width: 3; }
+.dg-point--double rect { fill: var(--warning-fond); }
+.dg-point--faux rect { fill: var(--danger-fond); }
 
 .dg-statut { min-height: 2.8em; text-align: center; font-weight: 600;
     color: var(--text-muted); max-width: 46ch; }

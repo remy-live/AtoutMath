@@ -256,9 +256,42 @@ test('un dessin choisi à la main est servi tel quel', () => {
 test('deux droites restent deux cibles séparées, de 280 à 1400 px', () => {
     for (let l = 280; l <= 1400; l += 17) {
         const g = geometrie(l);
-        assert.ok(g.pas >= 58, `à ${l} px, deux droites sont à ${g.pas} px l'une de l'autre`);
+        // QUARANTE-HUIT ET NON PLUS CINQUANTE-HUIT, et c'est un arbitrage de
+        // Rémy : « tous les axes doivent apparaitre à l'écran ». Le plan a
+        // cessé d'avoir le droit de déborder, donc l'écart se resserre — et
+        // 48 px reste la taille d'une cible qu'un doigt atteint.
+        assert.ok(g.pas >= 48, `à ${l} px, deux droites sont à ${g.pas} px l'une de l'autre`);
         assert.ok(g.colonne > 20, `à ${l} px, deux graduations sont à ${g.colonne} px`);
         assert.ok(g.x1 > g.x0, `à ${l} px, la droite est à l'envers`);
         assert.ok(g.x1 <= l, `à ${l} px, la droite déborde du cadre`);
+        // LA BORNE S'ÉCRIT SOUS LE CRAN ET SOUS LE JETON : onze pixels de
+        // cran, douze de jeton. Moins de vingt-trois, et le nombre passe sur
+        // le jeton qu'on vient de poser.
+        assert.ok(g.souscran >= 23, `à ${l} px, la borne monte sur le jeton`);
     }
+});
+
+test('toutes les droites tiennent dans la hauteur qu\'on leur donne', () => {
+    // RÉMY, 27 octobre : « tous les axes doivent apparaitre à l'écran ». Sur sa
+    // capture, un dessin de six droites en montrait quatre et la suite tombait
+    // sous le bord de la fenêtre — on place un point en se souvenant d'une
+    // droite qu'on ne voit plus.
+    for (const lignes of [3, 4, 5, 6]) {
+        for (const dispo of [320, 400, 520, 700, 900]) {
+            const g = geometrie(390, { lignes, dispo });
+            const hauteur = g.haut + (lignes - 1) * g.pas + g.bas;
+            // Au-dessus du plancher de 48 px, le plan DOIT tenir dans la place
+            // qu'on lui donne. En dessous, on cesse de resserrer et l'on
+            // assume le défilement : mieux vaut défiler que des droites
+            // collées l'une à l'autre.
+            if (g.pas > 48) {
+                assert.ok(hauteur <= dispo + 1,
+                    `${lignes} droites dans ${dispo} px : le plan en prend ${hauteur}`);
+            }
+            assert.ok(g.pas >= 48, `${lignes} droites dans ${dispo} px : écart ${g.pas}`);
+        }
+    }
+    // Et sans hauteur annoncée, rien ne se resserre : c'est le cas des
+    // épreuves, qui n'ont pas de fenêtre.
+    assert.equal(geometrie(1200, { lignes: 6 }).pas, geometrie(1200).pas);
 });

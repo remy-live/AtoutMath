@@ -313,20 +313,42 @@ export function ecrireAbscisse(v, { varie = false, rng = null } = {}) {
  * quatre-vingts pixels de largeur sur un téléphone — soit huit pixels par
  * colonne, le quart de l'écart entre deux graduations.
  */
-export function geometrie(largeur) {
+export function geometrie(largeur, { lignes = 4, dispo = 0 } = {}) {
     const l = Math.max(280, Math.round(largeur || 0) || 360);
     const gauche = 30, droite = 16;
+    const haut = 34, bas = 36;
+    const n = Math.max(1, Math.round(lignes) || 1);
+    // L'ÉCART ENTRE DEUX DROITES SUIT LA LARGEUR, ENTRE 48 ET 96 PIXELS.
+    const parLaLargeur = Math.min(96, Math.max(48, l / 5.2));
+    // ET IL SE RESSERRE POUR QUE TOUTES LES DROITES TIENNENT DANS L'ÉCRAN.
+    //
+    // Rémy, 27 octobre : « tous les axes doivent apparaitre à l'écran ». Sur
+    // sa capture, un dessin de six droites en montrait quatre et la suite se
+    // trouvait sous le bord de la fenêtre — on place un point en se souvenant
+    // d'une droite qu'on ne voit plus. `dispo` est la hauteur mesurée sous le
+    // plan ; quand elle vaut zéro — hors navigateur, dans une épreuve — elle
+    // ne contraint rien.
+    const parLaHauteur = (n > 1 && dispo > 0)
+        ? (dispo - haut - bas) / (n - 1) : Infinity;
+    // LE PLANCHER EST À 48 PIXELS, ET IL EST DESCENDU DE 58.
+    //
+    // 58 était le plus petit écart où deux droites voisines restent deux
+    // cibles séparées au doigt, et c'était le bon chiffre tant que le plan
+    // avait le droit de déborder de l'écran. Il ne l'a plus : entre « tout
+    // voir » et « viser large », Rémy a tranché pour « tout voir », et 48 px
+    // reste la taille d'une cible tactile. Sous ce plancher, on cesse de
+    // resserrer et le plan défile — mieux vaut défiler que des droites
+    // collées.
+    // ON ARRONDIT VERS LE BAS, jamais au plus près : à 62,5 px d'écart pour
+    // cinq droites, arrondir à 63 fait un plan de 322 px dans une place de
+    // 320 — deux pixels, et la dernière droite repasse sous le bord. L'épreuve
+    // l'a dit avant l'écran.
+    const pas = Math.floor(Math.max(48, Math.min(parLaLargeur, parLaHauteur)));
     return {
-        l, x0: gauche, x1: l - droite,
-        // L'ÉCART ENTRE DEUX DROITES SUIT LA LARGEUR, ENTRE 58 ET 96 PIXELS.
-        // 58 est le plus petit écart où deux droites voisines restent deux
-        // cibles séparées au doigt ; 96 celui au-delà duquel un dessin de
-        // quatre lignes devient une affiche. Il NE SUIT PAS la largeur d'une
-        // colonne, qui fait trente pixels sur un téléphone : le dessin est
-        // donc étiré en hauteur sur un petit écran, comme les modèles papier,
-        // et une fusée étirée reste une fusée.
-        pas: Math.round(Math.min(96, Math.max(58, l / 5.2))),
-        haut: 34, bas: 36,
+        l, x0: gauche, x1: l - droite, pas, haut, bas,
+        // LA BORNE S'ÉCRIT SOUS LE CRAN ET SOUS LE JETON : onze pixels de cran,
+        // douze de jeton, donc jamais moins de vingt-trois.
+        souscran: Math.round(Math.max(23, Math.min(26, pas * 0.3))),
         colonne: (l - gauche - droite) / COLONNES
     };
 }

@@ -299,3 +299,146 @@ test('ET LES DEUX SE FABRIQUENT SANS SE FAIRE ATTENDRE', () => {
         assert.ok(dt < BUDGETS[id], `${id} : ${dt} ms, au-delà des ${BUDGETS[id]} ms permises`);
     }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LA GÉOMÉTRIE DES ALLUMETTES — 27 octobre.
+//
+// RÉMY, capture à l'appui : « fais des vraies allumettre et les horizontals en
+// haut et en bas sont un peu decales ».
+//
+// IL AVAIT RAISON, ET LA CAUSE ÉTAIT LE FORMAT DE LA CASE. Les bâtons étaient
+// dessinés en pourcentages de leur zone de toucher — horizontaux de 12 % à
+// 88 % de leur largeur, verticaux débordant de 34 % de leur hauteur — donc
+// deux repères différents et des coins qui ne se ferment pas. Et la case était
+// en 1 / 2,5, alors qu'un chiffre à sept allumettes DE MÊME LONGUEUR est
+// exactement deux fois plus haut que large : aucun réglage de marge ne pouvait
+// rattraper cela.
+//
+// CES GARDES TIENNENT LE DESSIN À SA PROMESSE : sept longueurs égales, une
+// zone de toucher par bâton, et pas une qui empiète sur sa voisine.
+
+import {
+    L as ALLU_L, T as ALLU_T, LONG as ALLU_LONG, JEU as ALLU_JEU,
+    EMPLACEMENTS, ZONES, VUE,
+    baton, batonsDuSigne
+} from '../js/core/allumettesDessin.js';
+
+/** Le centre d'un bâton, en pourcentage de la vue. */
+function centreDansLaVue(e) {
+    const { corps } = baton(e);
+    return {
+        x: (corps.x + corps.w / 2 - VUE.x) / VUE.w * 100,
+        y: (corps.y + corps.h / 2 - VUE.y) / VUE.h * 100
+    };
+}
+
+test('les sept allumettes d\'un chiffre ont la même longueur et le même jeu aux coins', () => {
+    const longueurs = EMPLACEMENTS.map(e => {
+        const { corps } = baton(e);
+        return Math.round(Math.max(corps.w, corps.h) * 1e6) / 1e6;
+    });
+    assert.equal(new Set(longueurs).size, 1,
+        `sept allumettes, ${new Set(longueurs).size} longueurs : ${longueurs.join(', ')}`);
+    assert.equal(longueurs[0], ALLU_LONG);
+    // ET CHACUNE EST POSÉE À ÉGALE DISTANCE DES DEUX COINS QU'ELLE RELIE.
+    //
+    // Sans cette moitié-là, la garde ne gardait RIEN : la longueur vient de
+    // `LONG`, donc elle est la même par construction et aucun défaut de
+    // placement ne la ferait tomber. `epreuveTombe` l'a dit avant qu'on la
+    // croie. Ce qui se vérifie vraiment, c'est la POSITION : un bâton décalé
+    // d'un cheveu rouvre le coin, et c'est exactement ce que Rémy a vu.
+    for (const e of EMPLACEMENTS) {
+        if (e.sens === 'h') {
+            assert.equal(e.x, ALLU_JEU, `le bâton ${e.i} ne part pas du bon jeu`);
+            assert.equal(ALLU_L - (e.x + ALLU_LONG), ALLU_JEU,
+                `le bâton ${e.i} ne finit pas au bon jeu`);
+            assert.ok([0, ALLU_L, 2 * ALLU_L].includes(e.y),
+                `le bâton ${e.i} n'est pas sur une des trois lignes`);
+        } else {
+            const demi = e.y < ALLU_L ? 0 : ALLU_L;
+            assert.equal(e.y - demi, ALLU_JEU, `le bâton ${e.i} ne part pas du bon jeu`);
+            assert.equal(demi + ALLU_L - (e.y + ALLU_LONG), ALLU_JEU,
+                `le bâton ${e.i} ne finit pas au bon jeu`);
+            assert.ok([0, ALLU_L].includes(e.x),
+                `le bâton ${e.i} n'est pas sur un des deux montants`);
+        }
+    }
+    // ET LA CASE EST DEUX FOIS PLUS HAUTE QUE LARGE : c'est la CONDITION pour
+    // que les sept soient égales, et c'est elle qui manquait — la case était
+    // en 1 / 2,5. La vue ajoute la demi-épaisseur dont les bâtons dépassent,
+    // plus un pixel de jeu de chaque côté ; on les retire pour retrouver la
+    // boîte des centres.
+    const MARGE = 2;
+    assert.equal(VUE.w - ALLU_T - MARGE, ALLU_L);
+    assert.equal(VUE.h - ALLU_T - MARGE, 2 * ALLU_L);
+});
+
+test('le signe et le « = » emploient les mêmes allumettes', () => {
+    for (const quoi of ['+', '=']) {
+        for (const e of batonsDuSigne(quoi)) {
+            const { corps } = baton(e);
+            assert.equal(Math.round(Math.max(corps.w, corps.h) * 1e6) / 1e6, ALLU_LONG,
+                `une allumette du « ${quoi} » n'a pas la longueur des autres`);
+        }
+    }
+});
+
+test('chaque zone de toucher contient son bâton, et lui seul', () => {
+    for (const e of EMPLACEMENTS) {
+        const c = centreDansLaVue(e);
+        for (const autre of EMPLACEMENTS) {
+            const z = ZONES[autre.i];
+            const dedans = c.x >= z.gauche && c.x <= z.droite
+                && c.y >= z.haut && c.y <= z.bas;
+            if (autre.i === e.i) {
+                assert.ok(dedans,
+                    `le bâton ${e.i} tombe hors de sa zone (${c.x.toFixed(1)} ; `
+                        + `${c.y.toFixed(1)})`);
+            } else {
+                // Une frontière partagée ne compte pas : on exige seulement
+                // qu'un centre ne soit pas À L'INTÉRIEUR d'une zone étrangère.
+                const dedansStrict = c.x > z.gauche && c.x < z.droite
+                    && c.y > z.haut && c.y < z.bas;
+                assert.ok(!dedansStrict,
+                    `le bâton ${e.i} tombe dans la zone du ${autre.i}`);
+            }
+        }
+    }
+});
+
+test('les zones pavent la case sans se recouvrir ni laisser de trou', () => {
+    const toutes = EMPLACEMENTS.map(e => ZONES[e.i]);
+    for (let i = 0; i < toutes.length; i++) {
+        for (let j = i + 1; j < toutes.length; j++) {
+            const a = toutes[i], b = toutes[j];
+            const croise = a.gauche < b.droite && b.gauche < a.droite
+                && a.haut < b.bas && b.haut < a.bas;
+            assert.ok(!croise, `les zones ${i} et ${j} se recouvrent`);
+        }
+    }
+    // Elles couvrent la case du haut au bas : un toucher au ras du bord doit
+    // agir, pas tomber dans un couloir mort.
+    const aire = toutes.reduce((t, z) =>
+        t + (z.droite - z.gauche) * (z.bas - z.haut), 0);
+    assert.ok(Math.abs(aire - 10000) < 1,
+        `les zones couvrent ${(aire / 100).toFixed(1)} % de la case`);
+});
+
+test('aucune allumette ne déborde de la vue', () => {
+    const tous = EMPLACEMENTS.concat(batonsDuSigne('+'), batonsDuSigne('='));
+    for (const e of tous) {
+        const { corps, tete } = baton(e);
+        for (const r of [corps, tete]) {
+            assert.ok(r.x >= VUE.x - 1e-9 && r.y >= VUE.y - 1e-9,
+                `une allumette sort de la vue en haut à gauche`);
+            assert.ok(r.x + r.w <= VUE.x + VUE.w + 1e-9
+                && r.y + r.h <= VUE.y + VUE.h + 1e-9,
+                `une allumette sort de la vue en bas à droite`);
+        }
+        // La tête est À UN BOUT du corps, jamais au milieu.
+        const auBout = (tete.x === corps.x && tete.y === corps.y)
+            || (tete.x + tete.w === corps.x + corps.w
+                && tete.y + tete.h === corps.y + corps.h);
+        assert.ok(auBout, 'une tête d\'allumette n\'est pas à un bout');
+    }
+});
