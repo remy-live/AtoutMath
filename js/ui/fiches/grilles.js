@@ -10,6 +10,10 @@ import {
 import { ajusterAuCarre, boiteDe as boiteCaseDomino, cellulesDe, cheminSerpentin, insecable } from '../../core/dominos.js';
 import { decorSvg } from '../../core/penduDecors.js';
 import { COLONNES, nombreFr } from '../../core/dessinsGradues.js';
+// `nombreArbre` ÉCRIT LE MOINS TYPOGRAPHIQUE, celui du manuel ; `nombreFr`
+// des droites graduées garde le trait d'union. Deux fonctions du même nom
+// dans deux noyaux, et c'est voulu — on les distingue ici, à l'import.
+import { nombreFr as nombreArbre } from '../../core/arbresDeCalculs.js';
 import { encre, polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 
 // --- Dessin d'une grille Mathdoku -------------------------------------------
@@ -2655,4 +2659,204 @@ RENDUS_GRILLES.dessinGradue = {
     // qu'on pointe au crayon demandent toute la page. À deux par ligne, un
     // intervalle fait huit millimètres et la graduation ne se vise plus.
     parLigneDefaut: 1
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'ARBRE DE CALCULS, SUR LE PAPIER — et c'est de cela qu'il s'agissait.
+//
+// La collègue du fil que Rémy a envoyé ne cherchait pas un écran : elle
+// cherchait un arbre « éditable », c'est-à-dire une FICHE qu'on règle et
+// qu'on imprime, et la seule réponse qu'on lui a faite était « écris du
+// LaTeX ». « Recopier et compléter » est une consigne de photocopie.
+//
+// CE QUE LA FEUILLE PORTE, ET DANS CET ORDRE : les cases du haut avec leurs
+// nombres, les ronds d'opération reliés par des flèches, les cases vides, la
+// case du bas en rouge — et, quand la question est d'écrire en ligne, les
+// pointillés pour l'écrire.
+//
+// LES CASES VIDES SONT VRAIMENT VIDES, et assez grandes pour qu'un nombre à
+// virgule et son signe y tiennent au crayon. C'est la seule mesure qui
+// compte sur une feuille : si « −10,5 » ne rentre pas dans le rectangle,
+// l'élève écrit à côté et la fiche a raté son seul travail.
+
+/** La place de chaque chose dans le bloc de la fiche, en millimètres. */
+function poseArbre(item, slot) {
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const { colonnes, lignes, question } = item.meta;
+    const police = Math.max(2.4, Math.min(3.4, b.w * 0.035));
+    // LES POINTILLÉS DE LA RÉPONSE NE SE PRENNENT QUE QUAND ON LES DEMANDE :
+    // sur un arbre à compléter, ils laisseraient croire qu'il y a autre chose
+    // à écrire en bas.
+    const hLigne = question === 'ligne' ? police * 4.5 : 0;
+    // La largeur que prend « En ligne : », mesurée et non devinée.
+    const etiquette = hLigne ? largeurTexte('En ligne :', police * 2.835) + 1.5 : 0;
+    const large = Math.max(8, Math.min(22, (b.w - 2) / (colonnes + 0.2)));
+    const haut = Math.max(5, Math.min(9, large * 0.5));
+    const pasX = colonnes > 1 ? (b.w - 2 - large) / (colonnes - 1) : 0;
+    const pasY = Math.max(haut + 8, (b.h - haut - hLigne - 2) / Math.max(1, lignes - 1));
+    return {
+        b, police, large, haut, pasX, pasY, hLigne, etiquette,
+        rond: Math.min(3.2, pasY * 0.16),
+        x: (colonne) => b.x + 1 + colonne * pasX,
+        y: (ligne) => b.y + 1 + (ligne - 1) * pasY,
+        yLigne: b.y + b.h - hLigne * 0.5
+    };
+}
+
+/** Le texte d'une case : le nombre donné, ou rien tant qu'on ne corrige pas. */
+const texteCase = (c, item, solution) =>
+    (c.genre === 'feuille' || item.meta.question === 'ligne' || solution)
+        ? nombreArbre(c.valeur) : '';
+
+function arbrePreviewHtml(item, slot, k, solution) {
+    const g = poseArbre(item, slot);
+    const px = (v) => `${v * k}px`;
+    const { cases, racine } = item.meta;
+    const parId = new Map(cases.map(c => [c.id, c]));
+    const cx = (c) => g.x(c.colonne) + g.large / 2;
+    let html = '';
+
+    // ── LES FLÈCHES ET LES RONDS ────────────────────────────────────────────
+    const calque = (dedans) => `<svg style="position:absolute; left:0; top:0;
+        overflow:visible; width:1px; height:1px;">${dedans}</svg>`;
+    for (const c of cases) {
+        if (c.genre !== 'noeud') continue;
+        const rx = cx(c), ry = g.y(c.ligne) - g.pasY / 2 + g.haut / 2;
+        for (const e of [parId.get(c.g), parId.get(c.d)]) {
+            html += calque(`<line x1="${cx(e) * k}" y1="${(g.y(e.ligne) + g.haut) * k}"
+                x2="${rx * k}" y2="${(ry - g.rond) * k}" stroke="#2d3748"
+                stroke-width="${Math.max(1, k * 0.22)}" />`);
+        }
+        html += calque(`<line x1="${rx * k}" y1="${(ry + g.rond) * k}"
+            x2="${rx * k}" y2="${(g.y(c.ligne) - 0.3) * k}" stroke="#1a202c"
+            stroke-width="${Math.max(1, k * 0.28)}" />`);
+        html += `<div style="position:absolute; left:${px(rx - g.rond)};
+            top:${px(ry - g.rond)}; width:${px(g.rond * 2)}; height:${px(g.rond * 2)};
+            border:${Math.max(1, k * 0.3)}px solid #1d4ed8; border-radius:50%;
+            background:#ffffff; display:flex; align-items:center; justify-content:center;
+            font-size:${px(g.rond * 1.1)}; font-weight:800; color:#1d4ed8;
+            box-sizing:border-box;">${c.op}</div>`;
+    }
+
+    // ── LES CASES ───────────────────────────────────────────────────────────
+    for (const c of cases) {
+        const donne = c.genre === 'feuille' || item.meta.question === 'ligne';
+        const fond = donne ? '#dbeafe' : '#ffffff';
+        const bord = c.id === racine ? '#dc2626' : (donne ? '#60a5fa' : '#94a3b8');
+        const encre = (donne || !solution) ? '#1a202c' : '#1d4ed8';
+        html += `<div style="position:absolute; left:${px(g.x(c.colonne))};
+            top:${px(g.y(c.ligne))}; width:${px(g.large)}; height:${px(g.haut)};
+            border:${Math.max(1, k * 0.35)}px solid ${bord}; border-radius:${px(0.8)};
+            background:${fond}; display:flex; align-items:center; justify-content:center;
+            font-size:${px(g.police)}; font-weight:700; color:${encre};
+            box-sizing:border-box;">${echapperSheet(texteCase(c, item, solution))}</div>`;
+    }
+
+    // ── LES POINTILLÉS, QUAND C'EST LA LIGNE QU'ON DEMANDE ──────────────────
+    //
+    // ILS PORTENT LEUR ÉTIQUETTE, et ce n'est pas un ornement. Sur une feuille
+    // qui mêle les deux questions, un arbre DÉJÀ REMPLI suivi d'un trait nu ne
+    // dit pas ce qu'on attend — la consigne du haut, elle, ne parle que du
+    // premier bloc. Vu sur la fiche imprimée : « Recopie et complète l'arbre »
+    // au-dessus d'un arbre qui n'avait plus une case vide.
+    if (g.hLigne) {
+        html += `<div style="position:absolute; left:${px(g.b.x)};
+            top:${px(g.yLigne - g.police * 1.4)}; font-size:${px(g.police)};
+            font-weight:700; color:#1a202c;">En ligne :</div>`;
+        html += `<div style="position:absolute; left:${px(g.b.x + g.etiquette)};
+            top:${px(g.yLigne)}; width:${px(g.b.w - g.etiquette)};
+            border-bottom:1px dotted #2d3748;
+            font-size:${px(g.police)}; color:#1d4ed8; font-weight:700;
+            white-space:nowrap; overflow:hidden;">${solution
+        ? echapperSheet(item.meta.ligneAttendue) : ''}</div>`;
+    }
+    return html;
+}
+
+function dessinerArbrePdf(doc, item, slot, solution) {
+    const g = poseArbre(item, slot);
+    const { cases, racine } = item.meta;
+    const parId = new Map(cases.map(c => [c.id, c]));
+    const cx = (c) => g.x(c.colonne) + g.large / 2;
+
+    // ── LES FLÈCHES, PUIS LES RONDS ─────────────────────────────────────────
+    for (const c of cases) {
+        if (c.genre !== 'noeud') continue;
+        const rx = cx(c), ry = g.y(c.ligne) - g.pasY / 2 + g.haut / 2;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.25);
+        for (const e of [parId.get(c.g), parId.get(c.d)]) {
+            doc.line(cx(e), g.y(e.ligne) + g.haut, rx, ry - g.rond);
+        }
+        doc.setLineWidth(0.35);
+        doc.line(rx, ry + g.rond, rx, g.y(c.ligne) - 0.9);
+        // LA POINTE DE LA FLÈCHE, à la main : jsPDF n'a pas de marqueur de
+        // fin de ligne. Un triangle plein de huit dixièmes de millimètre.
+        doc.setFillColor(...ENCRE.trait);
+        doc.lines([[-0.7, -1.1], [1.4, 0], [-0.7, 1.1]], rx, g.y(c.ligne) - 0.2,
+            [1, 1], 'F', true);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...encre([29, 78, 216]));
+        doc.setLineWidth(0.4);
+        doc.circle(rx, ry, g.rond, 'FD');
+        doc.setTextColor(...encre([29, 78, 216]));
+        doc.setFontSize(enPoints(g.rond * 1.1));
+        doc.text(pourPdf(c.op), rx, ry + g.rond * 0.42, { align: 'center' });
+    }
+
+    // ── LES CASES ───────────────────────────────────────────────────────────
+    for (const c of cases) {
+        const donne = c.genre === 'feuille' || item.meta.question === 'ligne';
+        doc.setFillColor(...(donne ? encre([219, 234, 254]) : [255, 255, 255]));
+        doc.setDrawColor(...(c.id === racine ? encre([220, 38, 38])
+            : donne ? encre([96, 165, 250]) : ENCRE.grille));
+        doc.setLineWidth(c.id === racine ? 0.6 : 0.4);
+        doc.roundedRect(g.x(c.colonne), g.y(c.ligne), g.large, g.haut, 0.8, 0.8, 'FD');
+        const texte = texteCase(c, item, solution);
+        if (!texte) continue;
+        doc.setTextColor(...((donne || !solution) ? ENCRE.texte : encre([29, 78, 216])));
+        doc.setFontSize(enPoints(g.police));
+        doc.text(pourPdf(texte), g.x(c.colonne) + g.large / 2,
+            g.y(c.ligne) + g.haut / 2 + g.police * 0.38, { align: 'center' });
+    }
+
+    // ── LES POINTILLÉS DE LA RÉPONSE, ET LEUR ÉTIQUETTE ─────────────────────
+    if (g.hLigne) {
+        doc.setTextColor(...ENCRE.texte);
+        doc.setFontSize(enPoints(g.police));
+        doc.text(pourPdf('En ligne :'), g.b.x, g.yLigne - 0.8);
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.25);
+        if (doc.setLineDashPattern) doc.setLineDashPattern([0.7, 0.7], 0);
+        doc.line(g.b.x + g.etiquette, g.yLigne, g.b.x + g.b.w, g.yLigne);
+        if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+        if (solution) {
+            doc.setTextColor(...encre([29, 78, 216]));
+            doc.text(pourPdf(item.meta.ligneAttendue), g.b.x + g.etiquette + 1, g.yLigne - 0.8);
+        }
+    }
+    doc.setTextColor(...ENCRE.texte);
+}
+
+RENDUS_GRILLES.arbreCalcul = {
+    titre: 'L\'Arbre de Calculs',
+    nomBloc: 'Arbre',
+    // LA CONSIGNE DOIT COUVRIR LA FEUILLE ENTIÈRE, pas son premier bloc. Avec
+    // le réglage « les deux en alternance », la moitié des arbres demande la
+    // ligne — et la fiche affichait « Recopie et complète l'arbre » au-dessus
+    // d'arbres déjà remplis. Mesuré en REGARDANT le PDF, pas en le comptant.
+    consigne: (items) => {
+        const quoi = new Set(items.map(i => i.meta && i.meta.question));
+        if (quoi.size > 1) {
+            return 'Complète les cases vides. Quand l\'arbre est déjà rempli, '
+                + 'écris son expression en ligne sur les pointillés.';
+        }
+        return (items[0].prompt && items[0].prompt.papier) || '';
+    },
+    previewGrille: arbrePreviewHtml,
+    pdfGrille: dessinerArbrePdf,
+    // DEUX PAR LIGNE : un arbre de cinq colonnes a besoin de la moitié d'une
+    // page pour que « −10,5 » tienne dans sa case au crayon. À quatre par
+    // ligne, la case fait huit millimètres et l'élève écrit à côté.
+    parLigneDefaut: 2
 };

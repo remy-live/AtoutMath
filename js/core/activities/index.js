@@ -42,6 +42,7 @@ import { allumettesEgaliteGenerator } from '../generators/allumettesEgalite.js';
 import { traverseeGenerator } from '../generators/traversee.js';
 import { penduGenerator } from '../generators/pendu.js';
 import { dessinGradueGenerator } from '../generators/dessinGradue.js';
+import { arbreCalculGenerator } from '../generators/arbreCalcul.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -187,7 +188,7 @@ import {
     kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
     cheminNombresGenerator, allumettesGenerator,
     allumettesEgaliteGenerator, traverseeGenerator, penduGenerator,
-    dessinGradueGenerator,
+    dessinGradueGenerator, arbreCalculGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -577,6 +578,19 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./dessinGradue.js')
+});
+
+// L'ARBRE DE CALCULS — l'unité est l'ARBRE. Pas de réglage de saisie : le
+// pavé fait partie de l'exercice et porte des signes que le clavier du
+// système n'a pas (× et ÷), donc il n'y a rien à choisir.
+registerActivity({
+    id: 'arbreCalcul',
+    unite: 'arbre',
+    parDefaut: 4,
+    label: 'L\'Arbre de Calculs',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./arbreCalcul.js')
 });
 
 registerActivity({

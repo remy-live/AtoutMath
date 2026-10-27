@@ -15961,3 +15961,131 @@ body.en-boite > #app-container { background: none; }
 @media (max-width: 480px) {
     .dg-context { font-size: .9rem; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   L'ARBRE DE CALCULS — des boîtes en HTML, des flèches en SVG.
+
+   LE DESSIN EST MIXTE, ET C'EST VOULU. Les cases portent du texte qu'on tape :
+   ce sont de vraies boîtes HTML, avec la police de l'application, qui
+   grandissent avec le réglage d'affichage du téléphone. Les flèches et les
+   ronds d'opération vont dans un calque SVG posé DERRIÈRE et transparent aux
+   clics — sans quoi le rond, qui chevauche les cases, avalerait leurs
+   touchers.
+
+   LES CASES NE PRENNENT PAS LES 44 PX D'OFFICE, et leur nom le dit : la règle
+   globale du dépôt épargne tout ce qui porte « case » dans sa classe. Une
+   case d'arbre fait la taille que la géométrie lui donne — trente-quatre
+   pixels sur un téléphone — parce qu'elles sont NEUF à tenir dans un écran,
+   et qu'une case de 44 px ferait déborder l'arbre de la page. Les touches du
+   pavé, elles, les prennent, et c'est là qu'est le doigt.
+   ───────────────────────────────────────────────────────────────────────── */
+.ac-layout { display: flex; flex-direction: column; align-items: center;
+    gap: 12px; width: 100%; }
+.ac-context { text-align: center; max-width: 48ch; }
+
+.ac-arbre { position: relative; width: 100%; max-width: 560px; }
+.ac-svg { position: absolute; left: 0; top: 0; pointer-events: none; }
+.ac-fleche { stroke: var(--text-muted); stroke-width: 1.6; fill: none; }
+.ac-fleche--bout { stroke: var(--text-main); stroke-width: 2; }
+#ac-pointe path { fill: var(--text-main); }
+.ac-rond circle { fill: var(--bg-panel); stroke: var(--primary); stroke-width: 2.5; }
+.ac-rond text { fill: var(--primary-texte); font-size: 16px; font-weight: 800; }
+
+.ac-case {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    padding: 0 2px; box-sizing: border-box;
+    border: 2px dashed var(--border); border-radius: 8px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: clamp(.82rem, 3.4vw, 1.05rem); font-weight: 700;
+    font-variant-numeric: tabular-nums; cursor: pointer;
+}
+/* LES NOMBRES DONNÉS SONT SUR FOND BLEU, comme dans le manuel : c'est ce qui
+   distingue d'un coup d'œil ce qu'on lit de ce qu'on écrit. */
+.ac-case--donne {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--bg-panel));
+    background: color-mix(in srgb, var(--accent) 18%, var(--bg-panel));
+    cursor: default;
+}
+/* LA DERNIÈRE CASE EST ROUGE, elle aussi comme dans le manuel : c'est le
+   résultat de tout l'arbre, et il doit se repérer avant d'être lu. */
+.ac-case--final {
+    border-color: var(--danger-fond);
+    background: color-mix(in srgb, var(--danger) 16%, var(--bg-panel));
+}
+.ac-case--actif {
+    border-style: solid; border-color: var(--primary);
+    outline: 3px solid color-mix(in srgb, var(--primary) 35%, transparent);
+    outline-offset: 1px;
+}
+/* `--danger-fond` ET NON `--danger` sous du blanc : le fond vif ne donne que
+   3,76 de contraste, et la garde du dépôt le refuse. */
+.ac-case--faux {
+    border-style: solid; border-color: var(--danger-fond);
+    background: var(--danger-fond); color: #fff;
+}
+.ac-case:disabled { cursor: default; }
+@media (hover: hover) {
+    .ac-case[data-case]:not(:disabled):not(.ac-case--actif):hover {
+        border-color: var(--primary);
+    }
+}
+.ac-case:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* LA LIGNE QU'ON TAPE, en grand : c'est la réponse, elle se relit avant
+   d'être validée. Elle défile de côté plutôt que de passer à la ligne —
+   une expression coupée en deux ne se lit plus comme une expression. */
+.ac-ligne {
+    width: 100%; max-width: 560px; min-height: 2.4em;
+    display: flex; align-items: center;
+    padding: 6px 10px; box-sizing: border-box;
+    border: 2px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: clamp(1rem, 4.2vw, 1.25rem); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    overflow-x: auto; white-space: nowrap;
+}
+.ac-ligne--vide { color: var(--text-muted); font-weight: 500; }
+
+.ac-statut { min-height: 2.6em; text-align: center; font-weight: 600;
+    color: var(--text-muted); max-width: 46ch; }
+
+.ac-pave {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
+    width: 100%; max-width: 420px;
+}
+.ac-pave--large { max-width: 460px; }
+.ac-touche {
+    min-height: 46px; padding: 0;
+    border: 2px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1.05rem; font-weight: 800; cursor: pointer;
+}
+/* L'EFFACEMENT PREND DEUX CASES quand il finit la rangée des chiffres, et une
+   seule quand il s'y glisse en douzième position — c'est-à-dire en mode
+   « écrire la ligne », où les six signes réclament la rangée suivante. */
+.ac-touche--eff { grid-column: span 2; }
+.ac-pave--large .ac-touche--eff { grid-column: span 1; }
+
+/* LE BOUTON DE VALIDATION FINIT LA RANGÉE, OU LA PREND ENTIÈRE. C'est le seul
+   geste qui termine la question, et il ne doit pas se confondre avec un
+   chiffre. Pour compléter l'arbre, l'effacement et lui se partagent la
+   troisième rangée ; pour écrire une ligne, les six signes occupent celle-ci
+   et il prend la quatrième. ENCRE BLANCHE SUR UN BOUTON PLEIN, jamais
+   `--primary-texte` : ce jeton est l'indigo qu'on écrit SUR le fond de la
+   page, et posé sur un bouton indigo il donne de l'indigo sur de l'indigo. */
+.ac-touche--ok {
+    grid-column: span 4; background: var(--primary);
+    border-color: var(--primary); color: #fff;
+}
+.ac-pave--large .ac-touche--ok { grid-column: 1 / -1; }
+.ac-touche:disabled { opacity: .5; cursor: default; }
+@media (hover: hover) {
+    .ac-touche:not(:disabled):not(.ac-touche--ok):hover { background: var(--bg-hover); }
+}
+.ac-touche:focus-visible { outline: 3px solid var(--text-main); outline-offset: 2px; }
+
+@media (max-width: 480px) {
+    .ac-context { font-size: .9rem; }
+    .ac-touche { min-height: 44px; font-size: 1rem; }
+}

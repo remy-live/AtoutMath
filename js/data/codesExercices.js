@@ -99,6 +99,7 @@ export const CODES_EXERCICES = {
     'calc-prio-parentheses':      'BT',   // Prio-Bot Parenthèses
     'calc-prio-resultat':         'PC',   // Prio-Bot Calcul
     'calc-prio-cascade':          'PL',   // Priorités : ligne par ligne
+    'calc-arbre':                 'BR',   // les BRanches de l'arbre de calculs
     // « PR » va aux puissances et « PS » n'est pas libre : le X marque la
     // rencontre des deux chapitres.
     'calc-prio-relatifs':         'PX',   // Prio-Bot Relatifs — Priorités × relatifs

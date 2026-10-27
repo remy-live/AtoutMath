@@ -4129,3 +4129,58 @@ SES DEUX CONSIGNES, et elles commandent tout le reste :
   CLAIR : l'élève PLACE les points, c'est là qu'est la mathématique ; le
   dessin, lui, se trace tout seul au fur et à mesure. C'est la récompense,
   pas le travail.
+
+
+## 41. Les arbres de calculs — 27 octobre
+
+Rémy envoie une capture d'un fil du « coin boulot des profs de mathématiques ».
+Une collègue y demande :
+
+> « Savez-vous où je peux trouver ces types d'arbres de calculs "éditables"
+> (avant que je ne me lance sur leur fabrication chronophage ….) ? »
+
+Une seule réponse sous le fil, et elle dit tout du besoin : « Latex… Le super
+package ProfCollege de Christophe Poulain ». Autrement dit : **pour obtenir
+un arbre de calculs à ses nombres, il faut aujourd'hui écrire du LaTeX.**
+
+Et Rémy, en une ligne :
+
+> « Et ce genre d exercice »
+
+CE QU'EST L'EXERCICE, lu sur la capture (exercice 57 d'un manuel) :
+
+> **1. Recopier et compléter.** — deux arbres, a. et b.
+>
+> **2. Pour chacun des arbres ci-dessus, écrire l'expression « en ligne »
+> correspondante.**
+
+L'arbre a. : −0,6 et −5 entrent dans un ×, le résultat et −0,4 dans un +,
+tandis que −8 et 2 entrent dans un − ; les deux résultats entrent enfin dans
+un ×, et la dernière case est ROUGE. L'arbre b. fait de même avec −7 et −3,
+puis −0,8, puis −5,5 et −10,5, et finit sur une division.
+
+Cinq nombres, quatre opérations, quatre étages. Les cases bleues du haut
+portent les nombres donnés ; toutes les autres sont VIDES, et c'est ce que
+l'élève remplit, du haut vers le bas.
+
+CE QUE ÇA TRAVAILLE, ET CE N'EST PAS LE CALCUL. Un élève de cinquième sait
+faire −0,6 × (−5). Ce qu'il ne sait pas faire, c'est écrire en UNE ligne un
+calcul qui a une forme d'arbre : il oublie les parenthèses, et
+`(−0,6 × −5 + −0,4) × (−8 − 2)` devient `−0,6 × −5 + −0,4 × −8 − 2`, qui ne
+vaut pas la même chose. L'arbre rend visible ce que les parenthèses disent —
+c'est le même objet vu de deux façons, et la question 2 demande exactement
+de passer de l'une à l'autre.
+
+CE QUI COMMANDE LA RÉALISATION :
+
+- **LE PAPIER D'ABORD.** « Recopier et compléter » est une consigne de
+  photocopie, et la demande d'origine est celle d'un arbre ÉDITABLE — c'est-
+  à-dire d'une fiche qu'on règle et qu'on imprime. Le rendu imprimé n'est
+  pas un supplément ici : c'est la moitié de la demande.
+- **LES DEUX QUESTIONS, PAS UNE.** Compléter l'arbre, puis écrire
+  l'expression en ligne. La seconde est celle qui apprend quelque chose, et
+  c'est aussi la plus dure à corriger : une expression juste s'écrit de
+  plusieurs façons.
+- **ET SUR UN TÉLÉPHONE.** Cinq cases en haut, quatre étages : il faut que
+  cela tienne dans 390 px, et qu'on puisse taper un nombre négatif à
+  virgule dans une case.

@@ -6454,3 +6454,24 @@ le résultat n'existe pas** — 15 octobre 2026
 - *Ce qui manque* : dans `sonde.mjs`, un `photoDuVerdict(selecteur, chemin)`
   qui **gèle l'enchaînement** le temps de la découpe — ou, à défaut, la règle
   écrite une fois : après un `submit`, on photographie AVANT de compter.
+
+
+**Une épreuve qui ÉCHANTILLONNE doit chiffrer son échantillon, sinon elle ne garde rien** — 27 octobre 2026
+
+- *Ce que je voulais faire* : garder la règle « au plus une division par arbre
+  de calculs ».
+- *Ce qui a coûté* : une épreuve verte qui ne gardait rien, et dix minutes pour
+  comprendre pourquoi. J'avais écrit « cinq arbres par réglage », un chiffre
+  pris à l'œil comme on en prend tous les jours. `epreuveTombe` l'a refusée :
+  le défaut remis, l'épreuve restait verte. En comptant — mille deux cents
+  arbres tirés SANS le filtre —, deux divisions exactes dans le même arbre
+  sortent 30 fois, soit 2,5 %, la première au dix-huitième tirage. Cinq
+  échantillons ne pouvaient rien voir ; soixante en attendent une dizaine.
+- *Combien de fois* : || (même famille que les gardes de vitesse, où « douze
+  graines par réglage » avait été posé au jugé puis mesuré)
+- *Ce qui manque* : la règle, à écrire une fois — **une épreuve qui tire au
+  hasard doit dire COMBIEN elle tire et POURQUOI ce nombre-là**, mesuré sur la
+  fréquence du défaut qu'elle guette. Et, plus outillé : que
+  `epreuveTombe` dise, quand une épreuve ne tombe pas, s'il s'agit d'une
+  épreuve d'échantillonnage — il voit déjà passer les deux exécutions, il
+  pourrait comparer le nombre d'assertions au lieu du seul verdict.

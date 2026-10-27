@@ -308,6 +308,22 @@ const BASE = {
         descriptor: 'Calculer une expression où la règle de priorité et la règle des signes se rencontrent.',
         lesson: 'CE N\'EST PAS LA SOMME DE DEUX LEÇONS, C\'EST UNE TROISIÈME. On peut savoir que « × passe avant − », savoir que « − (−6) = + 6 », et se tromper quand même sur 5 − 3 × (−2) : il faut faire les trois pas DANS L\'ORDRE. 1. La règle de priorité désigne l\'opération : c\'est 3 × (−2), pas le 5 − 3. 2. La règle des signes la calcule : 3 × (−2) = −6. 3. On réécrit la ligne entière : 5 − (−6). 4. Et seulement là, soustraire un négatif revient à ajouter : 5 + 6 = 11. Le résultat surprend tout le monde la première fois. DEUX PIÈGES D\'ÉCRITURE. Le « − » collé à un nombre entre parenthèses est son SIGNE, pas une opération : dans 5 − 3 × (−2), il n\'y a que deux opérations, pas trois. Et deux signes ne se suivent jamais : on écrit 3 × (−2), jamais 3 × −2 — les parenthèses du nombre négatif font partie de son écriture, elles ne groupent aucun calcul.'
     },
+    // LA COMPÉTENCE QUE L'ARBRE DE CALCULS TRAVAILLE, ET ELLE N'EXISTAIT PAS.
+    //
+    // 'num.prio' dit en toutes lettres « dans un calcul SANS parenthèses » :
+    // c'est l'autre moitié du sujet. Savoir que × passe avant +, et savoir
+    // écrire en une ligne un calcul qui a la forme d'un arbre, ce sont deux
+    // choses — la seconde se rate en contrôle par des élèves qui réussissent
+    // la première. Elle garde donc sa ligne au bilan, comme les priorités et
+    // les relatifs ont été séparés pour la même raison.
+    'num.prio.parentheses': {
+        label: 'Écrire en ligne un calcul à plusieurs étages',
+        chemin: [D.NUMERIQUE, SD.PRIORITES],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.prio'],
+        descriptor: 'Passer d\'un arbre de calculs à son expression en ligne, et poser les parenthèses qui changent le résultat.',
+        lesson: 'UNE PARENTHÈSE NE DÉCORE PAS, ELLE CHANGE LE RÉSULTAT. Dans un arbre, la case du BAS porte la dernière opération : c\'est elle qui coupe le calcul en deux morceaux, et chacun de ces morceaux devient une parenthèse dès qu\'il contient une opération plus faible. (−0,6 × (−5) + (−0,4)) × (−8 − 2) vaut −26 ; les mêmes nombres sans les parenthèses valent tout autre chose, parce que le × se servirait d\'abord. LA MÉTHODE QUI NE SE TROMPE PAS : on remonte depuis la case du bas, et à chaque case qui n\'est pas un nombre donné on se demande « est-ce que ce morceau doit être fini AVANT que l\'opération du dessous le prenne ? ». Si oui, il prend ses parenthèses. On n\'en met pas autour d\'un morceau qui serre déjà plus fort : dans (a + b) × c, la parenthèse est indispensable ; dans a × b + c, elle ne sert à rien. ENFIN, DEUX SIGNES NE SE SUIVENT PAS : on écrit × (−5), jamais × −5 — les parenthèses d\'un nombre négatif font partie de son écriture et ne groupent aucun calcul.'
+    },
     'num.frac.sens': {
         label: 'Sens d\'une fraction',
         chemin: [D.NUMERIQUE, SD.FRACTIONS],

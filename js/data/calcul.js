@@ -297,6 +297,41 @@ export const calculExercises = [
         instruction: "Clique sur l'opération qu'il faut faire EN PREMIER : elle se souligne. Donne son résultat dans le trou, et la ligne suivante s'écrit — en RECOPIANT tout le reste. C'est la recopie qui coûte des points en contrôle, pas la règle : on calcule 4 × 5 correctement, et on oublie le « − 2 ». Avec le réglage « Avec des puissances », un cran s'ajoute à la règle : les parenthèses d'abord, PUIS les puissances, puis les multiplications et les divisions, et enfin les additions et les soustractions. Une puissance se clique comme un signe — c'est elle, l'opération."
     },
     {
+        // L'ARBRE DE CALCULS — demandé par Rémy le 27 octobre, d'après un fil
+        // de profs où une collègue cherche des arbres « éditables » et où la
+        // seule réponse est « Latex… Le super package ProfCollege ».
+        //
+        // DEUX QUESTIONS, ET C'EST LE MANUEL QUI LES POSE AINSI : « Recopier
+        // et compléter », puis « écrire l'expression en ligne ». La seconde
+        // est celle qui apprend quelque chose — un élève sait calculer
+        // −0,6 × (−5), il ne sait pas parenthéser — et c'est pour elle que la
+        // compétence 'num.prio.parentheses' a été créée : 'num.prio' dit en
+        // toutes lettres « dans un calcul SANS parenthèses ».
+        //
+        // ET IL S'IMPRIME, parce que c'est de cela qu'il s'agissait depuis le
+        // début : « Recopier et compléter » est une consigne de photocopie, et
+        // la collègue cherchait une fiche réglable, pas un écran.
+        id: 'calc-arbre',
+        jeu: false,
+        cree: '2026-10-27',
+        title: 'L\'Arbre de Calculs',
+        consignePapier: 'Complète l\'arbre, puis écris l\'expression en ligne.',
+        colonnesPapier: 2,
+        printable: 'arbreCalcul',
+        generatorId: 'num.arbre-calcul', activityId: 'arbreCalcul',
+        skills: ['num.prio.parentheses'],
+        // UN ARBRE NE SE RÉVISE PAS : refaire le même ne corrige pas la
+        // parenthèse oubliée. Ce qu'on remonte, c'est le réglage « Ce qu'on
+        // demande », et cela se décide au catalogue.
+        sansRevision: true,
+        params: { nbQuestions: 4, taille: 'moyen', nombres: 'relatifs',
+            operations: 'sans-division', question: 'completer' },
+        motsClefs: ['arbre', 'arbre de calculs', 'priorités', 'parenthèses', 'expression',
+            'en ligne', 'relatifs', 'compléter', 'calcul'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Les cases bleues du haut portent les nombres donnés. Chaque rond est une opération : elle prend les deux cases qui pointent vers elle et descend son résultat dans la case du dessous. La dernière case est ROUGE — c'est le résultat de tout l'arbre. Avec le réglage « Ce qu'on demande », l'exercice bascule sur la vraie difficulté : ÉCRIRE CE CALCUL EN UNE SEULE LIGNE. Pars de la case du bas, qui porte la dernière opération : c'est elle qui coupe la ligne en deux morceaux, et chaque morceau prend ses parenthèses dès qu'il contient une opération plus faible. (−0,6 × (−5) + (−0,4)) × (−8 − 2) vaut −26 ; les mêmes nombres sans parenthèses valent tout autre chose. Toute écriture juste est acceptée, parenthèses en plus comprises."
+    },
+    {
         // LE MOINS DEVANT UNE PARENTHÈSE, UN BARREAU À LA FOIS.
         //
         // Rémy : « les élèves galèrent aux exercices −(−3+5×6)−(−7). Comment les
