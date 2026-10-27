@@ -3985,3 +3985,33 @@ n'est pas unique de la même façon.**
 TROIS CONSIGNES REPRISES DE LA VEILLE, qu'il n'a pas eu à répéter : réglage
 par défaut le plus facile, mesuré en 390 × 844 comme sur ordinateur, et ça
 s'imprime.
+
+
+---
+
+## 37. Un pendu mathématique — 27 octobre
+
+> « J aimerai bien aussi un pendu mathématiques avec des mots mathématiques »
+
+LE JEU EST CONNU DE TOUS, donc rien à expliquer à un élève — c'est son plus
+grand avantage et il ne faut pas le gâcher en compliquant la règle.
+
+CE QU'IL FAUT DÉCIDER, ET QUI NE VA PAS DE SOI :
+
+- **D'OÙ VIENNENT LES MOTS.** Le logiciel a déjà un vocabulaire
+  mathématique — les Anagrammes, les Mots Croisés, le Mot Juste en vivent.
+  S'il est classé par niveau et porte des définitions, le pendu doit s'en
+  servir : un deuxième vocabulaire qui dérive du premier, c'est deux endroits
+  à corriger quand un mot est mal défini.
+- **CE QU'ON DESSINE QUAND ON SE TROMPE.** « Pendu » dit une potence et un
+  pendu. Dans un logiciel pour des élèves de onze ans, cela se discute — et
+  c'est un choix de dessin, donc exactement ce sur quoi il demande des
+  propositions d'abord. On lui montre plusieurs décors et c'est lui qui
+  tranche.
+- **LA DÉFINITION EST-ELLE DONNÉE ?** Sans elle, le pendu ne travaille que
+  l'orthographe. Avec elle, il travaille le VOCABULAIRE — « quadrilatère dont
+  les diagonales se coupent en leur milieu » —, et c'est là qu'il devient un
+  exercice de mathématiques plutôt qu'un jeu de lettres.
+
+ET IL DOIT S'IMPRIMER, comme tout le reste : le mot en tirets, la définition,
+et l'alphabet à rayer.

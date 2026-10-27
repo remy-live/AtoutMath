@@ -15715,3 +15715,102 @@ body.en-boite > #app-container { background: none; }
     .tv-pion { padding: 4px 6px; justify-content: center; }
     .tv-context { font-size: .9rem; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LE PENDU MATHÉMATIQUE — le dessin, le mot, et vingt-six touches.
+
+   LE PAVÉ TIENT SUR UN TÉLÉPHONE, et c'est la contrainte qui commande tout
+   le reste : vingt-six touches de 44 px dans 358 px utiles font six
+   colonnes (6 × 52 + gaps). On ne fixe donc pas une largeur de touche, on
+   laisse la grille en poser autant qu'il en tient — `auto-fit` avec un
+   minimum de 42 px — et les lettres se rangent toutes seules de six par
+   ligne au doigt, de treize sur un écran large.
+   ───────────────────────────────────────────────────────────────────────── */
+.pd-layout { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+.pd-context { text-align: center; max-width: 46ch; }
+
+.pd-haut {
+    display: flex; align-items: center; gap: clamp(8px, 3vw, 24px);
+    width: 100%; max-width: 560px;
+    padding: clamp(8px, 2.5vw, 16px);
+    border: 2px solid var(--border); border-radius: 14px; background: var(--bg-panel);
+}
+.pd-decor { flex: 0 0 auto; color: var(--text-main); line-height: 0; }
+.pd-decor svg { width: clamp(96px, 28vw, 150px); height: auto; }
+/* LES DEUX DERNIÈRES ERREURS SE VOIENT SANS QU'ON COMPTE : le dessin passe au
+   rouge. C'est la seule chose qui remplace un compteur chiffré, qu'on ne met
+   pas pour ne pas faire regarder le compteur plutôt que le mot.
+
+   `--danger-texte` ET NON `--danger` : le dessin est fait de TRAITS, donc de
+   l'encre, et `--danger` ne passe pas le seuil de lisibilité quand on écrit
+   avec. La garde du dépôt l'a refusé, et elle a raison. */
+.pd-decor--chaud { color: var(--danger-texte); }
+.pd-droite { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+.pd-def {
+    font-style: italic; color: var(--text-muted); font-size: clamp(.85rem, 3.4vw, 1rem);
+    line-height: 1.35;
+}
+/* LA PLACE DE LA DÉFINITION EST GARDÉE MÊME VIDE : sans cela, le mot saute
+   de vingt pixels à la deuxième erreur, au moment précis où l'élève le
+   regarde. */
+.pd-def--vide { min-height: 2.6em; }
+
+.pd-mot { display: flex; flex-wrap: wrap; gap: 5px; }
+.pd-lettre {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: clamp(20px, 6.5vw, 30px); height: clamp(28px, 9vw, 40px);
+    border-bottom: 3px solid var(--text-main);
+    font-size: clamp(1rem, 5vw, 1.5rem); font-weight: 800; color: var(--text-main);
+}
+.pd-lettre--su { color: var(--text-main); }
+/* LA LETTRE QU'ON N'A PAS TROUVÉE, à la fin perdue : elle se montre en rouge,
+   parce qu'un élève qui ne voit jamais la réponse ne l'apprend pas. */
+.pd-lettre--ratee { color: var(--danger-texte); }
+
+.pd-clavier {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+    gap: 6px; width: 100%; max-width: 560px;
+}
+.pd-touche {
+    min-height: 44px; padding: 0;
+    border: 2px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1.05rem; font-weight: 800; cursor: pointer;
+}
+/* UNE TOUCHE PLEINE PREND `--success-fond` ou `--danger-fond`, PAS `--success`
+   ni `--danger`.
+
+   Il y a ici TROIS jetons par couleur et ils ne sont pas interchangeables :
+   `--danger` est la teinte vive (contraste 3,76 avec du blanc — trop clair
+   pour porter du texte), `--danger-texte` est l'encre qu'on écrit sur le fond
+   de la page, et `--danger-fond` est la teinte FONCÉE faite pour porter du
+   blanc (6,29). La garde du dépôt chiffre les trois et refuse les deux
+   mauvaises ; c'est elle qui a attrapé celle-ci. */
+.pd-touche--bonne {
+    background: var(--success-fond); border-color: var(--success-fond); color: #fff;
+}
+.pd-touche--ratee {
+    background: var(--danger-fond); border-color: var(--danger-fond); color: #fff;
+}
+.pd-touche:disabled { cursor: default; opacity: .85; }
+/* LE SURVOL N'EXISTE QUE LÀ OÙ IL Y A UN POINTEUR. Sur un téléphone, une
+   règle `:hover` reste collée après le toucher : la touche garde sa couleur
+   de survol jusqu'à ce qu'on touche ailleurs, et l'élève croit l'avoir déjà
+   jouée. Le dépôt le garde, et il a raison. */
+@media (hover: hover) {
+    .pd-touche:not(:disabled):hover { background: var(--bg-hover); }
+}
+.pd-touche:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+.pd-statut { min-height: 2.6em; text-align: center; font-weight: 600;
+    color: var(--text-muted); max-width: 46ch; }
+
+.pd-haut--ok { outline: 3px solid var(--success); outline-offset: 3px; }
+.pd-haut--rate { outline: 3px solid var(--danger); outline-offset: 3px; }
+
+@media (max-width: 480px) {
+    .pd-context { font-size: .9rem; }
+    .pd-haut { flex-direction: column; }
+    .pd-droite { width: 100%; }
+}

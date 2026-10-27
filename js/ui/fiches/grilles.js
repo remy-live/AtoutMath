@@ -8,6 +8,7 @@ import {
     ENCRE, boiteDe, echapperSheet, largeurTexte
 } from './socle.js';
 import { ajusterAuCarre, boiteDe as boiteCaseDomino, cellulesDe, cheminSerpentin, insecable } from '../../core/dominos.js';
+import { decorSvg } from '../../core/penduDecors.js';
 import { encre, polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 
 // --- Dessin d'une grille Mathdoku -------------------------------------------
@@ -2264,5 +2265,142 @@ RENDUS_GRILLES.traversee = {
     pdfGrille: dessinerTraverseePdf,
     // DEUX PAR LIGNE : le tableau est HAUT, et il faut de la place pour écrire
     // des noms à la main sur chaque ligne.
+    parLigneDefaut: 2
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LE PENDU, SUR LE PAPIER — et c'est sa forme d'origine.
+//
+// Ce jeu s'est toujours joué sur un coin de cahier : des tirets, une
+// définition, l'alphabet qu'on raye au fur et à mesure, et de la place pour
+// dessiner. On imprime exactement cela.
+//
+// L'ALPHABET IMPRIMÉ N'EST PAS UN ORNEMENT : sans lui, l'élève redemande trois
+// fois la même lettre et ne sait plus où il en est. C'est la seule chose que
+// l'écran fait gratuitement et que le papier doit payer en encre.
+//
+// LA PLACE DU DESSIN EST VIDE, avec juste le décor amorcé : c'est l'ÉLÈVE qui
+// dessine, pas la feuille. Rémy : « Rien ne remplace le geste » — la phrase
+// visait la règle et le compas, mais elle vaut aussi ici.
+
+const ALPHABET_FICHE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+/**
+ * LA PLACE DE CHAQUE CHOSE DANS LE CARRÉ DE LA FICHE.
+ *
+ * Premier jet : tout en haut, et les deux tiers du carré vides. REGARDÉ SUR LA
+ * FICHE IMPRIMÉE — la définition, une rangée de tirets, un petit cadre, et
+ * ensuite plus rien jusqu'au bloc suivant. Or la place vide n'est pas neutre
+ * sur une feuille : c'est là que l'élève DESSINE. Le cadre prend donc la
+ * moitié de la hauteur, et l'alphabet descend tout en bas.
+ */
+function posePendu(item, slot) {
+    const n = item.meta.mot.length;
+    const T = slot.taille;
+    // Les tirets tiennent sur une ligne tant que le mot n'est pas trop long ;
+    // au-delà on passe à deux lignes plutôt que de réduire les lettres à rien.
+    const parLigne = n <= 9 ? n : Math.ceil(n / 2);
+    const lignes = Math.ceil(n / parLigne);
+    return {
+        n, parLigne, lignes, x: slot.x, y: slot.y, large: T, T,
+        yDef: slot.y + T * 0.04,
+        yMot: slot.y + T * 0.20,
+        pasMot: Math.min(T / (parLigne + 0.6), T * 0.1),
+        cadre: { x: slot.x + T * 0.16, y: slot.y + T * 0.33, cote: T * 0.46 },
+        yAlpha: slot.y + T * 0.87
+    };
+}
+
+function penduPreviewHtml(item, slot, k, solution) {
+    const { mot, definition } = item.meta;
+    const g = posePendu(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = '';
+
+    // La définition, en tête : c'est elle qu'on lit vraiment.
+    html += `<div style="position:absolute; left:${px(g.x)}; top:${px(g.yDef)};
+        width:${px(g.large)}; font-size:${px(g.T * 0.042)}; font-style:italic;
+        color:#2d3748; line-height:1.3;">${definition}</div>`;
+
+    // Les tirets du mot.
+    [...mot].forEach((c, i) => {
+        const li = Math.floor(i / g.parLigne), co = i % g.parLigne;
+        html += `<div style="position:absolute;
+            left:${px(g.x + co * g.pasMot)}; top:${px(g.yMot + li * g.pasMot * 1.1)};
+            width:${px(g.pasMot * 0.8)}; height:${px(g.pasMot * 0.9)};
+            border-bottom:2px solid #1a202c; text-align:center;
+            font-size:${px(g.pasMot * 0.6)}; font-weight:800;
+            color:#1d4ed8;">${solution ? c : ''}</div>`;
+    });
+
+    // LA PLACE DU DESSIN, vide : c'est l'élève qui dessine, pas la feuille.
+    html += `<div style="position:absolute; left:${px(g.cadre.x)}; top:${px(g.cadre.y)};
+        width:${px(g.cadre.cote)}; height:${px(g.cadre.cote)};
+        border:1px solid #b0b6c5; border-radius:${px(g.T * 0.012)};"></div>`;
+
+    // L'alphabet à rayer, tout en bas.
+    ALPHABET_FICHE.forEach((c, i) => {
+        html += `<div style="position:absolute;
+            left:${px(g.x + (i % 13) * (g.large / 13))};
+            top:${px(g.yAlpha + Math.floor(i / 13) * g.T * 0.058)};
+            width:${px(g.large / 13)}; text-align:center;
+            font-size:${px(g.T * 0.042)}; font-weight:600;
+            color:#2d3748;">${c}</div>`;
+    });
+    return html;
+}
+
+function dessinerPenduPdf(doc, item, slot, solution) {
+    const { mot, definition } = item.meta;
+    const g = posePendu(item, slot);
+
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(9, g.T * 0.09));
+    doc.splitTextToSize(pourPdf(definition), g.large).slice(0, 2)
+        .forEach((t, i) => doc.text(t, g.x, g.yDef + g.T * 0.05 + i * g.T * 0.05));
+
+    // Les tirets du mot.
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.45);
+    [...mot].forEach((c, i) => {
+        const li = Math.floor(i / g.parLigne), co = i % g.parLigne;
+        const lx = g.x + co * g.pasMot, ly = g.yMot + g.pasMot * 0.9 + li * g.pasMot * 1.1;
+        doc.line(lx, ly, lx + g.pasMot * 0.8, ly);
+        if (solution) {
+            doc.setTextColor(29, 78, 216);
+            doc.setFontSize(Math.min(12, g.pasMot * 2.4));
+            doc.text(pourPdf(c), lx + g.pasMot * 0.4, ly - g.pasMot * 0.2, { align: 'center' });
+            doc.setTextColor(...ENCRE.texte);
+        }
+    });
+
+    // LA PLACE DU DESSIN : un rectangle, et rien dedans. Sur une photocopie, un
+    // décor amorcé au trait fin disparaît ; et c'est de la PLACE que l'élève a
+    // besoin, pas d'un modèle. Elle prend la moitié du carré — la première
+    // version lui donnait un timbre-poste et laissait les deux tiers de la
+    // case vides, ce qui se voit sur la fiche imprimée et nulle part ailleurs.
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.18);
+    doc.rect(g.cadre.x, g.cadre.y, g.cadre.cote, g.cadre.cote, 'S');
+
+    // L'ALPHABET À RAYER : treize par ligne, deux lignes, à l'encre du TEXTE.
+    // En gris, il disparaissait à la photocopie — et c'est le seul endroit où
+    // l'élève note ce qu'il a déjà essayé.
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(9, g.T * 0.085));
+    ALPHABET_FICHE.forEach((c, i) => {
+        doc.text(pourPdf(c), g.x + (i % 13 + 0.5) * (g.large / 13),
+            g.yAlpha + Math.floor(i / 13) * g.T * 0.06, { align: 'center' });
+    });
+}
+
+RENDUS_GRILLES.pendu = {
+    titre: 'Le Pendu Mathématique',
+    nomBloc: 'Mot',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: penduPreviewHtml,
+    pdfGrille: dessinerPenduPdf,
+    // DEUX PAR LIGNE : il faut de la place pour les tirets d'un mot long ET
+    // pour l'alphabet en dessous.
     parLigneDefaut: 2
 };

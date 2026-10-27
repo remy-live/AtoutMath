@@ -1245,6 +1245,17 @@ export const calculExercises = [
         // justification est une division euclidienne. Puissance 4, Othello et
         // les Dames sont des jeux de stratégie, mais aucun ne se résout par un
         // reste.
+        id: 'logi-pendu', title: 'Le Pendu Mathématique',
+        cree: '2026-10-27',
+        generatorId: 'logique.pendu', activityId: 'pendu',
+        printable: 'pendu',
+        sansRevision: true,
+        params: { nbQuestions: 4, theme: 'tout', niveau: '1', indice: 'toujours', decor: 'bonhomme' },
+        motsClefs: ['pendu', 'vocabulaire', 'mots', 'lettres', 'définition', 'lexique', 'jeu'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Un mot du vocabulaire mathématique est caché : on ne voit que le nombre de ses lettres. Propose une lettre ; si elle y est, elle se place PARTOUT où elle apparaît. Six erreurs, et c'est perdu. CE N'EST PAS UN JEU D'ORTHOGRAPHE : c'est la DÉFINITION qui donne le mot, et les lettres ne font que le confirmer. Un élève qui sait ce qu'est une médiatrice la trouve en trois lettres ; un élève qui a seulement croisé le mot la cherche jusqu'au bout. COMMENCE PAR LES VOYELLES — elles sont nombreuses dans les mots longs, elles coûtent peu, et elles découpent le mot en morceaux qu'on reconnaît. Les mots viennent du même vocabulaire que les Mots Cachés et les Anagrammes."
+    },
+    {
         id: 'logi-allumettes-egalite', title: 'Les Allumettes à Déplacer',
         cree: '2026-10-27',
         generatorId: 'logique.allumettes-egalite', activityId: 'allumettesEgalite',

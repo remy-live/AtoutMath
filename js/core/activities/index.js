@@ -40,6 +40,7 @@ import { cheminNombresGenerator } from '../generators/cheminNombres.js';
 import { allumettesGenerator } from '../generators/allumettes.js';
 import { allumettesEgaliteGenerator } from '../generators/allumettesEgalite.js';
 import { traverseeGenerator } from '../generators/traversee.js';
+import { penduGenerator } from '../generators/pendu.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -184,7 +185,7 @@ import {
     kenkenGenerator, shikakuGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
     kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
     cheminNombresGenerator, allumettesGenerator,
-    allumettesEgaliteGenerator, traverseeGenerator,
+    allumettesEgaliteGenerator, traverseeGenerator, penduGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -547,6 +548,19 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./traversee.js')
+});
+
+// LE PENDU — vingt-six touches et un dessin. Pas de réglage de saisie : il
+// n'y a qu'un geste, toucher une lettre, et le clavier physique est branché en
+// plus pour ceux qui sont sur ordinateur.
+registerActivity({
+    id: 'pendu',
+    unite: 'mot',
+    parDefaut: 4,
+    label: 'Le Pendu Mathématique',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./pendu.js')
 });
 
 registerActivity({

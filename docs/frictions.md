@@ -6344,3 +6344,44 @@ le résultat n'existe pas** — 15 octobre 2026
   l'écran : il ne dessine que les allumettes posées, parce qu'on ne peut pas
   imprimer un emplacement vide. Quand deux rendus d'une même chose divergent,
   **c'est le plus contraint qui a raison**.
+
+**Une référence au DOM survit au redessin et répond « non » pour toujours** — 27 octobre 2026
+
+- *Ce que je voulais faire* : faire exactement deux erreurs dans le pendu, pour
+  mesurer que le décor bouge.
+- *Ce qui a coûté* : une sonde qui MENTAIT sans jamais rougir. Elle cliquait
+  une touche puis relisait `b.classList.contains('pd-touche--ratee')` — mais
+  l'activité redessine tout le pavé à chaque coup, donc `b` est détaché de la
+  page et sa classe ne change jamais. La réponse était toujours `false`,
+  c'est-à-dire **la même réponse qu'une touche qui n'a rien fait**. La sonde
+  annonçait « DEUX ERREURS » en en ayant fait cinq, et toutes ses lignes
+  étaient vertes.
+- *Combien de fois* : || (même famille que `doitExister` : un sélecteur
+  inventé rend `false`, un élément détaché rend `false`, et dans les deux cas
+  c'est la réponse d'un logiciel cassé)
+- *Ce qui manque* : une fonction dans `sonde.mjs` — `s.cliquerPuisRelire(sel,
+  lecture)` — qui clique, attend un battement, et RELIT dans un DOM neuf ; ou,
+  moins cher, qu'elle refuse de lire la classe d'un élément dont
+  `isConnected` est faux et le DISE. La règle, en attendant : **après un clic
+  qui redessine, on ne relit jamais l'élément cliqué — on réinterroge la
+  page.**
+
+**Trois jetons de couleur par teinte, et deux sont des pièges** — 27 octobre 2026
+
+- *Ce que je voulais faire* : une touche verte quand la lettre y est, rouge
+  sinon.
+- *Ce qui a coûté* : trois gardes rouges d'un coup à la fin de `npm test`,
+  quatre minutes après le commit espéré. `--danger` est la teinte VIVE
+  (contraste 3,76 avec du blanc, trop clair pour porter du texte),
+  `--danger-texte` est l'encre qu'on écrit sur le fond de la page, et
+  `--danger-fond` est la teinte foncée faite pour porter du blanc (6,29).
+  J'avais pris la première pour les deux usages. J'avais DÉJÀ noté la moitié
+  de cette leçon le 26 (« `--primary-texte` n'est pas l'encre d'un bouton
+  plein ») — et je n'avais pas vu qu'il existait un troisième jeton.
+- *Combien de fois* : ||
+- *Ce qui manque* : les gardes existent et elles sont bonnes ; ce qui manque
+  est de les atteindre en six secondes au lieu de quatre minutes.
+  `node tools/couleursDesFiches.mjs` regarde les fiches ; il faudrait l'équivalent
+  pour un bloc CSS neuf — **`node tools/verifierCss.mjs css/modules.css`, qui
+  lance les quatre gardes de couleur et de survol seules**. Elles tournent en
+  une seconde ; c'est `npm test` autour d'elles qui en met deux cents.

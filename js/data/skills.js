@@ -182,6 +182,16 @@ const BASE = {
             + '7 et 1, 8 et 9. Et n\'oublie pas le signe — la barre verticale du + est une '
             + 'allumette comme les autres.'
     },
+    'num.logique.pendu': {
+        label: 'Le vocabulaire mathématique (Pendu)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Retrouver un mot du vocabulaire à partir de sa définition.',
+        lesson: 'C\'est la DÉFINITION qui donne le mot, pas les lettres — les lettres ne '
+            + 'font que le confirmer. Commence par les voyelles : elles sont nombreuses, '
+            + 'elles coûtent peu, et elles découpent le mot en morceaux qu\'on reconnaît.'
+    },
     'num.logique.traversee': {
         label: 'Planifier une suite de coups (La Traversée)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
