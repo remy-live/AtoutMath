@@ -1918,22 +1918,29 @@ function grilleNombresPreviewHtml(item, slot, k, solution) {
                 return (!a || a.zone !== t.zone) ? '2.4px solid #0f172a' : '0.7px solid #94a3b8';
             };
             if (t.type === 'mur' || t.type === 'indice') {
+                // LES SOMMES PLUS PETITES ET PLUS SERRÉES DANS LEUR COIN : à
+                // 0,30 elles occupaient presque la moitié de la case, ce qui
+                // se voit tout de suite à côté d'une grille publiée.
                 const sommes = t.type === 'indice'
-                    ? `<span style="position:absolute; top:4%; right:8%; font-size:${px(s * 0.3)};
-                         color:#fff;">${t.droite || ''}</span>
-                       <span style="position:absolute; bottom:4%; left:8%; font-size:${px(s * 0.3)};
-                         color:#fff;">${t.bas || ''}</span>
+                    ? `<span style="position:absolute; top:3%; right:6%; font-size:${px(s * 0.24)};
+                         font-weight:700; color:#fff;">${t.droite || ''}</span>
+                       <span style="position:absolute; bottom:3%; left:6%; font-size:${px(s * 0.24)};
+                         font-weight:700; color:#fff;">${t.bas || ''}</span>
                        <!-- « TO TOP RIGHT », comme à l'écran et comme le PDF : un dégradé
                             pose ses bandes PERPENDICULAIREMENT à son axe, donc
                             « to bottom right » traçait le trait qui passe exactement par
                             les deux coins où sont écrites les sommes, et les barrait.
                             L'aperçu et le PDF se contredisaient — le PDF, lui, trace
                             (X,Y) vers (X+s,Y+s), qui est la bonne diagonale. -->
-                       <span style="position:absolute; inset:0; background:linear-gradient(
-                         to top right, transparent calc(50% - .5px), #fff calc(50% - .5px),
-                         #fff calc(50% + .5px), transparent calc(50% + .5px));"></span>`
+                       `
                     : '';
-                html += boite(c + mg, r + mh, sommes,
+                // LA DIAGONALE EST SUR TOUTE CASE NOIRE, somme ou pas : sans
+                // elle, les cases noires voisines se collent et la grille se
+                // lit comme une tache. C'est ce que Rémy a vu.
+                const diag = `<span style="position:absolute; inset:0; background:linear-gradient(
+                         to top right, transparent calc(50% - .5px), #fff calc(50% - .5px),
+                         #fff calc(50% + .5px), transparent calc(50% + .5px));"></span>`;
+                html += boite(c + mg, r + mh, sommes + diag,
                     'background:#0f172a; border:1px solid #0f172a; position:absolute;');
                 continue;
             }
@@ -2020,12 +2027,16 @@ function dessinerGrilleNombresPdf(doc, item, slot, solution) {
     for (let r = 0; r < lignes; r++) {
         for (let c = 0; c < colonnes; c++) {
             const t = par.get(`${r},${c}`) || {};
-            if (t.type !== 'indice') continue;
+            // TOUTE CASE NOIRE PORTE SA DIAGONALE, somme ou pas. Voir l'écran
+            // et l'aperçu : sans elle, les cases noires voisines se collent et
+            // la grille se lit comme une tache.
+            if (t.type !== 'indice' && t.type !== 'mur') continue;
             const X = x + (c + mg) * s, Y = y + (r + mh) * s;
             doc.line(X, Y, X + s, Y + s);
-            doc.setFontSize(Math.min(8, s * 0.62));
-            if (t.droite) doc.text(String(t.droite), X + s * 0.72, Y + s * 0.3, { align: 'center', baseline: 'middle' });
-            if (t.bas) doc.text(String(t.bas), X + s * 0.28, Y + s * 0.74, { align: 'center', baseline: 'middle' });
+            if (t.type !== 'indice') continue;
+            doc.setFontSize(Math.min(7.5, s * 0.5));
+            if (t.droite) doc.text(String(t.droite), X + s * 0.74, Y + s * 0.26, { align: 'center', baseline: 'middle' });
+            if (t.bas) doc.text(String(t.bas), X + s * 0.26, Y + s * 0.76, { align: 'center', baseline: 'middle' });
         }
     }
 

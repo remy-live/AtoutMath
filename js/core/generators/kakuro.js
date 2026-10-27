@@ -58,6 +58,23 @@ const PLAFOND_NOEUDS = 60000;
 
 /** Ce qu'un remplissage s'autorise avant qu'on redécoupe. Voir `remplir`. */
 const PLAFOND_REMPLIR = 12000;
+
+/**
+ * COMBIEN DE DÉCOUPES ON TIRE AVANT DE GARDER LA MEILLEURE. Voir `dessiner` :
+ * on ne cherche plus la première acceptable, mais la plus dense — alors le
+ * nombre de tirages décide de la QUALITÉ du dessin, pas seulement de la
+ * chance de trouver.
+ */
+const TIRAGES_DESSIN = 200;
+
+/**
+ * LA PETITE GRILLE EN TIRE TROIS FOIS PLUS, parce qu'elle les paie trois fois
+ * moins cher : un tirage coûte un parcours de la grille, mais chaque découpe
+ * retenue coûte ensuite une PREUVE D'UNICITÉ, et c'est elle qui domine — elle
+ * est bien plus lourde en 5 × 5 qu'en 4 × 4. On met donc l'effort là où il est
+ * bon marché, et le 4 × 4 est justement le réglage par défaut.
+ */
+const TIRAGES_PETITE = 600;
 const DIFFICULTE_ITEM = { facile: 1, moyen: 2, difficile: 3 };
 
 /** Les suites d'une grille : chacune porte ses cases et sa direction. */
@@ -118,17 +135,65 @@ function motifsDeLigne(n, maxSuite) {
     return out;
 }
 
-/** Un dessin de murs valable, ou null. */
-function dessiner(rng, L, C, maxSuite) {
+/**
+ * UN DESSIN DE MURS VALABLE, LE PLUS DENSE QU'ON TROUVE.
+ *
+ * ── POURQUOI « LE PLUS DENSE » ET NON « LE PREMIER QUI PASSE » ──────────────
+ *
+ * RÉMY, 27 octobre, deux captures côte à côte — la nôtre et une grille
+ * téléchargée : « je préfère la deuxième images ». Comptées sur les deux
+ * images : SEPT cases blanches sur vingt-cinq chez nous, DOUZE chez eux. La
+ * nôtre se lisait comme une tache noire avec quelques cases dedans.
+ *
+ * La cause tenait en une ligne : on tirait des découpes au hasard et l'on
+ * gardait LA PREMIÈRE qui dépassait un plancher de 45 %. Or une découpe tirée
+ * au hasard est presque toujours trouée — le premier succès est donc, à peu
+ * de chose près, le pire grille acceptable.
+ *
+ * ET MONTER LE PLANCHER NE MARCHE PAS, c'est mesuré : à 55 %, seize grilles
+ * sur vingt tombaient dans le filet ; à 60 %, vingt sur vingt. Le plancher ne
+ * fabrique pas de bonnes découpes, il refuse les mauvaises — et quand il les
+ * refuse toutes il ne reste rien.
+ *
+ * ON GARDE DONC LA MEILLEURE DE TOUS LES TIRAGES. Même travail, même durée,
+ * et c'est le maximum atteignable qu'on obtient au lieu du minimum acceptable.
+ * Sur une grille de quatre par quatre à suites de trois cases, ce maximum est
+ * de dix cases blanches sur seize, et il se démontre : chaque colonne de
+ * quatre doit porter au moins un mur, sinon sa suite ferait quatre cases.
+ */
+function dessiner(rng, L, C, maxSuite, tirages = (L * C > 16 ? TIRAGES_DESSIN : TIRAGES_PETITE)) {
     const motifs = motifsDeLigne(C, maxSuite);
     if (!motifs.length) return null;
-    // TROIS MILLE TIRAGES, ET C'EST BON MARCHÉ : chaque essai coûte un
-    // parcours de la grille. MESURÉ à quatre cents, la découpe échouait deux
-    // fois sur trois et l'on desserrait le plafond pour rien — les lignes ET
-    // les colonnes doivent se découper proprement, et cela ne tombe pas
-    // souvent par hasard.
-    for (let essai = 0; essai < 3000; essai++) {
-        const blanc = Array.from({ length: L }, () => motifs[rng.int(0, motifs.length - 1)].slice());
+    // ASSEZ DENSE POUR S'ARRÊTER : inutile de faire les mille tirages quand on
+    // tient déjà une grille aux trois quarts blanche.
+    const vise = Math.round(L * C * 0.60);
+    let meilleur = null;
+    for (let essai = 0; essai < tirages; essai++) {
+        // ── DEUX FAÇONS DE TIRER UNE DÉCOUPE, ET LA SECONDE EST CELLE QUI
+        //    TROUVE ──────────────────────────────────────────────────────
+        //
+        // Tirer chaque rangée INDÉPENDAMMENT ne marche presque jamais : il
+        // faut que les colonnes se découpent proprement AUSSI, et deux rangées
+        // sans rapport n'ont aucune raison de s'accorder. En 5 × 5 à suites de
+        // deux cases, la seule découpe valable est faite de quatre carrés de
+        // deux sur deux ; sa probabilité en tirage indépendant est de l'ordre
+        // d'une sur cent mille, et cinq cents tirages ne la rencontrent jamais.
+        // Mesuré : le Kakuro tombait dans le filet, donc servait une grille
+        // pleine, et la garde d'unicité le refusait.
+        //
+        // LES VRAIES GRILLES DE KAKURO RÉEMPLOIENT LEURS RANGÉES — c'est ce
+        // qui leur donne cet air de blocs. On tire donc une fois sur deux dans
+        // une PETITE PALETTE de deux ou trois motifs qu'on répète : les
+        // colonnes ont alors toutes les chances de se découper comme les
+        // lignes, puisqu'elles voient les mêmes murs aux mêmes endroits.
+        let blanc;
+        if (essai % 2 === 0) {
+            blanc = Array.from({ length: L }, () => motifs[rng.int(0, motifs.length - 1)].slice());
+        } else {
+            const palette = Array.from({ length: rng.int(2, 3) },
+                () => motifs[rng.int(0, motifs.length - 1)]);
+            blanc = Array.from({ length: L }, () => palette[rng.int(0, palette.length - 1)].slice());
+        }
         const suites = suitesDe(blanc, L, C);
         // Chaque case blanche doit tenir dans une suite de deux au moins, dans
         // les DEUX sens — sinon sa « somme » serait son propre chiffre.
@@ -139,13 +204,34 @@ function dessiner(rng, L, C, maxSuite) {
         const blanches = blanc.flat().filter(Boolean).length;
         const bon = suites.length > 0
             && suites.every(s => s.cases.length >= 2 && s.cases.length <= maxSuite)
-            && [...compte.values()].every(v => v === 2)
-            // UNE GRILLE TROP TROUÉE N'EST PLUS UN JEU : on en garde au moins
-            // la moitié en blanc.
-            && blanches >= Math.round(L * C * 0.45);
-        if (bon) return { blanc, suites };
+            && [...compte.values()].every(v => v === 2);
+        if (!bon) continue;
+
+        // UNE RANGÉE ENTIÈREMENT NOIRE EST UNE RANGÉE PERDUE : une grille de
+        // quatre sur quatre dont deux rangées sont noires est une grille de
+        // deux sur quatre dans une boîte trop grande, et cela se voit tout de
+        // suite sur la fiche imprimée.
+        //
+        // MAIS C'EST UNE PRÉFÉRENCE, PAS UNE RÈGLE, et la nuance est mesurée :
+        // posée en règle, elle faisait tomber DIX-SEPT grilles sur vingt dans
+        // le filet en 5 × 5 — les découpes valables y sont déjà rares, et en
+        // exiger une de plus ne laissait presque rien. En pénalité, on prend
+        // la rangée pleine quand elle existe et l'on s'en passe sinon.
+        const vides = blanc.filter(l => !l.some(Boolean)).length
+            + Array.from({ length: C }, (_, k) => blanc.some(l => l[k])).filter(v => !v).length;
+        const note = blanches - vides * 3;
+        if (!meilleur || note > meilleur.note) {
+            meilleur = { blanc, suites, blanches, note };
+            if (!vides && blanches >= vise) break;
+        }
     }
-    return null;
+    // ON NE REFUSE PLUS RIEN SUR LA DENSITÉ, et c'est une correction du même
+    // jour : un plancher qui rend `null` fait descendre l'appelant de barreau
+    // en barreau jusqu'au filet — et le filet, lui, sert une grille PLEINE.
+    // Mesuré : quatorze grilles sur seize tombaient dans le filet en 5 × 5.
+    // Une découpe un peu trouée mais vérifiée vaut toujours mieux qu'une
+    // grille pleine dont personne n'a compté les solutions.
+    return meilleur;
 }
 
 /**

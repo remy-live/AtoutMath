@@ -15320,7 +15320,15 @@ body.en-boite > #app-container { background: none; }
 /* LA CASE DONNÉE NE S'ÉCRIT PAS, et cela doit se VOIR avant qu'on essaie :
    un fond légèrement teinté suffit, et c'est la convention du sudoku. */
 .gn-cell--donnee { background: var(--bg-hover); color: var(--text-main); }
-.gn-cell--mur, .gn-cell--indice { background: var(--text-main); border-color: var(--text-main); }
+/* LE TRAIT ENTRE DEUX CASES NOIRES SE VOIT. Il était de la couleur du fond —
+   donc invisible —, et les diagonales de deux cases voisines se rejoignaient
+   alors en une seule longue balafre en travers du plateau. Sur la grille que
+   Rémy a téléchargée, un filet clair sépare TOUTES les cases, y compris les
+   noires : c'est lui qui fait qu'un damier noir reste un damier. */
+.gn-cell--mur, .gn-cell--indice {
+    background: var(--text-main);
+    border-color: color-mix(in srgb, var(--bg-panel) 30%, var(--text-main));
+}
 .gn-cell--active { outline: 3px solid var(--primary); outline-offset: -3px; z-index: 2; }
 .gn-cell--corrige { background: color-mix(in srgb, var(--danger) 18%, transparent); }
 .gn-cell--demo { background: color-mix(in srgb, var(--primary) 14%, transparent); }
@@ -15349,8 +15357,17 @@ body.en-boite > #app-container { background: none; }
    longue balafre en travers du plateau. Rien ne débordait, pourtant : c'était
    le même défaut vu de loin. Mesuré sur une photo ; aucun compte ne l'aurait
    dit. */
-.gn-cell--indice { position: relative; }
-.gn-cell--indice::after {
+/* TOUTE CASE NOIRE PORTE SA DIAGONALE, pas seulement celles qui portent une
+   somme — et c'est LA différence que Rémy a vue entre notre grille et celle
+   qu'il a téléchargée, deux captures côte à côte, 27 octobre : « je préfère
+   la deuxième images ».
+
+   Sans diagonale, les cases noires sans somme se collent les unes aux autres
+   et la grille se lit comme une TACHE, avec quelques cases blanches dedans.
+   Avec, chaque case reste une case : le damier se lit, même en noir. C'est la
+   convention de toutes les grilles publiées, et elle n'est pas décorative. */
+.gn-cell--mur, .gn-cell--indice { position: relative; }
+.gn-cell--mur::after, .gn-cell--indice::after {
     content: ''; position: absolute; inset: 0;
     background: linear-gradient(to top right, transparent calc(50% - .7px),
         var(--bg-panel) calc(50% - .7px), var(--bg-panel) calc(50% + .7px),
@@ -15813,4 +15830,38 @@ body.en-boite > #app-container { background: none; }
     .pd-context { font-size: .9rem; }
     .pd-haut { flex-direction: column; }
     .pd-droite { width: 100%; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LE GLISSER-DÉPOSER DES JETONS — Rémy, 27 octobre : « pouvoir aussi drag
+   dropper les chiffrres et nombres ».
+
+   `touch-action: none` SUR LE JETON, et c'est obligatoire : sans lui, le
+   navigateur décide qu'un doigt qui part d'un bouton veut faire défiler la
+   page, il annule la suite des `pointermove` et le glisser meurt au premier
+   pixel. On perd le défilement AU DÉPART D'UN JETON ; la page se fait
+   défiler partout ailleurs, et la palette fait trois centimètres de haut.
+   ───────────────────────────────────────────────────────────────────────── */
+.gn-jeton { touch-action: none; }
+.gn-jeton--pris { opacity: .45; }
+
+/* LE JETON FANTÔME suit le doigt. Il est TRANSPARENT AUX ÉVÉNEMENTS, sinon
+   `elementFromPoint` le trouverait lui — il est sous le doigt par
+   construction — et l'on ne viserait jamais une case. */
+.gn-fantome {
+    position: fixed; z-index: 2000001; pointer-events: none;
+    transform: translate(-50%, -50%);
+    min-width: 42px; height: 42px; padding: 0 8px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; border: 2px solid var(--primary);
+    background: var(--primary); color: #fff;
+    font-size: 1.1rem; font-weight: 800;
+    box-shadow: 0 6px 16px rgb(0 0 0 / .28);
+}
+
+/* LA CASE VISÉE SE SIGNALE pendant qu'on tient le jeton : sans cela on lâche
+   au jugé, et l'on découvre après coup que c'était la case d'à côté. */
+.gn-cell--cible {
+    outline: 3px solid var(--primary); outline-offset: -3px;
+    background: color-mix(in srgb, var(--primary) 16%, var(--bg-panel));
 }

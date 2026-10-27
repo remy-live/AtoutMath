@@ -4015,3 +4015,69 @@ CE QU'IL FAUT DÉCIDER, ET QUI NE VA PAS DE SOI :
 
 ET IL DOIT S'IMPRIMER, comme tout le reste : le mot en tirets, la définition,
 et l'alphabet à rayer.
+
+
+---
+
+## 38. « je préfère la deuxième image » — le Kakuro, 27 octobre
+
+> Deux captures côte à côte : la grille d'AtoutMath, et une grille téléchargée.
+> « ca ce sont les tiens, ca c'est une que j'ai téléchargé, je préfère la
+> deuxième images »
+
+IL NE DIT PAS CE QU'IL PRÉFÈRE, IL MONTRE. C'est à moi de lire les deux
+images et de nommer les différences — et il y en a quatre, dont une qui
+explique presque tout.
+
+1. **TOUTE CASE NOIRE PORTE UNE DIAGONALE** dans la grille téléchargée, même
+   celles qui ne portent aucune somme. Chez moi, seules les cases à somme en
+   ont une : les autres restent des carrés noirs pleins, et comme elles sont
+   nombreuses, la grille se lit comme une tache noire avec quelques cases
+   blanches dedans. C'est LA différence qui saute aux yeux.
+
+2. **LA GRILLE EST BEAUCOUP PLUS DENSE.** Onze cases blanches sur vingt-cinq
+   chez eux, sept sur vingt-cinq chez moi. Je l'avais d'ailleurs signalé moi-
+   même la veille — « le plateau trop noir du Kakuro facile » — et il n'avait
+   pas répondu ; la capture répond.
+
+3. **LES SOMMES SONT PLUS PETITES ET PLUS SERRÉES DANS LEUR COIN.** Chez moi
+   elles occupent presque la moitié de la case.
+
+4. **LE NOIR EST PLUS FRANC ET LE QUADRILLAGE PLUS FIN.**
+
+CE QUI NE CHANGE PAS, et c'est bon à vérifier : la somme de la LIGNE s'écrit
+au-dessus de la diagonale (en haut à droite), celle de la COLONNE en dessous
+(en bas à gauche). Les deux grilles sont d'accord — la correction de la veille
+était la bonne.
+
+
+---
+
+## 39. Glisser-déposer les chiffres — 27 octobre
+
+> « il faudrait dans les deniers jeux que tu as fait pouvoir aussi drag
+> dropper les chiffrres et nombres »
+
+« LES DERNIERS JEUX » : les cinq grilles du 26 octobre — Kakuro, Yohaku,
+Suguru, Gratte-ciel, Chemin des Nombres — qui partagent toutes l'activité
+`grilleNombres`. Ce sont elles qui ont des chiffres à poser. Une seule
+activité à corriger, donc, et c'est pour cela qu'elle avait été écrite une
+seule fois.
+
+LE MOT QUI COMPTE DANS SA PHRASE EST « AUSSI ». Il ne demande pas de
+remplacer la saisie existante — toucher une case puis taper, ou toucher un
+jeton — mais d'AJOUTER une troisième façon de faire. On garde donc tout, et
+le glisser vient en plus.
+
+CE QUE J'AI ÉCRIT NOIR SUR BLANC IL Y A DEUX JOURS, et qu'il faut relire
+avant de se lancer : « glisser sur un téléphone demande de viser pendant
+qu'on bouge, ce qu'un élève de sixième rate une fois sur trois ». Je le
+pensais, et je le pense encore pour un glisser qui REMPLACE le toucher. Comme
+troisième chemin, à côté des deux autres, l'objection tombe : celui qui rate
+son glisser touche, et celui qui préfère glisser glisse. C'est d'ailleurs le
+geste des jeux auxquels les élèves jouent sur leur téléphone.
+
+À MESURER AVANT DE CROIRE QUE ÇA MARCHE :
+- au doigt, en 390 px, où la cible est petite ;
+- qu'un glisser raté ne CASSE rien — la case doit rester comme elle était ;
+- que le toucher et le clavier marchent encore exactement comme avant.

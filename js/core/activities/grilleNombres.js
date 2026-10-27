@@ -201,6 +201,7 @@ export function mount(container, session) {
             bloque: () => session.locked || destroyed
         });
         brancherPalette();
+        brancherGlisser();
         brancherBoutons();
         majReste();
     }
@@ -250,6 +251,25 @@ export function mount(container, session) {
         });
     }
 
+    /** Écrire une valeur DANS LE DESSIN de la case — la grille, elle, l'a déjà. */
+    function ecrireDansLaCase(r, c, v) {
+        const cel = celluleEl(r, c);
+        const ch = cel && cel.querySelector('.kk-val');
+        if (!ch) return;
+        if (ch.tagName === 'INPUT') ch.value = v ? String(v) : '';
+        else ch.textContent = v ? String(v) : '';
+    }
+
+    /** La case remplissable sous ce point de l'écran, ou null. */
+    function caseSousLePoint(x, y) {
+        const el = document.elementFromPoint(x, y);
+        const cel = el && el.closest ? el.closest('.gn-cell[data-r]') : null;
+        if (!cel || cel.classList.contains('gn-cell--donnee')) return null;
+        const r = Number(cel.dataset.r), c = Number(cel.dataset.c);
+        if (estMur(r, c) || typeDe(r, c).type === 'donnee') return null;
+        return { cel, r, c };
+    }
+
     /**
      * LA PALETTE EST LE GESTE DE LA TABLETTE : on touche une case, on touche
      * un nombre. Le clavier reste là pour ceux qui en ont un — les deux
@@ -258,19 +278,118 @@ export function mount(container, session) {
     function brancherPalette() {
         container.querySelectorAll('[data-jeton]').forEach(btn => {
             btn.onclick = () => {
+                // UN GLISSER SE TERMINE AUSSI PAR UN `click`, et c'est le
+                // navigateur qui le fabrique : le `pointerdown` et le
+                // `pointerup` ont lieu sur le même jeton — la capture du
+                // pointeur s'en assure —, donc il en déduit une tape. Sans ce
+                // garde-fou, chaque glisser déclenchait EN PLUS le chemin du
+                // toucher : un glisser raté répondait « Touche d'abord une
+                // case de la grille », ce qui est faux et décourageant. Mesuré
+                // par `tools/glisserLesJetons.mjs`, qui a rougi là-dessus.
+                if (btn.dataset.glisse) { delete btn.dataset.glisse; return; }
                 if (!caseActive || session.locked || destroyed) {
                     if (!caseActive) statut('Touche d\'abord une case de la grille.');
                     return;
                 }
                 const v = btn.dataset.jeton === '' ? 0 : Number(btn.dataset.jeton);
                 poser(caseActive.r, caseActive.c, v);
-                const cel = celluleEl(caseActive.r, caseActive.c);
-                const ch = cel && cel.querySelector('.kk-val');
-                if (ch) {
-                    if (ch.tagName === 'INPUT') ch.value = v ? String(v) : '';
-                    else ch.textContent = v ? String(v) : '';
-                }
+                ecrireDansLaCase(caseActive.r, caseActive.c, v);
             };
+        });
+    }
+
+    /**
+     * ET L'ON PEUT AUSSI GLISSER LE JETON DANS LA CASE.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * RÉMY, 27 octobre : « il faudrait dans les deniers jeux que tu as fait
+     * pouvoir aussi drag dropper les chiffrres et nombres ».
+     *
+     * LE MOT QUI COMMANDE EST « AUSSI ». Ceci n'enlève rien : toucher une case
+     * puis un jeton marche comme avant, le clavier aussi. C'est un TROISIÈME
+     * chemin, et il arrive par-dessus les deux autres sans les gêner.
+     *
+     * J'avais écrit deux jours plus tôt, dans la Traversée, que « glisser sur
+     * un téléphone demande de viser pendant qu'on bouge, ce qu'un élève de
+     * sixième rate une fois sur trois ». C'était vrai d'un glisser qui
+     * REMPLACE le toucher ; comme troisième chemin l'objection tombe, parce
+     * qu'un glisser raté ne coûte rien — on relâche à côté, rien ne bouge, et
+     * l'on touche comme avant.
+     *
+     * ── CE QUI DISTINGUE UN GLISSER D'UNE TAPE ───────────────────────────
+     *
+     * SIX PIXELS. En dessous, c'est une tape : on ne fait rien ici et le
+     * `onclick` d'origine s'en charge. Au-delà, c'est un glisser : on prend la
+     * main, on montre un jeton fantôme sous le doigt, et l'on surligne la case
+     * visée. Sans ce seuil, un doigt qui tremble d'un pixel sur une tape
+     * déclencherait un glisser et la tape serait perdue.
+     *
+     * `setPointerCapture` ÉVITE DE PERDRE LE DOIGT : sans lui, dès que le
+     * doigt quitte le jeton — c'est-à-dire tout de suite — les `pointermove`
+     * vont à l'élément survolé et le glisser s'arrête au premier pixel.
+     */
+    function brancherGlisser() {
+        container.querySelectorAll('[data-jeton]').forEach(btn => {
+            btn.addEventListener('pointerdown', (e) => {
+                if (session.locked || destroyed || e.button > 0) return;
+                const v = btn.dataset.jeton === '' ? 0 : Number(btn.dataset.jeton);
+                const x0 = e.clientX, y0 = e.clientY;
+                let fantome = null, cible = null;
+
+                const bouger = (ev) => {
+                    if (!fantome) {
+                        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+                        fantome = document.createElement('div');
+                        fantome.className = 'gn-fantome';
+                        fantome.textContent = v ? String(v) : '⌫';
+                        document.body.appendChild(fantome);
+                        btn.classList.add('gn-jeton--pris');
+                    }
+                    fantome.style.left = `${ev.clientX}px`;
+                    fantome.style.top = `${ev.clientY}px`;
+                    // LE FANTÔME NE DOIT PAS SE DÉSIGNER LUI-MÊME : il suit le
+                    // doigt, donc il est toujours sous lui. `pointer-events:
+                    // none` dans la feuille de style le rend transparent à
+                    // `elementFromPoint`, sans quoi on ne viserait jamais une
+                    // case.
+                    const sous = caseSousLePoint(ev.clientX, ev.clientY);
+                    if (cible && (!sous || sous.cel !== cible)) cible.classList.remove('gn-cell--cible');
+                    cible = sous ? sous.cel : null;
+                    if (cible) cible.classList.add('gn-cell--cible');
+                };
+
+                const lacher = (ev) => {
+                    btn.releasePointerCapture?.(e.pointerId);
+                    btn.removeEventListener('pointermove', bouger);
+                    btn.removeEventListener('pointerup', lacher);
+                    btn.removeEventListener('pointercancel', lacher);
+                    if (cible) cible.classList.remove('gn-cell--cible');
+                    btn.classList.remove('gn-jeton--pris');
+                    if (!fantome) return;          // c'était une tape : on n'y touche pas
+                    fantome.remove();
+                    // ON MARQUE LE JETON pour que le `click` que le navigateur
+                    // va fabriquer juste après ne rejoue pas le toucher.
+                    btn.dataset.glisse = '1';
+                    const sous = caseSousLePoint(ev.clientX, ev.clientY);
+                    // UN GLISSER LÂCHÉ À CÔTÉ NE CASSE RIEN : la case reste
+                    // comme elle était, et l'on n'a rien perdu à essayer.
+                    if (!sous) { statut('Lâche le jeton SUR une case à remplir.'); return; }
+                    poser(sous.r, sous.c, v);
+                    ecrireDansLaCase(sous.r, sous.c, v);
+                    // La case où l'on vient de poser devient la case active :
+                    // le jeton suivant, touché cette fois, ira au même endroit.
+                    container.querySelectorAll('.gn-cell--active')
+                        .forEach(x => x.classList.remove('gn-cell--active'));
+                    sous.cel.classList.add('gn-cell--active');
+                    caseActive = { r: sous.r, c: sous.c };
+                };
+
+                btn.setPointerCapture?.(e.pointerId);
+                btn.addEventListener('pointermove', bouger);
+                btn.addEventListener('pointerup', lacher);
+                btn.addEventListener('pointercancel', lacher);
+            });
         });
     }
 

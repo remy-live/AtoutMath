@@ -6385,3 +6385,36 @@ le résultat n'existe pas** — 15 octobre 2026
   pour un bloc CSS neuf — **`node tools/verifierCss.mjs css/modules.css`, qui
   lance les quatre gardes de couleur et de survol seules**. Elles tournent en
   une seconde ; c'est `npm test` autour d'elles qui en met deux cents.
+
+**Un glisser déclenche AUSSI un clic, et le navigateur le fabrique tout seul** — 27 octobre 2026
+
+- *Ce que je voulais faire* : ajouter le glisser-déposer des jetons sans
+  toucher au chemin du toucher.
+- *Ce qui a coûté* : une mesure rouge et dix minutes à comprendre pourquoi un
+  glisser raté répondait « Touche d'abord une case de la grille ». Le
+  `pointerdown` et le `pointerup` ont lieu sur le même jeton — la capture du
+  pointeur s'en assure —, donc le navigateur en DÉDUIT une tape et envoie un
+  `click` après. Les deux chemins se déclenchaient à chaque glisser.
+- *Combien de fois* : |
+- *Ce qui manque* : la règle, à écrire une fois pour toutes — **tout élément
+  qui porte un glisser doit avaler le `click` qui suit**, par un drapeau posé
+  dans le `pointerup` et consommé dans le `onclick`. Trois lignes, mais
+  invisibles tant qu'on n'a pas mesuré le chemin raté : un glisser qui RÉUSSIT
+  ne montre rien, puisque le clic repose la même valeur au même endroit.
+
+**Une mesure du cas qui RATE doit viser un point calculé, pas deviné** — 27 octobre 2026
+
+- *Ce que je voulais faire* : vérifier qu'un jeton lâché à côté de la grille
+  ne pose rien.
+- *Ce qui a coûté* : deux relances et une fausse piste. J'avais écrit « cent
+  soixante pixels au-dessus du jeton » — un chiffre choisi à l'œil. En 390 px
+  la palette est juste sous la grille, donc cent soixante pixels plus haut
+  tombent EN PLEINE GRILLE : le glisser réussissait, et la sonde annonçait un
+  défaut sur un logiciel qui marchait. J'ai cherché le défaut dans le code.
+- *Combien de fois* : || (même famille que la photo prise après la validation,
+  le 26 : dans les deux cas la MESURE est fausse et le logiciel a raison, ce
+  qui coûte toujours plus cher que l'inverse)
+- *Ce qui manque* : la règle — **le point de chute d'un essai qui doit rater
+  se calcule depuis la page** (le centre d'un élément dont on sait qu'il n'est
+  pas une cible), jamais depuis un décalage en pixels. Un décalage est juste
+  sur l'écran où on l'a écrit et faux sur les deux autres.
