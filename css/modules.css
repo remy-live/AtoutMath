@@ -15631,66 +15631,145 @@ body.en-boite > #app-container { background: none; }
    pousse la rive hors de l'écran, alors que l'emoji se reconnaît du premier
    coup d'œil.
    ───────────────────────────────────────────────────────────────────────── */
-.tv-layout { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+.tv-layout { display: flex; flex-direction: column; align-items: center;
+    gap: 12px; width: 100%; }
 .tv-context { text-align: center; max-width: 48ch; }
 
+/* ── LA SCÈNE : DEUX BERGES ET UNE RIVIÈRE ──────────────────────────────────
+
+   RÉMY, 27 octobre : « ca fait vieillot de fou ! ». Il avait raison, et la
+   cause se nomme : tout avait le même poids. Un cadre blanc à filet gris pour
+   la scène, des cartes blanches à filet gris pour les personnages, un carré en
+   POINTILLÉS pour la barque — c'est-à-dire le dessin universel de « zone de
+   dépôt vide » dans un formulaire. L'écran ressemblait à un formulaire parce
+   qu'il en portait tous les signes.
+
+   Trois maquettes lui ont été soumises ; il a choisi « la rivière ». De
+   l'herbe, de l'eau, une barque en bois : trois matières différentes, donc
+   trois lectures immédiates. Les couleurs sont posées EN DUR et ne suivent pas
+   le thème — une berge est verte et de l'eau est bleue, comme un emoji ne
+   change pas de couleur quand on passe en sombre. */
 .tv-scene {
-    display: flex; align-items: stretch; gap: 6px;
-    width: 100%; max-width: 620px; min-height: 220px;
-    border: 2px solid var(--border); border-radius: 14px; overflow: hidden;
+    position: relative; display: grid;
+    grid-template-columns: 1fr clamp(116px, 26vw, 190px) 1fr;
+    width: 100%; max-width: 660px; height: clamp(236px, 42vh, 320px);
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 10px 28px -14px rgb(15 23 42 / .45);
 }
 .tv-rive {
-    flex: 1 1 0; display: flex; flex-wrap: wrap; align-content: flex-start;
-    gap: 6px; padding: 10px; background: var(--bg-panel);
+    position: relative; padding: 12px;
+    background: linear-gradient(#e8f8d8, #c6ecaa 62%, #aadd8c);
+    display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start;
 }
 .tv-rive--d { justify-content: flex-end; }
+/* LE NOM DE LA RIVE, tout en bas : sans lui, on ne sait pas laquelle est le
+   départ — et c'est la première question qu'un élève pose. */
+.tv-rive::after {
+    content: attr(data-nom); position: absolute; left: 0; right: 0; bottom: 8px;
+    text-align: center; font: 800 10px system-ui; letter-spacing: .12em;
+    text-transform: uppercase; color: #4d7c2f; pointer-events: none;
+}
 
-/* LA RIVIÈRE : la barque s'y range à gauche ou à droite, et glisse de l'une
-   à l'autre. L'animation n'est pas un ornement — sans elle, on ne voit pas
-   que la barque a bougé, et l'on croit que le bouton n'a rien fait. */
 .tv-riviere {
-    flex: 0 0 clamp(72px, 22vw, 132px);
-    display: flex; align-items: center; justify-content: flex-start;
-    padding: 6px; background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+    position: relative;
+    background: linear-gradient(#8fd9f6, #3da2da 72%, #2b86bb);
 }
-.tv-riviere--droite { justify-content: flex-end; }
-.tv-barque {
-    display: flex; flex-wrap: wrap; gap: 4px; align-content: center;
-    min-width: 54px; min-height: 54px; padding: 5px;
-    border: 2px dashed var(--primary); border-radius: 10px;
-    background: var(--bg-panel);
-    transition: transform .35s ease;
-}
-@media (prefers-reduced-motion: reduce) { .tv-barque { transition: none; } }
+.tv-vagues { position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; }
+.tv-vagues path { stroke: #fff; fill: none; stroke-linecap: round; }
 
-.tv-pion {
-    display: inline-flex; align-items: center; gap: 5px;
-    min-height: 44px; min-width: 44px; padding: 4px 8px;
-    border: 2px solid var(--border); border-radius: 12px;
-    background: var(--bg-main); color: var(--text-main);
-    font-size: .85rem; font-weight: 700; cursor: pointer;
+/* LA BARQUE GLISSE D'UNE RIVE À L'AUTRE, et l'animation n'est pas un
+   ornement : sans elle, on ne voit pas que la barque a bougé, et l'on croit
+   que le bouton n'a rien fait. */
+.tv-barque {
+    position: absolute; left: 50%; top: 46%;
+    width: 80%; height: 38%;
+    transform: translate(-50%, -50%) translateX(-11%);
+    transition: transform .4s ease;
 }
-.tv-emoji { font-size: 1.5rem; line-height: 1; }
+/* LE CHARGEMENT EST UNE BOÎTE À PART, et il le faut : peindre remplace le
+   contenu de la barque, ce qui emporterait le SVG de la coque avec lui. */
+.tv-charge {
+    position: absolute; inset: 0; padding: 6% 12% 18%;
+    display: flex; gap: 4px;
+    align-items: center; justify-content: center;
+}
+/* DANS LA BARQUE, ON NE GARDE QUE L'EMOJI. Deux pastilles nommées font deux
+   cent quarante pixels de large ; la rivière en fait cent quatre-vingt-dix au
+   plus. Et le nom n'y sert à rien : on vient de les y mettre, on sait qui
+   c'est. La poignée part avec, pour la même raison de place. */
+.tv-charge .tv-nom, .tv-charge .tv-poignee { display: none; }
+.tv-charge .tv-pion { padding: 5px 8px; min-height: 40px; }
+.tv-riviere--droite .tv-barque { transform: translate(-50%, -50%) translateX(11%); }
+@media (prefers-reduced-motion: reduce) { .tv-barque { transition: none; } }
+.tv-coque { position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: -1; }
+/* L'OMBRE DE LA COQUE SUR L'EAU : c'est elle qui pose la barque SUR quelque
+   chose. Sans elle, la coque flotte dans le vide et l'eau redevient une bande. */
+.tv-ombre { position: absolute; left: 50%; top: 62%; width: 50%; height: 7%;
+    transform: translate(-50%, -50%) translateX(-11%);
+    background: #15618f; opacity: .3; border-radius: 50%;
+    transition: transform .4s ease; pointer-events: none; }
+.tv-riviere--droite .tv-ombre { transform: translate(-50%, -50%) translateX(11%); }
+
+/* ── LES PIONS ──────────────────────────────────────────────────────────────
+
+   Une pastille blanche, une ombre douce, et une POIGNÉE de six points à
+   gauche. La poignée n'est pas décorative : c'est le seul signe qui dise
+   « ceci se prend », et Rémy a demandé le glisser-déposer dans la même phrase
+   que « vieillot ».
+
+   `touch-action: none` EST OBLIGATOIRE : sans lui, le navigateur décide qu'un
+   doigt parti d'un pion veut faire défiler la page, il annule la suite des
+   `pointermove`, et le glisser meurt au premier pixel. */
+.tv-pion {
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 44px; padding: 6px 13px 6px 8px;
+    border: 0; border-radius: 999px;
+    background: #fff; color: #1e293b; white-space: nowrap;
+    box-shadow: 0 1px 2px rgb(15 23 42 / .16), 0 6px 14px -8px rgb(15 23 42 / .55);
+    font: 700 14px system-ui; cursor: grab; touch-action: none;
+}
+.tv-poignee { width: 9px; height: 16px; opacity: .3; flex: 0 0 auto;
+    background: radial-gradient(circle, #334155 1.4px, transparent 1.5px) 0 0 / 4.5px 5.3px; }
+.tv-emoji { font-size: 24px; line-height: 1; }
 .tv-pion:disabled { cursor: default; }
 /* CE QUI EST SUR L'AUTRE RIVE EST PÂLE, mais reste LISIBLE : l'élève doit
    pouvoir compter qui est déjà passé sans plisser les yeux. */
-.tv-pion--loin { opacity: .55; }
-.tv-pion:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.tv-pion--loin { opacity: .6; box-shadow: none; }
+.tv-pion--pris { opacity: .32; }
+.tv-pion:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+@media (hover: hover) {
+    .tv-pion:not(:disabled):hover { transform: translateY(-1px); }
+}
+
+/* LA ZONE VISÉE pendant qu'on tient quelqu'un : sans elle on lâche au jugé. */
+.tv-cible { outline: 3px dashed #fff; outline-offset: -6px; }
+
+/* LE FANTÔME suit le doigt. Il est TRANSPARENT AUX ÉVÉNEMENTS, sinon
+   `elementFromPoint` le trouverait lui — il est sous le doigt par
+   construction — et l'on ne viserait jamais une zone. */
+.tv-fantome {
+    position: fixed; z-index: 2000001; pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-4deg);
+    box-shadow: 0 10px 22px -6px rgb(15 23 42 / .55);
+}
 
 .tv-statut { min-height: 3em; text-align: center; font-weight: 600;
     color: var(--text-muted); max-width: 46ch; }
 .tv-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .tv-btn {
-    min-height: 48px; padding: 0 18px;
-    border: 2px solid var(--border); border-radius: 12px;
+    min-height: 48px; padding: 0 20px;
+    border: 2px solid var(--border); border-radius: 14px;
     background: var(--bg-panel); color: var(--text-main);
-    font-size: 1rem; font-weight: 700; cursor: pointer;
+    font-size: 1rem; font-weight: 800; cursor: pointer;
 }
 /* ENCRE BLANCHE SUR UN BOUTON PLEIN : `--primary-texte` vaut #4f46e5, qui est
    l'indigo qu'on écrit SUR le fond de la page, pas l'encre d'un bouton
    indigo. Vu sur le Shikaku, et on ne le reverra pas. */
-.tv-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
-.tv-btn:disabled { opacity: .5; cursor: default; }
+.tv-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff;
+    box-shadow: 0 6px 16px -8px var(--primary); }
+.tv-btn:disabled { opacity: .5; cursor: default; box-shadow: none; }
 .tv-btn:focus-visible { outline: 3px solid var(--text-main); outline-offset: 2px; }
 
 .tv-scene--ok { outline: 3px solid var(--success); outline-offset: 3px; }
@@ -15703,7 +15782,7 @@ body.en-boite > #app-container { background: none; }
 
 @media (max-width: 560px) {
     .tv-nom { display: none; }
-    .tv-pion { padding: 4px 6px; justify-content: center; }
+    .tv-pion { padding: 6px 9px 6px 6px; gap: 5px; }
     .tv-context { font-size: .9rem; }
 }
 
