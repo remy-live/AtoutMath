@@ -30,7 +30,7 @@ import { makeRng } from '../js/core/ids.js';
 import { evaluate } from '../js/core/items.js';
 import { LEXIQUE, motsDisponibles } from '../js/core/motsCaches.js';
 import { DECORS, ERREURS_MAX, lettresDe, motVu } from '../js/core/generators/pendu.js';
-import { decorSvg } from '../js/core/penduDecors.js';
+import { decorSvg, ETAPES, VIF, VUE } from '../js/core/penduDecors.js';
 
 const ID = 'logi-pendu';
 
@@ -189,4 +189,140 @@ test('ET LE PENDU SE FABRIQUE SANS SE FAIRE ATTENDRE', () => {
     for (const r of reglages()) tirer(12, r);
     const dt = Math.round(performance.now() - t);
     assert.ok(dt < 3000, `${dt} ms pour tous les réglages`);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES QUATRE DÉCORS EN COULEUR — 27 octobre.
+//
+// Rémy : « les dessins pour le pendu ne sont vraiment pas beaux », puis,
+// devant trois maquettes : « Les 3, et on peut choisir ».
+//
+// ON NE MESURE PAS LA BEAUTÉ : cela se regarde, et `tools/decorsDuPendu.mjs`
+// en fait la planche. On garde ici les quatre choses qui, elles, se chiffrent —
+// et dont trois avaient déjà coûté une relecture.
+
+/** Les attributs qui ne disent QUE la position : tout le reste est l'identité. */
+const GEOMETRIE = new Set(['x', 'y', 'cx', 'cy', 'r', 'rx', 'ry',
+    'x1', 'y1', 'x2', 'y2', 'width', 'height', 'd', 'transform']);
+
+/** Les formes d'un décor, une par objet dessiné. */
+function formes(svg) {
+    const dedans = svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+    return dedans.match(/<[a-z]+[^>]*\/>/g) || [];
+}
+
+/** CE QU'UNE FORME EST, sans ses coordonnées : sa balise et ses couleurs. */
+function signature(el) {
+    const tag = (el.match(/^<([a-z]+)/) || [])[1] || '?';
+    const attrs = [...el.matchAll(/([a-zA-Z-]+)="([^"]*)"/g)]
+        .filter(([, nom]) => !GEOMETRIE.has(nom))
+        .map(([, nom, val]) => `${nom}=${val}`).sort();
+    return `${tag} ${attrs.join(' ')}`;
+}
+
+/** La boîte d'une forme, la demi-épaisseur du trait comprise. */
+function boite(el) {
+    const tag = (el.match(/^<([a-z]+)/) || [])[1];
+    const v = (a) => {
+        const m = el.match(new RegExp(`\\b${a}="(-?[\\d.]+)"`));
+        return m ? Number(m[1]) : null;
+    };
+    const trait = /\bstroke="/.test(el) ? (v('stroke-width') || 1) / 2 : 0;
+    const xs = [], ys = [];
+    if (tag === 'circle') { xs.push(v('cx') - v('r'), v('cx') + v('r')); ys.push(v('cy') - v('r'), v('cy') + v('r')); }
+    else if (tag === 'ellipse') { xs.push(v('cx') - v('rx'), v('cx') + v('rx')); ys.push(v('cy') - v('ry'), v('cy') + v('ry')); }
+    else if (tag === 'rect') { xs.push(v('x'), v('x') + v('width')); ys.push(v('y'), v('y') + v('height')); }
+    else if (tag === 'line') { xs.push(v('x1'), v('x2')); ys.push(v('y1'), v('y2')); }
+    else if (tag === 'path') {
+        // LES COMMANDES SONT ABSOLUES — une épreuve le garde juste en dessous —,
+        // donc TOUS les nombres d'un `d` sont des coordonnées, deux par deux.
+        // Avec des commandes relatives il faudrait rejouer le tracé, c'est-à-dire
+        // écrire un interpréteur SVG dans un fichier d'épreuves.
+        const d = (el.match(/\bd="([^"]*)"/) || [])[1] || '';
+        const n = (d.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+        for (let i = 0; i + 1 < n.length; i += 2) { xs.push(n[i]); ys.push(n[i + 1]); }
+    }
+    return {
+        x0: Math.min(...xs) - trait, x1: Math.max(...xs) + trait,
+        y0: Math.min(...ys) - trait, y1: Math.max(...ys) + trait
+    };
+}
+
+const tousLesEtats = (decor) =>
+    Array.from({ length: ETAPES + 1 }, (_, n) => decorSvg(decor, n));
+
+test('AUCUN DÉCOR NE DÉBORDE DE SA VUE', () => {
+    // CE QUE CETTE GARDE EMPÊCHE : un dessin rogné. Une forme qui sort de la
+    // vue n'est pas signalée par le navigateur — elle est simplement coupée —,
+    // et cela ne se voit que sur une capture d'écran qu'on pense à prendre.
+    // C'est la même garde que celle des allumettes, pour la même raison.
+    for (const decor of Object.keys(DECORS)) {
+        tousLesEtats(decor).forEach((svg, n) => {
+            for (const el of formes(svg)) {
+                const b = boite(el);
+                assert.ok(Number.isFinite(b.x0) && Number.isFinite(b.y0),
+                    `${decor} à ${n} : forme illisible — ${el.slice(0, 60)}`);
+                assert.ok(b.x0 >= 0 && b.x1 <= VUE.l,
+                    `${decor} à ${n} erreur(s) : déborde en largeur `
+                    + `(${b.x0.toFixed(1)} → ${b.x1.toFixed(1)} hors de 0 → ${VUE.l})`);
+                assert.ok(b.y0 >= 0 && b.y1 <= VUE.h,
+                    `${decor} à ${n} erreur(s) : déborde en hauteur `
+                    + `(${b.y0.toFixed(1)} → ${b.y1.toFixed(1)} hors de 0 → ${VUE.h})`);
+            }
+        });
+    }
+});
+
+test('ET LEURS TRACÉS N\'EMPLOIENT QUE DES COMMANDES ABSOLUES', () => {
+    // CETTE GARDE N'EST PAS UNE QUESTION DE GOÛT : c'est elle qui rend
+    // l'épreuve précédente écrivable en dix lignes. Une seule commande
+    // relative, et la boîte calculée plus haut devient fausse SANS RIEN DIRE —
+    // une épreuve qui se trompe en silence est pire que pas d'épreuve.
+    for (const decor of Object.keys(DECORS)) {
+        tousLesEtats(decor).forEach((svg, n) => {
+            for (const el of formes(svg)) {
+                const d = (el.match(/\bd="([^"]*)"/) || [])[1];
+                if (!d) continue;
+                assert.ok(!/[a-z]/.test(d),
+                    `${decor} à ${n} : commande relative dans « ${d.slice(0, 40)} »`);
+            }
+        });
+    }
+});
+
+test('CHAQUE ERREUR FAIT APPARAÎTRE, DISPARAÎTRE OU RECOLORER UNE FORME ENTIÈRE', () => {
+    // LA GARDE QUI AURAIT ÉVITÉ DEUX RELECTURES, et elle est plus forte que
+    // celle d'à côté. « Les deux dessins diffèrent » est vrai dès qu'un nombre
+    // bouge d'un dixième : la première mèche de la fusée était une courbe qui
+    // RACCOURCISSAIT, et elle donnait cinq dessins indiscernables tout en
+    // passant au vert. La maquette de la fusée avait le même travers, dit à
+    // Rémy avant qu'il choisisse : les voyants changeaient, la fusée non.
+    //
+    // On exige donc qu'entre deux états voisins le JEU DES FORMES change —
+    // leur nature et leurs couleurs, coordonnées exclues. Un trait qui rétrécit
+    // ne suffit plus ; une bougie qui s'éteint, un voyant qui passe au gris ou
+    // une poutre qui apparaît, oui.
+    for (const decor of Object.keys(DECORS)) {
+        const etats = tousLesEtats(decor);
+        for (let n = 1; n <= ETAPES; n++) {
+            const avant = etats[n - 1].length ? formes(etats[n - 1]).map(signature).sort() : [];
+            const apres = formes(etats[n]).map(signature).sort();
+            assert.notDeepEqual(avant, apres,
+                `${decor} : de ${n - 1} à ${n} erreur(s), seules des coordonnées bougent `
+                + '— aucune forme n\'apparaît, ne disparaît ni ne change de couleur');
+        }
+    }
+});
+
+test('ET CE QUI RESTE SE COMPTE : SIX BOUGIES, SIX VOYANTS', () => {
+    // C'EST LA PROMESSE FAITE À RÉMY sur la maquette du gâteau : « on compte ce
+    // qui reste d'un coup d'œil ». Elle tient à une inégalité, et une inégalité
+    // se renverse en se relisant mal.
+    const compter = (svg, couleur) => (svg.match(new RegExp(couleur, 'g')) || []).length;
+    for (let n = 0; n <= ETAPES; n++) {
+        assert.equal(compter(decorSvg('gateau', n), VIF.flamme), ETAPES - n,
+            `le gâteau à ${n} erreur(s) ne montre pas ${ETAPES - n} bougie(s) allumée(s)`);
+        assert.equal(compter(decorSvg('fusee', n), VIF.voyant), ETAPES - n,
+            `la fusée à ${n} erreur(s) ne montre pas ${ETAPES - n} voyant(s) vert(s)`);
+    }
 });

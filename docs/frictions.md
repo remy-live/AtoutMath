@@ -6499,3 +6499,26 @@ le résultat n'existe pas** — 15 octobre 2026
   indices — la pastille indigo, le texte de l'ordre, le compteur — disaient
   chacun quelque chose de compatible avec quatre hypothèses différentes. Un
   attribut l'a dit en une fois. À faire d'emblée sur toute activité à état.
+
+---
+
+**J'ai écrasé une sonde qui existait déjà, et rien ne me l'a dit** — 27 octobre 2026
+
+- *Ce que je voulais faire* : mesurer les quatre nouveaux décors du Pendu par
+  le chemin de l'élève, et j'ai écrit `tools/penduAuDoigt.mjs`.
+- *Ce qui a coûté* : le fichier EXISTAIT. Il jouait une partie entière et
+  gardait la seule chose qui ne se mesure nulle part ailleurs — que la réponse
+  envoyée par l'activité et celle attendue par le générateur s'écrivent pareil.
+  L'outil d'écriture a répondu « has been updated successfully », ce qui est
+  exact et ne ressemble en rien à un avertissement. Je ne l'ai vu que dans
+  `git status`, qui affichait `M` au lieu de `??`, juste avant de committer.
+  Cent vingt-trois lignes de mesure auraient disparu dans le commit.
+- *Combien de fois* : |
+- *Ce qui manque* : le réflexe tient en une commande — `ls tools/ | grep -i <sujet>`
+  avant d'écrire une sonde — et il se range à côté de celui qu'on a déjà pour
+  les exercices (`nouvelExercice.mjs` refuse un identifiant déjà pris). Ce qui
+  manque vraiment, c'est le même refus pour les outils : **un script qui crée
+  une sonde et qui s'arrête si le nom est pris**, en disant ce que l'ancienne
+  mesurait. Le dépôt porte 196 outils, dont 9 nommés
+  `<sujet>AuDoigt.mjs` : la collision n'est donc pas un accident, c'est une
+  conséquence de la convention de nommage.

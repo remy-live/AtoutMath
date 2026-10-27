@@ -32,10 +32,13 @@
 //
 // « Pendu » dit une potence et un pendu. Dans un logiciel pour des élèves de
 // onze ans, cela se discute — et c'est un choix de DESSIN, donc exactement ce
-// sur quoi Rémy demande des propositions avant qu'on se lance. On en offre
-// donc trois, on les lui montre, et c'est lui qui tranche lequel reste par
-// défaut. Les trois comptent six erreurs : six est le nombre classique, et
-// c'est assez pour qu'un mot long reste gagnable.
+// sur quoi Rémy demande des propositions avant qu'on se lance.
+//
+// TROIS MAQUETTES lui ont été soumises le 27 octobre, les sept états de
+// chacune côte à côte ; sa réponse tient en cinq mots : « Les 3, et on peut
+// choisir ». Les trois sont donc construites, la potence reste offerte, et le
+// réglage ci-dessous les propose. Les quatre comptent six erreurs : six est le
+// nombre classique, et c'est assez pour qu'un mot long reste gagnable.
 
 import { makeItem } from '../items.js';
 import { motsDisponibles, THEMES } from '../motsCaches.js';
@@ -47,9 +50,13 @@ export { THEMES };
 /** Six erreurs : le compte classique, et six traits se dessinent bien. */
 export const ERREURS_MAX = 6;
 
+// LES QUATRE DÉCORS, dans l'ordre où le professeur les voit. Rémy, 27 octobre,
+// devant trois maquettes : « Les 3, et on peut choisir » — on les construit
+// donc toutes les trois, et la potence, qui existait déjà, reste offerte.
 export const DECORS = {
     bonhomme: 'Le bonhomme de neige qui fond',
-    fusee: 'La mèche de la fusée',
+    gateau: 'Le gâteau et ses six bougies',
+    fusee: 'La fusée et son compte à rebours',
     potence: 'La potence (le pendu classique)'
 };
 

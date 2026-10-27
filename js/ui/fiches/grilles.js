@@ -8,7 +8,10 @@ import {
     ENCRE, boiteDe, echapperSheet, enPoints, largeurTexte
 } from './socle.js';
 import { ajusterAuCarre, boiteDe as boiteCaseDomino, cellulesDe, cheminSerpentin, insecable } from '../../core/dominos.js';
-import { decorSvg } from '../../core/penduDecors.js';
+// AUCUN DÉCOR DE PENDU N'EST IMPORTÉ ICI, ET C'EST LE SUJET : la fiche laisse
+// un cadre VIDE, c'est l'élève qui dessine. L'import existait, inutilisé, et
+// c'est lui qui faisait croire que les décors s'imprimaient — d'où la
+// consigne « lisibles en noir » qui les a tenus au trait gris pendant un mois.
 import { COLONNES, nombreFr } from '../../core/dessinsGradues.js';
 // LA GÉOMÉTRIE DES ALLUMETTES VIENT DU NOYAU, en bloc : l'écran et la
 // feuille lisent les mêmes rectangles, et rien ne peut diverger.

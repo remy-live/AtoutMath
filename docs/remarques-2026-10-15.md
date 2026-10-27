@@ -4224,3 +4224,64 @@ glisser doit avaler le clic qui suit**.
 ON NE SE LANCE PAS : Rémy a dit une fois pour toutes, à propos des schémas
 puis des interrupteurs, « fais moi des propositions d'abord ». Trois
 maquettes, donc, avant une ligne de code définitif.
+
+## 43. Les allumettes : « fais des vraies allumettes » — 27 octobre
+
+Rémy, capture de l'écran des Allumettes à l'appui, envoyée deux fois :
+
+> « fais des vraies allumettre et les horizontals en haut et en bas sont un
+> peu décales. Il fuadrait pourvoir les prendre et les glisser »
+
+TROIS DEMANDES DANS UNE PHRASE, et la deuxième explique la première.
+
+**Les horizontaux décalés.** Il a raison, et la cause est plus profonde que
+les marges. Les bâtons étaient dessinés en POURCENTAGES DE LEUR ZONE : les
+horizontaux occupaient de 12 % à 88 % de la largeur de la case, les
+verticaux débordaient de 34 % en haut et en bas de la leur. Deux familles,
+deux repères, donc des coins qui ne se ferment pas. Aucun réglage de marge
+n'y pouvait rien : **la vraie cause est le FORMAT de la case**. Un chiffre
+à sept segments fait d'allumettes toutes de la même longueur est exactement
+deux fois plus haut que large — un horizontal mesure la largeur, un
+vertical la demi-hauteur. La case était en 1 / 2,5.
+
+**De vraies allumettes.** Un segment gris à bouts ronds n'est pas une
+allumette : il lui manque le bois, le reflet et surtout la TÊTE. Et la tête
+n'est pas un ornement — c'est elle qui dit que l'objet a un sens, donc
+qu'on peut le retourner, donc qu'il est posé et non dessiné.
+
+**Les prendre et les glisser.** Même demande que sur La Traversée, le même
+jour : le jeu est un jeu de GESTES. Toucher un segment pour l'allumer, cela
+coche une case ; prendre une allumette et la poser ailleurs, cela joue.
+
+CE QUE LA MESURE A AJOUTÉ, et que la capture ne montrait pas : les sept
+zones de toucher se recouvraient de treize pixels — la feuille de style
+impose 44 px de haut à tout bouton de l'aire de jeu —, si bien qu'un doigt
+qui visait le segment du milieu enlevait celui du haut. Vingt-quatre paires
+fautives, comptées par la sonde. Il n'en avait rien dit ; il aurait fini
+par le dire.
+
+## 44. Le Pendu : « les dessins ne sont vraiment pas beaux » — 27 octobre
+
+> « les dessins pour le pendu ne sont vraiment pas beaux »
+
+C'EST VRAI, ET C'ÉTAIT PRÉVISIBLE. Les trois décors étaient écrits au trait
+noir — `currentColor`, 3,5 d'épaisseur, bouts ronds — parce que le fichier
+leur demandait d'être « lisibles en noir, puisqu'ils s'impriment aussi ».
+Or **ils ne s'impriment pas** : la fiche du Pendu laisse un CADRE VIDE, et
+c'est l'élève qui dessine — « Rien ne remplace le geste ». La contrainte
+qui a appauvri les trois dessins ne correspondait à rien. Un décor qui ne
+vit qu'à l'écran peut être en couleur, comme la rivière de La Traversée est
+bleue et son herbe verte.
+
+TROIS MAQUETTES lui ont été soumises, les sept états de chacune côte à
+côte, avec un défaut dit franchement sur la troisième : la fusée ne change
+pas entre une et cinq erreurs, seuls ses voyants changent. Sa réponse :
+
+> « Les 3, et on peut choisir »
+
+DONC LES TROIS SONT CONSTRUITES, et le réglage « Le dessin des erreurs »
+qui existait déjà les offre. La potence reste au catalogue, redessinée avec
+le même soin : la refuser d'autorité serait décider à la place du
+professeur. Et le défaut annoncé sur la fusée est corrigé au passage — sa
+flamme décroît à chaque erreur, de sorte que **deux états voisins diffèrent
+toujours en deux endroits**, pas seulement par un voyant.

@@ -15805,16 +15805,36 @@ body.en-boite > #app-container { background: none; }
     padding: clamp(8px, 2.5vw, 16px);
     border: 2px solid var(--border); border-radius: 14px; background: var(--bg-panel);
 }
-.pd-decor { flex: 0 0 auto; color: var(--text-main); line-height: 0; }
-.pd-decor svg { width: clamp(96px, 28vw, 150px); height: auto; }
-/* LES DEUX DERNIÈRES ERREURS SE VOIENT SANS QU'ON COMPTE : le dessin passe au
-   rouge. C'est la seule chose qui remplace un compteur chiffré, qu'on ne met
-   pas pour ne pas faire regarder le compteur plutôt que le mot.
+/* LE DÉCOR PORTE SON PROPRE FOND, CLAIR DANS LES DEUX THÈMES.
 
-   `--danger-texte` ET NON `--danger` : le dessin est fait de TRAITS, donc de
-   l'encre, et `--danger` ne passe pas le seuil de lisibilité quand on écrit
-   avec. La garde du dépôt l'a refusé, et elle a raison. */
-.pd-decor--chaud { color: var(--danger-texte); }
+   Les quatre décors sont en couleur depuis le 27 octobre — Rémy : « les
+   dessins pour le pendu ne sont vraiment pas beaux ». Des couleurs posées en
+   dur veulent un fond posé en dur : un gâteau jaune et son assiette grise sur
+   le panneau sombre du thème nuit perdraient tout leur relief. C'est la règle
+   écrite le matin même pour la rivière de La Traversée.
+
+   LE DÉCOR EST UN PORTRAIT, plus haut que large : c'est la forme des trois
+   maquettes, et un carré lui rendrait les bandes vides qu'on vient de lui
+   enlever. */
+.pd-decor {
+    flex: 0 0 auto; line-height: 0;
+    padding: 8px; border-radius: 14px;
+    background: linear-gradient(#f8fafc, #e9eef5);
+}
+.pd-decor svg { width: clamp(88px, 26vw, 132px); height: auto; }
+/* LES DEUX DERNIÈRES ERREURS SE VOIENT SANS QU'ON COMPTE. Avant, le dessin
+   PASSAIT AU ROUGE : cela marchait tant qu'il était fait de traits à l'encre
+   du thème, mais repeindre un gâteau en rouge ne dirait plus rien — on
+   croirait à un autre gâteau. C'est donc le FOND qui s'alarme, et le dessin
+   garde ses couleurs.
+
+   `--danger` ET NON `--danger-texte` : ici la teinte ne porte aucun texte,
+   elle borde un cadre — c'est précisément l'emploi du jeton vif, et la garde
+   du dépôt ne compte le contraste que sur ce qui porte de l'encre. */
+.pd-decor--chaud {
+    background: linear-gradient(#fff1f2, #ffe4e6);
+    box-shadow: 0 0 0 3px var(--danger);
+}
 .pd-droite { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
 .pd-def {
