@@ -171,6 +171,27 @@ const BASE = {
             + 'complètes à 4. Le tas descend de quatre en quatre et arrive à zéro après TON '
             + 'coup. Tout se lit dans le reste de la division par 4.'
     },
+    'num.logique.allumettes-egalite': {
+        label: 'Réparer une égalité (Allumettes à déplacer)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Rendre vraie une égalité fausse en déplaçant une seule allumette.',
+        lesson: 'Cherche d\'abord les égalités VRAIES voisines de celle qu\'on te montre. '
+            + 'Puis regarde quels chiffres ne diffèrent que d\'une allumette : 6 et 5, 9 et 3, '
+            + '7 et 1, 8 et 9. Et n\'oublie pas le signe — la barre verticale du + est une '
+            + 'allumette comme les autres.'
+    },
+    'num.logique.traversee': {
+        label: 'Planifier une suite de coups (La Traversée)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Trouver une suite de traversées qui respecte toutes les contraintes.',
+        lesson: 'Commence par celui qui est au milieu des disputes : c\'est lui qu\'il faut '
+            + 'séparer des autres. Et accepte de RAMENER quelqu\'un en arrière — c\'est le '
+            + 'coup auquel personne ne pense, et c\'est celui qui débloque tout.'
+    },
     'num.logique.mathodu': {
         label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

@@ -6302,3 +6302,45 @@ le résultat n'existe pas** — 15 octobre 2026
   parler. Rangé aussi : **une garde qui répond en une milliseconde se déclare
   AVANT celle qui met sept secondes et peut boucler** — les deux ont été
   échangées dans `tests/sixJeux.test.mjs` pour cette raison.
+
+**Une règle globale écrasait ma géométrie, et le symptôme ne la désignait pas** — 27 octobre 2026
+
+- *Ce que je voulais faire* : donner aux sept segments d'un chiffre sept zones
+  tactiles qui pavent la case sans se recouvrir.
+- *Ce qui a coûté* : trois mesures et deux corrections fausses. La sonde disait
+  « 24 paires se recouvrent », j'ai donc corrigé le pavage — qui était juste.
+  Puis j'ai ajouté `min-height: 0`, sans effet. La cause : une règle
+  `#game-layer button:not(…)` sous `@media (pointer: coarse)` impose 44 px de
+  haut à tout bouton de l'aire de jeu, avec une spécificité de (1,7,1) contre
+  (0,1,0). Les zones mesuraient donc 44 px là où la bande en faisait 31.
+  **Le symptôme — « elles se recouvrent » — ne nomme jamais le coupable.**
+  Trouvé en demandant au navigateur : parcourir `document.styleSheets` et
+  garder les règles que l'élément `matches`.
+- *Combien de fois* : |
+- *Ce qui manque* : une fonction dans `sonde.mjs`, par exemple
+  `s.quiStyle('.ae-s6', 'min-height')`, qui rende la LISTE des règles qui
+  touchent une propriété sur un élément, avec leur média et leur spécificité.
+  Vingt lignes, et elles remplacent une demi-heure de grep à chaque fois qu'un
+  style ne prend pas. (La règle avait déjà sa porte de sortie — les classes
+  contenant `touche`, `case` ou `cell` — mais on ne la trouve qu'une fois la
+  règle trouvée.)
+
+**Une mesure chiffrée verte sur un écran illisible** — 27 octobre 2026
+
+- *Ce que je voulais faire* : vérifier que les allumettes s'affichaient bien.
+- *Ce qui a coûté* : une correction entière écrite pour rien, puis une
+  relecture de photo. Toutes les mesures étaient au vert — rien ne débordait,
+  aucune zone ne se recouvrait, les bâtons étaient au bon endroit, la saisie
+  marchait — et l'égalité à l'écran se lisait **« 8 + 8 = 8 »**. Les
+  emplacements VIDES étaient dessinés à 0,22 d'opacité, et l'œil reconstitue
+  le 8, seul chiffre où tout est allumé. Il n'y avait plus d'énigme du tout.
+- *Combien de fois* : ||| (le voile de correction photographié sur le Kakuro,
+  la diagonale qui barrait les sommes, et maintenant ceci — trois fois en deux
+  jours, toujours la même forme)
+- *Ce qui manque* : la règle est connue (« une feuille, ça se regarde ») mais
+  elle ne vaut pas que pour les feuilles. **Tout écran neuf se regarde une
+  fois, en photo, avant d'être cru** — les mesures chiffrées disent qu'il
+  FONCTIONNE, jamais qu'il se LIT. Et le rendu imprimé avait raison avant
+  l'écran : il ne dessine que les allumettes posées, parce qu'on ne peut pas
+  imprimer un emplacement vide. Quand deux rendus d'une même chose divergent,
+  **c'est le plus contraint qui a raison**.

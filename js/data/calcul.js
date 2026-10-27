@@ -1245,6 +1245,30 @@ export const calculExercises = [
         // justification est une division euclidienne. Puissance 4, Othello et
         // les Dames sont des jeux de stratégie, mais aucun ne se résout par un
         // reste.
+        id: 'logi-allumettes-egalite', title: 'Les Allumettes à Déplacer',
+        cree: '2026-10-27',
+        generatorId: 'logique.allumettes-egalite', activityId: 'allumettesEgalite',
+        printable: 'allumettesEgalite',
+        sansRevision: true,
+        params: { nbQuestions: 4, format: 'court', signe: 'plus' },
+        motsClefs: ['allumettes', 'égalité', 'sept segments', 'chiffres', 'calcul mental',
+            'logique', 'énigme'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Une égalité est écrite en allumettes, avec des chiffres comme sur un réveil. Elle est FAUSSE. Déplace UNE seule allumette pour la rendre vraie — elle doit se reposer ailleurs, pas disparaître. DEUX CHOSES À CHERCHER EN MÊME TEMPS : quelles égalités VRAIES sont proches de celle-là, et quels chiffres ne diffèrent que d'une allumette. 6 et 5, 9 et 3, 7 et 1, 8 et 9 : apprends ces voisinages, ils ouvrent presque toutes les énigmes. ET LE SIGNE COMPTE : la barre verticale du + est une allumette comme les autres, elle peut partir ailleurs — ou arriver sur un − pour en faire un +. C'est le coup que personne ne voit la première fois. Il n'y a qu'une seule réparation possible."
+    },
+    {
+        id: 'logi-traversee', title: 'La Traversée',
+        cree: '2026-10-27',
+        generatorId: 'logique.traversee', activityId: 'traversee',
+        printable: 'traversee',
+        sansRevision: true,
+        params: { nbQuestions: 2, scenario: 'classique' },
+        motsClefs: ['traversée', 'loup', 'chèvre', 'chou', 'barque', 'logique', 'planifier',
+            'énigme'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Tout le monde est sur la rive de départ, il faut tout amener en face. La barque ne porte qu'un passager en plus du passeur, et le passeur doit toujours être à bord — une barque ne traverse pas toute seule. Certains ne peuvent pas rester ensemble sans surveillance : le loup mangerait la chèvre, la chèvre mangerait le chou. COMMENCE PAR CELUI QUI EST AU MILIEU DES DISPUTES, c'est lui qu'il faut séparer des autres. ET ACCEPTE DE RAMENER QUELQU'UN EN ARRIÈRE : c'est le coup auquel personne ne pense, et c'est celui qui débloque tout. Plusieurs chemins mènent à l'autre rive ; sept traversées suffisent."
+    },
+    {
         id: 'logi-allumettes', title: 'Le Jeu des Allumettes',
         cree: '2026-10-26',
         generatorId: 'logique.allumettes', activityId: 'allumettes',

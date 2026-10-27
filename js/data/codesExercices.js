@@ -133,6 +133,8 @@ export const CODES_EXERCICES = {
     'logi-gratte-ciel':              'AA',
     'logi-chemin-nombres':           'AB',
     'logi-allumettes':               'AH',
+    'logi-allumettes-egalite':       'AJ',   // Les Allumettes à Déplacer
+    'logi-traversee':                'TV',   // La Traversée
     'logi-shikaku':               'RT',   // RecTangles — « SK » est aux serpents, « RE » au carré
     'calc-garam':                 'GA',   // Garam
     'calc-course':                'CM',   // Course Mathématique

@@ -2054,3 +2054,215 @@ function dessinerGrilleNombresPdf(doc, item, slot, solution) {
         parLigneDefaut: 2
     };
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES ALLUMETTES À DÉPLACER, SUR LE PAPIER.
+//
+// C'EST LÀ QUE CE JEU EST NÉ : on le pose sur la table avec de vraies
+// allumettes, et la feuille n'est que le dessin de ce qu'on a posé. On
+// n'imprime donc PAS les emplacements vides — sur l'écran ils disent où l'on
+// peut poser, sur le papier ils transformeraient chaque chiffre en 8 et il n'y
+// aurait plus d'énigme. Mesuré sur une image : à 0,22 d'opacité, un 0 se
+// lisait 8.
+//
+// L'ÉLÈVE ENTOURE L'ALLUMETTE QU'IL ENLÈVE et dessine celle qu'il pose. C'est
+// le geste qu'il ferait avec son crayon de toute façon.
+
+/** Les sept segments d'un chiffre, en fractions de la case, pour le papier. */
+const SEPT_SEGMENTS = [
+    { h: true, x: 0.16, y: 0.03 },   // 0 — haut
+    { h: false, x: 0.84, y: 0.09 },  // 1 — haut-droite
+    { h: false, x: 0.84, y: 0.55 },  // 2 — bas-droite
+    { h: true, x: 0.16, y: 0.95 },   // 3 — bas
+    { h: false, x: 0.16, y: 0.55 },  // 4 — bas-gauche
+    { h: false, x: 0.16, y: 0.09 },  // 5 — haut-gauche
+    { h: true, x: 0.16, y: 0.49 }    // 6 — milieu
+];
+
+/** La place de l'égalité sur la feuille : une rangée de cases deux fois hautes. */
+function poseAllumettes(item, slot) {
+    const n = item.meta.cellules.length;
+    // Une case de chiffre est deux fois plus haute que large ; le signe et le
+    // « = » sont plus étroits, comme à l'écran et comme sur une feuille.
+    const etroite = (c) => c.t !== 'c';
+    const unites = item.meta.cellules.reduce((t, c) => t + (etroite(c) ? 0.55 : 1), 0);
+    const ecart = 0.18;
+    const total = unites + ecart * (n - 1);
+    const l = Math.min(slot.taille / total, slot.taille / 2.1);
+    return { l, total, ecart, etroite, x: slot.x + (slot.taille - l * total) / 2,
+        y: slot.y + (slot.taille - l * 2) / 2 };
+}
+
+function allumettesPreviewHtml(item, slot, k, solution) {
+    const { l, ecart, etroite, x, y } = poseAllumettes(item, slot);
+    const cellules = solution ? item.meta.solution : item.meta.cellules;
+    const px = (v) => `${v * k}px`;
+    const ep = l * 0.11;
+    const baton = (bx, by, bl, horizontal, couleur) => `<div style="position:absolute;
+        left:${px(bx)}; top:${px(by)};
+        width:${px(horizontal ? bl : ep)}; height:${px(horizontal ? ep : bl)};
+        background:${couleur}; border-radius:${px(ep * 0.4)};"></div>`;
+
+    let html = '';
+    let cx = x;
+    cellules.forEach((cel, i) => {
+        const large = etroite(cel) ? l * 0.55 : l;
+        const h = l * 2;
+        if (cel.t === '=') {
+            html += baton(cx + large * 0.08, y + h * 0.42, large * 0.84, true, '#1a202c');
+            html += baton(cx + large * 0.08, y + h * 0.58, large * 0.84, true, '#1a202c');
+        } else if (cel.t === 'o') {
+            html += baton(cx + large * 0.04, y + h * 0.5 - ep / 2, large * 0.92, true, '#1a202c');
+            if (cel.m & 0b10) {
+                html += baton(cx + large * 0.5 - ep / 2, y + h * 0.5 - large * 0.46,
+                    large * 0.92, false, '#1a202c');
+            }
+        } else {
+            SEPT_SEGMENTS.forEach((s, si) => {
+                // SEULES LES ALLUMETTES POSÉES SE DESSINENT, voir plus haut.
+                if (!(cel.m & (1 << si))) return;
+                const bl = s.h ? large * 0.68 : h * 0.36;
+                html += baton(cx + large * s.x - (s.h ? 0 : ep / 2), y + h * s.y,
+                    bl, s.h, solution ? '#1d4ed8' : '#1a202c');
+            });
+        }
+        cx += large + l * ecart;
+        void i;
+    });
+    return html;
+}
+
+function dessinerAllumettesPdf(doc, item, slot, solution) {
+    const { l, ecart, etroite, x, y } = poseAllumettes(item, slot);
+    const cellules = solution ? item.meta.solution : item.meta.cellules;
+    const ep = l * 0.11;
+    if (solution) doc.setFillColor(29, 78, 216); else doc.setFillColor(...ENCRE.trait);
+    const baton = (bx, by, bl, horizontal) => {
+        const w = horizontal ? bl : ep, hh = horizontal ? ep : bl;
+        doc.roundedRect(bx, by, w, hh, ep * 0.4, ep * 0.4, 'F');
+    };
+    let cx = x;
+    for (const cel of cellules) {
+        const large = etroite(cel) ? l * 0.55 : l;
+        const h = l * 2;
+        if (cel.t === '=') {
+            doc.setFillColor(...ENCRE.trait);
+            baton(cx + large * 0.08, y + h * 0.42, large * 0.84, true);
+            baton(cx + large * 0.08, y + h * 0.58, large * 0.84, true);
+            if (solution) doc.setFillColor(29, 78, 216);
+        } else if (cel.t === 'o') {
+            baton(cx + large * 0.04, y + h * 0.5 - ep / 2, large * 0.92, true);
+            if (cel.m & 0b10) {
+                baton(cx + large * 0.5 - ep / 2, y + h * 0.5 - large * 0.46, large * 0.92, false);
+            }
+        } else {
+            SEPT_SEGMENTS.forEach((s, si) => {
+                if (!(cel.m & (1 << si))) return;
+                const bl = s.h ? large * 0.68 : h * 0.36;
+                baton(cx + large * s.x - (s.h ? 0 : ep / 2), y + h * s.y, bl, s.h);
+            });
+        }
+        cx += large + l * ecart;
+    }
+    doc.setFillColor(...ENCRE.trait);
+}
+
+RENDUS_GRILLES.allumettesEgalite = {
+    titre: 'Les Allumettes à Déplacer',
+    // « ÉGALITÉ 1 », PAS « GRILLE 1 » : ce n'en est pas une, et le mot se lit
+    // six fois sur la feuille. Vu en regardant la fiche imprimée.
+    nomBloc: 'Égalité',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: allumettesPreviewHtml,
+    pdfGrille: dessinerAllumettesPdf,
+    // TROIS PAR LIGNE : une égalité est LARGE et basse, pas carrée comme une
+    // grille. À deux par ligne elle flotte au milieu d'un vide.
+    parLigneDefaut: 3
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LA TRAVERSÉE, SUR LE PAPIER — et c'est le plus honnête des deux.
+//
+// ON N'IMPRIME PAS UNE BARQUE QUI GLISSE : on imprime le TABLEAU que l'élève
+// remplirait de toute façon au brouillon, une ligne par traversée, avec le
+// sens de la flèche déjà écrit. C'est la forme sous laquelle on demande ce
+// travail à l'écrit depuis toujours, et c'est elle qui fait voir que les
+// allers et les retours alternent.
+
+function poseTraversee(item, slot) {
+    // Une ligne par traversée minimale, plus deux de marge pour les élèves
+    // qui s'y reprennent — et au moins huit, pour que le tableau ne soit pas
+    // ridicule quand le minimum est petit.
+    const lignes = Math.max(8, (item.meta.minimum || 7) + 2);
+    const haut = Math.min(slot.taille / (lignes + 1.6), slot.taille * 0.11);
+    return { lignes, haut, x: slot.x, y: slot.y + haut * 0.8, large: slot.taille };
+}
+
+function traverseePreviewHtml(item, slot, k, solution) {
+    const { lignes, haut, x, y, large } = poseTraversee(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = `<div style="position:absolute; left:${px(x)}; top:${px(slot.y)};
+        width:${px(large)}; font-size:${px(haut * 0.44)}; font-weight:700;
+        color:#2d3748;">${item.meta.titre}</div>
+        <div style="position:absolute; left:${px(x)}; top:${px(slot.y + haut * 0.52)};
+        width:${px(large)}; font-size:${px(haut * 0.34)};
+        color:#6e7684;">${item.meta.pourquoi}</div>`;
+    for (let i = 0; i < lignes; i++) {
+        const ly = y + i * haut;
+        const sens = i % 2 === 0 ? '→' : '←';
+        html += `<div style="position:absolute; left:${px(x)}; top:${px(ly)};
+            width:${px(large)}; height:${px(haut)}; box-sizing:border-box;
+            border-bottom:1px solid #b0b6c5; display:flex; align-items:center;
+            gap:${px(haut * 0.3)}; font-size:${px(haut * 0.42)}; color:#6e7684;">
+            <span style="width:${px(haut * 0.9)}; text-align:right;">${i + 1}.</span>
+            <span style="font-size:${px(haut * 0.6)}; color:#2d3748;">${sens}</span>
+            <span style="color:#2d3748;">${solution
+        ? (item.meta.solution[i] || '').replace(/^\d+\.\s*/, '') : ''}</span>
+        </div>`;
+    }
+    return html;
+}
+
+function dessinerTraverseePdf(doc, item, slot, solution) {
+    const { lignes, haut, x, y, large } = poseTraversee(item, slot);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(10, haut * 2.6));
+    doc.text(pourPdf(item.meta.titre), x, slot.y + haut * 0.4);
+    // LA RÈGLE DE CETTE HISTOIRE-LÀ, sous son titre : la consigne du haut de
+    // feuille est commune à quatre énigmes qui ne racontent pas la même chose.
+    doc.setTextColor(...ENCRE.gris);
+    doc.setFontSize(Math.min(7.5, haut * 2));
+    doc.text(pourPdf(item.meta.pourquoi), x, slot.y + haut * 0.95);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.18);
+    for (let i = 0; i < lignes; i++) {
+        const ly = y + (i + 1) * haut;
+        doc.line(x, ly, x + large, ly);
+        doc.setTextColor(...ENCRE.gris);
+        doc.setFontSize(Math.min(8, haut * 2.2));
+        doc.text(`${i + 1}.`, x + haut * 0.9, ly - haut * 0.25, { align: 'right' });
+        // LA FLÈCHE DIT LE SENS, et c'est elle qui fait voir l'alternance :
+        // on part, on revient, on repart. Un élève qui écrit deux allers de
+        // suite voit tout de suite que quelque chose cloche.
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(i % 2 === 0 ? '→' : '←', x + haut * 1.5, ly - haut * 0.25);
+        if (solution && item.meta.solution[i]) {
+            doc.setTextColor(29, 78, 216);
+            doc.text(pourPdf(item.meta.solution[i].replace(/^\d+\.\s*/, '')),
+                x + haut * 2.4, ly - haut * 0.25);
+        }
+    }
+    doc.setTextColor(...ENCRE.texte);
+}
+
+RENDUS_GRILLES.traversee = {
+    titre: 'La Traversée',
+    nomBloc: 'Énigme',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: traverseePreviewHtml,
+    pdfGrille: dessinerTraverseePdf,
+    // DEUX PAR LIGNE : le tableau est HAUT, et il faut de la place pour écrire
+    // des noms à la main sur chaque ligne.
+    parLigneDefaut: 2
+};

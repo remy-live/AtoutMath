@@ -15470,3 +15470,248 @@ body.en-boite > #app-container { background: none; }
     .al-baton--quatre { margin-right: 10px; }
     .al-context { font-size: .9rem; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LES ALLUMETTES À DÉPLACER — des chiffres à sept segments qu'on touche.
+
+   LA GÉOMÉTRIE EST CELLE D'UN RÉVEIL, et chaque emplacement est un bouton
+   qui occupe bien plus de place que le bâton qu'il porte : les sept zones
+   PAVENT la case du chiffre sans se recouvrir — trois bandes horizontales
+   sur toute la largeur, quatre quarts verticaux — pour qu'un doigt qui vise
+   le milieu d'un segment ne tombe jamais sur le voisin.
+
+   LE BÂTON VISIBLE EST DESSINÉ PAR LE ::after du bouton, centré dans sa
+   zone. Un emplacement vide garde son bouton, presque transparent : c'est
+   lui qui reçoit l'allumette qu'on a en main, et il doit donc se voir un
+   peu — mais à peine, sinon on ne lit plus le chiffre.
+   ───────────────────────────────────────────────────────────────────────── */
+.ae-layout { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+.ae-context { text-align: center; max-width: 46ch; }
+
+.ae-plateau {
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(4px, 1.6vw, 12px);
+    width: 100%; max-width: 620px;
+    padding: clamp(8px, 2.5vw, 18px);
+    background: var(--bg-panel); border: 2px solid var(--border); border-radius: 14px;
+}
+/* UN CHIFFRE EST HAUT : 1 pour 2,5. Ce n'est pas un choix d'esthétique mais
+   d'arithmétique — les sept zones se partagent la hauteur en CINQ bandes, et
+   pour que chacune fasse ses 44 px il faut 220 px de haut. À 1 pour 2, les
+   bandes tombaient à 31 px. */
+.ae-case { position: relative; flex: 1 1 0; aspect-ratio: 1 / 2.5; max-width: 96px; }
+/* Le signe et le « = » sont plus étroits qu'un chiffre : ils le sont sur une
+   feuille, et une égalité dont le + est aussi large qu'un 8 ne se lit plus. */
+.ae-case--op, .ae-case--egal { flex: 0 1 auto; width: clamp(24px, 7.5vw, 54px); }
+
+/* ── LES SEPT ZONES, QUI PAVENT LA CASE ──────────────────────────────────── */
+/* `min-height: 0` N'EST PAS UNE COQUETTERIE. La feuille de style impose 44 px
+   de haut à TOUT bouton — une bonne règle, payée par « les 43 boutons
+   étirés » — et elle écrasait ici la hauteur de bande : les zones faisaient
+   44 px là où la bande en mesurait 31, et se recouvraient donc de 13 px.
+   Vingt-quatre paires, mesurées par la sonde. Un doigt qui visait le segment
+   du milieu enlevait celui du haut.
+
+   ON CHOISIT LE PAVAGE EXACT CONTRE LA TAILLE MINIMALE, et dans cet ordre :
+   deux zones qui se recouvrent sont un DÉFAUT — le logiciel fait autre chose
+   que ce qu'on lui demande —, alors qu'une zone un peu petite n'est qu'une
+   gêne. La case est donc dimensionnée pour que les bandes fassent leurs
+   44 px, et le pavage reste juste même quand l'écran les rétrécit. */
+.ae-seg {
+    position: absolute; padding: 0; margin: 0; min-height: 0; min-width: 0;
+    border: 0; background: none; cursor: pointer;
+}
+/* CINQ BANDES DE 20 %, ET ELLES PAVENT SANS SE RECOUVRIR — c'est la seule
+   disposition qui tienne, et le premier jet ne tenait pas : les zones
+   verticales mordaient sur les horizontales, 24 paires qui se recouvraient,
+   mesurées par la sonde. Un doigt qui vise un segment tombait sur son voisin.
+
+   LA ZONE ET LE BÂTON SONT DEUX CHOSES DIFFÉRENTES : la zone pave, le bâton
+   DÉBORDE de sa zone pour aller toucher ses voisins — un chiffre dont les
+   segments ne se rejoignent pas ne se lit pas. Comme le ::after ne reçoit
+   aucun clic, le dessin peut sortir sans que la zone bouge. */
+.ae-seg--h { left: 0; width: 100%; height: 20%; }
+.ae-seg--v { width: 50%; height: 20%; }
+.ae-s0 { top: 0; }
+.ae-s5 { left: 0; top: 20%; }
+.ae-s1 { right: 0; top: 20%; }
+.ae-s6 { top: 40%; }
+.ae-s4 { left: 0; top: 60%; }
+.ae-s2 { right: 0; top: 60%; }
+.ae-s3 { top: 80%; }
+
+/* ── LE BÂTON, DESSINÉ DANS SA ZONE MAIS PAS ENFERMÉ DEDANS ──────────────── */
+.ae-seg::after {
+    content: ''; position: absolute; border-radius: 3px;
+    background: var(--text-main);
+}
+.ae-seg--h::after { left: 12%; right: 12%; height: 7px; }
+.ae-s0::after { top: 14%; }
+.ae-s6::after { top: 50%; transform: translateY(-50%); }
+.ae-s3::after { bottom: 14%; }
+/* Les barres verticales montent et descendent hors de leur bande pour
+   rejoindre les horizontales : sans ce débordement, le 0 ressemble à six
+   traits posés côte à côte. */
+.ae-seg--v::after { top: -34%; bottom: -34%; width: 7px; }
+.ae-s5::after, .ae-s4::after { left: 10%; }
+.ae-s1::after, .ae-s2::after { right: 10%; }
+
+/* UN EMPLACEMENT VIDE NE SE DESSINE PAS DU TOUT, tant qu'on n'a rien en main.
+
+   Premier jet : il se devinait, à 0,22 d'opacité. REGARDÉ SUR UNE PHOTO en
+   390 px, et c'était sans appel — les trois chiffres de l'égalité se lisaient
+   « 8 + 8 = 8 ». Sept emplacements pâles autour de quelques bâtons noirs, et
+   l'œil reconstitue le 8, qui est le seul chiffre où tout est allumé. Aucune
+   des mesures chiffrées ne le disait : rien ne débordait, aucune zone ne se
+   recouvrait, les bâtons étaient au bon endroit. Il n'y avait plus d'énigme,
+   voilà tout.
+
+   LE PAPIER AVAIT RAISON AVANT L'ÉCRAN : le rendu imprimé, lui, ne dessine
+   que les allumettes posées — on ne peut pas imprimer un emplacement vide
+   sans transformer chaque chiffre en 8. L'écran fait pareil, et il ne montre
+   les emplacements libres QU'AU MOMENT où l'on tient une allumette, c'est-à-
+   dire au seul moment où la question « où puis-je la poser ? » se pose. */
+.ae-seg--vide::after { background: none; }
+.ae-seg--pleine::after { background: var(--text-main); }
+/* LE TROU LAISSÉ PAR L'ALLUMETTE EN MAIN : il reste visible, en pointillé,
+   pour qu'on puisse la remettre d'où elle vient sans avoir à tout reprendre. */
+.ae-seg--trou::after { background: var(--danger); opacity: .3; }
+.ae-seg--posee::after { background: var(--primary); }
+.ae-seg:focus-visible { outline: 3px solid var(--primary); outline-offset: -2px; border-radius: 6px; }
+.ae-seg:disabled { cursor: default; }
+
+/* PENDANT QU'ON TIENT L'ALLUMETTE, les emplacements libres s'éclairent : sans
+   cela on cherche où elle peut aller, et l'on clique au hasard. */
+.ae-plateau--main .ae-seg--vide::after { background: var(--primary); opacity: .34; }
+/* ET LE TROU GARDE SA COULEUR À LUI, qui n'est pas celle des emplacements
+   libres. Le trou EST un emplacement libre — il porte donc aussi la classe
+   `--vide` —, et la règle du dessus, plus spécifique, le repeignait en violet
+   pâle comme les autres. Regardé sur une photo : on ne distinguait plus « d'où
+   je l'ai prise » de « où je peux la poser », et c'est précisément ce qu'il
+   faut distinguer pour remettre une allumette en place. */
+.ae-seg.ae-seg--trou::after { background: var(--danger); opacity: .5; }
+
+/* ── LE SIGNE ET LE « = », qui ne sont pas des chiffres ──────────────────── */
+.ae-barre { position: absolute; background: var(--text-main); border-radius: 3px; }
+.ae-barre--oh { left: 4%; right: 4%; top: 50%; height: 7px; transform: translateY(-50%); }
+.ae-barre--eh { left: 4%; right: 4%; top: 42%; height: 7px; }
+.ae-barre--eb { left: 4%; right: 4%; top: 58%; height: 7px; }
+/* LA BARRE VERTICALE DU SIGNE PREND TOUTE LA LARGEUR de sa case : à 50 %
+   elle mesurait 18 px au doigt, mesuré — on ne vise pas 18 px. */
+.ae-seg--ov { left: 0; width: 100%; top: 25%; height: 50%; }
+.ae-seg--ov::after { top: 8%; bottom: 8%; left: 50%; width: 7px; transform: translateX(-50%); }
+
+.ae-statut { min-height: 2.6em; text-align: center; font-weight: 600;
+    color: var(--text-muted); max-width: 44ch; }
+.ae-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.ae-btn {
+    min-height: 48px; padding: 0 18px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+/* L'ENCRE D'UN BOUTON PLEIN EST BLANCHE, jamais `--primary-texte` : ce jeton
+   vaut #4f46e5, l'indigo qu'on écrit SUR le fond de la page. Posé sur un
+   bouton indigo, il donne de l'indigo sur de l'indigo. Vu sur le Shikaku. */
+.ae-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+.ae-btn:disabled { opacity: .5; cursor: default; }
+.ae-btn:focus-visible { outline: 3px solid var(--text-main); outline-offset: 2px; }
+
+.ae-plateau--ok { outline: 3px solid var(--success); outline-offset: 3px; }
+.ae-plateau--secoue { animation: aeSecoue .35s ease; }
+@keyframes aeSecoue {
+    20% { transform: translateX(-7px); } 40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); } 80% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) { .ae-plateau--secoue { animation: none; } }
+
+@media (max-width: 480px) {
+    .ae-seg--h::after, .ae-barre--oh, .ae-barre--eh, .ae-barre--eb { height: 5px; }
+    .ae-seg--v::after, .ae-seg--ov::after { width: 5px; }
+    .ae-context { font-size: .9rem; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LA TRAVERSÉE — deux rives, une rivière, une barque qui glisse.
+
+   TROIS COLONNES, ET LA RIVIÈRE AU MILIEU : c'est la seule disposition qui
+   dit l'histoire sans un mot. Sur un téléphone, les pastilles perdent leur
+   NOM et ne gardent que l'emoji — à 390 px, « Le passeur » écrit en entier
+   pousse la rive hors de l'écran, alors que l'emoji se reconnaît du premier
+   coup d'œil.
+   ───────────────────────────────────────────────────────────────────────── */
+.tv-layout { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+.tv-context { text-align: center; max-width: 48ch; }
+
+.tv-scene {
+    display: flex; align-items: stretch; gap: 6px;
+    width: 100%; max-width: 620px; min-height: 220px;
+    border: 2px solid var(--border); border-radius: 14px; overflow: hidden;
+}
+.tv-rive {
+    flex: 1 1 0; display: flex; flex-wrap: wrap; align-content: flex-start;
+    gap: 6px; padding: 10px; background: var(--bg-panel);
+}
+.tv-rive--d { justify-content: flex-end; }
+
+/* LA RIVIÈRE : la barque s'y range à gauche ou à droite, et glisse de l'une
+   à l'autre. L'animation n'est pas un ornement — sans elle, on ne voit pas
+   que la barque a bougé, et l'on croit que le bouton n'a rien fait. */
+.tv-riviere {
+    flex: 0 0 clamp(72px, 22vw, 132px);
+    display: flex; align-items: center; justify-content: flex-start;
+    padding: 6px; background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+}
+.tv-riviere--droite { justify-content: flex-end; }
+.tv-barque {
+    display: flex; flex-wrap: wrap; gap: 4px; align-content: center;
+    min-width: 54px; min-height: 54px; padding: 5px;
+    border: 2px dashed var(--primary); border-radius: 10px;
+    background: var(--bg-panel);
+    transition: transform .35s ease;
+}
+@media (prefers-reduced-motion: reduce) { .tv-barque { transition: none; } }
+
+.tv-pion {
+    display: inline-flex; align-items: center; gap: 5px;
+    min-height: 44px; min-width: 44px; padding: 4px 8px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-main); color: var(--text-main);
+    font-size: .85rem; font-weight: 700; cursor: pointer;
+}
+.tv-emoji { font-size: 1.5rem; line-height: 1; }
+.tv-pion:disabled { cursor: default; }
+/* CE QUI EST SUR L'AUTRE RIVE EST PÂLE, mais reste LISIBLE : l'élève doit
+   pouvoir compter qui est déjà passé sans plisser les yeux. */
+.tv-pion--loin { opacity: .55; }
+.tv-pion:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+.tv-statut { min-height: 3em; text-align: center; font-weight: 600;
+    color: var(--text-muted); max-width: 46ch; }
+.tv-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.tv-btn {
+    min-height: 48px; padding: 0 18px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+/* ENCRE BLANCHE SUR UN BOUTON PLEIN : `--primary-texte` vaut #4f46e5, qui est
+   l'indigo qu'on écrit SUR le fond de la page, pas l'encre d'un bouton
+   indigo. Vu sur le Shikaku, et on ne le reverra pas. */
+.tv-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+.tv-btn:disabled { opacity: .5; cursor: default; }
+.tv-btn:focus-visible { outline: 3px solid var(--text-main); outline-offset: 2px; }
+
+.tv-scene--ok { outline: 3px solid var(--success); outline-offset: 3px; }
+.tv-scene--rate { animation: tvSecoue .4s ease; }
+@keyframes tvSecoue {
+    20% { transform: translateX(-8px); } 40% { transform: translateX(7px); }
+    60% { transform: translateX(-5px); } 80% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) { .tv-scene--rate { animation: none; } }
+
+@media (max-width: 560px) {
+    .tv-nom { display: none; }
+    .tv-pion { padding: 4px 6px; justify-content: center; }
+    .tv-context { font-size: .9rem; }
+}

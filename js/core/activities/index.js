@@ -38,6 +38,8 @@ import { suguruGenerator } from '../generators/suguru.js';
 import { gratteCielGenerator } from '../generators/gratteCiel.js';
 import { cheminNombresGenerator } from '../generators/cheminNombres.js';
 import { allumettesGenerator } from '../generators/allumettes.js';
+import { allumettesEgaliteGenerator } from '../generators/allumettesEgalite.js';
+import { traverseeGenerator } from '../generators/traversee.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -182,6 +184,7 @@ import {
     kenkenGenerator, shikakuGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
     kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
     cheminNombresGenerator, allumettesGenerator,
+    allumettesEgaliteGenerator, traverseeGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -518,6 +521,32 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./allumettes.js')
+});
+
+// LES ALLUMETTES À DÉPLACER — ni grille ni partie : une égalité fausse, et un
+// seul bâton à bouger. Deux touchers suffisent, donc pas de réglage de saisie.
+registerActivity({
+    id: 'allumettesEgalite',
+    unite: 'égalité',
+    parDefaut: 4,
+    label: 'Les Allumettes à Déplacer',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./allumettesEgalite.js')
+});
+
+// LA TRAVERSÉE — deux rives et une barque. On embarque, on traverse, et
+// quand ça tourne mal on recommence sans que cela compte comme une erreur :
+// ce jeu se cherche par essais, et compter faux le premier essai
+// découragerait exactement l'élève qu'on veut voir essayer.
+registerActivity({
+    id: 'traversee',
+    unite: 'énigme',
+    parDefaut: 2,
+    label: 'La Traversée',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./traversee.js')
 });
 
 registerActivity({

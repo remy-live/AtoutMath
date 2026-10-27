@@ -3947,3 +3947,41 @@ TROIS CONSIGNES DANS SA PHRASE, et les trois comptent :
   cinq de ces jeux sont la même chose — une grille de cases où l'on écrit des
   nombres — et ne diffèrent que par ce qui est dessiné AUTOUR. Le sixième,
   les allumettes, n'est pas une grille du tout.
+
+
+---
+
+## 36. Deux jeux de plus — 27 octobre
+
+> « tu penses à d'autres jeux de logique et mathématique ? »
+>
+> puis, sur six propositions : « fais allumettes, la traversée »
+
+IL EN CHOISIT DEUX SUR SIX, et le choix est intéressant : ce sont les deux
+qui ne sont PAS des grilles. Le catalogue en comptait déjà dix-neuf.
+
+**LES ALLUMETTES À DÉPLACER.** « Déplace UNE allumette pour que l'égalité
+devienne vraie. » Rien à voir avec Le Jeu des Allumettes du 26, qui est un
+Nim : ici on lit une égalité fausse écrite en chiffres à sept segments, et on
+la répare. Ça travaille la lecture d'une égalité et le calcul mental.
+
+**LA TRAVERSÉE.** Le loup, la chèvre et le chou. Planifier une suite de
+coups, revenir en arrière quand on s'enferme. Je l'avais classé « plus proche
+du jeu que des mathématiques » ; il le prend quand même, et il a sans doute
+raison — c'est un parcours dans un graphe d'états, et c'est ce qu'on fait
+sans le dire chaque fois qu'on cherche.
+
+CE QUE LES DEUX PARTAGENT, et ce qui décidera de leur qualité : **la solution
+n'est pas unique de la même façon.**
+
+- Pour les allumettes, elle DOIT l'être. Deux réparations possibles, et
+  l'élève qui trouve l'autre est compté faux — le même défaut que la grille
+  de kakuro à deux solutions, corrigé la veille.
+- Pour la traversée, elle ne doit PAS l'être. Plusieurs chemins mènent à
+  l'autre rive, et les compter faux serait absurde. Ce qui se garde ici, ce
+  n'est pas l'unicité mais l'EXISTENCE : un scénario sans solution est un
+  piège, et le minimum de traversées doit être su pour pouvoir le dire.
+
+TROIS CONSIGNES REPRISES DE LA VEILLE, qu'il n'a pas eu à répéter : réglage
+par défaut le plus facile, mesuré en 390 × 844 comme sur ordinateur, et ça
+s'imprime.
