@@ -15651,7 +15651,7 @@ body.en-boite > #app-container { background: none; }
    change pas de couleur quand on passe en sombre. */
 .tv-scene {
     position: relative; display: grid;
-    grid-template-columns: 1fr clamp(116px, 26vw, 190px) 1fr;
+    grid-template-columns: 1fr clamp(184px, 32vw, 240px) 1fr;
     width: 100%; max-width: 660px; height: clamp(236px, 42vh, 320px);
     border-radius: 20px; overflow: hidden;
     box-shadow: 0 10px 28px -14px rgb(15 23 42 / .45);
@@ -15680,37 +15680,75 @@ body.en-boite > #app-container { background: none; }
 
 /* LA BARQUE GLISSE D'UNE RIVE À L'AUTRE, et l'animation n'est pas un
    ornement : sans elle, on ne voit pas que la barque a bougé, et l'on croit
-   que le bouton n'a rien fait. */
+   que le bouton n'a rien fait.
+
+   RÉMY, 27 octobre : « fais un bateau plus petit et une rivière plus large ».
+   La barque occupait 80 % de la largeur de l'eau : ce n'est pas une barque sur
+   une rivière, c'est un bac qui touche les deux berges. Elle en occupe 56 %,
+   et la rivière est passée de 190 px à 240 px au plus large.
+
+   CE QUI EMPÊCHE D'ALLER PLUS PETIT SE CALCULE : deux passagers dans la coque,
+   chacun devant rester atteignable au doigt — 44 px, le plancher tactile du
+   dépôt. Deux jetons ronds et leur écart font 94 px ; la coque en fait 103 au
+   plus étroit, soit la rivière d'un téléphone. C'est la vraie borne.
+
+   LE DÉPLACEMENT EST DE ±33 % DE LA LARGEUR DE LA BARQUE, ce qui la mène à une
+   coudée de chaque berge et donne un voyage qu'on voit — l'ancien ±11 % d'une
+   barque large ne déplaçait presque rien.
+
+   ET LA DURÉE EST ACCORDÉE À CELLE DE L'ACTIVITÉ (`TRAVERSEE_MS`, 980 ms) :
+   la coque met 850 ms, les passagers débarquent à 980. Les changer séparément,
+   c'est débarquer en pleine eau ou attendre devant une barque arrêtée. */
 .tv-barque {
-    position: absolute; left: 50%; top: 46%;
-    width: 80%; height: 38%;
-    transform: translate(-50%, -50%) translateX(-11%);
-    transition: transform .4s ease;
+    position: absolute; left: 50%; top: 48%;
+    width: 56%; height: 34%;
+    transform: translate(-50%, -50%) translateX(-33%);
+    transition: transform .85s cubic-bezier(.4, 0, .25, 1);
 }
 /* LE CHARGEMENT EST UNE BOÎTE À PART, et il le faut : peindre remplace le
-   contenu de la barque, ce qui emporterait le SVG de la coque avec lui. */
+   contenu de la barque, ce qui emporterait le SVG de la coque avec lui.
+
+   ET IL VOYAGE AVEC ELLE. C'est tout le propos du 27 octobre — « qu'on voit le
+   transport » : l'activité ne vide plus la barque avant l'animation, donc ces
+   jetons-ci glissent d'une rive à l'autre à l'intérieur de la coque. */
 .tv-charge {
-    position: absolute; inset: 0; padding: 6% 12% 18%;
-    display: flex; gap: 4px;
+    position: absolute; inset: 0; padding: 2% 8% 11%;
+    display: flex; gap: 6px;
     align-items: center; justify-content: center;
 }
-/* DANS LA BARQUE, ON NE GARDE QUE L'EMOJI. Deux pastilles nommées font deux
-   cent quarante pixels de large ; la rivière en fait cent quatre-vingt-dix au
-   plus. Et le nom n'y sert à rien : on vient de les y mettre, on sait qui
-   c'est. La poignée part avec, pour la même raison de place. */
+/* DANS LA BARQUE, ON NE GARDE QUE L'EMOJI, et la pastille devient un JETON
+   ROND. Deux pastilles nommées font deux cent quarante pixels de large ; la
+   coque en fait cent trois au plus étroit. Le nom n'y sert à rien — on vient
+   de les y mettre, on sait qui c'est — et la poignée part avec.
+
+   `btn-carre` EST UNE DÉCLARATION, PAS UN ORNEMENT : le plancher tactile du
+   dépôt impose 44 px de haut à tout bouton de l'aire de jeu, sauf à ceux qui
+   disent « ma mise en page commande ma forme ». Sans elle, le jeton s'étire en
+   ovale et deux passagers débordent de la coque. On garde les 44 px de HAUT,
+   on ne reprend que la largeur. */
 .tv-charge .tv-nom, .tv-charge .tv-poignee { display: none; }
-.tv-charge .tv-pion { padding: 5px 8px; min-height: 40px; }
-.tv-riviere--droite .tv-barque { transform: translate(-50%, -50%) translateX(11%); }
+.tv-pion--rame {
+    width: 44px; height: 44px; min-height: 44px; padding: 0; flex: 0 0 auto;
+    justify-content: center; border-radius: 50%;
+    background: #fffdf7;
+    box-shadow: 0 1px 2px rgb(69 39 10 / .3), 0 4px 10px -5px rgb(69 39 10 / .7);
+}
+.tv-riviere--droite .tv-barque { transform: translate(-50%, -50%) translateX(33%); }
 @media (prefers-reduced-motion: reduce) { .tv-barque { transition: none; } }
 .tv-coque { position: absolute; inset: 0; width: 100%; height: 100%;
     pointer-events: none; z-index: -1; }
 /* L'OMBRE DE LA COQUE SUR L'EAU : c'est elle qui pose la barque SUR quelque
    chose. Sans elle, la coque flotte dans le vide et l'eau redevient une bande. */
-.tv-ombre { position: absolute; left: 50%; top: 62%; width: 50%; height: 7%;
-    transform: translate(-50%, -50%) translateX(-11%);
+/* L'OMBRE SUIT LA BARQUE, et son décalage se compte DANS SA PROPRE LARGEUR :
+   ±33 % de 56 % de la rivière font 18,5 % de la rivière, soit 46 % d'une ombre
+   large de 40 %. Deux pourcentages qui ne se rapportent pas à la même chose —
+   c'est la faute qu'on fait une fois et qui laisse l'ombre en arrière. */
+.tv-ombre { position: absolute; left: 50%; top: 59%; width: 40%; height: 6%;
+    transform: translate(-50%, -50%) translateX(-46%);
     background: #15618f; opacity: .3; border-radius: 50%;
-    transition: transform .4s ease; pointer-events: none; }
-.tv-riviere--droite .tv-ombre { transform: translate(-50%, -50%) translateX(11%); }
+    transition: transform .85s cubic-bezier(.4, 0, .25, 1); pointer-events: none; }
+.tv-riviere--droite .tv-ombre { transform: translate(-50%, -50%) translateX(46%); }
+@media (prefers-reduced-motion: reduce) { .tv-ombre { transition: none; } }
 
 /* ── LES PIONS ──────────────────────────────────────────────────────────────
 
@@ -15738,6 +15776,34 @@ body.en-boite > #app-container { background: none; }
    pouvoir compter qui est déjà passé sans plisser les yeux. */
 .tv-pion--loin { opacity: .6; box-shadow: none; }
 .tv-pion--pris { opacity: .32; }
+
+/* ── LES DEUX QU'ON A LAISSÉS ENSEMBLE ──────────────────────────────────────
+
+   RÉMY, 27 octobre : « que ceux qui sont restés ensemble et qui sont
+   incompatibles soit "clignotant" en rouge ».
+
+   AVANT, LEURS NOMS ÉTAIENT DANS UNE PHRASE, sous la scène. Lire la phrase,
+   puis retrouver les deux pastilles des yeux, cela prend quelques secondes —
+   et c'est le moment précis où l'élève apprend quelque chose. Un clignotement
+   ne demande rien : on voit QUI, avant d'avoir lu POURQUOI.
+
+   L'ENCRE RESTE SOMBRE AUX DEUX TEMPS du clignotement. Un texte blanc sur
+   rouge une demi-seconde sur deux, c'est un nom qu'on n'arrive pas à lire. */
+.tv-pion--alerte {
+    animation: tvAlerte .62s ease-in-out infinite alternate;
+    z-index: 3;
+}
+@keyframes tvAlerte {
+    from { background: #fff; box-shadow: 0 1px 2px rgb(15 23 42 / .16); }
+    to { background: #fecdd3; box-shadow: 0 0 0 6px rgb(225 29 72 / .6); }
+}
+/* SANS ANIMATION, ON GARDE LE ROUGE : c'est l'information, pas le mouvement. */
+@media (prefers-reduced-motion: reduce) {
+    .tv-pion--alerte {
+        animation: none; background: #fecdd3;
+        box-shadow: 0 0 0 6px rgb(225 29 72 / .6);
+    }
+}
 .tv-pion:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
 @media (hover: hover) {
     .tv-pion:not(:disabled):hover { transform: translateY(-1px); }

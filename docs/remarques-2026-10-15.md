@@ -4285,3 +4285,38 @@ le même soin : la refuser d'autorité serait décider à la place du
 professeur. Et le défaut annoncé sur la fusée est corrigé au passage — sa
 flamme décroît à chaque erreur, de sorte que **deux états voisins diffèrent
 toujours en deux endroits**, pas seulement par un voyant.
+
+## 45. La Traversée, deuxième passe — 27 octobre
+
+> « pour la riviève, fais un ba[t]eau plus petit et une rivière plus large
+> et qu'on voit le transport et que ceux qui sont restés ensemble et qui
+> sont incompa[t]ibles soit "clignotant" en rouge et que le texte en
+> dessous reste plus longtemps »
+
+CINQ DEMANDES, ET LA TROISIÈME EST UN DÉFAUT, PAS UN GOÛT.
+
+**« qu'on voit le transport ».** La barque ne transportait personne. Dans
+`traverser()`, `dansBarque` était vidé AVANT que l'animation ne commence :
+la coque glissait d'une rive à l'autre **vide**, pendant que les passagers
+réapparaissaient d'un coup sur la rive d'arrivée. Les quatre dixièmes de
+seconde de transition existaient, le voyage non. C'est le genre de défaut
+qu'aucune épreuve ne voit — l'état final est juste — et qu'on ne trouve
+qu'en REGARDANT l'écran pendant qu'il bouge.
+
+**« un bateau plus petit et une rivière plus large ».** La barque occupait
+80 % de la largeur de la rivière : ce n'est pas une barque sur une rivière,
+c'est un bac qui touche les deux berges. Ce qui limite la réduction est
+connu et se calcule : deux passagers dans la coque, chacun devant rester
+atteignable au doigt.
+
+**« clignotant en rouge ».** Quand ça tourne mal, on écrivait le nom des
+deux coupables dans une phrase, sous la scène. Il faut quatre secondes pour
+lire une phrase et retrouver les deux pastilles ; il en faut zéro pour voir
+clignoter. Et c'est le moment où l'élève apprend le plus : on lui montre la
+conséquence, pas un bouton gris.
+
+**« que le texte en dessous reste plus longtemps ».** Deux cas, et les deux
+étaient fautifs. Le message d'échec disparaissait au bout de 2,2 s, soit
+moins que le temps de le lire. Et surtout, TOUT message était effacé au
+repeint suivant : « La barque ne porte pas un adulte avec quelqu'un »
+s'affichait, on touchait ailleurs, et il n'avait jamais existé.

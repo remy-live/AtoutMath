@@ -31,7 +31,7 @@ import { exercices } from '../js/data/catalog.js';
 import { getGenerator } from '../js/core/registry.js';
 import { makeRng } from '../js/core/ids.js';
 import { evaluate } from '../js/core/items.js';
-import { SCENARIOS } from '../js/core/generators/traversee.js';
+import { etPuis, SCENARIOS } from '../js/core/generators/traversee.js';
 
 const LES_DEUX = ['logi-allumettes-egalite', 'logi-traversee'];
 
@@ -440,5 +440,45 @@ test('aucune allumette ne déborde de la vue', () => {
             || (tete.x + tete.w === corps.x + corps.w
                 && tete.y + tete.h === corps.y + corps.h);
         assert.ok(auBout, 'une tête d\'allumette n\'est pas à un bout');
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LA PHRASE QUI DIT CE QUI A MAL TOURNÉ — 27 octobre.
+//
+// « Le renard et La poule sont restés seuls » : une majuscule au milieu de la
+// phrase, vue sur une capture d'écran prise pour regarder autre chose. Les
+// noms des passagers PORTENT leur article — « Le loup », « La poule »,
+// « L'aînée » — et recollés tels quels ils en gardent la capitale.
+//
+// DEUX GARDES, ET LA PREMIÈRE TIENT LA SECONDE : `etPuis` ne sait abaisser que
+// ce qui commence par un article. Le jour où quelqu'un ajoute « Pierre », la
+// phrase deviendrait « Le loup et pierre », et c'est la première qui le dira.
+
+test('TOUT PASSAGER PORTE SON ARTICLE, ET LA PHRASE D\'ÉCHEC EN DÉPEND', () => {
+    for (const [cle, sc] of Object.entries(SCENARIOS)) {
+        for (const p of sc.passagers) {
+            assert.match(p.nom, /^(Le |La |Les |L')/,
+                `${cle} : « ${p.nom} » ne commence pas par son article — `
+                + 'la phrase d\'échec abaissera une lettre qui n\'est pas un article');
+        }
+    }
+});
+
+test('ET LA PHRASE D\'ÉCHEC NE PORTE PAS DE MAJUSCULE AU MILIEU', () => {
+    // On la fabrique pour TOUTES les paires interdites du fichier, et non pour
+    // un exemple : c'est la liste qui grandit, pas la fonction.
+    for (const [cle, sc] of Object.entries(SCENARIOS)) {
+        const nom = (id) => (sc.passagers.find(p => p.id === id) || {}).nom;
+        for (const [a, b] of sc.interdits || []) {
+            const phrase = etPuis(nom(a), nom(b));
+            assert.ok(phrase.includes(' et '), `${cle} : « ${phrase} » n'a pas de « et »`);
+            const second = phrase.split(' et ')[1];
+            assert.equal(second, second.charAt(0).toLowerCase() + second.slice(1),
+                `${cle} : « ${phrase} » garde une majuscule au milieu`);
+            // ET LE PREMIER GARDE LA SIENNE : c'est le début de la phrase.
+            assert.equal(phrase.charAt(0), phrase.charAt(0).toUpperCase(),
+                `${cle} : « ${phrase} » ne commence pas par une capitale`);
+        }
     }
 });

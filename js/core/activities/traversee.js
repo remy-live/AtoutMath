@@ -39,6 +39,19 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
+import { etPuis } from '../generators/traversee.js';
+
+/**
+ * LE TEMPS QUE MET LA BARQUE À TRAVERSER, en millisecondes.
+ *
+ * Il est ici ET dans la feuille de style, et les deux doivent s'accorder :
+ * la coque glisse par une transition CSS, les passagers débarquent par ce
+ * délai-ci. Plus court, ils sautent à terre avant d'être arrivés ; plus long,
+ * on attend devant une barque immobile. 850 pour la transition, 980 pour le
+ * débarquement — la petite marge est ce qui fait que le pied touche le sol
+ * APRÈS la coque.
+ */
+const TRAVERSEE_MS = 980;
 
 /** Les vagues du fond, et la coque : le décor ne bouge jamais. */
 const VAGUES = `<svg class="tv-vagues" viewBox="0 0 100 200" preserveAspectRatio="none"
@@ -64,6 +77,20 @@ export function mount(container, session) {
     let traversees = 0, essais = 0, fini = false;
     /** Le passager qu'on tient, le point de départ du doigt, et le fantôme. */
     let prise = null, depart = null, aGlisse = false, fantome = null;
+    /** La barque est en route : on ne touche plus à rien tant qu'elle avance. */
+    let enRoute = false;
+    /** Les deux qu'on a laissés ensemble : ils clignotent jusqu'au recommencement. */
+    let alerte = [];
+    /**
+     * JUSQU'À QUAND LE MESSAGE DU BAS TIENT SA PLACE.
+     *
+     * Rémy, 27 octobre : « que le texte en dessous reste plus longtemps ». Le
+     * défaut n'était pas seulement une durée trop courte : TOUT message était
+     * effacé au repeint suivant. « La barque ne porte pas un adulte avec
+     * quelqu'un » s'affichait, on touchait ailleurs, et il n'avait jamais
+     * existé. Un message posé ici tient sa place, et `peindre` attend son tour.
+     */
+    let messageJusqua = 0;
 
     function renderNext() {
         if (destroyed) return;
@@ -76,12 +103,23 @@ export function mount(container, session) {
         barqueAGauche = true;
         traversees = 0;
         fini = false;
+        enRoute = false;
+        alerte = [];
+    }
+
+    /** Dit quelque chose sous la scène, et le laisse le temps qu'on le lise. */
+    function dire(texte, duree = 2600) {
+        const st = container.querySelector('.tv-statut');
+        if (!st) return;
+        st.textContent = texte;
+        messageJusqua = Date.now() + duree;
     }
 
     function render(prochain) {
         item = prochain;
         essais = 0;
         prise = null; depart = null; aGlisse = false;
+        messageJusqua = 0;
         cacherFantome();
         remettre();
 
@@ -115,7 +153,8 @@ export function mount(container, session) {
         wireHint(container, session);
         peindre();
         container.querySelector('[data-recommencer]').onclick = () => {
-            if (fini) return;
+            if (fini || enRoute) return;
+            messageJusqua = 0;
             remettre(); peindre();
         };
         container.querySelector('[data-traverser]').onclick = traverser;
@@ -149,7 +188,7 @@ export function mount(container, session) {
         const cibleVoulue = (ou) => (ou === 'b' ? (barqueAGauche ? 'g' : 'd') : 'b');
 
         scene.addEventListener('pointerdown', (e) => {
-            if (fini || destroyed || session.locked) return;
+            if (fini || destroyed || session.locked || enRoute) return;
             const el = e.target.closest ? e.target.closest('[data-pion]') : null;
             if (!el || !scene.contains(el) || el.disabled) return;
             prise = { k: Number(el.dataset.pion), ou: el.dataset.ou, el };
@@ -217,10 +256,16 @@ export function mount(container, session) {
     /** Une pastille de passager, touchable. */
     function pastille(k, ou) {
         const p = item.meta.passagers[k];
+        // DANS LA BARQUE, LA PASTILLE DEVIENT UN JETON ROND. `btn-carre` n'est
+        // pas décoratif : c'est la DÉCLARATION que le plancher tactile de 44 px
+        // du dépôt attend d'un bouton dont la mise en page commande la forme.
+        // Sans elle, la règle étire le jeton et la barque déborde de la rivière.
+        const rond = ou === 'b' ? ' tv-pion--rame btn-carre' : '';
+        const quiCrie = alerte.includes(p.id) ? ' tv-pion--alerte' : '';
         // LA POIGNÉE N'EST PAS DÉCORATIVE : c'est le seul signe qui dise
         // « ceci se prend ». Sans elle, le glisser existe et personne ne le
         // trouve — ce qui revient à ne pas l'avoir écrit.
-        return `<button type="button" class="tv-pion" data-pion="${k}" data-ou="${ou}"
+        return `<button type="button" class="tv-pion${rond}${quiCrie}" data-pion="${k}" data-ou="${ou}"
                  aria-label="${p.nom}"><span class="tv-poignee" aria-hidden="true"></span
                  ><span class="tv-emoji" aria-hidden="true">${p.emoji}</span
                  ><span class="tv-nom">${p.nom}</span></button>`;
@@ -248,7 +293,7 @@ export function mount(container, session) {
             // panne — elle est trop loin pour monter.
             const atteignable = ou === 'b'
                 || (ou === 'g' && barqueAGauche) || (ou === 'd' && !barqueAGauche);
-            b.disabled = fini || session.locked || !atteignable;
+            b.disabled = fini || session.locked || enRoute || !atteignable;
             b.classList.toggle('tv-pion--loin', !atteignable && ou !== 'b');
             b.classList.toggle('tv-pion--pris', !!prise && prise.k === k);
             b.onclick = () => {
@@ -261,12 +306,15 @@ export function mount(container, session) {
         });
 
         const traverser = container.querySelector('[data-traverser]');
-        if (traverser) traverser.disabled = fini || session.locked || !dansBarque.length;
+        if (traverser) {
+            traverser.disabled = fini || session.locked || enRoute || !dansBarque.length;
+        }
         const recommencer = container.querySelector('[data-recommencer]');
-        if (recommencer) recommencer.disabled = fini || session.locked;
+        if (recommencer) recommencer.disabled = fini || session.locked || enRoute;
 
+        // LE MESSAGE EN COURS PASSE AVANT L'ÉTAT : voir `dire`.
         const statut = container.querySelector('.tv-statut');
-        if (statut && !fini) {
+        if (statut && !fini && Date.now() >= messageJusqua) {
             statut.textContent = traversees
                 ? `${traversees} traversée${traversees > 1 ? 's' : ''}.`
                     + (dansBarque.length ? ' La barque est chargée.'
@@ -283,14 +331,14 @@ export function mount(container, session) {
             peindre();
             return;
         }
+        if (enRoute) return;
         if (dansBarque.length >= item.meta.places) return;
         // UN ADULTE OCCUPE LA BARQUE ENTIÈRE, quand le scénario parle de poids.
         // On le refuse en le DISANT, au lieu de ne rien faire : un bouton qui
         // ne répond pas se lit comme une panne.
         const lourdsApres = dansBarque.filter(estLourd).length + (estLourd(k) ? 1 : 0);
         if (lourdsApres && dansBarque.length + 1 > 1) {
-            const statut = container.querySelector('.tv-statut');
-            if (statut) statut.textContent = 'La barque ne porte pas un adulte avec quelqu\'un.';
+            dire('La barque ne porte pas un adulte avec quelqu\'un.', 3200);
             return;
         }
         dansBarque.push(k);
@@ -298,7 +346,15 @@ export function mount(container, session) {
         peindre();
     }
 
-    /** Qui reste sans surveillance sur une rive, et est-ce que ça se passe mal ? */
+    /**
+     * QUI RESTE SANS SURVEILLANCE SUR UNE RIVE, ET EST-CE QUE ÇA SE PASSE MAL ?
+     *
+     * Elle rend aussi LES DEUX COUPABLES, et c'est la demande de Rémy du
+     * 27 octobre : « que ceux qui sont restés ensemble et qui sont
+     * incompatibles soit clignotant en rouge ». Une phrase sous la scène
+     * demande qu'on la lise, puis qu'on retrouve les deux pastilles des yeux ;
+     * un clignotement ne demande rien du tout.
+     */
     function desastre(rive) {
         const ids = rive.map(k => item.meta.passagers[k].id);
         const garde = item.meta.passeur >= 0
@@ -308,19 +364,47 @@ export function mount(container, session) {
         for (const [a, b] of item.meta.interdits) {
             if (ids.includes(a) && ids.includes(b)) {
                 const nom = (id) => item.meta.passagers.find(p => p.id === id).nom;
-                return `${nom(a)} et ${nom(b)} sont restés seuls : c'est fini pour l'un des deux.`;
+                return {
+                    ids: [a, b],
+                    texte: `${etPuis(nom(a), nom(b))} sont restés seuls : `
+                        + 'c\'est fini pour l\'un des deux.'
+                };
             }
         }
         return null;
     }
 
+    /**
+     * LA BARQUE PART — ET ELLE EMPORTE SES PASSAGERS.
+     *
+     * RÉMY, 27 octobre : « qu'on voit le transport ». La barque ne
+     * transportait personne : `dansBarque` était vidé AVANT l'animation, si
+     * bien que la coque glissait d'une rive à l'autre VIDE pendant que les
+     * passagers réapparaissaient d'un coup sur l'autre berge. Les quatre
+     * dixièmes de seconde de transition existaient, le voyage non.
+     *
+     * Aucune épreuve ne pouvait le voir : l'état final était juste. Il a fallu
+     * regarder l'écran PENDANT qu'il bouge.
+     */
     function traverser() {
-        if (fini || !dansBarque.length || session.locked) return;
+        if (fini || enRoute || !dansBarque.length || session.locked) return;
+        enRoute = true;
+        alerte = [];
         barqueAGauche = !barqueAGauche;
         traversees++;
-        // On débarque tout le monde sur la rive d'arrivée.
+        // ON NE VIDE RIEN : `peindre` redessine la barque à sa nouvelle place,
+        // AVEC sa charge, et la transition de la feuille de style l'y conduit.
+        peindre();
+        dire('La barque traverse…', TRAVERSEE_MS + 200);
+        regTimeout(() => { if (!destroyed) debarquer(); }, TRAVERSEE_MS);
+    }
+
+    /** On met pied à terre, et l'on regarde qui est resté avec qui. */
+    function debarquer() {
+        enRoute = false;
         if (barqueAGauche) aGauche = aGauche.concat(dansBarque);
         dansBarque = [];
+        messageJusqua = 0;
         peindre();
 
         const tous = item.meta.passagers.map((_, i) => i);
@@ -328,20 +412,24 @@ export function mount(container, session) {
         const mal = desastre(aGauche) || desastre(droite);
         if (mal) {
             essais++;
-            const statut = container.querySelector('.tv-statut');
+            alerte = mal.ids;
+            peindre();                       // les deux coupables se mettent à clignoter
             const scene = container.querySelector('.tv-scene');
             if (scene) {
                 scene.classList.add('tv-scene--rate');
                 regTimeout(() => scene.classList.remove('tv-scene--rate'), 500);
             }
-            if (statut) statut.textContent = `${mal} On recommence — essai n° ${essais + 1}.`;
+            // CINQ SECONDES, ET C'EST MESURÉ À LA LECTURE : la phrase fait une
+            // centaine de signes, un élève de sixième en lit deux cents à la
+            // minute. Les 2,2 s d'avant ne suffisaient pas à la finir.
+            dire(`${mal.texte} On recommence — essai n° ${essais + 1}.`, 5400);
             regTimeout(() => {
                 if (destroyed || fini) return;
+                messageJusqua = 0;
                 remettre();
                 peindre();
-                const s = container.querySelector('.tv-statut');
-                if (s) s.textContent = `Essai n° ${essais + 1}. Qui monte en premier ?`;
-            }, 2200);
+                dire(`Essai n° ${essais + 1}. Qui monte en premier ?`, 2600);
+            }, 5200);
             return;
         }
         if (!aGauche.length) reussi();
@@ -349,6 +437,9 @@ export function mount(container, session) {
 
     function reussi() {
         fini = true;
+        enRoute = false;
+        alerte = [];
+        messageJusqua = 0;
         peindre();
         const scene = container.querySelector('.tv-scene');
         if (scene) scene.classList.add('tv-scene--ok');
@@ -373,8 +464,7 @@ export function mount(container, session) {
         peindre();
         for (const etape of item.meta.solution) {
             if (destroyed) return;
-            const statut = container.querySelector('.tv-statut');
-            if (statut) statut.textContent = etape;
+            dire(etape, 1400);
             await new Promise(r => regTimeout(r, 1100));
         }
         if (!destroyed) regTimeout(renderNext, 900);

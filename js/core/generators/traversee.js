@@ -64,6 +64,22 @@ const SKILL = 'num.logique.traversee';
  * raisonnement se refait volontiers quand l'histoire change — c'est d'ailleurs
  * ainsi que cette énigme a voyagé pendant mille ans.
  */
+/**
+ * « LE LOUP ET LA CHÈVRE » — l'article du second passe en minuscule.
+ *
+ * Tous les passagers du fichier portent un nom qui COMMENCE par son article :
+ * « Le loup », « La poule », « L'aînée ». Recollés tels quels, ils donnaient
+ * « Le renard et La poule sont restés seuls », avec une majuscule au milieu
+ * de la phrase — vu sur la capture de l'écran d'échec, le 27 octobre, en
+ * regardant autre chose.
+ *
+ * ELLE VIT ICI, ET NON DANS L'ACTIVITÉ, pour qu'une épreuve puisse la lire :
+ * une fonction enfermée dans la fermeture d'un `mount` ne se mesure pas.
+ */
+export function etPuis(a, b) {
+    return `${a} et ${b.charAt(0).toLowerCase()}${b.slice(1)}`;
+}
+
 export const SCENARIOS = {
     loupChevre: {
         famille: 'classique',
