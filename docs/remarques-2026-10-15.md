@@ -4320,3 +4320,50 @@ conséquence, pas un bouton gris.
 moins que le temps de le lire. Et surtout, TOUT message était effacé au
 repeint suivant : « La barque ne porte pas un adulte avec quelqu'un »
 s'affichait, on touchait ailleurs, et il n'avait jamais existé.
+
+## 46. L'Enquête « fait vraiment vieux » — 28 octobre
+
+Rémy, capture d'un jeu du commerce à l'appui — « La citrouille cachée »,
+une maison dessinée où l'on pose des personnages d'après des indices :
+
+> « Ce jeu ressemble à l'enquête mais l'enquête fait vraiment vieux. On
+> pourrait avoir cette présentation ou la présentation avec tous les
+> indices il faudrait qqch de plus visuel »
+
+IL A RAISON, ET CETTE FOIS LA COMPARAISON EST SOUS LES YEUX. Les deux
+écrans font la même chose ; en les regardant côte à côte, quatre
+différences se nomment, et aucune n'est une question de goût.
+
+**1. Rien n'est dessiné.** Notre plan est fait de rectangles pastel unis
+avec le nom du lieu écrit en petit dans le coin. Le sien dessine le SOL —
+des lames de parquet, un carrelage à quatre points, de la pierre — et pose
+le nom du lieu sur une étiquette blanche. Un rectangle de couleur avec du
+texte dans le coin, c'est un tableur ; un sol qui change de matière, c'est
+une maison.
+
+**2. Les personnages n'ont pas de visage.** Chez nous, cinq pastilles de
+texte — « Ismaël », « Jade », « Chloé ». Chez lui, cinq PORTRAITS, et le
+choisi porte un cadre orange. Une pastille de texte est un champ de
+formulaire ; un portrait est quelqu'un. Et c'est l'élève qui doit dire
+« Jade est au nord de Noé » : il faut qu'il les voie.
+
+**3. Les repères sont du texte dans un coin.** « 📌 le distributeur d'eau »
+tient sur trois lignes dans une case de 95 px, en gris de 9 px. Chez lui,
+c'est une pierre tombale, un fauteuil, un pot de fleurs — dessinés. Or
+l'indice dit « à côté d'une pierre tombale » : l'objet est un ACTEUR de
+l'énigme, pas une légende.
+
+**4. Les indices sont une liste numérotée.** Sept phrases longues, en
+colonne, toutes de la même couleur. Son jeu n'en montre qu'un, en grand, et
+l'on tourne les pages. C'est la deuxième branche de sa phrase : « cette
+présentation OU la présentation avec tous les indices » — autrement dit,
+les deux l'intéressent, à condition que l'indice soit VU et pas seulement lu.
+
+ET UNE CINQUIÈME, qu'il n'a pas demandée mais que sa capture montre : son
+jeu a un outil **Croix**. On peut marquer « ce n'est pas ici », ce qui est
+exactement le geste de la déduction. Nous n'avons que « Placer » : l'élève
+ne peut écrire que ce qu'il a conclu, jamais ce qu'il a éliminé — alors que
+l'on résout cette énigme en éliminant. Sur le papier, il RATURE ; à
+l'écran, non.
+
+ON NE SE LANCE PAS : « fais moi des propositions d'abord ».

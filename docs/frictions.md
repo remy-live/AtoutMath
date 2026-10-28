@@ -6522,3 +6522,45 @@ le résultat n'existe pas** — 15 octobre 2026
   mesurait. Le dépôt porte 196 outils, dont 9 nommés
   `<sujet>AuDoigt.mjs` : la collision n'est donc pas un accident, c'est une
   conséquence de la convention de nommage.
+
+---
+
+**Un accent grave dans un commentaire CSS passe `node --check`** — 28 octobre 2026
+
+- *Ce que je voulais faire* : écrire, dans le bloc `<style>` d'un jeu, un
+  commentaire qui cite un sélecteur — « la règle passe après `.eq-tag` ».
+- *Ce qui a coûté* : deux allers-retours de sonde, soit une dizaine de
+  minutes. Le piège de l'accent grave est connu et documenté, et un `hook`
+  passe `node --check` sur tout fichier écrit — **mais ici le fichier reste
+  SYNTAXIQUEMENT VALIDE**. L'accent grave ferme le gabarit, `.eq-tag`
+  devient une expression, et le résultat compile très bien. Le hook s'est
+  tu, `node --check` a dit oui, et le défaut n'est apparu qu'au navigateur,
+  sous la forme « ReferenceError: tag is not defined » — un nom qui
+  n'existe nulle part dans le fichier. C'est la version SILENCIEUSE du
+  piège, et c'est la pire : la version bruyante au moins s'annonce.
+- *Combien de fois* : ||
+- *Ce qui manque* : une garde qui ne demande pas de syntaxe fautive pour se
+  déclencher — **compter les accents graves à l'intérieur de chaque gabarit
+  d'un fichier, et refuser qu'il y en ait**. Un gabarit qui contient du CSS
+  ou du HTML n'a aucune raison d'en porter ; c'est une règle lexicale
+  simple, et elle attrape les deux versions du piège d'un coup. À ajouter à
+  `tools/hooks/verifierSyntaxe.sh`.
+
+---
+
+**Une épreuve de durée à 1 % de marge clignote** — 28 octobre 2026
+
+- *Ce que je voulais faire* : lire le verdict de `npm test` avant de
+  committer.
+- *Ce qui a coûté* : quatre minutes de relance, plus le temps de vérifier
+  que ce n'était pas ma faute. « logi-kakuro : 10110 ms pour 72 grilles,
+  au-delà des 10000 ms permises » — 1,1 % au-dessus, sur une machine
+  chargée par les trois harnais lancés dans la foulée. Relancée seule :
+  verte. Relancée en entier : verte. Le défaut n'existait pas.
+- *Combien de fois* : |
+- *Ce qui manque* : une épreuve de DURÉE n'a pas la même nature qu'une
+  épreuve de justesse — elle mesure la machine autant que le code. Deux
+  réparations possibles : lui donner une marge franche (×2 plutôt que
+  ×1,01), ou la faire réessayer une fois avant de rougir. Ce qui compte
+  est qu'elle ne coûte pas quatre minutes pour dire « la machine était
+  occupée ».
