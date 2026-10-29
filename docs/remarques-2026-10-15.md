@@ -4367,3 +4367,74 @@ l'on résout cette énigme en éliminant. Sur le papier, il RATURE ; à
 l'écran, non.
 
 ON NE SE LANCE PAS : « fais moi des propositions d'abord ».
+
+## 47. Quatre jeux qu'on manipule — 29 octobre
+
+Rémy, après avoir demandé « penses tu à d'autres jeux, d'autres énigmes que
+l'on manipule ? » et reçu sept propositions :
+
+> « j'aime bien les transvasements, le pliage, les pentaminos, le puzzle,
+> il faut que ce soit beau, facile »
+
+QUATRE RETENUS SUR SEPT, et deux mots de cahier des charges qui valent le
+reste de la phrase : **beau** et **facile**.
+
+« BEAU » N'EST PAS UNE POLITESSE, c'est la leçon des trois derniers jours.
+« ca fait vieillot de fou » pour La Traversée, « les dessins ne sont
+vraiment pas beaux » pour le Pendu, « l'enquête fait vraiment vieux » pour
+L'Enquête : trois fois le même retour sur trois écrans écrits sans qu'on
+lui montre rien d'abord. Les quatre jeux qui suivent sont NEUFS et donc
+entièrement visuels — on fait donc la maquette AVANT, pas après.
+
+« FACILE » EST UNE CONTRAINTE MATHÉMATIQUE, pas d'interface. Les
+pentaminos complets, c'est douze pièces et soixante cases : un élève de
+sixième n'y arrive pas, et un jeu qu'on ne réussit pas la première fois ne
+se rouvre pas — c'est sa consigne du 26 octobre. Chacun des quatre doit
+donc avoir un premier niveau qu'on gagne du premier coup.
+
+CE QUE CHACUN TRAVAILLE, et c'est à cela qu'ils se jugent :
+
+- **Le puzzle des aires** — on recouvre une figure avec les morceaux d'une
+  autre. Pythagore se DÉMONTRE avec les doigts, et la même mécanique sert
+  pour (a + b)², pour l'aire du parallélogramme, pour celle du triangle.
+- **Les transvasements** — mesurer 4 L avec un bidon de 5 et un de 3. Ce
+  qui est atteignable est exactement ce que le PGCD autorise, et l'élève le
+  découvre en versant, pas en l'apprenant.
+- **Le pliage et les trous** — on plie, on perce, on prévoit le dépliage.
+  C'est la symétrie axiale, en prévision plutôt qu'en constatation.
+- **Les pentaminos** — faire tenir des pièces dans un rectangle. Aire,
+  symétrie, et l'art d'éliminer.
+
+AUCUN NE TOUCHE LA LIGNE ROUGE : on déplace des pièces données, on ne trace
+rien à la règle ni au compas.
+
+### Son arbitrage, devant les quatre maquettes — 29 octobre
+
+> « enlève les aires, pour les transvasement, il faudra faire du drag drop
+> plutôt, le pliage enlève, les penamios, ca me va »
+
+DEUX JEUX SUR QUATRE, et une correction d'interface.
+
+**Les aires et le pliage sont retirés.** Il ne dit pas pourquoi et ce n'est
+pas à deviner : ce sont les deux qui demandaient à l'élève de PRÉVOIR avant
+de manipuler — recouvrir une figure qu'on ne voit pas encore, placer des
+trous qu'on n'a pas encore dépliés. Les deux qu'il garde se jouent en
+manipulant d'abord et en comprenant après. C'est peut-être la vraie ligne,
+et on la note sans la lui faire dire.
+
+**Les transvasements se joueront au GLISSER.** La maquette proposait un
+mode « Verser » puis deux touchers — c'est-à-dire un formulaire à trois
+temps. Prendre un bidon et le pencher sur l'autre, c'est UN geste, et c'est
+le geste qu'on fait vraiment. Même leçon que La Traversée le 27 : « il
+faudrait pouvoir dragdropper ».
+
+**Les pentaminos sont validés tels quels** : « ca me va » sur la maquette,
+donc quatre pièces dans un 4 × 5 pour commencer, le biseau sur la
+silhouette, Tourner et Retourner dans la barre du bas.
+
+ET UNE DISSECTION QUI N'EXISTAIT PAS, trouvée avant lui. La première
+maquette des aires montrait cinq morceaux dont l'aire tombait juste —
+9 + 4 + 6 + 4 + 2 = 25 — et qui ne pavaient RIEN. Un solveur de dix lignes
+l'a dit en deux cents millisecondes. Le jeu est retiré, mais la leçon
+reste : **une figure dont on n'a pas posé les morceaux n'est pas une
+figure, c'est un espoir.**
