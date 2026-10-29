@@ -48,6 +48,21 @@ export const NIVEAUX = {
     1: {
         nom: '1 — Deux bidons et un robinet',
         famille: 'robinet',
+        // L'ÉNIGME D'OUVERTURE EST LA PLUS CÉLÈBRE DE TOUTES : quatre litres
+        // avec un bidon de cinq et un de trois.
+        //
+        // RÉMY, 29 octobre : « Tu as mis aussi l'énigme comment faire 4 litres
+        // avec un seau de 3 et un seau de 5 litres ». Elle y était — et elle
+        // sortait UNE FOIS SUR DOUZE, mesuré sur soixante tirages. Pour
+        // n'importe quelle autre, ce serait bien ; pour celle-là, non : c'est
+        // celle que l'élève a peut-être déjà entendue, et c'est surtout celle
+        // qui montre les trois gestes en six coups — remplir le 5, le verser
+        // dans le 3, il reste 2 ; vider le 3, y mettre les 2 ; remplir le 5,
+        // compléter le 3 avec 1, il reste 4.
+        //
+        // ON N'ÉCRIT PAS SA SOLUTION POUR AUTANT : le nombre de gestes reste
+        // calculé par le parcours en largeur, comme pour toutes les autres.
+        ouverture: { caps: [5, 3], cible: 4 },
         // Les paires sont PREMIÈRES ENTRE ELLES : le PGCD vaut 1, donc toute
         // cible entière est atteignable, et l'élève n'a jamais à se demander
         // si l'énigme a une solution. Les frontières viendront au niveau 2.
@@ -56,14 +71,35 @@ export const NIVEAUX = {
     2: {
         nom: '2 — Deux bidons, et la cible se mérite',
         famille: 'robinet',
-        paires: [[9, 6], [8, 6], [12, 8], [10, 4], [12, 9], [10, 6]]
+        // DEUX DE CES FAMILLES NE PORTAIENT AUCUNE ÉNIGME, et personne ne
+        // l'avait vu : avec 9 L et 6 L on ne mesure que des multiples de 3,
+        // donc la seule cible possible est 3 L — et elle s'obtient en DEUX
+        // gestes, sous le seuil. Idem pour 12 L et 8 L. Elles figuraient dans
+        // la liste, n'étaient jamais servies, et faisaient croire à six
+        // familles là où il n'y en avait que quatre : une feuille de six
+        // blocs devait donc en répéter. Remplacées, et une garde compte
+        // maintenant les énigmes de chaque famille.
+        //
+        // Les capacités restent sous douze litres : un bidon se dessine à
+        // hauteur de sa capacité, et quinze litres font 416 px sur un
+        // téléphone — la moitié de l'écran pour un seul bidon.
+        paires: [[8, 6], [10, 4], [12, 9], [10, 6], [10, 8], [12, 10], [12, 2], [10, 2]]
     },
     3: {
         nom: '3 — Partager, sans robinet',
         famille: 'partage',
         // Le classique : huit litres dans le grand, et il faut en faire deux
         // fois quatre. Rien n'entre, rien ne sort.
-        triples: [[8, 5, 3], [10, 7, 3], [12, 7, 5], [10, 6, 4], [12, 8, 5]]
+        //
+        // HUIT FAMILLES, PAS CINQ : une feuille de six blocs n'en avait que
+        // cinq à se partager et devait en répéter une. Les trois ajoutées
+        // vérifient la même condition que les autres — le petit et le moyen
+        // réunis contiennent au moins le grand, sinon le grand ne se vide
+        // jamais et le jeu se bloque.
+        triples: [
+            [8, 5, 3], [10, 7, 3], [12, 7, 5], [10, 6, 4],
+            [12, 8, 5], [9, 5, 4], [11, 7, 4], [12, 9, 5]
+        ]
     }
 };
 
@@ -179,32 +215,83 @@ export function mesurables(caps, famille) {
  * fait en moins de trois gestes, sans quoi le niveau 1 se résout avant d'avoir
  * compris la règle.
  */
-export function tirerEnigme(rng, niveau = 1, rang = 0) {
+export function tirerEnigme(rng, niveau = 1, rang = 0, dejaVues = []) {
     const n = NIVEAUX[niveau] ? niveau : 1;
     const def = NIVEAUX[n];
     const famille = def.famille;
-    const liste = famille === 'partage' ? def.triples : def.paires;
-    // ON TOURNE SUR LE RANG DE L'ÉNIGME, pas seulement sur le hasard. Mesuré
-    // sur la fiche imprimée : deux énigmes tirées au sort sur une liste de six
-    // donnaient DEUX FOIS « 5 L et 2 L » côte à côte, et une feuille qui pose
-    // deux fois la même question ne se fait qu'une fois. Même correction que
-    // pour les scénarios de La Traversée.
-    const caps = liste[(rng.int(0, liste.length - 1) + rang) % liste.length].slice();
 
-    const possibles = mesurables(caps, famille)
-        .filter(v => v > 0 && !caps.includes(v));
-    const candidats = [];
-    for (const cible of possibles) {
+    // LA PREMIÈRE ÉNIGME EST CELLE QU'ON RACONTE. Elle est servie telle quelle
+    // au rang zéro ; la rotation habituelle reprend au rang suivant.
+    if (rang === 0 && def.ouverture) {
+        const { caps, cible } = def.ouverture;
         const route = resoudre(caps, cible, famille);
-        if (route && route.length >= 3) candidats.push({ cible, coups: route.length });
+        return {
+            caps: caps.slice(), famille, cible, minimum: route.length,
+            depart: depart(caps, famille), pgcd: pgcd(caps[0], caps[1])
+        };
     }
-    // Le filet : une famille de capacités dont aucune cible ne tient la route
-    // se redemande plutôt que de servir un écran impossible.
-    if (!candidats.length) return tirerEnigme(rng, n, rang + 1);
-    // LA CIBLE TOURNE AUSSI SUR LE RANG : tirée au sort seule, elle sortait
-    // deux fois « il faut 1 L » sur la même feuille, avec des bidons pourtant
-    // différents. Deux fois la même question se fait une fois.
-    const choisi = candidats[(rng.int(0, candidats.length - 1) + rang) % candidats.length];
+    const liste = famille === 'partage' ? def.triples : def.paires;
+
+    // ── DEUX FOIS LA MÊME ÉNIGME SUR UNE FEUILLE ───────────────────────────
+    //
+    // La feuille tire UNE GRAINE PAR BLOC. Tourner sur le rang ne suffit donc
+    // pas : deux blocs dont les tirages diffèrent du bon écart retombent sur
+    // la même paire ET sur la même cible. Mesuré sur deux cents feuilles de
+    // quatre énigmes : 82 % en portaient deux fois la même quantité, et
+    // « 5/3 → 4 » apparaissait DEUX FOIS sur la même page.
+    //
+    // `dejaVues` PORTE CE QUE LA FEUILLE A DÉJÀ POSÉ, par le canal
+    // `themesExclus` que les fiches tiennent ouvert depuis les logigrammes.
+    // Chaque entrée dit les bidons ET la quantité : « 5-3:4 ». On s'en sert
+    // deux fois — pour ne pas redessiner les mêmes bidons, et pour ne pas
+    // redemander la même quantité, qui sont deux gênes distinctes. La seconde
+    // était déjà connue : « il faut 1 L » sortait deux fois sur une feuille,
+    // avec des bidons pourtant différents.
+    const paireVues = new Set(dejaVues.map(x => String(x).split(':')[0]));
+    const cibleVues = new Set(dejaVues.map(x => String(x).split(':')[1]).filter(Boolean));
+
+    // LE CHOIX DES BIDONS ET CELUI DE LA CIBLE NE SONT PAS SÉPARABLES : des
+    // bidons dont aucune quantité ne demande trois gestes ne doivent pas être
+    // choisis du tout. On les cherchait séparément, et le filet se rappelait
+    // alors lui-même avec le rang suivant — ce qui RECOMMENÇAIT LE MÊME CHOIX
+    // et débordait la pile. L'épreuve de feuille l'a attrapé dès sa première
+    // exécution ; aucune n'avait jamais parcouru la liste entière.
+    const ciblesDe = (c) => mesurables(c, famille)
+        .filter(v => v > 0 && !c.includes(v))
+        .map(cible => ({ cible, coups: (resoudre(c, cible, famille) || []).length }))
+        .filter(x => x.coups >= 3);
+
+    const debut = (rng.int(0, liste.length - 1) + rang) % liste.length;
+    let iPaire = -1, candidats = [];
+    // Deux tours : au premier on saute les bidons que la feuille a déjà posés,
+    // au second on ne saute plus rien — une énigme sort toujours.
+    for (let tour = 0; tour < 2 && iPaire < 0; tour++) {
+        for (let k = 0; k < liste.length; k++) {
+            const j = (debut + k) % liste.length;
+            if (tour === 0 && paireVues.has(liste[j].join('-'))) continue;
+            const c = ciblesDe(liste[j]);
+            if (!c.length) continue;
+            iPaire = j; candidats = c; break;
+        }
+    }
+    // Un niveau dont AUCUNE famille de bidons ne porte d'énigme est une erreur
+    // de définition, pas un accident de tirage : on le dit tout haut plutôt
+    // que de rendre une énigme fausse. Les épreuves parcourent les trois
+    // niveaux, donc cette ligne ne se voit jamais en classe.
+    if (iPaire < 0) throw new Error(`niveau ${n} : aucune énigme possible`);
+    const caps = liste[iPaire].slice();
+
+    // LA CIBLE NE SE TIRE PAS AU SORT NON PLUS : elle découle des bidons et du
+    // rang, puis on avance jusqu'à une quantité que la feuille n'a pas encore
+    // demandée. Si toutes l'ont été — une feuille longue finit par épuiser les
+    // cinq ou six quantités mesurables —, on garde celle du rang plutôt que de
+    // rendre une énigme impossible : les bidons, eux, diffèrent.
+    const base = (iPaire + rang) % candidats.length;
+    let choisi = candidats[base];
+    for (let k = 0; k < candidats.length; k++) {
+        const c = candidats[(base + k) % candidats.length];
+        if (!cibleVues.has(String(c.cible))) { choisi = c; break; }
+    }
     return {
         caps, famille, cible: choisi.cible, minimum: choisi.coups,
         depart: depart(caps, famille),

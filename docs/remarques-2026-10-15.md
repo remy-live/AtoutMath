@@ -4438,3 +4438,67 @@ maquette des aires montrait cinq morceaux dont l'aire tombait juste —
 l'a dit en deux cents millisecondes. Le jeu est retiré, mais la leçon
 reste : **une figure dont on n'a pas posé les morceaux n'est pas une
 figure, c'est un espoir.**
+
+## 48. « 4 litres avec un seau de 3 et un de 5 » — 29 octobre
+
+> « Tu as mis aussi l'énigme comment faire 4 litres avec un seau de 3 et un
+> seau de 5 litres »
+
+OUI, ET C'EST MESURÉ — mais pas assez souvent. La paire 5 / 3 est bien au
+niveau 1, et 4 L en est une cible servable (six gestes, donc au-dessus du
+seuil de trois). Sur soixante tirages, « 5/3 → 4 » sort CINQ fois : une
+fois sur douze.
+
+POUR N'IMPORTE QUELLE AUTRE ÉNIGME, UNE FOIS SUR DOUZE SERAIT BIEN. Pour
+celle-là, non : c'est la plus racontée de toutes, celle que l'élève a
+peut-être déjà entendue, et surtout celle qui fait le mieux comprendre la
+règle du jeu — remplir le 5, le verser dans le 3, il reste 2 ; vider le 3,
+y mettre les 2 ; remplir le 5, compléter le 3 avec 1, il reste 4. Six
+gestes qui montrent les trois gestes possibles.
+
+ELLE DEVIENT DONC L'ÉNIGME D'OUVERTURE : le premier tirage du niveau 1 est
+toujours celui-là, et la rotation habituelle reprend ensuite. Un élève qui
+ouvre le jeu rencontre la célèbre, puis découvre les autres.
+
+ON NE CODE PAS SA SOLUTION EN DUR pour autant : le nombre de gestes reste
+calculé par le parcours en largeur, comme pour toutes les autres. Une
+énigme dont on écrirait la réponse à la main serait la seule du fichier
+que rien ne vérifie.
+
+### Et en la posant, deux défauts qu'elle a révélés
+
+L'ÉNIGME D'OUVERTURE A SERVI DE RÉVÉLATEUR. Une fois 5 / 3 → 4 L fixée au
+premier bloc, la fiche imprimée a montré « il faut 4 L » DEUX FOIS de
+suite. On a donc mesuré la feuille entière, par le chemin qu'elle emprunte
+vraiment — une graine par bloc, et non une seule pour toute la page :
+
+```
+200 feuilles de quatre énigmes, niveau 1
+   au moins deux fois la même quantité : 163  (82 %)
+   et « 5/3 → 4 » DEUX FOIS sur la même page
+```
+
+**Premier défaut : une épreuve verte qui ne gardait rien.** « Deux énigmes
+de suite ne se ressemblent pas » tirait les deux énigmes AVEC LA MÊME
+GRAINE et ne changeait que le rang. Elle restait verte pendant que la vraie
+feuille répétait. Elle a été réécrite pour passer par le générateur, une
+graine par bloc, et par le canal `themesExclus` que les fiches tiennent
+ouvert depuis les logigrammes.
+
+**Second défaut, trouvé en réparant le premier : deux familles de bidons
+mortes.** Le niveau 2 annonçait six familles ; 9 L / 6 L et 12 L / 8 L n'en
+portaient AUCUNE. Avec 9 et 6 on ne mesure que des multiples de 3, donc la
+seule cible est 3 L — et elle s'obtient en deux gestes, sous le seuil de
+trois. Elles n'étaient jamais servies : le niveau tournait sur quatre
+familles, et une feuille de six blocs devait forcément en répéter une. Le
+niveau 3 avait le même manque, avec cinq triplets pour six blocs.
+
+Les deux niveaux portent maintenant huit familles chacun, et une garde
+COMPTE les énigmes de chaque ligne — une liste trop courte ne se voit pas
+en la lisant.
+
+```
+feuilles de 4 blocs    deux fois la même énigme   les mêmes bidons   la même cible
+   avant                      82 %                     fréquent          67 %
+   après                       0 %                        0 %            10 %
+```

@@ -6564,3 +6564,27 @@ le résultat n'existe pas** — 15 octobre 2026
   ×1,01), ou la faire réessayer une fois avant de rougir. Ce qui compte
   est qu'elle ne coûte pas quatre minutes pour dire « la machine était
   occupée ».
+
+---
+
+**Une épreuve qui tire avec UNE graine ne mesure pas une feuille qui en tire
+une par bloc** — 29 octobre 2026
+
+- *Ce que je voulais faire* : garder une règle de variété — « une feuille ne
+  pose jamais deux fois la même question ».
+- *Ce qui a coûté* : une version entière de fausse assurance. L'épreuve
+  comparait deux tirages faits AVEC LA MÊME GRAINE, en ne changeant que le
+  rang ; elle était verte. La vraie feuille tire **une graine par bloc**, et
+  répétait une quantité sur 82 % des pages — mesuré après coup, et seulement
+  parce que Rémy avait demandé autre chose. En réparant, un second défaut est
+  tombé : deux familles de bidons du niveau 2 ne portaient aucune énigme et
+  n'étaient jamais servies, ce qui raccourcissait la liste sans le dire.
+- *Combien de fois* : || (déjà vu sur les scénarios de La Traversée, où la
+  correction « on tourne sur le rang » avait l'air de suffire)
+- *Ce qui manque* : un outil qui MONTE UNE FEUILLE comme `printSheet` la
+  monte — une graine par bloc, `index` qui avance, `themesExclus` rempli des
+  `meta.theme` déjà posés — et rend la liste des blocs. Trois lignes
+  réécrites à chaque fois, et c'est précisément la ligne qu'on oublie de
+  réécrire qui fait mentir l'épreuve. Quelque chose comme
+  `feuilleDEssai(generateurOuId, reglages, combien)` dans `tools/`, utilisable
+  depuis une épreuve comme depuis un script de mesure.

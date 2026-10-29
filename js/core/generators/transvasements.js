@@ -44,7 +44,12 @@ export const transvasementsGenerator = {
         const rng = ctx.rng;
         const p = params || {};
         const niveau = NIVEAUX[p.niveau] ? Number(p.niveau) : 1;
-        const e = tirerEnigme(rng, niveau, ctx.index || 0);
+        // `themesExclus` EST LE CANAL PAR LEQUEL LA FEUILLE DIT CE QU'ELLE A
+        // DÉJÀ POSÉ. Les fiches le tiennent ouvert depuis longtemps pour les
+        // logigrammes ; ici il empêche deux blocs de montrer les mêmes bidons.
+        // Sans lui, 82 % des feuilles de quatre énigmes en répétaient une —
+        // mesuré, pas supposé.
+        const e = tirerEnigme(rng, niveau, ctx.index || 0, ctx.themesExclus || []);
         const noms = nommerLesBidons(e.caps);
 
         // UNE ESPACE INSÉCABLE ENTRE LE NOMBRE ET SON UNITÉ : sur un téléphone,
@@ -89,6 +94,9 @@ export const transvasementsGenerator = {
                 caps: e.caps, famille: e.famille, cible: e.cible,
                 minimum: e.minimum, depart: e.depart, pgcd: e.pgcd,
                 noms,
+                // La SIGNATURE des bidons, que la feuille relit pour le bloc
+                // suivant. C'est ce champ-là que `themesExclus` collecte.
+                theme: `${e.caps.join('-')}:${e.cible}`,
                 titreCourt: 'Transvasements',
                 texteLecon: 'Ce qu\'on peut mesurer, ce sont les multiples du PGCD des '
                     + 'deux bidons.'

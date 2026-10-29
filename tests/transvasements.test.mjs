@@ -138,16 +138,40 @@ test('LE NIVEAU 1 NE SERT QUE DES BIDONS PREMIERS ENTRE EUX', () => {
         'le niveau 2 ne sert aucune frontière');
 });
 
-test('ET DEUX ÉNIGMES DE SUITE NE SE RESSEMBLENT PAS', () => {
-    // Mesuré sur la fiche imprimée : deux énigmes tirées au sort sur une liste
-    // de six donnaient DEUX FOIS « 5 L et 2 L » côte à côte. Une feuille qui
-    // pose deux fois la même question ne se fait qu'une fois.
-    for (const niveau of [1, 2, 3]) {
-        for (let i = 0; i < 10; i++) {
-            const a = tirerEnigme(makeRng(`d${niveau}${i}`), niveau, i);
-            const b = tirerEnigme(makeRng(`d${niveau}${i}`), niveau, i + 1);
-            assert.notDeepEqual([a.caps, a.cible], [b.caps, b.cible],
-                `niveau ${niveau}, rang ${i} : deux énigmes de suite sont identiques`);
+test('ET UNE FEUILLE NE POSE JAMAIS DEUX FOIS LA MÊME ÉNIGME', () => {
+    // CETTE ÉPREUVE A DÉJÀ MENTI UNE FOIS, et c'est pour cela qu'elle est
+    // écrite ainsi. La version d'avant tirait les deux énigmes AVEC LA MÊME
+    // GRAINE et ne changeait que le rang : elle restait verte pendant que la
+    // vraie feuille — qui tire UNE GRAINE PAR BLOC — répétait une quantité sur
+    // 82 % des pages, et servait « 5/3 → 4 » DEUX FOIS sur la même.
+    //
+    // On emprunte donc le chemin de la feuille : le générateur, une graine par
+    // bloc, et `themesExclus` rempli comme `printSheet` le remplit.
+    const gen = getGenerator(exercices.find(e => e.id === ID).generatorId);
+    const feuille = (f, n, niveau) => {
+        const items = [];
+        for (let i = 0; i < n; i++) {
+            items.push(gen.generate({ niveau }, {
+                rng: makeRng(`f${f}-${i}`), index: items.length, total: n, papier: true,
+                themesExclus: items.map(it => it.meta && it.meta.theme).filter(Boolean)
+            }));
+        }
+        return items.map(it => `${it.meta.caps.join('/')}→${it.meta.cible}`);
+    };
+    for (const niveau of ['1', '2', '3']) {
+        for (let f = 0; f < 40; f++) {
+            for (const n of [4, 6]) {
+                const l = feuille(f, n, niveau);
+                assert.equal(new Set(l).size, l.length,
+                    `niveau ${niveau}, feuille ${f} : ${l.join('  ')}`);
+                // ET LES BIDONS EUX-MÊMES DIFFÈRENT : deux blocs qui montrent
+                // le même dessin se lisent comme une erreur d'impression,
+                // même si la quantité demandée change.
+                const bidons = l.map(x => x.split('→')[0]);
+                assert.equal(new Set(bidons).size, bidons.length,
+                    `niveau ${niveau}, feuille ${f} : les mêmes bidons deux fois — `
+                        + l.join('  '));
+            }
         }
     }
 });
@@ -187,4 +211,107 @@ test('ET LES TRANSVASEMENTS SE FABRIQUENT SANS SE FAIRE ATTENDRE', () => {
     // millisecondes, et une épreuve de durée à 1 % de marge clignote sous
     // charge — leçon du 28 octobre.
     assert.ok(dt < 3000, `${dt} ms pour soixante tirages`);
+});
+
+test('LA PREMIÈRE ÉNIGME DU NIVEAU 1 EST LA PLUS CÉLÈBRE', () => {
+    // RÉMY, 29 octobre : « Tu as mis aussi l'énigme comment faire 4 litres avec
+    // un seau de 3 et un seau de 5 litres ». Elle y était — et elle sortait UNE
+    // FOIS SUR DOUZE, mesuré sur soixante tirages. Pour n'importe quelle autre,
+    // ce serait bien ; pour celle-là, non.
+    //
+    // ON NE VÉRIFIE PAS SEULEMENT LES BIDONS ET LA CIBLE : on vérifie aussi que
+    // la solution fait bien SIX gestes, parce que ce nombre n'est écrit nulle
+    // part — il est calculé. Une ouverture dont on aurait codé la réponse à la
+    // main serait la seule énigme du fichier que rien ne contrôle.
+    for (const graine of ['a', 'b', 'c', 'd', 'e', 'f']) {
+        const e = tirerEnigme(makeRng(graine), 1, 0);
+        assert.deepEqual(e.caps, [5, 3], `graine ${graine} : l'ouverture n'est pas 5 / 3`);
+        assert.equal(e.cible, 4, `graine ${graine} : l'ouverture ne demande pas 4 L`);
+        assert.equal(e.minimum, 6, `l'ouverture se fait en ${e.minimum} gestes, pas six`);
+        assert.deepEqual(e.depart, [0, 0], 'l\'ouverture ne part pas de deux bidons vides');
+    }
+    // ET LA ROTATION REPREND ENSUITE : si le rang 1 servait lui aussi la même,
+    // le jeu n'aurait plus qu'une énigme.
+    const vus = new Set();
+    for (let i = 0; i < 20; i++) {
+        const e = tirerEnigme(makeRng(`suite${i}`), 1, 1);
+        vus.add(`${e.caps.join('/')}→${e.cible}`);
+    }
+    assert.ok(vus.size >= 4,
+        `au rang 1, seulement ${vus.size} énigme(s) différente(s) : ${[...vus].join(' ')}`);
+    // Les niveaux 2 et 3 n'ont pas d'ouverture imposée : ils s'adressent à qui
+    // a déjà vu la célèbre.
+    assert.ok(!NIVEAUX[2].ouverture && !NIVEAUX[3].ouverture,
+        'un niveau au-delà du premier impose une énigme d\'ouverture');
+});
+
+test('AUCUNE FAMILLE DE BIDONS NE DORT DANS LA LISTE', () => {
+    // CE DÉFAUT A VÉCU UNE VERSION ENTIÈRE SANS QUE RIEN NE LE DISE. Le niveau
+    // 2 annonçait six familles de bidons ; deux d'entre elles — 9 L / 6 L et
+    // 12 L / 8 L — ne portaient AUCUNE énigme, parce que leur unique cible
+    // possible s'obtient en deux gestes et que le jeu en exige trois. Elles
+    // n'étaient donc jamais servies : le niveau tournait sur quatre familles,
+    // et une feuille de six blocs devait en répéter.
+    //
+    // Une liste trop courte ne se voit pas en la lisant — il faut COMPTER les
+    // énigmes de chaque ligne. C'est ce que fait cette garde.
+    for (const [niveau, def] of Object.entries(NIVEAUX)) {
+        const liste = def.famille === 'partage' ? def.triples : def.paires;
+        for (const caps of liste) {
+            const combien = mesurables(caps, def.famille)
+                .filter(v => v > 0 && !caps.includes(v))
+                .filter(cible => {
+                    const route = resoudre(caps, cible, def.famille);
+                    return route && route.length >= 3;
+                }).length;
+            assert.ok(combien >= 1,
+                `niveau ${niveau} : ${caps.join(' / ')} ne porte aucune énigme — `
+                    + 'la famille est dans la liste et ne sort jamais');
+        }
+        // ET IL Y EN A ASSEZ POUR UNE FEUILLE DE SIX BLOCS, sans quoi deux
+        // blocs montrent forcément les mêmes bidons.
+        assert.ok(liste.length >= 6,
+            `niveau ${niveau} : ${liste.length} familles seulement, une feuille `
+                + 'de six blocs en répétera');
+        // ET LES BIDONS SE DESSINENT : la hauteur d'un bidon suit sa capacité,
+        // et quinze litres font 416 px sur un téléphone — la moitié de l'écran
+        // pour un seul bidon. Douze est le plafond tenu par les trois niveaux.
+        for (const caps of liste) {
+            assert.ok(Math.max(...caps) <= 12,
+                `niveau ${niveau} : ${caps.join(' / ')} déborde l'écran d'un téléphone`);
+        }
+    }
+});
+
+test('ET ELLE NE REDEMANDE PRESQUE JAMAIS LA MÊME QUANTITÉ', () => {
+    // DEUX GÊNES DISTINCTES, DEUX GARDES. L'épreuve précédente interdit deux
+    // fois les MÊMES BIDONS ; celle-ci surveille la QUANTITÉ demandée, qui
+    // peut se répéter d'un bloc à l'autre avec des bidons différents. Rémy
+    // l'avait signalé pour « il faut 1 L », servi deux fois sur une feuille.
+    //
+    // ON NE L'INTERDIT PAS : une feuille longue finit par épuiser les cinq ou
+    // six quantités qu'une famille de bidons permet, et refuser la dernière
+    // rendrait l'énigme impossible. On MESURE donc, et le code choisit la
+    // quantité par rotation en sautant celles que la feuille a déjà posées.
+    // Mesuré : 90 % des feuilles de quatre posent quatre quantités
+    // différentes, contre 33 % quand la cible se tirait au sort.
+    const gen = getGenerator(exercices.find(e => e.id === ID).generatorId);
+    let toutesDifferentes = 0;
+    const feuilles = 200;
+    for (let f = 0; f < feuilles; f++) {
+        const items = [];
+        for (let i = 0; i < 4; i++) {
+            items.push(gen.generate({ niveau: '1' }, {
+                rng: makeRng(`c${f}-${i}`), index: items.length, total: 4, papier: true,
+                themesExclus: items.map(it => it.meta && it.meta.theme).filter(Boolean)
+            }));
+        }
+        const cibles = items.map(it => it.meta.cible);
+        if (new Set(cibles).size === cibles.length) toutesDifferentes++;
+    }
+    const part = Math.round(toutesDifferentes / feuilles * 100);
+    // Une marge franche sous les 90 % mesurés : une garde posée au ras de la
+    // mesure clignote au premier changement de liste — leçon du 28 octobre.
+    assert.ok(part >= 75,
+        `seules ${part} % des feuilles posent quatre quantités différentes`);
 });
