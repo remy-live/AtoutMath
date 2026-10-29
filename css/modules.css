@@ -15853,6 +15853,110 @@ body.en-boite > #app-container { background: none; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   LES PENTAMINOS — douze pièces de cinq cases, un rectangle à remplir.
+
+   Rémy, 29 octobre, devant la maquette : « les penamios, ca me va ».
+
+   TOUT DÉCOULE D'UNE SEULE MESURE, `--pn-u` : la case. La grille, les pièces,
+   le bac et le fantôme la lisent, et rien d'autre n'est écrit en pixels. Une
+   pièce posée sur le plateau doit tomber EXACTEMENT sur les cases ; deux
+   unités qui dérivent de deux pixels, et le jeu paraît mal dessiné sans qu'on
+   sache dire pourquoi.
+   ───────────────────────────────────────────────────────────────────────── */
+.pn-layout {
+    --pn-u: clamp(30px, 9.5vw, 48px);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: 100%;
+}
+.pn-context { text-align: center; max-width: 46ch; }
+.pn-aire { font-size: .78rem; font-weight: 800; color: var(--text-muted); }
+
+/* LA BORDURE EST EN DEHORS DE LA LARGEUR, et il faut le dire : le dépôt pose
+   `box-sizing: border-box` partout, si bien que les trois pixels du cadre
+   mangeaient la dernière colonne — le bord droit du rectangle passait SOUS les
+   cases et disparaissait. Vu sur la capture, pas dans un compteur. */
+.pn-plateau {
+    position: relative; box-sizing: content-box;
+    width: calc(var(--pn-l) * var(--pn-u));
+    height: calc(var(--pn-h) * var(--pn-u));
+    border: 3px solid #16233a; border-radius: 6px;
+    box-shadow: 0 8px 20px -14px rgb(15 23 42 / .7);
+}
+.pn-grille { position: absolute; inset: 0; display: grid;
+    grid-template-columns: repeat(var(--pn-l), var(--pn-u)); }
+.pn-vide { width: var(--pn-u); height: var(--pn-u);
+    box-shadow: inset -1px -1px 0 var(--border); background: var(--bg-panel); }
+/* LA VISÉE MONTRE OÙ LA PIÈCE TOMBERAIT, et en rouge quand elle ne tient pas :
+   sans elle on lâche au jugé, et un lâcher raté se lit comme une panne. */
+.pn-visee { background: #dbeafe; box-shadow: inset 0 0 0 2px #2563eb; }
+.pn-visee--non { background: #fee2e2; box-shadow: inset 0 0 0 2px #be123c; }
+/* LA COUCHE DES PIÈCES POSÉES EST TRANSPARENTE AUX ÉVÉNEMENTS, et c'est le
+   défaut que la sonde a trouvé du premier coup : posée par-dessus la grille
+   avec `inset: 0`, elle recouvrait les vingt cases MÊME VIDE.
+   `elementFromPoint` rendait donc toujours cette couche-là, jamais une case,
+   et aucune pièce ne se posait — sans erreur de page, sans rien qui bouge.
+   Les pièces, elles, redeviennent touchables une par une. */
+.pn-pieces { position: absolute; inset: 0; pointer-events: none; }
+.pn-pose { position: absolute; pointer-events: auto; }
+
+/* `touch-action: none` EST OBLIGATOIRE : sans lui, le navigateur décide qu'un
+   doigt parti d'une pièce veut faire défiler la page, il annule la suite des
+   `pointermove`, et le glisser meurt au premier pixel. Payé trois fois. */
+.pn-piece { position: relative; cursor: grab; touch-action: none; }
+.pn-piece--choisie { outline: 3px solid #ea580c; outline-offset: 2px; border-radius: 4px; }
+.pn-piece:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+
+/* LE BISEAU SUIT LA SILHOUETTE DE LA PIÈCE, et les quatre bords se cumulent
+   dans UNE seule déclaration : quatre règles qui écrivent chacune `box-shadow`
+   ne s'additionnent pas, la dernière efface les trois autres. */
+.pn-case {
+    --sh-h: 0 0 0 0 transparent; --sh-b: 0 0 0 0 transparent;
+    --sh-g: 0 0 0 0 transparent; --sh-d: 0 0 0 0 transparent;
+    position: absolute; width: var(--pn-u); height: var(--pn-u);
+    background: var(--pn-c);
+    box-shadow: var(--sh-h), var(--sh-b), var(--sh-g), var(--sh-d),
+        inset 0 0 0 1px rgb(0 0 0 / .10);
+}
+.pn-case.pn-h { --sh-h: inset 0 3px 0 rgb(255 255 255 / .45); }
+.pn-case.pn-b { --sh-b: inset 0 -3px 0 rgb(0 0 0 / .20); }
+.pn-case.pn-g { --sh-g: inset 3px 0 0 rgb(255 255 255 / .28); }
+.pn-case.pn-d { --sh-d: inset -3px 0 0 rgb(0 0 0 / .14); }
+
+.pn-bac {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    align-items: flex-start; width: 100%; max-width: 560px;
+    min-height: calc(2 * var(--pn-u) + 20px); padding: 10px;
+    border: 1.5px dashed var(--border); border-radius: 14px; background: var(--bg-hover);
+}
+.pn-bacVide { font-size: .8rem; font-weight: 700; color: var(--text-muted);
+    align-self: center; }
+
+.pn-outils { display: flex; gap: 6px; width: 100%; max-width: 560px; }
+.pn-outil {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 7px 0 5px; min-height: 44px;
+    border: 1.5px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+    font: inherit; font-size: .64rem; font-weight: 700; cursor: pointer;
+}
+.pn-outil span { font-size: .95rem; line-height: 1; }
+.pn-outil:disabled { opacity: .45; cursor: default; }
+.pn-outil:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+
+.pn-statut { min-height: 2.6em; text-align: center; font-weight: 600;
+    color: var(--text-muted); max-width: 46ch; }
+.pn-plateau--ok { outline: 3px solid var(--success); outline-offset: 4px; }
+
+/* LE FANTÔME suit le doigt. Il est TRANSPARENT AUX ÉVÉNEMENTS, sinon
+   `elementFromPoint` le trouverait lui — il est sous le doigt par
+   construction — et l'on ne viserait jamais une case. */
+.pn-fantome {
+    position: fixed; z-index: 2000001; pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-3deg);
+    filter: drop-shadow(0 8px 14px rgb(15 23 42 / .5));
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    LE PENDU MATHÉMATIQUE — le dessin, le mot, et vingt-six touches.
 
    LE PAVÉ TIENT SUR UN TÉLÉPHONE, et c'est la contrainte qui commande tout

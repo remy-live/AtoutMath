@@ -202,6 +202,16 @@ const BASE = {
             + 'séparer des autres. Et accepte de RAMENER quelqu\'un en arrière — c\'est le '
             + 'coup auquel personne ne pense, et c\'est celui qui débloque tout.'
     },
+    'num.logique.pentaminos': {
+        label: 'Paver un rectangle (Les Pentaminos)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Faire tenir des pièces de cinq cases dans un rectangle, sans trou.',
+        lesson: 'Chaque pièce vaut cinq cases : l\'aire du rectangle te dit combien il en '
+            + 'faut. Commence par un COIN — une case de coin ne se remplit que de deux '
+            + 'façons, alors qu\'une case du milieu s\'en offre huit.'
+    },
     'num.logique.mathodu': {
         label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

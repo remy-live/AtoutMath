@@ -43,6 +43,7 @@ import { traverseeGenerator } from '../generators/traversee.js';
 import { penduGenerator } from '../generators/pendu.js';
 import { dessinGradueGenerator } from '../generators/dessinGradue.js';
 import { arbreCalculGenerator } from '../generators/arbreCalcul.js';
+import { pentaminosGenerator } from '../generators/pentaminos.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -188,7 +189,7 @@ import {
     kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
     cheminNombresGenerator, allumettesGenerator,
     allumettesEgaliteGenerator, traverseeGenerator, penduGenerator,
-    dessinGradueGenerator, arbreCalculGenerator,
+    dessinGradueGenerator, arbreCalculGenerator, pentaminosGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -583,6 +584,21 @@ registerActivity({
 // L'ARBRE DE CALCULS — l'unité est l'ARBRE. Pas de réglage de saisie : le
 // pavé fait partie de l'exercice et porte des signes que le clavier du
 // système n'a pas (× et ÷), donc il n'y a rien à choisir.
+// LES PENTAMINOS. Rémy, 29 octobre : « les penamios, ca me va ».
+//
+// `parDefaut: 3` — trois rectangles d'affilée, et c'est mesuré à la durée :
+// un 4 × 5 se pose en deux minutes, un 5 × 6 en cinq. Quatre grilles
+// déborderaient de l'heure de cours sur le niveau le plus long.
+registerActivity({
+    id: 'pentaminos',
+    unite: 'rectangle',
+    parDefaut: 3,
+    label: 'Les Pentaminos',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./pentaminos.js')
+});
+
 registerActivity({
     id: 'arbreCalcul',
     unite: 'arbre',

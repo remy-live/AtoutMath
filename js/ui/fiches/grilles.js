@@ -13,6 +13,9 @@ import { ajusterAuCarre, boiteDe as boiteCaseDomino, cellulesDe, cheminSerpentin
 // c'est lui qui faisait croire que les décors s'imprimaient — d'où la
 // consigne « lisibles en noir » qui les a tenus au trait gris pendant un mois.
 import { COLONNES, nombreFr } from '../../core/dessinsGradues.js';
+// LES FORMES DES PENTAMINOS VIENNENT DU NOYAU : la feuille et l'écran dessinent
+// les mêmes douze pièces, et rien ne peut diverger.
+import { FORMES as PENTA_FORMES } from '../../core/pentaminos.js';
 // LA GÉOMÉTRIE DES ALLUMETTES VIENT DU NOYAU, en bloc : l'écran et la
 // feuille lisent les mêmes rectangles, et rien ne peut diverger.
 import * as ALLU from '../../core/allumettesDessin.js';
@@ -2409,6 +2412,193 @@ function dessinerPenduPdf(doc, item, slot, solution) {
             g.yAlpha + Math.floor(i / 13) * g.T * 0.06, { align: 'center' });
     });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES PENTAMINOS, SUR LE PAPIER.
+//
+// L'ÉCRAN DONNE LES PIÈCES, LA FEUILLE DONNE LE RECTANGLE VIDE ET LES PIÈCES À
+// CÔTÉ. L'élève dessine le pavage au crayon, en écrivant la lettre de chaque
+// pièce dans ses cinq cases — c'est ainsi qu'on vérifie, et c'est ainsi qu'on
+// RATURE, ce que l'écran ne permet pas.
+//
+// ON N'IMPRIME PAS DE PIÈCES À DÉCOUPER. Ce serait plus joli et cela coûterait
+// une paire de ciseaux par élève, dix minutes de classe, et des pièces perdues
+// sous les tables. La lettre écrite dans la case dit la même chose.
+
+function posePentaminos(item, slot) {
+    const { largeur, hauteur, pieces } = item.meta;
+    const T = slot.taille;
+    const u = Math.min(T * 0.60 / largeur, T * 0.42 / hauteur);
+    const l = largeur * u, h = hauteur * u;
+    const g = {
+        T, u, l, h, largeur, hauteur, pieces,
+        x: slot.x + (T - l) / 2,
+        y: slot.y + T * 0.05,
+        dispo: T * 0.84 - T * 0.05 - h
+    };
+    g.yPieces = g.y + h + T * 0.05;
+    g.rangees = rangerLesPieces(g);
+    return g;
+}
+
+/**
+ * LES PIÈCES SOUS LE RECTANGLE, SUR AUTANT DE RANGÉES QU'IL EN FAUT.
+ *
+ * LE PREMIER JET LES COUPAIT. Une seule rangée, et `break` dès que la suivante
+ * dépassait du cadre : la fiche montrait DEUX pièces sur quatre, et l'élève
+ * cherchait un pavage avec la moitié du jeu. C'est exactement ce que
+ * `nouvelExercice.mjs` annonce en toutes lettres — « un énoncé juste à l'écran
+ * peut être sans réponse possible sur le papier » —, et il a fallu REGARDER
+ * l'image pour le voir : aucun compteur ne bouge quand une fiche est sans
+ * solution.
+ *
+ * On couche donc chaque pièce dans le sens le plus large, on les range en
+ * rangées, et l'on rétrécit tant que l'ensemble déborde. Le I devient une
+ * barre de cinq de long sur une de haut plutôt que l'inverse.
+ */
+function rangerLesPieces(g) {
+    const couchee = (cells) => {
+        const w = Math.max(...cells.map(c => c[0])) + 1;
+        const h = Math.max(...cells.map(c => c[1])) + 1;
+        if (w >= h) return cells;
+        const tournee = cells.map(([x, y]) => [-y, x]);
+        const mx = Math.min(...tournee.map(c => c[0]));
+        const my = Math.min(...tournee.map(c => c[1]));
+        return tournee.map(([x, y]) => [x - mx, y - my]);
+    };
+    const formes = g.pieces.map(id => ({ id, cells: couchee(PENTA_FORMES[id]) }));
+
+    for (let essai = 0; essai < 14; essai++) {
+        const up = g.u * 0.46 * Math.pow(0.9, essai);
+        const ecart = up * 0.7, sousLeNom = up * 1.5;
+        const rangees = [];
+        let ligne = [], large = 0, haute = 0, total = 0;
+        const fermer = () => {
+            if (!ligne.length) return;
+            rangees.push({ pieces: ligne, haut: haute });
+            total += haute + sousLeNom;
+            ligne = []; large = 0; haute = 0;
+        };
+        for (const f of formes) {
+            const w = (Math.max(...f.cells.map(c => c[0])) + 1) * up;
+            const h = (Math.max(...f.cells.map(c => c[1])) + 1) * up;
+            if (ligne.length && large + ecart + w > g.l) fermer();
+            ligne.push({ ...f, w, h, dx: large });
+            large += w + ecart;
+            haute = Math.max(haute, h);
+        }
+        fermer();
+        if (total <= g.dispo || essai === 13) {
+            let y = 0;
+            for (const r of rangees) {
+                r.y = y;
+                r.pieces.forEach(p => { p.y = y; });
+                y += r.haut + sousLeNom;
+            }
+            return { rangees, up, sousLeNom };
+        }
+    }
+    return { rangees: [], up: g.u * 0.2, sousLeNom: 0 };
+}
+
+function pentaminosPreviewHtml(item, slot, k, solution) {
+    const g = posePentaminos(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = '';
+
+    // Le rectangle vide, quadrillé.
+    for (let y = 0; y < g.hauteur; y++) for (let x = 0; x < g.largeur; x++) {
+        html += `<div style="position:absolute; left:${px(g.x + x * g.u)};
+            top:${px(g.y + y * g.u)}; width:${px(g.u)}; height:${px(g.u)};
+            border:1px solid #9aa3b2; box-sizing:border-box;"></div>`;
+    }
+    html += `<div style="position:absolute; left:${px(g.x)}; top:${px(g.y)};
+        width:${px(g.l)}; height:${px(g.h)}; border:2px solid #1a202c;
+        box-sizing:border-box;"></div>`;
+
+    // LA SOLUTION ÉCRIT LA LETTRE DANS CHAQUE CASE, et ne colorie pas : une
+    // feuille de correction part au photocopieur, et six aplats de couleur y
+    // deviennent six gris qu'on ne distingue plus.
+    if (solution && item.meta.solution) {
+        for (const s of item.meta.solution) {
+            for (const [a, b] of s.cells) {
+                html += `<div style="position:absolute;
+                    left:${px(g.x + (s.x + a) * g.u)}; top:${px(g.y + (s.y + b) * g.u)};
+                    width:${px(g.u)}; height:${px(g.u)}; display:flex;
+                    align-items:center; justify-content:center;
+                    font-size:${px(g.u * 0.5)}; font-weight:800; color:#1d4ed8;
+                    ">${s.id}</div>`;
+            }
+        }
+    }
+
+    // Les pièces, rangée par rangée sous le rectangle.
+    const { rangees, up } = g.rangees;
+    for (const r of rangees) {
+        for (const p of r.pieces) {
+            for (const [a, b] of p.cells) {
+                html += `<div style="position:absolute;
+                    left:${px(g.x + p.dx + a * up)};
+                    top:${px(g.yPieces + p.y + b * up)};
+                    width:${px(up)}; height:${px(up)};
+                    border:1.5px solid #1a202c; box-sizing:border-box;"></div>`;
+            }
+            html += `<div style="position:absolute; left:${px(g.x + p.dx)};
+                top:${px(g.yPieces + p.y + r.haut + up * 0.1)}; width:${px(p.w)};
+                text-align:center; font-size:${px(up * 0.9)}; font-weight:800;
+                color:#2d3748;">${p.id}</div>`;
+        }
+    }
+    return html;
+}
+
+function dessinerPentaminosPdf(doc, item, slot, solution) {
+    const g = posePentaminos(item, slot);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.2);
+    for (let y = 0; y < g.hauteur; y++) for (let x = 0; x < g.largeur; x++) {
+        doc.rect(g.x + x * g.u, g.y + y * g.u, g.u, g.u, 'S');
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.6);
+    doc.rect(g.x, g.y, g.l, g.h, 'S');
+
+    if (solution && item.meta.solution) {
+        doc.setTextColor(29, 78, 216);
+        doc.setFontSize(Math.min(11, g.u * 1.6));
+        for (const s of item.meta.solution) {
+            for (const [a, b] of s.cells) {
+                doc.text(pourPdf(s.id), g.x + (s.x + a + 0.5) * g.u,
+                    g.y + (s.y + b + 0.68) * g.u, { align: 'center' });
+            }
+        }
+        doc.setTextColor(...ENCRE.texte);
+    }
+
+    const { rangees, up } = g.rangees;
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.35);
+    for (const r of rangees) {
+        for (const p of r.pieces) {
+            for (const [a, b] of p.cells) {
+                doc.rect(g.x + p.dx + a * up, g.yPieces + p.y + b * up, up, up, 'S');
+            }
+            doc.setFontSize(Math.min(9, up * 1.9));
+            doc.text(pourPdf(p.id), g.x + p.dx + p.w / 2,
+                g.yPieces + p.y + r.haut + up * 1.05, { align: 'center' });
+        }
+    }
+}
+
+RENDUS_GRILLES.pentaminos = {
+    titre: 'Les Pentaminos',
+    nomBloc: 'Rectangle',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: pentaminosPreviewHtml,
+    pdfGrille: dessinerPentaminosPdf,
+    parLigneDefaut: 2
+};
 
 RENDUS_GRILLES.pendu = {
     titre: 'Le Pendu Mathématique',

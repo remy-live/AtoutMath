@@ -1315,6 +1315,30 @@ export const calculExercises = [
         instruction: "Tout le monde est sur la rive de départ, il faut tout amener en face. La barque ne porte qu'un passager en plus du passeur, et le passeur doit toujours être à bord — une barque ne traverse pas toute seule. Certains ne peuvent pas rester ensemble sans surveillance : le loup mangerait la chèvre, la chèvre mangerait le chou. COMMENCE PAR CELUI QUI EST AU MILIEU DES DISPUTES, c'est lui qu'il faut séparer des autres. ET ACCEPTE DE RAMENER QUELQU'UN EN ARRIÈRE : c'est le coup auquel personne ne pense, et c'est celui qui débloque tout. Plusieurs chemins mènent à l'autre rive ; sept traversées suffisent."
     },
     {
+        // LES PENTAMINOS. Rémy, 29 octobre, devant la maquette : « les penamios,
+        // ca me va ». Douze pièces de cinq cases ; on en pose quatre, cinq ou six
+        // dans un rectangle, sans trou et sans chevauchement.
+        //
+        // LE JEU DE PIÈCES N'EST JAMAIS TIRÉ AU HASARD. La plupart des paquets de
+        // quatre pentaminos ne pavent AUCUN 4 × 5 : on fabrique donc d'abord un
+        // pavage, et les pièces servies sont celles qu'il emploie. L'élève cherche
+        // toujours une solution qui existe — souvent plusieurs.
+        id: 'logi-pentaminos', title: 'Les Pentaminos',
+        cree: '2026-10-29',
+        generatorId: 'logique.pentaminos', activityId: 'pentaminos',
+        printable: 'pentaminos',
+        // DEUX PAR LIGNE À L'IMPRESSION : il faut la place du rectangle ET celle
+        // des pièces à côté, sans quoi l'élève n'a pas de quoi les dessiner.
+        colonnesPapier: 2,
+        sansRevision: true,
+        params: { niveau: '1' },
+        skills: ['num.logique.pentaminos'],
+        motsClefs: ['pentamino', 'pentaminos', 'pavage', 'paver', 'aire', 'puzzle',
+            'logique', 'symétrie', 'rectangle', 'pièces'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Chaque pièce est faite de CINQ cases, et il faut qu'elles remplissent le rectangle entièrement : pas un trou, pas un chevauchement. Prends une pièce et glisse-la ; touche-la sur le plateau pour la reprendre. « Tourner » et « Retourner » agissent sur la pièce choisie — et si rien ne change, ce n'est pas une panne : c'est que la pièce est symétrique, comme la croix qui a la même forme dans les quatre sens. COMMENCE PAR UN COIN : une case de coin ne se remplit que de deux façons, une case du milieu s'en offre huit. Et compte avant de poser — l'aire du rectangle te dit combien de pièces il faut."
+    },
+    {
         id: 'logi-allumettes', title: 'Le Jeu des Allumettes',
         cree: '2026-10-26',
         generatorId: 'logique.allumettes', activityId: 'allumettes',
