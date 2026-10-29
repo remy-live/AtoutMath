@@ -16,6 +16,9 @@ import { COLONNES, nombreFr } from '../../core/dessinsGradues.js';
 // LES FORMES DES PENTAMINOS VIENNENT DU NOYAU : la feuille et l'écran dessinent
 // les mêmes douze pièces, et rien ne peut diverger.
 import { FORMES as PENTA_FORMES } from '../../core/pentaminos.js';
+// LA SOLUTION IMPRIMÉE EST CELLE DU NOYAU : la feuille de correction et l'écran
+// comptent les mêmes gestes, et rien ne peut diverger.
+import { resoudre as resoudreTransvasement } from '../../core/transvasements.js';
 // LA GÉOMÉTRIE DES ALLUMETTES VIENT DU NOYAU, en bloc : l'écran et la
 // feuille lisent les mêmes rectangles, et rien ne peut diverger.
 import * as ALLU from '../../core/allumettesDessin.js';
@@ -2412,6 +2415,183 @@ function dessinerPenduPdf(doc, item, slot, solution) {
             g.yAlpha + Math.floor(i / 13) * g.T * 0.06, { align: 'center' });
     });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES TRANSVASEMENTS, SUR LE PAPIER.
+//
+// L'ÉCRAN VERSE ; LA FEUILLE DEMANDE DE NOTER. Les bidons sont dessinés vides
+// en haut, et dessous un tableau où l'élève écrit, ligne après ligne, ce que
+// contient chaque bidon après chaque geste. C'est le même raisonnement, et il y
+// gagne une trace : à l'écran on verse et l'on oublie, sur la feuille on RELIT
+// ses trois derniers états et l'on voit qu'on tourne en rond.
+//
+// LA PREMIÈRE LIGNE EST DONNÉE — c'est l'état de départ, qui n'est pas une
+// question. Sans elle, l'élève hésite sur ce qu'il faut écrire en haut.
+
+function poseTransvasements(item, slot) {
+    const { caps } = item.meta;
+    const T = slot.taille;
+    const n = caps.length;
+    // Les bidons occupent le tiers haut, le tableau les deux tiers bas.
+    const hBidons = T * 0.30;
+    const litre = Math.min(hBidons / Math.max(...caps), T * 0.035);
+    const large = Math.min(T * 0.16, T / (n + 1.4));
+    const ecart = large * 0.55;
+    const totalL = n * large + (n - 1) * ecart;
+    const lignes = 8;
+    // LA PLACE DE LA CIBLE EST RÉSERVÉE, pas espérée. Calculée « à peu près sous
+    // les bidons », la ligne « il faut 2 L » tombait PILE sur la première
+    // rangée du tableau et les deux se chevauchaient. Le tableau commence donc
+    // après la capacité ET après la cible, comptées en hauteurs de litre.
+    const yTable = slot.y + T * 0.03 + hBidons + litre * 3.4;
+    const colonne = large + ecart;
+    const hLigne = Math.max(T * 0.045, (T * 0.9 - (yTable - slot.y)) / (lignes + 1));
+    return {
+        T, n, caps, litre, large, ecart, lignes, hLigne, colonne,
+        xBidons: slot.x + (T - totalL) / 2,
+        yBidons: slot.y + T * 0.03,
+        hBidons,
+        // LE TABLEAU SE RANGE SOUS LES BIDONS, colonne par colonne. Centré
+        // pour lui-même, il ne disait pas quelle colonne allait avec quel
+        // bidon, et il aurait fallu une ligne d'en-tête pour le dire.
+        xTable: slot.x + (T - totalL) / 2 - ecart / 2,
+        yTable
+    };
+}
+
+function transvasementsPreviewHtml(item, slot, k, solution) {
+    const g = poseTransvasements(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = '';
+
+    g.caps.forEach((cap, i) => {
+        const x = g.xBidons + i * (g.large + g.ecart);
+        const h = cap * g.litre;
+        const y = g.yBidons + g.hBidons - h;
+        html += `<div style="position:absolute; left:${px(x)}; top:${px(y)};
+            width:${px(g.large)}; height:${px(h)}; border:2px solid #1a202c;
+            border-top:none; box-sizing:border-box;"></div>`;
+        for (let t = 1; t < cap; t++) {
+            html += `<div style="position:absolute; left:${px(x + g.large * 0.55)};
+                top:${px(y + t * g.litre)}; width:${px(g.large * 0.3)};
+                border-top:1px solid #9aa3b2;"></div>`;
+        }
+        html += `<div style="position:absolute; left:${px(x)};
+            top:${px(g.yBidons + g.hBidons + g.litre * 0.25)}; width:${px(g.large)};
+            text-align:center; font-size:${px(g.litre * 1.1)}; font-weight:800;
+            color:#2d3748;">${cap} L</div>`;
+    });
+
+    // LA CIBLE DE CETTE ÉNIGME-LÀ, écrite dans le bloc : la consigne du haut est
+    // commune à toute la feuille et ne peut pas la porter.
+    html += `<div style="position:absolute; left:${px(slot.x)};
+        top:${px(g.yBidons + g.hBidons + g.litre * 1.7)}; width:${px(g.T)};
+        text-align:center; font-size:${px(g.litre * 1.25)}; font-weight:800;
+        color:#c2410c;">il faut ${item.meta.cible} L${
+        item.meta.famille === 'partage' ? ' — ni robinet ni évier' : ''}</div>`;
+
+    const etats = solution ? etatsDeLaSolution(item) : null;
+    for (let r = 0; r <= g.lignes; r++) {
+        for (let c = 0; c < g.n; c++) {
+            const donne = r === 0 || (etats && r < etats.length);
+            const texte = r === 0 ? String(item.meta.depart[c])
+                : (etats && etats[r]) ? String(etats[r][c]) : '';
+            html += `<div style="position:absolute;
+                left:${px(g.xTable + c * g.colonne)}; top:${px(g.yTable + r * g.hLigne)};
+                width:${px(g.colonne)}; height:${px(g.hLigne)};
+                border:1px solid #9aa3b2; box-sizing:border-box; display:flex;
+                align-items:center; justify-content:center;
+                font-size:${px(g.hLigne * 0.5)}; font-weight:800;
+                color:${r === 0 ? '#2d3748' : '#1d4ed8'};
+                background:${r === 0 ? '#eef2f7' : 'transparent'};
+                ">${donne ? texte : ''}</div>`;
+        }
+    }
+    return html;
+}
+
+/** Les états successifs de la plus courte solution, départ compris. */
+function etatsDeLaSolution(item) {
+    const route = resoudreTransvasement(item.meta.caps, item.meta.cible, item.meta.famille);
+    if (!route) return null;
+    return [item.meta.depart].concat(route.map(g => g.etat));
+}
+
+function dessinerTransvasementsPdf(doc, item, slot, solution) {
+    const g = poseTransvasements(item, slot);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    g.caps.forEach((cap, i) => {
+        const x = g.xBidons + i * (g.large + g.ecart);
+        const h = cap * g.litre;
+        const y = g.yBidons + g.hBidons - h;
+        doc.line(x, y, x, y + h);
+        doc.line(x + g.large, y, x + g.large, y + h);
+        doc.line(x, y + h, x + g.large, y + h);
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.2);
+        for (let t = 1; t < cap; t++) {
+            doc.line(x + g.large * 0.55, y + t * g.litre,
+                x + g.large * 0.85, y + t * g.litre);
+        }
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.5);
+        doc.setTextColor(...ENCRE.texte);
+        doc.setFontSize(Math.min(9, g.litre * 2.2));
+        doc.text(pourPdf(`${cap} L`), x + g.large / 2,
+            g.yBidons + g.hBidons + g.litre * 1.1, { align: 'center' });
+    });
+
+    doc.setTextColor(194, 65, 12);
+    doc.setFontSize(Math.min(10, g.litre * 2.4));
+    doc.text(pourPdf(`il faut ${item.meta.cible} L${
+        item.meta.famille === 'partage' ? ' — ni robinet ni évier' : ''}`),
+    slot.x + g.T / 2, g.yBidons + g.hBidons + g.litre * 2.5, { align: 'center' });
+    doc.setTextColor(...ENCRE.texte);
+
+    const etats = solution ? etatsDeLaSolution(item) : null;
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.2);
+    for (let r = 0; r <= g.lignes; r++) {
+        for (let c = 0; c < g.n; c++) {
+            doc.rect(g.xTable + c * g.colonne, g.yTable + r * g.hLigne,
+                g.colonne, g.hLigne, 'S');
+        }
+    }
+    doc.setFontSize(Math.min(10, g.hLigne * 1.5));
+    for (let c = 0; c < g.n; c++) {
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(String(item.meta.depart[c])),
+            g.xTable + (c + 0.5) * g.colonne, g.yTable + g.hLigne * 0.68,
+            { align: 'center' });
+    }
+    if (etats) {
+        doc.setTextColor(29, 78, 216);
+        for (let r = 1; r < Math.min(etats.length, g.lignes + 1); r++) {
+            for (let c = 0; c < g.n; c++) {
+                doc.text(pourPdf(String(etats[r][c])),
+                    g.xTable + (c + 0.5) * g.colonne,
+                    g.yTable + (r + 0.68) * g.hLigne, { align: 'center' });
+            }
+        }
+        doc.setTextColor(...ENCRE.texte);
+    }
+}
+
+RENDUS_GRILLES.transvasements = {
+    titre: 'Les Transvasements',
+    nomBloc: 'Énigme',
+    // LA CONSIGNE EST GÉNÉRALE, et chaque bloc dit SA cible. Reprise du premier
+    // énoncé — « avec des bidons de 7 L et 5 L » —, elle contredisait la
+    // deuxième énigme de la feuille, qui en a de 7 L et 4 L. Vu sur l'image.
+    consigne: () => 'Verse d\'un bidon dans l\'autre pour obtenir la quantité demandée. '
+        + 'Un versement s\'arrête tout seul : soit le premier se vide, soit le second '
+        + 'déborde. Note ce que contient chaque bidon après chaque geste.',
+    previewGrille: transvasementsPreviewHtml,
+    pdfGrille: dessinerTransvasementsPdf,
+    parLigneDefaut: 2
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LES PENTAMINOS, SUR LE PAPIER.

@@ -202,6 +202,17 @@ const BASE = {
             + 'séparer des autres. Et accepte de RAMENER quelqu\'un en arrière — c\'est le '
             + 'coup auquel personne ne pense, et c\'est celui qui débloque tout.'
     },
+    'num.logique.transvasements': {
+        label: 'Mesurer en transvasant (Les Transvasements)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Obtenir une quantité exacte en versant d\'un bidon dans l\'autre.',
+        lesson: 'Un versement s\'arrête tout seul : soit le premier bidon est vide, soit '
+            + 'le second est plein. Il n\'y a jamais de demi-mesure. Et ce qu\'on peut '
+            + 'mesurer, ce sont exactement les multiples du PGCD des deux bidons — avec '
+            + '6 L et 4 L, on n\'obtiendra jamais 3 L.'
+    },
     'num.logique.pentaminos': {
         label: 'Paver un rectangle (Les Pentaminos)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

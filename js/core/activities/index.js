@@ -44,6 +44,7 @@ import { penduGenerator } from '../generators/pendu.js';
 import { dessinGradueGenerator } from '../generators/dessinGradue.js';
 import { arbreCalculGenerator } from '../generators/arbreCalcul.js';
 import { pentaminosGenerator } from '../generators/pentaminos.js';
+import { transvasementsGenerator } from '../generators/transvasements.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -190,6 +191,7 @@ import {
     cheminNombresGenerator, allumettesGenerator,
     allumettesEgaliteGenerator, traverseeGenerator, penduGenerator,
     dessinGradueGenerator, arbreCalculGenerator, pentaminosGenerator,
+    transvasementsGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -584,6 +586,22 @@ registerActivity({
 // L'ARBRE DE CALCULS — l'unité est l'ARBRE. Pas de réglage de saisie : le
 // pavé fait partie de l'exercice et porte des signes que le clavier du
 // système n'a pas (× et ÷), donc il n'y a rien à choisir.
+// LES TRANSVASEMENTS. Rémy, 29 octobre : « j'aime bien les transvasements […]
+// il faudra faire du drag drop plutôt ».
+//
+// `parDefaut: 3` — une énigme se résout en quatre à dix gestes, mais la
+// RÉFLEXION tient tout le temps : trois d'affilée suffisent, et la quatrième
+// se jouerait à la main sans penser.
+registerActivity({
+    id: 'transvasements',
+    unite: 'énigme',
+    parDefaut: 3,
+    label: 'Les Transvasements',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./transvasements.js')
+});
+
 // LES PENTAMINOS. Rémy, 29 octobre : « les penamios, ca me va ».
 //
 // `parDefaut: 3` — trois rectangles d'affilée, et c'est mesuré à la durée :

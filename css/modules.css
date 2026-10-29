@@ -15853,6 +15853,114 @@ body.en-boite > #app-container { background: none; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   LES TRANSVASEMENTS — des bidons de verre, un robinet, un évier.
+
+   Rémy, 29 octobre : « j'aime bien les transvasements […] il faudra faire du
+   drag drop plutôt ».
+
+   UN LITRE FAIT LA MÊME HAUTEUR DANS TOUS LES BIDONS, et c'est la décision qui
+   porte tout le dessin : `--ts-litre`. Un bidon de 3 L aussi haut qu'un de 8 L
+   comparerait des niveaux qui ne veulent rien dire — l'élève lirait « il est à
+   moitié plein » au lieu de « il contient quatre litres ». La hauteur de chaque
+   bidon se calcule donc à partir de sa capacité.
+
+   LES COULEURS DE L'EAU ET DU VERRE SONT POSÉES EN DUR : de l'eau est bleue
+   dans les deux thèmes, comme la rivière de La Traversée.
+   ───────────────────────────────────────────────────────────────────────── */
+.ts-layout {
+    --ts-litre: clamp(14px, 3.4vh, 26px);
+    --ts-rebord: 26px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    width: 100%;
+}
+.ts-context { text-align: center; max-width: 46ch; }
+
+.ts-scene {
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: clamp(8px, 3vw, 26px); flex-wrap: nowrap;
+    width: 100%; max-width: 620px; padding: 14px 10px 10px;
+    border-radius: 20px;
+    background: linear-gradient(#f4fbff, #dceef7);
+    box-shadow: inset 0 0 0 2px #cbe2ee;
+}
+.ts-bidons { display: flex; align-items: flex-end; gap: clamp(8px, 3.5vw, 24px); }
+
+/* LE ROBINET ET L'ÉVIER SONT DES CIBLES DE GLISSER, pas des ornements : on
+   penche un bidon dessus. Un bouton « Remplir » dirait la même chose en trois
+   temps, et Rémy a demandé un seul geste. */
+.ts-robinet, .ts-evier {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    flex: 0 0 auto; padding: 6px; border-radius: 14px;
+    border: 2px dashed transparent;
+}
+.ts-icone { width: clamp(42px, 13vw, 62px); height: auto; display: block; }
+.ts-etiq { font: 700 9px system-ui; letter-spacing: .08em; text-transform: uppercase;
+    color: #5e7d8c; }
+.ts-visee { border-color: #ea580c; background: rgb(234 88 12 / .10); }
+
+/* LE BIDON : du verre, de l'eau, des graduations, et un reflet. */
+.ts-bidon {
+    position: relative; width: clamp(44px, 13vw, 66px);
+    border: 2.5px solid #9bb6c4; border-radius: 9px 9px 11px 11px;
+    background: #eaf6fb; cursor: grab; touch-action: none;
+    box-shadow: 0 6px 14px -10px rgb(15 23 42 / .8);
+    overflow: hidden;
+}
+.ts-bidon--pris { opacity: .35; }
+.ts-bidon:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+.ts-visee.ts-bidon { border-color: #ea580c; border-style: solid; border-width: 3.5px; }
+.ts-eau {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(#5bb6e4, #2b86bb);
+    border-top: 3px solid #8fd9f6;
+    transition: height .32s ease;
+}
+@media (prefers-reduced-motion: reduce) { .ts-eau { transition: none; } }
+.ts-grad {
+    position: absolute; right: 4px; width: 12px; height: 2px; border-radius: 1px;
+    background: #5e7d8c; opacity: .5; pointer-events: none;
+}
+.ts-reflet {
+    position: absolute; left: 5px; top: 6px; bottom: 6px; width: 7px; border-radius: 4px;
+    background: #fff; opacity: .45; pointer-events: none;
+}
+/* LE NOMBRE DE LITRES EST ÉCRIT DANS LE BIDON, en blanc cerné : lu sur l'eau
+   il disparaît quand le bidon est vide, lu sous le bidon il oblige à regarder
+   ailleurs que là où l'on verse. */
+.ts-litres {
+    position: absolute; left: 0; right: 0; top: 7px; text-align: center;
+    font: 800 .82rem system-ui; color: #0b3c57;
+    text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+    pointer-events: none;
+}
+.ts-nom {
+    position: absolute; left: 0; right: 0; bottom: 4px; text-align: center;
+    font: 700 .64rem system-ui; color: #0b3c57; opacity: .75; pointer-events: none;
+}
+
+.ts-statut { min-height: 2.8em; text-align: center; font-weight: 600;
+    color: var(--text-muted); max-width: 46ch; }
+.ts-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.ts-btn {
+    min-height: 44px; padding: 0 18px;
+    border: 1.5px solid var(--border); border-radius: 14px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: .95rem; font-weight: 800; cursor: pointer;
+}
+.ts-btn:disabled { opacity: .5; cursor: default; }
+.ts-btn:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+.ts-scene--ok { outline: 3px solid var(--success); outline-offset: 3px; }
+
+/* LE FANTÔME suit le doigt, penché comme un bidon qu'on verse. Il est
+   TRANSPARENT AUX ÉVÉNEMENTS, sinon `elementFromPoint` le trouverait lui — il
+   est sous le doigt par construction — et l'on ne viserait jamais une cible. */
+.ts-fantome {
+    position: fixed; z-index: 2000001; pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-24deg);
+    box-shadow: 0 10px 22px -6px rgb(15 23 42 / .55);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    LES PENTAMINOS — douze pièces de cinq cases, un rectangle à remplir.
 
    Rémy, 29 octobre, devant la maquette : « les penamios, ca me va ».

@@ -1315,6 +1315,32 @@ export const calculExercises = [
         instruction: "Tout le monde est sur la rive de départ, il faut tout amener en face. La barque ne porte qu'un passager en plus du passeur, et le passeur doit toujours être à bord — une barque ne traverse pas toute seule. Certains ne peuvent pas rester ensemble sans surveillance : le loup mangerait la chèvre, la chèvre mangerait le chou. COMMENCE PAR CELUI QUI EST AU MILIEU DES DISPUTES, c'est lui qu'il faut séparer des autres. ET ACCEPTE DE RAMENER QUELQU'UN EN ARRIÈRE : c'est le coup auquel personne ne pense, et c'est celui qui débloque tout. Plusieurs chemins mènent à l'autre rive ; sept traversées suffisent."
     },
     {
+        // LES TRANSVASEMENTS. Rémy, 29 octobre : « j'aime bien les transvasements
+        // […] il faudra faire du drag drop plutôt ». On prend un bidon et on le
+        // penche — sur un autre bidon, sur le robinet, sur l'évier. Un seul geste.
+        //
+        // CE QUE L'ÉLÈVE RENCONTRE SANS QU'ON LE LUI NOMME : avec 5 L et 3 L on
+        // obtient tout ; avec 6 L et 4 L on n'obtiendra jamais 3 L. Ce qui est
+        // mesurable, ce sont les multiples du PGCD — et le niveau 2 sert exprès
+        // des bidons dont le PGCD vaut 2 ou 3.
+        //
+        // AUCUNE ÉNIGME SERVIE N'EST IMPOSSIBLE : chaque tirage est parcouru en
+        // largeur avant d'être servi, et l'on garde le nombre de coups de la plus
+        // courte solution pour pouvoir le dire à la fin.
+        id: 'logi-transvasements', title: 'Les Transvasements',
+        cree: '2026-10-29',
+        generatorId: 'logique.transvasements', activityId: 'transvasements',
+        printable: 'transvasements',
+        colonnesPapier: 2,
+        sansRevision: true,
+        params: { niveau: '1' },
+        skills: ['num.logique.transvasements'],
+        motsClefs: ['transvasement', 'transvasements', 'bidon', 'bidons', 'verser', 'litre',
+            'mesurer', 'PGCD', 'logique', 'eau', 'seau'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Prends un bidon et penche-le : sur un AUTRE BIDON pour verser, sur le ROBINET pour le remplir, sur l'ÉVIER pour le vider. Un versement s'arrête tout seul — soit le premier bidon se vide, soit le second déborde — donc il n'y a jamais de demi-mesure à estimer : c'est de l'arithmétique, pas de l'adresse. COMMENCE PAR REMPLIR LE GRAND ET LE VERSER DANS LE PETIT : ce qui reste dans le grand est la différence des deux, et c'est de là que tout part. Au niveau 3 il n'y a ni robinet ni évier : tout le liquide est déjà là, rien ne se perd, et l'on PARTAGE au lieu de mesurer."
+    },
+    {
         // LES PENTAMINOS. Rémy, 29 octobre, devant la maquette : « les penamios,
         // ca me va ». Douze pièces de cinq cases ; on en pose quatre, cinq ou six
         // dans un rectangle, sans trou et sans chevauchement.
