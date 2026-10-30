@@ -499,3 +499,22 @@ export function laLeconFormule(t, cle) {
     return `${f.texte} — ${f.fonction.libelle} = ${COURTS[f.haut]} sur ${COURTS[f.bas]}, `
         + `lus par rapport à l'angle en ${f.angle}.`;
 }
+
+/**
+ * LES TROIS PALIERS, À COCHER PLUTÔT QU'À CHOISIR.
+ *
+ * Rémy : « il faudrait pouvoir faire les check box comme pour le calcul
+ * littéral ». Ici le gain est net : montrer, nommer et écrire la formule sont
+ * trois gestes DIFFÉRENTS sur la même figure, et une séance de révision veut
+ * souvent les deux derniers sans le premier — ce qu'un menu ne sait pas dire.
+ *
+ * Ils sont exportés parce que le catalogue les déclare : une seconde liste
+ * écrite là-bas finirait par ne plus dire la même chose qu'ici.
+ */
+export const MARCHES_TRIGO = [
+    { id: 'reperer', nom: '1. Cliquer le côté sur la figure' },
+    { id: 'ecrire', nom: '2. Écrire le nom du côté — [AB]' },
+    { id: 'formule', nom: '3. Écrire la formule — cos(G) = …' }
+];
+/** Le réglage d'avant les cases — voir `marchesCochees`. */
+export const ANCIEN_TRIGO = { cle: 'palier' };

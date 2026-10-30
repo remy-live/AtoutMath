@@ -57,7 +57,9 @@ class CompteEstBon extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .cb-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .cb-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                }
                 .cb-btn:disabled { opacity: .4; cursor: default; }
 
                 /* LE BUT, ÉNORME. C'est le seul nombre qu'on regarde pendant
@@ -65,7 +67,18 @@ class CompteEstBon extends BaseGame {
                 .cb-but {
                     font-size: clamp(38px, 13cqw, 76px); font-weight: 900; line-height: 1;
                     letter-spacing: -.03em;
-                    background: linear-gradient(135deg, var(--primary), #a855f7);
+                    /* LE MÊME DÉFAUT QUE LE NOM DU LOGICIEL, ET LE MÊME REMÈDE.
+                       Ce dégradé finissait sur un violet écrit en dur : en thème
+                       Forêt, le but partait du vert et arrivait au violet ; en
+                       Coucher de soleil, de l'orange au violet. Et en thème
+                       sombre il partait d'un indigo de FOND posé en texte sur du
+                       sombre — le nombre qu'on regarde le plus était celui qui
+                       se lisait le moins bien. Les deux jetons portent leurs
+                       mesures dans css/base.css.
+                       (PAS D'ACCENT GRAVE ICI : on est dans un gabarit, et un
+                       accent grave le ferme. Septième fois dans ce dépôt ;
+                       node --check l'a dit en une seconde.) */
+                    background: linear-gradient(135deg, var(--degrade-texte-debut), var(--degrade-texte-fin));
                     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
                 }
                 .cb-ecart { font-size: .82rem; color: var(--text-muted); font-weight: 700; }
@@ -96,7 +109,10 @@ class CompteEstBon extends BaseGame {
                     border: 2px solid var(--border); background: var(--bg-panel);
                     color: var(--text-main); font-size: 22px; font-weight: 800;
                 }
-                .cb-signe:hover, .cb-signe--choisi { background: var(--primary); color: #fff; }
+                .cb-signe--choisi { background: var(--primary); color: #fff; }
+                @media (hover: hover) {
+                    .cb-signe:hover { background: var(--primary); color: #fff; }
+                }
 
                 /* LA LIGNE EN COURS : « 75 × 4 = [  ] ». */
                 .cb-ligne {

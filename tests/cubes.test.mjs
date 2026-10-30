@@ -4,7 +4,8 @@ import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
     totalCubes, cubesAuSol, boitePleine, cubesAAjouter, cubesCaches,
-    projeter, facesCube, cubesAPeindre, boiteDessin, pave, construire, mesures, FAMILLES, FUITE
+    projeter, facesCube, cubesAPeindre, boiteDessin, pave, construire, mesures, FAMILLES, FUITE,
+    quartDeTour
 } from '../js/core/cubes.js';
 import { cubesSvg } from '../js/core/cubesSvg.js';
 import { cubesGenerator as G } from '../js/core/generators/cubes.js';
@@ -364,4 +365,84 @@ test('une question sur trois se voit de l\'autre coin', () => {
     // Le tirage vient de l'INDEX, pas du hasard : sur une fiche de neuf
     // dessins, le hasard en donne parfois neuf pareils.
     assert.deepEqual(vues, [false, false, true, false, false, true]);
+});
+
+// ──────────────────────── LES COULEURS ET LE QUART DE TOUR ──────────────────
+//
+// RÉMY, 19 octobre, devant « Dénombrer des cubes par tranche » : « j'aimerai
+// bien ce genre d'exercices (tu peux mettre des couleurs) ». La capture porte
+// un bouton 90° au-dessus du dessin.
+
+test('UN QUART DE TOUR NE CHANGE NI LE NOMBRE DE CUBES NI LA BASE', () => {
+    // C'EST CE QUI REND L'OUTIL HONNÊTE. On montre le même solide sous un
+    // autre angle : si la grille tournée ne portait pas exactement les mêmes
+    // cubes, l'outil mentirait sur la réponse — et l'élève compterait sur une
+    // vue un nombre que l'énoncé refuserait.
+    const grilles = [pave(4, 3, 3), [[4, 0], [1, 2]], [[0, 0, 0], [0, 2, 1], [3, 0, 1]],
+        construire('escalier', { largeur: 4, profondeur: 3, hauteur: 3, rng: makeRng('t') })];
+    grilles.forEach(h => {
+        let g = h;
+        for (let n = 0; n < 4; n++) {
+            g = quartDeTour(g);
+            assert.equal(totalCubes(g), totalCubes(h), `${n + 1} quart(s) : le total a bougé`);
+            assert.equal(cubesAuSol(g), cubesAuSol(h), `${n + 1} quart(s) : la base a bougé`);
+        }
+        // Et QUATRE quarts de tour ramènent exactement au départ : sans cela,
+        // l'outil montrerait quatre solides différents dont un seul serait le
+        // bon, et c'est l'énoncé qu'on trahirait.
+        assert.deepEqual(g, h, 'quatre quarts de tour ne reviennent pas au point de départ');
+    });
+});
+
+test('ET IL TOURNE VRAIMENT — ce n\'est pas un miroir de plus', () => {
+    // Le miroir existait déjà : il retourne l'IMAGE, et il n'y a pas de
+    // troisième vue. Le quart de tour donne quatre VUES du solide, ce qui est
+    // ce que le bouton 90° de la capture fait.
+    const h = [[1, 2, 3], [0, 1, 0]];
+    const t = quartDeTour(h);
+    assert.equal(t.length, h[0].length, 'la grille tournée n\'a pas échangé ses côtés');
+    assert.equal(t[0].length, h.length);
+    assert.notDeepEqual(t, h);
+    // La colonne 0 lue de bas en haut devient la ligne 0.
+    assert.deepEqual(t[0], [h[1][0], h[0][0]]);
+});
+
+test('LES ÉTAGES SONT COLORÉS DÈS L\'ÉNONCÉ, ET ÇA SE DÉCOCHE', () => {
+    // Rémy : « tu peux mettre des couleurs ». Cela défait son propre choix
+    // d'août — « couleurs par étage (via l'indice) » —, et c'est sa demande la
+    // plus récente qui compte ; le réglage garde l'autre possible.
+    const couleurs = G.params.find(p => p.id === 'couleurs');
+    assert.ok(couleurs, 'le réglage « Colorer les étages » n\'existe pas');
+    assert.equal(couleurs.default, true);
+    const avec = G.generate({ taille: 'petit', question: 'total' },
+        { rng: makeRng('c1'), index: 0 });
+    assert.match(avec.prompt.html, /cu-e\d/, 'aucune teinte d\'étage dans l\'énoncé');
+    const sans = G.generate({ taille: 'petit', question: 'total', couleurs: false },
+        { rng: makeRng('c1'), index: 0 });
+    assert.ok(!/cu-e\d/.test(sans.prompt.html), 'décocher ne retire pas les couleurs');
+});
+
+test('LE BOUTON « TOURNER » EST DÉCOCHÉ PAR DÉFAUT — c\'est un autre exercice', () => {
+    // « Le dessin ne ment pas, mais il cache » EST l'exercice. Qui peut
+    // tourner voit les cubes cachés et n'a plus rien à déduire : c'est plus
+    // facile, et c'est au professeur de décider lequel il donne.
+    const tourner = G.params.find(p => p.id === 'tourner');
+    assert.ok(tourner, 'le réglage « Laisser tourner » n\'existe pas');
+    assert.equal(tourner.default, false);
+    const nu = G.generate({ taille: 'petit', question: 'total' }, { rng: makeRng('t1'), index: 0 });
+    assert.ok(!nu.meta.outils, 'le bouton apparaît sans qu\'on l\'ait demandé');
+    const avec = G.generate({ taille: 'petit', question: 'total', tourner: true },
+        { rng: makeRng('t1'), index: 0 });
+    // L'OUTIL VOYAGE DANS `meta.outils` — c'est là, et nulle part ailleurs,
+    // que `core/activities/outils.js` va le chercher. Déclaré à côté, il ne
+    // s'afficherait nulle part, et sans un mot.
+    assert.ok(Array.isArray(avec.meta.outils) && avec.meta.outils.length === 1);
+    const o = avec.meta.outils[0];
+    assert.equal(o.id, 'tourner');
+    assert.ok(o.label && o.html);
+    // QUATRE VUES, PAS UNE QUI TOURNE : cliquer quatre fois pour revenir au
+    // départ fait perdre le fil du comptage, et ce qu'on veut est COMPARER.
+    assert.equal((o.html.match(/<svg/g) || []).length, 4, 'il n\'y a pas quatre vues');
+    assert.match(o.html, /Vue de l'énoncé/);
+    assert.match(o.html, /Tourné de 270°/);
 });

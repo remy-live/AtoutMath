@@ -30,6 +30,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     TROU, BLEUE, ROSE, CASSEE, NIVEAUX, niveauDe, genererNiveau, caseDe,
     deplacer, viser, avancerEnnemis, toucheJoueur, tirer, avancerTirs, avancement, accessibles
@@ -42,6 +43,9 @@ const CASE_LISIBLE = 50;         // en dessous, « 61 − 19 » ne tient plus
 class Skweek extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'skweek');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.rng = makeRng(this.params.seed);
         this.niveauCourant = Number(this.params.niveau) || 1;
         this.viesDepart = Number(this.params.vies) || 3;
@@ -545,10 +549,23 @@ class Skweek extends BaseGame {
     gagne() {
         this.finie = true;
         this.note(`🎉 Niveau ${this.etat.niveau} terminé : tout est rose !`, 'ok');
+        // `partiel` : LE NIVEAU FINI EST LA SOMME DES DALLES REPEINTES.
+        //
+        // RÉMY : « sur Poser une opération, les élèves ont fait 2 opérations
+        // (ou 3) et ont eu 5/5 ». Le même défaut vivait ici, en plus discret :
+        // une question de plus à chaque manche terminée.
+        //
+        // CE N'EST PAS UN JUGEMENT DE MA PART : le manifeste de l'activité
+        // déclare `unite: 'question'`, et c'est lui qui dit ce qu'est une
+        // question dans ce jeu. Chaque dalle est un calcul trié — « 12 fait-il
+        // partie des multiples de 3 ? » —, et elles ont toutes déjà compté.
+        //
+        // La tentative reste ENREGISTRÉE — statistiques, carnet d'erreurs,
+        // points : elle ne fait plus avancer le compteur de questions.
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `Le Peintre niveau ${this.etat.niveau} — ${this.etat.regle.consigne}`,
             expected: 'sol repeint', given: 'sol repeint',
-            points: 15 + this.etat.niveau * 5
+            points: 15 + this.etat.niveau * 5, partiel: true
         });
         this.niveauCourant = Math.min(NIVEAUX.length, this.niveauCourant + 1);
         setTimeout(() => { if (this.isRunning) this.poser(); }, 1800);
@@ -621,19 +638,26 @@ class Skweek extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.etat) this.poser();
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say(`La règle est écrite en haut, et elle commande tout : ici, on repeint `
             + `${this.etat.regle.consigne}. Chaque dalle porte un calcul.`,
             this.container.querySelector('[data-regle]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Je ne marche JAMAIS sans avoir lu. Une dalle qui ne vérifie pas la règle '
-            + 's\'effrite sous mes pieds — et le terrain qu\'elle emporte ne revient pas.', this.vueEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        cur.say('Je ne marche JAMAIS sans avoir lu.', this.vueEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        // DEUX BULLES : le geste, puis ce qu'il coûte de l'oublier. Au-delà de 110
+        // caractères une bulle se lit si lentement qu'on croit la démonstration plantée
+        // (js/core/activities/choice.js, COURT). « et le terrain qu'elle emporte ne
+        // revient pas » est parti : la dalle qui s'effrite dit déjà la sanction.
+        cur.say('Une dalle qui ne vérifie pas la règle s\'effrite sous mes pieds.', this.vueEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Quelques pas VERS des dalles justes : le robot montre le tri. Il
         // s'arrête une fois devant une dalle piégée pour dire pourquoi il ne
@@ -657,7 +681,7 @@ class Skweek extends BaseGame {
             const choisie = piege || bonne;
             if (!choisie) break;
 
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             // LA BULLE POINTE LA DALLE DONT ELLE PARLE, pas le terrain : sinon
             // la flèche désigne une dalle voisine et l'élève lit le mauvais calcul.
             const { dir, c } = choisie;
@@ -666,7 +690,7 @@ class Skweek extends BaseGame {
             cur.say(`${c.calcul} fait ${c.valeur} : ${c.bonne
                 ? 'ça vérifie la règle, j\'y vais'
                 : 'ça ne la vérifie PAS, je ne marche pas dessus'}.`, el);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
             if (c.bonne) {
                 const r = deplacer(this.etat, dir);
@@ -674,15 +698,18 @@ class Skweek extends BaseGame {
                 this.placerHeros();
                 this.majTete();
             } else piegeMontre = true;
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('On lit, on calcule, PUIS on avance. Le bouton TIR sert aux blobs verts — '
-            + 'ils ne se calculent pas, eux — et le 🎯 tourne la tête SANS avancer, pour '
-            + 'les viser sans repeindre une dalle au passage.',
+        if (!await robot.tour()) return fin();
+        cur.say('On lit, on calcule, PUIS on avance.', this.vueEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        // LES DEUX BOUTONS RESTENT NOMMÉS — l'élève en a besoin pour jouer — mais dans
+        // leur propre bulle, et sans l'aparté sur les blobs qui ne se calculent pas.
+        cur.say('Le bouton TIR sert aux blobs verts, et le 🎯 tourne la tête sans avancer.',
         this.container.querySelector('[data-viser]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

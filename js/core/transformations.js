@@ -84,9 +84,43 @@ export const SENS = {
     3: { nom: 'direct', aiguilles: 'dans le sens inverse des aiguilles d\'une montre' }
 };
 
+/**
+ * LE SENS VU, SELON LE SENS DE L'ORDONNÉE DU DESSIN.
+ *
+ * ── CE QUE RÉMY A VU, ET QUE LE CALCUL CONFIRME ────────────────────────────
+ *
+ * RÉMY, sur la Mosaïque des Transformations : « je pense que tu fais une
+ * erreur sur le sens direct et indirect ». Il avait raison, et sur DOUZE
+ * questions sur douze.
+ *
+ * `SENS` ci-dessus décrit ce qu'on voit sur un dessin dont l'ORDONNÉE DESCEND
+ * — celui du quadrillage, et celui d'un SVG laissé à son repère naturel. La
+ * mosaïque, elle, retourne l'ordonnée pour dessiner : `Y(y) = y1 - y` dans
+ * l'activité, `y0 + (bo.y1 - y) * pas` sur la feuille imprimée. Le MÊME quart
+ * de tour s'y voit donc tourner dans l'autre sens, et le mot l'appelait quand
+ * même « indirect ».
+ *
+ * MESURÉ, et non relu : `tools/sensDeLaRotation.mjs` prend chaque question,
+ * calcule le produit vectoriel du trajet dans le repère de l'ÉCRAN, et compare
+ * au mot de l'énoncé. Douze désaccords sur douze pour la mosaïque, zéro sur
+ * douze pour le quadrillage.
+ *
+ * ON NE CHOISIT PAS UNE CONVENTION UNIQUE, parce qu'il n'y en a pas une qui
+ * soit juste : les deux dessins sont bons, ils ne regardent simplement pas le
+ * plan du même côté. Ce qui doit être unique, c'est l'endroit où la question
+ * « de quel côté est-ce que je regarde ? » se pose — et c'est ici.
+ */
+export function sensDe(quarts, { ordonneeMonte = false } = {}) {
+    const n = ((Math.round(quarts) % 4) + 4) % 4;
+    // Retourner l'ordonnée retourne le sens : un quart de tour de 1 devient
+    // celui de 3, et réciproquement.
+    const vu = ordonneeMonte ? ((4 - n) % 4) : n;
+    return SENS[vu] || SENS[1];
+}
+
 /** « le sens indirect (dans le sens des aiguilles d'une montre) ». */
-export function direLeSens(quarts, { avecAiguilles = true } = {}) {
-    const s = SENS[((Math.round(quarts) % 4) + 4) % 4] || SENS[1];
+export function direLeSens(quarts, { avecAiguilles = true, ordonneeMonte = false } = {}) {
+    const s = sensDe(quarts, { ordonneeMonte });
     return avecAiguilles ? `le sens ${s.nom} (${s.aiguilles})` : `le sens ${s.nom}`;
 }
 
@@ -191,6 +225,28 @@ export function cleFigure(figure) {
 }
 
 /**
+ * L'INVERSE DE `cleFigure` — et ce qui le rend nécessaire.
+ *
+ * RÉMY, capture du carnet d'un élève : « il faut montrer la figure de base et
+ * la solutions ». La carte y écrivait « ta réponse : 7|3/8|3/7|4/8|4/8|5,
+ * attendu : 8|2/9|2/8|3/9|3/9|4 » — la forme qui JUGE, posée sous les yeux
+ * d'un enfant.
+ *
+ * LE CARNET REJOUE CE QUI A ÉTÉ ÉCRIT LE JOUR DE L'ERREUR : les erreurs déjà
+ * enregistrées portent cette forme et la porteront toujours. On la relit donc,
+ * et le carnet redessine les deux figures au lieu de les épeler.
+ *
+ * @param {string} cle « 7|3/8|3/7|4 »
+ * @returns {Array<{x:number,y:number}>} les cases, ou une liste vide
+ */
+export function figureDepuisLaCle(cle) {
+    return String(cle ?? '').split('/')
+        .map(c => /^(-?\d+)\|(-?\d+)$/.exec(c.trim()))
+        .filter(Boolean)
+        .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
+}
+
+/**
  * Deux figures sont-elles la MÊME ? L'ordre des cases ne compte pas : on ne
  * demande pas à l'élève de les poser dans un ordre, on lui demande un dessin.
  */
@@ -218,6 +274,47 @@ export function comparer(attendue, posee) {
         oublies: [...veut].filter(k => !mis.has(k)).map(depuisCle),
         enTrop: [...mis].filter(k => !veut.has(k)).map(depuisCle)
     };
+}
+
+/**
+ * LA MÊME FIGURE, POSÉE AILLEURS — de combien de carreaux, ou `null`.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, deux captures du carnet d'erreurs à l'appui : « deux explications
+ * compliqués et fausses ».
+ *
+ * CE QUE LE COMPTE DE CASES NE VOIT PAS. Sur sa capture, l'élève avait colorié
+ * la BONNE FIGURE, un carreau trop à gauche et un carreau trop bas, et la carte
+ * annonçait « 1 case juste, 4 oubliées, 4 en trop ». La phrase est vraie — on
+ * l'a vérifiée au carreau près (`tools/carnetDesTransformations.mjs`) — et elle
+ * décrit un élève qui colorie au hasard. Mesuré sur quatre autres tirages du
+ * même décalage : « 5 oubliées, 5 en trop », c'est-à-dire « rien de juste », à
+ * un élève qui avait tout compris sauf où poser sa figure.
+ *
+ * `comparer` compte des cases et ne peut rien en dire : deux figures décalées
+ * n'ont presque aucune case commune, et le compte le dit fidèlement. Il faut
+ * donc comparer les figures COMME FORMES, ce que fait cette fonction.
+ *
+ * UN SEUL DÉCALAGE EST POSSIBLE, et c'est ce qui rend la recherche immédiate :
+ * si les deux figures se superposent par glissement, alors leur coin haut-gauche
+ * se correspond. On essaie celui-là, et un seul.
+ *
+ * @returns {{dx:number, dy:number}|null} `null` si ce n'est pas un glissement,
+ *   et `null` aussi quand les deux figures sont déjà au même endroit — il n'y a
+ *   alors rien à dire sur la place.
+ */
+export function decalageEntre(reference, posee) {
+    if (!reference || !posee) return null;
+    if (!reference.length || reference.length !== posee.length) return null;
+    const coin = (f) => f.reduce((m, p) => ({
+        x: Math.min(m.x, p.x), y: Math.min(m.y, p.y)
+    }), { x: Infinity, y: Infinity });
+    const a = coin(reference), b = coin(posee);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    if (!dx && !dy) return null;
+    const glissee = reference.map(p => ({ x: p.x + dx, y: p.y + dy }));
+    return memeFigure(glissee, posee) ? { dx, dy } : null;
 }
 
 // --- Reconnaître la transformation entre deux pièces --------------------------
@@ -363,6 +460,26 @@ export function direVecteur(v) {
     if (v.x) bouts.push(`${Math.abs(v.x)} carreau${Math.abs(v.x) > 1 ? 'x' : ''} vers la ${v.x > 0 ? 'droite' : 'gauche'}`);
     if (v.y) bouts.push(`${Math.abs(v.y)} vers le ${v.y > 0 ? 'bas' : 'haut'}`);
     return bouts.length ? bouts.join(' et ') : 'aucun déplacement';
+}
+
+/**
+ * LE MÊME ÉCART, DIT COMME UNE FAUTE : « 1 carreau trop à gauche et 1 trop
+ * bas ».
+ *
+ * `direVecteur` dit un DÉPLACEMENT demandé — « glisse de 3 carreaux vers la
+ * droite » —, celle-ci dit un ÉCART constaté. Les mots changent parce que le
+ * propos change : on ne demande pas à l'élève de refaire ce glissement, on lui
+ * dit de combien sa figure a manqué sa place.
+ */
+export function direLeDecalage(d) {
+    if (!d) return '';
+    const bouts = [];
+    if (d.dx) {
+        bouts.push(`${Math.abs(d.dx)} carreau${Math.abs(d.dx) > 1 ? 'x' : ''}`
+            + ` trop à ${d.dx > 0 ? 'droite' : 'gauche'}`);
+    }
+    if (d.dy) bouts.push(`${Math.abs(d.dy)} trop ${d.dy > 0 ? 'bas' : 'haut'}`);
+    return bouts.join(' et ');
 }
 
 /** La transformation, telle qu'on l'écrit dans une consigne ou une correction. */

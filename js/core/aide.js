@@ -558,3 +558,193 @@ export function plafonnerClavier(aide, params = {}) {
     const dernier = [...ECHELONS].reverse().find(e => !e.clavier) || ECHELONS[0];
     return { ...dernier };
 }
+
+// --- LE CLAVIER EST-IL SEULEMENT POSSIBLE DANS CET EXERCICE ? -----------------
+//
+// Rémy : « dans le mot juste, dans les réglages, le clavier est proposé mais le
+// jeu ne propose jamais le clavier non ? »
+//
+// LE RÉGLAGE « AUTORISER LE CLAVIER » EST OFFERT PAR L'ACTIVITÉ, donc à tous les
+// exercices à propositions — soixante-dix. Mais le pavé ne prend la main que si
+// la réponse est un NOMBRE, ou si l'item se déclare composable (une notation, un
+// tracé, une expression littérale). « somme », « différence », « oui », « [AB) »
+// ne sont rien de tout cela.
+//
+// MESURÉ sur le catalogue (`tools/reglagesMuets.mjs`, qui tire de vraies
+// questions) : dans VINGT-SIX exercices sur soixante-dix, le réglage ne décide
+// de rien — vingt et un parce qu'aucune réponse n'est un nombre, cinq parce
+// qu'on y va de toute façon. Le professeur y décoche un réglage pour protéger
+// une classe qui découvre, et croit avoir agi. Un réglage qui ne fait rien est
+// pire qu'un réglage absent.
+//
+// LA RÈGLE EST ÉCRITE ICI, UNE FOIS. `activities/choice.js` l'applique pour
+// décider quel module pose la question, et le panneau de réglages l'interroge
+// pour savoir s'il doit montrer la case. Deux copies de cette règle, et le jour
+// où l'une bouge, le panneau ment.
+
+/**
+ * UNE RÉPONSE EN PLUSIEURS CASES — « 2|3 », « 45|3|15|3|5 ».
+ *
+ * Rémy, carnet de son relevé du 23 octobre : « Et pour la décompoisiton, il
+ * n'y a pas de clavier ». Deux captures : « Complète la décomposition de 63 en
+ * facteurs premiers » et « Pose la décomposition de 56 en colonne », et sous
+ * chacune les deux boutons d'aide — RIEN D'AUTRE. L'élève ne peut pas
+ * répondre.
+ *
+ * MESURÉ (`tools/clavierDesMarches.mjs`, les 22 marches de `num.pgcd-ppcm`
+ * montées une par une sur les deux exercices qui l'emploient) : quatre marches
+ * — `decomposer-petit`, `potence`, `decomposer`, `irreductible` — n'offrent
+ * NI pavé NI proposition dans « Divisible, oui ou non ? », et les quatre
+ * mêmes marchent parfaitement dans « Décomposer, PGCD et PPCM ». La seule
+ * différence entre les deux exercices est l'activité : `bubbles` contre
+ * `numpad`.
+ *
+ * CE QUI SE PASSAIT, ET POURQUOI ÇA NE CRIAIT PAS. La réponse d'une question à
+ * plusieurs cases s'écrit « 2|3 » — c'est une PAIRE RANGÉE, pas deux nombres
+ * indépendants. `Number('2|3')` vaut NaN, donc la règle d'en dessous répondait
+ * « cette question ne se tape pas » et le pavé ne prenait jamais la main. Mais
+ * elle ne se CHOISIT pas non plus : on ne fabrique pas quatre propositions
+ * pour une réponse à cinq morceaux, donc aucune bulle n'était construite. Ni
+ * l'un ni l'autre : un écran muet, zéro erreur de page. Le logiciel ne se
+ * plaignait pas, il se taisait — et c'est la panne la plus chère, puisqu'elle
+ * ne ressemble pas à une panne.
+ *
+ * ON NE CHERCHAIT PAS LÀ. Le signalement venait d'un iPhone (« on ne peut rien
+ * taper »), et l'on a passé une journée sur l'appareil : douze configurations,
+ * la piste des unités `cqh`/`cqw` que Safari ne sert qu'à partir de la 16.
+ * Ce n'était pas l'appareil. On avait cherché la cause du côté de ce qui était
+ * inhabituel dans le SIGNALEMENT, alors que ce qui était inhabituel dans la
+ * QUESTION suffisait : les marches sans clavier sont exactement celles qui
+ * demandent PLUSIEURS réponses à la fois.
+ */
+export function reponseEnPlusieursCases(item) {
+    if (!item || item.answer === null || item.answer === undefined) return false;
+    const morceaux = String(item.answer).split('|');
+    // Chaque morceau doit être un nombre : c'est ce que le pavé sait écrire.
+    // Une réponse à trous qui porterait du texte n'irait nulle part, et il
+    // vaut mieux le savoir ici que devant la classe.
+    return morceaux.length > 1 && morceaux.every(v => v !== '' && Number.isFinite(Number(v)));
+}
+
+/** Cette question-là peut-elle se taper plutôt que se choisir ? */
+export function itemPeutAllerAuClavier(item) {
+    const m = (item && item.meta) || {};
+    if (m.composable) return true;
+    // `saisieSeule` va au clavier DÈS LA PREMIÈRE QUESTION : ce n'est pas
+    // l'escalier qui l'y mène, et le réglage ne le retient pas non plus.
+    if (m.saisieSeule) return false;
+    if (!item || item.answer === null || item.answer === undefined || item.answer === '') {
+        return false;
+    }
+    // LE PAVÉ EST LE SEUL À SAVOIR POSER UNE QUESTION À PLUSIEURS CASES : il
+    // compte les `[data-trou]` de l'énoncé et écrit dans celui qui est visé.
+    // Lui refuser le clavier, c'est ne laisser AUCUNE façon de répondre.
+    if (reponseEnPlusieursCases(item)) return true;
+    return Number.isFinite(Number(item.answer));
+}
+
+/**
+ * LE RÉGLAGE « AUTORISER LE CLAVIER » A-T-IL PRISE SUR CETTE QUESTION-LÀ ?
+ *
+ * CE N'EST PAS LA MÊME QUESTION QUE « le clavier est-il possible », et les
+ * confondre m'a fait cacher le réglage au mauvais endroit. Relire l'ordre des
+ * lignes de `moduleVoulu`, dans `activities/choice.js` :
+ *
+ *     if (m.saisieSeule) return compose || null;   // le réglage n'est PAS lu
+ *     if (!aideIci.clavier) return null;           // ici, il décide
+ *
+ * Une question `saisieSeule` — les « pas à pas » du développement, de la
+ * factorisation — va au clavier DÈS LA PREMIÈRE, et le réglage n'est même pas
+ * consulté. Le clavier y est donc parfaitement possible, et le réglage
+ * parfaitement muet.
+ */
+export function reglageClavierAgit(item) {
+    if (!item || (item.meta && item.meta.saisieSeule)) return false;
+    return itemPeutAllerAuClavier(item);
+}
+
+/** Cette question-là peut-elle se poser en PROPOSITIONS ? */
+export function itemPeutEtreChoisi(item) {
+    // `saisieSeule` dit « celle-ci ne se pose pas en vignettes » : « Trace
+    // [AB) » ne se choisit pas parmi quatre images, et c'est ce QCM-là que
+    // Rémy trouvait bête. Tout le reste commence par des propositions.
+    if (!item || (item.meta && item.meta.saisieSeule)) return false;
+    // ── SAUF QUAND LE GÉNÉRATEUR EN A ÉCRIT, DES PROPOSITIONS ─────────────
+    //
+    // RÉMY, sur « Heures et Minutes » : « on ne peut taper au clavier, ca
+    // semble forcément un qcm ». La réponse « 5 h 30 » est deux nombres : pour
+    // la TAPER, il faut deux cases — et c'est justement ce que la ligne du
+    // dessous interdisait de combiner avec des propositions. L'exercice était
+    // donc condamné au QCM, frise des réglages comprise : elle montrait une
+    // zone « clavier » qui ne faisait rien.
+    //
+    // CE N'EST PAS UNE EXCEPTION, C'EST LA RÈGLE RELUE. Ce qu'on ne sait pas
+    // faire, c'est FABRIQUER quatre vignettes à partir de « 45|3|15|3|5 » —
+    // pas les afficher quand elles existent. Un générateur qui a écrit ses
+    // propositions, avec le « pourquoi » de chaque erreur, en sait plus que
+    // cette fonction.
+    //
+    // MESURÉ AVANT DE TOUCHER À LA RÈGLE (`tools/tmp/cumul.mjs`, 996 questions
+    // tirées dans tout le catalogue) : 26 réponses à plusieurs cases, et ZÉRO
+    // qui portait aussi des propositions. Aucune question d'aujourd'hui ne
+    // change donc de comportement.
+    if (item.choices && item.choices.length) return true;
+    // ET UNE RÉPONSE À PLUSIEURS CASES NON PLUS. On ne fabrique pas quatre
+    // vignettes pour « 45|3|15|3|5 » : la réponse n'est pas une valeur parmi
+    // d'autres, c'est une suite de cases à remplir dans l'ordre. C'est cette
+    // ligne-là qui manquait — l'escalier croyait pouvoir commencer par des
+    // propositions, n'en construisait aucune, et laissait l'écran muet.
+    return !reponseEnPlusieursCases(item);
+}
+
+/**
+ * ET CET EXERCICE-LÀ ? On le demande au générateur, on ne le devine pas.
+ *
+ * On tire de vraies questions : c'est la seule réponse juste, puisqu'un même
+ * exercice peut mêler des volets chiffrés et des volets de vocabulaire — « Le
+ * Mot Juste » en a un sur six qui se tape, et cinq qui ne se tapent pas.
+ *
+ * @param {Object} exo l'exercice du catalogue
+ * @param {Object} gen son générateur (le registre n'est pas connu d'ici)
+ * @param {Function} rngPour fabrique un tirage à partir d'une graine
+ * @param {number} [tirages]
+ */
+export function clavierPossible(exo, gen, rngPour, tirages = 18) {
+    return formesPossibles(exo, gen, rngPour, tirages).clavier;
+}
+
+/** Et les propositions ? Même question, même tirage. */
+export function propositionsPossibles(exo, gen, rngPour, tirages = 18) {
+    return formesPossibles(exo, gen, rngPour, tirages).propositions;
+}
+
+/**
+ * LES DEUX QUESTIONS EN UN SEUL TIRAGE.
+ *
+ * Le panneau de réglages les pose toutes les deux ; les poser séparément, c'est
+ * faire tourner le générateur trente-six fois au lieu de dix-huit à chaque
+ * ouverture. Et surtout : deux tirages différents pourraient ne pas voir les
+ * mêmes volets, donc ne pas répondre sur le même exercice.
+ */
+export function formesPossibles(exo, gen, rngPour, tirages = 18) {
+    if (!gen || typeof gen.generate !== 'function' || typeof rngPour !== 'function') {
+        // On ne sait pas : on MONTRE les réglages. Cacher une commande sur un
+        // doute, c'est retirer au professeur une décision qu'il avait.
+        return { clavier: true, propositions: true };
+    }
+    let clavier = false;
+    let propositions = false;
+    for (let i = 0; i < tirages; i++) {
+        let item = null;
+        try {
+            item = gen.generate({ ...(exo.params || {}) },
+                { rng: rngPour('clav' + i), weakTables: [], difficulty: null, index: i });
+        } catch (e) {
+            return { clavier: true, propositions: true };   // dans le doute, on montre
+        }
+        if (reglageClavierAgit(item)) clavier = true;
+        if (itemPeutEtreChoisi(item)) propositions = true;
+        if (clavier && propositions) break;
+    }
+    return { clavier, propositions };
+}

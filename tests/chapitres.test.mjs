@@ -177,17 +177,55 @@ test('un jeu de la réserve ne compte pas comme orphelin', () => {
     assert.ok(!r.orphelins.includes('logi-echecs'));
 });
 
-test('la 6ᵉ range la grande majorité de ce qu\'elle doit ranger', () => {
-    // Le chiffre qui dit si le pré-remplissage sert vraiment à quelque chose :
-    // s'il laissait la moitié du catalogue de côté, le tableau serait une
-    // soirée de saisie, pas une soirée de relecture.
+test('la 6ᵉ range tout ce qu\'elle PEUT ranger', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // CE CHIFFRE DIT SI LE PRÉ-REMPLISSAGE SERT VRAIMENT À QUELQUE CHOSE :
+    // s'il laissait de côté ce qu'il sait ranger, le tableau serait une soirée
+    // de saisie, pas une soirée de relecture.
+    //
+    // IL SE MESURAIT SUR TOUS LES EXERCICES DE 6ᵉ, ET IL NE MESURAIT PAS CELA.
+    // Le rapport était 85/142, c'est-à-dire 0,598 — sous le seuil de 0,6 qu'on
+    // exigeait. L'exercice de trop n'avait rien cassé : il venait d'être ajouté
+    // au catalogue, et le rapport était depuis longtemps posé sur le seuil
+    // (85/141 = 0,603). AJOUTER UN JEU FAISAIT TOMBER UNE ÉPREUVE SUR LE
+    // CLASSEMENT PAR CHAPITRE — un signal qui ne désigne pas son défaut.
+    //
+    // LA RAISON, MESURÉE : des 57 exercices de 6ᵉ sans chapitre, 52 portent une
+    // compétence qui ne figure dans AUCUN chapitre, d'aucun niveau. Ce sont les
+    // casse-têtes, les défis et le vocabulaire — Strimko, sudoku, Mathdoku,
+    // Hashi, les mots cachés, la Tour de Brahma… Les chapitres de Rémy sont sa
+    // progression réelle, et « logique » n'en est pas un : ces exercices n'ont
+    // pas de chapitre par CONSTRUCTION, pas par oubli. Les compter comme des
+    // échecs du pré-remplissage, c'est compter ce que le pré-remplissage ne
+    // peut rien ranger — et garantir que l'épreuve retombera au jeu suivant.
+    //
+    // ON MESURE DONC SUR CEUX QU'ON PEUT RANGER : un exercice dont une
+    // compétence figure dans un chapitre, à un niveau quelconque. La question
+    // devient « quand la notion EST sur la carte, la 6ᵉ la trouve-t-elle ? »,
+    // et elle n'a rien de circulaire : un chapitre d'un autre niveau suffit à
+    // entrer au dénominateur. Mesuré : 73/78, soit 0,936.
+    //
+    // LES CINQ QUI MANQUENT sont de vrais cas, et ils restent visibles :
+    // `frac-compare`, `geo-translation-fleche`, `geo-pavage`,
+    // `geo-coder-figure`, `don-tableur` — rangés ailleurs, pas en 6ᵉ. Un
+    // sixième ferait tomber l'épreuve, et c'est ce qu'on veut.
+    //
+    // VUE TOMBER, et sur un défaut qu'elle est SEULE à voir : `proposePar`
+    // passé de `some` à `every` — la bévue la plus banale sur ce genre de
+    // ligne. Aucune des vingt-et-une autres épreuves du fichier ne bronche.
+    // ─────────────────────────────────────────────────────────────────────
+    const surLaCarte = new Set(CHAPITRES.flatMap(c => c.skills));
     const deSixieme = exercices.filter(e =>
         (e.tags.niveaux || []).includes(TAGS.NIVEAU.SIXIEME) && !e.horsProgression);
-    const ranges = deSixieme.filter(e =>
+    const rangeables = deSixieme.filter(e => skillsOf(e).some(s => surLaCarte.has(s)));
+    const ranges = rangeables.filter(e =>
         chapitresDe(e, {}).some(c => c.niveau === TAGS.NIVEAU.SIXIEME));
-    const part = ranges.length / deSixieme.length;
-    assert.ok(part > 0.6,
-        `seulement ${ranges.length}/${deSixieme.length} exercices de 6ᵉ trouvent un chapitre`);
+    const part = ranges.length / rangeables.length;
+    assert.ok(part > 0.9,
+        `seulement ${ranges.length}/${rangeables.length} exercices de 6ᵉ dont la `
+        + 'compétence est sur la carte trouvent un chapitre de 6ᵉ : '
+        + rangeables.filter(e => !chapitresDe(e, {}).some(c => c.niveau === TAGS.NIVEAU.SIXIEME))
+            .map(e => e.id).join(', '));
 });
 
 // --- Les deux couches --------------------------------------------------------

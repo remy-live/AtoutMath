@@ -44,7 +44,13 @@ import { trame as trameRaisonnement } from '../../core/raisonnement.js';
 // calcul en compte six — l'égalité, l'isolement du côté cherché, la
 // substitution, les deux carrés, la somme, la racine. Avec cinq, la dernière
 // tombait dans le vide, et c'était justement celle qui donne la réponse.
-const AMORCES = trameRaisonnement([2, 6, 1]);
+// SEPT ET NON SIX, depuis que le « Or » nomme le théorème avant de l'appliquer
+// (voir `redactionPapier`). Mesuré sur six mille tirages : le calcul fait cinq
+// lignes quand on cherche l'hypoténuse, SIX quand on cherche un côté de l'angle
+// droit — l'égalité, l'isolement, la substitution, les deux carrés, la somme,
+// la racine. Avec la phrase du théorème par-dessus, il en faut sept ; à six, la
+// dernière tombait dans le vide, et c'est elle qui donne la réponse.
+const AMORCES = trameRaisonnement([2, 7, 1]);
 
 /** L'énoncé en toutes lettres, tel que le générateur l'écrit pour le papier. */
 const enoncePythagore = (item) =>
@@ -109,6 +115,28 @@ const SEGMENTS_THALES = [['A', 'B'], ['A', 'C'], ['A', 'E'], ['A', 'D']];
  *
  * @returns {{barres:Array, pointilles:Array, egaux:Array, bas:number}}
  */
+/**
+ * OÙ COMMENCE L'ÉGALITÉ : SOUS L'ÉNONCÉ, JAMAIS DESSUS.
+ *
+ * RÉMY : « POur l'égalité de Thalès, les pointillés vont sur l'énoncé. »
+ *
+ * Le squelette partait d'une fraction FIXE de la hauteur du bloc — 40 % —,
+ * qui ne sait rien de la longueur du texte. « Les droites (DE) et (BC) sont
+ * parallèles. Écris l'égalité des trois rapports donnée par le théorème de
+ * Thalès. » tient sur QUATRE lignes dans une demi-colonne, et la quatrième
+ * tombait pile sur les pointillés des numérateurs.
+ *
+ * ON RÉSERVE LES QUATRE LIGNES, qui sont le maximum que le PDF imprime
+ * (`lignes.slice(0, 4)`). Compter les lignes réellement écrites serait plus
+ * serré — mais le navigateur et `splitTextToSize` ne coupent pas toujours au
+ * même mot, et les deux dessins se mettraient à diverger d'une ligne selon
+ * l'énoncé. Une réserve que les deux connaissent vaut mieux qu'une mesure que
+ * chacun refait de son côté.
+ */
+const hautDeLEgalite = (g) => Math.max(
+    g.b.y + g.b.h * 0.40,
+    g.b.y + g.corps * (1 + 3 * 1.15) + g.corps * 0.55);
+
 function egaliteThalesTraces(g, y0) {
     const c = g.corps;
     const wEq = c * 2.4;
@@ -187,14 +215,18 @@ function thalesPreviewHtml(item, slot, k) {
                 top:${T(y - taille * 0.78)}px; width:${T(large)}px;
                 text-align:center; font-size:${T(taille)}px">${nom}</div>`;
         });
+    // QUATRE LIGNES AU PLUS, comme le PDF (`lignes.slice(0, 4)`) : un aperçu qui
+    // montre une cinquième ligne promet un texte que la feuille n'imprimera pas,
+    // et c'est l'aperçu que le professeur relit avant de lancer la photocopie.
     html += `<div class="fx-th-enonce" style="left:${T(g.texteX)}px; top:${T(g.b.y)}px;
-        width:${T(g.texteW)}px; font-size:${T(g.corps)}px">${echapperSheet(item.prompt.papier)}</div>`;
+        width:${T(g.texteW)}px; font-size:${T(g.corps)}px; line-height:1.15;
+        max-height:${T(g.corps * 4.6)}px; overflow:hidden">${echapperSheet(item.prompt.papier)}</div>`;
     // L'ÉGALITÉ À REMPLIR, quand c'est elle qu'on demande — voir
     // `egaliteThalesTraces`. La réciproque, elle, se justifie en phrases : on
     // lui laisse ses lignes.
     const avecEgalite = g.m.etape === 'egalite' || g.m.etape === 'calculer';
     if (avecEgalite) {
-        const e = egaliteThalesTraces(g, g.b.y + g.b.h * 0.40);
+        const e = egaliteThalesTraces(g, hautDeLEgalite(g));
         e.pointilles.forEach(l => {
             html += `<div class="fx-th-ligne" style="left:${T(l.x1)}px; top:${T(l.y)}px;
                 width:${T(l.x2 - l.x1)}px"></div>`;
@@ -220,16 +252,19 @@ function thalesPreviewHtml(item, slot, k) {
         }
         return html;
     }
-    // Les lignes pour rédiger : c'est là que Thalès se note.
+    // Les lignes pour rédiger : c'est là que Thalès se note. Elles partent
+    // sous l'énoncé comme l'égalité — même défaut, même règle : sur un bloc
+    // bas, 42 % de sa hauteur tombe encore dans le texte.
+    const hautRedaction = Math.max(g.b.y + g.b.h * 0.42, hautDeLEgalite(g));
     for (let i = 0; i < 3; i++) {
-        const y = g.b.y + g.b.h * 0.42 + i * (g.b.h * 0.18);
+        const y = hautRedaction + i * (g.b.h * 0.18);
         html += `<div class="fx-th-ligne" style="left:${T(g.texteX)}px; top:${T(y)}px;
             width:${T(g.texteW)}px"></div>`;
     }
     return html;
 }
 
-function dessinerThalesPdf(doc, item, slot, solution) {
+function dessinerThalesPdf(doc, item, slot, solution, champ) {
     const g = geoThalesFiche(item, slot);
     const P = g.m.points;
     const X = (n) => g.versX(P[n].x), Y = (n) => g.versY(P[n].y);
@@ -265,11 +300,21 @@ function dessinerThalesPdf(doc, item, slot, solution) {
         if (doc.setLineDashPattern) doc.setLineDashPattern([1, 1], 0);
         if (avecEgalite) {
             // Le squelette de l'égalité — les mêmes traits qu'à l'aperçu.
-            const e = egaliteThalesTraces(g, g.b.y + g.b.h * 0.40);
+            const e = egaliteThalesTraces(g, hautDeLEgalite(g));
             e.pointilles.forEach(l => doc.line(l.x1, l.y, l.x2, l.y));
+            // CHAQUE POINTILLÉ DE L'ÉGALITÉ EST UN CHAMP : numérateurs et
+            // dénominateurs, c'est ce que l'élève a à écrire.
+            if (typeof champ === 'function') {
+                e.pointilles.forEach(l => champ(l.x1, l.y - g.corps * 0.95,
+                    l.x2 - l.x1, g.corps * 1.1));
+            }
             if (g.m.etape === 'calculer') {
                 [0, 1].forEach(i => doc.line(g.texteX, e.bas + i * g.corps * 1.9,
                     g.texteX + g.texteW, e.bas + i * g.corps * 1.9));
+                if (typeof champ === 'function') {
+                    [0, 1].forEach(i => champ(g.texteX, e.bas + i * g.corps * 1.9 - g.corps * 1.4,
+                        g.texteW, g.corps * 1.6));
+                }
             }
             if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
             doc.setDrawColor(...ENCRE.trait);
@@ -281,9 +326,14 @@ function dessinerThalesPdf(doc, item, slot, solution) {
             e.egaux.forEach(p => doc.text('=', p.x, p.y + g.corps * 0.4, { align: 'center' }));
             return;
         }
+        const hautRedaction = Math.max(g.b.y + g.b.h * 0.42, hautDeLEgalite(g));
         for (let i = 0; i < 3; i++) {
-            const y = g.b.y + g.b.h * 0.42 + i * (g.b.h * 0.18);
+            const y = hautRedaction + i * (g.b.h * 0.18);
             doc.line(g.texteX, y, g.texteX + g.texteW, y);
+            // Trois lignes tracées pour qu'on y rédige : trois champs.
+            if (typeof champ === 'function') {
+                champ(g.texteX, y - g.b.h * 0.15, g.texteW, g.b.h * 0.16);
+            }
         }
         if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
         return;
@@ -486,12 +536,28 @@ function redactionPapier(item) {
     return [
         [`le triangle ${t.nom} est rectangle en ${t.sommets[t.angleDroit]},`,
             `avec ${donnees.join(' et ')}.`],
-        calc.lignes.map(ligneEnTextePythagore),
+        // LE « OR » NOMME LA PROPRIÉTÉ AVANT DE L'APPLIQUER.
+        //
+        // Rémy : « pour le théorème de Pythagore, tu oublies Or : d'après le
+        // théorème de Pythagore ». Il a raison, et c'est une perte d'un
+        // précédent réglage : quand les calculs sont remontés du « Donc » vers
+        // le « Or » — ils y appartiennent —, la phrase qui NOMME le théorème
+        // est partie avec l'ancienne récitation du cours.
+        //
+        // Or ce n'est pas la même chose. Réciter « dans un triangle rectangle,
+        // le carré de l'hypoténuse… » n'apprend rien sur CE triangle, et c'est
+        // ce qu'il avait fait retirer. Mais « d'après le théorème de
+        // Pythagore » est la JUSTIFICATION : c'est le mot qui relie ce qu'on
+        // sait à ce qu'on écrit, et sans lui la rédaction n'est plus une
+        // démonstration, c'est une suite de lignes. L'écran l'a toujours dit
+        // (`redactionComplete` dans core/pythagore.js) ; le papier l'avait
+        // perdu.
+        ['d\'après le théorème de Pythagore :', ...calc.lignes.map(ligneEnTextePythagore)],
         [`${calc.cherche} = ${calc.resultat} cm.`]
     ];
 }
 
-function dessinerPythagorePdf(doc, item, slot, solution) {
+function dessinerPythagorePdf(doc, item, slot, solution, champ) {
     const g = geoPythagoreFiche(item, slot);
     const b = g.b;
 
@@ -560,6 +626,11 @@ function dessinerPythagorePdf(doc, item, slot, solution) {
             doc.setDrawColor(...ENCRE.grille);
             doc.setLineWidth(0.2);
             doc.line(g.droiteX, y + g.pas * 0.82, g.droiteX + g.droiteW, y + g.pas * 0.82);
+            // « Je sais que… », « Or… », « Donc… » : chaque ligne tracée sous
+            // une amorce attend une phrase de l'élève. Un champ par ligne.
+            if (!solution && typeof champ === 'function') {
+                champ(g.droiteX, y + g.pas * 0.82 - g.pas * 0.88, g.droiteW, g.pas * 0.9);
+            }
             const texte = rempli ? (rempli[iA][i] || '') : '';
             if (texte) {
                 doc.setFont('helvetica', 'normal');
@@ -993,7 +1064,7 @@ function thalesRedactionPreviewHtml(item, slot, k, solution) {
         overflow:visible; pointer-events:none">${out}</svg>`;
 }
 
-function dessinerThalesRedactionPdf(doc, item, slot, solution) {
+function dessinerThalesRedactionPdf(doc, item, slot, solution, champ) {
     const g = geoThalesRedaction(item, slot, solution);
     const m = g.m;
 
@@ -1083,6 +1154,12 @@ function dessinerThalesRedactionPdf(doc, item, slot, solution) {
         for (let i = 1; i <= box.lignes; i++) {
             const y = box.y + box.hTitre + i * box.hLigne - 1.5;
             doc.line(box.x + 3, y, box.x + box.w - 3, y);
+            // Une ligne de rédaction par champ. C'est l'exercice de ce bloc :
+            // « Je sais que… », « Donc… » — on écrit des phrases, et la fiche
+            // remplissable doit permettre de les taper.
+            if (typeof champ === 'function') {
+                champ(box.x + 3, y - box.hLigne * 0.86, box.w - 6, box.hLigne * 0.92);
+            }
         }
     });
 }
@@ -1274,7 +1351,7 @@ function libelleTrigo(ligne, mesurer) {
     };
 }
 
-function dessinerTrigoPdf(doc, item, slot, solution) {
+function dessinerTrigoPdf(doc, item, slot, solution, champ) {
     const g = geoTrigo(item, slot);
     const t = tracesTrigo(g);
 
@@ -1321,6 +1398,11 @@ function dessinerTrigoPdf(doc, item, slot, solution) {
         doc.setLineDashPattern([0.9, 0.9], 0);
         doc.line(xDebut, y + 4, g.b.x + g.b.w - 1, y + 4);
         doc.setLineDashPattern([], 0);
+        // Le nom du côté s'écrit sur ce pointillé : « [MN] », deux lettres
+        // entre crochets. C'est court, et c'est tout l'exercice.
+        if (!solution && typeof champ === 'function') {
+            champ(xDebut, y + 4 - 3.4, g.b.x + g.b.w - 1 - xDebut, 3.8);
+        }
         if (solution) {
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(43, 108, 176);

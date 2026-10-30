@@ -31,16 +31,50 @@ const PAD = 30;       // marge pour les graduations et les flèches
  * @param {string} [classe] - portée par le groupe, pour la couleur
  * @param {number} [taille] - demi-longueur des branches, en unités du viewBox
  */
-export function marqueurPoint(x, y, classe = '', taille = 6) {
+/**
+ * LES TRAITS D'UNE MARQUE DE POINT, EN DONNÉES.
+ *
+ * `marqueurPoint` rend du SVG où les trois marques sont dessinées et où le CSS
+ * en cache deux — c'est ce qui permet au réglage de s'appliquer à l'instant où
+ * on le touche, sans redessiner. Le PAPIER ne peut pas faire ça : jsPDF n'a pas
+ * de feuille de style, et il faut lui dire quoi tracer.
+ *
+ * RÉMY : « il faut se fier au paramètre, sur le pdf un point est représenté par
+ * un point alors que dans mes options j'avais mis une croix ». La fiche
+ * dessinait un disque en dur, avec un commentaire qui le justifiait — et le
+ * réglage qu'il avait choisi ne la concernait pas.
+ *
+ * D'où cette fonction : la MÊME géométrie, rendue en segments plutôt qu'en
+ * balises, pour que les deux dessins ne puissent pas diverger.
+ *
+ * @returns {{disque:boolean, rayon:number,
+ *            traits:{x1:number,y1:number,x2:number,y2:number}[]}}
+ */
+export function traitsDuPoint(x, y, style = 'croix', taille = 6) {
     const t = taille;
-    const d = t * 0.72;                // branches obliques : même encombrement
+    const d = t * 0.72;
+    if (style === 'disque') return { disque: true, rayon: t * 0.85, traits: [] };
+    const traits = style === 'plus'
+        ? [{ x1: x - t, y1: y, x2: x + t, y2: y },
+            { x1: x, y1: y - t, x2: x, y2: y + t }]
+        : [{ x1: x - d, y1: y - d, x2: x + d, y2: y + d },
+            { x1: x - d, y1: y + d, x2: x + d, y2: y - d }];
+    return { disque: false, rayon: 0, traits };
+}
+
+export function marqueurPoint(x, y, classe = '', taille = 6) {
     const n = (v) => Number(v).toFixed(2);
+    // LES TROIS ÉCRITURES SORTENT DE `traitsDuPoint`, COMME CELLE DU PAPIER.
+    // Les mêmes nombres recopiés à deux endroits finissent par ne plus être les
+    // mêmes — c'est exactement ce qui venait d'arriver : la fiche avait son
+    // disque en dur pendant que l'écran suivait le réglage.
+    const rond = traitsDuPoint(x, y, 'disque', taille);
+    const segments = (style, cls) => traitsDuPoint(x, y, style, taille).traits
+        .map(s => `<line class="${cls}" x1="${n(s.x1)}" y1="${n(s.y1)}"`
+            + ` x2="${n(s.x2)}" y2="${n(s.y2)}"/>`).join('');
     return `<g class="pt-marque ${classe}">
-        <circle class="pt-disque" cx="${n(x)}" cy="${n(y)}" r="${n(t * 0.85)}"/>
-        <line class="pt-croix" x1="${n(x - d)}" y1="${n(y - d)}" x2="${n(x + d)}" y2="${n(y + d)}"/>
-        <line class="pt-croix" x1="${n(x - d)}" y1="${n(y + d)}" x2="${n(x + d)}" y2="${n(y - d)}"/>
-        <line class="pt-plus" x1="${n(x - t)}" y1="${n(y)}" x2="${n(x + t)}" y2="${n(y)}"/>
-        <line class="pt-plus" x1="${n(x)}" y1="${n(y - t)}" x2="${n(x)}" y2="${n(y + t)}"/>
+        <circle class="pt-disque" cx="${n(x)}" cy="${n(y)}" r="${n(rond.rayon)}"/>
+        ${segments('croix', 'pt-croix')}${segments('plus', 'pt-plus')}
     </g>`;
 }
 
@@ -546,10 +580,23 @@ export function traceSvg({ type, a = 'A', b = 'B', echelle = 1 } = {}) {
  * @param {number} cfg.rang   - le nombre de décimales à écrire
  * @param {number} [cfg.point]- l'abscisse du point rouge, s'il y en a un
  */
-export function axeSvg({ debut = 0, fin = 1, pas = 0.1, rang = 1, point = null } = {}) {
-    const W = 340, H = 74;
+export function axeSvg({
+    debut = 0, fin = 1, pas = 0.1, rang = 1, point = null,
+    intervalles = 0, etiquettes = null, grandsTous = 0
+} = {}) {
+    // UNE DROITE GRADUÉE N'A PAS TOUJOURS DIX INTERVALLES, et c'est tout le
+    // bloc 10 de sixième : pour lire une fraction, l'axe est coupé en DEUX,
+    // TROIS ou QUATRE — autant que le dénominateur. Dix intervalles codés en
+    // dur rendaient cet exercice impossible à dessiner.
+    //
+    // `grandsTous` dit tous les combien un trait est GRAND : à chaque unité,
+    // donc tous les `den` crans quand l'axe porte plusieurs unités. Sans lui,
+    // un axe de 0 à 2 en quarts montre huit traits identiques et personne ne
+    // voit où tombe le 1.
+    const W = 340, H = 86;
     const y = 40, G = 26, D = W - 26;
-    const n = Math.max(1, Math.round((fin - debut) / pas));
+    const n = Math.max(1, intervalles || Math.round((fin - debut) / pas));
+    const grand = Math.max(1, grandsTous || n);
     const x = (v) => G + ((v - debut) / (fin - debut)) * (D - G);
     // « 3,50 » n'est pas faux, mais ce n'est pas ce qu'on écrit au tableau :
     // on retire les zéros de queue, puis la virgule si elle reste seule.
@@ -557,21 +604,44 @@ export function axeSvg({ debut = 0, fin = 1, pas = 0.1, rang = 1, point = null }
 
     const traits = [];
     for (let k = 0; k <= n; k++) {
-        const bout = k === 0 || k === n;
-        const xx = x(debut + k * pas);
+        const bout = k % grand === 0;
+        const xx = G + (k / n) * (D - G);
         traits.push(`<line class="ax-cran${bout ? ' ax-cran--bout' : ''}"
             x1="${xx.toFixed(1)}" y1="${(y - (bout ? 13 : 7)).toFixed(1)}"
             x2="${xx.toFixed(1)}" y2="${(y + (bout ? 13 : 7)).toFixed(1)}"/>`);
     }
-    // Seuls les deux bouts sont chiffrés : c'est l'énoncé, tout le reste est
-    // la question.
-    const nombres = [debut, fin].map(v =>
-        `<text class="ax-nb" x="${x(v).toFixed(1)}" y="${y + 30}" text-anchor="middle">${fr(v)}</text>`).join('');
+    // LES ÉTIQUETTES, ET ELLES NE SONT PAS TOUJOURS DES NOMBRES À VIRGULE.
+    //
+    // Par défaut, les deux bouts chiffrés : c'est l'énoncé, tout le reste est
+    // la question. Mais une droite de fractions porte « 0 » et « 1 » aux bouts
+    // et, s'il le faut, des fractions EMPILÉES — numérateur sur dénominateur,
+    // barre au milieu. Les écrire « 3/4 » sur une ligne serait plus simple à
+    // coder et faux à lire : ce n'est pas ainsi qu'on les écrit au tableau,
+    // et c'est justement l'écriture qu'on apprend.
+    const xDeCran = (i) => G + (i / n) * (D - G);
+    const empilee = (xx, num, den) => `
+        <text class="ax-nb" x="${xx.toFixed(1)}" y="${y + 24}" text-anchor="middle">${num}</text>
+        <line class="ax-barre" x1="${(xx - 7).toFixed(1)}" y1="${y + 28}"
+              x2="${(xx + 7).toFixed(1)}" y2="${y + 28}"/>
+        <text class="ax-nb" x="${xx.toFixed(1)}" y="${y + 42}" text-anchor="middle">${den}</text>`;
+    const nombres = (Array.isArray(etiquettes) && etiquettes.length
+        ? etiquettes.map(e => (e.den !== undefined
+            ? empilee(xDeCran(e.i), e.num, e.den)
+            : `<text class="ax-nb" x="${xDeCran(e.i).toFixed(1)}" y="${y + 30}" text-anchor="middle">${e.texte}</text>`))
+        : [debut, fin].map(v =>
+            `<text class="ax-nb" x="${x(v).toFixed(1)}" y="${y + 30}" text-anchor="middle">${fr(v)}</text>`)
+    ).join('');
 
-    const marque = point === null ? '' : `
+    // LE POINT SE DONNE PAR SA VALEUR, OU PAR SON RANG DE CRAN. Sur une droite
+    // de tiers, la valeur 1/3 ne s'écrit pas exactement en virgule flottante :
+    // `x(0.3333…)` tombe à côté du trait qu'on vient de dessiner, d'un pixel
+    // ou deux — assez pour qu'une croix soit « entre deux traits ».
+    const xPoint = point === null ? null
+        : (typeof point === 'object' ? xDeCran(point.i) : x(point));
+    const marque = xPoint === null ? '' : `
         <g class="ax-point">
-            <line x1="${(x(point) - 6).toFixed(1)}" y1="${y - 6}" x2="${(x(point) + 6).toFixed(1)}" y2="${y + 6}"/>
-            <line x1="${(x(point) - 6).toFixed(1)}" y1="${y + 6}" x2="${(x(point) + 6).toFixed(1)}" y2="${y - 6}"/>
+            <line x1="${(xPoint - 6).toFixed(1)}" y1="${y - 6}" x2="${(xPoint + 6).toFixed(1)}" y2="${y + 6}"/>
+            <line x1="${(xPoint - 6).toFixed(1)}" y1="${y + 6}" x2="${(xPoint + 6).toFixed(1)}" y2="${y - 6}"/>
         </g>`;
 
     return `

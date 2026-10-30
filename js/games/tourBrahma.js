@@ -22,15 +22,13 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     departBrahma, coupValide, jouer, estGagneBrahma, coupsRestants,
-    prochainCoupBrahma, minimumBrahma, qualiteBrahma, TAILLES_BRAHMA
+    prochainCoupBrahma, minimumBrahma, qualiteBrahma, TAILLES_BRAHMA, teinteBoule
 } from '../core/tourBrahma.js';
 
 const COMPETENCE = 'defi.recursion';
-
-/** Les teintes des boules, de la plus petite à la plus grosse. */
-const TEINTES = ['#7c3aed', '#c1274a', '#2f855a', '#e0a020', '#3182ce', '#b7791f'];
 
 class TourBrahma extends BaseGame {
     constructor(container, isDemo, params) {
@@ -135,7 +133,7 @@ class TourBrahma extends BaseGame {
                 .tb-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .tb-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
@@ -229,7 +227,7 @@ class TourBrahma extends BaseGame {
         const p = this.part(b);
         return `<div class="tb-boule" style="width:calc(var(--tb-d) * ${p});
             height:calc(var(--tb-d) * ${p}); font-size:calc(var(--tb-d) * ${p} * .46);
-            background:${TEINTES[(b - 1) % TEINTES.length]}">${b}</div>`;
+            background:${teinteBoule(b)}">${b}</div>`;
     }
 
     /** Toucher un conduit : on prend sa boule du dessus, ou l'on pose la sienne. */
@@ -339,20 +337,21 @@ class TourBrahma extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.etat) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         cur.say(`Pour amener la boule ${this.n} à droite, il faut d'abord que le conduit de `
             + `droite soit VIDE. Donc que les ${this.n - 1} du dessus soient ailleurs.`,
         this.socleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say(`Et pour déplacer ces ${this.n - 1} boules, même problème avec la `
             + `${this.n - 1}. Le jeu se ramène toujours à lui-même, une boule de moins.`,
         this.socleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let i = 0; i < 5; i++) {
             const c = prochainCoupBrahma(this.etat, this.n);
@@ -360,7 +359,7 @@ class TourBrahma extends BaseGame {
             this.etat = jouer(this.etat, c.de, c.vers);
             this.coups++;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 700) || !this.isRunning) return fin();
+            if (!await robot.pause(700)) return fin();
         }
         cur.say(`C'est pour cela que le compte double à chaque boule ajoutée, plus un : `
             + '1, 3, 7, 15, 31… Avec soixante-quatre boules, les moines de Brahma en ont '

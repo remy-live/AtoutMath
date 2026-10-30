@@ -385,7 +385,7 @@ async function voirCommeEleve(eleveId) {
         if (modaleClasses) { modaleClasses.close(); modaleClasses = null; }
         await rafraichir();
         showToast(`Écran de ${eleve.nom}. Le lien se défait depuis l'accueil.`, 'success', 6000);
-    });
+    }, { bouton: `Voir l'écran de ${eleve.nom}`, doux: true });
 }
 
 /** Un ou plusieurs fichiers déposés d'un coup : toute la classe en une fois. */
@@ -530,7 +530,7 @@ function brancher(racine) {
                 state.teacherPaths = state.teacherPaths.filter(p => !p.demo);
                 state.saveTeacherPaths();
                 rafraichir();
-            });
+            }, { bouton: 'Effacer les démonstrations' });
         }
 
         // La classe du SERVEUR : celle qui aura un code, des billets, des élèves.
@@ -576,7 +576,7 @@ function brancher(racine) {
                 eleveOuvertId = null;
                 await enregistrer();
                 rafraichir();
-            });
+            }, { bouton: `Supprimer « ${c.nom} »` });
         }
         if (el.dataset.ouvre) {
             eleveOuvertId = eleveOuvertId === el.dataset.ouvre ? null : el.dataset.ouvre;
@@ -591,7 +591,7 @@ function brancher(racine) {
             return showConfirm(`Retirer ${eleve.nom} de la classe ?`, async () => {
                 eleveOuvertId = null;
                 await majClasse(retirerEleve(c, eleve.id));
-            });
+            }, { bouton: `Retirer ${eleve.nom}` });
         }
         if (el.dataset.renommer) {
             const c = classeActive();

@@ -5,10 +5,28 @@
 // ce qui sert à plusieurs vit dans `socle.js`.
 
 import {
-    ENCRE, boiteDe, echapperSheet, largeurTexte
+    ENCRE, boiteDe, echapperSheet, enPoints, largeurTexte
 } from './socle.js';
 import { ajusterAuCarre, boiteDe as boiteCaseDomino, cellulesDe, cheminSerpentin, insecable } from '../../core/dominos.js';
-import { encre, pourPdf } from '../ficheRendu.js';
+// AUCUN DÉCOR DE PENDU N'EST IMPORTÉ ICI, ET C'EST LE SUJET : la fiche laisse
+// un cadre VIDE, c'est l'élève qui dessine. L'import existait, inutilisé, et
+// c'est lui qui faisait croire que les décors s'imprimaient — d'où la
+// consigne « lisibles en noir » qui les a tenus au trait gris pendant un mois.
+import { COLONNES, nombreFr } from '../../core/dessinsGradues.js';
+// LES FORMES DES PENTAMINOS VIENNENT DU NOYAU : la feuille et l'écran dessinent
+// les mêmes douze pièces, et rien ne peut diverger.
+import { FORMES as PENTA_FORMES } from '../../core/pentaminos.js';
+// LA SOLUTION IMPRIMÉE EST CELLE DU NOYAU : la feuille de correction et l'écran
+// comptent les mêmes gestes, et rien ne peut diverger.
+import { resoudre as resoudreTransvasement } from '../../core/transvasements.js';
+// LA GÉOMÉTRIE DES ALLUMETTES VIENT DU NOYAU, en bloc : l'écran et la
+// feuille lisent les mêmes rectangles, et rien ne peut diverger.
+import * as ALLU from '../../core/allumettesDessin.js';
+// `nombreArbre` ÉCRIT LE MOINS TYPOGRAPHIQUE, celui du manuel ; `nombreFr`
+// des droites graduées garde le trait d'union. Deux fonctions du même nom
+// dans deux noyaux, et c'est voulu — on les distingue ici, à l'import.
+import { nombreFr as nombreArbre } from '../../core/arbresDeCalculs.js';
+import { encre, polycopieEnVraieCouleur, pourPdf } from '../ficheRendu.js';
 
 // --- Dessin d'une grille Mathdoku -------------------------------------------
 
@@ -913,6 +931,48 @@ const ordreDominos = (item, solution) => solution
 /** La taille du texte dans un carré de `cote` mm : la même règle qu'à l'écran. */
 const policeDomino = (texte, cote) => Math.max(1.7, cote * ajusterAuCarre(insecable(texte)));
 
+/**
+ * L'ENCRE D'UNE MOITIÉ : question, réponse, ou bout de chaîne.
+ *
+ * RÉMY : « Vérifie aussi les autres pour les couleurs. » Mesuré : la planche
+ * sortait en trente moitiés blanches identiques, alors que l'écran distingue
+ * depuis toujours la moitié QUESTION de la moitié RÉPONSE, et marque les deux
+ * BOUTS — qui ne se marient à rien et donnent donc le départ et l'arrivée.
+ *
+ * C'est une information sur le jeu, pas une décoration : « le pli entre deux
+ * pièces dit toujours la même chose, voici une question, voici sa réponse »
+ * (`core/dominos.js`). Sur la planche à découper, l'élève cherche quelle
+ * moitié présenter à quelle autre, et la couleur lui dit laquelle est laquelle
+ * du premier coup d'œil.
+ *
+ * LES TROIS TEINTES SONT CELLES DE L'ÉCRAN, à pleine valeur. L'écran les dilue
+ * à vingt-six pour cent parce qu'il les pose sur le fond de son panneau, qui
+ * participe ; le papier est blanc, et c'est la teinte pleine qui y retombe sur
+ * la même nuance. Le texte reste sombre — les trois sont des teintes claires.
+ *
+ * ET RIEN NE SE PERD SANS ELLES : la planche se lit exactement comme avant en
+ * noir et blanc, puisque chaque moitié porte son texte. D'où
+ * `polycopieEnVraieCouleur` : trois pastels passés en niveaux de gris tombent
+ * à trois blancs cassés qu'on ne distingue pas, et l'on aurait dépensé de
+ * l'encre pour rien.
+ */
+const ENCRES_DEMI = { question: '#fcd34d', reponse: '#7dd3fc', bout: '#c4b5fd' };
+const encreDemi = (type) => (polycopieEnVraieCouleur()
+    ? (ENCRES_DEMI[type] || '#ffffff') : '#ffffff');
+
+/**
+ * LES DEUX MOITIÉS DANS LE SENS OÙ ON LES DESSINE, texte et genre ensemble.
+ *
+ * Le chemin peut traverser une case À L'ENVERS, et les deux rendus échangeaient
+ * alors les textes sans rien savoir des genres : la moitié repeinte « question »
+ * aurait porté la réponse. Les deux listes se retournent donc du même geste, ici.
+ */
+const demisDuDomino = (p, inverse) => {
+    const d = p.demis || [];
+    const ordre = inverse ? [1, 0] : [0, 1];
+    return ordre.map(i => ({ texte: i ? p.droite : p.gauche, type: (d[i] || {}).type }));
+};
+
 function dominosPreviewHtml(item, slot, k, solution) {
     const b = slot.boite;
     const g = geometrieDominos(item, b);
@@ -926,15 +986,16 @@ function dominosPreviewHtml(item, slot, k, solution) {
     /** Une pièce dessinée, couchée ou debout, ses moitiés dans l'ordre voulu. */
     const poser = (p, x, y, opts = {}) => {
         const vertical = !!opts.vertical;
-        const textes = opts.inverse ? [p.droite, p.gauche] : [p.gauche, p.droite];
-        const demi = (t, cls) => `<div class="fx-dom-demi ${cls}"
-            style="font-size:${policeDomino(t, g.cote) * k}px">${echapperSheet(insecable(t))}</div>`;
+        const moities = demisDuDomino(p, opts.inverse);
+        const demi = (m, cls) => `<div class="fx-dom-demi ${cls}"
+            style="font-size:${policeDomino(m.texte, g.cote) * k}px;
+            background:${encreDemi(m.type)}">${echapperSheet(insecable(m.texte))}</div>`;
         return `<div class="fx-dom-piece ${vertical ? 'fx-dom-piece--v' : ''}"
             style="left:${x * k}px; top:${y * k}px;
             width:${(vertical ? g.cote : g.pieceW) * k}px;
             height:${(vertical ? g.pieceW : g.cote) * k}px">
-            ${demi(textes[0], 'fx-dom-demi--g')}
-            ${demi(textes[1], 'fx-dom-demi--d')}</div>`;
+            ${demi(moities[0], 'fx-dom-demi--g')}
+            ${demi(moities[1], 'fx-dom-demi--d')}</div>`;
     };
 
     // --- LE PLATEAU, c'est-à-dire le PARCOURS. Vide sur la fiche, rempli sur
@@ -991,15 +1052,24 @@ function dessinerDominosPdf(doc, item, slot, solution, champ) {
         const vertical = !!opts.vertical;
         const w = vertical ? g.cote : g.pieceW;
         const h = vertical ? g.pieceW : g.cote;
-        const textes = opts.inverse ? [p.droite, p.gauche] : [p.gauche, p.droite];
+        const moities = demisDuDomino(p, opts.inverse);
+        const textes = moities.map(m => m.texte);
 
+        // LES DEUX MOITIÉS D'ABORD, chacune de son encre — et sans trait : le
+        // contour du ciseau passe par-dessus, d'un seul tenant. Deux carrés
+        // tracés séparément laisseraient leur frontière DEUX FOIS sur le
+        // papier, et c'est le pli qu'on verrait en gras.
+        moities.forEach((m, i) => {
+            doc.setFillColor(encreDemi(m.type));
+            if (vertical) doc.rect(x, y + i * g.cote, g.cote, g.cote, 'F');
+            else doc.rect(x + i * g.cote, y, g.cote, g.cote, 'F');
+        });
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.5);
-        doc.setFillColor(255, 255, 255);
         // Coins CARRÉS : deux pièces mises bord à bord ne doivent pas laisser
         // d'encoche entre leurs angles, sans quoi le trait à suivre au ciseau
         // se casse quatre fois par pièce.
-        doc.rect(x, y, w, h, 'FD');
+        doc.rect(x, y, w, h, 'S');
         // Le pli du domino : vertical sur une pièce couchée, horizontal sur
         // une pièce debout. PLUS FIN QUE LE CONTOUR — sur le parcours rempli
         // les pièces se touchent, et si le pli avait le même trait que la
@@ -1672,6 +1742,12 @@ export const RENDUS_GRILLES = {
     },
     dominos: {
         titre: 'Dominos',
+        // UN SEUL JEU PAR FEUILLE. Rémy : « pour les dominos ne mets qu'un
+        // exercice par défaut ». Une planche, c'est le plateau vide ET les
+        // pièces à découper en dessous : deux demi-pages. En mettre deux par
+        // défaut remplissait une feuille entière d'un jeu qu'on joue une fois,
+        // et dont on découpe les pièces — on ne découpe pas deux jeux.
+        unique: true,
         consigne: (items) => `Découpe les ${(items[0] && items[0].meta.pieces.length) || ''} pièces du bas `
             + 'et colle-les le long du parcours, bout à bout : chaque question doit TOUCHER sa '
             + 'réponse. On part de DÉPART, on calcule le bout ouvert, on cherche ce résultat sur une '
@@ -1704,4 +1780,1453 @@ export const RENDUS_GRILLES = {
         previewGrille: binairoPreviewHtml,
         pdfGrille: dessinerBinairoPdf
     }
+};
+
+// ── LE SHIKAKU SUR PAPIER ────────────────────────────────────────────────────
+//
+// RÉMY : « Tu pourrais me créer ce jeu là ». C'est un jeu de papier à
+// l'origine, et il s'imprime mieux que la plupart : il n'y a rien à ÉCRIRE,
+// seulement des traits à tracer à la main entre les cases. Une grille, des
+// nombres, et du blanc.
+//
+// LA GRILLE N'EST PAS CARRÉE, et l'emplacement qu'on lui donne l'est. On
+// garde donc des cases CARRÉES — leur forme est la réponse — et l'on centre
+// ce qui en résulte dans l'emplacement, plutôt que d'étirer la grille.
+
+/** La case carrée la plus grande qui tienne dans l'emplacement, et son coin. */
+function poseShikaku(item, slot) {
+    const { lignes, colonnes } = item.meta;
+    const s = Math.min(slot.taille / colonnes, slot.taille / lignes);
+    return {
+        s,
+        x: slot.x + (slot.taille - s * colonnes) / 2,
+        y: slot.y + (slot.taille - s * lignes) / 2
+    };
+}
+
+function shikakuPreviewHtml(item, slot, k, solution) {
+    const { lignes, colonnes, indices, solution: rects } = item.meta;
+    const { s, x, y } = poseShikaku(item, slot);
+    const nb = new Map(indices.map(i => [`${i.r},${i.c}`, i.n]));
+    let html = `<div class="fp-grille" style="position:absolute; left:${x * k}px; top:${y * k}px;
+        width:${s * colonnes * k}px; height:${s * lignes * k}px;
+        display:grid; grid-template-columns:repeat(${colonnes}, 1fr);
+        grid-template-rows:repeat(${lignes}, 1fr); border:2.4px solid #1a202c;">`;
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const v = nb.get(`${r},${c}`);
+            html += `<div style="border-right:0.8px solid #94a3b8; border-bottom:0.8px solid #94a3b8;
+                display:flex; align-items:center; justify-content:center;
+                font-weight:800; font-size:${s * k * 0.5}px; color:#1a202c;">${v || ''}</div>`;
+        }
+    }
+    html += '</div>';
+    // LE CORRIGÉ EST UN TRACÉ, pas des chiffres : on repasse les contours des
+    // rectangles, et c'est exactement ce que l'élève aura fait au crayon.
+    if (solution) {
+        html += rects.map(rec => `<div style="position:absolute;
+            left:${(x + rec.c0 * s) * k}px; top:${(y + rec.r0 * s) * k}px;
+            width:${(rec.c1 - rec.c0 + 1) * s * k}px; height:${(rec.r1 - rec.r0 + 1) * s * k}px;
+            border:2.2px solid #1d4ed8; box-sizing:border-box;"></div>`).join('');
+    }
+    return html;
+}
+
+function dessinerShikakuPdf(doc, item, slot, solution) {
+    const { lignes, colonnes, indices, solution: rects } = item.meta;
+    const { s, x, y } = poseShikaku(item, slot);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.12);
+    for (let i = 1; i < colonnes; i++) doc.line(x + i * s, y, x + i * s, y + lignes * s);
+    for (let i = 1; i < lignes; i++) doc.line(x, y + i * s, x + colonnes * s, y + i * s);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    doc.rect(x, y, colonnes * s, lignes * s, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(16, s * 1.5));
+    indices.forEach(i => {
+        doc.text(String(i.n), x + (i.c + 0.5) * s, y + (i.r + 0.5) * s,
+            { align: 'center', baseline: 'middle' });
+    });
+
+    if (solution) {
+        // Le trait du corrigé est plus épais que le quadrillage et plus fin
+        // que le cadre : il se lit par-dessus sans écraser les nombres.
+        doc.setDrawColor(29, 78, 216);
+        doc.setLineWidth(0.5);
+        rects.forEach(rec => doc.rect(x + rec.c0 * s, y + rec.r0 * s,
+            (rec.c1 - rec.c0 + 1) * s, (rec.r1 - rec.r0 + 1) * s, 'S'));
+    }
+}
+
+RENDUS_GRILLES.shikaku = {
+    titre: 'Shikaku',
+    // DEUX PAR LIGNE. Douze grilles sur une page donnaient des cases de trois
+    // millimètres : on n'y trace pas un trait au crayon entre deux cases, et
+    // c'est tout ce qu'on fait sur un Shikaku. Même raison que le Garam.
+    parLigneDefaut: 2,
+    consigne: () => 'Découpe toute la grille en rectangles : un seul nombre dans chacun, '
+        + 'et ce nombre est son nombre de cases. Aucun trou, aucun chevauchement.',
+    previewGrille: shikakuPreviewHtml,
+    pdfGrille: dessinerShikakuPdf
+};
+
+// ── LES CINQ GRILLES DE NOMBRES SUR PAPIER ───────────────────────────────────
+//
+// RÉMY, 26 octobre : « tu me les fais tous ». Le Kakuro, le Yohaku, le Suguru,
+// les Gratte-ciel et le Chemin des Nombres s'impriment de la même façon : un
+// damier, des cases écrites d'avance, parfois des marges, parfois des bords de
+// zone, parfois des cases noires à deux sommes. Un seul rendu, donc, paramétré
+// par ce que le générateur a décrit — exactement comme leur activité à l'écran.
+
+/** La case carrée la plus grande qui tienne dans l'emplacement, et son coin. */
+function poseGrilleNombres(item, slot) {
+    const m = item.meta.marges || {};
+    const mg = m.gauche ? 1 : 0, md = m.droite ? 1 : 0;
+    const mh = m.haut ? 1 : 0, mb = m.bas ? 1 : 0;
+    const cols = item.meta.colonnes + mg + md;
+    const rows = item.meta.lignes + mh + mb;
+    const s = Math.min(slot.taille / cols, slot.taille / rows);
+    return {
+        s, mg, md, mh, mb, cols, rows,
+        x: slot.x + (slot.taille - s * cols) / 2,
+        y: slot.y + (slot.taille - s * rows) / 2
+    };
+}
+
+const caseDeLaGrille = (item) => {
+    const par = new Map();
+    item.meta.cases.forEach(c => par.set(`${c.r},${c.c}`, c));
+    return par;
+};
+
+function grilleNombresPreviewHtml(item, slot, k, solution) {
+    const { lignes, colonnes, marges = {}, zones } = item.meta;
+    const { s, mg, mh, x, y } = poseGrilleNombres(item, slot);
+    const par = caseDeLaGrille(item);
+    const px = (v) => `${v * k}px`;
+    const boite = (cx, cy, dedans, style) => `<div style="position:absolute;
+        left:${px(x + cx * s)}; top:${px(y + cy * s)}; width:${px(s)}; height:${px(s)};
+        box-sizing:border-box; display:flex; align-items:center; justify-content:center;
+        font-size:${px(s * 0.44)}; font-weight:700; ${style}">${dedans}</div>`;
+
+    let html = '';
+    const etiq = (v) => (v === null || v === undefined ? '' : String(v));
+    (marges.haut || []).forEach((v, c) => { html += boite(c + mg, 0, etiq(v), 'color:#1d4ed8;'); });
+    (marges.bas || []).forEach((v, c) => {
+        html += boite(c + mg, lignes + mh, etiq(v), 'color:#1d4ed8;');
+    });
+    (marges.gauche || []).forEach((v, r) => { html += boite(0, r + mh, etiq(v), 'color:#1d4ed8;'); });
+    (marges.droite || []).forEach((v, r) => {
+        html += boite(colonnes + mg, r + mh, etiq(v), 'color:#1d4ed8;');
+    });
+
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const t = par.get(`${r},${c}`) || {};
+            // LE TRAIT ÉPAIS SÉPARE DEUX ZONES, le fin deux cases d'une même
+            // zone : c'est tout le dessin du Suguru, et il porte sa règle.
+            const bord = (dr, dc) => {
+                if (!zones) return '1px solid #475569';
+                const a = par.get(`${r + dr},${c + dc}`);
+                return (!a || a.zone !== t.zone) ? '2.4px solid #0f172a' : '0.7px solid #94a3b8';
+            };
+            if (t.type === 'mur' || t.type === 'indice') {
+                // LES SOMMES PLUS PETITES ET PLUS SERRÉES DANS LEUR COIN : à
+                // 0,30 elles occupaient presque la moitié de la case, ce qui
+                // se voit tout de suite à côté d'une grille publiée.
+                const sommes = t.type === 'indice'
+                    ? `<span style="position:absolute; top:3%; right:6%; font-size:${px(s * 0.24)};
+                         font-weight:700; color:#fff;">${t.droite || ''}</span>
+                       <span style="position:absolute; bottom:3%; left:6%; font-size:${px(s * 0.24)};
+                         font-weight:700; color:#fff;">${t.bas || ''}</span>
+                       <!-- « TO TOP RIGHT », comme à l'écran et comme le PDF : un dégradé
+                            pose ses bandes PERPENDICULAIREMENT à son axe, donc
+                            « to bottom right » traçait le trait qui passe exactement par
+                            les deux coins où sont écrites les sommes, et les barrait.
+                            L'aperçu et le PDF se contredisaient — le PDF, lui, trace
+                            (X,Y) vers (X+s,Y+s), qui est la bonne diagonale. -->
+                       `
+                    : '';
+                // LA DIAGONALE EST SUR TOUTE CASE NOIRE, somme ou pas : sans
+                // elle, les cases noires voisines se collent et la grille se
+                // lit comme une tache. C'est ce que Rémy a vu.
+                const diag = `<span style="position:absolute; inset:0; background:linear-gradient(
+                         to top right, transparent calc(50% - .5px), #fff calc(50% - .5px),
+                         #fff calc(50% + .5px), transparent calc(50% + .5px));"></span>`;
+                html += boite(c + mg, r + mh, sommes + diag,
+                    'background:#0f172a; border:1px solid #0f172a; position:absolute;');
+                continue;
+            }
+            const donnee = t.type === 'donnee';
+            html += boite(c + mg, r + mh, (donnee || solution)
+                ? String(donnee ? t.valeur : item.meta.solution[r][c]) : '',
+            `border-top:${bord(-1, 0)}; border-bottom:${bord(1, 0)};`
+                + `border-left:${bord(0, -1)}; border-right:${bord(0, 1)};`
+                + (donnee ? 'background:#eef0fa;' : '')
+                + (!donnee && solution ? 'color:#1d4ed8;' : ''));
+        }
+    }
+    return html;
+}
+
+function dessinerGrilleNombresPdf(doc, item, slot, solution) {
+    const { lignes, colonnes, marges = {}, zones } = item.meta;
+    const { s, mg, mh, x, y } = poseGrilleNombres(item, slot);
+    const par = caseDeLaGrille(item);
+    const centre = (cx, cy, texte, taille) => {
+        doc.setFontSize(taille);
+        doc.text(String(texte), x + (cx + 0.5) * s, y + (cy + 0.5) * s,
+            { align: 'center', baseline: 'middle' });
+    };
+
+    // Les cases noires d'abord : tout le reste se dessine par-dessus.
+    doc.setFillColor(15, 23, 42);
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const t = par.get(`${r},${c}`) || {};
+            if (t.type === 'mur' || t.type === 'indice') {
+                doc.rect(x + (c + mg) * s, y + (r + mh) * s, s, s, 'F');
+            }
+        }
+    }
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.12);
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            doc.rect(x + (c + mg) * s, y + (r + mh) * s, s, s, 'S');
+        }
+    }
+    // LES BORDS DE ZONE, par-dessus le quadrillage fin.
+    if (zones) {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.55);
+        for (let r = 0; r < lignes; r++) {
+            for (let c = 0; c < colonnes; c++) {
+                const z = (par.get(`${r},${c}`) || {}).zone;
+                const X = x + (c + mg) * s, Y = y + (r + mh) * s;
+                const autre = (dr, dc) => {
+                    const a = par.get(`${r + dr},${c + dc}`);
+                    return !a || a.zone !== z;
+                };
+                if (autre(-1, 0)) doc.line(X, Y, X + s, Y);
+                if (autre(1, 0)) doc.line(X, Y + s, X + s, Y + s);
+                if (autre(0, -1)) doc.line(X, Y, X, Y + s);
+                if (autre(0, 1)) doc.line(X + s, Y, X + s, Y + s);
+            }
+        }
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.55);
+    doc.rect(x + mg * s, y + mh * s, colonnes * s, lignes * s, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    // Les totaux de marge, en bleu : ils ne se confondent pas avec ce qu'on
+    // écrit dans la grille.
+    doc.setTextColor(29, 78, 216);
+    const etiq = (v, cx, cy) => {
+        if (v === null || v === undefined || v === '') return;
+        centre(cx, cy, v, Math.min(12, s * 1.1));
+    };
+    (marges.haut || []).forEach((v, c) => etiq(v, c + mg, 0));
+    (marges.bas || []).forEach((v, c) => etiq(v, c + mg, lignes + mh));
+    (marges.gauche || []).forEach((v, r) => etiq(v, 0, r + mh));
+    (marges.droite || []).forEach((v, r) => etiq(v, colonnes + mg, r + mh));
+
+    // Les deux sommes d'une case noire, en blanc sur le noir.
+    doc.setTextColor(255, 255, 255);
+    doc.setLineWidth(0.18);
+    doc.setDrawColor(255, 255, 255);
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const t = par.get(`${r},${c}`) || {};
+            // TOUTE CASE NOIRE PORTE SA DIAGONALE, somme ou pas. Voir l'écran
+            // et l'aperçu : sans elle, les cases noires voisines se collent et
+            // la grille se lit comme une tache.
+            if (t.type !== 'indice' && t.type !== 'mur') continue;
+            const X = x + (c + mg) * s, Y = y + (r + mh) * s;
+            doc.line(X, Y, X + s, Y + s);
+            if (t.type !== 'indice') continue;
+            doc.setFontSize(Math.min(7.5, s * 0.5));
+            if (t.droite) doc.text(String(t.droite), X + s * 0.74, Y + s * 0.26, { align: 'center', baseline: 'middle' });
+            if (t.bas) doc.text(String(t.bas), X + s * 0.26, Y + s * 0.76, { align: 'center', baseline: 'middle' });
+        }
+    }
+
+    doc.setTextColor(...ENCRE.texte);
+    for (let r = 0; r < lignes; r++) {
+        for (let c = 0; c < colonnes; c++) {
+            const t = par.get(`${r},${c}`) || {};
+            if (t.type === 'donnee') { centre(c + mg, r + mh, t.valeur, Math.min(13, s * 1.2)); continue; }
+            if (t.type === 'vide' && solution) {
+                doc.setTextColor(29, 78, 216);
+                centre(c + mg, r + mh, item.meta.solution[r][c], Math.min(13, s * 1.2));
+                doc.setTextColor(...ENCRE.texte);
+            }
+        }
+    }
+}
+
+['kakuro', 'yohaku', 'suguru', 'gratteCiel', 'cheminNombres'].forEach(nom => {
+    RENDUS_GRILLES[nom] = {
+        titre: { kakuro: 'Kakuro', yohaku: 'Yohaku', suguru: 'Suguru',
+            gratteCiel: 'Les Gratte-ciel', cheminNombres: 'Le Chemin des Nombres' }[nom],
+        consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+        previewGrille: grilleNombresPreviewHtml,
+        pdfGrille: dessinerGrilleNombresPdf,
+        // DEUX PAR LIGNE : on ÉCRIT dans ces grilles, et à six par page les
+        // cases tombent sous les quatre millimètres. Même raison que le Garam.
+        parLigneDefaut: 2
+    };
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES ALLUMETTES À DÉPLACER, SUR LE PAPIER.
+//
+// C'EST LÀ QUE CE JEU EST NÉ : on le pose sur la table avec de vraies
+// allumettes, et la feuille n'est que le dessin de ce qu'on a posé. On
+// n'imprime donc PAS les emplacements vides — sur l'écran ils disent où l'on
+// peut poser, sur le papier ils transformeraient chaque chiffre en 8 et il n'y
+// aurait plus d'énigme. Mesuré sur une image : à 0,22 d'opacité, un 0 se
+// lisait 8.
+//
+// L'ÉLÈVE ENTOURE L'ALLUMETTE QU'IL ENLÈVE et dessine celle qu'il pose. C'est
+// le geste qu'il ferait avec son crayon de toute façon.
+
+/** Les sept segments d'un chiffre, en fractions de la case, pour le papier. */
+const SEPT_SEGMENTS = [
+    { h: true, x: 0.16, y: 0.03 },   // 0 — haut
+    { h: false, x: 0.84, y: 0.09 },  // 1 — haut-droite
+    { h: false, x: 0.84, y: 0.55 },  // 2 — bas-droite
+    { h: true, x: 0.16, y: 0.95 },   // 3 — bas
+    { h: false, x: 0.16, y: 0.55 },  // 4 — bas-gauche
+    { h: false, x: 0.16, y: 0.09 },  // 5 — haut-gauche
+    { h: true, x: 0.16, y: 0.49 }    // 6 — milieu
+];
+
+/** La place de l'égalité sur la feuille : une rangée de cases deux fois hautes. */
+function poseAllumettes(item, slot) {
+    const n = item.meta.cellules.length;
+    // TOUTES LES CASES ONT LA MÊME LARGEUR, y compris le signe et le « = ».
+    //
+    // Elles étaient plus étroites pour les signes, ce qui raccourcissait leurs
+    // allumettes — et une allumette plus courte que les autres se voit du
+    // premier coup d'œil sur une feuille. C'est la même correction qu'à
+    // l'écran : les sept bâtons d'un chiffre, les deux d'un signe et les deux
+    // du « = » ont désormais rigoureusement la même longueur.
+    const ecart = 0.18;
+    const total = n + ecart * (n - 1);
+    // La vue d'une case fait 115 de large pour 215 de haut : la boîte des
+    // centres, plus la demi-épaisseur dont les bâtons dépassent.
+    const l = Math.min(slot.taille / total, slot.taille * ALLU.VUE.w / ALLU.VUE.h);
+    const h = l * ALLU.VUE.h / ALLU.VUE.w;
+    return { l, h, total, ecart, x: slot.x + (slot.taille - l * total) / 2,
+        y: slot.y + (slot.taille - h) / 2 };
+}
+
+/**
+ * LES RECTANGLES D'UNE CASE, en unités du noyau.
+ *
+ * Une seule source pour l'écran et pour le papier : `allumettesDessin.js`.
+ * Deux géométries écrites séparément finissent toujours par diverger — c'est
+ * exactement ce qui a produit le « un peu décalés » de Rémy.
+ */
+function rectsDeLaCase(cel) {
+    const dessine = (e) => {
+        const b = ALLU.baton(e);
+        return [{ ...b.corps, quoi: 'bois' }, { ...b.tete, quoi: 'tete' }];
+    };
+    if (cel.t === '=') return ALLU.batonsDuSigne('=').flatMap(dessine);
+    if (cel.t === 'o') {
+        return ALLU.batonsDuSigne('+')
+            .filter(e => (cel.m & (1 << e.i))).flatMap(dessine);
+    }
+    // SEULES LES ALLUMETTES POSÉES SE DESSINENT : un emplacement vide montré
+    // en pâle ferait lire « 8 » là où il n'y a pas de 8.
+    return ALLU.EMPLACEMENTS.filter(e => (cel.m & (1 << e.i))).flatMap(dessine);
+}
+
+function allumettesPreviewHtml(item, slot, k, solution) {
+    const { l, ecart, x, y } = poseAllumettes(item, slot);
+    const cellules = solution ? item.meta.solution : item.meta.cellules;
+    const px = (v) => `${v * k}px`;
+    const u = l / ALLU.VUE.w;                       // une unité du noyau, en mm
+    let html = '';
+    cellules.forEach((cel, i) => {
+        const cx = x + i * (l + l * ecart);
+        for (const r of rectsDeLaCase(cel)) {
+            const couleur = r.quoi === 'tete'
+                ? (solution ? '#1d4ed8' : '#d81b4a')
+                : (solution ? '#93b4f5' : '#e3c296');
+            html += `<div style="position:absolute;
+                left:${px(cx + (r.x - ALLU.VUE.x) * u)};
+                top:${px(y + (r.y - ALLU.VUE.y) * u)};
+                width:${px(r.w * u)}; height:${px(r.h * u)};
+                background:${couleur};
+                border-radius:${px(ALLU.T * u * 0.5)};"></div>`;
+        }
+    });
+    return html;
+}
+
+function dessinerAllumettesPdf(doc, item, slot, solution) {
+    const { l, ecart, x, y } = poseAllumettes(item, slot);
+    const cellules = solution ? item.meta.solution : item.meta.cellules;
+    const u = l / ALLU.VUE.w;
+    const BOIS = solution ? [147, 180, 245] : [227, 194, 150];
+    const TETE = solution ? [29, 78, 216] : [216, 27, 74];
+    cellules.forEach((cel, i) => {
+        const cx = x + i * (l + l * ecart);
+        for (const r of rectsDeLaCase(cel)) {
+            doc.setFillColor(...encre(r.quoi === 'tete' ? TETE : BOIS));
+            doc.roundedRect(cx + (r.x - ALLU.VUE.x) * u, y + (r.y - ALLU.VUE.y) * u,
+                r.w * u, r.h * u, ALLU.T * u * 0.5, ALLU.T * u * 0.5, 'F');
+        }
+    });
+    doc.setFillColor(...ENCRE.trait);
+}
+
+RENDUS_GRILLES.allumettesEgalite = {
+    titre: 'Les Allumettes à Déplacer',
+    // « ÉGALITÉ 1 », PAS « GRILLE 1 » : ce n'en est pas une, et le mot se lit
+    // six fois sur la feuille. Vu en regardant la fiche imprimée.
+    nomBloc: 'Égalité',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: allumettesPreviewHtml,
+    pdfGrille: dessinerAllumettesPdf,
+    // TROIS PAR LIGNE : une égalité est LARGE et basse, pas carrée comme une
+    // grille. À deux par ligne elle flotte au milieu d'un vide.
+    parLigneDefaut: 3
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LA TRAVERSÉE, SUR LE PAPIER — et c'est le plus honnête des deux.
+//
+// ON N'IMPRIME PAS UNE BARQUE QUI GLISSE : on imprime le TABLEAU que l'élève
+// remplirait de toute façon au brouillon, une ligne par traversée, avec le
+// sens de la flèche déjà écrit. C'est la forme sous laquelle on demande ce
+// travail à l'écrit depuis toujours, et c'est elle qui fait voir que les
+// allers et les retours alternent.
+
+function poseTraversee(item, slot) {
+    // Une ligne par traversée minimale, plus deux de marge pour les élèves
+    // qui s'y reprennent — et au moins huit, pour que le tableau ne soit pas
+    // ridicule quand le minimum est petit.
+    const lignes = Math.max(8, (item.meta.minimum || 7) + 2);
+    const haut = Math.min(slot.taille / (lignes + 1.6), slot.taille * 0.11);
+    return { lignes, haut, x: slot.x, y: slot.y + haut * 0.8, large: slot.taille };
+}
+
+function traverseePreviewHtml(item, slot, k, solution) {
+    const { lignes, haut, x, y, large } = poseTraversee(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = `<div style="position:absolute; left:${px(x)}; top:${px(slot.y)};
+        width:${px(large)}; font-size:${px(haut * 0.44)}; font-weight:700;
+        color:#2d3748;">${item.meta.titre}</div>
+        <div style="position:absolute; left:${px(x)}; top:${px(slot.y + haut * 0.52)};
+        width:${px(large)}; font-size:${px(haut * 0.34)};
+        color:#6e7684;">${item.meta.pourquoi}</div>`;
+    for (let i = 0; i < lignes; i++) {
+        const ly = y + i * haut;
+        const sens = i % 2 === 0 ? '→' : '←';
+        html += `<div style="position:absolute; left:${px(x)}; top:${px(ly)};
+            width:${px(large)}; height:${px(haut)}; box-sizing:border-box;
+            border-bottom:1px solid #b0b6c5; display:flex; align-items:center;
+            gap:${px(haut * 0.3)}; font-size:${px(haut * 0.42)}; color:#6e7684;">
+            <span style="width:${px(haut * 0.9)}; text-align:right;">${i + 1}.</span>
+            <span style="font-size:${px(haut * 0.6)}; color:#2d3748;">${sens}</span>
+            <span style="color:#2d3748;">${solution
+        ? (item.meta.solution[i] || '').replace(/^\d+\.\s*/, '') : ''}</span>
+        </div>`;
+    }
+    return html;
+}
+
+function dessinerTraverseePdf(doc, item, slot, solution) {
+    const { lignes, haut, x, y, large } = poseTraversee(item, slot);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(10, haut * 2.6));
+    doc.text(pourPdf(item.meta.titre), x, slot.y + haut * 0.4);
+    // LA RÈGLE DE CETTE HISTOIRE-LÀ, sous son titre : la consigne du haut de
+    // feuille est commune à quatre énigmes qui ne racontent pas la même chose.
+    doc.setTextColor(...ENCRE.gris);
+    doc.setFontSize(Math.min(7.5, haut * 2));
+    doc.text(pourPdf(item.meta.pourquoi), x, slot.y + haut * 0.95);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.18);
+    for (let i = 0; i < lignes; i++) {
+        const ly = y + (i + 1) * haut;
+        doc.line(x, ly, x + large, ly);
+        doc.setTextColor(...ENCRE.gris);
+        doc.setFontSize(Math.min(8, haut * 2.2));
+        doc.text(`${i + 1}.`, x + haut * 0.9, ly - haut * 0.25, { align: 'right' });
+        // LA FLÈCHE DIT LE SENS, et c'est elle qui fait voir l'alternance :
+        // on part, on revient, on repart. Un élève qui écrit deux allers de
+        // suite voit tout de suite que quelque chose cloche.
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(i % 2 === 0 ? '→' : '←', x + haut * 1.5, ly - haut * 0.25);
+        if (solution && item.meta.solution[i]) {
+            doc.setTextColor(29, 78, 216);
+            doc.text(pourPdf(item.meta.solution[i].replace(/^\d+\.\s*/, '')),
+                x + haut * 2.4, ly - haut * 0.25);
+        }
+    }
+    doc.setTextColor(...ENCRE.texte);
+}
+
+RENDUS_GRILLES.traversee = {
+    titre: 'La Traversée',
+    nomBloc: 'Énigme',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: traverseePreviewHtml,
+    pdfGrille: dessinerTraverseePdf,
+    // DEUX PAR LIGNE : le tableau est HAUT, et il faut de la place pour écrire
+    // des noms à la main sur chaque ligne.
+    parLigneDefaut: 2
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LE PENDU, SUR LE PAPIER — et c'est sa forme d'origine.
+//
+// Ce jeu s'est toujours joué sur un coin de cahier : des tirets, une
+// définition, l'alphabet qu'on raye au fur et à mesure, et de la place pour
+// dessiner. On imprime exactement cela.
+//
+// L'ALPHABET IMPRIMÉ N'EST PAS UN ORNEMENT : sans lui, l'élève redemande trois
+// fois la même lettre et ne sait plus où il en est. C'est la seule chose que
+// l'écran fait gratuitement et que le papier doit payer en encre.
+//
+// LA PLACE DU DESSIN EST VIDE, avec juste le décor amorcé : c'est l'ÉLÈVE qui
+// dessine, pas la feuille. Rémy : « Rien ne remplace le geste » — la phrase
+// visait la règle et le compas, mais elle vaut aussi ici.
+
+const ALPHABET_FICHE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+/**
+ * LA PLACE DE CHAQUE CHOSE DANS LE CARRÉ DE LA FICHE.
+ *
+ * Premier jet : tout en haut, et les deux tiers du carré vides. REGARDÉ SUR LA
+ * FICHE IMPRIMÉE — la définition, une rangée de tirets, un petit cadre, et
+ * ensuite plus rien jusqu'au bloc suivant. Or la place vide n'est pas neutre
+ * sur une feuille : c'est là que l'élève DESSINE. Le cadre prend donc la
+ * moitié de la hauteur, et l'alphabet descend tout en bas.
+ */
+function posePendu(item, slot) {
+    const n = item.meta.mot.length;
+    const T = slot.taille;
+    // Les tirets tiennent sur une ligne tant que le mot n'est pas trop long ;
+    // au-delà on passe à deux lignes plutôt que de réduire les lettres à rien.
+    const parLigne = n <= 9 ? n : Math.ceil(n / 2);
+    const lignes = Math.ceil(n / parLigne);
+    return {
+        n, parLigne, lignes, x: slot.x, y: slot.y, large: T, T,
+        yDef: slot.y + T * 0.04,
+        yMot: slot.y + T * 0.20,
+        pasMot: Math.min(T / (parLigne + 0.6), T * 0.1),
+        cadre: { x: slot.x + T * 0.16, y: slot.y + T * 0.33, cote: T * 0.46 },
+        yAlpha: slot.y + T * 0.87
+    };
+}
+
+function penduPreviewHtml(item, slot, k, solution) {
+    const { mot, definition } = item.meta;
+    const g = posePendu(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = '';
+
+    // La définition, en tête : c'est elle qu'on lit vraiment.
+    html += `<div style="position:absolute; left:${px(g.x)}; top:${px(g.yDef)};
+        width:${px(g.large)}; font-size:${px(g.T * 0.042)}; font-style:italic;
+        color:#2d3748; line-height:1.3;">${definition}</div>`;
+
+    // Les tirets du mot.
+    [...mot].forEach((c, i) => {
+        const li = Math.floor(i / g.parLigne), co = i % g.parLigne;
+        html += `<div style="position:absolute;
+            left:${px(g.x + co * g.pasMot)}; top:${px(g.yMot + li * g.pasMot * 1.1)};
+            width:${px(g.pasMot * 0.8)}; height:${px(g.pasMot * 0.9)};
+            border-bottom:2px solid #1a202c; text-align:center;
+            font-size:${px(g.pasMot * 0.6)}; font-weight:800;
+            color:#1d4ed8;">${solution ? c : ''}</div>`;
+    });
+
+    // LA PLACE DU DESSIN, vide : c'est l'élève qui dessine, pas la feuille.
+    html += `<div style="position:absolute; left:${px(g.cadre.x)}; top:${px(g.cadre.y)};
+        width:${px(g.cadre.cote)}; height:${px(g.cadre.cote)};
+        border:1px solid #b0b6c5; border-radius:${px(g.T * 0.012)};"></div>`;
+
+    // L'alphabet à rayer, tout en bas.
+    ALPHABET_FICHE.forEach((c, i) => {
+        html += `<div style="position:absolute;
+            left:${px(g.x + (i % 13) * (g.large / 13))};
+            top:${px(g.yAlpha + Math.floor(i / 13) * g.T * 0.058)};
+            width:${px(g.large / 13)}; text-align:center;
+            font-size:${px(g.T * 0.042)}; font-weight:600;
+            color:#2d3748;">${c}</div>`;
+    });
+    return html;
+}
+
+function dessinerPenduPdf(doc, item, slot, solution) {
+    const { mot, definition } = item.meta;
+    const g = posePendu(item, slot);
+
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(9, g.T * 0.09));
+    doc.splitTextToSize(pourPdf(definition), g.large).slice(0, 2)
+        .forEach((t, i) => doc.text(t, g.x, g.yDef + g.T * 0.05 + i * g.T * 0.05));
+
+    // Les tirets du mot.
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.45);
+    [...mot].forEach((c, i) => {
+        const li = Math.floor(i / g.parLigne), co = i % g.parLigne;
+        const lx = g.x + co * g.pasMot, ly = g.yMot + g.pasMot * 0.9 + li * g.pasMot * 1.1;
+        doc.line(lx, ly, lx + g.pasMot * 0.8, ly);
+        if (solution) {
+            doc.setTextColor(29, 78, 216);
+            doc.setFontSize(Math.min(12, g.pasMot * 2.4));
+            doc.text(pourPdf(c), lx + g.pasMot * 0.4, ly - g.pasMot * 0.2, { align: 'center' });
+            doc.setTextColor(...ENCRE.texte);
+        }
+    });
+
+    // LA PLACE DU DESSIN : un rectangle, et rien dedans. Sur une photocopie, un
+    // décor amorcé au trait fin disparaît ; et c'est de la PLACE que l'élève a
+    // besoin, pas d'un modèle. Elle prend la moitié du carré — la première
+    // version lui donnait un timbre-poste et laissait les deux tiers de la
+    // case vides, ce qui se voit sur la fiche imprimée et nulle part ailleurs.
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.18);
+    doc.rect(g.cadre.x, g.cadre.y, g.cadre.cote, g.cadre.cote, 'S');
+
+    // L'ALPHABET À RAYER : treize par ligne, deux lignes, à l'encre du TEXTE.
+    // En gris, il disparaissait à la photocopie — et c'est le seul endroit où
+    // l'élève note ce qu'il a déjà essayé.
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(9, g.T * 0.085));
+    ALPHABET_FICHE.forEach((c, i) => {
+        doc.text(pourPdf(c), g.x + (i % 13 + 0.5) * (g.large / 13),
+            g.yAlpha + Math.floor(i / 13) * g.T * 0.06, { align: 'center' });
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES TRANSVASEMENTS, SUR LE PAPIER.
+//
+// L'ÉCRAN VERSE ; LA FEUILLE DEMANDE DE NOTER. Les bidons sont dessinés vides
+// en haut, et dessous un tableau où l'élève écrit, ligne après ligne, ce que
+// contient chaque bidon après chaque geste. C'est le même raisonnement, et il y
+// gagne une trace : à l'écran on verse et l'on oublie, sur la feuille on RELIT
+// ses trois derniers états et l'on voit qu'on tourne en rond.
+//
+// LA PREMIÈRE LIGNE EST DONNÉE — c'est l'état de départ, qui n'est pas une
+// question. Sans elle, l'élève hésite sur ce qu'il faut écrire en haut.
+
+function poseTransvasements(item, slot) {
+    const { caps } = item.meta;
+    const T = slot.taille;
+    const n = caps.length;
+    // Les bidons occupent le tiers haut, le tableau les deux tiers bas.
+    const hBidons = T * 0.30;
+    const litre = Math.min(hBidons / Math.max(...caps), T * 0.035);
+    const large = Math.min(T * 0.16, T / (n + 1.4));
+    const ecart = large * 0.55;
+    const totalL = n * large + (n - 1) * ecart;
+    const lignes = 8;
+    // LA PLACE DE LA CIBLE EST RÉSERVÉE, pas espérée. Calculée « à peu près sous
+    // les bidons », la ligne « il faut 2 L » tombait PILE sur la première
+    // rangée du tableau et les deux se chevauchaient. Le tableau commence donc
+    // après la capacité ET après la cible, comptées en hauteurs de litre.
+    const yTable = slot.y + T * 0.03 + hBidons + litre * 3.4;
+    const colonne = large + ecart;
+    const hLigne = Math.max(T * 0.045, (T * 0.9 - (yTable - slot.y)) / (lignes + 1));
+    return {
+        T, n, caps, litre, large, ecart, lignes, hLigne, colonne,
+        xBidons: slot.x + (T - totalL) / 2,
+        yBidons: slot.y + T * 0.03,
+        hBidons,
+        // LE TABLEAU SE RANGE SOUS LES BIDONS, colonne par colonne. Centré
+        // pour lui-même, il ne disait pas quelle colonne allait avec quel
+        // bidon, et il aurait fallu une ligne d'en-tête pour le dire.
+        xTable: slot.x + (T - totalL) / 2 - ecart / 2,
+        yTable
+    };
+}
+
+function transvasementsPreviewHtml(item, slot, k, solution) {
+    const g = poseTransvasements(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = '';
+
+    g.caps.forEach((cap, i) => {
+        const x = g.xBidons + i * (g.large + g.ecart);
+        const h = cap * g.litre;
+        const y = g.yBidons + g.hBidons - h;
+        html += `<div style="position:absolute; left:${px(x)}; top:${px(y)};
+            width:${px(g.large)}; height:${px(h)}; border:2px solid #1a202c;
+            border-top:none; box-sizing:border-box;"></div>`;
+        for (let t = 1; t < cap; t++) {
+            html += `<div style="position:absolute; left:${px(x + g.large * 0.55)};
+                top:${px(y + t * g.litre)}; width:${px(g.large * 0.3)};
+                border-top:1px solid #9aa3b2;"></div>`;
+        }
+        html += `<div style="position:absolute; left:${px(x)};
+            top:${px(g.yBidons + g.hBidons + g.litre * 0.25)}; width:${px(g.large)};
+            text-align:center; font-size:${px(g.litre * 1.1)}; font-weight:800;
+            color:#2d3748;">${cap} L</div>`;
+    });
+
+    // LA CIBLE DE CETTE ÉNIGME-LÀ, écrite dans le bloc : la consigne du haut est
+    // commune à toute la feuille et ne peut pas la porter.
+    html += `<div style="position:absolute; left:${px(slot.x)};
+        top:${px(g.yBidons + g.hBidons + g.litre * 1.7)}; width:${px(g.T)};
+        text-align:center; font-size:${px(g.litre * 1.25)}; font-weight:800;
+        color:#c2410c;">il faut ${item.meta.cible} L${
+        item.meta.famille === 'partage' ? ' — ni robinet ni évier' : ''}</div>`;
+
+    const etats = solution ? etatsDeLaSolution(item) : null;
+    for (let r = 0; r <= g.lignes; r++) {
+        for (let c = 0; c < g.n; c++) {
+            const donne = r === 0 || (etats && r < etats.length);
+            const texte = r === 0 ? String(item.meta.depart[c])
+                : (etats && etats[r]) ? String(etats[r][c]) : '';
+            html += `<div style="position:absolute;
+                left:${px(g.xTable + c * g.colonne)}; top:${px(g.yTable + r * g.hLigne)};
+                width:${px(g.colonne)}; height:${px(g.hLigne)};
+                border:1px solid #9aa3b2; box-sizing:border-box; display:flex;
+                align-items:center; justify-content:center;
+                font-size:${px(g.hLigne * 0.5)}; font-weight:800;
+                color:${r === 0 ? '#2d3748' : '#1d4ed8'};
+                background:${r === 0 ? '#eef2f7' : 'transparent'};
+                ">${donne ? texte : ''}</div>`;
+        }
+    }
+    return html;
+}
+
+/** Les états successifs de la plus courte solution, départ compris. */
+function etatsDeLaSolution(item) {
+    const route = resoudreTransvasement(item.meta.caps, item.meta.cible, item.meta.famille);
+    if (!route) return null;
+    return [item.meta.depart].concat(route.map(g => g.etat));
+}
+
+function dessinerTransvasementsPdf(doc, item, slot, solution) {
+    const g = poseTransvasements(item, slot);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    g.caps.forEach((cap, i) => {
+        const x = g.xBidons + i * (g.large + g.ecart);
+        const h = cap * g.litre;
+        const y = g.yBidons + g.hBidons - h;
+        doc.line(x, y, x, y + h);
+        doc.line(x + g.large, y, x + g.large, y + h);
+        doc.line(x, y + h, x + g.large, y + h);
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.2);
+        for (let t = 1; t < cap; t++) {
+            doc.line(x + g.large * 0.55, y + t * g.litre,
+                x + g.large * 0.85, y + t * g.litre);
+        }
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.5);
+        doc.setTextColor(...ENCRE.texte);
+        doc.setFontSize(Math.min(9, g.litre * 2.2));
+        doc.text(pourPdf(`${cap} L`), x + g.large / 2,
+            g.yBidons + g.hBidons + g.litre * 1.1, { align: 'center' });
+    });
+
+    doc.setTextColor(194, 65, 12);
+    doc.setFontSize(Math.min(10, g.litre * 2.4));
+    doc.text(pourPdf(`il faut ${item.meta.cible} L${
+        item.meta.famille === 'partage' ? ' — ni robinet ni évier' : ''}`),
+    slot.x + g.T / 2, g.yBidons + g.hBidons + g.litre * 2.5, { align: 'center' });
+    doc.setTextColor(...ENCRE.texte);
+
+    const etats = solution ? etatsDeLaSolution(item) : null;
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.2);
+    for (let r = 0; r <= g.lignes; r++) {
+        for (let c = 0; c < g.n; c++) {
+            doc.rect(g.xTable + c * g.colonne, g.yTable + r * g.hLigne,
+                g.colonne, g.hLigne, 'S');
+        }
+    }
+    doc.setFontSize(Math.min(10, g.hLigne * 1.5));
+    for (let c = 0; c < g.n; c++) {
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(pourPdf(String(item.meta.depart[c])),
+            g.xTable + (c + 0.5) * g.colonne, g.yTable + g.hLigne * 0.68,
+            { align: 'center' });
+    }
+    if (etats) {
+        doc.setTextColor(29, 78, 216);
+        for (let r = 1; r < Math.min(etats.length, g.lignes + 1); r++) {
+            for (let c = 0; c < g.n; c++) {
+                doc.text(pourPdf(String(etats[r][c])),
+                    g.xTable + (c + 0.5) * g.colonne,
+                    g.yTable + (r + 0.68) * g.hLigne, { align: 'center' });
+            }
+        }
+        doc.setTextColor(...ENCRE.texte);
+    }
+}
+
+RENDUS_GRILLES.transvasements = {
+    titre: 'Les Transvasements',
+    nomBloc: 'Énigme',
+    // LA CONSIGNE EST GÉNÉRALE, et chaque bloc dit SA cible. Reprise du premier
+    // énoncé — « avec des bidons de 7 L et 5 L » —, elle contredisait la
+    // deuxième énigme de la feuille, qui en a de 7 L et 4 L. Vu sur l'image.
+    consigne: () => 'Verse d\'un bidon dans l\'autre pour obtenir la quantité demandée. '
+        + 'Un versement s\'arrête tout seul : soit le premier se vide, soit le second '
+        + 'déborde. Note ce que contient chaque bidon après chaque geste.',
+    previewGrille: transvasementsPreviewHtml,
+    pdfGrille: dessinerTransvasementsPdf,
+    parLigneDefaut: 2
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES PENTAMINOS, SUR LE PAPIER.
+//
+// L'ÉCRAN DONNE LES PIÈCES, LA FEUILLE DONNE LE RECTANGLE VIDE ET LES PIÈCES À
+// CÔTÉ. L'élève dessine le pavage au crayon, en écrivant la lettre de chaque
+// pièce dans ses cinq cases — c'est ainsi qu'on vérifie, et c'est ainsi qu'on
+// RATURE, ce que l'écran ne permet pas.
+//
+// ON N'IMPRIME PAS DE PIÈCES À DÉCOUPER. Ce serait plus joli et cela coûterait
+// une paire de ciseaux par élève, dix minutes de classe, et des pièces perdues
+// sous les tables. La lettre écrite dans la case dit la même chose.
+
+function posePentaminos(item, slot) {
+    const { largeur, hauteur, pieces } = item.meta;
+    const T = slot.taille;
+    const u = Math.min(T * 0.60 / largeur, T * 0.42 / hauteur);
+    const l = largeur * u, h = hauteur * u;
+    const g = {
+        T, u, l, h, largeur, hauteur, pieces,
+        x: slot.x + (T - l) / 2,
+        y: slot.y + T * 0.05,
+        dispo: T * 0.84 - T * 0.05 - h
+    };
+    g.yPieces = g.y + h + T * 0.05;
+    g.rangees = rangerLesPieces(g);
+    return g;
+}
+
+/**
+ * LES PIÈCES SOUS LE RECTANGLE, SUR AUTANT DE RANGÉES QU'IL EN FAUT.
+ *
+ * LE PREMIER JET LES COUPAIT. Une seule rangée, et `break` dès que la suivante
+ * dépassait du cadre : la fiche montrait DEUX pièces sur quatre, et l'élève
+ * cherchait un pavage avec la moitié du jeu. C'est exactement ce que
+ * `nouvelExercice.mjs` annonce en toutes lettres — « un énoncé juste à l'écran
+ * peut être sans réponse possible sur le papier » —, et il a fallu REGARDER
+ * l'image pour le voir : aucun compteur ne bouge quand une fiche est sans
+ * solution.
+ *
+ * On couche donc chaque pièce dans le sens le plus large, on les range en
+ * rangées, et l'on rétrécit tant que l'ensemble déborde. Le I devient une
+ * barre de cinq de long sur une de haut plutôt que l'inverse.
+ */
+function rangerLesPieces(g) {
+    const couchee = (cells) => {
+        const w = Math.max(...cells.map(c => c[0])) + 1;
+        const h = Math.max(...cells.map(c => c[1])) + 1;
+        if (w >= h) return cells;
+        const tournee = cells.map(([x, y]) => [-y, x]);
+        const mx = Math.min(...tournee.map(c => c[0]));
+        const my = Math.min(...tournee.map(c => c[1]));
+        return tournee.map(([x, y]) => [x - mx, y - my]);
+    };
+    const formes = g.pieces.map(id => ({ id, cells: couchee(PENTA_FORMES[id]) }));
+
+    for (let essai = 0; essai < 14; essai++) {
+        const up = g.u * 0.46 * Math.pow(0.9, essai);
+        const ecart = up * 0.7, sousLeNom = up * 1.5;
+        const rangees = [];
+        let ligne = [], large = 0, haute = 0, total = 0;
+        const fermer = () => {
+            if (!ligne.length) return;
+            rangees.push({ pieces: ligne, haut: haute });
+            total += haute + sousLeNom;
+            ligne = []; large = 0; haute = 0;
+        };
+        for (const f of formes) {
+            const w = (Math.max(...f.cells.map(c => c[0])) + 1) * up;
+            const h = (Math.max(...f.cells.map(c => c[1])) + 1) * up;
+            if (ligne.length && large + ecart + w > g.l) fermer();
+            ligne.push({ ...f, w, h, dx: large });
+            large += w + ecart;
+            haute = Math.max(haute, h);
+        }
+        fermer();
+        if (total <= g.dispo || essai === 13) {
+            let y = 0;
+            for (const r of rangees) {
+                r.y = y;
+                r.pieces.forEach(p => { p.y = y; });
+                y += r.haut + sousLeNom;
+            }
+            return { rangees, up, sousLeNom };
+        }
+    }
+    return { rangees: [], up: g.u * 0.2, sousLeNom: 0 };
+}
+
+function pentaminosPreviewHtml(item, slot, k, solution) {
+    const g = posePentaminos(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = '';
+
+    // Le rectangle vide, quadrillé.
+    for (let y = 0; y < g.hauteur; y++) for (let x = 0; x < g.largeur; x++) {
+        html += `<div style="position:absolute; left:${px(g.x + x * g.u)};
+            top:${px(g.y + y * g.u)}; width:${px(g.u)}; height:${px(g.u)};
+            border:1px solid #9aa3b2; box-sizing:border-box;"></div>`;
+    }
+    html += `<div style="position:absolute; left:${px(g.x)}; top:${px(g.y)};
+        width:${px(g.l)}; height:${px(g.h)}; border:2px solid #1a202c;
+        box-sizing:border-box;"></div>`;
+
+    // LA SOLUTION ÉCRIT LA LETTRE DANS CHAQUE CASE, et ne colorie pas : une
+    // feuille de correction part au photocopieur, et six aplats de couleur y
+    // deviennent six gris qu'on ne distingue plus.
+    if (solution && item.meta.solution) {
+        for (const s of item.meta.solution) {
+            for (const [a, b] of s.cells) {
+                html += `<div style="position:absolute;
+                    left:${px(g.x + (s.x + a) * g.u)}; top:${px(g.y + (s.y + b) * g.u)};
+                    width:${px(g.u)}; height:${px(g.u)}; display:flex;
+                    align-items:center; justify-content:center;
+                    font-size:${px(g.u * 0.5)}; font-weight:800; color:#1d4ed8;
+                    ">${s.id}</div>`;
+            }
+        }
+    }
+
+    // Les pièces, rangée par rangée sous le rectangle.
+    const { rangees, up } = g.rangees;
+    for (const r of rangees) {
+        for (const p of r.pieces) {
+            for (const [a, b] of p.cells) {
+                html += `<div style="position:absolute;
+                    left:${px(g.x + p.dx + a * up)};
+                    top:${px(g.yPieces + p.y + b * up)};
+                    width:${px(up)}; height:${px(up)};
+                    border:1.5px solid #1a202c; box-sizing:border-box;"></div>`;
+            }
+            html += `<div style="position:absolute; left:${px(g.x + p.dx)};
+                top:${px(g.yPieces + p.y + r.haut + up * 0.1)}; width:${px(p.w)};
+                text-align:center; font-size:${px(up * 0.9)}; font-weight:800;
+                color:#2d3748;">${p.id}</div>`;
+        }
+    }
+    return html;
+}
+
+function dessinerPentaminosPdf(doc, item, slot, solution) {
+    const g = posePentaminos(item, slot);
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.2);
+    for (let y = 0; y < g.hauteur; y++) for (let x = 0; x < g.largeur; x++) {
+        doc.rect(g.x + x * g.u, g.y + y * g.u, g.u, g.u, 'S');
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.6);
+    doc.rect(g.x, g.y, g.l, g.h, 'S');
+
+    if (solution && item.meta.solution) {
+        doc.setTextColor(29, 78, 216);
+        doc.setFontSize(Math.min(11, g.u * 1.6));
+        for (const s of item.meta.solution) {
+            for (const [a, b] of s.cells) {
+                doc.text(pourPdf(s.id), g.x + (s.x + a + 0.5) * g.u,
+                    g.y + (s.y + b + 0.68) * g.u, { align: 'center' });
+            }
+        }
+        doc.setTextColor(...ENCRE.texte);
+    }
+
+    const { rangees, up } = g.rangees;
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.35);
+    for (const r of rangees) {
+        for (const p of r.pieces) {
+            for (const [a, b] of p.cells) {
+                doc.rect(g.x + p.dx + a * up, g.yPieces + p.y + b * up, up, up, 'S');
+            }
+            doc.setFontSize(Math.min(9, up * 1.9));
+            doc.text(pourPdf(p.id), g.x + p.dx + p.w / 2,
+                g.yPieces + p.y + r.haut + up * 1.05, { align: 'center' });
+        }
+    }
+}
+
+RENDUS_GRILLES.pentaminos = {
+    titre: 'Les Pentaminos',
+    nomBloc: 'Rectangle',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: pentaminosPreviewHtml,
+    pdfGrille: dessinerPentaminosPdf,
+    parLigneDefaut: 2
+};
+
+RENDUS_GRILLES.pendu = {
+    titre: 'Le Pendu Mathématique',
+    nomBloc: 'Mot',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: penduPreviewHtml,
+    pdfGrille: dessinerPenduPdf,
+    // DEUX PAR LIGNE : il faut de la place pour les tirets d'un mot long ET
+    // pour l'alphabet en dessous.
+    parLigneDefaut: 2
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LE DESSIN GRADUÉ, SUR LE PAPIER — et c'est sa forme d'origine.
+//
+// Rémy l'a demandé d'après quatre captures d'une publication de collègues :
+// c'est un exercice de PHOTOCOPIE, qu'on fait au crayon et à la règle. La
+// feuille porte donc exactement ce que portent ces modèles, et dans cet
+// ordre : le tableau des points, la pile des droites graduées, puis la liste
+// des polygones à relier.
+//
+// LA LISTE DES POLYGONES N'EST PAS UN ORNEMENT. À l'écran, le logiciel trace
+// tout seul dès que les sommets sont posés — l'élève ne sait pas, et n'a pas
+// besoin de savoir, lesquels vont ensemble. Sur le papier, sans cette liste,
+// la feuille demande un dessin sans dire lequel : elle est, mot pour mot,
+// impossible à faire. Oubliée au premier jet, vue en REGARDANT la fiche.
+//
+// ── POURQUOI LA BOÎTE ENTIÈRE, ET NON LE CARRÉ INSCRIT ──────────────────────
+//
+// La mise en page offre deux emplacements : le CARRÉ inscrit, pour une grille
+// carrée, et la BOÎTE complète. Premier jet sur le carré — REGARDÉ sur la
+// fiche imprimée : les droites occupaient la moitié de la largeur de la page,
+// et un intervalle faisait huit millimètres. Or ici la largeur EST l'exercice :
+// c'est elle qui décide si un élève peut viser une graduation au crayon. Avec
+// la boîte entière, un intervalle en fait dix-sept.
+//
+// LES DEUX BORNES S'ÉCRIVENT SOUS LES CRANS DES BOUTS, pas à côté de la
+// droite, pour la même raison : écrites à côté, elles mangent la largeur dont
+// les dix intervalles ont besoin.
+
+/** La place de chaque chose dans le bloc de la fiche, en millimètres. */
+function poseDessinGradue(item, slot) {
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const L = b.w, H = b.h;
+    const n = item.meta.droites.length;
+    const pts = item.meta.points;
+    // LA HAUTEUR DES LETTRES EST BORNÉE DES DEUX CÔTÉS. Elle ne peut pas
+    // suivre la largeur sans plafond — sur une page entière, « A (1) : 5 »
+    // sortirait en quatre millimètres de haut —, ni descendre sous 2,6 mm,
+    // qui est le plus petit corps qui survive à une photocopie.
+    const police = Math.max(2.6, Math.min(3.7, L * 0.022));
+    // DEUX COLONNES DÈS QUE L'ABSCISSE S'ÉCRIT EN MOTS : « H (4) : neuf
+    // dixièmes » fait vingt-cinq caractères, et quatre colonnes de cela
+    // débordent du bloc. Le tableau grandit alors en hauteur, pas en largeur.
+    const long = Math.max(...pts.map(p => String(p.enonce).length));
+    const colTab = long > 9 ? 2 : (pts.length > 8 ? 4 : 3);
+    const ligTab = Math.ceil(pts.length / colTab);
+    const pasTab = police * 1.55;
+    const hTab = ligTab * pasTab + police;
+    const hRelie = police * 2.6;
+    // x0 garde la place du numéro de droite, écrit à sa gauche.
+    const x0 = b.x + police * 2.4;
+    const x1 = b.x + L;
+    return {
+        L, H, n, pts, colTab, ligTab, pasTab, hTab, police,
+        x0, x1, x: b.x, large: L,
+        colonne: (x1 - x0) / COLONNES,
+        yTab: b.y + police,
+        largeurTab: L / colTab,
+        pas: (H - hTab - hRelie) / n,
+        y0: b.y + hTab + (H - hTab - hRelie) / n * 0.45,
+        yRelie: b.y + H - hRelie * 0.6
+    };
+}
+
+/** « A (1) : 5 » — le nom du point, sa droite, son abscisse. */
+const ligneTableau = (p) => `${p.nom} (${p.ligne}) : ${p.enonce}`;
+
+/** « B-C-E-D · A-B-C » — ce qu'il faut relier, dans l'ordre. */
+const aRelier = (item) => item.meta.formes
+    .map(f => [...f.sommets].join('-'))
+    .concat((item.meta.traits || []).map(([a, b]) => `${a}-${b}`))
+    .join('   ·   ');
+
+/** Les trois hauteurs de cran : les bouts, le milieu, et les autres. */
+const hauteurCran = (g, c) => (c === 0 || c === COLONNES) ? Math.min(g.pas * 0.17, 3)
+    : (c === COLONNES / 2 ? Math.min(g.pas * 0.13, 2.3) : Math.min(g.pas * 0.08, 1.5));
+
+function dessinGraduePreviewHtml(item, slot, k, solution) {
+    const g = poseDessinGradue(item, slot);
+    const px = (v) => `${v * k}px`;
+    const xDe = (c) => g.x0 + c * g.colonne;
+    const yDe = (i) => g.y0 + i * g.pas;
+    let html = '';
+
+    // ── LE TABLEAU DES POINTS ───────────────────────────────────────────────
+    g.pts.forEach((p, i) => {
+        const co = i % g.colTab, li = Math.floor(i / g.colTab);
+        html += `<div style="position:absolute;
+            left:${px(g.x + co * g.largeurTab)}; top:${px(g.yTab + li * g.pasTab)};
+            width:${px(g.largeurTab)}; font-size:${px(g.police)};
+            font-weight:600; color:#1a202c;">${echapperSheet(ligneTableau(p))}</div>`;
+    });
+
+    // ── LES FORMES, QUAND ON MONTRE LA SOLUTION ─────────────────────────────
+    //
+    // Elles se peignent AVANT les droites : un aplat posé par-dessus effacerait
+    // les graduations, et c'est sur elles que se lit la correction.
+    if (solution) {
+        const place = {};
+        g.pts.forEach(p => { place[p.nom] = { x: xDe(p.colonne), y: yDe(p.ligne - 1) }; });
+        const TEINTE = { corps: '#c7d2fe', toit: '#fde68a', detail: '#bae6fd' };
+        const calque = (dedans) => `<svg style="position:absolute; left:0; top:0;
+            overflow:visible; width:1px; height:1px;">${dedans}</svg>`;
+        item.meta.formes.forEach(f => {
+            const poly = [...f.sommets].map(s => `${place[s].x * k},${place[s].y * k}`).join(' ');
+            html += calque(`<polygon points="${poly}"
+                fill="${TEINTE[f.couleur] || TEINTE.corps}" stroke="#1d4ed8"
+                stroke-width="${Math.max(1, k * 0.3)}" />`);
+        });
+        (item.meta.traits || []).forEach(([a, c]) => {
+            html += calque(`<line x1="${place[a].x * k}" y1="${place[a].y * k}"
+                x2="${place[c].x * k}" y2="${place[c].y * k}" stroke="#1d4ed8"
+                stroke-width="${Math.max(1, k * 0.45)}" />`);
+        });
+    }
+
+    // ── LES DROITES, LEURS CRANS, LEURS BORNES ──────────────────────────────
+    item.meta.droites.forEach((d, i) => {
+        const y = yDe(i);
+        html += `<div style="position:absolute; left:${px(g.x0)}; top:${px(y)};
+            width:${px(g.x1 - g.x0)}; height:0;
+            border-top:${Math.max(1, k * 0.35)}px solid #1a202c;"></div>`;
+        html += `<div style="position:absolute; left:${px(g.x)}; top:${px(y - g.police * 0.7)};
+            width:${px(g.police * 1.8)}; text-align:center; font-size:${px(g.police)};
+            font-weight:700; color:#1a202c;">${i + 1}</div>`;
+        for (let c = 0; c <= COLONNES; c++) {
+            const h = hauteurCran(g, c);
+            html += `<div style="position:absolute; left:${px(xDe(c))}; top:${px(y - h)};
+                width:0; height:${px(h * 2)};
+                border-left:${Math.max(1, k * 0.3)}px solid #1a202c;"></div>`;
+        }
+        [[0, d.min], [COLONNES, d.max]].forEach(([c, v]) => {
+            html += `<div style="position:absolute; left:${px(xDe(c) - g.police * 2.5)};
+                top:${px(y + g.police * 0.9)}; width:${px(g.police * 5)}; text-align:center;
+                font-size:${px(g.police)}; font-weight:700;
+                color:#1a202c;">${nombreFr(v)}</div>`;
+        });
+    });
+
+    // ── LES POINTS, QUAND ON MONTRE LA SOLUTION ─────────────────────────────
+    if (solution) {
+        g.pts.forEach(p => {
+            html += `<div style="position:absolute;
+                left:${px(xDe(p.colonne) - g.police * 1.5)};
+                top:${px(yDe(p.ligne - 1) - g.police * 2)}; width:${px(g.police * 3)};
+                text-align:center; font-size:${px(g.police * 1.1)}; font-weight:800;
+                color:#1d4ed8;">${p.nom}</div>`;
+        });
+    }
+
+    // ── CE QU'IL FAUT RELIER ────────────────────────────────────────────────
+    html += `<div style="position:absolute; left:${px(g.x)}; top:${px(g.yRelie)};
+        width:${px(g.large)}; font-size:${px(g.police)}; font-weight:600;
+        color:#2d3748;">Relie : ${echapperSheet(aRelier(item))}</div>`;
+    return html;
+}
+
+function dessinerDessinGraduePdf(doc, item, slot, solution) {
+    const g = poseDessinGradue(item, slot);
+    const xDe = (c) => g.x0 + c * g.colonne;
+    const yDe = (i) => g.y0 + i * g.pas;
+
+    // ── LE TABLEAU DES POINTS ───────────────────────────────────────────────
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(enPoints(g.police));
+    g.pts.forEach((p, i) => {
+        const co = i % g.colTab, li = Math.floor(i / g.colTab);
+        doc.text(pourPdf(ligneTableau(p)),
+            g.x + co * g.largeurTab, g.yTab + li * g.pasTab + g.police);
+    });
+
+    // ── LES FORMES DE LA CORRECTION, SOUS LES DROITES ───────────────────────
+    if (solution) {
+        const place = {};
+        g.pts.forEach(p => { place[p.nom] = { x: xDe(p.colonne), y: yDe(p.ligne - 1) }; });
+        const TEINTE = { corps: [199, 210, 254], toit: [253, 230, 138], detail: [186, 230, 253] };
+        doc.setDrawColor(...encre([29, 78, 216]));
+        doc.setLineWidth(0.35);
+        item.meta.formes.forEach(f => {
+            const pts = [...f.sommets].map(s => place[s]);
+            doc.setFillColor(...encre(TEINTE[f.couleur] || TEINTE.corps));
+            // jsPDF ne sait pas tracer un polygone : on lui donne la suite des
+            // DÉPLACEMENTS d'un sommet au suivant, et l'on referme à la main.
+            const sauts = pts.slice(1).map((q, j) => [q.x - pts[j].x, q.y - pts[j].y]);
+            sauts.push([pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y]);
+            doc.lines(sauts, pts[0].x, pts[0].y, [1, 1], 'FD', true);
+        });
+        doc.setLineWidth(0.5);
+        (item.meta.traits || []).forEach(([a, c]) => {
+            doc.line(place[a].x, place[a].y, place[c].x, place[c].y);
+        });
+    }
+
+    // ── LES DROITES, LEURS CRANS, LEURS BORNES ──────────────────────────────
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(enPoints(g.police));
+    item.meta.droites.forEach((d, i) => {
+        const y = yDe(i);
+        doc.setLineWidth(0.4);
+        doc.line(g.x0, y, g.x1, y);
+        doc.text(String(i + 1), g.x + g.police * 0.9, y + g.police * 0.4, { align: 'center' });
+        doc.setLineWidth(0.3);
+        for (let c = 0; c <= COLONNES; c++) {
+            const h = hauteurCran(g, c);
+            doc.line(xDe(c), y - h, xDe(c), y + h);
+        }
+        [[0, d.min], [COLONNES, d.max]].forEach(([c, v]) => {
+            doc.text(pourPdf(nombreFr(v)), xDe(c), y + g.police * 1.9, { align: 'center' });
+        });
+    });
+
+    // ── LES LETTRES DE LA CORRECTION, PAR-DESSUS ────────────────────────────
+    if (solution) {
+        doc.setTextColor(...encre([29, 78, 216]));
+        doc.setFontSize(enPoints(g.police * 1.1));
+        g.pts.forEach(p => {
+            doc.text(pourPdf(p.nom), xDe(p.colonne), yDe(p.ligne - 1) - g.police * 1.2,
+                { align: 'center' });
+        });
+        doc.setTextColor(...ENCRE.texte);
+    }
+
+    // ── CE QU'IL FAUT RELIER ────────────────────────────────────────────────
+    doc.setFontSize(enPoints(g.police));
+    doc.splitTextToSize(pourPdf(`Relie : ${aRelier(item)}`), g.large).slice(0, 2)
+        .forEach((t, i) => doc.text(t, g.x, g.yRelie + g.police + i * g.police * 1.5));
+}
+
+RENDUS_GRILLES.dessinGradue = {
+    titre: 'Le Dessin Gradué',
+    nomBloc: 'Dessin',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: dessinGraduePreviewHtml,
+    pdfGrille: dessinerDessinGraduePdf,
+    // UN SEUL PAR LIGNE, et c'est la largeur qui l'impose : dix intervalles
+    // qu'on pointe au crayon demandent toute la page. À deux par ligne, un
+    // intervalle fait huit millimètres et la graduation ne se vise plus.
+    parLigneDefaut: 1
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'ARBRE DE CALCULS, SUR LE PAPIER — et c'est de cela qu'il s'agissait.
+//
+// La collègue du fil que Rémy a envoyé ne cherchait pas un écran : elle
+// cherchait un arbre « éditable », c'est-à-dire une FICHE qu'on règle et
+// qu'on imprime, et la seule réponse qu'on lui a faite était « écris du
+// LaTeX ». « Recopier et compléter » est une consigne de photocopie.
+//
+// CE QUE LA FEUILLE PORTE, ET DANS CET ORDRE : les cases du haut avec leurs
+// nombres, les ronds d'opération reliés par des flèches, les cases vides, la
+// case du bas en rouge — et, quand la question est d'écrire en ligne, les
+// pointillés pour l'écrire.
+//
+// LES CASES VIDES SONT VRAIMENT VIDES, et assez grandes pour qu'un nombre à
+// virgule et son signe y tiennent au crayon. C'est la seule mesure qui
+// compte sur une feuille : si « −10,5 » ne rentre pas dans le rectangle,
+// l'élève écrit à côté et la fiche a raté son seul travail.
+
+/** La place de chaque chose dans le bloc de la fiche, en millimètres. */
+function poseArbre(item, slot) {
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const { colonnes, lignes, question } = item.meta;
+    const police = Math.max(2.4, Math.min(3.4, b.w * 0.035));
+    // LES POINTILLÉS DE LA RÉPONSE NE SE PRENNENT QUE QUAND ON LES DEMANDE :
+    // sur un arbre à compléter, ils laisseraient croire qu'il y a autre chose
+    // à écrire en bas.
+    const hLigne = question === 'ligne' ? police * 4.5 : 0;
+    // La largeur que prend « En ligne : », mesurée et non devinée.
+    const etiquette = hLigne ? largeurTexte('En ligne :', police * 2.835) + 1.5 : 0;
+    const large = Math.max(8, Math.min(22, (b.w - 2) / (colonnes + 0.2)));
+    const haut = Math.max(5, Math.min(9, large * 0.5));
+    const pasX = colonnes > 1 ? (b.w - 2 - large) / (colonnes - 1) : 0;
+    const pasY = Math.max(haut + 8, (b.h - haut - hLigne - 2) / Math.max(1, lignes - 1));
+    return {
+        b, police, large, haut, pasX, pasY, hLigne, etiquette,
+        rond: Math.min(3.2, pasY * 0.16),
+        x: (colonne) => b.x + 1 + colonne * pasX,
+        y: (ligne) => b.y + 1 + (ligne - 1) * pasY,
+        yLigne: b.y + b.h - hLigne * 0.5
+    };
+}
+
+/** Le texte d'une case : le nombre donné, ou rien tant qu'on ne corrige pas. */
+const texteCase = (c, item, solution) =>
+    (c.genre === 'feuille' || item.meta.question === 'ligne' || solution)
+        ? nombreArbre(c.valeur) : '';
+
+function arbrePreviewHtml(item, slot, k, solution) {
+    const g = poseArbre(item, slot);
+    const px = (v) => `${v * k}px`;
+    const { cases, racine } = item.meta;
+    const parId = new Map(cases.map(c => [c.id, c]));
+    const cx = (c) => g.x(c.colonne) + g.large / 2;
+    let html = '';
+
+    // ── LES FLÈCHES ET LES RONDS ────────────────────────────────────────────
+    const calque = (dedans) => `<svg style="position:absolute; left:0; top:0;
+        overflow:visible; width:1px; height:1px;">${dedans}</svg>`;
+    for (const c of cases) {
+        if (c.genre !== 'noeud') continue;
+        const rx = cx(c), ry = g.y(c.ligne) - g.pasY / 2 + g.haut / 2;
+        for (const e of [parId.get(c.g), parId.get(c.d)]) {
+            html += calque(`<line x1="${cx(e) * k}" y1="${(g.y(e.ligne) + g.haut) * k}"
+                x2="${rx * k}" y2="${(ry - g.rond) * k}" stroke="#2d3748"
+                stroke-width="${Math.max(1, k * 0.22)}" />`);
+        }
+        html += calque(`<line x1="${rx * k}" y1="${(ry + g.rond) * k}"
+            x2="${rx * k}" y2="${(g.y(c.ligne) - 0.3) * k}" stroke="#1a202c"
+            stroke-width="${Math.max(1, k * 0.28)}" />`);
+        html += `<div style="position:absolute; left:${px(rx - g.rond)};
+            top:${px(ry - g.rond)}; width:${px(g.rond * 2)}; height:${px(g.rond * 2)};
+            border:${Math.max(1, k * 0.3)}px solid #1d4ed8; border-radius:50%;
+            background:#ffffff; display:flex; align-items:center; justify-content:center;
+            font-size:${px(g.rond * 1.1)}; font-weight:800; color:#1d4ed8;
+            box-sizing:border-box;">${c.op}</div>`;
+    }
+
+    // ── LES CASES ───────────────────────────────────────────────────────────
+    for (const c of cases) {
+        const donne = c.genre === 'feuille' || item.meta.question === 'ligne';
+        const fond = donne ? '#dbeafe' : '#ffffff';
+        const bord = c.id === racine ? '#dc2626' : (donne ? '#60a5fa' : '#94a3b8');
+        const encre = (donne || !solution) ? '#1a202c' : '#1d4ed8';
+        html += `<div style="position:absolute; left:${px(g.x(c.colonne))};
+            top:${px(g.y(c.ligne))}; width:${px(g.large)}; height:${px(g.haut)};
+            border:${Math.max(1, k * 0.35)}px solid ${bord}; border-radius:${px(0.8)};
+            background:${fond}; display:flex; align-items:center; justify-content:center;
+            font-size:${px(g.police)}; font-weight:700; color:${encre};
+            box-sizing:border-box;">${echapperSheet(texteCase(c, item, solution))}</div>`;
+    }
+
+    // ── LES POINTILLÉS, QUAND C'EST LA LIGNE QU'ON DEMANDE ──────────────────
+    //
+    // ILS PORTENT LEUR ÉTIQUETTE, et ce n'est pas un ornement. Sur une feuille
+    // qui mêle les deux questions, un arbre DÉJÀ REMPLI suivi d'un trait nu ne
+    // dit pas ce qu'on attend — la consigne du haut, elle, ne parle que du
+    // premier bloc. Vu sur la fiche imprimée : « Recopie et complète l'arbre »
+    // au-dessus d'un arbre qui n'avait plus une case vide.
+    if (g.hLigne) {
+        html += `<div style="position:absolute; left:${px(g.b.x)};
+            top:${px(g.yLigne - g.police * 1.4)}; font-size:${px(g.police)};
+            font-weight:700; color:#1a202c;">En ligne :</div>`;
+        html += `<div style="position:absolute; left:${px(g.b.x + g.etiquette)};
+            top:${px(g.yLigne)}; width:${px(g.b.w - g.etiquette)};
+            border-bottom:1px dotted #2d3748;
+            font-size:${px(g.police)}; color:#1d4ed8; font-weight:700;
+            white-space:nowrap; overflow:hidden;">${solution
+        ? echapperSheet(item.meta.ligneAttendue) : ''}</div>`;
+    }
+    return html;
+}
+
+function dessinerArbrePdf(doc, item, slot, solution) {
+    const g = poseArbre(item, slot);
+    const { cases, racine } = item.meta;
+    const parId = new Map(cases.map(c => [c.id, c]));
+    const cx = (c) => g.x(c.colonne) + g.large / 2;
+
+    // ── LES FLÈCHES, PUIS LES RONDS ─────────────────────────────────────────
+    for (const c of cases) {
+        if (c.genre !== 'noeud') continue;
+        const rx = cx(c), ry = g.y(c.ligne) - g.pasY / 2 + g.haut / 2;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.25);
+        for (const e of [parId.get(c.g), parId.get(c.d)]) {
+            doc.line(cx(e), g.y(e.ligne) + g.haut, rx, ry - g.rond);
+        }
+        doc.setLineWidth(0.35);
+        doc.line(rx, ry + g.rond, rx, g.y(c.ligne) - 0.9);
+        // LA POINTE DE LA FLÈCHE, à la main : jsPDF n'a pas de marqueur de
+        // fin de ligne. Un triangle plein de huit dixièmes de millimètre.
+        doc.setFillColor(...ENCRE.trait);
+        doc.lines([[-0.7, -1.1], [1.4, 0], [-0.7, 1.1]], rx, g.y(c.ligne) - 0.2,
+            [1, 1], 'F', true);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...encre([29, 78, 216]));
+        doc.setLineWidth(0.4);
+        doc.circle(rx, ry, g.rond, 'FD');
+        doc.setTextColor(...encre([29, 78, 216]));
+        doc.setFontSize(enPoints(g.rond * 1.1));
+        doc.text(pourPdf(c.op), rx, ry + g.rond * 0.42, { align: 'center' });
+    }
+
+    // ── LES CASES ───────────────────────────────────────────────────────────
+    for (const c of cases) {
+        const donne = c.genre === 'feuille' || item.meta.question === 'ligne';
+        doc.setFillColor(...(donne ? encre([219, 234, 254]) : [255, 255, 255]));
+        doc.setDrawColor(...(c.id === racine ? encre([220, 38, 38])
+            : donne ? encre([96, 165, 250]) : ENCRE.grille));
+        doc.setLineWidth(c.id === racine ? 0.6 : 0.4);
+        doc.roundedRect(g.x(c.colonne), g.y(c.ligne), g.large, g.haut, 0.8, 0.8, 'FD');
+        const texte = texteCase(c, item, solution);
+        if (!texte) continue;
+        doc.setTextColor(...((donne || !solution) ? ENCRE.texte : encre([29, 78, 216])));
+        doc.setFontSize(enPoints(g.police));
+        doc.text(pourPdf(texte), g.x(c.colonne) + g.large / 2,
+            g.y(c.ligne) + g.haut / 2 + g.police * 0.38, { align: 'center' });
+    }
+
+    // ── LES POINTILLÉS DE LA RÉPONSE, ET LEUR ÉTIQUETTE ─────────────────────
+    if (g.hLigne) {
+        doc.setTextColor(...ENCRE.texte);
+        doc.setFontSize(enPoints(g.police));
+        doc.text(pourPdf('En ligne :'), g.b.x, g.yLigne - 0.8);
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.25);
+        if (doc.setLineDashPattern) doc.setLineDashPattern([0.7, 0.7], 0);
+        doc.line(g.b.x + g.etiquette, g.yLigne, g.b.x + g.b.w, g.yLigne);
+        if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+        if (solution) {
+            doc.setTextColor(...encre([29, 78, 216]));
+            doc.text(pourPdf(item.meta.ligneAttendue), g.b.x + g.etiquette + 1, g.yLigne - 0.8);
+        }
+    }
+    doc.setTextColor(...ENCRE.texte);
+}
+
+RENDUS_GRILLES.arbreCalcul = {
+    titre: 'L\'Arbre de Calculs',
+    nomBloc: 'Arbre',
+    // LA CONSIGNE DOIT COUVRIR LA FEUILLE ENTIÈRE, pas son premier bloc. Avec
+    // le réglage « les deux en alternance », la moitié des arbres demande la
+    // ligne — et la fiche affichait « Recopie et complète l'arbre » au-dessus
+    // d'arbres déjà remplis. Mesuré en REGARDANT le PDF, pas en le comptant.
+    consigne: (items) => {
+        const quoi = new Set(items.map(i => i.meta && i.meta.question));
+        if (quoi.size > 1) {
+            return 'Complète les cases vides. Quand l\'arbre est déjà rempli, '
+                + 'écris son expression en ligne sur les pointillés.';
+        }
+        return (items[0].prompt && items[0].prompt.papier) || '';
+    },
+    previewGrille: arbrePreviewHtml,
+    pdfGrille: dessinerArbrePdf,
+    // DEUX PAR LIGNE : un arbre de cinq colonnes a besoin de la moitié d'une
+    // page pour que « −10,5 » tienne dans sa case au crayon. À quatre par
+    // ligne, la case fait huit millimètres et l'élève écrit à côté.
+    parLigneDefaut: 2
 };

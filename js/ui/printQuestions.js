@@ -20,6 +20,7 @@
 //    qui sort de l'imprimante.
 
 import { generateurDeFiche } from '../core/registry.js';
+import { replierApercuSiEtroit } from './modal.js';
 import { crayonSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { equiperFenetre } from './flottant.js';
 // Le détachement est un outil d'auteur : l'interrupteur vit dans la palette.
@@ -31,6 +32,9 @@ import { brancherFicheDirecte } from './ficheDirecte.js';
 // c'est trente-quatre exercices dont on ne pouvait rien choisir une fois la
 // feuille ouverte — ni les tables, ni la difficulté, ni le niveau.
 import { monterPanneauContenu } from './panneauContenu.js';
+import {
+    champsStyleTableau, brancherStyleTableau, lireStyleTableau, montrerStyleTableau
+} from './styleTableauUI.js';
 import { paramSchemaOf } from '../data/catalog.js';
 import { makeRng } from '../core/ids.js';
 import { composerBlocs, composerSolutions, pageDe, porteUneFraction } from '../core/fiche.js';
@@ -82,7 +86,25 @@ function tirerQuestions(generator, params, nb) {
         // pouvait pas s'en charger : les réglages du catalogue le recouvrent —
         // voir plus bas, c'est ce qui rendait dix-sept exercices insensibles à
         // leurs propres réglages.)
-        const item = generator.generate(params, { index: out.length, rng: makeRng(), papier: true });
+        // `total: nb` — LA FEUILLE DIT COMBIEN DE QUESTIONS ELLE PORTE.
+        //
+        // Elle ne le disait pas, et le générateur retombait alors sur son
+        // compte d'avant les réglages : DEUX questions par marche, dans
+        // l'ordre. Une feuille de vingt questions ne montrait donc jamais que
+        // les DIX PREMIÈRES marches de la progression, quel que soit le partage
+        // réglé par le professeur et quel que soit le nombre de marches.
+        //
+        // MESURÉ EN REGARDANT LE PDF : « Décomposer, PGCD et PPCM » compte
+        // dix-sept marches ; sa feuille s'arrêtait à « lire une décomposition »
+        // et ne posait AUCUNE question de PGCD ni de PPCM. Le titre promettait
+        // ce que la feuille ne contenait pas.
+        //
+        // Cela vaut pour les treize exercices à progression, pas seulement
+        // celui-ci : tous partagent désormais leurs questions sur la feuille
+        // comme ils le font à l'écran, en honorant les cases cochées et la
+        // barre de répartition.
+        const item = generator.generate(params,
+            { index: out.length, total: nb, rng: makeRng(), papier: true });
         // `papier` : la même question, écrite pour la feuille — sans la
         // consigne répétée devant chaque ligne. À défaut, le texte d'écran.
         const texte = (item.prompt && (item.prompt.papier || item.prompt.text)) || '';
@@ -93,6 +115,12 @@ function tirerQuestions(generator, params, nb) {
             // LE TABLEAU DE L'ÉNONCÉ, quand le générateur en pose un : la mise
             // en page le DESSINE au lieu de l'écrire en texte suivi.
             tableau: (item.prompt && item.prompt.tableau) || null,
+            // LE SCHÉMA DES BONDS VOYAGE PAR LE MÊME CHEMIN QUE LE TABLEAU, et
+            // il faut l'écrire ICI ET DANS `printParcours.js` : les deux
+            // panneaux d'impression recopient l'item à la main, et un chaînon
+            // posé dans un seul rend la déclaration muette dans l'autre — ce
+            // qui est arrivé au menu « Présentation » la semaine dernière.
+            bonds: (item.prompt && item.prompt.bonds) || null,
             // SUR LE PAPIER, UNE FRACTION S'ÉCRIT EN COLONNE — numérateur sur
             // dénominateur, séparés d'un trait. La barre oblique est une
             // commodité d'écran ; ce n'est pas ce qu'on demande d'écrire à
@@ -100,6 +128,11 @@ function tirerQuestions(generator, params, nb) {
             // cours. Le générateur le déclare (`fractions: true`) ; la fiche
             // du parcours le lisait déjà, celle-ci l'oubliait.
             fractions: !!generator.fractions && porteUneFraction(texte, item.answer),
+            // COMBIEN DE LIGNES CETTE QUESTION-LÀ DEMANDE. Une question à un
+            // mot et un raisonnement en trois temps ne veulent pas la même
+            // place ; le réglage de la feuille ne sait pas les distinguer, le
+            // générateur si. Voir `placeDemandee` dans core/fiche.js.
+            lignes: (item.meta && item.meta.lignesPapier) || null,
             // LE MÊME PIÈGE QUE POUR LA RÉPONSE, un cran plus loin : le
             // libellé d'une proposition est fait pour l'ÉCRAN. Une fraction y
             // est du HTML — deux span empilés —, et une égalité de Thalès
@@ -256,6 +289,29 @@ function assurerModale() {
                         <option value="3">3 lignes — « Je sais que… »</option>
                         <option value="5">5 lignes — rédaction complète</option>
                     </select></label>
+                <!-- LES QUESTIONS EN TABLEAU. Remy : « pour les calculs sur les
+                     impressions, n'hesite a proposer une option tableau ou c'est
+                     presente sous forme de tableau (dans les options
+                     d'impression) avec alternances des couleurs ou non. »
+
+                     UN SEUL MENU POUR LES DEUX : l'alternance n'a aucun sens
+                     sans le tableau, et deux reglages dont l'un n'agit que si
+                     l'autre est mis se decochent toujours dans le mauvais
+                     ordre. (Sans accent grave ici : il fermerait le gabarit.) -->
+                <label>Présentation
+                    <select id="fq-tableau" class="cfg-input">
+                        <option value="liste">En liste</option>
+                        <option value="tableau">En tableau</option>
+                        <option value="zebre">En tableau, une ligne sur deux teintée</option>
+                    </select></label>
+                <!-- DE QUOI A L'AIR LE FILET. Remy : « bordure, epaisseur,
+                     couleur bordure, couleur alternance/ bords exterieurs ou
+                     non ». Ecrites dans ui/styleTableauUI.js, parce que la
+                     feuille de parcours et la roue d'un exercice ont besoin
+                     des memes. Elles se cachent en mode « En liste » : il n'y
+                     a alors pas de filet a habiller.
+                     (Sans accent grave ici : il fermerait le gabarit.) -->
+                ${champsStyleTableau('fq')}
                 <label class="fq-case"><input type="checkbox" id="fq-champs">
                     Champs remplissables (PDF)</label>
                 <label class="fq-case"><input type="checkbox" id="fq-numeroter" checked>
@@ -279,9 +335,12 @@ function assurerModale() {
                     </select></label>
             </div>
             </details>
+            <details class="fp-apercu-repli" open>
+                <summary>L’aperçu de la feuille</summary>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu fq-apercu" id="fq-apercu"></div>
             </div>
+            </details>
             <div class="fp-note" id="fq-note"></div>
             <div class="modal-actions-center">
                 <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="fq-fermer">Fermer</button>
@@ -289,6 +348,7 @@ function assurerModale() {
             </div>
         </div>`;
     document.body.appendChild(modal);
+    replierApercuSiEtroit(modal);
     // Ancrer / détacher, et replier les réglages : les deux commandes vivent
     // dans le titre, comme sur la fiche de grilles.
     fenetreFiche = equiperFenetre(modal, CLE_FENETRE, { peutDetacher: fenetresDetachables });
@@ -344,6 +404,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     const couleurEl = modal.querySelector('#fq-couleur');
     retenirRepli(modal.querySelector('#fq-plus'), 'questions');
     const colsEl = modal.querySelector('#fq-colonnes');
+    const tabEl = modal.querySelector('#fq-tableau');
     const champsEl = modal.querySelector('#fq-champs');
     const numEl = modal.querySelector('#fq-numeroter');
     // L'EN-TÊTE SE RÈGLE SUR LA FEUILLE, ICI AUSSI. Cette fenêtre-là n'offrait
@@ -386,6 +447,14 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         champs: champsEl.checked,
         numeroter: numEl.checked,
         colonnes: colsEl.value === 'auto' ? null : Number(colsEl.value),
+        // Un seul menu, deux réglages : « zébré » veut dire « tableau » ET
+        // « alterné ». Voir le commentaire du menu.
+        tableau: tabEl.value !== 'liste',
+        zebre: tabEl.value === 'zebre',
+        // L'ALLURE DU FILET — épaisseur, couleurs, bords extérieurs. Les noms
+        // rendus sont ceux de `DEFAUTS_BLOCS` : ils se répandent tels quels
+        // dans les options de la mise en page.
+        styleTableau: lireStyleTableau(modal, 'fq'),
         // LA PLACE POUR RÉDIGER. Un « Je sais que… / or… / donc… » ne tient
         // pas au bout d'une ligne de pointillés : il lui faut trois lignes
         // pleine largeur, et c'est au professeur de le décider — lui seul sait
@@ -424,6 +493,8 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
         numeroter: o.numeroter
     }], {
         avecChoix: o.avecChoix, orientation: o.orientation, champs: o.champs,
+        tableau: o.tableau, zebre: o.zebre,
+        ...o.styleTableau,
         // `lignesReponse` passe AUSSI à la mise en page : c'est elle qui trace
         // les traits, un par ligne demandée. Sans lui, on réservait la hauteur
         // de trois lignes et l'on n'en dessinait qu'une, tout au fond.
@@ -520,6 +591,25 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     champsEl.onchange = rendre;
     numEl.onchange = rendre;
     ouSol.onchange = rendre;
+    // ── LE MENU « Présentation » NE REFAISAIT PAS L'APERÇU ──────────────────
+    //
+    // MESURÉ, sur `calc-add`, dans cette fenêtre : zéro cadre avant, le menu
+    // passé à « zébré », zéro cadre après — et aucune erreur de page. Les six
+    // autres commandes de ce panneau avaient leur `onchange`, celle-ci non :
+    // elle n'agissait qu'au téléchargement, qui relit `lire()`. Le professeur
+    // choisissait donc « En tableau », ne voyait rien changer, et en concluait
+    // que le réglage n'existait pas.
+    //
+    // C'est la moitié invisible de la remarque de Rémy sur les tableaux : il
+    // demandait de quoi régler le filet, et le réglage qui existait déjà ne se
+    // voyait pas agir.
+    const majTableau = () => {
+        montrerStyleTableau(modal, 'fq', tabEl.value);
+        rendre();
+    };
+    tabEl.onchange = majTableau;
+    brancherStyleTableau(modal, 'fq', rendre);
+    montrerStyleTableau(modal, 'fq', tabEl.value);
     modal.querySelector('#fq-regen').onclick = () => { questions = []; rendre(); };
 
     // --- ① QUOI : LES RÉGLAGES DE L'EXERCICE, sur la feuille elle-même -------

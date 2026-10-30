@@ -15,11 +15,15 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL = 'geo.angles.mesure';
 
 class Galactic extends BaseGame {
     render() {
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.score = 0;
         this.level = parseInt(this.params.startLevel) || 1;
         this.lives = parseInt(this.params.lives) || 3;
@@ -581,13 +585,14 @@ class Galactic extends BaseGame {
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
         const gate = createDemoGate(this.container.querySelector('.gal-deck') || this.container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => this.isRunning, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cursor.pause(1400) || !this.isRunning) return fin();
+        if (!await robot.pause(1400)) return fin();
 
         while (this.isRunning && this.isDemo) {
             if (!this.enemy.active) { await cursor.pause(600); continue; }
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
 
             const grad = this.enemy.isReverse ? this.enemy.angle : this.angleReel();
             const reponse = this.enemy.isReverse ? this.enemy.angle : this.angleReel();
@@ -596,7 +601,7 @@ class Galactic extends BaseGame {
                 ? `L'ennemi est sur la graduation ${grad}. Échelle INVERSÉE : je tape ${grad}, le canon tirera à 180 − ${grad} = ${180 - grad}°.`
                 : `Je suis la ligne jusqu'à l'ennemi : elle croise la graduation ${grad}. Je tape ${grad}.`,
                 this.container.querySelector('.gal-lcd'));
-            if (!await cursor.pause(1900) || !this.isRunning) return fin();
+            if (!await robot.pause(1900)) return fin();
 
             this.demoTire = true;
             for (const c of String(reponse)) {
@@ -608,7 +613,7 @@ class Galactic extends BaseGame {
             if (!feu || !await cursor.tap(feu, 320)) { this.demoTire = false; return fin(); }
             this.fire();
             this.demoTire = false;
-            if (!await cursor.pause(DEMO_SPEED.between + 600) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 600)) return fin();
         }
         fin();
     }

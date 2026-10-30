@@ -12,6 +12,7 @@
 import { state } from '../core/state.js';
 import { estRevisable, getExerciseById } from '../data/catalog.js';
 import { messageDArrivee, bilanExercice } from '../core/accueil.js';
+import { deposerBilan } from './finDeSerie.js';
 import { startErrorReview } from '../core/remediation.js';
 import { robotSvg, ampouleSvg } from './icones.js';
 
@@ -110,26 +111,10 @@ export function initAccueil() {
 
 // --- Le bilan de fin d'exercice ------------------------------------------------
 
-function assurerBilan() {
-    let m = document.getElementById('bilan-modal');
-    if (m) return m;
-    m = document.createElement('div');
-    m.id = 'bilan-modal';
-    m.className = 'modal-overlay modal-overlay--top';
-    m.innerHTML = `
-        <div class="glass-panel modal-panel ac-panel">
-            <div class="ac-robot" id="bi-emoji">${robotSvg(46)}</div>
-            <h3 class="modal-title" id="bi-titre"></h3>
-            <p class="ac-texte" id="bi-texte"></p>
-            <div class="ac-lecon" id="bi-lecon"></div>
-            <div class="modal-actions-center">
-                <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="bi-fermer">Fermer</button>
-                <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="bi-refaire">Recommencer avec le robot</button>
-            </div>
-        </div>`;
-    document.body.appendChild(m);
-    return m;
-}
+// `assurerBilan` vivait ici : la fenêtre du bilan est partie dans
+// `ui/finDeSerie`, qui est désormais le seul endroit où une carte de fin se
+// dessine. Deux gabarits pour la même chose, c'est celui qu'on oublie de
+// corriger le jour où l'autre change.
 
 /**
  * Branche le bilan sur la fin des exercices.
@@ -150,19 +135,19 @@ export function initBilanExercice() {
         });
         if (bilan.verdict === 'court') return;
 
-        const m = assurerBilan();
-        // Le robot de l'application, pas un emoji : c'est LUI qui parle à
-        // l'élève partout ailleurs, et un autre dessin ferait un autre
-        // personnage au moment le plus personnel.
-        m.querySelector('#bi-emoji').innerHTML =
-            bilan.verdict === 'reussi' ? '🎉' : robotSvg(46);
-        m.querySelector('#bi-titre').textContent = bilan.titre;
-        m.querySelector('#bi-texte').textContent = bilan.texte;
-        const lecon = m.querySelector('#bi-lecon');
-        lecon.textContent = bilan.lecon || '';
-        lecon.style.display = bilan.lecon ? '' : 'none';
-
-        const refaire = m.querySelector('#bi-refaire');
+        // LE BILAN NE DESSINE PLUS SA PROPRE FENÊTRE.
+        //
+        // Il en ouvrait une, les récompenses en ouvraient une autre au même
+        // instant, et les deux se posaient par-dessus l'écran de fin du
+        // parcours. Trois panneaux : l'élève devait en fermer DEUX pour
+        // atteindre « Voir mon bilan », qui était dessous. À la sonnerie, il
+        // fermait tout au réflexe et ne le voyait jamais.
+        //
+        // On dépose donc le verdict dans `ui/finDeSerie`, qui attend un court
+        // moment, ramasse aussi les badges s'il y en a, et n'ouvre QU'UNE
+        // carte. Rémy, entre une file de trois panneaux et une carte unique :
+        // « Le B ».
+        const actions = [];
         // On ne repropose l'exercice QUE s'il a été loupé. Après une réussite,
         // « recommencer » serait un contresens : c'est d'un cran de plus que
         // l'élève a besoin, pas du même exercice.
@@ -170,12 +155,12 @@ export function initBilanExercice() {
         // ET JAMAIS APRÈS UNE INTERROGATION. Rémy : « en mode interrogation, il
         // ne faut pas proposer à la fin de refaire l'exercice ». Une évaluation
         // qu'on recommence jusqu'à ce qu'elle tombe juste ne mesure plus rien.
-        refaire.style.display = (bilan.relancer && exo && !d.evaluation) ? '' : 'none';
-        refaire.onclick = () => {
-            m.style.display = 'none';
-            import('../games/engine.js').then(g => g.openGameLayer(exo, true));
-        };
-        m.querySelector('#bi-fermer').onclick = () => { m.style.display = 'none'; };
-        m.style.display = 'flex';
+        if (bilan.relancer && exo && !d.evaluation) {
+            actions.push({
+                mot: 'Recommencer avec le robot', principal: true,
+                faire: () => import('../games/engine.js').then(g => g.openGameLayer(exo, true))
+            });
+        }
+        deposerBilan(bilan, actions);
     });
 }

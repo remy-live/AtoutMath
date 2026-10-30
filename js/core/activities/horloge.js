@@ -29,6 +29,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../../ui/paveTactile.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const deuxChiffres = (n) => String(n).padStart(2, '0');
 
@@ -557,30 +558,31 @@ export function mount(container, session) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
         const fin = () => { cursor?.hideBubble(); regTimeout(renderNext, DEMO_SPEED.between); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, fin, { rangementSeul: true });
         const cadran = container.querySelector('[data-cadran]');
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        if (!await robot.pause(600)) return fin();
 
         if (m.mode === 'lire') {
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             cursor.say('Deux aiguilles, deux lectures. Je commence TOUJOURS par la petite, la bleue : c\'est elle qui donne les heures.', cadran);
-            if (!await cursor.pause(DEMO_SPEED.between + 1200) || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 1200)) return fin();
 
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             cursor.say(m.m === 0
                 ? `Elle est pile sur le ${m.h12} : il est ${m.h12} heures.`
                 : `Elle est ENTRE le ${m.h12} et le ${m.h12 === 12 ? 1 : m.h12 + 1}. On garde le plus petit : ${m.h12} heures passées.`, cadran);
-            if (!await cursor.pause(DEMO_SPEED.between + 1600) || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 1600)) return fin();
 
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             cursor.say(m.m === 0
                 ? 'La grande aiguille, la rouge, est sur le 12 : zéro minute.'
                 : (m.m % 5 === 0
                     ? `La grande aiguille, la rouge, est sur le ${m.m / 5}. Chaque nombre vaut 5 minutes : ${m.m / 5} × 5 = ${m.m} minutes.`
                     : `La grande aiguille a dépassé le ${Math.floor(m.m / 5)} — soit ${Math.floor(m.m / 5) * 5} minutes — de ${m.m % 5} petites graduations : ${m.m} minutes.`), cadran);
-            if (!await cursor.pause(DEMO_SPEED.between + 1800) || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 1800)) return fin();
 
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const ih = container.querySelector('[data-h]');
             const im = container.querySelector('[data-m]');
             if (ih) ih.value = item.answer.split(':')[0];
@@ -588,40 +590,50 @@ export function mount(container, session) {
             cursor.say(m.apresmidi
                 ? `C'est l'après-midi : la pendule montre ${m.h12} h, j'ajoute 12 et j'écris ${item.answer.split(':')[0]} h ${deuxChiffres(m.m)}. On dit « ${m.dit} ».`
                 : `J'écris ${m.h12} h ${deuxChiffres(m.m)}. On dit « ${m.dit} ».`, cadran);
-            if (!await cursor.pause(DEMO_SPEED.between + 1800) || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 1800)) return fin();
             return fin();
         }
 
         // Mode PLACER : le robot montre l'ordre des gestes.
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         cursor.say(`Pour placer ${m.h} h ${deuxChiffres(m.m)}, je commence par la GRANDE aiguille : elle porte les minutes.`, cadran);
-        if (!await cursor.pause(DEMO_SPEED.between + 1400) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1400)) return fin();
 
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         cursor.say(m.m === 0
             ? 'Zéro minute : la grande aiguille va sur le 12.'
             : `${m.m} minutes, ça fait ${m.m} ÷ 5 = ${(m.m / 5).toFixed(m.m % 5 ? 1 : 0)} : la grande aiguille s'arrête ${m.m % 5 ? 'un peu après' : 'sur'} le ${Math.floor(m.m / 5)}.`, cadran);
+        // ON LAISSE LIRE AVANT DE BOUGER. `animer` est une boucle
+        // `requestAnimationFrame` maison : elle ne consulte pas l'échéance de
+        // lecture et n'écoute ni « Pause » ni « Un pas ». La grande aiguille
+        // balayait donc ses minutes pendant les 1 500 premières millisecondes
+        // d'une phrase qui en demande 5 500 — le geste était fini avant qu'on
+        // ait lu pourquoi on le faisait, et rien ne permettait de le revoir.
+        // `pause(0)` remonte d'elle-même au temps de lecture restant.
+        if (!await robot.pause(0)) return fin();
         if (!await animer((e) => { etat.min = Math.round(m.m * e); }, 1500) || destroyed) return fin();
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         cursor.say(m.apresmidi
             ? `${m.h} h, c'est ${m.h} − 12 = ${m.h12} sur la pendule : la petite aiguille va vers le ${m.h12}.`
             : (m.m === 0
                 ? `Puis la petite aiguille sur le ${m.h12}. Zéro minute : elle tombe pile sur le nombre.`
-                : `Puis la petite aiguille sur le ${m.h12}. Regarde : elle se décale un peu vers le nombre suivant — c'est normal, les minutes l'entraînent.`), cadran);
+                : `Puis la petite aiguille sur le ${m.h12} — elle se décale un peu : les minutes l'entraînent.`), cadran);
         // On tourne dans le SENS DES AIGUILLES, comme on règle une vraie
         // pendule : interpolé du plus court chemin, le geste partait à
         // l'envers et l'on ne reconnaissait plus ce qu'on faisait.
         const depart = etat.h12;
         const tour = ((m.h12 - depart) + 12) % 12;
+        // Même chose pour la petite aiguille : on lit, puis on tourne.
+        if (!await robot.pause(0)) return fin();
         if (!await animer((e) => {
             const v = depart + tour * e;
             etat.h12 = Math.round(((v - 1) % 12 + 12) % 12) + 1;
         }, 1500) || destroyed) return fin();
         etat.h12 = m.h12;
         majAffichage();
-        if (!await cursor.pause(DEMO_SPEED.between + 1200) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1200)) return fin();
         fin();
     }
 

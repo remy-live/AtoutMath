@@ -65,3 +65,81 @@ RedirectMatch 404 ^/(tests|tools|outils|imports|docs|node_modules|\.claude)(/|$)
 
 # Pas de listage de dossier : sans index, on ne montre pas le contenu.
 Options -Indexes
+
+# ── CSP : engendrée par `node tools/csp.mjs`, ne pas éditer à la main ──
+#
+# EN VIGUEUR, ET PLUS EN MODE « RAPPORT ».
+#
+# `Report-Only` n'empêche rien : le navigateur applique la page et se
+# contente de signaler ce qu'il AURAIT bloqué. C'était le bon premier
+# temps — une CSP trop serrée ne prévient pas l'utilisateur : la page
+# se charge, un bout ne marche plus, aucun message, et on le découvre
+# devant la classe.
+#
+# ON N'A PAS ATTENDU UNE SEMAINE : ON A MESURÉ. Plutôt que de guetter
+# une console pendant des jours, on pose la CSP STRICTE dans un vrai
+# navigateur et l'on se sert de l'application dessous — démarrage,
+# entrée du professeur, espace classes, quatre exercices joués jusqu'au
+# pavé, réglages et aperçu, impression. Une violation est sortie, et
+# une seule : `worker-src ← blob:`, les confettis. Elle est corrigée
+# dans la politique, pas contournée. Depuis : zéro.
+#
+# SI QUELQUE CHOSE CASSE MALGRÉ TOUT, le retour arrière tient en deux
+# mots : rajouter `-Report-Only` à la ligne ci-dessous.
+#
+# LES EMPREINTES SONT CALCULÉES : `node tools/csp.mjs --ecrire`. Elles
+# changent dès qu'on touche à un script écrit dans `index.html`, et un
+# test (`tests/csp.test.mjs`) tombe quand elles ont dérivé.
+<IfModule mod_headers.c>
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-BXVn6fsm1sQm8njQY2nOoCyo2W3LmrauoUZTlPMbDTM=' 'sha256-CyDJu+j93jtmm6i5Jsv1M2a6Sv6TYqwi/9pgRqhK9ds=' 'sha256-hu6eTjnzLCHONfJGthOkWzFtRfYFF+jvvfC5dhBdPWs=' 'sha256-katAJK+GcRf/6c1XGMElvvKAlsedIISFU6cCGcTRQxA=' 'sha256-x5CfOE5q9DMkKPias0R9Cg3Lcjowo7E86idQei2inkA=' 'sha256-pa2avj5ayeUvbR3umaUy8AyoNDKYZtwRnH4NZql0zxo=' 'sha256-M2tnFN78gJtrSoLoSHah14V8C41kM/54cIXnPieU5Tk=' 'sha256-wTV8CXIgEiiqwAlab1K5N8NVXB7IdbO7vnLE9FwmWTY=' 'sha256-+fopFv6xyQKs53IdDReRMRR5101ksD9m6i8GxFRDNcI=' 'sha256-uH1so6NKVwf2aRQPciupiB0JKvRAk91yTHxux0g4Pdo=' 'sha256-Cvx6sBYtv858+Fgr6J+PZV8kf8ekkDHrUOlT6md81q8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    # DEUX EN-TÊTES DE PLUS, sans rapport avec la CSP mais du même
+    # ménage : ne pas deviner le type d'un fichier (une image qui
+    # serait lue comme du script), et ne pas envoyer l'adresse
+    # complète de la page à un site tiers.
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+# ── fin CSP ──
+
+# ── LES FICHIERS PARTENT COMPRESSÉS ────────────────────────────────────────
+#
+# MESURÉ (tools/poidsDuDemarrage.mjs) : la première ouverture d'une version
+# demande 256 fichiers au serveur, et le service worker en range 131 de plus
+# derrière. L'essentiel est du JavaScript, qui se comprime autour de quatre
+# pour un. Sur une salle de trente postes, le lendemain d'un dépôt, c'est la
+# différence entre ~230 Mo et ~60 Mo à faire entrer par la ligne du collège,
+# tous en même temps.
+#
+# ET SEULEMENT LE LENDEMAIN D'UN DÉPÔT : une fois le cache du worker garni,
+# l'ouverture coûte deux requêtes. La compression ne change donc rien aux
+# heures ordinaires — c'est le matin de la mise à jour qu'elle paie.
+#
+# `AddOutputFilterByType` ET PAS `SetOutputFilter` : le second comprimerait
+# aussi ce qui l'est déjà — les images, les polices woff2 — ce qui coûte du
+# calcul au serveur pour grossir le fichier de quelques octets.
+#
+# SI LE MODULE N'EST PAS CHARGÉ chez l'hébergeur, le bloc entier est ignoré :
+# le site sert exactement ce qu'il servait, sans erreur. C'est pourquoi on peut
+# le poser sans avoir vérifié la configuration d'OVH.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+    AddOutputFilterByType DEFLATE application/javascript text/javascript
+    AddOutputFilterByType DEFLATE application/json application/manifest+json
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# ── LE SERVICE WORKER NE DOIT JAMAIS ÊTRE SERVI PÉRIMÉ ──────────────────────
+#
+# C'est lui qui décide maintenant de tout le reste : depuis qu'il sert les
+# fichiers depuis son cache (voir sw.js), un `sw.js` périmé figerait un poste
+# sur une ancienne version sans qu'aucune requête n'échoue — le pire des
+# défauts, celui qui ne se voit pas.
+#
+# Les navigateurs revalident déjà `sw.js` d'eux-mêmes ; on l'écrit quand même,
+# parce que le jour où un intermédiaire du réseau du collège décide d'en garder
+# une copie, c'est cette ligne qui le lui interdit.
+<IfModule mod_headers.c>
+    <FilesMatch "^(sw\.js|index\.html|manifest\.webmanifest)$">
+        Header always set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

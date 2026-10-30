@@ -13,8 +13,10 @@
 import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
-import { aideSelonEtat, reduireChoix } from '../aide.js';
-import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
+import { aideSelonEtat, reduireChoix, itemPeutAllerAuClavier,
+    reponseEnPlusieursCases, itemPeutEtreChoisi } from '../aide.js';
+import { barreOutils, boiteOutils, brancherOutils, brancherCasesPosees } from './outils.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /**
  * Ce que le robot dit avant de choisir, et après avoir choisi.
@@ -141,22 +143,76 @@ export function mount(container, session, opts = {}) {
      * prend la main dès la première question — il n'y a pas de marche plus
      * basse où redescendre.
      */
-    const MODULES = { notation: './notationSaisie.js', trace: './traceNotation.js' };
+    // LA ROUTE LITTÉRALE MANQUAIT, et c'est elle qui rendait le QCM éternel.
+    // `moduleVoulu` ne passait au clavier que si la réponse était un nombre ;
+    // une expression — « 2x² + 3x − 5 », « (x − 3)(x + 3) » — n'en est pas un,
+    // donc aucun chapitre de calcul littéral ne pouvait se taper.
+    const MODULES = { notation: './notationSaisie.js', trace: './traceNotation.js',
+        litteral: './litteralSaisie.js' };
     function moduleVoulu(item, aideIci) {
         const m = (item && item.meta) || {};
         const compose = MODULES[m.composable];
         if (m.saisieSeule) return compose || null;
+        // UNE RÉPONSE À PLUSIEURS CASES PASSE AU PAVÉ DÈS LA PREMIÈRE QUESTION,
+        // et le réglage « Autoriser le clavier » ne la retient pas — exactement
+        // comme `saisieSeule`, et pour la même raison : il n'y a pas de marche
+        // plus basse où redescendre. La décrocher du clavier ne la ramène pas
+        // aux propositions, elle la fait disparaître.
+        //
+        // Rémy : « Et pour la décompoisiton, il n'y a pas de clavier ». MESURÉ
+        // (`tools/clavierDesMarches.mjs') : quatre marches de `num.pgcd-ppcm`
+        // n'offraient ni pavé ni proposition dans « Divisible, oui ou non ? ».
+        // ET ELLE N'Y VA DE FORCE QUE S'IL N'Y A VRAIMENT PAS DE MARCHE PLUS
+        // BASSE. Rémy, sur « Heures et Minutes » : « on ne peut taper au clavier,
+        // ca semble forcément un qcm ». Sa réponse se tape en deux cases —
+        // « 5 » puis « 30 » —, mais le générateur a AUSSI écrit quatre
+        // propositions, avec le « pourquoi » de chaque erreur de retenue. Lui
+        // imposer le pavé dès la première question jetterait ces quatre
+        // explications, qui sont le cœur du chapitre. Quand les propositions
+        // existent, l'escalier ordinaire s'applique : 2, puis 4, puis le pavé.
+        if (reponseEnPlusieursCases(item) && !itemPeutEtreChoisi(item)) {
+            return compose || './numeric.js';
+        }
         if (!aideIci.clavier) return null;
         if (compose) return compose;
-        const chiffrable = item.answer !== null && item.answer !== ''
-            && Number.isFinite(Number(item.answer));
-        return chiffrable ? './numeric.js' : null;
+        // LA RÈGLE VIT DANS `core/aide.js`, ET ELLE Y VIT SEULE. Le panneau de
+        // réglages l'interroge lui aussi, pour ne pas proposer « Autoriser le
+        // clavier » à un exercice dont aucune réponse ne se tape. Deux copies,
+        // et le jour où l'une bouge, le panneau ment.
+        return itemPeutAllerAuClavier(item) ? './numeric.js' : null;
     }
+
+    /**
+     * Le bandeau qui annonce le passage au clavier — QUAND IL Y A EU PASSAGE.
+     *
+     * « À toi d'écrire : PLUS DE PROPOSITIONS » n'a de sens qu'après des
+     * propositions. Sur un exercice `saisieSeule`, le clavier prend la main
+     * dès la première question : il n'y en a jamais eu, et la phrase annonce
+     * un changement qui n'a pas eu lieu. Vu à l'écran sur le pas à pas des
+     * factorisations, où elle occupait en plus les 60 px qui manquaient au
+     * bouton « Valider » sur un téléphone.
+     */
+    // ET UNE RÉPONSE À PLUSIEURS CASES EST DANS LE MÊME CAS : elle n'a jamais
+    // eu de propositions non plus, donc « plus de propositions » annoncerait un
+    // changement qui n'a pas eu lieu — sur la toute première question.
+    //
+    // SAUF QUAND ELLE EN A EU. Depuis « Heures et Minutes », une réponse à deux
+    // cases peut avoir commencé en propositions : là, le passage au clavier EST
+    // un changement, et c'est même le seul moment où l'annoncer sert à quelque
+    // chose. On pose donc la même question que `moduleVoulu` juste au-dessus,
+    // et on la pose de la même façon — deux règles voisines qui divergeraient
+    // donneraient un bandeau sans passage, ou un passage sans bandeau.
+    const avisPour = (module, item) =>
+        ((item && item.meta && item.meta.saisieSeule)
+            || (reponseEnPlusieursCases(item) && !itemPeutEtreChoisi(item))
+            ? '' : (AVIS[module] || ''));
 
     const AVIS = {
         './numeric.js': 'À toi d\'écrire : plus de propositions, tu tapes le résultat.',
         './notationSaisie.js': 'À toi d\'écrire : tu poses toi-même les deux symboles.',
-        './traceNotation.js': ''
+        './traceNotation.js': '',
+        './litteralSaisie.js': 'À toi d\'écrire : plus de propositions, tu tapes '
+            + 'l\'expression.'
     };
 
     function renderNext() {
@@ -167,7 +223,7 @@ export function mount(container, session, opts = {}) {
         const rang = session.history.length;
         aide = aideSelonEtat(session.params || {}, etatAdaptatif(), rang, totalPrevu());
         const voulu = moduleVoulu(item, aide);
-        if (!releve && voulu) return passerALaMain(item, voulu, AVIS[voulu] || '');
+        if (!releve && voulu) return passerALaMain(item, voulu, avisPour(voulu, item));
         render(item);
     }
 
@@ -212,7 +268,7 @@ export function mount(container, session, opts = {}) {
         // forme d'une question à l'autre : « trace [AB) » se dessine, « (AB)
         // se lit… » se choisit. On rend la main, et `renderNext` du QCM
         // n'ayant pas eu lieu, c'est ici qu'on aiguille.
-        if (voulu) { passerALaMain(item, voulu, AVIS[voulu] || ''); return true; }
+        if (voulu) { passerALaMain(item, voulu, avisPour(voulu, item)); return true; }
         avisRetour = 'On reprend avec des propositions : ça va revenir.';
         render(item);
         return true;
@@ -363,8 +419,9 @@ export function mount(container, session, opts = {}) {
         // la bulle se range autour.
         cursor.protegerZone([...container.children].filter(el => !el.classList.contains('hint-bar')));
 
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         // LE ROBOT DIT POURQUOI. Il se contentait de poser le doigt sur la
         // bonne case : montrer LAQUELLE est juste sans dire pourquoi n'apprend
@@ -386,8 +443,8 @@ export function mount(container, session, opts = {}) {
         const cible = viseDansEnonce(container);
         if (cible !== container) cible.classList.add('demo-vise');
         cursor.say(phraseDepart(item), cible);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
 
         // Le surlignage tient PENDANT le trajet du doigt : la bulle affiche
         // encore « Commence par 4 × 2 » tout le temps que le pointeur met à
@@ -402,9 +459,9 @@ export function mount(container, session, opts = {}) {
         el.classList.add('demo-target');
         fillSlot(el, true);
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(item, el), el);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 
@@ -572,25 +629,108 @@ export function wireHint(container, session) {
     wireShowMe(container, session);
     const btn = container.querySelector('[data-hint]');
     if (!btn) return;
+    // LE DESSIN DÉJÀ POSÉ, pour ne pas le reposer par-dessus lui-même. Voir
+    // plus bas : le reposer effacerait ce que l'élève y a écrit.
+    let deja = null;
     btn.onclick = () => {
         const h = session.hint();
         if (!h) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; return; }
-        let box = container.querySelector('.hint-text');
-        if (!box) {
-            box = document.createElement('div');
-            box.className = 'hint-text';
-            box.setAttribute('role', 'status');
-            btn.parentElement.parentElement.appendChild(box);
+        // L'INDICE S'OUVRE EN CARTE, PAS SOUS LES BOUTONS.
+        //
+        // RÉMY, capture du pas à pas à l'appui : « quand l'indice apparaît en
+        // dessous, on ne voit plus le haut. Je pense que l'indice ne doit
+        // apparaître que dans la modale en popup. »
+        //
+        // Il a raison, et la mesure est dans sa capture : l'indice poussait la
+        // colonne, le champ de saisie et les premières touches sortaient par
+        // le haut — au moment précis où l'élève vient de demander de l'aide
+        // pour écrire quelque chose. Une aide qui cache ce qu'elle explique ne
+        // s'explique pas elle-même.
+        //
+        // « Montre-moi », lui, passait DÉJÀ par cette carte : les deux boutons
+        // voisins se comportaient différemment sans que rien ne le dise.
+        // Le dessin de l'indice y est accepté (Rémy : « pourquoi ne pas avoir
+        // un petit schéma ? c'est souvent plus parlant ») ; il vient du
+        // générateur, jamais de l'élève.
+        const detail = { kind: 'hint', msg: h, schema: session.schemaIndice || null };
+        document.dispatchEvent(new CustomEvent('game_feedback', { detail }));
+        // PERSONNE POUR L'AFFICHER : on retombe sous les boutons plutôt que de
+        // perdre l'indice. C'est le cas de l'aperçu des réglages et des bancs,
+        // où la carte n'est pas montée — le contrat de `game_feedback` le dit
+        // par `handled`.
+        if (!detail.handled) {
+            let box = container.querySelector('.hint-text');
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'hint-text';
+                box.setAttribute('role', 'status');
+                btn.parentElement.parentElement.appendChild(box);
+            }
+            box.textContent = h;
+            if (session.schemaIndice) {
+                const dessin = document.createElement('div');
+                dessin.className = 'hint-schema';
+                dessin.innerHTML = session.schemaIndice;
+                box.appendChild(dessin);
+            }
         }
-        box.textContent = h;
-        // LE DESSIN DE L'INDICE, s'il en a un. Rémy : « pourquoi ne pas avoir
-        // un petit schéma ? c'est souvent plus parlant ». Le HTML vient du
-        // générateur, pas de l'élève : il est de confiance.
-        if (session.schemaIndice) {
-            const dessin = document.createElement('div');
-            dessin.className = 'hint-schema';
-            dessin.innerHTML = session.schemaIndice;
-            box.appendChild(dessin);
+        // ── LE DESSIN RESTE SOUS L'ÉNONCÉ QUAND LA CARTE SE FERME ──────────
+        //
+        // RÉMY, capture à l'appui, deux fois en deux jours : « je ne vois pas
+        // le schéma ».
+        //
+        // MESURÉ : le schéma EST dans la carte d'indice — 300 × 80 px, propre.
+        // Mais la carte est MODALE : on la lit, on appuie sur « Merci ! », et
+        // le dessin part avec elle. Il reste alors une question, deux boutons,
+        // et plus rien à regarder — c'est-à-dire exactement ce qu'il décrit.
+        //
+        // UN TEXTE SE RETIENT, UN DESSIN SE REGARDE PENDANT QU'ON CALCULE. Sa
+        // demande était « qqch de propre pour bien montrer » : montrer deux
+        // secondes, ce n'est pas montrer. Le dessin se POSE donc sous l'énoncé
+        // et y reste jusqu'à la question suivante — `container.innerHTML` est
+        // réécrit à chaque rendu, il n'y a rien à nettoyer.
+        //
+        // ENTRE L'ÉNONCÉ ET LES PROPOSITIONS, et non à la fin : c'est la place
+        // que `opts.context` occupe déjà pour les supports visuels, et c'est
+        // là qu'on regarde avant de choisir.
+        // ── ET C'EST CE DESSIN-LÀ QUI PORTE LES CASES, PAS LA CARTE ───────
+        //
+        // RÉMY, capture à l'appui : « petit bug quand on demande l'incide,
+        // enlève le bouton shéma finalement ».
+        //
+        // CE QU'IL VOYAIT : ce dessin-ci, en pointillés morts, ET le même
+        // dessin dans le panneau d'un bouton « Schéma », avec ses cases. Deux
+        // fois la même figure, dont une seule répondait quand on écrivait
+        // dedans. Le bouton est parti ; les cases sont restées, ici.
+        //
+        // `meta.schemaPose` EST UN AUTRE DESSIN QUE `session.schemaIndice`, et
+        // c'est voulu : la carte d'indice est MODALE. Une case qu'elle
+        // porterait s'effacerait dès « Merci ! » — on demanderait d'écrire
+        // dans quelque chose qui va disparaître.
+        const dessin = (session.current && session.current.meta
+            && session.current.meta.schemaPose) || session.schemaIndice;
+        if (dessin) {
+            const ou = container.querySelector('.game-question');
+            let pose = container.querySelector('.hint-schema--pose');
+            if (!pose) {
+                pose = document.createElement('div');
+                pose.className = 'hint-schema hint-schema--pose';
+                if (ou) ou.insertAdjacentElement('afterend', pose);
+                else container.prepend(pose);
+            }
+            // ON REMPLACE, ON N'EMPILE PAS : un second indice qui dessine aussi
+            // donnerait deux fois la même figure l'une sous l'autre. MAIS ON NE
+            // RÉÉCRIT QUE SI LE DESSIN CHANGE : le réécrire viderait les cases,
+            // et un second indice le ferait sans un mot.
+            if (deja !== dessin) {
+                deja = dessin;
+                pose.innerHTML = dessin;
+                // LES FRAPPES NE DOIVENT PAS ARRIVER À L'ACTIVITÉ : `bubbles`
+                // écoute le clavier sur le conteneur, dont ce dessin est un
+                // descendant. Sans la barrière, taper « 40 » dans une bulle
+                // répondrait AUSSI à la question. Voir `activities/outils.js`.
+                brancherCasesPosees(pose);
+            }
         }
         if (!session.hintsAvailable) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; }
     };

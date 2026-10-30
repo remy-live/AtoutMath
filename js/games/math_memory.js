@@ -335,20 +335,53 @@ class MathMemory extends BaseGame {
             }, 1000);
             
         } else {
-            // Wrong
+            // DEUX CARTES QUI NE VONT PAS ENSEMBLE : ON ATTEND, ET ON RETOURNE.
+            //
+            // Rémy : « dans le jeu paire, si c'est faux tu attends et retournes
+            // les cartes, car ce que tu notes n'est pas aidant ».
+            //
+            // CE QUI S'AFFICHAIT : une fenêtre « CE N'EST PAS ÇA — Faux ! 40 =
+            // 40 » avec un bouton « J'ai compris » à cliquer. Trois défauts
+            // d'un coup. Elle DISAIT une absurdité, parce que le message
+            // générique écrit « questionText = expected » et qu'ici les deux
+            // venaient de la MÊME carte : celle du résultat, dont le texte et
+            // la réponse sont le même nombre. Elle ARRÊTAIT le jeu, alors que
+            // le geste du memory est de retourner et de continuer. Et elle
+            // n'apprenait rien : se tromper de case n'est pas croire que
+            // 4 × 8 font 40.
+            //
+            // `silencieux` est le chemin que le socle prévoit pour cela (voir
+            // BaseGame.onWrongAnswer) : la tentative est enregistrée — le
+            // score et le journal restent justes —, mais rien ne s'ouvre. Les
+            // cartes rougissent, on attend, elles se retournent. C'est le jeu.
             this.firstPick.el.classList.add('error');
             secondPick.el.classList.add('error');
-            
-            // In a memory game, a mismatch is an error. We log it.
-            // But what is the exact math error? It's just a memory error. We can log the first card's expected vs actual picked.
+
+            // ET CE QU'ON NOTE DIT VRAI. Une paire, c'est une opération et son
+            // résultat ; l'ordre des deux clics ne dit rien. On range donc les
+            // deux cartes avant d'écrire, pour que le carnet d'erreurs porte
+            // « 4 × 8 → l'élève a pris 40 » et jamais « 40 = 40 ».
+            //
+            // ET DEUX RÉSULTATS ENSEMBLE NE SE DIAGNOSTIQUENT PAS. Le plateau
+            // porte les deux sortes de cartes : retourner « 40 » puis « 32 »
+            // est une erreur de mémoire parfaitement possible, et il n'y a
+            // alors AUCUNE opération à mettre en face. Ma première version
+            // prenait la seconde carte par défaut et réécrivait la même
+            // absurdité — « 32 = 32 » à la place de « 40 = 40 ». On n'écrit un
+            // couple question/réponse que s'il en existe un.
+            const cartes = [this.firstPick.data, secondPick.data];
+            const carteQuestion = cartes.find(c => c.type === 'question') || null;
+            const carteChoisie = carteQuestion
+                ? cartes.find(c => c !== carteQuestion) : null;
             this.onWrongAnswer(null, {
-                input: secondPick.data.text,
-                expected: this.firstPick.data.ans,
-                questionText: this.firstPick.data.text,
-                t: this.firstPick.data.t,
-                m: this.firstPick.data.m,
-                ans: this.firstPick.data.ans,
-                concept: this.firstPick.data.concept
+                silencieux: true,
+                concept: cartes[0].concept,
+                ...(carteQuestion ? {
+                    input: carteChoisie.text,
+                    expected: carteQuestion.ans,
+                    questionText: carteQuestion.text,
+                    t: carteQuestion.t, m: carteQuestion.m, ans: carteQuestion.ans
+                } : {})
             });
             
             regTimeout(() => {

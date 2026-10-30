@@ -173,6 +173,15 @@ export function computeRuns(events) {
             runs.set(runId, {
                 runId, pathId: null, pathName: '', mode: 'entrainement',
                 startedAt: null, finishedAt: null, policy: null,
+                // Le plan annoncé au départ : combien d'étapes, et combien de
+                // questions chacune. C'est ce qui permet de dire « étape 2 sur
+                // 5 » ailleurs que dans l'écran qui mène la séance.
+                plan: [], stepCount: 0, bac: false,
+                // CE QUI ÉTAIT DÉJÀ FAIT quand ce run a commencé. Reprendre une
+                // séance ouvre un run NEUF : sans ce point de départ, tout ce
+                // qui lit le journal repart de zéro alors que l'élève, lui,
+                // reprend bien à la bonne étape.
+                dejaFaites: [],
                 attempts: [], steps: [], aborted: false
             });
         }
@@ -187,6 +196,10 @@ export function computeRuns(events) {
             r.pathName = p.pathName || '';
             r.mode = p.mode || 'entrainement';
             r.policy = p.policy || null;
+            r.bac = !!p.bac;
+            r.plan = Array.isArray(p.plan) ? p.plan : [];
+            r.stepCount = Number(p.stepCount) || r.plan.length;
+            r.dejaFaites = Array.isArray(p.dejaFaites) ? p.dejaFaites : [];
             r.startedAt = e.ts;
         } else if (e.type === A.RUN_FINISHED) {
             const r = ensure(p.runId);
@@ -237,6 +250,33 @@ export function computeAssignedPath(events) {
     }
     if (!assigned) return null;
 
+    // L'HEURE OÙ L'ÉLÈVE A CHOISI DE REPARTIR À ZÉRO.
+    //
+    // RÉMY, après l'essai sur tablette : « Quand on rescanne à nouveau, si le
+    // parcours est identique au précédent, l'élève choisit ou non de redémarrer
+    // à zéro. »
+    //
+    // MESURÉ AVANT D'ÉCRIRE CECI (tools/tmp, deux `path_assigned` autour de
+    // deux `step_completed`) : rescanner le même QR code garde les étapes
+    // validées ET leurs résultats. C'est le bon défaut — c'est « reprendre » —
+    // mais c'était le SEUL comportement : rien ne permettait de recommencer.
+    //
+    // ON NE SUPPRIME RIEN, ET C'EST LE POINT. La remise à zéro du PROFESSEUR
+    // efface des événements (voir core/oublis.js) parce qu'elle veut que la
+    // séance n'ait jamais été commencée. Celle de l'ÉLÈVE est l'inverse : le
+    // professeur doit continuer de voir qu'il l'a déjà faite une fois, et son
+    // premier passage reste dans le bilan. On pose donc une BORNE DE TEMPS, et
+    // ce qui la précède ne compte plus comme fait.
+    //
+    // LE PLUS RÉCENT L'EMPORTE : deux remises à zéro ne se contredisent pas,
+    // la seconde englobe la première.
+    let depuis = 0;
+    for (const e of events) {
+        if (e.type !== A.PATH_RESET || !e.payload) continue;
+        if (e.payload.pathId !== assigned.pathId) continue;
+        depuis = Math.max(depuis, Number(e.ts) || 0);
+    }
+
     const done = new Set();
     // Le DÉTAIL de chaque étape, pas seulement « faite » : les jeux de
     // récompense s'ouvrent sur un TAUX de réussite, et « terminée » ne dit pas
@@ -245,6 +285,11 @@ export function computeAssignedPath(events) {
     const resultats = {};
     for (const e of events) {
         if (e.type !== A.STEP_COMPLETED || e.payload.pathId !== assigned.pathId) continue;
+        // AVANT LA BORNE, CELA NE COMPTE PLUS — ni comme étape faite, ni dans
+        // les résultats. « À zéro » veut dire à zéro : laisser les résultats
+        // rouvrirait les jeux de récompense que le premier passage avait
+        // gagnés, et l'élève repartirait d'un parcours déjà à moitié fêté.
+        if ((Number(e.ts) || 0) <= depuis) continue;
         const { stepId, solved = 0, required = 1, questions = 0, passed } = e.payload;
         // `passed` absent = l'ancien marqueur « étape validée », émis par
         // state.markStudentPathStepCompleted et seulement quand elle l'est.

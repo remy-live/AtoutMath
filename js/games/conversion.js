@@ -22,7 +22,8 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     FAMILLES, familleDe, uniteDe, melangerUnites, verifierUnites,
-    apercuPlacement, verifierNombre, convertir, tirerConversion
+    apercuPlacement, verifierNombre, convertir, tirerConversion,
+    echelonDe, colonnesDuTableau
 } from '../core/conversion.js';
 
 const COMPETENCE = 'num.conversion';
@@ -40,7 +41,14 @@ class Conversion extends BaseGame {
         this.unitesPosees = {};
     }
 
-    get colonnes() { return familleDe(this.famille).unites.map(u => u.rang); }
+    // TOUTES LES COLONNES, ET NON LES RANGS DES UNITÉS.
+    //
+    // En longueur les deux listes sont la même, et c'est ce qui rend la
+    // confusion indétectable là-bas. En aire, une unité coiffe DEUX colonnes :
+    // le km² est au rang 6, et le tableau monte jusqu'à la colonne 7. Prendre
+    // les rangs ferait croire au débordement d'un nombre qui tient.
+    get colonnes() { return colonnesDuTableau(this.famille); }
+    get echelon() { return echelonDe(this.famille); }
 
     render() {
         this.container.innerHTML = `
@@ -58,24 +66,43 @@ class Conversion extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .cv-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .cv-btn:hover { background: var(--bg-hover); }
+                }
                 .cv-etape {
                     font-weight: 800; font-size: clamp(14px, 3.4cqw, 18px); text-align: center;
                     padding: 5px 14px; border-radius: 999px; color: #fff;
-                    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+                    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
                 }
                 .cv-enonce {
                     font-size: clamp(20px, 5.5cqw, 30px); font-weight: 900;
                     font-variant-numeric: tabular-nums;
                 }
 
-                /* LE TABLEAU. Une colonne par unité, la virgule entre deux. */
+                /* LE TABLEAU. Une colonne par unité pour les longueurs ; DEUX
+                   pour les aires, TROIS pour les volumes — voir « echelon » dans
+                   core/conversion.js. La virgule se pose entre deux colonnes. */
                 .cv-table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
                 .cv-table th, .cv-table td {
                     border: 2px solid var(--text-main); text-align: center;
                     width: clamp(38px, 11cqw, 62px); height: clamp(34px, 9cqw, 52px);
                     padding: 0; font-weight: 800; font-size: clamp(15px, 4cqw, 22px);
                 }
+                /* QUATORZE COLONNES NE TIENNENT PAS DANS 390 PIXELS, et le
+                   tableau d'une aire en a quatorze. Les cases rétrécissent
+                   d'abord ; au-delà, le tableau DÉFILE dans sa propre boîte
+                   plutôt que de pousser la page entière de travers. */
+                .cv-large .cv-table th, .cv-large .cv-table td {
+                    width: clamp(26px, 6.5cqw, 44px);
+                    font-size: clamp(13px, 3.2cqw, 19px);
+                }
+                .cv-large .cv-table th { font-size: clamp(9px, 2.4cqw, 13px); }
+                .cv-defile { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+                /* LE TRAIT ÉPAIS SÉPARE LES UNITÉS, PAS LES SOUS-COLONNES.
+                   Sans lui, un tableau d'aires est une rangée de quatorze cases
+                   identiques, et le groupement par deux — qui EST la leçon —
+                   ne se voit nulle part. */
+                .cv-table td.cv-bord-unite { border-left-width: 4px; }
                 .cv-table th { background: var(--bg-hover); font-size: clamp(11px, 3cqw, 15px); }
                 .cv-tete-vide { background: color-mix(in srgb, var(--danger) 12%, transparent); }
                 .cv-tete-vide.cv-cible { outline: 3px dashed var(--primary); outline-offset: -4px; }
@@ -83,14 +110,14 @@ class Conversion extends BaseGame {
                    disent : sans indice visible, on n'essaie pas de cliquer un
                    en-tête de tableau — et on reste bloqué sur son erreur. */
                 .cv-tete-posee { cursor: pointer; }
-                .cv-tete-posee:hover {
-                    background: color-mix(in srgb, var(--primary) 14%, transparent);
-                    outline: 2px solid var(--primary); outline-offset: -3px;
+                @media (hover: hover) {
+                    .cv-tete-posee:hover { background: color-mix(in srgb, var(--primary) 14%, transparent);
+                    outline: 2px solid var(--primary); outline-offset: -3px; }
                 }
 
                 /* Le chiffre posé, et le fantôme pendant le glissement. */
                 .cv-chiffre { color: var(--text-main); }
-                .cv-fantome { color: var(--primary); opacity: .45; }
+                .cv-fantome { color: var(--primary-texte); opacity: .45; }
                 .cv-zero { color: var(--danger); }
                 .cv-case--survol { background: color-mix(in srgb, var(--primary) 18%, transparent); }
                 .cv-virgule { position: relative; }
@@ -102,6 +129,62 @@ class Conversion extends BaseGame {
                     width: 10px; height: 10px; border-radius: 50%;
                     background: var(--danger);
                 }
+
+                /* LA RANGÉE DES POIGNÉES — une par frontière de colonne.
+
+                   RÉMY : « une fois que l'on a posé la virgule, on ne peut
+                   plus l'enlever ». C'était vrai, et pire : la virgule et les
+                   zéros se posaient du MÊME clic, sur la MÊME case. Le premier
+                   clic posait la virgule, tous les suivants basculaient un
+                   zéro — la virgule ne bougeait donc plus jamais, pendant que
+                   la consigne disait « clique une case pour la déplacer ».
+
+                   ET ELLE NE POUVAIT MÊME PAS SE POSER UNE FOIS SUR TROIS :
+                   le clic était refusé sur une case portant un chiffre, or la
+                   virgule tombe sur une colonne occupée dans 27 à 31 % des
+                   tirages (mesuré). L'exercice était alors infaisable.
+
+                   DEUX GESTES, DEUX CIBLES. La virgule est une FRONTIÈRE entre
+                   deux colonnes, pas un contenu de case : elle a maintenant sa
+                   propre rangée, sous le tableau, où chaque poignée marque un
+                   bord droit. Les cases redeviennent ce qu'elles sont — les
+                   zéros —, et une poignée se reclique pour s'enlever. */
+                .cv-poignee {
+                    border: none !important; height: 26px !important; padding: 0 !important;
+                    position: relative; background: transparent;
+                }
+                .cv-etape3 .cv-poignee { cursor: pointer; }
+                /* Le repère discret : sans lui, on ne devine pas qu'il y a là
+                   quelque chose à cliquer — et l'on cherche dans les cases. */
+                .cv-etape3 .cv-poignee::before {
+                    content: ''; position: absolute; right: -2px; top: 4px;
+                    width: 4px; height: 11px; border-radius: 2px;
+                    background: color-mix(in srgb, var(--text-muted) 40%, transparent);
+                }
+                @media (hover: hover) {
+                    .cv-etape3 .cv-poignee:hover::before {
+                        background: var(--primary); height: 17px;
+                    }
+                }
+                .cv-etape3 .cv-poignee:focus-visible { outline: 2px solid var(--primary); }
+                .cv-poignee--mise::after {
+                    content: ','; position: absolute; right: -8px; top: -4px;
+                    font-size: 26px; font-weight: 900; line-height: 1;
+                    color: var(--danger);
+                }
+
+                /* CE QUI TOMBERAIT HORS DU TABLEAU, PENDANT QU'ON VISE.
+                   L'aperçu fantôme perdait silencieusement les chiffres sans
+                   colonne : on visait km avec 187 et l'on voyait « 7 », sans
+                   rien pour dire que deux chiffres manquaient. */
+                .cv-deborde-gauche::before, .cv-deborde-droite::after {
+                    position: absolute; top: 50%; transform: translateY(-50%);
+                    font-size: 15px; font-weight: 900; color: var(--danger);
+                }
+                .cv-deborde-gauche { position: relative; }
+                .cv-deborde-gauche::before { content: '«'; left: -13px; }
+                .cv-deborde-droite { position: relative; }
+                .cv-deborde-droite::after { content: '»'; right: -13px; }
 
                 .cv-etiquettes { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
                 .cv-etiquette {
@@ -159,7 +242,7 @@ class Conversion extends BaseGame {
                 </div>
                 <div class="cv-etape" data-etape></div>
                 <div class="cv-enonce" data-enonce></div>
-                <table class="cv-table"><tbody data-table></tbody></table>
+                <div class="cv-defile"><table class="cv-table"><tbody data-table></tbody></table></div>
                 <div class="cv-etiquettes" data-etiquettes></div>
                 <div data-zone></div>
                 <p class="cv-note" data-note></p>
@@ -175,9 +258,81 @@ class Conversion extends BaseGame {
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.poser());
         this.container.querySelector('[data-indice]').addEventListener('click', () => this.aider());
         this.poser();
+        this.brancherLaVue();
     }
 
     startGameLoop() { /* Pas d'horloge. */ }
+
+    // --- Le clavier de la tablette ------------------------------------------------
+    //
+    // RÉMY : « quand on veut écrire sur la tablette, le clavier cache la
+    // réponse ».
+    //
+    // MESURÉ AVANT DE CORRIGER, sur une tablette couchée de 1024 × 690 : le bas
+    // du champ de réponse est à 57 % de la hauteur visible, et un clavier de
+    // tablette en prend 35 à 45 %. Il passe donc dessous.
+    //
+    // ET IL N'Y AVAIT AUCUN RECOURS, ce qui est le vrai défaut : `.cv-wrap`
+    // fait toute la hauteur et son contenu y tient, donc `scrollHeight ===
+    // clientHeight` — mesuré — et il n'y a RIEN À FAIRE DÉFILER. L'élève ne
+    // peut pas ramener le champ sous ses yeux ; il doit fermer le clavier pour
+    // relire ce qu'il tape, le rouvrir pour écrire, et recommencer.
+    //
+    // `visualViewport` EST LE SEUL OBJET QUI DISE CE QUE L'ÉLÈVE VOIT quand le
+    // clavier est ouvert : la fenêtre, elle, ne bouge pas (sur iOS elle ne
+    // bouge jamais). On pose donc la hauteur du cadre sur ce qui reste visible,
+    // ce qui le rend défilable, puis on ramène le champ au centre. C'est le
+    // même geste que le duel (`games/duel.js`), pour la même raison.
+
+    ajusterLaVue() {
+        const wrap = this.container.querySelector('.cv-wrap');
+        if (!wrap || !wrap.isConnected) return;
+        const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+        const visible = vv ? vv.height : window.innerHeight;
+        const haut = wrap.getBoundingClientRect().top - (vv ? vv.offsetTop : 0);
+        // Un plancher : mieux vaut un cadre qui dépasse un peu qu'un cadre
+        // écrasé à rien si la mesure part en vrille pendant une rotation.
+        wrap.style.height = `${Math.max(240, Math.round(visible - haut))}px`;
+        // ET LE CHAMP REVIENT SOUS LES YEUX. Redimensionner ne suffit pas : le
+        // défilement reste où il était, et la réponse est en bas du cadre.
+        const trou = this.container.querySelector('.cv-trou');
+        if (trou && document.activeElement === trou) trou.scrollIntoView({ block: 'center' });
+    }
+
+    brancherLaVue() {
+        this.mesurerLaVue = () => this.ajusterLaVue();
+        this.ajusterLaVue();
+        // Deux fois : la première mesure tombe parfois avant que la couche de
+        // jeu ait fini de se poser, et l'en-tête peut encore changer de hauteur.
+        requestAnimationFrame(this.mesurerLaVue);
+        window.addEventListener('resize', this.mesurerLaVue);
+        window.addEventListener('orientationchange', this.mesurerLaVue);
+        const vv = window.visualViewport;
+        if (vv) {
+            vv.addEventListener('resize', this.mesurerLaVue);
+            vv.addEventListener('scroll', this.mesurerLaVue);
+        }
+    }
+
+    debrancherLaVue() {
+        if (!this.mesurerLaVue) return;
+        window.removeEventListener('resize', this.mesurerLaVue);
+        window.removeEventListener('orientationchange', this.mesurerLaVue);
+        const vv = window.visualViewport;
+        if (vv) {
+            vv.removeEventListener('resize', this.mesurerLaVue);
+            vv.removeEventListener('scroll', this.mesurerLaVue);
+        }
+        this.mesurerLaVue = null;
+    }
+
+    // UN ÉCOUTEUR SUR `window` SURVIT AU CONTENEUR. Sans ce débranchement, la
+    // mesure continuait de tourner après la sortie du jeu et cherchait un
+    // `.cv-wrap` que `innerHTML = ''` venait d'effacer.
+    destroy() {
+        this.debrancherLaVue();
+        super.destroy();
+    }
 
     poser() {
         this.exercice = tirerConversion({
@@ -206,8 +361,21 @@ class Conversion extends BaseGame {
         // --- Le tableau ---------------------------------------------------
         const entetes = document.createElement('tr');
         const cases = document.createElement('tr');
+        // LA RANGÉE DES POIGNÉES EXISTE À TOUTES LES ÉTAPES, même muette : si
+        // elle n'apparaissait qu'à l'étape 3, le tableau grandirait de
+        // vingt-six pixels sous les yeux au moment précis où l'élève vise une
+        // case, et tout glisserait d'un cran.
+        const poignees = document.createElement('tr');
+        poignees.className = 'cv-poignees';
+        // UNE UNITÉ COIFFE `echelon` COLONNES. Pour une longueur c'est une, et
+        // le tableau est celui qu'on connaît ; pour une aire c'est deux, pour un
+        // volume trois — parce qu'on passe de m² à dm² en multipliant par cent,
+        // et c'est exactement ce que l'élève doit VOIR. Rémy : « 1 m = 100 cm,
+        // 1 m² = 100 dm² ».
+        const e = this.echelon;
         f.unites.forEach(u => {
             const th = document.createElement('th');
+            if (e > 1) th.colSpan = e;
             const pose = this.unitesPosees[u.rang];
             th.textContent = pose || '';
             th.className = pose ? '' : 'cv-tete-vide';
@@ -235,16 +403,48 @@ class Conversion extends BaseGame {
             }
             entetes.appendChild(th);
 
-            const td = document.createElement('td');
-            td.dataset.rang = u.rang;
-            if (this.virgule === u.rang) td.classList.add('cv-virgule');
-            const contenu = this.contenuCase(u.rang);
-            td.innerHTML = contenu.html;
-            cases.appendChild(td);
+            // LES COLONNES DE CETTE UNITÉ, de la plus haute à la plus basse. La
+            // DERNIÈRE est celle des unités — c'est elle qui porte le rang, la
+            // virgule et la cible du glissement ; les précédentes sont les
+            // dizaines (et les centaines pour un volume).
+            for (let k = e - 1; k >= 0; k--) {
+                const col = u.rang + k;
+                const td = document.createElement('td');
+                td.dataset.rang = col;
+                // LE TRAIT ÉPAIS SÉPARE LES UNITÉS, PAS LES SOUS-COLONNES.
+                // Sans lui, un tableau d'aires est une rangée de quatorze cases
+                // identiques, et le groupement par deux — qui EST la leçon —
+                // ne se voit nulle part.
+                if (k === e - 1 && e > 1) td.classList.add('cv-bord-unite');
+                if (this.virgule === col) td.classList.add('cv-virgule');
+                const contenu = this.contenuCase(col);
+                td.innerHTML = contenu.html;
+                cases.appendChild(td);
+
+                const poi = document.createElement('td');
+                poi.className = 'cv-poignee'
+                    + (this.virgule === col ? ' cv-poignee--mise' : '')
+                    + (k === e - 1 && e > 1 ? ' cv-bord-unite' : '');
+                poi.dataset.virgule = col;
+                poi.setAttribute('role', 'button');
+                poi.tabIndex = this.etape === 3 ? 0 : -1;
+                poi.setAttribute('aria-label',
+                    `Poser la virgule après cette colonne des ${u.symbole}`);
+                poignees.appendChild(poi);
+            }
         });
         this.tableEl.innerHTML = '';
         this.tableEl.appendChild(entetes);
         this.tableEl.appendChild(cases);
+        this.tableEl.appendChild(poignees);
+        // La classe porte l'étape : c'est elle qui allume les poignées, et
+        // elle évite d'écrire deux fois la même condition en JavaScript.
+        this.tableEl.parentElement.classList.toggle('cv-etape3', this.etape === 3);
+        // LES CASES RÉTRÉCISSENT QUAND LES COLONNES SE MULTIPLIENT. Un tableau
+        // d'aires en a quatorze, un de volumes douze ; aux 38 pixels des
+        // longueurs, cela fait 532 pixels sur un écran qui en a 390.
+        const wrap = this.container.querySelector('.cv-wrap');
+        if (wrap) wrap.classList.toggle('cv-large', this.colonnes.length > 8);
 
         this.etiquettesEl.innerHTML = '';
         this.zoneEl.innerHTML = '';
@@ -269,7 +469,16 @@ class Conversion extends BaseGame {
 
     dessinerEtape1() {
         if (!this.melange) this.melange = melangerUnites(this.famille, this.rng);
-        this.note('Chaque étiquette va dans SA colonne. Attention : hecto vient avant déca.');
+        // ET L'ON DIT COMBIEN DE COLONNES COIFFE UNE ÉTIQUETTE. Devant un
+        // tableau d'aires, « SA colonne » est faux : le mètre carré en coiffe
+        // deux, et c'est précisément ce qu'il faut avoir compris avant de
+        // poser quoi que ce soit.
+        const e = this.echelon;
+        this.note(e === 1
+            ? 'Chaque étiquette va dans SA colonne. Attention : hecto vient avant déca.'
+            : `Chaque étiquette coiffe ${e === 2 ? 'DEUX' : 'TROIS'} colonnes — on passe `
+                + `d'une unité à la suivante en multipliant par ${e === 2 ? 'cent' : 'mille'}. `
+                + 'Attention : hecto vient avant déca.');
         this.melange.etiquettes.forEach(sym => {
             const el = document.createElement('div');
             el.className = 'cv-etiquette';
@@ -297,9 +506,22 @@ class Conversion extends BaseGame {
             if (v.ok) {
                 this.tableauGarni = true;
                 this.etape = 2;
+                // `partiel` : GARNIR LE TABLEAU EST LA MISE EN PLACE, PAS UNE
+                // CONVERSION.
+                //
+                // C'est la même forme exactement que l'alignement de « Poser
+                // une opération », que Rémy a signalé : une étape préalable
+                // qui se faisait compter comme une question. Elle n'arrive
+                // qu'UNE fois par partie — l'élève recevait donc une question
+                // gratuite en début d'exercice, et l'étape se refermait une
+                // conversion trop tôt.
+                //
+                // Ranger les sept unités dans l'ordre EST une réussite, et
+                // elle reste enregistrée : statistiques, carnet d'erreurs,
+                // points. Elle ne fait plus avancer le compteur.
                 this.onCorrectAnswer(null, COMPETENCE, {
                     questionText: `Ranger les unités de ${familleDe(this.famille).nom.toLowerCase()}`,
-                    expected: 'km hm dam m dm cm mm', given: 'juste', points: 8
+                    expected: 'km hm dam m dm cm mm', given: 'juste', points: 8, partiel: true
                 });
                 this.dessiner();
                 this.note('✅ Le tableau est prêt — et il le restera pour les conversions suivantes.', 'ok');
@@ -345,19 +567,33 @@ class Conversion extends BaseGame {
      *  qui fait VOIR le facteur dix avant de le commettre. */
     apercuNombre(td) {
         const ex = this.exercice;
-        this.tableEl.querySelectorAll('td').forEach(c => {
-            c.classList.remove('cv-case--survol');
+        this.tableEl.querySelectorAll('td[data-rang]').forEach(c => {
+            c.classList.remove('cv-case--survol', 'cv-deborde-gauche', 'cv-deborde-droite');
             if (!c.querySelector('.cv-chiffre')) c.innerHTML = '';
         });
         if (!td) return;
         const rang = Number(td.dataset.rang);
+        // CE QUI N'A PAS DE COLONNE DOIT SE VOIR, et non disparaître.
+        //
+        // L'aperçu posait chaque chiffre dans sa colonne « si elle existe » —
+        // et se taisait sinon. En visant km avec 187, l'élève voyait « 7 » tout
+        // seul et rien pour dire où étaient passés le 1 et le 8. Le tirage ne
+        // propose plus de nombre qui déborde (voir `tientDansLeTableau`), mais
+        // un placement FAUX en fait toujours déborder — et c'est précisément
+        // là qu'il faut le montrer, puisque c'est l'erreur qu'on travaille.
+        let horsGauche = 0, horsDroite = 0;
         apercuPlacement(ex.valeur, rang).forEach(c => {
             const q = this.tableEl.querySelector(`td[data-rang="${c.colonne}"]`);
             if (q) {
                 q.innerHTML = `<span class="cv-fantome">${c.chiffre}</span>`;
                 q.classList.add('cv-case--survol');
+                return;
             }
+            if (c.colonne > this.colonnes[0]) horsGauche++; else horsDroite++;
         });
+        const cases = this.tableEl.querySelectorAll('td[data-rang]');
+        if (horsGauche && cases.length) cases[0].classList.add('cv-deborde-gauche');
+        if (horsDroite && cases.length) cases[cases.length - 1].classList.add('cv-deborde-droite');
     }
 
     poserNombre(td) {
@@ -392,14 +628,41 @@ class Conversion extends BaseGame {
         const ex = this.exercice;
         const attendu = convertir(ex.valeur, this.famille, ex.depart, ex.arrivee);
 
-        // On clique une colonne pour y poser la virgule ; on clique une case
-        // vide pour y écrire un zéro.
+        // ── DEUX GESTES, DEUX CIBLES ──────────────────────────────────────
+        //
+        // Les deux partaient du même clic sur la même case, et l'ordre des
+        // clics décidait du sens : le premier posait la virgule, les suivants
+        // basculaient un zéro. Conséquence, signalée par Rémy : « une fois que
+        // l'on a posé la virgule, on ne peut plus l'enlever » — rien, jamais,
+        // ne pouvait la déplacer, pendant que la consigne affirmait le
+        // contraire. Et le clic étant refusé sur une case portant un chiffre,
+        // la virgule ne pouvait même pas se poser dans 27 à 31 % des tirages
+        // (mesuré sur 400 tirages par famille) : l'exercice était infaisable.
+        //
+        // La virgule a donc sa propre rangée de poignées, sous les cases.
+        this.tableEl.querySelectorAll('td[data-virgule]').forEach(poi => {
+            const rang = Number(poi.dataset.virgule);
+            const basculer = () => {
+                if (this.isDemo) return;
+                // RECLIQUER L'ENLÈVE. C'est la phrase de Rémy, mot pour mot, et
+                // c'est aussi le geste qu'on essaie d'abord quand on s'est
+                // trompé.
+                this.virgule = this.virgule === rang ? null : rang;
+                this.majEtape3();
+            };
+            poi.addEventListener('click', basculer);
+            poi.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); basculer(); }
+            });
+        });
+
+        // Et les cases ne font plus qu'une chose : les zéros de comblement.
         this.tableEl.querySelectorAll('td[data-rang]').forEach(td => {
             const rang = Number(td.dataset.rang);
             td.style.cursor = 'pointer';
             td.addEventListener('click', () => {
-                if (td.querySelector('.cv-chiffre')) return;   // un chiffre ne se touche pas
-                if (this.virgule === null) { this.virgule = rang; this.majEtape3(); return; }
+                if (this.isDemo) return;
+                if (td.querySelector('.cv-chiffre')) return;   // un chiffre ne se remplace pas
                 if (this.zeros.has(rang)) this.zeros.delete(rang); else this.zeros.add(rang);
                 this.majEtape3();
             });
@@ -421,6 +684,16 @@ class Conversion extends BaseGame {
         };
         trou.addEventListener('keydown', (e) => { if (e.key === 'Enter') valider(); });
         trou.addEventListener('blur', valider);
+        // LE CLAVIER DE LA TABLETTE CACHAIT LA RÉPONSE — voir `brancherLaVue`.
+        // Le délai laisse au clavier le temps de monter : mesurer avant qu'il
+        // soit là, c'est mesurer l'écran d'avant.
+        trou.addEventListener('focus', () => {
+            setTimeout(() => {
+                if (!trou.isConnected) return;
+                this.ajusterLaVue();
+                trou.scrollIntoView({ block: 'center' });
+            }, 120);
+        });
         rep.appendChild(trou);
         const u = document.createElement('span');
         u.textContent = ex.arrivee;
@@ -430,17 +703,26 @@ class Conversion extends BaseGame {
         this.majEtape3();
     }
 
-    /** Le message d'accompagnement de l'étape 3, selon ce qui reste à faire. */
+    /**
+     * Le message d'accompagnement de l'étape 3, selon ce qui reste à faire.
+     *
+     * CES PHRASES DOIVENT DIRE LE GESTE QUI MARCHE. L'une d'elles disait
+     * « clique une case pour la déplacer » alors qu'aucun clic ne déplaçait
+     * rien : l'élève suivait la consigne, il ne se passait rien, et il en
+     * concluait que le logiciel était cassé — ce qu'il était.
+     */
     majEtape3() {
         this.dessinerTableSeulement();
         const a = this.attendu;
         if (this.virgule === null) {
-            this.note(`Clique la colonne des ${this.exercice.arrivee} : la virgule se pose juste après elle.`);
+            this.note(`Clique le petit repère SOUS la colonne des ${this.exercice.arrivee} : `
+                + 'la virgule se pose juste après cette colonne.');
             return;
         }
         if (this.virgule !== a.colonneVirgule) {
             this.note('La virgule se pose après la colonne de l\'unité demandée, jamais ailleurs. '
-                + 'Clique une case pour la déplacer.', 'ko');
+                + 'Clique un autre repère sous le tableau pour la déplacer, ou le même pour '
+                + 'l\'enlever.', 'ko');
             return;
         }
         const manquants = a.zeros.filter(z => !this.zeros.has(z));
@@ -459,6 +741,13 @@ class Conversion extends BaseGame {
             td.classList.toggle('cv-virgule', this.virgule === rang);
             if (td.querySelector('.cv-chiffre')) return;
             td.innerHTML = this.zeros.has(rang) ? '<span class="cv-zero">0</span>' : '';
+        });
+        // ET LA POIGNÉE SUIT. Sans cette boucle, la virgule se déplaçait dans
+        // l'état et sur la rangée des chiffres, mais la poignée restait
+        // allumée à son ancienne place — deux virgules à l'écran, dont une
+        // fausse.
+        this.tableEl.querySelectorAll('td[data-virgule]').forEach(poi => {
+            poi.classList.toggle('cv-poignee--mise', this.virgule === Number(poi.dataset.virgule));
         });
     }
 

@@ -66,9 +66,27 @@ export const HAUTEUR_MONDE = 620;
  */
 export const LONGUEUR_MONDE = 6400;
 
+/**
+ * LA NUIT A ÉTÉ REMESURÉE AVEC LE BATTEMENT D'AILES, et il le fallait.
+ *
+ * Elle courait à 150–248 px/s, réglée sur un jeu où le joueur ordinaire faisait
+ * 210 à 280. Le battement a doublé les allures : ne RIEN faire suffisait alors
+ * à la semer dans les six mondes — c'est-à-dire qu'il n'y avait plus aucune
+ * raison d'apprendre le geste, et l'épreuve du même nom le disait.
+ *
+ * Les six valeurs sont reposées sur les allures MESURÉES monde par monde
+ * (tools/tmp/allureMondes.mjs), et tiennent les trois règles d'origine :
+ * elle reste sous 85 % de l'allure du bon joueur partout — il doit pouvoir la
+ * semer dans les six mondes —, le premier monde pardonne (300 contre 458 à ne
+ * rien faire : on y apprend sans perdre), et le dernier ne pardonne plus
+ * (400 contre 285 : l'immobilité s'y paie).
+ *
+ * Elle monte aussi de monde en monde, ce qu'elle faisait déjà : chacun est
+ * « plus haut, plus serré et plus pressé que le précédent ».
+ */
 export const MONDES = [
     {
-        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 150,
+        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 300,
         // Les collines du fond sont du SABLE, pas du bleu : ce sont les mêmes
         // dunes vues de loin, et une couche bleue au milieu du désert se lisait
         // comme une flaque.
@@ -76,27 +94,27 @@ export const MONDES = [
         sol: '#c99a52', herbe: '#f0c987'
     },
     {
-        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 175,
+        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 330,
         ciel: ['#8ed0ff', '#dff3ff'], fond: ['#a9c8e8', '#87b0d8'],
         sol: '#2f855a', herbe: '#68d391'
     },
     {
-        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 200,
+        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 360,
         ciel: ['#ffc98a', '#ffe9cf'], fond: ['#e0a98a', '#c98a72'],
         sol: '#7b4b2a', herbe: '#c0703c'
     },
     {
-        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 222,
+        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 380,
         ciel: ['#b9a7ff', '#e9e2ff'], fond: ['#a99ad8', '#8878c0'],
         sol: '#4a5578', herbe: '#e6ecff'
     },
     {
-        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 235,
+        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 390,
         ciel: ['#63c7c0', '#d6f5f2'], fond: ['#7fbfc4', '#5d9aa4'],
         sol: '#1f6b6b', herbe: '#7fe6d8'
     },
     {
-        id: 6, nom: 'Le pays de nuit', amplitude: 198, periode: 790, nuit: 248,
+        id: 6, nom: 'Le pays de nuit', amplitude: 198, periode: 790, nuit: 400,
         ciel: ['#2d3561', '#5a6bad'], fond: ['#3f4a80', '#2b3358'],
         sol: '#1b2140', herbe: '#8f9bff'
     }
@@ -397,7 +415,24 @@ export const quitteLeSol = (courbure, vx, gravite) => -courbure * vx * vx > grav
  */
 export const GRAVITE = 1300;
 export const GRAVITE_PLONGEE = 2950;
-export const VX_MIN = 130;
+/**
+ * LE PLANCHER DE VITESSE — et il ne doit plus faire le travail du joueur.
+ *
+ * Rémy : « il avance quoiqu'il arrive (il monte même presque sans vitesse) ».
+ * Mesuré : à 130, le plancher RELEVAIT la vitesse pendant 21 à 23 % des images
+ * du joueur ordinaire. C'est lui qui faisait gravir les côtes à un oiseau qui
+ * n'avait plus d'élan — exactement ce que Rémy décrit.
+ *
+ * À 40, une bosse peut arrêter : franchir 200 px demande √(2·430·200) ≈ 415 px/s,
+ * et au-dessous on cale. Mesuré après : l'oiseau passe 3 à 14 % du temps
+ * au-dessous de 100 px/s selon la façon de jouer — il est freiné pour de bon,
+ * et c'est le battement d'ailes qui le repousse, doucement.
+ *
+ * PAS ZÉRO, ET C'EST MESURÉ AUSSI : à 0, toutes les façons de jouer s'arrêtent
+ * net (99 % du temps sous 100 px/s, 115 px parcourus en une minute). Sans un
+ * minimum, l'oiseau posé sur une pente ne redémarre jamais.
+ */
+export const VX_MIN = 40;
 export const VX_MAX = 900;
 
 /**
@@ -428,7 +463,7 @@ export const VX_MAX = 900;
  * Appuyer dans la descente gagne beaucoup, relâcher dans la montée perd peu.
  */
 export const PESANTEUR_GLISSE = 430;
-export const PESANTEUR_GLISSE_APPUI = 980;
+export const PESANTEUR_GLISSE_APPUI = 1200;
 
 /**
  * LE FROTTEMENT — faible des deux côtés, et c'est capital.
@@ -447,6 +482,50 @@ export const PESANTEUR_GLISSE_APPUI = 980;
  */
 export const FROTTEMENT_SOL = 0.05;
 export const FROTTEMENT_AIR = 0.07;
+
+/**
+ * LE BATTEMENT D'AILES — la seule vitesse qui ne se mérite pas.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « c'est un jeu, il faut que ça aille plus vite comme le jeu de base
+ * car là l'oiseau est tjs collé et avance quoiqu'il arrive (il monte même
+ * presque sans vitesse) ».
+ *
+ * MESURÉ, SOIXANTE SECONDES, QUATRE FAÇONS DE JOUER (tools/tmp/volAiles.mjs) :
+ *
+ *   · le joueur qui appuie au bon moment   : 614 px/s, 39 vols, 59 % au sol ;
+ *   · celui qui appuie sans arrêt          : 280 px/s, ZÉRO vol, 100 % au sol ;
+ *   · celui qui n'appuie jamais            : 210 px/s, ZÉRO vol, 100 % au sol ;
+ *   · celui qui appuie au hasard           : 249 px/s, ZÉRO vol, 100 % au sol.
+ *
+ * Le jeu était donc magnifique POUR QUI CONNAISSAIT DÉJÀ LE TRUC, et pour tous
+ * les autres un oiseau collé au sol qui rampe. Rémy décrit la seconde colonne,
+ * et il la décrit exactement.
+ *
+ * POURQUOI. Décoller demande `-courbure · v² > g`, soit 285 px/s à la crête la
+ * plus creuse du jeu : le joueur ordinaire plafonne à 280 et ne décolle JAMAIS.
+ * Et comme le glissé conserve l'énergie, une colline rend exactement ce qu'elle
+ * a pris : sans l'asymétrie de l'appui, aucune vitesse ne se fabrique. Il ne
+ * restait que le plancher de vitesse pour avancer — d'où « avance quoiqu'il
+ * arrive ».
+ *
+ * BAISSER LA PESANTEUR NE RÉPARE RIEN, et le balayage le dit : à g = 900 comme
+ * à g = 800, le joueur ordinaire fait toujours zéro vol, et il RALENTIT.
+ *
+ * D'OÙ LE BATTEMENT. Un oiseau n'est pas une bille : il bat des ailes. Une
+ * poussée constante au sol donne une vitesse de croisière à tout le monde —
+ * l'équilibre avec le frottement se lit `v = POUSSEE / FROTTEMENT_SOL` —, sans
+ * rien enlever au reste : la montée coûte toujours son énergie, la descente la
+ * rend toujours, et l'appui au bon moment rapporte toujours autant. Le sol
+ * monte le plancher ; il ne remplace pas le talent.
+ *
+ * ET LA CÔTE PEUT ENCORE ARRÊTER. Franchir une bosse de 200 px demande
+ * √(2 · 430 · 200) ≈ 415 px/s : au-dessous, on cale — ce que Rémy demande
+ * explicitement (« ou puisse être bloqué »). Le battement repousse alors
+ * doucement, au lieu de figer l'oiseau pour de bon.
+ */
+export const POUSSEE = 40;
 
 /**
  * CE QU'IL RESTE DE LA VITESSE À L'ATTERRISSAGE — et ce n'est plus un forfait.
@@ -508,6 +587,10 @@ export function pas(etat, dt, appuie, graine) {
         const v0 = vx * q0;                             // la vitesse LE LONG du sol
         const v2 = v0 * v0 - 2 * p * (sol.hauteur - avant.hauteur);
         let v = v2 > 0 ? Math.sqrt(v2) : 0;
+        // LE BATTEMENT D'AILES, puis le frottement. Voir `POUSSEE` : c'est la
+        // seule vitesse qui ne demande pas de jouer juste, et c'est elle qui
+        // décolle le joueur ordinaire du sol.
+        v += POUSSEE * dt;
         v -= v * FROTTEMENT_SOL * dt;
         vx = v / q1;
         y = sol.hauteur;
@@ -570,7 +653,12 @@ export function pas(etat, dt, appuie, graine) {
  * passer son descripteur à une fonction qui ne le regarde plus.
  */
 export const etatInitial = (graine, x0 = 0) => ({
-    x: x0, y: relief(x0, graine).hauteur, vx: 190, vy: 0, auSol: true
+    // ON PART À LA VITESSE DE CROISIÈRE, pas au ralenti. À 190, les premières
+    // secondes se passaient sous la vitesse de décollage (285 px/s à la crête
+    // la plus creuse) : le jeu s'ouvrait donc sur ce qu'on lui reproche —
+    // un oiseau collé au sol. 320 est au-dessus, et c'est l'équilibre que le
+    // battement d'ailes tient de toute façon sur le plat.
+    x: x0, y: relief(x0, graine).hauteur, vx: 320, vy: 0, auSol: true
 });
 
 /**

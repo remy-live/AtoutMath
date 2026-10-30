@@ -46,11 +46,32 @@
 // lire comme « rien de coché » viderait l'exercice ; les ignorer effacerait un
 // choix que le professeur a posé. `marchesCochees` les traduit.
 
+import { pluriel, feminin, accorde } from './accord.js';
+
 /** Toutes les marches, c'est le défaut — et c'est ce que disait « progressif ». */
 export const TOUTES = 'toutes';
 
 /** Au-delà, la liste se plie en groupes — voir l'en-tête. */
 export const SANS_GROUPE_MAX = 8;
+
+/**
+ * AU-DELÀ, LES GROUPES S'OUVRENT FERMÉS. En deçà, ils s'ouvrent OUVERTS.
+ *
+ * DEUX DEMANDES DE RÉMY QUI SE CONTREDISENT — et le nombre les départage.
+ *
+ *   · « pour un exercice des nombres relatifs il y a beaucoup d'étapes, ça
+ *     risque d'être illisible » — douze et treize marches, repliées ;
+ *   · « il faut pouvoir sélectionner les étapes […], là on doit choisir un
+ *     cran, ce n'est pas cohérent, je pourrais vouloir qu'un type de
+ *     développement » — onze marches en deux temps, et repliées elles ne
+ *     montraient QUE les deux temps : le seul geste offert était de prendre
+ *     un temps entier. Le groupe cachait l'unité de choix.
+ *
+ * Onze s'ouvre, douze se replie. Le groupe reste dans les deux cas — c'est lui
+ * qui porte le « cocher tout le temps B » d'un geste —, mais il ne masque plus
+ * ce qu'il contient tant que cela tient à l'écran.
+ */
+export const PLIER_AU_DELA = 11;
 
 /** Ce que les générateurs posaient en dur avant qu'il y ait un réglage. */
 export const PAR_MARCHE_DEFAUT = 2;
@@ -115,6 +136,36 @@ export function marchesCochees(params, toutes, ancien = {}) {
     if (vieux === undefined || vieux === null || vieux === '' || vieux === 'progressif') {
         return liste;
     }
+    // UN ANCIEN RÉGLAGE EST PARFOIS UN PLAFOND, PAS UN CHOIX.
+    //
+    // « Niveau 3 » dans les priorités ne voulait pas dire « le niveau 3 » : il
+    // voulait dire « jusqu'au 3 », et le générateur montait de 1 à 3 au fil
+    // des questions. Le relire comme UNE marche donnerait au professeur le
+    // contraire de ce qu'il avait réglé — les questions les plus dures, et
+    // elles seules, là où il avait demandé une montée.
+    //
+    // `ancien.jusqua` dit que la valeur nomme le HAUT de l'échelle : on garde
+    // tout ce qui vient avant, elle comprise.
+    //
+    // ET PARFOIS UNE CASE À CÔTÉ DÉCIDAIT DU SENS. Aux priorités, « Commencer
+    // plus facile » faisait de `niveau` un plafond ; décochée, le même nombre
+    // désignait une seule difficulté. On accepte donc une fonction des
+    // réglages : elle lit l'autre case, et deux parcours enregistrés qui
+    // portent le même `niveau: 3` ne se relisent pas de la même façon.
+    const jusqua = typeof ancien.jusqua === 'function' ? ancien.jusqua(p) : ancien.jusqua;
+    if (jusqua) {
+        const i = liste.findIndex(m => m.id === String(vieux));
+        if (i >= 0) return liste.slice(0, i + 1);
+    }
+    // ET PARFOIS C'EST LE BAS DE L'ÉCHELLE. « Commencer au niveau 5 » ou
+    // « Commencer à la figure 8 » ne nomment pas non plus UNE marche : elles
+    // disent par où l'on entre, et la suite se déroule à partir de là — le chat
+    // de Scratch bouclait même sur les douze figures à partir de celle-là. On
+    // garde donc tout ce qui vient APRÈS, elle comprise.
+    if (ancien.depuis) {
+        const i = liste.findIndex(m => m.id === String(vieux));
+        if (i >= 0) return liste.slice(i);
+    }
     // « A », « B », « C » désignaient un TEMPS entier : c'est exactement ce que
     // le groupe coché fait aujourd'hui.
     const parGroupe = liste.filter(m => m.groupe && String(m.groupe) === String(vieux));
@@ -175,7 +226,7 @@ export function decoupeMarches(marches, total, params) {
     const n = Math.max(1, Math.round(Number(total)) || 1);
     if (!liste.length) return [];
     const parts = lireLongueurs((params || {}).repartitionMarches, liste.length, n)
-        || partageEgal(liste.length, n);
+        || partageEnBas(liste.length, n);
 
     let rang = 1;
     return liste.map((m, k) => {
@@ -184,6 +235,74 @@ export function decoupeMarches(marches, total, params) {
         rang += p;
         return { ...m, n: p, de, a: rang - 1 };
     });
+}
+
+/**
+ * LE PARTAGE PAR DÉFAUT : ON RESTE EN BAS DE L'ESCALIER.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, capture de son iPhone à l'appui, sur « Décomposer, PGCD et PPCM » :
+ * « Ce n'est pas très progressif ».
+ *
+ * MESURÉ : `partageEgal` donnait UNE question à chacune des premières marches.
+ * Sur les dix-sept marches de cet exercice, un parcours de dix questions
+ * faisait donc dix notions différentes en dix questions — « divisible »,
+ * « qui divise », « la liste des diviseurs », « premier ou non », « par quoi
+ * commencer », « le quotient », puis la décomposition entière. Jamais deux
+ * fois la même. Ce n'est pas un escalier, c'est une VISITE : rien ne se répète,
+ * donc rien ne s'installe, et la septième question tombe sur un élève qui n'a
+ * encore rien automatisé.
+ *
+ * CE QU'IL A TRANCHÉ : « rester en bas plus longtemps ». Trois questions sur
+ * une marche avant de passer à la suivante, puis deux, puis une — l'escalier
+ * monte, mais il s'attarde là où l'on apprend.
+ *
+ *     dix questions, dix-sept marches   →  3, 3, 4          (3 marches)
+ *     dix-sept questions                →  3, 3, 3, 2, 2, 2, 1, 1
+ *
+ * ET L'ESCALIER COURT GARDE SON PARTAGE ÉGAL. Dès qu'il y a DEUX questions par
+ * marche pour tout le monde, chacune est déjà répétée : s'attarder encore
+ * amputerait la fin du chapitre sans rien apprendre de plus. Un exercice de
+ * quatre marches joué en huit questions fait donc toujours 2, 2, 2, 2.
+ *
+ * LE RESTE VA À LA DERNIÈRE MARCHE JOUÉE, et non à une marche de plus : une
+ * marche qui n'aurait qu'une seule question serait exactement ce qu'on vient
+ * de corriger. Dix questions font 3, 3, 4 — pas 3, 3, 3, 1.
+ *
+ * ET LE PROFESSEUR GARDE LA MAIN : `params.repartitionMarches` l'emporte sur
+ * tout ceci, et c'est ce que la barre écrit quand il tire une borne.
+ */
+export function partageEnBas(nbMarches, total) {
+    const m = Math.max(1, Math.round(Number(nbMarches)) || 1);
+    const n = Math.max(1, Math.round(Number(total)) || 1);
+    // ON NE S'ATTARDE QUE LÀ OÙ L'ESCALIER NE TIENT PAS DANS LE PARCOURS.
+    //
+    // DEUX MESURES ONT BORNÉ CETTE RÈGLE, et toutes deux ont failli passer
+    // inaperçues :
+    //
+    //   · DIX DES DIX-SEPT exercices à marches en ont cinq ou moins. Un
+    //     parcours ordinaire leur donne déjà deux questions par marche ;
+    //     s'y attarder couperait la fin du chapitre — qui en est souvent le
+    //     SUJET — pour répéter ce qui l'est déjà.
+    //   · ET CERTAINS ESCALIERS SONT FAITS POUR ÊTRE BALAYÉS. « Révision —
+    //     les quatre opérations » donne huit questions pour huit barreaux,
+    //     et `geo.scratch` conseille douze questions pour douze marches :
+    //     une chacune, exprès. S'y attarder les aurait amputés des deux
+    //     tiers, et c'est `tests/progression.test.mjs` qui l'a dit.
+    //
+    // Reste le cas de Rémy, et il est net : MOINS DE QUESTIONS QUE DE
+    // MARCHES. Là, l'ancien partage donnait une question à chacune des
+    // premières et ZÉRO aux suivantes — des notions vues une fois, puis un
+    // chapitre qui s'arrête au milieu.
+    if (m <= 5 || n >= m) return partageEgal(m, n);
+
+    // TROIS QUESTIONS PAR MARCHE, ET L'ON MONTE AUSSI HAUT QUE LE COMPTE LE
+    // PERMET. C'est le seuil de Rémy : « 3 ou 4 sur chacune des 3 premières ».
+    // En dessous de trois, une notion est vue et aussitôt quittée.
+    const jouees = Math.min(m, Math.max(1, Math.floor(n / 3)));
+    const dessus = partageEgal(jouees, n);
+    return Array.from({ length: m }, (_, k) => (k < jouees ? dessus[k] : 0));
 }
 
 /** Le partage à parts égales, le reste aux dernières. */
@@ -327,19 +446,19 @@ export function conseilProgression(nbMarches, historique = PAR_MARCHE_DEFAUT) {
  * @param {Object} [opts.groupes] les noms des groupes, par clé : { A: '…' }
  * @param {string} [opts.mot]     « marche », « étape », « niveau », « palier »…
  */
-// L'ACCORD, PARCE QUE LE MOT CHANGE D'UN EXERCICE À L'AUTRE. Une marche et une
-// étape sont féminines, un palier et un niveau masculins : écrire
-// « Les paliers travaillées » dans un logiciel de français... de maths, mais
-// lu par des élèves de sixième, ne se fait pas. Quatre mots suffisent — on ne
-// devine pas le genre, on le déclare.
-const FEMININS = new Set(['marche', 'étape', 'forme']);
-const feminin = (mot) => FEMININS.has(String(mot || '').toLowerCase());
+// L'ACCORD ET LE PLURIEL VIVENT DANS `core/accord.js` — voir l'en-tête de ce
+// module. Ils étaient ici, et il y manquait les deux moitiés du problème :
+// « figure » n'était pas déclaré féminin (« Les figures travaillés »), et le
+// pluriel se faisait par un « s » collé au mot, ce qui donnait « Les barreaus
+// travaillés » et « Les niveaus travaillés ». C'est ce que lit un professeur
+// de mathématiques, et ses élèves de sixième derrière lui.
 
 export function paramMarches({ marches = [], groupes = {}, mot = 'marche', ancien = {} } = {}) {
     const liste = normaliserMarches(marches);
     const f = feminin(mot);
     return {
-        id: 'marches', type: 'marches', label: `Les ${mot}s travaillé${f ? 'es' : 's'}`,
+        id: 'marches', type: 'marches',
+        label: `Les ${pluriel(mot)} ${accorde('travaillé', mot)}`,
         // OUTIL DE PRÉPARATION, PAS RÉGLAGE D'ÉLÈVE.
         //
         // Rémy : « est-ce que tu penses, sans que je te cause quoi que ce soit,
@@ -367,9 +486,10 @@ export function paramMarches({ marches = [], groupes = {}, mot = 'marche', ancie
         // sans cela, rouvrir un parcours d'hier montrerait tout coché alors que
         // l'exercice, lui, ne jouerait qu'un temps.
         ancien,
-        aide: `Coche ce que la classe travaille aujourd’hui. Les ${mot}s coché${f ? 'e' : ''}s se `
-            + `partagent les questions, et la barre montre comment : tire une borne pour en `
-            + `donner plus à l’${f ? 'une' : 'un'} qu’à l’autre.`
+        aide: `Coche ce que la classe travaille aujourd’hui. Les ${pluriel(mot)} `
+            + `${accorde('coché', mot)} se partagent les questions, et la barre montre `
+            + `comment : tire une borne pour en donner plus à l’${f ? 'une' : 'un'} `
+            + `qu’à l’autre.`
     };
 }
 
@@ -456,14 +576,19 @@ export function motsDeCoupe(coupe, mot = 'marche') {
     const n = coupe.reduce((s, z) => s + z.n, 0);
     const pleines = coupe.filter(z => z.n > 0);
     const tailles = [...new Set(pleines.map(z => z.n))];
+    // « CHACUNE » SUIT LE MOT, PAS LA QUESTION. La phrase parle de ce que
+    // reçoit chaque marche : « 3 questions chacune » pour une marche, « 3
+    // questions chacun » pour un niveau. Elle annonçait « chacune » partout,
+    // c'est-à-dire faux sur les deux tiers des exercices à progression.
+    const chacun = feminin(mot) ? 'chacune' : 'chacun';
     const combien = tailles.length === 1
-        ? `${tailles[0]} question${tailles[0] > 1 ? 's' : ''} chacune`
-        : `de ${Math.min(...tailles)} à ${Math.max(...tailles)} questions chacune`;
+        ? `${tailles[0]} question${tailles[0] > 1 ? 's' : ''} ${chacun}`
+        : `de ${Math.min(...tailles)} à ${Math.max(...tailles)} questions ${chacun}`;
     if (pleines.length < coupe.length) {
-        return `${n} questions : ${pleines.length} ${mot}s sur ${coupe.length}, ${combien}. `
-            + `Les autres n’auront aucune question.`;
+        return `${n} questions : ${pleines.length} ${pluriel(mot)} sur ${coupe.length}, `
+            + `${combien}. Les autres n’auront aucune question.`;
     }
-    return `${n} questions pour ${coupe.length} ${mot}s : ${combien}.`;
+    return `${n} questions pour ${coupe.length} ${pluriel(mot)} : ${combien}.`;
 }
 
 /**

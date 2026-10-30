@@ -20,7 +20,8 @@
 //
 // Le calcul, lui, vit dans `core/calculatrice.js` — testé à part, sans écran.
 
-import { calculer, ecrire } from '../core/calculatrice.js';
+import { calculer, ecrire, calculatricePermise } from '../core/calculatrice.js';
+import { calculatriceAccordee } from '../core/seanceDistante.js';
 import { placer, restaurer, memoriser, rendreDeplacable } from './flottant.js';
 
 const CLE_POS = 'mathbox-calc-pos';
@@ -324,8 +325,16 @@ function majBoutons() {
  *
  * @param {Object|null} exo - l'exercice en cours, ou rien du tout
  */
-export function reglerCalculatrice(exo) {
-    const permise = !!(exo && exo.calculatrice);
+export function reglerCalculatrice(exo, opts = {}) {
+    // CE QU'ON REGARDE EN CE MOMENT, gardé pour pouvoir y revenir : le
+    // professeur peut accorder la calculatrice PENDANT l'exercice, et il faut
+    // alors rejuger sans attendre la question suivante. Voir plus bas.
+    enCours = exo ? { exo, params: opts.params || null } : null;
+    appliquer(calculatricePermise({ exercice: exo, ...opts }));
+}
+
+/** Montrer ou cacher le bouton, et le faire battre s'il apparaît. */
+function appliquer(permise) {
     document.querySelectorAll('[data-calculatrice]').forEach(b => { b.hidden = !permise; });
     if (!permise) { fermerCalculatrice(); return; }
     majBoutons();
@@ -335,6 +344,31 @@ export function reglerCalculatrice(exo) {
     // droit qu'on ne sait pas qu'on a n'est pas un droit.
     battreBoutons();
 }
+
+let enCours = null;
+
+/**
+ * « VOUS POUVEZ PRENDRE LA CALCULATRICE » NE PEUT PAS ATTENDRE LA QUESTION
+ * SUIVANTE.
+ *
+ * Le professeur l'accorde depuis Le direct, en pleine heure, et le dit à voix
+ * haute dans la même seconde. Sans cette écoute, le bouton n'apparaissait qu'au
+ * changement d'étape : l'élève cherchait sur son écran une chose que le
+ * professeur venait de lui promettre, et concluait que ça ne marche pas.
+ *
+ * L'état de séance arrive tout seul toutes les dix secondes quand l'onglet est
+ * devant l'élève (voir `SEANCE_VISIBLE_MS` dans core/sync.js) et annonce chaque
+ * changement par cet événement. On rejuge alors la même question, avec la même
+ * règle — et le bouton bat trois fois, donc l'élève le voit arriver.
+ */
+document.addEventListener('seance_distante', () => {
+    if (!enCours) return;
+    appliquer(calculatricePermise({
+        exercice: enCours.exo,
+        params: enCours.params,
+        accordee: calculatriceAccordee(enCours.exo && enCours.exo.id)
+    }));
+});
 
 /**
  * LE BOUTON BAT TROIS FOIS — pas plus.

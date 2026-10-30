@@ -28,8 +28,35 @@ function randomDecimal(rng, { intDigits = 4, decDigits = 2 } = {}) {
 
 // --- 1. Chiffre d'un rang ---------------------------------------------------
 
-const RANKS_ENTIER = [0, 1, 2, 3];
 const RANKS_DECIMAL = [-1, -2, -3];
+
+/**
+ * LA TAILLE DES NOMBRES, ET POURQUOI LES GRANDS N'ONT PAS DE DÉCIMALES.
+ *
+ * RÉMY, premier bloc de sa progression de sixième : les grands nombres vont
+ * « jusqu'aux centaines de milliards ». L'exercice tirait quatre chiffres —
+ * 9 999 au plus —, soit le quart de son chapitre.
+ *
+ * ET LA PARTIE DÉCIMALE DISPARAÎT AU-DELÀ DES MILLIERS. Deux raisons, et la
+ * seconde est un défaut qui ne se voit pas :
+ *
+ *   · le chapitre des grands nombres est celui des ENTIERS ; les décimaux
+ *     arrivent plus tard, et mêler les deux ferait du rang un terrain glissant
+ *     là où l'on veut d'abord qu'il soit solide ;
+ *   · douze chiffres entiers et trois décimales font QUINZE chiffres
+ *     significatifs, c'est-à-dire la limite même du nombre à virgule flottante
+ *     de JavaScript. `digitAtRank` lit `value.toFixed(6)` : au-delà, il
+ *     rendrait des chiffres inventés, et l'exercice compterait faux un élève
+ *     qui a raison. Les tailles au-dessus des milliers n'ont donc PAS de
+ *     décimales, et ce n'est pas un choix de confort.
+ */
+const TAILLES = {
+    milliers: { label: 'Jusqu\'à 9 999', chiffres: 4, decimales: true },
+    millions: { label: 'Jusqu\'aux centaines de millions', chiffres: 9, decimales: false },
+    milliards: { label: 'Jusqu\'aux centaines de milliards', chiffres: 12, decimales: false }
+};
+
+const rangsEntiers = (chiffres) => Array.from({ length: chiffres }, (_, i) => i);
 
 /**
  * LE TABLEAU DE NUMÉRATION, À LA DEMANDE.
@@ -38,12 +65,23 @@ const RANKS_DECIMAL = [-1, -2, -3];
  * proposer un bouton pour afficher un tableau de numération pour placer son
  * nombre ».
  *
- * IL EST VIDE, ET C'EST TOUT L'INTÉRÊT. Un tableau où le nombre serait déjà
- * posé donnerait la réponse à lire dans une case : l'exercice n'existerait
- * plus. Ce qu'on rend disponible, c'est l'OUTIL — les colonnes, leur ordre, la
- * virgule à sa place — pour que l'élève y pose son nombre lui-même, du doigt
- * ou sur son brouillon. C'est le geste que le premier indice commande déjà
- * (« Place 3 407,52 dans le tableau ») et qu'aucun écran ne montrait.
+ * IL EST VIDE, ET C'EST TOUT L'INTÉRÊT — mais il SE REMPLIT. Un tableau où le
+ * nombre serait DÉJÀ posé donnerait la réponse à lire dans une case :
+ * l'exercice n'existerait plus. Un tableau que l'élève remplit lui-même est
+ * tout le contraire — c'est le geste même du chapitre, et s'il place les
+ * chiffres dans les bonnes colonnes, il a fait le travail qu'on lui demande.
+ *
+ * RÉMY, DEVANT CE TABLEAU : « dans cet exercice, on ne peut mettre le
+ * nombre ». Il avait raison, et le reproche était d'autant plus juste que la
+ * phrase sous le tableau dit « POSE TON NOMBRE : un chiffre par colonne » —
+ * une consigne qui commande un geste que l'écran ne permettait pas. J'avais
+ * lu « vide » comme « non modifiable », ce qui n'était ni ce qu'il demandait
+ * (« un tableau de numération POUR PLACER SON NOMBRE ») ni ce que la phrase
+ * promettait. Chaque colonne porte donc une case d'un seul chiffre.
+ *
+ * ET CE N'EST PAS UN INDICE : il ne dit rien de la question, il n'écrit rien
+ * tout seul, et placer correctement les chiffres EST la compétence évaluée.
+ * Comme la calculatrice ailleurs, il ne coûte rien à la note.
  *
  * LA VIRGULE EST UNE FRONTIÈRE, PAS UNE COLONNE. Elle est dessinée sur le bord
  * entre unités et dixièmes, comme dans le jeu du glissement (js/games/
@@ -69,13 +107,81 @@ const TABLEAU_HTML = `<div class="tn-cadre"><table class="tn-tab"><thead><tr>${
         c.court === 'unités' ? ' tn-avant-virgule' : ''}">${c.court}</th>`).join('')
 }</tr></thead><tbody><tr>${
     COLONNES_TABLEAU.map(c => `<td class="${c.dec ? 'tn-dec' : ''}${
-        c.court === 'unités' ? ' tn-avant-virgule' : ''}"></td>`).join('')
+        c.court === 'unités' ? ' tn-avant-virgule' : ''}"><input class="tn-case"
+        type="text" inputmode="numeric" maxlength="1" autocomplete="off"
+        data-case-outil aria-label="Chiffre des ${c.court}"></td>`).join('')
 }</tr></tbody></table></div>
 <p class="tn-mot">Pose ton nombre : un chiffre par colonne, en partant de la virgule.</p>`;
 
 const OUTIL_TABLEAU = {
     id: 'tableau', label: 'Tableau de numération', html: TABLEAU_HTML
 };
+
+/**
+ * LE MÊME TABLEAU POUR LES GRANDS NOMBRES — ET IL CHANGE DE FORME, PARCE QUE
+ * LA PLACE L'EXIGE.
+ *
+ * Sept colonnes nommées en toutes lettres tiennent dans un téléphone, et la
+ * feuille de style le dit chiffres à l'appui : 45,4 px par colonne à 390 px,
+ * quand « centièmes » en demande 52,4 à sa taille d'origine — d'où son clamp
+ * à 2,7 cqi, et l'avertissement que la marge y est MINCE. DOUZE COLONNES EN
+ * DONNENT 26, et quinze 21 : aucun de ces noms n'y entre, à aucune taille
+ * encore lisible.
+ *
+ * Au-delà des milliers, le tableau prend donc la forme qu'ont tous les manuels
+ * de sixième et que Rémy trace au tableau : LES CLASSES EN BANDEAU — milliards,
+ * millions, mille, unités — et sous chacune trois colonnes « c d u ». Une
+ * lettre tient dans 21 px, le bandeau porte le nom en entier au-dessus de ses
+ * trois colonnes, et l'élève y retrouve le tableau de son cahier.
+ *
+ * LES CLASSES SONT TOUJOURS COMPLÈTES, même quand le nombre n'a pas de quoi
+ * les remplir : un nombre de sept chiffres laisse vides les deux premières
+ * colonnes de la classe des millions, et c'est exactement ce qu'on veut lui
+ * faire voir — une classe incomplète est une classe qui commence par des zéros
+ * qu'on n'écrit pas.
+ */
+const CLASSES = ['unités', 'mille', 'millions', 'milliards'];
+const CDU = ['c', 'd', 'u'];
+const DEC_COURT = ['d', 'c', 'm'];
+
+function tableauParClasses(intDigits, decDigits) {
+    const combien = Math.min(CLASSES.length, Math.ceil(intDigits / 3));
+    const noms = CLASSES.slice(0, combien).reverse();
+    const tetes = noms.map(n => `<th class="tn-classe" colspan="3">${n}</th>`).join('')
+        + (decDigits ? `<th class="tn-classe tn-dec" colspan="${decDigits}">décimales</th>` : '');
+    const sous = noms.map((n, i) => CDU.map((l, j) => {
+        // LA VIRGULE EST UNE FRONTIÈRE : elle se dessine sur le bord droit de
+        // la colonne des unités, la dernière de la dernière classe entière.
+        // SANS DÉCIMALE, PAS DE VIRGULE À MARQUER. Le trait rouge tombait
+        // alors sur le bord DROIT du tableau, où il ne sépare plus rien : vu
+        // sur la photo au doigt, il se lit comme une erreur d'affichage.
+        const virgule = decDigits > 0 && i === noms.length - 1 && j === CDU.length - 1;
+        return `<th${virgule ? ' class="tn-avant-virgule"' : ''}>${l}</th>`;
+    }).join('')).join('')
+        + DEC_COURT.slice(0, decDigits).map(l => `<th class="tn-dec">${l}</th>`).join('');
+
+    // Les cases, de la plus grande à la plus petite : le rang de chacune sert
+    // à l'étiquette que lit un lecteur d'écran.
+    const rangs = [];
+    for (let r = combien * 3 - 1; r >= 0; r--) rangs.push(r);
+    for (let d = 1; d <= decDigits; d++) rangs.push(-d);
+    const cases = rangs.map(r => `<td class="${r < 0 ? 'tn-dec' : ''}${
+        r === 0 && decDigits > 0 ? ' tn-avant-virgule' : ''}"><input class="tn-case" type="text"
+        inputmode="numeric" maxlength="1" autocomplete="off" data-case-outil
+        aria-label="Chiffre des ${RANK_NAMES[r]}"></td>`).join('');
+
+    return `<div class="tn-cadre tn-cadre--classes"><table class="tn-tab tn-tab--classes">
+        <thead><tr>${tetes}</tr><tr>${sous}</tr></thead>
+        <tbody><tr>${cases}</tr></tbody></table></div>
+<p class="tn-mot">Pose ton nombre : un chiffre par colonne, en partant des unités.</p>`;
+}
+
+/** L'outil qui convient à la taille des nombres de l'exercice. */
+function outilTableau(intDigits, decDigits) {
+    return intDigits <= 4
+        ? OUTIL_TABLEAU
+        : { id: 'tableau', label: 'Tableau de numération', html: tableauParClasses(intDigits, decDigits) };
+}
 
 export const chiffreRangGenerator = {
     id: 'num.chiffre-rang',
@@ -84,15 +190,38 @@ export const chiffreRangGenerator = {
     answerKinds: ['choice', 'numeric'],
     ecrit: true,
     params: [
+        {
+            id: 'taille', type: 'select', label: 'Taille des nombres', default: 'milliers',
+            options: Object.entries(TAILLES).map(([value, t]) => ({ value, label: t.label }))
+        },
         { id: 'partie', type: 'select', label: 'Rangs interrogés', options: ['entière', 'décimale', 'les deux'], default: 'les deux' },
         { id: 'decimales', type: 'number', label: 'Nombre de décimales', default: 3, min: 1, max: 3 }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const decDigits = params.decimales || 3;
-        const { value } = randomDecimal(rng, { intDigits: 4, decDigits });
+        const taille = TAILLES[params.taille] || TAILLES.milliers;
+        const intDigits = taille.chiffres;
+        // AU-DELÀ DES MILLIERS, AUCUNE DÉCIMALE — voir `TAILLES`. Un réglage
+        // « Rangs interrogés » resté sur « décimale » demanderait alors un rang
+        // qui n'existe pas dans le nombre, et `digitAtRank` rendrait 0 pour
+        // toutes les questions.
+        const decDigits = taille.decimales ? (params.decimales || 3) : 0;
+        const RANKS_ENTIER = rangsEntiers(intDigits);
+        // UN NOMBRE ASSEZ VARIÉ POUR PORTER SES PROPRES LEURRES.
+        //
+        // Les propositions sont désormais tirées des chiffres DU NOMBRE (voir
+        // plus bas) : encore faut-il qu'il en ait quatre différents. « 8 888,88 »
+        // n'en a qu'un, et la question n'aurait plus qu'une seule proposition —
+        // elle serait d'ailleurs sans intérêt, puisque la réponse y est la même
+        // à tous les rangs. On retire donc, au plus dix fois : sur sept chiffres
+        // tirés au hasard, en avoir quatre distincts est le cas ordinaire.
+        let value;
+        for (let essai = 0; essai < 10; essai++) {
+            value = randomDecimal(rng, { intDigits, decDigits }).value;
+            if (new Set(String(value).replace(/[^0-9]/g, '')).size >= 4) break;
+        }
 
-        const pool = params.partie === 'entière' ? RANKS_ENTIER
+        const pool = (params.partie === 'entière' || !decDigits) ? RANKS_ENTIER
             : params.partie === 'décimale' ? RANKS_DECIMAL
                 : [...RANKS_ENTIER, ...RANKS_DECIMAL.slice(0, decDigits)];
         const rank = rng.pick(pool);
@@ -104,8 +233,54 @@ export const chiffreRangGenerator = {
         // sert justement à lever.
         const miroir = rank > 0 ? -rank : (rank < 0 ? -rank : null);
         const chiffreMiroir = miroir !== null ? digitAtRank(value, miroir) : null;
-        // Compter les rangs depuis la gauche au lieu de la droite.
-        const parLaGauche = digitAtRank(value, 3 - Math.min(rank, 3));
+        // LES CHIFFRES DU NOMBRE, DANS L'ORDRE OÙ ON LES LIT. C'est la chaîne
+        // affichée qu'on découpe, et non `String(value)` : un nombre comme
+        // 4 528,900 s'écrit « 4528.9 » en JavaScript, et les deux zéros de fin —
+        // que l'élève voit pourtant — disparaîtraient du jeu de leurres.
+        const chiffres = [...affiche.replace(/[^0-9]/g, '')].map(Number);
+
+        // COMPTER LES RANGS DEPUIS LA GAUCHE AU LIEU DE LA VIRGULE — la seconde
+        // erreur du chapitre, et un leurre qui doit donc exister.
+        //
+        // La formule d'avant, `3 - Math.min(rank, 3)`, sortait du nombre dès
+        // qu'on interrogeait un rang décimal : pour les millièmes elle demandait
+        // le rang 6 d'un nombre qui s'arrête au rang 3, et `digitAtRank` rendait
+        // alors 0. Mesuré : 985 leurres sur 12 000 étaient hors du nombre, et
+        // c'était TOUJOURS ce zéro-là. On compte donc les chiffres à partir de
+        // la gauche, ce qui est précisément l'erreur qu'on veut proposer, et
+        // rend forcément un chiffre du nombre.
+        const parLaGauche = chiffres[Math.min(chiffres.length - 1,
+            rank >= 0 ? rank : (-rank) - 1)];
+
+        // LES LEURRES SORTENT DU NOMBRE LUI-MÊME, ET DE NULLE PART AILLEURS.
+        //
+        // Retour d'un professeur, capture à l'appui : « Quel est le chiffre des
+        // unités de 8 788,13 ? » proposait 0, 8, 4, 7. Le 0 et le 4 ne SONT PAS
+        // dans le nombre. Un élève qui ignore tout du rang des unités les écarte
+        // d'un coup d'œil et il lui reste une chance sur deux — « 2 chiffres qui
+        // ne se trouvent pas dans les chiffres du nombre à analyser c'est trop
+        // facilitant, ça vide l'exo de sa substance ».
+        //
+        // Il a raison, et c'est exactement le reproche qu'un inspecteur ferait :
+        // la question ne mesurait plus la capacité à SITUER un rang, elle
+        // mesurait celle à reconnaître un chiffre déjà vu.
+        //
+        // MESURÉ sur 4 000 questions, en simulant l'élève qui ne sait rien du
+        // rang mais écarte les chiffres absents du nombre, puis répond au
+        // hasard parmi ce qui reste :
+        //
+        //     avant : 4 295 leurres sur 12 000 absents du nombre (36 %)
+        //             → 37 réussites sur 100, contre 25 au pur hasard
+        //     après : 0 leurre sur 12 000 absent du nombre
+        //             → 25 sur 100, c'est-à-dire le hasard et rien d'autre
+        //
+        // Douze points de réussite qui ne venaient d'aucun savoir : c'est cela,
+        // « vider l'exo de sa substance ».
+        //
+        // Les deux leurres écrits à la main ci-dessus en viennent déjà (le rang
+        // miroir, le comptage par la gauche) ; c'est le BOUCHE-TROU qui tirait
+        // un chiffre entre 0 et 9 sans regarder le nombre.
+        const autresChiffres = rng.shuffle([...new Set(chiffres)].filter(d => d !== answer));
 
         return makeItem({
             seed: rng.seed, generatorId: 'num.chiffre-rang', skillId: 'num.numeration.rang',
@@ -125,7 +300,7 @@ export const chiffreRangGenerator = {
                     }
                     : null,
                 { value: parLaGauche, why: 'Les rangs se comptent à partir de la virgule, pas depuis le début du nombre.' }
-            ].filter(Boolean), { count: 4, filler: r => r.int(0, 9) }),
+            ].filter(Boolean), { count: 4, filler: () => autresChiffres.pop() ?? null }),
             // UN INDICE QUI COMMANDE DOIT NOMMER SUR QUOI. « Place le nombre
             // dans le tableau » ne désigne rien — et c'est le PREMIER indice,
             // donc la phrase que le robot prononce, sans montrer quoi que ce
@@ -138,7 +313,7 @@ export const chiffreRangGenerator = {
             ],
             explanation: `Dans ${affiche}, le chiffre des ${RANK_NAMES[rank]} est ${answer}.`,
             difficulty: rank < 0 ? 3 : 2,
-            meta: { value, rank, decimal: false, outils: [OUTIL_TABLEAU] }
+            meta: { value, rank, decimal: false, outils: [outilTableau(intDigits, decDigits)] }
         });
     }
 };
@@ -272,10 +447,53 @@ export const zerosGenerator = {
         const affiche = `${zerosGauche}${base}${zerosDroite}`;
         const answer = stripUselessZeros(affiche);
 
-        // Distracteurs : supprimer un zéro qui compte, ou n'en retirer qu'une partie.
+        // LES FAUSSES RÉPONSES, ET CE QU'ELLES DISENT. Une seule liste sert aux
+        // DEUX chemins — la réponse tapée (`diagnostics`) et la proposition
+        // cliquée (`choices`) — pour qu'ils ne puissent pas dire deux choses
+        // différentes de la même erreur.
+        //
+        // RÉMY : « dans les zéros inutiles, tu considères comme bon comme
+        // réponse 53,300 ». Elles étaient comptées justes parce que la
+        // comparaison porte sur le NOMBRE, et que 53,300 EST 53,3 (voir
+        // `ecritureExacte` dans core/items.js). Ici la réponse n'est pas un
+        // nombre, c'est une ÉCRITURE.
+        //
+        // ET EN CHERCHANT CE QU'ON N'AVAIT PAS CORRIGÉ, ON A TROUVÉ PIRE : ces
+        // fausses réponses étaient écartées de la liste des propositions
+        // PARCE QU'ELLES VALAIENT LE MÊME NOMBRE que la bonne. Mesuré sur
+        // quatre-vingts questions : soixante-treize n'offraient qu'UNE SEULE
+        // proposition — un bouton, toujours juste. Maintenant qu'on juge
+        // l'écriture, ce sont les meilleurs leurres qui existent, et ils
+        // reviennent dans la liste.
+        //
+        // On les dérive de la RÈGLE, pas des morceaux qu'on a collés : quand la
+        // base finit elle-même par un zéro (94,90), l'élève qui enlève « les
+        // zéros de la fin » en enlève deux, et un leurre calculé sur
+        // `zerosDroite` ne l'aurait pas reconnu.
+        const sansCeuxDeGauche = (x) => x.replace(/^0+(?=\d)/, '');
+        const sansCeuxDeDroite = (x) => x.includes(',')
+            ? x.replace(/0+$/, '').replace(/,$/, '') : x;
+        // Un zéro qui compte, retiré : celui du milieu s'il y en a un, sinon
+        // celui qui tient le rang des unités (250 → 25).
         const trop = answer.includes(',')
             ? answer.replace(/0/g, '') || '0'
             : answer.replace(/0+$/, '') || '0';
+        const fausses = [
+            { value: sansCeuxDeGauche(affiche),
+                why: 'Bien pour les zéros de devant — mais il en reste à la FIN des décimales, et ceux-là ne changent rien non plus.' },
+            { value: sansCeuxDeDroite(affiche),
+                why: 'Bien pour les zéros de la fin — mais il en reste DEVANT le nombre, et un zéro devant la partie entière ne change rien.' },
+            { value: affiche,
+                why: 'Tu as recopié le nombre sans rien enlever. Cherche les zéros qui ne changent rien : ceux tout à gauche de la partie entière, et ceux tout à droite de la partie décimale.' },
+            // Il en reste UN : l'erreur de celui qui a compris la règle et s'est
+            // arrêté trop tôt.
+            { value: zerosGauche ? `0${answer}` : null,
+                why: 'Il en reste un devant : ils partent tous, même le dernier — 0147 s\'écrit 147.' },
+            { value: zerosDroite ? `${answer}0` : null,
+                why: 'Il en reste un à la fin : ils partent tous, même le dernier — 3,470 s\'écrit 3,47.' },
+            { value: trop,
+                why: 'Tu en as enlevé un qui compte : il tient la place d\'un rang. On ne supprime que ceux tout à gauche de la partie entière et tout à droite de la partie décimale.' }
+        ].filter(d => d.value && d.value !== answer);
 
         return makeItem({
             seed: rng.seed, generatorId: 'num.zeros', skillId: 'num.decimal.zeros',
@@ -286,11 +504,14 @@ export const zerosGenerator = {
                        <span class="nb-highlight nb-highlight--lg">${affiche}</span></div>`
             },
             answer,
-            choices: finalizeChoices(rng, [
-                { value: answer, correct: true },
-                trop !== answer ? { value: trop, why: 'Tu en as enlevé un qui compte : on ne supprime que les zéros tout à gauche de la partie entière et tout à droite de la partie décimale.' } : null,
-                { value: `${zerosGauche}${base}`.replace(/^0+/, '') === answer ? null : `${base}${zerosDroite}`, why: 'Il reste des zéros inutiles à la fin.' }
-            ].filter(c => c && c.value), { count: 3, filler: () => null }),
+            // C'EST L'ÉCRITURE QU'ON JUGE, PAS LE NOMBRE — sans quoi toutes les
+            // fausses réponses ci-dessus sont des bonnes réponses.
+            ecritureExacte: true,
+            diagnostics: fausses,
+            // `finalizeChoices` écarte tout seul ce qui s'écrit comme la bonne
+            // réponse : on lui donne les candidats, il garde ceux qui tiennent.
+            choices: finalizeChoices(rng, [{ value: answer, correct: true }, ...fausses],
+                { count: 4, filler: () => null }),
             hints: [
                 'Un zéro tout à gauche de la partie entière ne change rien : 032,12 = 32,12.',
                 'Un zéro tout à droite de la partie décimale ne change rien non plus : 3,470 = 3,47.',
@@ -357,6 +578,27 @@ export const conversionGenerator = {
 
 // --- 5. Décomposition additive ----------------------------------------------
 
+/**
+ * LES RANGS OÙ L'ON PEUT POSER UN TERME, selon la taille choisie.
+ *
+ * Les trois tailles sont celles de « Chasse au Chiffre », et ce n'est pas une
+ * coïncidence : les deux exercices servent le même bloc de la progression de
+ * sixième, et un professeur qui règle l'un sur les milliards doit retrouver le
+ * même mot dans l'autre.
+ */
+const TAILLES_DECOMPO = {
+    milliers: { label: 'Jusqu\'à 99 999', rangs: [1, 10, 100, 1000, 10000] },
+    millions: {
+        label: 'Jusqu\'aux centaines de millions',
+        rangs: [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000]
+    },
+    milliards: {
+        label: 'Jusqu\'aux centaines de milliards',
+        rangs: [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000,
+            1000000000, 10000000000, 100000000000]
+    }
+};
+
 export const decompositionGenerator = {
     id: 'num.decomposition',
     label: 'Décomposer un nombre',
@@ -364,12 +606,28 @@ export const decompositionGenerator = {
     answerKinds: ['numeric', 'choice'],
     ecrit: true,
     params: [
-        { id: 'sens', type: 'select', label: 'Sens', options: ['recomposer', 'terme manquant', 'libre'], default: 'libre' }
+        { id: 'sens', type: 'select', label: 'Sens', options: ['recomposer', 'terme manquant', 'libre'], default: 'libre' },
+        {
+            id: 'taille', type: 'select', label: 'Taille des nombres', default: 'milliers',
+            options: Object.entries(TAILLES_DECOMPO).map(([value, t]) => ({ value, label: t.label }))
+        }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
         // Trois à quatre rangs non nuls, comme dans les exercices de la fiche.
-        const rangs = rng.shuffle([1, 10, 100, 1000, 10000]).slice(0, rng.int(3, 4)).sort((a, b) => b - a);
+        //
+        // ET LES RANGS DISPONIBLES MONTENT JUSQU'AUX MILLIARDS. RÉMY, premier
+        // bloc de sa progression de sixième : les grands nombres y vont
+        // « jusqu'aux centaines de milliards ». L'exercice s'arrêtait aux
+        // dizaines de mille — 99 999 au plus, mesuré sur quatre-vingts tirages.
+        //
+        // ON NE PREND QUE TROIS À QUATRE RANGS, quelle que soit la taille : une
+        // décomposition de douze termes ne se lit plus, et ce n'est pas ce que
+        // le chapitre demande. Les rangs sont tirés DANS toute l'étendue
+        // choisie, ce qui fait des nombres troués — « 400 000 000 + 7 000 + 60 »
+        // — et le trou est justement ce qui se travaille.
+        const taille = TAILLES_DECOMPO[params.taille] || TAILLES_DECOMPO.milliers;
+        const rangs = rng.shuffle(taille.rangs).slice(0, rng.int(3, 4)).sort((a, b) => b - a);
         const termes = rangs.map(r => rng.int(1, 9) * r);
         const total = termes.reduce((s, t) => s + t, 0);
 

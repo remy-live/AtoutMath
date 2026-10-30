@@ -1,0 +1,240 @@
+// LA FRACTION SUR LA DROITE GRADUÉE — sixième, bloc 10.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// « La Loupe sur la Droite » existait, mais elle ne place que des DÉCIMAUX et
+// son axe écrit ses graduations en décimaux. Trois choses changent ici, et
+// aucune n'est un réglage : l'axe n'a plus dix intervalles mais autant que le
+// dénominateur, l'étiquette est une fraction EMPILÉE, et la réponse se
+// choisit au lieu de se taper.
+//
+// ── CE QUE CETTE ÉPREUVE GARDE ─────────────────────────────────────────────
+//
+// Les trois pièges qui ne se voient pas en relisant le code : le point placé
+// par sa VALEUR plutôt que par son rang de cran (1/3 ne s'écrit pas
+// exactement en virgule flottante), le balisage de fraction inventé au lieu de
+// celui que l'activité reconnaît, et les dix intervalles codés en dur dans le
+// rendu imprimé.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { sansCommentaires } from './helpers.mjs';
+import { makeRng } from '../js/core/ids.js';
+import { axeSvg } from '../js/core/figures.js';
+import { graduationFractionGenerator as gen, fractionHtml }
+    from '../js/core/generators/graduationFraction.js';
+
+const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+const compter = (texte, motif) => (texte.match(motif) || []).length;
+
+test('L\'AXE A AUTANT D\'INTERVALLES QUE LE DÉNOMINATEUR', () => {
+    // DIX ÉTAIT CODÉ EN DUR, et c'est ce qui rendait cet exercice impossible à
+    // dessiner : pour lire 3/4, l'axe est coupé en QUATRE.
+    // `intervalles` ET `pas` SE CONTREDISENT EXPRÈS ICI, et c'est la seule
+    // façon de prouver lequel compte. Avec `pas: 0,1`, l'ancien calcul —
+    // `(fin − debut) / pas` — donnerait DIX traits ; l'axe doit en donner
+    // CINQ, parce que `intervalles` vaut quatre.
+    const svg = axeSvg({
+        debut: 0, fin: 1, pas: 0.1, rang: 0, intervalles: 4, grandsTous: 4,
+        etiquettes: [{ i: 0, texte: '0' }, { i: 4, texte: '1' }], point: { i: 3 }
+    });
+    assert.equal(compter(svg, /class="ax-cran/g), 5, 'quatre intervalles font CINQ traits');
+    assert.equal(compter(svg, /ax-cran--bout/g), 2);
+    // ET LES TRAITS D'UNITÉ SONT PLUS LONGS, sans quoi un axe de 0 à 2 en
+    // quarts montre huit traits identiques et personne ne voit où tombe le 1.
+    const deuxUnites = axeSvg({
+        debut: 0, fin: 2, pas: 1 / 4, rang: 0, intervalles: 8, grandsTous: 4,
+        etiquettes: [{ i: 0, texte: '0' }, { i: 4, texte: '1' }, { i: 8, texte: '2' }],
+        point: { i: 5 }
+    });
+    assert.equal(compter(deuxUnites, /class="ax-cran/g), 9);
+    assert.equal(compter(deuxUnites, /ax-cran--bout/g), 3, '0, 1 et 2 portent un grand trait');
+});
+
+test('LA CROIX TOMBE SUR UN TRAIT, ET SUR LE BON', () => {
+    // LES TRAITS ET LA CROIX DOIVENT SE CALCULER PAREIL, sans quoi la croix
+    // flotte « entre deux traits » et la question n'a plus de réponse. On les
+    // met en désaccord exprès — `pas` dit dix intervalles, `intervalles` en
+    // dit quatre — et l'on vérifie que la croix est exactement sur le trait
+    // du troisième cran.
+    const svg = axeSvg({
+        debut: 0, fin: 1, pas: 0.1, rang: 0, intervalles: 4, grandsTous: 4,
+        etiquettes: [{ i: 0, texte: '0' }, { i: 4, texte: '1' }], point: { i: 3 }
+    });
+    const traits = [...svg.matchAll(/class="ax-cran[^"]*"\s+x1="([\d.]+)"/g)]
+        .map(m => Number(m[1]));
+    const croix = /ax-point[\s\S]*?x1="([\d.]+)"/.exec(svg);
+    assert.ok(croix, 'la croix n\'est pas dessinée');
+    // La croix est centrée sur le cran : son bras gauche est à 6 px avant.
+    assert.equal(Number(croix[1]) + 6, traits[3],
+        'la croix ne tombe pas sur le trait du troisième cran');
+});
+
+test('LES ÉTIQUETTES PEUVENT ÊTRE DES FRACTIONS EMPILÉES', () => {
+    const svg = axeSvg({
+        debut: 0, fin: 1, pas: 1 / 4, rang: 0, intervalles: 4,
+        etiquettes: [{ i: 1, num: 1, den: 4 }], point: { i: 1 }
+    });
+    assert.match(svg, /ax-barre/, 'la barre de fraction manque : « 1 4 » se lirait quatorze');
+    assert.equal(compter(svg, /class="ax-nb"/g), 2, 'le numérateur ET le dénominateur');
+});
+
+test('LA FRACTION LUE EST LA BONNE, ET LE POINT N\'EST JAMAIS SUR UN ENTIER', () => {
+    for (const graine of ['a', 'b', 'c', 'd', 'e']) {
+        for (let i = 0; i < 12; i++) {
+            const it = gen.generate({}, { rng: makeRng(graine + i), index: i });
+            const m = it.meta;
+            // « n|d » : les deux cases du pavé, depuis que la fraction se
+            // tape. L'étiquette, elle, dessine la fraction — voir le
+            // générateur.
+            assert.equal(it.answer, `${m.num}|${m.den}`);
+            assert.equal(m.crans, m.den * m.unites);
+            // JAMAIS SUR UN TRAIT D'UNITÉ : « lis le point posé sur 1 » ne
+            // demande pas de compter, et sa réponse n'est pas une fraction.
+            assert.notEqual(m.num % m.den, 0,
+                `${it.answer} tombe sur un entier`);
+            assert.ok(m.num >= 1 && m.num <= m.crans - 1);
+        }
+    }
+});
+
+test('LES LEURRES SONT LES TROIS ERREURS DU CHAPITRE, ET AUCUN N\'EST JUSTE', () => {
+    // SUR CENT TIRAGES, ET NON SUR UN. « 2/4 » contre « 1/2 » n'arrive qu'à
+    // certaines graines : une épreuve qui n'en regarde qu'une passe au vert
+    // le jour où le garde disparaît. `epreuveTombe` me l'a dit sur cette
+    // épreuve-ci — elle tenait avec le garde retiré.
+    for (const graine of ['a', 'b', 'c', 'd', 'e']) {
+        for (let i = 0; i < 20; i++) {
+            const it = gen.generate({}, { rng: makeRng(graine + i), index: i });
+            const m = it.meta;
+            // « n|d » : la forme JUGÉE, celle que le pavé envoie.
+            const bonne = `${m.num}|${m.den}`;
+            const valeurs = it.choices.map(c => c.value);
+            assert.equal(new Set(valeurs).size, valeurs.length,
+                `deux propositions identiques (${valeurs.join(' ')})`);
+            assert.equal(valeurs.filter(v => v === bonne).length, 1);
+            // AUCUNE PROPOSITION FAUSSE NE VAUT LA BONNE. « 2/4 » proposé
+            // contre « 1/2 » serait compté faux alors qu'il est juste : c'est
+            // le pire des leurres, celui qui punit l'élève qui a raison.
+            for (const c of it.choices) {
+                if (c.correct) continue;
+                const [n, d] = String(c.value).split(/[/|]/).map(Number);
+                assert.notEqual(n / d, m.num / m.den,
+                    `${c.value} vaut la bonne réponse ${bonne}`);
+            }
+        }
+    }
+});
+
+test('LE BALISAGE D\'UNE FRACTION EST CELUI QUE L\'ACTIVITÉ RECONNAÎT', () => {
+    // LA LEÇON EST ÉCRITE DANS `choice.js`, AU-DESSUS DE `FRACTION_SEULE`, et
+    // je l'ai payée quand même : avec un balisage à moi, le texte nu donnait
+    // « 2 3 » — espace compris — et les propositions sortaient en CARTES, une
+    // par ligne, au lieu de quatre ronds. Mesuré à l'écran.
+    const html = fractionHtml(3, 4);
+    const MOTIF = /^\s*<span class="fraction">\s*<span class="fraction-num">([^<]*)<\/span>\s*<span class="fraction-den">([^<]*)<\/span>\s*<\/span>\s*$/;
+    assert.match(html, MOTIF, 'le balisage n\'est plus celui que choice.js sait mesurer');
+    // Et c'est bien CE motif que l'activité cherche : si elle en change, cette
+    // épreuve doit tomber plutôt que de laisser la mise en page se dégrader.
+    const C = lire('js/core/activities/choice.js');
+    assert.ok(C.includes('const FRACTION_SEULE = ' + String(MOTIF)),
+        'choice.js ne cherche plus ce motif : les propositions repasseront en cartes');
+});
+
+test('LE RENDU IMPRIMÉ NE COMPTE PLUS DIX INTERVALLES EN DUR', () => {
+    const N = sansCommentaires(lire('js/ui/fiches/nombres.js'));
+    assert.match(N, /const nb = Math\.max\(1, Number\(m\.intervalles\) \|\| 10\);/,
+        'la feuille redessine dix intervalles : une droite de quarts y sortirait '
+        + 'en dixièmes, et toutes les croix à côté de leur trait');
+    assert.ok(!/for \(let i = 0; i <= 10; i\+\+\)/.test(N),
+        'il reste une boucle à dix intervalles codée en dur');
+    // ET LA POINTE DE LA FLÈCHE NE DÉPASSE PLUS D'UN DEMI-INTERVALLE : sur une
+    // droite de demis, cela sortait de la feuille.
+    assert.equal(compter(N, /Math\.min\(g\.pas \* 0\.5, 6\)/g), 2,
+        'l\'aperçu et le PDF doivent borner la pointe de la même façon');
+});
+
+test('« A ( …/… ) » SE POSE D\'UN SEUL BLOC', () => {
+    // RÉMY, capture de la feuille imprimée, 24 octobre : « très mal centrée et
+    // trop de pointillé pour les points, les parenthèses doivent être plus
+    // haute du coup, pour couvrir la fraction ».
+    //
+    // LES TROIS DÉFAUTS N'EN FONT QU'UN : la lettre, les deux parenthèses et la
+    // fraction étaient posées SÉPARÉMENT, chacune sur la ligne de base de
+    // l'ancienne réponse à une ligne. Empiler le contenu a doublé sa hauteur, et
+    // rien n'a suivi — les parenthèses couvraient la moitié basse.
+    //
+    // CETTE ÉPREUVE GARDE LA FORME, pas le pixel : elle vérifie qu'il n'y a plus
+    // qu'UNE boîte, centrée par `align-items`. Où les morceaux TOMBENT se mesure
+    // au navigateur — voir `tools/caseDeLaFraction.mjs`, qui le fait et le dit.
+    const N = sansCommentaires(lire('js/ui/fiches/nombres.js'));
+    // ON COMPTE, ON NE CHERCHE PAS UNE FOIS.
+    //
+    // Première version : `assert.match`. `epreuveTombe` a dit « CETTE ÉPREUVE
+    // NE GARDE RIEN » deux fois de suite — en défaisant le groupe de l'APERÇU,
+    // celui du PDF portait encore la même ligne et l'épreuve restait verte ; en
+    // rapetissant la parenthèse OUVRANTE, la fermante gardait sa taille. Un
+    // motif cherché une fois ne garde que le premier des deux endroits.
+    assert.equal(compter(N, /if \(g\.fractions && p\.lettre\) \{/g), 2,
+        'l\'aperçu ET le PDF doivent poser le groupe d\'un seul bloc');
+    assert.match(N, /display:flex; align-items:center/,
+        'rien ne centre plus la fraction entre ses parenthèses');
+    // LES PARENTHÈSES FONT DEUX FOIS LE TEXTE, dans les deux rendus : la
+    // fraction tient sur deux étages, elles doivent la couvrir. DEUX dans
+    // l'aperçu — l'ouvrante et la fermante —, une seule taille dans le PDF.
+    assert.equal(compter(N, /font-size:\$\{police \* 2\}px/g), 2,
+        'les deux parenthèses de l\'aperçu doivent couvrir la fraction');
+    assert.match(N, /const pt2 = g\.pt \* 2;/,
+        'la parenthèse du PDF a repris sa taille de texte');
+});
+
+test('ET LA PLACE À REMPLIR A LA TAILLE D\'UNE FRACTION', () => {
+    // « trop de pointillé pour les points ». MESURÉ AVANT, sur son aperçu :
+    // 41 pixels de pointillé par étage, pour un numérateur qui tient en un ou
+    // deux chiffres.
+    //
+    // LA LARGEUR EST ÉCRITE UNE FOIS pour les deux rendus : deux bornes
+    // recopiées finissent par diverger, et la parenthèse fermante se poserait
+    // alors à côté de ce qu'elle ferme.
+    const N = lire('js/ui/fiches/nombres.js');
+    assert.match(N, /const largeurEtageFraction = \(mm, lTrait\) =>/,
+        'la largeur d\'un étage n\'a plus de définition unique');
+    assert.equal(compter(N, /largeurEtageFraction\(mm, lTrait\)/g), 2,
+        'deux emplois, et deux seulement : l\'aperçu et le PDF');
+    // ET ELLE RESTE DANS CE QUI S'ÉCRIT À LA MAIN : entre six et douze
+    // millimètres pour un corps de dix points.
+    //
+    // ON LIT LES BORNES DANS LA SOURCE au lieu de les recopier ici : une
+    // épreuve qui réécrit la formule ne garde plus la formule, elle garde sa
+    // propre copie — et les deux dérivent le jour où l'on règle la largeur.
+    const bornes = N.match(
+        /Math\.min\(mm \* ([\d.]+), Math\.max\(mm \* ([\d.]+), lTrait \* [\d.]+\)\)/);
+    assert.ok(bornes, 'la borne de largeur a disparu de largeurEtageFraction');
+    const mm = 10 * 0.3528;   // un corps de dix points, en millimètres
+    assert.ok(mm * Number(bornes[1]) <= 12.1,
+        'un étage plus large qu\'un centimètre et demi redevient une ligne');
+    assert.ok(mm * Number(bornes[2]) >= 6.5,
+        'un étage trop étroit ne tient pas un dénominateur à deux chiffres');
+});
+
+test('LE CORRIGÉ SERRE SA BARRE AUTOUR DE SES CHIFFRES', () => {
+    // La place à remplir fait la largeur qu'on laisse à l'élève ; une fraction
+    // ÉCRITE fait la largeur de ses chiffres. Posée sur la première, « 1/2 »
+    // traçait une barre deux fois plus longue que le 1 et le 2 qu'elle sépare.
+    const N = sansCommentaires(lire('js/ui/fiches/nombres.js'));
+    assert.match(N, /const w = solution\s*\?\s*Math\.max\(doc\.getTextWidth/,
+        'le PDF du corrigé reprend la largeur de la place à remplir');
+    assert.match(N, /min-width:\$\{police \* 1\.2\}px/,
+        'l\'aperçu du corrigé reprend la largeur de la place à remplir');
+});
+
+test('LE TITRE DE LA FEUILLE DIT CE QU\'ELLE DEMANDE', () => {
+    // LE MÊME RENDU SERT DEUX EXERCICES. « La loupe sur la droite graduée »
+    // au-dessus d'une feuille de fractions annonce autre chose que ce qui suit.
+    const N = lire('js/ui/fiches/nombres.js');
+    assert.match(N, /\? 'La fraction sur la droite graduée'/);
+    const P = sansCommentaires(lire('js/ui/printSheet.js'));
+    assert.match(P, /typeof rendu\.titre === 'function'/,
+        'l\'entête imprimerait « (items) => … » en haut de la feuille');
+});

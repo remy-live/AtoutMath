@@ -34,6 +34,7 @@
 // Module pur : ni DOM, ni horloge. Il se teste sous Node.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { relatif } from '../signeMoins.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
@@ -53,7 +54,13 @@ const MOINS = '−';
  *   · le coefficient 0 fait disparaître le terme entier.
  */
 export function ecrireTerme(coef, part) {
-    if (!part) return String(coef);
+    // LE TERME SANS LETTRE PORTE LE MÊME MOINS QUE LES AUTRES. Il rendait
+    // `String(coef)`, donc « -1 » au trait d'union, pendant que le terme juste
+    // avant s'écrivait « −2a » avec le vrai signe : « 3a et −2a donnent a ;
+    // 3 et -1 donnent 2 ». Le juge ramène les deux au même avant de comparer
+    // (`normaliser`, reductionPuissances.js), donc rien ne change pour la
+    // réponse de l'élève — seule l'ÉCRITURE qu'il lit est corrigée.
+    if (!part) return relatif(coef);
     if (coef === 0) return '0';
     if (coef === 1) return part;
     if (coef === -1) return MOINS + part;
@@ -354,9 +361,14 @@ function questionBrute(etape, rng) {
                     { value: ecrireSomme([{ coef: somN, part: l }, { coef: somL, part: '' }]), why: `Les nombres et les ${l} ont été échangés.` },
                     { value: String(somL + somN), why: 'La lettre ne disparaît pas.' }
                 ],
+                // `relatif` SUR LES DEUX NOMBRES NUS. `ecrireTerme` écrit déjà le
+                // vrai signe moins ; `${cc}` et `${somN}`, eux, rendaient le trait
+                // d'union — « 3a et −2a donnent a ; 3 et -1 donnent 2 », les deux
+                // signes dans la même phrase. Voir `js/core/signeMoins.js`.
                 pourquoi: `On range : les ${l} avec les ${l}, les nombres avec les nombres. `
                     + `${ecrireTerme(aa, l)} et ${ecrireTerme(b, l)} donnent ${ecrireTerme(somL, l)} ; `
-                    + `${cc} et ${ecrireTerme(d, '')} donnent ${somN}. Donc ${reponse}.`
+                    + `${relatif(cc)} et ${ecrireTerme(d, '')} donnent ${relatif(somN)}. `
+                    + `Donc ${reponse}.`
             };
         }
         default:
@@ -450,7 +462,13 @@ export const litteralReduireGenerator = {
             difficulty: etape.temps === 'A' ? 1 : etape.temps === 'B' ? 2 : 3,
             meta: {
                 etape: etape.id, temps: etape.temps, titre: etape.titre,
-                marche: rangGlobal + 1, marches: ETAPES.length,
+                // LE RANG N'EST PAS L'IDENTIFIANT DE LA MARCHE, et les deux
+                // vivaient sous le même nom. `meta.marche` porte partout
+                // ailleurs l'IDENTIFIANT — « signe-pp », « completer »,
+                // « formule » —, c'est lui que les fiches et les tests lisent ;
+                // ici il portait le NUMÉRO. Le rang garde donc le nom qu'il a
+                // déjà dans `relatifsAddition` : `rang`.
+                marche: etape.id, rang: rangGlobal + 1, total_etapes: ETAPES.length,
                 dejaReduite: !!q.dejaReduite
             }
         });

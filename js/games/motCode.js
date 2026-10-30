@@ -27,6 +27,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerMotCode, saisieInitiale, numerosFaux, lettresEnDouble, PART_OFFERTE,
     estResoluCode, qualiteCode, THEMES, FORMATS_CODE
@@ -167,8 +168,50 @@ class MotCode extends BaseGame {
                     display: flex; flex-wrap: wrap; gap: 3px; justify-content: center;
                     max-height: 26cqh; overflow-y: auto; width: 100%; flex: 0 0 auto;
                 }
+                /* LA CLEF EST UNE CIBLE, PAS UNE CASE DE GRILLE.
+                   Rémy, le 13 octobre : « oui, à corriger ».
+
+                   MESURÉ sur 390 × 844 : 24 × 44 px, soit 1,83 fois plus haut
+                   que large. Les 44 px ne sont PAS un choix de ce jeu — c'est
+                   le plancher tactile de css/modules.css, qui s'applique à
+                   tout bouton de la couche de jeu. La clef se déclarait donc
+                   large de 24 et recevait 44 de haut sans le savoir.
+
+                   DEUX ISSUES, ET UNE SEULE EST BONNE. On pourrait déclarer
+                   btn-carre, ce qui retirerait le plancher et rendrait une
+                   clef de 24 × 32 : c'est ce qu'on fait pour une case de
+                   grille, dont la hauteur EST la mise en page. Mais une clef
+                   SE TOUCHE — c'est par elle qu'on choisit la lettre à poser —
+                   et 24 px est sous la pulpe d'un index. On garde donc le
+                   plancher et l'on ÉLARGIT.
+
+                   36 px NE COÛTE AUCUNE RANGÉE, et c'est ce qui rend le
+                   changement gratuit : vingt lettres à 24 + 3 px d'espace
+                   tiennent à quatorze par rangée, donc deux rangées ; à
+                   36 + 3, à dix par rangée — toujours deux.
+
+                   ET CE QUE J'AI CRU CORRIGER NE SE CORRIGE PAS — mesuré deux
+                   fois, à deux largeurs :
+
+                     24 px de large →  24 × 44    = 1,83×   (le plancher)
+                     34 px          →  34 × 46,6  = 1,37×
+                     36 px          →  36 × 49,2  = 1,37×
+
+                   LE RAPPORT NE BOUGE PLUS, et c'est une propriété, pas un
+                   hasard : la clef porte deux choses empilées, la lettre
+                   (--mk-c de haut) et son numéro dessous, dont la taille
+                   s'écrit calc(var(--mk-c) * .34). Le numéro grandit donc avec
+                   la lettre, et la forme est la même à toutes les tailles.
+                   AUCUNE LARGEUR NE RENDRA CETTE CLEF « CARRÉE » : 1,37 est la
+                   forme d'une lettre avec son numéro sous elle.
+
+                   J'avais écrit ici « 34 × 44, soit 1,29× » sans l'avoir
+                   obtenu. Le gain réel n'est pas le rapport, c'est la CIBLE :
+                   24 × 44 devient 36 × 49, soit une surface qui double, et
+                   36 px dépasse la pulpe d'un index. C'est ce que Rémy
+                   demandait ; le rapport, lui, n'était pas le défaut. */
                 .mk-clef {
-                    --mk-c: clamp(24px, 4.4cqw, 40px);
+                    --mk-c: clamp(36px, 4.4cqw, 40px);
                     width: var(--mk-c); border: 0; background: none; padding: 0;
                     font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
                     display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -479,10 +522,11 @@ class MotCode extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.m) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         const q = qualiteCode(this.m);
         cur.say(`${q.alphabet} lettres se cachent derrière ${q.alphabet} numéros. `
@@ -490,7 +534,7 @@ class MotCode extends BaseGame {
                 ? `La clé commence par ${q.cle} : ses ${q.cle.length} lettres sont posées `
                     + 'partout où leur numéro paraît — c\'est de là qu\'on part.'
                 : 'Aucune n\'est donnée : on part de rien.'), this.grilleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // Le numéro le plus fréquent encore inconnu : c'est celui qui rapporte
         // le plus, et donc celui par lequel on commence.
@@ -505,7 +549,7 @@ class MotCode extends BaseGame {
         this.vise = num; this.dessiner();
         cur.say(`Je ne prends pas un numéro au hasard : le ${num} paraît ${combien} fois. `
             + 'Le trouver éclaire toute la grille d\'un coup.', this.cleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         this.saisie[num] = this.m.parNumero[num];
         this.soufflees.add(num);

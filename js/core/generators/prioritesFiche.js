@@ -18,7 +18,25 @@
 // elle vient de core/priorites.js, jamais d'un calcul refait ici.
 
 import { makeItem } from '../items.js';
-import { tirerExpression, etapes, etapesMax } from '../priorites.js';
+import { tirerExpression, etapes, etapesMax,
+         MARCHES_PRIORITES, MARCHES_OPPOSE, ANCIEN_NIVEAU } from '../priorites.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, totalDe
+} from '../progression.js';
+
+// ── LES QUATRE DIFFICULTÉS, EN CASES À COCHER ───────────────────────────────
+//
+// Rémy : « fais tout, ce serait le plus cohérent non ? » — et sur une feuille
+// ce n'est pas seulement de la cohérence. Le menu donnait UNE difficulté pour
+// les douze expressions de la page ; les cases donnent une feuille qui MONTE,
+// ce qui est la forme ordinaire d'un exercice d'entraînement sur papier : on
+// commence par deux calculs simples et l'on finit sur les deux durs.
+// LES BARREAUX VIENNENT DU MOTEUR, et non d'une copie locale. Ils vivaient
+// ici ET deux fois dans le catalogue, au mot près. L'écran et la feuille
+// doivent dire la MÊME chose du même travail : une liste recopiée garantit
+// qu'un jour ils ne le diront plus.
+const MARCHES_PRIO = MARCHES_PRIORITES;
+const ANCIEN_PRIO = ANCIEN_NIVEAU;
 
 export const prioritesFicheGenerator = {
     id: 'calc.priorites-fiche',
@@ -26,19 +44,16 @@ export const prioritesFicheGenerator = {
     answerKinds: ['numeric'],
     skills: ['num.prio', 'num.prio.relatifs'],
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
-            options: [
-                { value: 1, label: '1 — Deux opérations, sans parenthèses' },
-                { value: 2, label: '2 — Jusqu\'à trois opérations' },
-                { value: 3, label: '3 — Les parenthèses arrivent' },
-                { value: 4, label: '4 — Deux groupes de parenthèses' }
-            ]
-        },
+        paramMarches({ marches: MARCHES_PRIO, mot: 'niveau', ancien: ANCIEN_PRIO }),
         {
             id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: true,
             aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu — et le '
-                + 'tirage garantit qu\'un calcul mené de gauche à droite donne toujours faux.'
+                + 'tirage garantit qu\'un calcul mené de gauche à droite donne toujours faux.',
+            // PAS SUR LA FEUILLE DU MOINS DEVANT LA PARENTHÈSE : il y en a
+            // toujours une, c'est la définition de l'exercice. Le bouton
+            // était offert et ne changeait rien — `ficheReglages` l'a dit,
+            // et un bouton mort fait douter de tous les autres.
+            visibleSi: (r) => !r.oppose
         },
         {
             // LE MÊME COUPLAGE QU'À L'ÉCRAN. La feuille de l'exercice
@@ -48,7 +63,10 @@ export const prioritesFicheGenerator = {
             id: 'relatifs', type: 'checkbox', label: 'Avec des nombres relatifs', default: false,
             aide: 'Les nombres peuvent être négatifs, et le résultat aussi. La règle de '
                 + 'priorité désigne l\'opération, la règle des signes la calcule — deux '
-                + 'gestes dans cet ordre, et ils se ratent séparément.'
+                + 'gestes dans cet ordre, et ils se ratent séparément.',
+            // NON PLUS : « un opposé sans négatifs n'enseigne rien », dit le
+            // moteur, qui force donc les relatifs. Le décocher ne faisait rien.
+            visibleSi: (r) => !r.oppose
         },
         {
             id: 'puissances', type: 'checkbox', label: 'Avec des puissances', default: false,
@@ -63,7 +81,39 @@ export const prioritesFicheGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         params = params || {};
-        const niveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
+        // LES NIVEAUX COCHÉS SE PARTAGENT LES CALCULS DE LA PAGE, dans
+        // l'ordre — voir core/progression.js. `ctx.total` est le nombre de
+        // blocs de la feuille ; sans lui (une vignette) on retombe sur deux
+        // calculs par niveau, ce que faisait l'écran avant les cases.
+        // LE MOINS DEVANT LA PARENTHÈSE EST UNE AUTRE ÉCHELLE, pas un réglage
+        // de plus sur celle-ci.
+        //
+        // RÉMY avait relevé que « Le Moins devant la Parenthèse » ne
+        // s'imprimait pas : l'exercice portait pourtant déjà sa consigne
+        // papier et ses quatre colonnes — il lui manquait seulement un
+        // générateur, parce qu'il n'existe qu'à l'écran. Le moteur, lui,
+        // savait déjà tout faire : `tirerExpression` prend `avecOppose`, et
+        // `etapesMax` aussi. Il n'y avait rien à écrire, seulement à brancher.
+        //
+        // DEUX BARREAUX ET NON QUATRE : cet exercice ne porte que les deux
+        // derniers crans de l'échelle, ceux où une priorité entre en jeu.
+        const avecOppose = !!params.oppose;
+        const table = avecOppose ? MARCHES_OPPOSE : MARCHES_PRIO;
+        const coches = marchesCochees(params, table, ANCIEN_PRIO);
+        // PAS DE PLAFOND ICI : `marchesCochees` ne rend que des barreaux DE LA
+        // TABLE, donc deux pour l'opposé et quatre pour le reste. Un
+        // `Math.min(2, …)` de plus aurait l'air prudent et ne ferait rien —
+        // `epreuveTombe` l'a montré, il n'existe aucun défaut d'une seule ligne
+        // qui le fasse servir. Du code qu'aucune épreuve ne peut atteindre finit
+        // par être cru sur parole.
+        const niveau = Math.max(1, Number(marcheAuRang(ctx.index ?? 0,
+            coches, totalDe(ctx, params), params)) || (avecOppose ? 1 : 2));
+        // ET LE PLUS HAUT NIVEAU COCHÉ, pour la hauteur des lignes — voir
+        // `etapesMax` plus bas. Le prendre sur CETTE expression-là donnerait à
+        // chaque calcul la hauteur de sa propre cascade, c'est-à-dire la
+        // réponse en creux : trois lignes vides diraient « il reste trois
+        // opérations », et le calcul d'à côté n'en aurait que deux.
+        const niveauMax = coches.reduce((m, x) => Math.max(m, Number(x.id) || 0), 1);
         const parentheses = params.parentheses !== false;
         const puissances = !!params.puissances;
         const relatifs = !!params.relatifs;
@@ -74,7 +124,8 @@ export const prioritesFicheGenerator = {
         const dejaVus = new Set(ctx.themesExclus || []);
         let e = null;
         for (let essai = 0; essai < 40; essai++) {
-            const tire = tirerExpression({ rng, niveau, parentheses, puissances, relatifs });
+            const tire = tirerExpression({
+                rng, niveau, parentheses, puissances, relatifs, avecOppose });
             if (!dejaVus.has(tire.texte)) { e = tire; break; }
             e = e || tire;
         }
@@ -87,7 +138,7 @@ export const prioritesFicheGenerator = {
             // LA COMPÉTENCE SUIT LE RÉGLAGE : une feuille de priorités avec
             // des relatifs ne travaille pas la même chose, et ne doit pas se
             // ranger au même endroit du bilan.
-            skillId: relatifs ? 'num.prio.relatifs' : 'num.prio',
+            skillId: (relatifs || avecOppose) ? 'num.prio.relatifs' : 'num.prio',
             answerKind: 'numeric',
             prompt: {
                 text: e.texte,
@@ -109,9 +160,15 @@ export const prioritesFicheGenerator = {
                 // feuille aient la MÊME hauteur. Donner à chacun le compte
                 // exact de ses étapes écrit la réponse en creux : trois lignes
                 // vides disent « il reste trois opérations ».
-                etapesMax: etapesMax({ niveau, parentheses, puissances }),
+                etapesMax: etapesMax({ niveau: niveauMax, parentheses, puissances, avecOppose }),
                 resultat: e.resultat,
                 niveau,
+                // LE RENDU EN A BESOIN : c'est à ce drapeau qu'il reconnaît une
+                // feuille du « moins devant la parenthèse » et change son titre
+                // et sa consigne. Sans lui, deux chapitres sortent sous le même
+                // en-tête, et l'élève cherche ce qu'il révise.
+                oppose: avecOppose,
+                marche: String(niveau),
                 // Ce que la fiche exclura pour le bloc suivant.
                 theme: e.texte
             }

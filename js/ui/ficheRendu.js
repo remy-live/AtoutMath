@@ -10,10 +10,69 @@
 
 import { A4, morceauxReponse, typographieFr, couperEnLignes } from '../core/fiche.js';
 import { refaireSvg, croixSvg } from './icones.js';
-import { RE_FRACTION, etageEstUnTrou } from '../core/fiche.js';
-// Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
-// pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
-import { RENDUS } from './printSheet.js';
+import {
+    RE_FRACTION, etageEstUnTrou, pasDeLigne, hauteurDesLignes
+} from '../core/fiche.js';
+// LE RADICAL DE L'ÉCRAN, RÉUTILISÉ TEL QUEL SUR L'APERÇU.
+//
+// RÉMY : « il faut bien que la racine carrée soit continue, là il y a une
+// rupture sur ce que tu as fait. » J'avais écrit un second radical — le
+// caractère « √ » suivi d'un `overline` —, et entre le crochet de la police et
+// la barre du soulignement il restait une marche : deux traits d'épaisseurs et
+// de hauteurs différentes qui ne se rejoignent pas.
+//
+// `core/maths/formule.js` existe PRÉCISÉMENT pour ça. Rémy, il y a des mois :
+// « les racines carrées sont très moches », puis « sur ton banc les radicaux
+// ont-ils une ligne de la même épaisseur ». Son crochet et sa barre sont DEUX
+// TRACÉS SVG aux mêmes réglages, et le crochet se termine par un bout
+// horizontal qui prolonge la barre : la jonction est structurelle, pas calée.
+//
+// EN ÉCRIRE UN SECOND ÉTAIT L'ERREUR. Deux rendus de la même chose divergent au
+// premier réglage — c'est la leçon que ce fichier porte déjà pour l'aperçu et
+// le PDF, et je venais de la repayer à l'intérieur même de l'aperçu.
+import { formule as formuleHtml } from '../core/maths/formule.js';
+/**
+ * LES RENDUS DE GRILLES SONT DÉPOSÉS ICI, PAS IMPORTÉS D'ICI.
+ *
+ * Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
+ * pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
+ * Ce fichier en a donc besoin — mais il ne peut pas les IMPORTER, et c'est ce
+ * qu'il faisait.
+ *
+ * ── LE CERCLE, ET CE QU'IL CASSAIT ────────────────────────────────────────
+ *
+ * `import { RENDUS } from './printSheet.js'` était l'arête à l'envers d'un
+ * cercle complet :
+ *
+ *     ficheRendu.js → printSheet.js → fiches/axes.js → fiches/socle.js
+ *                  ↖──────────────────────────────────────────┘
+ *
+ * Tant que l'application charge `printSheet.js` en premier, le cercle se
+ * referme dans le bon ordre et personne ne voit rien. Mais dès que l'entrée
+ * est un RENDU — ce qu'une sonde fait naturellement, et ce qu'un futur module
+ * fera un jour —, `printSheet.js` est atteint PENDANT que le rendu s'évalue,
+ * et sa table `RENDUS` se construit en lisant un `RENDUS_AXES` encore dans sa
+ * zone morte :
+ *
+ *     ReferenceError: Cannot access 'RENDUS_AXES' before initialization
+ *
+ * MESURÉ : une sonde qui importait `fiches/axes.js` sans passer par
+ * `printSheet.js` faisait tomber TOUT le sous-système d'impression, sur un
+ * message qui désignait à chaque correction un fichier différent et jamais le
+ * bon — `mots.js`, puis `socle.js`, puis `printSheet.js`. Vingt minutes avant
+ * de comprendre que le sujet n'était aucun des trois, mais le SENS d'une
+ * flèche d'import.
+ *
+ * ── CE QUI REMPLACE L'IMPORT ──────────────────────────────────────────────
+ *
+ * `RENDUS` n'est lu qu'à l'intérieur de deux fonctions, donc longtemps après
+ * que tout est chargé : une table qu'on DÉPOSE suffit, et le cercle disparaît.
+ * `printSheet.js` appelle `deposerLesRendus` au moment où il construit sa
+ * table. Si quelqu'un l'oubliait, les blocs de grille ne se dessineraient plus
+ * du tout — et `tests/cercleDesFiches.test.mjs` le dit avant le navigateur.
+ */
+let RENDUS = {};
+export function deposerLesRendus(table) { RENDUS = table || {}; }
 
 /**
  * L'ENCRE DU POLYCOPIÉ — QUATRE MODES, UN SEUL FILTRE.
@@ -108,6 +167,31 @@ export function reglerModePolycopie(id) {
  */
 export function polycopieEnCouleur() {
     return modePolycopie() !== 'nb';
+}
+
+/**
+ * ET L'AUTRE QUESTION, CELLE QUI A MIS TROIS FICHES À SE FORMULER : LA FEUILLE
+ * SORT-ELLE EN VRAIE COULEUR ?
+ *
+ * `polycopieEnCouleur` répond « dessine-t-on les aplats ? », et « Niveaux de
+ * gris » répond oui — c'est bien ce qu'on veut d'un aplat, qui devient un gris
+ * franc et se lit. Mais une PALETTE n'est pas un aplat : quand sept teintes
+ * doivent se distinguer LES UNES DES AUTRES, les niveaux de gris les font
+ * toutes tomber au même endroit, et l'on perd l'information qu'on croyait
+ * ajouter. Mesuré sur les ruisseaux du Strimko : sept pastels passés au filtre
+ * tombent entre 160 et 210 — sept gris clairs qu'on ne distingue pas, là où UNE
+ * bande franche se suit du doigt.
+ *
+ * Les deux modes qui portent vraiment une palette sont donc « Couleur » —
+ * l'imprimante de la maison — et « Affiche » — ce qu'on projette ou qu'on
+ * punaise, qui ne passe par aucune photocopieuse. C'est exactement le partage
+ * que `algorithmes.js` avait écrit à la main pour ses conditionnelles, et que
+ * les ruisseaux puis les boules de Brahma ont redemandé : au troisième, le nom
+ * vient ici. Trois copies d'une même liste de deux mots, c'est un lecteur qui
+ * cherche la règle et qui en trouve trois.
+ */
+export function polycopieEnVraieCouleur() {
+    return ['couleur', 'intense'].includes(modePolycopie());
 }
 
 // Les coefficients de la luminance sRGB — les mêmes que ceux des filtres CSS
@@ -442,6 +526,30 @@ export function teindreDoc(doc) {
 }
 
 /**
+ * LE FILET D'UNE CASE DE TABLEAU, en CSS.
+ *
+ * Rémy, carnet du 24 octobre : « bordure, épaisseur, couleur bordure, couleur
+ * alternance/ bords extérieurs ou non ». Les cinq arrivent dans le cadre,
+ * calculés par `styleTableau` ; il ne reste qu'à les écrire.
+ *
+ * UN DEMI-PIXEL AU MINIMUM : à l'échelle de l'aperçu, un dixième de
+ * millimètre vaut moins d'un pixel, et un `border` de 0 ne se voit pas du
+ * tout — l'aperçu montrerait une feuille sans filet là où le PDF en a un.
+ *
+ * `cotes` à `null` veut dire les quatre côtés : voir le commentaire du cadre
+ * dans `core/fiche.js`.
+ */
+function styleDuCadre(cadre, k) {
+    const rvb = (c, defaut) => `rgb(${(c || defaut).join(',')})`;
+    const px = Math.max(0.5, (cadre.trait || 0.2) * k);
+    const filet = `${px}px solid ${rvb(cadre.filet, ENCRE.bandeauTrait)}`;
+    const cote = (ou) => (!cadre.cotes || cadre.cotes[ou] ? filet : '0');
+    const bords = `border-top:${cote('h')}; border-bottom:${cote('b')};`
+        + ` border-left:${cote('g')}; border-right:${cote('d')};`;
+    return bords + (cadre.bande ? ` background:${rvb(cadre.fond, ENCRE.bandeZebre)}` : '');
+}
+
+/**
  * LE MÊME FILTRE POUR L'APERÇU, en une classe.
  *
  * L'aperçu est du HTML : ses couleurs sont écrites dans deux cents styles en
@@ -492,7 +600,13 @@ export const ENCRE = {
     trait: [26, 32, 44],
     pointille: [168, 176, 191],
     bandeau: [238, 241, 245],
-    bandeauTrait: [203, 210, 220]
+    bandeauTrait: [203, 210, 220],
+    // UNE RANGÉE SUR DEUX, quand la fiche est en tableau zébré. Plus pâle que
+    // le bandeau d'exercice, et c'est voulu : la bande ne doit pas peser plus
+    // que le titre qui la surplombe, et il faut encore pouvoir écrire dessus
+    // au crayon à papier. En gris et en noir et blanc, `teindreDoc` la ramène
+    // au gris correspondant, qui reste au-dessus du blanc sans manger d'encre.
+    bandeZebre: [240, 244, 250]
 };
 
 /**
@@ -554,6 +668,24 @@ const SYMBOLE = {
     '\u2260': ['\u00B9', 548],   // ≠
     '\u2264': ['\u00A3', 548],   // ≤
     '\u2265': ['\u00B3', 548],   // ≥
+    // ⩽ ET ⩾, CEUX DU PROGRAMME FRANÇAIS — et ils sortaient en « ? ».
+    //
+    // Le dépôt écrit partout le ⩽ français (`const LE = '⩽'` dans
+    // `generators/intervalles.js`, « celui du programme français, pas le ≤
+    // anglo-saxon »). Mais la table ci-dessus ne connaissait que le ≤
+    // anglo-saxon : le filet de sécurité de `pourPdf` remplaçait donc ⩽ par
+    // un point d'interrogation, et la feuille imprimait « x ? 3 ».
+    //
+    // MESURÉ sur le poly de Rémy : toutes les inégalités larges de la valeur
+    // absolue et des intervalles — « |x − 5| ⩽ 1 » devenait « |x - 5| ? 1 ».
+    // Personne ne l'avait vu parce que personne ne REGARDE un PDF : les
+    // sondes en comptent les segments. Voir `tools/pdfEnImage.mjs`.
+    //
+    // LA POLICE SYMBOL N'A PAS LE ⩽ INCLINÉ, elle n'a que le ≤ à barre
+    // droite. C'est le bon compromis : un ≤ se lit, un « ? » ne se lit pas.
+    // L'écran, lui, garde le ⩽ du programme.
+    '\u2A7D': ['\u00A3', 548],   // ⩽ — dessiné avec le ≤ de Symbol
+    '\u2A7E': ['\u00B3', 548],   // ⩾ — dessiné avec le ≥ de Symbol
     '\u221A': ['\u00D6', 548],   // √
     '\u2192': ['\u00AE', 986],   // →
     '\u2190': ['\u00AC', 986],   // ←
@@ -562,7 +694,18 @@ const SYMBOLE = {
     '\u221E': ['\u00A5', 713],   // ∞
     '\u2208': ['\u00CE', 713],   // ∈
     '\u2220': ['\u00D0', 768],   // ∠
-    '\u03C0': ['p', 548]          // π
+    '\u03C0': ['p', 548],         // π
+    // LES ENSEMBLES, ET CE QUI LES RELIE — mesuré par
+    // `node tools/caracteresPerdus.mjs` : ∪ ∩ ∅ ∉ sortaient en « ? » sur
+    // 128 questions du catalogue. « I ∩ J » s'imprimait « I ? J », ce qui est
+    // la question posée à l'envers.
+    //
+    // Symbol les a tous les quatre, et ∈ y était déjà : il manquait les
+    // quatre voisins de la même rangée.
+    '\u222A': ['\u00C8', 768],   // ∪ réunion
+    '\u2229': ['\u00C7', 768],   // ∩ intersection
+    '\u2205': ['\u00C6', 823],   // ∅ ensemble vide
+    '\u2209': ['\u00CF', 713]    // ∉ n'appartient pas
 };
 
 /**
@@ -586,6 +729,21 @@ const HORS_TABLE = {
     // d'un seul tenant, il respire seulement un peu plus.
     '\u202F': '\u00A0',
     '\u2212': '-',      // le vrai signe moins
+    // LES POINTS DE SUSPENSION, ÉCRITS EN TROIS POINTS.
+    //
+    // `…` EST dans WinAnsi — jsPDF l'écrit, à l'octet 133 — et c'est bien ce
+    // qui trompe : le caractère part dans le fichier, donc rien ne rougit.
+    // MESURÉ en regardant le PDF rendu : il sort en TROIS CARRÉS VIDES, parce
+    // que 133 est une position que les polices standard d'un PDF ne
+    // garnissent pas toujours. C'est exactement l'histoire du U+2212 de la
+    // ligne au-dessus, et celle du ≈ de `fiches/latins.js`.
+    //
+    // TROUVÉ SUR LE DINGBAT « … … … … », dont les quatre mots sont des points
+    // de suspension : la feuille montrait douze carrés noirs. Mais les CENT
+    // QUARANTE-CINQ énoncés de papier qui écrivent « = … » étaient dans le
+    // même cas — et c'est précisément ce que Rémy a signalé le 19 octobre, à
+    // un détail près : il avait vu la commande LaTeX, pas les carrés.
+    '\u2026': '...',
     // ⊥ ≠ ≤ ≥ √ → ← ≈ ≡ ∞ ∈ ∠ π ne sont plus translittérés : ils sont ÉCRITS,
     // avec la police Symbol. Voir la table SYMBOLE et `ecrireSymboles`.
     // Les indices ₀-₉ ne le sont plus non plus : ils sont dessinés.
@@ -600,7 +758,23 @@ const HORS_TABLE = {
     // Les fl\u00E8ches de rotation du chat g\u00E9om\u00E8tre. \u00AB \u00E0 droite \u00BB est d\u00E9j\u00E0 \u00E9crit \u00E0
     // c\u00F4t\u00E9 : la fl\u00E8che est un ornement, et un \u00AB ? \u00BB au milieu d'un programme
     // de construction se lit comme une donn\u00E9e manquante.
-    '\u21BB': '', '\u21BA': ''
+    '\u21BB': '', '\u21BA': '',
+    // LES LETTRES AJOURÉES DES ENSEMBLES — ℕ ℤ 𝔻 ℚ ℝ.
+    //
+    // Symbol ne les a pas, et `sec-ensembles` imprimait « ? — les
+    // rationnels ». Mesuré sur tout le catalogue : 132 occurrences, seize
+    // exercices — le plus gros des caractères perdus.
+    //
+    // La majuscule ordinaire est ce qu'on écrit au tableau, et c'est ainsi
+    // que le manuel les écrit quand il n'a pas la police. On ne perd que
+    // l'ajourage, qui est une convention typographique, pas une information.
+    '\u2115': 'N', '\u2124': 'Z', '\u211A': 'Q', '\u211D': 'R', '\u1D53B': 'D',
+    // LES NUMÉROS CERCLÉS DES ANGLES — et ici le chiffre nu est MIEUX que
+    // le cercle : la figure, elle, écrit « 1 » et « 2 » tout court
+    // (`fiches/figures.js`, `String(arc.pas)`). Le texte disait « Passe par
+    // l'angle ① » et la figure montrait « 1 » — deux écritures pour le même
+    // repère, dont une qui sortait en « ? ».
+    '\u2460': '1', '\u2461': '2', '\u2462': '3', '\u2463': '4'
 };
 
 /**
@@ -644,6 +818,27 @@ const HORS_TABLE = {
  */
 const RE_EXPOSANT = '([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)';
 
+/**
+ * LE RADICAL, ET CE QU'IL DOIT RECOUVRIR.
+ *
+ * RÉMY, quatre fois dans la même revue : « racine carré qui ne recouvre pas
+ * tout », « la racine carré ne recouvre pas bien le nombre sur la version
+ * imprimé », « attention au racine carré pour le mode imprimable ».
+ *
+ * LA CAUSE EST STRUCTURELLE, PAS COSMÉTIQUE. L'écran dessine le radical avec
+ * sa barre (`core/maths/formule.js`), mais la FEUILLE reçoit la forme TEXTE —
+ * et à plat, un radical s'écrit « √64 ». Il n'y a pas de barre à perdre : il
+ * n'y en a jamais eu. Or « √64 » ne dit pas si l'on prend la racine de 64 ou
+ * la racine de 6 multipliée par 4, et « √81 × √49 » ne se distingue pas de
+ * « √(81 × 49) » autrement que par cette barre.
+ *
+ * ON RECONNAÎT DEUX FORMES, celles que `formule.js` produit : le radicande
+ * parenthésé (`√(9 + 16)`) et le radicande atomique (`√64`, `√a`). Rien
+ * d'autre — un motif qui essaierait de deviner où s'arrête un radicande non
+ * parenthésé se tromperait sur « √2 + 3 », où la barre ne couvre que le 2.
+ */
+const RE_RACINE = '\u221A\\(([^()]*)\\)|\u221A([0-9]+(?:[.,][0-9]+)?|[a-zA-Z])';
+
 export function morceauxLigne(ligne, avecFractions) {
     const out = [];
     // Le motif vient de core/fiche.js : l'aperçu, le PDF et la mesure des
@@ -662,7 +857,10 @@ export function morceauxLigne(ligne, avecFractions) {
     // π, et un bloc d'exposants ne contient que des exposants. Le reste est une
     // fraction, et ses deux étages sont les deux premiers groupes — ceux qui
     // marchaient déjà avant qu'on touche à ce motif.
-    const hors = `\u2248|\u03C0|${RE_EXPOSANT}`;
+    // LA RACINE PASSE AVANT LA FRACTION, et l'ordre compte : dans « √(a/b) »,
+    // le motif de la fraction attraperait « a/b » tout seul et laisserait le
+    // « √( » au texte, ce qui donnerait une barre posée sur rien.
+    const hors = `${RE_RACINE}|\u2248|\u03C0|${RE_EXPOSANT}`;
     const re = avecFractions
         ? new RegExp(`${RE_FRACTION().source}|${hors}`, 'g')
         : new RegExp(hors, 'g');
@@ -670,7 +868,11 @@ export function morceauxLigne(ligne, avecFractions) {
     let dernier = 0, m;
     while ((m = re.exec(ligne))) {
         if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
-        if (m[0] === '\u2248') out.push({ presque: true });
+        // ON RECONNAÎT LE MORCEAU À CE QU'IL EST, PAS À SON NUMÉRO DE GROUPE —
+        // la leçon est écrite plus haut, et la racine la respecte : elle se
+        // reconnaît à son premier caractère, pas à la place de sa capture.
+        if (m[0][0] === '\u221A') out.push({ racine: m[0].slice(1).replace(/^\((.*)\)$/, '$1') });
+        else if (m[0] === '\u2248') out.push({ presque: true });
         else if (m[0] === '\u03C0') out.push({ pi: true });
         else if (queDesExposants.test(m[0])) out.push({ haut: m[0] });
         else out.push({ num: m[1], den: m[2] });
@@ -678,6 +880,86 @@ export function morceauxLigne(ligne, avecFractions) {
     }
     if (dernier < ligne.length) out.push({ texte: ligne.slice(dernier) });
     return out.length ? out : [{ texte: ligne }];
+}
+
+/**
+ * LE RADICAL DU PDF : le signe, puis le radicande, puis LA BARRE PAR-DESSUS.
+ *
+ * RÉMY : « la racine carré ne recouvre pas bien le nombre sur la version
+ * imprimé ». Elle ne le recouvrait pas du tout — la feuille recevait « √64 »,
+ * une chaîne plate, et jsPDF l'écrivait telle quelle.
+ *
+ * LA BARRE EST DESSINÉE, PAS ÉCRITE. Le caractère « ‾ » n'existe pas dans les
+ * polices standard du PDF — c'est le même piège que la case à cocher « ☐ »,
+ * déjà payé dix lignes plus bas. On mesure le radicande et l'on tire un trait
+ * de cette longueur.
+ *
+ * LES PROPORTIONS SONT CELLES DE L'ÉCRAN (`css/components.css`) : la barre se
+ * pose au niveau du sommet du radical, soit un peu au-dessus des capitales, et
+ * elle déborde d'un cheveu à droite pour ne pas sembler s'arrêter trop tôt sur
+ * un chiffre à jambage.
+ */
+/**
+ * LES PROPORTIONS DU CROCHET, celles du tracé de l'écran ramenées au corps.
+ *
+ * Le tracé de `core/maths/formule.js` est « M0 12.4 L2.7 12.4 L5.2 19.4
+ * L8.2 0 L10 0 » dans une boîte de 10 × 20 : un petit horizontal, la descente,
+ * la remontée jusqu'au sommet, puis UN BOUT HORIZONTAL AU SOMMET — c'est lui
+ * qui prolonge la barre, et c'est lui qui manquait.
+ */
+const CROCHET = [
+    [0.00, -0.38],   // départ du petit horizontal de gauche
+    [0.14, -0.38],   // fin de ce petit horizontal
+    [0.26, 0.00],    // le bas du V, posé sur la ligne d'écriture
+    [0.41, -1.00],   // le sommet
+    [0.47, -1.00]    // le bout horizontal qui devient la barre
+];
+/** La largeur du crochet, en corps : c'est là que commence le radicande. */
+const CROCHET_LARGE = 0.47;
+
+/**
+ * LE RADICAL DU PDF — CROCHET ET BARRE D'UN SEUL TRACÉ.
+ *
+ * RÉMY : « il faut bien que la racine carrée soit continue, là il y a une
+ * rupture sur ce que tu as fait. »
+ *
+ * PREMIÈRE VERSION : le caractère « √ » de la police, puis un trait tiré
+ * au-dessus du radicande. Deux objets différents — un glyphe et un trait —
+ * dont ni l'épaisseur ni la hauteur ne pouvaient coïncider : jsPDF écrit le
+ * radical avec le « Ö » de la police Symbol, dont le sommet est où il est, et
+ * mon trait passait à côté. Une marche, visible à l'œil nu.
+ *
+ * ICI, LE CROCHET N'EST PLUS UN CARACTÈRE : c'est le même tracé que l'écran,
+ * prolongé par la barre dans LE MÊME chemin. La continuité n'est plus un calage
+ * qu'on ajuste, elle est structurelle — on ne peut plus la casser sans casser
+ * le trait. C'est exactement ce que `formule.js` avait déjà établi pour
+ * l'écran, pour la même raison.
+ */
+export function dessinerRacine(pdf, dedans, x, y, taille) {
+    const t = pourPdf(String(dedans));
+    const wDedans = pdf.getTextWidth(t);
+    const xDedans = x + taille * CROCHET_LARGE;
+    // Le radicande d'abord : la barre doit passer PAR-DESSUS, et un trait tiré
+    // avant le texte se laisse recouvrir par ses jambages hauts.
+    pdf.text(t, xDedans, y);
+
+    pdf.setLineWidth(taille * 0.055);
+    pdf.setDrawColor(...ENCRE.texte);
+    // UN SEUL CHEMIN : le crochet, puis la barre jusqu'au bout du radicande.
+    // `lines` prend des déplacements RELATIFS ; on les calcule depuis le point
+    // précédent, et le dernier segment est la barre.
+    const pts = CROCHET.map(([dx, dy]) => [x + dx * taille, y + dy * taille]);
+    pts.push([xDedans + wDedans + taille * 0.08, pts[pts.length - 1][1]]);
+    const deltas = pts.slice(1).map(([px, py], i) => [px - pts[i][0], py - pts[i][1]]);
+    pdf.lines(deltas, pts[0][0], pts[0][1], [1, 1], 'S', false);
+
+    return taille * CROCHET_LARGE + wDedans + taille * 0.12;
+}
+
+/** La largeur d'un radical, sans l'écrire — pour centrer avant de dessiner. */
+export function largeurRacine(pdf, dedans, taille) {
+    const t = taille || 1;
+    return t * CROCHET_LARGE + pdf.getTextWidth(pourPdf(String(dedans))) + t * 0.12;
 }
 
 /** Le π du PDF : le « p » de la police Symbol, qui en est un. */
@@ -704,14 +986,21 @@ export function dessinerPi(pdf, x, y) {
  */
 export function texteRiche(pdf, texte, x, y, taille, o = {}) {
     const morceaux = morceauxLigne(String(texte ?? ''), false);
+    // LA CINQUIÈME SORTE DE MORCEAU, ET LE TROISIÈME LECTEUR. `morceauxLigne`
+    // en a maintenant CINQ et il y a TROIS lecteurs : l'aperçu, le PDF et cette
+    // mesure. Le commentaire de `ligneHtml` le dit déjà — en ajouter une sans
+    // faire le tour des trois, c'est composer sur une largeur et imprimer sur
+    // une autre.
     const large = (m) => (m.texte !== undefined ? pdf.getTextWidth(pourPdf(m.texte))
-        : m.pi ? largeurPi(pdf)
-            : m.haut ? largeurExposant(pdf, m.haut, taille)
-                : taille * 1.25);
+        : m.racine !== undefined ? largeurRacine(pdf, m.racine, taille)
+            : m.pi ? largeurPi(pdf)
+                : m.haut ? largeurExposant(pdf, m.haut, taille)
+                    : taille * 1.25);
     const total = morceaux.reduce((n, m) => n + large(m), 0);
     let cx = o.align === 'center' ? x - total / 2 : o.align === 'right' ? x - total : x;
     for (const m of morceaux) {
         if (m.texte !== undefined) { const t = pourPdf(m.texte); pdf.text(t, cx, y); }
+        else if (m.racine !== undefined) dessinerRacine(pdf, m.racine, cx, y, taille);
         else if (m.pi) dessinerPi(pdf, cx, y);
         else if (m.haut) dessinerExposant(pdf, m.haut, cx, y, taille);
         else signePresque(pdf, cx + taille * 0.15, y, taille);
@@ -764,8 +1053,22 @@ function largeurFraction(pdf, m) {
     // Un étage vide n'a pas de largeur propre : on lui donne celle de son
     // vis-à-vis, plus une marge — un trait de trois millimètres sous un
     // dénominateur à deux chiffres ne se remplit pas.
+    // Le plancher se dit EN CHIFFRES, et non en millimètres : c'est ainsi que
+    // l'aperçu le dit de son côté (trois `ch`), et deux planchers exprimés dans
+    // deux unités finissent par ne plus valoir la même chose quand la taille
+    // du corps change.
+    // DEUX TROUS FACE À FACE NE SE MESURENT PAS L'UN L'AUTRE.
+    //
+    // RÉMY, capture de la feuille « Diviser par une Fraction » : « mets moins
+    // de pointillés ». Un étage vide prenait la largeur de son vis-à-vis — et
+    // quand le vis-à-vis est VIDE LUI AUSSI, cette largeur est celle de ses
+    // ESPACES, c'est-à-dire la place à remplir que `texteImprime` a posée.
+    // Sur « …/… », les deux étages se gonflaient donc mutuellement : onze
+    // tirets de part et d'autre pour un chiffre à écrire.
     const large = (t, autre) => (etageEstUnTrou(t)
-        ? Math.max(pdf.getTextWidth(autre), 5) : pdf.getTextWidth(t));
+        ? Math.max(etageEstUnTrou(autre) ? 0 : pdf.getTextWidth(autre),
+            pdf.getTextWidth('000'))
+        : pdf.getTextWidth(t));
     return Math.max(large(m.num, m.den), large(m.den, m.num)) + 1.6;
 }
 
@@ -773,7 +1076,15 @@ function largeurFraction(pdf, m) {
  * Une ligne d'énoncé dans le PDF, morceau par morceau. Rend l'abscisse
  * atteinte, ce qui permettrait d'enchaîner.
  */
-function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
+/**
+ * @param {Function} [champ] le crayon de la fiche remplissable. L'étage vide
+ *   d'une fraction est une place où l'élève écrit : c'est donc un champ, au
+ *   même titre qu'un pointillé de fin de ligne. Sans cela, « L'Égalité à
+ *   Compléter » sortait remplissable sans aucun endroit où taper — la seule
+ *   case du PDF était l'ancienne ligne de réponse, qu'on vient de retirer
+ *   parce qu'elle proposait un second endroit pour la même réponse.
+ */
+function dessinerLigne(pdf, ligne, x0, y, o, avecFractions, champ) {
     let x = x0;
     for (const m of morceauxLigne(ligne, avecFractions)) {
         if (m.texte !== undefined) {
@@ -787,16 +1098,34 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
             x += dessinerPi(pdf, x, y);
         } else if (m.haut) {
             x += dessinerExposant(pdf, m.haut, x, y, o.taille);
+        } else if (m.racine !== undefined) {
+            x += dessinerRacine(pdf, m.racine, x, y, o.taille);
         } else {
             const w = largeurFraction(pdf, m);
             // L'ÉTAGE À REMPLIR, en pointillés : le même trait qu'ailleurs sur
             // la feuille, mais posé DANS la fraction, à son étage.
-            const etagePdf = (t, yEtage) => {
+            // LE NUMÉRATEUR N'A PAS DE POINTILLÉ À LUI : LA BARRE EST SA LIGNE.
+            //
+            // RÉMY : « avec des drôle de pointillé ». MESURÉ sur la feuille : le
+            // pointillé du numérateur tombe à 0,22 corps au-dessus de la barre de
+            // fraction — moins d'un millimètre. On imprimait donc un trait DOUBLE,
+            // pointillé contre plein, qui ne ressemble à rien de ce qu'on écrit au
+            // tableau.
+            //
+            // AU TABLEAU, LE NUMÉRATEUR S'ÉCRIT SUR LA BARRE. Elle lui sert de
+            // ligne, et c'est exactement ce qu'il faut dire à l'élève. Seul le
+            // dénominateur, qui n'a rien sous lui, garde son pointillé.
+            const etagePdf = (t, yEtage, dessous) => {
                 if (!etageEstUnTrou(t)) {
                     pdf.text(t, x + (w - pdf.getTextWidth(t)) / 2, yEtage);
                     return;
                 }
-                pointilles(pdf, x + 0.6, yEtage + o.taille * 0.06, w - 1.2);
+                if (dessous) pointilles(pdf, x + 0.6, yEtage + o.taille * 0.06, w - 1.2);
+                // La boîte est À CHEVAL sur ce pointillé, comme partout
+                // ailleurs : c'est là que l'élève écrirait à la main.
+                if (typeof champ === 'function') {
+                    champ(x + 0.6, yEtage - o.taille * 0.82, w - 1.2, o.taille * 1.05);
+                }
             };
             // LE TRAIT EST LA LIGNE D'ÉCRITURE. On le posait un tiers de corps
             // plus haut, et la fraction entière flottait au-dessus du texte :
@@ -804,8 +1133,8 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
             // ligne plus bas. Numérateur dessus, dénominateur dessous, à
             // distance égale du trait.
             const yTrait = y;
-            etagePdf(m.num, yTrait - o.taille * 0.28);
-            etagePdf(m.den, yTrait + o.taille * 0.98);
+            etagePdf(m.num, yTrait - o.taille * 0.28, false);
+            etagePdf(m.den, yTrait + o.taille * 0.98, true);
             pdf.setLineWidth(0.28);
             pdf.setDrawColor(...ENCRE.texte);
             pdf.line(x + 0.4, yTrait, x + w - 0.4, yTrait);
@@ -852,6 +1181,15 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
         // sortes de morceaux et TROIS lecteurs (l'aperçu, le PDF, la mesure).
         // Ajouter une sorte sans faire le tour des trois, c'est reproduire ce
         // bug — et il ne se voit que sur une feuille, à l'écran d'un élève.
+        // LA RACINE DE L'APERÇU, DESSINÉE PAR LE MÊME CODE QUE L'ÉCRAN.
+        // `formule('√(…)')` rend le crochet et la barre en SVG, d'une seule
+        // venue. On lui passe le radicande ENTRE PARENTHÈSES quoi qu'il
+        // arrive : son analyseur les retire, et sans elles « 9 + 16 » ne
+        // passerait que le 9 sous la barre.
+        if (m.racine !== undefined) {
+            try { return formuleHtml(`\u221A(${m.racine})`); }
+            catch (e) { return '&#8730;' + texteHtml(m.racine); }
+        }
         if (m.pi) return '<span class="fx-pi">&#960;</span>';
         // Le navigateur sait écrire « ² » ; mais au-delà de ³ les polices ne
         // suivent pas toutes, et l'on verrait un carré vide. Un `<sup>` avec le
@@ -865,10 +1203,36 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
         // UN ÉTAGE VIDE EST UN TROU, et un trou se dessine en pointillés — sans
         // quoi la place à remplir, faite d'espaces, disparaîtrait purement et
         // simplement dans le HTML.
-        const etage = (t) => (etageEstUnTrou(t)
-            ? `<span class="${trouCls}">${echapper(t)}</span>` : echapper(t));
-        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num)}</span>`
-            + `<span class="fx-frac-d">${etage(m.den)}</span></span>`;
+        // UN ÉTAGE VIDE A LA LARGEUR DE SON VIS-À-VIS, PAS CELLE DE SES ESPACES.
+        //
+        // RÉMY : « le trait de fraction est parfois très grand ». Le trait de
+        // fraction de l'aperçu EST la bordure basse du numérateur ; un
+        // numérateur fait d'une vingtaine d'espaces (la place à remplir,
+        // posée par `texteImprime`) donnait donc un trait de deux
+        // centimètres sous un dénominateur de deux chiffres.
+        //
+        // LE PDF, LUI, AVAIT DÉJÀ LA RÈGLE : `largeurFraction` prend la largeur
+        // du vis-à-vis, avec un plancher. Les deux dessins disaient donc deux
+        // choses différentes de la même fraction — et c'est l'aperçu que Rémy
+        // regarde avant d'imprimer. On écrit ici la MÊME règle, dans l'unité
+        // de l'aperçu : le `ch`, qui est la largeur d'un chiffre.
+        // LA MÊME RÈGLE QUE LE PDF, et il faut les deux : c'est l'aperçu que
+        // Rémy regarde avant d'imprimer. Deux trous face à face prennent la
+        // largeur de trois chiffres, et non celle des espaces de l'autre.
+        const chDuTrou = (autre) => (etageEstUnTrou(autre)
+            ? 3 : Math.max(String(autre ?? '').trim().length, 3));
+        // ET LE NUMÉRATEUR N'A PAS DE POINTILLÉ : `fx-frac-n` porte déjà la
+        // barre de fraction en bordure basse, à un cheveu de là. Les deux
+        // ensemble donnaient le trait double de sa capture. Le crayon de la
+        // fiche remplissable, lui, reste aux deux étages — c'est une place où
+        // l'on tape, pointillé ou pas.
+        const champCls = opts.champs ? ' fx-trou--champ' : '';
+        const etage = (t, autre, dessous) => (etageEstUnTrou(t)
+            ? `<span class="${dessous ? trouCls : 'fx-trou--nu' + champCls} fx-frac-trou"
+                style="width:${chDuTrou(autre)}ch"></span>`
+            : echapper(t));
+        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num, m.den, false)}</span>`
+            + `<span class="fx-frac-d">${etage(m.den, m.num, true)}</span></span>`;
     }).join('');
 }
 
@@ -876,7 +1240,12 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
 const EXPOSANTS_HAUT = {
     '\u2070': '0', '\u00B9': '1', '\u00B2': '2', '\u00B3': '3', '\u2074': '4',
     '\u2075': '5', '\u2076': '6', '\u2077': '7', '\u2078': '8', '\u2079': '9',
-    '\u207B': '-'
+    '\u207B': '-',
+    // LE PLUS, LE ⁿ ET LE FOIS EN EXPOSANT. « 10⁷ × 10⁷ = 10⁷⁺⁷ » sortait
+    // « 10^7 × 10^7 = 10^7?7 » : le pas intermédiaire d'un exercice sur les
+    // puissances, c'est-à-dire tout ce qu'il enseigne. Et « a × 10ⁿ »
+    // devenait « a × 10? » dans la définition même de l'écriture scientifique.
+    '\u207A': '+', '\u207F': 'n', '\u02DF': '\u00D7'
 };
 // Seuls ¹ ² ³ existent dans la police du PDF. Les autres — ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁰ et le
 // moins en exposant — n'y sont pas, et sortaient en points d'interrogation :
@@ -896,7 +1265,9 @@ const IMPRIMABLE_EN_HAUT = new Set(['\u00B9', '\u00B2', '\u00B3']);
  * problème et restent intacts.
  */
 const exposantsLisibles = (t) => t.replace(
-    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)/g,
+    // Le bloc inclut ⁺ ⁿ ˟ depuis qu'ils sont dans la table : sans eux,
+    // « 10⁷⁺⁷ » se coupait en deux blocs et le ⁺ tombait seul au milieu.
+    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207A\u207B\u207F\u02DF]+)/g,
     (_, avant, bloc) => {
         const puissance = /\d/.test(avant);
         const tout = [...bloc].every(c => IMPRIMABLE_EN_HAUT.has(c));
@@ -906,7 +1277,7 @@ const exposantsLisibles = (t) => t.replace(
     });
 
 /** Les caractères que `ecrireSymboles` sait dessiner : ils traversent pourPdf. */
-const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('') + Object.keys(INDICES).join('') + ']');
+export const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('') + Object.keys(INDICES).join('') + ']');
 
 export function pourPdf(texte) {
     let t = exposantsLisibles(typographieFr(texte));
@@ -985,6 +1356,47 @@ function tableauApercu(t, k, o) {
         });
     });
     return html;
+}
+
+/**
+ * LE SCHÉMA DES BONDS, DANS L'APERÇU.
+ *
+ * UN SEUL `<svg>`, ET SON REPÈRE EST LE MILLIMÈTRE. `viewBox="0 0 w h"` avec w
+ * et h en millimètres, posé dans une boîte de w × k pixels : à l'intérieur, on
+ * écrit EXACTEMENT les nombres que `mesurerBonds` a calculés, et le traceur du
+ * PDF écrit les mêmes. Sans ce repère il faudrait multiplier chaque coordonnée
+ * par `k` ici et pas là-bas — c'est-à-dire tenir deux fois la même géométrie.
+ *
+ * LE TEXTE EST DANS LE SVG, LUI AUSSI. Posé en `<div>` à côté, il faudrait
+ * convertir les lignes de base en `top` de boîte, et une étiquette se
+ * retrouverait un millimètre plus bas dans l'aperçu que sur la feuille.
+ */
+function bondsApercu(b, k, o) {
+    const d = (n) => Number(n).toFixed(2);
+    const arcs = b.arcs.map(a =>
+        `<path d="M ${d(a.x1)} ${d(a.y1)} Q ${d(a.cx)} ${d(a.cy)} ${d(a.x2)} ${d(a.y2)}"
+            fill="none" stroke="#1a202c" stroke-width=".3"/>`
+        + `<polygon points="${a.pointe.map(p => d(p[0]) + ',' + d(p[1])).join(' ')}"
+            fill="#1a202c"/>`).join('');
+    const points = b.xs.map((x, i) =>
+        `<circle cx="${d(x)}" cy="${d(b.yLigne)}" r="${d(b.R)}" fill="#1a202c"/>`
+        + `<text x="${d(x)}" y="${d(b.yEtiq)}" text-anchor="middle"
+            font-size="${d(o.taille)}" fill="#1a202c">${echapper(b.arrets[i])}</text>`).join('');
+    const gains = b.gains.map(g =>
+        `<text x="${d(g.x)}" y="${d(g.y)}" font-size="${d(o.taille)}"
+            fill="#1a202c">+</text>`
+        // LE TROU SE DESSINE, il ne s'écrit pas en points : une suite de « . »
+        // dépend de la police, et le PDF, lui, trace un trait en tirets. Deux
+        // façons de faire le même pointillé, c'est un pointillé différent.
+        + `<line x1="${d(g.x + g.wPlus)}" y1="${d(g.y + 0.55)}"
+            x2="${d(g.x + g.wPlus + g.wTrou)}" y2="${d(g.y + 0.55)}"
+            stroke="#9aa3b2" stroke-width=".25" stroke-dasharray=".7 1.1"/>`).join('');
+    return `<svg class="fq-bonds" viewBox="0 0 ${d(b.w)} ${d(b.h)}"
+        style="position:absolute; left:${b.x * k}px; top:${b.y * k}px;
+        width:${b.w * k}px; height:${b.h * k}px" aria-hidden="true">
+        <line x1="0" y1="${d(b.yLigne)}" x2="${d(b.w)}" y2="${d(b.yLigne)}"
+            stroke="#1a202c" stroke-width=".25"/>
+        ${arcs}${points}${gains}</svg>`;
 }
 
 export function apercuItems(page, k, o) {
@@ -1094,6 +1506,25 @@ export function apercuItems(page, k, o) {
             continue;
         }
         // type 'q'
+        // LE CADRE DE LA CASE D'ABORD, puisqu'il passe DERRIÈRE. Les blocs de
+        // l'aperçu sont posés en absolu dans l'ordre où on les écrit : le
+        // tracer après le texte le couvrirait d'un rectangle opaque.
+        if (it.cadre) {
+            // LE STYLE VIENT DE LA CELLULE, PLUS DE LA FEUILLE DE STYLE.
+            //
+            // Rémy a demandé de régler l'épaisseur et les deux couleurs ; elles
+            // étaient écrites en dur ICI et une seconde fois dans le PDF, et
+            // rien n'obligeait les deux à dire la même chose. `core/fiche.js`
+            // les calcule une fois (voir `styleTableau`) et les pose dans le
+            // cadre ; les deux rendus n'ont plus qu'à les lire.
+            //
+            // `box-sizing: border-box` est dans la feuille de style : le
+            // rectangle garde sa taille quelle que soit l'épaisseur, donc deux
+            // cases voisines continuent de partager exactement leur filet.
+            html += `<div class="fq-cellule" style="left:${it.cadre.x * k}px;
+                top:${it.cadre.y * k}px; width:${it.cadre.w * k}px;
+                height:${it.cadre.h * k}px; ${styleDuCadre(it.cadre, k)}"></div>`;
+        }
         if (it.n != null) {
             // LE NUMÉRO EST SUR LA LIGNE DE L'ÉNONCÉ, pas au-dessus. Il était
             // posé à `y` quand le texte commençait à `y + dy` : dès qu'une
@@ -1125,7 +1556,7 @@ export function apercuItems(page, k, o) {
                 : '';
             html += `<div class="fx-qgestes${recrire}"
                 style="left:${it.x * k}px; top:${it.y * k}px;
-                width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(it.lignes.length * o.interligne, o.interligne) * k}px">
+                width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(hauteurDesLignes(o, it.lignes.length, it.fractions), o.interligne) * k}px">
                 <button type="button" class="fx-qgeste" data-q-neuf="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
                     title="Retirer une autre question au sort à cette place"
                     aria-label="Remplacer la question ${it.n ?? it.iQ + 1}">${refaireSvg(13)}</button>
@@ -1142,7 +1573,7 @@ export function apercuItems(page, k, o) {
         // et sa réponse, dans le même geste.
         it.lignes.forEach((ligne, i) => {
             html += `<div class="fq-ligne"
-                style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
+                style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * pasDeLigne(o, it.fractions)) * k}px;
                 width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions, o)}</div>`;
         });
         if (it.choix) {
@@ -1150,6 +1581,7 @@ export function apercuItems(page, k, o) {
                 font-size:${o.taille * k * .9}px">${it.choix.map(c => '☐ ' + echapper(c)).join('&nbsp;&nbsp;')}</div>`;
         }
         if (it.tableau) html += tableauApercu(it.tableau, k, o);
+        if (it.bonds) html += bondsApercu(it.bonds, k, o);
         if (it.rep && !it.rep.dansLeTexte) {
             // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
             // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
@@ -1626,6 +2058,125 @@ function champSaisie(pdf, rep, index) {
 // une case du premier sudoku et voyait son chiffre apparaître dans le second.
 let compteurChamps = 0;
 
+/** La classe AcroForm demandée, qu'on soit dans la page ou dans un essai. */
+const deJsPdf = (pdf, nom) =>
+    ((typeof window !== 'undefined' && window.jspdf && window.jspdf[nom]) || pdf[nom]);
+
+/**
+ * UN QCM EST UN GROUPE DE BOUTONS RADIO — et non quatre cases du même nom.
+ *
+ * RÉMY : « et pour les QCM, il faut que le champ remplissable soit une
+ * checkbox ». Le carré tracé est le bon choix pour une feuille qu'on IMPRIME
+ * — le caractère ☐ n'existe pas dans les polices standard du PDF, voir le
+ * commentaire du dessin. Mais sur une fiche REMPLISSABLE, un carré dessiné
+ * n'est qu'un dessin : l'élève ne peut pas le cocher.
+ *
+ * ON POSE DONC LES DEUX : le carré reste tracé — une fiche remplissable
+ * s'imprime aussi —, et la case se pose dessus.
+ *
+ * ── CE QUE LA PREMIÈRE VERSION FAISAIT, ET QUE RÉMY A VU ──────────────────
+ *
+ * « quand je clique sur un champ checkbox, les autres se remplissent de
+ *   caractères spéciaux »
+ *
+ * Elle posait quatre `AcroFormCheckBox` du MÊME nom de champ, en croyant que
+ * « même nom, valeurs différentes » suffisait à faire un groupe exclusif. LU
+ * DANS LES OCTETS DU PDF :
+ *
+ *     /FT /Btn /T (choix_g0) /V /On /AS /Off /MK << /CA (U) >>
+ *     /FT /Btn /T (choix_g0) /V /On /AS /Off /MK << /CA (F) >>
+ *
+ * Même nom ET même état « on » : ce ne sont pas quatre cases, c'est UNE case
+ * à quatre apparences. Cocher l'une les coche toutes — ce qui est exactement
+ * ce qu'il décrit. Un groupe exclusif se fait avec un champ `/Ff` radio dont
+ * chaque enfant porte son PROPRE état d'apparence ; c'est ce que
+ * `createOption` construit.
+ *
+ * ET LE `caption` N'EST PAS UNE VALEUR, C'EST UN GLYPHE. Dans jsPDF il nomme
+ * un caractère de ZapfDingbats — la police des cases à cocher. On y passait
+ * la première lettre de la proposition : « U » et « F » y dessinent une
+ * étoile et des cercles. Les « caractères spéciaux » de sa phrase sont des
+ * dingbats, et ils étaient écrits par nous.
+ *
+ * TROISIÈME DÉFAUT DANS LA MÊME LIGNE : `AcroFormCheckBox` naît avec
+ * `value = 'On'`, et poser `appearanceState = 'Off'` ne touche que `/AS`.
+ * Chaque case arrivait donc avec `/V /On` — déclarée cochée avant qu'on y
+ * touche —, et le premier clic ne faisait que remettre l'apparence d'accord
+ * avec la valeur. C'est pourquoi tout paraissait d'un coup.
+ *
+ * LA CROIX PLUTÔT QUE LE ROND. Un bouton radio se dessine en pastille par
+ * défaut ; le carré, lui, est déjà TRACÉ autour. Une pastille dans un carré
+ * ne ressemble à rien de ce qu'un élève fait à la main — une croix, si.
+ */
+function groupeDeCases(pdf, nom) {
+    const Radio = deJsPdf(pdf, 'AcroFormRadioButton');
+    const Allure = deJsPdf(pdf, 'AcroFormAppearance');
+    if (typeof Radio !== 'function' || typeof pdf.addField !== 'function') return null;
+    const groupe = new Radio();
+    // UN jsPDF À MOITIÉ POSÉ rend une fonction pour TOUT — les essais en
+    // montent un de papier, bâti sur un `Proxy` —, si bien que
+    // `typeof Radio === 'function'` ne prouve rien. Ce qu'on vérifie, c'est
+    // qu'elle sache fabriquer une option.
+    if (typeof groupe.createOption !== 'function') return null;
+    groupe.fieldName = nom;
+    // LE CHAMP D'ABORD, LES OPTIONS ENSUITE : `createOption` enregistre
+    // l'enfant dans la PORTÉE du groupe, que `addField` vient de poser.
+    pdf.addField(groupe);
+    let rang = 0;
+    return (x, y, cote) => {
+        const option = groupe.createOption(`c${++rang}`);
+        option.Rect = [x, y, cote, cote];
+        // RIEN N'EST COCHÉ À L'OUVERTURE. Le constructeur le fait déjà ; on
+        // l'écrit quand même, parce que c'est précisément la valeur par
+        // défaut d'une classe voisine qui a causé le défaut d'avant.
+        option.appearanceState = 'Off';
+        if (Allure && Allure.RadioButton && Allure.RadioButton.Cross) {
+            // Repasse sur TOUS les enfants : chaque option reçoit son propre
+            // flux d'apparence, nommé d'après son propre état.
+            groupe.setAppearance(Allure.RadioButton.Cross);
+        }
+        return true;
+    };
+}
+
+/**
+ * LE CRAYON DES CHAMPS REMPLISSABLES, fabriqué en un seul endroit.
+ *
+ * Il écrit — `champ(x, y, w, h)` pose une case de saisie — et il coche —
+ * `champ.coche(x, y, côté)` ajoute une proposition au QCM de ce crayon.
+ *
+ * POURQUOI UNE FABRIQUE PLUTÔT QUE DEUX COPIES : il y a TROIS portes vers le
+ * papier dans ce logiciel — la fiche d'un exercice (`printSheet`), celle des
+ * questions (`printQuestions`) et le poly d'un parcours (`printParcours`) —
+ * et c'est exactement le genre d'endroit où une correction se pose sur une
+ * seule des trois. Le dépôt a payé cette leçon cinq fois.
+ *
+ * UN CRAYON, UNE QUESTION, UN GROUPE. Les deux appelants en fabriquent un par
+ * BLOC de la feuille : le groupe vit donc dans ce crayon, et les propositions
+ * d'une question s'excluent sans pouvoir toucher celles de la voisine.
+ *
+ * @param {object} pdf le document jsPDF
+ * @param {string} [groupe] un nom lisible pour le groupe. LE COMPTEUR, ET NON
+ *   CE NOM, garantit l'unicité : deux champs homonymes n'en font qu'un seul
+ *   pour un lecteur PDF, et c'est ainsi que l'élève tapait dans une case du
+ *   premier sudoku et voyait son chiffre paraître dans le second. Le même
+ *   piège a mordu deux fois ; le nom n'est plus qu'une étiquette.
+ */
+export function crayonDeChamps(pdf, groupe) {
+    const champ = (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`);
+    // PARESSEUX : quarante rendus sur quarante-deux n'ont pas de QCM, et un
+    // groupe fabriqué d'avance laisserait un champ sans aucune case dans
+    // chacun de leurs PDF.
+    let cocher;
+    champ.coche = (x, y, cote) => {
+        if (cocher === undefined) {
+            cocher = groupeDeCases(pdf, `${groupe || 'choix'}_${++compteurChamps}`);
+        }
+        return cocher ? cocher(x, y, cote) : false;
+    };
+    return champ;
+}
+
 function champCase(pdf, x, y, w, h, nom) {
     const Champ = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormTextField)
         || (pdf.AcroFormTextField);
@@ -1684,6 +2235,58 @@ function tableauPdf(pdf, t, o) {
     pdf.setTextColor(...ENCRE.texte);
 }
 
+/**
+ * LE SCHÉMA DES BONDS, DANS LE PDF.
+ *
+ * jsPDF ne connaît que des cubiques : `lines` prend six nombres par segment,
+ * RELATIFS au point précédent. Une quadratique s'y convertit sans perte —
+ * c₁ = p₀ + ⅔(c − p₀), c₂ = p₂ + ⅔(c − p₂) —, et c'est la conversion exacte,
+ * pas une approximation : toute courbe quadratique EST une cubique.
+ */
+function bondsPdf(pdf, b, o) {
+    pdf.setDrawColor(...ENCRE.trait);
+    pdf.setLineWidth(0.25);
+    pdf.line(b.x, b.y + b.yLigne, b.x + b.w, b.y + b.yLigne);
+    pdf.setLineWidth(0.3);
+    b.arcs.forEach(a => {
+        const c1x = a.x1 + (2 / 3) * (a.cx - a.x1), c1y = a.y1 + (2 / 3) * (a.cy - a.y1);
+        const c2x = a.x2 + (2 / 3) * (a.cx - a.x2), c2y = a.y2 + (2 / 3) * (a.cy - a.y2);
+        pdf.lines([[c1x - a.x1, c1y - a.y1, c2x - a.x1, c2y - a.y1, a.x2 - a.x1, a.y2 - a.y1]],
+            b.x + a.x1, b.y + a.y1, [1, 1], 'S');
+        // LA POINTE EST UN TRIANGLE PLEIN, calculé avec le reste : une pointe
+        // posée par le traceur aurait sa propre orientation et son propre
+        // débord, et l'on recommencerait la mesure de l'écran.
+        const p = a.pointe;
+        pdf.setFillColor(...ENCRE.trait);
+        pdf.triangle(b.x + p[0][0], b.y + p[0][1], b.x + p[1][0], b.y + p[1][1],
+            b.x + p[2][0], b.y + p[2][1], 'F');
+    });
+    b.xs.forEach((x, i) => {
+        pdf.setFillColor(...ENCRE.trait);
+        pdf.circle(b.x + x, b.y + b.yLigne, b.R, 'F');
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(o.taille * 2.83);
+        pdf.setTextColor(...ENCRE.texte);
+        pdf.text(pourPdf(b.arrets[i]), b.x + x, b.y + b.yEtiq, { align: 'center' });
+    });
+    b.gains.forEach((g) => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(o.taille * 2.83);
+        pdf.setTextColor(...ENCRE.texte);
+        pdf.text('+', b.x + g.x, b.y + g.y);
+        pointilles(pdf, b.x + g.x + g.wPlus, b.y + g.y + 0.55, g.wTrou);
+        // CE QU'ON AJOUTE À CHAQUE BOND EST UNE CASE À REMPLIR : au stylo sur
+        // la feuille, au clavier dans le PDF remplissable.
+        if (o.champs && !o.solution) {
+            champCase(pdf, b.x + g.x + g.wPlus, b.y + g.y - o.taille * 0.95,
+                g.wTrou, o.taille * 1.5, `bond_${++compteurChamps}`);
+        }
+    });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...ENCRE.texte);
+    pdf.setDrawColor(...ENCRE.trait);
+}
+
 /** Les items d'une page, dans le PDF. */
 export function pdfItems(pdf, page, o) {
     let nChamp = 0;
@@ -1724,8 +2327,22 @@ export function pdfItems(pdf, page, o) {
                 if (it.n != null && !r.numeroInterne) pdf.text(`${it.n}.`, it.x, it.y - 1.2);
                 // Le rendu de la grille appelle ce crayon pour chaque case
                 // vide, quand la fiche est déclarée remplissable.
+                //
+                // ET IL SAIT AUSSI COCHER. Rémy : « pour les QCM, il faut que
+                // le champ remplissable soit une checkbox ». Un QCM n'arrive
+                // pas toujours par la porte des QUESTIONS : « Le point est-il
+                // dessus ? » dessine sa figure puis ses quatre affirmations
+                // avec leurs carrés, et passe donc par ici. Lui donner une
+                // case de SAISIE serait répondre à côté de la question.
+                //
+                // Le crayon porte sa variante en propriété plutôt qu'en second
+                // argument : les quarante rendus qui n'ont pas de QCM gardent
+                // leur appel à quatre nombres, inchangé.
+                // Le nom du groupe porte le RANG DU BLOC, pas celui de la
+                // case : deux blocs voisins ont des groupes différents, et les
+                // propositions d'un même bloc s'excluent.
                 const champ = (o.champs && !o.solution)
-                    ? (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`)
+                    ? crayonDeChamps(pdf, `choix_g${it.n ?? it.iQ ?? ++compteurChamps}`)
                     : null;
                 r.pdfGrille(pdf, it.item,
                     { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
@@ -1735,6 +2352,30 @@ export function pdfItems(pdf, page, o) {
             }
             continue;
         }
+        // LE CADRE DE LA CASE, avant tout le reste : un rectangle rempli
+        // posé après le texte l'effacerait. Le fond puis le filet, et non un
+        // seul `FD` : deux cases voisines partagent leur bord, et un
+        // remplissage qui déborde d'un dixième de millimètre mangerait le
+        // filet du voisin.
+        if (it.cadre) {
+            const c = it.cadre;
+            if (c.bande) {
+                pdf.setFillColor(...(c.fond || ENCRE.bandeZebre));
+                pdf.rect(c.x, c.y, c.w, c.h, 'F');
+            }
+            pdf.setDrawColor(...(c.filet || ENCRE.bandeauTrait));
+            pdf.setLineWidth(c.trait || 0.2);
+            if (!c.cotes) pdf.rect(c.x, c.y, c.w, c.h, 'S');
+            else {
+                // SANS BORDS EXTÉRIEURS, on ne trace que les côtés qui
+                // SÉPARENT deux questions : `pdf.rect` ne sait pas n'en faire
+                // que trois. Voir le cadre dans `core/fiche.js`.
+                if (c.cotes.h) pdf.line(c.x, c.y, c.x + c.w, c.y);
+                if (c.cotes.b) pdf.line(c.x, c.y + c.h, c.x + c.w, c.y + c.h);
+                if (c.cotes.g) pdf.line(c.x, c.y, c.x, c.y + c.h);
+                if (c.cotes.d) pdf.line(c.x + c.w, c.y, c.x + c.w, c.y + c.h);
+            }
+        }
         pdf.setTextColor(...ENCRE.texte);
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(o.taille * 2.83);
@@ -1742,8 +2383,15 @@ export function pdfItems(pdf, page, o) {
         // le commentaire de l'aperçu, plus haut.
         if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + (it.dy || 0) + o.taille);
         pdf.setFont('helvetica', 'normal');
+        // LE CRAYON VOYAGE JUSQUE DANS LA LIGNE, parce qu'une place où écrire
+        // peut être AU MILIEU de l'énoncé — l'étage vide d'une fraction. Il
+        // n'existe que sur une fiche déclarée remplissable, et jamais sur un
+        // corrigé.
+        const crayonTexte = (o.champs && !o.solution) ? crayonDeChamps(pdf) : null;
         it.lignes.forEach((ligne, i) => {
-            dessinerLigne(pdf, ligne, it.texteX, it.y + (it.dy || 0) + o.taille + i * o.interligne, o, it.fractions);
+            dessinerLigne(pdf, ligne, it.texteX,
+                it.y + (it.dy || 0) + o.taille + i * pasDeLigne(o, it.fractions),
+                o, it.fractions, crayonTexte);
         });
         if (it.choix) {
             // LES CASES À COCHER SONT DESSINÉES, pas écrites. Le caractère ☐
@@ -1758,6 +2406,13 @@ export function pdfItems(pdf, page, o) {
                 pdf.setDrawColor(...ENCRE.gris);
                 pdf.setLineWidth(0.22);
                 pdf.rect(cx, it.choixY + o.taille - cote, cote, cote, 'S');
+                // Voir `champCoche` : le carré est le dessin, la case est le
+                // champ, et les deux se superposent. Le nom porte le rang de
+                // la question, donc les choix d'une même question s'excluent.
+                if (o.champs && !o.solution) {
+                    champCoche(pdf, cx, it.choixY + o.taille - cote, cote,
+                        `choix_${it.n ?? ++nChamp}`, mot);
+                }
                 pdf.setTextColor(...ENCRE.gris);
                 pdf.text(mot, cx + cote + 1.4, it.choixY + o.taille);
                 cx += cote + 1.4 + pdf.getTextWidth(mot) + 4;
@@ -1765,8 +2420,17 @@ export function pdfItems(pdf, page, o) {
             pdf.setTextColor(...ENCRE.texte);
         }
         if (it.tableau) tableauPdf(pdf, it.tableau, o);
+        if (it.bonds) bondsPdf(pdf, it.bonds, o);
         if (it.rep) {
-            if (o.champs) champSaisie(pdf, it.rep, ++nChamp);
+            // SUR UN QCM, LA RÉPONSE EST LA CASE COCHÉE, pas une seconde
+            // saisie. Rémy : « pour les QCM, il faut que le champ remplissable
+            // soit une checkbox ». Vu sur le PDF du 12 octobre : les quatre
+            // cases étaient bien là, ET une ligne de saisie les suivait —
+            // l'élève qui remplit à l'écran avait deux endroits où répondre,
+            // et deux réponses possibles qui se contredisent. La ligne
+            // pointillée, elle, reste dessinée : sur du papier, on écrit
+            // encore à la main à côté des cases.
+            if (o.champs && !it.choix) champSaisie(pdf, it.rep, ++nChamp);
             else {
                 for (let i = 0; i < (it.rep.lignes || 1); i++) {
                     pointilles(pdf, it.rep.x, it.rep.y + i * (it.rep.pas || 0), it.rep.w);

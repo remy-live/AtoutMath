@@ -16,6 +16,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     VIDE, clefH, clefV, genererSlitherlink, cotesTraces, verifier, prochainPas, tailleDe
 } from '../core/slitherlink.js';
@@ -394,42 +395,49 @@ class Slitherlink extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.puzzle) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Le but tient en une phrase : UNE seule boucle fermée, qui ne se croise jamais '
-            + 'et ne se touche jamais. Les chiffres disent combien de côtés de leur case '
-            + 'la boucle emprunte.', this.plateauEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
+        cur.say('UNE seule boucle fermée, qui ne se croise jamais et ne se touche jamais.', this.plateauEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('On ne devine jamais. On barre d\'une croix tout côté dont on est SÛR que la '
-            + 'boucle ne passe pas : une croix vaut autant qu\'un trait.', this.plateauEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        // LE BUT, PUIS CE QUE DISENT LES CHIFFRES : deux idées, deux bulles. Au-delà de
+        // 110 caractères la bulle se lit si lentement qu'on croit la démonstration
+        // plantée (js/core/activities/choice.js, COURT) ; les chiffres sont une
+        // information dont l'élève a besoin, on ne les coupe pas.
+        cur.say('Les chiffres disent combien de côtés de leur case la boucle emprunte.', this.plateauEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
+
+        if (!await robot.tour()) return fin();
+        // « une croix vaut autant qu'un trait » était la leçon, pas le geste : coupée.
+        cur.say('Je barre d\'une croix tout côté dont je suis SÛR que la boucle ne passe pas.',
+            this.plateauEl);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Six pas réels, chacun avec sa raison : c'est le raisonnement de
         // l'élève, pas une solution qui tombe du ciel.
         for (let k = 0; k < 6; k++) {
             const pas = prochainPas(this.puzzle, this.h, this.v);
             if (!pas) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const premier = pas.aretes[0];
             const el = this.svgEl.querySelector(`[data-seg="${premier.type}${premier.i}"] .sl-clic`);
             cur.say(pas.raison, el || this.plateauEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             pas.aretes.forEach(a => {
                 (a.type === 'h' ? this.h : this.v)[a.i] = pas.action === 'trait' ? 1 : 2;
                 this.majSegment(a.type, a.i);
             });
             this.rafraichir();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Et quand on cale, le bouton « Aide-moi » ne donne pas la réponse : il donne '
             + 'LA raison du pas suivant.', this.container.querySelector('[data-aide]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 
