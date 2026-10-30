@@ -6588,3 +6588,27 @@ une par bloc** — 29 octobre 2026
   réécrire qui fait mentir l'épreuve. Quelque chose comme
   `feuilleDEssai(generateurOuId, reglages, combien)` dans `tools/`, utilisable
   depuis une épreuve comme depuis un script de mesure.
+
+---
+
+**Une sonde qui ne regarde que l'état d'arrivée ne voit pas ce qui se passe
+pendant le geste** — 30 octobre 2026
+
+- *Ce que je voulais faire* : garder le glisser-déposer des Pentaminos.
+- *Ce qui a coûté* : un défaut bien visible, livré, et trouvé par Rémy. Pendant
+  qu'on promène une pièce, DOUZE cases sur vingt restaient marquées en rouge
+  derrière elle — une traînée. La sonde posait pourtant huit questions sur ce
+  jeu, et les épreuves 5604. Aucune ne l'a vu, parce que toutes mesuraient
+  APRÈS le lâcher, et qu'au lâcher le plateau se repeint : la trace disparaît
+  à l'instant même où on la cherche.
+- *Combien de fois* : |
+- *Ce qui manque* : une sonde s'arrête maintenant EN COURS DE GLISSER pour
+  compter ce qui est marqué (`tools/pentaminosAuDoigt.mjs`), et le défaut
+  remis fait bien rougir la mesure — 14 cases au lieu de 5. Mais c'est à
+  refaire à la main pour chaque jeu qui se joue au doigt, et il y en a neuf.
+  Ce qui manquerait vraiment : de quoi dire à `sonde.mjs` « pendant ce
+  glisser, relève ceci à chaque étape » — quelque chose comme
+  `s.glisser(de, vers, { releve: () => …, etapes: 6 })` qui rende la suite des
+  relevés. La règle est la même que pour la caméra et le QR code :
+  **pour mesurer ce qui ne dure que le temps d'un geste, il faut mesurer
+  pendant le geste.**

@@ -87,11 +87,9 @@ export function mount(container, session) {
                 <div class="pn-aire">${largeur} × ${hauteur} = ${largeur * hauteur} cases,
                     donc ${item.meta.combien} pièces</div>
                 <div class="pn-bac" data-bac></div>
+                <div class="pn-rappel" data-rappel>Touche une pièce : ses deux
+                    commandes apparaissent dessus.</div>
                 <div class="pn-outils">
-                    <button type="button" class="pn-outil" data-outil="tourner">
-                        <span aria-hidden="true">↻</span>Tourner</button>
-                    <button type="button" class="pn-outil" data-outil="retourner">
-                        <span aria-hidden="true">⇄</span>Retourner</button>
                     <button type="button" class="pn-outil" data-outil="aide">
                         <span aria-hidden="true">💡</span>Aide</button>
                     <button type="button" class="pn-outil" data-outil="vider">
@@ -127,11 +125,29 @@ export function mount(container, session) {
             return `<span class="pn-case ${bords}" data-cx="${x}" data-cy="${y}"
                 style="left:calc(${x} * var(--pn-u));top:calc(${y} * var(--pn-u))"></span>`;
         }).join('');
+        // LES DEUX COMMANDES SONT SUR LA PIÈCE, pas dans une barre au bas de
+        // l'écran. Rémy, 30 octobre : « il faut les icones sur les figures ».
+        // Une barre éloignée oblige à quitter la pièce des yeux, à viser un
+        // bouton, puis à revenir : trois gestes pour en faire un.
+        //
+        // ELLES SE POSENT À DROITE DE LA PIÈCE, en colonne, et JAMAIS dessus :
+        // un bouton posé au milieu d'un pentamino tombe sur une case creuse
+        // dès que la pièce est un L ou un U, et l'on ne sait plus ce qu'on
+        // touche. Rien ne rogne ce qui dépasse du plateau — vérifié dans le
+        // CSS avant de les y mettre.
+        const cmds = (choisie === id && !fini && !session.locked)
+            ? `<span class="pn-cmds">
+                <button type="button" class="pn-cmd btn-carre" data-cmd="tourner"
+                    title="Tourner" aria-label="tourner la pièce ${id}">↻</button>
+                <button type="button" class="pn-cmd btn-carre" data-cmd="retourner"
+                    title="Retourner" aria-label="retourner la pièce ${id}">⇄</button>
+               </span>`
+            : '';
         return `<div class="pn-piece${choisie === id ? ' pn-piece--choisie' : ''}"
             data-piece="${id}" data-ou="${ou}" role="button" tabindex="0"
             aria-label="pièce ${id}"
             style="--pn-c:${TEINTES[id]};width:calc(${w} * var(--pn-u));
-                   height:calc(${h} * var(--pn-u))">${cases}</div>`;
+                   height:calc(${h} * var(--pn-u))">${cases}${cmds}</div>`;
     }
 
     function peindre() {
@@ -168,10 +184,12 @@ export function mount(container, session) {
             st.textContent = `${combien} cases sur ${largeur * hauteur} couvertes.`;
         }
         container.querySelectorAll('[data-outil]').forEach(b => {
-            const quoi = b.dataset.outil;
-            b.disabled = fini || session.locked
-                || ((quoi === 'tourner' || quoi === 'retourner') && !choisie);
+            b.disabled = fini || session.locked;
         });
+        // Sans pièce choisie, aucune commande n'est à l'écran : on dit où les
+        // trouver plutôt que de laisser l'élève chercher un bouton absent.
+        const rappel = container.querySelector('[data-rappel]');
+        if (rappel) rappel.hidden = !!choisie || fini || session.locked;
     }
 
     // ────────────────────────────────────────────────────────── le geste ────
@@ -190,13 +208,26 @@ export function mount(container, session) {
 
         racine.addEventListener('pointerdown', (e) => {
             if (fini || destroyed || session.locked) return;
+            // LES COMMANDES SONT DANS LA PIÈCE, donc le doigt qui les touche
+            // touche aussi la pièce. Sans cette ligne, appuyer sur « tourner »
+            // arme un glisser, et la pièce part avec le doigt.
+            if (e.target.closest && e.target.closest('[data-cmd]')) return;
             const el = e.target.closest ? e.target.closest('[data-piece]') : null;
             if (!el || !racine.contains(el)) return;
             const sous = e.target.closest ? e.target.closest('[data-cx]') : null;
+            // OÙ L'ON A PRIS LA PIÈCE, en pixels dans sa propre boîte. C'est ce
+            // qui l'empêche de SAUTER : le fantôme était centré sous le doigt,
+            // si bien que prendre le bout d'un I la décalait de deux cases, et
+            // le dessin ne montrait plus où elle allait tomber — la visée
+            // bleue, elle, tenait déjà compte de la case saisie. Les deux se
+            // contredisaient. Rémy : « j'aimerai que la pièce bouge librement
+            // sur l'espace ».
+            const r = el.getBoundingClientRect();
             prise = {
                 id: el.dataset.piece, ou: el.dataset.ou,
                 ax: sous ? Number(sous.dataset.cx) : 0,
                 ay: sous ? Number(sous.dataset.cy) : 0,
+                dx: e.clientX - r.left, dy: e.clientY - r.top,
                 el
             };
             depart = { x: e.clientX, y: e.clientY };
@@ -227,7 +258,7 @@ export function mount(container, session) {
             const p = prise, glisse = aGlisse;
             prise = null; depart = null; aGlisse = false;
             cacherFantome();
-            container.querySelectorAll('.pn-visee').forEach(x => x.classList.remove('pn-visee'));
+            effacerLaVisee();
             if (!glisse) { toucher(p); return; }
             try { racine.releasePointerCapture(e.pointerId); } catch (err) { /* souris */ }
             deposer(p, e.clientX, e.clientY);
@@ -264,9 +295,29 @@ export function mount(container, session) {
         verifier();
     }
 
+    /**
+     * ON EFFACE LES DEUX MARQUES, PAS UNE SEULE.
+     *
+     * C'ÉTAIT LA TRACE. Rémy, 30 octobre : « il laisse des traces sur le
+     * plateau ». On n'enlevait que `pn-visee` ; or `pn-visee--non` est stylée
+     * TOUTE SEULE dans le CSS — fond rose, bord rouge — et n'a donc pas besoin
+     * de sa sœur pour se voir. Chaque position refusée laissait sa marque, et
+     * elles s'accumulaient : mesuré, DOUZE cases sur vingt restaient rouges
+     * derrière la pièce qu'on promenait, photo à l'appui.
+     *
+     * Ni la sonde ni les épreuves ne l'avaient vu, parce qu'au lâcher le
+     * plateau se repeint et que tout disparaît : elles ne regardaient que
+     * l'état d'arrivée. Une marque qui ne vit que pendant le geste ne se
+     * mesure QUE pendant le geste.
+     */
+    function effacerLaVisee() {
+        container.querySelectorAll('.pn-visee, .pn-visee--non').forEach(x =>
+            x.classList.remove('pn-visee', 'pn-visee--non'));
+    }
+
     /** Pendant qu'on tient une pièce, on montre où elle tomberait. */
     function viser(cx, cy) {
-        container.querySelectorAll('.pn-visee').forEach(x => x.classList.remove('pn-visee'));
+        effacerLaVisee();
         const cible = caseSous(cx, cy);
         if (!cible || !prise) return;
         const x = cible.x - prise.ax, y = cible.y - prise.ay;
@@ -274,12 +325,14 @@ export function mount(container, session) {
             .filter(id => id !== prise.id).map(posePiece).filter(Boolean));
         const tient = poseTient(formeDe(prise.id), x, y,
             item.meta.largeur, item.meta.hauteur, autres);
+        // UNE SEULE CLASSE POSÉE DIRECTEMENT, bleue ou rouge. L'écriture d'avant
+        // ajoutait `pn-visee` dans les deux branches d'un ternaire — donc
+        // toujours la même — puis repassait pour ajouter le rouge par-dessus.
+        // Deux passes pour une décision, et c'est la seconde qui a fait les
+        // traces : le nettoyage, lui, n'en connaissait qu'une.
         for (const [a, b] of posees(formeDe(prise.id), x, y)) {
             const el = container.querySelector(`[data-gx="${a}"][data-gy="${b}"]`);
-            if (el) el.classList.add(tient ? 'pn-visee' : 'pn-visee');
-        }
-        if (!tient) {
-            container.querySelectorAll('.pn-visee').forEach(x => x.classList.add('pn-visee--non'));
+            if (el) el.classList.add(tient ? 'pn-visee' : 'pn-visee--non');
         }
     }
 
@@ -289,13 +342,29 @@ export function mount(container, session) {
         fantome.classList.add('pn-fantome');
         fantome.classList.remove('pn-piece--choisie');
         fantome.removeAttribute('data-piece');
+        // Le clone emporterait les deux commandes avec lui : deux boutons qui
+        // volent sous le doigt, qu'on ne peut pas toucher et qui cachent la
+        // pièce qu'on est en train de placer.
+        fantome.querySelectorAll('[data-cmd]').forEach(b => b.remove());
         const r = el.getBoundingClientRect();
         fantome.style.width = `${r.width}px`;
         fantome.style.height = `${r.height}px`;
         document.body.appendChild(fantome);
     }
+    /**
+     * LE FANTÔME SUIT LE DOIGT DEPUIS L'ENDROIT OÙ ON A PRIS LA PIÈCE.
+     *
+     * Il se posait centré sous le doigt — `translate(-50%, -50%)` dans le CSS
+     * —, si bien qu'un I pris par le bout faisait un bond de deux cases à
+     * l'instant où il se soulevait. Pire : la visée bleue, elle, tenait déjà
+     * compte de la case saisie, donc le dessin et la case visée se
+     * contredisaient. On retire le décalage du CSS et on le fait ici, avec
+     * l'écart mesuré au `pointerdown`.
+     */
     function poserFantome(x, y) {
-        if (fantome) { fantome.style.left = `${x}px`; fantome.style.top = `${y}px`; }
+        if (!fantome || !prise) return;
+        fantome.style.left = `${x - prise.dx}px`;
+        fantome.style.top = `${y - prise.dy}px`;
     }
     function cacherFantome() {
         if (fantome) { fantome.remove(); fantome = null; }
@@ -316,10 +385,21 @@ export function mount(container, session) {
                     choisie = null; peindre(); return;
                 }
                 if (quoi === 'aide') { aider(); return; }
-                if (!choisie) return;
-                tournerLaChoisie(quoi === 'retourner');
             };
         });
+
+        // LES DEUX COMMANDES DE LA PIÈCE SE BRANCHENT PAR DÉLÉGATION, sur la
+        // racine qui survit : elles sont redessinées à chaque `peindre()`, donc
+        // un écouteur posé sur le bouton lui-même mourrait au premier geste.
+        // C'est la règle que ce dépôt a payée cinq fois pour le glisser.
+        const racine = container.querySelector('.pn-layout');
+        if (racine) {
+            racine.addEventListener('click', (e) => {
+                const b = e.target.closest ? e.target.closest('[data-cmd]') : null;
+                if (!b || fini || session.locked || !choisie) return;
+                tournerLaChoisie(b.dataset.cmd === 'retourner');
+            });
+        }
     }
 
     /**

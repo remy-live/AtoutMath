@@ -16012,6 +16012,41 @@ body.en-boite > #app-container { background: none; }
    `pointermove`, et le glisser meurt au premier pixel. Payé trois fois. */
 .pn-piece { position: relative; cursor: grab; touch-action: none; }
 .pn-piece--choisie { outline: 3px solid #ea580c; outline-offset: 2px; border-radius: 4px; }
+
+/* LES DEUX COMMANDES SONT SUR LA PIÈCE. Rémy, 30 octobre : « il faut les
+   icones sur les figures ». Elles se posent À DROITE, en colonne, et jamais
+   par-dessus : un bouton au milieu d'un pentamino tombe sur une case creuse
+   dès que la pièce est un L ou un U.
+
+   RIEN NE LES ROGNE : ni `.pn-plateau` ni `.pn-pieces` ne posent
+   `overflow: hidden`, donc une pièce collée au bord droit montre quand même
+   ses commandes, débordant sur la marge. Vérifié dans le CSS avant de les y
+   mettre, et mesuré ensuite au doigt sur 390 px. */
+.pn-cmds {
+    position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 4px;
+    margin-left: 6px; z-index: 6;
+}
+.pn-cmd {
+    width: 38px; height: 38px; display: grid; place-items: center;
+    font-size: 1.15rem; line-height: 1; cursor: pointer;
+    color: #fff; background: #ea580c; border: 2px solid #fff;
+    border-radius: 999px; box-shadow: 0 3px 8px -2px rgb(15 23 42 / .55);
+    /* `touch-action` REMIS À PLAT : la pièce porte `none` pour que le doigt ne
+       fasse pas défiler la page, et les boutons en héritent — un appui y
+       devenait alors difficile à distinguer d'un glisser. */
+    touch-action: manipulation;
+}
+/* LE SURVOL SOUS `@media (hover: hover)` : sur une tablette, un `:hover` nu
+   reste COLLÉ après le doigt, et le bouton garde sa couleur d'appui tant
+   qu'on ne touche pas ailleurs. Une épreuve du dépôt monte la garde. */
+@media (hover: hover) { .pn-cmd:hover { background: #c2410c; } }
+.pn-cmd:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+
+.pn-rappel {
+    font-size: .78rem; font-weight: 700; color: var(--text-muted);
+    text-align: center; max-width: 42ch;
+}
 .pn-piece:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
 
 /* LE BISEAU SUIT LA SILHOUETTE DE LA PIÈCE, et les quatre bords se cumulent
@@ -16030,8 +16065,14 @@ body.en-boite > #app-container { background: none; }
 .pn-case.pn-g { --sh-g: inset 3px 0 0 rgb(255 255 255 / .28); }
 .pn-case.pn-d { --sh-d: inset -3px 0 0 rgb(0 0 0 / .14); }
 
+/* LE BAC LAISSE LA PLACE DES COMMANDES ENTRE DEUX PIÈCES. Mesuré sur la
+   capture : posées à droite de la pièce choisie avec un écart de 10 px, les
+   deux pastilles tombaient SUR la pièce voisine, qui avait l'air abîmée. On
+   écarte donc les colonnes de la largeur d'une pastille, en permanence —
+   n'écarter qu'au moment du choix ferait sauter le bac sous le doigt à
+   l'instant précis où l'élève touche une pièce. */
 .pn-bac {
-    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    display: flex; flex-wrap: wrap; gap: 10px 48px; justify-content: center;
     align-items: flex-start; width: 100%; max-width: 560px;
     min-height: calc(2 * var(--pn-u) + 20px); padding: 10px;
     border: 1.5px dashed var(--border); border-radius: 14px; background: var(--bg-hover);
@@ -16058,9 +16099,14 @@ body.en-boite > #app-container { background: none; }
 /* LE FANTÔME suit le doigt. Il est TRANSPARENT AUX ÉVÉNEMENTS, sinon
    `elementFromPoint` le trouverait lui — il est sous le doigt par
    construction — et l'on ne viserait jamais une case. */
+/* LE FANTÔME NE SE RECENTRE PLUS SOUS LE DOIGT. `translate(-50%, -50%)`
+   faisait bondir de deux cases un I pris par le bout, et contredisait la visée
+   bleue qui, elle, tenait compte de la case saisie. Le décalage se calcule
+   maintenant en JavaScript, avec l'écart mesuré au `pointerdown`.
+   Rémy : « j'aimerai que la pièce bouge librement sur l'espace ». */
 .pn-fantome {
     position: fixed; z-index: 2000001; pointer-events: none;
-    transform: translate(-50%, -50%) rotate(-3deg);
+    transform: rotate(-3deg);
     filter: drop-shadow(0 8px 14px rgb(15 23 42 / .5));
 }
 

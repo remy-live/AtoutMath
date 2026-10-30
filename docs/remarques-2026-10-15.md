@@ -4502,3 +4502,35 @@ feuilles de 4 blocs    deux fois la même énigme   les mêmes bidons   la même
    avant                      82 %                     fréquent          67 %
    après                       0 %                        0 %            10 %
 ```
+
+## 49. Les Pentaminos — trois remarques — 30 octobre
+
+> « pour les pentaminos, il faut les icones sur les figures et il laisse des
+> traces sur le plateau, j'aimerai que la pièce bouge librement sur
+> l'espace. suis je clair ? »
+
+Trois choses, dans l'ordre où il les dit :
+
+1. **« les icones sur les figures »** — à éclaircir. Les commandes de
+   rotation et de retournement sont aujourd'hui dans une barre à part ;
+   il les veut vraisemblablement SUR la pièce elle-même.
+2. **« il laisse des traces sur le plateau »** — un défaut d'affichage : la
+   pièce déposée, prise, ou traînée laisse quelque chose derrière elle.
+   À mesurer, pas à supposer.
+3. **« la pièce bouge librement sur l'espace »** — elle doit suivre le
+   doigt partout, et non sauter de case en case.
+
+**Arbitrage, 30 octobre.** « Les icônes sur les figures » = **les commandes
+sur la pièce** : tourner et retourner collés à la pièce choisie, au lieu de
+la barre en bas. « Bouge librement » = **elle ne doit pas sauter** — elle
+suit le doigt depuis l'endroit exact où on l'a prise, et continue de se
+poser sur les cases au lâcher, le puzzle ayant besoin de la grille.
+
+**Les traces, mesurées et photographiées** (`tools/tmp/pn-traces.png`) :
+pendant qu'on promène une pièce, **douze des vingt cases** du plateau
+restaient roses à bord rouge derrière elle. La cause tient en une ligne :
+`viser()` enlevait la classe `pn-visee` à chaque mouvement, mais jamais
+`pn-visee--non`, qui est stylée toute seule dans le CSS. Chaque position
+refusée laissait donc sa marque, et elles s'accumulaient. Au lâcher, le
+plateau se repeint et tout disparaît — c'est pourquoi ni la sonde ni les
+épreuves ne l'avaient vu : **elles ne regardaient que l'état d'arrivée**.
