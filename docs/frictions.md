@@ -6620,3 +6620,20 @@ fois le temps mesuré. On ne perd rien — le défaut surveillé coûtait 141 26
 pour UNE grille, soit deux ordres de grandeur au-dessus du nouveau plafond. La
 règle est écrite en tête de `BUDGETS` dans `tests/sixJeux.test.mjs` : une garde
 de durée mesure la machine autant que le code, et se pose en conséquence.
+
+---
+
+**Un verdict de sonde qui compte sans nommer** — 2 novembre 2026
+
+- *Ce que je voulais faire* : lire le résultat de `tools/pentaminosAuDoigt.mjs`.
+- *Ce qui a coûté* : « 1 chose(s) à regarder » sous quinze lignes toutes
+  vertes. La sonde SAVAIT laquelle — elle range les ratés dans un tableau —
+  mais ne l'imprimait pas. Trois relances pour trouver que c'était un contrôle
+  instable, qui poussait toujours la pièce vers le bas et criait au défaut
+  quand le hasard l'avait posée en bas de la table.
+- *Combien de fois* : |
+- *Ce qui manque* : la ligne existe maintenant dans cette sonde-là
+  (`ratés : …`), mais les neuf sondes `*AuDoigt.mjs` ont toutes le même
+  épilogue recopié. Il mériterait de vivre dans `sonde.mjs` — quelque chose
+  comme `s.verdict(dits, ratés)` — pour que la règle « on nomme ce qu'on
+  compte » n'ait pas à être réécrite neuf fois.

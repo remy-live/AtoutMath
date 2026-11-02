@@ -44,7 +44,7 @@ const TAILLES = [
 
 const etat = (s) => s.page.evaluate(() => ({
     cases: document.querySelectorAll('.pn-vide').length,
-    auBac: document.querySelectorAll('.pn-bac .pn-piece').length,
+    surLaTable: document.querySelectorAll('.pn-libre .pn-piece').length,
     posees: document.querySelectorAll('.pn-pose .pn-piece').length,
     couvertes: document.querySelectorAll('.pn-pose .pn-case').length,
     choisies: document.querySelectorAll('.pn-piece--choisie').length,
@@ -78,9 +78,9 @@ async function glisser(s, de, vers) {
     await s.page.waitForTimeout(160);
 }
 
-/** La boîte d'une pièce du bac, pour voir si « Tourner » la change. */
+/** La boîte d'une pièce libre, pour voir si « Tourner » la change. */
 const boiteDuBac = (s, i = 0) => s.page.evaluate((k) => {
-    const el = document.querySelectorAll('.pn-bac .pn-piece')[k];
+    const el = document.querySelectorAll('.pn-libre .pn-piece')[k];
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return { l: Math.round(r.width), h: Math.round(r.height) };
@@ -110,13 +110,13 @@ async function unePasse(taille) {
         const raté = await s.ouvrirExercice('logi-pentaminos', { niveau: '1' }, { questions: 3 });
         if (raté) throw new Error(`ouverture : ${raté}`);
         await s.doitExister('.pn-plateau', 'le rectangle à remplir');
-        await s.doitExister('.pn-bac .pn-piece', 'les pièces du bac');
+        await s.doitExister('.pn-libre .pn-piece', 'les pièces posées sur la table');
         await s.page.waitForTimeout(300);
 
         const a = await etat(s);
-        dits.push(`${a.cases} cases, ${a.auBac} pièces au bac, ${a.couvertes} cases couvertes`);
+        dits.push(`${a.cases} cases, ${a.surLaTable} pièces sur la table, ${a.couvertes} cases couvertes`);
         if (a.cases !== 20) { ratés.push('cases'); dits.push(`${a.cases} CASES AU LIEU DE 20`); }
-        if (a.auBac !== 4) { ratés.push('bac'); dits.push(`${a.auBac} PIÈCES AU LIEU DE 4`); }
+        if (a.surLaTable !== 4) { ratés.push('bac'); dits.push(`${a.surLaTable} PIÈCES AU LIEU DE 4`); }
 
         const img = await s.photo('.pn-plateau', `tools/tmp/pn-plateau-${taille.nom}.png`, 0);
         dits.push(img && !img.unie ? `le plateau est dessiné (${img.teintes} teintes)`
@@ -137,15 +137,28 @@ async function unePasse(taille) {
             ? 'sans pièce choisie, aucune commande à l\'écran'
             : `${a.cmds} COMMANDE(S) FLOTTENT SANS PIÈCE CHOISIE`);
 
-        // ── ON GLISSE UNE PIÈCE DU BAC VERS LE COIN DU RECTANGLE ────────────
-        const uneCase = await centre(s, '.pn-bac .pn-piece .pn-case');
-        const coin = await centre(s, '.pn-vide');
+        // ── ON GLISSE UNE PIÈCE DE LA TABLE JUSQUE DANS LE CADRE ────────────
+        //
+        // ON VISE COMME UNE MAIN : la case qu'on a SAISIE va sur la case qu'on
+        // REGARDE. Viser le coin du cadre avec une pièce prise par son milieu
+        // la ferait déborder à gauche — refusée, à juste titre, et la sonde
+        // aurait alors crié « le glisser ne pose rien » sur un logiciel
+        // correct. En posant la case saisie sur la case de même rang, le coin
+        // de la pièce tombe en (0, 0) quelle que soit sa forme.
+        const saisie = await s.page.evaluate(() => {
+            const c = document.querySelector('.pn-libre .pn-piece .pn-case');
+            return c ? { cx: c.dataset.cx, cy: c.dataset.cy } : null;
+        });
+        if (!saisie) throw new Error('aucune case de pièce à saisir');
+        const uneCase = await centre(s, '.pn-libre .pn-piece .pn-case');
+        const coin = await centre(s, `[data-gx="${saisie.cx}"][data-gy="${saisie.cy}"]`);
+        if (!coin) throw new Error(`pas de case de grille en ${saisie.cx},${saisie.cy}`);
         await glisser(s, uneCase, coin);
         const pose = await etat(s);
-        dits.push((pose.posees === 1 && pose.auBac === 3)
-            ? 'glisser une pièce du bac la pose sur le rectangle'
-            : `LE GLISSER NE POSE RIEN (${pose.posees} posée(s), ${pose.auBac} au bac)`);
-        if (pose.posees !== 1 || pose.auBac !== 3) ratés.push('glisser');
+        dits.push((pose.posees === 1 && pose.surLaTable === 3)
+            ? 'glisser une pièce sur le cadre l\'y aimante'
+            : `LE GLISSER NE POSE RIEN (${pose.posees} posée(s), ${pose.surLaTable} sur la table)`);
+        if (pose.posees !== 1 || pose.surLaTable !== 3) ratés.push('glisser');
         dits.push(pose.fantomes === 0 ? 'et le fantôme est bien rangé'
             : `${pose.fantomes} FANTÔME(S) OUBLIÉ(S) À L'ÉCRAN`);
         if (pose.fantomes) ratés.push('fantôme');
@@ -172,10 +185,20 @@ async function unePasse(taille) {
         await s.page.mouse.down(); await s.page.mouse.up();
         await s.page.waitForTimeout(160);
         const repris = await etat(s);
-        dits.push((repris.posees === 0 && repris.auBac === 4)
-            ? 'toucher une pièce posée la renvoie au bac — le toucher marche toujours'
-            : `LE TOUCHER NE REPREND PAS (${repris.posees} posée(s))`);
-        if (repris.posees !== 0) ratés.push('toucher');
+        // LE TOUCHER CHOISIT, IL NE DÉPLACE PLUS.
+        //
+        // Il renvoyait la pièce au bac, ce qui avait un sens tant qu'il y avait
+        // un bac. Sur un plan de travail, toucher une pièce pour voir ses deux
+        // commandes la faisait sauter à l'autre bout de l'écran. Ce qu'on
+        // mesure reste le même : que le simple toucher MARCHE ENCORE après
+        // qu'on a branché le glisser — c'est exactement ce qui est tombé le
+        // 27 octobre sur les allumettes.
+        const choisie = repris.choisies === 1 && repris.posees === 1;
+        dits.push(choisie
+            ? 'toucher une pièce posée la choisit, et la laisse où elle est'
+            : `LE TOUCHER NE CHOISIT PAS (${repris.choisies} choisie(s), `
+                + `${repris.posees} posée(s))`);
+        if (!choisie) ratés.push('toucher');
 
         // ── « TOURNER » CHANGE LA FORME ─────────────────────────────────────
         //
@@ -184,7 +207,7 @@ async function unePasse(taille) {
         // rougir la sonde une fois sur douze, pour un logiciel correct.
         let tourne = false, essais = 0, surLaPiece = 0;
         for (let i = 0; i < 4 && !tourne; i++) {
-            const c = await centre(s, '.pn-bac .pn-piece', i);
+            const c = await centre(s, '.pn-libre .pn-piece', i);
             if (!c) break;
             await s.page.mouse.move(c.x, c.y);
             await s.page.mouse.down(); await s.page.mouse.up();
@@ -216,7 +239,7 @@ async function unePasse(taille) {
         // On promène une pièce sur tout le plateau SANS LÂCHER, et l'on compte
         // ce qui reste marqué derrière elle. C'est la mesure qui manquait.
         const dep = await s.page.evaluate(() => {
-            const el = document.querySelector('.pn-bac .pn-piece');
+            const el = document.querySelector('.pn-libre .pn-piece');
             const r = el.getBoundingClientRect();
             return { x: r.left + 6, y: r.top + 6, l: r.width, h: r.height };
         });
@@ -256,6 +279,91 @@ async function unePasse(taille) {
             : `${pire} CASES MARQUÉES À LA FOIS — LA PIÈCE LAISSE UNE TRAÎNÉE`);
         if (pire > 5) ratés.push('traces');
 
+        // ── UNE PIÈCE LÂCHÉE À CÔTÉ RESTE À CÔTÉ ────────────────────────────
+        //
+        // C'EST TOUTE LA DEMANDE DU 30 OCTOBRE : « des pièces libres qui
+        // peuvent aller n'importe tout ». Avant, une pièce lâchée hors du cadre
+        // retournait au bac — on ne pouvait rien mettre de côté, rien essayer.
+        // CE QU'ON MESURE EST « ELLE RESTE », pas « elle arrive au pixel visé » :
+        // la table borne les pièces sur ses bords, donc une pièce poussée vers
+        // l'extérieur s'arrête avant le point demandé — et c'est voulu. La
+        // question est : a-t-elle bougé, et est-elle restée libre là où on l'a
+        // lâchée, au lieu de retourner d'où elle venait ?
+        // ON POUSSE VERS LE CÔTÉ OPPOSÉ DE LA TABLE, jamais toujours vers le
+        // bas : une pièce déjà basse est bornée par la table, elle ne bouge
+        // presque pas, et la sonde criait au défaut une fois sur deux — sur un
+        // logiciel correct. Une mesure qui dépend de l'endroit où le hasard a
+        // posé la pièce ne mesure pas le logiciel.
+        const avantPos = await s.page.evaluate(() => {
+            const el = document.querySelector('.pn-libre .pn-piece');
+            const rp = document.querySelector('[data-plan]').getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            const versLaDroite = (r.left + r.width / 2) < (rp.left + rp.width / 2);
+            const versLeBas = (r.top + r.height / 2) < (rp.top + rp.height / 2);
+            return {
+                x: r.left, y: r.top,
+                dx: versLaDroite ? 70 : -70,
+                dy: versLeBas ? 70 : -70
+            };
+        });
+        await glisser(s, { x: avantPos.x + 8, y: avantPos.y + 8 },
+            { x: avantPos.x + 8 + avantPos.dx, y: avantPos.y + 8 + avantPos.dy });
+        const bouge = await s.page.evaluate(([x, y]) => {
+            const el = document.querySelector('.pn-libre .pn-piece');
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { d: Math.round(Math.hypot(r.left - x, r.top - y)),
+                libre: !!el.closest('.pn-libre') };
+        }, [avantPos.x, avantPos.y]);
+        const reste = bouge && bouge.libre && bouge.d > 40;
+        // (Le seuil est bien en dessous des ~99 px du déplacement demandé : ce
+        //  qu'on mesure est qu'elle RESTE où on l'a mise, pas qu'elle y arrive
+        //  au pixel — l'aimant ou le bord de la table ont le droit de la
+        //  rattraper de quelques pixels.)
+        dits.push(reste
+            ? `lâchée à côté du cadre, elle y reste (déplacée de ${bouge.d} px)`
+            : `UNE PIÈCE LÂCHÉE À CÔTÉ NE RESTE PAS LÀ (${JSON.stringify(bouge)})`);
+        if (!reste) ratés.push('pièce libre');
+
+        // ── ET L'AIMANT LA RATTRAPE À MOITIÉ DEHORS ─────────────────────────
+        //
+        // « mais qui reste magnétique sur la grille à remplir ». On vise
+        // VOLONTAIREMENT à côté — un tiers de case trop haut et trop à gauche —
+        // et la pièce doit entrer quand même. Sans aimant, il faudrait viser au
+        // pixel, ce qui est impossible au doigt.
+        // ── UNE OBSERVATION, ET NON UNE GARDE ───────────────────────────────
+        //
+        // On reprend la pièce déjà dans le cadre et on la relâche à un tiers de
+        // case de sa place : elle y revient. C'est agréable à lire, et cela NE
+        // COMPTE PAS dans le verdict — parce que je n'ai pas réussi à le faire
+        // rougir. L'ancien ciblage lisait la case SOUS LE DOIGT : un tiers de
+        // case d'écart laisse le doigt dans la même case, donc l'ancien code
+        // posait la pièce tout pareil. La tolérance n'a pas changé ; ce qui a
+        // changé, c'est que la pièce peut être prise N'IMPORTE OÙ, y compris
+        // par un creux de sa boîte — et cela, c'est la mesure du saut qui le
+        // garde, quelques lignes plus haut.
+        //
+        // Une ligne verte qui ne peut pas rougir donne une assurance qui
+        // n'existe pas : on la laisse DIRE, on ne la laisse pas JUGER.
+        const aimant = await s.page.evaluate(() => {
+            const c = document.querySelector('.pn-pose .pn-case');
+            const u = document.querySelector('.pn-vide').getBoundingClientRect().width;
+            if (!c) return null;
+            const rc = c.getBoundingClientRect();
+            const x = rc.left + rc.width / 2, y = rc.top + rc.height / 2;
+            return { de: { x, y }, vers: { x: x - u / 3, y: y - u / 3 }, u: Math.round(u) };
+        });
+        if (aimant) {
+            const avant = (await etat(s)).couvertes;
+            await glisser(s, aimant.de, aimant.vers);
+            const apres = await etat(s);
+            const revenue = apres.couvertes === avant;
+            dits.push(revenue
+                ? `(observé) relâchée à un tiers de case, elle s'aimante quand même`
+                : `(observé) la visée approximative ne porte plus `
+                    + `(${avant} → ${apres.couvertes} cases couvertes)`);
+        }
+
         // ── ET « AIDE » POSE UNE PIÈCE ──────────────────────────────────────
         await s.page.evaluate(() => document.querySelector('[data-outil="aide"]').click());
 
@@ -283,6 +391,10 @@ let fautes = 0;
 for (const { t, r } of sorties) {
     console.log(`── ${t.nom} (${t.largeur} × ${t.hauteur}) ──`);
     r.dits.forEach(x => console.log(`   ${x}`));
+    // UN VERDICT QUI COMPTE SANS NOMMER NE SERT À RIEN : « 1 chose à regarder »
+    // sous quinze lignes toutes positives fait chercher pendant dix minutes ce
+    // que la sonde savait déjà.
+    if (r.ratés.length) console.log(`   ratés : ${r.ratés.join(', ')}`);
     console.log(`   erreurs de page : ${r.erreurs.length}, fenêtres natives : ${r.fenetres.length}`);
     r.erreurs.forEach(e => console.log(`     ! ${e}`));
     fautes += r.erreurs.length + r.fenetres.length + r.ratés.length;

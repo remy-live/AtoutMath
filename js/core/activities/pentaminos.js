@@ -23,9 +23,37 @@
 //
 // ── CE QU'UNE PIÈCE POSÉE DOIT GARDER ──────────────────────────────────────
 //
-// Son ORIENTATION. Une pièce qu'on reprend du plateau et qu'on remet dans le
-// bac doit y revenir tournée comme elle était : sinon l'élève, qui l'avait
-// mise d'équerre, recommence son travail à chaque essai.
+// Son ORIENTATION. Une pièce qu'on reprend du plateau et qu'on repose à côté
+// doit rester tournée comme elle était : sinon l'élève, qui l'avait mise
+// d'équerre, recommence son travail à chaque essai.
+//
+// ── UN PLAN DE TRAVAIL, PAS UN BAC ET UN PLATEAU ──────────────────────────
+//
+// RÉMY, 30 octobre : « en fait je voyais vraiment des pièces libres qui
+// peuvent aller n'importe tout mais qui reste magnétique sur la grille à
+// remplir ».
+//
+// Il n'y a donc plus deux endroits — un bac en bas, un plateau en haut — mais
+// UNE TABLE avec un cadre dessus. Une pièce y vit où on la laisse : à côté du
+// cadre, dessous, en attente. Et dès qu'on l'amène sur la grille, elle
+// S'AIMANTE : on arrondit sa position au quart de case près, et si la pose
+// tient, elle claque dans les cases.
+//
+// L'AIMANT DISPENSE DE VISER. On lisait la case sous le DOIGT ; on lit
+// maintenant le coin haut-gauche de la PIÈCE, arrondi à la case la plus
+// proche. Une pièce à moitié hors du cadre entre donc toute seule, et il n'y a
+// plus de différence entre « poser » et « poser juste ».
+//
+// ET LE RECTANGLE SE VÉRIFIE EXACTEMENT PAREIL. J'avais mis Rémy en garde —
+// « le rectangle ne peut alors plus se vérifier tout seul » —, et c'était faux :
+// une pièce aimantée est posée sur des cases comme avant, une pièce laissée
+// dehors n'est simplement pas comptée. La mise en garde a coûté un aller-retour.
+
+/** La colonne des deux commandes, à droite d'une pièce, en cases. */
+const PLACE_CMD = 1.4;
+
+/** La marge que les pièces gardent avec le bord de la table, en cases. */
+const BORD = 0.3;
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
@@ -50,10 +78,18 @@ export function mount(container, session) {
         render(session.next());
     }
 
-    /** Toutes les pièces reviennent au bac, dans leur orientation d'origine. */
+    /**
+     * TOUTES LES PIÈCES REVIENNENT SUR LA TABLE, dans leur orientation d'origine.
+     *
+     * `x, y` sont les cases de la GRILLE quand la pièce y est aimantée ;
+     * `px, py` sa place LIBRE sur le plan, en cases elle aussi — et non en
+     * pixels, pour qu'un changement de largeur d'écran ne déplace rien : la
+     * case est l'unité du jeu, le pixel n'est que son rendu du moment.
+     */
     function remettre() {
         etats = new Map(item.meta.pieces.map(id => [id, {
-            vues: orientations(FORMES[id]), vue: 0, x: null, y: null
+            vues: orientations(FORMES[id]), vue: 0,
+            x: null, y: null, px: 0, py: 0, departX: 0, departY: 0
         }]));
         choisie = null;
         fini = false;
@@ -69,6 +105,159 @@ export function mount(container, session) {
     };
     const toutesLesPoses = () => item.meta.pieces.map(posePiece).filter(Boolean);
 
+    /**
+     * LES REPÈRES DU PLAN, MESURÉS SUR L'ÉCRAN.
+     *
+     * Tout le placement en dépend, et l'on ne REFAIT PAS le calcul de mise en
+     * page : la grille est centrée par le CSS, et redire ici où le CSS la met
+     * ferait deux vérités pour une seule position — celle qui se décale le jour
+     * où l'on touche à une marge.
+     *
+     * Rend tout en CASES : où commence la grille dans le plan, et la taille du
+     * plan. Null tant que rien n'est dessiné.
+     */
+    function reperes() {
+        const plan = container.querySelector('[data-plan]');
+        const grille = container.querySelector('[data-grille]');
+        const uneCase = container.querySelector('.pn-vide');
+        if (!plan || !grille || !uneCase) return null;
+        const u = uneCase.getBoundingClientRect().width;
+        if (!u) return null;
+        const rp = plan.getBoundingClientRect();
+        const rg = grille.getBoundingClientRect();
+        return {
+            u, gauche: rp.left, haut: rp.top,
+            gx: (rg.left - rp.left) / u, gy: (rg.top - rp.top) / u,
+            large: rp.width / u, haute: rp.height / u
+        };
+    }
+
+    /** La largeur et la hauteur d'une pièce, en cases, dans son orientation. */
+    function taille(id) {
+        const f = formeDe(id);
+        return {
+            l: Math.max(...f.map(c => c[0])) + 1,
+            h: Math.max(...f.map(c => c[1])) + 1
+        };
+    }
+
+    /**
+     * UNE PIÈCE LIBRE RESTE SUR LA TABLE.
+     *
+     * On réserve la colonne des commandes à droite : sans elle, une pièce
+     * choisie contre le bord droit pousserait ses deux pastilles hors du plan,
+     * et la page prendrait une barre de défilement horizontale — ce que la
+     * sonde mesure, et ce que personne ne veut sur une tablette.
+     */
+    function caler(e, id, r) {
+        const t = taille(id);
+        e.px = Math.max(BORD, Math.min(e.px, r.large - t.l - PLACE_CMD - BORD));
+        e.py = Math.max(BORD, Math.min(e.py, r.haute - t.h - BORD));
+    }
+
+    /**
+     * OÙ LES PIÈCES ATTENDENT AU DÉBUT : sous le cadre, de gauche à droite,
+     * en revenant à la ligne. C'est le seul endroit où l'on range à la place de
+     * l'élève — après, c'est lui qui décide.
+     *
+     * On en profite pour donner au plan la hauteur de ce qu'il contient : un
+     * plan trop court couperait la dernière rangée, un plan trop haut mettrait
+     * les boutons hors de l'écran.
+     */
+    function placerAuDepart() {
+        let r = reperes();
+        if (!r) return;
+        // ── ON RANGE D'ABORD À CÔTÉ DU CADRE, ENSUITE DESSOUS ──────────────
+        //
+        // Tout mettre en dessous faisait une table de seize cases de haut pour
+        // une grille de cinq, et il fallait alors rapetisser les cases jusqu'à
+        // 20 px pour que l'écran d'un téléphone l'accepte. Les deux bandes qui
+        // longent le cadre étaient vides pendant ce temps-là.
+        //
+        // Trois zones, dans cet ordre : à droite du cadre, à gauche, puis la
+        // pleine largeur en dessous pour ce qui n'entre nulle part. Chacune
+        // range de gauche à droite et revient à la ligne quand elle est pleine.
+        const ranger = (r) => {
+            const L = item.meta.largeur, H = item.meta.hauteur;
+            const basDuCadre = r.gy + H;
+            const zones = [
+                { x0: r.gx + L + 0.5, x1: r.large - BORD, y0: r.gy, yMax: basDuCadre },
+                { x0: BORD, x1: Math.max(BORD, r.gx - 0.5), y0: r.gy, yMax: basDuCadre },
+                { x0: BORD, x1: r.large - BORD, y0: basDuCadre + 0.8, yMax: Infinity }
+            ].map(z => ({ ...z, x: z.x0, y: z.y0, ligne: 0 }));
+            let bas = basDuCadre;
+            for (const id of item.meta.pieces) {
+                const t = taille(id);
+                const besoin = t.l + PLACE_CMD;
+                const e = etats.get(id);
+                for (const z of zones) {
+                    if (besoin > z.x1 - z.x0) continue;
+                    if (z.x > z.x0 && z.x + besoin > z.x1) {
+                        z.x = z.x0; z.y += z.ligne + 0.5; z.ligne = 0;
+                    }
+                    if (z.y + t.h > z.yMax) continue;
+                    e.px = z.x; e.py = z.y;
+                    e.departX = z.x; e.departY = z.y;
+                    z.x += besoin + 0.4;
+                    z.ligne = Math.max(z.ligne, t.h);
+                    bas = Math.max(bas, z.y + t.h);
+                    break;
+                }
+            }
+            return Math.ceil(bas + 0.6);
+        };
+        let ph = ranger(r);
+
+        // ── LA TABLE DOIT TENIR DANS L'ÉCRAN ───────────────────────────────
+        //
+        // MESURÉ sur un téléphone de 390 × 844 : au niveau 3 — six pièces, une
+        // grille de 5 × 6 — le plan faisait 852 px à lui seul. La page ne
+        // défilait pas pour autant : elle COUPAIT. Deux pièces se trouvaient
+        // donc hors d'atteinte, et rien ne le disait.
+        //
+        // ON CHERCHE LA PLUS GRANDE CASE QUI TIENNE, et c'est tout le sujet :
+        // rapetissir d'un coup au rapport qui manque donnait une table trop
+        // petite, parce que le rangement CHANGE avec la taille de la case. À
+        // 37 px, les bandes qui longent le cadre sont trop étroites pour une
+        // pièce et tout descend dessous ; à 23 px elles s'ouvrent, la table
+        // tient en deux fois moins de haut — et l'on aurait pu garder 30.
+        //
+        // ON SIMULE AU LIEU DE TÂTONNER À L'ÉCRAN. Les trois repères dont le
+        // rangement a besoin se calculent : la largeur du plan ne dépend pas de
+        // la case, le cadre est centré, et son décalage vertical est fixe en
+        // pixels. Vingt-huit essais ne coûtent donc rien, là où vingt-huit
+        // mesures auraient forcé autant de recalculs de mise en page.
+        const plan = container.querySelector('[data-plan]');
+        const layout = container.querySelector('.pn-layout');
+        if (plan && layout) {
+            const rl = layout.getBoundingClientRect();
+            const rp = plan.getBoundingClientRect();
+            const dispo = window.innerHeight - rp.top - (rl.bottom - rp.bottom) - 8;
+            const L = item.meta.largeur;
+            const W = r.large * r.u;        // la table, en pixels : fixe
+            const dyCadre = r.gy * r.u;     // le cadre commence là : fixe aussi
+            if (dispo > 0 && ph * r.u > dispo) {
+                let choisi = null;
+                for (let u = Math.floor(r.u) - 1; u >= 20 && !choisi; u--) {
+                    const rr = { ...r, u, large: W / u, gx: (W / u - L) / 2, gy: dyCadre / u };
+                    const essai = ranger(rr);
+                    if (essai * u <= dispo) choisi = { u, rr, ph: essai };
+                }
+                if (!choisi) {
+                    const u = 20;
+                    const rr = { ...r, u, large: W / u, gx: (W / u - L) / 2, gy: dyCadre / u };
+                    choisi = { u, rr, ph: ranger(rr) };
+                }
+                layout.style.setProperty('--pn-u', `${choisi.u}px`);
+                // Et l'on range une dernière fois sur les repères VRAIS : la
+                // simulation sert à choisir, pas à placer.
+                const neuf = reperes();
+                ph = neuf ? ranger(neuf) : choisi.ph;
+            }
+            plan.style.setProperty('--pn-ph', String(ph));
+        }
+    }
+
     function render(prochain) {
         item = prochain;
         prise = null; depart = null; aGlisse = false;
@@ -79,16 +268,25 @@ export function mount(container, session) {
         container.innerHTML = `
             <div class="pn-layout">
                 <div class="pn-context">${item.prompt.html}</div>
-                <div class="pn-plateau" data-plateau
-                     style="--pn-l:${largeur};--pn-h:${hauteur}">
-                    <div class="pn-grille" data-grille></div>
-                    <div class="pn-pieces" data-posees></div>
+                <div class="pn-plan" data-plan>
+                    <div class="pn-plateau" data-plateau
+                         style="--pn-l:${largeur};--pn-h:${hauteur}">
+                        <div class="pn-grille" data-grille></div>
+                    </div>
+                    <!-- TOUTES LES PIÈCES VIVENT DANS LA MÊME COUCHE, aimantées
+                         ou libres : deux couches, c'était deux endroits où
+                         une pièce pouvait être, et le glisser devait savoir
+                         de laquelle il la sortait. -->
+                    <div class="pn-pieces" data-pieces></div>
                 </div>
+                <!-- UNE SEULE LIGNE POUR LES DEUX RENSEIGNEMENTS. Elles en
+                     faisaient deux, et sur un téléphone chaque ligne est prise
+                     à la table : mesuré, le plan n'avait que 336 px de haut au
+                     niveau 3, et il fallait rapetisser les cases jusqu'au
+                     plancher pour y tenir. -->
                 <div class="pn-aire">${largeur} × ${hauteur} = ${largeur * hauteur} cases,
-                    donc ${item.meta.combien} pièces</div>
-                <div class="pn-bac" data-bac></div>
-                <div class="pn-rappel" data-rappel>Touche une pièce : ses deux
-                    commandes apparaissent dessus.</div>
+                    donc ${item.meta.combien} pièces<span class="pn-rappel"
+                    data-rappel> · touche une pièce pour la tourner</span></div>
                 <div class="pn-outils">
                     <button type="button" class="pn-outil" data-outil="aide">
                         <span aria-hidden="true">💡</span>Aide</button>
@@ -103,6 +301,10 @@ export function mount(container, session) {
         wireHint(container, session);
         brancherOutils();
         brancherGeste();
+        // DANS CET ORDRE : la grille doit exister pour qu'on puisse la MESURER,
+        // et c'est sa position mesurée qui dit où les pièces attendent.
+        peindre();
+        placerAuDepart();
         peindre();
     }
 
@@ -160,22 +362,21 @@ export function mount(container, session) {
                     Math.floor(k / largeur)}"></span>`).join('');
         }
 
-        const zone = container.querySelector('[data-posees]');
-        if (zone) {
-            zone.innerHTML = item.meta.pieces.filter(id => etats.get(id).x !== null)
-                .map(id => {
-                    const e = etats.get(id);
-                    return `<div class="pn-pose" style="left:calc(${e.x} * var(--pn-u));
-                        top:calc(${e.y} * var(--pn-u))">${pieceHtml(id, 'plateau')}</div>`;
-                }).join('');
-        }
-
-        const bac = container.querySelector('[data-bac]');
-        if (bac) {
-            const dehors = item.meta.pieces.filter(id => etats.get(id).x === null);
-            bac.innerHTML = dehors.length
-                ? dehors.map(id => pieceHtml(id, 'bac')).join('')
-                : '<span class="pn-bacVide">le bac est vide</span>';
+        // UNE SEULE BOUCLE POUR TOUTES LES PIÈCES, aimantées ou non : la seule
+        // différence est l'origine du calcul — le coin de la grille pour une
+        // pièce posée, le coin du plan pour une pièce libre.
+        const zone = container.querySelector('[data-pieces]');
+        const r = reperes();
+        if (zone && r) {
+            zone.innerHTML = item.meta.pieces.map(id => {
+                const e = etats.get(id);
+                const posee = e.x !== null;
+                const x = posee ? r.gx + e.x : e.px;
+                const y = posee ? r.gy + e.y : e.py;
+                return `<div class="${posee ? 'pn-pose' : 'pn-libre'}"
+                    style="left:calc(${x} * var(--pn-u));top:calc(${y} * var(--pn-u))"
+                    >${pieceHtml(id, posee ? 'plateau' : 'plan')}</div>`;
+            }).join('');
         }
 
         const combien = couvertes(toutesLesPoses()).size;
@@ -194,12 +395,33 @@ export function mount(container, session) {
 
     // ────────────────────────────────────────────────────────── le geste ────
 
-    /** La case de grille sous ce point, ou null. */
-    function caseSous(x, y) {
-        const el = document.elementFromPoint(x, y);
-        const c = el && el.closest ? el.closest('[data-gx]') : null;
-        return (c && container.contains(c))
-            ? { x: Number(c.dataset.gx), y: Number(c.dataset.gy) } : null;
+    /**
+     * OÙ LA PIÈCE TOMBERAIT SI ON LÂCHAIT MAINTENANT — l'aimant.
+     *
+     * ON NE LIT PLUS LA CASE SOUS LE DOIGT. C'était `elementFromPoint`, et cela
+     * voulait dire : pour poser, il faut viser une case avec le point précis
+     * par lequel on a pris la pièce. Un pentamino en L pris par son angle
+     * creux ne pouvait tout simplement pas se poser — le doigt était sur du
+     * vide.
+     *
+     * On lit maintenant le COIN HAUT-GAUCHE de la pièce, qu'on ramène à la case
+     * la plus proche. Une pièce à moitié hors du cadre entre donc toute seule :
+     * c'est l'aimant que Rémy décrit, et c'est aussi ce qui rend le geste
+     * possible à une main sur une tablette.
+     *
+     * Rend des cases de GRILLE, qui peuvent être négatives ou hors du cadre —
+     * `poseTient` tranche ensuite.
+     */
+    function caseAimantee(p, cx, cy, r) {
+        // ON REÇOIT LA PRISE, ON NE LA CHERCHE PAS. `lacher` met `prise` à null
+        // AVANT d'appeler `deposer` — pour qu'un second `pointerup` ne repose
+        // pas la même pièce —, si bien qu'une fonction qui lisait la variable
+        // rendait null au seul moment qui compte : le lâcher. Mesuré : plus
+        // aucune pièce ne se posait, nulle part, sans une erreur de page.
+        if (!p || !r) return null;
+        const px = (cx - p.dx - r.gauche) / r.u;
+        const py = (cy - p.dy - r.haut) / r.u;
+        return { x: Math.round(px - r.gx), y: Math.round(py - r.gy), px, py };
     }
 
     function brancherGeste() {
@@ -269,27 +491,42 @@ export function mount(container, session) {
         });
     }
 
-    /** Un simple toucher : on choisit la pièce ; posée, elle revient au bac. */
+    /**
+     * UN SIMPLE TOUCHER CHOISIT LA PIÈCE, et ne fait rien d'autre.
+     *
+     * Il la RENVOYAIT AU BAC quand elle était posée — ce qui avait un sens tant
+     * qu'il y avait un bac, et plus aucun maintenant : toucher une pièce pour
+     * voir ses commandes la faisait sauter à l'autre bout de l'écran. Sur un
+     * plan de travail, on prend une pièce en la glissant, pas en la touchant.
+     */
     function toucher(p) {
         choisie = p.id;
-        if (p.ou === 'plateau') {
-            const e = etats.get(p.id);
-            e.x = null; e.y = null;
-        }
         peindre();
     }
 
+    /**
+     * LÂCHER : la pièce s'aimante si elle tient, et reste où elle est sinon.
+     *
+     * C'EST TOUTE LA DEMANDE DE RÉMY. Avant, une pièce lâchée hors du cadre
+     * retournait au bac : on ne pouvait rien poser à côté, rien mettre de côté,
+     * rien essayer. Maintenant elle reste sous la main, et le cadre l'attire
+     * dès qu'elle l'atteint.
+     */
     function deposer(p, cx, cy) {
-        const cible = caseSous(cx, cy);
         const e = etats.get(p.id);
         choisie = p.id;
-        if (cible) {
-            const x = cible.x - p.ax, y = cible.y - p.ay;
-            const autres = couvertes(item.meta.pieces
-                .filter(id => id !== p.id).map(posePiece).filter(Boolean));
-            if (poseTient(formeDe(p.id), x, y, item.meta.largeur, item.meta.hauteur, autres)) {
-                e.x = x; e.y = y;
-            }
+        const r = reperes();
+        const ou = caseAimantee(p, cx, cy, r);
+        if (!r || !ou) { peindre(); return; }
+        const autres = couvertes(item.meta.pieces
+            .filter(id => id !== p.id).map(posePiece).filter(Boolean));
+        if (poseTient(formeDe(p.id), ou.x, ou.y,
+            item.meta.largeur, item.meta.hauteur, autres)) {
+            e.x = ou.x; e.y = ou.y;
+        } else {
+            e.x = null; e.y = null;
+            e.px = ou.px; e.py = ou.py;
+            caler(e, p.id, r);
         }
         peindre();
         verifier();
@@ -318,9 +555,10 @@ export function mount(container, session) {
     /** Pendant qu'on tient une pièce, on montre où elle tomberait. */
     function viser(cx, cy) {
         effacerLaVisee();
-        const cible = caseSous(cx, cy);
-        if (!cible || !prise) return;
-        const x = cible.x - prise.ax, y = cible.y - prise.ay;
+        const r = reperes();
+        const ou = caseAimantee(prise, cx, cy, r);
+        if (!ou || !prise) return;
+        const x = ou.x, y = ou.y;
         const autres = couvertes(item.meta.pieces
             .filter(id => id !== prise.id).map(posePiece).filter(Boolean));
         const tient = poseTient(formeDe(prise.id), x, y,
@@ -379,8 +617,14 @@ export function mount(container, session) {
                 if (fini || session.locked) return;
                 const quoi = b.dataset.outil;
                 if (quoi === 'vider') {
+                    // ELLES REVIENNENT À LEUR PLACE DE DÉPART, et non à zéro :
+                    // sur un plan de travail, « tout sortir » doit rendre la
+                    // table telle qu'on l'a trouvée, pas empiler quatre pièces
+                    // dans un coin.
                     for (const id of item.meta.pieces) {
-                        const e = etats.get(id); e.x = null; e.y = null;
+                        const e = etats.get(id);
+                        e.x = null; e.y = null;
+                        e.px = e.departX; e.py = e.departY;
                     }
                     choisie = null; peindre(); return;
                 }
@@ -403,12 +647,21 @@ export function mount(container, session) {
     }
 
     /**
-     * TOURNER OU RETOURNER LA PIÈCE CHOISIE.
+     * TOURNER OU RETOURNER LA PIÈCE CHOISIE — elle, et elle seule.
      *
-     * Une pièce POSÉE tourne sur place si elle le peut, et sinon ne tourne pas
-     * — on ne la renvoie pas au bac en douce. Le X ne tourne jamais, le I n'a
-     * que deux orientations : « Tourner » sans effet n'est pas une panne, c'est
-     * la SYMÉTRIE de la pièce, et c'est une chose à voir.
+     * RÉMY, 30 octobre : « quand on clique sur un bouton ca ne tourne inverse
+     * que la pièce qu'on manipule ». C'est le cas depuis que les deux commandes
+     * sont portées par la pièce choisie, et une épreuve le garde.
+     *
+     * UNE PIÈCE POSÉE QUI NE TIENT PLUS TOURNÉE SORT DU CADRE au lieu de
+     * refuser de tourner. Le refus était cohérent avec un bac — on ne la
+     * renvoyait pas en douce —, il ne l'est plus avec un plan de travail : le
+     * bouton doit TOUJOURS agir, et la pièce reste là où elle était, à la main
+     * de l'élève, simplement détachée de la grille.
+     *
+     * Le X ne tourne jamais, le I n'a que deux orientations : « Tourner » sans
+     * effet n'est pas une panne, c'est la SYMÉTRIE de la pièce, et c'est une
+     * chose à voir.
      */
     function tournerLaChoisie(miroir) {
         const e = etats.get(choisie);
@@ -417,16 +670,23 @@ export function mount(container, session) {
         // puis les quatre du miroir. « Retourner » saute d'une moitié à l'autre.
         const n = e.vues.length;
         e.vue = miroir ? (e.vue + Math.max(1, Math.floor(n / 2))) % n : (e.vue + 1) % n;
+        const r = reperes();
         if (e.x !== null) {
             const autres = couvertes(item.meta.pieces
                 .filter(id => id !== choisie).map(posePiece).filter(Boolean));
             if (!poseTient(formeDe(choisie), e.x, e.y,
                 item.meta.largeur, item.meta.hauteur, autres)) {
-                e.vue = avant;
-                dire('Elle ne tient pas tournée à cette place.');
+                if (r) { e.px = r.gx + e.x; e.py = r.gy + e.y; }
+                e.x = null; e.y = null;
+                if (r) caler(e, choisie, r);
+                dire('Tournée, elle ne tient plus là : elle est sortie du cadre.');
                 peindre();
                 return;
             }
+        } else if (r) {
+            // Tournée hors du cadre, elle peut déborder de la table : on la
+            // ramène dedans plutôt que de la laisser à moitié dehors.
+            caler(e, choisie, r);
         }
         peindre();
         verifier();
@@ -446,7 +706,7 @@ export function mount(container, session) {
      */
     function aider() {
         const dehors = item.meta.pieces.filter(id => etats.get(id).x === null);
-        if (!dehors.length) { dire('Tout est posé : regarde ce qui se chevauche.'); return; }
+        if (!dehors.length) { dire('Tout est dans le cadre : regarde ce qui se chevauche.'); return; }
         const sol = resoudre(item.meta.largeur, item.meta.hauteur,
             item.meta.pieces, item.meta.combien);
         if (!sol) { dire('Reprends depuis le début : ce début-là ne mène nulle part.'); return; }
@@ -454,7 +714,9 @@ export function mount(container, session) {
         // une pièce par-dessus un début contradictoire n'aide pas, elle ajoute
         // une contradiction.
         for (const id of item.meta.pieces) {
-            const e = etats.get(id); e.x = null; e.y = null;
+            const e = etats.get(id);
+            e.x = null; e.y = null;
+            e.px = e.departX; e.py = e.departY;
         }
         const premiere = sol[0];
         const e = etats.get(premiere.id);

@@ -15983,11 +15983,33 @@ body.en-boite > #app-container { background: none; }
    `box-sizing: border-box` partout, si bien que les trois pixels du cadre
    mangeaient la dernière colonne — le bord droit du rectangle passait SOUS les
    cases et disparaissait. Vu sur la capture, pas dans un compteur. */
+/* ── LE PLAN DE TRAVAIL ────────────────────────────────────────────────────
+
+   RÉMY, 30 octobre : « des pièces libres qui peuvent aller n'importe tout mais
+   qui reste magnétique sur la grille à remplir ». Il n'y a donc plus un bac
+   d'un côté et un plateau de l'autre, mais UNE TABLE avec un cadre dessus.
+
+   SA HAUTEUR VIENT DE CE QU'IL CONTIENT (`--pn-ph`, posée en JavaScript après
+   le rangement d'ouverture) : une hauteur écrite en dur couperait la dernière
+   rangée sur un 5 × 6, ou pousserait les boutons hors de l'écran sur un
+   4 × 5. */
+.pn-plan {
+    position: relative; width: 100%; max-width: 560px;
+    height: calc(var(--pn-ph, 12) * var(--pn-u));
+    border: 1.5px dashed var(--border); border-radius: 14px;
+    background: var(--bg-hover);
+}
+
+/* LE CADRE EST POSÉ SUR LA TABLE, centré : c'est le CSS qui décide où, et le
+   JavaScript le MESURE au lieu de refaire le calcul — deux vérités pour une
+   position, c'est celle qui se décale le jour où l'on touche à une marge. */
 .pn-plateau {
-    position: relative; box-sizing: content-box;
+    position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
+    box-sizing: content-box;
     width: calc(var(--pn-l) * var(--pn-u));
     height: calc(var(--pn-h) * var(--pn-u));
     border: 3px solid #16233a; border-radius: 6px;
+    background: var(--bg-panel);
     box-shadow: 0 8px 20px -14px rgb(15 23 42 / .7);
 }
 .pn-grille { position: absolute; inset: 0; display: grid;
@@ -16005,7 +16027,12 @@ body.en-boite > #app-container { background: none; }
    et aucune pièce ne se posait — sans erreur de page, sans rien qui bouge.
    Les pièces, elles, redeviennent touchables une par une. */
 .pn-pieces { position: absolute; inset: 0; pointer-events: none; }
-.pn-pose { position: absolute; pointer-events: auto; }
+/* AIMANTÉE OU LIBRE, une pièce se place pareil : seule l'origine du calcul
+   change, et elle est en JavaScript. Les deux classes ne servent qu'à savoir,
+   depuis une sonde ou une épreuve, ce qui est dans le cadre et ce qui attend
+   à côté. */
+.pn-pose, .pn-libre { position: absolute; pointer-events: auto; }
+.pn-libre { filter: drop-shadow(0 3px 5px rgb(15 23 42 / .22)); }
 
 /* `touch-action: none` EST OBLIGATOIRE : sans lui, le navigateur décide qu'un
    doigt parti d'une pièce veut faire défiler la page, il annule la suite des
@@ -16043,10 +16070,8 @@ body.en-boite > #app-container { background: none; }
 @media (hover: hover) { .pn-cmd:hover { background: #c2410c; } }
 .pn-cmd:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
 
-.pn-rappel {
-    font-size: .78rem; font-weight: 700; color: var(--text-muted);
-    text-align: center; max-width: 42ch;
-}
+/* Le rappel vit DANS la ligne de l'aire : voir le commentaire du gabarit. */
+.pn-rappel { font-weight: 700; color: var(--text-muted); }
 .pn-piece:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
 
 /* LE BISEAU SUIT LA SILHOUETTE DE LA PIÈCE, et les quatre bords se cumulent
@@ -16065,20 +16090,11 @@ body.en-boite > #app-container { background: none; }
 .pn-case.pn-g { --sh-g: inset 3px 0 0 rgb(255 255 255 / .28); }
 .pn-case.pn-d { --sh-d: inset -3px 0 0 rgb(0 0 0 / .14); }
 
-/* LE BAC LAISSE LA PLACE DES COMMANDES ENTRE DEUX PIÈCES. Mesuré sur la
-   capture : posées à droite de la pièce choisie avec un écart de 10 px, les
-   deux pastilles tombaient SUR la pièce voisine, qui avait l'air abîmée. On
-   écarte donc les colonnes de la largeur d'une pastille, en permanence —
-   n'écarter qu'au moment du choix ferait sauter le bac sous le doigt à
-   l'instant précis où l'élève touche une pièce. */
-.pn-bac {
-    display: flex; flex-wrap: wrap; gap: 10px 48px; justify-content: center;
-    align-items: flex-start; width: 100%; max-width: 560px;
-    min-height: calc(2 * var(--pn-u) + 20px); padding: 10px;
-    border: 1.5px dashed var(--border); border-radius: 14px; background: var(--bg-hover);
-}
-.pn-bacVide { font-size: .8rem; font-weight: 700; color: var(--text-muted);
-    align-self: center; }
+/* LE BAC A DISPARU AVEC LA REFONTE EN PLAN DE TRAVAIL. La place des deux
+   commandes, elle, reste réservée : `PLACE_CMD` dans l'activité range les
+   pièces en laissant 1,4 case à droite de chacune, et borne leur déplacement
+   de la même largeur. Mesuré avant : les deux pastilles tombaient SUR la pièce
+   voisine, qui avait l'air abîmée. */
 
 .pn-outils { display: flex; gap: 6px; width: 100%; max-width: 560px; }
 .pn-outil {
