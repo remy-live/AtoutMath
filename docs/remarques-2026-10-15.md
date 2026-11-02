@@ -4534,3 +4534,71 @@ restaient roses à bord rouge derrière elle. La cause tient en une ligne :
 refusée laissait donc sa marque, et elles s'accumulaient. Au lâcher, le
 plateau se repeint et tout disparaît — c'est pourquoi ni la sonde ni les
 épreuves ne l'avaient vu : **elles ne regardaient que l'état d'arrivée**.
+
+### Précision du 30 octobre : le plan de travail
+
+> « en fait je voyais vraiment des pièces libres qui peuvent aller n'importe
+> tout mais qui reste magnétique sur la grille à remplir et quand on clique
+> sur un bouton ca ne tourne inverse que la pièce qu'on manipule »
+
+J'AVAIS CHOISI LA MAUVAISE MOITIÉ. À la question « elle se pose où je
+veux ? », j'avais mis en garde — « le rectangle ne peut alors plus se
+vérifier tout seul » —, et c'était FAUX : une pièce aimantée est posée sur
+des cases comme avant, et une pièce laissée dehors n'est simplement pas
+comptée. Le rectangle se vérifie exactement pareil. La mise en garde a
+coûté un aller-retour.
+
+**Ce qu'il voit** : un plan de travail, la grille au milieu. Les pièces y
+vivent où on les laisse — à côté, en dessous, en attente — et **elles
+s'aimantent dès qu'elles arrivent sur la grille**. Il n'y a plus un bac
+d'un côté et un plateau de l'autre : il y a une table, et un cadre dessus.
+
+**Et le bouton n'agit que sur la pièce qu'on manipule** — c'est le cas
+depuis que les commandes sont portées par la pièce choisie. On le garde, et
+on le mesure.
+
+## 50. L'énigme des cavaliers — 31 octobre
+
+> « j'aimeri bien aussi cette enigme » *(avec la photo d'un livre d'énigmes :
+> seize petits échiquiers 3 × 3, cavaliers rouges et bleus, et la légende
+> « Sixteen moves is the minimum. Note that the knights have to move around
+> in a cycle in the same direction. »)*
+
+C'est le **problème de Guarini**, posé en 1512 : quatre cavaliers aux quatre
+coins d'un damier 3 × 3, deux d'une couleur et deux de l'autre, et il faut
+les échanger. La case du milieu ne sert à rien — aucun saut de cavalier n'y
+mène ni n'en part.
+
+CE QU'IL Y A DERRIÈRE, et c'est pour cela que l'énigme vaut la peine : les
+huit cases du pourtour, reliées par les sauts du cavalier, forment **un seul
+cycle**. Les cavaliers y tournent comme des perles sur un collier et ne
+peuvent jamais se dépasser. Échanger les deux paires, c'est donc faire un
+quart de tour à tout le monde : quatre cavaliers × quatre pas = seize coups,
+et c'est le minimum. C'est un raisonnement de graphe, fait avec les mains.
+
+## 51. Deux défauts dans l'espace professeur — 31 octobre
+
+> « quand on met role de l'étape jeu de récompense et que je mets l'apercu
+> (en mode professeur), il me montre le monde avec tous les exercices et non
+> le jeu »
+
+> « Quand je change le nom d'une épreuve ca le duplique et surtout le nom de
+> la séance dans l'onglet la classe, le nom ne change pas tout de suite »
+
+Trois choses à mesurer, pas à supposer :
+1. l'aperçu d'une étape dont le rôle est « jeu de récompense » montre le
+   monde et non le jeu ;
+2. renommer une épreuve la **duplique** — c'est le plus grave des trois,
+   parce qu'il salit ses données ;
+3. et le nom de la séance ne se rafraîchit pas tout de suite dans l'onglet
+   « La classe ».
+
+**Vu en corrigeant, et laissé exprès.** L'aperçu d'une étape affiche en haut
+« Étape 1 sur 3 » alors qu'il montre la troisième. Ce n'est pas nouveau : le
+fil de séance compte les étapes FAITES (`filSeance.js`, « Étape faites + 1 »),
+ce qui est juste pour l'élève — il en est à sa première — et trompeur dans un
+aperçu, où rien n'est fait. Le défaut existait déjà pour toute étape regardée
+au-delà de la première ; il devient seulement VISIBLE maintenant que l'aperçu
+d'une récompense ouvre l'étape au lieu du monde. À trancher par Rémy : soit le
+fil dit le rang réel en aperçu, soit il se tait quand c'est le professeur qui
+regarde.

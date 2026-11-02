@@ -522,10 +522,23 @@ let veille = false;
 export function veillerSurLaBibliotheque() {
     if (veille || typeof document === 'undefined') return;
     veille = true;
-    document.addEventListener('teacherPaths_updated', () => {
+    document.addEventListener('teacherPaths_updated', (e) => {
         if (!enPosteDeProf()) return;
+        // UN RENOMMAGE SE PROPAGE AUX SÉANCES EN COURS, TOUT DE SUITE.
+        //
+        // RÉMY : « le nom de la séance dans l'onglet la classe, le nom ne
+        // change pas tout de suite ». La séance garde une COPIE du nom qu'avait
+        // le parcours le jour où elle a été donnée — c'était voulu, pour ne pas
+        // réécrire l'histoire d'une classe. On garde cette protection pour les
+        // séances CLOSES, et seulement pour elles : voir `suivreLeRenommage`.
+        const quoi = e && e.detail && e.detail.renomme;
+        if (quoi) faireSuivreLeNom(quoi);
+        // LE RENOMMAGE NE MÉRITE PAS DEUX SECONDES D'ATTENTE. Le délai existe
+        // pour les rafales — un curseur de réglage qui bouge envoie trente
+        // retouches —, pas pour un geste qu'on fait une fois et dont on attend
+        // l'effet des yeux.
         clearTimeout(minuteur);
-        minuteur = setTimeout(() => { monterLaBibliotheque(); }, 2000);
+        minuteur = setTimeout(() => { monterLaBibliotheque(); }, quoi ? 400 : 2000);
     });
     // LES DOSSIERS ONT LEUR PROPRE BATTEMENT, parce qu'ils ont leur propre
     // avis : renommer un dossier ne touche aucun parcours, et n'aurait donc
@@ -535,6 +548,23 @@ export function veillerSurLaBibliotheque() {
         clearTimeout(minuteurDossiers);
         minuteurDossiers = setTimeout(() => { monterLesDossiers(); }, 2000);
     });
+}
+
+/**
+ * LE NOM NEUF DESCEND JUSQU'AUX SÉANCES QUI LE PORTAIENT.
+ *
+ * On passe par les mêmes portes que le reste de l'application — `lireSeances`
+ * et `ecrireSeances` —, et la règle elle-même vit dans `core/seances.js`, avec
+ * la donnée qu'elle lit. Ici il n'y a que le branchement.
+ */
+async function faireSuivreLeNom({ ancienNom, nouveauNom }) {
+    try {
+        const { lireSeances, ecrireSeances } = await import('../ui/donnerSeance.js');
+        const { suivreLeRenommage } = await import('./seances.js');
+        const avant = (await lireSeances()) || [];
+        const apres = suivreLeRenommage(avant, ancienNom, nouveauNom);
+        if (apres !== avant) await ecrireSeances(apres);
+    } catch (err) { /* une séance non renommée ne casse rien */ }
 }
 
 /** À rappeler au démarrage : on remonte ce qui était resté à terre. */

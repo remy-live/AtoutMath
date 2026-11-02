@@ -11,6 +11,7 @@ import { initConsoleCapture, openConsoleModal } from './ui/consoleLog.js';
 initConsoleCapture();
 
 import { state } from './core/state.js';
+import { reposerUnParcoursSeme } from './core/parcoursSeme.js';
 import { SIGNES_FOIS } from './core/signeFois.js';
 import { jetonProf, verrouActif } from './core/verrouProf.js';
 import { copieDEssai } from './core/copieDEssai.js';
@@ -1926,7 +1927,7 @@ async function seedExamplePath() {
     // séances.
     if (!state.teacherPaths.length) {
         const path = await buildDiscoveryPath();
-        state.saveTeacherPath(path.name, path);
+        reposerUnParcoursSeme(state, { semence: 'decouverte', parcours: path });
     }
     // « TOUT SUR PAPIER », EN REVANCHE, SE POSE TOUJOURS.
     //
@@ -1945,22 +1946,34 @@ async function seedExamplePath() {
  */
 async function semerParcoursPapier() {
     const papier = await buildPrintablePath();
-    const ancien = state.teacherPaths.find(p => /^Tout sur papier/.test(p.name));
-    if (ancien) state.updateTeacherPath(ancien.id, papier.name, papier);
-    else state.saveTeacherPath(papier.name, papier);
+    // ON LA RETROUVE À SA MARQUE, PLUS À SON NOM. Elle se cherchait avec
+    // `/^Tout sur papier/` : renommée par le professeur, elle n'était plus
+    // reconnue, donc reposée — et sa bibliothèque gagnait un doublon à
+    // l'ouverture suivante. Voir `js/core/parcoursSeme.js`, qui porte la
+    // règle, l'adoption des bibliothèques d'avant, et la raison pour laquelle
+    // la marque vit dans le parcours et non dans l'enveloppe.
+    reposerUnParcoursSeme(state, {
+        semence: 'papier', parcours: papier, motifHistorique: /^Tout sur papier/
+    });
 }
 
 async function generateSampleData() {
-    if (!state.teacherPaths.some(p => p.name === 'Parcours découverte')) {
-        const path = await buildDiscoveryPath();
-        state.saveTeacherPath(path.name, path);
-    }
+    const path = await buildDiscoveryPath();
+    // `seulementSiAbsent` : le parcours d'exemple est à retoucher librement,
+    // contrairement à « Tout sur papier » qui suit le catalogue. On le pose
+    // s'il manque, on n'y touche plus ensuite — mais on le reconnaît quand
+    // même à sa marque, pour qu'un renommage ne le fasse pas revenir en
+    // double.
+    const seme = reposerUnParcoursSeme(state, {
+        semence: 'decouverte', parcours: path,
+        motifHistorique: /^Parcours découverte$/, seulementSiAbsent: true
+    });
 
     await semerParcoursPapier();
 
     // Assigné à l'élève : la carte des mondes de « Mon Parcours » se remplit
     // comme si un code avait été saisi.
-    const saved = state.teacherPaths.find(p => p.name === 'Parcours découverte');
+    const saved = state.teacherPaths.find(p => p.id === seme.id);
     if (saved && (!state.studentPath || !state.studentPath.steps || !state.studentPath.steps.length)) {
         state.setStudentPath(saved.data.steps, {
             pathId: saved.data.id, name: saved.name, policy: saved.data.policy

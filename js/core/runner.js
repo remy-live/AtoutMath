@@ -162,6 +162,12 @@ export class Runner {
         // rien ne change pour ce qui existait.
         this.sansTrace = !!cfg.sansTrace || this.essai;
         this.index = cfg.startIndex || 0;
+        // LE PROFESSEUR A DEMANDÉ CETTE ÉTAPE-LÀ. C'est une intention nommée,
+        // et non une position de départ : `startIndex` vaut zéro aussi bien
+        // pour « montre-moi la première étape » que pour « déroule le parcours
+        // depuis le début », et les deux n'attendent pas le même écran. Voir
+        // `avecCarte`.
+        this.apercuDUneEtape = !!cfg.apercuDUneEtape;
         // En mode apprentissage, chaque étape s'ouvre sur un écran leçon +
         // robot. `skipIntro` le saute UNE fois : posé quand on revient d'une
         // démonstration (l'élève vient de voir le robot, inutile de re-proposer).
@@ -891,6 +897,23 @@ export class Runner {
     get avecCarte() {
         // Un exercice seul n'est pas un chemin.
         if (this.steps.length <= 1) return false;
+        // L'APERÇU D'UNE ÉTAPE MONTRE CETTE ÉTAPE-LÀ, et rien d'autre.
+        //
+        // RÉMY, 31 octobre : « quand on met role de l'étape jeu de récompense
+        // et que je mets l'apercu (en mode professeur), il me montre le monde
+        // avec tous les exercices et non le jeu ».
+        //
+        // LA CAUSE EST JUSTE EN DESSOUS, et c'est un ordre de lecture : la
+        // règle « dès qu'une étape est facultative, carte obligatoire » passait
+        // AVANT celle qui reconnaît un essai de professeur. Un parcours
+        // contenant une récompense forçait donc la carte dans TOUS les cas,
+        // aperçu compris — et plus le professeur en posait, moins il pouvait
+        // les regarder.
+        //
+        // L'aperçu d'une étape est une demande explicite et nommée ; aucune
+        // règle de navigation n'a à la recouvrir. L'aperçu du parcours ENTIER,
+        // lui, garde la carte : c'est ce que l'élève verra.
+        if (this.apercuDUneEtape) return false;
         // DÈS QU'UNE ÉTAPE EST FACULTATIVE, LA CARTE N'EST PLUS UN CONFORT.
         //
         // Rémy : « il faut voir et forcer la carte quand on a des exercices non

@@ -1910,12 +1910,16 @@ function previewMode() {
     return cadreDApercu(state.previewDeviceMode, state.isMobileView);
 }
 
-async function runPath(path, deviceMode, startIndex = 0) {
+async function runPath(path, deviceMode, startIndex = 0, apercuDUneEtape = false) {
     const { Runner } = await import('../core/runner.js');
     new Runner({
         path,
         deviceMode,
         startIndex,
+        // VOIR CETTE ÉTAPE-LÀ, ou dérouler le parcours : deux intentions, et
+        // `startIndex` ne les distingue pas, puisqu'il vaut zéro dans les deux
+        // cas quand l'étape visée est la première.
+        apercuDUneEtape,
         // Le professeur teste son parcours : il doit pouvoir circuler entre les
         // activités sans avoir à les réussir une par une.
         allowStepNavigation: true
@@ -1925,9 +1929,16 @@ async function runPath(path, deviceMode, startIndex = 0) {
 // L'aperçu d'une étape ouvre le parcours complet positionné sur celle-ci,
 // plutôt qu'un parcours réduit : le professeur peut ainsi enchaîner sur les
 // activités voisines pour vérifier la progression.
+//
+// MAIS IL S'OUVRE SUR L'ÉTAPE, PAS SUR LA CARTE. Rémy : « quand on met role de
+// l'étape jeu de récompense et que je mets l'apercu (en mode professeur), il me
+// montre le monde avec tous les exercices et non le jeu ». Un parcours portant
+// une étape facultative ou une récompense force la carte — c'est juste pour
+// l'élève, qui n'aurait sinon aucun moyen d'en prendre une — et cela recouvrait
+// la demande explicite du professeur. Voir `avecCarte` dans core/runner.js.
 function testStep(index) {
     if (!state.currentPath.steps[index]) return;
-    runPath(state.currentPath, previewMode(), index);
+    runPath(state.currentPath, previewMode(), index, true);
 }
 
 function initToolbar() {

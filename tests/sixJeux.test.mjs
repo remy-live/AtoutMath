@@ -429,13 +429,30 @@ test('ET TOUTE RECHERCHE PAR RETOUR SUR SES PAS RESTE PLAFONNÉE', () => {
  * réglages. Les chiffres mesurés le 26 octobre sont en commentaire ; le seuil
  * leur laisse à peu près quatre fois leur temps.
  */
+// ── LES BUDGETS SONT LARGES EXPRÈS, ET C'EST LA SECONDE FOIS QU'ON LE DIT ──
+//
+// Cette garde a rougi deux fois sur un dépôt sain : 10 110 ms le 28 octobre,
+// 10 264 ms le 2 novembre, pour un plafond de 10 000. Les deux fois, relancée
+// seule : 2 300 ms. La machine n'était pas la même — `npm test` lance ses
+// fichiers en parallèle, et le temps d'une boucle de calcul y dépend de ce que
+// font les autres. Quatre minutes perdues chaque fois à vérifier que ce
+// n'était pas un vrai défaut.
+//
+// ON NE PERD RIEN EN ÉLARGISSANT. Le défaut que cette garde surveille n'est
+// pas un ralentissement de dix pour cent : c'est **141 268 ms pour UNE grille**
+// de Kakuro, et sept secondes par grille sur le Suguru. Un plafond à trois fois
+// le temps mesuré attrape encore ces défauts-là par deux ordres de grandeur, et
+// cesse de mesurer la charge de la machine au lieu du code.
+//
+// Une garde de DURÉE n'a pas la même nature qu'une garde de justesse : elle
+// mesure la machine autant que le code, et doit être posée en conséquence.
 const BUDGETS = {
-    'logi-kakuro': 10000,          //  2 319 ms mesurées
-    'logi-yohaku': 4000,           //    779 ms
-    'logi-suguru': 7000,           //  1 551 ms
-    'logi-gratte-ciel': 6000,      //  1 314 ms
-    'logi-chemin-nombres': 6000,   //  1 295 ms
-    'logi-allumettes': 2000        //      0 ms
+    'logi-kakuro': 30000,          //  2 319 ms mesurées
+    'logi-yohaku': 12000,          //    779 ms
+    'logi-suguru': 21000,          //  1 551 ms
+    'logi-gratte-ciel': 18000,     //  1 314 ms
+    'logi-chemin-nombres': 18000,  //  1 295 ms
+    'logi-allumettes': 6000        //      0 ms
 };
 
 test('ET AUCUNE GRILLE NE SE FAIT ATTENDRE', () => {

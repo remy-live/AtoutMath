@@ -614,3 +614,43 @@ export function direSeance(seance, maintenant = Date.now()) {
     }
     return 'En cours';
 }
+
+/**
+ * FAIRE SUIVRE UN RENOMMAGE DE PARCOURS AUX SÉANCES EN COURS.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 31 octobre : « le nom de la séance dans l'onglet la classe, le nom ne
+ * change pas tout de suite ».
+ *
+ * IL NE CHANGEAIT PAS DU TOUT, et c'était écrit exprès quelques lignes plus
+ * haut : « le nom du parcours au moment où on l'a donné : le renommer ensuite
+ * ne doit pas réécrire l'histoire de la classe ». La raison tient : un bilan
+ * de novembre qui s'intitulerait d'après un parcours remanié en mars ne dit
+ * plus de quoi il parle.
+ *
+ * MAIS CE N'EST VRAI QUE DU PASSÉ. La séance de cette semaine, celle qu'on est
+ * en train de préparer et qu'on renomme justement parce qu'on vient de se
+ * relire, n'est pas de l'histoire : c'est le travail en cours, et il doit
+ * porter le nom qu'on vient de lui donner.
+ *
+ * LA FRONTIÈRE EST DONC LA CLÔTURE, et non le renommage. Une séance close
+ * garde son nom pour toujours ; une séance ouverte ou à venir suit. Et l'on ne
+ * touche qu'aux séances dont le titre EST l'ancien nom du parcours : un titre
+ * écrit à la main — « Contrôle n° 3 » — appartient à celui qui l'a écrit.
+ *
+ * Fonction pure : elle rend une nouvelle liste, ou la même si rien ne bouge.
+ */
+export function suivreLeRenommage(seances, ancienNom, nouveauNom, maintenant = Date.now()) {
+    if (!Array.isArray(seances) || !ancienNom || !nouveauNom || ancienNom === nouveauNom) {
+        return seances;
+    }
+    let touchee = false;
+    const suite = seances.map((s) => {
+        if (etatSeance(s, maintenant) === ETATS.CLOSE) return s;
+        if (String(s && s.titre || '') !== String(ancienNom)) return s;
+        touchee = true;
+        return { ...s, titre: nouveauNom };
+    });
+    return touchee ? suite : seances;
+}

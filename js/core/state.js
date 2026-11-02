@@ -640,13 +640,19 @@ export const state = {
     updateTeacherPath(id, name, pathData) {
         const p = this.teacherPaths.find(x => x.id === id);
         if (!p) return;
+        // CE QU'IL S'APPELAIT AVANT, retenu avant de l'écraser : c'est la seule
+        // chose qui permette, plus loin, de reconnaître les séances qui
+        // portaient CE nom-là et de les faire suivre. Sans lui, on ne saurait
+        // renommer que ce qui s'appelle déjà comme la cible.
+        const ancienNom = p.name;
         if (name) p.name = name;
         if (pathData) p.data = pathData;
         if (name && p.data && typeof p.data === 'object' && !Array.isArray(p.data)) {
             p.data.name = name;
         }
         p.timestamp = Date.now();
-        this.saveTeacherPaths();
+        this.saveTeacherPaths(name && name !== ancienNom
+            ? { renomme: { id, ancienNom, nouveauNom: name } } : null);
     },
 
     moveTeacherPath(pathId, folderId) {
@@ -662,9 +668,18 @@ export const state = {
         this.saveTeacherPaths();
     },
 
-    saveTeacherPaths() {
+    /**
+     * @param {object|null} detail ce qui a changé, quand on le sait. Seul le
+     *   renommage le dit : c'est le seul changement qui doive se propager
+     *   ailleurs qu'à la bibliothèque — voir `suivreLeRenommage` dans
+     *   `core/seances.js`. Les autres retouches restent muettes, et leurs
+     *   lecteurs se contentent de redessiner.
+     */
+    saveTeacherPaths(detail = null) {
         if (profileStore) profileStore.set('teacherPaths', this.teacherPaths);
-        document.dispatchEvent(new CustomEvent('teacherPaths_updated'));
+        document.dispatchEvent(detail
+            ? new CustomEvent('teacherPaths_updated', { detail })
+            : new CustomEvent('teacherPaths_updated'));
     },
 
     addTeacherFolder(name) {

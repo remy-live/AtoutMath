@@ -6612,3 +6612,11 @@ pendant le geste** — 30 octobre 2026
   relevés. La règle est la même que pour la caméra et le QR code :
   **pour mesurer ce qui ne dure que le temps d'un geste, il faut mesurer
   pendant le geste.**
+
+**Suite, 2 novembre** — elle a rougi une seconde fois, sur un dépôt sain :
+10 264 ms pour un plafond de 10 000. Quatre minutes reperdues à vérifier que
+ce n'était pas un vrai défaut. **Réparé** : les six budgets passent à trois
+fois le temps mesuré. On ne perd rien — le défaut surveillé coûtait 141 268 ms
+pour UNE grille, soit deux ordres de grandeur au-dessus du nouveau plafond. La
+règle est écrite en tête de `BUDGETS` dans `tests/sixJeux.test.mjs` : une garde
+de durée mesure la machine autant que le code, et se pose en conséquence.
