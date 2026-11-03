@@ -316,14 +316,29 @@ export const relatifsProduitGenerator = {
         // « -12 » plus court que le « − » de l'énoncé n'est pas un détail de
         // typographie : c'est l'œil qui ne fait plus le lien.
         const etiquette = (v) => (typeof v === 'number' ? nb(v) : v);
-        const choices = finalizeChoices(rng, [
-            { value: q.reponse, label: etiquette(q.reponse), correct: true },
-            ...q.pieges.filter(p => p.value !== q.reponse)
-                .map(p => ({ ...p, label: etiquette(p.value) }))
-        ], surLeSigne
-            ? { count: 2 }
-            : { count: 4, filler: (r) => q.reponse + r.int(1, 9) * (r.bool() ? 1 : -1) })
-            .map(c => ({ ...c, label: etiquette(c.label) }));
+        // ── LES DEUX SIGNES NE SE MÉLANGENT PAS ────────────────────────────
+        //
+        // RÉMY, 3 novembre : « laisse le bouton négatif à gauche et le positif
+        // à droite ».
+        //
+        // C'EST L'ORDRE DE LA DROITE GRADUÉE, et c'est le seul qui n'apprenne
+        // rien de faux. `finalizeChoices` mélange — ce qui est juste pour des
+        // RÉSULTATS, où retenir une position serait tricher. Mais ici les deux
+        // propositions sont « négatif » et « positif » à toutes les questions :
+        // il n'y a rien à deviner par la position, et deux boutons qui changent
+        // de place à chaque question font chercher le bon au lieu de penser au
+        // signe. Pire, l'élève qui se construit une image mentale des négatifs
+        // à gauche la voit contredite une fois sur deux.
+        const choices = surLeSigne
+            ? ['négatif', 'positif'].map(v => ({
+                value: v, label: etiquette(v), correct: v === q.reponse
+            }))
+            : finalizeChoices(rng, [
+                { value: q.reponse, label: etiquette(q.reponse), correct: true },
+                ...q.pieges.filter(p => p.value !== q.reponse)
+                    .map(p => ({ ...p, label: etiquette(p.value) }))
+            ], { count: 4, filler: (r) => q.reponse + r.int(1, 9) * (r.bool() ? 1 : -1) })
+                .map(c => ({ ...c, label: etiquette(c.label) }));
 
         return makeItem({
             seed: rng.seed,

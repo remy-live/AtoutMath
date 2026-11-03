@@ -351,16 +351,43 @@ export function htmlDesBillets({ eleves, nom = '', origine = '' }) {
       .pr-code { font-family: ui-monospace, Menlo, Consolas, monospace;
                  font-weight: 800; font-size: 1.1em; letter-spacing: .1em;
                  flex: 0 0 auto; }
-      /* Les trois teintes. Le code prend l'encre foncée de son bloc : c'est
-         lui qu'on recopie, et c'est lui qu'on doit retrouver sans hésiter. */
-      .pr-bloc--1 .pr-ligne { background: #eaf1fd; }
-      .pr-bloc--1 .pr-ligne:nth-child(even) { background: #f6f9ff; }
+      /* ── RETROUVER SA LIGNE SUR UN ÉCRAN PROJETÉ ──────────────────────
+
+         RÉMY, 3 novembre : « pour l'écran ton idenfiant ton code, le contraste
+         une ligne sur deux n'est pas fort, que pourrait-on faire ? »
+
+         MESURÉ : le rapport de contraste entre une ligne et la suivante valait
+         1,07 — et 1,00, c'est deux couleurs identiques. Autant dire qu'il n'y
+         avait pas de zébrure du tout. Un vidéoprojecteur en salle éclairée
+         délave encore ce qui reste.
+
+         TROIS REPÈRES, ET IL LES A CHOISIS TOUS LES TROIS :
+
+           · la zébrure passe à 1,35 — calculé, pas choisi à l'œil : c'est la
+             teinte la PLUS CLAIRE qui atteigne ce rapport, pour que l'encre
+             foncée du code y reste lisible ;
+           · un trait fin entre chaque élève, parce qu'un trait se voit quel
+             que soit le projecteur, là où un fond pâle dépend de la lampe ;
+           · et un trait franc toutes les CINQ lignes. C'est celui qui compte
+             vraiment : un élève au fond de la classe qui cherche sa ligne dans
+             une liste de trente compte par paquets de cinq, jamais ligne à
+             ligne.
+
+         L'encre foncée du code ne bouge pas : c'est elle qu'on recopie, et on
+         doit la retrouver sans hésiter. */
+      .pr-ligne { border-bottom: 1px solid rgb(15 23 42 / .14); }
+      /* L'en-tête est le PREMIER enfant du bloc : les lignes sont donc les
+         enfants 2, 3, 4… et le repère des cinq tombe sur 5n + 1. */
+      .pr-ligne:nth-child(5n + 1) { border-bottom: 3px solid rgb(15 23 42 / .38); }
+      .pr-bloc section > .pr-ligne:last-child { border-bottom: none; }
+      .pr-bloc--1 .pr-ligne { background: #cddef9; }
+      .pr-bloc--1 .pr-ligne:nth-child(even) { background: #ffffff; }
       .pr-bloc--1 .pr-code { color: #15397c; }
-      .pr-bloc--2 .pr-ligne { background: #e6f5ea; }
-      .pr-bloc--2 .pr-ligne:nth-child(even) { background: #f4fbf6; }
+      .pr-bloc--2 .pr-ligne { background: #c0e7cc; }
+      .pr-bloc--2 .pr-ligne:nth-child(even) { background: #ffffff; }
       .pr-bloc--2 .pr-code { color: #14603a; }
-      .pr-bloc--3 .pr-ligne { background: #fdefdf; }
-      .pr-bloc--3 .pr-ligne:nth-child(even) { background: #fff8ef; }
+      .pr-bloc--3 .pr-ligne { background: #f3dabb; }
+      .pr-bloc--3 .pr-ligne:nth-child(even) { background: #ffffff; }
       .pr-bloc--3 .pr-code { color: #8a4708; }
       @media print { .rien { display: none; } }
     </style></head><body data-vue="billets">

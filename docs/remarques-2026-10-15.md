@@ -4602,3 +4602,70 @@ au-delà de la première ; il devient seulement VISIBLE maintenant que l'aperçu
 d'une récompense ouvre l'étape au lieu du monde. À trancher par Rémy : soit le
 fil dit le rang réel en aperçu, soit il se tait quand c'est le professeur qui
 regarde.
+
+## 52. « Lis la fraction » — l'indice et la réponse — 3 novembre
+
+> « our l'exercice lis la fraction, l'indice devrait dessiner les lignes
+> manquantes quand les parts ne sont pas égales, ca aiderait, ca ne le fait
+> pas. et aussi dans la réponse montre moi donner la fraction sous forme de
+> fraction colonne »
+
+Deux choses :
+
+1. **L'indice doit DESSINER les traits manquants** quand la figure est
+   partagée en parts inégales. Une fraction ne se lit que sur des parts
+   égales : tant que l'élève ne voit pas le découpage complet, il compte des
+   morceaux et non des parts. Rémy dit que l'indice ne le fait pas — à
+   mesurer, pas à supposer.
+2. **La réponse se montre en fraction COLONNE** — numérateur au-dessus du
+   trait, dénominateur en dessous —, et non « 3/8 » sur une ligne. C'est
+   l'écriture du cahier.
+
+**Mesuré, 3 novembre.** L'indice DESSINE bien les coupes manquantes — mais il
+le fait au DEUXIÈME indice, et il les trace en gris fin : sur la capture, une
+seule ligne pointillée claire au milieu d'un camembert de dix parts, qu'on ne
+voit qu'en la cherchant. Vu aussi : sur une figure aux parts ÉGALES, le
+deuxième indice NUMÉROTE les parts au lieu de couper — c'est voulu, il n'y a
+rien à couper, mais l'énoncé de l'exercice promet « le deuxième indice
+redessine la figure AVEC toutes ses coupes » sans dire que cela ne vaut que
+pour les marches inégales. Trois choses à reprendre : rendre les coupes
+VISIBLES, le dire dès le premier indice, et corriger la promesse de l'énoncé.
+
+## 53. Un mode démonstration sur l'accueil — 3 novembre
+
+> « j'aimerai bien un mode démo dans l'accueil avec un apercu des exercices et
+> aussi un mode qui montre et explique les possibilités »
+
+Deux choses, et ce ne sont pas les mêmes :
+
+1. **Un aperçu des exercices** — une vitrine : on voit à quoi ressemblent les
+   exercices sans avoir à en ouvrir un, et sans compte.
+2. **Un mode qui MONTRE ET EXPLIQUE les possibilités** — une visite guidée du
+   logiciel : à quoi sert l'espace professeur, les parcours, les fiches, les
+   codes dictés, le direct. C'est une présentation, pas un catalogue.
+
+À lui demander avant de construire : c'est du visuel, et il a dit « fais moi
+des propositions d'abord ».
+
+## 54. L'écran à projeter : une ligne sur deux se distingue mal — 3 novembre
+
+> « pour l'écran ton idenfiant ton code, le contraste une ligne sur deux n'est
+> pas fort, que pourrait-on faire ? »
+
+Il demande une PROPOSITION, pas une correction d'office.
+
+## 55. « Multiplie les relatifs, pas à pas » : l'ordre des deux signes — 3 novembre
+
+> « Pour multiplie les relatifs pas à pas, laisse le bouton négatif à gauche et
+> le positif à droite. »
+
+Le négatif à GAUCHE, le positif à DROITE — l'ordre de la droite graduée, et
+l'ordre dans lequel on les lit.
+
+**Arbitrage et mesure, 3 novembre.** Rémy a choisi les TROIS repères à la
+fois. Mesuré sur les pixels (`tools/contrasteDesBillets.mjs`) : la zébrure
+passe de **1,07 à 1,36**, le code reste à 8,08 de contraste sur son fond — il
+faut qu'il se recopie sans hésiter —, et le trait franc tombe bien sous la
+cinquième ligne. La teinte n'est pas choisie à l'œil : c'est la PLUS CLAIRE
+qui atteigne 1,35, calculée. « Un peu plus foncé » choisi à l'œil est
+exactement ce qui avait produit le 1,07.

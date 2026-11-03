@@ -191,7 +191,22 @@ const TRAIT = 'currentColor';
  * c'est ce qui garantit qu'une figure imprimée est la figure vue.
  */
 const encresDe = (o = {}) => ({
-    plein: o.plein || PLEIN, vide: o.vide || VIDE, trait: o.trait || TRAIT
+    plein: o.plein || PLEIN, vide: o.vide || VIDE, trait: o.trait || TRAIT,
+    // L'ENCRE DES COUPES QUI MANQUENT, et elle n'est pas celle des traits.
+    //
+    // RÉMY, 3 novembre : « l'indice devrait dessiner les lignes manquantes
+    // quand les parts ne sont pas égales, ca aiderait, ca ne le fait pas ».
+    //
+    // IL LES DESSINAIT — mesuré, capture à l'appui : UNE ligne pointillée
+    // grise, large de 1,6, à 75 % d'opacité, au milieu d'un camembert de dix
+    // parts dont tous les traits sont du même gris. On ne la voit qu'en la
+    // cherchant, et personne ne cherche une ligne dont on ne sait pas qu'elle
+    // est là. Une aide qu'on ne distingue pas de la figure n'aide pas.
+    //
+    // Elle devient donc ORANGE et franche. Sur le papier, la fiche passe ses
+    // propres encres et peut la ramener au noir — une photocopie n'a pas de
+    // couleur, et un trait orange y devient un gris de plus.
+    coupe: o.coupe || '#ea580c'
 });
 
 /**
@@ -233,7 +248,8 @@ export function camembertSvg(morceaux, n, finesse = false, o = {}) {
             if (bords.has(i)) continue;
             const [x, y] = point(i);
             dessin += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" `
-                + `stroke="${E.trait}" stroke-width="1.6" stroke-dasharray="5 4" opacity=".75"/>`;
+                + `stroke="${E.coupe}" stroke-width="3.4" stroke-dasharray="7 5" `
+                + 'stroke-linecap="round"/>';
         }
     }
     // LES PARTS NUMÉROTÉES — l'autre moitié de l'indice, celle qui manquait.
@@ -288,8 +304,8 @@ export function pavageSvg(morceaux, n, finesse = false, o = {}) {
         for (const m of poses) {
             for (let i = 1; i < m.poids; i++) {
                 dessin += `<line x1="${(m.x + i) * C}" y1="${m.y * C}" `
-                    + `x2="${(m.x + i) * C}" y2="${(m.y + 1) * C}" stroke="${E.trait}" `
-                    + 'stroke-width="1.6" stroke-dasharray="5 4" opacity=".75"/>';
+                    + `x2="${(m.x + i) * C}" y2="${(m.y + 1) * C}" stroke="${E.coupe}" `
+                    + 'stroke-width="3.4" stroke-dasharray="7 5" stroke-linecap="round"/>';
             }
         }
     }
@@ -524,11 +540,32 @@ export const lireUneFractionGenerator = {
             // parts — il montre où l'on en est, il ne dit pas la réponse.
             schemas: ['', q.inegal ? q.decoupe : q.numerotee],
             explanation: `La figure vaut ${q.n} parts égales, et ${q.k} ${q.k > 1 ? 'sont' : 'est'} `
-                + `coloriée${q.k > 1 ? 's' : ''} : c'est ${q.k}/${q.n}.`,
+                + `coloriée${q.k > 1 ? 's' : ''} : ${q.k} sur ${q.n}.`,
             difficulty: etape.temps === 'A' ? 1 : 3,
             meta: {
                 marche: etape.id, temps: etape.temps, titre: etape.titre,
                 n: q.n, k: q.k, support: q.support, visibles: q.visibles, inegal: q.inegal,
+                // ── LA RÉPONSE SE MONTRE COMME ON L'ÉCRIT ─────────────────
+                //
+                // RÉMY, 3 novembre : « dans la réponse montre moi donner la
+                // fraction sous forme de fraction colonne ».
+                //
+                // « La réponse est 1|8 » n'est pas une fraction : c'est la
+                // barre verticale qui sépare les deux trous, imprimée telle
+                // quelle. Or l'élève doit écrire un nombre AU-DESSUS d'un
+                // autre — c'est l'écriture du cahier, et c'est elle qu'il faut
+                // lui montrer. On réemploie le gabarit de l'énoncé.
+                //
+                // DANS `meta`, ET NON À CÔTÉ : `makeItem` ne garde que les
+                // champs qu'il connaît, et un champ posé au premier niveau
+                // disparaît sans un mot. Mesuré — la carte restait muette
+                // alors que le dessin était écrit.
+                schemaReponse: '<span class="fraction fraction--grande">'
+                    + `<span class="fraction-num">${q.k}</span>`
+                    + `<span class="fraction-den">${q.n}</span></span>`,
+                // ET LE TEXTE QUI L'ACCOMPAGNE : « 1 sur 8 » se lit, « 1|8 »
+                // non. Voir `answerLabelOf` dans `activities/choice.js`.
+                reponseLisible: `${q.k} sur ${q.n}`,
                 // CE QU'IL FAUT POUR REDESSINER LA FIGURE AILLEURS : la fiche
                 // papier la retrace en jsPDF, qui ne sait pas lire du SVG.
                 // Les morceaux et la teinte suffisent — le reste se recalcule.

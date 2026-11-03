@@ -598,6 +598,14 @@ function canShowMe(session) {
 
 /** La réponse sous sa forme lisible par l'élève. */
 function answerLabelOf(item) {
+    // CE QUE LE GÉNÉRATEUR VEUT QU'ON LISE, quand il le dit.
+    //
+    // Une réponse à DEUX TROUS est rangée « 1|8 » — la barre verticale sépare
+    // les deux champs, elle n'est pas un signe de mathématiques. Imprimée
+    // telle quelle, elle donnait « La réponse est « 1|8 » ». On ne devine pas
+    // à la place du générateur : celui qui sait comment se lit sa réponse le
+    // dit, les autres ne changent pas.
+    if (item.meta && item.meta.reponseLisible) return String(item.meta.reponseLisible);
     if (item.choices) {
         const good = item.choices.find(c => c.correct);
         // `texte` l'emporte sur `label` : une proposition peut être un DESSIN
@@ -755,7 +763,18 @@ export function wireShowMe(container, session, opts = {}) {
     const btn = container.querySelector('[data-showme]');
     if (!btn) return;
 
-    const dire = (msg, detail) => {
+    /**
+     * @param {string} msg     ce qu'on dit
+     * @param {string} detail  l'explication longue, lue au rythme de l'élève
+     * @param {string} dessin  un DESSIN de la réponse, quand le texte ne suffit
+     *   pas. RÉMY, 3 novembre : « dans la réponse montre moi donner la fraction
+     *   sous forme de fraction colonne ». « La réponse est 5|10 » n'est pas une
+     *   fraction, c'est un couple de nombres avec une barre verticale entre
+     *   eux — et l'élève, lui, doit écrire un nombre AU-DESSUS d'un autre.
+     *   Le générateur fournit le dessin par `meta.schemaReponse` ; la carte
+     *   d'indice sait déjà en afficher un, c'est le même chemin.
+     */
+    const dire = (msg, detail, dessin) => {
         if (opts.enPage) {
             let box = container.querySelector('.hint-text');
             if (!box) {
@@ -765,9 +784,18 @@ export function wireShowMe(container, session, opts = {}) {
                 btn.parentElement.parentElement.appendChild(box);
             }
             box.textContent = msg;
+            if (dessin) {
+                const d = document.createElement('div');
+                d.className = 'hint-schema';
+                d.innerHTML = dessin;
+                box.appendChild(d);
+            }
         } else {
             document.dispatchEvent(new CustomEvent('game_feedback', {
-                detail: { kind: 'hint', msg, misconception: detail || null }
+                detail: {
+                    kind: 'hint', msg, misconception: detail || null,
+                    schema: dessin || null
+                }
             }));
         }
     };
@@ -838,7 +866,8 @@ export function wireShowMe(container, session, opts = {}) {
         const msg = opts.message
             ? opts.message(item)
             : `La réponse est « ${answerLabelOf(item)} ». À toi de la jouer !`;
-        dire(msg, item.explanation || null);
+        dire(msg, item.explanation || null,
+            (item.meta && item.meta.schemaReponse) || null);
         if (opts.highlight) opts.highlight();
     };
 }

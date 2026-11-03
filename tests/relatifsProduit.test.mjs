@@ -227,3 +227,36 @@ test('la même graine rend la même question', () => {
     assert.equal(a.prompt.text, b.prompt.text);
     assert.equal(a.answer, b.answer);
 });
+
+test('LE SIGNE NÉGATIF EST TOUJOURS À GAUCHE, LE POSITIF À DROITE', () => {
+    // RÉMY, 3 novembre : « laisse le bouton négatif à gauche et le positif à
+    // droite ».
+    //
+    // POURQUOI CE N'EST PAS UNE PRÉFÉRENCE. Sur les marches qui ne demandent
+    // QUE le signe, les deux propositions sont « négatif » et « positif » à
+    // toutes les questions : il n'y a rien à deviner par la position, donc
+    // rien à protéger en mélangeant. Mais deux boutons qui changent de place
+    // à chaque question font chercher le bon au lieu de penser au signe — et
+    // l'élève qui se construit l'image des négatifs À GAUCHE, celle de la
+    // droite graduée, la voit contredite une fois sur deux.
+    //
+    // LE MÉLANGE RESTE AILLEURS : sur les marches qui demandent le RÉSULTAT,
+    // quatre propositions chiffrées, et retenir une position serait tricher.
+    let vuesSigne = 0, vuesChiffre = 0;
+    for (let i = 0; i < 40; i++) {
+        const it = G.generate({}, { rng: makeRng(`sg${i}`), index: i, total: 40 });
+        const labels = (it.choices || []).map(c => String(c.label));
+        if (labels.length === 2 && labels.includes('positif')) {
+            vuesSigne++;
+            assert.deepEqual(labels, ['négatif', 'positif'],
+                `rang ${i} : les deux signes sortent dans l'ordre ${labels.join(', ')}`);
+            // Et la bonne réponse est bien l'une des deux, pas une troisième.
+            assert.ok(it.choices.some(c => c.correct && c.value === it.answer),
+                `rang ${i} : aucune proposition ne porte la réponse`);
+        } else if (labels.length === 4) {
+            vuesChiffre++;
+        }
+    }
+    assert.ok(vuesSigne > 0, 'aucune marche « signe seul » dans quarante tirages');
+    assert.ok(vuesChiffre > 0, 'aucune marche à quatre propositions : le mélange a disparu');
+});
