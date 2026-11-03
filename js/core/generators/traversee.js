@@ -166,6 +166,34 @@ export const SCENARIOS = {
 // CE N'EST PAS UN ACCIDENT, et c'est joli : l'énigme du loup, de la chèvre et
 // du chou tient parce que la barque porte EXACTEMENT un passager en plus du
 // passeur. C'est ce rapport-là qui fait l'énigme, pas le nombre d'animaux.
+//
+// ── ET IL N'Y A PAS DE TROISIÈME STRUCTURE À TROUVER ICI ───────────────────
+//
+// « La Traversée n'a que deux structures » revenait dans mes notes : les trois
+// premiers scénarios sont le même raisonnement en costumes, le quatrième en
+// est un autre. Plutôt que d'en inventer un troisième à l'instinct, on a
+// BALAYÉ l'espace que ce moteur sait décrire — quatre et cinq passagers,
+// barque de deux ou de trois, tous les graphes de disputes jusqu'à quatre
+// arêtes : 87 combinaisons solubles, et pas une seule énigme neuve.
+//
+//     deux disputes DISJOINTES, barque 2      INSOLUBLE (aucune des deux
+//                                             paires ne peut rester seule)
+//     une CHAÎNE DE QUATRE, barque 2          INSOLUBLE (même raison)
+//     les mêmes, barque 3                     3 traversées — plus rien à
+//                                             chercher
+//     le classique + un objet libre, barque 2 9 traversées, mais c'est le
+//                                             classique avec un figurant :
+//                                             le raisonnement ne change pas
+//     le classique (loup/chèvre/chou)         7 traversées
+//
+// TOUT CE QUI EST SOLUBLE EST SOIT LE CLASSIQUE, SOIT TRIVIAL. Ce moteur
+// décrit des interdits de VOISINAGE ; une troisième structure demanderait une
+// autre règle — le pont et la lampe (deux passent, le plus lent donne le
+// temps, on cherche le total le plus court) en serait une, et ce serait un
+// autre exercice, avec des nombres à additionner. Pas un scénario de plus.
+//
+// Le balayage est dans `tools/tmp/` et n'a pas été gardé : il tient en trente
+// lignes, et c'est son RÉSULTAT qu'il fallait garder — ces dix lignes-ci.
 
 /**
  * LES ÉTATS SE RANGENT DANS UN ENTIER : le bit k vaut 1 si le passager k est

@@ -372,6 +372,16 @@ export function question(etape, rng) {
             // LE DESSIN DE LA SITUATION — « des urnes etc. ». Les favorables
             // d'abord, pour que le dessin se lise dans l'ordre de la phrase.
             figure: sacSvg(favorables, autres, encreDe(h.singulier[i]), encreDe(h.singulier[j])),
+            // ET LES MÊMES NOMBRES EN CLAIR, POUR LA FEUILLE.
+            //
+            // Le dessin ci-dessus est du SVG : il vit à l'écran et nulle part
+            // ailleurs. Une fiche se trace en jsPDF, qui ne sait pas lire du
+            // SVG — elle a besoin des nombres, pas de l'image. On les range
+            // donc à côté, et `ui/fiches/donnees.js` redessine la même chose
+            // avec ses outils à lui. C'est la seule façon qu'un élève voie la
+            // MÊME situation à l'écran et sur le papier.
+            dessin: { forme: 'sac', favorables, autres,
+                couleurA: encreDe(h.singulier[i]), couleurB: encreDe(h.singulier[j]) },
             kind: 'numeric', reponse: `${num}|${total}`, cases: 2,
             pourquoi: pasCelle
                 ? `Ne pas tirer ${article} ${objet} ${h.singulier[i]}, c'est en tirer ${article} `
@@ -406,6 +416,8 @@ export function question(etape, rng) {
             // commentaire des situations disait « la roue se lit sur un dessin
             // qu'on n'a pas » : elle en a un.
             figure: roueSvg(favorables, autres, encreDe(h.singulier[i]), encreDe(h.singulier[j])),
+            dessin: { forme: 'roue', favorables, autres,
+                couleurA: encreDe(h.singulier[i]), couleurB: encreDe(h.singulier[j]) },
             kind: 'numeric', reponse: `${favorables}|${total}`, cases: 2,
             pourquoi: `${favorables} ${h.secteurs} favorables sur ${total} : la probabilité vaut `
                 + `${favorables}/${total}.`,
@@ -544,6 +556,11 @@ export const probabilitesGenerator = {
             meta: {
                 marche: etape.id, temps: etape.temps, titre: etape.titre,
                 decimal: !!q.decimal,
+                // LE DESSIN VA DANS `meta`, ET NULLE PART AILLEURS : `makeItem`
+                // ne garde que les champs qu'il connaît, et un champ posé au
+                // premier étage disparaît SANS RIEN DIRE. Payé une fois déjà,
+                // sur la réponse en fraction de « Lis la fraction ».
+                ...(q.dessin ? { dessin: q.dessin } : {}),
                 ...(q.cases ? { cases: q.cases } : {})
             }
         });

@@ -165,6 +165,22 @@ for (const id of ids) {
     if (ouvert === 'inconnu') { console.log(`  ?  ${id} : pas au catalogue`); continue; }
     await dormir(3000);
 
+    // `--items` NE FAISAIT RIEN SUR UNE FICHE À GRILLES, ET NE LE DISAIT PAS.
+    //
+    // L'outil passait `nbItems` à `ouvrirFicheModal`, qui ne lit pas cette
+    // option — zéro occurrence dans `printSheet.js`. La feuille sortait donc
+    // toujours avec le compte par défaut, et l'on regardait une seule question
+    // en croyant en avoir demandé douze. Vingt minutes, le 3 novembre, à
+    // chercher pourquoi un rendu neuf ne dessinait « qu'un bloc ».
+    //
+    // Le compte vit dans un champ de la modale : on l'écrit, et l'aperçu se
+    // refait à la frappe (`combienEl.oninput`).
+    if (ouvert === 'fiche' && await s.page.$('#fp-combien')) {
+        await s.page.fill('#fp-combien', String(ITEMS));
+        await s.page.dispatchEvent('#fp-combien', 'input');
+        await dormir(1500);
+    }
+
     // LE RÉGLAGE DE COULEUR DORT SOUS « Papier et impression ». Un réglage dans
     // un `<details>` fermé se mesure « visible » — 13 × 13, `display: block` —
     // pendant que Playwright répète « element is not visible ». Voir `deplier`.

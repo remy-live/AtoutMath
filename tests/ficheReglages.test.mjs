@@ -505,8 +505,20 @@ test('LE MEMORY SE DONNE PAR FEUILLES PLEINES', () => {
 test('les autres fiches restent sur une seule feuille', () => {
     // La pagination est déclarée par le rendu, jamais devinée : une planche de
     // sudokus ou de disques n'a aucune raison de déborder sur une seconde page.
+    //
+    // LA LISTE EST CLOSE, ET CHAQUE ENTRÉE A SA RAISON :
+    //
+    //   · `memory` — des cartes à découper. Rémy : « 8 paires ou 16 paires
+    //     (2 pages du coup) ou 24 paires (3 pages) ».
+    //   · `probabilites` — six questions par page, parce qu'au-delà le sac de
+    //     onze jetons tombe sous deux millimètres et qu'on ne les compte plus
+    //     (voir `ui/fiches/donnees.js`). Sans pagination, ce plafond-là
+    //     devenait le plafond de la FEUILLE : on demandait douze questions,
+    //     on en recevait six, sans un mot.
+    //
+    // Y ajouter un nom sans raison écrite, c'est deviner.
     const paginees = Object.entries(RENDUS).filter(([, r]) => r && r.plusieursPages);
-    assert.deepEqual(paginees.map(([k]) => k), ['memory']);
+    assert.deepEqual(paginees.map(([k]) => k).sort(), ['memory', 'probabilites']);
 });
 
 // LE FILTRE NOIR ET BLANC NE DOIT PLUS FAIRE DE NOIR AVEC DES COULEURS.

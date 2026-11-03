@@ -211,6 +211,34 @@ function caseHtml(i, av, meneur) {
     return `<span class="${classes}"${titre ? ` title="${esc(titre)}"` : ''}>${dedans}</span>`;
 }
 
+/**
+ * OÙ L'ON EN EST — ET LA RÉPONSE N'EST PAS LA MÊME POUR L'ÉLÈVE ET POUR LUI.
+ *
+ * RÉMY, en regardant l'aperçu d'une étape : le bandeau annonçait « Étape 1
+ * sur 3 » pendant qu'il regardait la TROISIÈME.
+ *
+ * CE N'ÉTAIT PAS UN DÉFAUT DE COMPTAGE : `av.faites` compte les étapes
+ * TERMINÉES, et c'est la bonne mesure pour un élève — il a fini la première,
+ * il est donc à la deuxième. Le professeur, lui, n'a rien terminé du tout : il
+ * a SAUTÉ à l'étape qu'il voulait voir, et le compte des étapes faites reste à
+ * zéro quelle que soit celle qu'il regarde.
+ *
+ * Les deux questions sont distinctes, et le meneur sait répondre à la seconde :
+ * `index` est la position RÉELLE de ce qui est à l'écran. On la lit quand c'est
+ * lui qui pilote, et l'on garde le compte des étapes faites pour l'élève.
+ *
+ * ET L'APERÇU LE DIT EN TOUTES LETTRES. « Étape 3 sur 3 » seul laisserait
+ * croire au professeur qu'il est à la fin d'une séance en cours ; il regarde
+ * une étape, ce qui n'est pas la même chose.
+ */
+export function ouEnEstOn(av, meneur) {
+    const rang = meneur && typeof meneur.index === 'number'
+        ? Math.min(meneur.index + 1, av.etapes)
+        : Math.min(av.faites + 1, av.etapes);
+    return `${meneur && meneur.apercuDUneEtape ? 'Aperçu — étape' : 'Étape'} `
+        + `${rang} sur ${av.etapes}`;
+}
+
 /** À rappeler chaque fois que l'avancement a pu bouger. Coût : une projection. */
 export function majFilSeance() {
     const el = fil();
@@ -224,9 +252,7 @@ export function majFilSeance() {
 
     el.hidden = false;
     const meneur = meneurPilotable();
-    const ou = av.etat === 'fini'
-        ? 'Séance terminée'
-        : `Étape ${Math.min(av.faites + 1, av.etapes)} sur ${av.etapes}`;
+    const ou = av.etat === 'fini' ? 'Séance terminée' : ouEnEstOn(av, meneur);
     el.classList.toggle('fil--pilotable', !!meneur);
     el.innerHTML = `
         <span class="fil-nom">${esc(av.pathName || 'Ma séance')}</span>

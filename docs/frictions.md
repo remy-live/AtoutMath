@@ -6687,3 +6687,19 @@ erreur qui ne parle pas d'elles** — 3 novembre 2026
 - **Combien de fois** : |  (mais tout nouvel appelant les redécouvrira)
 - **Ce qui manque** : un `poserLeRole(professeur)` exporté, et un
   `chargerDansLAtelier(parcours)` qui fasse les quatre gestes d'un coup.
+
+## `--items` de `ficheEnPdf.mjs` ne faisait rien, et ne le disait pas — 2026-11-03
+
+- **Ce que je voulais faire** : regarder une feuille de probabilités neuve, à
+  six puis à douze questions.
+- **Ce qui a coûté** : vingt minutes. L'outil passait `nbItems` à
+  `ouvrirFicheModal`, qui ne lit pas cette option — zéro occurrence dans
+  `printSheet.js`. La feuille sortait toujours avec le compte par défaut, et
+  j'ai cherché pourquoi un rendu neuf « ne dessinait qu'un seul bloc ». C'est
+  le même piège qu'un sélecteur inventé : un réglage qu'on croit avoir posé
+  rend la même image qu'un logiciel qui va bien.
+- **Combien de fois** : |
+- **Ce qui manque** : rien de neuf — **corrigé dans l'outil le jour même** (il
+  écrit maintenant dans `#fp-combien`). Noté pour la RÈGLE : un outil qui
+  accepte une option doit la poser ou le dire. Les autres options de
+  `ficheEnPdf` le font déjà (`ORIENTATION` crie quand le sélecteur manque).

@@ -78,3 +78,28 @@ test('ON NE VISE PAS HUIT PIXELS', () => {
     // Et le clavier voit où il est.
     assert.match(CSS, /\.fil--pilotable \.fil-pas:focus-visible/);
 });
+
+// ── OÙ L'ON EN EST — ET CE N'EST PAS LA MÊME QUESTION DES DEUX CÔTÉS ────────
+
+test('LE BANDEAU DIT L\'ÉTAPE REGARDÉE QUAND C\'EST LE PROFESSEUR QUI PILOTE', async () => {
+    const { ouEnEstOn } = await import('../js/ui/filSeance.js');
+    // L'ÉLÈVE : on compte ce qu'il a TERMINÉ. Il a fini la première, il est à
+    // la deuxième — c'est la bonne mesure, et on n'y touche pas.
+    assert.equal(ouEnEstOn({ etapes: 3, faites: 1 }, null), 'Étape 2 sur 3');
+    assert.equal(ouEnEstOn({ etapes: 3, faites: 0 }, null), 'Étape 1 sur 3');
+
+    // LE PROFESSEUR : il n'a rien terminé, il a SAUTÉ. Le compte des étapes
+    // faites reste à zéro quelle que soit celle qu'il regarde — d'où le
+    // « Étape 1 sur 3 » affiché au-dessus de la TROISIÈME, que Rémy a vu.
+    assert.equal(ouEnEstOn({ etapes: 3, faites: 0 }, { index: 2 }), 'Étape 3 sur 3');
+    assert.equal(ouEnEstOn({ etapes: 5, faites: 0 }, { index: 3 }), 'Étape 4 sur 5');
+
+    // ET L'APERÇU LE DIT EN TOUTES LETTRES : « Étape 3 sur 3 » tout seul
+    // laisserait croire qu'on est à la fin d'une séance en cours.
+    assert.equal(ouEnEstOn({ etapes: 3, faites: 0 }, { index: 2, apercuDUneEtape: true }),
+        'Aperçu — étape 3 sur 3');
+
+    // ON NE DÉBORDE JAMAIS DU TOTAL, d'où qu'on lise le rang.
+    assert.equal(ouEnEstOn({ etapes: 2, faites: 9 }, null), 'Étape 2 sur 2');
+    assert.equal(ouEnEstOn({ etapes: 2, faites: 0 }, { index: 9 }), 'Étape 2 sur 2');
+});

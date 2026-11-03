@@ -54,7 +54,14 @@ const ecran = () => s.page.evaluate(() => {
         carte: dedans('.run-map, .run-map-step, [data-carte]'),
         // L'étape elle-même : une question, un plateau, une aire de jeu.
         etape: dedans('.game-question, .pn-layout, canvas, .game-area'),
-        titre: ((couche && couche.textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 90)
+        titre: ((couche && couche.textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 90),
+        // CE QUE LE BANDEAU ANNONCE — et il annonçait le contraire de ce qu'on
+        // regardait. Rémy voyait « Étape 1 sur 3 » au-dessus de la TROISIÈME.
+        // Une épreuve garde la règle (`ouEnEstOn`) ; celle-ci garde l'écran,
+        // c'est-à-dire que le bandeau est bien RAFRAÎCHI quand l'aperçu
+        // s'ouvre — une règle juste affichée au mauvais moment est un
+        // bandeau faux.
+        ou: ((document.querySelector('.fil-ou') || {}).textContent || '').trim()
     };
 });
 
@@ -85,6 +92,8 @@ dire('l\'aperçu de la récompense n\'ouvre PAS le monde', vu.carte === 0,
     vu.carte ? `${vu.carte} morceau(x) de carte` : '');
 dire('et il ouvre bien le jeu', vu.etape > 0,
     vu.etape ? '' : 'rien d\'une activité à l\'écran');
+dire('et le bandeau nomme l\'étape REGARDÉE, la troisième',
+    /3\s+sur\s+3/.test(vu.ou), `le bandeau dit « ${vu.ou || '(rien)'} »`);
 await s.page.screenshot({ path: 'tools/tmp/apercu-recompense.png' });
 
 console.log(`\nerreurs de page : ${s.erreurs.length}, fenêtres natives : ${s.fenetresNatives.length}`);

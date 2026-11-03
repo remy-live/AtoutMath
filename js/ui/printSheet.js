@@ -150,6 +150,10 @@ import { RENDUS_THEOREMES } from './fiches/theoremes.js';
 import { RENDUS_REPERAGE } from './fiches/reperage.js';
 import { RENDUS_NOMBRES } from './fiches/nombres.js';
 import { RENDUS_ALGORITHMES } from './fiches/algorithmes.js';
+// LES PROBABILITÉS — Rémy : « des illustrations avec des roues de couleurs,
+// des urnes etc. ». Elles existaient à l'écran ; la feuille n'imprimait que le
+// texte, c'est-à-dire la description du dessin au lieu du dessin.
+import { RENDUS_DONNEES } from './fiches/donnees.js';
 import {
     ENCRE, echapperSheet
 } from './fiches/socle.js';
@@ -306,6 +310,7 @@ export const RENDUS = {
     ...RENDUS_REPERAGE,
     ...RENDUS_NOMBRES,
     ...RENDUS_ALGORITHMES,
+    ...RENDUS_DONNEES,
 };
 
 // ON LA DÉPOSE DANS `ficheRendu`, qui ne l'importe plus.

@@ -99,6 +99,13 @@ test('OÙ J\'EN SUIS NE SE DIT PAS DEUX FOIS', () => {
         'le titre de l\'exercice ne répète plus le numéro d\'étape');
     assert.match(runner, /titleEl\.textContent = step\.title;/);
     // Et le fil, lui, le dit — en toutes lettres et en cases.
+    //
+    // CE QU'ON LIT A CHANGÉ DE FORME, PAS DE SENS. La phrase vit maintenant
+    // dans `ouEnEstOn`, parce que le rang n'est pas le même pour l'élève (ce
+    // qu'il a TERMINÉ) et pour le professeur qui regarde un aperçu (ce qu'il
+    // a SAUTÉ). Cette épreuve-ci garde qu'elle est dite ; `filCliquable`
+    // garde qu'elle est juste des deux côtés.
     const fil = sansCommentairesJs(lire('js/ui/filSeance.js'));
-    assert.match(fil, /Étape \$\{Math\.min\(av\.faites \+ 1, av\.etapes\)\} sur \$\{av\.etapes\}/);
+    assert.match(fil, /\$\{rang\} sur \$\{av\.etapes\}/);
+    assert.match(fil, /Math\.min\(av\.faites \+ 1, av\.etapes\)/);
 });

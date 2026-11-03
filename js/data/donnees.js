@@ -188,9 +188,24 @@ export const donneesExercises = [
         cree: '2026-10-20',
         title: 'Les Probabilités',
         generatorId: 'don.probabilites', activityId: 'numpad',
+        // LA FEUILLE DESSINE LE SAC ET LA ROUE — voir `ui/fiches/donnees.js`.
+        //
+        // Elle n'imprimait que le texte : « Une roue de loterie est partagée
+        // en 9 secteurs TOUS DE MÊME TAILLE : 5 sont verts et 4 sont bleus. »
+        // C'est la DESCRIPTION du dessin au lieu du dessin, c'est-à-dire
+        // exactement le travail que le dessin existe pour épargner. Rémy, le
+        // 24 octobre : « des illustrations avec des roues de couleurs, des
+        // urnes etc. » — l'écran les avait, le papier non.
+        printable: 'probabilites',
+        // `colonnesPapier` ET `lignesReponsePapier` SONT PARTIS AVEC LA LISTE.
+        //
+        // Ils réglaient la fiche de QUESTIONS — une colonne, deux lignes de
+        // pointillés sous chaque énoncé. La feuille est maintenant une grille
+        // de blocs, et ces deux-là s'y battaient en silence : `colonnesPapier:
+        // 1` imposait UNE colonne au calcul du compte par défaut, qui tombait
+        // donc à une question par page. On demandait douze questions, on en
+        // recevait une par feuille, sur douze feuilles.
         consignePapier: 'Compte les cas, puis écris la probabilité.',
-        colonnesPapier: 1,
-        lignesReponsePapier: 2,
         params: { marches: ['certain', 'echelle', 'sac', 'roue', 'pas-cette-couleur',
             'contraire', 'comparer'] },
         motsClefs: ['probabilité', 'hasard', 'certain', 'impossible', 'événement',

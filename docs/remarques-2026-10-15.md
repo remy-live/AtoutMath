@@ -4689,3 +4689,32 @@ ON CONSTRUIT EN DEUX TEMPS : d'abord la porte, l'écran et la vitrine jouable
 (c'est ce qui répond à « un aperçu des exercices » et « pouvoir faire qqs
 exercices ») ; la visite guidée ensuite, parce qu'elle demande le profil de
 démonstration.
+
+## 56. « D'autres idées » — 3 novembre
+
+Une fois la visite guidée livrée, il demande la suite. Je lui ai proposé six
+pistes, rangées par le moment de la journée où elles serviraient, et vérifiées
+contre le dépôt : la reprise n'existe **qu'à l'écran** (`core/remediation.js`,
+`aRattraper`), jamais sur papier ; la page parents n'existe pas ; le mode
+projection n'existe pas ; l'aération du texte pour les élèves dyslexiques,
+elle, est déjà faite et bien faite (`css/base.css`, `data-aere`).
+
+**Son arbitrage, 3 novembre.** Trois choses, dans cet ordre :
+
+1. **LA FICHE DE REPRISE, UNE PAR ÉLÈVE, TOUTES DIFFÉRENTES.** Depuis le bilan
+   de la classe : vingt-six feuilles en un clic, chacune fabriquée depuis les
+   erreurs de CET élève-là, avec le corrigé du professeur à part. C'est le
+   geste que le logiciel sait déjà faire en morceaux — il sait qui a raté quoi,
+   il sait fabriquer une feuille — et qu'il ne sait pas faire d'un bout à
+   l'autre.
+2. **LA PAGE PARENTS, UNE PAR ÉLÈVE.** Une A4 qui se donne en main à la
+   rencontre : ce qu'il sait, ce qui progresse, deux erreurs nommées. Les
+   briques du PDF existent (`ui/bilanPdf.js`), la mise en page non.
+3. **LES DETTES DÉJÀ REPÉRÉES** : le `⩽` de la fiche d'inégalités, les
+   probabilités sur papier, les pastilles de couleur pour les lignes de
+   tableau, Kakuro « Moyen » par défaut, La Traversée et ses deux structures,
+   et l'aperçu qui annonce « Étape 1 sur 3 » en montrant la troisième.
+
+**Les deux premières sont des feuilles imprimées, donc du visuel** : maquettes
+d'abord, comme il l'a demandé une fois pour toutes — « fais moi des
+propositions d'abord ».
