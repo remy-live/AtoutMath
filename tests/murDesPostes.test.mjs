@@ -74,13 +74,20 @@ test('LE PRÉFIXE DE STOCKAGE PORTE LA PLACE', () => {
     // C'est la ligne qui rend le mur possible, et elle est dans le script en
     // tête d'`index.html` : c'est le seul endroit qui s'exécute avant tous les
     // modules, donc le seul qui puisse remplacer `localStorage` sous eux.
-    assert.match(HTML, /var n = parseInt\(p\.get\('poste'\), 10\);/);
-    assert.match(HTML, /if \(!\(n >= 1 && n <= 12\)\) \{ return; \}/);
-    assert.match(HTML, /var P = n === 1 \? 'poste:' : 'poste' \+ n \+ ':';/);
+    assert.match(HTML, /var n = visite \? 0 : parseInt\(p\.get\('poste'\), 10\);/);
+    assert.match(HTML, /if \(!visite && !\(n >= 1 && n <= 12\)\) \{ return; \}/);
+    assert.match(HTML, /var P = visite \? 'visite:' : \(n === 1 \? 'poste:' : 'poste' \+ n \+ ':'\);/);
+    // LA VISITE GUIDÉE PARTAGE CE MÉCANISME, et cette épreuve a bien fait son
+    // travail le jour où on l'y a branchée : elle est tombée sur la ligne
+    // exacte, ce qui a forcé à relire ce que la visite changeait au poste
+    // élève — c'est-à-dire rien, elle ne fait qu'ajouter un troisième préfixe.
+    // Les bornes du poste restent les bornes du poste.
+    assert.match(HTML, /var visite = p\.get\('visite'\) === '1';/);
     // IndexedDB est commune à l'origine elle aussi : le journal de chaque
     // place a sa base, sinon deux élèves s'écriraient dessus dans le journal
     // pendant que leurs `localStorage` sont bien séparés.
     assert.match(HTML, /window\.__postePlace > 1 \? 'atoutmath-poste' \+ window\.__postePlace/);
+    assert.match(HTML, /window\.__visiteGuidee \? 'atoutmath-visite'/);
 });
 
 test('LA PLACE 1 NE CHANGE PAS DE TIROIR', () => {

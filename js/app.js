@@ -421,6 +421,22 @@ const demarrerLApplication = async () => {
     // qu'il regarde n'est posé que par `?poste=1`.
     initPosteEleve();
 
+    // LA VISITE GUIDÉE, POUR LA MÊME RAISON ET AU MÊME ENDROIT.
+    //
+    // Elle sème un parcours, une classe et un journal, puis ouvre le premier
+    // des six vrais écrans. Elle ne fait rien hors de `?visite=1`, et tout ce
+    // qu'elle écrit vit dans le tiroir préfixé que `index.html` installe pour
+    // cette adresse — jamais dans celui du visiteur.
+    //
+    // CHARGÉE À LA DEMANDE : elle tire `demoClasses.js` et tout l'écran des
+    // classes derrière elle, ce qu'un élève qui ouvre sa séance n'a aucune
+    // raison de télécharger.
+    if (window.__visiteGuidee) {
+        import('./ui/visiteUI.js')
+            .then(m => m.demarrerLaVisite())
+            .catch(() => { /* la visite est un supplément, pas un dû */ });
+    }
+
     // L'ÉCRAN EST MONTÉ. Le drapeau du bas de ce fichier — `__atoutmathDemarre`
     // — dit seulement que le MODULE s'est chargé : il est posé à l'évaluation,
     // donc AVANT que ce gestionnaire ne tourne. C'est ce qu'il faut au
@@ -1563,6 +1579,17 @@ function initDebugToolbar() {
     // `profiles_updated` — sans cette écoute, la pastille garderait « Élève »
     // jusqu'au prochain rechargement, c'est-à-dire pendant toute l'heure.
     document.addEventListener('profiles_updated', syncRole);
+    // ET LA PASTILLE SUIT L'ANNONCE, PAS SEULEMENT LE BOUTON.
+    //
+    // `role_change` était annoncé par le bouton de bascule, et la pastille
+    // était remise à jour juste à côté, à la main. Tout autre endroit qui
+    // change de rôle — la visite guidée, qui passe du professeur à l'élève et
+    // revient — laissait donc une pastille qui disait « Élève » au-dessus de
+    // l'atelier du professeur. Mesuré sur la première étape de la visite.
+    //
+    // On écoute l'ANNONCE : c'est le seul entonnoir par lequel tout
+    // changement de rôle passe, aujourd'hui et demain.
+    document.addEventListener('role_change', syncRole);
     if (btnRoleDbg) btnRoleDbg.onclick = basculerRole;
     if (btnRole) btnRole.onclick = basculerRole;
 

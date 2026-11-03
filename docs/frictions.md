@@ -6658,3 +6658,32 @@ erreur qui ne parle pas d'elles** — 3 novembre 2026
   déclare enfin ces deux-là : « on n'ajoute pas de dépendance sans une raison
   qu'on peut écrire », et la raison est écrite depuis longtemps — ce sont les
   deux outils de mesure du dépôt.
+
+## Une sonde qui compte des nœuds ne voit pas un écran blanc — 2026-11-03
+
+- **Ce que je voulais faire** : vérifier que la visite guidée ouvre bien les
+  six vrais écrans.
+- **Ce qui a coûté** : la sonde a dit « l'atelier s'ouvre » devant une page
+  parfaitement BLANCHE, et je l'ai crue. Les rangées du parcours étaient dans
+  le document et cachées par
+  `body:not(.teacher-mode) .teacher-only { display: none }`. Vingt minutes, et
+  c'est la photo — pas la sonde — qui l'a dit.
+- **Combien de fois** : |  (et trois autres sondes du dépôt comptent encore
+  des nœuds : `decouverteAuDoigt`, `pentaminosAuDoigt`, `boutEnBout`)
+- **Ce qui manque** : un `doitSeVoir(sel)` dans `sonde.mjs`, frère de
+  `doitExister`, qui jette quand le crochet existe mais ne peint rien, et qui
+  nomme alors la règle CSS ou l'ancêtre qui le cache.
+
+## Poser un drapeau d'état ne suffit jamais à changer d'écran — 2026-11-03
+
+- **Ce que je voulais faire** : ouvrir l'atelier du professeur depuis la
+  visite guidée.
+- **Ce qui a coûté** : quatre essais. `state.isTeacherMode = true` ne montre
+  rien ; il faut AUSSI la classe `teacher-mode` sur le corps, l'événement
+  `role_change` (sans lui la pastille dit « Élève » au-dessus de l'atelier),
+  le mode `teacher` de la barre du haut, et le nom du parcours recopié à la
+  main dans `#path-name-input`. Les quatre gestes sont écrits ensemble à UN
+  seul endroit, au milieu du bouton de bascule de `js/app.js`.
+- **Combien de fois** : |  (mais tout nouvel appelant les redécouvrira)
+- **Ce qui manque** : un `poserLeRole(professeur)` exporté, et un
+  `chargerDansLAtelier(parcours)` qui fasse les quatre gestes d'un coup.

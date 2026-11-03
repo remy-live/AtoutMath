@@ -86,12 +86,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1128">
-    <link rel="stylesheet" href="css/layout.css?v=1128">
-    <link rel="stylesheet" href="css/ui.css?v=1128">
-    <link rel="stylesheet" href="css/games.css?v=1128">
-    <link rel="stylesheet" href="css/components.css?v=1128">
-    <link rel="stylesheet" href="css/modules.css?v=1128">
+    <link rel="stylesheet" href="css/base.css?v=1129">
+    <link rel="stylesheet" href="css/layout.css?v=1129">
+    <link rel="stylesheet" href="css/ui.css?v=1129">
+    <link rel="stylesheet" href="css/games.css?v=1129">
+    <link rel="stylesheet" href="css/components.css?v=1129">
+    <link rel="stylesheet" href="css/modules.css?v=1129">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -145,15 +145,27 @@
             // compatibilité — aucun élève n'utilise encore le logiciel — c'est
             // que « Ouvrir son poste », le geste courant, n'a aucune raison de
             // changer de tiroir le jour où l'on ajoute un mur.
-            var n = parseInt(p.get('poste'), 10);
-            if (!(n >= 1 && n <= 12)) { return; }
+            //
+            // LA VISITE GUIDÉE EMPRUNTE LE MÊME TIROIR, et c'est toute la raison
+            // pour laquelle elle a pu exister. Elle ouvre les VRAIS écrans du
+            // professeur — c'est le choix de Rémy, « on voit le logiciel, pas
+            // une image de lui » — et il lui faut donc un parcours, une classe,
+            // des résultats. Écrits dans le stockage ordinaire, ils se
+            // mêleraient aux siens : un visiteur poserait un parcours de
+            // démonstration dans la bibliothèque du professeur, et le bilan de
+            // sa classe compterait des tentatives qu'aucun élève n'a faites.
+            // Avec ce tiroir-ci, la visite écrit tout ce qu'elle veut et n'écrit
+            // QUE chez elle ; en sortant, on la vide.
+            var visite = p.get('visite') === '1';
+            var n = visite ? 0 : parseInt(p.get('poste'), 10);
+            if (!visite && !(n >= 1 && n <= 12)) { return; }
             var vrai;
             try {
                 vrai = window.localStorage;
                 vrai.getItem('__sonde__');
             } catch (e) { return; }   // navigation privée verrouillée : on laisse tel quel
 
-            var P = n === 1 ? 'poste:' : 'poste' + n + ':';
+            var P = visite ? 'visite:' : (n === 1 ? 'poste:' : 'poste' + n + ':');
             var clefs = function () {
                 var l = [];
                 for (var i = 0; i < vrai.length; i++) {
@@ -177,8 +189,8 @@
                     value: faux, configurable: true, writable: false
                 });
             } catch (e) { return; }
-            window.__posteEleve = true;
-            window.__postePlace = n;
+            if (visite) { window.__visiteGuidee = true; }
+            else { window.__posteEleve = true; window.__postePlace = n; }
         })();
     </script>
     <!-- UN CODE DANS L'URL : ON NE MONTRE PAS L'APPLICATION.
@@ -250,13 +262,17 @@
         // LE JOURNAL DU POSTE ÉLÈVE DANS SA PROPRE BASE. Il faut que ce soit
         // ici : `localforage.config()` n'a d'effet qu'avant le premier accès
         // aux données, et les modules qui en font vivent plus bas.
-        if (window.__posteEleve && typeof localforage !== 'undefined') {
+        if ((window.__posteEleve || window.__visiteGuidee) && typeof localforage !== 'undefined') {
             // Même raison qu'au-dessus, et même règle : IndexedDB est commune à
-            // l'origine, donc chaque place lui faut sa base.
+            // l'origine, donc chaque place lui faut sa base. LA VISITE AUSSI :
+            // le journal est ce qui porte les tentatives, donc le bilan qu'elle
+            // montre — écrit dans la base ordinaire, il ajouterait des réussites
+            // inventées au carnet d'un vrai élève.
             try {
-                var b = window.__postePlace > 1 ? 'atoutmath-poste' + window.__postePlace
-                    : 'atoutmath-poste';
-                localforage.config({ name: b, storeName: 'poste' });
+                var b = window.__visiteGuidee ? 'atoutmath-visite'
+                    : (window.__postePlace > 1 ? 'atoutmath-poste' + window.__postePlace
+                        : 'atoutmath-poste');
+                localforage.config({ name: b, storeName: window.__visiteGuidee ? 'visite' : 'poste' });
             }
             catch (e) { /* le préfixe de localStorage suffit déjà à séparer */ }
         }

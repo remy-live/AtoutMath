@@ -83,48 +83,75 @@ export const VITRINE = [
 /**
  * LES ÉTAPES DE LA VISITE.
  *
- * Chacune OUVRE UN VRAI ÉCRAN — c'est le choix de Rémy —, avec une bulle qui
- * dit ce qu'on regarde. `ou` nomme la destination ; l'écran sait la traduire.
+ * Chacune OUVRE UN VRAI ÉCRAN — c'est le choix de Rémy, « on voit le logiciel,
+ * pas une image de lui » —, avec une bande qui dit ce qu'on regarde. `ou` nomme
+ * la destination ; `js/ui/visiteUI.js` sait la traduire.
  *
  * L'ORDRE EST CELUI D'UNE HEURE DE COURS, et non celui des menus : on prépare,
- * on imprime ou on dicte, on regarde la classe avancer, on lit ce qui reste à
- * reprendre. Un visiteur suit une histoire, pas une arborescence.
+ * on imprime, on dicte le code, les élèves travaillent, on lit ce qui reste à
+ * reprendre, et l'on range les tablettes. Un visiteur suit une histoire, pas
+ * une arborescence.
+ *
+ * ── POURQUOI « LE DIRECT » N'EST PAS DE LA VISITE, ET CE QUI L'A REMPLACÉ ──
+ *
+ * La première version de cette liste contenait « Le direct » : qui avance, qui
+ * bloque, pendant l'heure. C'est un des plus beaux écrans du logiciel, et il
+ * est resté dehors pour une raison qu'on a LUE dans le code et non devinée —
+ * `mesClasses()` interroge `/teacher/classes`, donc le serveur, avec le jeton
+ * du professeur. Un visiteur n'en a pas. L'étape aurait ouvert un écran qui
+ * demande à se connecter, c'est-à-dire la seule chose qu'une démonstration ne
+ * doit pas faire.
+ *
+ * À SA PLACE, « CE QUE VOIT L'ÉLÈVE » — et c'est un meilleur quatrième temps.
+ * Entre le code dicté et le bilan, il manquait justement le moment où les
+ * élèves TRAVAILLENT, qui est l'essentiel du logiciel et que la visite
+ * sautait. Le direct, lui, se raconte en une phrase dans l'étape suivante.
  */
 export const VISITE = [
     {
         id: 'parcours', titre: 'Un parcours',
         quoi: 'On empile des exercices, on règle le nombre de questions, et la '
             + 'séance est prête.',
-        ou: 'atelier', bouton: 'Voir l\'écran'
+        ou: 'atelier', bouton: 'Voir l\'atelier'
     },
     {
         id: 'fiche', titre: 'Une fiche à imprimer',
-        quoi: 'Le même exercice sur papier, avec son corrigé — et la figure, pas '
+        quoi: 'La même séance sur papier, avec son corrigé — et les figures, pas '
             + 'seulement le texte.',
-        ou: 'fiche', bouton: 'Voir une fiche'
+        ou: 'fiche', bouton: 'Voir la fiche'
     },
     {
         id: 'code', titre: 'Un code dicté, ou un QR',
-        quoi: 'Trois lettres à dire à voix haute, ou un carré à scanner : la classe '
-            + 'est lancée en dix secondes.',
+        quoi: 'Des lettres à dire à voix haute, un lien, ou un carré à scanner : la '
+            + 'classe est lancée en dix secondes.',
         ou: 'code', bouton: 'Voir le code'
     },
     {
-        id: 'direct', titre: 'Le direct',
-        quoi: 'Qui avance, qui bloque, sur quelle question — pendant l\'heure, pas '
-            + 'après.',
-        ou: 'direct', bouton: 'Voir le direct'
+        id: 'eleve', titre: 'Ce que voit l\'élève',
+        quoi: 'Sa séance en étapes, ses indices, ses erreurs nommées — et rien '
+            + 'd\'autre à l\'écran pendant qu\'il cherche.',
+        ou: 'eleve', bouton: 'Voir son écran'
     },
     {
         id: 'bilan', titre: 'Ce que chacun sait',
-        quoi: 'Par compétence et dans le temps, avec les erreurs nommées — pas une '
-            + 'moyenne.',
-        ou: 'bilan', bouton: 'Voir un bilan'
+        quoi: 'Une ligne par élève, une colonne par compétence, et la phrase qui '
+            + 'dit quoi reprendre — pas une moyenne.',
+        ou: 'bilan', bouton: 'Voir la classe'
     },
     {
+        // ON ANNONCE LE TÉLÉCHARGEMENT, PARCE QUE L'ÉCRAN LE LANCE TOUT SEUL.
+        //
+        // C'est voulu là où il sert : la maîtresse qui prépare vingt-cinq
+        // tablettes n'a pas à cliquer vingt-cinq fois sur « commencer », et
+        // la mise en mémoire est justement l'étape qu'on oublie. MESURÉ dans
+        // la visite : arriver sur cette étape met en mémoire 716 fichiers,
+        // environ 6 Mo. Un visiteur qui n'en est pas prévenu les paie sans
+        // l'avoir demandé — alors on le lui dit AVANT, dans la phrase même
+        // qui porte le bouton.
         id: 'horsligne', titre: 'Hors ligne',
-        quoi: 'Une tablette préparée fonctionne sans internet, toute l\'heure.',
-        ou: 'tablette', bouton: 'Comment faire'
+        quoi: 'Une tablette préparée fonctionne sans internet, toute l\'heure. '
+            + 'Cet écran met les exercices en mémoire : environ 6 Mo.',
+        ou: 'tablette', bouton: 'Préparer une tablette'
     }
 ];
 

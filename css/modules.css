@@ -16708,6 +16708,100 @@ body.en-boite > #app-container { background: none; }
 .dc-note { margin-top: 26px; background: var(--bg-hover); border-radius: 14px;
     padding: 13px 15px; font-size: .85rem; color: var(--text-muted); }
 
+/* ══ LA VISITE GUIDÉE ══════════════════════════════════════════════════════
+
+   LA BANDE EST AU-DESSUS DE TOUT, et le nombre est mesuré, pas choisi : les
+   fenêtres montent à 100000, la fiche à imprimer à 999999, et le panneau de
+   réglages posé par-dessus elle à 1000001 (voir `css/components.css`). Une
+   bande de visite à 9999 passerait donc DERRIÈRE la fiche, à l'étape même qui
+   sert à montrer la fiche.
+
+   ELLE EST EN BAS parce que c'est le bord qu'aucun écran du logiciel n'occupe
+   en entier : les fenêtres se centrent, l'atelier et la carte de l'élève
+   défilent. En haut, elle aurait recouvert le titre de chaque fenêtre.
+
+   ET LE CORPS GAGNE SA HAUTEUR : sans quoi la dernière ligne d'une liste qui
+   défile se lit sous la bande, c'est-à-dire pas du tout. */
+.vs-bande {
+    position: fixed; z-index: 1000005;
+    left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-panel); border-top: 2px solid var(--primary);
+    box-shadow: 0 -8px 24px rgb(15 23 42 / .18);
+}
+/* CE QUE LA BANDE RECOUVRE, ELLE LE REND. Sa hauteur est mesurée à chaque
+   étape et posée dans `--vs-bande-h` (voir `dessinerLaBande`) : écrite en dur,
+   elle serait juste à une largeur et fausse à l'autre, les boutons passant à
+   la ligne sur un téléphone.
+
+   LES FENÊTRES AUSSI, et c'est ce qui l'a fait voir : l'étape de la fiche
+   ouvre une fenêtre haute de 90 % de l'écran, dont « Fermer » et « Télécharger
+   le PDF » disparaissaient sous la bande. `!important` est nécessaire ici —
+   `showModal` pose ses dimensions en style EN LIGNE. */
+body.visite-en-cours { padding-bottom: calc(var(--vs-bande-h, 150px) + 20px); }
+body.visite-en-cours .modal-overlay {
+    padding-bottom: calc(var(--vs-bande-h, 150px) + 16px);
+}
+body.visite-en-cours .modal-overlay > * {
+    max-height: calc(100vh - var(--vs-bande-h, 150px) - 40px) !important;
+}
+.vs-corps { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+/* `--primary-texte` ET NON `--primary` : la première est la teinte des FONDS,
+   où se pose du blanc ; employée comme texte elle ne passe pas le seuil AA.
+   Une épreuve du dépôt l'a dit avant Rémy, ce qui est la bonne façon. */
+.vs-compte { font-size: .72rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--primary-texte, var(--primary)); }
+.vs-titre { font-size: 1.02rem; color: var(--text-main); }
+.vs-quoi { font-size: .86rem; color: var(--text-muted); line-height: 1.4; }
+.vs-boutons { display: flex; gap: 8px; flex-wrap: wrap; }
+.vs-btn {
+    border: 1px solid var(--border); background: var(--bg-app);
+    border-radius: 12px; padding: 11px 15px; font-weight: 700;
+    font-size: .88rem; cursor: pointer; color: var(--text-main);
+}
+.vs-btn--vif { background: var(--primary); border-color: var(--primary); color: #fff; }
+@media (hover: hover) { .vs-btn:hover { filter: brightness(1.06); } }
+.vs-btn:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+/* AU DOIGT, LA BANDE PRENAIT PRESQUE LA MOITIÉ DE L'ÉCRAN.
+
+   MESURÉ à 390 × 844 : trois boutons à parts égales, « Quitter la visite »
+   passe à la ligne dans le sien, la rangée fait deux lignes, et la bande
+   atteint 400 px — autant que ce qu'elle laisse voir. Deux gestes la ramènent
+   à une rangée : le bouton dit « Quitter » (la suite de la phrase est cachée,
+   pas supprimée : un lecteur d'écran la lit toujours), et « Suite » garde la
+   place qu'il mérite pendant que les deux autres se serrent. */
+@media (max-width: 560px) {
+    .vs-bande { padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
+    .vs-quoi { font-size: .82rem; }
+    .vs-long { display: none; }
+    .vs-boutons { width: 100%; }
+    .vs-boutons .vs-btn { flex: 1; padding: 11px 8px; font-size: .84rem; }
+    .vs-boutons .vs-btn--vif { flex: 1.4; }
+}
+
+/* LA PAGE QUE LA VISITE PRÊTE À UN ÉCRAN QUI VEUT TOUTE LA PAGE.
+   La préparation d'une tablette écrit dans le corps du document entier ; on
+   lui donne ce cadre-ci à la place, qui recouvre l'application sans l'effacer
+   et passe SOUS la bande. */
+.vs-ecran {
+    position: fixed; inset: 0; z-index: 1000003;
+    overflow: auto; background: var(--bg-app);
+    padding-bottom: 160px;
+}
+
+/* LA VISITE, SUR L'ÉCRAN DE DÉCOUVERTE : six portes, une par étape. */
+.dc-visite { display: grid; gap: 10px; margin-bottom: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.dc-pas { background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px 13px; display: flex;
+    flex-direction: column; gap: 5px; }
+.dc-pas-rang { font-size: .72rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--primary-texte, var(--primary)); }
+.dc-pas-titre { margin: 0; font-size: .95rem; }
+.dc-pas-quoi { margin: 0; font-size: .82rem; color: var(--text-muted); line-height: 1.4; }
+.dc-pas .dc-btn { margin-top: auto; }
+
 /* La porte, sur l'accueil. Elle est au-dessus du pied, pas dedans : c'est une
    PORTE, pas une mention légale — la même leçon que celle du professeur. */
 .portail-decouvrir { display: flex; flex-direction: column; align-items: center;

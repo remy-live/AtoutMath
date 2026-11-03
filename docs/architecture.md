@@ -772,6 +772,44 @@ qu'elle montre avant que le visiteur ait le moindre jeton. L'écriture
 (`POST /teacher/reglages`) exige un professeur. Tout professeur peut le changer :
 c'est un réglage de site, et il n'y a pas de rôle « fondateur » exigé ici.
 
+### Découvrir le logiciel sans compte
+
+La porte d'accueil ouvre un écran de découverte (`ui/decouverteUI.js`) qui ne
+dépend d'aucun réglage : Rémy n'a rien à allumer pour montrer AtoutMath en
+salle des professeurs. Il porte trois choses, et elles ne répondent pas à la
+même question.
+
+**La vitrine** répond à « à quoi ça ressemble ? ». Dix cartes, dont l'aperçu
+est produit en faisant tourner le VRAI générateur avec une graine fixe — une
+capture d'écran vieillirait et se mettrait à mentir sans que personne ne le
+voie. **L'essai** répond à « est-ce bien fait ? » : il emprunte le même chemin
+que l'essai du professeur depuis les nouveautés, donc rien ne part au journal.
+
+**La visite** répond à « qu'est-ce que ce logiciel sait faire ? », et elle
+ouvre les VRAIS écrans — le choix de Rémy : « on voit le logiciel, pas une
+image de lui ». Six étapes dans l'ordre d'une heure de cours : l'atelier, la
+fiche, le code et le QR, l'écran de l'élève, le tableau de la classe, la
+préparation d'une tablette.
+
+Deux choses la rendent possible, et elles méritent d'être sues.
+
+1. **Elle a son propre tiroir.** `?visite=1` fait remplacer `localStorage` par
+   un objet préfixé et `IndexedDB` par une base à part, depuis `index.html`,
+   avant le premier module — exactement le mécanisme du poste élève. Ce qu'elle
+   sème (un parcours, cinq classes, un journal) n'existe que là, et quitter la
+   visite vide le tiroir. Sans cela, un visiteur déposerait un parcours de
+   démonstration dans la bibliothèque du professeur.
+2. **Elle ne montre que des écrans qui vivent sans serveur.** « Le direct »
+   n'est pas de la visite, et ce n'est pas un oubli : `mesClasses()` interroge
+   `/teacher/classes` avec le jeton du professeur, qu'un visiteur n'a pas.
+   L'étape aurait ouvert un écran demandant à se connecter. Le quatrième temps
+   est donc « ce que voit l'élève », qui manquait et qui est l'essentiel.
+
+La séance de démonstration (`core/visite.js`) est **réglée d'usine**, et c'est
+une contrainte : une chaîne de quelques lettres ne sait pas transporter des
+réglages qui n'en sont pas, et l'étape du code affichait sinon « PAS DE CODE À
+DICTER » sous une bande qui en promettait un. `tests/visite.test.mjs` le garde.
+
 ### Les mots
 
 Une chose, un mot. Le compteur s'appelle **des points** — pas « étoiles »

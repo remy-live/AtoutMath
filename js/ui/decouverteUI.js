@@ -6,13 +6,19 @@
 // apercu des exercices et aussi un mode qui montre et explique les
 // possibilités ». Puis : « les deux et pouvoir faire qqs exercices. »
 //
-// CET ÉCRAN PORTE DEUX DES TROIS CHOSES : la vitrine et l'essai. La visite
-// guidée — celle qui OUVRE LES VRAIS ÉCRANS, son choix — vient ensuite : elle
-// demande un profil de démonstration avec une classe et des élèves, pour que
-// personne ne la fasse par-dessus de vraies données. Son emplacement est
-// réservé ici, et il est VIDE tant qu'elle n'existe pas : une section qui
-// annoncerait six étapes dont aucune ne s'ouvre serait pire que pas de
-// section.
+// CET ÉCRAN PORTE LES TROIS CHOSES : la visite, la vitrine et l'essai.
+//
+// LA VISITE EST EN HAUT, ET LA VITRINE DESSOUS. Celui qui arrive se demande
+// d'abord « qu'est-ce que ce logiciel sait faire ? », et seulement ensuite
+// « à quoi ressemble un exercice ? ». L'ordre inverse — des cartes d'exercices
+// d'abord — donnerait l'idée d'un recueil d'exercices, ce que le logiciel
+// n'est pas.
+//
+// LA VISITE OUVRE LES VRAIS ÉCRANS, c'est le choix de Rémy. Elle a donc besoin
+// d'une classe, d'élèves et de résultats, qu'elle sème dans un tiroir à elle —
+// `?visite=1`, et `index.html` lui donne un stockage séparé. Rien n'est écrit
+// chez le visiteur, ni chez le professeur qui regarde par-dessus son épaule.
+// Voir `js/ui/visiteUI.js`.
 //
 // ── L'APERÇU EST LE VRAI EXERCICE, PAS UNE IMAGE DE LUI ────────────────────
 //
@@ -161,16 +167,29 @@ function ajusterLesApercus(racine) {
 }
 
 /**
- * LA VISITE GUIDÉE — sa place, et rien d'autre pour l'instant.
+ * LA VISITE GUIDÉE — six portes, une par étape.
  *
- * Elle ouvrira les VRAIS écrans, avec une bulle qui explique. Tant que le
- * profil de démonstration n'existe pas, on n'en montre rien : six cartes dont
- * aucune ne s'ouvre feraient croire à un logiciel cassé, ce qui est le
- * contraire de ce qu'une démonstration doit produire.
+ * ON PEUT ENTRER PAR N'IMPORTE LAQUELLE, et ce n'est pas un détail : celui qui
+ * vient voir « est-ce que ça s'imprime ? » n'a pas à traverser trois écrans
+ * pour arriver à la fiche. La visite continue ensuite dans l'ordre, par
+ * « Suite ».
+ *
+ * CHAQUE BOUTON RECHARGE LA PAGE sur `?visite=1`, et c'est obligé : le tiroir
+ * isolé où la visite sème ses données est installé par un script de
+ * `index.html`, avant le premier module. Voir `js/ui/visiteUI.js`.
  */
 function visiteHtml() {
     if (!VISITE.length) return '';
-    return '';
+    const pas = VISITE.map((e, i) => `<article class="dc-pas">
+        <span class="dc-pas-rang">Étape ${i + 1}</span>
+        <h3 class="dc-pas-titre">${esc(e.titre)}</h3>
+        <p class="dc-pas-quoi">${esc(e.quoi)}</p>
+        <button type="button" class="dc-btn" data-visite="${esc(e.id)}">${
+    esc(e.bouton)}</button>
+    </article>`).join('');
+    return `<h2 class="dc-h2">Voir le logiciel
+            <span>les vrais écrans, avec une classe de démonstration</span></h2>
+        <div class="dc-visite">${pas}</div>`;
 }
 
 export function ouvrirDecouverte() {
@@ -202,7 +221,9 @@ export function ouvrirDecouverte() {
             <div class="dc-vitrine">${bonnes.map(carte).join('')}</div>
             <p class="dc-note"><b>Rien ne part, rien ne reste.</b> Les réponses
                données ici ne sont écrites nulle part : pas de compte, pas de
-               bilan, pas de trace.</p>
+               bilan, pas de trace. La visite, elle, a besoin d'une classe et
+               d'un parcours pour avoir quelque chose à montrer : elle les range
+               dans un espace à elle, séparé du vôtre, et le vide en sortant.</p>
         </div>`;
     document.body.appendChild(el);
     ouvert = el;
@@ -213,7 +234,11 @@ export function ouvrirDecouverte() {
         const essai = e.target.closest('[data-essayer]');
         if (essai) { essayerUnExercice(essai.dataset.essayer, fermerDecouverte); return; }
         const fiche = e.target.closest('[data-fiche]');
-        if (fiche) voirLaFicheDe(fiche.dataset.fiche);
+        if (fiche) { voirLaFicheDe(fiche.dataset.fiche); return; }
+        const pas = e.target.closest('[data-visite]');
+        if (pas) {
+            import('./visiteUI.js').then(m => m.entrerDansLaVisite(pas.dataset.visite));
+        }
     });
     document.addEventListener('keydown', surEchap);
     return el;

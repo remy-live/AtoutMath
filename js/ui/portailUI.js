@@ -468,8 +468,8 @@ function dessiner() {
         <p class="portail-decouvrir">
           <button id="portail-decouvrir" class="portail-bouton portail-bouton--doux">
             Découvrir AtoutMath</button>
-          <span class="portail-aide portail-aide--centre">Les exercices, en vrai,
-            sans compte et sans trace.</span>
+          <span class="portail-aide portail-aide--centre">La visite des écrans et
+            les exercices, en vrai, sans compte et sans trace.</span>
         </p>
         <p class="portail-pied">
           ${modeLibre() ? '<button id="portail-libre" class="portail-lien portail-lien--porte">'
