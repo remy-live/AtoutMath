@@ -16663,13 +16663,27 @@ body.en-boite > #app-container { background: none; }
    Sans cela, un clic sur une pastille de réponse ou une case de grille
    répondrait à une question qui n'a pas été posée — et l'exercice qu'on
    croyait regarder se mettrait à compter. */
+/* LA HAUTEUR DU CADRE EST UNE MESURE, PAS UN GOÛT. Elle était à 132 px, et
+   quatre aperçus sur dix débordaient — le plus grand (le disque) demandait
+   215 px. Rapetisser seul ne suffisait pas : pour tenir, trois d'entre eux
+   passaient sous le plancher de lisibilité, et restaient rognés. À 168 px,
+   l'échelle la plus forte est 0,69 et plus rien n'est coupé, aux deux
+   largeurs mesurées. */
 .dc-apercu {
-    height: 132px; padding: 10px; background: var(--bg-app);
+    height: 168px; padding: 10px; background: var(--bg-app);
     border-bottom: 1px solid var(--border);
     display: grid; place-items: center; overflow: hidden;
 }
+/* LE CADRE est ce qu'on rapetisse quand l'aperçu déborde — voir
+   `ajusterLesApercus` dans `js/ui/decouverteUI.js`. Il existe pour qu'il y ait
+   quelque chose à MESURER : la hauteur du contenu, que l'aperçu lui-même ne
+   peut pas donner puisqu'il est à hauteur fixe. */
+.dc-cadre { display: grid; place-items: center; max-width: 100%; }
 .dc-apercu > * { pointer-events: none; max-width: 100%; }
-.dc-apercu svg { max-height: 112px; width: auto; height: auto; }
+/* ET LA FIGURE NE PREND PAS TOUT LE CADRE : montée à 148 px, elle poussait
+   l'énoncé dehors — le disque réclamait 251 px et redescendait sous le
+   plancher de lisibilité. À 128 px, le plus grand aperçu tient à 0,69. */
+.dc-apercu svg { max-height: 128px; width: auto; height: auto; }
 .dc-apercu .game-question { font-size: .92rem; text-align: center; }
 .dc-enonce { margin: 0; font-size: .9rem; text-align: center; color: var(--text-main); }
 

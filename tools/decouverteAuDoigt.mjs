@@ -62,6 +62,21 @@ async function unePasse(taille) {
                 }).length,
                 niveaux: cartes.map(c =>
                     (c.querySelector('.dc-niveau') || {}).textContent || '').filter(Boolean).length,
+                // ET AUCUN APERÇU N'EST ROGNÉ. Le cadre est à hauteur fixe et
+                // coupe EN HAUT ET EN BAS : une figure trop grande n'a pas
+                // l'air rognée, elle a l'air mal dessinée, et personne ne va
+                // chercher la hauteur d'une boîte CSS. Quatre sur dix sortaient
+                // du cadre avant qu'on les rapetisse. On mesure le rendu, donc
+                // APRÈS la mise à l'échelle : c'est ce que le visiteur voit.
+                rognes: cartes.filter(c => {
+                    const cadre = c.querySelector('.dc-cadre');
+                    if (!cadre) return false;
+                    const boite = cadre.parentElement;
+                    const st = getComputedStyle(boite);
+                    const dispo = boite.clientHeight
+                        - parseFloat(st.paddingTop) - parseFloat(st.paddingBottom);
+                    return cadre.getBoundingClientRect().height > dispo + 1;
+                }).length,
                 dehors: document.documentElement.scrollWidth - window.innerWidth
             };
         });
@@ -77,6 +92,9 @@ async function unePasse(taille) {
         dits.push(vu.niveaux === vu.cartes ? 'chaque carte dit ses niveaux'
             : `${vu.niveaux} carte(s) sur ${vu.cartes} disent leurs niveaux`);
         if (vu.niveaux !== vu.cartes) ratés.push('niveaux');
+        dits.push(vu.rognes === 0 ? 'aucun aperçu ne sort de son cadre'
+            : `${vu.rognes} APERÇU(S) ROGNÉ(S) PAR LE CADRE`);
+        if (vu.rognes) ratés.push('aperçu rogné');
         dits.push(`rien ne déborde en largeur : ${vu.dehors} px`);
         if (vu.dehors > 0) ratés.push('débordement');
 

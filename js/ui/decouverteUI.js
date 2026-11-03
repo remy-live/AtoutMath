@@ -118,7 +118,7 @@ function carte(entree) {
         ? `<button type="button" class="dc-btn" data-fiche="${esc(exo.id)}">La fiche</button>`
         : '';
     return `<article class="dc-carte">
-        <div class="dc-apercu">${apercu || ''}</div>
+        <div class="dc-apercu"><div class="dc-cadre">${apercu || ''}</div></div>
         <div class="dc-corps">
             <span class="dc-niveau">${esc(niveauxDe(exo))}</span>
             <h3 class="dc-titre">${esc(exo.title)}</h3>
@@ -130,6 +130,34 @@ function carte(entree) {
             </div>
         </div>
     </article>`;
+}
+
+/**
+ * ON RAPETISSE L'APERÇU QUI DÉBORDE, AU LIEU DE LE COUPER.
+ *
+ * MESURÉ sur la vitrine de dix cartes, à 1280 px : trois aperçus sur dix
+ * dépassaient la hauteur du cadre, et `overflow: hidden` les coupait EN HAUT
+ * ET EN BAS — la figure du disque sans son bas, la fraction sans sa question.
+ * Un visiteur ne voit pas « c'est rogné » : il voit une figure bancale, et il
+ * en conclut que le logiciel dessine mal.
+ *
+ * On ne peut pas le faire en CSS seul : la hauteur du contenu dépend du
+ * générateur, qui vient de tirer sa figure. Alors on MESURE après coup, et on
+ * met l'échelle qu'il faut. Le plancher à 0,62 est là parce qu'en dessous le
+ * texte d'un énoncé n'est plus lisible : mieux vaut alors rogner un peu que
+ * montrer une ligne qu'on ne peut pas lire.
+ */
+function ajusterLesApercus(racine) {
+    for (const cadre of racine.querySelectorAll('.dc-cadre')) {
+        const boite = cadre.parentElement;
+        if (!boite) continue;
+        const style = getComputedStyle(boite);
+        const dispo = boite.clientHeight
+            - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+        const haut = cadre.getBoundingClientRect().height;
+        if (!(dispo > 0) || !(haut > dispo + 1)) continue;
+        cadre.style.transform = `scale(${Math.max(0.62, dispo / haut).toFixed(3)})`;
+    }
 }
 
 /**
@@ -178,6 +206,7 @@ export function ouvrirDecouverte() {
         </div>`;
     document.body.appendChild(el);
     ouvert = el;
+    ajusterLesApercus(el);
 
     el.addEventListener('click', (e) => {
         if (e.target.closest('[data-fermer]')) { fermerDecouverte(); return; }
