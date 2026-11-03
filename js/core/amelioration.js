@@ -18,6 +18,9 @@
 
 import { makeStep } from './path.js';
 import { exercisesForSkill, getExerciseById } from '../data/catalog.js';
+// `generateurDeFiche` : pour savoir si un exercice sait s'écrire sur une
+// feuille. Voir `exercicePourLaFeuille`.
+import { generateurDeFiche } from './registry.js';
 
 // COMBIEN D'ÉTAPES AU PLUS DANS UN PARCOURS DE RÉVISION. Huit questions ratées
 // font huit étapes de deux questions : c'est déjà un quart d'heure, et au-delà
@@ -152,6 +155,40 @@ export function firstExerciseForSkill(skillId) {
     // temporelle nuit à la compréhension.
     const calm = list.find(e => !(e.params && e.params.timeLimit));
     return (calm || list[0]).id;
+}
+
+/**
+ * L'EXERCICE QUI TRAVAILLE CETTE NOTION **ET QUI SAIT S'IMPRIMER**.
+ *
+ * `firstExerciseForSkill` rend le premier venu, et c'est le bon choix à
+ * l'écran. Sur une FEUILLE, il se trompe une fois sur deux : MESURÉ sur la
+ * fiche de reprise de Louis, « Aire d'un rectangle » donnait `calc-arpenteurs`
+ * — un jeu d'écran, sans version papier. La feuille annonçait deux notions en
+ * tête et n'en portait qu'une : l'élève lisait qu'il devait reprendre l'aire,
+ * et ne trouvait nulle part où le faire.
+ *
+ * DEUX FAÇONS DE S'IMPRIMER, dans cet ordre : un générateur ÉCRIT (des
+ * questions en lignes), ou un `printable` (un dessin, une grille). On préfère
+ * l'écrit — il tient en moins de place, donc trois notions entrent sur une
+ * page — et l'on prend la grille quand c'est tout ce qu'il y a : `mes-aire`
+ * est une grille, et c'est une bonne feuille d'aire.
+ *
+ * Rend `null` quand aucun exercice de cette notion ne s'imprime. L'appelant
+ * doit alors retirer la notion de ce qu'il annonce — et non imprimer un trou.
+ */
+export function exercicePourLaFeuille(skillId) {
+    if (!skillId) return null;
+    const list = exercisesForSkill(skillId) || [];
+    if (!list.length) return null;
+    const calmes = list.filter(e => !(e.params && e.params.timeLimit));
+    const ou = calmes.length ? calmes : list;
+    const ecrit = ou.find(e => {
+        const g = generateurDeFiche(e);
+        return g && g.ecrit;
+    });
+    if (ecrit) return ecrit.id;
+    const grille = ou.find(e => e.printable);
+    return grille ? grille.id : null;
 }
 
 export function exerciseForQuestion(q) {

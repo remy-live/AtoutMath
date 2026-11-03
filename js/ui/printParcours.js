@@ -248,7 +248,7 @@ function blocContenu(e, id) {
 }
 
 /** Les grilles d'une étape à grilles, tirées comme les questions. */
-function grillesDe(etape, nb) {
+export function grillesDe(etape, nb) {
     const out = [];
     for (let i = 0; i < nb; i++) {
         // `themesExclus` : ce qui a déjà servi dans cette étape. Un générateur
@@ -287,7 +287,7 @@ function grillesDe(etape, nb) {
 }
 
 /** Tire les questions d'une étape, avec les réglages voulus par le professeur. */
-function questionsDe(etape, nb) {
+export function questionsDe(etape, nb) {
     const vus = new Set();
     const out = [];
     for (let essai = 0; out.length < nb && essai < nb * 12; essai++) {
@@ -329,6 +329,58 @@ function questionsDe(etape, nb) {
         });
     }
     return out;
+}
+
+/**
+ * LES BLOCS D'UNE FEUILLE SIMPLE — sans la modale et sans ses retouches.
+ *
+ * ELLE EXISTE POUR LES FEUILLES QU'UN HUMAIN NE COMPOSE PAS. La fiche de
+ * reprise en fabrique une PAR ÉLÈVE : personne ne va ouvrir vingt-six fois le
+ * panneau pour régler des titres et des colonnes. Il n'y a donc ici ni
+ * retouche, ni réglage par exercice, ni grille — juste des questions tirées et
+ * rangées comme `composerBlocs` les attend.
+ *
+ * ET ELLE VIT ICI, à côté de `questionsDe`, plutôt que dans un module à part :
+ * c'est la même mécanique, et deux copies d'un tirage de questions finiraient
+ * par tirer différemment. Voir la leçon de `fiches/encre.js`.
+ *
+ * @param {Array} etapes  des entrées de `analyserParcours().papier`
+ * @param {object} [o]    `{ consigne(etape) }` pour écrire la consigne d'un bloc
+ */
+export function blocsSimples(etapes, o = {}) {
+    const exos = (etapes || []).map((e, i) => {
+        const nb = e.nbItems || 4;
+        // LES DEUX FAÇONS D'ALLER SUR LE PAPIER, et il faut les deux : un
+        // exercice ÉCRIT donne des questions, un exercice à GRILLE donne des
+        // dessins. Ne garder que les premiers reviendrait à retirer de la
+        // feuille de reprise l'aire d'un rectangle et le repérage — deux des
+        // notions qu'on reprend le plus souvent.
+        const tire = e.grille ? grillesDe(e, nb) : questionsDe(e, nb);
+        const rendu = e.grille ? RENDUS[e.grille] : null;
+        return {
+            id: `${e.exerciseId || 'exo'}-${i}`,
+            titre: (e.exercise && e.exercise.title) || e.titre || '',
+            // CE QUI A FAIT VENIR CET EXERCICE SUR LA FEUILLE. La fiche de
+            // reprise s'en sert pour n'annoncer en tête que les notions
+            // RÉELLEMENT imprimées — voir `fichesDeReprise.js`.
+            notion: e.notion || null,
+            consigne: o.consigne ? (o.consigne(e) || '')
+                : (rendu && rendu.consigne ? rendu.consigne(tire.map(g => g.item))
+                    : (e.exercise && e.exercise.consignePapier) || ''),
+            points: null, numeroter: true, presentation: null, insecable: false,
+            questions: e.grille ? [] : tire,
+            grilles: e.grille ? tire : [],
+            colonnes: null,
+            grillesParLigne: e.grille ? (parLigneDuRendu(rendu, tire, e) ?? null) : null,
+            grilleMax: e.grille ? (EST_PLEIN(rendu, tire) ? 400 : (rendu.grilleMax ?? null)) : null,
+            grilleRatio: e.grille ? rapportDuBloc(rendu, tire) : 1,
+            grilleHauteurMin: e.grille ? (rendu.hauteurMin ?? 0) : 0,
+            grillePleine: !!(e.grille && EST_PLEIN(rendu, tire)),
+            blocsColles: !!(e.grille && rendu.blocsColles),
+            jeuUnique: false
+        };
+    }).filter(x => x.questions.length || x.grilles.length);
+    return { exos, toutes: exos.flatMap(x => x.questions) };
 }
 
 /**
