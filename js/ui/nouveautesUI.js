@@ -22,7 +22,11 @@ import { direLaDate, vaguesDuCatalogue, dateDeReference } from '../data/nouveaut
 import { getExerciseById, exercices } from '../data/catalog.js';
 import { makePath, makeStep } from '../core/path.js';
 
-const QUESTIONS_D_ESSAI = 4;
+// LA LONGUEUR D'UN ESSAI, ÉCRITE UNE SEULE FOIS. Le mode découverte annonce
+// ce nombre en haut de son écran ; l'avoir écrit deux fois a donné une
+// bannière qui promettait trois questions au-dessus d'un essai qui en servait
+// quatre — vu sur la capture, pas dans un compteur.
+export const QUESTIONS_D_ESSAI = 4;
 
 let ouvert = null;
 
@@ -65,13 +69,13 @@ export function openNouveautesModal() {
         // Un clic sur le fond ferme ; un clic dans le panneau, non.
         if (e.target === fond || e.target.closest('[data-fermer]')) { fermerNouveautes(); return; }
         const essai = e.target.closest('[data-essayer]');
-        if (essai) { essayer(essai.dataset.essayer); return; }
+        if (essai) { essayerUnExercice(essai.dataset.essayer, fermerNouveautes); return; }
         const fiche = e.target.closest('[data-fiche]');
-        if (fiche) { voirLaFiche(fiche.dataset.fiche); return; }
+        if (fiche) { voirLaFicheDe(fiche.dataset.fiche); return; }
         // La liste déroulante : deux boutons qui lisent la même sélection.
         const choix = fond.querySelector('#nv-choix');
-        if (e.target.closest('[data-essayer-choix]') && choix) { essayer(choix.value); return; }
-        if (e.target.closest('[data-fiche-choix]') && choix) voirLaFiche(choix.value);
+        if (e.target.closest('[data-essayer-choix]') && choix) { essayerUnExercice(choix.value, fermerNouveautes); return; }
+        if (e.target.closest('[data-fiche-choix]') && choix) voirLaFicheDe(choix.value);
     });
     document.addEventListener('keydown', surEchap);
 }
@@ -153,10 +157,18 @@ function carte({ exo, quoi, revise }) {
 
 // --- Les deux actions ---------------------------------------------------------
 
-async function essayer(id) {
+/**
+ * ESSAYER UN EXERCICE, SANS TRACE — et c'est le même geste pour deux écrans.
+ *
+ * Le mode découverte en a besoin mot pour mot : trois questions, on avance
+ * sans avoir à réussir, et rien ne part au journal. L'écrire deux fois, c'est
+ * s'assurer que le jour où l'une des deux change, l'autre garde l'ancienne
+ * règle — et celle qui compte ici est « rien n'est enregistré ».
+ */
+export async function essayerUnExercice(id, fermer) {
     const exo = getExerciseById(id);
     if (!exo) return;
-    fermerNouveautes();
+    if (typeof fermer === 'function') fermer();
 
     const { Runner } = await import('../core/runner.js');
     const path = makePath(`Essai — ${exo.title}`, [
@@ -172,7 +184,7 @@ async function essayer(id) {
     }).start();
 }
 
-async function voirLaFiche(id) {
+export async function voirLaFicheDe(id) {
     const exo = getExerciseById(id);
     if (!exo) return;
     // La liste déroulante propose TOUS les exercices, et tous ne s'impriment

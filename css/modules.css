@@ -16607,3 +16607,105 @@ body.en-boite > #app-container { background: none; }
 
 .cv-statut { font-size: .86rem; font-weight: 700; color: var(--text-muted);
     text-align: center; min-height: 1.2em; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LE MODE DÉCOUVERTE — l'écran de celui qui arrive sans rien.
+
+   RÉMY, 3 novembre : « j'aimerai bien un mode démo dans l'accueil avec un
+   apercu des exercices […] et pouvoir faire qqs exercices. »
+
+   UNE COUCHE PLEIN ÉCRAN, PAS UNE FENÊTRE. Une fenêtre modale dit « ceci est
+   un détail, vous reviendrez » ; la découverte est au contraire l'écran où
+   l'on reste dix minutes, et où l'on va et vient entre les cartes et les
+   exercices qu'on essaie.
+
+   L'APERÇU EST LE VRAI ÉNONCÉ, tiré par le vrai générateur : il peut donc
+   contenir n'importe quoi — un SVG, un tableau, un clavier. On le BORNE au
+   lieu de le mettre en page : hauteur fixe, débordement caché, et il se
+   réduit tout seul. Une vitrine montre, elle ne fait pas jouer.
+   ───────────────────────────────────────────────────────────────────────── */
+/* LA COUCHE EST OPAQUE, et ce n'est pas un détail : elle était posée sur
+   `var(--bg)`, un jeton qui N'EXISTE PAS dans ce dépôt — les fonds s'appellent
+   `--bg-app`, `--bg-panel`, `--bg-hover`. Une couleur inconnue ne déclenche
+   aucune erreur : elle ne peint rien. L'accueil transparaissait donc ENTRE les
+   cartes, et l'on voyait « Ouvrir le parcours » traverser la vitrine. Vu sur
+   la capture ; aucun compteur ne l'aurait dit. */
+.dc-couche {
+    position: fixed; inset: 0; z-index: 2000000;
+    overflow: auto; background: var(--bg-app);
+    -webkit-overflow-scrolling: touch;
+}
+.dc-page { max-width: 1120px; margin: 0 auto; padding: 20px 16px 56px; }
+
+.dc-bandeau {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 18px; padding: 16px 18px; margin-bottom: 22px;
+}
+.dc-h1 { margin: 0; font-size: 1.35rem; letter-spacing: -.01em; }
+.dc-sous { margin: 2px 0 0; color: var(--text-muted); font-size: .92rem; }
+.dc-sortie { margin-left: auto; display: flex; gap: 8px; }
+@media (max-width: 560px) { .dc-sortie { margin-left: 0; width: 100%; } }
+
+.dc-h2 { font-size: 1.05rem; margin: 26px 0 10px; letter-spacing: -.01em; }
+.dc-h2 span { color: var(--text-muted); font-weight: 600; font-size: .86rem;
+    margin-left: 8px; }
+
+.dc-vitrine {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
+}
+.dc-carte {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;
+}
+/* L'APERÇU NE SE JOUE PAS : `pointer-events: none` sur ce qu'il contient.
+   Sans cela, un clic sur une pastille de réponse ou une case de grille
+   répondrait à une question qui n'a pas été posée — et l'exercice qu'on
+   croyait regarder se mettrait à compter. */
+.dc-apercu {
+    height: 132px; padding: 10px; background: var(--bg-app);
+    border-bottom: 1px solid var(--border);
+    display: grid; place-items: center; overflow: hidden;
+}
+.dc-apercu > * { pointer-events: none; max-width: 100%; }
+.dc-apercu svg { max-height: 112px; width: auto; height: auto; }
+.dc-apercu .game-question { font-size: .92rem; text-align: center; }
+.dc-enonce { margin: 0; font-size: .9rem; text-align: center; color: var(--text-main); }
+
+.dc-corps { padding: 12px 13px 13px; display: flex; flex-direction: column;
+    gap: 6px; flex: 1; }
+.dc-niveau { font-size: .72rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted); }
+.dc-titre { margin: 0; font-size: .95rem; }
+.dc-quoi { margin: 0; font-size: .82rem; color: var(--text-muted); line-height: 1.4; }
+.dc-pied { display: flex; gap: 8px; margin-top: auto; padding-top: 8px; }
+.dc-pied .dc-btn { flex: 1; }
+
+.dc-btn {
+    border: 1px solid var(--border); background: var(--bg-panel);
+    border-radius: 12px; padding: 10px 14px; font-weight: 700;
+    font-size: .88rem; cursor: pointer; color: var(--text-main);
+}
+.dc-btn--vif { background: var(--primary); border-color: var(--primary); color: #fff; }
+@media (hover: hover) { .dc-btn:hover { filter: brightness(1.06); } }
+.dc-btn:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+
+.dc-note { margin-top: 26px; background: var(--bg-hover); border-radius: 14px;
+    padding: 13px 15px; font-size: .85rem; color: var(--text-muted); }
+
+/* La porte, sur l'accueil. Elle est au-dessus du pied, pas dedans : c'est une
+   PORTE, pas une mention légale — la même leçon que celle du professeur. */
+.portail-decouvrir { display: flex; flex-direction: column; align-items: center;
+    gap: 4px; margin: 18px 0 6px; }
+
+/* LA FACE D'UN JEU, dans la vitrine : ce qui n'a pas d'énoncé parce que ce
+   n'est pas une question. Elle ne ressemble pas à un aperçu d'exercice, et
+   c'est le but — un visiteur doit voir du premier coup d'œil que celui-là se
+   joue au lieu de se répondre. */
+.dc-jeu {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--text-muted);
+}
+.dc-jeu span { font-size: .78rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; }

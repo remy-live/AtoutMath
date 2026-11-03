@@ -448,6 +448,29 @@ function dessiner() {
              aux textes secondaires. Il se lisait comme une note de bas de page.
              Il reste DISCRET — c'est l'écran des élèves, et ils sont trente
              pour un professeur — mais discret n'est pas illisible. -->
+        <!-- ── LA PORTE DE LA DÉCOUVERTE ───────────────────────────────
+
+             RÉMY, 3 novembre : « j'aimerai bien un mode démo dans l'accueil
+             avec un apercu des exercices et aussi un mode qui montre et
+             explique les possibilités ».
+
+             IL Y AVAIT DÉJÀ « Explorer les exercices » — un lien gris en bas
+             de page, qui dépend d'un réglage éteint par défaut et ouvre les
+             264 exercices d'un coup. Ce n'est ni une vitrine ni une
+             présentation : c'est le catalogue, pour un élève qui sait déjà ce
+             qu'il cherche. La découverte s'adresse à quelqu'un qui ne sait
+             pas encore ce que le logiciel fait.
+
+             ELLE NE DÉPEND D'AUCUN RÉGLAGE, et c'est voulu : un collègue à qui
+             l'on montre le logiciel en salle des profs n'a pas de compte, et
+             Rémy n'a pas à allumer quelque chose avant de lui montrer. Rien
+             n'y est enregistré, donc rien n'y est à protéger. -->
+        <p class="portail-decouvrir">
+          <button id="portail-decouvrir" class="portail-bouton portail-bouton--doux">
+            Découvrir AtoutMath</button>
+          <span class="portail-aide portail-aide--centre">Les exercices, en vrai,
+            sans compte et sans trace.</span>
+        </p>
         <p class="portail-pied">
           ${modeLibre() ? '<button id="portail-libre" class="portail-lien portail-lien--porte">'
             + 'Explorer les exercices</button>' : ''}
@@ -664,6 +687,17 @@ function dessiner() {
 
     const libre = document.getElementById('portail-libre');
     if (libre) libre.onclick = () => { fermerPortail(); };
+
+    // LA DÉCOUVERTE SE CHARGE À LA DEMANDE : elle porte la vitrine, qui fait
+    // tourner dix générateurs, et personne ne doit payer cela en ouvrant
+    // l'accueil pour taper son identifiant.
+    const decouvrir = document.getElementById('portail-decouvrir');
+    if (decouvrir) {
+        decouvrir.onclick = async () => {
+            const { ouvrirDecouverte } = await import('./decouverteUI.js');
+            ouvrirDecouverte();
+        };
+    }
 
     // L'ÉLÈVE D'ESSAI, SUR LA COPIE SANS SERVEUR SEULEMENT.
     //

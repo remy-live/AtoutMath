@@ -4669,3 +4669,23 @@ faut qu'il se recopie sans hésiter —, et le trait franc tombe bien sous la
 cinquième ligne. La teinte n'est pas choisie à l'œil : c'est la PLUS CLAIRE
 qui atteigne 1,35, calculée. « Un peu plus foncé » choisi à l'œil est
 exactement ce qui avait produit le 1,07.
+
+**Arbitrage, 3 novembre.** « les deux et pouvoir faire qqs exercices. » Donc
+trois choses dans le même mode : la vitrine, la visite guidée, ET de quoi
+jouer pour de vrai à quelques exercices — sans compte, sans rien casser.
+
+**Arbitrage, 3 novembre, sur maquette.** Deux choix tranchés :
+
+1. **La visite ouvre les VRAIS écrans**, avec une bulle qui explique et un
+   bouton « suite ». Pas une capture — « on voit le logiciel, pas une image de
+   lui ». Cela oblige à de fausses données crédibles : une classe, des élèves,
+   des résultats. Elles existent déjà (`generateSampleData`), il faudra les
+   poser dans un profil à part pour ne jamais toucher aux vraies.
+2. **La vitrine est une sélection que je compose** — un exercice par domaine et
+   par niveau, du calcul, une figure, une énigme, un jeu — et que je tiens à
+   jour quand le catalogue grandit. Rien à régler de son côté.
+
+ON CONSTRUIT EN DEUX TEMPS : d'abord la porte, l'écran et la vitrine jouable
+(c'est ce qui répond à « un aperçu des exercices » et « pouvoir faire qqs
+exercices ») ; la visite guidée ensuite, parce qu'elle demande le profil de
+démonstration.
