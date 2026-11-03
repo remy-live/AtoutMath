@@ -169,6 +169,7 @@ export const CODES_EXERCICES = {
     'logi-enquete':               'EN',   // L'Enquête
     'logi-pentaminos':            'NS',   // Les Pentaminos
     'logi-transvasements':        'NW',   // Les Transvasements
+    'logi-cavaliers':             'CY',   // L'énigme des cavaliers
     'dec-chute':                  'ND',   // La Chute des Décimaux
     'logi-carre-magique':         'MG',   // Le Carré Magique
     'logi-hexagrille':            'HX',   // L'Hexagrille

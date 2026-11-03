@@ -1362,7 +1362,32 @@ export const calculExercises = [
         motsClefs: ['pentamino', 'pentaminos', 'pavage', 'paver', 'aire', 'puzzle',
             'logique', 'symétrie', 'rectangle', 'pièces'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Chaque pièce est faite de CINQ cases, et il faut qu'elles remplissent le rectangle entièrement : pas un trou, pas un chevauchement. Prends une pièce et glisse-la ; touche-la sur le plateau pour la reprendre. « Tourner » et « Retourner » agissent sur la pièce choisie — et si rien ne change, ce n'est pas une panne : c'est que la pièce est symétrique, comme la croix qui a la même forme dans les quatre sens. COMMENCE PAR UN COIN : une case de coin ne se remplit que de deux façons, une case du milieu s'en offre huit. Et compte avant de poser — l'aire du rectangle te dit combien de pièces il faut."
+        instruction: "Chaque pièce est faite de CINQ cases, et il faut qu'elles remplissent le rectangle entièrement : pas un trou, pas un chevauchement. Les pièces vivent sur une table et tu les poses où tu veux ; dès qu'une pièce arrive sur le cadre, elle s'y aimante. Touche-la pour la choisir. « Tourner » et « Retourner » agissent sur la pièce choisie — et si rien ne change, ce n'est pas une panne : c'est que la pièce est symétrique, comme la croix qui a la même forme dans les quatre sens. COMMENCE PAR UN COIN : une case de coin ne se remplit que de deux façons, une case du milieu s'en offre huit. Et compte avant de poser — l'aire du rectangle te dit combien de pièces il faut."
+    },
+    {
+        // L'ÉNIGME DES CAVALIERS. Rémy, 31 octobre, avec la photo d'un livre
+        // d'énigmes : « j'aimeri bien aussi cette enigme ». C'est le problème de
+        // Guarini, posé en 1512, et sa légende disait le résultat : « Sixteen
+        // moves is the minimum. Note that the knights have to move around in a
+        // cycle in the same direction. »
+        //
+        // ON NE RECOPIE PAS CE SEIZE : il est calculé par un parcours en largeur
+        // à chaque tirage. Une énigme dont on écrirait la réponse à la main
+        // serait la seule du catalogue que rien ne vérifie.
+        id: 'logi-cavaliers', title: 'L\u2019énigme des cavaliers',
+        cree: '2026-11-02',
+        generatorId: 'logique.cavaliers', activityId: 'cavaliers',
+        printable: 'cavaliers',
+        // DEUX PAR LIGNE : il faut le damier de départ, celui d'arrivée, et la
+        // suite de petits damiers où l'élève note ses coups.
+        colonnesPapier: 2,
+        sansRevision: true,
+        params: { niveau: '2' },
+        skills: ['num.logique.cavaliers'],
+        motsClefs: ['cavalier', 'cavaliers', 'échiquier', 'damier', 'Guarini', 'échanger',
+            'saut', 'logique', 'graphe', 'anneau', 'énigme'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Touche un cavalier : ses cases d'arrivée s'allument. Touche l'une d'elles, il y saute. Un cavalier va toujours à deux cases d'un côté et une de l'autre — rien d'autre. REGARDE COMBIEN DE CASES S'ALLUMENT à chaque fois : il y en a toujours DEUX, jamais trois. C'est là qu'est l'énigme. Si chaque case n'a que deux voisines, alors les huit cases utiles forment un seul anneau, les cavaliers y tournent comme des perles sur un collier, et aucun ne peut en dépasser un autre. Pour les échanger, il n'y a donc qu'une chose à faire : les faire tourner TOUS DANS LE MÊME SENS. La case du milieu, elle, ne sert jamais : aucun saut n'y mène."
     },
     {
         id: 'logi-allumettes', title: 'Le Jeu des Allumettes',

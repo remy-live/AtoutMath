@@ -45,6 +45,7 @@ import { dessinGradueGenerator } from '../generators/dessinGradue.js';
 import { arbreCalculGenerator } from '../generators/arbreCalcul.js';
 import { pentaminosGenerator } from '../generators/pentaminos.js';
 import { transvasementsGenerator } from '../generators/transvasements.js';
+import { cavaliersGenerator } from '../generators/cavaliers.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
@@ -191,7 +192,7 @@ import {
     cheminNombresGenerator, allumettesGenerator,
     allumettesEgaliteGenerator, traverseeGenerator, penduGenerator,
     dessinGradueGenerator, arbreCalculGenerator, pentaminosGenerator,
-    transvasementsGenerator,
+    transvasementsGenerator, cavaliersGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
@@ -615,6 +616,23 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./pentaminos.js')
+});
+
+// L'ÉNIGME DES CAVALIERS. Rémy, 31 octobre, avec la photo d'un livre :
+// « j'aimeri bien aussi cette enigme ». C'est le problème de Guarini, 1512.
+//
+// `parDefaut: 2` — et c'est mesuré à la durée : l'énigme de seize coups se
+// cherche dix minutes la première fois, et se rejoue en une une fois qu'on a
+// vu l'anneau. Deux d'affilée tiennent dans une heure ; trois voudraient dire
+// que la deuxième n'a rien appris.
+registerActivity({
+    id: 'cavaliers',
+    unite: 'énigme',
+    parDefaut: 2,
+    label: 'L\'énigme des cavaliers',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./cavaliers.js')
 });
 
 registerActivity({

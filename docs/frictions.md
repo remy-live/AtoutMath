@@ -6637,3 +6637,24 @@ de durée mesure la machine autant que le code, et se pose en conséquence.
   épilogue recopié. Il mériterait de vivre dans `sonde.mjs` — quelque chose
   comme `s.verdict(dits, ratés)` — pour que la règle « on nomme ce qu'on
   compte » n'ait pas à être réécrite neuf fois.
+
+---
+
+**Un conteneur neuf perd `node_modules`, et toutes les sondes meurent sur une
+erreur qui ne parle pas d'elles** — 3 novembre 2026
+
+- *Ce que je voulais faire* : lancer une sonde après un redémarrage de la
+  session.
+- *Ce qui a coûté* : `Cannot find package 'playwright' imported from
+  tools/sonde.mjs`. Le dépôt n'a aucune dépendance déclarée — Playwright et
+  `pdfjs-dist` viennent de l'installation globale —, mais l'import ESM ne va
+  pas les chercher là. Il faut relier `node_modules` à la main, et pour
+  `pdfjs-dist` (que `tools/pdfEnImage.mjs` cherche à un chemin écrit en dur)
+  il faut l'installer. Trois fois dans la session, à chaque redémarrage.
+- *Combien de fois* : |||
+- *Ce qui manque* : de quoi préparer l'atelier en une commande — un
+  `tools/preparerLAtelier.sh` qui relie les modules globaux, vérifie
+  `playwright` et `pdfjs-dist`, et le dise. Ou, mieux, un `package.json` qui
+  déclare enfin ces deux-là : « on n'ajoute pas de dépendance sans une raison
+  qu'on peut écrire », et la raison est écrite depuis longtemps — ce sont les
+  deux outils de mesure du dépôt.

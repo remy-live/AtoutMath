@@ -3230,3 +3230,221 @@ RENDUS_GRILLES.arbreCalcul = {
     // ligne, la case fait huit millimètres et l'élève écrit à côté.
     parLigneDefaut: 2
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L'ÉNIGME DES CAVALIERS, SUR LE PAPIER.
+//
+// RÉMY, 31 octobre : « j'aimeri bien aussi cette enigme ». Sur le papier, on ne
+// peut pas déplacer un cavalier — alors on l'ÉCRIT. Le damier porte des
+// coordonnées, comme un échiquier, et l'élève note ses coups « A1 → C2 ».
+//
+// POURQUOI PAS SEIZE PETITS DAMIERS, comme dans le livre dont Rémy a envoyé la
+// photo : seize damiers dessinés, c'est seize fois la même figure à redessiner
+// à la main, et il n'en resterait plus la place pour chercher. Le livre les
+// montre parce qu'il donne la SOLUTION ; une fiche d'élève doit laisser la
+// place de se tromper et de raturer.
+//
+// LES DEUX COULEURS SE LISENT EN NOIR ET BLANC : un cavalier plein et un
+// cavalier creux. Deux gris ne se distinguent pas sur une photocopie, et c'est
+// une photocopie que les élèves recevront.
+
+function poseCavaliers(item, slot) {
+    const T = slot.taille;
+    const { colonnes, lignes } = item.meta;
+    // Le damier du haut occupe un peu plus du tiers ; la liste des coups prend
+    // le reste. La case est bornée par les deux : assez grande pour qu'on
+    // puisse dessiner un cavalier dedans, assez petite pour que la liste tienne.
+    const u = Math.min(T * 0.34 / lignes, T * 0.40 / colonnes);
+    const uBut = u * 0.52;
+    const marge = u * 0.52;                       // la place des étiquettes
+    const largeJeu = colonnes * u + marge;
+    const largeBut = colonnes * uBut;
+    const ecart = T * 0.07;
+    const total = largeJeu + ecart + largeBut;
+    const yHaut = slot.y + T * 0.04;
+    const combien = Math.max(8, Math.min(20, (item.meta.minimum || 16) + 4));
+    const yListe = yHaut + lignes * u + u * 0.9;
+    const hLigne = Math.max(T * 0.038, (slot.y + T * 0.97 - yListe) / Math.ceil(combien / 2));
+    return {
+        T, u, uBut, marge, colonnes, lignes, combien, hLigne,
+        xJeu: slot.x + (T - total) / 2 + marge,
+        yJeu: yHaut,
+        xBut: slot.x + (T - total) / 2 + largeJeu + ecart,
+        yBut: yHaut + (lignes * u - lignes * uBut) / 2,
+        xListe: slot.x + T * 0.06,
+        largeListe: T * 0.88,
+        yListe
+    };
+}
+
+/** « A1 », « C3 » — la colonne en lettre, la ligne en chiffre, comme aux échecs. */
+function nomDeCase(k, colonnes, lignes) {
+    const c = k % colonnes, l = Math.floor(k / colonnes);
+    return `${String.fromCharCode(65 + c)}${lignes - l}`;
+}
+
+function cavaliersPreviewHtml(item, slot, k, solution) {
+    const g = poseCavaliers(item, slot);
+    const px = (v) => `${v * k}px`;
+    const { colonnes, lignes, mortes } = item.meta;
+    const morte = new Set(mortes || []);
+    let html = '';
+
+    const damier = (etat, x0, y0, u, avecNoms) => {
+        for (let i = 0; i < colonnes * lignes; i++) {
+            const c = i % colonnes, l = Math.floor(i / colonnes);
+            const x = x0 + c * u, y = y0 + l * u;
+            const sombre = (c + l) % 2;
+            const fond = morte.has(i) ? '#9aa3b2' : (sombre ? '#d7dde6' : '#ffffff');
+            html += `<div style="position:absolute; left:${px(x)}; top:${px(y)};
+                width:${px(u)}; height:${px(u)}; box-sizing:border-box;
+                border:1px solid #1a202c; background:${fond};"></div>`;
+            if (etat[i]) {
+                const plein = etat[i] === 'A';
+                html += `<div style="position:absolute; left:${px(x + u * 0.18)};
+                    top:${px(y + u * 0.18)}; width:${px(u * 0.64)}; height:${px(u * 0.64)};
+                    box-sizing:border-box; border-radius:50%;
+                    border:${px(u * 0.09)} solid #1a202c;
+                    background:${plein ? '#1a202c' : 'transparent'};"></div>`;
+            }
+        }
+        if (!avecNoms) return;
+        for (let c = 0; c < colonnes; c++) {
+            html += `<div style="position:absolute; left:${px(x0 + c * u)};
+                top:${px(y0 + lignes * u + u * 0.06)}; width:${px(u)}; text-align:center;
+                font-size:${px(u * 0.34)}; font-weight:800; color:#4a5568;"
+                >${String.fromCharCode(65 + c)}</div>`;
+        }
+        for (let l = 0; l < lignes; l++) {
+            html += `<div style="position:absolute; left:${px(x0 - u * 0.5)};
+                top:${px(y0 + l * u + u * 0.32)}; width:${px(u * 0.42)}; text-align:center;
+                font-size:${px(u * 0.34)}; font-weight:800; color:#4a5568;"
+                >${lignes - l}</div>`;
+        }
+    };
+
+    damier(item.meta.depart, g.xJeu, g.yJeu, g.u, true);
+    damier(item.meta.arrivee, g.xBut, g.yBut, g.uBut, false);
+    html += `<div style="position:absolute; left:${px(g.xBut)};
+        top:${px(g.yBut + lignes * g.uBut + g.uBut * 0.1)}; width:${px(colonnes * g.uBut)};
+        text-align:center; font-size:${px(g.uBut * 0.42)}; font-weight:800;
+        color:#4a5568;">à obtenir</div>`;
+
+    // LA LISTE DES COUPS, en deux colonnes : « 1. ___ → ___ ».
+    const parColonne = Math.ceil(g.combien / 2);
+    const solutions = solution ? (item.meta.solution || []) : null;
+    for (let i = 0; i < g.combien; i++) {
+        const col = Math.floor(i / parColonne), rang = i % parColonne;
+        const x = g.xListe + col * (g.largeListe / 2);
+        const y = g.yListe + rang * g.hLigne;
+        const dit = solutions && solutions[i]
+            ? `${nomDeCase(solutions[i].de, colonnes, lignes)} > `
+                + `${nomDeCase(solutions[i].vers, colonnes, lignes)}`
+            : '';
+        html += `<div style="position:absolute; left:${px(x)}; top:${px(y)};
+            width:${px(g.largeListe / 2 - g.T * 0.02)};
+            font-size:${px(g.hLigne * 0.52)}; color:#2d3748;">
+            <span style="font-weight:800;">${i + 1}.</span>
+            <span style="display:inline-block; min-width:${px(g.T * 0.18)};
+                border-bottom:1px solid #9aa3b2; text-align:center;
+                font-weight:800; color:${dit ? '#c2410c' : 'transparent'};"
+                >${dit || '.'}</span></div>`;
+    }
+    return html;
+}
+
+function dessinerCavaliersPdf(doc, item, slot, solution) {
+    const g = poseCavaliers(item, slot);
+    const { colonnes, lignes, mortes } = item.meta;
+    const morte = new Set(mortes || []);
+
+    const damier = (etat, x0, y0, u, avecNoms) => {
+        for (let i = 0; i < colonnes * lignes; i++) {
+            const c = i % colonnes, l = Math.floor(i / colonnes);
+            const x = x0 + c * u, y = y0 + l * u;
+            if (morte.has(i)) doc.setFillColor(154, 163, 178);
+            else if ((c + l) % 2) doc.setFillColor(215, 221, 230);
+            else doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(0.3);
+            doc.rect(x, y, u, u, 'FD');
+            if (!etat[i]) continue;
+            // PLEIN OU CREUX, jamais deux gris : c'est une photocopie.
+            const r = u * 0.30;
+            doc.setLineWidth(u * 0.09);
+            doc.setDrawColor(...ENCRE.trait);
+            if (etat[i] === 'A') {
+                doc.setFillColor(...ENCRE.trait);
+                doc.circle(x + u / 2, y + u / 2, r, 'FD');
+            } else {
+                doc.circle(x + u / 2, y + u / 2, r, 'D');
+            }
+            doc.setLineWidth(0.3);
+        }
+        if (!avecNoms) return;
+        doc.setTextColor(...ENCRE.texte);
+        // LA TAILLE DE POLICE EST EN POINTS, PAS EN MILLIMÈTRES. `u * 1.9` donnait
+        // des « A B C » de trente points, plus hauts que les cases qu'ils
+        // nomment : vu sur l'image, pas dans un compteur. Le plafond est celui
+        // des autres rendus du dépôt.
+        doc.setFontSize(Math.min(11, u * 0.95));
+        for (let c = 0; c < colonnes; c++) {
+            doc.text(String.fromCharCode(65 + c), x0 + c * u + u / 2,
+                y0 + lignes * u + u * 0.42, { align: 'center' });
+        }
+        for (let l = 0; l < lignes; l++) {
+            doc.text(String(lignes - l), x0 - u * 0.28, y0 + l * u + u * 0.62,
+                { align: 'center' });
+        }
+    };
+
+    damier(item.meta.depart, g.xJeu, g.yJeu, g.u, true);
+    damier(item.meta.arrivee, g.xBut, g.yBut, g.uBut, false);
+    doc.setFontSize(Math.min(8, g.uBut * 1.1));
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf('à obtenir'), g.xBut + colonnes * g.uBut / 2,
+        g.yBut + lignes * g.uBut + g.uBut * 0.75, { align: 'center' });
+
+    const parColonne = Math.ceil(g.combien / 2);
+    const solutions = solution ? (item.meta.solution || []) : null;
+    doc.setFontSize(Math.min(10, g.hLigne * 1.5));
+    for (let i = 0; i < g.combien; i++) {
+        const col = Math.floor(i / parColonne), rang = i % parColonne;
+        const x = g.xListe + col * (g.largeListe / 2);
+        const y = g.yListe + rang * g.hLigne + g.hLigne * 0.6;
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(`${i + 1}.`, x, y);
+        const xTrait = x + g.T * 0.05;
+        const largeur = g.largeListe / 2 - g.T * 0.09;
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.2);
+        doc.line(xTrait, y + g.hLigne * 0.12, xTrait + largeur, y + g.hLigne * 0.12);
+        if (solutions && solutions[i]) {
+            // L'ORANGE DES CORRIGÉS, celui des autres fiches : il n'y a pas de
+            // jeton pour lui dans `encre.js`, et l'inventer ici en ferait un
+            // sixième ton sur un papier qui en compte cinq.
+            doc.setTextColor(194, 65, 12);
+            doc.text(pourPdf(`${nomDeCase(solutions[i].de, colonnes, lignes)} > `
+                + `${nomDeCase(solutions[i].vers, colonnes, lignes)}`),
+            xTrait + largeur / 2, y, { align: 'center' });
+        }
+    }
+}
+
+RENDUS_GRILLES.cavaliers = {
+    titre: 'L’énigme des cavaliers',
+    nomBloc: 'Énigme',
+    // LA CASE GRISE DU MILIEU EST NOMMÉE DANS LA CONSIGNE. Sur l'écran elle
+    // est hachurée, et l'on comprend ; sur le papier ce n'est qu'un gris de
+    // plus au milieu d'un damier gris et blanc, et rien ne dit qu'elle est
+    // morte. Une feuille part en photocopie sans personne pour l'expliquer.
+    consigne: () => 'Échange les cavaliers pleins et les cavaliers creux. Un cavalier '
+        + 'saute en L : deux cases d\'un côté, une de l\'autre. Note tes coups : « A1 > C2 ». '
+        + 'Regarde bien où un cavalier peut aller : tu trouveras toujours DEUX cases. '
+        + 'La case grise foncée du milieu ne sert jamais — aucun saut n\'y mène.',
+    previewGrille: cavaliersPreviewHtml,
+    pdfGrille: dessinerCavaliersPdf,
+    // DEUX PAR LIGNE : il faut le damier, celui d'arrivée à côté, et la liste
+    // des coups en dessous.
+    parLigneDefaut: 2
+};

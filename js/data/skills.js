@@ -223,6 +223,18 @@ const BASE = {
             + 'faut. Commence par un COIN — une case de coin ne se remplit que de deux '
             + 'façons, alors qu\'une case du milieu s\'en offre huit.'
     },
+    'num.logique.cavaliers': {
+        label: 'Échanger les cavaliers (énigme de Guarini)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Échanger quatre cavaliers sur un damier 3 × 3.',
+        lesson: 'Sur un damier 3 × 3, la case du milieu ne sert à rien : aucun saut de '
+            + 'cavalier n\'y mène. Les huit autres n\'ont chacune que DEUX voisines, si '
+            + 'bien qu\'elles forment un seul anneau. Les cavaliers y tournent comme des '
+            + 'perles sur un collier et ne peuvent jamais se dépasser : pour les échanger, '
+            + 'il faut les faire tourner tous dans le même sens, seize coups en tout.'
+    },
     'num.logique.mathodu': {
         label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],
