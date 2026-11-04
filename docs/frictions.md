@@ -3820,8 +3820,14 @@ lignes** — 2026-10-01
   POSITIF sous un repli fermé. Ce qui a tranché en une ligne :
   `document.elementFromPoint` au centre, qui a désigné l'aperçu derrière le
   panneau.
-- **Combien de fois** : || — deux fois dans la même heure, sur deux replis
-  différents (`#pp-plus` pour le poly, « Sur quel papier » pour la fiche).
+- **Combien de fois** : ||| — deux fois dans la même heure, sur deux replis
+  différents (`#pp-plus` pour le poly, « Sur quel papier » pour la fiche) ;
+  **une troisième le 4 novembre**, sur le bouton « Fiches de reprise », caché
+  dans « Classes locales, importées de fichiers ». L'outil existe et il a
+  réglé la chose en une ligne — mais j'ai de nouveau commencé par écrire le
+  clic sans lui, et payé trente secondes de « element is not visible ».
+  **La règle à retenir : tout clic sur un bouton d'un écran qu'on n'a pas
+  composé soi-même passe par `deplier` d'abord.**
 - **Ce qui manque** : *fait* — `sonde.deplier(selecteur)` clique le `<summary>`
   du repli qui contient le réglage, et jette si le repli ne s'ouvre pas. Reste
   la leçon générale : **une mesure de visibilité doit regarder

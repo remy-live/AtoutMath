@@ -10748,6 +10748,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     background: var(--primary); color: #fff;
 }
 .cl-btn--fin { background: transparent; color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
+/* LE SECOND PLAN : « Fermer » à côté de « Télécharger ». Deux boutons pleins
+   de la même couleur ne disent pas lequel agit. */
+.cl-btn--doux { background: transparent; color: var(--primary-texte, var(--primary)); }
 .cl-btn--mini { padding: 5px 11px; font-size: .78rem; }
 @media (hover: hover) {
     .cl-btn:hover { filter: brightness(1.06); }
