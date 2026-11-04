@@ -4869,3 +4869,10 @@ CHER ? ». Même famille — on explore des états —, une marche de plus.
 la lumière qui se déplace, les silhouettes qui attendent de l'autre côté. Les
 propositions visuelles lui partent avant que je ne fige quoi que ce soit —
 « fais moi des propositions d'abord ».
+
+### Son choix, 4 novembre : « le A »
+
+Décor **A · Nuit et lanterne**, personnages **A · Randonneurs** — manteau,
+écharpe, bottes, et la vitesse qui se lit sur le dessin. Les ombres chinoises
+sont écartées : seule la lampe détourait le personnage, et l'on ne distinguait
+plus qui traversait.

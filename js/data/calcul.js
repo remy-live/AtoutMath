@@ -1302,6 +1302,26 @@ export const calculExercises = [
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Une égalité est écrite en allumettes, avec des chiffres comme sur un réveil. Elle est FAUSSE. Déplace UNE seule allumette pour la rendre vraie — elle doit se reposer ailleurs, pas disparaître. DEUX CHOSES À CHERCHER EN MÊME TEMPS : quelles égalités VRAIES sont proches de celle-là, et quels chiffres ne diffèrent que d'une allumette. 6 et 5, 9 et 3, 7 et 1, 8 et 9 : apprends ces voisinages, ils ouvrent presque toutes les énigmes. ET LE SIGNE COMPTE : la barre verticale du + est une allumette comme les autres, elle peut partir ailleurs — ou arriver sur un − pour en faire un +. C'est le coup que personne ne voit la première fois. Il n'y a qu'une seule réparation possible."
     },
+    // LE PONT ET LA LAMPE. Rémy, 4 novembre : « Oui super et il faut que ce
+    // soit joli ». Il est rangé juste à côté de La Traversée parce qu'on y
+    // arrive depuis elle : la première demande qu'un chemin EXISTE, celle-ci
+    // demande le chemin le moins CHER.
+    //
+    // PAS DE RÉVISION (`sansRevision`) : une énigme ne se revoit pas comme une
+    // table de multiplication. On la refait quand on veut, on ne la « doit »
+    // jamais.
+    {
+        id: 'logi-pont-lampe', title: 'Le Pont et la lampe',
+        cree: '2026-11-04',
+        generatorId: 'logique.pontLampe', activityId: 'pontLampe',
+        printable: 'pontLampe',
+        sansRevision: true,
+        params: { nbQuestions: 2, niveau: '2' },
+        motsClefs: ['pont', 'lampe', 'lanterne', 'traverser', 'minutes', 'optimiser',
+            'logique', 'énigme', 'le plus lent'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Il fait nuit, il n'y a qu'une lampe, et le pont ne porte que deux personnes à la fois. Qui traverse doit porter la lampe — donc quelqu'un doit toujours la RAPPORTER, et ces retours coûtent des minutes eux aussi. DEUX QUI TRAVERSENT ENSEMBLE VONT AU RYTHME DU PLUS LENT : leurs deux temps ne s'additionnent pas, le plus grand remplace l'autre. C'est de là que vient l'idée à laquelle personne ne pense. La stratégie qui vient toute seule — le plus rapide accompagne chacun et revient — est honnête et ce n'est pas la meilleure : essaie de faire traverser LES DEUX PLUS LENTS ENSEMBLE, pour ne payer leur lenteur qu'une seule fois. Ici on ne cherche pas à réussir, on cherche à payer le moins cher : le nombre de minutes est la réponse."
+    },
     {
         id: 'logi-traversee', title: 'La Traversée',
         cree: '2026-10-27',

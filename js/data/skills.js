@@ -202,6 +202,22 @@ const BASE = {
             + 'séparer des autres. Et accepte de RAMENER quelqu\'un en arrière — c\'est le '
             + 'coup auquel personne ne pense, et c\'est celui qui débloque tout.'
     },
+    // LE PONT ET LA LAMPE. Rémy, 4 novembre : « Oui super et il faut que ce
+    // soit joli ». Ce n'est PAS la même compétence que La Traversée, et c'est
+    // la raison d'ajouter l'exercice : celle-là demande qu'un chemin existe,
+    // celle-ci demande le chemin le moins CHER. On passe de réussir à
+    // optimiser, et le prérequis le dit — on y arrive depuis La Traversée.
+    'num.logique.pont': {
+        label: 'Choisir le chemin le moins coûteux (Le Pont et la lampe)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.logique.traversee'],
+        descriptor: 'Trouver la suite de traversées qui coûte le moins de minutes.',
+        lesson: 'Quand deux personnes traversent ensemble, le groupe va au rythme de la '
+            + 'PLUS LENTE : son temps ne s\'ajoute pas, il remplace l\'autre. C\'est ce qui '
+            + 'donne l\'idée à laquelle personne ne pense — faire traverser LES DEUX PLUS '
+            + 'LENTS ENSEMBLE, pour ne payer leur lenteur qu\'une seule fois.'
+    },
     'num.logique.transvasements': {
         label: 'Mesurer en transvasant (Les Transvasements)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

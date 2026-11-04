@@ -40,6 +40,7 @@ import { cheminNombresGenerator } from '../generators/cheminNombres.js';
 import { allumettesGenerator } from '../generators/allumettes.js';
 import { allumettesEgaliteGenerator } from '../generators/allumettesEgalite.js';
 import { traverseeGenerator } from '../generators/traversee.js';
+import { pontLampeGenerator } from '../generators/pontLampe.js';
 import { penduGenerator } from '../generators/pendu.js';
 import { dessinGradueGenerator } from '../generators/dessinGradue.js';
 import { arbreCalculGenerator } from '../generators/arbreCalcul.js';
@@ -190,7 +191,7 @@ import {
     kenkenGenerator, shikakuGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
     kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
     cheminNombresGenerator, allumettesGenerator,
-    allumettesEgaliteGenerator, traverseeGenerator, penduGenerator,
+    allumettesEgaliteGenerator, traverseeGenerator, pontLampeGenerator, penduGenerator,
     dessinGradueGenerator, arbreCalculGenerator, pentaminosGenerator,
     transvasementsGenerator, cavaliersGenerator,
     dingbatGenerator,
@@ -555,6 +556,20 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./traversee.js')
+});
+
+// LE PONT ET LA LAMPE — la même famille que La Traversée, une marche plus
+// haut : celle-là demande qu'un chemin existe, celui-ci demande le chemin le
+// moins CHER. On ne grise jamais « Traverser » : un coup cher n'est pas un coup
+// interdit, et griser donnerait la solution par élimination.
+registerActivity({
+    id: 'pontLampe',
+    unite: 'énigme',
+    parDefaut: 2,
+    label: 'Le Pont et la lampe',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./pontLampe.js')
 });
 
 // LE PENDU — vingt-six touches et un dessin. Pas de réglage de saisie : il

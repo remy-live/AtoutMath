@@ -16886,3 +16886,88 @@ body.visite-en-cours .modal-overlay > * {
 .st-pastille--libre input[type="color"] {
     width: 200%; height: 200%; border: 0; padding: 0; opacity: 0; cursor: pointer;
 }
+
+/* ═══════════ LE PONT ET LA LAMPE ═══════════
+   Rémy, 4 novembre : « Oui super et il faut que ce soit joli », puis, devant
+   trois maquettes : « le A » — la nuit, la lanterne, les randonneurs.
+
+   TOUT LE DÉCOR EST DANS LE SVG (js/core/pontSvg.js) : l'écran et la feuille
+   imprimée le partagent, et le jour où les deux divergeraient ce serait sur un
+   détail que personne ne verrait avant l'impression. Ici on ne règle que ce
+   qui tient à l'ÉCRAN — la taille, le toucher, les deux états de fin. */
+.pl-layout {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    width: 100%; max-width: 1100px; margin: 0 auto;
+}
+.pl-context { text-align: center; max-width: 820px; }
+.pl-consigne { font-size: 1rem; line-height: 1.45; }
+.pl-scene {
+    width: 100%; border-radius: 16px; overflow: hidden;
+    box-shadow: 0 10px 30px -18px rgb(2 6 23 / .8);
+}
+.pl-decor { display: block; width: 100%; height: auto; }
+
+/* LE MARCHEUR EST UNE CIBLE DE DOIGT, et c'est pour cela qu'on ne touche pas
+   à sa taille de dessin : à l'échelle de l'écran, sa silhouette fait déjà plus
+   de 44 px de large. On ne lui ajoute que le curseur et la réponse au doigt. */
+.pl-marcheur { cursor: pointer; transition: transform .18s ease; }
+.pl-marcheur:focus-visible {
+    outline: 3px solid #fde047; outline-offset: 4px; border-radius: 12px;
+}
+@media (hover: hover) {
+    .pl-marcheur:hover { filter: brightness(1.12); }
+}
+/* CELUI QUI EST SUR LE PONT EST DÉJÀ À UN AUTRE ENDROIT : on n'a pas besoin de
+   le colorier en plus, juste de confirmer qu'on l'a bien pris. */
+.pl-marcheur--sur { filter: drop-shadow(0 0 10px rgb(253 224 71 / .75)); }
+.pl-min { font: 900 13px/1 system-ui, sans-serif; fill: #0b1020; }
+.pl-nom { font: 900 15px/1 system-ui, sans-serif; fill: #eef2ff; }
+
+.pl-compteur {
+    display: flex; align-items: baseline; gap: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.pl-compteur b { font-size: 1.9rem; color: var(--text-main); }
+.pl-compteur span {
+    font-size: .8rem; font-weight: 800; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--text-muted);
+}
+.pl-statut {
+    min-height: 2.6em; text-align: center; max-width: 720px;
+    font-weight: 700; color: var(--text-main);
+}
+.pl-actions { display: flex; gap: 10px; }
+.pl-btn {
+    padding: 11px 20px; border-radius: 12px; border: 2px solid var(--border);
+    background: var(--bg-panel); color: var(--text-main);
+    font-family: inherit; font-size: 1rem; font-weight: 800; cursor: pointer;
+    min-height: 44px;
+}
+/* `#fff` ET NON `--primary-texte` : ce jeton est la couleur du texte sur le
+   FOND DE LA PAGE, pas sur un aplat de `--primary`. Posé ici, il donnait de
+   l'indigo sur de l'indigo — le bouton « Traverser » était vide, et la sonde
+   l'a montré avant Rémy. C'est la même règle que `.tv-btn--fort`. */
+.pl-btn--fort {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+    box-shadow: 0 6px 16px -8px var(--primary);
+}
+.pl-btn:disabled { opacity: .45; cursor: default; }
+@media (hover: hover) {
+    .pl-btn:not(:disabled):hover { background: var(--bg-hover); }
+    .pl-btn--fort:not(:disabled):hover { filter: brightness(1.08); }
+}
+/* LA MARCHE : le décor s'éclaircit le temps de la traversée. On ne déplace pas
+   les marcheurs en CSS — ils sont dans le SVG et c'est le code qui les repose
+   de l'autre côté ; un seul endroit sait où ils sont. */
+.pl-scene--marche .pl-decor { filter: brightness(1.12); transition: filter .9s ease; }
+.pl-scene--ok { box-shadow: 0 0 0 4px #16a34a, 0 10px 30px -18px rgb(2 6 23 / .8); }
+/* « PRESQUE » N'EST PAS « RATÉ ». Tout le monde est passé : l'élève a trouvé
+   une solution, simplement plus chère. L'ambre le dit sans le punir. */
+.pl-scene--presque { box-shadow: 0 0 0 4px #f59e0b, 0 10px 30px -18px rgb(2 6 23 / .8); }
+
+@media (max-width: 767px) {
+    .pl-compteur b { font-size: 1.5rem; }
+    .pl-min, .pl-nom { font-size: 19px; }
+    .pl-actions { width: 100%; }
+    .pl-btn { flex: 1; }
+}

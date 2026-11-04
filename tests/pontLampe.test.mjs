@@ -126,3 +126,28 @@ test('ET LE RETOUR SE DIT « RAPPORTE LA LAMPE »', () => {
     assert.equal(direLeTrajet({ qui: [0], vers: 'gauche', minutes: 1 }, m),
         'Léa rapporte la lampe (1 min)');
 });
+
+test('LA PREMIÈRE EST CELLE DU LIVRE, LES SUIVANTES SONT TIRÉES', () => {
+    // MESURÉ SUR LA FICHE IMPRIMÉE : une feuille de quatre énigmes imprimait
+    // QUATRE FOIS « Léa 1 · Tom 2 · Zoé 5 · Noé 10 ». Personne ne fait quatre
+    // fois la même chose — c'est le défaut que La Traversée avait eu, au même
+    // endroit, pour la même raison.
+    //
+    // ET L'ORDRE EST LE BON : on rencontre d'abord l'énigme canonique, celle
+    // dont le 17 contre 19 se raconte, puis on applique l'idée à des nombres
+    // neufs.
+    let graine = 7;
+    const rng = { int: (a, b) => { graine = (graine * 1103515245 + 12345) % 2147483648;
+        return a + (graine % (b - a + 1)); } };
+    assert.deepEqual(enigmeDuPont(2, rng, 0).temps, [1, 2, 5, 10]);
+    const vues = new Set();
+    for (let i = 1; i <= 6; i++) {
+        const e = enigmeDuPont(2, rng, i);
+        assert.equal(e.temps.length, 4, 'une variante a changé de nombre de marcheurs');
+        assert.ok(e.minutes < e.navette, `variante ${JSON.stringify(e.temps)} : sans piège`);
+        vues.add(e.temps.join('-'));
+    }
+    assert.ok(vues.size >= 4, `six tirages n'ont donné que ${vues.size} énigme(s)`);
+    assert.ok(!vues.has('1-2-5-10') || vues.size > 1,
+        'les variantes redonnent toujours l\'énigme du livre');
+});

@@ -3448,3 +3448,105 @@ RENDUS_GRILLES.cavaliers = {
     // des coups en dessous.
     parLigneDefaut: 2
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LE PONT ET LA LAMPE, SUR LE PAPIER.
+//
+// RÉMY, 4 novembre : « Oui super et il faut que ce soit joli ».
+//
+// LA FEUILLE NE REFAIT PAS LE DÉCOR DE NUIT, et c'est volontaire : un ciel
+// étoilé photocopié est un aplat gris qui mange l'encre et ne dit rien. Ce que
+// le papier doit porter, c'est ce que l'élève ne peut pas retenir de tête — QUI
+// met COMBIEN — et de la place pour écrire les traversées.
+//
+// LA COLONNE DES MINUTES EST CE QUI CHANGE TOUT par rapport à La Traversée. Là
+// -bas on notait qui passe ; ici on note qui passe ET ce que ça coûte, et l'on
+// additionne en bas. C'est en voyant la colonne qu'on comprend qu'un aller-
+// retour de trop se paie deux fois.
+
+function posePont(item, slot) {
+    const n = (item.meta.marcheurs || []).length;
+    // Une ligne par traversée minimale, plus deux pour ceux qui s'y
+    // reprennent, et jamais moins de sept : un tableau de trois lignes a l'air
+    // d'une erreur d'impression.
+    const lignes = Math.max(7, (item.meta.trajets || []).length + 2);
+    const haut = Math.min(slot.taille / (lignes + 3.4), slot.taille * 0.1);
+    return { n, lignes, haut, x: slot.x, y: slot.y + haut * 2.6, large: slot.taille };
+}
+
+/** « Léa 1 · Tom 2 · Zoé 5 · Noé 10 » — l'entête qu'on relit à chaque ligne. */
+function qui(item) {
+    return (item.meta.marcheurs || []).map(m => `${m.nom} ${m.minutes}`).join('  ·  ');
+}
+
+function pontPreviewHtml(item, slot, k, solution) {
+    const { lignes, haut, x, y, large } = posePont(item, slot);
+    const px = (v) => `${v * k}px`;
+    let html = `<div style="position:absolute; left:${px(x)}; top:${px(slot.y)};
+        width:${px(large)}; font-size:${px(haut * 0.46)}; font-weight:700;
+        color:#2d3748;">${qui(item)}</div>
+        <div style="position:absolute; left:${px(x)}; top:${px(slot.y + haut * 0.7)};
+        width:${px(large)}; font-size:${px(haut * 0.36)}; color:#6e7684;">
+        Deux au plus, et la lampe revient. Objectif : ${item.meta.minutes} min.</div>`;
+    for (let i = 0; i < lignes; i++) {
+        const ly = y + i * haut;
+        html += `<div style="position:absolute; left:${px(x)}; top:${px(ly)};
+            width:${px(large)}; height:${px(haut)}; box-sizing:border-box;
+            border-bottom:1px solid #b0b6c5; display:flex; align-items:center;
+            gap:${px(haut * 0.3)}; font-size:${px(haut * 0.42)}; color:#6e7684;">
+            <span style="width:${px(haut * 0.9)}; text-align:right;">${i + 1}.</span>
+            <span style="font-size:${px(haut * 0.6)}; color:#2d3748;">${i % 2 === 0 ? '→' : '←'}</span>
+            <span style="flex:1; color:#1d4ed8;">${solution
+        ? ((item.meta.solution || [])[i] || '') : ''}</span>
+        </div>`;
+    }
+    html += `<div style="position:absolute; left:${px(x)}; top:${px(y + lignes * haut + haut * 0.3)};
+        width:${px(large)}; font-size:${px(haut * 0.46)}; font-weight:700; color:#2d3748;
+        text-align:right;">Total : ${solution ? item.meta.minutes : '......'} min</div>`;
+    return html;
+}
+
+function dessinerPontPdf(doc, item, slot, solution) {
+    const { lignes, haut, x, y, large } = posePont(item, slot);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(10, haut * 2.7));
+    doc.text(pourPdf(qui(item)), x, slot.y + haut * 1.1);
+    doc.setTextColor(...ENCRE.gris);
+    doc.setFontSize(Math.min(7.5, haut * 2));
+    doc.text(pourPdf(`Deux au plus, et la lampe revient. Objectif : ${item.meta.minutes} min.`),
+        x, slot.y + haut * 1.9);
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.18);
+    for (let i = 0; i < lignes; i++) {
+        const ly = y + (i + 1) * haut;
+        doc.line(x, ly, x + large, ly);
+        doc.setTextColor(...ENCRE.gris);
+        doc.setFontSize(Math.min(8, haut * 2.2));
+        doc.text(`${i + 1}.`, x + haut * 0.9, ly - haut * 0.25, { align: 'right' });
+        // LA FLÈCHE DIT LE SENS : on part, on revient, on repart. Un élève qui
+        // écrit deux allers de suite voit tout de suite que quelque chose
+        // cloche — c'est le retour de la lampe qu'il a oublié.
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(i % 2 === 0 ? '→' : '←', x + haut * 1.5, ly - haut * 0.25);
+        if (solution && (item.meta.solution || [])[i]) {
+            doc.setTextColor(29, 78, 216);
+            doc.text(pourPdf(item.meta.solution[i]), x + haut * 2.4, ly - haut * 0.25);
+        }
+    }
+    // LE TOTAL EST LA RÉPONSE : c'est lui qu'on vient chercher, pas la liste.
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.min(10, haut * 2.7));
+    doc.text(pourPdf(`Total : ${solution ? item.meta.minutes : '......'} min`),
+        x + large, y + (lignes + 0.9) * haut, { align: 'right' });
+}
+
+RENDUS_GRILLES.pontLampe = {
+    titre: 'Le Pont et la lampe',
+    nomBloc: 'Énigme',
+    consigne: (items) => (items[0].prompt && items[0].prompt.papier) || '',
+    previewGrille: pontPreviewHtml,
+    pdfGrille: dessinerPontPdf,
+    // DEUX PAR LIGNE : le tableau est haut, et il faut de quoi écrire des noms
+    // à la main sur chaque ligne.
+    parLigneDefaut: 2
+};

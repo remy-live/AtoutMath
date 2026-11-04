@@ -183,9 +183,9 @@ export function strategieNavette(temps) {
  * piège, c'est dire à l'élève que la leçon du deuxième était un accident.
  */
 export const PALIERS = {
-    1: { nom: 'Trois marcheurs', temps: [1, 2, 5] },
-    2: { nom: 'L\'énigme des quatre', temps: [1, 2, 5, 10] },
-    3: { nom: 'Cinq marcheurs', temps: null, combien: 5 }
+    1: { nom: 'Trois marcheurs', temps: [1, 2, 5], combien: 3, piege: false },
+    2: { nom: 'L\'énigme des quatre', temps: [1, 2, 5, 10], combien: 4, piege: true },
+    3: { nom: 'Cinq marcheurs', temps: null, combien: 5, piege: true }
 };
 
 /** Des prénoms courts, qui tiennent sous une silhouette. */
@@ -194,24 +194,39 @@ export const MARCHEURS = ['Léa', 'Tom', 'Zoé', 'Noé', 'Mia', 'Sam'];
 /**
  * UNE ÉNIGME COMPLÈTE : les marcheurs, le minimum, et ce que coûte la navette.
  *
+ * LA PREMIÈRE EST CELLE DU LIVRE, LES SUIVANTES SONT TIRÉES.
+ *
+ * MESURÉ SUR LA FICHE IMPRIMÉE : une feuille de quatre énigmes imprimait
+ * QUATRE FOIS la même, « Léa 1 · Tom 2 · Zoé 5 · Noé 10 » en quatre
+ * exemplaires. Personne ne fait quatre fois la même chose — c'est le défaut
+ * que La Traversée avait eu, au même endroit, pour la même raison.
+ *
+ * ET L'ORDRE EST LE BON ORDRE : on rencontre d'abord l'énigme canonique, celle
+ * dont le 17 contre 19 se raconte, puis on applique l'idée à des nombres
+ * neufs. C'est exactement ce qu'on attend d'une notion.
+ *
  * @param {number} palier  1, 2 ou 3
  * @param {{int:(a:number,b:number)=>number}} rng
+ * @param {number} [index] le rang de la question ; 0 sert l'énigme de référence
  */
-export function enigmeDuPont(palier, rng) {
+export function enigmeDuPont(palier, rng, index = 0) {
     const p = PALIERS[palier] || PALIERS[2];
-    let temps = p.temps;
+    let temps = (index === 0 || !rng) ? p.temps : null;
     if (!temps) {
-        // ON TIRE JUSQU'À CE QUE L'ÉNIGME AIT UN PIÈGE, et l'on borne les
-        // essais : un tirage qui ne trouve pas doit rendre quelque chose de
-        // jouable plutôt que de tourner. Le repli est l'énigme des livres,
-        // augmentée d'un marcheur — elle, on sait qu'elle piège.
+        // ON TIRE JUSQU'À CE QUE L'ÉNIGME TIENNE LA PROMESSE DE SON PALIER, et
+        // l'on borne les essais : un tirage qui ne trouve pas doit rendre
+        // quelque chose de jouable plutôt que de tourner. Le repli est celle
+        // du palier, qu'on sait bonne.
         for (let essai = 0; essai < 60; essai++) {
             const t = Array.from({ length: p.combien },
                 () => rng.int(1, 12)).sort((a, z) => a - z);
             const best = meilleurChemin(t);
-            if (best && best.minutes < strategieNavette(t)) { temps = t; break; }
+            if (!best) continue;
+            // LE PREMIER PALIER N'EXIGE PAS DE PIÈGE, et c'est tout son objet :
+            // on y apprend la règle sans avoir encore à la remettre en cause.
+            if (!p.piege || best.minutes < strategieNavette(t)) { temps = t; break; }
         }
-        if (!temps) temps = [1, 2, 5, 8, 10];
+        if (!temps) temps = p.temps || [1, 2, 5, 8, 10];
     }
     const best = meilleurChemin(temps);
     return {

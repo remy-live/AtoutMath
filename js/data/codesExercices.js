@@ -137,6 +137,7 @@ export const CODES_EXERCICES = {
     'logi-allumettes':               'AH',
     'logi-allumettes-egalite':       'AJ',   // Les Allumettes à Déplacer
     'logi-traversee':                'TV',   // La Traversée
+    'logi-pont-lampe':               'AK',   // Le Pont et la lampe (PL, PT et PN sont pris)
     'logi-pendu':                    'ME',   // Le Pendu Mathématique (MOT)
     'logi-shikaku':               'RT',   // RecTangles — « SK » est aux serpents, « RE » au carré
     'calc-garam':                 'GA',   // Garam
