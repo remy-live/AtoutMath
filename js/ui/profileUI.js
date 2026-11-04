@@ -554,11 +554,35 @@ function errorBody(err) {
            </div>`
         : figureDeLErreur(err);
 
+    // LES DEUX RÉPONSES EN TOUTES LETTRES NE S'ÉCRIVENT QUE S'IL N'Y A PAS DE
+    // DESSIN.
+    //
+    // RÉMY, 4 novembre, devant la carte d'une translation : « Colorie l'image
+    // de la figure bleue par la translation que montre la flèche rouge. — ta
+    // réponse : (6 ; 2), (6 ; 3), (7 ; 3), (6 ; 4), (7 ; 4), attendu :
+    // (6 ; 3), (6 ; 4), (7 ; 4), (6 ; 5), (7 ; 5). Aucun intérêt, le dessin
+    // suffit ».
+    //
+    // C'est pire qu'inutile : pour comparer deux listes de cinq couples,
+    // l'élève doit les reporter à la main sur le quadrillage — refaire
+    // l'exercice pour lire sa correction —, pendant que le dessin juste en
+    // dessous les lui montre en vert et en rouge, avec sa légende.
+    //
+    // ET CE N'EST PAS « DÈS QU'IL Y A UN DESSIN », C'EST « DÈS QUE LA RÉPONSE
+    // EST UNE LISTE DE CASES ». MESURÉ (`tools/carteDuCarnet.mjs`) : supprimée
+    // dès qu'un dessin existe, la ligne disparaissait aussi du pavage — où la
+    // réponse est « l'axe d₁ (x = 9) », un NOM qu'on relit en classe et que la
+    // figure ne prononce pas. Une liste de cinq couples ne se relit pas ; un
+    // nom, si.
+    const listeDeCases = (t) =>
+        (String(t == null ? '' : t).match(/\(\s*\d+\s*;\s*\d+\s*\)/g) || []).length >= 2;
+    const enMots = (corrige && listeDeCases(attendu)) ? '' : ` — ta réponse :
+            <b class="error-given">${escapeHtml(donne)}</b>, attendu :
+            <b class="error-expected">${escapeHtml(attendu)}</b>`;
+
     return `
         <div class="error-item-detail">
-            <b>${escapeHtml(q.questionText || '')}</b>${repeat} — ta réponse :
-            <b class="error-given">${escapeHtml(donne)}</b>, attendu :
-            <b class="error-expected">${escapeHtml(attendu)}</b>
+            <b>${escapeHtml(q.questionText || '')}</b>${repeat}${enMots}
         </div>
         ${dessin}${why}${skill}`;
 }

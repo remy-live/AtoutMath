@@ -303,21 +303,55 @@ function indices(t) {
  * carnet comptaient les colonnes autrement l'un de l'autre, l'un des deux
  * mentirait, et l'on ne saurait pas lequel.
  */
+/**
+ * LA PHRASE DES CASES, RELUE — l'inverse exact de `direLesCases`.
+ *
+ * Le journal garde « (6 ; 2), (6 ; 3) », comptées à partir de 1 ; les figures
+ * se dessinent à partir de 0. C'est le même décalage que dans `direLesCases`,
+ * pris dans l'autre sens, et c'est pour cela que les deux fonctions se tiennent
+ * côte à côte : séparées, l'une des deux aurait dérivé.
+ */
+export function casesDepuisLaPhrase(texte) {
+    const out = [];
+    const re = /\(\s*(\d+)\s*;\s*(\d+)\s*\)/g;
+    let m;
+    while ((m = re.exec(String(texte == null ? '' : texte)))) {
+        out.push({ x: Number(m[1]) - 1, y: Number(m[2]) - 1 });
+    }
+    return out;
+}
+
 export function direLesCases(cases) {
     return [...(cases || [])]
         .sort((a, b) => (a.y - b.y) || (a.x - b.x))
         .map(p => `(${p.x + 1} ; ${p.y + 1})`).join(', ');
 }
 
-/** La correction : ce qu'il fallait faire, et où. */
-function explication(t, image) {
-    const ou = direLesCases(image);
+/**
+ * LA CORRECTION : CE QU'IL FALLAIT FAIRE — et plus la liste des cases.
+ *
+ * RÉMY, 4 novembre, devant la carte d'une translation : « ta réponse :
+ * (6 ; 2), (6 ; 3), (7 ; 3), (6 ; 4), (7 ; 4), attendu : (6 ; 3), (6 ; 4),
+ * (7 ; 4), (6 ; 5), (7 ; 5). Aucun intérêt, le dessin suffit ».
+ *
+ * IL A RAISON, ET C'EST PIRE QU'INUTILE. Pour comparer deux listes de cinq
+ * couples, l'élève doit les reporter une à une sur le quadrillage : il refait
+ * l'exercice pour pouvoir lire sa correction. Or le dessin est là dans les
+ * TROIS endroits où cette phrase se lit — à l'écran, la grille montre les cases
+ * oubliées hachurées et celles en trop barrées ; au carnet, `figureCorrigee`
+ * redessine l'attendu en vert et le surplus en rouge ; sur le papier, le
+ * corrigé reprend le quadrillage avec l'image coloriée.
+ *
+ * CE QUI RESTE EST CE QUE LE DESSIN NE DIT PAS : la RÈGLE. « En glissant de 1
+ * carreau vers le bas » s'emporte à la question suivante ; une liste de cases
+ * ne sert qu'une fois.
+ */
+function explication(t) {
     const quoi = t.genre === 'axiale' ? `par rapport à ${nommerAxe(t.axe)}`
         : t.genre === 'centrale' ? 'par rapport au centre O'
             : t.genre === 'translation' ? `en glissant de ${direVecteur(t.vecteur)}`
                 : `d'un quart de tour dans ${direLeSens(t.quarts)} autour de O`;
-    return `L'image se trace ${quoi}. Elle occupe les cases ${ou} `
-        + '(colonne ; ligne, en comptant à partir de 1).';
+    return `L'image se trace ${quoi}.`;
 }
 
 // --- Le générateur ------------------------------------------------------------
@@ -358,9 +392,23 @@ export const transfoQuadrillageGenerator = {
      * @returns {{objet: Array, dit: string}|null}
      */
     lireUneReponse(cle) {
+        // DEUX ÉCRITURES, ET IL FAUT LES DEUX.
+        //
+        // MESURÉ (`tools/carteDuCarnet.mjs`) : le corrigé dessiné ne montrait
+        // JAMAIS les cases de l'élève en rouge. Le journal ne garde pas la clé
+        // qui juge — `itemSession` enregistre `opts.dire`, c'est-à-dire la
+        // version LISIBLE, « (6 ; 2), (6 ; 3) … », décidée le jour où la carte
+        // écrivait encore « 7|3/8|3/… » sous les yeux d'un élève. Relue ici
+        // comme une clé, elle ne donnait aucune case, donc aucun rouge.
+        //
+        // Cela se voyait à peine tant que la carte écrivait les deux listes à
+        // côté du dessin. Depuis que Rémy les a fait retirer — « Aucun
+        // intérêt, le dessin suffit » —, le dessin est la SEULE chose qui dit
+        // ce que l'élève avait posé : il doit savoir lire ce qui a été écrit.
         const cases = figureDepuisLaCle(cle);
-        if (!cases.length) return null;
-        return { objet: cases, dit: direLesCases(cases) };
+        const lues = cases.length ? cases : casesDepuisLaPhrase(cle);
+        if (!lues.length) return null;
+        return { objet: lues, dit: direLesCases(lues) };
     },
 
     figureCorrigee(item, { donne } = {}) {
@@ -482,7 +530,7 @@ export const transfoQuadrillageGenerator = {
             },
             answer: cleFigure(q.image),
             hints: indices(q.transfo),
-            explanation: explication(q.transfo, q.image),
+            explanation: explication(q.transfo),
             difficulty: DIFFICULTE[q.transfo.genre] || 2,
             meta: {
                 largeur: t.l, hauteur: t.h,

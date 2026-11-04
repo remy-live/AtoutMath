@@ -105,6 +105,45 @@ function invalidate() {
 document.addEventListener('journal_appended', invalidate);
 document.addEventListener('journal_merged', invalidate);
 
+/**
+ * LE JOURNAL QUI ARRIVE D'AILLEURS DOIT REDESSINER LES ÉCRANS, et pas seulement
+ * vider le cache.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 4 novembre : « j'ai aussi fait une séance avec les élèves et en allant
+ * dans le profil d'une élève je vois que dans mes progès, elle n'a rien », puis
+ * aussitôt : « en fait ca n'apparait pas tout de suite ».
+ *
+ * CE N'ÉTAIT PAS UN DÉLAI. MESURÉ (`tools/mesProgresApresLaSeance.mjs`), sur un
+ * appareil qui reçoit la séance du serveur : les TRENTE-CINQ tentatives étaient
+ * bel et bien dans le journal, et « Mes progrès » affichait encore « Joue à
+ * quelques exercices pour voir apparaître tes points forts » quinze secondes
+ * plus tard. Il l'aurait affiché toute la soirée — seul un rechargement
+ * remettait la vérité, et personne n'y pense puisque rien ne le dit.
+ *
+ * LA CAUSE TIENT À UNE LIGNE MANQUANTE. Les écrans se redessinent sur
+ * `attempts_updated`, `score_updated`, `errors_updated` et `badges_updated` —
+ * quatre événements que SEULE une action locale émettait. Un journal qui
+ * redescend du serveur vidait le cache et ne prévenait personne : les écrans
+ * gardaient un dessin fabriqué avant son arrivée.
+ *
+ * ON LES ÉMET DONC ICI, AU SEUL ENDROIT QUI SAIT, plutôt que d'apprendre à
+ * chaque écran à écouter un cinquième événement. Ils sont huit à les écouter
+ * aujourd'hui ; le neuvième aurait oublié, et le défaut serait revenu par un
+ * autre écran.
+ */
+document.addEventListener('journal_merged', (ev) => {
+    const d = (ev && ev.detail) || {};
+    // UNE SYNCHRONISATION QUI N'APPORTE RIEN NE REDESSINE RIEN. `syncNow` tourne
+    // toutes les cinq minutes et ne rapporte le plus souvent aucun événement :
+    // repeindre quatre écrans pour zéro nouveauté serait du travail pur, et sur
+    // la tablette de l'élève ce travail se voit.
+    if (!d.added && !d.reset) return;
+    ['attempts_updated', 'score_updated', 'errors_updated', 'badges_updated']
+        .forEach(nom => document.dispatchEvent(new CustomEvent(nom)));
+});
+
 export const STYLES_POINT = ['croix', 'plus', 'disque'];
 
 /**

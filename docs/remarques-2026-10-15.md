@@ -4771,3 +4771,26 @@ grille — c'est-à-dire refaire à la main le travail que le dessin fait tout s
 **La correction d'un exercice qui se joue sur une figure doit se montrer SUR la
 figure** : les cases attendues, celles qu'il a coloriées, et la différence. La
 liste n'est pas une correction, c'est la donnée brute de la réponse.
+
+### Ce que la mesure a dit, 4 novembre
+
+**§58 n'était pas un délai.** `tools/mesProgresApresLaSeance.mjs` monte une
+vraie séance, la fait faire à un élève, puis ouvre son profil sur un appareil
+qui n'a rien vu. Résultat : les **trente-cinq tentatives étaient dans le
+journal** de cet appareil, et « Mes progrès » affichait encore « Joue à quelques
+exercices » quinze secondes plus tard. Il l'aurait affiché toute la soirée —
+seul un rechargement remettait la vérité, et personne n'y pense puisque rien ne
+le dit.
+
+La cause tient à une ligne manquante : les écrans se redessinent sur quatre
+événements que **seule une action locale** émettait. Un journal qui redescend du
+serveur vidait le cache et ne prévenait personne. On émet donc les quatre à
+l'endroit qui sait, plutôt que d'apprendre à chaque écran un cinquième
+événement.
+
+**§59 cachait un second défaut, trouvé en retirant la liste.** Le corrigé
+dessiné du quadrillage ne montrait **jamais** les cases de l'élève en rouge :
+le journal garde la version lisible « (6 ; 2), (6 ; 3) », et `lireUneReponse`
+ne comprenait que la clé canonique. Invisible tant que les deux listes étaient
+écrites à côté ; critique dès que le dessin devient la seule chose qui dit ce
+que l'élève avait posé.

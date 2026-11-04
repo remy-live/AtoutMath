@@ -93,14 +93,50 @@ test('LES CASES SE COMPTENT À PARTIR DE 1, EN COLONNE PUIS LIGNE', () => {
     assert.equal(direLesCases([]), '');
 });
 
-test('ET LA CORRECTION COMPTE COMME LE CARNET — une seule vérité', () => {
-    // Si l'explication et la carte comptaient les colonnes autrement l'une de
-    // l'autre, l'une des deux mentirait, et l'on ne saurait pas laquelle.
+test('LA CORRECTION DIT LA RÈGLE, ET NON LA LISTE DES CASES', () => {
+    // RÉMY, 4 novembre, devant la carte d'une translation : « ta réponse :
+    // (6 ; 2), (6 ; 3), (7 ; 3), (6 ; 4), (7 ; 4), attendu : (6 ; 3), (6 ; 4),
+    // (7 ; 4), (6 ; 5), (7 ; 5). Aucun intérêt, le dessin suffit ».
+    //
+    // CETTE ÉPREUVE EXIGEAIT L'INVERSE jusqu'à ce jour-là — « l'explication
+    // doit contenir les cases dites » —, et elle avait raison quand la carte
+    // n'avait pas de dessin. Elle en a un maintenant dans les TROIS endroits
+    // où cette phrase se lit : à l'écran la grille marque les cases oubliées
+    // et celles en trop, au carnet `figureCorrigee` redessine l'attendu en
+    // vert et le surplus en rouge, sur le papier le corrigé reprend le
+    // quadrillage colorié. Pour comparer deux listes de cinq couples, l'élève
+    // devait les reporter à la main : il refaisait l'exercice pour lire sa
+    // correction.
+    //
+    // CE QUI RESTE EST CE QUE LE DESSIN NE DIT PAS : la RÈGLE. « En glissant
+    // de 1 carreau vers le bas » s'emporte à la question suivante ; une liste
+    // de cases ne sert qu'une fois.
     const item = QUAD.generate({ genres: ['translation'], taille: 'moyen' },
         { rng: makeRng('une-verite'), index: 0 });
-    const dites = direLesCases(imageAttendue(item.meta));
-    assert.ok(item.explanation.includes(dites),
-        `l'explication « ${item.explanation} » devrait contenir « ${dites} »`);
+    assert.ok(!/\(\d+ ; \d+\)/.test(item.explanation),
+        `l'explication rend encore la liste des cases : « ${item.explanation} »`);
+    assert.match(item.explanation, /L'image se trace en glissant de/);
+});
+
+test('ET LE CORRIGÉ DESSINÉ SAIT RELIRE CE QUE LE JOURNAL A GARDÉ', () => {
+    // LE DÉFAUT ÉTAIT INVISIBLE TANT QUE LA LISTE RESTAIT ÉCRITE À CÔTÉ, et
+    // il a été trouvé en la retirant : le corrigé dessiné ne montrait JAMAIS
+    // les cases de l'élève en rouge. `core/itemSession.js` n'enregistre pas la
+    // clé qui juge — il garde `opts.dire`, la version lisible « (6 ; 2),
+    // (7 ; 4) » —, et `lireUneReponse` ne comprenait que la clé. Elle rendait
+    // donc `null`, et `figureCorrigee` dessinait l'attendu tout seul.
+    //
+    // Depuis que la liste a disparu de la carte, ce dessin est la SEULE chose
+    // qui dise à l'élève ce qu'il avait posé.
+    const cases = [{ x: 5, y: 1 }, { x: 6, y: 3 }];
+    const phrase = direLesCases(cases);
+    const relu = QUAD.lireUneReponse(phrase);
+    assert.ok(relu, `« ${phrase} » n'a pas été relu`);
+    assert.equal(direLesCases(relu.objet), phrase);
+    // ET LA CLÉ CANONIQUE SE RELIT TOUJOURS : les erreurs enregistrées avant
+    // ce jour-là la portent, et un carnet ne se réécrit pas.
+    assert.equal(direLesCases(QUAD.lireUneReponse(cleFigure(cases)).objet), phrase);
+    assert.equal(QUAD.lireUneReponse('n\'importe quoi'), null);
 });
 
 // ─────────────────────── L'ÉLÉMENT DE SYMÉTRIE, DIT POUR ÊTRE LU ────────────

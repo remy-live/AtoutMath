@@ -220,8 +220,36 @@ const carteFigure = cartes.find(c => /Colorie l'image/i.test(c));
 dire('LA CARTE DE LA TRANSLATION EST LÀ', !!carteFigure, `${cartes.length} carte(s)`);
 dire('ELLE N\'ÉCRIT PLUS « 7|3/8|3/… »', !!carteFigure && !/\d\|\d/.test(carteFigure),
     carteFigure || '');
-dire('elle désigne les cases en colonne et ligne', !!carteFigure && /\(\d+ ; \d+\)/.test(carteFigure),
-    carteFigure || '');
+// ET ELLE N'ÉCRIT PLUS LA LISTE DES CASES NON PLUS.
+//
+// Cette sonde exigeait l'inverse jusqu'au 4 novembre : « elle désigne les cases
+// en colonne et ligne », parce que la carte écrivait alors la clé canonique
+// `7|3/8|3/…` et qu'il fallait au moins la rendre lisible. Puis le dessin du
+// corrigé est arrivé — l'attendu en vert, le surplus en rouge —, et RÉMY a
+// tranché devant la carte : « ta réponse : (6 ; 2), (6 ; 3), … attendu : …
+// Aucun intérêt, le dessin suffit ».
+//
+// Il a raison : pour comparer deux listes de cinq couples, l'élève doit les
+// reporter à la main sur le quadrillage, c'est-à-dire refaire l'exercice pour
+// lire sa correction — pendant que le dessin juste en dessous le lui montre.
+dire('ELLE N\'ÉCRIT PLUS LA LISTE DES CASES — le dessin suffit',
+    !!carteFigure && !/\(\d+ ; \d+\)/.test(carteFigure), carteFigure || '');
+// ON CHERCHE LE DESSIN DE LA BONNE CARTE, et non le premier de la page : le
+// carnet en porte deux, celle du pavage arrive la première, et la mesure
+// annonçait « pas de rouge » en regardant une figure où il n'y en a jamais.
+const dessine = await s.page.evaluate(() => {
+    const carte = [...document.querySelectorAll('.error-item-card, .error-item')]
+        .find(e => /Colorie l'image/i.test(e.textContent || ''));
+    const d = carte && carte.querySelector('.error-figure--corrige');
+    return d ? { svg: d.querySelectorAll('svg').length,
+        vert: !!d.querySelector('.qd-attendue'),
+        rouge: !!d.querySelector('.qd-en-trop') } : null;
+});
+// SANS LE DESSIN, RETIRER LA LISTE SERAIT UNE PERTE SÈCHE : la carte ne dirait
+// plus du tout ce qu'il fallait trouver. C'est l'autre moitié de la mesure.
+dire('ET LE CORRIGÉ EST DESSINÉ À LA PLACE, avec l\'attendu et le surplus',
+    !!dessine && dessine.svg > 0 && dessine.vert && dessine.rouge,
+    JSON.stringify(dessine));
 // ET LE DIAGNOSTIC DIT L'ERREUR FAITE, pas un compte de cases.
 dire('LE DIAGNOSTIC DIT « LA BONNE FORME, MAL POSÉE »',
     diagnostics.some(d => /bonne forme/i.test(d) && /trop (à (gauche|droite)|bas|haut)/i.test(d)),
@@ -230,7 +258,14 @@ dire('et il ne dit plus « n oubliées, n en trop » sur ce cas-là',
     !diagnostics.some(d => /en trop/.test(d) && /Colorie/.test(carteFigure || '')
         && /oubliée/.test(d)),
     diagnostics.join(' · '));
-await s.photo('.error-item-card', 'tools/tmp/carte-figure.png');
+// ON PHOTOGRAPHIE LA CARTE DE LA TRANSLATION, et non la première de la page :
+// c'est celle dont Rémy parle, et le carnet en porte deux.
+await s.page.evaluate(() => {
+    const c = [...document.querySelectorAll('.error-item-card, .error-item')]
+        .find(e => /Colorie l'image/i.test(e.textContent || ''));
+    if (c) c.setAttribute('data-photo', '1');
+});
+await s.photo('[data-photo]', 'tools/tmp/carte-figure.png');
 
 console.log(`\nerreurs de page : ${s.erreurs.length} · fenêtres natives : ${s.fenetresNatives.length}`);
 s.erreurs.slice(0, 5).forEach(e => console.log(`   ${e}`));
