@@ -4841,3 +4841,31 @@ faits le 3 novembre (v1130). **Les probabilités sur papier** : v1130 aussi.
 - **« L'élève qui répète et l'élève qui est arrêté »**, une idée de signal
   pour le direct que j'avais notée sans qu'il la valide. Inventer un signal
   que le professeur lira comme un diagnostic est exactement ce qu'il arbitre.
+
+## 61. « Le pont et la lampe » — accepté le 4 novembre
+
+> « Oui super et il faut que ce soit joli »
+
+L'énigme : quatre personnes traversent un pont la nuit, une seule lampe, deux
+au plus à la fois, et qui traverse doit porter la lampe — donc quelqu'un la
+rapporte. Vitesses 1, 2, 5 et 10 minutes ; deux qui traversent ensemble vont au
+rythme du plus lent. Tout le monde de l'autre côté en **17 minutes**.
+
+CE QUE ÇA TRAVAILLE, et qui n'existe nulle part ailleurs dans le logiciel :
+
+- **le coût d'un groupe est le MAXIMUM, pas la somme** ;
+- **la bonne idée est contre-intuitive** — faire traverser les deux lents
+  ENSEMBLE pour ne payer leur lenteur qu'une fois. La stratégie spontanée (le
+  plus rapide fait la navette) donne 19, pas 17 ;
+- **on compare deux stratégies avec des nombres**, 19 contre 17 : ce n'est plus
+  « juste ou faux », c'est « mieux ou moins bien » ;
+- et **le minimum se démontre** : parcours en largeur, comme pour La Traversée.
+
+LA DIFFÉRENCE AVEC LA TRAVERSÉE, qui est la raison de l'ajouter : celle-ci
+demande « un chemin existe-t-il ? », celui-là « quel est le chemin le moins
+CHER ? ». Même famille — on explore des états —, une marche de plus.
+
+**« Il faut que ce soit joli »** : c'est la nuit, un pont, une lampe. Le noir,
+la lumière qui se déplace, les silhouettes qui attendent de l'autre côté. Les
+propositions visuelles lui partent avant que je ne fige quoi que ce soit —
+« fais moi des propositions d'abord ».
