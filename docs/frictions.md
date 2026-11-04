@@ -6709,3 +6709,23 @@ erreur qui ne parle pas d'elles** — 3 novembre 2026
   écrit maintenant dans `#fp-combien`). Noté pour la RÈGLE : un outil qui
   accepte une option doit la poser ou le dire. Les autres options de
   `ficheEnPdf` le font déjà (`ORIENTATION` crie quand le sélecteur manque).
+
+**On livre une fonction sur l'écran que Rémy n'utilise pas** — 4 novembre
+
+- *Ce que je voulais faire* : donner au professeur un bouton « Pages pour les
+  parents ». Je l'ai posé sur `ui/classesUI.js`, mesuré par le chemin de
+  l'utilisateur, vu la fenêtre s'ouvrir et le PDF tomber — et livré. Rémy :
+  « ah oui mais du coup on n'a pas fait la page parent ». Ses classes à lui
+  sont sur le serveur, et `classesUI.js` ne s'affiche même plus dans ce cas
+  (`if (avecServeur && !classes.length) return serveur;`).
+- *Ce qui a coûté* : une livraison entière pour rien (v1132), puis une demi-
+  journée de reprise — un module partagé, un adaptateur, une sonde qui monte
+  une vraie classe du serveur avec un élève qui répond vraiment.
+- *Combien de fois* : || — déjà le cas des deux « Mes classes » en octobre,
+  « honnêtement j'ai dû chercher où étaient mes classes ».
+- *Ce qui manque* : **une épreuve qui dise quels écrans un bouton n'atteint
+  pas.** Il y a deux écrans de classes dans ce dépôt, et l'un cache l'autre
+  selon l'état du serveur. Tant qu'ils coexistent, tout geste posé sur l'un
+  devrait obliger à répondre « et sur l'autre ? » — aujourd'hui rien ne le
+  demande, et « mesuré par le chemin de l'utilisateur » ne suffit pas : j'ai
+  emprunté un chemin d'utilisateur, pas CELUI de Rémy.

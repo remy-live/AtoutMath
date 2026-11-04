@@ -144,11 +144,12 @@ let ordreDesBilans = (() => {
 import { enMinutes } from './leMoment.js';
 import { ficheDeLEleve, gestesPossibles, pourquoiDebloquer } from '../core/ficheEleve.js';
 import { notionsAReprendre, notionsComprises, resumeDeClasse, enHeures,
-    ORDRES_DU_BILAN, trieurDuBilan } from '../core/bilanClasse.js';
+    ORDRES_DU_BILAN, trieurDuBilan, elevesPourLesFeuilles,
+    SEUIL_DU_SERVEUR } from '../core/bilanClasse.js';
 import { tableauDesExercices, phraseDuTableau } from '../core/tableauDesExercices.js';
 // LE CONSEIL PAR ÉLÈVE vient du noyau : c'est lui qui porte l'ordre des
 // priorités, et il se vérifie sous Node. Rémy : « une conseil pour chaque élève ».
-import { conseilDuRapport } from '../core/bilan.js';
+import { conseilDuRapport, nomCompetence } from '../core/bilan.js';
 import { levelFor } from '../core/mastery.js';
 import { detailDeLEleve } from '../core/detailDeLEleve.js';
 import { getSkill as laCompetence } from '../data/skills.js';
@@ -1990,10 +1991,27 @@ const chiffre = (v, quoi, ton = '') => `<div class="ec-chiffre${ton ? ' ec-chiff
  * ne se remplacent pas ; ils partagent la mécanique du papier, rien d'autre.
  */
 function barreDuBilanHtml() {
+    // LES DEUX FEUILLES QU'ON TIRE DU BILAN SONT ICI, à côté de l'impression du
+    // bilan lui-même. RÉMY, 4 novembre : « ah oui mais du coup on n'a pas fait
+    // la page parent ». Elle existait — sur l'écran des classes LOCALES, celui
+    // que cet espace remplace dès que le serveur répond. Ses classes à lui sont
+    // ici, donc les boutons devaient y être aussi : un document derrière un
+    // bouton que le professeur n'a pas sous les yeux est un document que
+    // personne n'aura jamais.
+    //
+    // ET LES TROIS SONT VOISINS PARCE QUE C'EST LE MÊME MOMENT : on vient de
+    // lire qui décroche et sur quoi, et le geste suivant est de donner quelque
+    // chose à refaire, ou un mot à porter à la maison.
     return `<div class="ec-bilan-gestes">
         <button type="button" class="ec-bouton ec-bouton--doux" data-bilan-pdf
             title="Une feuille A4 : ce qu'il faut reprendre, ce qui est compris, le tableau de la classe — et le détail par exercice si vous l'avez ouvert."
             >Imprimer ce bilan</button>
+        <button type="button" class="ec-bouton ec-bouton--doux" data-feuilles-reprise
+            title="Une feuille par élève, toutes différentes : ses trois notions les plus fragiles, avec des nombres neufs. Vos corrigés à la fin."
+            >Fiches de reprise…</button>
+        <button type="button" class="ec-bouton ec-bouton--doux" data-feuilles-parents
+            title="Une A4 par élève à donner en main : ce qui est acquis, ce qui reste, et une chose à faire à la maison en cinq minutes. Ni note, ni moyenne, ni rang."
+            >Pages pour les parents…</button>
     </div>`;
 }
 
@@ -3505,6 +3523,7 @@ async function brancher(e, redessiner) {
         + '[data-calc-eleve], [data-saut-tout], [data-bilan-eleve],'
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
         + '[data-ordre-direct], [data-ordre-bilan], [data-sous-bilan], [data-bilan-pdf],'
+        + '[data-feuilles-reprise], [data-feuilles-parents],'
         + '[data-outil], [data-forme-direct], [data-gerer],'
         + '[data-libre-ajout], [data-libre-retire],'
         + '[data-effacer-signal]');
@@ -3662,6 +3681,37 @@ async function brancher(e, redessiner) {
             nommer: nomDExercice
         });
         showToast('Le bilan est dans vos téléchargements.', 'success');
+        return;
+    }
+
+    // ── LES DEUX FEUILLES QU'ON TIRE DE CE BILAN ───────────────────────────
+    //
+    // ON TRADUIT LES LIGNES DU SERVEUR avant de les donner aux feuilles : elles
+    // lisent des élèves de bilan (`competences`), le serveur rend des lignes de
+    // rapport (`weakSkills`, `strongSkills`). `elevesPourLesFeuilles` fait le
+    // pont, et dit en commentaire ce que ce pont perd — l'erreur têtue, que le
+    // serveur n'envoie pas.
+    //
+    // ET LA REPRISE EMPRUNTE LE SEUIL DU SERVEUR : l'écran vient d'écrire « à
+    // reprendre » sous ces notions-là, et une feuille qui ne les reprendrait
+    // pas ferait douter des deux.
+    if (d.feuillesReprise !== undefined || d.feuillesParents !== undefined) {
+        const lignes = (vue.bilans && vue.bilans.students) || [];
+        if (!lignes.length) {
+            showToast('Il n\'y a rien à en tirer : cette classe n\'a pas encore '
+                + 'd\'élèves.', 'info');
+            return;
+        }
+        const eleves = elevesPourLesFeuilles(lignes, nomCompetence);
+        const quelle = (vue.bilans && vue.bilans.class) || vue.classe || {};
+        const nom = quelle.name || quelle.nom || 'la classe';
+        const m = await import('./feuillesDeClasse.js');
+        if (d.feuillesReprise !== undefined) {
+            await m.ouvrirLesReprises(eleves,
+                { classe: nom, reprise: { seuil: SEUIL_DU_SERVEUR } });
+        } else {
+            await m.ouvrirLesPagesParents(eleves, { classe: nom });
+        }
         return;
     }
 

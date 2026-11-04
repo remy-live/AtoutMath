@@ -266,3 +266,74 @@ export function notionsComprises(lignes) {
         // d'abord : c'est l'ordre dans lequel on raye des lignes.
         .sort((a, b) => (b.combien - a.combien) || (b.maitriseMoyenne - a.maitriseMoyenne));
 }
+
+/**
+ * LES LIGNES DU SERVEUR, DANS LA FORME QUE LES FEUILLES LISENT.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 4 novembre : « ah oui mais du coup on n'a pas fait la page parent ».
+ * Elle était faite — mais sur l'AUTRE écran des classes, celui des classes
+ * locales. Ses élèves à lui sont sur le serveur, et les deux moitiés de ce
+ * logiciel ne parlent pas la même langue :
+ *
+ *   · `bilanClasse` (local) tient un élève avec ses `competences` ;
+ *   · `/teacher/report` tient une ligne avec `weakSkills` et `strongSkills`.
+ *
+ * Les feuilles — reprise et page parents — lisent la première. On traduit donc
+ * ICI, une fois, plutôt que d'apprendre aux deux feuilles à lire deux formes :
+ * deux lecteurs divergent au premier réglage, et c'est toujours le second
+ * qu'on oublie de mettre à jour.
+ *
+ * ── CE QUE LA TRADUCTION PERD, ET QU'ON ÉCRIT PLUTÔT QUE DE LE CACHER ──────
+ *
+ *   · L'ERREUR TÊTUE. Le serveur ne l'envoie pas. La page parents d'une classe
+ *     du serveur n'aura donc pas son encadré « l'erreur qui revient » : une
+ *     ligne absente vaut mieux qu'une ligne inventée.
+ *   · LE NOMBRE D'ESSAIS, qui ne sert qu'à départager deux notions de même
+ *     maîtrise. À défaut, l'ordre du serveur fait foi — et il est déjà le bon :
+ *     `masteryOf` rend ses notions de la plus fragile à la plus solide.
+ *
+ * ── ET TOUT CE QUI ARRIVE EST FIABLE ──────────────────────────────────────
+ *
+ * Le serveur a déjà écarté les notions vues trop peu de fois (`reliable`), avec
+ * le même seuil que le client. Poser `fiable: true` n'est donc pas une
+ * permission qu'on s'accorde : c'est le constat que le tri a eu lieu avant.
+ */
+
+/**
+ * LE SEUIL DU SERVEUR, ET POURQUOI LA REPRISE DOIT L'EMPRUNTER.
+ *
+ * `/teacher/report` range dans `weakSkills` ce qui est sous 0,7 de maîtrise ;
+ * `core/reprise.js` reprend ce qui est sous 0,6 de taux de réussite. Les deux
+ * nombres ne mesurent pas tout à fait la même chose — la maîtrise est une
+ * réussite pondérée par l'ancienneté —, mais ce n'est pas la raison d'emprunter
+ * celui-ci : c'est que l'écran a déjà dit au professeur « à reprendre ». Une
+ * feuille qui ne reprendrait pas ce que l'écran vient de désigner lui ferait
+ * douter des deux.
+ */
+export const SEUIL_DU_SERVEUR = 0.7;
+
+export function elevesPourLesFeuilles(lignes, nommer = (id) => id) {
+    const competence = (s) => ({
+        skillId: s.skillId,
+        nom: nommer(s.skillId),
+        maitrise: Number(s.mastery) || 0,
+        // `taux` PORTE LA MAÎTRISE, faute de mieux : le serveur n'envoie pas le
+        // taux brut. Voir `SEUIL_DU_SERVEUR` juste au-dessus.
+        taux: Number(s.mastery) || 0,
+        niveau: (s.level && s.level.key) || s.level || '',
+        essais: 0,
+        fiable: true
+    });
+    return (lignes || []).map(l => ({
+        id: l.studentId,
+        nom: l.firstName || '?',
+        questions: Number(l.totalQuestions) || 0,
+        reussite: Number(l.successRate) || 0,
+        seancesFinies: (l.notes || []).length,
+        competences: [...(l.weakSkills || []), ...(l.strongSkills || [])]
+            .filter(s => s && s.skillId).map(competence),
+        tetu: null
+    }));
+}

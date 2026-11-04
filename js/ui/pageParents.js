@@ -81,11 +81,20 @@ export function phraseParents(bilan, cols) {
         + 'c\'est une difficulté fréquente à son âge.';
 }
 
-/** Les chiffres du haut : quatre, et pas un de plus. */
+/** Les chiffres du haut : quatre au plus, et pas un de plus. */
 function chiffresDe(bilan, cols) {
     const total = cols.acquis.length + cols.encours.length + cols.reprendre.length;
+    const seances = bilan.seancesFinies ?? bilan.seances ?? 0;
     return [
-        { n: bilan.seancesFinies ?? bilan.seances ?? 0, quoi: 'séances faites' },
+        // « 0 SÉANCES FAITES » À CÔTÉ DE « 45 QUESTIONS » EST UNE PHRASE FAUSSE,
+        // et elle s'est imprimée. Pour une classe du serveur, on ne compte que
+        // les séances NOTÉES : un élève qui travaille sans qu'aucune séance ne
+        // soit arrivée à son terme en a zéro, alors qu'il a manifestement
+        // travaillé. On retire la case plutôt que d'écrire un zéro qui dément
+        // la case d'à côté — trois chiffres vrais valent mieux que quatre dont
+        // un ment.
+        ...(seances || !(bilan.questions > 0)
+            ? [{ n: seances, quoi: 'séances faites' }] : []),
         { n: bilan.questions || 0, quoi: 'questions' },
         { n: `${Math.round((bilan.reussite || 0) * 100)} %`, quoi: 'de réussite' },
         // « 4 sur 6 » SE LIT, « 67 % de maîtrise » non : un parent compte des

@@ -507,18 +507,24 @@ function brancher(racine) {
         // souvenant de ce qu'on vient de lire.
         if ('reprises' in el.dataset) {
             const c = classeActive();
-            if (c) await ouvrirLesReprises(c);
+            if (!c) return;
+            const m = await import('./feuillesDeClasse.js');
+            await m.ouvrirLesReprises(bilanClasse(c).eleves, { classe: c.nom });
             return;
         }
 
         // ET LES PAGES POUR LES PARENTS, JUSTE À CÔTÉ. Rémy : « est-ce que
         // Louis peut avoir un corrigé, ou ses parents ? » Les deux, et pas le
-        // même document — voir `ouvrirLesPagesParents`. Les deux boutons sont
-        // voisins parce que c'est le même geste : on vient de lire le tableau,
-        // on sait qui décroche, et la rencontre parents est le jeudi suivant.
+        // même document — voir `ui/feuillesDeClasse.js`, où vivent les deux
+        // fenêtres parce que l'espace des VRAIES classes les ouvre aussi. Les
+        // deux boutons sont voisins parce que c'est le même geste : on vient de
+        // lire le tableau, on sait qui décroche, et la rencontre parents est le
+        // jeudi suivant.
         if ('parents' in el.dataset) {
             const c = classeActive();
-            if (c) await ouvrirLesPagesParents(c);
+            if (!c) return;
+            const m = await import('./feuillesDeClasse.js');
+            await m.ouvrirLesPagesParents(bilanClasse(c).eleves, { classe: c.nom });
             return;
         }
 
@@ -633,173 +639,6 @@ function brancher(racine) {
 }
 
 // --- Point d'entrée ---------------------------------------------------------
-
-/**
- * LA FENÊTRE DES FICHES DE REPRISE.
- *
- * ─────────────────────────────────────────────────────────────────────────
- *
- * ELLE DIT CE QU'ELLE VA FAIRE AVANT DE LE FAIRE, et c'est tout son objet :
- * un bouton qui lâcherait vingt-six feuilles sans prévenir est un bouton
- * qu'on n'ose pas presser. Elle annonce donc combien de feuilles, et surtout
- * QUI N'EN A PAS — avec la raison. « Rien à reprendre » et « n'a rien
- * déposé » sont deux nouvelles très différentes : la première est une bonne
- * nouvelle, la seconde demande un mot à l'élève.
- *
- * LE CORRIGÉ DÉTACHABLE EST UNE CASE, PAS DEUX DOCUMENTS. Rémy : « est-ce que
- * Louis peut avoir un corrigé, ou ses parents ? » Les deux, mais pas le même :
- * celui de l'élève est un bandeau qu'on découpe — on le retire avant de
- * distribuer si l'on ramasse, on le laisse s'il travaille seul. C'est la même
- * feuille dans les deux cas.
- */
-async function ouvrirLesReprises(classe) {
-    const [{ bilanClasse: bc }, { exercicePourLaFeuille }, { reprisesDeLaClasse }] =
-        await Promise.all([
-            import('../core/bilan.js'),
-            import('../core/amelioration.js'),
-            import('../core/reprise.js')
-        ]);
-    const b = bc(classe);
-    const { fiches, ecartes } = reprisesDeLaClasse(b.eleves, exercicePourLaFeuille);
-
-    if (!fiches.length) {
-        // ON NE MONTRE PAS UNE FENÊTRE VIDE AVEC UN BOUTON MORT. Et l'on dit
-        // POURQUOI : une classe qui a tout réussi n'est pas une classe qui
-        // n'a rien fait.
-        const rien = ecartes.filter(e => /déposé/.test(e.pourquoi)).length;
-        showToast(rien === ecartes.length && rien > 0
-            ? 'Personne n\'a encore déposé de travail : il n\'y a rien à reprendre.'
-            : 'Aucune reprise à faire — tout ce qui a été mesuré est acquis.', 'info');
-        return;
-    }
-
-    const liste = (quoi) => ecartes.filter(e => e.pourquoi === quoi)
-        .map(e => esc(e.nom)).join(', ');
-    const acquis = liste('rien à reprendre');
-    const absents = liste('n\'a rien déposé');
-
-    const modal = showModal('Fiches de reprise', `
-        <p class="modal-text"><b>${fiches.length} feuille${fiches.length > 1 ? 's' : ''}</b>
-           pour ${esc(classe.nom)} — une par élève, toutes différentes, avec
-           votre pile de corrigés à la fin.</p>
-        ${acquis ? `<p class="modal-text">Sans feuille, parce que tout est acquis :
-           ${acquis}.</p>` : ''}
-        ${absents ? `<p class="modal-text">Sans feuille, parce qu'ils n'ont rien déposé :
-           <b>${absents}</b>.</p>` : ''}
-        <label style="display:flex; gap:10px; align-items:flex-start; margin:14px 0">
-            <input type="checkbox" id="rp-detachable" checked>
-            <span>Mettre le corrigé de l'élève au bas de sa feuille, à découper.
-                <br><small>Vous le coupez avant de distribuer si vous ramassez ;
-                vous le laissez s'il travaille seul.</small></span>
-        </label>
-        <p class="modal-text" id="rp-etat" role="status" aria-live="polite"></p>`,
-    { width: '560px' });
-
-    const pied = document.createElement('div');
-    pied.style.cssText = 'display:flex; gap:10px; justify-content:flex-end; margin-top:8px';
-    // « Fermer » EN SECOND PLAN : les deux boutons étaient pleins et de la
-    // même couleur, donc on ne voyait pas lequel agit. Le contour suffit —
-    // c'est déjà ce que fait « Supprimer la classe », en rouge.
-    pied.innerHTML = '<button type="button" class="cl-btn cl-btn--doux" data-annuler>Fermer</button>'
-        + '<button type="button" class="cl-btn" data-faire>Télécharger le PDF</button>';
-    modal.element.querySelector('#rp-etat').after(pied);
-
-    pied.querySelector('[data-annuler]').onclick = () => modal.close();
-    pied.querySelector('[data-faire]').onclick = async () => {
-        const bouton = pied.querySelector('[data-faire]');
-        const etat = modal.element.querySelector('#rp-etat');
-        bouton.disabled = true;
-        // ON DIT QU'ON TRAVAILLE : vingt-six feuilles demandent de tirer cent
-        // questions et de dessiner autant de figures. Sans ce mot, le bouton
-        // paraît n'avoir rien fait, et l'on clique une seconde fois.
-        etat.textContent = 'Fabrication des feuilles…';
-        try {
-            const { telechargerLesReprises } = await import('./fichesDeReprise.js');
-            const r = await telechargerLesReprises(fiches, {
-                classe: classe.nom,
-                detachable: modal.element.querySelector('#rp-detachable').checked
-            });
-            modal.close();
-            showToast(`${r.feuilles} feuille${r.feuilles > 1 ? 's' : ''} · `
-                + `${r.pages} page${r.pages > 1 ? 's' : ''} — corrigés compris.`, 'success');
-        } catch (e) {
-            bouton.disabled = false;
-            etat.textContent = `La fabrication a échoué : ${e && e.message ? e.message : e}`;
-            console.error('[reprises]', e);
-        }
-    };
-}
-
-/**
- * LES PAGES POUR LES PARENTS — une A4 par élève, à donner en main.
- *
- * RÉMY : « est-ce que Louis peut avoir un corrigé, ou ses parents ? » Les deux,
- * et surtout PAS LE MÊME DOCUMENT. La fiche de reprise part avec l'élève et
- * porte des questions ; celle-ci part chez ses parents et n'en porte aucune —
- * elle dit ce qui est acquis, ce qui reste, l'erreur qui revient, et UNE chose
- * à faire à la maison en cinq minutes. Un parent ne peut rien faire d'une liste
- * de réponses : il ne peut pas expliquer. Il peut faire quelque chose d'une
- * phrase à dire à table.
- *
- * ET CELUI QUI N'A RIEN DÉPOSÉ N'A PAS DE PAGE. Une feuille de zéros n'apprend
- * rien à ses parents et les blesse pour rien ; on le dit ici, dans la fenêtre,
- * pour que le professeur sache qui manque à la pile avant de l'imprimer.
- */
-async function ouvrirLesPagesParents(classe) {
-    const { bilanClasse: bc } = await import('../core/bilan.js');
-    const b = bc(classe);
-    const actifs = (b.eleves || []).filter(e => e && e.questions > 0);
-    const muets = (b.eleves || []).filter(e => e && !(e.questions > 0));
-
-    if (!actifs.length) {
-        showToast('Personne n\'a encore déposé de travail : il n\'y a rien à raconter '
-            + 'à des parents.', 'info');
-        return;
-    }
-
-    const modal = showModal('Pages pour les parents', `
-        <p class="modal-text"><b>${actifs.length} page${actifs.length > 1 ? 's' : ''}</b>
-           pour ${esc(classe.nom)} — une par élève, dans l'ordre alphabétique :
-           on cherche un nom dans une pile, pas un rang.</p>
-        <p class="modal-text">Chacune dit ce qui est acquis, ce qui reste, l'erreur
-           qui revient, et une chose à faire à la maison en cinq minutes. Ni note,
-           ni moyenne, ni rang — et le bas de la page reste blanc, avec des lignes,
-           pour votre mot à la main.</p>
-        ${muets.length ? `<p class="modal-text">Sans page, parce qu'ils n'ont rien
-           déposé : <b>${muets.map(e => esc(e.nom)).join(', ')}</b>.
-           <br><small>Une feuille de zéros n'apprend rien à des parents ; c'est à
-           vous de leur en parler.</small></p>` : ''}
-        <p class="modal-text" id="pp-etat" role="status" aria-live="polite"></p>`,
-    { width: '560px' });
-
-    const pied = document.createElement('div');
-    pied.style.cssText = 'display:flex; gap:10px; justify-content:flex-end; margin-top:8px';
-    pied.innerHTML = '<button type="button" class="cl-btn cl-btn--doux" data-annuler>Fermer</button>'
-        + '<button type="button" class="cl-btn" data-faire>Télécharger le PDF</button>';
-    modal.element.querySelector('#pp-etat').after(pied);
-
-    pied.querySelector('[data-annuler]').onclick = () => modal.close();
-    pied.querySelector('[data-faire]').onclick = async () => {
-        const bouton = pied.querySelector('[data-faire]');
-        const etat = modal.element.querySelector('#pp-etat');
-        bouton.disabled = true;
-        etat.textContent = 'Fabrication des pages…';
-        try {
-            const { telechargerLesPagesParents } = await import('./pageParents.js');
-            const r = await telechargerLesPagesParents(actifs, {
-                classe: classe.nom,
-                date: new Date().toLocaleDateString('fr-FR',
-                    { day: 'numeric', month: 'long', year: 'numeric' })
-            });
-            modal.close();
-            showToast(`${r.pages} page${r.pages > 1 ? 's' : ''} — une par élève.`, 'success');
-        } catch (e) {
-            bouton.disabled = false;
-            etat.textContent = `La fabrication a échoué : ${e && e.message ? e.message : e}`;
-            console.error('[parents]', e);
-        }
-    };
-}
 
 export async function ouvrirClasses() {
     await chargerClasses();
