@@ -49,8 +49,28 @@ await s.doitExister('#fq-apercu', 'l\'aperçu de la fiche');
 await s.doitExister('#fq-couleur', 'le menu du mode d\'impression');
 await s.doitExister('#fq-tableau', 'le menu « Présentation »');
 await s.doitExister('#fq-trait', 'le menu « Épaisseur du filet »');
-await s.doitExister('#fq-filet', 'le menu « Couleur du filet »');
-await s.doitExister('#fq-bande', 'le menu « Couleur de l\'alternance »');
+await s.doitExister('#fq-filet', 'la valeur « Couleur du filet »');
+await s.doitExister('#fq-bande', 'la valeur « Couleur de l\'alternance »');
+
+let ratés = 0;
+const dire = (q, ok, d = '') => {
+    if (!ok) ratés++;
+    console.log(`  ${ok ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${q}${
+        d ? ` \x1b[2m— ${d}\x1b[0m` : ''}`);
+};
+
+// LES COULEURS NE SONT PLUS DES MENUS, CE SONT DES PASTILLES.
+//
+// RÉMY : « Pour les couleurs des lignes dans les tableaux, affiche des
+// pastilles de couleur et la possibilité de choisir dans une palette (un
+// select color) ». Le menu DISAIT les couleurs au lieu de les montrer, sur un
+// réglage dont le seul juge est l'œil : six allers-retours pour voir six
+// couleurs.
+await s.doitExister('[data-champ="fq-filet"] .st-pastille[data-valeur="orange"]',
+    'la pastille orange du filet');
+await s.doitExister('[data-champ="fq-bande"] .st-libre',
+    'le sélecteur de couleur libre de l\'alternance');
+dire('LES COULEURS SE CHOISISSENT EN PASTILLES, et une pastille ouvre toute la palette', true);
 await s.doitExister('#fq-bords', 'la case « Bords extérieurs »');
 
 // ── ON SE MET EN COULEUR, SINON ON NE MESURE QUE DU GRIS ───────────────────
@@ -108,6 +128,18 @@ async function essai(titre, reglages) {
                 el.checked = v;
                 el.dispatchEvent(new Event('change', { bubbles: true }));
             }, [sel, val]);
+        } else if (await s.page.evaluate((q) => {
+            const el = document.querySelector(q);
+            return !!el && el.type === 'hidden';
+        }, sel)) {
+            // UNE COULEUR SE CLIQUE MAINTENANT. La valeur vit dans un champ
+            // caché de même identifiant qu'avant — c'est ce qui permet aux
+            // trois panneaux de n'avoir rien appris —, et Playwright refusait
+            // `selectOption` sur lui pendant trente secondes : « element is
+            // not visible », et il avait raison.
+            const pastille = `[data-champ="${sel.slice(1)}"] .st-pastille[data-valeur="${val}"]`;
+            await s.doitExister(pastille, `la pastille « ${val} »`);
+            await s.page.click(pastille);
         } else {
             await s.page.selectOption(sel, String(val));
         }
@@ -126,6 +158,21 @@ await essai('en tableau, filet normal gris', { '#fq-tableau': 'tableau' });
 await essai('zébré, filet épais orange, bande verte', {
     '#fq-tableau': 'zebre', '#fq-trait': '0.4', '#fq-filet': 'orange', '#fq-bande': 'vert'
 });
+// ET UNE COULEUR LIBRE, CELLE QUE LE SÉLECTEUR DU SYSTÈME REND : `#a1b2c3`.
+// C'est l'autre moitié de sa phrase, et c'est elle qui traverse le plus de
+// code — l'aperçu la pose en CSS, le PDF la veut en trois nombres.
+await s.page.evaluate(() => {
+    const el = document.querySelector('[data-champ="fq-filet"] .st-libre');
+    el.value = '#b91c1c';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+});
+await dormir(1400);
+const libre = await lire();
+console.log('── filet d\'une couleur libre (#b91c1c)');
+console.log(`    cadres ${libre.cadres} · couleur ${libre.couleur || '—'}`);
+dire('LA COULEUR LIBRE ARRIVE JUSQU\'À L\'APERÇU',
+    /185,\s*28,\s*28/.test(String(libre.couleur || '')), String(libre.couleur || ''));
+
 await essai('sans bords extérieurs', { '#fq-bords': false });
 await essai('filet fin, bords rendus', { '#fq-trait': '0.1', '#fq-bords': true });
 
@@ -158,4 +205,8 @@ await s.photo('#fq-apercu .fq-page', 'tools/tmp/filet-apercu.png');
 console.log('\nerreurs de page :', s.erreurs.length,
     '· fenêtres natives :', s.fenetresNatives.length);
 if (s.erreurs.length) console.log(s.erreurs.slice(0, 5));
+if (s.erreurs.length || s.fenetresNatives.length) ratés++;
 await s.fermer();
+console.log(ratés ? `\n\x1b[31m${ratés} chose(s) à regarder.\x1b[0m`
+    : '\n\x1b[32mTOUT PASSE.\x1b[0m');
+process.exit(ratés ? 1 : 0);

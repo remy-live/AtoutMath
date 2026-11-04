@@ -16831,3 +16831,58 @@ body.visite-en-cours .modal-overlay > * {
 }
 .dc-jeu span { font-size: .78rem; font-weight: 800; letter-spacing: .04em;
     text-transform: uppercase; }
+
+/* LES PASTILLES DE COULEUR DU TABLEAU — voir js/ui/styleTableauUI.js.
+   RÉMY : « Pour les couleurs des lignes dans les tableaux, affiche des
+   pastilles de couleur et la possibilité de choisir dans une palette (un
+   select color) ». Le menu déroulant DISAIT les couleurs au lieu de les
+   montrer, sur un réglage dont le seul juge est l'œil. */
+.st-champ { display: flex; flex-direction: column; gap: 6px; }
+.st-eti {
+    font-size: .82rem; font-weight: 700; color: var(--text-muted);
+}
+.st-palette { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* 34 PX, ET C'EST UN MINIMUM TACTILE : Rémy règle ses fiches sur la tablette
+   aussi, et une pastille de vingt pixels se manque une fois sur trois. */
+.st-pastille {
+    position: relative; width: 34px; height: 34px; padding: 0;
+    border-radius: 50%; cursor: pointer;
+    background: var(--st-fond, transparent);
+    border: 2px solid var(--border);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .1s ease, box-shadow .12s ease;
+}
+@media (hover: hover) {
+    .st-pastille:hover { transform: scale(1.08); }
+}
+.st-pastille:focus-visible {
+    outline: 3px solid var(--primary); outline-offset: 2px;
+}
+/* LA PASTILLE PRISE PORTE UN ANNEAU, PAS UNE COULEUR DE PLUS : teinter la
+   sélection reviendrait à mentir sur la couleur qu'on est en train de choisir. */
+.st-pastille--prise {
+    border-color: var(--text-main);
+    box-shadow: 0 0 0 3px var(--bg-panel), 0 0 0 5px var(--text-main);
+}
+/* « Comme la feuille » : un trait oblique, parce qu'une pastille vide se lit
+   comme la couleur blanche. */
+.st-neant {
+    position: absolute; inset: 4px;
+    background: linear-gradient(to top right, transparent calc(50% - 1px),
+        var(--text-muted) calc(50% - 1px), var(--text-muted) calc(50% + 1px),
+        transparent calc(50% + 1px));
+}
+/* LE SÉLECTEUR DU SYSTÈME, caché sous la pastille : il connaît la pipette et
+   les codes hexadécimaux, et il est déjà traduit. */
+.st-pastille--libre {
+    display: inline-flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    /* L'ARC-EN-CIEL DIT « TOUTES LES AUTRES », et il disparaît dès qu'une
+       couleur est choisie : la pastille montre alors CE qu'elle a retenu, ce
+       qu'un arc-en-ciel permanent ne dirait jamais. */
+    background: conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444);
+}
+.st-pastille--libre.st-pastille--prise { background: var(--st-fond, transparent); }
+.st-pastille--libre input[type="color"] {
+    width: 200%; height: 200%; border: 0; padding: 0; opacity: 0; cursor: pointer;
+}

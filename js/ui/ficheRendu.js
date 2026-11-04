@@ -2437,6 +2437,15 @@ export function pdfItems(pdf, page, o) {
                 }
             }
         }
+        // LES AUTRES TROUS DE LA MÊME QUESTION. Un encadrement en a deux, un de
+        // chaque côté du nombre : « ……… < 26,6 < ……… ». Sans cette boucle, seul
+        // celui de gauche portait son trait, et une place sans trait se lit,
+        // sur une feuille où toutes les autres en ont un, comme une place qui
+        // n'existe pas. Voir `trousDe` dans core/fiche.js.
+        for (const r of it.repsSup || []) {
+            if (o.champs && !it.choix) champSaisie(pdf, r, ++nChamp);
+            else pointilles(pdf, r.x, r.y, r.w);
+        }
     }
 }
 

@@ -4794,3 +4794,50 @@ le journal garde la version lisible « (6 ; 2), (6 ; 3) », et `lireUneReponse`
 ne comprenait que la clé canonique. Invisible tant que les deux listes étaient
 écrites à côté ; critique dès que le dessin devient la seule chose qui dit ce
 que l'élève avait posé.
+
+## 60. « Fais tout ce qui manque TOUT ! » — 4 novembre
+
+Les dettes de la liste du 3 novembre, une par une, et ce que chacune est
+devenue.
+
+**Les pastilles de couleur pour les lignes de tableau — FAIT.** « affiche des
+pastilles de couleur et la possibilité de choisir dans une palette (un select
+color) ». Les deux menus déroulants deviennent deux rangées de pastilles, plus
+une dernière qui ouvre le sélecteur du système. Chaque pastille montre la
+teinte de SON rôle : le filet en franc, l'alternance en pâli — sinon on
+choisirait l'orange vif et il sortirait beige.
+
+**Le `⩽` de la fiche d'inégalités — FAIT, et il restait un défaut.** Le signe
+était déjà à compléter et l'énoncé déjà raccourci (« Encadre à l'unité »).
+Mais « ……… < 26,6 < ……… » ne sortait qu'avec UN pointillé : la mise en page ne
+savait poser qu'une réponse par question, et un encadrement en demande deux.
+Il n'y avait pas d'autre question à deux réponses dans le catalogue, et c'est
+pour cela que la limite a tenu si longtemps sans se voir.
+
+**Kakuro « Moyen » par défaut — MESURÉ, ET NON.** La question venait de sa
+capture du 27 octobre : sa grille téléchargée était plus dense que la nôtre.
+Douze grilles par croisement, part de cases non noires :
+
+| | facile | moyen | difficile |
+| --- | --- | --- | --- |
+| petit (5×5) | **68 %** | 67 % | 67 % |
+| moyen (6×6) | 66 % | 66 % | 67 % |
+| grand | 49 % | 54 % | 41 % |
+
+« Facile » est déjà à 68 % — plus blanche que celle qu'il préférait (48 %). La
+densité ne venait pas de la longueur des suites mais du choix de la meilleure
+découpe, corrigé le même jour. Passer à « Moyen » rendrait l'exercice plus
+difficile pour un point de blanc en moins. On reste sur « Facile », et le
+chiffre est écrit dans `kakuro.js` pour que la question ne revienne pas.
+
+**La Traversée et ses deux structures** et **l'aperçu « Étape 1 sur 3 »** :
+faits le 3 novembre (v1130). **Les probabilités sur papier** : v1130 aussi.
+
+### Ce qui reste, et que je ne fais pas sans lui
+
+- **« Le pont et la lampe »**, proposé comme nouvelle énigme d'optimisation :
+  il n'a jamais répondu. Un exercice de plus au catalogue est un choix
+  pédagogique, et c'est le sien.
+- **« L'élève qui répète et l'élève qui est arrêté »**, une idée de signal
+  pour le direct que j'avais notée sans qu'il la valide. Inventer un signal
+  que le professeur lira comme un diagnostic est exactement ce qu'il arbitre.

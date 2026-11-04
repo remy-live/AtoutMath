@@ -303,3 +303,47 @@ test('LES CINQ COMMANDES SONT ÉCRITES UNE FOIS, ET LUES AUX TROIS ENDROITS', ()
     // se garderait en mémoire sans jamais atteindre la mise en page.
     assert.match(PP, /presentation: presentations\[id\] \|\| null,/);
 });
+
+// ───────────────── UNE COULEUR CHOISIE DANS LA PALETTE DU SYSTÈME ───────────
+//
+// RÉMY : « Pour les couleurs des lignes dans les tableaux, affiche des
+// pastilles de couleur et la possibilité de choisir dans une palette (un
+// select color) ».
+//
+// LES PASTILLES SE REGARDENT — `tools/filetDuTableau.mjs` les clique et lit la
+// couleur rendue. Ce qui se garde ici est la TRADUCTION : le sélecteur du
+// navigateur ne rend que `#a1b2c3`, jsPDF ne connaît que les triplets, et
+// entre les deux il y a tout le chemin de la feuille. Une couleur libre qui se
+// perdrait en route redonnerait le gris par défaut — la même réponse qu'un
+// réglage qui n'existe pas.
+
+test('UNE COULEUR LIBRE TRAVERSE LA FEUILLE JUSQU\'AU TRAIT', () => {
+    const regle = { ...DEFAUTS_BLOCS, tableau: true, zebre: true,
+        couleurTableau: '#b91c1c', couleurBandeTableau: '#fee2e2' };
+    const s = styleTableau(regle, {});
+    assert.deepEqual(s.filet, [185, 28, 28]);
+    assert.deepEqual(s.fond, [254, 226, 226]);
+});
+
+test('ET UN EXERCICE PEUT AFFINER AVEC LA SIENNE', () => {
+    // « on peut faire un réglage globale et affiner selon l'exercice » : le
+    // correctif de l'exercice doit l'emporter, qu'il porte un nom de famille
+    // ou une couleur libre.
+    const regle = { ...DEFAUTS_BLOCS, tableau: true, couleurTableau: 'gris' };
+    assert.deepEqual(styleTableau(regle, { presentation: { couleur: '#0ea5e9' } }).filet,
+        [14, 165, 233]);
+    assert.deepEqual(styleTableau(regle, { presentation: { couleur: 'vert' } }).filet,
+        TEINTES_TABLEAU.vert.filet);
+});
+
+test('ET CE QUI N\'EST PAS UNE COULEUR RETOMBE SUR LE GRIS', () => {
+    // La valeur peut venir d'un fichier de parcours relu, écrit par une
+    // version d'avant ou par une main. « rouge vif », `#fff`, `javascript:` :
+    // aucune ne doit sortir du tuyau autrement qu'en gris.
+    const regle = { ...DEFAUTS_BLOCS, tableau: true };
+    for (const faux of ['rouge vif', '#fff', 'url(x)', '', null]) {
+        const s = styleTableau({ ...regle, couleurTableau: faux }, {});
+        assert.deepEqual(s.filet, TEINTES_TABLEAU.gris.filet,
+            `« ${faux} » n'est pas retombé sur le gris`);
+    }
+});

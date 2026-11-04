@@ -69,7 +69,14 @@ await dire('au départ (en liste)');
 
 await s.page.selectOption('#pp-tableau', 'zebre');
 await dormir(1500);
-await s.page.selectOption('#pp-filet', 'bleu');
+// LA COULEUR SE CLIQUE, ELLE NE SE CHOISIT PLUS DANS UN MENU. Rémy :
+// « affiche des pastilles de couleur et la possibilité de choisir dans une
+// palette (un select color) ». La valeur vit dans un champ caché de même
+// identifiant qu'avant, et Playwright refusait `selectOption` dessus pendant
+// trente secondes — « element is not visible », et il avait raison.
+await s.doitExister('[data-champ="pp-filet"] .st-pastille[data-valeur="bleu"]',
+    'la pastille bleue de la feuille');
+await s.page.click('[data-champ="pp-filet"] .st-pastille[data-valeur="bleu"]');
 await dormir(1500);
 await dire('toute la feuille en zébré bleu');
 
@@ -80,9 +87,14 @@ console.log('   roues d\'étape :', roues.length);
 await roues[0].click();
 await dormir(900);
 await s.doitExister('#ppx-presence', 'le menu « Présentation » de la roue');
-await s.doitExister('#ppx-filet', 'le menu « Couleur du filet » de la roue');
-
-await s.page.selectOption('#ppx-filet', 'orange');
+await s.doitExister('#ppx-filet', 'la valeur « Couleur du filet » de la roue');
+// ET LA ROUE D'UN EXERCICE GARDE SON « COMME LA FEUILLE », en pastille : un
+// réglage d'exercice AFFINE celui de la feuille, il ne le remplace pas. Sans
+// cette pastille-là, ouvrir une roue sans rien toucher figerait l'exercice sur
+// la couleur du moment, et changer la feuille ensuite ne le suivrait plus.
+await s.doitExister('[data-champ="ppx-filet"] .st-pastille[data-valeur=""]',
+    'la pastille « Comme la feuille » de la roue');
+await s.page.click('[data-champ="ppx-filet"] .st-pastille[data-valeur="orange"]');
 await dormir(1600);
 await dire('premier exercice en orange, le second reste bleu');
 

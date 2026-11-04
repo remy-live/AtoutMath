@@ -405,6 +405,27 @@ export const kakuroGenerator = {
             id: 'format', type: 'select', label: 'Taille de la grille', default: 'petit',
             options: Object.entries(FORMATS).map(([value, f]) => ({ value, label: f.nom }))
         },
+        // ── « MOYEN » PAR DÉFAUT ? NON, ET C'EST MESURÉ ────────────────────
+        //
+        // La question restait ouverte depuis le 27 octobre : Rémy avait montré
+        // deux grilles côte à côte — « je préfère la deuxième images » — et la
+        // sienne était bien plus dense que la nôtre, SEPT cases blanches sur
+        // vingt-cinq contre DOUZE. On s'était demandé si « Moyen », dont les
+        // suites sont plus longues, ne ferait pas des grilles plus blanches.
+        //
+        // MESURÉ, douze grilles par croisement, part de cases non noires :
+        //
+        //     petit (5×5)   facile 68 %   moyen 67 %   difficile 67 %
+        //     moyen (6×6)   facile 66 %   moyen 66 %   difficile 67 %
+        //     grand         facile 49 %   moyen 54 %   difficile 41 %
+        //
+        // « Facile » est DÉJÀ à 68 % sur la petite grille — plus blanche que
+        // celle qu'il préférait (48 %). La densité ne vient donc pas de la
+        // longueur des suites : elle vient du choix de la meilleure découpe
+        // parmi tous les tirages (voir `dessiner`), corrigé le même jour.
+        // Passer à « Moyen » allongerait les suites — c'est-à-dire rendrait
+        // l'exercice plus difficile — pour un point de blanc en moins et deux
+        // fois plus de temps de fabrication. On reste sur « Facile ».
         {
             id: 'difficulte', type: 'select', label: 'Difficulté', default: 'facile',
             aide: 'Elle change la LONGUEUR des suites. À deux ou trois cases, beaucoup de '

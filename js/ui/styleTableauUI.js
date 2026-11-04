@@ -53,6 +53,79 @@ function options(liste, choisie, heritage) {
 const LES_TEINTES = Object.entries(TEINTES_TABLEAU).map(([cle, t]) => [cle, t.nom]);
 const LES_EPAISSEURS = EPAISSEURS_TABLEAU.map(e => [e.valeur, e.nom]);
 
+/** Une couleur libre, écrite comme le navigateur la rend : `#a1b2c3`. */
+const estLibre = (v) => /^#[0-9a-f]{6}$/i.test(String(v || ''));
+
+const rvb = (t) => `rgb(${t[0]}, ${t[1]}, ${t[2]})`;
+
+/**
+ * UNE PALETTE DE PASTILLES, ET UNE PASTILLE QUI OUVRE TOUTES LES COULEURS.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « Pour les couleurs des lignes dans les tableaux, affiche des
+ * pastilles de couleur et la possibilité de choisir dans une palette (un select
+ * color) ».
+ *
+ * LE MENU DÉROULANT DISAIT LES COULEURS AU LIEU DE LES MONTRER. « Ardoise »,
+ * « Violet » : il fallait choisir, fermer le menu, regarder l'aperçu, rouvrir.
+ * Six allers-retours pour voir six couleurs, sur un réglage dont le seul juge
+ * est l'œil. Les pastilles les montrent toutes en même temps, et le choix se
+ * fait en un clic.
+ *
+ * LA VALEUR RESTE DANS UN CHAMP CACHÉ, de même identifiant qu'avant
+ * (`#fq-filet`, `#pp-bande`…). Les trois panneaux lisent `el.value` et
+ * branchent `el.onchange` : ils n'ont rien à apprendre, et une pastille cliquée
+ * émet le `change` qu'ils attendent. C'est le contrat qu'on garde ; c'est la
+ * commande qu'on change.
+ *
+ * ET LA DERNIÈRE PASTILLE EST LE SÉLECTEUR DU NAVIGATEUR — « un select color »,
+ * mot pour mot. Celui du système connaît la pipette et les codes hexadécimaux,
+ * et il est déjà traduit : le refaire à la main aurait donné moins bien.
+ */
+function palette(prefixe, nom, choisie, heritage, role) {
+    const val = String(choisie ?? '');
+    const libre = estLibre(val);
+    const pastille = (valeur, titre, fond, dedans = '') => {
+        const pris = String(valeur) === val ? ' st-pastille--prise' : '';
+        return `<button type="button" class="st-pastille${pris}" data-valeur="${echapper(valeur)}"
+            title="${echapper(titre)}" aria-label="${echapper(titre)}"
+            aria-pressed="${String(valeur) === val ? 'true' : 'false'}"
+            style="--st-fond:${fond}">${dedans}</button>`;
+    };
+    const commeLaFeuille = heritage
+        // UN TRAIT OBLIQUE, ET NON UNE CASE BLANCHE : « comme la feuille » n'est
+        // pas « blanc », et une pastille vide se lit comme la couleur blanche.
+        ? pastille('', 'Comme la feuille', 'transparent', '<span class="st-neant"></span>')
+        : '';
+    // CHAQUE PASTILLE MONTRE LA TEINTE DE SON RÔLE. Une famille porte deux
+    // couleurs : le trait, franc, et la bande, pâlie pour qu'un texte noir
+    // passe dessus. Les montrer toutes les deux en « franc » ferait choisir
+    // l'alternance sur une couleur qui ne s'imprimera jamais — on choisirait
+    // l'orange vif et il sortirait beige.
+    const crans = LES_TEINTES.map(([cle, mot]) =>
+        pastille(cle, mot, rvb(TEINTES_TABLEAU[cle][role] || TEINTES_TABLEAU[cle].filet)))
+        .join('');
+    return `<div class="st-palette" role="group" aria-label="${echapper(nom)}">
+        ${commeLaFeuille}${crans}
+        <label class="st-pastille st-pastille--libre${libre ? ' st-pastille--prise' : ''}"
+               title="Une autre couleur"
+               style="--st-fond:${libre ? val : 'transparent'}">
+            <input type="color" class="st-libre" value="${libre ? val : '#64748b'}"
+                   aria-label="${echapper(nom)} — une autre couleur">
+        </label>
+    </div>`;
+}
+
+/** Le champ complet : son étiquette, ses pastilles, et la valeur en dessous. */
+function champCouleur(prefixe, id, nom, choisie, heritage, classe, role) {
+    return `<div class="${classe} st-champ" data-champ="${prefixe}-${id}">
+        <span class="st-eti">${echapper(nom)}</span>
+        ${palette(prefixe, nom, choisie, heritage, role)}
+        <input type="hidden" id="${prefixe}-${id}" value="${echapper(String(choisie ?? ''))}">
+    </div>`;
+}
+
 /**
  * LES CINQ COMMANDES, EN HTML.
  *
@@ -85,14 +158,10 @@ export function champsStyleTableau(prefixe, o = {}) {
             <select id="${prefixe}-trait" class="cfg-input">
                 ${options(LES_EPAISSEURS, v.trait ?? (heritage ? '' : 0.2), heritage)}
             </select></label>
-        <label class="${classe}">Couleur du filet
-            <select id="${prefixe}-filet" class="cfg-input">
-                ${options(LES_TEINTES, v.couleur ?? (heritage ? '' : 'gris'), heritage)}
-            </select></label>
-        <label class="${classe}">Couleur de l'alternance
-            <select id="${prefixe}-bande" class="cfg-input">
-                ${options(LES_TEINTES, v.couleurBande ?? (heritage ? '' : 'gris'), heritage)}
-            </select></label>
+        ${champCouleur(prefixe, 'filet', 'Couleur du filet',
+        v.couleur ?? (heritage ? '' : 'gris'), heritage, classe, 'filet')}
+        ${champCouleur(prefixe, 'bande', 'Couleur de l\'alternance',
+        v.couleurBande ?? (heritage ? '' : 'gris'), heritage, classe, 'bande')}
         ${bords}`;
 }
 
@@ -105,6 +174,42 @@ export function brancherStyleTableau(racine, prefixe, quoiFaire) {
     CHAMPS.forEach(nom => {
         const el = racine.querySelector(`#${prefixe}-${nom}`);
         if (el) el.onchange = quoiFaire;
+    });
+    // LES PASTILLES ÉCRIVENT DANS LE CHAMP CACHÉ, PUIS ÉMETTENT `change`.
+    //
+    // Un `input[type=hidden]` n'émet jamais rien tout seul : sans cette ligne,
+    // la couleur changerait dans le modèle et l'aperçu ne bougerait pas — le
+    // genre de défaut qu'on cherche dans le rendu pendant vingt minutes.
+    ['filet', 'bande'].forEach(nom => {
+        const champ = racine.querySelector(`[data-champ="${prefixe}-${nom}"]`);
+        const cache = racine.querySelector(`#${prefixe}-${nom}`);
+        if (!champ || !cache) return;
+        const poser = (valeur, quelle) => {
+            cache.value = valeur;
+            champ.querySelectorAll('.st-pastille').forEach(p => {
+                const prise = p === quelle;
+                p.classList.toggle('st-pastille--prise', prise);
+                if (p.hasAttribute('aria-pressed')) {
+                    p.setAttribute('aria-pressed', prise ? 'true' : 'false');
+                }
+            });
+            cache.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        champ.querySelectorAll('.st-pastille[data-valeur]').forEach(p => {
+            p.onclick = () => poser(p.dataset.valeur, p);
+        });
+        const libre = champ.querySelector('.st-libre');
+        if (libre) {
+            // `input` ET NON `change` : le sélecteur du système envoie `input` à
+            // chaque glissement dans la roue chromatique, et `change` seulement
+            // à la fermeture. On veut l'aperçu PENDANT qu'on cherche la
+            // couleur — c'est tout l'intérêt d'avoir une palette.
+            libre.oninput = () => {
+                const enveloppe = libre.closest('.st-pastille');
+                if (enveloppe) enveloppe.style.setProperty('--st-fond', libre.value);
+                poser(libre.value, enveloppe);
+            };
+        }
     });
 }
 
@@ -164,8 +269,10 @@ export function montrerStyleTableau(racine, prefixe, presentation) {
     racine.querySelectorAll(`.${prefixe}-style-tableau`).forEach(el => {
         el.hidden = !enTableau;
     });
+    // `.st-champ` ET NON `closest('label')` : la couleur n'est plus un menu
+    // dans une étiquette, c'est une rangée de pastilles dans un bloc. Chercher
+    // l'étiquette remontait jusqu'à celle du panneau entier, et cachait tout.
     const bande = racine.querySelector(`#${prefixe}-bande`);
-    if (bande && bande.closest('label')) {
-        bande.closest('label').hidden = !enTableau || presentation !== 'zebre';
-    }
+    const bloc = bande && (bande.closest('.st-champ') || bande.closest('label'));
+    if (bloc) bloc.hidden = !enTableau || presentation !== 'zebre';
 }

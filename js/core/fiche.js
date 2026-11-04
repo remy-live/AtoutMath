@@ -222,6 +222,31 @@ export function trouDe(ligne) {
 }
 
 /**
+ * TOUS LES TROUS D'UNE LIGNE, ET NON LE PREMIER.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, sur la fiche « Plus Petit, Plus Grand… ou Égal » : « Mets juste plutôt
+ * le signe inégalité à compléter sur les exercices à imprimers ».
+ *
+ * MESURÉ SUR LA FEUILLE, une fois le signe mis : « Encadre à l'unité :
+ * ……… < 26,6 < ……… » sortait avec UN SEUL pointillé, à gauche. Le second
+ * blanc était bien là — on pouvait écrire dessus —, mais sans trait : sur une
+ * feuille où toutes les autres places en ont un, une place sans trait se lit
+ * comme une place qui n'existe pas, et l'élève laisse la borne haute vide.
+ *
+ * LA CAUSE N'ÉTAIT PAS DANS LE GÉNÉRATEUR, qui écrivait bien ses deux trous.
+ * `trouDe` n'en rendait qu'un, et la mise en page ne savait poser qu'une
+ * réponse par question. Un encadrement EST une question à deux réponses ; il
+ * n'y en avait pas d'autre dans le catalogue, et c'est pour cela que la
+ * limite a tenu si longtemps sans se voir.
+ */
+export function trousDe(ligne) {
+    return [...String(ligne ?? '').matchAll(/ {3,}/g)]
+        .map(m => ({ debut: m.index, fin: m.index + m[0].length }));
+}
+
+/**
  * CE TROU-LÀ EST-IL DÉJÀ DESSINÉ PAR UNE FRACTION ?
  *
  * RÉMY, sur « L'Égalité à Compléter » : la réponse est le terme manquant DANS
@@ -846,10 +871,31 @@ export const EPAISSEURS_TABLEAU = [
  *
  * Rend `null` quand il ne faut rien tracer : les appelants testent `cadre`.
  */
+/**
+ * UNE COULEUR LIBRE, ÉCRITE `#a1b2c3`, RENDUE EN TROIS NOMBRES.
+ *
+ * RÉMY : « la possibilité de choisir dans une palette (un select color) ». Le
+ * sélecteur du navigateur ne rend que cette écriture-là ; jsPDF ne connaît que
+ * les triplets. La traduction tient ici, à côté des teintes nommées, pour que
+ * les deux sortes de couleur entrent dans le même tuyau — sans quoi la moitié
+ * du dessin saurait lire l'une et pas l'autre.
+ */
+const HEX = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+export function teinteLibre(valeur) {
+    const m = HEX.exec(String(valeur || ''));
+    return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
+}
+
 export function styleTableau(o, exo) {
     const r = (exo && exo.presentation) || {};
     if (r.filet === false || (r.filet === undefined && !o.tableau)) return null;
     const famille = (nom) => TEINTES_TABLEAU[nom] || TEINTES_TABLEAU.gris;
+    // UNE COULEUR LIBRE S'EMPLOIE TELLE QUELLE, pour le filet comme pour la
+    // bande. On ne l'éclaircit pas d'office : le professeur voit la pastille
+    // qu'il a choisie, et une couleur qui sort plus pâle que celle qu'on a
+    // désignée est un réglage auquel on ne fait plus confiance.
+    const couleurDe = (valeur, defaut, role) =>
+        teinteLibre(valeur) || teinteLibre(defaut) || famille(valeur || defaut)[role];
     const trait = Number(r.trait !== undefined ? r.trait : o.traitTableau);
     return {
         zebre: r.zebre !== undefined ? !!r.zebre : !!o.zebre,
@@ -857,8 +903,8 @@ export function styleTableau(o, exo) {
         // relu : un trait de douze millimètres effacerait la feuille.
         trait: Math.max(0.05, Math.min(1.5, Number.isFinite(trait) ? trait : 0.2)),
         bords: (r.bords !== undefined ? r.bords : o.bordsExterieurs) !== false,
-        filet: famille(r.couleur || o.couleurTableau).filet,
-        fond: famille(r.couleurBande || o.couleurBandeTableau).bande
+        filet: couleurDe(r.couleur, o.couleurTableau, 'filet'),
+        fond: couleurDe(r.couleurBande, o.couleurBandeTableau, 'bande')
     };
 }
 
@@ -1298,16 +1344,25 @@ export function composerBlocs(exos, opts, mesurer) {
             // LE TROU DANS L'ÉNONCÉ. « 82 041 = 80 000 +      + 40 + 1 » porte
             // déjà la place où l'on écrit : lui ajouter des pointillés au bout
             // ferait deux endroits pour une seule réponse.
+            // ET IL PEUT Y EN AVOIR PLUSIEURS : un encadrement en demande
+            // DEUX, une de chaque côté du nombre. Voir `trousDe`.
             let trou = null, trouDessine = false;
-            for (let i = 0; i < lignes.length && !trou && !trouDessine; i++) {
-                const t = trouDe(lignes[i]);
-                if (!t) continue;
-                // Un trou au milieu d'une FRACTION porte déjà sa place : la
-                // fraction la dessine à son étage. Voir
-                // `trouDessineParUneFraction`.
-                if (trouDessineParUneFraction(lignes[i], t)) trouDessine = true;
-                else trou = { ...t, ligne: i };
+            const trous = [];
+            for (let i = 0; i < lignes.length && !trouDessine; i++) {
+                for (const t of trousDe(lignes[i])) {
+                    // Un trou au milieu d'une FRACTION porte déjà sa place : la
+                    // fraction la dessine à son étage. Voir
+                    // `trouDessineParUneFraction`.
+                    if (trouDessineParUneFraction(lignes[i], t)) { trouDessine = true; break; }
+                    trous.push({ ...t, ligne: i });
+                }
             }
+            if (trouDessine) trous.length = 0;
+            // `trou` RESTE LE PREMIER, et tout ce qui le lisait continue de
+            // marcher : la hauteur de la cellule, la règle « la réponse va
+            // dans l'énoncé », le corrigé qui pose la bonne réponse dans le
+            // trou. Les suivants ne servent qu'au tracé.
+            if (trous.length) trou = trous[0];
             // La réponse va SUR la ligne de l'énoncé quand il reste assez de
             // pointillés ; sinon dessous, en pleine largeur de cellule.
             //
@@ -1430,7 +1485,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // sur toute la feuille et saute les exercices non numérotés.
             return { lignes, coupee: lignes.length > lignesVoulues,
                 casse: coupureCasseUneExpression(lignes),
-                choix, memeLigne, trou, trouDessine, tableau, bonds, hBonds, sansPointilles, h,
+                choix, memeLigne, trou, trous, trouDessine, tableau, bonds, hBonds, sansPointilles, h,
                 // CE QUE LA QUESTION A DEMANDÉ voyage avec sa cellule : le
                 // traceur, plus bas, n'a plus accès à `q`.
                 nRep, hRep,
@@ -1541,7 +1596,7 @@ export function composerBlocs(exos, opts, mesurer) {
                 if (numerote) numero++;
                 const x = zone.x + iCell * (cellW + o.gouttiere);
                 const texteX = x + gouttiereNum;
-                let rep = null;
+                let rep = null, repsSup = [];
                 if (cell.tableau && cell.tableau.aRemplir) {
                     // Rien : le tableau est la place pour répondre.
                 } else if (cell.trouDessine) {
@@ -1551,14 +1606,20 @@ export function composerBlocs(exos, opts, mesurer) {
                 } else if (cell.trou) {
                     // On écrit DANS l'énoncé, à l'endroit du trou : le trait à
                     // remplir se pose sous ce blanc, et le champ du PDF dessus.
-                    const ligne = cell.lignes[cell.trou.ligne];
-                    const avant = cell.mes(ligne.slice(0, cell.trou.debut), o.taille);
-                    const largeur = cell.mes(ligne.slice(cell.trou.debut, cell.trou.fin), o.taille);
-                    rep = {
-                        x: texteX + avant,
-                        y: y + cell.dy + o.taille + cell.trou.ligne * o.interligne + 0.9,
-                        w: largeur, dansLeTexte: true
+                    const place = (t) => {
+                        const ligne = cell.lignes[t.ligne];
+                        return {
+                            x: texteX + cell.mes(ligne.slice(0, t.debut), o.taille),
+                            y: y + cell.dy + o.taille + t.ligne * o.interligne + 0.9,
+                            w: cell.mes(ligne.slice(t.debut, t.fin), o.taille),
+                            dansLeTexte: true
+                        };
                     };
+                    rep = place(cell.trou);
+                    // LES AUTRES TROUS DE LA MÊME QUESTION — un encadrement en
+                    // a deux. Ils ne portent pas de champ de formulaire pour
+                    // l'instant : voir `pdfItems`, qui les dessine.
+                    repsSup = (cell.trous || []).slice(1).map(place);
                 } else if (cell.memeLigne) {
                     // Les pointillés continuent la ligne d'écriture : même
                     // hauteur que la ligne de base du texte.
@@ -1596,6 +1657,11 @@ export function composerBlocs(exos, opts, mesurer) {
                     rep.champY = rep.y - rep.h * 0.78;
                     rep.nom = `q${total}`;
                 }
+                repsSup.forEach((r, i) => {
+                    r.h = Math.min(o.champH, ligneRep || o.champH);
+                    r.champY = r.y - r.h * 0.78;
+                    r.nom = `q${total}b${i + 1}`;
+                });
                 // LE TABLEAU, POSÉ. Sa géométrie est mesurée plus haut ; il ne
                 // lui manquait que le coin où le tracer, et ce coin dépend de la
                 // hauteur du texte qui le précède.
@@ -1661,7 +1727,11 @@ export function composerBlocs(exos, opts, mesurer) {
                         ? y + cell.dy
                             + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
                         : null,
-                    rep
+                    rep,
+                    // VIDE LE PLUS SOUVENT : une question n'a qu'une réponse.
+                    // On ne pose le tableau que quand il porte quelque chose,
+                    // pour que les items restent lisibles au débogage.
+                    ...(repsSup.length ? { repsSup } : {})
                 });
             });
             y += rangeeH + o.entreQuestions;
