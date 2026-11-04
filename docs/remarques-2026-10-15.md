@@ -4718,3 +4718,56 @@ elle, est déjà faite et bien faite (`css/base.css`, `data-aere`).
 **Les deux premières sont des feuilles imprimées, donc du visuel** : maquettes
 d'abord, comme il l'a demandé une fois pour toutes — « fais moi des
 propositions d'abord ».
+
+## 57. La case proposée prend la couleur de l'autre camp — 4 novembre
+
+> « petit détail pour le cavalier quand je clique sur le cavalier rouge, il
+> faut que la case proposée soit en rouge pas en bleu »
+
+Dans l'énigme des cavaliers, toucher un cavalier allume ses deux cases
+d'arrivée — un liseré et un point. Les deux étaient **bleus en dur**
+(`#2563eb`), c'est-à-dire la couleur du camp ADVERSE : on touche un cavalier
+rouge, et le damier répond en bleu. L'élève lit alors que c'est l'autre
+cavalier qui peut y aller.
+
+Ce n'est pas une préférence de goût : sur ce damier, la couleur est la seule
+chose qui distingue les deux camps, et la seule chose qui dit QUI est en train
+de jouer.
+
+## 58. « Dans mes progrès, elle n'a rien » — 4 novembre
+
+> « j'ai aussi fait une séance avec les élèves et en allant dans le profil d'une
+> élève je vois que dans mes progès, elle n'a rien »
+>
+> « en fait ca n'apparait pas tout de suite »
+
+Une séance faite en classe, et l'écran « Mes progrès » de l'élève est vide juste
+après — puis il se remplit plus tard. **Le défaut n'est donc pas que rien
+n'arrive : c'est le DÉLAI, et le vide qu'on montre pendant ce délai.**
+
+Un professeur qui ouvre le profil devant l'élève lit « rien », et c'est faux. Ce
+qu'il faudrait savoir, dans l'ordre :
+
+1. d'où vient l'attente — la remontée du journal depuis le poste de l'élève, la
+   redescente vers le profil, ou un bilan calculé une fois puis gardé ;
+2. et, quoi qu'il arrive, **ne plus jamais montrer un écran vide pour un écran
+   pas encore arrivé** : « rien à afficher » et « pas encore reçu » sont deux
+   nouvelles différentes, exactement comme « rien à reprendre » et « n'a rien
+   déposé » sur les fiches de reprise.
+
+## 59. La flèche qui glisse : la liste de coordonnées ne sert à rien — 4 novembre
+
+> « et pour la flèche qui glisse (mais pour les transformations) tu mets cela :
+> *Colorie l'image de la figure bleue par la translation que montre la flèche
+> rouge. — ta réponse : (6 ; 2), (6 ; 3), (7 ; 3), (6 ; 4), (7 ; 4), attendu :
+> (6 ; 3), (6 ; 4), (7 ; 4), (6 ; 5), (7 ; 5) »
+>
+> « Aucun intérêt, le dessin suffit »
+
+L'élève colorie des cases ; la correction lui rend deux listes de couples. Pour
+comparer, il doit lire dix coordonnées et les reporter mentalement sur la
+grille — c'est-à-dire refaire à la main le travail que le dessin fait tout seul.
+
+**La correction d'un exercice qui se joue sur une figure doit se montrer SUR la
+figure** : les cases attendues, celles qu'il a coloriées, et la différence. La
+liste n'est pas une correction, c'est la donnée brute de la réponse.

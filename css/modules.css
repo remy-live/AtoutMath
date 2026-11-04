@@ -16579,15 +16579,26 @@ body.en-boite > #app-container { background: none; }
     cursor: default;
 }
 .cv-case--choisie { box-shadow: inset 0 0 0 4px #ea580c; }
-.cv-case--possible { box-shadow: inset 0 0 0 4px #2563eb; }
+/* LA CASE PROPOSÉE PREND LA COULEUR DU CAVALIER TOUCHÉ, et non une couleur
+   fixe. Rémy, 4 novembre : « quand je clique sur le cavalier rouge, il faut que
+   la case proposée soit en rouge pas en bleu ». Le bleu en dur était la teinte
+   du camp ADVERSE : on touchait un cavalier rouge et le damier répondait en
+   bleu, c'est-à-dire en désignant l'autre camp. Les deux teintes sont celles
+   des cavaliers eux-mêmes, au pixel près — une nuance voisine se lirait comme
+   une troisième couleur, donc comme une troisième chose. */
+.cv-case--possible { box-shadow: inset 0 0 0 4px var(--cv-teinte, #2563eb); }
+.cv-possible--A { --cv-teinte: #dc2626; }
+.cv-possible--B { --cv-teinte: #1d4ed8; }
 .cv-case:focus-visible { outline: 3px solid #1d4ed8; outline-offset: -3px; }
 
 /* LE POINT DES CASES POSSIBLES : c'est LUI qui fait trouver l'énigme. Toucher
    un cavalier allume ses deux — jamais trois — cases d'arrivée, et c'est en
-   voyant « toujours deux » qu'on comprend que les huit cases font un anneau. */
+   voyant « toujours deux » qu'on comprend que les huit cases font un anneau.
+   IL SUIT LA MÊME TEINTE QUE LE LISERÉ : ils désignent la même case, et deux
+   couleurs sur une seule case voudraient dire deux choses. */
 .cv-point {
     width: 34%; height: 34%; border-radius: 50%;
-    background: #2563eb; opacity: .55;
+    background: var(--cv-teinte, #2563eb); opacity: .55;
 }
 
 .cv-cavalier { display: block; width: 84%; height: 84%; }

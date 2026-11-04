@@ -120,7 +120,14 @@ export function mount(container, session) {
                 ((k % colonnes) + Math.floor(k / colonnes)) % 2 ? 'cv-case--sombre' : '',
                 morte ? 'cv-case--morte' : '',
                 interactif && choisi === k ? 'cv-case--choisie' : '',
-                ouPeutAller.has(k) ? 'cv-case--possible' : ''
+                // LA CASE PROPOSÉE PORTE LA COULEUR DU CAVALIER QU'ON VIENT DE
+                // TOUCHER. Rémy, 4 novembre : « quand je clique sur le cavalier
+                // rouge, il faut que la case proposée soit en rouge pas en
+                // bleu ». Le liseré et le point étaient bleus en dur — la teinte
+                // du camp ADVERSE : on touchait un cavalier rouge et le damier
+                // répondait en désignant l'autre camp. Sur ce damier, la couleur
+                // est la seule chose qui dit qui est en train de jouer.
+                ouPeutAller.has(k) ? `cv-case--possible cv-possible--${etat[choisi]}` : ''
             ].filter(Boolean).join(' ');
             const dedans = couleur
                 ? `<span class="cv-cavalier cv-cavalier--${couleur}">${CAVALIER}</span>`

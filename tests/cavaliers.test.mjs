@@ -27,6 +27,7 @@ import '../js/core/activities/index.js';
 import { exercices } from '../js/data/catalog.js';
 import { getGenerator } from '../js/core/registry.js';
 import { makeRng } from '../js/core/ids.js';
+import { readFileSync } from 'node:fs';
 import {
     NIVEAUX, arrivee, collier, coups, depart, estArrive, graphe, jouer, resoudre, tirerEnigme
 } from '../js/core/cavaliers.js';
@@ -176,4 +177,34 @@ test('ET LES CAVALIERS SE FABRIQUENT SANS SE FAIRE ATTENDRE', () => {
     // et `npm test` lance ses fichiers en parallèle — leçon du 2 novembre.
     assert.ok(dt < 6000, `${dt} ms pour douze tirages`);
     assert.equal(resoudre(NIVEAUX[2]).length, 16);
+});
+
+test('LA CASE PROPOSÉE PORTE LA COULEUR DU CAVALIER TOUCHÉ', () => {
+    // RÉMY, 4 novembre : « quand je clique sur le cavalier rouge, il faut que
+    // la case proposée soit en rouge pas en bleu ». Le liseré et le point
+    // étaient bleus en dur — la teinte du camp ADVERSE : on touchait un
+    // cavalier rouge et le damier répondait en désignant l'autre camp.
+    //
+    // CE QU'ON GARDE ICI N'EST PAS LA COULEUR, C'EST L'ACCORD. Les deux
+    // teintes vivent dans deux fichiers : l'écran pose la classe du camp, la
+    // feuille de style dit ce que ce camp vaut. Le jour où l'on retouche le
+    // rouge des cavaliers sans toucher l'autre, le damier répond de nouveau
+    // dans une couleur qui n'est celle de personne — et rien ne le dirait.
+    // `tools/cavaliersAuDoigt.mjs` le voit à l'écran, sur les pixels ; ici on
+    // garde l'accord, qui est la cause.
+    const vue = readFileSync(new URL('../js/core/activities/cavaliers.js',
+        import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
+    assert.match(vue, /cv-case--possible cv-possible--\$\{etat\[choisi\]\}/,
+        'la case allumée ne dit plus de quel camp elle vient');
+    for (const camp of ['A', 'B']) {
+        const teinte = (quoi, prop) => (css.match(
+            new RegExp(`\\.${quoi}--${camp}\\s*\\{[^}]*${prop}:\\s*(#[0-9a-f]{3,8})`, 'i')) || [])[1];
+        const cavalier = teinte('cv-cavalier', 'color');
+        const allumee = teinte('cv-possible', '--cv-teinte');
+        assert.ok(cavalier, `le cavalier ${camp} n'a plus de couleur`);
+        assert.ok(allumee, `les cases du camp ${camp} n'ont plus de teinte`);
+        assert.equal(allumee.toLowerCase(), cavalier.toLowerCase(),
+            `le camp ${camp} allume une couleur qui n'est celle de personne`);
+    }
 });

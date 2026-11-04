@@ -43,6 +43,33 @@ const centre = (s, sel, i = 0) => s.page.evaluate(([x, k]) => {
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 }, [sel, i]);
 
+/** Le centre du premier cavalier d'un camp — « A » les rouges, « B » les bleus. */
+const centreDuCamp = (s, camp) => s.page.evaluate((k) => {
+    const el = document.querySelector('[data-damier] .cv-cavalier--' + k);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}, camp);
+
+/**
+ * LES COULEURS RENDUES, et non les noms de classes.
+ *
+ * Une classe posée ne prouve rien : si la variable `--cv-teinte` n'était
+ * déclarée nulle part, le liseré retomberait sur son bleu de repli et la classe
+ * serait là quand même. On lit donc ce que le navigateur a CALCULÉ — la seule
+ * chose que l'élève voit.
+ */
+const teintes = (s) => s.page.evaluate(() => {
+    const lire = (el, prop) => (el ? getComputedStyle(el)[prop] : null);
+    const choisie = document.querySelector('[data-damier] .cv-case--choisie');
+    const possible = document.querySelector('[data-damier] .cv-case--possible');
+    return {
+        cavalier: lire(choisie && choisie.querySelector('.cv-cavalier'), 'color'),
+        liseré: lire(possible, 'boxShadow'),
+        point: lire(possible && possible.querySelector('.cv-point'), 'backgroundColor')
+    };
+});
+
 async function unePasse(taille) {
     const s = await ouvrirSonde({ largeur: taille.largeur, hauteur: taille.hauteur });
     const dits = [], ratés = [];
@@ -85,6 +112,32 @@ async function unePasse(taille) {
             ? 'toucher un cavalier allume TOUJOURS deux cases, jamais trois'
             : `UN CAVALIER ALLUME ENTRE ${mini} ET ${maxi} CASES`);
         if (!deux) ratés.push('deux cases');
+
+        // ── LA CASE PROPOSÉE PORTE LA COULEUR DU CAVALIER TOUCHÉ ───────────
+        //
+        // Rémy, 4 novembre : « quand je clique sur le cavalier rouge, il faut
+        // que la case proposée soit en rouge pas en bleu ». Le liseré et le
+        // point étaient bleus en dur — la teinte du camp ADVERSE. Sur ce
+        // damier, la couleur est la seule chose qui dit qui est en train de
+        // jouer, et un cavalier rouge qui allume des cases bleues désigne
+        // l'autre camp.
+        for (const camp of ['A', 'B']) {
+            const nom = camp === 'A' ? 'rouge' : 'bleu';
+            const c = await centreDuCamp(s, camp);
+            if (!c) { dits.push(`AUCUN CAVALIER ${nom.toUpperCase()}`); ratés.push('camp'); continue; }
+            await s.page.mouse.click(c.x, c.y);
+            await dormir(160);
+            const t = await teintes(s);
+            const accord = !!t.cavalier && !!t.liseré
+                && t.liseré.includes(t.cavalier) && t.point === t.cavalier;
+            dits.push(accord
+                ? `le cavalier ${nom} allume des cases ${camp === "A" ? "rouges" : "bleues"} — ${t.cavalier}`
+                : `LE CAVALIER ${nom.toUpperCase()} (${t.cavalier}) ALLUME `
+                    + `LISERÉ ${t.liseré} / POINT ${t.point}`);
+            if (!accord) ratés.push(`couleur ${nom}`);
+            await s.page.mouse.click(c.x, c.y);   // on le repose
+            await dormir(120);
+        }
 
         // ── ET TOUCHER UNE CASE ALLUMÉE Y FAIT SAUTER LE CAVALIER ───────────
         const c0 = await centre(s, '[data-damier] .cv-cavalier', 0);
