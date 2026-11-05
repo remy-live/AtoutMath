@@ -5153,3 +5153,45 @@ C'est le feu vert sur la direction, et trois précisions qui comptent :
 3. **LES PORTES.** Je les avais oubliées, et le panneau de ses captures compte
    justement des CLÉS. Les clés ouvrent la porte : c'est elle, le but du
    tableau, et c'est ce qui donne un sens au comptage du panneau.
+
+## Le high score des angles : « ah ok c'est un défi pas un exercice » — 5 novembre
+
+Après la livraison de v1144, et après lui avoir décrit le déroulé :
+
+> « ah ok c'est un défi pas un exercice »
+
+**C'est une remarque, pas une question**, et elle dit que j'ai tranché une
+ambiguïté sans le lui demander. Sa phrase du 5 novembre était :
+
+> « plus il est proche, plus il a de points et après si c'est une classe en
+> séance, on peut récupérer les high score, c'est motivant »
+
+« SI C'EST UNE CLASSE EN SÉANCE » SE LIT DE DEUX FAÇONS, et j'ai pris la
+première sans remarquer qu'il y en avait une seconde :
+
+1. **le défi** — une minute, tout le monde en même temps, classement à la fin.
+   C'est ce que j'ai livré, et c'est la lecture qui collait au mécanisme qui
+   existait déjà ;
+2. **l'exercice dans son parcours** — les élèves travaillent normalement, leurs
+   points s'accumulent pendant l'heure, et le professeur a un tableau des
+   meilleurs scores de SA séance. Là, le high score n'interrompt rien : il
+   récompense le travail ordinaire.
+
+Ce sont deux objets différents. Le premier est un MOMENT de classe, le second
+est une TOILE DE FOND. Et la note plus haut — « il n'a pas répondu sur le
+classement (prénoms ou anonyme, séance ou record de l'année) » — montre que la
+question était déjà ouverte et que je ne la lui avais pas reposée.
+
+**Ce qu'il a répondu, le jour même** : « **Le défi suffit** ». Le classement
+reste donc un MOMENT qu'il déclenche, et pas une toile de fond qui tourne toute
+l'heure — ce qui se tient : un high score qui monte en permanence pendant un
+parcours met la vitesse au-dessus du travail, et l'estimation est justement ce
+qu'on fait en s'arrêtant pour regarder.
+
+**Et, pour le jour où la question reviendra**, il a aussi dit ce que les élèves
+devraient voir dans ce cas-là : **« podium + sa place »**, comme dans le défi.
+C'est la même réponse qu'il avait donnée pour le défi, et elle est maintenant
+écrite : on ne la lui redemandera pas.
+
+**Rien n'a donc été codé de plus.** La v1144 est la réponse complète à sa
+demande du 5 novembre.
