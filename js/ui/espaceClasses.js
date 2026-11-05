@@ -153,6 +153,12 @@ import { conseilDuRapport, nomCompetence } from '../core/bilan.js';
 import { levelFor } from '../core/mastery.js';
 import { detailDeLEleve } from '../core/detailDeLEleve.js';
 import { getSkill as laCompetence } from '../data/skills.js';
+// L'ANGLE À ESTIMER SE DESSINE ICI AUSSI, et c'est le MÊME dessin que celui de
+// l'exercice et du défi : un seul vit dans le noyau, exprès (voir
+// `core/anglesDessin.js`). `compteEnPoints` vient du défi parce que le défi
+// tire déjà les questions, et qu'une seconde façon de les tirer dériverait.
+import { VUE, dessinDeLAngle, estUneEstimation } from '../core/anglesDessin.js';
+import { compteEnPoints } from './defiUI.js';
 
 /**
  * LE NOM DE L'EXERCICE, PAS SON IDENTIFIANT.
@@ -4553,19 +4559,42 @@ async function brancher(e, redessiner) {
         const graine = 'apercu-' + Date.now();
         const cartes = [];
         let sansChoix = 0;
+        let estimations = 0;
         for (let n = 0; n < 3; n++) {
             const item = questionDuDefi(exo, graine, n);
             if (!item) continue;
-            const enonce = (item.prompt && item.prompt.html)
-                || `<div class="game-question">${esc((item.prompt || {}).text || '')}</div>`;
-            const choix = (item.choices || []).slice(0, 4);
-            if (!choix.length) sansChoix++;
-            const reponses = (mode === 'saisie' || !choix.length)
+            // L'ANGLE À ESTIMER EST TOUT L'ÉNONCÉ, et sans lui l'aperçu de
+            // « À vue d'œil » montrait TROIS FOIS LA MÊME PHRASE — « Combien
+            // mesure cet angle ? » — ce qui est exactement ce que l'aperçu
+            // existe pour éviter. On le dessine donc TEL QUE L'ÉLÈVE LE VERRA,
+            // point d'interrogation compris, et la mesure est écrite sous la
+            // carte : le professeur voit en un regard s'il lance des angles
+            // autour des repères ou des rentrants à 250°.
+            const estim = estUneEstimation(item);
+            const enonce = ((item.prompt && item.prompt.html)
+                || `<div class="game-question">${esc((item.prompt || {}).text || '')}</div>`)
+                + (estim
+                    ? `<svg class="ec-apercu-angle" viewBox="0 0 ${VUE.largeur} ${VUE.hauteur}"
+                            role="img" aria-label="L'angle de la question ${n + 1}"
+                            >${dessinDeLAngle(item.meta, null)}</svg>`
+                    : '');
+            const choix = estim ? [] : (item.choices || []).slice(0, 4);
+            // ON NE COMPTE PAS CELUI-LÀ COMME « sans choix ». Un angle à
+            // estimer ne se pose NI en QCM ni en saisie : le défi lui donne son
+            // propre pavé de réglage, et l'avertissement « le défi passera en
+            // saisie » serait un mensonge qui fait hésiter avant de lancer.
+            if (!choix.length && !estim) sansChoix++;
+            const reponses = estim
+                ? `<div class="ec-apercu-saisie">au pari, à ±${
+                    esc(String((item.meta || {}).tolerance ?? 5))}° près : `
+                    + `<b>${esc(String((item.meta || {}).angle ?? '?'))}°</b></div>`
+                : (mode === 'saisie' || !choix.length)
                 ? `<div class="ec-apercu-saisie">réponse attendue :
                    <b>${esc(String(item.answer ?? '?'))}</b></div>`
                 : `<div class="ec-apercu-choix">${choix.map(c =>
                     `<span class="ec-apercu-choix-un${c.correct ? ' ec-apercu-choix-un--bonne' : ''}">`
                     + `${c.label !== undefined ? c.label : esc(String(c.value))}</span>`).join('')}</div>`;
+            if (estim) estimations++;
             cartes.push(`<div class="ec-apercu-carte"><span class="ec-apercu-rang">${n + 1}</span>
                 <div class="ec-apercu-enonce">${enonce}</div>${reponses}</div>`);
         }
@@ -4573,10 +4602,18 @@ async function brancher(e, redessiner) {
             ? '<p class="ec-note ec-note--bloc">⚠ Cet exercice ne propose pas de choix : '
                 + 'le défi passera tout seul en <b>saisie</b> pour ces questions-là.</p>'
             : '';
+        // ON NE DIT PAS « en QCM » SOUS TROIS ANGLES À ESTIMER. Le mode choisi
+        // ne s'applique pas à eux — ils ont leur pavé de pari —, et annoncer un
+        // QCM sous un dessin qui n'en propose aucun ferait croire à un défaut
+        // juste avant de lancer la minute.
+        const phrase = estimations === cartes.length && cartes.length
+            ? 'Trois angles comme vos élèves les auront. La mesure est écrite ici ; '
+                + 'chez eux, non — ils parient, et plus ils s\'approchent, plus ils marquent.'
+            : `Trois questions comme vos élèves les auront, en <b>${
+                mode === 'saisie' ? 'saisie' : 'QCM'}</b>. La bonne réponse est marquée ; `
+                + 'chez eux elle ne l\'est pas.';
         showModal(`Aperçu — ${exo.title}`,
-            `<p class="ec-note">Trois questions comme vos élèves les auront, en
-             <b>${mode === 'saisie' ? 'saisie' : 'QCM'}</b>. La bonne réponse est marquée ;
-             chez eux elle ne l'est pas.</p>${alerte}
+            `<p class="ec-note">${phrase}</p>${alerte}
              <div class="ec-apercu">${cartes.join('') || '<p>Cet exercice n\'a rien rendu.</p>'}</div>`,
             { width: '560px' });
         return;
@@ -5058,9 +5095,23 @@ function classementDuDefiHtml(direct) {
         return '<div class="ec-defi-vide">'
             + (df.fini ? 'Personne n\'a marqué.' : 'Le défi tourne…') + '</div>';
     }
+    // UN DÉFI D'ESTIMATION SE LIT EN POINTS, et il faut les DEUX nombres ici.
+    //
+    // Les points font le classement — c'est d'eux que Rémy parlait, « plus il
+    // est proche, plus il a de points ». Mais lui regarde aussi ce que ce
+    // tableau dira de sa classe, et « 4 sur 6 dans la tolérance » est une
+    // information que « 412 points » ne porte pas. Pour un défi de calcul les
+    // deux coïncident, donc on n'affiche que l'un : répéter « 5 » puis « 5/8 »
+    // ferait lire deux fois la même chose.
+    const enPoints = compteEnPoints(df.exo, df.debut);
+    const marque = (l) => (l.points === undefined || l.points === null)
+        ? Number(l.bonnes || 0) : Number(l.points);
     return '<ol class="ec-defi-classement">'
-        + liste.map(l => `<li><span>${esc(l.prenom)}</span><b>${l.bonnes}</b>`
-            + `<small>/ ${l.total}</small></li>`).join('')
+        + liste.map(l => `<li><span>${esc(l.prenom)}</span><b>${marque(l)}</b>`
+            + (enPoints
+                ? `<small>pts · ${l.bonnes}/${l.total}</small>`
+                : `<small>/ ${l.total}</small>`)
+            + '</li>').join('')
         + '</ol>';
 }
 

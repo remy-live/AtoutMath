@@ -6765,7 +6765,7 @@ erreur qui ne parle pas d'elles** — 3 novembre 2026
   jeu en comptait cent soixante-dix.
 - *Ce qui a coûté* : vingt minutes à chercher un défaut d'affichage qui
   n'existait pas, puis le renommage de treize crochets.
-- *Combien de fois* : || — c'est le cousin du défaut que `doitExister` ferme.
+- *Combien de fois* : ||| — c'est le cousin du défaut que `doitExister` ferme.
   Lui garde le cas « le crochet ne désigne RIEN » ; celui-ci est le cas « le
   crochet désigne AUTRE CHOSE », et il est pire : `null` se voit, une valeur
   plausible ne se voit pas.
@@ -6773,6 +6773,21 @@ erreur qui ne parle pas d'elles** — 3 novembre 2026
   plusieurs éléments de la page**, ou qu'il rappelle de préfixer. Un jeu monté
   dans la page de l'application partage son `document` : tout crochet non
   préfixé est un tirage au sort.
+
+**Récidive, 5 novembre (troisième barre)** — la sonde du défi d'estimation
+lisait la fenêtre d'aperçu par `document.querySelector('.modal-overlay')`. Il
+en existe **dix** dans cette page : neuf fenêtres déclarées en dur plus celle
+qu'on vient d'ouvrir, et `querySelector` rend `#code-modal`, qui est vide. Trois
+contrôles annonçaient « 0 carte, 0 dessin » sur un aperçu parfaitement dessiné,
+et c'est le clic SUIVANT — refusé par la sonde parce qu'il était RECOUVERT par
+`div.ec-apercu-carte` — qui a fini par dire où était la vraie fenêtre. **C'est
+`cliquer` qui a sauvé la mesure, pas `doitExister`** : le premier regarde QUI
+répond au centre du rectangle, le second se contente d'un sélecteur qui désigne
+quelque chose. Le remède qui aurait marché ici : partir du contenu
+(`document.querySelector('.ec-apercu-carte').closest('.modal-overlay')`) plutôt
+que du voile. **Et l'outil qui manque reste le même, en plus précis : que
+`doitExister` dise combien d'éléments le sélecteur désigne dès qu'il en désigne
+plus d'un.**
 
 **Un renommage d'attribut à la main en oublie une forme** — 5 novembre
 

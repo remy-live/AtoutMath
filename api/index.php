@@ -2240,7 +2240,11 @@ function handleDefiScore(): void
         $eleve,
         (int) ($body['bonnes'] ?? 0),
         (int) ($body['total'] ?? 0),
-        (int) ($body['ms'] ?? 0)
+        (int) ($body['ms'] ?? 0),
+        // `null` QUAND LE CLIENT N'EN PARLE PAS : le serveur reprend alors les
+        // bonnes réponses. Une ardoise qui n'a pas encore la mise à jour reste
+        // classable, et au même rang qu'avant.
+        isset($body['points']) ? (int) $body['points'] : null
     );
     respond($r);
 }

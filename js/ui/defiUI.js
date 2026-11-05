@@ -47,6 +47,15 @@ import { apiEleve, rafraichirSeance } from '../core/sync.js';
 import { makeRng } from '../core/ids.js';
 import { getExerciseById } from '../data/catalog.js';
 import { getGenerator } from '../core/registry.js';
+// LE DESSIN DE L'ANGLE ET SON BARÈME VIENNENT DU NOYAU, et c'est la raison
+// d'être de `core/anglesDessin.js` : l'exercice « À vue d'œil » montre cet
+// angle, LE DÉFI le montre aussi, et l'aperçu du professeur une troisième fois.
+// Trois dessins séparés dériveraient — un drapeau d'arc corrigé ici et pas là —
+// et les trente élèves du défi estimeraient alors autre chose que ce que
+// l'exercice leur a appris.
+import {
+    VUE, dessinDeLAngle, estUneEstimation, pointsDeLEcart
+} from '../core/anglesDessin.js';
 
 const CLE_FAITS = 'atoutmath-defis-faits';
 
@@ -106,6 +115,24 @@ const attentes = new Map();
 
 /** Ce que CET appareil a compté pendant le défi, pour le cas où le serveur tarde. */
 let monScore = null;
+
+/**
+ * CE DÉFI SE COMPTE-T-IL EN POINTS plutôt qu'en bonnes réponses ?
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « plus il est proche, plus il a de points et après si c'est une classe
+ * en séance, on peut récupérer les high score, c'est motivant ».
+ *
+ * ON NE REGARDE PAS L'IDENTIFIANT DE L'EXERCICE, ON REGARDE LA QUESTION. Tout
+ * générateur qui pose un angle à estimer — celui-ci et ceux qui viendront —
+ * sera compté en points sans qu'il y ait une liste à tenir à jour quelque part.
+ * La graine n'a aucune importance ici : on ne lit que la FORME de l'item, pas
+ * son contenu.
+ */
+export function compteEnPoints(exoId, graine) {
+    return estUneEstimation(questionDuDefi(getExerciseById(exoId), graine || 'x', 0));
+}
 
 function regarder() {
     // LE PROFESSEUR NE SE LANCE PAS UN DÉFI À LUI-MÊME. Son navigateur a servi
@@ -206,8 +233,12 @@ async function jouer(defi) {
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function questionner(defi, exo) {
+    // EN POINTS OU EN BONNES RÉPONSES ? On le décide AVANT de bâtir la carte :
+    // le compteur du haut, la place du dessin et la taille de l'énoncé en
+    // dépendent, et l'exercice ne change pas en cours de défi.
+    const enPoints = compteEnPoints(defi.exo, defi.graine);
     const voile = plateau(`
-        <div class="defi-carte defi-carte--jeu">
+        <div class="defi-carte defi-carte--jeu${enPoints ? ' defi-carte--estim' : ''}">
             <!-- ON DIT CE QUE C'EST, MÊME PENDANT. Les trois secondes de départ
                  l'annoncent, mais un élève qui lève les yeux dix secondes plus
                  tard ne sait plus pourquoi son écran a changé. -->
@@ -219,7 +250,14 @@ async function questionner(defi, exo) {
                      « 12 » et le « s » sont DEUX enfants, donc ils partent
                      chacun à un bout de la carte. -->
                 <span class="defi-temps"><b data-reste>${defi.reste}</b> s</span>
-                <span class="defi-score">✅ <b data-bonnes>0</b></span>
+                <!-- LE COMPTEUR DIT CE QU'ON GAGNE VRAIMENT. Dans un défi
+                     d'estimation, les points sont continus — cent si l'on
+                     tombe pile, huit de moins par degré d'écart — et afficher
+                     « 3 bonnes réponses » cacherait exactement ce que Rémy
+                     voulait rendre motivant : de combien on s'est approché. -->
+                <span class="defi-score">${enPoints
+                    ? '⭐ <b data-bonnes>0</b> pts'
+                    : '✅ <b data-bonnes>0</b>'}</span>
             </div>
             <div class="defi-question" data-question></div>
             <div class="defi-reponses" data-reponses></div>
@@ -228,9 +266,18 @@ async function questionner(defi, exo) {
     const el = (s) => voile.querySelector(s);
     let n = 0;
     let bonnes = 0;
+    // LES DEUX COMPTES SONT SÉPARÉS, et c'est la même séparation que dans
+    // « À vue d'œil ». LES POINTS font le classement, parce qu'eux seuls disent
+    // de combien on s'est approché. LA BONNE RÉPONSE reste franche, à la
+    // tolérance près, parce que c'est elle qui dira au professeur si la
+    // compétence est acquise — un barème continu n'est pas une maîtrise.
+    // POUR UN DÉFI DE CALCUL LES DEUX COÏNCIDENT : un point par bonne réponse,
+    // et le classement ne change pas d'un iota.
+    let points = 0;
     let total = 0;
     let ms = 0;
     let fini = false;
+    let clavier = null;
 
     // LE TEMPS RESTANT SE RELIT SUR L'HORLOGE DU SERVEUR À CHAQUE SECONDE, et
     // ne se décompte pas tout seul : un onglet mis en arrière-plan fige les
@@ -248,15 +295,20 @@ async function questionner(defi, exo) {
 
     const terminer = async () => {
         clearInterval(tic);
+        if (clavier) { document.removeEventListener('keydown', clavier); clavier = null; }
         voile.remove();
         // CE QUE CET APPAREIL A COMPTÉ, gardé avant tout aller-retour : si le
         // serveur tarde, l'élève lira au moins son propre score plutôt qu'un
         // démenti. Voir `ATTENTES_MAX` plus haut.
-        monScore = { bonnes, total };
+        monScore = { bonnes, total, points };
         // ON ENVOIE LE SCORE, ET L'ÉCHEC N'EST PAS GRAVE : le serveur accepte
         // le renvoi, et il garde le meilleur.
         try {
-            await apiEleve('/defi/score', { bonnes, total, ms });
+            // ON ENVOIE LES DEUX COMPTES. Le serveur classe sur les points ;
+            // quand le client ne lui en donne pas — une ardoise qui n'a pas
+            // encore la mise à jour —, il retombe sur les bonnes réponses, et
+            // le classement d'un défi de calcul est le même.
+            await apiEleve('/defi/score', { bonnes, total, ms, points });
             // PUIS ON REDEMANDE L'ÉTAT TOUT DE SUITE.
             //
             // C'est la moitié qui compte de la correction de Rémy — « les
@@ -272,6 +324,8 @@ async function questionner(defi, exo) {
     };
 
     const poser = () => {
+        if (fini) return;
+        if (clavier) { document.removeEventListener('keydown', clavier); clavier = null; }
         const item = questionDuDefi(exo, defi.graine, n);
         if (!item) { fini = true; terminer(); return; }
         el('[data-question]').innerHTML = (item.prompt && item.prompt.html)
@@ -281,14 +335,125 @@ async function questionner(defi, exo) {
         zone.innerHTML = '';
         const parti = Date.now();
 
+        /** On affiche le compte, on laisse voir, et on enchaîne. */
+        const enchainer = (attente) => {
+            el('[data-bonnes]').textContent = String(enPoints ? points : bonnes);
+            setTimeout(() => {
+                // LA MINUTE A PU TOMBER PENDANT CE TEMPS-LÀ, et le voile est
+                // alors démonté : poser une question de plus irait chercher des
+                // crochets qui n'existent plus.
+                if (fini) return;
+                zone.classList.remove('defi-ok', 'defi-ko');
+                n++;
+                poser();
+            }, attente);
+        };
+
         const repondre = (juste) => {
             if (fini) return;
             total++;
-            if (juste) { bonnes++; ms += Date.now() - parti; }
-            el('[data-bonnes]').textContent = String(bonnes);
+            if (juste) { bonnes++; points++; ms += Date.now() - parti; }
             zone.classList.add(juste ? 'defi-ok' : 'defi-ko');
-            setTimeout(() => { zone.classList.remove('defi-ok', 'defi-ko'); n++; poser(); }, 260);
+            enchainer(260);
         };
+
+        // ── RÉPONDRE EN ESTIMANT UN ANGLE ──────────────────────────────────
+        //
+        // ET CETTE BRANCHE PASSE AVANT LES DEUX AUTRES, ce qui n'est pas un
+        // détail de style : un item d'estimation PORTE une `answer` — la mesure
+        // exacte de l'angle —, donc le mode « saisie » lui donnerait un champ
+        // de texte et une comparaison exacte. L'élève à un degré près serait
+        // compté faux, et le défi mesurerait tout le contraire de ce que Rémy a
+        // demandé : « plus il est proche, plus il a de points ».
+        if (estUneEstimation(item)) {
+            const m = item.meta;
+            let pari = 45;
+            zone.innerHTML = `
+                <div class="defi-estim">
+                    <svg class="ea-dessin" viewBox="0 0 ${VUE.largeur} ${VUE.hauteur}"
+                         role="img" aria-label="Un angle à estimer" data-dessin></svg>
+                    <div class="ea-pari" data-pari>
+                        <button type="button" class="ea-pm" data-pas="-10"
+                            aria-label="Dix degrés de moins">−10</button>
+                        <button type="button" class="ea-pm" data-pas="-1"
+                            aria-label="Un degré de moins">−1</button>
+                        <div class="ea-champ"><b data-valeur>${pari}°</b>
+                            <span>ton pari</span></div>
+                        <button type="button" class="ea-pm" data-pas="1"
+                            aria-label="Un degré de plus">+1</button>
+                        <button type="button" class="ea-pm" data-pas="10"
+                            aria-label="Dix degrés de plus">+10</button>
+                    </div>
+                    <button type="button" class="ea-go" data-go>Je parie !</button>
+                </div>`;
+            const svg = zone.querySelector('[data-dessin]');
+            // RIEN NE BOUGE AVANT LE PARI : le dessin ne suit pas le nombre,
+            // sinon on ajusterait jusqu'à ce que ça colle et l'on ne
+            // mesurerait plus l'œil mais l'adresse. C'est la règle de
+            // l'exercice, et elle vaut ici pour la même raison.
+            svg.innerHTML = dessinDeLAngle(m, null);
+            const bouger = (pas) => {
+                pari = Math.max(1, Math.min(359, pari + pas));
+                const b = zone.querySelector('[data-valeur]');
+                if (b) b.textContent = `${pari}°`;
+            };
+            const parier = () => {
+                if (fini) return;
+                if (clavier) {
+                    document.removeEventListener('keydown', clavier);
+                    clavier = null;
+                }
+                total++;
+                const ecart = pari - m.angle;
+                const gagnes = pointsDeLEcart(ecart);
+                points += gagnes;
+                const juste = Math.abs(ecart) <= (m.tolerance || 5);
+                if (juste) { bonnes++; ms += Date.now() - parti; }
+                // ON MONTRE L'ÉCART, ET LES POINTS POUR TOUTE PHRASE.
+                //
+                // DEUX DIFFÉRENCES AVEC L'EXERCICE, et les deux viennent du
+                // chrono : le retour ne dure que huit cents millisecondes — on
+                // VOIT sa mince part de camembert, mais on ne s'y installe
+                // pas, la minute est à toute la classe —, et l'on n'écrit
+                // aucune phrase, parce qu'à ce rythme-là on ne lit pas.
+                //
+                // ET ON N'AGITE PAS LA CARTE EN ROUGE quand on est loin :
+                // `defi-ko` dit « c'est faux », et l'on n'est jamais faux
+                // quand on estime. Un élève à sept degrés a bien travaillé.
+                svg.innerHTML = dessinDeLAngle(m, pari);
+                const pad = zone.querySelector('[data-pari]');
+                if (pad) {
+                    pad.innerHTML = '<div class="defi-gagne">+' + gagnes
+                        + '<small>pts</small></div>';
+                }
+                const go = zone.querySelector('[data-go]');
+                if (go) go.hidden = true;
+                if (juste) zone.classList.add('defi-ok');
+                enchainer(800);
+            };
+            zone.querySelectorAll('[data-pas]').forEach((b) => {
+                b.onclick = () => bouger(Number(b.dataset.pas));
+            });
+            zone.querySelector('[data-go]').onclick = parier;
+            // LE CLAVIER AUSSI, ET POUR UNE RAISON PROPRE AU DÉFI : une minute
+            // pour viser à quelques degrés près, c'est court, et les flèches
+            // vont plus vite que le doigt sur un ordinateur. Le voile n'a pas
+            // le foyer — on écoute donc sur le document, et on relâche dès que
+            // le pari est posé, sans quoi les flèches de la question suivante
+            // iraient nourrir celle d'avant.
+            clavier = (e) => {
+                if (fini) return;
+                if (e.key === 'ArrowUp' || e.key === 'ArrowRight') bouger(1);
+                else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') bouger(-1);
+                else if (e.key === 'PageUp') bouger(10);
+                else if (e.key === 'PageDown') bouger(-10);
+                else if (e.key === 'Enter') parier();
+                else return;
+                e.preventDefault();
+            };
+            document.addEventListener('keydown', clavier);
+            return;
+        }
 
         // DEUX FAÇONS DE RÉPONDRE, « aux choix » — et c'est le choix de Rémy au
         // lancement, pas celui de l'élève : une classe où chacun choisit son
@@ -339,26 +504,37 @@ async function questionner(defi, exo) {
 let tableauOuvert = null;
 
 function corpsDuTableau(t, monScoreLocal) {
+    // LE TABLEAU D'UN DÉFI D'ESTIMATION SE LIT EN POINTS. Le serveur classe
+    // déjà sur eux ; afficher « 3 » là où l'élève a marqué 274 donnerait un
+    // podium qu'on ne comprend pas, et un ordre qui a l'air faux.
+    const enPoints = compteEnPoints(t.exo, t.debut);
+    // `points` EST LA SEULE COLONNE QUI CLASSE, donc la seule qu'on affiche.
+    // Pour un défi de calcul elle VAUT les bonnes réponses, donc le nombre ne
+    // change pas — seul le mot qui l'accompagne change. Et si elle manque, on
+    // retombe dessus : une ardoise d'avant la mise à jour n'en envoyait pas.
+    const compte = (l) => Number(l.points === undefined || l.points === null
+        ? (l.bonnes || 0) : l.points);
+    const mot = (v) => enPoints
+        ? `<b>${v}</b> point${v > 1 ? 's' : ''}`
+        : `<b>${v}</b> bonne${v > 1 ? 's' : ''} réponse${v > 1 ? 's' : ''}`;
     const marches = ['🥇', '🥈', '🥉'];
     const podium = (t.podium || []).map((p, i) =>
         `<div class="defi-marche"><span class="defi-medaille">${marches[i] || ''}</span>`
         + `<span class="defi-prenom">${echapper(p.prenom)}</span>`
-        + `<span class="defi-pts">${p.bonnes}</span></div>`).join('');
+        + `<span class="defi-pts">${compte(p)}</span></div>`).join('');
     // SA LIGNE À LUI, TOUJOURS, même quand il est sur le podium : c'est celle
     // qu'il cherche des yeux, et la faire disparaître dans ce cas-là
     // obligerait à se chercher dans la liste.
     const moi = t.moi
         ? `<div class="defi-moi">Toi : <b>${t.moi.rang}<sup>e</sup></b> sur `
-            + `${t.participants} — <b>${t.moi.bonnes}</b> bonne${t.moi.bonnes > 1 ? 's' : ''} `
-            + `réponse${t.moi.bonnes > 1 ? 's' : ''}</div>`
+            + `${t.participants} — ${mot(compte(t.moi))}</div>`
         // ON NE DÉMENT PAS CELUI QUI VIENT DE JOUER. Son score n'est pas
         // remonté — le réseau, le plus souvent —, et lui dire qu'il n'a pas
         // participé serait faux là où il est le mieux placé pour le savoir.
         : (monScoreLocal
-            ? `<div class="defi-moi">Toi : <b>${monScoreLocal.bonnes}</b> `
-                + `bonne${monScoreLocal.bonnes > 1 ? 's' : ''} `
-                + `réponse${monScoreLocal.bonnes > 1 ? 's' : ''} — ton classement `
-                + 'n\'a pas pu être calculé.</div>'
+            ? `<div class="defi-moi">Toi : ${mot(enPoints
+                ? (monScoreLocal.points || 0) : monScoreLocal.bonnes)} `
+                + '— ton classement n\'a pas pu être calculé.</div>'
             : '<div class="defi-moi">Tu n\'as pas participé à ce défi.</div>');
     return `
         <div class="defi-carte defi-carte--fin">

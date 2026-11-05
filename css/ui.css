@@ -682,6 +682,18 @@
 .ec-apercu-enonce .enonce { font-size: 1.08rem; line-height: 1.35; }
 .ec-apercu-enonce svg { max-height: 96px; width: auto; }
 .ec-apercu-enonce img { max-height: 96px; }
+/* SAUF L'ANGLE À ESTIMER, QUI EST TOUT L'ÉNONCÉ. Les quatre-vingt-seize
+   pixels bornent une FIGURE qui accompagne une phrase ; ici il n'y a pas de
+   phrase à lire — « Combien mesure cet angle ? » est la même aux trois
+   questions —, et c'est le dessin qu'on compare. À 96 px de haut il faisait
+   145 px de large : on ne distingue plus 118° de 135°, donc l'aperçu ne
+   répond plus à la seule question qu'on lui pose. */
+.ec-apercu-enonce .ec-apercu-angle {
+    display: block; width: 100%; max-width: 270px; height: auto;
+    max-height: none; margin: 6px 0 0;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 10px;
+}
 .ec-apercu-choix { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .ec-apercu-choix-un {
     border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px;

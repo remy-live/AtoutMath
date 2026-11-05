@@ -34,58 +34,20 @@
 //     rempli de demi-réussites ne se lit pas.
 
 import { regTimeout } from '../timers.js';
+import {
+    VUE, dessinDeLAngle, motDeLEcart, pointsDeLEcart
+} from '../anglesDessin.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 import { meneurDemo } from '../meneurDemo.js';
 
-/** Le barème : cent points, moins huit par degré d'écart. */
-export function pointsDe(ecart) {
-    return Math.max(0, 100 - 8 * Math.abs(ecart));
-}
-
-/** Ce qu'on dit à l'élève, selon l'écart. Jamais « faux ». */
-export function motDeLEcart(ecart) {
-    const e = Math.abs(ecart);
-    if (e === 0) return 'PILE POIL ! Au degré près.';
-    if (e <= 2) return 'À un cheveu près.';
-    if (e <= 5) return 'Tu n\'es pas loin !';
-    if (e <= 10) return 'Pas mal — affine ton repère.';
-    if (e <= 20) return 'Un peu loin. Compare à l\'angle droit.';
-    return 'Très loin. Regarde si l\'angle est plus ouvert ou plus fermé qu\'un droit.';
-}
-
-/** Le sommet et le rayon du dessin, en unités de la vue SVG. */
-const O = { x: 310, y: 205 };
-const RAYON = 168;
-const RAYON_SECTEUR = 92;
-
-/** Un point du cercle, en degrés trigonométriques (l'axe y de SVG descend). */
-const surLeCercle = (deg, r) => ({
-    x: O.x + Math.cos(deg * Math.PI / 180) * r,
-    y: O.y - Math.sin(deg * Math.PI / 180) * r
-});
-
-/**
- * Le chemin d'un secteur, du départ et sur `ouverture` degrés.
- *
- * `sweep-flag` VAUT ZÉRO, et ce n'est pas un détail : l'axe y de SVG descend,
- * donc le sens trigonométrique s'y dessine en « négatif ». Avec 1, tous les
- * secteurs seraient le complément de celui qu'on veut — un angle de 60°
- * s'afficherait à 300°, et l'exercice entier mentirait.
- */
-export function cheminSecteur(depart, ouverture, r) {
-    const a = surLeCercle(depart, r);
-    const b = surLeCercle(depart + ouverture, r);
-    // DEUX DRAPEAUX, ET LES DEUX DÉPENDENT DU SIGNE. L'écart entre le pari et
-    // l'angle vrai est NÉGATIF quand on a parié trop bas : l'arc se parcourt
-    // alors dans l'autre sens, et un `sweep` figé à zéro dessinerait le
-    // complément — c'est-à-dire la part qu'on n'a PAS ratée. De même, c'est la
-    // VALEUR ABSOLUE qui décide du grand arc.
-    const grand = Math.abs(ouverture) > 180 ? 1 : 0;
-    const sens = ouverture < 0 ? 1 : 0;
-    return `M ${O.x} ${O.y} L ${a.x.toFixed(1)} ${a.y.toFixed(1)} `
-        + `A ${r} ${r} 0 ${grand} ${sens} ${b.x.toFixed(1)} ${b.y.toFixed(1)} Z`;
-}
+// LE BARÈME, LES PHRASES ET LE DESSIN VIVENT DANS LE NOYAU, et c'est une
+// nécessité : LE DÉFI DE LA CLASSE montre le même angle et compte les mêmes
+// points. Deux copies dériveraient, et le jour où l'une corrige un drapeau
+// d'arc sans l'autre, les trente élèves du défi estiment autre chose que ce
+// que l'exercice leur a appris.
+export { cheminSecteur, motDeLEcart } from '../anglesDessin.js';
+export { pointsDeLEcart as pointsDe } from '../anglesDessin.js';
 
 export function mount(container, session, opts = {}) {
     let destroyed = false;
@@ -112,8 +74,8 @@ export function mount(container, session, opts = {}) {
             <div class="ea-layout">
                 <div class="game-question ea-question">Combien mesure cet angle ?</div>
                 <div class="ea-scene">
-                    <svg class="ea-dessin" viewBox="0 0 620 410" role="img"
-                         aria-label="Un angle à estimer" data-ea-dessin></svg>
+                    <svg class="ea-dessin" viewBox="0 0 ${VUE.largeur} ${VUE.hauteur}"
+                         role="img" aria-label="Un angle à estimer" data-ea-dessin></svg>
                     <div class="ea-total" data-ea-total>${total} pts</div>
                 </div>
                 <div class="ea-verdict" data-ea-verdict hidden></div>
@@ -141,59 +103,8 @@ export function mount(container, session, opts = {}) {
 
     /** Dessine l'angle, et le pari par-dessus si l'on a déjà parié. */
     function dessiner(paris) {
-        const m = item.meta;
         const svg = container.querySelector('[data-ea-dessin]');
-        if (!svg) return;
-        const cote = (deg, classe, r = RAYON) => {
-            const p = surLeCercle(deg, r);
-            return `<line class="${classe}" x1="${O.x}" y1="${O.y}" `
-                + `x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}"/>`;
-        };
-        let dedans = '';
-        // LE PAPIER : des points, jamais un quadrillage. Un quadrillage
-        // donnerait des directions à 45° et l'on mesurerait la géométrie au
-        // lieu de l'œil.
-        for (let y = 18; y < 410; y += 26) {
-            for (let x = 18; x < 620; x += 26) {
-                dedans += `<circle class="ea-grain" cx="${x}" cy="${y}" r="1.2"/>`;
-            }
-        }
-        dedans += `<path class="ea-secteur" d="${cheminSecteur(m.depart, m.angle, RAYON_SECTEUR)}"/>`;
-        dedans += `<path class="ea-arc" d="${cheminSecteur(m.depart, m.angle, RAYON_SECTEUR)}"/>`;
-        dedans += cote(m.depart, 'ea-cote');
-        dedans += cote(m.depart + m.angle, 'ea-cote');
-
-        if (paris !== null) {
-            const ecart = paris - m.angle;
-            // L'ÉCART HACHURÉ entre le vrai et le pari : c'est la part de
-            // camembert qu'on a ratée, et elle se regarde.
-            dedans += `<path class="ea-ecart" d="${
-                cheminSecteur(m.depart + m.angle, ecart, 142)}"/>`;
-            dedans += cote(m.depart + paris, 'ea-pariCote', RAYON - 30);
-            // LA PASTILLE DE L'ÉCART RESTE DANS LE CADRE. À cinq degrés les
-            // deux traits se touchent presque : le nombre posé entre eux
-            // devient illisible, d'où le rayon plus grand. Mais un angle qui
-            // pointe vers le haut l'envoyait alors HORS de la vue, et la seule
-            // chose qu'on voulait montrer était la seule qu'on ne voyait pas.
-            const brut = surLeCercle(m.depart + m.angle + ecart / 2, RAYON + 34);
-            const mi = {
-                x: Math.max(36, Math.min(584, brut.x)),
-                y: Math.max(26, Math.min(384, brut.y))
-            };
-            dedans += `<g class="ea-bulle" transform="translate(${mi.x.toFixed(1)} ${mi.y.toFixed(1)})">
-                <rect x="-30" y="-17" width="60" height="34" rx="11"/>
-                <text x="0" y="7" text-anchor="middle">${Math.abs(ecart)}°</text></g>`;
-            const dans = surLeCercle(m.depart + m.angle / 2, RAYON_SECTEUR * .62);
-            dedans += `<text class="ea-vrai" x="${dans.x.toFixed(1)}" y="${
-                (dans.y + 7).toFixed(1)}" text-anchor="middle">${m.angle}°</text>`;
-        } else {
-            const dans = surLeCercle(m.depart + m.angle / 2, RAYON_SECTEUR * .62);
-            dedans += `<text class="ea-mystere" x="${dans.x.toFixed(1)}" y="${
-                (dans.y + 9).toFixed(1)}" text-anchor="middle">?</text>`;
-        }
-        dedans += `<circle class="ea-sommet" cx="${O.x}" cy="${O.y}" r="8.5"/>`;
-        dedans += `<circle class="ea-sommetBlanc" cx="${O.x}" cy="${O.y}" r="3.4"/>`;
-        svg.innerHTML = dedans;
+        if (svg) svg.innerHTML = dessinDeLAngle(item.meta, paris);
     }
 
     function brancher() {
@@ -231,7 +142,7 @@ export function mount(container, session, opts = {}) {
         repondu = true;
         const m = item.meta;
         const ecart = pari - m.angle;
-        const pts = pointsDe(ecart);
+        const pts = pointsDeLEcart(ecart);
         total += pts;
         dessiner(pari);
 

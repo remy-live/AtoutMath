@@ -171,10 +171,71 @@ test('UN TABLEAU QUI M\'OUBLIE N\'EST PAS AFFICHÉ TOUT DE SUITE', () => {
         'on attend sans sortir : le tableau serait noté « vu » avant d\'être juste');
 });
 
+// ── LE DÉFI D'ESTIMATION ───────────────────────────────────────────────────
+//
+// RÉMY, 5 novembre : « j'aimerai bien un exercice où l'élève doit deviner la
+// mesure d'un angle et plus il est proche, plus il a de points et après si
+// c'est une classe en séance, on peut récupérer les high score, c'est
+// motivant ».
+//
+// TROIS CHARNIÈRES, et chacune a sa façon de casser en silence.
+
+test('ON PARIE SUR L\'ANGLE AVANT DE POUVOIR LE SAISIR', () => {
+    // L'ORDRE DES TROIS BRANCHES EST LA RÈGLE. Un item d'estimation PORTE une
+    // `answer` — la mesure exacte de l'angle —, donc le mode « saisie » lui
+    // donnerait un champ de texte et une comparaison exacte : l'élève à un
+    // degré près serait compté FAUX, et le défi mesurerait le contraire de ce
+    // que Rémy a demandé. Rien ne le signalerait : le défi tournerait, le
+    // compteur monterait, et il resterait à zéro.
+    const estim = DEFI_UI.indexOf('if (estUneEstimation(item)) {');
+    const saisie = DEFI_UI.indexOf("defi.mode === 'saisie'");
+    assert.ok(estim >= 0, 'le défi ne sait pas répondre en estimant');
+    assert.ok(saisie >= 0, 'le mode saisie a changé de forme');
+    assert.ok(estim < saisie,
+        'la saisie passe avant l\'estimation : un pari à un degré près sera '
+        + 'comparé exactement et compté faux');
+});
+
+test('LE DESSIN DU DÉFI EST CELUI DE L\'EXERCICE, pas une copie', () => {
+    // S'IL Y EN AVAIT DEUX, ils dériveraient — et le jour où l'un corrige un
+    // drapeau d'arc sans l'autre, le défi affiche le COMPLÉMENT de l'angle que
+    // l'exercice affiche : les trente élèves estiment autre chose que ce qu'on
+    // leur a appris, sans qu'aucune erreur ne soit levée.
+    assert.match(DEFI_UI, /from '\.\.\/core\/anglesDessin\.js'/,
+        'le défi ne prend plus son dessin dans le noyau');
+    assert.match(DEFI_UI, /dessinDeLAngle\(m, null\)/,
+        'l\'angle n\'est pas dessiné avant le pari');
+    assert.match(DEFI_UI, /dessinDeLAngle\(m, pari\)/,
+        'l\'écart n\'est pas dessiné après le pari');
+    // ET LE BARÈME AUSSI VIENT DU NOYAU : le même écart doit valoir les mêmes
+    // points dans l'exercice et dans le défi, sans quoi l'élève apprend un
+    // barème et se fait classer sur un autre.
+    assert.match(DEFI_UI, /const gagnes = pointsDeLEcart\(ecart\);\n\s*points \+= gagnes;/,
+        'le défi recompte les points à sa façon');
+    assert.ok(!/100 - 8 \*/.test(DEFI_UI), 'le barème est recopié dans le défi');
+});
+
+test('LES POINTS PARTENT AU SERVEUR, ET RIEN NE BOUGE AVANT LE PARI', () => {
+    // SANS LES POINTS DANS LA REQUÊTE, le serveur retombe sur les bonnes
+    // réponses : le classement d'un défi d'estimation compterait alors les
+    // paris dans la tolérance, et deux élèves à ±1° et ±5° seraient à égalité.
+    // C'est exactement ce que « plus il est proche, plus il a de points » dit
+    // de ne pas faire, et le défi aurait l'air de marcher.
+    assert.match(DEFI_UI, /apiEleve\('\/defi\/score', \{ bonnes, total, ms, points \}\)/,
+        'les points ne partent pas au serveur');
+    // ET LE DESSIN NE SUIT PAS LE NOMBRE : `bouger` ne touche qu'au texte du
+    // pari. S'il redessinait, on ajusterait jusqu'à ce que ça colle, et le
+    // défi d'estimation deviendrait un jeu d'adresse.
+    const bouger = /const bouger = \(pas\) => \{[\s\S]*?\n            \};/.exec(DEFI_UI);
+    assert.ok(bouger, '`bouger` a changé de forme');
+    assert.ok(!/dessinDeLAngle|innerHTML/.test(bouger[0]),
+        'régler son pari redessine l\'angle : on viserait au lieu d\'estimer');
+});
+
 test('ET AU BOUT DE L\'ATTENTE, ON NE LE DÉMENT PAS', () => {
     // Le réseau peut tomber. On montre alors le tableau quand même — mais avec
     // ce que l'appareil a compté, pas avec « tu n'as pas participé ».
-    assert.match(DEFI_UI, /monScore = \{ bonnes, total \}/,
+    assert.match(DEFI_UI, /monScore = \{ bonnes, total, points \}/,
         'l\'appareil ne garde pas ce qu\'il a compté');
     assert.match(DEFI_UI, /monScoreLocal\s*\n?\s*\?/,
         'le repli sur le score local n\'existe pas');

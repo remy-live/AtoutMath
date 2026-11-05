@@ -474,9 +474,12 @@ function defiEnCours(array $classe): ?array
  * à chaque défi — et ce sont justement les élèves dont on parle depuis deux
  * jours. Le professeur, lui, a le classement entier sur son écran.
  *
- * LE SCORE EST LE NOMBRE DE BONNES RÉPONSES. Rémy : « le plus de calcul ». La
- * rapidité ne départage qu'à égalité : compter des points de vitesse
- * récompenserait la frappe, pas le calcul.
+ * LE SCORE EST LE NOMBRE DE BONNES RÉPONSES — SAUF QUAND ON ESTIME. Rémy :
+ * « le plus de calcul », et la rapidité ne départage qu'à égalité, parce que
+ * compter des points de vitesse récompenserait la frappe et pas le calcul.
+ * MAIS UN DÉFI D'ESTIMATION NE COMPTE PAS DES RÉPONSES JUSTES — « plus il est
+ * proche, plus il a de points » —, d'où la colonne `points`, qui vaut les
+ * bonnes réponses partout ailleurs.
  */
 function tableauDuDefi(array $classe, string $eleveId): ?array
 {
@@ -489,10 +492,20 @@ function tableauDuDefi(array $classe, string $eleveId): ?array
         return null;
     }
     $s = db()->prepare(
-        'SELECT d.student_id, d.bonnes, d.ms, e.first_name
+        // LE MÊME ORDRE QUE LE CLASSEMENT DU PROFESSEUR, et c'est une
+        // obligation : deux tris différents feraient qu'un élève se voit
+        // deuxième sur son ardoise et troisième au tableau.
+        //
+        // `COALESCE` PARCE QUE `points` PEUT ÊTRE VIDE : une ligne écrite avant
+        // que la colonne n'existe, ou par une ardoise qui n'a pas la mise à
+        // jour. Les points valent alors les bonnes réponses, ce qui est juste
+        // pour tout défi qui n'est pas une estimation — et sans ce repli, ces
+        // lignes passeraient toutes derrière, podium compris.
+        'SELECT d.student_id, d.bonnes, d.ms,
+                COALESCE(d.points, d.bonnes) AS points, e.first_name
            FROM defi_scores d JOIN students e ON e.id = d.student_id
           WHERE d.class_id = ? AND d.defi_debut = ?
-          ORDER BY d.bonnes DESC, d.ms ASC'
+          ORDER BY COALESCE(d.points, d.bonnes) DESC, d.ms ASC'
     );
     $s->execute([$classe['id'], $debut]);
     $lignes = $s->fetchAll();
@@ -500,10 +513,18 @@ function tableauDuDefi(array $classe, string $eleveId): ?array
     $moi = null;
     foreach ($lignes as $i => $l) {
         if ($i < 3) {
-            $podium[] = ['prenom' => dechiffrer($l['first_name']), 'bonnes' => (int) $l['bonnes']];
+            $podium[] = [
+                'prenom' => dechiffrer($l['first_name']),
+                'bonnes' => (int) $l['bonnes'],
+                'points' => (int) $l['points'],
+            ];
         }
         if ($l['student_id'] === $eleveId) {
-            $moi = ['rang' => $i + 1, 'bonnes' => (int) $l['bonnes']];
+            $moi = [
+                'rang' => $i + 1,
+                'bonnes' => (int) $l['bonnes'],
+                'points' => (int) $l['points'],
+            ];
         }
     }
     return [
@@ -525,7 +546,8 @@ function tableauDuDefi(array $classe, string $eleveId): ?array
  * ET ON GARDE LE MEILLEUR. Une ardoise qui perd le réseau renvoie son score en
  * se reconnectant ; le renvoi doit être sans effet, pas destructeur.
  */
-function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms): array
+function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms,
+                              ?int $points = null): array
 {
     $s = db()->prepare('SELECT id, defi_debut, defi_fin FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
@@ -538,22 +560,31 @@ function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms): a
     $bonnes = max(0, min(999, $bonnes));
     $total = max($bonnes, min(999, $total));
     $ms = max(0, min(3600000, $ms));
+    // LES POINTS VALENT LES BONNES RÉPONSES QUAND ON N'EN ENVOIE PAS. Une
+    // ardoise qui n'a pas encore reçu la mise à jour continue d'envoyer
+    // `{bonnes, total, ms}` : elle doit rester classable, et au même rang
+    // qu'avant. Un classement qui trie sur une colonne vide mettrait tous les
+    // anciens clients derniers, sans que rien ne le dise.
+    $points = $points === null ? $bonnes : max(0, min(99999, $points));
 
-    $q = db()->prepare('SELECT id, bonnes FROM defi_scores
+    $q = db()->prepare('SELECT id, COALESCE(points, bonnes) AS points FROM defi_scores
                          WHERE class_id = ? AND defi_debut = ? AND student_id = ?');
     $q->execute([$eleve['class_id'], $debut, $eleve['id']]);
     $deja = $q->fetch();
     if ($deja) {
-        if ((int) $deja['bonnes'] >= $bonnes) {
+        // ON GARDE LE MEILLEUR, ET SUR LES POINTS : c'est la colonne qui classe.
+        if ((int) $deja['points'] >= $points) {
             return ['ok' => true, 'dit' => 'Score déjà enregistré.'];
         }
-        db()->prepare('UPDATE defi_scores SET bonnes = ?, total = ?, ms = ? WHERE id = ?')
-            ->execute([$bonnes, $total, $ms, $deja['id']]);
+        db()->prepare('UPDATE defi_scores SET bonnes = ?, total = ?, ms = ?, points = ? WHERE id = ?')
+            ->execute([$bonnes, $total, $ms, $points, $deja['id']]);
         return ['ok' => true, 'dit' => 'Score mis à jour.'];
     }
-    db()->prepare('INSERT INTO defi_scores (id, class_id, student_id, defi_debut, bonnes, total, ms)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)')
-        ->execute([uuidv4(), $eleve['class_id'], $eleve['id'], $debut, $bonnes, $total, $ms]);
+    db()->prepare('INSERT INTO defi_scores
+                     (id, class_id, student_id, defi_debut, bonnes, total, ms, points)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        ->execute([uuidv4(), $eleve['class_id'], $eleve['id'], $debut,
+            $bonnes, $total, $ms, $points]);
     return ['ok' => true, 'dit' => 'Score enregistré.'];
 }
 
@@ -570,16 +601,23 @@ function classementDuDefi(array $classe): array
         return [];
     }
     $s = db()->prepare(
-        'SELECT d.bonnes, d.total, d.ms, e.first_name
+        // ON TRIE SUR LES POINTS, et le temps départage encore les égalités.
+        // Pour un défi de calcul les points valent les bonnes réponses, donc
+        // l'ordre est exactement celui d'avant ; pour un défi d'estimation,
+        // c'est le seul ordre qui ait un sens. `COALESCE` : voir
+        // `tableauDuDefi`, et c'est le MÊME tri — obligatoirement.
+        'SELECT d.bonnes, d.total, d.ms,
+                COALESCE(d.points, d.bonnes) AS points, e.first_name
            FROM defi_scores d JOIN students e ON e.id = d.student_id
           WHERE d.class_id = ? AND d.defi_debut = ?
-          ORDER BY d.bonnes DESC, d.ms ASC'
+          ORDER BY COALESCE(d.points, d.bonnes) DESC, d.ms ASC'
     );
     $s->execute([$classe['id'], $debut]);
     return array_map(fn ($l) => [
         'prenom' => dechiffrer($l['first_name']),
         'bonnes' => (int) $l['bonnes'],
         'total'  => (int) $l['total'],
+        'points' => (int) $l['points'],
     ], $s->fetchAll());
 }
 

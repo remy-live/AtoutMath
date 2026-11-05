@@ -15049,6 +15049,40 @@ body.en-boite > #app-container { background: none; }
 .defi-carte--jeu .defi-titre { margin-bottom: 10px; font-size: .8rem; }
 .defi-temps { font-variant-numeric: tabular-nums; }
 
+/* ── L'ANGLE À ESTIMER, DANS LE DÉFI ───────────────────────────────────────
+   RÉMY : « plus il est proche, plus il a de points et après si c'est une
+   classe en séance, on peut récupérer les high score, c'est motivant ».
+
+   ON REPREND LES CLASSES DE L'EXERCICE — `.ea-dessin`, `.ea-pari`, `.ea-pm`,
+   `.ea-champ`, `.ea-go` — et ce n'est pas de l'économie : l'élève doit
+   reconnaître le geste qu'il vient d'apprendre. Un pari qui se règle
+   autrement dans le défi que dans l'exercice coûterait les trois premières
+   secondes de la minute, à trente élèves à la fois.
+
+   TROIS DIFFÉRENCES, ET TOUTES TIENNENT À LA PLACE. La carte du défi porte
+   déjà un titre, une jauge, le temps et le compteur : le dessin doit donc
+   être plus petit, et l'énoncé moins haut. */
+.defi-estim { display: flex; flex-direction: column; align-items: center;
+    gap: 8px; width: 100%; }
+/* LE FOND DU DESSIN N'EST PLUS `--bg-panel` : c'est la couleur de la carte
+   elle-même, et la trame de points flotterait alors sans cadre. */
+.defi-estim .ea-dessin { background: var(--bg-app); max-width: 470px; }
+.defi-estim .ea-pari, .defi-estim .ea-go { max-width: 470px; }
+.defi-carte--estim .defi-question,
+.defi-carte--estim .defi-question .game-question {
+    /* LA QUESTION EST LA MÊME AUX DIX QUESTIONS — « Combien mesure cet
+       angle ? » — et c'est le DESSIN qu'on regarde. Aux cinq centimètres que
+       prend l'énoncé des exercices de calcul, mesuré à la photo, il ne restait
+       plus assez de hauteur pour l'angle sur une tablette posée à plat. */
+    font-size: clamp(1rem, 3vmin, 1.35rem); margin: 8px 0 4px;
+}
+/* LES POINTS GAGNÉS PRENNENT LA PLACE DU PAVÉ DE RÉGLAGE, pour que le dessin
+   ne saute pas d'un demi-centimètre au moment où l'on parie. */
+.defi-gagne { font-size: 1.7rem; font-weight: 900; line-height: 1.15;
+    color: var(--success-texte); font-variant-numeric: tabular-nums; }
+.defi-gagne small { font-size: .7rem; font-weight: 800; letter-spacing: .09em;
+    text-transform: uppercase; margin-left: 4px; }
+
 /* === LIRE UNE FRACTION, ET LES HISTOIRES D'ARGENT ==========================
    Deux exercices dont l'ÉNONCÉ EST UN DESSIN — une figure coloriée, un billet
    qu'on tend. Le dessin a besoin d'air autour de lui, et la question a besoin

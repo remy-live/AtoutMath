@@ -3462,6 +3462,87 @@ verifier('À ÉGALITÉ, LE PLUS RAPIDE EST DEVANT',
     count($exAequo) === 2 && str_contains($exAequo[0]['prenom'] ?? '', 'Yanis'),
     json_encode(array_column($exAequo, 'prenom')));
 
+// ── UN DÉFI D'ESTIMATION SE CLASSE EN POINTS, PAS EN BONNES RÉPONSES ───────
+//
+// RÉMY, 5 novembre : « j'aimerai bien un exercice où l'élève doit deviner la
+// mesure d'un angle et plus il est proche, plus il a de points et après si
+// c'est une classe en séance, on peut récupérer les high score, c'est
+// motivant ».
+//
+// CE QUE ÇA CHANGE AU SERVEUR, ET C'EST TOUT CE QUE ÇA CHANGE : le classement
+// trie sur `points`. LES DEUX ORDRES NE DISENT PAS LA MÊME CHOSE, et c'est
+// précisément pourquoi l'épreuve existe — Zoe a CINQ estimations dans la
+// tolérance et Yanis DEUX, mais Yanis a visé plus juste sur l'ensemble. Un tri
+// resté sur `bonnes` mettrait Zoe première, et le podium de la classe
+// récompenserait l'élève qui s'est le moins approché.
+$defiProf(['exo' => 'geo-estimer-angle', 'secondes' => 60, 'mode' => 'qcm']);
+// LES DEUX DÉFIS ONT LE MÊME `defi_debut`, ET C'EST L'ÉPREUVE QUI L'A DIT.
+//
+// Le serveur date le départ à `time() + 12` ; une épreuve qui tourne en
+// quelques millisecondes lance donc son second défi DANS LA MÊME SECONDE que
+// le premier, et les deux reçoivent la même date. Or `defi_debut` est la clé
+// qui range les scores : les cinq lignes du défi de calcul se retrouvaient
+// dans le classement du défi d'estimation, et l'épreuve lisait un podium à
+// vingt-deux points de bonnes réponses. On décale donc le second à la main —
+// c'est la seule façon d'avoir deux défis distincts sans dormir une seconde.
+$debut2 = $debutDuDefi + 1000;
+enBase()->prepare('UPDATE classes SET defi_debut = ?, defi_fin = ? WHERE id = ?')
+    ->execute([$debut2, $debut2 + 60, $idDefi]);
+// Zoe : cinq paris à cinq degrés près ou moins, trois complètement à côté.
+json('/defi/score', ['bonnes' => 5, 'total' => 8, 'ms' => 30000, 'points' => 324], $jetonZoe);
+// Yanis : deux paris au degré près, trois à six degrés — aucun des trois n'est
+// « juste », et ce sont eux qui font la différence.
+json('/defi/score', ['bonnes' => 2, 'total' => 5, 'ms' => 8000, 'points' => 348], $jetonYanis);
+// ── ET UNE LIGNE SANS POINTS DU TOUT, qui est le cas de tous les scores
+// écrits avant que la colonne n'existe, et de toute ardoise qui n'a pas encore
+// reçu la mise à jour. Elle doit se classer sur ses bonnes réponses, et non
+// passer dernière à zéro : c'est ce que `COALESCE(points, bonnes)` achète, et
+// sans lui le podium d'un défi lancé juste avant la mise à jour afficherait
+// trois prénoms au hasard.
+$sansPoints = enBase()->prepare(
+    'SELECT id FROM students WHERE class_id = ?
+       AND id NOT IN (SELECT student_id FROM defi_scores WHERE defi_debut = ?)
+     LIMIT 1'
+);
+$sansPoints->execute([$idDefi, $debut2]);
+$ancien = (string) $sansPoints->fetchColumn();
+enBase()->prepare('INSERT INTO defi_scores (id, class_id, student_id, defi_debut,
+                                            bonnes, total, ms)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)')
+    ->execute([bin2hex(random_bytes(16)), $idDefi, $ancien, $debut2, 4, 6, 12000]);
+$qVide = enBase()->prepare('SELECT COUNT(*) FROM defi_scores
+                            WHERE defi_debut = ? AND points IS NULL');
+$qVide->execute([$debut2]);
+verifier('UNE LIGNE SANS POINTS RESTE VIDE EN BASE, et ne vaut pas zéro',
+    ((int) $qVide->fetchColumn()) === 1, 'élève ' . substr($ancien, 0, 8));
+
+enBase()->prepare('UPDATE classes SET defi_fin = ? WHERE id = ?')
+    ->execute([time() - 5, $idDefi]);
+$tEstim = json('/session', [], $jetonZoe)['json']['session']['defiTableau'] ?? [];
+$pod = $tEstim['podium'] ?? [];
+verifier('LE PODIUM D\'UN DÉFI D\'ESTIMATION EST CELUI DES POINTS',
+    count($pod) === 3 && ($pod[0]['points'] ?? 0) === 348 && ($pod[0]['bonnes'] ?? 0) === 2
+    && ($pod[1]['points'] ?? 0) === 324 && ($pod[1]['bonnes'] ?? 0) === 5,
+    json_encode($pod));
+verifier('ET UNE LIGNE SANS POINTS SE CLASSE SUR SES BONNES RÉPONSES',
+    ($pod[2]['points'] ?? -1) === 4, json_encode($pod[2] ?? null));
+verifier('L\'ÉLÈVE VOIT SA PLACE EN POINTS, ET NON EN BONNES RÉPONSES',
+    ($tEstim['moi']['rang'] ?? 0) === 2 && ($tEstim['moi']['points'] ?? 0) === 324,
+    json_encode($tEstim['moi'] ?? null));
+$classEstim = json('/teacher/live', ['classId' => $idDefi], $jetonNotre)['json']['classement'] ?? [];
+verifier('LE PROFESSEUR A LE MÊME ORDRE QUE SES ÉLÈVES',
+    array_map(fn ($l) => (int) $l['points'], $classEstim) === [348, 324, 4],
+    json_encode(array_column($classEstim, 'points')));
+// ET LE RENVOI D'UN SCORE PLUS FAIBLE NE DÉTRUIT TOUJOURS RIEN — mais c'est
+// sur les POINTS qu'on compare maintenant, pas sur les bonnes réponses : Zoe
+// renvoie un score avec PLUS de bonnes réponses et MOINS de points.
+json('/defi/score', ['bonnes' => 7, 'total' => 8, 'ms' => 1000, 'points' => 90], $jetonZoe);
+$qP = enBase()->prepare('SELECT bonnes, points FROM defi_scores
+                          WHERE defi_debut = ? AND points = 324');
+$qP->execute([$debut2]);
+verifier('UN RENVOI À MOINS DE POINTS NE DÉTRUIT PAS LE MEILLEUR',
+    ((int) ($qP->fetch()['bonnes'] ?? 0)) === 5);
+
 // ── ON NE MARQUE PAS UN POINT SUR UN DÉFI QUI N'EXISTE PAS ─────────────────
 $defiProf(['secondes' => 0]);
 $r = json('/defi/score', ['bonnes' => 99, 'total' => 99, 'ms' => 1000], $jetonZoe);

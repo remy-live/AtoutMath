@@ -742,6 +742,30 @@ function lesTablesDuSchema(bool $sqlite): array
         defi_debut " . ($sqlite ? 'INTEGER NOT NULL' : 'BIGINT NOT NULL') . ",
         bonnes     " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
         total      " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        -- LES POINTS, ET POURQUOI ILS NE SONT PAS LES BONNES RÉPONSES.
+        --
+        -- RÉMY, 5 novembre, sur l'estimation d'angle : « plus il est proche,
+        -- plus il a de points et après si c'est une classe en séance, on peut
+        -- récupérer les high score ». Un défi d'estimation ne compte pas des
+        -- réponses justes : il compte des APPROCHES, et deux élèves à ±2° et
+        -- ±9° ne valent pas la même chose alors qu'aucun n'est « juste ».
+        --
+        -- Pour tous les autres défis, les points VALENT les bonnes réponses —
+        -- le client les envoie égaux — et rien ne change. Le classement a donc
+        -- UNE seule clé de tri, et il n'y a pas deux façons d'être premier.
+        --
+        -- ELLE EST NULLABLE, ET CE N'EST PAS DE LA PRUDENCE DE PRINCIPE. Une
+        -- colonne ajoutée après coup n'arrive chez ceux qui ont déjà installé
+        -- le logiciel que par la boucle d'`ALTER TABLE` plus bas, et toutes
+        -- leurs lignes la reçoivent alors à la valeur par défaut. Avec
+        -- `DEFAULT 0`, les scores d'avant la mise à jour se mettent tous à
+        -- ZÉRO POINT, et le tri les range derrière tout le monde : le podium
+        -- d'un défi lancé juste avant afficherait trois prénoms au hasard.
+        -- NULL dit « on ne me l'a pas donné », ce qui est la vérité, et le tri
+        -- retombe alors sur les bonnes réponses (`COALESCE`, dans
+        -- `classementDuDefi`). Un zéro VRAI reste distinct : on peut être dans
+        -- la tolérance et marquer zéro point, à treize degrés d'écart.
+        points     " . ($sqlite ? 'INTEGER NULL' : 'INT NULL') . ",
         -- LE TEMPS CUMULÉ DES BONNES RÉPONSES, en millisecondes. Il ne fait pas
         -- le score — Rémy veut « le plus de calculs » —, il DÉPARTAGE les
         -- égalités. Compter des points de vitesse récompenserait la frappe.
@@ -844,6 +868,7 @@ function migrerLaSuite(PDO $pdo, bool $sqlite, array $tables): void
 
     reparerEmpreintesPrenom($pdo);
 }
+
 
 /**
  * LES COLONNES D'UNE DÉFINITION DE TABLE, lues telles qu'on les a écrites.
