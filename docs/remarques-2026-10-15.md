@@ -5195,3 +5195,58 @@ C'est la même réponse qu'il avait donnée pour le défi, et elle est maintenan
 
 **Rien n'a donc été codé de plus.** La v1144 est la réponse complète à sa
 demande du 5 novembre.
+
+## « Le Détour par le Nombre Rond » : le nombre de questions revient à 4 — 5 novembre
+
+> « quand je veux changer le nombre de questions du le détour du nombre rond,
+> ca change dans les paramètres mais dans le parcours ca remet 4/4 »
+
+**Deux écrans qui ne disent pas la même chose, et c'est le pire des défauts :**
+le réglage accepte la valeur, l'affiche, et le parcours en applique une autre.
+Rien ne prévient. Le professeur croit avoir posé dix questions et sa classe en
+fait quatre.
+
+Écrit ici AVANT d'aller voir le code.
+
+### Et il a d'abord soupçonné l'assignation
+
+> « est ce peut etre que c'est parce que c'est un parcours qui a été donné et
+> du coup on ne peut le changer ? » puis « bah non il n'a pas été donné mais je
+> l'ai assigné »
+
+### CE QUI A ÉTÉ MESURÉ, et qui ne reproduit PAS son défaut
+
+Quatre sondes, dans un vrai navigateur, sur un vrai serveur d'essai :
+
+1. **Une étape neuve de cet exercice fait 20 questions / 14 exigées**, jamais 4
+   — `conseilProgression` donne deux questions par marche, et l'exercice en a
+   dix. Le 4 ne vient donc d'aucun défaut.
+2. **Taper 30 dans les réglages marche** : la pastille, la bibliothèque locale
+   ET le serveur passent à 30.
+3. **Décocher des marches ne touche pas au nombre de questions.**
+4. **Avec le parcours ASSIGNÉ à une classe, la retouche passe quand même** : le
+   serveur a bien 30, et la séance assignée annonce « questions : 30 ». Son
+   hypothèse ne tient donc pas sur ce dépôt-ci.
+5. **Et sans souvenir de synchronisation** — machine fraîchement mise à jour,
+   stockage vidé —, la retouche survit aussi au rapatriement de la
+   bibliothèque : `quiGagne` rend « local », et le compte reste à 20. C'était
+   la piste la plus sérieuse (`arbitrageParcours.js` fait gagner le SERVEUR
+   quand il n'y a pas de souvenir) ; elle est fermée, et elle l'a été AVANT
+   d'écrire la moindre correction.
+
+### LE SEUL DÉFAUT RÉEL TROUVÉ EN CHEMIN, et il n'est pas celui-là
+
+En partant de **4 questions / 4 exigées** et en passant à 30 questions, la
+pastille affiche **`✔ 4/30`** : l'exigence ne suit pas. C'est VOULU — Rémy :
+« le taux de réussite n'a pas de rapport, il peut rester à 70 % et ne devrait
+pas bouger si on change le nombre de questions » —, et `majDuo` ne recalcule
+que tant que personne n'y a touché. Mais « il faut TOUT réussir » devenu « 4
+sur 30 » est un affaiblissement silencieux, et c'est tout près du « 4/4 » qu'il
+lit. À lui soumettre.
+
+### Ce qui reste à savoir
+
+Il lit le « 4/4 » **sur la pastille de l'étape** (demandé, répondu). Il manque
+donc une seule chose : sa VERSION, et son parcours exporté —
+`node tools/relireUneSeance.mjs <fichier.json>` dira ce que l'étape porte
+vraiment.
