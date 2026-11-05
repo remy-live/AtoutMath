@@ -56,6 +56,7 @@ import { colorierNombresGenerator } from '../generators/colorierNombres.js';
 import { garamGenerator } from '../generators/garam.js';
 import { sudokuGenerator } from '../generators/sudoku.js';
 import { anglesGenerator } from '../generators/angles.js';
+import { estimerAngleGenerator } from '../generators/estimerAngle.js';
 import { scratchGenerator } from '../generators/scratch.js';
 import { horlogeGenerator } from '../generators/horloge.js';
 import { relatifsGenerator } from '../generators/relatifs.js';
@@ -197,7 +198,7 @@ import {
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
-    anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
+    anglesGenerator, estimerAngleGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, relatifsProduitGenerator, relatifsMelangeGenerator,
     detourRondGenerator, argentGenerator, lireUneFractionGenerator,
     argentProblemesGenerator, litteralReduireGenerator,
@@ -934,6 +935,18 @@ registerActivity({
     accepts: ['angle'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./angles.js')
+});
+
+// « À vue d'œil » : le MÊME genre de réponse que le rapporteur — un nombre de
+// degrés —, mais sans rapporteur, sans graduation et sans quadrillage. On
+// parie, puis on voit son écart. Rémy, 5 novembre : « deviner la mesure d'un
+// angle et plus il est proche, plus il a de points ».
+registerActivity({
+    id: 'estimer-angle',
+    label: 'À vue d\'œil (estimer un angle)',
+    accepts: ['angle'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./estimerAngle.js')
 });
 
 // Blocs façon Scratch : genre de réponse 'scratch' — l'élève écrit un

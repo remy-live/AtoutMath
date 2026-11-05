@@ -16999,3 +16999,89 @@ body.visite-en-cours .modal-overlay > * {
     .pl-marcheur { transition: none; }
     .pl-scene--marche .pl-marcheur--sur { animation: none; }
 }
+
+/* ── « À VUE D'ŒIL » : estimer un angle ────────────────────────────────────
+   Voir js/core/activities/estimerAngle.js. Rémy, 5 novembre : « il faut que
+   ce soit joli et fun ».
+
+   LE DESSIN N'A NI GRADUATION NI QUADRILLAGE, et le fond n'est qu'une trame
+   de points : un quadrillage donnerait des directions à 45°, et l'on
+   mesurerait la géométrie au lieu de l'œil. */
+.ea-layout { display: flex; flex-direction: column; align-items: center;
+    gap: 10px; width: 100%; }
+.ea-question { text-align: center; }
+.ea-scene { position: relative; width: 100%; max-width: 620px; }
+.ea-dessin { display: block; width: 100%; height: auto;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; }
+/* LE TOTAL EN COIN, et non en bandeau : c'est un encouragement, pas une
+   consigne. Posé en haut il prendrait la place de la question. */
+.ea-total { position: absolute; top: 10px; right: 12px; font-weight: 800;
+    font-variant-numeric: tabular-nums; font-size: .95rem;
+    /* `--primary-texte` ET NON `--primary` : sur le fond de la page, le
+       bleu plein ne passe pas le seuil AA. C'est une règle du dépôt, et une
+       épreuve la garde. */
+    color: var(--primary-texte); background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 99px; padding: 3px 11px; }
+
+.ea-grain { fill: var(--border); }
+.ea-secteur { fill: color-mix(in srgb, var(--primary) 14%, transparent); }
+.ea-arc { fill: none; stroke: var(--primary); stroke-width: 3; }
+.ea-cote { stroke: var(--text-main); stroke-width: 7; stroke-linecap: round; }
+.ea-sommet { fill: var(--text-main); }
+.ea-sommetBlanc { fill: var(--bg-panel); }
+.ea-mystere { fill: var(--primary); font: 800 30px system-ui, sans-serif; }
+
+/* APRÈS LE PARI : le trait pointillé, l'écart hachuré, et la vraie mesure. */
+.ea-pariCote { stroke: #f97316; stroke-width: 5; stroke-linecap: round;
+    stroke-dasharray: 11 8; }
+.ea-ecart { fill: rgb(249 115 22 / .22); }
+.ea-vrai { fill: var(--primary); font: 800 22px system-ui, sans-serif; }
+.ea-bulle rect { fill: #fff7ed; stroke: #f97316; stroke-width: 2.5; }
+.ea-bulle text { fill: #9a3412; font: 800 19px system-ui, sans-serif; }
+
+/* LE PARI SE RÈGLE AU POUCE : quatre boutons et un nombre, jamais un champ de
+   saisie — le clavier d'une tablette recouvrirait la figure qu'on estime. */
+.ea-pari { display: flex; gap: 8px; align-items: stretch; width: 100%;
+    max-width: 480px; }
+.ea-pm { min-width: 54px; border: 1px solid var(--border);
+    background: var(--bg-panel); border-radius: 14px; font-size: 1.05rem;
+    font-weight: 800; color: var(--text-main); cursor: pointer;
+    font-variant-numeric: tabular-nums; }
+@media (hover: hover) { .ea-pm:hover { background: var(--bg-hover); } }
+.ea-pm:active { transform: translateY(1px); }
+.ea-champ { flex: 1; text-align: center; border: 2px solid var(--primary);
+    border-radius: 14px; padding: 6px 0 4px;
+    font-variant-numeric: tabular-nums; }
+.ea-champ b { display: block; font-size: 2rem; font-weight: 800; line-height: 1;
+    color: var(--text-main); }
+.ea-champ span { font-size: .66rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+.ea-go { width: 100%; max-width: 480px; border: 0; border-radius: 14px;
+    background: var(--primary); color: #fff; font-size: 1.05rem;
+    font-weight: 800; padding: 12px 0; cursor: pointer; }
+@media (hover: hover) { .ea-go:hover { filter: brightness(1.07); } }
+
+/* LE VERDICT : une pastille de points, une phrase, et jamais le mot « faux ».
+   On n'est pas juste ou faux quand on estime — on est plus ou moins près. */
+.ea-verdict { display: flex; gap: 12px; align-items: center; width: 100%;
+    max-width: 520px; border-radius: 16px; padding: 10px 14px;
+    background: var(--bg-hover); }
+.ea-verdict p { margin: 0; font-size: .95rem; }
+.ea-pastille { width: 70px; height: 70px; flex: none; border-radius: 20px;
+    display: grid; place-items: center; font-size: 1.5rem; font-weight: 900;
+    line-height: 1; background: var(--bg-panel); color: var(--text-main); }
+.ea-pastille small { display: block; font-size: .56rem; font-weight: 800;
+    letter-spacing: .09em; text-transform: uppercase; opacity: .7; }
+.ea-verdict--pile { background: #dcfce7; }
+.ea-verdict--pile .ea-pastille { background: #bbf7d0; color: #15803d; }
+.ea-verdict--bien { background: #ecfdf5; }
+.ea-verdict--bien .ea-pastille { background: #d1fae5; color: #047857; }
+.ea-verdict--loin { background: #fff7ed; }
+.ea-verdict--loin .ea-pastille { background: #ffedd5; color: #9a3412; }
+
+@media (max-width: 560px) {
+    .ea-pm { min-width: 44px; font-size: .95rem; }
+    .ea-champ b { font-size: 1.6rem; }
+    .ea-pastille { width: 58px; height: 58px; font-size: 1.2rem; }
+}

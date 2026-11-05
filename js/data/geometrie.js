@@ -1064,6 +1064,24 @@ export const geometrieExercises = [
         // générateur les offre depuis toujours dans son réglage « Question » —
         // qui propose même de les ALTERNER, ce qu'aucune des deux entrées
         // séparées ne permettait d'atteindre.
+        id: 'geo-estimer-angle', title: 'À vue d\'œil',
+        cree: '2026-11-05',
+        generatorId: 'geo.estimerAngle', activityId: 'estimer-angle',
+        // SUR LE PAPIER, L'EXERCICE SE DOUBLE : l'élève écrit d'abord son
+        // estimation, puis mesure au rapporteur et note l'écart. C'est le même
+        // travail, et c'est là qu'il prend tout son sens — l'estimation sert à
+        // CONTRÔLER la mesure, et sur la feuille les deux sont côte à côte.
+        printable: 'estimerAngle',
+        params: { niveau: '1', premierCote: 'auto', tolerance: 5 },
+        motsClefs: ['estimer', 'angle', 'degrés', 'à vue d\'œil', 'ordre de grandeur',
+            'repère', 'droit', 'plat', 'points'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "PAS D'INSTRUMENT, PAS DE GRADUATIONS : tu regardes l'angle et tu paries sa mesure. Plus tu es près, plus tu marques de points — cent si tu tombes pile, et huit de moins par degré d'écart. Après ton pari, ton trait apparaît en pointillé sur l'angle vrai, et l'écart se voit : c'est lui qui te construit un repère pour la fois d'après. LA MÉTHODE : situe d'abord l'angle par rapport au coin d'une feuille, qui fait 90°, puis affine. Un angle plat en fait 180 ; la moitié d'un droit, 45. Le réglage « Angles proposés » passe des repères (30, 45, 60, 90…) à n'importe quel angle, puis aux angles rentrants ; « Premier côté » décide si un des côtés reste horizontal — dès qu'il ne l'est plus, il n'y a plus de repère extérieur et c'est l'angle lui-même qu'on estime."
+    },
+    {
         id: 'geo-angles', title: 'Angle Master',
         colonnesPapier: 3,
         cree: '2026-08-04',

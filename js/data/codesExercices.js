@@ -139,7 +139,8 @@ export const CODES_EXERCICES = {
     'logi-traversee':                'TV',   // La Traversée
     'logi-pont-lampe':               'AK',   // Le Pont et la lampe (PL, PT et PN sont pris)
     'jeu-bumpy':                     'AW',   // Bumpy — la balle qui rebondit
-    'jeu-boulder-dash':              'AY',   // Boulder Dash — la mine et les rochers
+    'jeu-boulder-dash':              'AY',
+    'geo-estimer-angle':             'AZ',   // À vue d'œil — estimer un angle   // Boulder Dash — la mine et les rochers
     'logi-pendu':                    'ME',   // Le Pendu Mathématique (MOT)
     'logi-shikaku':               'RT',   // RecTangles — « SK » est aux serpents, « RE » au carré
     'calc-garam':                 'GA',   // Garam

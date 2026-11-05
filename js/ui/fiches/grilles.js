@@ -3540,6 +3540,135 @@ function dessinerPontPdf(doc, item, slot, solution) {
         x + large, y + (lignes + 0.9) * haut, { align: 'right' });
 }
 
+// ── « À VUE D'ŒIL » SUR LE PAPIER ─────────────────────────────────────────
+//
+// SUR LA FEUILLE, L'EXERCICE SE DOUBLE, et c'est là qu'il prend tout son sens.
+// L'élève écrit d'abord SON ESTIMATION, puis il mesure au rapporteur et note
+// la mesure ; la troisième colonne est l'écart. Les trois sont côte à côte, et
+// c'est exactement ce que l'estimation sert à faire : CONTRÔLER la mesure.
+//
+// À l'écran, l'ordinateur donne la bonne réponse ; sur le papier, c'est le
+// rapporteur qui la donne — donc l'élève fait lui-même les deux gestes, dans
+// l'ordre où ils comptent.
+
+/**
+ * La place de l'angle et des trois lignes, dans une case de la grille.
+ *
+ * UNE CASE DE FICHE A UN `taille`, PAS DE `w` NI DE `h`. La première version
+ * lisait `slot.w` et `slot.h` : tout devenait `NaN`, jsPDF jetait au fond du
+ * gestionnaire de téléchargement, et l'outil n'avait rien d'autre à dire que
+ * « Timeout en attendant l'événement download ». Une erreur avalée ne dit même
+ * pas son nom.
+ */
+function poseEstimation(slot) {
+    const t = slot.taille;
+    return {
+        cx: slot.x + t / 2, cy: slot.y + t * 0.34,
+        r: t * 0.25,
+        x: slot.x, y: slot.y, taille: t,
+        // LES TROIS LIGNES OCCUPENT LE TIERS BAS, et le dessin le reste : un
+        // angle qu'on estime doit rester grand, sinon on ne l'estime plus, on
+        // le devine.
+        base: slot.y + t * 0.68, haut: t * 0.1
+    };
+}
+
+/** Un point du cercle, en degrés trigonométriques (l'axe y descend). */
+const pointDuCercle = (cx, cy, deg, r) => ({
+    x: cx + Math.cos(deg * Math.PI / 180) * r,
+    y: cy - Math.sin(deg * Math.PI / 180) * r
+});
+
+/** Les trois lignes de la fiche, dans l'ordre où l'élève les remplit. */
+const LIGNES_ESTIMATION = ['Mon estimation', 'Au rapporteur', 'Écart'];
+
+function estimationPreviewHtml(item, slot, k, solution) {
+    // `k` EST L'ÉCHELLE DE L'APERÇU, et `px` la convertit.
+    const px = (v) => `${v * k}px`;
+    const p = poseEstimation(slot);
+    const m = item.meta;
+    const a = pointDuCercle(p.cx, p.cy, m.depart, p.r);
+    const b = pointDuCercle(p.cx, p.cy, m.depart + m.angle, p.r);
+    const grand = m.angle > 180 ? 1 : 0;
+    const rs = p.r * 0.42;
+    const as = pointDuCercle(p.cx, p.cy, m.depart, rs);
+    const bs = pointDuCercle(p.cx, p.cy, m.depart + m.angle, rs);
+    const rel = (q) => ({ x: q.x - p.x, y: q.y - p.y });
+    const A = rel(a), B = rel(b), As = rel(as), Bs = rel(bs), C = rel({ x: p.cx, y: p.cy });
+    const valeurs = solution ? [`${m.angle}°`, `${m.angle}°`, '0°'] : ['', '', ''];
+    const lignes = LIGNES_ESTIMATION.map((titre, i) => `<div style="position:absolute;
+        left:${px(p.taille * 0.06)}; top:${px(p.base - p.y + i * p.haut)};
+        width:${px(p.taille * 0.88)}; display:flex; align-items:flex-end;
+        gap:${px(p.haut * 0.2)}; font-size:${px(p.haut * 0.5)}; color:#6e7684;
+        border-bottom:1px solid #b0b6c5; height:${px(p.haut * 0.9)};">
+        <span style="flex:1;">${titre}</span>
+        <b style="color:#1d4ed8;">${valeurs[i]}</b></div>`).join('');
+    return `<div style="position:absolute; left:${px(p.x)}; top:${px(p.y)};
+        width:${px(p.taille)}; height:${px(p.taille)};">
+        <svg viewBox="0 0 ${p.taille} ${p.taille}" width="${px(p.taille)}"
+             height="${px(p.taille)}" style="position:absolute; left:0; top:0;">
+            <path d="M ${C.x} ${C.y} L ${As.x} ${As.y}
+                A ${rs} ${rs} 0 ${grand} 0 ${Bs.x} ${Bs.y}"
+                  fill="none" stroke="#6e7684" stroke-width="0.6"/>
+            <line x1="${C.x}" y1="${C.y}" x2="${A.x}" y2="${A.y}"
+                  stroke="#1a202c" stroke-width="1.1" stroke-linecap="round"/>
+            <line x1="${C.x}" y1="${C.y}" x2="${B.x}" y2="${B.y}"
+                  stroke="#1a202c" stroke-width="1.1" stroke-linecap="round"/>
+            <circle cx="${C.x}" cy="${C.y}" r="1.1" fill="#1a202c"/>
+        </svg>${lignes}</div>`;
+}
+
+function dessinerEstimationPdf(doc, item, slot, solution) {
+    const p = poseEstimation(slot);
+    const m = item.meta;
+    const a = pointDuCercle(p.cx, p.cy, m.depart, p.r);
+    const b = pointDuCercle(p.cx, p.cy, m.depart + m.angle, p.r);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.line(p.cx, p.cy, a.x, a.y);
+    doc.line(p.cx, p.cy, b.x, b.y);
+    doc.setFillColor(...ENCRE.trait);
+    doc.circle(p.cx, p.cy, 0.5, 'F');
+    // LE PETIT ARC DIT QUEL ANGLE ON MESURE. Sans lui, un angle rentrant se
+    // confond avec son complément, et l'élève mesure le mauvais — ce qui est
+    // la faute que ce niveau existe pour faire rencontrer, pas pour piéger.
+    doc.setDrawColor(...ENCRE.gris);
+    doc.setLineWidth(0.22);
+    const rs = p.r * 0.42;
+    for (let d = 0; d < m.angle; d += 4) {
+        const u = pointDuCercle(p.cx, p.cy, m.depart + d, rs);
+        const v = pointDuCercle(p.cx, p.cy, m.depart + Math.min(d + 4, m.angle), rs);
+        doc.line(u.x, u.y, v.x, v.y);
+    }
+    const gauche = p.x + p.taille * 0.06, large = p.taille * 0.88;
+    const valeurs = solution ? [`${m.angle}°`, `${m.angle}°`, '0°'] : ['', '', ''];
+    LIGNES_ESTIMATION.forEach((titre, i) => {
+        const y = p.base + (i + 1) * p.haut;
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.18);
+        doc.line(gauche, y, gauche + large, y);
+        doc.setTextColor(...ENCRE.gris);
+        doc.setFontSize(Math.max(5, Math.min(8, p.haut * 1.9)));
+        doc.text(pourPdf(titre), gauche, y - p.haut * 0.25);
+        if (valeurs[i]) {
+            doc.setTextColor(29, 78, 216);
+            doc.text(pourPdf(valeurs[i]), gauche + large, y - p.haut * 0.25, { align: 'right' });
+        }
+    });
+}
+
+RENDUS_GRILLES.estimerAngle = {
+    titre: 'À vue d\'œil',
+    nomBloc: 'Angle',
+    consigne: () => 'Pour chaque angle : écris d\'abord ton ESTIMATION, sans rien '
+        + 'mesurer. Mesure ensuite au rapporteur, et calcule l\'écart.',
+    previewGrille: estimationPreviewHtml,
+    pdfGrille: dessinerEstimationPdf,
+    // TROIS PAR LIGNE : l'angle doit rester grand — on l'estime à l'œil — et
+    // il lui faut trois lignes d'écriture dessous.
+    parLigneDefaut: 3
+};
+
 RENDUS_GRILLES.pontLampe = {
     titre: 'Le Pont et la lampe',
     nomBloc: 'Énigme',

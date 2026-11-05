@@ -1546,6 +1546,19 @@ const BASE = {
         descriptor: 'Mesurer un angle avec un rapporteur, au degré près.',
         lesson: 'Centre du rapporteur sur le sommet, zéro aligné sur un côté : l\'autre côté croise la graduation. Entre les deux échelles, choisis selon la nature de l\'angle — aigu (moins de 90°) ou obtus (plus de 90°).'
     },
+    // ESTIMER VIENT AVANT MESURER, et n'a donc aucun prérequis. C'est
+    // l'estimation qui rend la mesure VÉRIFIABLE : un élève qui sait qu'un
+    // angle « fait dans les 60° » voit tout de suite qu'une lecture à 120° est
+    // fausse — il a pris la mauvaise graduation du rapporteur. Sans repères,
+    // il recopie ce qu'il lit et ne peut rien contrôler.
+    'geo.angles.estimer': {
+        label: 'Estimer la mesure d\'un angle à vue d\'œil',
+        chemin: [D.GEOMETRIQUE, SD.ANGLES],
+        niveaux: [N.SIXIEME],
+        prereqs: [],
+        descriptor: 'Donner à vue d\'œil la mesure d\'un angle, à quelques degrés près.',
+        lesson: 'ON SE DONNE DES REPÈRES, ET L\'ON COMPARE. L\'angle droit en est un : c\'est le coin d\'une feuille, et il fait 90°. L\'angle plat en est un autre : les deux côtés sont alignés, et il fait 180°. Entre les deux, 45° est la moitié d\'un droit, 135° est un droit plus sa moitié. LA MÉTHODE TIENT EN DEUX TEMPS. D\'abord on situe : plus fermé qu\'un droit, ou plus ouvert ? Ensuite on affine : est-ce la moitié d\'un droit, le tiers, les deux tiers ? ET POUR LES ANGLES RENTRANTS — ceux qui dépassent 180° — on ne mesure pas l\'angle lui-même : on regarde CE QUI MANQUE pour faire un tour entier, et on le retire de 360. À quoi cela sert : quand on mesurera au rapporteur, l\'estimation dira si l\'on a lu la bonne graduation. Un angle qu\'on avait vu « dans les 60° » et qu\'on lit 120° n\'est pas un angle de 120° : c\'est une erreur de lecture.'
+    },
     'geo.angles.construire': {
         label: 'Construire un angle au rapporteur',
         chemin: [D.GEOMETRIQUE, SD.ANGLES],
