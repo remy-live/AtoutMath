@@ -54,15 +54,27 @@ export const RAYON = 11;
  * constante du monde, pas une conséquence de la chute. Avec un coefficient,
  * la balle s'amortit, finit par ramper, et le jeu meurt ; avec une vitesse
  * fixe, elle rebondit éternellement à la même hauteur et l'on peut compter
- * dessus. MESURÉ : 420 px/s sous 1500 px/s² donnent un saut de 59 px, soit
- * presque deux cases — la hauteur qu'on franchit d'un rebond.
+ * dessus.
+ *
+ * ET C'EST LA HAUTEUR DU REBOND QUI DESSINE LES TABLEAUX. On avait d'abord
+ * écrit 420, soit — MESURÉ — 58,8 px, c'est-à-dire 1,84 case : moins qu'il
+ * n'en faut pour se poser sur une plateforme située deux cases plus haut (il
+ * faut 64 px). Aucun des quatre tableaux n'était alors gravissable, et la
+ * sonde ne pouvait pas le dire : elle voyait une balle qui rebondit.
+ *
+ * 560 px/s sous 1500 px/s² donnent 104,5 px, soit 3,27 cases. Une marche de
+ * deux cases (64 px) passe largement, une marche de trois (96 px) passe de
+ * justesse — c'est le geste adroit qu'on récompense. Le vol dure alors
+ * 2 × 560 / 1500 = 0,75 s, pendant lesquelles on parcourt 190 × 0,75 = 142 px,
+ * soit quatre cases et demie : de quoi viser une plateforme voisine sans que
+ * la balle file hors du tableau.
  *
  * `VX` EST DIRECTE, et c'est la seconde moitié du jeu : on ne pousse pas la
  * balle, on la DIRIGE, en l'air comme au sol. Une inertie horizontale rendrait
  * le pilotage mou et les couloirs d'une case infranchissables.
  */
 export const GRAVITE = 1500;
-export const REBOND = 420;
+export const REBOND = 560;
 export const VX = 190;
 
 /**
@@ -134,21 +146,39 @@ export const NIVEAUX = [
         ]
     },
     {
+        // LE PUITS, ET POURQUOI IL EST FAIT AINSI.
+        //
+        // Première version : la sortie était au fond, sous une nappe de feu.
+        // Un élève qui plongeait avant d'avoir tout ramassé se retrouvait
+        // enfermé — vivant, sans rien à faire, et sans savoir pourquoi. UN
+        // CUL-DE-SAC EST PIRE QU'UNE MORT : la mort rend une vie et explique
+        // ce qui s'est passé.
+        //
+        // ICI LA GOUTTE EST UNE VRAIE CLÉ, ET ELLE OUVRE DANS LES DEUX SENS :
+        // le feu de la ligne 12 interdit le fond du puits, et comme il n'est
+        // plus solide une fois la goutte prise, on le retraverse pour
+        // remonter. Rien ne se referme derrière l'élève.
+        //
+        // ET L'ESCALIER MONTE DE DEUX LIGNES EN DEUX LIGNES — 13, 11, 9, 7,
+        // 5, 3. MESURÉ : un rebond élève la balle de 104,5 px, une marche de
+        // deux cases en demande 64, une marche de trois 96. Trois cases
+        // passent, mais à 8 px près : c'est une marche qui tombe une fois sur
+        // deux, et l'on n'en met donc aucune sur le chemin obligé.
         nom: 'Le puits',
         lignes: [
             '####################',
-            '#...o..........o...#',
-            '#..###........###..#',
             '#..................#',
-            '#.......B..........#',
-            '#....=======.......#',
+            '#........E.........#',
+            '#......#####.......#',
             '#..................#',
-            '#..w...............#',
-            '#.###.......####...#',
+            '#..####.......####.#',
+            '#........B.........#',
+            '#.###...o.o...###..#',
             '#..................#',
-            '#......o......o....#',
-            '#....~~~~....~~~~..#',
-            '#.........E........#',
+            '#.....#######......#',
+            '#..w...........o...#',
+            '#.###.......o..###.#',
+            '#.....~~~~~~~~.....#',
             '####################'
         ]
     }
@@ -232,35 +262,72 @@ export function avancer(etat, n, dt, entree) {
     e.vx = (entree || 0) * VX;
     e.vy += GRAVITE * pas;
 
+    // ── ON NE RÉSOUT QUE LA LIGNE OÙ LE BORD AVANT ENTRE ───────────────────
+    //
+    // La première version parcourait TOUTES les cases que le disque touche et
+    // résolvait chacune. C'est le défaut qui rendait le jeu injouable, et il
+    // ne se voyait pas à l'œil : une balle à cheval sur deux cases de sol —
+    // ce qui arrive aux deux tiers des abscisses, le disque mesurant 22 px
+    // dans une case de 32 — était résolue deux fois. Au premier tour `vy`
+    // devenait négative (le rebond), au second elle n'était donc plus
+    // positive : on tombait dans la branche « plafond » et la balle était
+    // repoussée SOUS le sol.
+    //
+    // MESURÉ, sol à y = 128 : elle oscillait entre y = 171 et y = 149 —
+    // enterrée —, ne montait plus et ne ramassait plus rien. La sonde d'écran
+    // ne pouvait pas le dire : elle voyait bien une balle, qui bougeait bien.
+    //
+    // On ne regarde donc que la colonne (pour X) ou la ligne (pour Y) où le
+    // BORD AVANT de la balle entre, et l'on résout UNE SEULE FOIS.
+
     // ── X ──
     e.x += e.vx * pas;
-    for (const { c, r, t } of casesTouchees(n, e.x, e.y)) {
-        if (!solide(t)) continue;
-        if (t === TUILE.FEU && !e.eau) { e.mort = true; faits.push('feu'); return { etat: e, faits }; }
-        if (t === TUILE.FEU) continue;
-        e.x = e.vx > 0 ? (c * CASE) - RAYON - 0.01 : ((c + 1) * CASE) + RAYON + 0.01;
-        e.vx = 0;
+    if (e.vx !== 0) {
+        const col = Math.floor((e.vx > 0 ? e.x + RAYON : e.x - RAYON) / CASE);
+        const r0 = Math.floor((e.y - RAYON) / CASE), r1 = Math.floor((e.y + RAYON) / CASE);
+        let bute = false;
+        for (let r = r0; r <= r1; r++) {
+            const t = tuileA(n, col, r);
+            if (!solide(t)) continue;
+            if (t === TUILE.FEU) {
+                if (!e.eau) { e.mort = true; faits.push('feu'); return { etat: e, faits }; }
+                continue;          // avec la goutte, le feu se traverse
+            }
+            bute = true;
+        }
+        if (bute) {
+            e.x = e.vx > 0 ? (col * CASE) - RAYON - 0.01 : ((col + 1) * CASE) + RAYON + 0.01;
+            e.vx = 0;
+        }
     }
 
     // ── Y ──
     e.y += e.vy * pas;
-    for (const { c, r, t } of casesTouchees(n, e.x, e.y)) {
-        if (!solide(t)) continue;
-        if (t === TUILE.FEU && !e.eau) { e.mort = true; faits.push('feu'); return { etat: e, faits }; }
-        if (t === TUILE.FEU) continue;
-        if (e.vy > 0) {
-            e.y = (r * CASE) - RAYON - 0.01;
+    if (e.vy !== 0) {
+        const lig = Math.floor((e.vy > 0 ? e.y + RAYON : e.y - RAYON) / CASE);
+        const c0 = Math.floor((e.x - RAYON) / CASE), c1 = Math.floor((e.x + RAYON) / CASE);
+        let bute = false;
+        const aCasser = [];
+        for (let c = c0; c <= c1; c++) {
+            const t = tuileA(n, c, lig);
+            if (!solide(t)) continue;
+            if (t === TUILE.FEU) {
+                if (!e.eau) { e.mort = true; faits.push('feu'); return { etat: e, faits }; }
+                continue;
+            }
+            bute = true;
+            if (t === TUILE.CASSABLE) aCasser.push(c);
+        }
+        if (bute && e.vy > 0) {
+            e.y = (lig * CASE) - RAYON - 0.01;
             // LE REBOND EST UNE CONSTANTE DU MONDE : la balle repart toujours
             // à la même vitesse, quelle que soit celle avec laquelle elle est
             // arrivée. Voir `REBOND`.
             e.vy = -REBOND;
             faits.push('rebond');
-            if (t === TUILE.CASSABLE) {
-                n.cases[r][c] = TUILE.VIDE;
-                faits.push('casse');
-            }
-        } else {
-            e.y = ((r + 1) * CASE) + RAYON + 0.01;
+            for (const c of aCasser) { n.cases[lig][c] = TUILE.VIDE; faits.push('casse'); }
+        } else if (bute) {
+            e.y = ((lig + 1) * CASE) + RAYON + 0.01;
             e.vy = 0;
         }
     }

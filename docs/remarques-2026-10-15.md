@@ -4902,6 +4902,23 @@ révision. Pas de nombres sur les plateformes. Et fidèle : la balle qui rebondi
 toute seule, les objets à ramasser pour ouvrir la sortie, les plateformes qui
 se cassent, celles qui brûlent et la goutte d'eau.
 
+### Ce qu'il a fallu mesurer, et que l'écran ne disait pas
+
+Les deux défauts qui rendaient le jeu injouable se ressemblaient à l'écran :
+une balle qui rebondit et des compteurs qui ne bougent pas.
+
+- **La balle passait sous le sol.** À cheval sur deux cases — ce qui arrive aux
+  deux tiers des abscisses, le disque mesurant 22 px dans une case de 32 — elle
+  était résolue deux fois, et la seconde fois la repoussait vers le bas.
+  MESURÉ : sol à y = 128, balle oscillant entre 149 et 171.
+- **Aucun tableau n'était gravissable.** Le rebond élevait la balle de 1,84
+  case quand les tableaux demandaient d'en monter trois. Les quatre tableaux
+  ont été redessinés par marches de deux cases, et le rebond porté à 3,27.
+
+Les deux ont été trouvés sous Node, en rejouant la physique. `npm test` garde
+désormais les deux, et `tools/bumpyJouable.mjs` cherche, pour chaque tableau,
+un chemin qui le finit — c'est la seule épreuve qui dit que le jeu se joue.
+
 ## 63. « et j'adorai aussi boulder dash » — 5 novembre
 
 Deuxième souvenir, cinq minutes après Bumpy. Et il faut le dire parce que ce

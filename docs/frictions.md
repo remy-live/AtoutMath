@@ -6729,3 +6729,29 @@ erreur qui ne parle pas d'elles** — 3 novembre 2026
   devrait obliger à répondre « et sur l'autre ? » — aujourd'hui rien ne le
   demande, et « mesuré par le chemin de l'utilisateur » ne suffit pas : j'ai
   emprunté un chemin d'utilisateur, pas CELUI de Rémy.
+
+**Une sonde d'écran ne distingue pas « cassé » de « impossible »** — 5 novembre
+
+- *Ce que je voulais faire* : savoir si Bumpy était jouable. La sonde ouvrait le
+  jeu, tenait la flèche droite deux secondes et constatait que le compteur
+  d'objets ne bougeait pas. Elle a dit la même chose pour DEUX défauts
+  différents, et l'un cachait l'autre : la balle passait sous le sol dès
+  qu'elle chevauchait deux cases (donc aux deux tiers des abscisses), et le
+  rebond n'élevait la balle que de 1,84 case quand les tableaux demandaient
+  d'en gravir trois. Dans les deux cas l'écran montrait une balle qui rebondit.
+- *Ce qui a coûté* : une demi-journée. Le premier défaut a été trouvé en
+  écrivant un script jetable qui rejouait la physique sous Node ; le second en
+  en écrivant un second, qui dessinait les points de rebond atteignables. La
+  sonde d'écran, elle, n'a jamais rien appris — et elle était verte sur les
+  crochets, les compteurs et l'absence d'erreurs de page.
+- *Combien de fois* : || — déjà le cas du Pont et la lampe la veille : « TOUT
+  PASSE » pendant que Rémy écrivait « on a du mal à comprendre comment il faut
+  faire ». Une sonde qui connaît la solution mesure le calcul, pas l'écran.
+- *Ce qui manque* : pour tout ce qui a des RÈGLES et un ESPACE D'ÉTATS — jeux
+  de plateau, énigmes, parcours —, **un chercheur qui rejoue le vrai code et
+  dit si le but est atteignable**. `tools/bumpyJouable.mjs` le fait pour Bumpy
+  (recherche en largeur sur les décisions du joueur, onze secondes pour quatre
+  tableaux) et `meilleurChemin` pour le pont. Les deux ont été écrits à la
+  main, pour un seul jeu chacun. La question « ce que je viens de dessiner
+  est-il faisable ? » revient à chaque nouveau jeu, et c'est la seule que
+  l'écran ne sait pas poser.

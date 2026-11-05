@@ -16971,3 +16971,31 @@ body.visite-en-cours .modal-overlay > * {
     .pl-actions { width: 100%; }
     .pl-btn { flex: 1; }
 }
+
+/* L'ANIMATION DES MARCHEURS — voir js/core/activities/pontLampe.js.
+   RÉMY, 5 novembre : « on a du mal à comprendre comment il faut faire il
+   faudrait peut être voir les animations ». Ils se TÉLÉPORTAIENT : deux images
+   sans lien, et toute la traversée à reconstruire de tête.
+
+   LA DURÉE EST ICI ET DANS LE CODE, et les deux doivent s'accorder :
+   `TRAVERSEE_MS` vaut 1100, la transition 1000. La petite marge fait que le
+   pion arrive APRÈS que le dessin l'y a posé. */
+.pl-marcheur { transition: transform 1s cubic-bezier(.33, .1, .25, 1); }
+/* ET LE PAS SE VOIT : un léger balancement pendant qu'ils marchent. Sans lui,
+   la silhouette glisse comme un pion de jeu de l'oie — on voit qu'elle se
+   déplace, pas qu'elle MARCHE. */
+.pl-scene--marche .pl-marcheur--sur { animation: pl-pas .34s ease-in-out infinite; }
+@keyframes pl-pas {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -3px; }
+}
+/* LA FLÈCHE DE RETOUR, sur celui qu'on vient de poser sur le pont. Rémy :
+   « comprendre si on annule le personnage ». Rien ne disait qu'une seconde
+   touche le fait redescendre — l'élève qui se trompait de personne croyait
+   avoir joué un coup irréversible. */
+.pl-fleche { font: 900 15px/1 system-ui, sans-serif; fill: #fde047; }
+.pl-annuler { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+    .pl-marcheur { transition: none; }
+    .pl-scene--marche .pl-marcheur--sur { animation: none; }
+}

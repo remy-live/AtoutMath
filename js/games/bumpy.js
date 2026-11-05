@@ -205,7 +205,7 @@ class Bumpy extends BaseGame {
         while (reste > 0 && !this.fini) {
             const p = Math.min(0.02, reste);
             reste -= p;
-            const r = avancer(this.etat, this.niveau, p, this.isDemo ? 0 : this.entree);
+            const r = avancer(this.etat, this.niveau, p, this.entree);
             this.etat = r.etat;
             for (const fait of r.faits) this.surFait(fait);
         }
@@ -363,15 +363,29 @@ class Bumpy extends BaseGame {
         g.beginPath(); g.arc(e.x + 3 + dx, e.y - 1, 1.8, 0, Math.PI * 2); g.fill();
     }
 
-    /** Le robot va chercher le premier objet, puis se laisse rebondir. */
+    /**
+     * L'APERÇU DU PROFESSEUR : le robot joue, il ne regarde pas.
+     *
+     * Première version : `pas()` forçait la touche à zéro quand `isDemo`, et
+     * le robot avait beau changer de sens toutes les 1,4 s, la balle
+     * rebondissait sur place. RÉMY NE VOYAIT DONC PAS LE JEU, il voyait un
+     * plateau et une balle qui tape au même endroit — ce qui ressemble
+     * beaucoup à un jeu cassé.
+     *
+     * LE VA-ET-VIENT DURE 1,7 s, et ce n'est pas un chiffre rond par hasard :
+     * MESURÉ sous Node sur le premier tableau, c'est la demi-période qui
+     * ramasse le premier objet le plus tôt — 1,84 s. L'aperçu montre donc, en
+     * deux secondes, ce que le jeu demande de faire.
+     */
     async runDemoSequence() {
         this.startGameLoop();
-        let sens = 1;
+        let sens = -1;
+        this.entree = sens;
         this.demoTempo = setInterval(() => {
             if (!this.isRunning) return;
             sens = -sens;
             this.entree = sens;
-        }, 1400);
+        }, 1700);
     }
 
     destroy() {

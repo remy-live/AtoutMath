@@ -159,8 +159,13 @@ test('COMBIEN, EXACTEMENT', () => {
     // 5 octobre : une pause où cliquer à côté n'est pas une faute de
     // mathématiques. Monter ce chiffre est donc un geste qu'on fait EN LE
     // SACHANT — c'est tout l'intérêt du repère.
+    //
+    // LE TRENTE-TROISIÈME EST BUMPY, 5 novembre. Rémy : « le A seulement »,
+    // c'est-à-dire sans nombres sur les plateformes. Rater un rebond n'est pas
+    // une faute de mathématiques, et lui accrocher une note remplirait le bilan
+    // du professeur de lignes qui ne mesurent rien.
     const sans = exercices.filter(e => !estNotable(e));
-    assert.equal(sans.length, 32, `${sans.length} exercices sans note : ${sans.map(e => e.id).join(', ')}`);
+    assert.equal(sans.length, 33, `${sans.length} exercices sans note : ${sans.map(e => e.id).join(', ')}`);
     assert.ok(sans.some(e => e.id === 'geo-quadrilateres'),
         'l\'organigramme de Rémy est bien du lot — c\'est de lui qu\'on est parti');
 });

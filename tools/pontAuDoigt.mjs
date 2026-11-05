@@ -44,6 +44,7 @@ await s.doitExister('[data-pion="0"]', 'le premier marcheur');
 await s.doitExister('[data-traverser]', 'le bouton « Traverser »');
 await s.doitExister('[data-minutes]', 'le compteur de minutes');
 
+let v;
 const vu = () => s.page.evaluate(() => ({
     minutes: (document.querySelector('[data-minutes]') || {}).textContent || '',
     statut: ((document.querySelector('.pl-statut') || {}).textContent || '').trim(),
@@ -59,6 +60,85 @@ console.log('   au départ :', depart.join(' · '));
 
 dire('personne n\'est sur le pont, et « Traverser » attend',
     !(await vu()).surLePont && !(await vu()).peutTraverser);
+
+// ── CE QUE LA PREMIÈRE VERSION DE CETTE SONDE NE MESURAIT PAS ──────────────
+//
+// RÉMY, 5 novembre : « on a du mal à comprendre comment il faut faire il
+// faudrait peut être voir les animations, et comprendre si on annule le
+// personnage et peut être faire un exemple ».
+//
+// Cette sonde disait TOUT PASSE. Elle jouait la solution entière et vérifiait
+// que les minutes s'additionnent — c'est-à-dire qu'elle mesurait le CALCUL,
+// qui était juste. Une sonde qui connaît déjà la solution ne peut pas mesurer
+// si l'écran l'enseigne. Les trois mesures qui suivent sont celles qui
+// manquaient.
+
+await s.doitExister('[data-exemple]', 'le bouton « Voir un exemple »');
+dire('L\'EXEMPLE EST PROPOSÉ AVANT QU\'ON AIT RENONCÉ',
+    /exemple/i.test((await vu()).statut), (await vu()).statut);
+
+// LA FLÈCHE DE RETOUR : rien ne disait qu'une seconde touche fait redescendre.
+await s.page.click('[data-pion="0"]');
+await dormir(300);
+let marque = await s.page.evaluate(() =>
+    !!document.querySelector('[data-pion="0"] .pl-annuler'));
+v = await vu();
+dire('ON VOIT QU\'ON PEUT ANNULER — une flèche, et la phrase le dit',
+    marque && /redescendre/.test(v.statut), v.statut);
+await s.page.click('[data-pion="0"]');
+await dormir(300);
+v = await vu();
+dire('et retoucher le fait vraiment redescendre', v.surLePont === 0, v.statut);
+
+// L'ANIMATION : le marcheur doit se DÉPLACER, pas sauter d'un point à l'autre.
+// On relève sa position au milieu de la traversée.
+await s.page.click('[data-pion="0"]');
+await s.page.click('[data-pion="1"]');
+await dormir(250);
+const ouEstIl = () => s.page.evaluate(() => {
+    const g = document.querySelector('[data-pion="0"]');
+    return g ? g.getBoundingClientRect().left : 0;
+});
+const avant = await ouEstIl();
+await s.page.click('[data-traverser]');
+await dormir(450);
+const pendant = await ouEstIl();
+await dormir(1400);
+const apres = await ouEstIl();
+// AU MILIEU, IL EST AU MILIEU : strictement entre le départ et l'arrivée.
+const bouge = pendant > avant + 10 && pendant < apres - 10;
+dire('LA TRAVERSÉE SE VOIT — le marcheur glisse, il ne se téléporte pas',
+    bouge, `départ ${Math.round(avant)} · à mi-chemin ${Math.round(pendant)} · `
+        + `arrivée ${Math.round(apres)}`);
+
+// ── L'EXEMPLE SE JOUE, PUIS IL REND LA MAIN ───────────────────────────────
+//
+// C'est la partie qu'on peut le plus facilement rater sans le voir : un
+// exemple qui laisserait ses dix-sept minutes au compteur ferait commencer
+// l'élève déjà perdu, et un exemple qui enchaînerait sur la question suivante
+// ne lui laisserait pas essayer ce qu'il vient de voir.
+await s.page.click('[data-recommencer]');
+await dormir(500);
+await s.page.click('[data-exemple]');
+await dormir(1500);
+const pendantEx = await vu();
+dire('l\'exemple se joue sous les yeux', /passe|traverse|rapporte|Regarde/i.test(pendantEx.statut),
+    pendantEx.statut);
+// Cinq traversées à ~2 s, plus les deux temps de lecture : on attend large.
+// ON ATTEND LA PHRASE QUI REND LA MAIN, et non le compteur à zéro : il vaut
+// zéro au DÉBUT de l'exemple aussi — le robot dit son trajet avant de payer
+// ses minutes —, et la sonde s'arrêtait donc à la première image. Deux fois le
+// même piège dans la même sonde : attendre un état qui existe aussi avant.
+for (let i = 0; i < 50 && !/Touche une ou deux/.test((await vu()).statut); i++) {
+    await dormir(700);
+}
+const apresEx = await vu();
+dire('ET IL REND LA MAIN, compteur remis à zéro',
+    apresEx.minutes === '0 min' && apresEx.surLePont === 0 && /À toi/.test(apresEx.statut),
+    `${apresEx.minutes} — ${apresEx.statut}`);
+
+await s.page.click('[data-recommencer]');
+await dormir(500);
 
 // ── LA RÈGLE QUI SE VOIT LE MOINS ──────────────────────────────────────────
 //
@@ -78,7 +158,7 @@ async function traverser(...qui) {
 }
 
 await traverser(0, 1);
-let v = await vu();
+v = await vu();
 dire('la première traversée coûte le temps du PLUS LENT des deux',
     v.minutes === '2 min', `compteur : ${v.minutes}`);
 

@@ -35,8 +35,21 @@ import {
     decorDuPont, etoilesSvg, habitDe, lampeSvg, marcheurSvg, solDuPont, SOL_RIVE
 } from '../pontSvg.js';
 
-/** Combien de temps dure la traversée à l'écran, en millisecondes. */
-const TRAVERSEE_MS = 900;
+/**
+ * COMBIEN DE TEMPS DURE LA TRAVERSÉE À L'ÉCRAN.
+ *
+ * RÉMY, 5 novembre : « on a du mal à comprendre comment il faut faire il
+ * faudrait peut être voir les animations ». Les marcheurs se TÉLÉPORTAIENT :
+ * on touchait quelqu'un, il était sur le pont ; on appuyait, il était de
+ * l'autre côté. L'élève ne voyait donc jamais la traversée — deux images sans
+ * lien, et tout à reconstruire.
+ *
+ * IL EST ICI ET DANS LA FEUILLE DE STYLE, et les deux doivent s'accorder : le
+ * marcheur glisse par une transition CSS, le code repose les pions par ce
+ * délai-ci. 1100 contre 1000 — la petite marge est ce qui fait que le pion
+ * arrive APRÈS que le dessin l'y a posé.
+ */
+const TRAVERSEE_MS = 1100;
 
 /**
  * OÙ L'ON SE TIENT : les deux places du pont, et la bande de chaque rive.
@@ -67,6 +80,10 @@ export function mount(container, session) {
     let ou = [], lampe = 'g';
     let minutes = 0, fini = false, enRoute = false;
     let etoiles = '';
+    /** Pendant la traversée : la rive vers laquelle le pont glisse. */
+    let versRive = null;
+    /** Un exemple joué : on ne compte rien, et l'on remet tout après. */
+    let enExemple = false;
 
     function renderNext() {
         if (destroyed) return;
@@ -113,6 +130,12 @@ export function mount(container, session) {
                 </div>
                 <div class="pl-statut" role="status" aria-live="polite"></div>
                 <div class="pl-actions">
+                    <!-- « VOIR UN EXEMPLE » EN PREMIER, et c'est voulu. Rémy,
+                         5 novembre : « peut être faire un exemple ». Un élève
+                         qui ne comprend pas la règle ne cherche pas un bouton
+                         d'aide — il faut que l'exemple soit là, devant, avant
+                         qu'il ait eu le temps de renoncer. -->
+                    <button type="button" class="pl-btn" data-exemple>▶ Voir un exemple</button>
                     <button type="button" class="pl-btn" data-recommencer>↺ Recommencer</button>
                     <button type="button" class="pl-btn pl-btn--fort" data-traverser>Traverser</button>
                 </div>
@@ -122,13 +145,19 @@ export function mount(container, session) {
         if (session.isDemo) { if (!session.frozen) runDemo(); return; }
         wireHint(container, session);
         peindre();
-        dire('Touche une ou deux personnes du côté de la lampe, puis « Traverser ».');
+        // LA PREMIÈRE PHRASE DIT LE GESTE, PAS LA RÈGLE. Les règles sont dans
+        // la consigne au-dessus et dans l'instruction ; ce que l'élève cherche
+        // à cet instant-là, c'est quoi TOUCHER. Rémy : « on a du mal à
+        // comprendre comment il faut faire ».
+        dire('Touche une ou deux personnes du côté de la lampe, puis « Traverser ». '
+            + 'Tu peux aussi regarder un exemple d\'abord.');
         container.querySelector('[data-recommencer]').onclick = () => {
             if (enRoute) return;
             remettre(); peindre();
             dire('On recommence. Qui part en premier ?');
         };
         container.querySelector('[data-traverser]').onclick = traverser;
+        container.querySelector('[data-exemple]').onclick = exemple;
         brancherLeToucher();
     }
 
@@ -143,7 +172,11 @@ export function mount(container, session) {
     function placeDe(i) {
         if (ou[i] === 'pont') {
             const rang = surLePont().indexOf(i);
-            const x = PLACES_PONT[rang] ?? PLACES_PONT[0];
+            let x = PLACES_PONT[rang] ?? PLACES_PONT[0];
+            // PENDANT LA TRAVERSÉE, LES DEUX PLACES GLISSENT VERS LA RIVE
+            // VISÉE. C'est tout le mouvement : le dessin se contente de
+            // changer de but, et la transition CSS fait marcher les pions.
+            if (versRive) x += (versRive === 'd' ? 1 : -1) * 250;
             return { x, y: solDuPont(x) };
         }
         const liste = ou.map((o, k) => (o === ou[i] ? k : -1)).filter(k => k >= 0);
@@ -166,23 +199,41 @@ export function mount(container, session) {
         if (!gens) return;
         const lent = item.meta.marcheurs.reduce(
             (meilleur, m, i) => (m.minutes > item.meta.marcheurs[meilleur].minutes ? i : meilleur), 0);
-        gens.innerHTML = item.meta.marcheurs.map((m, i) => {
+        // ON NE REFABRIQUE PAS LES PIONS À CHAQUE COUP, ON LES DÉPLACE.
+        //
+        // C'est la condition de l'animation : un `<g>` recréé repart de sa
+        // nouvelle place sans transition, et c'est exactement ce qui faisait
+        // que les marcheurs se téléportaient. Ils sont donc créés une fois par
+        // énigme, et `peindre` ne touche ensuite qu'à leur `transform` — que
+        // la feuille de style anime.
+        if (gens.childElementCount !== item.meta.marcheurs.length) {
+            gens.innerHTML = item.meta.marcheurs.map((m, i) =>
+                `<g class="pl-marcheur" data-pion="${i}" role="button" tabindex="0"
+                   aria-label="${m.nom}, ${m.minutes} minute${m.minutes > 1 ? 's' : ''}"></g>`)
+                .join('');
+        }
+        item.meta.marcheurs.forEach((m, i) => {
+            const g = gens.children[i];
+            if (!g) return;
             const p = placeDe(i);
             // ÉCLAIRÉ VEUT DIRE « DU CÔTÉ DE LA LAMPE », donc « peut partir ».
             // C'est la seule information de règle que le dessin porte tout
             // seul, et elle évite une phrase à chaque coup.
             const eclaire = ou[i] === 'pont' || ou[i] === lampe;
             const habit = habitDe(i, { lent: i === lent, sac: i === 1 });
-            const choisi = ou[i] === 'pont' ? ' pl-marcheur--sur' : '';
-            return `<g class="pl-marcheur${choisi}" data-pion="${i}" role="button"
-                       tabindex="0" aria-label="${m.nom}, ${m.minutes} minute${m.minutes > 1 ? 's' : ''}"
-                       transform="translate(${p.x} ${p.y})">
-                <g transform="scale(.78)">${marcheurSvg(habit, { lumiere: eclaire })}</g>
+            g.classList.toggle('pl-marcheur--sur', ou[i] === 'pont');
+            // `style.transform` ET NON L'ATTRIBUT `transform` : seul le premier
+            // est une propriété CSS, donc seul le premier s'anime. L'attribut
+            // saute d'un point à l'autre, et c'est le défaut qu'on répare.
+            g.style.transform = `translate(${p.x}px, ${p.y}px)`;
+            g.innerHTML = `<g transform="scale(.78)">${marcheurSvg(habit, { lumiere: eclaire })}</g>
                 <rect x="-29" y="14" width="58" height="24" rx="12" fill="${habit.corps}"/>
                 <text x="0" y="32" text-anchor="middle" class="pl-min">${m.minutes} min</text>
                 <text x="0" y="58" text-anchor="middle" class="pl-nom">${m.nom}</text>
-            </g>`;
-        }).join('');
+                ${ou[i] === 'pont' ? `<g class="pl-annuler" aria-hidden="true">
+                    <circle cx="30" cy="-74" r="13" fill="#0b1020" opacity=".82"/>
+                    <text x="30" y="-69" text-anchor="middle" class="pl-fleche">↩</text></g>` : ''}`;
+        });
         // LA LAMPE SUIT CE QUI EST SUR LE PONT, sinon elle attend sur sa rive.
         const dessus = surLePont();
         const pos = dessus.length
@@ -194,8 +245,19 @@ export function mount(container, session) {
         if (halo) { halo.setAttribute('cx', pos.x); halo.setAttribute('cy', pos.y); }
         const b = container.querySelector('[data-minutes]');
         if (b) b.textContent = `${minutes} min`;
-        const bouton = container.querySelector('[data-traverser]');
-        if (bouton) bouton.disabled = fini || enRoute || !dessus.length || session.locked;
+        majBoutons();
+    }
+
+    /** Les trois boutons disent ce qu'on peut faire, et rien de plus. */
+    function majBoutons() {
+        const peut = (sel, oui) => {
+            const b = container.querySelector(sel);
+            if (b) b.disabled = !oui;
+        };
+        peut('[data-traverser]',
+            !fini && !enRoute && !enExemple && surLePont().length && !session.locked);
+        peut('[data-exemple]', !fini && !enRoute && !enExemple);
+        peut('[data-recommencer]', !enRoute && !enExemple);
     }
 
     function brancherLeToucher() {
@@ -206,7 +268,13 @@ export function mount(container, session) {
             const el = e.target.closest ? e.target.closest('[data-pion]') : null;
             if (!el) return;
             const i = Number(el.dataset.pion);
-            if (ou[i] === 'pont') { ou[i] = lampe; peindre(); return; }
+            if (ou[i] === 'pont') {
+                ou[i] = lampe;
+                peindre();
+                dire(`${item.meta.marcheurs[i].nom} redescend. Tu peux changer d'avis `
+                    + 'autant de fois que tu veux avant de traverser.');
+                return;
+            }
             // ON NE MONTE QUE DU CÔTÉ DE LA LAMPE, et l'on DIT pourquoi : sans
             // ce mot, l'élève touche trois fois le même marcheur en croyant que
             // l'écran ne répond pas.
@@ -222,10 +290,14 @@ export function mount(container, session) {
             ou[i] = 'pont';
             peindre();
             const dessus = surLePont();
+            // ET L'ON DIT QU'ON PEUT ANNULER, à chaque fois qu'on pose
+            // quelqu'un. Rémy : « comprendre si on annule le personnage ».
             dire(dessus.length === 2
                 ? `${item.meta.marcheurs[dessus[0]].nom} et ${item.meta.marcheurs[dessus[1]].nom} : `
-                    + `ils iront au rythme du plus lent, ${Math.max(...dessus.map(k => item.meta.marcheurs[k].minutes))} min.`
-                : 'Tu peux en prendre un second, ou traverser seul pour rapporter la lampe.');
+                    + `ils iront au rythme du plus lent, ${Math.max(...dessus.map(k => item.meta.marcheurs[k].minutes))} min. `
+                    + 'Retouche quelqu\'un pour le faire redescendre.'
+                : 'Tu peux en prendre un second, ou traverser seul pour rapporter la '
+                    + 'lampe. Retouche-le pour le faire redescendre.');
         };
         scene.addEventListener('click', prendre);
         scene.addEventListener('keydown', (e) => {
@@ -246,9 +318,14 @@ export function mount(container, session) {
         if (b) b.textContent = `${minutes} min`;
         const scene = container.querySelector('.pl-scene');
         if (scene) scene.classList.add('pl-scene--marche');
+        // LE PONT GLISSE VERS LA RIVE VISÉE, et les pions avec lui : c'est là
+        // que la traversée se VOIT. Voir `placeDe` et `versRive`.
+        versRive = vers;
+        peindre();
         regTimeout(() => {
             if (destroyed) return;
             if (scene) scene.classList.remove('pl-scene--marche');
+            versRive = null;
             dessus.forEach(i => { ou[i] = vers; });
             lampe = vers;
             enRoute = false;
@@ -277,6 +354,58 @@ export function mount(container, session) {
             if (destroyed) return;
             renderNext();
         });
+    }
+
+    /**
+     * L'EXEMPLE : la solution jouée sous les yeux, puis tout remis à zéro.
+     *
+     * RÉMY, 5 novembre : « peut être faire un exemple ». « Montre-moi » existe
+     * déjà, mais il faut le chercher, et surtout il enchaîne sur la question
+     * suivante — on ne peut pas ESSAYER juste après avoir vu.
+     *
+     * ON NE COMPTE RIEN PENDANT L'EXEMPLE, et le compteur revient à zéro
+     * ensuite : sans cela l'élève hériterait des dix-sept minutes du robot et
+     * commencerait sa partie déjà perdue.
+     *
+     * ET C'EST BIEN L'ÉNIGME QU'IL A SOUS LES YEUX qu'on joue, pas une autre :
+     * voir résoudre un problème voisin n'apprend pas à résoudre celui-là.
+     */
+    async function exemple() {
+        if (enRoute || enExemple || fini) return;
+        enExemple = true;
+        majBoutons();
+        remettre();
+        peindre();
+        dire('Regarde : on fait passer tout le monde, et la lampe revient à chaque fois.');
+        await new Promise(r => regTimeout(r, 1200));
+        for (const t of item.meta.trajets) {
+            if (destroyed) return;
+            t.qui.forEach(i => { ou[i] = 'pont'; });
+            peindre();
+            dire(item.meta.solution[item.meta.trajets.indexOf(t)]);
+            await new Promise(r => regTimeout(r, 900));
+            if (destroyed) return;
+            minutes += t.minutes;
+            versRive = t.vers === 'droite' ? 'd' : 'g';
+            peindre();
+            await new Promise(r => regTimeout(r, TRAVERSEE_MS));
+            if (destroyed) return;
+            versRive = null;
+            t.qui.forEach(i => { ou[i] = t.vers === 'droite' ? 'd' : 'g'; });
+            lampe = t.vers === 'droite' ? 'd' : 'g';
+            peindre();
+        }
+        // « À TOI » NE SE DIT QU'UNE FOIS, et c'est à la fin : dit ici, il
+        // annonce la main alors que le compteur porte encore les minutes du
+        // robot et que tout le monde est de l'autre côté. La sonde l'a vu
+        // avant moi — elle attendait ce mot pour mesurer la remise à zéro.
+        dire(`${minutes} minutes : c'est le minimum.`);
+        await new Promise(r => regTimeout(r, 2400));
+        if (destroyed) return;
+        enExemple = false;
+        remettre();
+        peindre();
+        dire('À toi. Touche une ou deux personnes du côté de la lampe, puis « Traverser ».');
     }
 
     /** Le robot joue la solution minimale, et la commente. */

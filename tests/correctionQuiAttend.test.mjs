@@ -74,8 +74,12 @@ test('SEULS LES JEUX QUI AVANCENT TOUT SEULS GARDENT LA CARTE FUGACE', () => {
         .map(f => f.replace(/\.js$/, ''))
         .sort();
 
-    const attendus = ['canon', 'course', 'demineur', 'diviseurs', 'duel', 'escadrille',
-        'galactic', 'jezzball', 'ninja', 'nova', 'pousseur', 'serpent', 'skweek', 'tetris'];
+    // « bumpy » s'ajoute le 5 novembre : la balle rebondit toute seule, donc
+    // une carte de correction qui attendrait un clic se ferait écraser par un
+    // jeu qui ne s'arrête pas. C'est exactement le critère de cette liste.
+    const attendus = ['bumpy', 'canon', 'course', 'demineur', 'diviseurs', 'duel',
+        'escadrille', 'galactic', 'jezzball', 'ninja', 'nova', 'pousseur', 'serpent',
+        'skweek', 'tetris'];
     assert.deepEqual(declarent, attendus,
         'la liste des jeux en temps réel a changé — mesure-la avant de la corriger '
         + '(tools/tmp/boucleContinue.mjs)');
