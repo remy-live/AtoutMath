@@ -4876,3 +4876,20 @@ Décor **A · Nuit et lanterne**, personnages **A · Randonneurs** — manteau,
 écharpe, bottes, et la vitesse qui se lit sur le dessin. Les ombres chinoises
 sont écartées : seule la lampe détourait le personnage, et l'on ne distinguait
 plus qui traversait.
+
+## 62. « Bumpy » — 5 novembre
+
+> « quand j'étais jeune, je jouais à un jeu Bumpy, je l'adorai, c'est un chouette
+> jeu pour ceux qui vont vite et ca fait les réflexes »
+
+Une idée, pas encore une demande. Elle porte deux choses qu'il faut séparer
+avant de proposer quoi que ce soit :
+
+1. **CEUX QUI VONT VITE.** C'est un besoin réel et jamais traité : l'élève qui
+   finit sa séance en dix minutes et attend. Aujourd'hui le logiciel n'a rien à
+   lui donner qui ne soit « encore des questions ».
+2. **LES RÉFLEXES.** Là, prudence : un jeu de réflexe pur n'est pas un exercice
+   de mathématiques, et ce dépôt n'ajoute pas un exercice sans savoir ce qu'il
+   enseigne. Mais le logiciel A DÉJÀ des jeux de récompense, et c'en serait un.
+
+À trancher avec lui : récompense pure, ou arcade qui porte du calcul.
