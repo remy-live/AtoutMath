@@ -1157,6 +1157,11 @@ const legacy = [
     // sur son bandeau, où il est un but qu'on se donne et non une consigne
     // qu'on subit.
     ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'partie', 1],
+    // BUMPY SE COMPTE EN PARTIES, comme Les Petites Ailes et pour la même
+    // raison : c'est une récréation. Rémy, sur l'autre : « pas besoin de 5/6
+    // obligatoire c'est un jeu ». Exiger trois tableaux ferait d'une
+    // récompense un devoir déguisé.
+    ['bumpy', 'Bumpy', 'bumpy', 'engineBumpy', 'partie', 1],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],
@@ -1290,6 +1295,7 @@ legacy.forEach(([id, label, file, fn, unite, parDefaut]) => {
 const SANS_NOTE = [
     'arpenteurs', 'balance', 'colorier-nombres', 'dedale', 'deuxmille', 'duel',
     'embouteillage', 'grenouilles', 'mot-code', 'mots-croises', 'motscaches',
+    'bumpy',
     'parking', 'petites-ailes', 'pipopipette', 'pousseur', 'programme-construction',
     'puissance4', 'pyramide', 'pyramide-nombres', 'quadrilateres', 'sans-croiser',
     'serpent', 'sim', 'tableau-croise', 'tasuko', 'tetris', 'tour-brahma',

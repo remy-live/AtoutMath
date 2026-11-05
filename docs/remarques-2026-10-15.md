@@ -4893,3 +4893,54 @@ avant de proposer quoi que ce soit :
    enseigne. Mais le logiciel A DÉJÀ des jeux de récompense, et c'en serait un.
 
 À trancher avec lui : récompense pure, ou arcade qui porte du calcul.
+
+### Son choix, 5 novembre : « le A seulement, le 3 j'aimais tout »
+
+Bumpy sera une **récréation**, comme Les Petites Ailes : rangé dans
+« Défis → Adresse et réflexes », sans compétence, hors progression, hors
+révision. Pas de nombres sur les plateformes. Et fidèle : la balle qui rebondit
+toute seule, les objets à ramasser pour ouvrir la sortie, les plateformes qui
+se cassent, celles qui brûlent et la goutte d'eau.
+
+## 63. « et j'adorai aussi boulder dash » — 5 novembre
+
+Deuxième souvenir, cinq minutes après Bumpy. Et il faut le dire parce que ce
+n'est PAS la même famille, même si les deux jeux datent du même monde :
+
+- **Bumpy est un jeu de RÉFLEXE.** On ne peut pas s'arrêter, la balle retombe,
+  il faut avoir décidé avant. Rien à planifier — tout à sentir.
+- **Boulder Dash est un jeu d'ANTICIPATION.** On creuse, les rochers tombent,
+  et un rocher qu'on libère sans y penser nous écrase trois secondes plus tard.
+  Il faut se représenter ce qui va arriver AVANT de le déclencher, et ne pas
+  s'enfermer dans un couloir qu'on vient de creuser.
+
+Le second est donc beaucoup plus proche des mathématiques que le premier : il
+travaille exactement ce que travaillent les Pentaminos et La Traversée — se
+représenter un état futur et choisir l'ordre des coups. Et il compte : il faut
+N diamants pour que la sortie s'ouvre.
+
+À proposer séparément, et pas comme une récréation.
+
+## 64. « On a du mal à comprendre comment il faut faire » — 5 novembre
+
+> « pour le pont et la lampe on a du mal à comprendre comment il faut faire il
+> faudrait peut être voir les animations, et comprendre si on annule le
+> personnage et peut être faire un exemple »
+
+Trois défauts, et ils se tiennent :
+
+1. **LES MARCHEURS SE TÉLÉPORTENT.** Il n'y a AUCUNE animation : on touche
+   quelqu'un, il est sur le pont ; on appuie sur « Traverser », il est de
+   l'autre côté. L'élève ne voit donc jamais la traversée — il voit deux
+   images sans lien, et doit reconstruire ce qui s'est passé. « Il faudrait
+   voir les animations » n'est pas une demande de joli : c'est la cause.
+2. **ON NE SAIT PAS QU'ON PEUT ANNULER.** Retoucher un marcheur le fait
+   redescendre, et rien ne le dit. Un élève qui se trompe de personne croit
+   avoir joué un coup qu'il ne peut plus reprendre.
+3. **IL N'Y A PAS D'EXEMPLE.** « Montre-moi » existe mais il faut le chercher :
+   rien ne propose de voir d'abord une traversée faite.
+
+MESURÉ CONTRE MOI-MÊME : ma sonde `tools/pontAuDoigt.mjs` jouait la solution
+entière et disait TOUT PASSE. Elle vérifiait que les minutes s'additionnent —
+pas qu'on comprenne quoi faire. Une sonde qui connaît déjà la solution ne peut
+pas mesurer si l'écran l'enseigne.

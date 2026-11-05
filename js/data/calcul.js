@@ -3575,6 +3575,29 @@ export const calculExercises = [
         // suivre le sol demande une accélération vers le bas de v² fois la
         // courbure, et si la gravité ne fournit pas autant, l'oiseau part tout
         // droit. Aucun saut à programmer.
+        // BUMPY. Rémy, 5 novembre : « quand j'étais jeune, je jouais à un jeu
+        // Bumpy, je l'adorai, c'est un chouette jeu pour ceux qui vont vite et
+        // ca fait les réflexes », puis « le A seulement » — la récréation, pas
+        // l'arcade qui calcule.
+        //
+        // PAS DE COMPÉTENCE, pour la même raison qu'aux Petites Ailes juste en
+        // dessous : une récréation qui porterait une compétence remplirait le
+        // bilan de lignes qui ne mesurent rien. Elle se range en « Adresse et
+        // réflexes », hors progression et hors révision.
+        id: 'jeu-bumpy', title: 'Bumpy',
+        cree: '2026-11-05',
+        activityId: 'bumpy', skills: [], horsProgression: true,
+        sansRevision: true,
+        params: {},
+        motsClefs: ['bumpy', 'balle', 'rebond', 'plateformes', 'arcade', 'réflexe',
+            'adresse', 'récréation', 'loriciels', 'tableaux'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.ADRESSE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "IL N'Y A RIEN À CALCULER : c'est un jeu d'adresse. La balle rebondit TOUTE SEULE et tu ne peux pas l'arrêter — tu la diriges seulement à gauche et à droite, avec les flèches ou les deux moitiés de l'écran. Il n'y a pas de bouton pour sauter, et c'est toute l'idée du jeu : il faut avoir décidé où aller AVANT qu'elle retombe. Ramasse toutes les pastilles jaunes d'un tableau : la porte grise s'ouvre alors, et tu peux sortir. ATTENTION AUX PLATEFORMES EN BOIS CLAIR : elles se cassent sous ton rebond, et parfois c'est ce qu'il faut pour descendre. LES PLATEFORMES ROUGES BRÛLENT : elles te coûtent une vie, à moins d'avoir ramassé la goutte d'eau bleue avant de les toucher. Tu as trois vies, et quand tu en perds une tu reprends le tableau où tu en étais."
+    },
+    {
         id: 'jeu-petites-ailes', title: 'Les Petites Ailes',
         cree: '2026-08-25',
         // PAS DE COMPÉTENCE, ET C'EST VOULU. Rémy : « n'en fais pas un jeu
