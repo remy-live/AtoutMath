@@ -4919,6 +4919,56 @@ Les deux ont été trouvés sous Node, en rejouant la physique. `npm test` garde
 désormais les deux, et `tools/bumpyJouable.mjs` cherche, pour chaque tableau,
 un chemin qui le finit — c'est la seule épreuve qui dit que le jeu se joue.
 
+### Sa correction, 5 novembre, après avoir vu l'écran
+
+> « bumpy ca cassait des blocs et ca sautait en colonnes »
+>
+> « et il y avait des pics des bonus »
+
+**CE QUE J'AI LIVRÉ N'EST PAS BUMPY.** J'ai écrit une balle à physique
+continue qui ramasse des pastilles — c'est-à-dire un jeu de plateforme, pas
+celui dont il se souvient. Trois corrections, et elles touchent le cœur :
+
+1. **ON CASSE LES BLOCS.** Le but n'est pas de ramasser : c'est de DÉTRUIRE,
+   et chaque atterrissage casse le bloc sur lequel on retombe. C'est le geste
+   du jeu, et je l'avais rangé en décor (« les plateformes claires se cassent »).
+2. **ÇA SAUTE EN COLONNES.** La balle ne glisse pas d'un pixel à l'autre : un
+   rebond la pose sur la colonne d'à côté, une et une seule. C'est ce qui rend
+   le jeu LISIBLE — on sait exactement où l'on va retomber, donc on peut
+   décider. Ma physique continue rendait l'arrivée imprévisible, et c'est
+   précisément ce qu'il fallait éviter.
+3. **DES PICS ET DES BONUS.** Les pics tuent, les bonus se ramassent. J'avais
+   le feu et la goutte d'eau ; ce n'est pas la même chose.
+
+Et il faut le noter : **la correction vient de SA MÉMOIRE, pas d'une mesure.**
+Aucune de mes épreuves ne pouvait la trouver — elles gardent que le jeu que
+j'ai écrit fonctionne, pas qu'il soit le bon jeu. La seule parade est celle-ci :
+montrer une image AVANT d'écrire, pas après.
+
+### Ce qu'il a tranché sur la maquette, 5 novembre
+
+Maquette envoyée (`tools/tmp/bumpyMaquette.html`), trois questions, trois
+réponses :
+
+- **« Oui, c'est ça »** — un rebond pose la balle sur la colonne de gauche, la
+  même, ou celle de droite, et le bloc sous elle casse.
+- **ON GAGNE EN ATTEIGNANT LA SORTIE.** Pas en cassant tout, pas en ramassant
+  tout : les blocs et les bonus sont des MOYENS. La sortie est visible dès le
+  début, enfouie dans la masse — on la voit, et il faut creuser jusqu'à elle.
+- Les pics tuent, les bonus comptent des points.
+
+**CE QUE CELA DONNE COMME JEU, ET POURQUOI C'EST BIEN.** Chaque atterrissage
+casse le bloc du dessous : on ne peut donc pas se déplacer sans détruire, et le
+sol se dérobe derrière soi. Comme un rebond ne monte que de deux cases,
+DESCENDRE EST UN ENGAGEMENT : à trois cases de fond, les parois du puits
+interdisent de changer de colonne. Le jeu se joue donc AVANT de creuser — on lit
+la masse, on repère les pics, et l'on choisit sa colonne.
+
+### Boulder Dash : « B — la partie »
+
+Grand tableau, chronomètre, trois vies, rien de noté. C'est la récréation de
+1984, pas l'énigme. À faire après Bumpy.
+
 ## 63. « et j'adorai aussi boulder dash » — 5 novembre
 
 Deuxième souvenir, cinq minutes après Bumpy. Et il faut le dire parce que ce
