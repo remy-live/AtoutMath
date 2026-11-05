@@ -3598,6 +3598,32 @@ export const calculExercises = [
         instruction: "IL N'Y A RIEN À CALCULER : c'est un jeu d'adresse. La balle rebondit TOUTE SEULE et tu ne peux pas l'arrêter — à chaque rebond tu choisis seulement sa colonne : à gauche, tout droit, ou à droite. Le cadre pointillé te montre où tu vas retomber. ET CHAQUE FOIS QUE TU RETOMBES, LE BLOC SOUS TOI SE CASSE : tu ne peux donc pas avancer sans creuser. Le but est d'ATTEINDRE LA PORTE VERTE, que tu vois dès le début dans la masse de blocs. ATTENTION AUX PICS ROUGES : ils coûtent une vie, et ils se voient — choisis ta colonne en les regardant, pas en creusant au hasard. Un rebond ne monte que de deux cases, alors réfléchis avant de descendre : à trois cases de fond, on ne peut plus changer de colonne. Les étoiles jaunes sont des bonus, à prendre au vol. Tu as trois vies, et quand tu en perds une tu reprends le tableau où tu en étais."
     },
     {
+        id: 'jeu-boulder-dash', title: 'Boulder Dash',
+        cree: '2026-11-05',
+        // PAS DE COMPÉTENCE, ET C'EST VOULU. Rémy a choisi « B — la partie » :
+        // grand tableau, chronomètre, trois vies, rien de noté. C'est une
+        // récréation, comme Bumpy et Les Petites Ailes. Lui accrocher une
+        // compétence mentirait deux fois : à l'élève, qui croirait travailler
+        // quelque chose, et au professeur, dont le bilan se remplirait de
+        // lignes qui ne mesurent rien.
+        //
+        // ET POURTANT CE N'EST PAS LE MÊME JEU QUE BUMPY. Bumpy est un jeu de
+        // RÉFLEXE — on ne peut pas s'arrêter. Boulder Dash est un jeu
+        // d'ANTICIPATION : on creuse, un rocher perd son appui, et il nous
+        // écrase trois secondes plus tard. C'est, de tous les jeux du
+        // catalogue, le plus proche des Pentaminos et de La Traversée.
+        activityId: 'boulder-dash', skills: [], horsProgression: true,
+        sansRevision: true,
+        params: {},
+        motsClefs: ['boulder dash', 'mine', 'rochers', 'diamants', 'creuser',
+            'anticipation', 'arcade', 'réflexe', 'récréation', 'tableaux'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.ADRESSE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "IL N'Y A RIEN À CALCULER : c'est un jeu de mine. Tu creuses la terre avec les quatre flèches, et tu ramasses les diamants bleus. Quand tu en as assez — le compteur te dit combien il en faut — LA PORTE DEVIENT VERTE et tu peux sortir. LES ROCHERS GRIS TOMBENT dès que plus rien ne les retient : tant que tu es dessous, c'est TOI qui les retiens, mais si tu t'en vas vers le bas, le rocher te suit et t'écrase. Alors écarte-toi sur le côté, laisse-le tomber, et passe après. Tu peux aussi POUSSER un rocher sur le côté, à condition que la case d'après soit libre. Un chronomètre tourne, et tu as trois vies."
+    },
+    {
         id: 'jeu-petites-ailes', title: 'Les Petites Ailes',
         cree: '2026-08-25',
         // PAS DE COMPÉTENCE, ET C'EST VOULU. Rémy : « n'en fais pas un jeu

@@ -4969,6 +4969,35 @@ la masse, on repère les pics, et l'on choisit sa colonne.
 Grand tableau, chronomètre, trois vies, rien de noté. C'est la récréation de
 1984, pas l'énigme. À faire après Bumpy.
 
+### Fait le 5 novembre — et ce que la mine a appris
+
+Trois tableaux : *La mine* (on apprend à creuser), *Les rochers* (des diamants
+posés sous des pierres), *Le couloir* (on pousse). Chronomètre, trois vies,
+rien de noté.
+
+**TOUT LE JEU TIENT DANS UNE RÈGLE À TROIS FACES**, et c'est elle qu'on garde :
+on passe SOUS un rocher sans rien risquer — c'est nous qui le retenons ; on
+s'écarte SUR LE CÔTÉ et il tombe derrière nous ; on descend DE SOUS LUI et il
+suit, et il écrase. Le danger n'est jamais la pierre : c'est le moment où on
+lui retire son appui.
+
+Deux défauts trouvés en écrivant les épreuves, pas en jouant :
+
+- **Le joueur n'est pas dans la grille.** Sa case y est vide, donc une pierre
+  POSÉE au-dessus de lui y tombait, et il se retrouvait à l'intérieur du
+  rocher — vivant, et dans la pierre. Mesuré : la grille rendait `#..o...#`
+  sur la ligne du joueur.
+- **Deux épreuves ne gardaient rien** (`tools/epreuveTombe.mjs`). Celle du
+  roulement laissait de la terre à côté de la pierre témoin, qui ne pouvait
+  donc pas rouler de toute façon : on mesurait le décor au lieu de la règle.
+  Celle de la poussée ne couvrait pas « pousser dans la terre ».
+
+Et le robot qui dit si un tableau se finit n'est pas exhaustif, cette fois :
+l'état d'un tableau de Boulder Dash est TOUTE la grille. On a donc renversé la
+question — « un joueur simple y arrive-t-il ? » —, et la réponse est une
+condition suffisante, ce qui est la bonne exigence pour une récréation. Il lui
+a fallu apprendre une seule prudence : ne jamais descendre de sous une pierre.
+
 ## 63. « et j'adorai aussi boulder dash » — 5 novembre
 
 Deuxième souvenir, cinq minutes après Bumpy. Et il faut le dire parce que ce

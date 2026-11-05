@@ -1162,6 +1162,11 @@ const legacy = [
     // obligatoire c'est un jeu ». Exiger trois tableaux ferait d'une
     // récompense un devoir déguisé.
     ['bumpy', 'Bumpy', 'bumpy', 'engineBumpy', 'partie', 1],
+    // BOULDER DASH AUSSI, et pour la même raison. Rémy, 5 novembre : « et
+    // j'adorai aussi boulder dash », puis « B — la partie ». Une partie, c'est
+    // les trois tableaux ou les trois vies ; compter en tableaux ferait sortir
+    // l'élève au premier, puisqu'un tableau se finit en une minute.
+    ['boulder-dash', 'Boulder Dash', 'boulderDash', 'engineBoulderDash', 'partie', 1],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],
@@ -1295,7 +1300,7 @@ legacy.forEach(([id, label, file, fn, unite, parDefaut]) => {
 const SANS_NOTE = [
     'arpenteurs', 'balance', 'colorier-nombres', 'dedale', 'deuxmille', 'duel',
     'embouteillage', 'grenouilles', 'mot-code', 'mots-croises', 'motscaches',
-    'bumpy',
+    'boulder-dash', 'bumpy',
     'parking', 'petites-ailes', 'pipopipette', 'pousseur', 'programme-construction',
     'puissance4', 'pyramide', 'pyramide-nombres', 'quadrilateres', 'sans-croiser',
     'serpent', 'sim', 'tableau-croise', 'tasuko', 'tetris', 'tour-brahma',

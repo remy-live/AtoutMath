@@ -164,8 +164,12 @@ test('COMBIEN, EXACTEMENT', () => {
     // c'est-à-dire sans nombres sur les plateformes. Rater un rebond n'est pas
     // une faute de mathématiques, et lui accrocher une note remplirait le bilan
     // du professeur de lignes qui ne mesurent rien.
+    //
+    // LE TRENTE-QUATRIÈME EST BOULDER DASH, le même jour. Rémy : « B — la
+    // partie », c'est-à-dire la récréation et non l'énigme. Se faire écraser
+    // par un rocher n'est pas une faute de mathématiques non plus.
     const sans = exercices.filter(e => !estNotable(e));
-    assert.equal(sans.length, 33, `${sans.length} exercices sans note : ${sans.map(e => e.id).join(', ')}`);
+    assert.equal(sans.length, 34, `${sans.length} exercices sans note : ${sans.map(e => e.id).join(', ')}`);
     assert.ok(sans.some(e => e.id === 'geo-quadrilateres'),
         'l\'organigramme de Rémy est bien du lot — c\'est de lui qu\'on est parti');
 });
