@@ -6,21 +6,25 @@
 //
 // ── CE QUE LES ÉPREUVES DE NOYAU NE PEUVENT PAS DIRE ───────────────────────
 //
-// `tests/bumpy.test.mjs` prouve que le monde est juste et que les quatre
+// `tests/bumpy.test.mjs` prouve que le monde est juste et que les trois
 // tableaux se finissent. Il ne prouve pas qu'un élève puisse JOUER : entre le
 // monde et son doigt il y a une touche à écouter, une boucle d'image à tenir,
-// une toile à peindre et trois compteurs à suivre. Chacun peut casser sans
-// qu'une seule épreuve rougisse.
+// une toile à peindre et un panneau à suivre.
 //
-// ── ON TROUVE LA BALLE DANS LES PIXELS, ET C'EST VOULU ─────────────────────
+// ── ON LIT LA TOILE, ET C'EST VOULU ────────────────────────────────────────
 //
 // Le jeu ne publie pas sa position : lui demander de le faire serait ajouter
 // une porte au logiciel pour le confort de la mesure, et cette porte mentirait
-// le jour où le dessin cesserait de suivre l'état. ON LIT DONC LA TOILE. La
-// balle est le seul rose, le cadre d'aperçu le seul blanc, les blocs le seul
-// bleu clair — trois couleurs choisies pour être reconnaissables, et une
-// couleur qu'on confond est une mesure qui ment. (Le rose de la balle se
-// distingue du rouge clair des pics par l'écart bleu-vert : 68 contre 0.)
+// le jour où le dessin cesserait de suivre l'état. La balle est le seul rose
+// du plateau, la porte ouverte le seul vert.
+//
+// ── ET LES CROCHETS SONT PRÉFIXÉS, parce qu'on s'est fait prendre ──────────
+//
+// La première version lisait `[data-score]`. Il en existe un AUTRE dans
+// `index.html`, hors du jeu — `document.querySelector` rendait donc celui-là,
+// et la sonde annonçait tranquillement « score : 0 » pendant que le jeu en
+// comptait cent soixante-dix. Un sélecteur qui désigne autre chose ne rend pas
+// `null` : il rend une valeur plausible, ce qui est pire.
 
 import { setTimeout as dormir } from 'node:timers/promises';
 import { ouvrirSonde } from './sonde.mjs';
@@ -35,243 +39,250 @@ const dire = (q, ok, d = '') => {
         d ? ` \x1b[2m— ${d}\x1b[0m` : ''}`);
 };
 
-const s = await ouvrirSonde({ largeur: 1280, hauteur: 1000 });
+const s = await ouvrirSonde({ largeur: 1400, hauteur: 1000 });
 await s.identifier();
 const raté = await s.ouvrirExercice('jeu-bumpy', {}, { questions: 1 });
 if (raté) throw new Error(`ouverture : ${raté}`);
-await dormir(1200);
+await dormir(1300);
 
 await s.doitExister('.bp-toile', 'la toile du plateau');
-await s.doitExister('[data-bonus]', 'le compteur de bonus');
-await s.doitExister('[data-vies]', 'le compteur de vies');
+await s.doitExister('.bp-panneau', 'le panneau latéral');
+await s.doitExister('[data-bp-clefs]', 'le compteur de clés');
+await s.doitExister('[data-bp-porte]', 'l\'état de la porte');
+await s.doitExister('[data-bp-score]', 'le score');
 await s.doitExister('.bp-moitie--g', 'la moitié gauche de l\'écran');
 await s.doitExister('.bp-moitie--d', 'la moitié droite de l\'écran');
 
-const hud = () => s.page.evaluate(() => ({
-    tableau: (document.querySelector('[data-tableau]') || {}).textContent,
-    bonus: (document.querySelector('[data-bonus]') || {}).textContent,
-    vies: (document.querySelector('[data-vies]') || {}).textContent,
-    mot: ((document.querySelector('[data-mot]') || {}).textContent || '').trim()
-}));
+const panneau = () => s.page.evaluate(() => {
+    const q = (sel) => (document.querySelector(sel) || {}).textContent;
+    return {
+        clefs: q('[data-bp-clefs]'), fruits: q('[data-bp-fruits]'),
+        porte: q('[data-bp-porte]'), score: q('[data-bp-score]'),
+        tableau: q('[data-bp-tableau]'),
+        vies: document.querySelectorAll('.bp-vies i').length,
+        mot: (q('[data-bp-mot]') || '').trim()
+    };
+});
 
-/** Ce que la toile montre : la balle, le cadre d'aperçu, les blocs. */
-const lire = () => s.page.evaluate(() => {
-    const t = document.querySelector('.bp-toile');
+/** Ce que la toile montre : la balle (rose) et la porte ouverte (vert). */
+const lire = (dans = '') => s.page.evaluate((ou) => {
+    const t = document.querySelector(ou + ' .bp-toile');
     if (!t) return null;
     const d = t.getContext('2d').getImageData(0, 0, t.width, t.height).data;
-    let sx = 0, sy = 0, rose = 0, blanc = 0, blocs = 0;
+    let sx = 0, sy = 0, rose = 0, vert = 0;
     for (let i = 0; i < d.length; i += 4) {
         const r = d[i], v = d[i + 1], b = d[i + 2];
+        // #f472b6 la balle : beaucoup de rouge, du bleu, peu de vert. Le rouge
+        // clair des pics (#fca5a5) s'en distingue par l'écart bleu-vert — 68
+        // contre 0 —, et c'est pour cela qu'on le teste.
         if (r > 200 && b > 140 && v < 160 && b - v > 30) {
             const p = (i / 4) | 0;
             sx += p % t.width; sy += (p / t.width) | 0; rose++;
-        } else if (r > 235 && v > 235 && b > 235) blanc++;
-        else if (r > 80 && r < 115 && v > 150 && v < 180 && b > 235) blocs++;
+        } else if (r > 20 && r < 60 && v > 175 && v < 215 && b > 70 && b < 110) vert++;
     }
-    return { x: rose ? sx / rose : null, y: rose ? sy / rose : null, rose, blanc, blocs };
-});
+    return { x: rose ? sx / rose : null, y: rose ? sy / rose : null, rose, vert };
+}, dans);
 
-const debut = await hud();
-// ON NE REGARDE PAS LE COMPTEUR DE BONUS ICI : le premier rebond du premier
-// tableau en ramasse un, et la sonde arrive forcément après. Exiger zéro
-// serait exiger que la sonde soit plus rapide que le jeu.
-dire('le plateau s\'ouvre sur le premier tableau, trois vies',
-    debut.tableau === '1' && debut.vies === '3',
-    `tableau ${debut.tableau} · ${debut.bonus} bonus · ${debut.vies} vies`);
+const debut = await panneau();
+dire('le panneau s\'ouvre sur le but du tableau, porte fermée',
+    debut.clefs === '0 / 2' && debut.porte === 'Fermée' && debut.vies === 3
+    && debut.tableau === 'Tableau 1',
+    `${debut.tableau} · clés ${debut.clefs} · porte ${debut.porte} · `
+    + `${debut.vies} vies · score ${debut.score}`);
 
-/**
- * REMET LA PARTIE EN JEU SI ELLE EST FINIE.
- *
- * Les tableaux 2 à 4 demandent de vrais choix : une sonde qui tient une
- * flèche au hasard y meurt, et au bout de trois vies le voile de fin recouvre
- * le plateau. Les mesures suivantes liraient alors une balle immobile et
- * diraient « la flèche ne fait rien » — ce qui serait faux, et ce qui est
- * exactement le genre de conclusion qu'une sonde doit refuser de tirer.
- */
-const remettre = async () => {
-    const fini = await s.page.evaluate(() =>
-        !!document.querySelector('.bp-fin--vu'));
-    if (!fini) return;
-    await s.page.click('[data-neuf]');
-    await dormir(600);
-};
-
-const photo = await s.photo('.bp-cadre', 'tools/tmp/bumpy.png', 0);
+const photo = await s.photo('.bp-jeu', 'tools/tmp/bumpy.png', 0);
 dire('et la toile est peinte, pas restée vide', !photo.unie && photo.entiere,
     photo.unie ? 'image UNIE' : `${photo.teintes} teintes, cadre entier`);
 
 const premier = await lire();
-dire('ON TROUVE LA BALLE SUR LA TOILE', !!premier && premier.rose > 150,
+dire('ON TROUVE LA BALLE SUR LA TOILE', !!premier && premier.rose > 200,
     premier ? `${premier.rose} pixels roses en (${Math.round(premier.x)} ; `
         + `${Math.round(premier.y)})` : 'aucun pixel rose');
 
-// ── ON VOIT OÙ L'ON VA RETOMBER ────────────────────────────────────────────
+// ── LE REBOND SE VOIT ──────────────────────────────────────────────────────
 //
-// Le cadre pointillé est la promesse du jeu : l'arrivée est connue d'avance.
-// S'il disparaissait, le jeu deviendrait subi, et rien d'autre ne le dirait.
-// ON PREND LE MAXIMUM SUR PLUSIEURS RELEVÉS, et c'est une leçon payée : le
-// jeu se fige une seconde entre deux tableaux, et pendant cette pause il ne
-// dessine pas le cadre — il n'y a plus de coup suivant à montrer. Un relevé
-// unique tombait pile là, trois fois de suite, et annonçait « zéro pixel
-// blanc » pendant que le cadre s'affichait parfaitement le reste du temps.
-let blancMax = 0;
-for (let i = 0; i < 12; i++) {
-    blancMax = Math.max(blancMax, (await lire()).blanc);
-    await dormir(120);
-}
-dire('LE CADRE POINTILLÉ EST LÀ — on voit son coup avant de le jouer',
-    blancMax > 40, `${blancMax} pixels blancs sur la toile`);
-
-// ── ELLE REBONDIT TOUTE SEULE ──────────────────────────────────────────────
-let bas = -1e9, haut = 1e9, gauche = 1e9, droite = -1e9;
-for (let i = 0; i < 18; i++) {
+// RÉMY : « il faut bien voir le rebond ». C'est la seule information sur
+// laquelle l'élève décide, et elle ne vit qu'à l'écran : le noyau peut être
+// juste pendant que la boucle d'image saute une image sur deux.
+let bas = -1e9, haut = 1e9;
+for (let i = 0; i < 36; i++) {
     const p = await lire();
-    if (p && p.y !== null) {
-        bas = Math.max(bas, p.y); haut = Math.min(haut, p.y);
-        gauche = Math.min(gauche, p.x); droite = Math.max(droite, p.x);
-    }
-    await dormir(90);
+    if (p && p.y !== null) { bas = Math.max(bas, p.y); haut = Math.min(haut, p.y); }
+    await dormir(45);
 }
-dire('ELLE REBONDIT TOUTE SEULE, sans qu\'on touche à rien', bas - haut > CASE,
-    `elle monte et descend de ${Math.round(bas - haut)} px`);
-// ── LE PREMIER TABLEAU SE GAGNE, ET LE SUIVANT ARRIVE ──────────────────────
-//
-// Le premier tableau part pile au-dessus de la porte : sans rien toucher, la
-// balle creuse et sort. C'est une promesse qu'aucune épreuve de noyau ne peut
-// tenir — l'enchaînement des tableaux vit à l'écran — et c'est le premier
-// contact d'un élève avec le jeu.
-let passe = null;
-for (let i = 0; i < 40 && !passe; i++) {
-    const h = await hud();
-    if (h.tableau !== '1') passe = h;
-    await dormir(250);
-}
-dire('LE PREMIER TABLEAU SE GAGNE SANS RIEN TOUCHER, et le suivant arrive',
-    !!passe && passe.vies === '3',
-    passe ? `on passe au tableau ${passe.tableau} avec ${passe.vies} vies`
-        : 'on reste au tableau 1');
+// LE SEUIL EST À 2,7 CASE ET NON À 3,33, ET C'EST VOULU : on ÉCHANTILLONNE,
+// donc on rate le sommet exact de la courbe et l'on mesure toujours un peu
+// MOINS que la vraie amplitude. Mesuré : 108 px relevés pour 120 réels. La
+// valeur exacte est gardée par `tests/bumpy.test.mjs`, qui calcule au lieu de
+// regarder ; ici on garde seulement que le rebond est AMPLE à l'écran.
+dire('LE REBOND SE VOIT — la balle monte de près de quatre cases',
+    bas - haut > 2.7 * CASE,
+    `elle monte et descend d'au moins ${Math.round(bas - haut)} px, soit `
+    + `${((bas - haut) / CASE).toFixed(1)} cases`);
 
-// ── UN REBOND, UNE COLONNE ─────────────────────────────────────────────────
-//
-// C'est la règle que Rémy a corrigée. On la mesure en pixels : le déplacement
-// doit être un MULTIPLE de la case, pas une valeur quelconque.
-const auRepos = async () => {
-    // On attend qu'elle soit posée : son abscisse ne bouge plus d'une image à
-    // l'autre. Mesurer en plein vol donnerait une position intermédiaire, et
-    // l'on conclurait que le pas n'est pas un multiple de la case.
-    //
-    // ET L'ON IGNORE LES RELEVÉS SANS BALLE : entre deux tableaux, et sous le
-    // voile de fin, la toile n'a aucun pixel rose. Rendre `null` ferait tomber
-    // la mesure suivante sur « Cannot read properties of null », c'est-à-dire
-    // une panne de sonde déguisée en défaut du jeu.
-    let p = null, q = null, dernier = null;
-    for (let i = 0; i < 40; i++) {
-        q = await lire();
-        if (q && q.x !== null) {
-            dernier = q;
-            if (p && Math.abs(q.x - p.x) < 1.5) return q;
-            p = q;
-        }
-        await dormir(70);
-    }
-    return dernier;
-};
-await remettre();
-const avant = await auRepos();
+// ── LES FLÈCHES LA DIRIGENT ────────────────────────────────────────────────
+const avant = await lire();
 await s.page.keyboard.down('ArrowRight');
-await dormir(1400);
+await dormir(800);
 await s.page.keyboard.up('ArrowRight');
-const apres = await auRepos();
-if (!avant || !apres) throw new Error('la balle est introuvable sur la toile');
-const pas = apres.x - avant.x;
-const cases = pas / CASE;
-dire('LA FLÈCHE DROITE LA DÉPLACE D\'UN NOMBRE ENTIER DE COLONNES',
-    pas > CASE * .8 && Math.abs(cases - Math.round(cases)) < .25,
-    `${Math.round(pas)} px, soit ${cases.toFixed(2)} case(s)`);
+const apres = await lire();
+dire('LA FLÈCHE DROITE LA POUSSE À DROITE', apres.x > avant.x + CASE,
+    `de x ${Math.round(avant.x)} à ${Math.round(apres.x)}`);
 
-await remettre();
-const avantG = await auRepos();
 await s.page.keyboard.down('ArrowLeft');
-await dormir(1400);
+await dormir(800);
 await s.page.keyboard.up('ArrowLeft');
-const apresG = await auRepos();
-dire('et la flèche gauche dans l\'autre sens', apresG.x < avantG.x - CASE * .8,
-    `${Math.round(apresG.x - avantG.x)} px`);
+const apresG = await lire();
+dire('et la flèche gauche à gauche', apresG.x < apres.x - CASE,
+    `de x ${Math.round(apres.x)} à ${Math.round(apresG.x)}`);
 
-// ── ET LES BLOCS SE CASSENT ────────────────────────────────────────────────
+// ── AU DOIGT, DANS UNE SALLE VIDE ─────────────────────────────────────────
 //
-// Le compteur de bonus peut rester à zéro pendant toute une partie ; les blocs,
-// eux, disparaissent à CHAQUE atterrissage. C'est donc eux qui disent que la
-// chaîne entière tient : touche écoutée, coup joué, tableau modifié, toile
-// repeinte.
-// ON CHERCHE UNE BAISSE ENTRE DEUX RELEVÉS CONSÉCUTIFS, et non entre le
-// premier et le dernier : un tableau fini remet un plateau neuf, donc plus de
-// blocs qu'avant, et la mesure d'ensemble dirait le contraire de la vérité.
-await remettre();
-let baisse = 0, suite = (await lire()).blocs;
-for (let i = 0; i < 14; i++) {
-    await dormir(320);
-    const n2 = (await lire()).blocs;
-    if (n2 < suite - 100) baisse = Math.max(baisse, suite - n2);
-    suite = n2;
-}
-dire('EN JOUANT, LES BLOCS DISPARAISSENT — la chaîne entière tient',
-    baisse > 100, `le plus gros bloc cassé d'un coup : ${baisse} pixels`);
-
-// ── AU DOIGT, SUR LA MOITIÉ DE L'ÉCRAN ─────────────────────────────────────
-//
-// La tablette de Rémy n'a pas de flèches. Les deux moitiés sont invisibles :
-// si elles cessaient d'écouter, rien à l'écran ne le dirait.
-await remettre();
-const boite = await (await s.page.$('.bp-moitie--d')).boundingBox();
-const avantD = await auRepos();
-await s.page.mouse.move(boite.x + boite.width / 2, boite.y + boite.height / 2);
-await s.page.mouse.down();
-await dormir(2000);
-await s.page.mouse.up();
-const apresD = await auRepos();
-dire('AU DOIGT AUSSI : la moitié droite de l\'écran la pousse à droite',
-    apresD.x > avantD.x + CASE * .8, `${Math.round(apresD.x - avantD.x)} px`);
-
-// ── L'APERÇU DU PROFESSEUR ─────────────────────────────────────────────────
-//
-// Quand Rémy met « aperçu » sur une étape, c'est un robot qui joue. S'il
-// mourait au premier pic, Rémy verrait un jeu qui perd — ce qui ressemble
-// beaucoup à un jeu cassé. LE ROBOT JOUE DONC LE CHEMIN QUE LE CHERCHEUR A
-// TROUVÉ, et cette mesure est aussi la seule qui rejoue ces quatre chemins
-// DANS UN VRAI NAVIGATEUR : si l'un d'eux cessait d'être jouable, le robot
-// mourrait ici avant que personne ne s'en aperçoive.
-const fin = await hud();
-console.log(`\n   ${fin.mot}`);
-
-await s.page.evaluate(async () => {
+// ON NE MESURE PAS LE DOIGT SUR LE VRAI TABLEAU, et c'est une leçon : la
+// première version poussait la balle à droite au milieu du premier tableau,
+// là où une paroi l'attendait — elle ne bougeait pas d'un pixel, et la sonde
+// concluait « la moitié d'écran ne fait rien ». `document.elementFromPoint`
+// nommait pourtant le bon élément. Une mesure de pilotage se fait dans une
+// pièce où rien ne peut arrêter la balle ; sinon on mesure le décor.
+const doigt = await s.page.evaluate(async () => {
     const d = document.createElement('div');
-    d.id = 'bp-apercu';
-    d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#fff;padding:16px';
+    d.id = 'bp-vide';
+    d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#fff;padding:10px';
     document.body.appendChild(d);
-    const { engineBumpy } = await import('./js/games/bumpy.js');
-    window.__apercu = engineBumpy(d, true, {});
+    const noyau = await import('./js/core/bumpy.js');
+    const jeu = await import('./js/games/bumpy.js');
+    const garde = noyau.NIVEAUX[0];
+    noyau.NIVEAUX[0] = {
+        nom: 'salle vide', clefs: 1,
+        lignes: [
+            '####################',
+            '#........B.........#',
+            '#..................#',
+            '#.............c....#',
+            '#.PP...............#',
+            '#==================#',
+            '####################'
+        ]
+    };
+    const inst = jeu.engineBumpy(d, false, {});
+    const dors = (ms) => new Promise(r => setTimeout(r, ms));
+    await dors(500);
+    const avant = inst.etat.x;
+    // ON TOUCHE VRAIMENT LA MOITIÉ DROITE : un `pointerdown` posé dessus, pas
+    // un réglage interne. C'est le chemin du doigt de Rémy, et c'est celui-là
+    // qu'on veut mesurer.
+    const moitie = d.querySelector('.bp-moitie--d');
+    const b = moitie.getBoundingClientRect();
+    const opts = { pointerId: 1, bubbles: true, isPrimary: true,
+        clientX: b.x + b.width / 2, clientY: b.y + b.height / 2 };
+    moitie.dispatchEvent(new PointerEvent('pointerdown', opts));
+    await dors(700);
+    const pendant = inst.etat.x;
+    moitie.dispatchEvent(new PointerEvent('pointerup', opts));
+    await dors(300);
+    const apres = inst.etat.x;
+    inst.destroy();
+    d.remove();
+    noyau.NIVEAUX[0] = garde;
+    return { avant, pendant, apres };
 });
-await dormir(900);
-const vus = new Set();
-for (let i = 0; i < 70; i++) {
-    const h = await s.page.evaluate(() => ({
-        t: (document.querySelector('#bp-apercu [data-tableau]') || {}).textContent,
-        v: (document.querySelector('#bp-apercu [data-vies]') || {}).textContent
-    }));
-    if (h.t) vus.add(`${h.t}/${h.v}`);
-    await dormir(400);
+dire('AU DOIGT : la moitié droite de l\'écran pousse la balle à droite',
+    doigt.pendant > doigt.avant + CASE,
+    `de x ${Math.round(doigt.avant)} à ${Math.round(doigt.pendant)}`);
+dire('et quand le doigt se lève, elle cesse d\'aller à droite',
+    doigt.apres - doigt.pendant < CASE / 2,
+    `encore ${Math.round(doigt.apres - doigt.pendant)} px après le lâcher`);
+
+// ── EN JOUANT, LE PANNEAU SUIT ─────────────────────────────────────────────
+//
+// Le score qui monte est la preuve que la chaîne entière tient : la touche
+// écoutée, le monde avancé, le mur abattu ou le fruit pris, le panneau repeint.
+let sens = 'ArrowLeft', bouge = false;
+const scoreDepart = Number((await panneau()).score);
+await s.page.keyboard.down(sens);
+for (let i = 0; i < 8 && !bouge; i++) {
+    await dormir(1500);
+    await s.page.keyboard.up(sens);
+    sens = sens === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
+    await s.page.keyboard.down(sens);
+    if (Number((await panneau()).score) > scoreDepart) bouge = true;
 }
-const liste = [...vus].sort();
-dire('L\'APERÇU TRAVERSE LES QUATRE TABLEAUX SANS JAMAIS MOURIR',
-    liste.every(x => x.endsWith('/3')) && liste.some(x => x.startsWith('4')),
-    `tableau/vies vus : ${liste.join(' ')}`);
-await s.photo('#bp-apercu', 'tools/tmp/bumpy-apercu.png', 0);
+await s.page.keyboard.up(sens);
+const enJeu = await panneau();
+dire('EN JOUANT, LE SCORE MONTE — la chaîne entière tient',
+    Number(enJeu.score) > scoreDepart,
+    `${scoreDepart} → ${enJeu.score} · ${enJeu.mot}`);
+
+// ── LA PORTE S'OUVRE QUAND LA CLÉ EST PRISE ────────────────────────────────
+//
+// On monte un tableau d'essai où la clé est sous la balle : la porte doit
+// passer du gris au vert, et cela se compte en pixels. C'est la promesse que
+// Rémy a ajoutée — « tu pense aussi au porte » —, et elle ne se voit que là.
+const porte = await s.page.evaluate(async () => {
+    const d = document.createElement('div');
+    d.id = 'bp-cle';
+    d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#fff;padding:10px';
+    document.body.appendChild(d);
+    const noyau = await import('./js/core/bumpy.js');
+    const jeu = await import('./js/games/bumpy.js');
+    const garde = noyau.NIVEAUX[0];
+    // LA CLÉ EST LOIN DE LA BALLE, et c'est la correction : posée juste
+    // dessous, elle était ramassée avant la première mesure — la porte était
+    // donc DÉJÀ verte quand on comptait le « avant », et la sonde annonçait
+    // « 626 → 626 » sans qu'aucun défaut n'existe.
+    noyau.NIVEAUX[0] = {
+        nom: 'essai', clefs: 1,
+        lignes: [
+            '####################',
+            '#..B...............#',
+            '#..................#',
+            '#...............c..#',
+            '#.PP...............#',
+            '#==================#',
+            '####################'
+        ]
+    };
+    const inst = jeu.engineBumpy(d, false, {});
+    const vert = () => {
+        const t = d.querySelector('.bp-toile');
+        const im = t.getContext('2d').getImageData(0, 0, t.width, t.height).data;
+        let n = 0;
+        for (let i = 0; i < im.length; i += 4) {
+            if (im[i] > 20 && im[i] < 60 && im[i + 1] > 175 && im[i + 1] < 215
+                && im[i + 2] > 70 && im[i + 2] < 110) n++;
+        }
+        return n;
+    };
+    const dors = (ms) => new Promise(r => setTimeout(r, ms));
+    await dors(150);
+    const avant = vert();
+    // ON LA POUSSE AVEC LA MOITIÉ D'ÉCRAN, comme un doigt : c'est le chemin
+    // de l'élève, et il est déjà mesuré plus haut.
+    const moitie = d.querySelector('.bp-moitie--d');
+    const b = moitie.getBoundingClientRect();
+    const opts = { pointerId: 2, bubbles: true, isPrimary: true,
+        clientX: b.x + b.width / 2, clientY: b.y + b.height / 2 };
+    moitie.dispatchEvent(new PointerEvent('pointerdown', opts));
+    for (let i = 0; i < 100 && !inst.etat.ouverte; i++) await dors(60);
+    moitie.dispatchEvent(new PointerEvent('pointerup', opts));
+    await dors(200);
+    const apres = vert();
+    const clefs = inst.etat.clefs;
+    inst.destroy();
+    d.remove();
+    noyau.NIVEAUX[0] = garde;
+    return { avant, apres, clefs };
+});
+dire('LA CLÉ OUVRE LA PORTE, et la porte VERDIT', porte.apres > porte.avant + 200,
+    `${porte.avant} → ${porte.apres} pixels verts, ${porte.clefs} clé(s) prise(s)`);
+
+const fin = await panneau();
+console.log(`\n   ${fin.mot}`);
 console.log(`erreurs de page : ${s.erreurs.length}, fenêtres natives : ${s.fenetresNatives.length}`);
 s.erreurs.slice(0, 3).forEach(e => console.log('  ! ' + String(e).slice(0, 160)));
 if (s.erreurs.length || s.fenetresNatives.length) ratés++;
 
-await s.photo('.bp-wrap', 'tools/tmp/bumpy-joue.png', 0);
+await s.photo('.bp-jeu', 'tools/tmp/bumpy-joue.png', 0);
 await s.fermer();
 
 console.log(ratés ? `\n\x1b[31m${ratés} chose(s) à regarder.\x1b[0m`

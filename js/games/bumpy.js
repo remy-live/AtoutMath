@@ -2,61 +2,44 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// RÉMY, 5 novembre : « bumpy ca cassait des blocs et ca sautait en colonnes »,
-// « et il y avait des pics des bonus ». Puis, sur la maquette : « Oui, c'est
-// ça », et l'on gagne en ATTEIGNANT LA SORTIE.
+// RÉMY, 5 novembre, avec les captures du jeu d'origine : « tu peux pas faire
+// comme le jeu original mais avec un design moderne ». Puis : « les parois
+// cassable de bumpy sont grosses en hauteur, il faut bien voir le rebond, tu
+// pense aussi au porte ».
 //
-// ── LA BALLE NE S'ARRÊTE JAMAIS, ET C'EST LE JEU ───────────────────────────
+// ── CE QUE L'ÉCRAN DOIT DIRE, ET DANS QUEL ORDRE ───────────────────────────
 //
-// Elle rebondit toute seule, à tempo fixe. On ne choisit pas QUAND, on choisit
-// seulement OÙ : gauche, tout droit, ou droite. C'est ce que Rémy appelle
-// « ça fait les réflexes » — il y a une décision, mais elle est à prendre
-// avant que la balle retombe.
+//   · LE PANNEAU DONNE LE BUT. Sur ses captures, la moitié droite de l'écran
+//     est un panneau qui compte ce qu'il faut ramasser. C'est lui qui fait
+//     qu'on sait ce qu'on cherche AVANT de commencer, et je l'avais oublié.
+//   · LES PAROIS SONT DES BARRES HAUTES. Une colonne de quatre cases se
+//     dessine comme UNE barre, pas comme quatre cubes : c'est la différence
+//     entre un mur qu'on abat et un sol sur lequel on marche.
+//   · LE REBOND DOIT SE VOIR. La balle laisse une traînée de trois fantômes :
+//     à l'arrêt sur une image, on voit d'où elle vient. Et elle s'écrase un
+//     peu en touchant le sol — c'est ce qui fait sentir le choc.
 //
-// ── ON MONTRE OÙ L'ON VA RETOMBER ──────────────────────────────────────────
+// ── LE PILOTAGE EST LE MÊME AU DOIGT ET AU CLAVIER ─────────────────────────
 //
-// Le cadre pointillé marque la case où la balle se posera si l'on ne change
-// rien. Ce n'est pas une aide au rabais : le jeu REPOSE sur le fait que
-// l'arrivée est connue d'avance — sinon on subit au lieu de décider. On le
-// calcule en rejouant `coup` sur une copie du tableau, donc ce qu'il montre
-// est exactement ce qui va se produire, et non une approximation qui
-// divergerait un jour en silence.
-//
-// ── DEUX CHOSES QUE L'ORIGINAL NE FAISAIT PAS ──────────────────────────────
-//
-//   · ON REPREND AU TABLEAU, PAS AU DÉBUT. En 1989 on recommençait tout. Dans
-//     une salle de classe, un élève qui refait trois tableaux pour atteindre
-//     celui où il a échoué abandonne avant d'y arriver.
-//   · ET IL Y A TROIS VIES AFFICHÉES. Savoir combien il en reste change la
-//     façon de jouer : on ose une colonne quand on en a trois, on assure
-//     quand il n'en reste qu'une.
+// Flèches gauche et droite, ou les deux moitiés de l'écran. Pas de bouton de
+// saut : il n'y en a pas, la balle saute toute seule — et c'est toute l'idée.
+// Un troisième geste donnerait à croire qu'on peut contrôler la hauteur.
 
 import { BaseGame } from '../core/BaseGame.js';
-import { CASE, NIVEAUX, TUILE, coup, etatInitial, lireNiveau } from '../core/bumpy.js';
+import {
+    CASE, FRUITS, NIVEAUX, RAYON, TUILE, avancer, estParoi, etatInitial, lireNiveau
+} from '../core/bumpy.js';
 
-/** Combien de temps met la balle à franchir une case, en millisecondes. */
-const MS_PAR_CASE = 58;
-/**
- * UN COUP NE DURE JAMAIS MOINS QUE CELA, et le temps d'arrêt après
- * l'atterrissage.
- *
- * MESURÉ À L'ÉCRAN : à 280 + 130 ms, la balle enchaîne un rebond toutes les
- * quatre dixièmes de seconde et atteint le fond du tableau en trois secondes.
- * C'est trop court pour LIRE le plateau — or tout le jeu consiste à le lire
- * avant de creuser. À 420 + 180, on a le temps de voir où est la porte et où
- * sont les pics, sans que la balle cesse d'être pressante.
- */
-const MS_MINIMUM = 420;
-const MS_POSE = 180;
-
-/** Les couleurs du tableau. Une mine de nuit, et chaque tuile sa matière. */
+/** Les couleurs du tableau. */
 const ENCRE = {
-    fond: '#0b1226', grille: '#141d3a',
-    roche: '#3f4e86', rocheHaut: '#6b7cc4',
-    bloc: '#60a5fa', blocHaut: '#bfdbfe', blocBas: '#1d4ed8',
+    fond: '#0b1226', trame: '#101a36',
+    cadre: '#3f4e86', cadreHaut: '#6b7cc4',
+    plate: '#94a3b8', plateHaut: '#e2e8f0',
+    barre: '#475569', barreHaut: '#94a3b8',
+    paroi: { R: ['#ef4444', '#fca5a5'], J: ['#eab308', '#fde047'], V: ['#22c55e', '#86efac'] },
     pic: '#dc2626', picClair: '#fca5a5',
-    bonus: '#fbbf24', bonusClair: '#fff7cc',
-    sortie: '#22c55e', sortieClair: '#86efac',
+    cle: '#fbbf24',
+    porte: '#334155', porteOuverte: '#22c55e', porteClair: '#86efac',
     balle: '#f472b6', balleClair: '#fbcfe8'
 };
 
@@ -64,14 +47,14 @@ class Bumpy extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'bumpy');
         // CE JEU AVANCE TOUT SEUL PENDANT QU'ON LIT : il le déclare, pour que
-        // les cartes de correction ne s'effacent pas d'elles-mêmes. Voir
-        // `tempsReel` dans core/BaseGame.js.
+        // les cartes de correction ne s'effacent pas d'elles-mêmes.
         this.tempsReel = true;
         this.rang = 0;
         this.vies = 3;
-        this.bonus = 0;
-        this.choix = 0;
+        this.score = 0;
+        this.entree = 0;
         this.touches = { gauche: false, droite: false };
+        this.trainee = [];
     }
 
     render() {
@@ -79,59 +62,112 @@ class Bumpy extends BaseGame {
         const H = NIVEAUX[0].lignes.length * CASE;
         this.container.innerHTML = `
             <style>
-                .bp-wrap { display: flex; flex-direction: column; align-items: center;
-                    gap: 10px; width: 100%; user-select: none;
-                    -webkit-user-select: none; touch-action: none; }
-                .bp-hud { display: flex; gap: 18px; align-items: baseline;
-                    font-weight: 800; font-variant-numeric: tabular-nums; }
-                .bp-hud span { color: var(--text-muted); font-size: .8rem;
-                    text-transform: uppercase; letter-spacing: .05em; }
-                .bp-hud b { font-size: 1.1rem; color: var(--text-main); }
-                .bp-cadre { position: relative; width: 100%; max-width: ${L}px; }
+                .bp-wrap { display: flex; justify-content: center; width: 100%;
+                    user-select: none; -webkit-user-select: none; touch-action: none; }
+                .bp-jeu { display: flex; gap: 10px; align-items: stretch;
+                    max-width: ${L + 232}px; width: 100%; }
+                .bp-cadre { position: relative; flex: 1 1 auto; min-width: 0; }
                 .bp-toile { display: block; width: 100%; height: auto;
                     border-radius: 12px; box-shadow: 0 10px 30px -18px #000; }
-                /* LES DEUX MOITIÉS DE L'ÉCRAN SONT LES DEUX FLÈCHES. Elles sont
-                   invisibles : un bouton dessiné sur le plateau cacherait
-                   justement la colonne qu'on vise. */
+                /* LES DEUX MOITIÉS DE L'ÉCRAN SONT LES DEUX FLÈCHES. Elles
+                   sont invisibles : un bouton dessiné sur le plateau cacherait
+                   justement la plateforme qu'on vise. */
                 .bp-moitie { position: absolute; top: 0; bottom: 0; width: 50%;
                     cursor: pointer; }
                 .bp-moitie--g { left: 0; } .bp-moitie--d { right: 0; }
-                .bp-mot { min-height: 1.6em; font-weight: 700; text-align: center; }
+
+                .bp-panneau { width: 222px; flex: none; display: flex;
+                    flex-direction: column; gap: 9px; background: #0b1226;
+                    border-radius: 12px; padding: 12px; color: #e8ecff;
+                    font-variant-numeric: tabular-nums; }
+                .bp-vies { display: flex; gap: 6px; align-items: center; }
+                .bp-vies i { width: 17px; height: 17px; border-radius: 50%;
+                    background: radial-gradient(circle at 32% 30%, #fbcfe8, #f472b6 60%); }
+                .bp-vies span { margin-left: auto; font-size: 10.5px;
+                    letter-spacing: .09em; text-transform: uppercase; color: #94a3b8;
+                    font-weight: 700; }
+                .bp-score { font-size: 25px; font-weight: 800; letter-spacing: .06em;
+                    color: #fde047; line-height: 1.1; }
+                .bp-score small { display: block; font-size: 10px; letter-spacing: .11em;
+                    text-transform: uppercase; color: #94a3b8; font-weight: 700; }
+                .bp-obj { display: grid; grid-template-columns: 24px 1fr auto;
+                    gap: 8px; align-items: center; background: #141d3a;
+                    border-radius: 9px; padding: 6px 9px; }
+                .bp-obj em { font-style: normal; font-size: 11.5px; color: #94a3b8;
+                    letter-spacing: .03em; }
+                .bp-obj b { font-size: 15px; font-weight: 800; }
+                .bp-obj .ok { color: #22c55e; }
+                .bp-logo { margin-top: auto; text-align: center; background: #141d3a;
+                    border-radius: 10px; padding: 9px 6px 7px; }
+                .bp-logo b { display: block; font-size: 20px; font-weight: 900;
+                    letter-spacing: .12em; color: #f472b6; }
+                .bp-logo span { font-size: 10px; letter-spacing: .13em; color: #94a3b8;
+                    text-transform: uppercase; }
+                .bp-mot { min-height: 1.5em; font-weight: 700; text-align: center;
+                    margin-top: 9px; }
                 .bp-fin { position: absolute; inset: 0; display: none;
                     place-items: center; text-align: center; border-radius: 12px;
                     background: rgb(11 18 38 / .9); color: #eef2ff; padding: 20px; }
                 .bp-fin--vu { display: grid; }
                 .bp-fin h3 { margin: 0 0 6px; font-size: 1.3rem; }
                 .bp-fin p { margin: 0 0 14px; opacity: .85; }
+                @media (max-width: 900px) {
+                    .bp-jeu { flex-direction: column; }
+                    .bp-panneau { width: auto; flex-direction: row; flex-wrap: wrap;
+                        align-items: center; gap: 8px 14px; }
+                    .bp-logo { margin-top: 0; }
+                }
             </style>
-            <div class="bp-wrap">
-                <div class="bp-hud">
-                    <div><span>Tableau</span> <b data-tableau>1</b></div>
-                    <div><span>Bonus</span> <b data-bonus>0</b></div>
-                    <div><span>Vies</span> <b data-vies>3</b></div>
-                </div>
+            <div class="bp-wrap"><div class="bp-jeu">
                 <div class="bp-cadre">
                     <canvas class="bp-toile" width="${L}" height="${H}"
                         role="img" aria-label="Le plateau de Bumpy"></canvas>
-                    <div class="bp-moitie bp-moitie--g" data-cote="-1"
+                    <div class="bp-moitie bp-moitie--g" data-bp-cote="-1"
                         aria-label="Aller à gauche"></div>
-                    <div class="bp-moitie bp-moitie--d" data-cote="1"
+                    <div class="bp-moitie bp-moitie--d" data-bp-cote="1"
                         aria-label="Aller à droite"></div>
-                    <div class="bp-fin" data-fin>
+                    <div class="bp-fin" data-bp-fin>
                         <div>
-                            <h3 data-fin-titre></h3>
-                            <p data-fin-texte></p>
+                            <h3 data-bp-fin-titre></h3>
+                            <p data-bp-fin-texte></p>
                             <button type="button" class="pl-btn pl-btn--fort"
-                                data-neuf>Recommencer</button>
+                                data-bp-neuf>Recommencer</button>
                         </div>
                     </div>
+                    <div class="bp-mot" data-bp-mot>Flèches ← → ou les deux moitiés
+                        de l'écran. La balle rebondit toute seule.</div>
                 </div>
-                <div class="bp-mot" data-mot>Flèches ← → ou les deux moitiés de
-                    l'écran. Le cadre pointillé montre où tu vas retomber.</div>
-            </div>`;
+                <div class="bp-panneau">
+                    <div class="bp-vies" data-bp-vies></div>
+                    <div class="bp-score"><small>Score</small><span data-bp-score>0000000</span></div>
+                    <div class="bp-obj">
+                        <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+                            <g stroke="#fbbf24" stroke-width="2.6" fill="none"
+                               stroke-linecap="round"><circle cx="8" cy="13" r="4.4"/>
+                            <path d="M12 13h9M18 13v4M21 13v3.5"/></g></svg>
+                        <em>Clés</em><b data-bp-clefs>0 / 0</b>
+                    </div>
+                    <div class="bp-obj">
+                        <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+                            <circle cx="9" cy="16" r="5" fill="#dc2626"/>
+                            <circle cx="18" cy="17" r="5" fill="#dc2626"/>
+                            <path d="M8 12q3-10 11-8" stroke="#15803d" stroke-width="2"
+                                  fill="none"/></svg>
+                        <em>Fruits</em><b data-bp-fruits>0</b>
+                    </div>
+                    <div class="bp-obj">
+                        <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+                            <rect x="5" y="3" width="16" height="21" rx="2"
+                                  fill="#334155" data-bp-porte-svg/>
+                            <rect x="9" y="9" width="8" height="15" fill="#0b1226"/></svg>
+                        <em>Porte</em><b data-bp-porte>Fermée</b>
+                    </div>
+                    <div class="bp-logo"><b>BUMPY</b><span data-bp-tableau>Tableau 1</span></div>
+                </div>
+            </div></div>`;
         this.toile = this.container.querySelector('.bp-toile');
         this.ctx = this.toile.getContext('2d');
-        this.finEl = this.container.querySelector('[data-fin]');
+        this.finEl = this.container.querySelector('[data-bp-fin]');
         this.brancher();
         this.chargerTableau(0);
     }
@@ -142,33 +178,30 @@ class Bumpy extends BaseGame {
             else if (e.key === 'ArrowRight') this.touches.droite = enfonce;
             else return;
             e.preventDefault();
-            this.choix = (this.touches.droite ? 1 : 0) - (this.touches.gauche ? 1 : 0);
+            this.entree = (this.touches.droite ? 1 : 0) - (this.touches.gauche ? 1 : 0);
         };
         this._bas = (e) => surTouche(e, true);
         this._haut = (e) => surTouche(e, false);
         document.addEventListener('keydown', this._bas);
         document.addEventListener('keyup', this._haut);
 
-        this.container.querySelectorAll('[data-cote]').forEach(el => {
-            const cote = Number(el.dataset.cote);
-            // `pointerdown` ET LA CAPTURE : un doigt qui glisse d'une moitié à
-            // l'autre doit changer de sens, pas rester bloqué parce qu'il a
-            // quitté l'élément.
+        this.container.querySelectorAll('[data-bp-cote]').forEach(el => {
+            const cote = Number(el.dataset.bpCote);
             el.addEventListener('pointerdown', (e) => {
-                // LE CHOIX D'ABORD, LA CAPTURE ENSUITE, et la capture dans un
+                // LE SENS D'ABORD, LA CAPTURE ENSUITE, et la capture dans un
                 // `try` : `setPointerCapture` jette quand le pointeur n'est
                 // plus actif, et l'exception interrompait le gestionnaire
-                // AVANT que le choix soit posé. Le doigt ne faisait alors
-                // rien du tout, et rien à l'écran ne disait pourquoi.
-                this.choix = cote;
+                // AVANT que le sens soit posé — le doigt ne faisait alors rien
+                // du tout, et rien à l'écran ne disait pourquoi.
+                this.entree = cote;
                 try { el.setPointerCapture(e.pointerId); } catch (err) { /* sans */ }
             });
-            const lacher = () => { this.choix = 0; };
+            const lacher = () => { this.entree = 0; };
             el.addEventListener('pointerup', lacher);
             el.addEventListener('pointercancel', lacher);
         });
 
-        const neuf = this.container.querySelector('[data-neuf]');
+        const neuf = this.container.querySelector('[data-bp-neuf]');
         if (neuf) neuf.onclick = () => this.recommencer();
     }
 
@@ -176,34 +209,46 @@ class Bumpy extends BaseGame {
         this.rang = rang % NIVEAUX.length;
         this.niveau = lireNiveau(NIVEAUX[this.rang]);
         this.etat = etatInitial(this.niveau);
-        this.vol = null;          // le coup en cours d'animation
-        this.attente = MS_POSE * 3;
-        this.fini = false;
+        this.trainee = [];
+        this.ecrase = 0;
+        this.fige = false;
         this.dernier = null;
-        this.majHud();
-        this.dire(`Tableau ${this.rang + 1} — ${this.niveau.nom}`);
+        this.majPanneau();
+        this.dire(`Tableau ${this.rang + 1} — ${this.niveau.nom} · `
+            + `${this.niveau.ilEnFaut} clés pour ouvrir la porte`);
     }
 
     recommencer() {
         this.vies = 3;
-        this.bonus = 0;
+        this.score = 0;
         this.finEl.classList.remove('bp-fin--vu');
         this.chargerTableau(0);
         if (!this.raf) this.raf = requestAnimationFrame(this.boucle);
     }
 
-    majHud() {
-        const poser = (clef, v) => {
-            const el = this.container.querySelector(`[data-${clef}]`);
-            if (el) el.textContent = v;
-        };
-        poser('tableau', this.rang + 1);
-        poser('bonus', this.bonus + (this.etat ? this.etat.bonus : 0));
-        poser('vies', this.vies);
+    majPanneau() {
+        const q = (s) => this.container.querySelector(s);
+        const vies = q('[data-bp-vies]');
+        if (vies) {
+            vies.innerHTML = '<i></i>'.repeat(Math.max(0, this.vies)) + '<span>Vies</span>';
+        }
+        const poser = (sel, v) => { const el = q(sel); if (el) el.textContent = v; };
+        poser('[data-bp-score]', String(this.score).padStart(7, '0'));
+        poser('[data-bp-clefs]', `${this.etat ? this.etat.clefs : 0} / ${this.niveau.ilEnFaut}`);
+        poser('[data-bp-fruits]', this.etat ? this.etat.fruits : 0);
+        poser('[data-bp-tableau]', `Tableau ${this.rang + 1}`);
+        const ouverte = this.etat && this.etat.ouverte;
+        poser('[data-bp-porte]', ouverte ? 'Ouverte' : 'Fermée');
+        const bC = q('[data-bp-clefs]');
+        if (bC) bC.classList.toggle('ok', ouverte);
+        const bP = q('[data-bp-porte]');
+        if (bP) bP.classList.toggle('ok', ouverte);
+        const svg = q('[data-bp-porte-svg]');
+        if (svg) svg.setAttribute('fill', ouverte ? '#22c55e' : '#334155');
     }
 
     dire(texte) {
-        const el = this.container.querySelector('[data-mot]');
+        const el = this.container.querySelector('[data-bp-mot]');
         if (el) el.textContent = texte;
     }
 
@@ -215,268 +260,332 @@ class Bumpy extends BaseGame {
     boucle = (t) => {
         this.raf = null;
         if (!this.isRunning || !this.toile || !this.toile.isConnected) return;
-        const dt = this.dernier === null ? 16 : Math.min(60, t - this.dernier);
+        const dt = this.dernier === null ? 1 / 60 : Math.min(0.05, (t - this.dernier) / 1000);
         this.dernier = t;
-        if (!this.fini && !this.gelDemo) this.avancer(dt);
+        if (!this.fige && !this.gelDemo) this.pas(dt);
         this.dessiner();
         this.raf = requestAnimationFrame(this.boucle);
     };
 
-    avancer(dt) {
-        if (this.vol) {
-            this.vol.passe += dt;
-            if (this.vol.passe >= this.vol.duree) {
-                const v = this.vol;
-                this.vol = null;
-                this.attente = MS_POSE;
-                this.etat = v.etat;
-                this.majHud();
-                for (const fait of v.faits) this.surFait(fait);
-            }
-            return;
+    pas(dt) {
+        // LE PAS DU MONDE EST DÉCOUPÉ, et c'est ce qui empêche la balle de
+        // traverser un mur : `avancer` plafonne déjà à 25 ms, mais plafonner
+        // RALENTIT le jeu quand l'image tarde. On rejoue donc autant de petits
+        // pas qu'il faut pour couvrir le temps écoulé.
+        let reste = dt;
+        while (reste > 0 && !this.fige) {
+            const p = Math.min(0.02, reste);
+            reste -= p;
+            const r = avancer(this.etat, this.niveau, p, this.coupDuJoueur());
+            this.etat = r.etat;
+            for (const fait of r.faits) this.surFait(fait);
         }
-        this.attente -= dt;
-        if (this.attente > 0) return;
-        this.jouerUnCoup();
+        // LA TRAÎNÉE : trois positions passées, pour qu'on VOIE d'où la balle
+        // vient. Rémy : « il faut bien voir le rebond ».
+        this.trainee.unshift({ x: this.etat.x, y: this.etat.y });
+        if (this.trainee.length > 9) this.trainee.pop();
+        if (this.ecrase > 0) this.ecrase = Math.max(0, this.ecrase - dt * 5);
+        this.majPanneau();
     }
 
-    /** Un rebond : on demande au monde, et l'on anime ce qu'il répond. */
-    jouerUnCoup() {
-        const d = this.isDemo ? this.choixDemo() : this.choix;
-        const r = coup(this.etat, this.niveau, d);
-        const cases = Math.max(1, r.chemin.length - 1);
-        this.vol = {
-            chemin: r.chemin, etat: r.etat, faits: r.faits,
-            passe: 0, duree: Math.max(MS_MINIMUM, cases * MS_PAR_CASE)
-        };
+    /** La touche tenue, ou celle du robot quand c'est l'aperçu du professeur. */
+    coupDuJoueur() {
+        if (!this.isDemo) return this.entree;
+        // LE ROBOT VISE LA CLÉ LA PLUS PROCHE, puis la porte. Ce n'est pas une
+        // recherche : c'en serait une de trois secondes, et elle figerait la
+        // page à l'ouverture de l'aperçu. Viser suffit à montrer le jeu, et
+        // cela ne ment pas — il joue avec les deux mêmes touches que l'élève.
+        const n = this.niveau, e = this.etat;
+        let cible = null, best = 1e9;
+        for (let r = 0; r < n.hauteur; r++) {
+            for (let c = 0; c < n.largeur; c++) {
+                const t = n.cases[r][c];
+                const vise = e.ouverte ? (t === TUILE.PORTE) : (t === TUILE.CLE);
+                if (!vise) continue;
+                const d = Math.abs((c + .5) * CASE - e.x) + Math.abs((r + .5) * CASE - e.y);
+                if (d < best) { best = d; cible = { c, r }; }
+            }
+        }
+        if (!cible) return 0;
+        const dx = (cible.c + .5) * CASE - e.x;
+        return Math.abs(dx) < 6 ? 0 : Math.sign(dx);
     }
 
     surFait(fait) {
-        if (fait === 'bonus') this.dire('Un bonus !');
+        if (fait === 'rebond') this.ecrase = 1;
+        if (fait === 'casse') { this.score += 5; this.dire('Un mur de moins !'); }
+        if (fait === 'fruit') { this.score += 25; this.dire('Un fruit !'); }
+        if (fait === 'cle') {
+            this.score += 50;
+            const reste = this.niveau.ilEnFaut - this.etat.clefs;
+            this.dire(reste > 0 ? `Encore ${reste} clé${reste > 1 ? 's' : ''}.` : 'Dernière clé !');
+        }
+        if (fait === 'ouverte') this.dire('La porte est ouverte !');
         if (fait === 'pic') this.perdreUneVie();
-        if (fait === 'sortie') this.tableauFini();
+        if (fait === 'porte') this.tableauFini();
     }
 
     perdreUneVie() {
+        if (this.fige) return;
         this.vies--;
-        this.majHud();
+        this.fige = true;
+        this.majPanneau();
         if (this.vies > 0) {
             this.dire(`Les pics ! Il te reste ${this.vies} vie${this.vies > 1 ? 's' : ''}.`);
             const rang = this.rang;
-            this.fini = true;
             setTimeout(() => {
                 if (!this.isRunning) return;
-                // ON REPREND AU TABLEAU, pas au début : voir l'en-tête. Les
-                // bonus déjà pris restent acquis.
-                this.bonus += this.etat.bonus;
+                // ON REPREND AU TABLEAU, pas au début : un élève qui refait
+                // deux tableaux pour atteindre celui où il a échoué abandonne
+                // avant d'y arriver. Le score, lui, reste acquis.
                 this.chargerTableau(rang);
-            }, 900);
+            }, 1000);
             return;
         }
         this.terminer('Plus de vies', `Tu es allé jusqu'au tableau ${this.rang + 1}.`);
     }
 
     tableauFini() {
-        this.bonus += this.etat.bonus;
+        this.score += 200 + this.rang * 100;
+        this.fige = true;
+        this.majPanneau();
         if (this.rang + 1 >= NIVEAUX.length) {
             this.terminer('Tous les tableaux !', 'Tu les as tous finis. On recommence ?');
             return;
         }
-        this.fini = true;
-        this.dire('La sortie ! Tableau suivant.');
+        this.dire('La porte ! Tableau suivant.');
         const suivant = this.rang + 1;
         setTimeout(() => {
             if (!this.isRunning) return;
             this.chargerTableau(suivant);
-        }, 900);
+        }, 1000);
     }
 
     /**
      * LA PARTIE EST FINIE — et c'est LE SEUL MOMENT OÙ L'ON MARQUE.
      *
-     * Le catalogue range Bumpy en « 1 partie », et une partie se termine quand
-     * les quatre tableaux sont franchis ou les trois vies perdues. MARQUER À
-     * CHAQUE TABLEAU TERMINERAIT L'ACTIVITÉ AU PREMIER : mesuré à l'écran, le
-     * plateau disparaissait cinq secondes après son ouverture, puisque le
-     * premier tableau se gagne sans rien toucher. Les Petites Ailes marquent
-     * par monde parce qu'un monde y dure une minute ; ici, non.
-     *
-     * Ce n'est pas un exercice : il n'y a ni bonne ni mauvaise réponse,
-     * seulement une partie jouée — et c'est cela qu'on enregistre, pour
-     * qu'elle compte dans un parcours.
+     * Le catalogue range Bumpy en « 1 partie ». Marquer à chaque tableau
+     * terminerait l'activité au premier : mesuré, le plateau disparaissait
+     * quelques secondes après son ouverture. Ce n'est pas un exercice — il n'y
+     * a ni bonne ni mauvaise réponse, seulement une partie jouée.
      */
     terminer(titre, texte) {
-        this.fini = true;
+        this.fige = true;
         if (!this.isDemo) {
             this.onCorrectAnswer(null, null, {
                 questionText: `Une partie de Bumpy — jusqu'au tableau ${this.rang + 1}`,
                 expected: 'une partie', given: `tableau ${this.rang + 1}`,
-                points: 10 + this.rang * 8 + this.bonus * 2
+                points: 10 + this.rang * 8 + Math.floor(this.score / 100)
             });
         }
-        this.container.querySelector('[data-fin-titre]').textContent = titre;
-        this.container.querySelector('[data-fin-texte]').textContent = texte;
+        this.container.querySelector('[data-bp-fin-titre]').textContent = titre;
+        this.container.querySelector('[data-bp-fin-texte]').textContent =
+            `${texte} Score : ${this.score}.`;
         this.finEl.classList.add('bp-fin--vu');
     }
 
     // ── LE DESSIN ──────────────────────────────────────────────────────────
-    //
-    // CHAQUE TUILE A SA MATIÈRE, et non sa seule couleur : la roche porte une
-    // arête claire, le bloc une arête claire ET une ombre basse — c'est elle
-    // qui dit « on se pose dessus » —, le pic ses pointes. En gris on les
-    // distinguerait encore, et c'est le bon critère : la couleur seule ne
-    // suffit jamais.
 
     dessiner() {
         const g = this.ctx, n = this.niveau;
         if (!g || !n) return;
         g.fillStyle = ENCRE.fond;
         g.fillRect(0, 0, this.toile.width, this.toile.height);
-        g.strokeStyle = ENCRE.grille;
-        g.lineWidth = 1;
-        for (let c = 1; c < n.largeur; c++) {
-            g.beginPath(); g.moveTo(c * CASE, 0); g.lineTo(c * CASE, this.toile.height); g.stroke();
-        }
-        for (let r = 1; r < n.hauteur; r++) {
-            g.beginPath(); g.moveTo(0, r * CASE); g.lineTo(this.toile.width, r * CASE); g.stroke();
-        }
-        for (let r = 0; r < n.hauteur; r++) {
-            for (let c = 0; c < n.largeur; c++) {
-                this.dessinerTuile(g, n.cases[r][c], c * CASE, r * CASE);
+        // UNE TRAME DISCRÈTE, pour que le fond ait de la matière sans parasiter
+        // la lecture. Le portage moderne y répète le mot BUMPY ; ici, un damier
+        // de points, qui ne concurrence rien.
+        g.fillStyle = ENCRE.trame;
+        for (let y = 0; y < this.toile.height; y += 18) {
+            for (let x = (y / 18 % 2) * 9; x < this.toile.width; x += 18) {
+                g.fillRect(x, y, 9, 9);
             }
         }
-        this.dessinerApercu(g);
+        for (let r = 0; r < n.hauteur; r++) {
+            for (let c = 0; c < n.largeur; c++) this.dessinerTuile(g, n, c, r);
+        }
         this.dessinerBalle(g);
     }
 
-    dessinerTuile(g, t, x, y) {
+    dessinerTuile(g, n, c, r) {
+        const t = n.cases[r][c], x = c * CASE, y = r * CASE;
         if (t === TUILE.ROCHE) {
-            g.fillStyle = ENCRE.roche; g.fillRect(x, y, CASE, CASE);
-            g.fillStyle = ENCRE.rocheHaut; g.fillRect(x, y, CASE, 4);
-        } else if (t === TUILE.BLOC) {
-            g.fillStyle = ENCRE.bloc; g.fillRect(x + 1, y + 1, CASE - 2, CASE - 2);
-            g.fillStyle = ENCRE.blocHaut; g.fillRect(x + 1, y + 1, CASE - 2, 5);
-            g.fillStyle = ENCRE.blocBas; g.fillRect(x + 1, y + CASE - 5, CASE - 2, 4);
+            g.fillStyle = ENCRE.cadre; g.fillRect(x, y, CASE, CASE);
+            g.fillStyle = ENCRE.cadreHaut; g.fillRect(x, y, CASE, 4);
+        } else if (t === TUILE.PLATEFORME) {
+            g.fillStyle = ENCRE.plate;
+            g.beginPath(); g.roundRect(x, y + CASE * .3, CASE, CASE * .38, 5); g.fill();
+            g.fillStyle = ENCRE.plateHaut;
+            g.beginPath(); g.roundRect(x, y + CASE * .3, CASE, CASE * .14, 4); g.fill();
+        } else if (t === TUILE.BARRE) {
+            g.fillStyle = ENCRE.barre;
+            g.beginPath(); g.roundRect(x + CASE * .3, y, CASE * .4, CASE, 5); g.fill();
+            g.fillStyle = ENCRE.barreHaut;
+            g.beginPath(); g.roundRect(x + CASE * .3, y, CASE * .14, CASE, 4); g.fill();
+        } else if (estParoi(t)) {
+            // UNE PAROI SE DESSINE COMME UNE BARRE, PAS COMME DES CUBES. On
+            // regarde donc si la case du dessus et celle du dessous portent la
+            // même paroi, et l'on n'arrondit que les extrémités. C'est la
+            // demande de Rémy — « grosses en hauteur » —, et c'est ce qui fait
+            // qu'on la lit comme un mur à abattre.
+            const memeHaut = r > 0 && n.cases[r - 1][c] === t;
+            const memeBas = r < n.hauteur - 1 && n.cases[r + 1][c] === t;
+            const [plein, clair] = ENCRE.paroi[t];
+            const R = 9;
+            g.fillStyle = plein;
+            g.beginPath();
+            g.roundRect(x + 2, y + (memeHaut ? -1 : 2), CASE - 4,
+                CASE - (memeHaut ? -1 : 2) - (memeBas ? -1 : 2),
+                [memeHaut ? 0 : R, memeHaut ? 0 : R, memeBas ? 0 : R, memeBas ? 0 : R]);
+            g.fill();
+            if (!memeHaut) {
+                g.fillStyle = clair;
+                g.beginPath(); g.roundRect(x + 6, y + 6, CASE - 12, 5, 3); g.fill();
+            }
+            // LA FÊLURE traverse la case de haut en bas : elle dit « ça se
+            // casse » sans qu'on ait à l'apprendre.
+            g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 2;
+            g.beginPath();
+            g.moveTo(x + 17, y); g.lineTo(x + 12, y + 12);
+            g.lineTo(x + 21, y + 20); g.lineTo(x + 15, y + 28); g.lineTo(x + 19, y + CASE);
+            g.stroke();
         } else if (t === TUILE.PIC) {
             g.fillStyle = ENCRE.pic;
             g.beginPath();
             for (let i = 0; i < 3; i++) {
-                g.moveTo(x + 3 + i * 10.5, y + CASE);
-                g.lineTo(x + 8.2 + i * 10.5, y + 6);
-                g.lineTo(x + 13.5 + i * 10.5, y + CASE);
+                g.moveTo(x + 3 + i * 11, y + CASE);
+                g.lineTo(x + 8.5 + i * 11, y + 4);
+                g.lineTo(x + 14 + i * 11, y + CASE);
             }
             g.fill();
             g.fillStyle = ENCRE.picClair;
             for (let i = 0; i < 3; i++) {
                 g.beginPath();
-                g.moveTo(x + 6.5 + i * 10.5, y + 16);
-                g.lineTo(x + 8.2 + i * 10.5, y + 6);
-                g.lineTo(x + 10 + i * 10.5, y + 16);
-                g.fill();
+                g.moveTo(x + 6.6 + i * 11, y + 17); g.lineTo(x + 8.5 + i * 11, y + 4);
+                g.lineTo(x + 10.4 + i * 11, y + 17); g.fill();
             }
-        } else if (t === TUILE.BONUS) {
+        } else if (t === TUILE.CLE) {
             const cx = x + CASE / 2, cy = y + CASE / 2;
-            g.fillStyle = ENCRE.bonus;
+            g.strokeStyle = ENCRE.cle; g.lineWidth = 3.4; g.lineCap = 'round';
+            g.beginPath(); g.arc(cx - 6, cy, 6, 0, Math.PI * 2); g.stroke();
+            g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + 12, cy); g.stroke();
+            g.beginPath(); g.moveTo(cx + 8, cy); g.lineTo(cx + 8, cy + 6); g.stroke();
+            g.beginPath(); g.moveTo(cx + 12, cy); g.lineTo(cx + 12, cy + 5); g.stroke();
+            g.lineCap = 'butt';
+        } else if (t === TUILE.PORTE) {
+            // LA PORTE EST GRISE TANT QU'IL MANQUE UNE CLÉ, puis verte. On la
+            // voit depuis le début : c'est elle qui dit où l'on va. Une porte
+            // qui n'apparaîtrait qu'à la fin ferait du tableau une surprise.
+            // LA PORTE DOIT SE VOIR DE LOIN, et c'est une correction : en
+            // ardoise sur fond de nuit, elle disparaissait dans le décor — or
+            // c'est elle, le but du tableau. Elle a donc un ENCADREMENT clair
+            // et un trou de serrure doré, qui disent « porte » avant même
+            // qu'on ait lu le panneau.
+            const ouverte = this.etat && this.etat.ouverte;
+            const gauche = n.cases[r][c - 1] !== TUILE.PORTE;
+            const droite = n.cases[r][c + 1] !== TUILE.PORTE;
+            const R = 9;
+            g.fillStyle = ouverte ? ENCRE.porteOuverte : '#64748b';
             g.beginPath();
-            for (let i = 0; i < 10; i++) {
-                const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? 5 : 12;
-                g[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+            g.roundRect(x, y, CASE, CASE,
+                [gauche ? R : 0, droite ? R : 0, 0, 0]);
+            g.fill();
+            g.fillStyle = ouverte ? '#14532d' : '#1e293b';
+            g.beginPath();
+            g.roundRect(x + (gauche ? 5 : 0), y + 5, CASE - (gauche ? 5 : 0) - (droite ? 5 : 0),
+                CASE - 5, [gauche ? 6 : 0, droite ? 6 : 0, 0, 0]);
+            g.fill();
+            if (droite) {
+                g.fillStyle = ouverte ? ENCRE.porteClair : ENCRE.cle;
+                g.beginPath(); g.arc(x + 4, y + CASE * .55, 3.2, 0, Math.PI * 2); g.fill();
+                g.fillRect(x + 2.6, y + CASE * .55, 2.8, 7);
             }
-            g.closePath(); g.fill();
-            g.fillStyle = ENCRE.bonusClair;
-            g.beginPath(); g.arc(cx - 2.5, cy - 3, 2.6, 0, Math.PI * 2); g.fill();
-        } else if (t === TUILE.SORTIE) {
-            // LA SORTIE EST OUVERTE DÈS LE DÉBUT, et on la VOIT dans la masse :
-            // c'est elle qui dit quelle colonne creuser. Une porte qui
-            // n'apparaîtrait qu'à la fin transformerait le tableau en loterie.
-            g.fillStyle = ENCRE.sortie;
-            g.fillRect(x + 4, y + 2, CASE - 8, CASE - 2);
-            g.fillStyle = ENCRE.fond;
-            g.fillRect(x + 10, y + 11, CASE - 20, CASE - 11);
-            g.fillStyle = ENCRE.sortieClair;
-            g.fillRect(x + 10, y + 11, CASE - 20, 3);
+            if (ouverte && gauche) {
+                g.fillStyle = ENCRE.porteClair;
+                g.fillRect(x + 5, y + 5, CASE - 5, 3);
+            }
+        } else if (FRUITS.includes(t)) {
+            this.dessinerFruit(g, t, x + CASE / 2, y + CASE / 2);
         }
     }
 
-    /**
-     * Le cadre pointillé : où la balle se posera si l'on ne change rien.
-     *
-     * ON LE DESSINE AUSSI PENDANT LE VOL, et c'est tout l'intérêt : c'est
-     * pendant qu'elle est en l'air qu'on décide du coup suivant. La première
-     * version le cachait dès que la balle bougeait — c'est-à-dire presque tout
-     * le temps —, et il ne restait qu'un clignotement. Mesuré : zéro pixel
-     * blanc sur la toile.
-     *
-     * PENDANT LE VOL, L'ÉTAT DE DÉPART DU COUP SUIVANT EST DÉJÀ CONNU : c'est
-     * `vol.etat`, et le tableau porte déjà le bloc cassé, puisque `coup` l'a
-     * retiré au moment où le vol a commencé. Le cadre dit donc vrai.
-     */
-    dessinerApercu(g) {
-        if (this.fini || !this.etat || this.etat.mort) return;
-        const depuis = this.vol ? this.vol.etat : this.etat;
-        if (depuis.mort || depuis.fini) return;
-        const copie = { ...this.niveau, cases: this.niveau.cases.map(l => l.slice()) };
-        const r = coup(depuis, copie, this.isDemo ? 0 : this.choix);
-        const fin = r.chemin[r.chemin.length - 1];
-        if (!fin) return;
-        // OPAQUE, ET C'EST UNE CORRECTION MESURÉE : en blanc à 75 %, le cadre
-        // composé sur le fond de nuit rend un gris à 194, qu'on distingue mal
-        // des arêtes claires des blocs. À l'œil on le voyait « un peu » ; la
-        // sonde, elle, ne trouvait aucun pixel blanc sur la toile.
-        g.strokeStyle = r.etat.mort ? '#fca5a5' : '#f8fafc';
-        g.lineWidth = 2.5;
-        g.setLineDash([6, 5]);
-        g.strokeRect(fin.c * CASE + 3, fin.r * CASE + 3, CASE - 6, CASE - 6);
-        g.setLineDash([]);
-    }
-
-    /** Où est la balle à cet instant : au repos, ou le long de son chemin. */
-    positionBalle() {
-        if (!this.vol) return { x: (this.etat.c + .5) * CASE, y: (this.etat.r + .5) * CASE };
-        const ch = this.vol.chemin;
-        const t = Math.min(1, this.vol.passe / this.vol.duree) * (ch.length - 1);
-        const i = Math.min(ch.length - 2, Math.floor(t)), f = t - i;
-        const a = ch[i], b = ch[i + 1] || a;
-        return {
-            x: (a.c + (b.c - a.c) * f + .5) * CASE,
-            y: (a.r + (b.r - a.r) * f + .5) * CASE
-        };
+    /** Cinq fruits, cinq silhouettes. Ce sont les points, et rien d'autre. */
+    dessinerFruit(g, quel, cx, cy) {
+        if (quel === '1') {              // cerises
+            g.strokeStyle = '#15803d'; g.lineWidth = 2;
+            g.beginPath(); g.moveTo(cx - 4, cy + 1);
+            g.quadraticCurveTo(cx, cy - 12, cx + 5, cy - 10); g.stroke();
+            g.beginPath(); g.moveTo(cx + 4, cy + 2);
+            g.quadraticCurveTo(cx + 4, cy - 8, cx + 5, cy - 10); g.stroke();
+            g.fillStyle = '#dc2626';
+            g.beginPath(); g.arc(cx - 5, cy + 5, 5.4, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.arc(cx + 5, cy + 6, 5.4, 0, Math.PI * 2); g.fill();
+        } else if (quel === '2') {       // banane
+            g.fillStyle = '#facc15';
+            g.beginPath();
+            g.moveTo(cx - 11, cy - 7);
+            g.quadraticCurveTo(cx - 2, cy + 12, cx + 12, cy + 6);
+            g.quadraticCurveTo(cx + 1, cy + 5, cx - 7, cy - 8);
+            g.closePath(); g.fill();
+        } else if (quel === '3') {       // pomme
+            g.fillStyle = '#ef4444';
+            g.beginPath(); g.arc(cx - 3.5, cy + 2, 7, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.arc(cx + 3.5, cy + 2, 7, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = '#78350f'; g.lineWidth = 2;
+            g.beginPath(); g.moveTo(cx, cy - 5); g.lineTo(cx + 1, cy - 12); g.stroke();
+            g.fillStyle = '#22c55e';
+            g.beginPath(); g.ellipse(cx + 6, cy - 11, 5, 2.6, -.5, 0, Math.PI * 2); g.fill();
+        } else if (quel === '4') {       // citron
+            g.fillStyle = '#fde047';
+            g.beginPath(); g.ellipse(cx, cy + 1, 11, 7.5, -.25, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#fef9c3';
+            g.beginPath(); g.ellipse(cx - 3, cy - 1.5, 3.6, 2.2, -.25, 0, Math.PI * 2); g.fill();
+        } else {                          // fraise
+            g.fillStyle = '#e11d48';
+            g.beginPath();
+            g.moveTo(cx, cy + 12);
+            g.quadraticCurveTo(cx - 11, cy + 1, cx - 7, cy - 5);
+            g.quadraticCurveTo(cx, cy - 9, cx + 7, cy - 5);
+            g.quadraticCurveTo(cx + 11, cy + 1, cx, cy + 12);
+            g.fill();
+            g.fillStyle = '#22c55e';
+            g.beginPath(); g.ellipse(cx, cy - 6, 8, 3, 0, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#fecdd3';
+            for (const [a, b] of [[-3, 1], [3, 2], [0, 6], [-5, 5], [5, 6]]) {
+                g.beginPath(); g.arc(cx + a, cy + b, 1.2, 0, Math.PI * 2); g.fill();
+            }
+        }
     }
 
     dessinerBalle(g) {
-        if (!this.etat) return;
-        const p = this.positionBalle();
-        const R = CASE * .36;
-        g.fillStyle = 'rgba(0,0,0,.35)';
-        g.beginPath(); g.ellipse(p.x, p.y + R + 3, R, 3.5, 0, 0, Math.PI * 2); g.fill();
-        g.fillStyle = ENCRE.balle;
-        g.beginPath(); g.arc(p.x, p.y, R, 0, Math.PI * 2); g.fill();
-        g.fillStyle = ENCRE.balleClair;
-        g.beginPath(); g.arc(p.x - R * .3, p.y - R * .3, R * .3, 0, Math.PI * 2); g.fill();
-        // LES DEUX YEUX REGARDENT OÙ L'ON VA : c'est le seul endroit du dessin
-        // qui dit le sens choisi, et il se lit sans y penser.
-        const dx = (this.vol ? 0 : this.choix) * 3;
-        g.fillStyle = '#1f2937';
-        g.beginPath(); g.arc(p.x - 3.4 + dx, p.y - 1, 2, 0, Math.PI * 2); g.fill();
-        g.beginPath(); g.arc(p.x + 3.4 + dx, p.y - 1, 2, 0, Math.PI * 2); g.fill();
-    }
-
-    /**
-     * L'APERÇU DU PROFESSEUR : le robot joue, il ne regarde pas.
-     *
-     * IL JOUE LE CHEMIN QUE LE CHERCHEUR A TROUVÉ, et non des coups au hasard.
-     * Un robot qui tâtonne meurt sur les pics au bout de six rebonds, et Rémy
-     * verrait un jeu qui perd — ce qui ressemble beaucoup à un jeu cassé.
-     */
-    choixDemo() {
-        if (!this._demo || this._demoRang !== this.rang) {
-            this._demo = cheminDeDemo(this.rang);
-            this._demoRang = this.rang;
-            this._demoPas = 0;
+        const e = this.etat;
+        if (!e) return;
+        // LA TRAÎNÉE D'ABORD, sous la balle : trois fantômes espacés disent
+        // d'où elle vient. Sur une image arrêtée, c'est la seule chose qui
+        // montre le rebond — et Rémy a demandé qu'on le voie bien.
+        for (let i = 3; i >= 1; i--) {
+            const p = this.trainee[i * 3];
+            if (!p) continue;
+            g.fillStyle = `rgba(244,114,182,${.1 * (4 - i)})`;
+            g.beginPath(); g.arc(p.x, p.y, RAYON - i * 1.6, 0, Math.PI * 2); g.fill();
         }
-        const d = this._demo[this._demoPas] ?? 0;
-        this._demoPas++;
-        return d;
+        // ET ELLE S'ÉCRASE UN PEU EN TOUCHANT : c'est ce qui fait sentir le
+        // choc, et cela ne coûte qu'un rapport de rayons.
+        const k = this.ecrase * .22;
+        g.fillStyle = 'rgba(0,0,0,.35)';
+        g.beginPath();
+        g.ellipse(e.x, e.y + RAYON + 3, RAYON, 3.5, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = ENCRE.balle;
+        g.beginPath();
+        g.ellipse(e.x, e.y + RAYON * k, RAYON * (1 + k), RAYON * (1 - k), 0, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = ENCRE.balleClair;
+        g.beginPath(); g.arc(e.x - 4, e.y - 4, 4.2, 0, Math.PI * 2); g.fill();
+        // LES DEUX YEUX REGARDENT OÙ L'ON VA : c'est le seul endroit du dessin
+        // qui dit le sens, et il se lit sans y penser.
+        const dx = (this.isDemo ? 0 : this.entree) * 3;
+        g.fillStyle = '#1f2937';
+        g.beginPath(); g.arc(e.x - 3.6 + dx, e.y - 1, 2.1, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.arc(e.x + 3.6 + dx, e.y - 1, 2.1, 0, Math.PI * 2); g.fill();
     }
 
     async runDemoSequence() {
@@ -489,53 +598,6 @@ class Bumpy extends BaseGame {
         if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
         super.destroy();
     }
-}
-
-/**
- * UN CHEMIN GAGNANT POUR L'APERÇU, cherché à la demande.
- *
- * ON NE LE RECOPIE PAS À LA MAIN dans une constante : un chemin recopié
- * cesserait d'être juste au premier pic déplacé, en silence, et l'aperçu du
- * professeur mourrait sans que rien ne rougisse. On le CHERCHE, avec les trois
- * mêmes coups que l'élève — quelques milliers d'essais, soit quelques
- * millisecondes, et c'est vrai par construction.
- */
-function cheminDeDemo(rang) {
-    const def = NIVEAUX[rang];
-    const n0 = lireNiveau(def);
-    const mobiles = [];
-    for (let r = 0; r < n0.hauteur; r++) {
-        for (let c = 0; c < n0.largeur; c++) {
-            const t = n0.cases[r][c];
-            if (t === TUILE.BLOC || t === TUILE.BONUS) mobiles.push({ c, r, t });
-        }
-    }
-    const replanter = (emp) => {
-        const n = lireNiveau(def);
-        mobiles.forEach((m, i) => { if (emp[i] === '1') n.cases[m.r][m.c] = TUILE.VIDE; });
-        return n;
-    };
-    const empreinte = (n) => mobiles.map(m => (n.cases[m.r][m.c] === m.t ? '0' : '1')).join('');
-    const vide = '0'.repeat(mobiles.length);
-    const e0 = etatInitial(n0);
-    const file = [{ etat: e0, emp: vide, chemin: [] }];
-    const vus = new Set([`${e0.c}|${e0.r}|${vide}`]);
-    let tours = 0;
-    while (file.length && tours++ < 200000) {
-        const { etat, emp, chemin } = file.shift();
-        for (const d of [-1, 0, 1]) {
-            const n = replanter(emp);
-            const r = coup(etat, n, d);
-            if (r.etat.mort) continue;
-            if (r.etat.fini) return [...chemin, d];
-            const emp2 = empreinte(n);
-            const k = `${r.etat.c}|${r.etat.r}|${emp2}`;
-            if (vus.has(k)) continue;
-            vus.add(k);
-            file.push({ etat: r.etat, emp: emp2, chemin: [...chemin, d] });
-        }
-    }
-    return [];
 }
 
 export function engineBumpy(container, isDemo, params) {

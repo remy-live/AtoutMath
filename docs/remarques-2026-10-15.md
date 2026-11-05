@@ -4964,6 +4964,40 @@ DESCENDRE EST UN ENGAGEMENT : à trois cases de fond, les parois du puits
 interdisent de changer de colonne. Le jeu se joue donc AVANT de creuser — on lit
 la masse, on repère les pics, et l'on choisit sa colonne.
 
+### Sa seconde correction, 5 novembre — avec les captures du vrai jeu
+
+> « pour le bumpy, tu peux pas faire comme le jeu original mais avec un design
+> moderne, ce que tu proposes ne va pas »
+
+Il envoie quatre captures : deux de la version Amstrad CPC de Loriciels, deux
+du portage moderne de M.C.A. **ET ELLES DISENT QUE J'AI SUR-INTERPRÉTÉ SA
+PHRASE.** « ça sautait en colonnes » ne décrivait pas la mécanique du rebond :
+cela décrivait UN NIVEAU, celui dont le plateau est fait de barres verticales
+entre lesquelles la balle monte. Le saut case par case que j'ai écrit n'existe
+nulle part dans le jeu.
+
+**MA PREMIÈRE VERSION ÉTAIT PLUS PROCHE QUE LA SECONDE**, et c'est une leçon
+coûteuse : une correction de Rémy se lit comme un INDICE, pas comme une
+spécification. J'ai pris « en colonnes » pour une règle et j'ai jeté la
+physique continue, qui était juste.
+
+### Ce que les captures montrent, et qu'aucune de mes versions n'avait
+
+- **UN PANNEAU LATÉRAL**, à droite, qui tient tout le compte : les vies, le
+  score, puis QUATRE OBJETS avec « combien il en faut : l'icône : combien on
+  en a » — une goutte, une clé, une flèche, un éclair. C'est lui qui donne
+  son but au tableau, et je n'en avais aucun.
+- **DES PLATEFORMES COURTES**, de trois ou quatre cases, posées à toutes les
+  hauteurs — et non les longues dalles que j'avais dessinées.
+- **DES BARRES VERTICALES**, grises ou de couleur, qui ferment des couloirs.
+  Les colorées (rouge, jaune, vert) sont celles qui se cassent.
+- **DES FRUITS PARTOUT** : pastèque, banane, fraise, cerise, citron, poire.
+  Ce sont les points, et c'est eux qui remplissent l'écran.
+- **DES PICS** posés sur une plateforme, et **DES BOMBES**.
+
+Le fond du portage moderne est une trame qui répète le mot « BUMPY ». Le
+plateau est encadré d'un cadre épais, et le logo occupe le bas du panneau.
+
 ### Boulder Dash : « B — la partie »
 
 Grand tableau, chronomètre, trois vies, rien de noté. C'est la récréation de
@@ -5040,3 +5074,82 @@ MESURÉ CONTRE MOI-MÊME : ma sonde `tools/pontAuDoigt.mjs` jouait la solution
 entière et disait TOUT PASSE. Elle vérifiait que les minutes s'additionnent —
 pas qu'on comprenne quoi faire. Une sonde qui connaît déjà la solution ne peut
 pas mesurer si l'écran l'enseigne.
+
+## 65. « Deviner la mesure d'un angle » — 5 novembre
+
+> « j'aimerai bien un exercice où l'élève doit deviner la mesure d'un angle et
+> plus il est proche, plus il a de points et après si c'est une classe en
+> séance, on peut récupérer les high score, c'est motivant. Il faut que ce soit
+> joli et fun »
+
+Quatre demandes dans une phrase, et il faut les séparer parce qu'elles ne
+coûtent pas la même chose :
+
+1. **ESTIMER UN ANGLE À L'ŒIL.** C'est un vrai exercice de sixième-cinquième,
+   et il n'existe pas dans le catalogue : on y mesure des angles au rapporteur
+   (`geo-mesurer-angle`), on les nomme, on les construit — jamais on ne les
+   ESTIME. Or estimer, c'est se construire les repères 30°, 45°, 90°, 120°,
+   180°, et c'est ce qui permet ensuite de voir qu'une mesure au rapporteur
+   est fausse.
+
+2. **PLUS ON EST PROCHE, PLUS ON A DE POINTS.** C'est nouveau ici : tout le
+   reste du logiciel est juste ou faux. Il faut donc trancher ce que « proche »
+   vaut, et surtout ce qui va dans le BILAN du professeur — un barème continu
+   n'est pas une maîtrise. À proposer : les points pour le jeu, et une
+   réussite franche (±5° par exemple) pour la compétence.
+
+3. **LES HIGH SCORES DE LA CLASSE.** Le serveur sait déjà ce que chaque élève
+   a fait dans une séance (`/teacher/report`). Il manque un classement, et
+   surtout il manque de décider s'il est NOMMÉ ou non — un classement nommé
+   dans une classe peut humilier autant qu'il motive. À lui de trancher.
+
+4. **« JOLI ET FUN ».** Ses quatre critères habituels sont « simple beau
+   progressif et qu'on puisse imprimer » : il en rajoute un ici, et il faut
+   l'entendre comme une consigne de forme, pas de décoration — l'écran doit
+   donner envie de réessayer.
+
+**ON MONTRE UNE MAQUETTE AVANT D'ÉCRIRE.** C'est la leçon de Bumpy, payée deux
+fois le même jour : une correction de Rémy se lit comme un indice, pas comme
+une spécification.
+
+### Sa précision sur la maquette, 5 novembre
+
+> « le premier trait peut ne pas être horizontal (ca peut être un réglage) »
+
+Et il a raison sur le fond : **un angle dont un côté est horizontal se lit sur
+les repères du monde** — on le compare au bord de la table, au bas de l'écran.
+Dès que les deux côtés sont obliques, il n'y a plus de repère extérieur, et
+c'est l'angle LUI-MÊME qu'on estime. C'est deux exercices différents, et le
+second est le vrai.
+
+C'EST DONC UN RÉGLAGE, comme il le dit, et non un niveau : le professeur
+choisit « premier côté horizontal » ou « à n'importe quelle direction ».
+Par défaut, horizontal au premier niveau — on apprend d'abord à se donner des
+repères — et libre ensuite.
+
+### Ce que je n'ai pas tranché, et comment je m'en suis sorti
+
+Il n'a pas répondu sur le classement (prénoms ou anonyme, séance ou record de
+l'année). **J'en fais donc un réglage lui aussi**, avec un défaut raisonnable :
+le tableau de la séance avec les prénoms, et le record de la classe au-dessus.
+Un professeur qui ne veut pas exposer ses élèves le passe en anonyme d'un
+clic ; c'est la seule décision qui ne m'appartient pas, et un réglage est la
+façon honnête de la lui laisser.
+
+### Ses trois corrections sur la maquette, 5 novembre
+
+> « les parois cassable de bumpy sont grosses en hauteur, il faut bien voir le
+> rebond, tu pense aussi au porte »
+
+C'est le feu vert sur la direction, et trois précisions qui comptent :
+
+1. **LES PAROIS CASSABLES SONT HAUTES.** Sur ses captures ce sont des BARRES
+   VERTICALES de trois ou quatre cases, rouges, jaunes ou vertes — et non les
+   petits cubes empilés que j'avais dessinés. Une barre haute se lit comme un
+   mur qu'on doit abattre ; des cubes se lisent comme un sol.
+2. **IL FAUT BIEN VOIR LE REBOND.** La hauteur du saut doit être ample et
+   lisible : c'est la seule information sur laquelle l'élève décide. Mesuré
+   précédemment : 560 px/s sous 1500 px/s² donnent 104,5 px, soit 3,27 cases.
+3. **LES PORTES.** Je les avais oubliées, et le panneau de ses captures compte
+   justement des CLÉS. Les clés ouvrent la porte : c'est elle, le but du
+   tableau, et c'est ce qui donne un sens au comptage du panneau.

@@ -2,228 +2,275 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// RÉMY, 5 novembre : « bumpy ca cassait des blocs et ca sautait en colonnes »,
-// « et il y avait des pics des bonus ».
+// RÉMY, 5 novembre, avec les captures du jeu d'origine : « tu peux pas faire
+// comme le jeu original mais avec un design moderne ». Puis : « les parois
+// cassable de bumpy sont grosses en hauteur, il faut bien voir le rebond, tu
+// pense aussi au porte ».
 //
 // ── POURQUOI CES ÉPREUVES-LÀ ───────────────────────────────────────────────
 //
 // Un jeu d'adresse ne se vérifie pas en le regardant : on voit une balle qui
-// rebondit, et l'on en conclut qu'elle rebondit bien. La première version de
-// ce jeu avait DEUX défauts qui rendaient tout injouable, et aucun des deux ne
-// se voyait à l'écran — une balle qui passait sous le sol dès qu'elle
-// chevauchait deux cases, et un rebond trop court pour gravir les tableaux.
+// rebondit, et l'on en conclut qu'elle rebondit bien. Deux défauts ont rendu
+// ce jeu injouable sans qu'aucun ne SE VOIE :
 //
-// On garde donc les quatre règles qui FONT le jeu, et la seule question qui
-// compte : les tableaux se finissent-ils ?
+//   · LA BALLE PASSAIT SOUS LE SOL. À cheval sur deux cases — ce qui arrive
+//     aux deux tiers des abscisses —, elle était résolue deux fois, et la
+//     seconde la repoussait sous le sol. MESURÉ : sol à y = 128, balle
+//     oscillant entre 149 et 171, enterrée.
+//   · ET AUCUN TABLEAU N'ÉTAIT GRAVISSABLE, le rebond étant trop court.
+//
+// On garde donc la physique, les quatre règles du monde, et la seule question
+// qui compte : les tableaux se finissent-ils ?
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import { MONTEE, NIVEAUX, TUILE, coup, etatInitial, lireNiveau } from '../js/core/bumpy.js';
+import {
+    CASE, FRUITS, GRAVITE, NIVEAUX, RAYON, REBOND, TUILE, VX,
+    avancer, estParoi, etatInitial, lireNiveau
+} from '../js/core/bumpy.js';
 import { chercher } from '../tools/bumpyJouable.mjs';
 
 /** Un tableau d'essai écrit à la main, lu comme les vrais. */
-const essai = (lignes) => lireNiveau({ nom: 'essai', lignes });
+const essai = (lignes, clefs = 0) => lireNiveau({ nom: 'essai', clefs, lignes });
 
-test('UN REBOND NE DÉPLACE JAMAIS QUE D\'UNE COLONNE', () => {
-    // C'est la règle que Rémy a corrigée en premier — « ca sautait en
-    // colonnes ». Si elle lâche, le jeu redevient un jeu de plateforme : on
-    // ne sait plus où l'on va retomber, donc on subit au lieu de décider.
+/**
+ * Fait tourner le monde pendant `secondes`, touche tenue.
+ *
+ * ET L'ON REND LE PLUS BAS OÙ ELLE EST DESCENDUE, pas seulement où elle
+ * finit : la balle rebondit sans fin, donc son état final dit l'instant où le
+ * chronomètre s'est arrêté, pas ce qu'elle a fait.
+ */
+function jouer(n, etat, secondes, entree = 0) {
+    let e = etat;
+    const faits = [];
+    let basMax = e.y;
+    for (let t = 0; t < secondes / 0.02; t++) {
+        const r = avancer(e, n, 0.02, entree);
+        e = r.etat;
+        basMax = Math.max(basMax, e.y);
+        faits.push(...r.faits);
+        if (e.mort || e.fini) break;
+    }
+    return { etat: e, faits, basMax };
+}
+
+test('la balle ne passe jamais sous le sol, même à cheval sur deux cases', () => {
+    // LES TRENTE-SIX ABSCISSES D'UNE CASE, UNE PAR UNE. C'est la seule façon
+    // de couvrir le défaut : il ne se produisait QUE lorsque le disque
+    // chevauchait deux cases, donc pas au centre d'une case — et c'est au
+    // centre qu'on essaie quand on essaie une fois.
     const n = essai([
         '##########',
         '#........#',
         '#........#',
-        '#..B.....#',
-        '#========#',
+        '#........#',
         '##########'
     ]);
-    let e = etatInitial(n);
-    for (const d of [1, 1, -1, 0, -1, 1, 1, 1]) {
-        const avant = e.c;
-        const r = coup(e, n, d);
-        e = r.etat;
-        assert.ok(Math.abs(e.c - avant) <= 1,
-            `elle passe de la colonne ${avant} à ${e.c} en un seul rebond`);
+    const solHaut = 4 * CASE;
+    for (let d = 0; d < CASE; d++) {
+        const depart = {
+            x: 5 * CASE + d, y: 1.5 * CASE, vx: 0, vy: 0,
+            clefs: 0, fruits: 0, ouverte: true, fini: false, mort: false
+        };
+        const { etat } = jouer(n, depart, 3);
+        assert.ok(etat.y <= solHaut - RAYON,
+            `à x = ${5 * CASE + d} la balle descend à y = ${etat.y.toFixed(1)}, `
+            + `alors que le sol est à ${solHaut}`);
     }
 });
 
-test('ON CASSE LE BLOC SUR LEQUEL ON RETOMBE, ET LUI SEUL', () => {
+test('le rebond est une constante du monde, et non un ricochet amorti', () => {
+    // On la lâche de deux hauteurs très différentes : elle doit repartir à la
+    // MÊME vitesse. C'est ce qui fait Bumpy — sans cela elle s'amortit, finit
+    // par ramper, et le jeu meurt.
+    const n = essai([
+        '##########', '#........#', '#........#', '#........#',
+        '#........#', '#........#', '##########'
+    ]);
+    for (const ligne of [1.5, 4.5]) {
+        let e = {
+            x: 5.5 * CASE, y: ligne * CASE, vx: 0, vy: 0,
+            clefs: 0, fruits: 0, ouverte: true, fini: false, mort: false
+        };
+        for (let t = 0; t < 300; t++) {
+            const r = avancer(e, n, 0.02, 0);
+            e = r.etat;
+            if (r.faits.includes('rebond')) break;
+        }
+        assert.equal(Math.round(e.vy), -REBOND,
+            `lâchée de la ligne ${ligne}, elle repart à ${e.vy.toFixed(0)}`);
+    }
+});
+
+test('LE REBOND SE VOIT — il élève la balle de plus de trois cases', () => {
+    // RÉMY : « il faut bien voir le rebond ». C'est aussi un contrat avec les
+    // tableaux, dessinés par marches de deux et trois cases : si ce nombre
+    // baisse, ils cessent tous d'être gravissables d'un coup, et plus rien à
+    // l'écran ne le dit.
+    const haut = (REBOND * REBOND) / (2 * GRAVITE);
+    assert.ok(haut > 3 * CASE,
+        `un rebond n'élève la balle que de ${haut.toFixed(1)} px, soit `
+        + `${(haut / CASE).toFixed(2)} case(s)`);
+    // Et ce n'est pas qu'un calcul : la balle le fait.
+    const n = essai([
+        '##########', '#........#', '#........#', '#........#',
+        '#........#', '##########'
+    ]);
+    let e = {
+        x: 5.5 * CASE, y: 5 * CASE - RAYON - 0.01, vx: 0, vy: 0,
+        clefs: 0, fruits: 0, ouverte: true, fini: false, mort: false
+    };
+    let plusHaut = e.y;
+    for (let t = 0; t < 200; t++) {
+        e = avancer(e, n, 0.02, 0).etat;
+        plusHaut = Math.min(plusHaut, e.y);
+    }
+    assert.ok((5 * CASE - RAYON) - plusHaut > 3 * CASE,
+        `en vrai elle ne monte que de ${((5 * CASE - RAYON) - plusHaut).toFixed(1)} px`);
+});
+
+test('UNE PAROI S\'ABAT UNE CASE À LA FOIS, ET PAR LE HAUT', () => {
+    // Rémy : « les parois cassable sont grosses en hauteur ». Une barre de
+    // trois cases doit donc s'user du sommet vers le bas — c'est ce qui se
+    // VOIT (le mur baisse) et c'est ce qui donne son rythme au jeu : un
+    // rebond, une case.
+    //
+    // LE TABLEAU D'ESSAI EST HAUT, ET C'EST VOULU : dans sa première version
+    // le plafond était juste au-dessus du mur, la balle y faisait des
+    // aller-retours de vingt centimètres et abattait les trois cases en une
+    // seconde. L'épreuve mesurait alors la hauteur du plafond, pas la règle.
+    const n = essai([
+        '##########', '#........#', '#........#', '#........#',
+        '#........#', '#....R...#', '#....R...#', '#....R...#', '##########'
+    ]);
+    const hauteurMur = () => n.cases.flat().filter(estParoi).length;
+    assert.equal(hauteurMur(), 3);
+
+    /** Avance jusqu'au prochain éclat de paroi, et rend l'état. */
+    const jusquAuCasse = (e) => {
+        for (let t = 0; t < 4 / 0.02; t++) {
+            const r = avancer(e, n, 0.02, 0);
+            e = r.etat;
+            if (r.faits.includes('casse')) return { etat: e, ok: true };
+            if (e.mort || e.fini) break;
+        }
+        return { etat: e, ok: false };
+    };
+
+    const e0 = {
+        x: 5.5 * CASE, y: 1.5 * CASE, vx: 0, vy: 0,
+        clefs: 0, fruits: 0, ouverte: true, fini: false, mort: false
+    };
+    const a = jusquAuCasse(e0);
+    assert.ok(a.ok, 'la paroi n\'a pas été entamée');
+    assert.equal(hauteurMur(), 2, 'le premier rebond n\'a pas abattu UNE case');
+    assert.equal(n.cases[5][5], TUILE.VIDE, 'ce n\'est pas la case du haut qui est tombée');
+    assert.equal(n.cases[6][5], TUILE.PAROI_R, 'la case du dessous a disparu aussi');
+
+    const b = jusquAuCasse(a.etat);
+    assert.ok(b.ok, 'le deuxième rebond n\'abat rien');
+    assert.equal(hauteurMur(), 1, 'le mur ne baisse pas d\'une case par rebond');
+    assert.ok(b.etat.y > a.etat.y, 'la balle ne descend pas en creusant');
+});
+
+test('LA PORTE FERMÉE EST UN MUR, et les clés l\'ouvrent', () => {
+    // LA PORTE D'ESSAI EST HAUTE, et c'est une leçon : dans sa première
+    // version elle ne faisait qu'une case, et la balle lui passait AU-DESSUS
+    // en rebondissant. L'épreuve concluait « la porte fermée laisse passer »
+    // alors que la porte tenait très bien son rôle — c'est le tableau d'essai
+    // qui ne tenait pas le sien.
+    const colonne = (avecCle) => [
+        '##########',
+        '#.B..P...#',
+        avecCle ? '#..c.P...#' : '#....P...#',
+        '#....P...#',
+        '##########'
+    ];
+
+    // Sans clé, la porte ne s'ouvre jamais et la balle reste de son côté.
+    const ferme = essai(colonne(false), 1);
+    const a = jouer(ferme, etatInitial(ferme), 3, 1);
+    assert.equal(a.etat.fini, false, 'on sort par une porte fermée');
+    assert.ok(a.etat.x < 5 * CASE,
+        `la balle est passée en x = ${a.etat.x.toFixed(0)}, au-delà de la porte`);
+
+    // Avec la clé, elle s'ouvre, et l'on finit en passant dessus.
+    const ouvert = essai(colonne(true), 1);
+    const b = jouer(ouvert, etatInitial(ouvert), 4, 1);
+    assert.ok(b.faits.includes('cle'), 'la clé n\'a pas été ramassée');
+    assert.ok(b.faits.includes('ouverte'), 'la porte ne s\'est pas ouverte');
+    assert.equal(b.etat.fini, true, 'la porte ouverte ne finit pas le tableau');
+});
+
+test('LES PICS TUENT, et un fruit ne se reprend pas', () => {
     const n = essai([
         '##########',
-        '#........#',
-        '#........#',
-        '#..B.....#',
-        '#========#',
-        '#========#',
+        '#....B...#',
+        '#....1...#',
+        '#....^...#',
         '##########'
     ]);
-    const compter = () => n.cases.flat().filter(t => t === TUILE.BLOC).length;
-    const depart = compter();
-    let e = etatInitial(n);
-    assert.equal(e.r, 3, 'elle doit se poser sur la masse, pas flotter');
-
-    const r1 = coup(e, n, 0);
-    e = r1.etat;
-    assert.ok(r1.faits.includes('casse'), 'rien ne s\'est cassé sous elle');
-    assert.equal(compter(), depart - 1, 'plus d\'un bloc a disparu d\'un coup');
-    assert.equal(n.cases[4][3], TUILE.VIDE, 'ce n\'est pas le bloc du dessous qui a sauté');
-
-    // ET ELLE DESCEND D'UN CRAN : c'est la conséquence, et c'est elle qui fait
-    // qu'on creuse. Sans cela, casser serait sans effet sur le jeu.
-    const r2 = coup(e, n, 0);
-    assert.equal(r2.etat.r, 4, `elle reste à la ligne ${r2.etat.r} au lieu de descendre`);
+    const r = jouer(n, etatInitial(n), 2);
+    assert.ok(r.faits.includes('fruit'), 'le fruit n\'a pas été pris au vol');
+    assert.equal(r.etat.fruits, 1);
+    assert.equal(r.etat.mort, true, 'le pic n\'a pas tué');
+    assert.ok(r.faits.includes('pic'));
+    // ET UN SEUL FRUIT : sans cela un élève ferait du surplace pour compter
+    // des points, et le jeu cesserait d'être un jeu.
+    assert.equal(r.faits.filter(f => f === 'fruit').length, 1,
+        'le même fruit a été ramassé plusieurs fois');
 });
 
-test('UN REBOND NE MONTE QUE DE DEUX CASES — c\'est l\'engagement du jeu', () => {
-    // Deux cases : de quoi sortir d'un trou qu'on vient de faire, pas de quoi
-    // sortir d'un puits de trois. C'est CE nombre qui fait que descendre
-    // engage, et donc que le jeu se joue avant de creuser.
-    assert.equal(MONTEE, 2);
-
-    // Un puits de deux : elle peut encore changer de colonne.
-    const peuProfond = essai([
-        '##########',
-        '#........#',
-        '#..=.=...#',
-        '#..=B=...#',
-        '#..===...#',
-        '##########'
-    ]);
-    let e = etatInitial(peuProfond);
-    const sortie = coup(e, peuProfond, 1);
-    assert.equal(sortie.etat.c, 5, 'à deux cases de fond, elle doit pouvoir sortir');
-
-    // Un puits de trois : elle ne peut plus. Les parois la retiennent, et le
-    // coup n'est pas perdu — elle creuse sur place.
-    const profond = essai([
-        '##########',
-        '#..=.=...#',
-        '#..=.=...#',
-        '#..=B=...#',
-        '#..===...#',
-        '##########'
-    ]);
-    let f = etatInitial(profond);
-    const retenue = coup(f, profond, 1);
-    assert.equal(retenue.etat.c, 4, 'à trois cases de fond, elle s\'échappe quand même');
-    assert.ok(retenue.faits.includes('mur'), 'et rien ne dit qu\'elle a buté');
-});
-
-test('LES PICS TUENT, AU VOL COMME À L\'ARRIVÉE', () => {
-    // On tombe DEDANS, on ne se pose pas dessus : un pic solide serait une
-    // plateforme qui tue au toucher, c'est-à-dire une règle à deux temps.
-    const dessous = essai([
-        '##########',
-        '#........#',
-        '#..B.....#',
-        '#..=.....#',
-        '#..^.....#',
-        '#..=.....#',
-        '##########'
-    ]);
-    let e = etatInitial(dessous);
-    const r1 = coup(e, dessous, 0);       // elle casse le bloc de la ligne 3
-    assert.ok(r1.faits.includes('casse'));
-    const r2 = coup(r1.etat, dessous, 0); // elle tombe dans le pic
-    assert.equal(r2.etat.mort, true, 'le pic ne l\'a pas tuée');
-    assert.ok(r2.faits.includes('pic'));
-
-    // ET LATÉRALEMENT AUSSI : un pic qu'on traverse en se décalant tue.
-    const decote = essai([
-        '##########',
-        '#........#',
-        '#..B^....#',
-        '#..==....#',
-        '##########'
-    ]);
-    const r3 = coup(etatInitial(decote), decote, 1);
-    assert.equal(r3.etat.mort, true, 'elle traverse le pic sans rien sentir');
-});
-
-test('LA SORTIE SE FRANCHIT AU VOL, et un bonus ne se reprend pas', () => {
-    const n = essai([
-        '##########',
-        '#........#',
-        '#..*.....#',
-        '#..B.....#',
-        '#..=.....#',
-        '#..E.....#',
-        '#..=.....#',
-        '##########'
-    ]);
-    let e = etatInitial(n);
-    // Elle monte de deux cases : elle traverse l'étoile en montant.
-    const r1 = coup(e, n, 0);
-    assert.ok(r1.faits.includes('bonus'), 'l\'étoile n\'a pas été prise au vol');
-    assert.equal(r1.etat.bonus, 1);
-    // ON NE LA REPREND PAS : sans cela, un élève ferait du surplace pour
-    // compter des points, et le jeu cesserait d'être un jeu.
-    const r2 = coup(r1.etat, n, 0);
-    assert.equal(r2.etat.bonus, 1, 'elle a repris la même étoile');
-    // Puis elle tombe dans la porte sans avoir besoin de s'y poser.
-    assert.equal(r2.etat.fini, true, `elle n'atteint pas la sortie (ligne ${r2.etat.r})`);
-    assert.ok(r2.faits.includes('sortie'));
-});
-
-test('CHAQUE TABLEAU EST BIEN FORMÉ, et repose sur des pics', () => {
+test('CHAQUE TABLEAU EST BIEN FORMÉ : un départ, une porte, assez de clés', () => {
     NIVEAUX.forEach((def, i) => {
         const n = lireNiveau(def);
         assert.ok(def.nom, `tableau ${i + 1} sans nom`);
-        assert.ok(n.depart, `tableau ${i + 1} sans départ (${TUILE.DEPART})`);
-        assert.ok(n.sortie, `tableau ${i + 1} sans sortie (${TUILE.SORTIE})`);
-        assert.ok(n.bonus >= 1, `tableau ${i + 1} sans bonus`);
-        // TOUTES LES LIGNES DE MÊME LONGUEUR : une ligne plus courte d'un
-        // caractère décale le mur de droite et ouvre le tableau sur le vide.
+        assert.ok(n.porte, `tableau ${i + 1} sans porte (${TUILE.PORTE})`);
+        assert.ok(n.clefs >= n.ilEnFaut,
+            `tableau ${i + 1} : ${n.clefs} clés sur le plateau pour ${n.ilEnFaut} exigées`);
+        assert.ok(n.ilEnFaut >= 1, `tableau ${i + 1} : aucune clé à ramasser`);
+        assert.ok(n.fruits >= 1, `tableau ${i + 1} : aucun fruit`);
         const l = def.lignes[0].length;
         def.lignes.forEach((ligne, r) => assert.equal(ligne.length, l,
             `tableau ${i + 1}, ligne ${r} : ${ligne.length} cases au lieu de ${l}`));
-
-        // LE GARDE-FOU CONTRE LE CUL-DE-SAC. Sous la masse, il faut des pics :
-        // une balle qui creuserait jusqu'à un sol incassable rebondirait sur
-        // place pour l'éternité, sans mourir et sans pouvoir remonter — et un
-        // cul-de-sac est pire qu'une mort.
-        for (let c = 0; c < n.largeur; c++) {
-            // La colonne porte-t-elle des blocs ? Alors son fond doit tuer.
-            const aDesBlocs = n.cases.some(ligne => ligne[c] === TUILE.BLOC);
-            if (!aDesBlocs) continue;
-            const basBloc = n.cases.reduce((m, ligne, r) =>
-                (ligne[c] === TUILE.BLOC ? r : m), -1);
-            const dessous = n.cases[basBloc + 1][c];
-            // OU LA SORTIE, et c'est la seule autre issue acceptable : creuser
-            // cette colonne-là fait GAGNER, ce qui n'est pas un cul-de-sac.
-            assert.ok(dessous === TUILE.PIC || dessous === TUILE.SORTIE,
-                `tableau ${i + 1}, colonne ${c} : sous le dernier bloc (ligne `
-                + `${basBloc}) il y a « ${dessous} », ni pic ni sortie — `
-                + 'une balle qui creuse cette colonne s\'y trouverait enfermée');
+        // LE DÉPART EST ÉCRIT, et il n'est pas au-dessus d'une paroi : laissé
+        // au milieu par défaut, il tombait pile sur le mur du premier tableau,
+        // que la balle abattait gratuitement avant qu'on ait touché une touche.
+        assert.ok(def.lignes.some(ligne => ligne.includes(TUILE.DEPART)),
+            `tableau ${i + 1} : pas de départ écrit`);
+        const sousLeDepart = [];
+        for (let r = n.depart.r + 1; r < n.hauteur; r++) {
+            sousLeDepart.push(n.cases[r][n.depart.c]);
         }
+        const premierSolide = sousLeDepart.find(t =>
+            t === TUILE.ROCHE || t === TUILE.PLATEFORME || t === TUILE.BARRE || estParoi(t));
+        assert.ok(!estParoi(premierSolide),
+            `tableau ${i + 1} : la balle tombe droit sur une paroi cassable`);
     });
 });
 
-test('ET LES QUATRE TABLEAUX SE FINISSENT VRAIMENT', () => {
-    // LA SEULE ÉPREUVE QUI DIT QUE LE JEU EST JOUABLE. Elle rejoue `coup`, le
-    // vrai code, en explorant les trois décisions du joueur à chaque rebond —
-    // voir `tools/bumpyJouable.mjs`. Bumpy étant discret, la recherche est
-    // EXACTE : ce qu'elle ne trouve pas n'existe pas.
+test('ET LES TROIS TABLEAUX SE FINISSENT VRAIMENT', () => {
+    // LA SEULE ÉPREUVE QUI DIT QUE LE JEU EST JOUABLE. Elle rejoue `avancer`,
+    // le vrai code, en explorant les décisions du joueur rebond par rebond —
+    // voir `tools/bumpyJouable.mjs`. Quelques secondes : c'est cher, et c'est
+    // le prix de la seule question qui compte.
     NIVEAUX.forEach((def, i) => {
         const r = chercher(def);
         assert.equal(r.trouve, true,
-            `tableau ${i + 1} — ${def.nom} : la sortie n'est jamais atteinte`
-            + ` (${r.explores} coups essayés, ${r.morts} morts)`);
+            `tableau ${i + 1} — ${def.nom} : la porte n'est jamais atteinte`
+            + (r.mieux ? ` (au mieux ${r.mieux.clefs} clé(s), porte `
+                + `${r.mieux.ouverte ? 'ouverte' : 'fermée'})` : ''));
     });
 });
 
-test('et la balle se pose au départ, sans rien casser ni rien devoir', () => {
-    // UN COUP GRATUIT AU DÉMARRAGE passerait inaperçu et fausserait tous les
-    // chemins trouvés par le chercheur : il compterait un rebond de moins que
-    // l'élève.
-    NIVEAUX.forEach((def, i) => {
-        const n = lireNiveau(def);
-        const avant = n.cases.flat().filter(t => t === TUILE.BLOC).length;
-        const e = etatInitial(n);
-        assert.equal(n.cases.flat().filter(t => t === TUILE.BLOC).length, avant,
-            `tableau ${i + 1} : un bloc a disparu avant le premier rebond`);
-        assert.equal(e.mort, false, `tableau ${i + 1} : elle meurt en se posant`);
-        assert.ok(e.r > def.lignes.findIndex(l => l.includes(TUILE.DEPART)) - 1,
-            `tableau ${i + 1} : elle n'est pas tombée sur la masse`);
-    });
+test('la balle passe dans un couloir d\'une case, et son saut porte assez loin', () => {
+    assert.ok(RAYON * 2 < CASE - 6,
+        `une balle de ${RAYON * 2} px ne passe pas dans une case de ${CASE}`);
+    const vol = (2 * REBOND) / GRAVITE;
+    assert.ok(VX * vol > 3 * CASE,
+        `un saut ne porte qu'à ${(VX * vol).toFixed(0)} px, soit moins de trois cases`);
+    // ET LES CINQ FRUITS SONT TOUS DESSINÉS : un fruit sans silhouette serait
+    // une case vide qui compte des points, c'est-à-dire un piège.
+    assert.equal(FRUITS.length, 5);
 });

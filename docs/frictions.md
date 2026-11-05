@@ -6755,3 +6755,38 @@ erreur qui ne parle pas d'elles** — 3 novembre 2026
   main, pour un seul jeu chacun. La question « ce que je viens de dessiner
   est-il faisable ? » revient à chaque nouveau jeu, et c'est la seule que
   l'écran ne sait pas poser.
+
+**Un sélecteur qui désigne autre chose rend une valeur plausible** — 5 novembre
+
+- *Ce que je voulais faire* : lire le score de Bumpy dans une sonde. Elle
+  demandait `document.querySelector('[data-score]')`. Il en existe un AUTRE
+  dans `index.html`, hors du jeu, et `querySelector` rend le PREMIER du
+  document : la sonde annonçait tranquillement « score : 0 » pendant que le
+  jeu en comptait cent soixante-dix.
+- *Ce qui a coûté* : vingt minutes à chercher un défaut d'affichage qui
+  n'existait pas, puis le renommage de treize crochets.
+- *Combien de fois* : || — c'est le cousin du défaut que `doitExister` ferme.
+  Lui garde le cas « le crochet ne désigne RIEN » ; celui-ci est le cas « le
+  crochet désigne AUTRE CHOSE », et il est pire : `null` se voit, une valeur
+  plausible ne se voit pas.
+- *Ce qui manque* : **que `doitExister` crie quand un sélecteur désigne
+  plusieurs éléments de la page**, ou qu'il rappelle de préfixer. Un jeu monté
+  dans la page de l'application partage son `document` : tout crochet non
+  préfixé est un tirage au sort.
+
+**Un renommage d'attribut à la main en oublie une forme** — 5 novembre
+
+- *Ce que je voulais faire* : préfixer les crochets `data-…` d'un jeu. Mon
+  script remplaçait `data-x]`, `data-x>` et `data-x/>` — et pas
+  `data-x="…"`. Les deux moitiés d'écran, écrites `data-cote="1"`, sont donc
+  restées en arrière pendant que le sélecteur, lui, cherchait `data-bp-cote`.
+  **Les deux moitiés d'écran étaient mortes, et rien ne le disait.**
+- *Ce qui a coûté* : une passe de sonde, et une fausse piste sur
+  `setPointerCapture` — on soupçonne l'API avant de soupçonner son propre
+  renommage.
+- *Combien de fois* : | (première)
+- *Ce qui manque* : une vérification de cohérence, qui tient en quatre lignes :
+  lire les `data-…` ÉCRITS dans le gabarit et ceux LUS par un sélecteur, et
+  dire ceux qui sont lus sans être écrits. Je l'ai faite à la main ce
+  jour-là ; elle devrait vivre dans `tools/nouvelExercice.mjs`, qui est déjà
+  le filet des quatre pièges.
