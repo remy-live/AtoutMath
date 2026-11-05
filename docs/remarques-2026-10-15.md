@@ -5244,9 +5244,42 @@ que tant que personne n'y a touché. Mais « il faut TOUT réussir » devenu « 
 sur 30 » est un affaiblissement silencieux, et c'est tout près du « 4/4 » qu'il
 lit. À lui soumettre.
 
-### Ce qui reste à savoir
+### TROUVÉ, et c'est son fichier qui l'a dit
 
-Il lit le « 4/4 » **sur la pastille de l'étape** (demandé, répondu). Il manque
-donc une seule chose : sa VERSION, et son parcours exporté —
-`node tools/relireUneSeance.mjs <fichier.json>` dira ce que l'étape porte
-vraiment.
+Il a envoyé son export (v1144). Dans « Révisions - 6ème », l'étape porte bien
+`nbItems: 4, threshold: 4` — **et six autres étapes du même parcours portent
+exactement 4/4**. Chargé tel quel dans le constructeur, puis son geste refait :
+taper 20 donnait **`✔ 4/20`**.
+
+**LE QUATRE N'ÉTAIT PAS UN NOMBRE DE QUESTIONS RESSUSCITÉ.** C'était la
+RÉUSSITE EXIGÉE, restée sur place — et elle s'écrit à GAUCHE de la barre
+oblique. « 4/4 » veut dire « il faut tout réussir » ; en passant à vingt, cela
+devenait « 4 sur 20 », c'est-à-dire **20 %**, sans que rien ne le dise. On lit
+le 4 en diagonale et l'on croit que le total est revenu.
+
+### ET IL Y AVAIT DEUX RÈGLES POUR LA MÊME DÉCISION
+
+  · la barre « Pour ces N étapes » (`core/reglagesGroupes.js`) garde la **part**
+    depuis toujours, avec le commentaire qui cite Rémy mot pour mot — « le taux
+    de réussite n'a pas de rapport, il peut rester à 70 % et ne devrait pas
+    bouger si on change le nombre de questions » ;
+  · le panneau d'UNE étape (`games/configUI.js`, `majDuo`) gardait le **nombre**
+    dès que le professeur y avait touché.
+
+La même action donnait donc deux résultats selon l'écran par lequel on passait :
+**20/20 par la barre, 4/20 par l'étape.** C'est exactement la divergence que ce
+dépôt refuse — deux mécaniques pour la même chose, c'est une des deux qu'on
+oublie.
+
+**CORRIGÉ** : le panneau emprunte la règle du noyau (`seuilPourPart`,
+`partDe`). Il n'y a plus qu'une règle. Mesuré sur SON parcours : `✔ 4/4` → vingt
+questions → **`✔ 20/20`**.
+
+Et la nuance qu'il avait posée tient toujours : 11 sur 15 (73 %) devient 15 sur
+20 — SA part, et non le conseil de vingt, qui serait 14. Une étape sans quota
+n'en gagne pas au passage.
+
+Gardé par `node tools/seuilQuiSuit.mjs` (cinq contrôles, le nombre tapé dans le
+vrai panneau) et par une épreuve de `tests/reglagesGroupes.test.mjs` qui exige
+que le panneau EMPRUNTE la règle au lieu d'en écrire une seconde. Les deux vues
+tomber.

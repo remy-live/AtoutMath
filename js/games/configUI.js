@@ -14,6 +14,11 @@ import { state } from '../core/state.js';
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
 import { texteDeChoix } from '../core/apercuChoix.js';
+// LA PART EXIGÉE EST UNE RÈGLE DU NOYAU, et elle n'est écrite qu'une fois :
+// la barre « Pour ces N étapes » et le panneau d'une étape s'en servent tous
+// les deux, sans quoi la même action donne deux résultats selon l'écran par
+// lequel on est passé. Voir `majDuo`.
+import { seuilPourPart, partDe } from '../core/reglagesGroupes.js';
 import {
     groupesDeMarches, marchesCochees, decoupeMarches, lireLongueurs, ecrireLongueurs,
     PLIER_AU_DELA,
@@ -419,15 +424,42 @@ function majDuo(boite) {
     const evaluation = boite.classList.contains('cfg-etape--sans-seuil');
     const min = Number(nb.min);
 
-    // LES 70 % SUIVENT LE NOMBRE DE QUESTIONS — mais seulement tant que
-    // personne n'y a touché.
+    // C'EST LA PART QUI SUIT LE NOMBRE DE QUESTIONS, ET NON LE NOMBRE EXIGÉ.
     //
-    // Sans cela, le défaut que Rémy vient de demander se dissout au premier
-    // geste : onze sur quinze, on passe à vingt questions, et l'exigence
-    // tombe à 55 % sans que rien ne le dise. On ne recalcule donc QUE si le
-    // rail porte encore, à la question près, le conseil de l'ancien total :
-    // c'est la signature d'une valeur que le professeur n'a pas choisie. Dès
-    // qu'il l'a déplacée, elle est à lui et on n'y touche plus.
+    // RÉMY : « le taux de réussite n'a pas de rapport, il peut rester à 70 % et
+    // ne devrait pas bouger si on change le nombre de questions. » Le réglage
+    // est donc la PART ; le nombre exigé n'en est que la traduction dans le
+    // total du moment. Quatre sur quatre, c'est « il faut TOUT réussir » — et
+    // cela doit rester vrai à vingt questions, donc vingt sur vingt.
+    //
+    // ── CE QUI SE PASSAIT, ET COMMENT ON L'A TROUVÉ ───────────────────────
+    //
+    // RÉMY : « quand je veux changer le nombre de questions du le détour du
+    // nombre rond, ca change dans les paramètres mais dans le parcours ca
+    // remet 4/4 ». Son parcours « Révisions - 6ème », relu ligne à ligne,
+    // portait bien `nbItems: 4, threshold: 4` sur cette étape — et sur six
+    // autres. En passant à vingt, la pastille affichait « ✔ 4/20 » : le 4 ne
+    // bougeait pas de la GAUCHE de la barre oblique, et c'est lui qu'on lit en
+    // diagonale comme le nombre qui serait revenu.
+    //
+    // Le quatre n'était donc pas un nombre de questions ressuscité : c'était
+    // l'exigence restée sur place. « Il faut tout réussir » devenait
+    // « 4 sur 20 », c'est-à-dire 20 %, sans que rien ne le dise.
+    //
+    // ── ET IL Y AVAIT DEUX RÈGLES POUR LA MÊME CHOSE ──────────────────────
+    //
+    // `core/reglagesGroupes.js` — la barre « Pour ces 7 étapes » — garde la
+    // PART depuis toujours (`seuilPourPart(duo.questions, partDe(s))`), avec
+    // le commentaire qui cite Rémy mot pour mot. Ce panneau-ci, lui, gardait
+    // le NOMBRE dès qu'on y avait touché. Deux mécaniques pour la même
+    // décision, et la même action donnait deux résultats selon l'écran par
+    // lequel on passait : 20/20 par la barre, 4/20 par l'étape.
+    //
+    // IL N'Y EN A PLUS QU'UNE, et elle vit dans le noyau. La condition
+    // d'avant — « on ne recalcule que si le rail porte encore le conseil de
+    // l'ancien total » — voulait protéger une valeur choisie à la main ; elle
+    // la protégeait en tant que NOMBRE, là où le professeur l'avait choisie en
+    // tant que PROPORTION. C'est elle qui est partie.
     //
     // ET ON CALCULE SUR UNE VARIABLE, PAS SUR LE RAIL. Écrire directement dans
     // `ex.value` ici ne marche pas : le rail porte encore l'ANCIEN maximum, et
@@ -438,8 +470,10 @@ function majDuo(boite) {
     const ancien = Math.round(Number(boite.dataset.duoQ)) || 0;
     const nouveau = Math.round(Number(nb.value)) || 0;
     let exigees = ex ? Number(ex.value) : Number(nb.value);
-    if (ex && ancien && nouveau && ancien !== nouveau && exigees === seuilConseille(ancien)) {
-        exigees = seuilConseille(nouveau);
+    if (ex && ancien && nouveau && ancien !== nouveau) {
+        // LA PART SE LIT SUR L'ANCIEN TOTAL, et se repose dans le nouveau.
+        const voulu = seuilPourPart(nouveau, partDe({ nbItems: ancien, threshold: exigees }));
+        if (voulu !== undefined && voulu !== null) exigees = voulu;
     }
     if (nouveau) boite.dataset.duoQ = String(nouveau);
     const duo = ajusterDuo({ questions: nouveau, exigees, max: Number(nb.max) });
