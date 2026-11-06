@@ -167,11 +167,40 @@ export function mount(container, session, opts = {}) {
             // l'explication parce qu'un disque est ressorti.
             result.dismissed.then(() => {
                 if (destroyed) return;
-                if (result.correct) regTimeout(nextItem, 350);
-                else {
-                    mole.classList.remove('mole--up', 'mole--ko');
-                    // Question toujours en cours : le métronome repart tout seul.
-                }
+                // ── UNE QUESTION FINIE EST UNE QUESTION FINIE, JUSTE OU NON ──
+                //
+                // RÉMY, après l'avoir lancé en classe : « pour le attrape le
+                // détour, j'avais mis option lente, et au bout de la 3ème
+                // question, des élèves ont été bloqué, ca ne réagisssait plus ».
+                //
+                // CE QU'ON LISAIT ICI : « si c'est juste, on enchaîne ; sinon,
+                // la question est toujours en cours ». La seconde moitié est
+                // fausse une fois sur deux. Le noyau n'accorde que deux
+                // tentatives par question (`maxAttemptsPerItem`) ; à la
+                // seconde erreur il MONTRE la réponse et ferme la question —
+                // `revealed: true`, `done: true`. Tout appel suivant à
+                // `submit` rend `ignored`.
+                //
+                // Or cette activité n'enchaînait QUE sur `correct`. L'élève
+                // qui se trompait deux fois restait donc sur le même calcul
+                // POUR TOUJOURS : les disques continuaient de sortir, il
+                // continuait de taper dessus, et plus rien ne répondait. Pas
+                // d'erreur, pas de message, pas de bouton — l'écran avait
+                // l'air vivant. MESURÉ : six « questions » de suite sur le même
+                // « 390 + 99 = ? ».
+                //
+                // ET L'ALLURE LENTE N'Y EST POUR RIEN, elle n'a fait que rendre
+                // le défaut facile à atteindre : plus les disques traînent,
+                // plus on a le temps d'en taper deux mauvais.
+                //
+                // `done` ET NON `correct || revealed` : c'est le mot du noyau
+                // pour « cette question est close », et les dix-neuf autres
+                // activités enchaînent déjà sans condition. Celle-ci était la
+                // seule à poser la sienne.
+                if (result.done) { regTimeout(nextItem, 350); return; }
+                // Il reste une tentative : le disque frappé se range, et le
+                // métronome repart tout seul.
+                mole.classList.remove('mole--up', 'mole--ko');
             });
         };
     });

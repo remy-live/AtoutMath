@@ -16,7 +16,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { csvDesBillets, nomDuFichierCsv, htmlDesBillets, reglageDeProjection, decouperEnBlocs }
+import { adresseALire, csvDesBillets, nomDuFichierCsv, htmlDesBillets, reglageDeProjection, decouperEnBlocs }
     from '../js/ui/billets.js';
 
 const TROIS = [
@@ -253,4 +253,38 @@ test('LA TAILLE DU TEXTE A DEUX BORNES, UNE PAR AXE', () => {
         'l\'écran projeté affiche les identifiants, pas les noms');
     assert.ok(projection.includes('dupont.emma') && projection.includes('NWXS'),
         'l\'écran projeté porte bien les identifiants et les codes');
+});
+
+// ── L'ADRESSE QU'ON PROJETTE EN GROS ───────────────────────────────────────
+//
+// RÉMY, 6 novembre : « met aussi en gros (là c'est en petit) l'adresse du site
+// (sans le https:// ou http://) ». Elle était à 2,1 vh au bout d'une phrase,
+// soit quinze pixels sur un vidéoprojecteur de 720 — alors que c'est LA
+// PREMIÈRE CHOSE À TAPER, et celle qu'il répète trente fois à voix haute.
+
+test('L\'ADRESSE PROJETÉE PERD LE PROTOCOLE, ET RIEN D\'AUTRE', () => {
+    assert.equal(adresseALire('https://atout-math.fr/'), 'atout-math.fr');
+    assert.equal(adresseALire('http://atout-math.fr/'), 'atout-math.fr');
+    // LA BARRE FINALE S'EN VA : « atout-math.fr slash » ne se dit pas.
+    assert.equal(adresseALire('https://atout-math.fr'), 'atout-math.fr');
+    // UN SOUS-DOSSIER RESTE EN ENTIER : sans ce chemin, l'élève n'arrive nulle
+    // part. C'est l'installation d'un collège qui héberge plusieurs outils.
+    assert.equal(adresseALire('https://college.fr/atoutmath/'), 'college.fr/atoutmath');
+    // ON NE TOUCHE PAS AU `www.` : il se tape, et certains hébergements ne
+    // répondent QUE là. Retirer ce qui ne se tape pas, garder tout le reste.
+    assert.equal(adresseALire('https://www.atout-math.fr/'), 'www.atout-math.fr');
+    // Et rien ne jette sur du vide.
+    assert.equal(adresseALire(''), '');
+    assert.equal(adresseALire(null), '');
+});
+
+test('ET ELLE EST VRAIMENT GROSSE SUR L\'ÉCRAN PROJETÉ', () => {
+    const html = htmlDesBillets({ eleves: TROIS, nom: '6e B', origine: 'https://atout-math.fr/' });
+    const projection = html.slice(html.indexOf('<div class="projection">'));
+    assert.ok(projection.includes('atout-math.fr'), 'l\'adresse n\'est pas sur l\'écran');
+    assert.ok(!projection.includes('https://atout-math.fr'),
+        'le protocole est encore projeté en grand');
+    // LA RÈGLE QUI LA GROSSIT, et le min() qui l'empêche de déborder d'un 4/3.
+    assert.match(html, /\.pr-adresse b \{[\s\S]*?font-size: min\(4\.4vh, 3\.1vw\)/,
+        'l\'adresse n\'a plus sa taille de projection');
 });

@@ -5364,6 +5364,113 @@ dise oui.
 **ÉPROUVÉ À SOIXANTE AUSSI** : 60 sur 60. Et la sonde TOMBE quand on remet le
 curseur ouvert — 26 sur 30, le verrou de retour dans le journal.
 
+## « Attrape le Détour » se bloque à la troisième question — 6 novembre
+
+> « pour le attrape le détour, j'avais mis option lente, et au bout de la 3ème
+> question, des élèves ont été bloqué, ca ne réagisssait plus »
+
+**UN ÉCRAN QUI NE RÉPOND PLUS, EN CLASSE, SUR PLUSIEURS POSTES.** C'est le pire
+des défauts : l'élève ne peut rien faire, le professeur ne peut rien dire, et il
+faut recharger devant tout le monde.
+
+CE QU'ON SAIT DÉJÀ, ET QUI VIENT DE SON PROPRE FICHIER : son parcours
+« Révisions - 6ème » porte, pour `calc-detour-arcade`,
+`overrides: { marches: ['calcul-plus'], allure: 'ralenti' }` avec `nbItems: 4`.
+Donc **une seule marche cochée**, l'allure lente, et quatre questions. Le
+blocage à la troisième tombe pile dans cette configuration-là.
+
+### REPRODUIT, ET CE N'ÉTAIT PAS L'ALLURE
+
+**Une sonde qui frappe toujours le BON disque ne voit rien** — j'ai commencé
+par là, et tout passait. Il a fallu faire jouer un élève qui SE TROMPE.
+
+Alors : l'énoncé « 390 + 99 = ? » est resté à l'écran **six frappes de suite**.
+Les disques continuaient de sortir, les clics étaient pris, et la question ne
+tournait jamais.
+
+**LA CAUSE.** Le noyau n'accorde que deux tentatives par question
+(`maxAttemptsPerItem`) ; à la seconde erreur il MONTRE la réponse et FERME la
+question — `revealed: true`, `done: true` —, et tout appel suivant à `submit`
+rend `ignored`. **C'est alors à l'activité d'enchaîner.** Or « Attrape le
+Détour » écrivait :
+
+```js
+if (result.correct) regTimeout(nextItem, 350);
+else { … // Question toujours en cours : le métronome repart tout seul. }
+```
+
+La seconde moitié est fausse une fois sur deux. L'élève qui se trompait deux
+fois restait sur le même calcul pour toujours — sans erreur, sans message, sans
+bouton. L'écran avait l'air vivant.
+
+**L'ALLURE LENTE N'Y EST POUR RIEN** : elle n'a fait que rendre le défaut facile
+à atteindre. Plus les disques traînent, plus on a le temps d'en taper deux
+mauvais. C'est pour cela qu'il l'a vu ce jour-là.
+
+**ET C'EST LA SEULE ACTIVITÉ SUR VINGT À AVOIR CE TROU.** Les dix-neuf autres
+appellent `renderNext()` sans condition. Vérifié fichier par fichier, et une
+épreuve le garde maintenant pour toutes : `tests/questionQuiTourne.test.mjs`.
+
+**Corrigé** avec `result.done`, le mot du noyau. Mesuré après : huit erreurs
+font tourner quatre énoncés, deux tentatives chacun. Gardé par
+`node tools/attrapeQuiRepond.mjs`, qui TOMBE quand on remet le défaut — un seul
+énoncé au lieu de quatre.
+
+## L'adresse du site sur l'écran à projeter — 6 novembre
+
+> « sur la liste de code à projeter met aussi en gros (là c'est en petit)
+> l'adresse du site (sans le https:// ou http://) »
+
+DEUX CHOSES, et la seconde explique la première.
+
+1. **L'ADRESSE EST EN PETIT.** Elle est à 2,1 vh dans l'en-tête, à droite du
+   titre — soit quinze pixels sur un vidéoprojecteur de 720. On lit
+   l'identifiant et le code du fond de la salle ; l'adresse, non. Or c'est
+   **la première chose à taper**, et celle qu'il doit répéter à voix haute
+   trente fois.
+2. **SANS LE `https://`.** On ne l'épelle pas, on ne le tape pas — un
+   navigateur le met tout seul — et il prend la moitié de la place d'une
+   adresse de huit lettres. C'est du bruit projeté en grand.
+
+Ce n'est pas un détail d'affichage : cet écran existe pour qu'une classe
+entière se connecte en deux minutes.
+
+**FAIT** : l'adresse est désormais dans une pastille jaune, en
+`min(4,4 vh ; 3,1 vw)` — le min() parce qu'une adresse longue
+(« college-jean-moulin.fr/atoutmath ») déborderait du bord droit sur un 4/3 —,
+sans protocole et sans barre finale. UN SOUS-DOSSIER RESTE EN ENTIER : sans son
+chemin, l'élève n'arrive nulle part. Et le `www.` reste : il se tape, et
+certains hébergements ne répondent QUE là.
+
+> « c'est atout-math.fr »
+
+Correction prise : c'était le DÉCOR de ma sonde qui disait « atoutmath.fr »,
+pas le logiciel — l'écran lit `location.origin`, donc sa vraie adresse. Le
+décor dit maintenant la sienne, pour que les photos ne mentent pas.
+
+### DEUX DÉFAUTS TROUVÉS EN CHEMIN SUR LE MÊME ÉCRAN
+
+`node tools/projectionDesCodes.mjs` était DÉJÀ ROUGE avant d'y toucher —
+quinze mesures en échec, sur l'écran même dont il parlait :
+
+1. **LA PREMIÈRE LIGNE DE CHAQUE COLONNE ÉTAIT BLANCHE.** La zébrure disait
+   `nth-child(even)`, mais l'en-tête « identifiant / code » est le PREMIER
+   enfant de la section : la première ligne d'élève est donc le deuxième, et
+   elle était peinte en blanc. Chaque colonne s'ouvrait sans couleur, pile là
+   où l'œil se pose pour savoir dans quelle colonne il est. Rémy avait demandé
+   « 2 colonnes avec des couleurs pour pas confondre ». Un mot : `odd`.
+2. **LES IDENTIFIANTS ÉTAIENT COUPÉS SUR UN PROJECTEUR 4/3.** Trente sur
+   trente, en points de suspension, sur un 1024 × 768 avec des noms longs. Un
+   identifiant tronqué n'est plus un identifiant : l'élève ne peut pas se
+   connecter, et personne ne le voit du tableau. La formule de largeur comptait
+   3,4 em « pour le code plus les marges » ; le compte posé en donne 5,9 — six
+   signes à 0,6 em mais en corps 1,1 avec 0,1 em d'interlettrage font déjà
+   4,56 em, et les marges 1,3 de plus. L'ancien commentaire disait même que le
+   min() de la feuille de style s'en chargerait : il ne peut rien quand c'est
+   la borne de largeur elle-même qui ment.
+
+Les trois écrans sont au vert : « Tout tient sur un écran. »
+
 ### LES DEUX AUTRES
 
 · **Le décompte du classement** (son idée) : trois secondes après la dernière,

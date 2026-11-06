@@ -117,7 +117,7 @@ for (const [n, long, quoi] of [[12, 0, 'petit groupe'], [24, 0, 'classe ordinair
     const eleves = classe(n, long);
     const r = reglageDeProjection(eleves);
     const fichier = `tools/tmp/projection-${n}${long ? '-longs' : ''}.html`;
-    writeFileSync(fichier, htmlDesBillets({ eleves, nom: '6e B', origine: 'https://atoutmath.fr/' }));
+    writeFileSync(fichier, htmlDesBillets({ eleves, nom: '6e B', origine: 'https://atout-math.fr/' }));
     console.log(`\n\x1b[1m${n} élèves — ${quoi}\x1b[0m`
         + gris(`  ${r.blocs} blocs × ${r.lignes} lignes · ${r.taille} / ${r.tailleLargeur}`));
 

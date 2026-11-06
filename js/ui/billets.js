@@ -142,9 +142,28 @@ function tenterAvec(nombre, blocs, long) {
     // lettres ridicules.
     const parHauteur = Math.max(1.9, Math.min(5.5, (84 / lignes) * 0.55));
     // EN LARGEUR : un bloc occupe (100/blocs) vw, moins les gouttières. Une
-    // chasse de police à chasse fixe vaut 0,6 em, et le code plus les marges
-    // en coûtent trois de plus.
-    const parLargeur = Math.max(1.2, ((100 / blocs) - 3) / (0.6 * long + 3.4));
+    // chasse de police à chasse fixe vaut 0,6 em.
+    //
+    // ── CE QUE LE CODE COÛTE VRAIMENT, ET C'ÉTAIT SOUS-ESTIMÉ ──────────
+    //
+    // La constante valait 3,4 em « pour le code plus les marges ». MESURÉ sur
+    // un projecteur 4/3 de 1024 × 768, trente élèves aux noms longs : les
+    // TRENTE identifiants étaient coupés en points de suspension. Un
+    // identifiant tronqué n'est plus un identifiant — l'élève ne peut pas se
+    // connecter, et personne ne le voit du tableau.
+    //
+    // LE COMPTE, POSÉ : le code fait six signes à 0,6 em, mais en 1,1 em de
+    // corps et avec 0,1 em d'interlettrage, soit 6 × 0,6 × 1,1 + 6 × 0,1 =
+    // 4,56 em ; les deux marges de la ligne (0,9 vw chacune) et l'espace entre
+    // les deux colonnes de texte (1 vw) en ajoutent près de 1,3 em à ces
+    // tailles-là. On arrondit à 5,9.
+    //
+    // ET L'ANCIEN COMMENTAIRE DISAIT DÉJÀ L'ERREUR : « si celui de Rémy est un
+    // vieux 4/3, le min() de la feuille de style s'en charge, et personne ne
+    // lit une ligne coupée ». Le min() ne peut rien quand c'est la borne de
+    // LARGEUR elle-même qui ment : il choisit la plus petite de deux valeurs,
+    // dont aucune n'était juste.
+    const parLargeur = Math.max(1.2, ((100 / blocs) - 3) / (0.6 * long + 5.9));
     // POUR COMPARER DEUX DÉCOUPAGES, IL FAUT UNE SEULE UNITÉ — donc une
     // proportion d'écran. 16/9 est celle des salles d'aujourd'hui. Si celui de
     // Rémy est un vieux 4/3, le texte sortira un peu plus petit que prévu : le
@@ -152,6 +171,34 @@ function tenterAvec(nombre, blocs, long) {
     // coupée. C'est une hypothèse sur l'OPTIMUM, jamais sur la justesse.
     return { blocs, lignes, parHauteur, parLargeur,
              lisible: Math.min(parHauteur, parLargeur * PROPORTION) };
+}
+
+/**
+ * L'ADRESSE TELLE QU'ON LA DIT À VOIX HAUTE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « met aussi en gros (là c'est en petit) l'adresse du site (sans le
+ * https:// ou http://) ».
+ *
+ * ON NE L'ÉPELLE PAS, ON NE LA TAPE PAS — le navigateur met le protocole tout
+ * seul —, et elle prend la moitié de la place d'une adresse de huit lettres.
+ * C'est du bruit projeté en grand devant trente élèves.
+ *
+ * LA BARRE FINALE S'EN VA AUSSI, et pour la même raison : « atout-math.fr
+ * slash » ne se dit pas. UN SOUS-DOSSIER, LUI, RESTE EN ENTIER : une
+ * installation dans `monsite.fr/atoutmath/` donne « monsite.fr/atoutmath », et
+ * sans ce chemin l'élève n'arrive nulle part.
+ *
+ * ON NE TOUCHE PAS AU `www.` : il se tape, lui, et certains hébergements ne
+ * répondent QUE là. Retirer ce qui ne se tape pas, garder tout le reste.
+ *
+ * @param {string} origine  ce que `location.origin + chemin` a donné
+ * @returns {string}        l'adresse à lire du fond de la salle
+ */
+export function adresseALire(origine) {
+    const nu = String(origine == null ? '' : origine).trim();
+    return nu.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
 }
 
 export function reglageDeProjection(eleves) {
@@ -333,6 +380,29 @@ export function htmlDesBillets({ eleves, nom = '', origine = '' }) {
                  align-items: baseline; justify-content: space-between; gap: 1vh 2vw; }
       .pr-tete h2 { font-size: 3.2vh; margin: 0; }
       .pr-tete p { margin: 0; font-size: 2.1vh; color: #333; }
+      /* ── L'ADRESSE SE LIT DU FOND DE LA SALLE ────────────────────────
+
+         RÉMY : « met aussi en gros (là c'est en petit) l'adresse du site ».
+         Elle était à 2,1 vh — quinze pixels sur un vidéoprojecteur de 720 —
+         au bout d'une phrase, à droite du titre. Or c'est LA PREMIÈRE CHOSE
+         À TAPER, et celle qu'il doit répéter trente fois à voix haute.
+
+         LE le min() ENTRE HAUTEUR ET LARGEUR, comme pour les lignes : une
+         adresse longue — college-jean-moulin.fr/atoutmath — déborderait
+         sinon du bord droit sur un 4/3, où un vw vaut moins qu'un vh.
+
+         ET UN FOND JAUNE PLUTÔT QU'UN GRAS DE PLUS : un vidéoprojecteur
+         délave les couleurs et écrase les graisses ; une pastille, elle,
+         reste une pastille. C'est la même raison qui a donné leur fond clair
+         aux blocs. */
+      .pr-adresse { display: flex; align-items: baseline; gap: .9vw;
+                    flex-wrap: wrap; }
+      .pr-adresse .pr-dit { font-size: 2.1vh; color: #333; }
+      .pr-adresse b { font-family: ui-monospace, Menlo, Consolas, monospace;
+                      font-size: min(4.4vh, 3.1vw); line-height: 1.1;
+                      color: #1f2937; background: #fde68a;
+                      padding: .3vh .9vw; border-radius: .8vh;
+                      border: .2vh solid #f0b429; }
       .pr-tete b { font-family: ui-monospace, Menlo, Consolas, monospace; }
       .pr-grille { flex: 1 1 auto; min-height: 0; display: grid;
                    grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0 1.2vw; }
@@ -381,13 +451,20 @@ export function htmlDesBillets({ eleves, nom = '', origine = '' }) {
       .pr-ligne:nth-child(5n + 1) { border-bottom: 3px solid rgb(15 23 42 / .38); }
       .pr-bloc section > .pr-ligne:last-child { border-bottom: none; }
       .pr-bloc--1 .pr-ligne { background: #cddef9; }
-      .pr-bloc--1 .pr-ligne:nth-child(even) { background: #ffffff; }
+      /* odd ET NON even : l'en-tête « identifiant / code » est le PREMIER
+         enfant de la section, si bien que la première ligne d'élève est le
+         deuxième — et even la peignait en blanc. Chaque colonne s'ouvrait
+         donc sur une ligne sans couleur, exactement là où l'oeil se pose pour
+         savoir dans quelle colonne il est. Rémy : « 2 colonnes avec des
+         couleurs pour pas confondre ». MESURÉ par la sonde, qui lit la
+         première ligne de chaque bloc : UNE teinte pour trois blocs. */
+      .pr-bloc--1 .pr-ligne:nth-child(odd) { background: #ffffff; }
       .pr-bloc--1 .pr-code { color: #15397c; }
       .pr-bloc--2 .pr-ligne { background: #c0e7cc; }
-      .pr-bloc--2 .pr-ligne:nth-child(even) { background: #ffffff; }
+      .pr-bloc--2 .pr-ligne:nth-child(odd) { background: #ffffff; }
       .pr-bloc--2 .pr-code { color: #14603a; }
       .pr-bloc--3 .pr-ligne { background: #f3dabb; }
-      .pr-bloc--3 .pr-ligne:nth-child(even) { background: #ffffff; }
+      .pr-bloc--3 .pr-ligne:nth-child(odd) { background: #ffffff; }
       .pr-bloc--3 .pr-code { color: #8a4708; }
       @media print { .rien { display: none; } }
     </style></head><body data-vue="billets">
@@ -456,7 +533,9 @@ export function htmlDesBillets({ eleves, nom = '', origine = '' }) {
     <div class="projection">
       <div class="pr-tete">
         <h2>${esc(nom)} — ton identifiant et ton code</h2>
-        <p>Tu les tapes sur <b>${esc(origine)}</b></p>
+        <!-- L'ADRESSE EN GROS, ET SANS LE PROTOCOLE : voir adresseALire. -->
+        <p class="pr-adresse"><span class="pr-dit">Tu les tapes sur</span><b>${
+            esc(adresseALire(origine))}</b></p>
       </div>
       <div class="pr-grille" style="--lignes: ${reglage.lignes}; --taille: ${reglage.taille}; --taille-l: ${reglage.tailleLargeur}">
         ${blocs.map((bloc, i) => `<section class="pr-bloc pr-bloc--${i + 1}">
