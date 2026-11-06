@@ -15082,6 +15082,21 @@ body.en-boite > #app-container { background: none; }
     color: var(--success-texte); font-variant-numeric: tabular-nums; }
 .defi-gagne small { font-size: .7rem; font-weight: 800; letter-spacing: .09em;
     text-transform: uppercase; margin-left: 4px; }
+/* LA VRAIE MESURE, ÉCRITE EN TOUTES LETTRES SOUS LES POINTS.
+   RÉMY, après l'avoir lancé en classe : « je trouvais que la vraie réponse
+   passait vite ». Elle était déjà sur le dessin — en petit, au milieu du
+   secteur — et c'est justement là qu'on ne la cherche pas quand on vient de
+   lire ses points. */
+.defi-vrai { font-size: 1rem; font-weight: 700; color: var(--text-muted);
+    margin-top: 2px; }
+.defi-vrai b { color: var(--text-main); font-size: 1.15rem; }
+/* ET LE BOUTON DIT CE QU'IL FAIT. Il disparaissait après le pari, et la carte
+   sautait d'un centimètre au moment précis où l'on voulait lire son écart. */
+.ea-go--suite { background: var(--bg-hover); color: var(--text-main); }
+/* LE DÉCOMPTE DU CLASSEMENT — « on rassemble les scores ». Même carte que
+   l'annonce du départ, et c'est voulu : le départ était commun, l'arrivée
+   doit l'être aussi, et l'élève reconnaît l'écran. */
+.defi-carte--compte .defi-compte { color: var(--primary-texte); }
 
 /* === LIRE UNE FRACTION, ET LES HISTOIRES D'ARGENT ==========================
    Deux exercices dont l'ÉNONCÉ EST UN DESSIN — une figure coloriée, un billet

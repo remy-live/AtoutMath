@@ -5283,3 +5283,94 @@ Gardé par `node tools/seuilQuiSuit.mjs` (cinq contrôles, le nombre tapé dans 
 vrai panneau) et par une épreuve de `tests/reglagesGroupes.test.mjs` qui exige
 que le panneau EMPRUNTE la règle au lieu d'en écrire une seconde. Les deux vues
 tomber.
+
+## Le défi d'estimation, joué avec sa classe — 6 novembre
+
+> « pour le défi, pour les angles, je trouvais que la vraie réponse passait vite
+> et aussi est ce normal que tous les élèves n'aient pas eu le podium ? On
+> pourrait pas avoir un petit décompte ou forcer une requete php pour avoir le
+> classement total »
+
+TROIS CHOSES, et c'est un retour de CLASSE, pas d'essai : il l'a lancé pour de
+vrai, avec ses élèves devant lui.
+
+1. **LA VRAIE RÉPONSE PASSE TROP VITE.** Les huit cents millisecondes de retour
+   sont mon choix, et je l'avais écrit noir sur blanc dans le code : « on VOIT
+   sa mince part de camembert, mais on ne s'y installe pas, la minute est à
+   toute la classe ». C'est la moitié du raisonnement. L'autre moitié est que
+   l'écart est **ce qui construit le repère pour la fois d'après** — c'est la
+   phrase du robot, c'est la raison d'être de l'exercice —, et un repère qu'on
+   n'a pas le temps de lire ne se construit pas. Le chrono a mangé la seule
+   chose qu'on voulait montrer.
+2. **TOUS LES ÉLÈVES N'ONT PAS EU LE PODIUM.** À vérifier avec PLUSIEURS
+   élèves à la fois : une sonde à un seul élève ne peut rien en dire, et c'est
+   exactement le genre de défaut qui ne se voit qu'à trente.
+3. **SA PROPOSITION : un décompte, ou forcer la requête.** Elle est juste sur
+   le fond : le tableau est une PHOTO prise à l'instant où chaque ardoise
+   interroge, et trente ardoises n'interrogent pas au même moment. Un petit
+   décompte après la dernière seconde donnerait au serveur le temps de recevoir
+   les trente scores, et à tout le monde le même instant pour découvrir le
+   classement — c'est la même idée que les douze secondes d'annonce au départ,
+   par l'autre bout.
+
+Écrit ici AVANT d'aller voir le code.
+
+### CE QUE LA MESURE À TROIS, PUIS À TRENTE, A DIT
+
+**Une sonde à trois élèves a reproduit le podium incomplet du premier coup.**
+À la seconde où le tableau s'est affiché : Ana lisait « 1e sur 1 » avec UN seul
+prénom au podium — le sien —, Bob « 1e sur 2 », Gus le classement entier. Le
+tableau est une PHOTO prise par le serveur à l'instant où CHAQUE ardoise
+interroge, et les trente n'interrogent pas au même moment.
+
+**Et le journal du serveur criait, à trois élèves déjà :**
+
+```
+PHP Fatal error: Uncaught PDOException: SQLSTATE[HY000]:
+General error: 5 database is locked   …   api/lib/db.php:239
+POST /api/defi/score → 500
+```
+
+D'où `tools/trenteDUnCoup.mjs`, écrit pour cette remarque : trente élèves qui
+envoient DANS LA MÊME SECONDE, sans navigateur. **Aucune mesure du dépôt ne
+faisait cela** — `testApi.php` interroge une requête à la fois, les sondes
+d'écran ouvrent un navigateur ou deux. Premier passage :
+
+> 21 élèves sur 30 restés à la porte · 24 scores perdus · 6 au classement
+
+**LA CAUSE, ET ELLE EST CONTRE-INTUITIVE.** `PRAGMA journal_mode = WAL` et
+`busy_timeout` étaient DÉJÀ posés. Ils ne servent à rien ici : `busy_timeout`
+fait patienter une écriture qui attend un verrou, mais PAS une LECTURE QUI VEUT
+DEVENIR UNE ÉCRITURE alors qu'une autre connexion a écrit entre-temps. SQLite
+rend alors `SQLITE_BUSY_SNAPSHOT` immédiatement. Et c'est exactement ce que
+faisait chaque requête d'élève : lire son jeton (curseur laissé ouvert), puis
+écrire `last_seen_at`.
+
+**TROIS CORRECTIONS, MESURÉES UNE PAR UNE :**
+
+1. `closeCursor()` avant d'écrire — d'où `lireUne()`, pour que la bonne façon
+   soit la plus courte à écrire. **30 sur 30 au lieu de 6.**
+2. `last_seen_at` ne s'écrit plus à chaque requête mais toutes les vingt
+   secondes : des centaines d'écritures par minute en moins, pour une donnée
+   qui sert à dire « vu il y a 3 min ».
+3. `ecrireMalgreLaRuee()` — six essais, 20 à 360 ms, AVEC DU DÉSORDRE : trente
+   ardoises qui patienteraient toutes 50 ms se bousculeraient de nouveau.
+
+**ET LE CLIENT AVALAIT L'ÉCHEC EN SILENCE** — `catch (e) {}`, avec en
+commentaire « on retentera au prochain état ». On ne retentait nulle part. Le
+score repart maintenant à chaque seconde du décompte, jusqu'à ce que le serveur
+dise oui.
+
+**ÉPROUVÉ À SOIXANTE AUSSI** : 60 sur 60. Et la sonde TOMBE quand on remet le
+curseur ouvert — 26 sur 30, le verrou de retour dans le journal.
+
+### LES DEUX AUTRES
+
+· **Le décompte du classement** (son idée) : trois secondes après la dernière,
+  tout le monde regarde le même décompte pendant que les scores arrivent et que
+  l'état se redemande à chaque seconde. C'est le mécanisme des douze secondes
+  d'annonce, par l'autre bout : **le départ était commun, l'arrivée doit
+  l'être.** Mesuré à trois élèves : même podium, même instant, rangs justes.
+· **La vraie réponse** : 800 ms → 2 400 ms, la mesure écrite en toutes lettres
+  sous les points (« c'était 130° — tu as dit 75° »), et un bouton
+  « Suivant → » pour qui veut aller plus vite. Un doigt ou une touche abrège.

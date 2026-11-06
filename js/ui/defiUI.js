@@ -82,6 +82,46 @@ function noter(quoi) {
 
 let enCours = false;
 
+// ── LE DÉCOMPTE DU CLASSEMENT, ET C'EST L'IDÉE DE RÉMY ────────────────────
+//
+// RÉMY, après l'avoir lancé avec sa classe : « est ce normal que tous les
+// élèves n'aient pas eu le podium ? On pourrait pas avoir un petit décompte ou
+// forcer une requete php pour avoir le classement total ».
+//
+// MESURÉ, TROIS ÉLÈVES, UN SEUL DÉFI : à la seconde où le tableau est apparu,
+// Ana lisait « 1e sur 1 » avec UN seul prénom au podium — le sien —, Bob
+// « 1e sur 2 », et Gus le classement entier. Quatre secondes plus tard les
+// trois écrans s'accordaient, mais le mal était fait : en classe, c'est
+// « le podium est faux » qu'on dit tout haut, et on ne revient pas dessus.
+//
+// LA CAUSE N'EST PAS UN DÉFAUT, C'EST UNE COURSE. Le tableau est une PHOTO
+// prise par le serveur à l'instant où CHAQUE ardoise interroge — et les trente
+// n'interrogent pas au même moment, ni après que les trente scores sont rangés.
+// Celle qui demande la première photographie une classe presque vide.
+//
+// ON ATTEND DONC ENSEMBLE. Trois secondes après la dernière, chacun regarde le
+// même décompte tomber pendant que son score part et que l'état se redemande à
+// chaque seconde. C'est exactement le mécanisme des douze secondes d'annonce au
+// départ, par l'autre bout : LE DÉPART ÉTAIT COMMUN, L'ARRIVÉE DOIT L'ÊTRE.
+const SECONDES_DU_CLASSEMENT = 3;
+
+// ── COMBIEN DE TEMPS ON REGARDE SON ÉCART ─────────────────────────────────
+//
+// RÉMY : « je trouvais que la vraie réponse passait vite ».
+//
+// Les huit cents millisecondes du premier jet étaient mon choix, et je l'avais
+// écrit : « on ne s'y installe pas, la minute est à toute la classe ». C'était
+// la moitié du raisonnement. L'autre moitié est que l'écart EST ce qui
+// construit le repère pour la fois d'après — c'est la raison d'être de
+// l'exercice —, et un repère qu'on n'a pas le temps de lire ne se construit
+// pas. Le chrono mangeait la seule chose qu'on voulait montrer.
+//
+// ET ON PEUT ENCHAÎNER PLUS TÔT : un doigt, une touche, et la question suivante
+// arrive. Celui qui va vite garde son rythme, celui qui regarde a son temps —
+// plutôt qu'un seul réglage qui déplaît aux deux.
+const ATTENTE_CORRECTION = 2400;
+const AVANT_DE_POUVOIR_PASSER = 450;
+
 // ── « TU N'AS PAS PARTICIPÉ » DIT À CEUX QUI VENAIENT DE JOUER ─────────────
 //
 // RÉMY, en classe, avec ses élèves : « pour le défi, on l'a fait avec les
@@ -228,6 +268,11 @@ async function jouer(defi) {
     voile.remove();
     await questionner(defi, exo);
     enCours = false;
+    // LE TABLEAU S'OUVRE ICI, ET PAS AVANT. `regarder` se refuse tant que
+    // `enCours` est vrai : le décompte du classement tient donc la porte
+    // fermée pendant que les scores arrivent, et tout le monde découvre le
+    // podium au même instant — avec les trente dedans.
+    regarder();
 }
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -264,6 +309,14 @@ async function questionner(defi, exo) {
         </div>`, 'defi-voile--jeu');
 
     const el = (s) => voile.querySelector(s);
+    // LA PARTIE EST FINIE QUAND LE DÉCOMPTE DU CLASSEMENT L'EST.
+    //
+    // `questionner` était `async` sans aucun `await` : elle rendait la main
+    // dès la première question posée, et `enCours` retombait à faux pendant
+    // tout le défi. On tient donc la promesse à la main, et c'est `terminer`
+    // qui la dénoue — c'est ce qui permet au décompte de retenir le tableau.
+    let denouer = null;
+    const finie = new Promise((r) => { denouer = r; });
     let n = 0;
     let bonnes = 0;
     // LES DEUX COMPTES SONT SÉPARÉS, et c'est la même séparation que dans
@@ -278,6 +331,9 @@ async function questionner(defi, exo) {
     let ms = 0;
     let fini = false;
     let clavier = null;
+    // CE QUI RELÂCHE L'ÉCOUTE DU « passer plus tôt », quand la minute tombe
+    // pendant qu'on regarde son écart.
+    let libererLaTouche = null;
 
     // LE TEMPS RESTANT SE RELIT SUR L'HORLOGE DU SERVEUR À CHAQUE SECONDE, et
     // ne se décompte pas tout seul : un onglet mis en arrière-plan fige les
@@ -296,31 +352,74 @@ async function questionner(defi, exo) {
     const terminer = async () => {
         clearInterval(tic);
         if (clavier) { document.removeEventListener('keydown', clavier); clavier = null; }
+        if (libererLaTouche) { libererLaTouche(); libererLaTouche = null; }
         voile.remove();
         // CE QUE CET APPAREIL A COMPTÉ, gardé avant tout aller-retour : si le
         // serveur tarde, l'élève lira au moins son propre score plutôt qu'un
         // démenti. Voir `ATTENTES_MAX` plus haut.
         monScore = { bonnes, total, points };
-        // ON ENVOIE LE SCORE, ET L'ÉCHEC N'EST PAS GRAVE : le serveur accepte
-        // le renvoi, et il garde le meilleur.
-        try {
-            // ON ENVOIE LES DEUX COMPTES. Le serveur classe sur les points ;
-            // quand le client ne lui en donne pas — une ardoise qui n'a pas
-            // encore la mise à jour —, il retombe sur les bonnes réponses, et
-            // le classement d'un défi de calcul est le même.
-            await apiEleve('/defi/score', { bonnes, total, ms, points });
-            // PUIS ON REDEMANDE L'ÉTAT TOUT DE SUITE.
-            //
-            // C'est la moitié qui compte de la correction de Rémy — « les
-            // autres c'était noté, tu n'as pas participé à ce défi ». Sans
-            // cette ligne, le tableau arrive au battement suivant, jusqu'à dix
-            // secondes plus tard ; et s'il arrive AVANT que le score ne soit
-            // rangé, il oublie celui qui vient de jouer. En le redemandant
-            // ici, la photo est prise après l'enregistrement, par
-            // construction — et le tableau s'affiche sans attendre, ce qui est
-            // de toute façon ce qu'on veut à la seconde où le défi tombe.
-            await rafraichirSeance();
-        } catch (e) { /* le réseau a hoqueté : on retentera au prochain état */ }
+        // LE DÉCOMPTE DU CLASSEMENT — voir `SECONDES_DU_CLASSEMENT`. Il n'est
+        // pas décoratif : c'est lui qui donne au serveur le temps de recevoir
+        // les trente scores avant que quiconque ne photographie le classement.
+        const attente = plateau(`
+            <div class="defi-carte defi-carte--compte">
+                <div class="defi-titre">⏱ LE DÉFI EST FINI</div>
+                <div class="defi-compte" data-compte>${SECONDES_DU_CLASSEMENT}</div>
+                <div class="defi-sous">On rassemble les scores de toute la classe…</div>
+            </div>`, 'defi-voile--annonce');
+        // ── LE SCORE PART, ET IL REPART TANT QU'IL N'EST PAS ARRIVÉ ──────
+        //
+        // IL ÉTAIT ENVOYÉ UNE FOIS, ET L'ÉCHEC AVALÉ EN SILENCE — `catch (e) {}`
+        // avec, en commentaire, « on retentera au prochain état ». On ne
+        // retentait nulle part. MESURÉ (`tools/trenteDUnCoup.mjs`) : sur trente
+        // ardoises qui envoient dans la même seconde, VINGT-QUATRE recevaient
+        // une erreur du serveur, et ces élèves-là n'étaient dans AUCUN podium —
+        // ni le leur, ni celui des autres. C'est, mot pour mot, ce que Rémy a vu
+        // dans sa classe : « est ce normal que tous les élèves n'aient pas eu le
+        // podium ? »
+        //
+        // LA CAUSE PRINCIPALE ÉTAIT AU SERVEUR et elle est corrigée là-bas. Mais
+        // un client qui perd son score en silence est un défaut à lui seul : un
+        // réseau d'établissement hoquette, une tablette repasse par le portail
+        // Wi-Fi, et l'élève disparaît du classement sans que personne ne sache
+        // pourquoi. Le décompte nous offre trois occasions de plus ; on les
+        // prend, et on s'arrête dès que le serveur dit oui.
+        let arrive = false;
+        const envoyer = async () => {
+            if (arrive) return;
+            try {
+                // ON ENVOIE LES DEUX COMPTES. Le serveur classe sur les points ;
+                // quand le client ne lui en donne pas — une ardoise qui n'a pas
+                // encore la mise à jour —, il retombe sur les bonnes réponses,
+                // et le classement d'un défi de calcul est le même.
+                const r = await apiEleve('/defi/score', { bonnes, total, ms, points });
+                // LE SERVEUR DIT `ok: false` QUAND IL N'Y A PLUS DE DÉFI. Le
+                // renvoyer serait inutile, et masquerait un vrai échec réseau.
+                if (r && r.ok !== undefined) arrive = true;
+            } catch (e) { /* on repassera au tour suivant du décompte */ }
+        };
+        await envoyer();
+        // PUIS ON REDEMANDE L'ÉTAT TOUT DE SUITE.
+        //
+        // C'est la moitié qui compte de la correction de Rémy — « les autres
+        // c'était noté, tu n'as pas participé à ce défi ». Sans cette ligne, le
+        // tableau arrive au battement suivant, jusqu'à dix secondes plus tard ;
+        // et s'il arrive AVANT que le score ne soit rangé, il oublie celui qui
+        // vient de jouer.
+        try { await rafraichirSeance(); } catch (e) { /* on retentera */ }
+        // ET ON REDEMANDE À CHAQUE SECONDE DU DÉCOMPTE. « forcer une requete
+        // php pour avoir le classement total », demandait Rémy : la voilà,
+        // trois fois plutôt qu'une — les trente scores n'arrivent pas au même
+        // instant, et une seule requête rate ceux qui traînent d'une seconde.
+        for (let reste = SECONDES_DU_CLASSEMENT - 1; reste >= 0; reste--) {
+            await dormir(1000);
+            const c = attente.querySelector('[data-compte]');
+            if (c) c.textContent = String(Math.max(0, reste));
+            await envoyer();
+            try { await rafraichirSeance(); } catch (e) { /* on retentera */ }
+        }
+        attente.remove();
+        denouer();
     };
 
     const poser = () => {
@@ -335,10 +434,29 @@ async function questionner(defi, exo) {
         zone.innerHTML = '';
         const parti = Date.now();
 
-        /** On affiche le compte, on laisse voir, et on enchaîne. */
-        const enchainer = (attente) => {
+        /**
+         * On affiche le compte, on laisse voir, et on enchaîne.
+         *
+         * `passable` : on peut abréger d'un doigt ou d'une touche, après un
+         * court délai de garde. Sans ce délai, le doigt encore posé sur « Je
+         * parie ! » sauterait la correction qu'on vient de demander.
+         */
+        const enchainer = (attente, passable = false) => {
             el('[data-bonnes]').textContent = String(enPoints ? points : bonnes);
-            setTimeout(() => {
+            let fait = false;
+            let ecoute = null;
+            const liberer = () => {
+                if (!ecoute) return;
+                document.removeEventListener('pointerdown', ecoute);
+                document.removeEventListener('keydown', ecoute);
+                ecoute = null;
+                libererLaTouche = null;
+            };
+            const suite = () => {
+                if (fait) return;
+                fait = true;
+                clearTimeout(minuteur);
+                liberer();
                 // LA MINUTE A PU TOMBER PENDANT CE TEMPS-LÀ, et le voile est
                 // alors démonté : poser une question de plus irait chercher des
                 // crochets qui n'existent plus.
@@ -346,7 +464,20 @@ async function questionner(defi, exo) {
                 zone.classList.remove('defi-ok', 'defi-ko');
                 n++;
                 poser();
-            }, attente);
+            };
+            const minuteur = setTimeout(suite, attente);
+            if (!passable) return;
+            setTimeout(() => {
+                if (fait || fini) return;
+                ecoute = (e) => {
+                    if (e.type === 'keydown'
+                        && e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+                    suite();
+                };
+                document.addEventListener('pointerdown', ecoute);
+                document.addEventListener('keydown', ecoute);
+                libererLaTouche = liberer;
+            }, AVANT_DE_POUVOIR_PASSER);
         };
 
         const repondre = (juste) => {
@@ -397,8 +528,13 @@ async function questionner(defi, exo) {
                 const b = zone.querySelector('[data-valeur]');
                 if (b) b.textContent = `${pari}°`;
             };
+            // ON NE PARIE QU'UNE FOIS. Le bouton reste à l'écran après le
+            // pari — il devient « Suivant → » —, et sans ce verrou un second
+            // appui compterait une deuxième question, avec le même écart.
+            let pose = false;
             const parier = () => {
-                if (fini) return;
+                if (fini || pose) return;
+                pose = true;
                 if (clavier) {
                     document.removeEventListener('keydown', clavier);
                     clavier = null;
@@ -423,13 +559,27 @@ async function questionner(defi, exo) {
                 svg.innerHTML = dessinDeLAngle(m, pari);
                 const pad = zone.querySelector('[data-pari]');
                 if (pad) {
+                    // ET ON ÉCRIT LA VRAIE MESURE EN TOUTES LETTRES. Elle est
+                    // déjà sur le dessin, en petit, au milieu du secteur — et
+                    // c'est justement là qu'on ne la cherche pas quand on vient
+                    // de lire ses points. Rémy : « la vraie réponse passait
+                    // vite » ; elle passait surtout inaperçue.
                     pad.innerHTML = '<div class="defi-gagne">+' + gagnes
-                        + '<small>pts</small></div>';
+                        + '<small>pts</small></div>'
+                        + '<div class="defi-vrai">c\'était <b>' + m.angle + '°</b>'
+                        + (ecart === 0 ? ' — pile poil !'
+                            : ` — tu as dit ${pari}°`) + '</div>';
                 }
+                // LE BOUTON DEVIENT « Suivant → » : il dit ce qu'on peut
+                // faire, au lieu de disparaître et de laisser la carte sauter
+                // d'un centimètre au moment où l'on veut lire son écart.
                 const go = zone.querySelector('[data-go]');
-                if (go) go.hidden = true;
+                if (go) {
+                    go.textContent = 'Suivant →';
+                    go.classList.add('ea-go--suite');
+                }
                 if (juste) zone.classList.add('defi-ok');
-                enchainer(800);
+                enchainer(ATTENTE_CORRECTION, true);
             };
             zone.querySelectorAll('[data-pas]').forEach((b) => {
                 b.onclick = () => bouger(Number(b.dataset.pas));
@@ -485,6 +635,9 @@ async function questionner(defi, exo) {
         });
     };
     poser();
+    // LA PARTIE N'EST FINIE QU'AU BOUT DU DÉCOMPTE DU CLASSEMENT : c'est cette
+    // promesse que `jouer` attend avant de rouvrir la porte du tableau.
+    return finie;
 }
 
 /* ------------------------------------------------------------ Le tableau --- */

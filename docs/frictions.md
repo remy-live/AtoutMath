@@ -6774,6 +6774,32 @@ erreur qui ne parle pas d'elles** — 3 novembre 2026
   dans la page de l'application partage son `document` : tout crochet non
   préfixé est un tirage au sort.
 
+**Rien ne mesurait ce qui n'arrive qu'à TRENTE** — 6 novembre
+
+- *Ce que je voulais faire* : comprendre pourquoi des élèves de Rémy
+  n'apparaissaient pas au podium du défi. Le dépôt a trois harnais et une
+  trentaine de sondes ; **aucun n'envoie deux requêtes en même temps**.
+  `tools/testApi.php` interroge le serveur une requête à la fois,
+  `boutEnBout.mjs` et les sondes d'écran ouvrent un navigateur ou deux. Or un
+  défi, c'est trente ardoises qui écrivent dans la même seconde — c'est même
+  son principe.
+- *Ce qui a coûté* : il a fallu une sonde d'écran à TROIS élèves pour voir le
+  premier `database is locked`, puis en écrire une quatrième
+  (`tools/trenteDUnCoup.mjs`) pour le mesurer vraiment. Et le défaut vivait
+  dans le logiciel depuis le premier jour du défi : il n'a été vu que parce
+  que Rémy l'a lancé dans une VRAIE classe.
+- *Combien de fois* : | (première) — mais la famille est large : le
+  rattachement de trente élèves au début de l'heure, la synchronisation de
+  fin de séance, l'envoi des travaux, l'impression des billets. Tout ce qui
+  arrive à une classe ENTIÈRE est hors de portée de nos mesures.
+- *Ce qui manque* : **un harnais de BOUSCULADE**, qui prenne une route de
+  l'API et la frappe à N clients simultanés en comptant les refus et en
+  relisant le journal du serveur. `tools/trenteDUnCoup.mjs` le fait pour le
+  défi ; il devrait être un OUTIL paramétré par la route, pas une sonde de
+  plus. Et la règle qu'il porte mériterait d'être écrite quelque part :
+  **une lecture non refermée avant une écriture verrouille SQLite, et
+  `busy_timeout` n'y peut rien.**
+
 **Récidive, 5 novembre (troisième barre)** — la sonde du défi d'estimation
 lisait la fenêtre d'aperçu par `document.querySelector('.modal-overlay')`. Il
 en existe **dix** dans cette page : neuf fenêtres déclarées en dur plus celle

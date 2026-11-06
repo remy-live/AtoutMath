@@ -549,9 +549,12 @@ function tableauDuDefi(array $classe, string $eleveId): ?array
 function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms,
                               ?int $points = null): array
 {
-    $s = db()->prepare('SELECT id, defi_debut, defi_fin FROM classes WHERE id = ?');
-    $s->execute([$eleve['class_id']]);
-    $classe = $s->fetch();
+    // `lireUne` ET NON UN `prepare` GARDÉ SOUS LE COUDE : la lecture se referme
+    // avant l'écriture qui suit. Sans cela, l'INSERT plus bas doit faire MONTER
+    // cette lecture en écriture, et SQLite refuse net dès qu'une autre ardoise a
+    // écrit entre-temps — ce qui, dans un défi, est le cas par construction.
+    $classe = lireUne('SELECT id, defi_debut, defi_fin FROM classes WHERE id = ?',
+        [$eleve['class_id']]);
     $debut = (int) ($classe['defi_debut'] ?? 0);
     $fin = (int) ($classe['defi_fin'] ?? 0);
     if (!$debut || time() > $fin + 300) {
@@ -567,23 +570,22 @@ function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms,
     // anciens clients derniers, sans que rien ne le dise.
     $points = $points === null ? $bonnes : max(0, min(99999, $points));
 
-    $q = db()->prepare('SELECT id, COALESCE(points, bonnes) AS points FROM defi_scores
-                         WHERE class_id = ? AND defi_debut = ? AND student_id = ?');
-    $q->execute([$eleve['class_id'], $debut, $eleve['id']]);
-    $deja = $q->fetch();
+    $deja = lireUne('SELECT id, COALESCE(points, bonnes) AS points FROM defi_scores
+                      WHERE class_id = ? AND defi_debut = ? AND student_id = ?',
+        [$eleve['class_id'], $debut, $eleve['id']]);
     if ($deja) {
         // ON GARDE LE MEILLEUR, ET SUR LES POINTS : c'est la colonne qui classe.
         if ((int) $deja['points'] >= $points) {
             return ['ok' => true, 'dit' => 'Score déjà enregistré.'];
         }
-        db()->prepare('UPDATE defi_scores SET bonnes = ?, total = ?, ms = ?, points = ? WHERE id = ?')
-            ->execute([$bonnes, $total, $ms, $points, $deja['id']]);
+        ecrireMalgreLaRuee('UPDATE defi_scores SET bonnes = ?, total = ?, ms = ?, points = ? WHERE id = ?',
+            [$bonnes, $total, $ms, $points, $deja['id']]);
         return ['ok' => true, 'dit' => 'Score mis à jour.'];
     }
-    db()->prepare('INSERT INTO defi_scores
+    ecrireMalgreLaRuee('INSERT INTO defi_scores
                      (id, class_id, student_id, defi_debut, bonnes, total, ms, points)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-        ->execute([uuidv4(), $eleve['class_id'], $eleve['id'], $debut,
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [uuidv4(), $eleve['class_id'], $eleve['id'], $debut,
             $bonnes, $total, $ms, $points]);
     return ['ok' => true, 'dit' => 'Score enregistré.'];
 }

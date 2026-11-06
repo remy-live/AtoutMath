@@ -205,7 +205,9 @@ const ecran = () => eleve.evaluate(() => {
         compteur: voile ? ((voile.querySelector('[data-bonnes]') || {}).textContent || '') : '',
         enTete: voile ? ((voile.querySelector('.defi-score') || {}).textContent || '')
             .replace(/\s+/g, ' ').trim() : '',
-        gagne: voile ? ((voile.querySelector('.defi-gagne') || {}).textContent || '') : ''
+        gagne: voile ? ((voile.querySelector('.defi-gagne') || {}).textContent || '') : '',
+        vrai: voile ? ((voile.querySelector('.defi-vrai') || {}).textContent || '') : '',
+        go: voile ? ((voile.querySelector('[data-go]') || {}).textContent || '') : ''
     };
 });
 
@@ -242,6 +244,23 @@ dire('APRÈS LE PARI, LE TRAIT POINTILLÉ ET L\'ÉCART APPARAISSENT',
     `${après.pointille} pointillé(s), ${après.ecart} secteur(s) d'écart`);
 dire('ET LES POINTS GAGNÉS S\'ÉCRIVENT, sans aucun verdict « faux »',
     /^\+\d+/.test(après.gagne.trim()), `« ${après.gagne.trim()} »`);
+
+// ── LA VRAIE RÉPONSE NE PASSE PAS EN COURANT D'AIR ────────────────────────
+//
+// RÉMY, après l'avoir lancé en classe : « je trouvais que la vraie réponse
+// passait vite ». Elle était déjà sur le dessin — en petit, au milieu du
+// secteur — et c'est justement là qu'on ne la cherche pas quand on vient de
+// lire ses points. On l'écrit donc en toutes lettres, ET on laisse le temps.
+dire('LA VRAIE MESURE EST ÉCRITE EN TOUTES LETTRES',
+    /c'était\s*\d+°/.test(après.vrai), `« ${après.vrai.trim()} »`);
+await dormir(1500);
+const tientEncore = await ecran();
+dire('ET ELLE EST ENCORE LÀ UNE SECONDE ET DEMIE PLUS TARD',
+    tientEncore.pointille === 1 && /c'était/.test(tientEncore.vrai),
+    tientEncore.pointille === 1 ? 'l\'écart tient à l\'écran' : 'la question a déjà changé');
+// ET L'ON PEUT PASSER PLUS TÔT : celui qui va vite garde son rythme.
+dire('ET LE BOUTON PROPOSE DE PASSER À LA SUITE', /Suivant/.test(tientEncore.go),
+    `« ${tientEncore.go.trim()} »`);
 
 // ── ON VISE L'ANGLE QU'ON LIT SUR LE DESSIN ────────────────────────────────
 //
@@ -291,7 +310,12 @@ const parierJuste = () => eleve.evaluate(() => {
 
 const visés = [];
 for (let i = 0; i < 3; i++) {
-    await dormir(1100);
+    // ON ATTEND QUE LA QUESTION SUIVANTE SOIT POSÉE. Le retour dure maintenant
+    // deux secondes et demie — c'est tout l'objet de la correction de Rémy —,
+    // et une sonde qui parie pendant qu'on regarde son écart ne mesure rien.
+    await eleve.waitForSelector('.defi-voile--jeu [data-valeur]', { timeout: 6000 })
+        .catch(() => {});
+    await dormir(150);
     const v = await parierJuste();
     if (!v) break;
     visés.push(v);
@@ -313,6 +337,17 @@ dire('ET LE COMPTEUR MONTE EN POINTS — le dessin dit bien l\'angle qu\'on esti
 // ── 7. LE TABLEAU DE FIN, EN POINTS ────────────────────────────────────────
 console.log('\nLE TABLEAU DE LA CLASSE');
 console.log('─'.repeat(64));
+
+// ── LE DÉCOMPTE DU CLASSEMENT, et c'est l'idée de Rémy ────────────────────
+//
+// « On pourrait pas avoir un petit décompte ou forcer une requete php pour
+// avoir le classement total ». Il tient la porte du tableau fermée pendant que
+// les trente scores arrivent — sans lui, chacun photographie une classe
+// presque vide, et les podiums se contredisent d'un écran à l'autre.
+const vuLeDecompte = await eleve.waitForSelector('.defi-carte--compte', { timeout: 60000 })
+    .then(() => true).catch(() => false);
+dire('LE DÉCOMPTE DU CLASSEMENT S\'AFFICHE AVANT LE TABLEAU', vuLeDecompte,
+    vuLeDecompte ? 'on rassemble les scores' : 'le tableau s\'ouvre sans attendre personne');
 await eleve.waitForSelector('.defi-carte--fin', { timeout: 60000 }).catch(() => {});
 // LE TABLEAU SUIT LES SCORES QUI ARRIVENT : on force une relecture, comme le
 // battement le fait, pour lire la version qui compte.

@@ -302,6 +302,8 @@ function handleLogin(): void
     );
     $stmt->execute([empreinteLogin($login)]);
     $student = $stmt->fetch();
+    // On referme avant d'écrire : voir `requireStudent`, même raison.
+    $stmt->closeCursor();
 
     // Une seconde d'attente sur l'échec : de quoi rendre l'essai en boucle
     // inintéressant, sans que l'élève qui se trompe une fois le remarque.
@@ -320,9 +322,12 @@ function handleLogin(): void
         fail(403, 'class_archived', "Cette classe est fermée.");
     }
 
+    // TRENTE ÉLÈVES ENTRENT DANS LA MÊME MINUTE, et c'est le début de chaque
+    // heure de cours. Mesuré avant cette ligne (`tools/trenteDUnCoup.mjs`) :
+    // VINGT ET UN SUR TRENTE restaient à la porte, la base verrouillée.
     $token = newToken();
-    db()->prepare('UPDATE students SET token_hash = ?, last_seen_at = ' . sqlMaintenant() . ' WHERE id = ?')
-        ->execute([hashToken($token), $student['id']]);
+    ecrireMalgreLaRuee('UPDATE students SET token_hash = ?, last_seen_at = '
+        . sqlMaintenant() . ' WHERE id = ?', [hashToken($token), $student['id']]);
     db()->prepare(sqlInsereSansDoublon() . ' INTO student_tokens (token_hash, student_id) VALUES (?, ?)')
         ->execute([hashToken($token), $student['id']]);
     elaguerJetons($student['id']);
