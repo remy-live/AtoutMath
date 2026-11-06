@@ -5364,6 +5364,42 @@ dise oui.
 **ÉPROUVÉ À SOIXANTE AUSSI** : 60 sur 60. Et la sonde TOMBE quand on remet le
 curseur ouvert — 26 sur 30, le verrou de retour dans le journal.
 
+## « Le défi ca cartonne, des idées dans ce style » — 6 novembre
+
+> « Le défi ca cartonne, des idées dans ce style »
+
+**PREMIER RETOUR FRANCHEMENT ENTHOUSIASTE SUR UN MÉCANISME, et il demande la
+suite.** Il ne demande pas un exercice de plus : il demande d'autres MOMENTS DE
+CLASSE. C'est une distinction qui vaut d'être écrite, parce qu'elle oriente tout
+ce qui suivra.
+
+### CE QUI FAIT MARCHER LE DÉFI, et qu'il faudra reprendre à chaque fois
+
+1. **TOUT LE MONDE PART À LA MÊME SECONDE** (les douze secondes d'annonce) ;
+2. **TOUT LE MONDE A LES MÊMES QUESTIONS** (la graine vient du serveur) ;
+3. **C'EST COURT, ÇA INTERROMPT, ET ÇA REND LA MAIN** — « on reprend la suite
+   des exercices normalement » ;
+4. **ÇA FINIT SUR UN INSTANT PARTAGÉ** — podium + ta place, et le décompte du
+   classement depuis le 6 novembre ;
+5. **ÇA COÛTE PRESQUE RIEN PAR MODE NOUVEAU**, parce que ça réutilise les
+   générateurs : « on pourrait faire cela avec les générateurs », disait-il.
+
+Tout ce qu'on proposera doit tenir ces cinq points, sans quoi ce ne sera pas
+« dans ce style ».
+
+### LA FAIBLESSE DU DÉFI, ET ELLE COMMANDE LES PROPOSITIONS
+
+Un classement récompense les rapides. Rémy l'avait déjà senti en choisissant
+« podium + ta place » plutôt que les trente prénoms — « ce sont justement les
+élèves dont il parlait la veille ». **Les meilleures idées « dans ce style »
+sont donc celles où l'élève lent compte AUSSI** : un but collectif, deux
+équipes, un record de classe à battre. On ne remplace pas le défi, on lui donne
+ses contraires.
+
+### Propositions envoyées, rien de codé
+
+Pas une ligne avant qu'il ait choisi : « fais moi des propositions d'abord ».
+
 ## « Attrape le Détour » se bloque à la troisième question — 6 novembre
 
 > « pour le attrape le détour, j'avais mis option lente, et au bout de la 3ème
