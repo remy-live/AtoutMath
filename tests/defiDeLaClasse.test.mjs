@@ -251,3 +251,102 @@ test('ET AU BOUT DE L\'ATTENTE, ON NE LE DÉMENT PAS', () => {
     assert.ok(repli >= 0 && faux >= 0 && repli < faux,
         '« Tu n\'as pas participé » reste la seule réponse possible');
 });
+
+// ── LE DÉFI EN MANCHES ─────────────────────────────────────────────────────
+//
+// RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+// ce style ». Une minute d'affilée ne lui laisse aucune place ; trois manches
+// de quarante secondes lui donnent deux pauses pour commenter.
+//
+// LE RANG DE LA MANCHE EST UNE FONCTION DE L'HORLOGE, et c'est tout l'objet de
+// ces épreuves. Une ardoise qui tiendrait son propre compteur dériverait de
+// celle du voisin au premier onglet mis en arrière-plan — c'est le défaut
+// qu'on a déjà corrigé deux fois sur cet écran. Deux ardoises qui lisent la
+// même seconde doivent lire la même manche, sans se parler.
+
+const troisManches = (o = {}) => ({
+    className: '6e B', messages: [], skippable: [], removed: [], calculatrice: [],
+    maintenant: 1_800_000_000,
+    // Trois manches de 40 s, deux entractes de 20 : 40+20+40+20+40 = 160.
+    defi: {
+        exo: 'calc-add', graine: 'abc', mode: 'qcm',
+        debut: 1_800_000_000, fin: 1_800_000_160,
+        manches: 3, duree: 40, pause: 20, ...o
+    },
+    defiTableau: null
+});
+
+test('LA MANCHE SE CALCULE SUR L\'HORLOGE, elle ne se compte pas', () => {
+    appliquerEtat(troisManches(), 1_800_000_000);
+    const a = (t) => defiEnCours(1_800_000_000 + t);
+
+    // Première manche : de 0 à 40.
+    assert.equal(a(0).manche, 1);
+    assert.equal(a(0).enPause, false);
+    assert.equal(a(0).resteManche, 40);
+    assert.equal(a(39).manche, 1);
+    // Premier entracte : de 40 à 60. La manche reste la 1re — c'est la
+    // SUIVANTE qu'on annonce, et l'écran le dit tout seul.
+    assert.equal(a(40).enPause, true);
+    assert.equal(a(40).resteAvantManche, 20);
+    assert.equal(a(55).resteAvantManche, 5);
+    assert.equal(a(55).resteManche, 0, 'on ne joue pas pendant l\'entracte');
+    // Deuxième manche : de 60 à 100.
+    assert.equal(a(60).manche, 2);
+    assert.equal(a(60).enPause, false);
+    assert.equal(a(60).resteManche, 40);
+    // Dernière manche : de 120 à 160, et AUCUN entracte après elle.
+    assert.equal(a(120).manche, 3);
+    assert.equal(a(159).manche, 3);
+    assert.equal(a(159).enPause, false, 'la dernière manche n\'a pas d\'entracte');
+});
+
+test('UN DÉFI D\'UNE SEULE MANCHE SE COMPORTE COMME AVANT', () => {
+    // UN PARCOURS LANCÉ HIER NE DOIT PAS CHANGER DE FORME. Sans `manches` ni
+    // `duree`, la manche unique dure tout le défi et il n'y a jamais d'entracte.
+    appliquerEtat({
+        className: '6e B', messages: [], skippable: [], removed: [], calculatrice: [],
+        maintenant: 1_800_000_000,
+        defi: { exo: 'calc-add', graine: 'abc', mode: 'qcm',
+                debut: 1_800_000_000, fin: 1_800_000_060 },
+        defiTableau: null
+    }, 1_800_000_000);
+    const d = defiEnCours(1_800_000_030);
+    assert.equal(d.manches, 1);
+    assert.equal(d.manche, 1);
+    assert.equal(d.enPause, false);
+    assert.equal(d.dureeManche, 60, 'une seule manche dure tout le défi');
+    assert.equal(d.resteManche, 30);
+});
+
+test('DEUX ARDOISES LISENT LA MÊME MANCHE À LA MÊME SECONDE', () => {
+    // L'UNE EST EN AVANCE DE TRENTE SECONDES sur son horloge. La correction
+    // d'horloge vaut pour la manche comme pour le temps restant : sans elle,
+    // l'une jouerait pendant que l'autre regarde l'entracte, et le professeur
+    // parlerait à une demi-classe.
+    appliquerEtat(troisManches(), 1_800_000_030);
+    const enAvance = defiEnCours(1_800_000_075);   // croit qu'il est +75
+    appliquerEtat(troisManches(), 1_800_000_000);
+    const alHeure = defiEnCours(1_800_000_045);    // il est vraiment +45
+    assert.equal(enAvance.manche, alHeure.manche);
+    assert.equal(enAvance.enPause, alHeure.enPause);
+    assert.equal(enAvance.resteManche, alHeure.resteManche);
+});
+
+test('LA DERNIÈRE MANCHE NE SE TERMINE JAMAIS EN ENTRACTE', () => {
+    // LE CAS QUE `rang < manches` PROTÈGE, et il demande des données
+    // INCOHÉRENTES pour se produire : une fin qui court au-delà de la dernière
+    // manche. C'est ce que donnerait une ligne écrite par une version d'avant,
+    // ou un `defi_fin` retouché à la main — et c'est arrivé dans ce dépôt, le
+    // jour où un harnais avançait la fin pour ne pas attendre.
+    //
+    // SANS LA GARDE, l'élève finirait sur un entracte perpétuel : les
+    // questions cachées, un décompte qui ne retombe jamais, et plus rien à
+    // faire jusqu'à ce que le défi s'efface. C'est précisément l'écran figé
+    // dont Rémy est déjà venu parler une fois.
+    appliquerEtat(troisManches({ fin: 1_800_000_300 }), 1_800_000_000);
+    const tard = defiEnCours(1_800_000_200);
+    assert.equal(tard.manche, 3, 'on ne dépasse jamais la dernière manche');
+    assert.equal(tard.enPause, false,
+        'la dernière manche se termine en jouant, jamais en entracte');
+});

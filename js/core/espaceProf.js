@@ -342,8 +342,23 @@ export const fermerHorsSeance = (classId, ferme, mot = '', exos = undefined) =>
  * et c'est toute la différence entre une minute et trente minutes différentes.
  * `secondes = 0` arrête le défi en cours.
  */
-export const lancerLeDefi = (classId, exo, secondes, mode = 'qcm') =>
-    auServeur('/teacher/class', { classId, action: 'defi', exo, secondes, mode });
+/**
+ * LANCER UN DÉFI — et `secondes` est la durée d'UNE MANCHE.
+ *
+ * RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+ * ce style ». D'où les manches : « 3 × 40 s » se lit tout seul, « deux minutes
+ * coupées en trois » non. Le serveur compte les pauses dans la fin.
+ *
+ * `memeGraine` REJOUE LA MÊME SÉRIE — mêmes questions, même ordre — pour que la
+ * classe batte le score qu'elle vient de faire. Une série neuve ne se
+ * comparerait à rien.
+ */
+export const lancerLeDefi = (classId, exo, secondes, mode = 'qcm', opts = {}) =>
+    auServeur('/teacher/class', {
+        classId, action: 'defi', exo, secondes, mode,
+        manches: opts.manches || 1,
+        memeGraine: !!opts.memeGraine
+    });
 
 /** Les réglages d'exercice d'une classe : saut autorisé, exercice retiré. */
 export const lesReglages = (classId) =>

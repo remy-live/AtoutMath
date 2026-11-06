@@ -216,7 +216,8 @@ function etatDeSeance(array $eleve): array
                               impose_jusqu_a, impose_plein_ecran, chrono_fin, chrono_a_zero,
                               pause_mot, bac_ferme, bac_minutes, bac_jeux,
                               hors_seance, hors_seance_mot,
-                              defi_exo, defi_graine, defi_mode, defi_debut, defi_fin
+                              defi_exo, defi_graine, defi_mode, defi_debut, defi_fin,
+                              defi_manches, defi_duree
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
@@ -449,6 +450,17 @@ function etatDeSeance(array $eleve): array
  * plus un défi, c'est un tableau de scores. L'ardoise n'a donc aucune règle à
  * appliquer — elle reçoit l'un ou l'autre, jamais les deux.
  */
+/**
+ * LA PAUSE ENTRE DEUX MANCHES, en secondes.
+ *
+ * VINGT SECONDES : assez pour dire une phrase à la classe — « regardez le
+ * troisième, c'est le piège du chapitre » —, trop peu pour que l'attention
+ * retombe. C'est le même ordre de grandeur que les douze secondes d'annonce,
+ * et pour la même raison : un temps mort de classe se compte en souffles, pas
+ * en minutes.
+ */
+const DEFI_PAUSE = 20;
+
 function defiEnCours(array $classe): ?array
 {
     $fin = (int) ($classe['defi_fin'] ?? 0);
@@ -462,6 +474,12 @@ function defiEnCours(array $classe): ?array
         'graine' => (string) $classe['defi_graine'],
         'mode'   => ($classe['defi_mode'] ?? 'qcm') === 'saisie' ? 'saisie' : 'qcm',
         'debut'  => (int) $classe['defi_debut'],
+        // LES MANCHES ET LA DURÉE DE CHACUNE. L'ardoise en déduit dans quelle
+        // manche elle est et combien il lui reste — elle ne le devine pas, et
+        // elle ne le décide pas : c'est la même horloge pour les trente.
+        'manches' => max(1, (int) ($classe['defi_manches'] ?? 1)),
+        'duree'   => max(1, (int) ($classe['defi_duree'] ?? 0)) ?: null,
+        'pause'   => DEFI_PAUSE,
         'fin'    => $fin,
     ];
 }

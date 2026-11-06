@@ -5396,9 +5396,71 @@ sont donc celles où l'élève lent compte AUSSI** : un but collectif, deux
 équipes, un record de classe à battre. On ne remplace pas le défi, on lui donne
 ses contraires.
 
-### Propositions envoyées, rien de codé
+### CE QU'IL A CHOISI, le jour même
 
-Pas une ligne avant qu'il ait choisi : « fais moi des propositions d'abord ».
+**La barre de la classe**, **le record de la classe**, et **les quatre petites
+d'abord** (rejouer le même défi · le défi en manches · la question au tableau ·
+deux équipes). **Pas le sondage** — celui-là attendra, et c'est son droit : je
+le trouvais le plus utile, il trouve le reste plus urgent, et c'est lui qui est
+devant la classe.
+
+### ET JE REGROUPE AUTREMENT QUE LUI, en le disant
+
+Il a demandé « les quatre petites d'abord ». Trois d'entre elles ne touchent
+qu'au LANCEMENT du défi ; la quatrième — deux équipes — est un CUMUL de scores,
+c'est-à-dire exactement la plomberie de la barre de la classe et du record.
+Les livrer ensemble, c'est écrire deux fois la même addition et en oublier une
+le jour où on la corrige. D'où deux lots :
+
+  · **lot 1 — le lancement** : rejouer le même défi, les manches, la question
+    au tableau ;
+  · **lot 2 — le score collectif** : la barre de la classe, deux équipes, le
+    record. Une seule addition, trois façons de la montrer.
+
+### LE CUMUL EN DIRECT NE DOIT PAS COÛTER UNE REQUÊTE DE PLUS
+
+Une barre qui se remplit en direct demande de connaître le score de trente
+élèves PENDANT le défi — alors qu'aujourd'hui chacun n'envoie le sien qu'à la
+fin. Trente ardoises qui écriraient toutes les trois secondes, c'est la
+bousculade qu'on vient de corriger, refaite exprès.
+
+**ON MONTE DONC SUR LE BATTEMENT QUI EXISTE.** L'ardoise interroge déjà
+`/session` toutes les dix secondes : le score en cours part DANS cette
+requête-là. Zéro requête de plus, et le serveur rend le total de la classe dans
+sa réponse. C'est la règle qui a déjà servi deux fois cette semaine : ne pas
+ajouter un second chemin à côté de celui qui marche.
+
+À vérifier avec `tools/trenteDUnCoup.mjs` avant de livrer.
+
+### LOT 1 LIVRÉ — ET TROIS PIÈGES EN CHEMIN
+
+**Ce qui est fait** : les manches (jusqu'à cinq, avec un entracte de vingt
+secondes), « ↻ Rejouer » (la même série, à la question près), et « 📺 Au
+tableau » (les questions du défi en grand, une par une, la réponse retournée
+quand il le décide, aux flèches du clavier).
+
+**1. UN BOUTON QUI EXISTE ET QUI NE FAIT RIEN.** `[data-defi-tableau]` n'était
+pas dans la liste du `closest()` de l'espace des classes : il se dessinait, il
+se cliquait, et le répartiteur sortait sur `if (!el) return;` — sans erreur,
+sans message. Le dépôt a une épreuve pour exactement cela, et elle m'a attrapé.
+
+**2. MAIS ELLE AVAIT DEUX TROUS, et c'est `epreuveTombe` qui les a dits.**
+Elle lisait LIGNE À LIGNE : un crochet écrit à la ligne sous `<button` lui
+échappait — sur mes trois boutons, elle en a vu deux. Et en acceptant tout
+crochet « lu quelque part », elle laissait passer le défaut même qu'elle garde :
+un crochet d'AIGUILLAGE (`if (d.defiTableau !== undefined)`) est lu, et pourtant
+mort s'il manque à la liste. Retiré de la liste, l'épreuve restait verte.
+Corrigée : balise entière, et on distingue le PORTEUR de valeur (`d.prenom`) de
+l'AIGUILLAGE (`d.x !== undefined`). Les deux défauts la font tomber maintenant.
+
+**3. ET `[hidden]` NE CACHAIT RIEN — c'est la PHOTO qui l'a dit.** La réponse
+du tableau s'affichait en permanence : `[hidden] { display: none }` a une
+spécificité de ZÉRO, et le `display: flex` de la classe l'emportait. Pire, ma
+sonde disait le contraire, parce qu'elle lisait la PROPRIÉTÉ `hidden` au lieu
+du pixel. Le même piège était dans l'entracte : les réponses restaient
+cliquables derrière le décompte. **Une mesure qui lit une propriété ne mesure
+pas ce qui est peint** — la sonde demande maintenant son rectangle à
+l'élément.
 
 ## « Attrape le Détour » se bloque à la troisième question — 6 novembre
 

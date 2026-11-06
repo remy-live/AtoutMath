@@ -2953,10 +2953,38 @@ function outilDefi(info, ch, enCours, defiCourt) {
                 <button type="button" class="ec-pilote-btn" data-defi-voir
                         title="Voir trois questions de cet exercice, comme les élèves les auront"
                         >👁 Aperçu</button>
+                <!-- LES MANCHES. Rémy, après l'avoir lancé en classe : « Le
+                     défi ca cartonne, des idées dans ce style ». Une minute
+                     d'affilée ne lui laisse aucune place ; trois manches de
+                     quarante secondes lui donnent DEUX PAUSES de vingt
+                     secondes pour commenter, et la classe repart sur sa
+                     lancée. La durée choisie est celle d'UNE manche. -->
+                <select class="ec-champ ec-champ--mince" data-defi-manches
+                        aria-label="En combien de manches">
+                    <option value="1">1 manche</option>
+                    <option value="2">2 manches</option>
+                    <option value="3">3 manches</option>
+                    <option value="5">5 manches</option>
+                </select>
                 <button type="button" class="ec-pilote-btn" data-defi-go>Lancer</button>
                 ${defiCourt
                     ? '<button type="button" class="ec-pilote-btn ec-pilote-btn--actif"'
                         + ' data-defi-stop>Arrêter</button>' : ''}
+                <!-- LES DEUX ÉCRANS D'APRÈS, et ils n'ont de sens qu'une fois
+                     qu'un défi a eu lieu dans cette classe.
+                     « REJOUER » relance la MÊME série — mêmes questions, même
+                     ordre — pour que la classe batte le score qu'elle vient de
+                     faire. Une série neuve ne se comparerait à rien.
+                     « AU TABLEAU » projette ces questions-là, en grand, pour
+                     les corriger ensemble. Ce sont les VRAIES : un nouveau
+                     tirage ne corrigerait rien. -->
+                ${(vue.direct && vue.direct.defiGraine) ? `
+                <button type="button" class="ec-pilote-btn" data-defi-rejouer
+                        title="Relancer le même défi, avec exactement les mêmes questions"
+                        >↻ Rejouer</button>
+                <button type="button" class="ec-pilote-btn" data-defi-tableau
+                        title="Projeter les questions du dernier défi, pour corriger avec la classe"
+                        >📺 Au tableau</button>` : ''}
             </span>
             ${classementDuDefiHtml(vue.direct)}`;
 }
@@ -3523,6 +3551,12 @@ async function brancher(e, redessiner) {
         + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours], [data-ecran-seance],'
         + '[data-maison], [data-maison-mot], [data-defi-go], [data-defi-stop], [data-defi-voir],'
+        // LES DEUX ÉCRANS D'APRÈS LE DÉFI. Un crochet absent de cette liste
+        // désigne un bouton qui EXISTE et qui ne fait RIEN : il se dessine, il
+        // se clique, et le répartiteur ne le voit jamais. Mesuré par
+        // `tools/defiEnManches.mjs`, qui a cliqué « Au tableau » sans qu'il se
+        // passe quoi que ce soit — ni fenêtre, ni message, ni erreur.
+        + '[data-defi-rejouer], [data-defi-tableau],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
@@ -4619,20 +4653,67 @@ async function brancher(e, redessiner) {
         return;
     }
 
-    if (d.defiGo !== undefined || d.defiStop !== undefined) {
+    if (d.defiGo !== undefined || d.defiStop !== undefined || d.defiRejouer !== undefined) {
         const zone = el.closest('.ec-pilote') || document;
         if (d.defiStop !== undefined) {
             await fait(lancerLeDefi(cid, '', 0));
             return;
         }
-        const exo = (zone.querySelector('[data-defi-exo]') || {}).value || '';
+        // ── REJOUER : LE MÊME EXERCICE, LES MÊMES QUESTIONS ────────────────
+        //
+        // Le réglage de la liste n'est PAS relu ici, et c'est voulu : on vient
+        // de jouer « Détour Express », le menu est peut-être resté sur autre
+        // chose, et « Rejouer » doit rejouer ce qu'on a joué. L'exercice vient
+        // donc du serveur, qui seul sait quel défi vient d'avoir lieu.
+        const rejoue = d.defiRejouer !== undefined;
+        const exo = rejoue
+            ? ((vue.direct && vue.direct.defiExo) || '')
+            : ((zone.querySelector('[data-defi-exo]') || {}).value || '');
         const secondes = Number((zone.querySelector('[data-defi-duree]') || {}).value || 60);
         const mode = (zone.querySelector('[data-defi-mode]') || {}).value || 'qcm';
-        if (!exo) return;
-        await fait(lancerLeDefi(cid, exo, secondes, mode), () => {
+        const manches = Number((zone.querySelector('[data-defi-manches]') || {}).value || 1);
+        if (!exo) {
+            if (rejoue) showToast('Aucun défi à rejouer dans cette classe.', 'info');
+            return;
+        }
+        await fait(lancerLeDefi(cid, exo, secondes, mode, { manches, memeGraine: rejoue }), () => {
             const info = (vue.liste && vue.liste.classe);
             if (info) info.defi_exo = exo;
         });
+        return;
+    }
+
+    // ── LES QUESTIONS DU DÉFI, AU TABLEAU ─────────────────────────────────
+    //
+    // RÉMY : « Le défi ca cartonne, des idées dans ce style ». Après la minute
+    // vient la correction, et elle se fait DEVANT la classe : les questions en
+    // grand, une par une, et la réponse quand il le décide.
+    //
+    // CE SONT LES VRAIES QUESTIONS, celles que les trente viennent d'avoir —
+    // la graine du défi vient du serveur. Un nouveau tirage ne corrigerait
+    // rien, et personne ne s'y reconnaîtrait.
+    if (d.defiTableau !== undefined) {
+        const exoId = (vue.direct && vue.direct.defiExo) || '';
+        const graine = (vue.direct && vue.direct.defiGraine) || '';
+        const exo = exoId ? getExerciseById(exoId) : null;
+        if (!exo || !graine) {
+            showToast('Aucun défi à projeter dans cette classe.', 'info');
+            return;
+        }
+        const { questionDuDefi } = await import('./defiUI.js');
+        const cartes = [];
+        for (let n = 0; n < 12; n++) {
+            const item = questionDuDefi(exo, graine, n);
+            if (!item) break;
+            cartes.push({
+                enonce: (item.prompt && item.prompt.html)
+                    || `<div class="game-question">${esc((item.prompt || {}).text || '')}</div>`,
+                reponse: String(item.answer ?? '?'),
+                meta: item.meta || null
+            });
+        }
+        if (!cartes.length) { showToast('Cet exercice n\'a rien rendu.', 'error'); return; }
+        ouvrirLeTableauDuDefi(exo, cartes);
         return;
     }
 
@@ -5060,6 +5141,10 @@ function signatureDuPilote() {
         // classement non plus. Le NOMBRE de scores en fait partie — c'est lui
         // qui bouge pendant que les élèves finissent.
         df ? `${df.debut || ''}:${df.fini ? 'fini' : 'court'}` : '',
+        // ET LA GRAINE DU DERNIER DÉFI : elle fait paraître « Rejouer » et
+        // « Au tableau », qui n'arriveraient sinon qu'au prochain changement
+        // d'onglet — après le seul défi de l'heure, c'est-à-dire jamais.
+        (vue.direct && vue.direct.defiGraine) || '',
         String((vue.direct && vue.direct.classement || []).length)].join('|');
 }
 
@@ -5078,6 +5163,89 @@ function exercicesPourLeDefi(info) {
         .map(e => `<option value="${esc(e.id)}"${e.id === choisi ? ' selected' : ''}>`
             + `${esc(e.title)}</option>`)
         .join('');
+}
+
+/**
+ * LES QUESTIONS DU DÉFI, PROJETÉES POUR LA CORRECTION.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+ * ce style ». Après la minute vient la correction — et elle se fait DEVANT la
+ * classe, pas sur trente ardoises.
+ *
+ * UNE QUESTION PAR ÉCRAN, EN GRAND, ET LA RÉPONSE QUAND IL LE DÉCIDE. C'est
+ * tout le mécanisme : s'il affichait la réponse avec la question, il n'y aurait
+ * plus rien à demander à la classe. Le bouton la retourne comme on retourne une
+ * carte, et la flèche passe à la suivante.
+ *
+ * LES FLÈCHES DU CLAVIER AUSSI : au tableau, il n'a pas la souris en main — la
+ * même raison qui a donné son clavier au pari de l'angle.
+ */
+function ouvrirLeTableauDuDefi(exo, cartes) {
+    let rang = 0;
+    let montree = false;
+    // Déclaré avant la fenêtre : `onClose` le référence, et il est posé plus
+    // bas — une fonction nommée plus tard ne serait pas encore là.
+    let clavier = () => {};
+    const m = showModal(`Au tableau — ${exo.title}`, `
+        <div class="ec-tableau">
+            <div class="ec-tableau-rang" data-rang></div>
+            <div class="ec-tableau-enonce" data-enonce></div>
+            <div class="ec-tableau-reponse" data-reponse hidden></div>
+            <div class="ec-tableau-pied">
+                <button type="button" class="ec-pilote-btn" data-tab-prec>← Précédente</button>
+                <button type="button" class="ec-pilote-btn ec-pilote-btn--actif"
+                        data-tab-voir>Voir la réponse</button>
+                <button type="button" class="ec-pilote-btn" data-tab-suiv>Suivante →</button>
+            </div>
+        </div>`, { width: '900px', onClose: () => document.removeEventListener('keydown', clavier) });
+    const el = (s) => m.element.querySelector(s);
+
+    const peindre = () => {
+        const c = cartes[rang];
+        el('[data-rang]').textContent = `Question ${rang + 1} sur ${cartes.length}`;
+        el('[data-enonce]').innerHTML = c.enonce;
+        // L'ANGLE À ESTIMER EST TOUT L'ÉNONCÉ : sans son dessin, « Combien
+        // mesure cet angle ? » ne se corrige pas. C'est le même dessin que
+        // celui de l'élève — il vit dans le noyau pour cette raison-là.
+        if (estUneEstimation({ meta: c.meta })) {
+            el('[data-enonce]').innerHTML += `<svg class="ec-tableau-angle"
+                viewBox="0 0 ${VUE.largeur} ${VUE.hauteur}" role="img"
+                aria-label="L'angle de la question ${rang + 1}"
+                >${dessinDeLAngle(c.meta, null)}</svg>`;
+        }
+        el('[data-reponse]').innerHTML = `<span>la réponse</span><b>${esc(c.reponse)}${
+            c.meta && typeof c.meta.angle === 'number' ? '°' : ''}</b>`;
+        el('[data-reponse]').hidden = !montree;
+        el('[data-tab-voir]').textContent = montree ? 'Cacher la réponse' : 'Voir la réponse';
+        el('[data-tab-prec]').disabled = rang === 0;
+        el('[data-tab-suiv]').disabled = rang >= cartes.length - 1;
+    };
+    // ON REPART CACHÉ À CHAQUE QUESTION : garder la réponse visible d'une
+    // question à l'autre la dévoilerait avant qu'on l'ait posée.
+    const aller = (pas) => {
+        rang = Math.max(0, Math.min(cartes.length - 1, rang + pas));
+        montree = false;
+        peindre();
+    };
+    el('[data-tab-prec]').onclick = () => aller(-1);
+    el('[data-tab-suiv]').onclick = () => aller(1);
+    el('[data-tab-voir]').onclick = () => { montree = !montree; peindre(); };
+    clavier = (e) => {
+        if (e.key === 'ArrowRight') aller(1);
+        else if (e.key === 'ArrowLeft') aller(-1);
+        else if (e.key === ' ' || e.key === 'Enter') { montree = !montree; peindre(); }
+        else return;
+        e.preventDefault();
+    };
+    // L'ÉCOUTE SE RELÂCHE PAR `onClose` ET NON EN HABILLANT `m.close` : la
+    // croix de la fenêtre a capturé la fonction d'origine à sa construction,
+    // donc la remplacer après coup ne l'atteint pas. Mesuré ailleurs dans ce
+    // dépôt, et c'est le genre de fuite qui ne se voit qu'à la dixième
+    // ouverture, quand les flèches font sauter dix questions d'un coup.
+    document.addEventListener('keydown', clavier);
+    peindre();
 }
 
 /**

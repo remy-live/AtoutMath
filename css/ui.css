@@ -652,6 +652,40 @@
 .ec-pilote-panneau > .ec-pilote-cadre { border: 0; background: none; padding: 0; }
 .ec-pilote-panneau .ec-pilote-plus-corps { padding-top: 0; }
 
+/* ── LES QUESTIONS DU DÉFI, AU TABLEAU ──────────────────────────────────────
+   RÉMY : « Le défi ca cartonne, des idées dans ce style ». Après la minute
+   vient la correction, et elle se fait DEVANT la classe.
+   TOUT EST GROS, parce que c'est projeté : l'énoncé se lit du fond de la
+   salle, et la réponse plus encore — c'est elle qu'on attend. Une question par
+   écran : deux à la fois, et la classe lit déjà la suivante. */
+.ec-tableau { display: flex; flex-direction: column; gap: 14px; align-items: center;
+    text-align: center; padding: 8px 0 2px; }
+.ec-tableau-rang { font-size: .78rem; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-muted); }
+.ec-tableau-enonce { font-size: clamp(1.6rem, 5vmin, 3rem); font-weight: 900;
+    line-height: 1.25; }
+.ec-tableau-enonce .game-question { font-size: inherit; font-weight: inherit; }
+.ec-tableau-angle { display: block; width: 100%; max-width: 420px; height: auto;
+    margin: 6px auto 0; background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 12px; }
+/* LA RÉPONSE SE RETOURNE COMME UNE CARTE : cachée, puis montrée. Affichée avec
+   la question, il n'y aurait plus rien à demander à la classe. */
+.ec-tableau-reponse { display: flex; flex-direction: column; gap: 2px;
+    background: var(--bg-hover); border-radius: 16px; padding: 10px 28px; }
+/* LE PIÈGE DE [hidden], ET IL EST DANS CE DÉPÔT DEPUIS LE DÉBUT : la règle du
+   navigateur a une spécificité de ZÉRO, donc le `display: flex` juste au-dessus
+   l'emporte. La réponse restait affichée en permanence — vue sur la photo de
+   `tools/defiEnManches.mjs`, « Voir la réponse » sous un 13 déjà écrit — et la
+   sonde disait le contraire, parce qu'elle lisait la PROPRIÉTÉ `hidden` et non
+   ce qui était peint. Elle mesure maintenant le rectangle. */
+.ec-tableau-reponse[hidden] { display: none; }
+.ec-tableau-reponse span { font-size: .72rem; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-muted); }
+.ec-tableau-reponse b { font-size: clamp(2rem, 7vmin, 3.4rem); line-height: 1.1;
+    color: var(--success-texte); font-variant-numeric: tabular-nums; }
+.ec-tableau-pied { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+    margin-top: 4px; }
+
 /* L'APERÇU DU DÉFI — trois questions, comme les élèves les auront.
 
    RÉMY : « ce serait cool d'avoir un apercu du jeu pour ne pas se tromper ».

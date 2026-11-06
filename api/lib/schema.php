@@ -364,6 +364,23 @@ function lesTablesDuSchema(bool $sqlite): array
         --     d'identifiant du défi dans la table des scores.
         defi_debut     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         defi_fin       " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
+        --   · defi_manches et defi_duree : LE DÉFI EN PLUSIEURS REPRISES.
+        --
+        --     RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des
+        --     idées dans ce style ». Une minute d'affilée ne laisse aucune
+        --     place au professeur ; trois manches de quarante secondes lui
+        --     donnent deux pauses pour commenter, sans rien démonter.
+        --
+        --     DEUX COLONNES ET NON UNE, parce que `defi_fin - defi_debut` ne
+        --     suffit plus à dire la durée d'UNE manche : il faut en retrancher
+        --     les pauses. L'ardoise a besoin des deux pour savoir dans quelle
+        --     manche elle est, et elle ne doit pas avoir à le deviner.
+        --
+        --     NULLABLES : un défi d'une seule manche n'écrit rien ici, et les
+        --     défis lancés avant cette version non plus. Une colonne vide se
+        --     lit « une manche », ce qui est la verite.
+        defi_manches   " . ($sqlite ? 'INTEGER' : 'INT') . " NULL,
+        defi_duree     " . ($sqlite ? 'INTEGER' : 'INT') . " NULL,
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 

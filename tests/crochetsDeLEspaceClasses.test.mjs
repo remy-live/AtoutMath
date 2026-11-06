@@ -79,8 +79,22 @@ function crochetsEcoutes() {
  */
 function crochetsPoses() {
     const poses = new Map();
-    for (const ligne of source.split('\n')) {
-        if (!/<button|<input/.test(ligne)) continue;
+    // ── UNE BALISE TIENT SUR PLUSIEURS LIGNES, ET C'EST LE CAS COURANT ────
+    //
+    // La lecture se faisait LIGNE À LIGNE : une balise écrite
+    //
+    //     <button type="button" class="ec-pilote-btn ec-pilote-btn--actif"
+    //             data-tab-voir>Voir la réponse</button>
+    //
+    // n'était pas vue, parce que la ligne qui porte le crochet ne porte pas
+    // `<button`. MESURÉ le jour où trois boutons de la même fenêtre ont été
+    // ajoutés : deux ont été attrapés, le troisième a passé — le seul dont le
+    // crochet était à la ligne. Une épreuve qui n'attrape que deux défauts sur
+    // trois donne une assurance qu'elle n'a pas.
+    //
+    // ON LIT DONC LA BALISE ENTIÈRE, de `<button` jusqu'au `>` qui la ferme.
+    for (const balise of source.match(/<(?:button|input)\b[\s\S]*?>/g) || []) {
+        const ligne = balise.replace(/\s+/g, ' ').trim().slice(0, 90);
         for (const m of ligne.matchAll(/\bdata-([a-z-]+)\s*=/g)) {
             if (!poses.has(m[1])) poses.set(m[1], ligne.trim().slice(0, 90));
         }
@@ -99,11 +113,99 @@ function crochetsPoses() {
         // après : c'est la seule forme qui ne dépende pas de l'écriture du
         // gabarit. (Le piège est de la même famille que le `\b` des feuilles
         // de style, payé trois fois dans ce dépôt.)
-        for (const m of ligne.matchAll(/\bdata-([a-z]+(?:-[a-z]+)*)(?![a-z0-9-])/g)) {
-            if (!poses.has(m[1])) poses.set(m[1], ligne.trim().slice(0, 90));
+        for (const m of balise.matchAll(/\bdata-([a-z]+(?:-[a-z]+)*)(?![a-z0-9-])/g)) {
+            if (!poses.has(m[1])) poses.set(m[1], ligne);
         }
     }
     return poses;
+}
+
+/**
+ * LES CROCHETS QUE LE FICHIER BRANCHE LUI-MÊME, bouton par bouton.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * LE RÉPARTITEUR N'EST PAS LA SEULE FAÇON DE BRANCHER UN BOUTON, et l'épreuve
+ * le croyait. Une fenêtre ouverte par cet écran — « Au tableau », qui projette
+ * les questions du défi — tient son propre état (quelle question, réponse
+ * montrée ou non) et pose donc ses gestes à la main :
+ *
+ *     el('[data-tab-prec]').onclick = () => aller(-1);
+ *
+ * Ce bouton marche. L'exiger dans la liste du `closest()` aurait obligé à y
+ * inscrire un crochet que le répartiteur ne traite pas — c'est-à-dire à mentir
+ * dans la liste même que cette épreuve garde.
+ *
+ * ON DISTINGUE DONC LES DEUX CAS AU LIEU D'EN FORCER UN. Un crochet est
+ * acceptable s'il est écouté par le répartiteur OU branché ici, sur place. Ce
+ * qui reste interdit — et c'est tout l'objet de l'épreuve — est le crochet
+ * branché NULLE PART : celui-là s'affiche, se clique, et ne fait rien.
+ */
+function crochetsBranchesSurPlace() {
+    const sur = new Set();
+    for (const m of source.matchAll(
+        /\[data-([a-z]+(?:-[a-z]+)*)\]'\s*\)\s*(?:\|\|[^\n]*)?\.\s*onclick/g)) {
+        sur.add(m[1]);
+    }
+    return sur;
+}
+
+/** `data-saut-eleve` → `sautEleve`, comme le navigateur le range. */
+const enCamel = (nom) => nom.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+
+/**
+ * LES CROCHETS QU'ON LIT COMME UNE VALEUR, et non comme une cible de clic.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Beaucoup de crochets ne servent qu'à TRANSPORTER quelque chose jusqu'au
+ * gestionnaire : `data-prenom` porte le prénom à afficher dans la question
+ * « Retirer Emma ? », `data-exo` l'exercice sur lequel l'élève se trouve,
+ * `data-graine` la question exacte à rouvrir. Ils vivent sur le même bouton
+ * qu'un crochet écouté, et c'est ce dernier qui déclenche.
+ *
+ * LA RÈGLE D'AVANT NE LES RECONNAISSAIT QUE PAR LEUR PRÉFIXE — `data-pseudo-
+ * actuel` accompagne `data-pseudo` —, ce qui laissait de côté tous ceux dont
+ * le nom ne commence pas par celui de leur voisin, c'est-à-dire la plupart.
+ * Tant que la lecture se faisait ligne à ligne, ils passaient inaperçus ; la
+ * lecture de la balise entière les a tous fait crier d'un coup, sur du code
+ * parfaitement sain. Une épreuve qui crie sur du code sain finit éteinte.
+ *
+ * ON LES RECONNAÎT DONC À CE QU'ILS SONT : des valeurs qu'on LIT. Le
+ * répartiteur écrit `const d = el.dataset;` puis `d.prenom` ; ailleurs on lit
+ * `bouton.dataset.reglages`. Les deux formes se cherchent ici.
+ */
+function crochetsLus() {
+    const lus = new Set();
+    for (const m of source.matchAll(/\b(?:d|dataset)\.([a-zA-Z]+)\b/g)) lus.add(m[1]);
+    return lus;
+}
+
+/**
+ * LES CROCHETS SUR LESQUELS LE RÉPARTITEUR AIGUILLE — et eux n'ont pas d'excuse.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * CECI EST LA MOITIÉ QUI MANQUAIT, ET `epreuveTombe` L'A DIT. En acceptant tout
+ * crochet « lu quelque part », l'épreuve laissait passer le défaut même qu'elle
+ * garde : un crochet absent de la liste du `closest()` mais SUR LEQUEL le
+ * répartiteur aiguille est lu — `if (d.defiTableau !== undefined)` — et il est
+ * pourtant mort, puisque le gestionnaire sort avant d'y arriver. Retiré de la
+ * liste, le bouton ne faisait plus rien et l'épreuve restait verte.
+ *
+ * LES DEUX USAGES NE SE RESSEMBLENT POURTANT PAS :
+ *
+ *   · un PORTEUR se lit comme une valeur — `d.prenom`, `d.exo`, `d.graine` ;
+ *   · un AIGUILLAGE se lit comme une présence — `d.defiTableau !== undefined`,
+ *     et c'est la forme qu'emploie tout ce fichier pour décider d'une action.
+ *
+ * Seul le second doit être dans la liste. On le reconnaît à sa forme, et c'est
+ * la forme que le fichier emploie partout : une exception y serait visible.
+ */
+function crochetsDAiguillage() {
+    const aig = new Set();
+    for (const m of source.matchAll(/\bd\.([a-zA-Z]+)\s*!==\s*undefined/g)) aig.add(m[1]);
+    return aig;
 }
 
 test('CHAQUE CROCHET DE BOUTON EST ÉCOUTÉ PAR LE RÉPARTITEUR', () => {
@@ -112,9 +214,18 @@ test('CHAQUE CROCHET DE BOUTON EST ÉCOUTÉ PAR LE RÉPARTITEUR', () => {
         `on n'a lu que ${ecoutes.size} crochet(s) dans le closest() : la découpe\n`
         + 'de la liste ne marche plus, et cette épreuve ne garde donc plus rien.');
 
+    const surPlace = crochetsBranchesSurPlace();
+    const lus = crochetsLus();
+    const aiguillages = crochetsDAiguillage();
     const muets = [];
     for (const [nom, ligne] of crochetsPoses()) {
         if (ecoutes.has(nom)) continue;
+        // BRANCHÉ À LA MAIN, DANS CE FICHIER : voir `crochetsBranchesSurPlace`.
+        if (surPlace.has(nom)) continue;
+        // SIMPLE PORTEUR DE VALEUR, LU AILLEURS : voir `crochetsLus`. Un
+        // crochet d'AIGUILLAGE, lui, n'a pas cette excuse — c'est justement
+        // celui qui doit être dans la liste pour que le clic l'atteigne.
+        if (lus.has(enCamel(nom)) && !aiguillages.has(enCamel(nom))) continue;
         // UN CROCHET QUI N'EST QU'UN PORTEUR DE VALEUR est normal : il voyage
         // avec un autre, qui est écouté. On les reconnaît à leur préfixe —
         // `data-pseudo-actuel` accompagne `data-pseudo`, `data-poste-code`

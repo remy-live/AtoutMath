@@ -464,6 +464,30 @@ export function defiEnCours(maintenant = Math.floor(Date.now() / 1000)) {
     const ici = maintenant + ecart;
     const reste = d.fin - ici;
     if (reste <= 0) return null;
+    // ── LES MANCHES, LUES SUR LA MÊME HORLOGE QUE LE RESTE ────────────────
+    //
+    // RÉMY : « Le défi ca cartonne, des idées dans ce style ». Trois manches de
+    // quarante secondes donnent au professeur deux pauses pour commenter, et la
+    // classe repart sur sa lancée.
+    //
+    // ON NE COMPTE PAS LES MANCHES, ON LES CALCULE. Une ardoise qui tiendrait
+    // son propre compteur de manches dériverait de celle du voisin au premier
+    // onglet mis en arrière-plan — c'est le défaut qu'on a déjà corrigé deux
+    // fois sur ce même écran. Le rang de la manche est une FONCTION de
+    // l'horloge du serveur, comme le temps restant : deux ardoises qui lisent
+    // la même seconde lisent forcément la même manche.
+    const manches = Math.max(1, Math.round(Number(d.manches) || 1));
+    const pause = manches > 1 ? Math.max(0, Math.round(Number(d.pause) || 0)) : 0;
+    // SANS `duree`, C'EST UN DÉFI D'AVANT LES MANCHES : une seule reprise, qui
+    // dure tout le défi. Un parcours lancé hier ne doit pas changer de forme.
+    const dureeManche = Math.max(1, Math.round(Number(d.duree) || (d.fin - d.debut)));
+    const cycle = dureeManche + pause;
+    const ecoule = Math.max(0, ici - d.debut);
+    const rang = Math.min(manches, Math.floor(ecoule / cycle) + 1);
+    const dansLeCycle = ecoule - (rang - 1) * cycle;
+    // EN PAUSE : la manche est finie et ce n'est pas la dernière. Pendant la
+    // dernière, il n'y a plus de pause — le défi s'arrête.
+    const enPause = manches > 1 && rang < manches && dansLeCycle >= dureeManche;
     return {
         exo: d.exo,
         graine: d.graine,
@@ -475,7 +499,15 @@ export function defiEnCours(maintenant = Math.floor(Date.now() / 1000)) {
         // question : on montre le compte à rebours de l'annonce.
         avant: Math.max(0, d.debut - ici),
         reste,
-        duree: Math.max(1, d.fin - d.debut)
+        duree: Math.max(1, d.fin - d.debut),
+        manches,
+        dureeManche,
+        // OÙ L'ON EN EST : la manche, ce qu'il y reste, et la pause s'il y en a
+        // une. Trois nombres, et l'écran n'a plus qu'à les montrer.
+        manche: rang,
+        enPause,
+        resteManche: enPause ? 0 : Math.max(0, dureeManche - dansLeCycle),
+        resteAvantManche: enPause ? Math.max(0, cycle - dansLeCycle) : 0
     };
 }
 

@@ -190,6 +190,17 @@ test('ON CHOISIT L\'EXERCICE À DISPENSER, ON NE TAPE PLUS SON IDENTIFIANT', () 
     // plus (la calculatrice accordée, qui fait apparaître son bouton
     // « Retirer ») : on vérifie donc que la séance imposée y est TOUJOURS,
     // sans figer le reste de la ligne.
+    //
+    // ── LA FENÊTRE SE MESURE EN CARACTÈRES, ET ELLE A DÉBORDÉ DEUX FOIS ───
+    //
+    // Ce qu'on garde ici est que la séance imposée et le `join` soient dans la
+    // MÊME fonction. Le nombre de caractères n'en est qu'un repère commode, et
+    // il vieillit : chaque élément ajouté à la signature — le défi, puis la
+    // graine du dernier défi pour que « Rejouer » paraisse — vient avec son
+    // commentaire, et c'est très bien ainsi dans ce dépôt. La borne a été
+    // portée de 1 200 à 2 400 pour cette raison, et non parce qu'une mesure
+    // gênait : si un jour le `join` passait dans une AUTRE fonction, aucune
+    // borne raisonnable ne les réunirait, et l'épreuve crierait comme il faut.
     assert.match(ec, /function signatureDuPilote\(\)[\s\S]{0,900}info\.impose_path_id \|\| ''/);
-    assert.match(ec, /signatureDuPilote\(\)[\s\S]{0,1200}\]\.join\('\|'\)/);
+    assert.match(ec, /signatureDuPilote\(\)[\s\S]{0,2400}\]\.join\('\|'\)/);
 });

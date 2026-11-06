@@ -287,7 +287,8 @@ async function questionner(defi, exo) {
             <!-- ON DIT CE QUE C'EST, MÊME PENDANT. Les trois secondes de départ
                  l'annoncent, mais un élève qui lève les yeux dix secondes plus
                  tard ne sait plus pourquoi son écran a changé. -->
-            <div class="defi-titre">⚡ DÉFI DE LA CLASSE</div>
+            <div class="defi-titre">⚡ DÉFI DE LA CLASSE<span class="defi-manche"
+                 data-manche hidden></span></div>
             <div class="defi-barre"><div class="defi-jauge" data-jauge></div></div>
             <div class="defi-haut">
                 <!-- LE TEMPS TIENT EN UN SEUL ÉLÉMENT, et c'est la photo qui
@@ -306,6 +307,15 @@ async function questionner(defi, exo) {
             </div>
             <div class="defi-question" data-question></div>
             <div class="defi-reponses" data-reponses></div>
+            <!-- L'ENTRACTE ENTRE DEUX MANCHES. Il vit DANS la carte du jeu et
+                 non dans un voile à part : le défi n'est pas fini, le score
+                 est gardé, et un second voile donnerait à l'élève le sentiment
+                 d'avoir perdu sa partie. On cache les questions, c'est tout. -->
+            <div class="defi-entracte" data-entracte hidden>
+                <div class="defi-entracte-titre">MANCHE <b data-manche-prochaine>2</b></div>
+                <div class="defi-compte" data-pause-compte>0</div>
+                <div class="defi-sous">Respire — ton score est gardé.</div>
+            </div>
         </div>`, 'defi-voile--jeu');
 
     const el = (s) => voile.querySelector(s);
@@ -335,18 +345,53 @@ async function questionner(defi, exo) {
     // pendant qu'on regarde son écart.
     let libererLaTouche = null;
 
+    // ── L'ENTRACTE, ET POURQUOI IL NE DÉMONTE RIEN ───────────────────────
+    //
+    // Entre deux manches, on cache les questions et l'on montre un décompte.
+    // La partie continue : le score, le rang de la question, les minuteurs en
+    // cours — tout reste en place. C'est une respiration, pas une fin.
+    let enEntracte = false;
+    const basculerEntracte = (d) => {
+        const q = el('[data-question]');
+        const r = el('[data-reponses]');
+        const e = el('[data-entracte]');
+        if (q) q.hidden = enEntracte;
+        if (r) r.hidden = enEntracte;
+        if (e) e.hidden = !enEntracte;
+        const suivante = el('[data-manche-prochaine]');
+        if (suivante) suivante.textContent = String(Math.min(d.manches, d.manche + 1));
+    };
+
     // LE TEMPS RESTANT SE RELIT SUR L'HORLOGE DU SERVEUR À CHAQUE SECONDE, et
     // ne se décompte pas tout seul : un onglet mis en arrière-plan fige les
     // minuteurs du navigateur, et l'élève se retrouverait avec trente secondes
     // de plus que son voisin.
     const tic = setInterval(() => {
         const d = defiEnCours();
-        // APRÈS L'ANNONCE, `reste` compte la vraie minute : le défi a commencé
-        // à la seconde où le serveur l'avait dit, chez les trente.
-        const reste = d ? Math.min(d.reste, defi.duree) : 0;
-        el('[data-reste]').textContent = String(Math.max(0, reste));
-        el('[data-jauge]').style.width = `${Math.max(0, Math.min(100, (reste / defi.duree) * 100))}%`;
-        if (reste <= 0 && !fini) { fini = true; terminer(); }
+        if (!d) { if (!fini) { fini = true; terminer(); } return; }
+        // LE BANDEAU DIT LA MANCHE, et seulement quand il y en a plusieurs :
+        // « Manche 1/1 » serait une information de plus à lire pour rien.
+        const bandeau = el('[data-manche]');
+        if (bandeau) {
+            bandeau.hidden = d.manches <= 1;
+            if (d.manches > 1) bandeau.textContent = ` · manche ${d.manche}/${d.manches}`;
+        }
+        if (d.enPause !== enEntracte) { enEntracte = d.enPause; basculerEntracte(d); }
+        if (enEntracte) {
+            const c = el('[data-pause-compte]');
+            if (c) c.textContent = String(Math.max(0, d.resteAvantManche));
+            return;
+        }
+        // LE CHRONO ET LA JAUGE COMPTENT LA MANCHE, PAS LE DÉFI. Une jauge qui
+        // montrerait les deux minutes entières n'aurait presque pas bougé au
+        // bout de la première manche, et l'élève n'aurait pas su qu'elle
+        // finissait. `dureeManche` vaut tout le défi quand il n'y a qu'une
+        // manche : le cas d'avant est exactement le même code.
+        const reste = Math.max(0, Math.min(d.resteManche, d.dureeManche));
+        el('[data-reste]').textContent = String(reste);
+        el('[data-jauge]').style.width =
+            `${Math.max(0, Math.min(100, (reste / d.dureeManche) * 100))}%`;
+        if (d.reste <= 0 && !fini) { fini = true; terminer(); }
     }, 250);
 
     const terminer = async () => {
@@ -461,6 +506,11 @@ async function questionner(defi, exo) {
                 // alors démonté : poser une question de plus irait chercher des
                 // crochets qui n'existent plus.
                 if (fini) return;
+                // ET L'ENTRACTE A PU COMMENCER. Poser la question suivante
+                // derrière le décompte la BRÛLERAIT : l'élève la retrouverait
+                // déjà affichée à la reprise, sans l'avoir vue arriver, et le
+                // temps de la lire serait passé pendant la pause.
+                if (enEntracte) { setTimeout(suite, 300); fait = false; return; }
                 zone.classList.remove('defi-ok', 'defi-ko');
                 n++;
                 poser();

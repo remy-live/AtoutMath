@@ -1761,8 +1761,15 @@ function handleTeacherClass(): void
     if ($action === 'defi') {
         $secondes = (int) ($body['secondes'] ?? 0);
         if ($secondes <= 0) {
-            db()->prepare('UPDATE classes SET defi_exo = NULL, defi_graine = NULL,
-                                  defi_mode = NULL, defi_debut = NULL, defi_fin = NULL
+            // ON GARDE L'EXERCICE ET LA GRAINE, et c'est ce qui rend possibles
+            // les deux écrans d'APRÈS : « Rejouer », qui relance la même série
+            // pour la battre, et « Au tableau », qui projette les questions
+            // qu'on vient de jouer pour les corriger ensemble. Arrêter un défi
+            // n'efface que les instants qui le rendaient vivant — `defiEnCours`
+            // s'en tient d'ailleurs à `defi_fin`, donc il s'éteint bien.
+            db()->prepare('UPDATE classes SET defi_mode = NULL,
+                                  defi_debut = NULL, defi_fin = NULL,
+                                  defi_manches = NULL, defi_duree = NULL
                            WHERE id = ?')->execute([$classe['id']]);
             respond(['ok' => true, 'defi' => null, 'dit' => 'Défi arrêté.']);
         }
@@ -1777,10 +1784,36 @@ function handleTeacherClass(): void
             fail(400, 'exo', 'Il faut choisir un exercice.');
         }
         $mode = ($body['mode'] ?? 'qcm') === 'saisie' ? 'saisie' : 'qcm';
+        // ── LE DÉFI EN MANCHES ────────────────────────────────────────────
+        //
+        // RÉMY : « Le défi ca cartonne, des idées dans ce style ». Une minute
+        // d'affilée ne laisse aucune place au professeur : trois manches de
+        // quarante secondes lui donnent DEUX PAUSES pour commenter, et la
+        // classe repart sur la même lancée.
+        //
+        // CINQ AU PLUS, et la durée donnée est celle d'UNE manche : « 3 × 40 s »
+        // se lit tout seul, « deux minutes coupées en trois » non.
+        $manches = max(1, min(5, (int) ($body['manches'] ?? 1)));
+        // LA PAUSE ENTRE DEUX MANCHES vit au serveur comme le reste des
+        // instants : l'ardoise la lit, elle ne la décide pas.
+        $pause = $manches > 1 ? DEFI_PAUSE : 0;
+
+        // ── REJOUER LA MÊME SÉRIE ─────────────────────────────────────────
+        //
+        // « Rejouer » relance le MÊME défi — mêmes questions, dans le même
+        // ordre — pour que la classe batte le score qu'elle vient de faire.
+        // Sans la même graine ce serait un autre défi, et la comparaison ne
+        // voudrait rien dire.
+        //
+        // ON NE REJOUE QUE CE QUI EXISTE : sans graine en base (aucun défi
+        // n'a jamais été lancé dans cette classe), on en tire une neuve
+        // plutôt que de refuser le clic.
+        $ancienne = trim((string) ($classe['defi_graine'] ?? ''));
+        $rejoue = !empty($body['memeGraine']) && $ancienne !== '';
         // LA GRAINE EST TIRÉE ICI, PAS PAR L'ÉCRAN : c'est la seule façon
         // qu'elle soit la même pour tous, et personne ne peut la choisir pour
         // retomber sur une série qu'il connaît déjà.
-        $graine = bin2hex(random_bytes(6));
+        $graine = $rejoue ? $ancienne : bin2hex(random_bytes(6));
         // ── LE DÉFI S'ANNONCE AVANT DE COMMENCER ────────────────────────────
         //
         // RÉMY : « ça se lance pareil pour tout le monde ? au même moment ? ».
@@ -1797,12 +1830,19 @@ function handleTeacherClass(): void
         // et non dix : il faut que la plus en retard ait reçu le défi, pas
         // qu'elle le reçoive pile à l'instant du départ.
         $debut = time() + 12;
+        // LA FIN COMPTE LES PAUSES. Trois manches de quarante secondes durent
+        // deux minutes de jeu PLUS deux pauses : si `defi_fin` ne les comptait
+        // pas, le défi s'effacerait des ardoises au milieu de la dernière.
+        $fin = $debut + $manches * $secondes + ($manches - 1) * $pause;
         db()->prepare('UPDATE classes SET defi_exo = ?, defi_graine = ?, defi_mode = ?,
-                              defi_debut = ?, defi_fin = ? WHERE id = ?')
-            ->execute([$exo, $graine, $mode, $debut, $debut + $secondes, $classe['id']]);
+                              defi_debut = ?, defi_fin = ?, defi_manches = ?, defi_duree = ?
+                       WHERE id = ?')
+            ->execute([$exo, $graine, $mode, $debut, $fin, $manches, $secondes, $classe['id']]);
         respond(['ok' => true,
                  'defi' => ['exo' => $exo, 'graine' => $graine, 'mode' => $mode,
-                            'debut' => $debut, 'fin' => $debut + $secondes],
+                            'debut' => $debut, 'fin' => $fin,
+                            'manches' => $manches, 'duree' => $secondes,
+                            'rejoue' => $rejoue],
                  'dit' => 'Défi annoncé : départ dans 12 secondes, puis '
                         . $secondes . ' secondes pour toute la classe.']);
     }
@@ -2226,6 +2266,14 @@ function handleTeacherLive(): void
             'debut' => (int) $classe['defi_debut'],
             'fin' => (int) ($classe['defi_fin'] ?? 0),
         ] : null),
+        // LA GRAINE DU DERNIER DÉFI, POUR DEUX ÉCRANS DU PROFESSEUR.
+        //
+        // « Rejouer » la relance telle quelle, et « Au tableau » retire d'elle
+        // les questions pour les projeter — ce sont les VRAIES, celles que la
+        // classe vient d'avoir, et non un nouveau tirage qui ne corrigerait
+        // rien. Elle survit à l'arrêt du défi, exprès : on corrige APRÈS.
+        'defiGraine' => (string) ($classe['defi_graine'] ?? ''),
+        'defiExo' => (string) ($classe['defi_exo'] ?? ''),
         'classement' => classementDuDefi($classe),
     ]);
 }

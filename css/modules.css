@@ -15013,6 +15013,12 @@ body.en-boite > #app-container { background: none; }
 .defi-score { color: var(--success-texte); }
 .defi-question { font-size: clamp(1.3rem, 5vmin, 2.2rem); font-weight: 900; margin: 14px 0; }
 .defi-reponses { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+/* MÊME PIÈGE QUE PARTOUT : [hidden] a une spécificité de zéro, et le
+   `display: flex` ci-dessus l'emporte. Sans cette ligne, les réponses
+   restaient cliquables PENDANT l'entracte — l'élève continuait de jouer
+   derrière le décompte, et le score de la manche suivante commençait avant
+   elle. */
+.defi-reponses[hidden] { display: none; }
 .defi-choix {
     flex: 1 1 140px; max-width: 280px; min-height: 58px;
     border: 2px solid var(--border); border-radius: 12px; background: var(--bg-panel);
@@ -15047,6 +15053,21 @@ body.en-boite > #app-container { background: none; }
 .defi-pts { color: var(--primary-texte); }
 .defi-moi { margin: 12px 0 16px; font-weight: 700; }
 .defi-carte--jeu .defi-titre { margin-bottom: 10px; font-size: .8rem; }
+/* LA MANCHE, DANS LE BANDEAU DU TITRE. Elle ne paraît qu'à partir de deux :
+   « manche 1/1 » serait une information de plus à lire pour rien. */
+.defi-manche { color: var(--text-muted); letter-spacing: .02em; font-weight: 800; }
+/* ── L'ENTRACTE ENTRE DEUX MANCHES ──────────────────────────────────────────
+   RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+   ce style ». Une minute d'affilée ne laisse aucune place au professeur ;
+   trois manches lui donnent deux pauses pour commenter.
+   IL VIT DANS LA CARTE DU JEU, et non dans un second voile : le défi n'est pas
+   fini, le score est gardé, et un voile de plus donnerait à l'élève le
+   sentiment d'avoir perdu sa partie. On cache les questions, c'est tout. */
+.defi-entracte { padding: 18px 0 8px; }
+.defi-entracte-titre { font-weight: 900; letter-spacing: .08em;
+    color: var(--text-muted); font-size: .9rem; }
+.defi-entracte-titre b { color: var(--primary-texte); font-size: 1.15rem; }
+.defi-entracte .defi-compte { font-size: clamp(2.6rem, 11vmin, 4.6rem); }
 .defi-temps { font-variant-numeric: tabular-nums; }
 
 /* ── L'ANGLE À ESTIMER, DANS LE DÉFI ───────────────────────────────────────
