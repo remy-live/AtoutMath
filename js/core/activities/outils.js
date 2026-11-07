@@ -43,12 +43,120 @@ export function boiteOutils(item) {
     return outilsDe(item).length ? '<div class="np-outil" data-outil hidden></div>' : '';
 }
 
+/**
+ * UN OUTIL PEUT PORTER DES CASES À REMPLIR, ET ELLES NE SONT PAS LA RÉPONSE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, devant le tableau de numération de la Chasse au Chiffre : « dans cet
+ * exercice, on ne peut mettre le nombre ». Le tableau disait pourtant « Pose
+ * ton nombre : un chiffre par colonne » — une consigne qui commandait un geste
+ * que l'écran ne permettait pas.
+ *
+ * DEUX CHOSES SONT NÉCESSAIRES POUR QUE CES CASES MARCHENT, et la seconde est
+ * celle qu'on n'aurait pas devinée :
+ *
+ *   · LES FRAPPES NE DOIVENT PAS ARRIVER À L'ACTIVITÉ. `bubbles`, `numeric` et
+ *     les écrans de saisie écoutent le clavier sur LEUR conteneur, dont le
+ *     panneau des outils est un descendant : sans `stopPropagation`, le
+ *     chiffre tapé dans le tableau irait AUSSI dans la réponse. L'élève
+ *     poserait son nombre et répondrait sans le vouloir.
+ *   · CE QU'IL A POSÉ DOIT SURVIVRE À LA FERMETURE DU PANNEAU. Le panneau se
+ *     reconstruit à chaque ouverture ; sans mémoire, refermer le tableau pour
+ *     regarder les propositions effacerait le nombre qu'on vient d'y placer —
+ *     et c'est exactement ce qu'on fait avec un tableau de numération.
+ *     La mémoire vit dans cette fermeture-ci, donc elle s'efface d'elle-même
+ *     à la question suivante, qui rebranche tout. C'est ce qu'on veut : un
+ *     nombre d'avant, resté dans les cases, serait un faux souvenir.
+ */
+function brancherLesCases(boite, memoire, i) {
+    const cases = [...boite.querySelectorAll('[data-case-outil]')];
+    if (!cases.length) return;
+    const gardees = memoire.get(i) || [];
+    cases.forEach((c, n) => { c.value = gardees[n] || ''; });
+    const retenir = () => memoire.set(i, cases.map(c => c.value));
+    // ── DEUX SORTES DE CASES, ET LA SECONDE EST ARRIVÉE APRÈS ──────────────
+    //
+    // RÉMY, sur le schéma des durées : « on pourra compléter les pointillés ».
+    //
+    // CE QU'ON Y ÉCRIT N'EST PAS UN CHIFFRE, c'est une durée — « 40 min »,
+    // « 1 h 25 ». Le filtre d'origine ne gardait qu'UN chiffre par case : il
+    // est né pour le tableau de numération, où une colonne porte un chiffre et
+    // où l'on veut avancer tout seul. Appliqué ici, il effaçait la frappe au
+    // fur et à mesure.
+    //
+    // `data-case-outil="texte"` DIT L'AUTRE RÉGIME : on garde ce qui est tapé,
+    // et l'on n'avance pas tout seul — il n'y a pas de colonne suivante.
+    const libre = (c) => c.dataset.caseOutil === 'texte';
+    cases.forEach((c, n) => {
+        c.addEventListener('input', () => {
+            if (libre(c)) { retenir(); return; }
+            // UN CHIFFRE, ET RIEN D'AUTRE. `maxlength` ne filtre pas ce qu'on
+            // tape, il n'en limite que le nombre : sans cette ligne, une
+            // lettre resterait dans la case.
+            c.value = (c.value.match(/\d/) || [''])[0];
+            retenir();
+            // ON AVANCE TOUT SEUL quand la case est pleine : poser sept
+            // chiffres en cliquant sept fois serait un travail de saisie, pas
+            // de numération.
+            if (c.value && cases[n + 1]) cases[n + 1].focus({ preventScroll: true });
+        });
+        c.addEventListener('keydown', (e) => {
+            // LES FLÈCHES ET L'EFFACEMENT NE NAVIGUENT QU'ENTRE DES COLONNES.
+            // Dans une case de texte libre, la flèche gauche DÉPLACE LE CURSEUR
+            // dans ce qu'on écrit : la détourner rendrait une durée de cinq
+            // caractères impossible à corriger.
+            if (libre(c)) return;
+            if (e.key === 'Backspace' && !c.value && cases[n - 1]) {
+                cases[n - 1].focus({ preventScroll: true });
+                cases[n - 1].value = '';
+                retenir();
+                e.preventDefault();
+            } else if (e.key === 'ArrowLeft' && cases[n - 1]) {
+                cases[n - 1].focus({ preventScroll: true }); e.preventDefault();
+            } else if (e.key === 'ArrowRight' && cases[n + 1]) {
+                cases[n + 1].focus({ preventScroll: true }); e.preventDefault();
+            }
+        });
+    });
+    // LA BARRIÈRE. Elle est posée sur le PANNEAU et non sur chaque case : une
+    // case ajoutée demain serait protégée sans qu'on y pense.
+    ['keydown', 'keyup', 'keypress'].forEach(quoi =>
+        boite.addEventListener(quoi, (e) => e.stopPropagation()));
+}
+
+/**
+ * LES MÊMES CASES, MAIS POSÉES À DEMEURE SOUS L'ÉNONCÉ.
+ *
+ * RÉMY a fait retirer le bouton « Schéma » — « enlève le bouton shéma
+ * finalement » — après avoir vu le dessin DEUX FOIS à l'écran : une fois posé
+ * par l'indice, une fois dans le panneau du bouton. Le dessin posé a donc
+ * hérité des cases, et il lui fallait ce que le panneau avait tout seul.
+ *
+ * CE QUI COMPTE ICI, C'EST LA BARRIÈRE. Le dessin posé est un descendant du
+ * conteneur de l'activité, qui écoute le clavier : sans `stopPropagation`,
+ * taper « 40 » dans une bulle répondrait AUSSI à la question. Le reste — le
+ * régime de case libre, la mémoire — vient avec, et c'est bien le but : un
+ * second code pour les mêmes cases finirait par ne plus leur ressembler.
+ *
+ * PAS DE MÉMOIRE À GARDER, elle : ce dessin-ci n'est posé qu'une fois par
+ * question (`wireHint` refuse de le reposer), donc les `<input>` gardent ce
+ * qu'on y tape tout seuls. La carte qu'on passe sert au régime, pas au
+ * souvenir.
+ */
+export function brancherCasesPosees(racine) {
+    brancherLesCases(racine, new Map(), 0);
+}
+
 /** Branche les boutons sur le panneau. À rappeler après chaque rendu. */
 export function brancherOutils(container, item) {
     const outils = outilsDe(item);
     const boite = container.querySelector('[data-outil]');
     if (!outils.length || !boite) return;
     let ouvert = -1;
+    // Ce que l'élève a posé dans les cases de chaque outil, le temps de la
+    // question. Voir `brancherLesCases`.
+    const memoire = new Map();
     const montrer = (i) => {
         ouvert = i;
         // LE PANNEAU PORTE SON NOM ET SA CROIX. Sur téléphone il recouvre le
@@ -61,6 +169,7 @@ export function brancherOutils(container, item) {
         boite.hidden = i < 0;
         const croix = boite.querySelector('[data-outil-fermer]');
         if (croix) croix.onclick = () => montrer(-1);
+        if (i >= 0) brancherLesCases(boite, memoire, i);
         container.querySelectorAll('[data-outil-i]').forEach(b =>
             b.setAttribute('aria-expanded', String(Number(b.dataset.outilI) === i)));
     };

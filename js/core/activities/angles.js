@@ -15,6 +15,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../../ui/paveTactile.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const LEG_LEN = 260;          // longueur maximale des côtés de l'angle (px canevas)
 const SNAP_DIST = 30;         // aimantation du centre du rapporteur au sommet
@@ -830,12 +831,13 @@ export function mount(container, session, opts = {}) {
         const m = item.meta;
         if (!cursor) cursor = createDemoCursor();
         const gate = createDemoGate(container.querySelector('.angles-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cursor.pause(700) || destroyed) return fin();
+        if (!await robot.pause(700)) return fin();
 
         // 1. Centre sur le sommet
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         let a = ancre(etat.sommet.x, etat.sommet.y);
         cursor.say('Je place le centre du rapporteur (la croix) exactement sur le sommet de l\'angle.', a);
         await cursor.moveTo(a);
@@ -847,17 +849,17 @@ export function mount(container, session, opts = {}) {
         }, 1400);
         a.remove();
         if (!ok1 || destroyed) return fin();
-        if (!await cursor.pause(900) || destroyed) return fin();
+        if (!await robot.pause(900)) return fin();
 
         // 2. Zéro aligné sur un côté
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         cursor.say('Je tourne le rapporteur pour aligner son zéro avec un côté de l\'angle.');
         const de2 = r.rot, vers2 = rotationLecture();
         if (!await tween(e => { r.rot = de2 + (vers2 - de2) * e; }, 1400) || destroyed) return fin();
-        if (!await cursor.pause(900) || destroyed) return fin();
+        if (!await robot.pause(900)) return fin();
 
         // 3. Lecture ou construction
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         if (m.mode === 'mesurer') {
             etat.fantome = true;
             cursor.say(`L'angle est ${m.aigu ? 'aigu' : 'obtus'} : entre ${m.target} et ${180 - m.target}, `
@@ -870,7 +872,7 @@ export function mount(container, session, opts = {}) {
             if (!await tween(e => { etat.construit = de3 + (m.target - de3) * e; majConstruit(); }, 1600) || destroyed) return fin();
             etat.fantome = true;
         }
-        if (!await cursor.pause(DEMO_SPEED.between + 900) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 900)) return fin();
 
         fin();
         renderNext();

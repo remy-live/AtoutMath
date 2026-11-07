@@ -6,7 +6,7 @@ import './helpers.mjs';
 import {
     TYPES_CODAGE, ORDRE_SEGMENTS, ORDRE_COTES, POINTS_ANGLE,
     construireFigure, longueur, classesDeLongueur, estAngleDroit, anglesDroitsDe,
-    canoniser, codageAttendu, verifierCodage, PROPRIETES, segmentsDe, pointsAngleDe
+    canoniser, codageAttendu, verifierCodage, PROPRIETES, segmentsDe, pointsAngleDe, direLeCodage, direLeCodageAttendu
 } from '../js/core/codage.js';
 
 const carre = () => construireFigure('carre', { cote: 10 });
@@ -183,4 +183,61 @@ test('chaque famille a ses propriétés, en français', () => {
         PROPRIETES[t].forEach(p => assert.equal(typeof p, 'string'));
     });
     assert.equal(POINTS_ANGLE.length, 5);
+});
+
+// ── CE QUE LE CARNET D'ERREURS ÉCRIT ────────────────────────────────────────
+//
+// RÉMY : « le carnet d'erreur code la figure ne veut rien dire ». Il y lisait
+// « ta réponse : 11223300/ABD, attendu : 11223344/ABCD » — la forme CANONIQUE,
+// celle qui sert à juger. Elle reste ; une seconde forme, lisible, part
+// désormais au journal.
+
+test('le codage se dit en français, et la phrase nomme les segments marqués', () => {
+    const fig = rectangle();
+    const ids = segmentsDe(true), pts = pointsAngleDe(true);
+    const dit = direLeCodageAttendu(fig, ids, pts);
+
+    // AUCUN CHIFFRE DE LA FORME CANONIQUE NE DOIT SUBSISTER. C'est le défaut
+    // exact que Rémy décrit : une suite de chiffres et une barre oblique.
+    assert.ok(!/\d{3,}\//.test(dit), `la forme canonique a fui dans la phrase : ${dit}`);
+    // Les quatre côtés d'un rectangle vont deux par deux, et les quatre
+    // demi-diagonales ensemble : la phrase doit MONTRER ces paquets.
+    assert.match(dit, /\[AB\] = \[CD\]/, dit);
+    assert.match(dit, /\[BC\] = \[DA\]/, dit);
+    assert.match(dit, /\[AO\] = \[OC\] = \[BO\] = \[OD\]/, dit);
+    assert.match(dit, /angles droits en A, B, C, D/, dit);
+});
+
+test('une figure non codée le dit, au lieu de rendre une suite de zéros', () => {
+    const ids = segmentsDe(true), pts = pointsAngleDe(true);
+    const dit = direLeCodage({}, ids, pts);
+    assert.match(dit, /sans marque/, dit);
+    assert.match(dit, /aucun angle droit/, dit);
+    assert.ok(!/0{3,}/.test(dit), dit);
+});
+
+test('une marque posée toute seule est nommée comme telle', () => {
+    // C'EST LA FAUTE FRÉQUENTE, et la taire rendrait la phrase fausse : une
+    // marque sur un seul segment n'affirme aucune égalité.
+    const ids = segmentsDe(false), pts = pointsAngleDe(false);
+    const dit = direLeCodage({ marques: { AB: 1 }, angles: {} }, ids, pts);
+    assert.match(dit, /\[AB\] marqué seul/, dit);
+});
+
+test('la phrase et la forme canonique décrivent le MÊME codage', () => {
+    // Deux routes vers la même vérité : si l'une ment, l'autre le dit. On
+    // compte les paquets dans chacune, et les deux comptes doivent coïncider.
+    for (const fig of [carre(), rectangle(), losange(), parallelo()]) {
+        const ids = segmentsDe(true), pts = pointsAngleDe(true);
+        const canon = codageAttendu(fig, ids, pts);
+        const paquets = new Set(canon.split('/')[0].split('').filter(c => c !== '0')).size;
+        const dit = direLeCodageAttendu(fig, ids, pts);
+        const groupes = dit.split(' — ')[0].split(' ; ').filter(g => !/^sans marque/.test(g)).length;
+        assert.equal(groupes, paquets,
+            `${fig.type} : ${paquets} paquets dans « ${canon} », ${groupes} dans « ${dit} »`);
+        const droits = (canon.split('/')[1] || '').length;
+        const ditDroits = /aucun angle droit/.test(dit)
+            ? 0 : dit.split('en ').pop().split(', ').length;
+        assert.equal(ditDroits, droits, `${fig.type} : ${dit}`);
+    }
 });

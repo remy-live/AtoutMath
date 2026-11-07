@@ -14,6 +14,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { CSS_GLISSER, rendreGlissable } from '../core/glisserDeposer.js';
 import { genererCarreMagique, verifierSaisie, lignesDe } from '../core/carreMagique.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'num.logique.carre-magique';
 
@@ -42,7 +43,7 @@ class CarreMagique extends BaseGame {
                     color: var(--text-main); overflow-y: auto; container-type: size;
                 }
                 .cm-tete { text-align: center; font-size: .95rem; }
-                .cm-somme { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
+                .cm-somme { font-size: 1.5rem; font-weight: 900; color: var(--primary-texte); }
                 /* LE CARRÉ EST UN TABLEAU DE SOMMES, pas une grille de trous.
                    Le total de chaque rangée s'écrit au bout, en direct : c'est
                    lui qui dit si l'on approche, et c'est par lui qu'on trouve la
@@ -77,7 +78,9 @@ class CarreMagique extends BaseGame {
                     background: var(--bg-panel); cursor: pointer;
                     border: 2.5px dashed color-mix(in srgb, var(--primary) 45%, transparent);
                 }
-                .cm-case--trou:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .cm-case--trou:hover { border-color: var(--primary); }
+                }
                 .cm-case--choisie {
                     border-style: solid; border-color: var(--primary);
                     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 28%, transparent);
@@ -98,7 +101,7 @@ class CarreMagique extends BaseGame {
                     background: color-mix(in srgb, var(--success, #16a34a) 18%, transparent); }
                 .cm-total--ko { color: var(--danger, #dc2626);
                     background: color-mix(in srgb, var(--danger, #dc2626) 15%, transparent); }
-                .cm-total--cible { color: var(--primary); font-weight: 900; }
+                .cm-total--cible { color: var(--primary-texte); font-weight: 900; }
 
                 /* LE PAVÉ MAISON. Le clavier de l'iPhone recouvrait le carré et
                    les boutons : on ne voyait plus ce qu'on remplissait. */
@@ -433,16 +436,17 @@ class CarreMagique extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.puzzle) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say(`Un carré magique se résout toujours pareil : je cherche une ligne où il ne manque `
             + `qu'UNE case, et je la trouve par une soustraction depuis ${this.puzzle.somme}.`, this.sommeEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (const e of this.puzzle.etapes.slice(0, 4)) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const el = this.grilleEl.querySelector(`.cm-case[data-i="${e.case}"]`);
             cur.say(`${e.raison}.`, el || this.grilleEl);
             // Le robot va CHERCHER le jeton, puis le pose : c'est le geste
@@ -450,7 +454,7 @@ class CarreMagique extends BaseGame {
             const jeton = (this.jetons || []).find(j => !j.dataset.pose
                 && Number(j.dataset.v) === e.valeur);
             if (jeton && el) {
-                if (!await cur.dragFromTo(jeton, el)) return fin();
+                if (!await robot.glisser(jeton, el)) return fin();
                 jeton.dataset.pose = String(e.case);
                 jeton.classList.add('cm-jeton--place');
                 el.textContent = String(e.valeur);
@@ -458,13 +462,14 @@ class CarreMagique extends BaseGame {
                 this.majReserve();
                 this.majTotaux();
             } else if (el && !await cur.tap(el)) { return fin(); }
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Chaque case écrite débloque une nouvelle ligne à une seule case : on continue '
-            + 'jusqu\'au bout, sans jamais deviner.', this.container.querySelector('[data-aide]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
+        // « on continue jusqu'au bout, sans jamais deviner » était la leçon, pas le geste.
+        cur.say('Chaque case écrite débloque une nouvelle ligne à une seule case.',
+            this.container.querySelector('[data-aide]'));
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

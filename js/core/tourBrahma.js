@@ -36,6 +36,25 @@ export const TAILLES_BRAHMA = {
 /** Le minimum de coups : 2ⁿ − 1, et il n'y a pas moyen de faire mieux. */
 export const minimumBrahma = (n) => 2 ** n - 1;
 
+/**
+ * LES TEINTES DES BOULES, de la plus petite à la plus grosse.
+ *
+ * ELLES VIVENT ICI, ET NON DANS LE JEU, parce que la FEUILLE les demande
+ * aussi. Rémy : « Vérifie aussi les autres pour les couleurs » — mesuré, la
+ * planche à découper sortait en six ronds du même lavande pâle, et la solution
+ * pas à pas en trente et une vignettes de galets blancs où l'on ne voit pas
+ * quelle boule a bougé. Deux listes à tenir d'accord, c'est une boule verte à
+ * l'écran et bleue sur le papier au premier changement de palette.
+ *
+ * La couleur ne porte rien toute seule : chaque boule porte SON NUMÉRO et son
+ * DIAMÈTRE, qui sont la règle du jeu. La teinte ne fait que reposer l'œil.
+ */
+export const TEINTES_BRAHMA = ['#7c3aed', '#c1274a', '#2f855a', '#e0a020',
+    '#3182ce', '#b7791f'];
+
+/** La teinte de la boule de taille `b`, les tailles commençant à 1. */
+export const teinteBoule = (b) => TEINTES_BRAHMA[(b - 1) % TEINTES_BRAHMA.length];
+
 /** La position de départ : tout à gauche, la plus grosse en bas. */
 export const departBrahma = (n) => [
     Array.from({ length: n }, (_, i) => n - i), [], []

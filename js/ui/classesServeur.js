@@ -34,6 +34,7 @@
 // duplique pas la maison.
 
 import { jetonProf, nomDuProf, oublierProf } from '../core/verrouProf.js';
+import { copieDEssai } from '../core/copieDEssai.js';
 import { adresseApiDeduite } from '../core/portail.js';
 
 /** L'adresse de l'administration, déduite comme celle de l'API. */
@@ -110,6 +111,23 @@ export function bandeauServeurHtml(liste) {
     // n'avait aucun moyen de comprendre. Un message qui se trompe fait perdre
     // plus de temps qu'un message absent.
     if (!Array.isArray(liste)) {
+        // SUR UNE COPIE D'ESSAI, « IDENTIFIEZ-VOUS » EST UN CONSEIL IMPOSSIBLE.
+        //
+        // Mesuré sur la copie publiée : le professeur y entre d'un clic, sans
+        // mot de passe, et tombait sur « Vos classes sont sur le serveur.
+        // Identifiez-vous pour les voir ici » — alors qu'il n'y a pas de
+        // serveur, et qu'il est déjà professeur. Un message qui se trompe fait
+        // perdre plus de temps qu'un message absent, et celui-ci envoyait
+        // chercher une porte qui n'existe pas.
+        if (copieDEssai()) {
+            return `<div class="cls-serveur cls-serveur--absent">
+                <p><b>Copie d'essai : il n'y a pas de serveur.</b> Les vraies classes
+                   vivent sur le site en ligne ; ici, rien n'est envoyé ni enregistré.</p>
+                <p class="cls-serveur-note">Pour voir à quoi ressemblent les écrans
+                   remplis, chargez les cinq classes de démonstration ci-dessous —
+                   trente élèves, des séances et des bilans, tout en local.</p>
+            </div>`;
+        }
         const pourquoi = (liste && liste.pourquoi) || 'pas-identifie';
         const phrases = {
             'pas-identifie': ['<b>Vos classes sont sur le serveur.</b> Identifiez-vous pour '

@@ -23,6 +23,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 import {
     NORD, EST, SUD, OUEST, DIRECTIONS, NOM_DIRECTION, HORAIRE, ANTIHORAIRE, NOM_SENS,
     tourner, formeDe, periodeDe, etatReseau, prochaineReparation, quartsMini, sensMini
@@ -358,13 +359,14 @@ export function mount(container, session) {
         if (!cursor) cursor = createDemoCursor();
         cursor.protegerZone(container.querySelector('.tu-board'));
         const gate = createDemoGate(container.querySelector('.tu-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        if (!await robot.pause(600)) return fin();
         while (!destroyed) {
             const coup = prochaineReparation(grille(), item.meta.solution);
             if (!coup) break;
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const el = caseEl(coup.case);
             if (!el) return fin();
             const dirs = dirsDe(coup.case);
@@ -373,17 +375,17 @@ export function mount(container, session) {
                 + `${coup.quarts} quart${coup.quarts > 1 ? 's' : ''} de tour `
                 + `${coup.sens === HORAIRE ? 'à droite' : 'à gauche'} et l’eau passe.`, el);
             for (let k = 0; k < coup.quarts; k++) {
-                if (!await cursor.tap(el, 340) || destroyed) return fin();
+                if (!await robot.toucher(el, 340)) return fin();
                 pivoter(coup.case, coup.sens);
                 peindre();
-                if (!await cursor.pause(320) || destroyed) return fin();
+                if (!await robot.pause(320)) return fin();
             }
-            if (!await cursor.pause(700) || destroyed) return fin();
+            if (!await robot.pause(700)) return fin();
         }
         fin();
         if (destroyed) return;
         container.querySelector('.tu-board').classList.add('tu-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

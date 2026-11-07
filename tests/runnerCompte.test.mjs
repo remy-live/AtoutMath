@@ -18,6 +18,12 @@ function faussaireRunner(nbItems = 3) {
     r.policy = { maxAttemptsPerItem: 2 };
     r.itemsResolved = new Set();
     r.itemsSolved = new Set();
+    // CELLES QU'IL A EUES DU PREMIER COUP, remise à zéro ici comme `runStep` la
+    // remet. Un faux meneur qui oublie un des ensembles ne tombe pas sur une
+    // assertion, il tombe sur « Cannot read properties of undefined » — et le
+    // défaut semble alors venir du code mesuré. Cinq épreuves d'un coup, le
+    // jour où l'ensemble est apparu.
+    r.itemsPremierCoup = new Set();
     r.autonomousCounter = 0;
     r.etapeClose = false;
     r.currentTimeLimit = null;

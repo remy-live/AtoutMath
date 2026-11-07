@@ -23,10 +23,17 @@ const NINJA_REGLAGES = (mode) => ([
 
             {
                 id: 'mode', type: 'select', label: 'Ce qu\'on coupe', default: mode,
-                aide: 'Trois règles pour le même geste. « Zéros inutiles » travaille l\'écriture décimale ; les deux autres, le signe d\'une somme de relatifs — l\'un en tranchant, l\'autre en tirant.',
+                // LE POURQUOI VA ICI, PAS DANS L'AIDE : une aide de réglage
+                // tient en deux phrases courtes, et une épreuve le garde.
+                // « Sommes ET produits » est le seul mode où l'élève doit
+                // CHOISIR sa règle avant de l'appliquer — et appliquer celle
+                // du produit à une somme est l'erreur reine de la 4ᵉ.
+                aide: 'Cinq règles pour le même geste. « Zéros inutiles » travaille l\'écriture décimale ; les autres, le signe d\'un calcul de relatifs — et « sommes ET produits » fait CHOISIR la règle.',
                 options: [
-                    { value: 'negatifs', label: 'Les résultats négatifs' },
-                    { value: 'positifs', label: 'Les résultats positifs (au tir)' },
+                    { value: 'negatifs', label: 'Les sommes négatives' },
+                    { value: 'positifs', label: 'Les sommes positives (au tir)' },
+                    { value: 'produits', label: 'Les produits négatifs' },
+                    { value: 'meles', label: 'Les résultats négatifs — sommes ET produits' },
                     { value: 'zeros', label: 'Les zéros inutiles' }
                 ]
             },
@@ -34,6 +41,12 @@ const NINJA_REGLAGES = (mode) => ([
                 id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
                 aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
                 options: [
+                    // UN CRAN DE PLUS QUE « Tranquille ». Rémy : « il faudrait
+                    // aussi pour les exercices à chrono rajouter encore une
+                    // option qui est plus lente que le plus bas ». Le facteur
+                    // vit dans `core/allure.js` ; cette liste n'est que le
+                    // menu, et les deux doivent offrir les mêmes crans.
+                    { value: 'ralenti', label: 'Au ralenti — deux fois et demie le temps' },
                     { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
                     { value: 'posee', label: 'Posée — un tiers de temps en plus' },
                     { value: 'normale', label: 'Normale' },
@@ -59,6 +72,10 @@ const SIXIEME = TAGS.NIVEAU.SIXIEME;
 const CM2 = TAGS.NIVEAU.CM2;
 const CINQUIEME = TAGS.NIVEAU.CINQUIEME;
 const QUATRIEME = TAGS.NIVEAU.QUATRIEME;
+const TROISIEME = TAGS.NIVEAU.TROISIEME;
+// Le chapitre « développer » enjambe le collège et le lycée : la double
+// distributivité se voit en 3ème et se réutilise en Seconde pour factoriser.
+const SECONDE = TAGS.NIVEAU.SECONDE;
 
 export const numerationExercises = [
     // --- Écriture des nombres (fiche § 1, 2, 3, 19) ---
@@ -92,9 +109,49 @@ export const numerationExercises = [
         params: { partie: 'entière', decimales: 2 },
         motsClefs: ['rang', 'dizaines', 'dixièmes', 'centièmes', 'partie décimale'],
         tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
-        instruction: "Trouve le chiffre qui occupe le rang demandé. "
-            + "Passe « Rangs interrogés » sur « les deux » pour affronter le piège du chapitre : "
-            + "dizaines et dixièmes ne sont pas le même rang."
+        instruction: "Trouve le chiffre qui occupe le rang demandé. Passe « Rangs interrogés » sur « les deux » pour affronter le piège du chapitre : dizaines et dixièmes ne sont pas le même rang. Et le réglage « Taille des nombres » monte jusqu'aux centaines de milliards : le tableau de numération change alors de forme et prend celle du cahier — les CLASSES en bandeau (milliards, millions, mille, unités) et sous chacune trois colonnes c, d, u. Au-delà des milliers il n'y a plus de décimales : le chapitre des grands nombres est celui des entiers."
+    },
+
+    // --- La fraction décimale (demandée après une séance) ---
+    //
+    // RÉMY : « on a fait des exercices où il faut convertir 3,5 en 35/10 etc
+    // et inversement ».
+    //
+    // LE CATALOGUE N'AVAIT RIEN, et c'est la lacune la plus surprenante du
+    // chapitre : neuf exercices de fractions, cinq de décimaux, et pas un seul
+    // qui dise que ce sont les MÊMES nombres. L'élève apprenait les deux
+    // écritures côte à côte sans qu'on les lui montre jamais égales.
+    {
+        id: 'num-fraction-decimale', title: 'Virgule ou Fraction ?',
+        cree: '2026-10-13',
+        // LA FICHE, AVEC UN VRAI TRAIT DE FRACTION — Rémy : « Faire le pdf
+        // pour … Virgule ou fractions ». L'exercice s'imprimait déjà, mais en
+        // LIGNE DE TEXTE : « 441/100 = … » écrit à plat demande exactement ce
+        // que cet exercice existe pour empêcher — lire une fraction comme deux
+        // nombres séparés par une barre. Voir `fractionDecimale` dans
+        // `js/ui/fiches/nombres.js`.
+        printable: 'fractionDecimale',
+        consignePapier: 'Complète l\'égalité entre l\'écriture à virgule et la fraction.',
+        colonnesPapier: 3,
+        generatorId: 'num.fraction-decimale', activityId: 'numpad',
+        // LES DEUX SENS, ET LES DEUX TROUS, DÈS LE DÉPART. Un réglage par
+        // défaut qui ne poserait qu'un seul sens enseignerait une recette —
+        // c'est précisément ce que cet exercice existe pour empêcher. Le
+        // professeur peut les figer pour une remédiation de dix minutes.
+        // LES TROIS RANGS COCHÉS, MILLIÈMES COMPRIS — arbitrage de Rémy, le
+        // 13 octobre : « cocher par défaut ». Les millièmes existaient dès le
+        // premier jour mais partaient décochés, si bien qu'un élève n'en
+        // voyait AUCUN tant que le professeur ne les demandait pas. Un rang
+        // disponible et jamais tiré est un rang absent.
+        params: { sens: 'les-deux', trou: 'les-deux',
+            rangs: ['dixiemes', 'centiemes', 'milliemes'], maxEntier: 9, piegeZero: true },
+        motsClefs: ['fraction décimale', 'dixièmes', 'centièmes', 'millièmes',
+            'écriture à virgule', 'numérateur', 'dénominateur'],
+        tags: { chemin: [D, NUM], niveaux: [CM2, SIXIEME] },
+        instruction: 'Un nombre à virgule EST une fraction décimale : 3,5 = 35/10. '
+            + 'Le numérateur est le nombre écrit sans sa virgule, et le dénominateur '
+            + 'porte autant de zéros qu\'il y a de chiffres après la virgule. '
+            + 'Attention au zéro qui tient le rang : 7/100 fait 0,07, pas 0,7.'
     },
 
     // --- Décimaux (fiche § 5, 6) ---
@@ -121,6 +178,111 @@ export const numerationExercises = [
         instruction: "Enlève les zéros inutiles — mais seulement ceux qui ne changent rien !"
     },
 
+    {
+        // COMPTER L'ARGENT — Rémy : « j'aimerai bien aussi un exercice où il
+        // faut compter l'argent et par exemple si j'ai 7 centimes, il faut
+        // marquer 0,07 ».
+        //
+        // CE N'EST PAS UN EXERCICE SUR L'ARGENT, C'EST L'EXERCICE SUR LES
+        // RANGS DÉCIMAUX — et l'euro en est le meilleur support qui existe :
+        // il a exactement deux décimales, la pièce de 1 centime EST le
+        // centième, et l'élève a déjà tenu ces pièces dans sa main.
+        //
+        // IL FAUT TAPER LA RÉPONSE, ET C'EST LE SUJET. Un QCM où l'on choisit
+        // entre 0,07 et 0,7 pose une question VOISINE mais pas celle-là : « il
+        // faut marquer 0,07 » demande d'ÉCRIRE le zéro qui tient le rang. D'où
+        // le pavé numérique, et sa virgule (`meta.decimal`).
+        id: 'num-argent',
+        cree: '2026-10-15',
+        consignePapier: 'Écris le prix en euros.',
+        colonnesPapier: 3,
+        title: 'Compter l\'Argent',
+        generatorId: 'num.argent', activityId: 'numpad',
+        motsClefs: ['argent', 'euros', 'centimes', 'prix', 'monnaie', 'pièces',
+            'billets', 'centièmes', 'dixièmes', 'virgule'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME] },
+        instruction: "Neuf marches, en trois temps. On écrit d'abord des centimes seuls (7 centimes, c'est 0,07 € — le zéro des dixièmes n'est pas décoratif), puis des dizaines de centimes, qui sont le piège INVERSE (70 centimes, c'est 0,70 € et non 0,07 €), puis des euros ET des centimes. LE DERNIER TEMPS COMPTE DE VRAIES PIÈCES : un tas est dessiné, à sa vraie taille et dans son vrai métal, et il faut trouver le total — c'est la seule façon de rencontrer les pièces de 20 et de 2 centimes. Le deuxième indice est un tableau de rangs qui montre où va chaque chiffre."
+    },
+
+    {
+        // LES PETITS PROBLÈMES D'ARGENT — Rémy : « et après tu peux faire des
+        // petits problèmes avec calcul », puis « Dans la même catégorie que
+        // les billets, l'argent et les prix ».
+        //
+        // POURQUOI UN EXERCICE DE PLUS, ALORS QUE « HISTOIRES EN PAGAILLE »
+        // EXISTE. Vérifié avant d'écrire : ses onze familles travaillent des
+        // prix ENTIERS. Or la monnaie rendue sur un billet de 10 € pour un
+        // article à 7,40 € est exactement l'endroit où un élève de sixième
+        // écrit 3,60 au lieu de 2,60 — ou 2,6 au lieu de 2,60. C'est le rang
+        // décimal de « Compter l'Argent », mais dans un problème.
+        id: 'num-argent-problemes',
+        cree: '2026-10-15',
+        consignePapier: 'Lis bien, écris ton calcul, puis la réponse avec son unité.',
+        lignesReponsePapier: 2,
+        colonnesPapier: 1,
+        title: 'Histoires d\'Argent',
+        generatorId: 'num.argent-problemes', activityId: 'numpad',
+        motsClefs: ['problème', 'argent', 'monnaie', 'euros', 'prix', 'rendre la monnaie',
+            'acheter', 'payer', 'reste', 'combien'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME] },
+        instruction: "Huit situations qu'on rencontre vraiment à une caisse. On commence par une seule opération — le total de deux achats, ce qu'il reste, la monnaie rendue —, puis on multiplie et on partage : plusieurs articles identiques, le prix d'un seul, et combien on peut en acheter avec ce qu'on a. Les deux dernières demandent DEUX calculs : payer deux choses avec un billet, et savoir combien il manque. Les prix sont des décimaux, et c'est tout le sujet : la monnaie rendue sur un billet de 10 € est l'endroit où l'on écrit 3,60 au lieu de 2,60."
+    },
+
+    // ── DÉCOMPOSER, PGCD ET PPCM — LE CHAPITRE DE TROISIÈME ────────────────
+    //
+    // RÉMY : « J'aimerai bien des exercices pour décomposer un nombre et pgcd
+    // et ppcm niveau 3ème. Des exercices d'application direct et des petits
+    // problèmes ».
+    //
+    // DEUX ENTRÉES, ET C'EST SA DEMANDE MOT POUR MOT. Le même générateur, deux
+    // portes : l'une ouvre sur les marches de technique, l'autre sur les
+    // problèmes seuls. Un seul exercice portant les dix marches aurait obligé
+    // à décocher sept cases pour donner un travail de problèmes — c'est-à-dire
+    // à faire à la main, chaque fois, ce qu'une seconde entrée fait une fois.
+    {
+        id: 'num-pgcd-ppcm',
+        cree: '2026-10-20',
+        consignePapier: 'Décompose, puis réponds.',
+        colonnesPapier: 2,
+        title: 'Décomposer, PGCD et PPCM',
+        generatorId: 'num.pgcd-ppcm', activityId: 'numpad',
+        // DIX-SEPT MARCHES, ET LE PETIT BAIN D'ABORD. Rémy, une heure après la
+        // première version : « le décomposer pgcd et ppcm est bien trop
+        // difficile ! ». Les sept marches d'alors étaient toutes au niveau d'un
+        // exercice de fin de chapitre, et la première était la plus dure — « 91
+        // est-il premier ? ».
+        //
+        // ON NE DÉCOUPE PAS EN DEUX EXERCICES pour autant : `decoupeMarches`
+        // partage les questions DANS L'ORDRE de la progression, et en donne une
+        // chacune aux PREMIÈRES quand il y en a moins que de marches. Dix
+        // questions sur dix-sept marches jouent donc les dix premières, c'est-à-
+        // dire le petit bain, sans aucun réglage ; et le temps C se coche d'un
+        // geste quand on veut le haut de l'escalier.
+        params: { marches: ['divisible', 'qui-divise', 'liste-diviseurs', 'premier-petit',
+            'par-quoi', 'le-quotient', 'decomposer-petit', 'premier', 'decomposer',
+            'recomposer', 'pgcd-liste', 'ppcm-liste', 'exposant', 'pgcd', 'ppcm',
+            'entre-eux', 'irreductible'] },
+        motsClefs: ['pgcd', 'ppcm', 'décomposition', 'facteurs premiers', 'premier',
+            'diviseur', 'multiple', 'irréductible', 'premiers entre eux', 'arithmétique',
+            'divisibilité', 'critère', 'troisième', '3ème'],
+        tags: { chemin: [D, MENTAL], niveaux: [TROISIEME] },
+        instruction: "Dix-sept marches, et un escalier qui commence en bas. Le temps A se répond SANS MÉTHODE, par les tables : divisible ou non, lequel divise, la liste des diviseurs, premier ou non sous trente. Le temps B décompose, et en deux gestes d'abord — par quel premier commencer, puis la première division — avant de demander l'écriture entière. Le temps C calcule le PGCD et le PPCM, et là encore il commence par le SENS : les deux listes de diviseurs sont écrites, on y cherche le plus grand commun ; les deux listes de multiples aussi, on y cherche le premier commun. La règle des exposants ne vient qu'après, et une marche la fait LIRE avant qu'on l'applique. Les deux dernières sont les deux usages du PGCD en troisième : « premiers entre eux ? » et la fraction irréductible. Un parcours court joue les premières marches : il suffit de régler le nombre de questions."
+    },
+    {
+        id: 'num-pgcd-ppcm-problemes',
+        cree: '2026-10-20',
+        consignePapier: 'Lis bien, écris ton calcul, puis la réponse.',
+        lignesReponsePapier: 2,
+        colonnesPapier: 1,
+        title: 'Problèmes de PGCD et de PPCM',
+        generatorId: 'num.pgcd-ppcm', activityId: 'numpad',
+        params: { marches: ['melange'] },
+        motsClefs: ['problème', 'pgcd', 'ppcm', 'paquets', 'bouquets', 'ensemble',
+            'carrelage', 'dalles', 'troisième', '3ème'],
+        tags: { chemin: [D, MENTAL], niveaux: [TROISIEME] },
+        instruction: "Trois situations, et elles sont MÉLANGÉES exprès : savoir calculer les deux ne sert à rien si l'on ne sait pas lequel l'énoncé demande, et c'est là que le contrôle se joue. La règle tient en une phrase : on PARTAGE en parts égales sans reste, donc on cherche un diviseur commun, donc le PGCD — et la réponse est plus PETITE que les nombres de départ ; on ATTEND que deux rythmes se retrouvent, ou l'on AGRANDIT jusqu'à ce que ça tombe juste, donc un multiple commun, donc le PPCM — et la réponse est plus GRANDE. Un élève dont la réponse est du mauvais côté s'est trompé de notion, pas de calcul."
+    },
+
     // --- Décomposition et conversions (fiche § 10, 11, 18, 20, 21) ---
     {
         id: 'num-decomposition',
@@ -129,9 +291,9 @@ export const numerationExercises = [
         title: 'Décomposer, Recomposer',
         generatorId: 'num.decomposition', activityId: 'numpad',
         params: { sens: 'libre' },
-        motsClefs: ['décomposition'],
+        motsClefs: ['décomposition', 'grands nombres', 'milliards', 'millions'],
         tags: { chemin: [D, NUM], niveaux: [SIXIEME] },
-        instruction: "Retrouve le nombre, ou le terme qui manque dans sa décomposition."
+        instruction: "Retrouve le nombre, ou le terme qui manque dans sa décomposition. Le réglage « Taille des nombres » monte jusqu'aux centaines de milliards. On ne pose jamais plus de quatre termes, quelle que soit la taille : ce sont donc des nombres TROUÉS — « 100 000 000 + 80 000 000 + 8 » —, et les zéros qu'on ne voit pas sont exactement ce qui se travaille."
     },
     {
         id: 'num-conversion', title: 'Dizaines, Centaines, Milliers',
@@ -240,6 +402,92 @@ export const numerationExercises = [
             + 'même résultat une fois sur deux, ce qui laisse croire longtemps qu\'on sait faire.'
     },
 
+    // --- Les critères de divisibilité (sixième, bloc 8) ---
+    //
+    // RÉMY, dans sa progression de sixième : « les critères de divisibilité
+    // par 2, 5, 10 ». Et ma note de travail disait déjà comment le faire —
+    // « réutiliser les marches d'entrée du PGCD ».
+    //
+    // ON NE RÉÉCRIT DONC PAS UN GÉNÉRATEUR. « Décomposer, PGCD et PPCM »
+    // ouvre par trois marches qui sont exactement ce chapitre-ci — est-ce
+    // divisible, lequel divise, la liste des diviseurs — mais cet exercice est
+    // étiqueté TROISIÈME, et un professeur de sixième ne le voit pas. Un
+    // second exercice, sur le même générateur, avec ces trois marches cochées
+    // et la bonne étiquette de niveau : il travaille, et il se trouve.
+    //
+    // C'EST LE MÊME GÉNÉRATEUR, DONC LA MÊME PROGRESSION. Le jour où les
+    // marches d'entrée changent, les deux exercices changent ensemble — ce
+    // qu'une copie n'aurait jamais fait.
+    {
+        id: 'num-divisibilite',
+        cree: '2026-10-21',
+        consignePapier: 'Réponds.',
+        // DEUX COLONNES, ET C'EST LUI QUI L'A VU SUR PAPIER. Rémy, carnet de
+        // son relevé du 23 octobre : « met l'impression sur deux colonnes ».
+        // Trois colonnes coupaient les questions les plus longues de ce
+        // chapitre — « Les diviseurs de 42 sont : 1, 2, 3, 6, 7, 14, ?, 42 » —
+        // en quatre lignes hachées.
+        colonnesPapier: 2,
+        title: 'Divisible, oui ou non ?',
+        generatorId: 'num.pgcd-ppcm', activityId: 'bubbles',
+        params: { marches: ['divisible', 'qui-divise', 'liste-diviseurs'] },
+        motsClefs: ['divisible', 'diviseur', 'critère', 'multiple', 'pair'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Un nombre est divisible par 2 s'il se termine par 0, 2, 4, 6 ou 8 ; par 5 s'il se termine par 0 ou 5 ; par 10 s'il se termine par 0 ; par 3 si la somme de ses chiffres est elle-même divisible par 3. Ces critères se lisent sur l'ÉCRITURE du nombre, sans poser la moindre division — c'est ce qui les rend utiles. Les mêmes marches ouvrent « Décomposer, PGCD et PPCM », en troisième : ce sont les mêmes questions, apprises ici pour elles-mêmes."
+    },
+
+    // --- La division euclidienne (sixième, bloc 8) ---
+    //
+    // RÉMY, dans sa progression de sixième. Le logiciel savait poser une
+    // division et savait les fractions ; il ne savait pas ce qui les RELIE —
+    // le reste.
+    //
+    // 47 = 6 × 7 + 5, AVEC 0 ⩽ 5 < 6. La condition sur le reste n'est pas une
+    // formalité d'adulte : c'est elle qui rend le couple unique, et c'est elle
+    // qui attrape l'erreur la plus fréquente — un quotient trop petit laisse
+    // un reste plus GRAND que le diviseur, et la division n'est pas finie.
+    // La dernière marche donne son sens à tout le reste : 47/6 n'est pas
+    // « 7 et des poussières », c'est 7 + 5/6, exactement.
+    {
+        id: 'num-euclidienne',
+        cree: '2026-10-21',
+        consignePapier: 'Complète.',
+        colonnesPapier: 2,
+        title: 'Quotient et Reste',
+        generatorId: 'num.euclidienne', activityId: 'bubbles',
+        motsClefs: ['division euclidienne', 'quotient', 'reste', 'dividende', 'diviseur', 'fraction'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Une division euclidienne donne DEUX nombres : un quotient et un reste, liés par l'égalité « dividende = diviseur × quotient + reste ». Le reste est toujours PLUS PETIT que le diviseur — s'il ne l'est pas, la division n'est pas finie, et c'est l'erreur la plus fréquente. La dernière marche montre le lien avec les fractions : 47 = 6 × 7 + 5 s'écrit aussi 47/6 = 7 + 5/6."
+    },
+
+    // --- Inégalité large ou stricte, et encadrement (sixième, bloc 3) ---
+    //
+    // RÉMY, dans sa progression de sixième. Le logiciel savait COMPARER deux
+    // nombres — choisir entre <, = et > — mais jamais distinguer < de ⩽.
+    //
+    // « 7 ⩽ 7 » EST VRAI, et c'est la phrase qui fait trébucher une classe
+    // entière. Elle n'est pas un détail de notation : tout le collège s'appuie
+    // dessus — un encadrement, une condition d'arrêt, plus tard un
+    // intervalle. L'élève qui lit ⩽ comme « strictement plus petit, ou alors
+    // je ne sais pas » se trompera sur chacun.
+    {
+        id: 'num-encadrement',
+        cree: '2026-10-21',
+        // LA CONSIGNE SUIT CE QUE LA FEUILLE DEMANDE VRAIMENT. Elle annonçait
+        // « VRAI ou FAUX » du temps où la feuille recopiait les bulles de
+        // l'écran ; depuis que le signe est à compléter (voir
+        // `core/generators/encadrement.js`), elle décrivait un exercice qui
+        // n'y est plus. Une consigne fausse coûte plus cher qu'une consigne
+        // absente : l'élève la croit.
+        consignePapier: 'Complète par <, > ou =, puis complète les encadrements.',
+        colonnesPapier: 2,
+        title: 'Plus Petit, Plus Grand… ou Égal',
+        generatorId: 'num.encadrement', activityId: 'bubbles',
+        motsClefs: ['inégalité', 'stricte', 'large', 'encadrer', 'encadrement', 'comparer', 'ou égal'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "La barre SOUS le signe veut dire « ou égal » : ⩽ se lit « plus petit OU ÉGAL ». C'est pour cela que « 7 ⩽ 7 » est VRAI alors que « 7 < 7 » est faux — et une question sur trois porte justement sur deux nombres égaux, parce que c'est le seul cas où les deux signes ne disent pas la même chose. Encadrer, ensuite, c'est écrire DEUX inégalités d'un coup : on cherche le voisin juste en dessous, puis celui juste au-dessus, au rang demandé."
+    },
+
     // --- La loupe sur la droite graduée (fiche 4ᵉ § C) ---
     // Entre 3 et 4 les dixièmes, entre 3,5 et 3,6 les centièmes : le même
     // geste à deux échelles. C'est ainsi qu'on installe l'idée qu'entre deux
@@ -261,6 +509,37 @@ export const numerationExercises = [
         motsClefs: ['graduation', 'abscisse', 'décimaux', 'intercaler', 'axe', 'centièmes', 'loupe'],
         tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME, QUATRIEME] },
         instruction: "Entre les deux grands traits, l'axe est coupé en DIX. On compte les INTERVALLES depuis le trait de gauche, jamais les traits. Puis on recommence un cran plus bas : entre 3,5 et 3,6, il y a encore dix intervalles, et un intervalle vaut 0,01. Le réglage « Le pas de la graduation » permet de rester aux centièmes du début à la fin."
+    },
+
+    // --- Le dessin gradué (demandé par Rémy le 27 octobre) ---
+    //
+    // RÉMY, quatre captures d'une publication de collègues : « Tu pourrais
+    // créer ce genre d'exercice pour vec des dessins simplifiées pour
+    // téléphone portable et évidemment on peut relier les points etc… »
+    //
+    // LA MÊME COMPÉTENCE QUE « La Loupe sur la Droite », juste au-dessus, et
+    // c'est voulu : les deux citent num.dec.graduations, pour que le bilan par
+    // compétence les réunisse. La Loupe fait LIRE une abscisse ; celui-ci fait
+    // POSER un point à une abscisse donnée — le même savoir dans l'autre
+    // sens, et c'est ce sens-là qui résiste.
+    {
+        id: 'num-dessin-gradue',
+        cree: '2026-10-27',
+        title: 'Le Dessin Gradué',
+        consignePapier: "Place les points, puis trace et colorie.",
+        colonnesPapier: 1,
+        printable: 'dessinGradue',
+        generatorId: 'num.dessin-gradue', activityId: 'dessinGradue',
+        // UN DESSIN NE SE RÉVISE PAS : refaire le même ne corrige pas la
+        // lecture d'échelle qui l'avait raté. Ce qu'on remonte, c'est le
+        // réglage des échelles, et cela se décide au catalogue — pas dans le
+        // carnet d'erreurs.
+        sansRevision: true,
+        params: { nbQuestions: 2, dessin: 'tous', echelles: 'entiers', ecriture: 'nombre' },
+        motsClefs: ['droite graduée', 'abscisse', 'graduation', 'échelle', 'placer',
+            'dessin', 'points', 'relier', 'décimaux', 'coloriage'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Chaque droite a SON échelle, et elle change d'une ligne à l'autre : lis d'abord les deux nombres écrits sous ses bouts. Placer 0,4 sur une droite de 0 à 1 et 40 sur une droite de 0 à 100, c'est le même geste et deux nombres différents. On compte les INTERVALLES depuis le bout gauche, jamais les traits. Touche la droite à l'endroit voulu : le point se range sur la graduation la plus proche, et son abscisse se relit en dessous — pour que tu puisses te corriger AVANT de valider. Quand tout est posé, le dessin apparaît. Le réglage « Comment l'abscisse est écrite » demande le même nombre de plusieurs façons : « 0,4 », « quatre dixièmes », « 4/10 », « le double de 0,2 »."
     },
 
     // --- Le vocabulaire du calcul (fiche 4ᵉ § 4, 5, 6, N) ---
@@ -298,7 +577,8 @@ export const numerationExercises = [
         // en CHERCHANT des paires, pas en répondant à des questions : une
         // table de cartes, on tape 3 puis 7, elles s'envolent. La table vidée,
         // une plus grande arrive.
-        id: 'num-amis-de-dix', title: 'Les Amis de Dix',
+        id: 'num-amis-de-dix',
+        jeu: false, title: 'Les Amis de Dix',
         cree: '2026-08-12',
         activityId: 'dix',
         // Sur le papier, on TRACE le trait au lieu de taper deux cartes : c'est
@@ -340,7 +620,8 @@ export const numerationExercises = [
         // ennemi porte 23, la cible est 100, on charge 77 au pavé, on touche
         // le boulet, et le nôtre part à sa rencontre. Somme juste : explosion.
         // Fausse : l'ennemi continue sa route. Le calcul précède le geste.
-        id: 'num-canon-complements', title: 'Le Canon des Compléments',
+        id: 'num-canon-complements',
+        jeu: false, title: 'Le Canon des Compléments',
         cree: '2026-08-12',
         activityId: 'canon',
         sansRevision: true,
@@ -351,6 +632,9 @@ export const numerationExercises = [
                 id: 'vitesse', type: 'select', label: 'Allure',
                 aide: 'Le temps de descente d\'un astéroïde, pas la difficulté du calcul. « Tranquille » laisse presque le double de temps — c\'est souvent ce qu\'il faut pour découvrir les compléments à 100.',
                 options: [
+                    // Voir `core/allure.js` : le cran le plus lent n'était pas
+                    // assez lent, et c'est la troisième fois qu'on l'entend.
+                    { value: 'ralenti', label: 'Au ralenti — deux fois et demie le temps' },
                     { value: 'tranquille', label: 'Tranquille — tout le temps de calculer' },
                     { value: 'posee', label: 'Posée — un quart de temps en plus' },
                     { value: 'normale', label: 'Normale' },
@@ -419,7 +703,8 @@ export const numerationExercises = [
         instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances. Le réglage « Niveau » choisit le modèle — l'ascenseur, le thermomètre, les pastilles qui s'annulent, ou l'écriture (+3) + (−5) — ou les enchaîne tous."
     },
     {
-        id: 'num-dictee', title: 'Dictée de Grands Nombres',
+        id: 'num-dictee',
+        jeu: false, title: 'Dictée de Grands Nombres',
         cree: '2026-08-10',
         activityId: 'dictee', skills: ['num.ecriture.lettres'],
         params: { palier: 'grands' },
@@ -429,7 +714,9 @@ export const numerationExercises = [
                 options: [
                     { value: 'milliers', label: 'Jusqu\'à 99 999' },
                     { value: 'grands', label: 'Jusqu\'à 999 999' },
-                    { value: 'millions', label: 'Jusqu\'aux millions' }
+                    { value: 'millions', label: 'Jusqu\'aux millions' },
+                    { value: 'centaines_millions', label: 'Jusqu\'aux centaines de millions' },
+                    { value: 'milliards', label: 'Jusqu\'aux centaines de milliards' }
                 ],
                 default: 'grands'
             }
@@ -497,6 +784,31 @@ export const numerationExercises = [
         instruction: "Des nombres traversent l'écran et tu tranches LES ZÉROS INUTILES, ceux qu'on peut effacer sans changer le nombre. Un zéro est inutile s'il est DEVANT le nombre — 048 s'écrit 48 — ou tout à la FIN après la virgule : 2,90 s'écrit 2,9. Les autres tiennent la place d'un rang et doivent rester : dans 4,08 le zéro dit qu'il n'y a pas de dixième, et dans 250 qu'il n'y a pas d'unité. Attention, laisser filer un zéro inutile coûte une vie, comme trancher un zéro utile : ne rien faire n'est pas une stratégie."
     },
     {
+        // LE NINJA DES DEUX RÈGLES — « et aussi des jeux en rapport avec cela ».
+        //
+        // LE MOTEUR SAVAIT DÉJÀ TRIER DES CALCULS ; il ne savait tirer que des
+        // SOMMES. Deux modes de plus dans `js/core/tri.js`, et le jeu qui
+        // existait depuis août devient celui de la règle des signes.
+        //
+        // UNE PORTE À PART, ET NON UN RÉGLAGE DE PLUS. Les deux modes sont
+        // accessibles depuis « Ninja des Relatifs » en changeant « ce qu'on
+        // coupe » — mais un réglage que personne ne déplie n'existe pas : 87
+        // exercices portent un dessin sous leurs indices que personne ne voit,
+        // on connaît la leçon. Celui-ci s'ouvre déjà réglé sur « mêlés », qui
+        // est le seul mode où l'élève doit CHOISIR sa règle avant de
+        // l'appliquer.
+        id: 'num-ninja-relatifs-meles', title: 'Le Ninja des Deux Règles',
+        cree: '2026-10-15',
+        activityId: 'ninja', skills: ['num.relatifs.somme', 'num.relatifs.produit'],
+        sansRevision: true,
+        params: { vitesse: 'posee', mode: 'meles', vies: 3, parVague: 5 },
+        paramSchema: NINJA_REGLAGES('meles'),
+        motsClefs: ['règle des signes', 'relatifs', 'somme', 'produit', 'négatif',
+            'trancher', 'ninja', 'arcade'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Des bulles traversent l'écran, et chacune porte une somme OU un produit de relatifs. Tu coupes celles dont le résultat est négatif. Le piège est tout le chapitre : dans une somme, c'est le nombre le plus éloigné de zéro qui donne le signe ; dans un produit, ce sont les signes des deux facteurs. Regarde l'opération AVANT les signes. L'allure part en « posée » — un tiers de temps en plus — parce qu'ici il faut d'abord CHOISIR la règle."
+    },
+    {
         id: 'num-relatifs-addition',
         cree: '2026-08-10',
         consignePapier: "Simplifie et calcule.",
@@ -528,6 +840,202 @@ export const numerationExercises = [
             'facteurs', 'carré', 'opposé'],
         tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
         instruction: "Douze marches, deux questions chacune. LES CINQ PREMIÈRES NE DEMANDENT PAS DE CALCULER : seulement de dire si le produit sera positif ou négatif. C'est le vrai sujet du chapitre — (−3) + (−4) fait −7, mais (−3) × (−4) fait +12, et ce n'est pas la même règle. Ensuite on calcule, d'abord avec les parenthèses puis sans. Les trois dernières marches passent à plusieurs facteurs : on ne récite plus une règle, on COMPTE les facteurs négatifs, et leur parité décide. La dernière garde les cas à part : le zéro, le 1, le −1, et le carré d'un négatif — (−4)² vaut +16, mais −4² vaut −16."
+    },
+    {
+        // SOMME OU PRODUIT ? — celui qui fait CHOISIR la règle.
+        //
+        // RÉMY : « en ce moment avec mes 4ᵉ, je fais les additions,
+        // soustractions, simplification et multiplications de nombres
+        // relatifs, c'est pas simple pour eux. Quel type d'exercice
+        // pourrait-on faire pour bien les entraîner ».
+        //
+        // NEUF EXERCICES TOUCHAIENT DÉJÀ LES RELATIFS, et le calcul était
+        // couvert. Le trou : chacun ANNONCE son opération. On entre dans
+        // « Multiplier », donc on multiplie. Or l'erreur reine de la 4ᵉ n'est
+        // pas d'ignorer une règle, c'est d'appliquer celle du produit à une
+        // somme — « moins et moins font plus », donc −3 − 5 = 8. Un élève qui
+        // ne rencontre jamais les deux opérations dans la même minute
+        // s'entraîne à appliquer celle qu'on lui a annoncée.
+        //
+        // ET LE RÉSULTAT VIENT APRÈS LE SIGNE, Rémy : « et après on peut aussi
+        // demander le résultat ».
+        id: 'num-relatifs-melange',
+        cree: '2026-10-15',
+        consignePapier: 'Regarde l’opération AVANT les signes : la règle n’est pas la même.',
+        colonnesPapier: 3,
+        title: 'Somme ou Produit ?',
+        generatorId: 'num.relatifs.melange', activityId: 'buttons',
+        motsClefs: ['règle des signes', 'somme', 'produit', 'addition', 'multiplication',
+            'négatif', 'positif', 'confusion'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Onze marches. LES TROIS PREMIÈRES MONTRENT LES DEUX ÉCRITURES CÔTE À CÔTE : les mêmes deux nombres, avec + et avec ×, et une seule question — lequel donne un résultat positif ? On ne calcule rien, on choisit la règle. Ensuite le signe d’une seule expression, somme ou produit au hasard, puis sans les parenthèses — c’est là que −3 − 5 et −3 × (−5) se ressemblent le plus. Les quatre dernières demandent le résultat, et le premier piège y est toujours le résultat de L’AUTRE opération."
+    },
+    {
+        // LE RÉFLEXE DU SIGNE, CONTRE LA MONTRE.
+        //
+        // RÉMY, juste après avoir choisi l'exercice d'apprentissage : « et
+        // puis après viser des automatismes, au début on applique, comment
+        // après rendre cela un peu ludique et vraiment ancrer les réflexes ».
+        //
+        // RIEN À ÉCRIRE POUR ÇA, ET C'EST LE POINT : un exercice, dans ce
+        // logiciel, est un GÉNÉRATEUR plus une ACTIVITÉ. Le même générateur
+        // rejoué en contre-la-montre devient l'entraînement au réflexe, et il
+        // garde tout — les pièges qui nomment la confusion, l'explication, le
+        // carnet d'erreurs. C'est déjà ce que font « Sprint des Notations » et
+        // « Attrape le Résultat ».
+        //
+        // ET SEULEMENT LES MARCHES DU SIGNE. Un chronomètre sur un calcul
+        // mental demande deux choses à la fois ; ce qu'on veut ancrer ici, et
+        // qui doit devenir instantané, c'est « quelle règle s'applique ? ».
+        id: 'num-relatifs-melange-sprint',
+        cree: '2026-10-15',
+        consignePapier: 'Donne le SIGNE du résultat, sans calculer.',
+        // TROIS COLONNES, PAS QUATRE. Rémy, carnet du 24 octobre :
+        // « en impression , 3 colonnes de base ». Les énoncés de cet
+        // exercice tiennent sur une ligne — « (−7) × (+3) » — mais à quatre
+        // colonnes la place pour écrire le signe se réduit à quelques
+        // millimètres, et un élève de cinquième écrit au crayon, pas au
+        // millimètre.
+        colonnesPapier: 3,
+        title: 'Réflexe des Signes',
+        generatorId: 'num.relatifs.melange', activityId: 'sprint',
+        params: { marches: ['signe-somme', 'signe-produit', 'signe-melange', 'signe-simple'] },
+        motsClefs: ['règle des signes', 'automatisme', 'réflexe', 'chrono', 'somme', 'produit'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Le même travail que « Somme ou Produit ? », mais contre la montre et sur le SIGNE seul. On ne calcule rien : on regarde l'opération, et l'on répond. C'est l'étape d'après celle où l'on applique la règle — celle où elle doit devenir instantanée."
+    },
+    {
+        // LE MÊME, EN ARCADE — « un peu ludique », demandé le même jour.
+        //
+        // ICI ON CALCULE, et c'est voulu : la taupe apporte le jeu, donc la
+        // question peut redemander un résultat sans que la séance devienne un
+        // contrôle. Les marches mêlées seulement : attraper le bon nombre
+        // quand la série alterne sommes et produits, c'est exactement le
+        // réflexe qu'on cherche, avec la main en plus.
+        //
+        // LE TITRE MENTAIT, ET RÉMY L'A DIT AUTREMENT : « il faut aussi faire
+        // faire des calculs pas que le signe ». Cette porte-ci DEMANDE le
+        // résultat depuis le premier jour — ses marches sont `calcul-melange`
+        // et `calcul-simple` — mais elle s'appelait « Attrape le Bon Signe ».
+        // Un professeur qui la prenait pour travailler le signe recevait du
+        // calcul mental ; un titre qui ment coûte une séance.
+        id: 'num-relatifs-melange-arcade',
+        cree: '2026-10-15',
+        consignePapier: 'Calcule. Attention : somme ou produit, ce n’est pas la même règle.',
+        colonnesPapier: 4,
+        title: 'Attrape le Résultat Relatif',
+        generatorId: 'num.relatifs.melange', activityId: 'moles',
+        params: { marches: ['calcul-melange', 'calcul-simple'] },
+        motsClefs: ['règle des signes', 'automatisme', 'arcade', 'somme', 'produit',
+            'calcul mental', 'résultat'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Les sommes et les produits se suivent sans prévenir, et l'on attrape le bon résultat. Le piège est toujours là : la proposition la plus tentante est le résultat de L'AUTRE opération."
+    },
+    {
+        // LE CALCUL CONTRE LA MONTRE — ET C'EST UN ARBITRAGE DE RÉMY QUI
+        // RENVERSE LE MIEN.
+        //
+        // J'avais écrit, en montant « Réflexe des Signes » : « un chronomètre
+        // sur un calcul mental demande deux choses à la fois, et n'ancre ni
+        // l'une ni l'autre » — et noté dans les remarques « à revoir si Rémy
+        // constate le contraire en classe ». Il l'a constaté : « pour les
+        // sommes et produits il faut aussi faire faire des calculs pas que le
+        // signe ».
+        //
+        // LES DEUX PORTES RESTENT, ET ELLES NE FONT PAS DOUBLON : l'une ancre
+        // le CHOIX de la règle, l'autre son APPLICATION. C'est l'ordre dans
+        // lequel on les prend qui compte — le signe d'abord, le résultat
+        // ensuite.
+        id: 'num-relatifs-melange-calcul',
+        cree: '2026-10-15',
+        consignePapier: 'Calcule. Regarde l’opération AVANT les signes.',
+        colonnesPapier: 4,
+        title: 'Calcul Express des Relatifs',
+        generatorId: 'num.relatifs.melange', activityId: 'sprint',
+        params: { marches: ['calcul-somme', 'calcul-produit', 'calcul-melange', 'calcul-simple'] },
+        motsClefs: ['règle des signes', 'calcul mental', 'chrono', 'automatisme',
+            'somme', 'produit', 'résultat'],
+        tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
+        instruction: "Le RÉSULTAT, contre la montre. On commence par des sommes seules, puis des produits seuls, puis les deux mêlés, et enfin sans les parenthèses — c'est là que −3 − 5 et −3 × (−5) se ressemblent le plus. À prendre APRÈS « Réflexe des Signes » : tant que la règle ne se choisit pas toute seule, la chronométrer fait deux choses à la fois."
+    },
+    {
+        // LE DÉTOUR PAR LE NOMBRE ROND.
+        //
+        // RÉMY : « j'aimerai bien des exercices de calcul mentaux du genre
+        // 76 + 9 ou 76 + 99 ou 156 − 9 ou 156 − 99, il faut que l'élève
+        // comprenne qu'on retire un et qu'on ajoute 10 (en tout cas pour le
+        // 9), etc, et qu'on en fasse des ludiques, voire des challenges
+        // vitesse mais facultatif ».
+        //
+        // CE QU'IL DEMANDE N'EST PAS « CALCULE 76 + 9 » : c'est la STRATÉGIE.
+        // Le résultat n'est que la preuve qu'on l'a employée — un exercice qui
+        // ne demanderait que lui laisserait l'élève poser son addition en
+        // colonne dans sa tête, ce qu'il fait déjà.
+        //
+        // ET LA DIFFICULTÉ EST À UN POINT PRÉCIS : la compensation change de
+        // sens avec l'opération. 76 + 9 = 76 + 10 − 1, mais 156 − 9 =
+        // 156 − 10 + 1. Les marches 2 et 3 ne travaillent que ce renversement,
+        // et sans aucun calcul.
+        id: 'calc-detour-rond',
+        cree: '2026-10-15',
+        consignePapier: 'Passe par le nombre rond, puis fais le petit pas qui reste.',
+        // TROIS COLONNES, PAS QUATRE — Rémy, carnet du 24 octobre :
+        // « en impression, 3 colonnes de base ». Même raison que pour
+        // « Réflexe des Signes » : le calcul est court, la RÉPONSE a besoin
+        // de place, et la quatrième colonne la prend.
+        colonnesPapier: 3,
+        title: 'Le Détour par le Nombre Rond',
+        generatorId: 'calc.detour', activityId: 'buttons',
+        // LES NOMBRES SONT DES MOTS-CLEFS, et c'est Rémy qui l'a vu : « le nom
+        // Détour Express n'est pas évident car si je tape 99 dans la barre de
+        // recherche, j'aurai pu espérer tomber dessus ».
+        //
+        // MESURÉ AVANT DE CORRIGER : « 99 » rendait ZÉRO résultat, « 101 » et
+        // « 19 » aussi. L'exercice existe précisément pour 76 + 99, et le
+        // nombre 99 n'était écrit nulle part de cherchable — ni dans le
+        // titre, ni dans les mots-clefs, ni dans la consigne. Seuls 9, 8 et 98
+        // se trouvaient, et par accident : ils figuraient dans une phrase
+        // d'exemple.
+        //
+        // UNE GARDE LES TIENT À LA TABLE `VOISINS` du générateur : ajouter un
+        // voisin sans ajouter son nombre ici fait rougir l'épreuve.
+        motsClefs: ['calcul mental', 'ajouter 9', 'retirer 9', 'compensation',
+            'nombre rond', 'dizaine', 'centaine', 'astuce',
+            '9', '99', '8', '98', '11', '101', '19', '21'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Dix marches. LES TROIS PREMIÈRES NE DEMANDENT AUCUN CALCUL : trouver le nombre rond caché (9 c'est 10 − 1, 98 c'est 100 − 2), puis dire ce qu'on fait APRÈS le grand saut. C'est là qu'est le piège du chapitre : pour ajouter 9 on ajoute 10 puis on retire 1, mais pour RETIRER 9 on retire 10 puis on AJOUTE 1. Ensuite on écrit la ligne du milieu — 76 + 10 − 1 —, et seulement après on calcule. Le deuxième indice est un dessin : le grand saut, puis le petit pas en arrière."
+    },
+    {
+        // LE MÊME, CONTRE LA MONTRE — « voire des challenges vitesse mais
+        // facultatif ». Facultatif : c'est un exercice à part, que Rémy met
+        // dans une séance ou n'y met pas. L'apprentissage ne dépend pas de lui.
+        id: 'calc-detour-sprint',
+        cree: '2026-10-15',
+        consignePapier: 'Calcule de tête, en passant par le nombre rond.',
+        colonnesPapier: 5,
+        title: 'Détour Express',
+        generatorId: 'calc.detour', activityId: 'sprint',
+        params: { marches: ['calcul-plus', 'calcul-moins', 'calcul-melange', 'calcul-voisins'] },
+        // LES MÊMES NOMBRES QUE LA PORTE D'APPRENTISSAGE : c'est cette
+        // porte-ci que Rémy cherchait en tapant « 99 ».
+        motsClefs: ['calcul mental', 'chrono', 'automatisme', 'ajouter 9', 'retirer 9',
+            '9', '99', '8', '98', '11', '101', '19', '21'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Le même calcul, contre la montre. On ne travaille plus la méthode — on vérifie qu'elle est devenue automatique. À prendre quand les trois premières marches du « Détour » sont acquises, pas avant."
+    },
+    {
+        // ET EN ARCADE — « qu'on en fasse des ludiques ».
+        id: 'calc-detour-arcade',
+        cree: '2026-10-15',
+        consignePapier: 'Attrape le bon résultat.',
+        colonnesPapier: 5,
+        title: 'Attrape le Détour',
+        generatorId: 'calc.detour', activityId: 'moles',
+        params: { marches: ['calcul-melange', 'calcul-voisins'] },
+        motsClefs: ['calcul mental', 'arcade', 'ajouter 9', 'retirer 9', 'compensation',
+            '9', '99', '8', '98', '11', '101', '19', '21'],
+        tags: { chemin: [D, MENTAL], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Les additions et les soustractions se suivent sans prévenir. Le piège est toujours le même : le nombre où l'on s'arrête quand on a sauté sans revenir."
     },
     {
         // LE SERPENT LITTÉRAL. Rémy : « Quel jeu sympa comme Nova ou le
@@ -618,7 +1126,31 @@ export const numerationExercises = [
         // partage pas en deux — 5 et 17 sont impairs —, et le bouton le dit.
         // C'est exactement pourquoi on retire les poids AVANT de diviser :
         // la règle n'est pas récitée, elle est rencontrée.
+        // --- Tester, et les programmes de calcul : le trou de la quatrième ---
+        //
+        // RÉMY : « Equations (tester et retour - Résolution et programme de
+        // calcul (Exercices type de brevet)) ». Mesuré avant d'écrire : la
+        // Balance RÉSOUT, et ne fait ni l'un ni l'autre des deux autres.
+        id: 'alg-equations',
+        cree: '2026-10-20',
+        title: 'Tester, Programmes et Équations',
+        generatorId: 'alg.equations', activityId: 'numpad',
+        consignePapier: 'Remplace, déroule, ou résous — selon ce qu\'on demande.',
+        colonnesPapier: 1,
+        lignesReponsePapier: 2,
+        params: { marches: ['tester', 'lequel', 'programme-direct', 'programme-retour',
+            'programme-ecrire', 'resoudre', 'probleme'] },
+        motsClefs: ['équation', 'solution', 'tester', 'programme de calcul', 'inconnue',
+            'brevet', 'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LITTERAL],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Sept marches, et les deux premières ne résolvent rien. TESTER n'est pas une petite résolution : résoudre demande d'isoler l'inconnue, avec un ordre de gestes à respecter ; tester ne demande que de remplacer, calculer, comparer. C'est le petit bain parfait — et c'est aussi le geste qui VÉRIFIE une résolution, celui qu'on ne fait jamais et qui attrape l'erreur de signe. Viennent ensuite les programmes de calcul, et tout le chapitre tient dans une confusion : « multiplie par 3 puis ajoute 4 » s'écrit 3x + 4, « ajoute 4 puis multiplie par 3 » s'écrit 3(x + 4). Les deux se ressemblent et ne valent jamais la même chose. La marche qui demande l'expression propose donc toujours les quatre programmes possibles avec les MÊMES nombres : rien d'autre que l'ordre des lignes ne départage les réponses. Les deux dernières résolvent, puis posent l'équation à partir d'un énoncé — l'exercice du brevet."
+    },
+    {
         id: 'alg-balance',
+        jeu: false,
         cree: '2026-09-04',
         title: 'La Balance des Équations',
         activityId: 'balance',
@@ -718,6 +1250,46 @@ export const numerationExercises = [
         instruction: "Une fonction est une machine : on lui donne un nombre, elle en rend un autre. « f(3) = 11 » se lit « 11 est l'IMAGE de 3 », et donc aussi « 3 est un ANTÉCÉDENT de 11 ». Retiens le sens de la marche : on PART du nombre entre parenthèses, on ARRIVE au résultat — c'est le seul moyen de ne pas inverser les deux mots. Pour calculer une image, tu REMPLACES x par le nombre donné, puis tu calcules. Pour chercher un antécédent, tu fais le chemin INVERSE : tu reprends le programme de calcul et tu le défais en commençant par la fin, chaque opération remplacée par son contraire. Et tu vérifies toujours en recalculant l'image — c'est gratuit, et cela attrape l'erreur d'ordre, qui est la plus fréquente."
     },
     {
+        // TRACER UNE FONCTION — et la réponse de Rémy tient le fichier.
+        //
+        // Bloc 12 de sa progression de quatrième : « Tracé de fonction ». La
+        // question que je lui ai posée touchait LA LIGNE ROUGE — l'écran a-t-il
+        // le droit de faire placer un point, ou le tracé doit-il rester sur la
+        // feuille ? SA RÉPONSE : « les deux ».
+        //
+        // D'OÙ DEUX MOITIÉS QUI NE SE RECOUVRENT PAS. À l'écran, l'élève CALCULE
+        // une image et CLIQUE un nœud du repère : ni règle, ni compas, ni tracé
+        // à la souris — « Placer un Point » fait déjà ce geste depuis la
+        // sixième. Sur la feuille (`printable`), il complète un tableau de
+        // valeurs, marque ses croix et TIRE LA DROITE À LA RÈGLE. Le logiciel
+        // n'en trace aucune.
+        id: 'alg-fonction-repere',
+        cree: '2026-10-20',
+        title: 'Tracer une Fonction',
+        generatorId: 'alg.fonction-repere', activityId: 'repere',
+        // LA FEUILLE A SON PROPRE GÉNÉRATEUR, et ce n'est pas un détail de
+        // mise en page : l'écran pose UNE question par point, la feuille en
+        // pose CINQ sur le même repère — en imprimer un par question gâcherait
+        // la page et ferait retracer des axes au lieu de tracer des droites.
+        printable: 'fonction', printGeneratorId: 'alg.fonction-fiche',
+        printParams: { max: 6 },
+        // LES SIX MARCHES SONT ÉCRITES ICI, et ce n'est pas une redite du
+        // générateur : les gardes du catalogue tirent marche par marche EN LES
+        // LISANT. Sans cette ligne elles n'en voient qu'un échantillon, et
+        // celle des deux signes moins a laissé passer « l'abscisse est -2 »
+        // dans la première marche. C'est aussi ce que le professeur voit
+        // coché en ouvrant le panneau.
+        params: { marches: ['tableau', 'image', 'image-relatifs', 'ordonnee-origine',
+            'antecedent-simple', 'antecedent', 'zero'] },
+        motsClefs: ['fonction', 'affine', 'droite', 'repère', 'coefficient',
+            'ordonnée à l\'origine', 'tracer', 'graphique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LITTERAL],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Une fonction affine se DESSINE, et son écriture dit tout du dessin. Les points de coordonnées (x ; f(x)) sont ALIGNÉS : ils forment une DROITE. Ici on en place un à la fois — on calcule d'abord, on clique ensuite, et le premier nombre est toujours l'ABSCISSE. DEUX CHOSES SE LISENT SANS CALCUL, et elles font gagner du temps toute l'année. Dans « f(x) = 2x − 3 », le nombre tout seul (−3) est l'endroit où la droite coupe l'axe VERTICAL : c'est une marche de l'exercice. Et le nombre devant le x (2) est un PAS — un carreau vers la droite, deux carreaux vers le haut : avec ce pas et ce point de départ, une droite se trace en dix secondes et sans tableau de valeurs. Les trois dernières marches font le chemin INVERSE : on donne la hauteur, on cherche où aller sur l'axe horizontal. La première ne défait qu'une opération ; la suivante en défait deux, dans l'ordre inverse ; la dernière demande où la droite coupe l'axe horizontal, c'est-à-dire là où l'ordonnée est NULLE — la question devient alors une équation, on résout f(x) = 0. Sur la feuille imprimée, c'est toi qui traces la droite à la règle, après avoir complété un tableau de valeurs — vérifie que tes points sont alignés avant de poser la règle, un point hors de la ligne signale un calcul faux."
+    },
+    {
         // SIMPLIFIER ET RÉDUIRE. Rémy : « j'aimerais bien un exercice qui
         // entraîne à simplifier et à réduire des expressions littérales
         // (d'abord 2*x = 2x) — ATTENTION ON UTILISE LE SIGNE FOIS. »
@@ -766,6 +1338,74 @@ export const numerationExercises = [
         tags: { chemin: [D, LITT], niveaux: [QUATRIEME] },
         instruction: "Dix marches, deux questions chacune, et une seule règle : on ne regroupe QUE ce qui a le même exposant. On apprend d'abord à écrire une puissance (x × x, c'est x²), puis à regrouper ce qui se regroupe (2x² + 5x² = 7x², et l'exposant ne bouge pas), puis — c'est la marche décisive — à NE PAS regrouper ce qui ne se regroupe pas : 3x² + 2x est déjà réduit. Si x vaut 5, alors x vaut 5 et x² en vaut 25 ; les additionner reviendrait à ajouter des mètres à des mètres carrés. La réponse s'écrit, avec des touches x, x² et x³."
     },
+    // ── DÉVELOPPER : ONZE BARREAUX, ET UNE AIRE À CHACUN ────────────────────
+    //
+    // Rémy : « j'aimerais bien des exercices très progressifs et visuels sur le
+    // développement simple et double développement ».
+    //
+    // LE CHAPITRE MANQUAIT ENTRE LES DEUX QUI ENCADRENT CETTE PLACE : réduire
+    // une expression est juste au-dessus, factoriser est en Seconde, et rien
+    // n'apprenait à ouvrir une parenthèse. C'est pourtant le geste dont la
+    // factorisation est l'inverse, et celui par lequel on la VÉRIFIE.
+    //
+    // ── DÉVELOPPER : UN EXERCICE, ONZE BARREAUX À COCHER ────────────────────
+    //
+    // RÉMY : « on a quand même beaucoup d'exercices pour la même chose ».
+    //
+    // Quinze cartes ici — onze barreaux, deux révisions, deux pas à pas — pour
+    // deux réglages qui existaient déjà. La progression n'est pas perdue, elle
+    // change de place : elle était dans l'ordre où l'on posait les cartes, elle
+    // est maintenant dans les cases cochées. Les onze barreaux se plient en
+    // deux temps — la distributivité simple, la double —, et cocher un temps
+    // entier fait exactement ce que faisaient « dev-simple » et « dev-double ».
+    {
+        id: 'dev',
+        cree: '2026-09-25',
+        title: 'Développer : distributivité simple et double',
+        consignePapier: 'Développer et réduire les expressions suivantes.',
+        colonnesPapier: 2,
+        generatorId: 'lit.developpement', activityId: 'buttons',
+        params: {},
+        motsClefs: ['développer', 'développement', 'distributivité', 'parenthèse',
+            'calcul littéral', 'identité remarquable', 'aire', 'rectangle',
+            'double distributivité', 'carré', 'progression'],
+        tags: { chemin: [D, LITT], niveaux: [QUATRIEME, TROISIEME, SECONDE] },
+        instruction: "Onze barreaux en deux temps, et tu choisis ceux que la classe "
+            + "travaille. La distributivité simple d'abord — 3(x + 2), puis le moins "
+            + "dans la parenthèse, le coefficient devant la lettre, le facteur négatif, "
+            + "deux distributions à réunir. Puis la double : (x + 2)(x + 3) jusqu'au "
+            + "carré (x + 4)² et à la différence (x − 5)(x + 5), qu'on relira à "
+            + "l'envers pour factoriser."
+    },
+    // ── ET LA MÊME CHOSE, LIGNE À LIGNE ─────────────────────────────────────
+    //
+    // RÉMY : « on peut proposer une ligne pour pouvoir le taper », puis
+    // « c'est génial ton idée de carte "pas à pas" prête ».
+    //
+    // C'est la ligne que les flèches dessinent : les produits ÉCRITS avant
+    // d'être calculés. Celui qui la saute est celui qui oublie les deux
+    // produits du milieu, et un « faux » sur la réponse entière ne dit pas
+    // lequel des quatre a manqué.
+    //
+    // LE PAS À PAS RESTE UN RÉGLAGE, disponible sur les onze barreaux ; cette
+    // carte-ci est ce réglage déjà posé, pour qu'on l'attrape sans ouvrir le
+    // panneau quand on prépare une remédiation.
+    {
+        id: 'dev-pas',
+        cree: '2026-09-25',
+        title: 'Développer pas à pas',
+        consignePapier: 'Développer et réduire les expressions suivantes.',
+        colonnesPapier: 2,
+        generatorId: 'lit.developpement', activityId: 'buttons',
+        params: { etapes: 'oui' },
+        motsClefs: ['développer', 'pas à pas', 'étapes', 'étape', 'détaillé', 'méthode',
+            'distributivité', 'double distributivité', 'parenthèse', 'calcul littéral'],
+        tags: { chemin: [D, LITT], niveaux: [QUATRIEME, TROISIEME, SECONDE] },
+        instruction: "Les mêmes questions, écrites ligne à ligne : les produits "
+            + "d'abord, sans les calculer, puis on calcule, puis on réunit. Le champ "
+            + "montre la FORME attendue, et seule la dernière ligne compte pour la "
+            + "séance — les autres sont l'écriture du raisonnement."
+    },
     {
         // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est
         // une règle qui marche pour les entiers et casse dès la première
@@ -777,7 +1417,8 @@ export const numerationExercises = [
         // les deux lectures sont vraies et donnent le même nombre, mais c'est
         // la première que l'élève entend en classe, et l'exercice ne doit pas
         // dire le contraire du professeur.
-        id: 'num-virgule', title: 'La Virgule qui se décale',
+        id: 'num-virgule',
+        jeu: false, title: 'La Virgule qui se décale',
         cree: '2026-08-11',
         activityId: 'virgule',
         // Sur le papier, le glissement dans le tableau de numération n'a pas
@@ -923,5 +1564,31 @@ export const numerationExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "Neuf marches, en trois temps. D'ABORD CE QU'EST UNE PUISSANCE : 2⁵ n'est pas 2 × 5, c'est 2 × 2 × 2 × 2 × 2. Et (−3)² vaut +9 quand −3² vaut −9 : la parenthèse dit si le signe fait partie du nombre qu'on élève au carré. ENSUITE LES DEUX RÈGLES QU'ON ÉCHANGE TOUT LE TEMPS. Le produit AJOUTE les exposants — 10⁵ × 10³ = 10⁸, parce que cinq dix suivis de trois dix font huit dix. Le quotient les SOUSTRAIT — 10⁸ ÷ 10³ = 10⁵. Le signe de l'opération n'est PAS celui qu'on fait sur les exposants, et c'est la faute la plus fréquente du chapitre. ENFIN la puissance de puissance, qui les MULTIPLIE — (10⁴)³ = 10¹², trois paquets de quatre dix —, l'inverse qui change le signe de l'exposant, et la condition qu'on oublie : il faut la MÊME base. 2³ × 5³ ne s'écrit pas sous la forme d'une seule puissance."
+    },
+    // ── LES PUISSANCES, LIGNE À LIGNE ───────────────────────────────────────
+    //
+    // RÉMY, EN ROUGE SUR SA FICHE DE QUATRIÈME : « TU ÉCRIRAS LE CALCUL ! »
+    //
+    // C'est écrit sur chacun de ses exercices, et c'est la demande de cette
+    // carte : il ne veut pas le résultat, il veut voir 10³ × 10² = 10³⁺² = 10⁵.
+    // La ligne du milieu est celle où la règle se montre — et celle où l'on
+    // voit, quand elle est fausse, que l'élève a appliqué le signe de
+    // l'opération aux exposants.
+    {
+        id: 'num-puissances-calcul-pas',
+        title: 'Calculer avec des Puissances, pas à pas',
+        cree: '2026-09-25',
+        generatorId: 'num.puissances-calcul', activityId: 'buttons',
+        skills: ['num.puissances.regles'],
+        params: { etapes: 'oui' },
+        consignePapier: "Écris le résultat le plus simple. Tu écriras le calcul !",
+        colonnesPapier: 4,
+        motsClefs: ['puissances', 'exposant', 'pas à pas', 'étapes', 'étape', 'détaillé',
+            'méthode', 'produit', 'quotient', 'règles de calcul', 'écrire le calcul'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Les mêmes questions, avec la ligne du milieu : 10⁵ × 10² = 10^(5 + 2) = 10⁷. L'exposant se tape avec la touche ^, parce qu'un exposant qui est une SOMME ne s'écrit pas en petits chiffres. Seule la dernière ligne compte pour la séance ; les autres sont la trace qu'on demande sur la copie."
     }
 ];

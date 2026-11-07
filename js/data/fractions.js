@@ -7,6 +7,41 @@ import { TAGS } from './tags.js';
 
 export const fractionsExercises = [
     {
+        // LA FRACTION SUR LA DROITE GRADUÉE — sixième, bloc 10 de sa
+        // progression.
+        //
+        // « La Loupe sur la Droite » existait déjà, mais elle ne place que des
+        // DÉCIMAUX, et son axe écrit ses graduations en décimaux. Trois choses
+        // changent ici, et aucune n'est un réglage : l'axe n'a plus dix
+        // intervalles mais autant que le dénominateur, l'étiquette est une
+        // fraction EMPILÉE, et la réponse se choisit au lieu de se taper —
+        // « 3/4 » au pavé numérique n'est pas une réponse, c'est une
+        // négociation avec le clavier.
+        //
+        // ET C'EST LÀ QU'ON VOIT QU'UNE FRACTION EST UN NOMBRE. Beaucoup
+        // d'élèves de sixième la lisent comme deux nombres superposés ; posée
+        // sur une droite, entre 0 et 1, elle prend une PLACE — et le palier
+        // « au-delà de 1 » achève de le montrer.
+        id: 'frac-graduation',
+        cree: '2026-10-21',
+        consignePapier: 'Écris la fraction de chaque point.',
+        // DEUX AXES DE FRONT, comme la droite des décimaux. MESURÉ : à un seul
+        // par rangée, la feuille portait DEUX axes et deux tiers de blanc ;
+        // à deux, elle en porte dix, chacun lisible. C'est Rémy qui a posé la
+        // règle, sur cet exercice-là : « car là ça gâche du papier ».
+        colonnesPapier: 2,
+        title: 'La Fraction sur la Droite',
+        generatorId: 'frac.graduation', activityId: 'bubbles',
+        // SUR LE PAPIER, C'EST LE MÊME RENDU QUE LA DROITE DES DÉCIMAUX : un
+        // axe, ses crans, deux ou trois croix nommées, et une ligne par point.
+        // Il a appris à compter autre chose que dix intervalles et à écrire
+        // une fraction empilée dans le corrigé.
+        printable: 'graduation',
+        motsClefs: ['fraction', 'droite graduée', 'abscisse', 'partage', 'unité', 'numérateur', 'dénominateur'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "L'unité, c'est le segment de 0 au trait suivant. Le DÉNOMINATEUR dit en combien de parts égales on l'a coupée : compte les INTERVALLES d'une unité, jamais les traits. Le NUMÉRATEUR dit combien d'intervalles on parcourt depuis 0. Le réglage des paliers ajoute les dénominateurs jusqu'à dix, puis les fractions qui dépassent 1 — car une fraction est un nombre, et rien ne l'oblige à rester sous l'unité."
+    },
+    {
         // Le réglage « Dénominateurs » EST la progression : identiques d'abord
         // (on compare les numérateurs, rien d'autre), puis différents. C'était
         // deux entrées de catalogue pour ce seul mot ; on part du plus facile,
@@ -60,17 +95,41 @@ export const fractionsExercises = [
         // tenir en même temps que la première.
         id: 'frac-produit', title: 'Multiplier des Fractions',
         cree: '2026-09-05',
-        consignePapier: 'Calcule le produit. Simplifie avant de multiplier quand c\'est possible.',
+        // LA CONSIGNE VAUT POUR LES DEUX RÉGLAGES. Vu sur la feuille imprimée
+        // du cas de sixième : « Simplifie avant de multiplier quand c'est
+        // possible » au-dessus de vingt « 3 × 1/2 », où rien ne se simplifie
+        // jamais. Une consigne fausse envoie l'élève chercher ce qui n'existe
+        // pas, et c'est pire qu'une consigne absente.
+        consignePapier: 'Calcule. Avec deux fractions, on peut simplifier en diagonale avant '
+            + 'de multiplier ; avec un entier, le dénominateur ne bouge pas.',
         colonnesPapier: 4,
         generatorId: 'frac.produit', activityId: 'bubbles',
-        params: { decomposition: 'sans', maxDen: 9, maxNum: 10 },
+        params: { decomposition: 'sans', maxDen: 9, maxNum: 10, facteurs: 'deux-fractions' },
         motsClefs: ['multiplier des fractions', 'produit de fractions', 'simplifier avant',
-            'décomposition', 'barrer en diagonale'],
+            'décomposition', 'barrer en diagonale', 'fraction par un entier'],
+        // ET IL DESCEND JUSQU'À LA SIXIÈME, par le réglage « Ce qu'on
+        // multiplie ». RÉMY, dix-huitième bloc de sa progression de sixième :
+        // « multiplier une fraction par un nombre ».
+        //
+        // LE CAS DE SIXIÈME N'EST PAS UNE VERSION FACILE DU CAS DE CINQUIÈME :
+        // « 3 × 2/5 », c'est « 2/5 + 2/5 + 2/5 ». Le nombre de parts est
+        // multiplié, leur TAILLE ne change pas — donc le dénominateur ne bouge
+        // pas. Un élève qui écrit 6/15 n'a pas raté une règle de calcul : il a
+        // cru que le 3 agissait sur les deux étages. Les leurres, les indices
+        // et le corrigé sont donc les siens, et non ceux du produit de deux
+        // fractions.
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
-            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
-        instruction: 'Multiplier deux fractions ne demande AUCUN dénominateur commun — c\'est '
+        instruction: 'LE RÉGLAGE « Ce qu\'on multiplie » OUVRE LE CAS DE SIXIÈME : une '
+            + 'fraction par un ENTIER. Ce n\'est pas le même geste. 3 × 2/5, c\'est '
+            + '2/5 + 2/5 + 2/5 : on prend trois fois deux cinquièmes. Le NOMBRE de parts est '
+            + 'multiplié, leur TAILLE ne change pas — donc le dénominateur ne bouge pas, et '
+            + 'la réponse est 6/5. Qui écrit 6/15 a multiplié les deux étages, et retombe sur '
+            + '2/5, c\'est-à-dire le nombre de départ : la multiplication n\'aurait servi à '
+            + 'rien. '
+            + 'Multiplier deux fractions ne demande AUCUN dénominateur commun — c\'est '
             + 'ce qui la sépare de l\'addition, et ce qu\'on oublie le plus vite. On multiplie '
             + 'les numérateurs entre eux, les dénominateurs entre eux : 2/3 × 5/7 = 10/21. Le '
             + 'réglage « Décomposer avant de calculer » change ce qui se passe ensuite. Sans, '
@@ -377,7 +436,8 @@ export const fractionsExercises = [
             + 'ou supprime la première phase.'
     },
     {
-        id: 'frac-samurai', title: 'Le Samouraï des Fractions',
+        id: 'frac-samurai',
+        jeu: false, title: 'Le Samouraï des Fractions',
         cree: '2026-08-04',
         revisions: [{
             date: '2026-08-20',
@@ -407,12 +467,48 @@ export const fractionsExercises = [
         instruction: "Rends la fraction irréductible ! Décompose le numérateur et le dénominateur (36/48 = 12×3 / 12×4), puis barre le facteur commun d'un coup de sabre. Attention aux pièges : si rien ne se simplifie, lève le bouclier 🛡️."
     },
     {
+        // LIRE LA FRACTION D'UNE FIGURE — le tout premier geste du chapitre,
+        // et il manquait.
+        //
+        // RÉMY : « on a même pas fait d'exercice de fraction où il faut écrire
+        // la fraction en fonction d'un camembert, pavage et avec la difficulté
+        // que parfois les parts ne sont pas identiques et que du coup, on
+        // sépare mentalement et en indice on peut voir la découpe ».
+        //
+        // AUDITÉ AVANT D'ÉCRIRE, ET IL AVAIT RAISON : vingt-huit exercices de
+        // fractions au catalogue, et pas un seul ne demandait de LIRE une
+        // figure. « La Pizzeria », juste en dessous, fait l'inverse — on lui
+        // donne 3/4 et l'élève colorie.
+        //
+        // LA DIFFICULTÉ QU'IL DEMANDE EST LA BONNE : une figure aux morceaux
+        // inégaux ne se COMPTE pas, elle se redécoupe. Un élève qui compte
+        // « 1 sur 3 » sans regarder la taille des morceaux écrit une fraction
+        // fausse — et c'est exactement ce que le temps B attrape.
+        id: 'frac-lire',
+        cree: '2026-10-15',
+        title: 'Lis la Fraction',
+        generatorId: 'frac.lire', activityId: 'numpad',
+        // LA FICHE PAPIER — Rémy : « Faire le pdf pour Lis la fraction ». Le
+        // rendu redessine le camembert ou le pavage en jsPDF à partir des
+        // morceaux rangés dans `meta` ; voir `lireFraction` dans
+        // `js/ui/fiches/nombres.js`.
+        printable: 'lireFraction',
+        // NEUF FIGURES PAR PAGE, en trois colonnes.
+        colonnesPapier: 3,
+        motsClefs: ['fraction', 'camembert', 'pavage', 'numérateur', 'dénominateur',
+            'parts égales', 'lire une fraction', 'partage', 'colorié'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Une figure est coloriée en partie : écris la fraction qu'elle montre. Le nombre du BAS dit en combien de parts ÉGALES la figure est coupée, celui du HAUT combien sont coloriées. Les trois premières marches coupent en parts toutes pareilles : il n'y a qu'à compter. LES TROIS DERNIÈRES NE LE FONT PAS — un morceau peut en valoir deux ou trois autres, et compter les morceaux donne alors une fraction fausse. Il faut d'abord trouver la plus petite part et voir combien de fois elle tient dans la figure. Le deuxième indice redessine la figure AVEC toutes ses coupes."
+    },
+    {
         // LE PPCM RENDU MANGEABLE. Deux fractions de dénominateurs différents
         // ne se posent pas sur la même pizza tant qu'on n'a pas trouvé le
         // découpage commun. L'élève ne calcule pas une fraction équivalente sur
         // une feuille : il compte des parts, et le nombre trouvé EST le
         // numérateur.
-        id: 'frac-pizza', title: 'La Pizzeria des Fractions',
+        id: 'frac-pizza',
+        jeu: false, title: 'La Pizzeria des Fractions',
         colonnesPapier: 3,
         cree: '2026-08-11',
         activityId: 'pizza',
@@ -436,7 +532,13 @@ export const fractionsExercises = [
         ],
         skills: ['num.frac.denominateur-commun'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Une commande arrive : « les deux tiers de champignons et le quart de sauce tomate ». Les deux dénominateurs ne sont pas les mêmes, alors la pizza est coupée en autant de parts que leur PPCM — douze pour 3 et 4. À toi de trouver combien de parts font les deux tiers, et combien font le quart. Choisis un ingrédient et tape les parts (tu peux balayer pour en garnir plusieurs), ou fais glisser l'ingrédient depuis la caisse. Puis au four !"
+        // PAS DE PPCM DANS LA CONSIGNE. Rémy : « l'explication pour les pizzas
+        // des fractions est une horreur ». Le mot criait au milieu de la
+        // première chose que l'élève lit, alors qu'il ne lui sert à rien ici :
+        // la pizza est DÉJÀ coupée quand il arrive, le découpage n'est pas la
+        // question qu'on lui pose. Elle dit donc ce qu'il a sous les yeux et ce
+        // qu'il doit chercher — combien de parts —, et rien de plus.
+        instruction: "Une commande arrive : « les deux tiers de champignons et le quart de sauce tomate ». Les tiers et les quarts ne sont pas les mêmes parts, alors la pizza est coupée pour les deux à la fois : en douze parts, puisque douze se divise par 3 et par 4. À toi de trouver combien de ces parts font les deux tiers, et combien font le quart. Choisis un ingrédient et tape les parts (tu peux balayer pour en garnir plusieurs), ou fais glisser l'ingrédient depuis la caisse. Puis au four !"
     },
     {
         id: 'dec-compare',
@@ -448,5 +550,29 @@ export const fractionsExercises = [
         params: { decimales: 2 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Compare les deux nombres décimaux rang par rang."
+    },
+
+    // --- Diviser par une fraction : le trou de la quatrième ---
+    //
+    // RÉMY : « Multiplication et division de fraction ». Multiplier existait,
+    // DIVISER n'existait qu'en seconde — et la quatrième est l'année où la
+    // règle s'apprend.
+    {
+        id: 'frac-division',
+        cree: '2026-10-20',
+        title: 'Diviser par une Fraction',
+        generatorId: 'frac.division', activityId: 'numpad',
+        consignePapier: 'Retourne, puis multiplie.',
+        colonnesPapier: 2,
+        lignesReponsePapier: 2,
+        params: { marches: ['inverse', 'inverse-entier', 'produit-un', 'par-un-entier',
+            'par-une-fraction', 'entier-par', 'probleme'] },
+        motsClefs: ['division', 'fraction', 'inverse', 'quotient', 'diviser',
+            'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Sept marches, et les trois premières ne divisent pas une seule fois. Diviser par une fraction demande DEUX gestes — retourner le diviseur, puis multiplier — et l'élève qui se trompe rate presque toujours le premier : il retourne la mauvaise fraction, ou les deux. Le temps A ne fait donc que retourner. « L'inverse d'un entier » y a sa marche à lui, parce que c'est le piège du chapitre : on sait retourner 3/5 et on bloque devant 4, faute de voir la fraction — il faut d'abord lire 4 comme 4/1. Le temps B divise, dans l'ordre : par un entier, par une fraction, puis un entier par une fraction — et là le résultat est plus GRAND que le nombre de départ, ce qui surprend et doit surprendre. Aucun résultat ne se simplifie : 8/12 et 2/3 sont tous les deux justes, et un logiciel qui en choisit un compte faux la moitié des élèves qui ont raison."
     }
 ];

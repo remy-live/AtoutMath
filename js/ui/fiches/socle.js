@@ -9,8 +9,15 @@ import { HAUTEUR_ETIQUETTE as HAUTEUR_ETIQ_ANGLE, ancreArc as ancreArcAngle, boi
 import { encre, mesureur, polycopieEnCouleur, pourPdf, texteRiche } from '../ficheRendu.js';
 import { sommets as sommetsAngles } from '../../core/anglesRemarquablesSvg.js';
 
-export const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240, 250],
-    texte: [45, 55, 72], gris: [110, 118, 132] };
+// L'ENCRE VIT DANS UN MODULE FEUILLE, et c'est ré-exporté ici pour que rien
+// ne change aux appels. Un rendu de `fiches/` a le droit d'écrire
+// `const TRAIT = ENCRE.trait` en tête de module, ce qui est le réflexe
+// naturel ; il ne l'avait PAS tant que `ENCRE` était déclaré ici, parce que ce
+// fichier est dans un cercle d'imports et qu'on ne lit pas une valeur d'un
+// cercle en train de se refermer. Voir `fiches/encre.js`, qui raconte les
+// vingt minutes que ça a coûté.
+export { ENCRE } from './encre.js';
+import { ENCRE } from './encre.js';
 
 // --- LES PLATEAUX À JOUER SUR PAPIER : puissance 4 et sim ---------------------
 //
@@ -210,8 +217,16 @@ export function dessinerFigureAnglePdf(doc, g, etiquette) {
  * pointillé à remplir. Commune à tous les blocs « une figure, et de quoi écrire
  * dessous » — les angles, les cubes — et c'est pour cela qu'elle ne porte plus le
  * nom d'un seul d'entre eux.
+ *
+ * ET C'EST ICI QUE LE CHAMP REMPLISSABLE SE POSE, pour les mêmes raisons :
+ * quatre rendus tracent cette ligne, et poser le champ dans chacun d'eux,
+ * c'est quatre occasions de l'oublier — la cinquième l'oubliera. Rémy : « je
+ * voudrais que tous les exercices qui peuvent prétendre à un champ
+ * remplissable puissent y avoir le droit. »
+ *
+ * @param {Function} [champ] le crayon `(x, y, w, h)` de la fiche remplissable.
  */
-export function ligneReponsePdf(doc, g, amorce, rep) {
+export function ligneReponsePdf(doc, g, amorce, rep, champ) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(g.taille / 0.3528);
     doc.setTextColor(...ENCRE.texte);
@@ -228,12 +243,72 @@ export function ligneReponsePdf(doc, g, amorce, rep) {
     if (doc.setLineDashPattern) doc.setLineDashPattern([0.6, 0.9], 0);
     doc.line(x, g.yReponse, g.b.x + g.b.w - 2, g.yReponse);
     if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+    // La boîte couvre le pointillé et monte d'une hauteur de ligne : on écrit
+    // SUR le trait, comme à la main. Le trait reste tracé — une fiche
+    // remplissable s'imprime aussi, et sans ses lignes elle n'est qu'une page
+    // de questions suivies de blancs.
+    if (typeof champ === 'function') {
+        const h = Math.max(3.4, g.taille * 1.1);
+        champ(x, g.yReponse - h * 0.78, g.b.x + g.b.w - 2 - x, h);
+    }
+}
+
+/**
+ * LE CHAMP REMPLISSABLE QUI TOMBE SUR LES POINTS DE SUSPENSION.
+ *
+ * Beaucoup de rendus n'écrivent pas de ligne : ils écrivent du TEXTE avec un
+ * trou dedans — « L'angle mesure ....... ° », « 79 dam = ……………… cm »,
+ * « Quelle est l'image de la pièce 3 … ». Le trou n'est pas au bord du bloc,
+ * il est au milieu d'une phrase dont la longueur change à chaque question : on
+ * ne peut pas écrire sa position en dur.
+ *
+ * On la MESURE. La largeur du texte qui précède le trou donne son abscisse, la
+ * largeur du trou donne la sienne, et l'alignement du texte fait le reste.
+ * C'est la même arithmétique pour tous ; la recopier dans chaque rendu, c'est
+ * la recopier faux une fois sur cinq.
+ *
+ * @param {object} doc le jsPDF — c'est LUI qui sait mesurer la police en cours
+ * @param {Function} champ le crayon `(x, y, w, h)`, ou rien du tout
+ * @param {string} texte la ligne écrite, trou compris
+ * @param {number} x l'abscisse passée à `doc.text`
+ * @param {number} y la ligne de base passée à `doc.text`
+ * @param {{align?: string, hauteur?: number}} [o]
+ * @returns {boolean} vrai si un trou a été trouvé et un champ posé
+ */
+export function champSurLePointille(doc, champ, texte, x, y, o = {}) {
+    if (typeof champ !== 'function') return 0;
+    const brut = pourPdf(String(texte == null ? '' : texte));
+    const total = doc.getTextWidth(brut);
+    const depart = o.align === 'center' ? x - total / 2
+        : (o.align === 'right' ? x - total : x);
+    const h = o.hauteur || 4;
+    let poses = 0;
+    // UNE LIGNE PEUT AVOIR DEUX TROUS, et c'est le cas qui a décidé de cette
+    // boucle : « A ( ...... ; ...... ) » du repère demande l'abscisse PUIS
+    // l'ordonnée. Un seul champ sur les deux, et l'élève tape ses deux nombres
+    // dans la même case — ce qui n'est pas la question posée.
+    for (const trou of brut.matchAll(/[.…]{2,}/g)) {
+        const avant = doc.getTextWidth(brut.slice(0, trou.index));
+        champ(depart + avant, y - h * 0.78, Math.max(6, doc.getTextWidth(trou[0])), h);
+        poses++;
+    }
+    return poses;
 }
 
 export const POINTE = 0.26;           // longueur de la pointe
 
 /** Une approximation de la largeur d'un texte en Helvetica, en millimètres. */
 export const largeurTexte = (s, pt) => String(s).length * pt * 0.48 * 0.3528;
+
+/**
+ * LE CORPS D'UN TEXTE EN POINTS, POUR UNE HAUTEUR VOULUE EN MILLIMÈTRES.
+ *
+ * Elle est ici parce qu'elle était écrite DEUX FOIS — dans les casse-tête et
+ * dans les grilles —, avec deux constantes différentes (2,8346 et 2,835). La
+ * garde du découpage l'a vu avant nous, et elle a raison : deux copies d'une
+ * fonction, ce sont deux comportements qui divergent au premier réglage.
+ */
+export const enPoints = (mm) => mm * 2.8346;
 
 export const echapperSheet = (t) => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 

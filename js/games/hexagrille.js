@@ -117,7 +117,7 @@ class Hexagrille extends BaseGame {
                 .hx-jeton {
                     width: clamp(34px, 9cqw, 46px); height: clamp(34px, 9cqw, 46px);
                     border-radius: 50%; border: 2px solid var(--primary);
-                    background: var(--bg-panel); color: var(--primary);
+                    background: var(--bg-panel); color: var(--primary-texte);
                     font: inherit; font-weight: 900; font-size: clamp(15px, 4cqw, 21px);
                     display: flex; align-items: center; justify-content: center;
                     cursor: grab; -webkit-tap-highlight-color: transparent;
@@ -131,7 +131,9 @@ class Hexagrille extends BaseGame {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; padding: 7px 12px;
                 }
-                .hx-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .hx-btn:hover { background: var(--bg-hover); }
+                }
                 .hx-note {
                     min-height: 2.4em; text-align: center; font-size: .88rem;
                     color: var(--text-muted); max-width: 620px; flex: 0 0 auto;
@@ -406,8 +408,12 @@ class Hexagrille extends BaseGame {
         const fin = () => { this.cursor?.hideBubble(); return true; };
 
         if (!await this.cursor.pause(600)) return fin();
-        this.cursor.say('Neuf cases, les chiffres de 1 à 9, chacun une seule fois. '
-            + 'Chaque flèche donne la somme de la file qu\'elle désigne.', this.plateauEl);
+        // DEUX IDÉES, DONC DEUX BULLES : les cases d'abord, les flèches ensuite.
+        // En une seule bulle de 114 caractères, la démonstration démarrait figée.
+        this.cursor.say('Neuf cases, les chiffres de 1 à 9, chacun une seule fois.', this.plateauEl);
+        if (!await this.cursor.pause(DEMO_SPEED.between)) return fin();
+
+        this.cursor.say('Chaque flèche donne la somme de la file qu\'elle désigne.', this.plateauEl);
         if (!await this.cursor.pause(DEMO_SPEED.between + 1200)) return fin();
 
         // Le robot déroule la grille comme on la résout : toujours la file où

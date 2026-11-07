@@ -18,6 +18,23 @@
 // Une règle commune, et elle n'est pas anodine : LAISSER PASSER un objet à
 // prendre coûte une vie, comme se tromper de cible. Sans cela, la stratégie
 // gagnante serait de ne rien toucher.
+//
+// DEUX MODES DE PLUS, DEMANDÉS PAR RÉMY : « pour les sommes et produits il
+// faut aussi faire faire des calculs pas que le signe, et aussi des jeux en
+// rapport avec cela ». Le moteur savait déjà trier des calculs ; il ne savait
+// tirer que des SOMMES.
+//
+//   PRODUITS  les bulles portent un produit ; on coupe celles dont le
+//             résultat est négatif. La règle n'est plus la même.
+//   MÊLÉS     sommes ET produits dans la même vague, moitié-moitié — c'est
+//             l'erreur reine de la 4ᵉ mise en jeu : appliquer la règle du
+//             produit à une somme.
+
+// LES DEUX EXERCICES ÉCRIVENT LE MÊME CALCUL DE LA MÊME FAÇON. « Somme ou
+// Produit ? » porte déjà ces deux écritures simplifiées ; les recopier ici
+// donnerait deux notations pour un seul chapitre, et l'élève croirait en voir
+// deux.
+import { sommeSimple, produitSimple } from './generators/relatifsMelange.js';
 
 export const MODES = {
     zeros: {
@@ -48,6 +65,24 @@ export const MODES = {
         rappel: 'Le résultat est positif quand le nombre le plus éloigné de zéro est positif.',
         skill: 'num.relatifs.somme',
         geste: 'tirer'
+    },
+    produits: {
+        id: 'produits',
+        titre: 'Ninja des produits négatifs',
+        consigne: 'Coupe les bulles dont le PRODUIT est négatif. Laisse passer les autres.',
+        rappel: 'Un produit est négatif quand ses deux facteurs sont de signes CONTRAIRES. Le plus éloigné de zéro ne décide de rien ici.',
+        skill: 'num.relatifs.produit',
+        geste: 'trancher',
+        operation: '×'
+    },
+    meles: {
+        id: 'meles',
+        titre: 'Ninja des deux règles',
+        consigne: 'Coupe les résultats NÉGATIFS — mais regarde l\'opération : somme et produit n\'ont pas la même règle.',
+        rappel: 'Dans une SOMME, le signe vient du nombre le plus éloigné de zéro. Dans un PRODUIT, il vient des signes des deux facteurs.',
+        skill: 'num.relatifs.produit',
+        geste: 'trancher',
+        operation: 'melange'
     }
 };
 
@@ -115,19 +150,50 @@ export function tirerNombre(rng) {
 
 // --- Les calculs de relatifs ---------------------------------------------------
 
-/** Un calcul simplifié (3 − 7) et son résultat. */
-export function tirerCalcul(rng, signeVoulu) {
+/**
+ * UN CALCUL SIMPLIFIÉ (3 − 7, ou −3 × (−7)) ET SON RÉSULTAT.
+ *
+ * RÉMY : « pour les sommes et produits il faut aussi faire faire des calculs
+ * pas que le signe, et aussi des jeux en rapport avec cela ».
+ *
+ * LE PRODUIT N'EST PAS LA SOMME, ET C'EST TOUT LE SUJET. Dans une somme,
+ * c'est le nombre le plus ÉLOIGNÉ DE ZÉRO qui donne le signe ; dans un
+ * produit, ce sont les deux SIGNES qui décident. L'erreur reine de la 4ᵉ est
+ * d'appliquer la seconde règle à la première — « moins et moins font plus »,
+ * donc −3 − 5 = 8.
+ *
+ * LES DEUX ÉCRITURES VIENNENT DU MÊME ENDROIT QUE « SOMME OU PRODUIT ? » :
+ * deux exercices qui écrivent le même calcul de deux façons apprennent deux
+ * notations, et l'élève croit voir deux chapitres.
+ *
+ * @param {'positif'|'negatif'} signeVoulu  le signe que doit avoir le résultat
+ * @param {'+'|'×'} op                      l'opération
+ */
+export function tirerCalcul(rng, signeVoulu, op = '+') {
+    const produit = op === '×';
+    // DES FACTEURS DE TABLE, et non jusqu'à douze : le jeu se joue à la
+    // volée, et (−11) × 12 n'est plus un réflexe de signe, c'est un calcul
+    // posé — ce que le chronomètre du jeu ne laisse pas faire.
+    //
+    // ET LE FACTEUR 1 EST ÉCARTÉ. Photographié : deux bulles sur cinq
+    // portaient « 9 × (−1) » et « 2 × (−1) ». Le signe y est juste, mais le
+    // produit n'en est pas un — multiplier par un ne fait rien, et l'élève
+    // lit l'opposé là où on lui demande une règle de signes. Le cas de ±1 a
+    // sa marche à lui dans « Multiplier des Relatifs » ; ici il dilue le jeu.
+    const bas = produit ? 2 : 1;
+    const borne = produit ? 9 : 12;
     for (let essai = 0; essai < 60; essai++) {
-        const a = rng.int(1, 12) * (rng.bool() ? 1 : -1);
-        const b = rng.int(1, 12) * (rng.bool() ? 1 : -1);
-        const total = a + b;
+        const a = rng.int(bas, borne) * (rng.bool() ? 1 : -1);
+        const b = rng.int(bas, borne) * (rng.bool() ? 1 : -1);
+        const total = produit ? a * b : a + b;
         if (total === 0) continue;
         if (signeVoulu === 'positif' && total < 0) continue;
         if (signeVoulu === 'negatif' && total > 0) continue;
-        const gauche = a < 0 ? `−${Math.abs(a)}` : String(a);
-        return { texte: `${gauche} ${b < 0 ? '−' : '+'} ${Math.abs(b)}`, valeur: total };
+        return { texte: produit ? produitSimple(a, b) : sommeSimple(a, b), valeur: total, op };
     }
-    return { texte: '3 − 7', valeur: -4 };
+    return produit
+        ? { texte: '−3 × 7', valeur: -21, op: '×' }
+        : { texte: '3 − 7', valeur: -4, op: '+' };
 }
 
 // --- Le jeu ---------------------------------------------------------------------
@@ -177,13 +243,28 @@ export function genererVague(etat, rng) {
         ...Array.from({ length: cibles }, () => veut),
         ...Array.from({ length: n - cibles }, () => contraire)
     ];
-    for (const quoi of rng.shuffle(plan)) {
-        const c = tirerCalcul(rng, quoi);
+
+    // LES OPÉRATIONS AUSSI SE PLANIFIENT, ET POUR LA MÊME RAISON QUE LES
+    // CIBLES. En mode « mêlés », une opération tirée à pile ou face par objet
+    // donne une vague de cinq sommes une fois sur trente-deux — et la vague
+    // qui ne mêle rien est exactement celle où l'élève applique une règle sans
+    // la choisir, c'est-à-dire le défaut que ce mode existe pour corriger.
+    const op = MODES[etat.mode].operation || '+';
+    const sommes = Math.max(1, Math.round(n / 2));
+    const ops = op === 'melange'
+        ? rng.shuffle([
+            ...Array.from({ length: sommes }, () => '+'),
+            ...Array.from({ length: n - sommes }, () => '×')
+        ])
+        : Array.from({ length: n }, () => op);
+
+    rng.shuffle(plan).forEach((quoi, i) => {
+        const c = tirerCalcul(rng, quoi, ops[i]);
         objets.push({
-            id: `o${++compteur}`, texte: c.texte, valeur: c.valeur,
+            id: `o${++compteur}`, texte: c.texte, valeur: c.valeur, op: c.op,
             cible: quoi === veut, coupe: false
         });
-    }
+    });
     etat.vague = { objets, consigne: MODES[etat.mode].consigne };
     return etat.vague;
 }
@@ -224,7 +305,14 @@ export function messageErreur(etat, o) {
         return `Tu as tranché un ${o.texte}, pas un zéro.`;
     }
     const attendu = etat.mode === 'positifs' ? 'positif' : 'négatif';
-    return `${o.texte} = ${o.valeur < 0 ? '−' + Math.abs(o.valeur) : o.valeur}, ce n'est pas ${attendu}.`;
+    const dit = `${o.texte} = ${o.valeur < 0 ? '−' + Math.abs(o.valeur) : o.valeur}, `
+        + `ce n'est pas ${attendu}.`;
+    // ET L'ON NOMME LA CONFUSION QUAND C'EST UN PRODUIT : dire « ce n'est pas
+    // négatif » laisse l'élève avec la règle qu'il vient d'appliquer. Celle
+    // du produit ne regarde pas le nombre le plus éloigné de zéro.
+    return o.op === '×'
+        ? `${dit} Dans un produit, ce sont les SIGNES des deux facteurs qui décident.`
+        : dit;
 }
 
 /** Un objet à prendre est sorti de l'écran sans avoir été touché. */

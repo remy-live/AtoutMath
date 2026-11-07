@@ -34,6 +34,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { CONFIGURATIONS, creerThales, longueurTexte } from '../core/thales.js';
 import { figureThalesSvg, egaliteEnColonnes } from '../core/generators/thales.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     ETIQUETTES, hypotheses, isolements, trio, calculEcrit, verifierEgalite, verifierChiffres
 } from '../core/thalesRedaction.js';
@@ -91,7 +92,7 @@ class ThalesRedaction extends BaseGame {
                     font-weight: 800; font-size: .82rem; letter-spacing: .04em;
                     text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px;
                 }
-                .thr-bloc--ici .thr-titre { color: var(--primary); }
+                .thr-bloc--ici .thr-titre { color: var(--primary-texte); }
                 .thr-bloc--fait .thr-titre { color: var(--success); }
                 .thr-ligne { font-size: .95rem; line-height: 1.5; font-weight: 600; }
                 /* La phrase qui dit quoi faire sur la ligne chiffrée : plus
@@ -110,7 +111,9 @@ class ThalesRedaction extends BaseGame {
                     font: inherit; font-weight: 600; font-size: .88rem; padding: 7px 11px;
                     line-height: 1.3;
                 }
-                .thr-opt:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .thr-opt:hover { border-color: var(--primary); }
+                }
                 .thr-opt--pris { border-color: var(--success); background: rgba(22,163,74,.12); }
                 .thr-opt--faux { border-color: var(--danger); background: rgba(220,38,38,.1); opacity: .7; }
 
@@ -150,7 +153,9 @@ class ThalesRedaction extends BaseGame {
                     cursor: pointer; min-height: 38px; line-height: 1.2;
                     display: flex; align-items: center; justify-content: center;
                 }
-                .thr-case--trou:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .thr-case--trou:hover { border-color: var(--primary); }
+                }
                 /* LA CASE VISÉE SE VOIT DE LOIN. C'est elle qui recevra la
                    prochaine étiquette : sans repère, on touche une longueur et
                    l'on ne sait pas où elle est allée. */
@@ -171,7 +176,9 @@ class ThalesRedaction extends BaseGame {
                     background: var(--bg-panel); color: var(--text-main); font: inherit;
                     font-weight: 800; font-size: .84rem; padding: 5px 10px; min-height: 32px;
                 }
-                .thr-eti:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .thr-eti:hover { border-color: var(--primary); color: var(--primary-texte); }
+                }
 
                 .thr-resultat { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
                 .thr-nb {
@@ -691,24 +698,48 @@ class ThalesRedaction extends BaseGame {
     // --- La démonstration du robot ---------------------------------------------
 
     async runDemoSequence() {
+        // LE ROBOT PARLAIT D'UNE FIGURE QUI N'ÉTAIT PAS LÀ.
+        //
+        // Rémy : « thalès n'a pas d'aperçu ». Mesuré : la vignette montait ONZE
+        // nœuds — l'enveloppe et sa feuille de style —, sans un seul `svg`,
+        // quand le QCM de Thalès en monte quarante-six avec son dessin.
+        //
+        // `start()` appelle `runDemoSequence()` À LA PLACE de `startGameLoop()`
+        // (voir core/BaseGame.js) : en démonstration, `poserDefi()` n'était donc
+        // jamais appelé. Pas de figure, pas d'énoncé, pas d'étiquettes — et le
+        // robot expliquait « deux droites sécantes, et deux parallèles » devant
+        // un cadre blanc. Ce n'est pas seulement l'aperçu qui était vide : la
+        // démonstration plein écran l'était aussi.
+        //
+        // Les autres jeux autonomes posent leur plateau en tête de séquence —
+        // l'École du Tableur ouvre sa leçon 1, le Chat pose sa figure. Celui-ci
+        // ne le faisait pas.
+        if (!this.f) this.poserDefi();
         const cursor = createDemoCursor();
         const gate = createDemoGate(this.container);
         this.demoCursor = cursor;
-        if (!await gate.waitTurn()) return;
+        const robot = meneurDemo(cursor, gate, null, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
         cursor.say('Une démonstration se rédige en trois temps, et ce sont eux qui '
             + 'rapportent les points — pas le nombre.', this.copieEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
+        // UNE IDÉE PAR BULLE : les trois temps gardent leur définition et leur
+        // geste, et ce qui commentait la correction (« la ligne où l'on remplace
+        // par les valeurs ne se recopie pas ») est parti. Au-delà de 110
+        // caractères, la bulle se lit si longtemps qu'on croit la démonstration
+        // plantée.
         cursor.say('JE SAIS QUE : ce qui vient de l\'énoncé. Deux droites sécantes, et '
-            + 'deux parallèles — Thalès ne demande rien d\'autre.', this.figEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
-        cursor.say('OR : ce qui vient du cours. J\'écris l\'égalité des trois rapports, '
-            + 'chaque petit segment sur le grand qui le contient.', this.copieEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
-        cursor.say('DONC : ce que j\'en déduis. Produit en croix, calcul, conclusion — '
-            + 'et la ligne où l\'on remplace par les valeurs ne se recopie pas.',
+            + 'deux parallèles.', this.figEl);
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
+        cursor.say('OR : ce qui vient du cours. J\'écris l\'égalité des trois rapports.', this.copieEl);
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
+        cursor.say('Chaque petit segment sur le grand qui le contient.', this.copieEl);
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
+        cursor.say('DONC : ce que j\'en déduis. Produit en croix, calcul, conclusion.',
         this.copieEl);
         await cursor.pause(DEMO_SPEED.between);
     }

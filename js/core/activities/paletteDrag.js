@@ -40,11 +40,16 @@ export function nettoyerFantomes() {
  * @param {()=>boolean} [h.bloque] - vrai quand la saisie est gelée (correction affichée)
  * @param {string} [h.classeVisee] - la classe qui marque la cible survolée ; une
  *        grille et une figure ne se surlignent pas de la même façon.
+ * @param {string} [h.jeton] - le sélecteur des jetons à rendre glissables. Il
+ *        valait `.kk-chip` en dur, ce qui était juste tant que le Mathdoku
+ *        était seul à s'en servir ; le Strimko a ses propres jetons, et rendre
+ *        les siens glissables en leur collant la classe d'un AUTRE jeu aurait
+ *        lié leur apparence à celle du Mathdoku pour toujours.
  */
 export function brancherGlisserPalette(conteneur, {
-    cibleSous, deposer, bloque, classeVisee = 'kk-cell--visee'
+    cibleSous, deposer, bloque, classeVisee = 'kk-cell--visee', jeton = '.kk-chip'
 }) {
-    conteneur.querySelectorAll('.kk-chip').forEach(chip => {
+    conteneur.querySelectorAll(jeton).forEach(chip => {
         chip.addEventListener('pointerdown', (event) => {
             if (event.button !== undefined && event.button !== 0) return;
             if (bloque && bloque()) return;

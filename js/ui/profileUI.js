@@ -18,7 +18,7 @@ import { getSkill, skillLabel } from '../data/skills.js';
 import { exercisesForSkill, getExerciseById, estRevisable } from '../data/catalog.js';
 import { isGame } from '../core/gameAccess.js';
 import { grouperParExercice, questionsOuvertes, fusionnerDoublons } from '../core/carnet.js';
-import { visuelDe } from '../core/visuelQuestion.js';
+import { visuelDe, corrigeDe } from '../core/visuelQuestion.js';
 import {
     startErrorReview, startSkillSession, startRecommendedSession, buildRecommendedPreview
 } from '../core/remediation.js';
@@ -41,8 +41,10 @@ export function initProfileUI() {
     const btnRevision = document.getElementById('btn-start-revision');
     if (btnRevision) btnRevision.onclick = () => startErrorReview();
 
-    const btnSeance = document.getElementById('btn-seance-conseillee');
-    if (btnSeance) btnSeance.onclick = () => startRecommendedSession();
+    // LE BOUTON « TOUT RÉVISER » SE BRANCHE DANS `renderPlan`, et non ici :
+    // c'est là qu'on sait ce qui est affiché, donc ce que « tout » désigne.
+    // Branché ici, il relancerait une liste recalculée — voir
+    // `startRecommendedSession`.
 
     ['profile-group-exo', 'profile-show-games'].forEach(id => {
         const el = document.getElementById(id);
@@ -153,10 +155,11 @@ function renderHeader() {
     const level = Math.floor(score / 100) + 1;
     const xpInLevel = score % 100;
 
-    let rank = 'Apprenti Mathématicien';
-    if (level >= 3) rank = 'Calculateur Averti';
-    if (level >= 5) rank = 'Expert des Chiffres';
-    if (level >= 10) rank = 'Génie des Maths';
+    // Les quatre titres, en français : majuscule au premier mot, et c'est tout.
+    let rank = 'Apprenti mathématicien';
+    if (level >= 3) rank = 'Calculateur averti';
+    if (level >= 5) rank = 'Expert des chiffres';
+    if (level >= 10) rank = 'Génie des maths';
 
     setText('profile-score-value', score);
     setText('profile-correct-count', getTotalCorrectCount());
@@ -172,12 +175,19 @@ function renderHeader() {
     const timeEl = document.getElementById('profile-time-value');
     if (timeEl) timeEl.textContent = formatDuration(state.timeSpentTotal);
 
+    // « XP » ÉTAIT LE TROISIÈME NOM DU MÊME NOMBRE. Le niveau vaut
+    // `score ÷ 100` et la barre montre `score % 100` : c'est le compteur de la
+    // barre du haut, appelé « étoiles » là-haut et « Points totaux » deux
+    // lignes plus haut. Trois mots pour un chiffre, dont un mot d'anglais de
+    // jeu vidéo qu'un élève de sixième n'a aucune raison de connaître — et que
+    // Rémy n'emploie nulle part ailleurs. On dit « points », qui est déjà le
+    // mot des exploits (« Gagner 250 points »), et l'on dit à quoi ils servent.
     const levelEl = document.getElementById('profile-level');
     if (levelEl) {
         levelEl.innerHTML = `
             <div class="profile-rank">${rank} <span class="profile-rank-level">(Niveau ${level})</span></div>
             <div class="profile-xp-bar"><div style="width:${xpInLevel}%"></div></div>
-            <div class="profile-xp-text">${xpInLevel} / 100 XP</div>`;
+            <div class="profile-xp-text">${xpInLevel} / 100 points avant le niveau ${level + 1}</div>`;
     }
 }
 
@@ -203,7 +213,33 @@ function renderPlan() {
         if (btn) btn.style.display = 'none';
         return;
     }
-    if (btn) btn.style.display = 'inline-flex';
+    // ── « TOUT RÉVISER » ────────────────────────────────────────────────────
+    //
+    // Rémy : « Dans ce que tu dois réviser, tu peux mettre un bouton Tout
+    // réviser. »
+    //
+    // LE GESTE EXISTAIT ; C'EST LE NOM QUI MANQUAIT. Mesuré sur l'écran de
+    // l'élève (tools/tmp/ceQueTuDoisReviser.mjs) : trois cartes, trois boutons
+    // « ▶ Réviser », et au-dessus « ▶ Lancer la séance conseillée » — qui
+    // enchaîne précisément ces trois-là. Rien ne le disait. Rémy, qui a écrit
+    // tout ce logiciel avec moi, ne l'avait pas reconnu : un élève de sixième
+    // ne le reconnaîtra pas davantage.
+    //
+    // LE COMPTE EST DANS LE NOM, comme « Réviser mes 79 erreurs » dans
+    // l'onglet voisin : « tout » tout seul ne dit pas si l'on s'engage pour
+    // trois minutes ou pour une heure. Et c'est `plan.length`, le nombre de
+    // cartes RÉELLEMENT affichées — pas une constante qui lui ressemble.
+    //
+    // À UNE SEULE NOTION, ON SE TAIT : le bouton ferait exactement ce que fait
+    // le « ▶ Réviser » de l'unique carte, dix pixels plus bas. Deux boutons
+    // voisins qui promettent la même chose, c'est le défaut qu'on a déjà payé
+    // sur la barre d'outils du professeur.
+    if (btn) {
+        const seul = plan.length < 2;
+        btn.style.display = seul ? 'none' : 'inline-flex';
+        btn.textContent = `▶ Tout réviser : ${plan.length} notions`;
+        btn.onclick = () => startRecommendedSession(plan);
+    }
 
     // DEUX LIGNES ET UN BOUTON.
     //
@@ -218,7 +254,7 @@ function renderPlan() {
         const def = getSkill(r.skillId);
         // LA LEÇON EST MISE EN PAGE, pas jetée en un paragraphe — voir
         // `ui/leconHtml.js`. Rémy : « ça donne pas envie de lire ».
-        const lecon = def && def.lesson ? `<div class="plan-lecon">${leconHtml(def.lesson)}</div>` : '';
+        const lecon = def && def.lesson ? `<div class="plan-lecon">${leconHtml(def)}</div>` : '';
         const exos = exercisesForSkill(r.skillId).slice(0, 3);
         const liens = exos.length
             ? `<div class="plan-exos">${exos.map(e =>
@@ -313,7 +349,7 @@ function group(title, skills, actionable) {
 function skillRow(skill, actionable) {
     const pct = Math.round(skill.mastery * 100);
     const def = getSkill(skill.skillId);
-    const lesson = def && def.lesson ? `<div class="skill-lesson">${leconHtml(def.lesson)}</div>` : '';
+    const lesson = def && def.lesson ? `<div class="skill-lesson">${leconHtml(def)}</div>` : '';
     return `
     <div class="skill-row">
         <div class="skill-main">
@@ -496,13 +532,59 @@ function errorBody(err) {
         ? `<div class="error-why">${escapeHtml(q.misconception)}</div>`
         : (q.customMessage ? `<div class="error-why">${escapeHtml(q.customMessage)}</div>` : '');
     const skill = err.skillId ? `<div class="error-skill">${escapeHtml(skillLabel(err.skillId))}</div>` : '';
+
+    // LA CORRECTION DESSINÉE, quand le générateur sait la dessiner.
+    //
+    // RÉMY, capture du carnet d'un élève de 4e : « c'est pas clair pour les
+    // transformations, il faut montrer la figure de base et la solutions. […]
+    // Il faut que tant que faire se peut que ce soit visuel. »
+    //
+    // Elle REMPLACE la figure de l'énoncé — c'est la même, avec la réponse
+    // dessus — et elle rend aussi les deux réponses en français, ce qui répare
+    // les erreurs enregistrées AVANT que l'activité ne les écrive lisibles.
+    // Voir `corrigeDe` dans core/visuelQuestion.js.
+    const corrige = corrigeDe(q, err.exoId);
+    const donne = (corrige && corrige.given) || q.input;
+    const attendu = (corrige && corrige.expected) || q.expected;
+    const dessin = corrige
+        ? `<div class="error-figure error-figure--corrige">${corrige.html}
+             <p class="error-legende">
+               <span class="error-legende-juste">vert</span> : la bonne réponse ·
+               <span class="error-legende-faux">rouge</span> : la tienne</p>
+           </div>`
+        : figureDeLErreur(err);
+
+    // LES DEUX RÉPONSES EN TOUTES LETTRES NE S'ÉCRIVENT QUE S'IL N'Y A PAS DE
+    // DESSIN.
+    //
+    // RÉMY, 4 novembre, devant la carte d'une translation : « Colorie l'image
+    // de la figure bleue par la translation que montre la flèche rouge. — ta
+    // réponse : (6 ; 2), (6 ; 3), (7 ; 3), (6 ; 4), (7 ; 4), attendu :
+    // (6 ; 3), (6 ; 4), (7 ; 4), (6 ; 5), (7 ; 5). Aucun intérêt, le dessin
+    // suffit ».
+    //
+    // C'est pire qu'inutile : pour comparer deux listes de cinq couples,
+    // l'élève doit les reporter à la main sur le quadrillage — refaire
+    // l'exercice pour lire sa correction —, pendant que le dessin juste en
+    // dessous les lui montre en vert et en rouge, avec sa légende.
+    //
+    // ET CE N'EST PAS « DÈS QU'IL Y A UN DESSIN », C'EST « DÈS QUE LA RÉPONSE
+    // EST UNE LISTE DE CASES ». MESURÉ (`tools/carteDuCarnet.mjs`) : supprimée
+    // dès qu'un dessin existe, la ligne disparaissait aussi du pavage — où la
+    // réponse est « l'axe d₁ (x = 9) », un NOM qu'on relit en classe et que la
+    // figure ne prononce pas. Une liste de cinq couples ne se relit pas ; un
+    // nom, si.
+    const listeDeCases = (t) =>
+        (String(t == null ? '' : t).match(/\(\s*\d+\s*;\s*\d+\s*\)/g) || []).length >= 2;
+    const enMots = (corrige && listeDeCases(attendu)) ? '' : ` — ta réponse :
+            <b class="error-given">${escapeHtml(donne)}</b>, attendu :
+            <b class="error-expected">${escapeHtml(attendu)}</b>`;
+
     return `
         <div class="error-item-detail">
-            <b>${escapeHtml(q.questionText || '')}</b>${repeat} — ta réponse :
-            <b class="error-given">${escapeHtml(q.input)}</b>, attendu :
-            <b class="error-expected">${escapeHtml(q.expected)}</b>
+            <b>${escapeHtml(q.questionText || '')}</b>${repeat}${enMots}
         </div>
-        ${figureDeLErreur(err)}${why}${skill}`;
+        ${dessin}${why}${skill}`;
 }
 
 function correctedBadge() {
@@ -698,7 +780,7 @@ function renderProfiles() {
                 showConfirm(`Supprimer le profil « ${p.name} » et toutes ses données ?`, async () => {
                     await deleteProfile(p.id);
                     location.reload();
-                });
+                }, { bouton: `Supprimer « ${p.name} »` });
             };
             chip.appendChild(del);
         }

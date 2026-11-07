@@ -279,6 +279,30 @@ function garantir(h, { largeur, profondeur, hauteur, rng }) {
 }
 
 /** Ce qui se mesure sur un empilement : de quoi écrire l'énoncé et le corrigé. */
+/**
+ * LE MÊME EMPILEMENT, VU DU COIN SUIVANT — un quart de tour vers la droite.
+ *
+ * RÉMY, 19 octobre, devant « Dénombrer des cubes par tranche » : « j'aimerai
+ * bien ce genre d'exercices » — et la capture montre un bouton 90° au-dessus
+ * du dessin.
+ *
+ * ON TOURNE LA GRILLE, PAS LE DESSIN. Le miroir qui existait déjà retourne
+ * l'IMAGE : c'est une seconde vue, et il n'y en a pas de troisième. Tourner
+ * les hauteurs d'un quart de tour en donne quatre, et surtout ce sont de
+ * vraies vues du même solide — ce qui était caché derrière passe devant, ce
+ * qui compte autant pour l'élève que pour la justesse : le nombre de cubes ne
+ * change pas, et `mesures` le vérifie sur la grille tournée.
+ *
+ * `h[y][x]` est la hauteur de la pile posée en (x, y). Le quart de tour envoie
+ * la colonne x sur la ligne y : la ligne 0 de la grille tournée est la
+ * COLONNE 0 lue de bas en haut.
+ */
+export function quartDeTour(h) {
+    const lignes = h.length, colonnes = h[0].length;
+    return Array.from({ length: colonnes }, (_, y) =>
+        Array.from({ length: lignes }, (_, x) => h[lignes - 1 - x][y]));
+}
+
 export function mesures(h) {
     const b = boitePleine(h);
     return {

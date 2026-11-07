@@ -15,11 +15,12 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { executer, compterBlocs, contientBoucle, profondeurBoucles } from '../scratchVM.js';
 import { comparerTrace, diagnostiquer, verifierExigences } from '../scratchScore.js';
 import { CHAT_SVG, CHAT_TAILLE } from './chatSvg.js';
 import { Atelier, vignettePalette } from './scratchAtelier.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const DEMI = 200;          // la scène couvre -200..200 dans les deux sens
 const CARREAU = 10;        // valeur d'un carreau par défaut, en pas du chat
@@ -166,6 +167,51 @@ export function mount(container, session, opts = {}) {
         });
 
         atelier.charger(item.meta.amorce || []);
+        veillerSurLaPalette(palette);
+    }
+
+    /**
+     * DIRE QU'IL Y A D'AUTRES BLOCS PLUS BAS.
+     *
+     * UN BALAYAGE DES 216 EXERCICES, sur un téléphone de 390 x 844 et au doigt,
+     * n'a trouvé QU'UN SEUL écran où une commande nécessaire se cache sous son
+     * cadre : celui-ci. La palette du Chat est une colonne de blocs sur 42 pour
+     * cent d'une largeur de téléphone ; 81 pixels en dépassaient, et le bloc
+     * « répéter 4 fois » était dedans.
+     *
+     * ATTEIGNABLE N'EST PAS VISIBLE, et c'est toute la question. Le balayage du
+     * 27 septembre avait annoncé dix-sept boutons « sous la fenêtre » qui se
+     * défilaient tous très bien, et la sonde avait été corrigée — à raison.
+     * Mais un élève de sixième qui ne voit pas le bloc qu'on lui demande ne se
+     * dit pas « il doit être plus bas » : il attend, ou il renonce.
+     *
+     * POURQUOI PAS UN SIMPLE DÉGRADÉ QUI EFFACE LE BAS : parce qu'il effacerait
+     * justement le bloc qu'on veut montrer. On pose une flèche, hors du flux,
+     * qui dit le geste ; elle disparaît dès qu'on a défilé.
+     *
+     * ELLE NE S'ALLUME QUE SI ELLE SERT. Sur un ordinateur, la palette tient
+     * tout entière et l'indice ne doit jamais paraître : c'est la mesure du
+     * débordement qui décide, pas la taille de l'écran.
+     */
+    function veillerSurLaPalette(palette) {
+        if (!palette) return;
+        const dire = () => {
+            const reste = palette.scrollHeight - palette.clientHeight - palette.scrollTop;
+            // Huit pixels : en dessous, c'est un arrondi de mise en page, pas
+            // un bloc caché.
+            palette.classList.toggle('sc-palette--encore', reste > 8);
+        };
+        palette.addEventListener('scroll', dire, { passive: true });
+        // La palette se remplit et se redimensionne APRÈS ce branchement : on
+        // remesure à chaque changement de taille plutôt que de parier sur un
+        // délai. Sans cela l'indice restait allumé sur un ordinateur, où il n'a
+        // rien à dire.
+        if (window.ResizeObserver) {
+            const oeil = new ResizeObserver(dire);
+            oeil.observe(palette);
+            palette._oeil = oeil;
+        }
+        dire();
     }
 
     // --- Saisie d'un nombre -------------------------------------------------
@@ -572,29 +618,30 @@ export function mount(container, session, opts = {}) {
         if (!cursor) cursor = createDemoCursor();
         cursor.protegerZone(container.querySelector('.sc-scene'));
         const gate = createDemoGate(container.querySelector('.sc-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
         const m = item.meta;
 
-        if (!await cursor.pause(700) || destroyed) return fin();
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.pause(700)) return fin();
+        if (!await robot.tour()) return fin();
         cursor.say(m.libre
             ? 'Ici, rien à repasser : on dessine ce qu\'on veut. Je te montre un programme.'
             : `On doit repasser ${m.titre.toLowerCase()}. Je vais écrire le programme du chat.`,
             container.querySelector('.sc-scene'));
-        if (!await cursor.pause(1600) || destroyed) return fin();
+        if (!await robot.pause(1600)) return fin();
 
         // Le robot POSE les pièces une par une, en disant pourquoi : c'est la
         // seule façon de transmettre « 360 divisé par le nombre de côtés ».
         for (let i = 0; i < m.modele.length; i++) {
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             atelier.charger(m.modele.slice(0, i + 1));
             const phrase = commenter(m.modele[i], m);
             const derniere = [...container.querySelectorAll('.sc-piece--vive')].pop();
             if (phrase) cursor.say(phrase, derniere);
-            if (!await cursor.pause(900) || destroyed) return fin();
+            if (!await robot.pause(900)) return fin();
         }
 
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         const btn = container.querySelector('[data-run]');
         cursor.say(item.meta.libre
             ? 'Et je lance : regarde ce que ce petit programme dessine.'
@@ -602,8 +649,8 @@ export function mount(container, session, opts = {}) {
         if (btn && !await cursor.tap(btn, 700)) return fin();
         await lancer();
         if (destroyed) return fin();
-        cursor.say(item.explanation, container.querySelector('.sc-scene'));
-        if (!await cursor.pause(DEMO_SPEED.between + 1400) || destroyed) return fin();
+        cursor.say(enUneBulle(item.explanation, 'Le chat a refait la figure : le programme est bon.'), container.querySelector('.sc-scene'));
+        if (!await robot.pause(DEMO_SPEED.between + 1400)) return fin();
         fin();
         renderNext();
     }
@@ -641,6 +688,8 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (anim) { cancelAnimationFrame(anim); anim = null; }
+            const pal = container.querySelector('[data-palette]');
+            if (pal && pal._oeil) { pal._oeil.disconnect(); pal._oeil = null; }
             if (preparerAtelier._resize) {
                 window.removeEventListener('resize', preparerAtelier._resize);
                 preparerAtelier._resize = null;

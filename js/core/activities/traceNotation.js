@@ -22,6 +22,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { MORCEAUX, traceVide, traceDe, ecritureDe, verifierTrace, roleDuMorceau } from '../trace.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 // La géométrie du dessin, en unités du viewBox.
 const W = 320, H = 120, Y = 66;
@@ -183,25 +184,26 @@ export function mount(container, session, opts = {}) {
     async function runDemo(item, gauche, droite, peindre, sceneEl, lectureEl) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const bon = traceAttendue(String(item.answer), gauche, droite);
         const contexte = container.querySelector('.tn-contexte');
         cursor.say(`Je dois tracer ${item.answer}. Je regarde ce que disent les deux symboles : `
             + 'un crochet arrête le trait, une parenthèse le laisse filer.', contexte || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
 
         for (const nom of MORCEAUX) {
             if (!bon[nom]) continue;
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             const g = sceneEl.querySelector(`[data-morceau="${nom}"]`);
             cursor.say(`Je prends ${roleDuMorceau(nom, gauche, droite)}.`, g || sceneEl);
             trace = { ...trace, [nom]: true };
             peindre();
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
         }
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(`Et ce que j'ai tracé s'écrit ${item.answer}.`, lectureEl || sceneEl);
         await cursor.pause(DEMO_SPEED.between);
     }

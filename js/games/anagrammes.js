@@ -21,6 +21,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { tirerAnagramme, analyser, debutDevoile, normaliser } from '../core/anagrammes.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'voc.mathematique';
 /** Au-delà, l'énigme n'en est plus une : on garde la trace des mots vus. */
@@ -71,7 +72,7 @@ class Anagrammes extends BaseGame {
                     border-radius: 9px; border: 2.5px dashed var(--border);
                     display: flex; align-items: center; justify-content: center;
                     font-weight: 900; font-size: calc(var(--an-cote) * .58);
-                    background: var(--bg-panel); color: var(--primary);
+                    background: var(--bg-panel); color: var(--primary-texte);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                 }
                 .an-case--pleine { border-style: solid; border-color: var(--primary); }
@@ -86,6 +87,32 @@ class Anagrammes extends BaseGame {
                 /* LE TAS DE LETTRES. Il se vide à mesure : ce qui reste est un
                    indice à lui tout seul. */
                 .an-tas { display: flex; gap: clamp(4px, 1cqw, 8px); flex-wrap: wrap; justify-content: center; }
+                /* LE JETON ET SA CASE ONT LA MÊME TAILLE, ET LE PLANCHER EN
+                   AVAIT CASSÉ UNE SEULE DES DEUX.
+
+                   Les deux se dessinent sur la même variable — width:
+                   var(--an-cote), height: calc(var(--an-cote) * 1.15) —
+                   puisque le jeton va SE POSER dans la case. Mais le plancher
+                   tactile de css/modules.css épargne tout bouton dont le nom
+                   contient « case », par la liste qu'il devine : an-case
+                   passait, an-jeton non.
+
+                   MESURÉ sur 390 × 844 : case 29 × 33, jeton 29 × 44. Un
+                   jeton plus haut que la case où il doit tomber, et personne
+                   ne l'avait signalé — ce n'est pas un ovale, c'est un
+                   désaccord de onze pixels entre deux objets qui doivent
+                   coïncider.
+
+                   btn-carre EST LA RÉPONSE ÉCRITE : le plancher dit
+                   lui-même « le jeu dit qu'il est carré, sa hauteur est ma
+                   mise en page », et il ajoute, pour les cases de grille, « à
+                   44 px, une grille de dix colonnes ferait 440 px de large sur
+                   un écran qui en a 390 : on casserait le jeu pour élargir un
+                   bouton ». C'est exactement le cas ici —
+                   « PERPENDICULAIRE » fait quinze lettres — et --an-cote monte
+                   déjà à 58 px dès que le mot est court.
+
+                   On ne devine donc plus par le nom : on déclare. */
                 .an-jeton {
                     width: var(--an-cote); height: calc(var(--an-cote) * 1.15);
                     border-radius: 10px; border: 2px solid var(--primary);
@@ -211,7 +238,7 @@ class Anagrammes extends BaseGame {
         });
 
         this.tasEl.innerHTML = this.tas.map(j =>
-            `<button type="button" class="an-jeton${j.pose ? ' an-jeton--pose' : ''}"
+            `<button type="button" class="an-jeton btn-carre${j.pose ? ' an-jeton--pose' : ''}"
                      data-jeton="${j.i}">${j.lettre}</button>`).join('');
         this.tasEl.querySelectorAll('[data-jeton]').forEach(b => {
             b.onclick = () => this.poserJeton(Number(b.dataset.jeton));
@@ -373,26 +400,27 @@ class Anagrammes extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.q) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         cur.say(`Les lettres sont toutes là, dans le désordre : ${this.q.melange.split('').join(' ')}. `
             + 'Ce n\'est pas un mot au hasard — c\'est un mot du cours.', this.tasEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say(`Je lis la définition : « ${this.q.def} » C'est elle l'énigme ; `
             + 'les lettres, je les ai déjà.', this.defEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say(`Et je compte les cases : ${this.q.mot.length} lettres. `
             + 'Un mot trop court ou trop long, je peux l\'écarter tout de suite.', this.motEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // Il pose le mot, lettre par lettre : c'est le geste qu'on demande.
         for (const lettre of this.q.mot) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const j = this.tas.find(x => !x.pose && x.lettre === lettre);
             if (!j) break;
             const el = this.tasEl.querySelector(`[data-jeton="${j.i}"]`);
@@ -404,10 +432,10 @@ class Anagrammes extends BaseGame {
             j.pose = true;
             this.cases[this.premiereLibre()] = j.i;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.press)) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`${this.q.mot}. Le tas s'est vidé exactement, donc j'ai employé toutes les `
             + 'lettres et aucune deux fois — c\'est la vérification qui va avec ce jeu.', this.motEl);
         await cur.pause(DEMO_SPEED.between);

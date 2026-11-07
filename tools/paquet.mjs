@@ -197,6 +197,10 @@ if (depuis) {
     console.log('  À FAIRE, DANS CET ORDRE :');
     console.log('   1. décompresser, tout sélectionner, déposer dans www/ ;');
     console.log('   2. ouvrir https://votre-site/api/install.php — TOUT DE SUITE ;');
-    console.log('   3. ouvrir https://votre-site/api/admin/sante.php.');
+    // L'ADMINISTRATION TIENT EN UNE SEULE PAGE depuis que Rémy l'a demandée :
+    // « j'aimerai en une seule page même pour le déposer ». Les anciennes
+    // adresses y redirigent, mais une consigne qui nomme une page disparue
+    // apprend à l'utilisateur un chemin qui n'existe plus.
+    console.log('   3. ouvrir https://votre-site/api/admin/#sante.');
 }
 console.log('');

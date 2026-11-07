@@ -199,7 +199,7 @@ test('chaque question porte une consigne, des indices et une correction', () => 
         const it = G.generate({}, { rng: makeRng('m' + i), index: i });
         assert.ok(it.prompt.text.length > 20, 'consigne vide');
         assert.ok(it.hints.length >= 3, 'moins de trois indices');
-        assert.match(it.explanation, /Elle occupe les cases/);
+        assert.match(it.explanation, /^L'image se trace /);
         assert.equal(it.answerKind, 'grid');
         assert.match(it.skillId, /^geo\.transfo\./);
     }

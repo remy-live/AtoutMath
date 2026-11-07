@@ -79,7 +79,16 @@ class Labyrinthe extends BaseGame {
                 html[data-theme="dark"] .laby-stats { background: rgba(30,41,59,0.8); color: #f8fafc; border-color: #334155; }
                 html[data-theme="dark"] .laby-timer-container { background: rgba(0,0,0,0.3); border-color: #334155; }
                 html[data-theme="dark"] .laby-timer-text { text-shadow: 0 1px 2px rgba(0,0,0,0.8); color: #fff; }
-                html[data-theme="dark"] .laby-calc { color: #fff; }
+                /* DU BLANC SUR LE VERT DE L'ACCENT NE FAIT QUE 3,9 — il en
+                   faut 4,5. Mesuré sur les pixels peints en thème sombre
+                   (tools/quiEstIllisible.mjs) : 3,77 pour « 4 × 7 ». Or c'est
+                   LE CALCUL À RÉSOUDRE : s'il y a un texte à ne pas rendre
+                   pénible à lire dans ce jeu, c'est celui-là.
+                   On fonce le fond de la pastille, pas le jeton d'accent. */
+                html[data-theme="dark"] .laby-calc {
+                    color: #fff;
+                    background: color-mix(in srgb, var(--laby-accent, var(--primary)) 72%, #000);
+                }
                 html[data-theme="dark"] .laby-board { background: #334155; border-color: #334155; }
                 html[data-theme="dark"] .laby-cell { background: #1e293b; }
                 html[data-theme="dark"] .laby-cell.lit { background: rgba(99, 102, 241, 0.15); box-shadow: inset 0 0 0 2px rgba(99, 102, 241, 0.4); }

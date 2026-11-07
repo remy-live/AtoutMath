@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
+import { readFileSync } from 'node:fs';
 import {
     seuilPourPart, partDe, communDe, appliquerAuxEtapes
 } from '../js/core/reglagesGroupes.js';
@@ -83,6 +84,39 @@ test('LES DEUX RÉGLAGES ENSEMBLE : la part se lit dans le NOUVEAU total', () =>
     const out = appliquerAuxEtapes([etape('a', 10, 7)], new Set(['a']),
         { questions: 20, part: 70 });
     assert.deepEqual([out[0].nbItems, out[0].threshold], [20, 14]);
+});
+
+// ── UNE SEULE RÈGLE POUR LES DEUX ÉCRANS ───────────────────────────────────
+//
+// RÉMY, 5 novembre : « quand je veux changer le nombre de questions du le
+// détour du nombre rond, ca change dans les paramètres mais dans le parcours ca
+// remet 4/4 ». Son parcours portait `nbItems: 4, threshold: 4` — « il faut TOUT
+// réussir » — et passer à vingt donnait « ✔ 4/20 », soit 20 %, en silence.
+//
+// LA CAUSE N'ÉTAIT PAS DANS CE MODULE-CI, QUI A TOUJOURS EU RAISON : la barre
+// « Pour ces N étapes » garde la PART depuis le début. C'est le panneau d'UNE
+// étape (`js/games/configUI.js`, `majDuo`) qui gardait le NOMBRE dès qu'on y
+// avait touché. Deux mécaniques pour la même décision, et la même action
+// donnait deux résultats selon l'écran — 20/20 par la barre, 4/20 par l'étape.
+//
+// CETTE ÉPREUVE GARDE LA MISE EN COMMUN, pas le calcul : que le panneau
+// EMPRUNTE bien la règle du noyau au lieu d'en écrire une seconde. Le résultat
+// à l'écran, lui, est gardé par `node tools/seuilQuiSuit.mjs`, qui tape le
+// nombre dans le vrai panneau — une fonction juste appelée nulle part ne
+// changerait rien à ce que Rémy obtient.
+test('LE PANNEAU D\'UNE ÉTAPE EMPRUNTE LA MÊME RÈGLE QUE LA BARRE', () => {
+    const source = readFileSync('js/games/configUI.js', 'utf8');
+    assert.match(source, /import \{ seuilPourPart, partDe \} from '\.\.\/core\/reglagesGroupes\.js'/,
+        'le panneau d\'étape n\'emprunte plus la règle du noyau');
+    const bloc = /function majDuo\(boite\) \{[\s\S]*?\n\}/.exec(source);
+    assert.ok(bloc, '`majDuo` a changé de forme');
+    assert.match(bloc[0], /seuilPourPart\(nouveau, partDe\(/,
+        'le panneau ne reporte pas la PART dans le nouveau total');
+    // ET L'ANCIENNE CONDITION N'EST PLUS LÀ. Elle ne recalculait que si le rail
+    // portait encore le conseil de l'ancien total : c'est elle qui laissait le
+    // 4 de Rémy en place, parce qu'il l'avait posé à la main.
+    assert.ok(!/exigees === seuilConseille\(ancien\)/.test(bloc[0]),
+        'le panneau garde encore le NOMBRE quand le professeur l\'a choisi');
 });
 
 test('UN JEU DE RÉCOMPENSE NE SE VOIT PAS IMPOSER UNE EXIGENCE', () => {

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
+import { readFileSync } from 'node:fs';
 import {
     OPERATIONS, operationDe, valeurChaine, expressionChaine, depasse, disposerPlateau
 } from '../js/core/mathCrush.js';
@@ -72,4 +73,68 @@ test('le plateau tient dans toutes les boîtes qu\'on peut lui donner', () => {
         assert.ok(P.y >= P.bandeau, `${w}×${h} : monte sur le bandeau`);
         assert.ok(P.y + P.h <= h, `${w}×${h} : déborde en bas`);
     }
+});
+
+// ─── LA CARTE DE FIN A UNE SORTIE ───────────────────────────────────────────
+//
+// RÉMY, capture à l'appui : « là ca bloque, on peut appuyer sur la croix mais
+// il faudrait un bouton quitter ou recommencer ».
+//
+// La carte de fin est PEINTE DANS LE CANEVAS : le sablier, les points, le
+// meilleur enchaînement, le tableau des scores. Tout y est, et rien n'y répond.
+// La seule sortie était la croix rouge de l'entête, en haut à droite de
+// l'écran — hors du regard de celui qui vient de finir.
+//
+// CE QUE CES ÉPREUVES GARDENT. La partie dure soixante secondes de vraie
+// horloge : la sonde qui l'attend (tools/finDeMathCrush.mjs) ne tourne pas à
+// chaque commit. On garde donc ici ce qui se défait en silence — la règle qui
+// cache les boutons, l'accord avec la croix de l'entête, et la remise à zéro.
+
+const crush = readFileSync(new URL('../js/games/math_crush.js', import.meta.url), 'utf8');
+
+test('LES DEUX BOUTONS DE LA FIN EXISTENT, ET ILS SE CACHENT PENDANT LA PARTIE', () => {
+    assert.match(crush, /data-rejouer>↺ Rejouer</, 'le bouton « Rejouer » a disparu');
+    assert.match(crush, /data-quitter>Quitter</, 'le bouton « Quitter » a disparu');
+
+    // CELLE-CI A ÉTÉ MESURÉE AVANT D'ÊTRE ÉCRITE, et c'est tout son intérêt :
+    // au premier tour de sonde, les deux boutons s'affichaient DÈS LA PREMIÈRE
+    // SECONDE de la partie. `display: flex` posé par une classe bat le `hidden`
+    // du navigateur, qui n'est qu'un `display: none` de feuille par défaut —
+    // et `rejouer()` ne les refermait pas davantage.
+    assert.match(crush, /\.mc-fin\[hidden\] \{ display: none; \}/,
+        'sans cette règle, les boutons de fin s\'affichent pendant toute la partie');
+
+    // 44 px : le plancher tactile de l'application. Ces boutons sont dans
+    // #game-layer, donc la règle globale les vise ; on l'écrit quand même ici,
+    // parce qu'un bouton de fin de partie se touche au doigt sur tablette.
+    assert.match(crush, /\.mc-fin-btn \{[^}]*min-height: 44px/,
+        'les boutons de fin passent sous le plancher tactile');
+});
+
+test('« QUITTER » PASSE PAR LA CROIX QUI EXISTE, ET ELLE EXISTE', () => {
+    // On ne refait pas la sortie, on prend celle qui est là : la croix de
+    // l'entête sait déjà tout ce qu'il faut faire en quittant un exercice.
+    // MAIS LES DEUX MOITIÉS VIVENT DANS DEUX FICHIERS : un identifiant renommé
+    // dans index.html et pas ici donne un bouton muet, sans aucune erreur.
+    assert.match(crush, /getElementById\('btn-close-game'\)/,
+        '« Quitter » ne passe plus par la croix de l\'entête');
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    assert.ok(html.includes('id="btn-close-game"'),
+        'la croix de l\'entête a changé d\'identifiant : « Quitter » ne ferme plus rien');
+});
+
+test('« REJOUER » REMET À ZÉRO CE QU\'UNE PARTIE USE', () => {
+    const debut = crush.indexOf('    rejouer() {');
+    assert.notEqual(debut, -1, 'la méthode rejouer() a disparu');
+    const corps = crush.slice(debut, crush.indexOf('\n    }', debut));
+    // `finEnvoyee` GARDE LE RENDEZ-VOUS du tableau des scores : oublié ici, le
+    // second score ne serait jamais enregistré, et l'élève qui rejoue pour
+    // battre son record jouerait pour rien.
+    for (const champ of ['score', 'vies', 'timeLeft', 'meilleurCombo', 'finEnvoyee']) {
+        assert.ok(corps.includes('this.' + champ + ' ='),
+            `rejouer() ne remet pas ${champ} à zéro`);
+    }
+    assert.match(corps, /this\.initGrid\(\)/, 'rejouer() garde la grille de la partie finie');
+    assert.match(corps, /this\.startGameLoop\(\)/, 'rejouer() ne relance pas la boucle');
+    assert.match(corps, /this\.finEl\.hidden = true/, 'rejouer() laisse la carte de fin à l\'écran');
 });

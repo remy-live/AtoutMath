@@ -13,7 +13,7 @@
 // lien vers l'administration pour ceux qui cherchent les classes, les listes
 // et les billets.
 
-import { identifierProf } from '../core/verrouProf.js';
+import { identifierProf, serveurPresent } from '../core/verrouProf.js';
 
 const ID = 'verrou-prof';
 
@@ -88,5 +88,26 @@ export function demanderProf() {
         // traitement inverse là-bas.
         el.onclick = (e) => { if (e.target === el) fermer(false); };
         el.querySelector('#verrou-email').focus();
+
+        // ON LE DIT AVANT QU'IL TAPE SON MOT DE PASSE, PAS APRÈS.
+        //
+        // Rémy, capture d'un collègue à qui il faisait essayer le site :
+        // « Connexion impossible (code 405) ». Cette copie-là n'avait pas de
+        // serveur — aucun mot de passe n'aurait marché, jamais. Le laisser
+        // essayer, se tromper, recommencer, puis lire un numéro, c'est trois
+        // fois le faire échouer pour une chose qu'on savait d'avance.
+        //
+        // ON N'EMPÊCHE PAS D'ESSAYER POUR AUTANT. `serveurPresent` rend aussi
+        // faux quand le réseau hésite une seconde ; verrouiller le bouton
+        // enfermerait dehors un professeur parfaitement légitime. On avertit,
+        // il tranche.
+        serveurPresent().then(la => {
+            if (la || !document.getElementById(ID)) return;
+            const sous = el.querySelector('.verrou-sous');
+            if (!sous) return;
+            sous.textContent = "Cette copie du site n'a pas de serveur : elle sert à "
+                + "essayer les exercices. L'espace professeur s'ouvre à l'adresse en ligne.";
+            sous.classList.add('verrou-sous--alerte');
+        }).catch(() => { /* on se tait plutôt que de crier à tort */ });
     });
 }

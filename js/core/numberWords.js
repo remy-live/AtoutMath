@@ -114,11 +114,24 @@ export function valueOfRank(count, rank) {
 }
 
 /** Nom du rang d'un chiffre : 0 = unités, 1 = dizaines… négatif = décimales. */
+// LES RANGS VONT JUSQU'AUX CENTAINES DE MILLIARDS.
+//
+// RÉMY, premier bloc de sa progression de sixième : les grands nombres y vont
+// « jusqu'aux centaines de milliards ». La table s'arrêtait au rang 6, et
+// l'avait d'ailleurs nommé « millions » là où le rang 3 s'appelle « unités de
+// mille » : deux conventions pour la même idée. On garde celle des CLASSES,
+// qui est celle du cahier — unités, mille, millions, milliards, et dans
+// chacune des unités, des dizaines et des centaines.
 export const RANK_NAMES = {
     '-3': 'millièmes', '-2': 'centièmes', '-1': 'dixièmes',
     0: 'unités', 1: 'dizaines', 2: 'centaines',
     3: 'unités de mille', 4: 'dizaines de mille', 5: 'centaines de mille',
-    6: 'millions'
+    // « MILLE » EST INVARIABLE, « MILLION » ET « MILLIARD » NE LE SONT PAS :
+    // on écrit « centaines de mille » mais « centaines de millions ». C'est la
+    // convention du tableau de numération du cahier, et elle se lit sur la
+    // sortie — « le chiffre des centaines de million » sonne faux.
+    6: 'unités de millions', 7: 'dizaines de millions', 8: 'centaines de millions',
+    9: 'unités de milliards', 10: 'dizaines de milliards', 11: 'centaines de milliards'
 };
 
 /**

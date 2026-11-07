@@ -16,6 +16,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL = 'num.frac.simplification';
 
@@ -97,7 +98,9 @@ class FracSamurai extends BaseGame {
                 .sam-vise { outline: 2px solid #fcc419; outline-offset: 1px; }
                 .sam-facteur { padding: 0 4px; position: relative; }
                 .sam-cible { cursor: pointer; border-radius: 6px; }
-                .sam-cible:hover { background: rgba(252,196,25,.25); }
+                @media (hover: hover) {
+                    .sam-cible:hover { background: rgba(252,196,25,.25); }
+                }
                 .sam-barre { color: #888; }
                 .sam-barre::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 4px; background: #ff6b6b; border-radius: 2px; transform: rotate(-18deg); box-shadow: 0 0 8px #ff6b6b; }
             </style>
@@ -491,24 +494,25 @@ class FracSamurai extends BaseGame {
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
         const gate = createDemoGate(this.ui.card);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => this.isRunning, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cursor.pause(1200) || !this.isRunning) return fin();
+        if (!await robot.pause(1200)) return fin();
 
         while (this.isRunning && this.isDemo) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const g = pgcd(this.num, this.den);
             const cfg = NIVEAUX[this.level];
 
             if (this.estIrreductible) {
                 cursor.say(`${this.num}/${this.den} : je cherche un diviseur commun… ${this.num} et ${this.den} n'en ont AUCUN. C'est un piège : la fraction est déjà irréductible, je lève le bouclier !`, this.ui.eq);
-                if (!await cursor.pause(2600) || !this.isRunning) return fin();
+                if (!await robot.pause(2600)) return fin();
                 const bouclier = this.ui.controls.querySelector('[data-bouclier]');
                 if (!bouclier || !await cursor.tap(bouclier, 320)) return fin();
                 this.utiliserBouclier();
             } else if (cfg.mode === 'simple') {
                 cursor.say(`${this.num}/${this.den} : les deux nombres sont dans la table de ${g}. Je coupe par ${g}.`, this.ui.eq);
-                if (!await cursor.pause(2200) || !this.isRunning) return fin();
+                if (!await robot.pause(2200)) return fin();
                 const inp = this.ui.controls.querySelector('[data-simple]');
                 if (!inp || !await cursor.tap(inp, 260)) return fin();
                 inp.value = g;
@@ -517,7 +521,7 @@ class FracSamurai extends BaseGame {
                 this.verifierSimple();
             } else {
                 cursor.say(`${this.num}/${this.den} : le facteur commun est ${g}, car ${this.num} = ${g} × ${this.num / g} et ${this.den} = ${g} × ${this.den / g}. J'écris la décomposition.`, this.ui.eq);
-                if (!await cursor.pause(2800) || !this.isRunning) return fin();
+                if (!await robot.pause(2800)) return fin();
                 const valeurs = [['[data-n1]', g], ['[data-n2]', this.num / g], ['[data-d1]', g], ['[data-d2]', this.den / g]];
                 for (const [sel, v] of valeurs) {
                     const inp = this.ui.eq.querySelector(sel);
@@ -531,18 +535,18 @@ class FracSamurai extends BaseGame {
 
             // Phase sabre éventuelle : barrer les deux facteurs identiques.
             if (!this.estIrreductible) {
-                if (!await cursor.pause(900) || !this.isRunning) return fin();
+                if (!await robot.pause(900)) return fin();
                 const cibles = [...this.ui.eq.querySelectorAll('[data-cible]')];
                 if (cibles.length) {
                     cursor.say(`Le ${this.facteurCommun} est en haut ET en bas : je le barre des deux côtés — il se simplifie.`, this.ui.eq);
-                    if (!await cursor.pause(1600) || !this.isRunning) return fin();
+                    if (!await robot.pause(1600)) return fin();
                     for (const c of cibles.slice(0, 2)) {
-                        if (!await cursor.tap(c, 300)) return fin();
+                        if (!await robot.toucher(c, 300)) return fin();
                         this.sabrer(c);
                     }
                 }
             }
-            if (!await cursor.pause(DEMO_SPEED.between + 800) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 800)) return fin();
         }
         fin();
     }

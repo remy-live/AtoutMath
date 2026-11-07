@@ -7,7 +7,8 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import {
-    tirerProduit, etapesProduit, corrigeProduit, reduire, memeValeur
+    tirerProduit, etapesProduit, corrigeProduit, reduire, memeValeur,
+    tirerParEntier, etapesParEntier, corrigeParEntier
 } from '../fractionsProduit.js';
 import {
     tirerProduitPose, etapesPose, MARCHES_POSE, PYTHAGORE_MAX
@@ -135,14 +136,133 @@ export const fracCompareGenerator = {
 // qui choisit la première a raison. On compare donc des valeurs, jamais des
 // chaînes — d'où `memeValeur` dans le noyau.
 
+/**
+ * UNE FRACTION PAR UN ENTIER — l'item du cas de sixième.
+ *
+ * LES TROIS LEURRES SONT LES TROIS ERREURS DU CHAPITRE, et aucune n'est tirée
+ * au hasard :
+ *
+ *   · (a × k)/(b × k) — on a multiplié LES DEUX ÉTAGES. C'est l'erreur, celle
+ *     que l'exercice existe pour montrer ; et elle est sournoise, puisque le
+ *     résultat VAUT la fraction de départ.
+ *   · (a + k)/b — on a ajouté au lieu de multiplier.
+ *   · a/(b × k) — on a multiplié le dénominateur au lieu du numérateur.
+ */
+function itemParEntier(rng, params) {
+    const p = tirerParEntier(rng, {
+        maxDen: Number(params.maxDen) || 9,
+        maxEntier: Number(params.maxNum) || 9
+    });
+    const ecrire = (f) => `${f.n}/${f.d}`;
+    const bonne = p.reponse;
+    const pieges = [
+        {
+            f: { n: p.a * p.k, d: p.b * p.k },
+            why: `En multipliant AUSSI le dénominateur, on retombe sur ${p.a}/${p.b} : `
+                + 'la multiplication n\'aurait servi à rien. Le nombre de parts change, '
+                + 'leur TAILLE non.'
+        },
+        {
+            f: { n: p.a + p.k, d: p.b },
+            why: 'C\'est une addition. On multiplie le numérateur, on ne lui ajoute rien.'
+        },
+        {
+            f: { n: p.a, d: p.b * p.k },
+            why: 'Le dénominateur dit la TAILLE des parts : le multiplier les rend plus '
+                + 'petites, alors qu\'on en voulait davantage.'
+        }
+    ];
+
+    const vues = [reduire(bonne.n, bonne.d)];
+    const gardes = [];
+    for (const pi of pieges) {
+        if (pi.f.n < 1 || pi.f.d < 2) continue;
+        // PAS D'ENTIER DÉGUISÉ DANS LA LISTE. « 9 × 1/5 » proposait « 10/5 »,
+        // c'est-à-dire 2 : un entier au milieu de fractions se repère du
+        // premier coup d'œil, sans rien calculer. C'est la même règle que
+        // pour le produit de deux fractions, où elle n'était écrite que pour
+        // le dénominateur 1 — « 6/1 » — et laissait passer « 4/2 ».
+        if (pi.f.n % pi.f.d === 0) continue;
+        const r = reduire(pi.f.n, pi.f.d);
+        // LE PREMIER LEURRE VAUT LA FRACTION DE DÉPART, PAS LA RÉPONSE : il est
+        // donc gardé. Mais on vérifie quand même, parce qu'une proposition qui
+        // vaut la bonne ferait compter faux un élève qui a raison.
+        if (vues.some(v => memeValeur(v, r))) continue;
+        vues.push(r);
+        gardes.push(pi);
+    }
+
+    let ecart = 0;
+    const choices = finalizeChoices(rng, [
+        { value: ecrire(bonne), label: fracHtml(bonne.n, bonne.d), correct: true },
+        ...gardes.map(pi => ({ value: ecrire(pi.f), label: fracHtml(pi.f.n, pi.f.d), why: pi.why }))
+    ], {
+        count: 4,
+        filler: () => {
+            for (let i = 0; i < 40; i++) {
+                ecart += 1;
+                const f = { n: bonne.n + ecart, d: bonne.d };
+                // PAS D'ENTIER DÉGUISÉ : la même règle que pour les leurres,
+                // qui l'avait seule — le bouche-trou monte le numérateur d'un
+                // en un et tombe donc tôt ou tard sur un multiple du
+                // dénominateur. Un entier au milieu de fractions se repère
+                // sans rien calculer.
+                if (f.n % f.d === 0) continue;
+                const r = reduire(f.n, f.d);
+                if (!vues.some(v => memeValeur(v, r))) { vues.push(r); return ecrire(f); }
+            }
+            return ecrire({ n: bonne.n + 100, d: bonne.d });
+        }
+    }).map(c => (/^\d+\/\d+$/.test(String(c.label))
+        ? { ...c, label: fracHtml(...String(c.value).split('/')) } : c));
+
+    // L'ENTIER S'ÉCRIT NU, jamais « 3/1 ». C'est ainsi qu'il est écrit au
+    // tableau et dans l'énoncé, et l'écrire sur 1 donnerait la méthode avant
+    // qu'on l'ait cherchée.
+    const entier = `<span class="nb-highlight">${p.k}</span>`;
+    const frac = fracHtml(p.a, p.b);
+    const texte = p.entierDevant ? `${p.k} × ${p.a}/${p.b} = ?` : `${p.a}/${p.b} × ${p.k} = ?`;
+
+    return makeItem({
+        seed: rng.seed, generatorId: 'frac.produit', skillId: 'num.frac.multiplication',
+        answerKind: 'choice',
+        prompt: {
+            text: texte,
+            html: `<div class="compare-line">
+                    ${p.entierDevant ? `${entier} <span class="compare-op">×</span> ${frac}`
+        : `${frac} <span class="compare-op">×</span> ${entier}`}
+                    <span class="compare-op">=</span> <span class="compare-slot"></span>
+                   </div>`,
+            papier: texte.replace(' = ?', ' ='),
+        },
+        answer: ecrire(bonne),
+        choices,
+        hints: etapesParEntier(p),
+        explanation: corrigeParEntier(p),
+        difficulty: 2,
+        meta: { a: p.a, b: p.b, k: p.k, parEntier: true, decimal: false }
+    });
+}
+
 export const fracProduitGenerator = {
     id: 'frac.produit',
     label: 'Multiplier deux fractions',
     skills: ['num.frac.multiplication'],
-    answerKinds: ['choice'],
+    answerKinds: ['choice', 'numeric'],
     ecrit: true,
     fractions: true,
     params: [
+        {
+            id: 'facteurs', type: 'select', label: 'Ce qu\'on multiplie', default: 'deux-fractions',
+            aide: 'Multiplier par un ENTIER est le cas de sixième : 3 × 2/5, c\'est '
+                + '2/5 + 2/5 + 2/5. Le nombre de parts est multiplié, leur taille non — donc '
+                + 'le dénominateur ne bouge pas.',
+            options: [
+                { value: 'deux-fractions', label: 'Deux fractions' },
+                { value: 'par-un-entier', label: 'Une fraction par un entier (6ᵉ)' },
+                { value: 'les-deux', label: 'Les deux mélangés' }
+            ]
+        },
         {
             id: 'decomposition', type: 'select', label: 'Décomposer avant de calculer',
             default: 'sans',
@@ -167,6 +287,18 @@ export const fracProduitGenerator = {
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
+        // LE CAS DE SIXIÈME A SON PROPRE CHEMIN, et ce n'est pas de la
+        // duplication : multiplier par un entier ne se corrige pas avec les
+        // mêmes mots, et surtout pas avec les mêmes LEURRES. « Multiplier en
+        // croix » n'a aucun sens face à un entier, tandis que « multiplier
+        // aussi le dénominateur » est L'erreur du chapitre et n'existe pas
+        // entre deux fractions. Des propositions qui ne sont les erreurs de
+        // personne transforment la question en tirage au sort.
+        const quoi = params.facteurs === 'les-deux'
+            ? (rng.bool() ? 'par-un-entier' : 'deux-fractions')
+            : (params.facteurs || 'deux-fractions');
+        if (quoi === 'par-un-entier') return itemParEntier(rng, params);
+
         const p = tirerProduit(rng, {
             decomposition: params.decomposition || 'sans',
             maxDen: Number(params.maxDen) || 9,
@@ -210,16 +342,24 @@ export const fracProduitGenerator = {
             // une liste de fractions, il se repère du premier coup d'œil sans
             // qu'on ait rien calculé.
             if (pi.f.d === 1) continue;
+            // ET PAS DAVANTAGE « 4/2 », qui est le même défaut écrit autrement.
+            if (pi.f.n % pi.f.d === 0) continue;
             const r = reduire(pi.f.n, pi.f.d);
             if (vues.some(v => memeValeur(v, r))) continue;
             vues.push(r);
             gardes.push(pi);
         }
 
+        // LA VALEUR JUGE, L'ÉTIQUETTE SE LIT. Voir `casesFraction` plus bas :
+        // « 20|49 » est ce que le pavé enverra, la fraction dessinée est ce
+        // que l'élève lit sur le bouton.
+        const ecrireCases = (f) => casesFraction(f.n, f.d);
         let ecart = 0;
         const choices = finalizeChoices(rng, [
-            { value: ecrire(bonne), label: fracHtml(bonne.n, bonne.d), correct: true },
-            ...gardes.map(pi => ({ value: ecrire(pi.f), label: fracHtml(pi.f.n, pi.f.d), why: pi.why }))
+            { value: ecrireCases(bonne), label: fracHtml(bonne.n, bonne.d), correct: true },
+            ...gardes.map(pi => ({
+                value: ecrireCases(pi.f), label: fracHtml(pi.f.n, pi.f.d), why: pi.why
+            }))
         ], {
             count: 4,
             // Le remplissage doit sortir des FRACTIONS, pas des nombres — et
@@ -228,13 +368,23 @@ export const fracProduitGenerator = {
                 for (let i = 0; i < 40; i++) {
                     ecart += 1;
                     const f = { n: bonne.n + ecart, d: bonne.d };
+                    // PAS D'ENTIER DÉGUISÉ, ICI NON PLUS. La règle était écrite
+                    // pour les leurres — « pas de 6/1 dans la liste » — et pas
+                    // pour le bouche-trou, qui monte le numérateur d'un en un
+                    // et tombe donc tôt ou tard sur un multiple du
+                    // dénominateur. « 3 × 1/2 » proposait « 4/2 », c'est-à-dire
+                    // 2, qui se repère sans rien calculer.
+                    if (f.n % f.d === 0) continue;
                     const r = reduire(f.n, f.d);
-                    if (!vues.some(v => memeValeur(v, r))) { vues.push(r); return ecrire(f); }
+                    if (!vues.some(v => memeValeur(v, r))) {
+                        vues.push(r);
+                        return { value: ecrireCases(f), label: fracHtml(f.n, f.d) };
+                    }
                 }
-                return ecrire({ n: bonne.n + 100, d: bonne.d });
+                const loin = { n: bonne.n + 100, d: bonne.d };
+                return { value: ecrireCases(loin), label: fracHtml(loin.n, loin.d) };
             }
-        }).map(c => (/^\d+\/\d+$/.test(String(c.label))
-            ? { ...c, label: fracHtml(...String(c.value).split('/')) } : c));
+        });
 
         return makeItem({
             seed: rng.seed, generatorId: 'frac.produit', skillId: 'num.frac.multiplication',
@@ -243,12 +393,12 @@ export const fracProduitGenerator = {
                 text: `${p.a}/${p.b} × ${p.c}/${p.d} = ?`,
                 html: `<div class="compare-line">
                         ${fracHtml(p.a, p.b)} <span class="compare-op">×</span> ${fracHtml(p.c, p.d)}
-                        <span class="compare-op">=</span> <span class="compare-slot"></span>
+                        <span class="compare-op">=</span> ${fenteAvecTrous()}
                        </div>`,
                 // Sur le papier, la feuille empile les `a/b` toute seule.
                 papier: `${p.a}/${p.b} × ${p.c}/${p.d} =`
             },
-            answer: ecrire(bonne),
+            answer: ecrireCases(bonne),
             choices,
             hints: etapesProduit(p),
             explanation: corrigeProduit(p),
@@ -322,6 +472,20 @@ export const fracProduitPoseGenerator = {
             answerKind: 'text',
             prompt: {
                 text: `${p.a}/${p.b} × ${p.c}/${p.d} = ?`,
+                // RÉMY : « ecris toujours les fractions en colonne ».
+                //
+                // Cet énoncé n'avait AUCUN `html` : l'écran retombait donc sur
+                // `text`, et affichait « 2/3 × 6/5 = ? » à la barre oblique.
+                // Sur la feuille imprimée la même question s'empile toute
+                // seule — le rendu sait le faire —, si bien que l'exercice
+                // enseignait deux écritures selon le support, et la mauvaise à
+                // l'écran, qui est le support le plus vu.
+                //
+                // MESURÉ sur les 238 exercices du catalogue, marche par
+                // marche : il n'en restait que deux dans ce cas.
+                html: `<div class="compare-line">`
+                    + `${fracHtml(p.a, p.b)} <span class="compare-op">×</span> `
+                    + `${fracHtml(p.c, p.d)} <span class="compare-op">=</span> ?</div>`,
                 consigne: 'Décompose et barre, puis écris le résultat.',
                 // Sur le papier il n'y a ni bouton ni table : on écrit le
                 // calcul à la main, ce qui est exactement le même travail.
@@ -350,11 +514,46 @@ export const fracProduitPoseGenerator = {
 
 // --- Additionner deux fractions de même dénominateur ------------------------
 
+/**
+ * LES DEUX CASES D'UNE FRACTION, DANS L'ÉNONCÉ.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « du coup, tu le mets pour tous (attention certains exercices ont
+ * parfois besoin de la virgule) ? »
+ *
+ * PAS POUR TOUS — le recensement (`tools/clavierDuCatalogue.mjs`) dit que sur
+ * les soixante-dix exercices qui n'atteignent jamais le pavé, l'immense
+ * majorité ne DOIT pas se taper : une grille de sudoku se remplit case par
+ * case, « pair ou impair » se choisit, un programme Scratch s'assemble. Les
+ * seuls qui sont dans le cas de la droite graduée sont ceux dont la réponse
+ * est une FRACTION : deux nombres, donc deux cases.
+ *
+ * ET LA VIRGULE NE VIENT PAS ICI, C'EST VOULU. `numeric.js` la fait paraître
+ * quand un morceau de la réponse n'est pas entier ; un numérateur et un
+ * dénominateur le sont toujours. Une virgule sous un dénominateur ouvrirait
+ * une porte vers une réponse qui n'existe pas.
+ */
+const casesFraction = (n, d) => `${n}|${d}`;
+
+/**
+ * LES DEUX TROUS SE POSENT DANS LA FENTE DE LA LIGNE. `compare-slot` est
+ * l'endroit où le QCM dépose la proposition choisie : en propositions, la
+ * fente se remplit et les trous s'en vont avec ; au clavier, le pavé compte
+ * les `[data-trou]` qu'il y trouve. Une seule place pour la réponse, quelle
+ * que soit la façon d'y répondre.
+ */
+const fenteAvecTrous = () => '<span class="compare-slot">'
+    + '<span class="fraction">'
+    + '<span class="fraction-num"><u class="np-trou" data-trou="0">&nbsp;?&nbsp;</u></span>'
+    + '<span class="fraction-den"><u class="np-trou" data-trou="1">&nbsp;?&nbsp;</u></span>'
+    + '</span></span>';
+
 export const fracAddGenerator = {
     id: 'frac.add',
     label: 'Additionner des fractions (même dénominateur)',
     skills: ['num.frac.add-meme-denom'],
-    answerKinds: ['choice'],
+    answerKinds: ['choice', 'numeric'],
     ecrit: true,
     fractions: true,
     params: [
@@ -367,7 +566,10 @@ export const fracAddGenerator = {
         const n2 = rng.int(1, d - 1);
         const sum = n1 + n2;
 
-        const label = (n, dd) => `${n}/${dd}`;
+        // LA VALEUR JUGE, L'ÉTIQUETTE SE LIT : « 7|5 » part au pavé, et le
+        // bouton montre la fraction dessinée. La bonne proposition doit porter
+        // EXACTEMENT ce que le pavé enverra, sinon la cliquer serait compté faux.
+        const label = (n, dd) => casesFraction(n, dd);
         let extra = 1;
         const choices = finalizeChoices(rng, [
             { value: label(sum, d), label: fracHtml(sum, d), correct: true },
@@ -385,12 +587,13 @@ export const fracAddGenerator = {
             }
         ], {
             count: 4,
-            // Les propositions sont des chaînes "n/d" : le remplissage doit
-            // produire des fractions, pas des nombres.
-            filler: () => label(sum + (++extra), d)
-        }).map(c => (typeof c.label === 'number' || /^\d+\/\d+$/.test(String(c.label)))
-            ? { ...c, label: fracHtml(...String(c.value).split('/')) }
-            : c);
+            // Les bouche-trous disent leur valeur ET leur étiquette : sans
+            // cela, « 9|5 » s'afficherait tel quel sur un bouton.
+            filler: () => {
+                const n = sum + (++extra);
+                return { value: label(n, d), label: fracHtml(n, d) };
+            }
+        });
 
         const g = gcd(sum, d);
         const simplified = g > 1 && sum % d !== 0 ? ` (soit ${sum / g}/${d / g} simplifié)` : '';
@@ -402,7 +605,7 @@ export const fracAddGenerator = {
                 text: `${n1}/${d} + ${n2}/${d} = ?`,
                 html: `<div class="compare-line">
                         ${fracHtml(n1, d)} <span class="compare-op">+</span> ${fracHtml(n2, d)}
-                        <span class="compare-op">=</span> <span class="compare-slot"></span>
+                        <span class="compare-op">=</span> ${fenteAvecTrous()}
                        </div>`
             },
             answer: label(sum, d),

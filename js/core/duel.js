@@ -58,6 +58,19 @@ export const ACCELERATION = 0.9;
  * accélération brutale redonne exactement le même sentiment.
  */
 export const RYTHMES = {
+    // ── UN CRAN DE PLUS, ET C'EST LA TROISIÈME FOIS QU'ON L'ENTEND ─────────
+    //
+    // RÉMY : « il faudrait aussi pour les exercices à chrono rajouter encore
+    // une option qui est plus lente que le plus bas ». Avant cela : « c'est
+    // hyper rapide au départ ! ralentis », deux fois.
+    //
+    // LES TROIS NOMBRES BOUGENT ENSEMBLE, et c'est le commentaire ci-dessus
+    // qui le dit : « un départ lent suivi d'une accélération brutale redonne
+    // exactement le même sentiment ». Le plancher monte donc à 3,2 s — en
+    // dessous on ne calcule plus, on devine — et la pente s'adoucit à 0,98,
+    // soit une balle qui met une vingtaine d'échanges à se resserrer au lieu
+    // de cinq.
+    ralenti: { depart: 9000, minimum: 3200, acceleration: 0.98 },
     tranquille: { depart: 6200, minimum: 2100, acceleration: 0.95 },
     normal: { depart: VOL_DEPART, minimum: VOL_MINIMUM, acceleration: ACCELERATION },
     rapide: { depart: 3000, minimum: 900, acceleration: 0.86 }

@@ -343,6 +343,30 @@ test('LES DEUX FICHES MONTENT LE MÊME BLOC « CONTENU »', () => {
     assert.match(lu('../js/ui/panneauContenu.js'), /reglagesDeFiche/);
 });
 
+test('LA BARRE DES MARCHES EST BRANCHÉE SUR LA FEUILLE AUSSI', () => {
+    // MESURÉ SUR QUATRE FEUILLES : les cases à cocher s'y dessinaient, les
+    // trois boutons y agissaient — ils ne cherchent que le champ —, mais la
+    // BARRE restait vide du début à la fin, parce que `brancherMarches`
+    // n'était appelé que par les deux panneaux de jeu. C'est-à-dire que la
+    // moitié du réglage manquait là où il compte le plus : huit des quatorze
+    // progressions à cases n'existent QUE sur le papier.
+    //
+    // Ce qui manquait avec elle : le champ caché du partage (donc le bouton
+    // « Tout, à parts égales » ne faisait que la moitié de ce que son nom dit),
+    // la borne qu'on tire, et l'aperçu d'une marche.
+    const src = fs.readFileSync(new URL('../js/ui/panneauContenu.js', import.meta.url), 'utf8');
+    assert.match(src, /brancherMarches\(/, 'le bloc « Contenu » ne branche pas la barre');
+    assert.match(src, /rafraichirBarreMarches\(/, 'la barre n\'est jamais dessinée');
+    // ET ELLE SUIT LE NOMBRE DE BLOCS, qui vit en tête de la modale et non
+    // dans le bloc « Contenu » : sans cet écouteur, taper « 16 » laissait la
+    // barre sur son découpage d'avant, et le dessin mentait sur ce qu'on
+    // allait imprimer.
+    assert.match(src, /#fp-combien, #fq-nb/, 'la barre ne suit pas le nombre de blocs');
+    // Enfin, le panneau d'une feuille se DÉCLARE comme tel, pour que l'aperçu
+    // d'une marche interroge le générateur du PAPIER.
+    assert.match(src, /\{ fiche: true \}/, 'la barre de la feuille ne se déclare pas');
+});
+
 // --- Les colonnes que l'exercice réclame -------------------------------------
 
 test('UN EXERCICE QUI DIT SES COLONNES LES OBTIENT', () => {
@@ -481,8 +505,20 @@ test('LE MEMORY SE DONNE PAR FEUILLES PLEINES', () => {
 test('les autres fiches restent sur une seule feuille', () => {
     // La pagination est déclarée par le rendu, jamais devinée : une planche de
     // sudokus ou de disques n'a aucune raison de déborder sur une seconde page.
+    //
+    // LA LISTE EST CLOSE, ET CHAQUE ENTRÉE A SA RAISON :
+    //
+    //   · `memory` — des cartes à découper. Rémy : « 8 paires ou 16 paires
+    //     (2 pages du coup) ou 24 paires (3 pages) ».
+    //   · `probabilites` — six questions par page, parce qu'au-delà le sac de
+    //     onze jetons tombe sous deux millimètres et qu'on ne les compte plus
+    //     (voir `ui/fiches/donnees.js`). Sans pagination, ce plafond-là
+    //     devenait le plafond de la FEUILLE : on demandait douze questions,
+    //     on en recevait six, sans un mot.
+    //
+    // Y ajouter un nom sans raison écrite, c'est deviner.
     const paginees = Object.entries(RENDUS).filter(([, r]) => r && r.plusieursPages);
-    assert.deepEqual(paginees.map(([k]) => k), ['memory']);
+    assert.deepEqual(paginees.map(([k]) => k).sort(), ['memory', 'probabilites']);
 });
 
 // LE FILTRE NOIR ET BLANC NE DOIT PLUS FAIRE DE NOIR AVEC DES COULEURS.

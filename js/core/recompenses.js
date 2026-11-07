@@ -251,6 +251,26 @@ export function prochaineObligatoire(steps, done) {
 }
 
 /**
+ * LES ÉTAPES QUI COMPTENT QUAND ON DIT « 2 SUR 5 ».
+ *
+ * Un jeu de récompense n'est pas du travail : le compter donnerait un chemin
+ * plus long qu'il n'est. Une étape FACULTATIVE non faite non plus — sinon
+ * l'élève qui a le droit de la sauter voit son parcours rester « incomplet »
+ * pour avoir exercé ce droit. Faite, en revanche, elle compte : c'est du
+ * travail qu'il a fourni.
+ *
+ * ELLE VIVAIT EN DEUX ENDROITS DU MENEUR, écrite deux fois à l'identique
+ * (`travailCompte`, et le compte du fil des étapes). Elle est ici parce qu'un
+ * troisième appelant se présentait — la question « reprendre ou recommencer »,
+ * qui doit annoncer le même décompte que l'en-tête affichera juste après —, et
+ * que trois copies d'une même règle, c'est deux de trop.
+ */
+export function etapesDeTravail(steps, faites) {
+    const done = faites instanceof Set ? faites : new Set(faites || []);
+    return (steps || []).filter(s => s && !s.bonus && (!s.facultatif || done.has(s.stepId)));
+}
+
+/**
  * L'état d'une étape aux yeux de l'élève.
  * @returns {'done'|'current'|'open'|'locked'|'cle'|'cadeau'|'cadeau-ferme'}
  */

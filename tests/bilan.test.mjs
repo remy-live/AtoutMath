@@ -9,7 +9,7 @@ import {
 } from '../js/core/classes.js';
 import {
     bilanEleve, bilanClasse, phraseDe, phraseClasse, nomCompetence,
-    consigneDe, consigneClasse
+    consigneDe, consigneClasse, conseilDuRapport
 } from '../js/core/bilan.js';
 import { RELIABLE_MIN_ATTEMPTS } from '../js/core/mastery.js';
 
@@ -294,9 +294,13 @@ test('LA CONSIGNE SUIT L\'ORDRE DES PRIORITÉS', () => {
         { nom: 'Nombres relatifs' }, { nom: 'Additions' }, { nom: 'Aires' }] });
     assert.match(c, /^Doit réviser : Nombres relatifs et Additions\.$/);
 
-    // Un seul souci : pas de deux-points inutile.
+    // UN SEUL SOUCI PREND LE DEUX-POINTS AUSSI, depuis que Rémy a tranché.
+    // L'essai gardait l'inverse, et c'est pour cela qu'il fallait le changer
+    // AVEC la règle : une ligne de tableau se balaie, et l'oeil suit un préfixe
+    // fixe. « Doit réviser Aire d'un rectangle. » avait l'air d'un ordre
+    // tronqué à côté de « Doit réviser : Diviser et Additionner. »
     assert.equal(consigneDe({ questions: 40, assez: true,
-        difficultes: [{ nom: 'Nombres relatifs' }] }), 'Doit réviser Nombres relatifs.');
+        difficultes: [{ nom: 'Nombres relatifs' }] }), 'Doit réviser : Nombres relatifs.');
 
     // Et celui qui réussit tout n'a pas besoin d'être félicité : il a besoin de
     // plus dur, et c'est cela l'information utile.
@@ -337,4 +341,98 @@ test('LA CONSIGNE DE CLASSE NE DÉCIDE QUE DE CE QUI BLOQUE TOUT LE MONDE', () =
         competences: [{ nom: 'Aires', enPeine: 0.9, eleves: 1 }]
     });
     assert.match(seul, /un par un/);
+});
+
+// --- Le conseil du rapport de classe ---------------------------------------
+
+test('UN CONSEIL PAR ÉLÈVE, ET IL DIT QUOI FAIRE', () => {
+    // RÉMY : « une conseil pour chaque élève ». La phrase NOMME LA NOTION,
+    // jamais l'élève : « Doit réviser : les relatifs » se recopie sur un
+    // cahier de textes, « est en difficulté » ne se recopie nulle part.
+    const c = (l) => conseilDuRapport(l);
+    // CELUI QUI N'EST JAMAIS VENU PASSE DEVANT TOUT LE RESTE : aucun conseil
+    // de travail n'a de sens tant qu'il n'est pas entré, et ce qui lui manque
+    // est son code — pas une notion.
+    assert.equal(c({}).rang, 0);
+    assert.match(c({}).phrase, /code/);
+    // PUIS CELUI QUI EST VENU SANS RIEN FAIRE.
+    assert.equal(c({ lastSeenAt: 1, totalQuestions: 0 }).rang, 1);
+    // TROP PEU DE QUESTIONS PASSE AVANT TOUTE CONCLUSION : dire « doit
+    // réviser » sur quatre questions est un chiffre juste et une conclusion
+    // fausse. C'est le défaut qu'on a vu à l'écran — il s'affichait en vert.
+    const tot = c({ lastSeenAt: 1, totalQuestions: 4,
+        weakSkills: [{ skillId: 'num.add.entiers' }] });
+    assert.equal(tot.rang, 4);
+    assert.match(tot.phrase, /trop tôt/);
+    // PUIS LA NOTION FRAGILE, NOMMÉE — pas son identifiant.
+    const faible = c({ lastSeenAt: 1, totalQuestions: 40,
+        weakSkills: [{ skillId: 'num.add.entiers' }, { skillId: 'num.sub.entiers' }] });
+    assert.equal(faible.rang, 2);
+    assert.equal(faible.phrase, 'Doit réviser : Additionner des entiers et Soustraire des entiers.');
+    // ENFIN CELUI QUI N'A RIEN À REPRENDRE.
+    assert.equal(c({ lastSeenAt: 1, totalQuestions: 40, successRate: .9 }).rang, 5);
+});
+
+test('LE CONSEIL NOMME LA NOTION, ET NON LE NOMBRE D\'ERREURS', () => {
+    // RÉMY, devant sa classe de trente : « il faut plutôt préciser en quoi ça
+    // doit être retravaillé ». Sept élèves d'affilée portaient « 67 erreurs
+    // jamais reprises : les revoir avec lui ou elle » — sept fois la même
+    // phrase, qui ne nomme rien et ne se recopie nulle part.
+    const avecNotion = conseilDuRapport({
+        lastSeenAt: 1, totalQuestions: 400, openErrors: 67,
+        weakSkills: [{ skillId: 'num.add.entiers' }],
+        openSkills: [{ skillId: 'num.sub.entiers', count: 40 }]
+    });
+    assert.match(avecNotion.phrase, /Additionner des entiers/,
+        'la notion fragile n\'est plus nommée');
+    // LE COMPTE RESTE, MAIS DERRIÈRE, entre parenthèses : il dit l\'ampleur,
+    // pas le travail.
+    assert.match(avecNotion.phrase, /\(67 erreurs à reprendre\)/);
+    assert.ok(!/^67/.test(avecNotion.phrase), 'le nombre a repris la tête de la phrase');
+
+    // SANS NOTION FRAGILE, ON NOMME CELLES DES ERREURS EN SOUFFRANCE : elles
+    // ne sont pas les mêmes — une notion peut être acquise et garder deux
+    // questions ratées qu\'on n\'a jamais rouvertes.
+    const desErreurs = conseilDuRapport({
+        lastSeenAt: 1, totalQuestions: 400, openErrors: 52, weakSkills: [],
+        openSkills: [{ skillId: 'num.sub.entiers', count: 40 },
+                     { skillId: 'num.mult.sens', count: 12 }]
+    });
+    assert.equal(desErreurs.phrase,
+        'À reprendre : Soustraire des entiers et Sens de la multiplication '
+        + '(52 erreurs à reprendre).');
+
+    // ET QUAND MÊME LES ERREURS NE DÉSIGNENT RIEN, on le dit — plutôt que de
+    // faire passer un nombre pour un conseil.
+    const sansRien = conseilDuRapport({
+        lastSeenAt: 1, totalQuestions: 400, openErrors: 3, weakSkills: [], openSkills: []
+    });
+    assert.match(sansRien.phrase, /sans notion qui ressorte/);
+});
+
+test('LE RANG DU CONSEIL VIENT AVEC SA PHRASE', () => {
+    // DEUX ÉCHELLES DIVERGENT. L'écran rangeait les élèves par urgence avec sa
+    // PROPRE échelle, et teintait le filet de chaque ligne avec : « 4 questions
+    // seulement » sortait en VERT, c'est-à-dire « rien à signaler ». La
+    // fonction rend donc les deux, et l'écran ne décide plus de rien.
+    const l = { lastSeenAt: 1, totalQuestions: 4 };
+    const r = conseilDuRapport(l);
+    assert.equal(typeof r.rang, 'number');
+    assert.equal(typeof r.phrase, 'string');
+    // ET CHAQUE CAS A SON RANG, du plus urgent au moins urgent — c'est lui qui
+    // range la liste ET qui teinte le filet de la ligne.
+    const rangs = {
+        jamaisVenu: conseilDuRapport({}).rang,
+        rienFait: conseilDuRapport({ lastSeenAt: 1 }).rang,
+        notionFragile: conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40,
+            weakSkills: [{ skillId: 'num.add.entiers' }] }).rang,
+        erreursOuvertes: conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40,
+            openErrors: 1 }).rang,
+        tropPeu: conseilDuRapport({ lastSeenAt: 1, totalQuestions: 2 }).rang,
+        rienAFaire: conseilDuRapport({ lastSeenAt: 1, totalQuestions: 40, successRate: .9 }).rang
+    };
+    assert.deepEqual(rangs, {
+        jamaisVenu: 0, rienFait: 1, notionFragile: 2, erreursOuvertes: 3,
+        tropPeu: 4, rienAFaire: 5
+    }, 'l\'échelle des urgences a changé : les couleurs des filets ne veulent plus dire la même chose');
 });

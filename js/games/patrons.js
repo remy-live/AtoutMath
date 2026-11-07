@@ -229,7 +229,7 @@ export class Patrons extends BaseGame {
                     box-sizing: border-box; border: none;
                     outline: var(--trait) solid var(--text-main);
                     outline-offset: calc(-0.5 * var(--trait));
-                    background: var(--card-bg, #fff);
+                    background: var(--bg-panel);
                     transform-style: preserve-3d;
                     /* Une face vue de dos reste peinte : sinon, la moitié du
                        cube disparaît dès qu'il tourne. */
@@ -309,12 +309,23 @@ export class Patrons extends BaseGame {
                     color: var(--primary, #4a6fd4);
                 }
                 .pa-outils { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
+                /* DEUX JETONS QUI N'EXISTENT PAS, ET UN BOUTON BLANC SUR BLANC.
+                   Rémy, capture en thème sombre, un seul mot : « illisible ».
+                   Les noms --card-bg et --border-color ne sont déclarés NULLE
+                   PART dans ce dépôt — ses jetons s'appellent --bg-panel et
+                   --border. Le repli #fff s'appliquait donc toujours, y compris
+                   là où --text-main vaut du blanc. MESURÉ sur les pixels
+                   rendus : contraste 1,05, pour un seuil de 4,5.
+                   Le repli d'un var() n'est pas un filet : c'est la valeur
+                   qu'on obtient à coup sûr quand on se trompe de nom. */
                 .pa-btn {
-                    border: 1.5px solid var(--border-color, #d7dae3); background: var(--card-bg, #fff);
+                    border: 1.5px solid var(--border); background: var(--bg-panel);
                     color: var(--text-main); border-radius: 10px; padding: 7px 18px; cursor: pointer;
                     font-size: clamp(12px, 2.4cqw, 15px); font-weight: 700;
                 }
-                .pa-btn:hover:not(:disabled) { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .pa-btn:hover:not(:disabled) { border-color: var(--primary); }
+                }
                 .pa-btn:disabled { opacity: .4; cursor: default; }
                 .pa-note {
                     text-align: center; min-height: 2.6em; flex: 0 0 auto;

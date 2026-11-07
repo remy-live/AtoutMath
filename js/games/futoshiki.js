@@ -11,6 +11,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { genererFutoshiki, verifierSaisie } from '../core/futoshiki.js';
 import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'num.logique.futoshiki';
 
@@ -330,28 +331,29 @@ class Futoshiki extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.puzzle) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say('Un signe < dit qui est le plus petit — et surtout, il ÉLIMINE : la case du petit '
             + `côté ne peut pas valoir ${this.puzzle.n}, celle du grand côté ne peut pas valoir 1.`, this.grilleEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (const e of this.puzzle.etapes.slice(0, 4)) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const el = this.grilleEl.querySelector(`.fu-case[data-i="${e.case}"]`);
             cur.say(`Ici, tout élimine sauf ${e.valeur} : je l'écris.`, el || this.grilleEl);
             if (el && !await cur.tap(el)) return fin();
             this.saisie[e.case] = e.valeur;
             if (el) el.textContent = String(e.valeur);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('On continue case par case, sans jamais deviner : chaque chiffre écrit rétrécit '
             + 'les possibilités des autres.', this.container.querySelector('[data-aide]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

@@ -41,11 +41,13 @@ const STYLE = `
         color: var(--text-main); border-radius: 9px; cursor: pointer;
         font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
     }
-    .pl-btn:hover { background: var(--bg-hover); }
+    @media (hover: hover) {
+        .pl-btn:hover { background: var(--bg-hover); }
+    }
     .pl-etape {
         font-weight: 800; font-size: clamp(13px, 3.2cqw, 17px); color: #fff;
         padding: 5px 14px; border-radius: 999px; text-align: center;
-        background: linear-gradient(135deg, var(--primary), #8b5cf6);
+        background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     }
 
     /* LA FEUILLE. Une grille de cases carrées : c'est le cahier, et rien ne
@@ -75,9 +77,26 @@ const STYLE = `
         color: var(--danger); outline: 2px solid var(--danger);
     }
     @keyframes pl-non { 25% { translate: -5px 0; } 75% { translate: 5px 0; } }
+    /* LA MÊME VIRGULE QUE DANS « POSER UNE OPÉRATION », pour la même raison.
+       Rémy : « les virgules ne sont pas très visibles ». C'était ici aussi un
+       rond rouge de 7 px, qui se lit comme une puce et non comme le signe que
+       l'élève doit RECONNAÎTRE pour aligner. Un même signe garde une même tête
+       d'un exercice à l'autre, sinon l'élève apprend trois dessins au lieu
+       d'une notation.
+
+       ELLE NE PREND TOUJOURS PAS DE RANG : posée sur la frontière droite de la
+       case, elle ne pousse aucune colonne. Et pointer-events none, parce que la
+       fente où l'on POSE la virgule occupe exactement cet endroit-là — sans
+       cela, le signe volerait le clic qui le fait naître. */
     .pl-case--virgule::after {
-        content: ''; position: absolute; right: -3px; bottom: 2px;
-        width: 7px; height: 7px; border-radius: 50%; background: var(--danger);
+        content: ','; position: absolute; right: 0; bottom: 0;
+        transform: translate(50%, -12%);
+        font-size: 1.6em; line-height: 1; font-weight: 900;
+        color: var(--danger); pointer-events: none;
+        /* Au-dessus du fond de la case voisine, qui se peint après elle —
+           invisible en thème clair, flagrant en sombre. Sous le trait, lui,
+           qui monte à z-index 2. */
+        z-index: 1;
     }
     /* La case où l'on peut POSER la virgule : un intervalle cliquable, pas une
        colonne — la virgule ne prend pas de rang. */
@@ -85,7 +104,9 @@ const STYLE = `
         position: absolute; right: -6px; top: 0; width: 12px; height: 100%;
         cursor: pointer; border-radius: 4px;
     }
-    .pl-fente:hover { background: color-mix(in srgb, var(--danger) 35%, transparent); }
+    @media (hover: hover) {
+        .pl-fente:hover { background: color-mix(in srgb, var(--danger) 35%, transparent); }
+    }
 
     .pl-signe { display: flex; align-items: center; justify-content: flex-end;
         padding-right: 4px; font-weight: 900; }
@@ -136,7 +157,9 @@ const STYLE = `
         border: 2px solid var(--border); background: var(--bg-panel);
         color: var(--text-main); font-size: 19px; font-weight: 800; font-family: inherit;
     }
-    .pl-touche:hover { background: var(--primary); color: #fff; }
+    @media (hover: hover) {
+        .pl-touche:hover { background: var(--primary); color: #fff; }
+    }
     .pl-touche--ok { border-color: var(--success); color: var(--success); }
     .pl-saisie {
         min-width: 70px; padding: 4px 12px; border-radius: 8px; font-weight: 900;
@@ -956,8 +979,12 @@ class PoserMultiplication extends PoserLongue {
                     await gate.wait(1800);
                 }
             }
-            cur.say('Puis on additionne les lignes — et la virgule se pose à la toute fin, '
-                + 'en comptant les décimales des deux facteurs.', this.grilleEl);
+            // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
+            // lentement (340 ms le mot) qu'on croit la démonstration plantée.
+            cur.say('Puis on additionne les lignes.', this.grilleEl);
+            await gate.wait(1800);
+            cur.say('La virgule se pose à la toute fin, en comptant les décimales des deux facteurs.',
+                this.grilleEl);
             await gate.wait(3000);
         } catch (e) { /* démonstration coupée */ }
         cur.destroy(); gate.destroy();
@@ -1338,8 +1365,8 @@ class PoserDivision extends PoserLongue {
         try {
             cur.protegerZone([this.grilleEl, this.zoneEl]);
             await gate.wait(500);
-            cur.say('Une division posée, c\'est toujours la même étape recommencée : j\'abaisse, '
-                + 'je cherche combien de fois, je multiplie, je soustrais.', this.grilleEl);
+            cur.say('Une division posée : j\'abaisse, je cherche combien de fois, '
+                + 'je multiplie, je soustrais.', this.grilleEl);
             await gate.wait(3400);
             for (let i = this.debut; i < this.d.etapes.length && this.isRunning; i++) {
                 const e = this.d.etapes[i];

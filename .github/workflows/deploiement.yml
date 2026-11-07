@@ -197,14 +197,28 @@ jobs:
         with:
           node-version: '22'
 
+      # L'ADRESSE EST ÉCRITE ICI, ET C'EST VOULU.
+      #
+      # Elle attendait une variable `SITE_ADRESSE` à renseigner dans les
+      # réglages de GitHub. Personne ne l'a renseignée — et la surveillance
+      # que Rémy avait demandée (« et on peut automatiser cela ? ») ne s'est
+      # donc JAMAIS exécutée : la tâche démarrait, ne trouvait pas l'adresse,
+      # écrivait une note polie et rendait la main en vert. Un contrôle qui
+      # passe au vert sans rien contrôler est pire que pas de contrôle : on
+      # croit être surveillé.
+      #
+      # Mesuré sur l'exécution n° 21 (la fusion de septembre) : « Variable
+      # SITE_ADRESSE absente — pas de contrôle en ligne », tâche verte.
+      #
+      # Le site a une adresse, elle ne change pas, elle est publique : on
+      # l'écrit. La variable reste prioritaire, pour le jour où elle change
+      # ou pour qui reprendrait ce dépôt sur un autre domaine.
       - name: Contrôler
         env:
-          SITE: ${{ vars.SITE_ADRESSE }}
+          SITE: ${{ vars.SITE_ADRESSE || 'https://atout-math.fr' }}
         run: |
           if [ -z "$SITE" ]; then
-            echo "::notice::Variable SITE_ADRESSE absente — pas de contrôle en ligne."
-            echo "Renseignez-la dans Settings → Secrets and variables → Actions → Variables,"
-            echo "par exemple : https://atoutmath.fr"
+            echo "::notice::Aucune adresse de site — pas de contrôle en ligne."
             exit 0
           fi
           # LE SITE VIENT D'ÊTRE TRANSFERTÉ : on laisse à l'hébergement le temps

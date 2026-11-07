@@ -13,6 +13,9 @@ import { THEMES as THEMES_MOTCODE } from '../../core/motCode.js';
 import { encre, pourPdf } from '../ficheRendu.js';
 import { pointsAngleDroit as pointsAngleDroitCodage, pointsProjetes as pointsProjetesCodage, traitsDeMarque as traitsDeMarqueCodage } from '../../core/codageSvg.js';
 import { silhouette } from '../../core/blocScratch.js';
+// LA MISE EN PAGE D'UN DINGBAT SUR LE PAPIER : des formes en millimètres,
+// consommées par l'aperçu ET par le PDF. Voir l'en-tête du module.
+import { planDuDingbat } from '../../core/dingbatPlan.js';
 
 /** « un losange » -> « Un losange » : le mot se pose sous la figure. */
 const nomTypeCodage = (type) => {
@@ -22,34 +25,26 @@ const nomTypeCodage = (type) => {
 
 // --- LES ANAGRAMMES SUR PAPIER ------------------------------------------------
 //
-// Une ligne par mot : les lettres mélangées à gauche, la définition, puis
-// autant de cases que de lettres. Les cases FONT l'exercice — sans elles on ne
-// sait pas quand on a fini, et « RACER » pourrait donner « CRAER ».
-
-function geoAnagrammes(item, slot) {
-    const b = boiteDe(slot);
-    const lignes = item.meta.lignes || [];
-    const n = Math.max(1, lignes.length);
-    const hLigne = Math.min(16, (b.h - 2) / n);
-    // La case doit rester lisible même sur le mot le plus long de la feuille.
-    const maxLettres = Math.max(4, ...lignes.map(l => l.mot.length));
-    const colMelange = b.w * 0.26;
-    const largeurCases = Math.min(b.w * 0.42, maxLettres * hLigne * 0.52);
-    const cote = largeurCases / maxLettres;
-    // UN SEUL CORPS POUR TOUTES LES DÉFINITIONS DE L'EXERCICE : celui de la
-    // plus longue. Calculé ligne par ligne, « Six faces carrées identiques »
-    // s'écrivait deux fois plus gros que la définition d'à côté, et la colonne
-    // avait l'air bricolée. C'est la même raison qui aligne les « = » de la
-    // fiche des pharaons : sur une feuille, l'irrégularité se voit avant le
-    // contenu.
-    const tailleDef = lignes.reduce((mini, l) => Math.min(mini, tailleDefinition(
-        hLigne,
-        Math.max(10, b.w * 0.74 - MARGE_DEF - cote * l.mot.length - 3),
-        String(l.def || '').length
-    )), hLigne * 0.30);
-    return { b, lignes, hLigne, colMelange, cote, maxLettres, tailleDef,
-        avecDef: item.meta.avecDef !== false };
-}
+// DEUX LIGNES PAR MOT, ET C'EST RÉMY QUI L'A DEMANDÉ :
+//
+//   « pour les anagrammes, aucun intérêt de mettre la définition sur plusieurs
+//     lignes. Tu écris le mot, puis les cases vides et à la ligne la définition
+//     en continu. »
+//
+// CE QU'IL Y AVAIT AVANT : trois colonnes sur une seule ligne — les lettres
+// mélangées, la définition, les cases. La définition héritait donc d'un tiers de
+// la largeur, et il fallait l'y faire entrer : on rapetissait le corps jusqu'à
+// ce que ça tienne, sur deux, trois, quatre lignes.
+//
+// MESURÉ SUR LE CAHIER D'UN PARCOURS, 96 définitions : 10 sur une ligne, 48 sur
+// deux, 32 sur trois, 6 sur quatre — dans une colonne de 121 pixels, écrites en
+// 9,6. Et pendant ce temps la PAGE faisait 700 pixels de large, dont le bloc
+// n'en recevait que 307 : 198 perdus à gauche, 196 à droite. Plus de la moitié
+// de la feuille pour rien, et la définition serrée dans un sixième.
+//
+// MAINTENANT : le mot mélangé et les cases se partagent la première ligne, la
+// définition prend la seconde POUR ELLE SEULE, sur toute la largeur du bloc —
+// et le bloc, lui, prend toute la largeur de la page (`grilleMax` plus bas).
 
 /**
  * LES LETTRES MÉLANGÉES TIENNENT DANS LEUR COLONNE. Écrites à taille fixe, un
@@ -62,41 +57,82 @@ function geoAnagrammes(item, slot) {
  * tout en CAPITALES GRASSES — un M fait 0,83 em, un O 0,78 —, et il faut y
  * ajouter l'interlettrage de 0,08 em qui aère la suite. La marge ensuite : il
  * n'y en avait aucune, si bien qu'un mot « qui tient tout juste » venait
- * toucher la définition. AVANCE couvre les deux, MARGE_DEF sépare.
+ * toucher les cases. AVANCE couvre les deux, MARGE_DEF sépare.
  */
 const AVANCE_MELANGE = 0.80;
 
 const MARGE_DEF = 3;
 
 /**
- * LA DÉFINITION TIENT DANS SA LIGNE, ET NE MORD PAS SUR LA SUIVANTE.
+ * LA HAUTEUR QU'ON S'AUTORISE POUR UNE ENTRÉE ENTIÈRE, mot ET définition.
  *
- * Rémy : « en anagramme, il y a toujours un souci de présentation ». Sur une
- * feuille de parcours, où le bloc est plus étroit, « Deux droites qui ne se
- * croisent jamais, même très loin » demandait trois lignes dans une place qui
- * n'en offrait que deux : la définition débordait sur le mot d'en dessous, et
- * deux textes se superposaient.
- *
- * Le corps se DÉDUIT de la place. Un texte de n signes écrit au corps t occupe
- * à peu près n × t / 2 en longueur ; il lui faut donc n × t / (2 × largeur)
- * lignes, chacune haute de 1,15 t. Poser que ce produit tient dans la hauteur
- * offerte donne directement t — une racine carrée, et plus aucune surprise.
+ * Vingt millimètres, et non quinze : sur la fiche d'un exercice seul, huit mots
+ * ne remplissaient que la moitié de la page et le reste était du blanc. Dans le
+ * cahier d'un parcours, ce plafond ne joue pas — c'est `proportions` qui réserve
+ * la hauteur du bloc, et l'entrée y vaut exactement ce qu'on lui a réservé.
  */
-function tailleDefinition(hLigne, largeur, n) {
-    const t = Math.sqrt(hLigne * 0.86 * Math.max(10, largeur) / (0.575 * Math.max(8, n)));
-    return Math.max(1.9, Math.min(hLigne * 0.30, t));
+const HAUTEUR_ENTREE_MAX = 20;
+
+/**
+ * COMMENT L'ENTRÉE SE PARTAGE, DE HAUT EN BAS.
+ *
+ * La définition COLLE à son mot, et le blanc se met APRÈS. Posée au milieu de
+ * ce qui restait, elle tombait à égale distance des deux mots et l'œil la
+ * rattachait au SUIVANT : on lisait « ESTER » puis, en dessous, la définition
+ * de « TNERNATR ». Sur une feuille où l'on cherche un mot, rattacher la
+ * définition au mauvais est pire que de ne pas la mettre.
+ */
+const PART_HAUT = 0.50;        // le mot mélangé et ses cases
+const PART_DEFINITION = 0.32;  // la définition, juste dessous
+                               // le reste — 18 % — sépare deux entrées
+
+/**
+ * LA DÉFINITION TIENT SUR UNE SEULE LIGNE, et c'est tout le changement.
+ *
+ * Elle dispose maintenant de la largeur ENTIÈRE du bloc : il n'y a plus de
+ * raison de la couper. On cherche donc le corps le plus grand qui fasse tenir
+ * la plus longue des définitions d'un seul tenant — un texte de n signes écrit
+ * au corps t occupe à peu près n × t / 2 —, borné par la hauteur qu'on lui a
+ * réservée.
+ *
+ * UN SEUL CORPS POUR TOUTES LES DÉFINITIONS DE L'EXERCICE : celui de la plus
+ * longue. Calculé ligne par ligne, « Six faces carrées identiques » s'écrirait
+ * deux fois plus gros que la définition d'à côté, et la colonne aurait l'air
+ * bricolée. C'est la même raison qui aligne les « = » de la fiche des pharaons :
+ * sur une feuille, l'irrégularité se voit avant le contenu.
+ */
+function tailleDefinition(hDef, largeur, nSignes) {
+    const tenu = largeur / (0.52 * Math.max(8, nSignes));
+    // Seule sur sa ligne, la définition peut occuper l'essentiel de la bande
+    // qu'on lui a donnée : il n'y a plus d'interligne à ménager.
+    return Math.max(1.9, Math.min(hDef * 0.82, tenu));
 }
 
-/** La largeur qui reste à la définition, une fois le mélange et les cases posés. */
-function largeurDefinition(g, ligne) {
-    return Math.max(10, g.b.w - g.colMelange - MARGE_DEF - g.cote * ligne.mot.length - 3);
-}
+function geoAnagrammes(item, slot) {
+    const b = boiteDe(slot);
+    const lignes = item.meta.lignes || [];
+    const n = Math.max(1, lignes.length);
+    const avecDef = item.meta.avecDef !== false;
+    const hEntree = Math.min(HAUTEUR_ENTREE_MAX, (b.h - 2) / n);
+    // Sans définition, le mot et ses cases prennent toute l'entrée : il n'y a
+    // rien à séparer.
+    const hDef = avecDef ? hEntree * PART_DEFINITION : 0;
+    const hHaut = avecDef ? hEntree * PART_HAUT : hEntree;
 
-function tailleMelange(g, ligne) {
-    const large = g.hLigne * 0.42;
-    const tenu = (g.colMelange - MARGE_DEF)
-        / Math.max(4, ligne.melange.length * AVANCE_MELANGE);
-    return Math.max(g.hLigne * 0.2, Math.min(large, tenu));
+    // La case doit rester lisible même sur le mot le plus long de la feuille.
+    const maxLettres = Math.max(4, ...lignes.map(l => l.mot.length));
+    // LA COLONNE DU MOT MÉLANGÉ se règle sur le plus long mélange de la feuille,
+    // pour que toutes les cases commencent à la même abscisse : sur une fiche,
+    // un alignement qui se perd se voit avant le contenu.
+    const maxMelange = Math.max(4, ...lignes.map(l => String(l.melange || '').length));
+    const tailleMel = Math.min(hHaut * 0.62, b.w * 0.30 / (maxMelange * AVANCE_MELANGE));
+    const colMelange = maxMelange * tailleMel * AVANCE_MELANGE + MARGE_DEF;
+    // Les cases prennent ce qui reste, sans jamais dépasser leur ligne.
+    const cote = Math.max(2.4, Math.min(hHaut * 0.78, (b.w - colMelange) / maxLettres));
+
+    const plusLongue = lignes.reduce((m, l) => Math.max(m, String(l.def || '').length), 8);
+    return { b, lignes, hEntree, hHaut, hDef, colMelange, cote, maxLettres,
+        tailleMel, tailleDef: tailleDefinition(hDef, b.w, plusLongue), avecDef };
 }
 
 function anagrammesPreviewHtml(item, slot, k, solution) {
@@ -104,65 +140,54 @@ function anagrammesPreviewHtml(item, slot, k, solution) {
     const T = (v) => (v * k).toFixed(2);
     let html = '';
     g.lignes.forEach((l, i) => {
-        const y = g.b.y + i * g.hLigne;
-        html += `<div class="fx-ana-mel" style="left:${T(g.b.x)}px; top:${T(y + g.hLigne * 0.18)}px;
-            width:${T(g.colMelange)}px; font-size:${T(tailleMelange(g, l))}px">${echapperSheet(l.melange)}</div>`;
-        if (g.avecDef) {
-            const largeurDef = largeurDefinition(g, l);
-            html += `<div class="fx-ana-def" style="left:${T(g.b.x + g.colMelange + MARGE_DEF)}px;
-                top:${T(y)}px; width:${T(largeurDef)}px; height:${T(g.hLigne)}px;
-                font-size:${T(g.tailleDef)}px">${echapperSheet(l.def)}</div>`;
-        }
-        const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
+        const y = g.b.y + i * g.hEntree;
+        html += `<div class="fx-ana-mel" style="left:${T(g.b.x)}px; top:${T(y)}px;
+            width:${T(g.colMelange)}px; height:${T(g.hHaut)}px;
+            font-size:${T(g.tailleMel)}px">${echapperSheet(l.melange)}</div>`;
         for (let c = 0; c < l.mot.length; c++) {
-            html += `<div class="fx-ana-case" style="left:${T(x0 + c * g.cote)}px;
-                top:${T(y + g.hLigne * 0.12)}px; width:${T(g.cote)}px; height:${T(g.cote)}px;
+            html += `<div class="fx-ana-case" style="left:${T(g.b.x + g.colMelange + c * g.cote)}px;
+                top:${T(y + (g.hHaut - g.cote) / 2)}px; width:${T(g.cote)}px; height:${T(g.cote)}px;
                 font-size:${T(g.cote * 0.62)}px">${solution ? l.mot[c] : ''}</div>`;
+        }
+        if (g.avecDef) {
+            html += `<div class="fx-ana-def" style="left:${T(g.b.x)}px;
+                top:${T(y + g.hHaut)}px; width:${T(g.b.w)}px; height:${T(g.hDef)}px;
+                font-size:${T(g.tailleDef)}px">${echapperSheet(l.def)}</div>`;
         }
     });
     return html;
 }
 
+/**
+ * LE MÊME DESSIN, EN PDF. Il doit tomber au pixel près sur l'aperçu : c'est
+ * l'aperçu que le professeur règle, et le PDF qu'il distribue.
+ */
 function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
     const g = geoAnagrammes(item, slot);
     g.lignes.forEach((l, i) => {
-        const y = g.b.y + i * g.hLigne;
+        const y = g.b.y + i * g.hEntree;
+
+        // 1. LE MOT MÉLANGÉ, à gauche de sa ligne.
         doc.setFont('helvetica', 'bold');
         // LA MÊME TAILLE QU'À L'APERÇU. Elle valait « × 2,5 », une échelle
         // sans rapport avec le millimètre : le PDF écrivait plus petit que
         // l'aperçu, et c'est l'aperçu qui décidait des largeurs. 1 pt vaut
         // 0,3528 mm — c'est la conversion qu'emploie déjà le reste du module.
-        const taille = tailleMelange(g, l);
-        doc.setFontSize(taille / 0.3528);
+        doc.setFontSize(g.tailleMel / 0.3528);
         doc.setTextColor(...ENCRE.texte);
-        doc.text(pourPdf(l.melange), g.b.x, y + g.hLigne * 0.55,
-            { baseline: 'middle', charSpace: taille * 0.08 });
+        doc.text(pourPdf(l.melange), g.b.x, y + g.hHaut * 0.55,
+            { baseline: 'middle', charSpace: g.tailleMel * 0.08 });
 
-        if (g.avecDef) {
-            doc.setFont('helvetica', 'normal');
-            const largeur = largeurDefinition(g, l);
-            const taille = g.tailleDef;
-            doc.setFontSize(taille / 0.3528);
-            doc.setTextColor(...ENCRE.gris);
-            const morceaux = doc.splitTextToSize(pourPdf(l.def), largeur);
-            // Le paragraphe est CENTRÉ dans sa ligne, du haut vers le bas : au
-            // milieu, deux lignes débordaient d'un demi-interligne de chaque
-            // côté et venaient toucher les voisines.
-            const interligne = taille * 1.15;
-            const haut = y + (g.hLigne - morceaux.length * interligne) / 2 + taille * 0.85;
-            morceaux.forEach((part, j) => {
-                doc.text(part, g.b.x + g.colMelange + MARGE_DEF, haut + j * interligne);
-            });
-        }
-
-        const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
+        // 2. LES CASES, à la suite du mot, toutes à la même abscisse d'une ligne
+        //    à l'autre : c'est la colonne du plus long mélange qui la fixe.
+        const x0 = g.b.x + g.colMelange;
+        const yc = y + (g.hHaut - g.cote) / 2;
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.35);
-        doc.setFont('helvetica', 'bold');
         doc.setFontSize(Math.min(13, g.cote * 1.4));
         doc.setTextColor(...ENCRE.texte);
         for (let c = 0; c < l.mot.length; c++) {
-            const x = x0 + c * g.cote, yc = y + g.hLigne * 0.12;
+            const x = x0 + c * g.cote;
             doc.rect(x, yc, g.cote, g.cote, 'S');
             if (solution) {
                 doc.text(l.mot[c], x + g.cote / 2, yc + g.cote / 2,
@@ -170,6 +195,19 @@ function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
             } else if (champ) {
                 champ(x + g.cote * 0.1, yc + g.cote * 0.1, g.cote * 0.8, g.cote * 0.8);
             }
+        }
+
+        // 3. LA DÉFINITION, EN DESSOUS ET D'UN SEUL TENANT. Plus de découpe en
+        //    morceaux : son corps a été calculé pour qu'elle tienne sur la
+        //    largeur entière du bloc. Si un texte exceptionnellement long
+        //    débordait tout de même, `splitTextToSize` n'en garderait que la
+        //    première ligne plutôt que d'écrire par-dessus l'entrée suivante.
+        if (g.avecDef) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(g.tailleDef / 0.3528);
+            doc.setTextColor(...ENCRE.gris);
+            const morceaux = doc.splitTextToSize(pourPdf(l.def), g.b.w);
+            doc.text(morceaux[0], g.b.x, y + g.hHaut + g.hDef * 0.62, { baseline: 'middle' });
         }
     });
 }
@@ -409,22 +447,53 @@ function pointsFleche(x0, y0, x1, y1) {
 const cheminFleche = (pts) => 'M ' + pts
     .map(([x, y]) => `${x.toFixed(3)} ${y.toFixed(3)}`).join(' L ') + ' Z';
 
-const CHEMINS_FLECHE = {
-    droite: [pointsFleche(0.16, 0.5, 0.84, 0.5)],
-    bas: [pointsFleche(0.5, 0.16, 0.5, 0.84)]
-};
-
-// Sur une case d'angle, les deux flèches ne se superposent pas : centrées
-// toutes les deux, elles se croisent en une étoile qu'on ne lit plus. Chacune
-// dans sa moitié, comme les deux départs distincts qu'elles annoncent.
-const CHEMINS_COIN = [
-    pointsFleche(0.30, 0.28, 0.86, 0.28),
-    pointsFleche(0.28, 0.30, 0.28, 0.86)
-];
+/**
+ * LES CHEMINS SONT CALCULÉS AU PREMIER APPEL, PAS AU CHARGEMENT DU MODULE.
+ *
+ * `pointsFleche` lit `POINTE`, qui vient de `socle.js`, et ces modules forment
+ * un CERCLE :
+ *
+ *     socle.js → ficheRendu.js → printSheet.js → mots.js → socle.js
+ *
+ * Quand l'entrée du cercle est `printSheet.js` — ce qu'elle est dans
+ * l'application —, `socle.js` a fini de s'évaluer avant que `mots.js` ne
+ * commence, et trois constantes calculées en tête de module passent. Quand
+ * l'entrée est `socle.js` lui-même, ou n'importe quel module de `fiches/` qui
+ * l'importe en premier, `mots.js` est évalué PENDANT que `socle.js` est encore
+ * en cours : `POINTE` est alors dans sa zone morte et le module jette
+ *
+ *     ReferenceError: Cannot access 'POINTE' before initialization
+ *
+ * MESURÉ : une sonde qui importait `fiches/axes.js` sans passer par
+ * `printSheet.js` faisait tomber TOUT le sous-système d'impression sur ce
+ * message — qui désigne `mots.js`, c'est-à-dire un fichier sans rapport avec
+ * ce qu'on mesurait. Vingt minutes pour comprendre que l'ordre d'import était
+ * le sujet.
+ *
+ * Un calcul différé ne dépend plus de l'ordre : au premier dessin de flèche,
+ * les deux modules sont évalués depuis longtemps.
+ */
+let CHEMINS = null;
+function chemins() {
+    if (!CHEMINS) {
+        CHEMINS = {
+            droite: [pointsFleche(0.16, 0.5, 0.84, 0.5)],
+            bas: [pointsFleche(0.5, 0.16, 0.5, 0.84)],
+            // Sur une case d'angle, les deux flèches ne se superposent pas :
+            // centrées toutes les deux, elles se croisent en une étoile qu'on
+            // ne lit plus. Chacune dans sa moitié, comme les deux départs
+            // distincts qu'elles annoncent.
+            coin: [
+                pointsFleche(0.30, 0.28, 0.86, 0.28),
+                pointsFleche(0.28, 0.30, 0.28, 0.86)
+            ]
+        };
+    }
+    return CHEMINS;
+}
 
 function traitsFleche(type) {
-    if (type === 'coin') return CHEMINS_COIN;
-    return CHEMINS_FLECHE[type] || [];
+    return chemins()[type] || [];
 }
 
 /** La place d'une case de clé, la i-ème (0 en tête). */
@@ -972,7 +1041,278 @@ function dessinerCodagePdf(doc, item, slot, solution) {
         g.b.x + g.b.w / 2, g.b.y + g.b.h - 1.2, { align: 'center' });
 }
 
+// --- LES DINGBATS SUR PAPIER --------------------------------------------------
+//
+// RÉMY : « Faire le pdf pour … Ding Bats ». C'est le jeu du catalogue qui
+// demandait le moins à l'écran et qui n'avait pourtant aucune feuille : rien
+// n'y est animé, rien ne s'y clique, on REGARDE et l'on dit ce qu'on lit. Un
+// dingbat sur une photocopie de début d'heure, c'est son usage naturel — et au
+// tableau, c'est celui d'où il vient.
+//
+// LA MISE EN PAGE VIENT DE `core/dingbatPlan.js`, qui rend des formes en
+// millimètres : l'aperçu et le PDF consomment la MÊME liste. L'aperçu ne
+// réemploie donc PAS le HTML de l'écran — il montrerait une mise en page que
+// l'imprimante ne sortira jamais, et l'on jugerait l'une pour valider l'autre.
+//
+// LA MESURE DES TEXTES EST CELLE DU SOCLE (`largeurTexte`), des deux côtés :
+// c'est ce qui garantit que l'aperçu et le PDF posent les mots au même
+// endroit. Une estimation partagée vaut mieux qu'une mesure exacte d'un seul
+// côté.
+
+/** La largeur d'un texte, en millimètres, pour un corps donné en millimètres. */
+const mesurerDingbat = (texte, corps) => String(texte).length * corps * 0.58;
+
+/**
+ * LA GÉOMÉTRIE D'UN BLOC : l'énigme en haut, la ligne de réponse en bas.
+ *
+ * LA LIGNE DE RÉPONSE N'EST PAS UNE CASE. Un dingbat se répond en FRANÇAIS —
+ * « racine carrée », « droites parallèles » —, pas en un chiffre : c'est une
+ * ligne qu'il faut, et large. La règle est écrite dans `css/modules.css` à
+ * propos de `.dg-champ`, et elle vaut tout autant sur le papier.
+ */
+function geoDingbat(item, slot) {
+    const b = boiteDe(slot);
+    const ligne = Math.max(7, Math.min(b.h * 0.2, 11));
+    return {
+        // L'ÉNIGME ELLE-MÊME voyage dans `meta.dingbat` ; la réponse est celle
+        // qu'on écrit au tableau — `reponsePapier` —, pas la liste des
+        // variantes que le juge accepte.
+        enigme: item.meta.dingbat,
+        reponse: item.reponsePapier || item.answer || '',
+        b, ligne,
+        scene: { x: b.x + 2, y: b.y, w: b.w - 4, h: b.h - ligne },
+        ligneY: b.y + b.h - ligne * 0.45
+    };
+}
+
+/** Le cadre d'une forme, en chemin SVG — les mêmes sommets que le PDF. */
+function sommetsDeLaForme(f) {
+    const { x, y, w, h } = f;
+    switch (f.forme) {
+    case 'triangle': return [[x + w / 2, y], [x + w, y + h], [x, y + h]];
+    case 'losange': return [[x + w / 2, y], [x + w, y + h / 2], [x + w / 2, y + h], [x, y + h / 2]];
+    // LE CUBE N'EST PAS UN CARRÉ, et c'est toute la différence entre « racine
+    // carrée » et « racine cubique ». Les mêmes proportions qu'à l'écran.
+    case 'cube': return [[x + w * 0.22, y + h * 0.10], [x + w, y + h * 0.10],
+        [x + w, y + h * 0.78], [x + w * 0.78, y + h], [x, y + h], [x, y + h * 0.32]];
+    // LE COIN : deux traits, et rien d'autre. C'est l'équerre de l'angle droit.
+    case 'coin': return null;
+    default: return null;
+    }
+}
+
+function dingbatPreviewHtml(item, slot, k, solution) {
+    const g = geoDingbat(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const plan = planDuDingbat(g.enigme, g.scene, mesurerDingbat);
+    const encreTrait = `rgb(${ENCRE.trait.join(',')})`;
+    const encreGris = `rgb(${ENCRE.gris.join(',')})`;
+    let d = '';
+
+    for (const f of plan.formes) {
+        if (f.t === 'forme') {
+            const pts = sommetsDeLaForme(f);
+            if (f.forme === 'cercle') {
+                d += `<ellipse cx="${T(f.x + f.w / 2)}" cy="${T(f.y + f.h / 2)}"
+                    rx="${T(f.w / 2)}" ry="${T(f.h / 2)}" fill="none"
+                    stroke="${encreTrait}" stroke-width="${T(0.6)}"/>`;
+            } else if (f.forme === 'coin') {
+                d += `<path d="M ${T(f.x)} ${T(f.y)} L ${T(f.x)} ${T(f.y + f.h)} `
+                    + `L ${T(f.x + f.w)} ${T(f.y + f.h)}" fill="none" stroke="${encreTrait}"
+                    stroke-width="${T(0.8)}"/>`;
+            } else if (pts) {
+                d += `<polygon points="${pts.map(([px, py]) => `${T(px)},${T(py)}`).join(' ')}"
+                    fill="none" stroke="${encreTrait}" stroke-width="${T(0.6)}"/>`;
+            } else {
+                d += `<rect x="${T(f.x)}" y="${T(f.y)}" width="${T(f.w)}" height="${T(f.h)}"
+                    rx="${T(0.6)}" fill="none" stroke="${encreTrait}" stroke-width="${T(0.6)}"/>`;
+            }
+        } else if (f.t === 'trait' || f.t === 'barre') {
+            const x1 = f.t === 'barre' ? f.cx - f.w / 2 : f.x1;
+            const x2 = f.t === 'barre' ? f.cx + f.w / 2 : f.x2;
+            const y1 = f.t === 'barre' ? f.cy : f.y1;
+            const y2 = f.t === 'barre' ? f.cy : f.y2;
+            d += `<line x1="${T(x1)}" y1="${T(y1)}" x2="${T(x2)}" y2="${T(y2)}"
+                stroke="${f.marque || f.t === 'barre' ? encreGris : encreTrait}"
+                stroke-width="${T(f.epaisseur || 0.4)}"
+                ${f.pointille ? `stroke-dasharray="${T(1.2)} ${T(1)}"` : ''}/>`;
+        } else if (f.t === 'point') {
+            d += `<circle cx="${T(f.cx)}" cy="${T(f.cy)}" r="${T(f.r)}" fill="${encreGris}"/>`;
+        } else if (f.t === 'fleche') {
+            const p = Math.max(0.6, (f.epaisseur || 0.4) * 3);
+            d += `<line x1="${T(f.x1)}" y1="${T(f.y1)}" x2="${T(f.x2 - p)}" y2="${T(f.y2)}"
+                stroke="${encreGris}" stroke-width="${T(f.epaisseur || 0.4)}"/>`;
+            d += `<polygon points="${T(f.x2)},${T(f.y2)} ${T(f.x2 - p)},${T(f.y2 - p * 0.6)}
+                ${T(f.x2 - p)},${T(f.y2 + p * 0.6)}" fill="${encreGris}"/>`;
+        }
+    }
+
+    let html = `<svg class="fx-abs" style="position:absolute; left:0; top:0; overflow:visible"
+        width="1" height="1">${d}</svg>`;
+    for (const f of plan.formes) {
+        if (f.t !== 'mot') continue;
+        // LE MIROIR ET LA ROTATION SONT DES TRANSFORMATIONS DU DESSIN, pas du
+        // texte : on les pose sur la boîte, autour de son centre, exactement
+        // comme le PDF les posera.
+        const tr = [];
+        if (f.angle) tr.push(`rotate(${f.angle}deg)`);
+        if (f.miroir) tr.push('scaleX(-1)');
+        // LE CORPS PASSE PAR LE MÊME FACTEUR QUE DANS LE PDF — 0,72 — sans
+        // quoi l'aperçu dessine des lettres QUARANTE POUR CENT plus grosses
+        // aux mêmes coordonnées : mesuré, « 3,14159 » aux lettres serrées
+        // s'empilait en bouillie à l'écran et sortait juste sur la feuille.
+        html += `<div class="fx-dg-mot${f.pale ? ' fx-dg-mot--pale' : ''}"
+            style="left:${T(f.cx)}px; top:${T(f.cy)}px; font-size:${T(f.corps * 0.72)}px;
+            transform:translate(-50%,-50%)${tr.length ? ' ' + tr.join(' ') : ''}"
+            >${echapperSheet(f.texte)}</div>`;
+    }
+    // LA LIGNE DE RÉPONSE, et sur la correction la réponse elle-même.
+    html += `<div class="fx-dg-ligne" style="left:${T(g.b.x + g.b.w * 0.12)}px;
+        top:${T(g.ligneY)}px; width:${T(g.b.w * 0.76)}px;
+        font-size:${T(Math.min(g.ligne * 0.62, 4.2))}px">${
+    solution ? echapperSheet(g.reponse) : ''}</div>`;
+    return html;
+}
+
+function dessinerDingbatPdf(doc, item, slot, solution, champ) {
+    const g = geoDingbat(item, slot);
+    const plan = planDuDingbat(g.enigme, g.scene, mesurerDingbat);
+
+    for (const f of plan.formes) {
+        if (f.t === 'forme') {
+            doc.setDrawColor(...ENCRE.trait);
+            doc.setLineWidth(f.forme === 'coin' ? 0.8 : 0.6);
+            if (f.forme === 'cercle') {
+                doc.ellipse(f.x + f.w / 2, f.y + f.h / 2, f.w / 2, f.h / 2, 'S');
+            } else if (f.forme === 'coin') {
+                doc.line(f.x, f.y, f.x, f.y + f.h);
+                doc.line(f.x, f.y + f.h, f.x + f.w, f.y + f.h);
+            } else {
+                const pts = sommetsDeLaForme(f);
+                if (!pts) { doc.roundedRect(f.x, f.y, f.w, f.h, 0.6, 0.6, 'S'); continue; }
+                const suite = pts.slice(1).concat([pts[0]])
+                    .map(([px, py], j) => [px - pts[j][0], py - pts[j][1]]);
+                doc.lines(suite, pts[0][0], pts[0][1], [1, 1], 'S', true);
+            }
+        } else if (f.t === 'trait' || f.t === 'barre') {
+            doc.setDrawColor(...(f.marque || f.t === 'barre' ? ENCRE.gris : ENCRE.trait));
+            doc.setLineWidth(f.epaisseur || 0.4);
+            if (f.pointille && doc.setLineDashPattern) doc.setLineDashPattern([1.2, 1], 0);
+            if (f.t === 'barre') doc.line(f.cx - f.w / 2, f.cy, f.cx + f.w / 2, f.cy);
+            else doc.line(f.x1, f.y1, f.x2, f.y2);
+            if (f.pointille && doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+        } else if (f.t === 'point') {
+            doc.setFillColor(...ENCRE.gris);
+            doc.circle(f.cx, f.cy, f.r, 'F');
+        } else if (f.t === 'fleche') {
+            const p = Math.max(0.6, (f.epaisseur || 0.4) * 3);
+            doc.setDrawColor(...ENCRE.gris);
+            doc.setLineWidth(f.epaisseur || 0.4);
+            doc.line(f.x1, f.y1, f.x2 - p, f.y2);
+            doc.setFillColor(...ENCRE.gris);
+            doc.lines([[-p, -p * 0.6], [0, p * 1.2], [p, -p * 0.6]], f.x2, f.y2, [1, 1], 'F', true);
+        }
+    }
+
+    for (const f of plan.formes) {
+        if (f.t !== 'mot') continue;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(f.corps / 0.3528 * 0.72);
+        // LE MOT PÂLE RESTE DE L'ENCRE, PLUS CLAIRE. L'opacité n'existe pas
+        // dans un PDF sans état graphique ; un gris moyen dit la même chose et
+        // survit mieux à la photocopieuse.
+        doc.setTextColor(...(f.pale ? ENCRE.grille : ENCRE.trait));
+        // ── CENTRER UN MOT TOURNÉ : ON NE PEUT PAS LE DEMANDER À jsPDF ────
+        //
+        // MESURÉ, une croix rouge posée à l'endroit demandé et le mot écrit
+        // par-dessus : avec `angle`, jsPDF applique le décalage de `align`
+        // AVANT de tourner. Un mot vertical sortait donc décalé d'une
+        // demi-longueur SUR LE CÔTÉ, et c'est ce qui faisait grimper
+        // « DROITE » par-dessus le titre du bloc.
+        //
+        // On calcule donc le point de départ nous-mêmes : la ligne d'écriture
+        // part dans la direction (cos A, −sin A) — l'angle de jsPDF tourne
+        // dans l'autre sens que celui du CSS, d'où le signe. À zéro degré, le
+        // calcul retombe exactement sur `align: 'center'`.
+        const A = -(f.angle || 0);
+        const rad = A * Math.PI / 180;
+        const large = doc.getTextWidth(pourPdf(f.texte));
+        // ET `baseline: 'middle'` SOUFFRE DU MÊME MAL que `align` : sous
+        // rotation, le décalage perpendiculaire part dans la direction de la
+        // PAGE au lieu de celle du texte, et un mot vertical sortait décalé
+        // d'une demi-hauteur de capitale sur le côté. On reste donc sur la
+        // ligne d'écriture — le réglage par défaut — et l'on pose le point de
+        // départ soi-même, dans les deux directions.
+        //
+        //   · le long de la ligne   (cos A, −sin A) : reculer d'une demi-largeur ;
+        //   · perpendiculairement   (sin A,  cos A) : descendre d'une demi-capitale,
+        //     puisque le milieu visuel d'une majuscule est au-dessus de sa ligne.
+        const demiCap = f.corps * 0.72 * 0.36;
+        const sx = f.cx - Math.cos(rad) * large / 2 + Math.sin(rad) * demiCap;
+        const sy = f.cy + Math.sin(rad) * large / 2 + Math.cos(rad) * demiCap;
+        const options = {};
+        if (A) options.angle = A;
+        // LE MIROIR N'EXISTE PAS EN jsPDF. On le fait à la main avec la
+        // matrice de transformation du PDF — `\-1 0 0 1 2x 0 cm` renvoie
+        // l'abscisse de part et d'autre de x. Sans lui, « un mot RETOURNÉ
+        // comme dans un miroir » s'imprimait à l'endroit, et l'énigme n'avait
+        // plus de réponse.
+        // ── LE MIROIR N'EXISTE PAS EN jsPDF ───────────────────────────────
+        //
+        // On le fait avec la matrice de transformation du PDF lui-même :
+        // `-1 0 0 1 2X 0 cm` renvoie l'abscisse de part et d'autre de X, donc
+        // le mot se retourne sans bouger de place. Sans elle, « un mot
+        // RETOURNÉ comme dans un miroir » s'imprimait à l'endroit et l'énigme
+        // n'avait plus de réponse.
+        //
+        // ON ENCADRE PAR `q` ET `Q` : la matrice vaudrait sinon pour tout ce
+        // qu'on dessine ensuite, et la feuille entière partirait à l'envers.
+        if (f.miroir && doc.internal && typeof doc.internal.write === 'function') {
+            const k = doc.internal.scaleFactor;
+            doc.internal.write('q');
+            doc.internal.write(`-1 0 0 1 ${(f.cx * 2 * k).toFixed(3)} 0 cm`);
+            doc.text(pourPdf(f.texte), sx, sy, options);
+            doc.internal.write('Q');
+            continue;
+        }
+        doc.text(pourPdf(f.texte), sx, sy, options);
+    }
+
+    // LA LIGNE DE RÉPONSE : des pointillés larges, pas une case.
+    const x = g.b.x + g.b.w * 0.12;
+    const w = g.b.w * 0.76;
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.3);
+    doc.line(x, g.ligneY + g.ligne * 0.25, x + w, g.ligneY + g.ligne * 0.25);
+    if (solution) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(Math.min(g.ligne * 0.62, 4.2) / 0.3528 * 0.8);
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(pourPdf(g.reponse), x + w / 2, g.ligneY + g.ligne * 0.1, { align: 'center' });
+    } else if (champ) {
+        champ(x, g.ligneY - g.ligne * 0.35, w, g.ligne * 0.6);
+    }
+}
+
 export const RENDUS_MOTS = {
+    dingbat: {
+        titre: 'Dingbats',
+        consigne: () => 'Chaque énigme cache une expression dans la FAÇON dont les mots '
+            + 'sont posés : rien n\'est dessiné, c\'est leur place qui parle. Regarde '
+            + 'd\'abord le MOT, puis ce qui lui arrive — il est dans une forme, autour '
+            + 'd\'une forme, répété, retourné, coupé, écarté. Dis-le à voix haute : '
+            + 'beaucoup se résolvent par l\'oreille. Écris ensuite ce que tu lis.',
+        previewGrille: dingbatPreviewHtml,
+        pdfGrille: dessinerDingbatPdf,
+        nomBloc: 'Énigme', nomBlocs: 'énigmes',
+        // SIX PAR PAGE, EN DEUX COLONNES. Un dingbat se REGARDE : « RACINE »
+        // dans un carré de deux centimètres n'est plus une énigme, c'est un
+        // test de vue. Et il lui faut sa ligne de réponse en français, qui est
+        // large par nature.
+        proportions: { w: 1, h: 0.62 },
+        disposition: { cols: 2, rows: 3, maxCols: 3, maxRows: 4 },
+        parLigneDefaut: 2
+    },
     codage: {
         titre: 'Coder les figures',
         consigne: () => 'CODE CHAQUE FIGURE. Pose la MÊME marque — un trait, deux traits, trois '
@@ -1000,7 +1340,34 @@ export const RENDUS_MOTS = {
         pdfGrille: dessinerAnagrammesPdf,
         nomBloc: 'Liste', nomBlocs: 'listes',
         titreAGauche: true,
-        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        // UNE LISTE PAR PAGE, ET PAS DEUX.
+        //
+        // Chaque entrée prend maintenant DEUX lignes — le mot avec ses cases,
+        // puis la définition. Deux listes empilées donnaient donc la moitié de
+        // la hauteur à chacune : mesuré sur la fiche d'un exercice seul, le mot
+        // mélangé tombait à 7,6 pixels et la définition à 5,1, illisibles l'un
+        // comme l'autre. Et deux listes CÔTE À CÔTE seraient pires encore :
+        // c'est la largeur entière qui permet à la définition de tenir sur une
+        // ligne.
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
+        // LA LARGEUR DE LA PAGE, ET PAS LE CARRÉ PAR DÉFAUT.
+        //
+        // Rémy : « tu vois le gâchis de place ». Mesuré sur le cahier d'un
+        // parcours : la page fait 700 pixels, le bloc en recevait 307 — 198
+        // perdus à gauche, 196 à droite, plus de la moitié de la feuille. En
+        // cause, le plafond commun de `core/fiche.js`, qui inscrit un bloc dans
+        // un carré de 78 mm : juste pour un sudoku, absurde pour une liste de
+        // mots, qui est large et basse et dont la définition court sur la ligne.
+        grilleMax: 400,
+        // ET LA HAUTEUR SUIT LE NOMBRE DE MOTS, puisque chacun prend maintenant
+        // DEUX lignes : le mot avec ses cases, puis la définition. Quinze
+        // millimètres par entrée sur une largeur de page (182 mm en A4
+        // portrait), plafonnés pour qu'une liste de seize mots ne réclame pas
+        // plus d'une page — au-delà, c'est `hEntree` qui se resserre.
+        proportions: (items) => {
+            const n = Math.max(1, ...(items || []).map(it => ((it.meta || {}).lignes || []).length));
+            return { w: 1, h: Math.max(0.35, Math.min(1.2, (n * HAUTEUR_ENTREE_MAX + 2) / 182)) };
+        },
         parLigneDefaut: 1
     },
     motcode: {
@@ -1041,6 +1408,21 @@ export const RENDUS_MOTS = {
         // UNE GRILLE PAR PAGE : à deux, un 15 × 18 tombe sous trois millimètres
         // par case, et les définitions ne tiennent plus.
         disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
+        // LA LARGEUR DE LA PAGE. Même gâchis que pour les anagrammes, et plus
+        // visible encore : le bloc recevait 327 pixels sur 700, si bien que les
+        // définitions se serraient dans 117 pixels et prenaient QUATRE ou CINQ
+        // lignes chacune — 40 définitions sur 40 — pendant que la moitié de la
+        // feuille restait blanche. `disposerMotsCroises` sait déjà poser les
+        // listes à côté de la grille plutôt qu'en dessous : encore fallait-il
+        // lui donner la place de le faire.
+        grilleMax: 400,
+        // ET LA PAGE ENTIÈRE EN HAUTEUR. Sans cela le bloc restait un CARRÉ —
+        // 182 mm de haut pour 240 disponibles —, et les dernières définitions
+        // se faisaient couper net en bas : « Mesure plus de cent quatre-vingts
+        // degrés : il rentre vers l'in… ». Une grille par page était déjà la
+        // règle (`disposition` juste au-dessus) ; il manquait de le dire à la
+        // mise en page du cahier, qui raisonne en proportions.
+        proportions: 'plein',
         parLigneDefaut: 1
     },
     motscaches: {

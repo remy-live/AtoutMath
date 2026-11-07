@@ -270,6 +270,13 @@ export function compter(solide, aspect) {
     return (solide.aretes || aretesDe(solide.faces)).length;
 }
 
+/** La vérification d'Euler, écrite pour l'élève. Une fois. */
+export function filetDEuler(solide) {
+    const e = euler(solide);
+    return `On peut vérifier : sommets − arêtes + faces = ${e.S} − ${e.A} + ${e.F} = 2, `
+        + 'et cela vaut pour tous les solides de ce genre.';
+}
+
 /** S − A + F : deux sur tout polyèdre convexe. C'est le filet de l'élève. */
 export function euler(solide) {
     const S = compter(solide, 'sommets');
@@ -286,11 +293,17 @@ export function euler(solide) {
  * 4 arêtes qui montent au sommet » se retrouve à chaque fois, sur n'importe
  * quelle base. C'est cette phrase-là qu'on rend.
  */
-export function expliquer(solide, aspect) {
+/**
+ * `avecFilet` à faux quand on recolle les TROIS aspects dans une seule
+ * explication : sinon la vérification d'Euler est écrite trois fois de suite,
+ * mot pour mot. MESURÉ (tools/cequilFautLire.mjs) : 139 mots, dont la même
+ * phrase ×3 — c'était, et de loin, le plus bavard du catalogue. Rémy : « un
+ * élève qui galère c'est aussi un élève qui peut avoir du mal à lire ».
+ */
+export function expliquer(solide, aspect, avecFilet = true) {
     const n = solide.n;
     const e = euler(solide);
-    const filet = `On peut vérifier : sommets − arêtes + faces = ${e.S} − ${e.A} + ${e.F} = 2, `
-        + 'et cela vaut pour tous les solides de ce genre.';
+    const filet = avecFilet ? filetDEuler(solide) : '';
 
     if (solide.famille === 'prisme') {
         if (aspect === 'sommets') {
@@ -334,10 +347,11 @@ export function expliquer(solide, aspect) {
 /** Ce que le robot dit quand il montre comment on compte. */
 export function direMethode(solide, aspect) {
     const quoi = ASPECTS.find(a => a.id === aspect).label;
-    return `Je compte les ${quoi} en les touchant une par une : la marque reste, `
-        + 'donc je ne compte jamais deux fois la même — et surtout je n\'en oublie pas. '
-        + 'Les traits en POINTILLÉS sont les arêtes de derrière : elles existent, '
-        + 'même si on ne les voit pas.';
+    // 243 CARACTÈRES MESURÉS, la plus longue bulle du logiciel : quatorze
+    // secondes de robot figé. Et sa seconde moitié — les pointillés, les arêtes
+    // de derrière — est dite en clair par la bulle suivante, qui les montre.
+    // On garde le geste ; le reste se voit.
+    return `Je compte les ${quoi} une par une : la marque reste, je ne compte pas deux fois.`;
 }
 
 // --- Le tirage ---------------------------------------------------------------

@@ -23,6 +23,7 @@ import { tirerProbleme, famillesDe, IDS_FAMILLES, FAMILLES, direReponse } from '
 import { boutonAide, majBoutonAide } from '../ui/gameChrome.js';
 import { suivreDefilement } from '../ui/defilement.js';
 import { dessinerSchema, esc } from './problemesSchema.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL_DEFAUT = 'num.probleme.composition';
 
@@ -63,7 +64,7 @@ class Problemes extends BaseGame {
                 }
                 .pb-famille {
                     background: color-mix(in srgb, var(--primary) 14%, transparent);
-                    color: var(--primary); border-radius: 999px; padding: 3px 12px;
+                    color: var(--primary-texte); border-radius: 999px; padding: 3px 12px;
                 }
                 .pb-score { color: var(--text-muted); font-weight: 600; }
                 .pb-btn {
@@ -71,7 +72,9 @@ class Problemes extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .pb-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pb-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* L'ÉNONCÉ. Une carte, pas un paragraphe perdu : c'est le texte
                    qu'il faut relire trois fois, il doit être facile à retrouver
@@ -90,7 +93,7 @@ class Problemes extends BaseGame {
                 .pb-question {
                     margin-top: 9px; padding-top: 9px; border-top: 2px dashed var(--border);
                     font-weight: 800; font-size: clamp(14px, 3.6cqw, 20px);
-                    color: var(--primary); line-height: 1.35;
+                    color: var(--primary-texte); line-height: 1.35;
                 }
                 .pb-nb { font-weight: 800; color: var(--text-main); white-space: nowrap; }
 
@@ -115,14 +118,16 @@ class Problemes extends BaseGame {
                     display: flex; align-items: center; justify-content: center; text-align: center;
                     min-height: clamp(52px, 10cqw, 70px); padding: 11px 13px;
                     border-radius: 18px; border: 3px solid rgba(255,255,255,.22);
-                    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+                    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
                     color: #fff; font-weight: 800; font-size: clamp(.95rem, 3.2cqw, 1.25rem);
                     line-height: 1.2; text-wrap: balance; cursor: pointer;
-                    box-shadow: 0 7px 18px rgba(79, 70, 229, .32);
+                    box-shadow: 0 7px 18px color-mix(in srgb, var(--primary) 32%, transparent);
                     transition: all .22s cubic-bezier(.4, 0, .2, 1);
                     -webkit-tap-highlight-color: transparent;
                 }
-                .pb-carte-rep:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(79,70,229,.42); }
+                @media (hover: hover) {
+                    .pb-carte-rep:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px color-mix(in srgb, var(--primary) 42%, transparent); }
+                }
                 .pb-carte-rep:active:not(:disabled) { transform: translateY(2px) scale(.98); }
                 .pb-carte-rep:disabled { cursor: default; }
                 .pb-carte-rep--ok {
@@ -302,44 +307,45 @@ class Problemes extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur?.destroy(); gate?.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say('Un problème se lit deux fois. L\'histoire, puis la question.', this.enonceEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Les nombres sont en gras : ce sont les données.', this.enonceEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Le geste central de l'exercice : ouvrir le schéma.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Je ne devine pas l\'opération. J\'ouvre l\'aide.', this.voirEl);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
-        if (!await cur.tap(this.voirEl)) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+        if (!await robot.toucher(this.voirEl)) return fin();
         this.basculerSchema();
-        if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.press)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Le dessin montre ce qu\'on cherche. Le mot ne décide plus.', this.schemaEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(this.p.etapes[0], this.schemaEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         const i = this.p.choix.findIndex(c => c.juste);
         const el = this.choixEl.querySelector(`[data-i="${i}"]`);
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(this.p.etapes[1], this.choixEl);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         if (el && !await cur.tap(el)) return fin();
         el?.classList.add('pb-carte-rep--ok');
-        if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.press)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Et la réponse porte son unité. Toujours.', this.choixEl);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

@@ -12,15 +12,66 @@ import { regTimeout } from '../timers.js';
 import { repereSvg, marqueurPoint } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 export function mount(container, session) {
     let destroyed = false;
     let cursor = null;
     let gate = null;
+    /** Le pavé, quand la question demande d'écrire au lieu de pointer. */
+    let releve = null;
+
+    /**
+     * UNE QUESTION QUI SE REMPLIT, DANS UN EXERCICE QUI SE CLIQUE.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * RÉMY : « pour tracer une fonction, ce serait bien de pouvoir aussi
+     * avoir des questions avec remplissage de tableau ».
+     *
+     * LE TABLEAU DE VALEURS EST L'ÉTAPE QU'ON SAUTE. Pour tracer, on calcule
+     * d'abord f(−2), f(−1), f(0)… et c'est ce calcul-là qui se travaille ;
+     * l'exercice ne posait que le POINT, c'est-à-dire ce qui vient après.
+     * Sur la feuille imprimée le tableau existait déjà — à l'écran, non.
+     *
+     * UN TABLEAU NE SE POINTE PAS : il s'écrit, case par case. C'est le pavé
+     * qui sait faire cela (plusieurs trous, une réponse « a|b|c »), et le
+     * mécanisme est celui du QCM qui passe au clavier — même contrat,
+     * `rendreLaMain` compris. On ne le réécrit donc pas.
+     */
+    const auPave = (item) => !!(item && item.meta && item.meta.cases);
 
     function renderNext() {
         if (destroyed) return;
-        render(session.next());
+        const item = session.next();
+        if (auPave(item)) { passerAuPave(item); return; }
+        render(item);
+    }
+
+    /** Le pavé prend la main pour les questions à cases. */
+    async function passerAuPave(item) {
+        const mod = await import('./numeric.js');
+        if (destroyed) return;
+        if (cursor) { cursor.destroy(); cursor = null; }
+        if (gate) { gate.destroy(); gate = null; }
+        releve = mod.mount(container, session, { item, rendreLaMain });
+    }
+
+    /**
+     * ET LE REPÈRE REPREND LA MAIN à la question suivante qui se pointe.
+     *
+     * Le pavé appelle ceci avant chaque question ; `true` veut dire « arrête-
+     * toi là ». Sans cela, une marche « tableau » au milieu de l'exercice
+     * laisserait le clavier pour tout le reste, et l'on placerait des points
+     * en tapant leurs coordonnées — ce qui n'est pas l'exercice.
+     */
+    function rendreLaMain(item) {
+        if (destroyed) return false;
+        if (auPave(item)) return false;
+        if (releve && releve.destroy) releve.destroy();
+        releve = null;
+        render(item);
+        return true;
     }
 
     function render(item) {
@@ -67,7 +118,33 @@ export function mount(container, session) {
                 if (result.revealed) {
                     if (target) markPoint(svg, target, 'demo', formatCoord(item.answer));
                     regTimeout(renderNext, 1800);
+                    return;
                 }
+                // ── IL LUI RESTE UN ESSAI : ON ROUVRE LA GRILLE ────────────
+                //
+                // RÉMY : « pour l'exercice placer un point. Si l'élève se
+                // trompe, on ne peut plus cliquer, en fait l'exercice bloque ».
+                //
+                // IL AVAIT RAISON À LA LETTRE. La grille se fige au moment de
+                // la réponse — c'est voulu, un doigt posé sur un nœud ne doit
+                // pas répondre deux fois pendant la correction — et rien ne la
+                // rouvrait. Deux chemins sortaient d'ici : juste, on passe à la
+                // question suivante ; la correction révélée, on la montre puis
+                // on passe. Le TROISIÈME — faux, mais il reste un essai —
+                // n'était écrit nulle part, et c'est le plus fréquent des trois
+                // en entraînement, où la politique accorde deux essais.
+                //
+                // MESURÉ AVANT : 36 cibles, 0 cliquable, et cela ne changeait
+                // plus. L'élève restait devant « Place le point B (5 ; 3) »
+                // sans rien pouvoir toucher.
+                //
+                // ON EFFACE SA CROIX ROUGE EN ROUVRANT. Elle a fait son travail
+                // pendant la correction — « tu as cliqué en (2 ; 3) » est ce
+                // qui fait comprendre l'inversion —, et la garder empilerait
+                // une croix par essai sur un repère qu'il faut relire.
+                svg.classList.remove('rep-svg--repondu');
+                svg.querySelectorAll('.rep-mark--ko, .rep-mark-label--ko')
+                    .forEach(n => n.remove());
             });
         };
 
@@ -112,22 +189,23 @@ export function mount(container, session) {
         if (!target) { regTimeout(renderNext, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         // La règle de lecture, DITE avant le geste. Le pointeur allait droit au
         // point : on voyait où, jamais comment — or « d'abord l'abscisse, puis
         // l'ordonnée » est exactement ce qui s'oublie.
         cursor.say(phraseDepart(item), container.querySelector('.figure-wrap') || container);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.tap(target) || destroyed) return;
+        if (!await robot.tour()) return;
+        if (!await robot.toucher(target)) return;
         markPoint(svg, target, 'demo');
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(item), target);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 
@@ -140,6 +218,9 @@ export function mount(container, session) {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
             if (gate) { gate.destroy(); gate = null; }
+            // LE PAVÉ MEURT AVEC NOUS, sans quoi il garderait ses minuteurs et
+            // sa session ouverte derrière un exercice fermé.
+            if (releve && releve.destroy) { releve.destroy(); releve = null; }
             container.innerHTML = '';
             session.finish();
         }

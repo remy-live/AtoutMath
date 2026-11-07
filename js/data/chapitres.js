@@ -70,8 +70,12 @@ export const CHAPITRES = [
     },
     {
         id: '6-elements-geometrie', niveau: SIXIEME, nom: 'Éléments de géométrie',
+        // LE CHAPITRE PORTAIT DÉJÀ LE TITRE DE SA FICHE, et il lui manquait
+        // trois de ses notions. Un exercice sans chapitre n'est atteignable
+        // que par la recherche : il existe, et personne ne le rencontre.
         skills: [
             'geo.notation.ecrire', 'geo.notation.lire', 'geo.notation.dire',
+            'geo.appartenance', 'geo.codage.lire', 'geo.milieu',
             'geo.construire.instruments', 'geo.figure.programme', 'geo.repere.coord',
             'geo.construction.programme'
         ]
@@ -228,8 +232,13 @@ export const CHAPITRES = [
         id: '4-grandeurs-composees', niveau: QUATRIEME, nom: 'Grandeurs composées',
         skills: ['mes.vitesse']
     },
+    // LE TRACÉ EST DANS LE MÊME CHAPITRE QUE L'IMAGE ET L'ANTÉCÉDENT, et non
+    // dans le repérage : c'est une fonction qu'on dessine, pas un point qu'on
+    // place. Sans cette ligne, la compétence existerait sans que la carte des
+    // chapitres puisse l'accrocher nulle part — `chapitresDe` associe PAR
+    // COMPÉTENCE, et le dépôt a déjà payé une fois cette leçon.
     { id: '4-fonctions', niveau: QUATRIEME, nom: 'Les fonctions',
-        skills: ['alg.fonction.image', 'alg.fonction.antecedent'] },
+        skills: ['alg.fonction.image', 'alg.fonction.antecedent', 'alg.fonction.graphique'] },
     { id: '4-solides', niveau: QUATRIEME, nom: 'Les solides', skills: [] },
     { id: '4-probabilite', niveau: QUATRIEME, nom: 'Probabilité', skills: [] },
     {

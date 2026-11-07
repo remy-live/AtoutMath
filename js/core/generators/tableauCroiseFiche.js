@@ -9,7 +9,7 @@
 // diverger de l'écran — et la correction ne peut pas mentir.
 
 import { makeItem } from '../items.js';
-import { genererTableau, PALIERS, totalGeneral, consigneDe } from '../tableauCroise.js';
+import { genererTableau, PALIERS, TAILLES, totalGeneral, consigneDe } from '../tableauCroise.js';
 
 export const tableauCroiseFicheGenerator = {
     id: 'donnees.tableau-croise',
@@ -27,6 +27,15 @@ export const tableauCroiseFicheGenerator = {
                 { value: 'tableau', label: 'Écrits dans le tableau' },
                 { value: 'enonce', label: 'Dits dans l\'énoncé — le tableau part vide' }
             ]
+        },
+        {
+            // SUR LA FEUILLE AUSSI. Une feuille de révision se photocopie pour
+            // toute la classe : c'est là qu'on veut pouvoir donner le même
+            // tableau avec de petits nombres à ceux qui butent sur l'addition.
+            id: 'taille', type: 'select', label: 'La taille des nombres', default: 'auto',
+            aide: 'Indépendante du tableau : un grand tableau avec de petits nombres '
+                + 'fait travailler la méthode sans la noyer dans les additions.',
+            options: Object.entries(TAILLES).map(([value, t]) => ({ value, label: t.label }))
         }
     ],
 
@@ -37,7 +46,8 @@ export const tableauCroiseFicheGenerator = {
         // pour tourner dans la liste des énoncés au lieu de tirer, et deux
         // blocs voisins ne se répètent plus.
         const depart = (params || {}).depart === 'enonce' ? 'enonce' : 'tableau';
-        const t = genererTableau({ rng, palier, depart, tour: ctx.index });
+        const taille = TAILLES[(params || {}).taille] ? params.taille : 'auto';
+        const t = genererTableau({ rng, palier, depart, taille, tour: ctx.index });
         return makeItem({
             seed: rng.seed,
             generatorId: 'donnees.tableau-croise',

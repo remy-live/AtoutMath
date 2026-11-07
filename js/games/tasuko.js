@@ -31,6 +31,7 @@ import {
 // LE GESTE, EN PLUS DU CLIC. Rémy : « on pourrait aussi cliquer sans relâcher
 // et glisser plutôt que cliquer et cliquer (on peut garder les deux) ».
 import { relierAuGlisse } from '../core/activities/glisser.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'num.logique.tasuko';
 
@@ -85,7 +86,26 @@ class Tasuko extends BaseGame {
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                     position: relative; z-index: 2;
                 }
-                .tk-case--depart { background: rgba(109, 92, 246, .18); }
+                /* LA CASE CHOISIE SE VOIT DE LOIN.
+
+                   RÉMY : « la selection n'est pas terrible je trouve ». Le fond
+                   violet à 18 % sur le blanc de la grille donnait
+                   rgb(229, 226, 253) — MESURÉ : 1,26 de contraste avec une
+                   case ordinaire, dont la bordure, elle, ne changeait pas
+                   du tout.
+                   C'est-à-dire rien sur un vidéoprojecteur, et rien sur une
+                   tablette au soleil.
+
+                   ON GARDE LE FOND, un peu plus franc, ET ON AJOUTE LE CADRE :
+                   c'est lui qui se voit — 7,07 de contraste sur le blanc —, et il
+                   ne coûte pas un pixel de place puisqu'il est posé À
+                   L'INTÉRIEUR — la grille ne bouge pas d'un cheveu quand on
+                   choisit une case. */
+                .tk-case--depart {
+                    background: rgba(109, 92, 246, .26);
+                    box-shadow: inset 0 0 0 3px #4c3fd4;
+                    z-index: 3;
+                }
                 .tk-case--montre { background: rgba(183, 121, 31, .28); }
                 .tk-case--faute { background: rgba(197, 48, 48, .22); }
                 /* LES CAPSULES SONT SOUS LES CHIFFRES, dans un calque à part :
@@ -108,8 +128,13 @@ class Tasuko extends BaseGame {
                     min-width: 1.7em; padding: 1px 4px; border-radius: 999px;
                     font-weight: 800; text-align: center;
                     font-size: clamp(10px, 2.3cqh, 15px);
+                    /* TROIS COULEURS FIXES ET UN FOND DU THÈME : l'encre et la
+                       bordure sont écrites en dur, le fond suivait le thème et
+                       devenait sombre — de l'indigo foncé sur de l'ardoise,
+                       mesuré à 2,04. Une pastille dont on choisit l'encre doit
+                       choisir son fond. */
                     border: 1.5px solid #6d5cf6; color: #4c3fd0;
-                    background: var(--bg-panel, #fff);
+                    background: #fff;
                 }
                 .tk-somme--faite {
                     border-color: #cbd5e1; color: #a0aec0;
@@ -120,7 +145,7 @@ class Tasuko extends BaseGame {
                 .tk-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .tk-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
@@ -423,19 +448,22 @@ class Tasuko extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.g) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         cur.say(`Il y a ${this.g.paires.length} façons de relier deux cases voisines dans cette `
             + `grille, et il n'en faut que ${this.g.n} : une par somme, de 1 à ${this.g.n}. `
             + 'Relier ce qui tombe juste ne suffit donc pas.', this.grilleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
-        cur.say('Le bon réflexe n\'est pas de regarder les chiffres, c\'est de regarder cette '
-            + 'liste-là et de prendre une somme qui reste.', this.sommesEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        // LA MÊME CONSIGNE DITE COMME UN GESTE, ET NON COMME UN « bon réflexe » :
+        // 118 caractères pour dire deux fois où regarder.
+        cur.say('Je ne regarde pas les chiffres : je prends dans cette liste une somme '
+            + 'qui reste.', this.sommesEl);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let n = 0; n < 3; n++) {
             const p = prochaineAddition(this.g, this.choisies);
@@ -451,13 +479,13 @@ class Tasuko extends BaseGame {
                 cur.say(`Ou par la case : ce ${v}-là n'a plus qu'une seule voisine libre dont `
                     + 'la somme serve encore.', this.grilleEl);
             }
-            if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.between)) return fin();
             this.choisies.push(p.paire.id);
             this.montre = null;
             this.dessiner();
             cur.say(`${p.paire.a} + ${p.paire.b} = ${p.paire.somme}. Et cette paire-là en coince `
                 + 'd\'autres à son tour.', this.sommesEl);
-            if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.between)) return fin();
         }
         cur.say('De proche en proche, toute la grille se découpe. On ne devine jamais.',
             this.grilleEl);

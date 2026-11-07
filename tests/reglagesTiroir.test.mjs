@@ -39,10 +39,19 @@ test('LES TROIS TIROIRS DE L\'APPLICATION SONT BRANCHÉS', () => {
     const cfg = lire('../js/games/configUI.js');
     assert.match(cfg, /rendreTirable\(modal\.querySelector\('\.modal-panel-sm-left'\), fermerReglages/);
     assert.match(cfg, /fond: modal/, 'le voile ne ferme pas les réglages');
-    // Les propriétés d'étape et le panneau des classes : pas de voile, ils
-    // occupent tout l'écran.
-    assert.match(lire('../js/ui/builder.js'), /rendreTirable\(panel, fermerProps/);
+    // Le panneau des classes : pas de voile, il occupe tout l'écran.
     assert.match(lire('../js/ui/parcoursClasses.js'), /rendreTirable\(panel, fermerPanneau/);
+    // LES RÉGLAGES D'UNE ÉTAPE NE SONT PLUS UN TIROIR — ils sont une FENÊTRE.
+    //
+    // Rémy : « oublions le panneau latéral pour les réglages, ça surcharge trop
+    // l'écran […] une modale […] avec un “tab” pour avoir un aperçu qui prenne
+    // en compte tes modifs ». Le volet de droite prenait 330 px sur un écran de
+    // 1440 et poussait le parcours ; surtout, il n'avait pas la place de montrer
+    // l'exercice. Voir js/ui/reglagesEtape.js.
+    const b = lire('../js/ui/builder.js');
+    assert.ok(!/rendreTirable\(panel, fermerProps/.test(b),
+        'les réglages d\'étape ne montent plus du bas');
+    assert.match(b, /ouvrirReglagesEtape\(\{/);
 });
 
 test('LA POIGNÉE NE RECOUVRE PAS LA CROIX, et n\'existe pas sur grand écran', () => {

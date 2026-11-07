@@ -6,7 +6,8 @@ import {
     chiffresParRang, enFrancais,
     colonnesAddition, colonnesSoustraction, colonnesMultiplication, poser,
     lignesMultiplication, colonnesDivision, apercuPose, verifierPose,
-    verifierPlacement, attenduEn, premierRang, rangSuivant
+    verifierPlacement, attenduEn, porteUneRetenue, premierRang, rangSuivant,
+    dernierRangDemande
 } from '../js/core/poser.js';
 
 // --- Les rangs -------------------------------------------------------------------
@@ -225,12 +226,57 @@ test('on sait dire ce qu\'attend chaque case, résultat comme retenue', () => {
     assert.equal(attenduEn(t, 0, 'resultat'), 2);
     assert.equal(attenduEn(t, 1, 'resultat'), 4);
     assert.equal(attenduEn(t, 1, 'retenue'), 1, 'la retenue se lit sur les dizaines');
-    assert.equal(attenduEn(t, 0, 'retenue'), 0);
+    // LA COLONNE DES UNITÉS NE PORTE PAS DE RETENUE — 'null', et non zéro.
+    //
+    // RÉMY, capture à l'appui sur 554 + 448 : « normalement, il ne devrait pas
+    // pour l'addition avoir une retenue sur la première colonne non ? » Non :
+    // la retenue d'une colonne VIENT de celle qui est à sa droite, et les
+    // unités n'ont rien à leur droite. Le jeu dessinait quand même son petit
+    // rond au-dessus — une case qu'on ne remplit jamais, posée devant un
+    // élève qui cherche quoi y écrire.
+    //
+    // Zéro et 'null' ne disent pas la même chose : zéro, c'est « la retenue
+    // vaut zéro cette fois-ci » ; 'null', c'est « il ne peut pas y en avoir ».
+    // Le rond se décide sur le second.
+    assert.equal(attenduEn(t, 0, 'retenue'), null,
+        'rien ne peut entrer dans la colonne des unités');
+    assert.equal(porteUneRetenue(t, 0), false);
+    assert.equal(porteUneRetenue(t, 1), true);
     assert.equal(attenduEn(t, 9, 'resultat'), null, 'pas de colonne à ce rang');
 
+    // LA SOUSTRACTION PORTE DEUX MARQUES, ET PAS AU MÊME ENDROIT.
+    //
+    // RÉMY, devant 307 − 260 : « logiquement la retenue devrait être à
+    // l'endroit où il y a une retenue, en l'occurrence à côté du 0 en haut et
+    // à côté du 2 en bas ».
+    //
+    // 52 − 27 : les unités empruntent (2 < 7), donc le petit 1 va devant le 2
+    // du HAUT ; la compensation +1 va contre le 2 du BAS, colonne des
+    // dizaines.
     const s = poser('-', [52, 27]);
     assert.equal(attenduEn(s, 0, 'resultat'), 5);
-    assert.equal(attenduEn(s, 1, 'retenue'), 1, 'la retenue du bas, sur les dizaines');
+    assert.equal(attenduEn(s, 0, 'retenue'), 1, 'le petit 1 devant le chiffre du haut');
+    assert.equal(attenduEn(s, 0, 'retenue-bas'), null, 'rien à ajouter aux unités du bas');
+    assert.equal(attenduEn(s, 1, 'retenue-bas'), 1, 'la compensation, contre le chiffre du bas');
+    assert.equal(attenduEn(s, 1, 'retenue'), null, 'les dizaines n\'empruntent rien');
+});
+
+test('UNE SOUSTRACTION NE MARQUE QUE LÀ OÙ IL Y A UNE RETENUE', () => {
+    // RÉMY, capture à l'appui sur 307 − 260. Le jeu posait un petit rond vide
+    // sous CHAQUE colonne sauf les unités, y compris là où rien ne se passe —
+    // un rond à remplir avec zéro n'est pas une retenue, c'est du bruit, et
+    // il apprend à ne plus regarder les autres.
+    //
+    // 307 − 260 : seules les dizaines empruntent. Donc UN « 1 » devant le 0,
+    // UN « +1 » contre le 2, et rien ailleurs.
+    const t = poser('-', [307, 260], { methode: 'compensation' });
+    assert.deepEqual(t.colonnes.map(c => attenduEn(t, c.rang, 'retenue')), [null, 1, null]);
+    assert.deepEqual(t.colonnes.map(c => attenduEn(t, c.rang, 'retenue-bas')), [null, null, 1]);
+    assert.deepEqual(t.colonnes.map(c => porteUneRetenue(t, c.rang)), [false, true, true]);
+
+    // ET UNE SOUSTRACTION SANS AUCUN EMPRUNT NE MARQUE RIEN DU TOUT.
+    const calme = poser('-', [48, 12], { methode: 'compensation' });
+    assert.deepEqual(calme.colonnes.map(c => porteUneRetenue(calme, c.rang)), [false, false]);
 });
 
 test('l\'ordre de calcul va des unités vers la gauche', () => {
@@ -458,4 +504,129 @@ test('un nombre s\'écrit à la française : 12,5 et non 12.5', () => {
     assert.equal(enFrancais(12.5), '12,5');
     assert.equal(enFrancais(0.05), '0,05');
     assert.equal(enFrancais(47), '47');
+});
+
+// --- LES DEUX MÉTHODES DE RETENUE DE LA SOUSTRACTION -------------------------
+//
+// RÉMY : « pour la soustraction posée, il faut que si il y a une retenue en
+// haut, la mettre et actualisé le +1 en bas dans le rang après. mais j'ai des
+// élèves qui font une autre méthode où pour 53 − 17, il mette le 1 à 3 et au
+// lieu du 5, il barre et mette 4, est ce clair ? »
+//
+// CE N'EST PAS UNE PRÉFÉRENCE, C'EST UN BLOCAGE : le logiciel n'enseignait que
+// la compensation, et un élève qui applique CORRECTEMENT l'emprunt — celui
+// qu'on lui a enseigné au primaire — ne pouvait pas l'écrire dans la grille.
+
+test('53 − 17 PAR EMPRUNT : LE 3 DEVIENT 13, ET LE 5 BARRÉ DEVIENT 4', () => {
+    // SON EXEMPLE, MOT POUR MOT. Si cette épreuve tombe, c'est la phrase de
+    // Rémy qui n'est plus vraie.
+    const t = colonnesSoustraction(53, 17, 'emprunt');
+    assert.equal(t.resultat, 36);
+    const [unites, dizaines] = t.colonnes;
+    // « IL METTE LE 1 À 3 » : un petit 1 DEVANT le 3, pas un « 13 » dans un
+    // rond. C'est la correction que Rémy a demandée en regardant 307 − 260 :
+    // « la retenue indique 1 en haut ».
+    assert.equal(unites.retenueHaut, 1, '« il mette le 1 à 3 »');
+    assert.equal(unites.hautCorrige, null, 'les unités ne prêtent rien, rien n\'y est barré');
+    assert.equal(unites.resultat, 6, '13 − 7 = 6');
+    assert.equal(dizaines.hautCorrige, 4, '« au lieu du 5, il barre et mette 4 »');
+    assert.equal(dizaines.retenueHaut, 0, 'on n\'écrit pas les deux marques sur le même chiffre');
+    assert.equal(dizaines.resultat, 3, '4 − 1 = 3');
+    // ET LE CHIFFRE DU BAS N'EST JAMAIS TOUCHÉ : c'est toute la différence
+    // avec la compensation, où c'est lui qui prend le +1.
+    assert.deepEqual(t.colonnes.map(c => c.retenueBas), [0, 0]);
+});
+
+test('LE ZÉRO QUI DEVIENT NEUF — 503 − 17 par emprunt', () => {
+    // LE CAS QUI FAIT TRÉBUCHER LE CODE AUTANT QUE L'ÉLÈVE : on vient prendre
+    // une dizaine à une colonne qui n'en a pas. Elle en emprunte à son tour,
+    // et le 0 se barre en 9. Un calcul naïf écrirait « −1 ».
+    const t = colonnesSoustraction(503, 17, 'emprunt');
+    assert.equal(t.resultat, 486);
+    // Les unités reçoivent le petit 1 ; les dizaines, qui ont PRÊTÉ une
+    // dizaine après en avoir emprunté une, se barrent en 9 ; les centaines en
+    // 4. « si c'est 0, le suivant est alors aussi décrémenté » — Rémy.
+    assert.deepEqual(t.colonnes.map(c => c.retenueHaut), [1, 0, 0]);
+    assert.deepEqual(t.colonnes.map(c => c.hautCorrige), [null, 9, 4]);
+    assert.deepEqual(t.colonnes.map(c => c.resultat), [6, 8, 4]);
+});
+
+test('LES DEUX MÉTHODES DONNENT TOUJOURS LE MÊME RÉSULTAT', () => {
+    // C'EST CE QUI AUTORISE À LAISSER LE CHOIX. Si elles divergeaient une
+    // seule fois, le bouton « changer de méthode » changerait la réponse.
+    for (let i = 0; i < 600; i++) {
+        const a = (i * 37) % 9000 + 100;
+        const b = (i * 13) % 900 + 1;
+        if (a < b) continue;
+        const c = colonnesSoustraction(a, b, 'compensation');
+        const e = colonnesSoustraction(a, b, 'emprunt');
+        assert.equal(c.resultat, e.resultat, `${a} − ${b}`);
+        assert.deepEqual(c.colonnes.map(x => x.resultat), e.colonnes.map(x => x.resultat),
+            `${a} − ${b} : les colonnes ne disent pas la même chose`);
+    }
+});
+
+test('CHAQUE MÉTHODE NE TOUCHE QU\'À SA LIGNE', () => {
+    // PAR COMPENSATION on ajoute en BAS, par EMPRUNT on barre en HAUT. Une
+    // marque posée des deux côtés demanderait à l'élève d'écrire deux fois la
+    // même retenue, et chacune contredirait l'autre.
+    for (let i = 0; i < 400; i++) {
+        const a = (i * 53) % 9000 + 100;
+        const b = (i * 17) % 900 + 1;
+        if (a < b) continue;
+        for (const c of colonnesSoustraction(a, b, 'compensation').colonnes) {
+            assert.equal(c.hautCorrige, null, `${a} − ${b} : le haut est touché par compensation`);
+        }
+        for (const c of colonnesSoustraction(a, b, 'emprunt').colonnes) {
+            assert.equal(c.retenueBas, 0, `${a} − ${b} : le bas est touché par emprunt`);
+            // ET LA MARQUE S'ÉCRIT : un nombre entre 0 et 19, jamais négatif.
+            if (c.hautCorrige !== null) {
+                assert.ok(c.hautCorrige >= 0 && c.hautCorrige <= 19,
+                    `${a} − ${b} : on demande d'écrire « ${c.hautCorrige} » au-dessus`);
+            }
+        }
+    }
+});
+
+test('LA GRILLE DEMANDE LA MARQUE LÀ OÙ LE CAHIER LA PORTE', () => {
+    // PAR COMPENSATION, la colonne des unités ne porte JAMAIS de marque : le
+    // +1 va toujours à la colonne suivante. PAR EMPRUNT au contraire, c'est
+    // elle qui reçoit les dix — le fameux petit 1 devant le 3 de 53.
+    const comp = colonnesSoustraction(53, 17, 'compensation');
+    const emp = colonnesSoustraction(53, 17, 'emprunt');
+    // LES DEUX MÉTHODES ÉCRIVENT LE MÊME PETIT 1 EN HAUT : c'est la dizaine
+    // empruntée, et elle s'écrit pareil dans les deux cahiers. Ce qui change
+    // est ce qu'on fait ENSUITE.
+    assert.equal(attenduEn(comp, 0, 'retenue'), 1, 'le petit 1 devant le 3 manque');
+    assert.equal(attenduEn(emp, 0, 'retenue'), 1, 'le petit 1 devant le 3 manque');
+    // PUIS LA COMPENSATION AJOUTE EN BAS, et l'emprunt barre en haut.
+    assert.equal(attenduEn(comp, 1, 'retenue-bas'), 1, 'le +1 des dizaines manque');
+    assert.equal(attenduEn(comp, 1, 'retenue'), null, 'la compensation ne touche pas au haut');
+    assert.equal(attenduEn(emp, 1, 'retenue'), 4, 'le 5 barré ne devient pas 4');
+    assert.equal(attenduEn(emp, 1, 'retenue-bas'), null, 'l\'emprunt ne touche pas au bas');
+    // ET UNE COLONNE SANS RIEN À ÉCRIRE N'EN DEMANDE PAS : 48 − 12 n'emprunte
+    // nulle part, donc pas une seule marque.
+    const calme = colonnesSoustraction(48, 12, 'emprunt');
+    assert.equal(calme.colonnes.every(c => c.hautCorrige === null), true);
+    assert.equal(porteUneRetenue(calme, 1), false);
+});
+
+test('ON NE DEMANDE PAS LE ZÉRO DE TÊTE DU RÉSULTAT', () => {
+    // RÉMY : « et si on fait 1000 - 3 par exemple ». 1000 − 3 = 997, posé sur
+    // quatre colonnes : la colonne des milliers calcule bien un 0, mais aucun
+    // cahier n'écrit 0997. On s'arrête donc à la dernière colonne que le
+    // résultat occupe vraiment.
+    assert.equal(dernierRangDemande(poser('-', [1000, 3])), 2,
+        'la colonne des milliers de 1000 − 3 est encore réclamée : l\'élève '
+        + 'devra écrire 0997');
+    assert.equal(dernierRangDemande(poser('-', [8123, 7256])), 2);
+    // ET L'ON NE RETIRE RIEN QUAND LE RÉSULTAT OCCUPE TOUT : 53 − 17 = 36.
+    assert.equal(dernierRangDemande(poser('-', [53, 17])), 1);
+    // UNE ADDITION GAGNE UNE COLONNE au lieu d'en perdre une, et celle-là se
+    // demande : 99 + 8 = 107.
+    assert.equal(dernierRangDemande(poser('+', [99, 8])), 2);
+    // JAMAIS SOUS LES UNITÉS : 7,2 − 6,7 = 0,5 s'écrit avec son zéro, sans
+    // quoi l'élève lirait « ,5 ».
+    assert.equal(dernierRangDemande(poser('-', [7.2, 6.7])), 0,
+        'le zéro de 0,5 n\'est plus demandé : il manquerait devant la virgule');
 });

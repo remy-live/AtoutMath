@@ -110,8 +110,27 @@ export function peindreAuGlisse(racine, { selecteur, estPleine, appliquer, bloqu
  * @param {()=>boolean} [opts.bloque]
  * @returns {Function} de quoi débrancher
  */
-export function relierAuGlisse(racine, { selecteur, toucher, bloque }) {
+export function relierAuGlisse(racine, { selecteur, toucher, bloque, cle }) {
     if (!racine) return () => { };
+    // ON RETIENT CE QUE LA CASE DÉSIGNE, ET NON LA CASE.
+    //
+    // RÉMY : « pour le tasuko, la selection n'est pas terrible je trouve ».
+    // MESURÉ avant de toucher à quoi que ce soit : après UN clic, rien n'est
+    // choisi et la consigne a disparu ; après DEUX, rien non plus. On ne
+    // pouvait jouer qu'au GLISSÉ, et c'est celui-là qu'il a dû trouver seul.
+    //
+    // LA CAUSE TENAIT DANS UN `!==`. `toucher` REDESSINE la grille — c'est
+    // ainsi que la case choisie s'allume —, donc `innerHTML` remplace TOUS
+    // les nœuds. Au relâchement, l'élément sous le pointeur désigne la même
+    // case mais n'est plus le même OBJET : la comparaison le prenait pour
+    // une voisine, rappelait `toucher`, et le second appel défaisait le
+    // premier. Un clic franc s'annulait lui-même, en silence.
+    //
+    // Par défaut on compare le `data-c` que portent les grilles de la
+    // maison ; un appelant qui nomme ses cases autrement passe son `cle`.
+    const nommer = (el) => (!el ? null
+        : cle ? cle(el)
+            : (el.dataset && el.dataset.c != null ? el.dataset.c : el));
     let presse = null;
     const caseSous = (ev) => {
         const el = document.elementFromPoint(ev.clientX, ev.clientY);
@@ -123,17 +142,24 @@ export function relierAuGlisse(racine, { selecteur, toucher, bloque }) {
         const el = caseSous(ev);
         if (!el) return;
         ev.preventDefault();
-        presse = el;
+        presse = nommer(el);
         toucher(el);
     };
     const fin = (ev) => {
-        if (!presse) return;
+        // `=== null` ET NON `!presse`, ET C'EST UNE PRÉCAUTION, PAS UNE
+        // CORRECTION : je l'ai d'abord écrite en croyant que la case numéro 0
+        // tombait, puis `epreuveTombe` m'a montré que l'épreuve restait verte
+        // avec `!presse`. Elle avait raison — la clé est une CHAÎNE, et « 0 »
+        // n'est pas faux. Le jour où un appelant rendra un NOMBRE dans son
+        // `cle`, il le sera ; on distingue donc « rien d'appuyé » d'une clé
+        // qui vaut zéro, et l'on ne compte pas sur la forme de la clé.
+        if (presse === null) return;
         const el = caseSous(ev);
         const depart = presse;
         presse = null;
         // Relâcher AILLEURS ferme la paire ; relâcher au même endroit laisse la
         // case simplement choisie, et c'est le clic-clic d'avant.
-        if (el && el !== depart && !(bloque && bloque())) toucher(el);
+        if (el && nommer(el) !== depart && !(bloque && bloque())) toucher(el);
     };
     racine.addEventListener('pointerdown', debut);
     window.addEventListener('pointerup', fin);

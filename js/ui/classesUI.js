@@ -310,6 +310,8 @@ function ecranHtml() {
         <div class="cl-tete">
             <p class="cl-resume">${esc(b.phrase)}</p>
             <div class="cl-actions">
+                <button type="button" class="cl-btn" data-reprises>Fiches de reprise…</button>
+                <button type="button" class="cl-btn" data-parents>Pages pour les parents…</button>
                 <button type="button" class="cl-btn" data-coller>Coller la liste de la classe…</button>
                 <button type="button" class="cl-btn" data-ajouter>Déposer des progressions…</button>
                 <button type="button" class="cl-btn cl-btn--fin" data-supprimer>Supprimer la classe</button>
@@ -385,7 +387,7 @@ async function voirCommeEleve(eleveId) {
         if (modaleClasses) { modaleClasses.close(); modaleClasses = null; }
         await rafraichir();
         showToast(`Écran de ${eleve.nom}. Le lien se défait depuis l'accueil.`, 'success', 6000);
-    });
+    }, { bouton: `Voir l'écran de ${eleve.nom}`, doux: true });
 }
 
 /** Un ou plusieurs fichiers déposés d'un coup : toute la classe en une fois. */
@@ -493,8 +495,38 @@ function brancher(racine) {
     racine.onclick = async (ev) => {
         const el = ev.target.closest('[data-classe-serveur-nouvelle],[data-classe],[data-nouvelle],[data-ajouter],[data-coller],[data-supprimer],'
             + '[data-ouvre],[data-ferme],[data-retirer],[data-renommer],[data-demo],'
-            + '[data-effacer-demo],[data-voir]');
+            + '[data-effacer-demo],[data-voir],[data-reprises],[data-parents]');
         if (!el) return;
+
+        // LES FICHES DE REPRISE — une feuille par élève, toutes différentes.
+        //
+        // ELLE S'OUVRE D'ICI ET DE NULLE PART AILLEURS, et c'est l'endroit
+        // juste : on vient de regarder le tableau, on voit qui décroche, et
+        // le geste suivant est de leur donner quelque chose à refaire. Mettre
+        // ce bouton dans l'atelier aurait demandé d'y retourner en se
+        // souvenant de ce qu'on vient de lire.
+        if ('reprises' in el.dataset) {
+            const c = classeActive();
+            if (!c) return;
+            const m = await import('./feuillesDeClasse.js');
+            await m.ouvrirLesReprises(bilanClasse(c).eleves, { classe: c.nom });
+            return;
+        }
+
+        // ET LES PAGES POUR LES PARENTS, JUSTE À CÔTÉ. Rémy : « est-ce que
+        // Louis peut avoir un corrigé, ou ses parents ? » Les deux, et pas le
+        // même document — voir `ui/feuillesDeClasse.js`, où vivent les deux
+        // fenêtres parce que l'espace des VRAIES classes les ouvre aussi. Les
+        // deux boutons sont voisins parce que c'est le même geste : on vient de
+        // lire le tableau, on sait qui décroche, et la rencontre parents est le
+        // jeudi suivant.
+        if ('parents' in el.dataset) {
+            const c = classeActive();
+            if (!c) return;
+            const m = await import('./feuillesDeClasse.js');
+            await m.ouvrirLesPagesParents(bilanClasse(c).eleves, { classe: c.nom });
+            return;
+        }
 
         // LES CINQ CLASSES DE DÉMONSTRATION. Elles ne se mêlent pas aux vraies :
         // elles portent une marque, un bandeau les annonce, et le bouton
@@ -530,7 +562,7 @@ function brancher(racine) {
                 state.teacherPaths = state.teacherPaths.filter(p => !p.demo);
                 state.saveTeacherPaths();
                 rafraichir();
-            });
+            }, { bouton: 'Effacer les démonstrations' });
         }
 
         // La classe du SERVEUR : celle qui aura un code, des billets, des élèves.
@@ -576,7 +608,7 @@ function brancher(racine) {
                 eleveOuvertId = null;
                 await enregistrer();
                 rafraichir();
-            });
+            }, { bouton: `Supprimer « ${c.nom} »` });
         }
         if (el.dataset.ouvre) {
             eleveOuvertId = eleveOuvertId === el.dataset.ouvre ? null : el.dataset.ouvre;
@@ -591,7 +623,7 @@ function brancher(racine) {
             return showConfirm(`Retirer ${eleve.nom} de la classe ?`, async () => {
                 eleveOuvertId = null;
                 await majClasse(retirerEleve(c, eleve.id));
-            });
+            }, { bouton: `Retirer ${eleve.nom}` });
         }
         if (el.dataset.renommer) {
             const c = classeActive();

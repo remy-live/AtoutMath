@@ -13,7 +13,7 @@ import { exercices } from '../js/data/catalog.js';
 
 const exo = (id, extra = {}) => ({
     id, title: `Exercice ${id}`,
-    tags: { chemin: ['Numérique', 'Calcul'], niveaux: ['6ème'] },
+    tags: { chemin: ['Nombres et calculs', 'Calcul'], niveaux: ['6ème'] },
     ...extra
 });
 
@@ -265,9 +265,9 @@ test('un tri venu d\'une colonne sait dire son nom et son sens', () => {
 
 test('une proposition de classement se garde et se relit', () => {
     // La virgule d'une fiche écrite à la main devient le séparateur de liste.
-    const r = decider(nouvelleRevue(), 'a', { tags: 'Géométrique > Angles, 5ème' });
-    assert.equal(ficheDe(r, 'a').tags, 'Géométrique > Angles · 5ème');
-    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').tags, 'Géométrique > Angles · 5ème');
+    const r = decider(nouvelleRevue(), 'a', { tags: 'Espace et géométrie > Angles, 5ème' });
+    assert.equal(ficheDe(r, 'a').tags, 'Espace et géométrie > Angles · 5ème');
+    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').tags, 'Espace et géométrie > Angles · 5ème');
 });
 
 test('elle date la ligne, comme toute décision', () => {
@@ -325,7 +325,8 @@ test('un classement se lit comme une liste, quel que soit le séparateur', () =>
 });
 
 test('il s\'écrit avec le point médian, et sans doublon', () => {
-    assert.equal(ecrireTags(['Numérique', 'Fractions', 'Numérique']), 'Numérique · Fractions');
+    assert.equal(ecrireTags(['Nombres et calculs', 'Fractions', 'Nombres et calculs']),
+        'Nombres et calculs · Fractions');
     assert.equal(ecrireTags([]), '');
 });
 
@@ -649,14 +650,23 @@ test('le catalogue entier passe dans la revue sans exploser', () => {
     assert.equal(filtrer(exercices, r, {}).length, exercices.length);
     const b = bilan(r, exercices);
     assert.equal(b.decides, 0);
-    assert.equal(b.enTest + b.valides, exercices.length);
+    // AUCUN EXERCICE NE SE PERD ENTRE LES TROIS ÉTATS. La somme ne portait que
+    // `enTest + valides` : elle valait le total tant que personne n'avait rien
+    // désactivé, et le jour où Rémy a dit « désactive le jardin » le bilan a
+    // affiché 222 sur 223 — un exercice évaporé, sans un mot.
+    assert.equal(b.enTest + b.valides + b.brouillons, exercices.length,
+        'le bilan de la revue perd un exercice : il n\'est ni en test, ni validé, '
+        + 'ni compté comme désactivé');
     // Ce test exigeait autrefois « b.enTest > 0 ». Rémy a ouvert tout le
     // catalogue aux élèves (« ouvre-les tous ») : il ne reste plus rien à
     // trier, et la revue doit le dire calmement plutôt que de planter. Le tri
     // lui-même est vérifié plus haut sur des lots fabriqués — c'est là qu'il
     // faut l'éprouver, pas sur l'humeur du catalogue du jour.
     assert.equal(b.enTest, 0, 'plus rien n\'attend d\'être trié');
-    assert.equal(b.valides, exercices.length);
+    // Et les validés sont tout le reste : le catalogue moins ce qu'on a éteint
+    // exprès. Écrire `exercices.length` ici redeviendrait faux à la prochaine
+    // désactivation — c'est précisément ce qui vient d'arriver.
+    assert.equal(b.valides, exercices.length - b.brouillons);
 });
 
 test('chaque domaine du catalogue se filtre', () => {

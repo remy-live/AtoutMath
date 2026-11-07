@@ -22,6 +22,56 @@ export class BaseGame {
         // de tester `this.gelDemo` là où il fait avancer son monde. Le rendu,
         // lui, continue : une image figée vaut mieux qu'un écran noir.
         this.gelDemo = false;
+        /**
+         * CE JEU AVANCE-T-IL TOUT SEUL PENDANT QU'ON LIT ?
+         *
+         * Rémy : « si on donne la réponse, attendre le bouton valider. » Il a
+         * raison, et c'était faux ici pour tout le monde : `onWrong` envoyait
+         * « Faux ! <question> = <réponse> » dans une carte qui s'efface d'elle-
+         * même au bout de 2,2 secondes. On donnait la réponse et on la
+         * reprenait — « je n'ai pas le temps de la lire et de comprendre ».
+         *
+         * Le motif écrit à l'époque — « ces jeux tournent en temps réel » —
+         * vaut pour certains et pas pour les autres. MESURÉ en cherchant, dans
+         * chaque jeu, une boucle qui SE REPROGRAMME ou un `setInterval` qui
+         * fait avancer le monde : 14 modules sur 52 (15 exercices sur 54). Les
+         * trente-huit autres — mastermind, logigramme, futoshiki, dictée,
+         * conversion, priorités… — n'avaient aucune raison de presser l'élève.
+         *
+         * Le défaut est donc ATTENDRE, et c'est le bon sens du côté où l'on se
+         * trompe : une carte qu'on ferme d'un clic ne coûte qu'un clic, tandis
+         * qu'une réponse qui file coûte la leçon. Les quatorze jeux qui ne
+         * peuvent pas s'arrêter le déclarent, chacun chez lui.
+         */
+        this.tempsReel = false;
+        /*
+         * PAS DE REPRISE DANS LES JEUX D'ARCADE — RÉMY A TRANCHÉ.
+         *
+         * Question posée : les quinze jeux d'arcade ne reposent jamais la
+         * question qu'on vient de rater — la météorite explose, la brique
+         * tombe, on passe à la suivante. Fallait-il leur donner une seconde
+         * chance, pour qu'ils honorent le réglage « Essais autorisés par
+         * question » ? Rémy : « non non on garde les jeux d'arcade tel quel. »
+         *
+         * ON NE LE « CORRIGERA » DONC PAS, et c'est écrit ici parce que cela
+         * ressemble à un oubli. Une reprise changerait la nature de ces
+         * jeux-là : leur tension vient précisément de ce qu'une erreur est
+         * perdue, comme au flipper.
+         *
+         * ET LE RÉGLAGE N'EST PAS SANS EFFET POUR AUTANT — je l'ai d'abord cru
+         * et c'était faux. MESURÉ au navigateur sur une étape de Tetris
+         * (`tools/tmp/essaisArcade.mjs`), après UNE question ratée :
+         *
+         *     essais autorisés = 1   →  1 question comptée, 0 juste
+         *     essais autorisés = 2   →  0 question comptée
+         *     essais autorisés = 3   →  0 question comptée
+         *
+         * À un essai, une question ratée est une question CONSOMMÉE : la partie
+         * se raccourcit à chaque erreur, et c'est le régime d'une évaluation.
+         * À deux ou plus, l'élève joue jusqu'à ce qu'il en ait réussi le compte
+         * demandé. Le réglage commande donc bien quelque chose ici — le PRIX
+         * d'une erreur, et non le droit de la refaire.
+         */
         this._surGelDemo = (e) => { this.gelDemo = !!e.detail; };
         document.addEventListener('demo_pause', this._surGelDemo);
     }
@@ -190,10 +240,11 @@ export class BaseGame {
                 detail: {
                     kind: 'error', isError: true,
                     msg: snapshot.customMessage || `Faux ! ${questionText} = ${snapshot.expected}`,
-                    // Ces jeux tournent en temps réel (chute de blocs, course,
-                    // chronomètre) : on ne peut pas les figer sur un clic.
-                    // Le retour y reste donc éphémère.
-                    blocking: false
+                    // Seuls les jeux qui avancent tout seuls gardent la carte
+                    // éphémère : les figer sur un clic ferait tomber le bloc,
+                    // ou passer la course. Voir `this.tempsReel`, posé dans le
+                    // constructeur et redéclaré par ces jeux-là.
+                    blocking: !this.tempsReel
                 }
             }));
         }

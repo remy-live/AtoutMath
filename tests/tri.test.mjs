@@ -213,3 +213,77 @@ test('un groupe entièrement tranché ne coûte rien en sortant', () => {
     assert.equal(laisserPasserGroupe(e, v.objets.map(o => o.id)).perdu, false);
     assert.equal(e.vies, avant);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LES DEUX RÈGLES — sommes ET produits.
+//
+// RÉMY : « pour les sommes et produits il faut aussi faire faire des calculs
+// pas que le signe, et aussi des jeux en rapport avec cela ».
+//
+// LE MOTEUR SAVAIT DÉJÀ TRIER DES CALCULS ; il ne savait tirer que des SOMMES.
+// Ce qui suit garde les deux modes neufs, et surtout CELUI QUI MÊLE : une
+// vague qui ne porterait que des sommes laisserait l'élève appliquer une règle
+// sans l'avoir choisie — c'est exactement le défaut que ce mode existe pour
+// corriger, et il passerait inaperçu une fois sur trente-deux.
+
+test('UN PRODUIT TIRÉ EST UN PRODUIT, ET SA VALEUR EST CELLE DU PRODUIT', () => {
+    const rng = makeRng('produits');
+    for (let i = 0; i < 150; i++) {
+        const voulu = i % 2 ? 'positif' : 'negatif';
+        const c = tirerCalcul(rng, voulu, '×');
+        assert.equal(c.op, '×', `« ${c.texte} » n'est pas annoncé comme un produit`);
+        assert.ok(c.texte.includes('×'), `« ${c.texte} » ne s'écrit pas comme un produit`);
+        assert.ok(voulu === 'positif' ? c.valeur > 0 : c.valeur < 0,
+            `« ${c.texte} » = ${c.valeur}, on voulait ${voulu}`);
+        // LE TEXTE DOIT VALOIR CE QU'IL DIT : un dessin qui ment sur sa valeur
+        // compterait faux un élève qui a calculé juste.
+        const [g, , d] = c.texte.split(' ');
+        const a = Number(g.replace('−', '-'));
+        const b = Number(d.replace(/[()]/g, '').replace('−', '-'));
+        assert.equal(a * b, c.valeur, `« ${c.texte} » ne vaut pas ${c.valeur}`);
+        // ET PAS DE FACTEUR 1 : multiplier par un ne multiplie rien, et deux
+        // bulles sur cinq en portaient — vu sur la photo.
+        assert.ok(Math.abs(a) >= 2 && Math.abs(b) >= 2,
+            `« ${c.texte} » : un facteur de 1 n'est pas un produit`);
+    }
+});
+
+test('LA VAGUE MÊLÉE PORTE TOUJOURS LES DEUX OPÉRATIONS', () => {
+    const rng = makeRng('meles');
+    for (let i = 0; i < 80; i++) {
+        const e = creerPartie({ mode: 'meles', parVague: 5 });
+        const v = genererVague(e, rng);
+        const produits = v.objets.filter(o => o.op === '×').length;
+        assert.ok(produits >= 1 && produits <= 4,
+            `une vague de ${v.objets.length} avec ${produits} produit(s) ne mêle rien`);
+        // ET LE CRITÈRE RESTE LE SIGNE DU RÉSULTAT, quelle que soit l'opération.
+        v.objets.forEach(o => assert.equal(o.cible, o.valeur < 0,
+            `« ${o.texte} » = ${o.valeur} : à prendre ? ${o.cible}`));
+    }
+});
+
+test('LE MODE PRODUITS NE TIRE QUE DES PRODUITS', () => {
+    const rng = makeRng('mode-produits');
+    for (let i = 0; i < 40; i++) {
+        const e = creerPartie({ mode: 'produits', parVague: 5 });
+        const v = genererVague(e, rng);
+        v.objets.forEach(o => {
+            assert.equal(o.op, '×', `« ${o.texte} » n'est pas un produit`);
+            assert.equal(o.cible, o.valeur < 0);
+        });
+    }
+});
+
+test('LE MESSAGE D\'ERREUR D\'UN PRODUIT NE RENVOIE PAS À LA RÈGLE DE LA SOMME', () => {
+    // « ce n'est pas négatif » laisse l'élève avec la règle qu'il vient
+    // d'appliquer — et dans ce chapitre, la règle qu'il vient d'appliquer est
+    // précisément celle de l'AUTRE opération.
+    const e = creerPartie({ mode: 'produits', parVague: 5 });
+    const v = genererVague(e, makeRng('msg-produit'));
+    const faux = v.objets.find(o => !o.cible);
+    assert.ok(faux, 'aucun objet à laisser dans cette vague');
+    const r = toucher(e, faux.id);
+    assert.equal(r.ok, false);
+    assert.match(r.message, /facteurs/,
+        `le message ne nomme pas la règle du produit : « ${r.message} »`);
+});

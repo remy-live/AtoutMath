@@ -16,6 +16,8 @@
 import { regTimeout } from '../timers.js';
 import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 import { hintBar, wireHint } from './choice.js';
+import { meneurDemo } from '../meneurDemo.js';
+import { allureDe } from '../allure.js';
 
 const DEPART = 9000;        // temps accordé à la première question (ms)
 const PLANCHER = 2600;      // en dessous, ce n'est plus du calcul mais du réflexe
@@ -27,8 +29,20 @@ export function mount(container, session, opts = {}) {
     let cursor = null;
     let item = null;
 
-    let budget = DEPART;
-    let restant = DEPART;
+    // L'ALLURE RÉGLÉE PAR LE PROFESSEUR — Rémy : « comment régler la durée sur
+    // chaque question ? ». Elle n'était pas réglable : neuf secondes et un
+    // plancher à 2,6, écrits en dur.
+    //
+    // ET LE PLANCHER SUIT, SINON LE RÉGLAGE NE SERT À RIEN. Multiplier le seul
+    // départ ferait redescendre tout le monde aux mêmes 2,6 secondes au bout
+    // de six bonnes réponses — c'est-à-dire exactement là où l'élève lent
+    // décroche, et exactement ce qu'on venait de corriger.
+    const allure = allureDe(session.params);
+    const depart = Math.round(DEPART * allure);
+    const plancher = Math.round(PLANCHER * allure);
+
+    let budget = depart;
+    let restant = depart;
     let debut = 0;
     let chrono = null;
     let serie = 0;
@@ -55,7 +69,7 @@ export function mount(container, session, opts = {}) {
 
     // Le palier affiché se DÉDUIT du budget au lieu d'être compté à part :
     // deux compteurs finissent toujours par diverger.
-    const niveau = () => 1 + Math.round(Math.log(DEPART / budget) / Math.log(1 / ACCELERATION));
+    const niveau = () => 1 + Math.round(Math.log(depart / budget) / Math.log(1 / ACCELERATION));
 
     function majHud(gagne = false) {
         vitesseEl.textContent = `Vitesse ${niveau()}`;
@@ -96,13 +110,13 @@ export function mount(container, session, opts = {}) {
         serie++;
         record = Math.max(record, serie);
         const avant = budget;
-        budget = Math.max(PLANCHER, Math.round(budget * ACCELERATION));
+        budget = Math.max(plancher, Math.round(budget * ACCELERATION));
         majHud(budget < avant);
     }
 
     function relacher() {
         serie = 0;
-        budget = Math.min(DEPART, Math.round(budget * RESPIRATION));
+        budget = Math.min(depart, Math.round(budget * RESPIRATION));
         majHud();
     }
 
@@ -156,7 +170,7 @@ export function mount(container, session, opts = {}) {
             barre.style.transform = 'scaleX(0.72)';
             if (!session.frozen) {
                 barre.style.transform = '';
-                barre.style.animation = `sprint-fondre ${DEPART}ms linear forwards`;
+                barre.style.animation = `sprint-fondre ${depart}ms linear forwards`;
                 demonstration(tuiles, choices);
             }
             return;
@@ -245,10 +259,11 @@ export function mount(container, session, opts = {}) {
         const el = tuiles[choices.findIndex(c => c.correct)];
         if (!el) { regTimeout(suivante, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
-        if (!await cursor.pause(500) || destroyed) return;
-        if (!await cursor.tap(el) || destroyed) return;
+        const robot = meneurDemo(cursor, null, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.pause(500)) return;
+        if (!await robot.toucher(el)) return;
         el.classList.add('sprint-tuile--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         suivante();
     }
 

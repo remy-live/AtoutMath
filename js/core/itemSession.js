@@ -14,6 +14,15 @@ import { state } from './state.js';
 import { getWeakTables } from './stats.js';
 import { defaultPolicy } from './policy.js';
 import { etatDepart, apresReponse } from './aide.js';
+import { laMemeBetiseQuAvant, noterUneQuestion } from './memoireCourte.js';
+
+// COMBIEN DE FOIS ON RETIRE AVANT D'ACCEPTER UNE QUESTION DÉJÀ POSÉE.
+//
+// Douze, et pas « jusqu'à en trouver une neuve » : un exercice réglé sur
+// quatre questions possibles doit pouvoir en poser dix. On retire, on ne
+// cherche pas — au pire l'élève revoit une question, ce qui est l'état
+// d'avant et non une panne.
+const TIRAGES_MAX = 12;
 
 /**
  * UNE PROMESSE QUI NE SE RÉSOUT JAMAIS, et c'est exactement ce qu'on veut.
@@ -69,6 +78,19 @@ export class ItemSession {
         // session ne l'utilise pas elle-même — c'est le Runner qui arrête —,
         // mais une activité qui change de forme en cours de route en a besoin.
         this.nbItems = Number(cfg.nbItems) || null;
+        // OÙ L'ON ENTRE DANS LA SÉRIE — presque toujours à la première
+        // question, donc zéro.
+        //
+        // RÉMY, DEVANT L'ONGLET « APERÇU » DU PANNEAU DE RÉGLAGES : « quand on
+        // fait l'aperçu avec les réglages, on reste toujours sur des questions
+        // du type x² − 36 ». Mesuré : dix clics sur « Question suivante », dix
+        // fois le PREMIER barreau, sur « Factoriser » comme sur « Développer ».
+        // L'aperçu ne rejoue pas la question suivante, il remonte une SESSION
+        // NEUVE — donc `history` est vide, donc `index` vaut zéro, donc un
+        // générateur à progression repose éternellement sa première marche.
+        // Les nombres changeaient (x² − 64, x² − 49), le barreau jamais : le
+        // professeur ne pouvait pas voir ce qu'il venait de cocher.
+        this.depuis = Math.max(0, Math.round(Number(cfg.depuis)) || 0);
 
         this.item = null;
         this.attemptIndex = 0;
@@ -80,6 +102,13 @@ export class ItemSession {
         // Graines des questions déjà posées, dans l'ordre : permet de revenir
         // en arrière et de rejouer une question à l'identique.
         this.history = [];
+        // LES QUESTIONS DÉJÀ POSÉES, telles que l'élève les lit — voir
+        // `clefDeQuestion` et `next()`.
+        this.dejaPosees = new Set();
+        // Par défaut, deux questions sont la même quand leur ÉNONCÉ est le
+        // même. Une activité qui ne montre qu'une partie de l'item redéfinit
+        // cette clef.
+        this._clef = (it) => (it && it.prompt && it.prompt.text) || '';
         // L'ESCALIER DE L'AIDE VIT SUR LA SESSION, pas sur l'activité.
         //
         // Il doit survivre au passage du QCM au pavé numérique — c'est même
@@ -141,11 +170,89 @@ export class ItemSession {
         // arrive, l'écran montre la dernière question et sa correction.
         if (this.termine) return this.item;
 
-        const seed = this.forceSeed || randomSeed();
+        // ── ON NE REPOSE PAS LA MÊME QUESTION ──────────────────────────────
+        //
+        // RÉMY, sur la Table de Pythagore : « essaie d'eviter les mêmes
+        // questions ».
+        //
+        // MESURÉ AVANT DE CORRIGER (`tools/repetitionsDUneSerie.mjs`, 2 000
+        // séries de vingt questions tirées comme la session les tire) :
+        // 4,57 questions déjà posées par série en moyenne, au moins une dans
+        // 99,8 % des séries, et jusqu'à dix sur vingt dans la pire. Une série
+        // telle qu'elle tombait : 12 18 32 12 12 40 5 81 28 64 6 42 90 14 10
+        // 10 56 40 90 24 — trois douze, deux dix, deux quarante, deux
+        // quatre-vingt-dix.
+        //
+        // LE TIRAGE ÉTAIT SANS MÉMOIRE, et c'est toute l'explication : chaque
+        // question partait d'une graine neuve, sans jamais regarder celles
+        // d'avant. Avec quatre-vingt-dix couples possibles et vingt tirages,
+        // la coïncidence n'est pas une malchance, c'est la règle.
+        //
+        // LA CLEF EST CE QUE L'ÉLÈVE LIT, PAS CE QUE LE GÉNÉRATEUR PRODUIT.
+        // Sur la Table de Pythagore, le générateur donne « 7 × 6 = ? » mais
+        // l'écran ne montre que le RÉSULTAT : « Où se cache 42 dans la
+        // table ? ». 7 × 6 et 6 × 7 sont donc deux items différents et une
+        // seule et même question — dédoublonner les énoncés n'aurait rien
+        // réglé là. L'activité déclare sa clef (voir `clefDeQuestion`) ; par
+        // défaut, c'est l'énoncé.
+        //
+        // ET C'EST ICI, pas dans les vingt-huit activités qui appellent
+        // `next()` — même raison que le garde-fou ci-dessus.
+        const forcee = !!this.forceSeed;
+        let seed = this.forceSeed || randomSeed();
         this.forceSeed = null; // le rejeu ne vaut que pour la première question
+        // LE RANG SE CALCULE AVANT D'EMPILER. `history` ne contient pas encore
+        // la question en cours : le rang vaut donc sa longueur, là où il valait
+        // longueur − 1 quand on empilait d'abord. Un générateur à progression
+        // en dépend, et douze tirages pour la même question doivent tous
+        // porter le MÊME rang.
+        const rang = this.depuis + this.history.length;
+        let item = null;
+        for (let tirage = 0; tirage < (forcee ? 1 : TIRAGES_MAX); tirage++) {
+            if (tirage) seed = randomSeed();
+            item = this._tirer(seed, rang);
+            const clef = this._clefDe(item);
+            // UNE GRAINE IMPOSÉE NE SE REDISCUTE PAS : c'est un retour en
+            // arrière (`rewind`), ou la question que le professeur veut voir
+            // telle que l'élève l'a eue sous les yeux. La reposer est le but.
+            if (forcee || !clef || !this.dejaPosees.has(clef)) break;
+        }
         this.history.push(seed);
-        const rng = makeRng(seed);
+        const clefPosee = this._clefDe(item);
+        if (clefPosee) this.dejaPosees.add(clefPosee);
 
+        return this._finirItem(item);
+    }
+
+    /**
+     * Ce qui, d'une question, ne doit pas se répéter — du point de vue de
+     * l'élève. Par défaut l'énoncé ; une activité qui n'en montre qu'une
+     * partie appelle ceci au montage pour dire laquelle.
+     *
+     * Rendre une clef vide revient à ne pas dédoublonner cette question-là.
+     */
+    clefDeQuestion(fn) {
+        if (typeof fn === 'function') this._clef = fn;
+        return this;
+    }
+
+    /**
+     * La clef, et JAMAIS une exception : elle vient d'une activité, et une
+     * question qui ne s'affiche pas coûte beaucoup plus cher qu'une question
+     * répétée.
+     */
+    _clefDe(item) {
+        if (!item) return '';
+        try { return String(this._clef(item) ?? ''); } catch { return ''; }
+    }
+
+    /**
+     * UN TIRAGE, ET RIEN D'AUTRE : pas d'historique, pas de contexte, pas
+     * d'événement. On peut donc l'appeler douze fois sans rien salir — c'est
+     * exactement ce que fait `next()` quand la question tombe déjà posée.
+     */
+    _tirer(seed, rang) {
+        const rng = makeRng(seed);
         let item = this.generator.generate(this.params, {
             rng,
             weakTables: this.policy.adaptive ? getWeakTables() : [],
@@ -156,8 +263,9 @@ export class ItemSession {
             // Mais un générateur qui porte une PROGRESSION — Le Chat Géomètre
             // enchaîne douze figures dans un ordre choisi — a besoin de savoir
             // où l'on en est, sinon il repose éternellement la première.
-            // `history` contient déjà la graine de la question en cours.
-            index: Math.max(0, this.history.length - 1),
+            // `history` contient déjà la graine de la question en cours, et
+            // `depuis` dit à quel rang on est entré — voir le constructeur.
+            index: rang,
             // ET COMBIEN IL Y EN AURA EN TOUT, quand on le sait.
             //
             // Rémy, sur le réglage des progressions : « le nombre de questions
@@ -192,10 +300,29 @@ export class ItemSession {
         if (this.preferredKind === 'choice' && item.answerKind !== 'choice') {
             item = toChoices(item, rng);
         }
+        return item;
+    }
 
+    /** La question tirée devient la question posée : compteurs, contexte, avis. */
+    _finirItem(item) {
         this.item = item;
         this.attemptIndex = 0;
         this.hintIndex = 0;
+        // LE DIAGNOSTIC DE LA QUESTION, QUI N'EST PAS CELUI DU DERNIER ESSAI.
+        //
+        // Un élève se trompe, on lui dit pourquoi, il se reprend et trouve.
+        // Au moment où la question se conclut, le verdict du dernier essai est
+        // « juste » et ne porte AUCUN diagnostic — alors que la question, elle,
+        // en a eu un. Sans cette mémoire d'une question, la mémoire courte
+        // n'inscrirait que les questions jamais trouvées, et « c'est la même
+        // chose qu'à la question d'avant » ne se dirait jamais à l'élève qui
+        // se corrige — c'est-à-dire à celui qui écoute.
+        //
+        // `api/lib/blocages.php` fait exactement cela, et pour la même raison
+        // (« LE DERNIER DIAGNOSTIC L'EMPORTE […] c'est celui qui décrit où
+        // l'élève en est resté »). Les deux doivent coïncider : c'est sur ses
+        // comptes que Rémy choisira le seuil.
+        this.diagnosticDeLaQuestion = null;
         this.eliminated = new Set();
         this.locked = false;
         this.startedAt = Date.now();
@@ -261,6 +388,29 @@ export class ItemSession {
 
     /**
      * Soumet une réponse.
+     *
+     * ── CE QUI JUGE N'EST PAS TOUJOURS CE QUI SE LIT ───────────────────────
+     *
+     * RÉMY : « le carnet d'erreur code la figure ne veut rien dire ».
+     *
+     * Une activité qui juge une FIGURE compare des formes canoniques —
+     * « 11223300/ABD » pour un codage. C'est ce qu'il faut pour trancher, et
+     * c'est illisible : le carnet d'erreurs écrivait ces deux chaînes sous
+     * « ta réponse » et « attendu », et la ligne ne disait rien à personne.
+     *
+     * `opts.dire` porte donc la version LISIBLE des deux, et c'est elle qui
+     * part au journal. La forme canonique continue de juger ; elle n'avait
+     * simplement rien à faire sous les yeux d'un élève.
+     *
+     * ON NE DEVINE PAS LA PHRASE ICI. Seule l'activité sait ce qu'elle a fait
+     * comparer — un codage, un tracé, une grille —, et une traduction écrite
+     * dans le noyau serait à refaire à chaque nouvelle activité.
+     *
+     * @param {*} given la réponse, dans la forme que l'item sait juger
+     * @param {Object} [opts]
+     * @param {string} [opts.misconception] le diagnostic calculé par l'activité
+     * @param {{given:string, expected:string}} [opts.dire] les deux mêmes
+     *   réponses, en français, pour le carnet et pour l'écran du professeur
      * @returns {{correct:boolean, expected:*, misconception:?string,
      *            explanation:string, revealed:boolean, done:boolean, attemptsLeft:number}}
      */
@@ -297,8 +447,11 @@ export class ItemSession {
         if (!this.isDemo && !this.sansTrace) {
             state.recordAttempt({
                 correct: verdict.correct,
-                given,
-                expected: this.item.answer,
+                // LA PHRASE QUAND IL Y EN A UNE, la forme canonique sinon :
+                // les deux champs voyagent ensemble ou pas du tout, sans quoi
+                // le carnet comparerait une phrase à une chaîne de chiffres.
+                given: opts.dire ? opts.dire.given : given,
+                expected: opts.dire ? opts.dire.expected : this.item.answer,
                 questionText: this.item.prompt.text,
                 skillId: this.item.skillId,
                 itemSeed: this.item.seed,
@@ -318,6 +471,12 @@ export class ItemSession {
             this.attemptIndex++;
             this.eliminated.add(String(given));
         }
+
+        // EST-CE LA DEUXIÈME FOIS ? La question se pose AVANT d'inscrire celle
+        // d'aujourd'hui, sans quoi elle se comparerait à elle-même.
+        const memeBetise = !verdict.correct
+            && laMemeBetiseQuAvant(verdict.misconception);
+        if (verdict.misconception) this.diagnosticDeLaQuestion = verdict.misconception;
 
         const exhausted = !verdict.correct && this.attemptIndex >= this.policy.maxAttemptsPerItem;
         const result = {
@@ -345,15 +504,84 @@ export class ItemSession {
                 // l'explication — c'est le devoir formatif que Rémy décrit :
                 // « si c'est en mode interrogation il faut une explication de
                 // la part du robot ».
-                const sec = this.policy.correction === 'reponse'
-                    ? `La bonne réponse était : ${this.item.answer}`
-                    : (verdict.misconception || this.item.explanation);
+                //
+                // ON NE DONNE PAS LA RÉPONSE TANT QU'IL LUI RESTE UN ESSAI.
+                //
+                // C'est le défaut que cet audit a trouvé, et il annulait à lui
+                // seul tout le dispositif du second essai : au PREMIER échec,
+                // l'élève recevait `item.explanation` — qui porte le calcul —
+                // ou « La bonne réponse était : … ». Le deuxième essai n'était
+                // plus un essai, c'était une recopie ; et le bouton « indice »,
+                // juste à côté, n'avait plus rien à offrir.
+                //
+                // Tant qu'il reste un essai, on lui rend ce qui l'aide à
+                // CHERCHER, dans cet ordre :
+                //   · le diagnostic de son erreur, quand le correcteur en a
+                //     posé un — « tu as oublié la retenue » nomme la faute sans
+                //     livrer le résultat ;
+                //   · à défaut, l'indice suivant, celui-là même qu'il aurait
+                //     obtenu en cliquant sur « Un indice » ;
+                //   · à défaut de tout, la seule phrase honnête : ce n'est pas
+                //     ça, recommence.
+                //
+                // L'explication complète reste pour le moment où elle sert
+                // vraiment : quand il n'a plus d'essai et repart avec sa
+                // question — c'est `exhausted`, calculé quelques lignes plus
+                // haut.
+                const encore = !exhausted && this.attemptsLeft > 0;
+                const prochainIndice = (encore && this.policy.hints && this.item)
+                    ? hintAt(this.item, this.hintIndex) : null;
+                let sec;
+                if (!encore) {
+                    sec = this.policy.correction === 'reponse'
+                        ? `La bonne réponse était : ${this.item.answer}`
+                        : (verdict.misconception || this.item.explanation);
+                } else {
+                    sec = verdict.misconception || prochainIndice
+                        || 'Ce n\'est pas ça. Il te reste un essai.';
+                }
+                // LA MÊME BÊTISE DEUX FOIS DOIT S'ENTENDRE AUTREMENT.
+                //
+                // RÉMY : « parfois un élève bloque complètement, que faire ? ».
+                // Nommer la répétition est tout l'enseignement, et c'est
+                // exactement ce qu'il fait de vive voix : « c'est la même chose
+                // que tout à l'heure ». Le logiciel, lui, répétait la même
+                // phrase neutre — celle d'une machine qui ne s'aperçoit de
+                // rien.
+                //
+                // ON NOMME, PUIS ON REDIT LA RÈGLE, et l'ordre est le bon : la
+                // remarque situe, la règle enseigne. Dire la règle d'abord, ce
+                // serait la troisième fois qu'on la dit sans que l'élève
+                // remarque qu'il l'a déjà lue.
+                //
+                // RIEN D'AUTRE NE CHANGE : pas de fenêtre, pas de son, pas de
+                // clignotement — la carte est celle de toujours, avec une
+                // phrase de plus. Rémy : « lancer une popup à chaque fois c'est
+                // l'enfer […] il faudra que ça apparaisse, que ce soit discret,
+                // et que ça ne casse pas la mise en page. »
+                //
+                // ET ELLE SE TAIT EN INTERROGATION, parce que LE DÉPÔT A DÉJÀ
+                // TRANCHÉ CELA quinze lignes plus haut : en régime « reponse »,
+                // « l'élève ne repart pas avec son erreur, mais on ne lui fait
+                // pas cours pendant qu'on le mesure ». Nommer la répétition
+                // EST faire cours — c'est même tout ce que ce geste prétend
+                // faire. Un devoir noté n'est pas le moment.
+                //
+                // Le régime « robot » — le devoir formatif que Rémy décrit
+                // (« si c'est en mode interrogation il faut une explication de
+                // la part du robot ») — la garde, lui : il enseigne exprès.
+                if (memeBetise && sec && this.policy.correction !== 'reponse') {
+                    sec = 'C\'est la même chose qu\'à la question d\'avant. ' + sec;
+                }
                 dismissed = announce({
                     kind: 'error',
                     isError: true,
                     msg: sec,
-                    misconception: (this.policy.correction !== 'reponse' && verdict.misconception)
-                        ? this.item.explanation : null
+                    // Le second paragraphe — l'explication — ne se joint qu'une
+                    // fois les essais épuisés, pour la même raison.
+                    misconception: (!encore && this.policy.correction !== 'reponse'
+                        && verdict.misconception) ? this.item.explanation : null,
+                    essaisRestants: encore ? this.attemptsLeft : 0
                 });
             }
         }
@@ -396,6 +624,20 @@ export class ItemSession {
                 reussi: verdict.correct,
                 duPremierCoup: isFirstTry,
                 avecIndice: this.hintIndex > 0
+            });
+            // ET LA MÉMOIRE COURTE S'INSCRIT ICI, AU MÊME ENDROIT ET POUR LA
+            // MÊME RAISON : une question conclue est un verdict, pas deux. Un
+            // élève qui se trompe puis se reprend a buté UNE fois.
+            //
+            // `duPremierCoup` ne regarde pas les indices, et c'est voulu : la
+            // définition est celle de `api/lib/blocages.php`, qui compte comme
+            // réussi « correct au premier essai ». Les deux doivent dire la
+            // même chose, sinon le seuil que Rémy choisira sur ses comptes ne
+            // sera pas celui que le logiciel appliquera.
+            noterUneQuestion({
+                competence: this.item ? this.item.skillId : null,
+                diagnostic: this.diagnosticDeLaQuestion,
+                duPremierCoup: verdict.correct && isFirstTry
             });
         }
 

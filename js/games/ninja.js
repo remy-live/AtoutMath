@@ -25,6 +25,8 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
+import { allureDe } from '../core/allure.js';
 import {
     MODES, creerPartie, genererVague, toucher, laisserPasserGroupe, vagueFinie, resteAPrendre
 } from '../core/tri.js';
@@ -57,8 +59,12 @@ const LENTEUR_ZEROS = 1.7;
  */
 const LENTEUR_CALCUL = 1.35;
 
-const lenteurDe = (mode) => (mode === 'zeros' ? LENTEUR_ZEROS
-    : (mode === 'positifs' || mode === 'negatifs' ? LENTEUR_CALCUL : 1));
+// ET LE TEST PORTE SUR CE QUE L'OBJET DEMANDE, PAS SUR LA LISTE DES MODES.
+// Écrit « positifs ou negatifs », il rendait 1 — donc la pleine vitesse — pour
+// tout mode ajouté ensuite : les deux modes de produits, arrivés après, y
+// seraient tombés sans que rien ne le dise. Un seul mode ne porte pas de
+// calcul, et c'est celui-là qu'on nomme.
+const lenteurDe = (mode) => (mode === 'zeros' ? LENTEUR_ZEROS : LENTEUR_CALCUL);
 
 /**
  * L'ALLURE, RÉGLABLE PAR LE PROFESSEUR.
@@ -74,14 +80,11 @@ const lenteurDe = (mode) => (mode === 'zeros' ? LENTEUR_ZEROS
  * temps à le parcourir. Sans le carré, les bulles sortiraient par le haut de
  * l'écran au réglage lent.
  */
-const ALLURES = {
-    tranquille: 1.6, posee: 1.3, normale: 1, rapide: 0.75,
-    // Les noms de l'ancien réglage « rythme » du Ninja des Nombres : il ne
-    // faisait rien du tout, faute d'être lu. Les garder évite qu'un parcours
-    // déjà enregistré change d'allure sans prévenir.
-    lent: 1.6, normal: 1
-};
-const allureDe = (p) => ALLURES[p.vitesse] || ALLURES[p.rythme] || 1;
+// LA TABLE A DÉMÉNAGÉ DANS `js/core/allure.js`, et elle y sert trois jeux au
+// lieu d'un : le contre-la-montre et les taupes n'avaient aucun réglage de
+// durée avant que Rémy ne le demande. Recopiée trois fois, elle aurait divergé
+// à la première correction — et « posée » n'aurait plus voulu dire la même
+// chose d'un exercice à l'autre.
 
 function auCoeur(el, x, y) {
     const r = el.getBoundingClientRect();
@@ -93,6 +96,9 @@ function auCoeur(el, x, y) {
 class Ninja extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'ninja');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.mode = MODES[this.params.mode] ? this.params.mode : 'negatifs';
         this.def = MODES[this.mode];
         this.allure = allureDe(this.params);
@@ -318,7 +324,9 @@ class Ninja extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .nj-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .nj-btn:hover { background: var(--bg-hover); }
+                }
             </style>
             <div class="nj-wrap">
                 <div class="nj-consigne" data-consigne></div>
@@ -740,14 +748,15 @@ class Ninja extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.scene);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say(`${this.def.consigne} ${this.def.rappel}`, this.scene);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let tour = 0; tour < 3 && this.isRunning; tour++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const v = this.etat.vague;
             if (!v) break;
             const cible = v.objets.find(o => o.cible && !o.coupe);
@@ -769,7 +778,7 @@ class Ninja extends BaseGame {
                     ? `Celui-là, je le laisse : ${laisser.texte === '0' ? 'ce zéro tient un rang, l\'enlever changerait le nombre' : 'ce n\'est pas un zéro'}.`
                     : `${laisser.texte} fait ${laisser.valeur < 0 ? '−' + Math.abs(laisser.valeur) : laisser.valeur} : je le laisse passer.`,
                     el || this.scene);
-                if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             }
 
             const el = this.scene.querySelector(`[data-obj="${cible.id}"]`);
@@ -777,15 +786,18 @@ class Ninja extends BaseGame {
                 ? `Ce zéro-là ne sert à rien : je le tranche.`
                 : `${cible.texte} fait ${cible.valeur < 0 ? '−' + Math.abs(cible.valeur) : cible.valeur} : celui-là, je le prends.`,
                 el || this.scene);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             if (el && !await cur.tap(el)) return fin();
             this.frapper(el || document.createElement('div'));
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Attention : laisser filer un objet qu\'il fallait prendre coûte une vie, exactement comme se tromper. Ne rien toucher n\'est donc pas une stratégie.', this.scene);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.tour()) return fin();
+        // LA DEUXIÈME PHRASE DISAIT VRAI, MAIS C'ÉTAIT UNE LEÇON, PAS UN GESTE :
+        // « ne rien toucher n'est pas une stratégie » se déduit de la première,
+        // et les deux ensemble faisaient 146 caractères.
+        cur.say('Attention : laisser filer un objet qu\'il fallait prendre coûte une vie.', this.scene);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

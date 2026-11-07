@@ -12,6 +12,29 @@
 
 import { makeItem } from '../items.js';
 import { famillesDe, tirerProbleme, direReponse } from '../problemes.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
+
+// ── LA PROGRESSION, EN CASES À COCHER ───────────────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? — fais tout, ce serait le plus cohérent non ? »
+//
+// ICI LES CRANS SONT DES ANNÉES, et cochées elles font ce qu'un menu ne
+// pouvait pas : une feuille qui part des problèmes du CM2 et finit sur ceux de
+// 5ème. « Toutes les familles » mélangeait les trois à chaque ligne, ce qui
+// est un autre exercice — et il reste disponible en tirant les bornes de la
+// barre. Le réglage « Les familles » de la carte, lui, l'emporte toujours :
+// c'est un choix plus fin, pas un doublon.
+const LISTE_MARCHES = [
+    { id: 'CM2', nom: '1. CM2 — réunir, changer, comparer, grouper' },
+    { id: '6ème', nom: '2. 6ème' },
+    { id: '5ème', nom: '3. 5ème — proportionnalité, durées, deux étapes' }
+];
+/** Le réglage d'avant les cases : « tout » n'était aucune marche — donc toutes. */
+const ANCIEN = { cle: 'niveau' };
 
 /**
  * LE SCHÉMA, DIT EN UNE PHRASE.
@@ -92,24 +115,19 @@ export const problemesFicheGenerator = {
     // sur le papier, cela se compose en colonne, numérateur sur dénominateur.
     // La barre oblique est une commodité d'écran.
     fractions: true,
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Familles proposées', default: 'tout',
-            options: [
-                { value: 'tout', label: 'Toutes les familles' },
-                { value: 'CM2', label: 'CM2 — réunir, changer, comparer, grouper' },
-                { value: '6ème', label: '6ème' },
-                { value: '5ème', label: '5ème — proportionnalité, durées, deux étapes' }
-            ]
-        }
+        paramMarches({ marches: LISTE_MARCHES, mot: 'niveau', ancien: ANCIEN })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = (params || {});
+        const annee = String(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(p, LISTE_MARCHES, ANCIEN), totalDe(ctx, p), p) || 'CM2');
         const choisies = (Array.isArray(p.familles) && p.familles.length)
             ? p.familles
-            : famillesDe(p.niveau === 'tout' ? null : p.niveau);
+            : famillesDe(annee);
         // Un filet : une famille inconnue ne doit pas vider la fiche.
         const dispo = choisies.length ? choisies : famillesDe(null);
 
@@ -130,7 +148,10 @@ export const problemesFicheGenerator = {
             choices: pb.choix.map(c => ({ value: direReponse(pb, c.v), correct: !!c.juste })),
             explanation: detailler(pb),
             difficulty: pb.etapes === 2 ? 3 : 2,
-            meta: { famille: pb.famille, unite: pb.unite || '', reponse: pb.reponse }
+            meta: {
+                famille: pb.famille, unite: pb.unite || '', reponse: pb.reponse,
+                marche: annee
+            }
         });
     }
 };

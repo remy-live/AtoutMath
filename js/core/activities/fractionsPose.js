@@ -32,9 +32,11 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { multiplesCommuns, bougeDansPose, etapesPosees } from '../fractionsEquivalentes.js';
 import { showModal } from '../../ui/modal.js';
+import { meneurDemo } from '../meneurDemo.js';
+import { eteindreSansPerdreLeFoyer } from '../foyerDeLaSaisie.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
@@ -355,7 +357,14 @@ export function mount(container, session, opts = {}) {
     function majValider() {
         const btn = container.querySelector('[data-valider]');
         if (!btn || !lignes.length) return;
-        btn.disabled = lignes[ligneActive].noms.some(n => !valeurs[n]);
+        // LE BOUTON S'ÉTEINT SANS EMPORTER LE FOYER — voir
+        // `core/foyerDeLaSaisie.js`. MESURÉ SAIN ICI, et on le branche quand
+        // même : le foyer retombait sur une touche `.fa-touche`, qui est dans
+        // le conteneur, donc les frappes remontaient. Rien ne garantit que
+        // cette touche ne sera pas désactivée un jour à son tour — et ce
+        // jour-là l'écran tomberait exactement comme les deux autres.
+        eteindreSansPerdreLeFoyer(btn,
+            lignes[ligneActive].noms.some(n => !valeurs[n]), container, session.locked);
     }
 
     // --- Validation, ligne par ligne -----------------------------------------
@@ -572,8 +581,9 @@ export function mount(container, session, opts = {}) {
     async function runDemo() {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const scene = container.querySelector('.fa-scene');
         cursor.say(calcul.type === 'complement'
@@ -583,7 +593,7 @@ export function mount(container, session, opts = {}) {
                 ? 'Les parts ont déjà la même taille : il n\'y a rien à convertir, on calcule.'
                 : 'On ne peut additionner que des parts de MÊME taille. Je commence donc par '
                     + 'chercher un dénominateur commun.', scene || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
 
         const dits = {
             entier: `Le tout, c'est TOUTES les parts : ici des ${calcul.commun}èmes, `
@@ -609,29 +619,29 @@ export function mount(container, session, opts = {}) {
         };
 
         for (const ligne of lignes) {
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(dits[ligne.nom] || '', ligne.el);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
             for (const nom of ligne.noms) {
                 const c = cases[nom];
                 selectionner(nom);
-                if (!await cursor.tap(c.el, 300) || destroyed) return;
+                if (!await robot.toucher(c.el, 300)) return;
                 const cible = String(c.attendu);
                 for (let i = 0; i < cible.length; i++) {
                     poser(nom, cible.slice(0, i + 1));
-                    if (!await cursor.pause(170) || destroyed) return;
+                    if (!await robot.pause(170)) return;
                 }
                 c.el.classList.add('fa-case--juste');
             }
             ligne.el.classList.add('fa-ligne--faite');
             if (ligne.nom === 'commun' || ligne.nom === 'entier') revelerCommun();
             if (ligne !== lignes[lignes.length - 1]) ouvrirSuivante();
-            if (!await cursor.pause(260) || destroyed) return;
+            if (!await robot.pause(260)) return;
         }
 
-        if (!await gate.waitTurn() || destroyed) return;
-        cursor.say(item.explanation || 'Et voilà le calcul posé en entier.', scene || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.tour()) return;
+        cursor.say(enUneBulle(item.explanation, 'Et voilà le calcul posé en entier.'), scene || container);
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

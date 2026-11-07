@@ -15,6 +15,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerPartie, idx, libre, placementPossible, tirerCible, poser,
     restant, score, conseil, formes, utiliserJoker, coupOrdinateur, jokerUtile
@@ -156,7 +157,9 @@ class Arpenteurs extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .ar-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .ar-btn:hover { background: var(--bg-hover); }
+                }
             </style>
             <div class="ar-wrap">
                 <div class="ar-haut">
@@ -450,14 +453,19 @@ class Arpenteurs extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.terrain);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Un jeu à DEUX, sur la même tablette. À chaque tour, un nombre de la table de Pythagore tombe, et celui dont c\'est le tour doit clôturer une parcelle de cette aire exactement.', this.terrain);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
+        // UNE IDÉE PAR BULLE : au-delà de 110 caractères (js/core/activities/choice.js,
+        // COURT = 110) la bulle se lit si lentement qu'on croit la démonstration plantée.
+        cur.say('Un jeu à DEUX, sur la même tablette.', this.terrain);
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+        cur.say('Un nombre de la table de Pythagore tombe : je clôture une parcelle qui a exactement cette aire.', this.terrain);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let tour = 0; tour < 5 && this.etat.cible; tour++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const n = this.etat.cible;
             const liste = formes(this.etat, n);
             const p = placementPossible(this.etat, n);
@@ -466,19 +474,23 @@ class Arpenteurs extends BaseGame {
                 ? `${n}. La question n'est pas « combien font 6 × 6 » mais l'inverse : quelles multiplications donnent ${n} ? Ici ${liste.map(([a, b]) => `${a} × ${b}`).join(', ')}.`
                 : `${n} : je peux le faire en ${liste.map(([a, b]) => `${a} × ${b}`).join(' ou ')}. Je choisis ${p.w} × ${p.h}.`,
                 this.terrain);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
             const res = poser(this.etat, p.x, p.y, p.w, p.h);
             if (res.ok) this.peindre(res.parcelle);
             this.majBandeau();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
             tirerCible(this.etat, this.rng);
             this.majBandeau();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Celui qui ne peut plus poser a perdu. À la fin il reste toujours des trous : une surface libre ne suffit pas, encore faut-il qu\'elle ait la bonne FORME. Connaître beaucoup de décompositions, c\'est donc avoir plus de coups possibles que l\'autre.', this.terrain);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.tour()) return fin();
+        // La morale finale (« connaître beaucoup de décompositions, c'est avoir plus de
+        // coups ») est une leçon, pas un geste montré : elle est partie.
+        cur.say('Celui qui ne peut plus poser a perdu.', this.terrain);
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+        cur.say('Il reste des trous : la surface libre ne suffit pas, il faut la bonne FORME.', this.terrain);
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

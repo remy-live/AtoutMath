@@ -8,32 +8,189 @@
 // L'ancien écran de fin affichait « Erreurs totales : 3 ». Ce n'est pas une
 // information exploitable, ni pour l'élève ni pour le professeur.
 
-import { appreciation } from '../core/grading.js';
+import { appreciation, ceQuiVaEtCeQuiReste } from '../core/grading.js';
+import { porteHtml as porteDuBac } from './bacASable.js';
+// AU CHARGEMENT POUR SAVOIR S'IL FAUT LE BOUTON, À LA DEMANDE POUR PARTIR.
+// Le libellé porte le NOMBRE d'exercices proposés : il faut donc le savoir au
+// moment de peindre, sans quoi le bouton apparaîtrait une image plus tard au
+// milieu d'une rangée d'actions — et un bouton qui pousse « Terminer » de côté
+// se clique par erreur.
+// `amelioration.js` ne connaît que le catalogue : il est léger et il répond
+// tout de suite, ce qu'il faut pour peindre un libellé. `remediation.js`, lui,
+// monte un meneur — il attend le clic.
+import { ilYAQuoiAmeliorer } from '../core/amelioration.js';
 
-export function showRunReport(bilan, { onClose } = {}) {
+/**
+ * @param {string} [opts.enTete] une phrase posée AU-DESSUS du bilan, quand il
+ *   ne vient pas d'une fin normale. Sans elle, l'élève interrompu par la
+ *   sonnerie lit « 3 questions, 2 réussies » et croit avoir tout raté.
+ */
+export function showRunReport(bilan, { onClose, enTete = '' } = {}) {
     document.getElementById('run-report-modal')?.remove();
 
     const modal = document.createElement('div');
     modal.id = 'run-report-modal';
     modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="glass-panel modal-panel-md report-panel">${reportHtml(bilan)}
-        <div class="modal-actions-center">
+    // LA PORTE DU BAC À SABLE, ICI ET PAS AILLEURS.
+    //
+    // Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des
+    // jeux ». C'est le seul écran où l'élève se trouve au moment exact où la
+    // question se pose — il vient de finir, il lève la tête, il reste huit
+    // minutes. Une porte rangée dans un menu ne serait jamais trouvée.
+    //
+    // Elle s'affiche même FERMÉE quand il n'a pas fini (« encore deux étapes,
+    // et le bac à sable s'ouvre ») : c'est la phrase qui donne envie de finir.
+    // Fermée par le professeur, en revanche, elle disparaît complètement —
+    // annoncer ce qu'on ne donnera pas est une promesse en l'air.
+    let porte = '';
+    try { porte = porteDuBac(); } catch (e) { /* jamais au détriment du bilan */ }
+
+    modal.innerHTML = `<div class="glass-panel modal-panel-md report-panel">${
+        enTete ? `<p class="report-entete">${escapeHtml(enTete)}</p>` : ''}${reportHtml(bilan)}
+        ${porte ? `<div class="report-bac">${porte}</div>` : ''}
+        <div class="modal-actions-center report-actions">
+            ${boutonAmeliorer(bilan)}
             <button id="btn-report-close" class="btn-toggle glass-btn primary active report-close-btn">Terminer</button>
         </div>
     </div>`;
     document.body.appendChild(modal);
     modal.style.display = 'flex';
 
+    // ON REMONTE LE PANNEAU EN HAUT, EXPRÈS.
+    //
+    // MESURÉ sur téléphone court — 360 × 640, 360 × 740, 414 × 640, dans les
+    // deux thèmes, six configurations sur six : le panneau s'ouvrait à son
+    // `scrollTop` MAXIMUM. L'élève qui finit sa séance atterrissait sur le BAS
+    // de son bilan : le trophée, « Sans faute ! », « 2 sur 2, tout juste du
+    // premier coup » et la note étaient au-dessus, et il fallait remonter pour
+    // les voir. Sur un écran de 360 × 640, 314 px plus haut.
+    //
+    // La cause la plus probable est l'ancrage de défilement du navigateur, qui
+    // suit un contenu inséré pendant que le panneau grandit. On ne cherche pas
+    // à le déjouer : on dit simplement où l'on veut être, ce qui est vrai quel
+    // que soit le navigateur. Deux fois, parce qu'une ligne peut encore
+    // s'insérer dans la même image (la porte du bac, les tuiles de bilan).
+    const panneau = modal.querySelector('.report-panel') || modal.firstElementChild;
+    if (panneau) {
+        // TROIS FOIS, PARCE QUE DEUX NE SUFFISAIENT PAS. Remesuré à 360 × 640
+        // après une première tentative : `scrollTop` revenait à 286 sur 286 de
+        // réserve. Le panneau grandit encore après sa pose — la porte du bac,
+        // les tuiles de bilan, les barres de maîtrise —, et le navigateur suit.
+        // `overflow-anchor: none` (voir `.report-panel` dans css/modules.css)
+        // lui retire cette initiative ; ces trois remises-ci rattrapent ce qui
+        // arriverait quand même.
+        const enHaut = () => { panneau.scrollTop = 0; };
+        enHaut();
+        requestAnimationFrame(enHaut);
+        setTimeout(enHaut, 150);
+    }
+
     document.getElementById('btn-report-close').onclick = () => {
         modal.remove();
         if (onClose) onClose();
     };
 
-    wireReplay(modal, bilan);
+    const ouvre = modal.querySelector('[data-ouvrir-bac]');
+    if (ouvre) {
+        ouvre.onclick = (e) => {
+            // ON FERME LE BILAN AVANT D'OUVRIR LE BAC. Deux fenêtres l'une sur
+            // l'autre, et l'élève qui ferme la première se retrouve devant la
+            // seconde sans comprendre d'où elle vient.
+            e.stopPropagation();
+            modal.remove();
+            if (onClose) onClose();
+            import('./bacASable.js').then(m => m.ouvrirLeBac());
+        };
+    }
+
+    brancherAmeliorer(modal, bilan, onClose);
     return modal;
 }
 
+/**
+ * LE BOUTON « M'AMÉLIORER », SUR LE BILAN DE FIN DE SÉANCE.
+ *
+ * RÉMY : « à la fin d'un parcours, lors du bilan envoyé à l'élève, il faut
+ * qu'il ait sur son écran un bouton M'améliorer où tu crées un parcours de
+ * révision, est ce clair ? »
+ *
+ * IL EXISTAIT DÉJÀ UN BOUTON, ET IL NE RÉPONDAIT PAS. « Rejouer ces questions »
+ * vivait au BAS de la liste « À retravailler » — donc après huit encadrés
+ * rouges, donc sous la ligne de flottaison sur un téléphone — et seulement
+ * quand il restait des questions DÉFINITIVEMENT ratées. Un élève qui avait tout
+ * rattrapé au second essai en sortant avec une compétence à 60 % n'avait aucun
+ * bouton du tout. Celui-ci se range avec « Terminer », là où l'élève regarde
+ * quand il a fini, et il dit ce qu'il va faire.
+ *
+ * IL SE TAIT QUAND IL N'Y A RIEN À AMÉLIORER — voir `ilYAQuoiAmeliorer`. Sous un
+ * bilan parfait, « M'améliorer » ne dit pas « bravo », il dit « ce n'était pas
+ * encore assez ».
+ *
+ * LE COMPTE EST DANS LE LIBELLÉ, et c'est la moitié de ce qu'on gagne à mettre
+ * un bouton ici : « M'améliorer — 3 exercices » se décide en une seconde, là où
+ * un bouton muet demande à être cliqué pour savoir ce qu'il fait.
+ */
+function boutonAmeliorer(bilan) {
+    let combien = 0;
+    // JAMAIS AU DÉTRIMENT DU BILAN. Le bilan est ce que l'élève a gagné ; une
+    // erreur en calculant une PROPOSITION ne doit pas l'effacer.
+    try { combien = ilYAQuoiAmeliorer(bilan); } catch (e) { combien = 0; }
+    if (!combien) return '';
+    const quoi = `${combien} exercice${combien > 1 ? 's' : ''}`;
+    return `<button type="button" class="btn-toggle glass-btn active report-ameliorer-btn"
+        data-ameliorer title="Un parcours de révision fait pour toi : les questions
+que tu as manquées, puis ce qui n'est pas encore acquis"
+        >M’améliorer <span class="report-ameliorer-quoi">${quoi}</span></button>`;
+}
+
+/**
+ * LE CLIC : on ferme le bilan, et l'on ouvre le parcours de révision.
+ *
+ * ON FERME D'ABORD, ET L'ON APPELLE `onClose` : sans lui, le meneur de la
+ * séance qui vient de finir reste monté derrière — c'est `exit()` qu'il
+ * attend —, et le parcours de révision s'ouvrirait par-dessus un écran de jeu
+ * qui n'a pas été démonté. Même famille de piège que la porte du bac à sable
+ * juste au-dessus.
+ */
+function brancherAmeliorer(root, bilan, onClose) {
+    const btn = root.querySelector('[data-ameliorer]');
+    if (!btn) return;
+    btn.onclick = async (e) => {
+        e.stopPropagation();
+        root.remove();
+        if (onClose) onClose();
+        try {
+            const { startAmelioration } = await import('../core/remediation.js');
+            await startAmelioration(bilan);
+        } catch (err) {
+            const { showAlert } = await import('./modal.js');
+            showAlert('Le parcours de révision n’a pas pu s’ouvrir. Réessaie dans un instant.');
+        }
+    };
+}
+
 /** Rendu réutilisable (fin de parcours, profil élève, tableau de bord prof). */
+/**
+ * CE QUI A ÉTÉ BIEN, ET CE QUI RESTE — en nommant les notions.
+ *
+ * RÉMY : « est ce que dans le bilan pour l'élève à la fin de l'épreuve, tu
+ * pourrais en une phrase lui dire ce qui a été bien et ce qui doit être
+ * retravaillé ».
+ *
+ * ELLE SE POSE SOUS L'APPRÉCIATION, ET NON À SA PLACE : les deux ne disent pas
+ * la même chose. « Objectif atteint » donne le NIVEAU, « Les priorités : c'est
+ * acquis » donne l'ADRESSE. L'élève a besoin des deux, et la seconde est celle
+ * qu'il peut emporter.
+ *
+ * ELLE DISPARAÎT QUAND ELLE N'A RIEN DE NET À DIRE — voir
+ * `ceQuiVaEtCeQuiReste` : ni réussite franche, ni trou franc, pas de phrase.
+ * Un paragraphe vide laisserait un blanc de deux lignes sous la note.
+ */
+function nomsDesNotions(bilan) {
+    const phrase = ceQuiVaEtCeQuiReste(bilan);
+    return phrase ? `<p class="report-notions">${escapeHtml(phrase)}</p>` : '';
+}
+
 export function reportHtml(bilan, { compact = false } = {}) {
     const pct = Math.round(bilan.ratioPondere * 100);
 
@@ -90,14 +247,20 @@ export function reportHtml(bilan, { compact = false } = {}) {
                     <div class="report-miss-a">Ta réponse : <b>${escapeHtml(q.donne)}</b> — attendu : <b>${escapeHtml(q.attendu)}</b></div>
                     ${q.diagnostic ? `<div class="report-miss-why">${escapeHtml(q.diagnostic)}</div>` : ''}
                 </li>`).join('')}
-        </ul>
-        <button class="btn-toggle glass-btn report-replay-btn" data-replay>Rejouer ces questions</button>` : '';
+        </ul>` : '';
+    // LE BOUTON QUI ÉTAIT ICI EST MONTÉ DANS LA RANGÉE D'ACTIONS, sous le nom
+    // que Rémy lui a donné — voir `boutonAmeliorer`. Il était au BAS de cette
+    // liste, donc après huit encadrés rouges, donc sous la ligne de flottaison
+    // d'un téléphone ; et il ne paraissait que s'il restait des questions
+    // DÉFINITIVEMENT ratées, ce qui laissait sans rien l'élève qui avait tout
+    // rattrapé au second essai en sortant avec une compétence à 60 %.
 
     return `
         <h2 class="report-title">${bilan.mode === 'evaluation' ? 'Évaluation terminée' : 'Parcours terminé'}</h2>
         ${bilan.pathName ? `<p class="report-subtitle">${escapeHtml(bilan.pathName)}</p>` : ''}
         ${noteBlock}
         <p class="report-appreciation">${appreciation(bilan)}</p>
+        ${nomsDesNotions(bilan)}
         ${calcul}
         ${stats}
         ${competences}
@@ -169,16 +332,6 @@ function nb(value) {
 // Relancer directement les questions ratées : la correction ne sert que si on
 // la remet en pratique. Les graines sont conservées, donc ce sont exactement
 // les mêmes questions.
-function wireReplay(root, bilan) {
-    const btn = root.querySelector('[data-replay]');
-    if (!btn) return;
-    btn.onclick = async () => {
-        const { startRemediation } = await import('../core/remediation.js');
-        root.remove();
-        startRemediation(bilan.aRetravailler.filter(q => !q.resolue));
-    };
-}
-
 function statTile(label, value) {
     return `<div class="report-stat"><div class="report-stat-value">${value}</div><div class="report-stat-label">${label}</div></div>`;
 }

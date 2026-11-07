@@ -18,19 +18,38 @@
 // En `fixed`, il aurait fallu tenir à jour un `padding-top` sur trois
 // dispositions différentes — et l'oublier une fois cache la barre de navigation.
 
-import { estVerrouille, estEcarte, consigneDuProf, messagesNonLus, direLu } from '../core/seanceDistante.js';
+import { ceQueVoitLEleve, direLu } from '../core/seanceDistante.js';
+import { state } from '../core/state.js';
 import { showModal } from './modal.js';
 
 export function initSeanceDistanteUI() {
     document.addEventListener('seance_distante', () => rendre());
+    // ET QUAND ON CHANGE DE RÔLE. Sans cela, le professeur qui repasse côté
+    // élève pour montrer quelque chose à sa classe n'aurait ni la consigne ni
+    // les mots tant que le serveur n'a pas reparlé — jusqu'à cinq minutes.
+    document.addEventListener('role_change', () => rendre());
     rendre();
 }
 
+/**
+ * LE PROFESSEUR NE VOIT RIEN DE L'ÉCRAN DE L'ÉLÈVE.
+ *
+ * Rémy : « quand j'envoie un mot genre Coucou, il apparaît en popup sur mon
+ * espace aussi ». Son navigateur avait servi à essayer le côté élève et en
+ * gardait le rattachement ; il recevait donc les mots de sa propre classe.
+ *
+ * La règle vit dans `ceQueVoitLEleve` et non ici : cette fonction faisait cinq
+ * appels indépendants, et un sixième ajouté demain aurait réintroduit le
+ * défaut. Une seule porte, fermée d'un côté.
+ */
 function rendre() {
-    majBandeau(consigneDuProf());
-    majVerrou(estVerrouille());
-    majEcarte(estEcarte());
-    montrerLesMots();
+    const vu = ceQueVoitLEleve({ professeur: !!state.isTeacherMode });
+    majBandeau(vu.consigne);
+    majVerrou(vu.verrouille);
+    majEcarte(vu.ecarte);
+    majFerme(vu.ferme);
+    montrerLesMots(vu.mots);
+    montrerLesIndices(vu.indices);
 }
 
 /* ------------------------------------------------------------------ Consigne */
@@ -70,6 +89,32 @@ function majBandeau(texte) {
  */
 function majVerrou(actif) {
     document.body.classList.toggle('classe-verrouillee', !!actif);
+    // LA PASTILLE DU PRÉNOM RESTE VISIBLE SOUS VERROU (voir css/ui.css), mais
+    // elle ne doit plus ouvrir le mode professeur — ni au doigt, ni au clavier.
+    // `pointer-events: none` suffit pour le doigt ; la tabulation, non.
+    const pastille = document.getElementById('btn-role');
+    if (pastille) {
+        pastille.disabled = !!actif;
+        pastille.setAttribute('aria-disabled', actif ? 'true' : 'false');
+        pastille.tabIndex = actif ? -1 : 0;
+        // ET ELLE DIT POURQUOI LES BOUTONS ONT DISPARU.
+        //
+        // Sous verrou, trois commandes s'effacent de la barre et RIEN ne
+        // l'expliquait : l'élève voyait son écran maigrir sans un mot. Le
+        // professeur a sa consigne pour parler, mais il ne l'écrit pas
+        // toujours, et « mets en pause » est justement le geste qu'on fait
+        // vite. Deux mots à côté du prénom suffisent, et ils tiennent dans la
+        // place qu'on vient de lui rendre — pas un bandeau de plus.
+        let mot = pastille.querySelector('.role-badge-pause');
+        if (actif && !mot) {
+            mot = document.createElement('span');
+            mot.className = 'role-badge-pause';
+            mot.textContent = 'en pause';
+            pastille.appendChild(mot);
+        } else if (!actif && mot) {
+            mot.remove();
+        }
+    }
     if (!actif) return;
     // Si l'élève était DANS le catalogue au moment du verrouillage, on le
     // ramène sur son parcours : le laisser sur un écran qu'on vient de lui
@@ -81,6 +126,60 @@ function majVerrou(actif) {
             || document.getElementById('mob-btn-path');
         if (versParcours) versParcours.click();
     }
+}
+
+/* --------------------------------------------------- La sortie, sur le voile */
+
+/**
+ * ON PEUT TOUJOURS SE DÉCONNECTER — Y COMPRIS QUAND TOUT EST FERMÉ.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « Quand c'est noté sur l'écran, c'est fermé pour le moment. Je ne peux
+ * déconnecter. En fait, il faut toujours pouvoir se déconnecter, j'ai besoin de
+ * tester avec un élève puis revenir à mon compte prof. »
+ *
+ * CE QUI S'EST PASSÉ, ET C'EST SA PROPRE DEMANDE QUI L'A CAUSÉ. Le voile
+ * couvre tout l'écran : « ATTENTION C'EST LA SEULE CHOSE QU'IL PEUT FAIRE, il
+ * ne peut pas aller sur son profil ou autre ». Or la sortie de l'élève vit
+ * justement dans « Mon profil ». En fermant la maison de sa classe, il s'est
+ * enfermé lui-même dans le compte de l'élève qu'il essayait.
+ *
+ * LA SORTIE EST DONC SUR LE VOILE, comme les exercices laissés libres, et pour
+ * la même raison : un trou percé exactement là où on le veut vaut mieux que
+ * trente portes à refermer. Et elle est sur LES DEUX voiles — l'accès mis en
+ * pause enferme tout autant que la porte close.
+ *
+ * ELLE N'IMPOSE RIEN. Rémy : « si l'élève ne se déconnecte pas chez lui, il
+ * peut travailler ». Un élève qui reste connecté garde ce que la porte lui
+ * laisse ; le bouton ne fait que donner le choix.
+ *
+ * LA FENÊTRE DE CONFIRMATION PASSE BIEN AU-DESSUS : `.modal-overlay` est à
+ * `z-index: 100000`, le voile à 10100 (css/components.css et css/ui.css). Un
+ * bouton qui ouvrirait sa demande DERRIÈRE le voile serait un bouton mort, et
+ * c'est le genre de chose qu'on vérifie avant d'y croire.
+ *
+ * ET CE N'EST PAS LA SORTIE ORDINAIRE. Rémy : « oui mais attention c'est le
+ * mode porte fermé donc ça doit être différent pour le logout ». La sortie
+ * ordinaire négocie — finis ta question, voilà ce qui n'est pas parti, veux-tu
+ * effacer ton travail —, et toutes ces questions supposent qu'on puisse RESTER
+ * et continuer. Derrière un voile, il n'y a rien à continuer. D'où
+ * `sortirDeLaPorteClose`, qui ne se refuse jamais et n'efface rien ; les deux
+ * voiles l'emploient, parce qu'un accès mis en pause enferme tout autant qu'une
+ * porte close.
+ */
+const HTML_SORTIE = '<button type="button" class="eleve-ecarte-sortie" '
+    + 'data-voile-sortie>Se déconnecter</button>';
+
+function brancherLaSortie(voile) {
+    const b = voile.querySelector('[data-voile-sortie]');
+    if (!b) return;
+    // CHARGÉ À LA DEMANDE, comme le catalogue des exercices libres : la plupart
+    // des élèves ne verront jamais ce voile.
+    b.onclick = async () => {
+        const { sortirDeLaPorteClose } = await import('./deconnexionUI.js');
+        sortirDeLaPorteClose();
+    };
 }
 
 /* ------------------------------------------------------------------- Écarté */
@@ -103,8 +202,188 @@ function majEcarte(actif) {
             <h2>Ton professeur a mis ton accès en pause.</h2>
             <p>Ton travail est conservé. Préviens-le : il peut te réactiver
                en un clic.</p>
+            ${HTML_SORTIE}
         </div>`;
     document.body.appendChild(voile);
+    brancherLaSortie(voile);
+}
+
+/* -------------------------------------------------------- Fermé hors séance */
+
+/**
+ * L'APPLICATION NE S'OUVRE QUE PENDANT LA SÉANCE, ET LE MOT EST LE SIEN.
+ *
+ * RÉMY : « j'aimerai aussi le fait de bloquer les élèves chez eux. C'est à dire
+ * que juste la séance imposée fonctionne mais par contre si il se connecte, on
+ * leur dit que pour l'instant ce n'est disponible qu'au collège (je peux mettre
+ * le message de mon choix) », puis : « Je peux choisir qu'il ne puisse avoir
+ * accès à rien à la maison pour la simple raison que pour le moment je veux
+ * suivre ce qu'ils font et voir le debug ».
+ *
+ * MÊME VOILE QUE L'ÉLÈVE ÉCARTÉ, ET C'EST VOULU : c'est le même geste du point
+ * de vue de l'élève — la porte est fermée, et on lui dit par qui. Ce qui change
+ * est la PHRASE, et elle ne doit pas se lire comme une punition : personne n'a
+ * rien fait de mal, c'est simplement l'heure.
+ *
+ * ON NE RÉÉCRIT PAS LE VOILE À CHAQUE BATTEMENT : la séance se redemande toutes
+ * les dix secondes, et un voile reconstruit dix fois par minute reprendrait son
+ * animation d'entrée à chaque fois.
+ */
+function majFerme(ferme) {
+    const actif = !!(ferme && ferme.ferme);
+    let voile = document.getElementById('eleve-ferme');
+    if (!actif) {
+        if (voile) voile.remove();
+        return;
+    }
+    const mot = (ferme.mot || '').trim()
+        || 'Pour l\'instant, AtoutMath ne s\'ouvre qu\'au collège, pendant le cours.';
+    const exos = (ferme.exos || []).filter(Boolean);
+    if (voile) {
+        // Le mot peut changer sans que le voile parte : le professeur le
+        // réécrit depuis son écran, et l'élève doit lire le nouveau.
+        const p = voile.querySelector('.eleve-ecarte-mot');
+        if (p && p.textContent !== mot) p.textContent = mot;
+        // ET LA LISTE AUSSI PEUT CHANGER, pendant que l'élève a le voile sous
+        // les yeux. On la redessine seulement si elle a bougé — sinon on
+        // reconstruirait des boutons sous les doigts à chaque battement.
+        if (voile.dataset.exos !== exos.join(',')) poserLesExos(voile, exos);
+        return;
+    }
+    voile = document.createElement('div');
+    voile.id = 'eleve-ferme';
+    voile.className = 'eleve-ecarte';
+    voile.innerHTML = `
+        <div class="eleve-ecarte-carte">
+            <div class="eleve-ecarte-icone" aria-hidden="true">🏫</div>
+            <h2>C'est fermé pour le moment.</h2>
+            <p class="eleve-ecarte-mot"></p>
+            <div class="eleve-ecarte-exos" hidden></div>
+            ${HTML_SORTIE}
+        </div>`;
+    // `textContent` ET PAS `innerHTML` : ce mot vient d'un champ de formulaire,
+    // et un champ de formulaire est du texte, jamais du balisage. (La même
+    // règle que la consigne, trente lignes plus haut.)
+    voile.querySelector('.eleve-ecarte-mot').textContent = mot;
+    document.body.appendChild(voile);
+    poserLesExos(voile, exos);
+    // APRÈS `poserLesExos`, ET CE N'EST PAS UN DÉTAIL D'ORDRE : celle-ci
+    // réécrit `.eleve-ecarte-exos`, pas le bouton, qui est son frère — mais la
+    // sortie doit être branchée même quand la liste est vide.
+    brancherLaSortie(voile);
+}
+
+/**
+ * LES EXERCICES LAISSÉS LIBRES, SUR LE VOILE — et rien d'autre.
+ *
+ * ── LA DEMANDE DE RÉMY, MOT POUR MOT ───────────────────────────────────────
+ *
+ * « si il est bloqué chez lui car j'empêche l'accès, je peux laisser libre qqs
+ * exercices que j'aurais défini mais ATTENTION C'EST LA SEULE CHOSE QU'IL PEUT
+ * FAIRE, il ne peut pas aller sur son profil ou autre. »
+ *
+ * C'EST POUR CELA QUE LES BOUTONS SONT SUR LE VOILE, ET NON DERRIÈRE. Rouvrir
+ * l'application en n'autorisant que quelques exercices demanderait de fermer
+ * une à une toutes les autres portes — le profil, le catalogue, la carte, le
+ * bac à sable, le menu — et il suffirait d'en oublier une. Le voile, lui, est
+ * déjà la fermeture de TOUT : on y perce exactement les trous nommés.
+ *
+ * ── CE QUI SE PASSE PENDANT L'EXERCICE ─────────────────────────────────────
+ *
+ * La couche de jeu est à `z-index: 10000`, le voile à 10100 : sans rien faire,
+ * il couvrirait l'exercice qu'il vient de lancer. On l'efface donc le temps du
+ * jeu et on le remet en sortant — c'est `onExit`, que le meneur appelle quel
+ * que soit le chemin de sortie (fin normale, croix, abandon).
+ */
+function poserLesExos(voile, exos) {
+    const zone = voile.querySelector('.eleve-ecarte-exos');
+    if (!zone) return;
+    voile.dataset.exos = exos.join(',');
+    if (!exos.length) { zone.hidden = true; zone.innerHTML = ''; return; }
+    zone.hidden = false;
+    zone.innerHTML = '<p class="eleve-ecarte-sous">Tu peux quand même faire&nbsp;:</p>'
+        + '<div class="eleve-ecarte-liste"></div>';
+    const liste = zone.querySelector('.eleve-ecarte-liste');
+    // LE CATALOGUE SE CHARGE À LA DEMANDE : la plupart des élèves ne verront
+    // jamais ce voile, et il ne doit rien coûter à ceux-là.
+    import('../data/catalog.js').then(({ getExerciseById }) => {
+        exos.forEach((id) => {
+            const exo = getExerciseById(id);
+            if (!exo) return;   // retiré du catalogue depuis : on ne propose pas un vide
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn-toggle active eleve-ecarte-exo';
+            b.textContent = exo.title || id;
+            b.onclick = () => lancerLExoLibre(voile, exo);
+            liste.appendChild(b);
+        });
+        if (!liste.children.length) { zone.hidden = true; }
+    }).catch(() => { zone.hidden = true; });
+}
+
+/**
+ * ON REMET LE VOILE QUAND LA COUCHE DE JEU DISPARAÎT — et non quand le meneur
+ * dit qu'il a fini.
+ *
+ * MESURÉ, ET C'EST POURQUOI CE N'EST PAS `onExit`. La croix rouge
+ * (`#btn-close-game`, js/app.js) N'APPELLE PAS `exit()` : elle abandonne le
+ * meneur et cache la couche elle-même. Avec `onExit` seul, l'élève qui ferme
+ * par la croix se retrouvait dans l'application ENTIÈRE, porte fermée —
+ * exactement ce que « c'est la seule chose qu'il peut faire » interdit. La
+ * boîte à jeux a payé ce même piège avant nous (voir `finirLaPartie` dans
+ * ui/boiteUI.js, qui le raconte).
+ *
+ * ON ÉCOUTE DONC LE FAIT, PAS LE CHEMIN : la couche de jeu est cachée, donc
+ * l'exercice est terminé, quelle que soit la porte par laquelle il est sorti.
+ * Un observateur sur son attribut `style` répond dans l'image qui suit, là où
+ * le battement de dix secondes laisserait l'écran ouvert dix secondes.
+ */
+function remettreLeVoileALaFin(voile) {
+    const gl = document.getElementById('game-layer');
+    const remettre = () => { voile.hidden = false; };
+    if (!gl) { remettre(); return; }
+    const obs = new MutationObserver(() => {
+        if (getComputedStyle(gl).display === 'none') {
+            obs.disconnect();
+            remettre();
+        }
+    });
+    obs.observe(gl, { attributes: true, attributeFilter: ['style', 'class'] });
+    // CEINTURE : si le voile part pour une autre raison — le professeur rouvre
+    // la porte pendant qu'il joue —, l'observateur n'a plus d'objet.
+    return obs;
+}
+
+async function lancerLExoLibre(voile, exo) {
+    const [{ Runner }, { makePath, makeStep }, { politiquePerso }] = await Promise.all([
+        import('../core/runner.js'), import('../core/path.js'),
+        import('../core/mesExercices.js')
+    ]);
+    const pas = makeStep(exo.id, {}, { stepId: 'libre' });
+    voile.hidden = true;
+    const obs = remettreLeVoileALaFin(voile);
+    try {
+        const r = new Runner({
+            path: makePath(exo.title || 'Exercice', [pas], politiquePerso()),
+            deviceMode: 'none',
+            // ON GARDE `onExit` EN PLUS DE L'OBSERVATEUR : il ferme le cas de
+            // la fin normale sans attendre une mutation, et il EMPÊCHE le
+            // meneur de naviguer vers la carte ou le catalogue en sortant —
+            // ce qu'il fait par défaut, et qui rouvrirait la maison.
+            onExit: () => {
+                if (obs) obs.disconnect();
+                const gl = document.getElementById('game-layer');
+                if (gl) gl.style.display = 'none';
+                voile.hidden = false;
+            }
+        });
+        r.start();
+    } catch (e) {
+        // SI LE MENEUR NE PART PAS, LE VOILE REVIENT. Un élève devant un écran
+        // vide, porte fermée, n'a aucun moyen de s'en sortir.
+        if (obs) obs.disconnect();
+        voile.hidden = false;
+    }
 }
 
 /* ---------------------------------------------------------------- Les mots */
@@ -117,10 +396,25 @@ function majEcarte(actif) {
  * les montre donc l'une après l'autre : la suivante n'apparaît qu'une fois la
  * précédente acquittée.
  */
-function montrerLesMots() {
-    if (document.getElementById('mot-du-prof')) return;   // il y en a déjà un
-    const mot = messagesNonLus()[0];
-    if (!mot) return;
+/** La fenêtre ouverte, pour pouvoir la refermer sans passer par « J'ai lu ». */
+let motOuvert = null;
+
+function montrerLesMots(liste) {
+    const mot = (liste || [])[0];
+    // ON REFERME CE QUI NE DOIT PLUS ÊTRE LÀ. Le professeur qui bascule pendant
+    // qu'un mot est ouvert le verrait rester à l'écran, et ne pourrait s'en
+    // débarrasser qu'en posant un accusé de lecture faux — c'est-à-dire en
+    // faisant exactement ce qu'on vient de lui épargner.
+    //
+    // ON GARDE LE FERMOIR RENDU PAR `showModal`, ET C'EST LA SEULE FAÇON.
+    // Mesuré : le voile de `showModal` n'a AUCUNE classe, seulement des styles
+    // en ligne. Chercher un `.modal-overlay` parent ne trouvait donc rien, la
+    // fenêtre restait, et l'essai en deux navigateurs l'a dit.
+    if (!mot) {
+        if (motOuvert) { motOuvert.close(); motOuvert = null; }
+        return;
+    }
+    if (motOuvert || document.getElementById('mot-du-prof')) return;   // il y en a déjà un
 
     const corps = document.createElement('div');
     corps.id = 'mot-du-prof';
@@ -132,6 +426,7 @@ function montrerLesMots() {
 
     const titre = mot.scope === 'class' ? 'Message à toute la classe' : 'Message de ton professeur';
     const fenetre = showModal(titre, corps.outerHTML, { width: '460px', zIndex: 10050 });
+    motOuvert = fenetre;
 
     // UNE SEULE SORTIE : « J'ai lu ». La fenêtre ordinaire offre une croix et
     // se ferme au clic à côté ; ici, les deux mèneraient à fermer le mot sans
@@ -147,9 +442,81 @@ function montrerLesMots() {
     if (ok) {
         ok.onclick = async () => {
             fenetre.close();
+            motOuvert = null;
             await direLu([mot.id]);
             // `direLu` retire le mot de l'état et redéclenche `rendre()`, qui
             // affichera le suivant s'il y en a un.
         };
+    }
+}
+
+/* ------------------------------------------------------------- Les indices */
+
+/**
+ * L'INDICE SE POSE À CÔTÉ, ET IL N'INTERROMPT RIEN.
+ *
+ * Rémy : « la possibilité de […] envoyer un indice ».
+ *
+ * TOUT CE QUI SUIT EXISTE PARCE QU'UN INDICE N'EST PAS UN MOT. Le mot ouvre
+ * une fenêtre qu'il faut acquitter — c'est ce qu'il faut pour « arrêtez tout,
+ * on corrige au tableau ». Faire pareil pour « regarde la retenue »
+ * détruirait la pensée qu'on veut aider : l'élève reviendrait à sa question
+ * après avoir cliqué, en ayant perdu le fil, et le professeur aurait nui en
+ * croyant aider.
+ *
+ * Donc : une carte en bas à droite, qui glisse, qui reste, et qu'on referme
+ * quand on veut. L'accusé de lecture part quand même — le professeur veut
+ * savoir si son coup de pouce est arrivé.
+ *
+ * ELLE NE VOLE PAS LE FOCUS. Un élève qui tape sa réponse au clavier doit
+ * pouvoir continuer à taper pendant que l'indice apparaît ; c'est pour cela
+ * qu'il n'y a ni `focus()` ni `autofocus` ici, et que `role="status"` le fait
+ * lire par une synthèse vocale sans couper la parole à autre chose.
+ */
+function montrerLesIndices(liste) {
+    let hote = document.getElementById('indices-du-prof');
+    if (!(liste || []).length) { if (hote) hote.remove(); return; }
+
+    if (!hote) {
+        hote = document.createElement('div');
+        hote.id = 'indices-du-prof';
+        hote.className = 'indices-prof';
+        hote.setAttribute('role', 'status');
+        hote.setAttribute('aria-live', 'polite');
+        document.body.appendChild(hote);
+    }
+
+    // ON NE REDESSINE PAS CE QUI EST DÉJÀ LÀ. L'état de séance revient toutes
+    // les dix secondes ; réécrire la carte à chaque fois relancerait son
+    // animation d'entrée toutes les dix secondes, sous les yeux d'un élève qui
+    // essaie de lire.
+    const dejaLa = new Set([...hote.querySelectorAll('[data-indice]')]
+        .map(x => x.getAttribute('data-indice')));
+    for (const ind of liste) {
+        if (dejaLa.has(ind.id)) continue;
+        const carte = document.createElement('div');
+        carte.className = 'indice-prof';
+        carte.setAttribute('data-indice', ind.id);
+        carte.innerHTML = `
+            <div class="indice-prof-tete">
+                <span class="indice-prof-qui">Un coup de pouce</span>
+                <button type="button" class="indice-prof-fermer" aria-label="Fermer">×</button>
+            </div>
+            <p class="indice-prof-texte"></p>`;
+        // `textContent` : le professeur a tapé du texte dans un champ, et un
+        // champ de formulaire est du texte, jamais du balisage.
+        carte.querySelector('.indice-prof-texte').textContent = ind.body;
+        carte.querySelector('.indice-prof-fermer').onclick = () => {
+            carte.classList.add('indice-prof--part');
+            setTimeout(() => carte.remove(), 250);
+            direLu([ind.id]);
+        };
+        hote.appendChild(carte);
+    }
+
+    // Les indices déjà lus ailleurs (un autre appareil) disparaissent.
+    const vivants = new Set(liste.map(i => i.id));
+    for (const c of [...hote.querySelectorAll('[data-indice]')]) {
+        if (!vivants.has(c.getAttribute('data-indice'))) c.remove();
     }
 }

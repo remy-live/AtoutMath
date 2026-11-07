@@ -24,6 +24,7 @@
 import { hintBar, wireHint } from './choice.js';
 import { egaliteFlecheeHtml } from '../fractionsEquivalentes.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Les touches, dans l'ordre où on les lit — pas celui d'une calculatrice. */
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
@@ -224,7 +225,8 @@ export function mount(container, session, opts = {}) {
     async function appuyer(selecteur, action) {
         const el = container.querySelector(selecteur);
         if (!el || destroyed) return false;
-        if (!await cursor.tap(el, DEMO_SPEED.move)) return false;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.toucher(el, DEMO_SPEED.move)) return false;
         if (destroyed) return false;
         action();
         return !destroyed;
@@ -241,28 +243,31 @@ export function mount(container, session, opts = {}) {
     async function runDemo() {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
         const m = item.meta;
-        const souffler = (ms) => cursor.pause(ms);
+        // `souffler` passait par `cursor.pause` directement, et refaisait donc la
+        // garde à la main derrière le dos du meneur. Il la lui laisse.
+        const souffler = (ms) => robot.pause(ms);
         const vise = (s) => container.querySelector(s);
 
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await souffler(600) || destroyed) return;
+        if (!await robot.tour()) return;
+        if (!await souffler(600)) return;
         const [de, a] = m.trou === 'numerateur'
             ? [m.gauche.d, m.droite.d] : [m.gauche.n, m.droite.n];
         cursor.say(`Une ligne est écrite des deux côtés : de ${de} à ${a}.`, vise('[data-fig]'));
-        if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
+        if (!await souffler(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(`${de} ${m.signe} ${m.facteur} = ${a} : je l’écris sur la flèche.`,
             vise('[data-case="haut"]'));
-        if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
+        if (!await souffler(DEMO_SPEED.settle)) return;
         if (cases.actif !== 'haut' && !await appuyer('[data-case="haut"]',
             () => { cases.actif = 'haut'; render(); })) return;
         if (!await ecrire(m.facteur)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say('L’autre flèche porte le MÊME nombre.', vise('[data-case="bas"]'));
-        if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
+        if (!await souffler(DEMO_SPEED.settle)) return;
         if (cases.actif !== 'bas' && !await appuyer('[data-case="bas"]',
             () => { cases.actif = 'bas'; render(); })) return;
         if (!await ecrire(m.facteur)) return;
@@ -270,10 +275,10 @@ export function mount(container, session, opts = {}) {
         if (m.complete) {
             const [depuis, mot] = m.trou === 'numerateur'
                 ? [m.gauche.n, 'numérateur'] : [m.gauche.d, 'dénominateur'];
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(`Et le ${mot} suit : ${depuis} ${m.signe} ${m.facteur} = ${m.manquant}.`,
                 vise('[data-case="trou"]'));
-            if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
+            if (!await souffler(DEMO_SPEED.settle)) return;
             if (cases.actif !== 'trou' && !await appuyer('[data-case="trou"]',
                 () => { cases.actif = 'trou'; render(); })) return;
             if (!await ecrire(m.manquant)) return;
@@ -281,10 +286,10 @@ export function mount(container, session, opts = {}) {
 
         // Le robot ne valide pas : une démonstration ne répond pas à la place
         // de l'élève. Elle s'arrête sur la figure remplie, qui est la leçon.
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say('Les deux flèches portent le même nombre : la fraction ne change pas.',
             vise('[data-fig]'));
-        if (!await souffler(DEMO_SPEED.between) || destroyed) return;
+        if (!await souffler(DEMO_SPEED.between)) return;
         renderNext();
     }
 

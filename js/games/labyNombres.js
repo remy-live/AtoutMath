@@ -23,6 +23,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     TAILLES, CONSIGNE, genererLabyrinthe, sautsPossibles, traceVide, peutAvancer,
     avancer, verifier, prochainSaut, conseil, valeur, clef, memeCase
@@ -90,7 +91,7 @@ class LabyrintheNombres extends BaseGame {
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 12px; font-size: .85rem; min-height: 38px;
                 }
-                .ln-btn--on { border-color: var(--primary); color: var(--primary); }
+                .ln-btn--on { border-color: var(--primary); color: var(--primary-texte); }
                 .ln-compte {
                     font-weight: 800; font-size: .9rem; background: var(--bg-hover);
                     border-radius: 999px; padding: 5px 14px;
@@ -310,13 +311,14 @@ class LabyrintheNombres extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.laby) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say('Le nombre de ma case dit de combien de cases je saute. Je choisis la '
             + 'direction, pas la distance.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         const caseEl = ([x, y]) => this.svg.querySelector(`[data-x="${x}"][data-y="${y}"]`);
         for (let k = 0; k < 3; k++) {
@@ -324,7 +326,7 @@ class LabyrintheNombres extends BaseGame {
             if (!suite) break;
             const ici = this.chemin[this.chemin.length - 1];
             const n = valeur(this.laby, ici[0], ici[1]);
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(k === 0
                 ? `Je suis sur un ${n} : je compte ${n} cases, et la PREMIÈRE comptée est celle `
                   + 'juste à côté — pas celle où je suis. C\'est l\'erreur la plus fréquente.'
@@ -335,13 +337,13 @@ class LabyrintheNombres extends BaseGame {
             if (cible && !await cur.tap(cible)) return fin();
             this.chemin = avancer(this.laby, this.chemin, suite);
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Et si je me trompe, je reviens sur la case d\'avant : le saut s\'efface.',
             this.container.querySelector('[data-retour]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

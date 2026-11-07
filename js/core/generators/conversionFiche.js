@@ -18,7 +18,8 @@
 
 import { makeItem } from '../items.js';
 import {
-    familleDe, tirerConversion, NOMS_FAMILLES, chiffresDansLeTableau
+    familleDe, tirerConversion, NOMS_FAMILLES, chiffresDansLeTableau,
+    echelonDe, colonnesDuTableau
 } from '../conversion.js';
 
 const NOMBRE_FR = (v) => String(v).replace('.', ',');
@@ -36,7 +37,13 @@ export const conversionFicheGenerator = {
             options: [
                 { value: 'longueur', label: 'Longueurs (km … mm)' },
                 { value: 'masse', label: 'Masses (kg … mg)' },
-                { value: 'capacite', label: 'Contenances (hL … mL)' }
+                { value: 'capacite', label: 'Contenances (hL … mL)' },
+                // DEUX COLONNES PAR UNITÉ, TROIS POUR LES VOLUMES. Le tableau
+                // devient large — quatorze colonnes pour les aires —, et c'est
+                // pourquoi il s'imprime SEUL sur sa rangée : voir
+                // `parLigneDefaut` dans js/ui/fiches/nombres.js.
+                { value: 'aire', label: 'Aires (km² … mm²) — deux colonnes par unité' },
+                { value: 'volume', label: 'Volumes (m³ … mm³) — trois colonnes par unité' }
             ]
         },
         {
@@ -93,6 +100,7 @@ export const conversionFicheGenerator = {
         params = params || {};
         const famille = NOMS_FAMILLES.includes(params.famille) ? params.famille : 'longueur';
         const f = familleDe(famille);
+        const toutesLesColonnes = colonnesDuTableau(famille);
         const nb = Math.max(3, Math.min(10, Number(params.lignes) || 8));
 
         // Des conversions TOUTES DIFFÉRENTES dans un même tableau : deux fois
@@ -111,7 +119,15 @@ export const conversionFicheGenerator = {
             // LE CORRIGÉ MONTRE LE TABLEAU REMPLI, pas seulement la réponse :
             // c'est le placement des chiffres qui est la leçon, et un corrigé
             // qui donne « 1 300 m » sans dire OÙ tombe le 1 n'explique rien.
-            const index = (rang) => f.unites.findIndex(u => u.rang === rang);
+            // L'INDEX SE PREND DANS LES COLONNES, PAS DANS LES UNITÉS.
+            //
+            // En longueur les deux listes sont la même, et c'est ce qui rend
+            // l'erreur invisible là-bas. En aire, une unité coiffe DEUX
+            // colonnes : chercher le rang parmi les unités rendrait −1 pour
+            // toute colonne de dizaines, et la moitié des chiffres du corrigé
+            // disparaîtrait — sans message, puisque −1 est écarté plus bas.
+            const toutes = colonnesDuTableau(famille);
+            const index = (rang) => toutes.indexOf(rang);
             const brut = chiffresDansLeTableau(c.valeur, famille, c.depart)
                 .map(x => ({ col: index(x.colonne), chiffre: x.chiffre }));
             // UN NOMBRE QUI NE TIENT PAS DANS LE TABLEAU N'EST PAS UNE
@@ -151,6 +167,11 @@ export const conversionFicheGenerator = {
             meta: {
                 famille, nom: f.nom,
                 unites: f.unites.map(u => u.symbole),
+                // COMBIEN DE SOUS-COLONNES PAR UNITÉ : 1 pour une longueur, 2
+                // pour une aire, 3 pour un volume. La feuille en a besoin pour
+                // coiffer les bonnes cases d'une seule étiquette.
+                echelon: echelonDe(famille),
+                nColonnes: toutesLesColonnes.length,
                 conversions,
                 entetes: params.entetes !== false,
                 tableau: params.tableau !== false,

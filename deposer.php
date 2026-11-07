@@ -45,11 +45,22 @@ declare(strict_types=1);
  * qui ne vient pas de nous.
  */
 
-// `DEPOSER_ESSAI` permet aux essais de charger les décisions de ce fichier sans
-// afficher la page — voir tools/testApi.php. Un fichier qui s'exécute tout seul
-// ne se met pas à l'épreuve, et les règles ci-dessus méritent de l'être.
-if (!defined('DEPOSER_ESSAI')) {
-    define('DEPOSER_ESSAI', false);
+// `DEPOSER_SANS_PAGE` charge les DÉCISIONS de ce fichier sans afficher la page.
+// Deux appelants s'en servent, et le nom a changé quand le second est arrivé :
+//
+//   · `tools/testApi.php` — un fichier qui s'exécute tout seul ne se met pas à
+//     l'épreuve, et les règles ci-dessus méritent de l'être ;
+//   · `api/admin/index.php` — Rémy : « j'aimerai en une seule page même pour le
+//     déposer ». L'administration pose donc les archives elle-même, en appelant
+//     `lireArchive()` et `poserArchive()`. Elle ne recopie PAS ces règles : un
+//     refus de `../` écrit deux fois finit par n'être écrit correctement qu'une
+//     fois, et l'on ne sait plus laquelle.
+//
+// CE FICHIER RESTE DEBOUT TOUT SEUL malgré cela : c'est lui qu'on transfère le
+// tout premier jour, quand `api/` n'existe pas encore. L'inclusion va dans ce
+// sens-là, jamais dans l'autre.
+if (!defined('DEPOSER_SANS_PAGE')) {
+    define('DEPOSER_SANS_PAGE', false);
 }
 
 const RACINE_SITE = __DIR__;
@@ -223,7 +234,7 @@ function poserArchive(string $zipf): array
     return ['ecrits' => $ecrits, 'erreurs' => $erreurs];
 }
 
-if (DEPOSER_ESSAI) {
+if (DEPOSER_SANS_PAGE) {
     return;   // les essais n'ont besoin que des fonctions ci-dessus
 }
 

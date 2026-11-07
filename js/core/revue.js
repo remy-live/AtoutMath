@@ -115,6 +115,19 @@ function normaliserFiche(f) {
         // uns après les autres — donc exactement ici, dans le tableau, et pas
         // en relisant cent descripteurs.
         calc: typeof f.calc === 'boolean' ? f.calc : null,
+        // « ON LE GARDE OU NON » — la troisième décision, et elle manquait.
+        //
+        // Rémy : « tu pourrais me faire pour la revue du catalogue, sur
+        // téléphone, un fonctionnement pratique pour que je t'envoie ce que l'on
+        // garde ou non. » Le carnet ne savait dire que « en test » ou « validé » :
+        // il n'y avait aucune façon de dire RETIRER, alors même que le catalogue
+        // porte un statut pour cela (`brouillon`, celui du Jardin).
+        //
+        // `true` = à retirer, `false` = on le garde explicitement, `null` = pas
+        // encore tranché. Les trois valeurs comptent : « pas encore lu » n'est
+        // pas « à garder », et les confondre validerait en bloc ce que personne
+        // n'a regardé.
+        retirer: typeof f.retirer === 'boolean' ? f.retirer : null,
         date: String(f.date || ''),
         remarque: String(f.remarque || '').slice(0, 2000),
         // CE QU'IL FAUDRAIT AJOUTER AU CLASSEMENT : un domaine, un
@@ -143,13 +156,14 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     if ('enTest' in changements) suite.enTest = changements.enTest === null ? null : !!changements.enTest;
     if ('jeu' in changements) suite.jeu = changements.jeu === null ? null : !!changements.jeu;
     if ('calc' in changements) suite.calc = changements.calc === null ? null : !!changements.calc;
+    if ('retirer' in changements) suite.retirer = changements.retirer === null ? null : !!changements.retirer;
     if ('remarque' in changements) suite.remarque = String(changements.remarque || '').slice(0, 2000);
     if ('tags' in changements) suite.tags = ecrireTags(changements.tags).slice(0, 500);
     if ('vu' in changements) suite.vu = { ...base.vu, ...changements.vu };
     Object.keys(suite.vu).forEach(k => { if (!suite.vu[k]) delete suite.vu[k]; });
 
     const decide = 'enTest' in changements || 'jeu' in changements || 'calc' in changements
-        || 'remarque' in changements || 'tags' in changements;
+        || 'retirer' in changements || 'remarque' in changements || 'tags' in changements;
     if ('date' in changements) suite.date = String(changements.date || '');
     else if (decide) suite.date = jourISO(quand || Date.now());
     suite.maj = quand || Date.now();
@@ -159,6 +173,7 @@ export function decider(revue, exercice, changements = {}, quand = 0) {
     // carnet. LA DATE COMPTE : le cochet du calendrier ne pose qu'elle, et sans
     // cette clause la ligne était jetée à la seconde même où on la datait.
     const vide = suite.enTest === null && suite.jeu === null && suite.calc === null
+        && suite.retirer === null
         && !suite.date && !suite.remarque
         && !suite.tags && !Object.keys(suite.vu).length;
     const autres = (revue.fiches || []).filter(f => f.exercice !== exercice);
@@ -176,14 +191,27 @@ export const marquerVu = (revue, exercice, colonne, vu = true, quand = 0) =>
  * ne sert à rien.
  */
 export function statutRevu(exo, fiche) {
+    // « À RETIRER » PASSE AVANT TOUT LE RESTE : c'est la décision la plus forte,
+    // et un exercice qu'on retire n'est ni en test ni validé.
+    if (fiche && fiche.retirer === true) return STATUS.BROUILLON;
     if (fiche && fiche.enTest === true) return STATUS.TEST;
     if (fiche && fiche.enTest === false) return STATUS.VALIDE;
     return (exo && exo.status) || STATUS.VALIDE;
 }
 
-/** La décision diffère-t-elle de ce qui est écrit dans le code ? */
+/**
+ * La décision diffère-t-elle de ce qui est écrit dans le code ?
+ *
+ * DEUX DÉCISIONS Y MÈNENT, PAS UNE. « On retire » écrit `retirer: true` et
+ * laisse `enTest` à `null` — un exercice retiré n'est ni en test ni validé.
+ * Tant que cette ligne ne regardait que `enTest`, le tri au pouce rendait une
+ * consigne où le seau « brouillon » était VIDE : Rémy retirait un exercice, la
+ * carte se remplissait de rouge, et le report dans le code ne le voyait jamais.
+ * Trouvé par l'épreuve, pas à l'écran — l'écran, lui, disait juste.
+ */
 export const aChange = (exo, fiche) =>
-    !!fiche && fiche.enTest !== null && statutRevu(exo, fiche) !== ((exo && exo.status) || STATUS.VALIDE);
+    !!fiche && (fiche.enTest !== null || fiche.retirer !== null)
+    && statutRevu(exo, fiche) !== ((exo && exo.status) || STATUS.VALIDE);
 
 /**
  * EST-CE UN JEU ? Même règle que le statut : la décision de Rémy s'il l'a
@@ -197,7 +225,28 @@ export const aChange = (exo, fiche) =>
  * catalogue en cinquante et un jeux et soixante-deux exercices. Se contenter de
  * « il a un activityId » aurait coché cent treize lignes sur cent treize.
  */
-export const estJeuCatalogue = (exo) => !!(exo && exo.activityId && !exo.generatorId);
+/**
+ * CE CATALOGUE-LÀ DEVINAIT, ET IL DEVINAIT SOUVENT FAUX.
+ *
+ * Rémy, revue de la v878 : « quelques remarques car il y a des choses qui ne
+ * sont pas des jeux ». Trente-deux exercices sur quarante-huit comptés comme
+ * jeux ne l'étaient pas.
+ *
+ * LA DÉDUCTION ÉTAIT « un `activityId` sans `generatorId` », et elle ne
+ * décrivait pas ce qu'on croyait : elle disait « cet exercice a son écran à
+ * lui », ce qui est vrai d'un jeu ET de la Dictée de Grands Nombres, du
+ * Tableau de Conversion, de la Rédaction de Thalès ou de Poser une opération.
+ * Aucun de ces quatre n'est un jeu, et chacun a bien son écran.
+ *
+ * ON DIT DONC CE QU'ON SAIT PLUTÔT QUE DE LE DEVINER : un exercice qui porte
+ * `jeu: false` n'en est pas un, et la déduction ne sert plus que de défaut pour
+ * ceux qu'on n'a pas encore tranchés. La décision de Rémy cesse ainsi de vivre
+ * dans son navigateur — sans ce champ, chaque revue lui redemandait les mêmes
+ * trente-deux cases.
+ */
+export const estJeuCatalogue = (exo) => (exo && typeof exo.jeu === 'boolean'
+    ? exo.jeu
+    : !!(exo && exo.activityId && !exo.generatorId));
 export const jeuRevu = (exo, fiche) =>
     (fiche && typeof fiche.jeu === 'boolean') ? fiche.jeu : estJeuCatalogue(exo);
 export const aChangeJeu = (exo, fiche) =>
@@ -348,7 +397,17 @@ export function filtrer(exercices, revue, criteres = {}) {
 
 /** Où en est la revue ? Le compteur qui décide si l'on peut s'arrêter. */
 export function bilan(revue, exercices) {
-    const b = { total: exercices.length, decides: 0, enTest: 0, valides: 0, changes: 0,
+    // `brouillons` COMPTE AUSSI, et il manquait. La chaîne `if/else if` ne
+    // connaissait que `test` et `valide` : un exercice DÉSACTIVÉ tombait entre
+    // les deux et disparaissait du bilan sans un mot. Tant qu'aucun exercice
+    // n'était au brouillon, la somme `enTest + valides` valait le total et
+    // personne ne pouvait s'en apercevoir — c'est le jour où Rémy a demandé
+    // « désactive le jardin » que le compte est tombé à 222 sur 223.
+    //
+    // UN BILAN QUI PERD UNE LIGNE EST PIRE QU'UN BILAN QUI N'EXISTE PAS : on le
+    // lit pour savoir ce qui reste à trier, et il affirmait avoir tout vu.
+    const b = { total: exercices.length, decides: 0, enTest: 0, valides: 0, brouillons: 0,
+        changes: 0,
         remarques: 0, vus: 0, classer: 0, jeux: 0, jeuxChanges: 0, calc: 0, calcChanges: 0 };
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
@@ -359,6 +418,7 @@ export function bilan(revue, exercices) {
         if (aChangeCalc(e, f)) b.calcChanges++;
         if (statutRevu(e, f) === STATUS.TEST) b.enTest++;
         else if (statutRevu(e, f) === STATUS.VALIDE) b.valides++;
+        else if (statutRevu(e, f) === STATUS.BROUILLON) b.brouillons++;
         if (aChange(e, f)) b.changes++;
         if (f && f.remarque.trim()) b.remarques++;
         if (f && f.tags.trim()) b.classer++;
@@ -380,7 +440,10 @@ export function bilan(revue, exercices) {
 export const MARQUE_STATUT = 'STATUT';
 
 export function consigneStatuts(revue, exercices) {
-    const par = { [STATUS.VALIDE]: [], [STATUS.TEST]: [] };
+    // TROIS SEAUX, ET LE TROISIÈME EST NEUF : `brouillon` dit « on le retire ».
+    // `lireStatuts` l'accepte sans rien changer — il relit n'importe quel statut
+    // que le catalogue connaît —, donc la consigne fait l'aller-retour.
+    const par = { [STATUS.VALIDE]: [], [STATUS.TEST]: [], [STATUS.BROUILLON]: [] };
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
         if (!aChange(e, f)) return;

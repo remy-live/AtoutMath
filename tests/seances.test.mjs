@@ -12,7 +12,7 @@ import {
     ETATS, donnerSeance, etatSeance, clore, rouvrir, poserMot,
     seancesDe, seanceDuMoment, archivees, vivantes, comptePourLaNote, direSeance,
     donnerAuxClasses, classesDuNiveau, niveauxDe, memeLot, concerne, elevesDe, aRattraper
-    , retirer, remettre, estRetiree
+    , retirer, remettre, estRetiree, estLaSeanceDe
 } from '../js/core/seances.js';
 import { makePath, makeStep } from '../js/core/path.js';
 import { identiteDeParcours } from '../js/core/shortcodes.js';
@@ -276,4 +276,63 @@ test('DÉCOCHER UNE CLASSE NE DÉTRUIT PAS LE TRAVAIL DES ÉLÈVES', () => {
     // Les cas vides ne plantent pas.
     assert.equal(retirer(null), null);
     assert.equal(estRetiree(null), false);
+});
+
+// ── « je recharge le parcours, je ne vois plus les classes » ────────────────
+
+test('UNE SÉANCE SE RECONNAÎT ENCORE APRÈS QU\'ON A RETOUCHÉ LE PARCOURS', () => {
+    // RÉMY, 20 octobre : « dans mes parcours, quand j'ai donné un parcours à
+    // des classes, et que je recharge le parcours, je ne vois plus les classes
+    // à qui j'ai donné les parcours. »
+    //
+    // MESURÉ AVANT, dans un navigateur, sur un parcours donné puis retouché :
+    // la séance garde l'identité du CONTENU qu'elle avait au moment du don, et
+    // l'atelier en recalcule une neuve à chaque geste. Cinq sur six la
+    // perdaient — et le sélecteur de mode est DANS le panneau qui affiche les
+    // classes, donc on pouvait les faire disparaître depuis l'écran même qui
+    // les montre.
+    const seance = donnerSeance(CLASSE, PARCOURS);
+    const voit = (p) => estLaSeanceDe(seance, identiteDeParcours(p), p.id);
+
+    const retouche = (quoi) => {
+        const c = JSON.parse(JSON.stringify(PARCOURS));
+        quoi(c);
+        return c;
+    };
+    assert.ok(voit(retouche(() => {})), 'perdue sans qu\'on ait rien touché');
+    assert.ok(voit(retouche(c => { c.name = 'Autre nom'; })), 'perdue au renommage');
+    assert.ok(voit(retouche(c => { c.policy = { ...c.policy, mode: 'evaluation' }; })),
+        'perdue quand on change le mode — c\'est le réglage du panneau lui-même');
+    assert.ok(voit(retouche(c => { c.steps.push(makeStep('calc-add')); })),
+        'perdue quand on ajoute une étape');
+    assert.ok(voit(retouche(c => { c.steps[0].nbItems = 20; })),
+        'perdue quand on change le nombre de questions');
+    assert.ok(voit(retouche(c => { c.bonusSeuil = 0.5; })),
+        'perdue quand on change le seuil des récompenses');
+});
+
+test('MAIS UN AUTRE PARCOURS N\'EST TOUJOURS PAS LE SIEN', () => {
+    // UNE CORRECTION QUI RECONNAÎT TOUT NE RECONNAÎT RIEN. C'est le garde-fou
+    // de la règle d'au-dessus : élargir ce qu'on accepte ne doit pas faire
+    // apparaître « donné » sur un parcours qui ne l'a pas été.
+    const seance = donnerSeance(CLASSE, PARCOURS);
+    const autre = makePath('Un tout autre parcours', [makeStep('calc-add')]);
+    assert.ok(!estLaSeanceDe(seance, identiteDeParcours(autre), autre.id),
+        'un autre parcours se croit donné');
+    // ET DEUX INCONNUES NE SE RESSEMBLENT PAS. Une séance d'avant cette
+    // version n'a pas d'identité d'atelier : `undefined === undefined` la
+    // montrerait donnée à toute classe ayant reçu n'importe quel parcours sans
+    // identifiant. C'est la même ceinture que pour `pathId`, et elle a déjà
+    // servi une fois.
+    const ancienne = { ...donnerSeance(CLASSE, PARCOURS), pathId: null, sourceId: null };
+    assert.ok(!estLaSeanceDe(ancienne, null, null), 'deux inconnues se reconnaissent');
+});
+
+test('ET LA SÉANCE RETIENT L\'IDENTITÉ DE SON ATELIER', () => {
+    // Les deux voyagent ensemble : celle du contenu pour l'élève et son bilan,
+    // celle de l'atelier pour le professeur qui relit ce qu'il a donné. C'est
+    // aussi la clef que le serveur emploie déjà (`donnerAuServeur`).
+    const seance = donnerSeance(CLASSE, PARCOURS);
+    assert.equal(seance.sourceId, PARCOURS.id);
+    assert.equal(seance.pathId, identiteDeParcours(PARCOURS));
 });

@@ -29,11 +29,29 @@ import { hintBar, wireHint } from './choice.js';
 import { tracesDe, cercleSvg } from '../cercleFigure.js';
 // La comparaison des mots vit avec le VOCABULAIRE, pas avec l'écran : c'est une
 // règle sur les mots du cercle, et elle se teste sans navigateur.
-import { memeMot, memeNotation } from '../generators/cercleVocabulaire.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { memeMot, jugerNotation, ecrituresDeLaSerie } from '../generators/cercleVocabulaire.js';
+// LES TOUCHES VIENNENT DU MÊME MODULE QUE LE PAVÉ DE CHIFFRES, et pour la même
+// raison : « c'est galère au clavier ». Un signe qu'on ne trouve pas sur un
+// téléphone ferme l'exercice aussi sûrement qu'un bogue.
+import { poserTouchesDeNotation, enMajuscules } from '../../ui/paveTactile.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Les deux marches, et le préréglage qui les enchaîne. */
 export const MARCHES = ['choisir', 'seul'];
+
+/**
+ * CE QU'ON POSE SOUS LE CHAMP POUR CHAQUE FAÇON D'ÉCRIRE.
+ *
+ * Le noyau dit QUELLES écritures la série peut demander ; cette table dit à
+ * quoi ressemble la touche. Les deux sont séparés parce qu'ils changent pour
+ * des raisons différentes : l'une suit le vocabulaire, l'autre le clavier.
+ */
+const TOUCHES = {
+    segment: { paire: '[]', titre: 'Les crochets, pour un segment' },
+    droite: { paire: '()', titre: 'Les parenthèses, pour une droite' },
+    arc: { mot: 'arc', titre: 'Le mot « arc », pour une ligne courbe' }
+};
 
 /**
  * À la question n sur N, quelle marche ?
@@ -110,15 +128,28 @@ export function mount(container, session, opts = {}) {
             // notation elle-même. Les deux gestes restent ouverts en même
             // temps : celui qui sait l'écrire n'a pas à viser un trait de deux
             // millimètres, celui qui hésite montre du doigt.
-            return `<p class="cv-consigne">Clique sur le bon tracé — ou écris sa notation.</p>
+            //
+            // LA CONSIGNE RENVOIE AUX TOUCHES, ET NE NOMME AUCUNE PONCTUATION.
+            //
+            // Elle disait « avec ses crochets ou ses parenthèses ». Rémy : « ne
+            // parle pas de tangente pour le cercle ! » — dans sa série, aucun
+            // tracé ne s'écrit entre parenthèses, et les nommer faisait entrer
+            // la quatrième dans une heure de sixième. Les touches posées plus
+            // bas montrent ce que CETTE série peut demander, et elles le
+            // montrent sans le dire.
+            //
+            // Et le repère « [  ] » du champ s'en va : il annonçait un segment
+            // là où la réponse pouvait être un arc, qui n'a pas de crochets.
+            return `<p class="cv-consigne">Clique sur le bon tracé — ou écris sa notation
+                    avec les touches ci-dessous.</p>
                 <div class="cv-ecriture">
                     <label class="cv-label" for="cv-champ">Notation :</label>
                     <input id="cv-champ" class="cv-champ cv-champ--court" type="text"
                            inputmode="text" autocomplete="off" spellcheck="false"
-                           autocapitalize="characters" placeholder="[  ]">
+                           autocapitalize="characters" aria-describedby="cv-dit">
                     <button type="button" class="kk-btn-valider" data-valider>Valider</button>
                 </div>
-                <p class="cv-statut" role="status"></p>`;
+                <p class="cv-statut" id="cv-dit" role="status"></p>`;
         }
         // PAS D'EXEMPLE DANS LE CHAMP. « un rayon » en filigrane est la réponse
         // d'une question sur deux : on donnerait le mot à celui qui doit le
@@ -153,6 +184,33 @@ export function mount(container, session, opts = {}) {
         }
         const champ = container.querySelector('#cv-champ');
         if (!champ) return;
+        if (faire === 'cliquer') {
+            // LES POINTS D'UNE FIGURE SONT DES MAJUSCULES, et un champ qui
+            // montre « og » enseigne une notation qui n'existe pas. Rémy :
+            // « et en majuscule ».
+            //
+            // SEULEMENT ICI, ET C'EST TOUT L'INTÉRÊT DE LA CONDITION : l'autre
+            // champ attend un MOT, et « UN RAYON » en capitales n'est pas la
+            // façon dont on écrit un mot français. Posée une ligne plus haut,
+            // la mise en majuscules les prenait tous les deux.
+            // « arc » RESTE EN BAS DE CASSE : c'est un mot du cours, pas un
+            // point. Toujours passé, même quand la série n'a pas d'arc — une
+            // notation fait deux lettres, donc aucun tracé ne peut s'appeler
+            // « ARC », et la règle n'a pas à savoir ce que la série contient.
+            enMajuscules(champ, ['arc']);
+            // LES TOUCHES SONT CELLES QUE LA SÉRIE PEUT DEMANDER, toutes
+            // ensemble — jamais celle de la réponse du moment, qui la
+            // désignerait. Dans une série de sixième il n'y a que des segments
+            // et des arcs : la touche « ( ) » n'y a rien à faire, et Rémy l'a
+            // dit sans détour — « ne parle pas de tangente pour le cercle ! ».
+            // Le noyau tranche (`ecrituresDeLaSerie`), l'écran pose.
+            poserTouchesDeNotation(container, {
+                champ: () => container.querySelector('#cv-champ'),
+                avant: container.querySelector('.cv-statut'),
+                touches: ecrituresDeLaSerie(session.params && session.params.mots)
+                    .map(f => TOUCHES[f])
+            });
+        }
         const valider = () => repondreParEcriture(champ.value, faire);
         champ.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); valider(); } };
         container.querySelector('[data-valider]').onclick = valider;
@@ -176,20 +234,35 @@ export function mount(container, session, opts = {}) {
 
     /**
      * ON REND LA RÉPONSE ATTENDUE QUAND C'EST LA MÊME CHOSE. La session compare
-     * des chaînes ; c'est ici que « rayon » et « un rayon » se rejoignent, ici
-     * aussi que « OA » rejoint « [OA] », et nulle part ailleurs — le journal
-     * doit enregistrer la même réponse quel que soit le geste.
+     * des chaînes ; c'est ici que « rayon » et « un rayon » se rejoignent, et
+     * nulle part ailleurs — le journal doit enregistrer la même réponse quel
+     * que soit le geste.
+     *
+     * MAIS « OA » NE REJOINT PLUS « [OA] ». Rémy : « tu acceptes comme rayon og
+     * comme réponse alors qu'il faudrait taper [OG] ». La ponctuation EST
+     * l'objet — [OA] le segment, (OA) la droite, OA la longueur —, et c'est
+     * `jugerNotation` qui tranche, en trois états plutôt qu'en deux.
      */
     function repondreParEcriture(texte, faire) {
         if (session.locked || destroyed) return;
         const notation = faire === 'cliquer';
         if (!texte.trim()) {
-            statut(notation ? 'Écris la notation du tracé, par exemple [OA].'
-                : 'Écris le mot qui nomme ce tracé.');
+            statut(notation ? 'Écris la notation du tracé — les touches ci-dessous posent '
+                + 'ce qui l\'entoure.' : 'Écris le mot qui nomme ce tracé.');
             return;
         }
-        const memeChose = notation ? memeNotation(texte, item.answer) : memeMot(texte, item.answer);
-        conclure(memeChose ? item.answer : texte.trim(), null);
+        if (!notation) {
+            conclure(memeMot(texte, item.answer) ? item.answer : texte.trim(), null);
+            return;
+        }
+        // UNE NOTATION MAL ÉCRITE N'EST PAS UNE RÉPONSE FAUSSE, et c'est tout
+        // l'objet du verdict en trois états : l'élève qui a tapé les bonnes
+        // lettres a LU LA FIGURE. On lui dit ce qui manque et on le laisse
+        // corriger — sans consommer un essai, parce qu'un professeur au bureau
+        // de l'élève ne compte pas une faute pour une paire de crochets.
+        const avis = jugerNotation(texte, item.answer);
+        if (avis.verdict === 'notation') { statut(avis.dire, 'dit'); return; }
+        conclure(avis.verdict === 'juste' ? item.answer : texte.trim(), null);
     }
 
     function conclure(valeur, element) {
@@ -222,9 +295,13 @@ export function mount(container, session, opts = {}) {
         statut(`C'était ${item.answer}.`);
     }
 
-    function statut(texte) {
+    function statut(texte, ton) {
         const el = container.querySelector('.cv-statut');
-        if (el) el.textContent = texte;
+        if (!el) return;
+        el.textContent = texte;
+        // La phrase qui corrige une notation n'est pas un murmure : elle prend
+        // la couleur d'un avertissement, parce que c'est ce qu'elle est.
+        el.className = `cv-statut${ton ? ' cv-statut--' + ton : ''}`;
     }
 
     // --- La démonstration du robot -------------------------------------------
@@ -233,8 +310,9 @@ export function mount(container, session, opts = {}) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
         const plateau = container.querySelector('.cv-plateau') || container;
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         // LE ROBOT NE VA PAS DROIT À LA RÉPONSE : il dit d'abord les deux
         // questions qui la donnent — d'où part le tracé, et est-il droit ou
@@ -242,14 +320,14 @@ export function mount(container, session, opts = {}) {
         // reconnaître ; entendre la règle, si.
         cursor.say('Je regarde OÙ commence et où finit le tracé : au centre ? sur le cercle ?',
             plateau);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say('Puis s\'il est DROIT ou COURBE — c\'est ce qui sépare la corde de l\'arc.',
             plateau);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         const cible = faire === 'cliquer'
             ? container.querySelector(`.cv-hit[data-el="${(item.meta.bon || 1) - 1}"]`)
             : (faire === 'ecrire' ? container.querySelector('#cv-champ')
@@ -258,8 +336,8 @@ export function mount(container, session, opts = {}) {
         // En écriture, le robot ÉCRIT : montrer le champ vide et dire la
         // réponse à côté laisserait croire qu'il n'y a rien à taper.
         if (faire === 'ecrire' && cible) cible.value = item.answer;
-        cursor.say(item.explanation || `C'est ${item.answer}.`, cible || plateau);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        cursor.say(enUneBulle(item.explanation, `C'est ${item.answer}.`), cible || plateau);
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

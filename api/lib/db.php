@@ -233,10 +233,31 @@ function requireStudent(): array
     );
     $stmt->execute([hashToken($token)]);
     $student = $stmt->fetch();
+    // ON REFERME LA LECTURE AVANT D'ÉCRIRE, et ce n'est pas de l'hygiène.
+    //
+    // Tant que le curseur reste ouvert, la connexion tient une lecture en
+    // cours ; l'écriture qui suit doit alors la faire MONTER en écriture, et
+    // SQLite refuse net — `SQLITE_BUSY_SNAPSHOT` — si une autre connexion a
+    // écrit entre-temps, sans honorer `busy_timeout`. C'est la ligne exacte
+    // qui tombait dans le journal quand trente élèves répondaient ensemble.
+    $stmt->closeCursor();
     if (!$student) {
         fail(401, 'bad_token', 'Jeton invalide.');
     }
-    db()->prepare('UPDATE students SET last_seen_at = ' . sqlMaintenant() . ' WHERE id = ?')->execute([$student['id']]);
+    // « VU À L'INSTANT » NE S'ÉCRIT PAS À CHAQUE REQUÊTE.
+    //
+    // C'était une écriture par requête et par élève — le battement de séance,
+    // chaque réponse, chaque synchronisation. Trente élèves en classe, c'est
+    // des centaines d'écritures par minute pour une donnée qui sert à dire
+    // « vu il y a 3 min » : une précision à la seconde n'y change RIEN, et
+    // c'est elle qui faisait la bousculade. Une fois toutes les vingt
+    // secondes suffit, et le direct du professeur ne s'en aperçoit pas — il
+    // bat lui-même toutes les dix.
+    $vu = strtotime((string) ($student['last_seen_at'] ?? '') . ' UTC');
+    if (!$vu || $vu < time() - 20) {
+        ecrireMalgreLaRuee('UPDATE students SET last_seen_at = ' . sqlMaintenant()
+            . ' WHERE id = ?', [$student['id']]);
+    }
     return $student;
 }
 
@@ -330,7 +351,17 @@ function applyCors(): void
  * empêcher qu'un client en boucle sature la base ; à remplacer par une vraie
  * solution si l'usage grandit.
  */
-function rateLimit(string $key, int $maxPerMinute = 60): void
+/**
+ * Compter un essai, et dire si le quota de la minute est dépassé.
+ *
+ * SÉPARÉE DE `rateLimit` PARCE QU'IL Y A DEUX FAÇONS DE REFUSER. L'API répond
+ * un 429 en JSON et s'arrête là ; l'administration, elle, est faite de pages
+ * HTML ordinaires que Rémy ouvre depuis le fond de la classe — lui servir un
+ * bloc JSON à la place de sa page de connexion, c'est le laisser devant un
+ * écran qu'il ne peut pas lire. Une seule mécanique de comptage, deux façons
+ * de le dire.
+ */
+function compterEtDepasse(string $key, int $maxPerMinute = 60): bool
 {
     // UN COMPTEUR PAR INSTALLATION, ET NON UN POUR TOUT LE SERVEUR.
     //
@@ -360,9 +391,151 @@ function rateLimit(string $key, int $maxPerMinute = 60): void
         }
     }
     $file = $dir . '/' . hash('sha256', $key) . '_' . date('YmdHi');
-    $count = is_file($file) ? (int) file_get_contents($file) : 0;
-    if ($count >= $maxPerMinute) {
+
+    // LIRE, AJOUTER ET ÉCRIRE SOUS UN SEUL VERROU.
+    //
+    // La version d'avant lisait le compteur, décidait, puis écrivait —
+    // `LOCK_EX` ne protégeait que l'écriture. Quarante requêtes lancées
+    // ensemble lisent donc toutes la même valeur AVANT qu'aucune n'ait écrit,
+    // et passent toutes. MESURÉ sur la page d'administration : quota de dix,
+    // 24 essais passés sur 40 au lieu de 10.
+    //
+    // Ce n'est pas un détail de concurrence théorique : c'est exactement la
+    // façon dont on force un mot de passe. On ouvre donc le fichier une fois,
+    // on le verrouille, et on ne le lâche qu'après avoir écrit.
+    $fh = @fopen($file, 'c+');
+    if ($fh === false) {
+        // Pas de compteur possible (disque plein, droits) : on laisse passer.
+        // Enfermer toute une classe dehors parce qu'un fichier temporaire ne
+        // s'ouvre pas serait un remède pire que le mal.
+        return false;
+    }
+    try {
+        if (!flock($fh, LOCK_EX)) {
+            return false;
+        }
+        $count = (int) stream_get_contents($fh);
+        if ($count >= $maxPerMinute) {
+            return true;
+        }
+        rewind($fh);
+        ftruncate($fh, 0);
+        fwrite($fh, (string) ($count + 1));
+        fflush($fh);
+        return false;
+    } finally {
+        @flock($fh, LOCK_UN);
+        @fclose($fh);
+    }
+}
+
+/** La même chose, pour l'API : on refuse en JSON et l'on s'arrête. */
+function rateLimit(string $key, int $maxPerMinute = 60): void
+{
+    if (compterEtDepasse($key, $maxPerMinute)) {
         fail(429, 'rate_limited', 'Trop de requêtes, réessayez dans une minute.');
     }
-    file_put_contents($file, (string) ($count + 1), LOCK_EX);
+}
+
+/**
+ * EST-CE LA BOUSCULADE, OU UNE VRAIE ERREUR ?
+ *
+ * Les deux bases le disent avec leurs mots : SQLite « database is locked »,
+ * MySQL « Lock wait timeout » ou « Deadlock found ». Dans les trois cas la
+ * requête était BONNE — elle est seulement arrivée pendant qu'une autre
+ * écrivait. C'est la seule famille d'échecs qu'on ait le droit de retenter.
+ */
+/**
+ * UNE LIGNE, ET LE CURSEUR REFERMÉ DERRIÈRE SOI.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * C'EST LA MOITIÉ DE LA CORRECTION DU « podium incomplet » DE RÉMY, et la plus
+ * contre-intuitive. Tant qu'une requête `SELECT` n'est pas refermée, la
+ * connexion tient une LECTURE EN COURS. L'écriture qui suit doit alors la faire
+ * monter en écriture — et SQLite refuse NET, `SQLITE_BUSY_SNAPSHOT`, si une
+ * autre connexion a écrit entre-temps. `busy_timeout` n'y change rien : il fait
+ * patienter une écriture qui attend un verrou, pas une lecture qui veut en
+ * devenir une.
+ *
+ * MESURÉ : avec `ecrireMalgreLaRuee` et ses six essais, quatre scores sur
+ * trente se perdaient encore — et ils se perdaient SIX FOIS CHACUN, parce que
+ * la lecture restée ouverte était toujours là au sixième essai. Un réessai ne
+ * peut rien contre un verrou qu'on tient soi-même.
+ *
+ * En PHP, une requête se referme quand on la détruit ou qu'on appelle
+ * `closeCursor()`. Une variable locale qui vit jusqu'au bout de la fonction ne
+ * se détruit pas : il faut le dire. D'où ce raccourci, pour que la bonne façon
+ * soit aussi la plus courte à écrire.
+ */
+function lireUne(string $sql, array $valeurs = [])
+{
+    $s = db()->prepare($sql);
+    $s->execute($valeurs);
+    $ligne = $s->fetch();
+    $s->closeCursor();
+    return $ligne;
+}
+
+function estUneBousculade(Throwable $e): bool
+{
+    $dit = $e->getMessage();
+    return str_contains($dit, 'database is locked')
+        || str_contains($dit, 'database table is locked')
+        || str_contains($dit, 'Lock wait timeout')
+        || str_contains($dit, 'Deadlock found');
+}
+
+/**
+ * ÉCRIRE MALGRÉ TRENTE ARDOISES QUI ÉCRIVENT EN MÊME TEMPS.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, après avoir lancé le défi avec sa classe : « est ce normal que tous les
+ * élèves n'aient pas eu le podium ? »
+ *
+ * NON, ET C'EST ICI QUE ÇA SE JOUAIT. `tools/trenteDUnCoup.mjs`, écrit pour
+ * cette remarque, envoie trente scores DANS LA MÊME SECONDE — ce qu'aucune
+ * autre mesure du dépôt ne faisait, parce que `testApi.php` interroge une
+ * requête à la fois et que les sondes d'écran ouvrent un navigateur ou deux. Le
+ * premier passage :
+ *
+ *     21 élèves sur 30 restés à la porte, 24 scores perdus,
+ *     6 au classement, et dans le journal du serveur :
+ *     PHP Fatal error: Uncaught PDOException: SQLSTATE[HY000]:
+ *     General error: 5 database is locked
+ *
+ * `PRAGMA busy_timeout = 5000` ÉTAIT DÉJÀ POSÉ, et il ne suffit pas : il fait
+ * patienter une écriture qui attend un verrou, mais PAS une lecture qui veut
+ * DEVENIR une écriture alors qu'une autre connexion a écrit entre-temps.
+ * SQLite rend alors `SQLITE_BUSY_SNAPSHOT` immédiatement, sans attendre une
+ * seule milliseconde — et c'est très exactement ce que fait une requête
+ * d'élève : elle lit son jeton, puis écrit `last_seen_at`.
+ *
+ * ON RETENTE DONC, COURT ET AVEC DU DÉSORDRE. Le désordre compte autant que
+ * l'attente : trente ardoises qui patienteraient toutes 50 ms se retrouveraient
+ * toutes 50 ms plus tard, et se bousculeraient de nouveau. Six essais, de 20 à
+ * 360 ms, couvrent une classe entière ; au-delà c'est que la base a un vrai
+ * problème, et on laisse l'erreur remonter plutôt que de faire attendre l'élève
+ * sans fin.
+ *
+ * @param string $sql      la requête, avec ses points d'interrogation
+ * @param array  $valeurs  ses valeurs
+ * @return PDOStatement    la requête exécutée
+ */
+function ecrireMalgreLaRuee(string $sql, array $valeurs = []): PDOStatement
+{
+    $essais = 6;
+    for ($n = 1; ; $n++) {
+        try {
+            $s = db()->prepare($sql);
+            $s->execute($valeurs);
+            return $s;
+        } catch (PDOException $e) {
+            if ($n >= $essais || !estUneBousculade($e)) {
+                throw $e;
+            }
+            usleep(random_int(20000, 60000) * $n);
+        }
+    }
 }

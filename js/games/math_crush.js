@@ -121,8 +121,55 @@ export class MathCrush extends BaseGame {
             this.canvas.style[p] = 'none';
         });
         this.container.appendChild(this.canvas);
-        
-        
+
+        // DEUX VRAIS BOUTONS SOUS LA CARTE DE FIN, ET PAS DES DESSINS.
+        //
+        // RÉMY, capture à l'appui : « là ca bloque, on peut appuyer sur la
+        // croix mais il faudrait un bouton quitter ou recommencer ».
+        //
+        // La carte de fin est peinte dans le canevas : elle est magnifique et
+        // elle ne répond à rien. L'élève qui vient de finir voit son score,
+        // son meilleur enchaînement, son nom dans le tableau — et aucune
+        // sortie, sauf une croix rouge en haut à droite de l'écran, qui n'est
+        // pas dans son regard et qui ressemble à « annuler ».
+        //
+        // DES BOUTONS DESSINÉS DANS LE CANEVAS AURAIENT COÛTÉ PLUS CHER ET
+        // VALU MOINS : il aurait fallu rendre les clics, et l'on n'aurait eu
+        // ni le foyer, ni le clavier, ni les 44 px de cible tactile que toute
+        // l'application garantit. Ce sont donc deux boutons du document,
+        // posés par-dessus — le conteneur est déjà `position: relative`.
+        this.finEl = document.createElement('div');
+        this.finEl.className = 'mc-fin';
+        this.finEl.hidden = true;
+        this.finEl.innerHTML = `<style>
+            .mc-fin { position: absolute; left: 0; right: 0; z-index: 3;
+                      display: flex; gap: 10px; justify-content: center; }
+            /* display: flex POSÉ PAR UNE CLASSE BAT LE hidden DU NAVIGATEUR,
+               qui n'est qu'un display: none de feuille par défaut. Sans cette
+               ligne, les deux boutons s'affichaient PENDANT la partie — mesuré
+               au premier tour de sonde, deux boutons dès la première seconde —
+               et rejouer() ne les refermait pas non plus. */
+            .mc-fin[hidden] { display: none; }
+            .mc-fin-btn {
+                font: 700 15px Outfit, Arial, sans-serif; padding: 10px 20px;
+                min-height: 44px; border-radius: 999px; cursor: pointer;
+                border: 1px solid #cbd5e1; background: #fff; color: #0f172a;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, .25);
+            }
+            .mc-fin-btn--neuf { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+        </style>
+        <button type="button" class="mc-fin-btn mc-fin-btn--neuf" data-rejouer>↺ Rejouer</button>
+        <button type="button" class="mc-fin-btn" data-quitter>Quitter</button>`;
+        this.finEl.querySelector('[data-rejouer]').onclick = () => this.rejouer();
+        // ON NE REFAIT PAS LA SORTIE, ON PREND CELLE QUI EXISTE. La croix de
+        // l'entête sait déjà tout ce qu'il faut faire en quittant un exercice ;
+        // un second chemin de sortie finirait par en oublier la moitié.
+        this.finEl.querySelector('[data-quitter]').onclick = () => {
+            const croix = document.getElementById('btn-close-game');
+            if (croix) croix.click();
+        };
+        this.container.appendChild(this.finEl);
+
         const onResize = () => {
             if (this.canvas && this.container) {
                 this.canvas.width = this.container.clientWidth || 800;
@@ -919,12 +966,13 @@ export class MathCrush extends BaseGame {
             `700 ${Math.round(hLigne * 0.62)}px Outfit, Arial, sans-serif`,
             this.record ? '#f59e0b' : '#64748b');
 
-        if (!lignes.length) return;
+        if (!lignes.length) { this.poserLesBoutons(cy + ch, h); return; }
         y += ch * 0.10;
         this.texteCentre('Meilleurs scores sur cet appareil', w / 2, y,
             `800 ${Math.round(hLigne * 0.55)}px Outfit, Arial, sans-serif`, '#94a3b8');
         y += hLigne * 0.9;
 
+        this.poserLesBoutons(cy + ch, h);
         const xg = cx + cw * 0.12, xd = cx + cw * 0.88;
         const police = `700 ${Math.round(hLigne * 0.66)}px Outfit, Arial, sans-serif`;
         lignes.forEach((e, i) => {
@@ -945,6 +993,47 @@ export class MathCrush extends BaseGame {
             y += hLigne;
         });
         ctx.textAlign = 'left';
+    }
+
+    /**
+     * LES BOUTONS SE POSENT SOUS LA CARTE, et non dedans : la carte se taille
+     * sur son contenu — cinq lignes de tableau ou aucune —, et des boutons
+     * glissés à l'intérieur se feraient recouvrir par la cinquième ligne. Le
+     * canevas fait exactement sa taille d'affichage (largeur en pixels de
+     * dessin = largeur en pixels de page), donc une ordonnée de dessin est une
+     * ordonnée de page, telle quelle.
+     */
+    poserLesBoutons(bas, h) {
+        if (!this.finEl) return;
+        this.finEl.hidden = false;
+        this.finEl.style.top = Math.round(Math.min(bas + 12, h - 56)) + 'px';
+    }
+
+    /**
+     * UNE AUTRE PARTIE, TOUT DE SUITE. Rémy : « il faudrait un bouton quitter
+     * ou recommencer ». On remet à zéro ce qu'une partie use — le score, le
+     * temps, les vies, l'enchaînement, la grille — et `finEnvoyee` avec, sans
+     * quoi le second score ne serait jamais enregistré.
+     */
+    rejouer() {
+        if (this.finEl) this.finEl.hidden = true;
+        this.score = 0;
+        this.vies = 3;
+        this.combo = 0;
+        this.meilleurCombo = 0;
+        this.successCount = 0;
+        this.timeLeft = 60;
+        this.particles = [];
+        this.scoreTexts = [];
+        this.currentPath = [];
+        this.isDragging = false;
+        this.tableau = [];
+        this.rang = 0;
+        this.record = false;
+        this.finEnvoyee = false;
+        this.initGrid();
+        this.generateTarget();
+        this.startGameLoop();
     }
 
     /**

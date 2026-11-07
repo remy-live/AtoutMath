@@ -17,6 +17,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerPyramideNombres, saisieInitialePN, estResoluePN, casesFaussesPN,
     prochaineCase, qualitePN, TAILLES_PN, DIFFICULTES_PN
@@ -78,7 +79,7 @@ class PyramideNombres extends BaseGame {
                 .pn-pave { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
                 .pn-touche {
                     width: clamp(26px, 6.5cqw, 44px); height: clamp(24px, 5cqh, 40px);
-                    border: 1px solid var(--border-soft, #cbd5e1); border-radius: 8px;
+                    border: 1px solid var(--border); border-radius: 8px;
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     font-weight: 800; font-size: clamp(13px, 2.8cqh, 19px);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -87,12 +88,28 @@ class PyramideNombres extends BaseGame {
                 .pn-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .pn-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
+                /* LE BOUTON DE LA SUITE, QUAND C'EST GAGNÉ. Rémy : « quand c'est
+                   bon et que l'élève a cliqué vérifié il faut dire qu'il a eu bon et
+                   proposer une nouvelle pyramide, j'ai une élève qui n'a pas compris
+                   qu'il fallait faire cela ». Les trois boutons étaient identiques :
+                   même fond blanc, même graisse, et deux d'entre eux ne répondaient
+                   plus. Mesuré (tools/pyramideQuandCestJuste.mjs) : rgb(255,255,255)
+                   pour « Vérifier » comme pour « Nouvelle pyramide ». */
+                .pn-btn--suite {
+                    background: var(--primary, #6d5cf6); color: #fff;
+                    border-color: var(--primary, #6d5cf6);
+                    transform: scale(1.06);
+                }
+                /* UN BOUTON VIVANT QUI NE RÉPOND PAS EST PIRE QUE PAS DE BOUTON :
+                   l'élève touche « Vérifier » une deuxième fois, il ne se passe
+                   rien, et elle en conclut que le logiciel est bloqué. */
+                .pn-btn:disabled { opacity: .4; cursor: default; }
                 .pn-note { min-height: 1.5em; text-align: center; font-weight: 600;
-                    font-size: clamp(11px, 2.4cqh, 15px); }
+                    font-size: clamp(11px, 2.4cqh, 15px); line-height: 1.35; }
                 .pn-note--ok { color: #2f855a; }
                 .pn-note--ko { color: #c53030; }
             </style>
@@ -121,7 +138,14 @@ class PyramideNombres extends BaseGame {
         });
 
         this.surTouche = (e) => {
-            if (this.fini || this.isDemo) return;
+            if (this.isDemo) return;
+            // ENTRÉE MÈNE PLUS LOIN QUAND C'EST GAGNÉ. Elle vient de taper dix
+            // nombres et de valider avec Entrée : la même touche doit lui
+            // donner la pyramide suivante, et pas rester muette.
+            if (this.fini) {
+                if (e.key === 'Enter') { this.poser(true); e.preventDefault(); }
+                return;
+            }
             if (/^[0-9]$/.test(e.key)) { this.taper(e.key); e.preventDefault(); }
             else if (e.key === 'Backspace') { this.taper('eff'); e.preventDefault(); }
             else if (e.key === 'Enter') { this.verifier(); e.preventDefault(); }
@@ -142,8 +166,38 @@ class PyramideNombres extends BaseGame {
         this.montre = null;
         this.vise = this.premiereVide();
         this.dessiner();
+        this.boutons(false);
         const q = qualitePN(this.p);
         this.note(`${q.aTrouver} cases à trouver. Chaque case est la SOMME des deux du dessous.`);
+    }
+
+    /**
+     * LES TROIS BOUTONS, SELON QU'IL RESTE QUELQUE CHOSE À FAIRE OU NON.
+     *
+     * RÉMY : « quand c'est bon et que l'élève a cliqué vérifié il faut dire
+     * qu'il a eu bon et proposer une nouvelle pyramide, j'ai une élève qui n'a
+     * pas compris qu'il fallait faire cela ».
+     *
+     * Le bouton existait depuis le début, à côté des deux autres et habillé
+     * comme eux. Pendant ce temps, « Vérifier » et « Un indice » ne faisaient
+     * plus rien — ils commencent tous les deux par `if (this.fini) return` —,
+     * et c'est sur « Vérifier » qu'on retouche quand on ne sait pas quoi faire.
+     * Elle a donc touché le bouton MORT, et a conclu que c'était bloqué.
+     *
+     * On éteint donc ce qui ne répond plus, on allume ce qu'il faut toucher, et
+     * l'on y met le foyer pour qu'Entrée suffise.
+     */
+    boutons(gagne) {
+        const neuf = this.container.querySelector('#pn-neuf');
+        const verif = this.container.querySelector('#pn-verif');
+        const aide = this.container.querySelector('#pn-aide');
+        if (verif) verif.disabled = gagne;
+        if (aide) aide.disabled = gagne;
+        if (!neuf) return;
+        neuf.classList.toggle('pn-btn--suite', gagne);
+        // PAS DE FOYER PENDANT LA DÉMONSTRATION : le robot joue tout seul, et
+        // déplacer le foyer sous le curseur de démonstration le fait sauter.
+        if (gagne && !this.isDemo) neuf.focus();
     }
 
     premiereVide() {
@@ -311,8 +365,13 @@ class PyramideNombres extends BaseGame {
         this.montre = null;
         this.dessiner();
         const q = qualitePN(this.p);
-        this.note(`🏆 Pyramide complète — sommet ${q.sommet}, base `
-            + `${q.base.join(' · ')}.`, 'ok');
+        // LA PHRASE DIT DEUX CHOSES, ET IL EN MANQUAIT UNE. « Pyramide
+        // complète » décrit la grille ; il faut d'abord dire à l'élève
+        // qu'ELLE a eu bon, puis où aller ensuite. Rémy : « il faut dire qu'il
+        // a eu bon et proposer une nouvelle pyramide ».
+        this.note(`🏆 Bravo, ta pyramide est JUSTE — sommet ${q.sommet}, base `
+            + `${q.base.join(' · ')}.<br>Touche « Nouvelle pyramide » pour en faire une autre.`, 'ok');
+        this.boutons(true);
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `Pyramide additive de ${this.p.n} étages (sommet ${q.sommet})`,
             expected: String(q.sommet), given: String(q.sommet),
@@ -336,15 +395,21 @@ class PyramideNombres extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.p) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
-        cur.say('Chaque case est la somme des deux du dessous. Mais on ne remplit pas '
-            + 'la pyramide dans l\'ordre : on cherche un TRIANGLE où deux cases sur trois '
-            + 'sont déjà là.', this.tableEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        // DEUX IDÉES, DONC DEUX BULLES : la règle des cases, puis le geste de
+        // recherche. Ensemble elles faisaient 156 caractères, soit trois lignes
+        // qu'on croit plantées.
+        cur.say('Chaque case est la somme des deux du dessous.', this.tableEl);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
+
+        cur.say('Je ne remplis pas dans l\'ordre : je cherche un TRIANGLE où deux cases '
+            + 'sur trois sont là.', this.tableEl);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let n = 0; n < 3; n++) {
             const c = prochaineCase(this.p, this.saisie);
@@ -357,7 +422,7 @@ class PyramideNombres extends BaseGame {
                 ? `En voilà un : ${c.calcul}. Vers le haut, on additionne.`
                 : `Et celui-ci descend : ${c.calcul}. Vers le bas, on SOUSTRAIT — c'est `
                     + 'la moitié du jeu que tout le monde oublie.', this.tableEl);
-            if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.between)) return fin();
             this.saisie[k][i] = c.valeur;
             this.montre = null;
             this.dessiner();

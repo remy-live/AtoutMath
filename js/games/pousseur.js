@@ -24,6 +24,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     MUR, BUT, DIRECTIONS, NIVEAUX_POUSSEUR, creerPousseur, zone, pousseesPossibles,
     pousser, estRange, pousseesRestantes, estPerdue, prochainePoussee, cheminAPied,
@@ -35,6 +36,9 @@ const COMPETENCE = 'defi.pousseur';
 class Pousseur extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'pousseur');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.niveau = Number(this.params.niveau) || 1;
         this.graine = this.params.seed || 'sk';
         this.aides = 0;
@@ -104,7 +108,9 @@ class Pousseur extends BaseGame {
                     box-sizing: border-box;
                 }
                 .sk-marche { cursor: pointer; }
-                .sk-marche:hover { background: #dbe3f5; }
+                @media (hover: hover) {
+                    .sk-marche:hover { background: #dbe3f5; }
+                }
                 .sk-caisse {
                     position: absolute; box-sizing: border-box;
                     width: calc(100% / var(--sk-l, 7)); height: calc(100% / var(--sk-h, 7));
@@ -145,13 +151,13 @@ class Pousseur extends BaseGame {
                 .sk-fl {
                     width: clamp(30px, 7cqh, 44px); height: clamp(30px, 7cqh, 44px);
                     border-radius: 10px; font-weight: 800; font-size: clamp(13px, 3cqh, 19px);
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main); cursor: pointer;
                 }
                 .sk-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .sk-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.3cqh, 14px);
                 }
@@ -532,28 +538,34 @@ class Pousseur extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        for (let i = 0; i < 60 && !this.jeu; i++) if (!await cur.pause(100)) return fin();
+        for (let i = 0; i < 60 && !this.jeu; i++) if (!await robot.pause(100)) return fin();
         if (!this.jeu) return fin();
-        if (!await cur.pause(400) || !this.isRunning) return fin();
+        if (!await robot.pause(400)) return fin();
 
-        cur.say('Le pousseur POUSSE, il ne tire jamais. Une caisse envoyée contre un mur ne '
-            + 'reviendra plus le long de ce mur ; dans un coin, elle ne bougera plus du tout.',
-        this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        cur.say('Le pousseur POUSSE, il ne tire jamais.', this.plateauEl);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
-        cur.say('Alors avant de pousser, la question n\'est pas « est-ce que ça avance ? » mais '
-            + '« est-ce que je pourrai revenir ? ». Le jeu te prévient dès que la position '
-            + 'devient perdue — mais la voir venir, c\'est tout l\'exercice.', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        // DEUX BULLES LÀ OÙ IL N'Y EN AVAIT QU'UNE : la règle de poussée et le sort de la
+        // caisse coincée sont deux idées, et une bulle de plus de 110 caractères se lit si
+        // lentement qu'on croit la démonstration plantée (js/core/activities/choice.js, COURT).
+        cur.say('Une caisse poussée contre un mur ne revient plus ; dans un coin, elle ne bouge plus.',
+            this.plateauEl);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
+
+        // « Le jeu te prévient dès que la position devient perdue » est parti : le robot
+        // montre le geste, il n'explique pas ce que le logiciel décide à la place de l'élève.
+        cur.say('Avant de pousser, je me demande : est-ce que je pourrai revenir ?', this.plateauEl);
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let i = 0; i < 4; i++) {
             const c = prochainePoussee(this.jeu.plan, this.jeu.table, this.caisses, this.pousseur);
             if (!c) break;
             this.montre = c.k;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 500) || !this.isRunning) return fin();
+            if (!await robot.pause(500)) return fin();
             const suite = pousser(this.caisses, c);
             this.caisses = suite.caisses;
             this.pousseur = suite.pousseur;
@@ -561,7 +573,7 @@ class Pousseur extends BaseGame {
             this.poussees++;
             this.montre = null;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 500) || !this.isRunning) return fin();
+            if (!await robot.pause(500)) return fin();
         }
         cur.say(`Il en faut ${this.jeu.mini} au minimum sur cet entrepôt-là. Le compteur te dit `
             + 'combien il en reste : s\'il monte, tu viens de faire un détour.', this.compteEl);
