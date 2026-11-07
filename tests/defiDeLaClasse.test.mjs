@@ -350,3 +350,104 @@ test('LA DERNIÈRE MANCHE NE SE TERMINE JAMAIS EN ENTRACTE', () => {
     assert.equal(tard.enPause, false,
         'la dernière manche se termine en jouant, jamais en entracte');
 });
+
+/* ═══════════════ CE QUE LA CLASSE FAIT ENSEMBLE ═════════════════════════════
+ *
+ * RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+ * ce style ». Trois façons de compter LA MÊME addition : le classement (qui
+ * existait), le but commun, et les deux équipes.
+ *
+ * CE QUE CES ÉPREUVES-CI GARDENT, et ce qu'elles ne peuvent pas garder : la
+ * PLOMBERIE — que les réglages descendent jusqu'à l'ardoise, que le score
+ * monte par le battement et non par une requête de plus, que la boîte aux
+ * lettres se vide à la fin. L'écran, lui, est gardé par `tools/defiEnsemble.mjs`,
+ * qui joue le défi à deux ardoises : une barre juste branchée nulle part ne
+ * ferait rien bouger, et toutes ces épreuves resteraient vertes.
+ */
+
+import { cumulDuDefi } from '../js/core/seanceDistante.js';
+import { poserLeScoreDuDefi, leScoreDuDefi } from '../js/core/scoreDuDefi.js';
+
+test('LE BUT ET LES ÉQUIPES DESCENDENT JUSQU\'À L\'ARDOISE', () => {
+    appliquerEtat(unDefi({ defi: { but: 300, equipes: true } }), 1_800_000_000);
+    const d = defiEnCours(1_800_000_010);
+    assert.equal(d.but, 300);
+    assert.equal(d.equipes, true);
+});
+
+test('ET UN DÉFI ORDINAIRE N\'EN A NI L\'UN NI L\'AUTRE', () => {
+    // ZÉRO VEUT DIRE « PAS DE BUT », et c'est ce qui distingue le défi au
+    // classement des deux autres. Un `undefined` qui passerait tel quel ferait
+    // une comparaison `undefined > 0` fausse par accident — on préfère le zéro.
+    appliquerEtat(unDefi(), 1_800_000_000);
+    const d = defiEnCours(1_800_000_010);
+    assert.equal(d.but, 0);
+    assert.equal(d.equipes, false);
+});
+
+test('LE TOTAL DE LA CLASSE ARRIVE PAR LE BATTEMENT, et repart avec lui', () => {
+    const avec = unDefi();
+    avec.defiCumul = { points: 214, participants: 27, equipes: [120, 94],
+                       moi: 1, noms: ['Les Bleus', 'Les Orange'],
+                       record: { points: 287, le: null } };
+    appliquerEtat(avec, 1_800_000_000);
+    assert.equal(cumulDuDefi().points, 214);
+    assert.equal(cumulDuDefi().record.points, 287);
+    // ET IL S'EFFACE QUAND LE SERVEUR N'EN PARLE PLUS. Hors défi, le serveur ne
+    // calcule rien — garder le dernier total ferait monter une barre pendant
+    // un défi où personne n'a encore marqué.
+    appliquerEtat(unDefi(), 1_800_000_000);
+    assert.equal(cumulDuDefi(), null);
+});
+
+test('LA BOÎTE AUX LETTRES DU SCORE SE POSE ET SE VIDE', () => {
+    poserLeScoreDuDefi({ bonnes: 3, total: 5, ms: 1200, points: 3 });
+    assert.equal(leScoreDuDefi().bonnes, 3);
+    // `undefined` ET NON `null` : c'est ce que `JSON.stringify` laisse TOMBER
+    // du corps de la requête. Avec `null`, le serveur recevrait une clé `defi`
+    // à chaque battement hors défi, et devrait apprendre à l'ignorer.
+    poserLeScoreDuDefi(null);
+    assert.equal(leScoreDuDefi(), undefined);
+});
+
+test('LE BATTEMENT EMPORTE LE SCORE — sans requête de plus', () => {
+    // LE CŒUR DE LA DÉCISION : trente ardoises qui ouvriraient une requête à
+    // chaque question, c'est la bousculade qu'on vient de corriger au serveur
+    // (voir `api/lib/db.php`), refaite exprès. Le score monte donc DANS la
+    // requête du battement, qui passait de toute façon.
+    const sync = readFileSync('js/core/sync.js', 'utf8');
+    assert.match(sync, /apiEleve\('\/session',\s*\n?\s*\{ ecran: ceQuOnVoit\(\), defi: leScoreDuDefi\(\) \}\)/,
+        'le battement ne porte plus le score du défi : la barre de la classe '
+        + 'ne bougera pas, et rien ne le dira');
+    // ET AUCUNE ROUTE À PART N'EST APPARUE À CÔTÉ.
+    assert.ok(!/\/defi\/cumul|\/defi\/total/.test(sync),
+        'une requête de plus a été ajoutée pour le total de la classe');
+});
+
+test('L\'ÉCRAN DU DÉFI POSE SON SCORE, ET LE RETIRE À LA FIN', () => {
+    // POSÉ LÀ OÙ PASSENT LES DEUX FAÇONS DE RÉPONDRE — le choix et le pari.
+    const bloc = /const enchainer = \(attente, passable = false\) => \{[\s\S]*?\n        \};/
+        .exec(DEFI_UI);
+    assert.ok(bloc, 'le bloc `enchainer` a changé de forme');
+    assert.match(bloc[0], /annoncerLeScore\(\)/,
+        'le score n\'est plus posé après une réponse : la barre de la classe '
+        + 'restera plate pendant tout le défi');
+    // ET RETIRÉ À LA FIN. Le laisser ferait réécrire la même ligne toutes les
+    // dix secondes pendant les cinq minutes d'affichage du tableau.
+    const fin = /const terminer = async \(\) => \{[\s\S]*?\n    \};/.exec(DEFI_UI);
+    assert.match(fin[0], /poserLeScoreDuDefi\(null\)/,
+        'la boîte aux lettres n\'est pas vidée : trente ardoises réécriront '
+        + 'leur score toutes les dix secondes pendant cinq minutes');
+});
+
+test('LA BANDE DE LA CLASSE SAIT SE CACHER — [hidden] ne suffit jamais', () => {
+    // LE PIÈGE, POUR LA TROISIÈME FOIS CETTE SEMAINE : `[hidden]` a une
+    // spécificité de ZÉRO, et le `display: flex` de la bande l'emporte sans un
+    // mot. Sans cette règle, un défi au classement garderait une bande vide
+    // sous sa jauge — et une sonde qui lirait la propriété `hidden` dirait que
+    // tout va bien.
+    const css = lireFeuille('css/modules.css');
+    const regle = corpsDeLaRegle(css, '.defi-ensemble[hidden]');
+    assert.ok(regle, 'rien ne cache la bande de la classe quand elle est vide');
+    assert.equal(valeurDe(regle, 'display'), 'none');
+});

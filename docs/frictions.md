@@ -6831,3 +6831,45 @@ plus d'un.**
   dire ceux qui sont lus sans être écrits. Je l'ai faite à la main ce
   jour-là ; elle devrait vivre dans `tools/nouvelExercice.mjs`, qui est déjà
   le filet des quatre pièges.
+
+**Une sonde qui lance un défi par-dessus un autre mesure le mauvais écran** — 7 novembre
+
+- *Ce que je voulais faire* : mesurer la barre de la classe et les deux équipes
+  sur l'écran de l'élève. La sonde lançait trois défis à la suite. Le deuxième
+  partait pendant que le premier tournait encore : l'ardoise voit alors le
+  nouveau défi tout de suite — `defiEnCours()` le rend —, mais la carte de jeu
+  déjà montée ne se démonte pas, et **aucune annonce ne paraît**. La sonde a
+  donc accusé l'annonce de ne pas s'afficher, trois lancements de suite, alors
+  que c'était elle qui ne laissait pas le défi finir. Aucun professeur ne lance
+  deux défis dans la même minute ; aucune épreuve ne mesurait ce cas.
+- *Ce qui a coûté* : trois lancements de sonde à deux minutes et demie pièce,
+  plus deux fausses pistes dans `appliquerEtat` et `terminer` — et le vrai
+  coupable était un `o.secondes || 30` dans la sonde elle-même, qui
+  transformait `secondes: 0` (l'arrêt) en relance de trente secondes.
+- *Combien de fois* : | (première pour l'enchaînement, mais le `||` sur un
+  nombre dont zéro est une commande, c'est la troisième du dépôt)
+- *Ce qui manque* : deux choses, et la première est la moins chère — que
+  `sonde.mjs` porte un `attendreQueLeDefiFinisse(page)` qui batte jusqu'à ce
+  qu'il ne reste plus un seul `.defi-voile`, ET QUI DISE ce qui reste quand il
+  abandonne (`{voiles, defi, tableau}` m'a donné la réponse en un lancement, là
+  où trois n'avaient rien dit). La seconde : que `lancerLeDefi` refuse de
+  lancer par-dessus un défi qui tourne, ou au moins que l'ardoise démonte sa
+  carte quand le début change.
+
+**`s.photo` découpe la page de la sonde, pas celle de l'élève** — 7 novembre
+
+- *Ce que je voulais faire* : regarder la barre de la classe sur l'ardoise de
+  l'élève. `s.photo('.defi-carte--jeu', …)` cherche dans la page du
+  PROFESSEUR — l'élève vit dans un autre contexte de navigateur, ouvert à la
+  main par la sonde. Le découpage échouait donc, et comme l'appel portait un
+  `.catch(() => {})` recopié d'une autre sonde, **il échouait en silence** :
+  deux lancements complets avant de s'apercevoir qu'aucune image n'avait jamais
+  été écrite.
+- *Ce qui a coûté* : deux lancements à deux minutes et demie, et surtout un
+  verdict « TOUT PASSE » sans la seule chose que je voulais voir.
+- *Combien de fois* : | (première, mais toutes les sondes à plusieurs ardoises
+  s'y exposent : `defiEnManches`, `classeVirtuelle`, `lesDeuxMoities`)
+- *Ce qui manque* : que `sonde.mjs` offre `photoDe(page, sel, fichier)` — la
+  même chose que `s.photo`, mais sur la page qu'on lui donne —, et qu'elle
+  CRIE quand le sélecteur ne désigne rien, comme `doitExister` le fait déjà.
+  Une photo ratée en silence est pire qu'une photo ratée.

@@ -41,7 +41,8 @@
 // il identifie le défi — dans `sessionStorage`, pour qu'un rechargement de page
 // au milieu de la minute ne le redonne pas non plus.
 
-import { defiEnCours, tableauDuDefi } from '../core/seanceDistante.js';
+import { cumulDuDefi, defiEnCours, tableauDuDefi } from '../core/seanceDistante.js';
+import { poserLeScoreDuDefi } from '../core/scoreDuDefi.js';
 import { state } from '../core/state.js';
 import { apiEleve, rafraichirSeance } from '../core/sync.js';
 import { makeRng } from '../core/ids.js';
@@ -238,13 +239,142 @@ export function questionDuDefi(exo, graine, n) {
     } catch (e) { return null; }
 }
 
+/* -------------------------------------- Ce que la classe fait ensemble --- */
+
+// RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+// ce style ». Trois façons de compter la même addition, et c'est tout :
+//
+//   LE CLASSEMENT   — chacun pour soi, et le podium à la fin. C'est l'existant.
+//   LE BUT COMMUN   — une seule barre, celle de toute la classe. Personne ne
+//                     perd : l'élève lent pousse la même barre que les autres.
+//   LES DEUX ÉQUIPES — la compétition reste, mais entre GROUPES.
+//
+// LES TROIS SORTENT DU MÊME TOTAL, additionné au serveur (`cumulDuDefi`). Trois
+// comptes séparés auraient fini par ne plus dire la même chose.
+//
+// ── ET ON LE MONTRE PENDANT, PAS SEULEMENT À LA FIN ───────────────────────
+//
+// Une barre qui monte sous les yeux de trente élèves, c'est tout le mécanisme ;
+// à la fin, ce n'est plus qu'un résultat. LE TOTAL ARRIVE PAR LE BATTEMENT,
+// toutes les dix secondes : il est donc EN RETARD d'au plus dix secondes, et
+// c'est voulu — trente ardoises qui demanderaient le total à chaque question,
+// c'est la bousculade qu'on vient de corriger dans `api/lib/db.php`. Une barre
+// qui monte par paliers de dix secondes monte quand même.
+
+/** La part d'une barre, en pourcentage, jamais au-delà de cent. */
+const part = (fait, sur) => `${Math.max(0, Math.min(100, (fait / Math.max(1, sur)) * 100)).toFixed(1)}%`;
+
+/** Un nombre de points sûr, quel que soit ce que le serveur a envoyé. */
+const pts = (v) => Math.max(0, Math.round(Number(v) || 0));
+
+/**
+ * LA BARRE DU BUT COMMUN : un seul nombre, celui de toute la classe.
+ *
+ * ON ÉCRIT LE BUT À CÔTÉ DU TOTAL — « 214 / 300 » — parce qu'une barre seule ne
+ * dit pas combien il manque, et que c'est la seule question que la classe se
+ * pose pendant la dernière manche.
+ */
+function barreDuBut(cumul, but) {
+    const total = pts(cumul.points);
+    const vise = Math.max(1, Math.round(but));
+    const atteint = total >= vise;
+    return `<div class="defi-but${atteint ? ' defi-but--atteint' : ''}">
+            <div class="defi-but-ligne">
+                <span>${atteint ? '🎉 OBJECTIF ATTEINT !' : '🤝 LA CLASSE'}</span>
+                <span class="defi-but-pts"><b>${total}</b> / ${vise}</span>
+            </div>
+            <div class="defi-barre"><div class="defi-jauge defi-jauge--but"
+                 style="width:${part(total, vise)}"></div></div>
+        </div>`;
+}
+
+/**
+ * LES DEUX BARRES DES ÉQUIPES, à l'échelle de celle qui mène.
+ *
+ * POURQUOI PAS À L'ÉCHELLE DU BUT : sans but, il n'y a pas d'échelle absolue —
+ * et avec un but, deux barres qui montent lentement vers trois cents ne
+ * montrent plus l'ÉCART, qui est la seule chose qui compte quand on joue à deux
+ * équipes. L'équipe qui mène occupe donc toute la largeur, et l'autre se lit
+ * par rapport à elle : on voit d'un coup d'œil si c'est serré.
+ *
+ * ET SON ÉQUIPE EST MARQUÉE. Le serveur partage la classe une ligne sur deux
+ * (voir `equipeDeLEleve`) : l'élève n'a rien choisi, il doit donc pouvoir lire
+ * de quel côté il pousse — sans quoi les deux barres ne le concernent pas.
+ */
+function barresDesEquipes(cumul) {
+    const scores = [pts((cumul.equipes || [])[0]), pts((cumul.equipes || [])[1])];
+    const noms = cumul.noms || ['Les Bleus', 'Les Orange'];
+    const haut = Math.max(1, scores[0], scores[1]);
+    const mene = scores[0] === scores[1] ? -1 : (scores[0] > scores[1] ? 0 : 1);
+    return '<div class="defi-eqs">' + scores.map((p, i) => `
+            <div class="defi-eq defi-eq--${i}${cumul.moi === i ? ' defi-eq--moi' : ''}">
+                <div class="defi-but-ligne">
+                    <span>${i === mene ? '👑 ' : ''}${echapper(String(noms[i] || ''))}${
+    cumul.moi === i ? ' <small>ton équipe</small>' : ''}</span>
+                    <span class="defi-but-pts"><b>${p}</b></span>
+                </div>
+                <div class="defi-barre"><div class="defi-jauge"
+                     style="width:${part(p, haut)}"></div></div>
+            </div>`).join('') + '</div>';
+}
+
+/**
+ * CE QU'ON MONTRE PENDANT LE DÉFI, ou rien du tout.
+ *
+ * RIEN, POUR UN DÉFI ORDINAIRE : le classement n'a pas d'état intermédiaire à
+ * donner — on ne va pas afficher un podium qui change toutes les dix secondes
+ * pendant que l'élève calcule — et la question a besoin de toute la place.
+ */
+function ensembleDuDefi(cumul, d) {
+    if (!cumul) return '';
+    // LES DEUX RÉGLAGES S'ADDITIONNENT PLUTÔT QUE DE S'EXCLURE : le meneur
+    // n'en propose qu'un à la fois, mais rien n'interdit de viser trois cents
+    // points EN DEUX ÉQUIPES — et si les deux sont posés, l'élève doit voir
+    // les deux, sinon la moitié de la règle qu'on vient de lui annoncer a
+    // disparu de son écran.
+    return (d.but > 0 ? barreDuBut(cumul, d.but) : '')
+        + (d.equipes ? barresDesEquipes(cumul) : '');
+}
+
+/**
+ * LE RECORD DE LA CLASSE, en une ligne, ou rien s'il n'y en a pas encore.
+ *
+ * RÉMY : « Le défi ca cartonne, des idées dans ce style ». De toutes les idées
+ * de cette série, c'est la seule où PERSONNE n'a rien à perdre : c'est la classe
+ * contre elle-même, de semaine en semaine, et le dernier du podium y pèse
+ * autant que le premier.
+ */
+function ligneDuRecord(record) {
+    if (!record || !record.points) return '';
+    return `<div class="defi-record">🏅 record de la classe : <b>${pts(record.points)}</b></div>`;
+}
+
 async function jouer(defi) {
     enCours = true;
     const exo = getExerciseById(defi.exo);
+    // ── ON DIT LA RÈGLE AVANT QUE ÇA COMMENCE ────────────────────────────
+    //
+    // Un but commun, deux équipes : ces deux-là changent ce que l'élève doit
+    // faire de ses points — pousser une barre, ou pousser SA couleur. Les
+    // découvrir en voyant une barre apparaître au milieu de la première
+    // question, c'est les découvrir trop tard. Les douze secondes d'annonce
+    // sont faites pour ça, et elles ne servaient encore qu'à dire le titre.
+    const cumul = cumulDuDefi();
+    const regles = [
+        defi.but > 0
+            ? `🎯 Objectif de la classe : <b>${defi.but}</b> points ensemble`
+            : '',
+        defi.equipes
+            ? `🤝 Deux équipes${cumul && cumul.noms && cumul.moi !== undefined
+                ? ` — tu es dans <b>${echapper(String(cumul.noms[cumul.moi] || ''))}</b>` : ''}`
+            : ''
+    ].filter(Boolean).map((t) => `<div class="defi-regle">${t}</div>`).join('');
     const voile = plateau(`
         <div class="defi-carte">
             <div class="defi-titre">⚡ DÉFI DE LA CLASSE</div>
             <div class="defi-exo">${echapper(exo ? exo.title : defi.exo)}</div>
+            ${regles}
+            ${ligneDuRecord(cumul && cumul.record)}
             <div class="defi-compte" data-compte>${Math.max(1, defi.avant)}</div>
             <div class="defi-sous">Tout le monde commence en même temps.</div>
         </div>`, 'defi-voile--annonce');
@@ -290,6 +420,11 @@ async function questionner(defi, exo) {
             <div class="defi-titre">⚡ DÉFI DE LA CLASSE<span class="defi-manche"
                  data-manche hidden></span></div>
             <div class="defi-barre"><div class="defi-jauge" data-jauge></div></div>
+            <!-- CE QUE LA CLASSE FAIT ENSEMBLE — la barre du but commun, ou les
+                 deux équipes. Vide et caché quand c'est un défi ordinaire : le
+                 classement n'a rien à montrer en direct, et il ne doit pas
+                 prendre la place de la question. -->
+            <div class="defi-ensemble" data-ensemble hidden></div>
             <div class="defi-haut">
                 <!-- LE TEMPS TIENT EN UN SEUL ÉLÉMENT, et c'est la photo qui
                      l'a dit : dans un « justify-content: space-between », le
@@ -345,6 +480,22 @@ async function questionner(defi, exo) {
     // pendant qu'on regarde son écart.
     let libererLaTouche = null;
 
+    // ── CE QUE LE BATTEMENT EMPORTE, ET POURQUOI PAS UNE REQUÊTE À PART ──
+    //
+    // La barre de la classe et les deux équipes ont besoin du score des TRENTE
+    // pendant que le défi tourne — alors que chacun n'envoyait le sien qu'à la
+    // fin. On ne crée pas de requête pour autant : on POSE le score dans une
+    // boîte aux lettres (`core/scoreDuDefi.js`) que le battement vide toutes
+    // les dix secondes, là où voyage déjà l'écran de l'élève.
+    //
+    // ET ON LE POSE TOUT DE SUITE, À ZÉRO : c'est ce qui fait compter cet élève
+    // parmi les participants dès la première lecture du professeur. Sans cela,
+    // une classe de trente s'afficherait à deux ou trois pendant les premières
+    // dizaines de secondes de chaque défi — le temps que les plus rapides
+    // marquent leur premier point.
+    const annoncerLeScore = () => poserLeScoreDuDefi({ bonnes, total, ms, points });
+    annoncerLeScore();
+
     // ── L'ENTRACTE, ET POURQUOI IL NE DÉMONTE RIEN ───────────────────────
     //
     // Entre deux manches, on cache les questions et l'on montre un décompte.
@@ -362,6 +513,24 @@ async function questionner(defi, exo) {
         if (suivante) suivante.textContent = String(Math.min(d.manches, d.manche + 1));
     };
 
+    // ── LA BARRE DE LA CLASSE, REPEINTE SEULEMENT QUAND ELLE CHANGE ──────
+    //
+    // `tic` passe QUATRE FOIS PAR SECONDE, et réécrire le HTML à chaque tour
+    // rallumerait la transition CSS de la jauge en boucle : la barre
+    // tremblerait sur place au lieu de monter. On compare donc le texte produit
+    // au précédent — le total ne change que toutes les dix secondes, de toute
+    // façon, puisqu'il arrive par le battement.
+    let ensembleEcrit = null;
+    const peindreLEnsemble = (d) => {
+        const zone = el('[data-ensemble]');
+        if (!zone) return;
+        const html = ensembleDuDefi(cumulDuDefi(), d);
+        if (html === ensembleEcrit) return;
+        ensembleEcrit = html;
+        zone.innerHTML = html;
+        zone.hidden = !html;
+    };
+
     // LE TEMPS RESTANT SE RELIT SUR L'HORLOGE DU SERVEUR À CHAQUE SECONDE, et
     // ne se décompte pas tout seul : un onglet mis en arrière-plan fige les
     // minuteurs du navigateur, et l'élève se retrouverait avec trente secondes
@@ -376,6 +545,10 @@ async function questionner(defi, exo) {
             bandeau.hidden = d.manches <= 1;
             if (d.manches > 1) bandeau.textContent = ` · manche ${d.manche}/${d.manches}`;
         }
+        // ET ELLE RESTE VISIBLE PENDANT L'ENTRACTE — c'est même là qu'elle
+        // sert le plus : les vingt secondes de pause sont exactement le moment
+        // où le professeur dit « il nous manque quarante points ».
+        peindreLEnsemble(d);
         if (d.enPause !== enEntracte) { enEntracte = d.enPause; basculerEntracte(d); }
         if (enEntracte) {
             const c = el('[data-pause-compte]');
@@ -396,6 +569,12 @@ async function questionner(defi, exo) {
 
     const terminer = async () => {
         clearInterval(tic);
+        // LA BOÎTE AUX LETTRES SE VIDE ICI. Le score final part juste en
+        // dessous par sa propre route ; le laisser dedans ferait réécrire la
+        // même ligne toutes les dix secondes pendant les cinq minutes
+        // d'affichage du tableau — trente ardoises, cent-cinquante écritures
+        // pour rien, et c'est exactement la bousculade qu'on vient de corriger.
+        poserLeScoreDuDefi(null);
         if (clavier) { document.removeEventListener('keydown', clavier); clavier = null; }
         if (libererLaTouche) { libererLaTouche(); libererLaTouche = null; }
         voile.remove();
@@ -488,6 +667,9 @@ async function questionner(defi, exo) {
          */
         const enchainer = (attente, passable = false) => {
             el('[data-bonnes]').textContent = String(enPoints ? points : bonnes);
+            // ET LE BATTEMENT L'EMPORTERA : c'est le seul endroit par lequel
+            // passent les DEUX façons de répondre, le choix et le pari.
+            annoncerLeScore();
             let fait = false;
             let ecoute = null;
             const liberer = () => {
@@ -706,6 +888,69 @@ async function questionner(defi, exo) {
 // l'heure — et c'est de ce tableau-là que Rémy parle ensuite à sa classe.
 let tableauOuvert = null;
 
+/**
+ * CE QUE LA CLASSE A FAIT ENSEMBLE, SUR LE TABLEAU DE FIN.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * IL PASSE AVANT LE PODIUM, et ce n'est pas un choix de mise en page : quand il
+ * y a un but commun, le résultat de la classe EST le résultat du défi — le
+ * podium n'en est plus que le détail. Rémy veut une classe qui se parle après le
+ * défi ; trois prénoms en haut de l'écran ne font parler que trois élèves.
+ *
+ * LE RECORD, LUI, S'AFFICHE TOUJOURS — même dans un défi au classement. C'est
+ * le total de la classe, il existe dans les trois façons de jouer, et c'est lui
+ * qui fait revenir la semaine suivante.
+ */
+function verdictDEnsemble(t) {
+    const total = pts(t.total);
+    const but = Math.max(0, Math.round(Number(t.but) || 0));
+    const bouts = [];
+    if (but > 0) {
+        const gagne = total >= but;
+        const manque = but - total;
+        bouts.push(`<div class="defi-but${gagne ? ' defi-but--atteint' : ''}">
+            <div class="defi-but-ligne">
+                <span>${gagne ? '🎉 GAGNÉ !' : '🤝 LA CLASSE'}</span>
+                <span class="defi-but-pts"><b>${total}</b> / ${but}</span>
+            </div>
+            <div class="defi-barre"><div class="defi-jauge defi-jauge--but"
+                 style="width:${part(total, but)}"></div></div>
+            <div class="defi-sous">${gagne
+        ? 'Objectif atteint, et c\'est toute la classe qui l\'a atteint.'
+        // ON DIT CE QUI MANQUAIT, PAS QU'ON A PERDU. Un but commun raté reste
+        // un total que la classe a construit à trente ; le nombre qui manque
+        // est une raison de recommencer, « perdu » n'en est pas une.
+        : `Il manquait ${manque} point${manque > 1 ? 's' : ''}.`}</div>
+        </div>`);
+    }
+    if (t.parEquipes) {
+        const e = [pts((t.equipesPoints || [])[0]), pts((t.equipesPoints || [])[1])];
+        const noms = t.noms || ['Les Bleus', 'Les Orange'];
+        bouts.push(barresDesEquipes({ equipes: e, noms, moi: t.maEquipe }));
+        bouts.push(`<div class="defi-sous">${e[0] === e[1]
+            ? 'Égalité parfaite.'
+            : `${echapper(String(noms[e[0] > e[1] ? 0 : 1] || ''))} gagnent ce défi.`}</div>`);
+    }
+    // ── LE RECORD : BATTU, OU À QUELLE DISTANCE ──────────────────────────
+    const ancien = t.record && t.record.points ? pts(t.record.points) : 0;
+    if (total > 0) {
+        bouts.push(!ancien
+            // LE PREMIER DÉFI SUR CET EXERCICE N'A RIEN BATTU, et le dire
+            // ainsi — « le record est à vous » — vaut mieux que de masquer la
+            // ligne : c'est la fois où l'on apprend que le record existe.
+            ? `<div class="defi-record defi-record--neuf">🏅 Premier défi sur cet exercice :
+                le record de la classe est à <b>${total}</b>.</div>`
+            : (total > ancien
+                ? `<div class="defi-record defi-record--neuf">🏅 NOUVEAU RECORD !
+                    <b>${total}</b> <small>— l'ancien était à ${ancien}</small></div>`
+                : `<div class="defi-record">🏅 ${total} points — le record de la classe
+                    est à <b>${ancien}</b>${total === ancien ? '' : `, il manquait
+                    ${ancien - total}`}.</div>`));
+    }
+    return bouts.join('');
+}
+
 function corpsDuTableau(t, monScoreLocal) {
     // LE TABLEAU D'UN DÉFI D'ESTIMATION SE LIT EN POINTS. Le serveur classe
     // déjà sur eux ; afficher « 3 » là où l'élève a marqué 274 donnerait un
@@ -742,6 +987,7 @@ function corpsDuTableau(t, monScoreLocal) {
     return `
         <div class="defi-carte defi-carte--fin">
             <div class="defi-titre">🏆 LE DÉFI EST FINI</div>
+            ${verdictDEnsemble(t)}
             <div class="defi-podium">${podium || '<div class="defi-moi">Personne n’a marqué.</div>'}</div>
             ${moi}
             <button type="button" class="defi-valider" data-fermer>On continue !</button>

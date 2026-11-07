@@ -510,6 +510,30 @@ function handleSession(): void
     if (array_key_exists('ecran', $corps)) {
         noterLEcran((string) $student['id'], $corps['ecran']);
     }
+    // ── ET SON SCORE DE DÉFI EN COURS, PAR LE MÊME CHEMIN ─────────────────
+    //
+    // RÉMY : « Le défi ca cartonne, des idées dans ce style ». La barre de la
+    // classe et les deux équipes demandent de connaître le score de trente
+    // élèves PENDANT le défi — alors que chacun n'envoyait le sien qu'à la fin.
+    //
+    // TRENTE ARDOISES QUI ÉCRIRAIENT TOUTES LES TROIS SECONDES, ce serait la
+    // bousculade qu'on vient de corriger, refaite exprès. On monte donc sur le
+    // battement qui existe : il passe toutes les dix secondes de toute façon,
+    // et le score tient en quatre nombres. Zéro requête de plus.
+    //
+    // `enregistrerScoreDefi` GARDE LE MEILLEUR, donc un battement en retard ne
+    // peut pas faire RECULER un score — et c'est ce qui rend l'envoi répété
+    // sans danger.
+    if (is_array($corps['defi'] ?? null)) {
+        $d = $corps['defi'];
+        enregistrerScoreDefi(
+            $student,
+            (int) ($d['bonnes'] ?? 0),
+            (int) ($d['total'] ?? 0),
+            (int) ($d['ms'] ?? 0),
+            isset($d['points']) ? (int) $d['points'] : null
+        );
+    }
     respond(['session' => etatDeSeance($student)]);
 }
 
@@ -1769,7 +1793,8 @@ function handleTeacherClass(): void
             // s'en tient d'ailleurs à `defi_fin`, donc il s'éteint bien.
             db()->prepare('UPDATE classes SET defi_mode = NULL,
                                   defi_debut = NULL, defi_fin = NULL,
-                                  defi_manches = NULL, defi_duree = NULL
+                                  defi_manches = NULL, defi_duree = NULL,
+                                  defi_but = NULL, defi_equipes = 0
                            WHERE id = ?')->execute([$classe['id']]);
             respond(['ok' => true, 'defi' => null, 'dit' => 'Défi arrêté.']);
         }
@@ -1794,6 +1819,23 @@ function handleTeacherClass(): void
         // CINQ AU PLUS, et la durée donnée est celle d'UNE manche : « 3 × 40 s »
         // se lit tout seul, « deux minutes coupées en trois » non.
         $manches = max(1, min(5, (int) ($body['manches'] ?? 1)));
+        // ── COMMENT ON COMPTE : classement, but commun, ou deux équipes ──
+        //
+        // RÉMY : « Le défi ca cartonne, des idées dans ce style ». Un
+        // classement récompense les RAPIDES ; le but commun est son contraire
+        // exact, et les deux équipes le tiers chemin. Les trois sortent de la
+        // même addition et ne diffèrent que par ce qu'on en montre.
+        //
+        // LE BUT EST BORNÉ : zéro veut dire « pas de but », et au-delà de
+        // cinquante mille on ne compte plus, on décore.
+        //
+        // ET `'auto'` VEUT DIRE « CALCULE-LE » : le record de cette classe sur
+        // cet exercice, plus dix pour cent. Voir `butDuDefi`, qui dit aussi
+        // pourquoi il rend zéro quand il n'y a pas encore de record.
+        $but = ($body['but'] ?? 0) === 'auto'
+            ? butDuDefi($classe, $exo)
+            : max(0, min(50000, (int) ($body['but'] ?? 0)));
+        $equipes = !empty($body['equipes']) ? 1 : 0;
         // LA PAUSE ENTRE DEUX MANCHES vit au serveur comme le reste des
         // instants : l'ardoise la lit, elle ne la décide pas.
         $pause = $manches > 1 ? DEFI_PAUSE : 0;
@@ -1835,16 +1877,37 @@ function handleTeacherClass(): void
         // pas, le défi s'effacerait des ardoises au milieu de la dernière.
         $fin = $debut + $manches * $secondes + ($manches - 1) * $pause;
         db()->prepare('UPDATE classes SET defi_exo = ?, defi_graine = ?, defi_mode = ?,
-                              defi_debut = ?, defi_fin = ?, defi_manches = ?, defi_duree = ?
+                              defi_debut = ?, defi_fin = ?, defi_manches = ?, defi_duree = ?,
+                              defi_but = ?, defi_equipes = ?
                        WHERE id = ?')
-            ->execute([$exo, $graine, $mode, $debut, $fin, $manches, $secondes, $classe['id']]);
+            ->execute([$exo, $graine, $mode, $debut, $fin, $manches, $secondes,
+                       $but ?: null, $equipes, $classe['id']]);
+        // ── CE QU'ON LUI RÉPOND, ET POURQUOI C'EST PLUS QU'UNE POLITESSE ──
+        //
+        // QUAND IL LAISSE LE SERVEUR CALCULER LE BUT, IL DOIT LIRE LE NOMBRE :
+        // c'est celui qu'il va annoncer à la classe à voix haute dans les douze
+        // secondes qui suivent. Et quand il n'y a pas encore de record, le dire
+        // est la seule façon qu'il comprenne pourquoi aucune barre n'apparaît —
+        // sans cette phrase, il croirait le réglage cassé, et c'est exactement
+        // le genre de silence qui fait abandonner une fonction.
+        $dit = 'Défi annoncé : départ dans 12 secondes, puis ' . $secondes
+             . ' secondes pour toute la classe.';
+        if ($equipes) {
+            $dit .= ' Deux équipes : ' . EQUIPES[0] . ' contre ' . EQUIPES[1] . '.';
+        }
+        if ($but > 0) {
+            $dit .= ' Objectif commun : ' . $but . ' points.';
+        } elseif (($body['but'] ?? 0) === 'auto') {
+            $dit .= ' Pas encore de record sur cet exercice : ce défi va'
+                  . ' l\'établir, et l\'objectif se calculera tout seul au suivant.';
+        }
         respond(['ok' => true,
                  'defi' => ['exo' => $exo, 'graine' => $graine, 'mode' => $mode,
                             'debut' => $debut, 'fin' => $fin,
                             'manches' => $manches, 'duree' => $secondes,
+                            'but' => $but, 'equipes' => (bool) $equipes,
                             'rejoue' => $rejoue],
-                 'dit' => 'Défi annoncé : départ dans 12 secondes, puis '
-                        . $secondes . ' secondes pour toute la classe.']);
+                 'dit' => $dit]);
     }
 
     // LE COMPTE À REBOURS, ET SES DEUX ISSUES. Rémy : « pour le compte à
@@ -2275,6 +2338,23 @@ function handleTeacherLive(): void
         'defiGraine' => (string) ($classe['defi_graine'] ?? ''),
         'defiExo' => (string) ($classe['defi_exo'] ?? ''),
         'classement' => classementDuDefi($classe),
+        // ── CE QUE LA CLASSE A FAIT ENSEMBLE, ET SON RECORD ──────────────
+        //
+        // RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des
+        // idées dans ce style ». Le professeur doit LIRE le total pendant que
+        // le défi tourne — c'est ce qu'il annonce à la classe entre deux
+        // manches, « il nous manque quarante points » — et le record d'avant,
+        // qui est la raison de recommencer.
+        //
+        // `defiRecord` NE COMPTE PAS LE DÉFI EN COURS : on ne bat pas un record
+        // qu'on est en train d'établir. C'est aussi, exactement, le nombre dont
+        // « Objectif auto » se sert pour calculer le but au lancement suivant.
+        'defiCumul' => ($classe['defi_debut'] ?? 0) ? cumulDuDefi($classe) : null,
+        'defiEquipes' => (bool) ($classe['defi_equipes'] ?? false),
+        'defiBut' => max(0, (int) ($classe['defi_but'] ?? 0)),
+        'defiNoms' => EQUIPES,
+        'defiRecord' => recordDeLaClasse($classe, (string) ($classe['defi_exo'] ?? ''),
+            (int) ($classe['defi_debut'] ?? 0)),
     ]);
 }
 

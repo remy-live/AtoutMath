@@ -204,3 +204,65 @@ test('ON CHOISIT L\'EXERCICE À DISPENSER, ON NE TAPE PLUS SON IDENTIFIANT', () 
     assert.match(ec, /function signatureDuPilote\(\)[\s\S]{0,900}info\.impose_path_id \|\| ''/);
     assert.match(ec, /signatureDuPilote\(\)[\s\S]{0,2400}\]\.join\('\|'\)/);
 });
+
+// ── COMMENT ON COMPTE : LE CLASSEMENT, LE BUT COMMUN, LES DEUX ÉQUIPES ──────
+//
+// RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+// ce style ». Le réglage vit dans un déroulant de la barre de pilotage, et un
+// déroulant que PERSONNE NE LIT est exactement le genre de bouton mort que ce
+// dépôt a déjà payé deux fois : il a l'air de marcher, il ne fait rien, et
+// aucune épreuve ne le dit.
+
+test('LE DÉROULANT DU MODE EXISTE, ET QUELQU\'UN LE LIT', () => {
+    const ec = lire('js/ui/espaceClasses.js');
+    assert.match(ec, /data-defi-ensemble/,
+        'le professeur n\'a aucun moyen de choisir un but commun ou deux équipes');
+    // LES TROIS FAÇONS DE JOUER SONT DANS LA LISTE.
+    assert.match(ec, /<option value="">Classement<\/option>/);
+    assert.match(ec, /<option value="auto">[^<]*Objectif auto<\/option>/);
+    assert.match(ec, /<option value="equipes">[^<]*Deux équipes<\/option>/);
+    // ET IL EST LU AU MOMENT DU LANCEMENT.
+    assert.match(ec, /querySelector\('\[data-defi-ensemble\]'\)/,
+        'le déroulant est à l\'écran mais personne ne lit sa valeur : le '
+        + 'professeur choisira un objectif et lancera un défi ordinaire');
+    // ET CE QU'IL DIT ARRIVE JUSQU'À `lancerLeDefi`.
+    assert.match(ec, /lancerLeDefi\(cid, exo, secondes, mode,\s*\n?\s*\{ manches, memeGraine: rejoue, but, equipes \}\)/,
+        'le mode choisi ne part pas au serveur');
+});
+
+test('ET LE RÉGLAGE TRAVERSE LE NOYAU JUSQU\'AU SERVEUR', () => {
+    const prof = lire('js/core/espaceProf.js');
+    const bloc = /export const lancerLeDefi =[\s\S]*?\}\);/.exec(prof);
+    assert.ok(bloc, 'le lancement du défi a changé de forme');
+    assert.match(bloc[0], /but: opts\.but === undefined \? 0 : opts\.but/,
+        'le but ne part pas — et `|| 0` l\'aurait mangé, puisque `auto` est une '
+        + 'chaîne et que zéro est une valeur qui veut dire quelque chose');
+    assert.match(bloc[0], /equipes: !!opts\.equipes/);
+});
+
+test('LE PROFESSEUR LIT LE TOTAL DE LA CLASSE ET SON RECORD', () => {
+    const ec = lire('js/ui/espaceClasses.js');
+    const bloc = /function ensembleDuDirectHtml\(direct\) \{[\s\S]*?\n\}/.exec(ec);
+    assert.ok(bloc, 'rien ne montre au professeur ce que sa classe fait ensemble');
+    assert.match(bloc[0], /direct\.defiCumul/);
+    assert.match(bloc[0], /direct\.defiRecord/);
+    assert.match(bloc[0], /direct\.defiBut/);
+    // ET LE RECORD SE LIT MÊME SANS DÉFI EN COURS : c'est l'écran où il décide
+    // s'il met un objectif, et il a besoin du nombre pour le décider.
+    const classement = /function classementDuDefiHtml\(direct\) \{[\s\S]*?\n\}/.exec(ec);
+    assert.match(classement[0], /if \(!df\) return ensemble;/,
+        'sans défi en cours, le professeur ne voit plus le record de sa classe '
+        + '— c\'est pourtant le seul moment où il le regarde');
+});
+
+test('ET LE TOTAL ENTRE DANS LA SIGNATURE, sinon la barre se fige', () => {
+    // LE NOMBRE DE SCORES NE SUFFIT PAS : les trente ont fini d'arriver bien
+    // avant la fin de la dernière manche, et le total affiché se figerait là —
+    // c'est-à-dire à l'instant où Rémy le lit le plus.
+    const ec = lire('js/ui/espaceClasses.js');
+    const sig = /function signatureDuPilote\(\)[\s\S]*?\]\.join\('\|'\)/.exec(ec);
+    assert.ok(sig, 'la signature du pilote a changé de forme');
+    assert.match(sig[0], /defiCumul\s*\n?\s*&& vue\.direct\.defiCumul\.points/,
+        'le total de la classe n\'entre pas dans la signature : la barre du '
+        + 'professeur ne se redessinera plus une fois les trente scores arrivés');
+});

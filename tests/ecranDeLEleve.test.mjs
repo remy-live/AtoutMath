@@ -65,7 +65,12 @@ test('LE PROFESSEUR N\'EN VOIT RIEN — ni le mot, ni le coup de pouce', () => {
         // ET PAS DAVANTAGE LE DÉFI CHRONOMÉTRÉ : son navigateur a servi à
         // essayer le côté élève, il reste rattaché à la classe — il se
         // lancerait un défi à lui-même en plein cours.
-        defi: null, defiTableau: null
+        //
+        // `deepEqual` ET NON UNE LISTE DE VÉRIFICATIONS : c'est l'exhaustivité
+        // qui garde ici. Un septième champ ajouté d'un seul côté de la porte
+        // fait tomber cette épreuve — ce qui vient d'arriver avec `defiCumul`,
+        // et c'est exactement ce qu'on lui demande.
+        defi: null, defiTableau: null, defiCumul: null
     });
 });
 

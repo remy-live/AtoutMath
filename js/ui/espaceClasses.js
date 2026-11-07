@@ -2966,6 +2966,31 @@ function outilDefi(info, ch, enCours, defiCourt) {
                     <option value="3">3 manches</option>
                     <option value="5">5 manches</option>
                 </select>
+                <!-- COMMENT ON COMPTE, ET C'EST LE RÉGLAGE QUI CHANGE LE PLUS
+                     L'AMBIANCE DE LA MINUTE. Rémy, après l'avoir lancé en
+                     classe : « Le défi ca cartonne, des idées dans ce style ».
+                     LE CLASSEMENT récompense les rapides, et ce sont toujours
+                     les mêmes trois prénoms sur le podium.
+                     L'OBJECTIF COMMUN est son contraire exact : la classe
+                     gagne ou perd ENSEMBLE, et l'élève lent y pousse la même
+                     barre que les autres — c'est la seule façon de jouer où il
+                     n'a rien à perdre.
+                     LES DEUX ÉQUIPES sont le tiers chemin : la compétition
+                     reste, mais elle se joue entre groupes.
+                     « Objectif auto » vaut le record de cette classe sur cet
+                     exercice, plus dix pour cent. C'est le serveur qui le
+                     calcule, parce que lui seul connaît ce record — et parce
+                     qu'un but choisi à la volée est soit gagné en vingt
+                     secondes, soit hors de portée. -->
+                <select class="ec-champ ec-champ--mince" data-defi-ensemble
+                        aria-label="Comment on compte">
+                    <option value="">Classement</option>
+                    <option value="auto">🎯 Objectif auto</option>
+                    <option value="100">🎯 Objectif 100</option>
+                    <option value="200">🎯 Objectif 200</option>
+                    <option value="500">🎯 Objectif 500</option>
+                    <option value="equipes">🤝 Deux équipes</option>
+                </select>
                 <button type="button" class="ec-pilote-btn" data-defi-go>Lancer</button>
                 ${defiCourt
                     ? '<button type="button" class="ec-pilote-btn ec-pilote-btn--actif"'
@@ -4672,11 +4697,26 @@ async function brancher(e, redessiner) {
         const secondes = Number((zone.querySelector('[data-defi-duree]') || {}).value || 60);
         const mode = (zone.querySelector('[data-defi-mode]') || {}).value || 'qcm';
         const manches = Number((zone.querySelector('[data-defi-manches]') || {}).value || 1);
+        // ── COMMENT ON COMPTE : un seul déroulant, trois façons de jouer ───
+        //
+        // UN SEUL RÉGLAGE PLUTÔT QUE DEUX CASES, parce qu'on les choisit avec
+        // trente élèves qui attendent : « Classement / Objectif / Deux
+        // équipes » se lit d'un coup d'œil, deux cases à cocher demandent de
+        // réfléchir à ce que leur combinaison veut dire.
+        //
+        // `auto` LAISSE LE SERVEUR CALCULER LE BUT — le record de la classe sur
+        // cet exercice plus dix pour cent —, parce que lui seul connaît ce
+        // record. Voir `butDuDefi`.
+        const ensemble = (zone.querySelector('[data-defi-ensemble]') || {}).value || '';
+        const equipes = ensemble === 'equipes';
+        const but = (!ensemble || equipes) ? 0
+            : (ensemble === 'auto' ? 'auto' : Number(ensemble) || 0);
         if (!exo) {
             if (rejoue) showToast('Aucun défi à rejouer dans cette classe.', 'info');
             return;
         }
-        await fait(lancerLeDefi(cid, exo, secondes, mode, { manches, memeGraine: rejoue }), () => {
+        await fait(lancerLeDefi(cid, exo, secondes, mode,
+            { manches, memeGraine: rejoue, but, equipes }), () => {
             const info = (vue.liste && vue.liste.classe);
             if (info) info.defi_exo = exo;
         });
@@ -5145,6 +5185,16 @@ function signatureDuPilote() {
         // « Au tableau », qui n'arriveraient sinon qu'au prochain changement
         // d'onglet — après le seul défi de l'heure, c'est-à-dire jamais.
         (vue.direct && vue.direct.defiGraine) || '',
+        // ET LE TOTAL DE LA CLASSE, QUI MONTE PENDANT LE DÉFI. Sans lui, le
+        // nombre de scores suffisait à redessiner tant que des élèves
+        // arrivaient — mais pas une seconde de plus : les trente ont fini
+        // d'arriver bien avant la fin de la dernière manche, et le total
+        // affiché se figeait là, à l'instant où Rémy le lit le plus.
+        String((vue.direct && vue.direct.defiCumul
+            && vue.direct.defiCumul.points) || 0),
+        String((vue.direct && vue.direct.defiBut) || 0),
+        String((vue.direct && vue.direct.defiRecord
+            && vue.direct.defiRecord.points) || 0),
         String((vue.direct && vue.direct.classement || []).length)].join('|');
 }
 
@@ -5255,12 +5305,63 @@ function ouvrirLeTableauDuDefi(exo, cartes) {
  * prénoms classés devant toute la classe désignerait le dernier à chaque défi.
  * Lui voit tout, parce que c'est avec ce tableau-là qu'il parlera ensuite.
  */
+/**
+ * CE QUE LA CLASSE FAIT ENSEMBLE, SUR L'ÉCRAN DU PROFESSEUR.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+ * ce style ». Il lit ces deux ou trois nombres PENDANT le défi, et c'est ce
+ * qu'il annonce à voix haute entre deux manches — « il nous manque quarante
+ * points », « les Bleus mènent de six ». Le classement entier ne sert qu'après.
+ *
+ * ET LE RECORD S'AFFICHE MÊME SANS DÉFI EN COURS : c'est le nombre qu'il
+ * regarde AVANT de lancer, pour décider s'il met un objectif — et c'est celui
+ * dont « Objectif auto » se servira.
+ */
+function ensembleDuDirectHtml(direct) {
+    if (!direct) return '';
+    const pts = (v) => Math.max(0, Math.round(Number(v) || 0));
+    const c = direct.defiCumul;
+    const but = pts(direct.defiBut);
+    const noms = direct.defiNoms || ['Les Bleus', 'Les Orange'];
+    const bouts = [];
+    if (c && but > 0) {
+        const total = pts(c.points);
+        const manque = but - total;
+        bouts.push(`<div class="ec-defi-ens${total >= but ? ' ec-defi-ens--atteint' : ''}">`
+            + `🎯 <b>${total}</b> / ${but} points`
+            + (total >= but ? ' — objectif atteint&nbsp;!'
+                : ` — il en manque <b>${manque}</b>`) + '</div>');
+    }
+    if (c && direct.defiEquipes) {
+        const e = [pts((c.equipes || [])[0]), pts((c.equipes || [])[1])];
+        bouts.push('<div class="ec-defi-ens">🤝 '
+            + `${esc(String(noms[0] || ''))} <b>${e[0]}</b> — `
+            + `${esc(String(noms[1] || ''))} <b>${e[1]}</b>`
+            + (e[0] === e[1] ? ' <small>(égalité)</small>' : '') + '</div>');
+    }
+    // LE RECORD, ET SUR QUEL EXERCICE. Sans le nom de l'exercice, le nombre
+    // serait trompeur : le record est celui du DERNIER défi joué, pas celui de
+    // l'exercice resté dans le menu déroulant.
+    const r = direct.defiRecord;
+    if (r && r.points) {
+        const exo = direct.defiExo ? nomDExercice(direct.defiExo) : '';
+        bouts.push(`<div class="ec-defi-ens ec-defi-ens--record">🏅 record de la classe&nbsp;: `
+            + `<b>${pts(r.points)}</b>${exo ? ` <small>sur ${esc(exo)}</small>` : ''}</div>`);
+    }
+    return bouts.join('');
+}
+
 function classementDuDefiHtml(direct) {
     const liste = (direct && direct.classement) || [];
     const df = direct && direct.defi;
-    if (!df) return '';
+    const ensemble = ensembleDuDirectHtml(direct);
+    // PAS DE DÉFI, MAIS PEUT-ÊTRE UN RECORD : c'est justement l'écran où il
+    // décide s'il met un objectif, et il a besoin du nombre pour le décider.
+    if (!df) return ensemble;
     if (!liste.length) {
-        return '<div class="ec-defi-vide">'
+        return ensemble + '<div class="ec-defi-vide">'
             + (df.fini ? 'Personne n\'a marqué.' : 'Le défi tourne…') + '</div>';
     }
     // UN DÉFI D'ESTIMATION SE LIT EN POINTS, et il faut les DEUX nombres ici.
@@ -5274,7 +5375,7 @@ function classementDuDefiHtml(direct) {
     const enPoints = compteEnPoints(df.exo, df.debut);
     const marque = (l) => (l.points === undefined || l.points === null)
         ? Number(l.bonnes || 0) : Number(l.points);
-    return '<ol class="ec-defi-classement">'
+    return ensemble + '<ol class="ec-defi-classement">'
         + liste.map(l => `<li><span>${esc(l.prenom)}</span><b>${marque(l)}</b>`
             + (enPoints
                 ? `<small>pts · ${l.bonnes}/${l.total}</small>`

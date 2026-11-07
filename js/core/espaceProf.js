@@ -352,12 +352,26 @@ export const fermerHorsSeance = (classId, ferme, mot = '', exos = undefined) =>
  * `memeGraine` REJOUE LA MÊME SÉRIE — mêmes questions, même ordre — pour que la
  * classe batte le score qu'elle vient de faire. Une série neuve ne se
  * comparerait à rien.
+ *
+ * ── COMMENT ON COMPTE : `but` ET `equipes` ────────────────────────────────
+ *
+ * `but` est un nombre de points à atteindre ENSEMBLE, ou la chaîne `'auto'`
+ * pour que LE SERVEUR le calcule. On lui laisse, et ce n'est pas de la
+ * paresse : lui seul connaît le record de la classe sur cet exercice et le
+ * nombre d'élèves — Rémy, avec trente élèves devant lui, n'a pas trois
+ * secondes pour faire le calcul, et un but tiré au hasard est soit gagné en
+ * vingt secondes, soit hors de portée. Voir `butDuDefi` au serveur.
+ *
+ * `equipes` partage la classe en deux. Rien à régler : le serveur prend une
+ * ligne sur deux dans l'ordre des identifiants (voir `equipeDeLEleve`).
  */
 export const lancerLeDefi = (classId, exo, secondes, mode = 'qcm', opts = {}) =>
     auServeur('/teacher/class', {
         classId, action: 'defi', exo, secondes, mode,
         manches: opts.manches || 1,
-        memeGraine: !!opts.memeGraine
+        memeGraine: !!opts.memeGraine,
+        but: opts.but === undefined ? 0 : opts.but,
+        equipes: !!opts.equipes
     });
 
 /** Les réglages d'exercice d'une classe : saut autorisé, exercice retiré. */

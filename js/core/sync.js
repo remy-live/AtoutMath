@@ -18,6 +18,7 @@ import { globalStore } from './store.js';
 import { getActiveProfile, getDeviceId, attachRemote, getActiveProfileId,
     listProfiles, setActiveProfile } from './profile.js';
 import { appliquerEtat } from './seanceDistante.js';
+import { leScoreDuDefi } from './scoreDuDefi.js';
 import { ceQuOnVoit } from './ecran.js';
 
 const CONFIG_KEY = 'syncConfig';
@@ -196,7 +197,13 @@ export async function rafraichirSeance() {
         // demander « le professeur a-t-il verrouillé ? ». Elle repart avec le
         // relevé dedans : le même nombre de requêtes, quelques dizaines
         // d'octets de plus, et le professeur voit la question.
-        const res = await apiEleve('/session', { ecran: ceQuOnVoit() });
+        // ET SON SCORE DE DÉFI, QUAND IL Y EN A UN. Même décision que pour
+        // l'écran, et pour la même raison : la barre de la classe a besoin du
+        // total des trente PENDANT le défi, et trente ardoises qui ouvriraient
+        // une requête de plus toutes les trois secondes, c'est la bousculade
+        // qu'on vient de corriger au serveur. Voir `core/scoreDuDefi.js`.
+        const res = await apiEleve('/session',
+            { ecran: ceQuOnVoit(), defi: leScoreDuDefi() });
         return res && res.session ? appliquerEtat(res.session) : null;
     } catch (err) {
         console.info('[sync] état de séance indisponible :', err.message);

@@ -5816,6 +5816,18 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .ec-defi-classement b { color: var(--primary-texte); }
 .ec-defi-classement small { color: var(--text-muted); font-weight: 600; }
 .ec-defi-vide { color: var(--text-muted); font-size: .85rem; font-weight: 600; }
+/* CE QUE LA CLASSE FAIT ENSEMBLE, SUR L'ÉCRAN DU PROFESSEUR.
+   RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+   ce style ». Deux ou trois nombres qu'il lit PENDANT le défi, et qu'il annonce
+   à voix haute entre deux manches. Ils passent donc AVANT le classement entier,
+   qui ne sert qu'après — et ils sont écrits plus gros que lui pour la même
+   raison : on les lit d'un coup d'œil, debout, en surveillant trente écrans. */
+.ec-defi-ens { font-weight: 700; font-size: .92rem; margin: 2px 0 6px; }
+.ec-defi-ens b { color: var(--primary-texte); font-variant-numeric: tabular-nums; }
+.ec-defi-ens small { color: var(--text-muted); font-weight: 600; }
+.ec-defi-ens--atteint { color: var(--warning-texte); font-weight: 900; }
+.ec-defi-ens--atteint b { color: inherit; }
+.ec-defi-ens--record { color: var(--text-muted); }
 
 /* ══════════════════════════ LE BROUILLON ══════════════════════════════════
    RÉMY : « Dans le menu à côté du robot, avoir un mode brouillon pour poser

@@ -5453,6 +5453,22 @@ mort s'il manque à la liste. Retiré de la liste, l'épreuve restait verte.
 Corrigée : balise entière, et on distingue le PORTEUR de valeur (`d.prenom`) de
 l'AIGUILLAGE (`d.x !== undefined`). Les deux défauts la font tomber maintenant.
 
+### « TU ME FAIS LA TOTALE » — 6 novembre
+
+> « Tu me fais la totale et tu me fais quand tu as tout fini une notice de
+> fonctionnement »
+
+Feu vert sur le lot 2 entier — la barre de la classe, deux équipes, le record —
+et une demande de plus, qui en dit long : **une notice de fonctionnement**.
+
+C'est la première fois qu'il demande de la DOCUMENTATION, et c'est le signe que
+le défi est passé du côté des choses qu'il utilise vraiment : on n'écrit pas de
+notice pour un essai. Elle devra donc être écrite pour quelqu'un qui a trente
+élèves devant lui et quarante secondes pour décider — pas pour quelqu'un qui
+découvre le logiciel.
+
+### LOT 1 — TROIS PIÈGES EN CHEMIN
+
 **3. ET `[hidden]` NE CACHAIT RIEN — c'est la PHOTO qui l'a dit.** La réponse
 du tableau s'affichait en permanence : `[hidden] { display: none }` a une
 spécificité de ZÉRO, et le `display: flex` de la classe l'emportait. Pire, ma
@@ -5579,3 +5595,68 @@ Les trois écrans sont au vert : « Tout tient sur un écran. »
 · **La vraie réponse** : 800 ms → 2 400 ms, la mesure écrite en toutes lettres
   sous les points (« c'était 130° — tu as dit 75° »), et un bouton
   « Suivant → » pour qui veut aller plus vite. Un doigt ou une touche abrège.
+
+### LOT 2 — LE SCORE COLLECTIF, FAIT — 7 novembre
+
+**UNE SEULE ADDITION, TROIS FAÇONS DE LA MONTRER.** C'est la décision qui tient
+tout le lot : la barre de la classe, les deux équipes et le record sortent du
+MÊME total (`cumulDuDefi`, une ligne par élève), et ne diffèrent que par ce
+qu'on en affiche. Trois comptes séparés auraient fini par ne plus dire la même
+chose — c'est la règle qui a déjà servi trois fois cette semaine.
+
+· **La barre de la classe.** Un but commun, et une seule barre. C'est l'exact
+  contraire du classement : personne n'est désigné, et **l'élève lent y pousse
+  la même barre que les autres** — de toutes les façons de jouer, c'est la
+  seule où il n'a rien à perdre. À la fin : « GAGNÉ ! » ou « Il manquait 8
+  points », jamais « perdu » ; un but raté reste un total que la classe a
+  construit à trente, et le nombre qui manque est une raison de recommencer.
+· **Les deux équipes.** Le tiers chemin : la compétition reste, mais entre
+  groupes. **Rien à régler** — le serveur partage la classe une ligne sur deux
+  dans l'ordre des identifiants : exactement équilibré, stable d'un défi à
+  l'autre, et l'élève retrouve sa couleur chaque fois. Demander à Rémy de
+  répartir trente élèves, c'est lui demander deux minutes qu'il n'a pas.
+· **Le record.** La classe contre elle-même, de semaine en semaine. Il se
+  CALCULE (la somme d'un défi passé, la meilleure de toutes) plutôt qu'il ne se
+  range : une table de records serait une seconde vérité à tenir d'accord, et
+  elle se tromperait au premier score qui arrive en retard — ce qui arrive à
+  chaque défi.
+
+**« OBJECTIF AUTO », ET POURQUOI LE SERVEUR CHOISIT À SA PLACE.** C'est le seul
+endroit du logiciel où cela se produit, et il y a une raison : debout devant
+trente élèves, il n'a pas trois secondes pour calculer un but — et un but tiré
+au hasard est soit gagné en vingt secondes, soit hors de portée. Dans les deux
+cas la barre ne sert plus à rien, ce qui est pire que de ne pas l'avoir. La
+règle est **le record + 10 %** : mesurée sur CETTE classe et CET exercice, elle
+vaut aussi bien pour un défi de calcul (un point par bonne réponse) que pour un
+défi d'estimation (jusqu'à cent points par question), là où un « cinq points
+par élève » serait juste pour l'un et absurde pour l'autre.
+
+**ET SANS RECORD, PAS DE BUT INVENTÉ.** Le premier défi sur un exercice est
+celui qui ÉTABLIT le record ; l'écran de fin le dit à la classe en ces mots, et
+le serveur le dit à Rémy au lancement — sans cette phrase, il croirait le
+réglage cassé, et c'est le genre de silence qui fait abandonner une fonction.
+
+**ZÉRO REQUÊTE DE PLUS, ET C'ÉTAIT LA VRAIE DIFFICULTÉ.** La barre a besoin du
+score des trente PENDANT le défi, alors que chacun n'envoyait le sien qu'à la
+fin. Trente ardoises qui écriraient toutes les trois secondes, c'est la
+bousculade qui a coûté le podium de sa classe il y a deux jours, refaite
+exprès. Le score monte donc DANS le battement qui passait déjà toutes les dix
+secondes, par une boîte aux lettres de quatre lignes (`core/scoreDuDefi.js`)
+qui évite un cycle d'imports. **Mesuré** (`tools/trenteDUnCoup.mjs`, étendu) :
+quatre-vingt-dix battements de trente ardoises portant leur score, tous servis,
+total exact, et le serveur n'a crié ni erreur ni verrou.
+
+**CE QUI A ÉTÉ MESURÉ, ET COMMENT.**
+
+· `tools/defiEnsemble.mjs` (neuf) — deux ardoises, le défi joué en vrai : la
+  barre monte, les deux équipes sont là, **les deux élèves ne sont pas dans la
+  même**, chacun voit laquelle est la sienne, le tableau de fin dit ce qui
+  manquait et annonce le record. Et, en premier : **un défi au classement ne
+  montre AUCUNE barre** — c'est lui qui attrape le piège de `[hidden]`, pour la
+  troisième fois cette semaine.
+· `tools/testApi.php` : 546 → 561 vérifications. L'addition du serveur et celle
+  de SQL sont deux chemins indépendants vers le même nombre.
+· Dix épreuves neuves, **toutes vues tomber** (`tools/epreuveTombe.mjs`).
+· `npm test` 5 727, `boutEnBout` « TOUT SE SYNCHRONISE », `trenteDUnCoup` 30/30.
+
+**IL RESTE LA NOTICE**, qu'il a demandée pour quand tout serait fini.

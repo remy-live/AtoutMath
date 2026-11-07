@@ -3544,6 +3544,129 @@ verifier('UN RENVOI À MOINS DE POINTS NE DÉTRUIT PAS LE MEILLEUR',
     ((int) ($qP->fetch()['bonnes'] ?? 0)) === 5);
 
 // ── ON NE MARQUE PAS UN POINT SUR UN DÉFI QUI N'EXISTE PAS ─────────────────
+// ── CE QUE LA CLASSE FAIT ENSEMBLE : LE BUT, LES DEUX ÉQUIPES, LE RECORD ──
+//
+// RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+// ce style ». Trois façons de compter LA MÊME ADDITION : le classement (qui
+// existait), le but commun, et les deux équipes.
+//
+// ON CALCULE LES TOTAUX ATTENDUS EN SQL, ici, plutöt que de les écrire à la
+// main : deux défis ont déjà été joués plus haut, avec des lignes insérées en
+// base, et un nombre recopié ici vieillirait à la première épreuve ajoutée
+// au-dessus. L'addition du serveur et celle de SQL sont deux chemins
+// indépendants vers le même nombre, ce qui est exactement ce qu'on veut vérifier.
+$sommeDuDefi = function (int $debut) use ($idDefi) {
+    $q = enBase()->prepare('SELECT SUM(COALESCE(points, bonnes)) FROM defi_scores
+                             WHERE class_id = ? AND defi_debut = ?');
+    $q->execute([$idDefi, $debut]);
+    return (int) $q->fetchColumn();
+};
+$recordAvant = (int) enBase()->query(
+    'SELECT MAX(t) FROM (SELECT SUM(COALESCE(points, bonnes)) AS t FROM defi_scores
+       WHERE class_id = ' . enBase()->quote($idDefi) . " AND exo = 'calc-add'
+       GROUP BY defi_debut)")->fetchColumn();
+verifier('IL Y A BIEN UN RECORD SUR calc-add AVANT DE CONTINUER', $recordAvant > 0,
+    'record = ' . $recordAvant);
+
+// « OBJECTIF AUTO » VAUT LE RECORD PLUS DIX POUR CENT. C'est le serveur qui le
+// calcule, parce que lui seul connaît ce record — et parce que Rémy, debout
+// devant trente élèves, n'a pas trois secondes pour faire la multiplication.
+$attendu = max($recordAvant + 1, (int) ceil($recordAvant * 1.1));
+$r = $defiProf(['exo' => 'calc-add', 'secondes' => 60, 'mode' => 'qcm',
+                'but' => 'auto', 'equipes' => true]);
+verifier('« OBJECTIF AUTO » VAUT LE RECORD DE LA CLASSE PLUS DIX POUR CENT',
+    ($r['json']['defi']['but'] ?? 0) === $attendu,
+    'rendu ' . json_encode($r['json']['defi']['but'] ?? null) . ', attendu ' . $attendu);
+verifier('ET LE PROFESSEUR LIT CE NOMBRE DANS LA RÉPONSE, pour l\'annoncer',
+    str_contains((string) ($r['json']['dit'] ?? ''), (string) $attendu)
+    && str_contains((string) ($r['json']['dit'] ?? ''), 'quipes'),
+    (string) ($r['json']['dit'] ?? ''));
+// LE TROISIÈME DÉFI DOIT AVOIR SON PROPRE `defi_debut`, ET C'EST LE MÊME PIÈGE
+// QU'À L'ESTIMATION, trente lignes plus haut : toute cette section s'exécute
+// DANS LA MÊME SECONDE, et `defi_debut` vaut `time() + 12` à chaque lancement.
+// Les trois défis reçoivent donc la même date, qui est LA CLÉ des scores.
+//
+// MESURÉ, sans ces deux lignes : les scores du battement tombaient dans les
+// lignes du PREMIER défi (87 points, cinq participants au lieu de dix et deux),
+// et le record rendait `null` puisque le seul défi sur `calc-add` était celui
+// qu'on venait d'exclure. Rien de tout cela n'arrive en classe — douze secondes
+// séparent deux lancements — mais l'épreuve, elle, mesurait autre chose.
+$debut3 = $debutDuDefi + 2000;
+enBase()->prepare('UPDATE classes SET defi_debut = ?, defi_fin = ? WHERE id = ?')
+    ->execute([$debut3, $debut3 + 60, $idDefi]);
+
+// LE SCORE MONTE PAR LE BATTEMENT, ET NON PAR UNE ROUTE À PART. Trente
+// ardoises qui demanderaient le total toutes les trois secondes, ce serait la
+// bousculade qu'on vient de corriger, refaite exprès.
+json('/session', ['defi' => ['bonnes' => 6, 'total' => 9, 'ms' => 12000]], $jetonZoe);
+json('/session', ['defi' => ['bonnes' => 4, 'total' => 9, 'ms' => 9000]], $jetonYanis);
+$sZoe = json('/session', [], $jetonZoe)['json']['session'] ?? [];
+$cumul = $sZoe['defiCumul'] ?? null;
+verifier('LE BATTEMENT ÉCRIT LE SCORE PENDANT LE DÉFI, sans requête de plus',
+    $sommeDuDefi($debut3) === 10, 'somme en base = ' . $sommeDuDefi($debut3));
+verifier('ET L\'ÉLÈVE REÇOIT LE TOTAL DE TOUTE LA CLASSE',
+    is_array($cumul) && ($cumul['points'] ?? -1) === 10
+    && ($cumul['participants'] ?? 0) === 2, json_encode($cumul));
+// LES DEUX ÉQUIPES SONT UNE RÉPARTITION DU MÊME TOTAL : si les deux barres ne
+// se rajoutaient pas au total, l'une des trois façons de compter mentirait.
+verifier('LES DEUX ÉQUIPES SE RAJOUTENT EXACTEMENT AU TOTAL',
+    array_sum($cumul['equipes'] ?? []) === ($cumul['points'] ?? -1),
+    json_encode($cumul['equipes'] ?? null));
+verifier('ET CHAQUE ÉLÈVE SAIT DANS LAQUELLE IL EST',
+    in_array($cumul['moi'] ?? null, [0, 1], true)
+    && count($cumul['noms'] ?? []) === 2, json_encode($cumul['moi'] ?? null));
+// LE RECORD NE COMPTE PAS LE DÉFI EN COURS : on ne bat pas un record qu'on est
+// en train d'établir.
+verifier('LE RECORD ANNONCÉ À L\'ÉLÈVE EST CELUI D\'AVANT CE DÉFI',
+    ($cumul['record']['points'] ?? 0) === $recordAvant,
+    json_encode($cumul['record'] ?? null));
+
+// L'ÉCRAN DU PROFESSEUR PORTE LES MÊMES NOMBRES, et ce sont ceux qu'il annonce
+// à la classe entre deux manches.
+$live = json('/teacher/live', ['classId' => $idDefi], $jetonNotre)['json'];
+verifier('LE DIRECT DU PROFESSEUR PORTE LE TOTAL, LE BUT, LES ÉQUIPES ET LE RECORD',
+    ($live['defiCumul']['points'] ?? -1) === 10
+    && ($live['defiBut'] ?? 0) === $attendu
+    && ($live['defiEquipes'] ?? null) === true
+    && ($live['defiRecord']['points'] ?? 0) === $recordAvant,
+    json_encode([$live['defiCumul'] ?? null, $live['defiBut'] ?? null,
+                 $live['defiEquipes'] ?? null, $live['defiRecord'] ?? null]));
+
+// ET LE TABLEAU DE FIN PORTE DE QUOI DIRE « GAGNÉ » OU « IL MANQUAIT 18 ».
+enBase()->prepare('UPDATE classes SET defi_fin = ? WHERE id = ?')
+    ->execute([time() - 5, $idDefi]);
+$tFin = json('/session', [], $jetonZoe)['json']['session']['defiTableau'] ?? [];
+verifier('LE TABLEAU DE FIN PORTE LE TOTAL, LE BUT ET LE RECORD',
+    ($tFin['total'] ?? -1) === 10 && ($tFin['but'] ?? 0) === $attendu
+    && ($tFin['parEquipes'] ?? null) === true
+    && ($tFin['record']['points'] ?? 0) === $recordAvant,
+    json_encode([$tFin['total'] ?? null, $tFin['but'] ?? null,
+                 $tFin['parEquipes'] ?? null, $tFin['record'] ?? null]));
+verifier('ET LES DEUX ÉQUIPES Y SONT, À LA MÊME ADDITION',
+    array_sum($tFin['equipesPoints'] ?? []) === ($tFin['total'] ?? -1)
+    && in_array($tFin['maEquipe'] ?? null, [0, 1], true),
+    json_encode($tFin['equipesPoints'] ?? null));
+
+// ── SANS RECORD, PAS DE BUT INVENTÉ ────────────────────────────────
+//
+// Un défi de calcul marque un point par bonne réponse ; un défi d'estimation
+// jusqu'à CENT par question. Aucune règle du genre « cinq points par élève » ne
+// peut être juste pour les deux — donc le premier défi sur un exercice n'a pas
+// de but, il ÉTABLIT le record, et le serveur le DIT.
+$r = $defiProf(['exo' => 'calc-sub', 'secondes' => 60, 'but' => 'auto']);
+verifier('SUR UN EXERCICE JAMAIS JOUÉ, « OBJECTIF AUTO » NE REND AUCUN BUT',
+    ($r['json']['defi']['but'] ?? -1) === 0, json_encode($r['json']['defi'] ?? null));
+verifier('ET LE PROFESSEUR APPREND POURQUOI, au lieu de croire à une panne',
+    str_contains((string) ($r['json']['dit'] ?? ''), 'record'),
+    (string) ($r['json']['dit'] ?? ''));
+// UN BUT CHOISI À LA MAIN RESTE CELUI-LÀ, et il est borné.
+verifier('UN BUT DONNÉ EN CHIFFRES EST GARDÉ TEL QUEL',
+    ($defiProf(['exo' => 'calc-add', 'secondes' => 60,
+                'but' => 200])['json']['defi']['but'] ?? 0) === 200);
+verifier('ET UN BUT DÉMESURÉ EST RAMENÉ À LA BORNE',
+    ($defiProf(['exo' => 'calc-add', 'secondes' => 60,
+                'but' => 999999])['json']['defi']['but'] ?? 0) === 50000);
+
 $defiProf(['secondes' => 0]);
 $r = json('/defi/score', ['bonnes' => 99, 'total' => 99, 'ms' => 1000], $jetonZoe);
 verifier('SANS DÉFI OUVERT, UN SCORE N\'EST PAS ENREGISTRÉ',

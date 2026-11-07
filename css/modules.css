@@ -15070,6 +15070,63 @@ body.en-boite > #app-container { background: none; }
 .defi-entracte .defi-compte { font-size: clamp(2.6rem, 11vmin, 4.6rem); }
 .defi-temps { font-variant-numeric: tabular-nums; }
 
+/* ── CE QUE LA CLASSE FAIT ENSEMBLE ────────────────────────────────
+   RÉMY, après l'avoir lancé en classe : « Le défi ca cartonne, des idées dans
+   ce style ». La barre du but commun et les deux équipes vivent SOUS la jauge du
+   temps, au-dessus de la question : c'est la seule place où l'œil les trouve
+   sans quitter le calcul des yeux — et la seule qui ne pousse pas les boutons
+   de réponse hors de l'écran sur un téléphone. */
+.defi-ensemble { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 2px; }
+/* LE MÊME PIÈGE QUE TROIS FOIS CETTE SEMAINE : [hidden] a une spécificité de
+   zéro, et le « display: flex » ci-dessus l'emporte. Sans cette ligne, un défi
+   ORDINAIRE garderait une bande vide de huit pixels sous sa jauge. */
+.defi-ensemble[hidden] { display: none; }
+.defi-but, .defi-eq { text-align: left; }
+.defi-but-ligne {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    font-weight: 800; font-size: .92rem; margin-bottom: 3px;
+}
+.defi-but-ligne small { font-weight: 700; color: var(--text-muted); }
+.defi-but-pts { font-variant-numeric: tabular-nums; color: var(--primary-texte); }
+.defi-jauge--but { background: var(--success); }
+/* L'OBJECTIF ATTEINT SE VOIT SANS LIRE : la classe est debout, personne ne lit
+   une phrase. La barre passe en or et le nombre avec elle. */
+.defi-but--atteint .defi-but-pts { color: var(--warning-texte); }
+.defi-but--atteint .defi-jauge--but { background: var(--warning); }
+.defi-eqs { display: flex; flex-direction: column; gap: 8px; }
+/* LES DEUX COULEURS SONT ÉCRITES EN DUR, ET C'EST VOULU.
+   « Les Bleus » et « Les Orange » portent leur couleur DANS LEUR NOM : prendre
+   var(--primary) ferait des Bleus une équipe verte dans le thème vert et orange
+   dans le thème orange — deux équipes de la même couleur, et un nom qui mentirait
+   à l'élève. La couleur ne porte que la JAUGE et la pastille : le nom reste
+   écrit dans la couleur du texte du thème, qui est la seule dont on sait qu'elle
+   se lit partout, en clair comme en sombre. */
+.defi-eq--0 .defi-jauge { background: #2563eb; }
+.defi-eq--1 .defi-jauge { background: #f97316; }
+.defi-eq .defi-but-ligne > span:first-child::before {
+    content: ''; display: inline-block; width: .62em; height: .62em; border-radius: 50%;
+    margin-right: 6px; background: currentColor; vertical-align: baseline;
+}
+.defi-eq--0 .defi-but-ligne > span:first-child::before { background: #2563eb; }
+.defi-eq--1 .defi-but-ligne > span:first-child::before { background: #f97316; }
+/* SON ÉQUIPE À LUI, soulignée d'un trait et non d'une couleur : l'élève n'a rien
+   choisi (le serveur partage la classe une ligne sur deux), il doit donc pouvoir
+   lire de quel côté il pousse. */
+.defi-eq--moi { border-left: 3px solid var(--border); padding-left: 8px; margin-left: -11px; }
+/* LA RÈGLE, DITE PENDANT LES DOUZE SECONDES D'ANNONCE. */
+.defi-regle { font-weight: 800; color: var(--text-muted); margin: 4px 0; }
+.defi-regle b { color: var(--primary-texte); }
+/* LE RECORD DE LA CLASSE. De toutes les façons de jouer, c'est la seule où
+   personne n'a rien à perdre : c'est la classe contre elle-même. */
+.defi-record { font-weight: 700; color: var(--text-muted); margin: 8px 0; }
+.defi-record b { color: var(--text-main); }
+.defi-record--neuf {
+    font-weight: 900; color: var(--warning-texte);
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    border-radius: 12px; padding: 10px 14px;
+}
+.defi-record--neuf b, .defi-record--neuf small { color: inherit; }
+
 /* ── L'ANGLE À ESTIMER, DANS LE DÉFI ───────────────────────────────────────
    RÉMY : « plus il est proche, plus il a de points et après si c'est une
    classe en séance, on peut récupérer les high score, c'est motivant ».

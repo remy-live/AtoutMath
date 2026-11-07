@@ -114,6 +114,40 @@ try {
     dire('le professeur lance le défi', (lance.json || {}).ok === true,
         JSON.stringify((lance.json || {}).dit || lance.json));
 
+    // ── LE BATTEMENT DE TRENTE ARDOISES, AVEC LE SCORE DEDANS ────────────
+    //
+    // C'EST UN CHEMIN D'ÉCRITURE NEUF, et il écrit PENDANT le défi : la barre
+    // de la classe et les deux équipes ont besoin du total des trente au fur
+    // et à mesure. On n'a ajouté AUCUNE requête — le score monte dans le
+    // battement qui passait déjà toutes les dix secondes — mais ce battement,
+    // lui, n'écrivait rien en base. Trente écritures toutes les dix secondes,
+    // c'est la même famille de bousculades que celle qu'on vient de corriger.
+    //
+    // TROIS TOURS, pour que le deuxième et le troisième tombent sur des lignes
+    // qui EXISTENT DÉJÀ : l'INSERT et l'UPDATE ne prennent pas les mêmes
+    // verrous, et c'est une lecture promue en écriture qui avait fait
+    // disparaître un tiers de la classe de Rémy du podium.
+    let battementsPerdus = 0;
+    for (let tour = 0; tour < 3; tour++) {
+        const b = await Promise.all(jetons.map((j, i) => appel('/session',
+            { defi: { bonnes: tour + 1, total: 5, ms: 900 + i,
+                      points: 10 * (tour + 1) + i } }, j)));
+        battementsPerdus += b.filter(e => e.code !== 200).length;
+    }
+    dire(`LES ${COMBIEN} BATTEMENTS PORTENT LE SCORE SANS SE BOUSCULER`,
+        battementsPerdus === 0,
+        battementsPerdus ? `${battementsPerdus} perdu(s) sur ${COMBIEN * 3}`
+            : `${COMBIEN * 3} battements, tous servis`);
+    // ET LE TOTAL DESCENDU EST CELUI DE TOUTE LA CLASSE, pas celui d'un élève :
+    // c'est ce nombre-là que la barre montre à trente écrans à la fois.
+    const pendant = await appel('/session', {}, jetons[0]);
+    const cumul = ((pendant.json || {}).session || {}).defiCumul || {};
+    const attendu = COMBIEN * 30 + (COMBIEN * (COMBIEN - 1)) / 2;
+    dire('ET LE TOTAL DESCENDU EST BIEN CELUI DES TRENTE',
+        cumul.points === attendu && cumul.participants === COMBIEN,
+        `${cumul.points} points pour ${cumul.participants} élève(s)`
+            + ` — attendu ${attendu} pour ${COMBIEN}`);
+
     // ── ET TOUT LE MONDE ENVOIE SON SCORE À LA MÊME SECONDE ──────────────
     //
     // C'est le cœur de la mesure. Les trente partent ensemble, sans se céder

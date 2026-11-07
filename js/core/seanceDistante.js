@@ -84,7 +84,7 @@ const VIDE = {
     // DEUX CHAMPS ET NON UN, parce que ce sont deux moments : pendant, on
     // répond ; après, on regarde. Le serveur n'en envoie jamais deux à la
     // fois, donc l'écran n'a aucune règle à appliquer pour savoir où il en est.
-    defi: null, defiTableau: null
+    defi: null, defiTableau: null, defiCumul: null
 };
 
 let etat = { ...VIDE };
@@ -339,7 +339,7 @@ export function indicesNonLus() { return messagesNonLus().filter(m => genreDe(m)
 export function ceQueVoitLEleve(opts = {}) {
     if (opts.professeur) {
         return { consigne: '', verrouille: false, ecarte: false, ferme: null,
-                 mots: [], indices: [], defi: null, defiTableau: null };
+                 mots: [], indices: [], defi: null, defiTableau: null, defiCumul: null };
     }
     return {
         consigne: consigneDuProf(),
@@ -355,7 +355,13 @@ export function ceQueVoitLEleve(opts = {}) {
         // règle : le professeur qui repasse côté élève ne se lance pas un défi
         // à lui-même.
         defi: defiEnCours(),
-        defiTableau: tableauDuDefi()
+        defiTableau: tableauDuDefi(),
+        // ET CE QUE LA CLASSE FAIT ENSEMBLE PASSE PAR LA MÊME PORTE. Il n'a
+        // rien à montrer tout seul — la barre vit DANS la carte du défi, qui
+        // est déjà fermée au professeur —, mais les deux côtés de cette porte
+        // doivent rendre LA MÊME FORME : c'est tout ce qui empêche un septième
+        // champ d'arriver un jour d'un côté seulement, et de passer.
+        defiCumul: cumulDuDefi()
     };
 }
 
@@ -500,6 +506,14 @@ export function defiEnCours(maintenant = Math.floor(Date.now() / 1000)) {
         avant: Math.max(0, d.debut - ici),
         reste,
         duree: Math.max(1, d.fin - d.debut),
+        // ── COMMENT CE DÉFI SE COMPTE, ET CE QU'ON MONTRE PENDANT ────────
+        //
+        // `but` à ZÉRO veut dire « pas de but commun » : c'est le défi
+        // ordinaire, celui du classement. Les deux réglages sont
+        // indépendants — on peut viser trois cents points EN DEUX ÉQUIPES, et
+        // c'est même la façon la plus vivante de jouer.
+        but: Math.max(0, Math.round(Number(d.but) || 0)),
+        equipes: !!d.equipes,
         manches,
         dureeManche,
         // OÙ L'ON EN EST : la manche, ce qu'il y reste, et la pause s'il y en a
@@ -519,6 +533,21 @@ export function defiEnCours(maintenant = Math.floor(Date.now() / 1000)) {
  * dernier à chaque défi — et ce sont justement les élèves dont il parlait la
  * veille. Le serveur a déjà coupé ; on ne fait que relayer.
  */
+/**
+ * CE QUE LA CLASSE A MARQUÉ ENSEMBLE, pendant que le défi tourne.
+ *
+ * RÉMY : « Le défi ca cartonne, des idées dans ce style ». La barre de la
+ * classe, les deux équipes et le record se lisent tous ici — c'est UNE addition
+ * faite au serveur, et trois façons de la montrer. Elle voyage dans la réponse
+ * du battement, sans une requête de plus.
+ *
+ * @returns {{points:number, participants:number, equipes:number[],
+ *            moi:number, noms:object, record:?object}|null}
+ */
+export function cumulDuDefi() {
+    return etat.defiCumul || null;
+}
+
 export function tableauDuDefi() {
     const t = etat.defiTableau;
     return t && Array.isArray(t.podium) ? t : null;

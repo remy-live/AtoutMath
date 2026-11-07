@@ -217,7 +217,7 @@ function etatDeSeance(array $eleve): array
                               pause_mot, bac_ferme, bac_minutes, bac_jeux,
                               hors_seance, hors_seance_mot,
                               defi_exo, defi_graine, defi_mode, defi_debut, defi_fin,
-                              defi_manches, defi_duree
+                              defi_manches, defi_duree, defi_but, defi_equipes
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
@@ -436,6 +436,32 @@ function etatDeSeance(array $eleve): array
         // deviner lequel des deux il tient, et il le devinerait en comparant
         // des horloges — celle du serveur et la sienne.
         'defi'        => defiEnCours($classe),
+        // ── CE QUE LA CLASSE A MARQUÉ ENSEMBLE, EN DIRECT ────────────────
+        //
+        // RÉMY : « Le défi ca cartonne, des idées dans ce style ». La barre de
+        // la classe et les deux équipes ont besoin du total de TOUT LE MONDE
+        // pendant que le défi tourne — alors que chacun n'envoyait le sien
+        // qu'à la fin.
+        //
+        // ON N'AJOUTE AUCUNE REQUÊTE : le total part dans la réponse du
+        // battement, qui passait de toute façon. C'est la même décision que
+        // pour l'écran de l'élève, qui voyage lui aussi dans cette requête-ci
+        // plutôt que dans une route à part.
+        //
+        // ET ON NE LE CALCULE QUE PENDANT UN DÉFI : hors défi, c'est une
+        // lecture de plus toutes les dix secondes pour rien, multipliée par
+        // trente ardoises.
+        'defiCumul'   => defiEnCours($classe) ? array_merge(
+            cumulDuDefi($classe),
+            [
+                'moi' => equipeDeLEleve((string) $classe['id'], (string) $eleve['id']),
+                'noms' => EQUIPES,
+                // LE RECORD À BATTRE, et il ne compte PAS le défi en cours :
+                // on ne bat pas un record qu'on est en train d'établir.
+                'record' => recordDeLaClasse($classe, (string) ($classe['defi_exo'] ?? ''),
+                    (int) ($classe['defi_debut'] ?? 0))
+            ]
+        ) : null,
         'defiTableau' => tableauDuDefi($classe, $eleve['id']),
         'maintenant' => time(),
     ];
@@ -477,6 +503,13 @@ function defiEnCours(array $classe): ?array
         // LES MANCHES ET LA DURÉE DE CHACUNE. L'ardoise en déduit dans quelle
         // manche elle est et combien il lui reste — elle ne le devine pas, et
         // elle ne le décide pas : c'est la même horloge pour les trente.
+        // ── COMMENT ON COMPTE : classement, but commun, ou deux équipes ──
+        //
+        // Les trois sortent de la MÊME addition (`cumulDuDefi`) et ne diffèrent
+        // que par ce qu'on en montre. `but` à zéro veut dire « pas de but » :
+        // c'est le défi ordinaire, avec son classement.
+        'but'     => max(0, (int) ($classe['defi_but'] ?? 0)),
+        'equipes' => !empty($classe['defi_equipes']),
         'manches' => max(1, (int) ($classe['defi_manches'] ?? 1)),
         'duree'   => max(1, (int) ($classe['defi_duree'] ?? 0)) ?: null,
         'pause'   => DEFI_PAUSE,
@@ -545,13 +578,188 @@ function tableauDuDefi(array $classe, string $eleveId): ?array
             ];
         }
     }
+    // ── CE QUE LA CLASSE A FAIT ENSEMBLE, ET LE RECORD ───────────────────
+    //
+    // RÉMY : « Le défi ca cartonne, des idées dans ce style ». Le tableau de
+    // fin doit pouvoir dire « GAGNÉ, 312 sur 300 » et « NOUVEAU RECORD » — donc
+    // porter le total de la classe, le but qu'on visait, et le record d'avant.
+    //
+    // ON LES MET ICI PLUTÔT QUE DE LES GARDER DANS L'ARDOISE : un élève qui
+    // recharge sa page pendant les cinq minutes d'affichage doit lire la même
+    // chose que son voisin, et une valeur gardée en mémoire aurait disparu.
+    $cumul = cumulDuDefi($classe);
     return [
         'debut' => $debut,
         'exo' => (string) ($classe['defi_exo'] ?? ''),
         'podium' => $podium,
         'moi' => $moi,
         'participants' => count($lignes),
+        'total' => $cumul['points'],
+        'equipesPoints' => $cumul['equipes'],
+        'maEquipe' => equipeDeLEleve((string) $classe['id'], $eleveId),
+        'noms' => EQUIPES,
+        'but' => max(0, (int) ($classe['defi_but'] ?? 0)),
+        'parEquipes' => !empty($classe['defi_equipes']),
+        // LE RECORD D'AVANT CE DÉFI : c'est lui qu'on vient de battre, ou non.
+        'record' => recordDeLaClasse($classe, (string) ($classe['defi_exo'] ?? ''), $debut),
     ];
+}
+
+/**
+ * DANS QUELLE ÉQUIPE EST CET ÉLÈVE ?
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « Le défi ca cartonne, des idées dans ce style ». Deux équipes, c'est
+ * le tiers chemin entre le classement — qui récompense les rapides — et le but
+ * commun, où personne ne se mesure : la compétition reste, mais elle se joue
+ * entre GROUPES, et l'élève lent y pousse sa couleur comme les autres.
+ *
+ * ── RIEN À RÉGLER, ET C'EST LE POINT ──────────────────────────────────────
+ *
+ * Demander au professeur de répartir trente élèves, c'est lui demander deux
+ * minutes qu'il n'a pas — et le défi existe précisément pour tenir en une.
+ * Le serveur partage donc la classe lui-même, UNE LIGNE SUR DEUX dans l'ordre
+ * des identifiants : exactement équilibré, et stable d'un défi à l'autre
+ * puisque l'ordre ne bouge pas. L'élève retrouve sa couleur chaque fois.
+ *
+ * ON NE RANGE RIEN EN BASE pour autant : une colonne « équipe » serait une
+ * seconde vérité à tenir d'accord avec la liste de la classe, et elle se
+ * déréglerait au premier élève ajouté en cours d'année.
+ *
+ * @return int 0 ou 1
+ */
+function equipeDeLEleve(string $classeId, string $eleveId): int
+{
+    static $cache = [];
+    if (!isset($cache[$classeId])) {
+        $s = db()->prepare('SELECT id FROM students WHERE class_id = ? ORDER BY id');
+        $s->execute([$classeId]);
+        $cache[$classeId] = array_column($s->fetchAll(), 'id');
+    }
+    $rang = array_search($eleveId, $cache[$classeId], true);
+    return $rang === false ? 0 : ($rang % 2);
+}
+
+/** Les deux noms, au même endroit : l'écran de l'élève et celui du professeur. */
+const EQUIPES = [0 => 'Les Bleus', 1 => 'Les Orange'];
+
+/**
+ * CE QUE LA CLASSE A MARQUÉ ENSEMBLE, PENDANT QUE LE DÉFI TOURNE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * UNE SEULE LECTURE POUR LES TROIS FAÇONS DE JOUER : la barre de la classe lit
+ * `points`, les deux équipes lisent `equipes`, et le classement ordinaire n'en
+ * lit aucune. Trois additions séparées auraient fini par ne plus dire la même
+ * chose — c'est la règle qui a déjà servi trois fois cette semaine.
+ *
+ * ELLE COÛTE UNE LIGNE PAR ÉLÈVE, et rien de plus : les scores sont déjà là,
+ * écrits par le battement de chaque ardoise. On ne demande pas aux élèves de
+ * dire où ils en sont, on regarde ce qu'ils ont déjà dit.
+ */
+function cumulDuDefi(array $classe): array
+{
+    $debut = (int) ($classe['defi_debut'] ?? 0);
+    $vide = ['points' => 0, 'participants' => 0, 'equipes' => [0, 0]];
+    if (!$debut) {
+        return $vide;
+    }
+    $s = db()->prepare(
+        'SELECT student_id, COALESCE(points, bonnes) AS points
+           FROM defi_scores WHERE class_id = ? AND defi_debut = ?'
+    );
+    $s->execute([$classe['id'], $debut]);
+    $lignes = $s->fetchAll();
+    $out = $vide;
+    foreach ($lignes as $l) {
+        $p = (int) $l['points'];
+        $out['points'] += $p;
+        $out['participants']++;
+        $out['equipes'][equipeDeLEleve((string) $classe['id'], (string) $l['student_id'])] += $p;
+    }
+    return $out;
+}
+
+/**
+ * LE RECORD DE LA CLASSE SUR CET EXERCICE — le meilleur total d'un défi passé.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « Le défi ca cartonne, des idées dans ce style ». Le record fait
+ * revenir, et il ne désigne personne : c'est la classe contre elle-même, de
+ * semaine en semaine. C'est aussi, de toutes les idées de cette série, la seule
+ * où l'élève lent n'a rien à perdre.
+ *
+ * ── ON LE CALCULE, ON NE LE RANGE PAS ─────────────────────────────────────
+ *
+ * Un record n'est qu'une LECTURE de ce qu'on a déjà : la somme des scores d'un
+ * même défi, le meilleur de tous. Une table de records serait une seconde
+ * vérité à tenir d'accord — et elle se tromperait le jour où un score arrive
+ * en retard, ce qui arrive à chaque défi.
+ *
+ * ET LE DÉFI EN COURS NE COMPTE PAS : on ne bat pas un record qu'on est en
+ * train d'établir. Il entrera dans la liste au défi suivant, c'est-à-dire
+ * quand il sera devenu un record à battre.
+ *
+ * @return array{points:int, le:?string}|null
+ */
+function recordDeLaClasse(array $classe, string $exo, int $saufDebut = 0): ?array
+{
+    if ($exo === '') {
+        return null;
+    }
+    $s = db()->prepare(
+        'SELECT defi_debut, SUM(COALESCE(points, bonnes)) AS total,
+                MAX(created_at) AS quand
+           FROM defi_scores
+          WHERE class_id = ? AND exo = ? AND defi_debut <> ?
+          GROUP BY defi_debut
+          ORDER BY total DESC
+          LIMIT 1'
+    );
+    $s->execute([$classe['id'], $exo, $saufDebut]);
+    $l = $s->fetch();
+    if (!$l || (int) $l['total'] <= 0) {
+        return null;
+    }
+    return ['points' => (int) $l['total'], 'le' => $l['quand'] ?: null];
+}
+
+/**
+ * LE BUT COMMUN, CALCULÉ PAR LE SERVEUR QUAND ON LUI LAISSE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * C'EST LE SEUL ENDROIT DU LOGICIEL OÙ LE SERVEUR CHOISIT UN RÉGLAGE à la place
+ * du professeur, et il y a une raison : Rémy, debout devant trente élèves, n'a
+ * pas trois secondes pour calculer un but — et un but tiré au hasard est soit
+ * gagné en vingt secondes, soit hors de portée. Dans les deux cas la barre ne
+ * sert plus à rien, ce qui est pire que de ne pas l'avoir.
+ *
+ * LE RECORD + 10 %, ET RIEN D'AUTRE. C'est la seule base qui se tienne : elle
+ * est MESURÉE sur cette classe-là, sur cet exercice-là, et elle vaut aussi bien
+ * pour un défi de calcul (un point par bonne réponse) que pour un défi
+ * d'estimation (jusqu'à cent points par question) — alors qu'une règle du genre
+ * « cinq points par élève » serait juste pour l'un et absurde pour l'autre.
+ *
+ * ── ET SANS RECORD, PAS DE BUT ────────────────────────────────────────────
+ *
+ * On ne devine pas. Le premier défi sur un exercice est celui qui ÉTABLIT le
+ * record — l'écran de fin le dit à la classe en ces mots —, et le but se
+ * calcule tout seul au suivant. Le professeur qui veut un but dès la première
+ * fois en choisit un dans la liste ; c'est son métier, pas une devinette.
+ */
+function butDuDefi(array $classe, string $exo): int
+{
+    $record = recordDeLaClasse($classe, $exo);
+    if (!$record || $record['points'] <= 0) {
+        return 0;
+    }
+    // AU MOINS UN POINT DE PLUS QUE LE RECORD : sur un petit record, dix pour
+    // cent arrondis pourraient ne rien ajouter du tout, et la classe
+    // « gagnerait » en égalant ce qu'elle avait déjà fait.
+    return min(50000, max($record['points'] + 1, (int) ceil($record['points'] * 1.1)));
 }
 
 /**
@@ -571,7 +779,7 @@ function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms,
     // avant l'écriture qui suit. Sans cela, l'INSERT plus bas doit faire MONTER
     // cette lecture en écriture, et SQLite refuse net dès qu'une autre ardoise a
     // écrit entre-temps — ce qui, dans un défi, est le cas par construction.
-    $classe = lireUne('SELECT id, defi_debut, defi_fin FROM classes WHERE id = ?',
+    $classe = lireUne('SELECT id, defi_debut, defi_fin, defi_exo FROM classes WHERE id = ?',
         [$eleve['class_id']]);
     $debut = (int) ($classe['defi_debut'] ?? 0);
     $fin = (int) ($classe['defi_fin'] ?? 0);
@@ -587,6 +795,10 @@ function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms,
     // qu'avant. Un classement qui trie sur une colonne vide mettrait tous les
     // anciens clients derniers, sans que rien ne le dise.
     $points = $points === null ? $bonnes : max(0, min(99999, $points));
+    // L'EXERCICE VOYAGE AVEC LE SCORE — c'est lui qui rend le record possible,
+    // et il ne peut venir que d'ici : le client ne le dit pas, et il n'a pas à
+    // le dire. Voir `recordDeLaClasse`.
+    $exo = trim((string) ($classe['defi_exo'] ?? ''));
 
     $deja = lireUne('SELECT id, COALESCE(points, bonnes) AS points FROM defi_scores
                       WHERE class_id = ? AND defi_debut = ? AND student_id = ?',
@@ -596,15 +808,16 @@ function enregistrerScoreDefi(array $eleve, int $bonnes, int $total, int $ms,
         if ((int) $deja['points'] >= $points) {
             return ['ok' => true, 'dit' => 'Score déjà enregistré.'];
         }
-        ecrireMalgreLaRuee('UPDATE defi_scores SET bonnes = ?, total = ?, ms = ?, points = ? WHERE id = ?',
-            [$bonnes, $total, $ms, $points, $deja['id']]);
+        ecrireMalgreLaRuee('UPDATE defi_scores SET bonnes = ?, total = ?, ms = ?, points = ?,
+                                  exo = ? WHERE id = ?',
+            [$bonnes, $total, $ms, $points, $exo, $deja['id']]);
         return ['ok' => true, 'dit' => 'Score mis à jour.'];
     }
     ecrireMalgreLaRuee('INSERT INTO defi_scores
-                     (id, class_id, student_id, defi_debut, bonnes, total, ms, points)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                     (id, class_id, student_id, defi_debut, bonnes, total, ms, points, exo)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [uuidv4(), $eleve['class_id'], $eleve['id'], $debut,
-            $bonnes, $total, $ms, $points]);
+            $bonnes, $total, $ms, $points, $exo]);
     return ['ok' => true, 'dit' => 'Score enregistré.'];
 }
 

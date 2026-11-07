@@ -381,6 +381,26 @@ function lesTablesDuSchema(bool $sqlite): array
         --     lit « une manche », ce qui est la verite.
         defi_manches   " . ($sqlite ? 'INTEGER' : 'INT') . " NULL,
         defi_duree     " . ($sqlite ? 'INTEGER' : 'INT') . " NULL,
+        --   · defi_but : L'OBJECTIF COMMUN, en points, quand il y en a un.
+        --
+        --     RÉMY : « Le défi ca cartonne, des idées dans ce style ». Un
+        --     classement récompense les RAPIDES — il l'avait déjà senti en
+        --     choisissant « podium + ta place » plutôt que les trente prénoms.
+        --     Un but commun est son contraire exact : la classe marque
+        --     ENSEMBLE, celui qui fait deux points pousse la barre autant que
+        --     les deux du plus rapide, et à la fin on gagne ou on perd tous.
+        --
+        --     NULL veut dire « pas de but » : c'est le défi ordinaire, avec son
+        --     classement. La colonne ne décide donc de rien quand elle est vide.
+        defi_but       " . ($sqlite ? 'INTEGER' : 'INT') . " NULL,
+        --   · defi_equipes : DEUX ÉQUIPES, ou la classe entière.
+        --
+        --     Le tiers chemin entre le classement et le but commun : on garde
+        --     la compétition, mais elle se joue entre GROUPES, et l'élève lent
+        --     y pousse sa couleur comme les autres. Rien à régler : le serveur
+        --     partage la classe en deux, une ligne sur deux, et la répartition
+        --     ne bouge pas d'un défi à l'autre.
+        defi_equipes   $bool,
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
@@ -787,6 +807,19 @@ function lesTablesDuSchema(bool $sqlite): array
         -- le score — Rémy veut « le plus de calculs » —, il DÉPARTAGE les
         -- égalités. Compter des points de vitesse récompenserait la frappe.
         ms         " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        -- L'EXERCICE DU DÉFI, ET C'EST LE RECORD DE LA CLASSE QUI LE DEMANDE.
+        --
+        -- RÉMY : « Le défi ca cartonne, des idées dans ce style ». Le record
+        -- — « Record de la 6e B sur Détour Express : 1 240 points » — se lit en
+        -- additionnant les scores d'un même défi, puis en gardant le meilleur
+        -- total PAR EXERCICE. Sans cette colonne, on comparerait un défi de
+        -- calcul mental à un défi d'estimation d'angle, dont les points ne se
+        -- comptent pas du tout pareil.
+        --
+        -- ON L'ÉCRIT SUR LA LIGNE DE SCORE plutôt que dans une table de records
+        -- à tenir à jour : un record n'est qu'une LECTURE de ce qu'on a déjà, et
+        -- une table de plus serait une seconde vérité à garder d'accord.
+        exo        $txtNull,
         created_at $date,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
