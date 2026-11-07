@@ -5660,3 +5660,56 @@ total exact, et le serveur n'a crié ni erreur ni verrou.
 · `npm test` 5 727, `boutEnBout` « TOUT SE SYNCHRONISE », `trenteDUnCoup` 30/30.
 
 **IL RESTE LA NOTICE**, qu'il a demandée pour quand tout serait fini.
+
+### « FAÇON TOURNOI, UN PLATEAU EN TEMPS RÉEL » — 7 novembre
+
+> « Question technique on pourrait un peu façon tournoi mettre tous les élèves
+> sur un plateau et jouer en temps réel ? »
+>
+> Puis, parce que j'avais répondu à côté en proposant des formes de plateau :
+> « Non je n'ai pas été clair, je voulais savoir pour tester est-ce que je peux
+> mettre 30 élèves sur un plateau et qu'il bouge en temps réel ? »
+
+**IL DEMANDAIT SI LA MACHINE TIENT, pas quelle forme donner au plateau.** Ma
+première réponse proposait trois dessins et un dialogue de choix : c'était la
+réponse à une question qu'il n'avait pas posée. **Une question technique appelle
+une mesure, pas un catalogue.**
+
+**MESURÉ** — `tools/plateauEnTempsReel.mjs` (neuf), trente vraies ardoises
+contre le vrai serveur PHP + SQLite, défi avec but commun ET deux équipes
+(le réglage le plus cher : il oblige le serveur à additionner les trente lignes
+et à les ranger en deux équipes à chaque battement) :
+
+| Cadence | Requêtes | Servies | Médiane | 9e décile | Verrous SQLite |
+| --- | --- | --- | --- | --- | --- |
+| 30 élèves × 1/s | 600 | **600** | 27 ms | 51 ms | 0 |
+| 30 élèves × 2/s | 720 | **720** | 26 ms | 49 ms | 0 |
+| 30 élèves × 4/s | 1 200 | **1 200** | 26 ms | 48 ms | 0 |
+
+**La médiane ne bouge pas de 30 à 120 requêtes par seconde** : on n'approche
+même pas la saturation. Et les deux nombres qui disent « temps réel » :
+
+· **Le plateau bouge à 100 % des secondes**, sur les trente ardoises.
+· **Le bond d'un élève est vu par les vingt-neuf autres au battement suivant**,
+  c'est-à-dire en une seconde — 30 sur 30.
+
+**RIEN DE NOUVEAU N'EST NÉCESSAIRE CÔTÉ RÉSEAU.** La requête du battement monte
+DÉJÀ le score de l'élève et redescend DÉJÀ le total de la classe (c'est ce qui
+fait la barre du lot 2). Un plateau ne demande donc **aucune route nouvelle** :
+seulement un rythme plus serré pendant le défi, et trente positions dans une
+réponse qui part de toute façon — mesuré : 723 octets aujourd'hui, + 540 pour
+les trente pions.
+
+**CE QUE LA MESURE NE DIT PAS** : si son hébergement mutualisé accepte ce débit.
+C'est une limite d'hébergeur, pas de logiciel. Mais le site d'essai tourne avec
+QUATRE processus PHP là où un mutualisé en accorde dix à vingt-cinq — donc ce
+qui passe ici est un plancher. Le calcul à faire chez lui : 30 requêtes/s × le
+temps d'une requête. À 150 ms sur mutualisé, cela demande environ **cinq
+processus PHP simultanés** — dans ce que son hébergement accorde.
+
+**ET L'OBSTACLE QUI RESTE N'EST PAS TECHNIQUE.** Il avait choisi « podium + ta
+place » pour ne pas désigner le dernier devant la classe. Un plateau projeté
+avec trente prénoms met le plus lent visiblement dernier **pendant toute la
+minute**, et non trois secondes. C'est sa décision ; j'ai trois formes qui
+l'évitent (pions anonymes, deux chenilles d'équipe), à lui proposer s'il veut
+qu'on le construise.
