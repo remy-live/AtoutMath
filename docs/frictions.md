@@ -6873,3 +6873,45 @@ plus d'un.**
   même chose que `s.photo`, mais sur la page qu'on lui donne —, et qu'elle
   CRIE quand le sélecteur ne désigne rien, comme `doitExister` le fait déjà.
   Une photo ratée en silence est pire qu'une photo ratée.
+
+**Un préfixe de classes CSS neuf peut être déjà pris, et rien ne le dit** — 7 novembre
+
+- *Ce que je voulais faire* : écrire l'écran du plateau des nombres. J'ai pris
+  le préfixe `pdn-`… après avoir perdu une heure sur `pn-`, qui est **celui des
+  Pentaminos**. `.pn-grille` existait déjà, en `position: absolute; inset: 0` :
+  ma grille était donc sortie du flux, la carte qui la contenait se rangeait sur
+  195 px, et **le plateau coulait par-dessus la page entière**. Aucune erreur,
+  aucun avertissement — juste une mise en page absurde.
+- *Ce qui a coûté* : environ cinquante minutes et **cinq lancements de sonde**.
+  J'ai successivement soupçonné `aspect-ratio`, `max-height: 100%`,
+  `align-items: center`, la taille de base en flexbox, et j'ai écrit un script
+  de bissection qui essayait sept hypothèses dans le navigateur — toutes
+  fausses. La vraie cause tenait dans un `grep` d'une seconde.
+- *Combien de fois* : | (première, mais le dépôt a plus de quatre-vingts
+  préfixes de jeux à deux ou trois lettres : la prochaine collision est devant)
+- *Ce qui manque* : que `tools/nouvelExercice.mjs` — déjà le filet des quatre
+  pièges — prenne un préfixe en argument et dise s'il est pris. Trois lignes :
+  `grep -c "\.<prefixe>" css/*.css`. **Et la règle que je n'ai pas appliquée :
+  avant d'écrire une feuille de style, chercher son préfixe dans l'existante.**
+
+**`aspect-ratio` ment deux fois sur la taille réelle d'un élément** — 7 novembre
+
+- *Ce que je voulais faire* : une grille de carrés qui remplit l'écran. Deux
+  pièges, et les deux font que **l'élément se peint à la bonne taille pendant
+  que la mise en page l'ignore** — donc `getBoundingClientRect` sur l'élément
+  dit « tout va bien » et c'est le PARENT qui est faux.
+  1. `aspect-ratio` sur un enfant de grille ne dimensionne pas sa ligne : la
+     ligne est rangée sur la hauteur de CONTENU, l'enfant déborde, et les pions
+     se chevauchent. Mesuré : cases de 68 px dans des lignes de 22.
+  2. `aspect-ratio` + `width: 100%` dans un conteneur flex en colonne donne une
+     taille de base de ZÉRO : le parent se range sans compter l'enfant.
+- *Ce qui a coûté* : deux lancements, plus la photo qui a enfin montré le
+  débordement. **C'est la photo qui a tranché, pas la mesure** — et c'est la
+  troisième fois cette semaine que `s.photo` dit ce qu'un nombre cachait.
+- *Combien de fois* : | (première pour `aspect-ratio`, mais « l'élément est
+  juste, son parent est faux » est le même piège que `[hidden]`, compté trois
+  fois déjà)
+- *Ce qui manque* : une aide de sonde qui, pour un sélecteur, compare la taille
+  de l'élément à celle de son parent et **crie quand l'enfant déborde** —
+  `s.deborde('.ma-grille')`. Elle aurait dit la vérité au premier lancement
+  dans les deux cas, et elle vaut pour tout débordement silencieux.

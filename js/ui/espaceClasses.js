@@ -2736,6 +2736,17 @@ const OUTILS_DE_LHEURE = [
       titre: (info, ch, enCours, defiCourt) => `⚡ Défi de la classe${defiCourt
                 ? ' <b class="ec-pilote-outil-vif">· en cours</b>' : ''}`,
       corps: outilDefi },
+    // LE PLATEAU DES NOMBRES. Rémy : « on est sur un plateau avec des nombres
+    // aux extrémités et on fonctionne par équipe, et sur le plateau chaque
+    // joueur porte un chiffre […] il y a un 56 sur le plateau et il faut qu'il
+    // se retrouve pour prendre le 56 ». Puis : « j'aimerai bien un mode démo ».
+    //
+    // IL EST RANGÉ JUSTE APRÈS LE DÉFI, et pas au bout de la barre : ce sont
+    // les deux choses qui prennent l'écran de toute la classe, et on les
+    // cherche au même endroit.
+    { cle: 'plateau',
+      titre: () => '🎲 Le plateau',
+      corps: outilPlateau },
     { cle: 'chrono',
       titre: (info, ch, enCours, defiCourt) => `⏱ Compte à rebours${enCours
                 ? ` <b class="ec-pilote-outil-vif ec-chrono-reste">${enMinutes(resteDuChrono(ch))}</b>`
@@ -3012,6 +3023,52 @@ function outilDefi(info, ch, enCours, defiCourt) {
                         >📺 Au tableau</button>` : ''}
             </span>
             ${classementDuDefiHtml(vue.direct)}`;
+}
+
+/**
+ * 🎲 LE PLATEAU DES NOMBRES — corps de l'onglet.
+ *
+ * POUR L'INSTANT, IL N'Y A QUE LE MODE DÉMO, et c'est délibéré : Rémy doit
+ * pouvoir JOUER sa propre règle avant que je câble trente ardoises dessus. Une
+ * règle de jeu se juge en jouant, pas en lisant — et s'il veut en changer une,
+ * mieux vaut le savoir avant d'avoir écrit le serveur qui la porte.
+ */
+function outilPlateau() {
+    return `<span class="ec-pilote-dit">Chaque joueur porte un nombre. Deux (ou
+               trois) qui se retrouvent sur une case la prennent si leurs nombres
+               la donnent&nbsp;: <b>7 et 8 prennent le 56</b>. Une rencontre entre
+               les deux équipes partage les points.</span>
+            <span class="ec-pilote-cadre" role="group" aria-label="Essayer le plateau">
+                <select class="ec-champ ec-champ--mince" data-plateau-op
+                        aria-label="L'opération du plateau">
+                    <option value="×">× multiplication</option>
+                    <option value="+">+ addition</option>
+                </select>
+                <!-- LES TROIS STYLES, et c'est le réglage qui décide si le jeu
+                     est un jeu de maths ou une course-poursuite. Rémy : « propose
+                     les 3 styles de jeu » — les voici, à essayer l'un après
+                     l'autre. « En répondant » est celui où le nombre se mérite. -->
+                <select class="ec-champ ec-champ--mince" data-plateau-style
+                        aria-label="Comment on change de nombre">
+                    <option value="question">en répondant</option>
+                    <option value="jetons">en ramassant</option>
+                    <option value="libre">librement</option>
+                </select>
+                <select class="ec-champ ec-champ--mince" data-plateau-combien
+                        aria-label="Combien de joueurs">
+                    <option value="11">12 joueurs</option>
+                    <option value="5">6 joueurs</option>
+                    <option value="23">24 joueurs</option>
+                    <option value="29">30 joueurs</option>
+                </select>
+                <button type="button" class="ec-pilote-btn" data-plateau-demo
+                        title="Jouer une partie seul, les autres pions tenus par l'ordinateur"
+                        >▶ Essayer en démo</button>
+            </span>
+            <span class="ec-pilote-dit">En démo, les autres pions sont tenus par
+               l'ordinateur&nbsp;: ils lisent le plateau avec les mêmes règles que
+               vous et ne trichent pas. Flèches du clavier, ou la case voisine au
+               doigt.</span>`;
 }
 
 /** ⏱ Compte à rebours — corps de l'onglet. */
@@ -3581,7 +3638,7 @@ async function brancher(e, redessiner) {
         // se clique, et le répartiteur ne le voit jamais. Mesuré par
         // `tools/defiEnManches.mjs`, qui a cliqué « Au tableau » sans qu'il se
         // passe quoi que ce soit — ni fenêtre, ni message, ni erreur.
-        + '[data-defi-rejouer], [data-defi-tableau],'
+        + '[data-defi-rejouer], [data-defi-tableau], [data-plateau-demo],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
@@ -4720,6 +4777,26 @@ async function brancher(e, redessiner) {
             const info = (vue.liste && vue.liste.classe);
             if (info) info.defi_exo = exo;
         });
+        return;
+    }
+
+    // ── LE PLATEAU DES NOMBRES, EN DÉMO ───────────────────────────────────
+    //
+    // RÉMY : « j'aimerai bien un mode démo ». Il n'est pas un confort : un jeu
+    // à trente ne se regarde pas tout seul, et Rémy ne peut PAS juger sa propre
+    // règle avant de l'avoir jouée. Les pions de l'ordinateur lisent le plateau
+    // par les mêmes fonctions que lui (`core/plateau.js`) et ne trichent pas.
+    if (d.plateauDemo !== undefined) {
+        const zone = el.closest('.ec-pilote') || document;
+        const lu = (sel, defaut) => ((zone.querySelector(sel) || {}).value || defaut);
+        const { ouvrirLePlateau, brancherLaSortie } = await import('./plateauUI.js');
+        const partie = ouvrirLePlateau({
+            operation: lu('[data-plateau-op]', '×'),
+            style: lu('[data-plateau-style]', 'question'),
+            robots: Number(lu('[data-plateau-combien]', '11')) || 11,
+            secondes: 180
+        });
+        brancherLaSortie(partie);
         return;
     }
 

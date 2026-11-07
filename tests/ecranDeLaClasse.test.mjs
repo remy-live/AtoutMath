@@ -51,13 +51,17 @@ test('LES OUTILS DE L\'HEURE SONT DE VRAIS ONGLETS', () => {
         'le panneau unique a disparu : les outils se rouvrent chacun chez soi');
     assert.doesNotMatch(source, /<details class="ec-pilote-outil/,
         'les pastilles dépliantes sont revenues');
-    // SEPT OUTILS, ET CHACUN SON CORPS : un onglet sans corps est un bouton
-    // qui ne fait rien.
+    // HUIT OUTILS, ET CHACUN SON CORPS : un onglet sans corps est un bouton
+    // qui ne fait rien. C'ÉTAIT SEPT jusqu'au plateau des nombres, et ce
+    // nombre-ci n'est pas une tatillonnerie : il est tombé le jour où j'ai
+    // ajouté l'onglet, ce qui est exactement ce qu'on lui demande — la barre de
+    // pilotage est l'écran que Rémy a le plus corrigé, et on ne lui ajoute pas
+    // une commande sans s'en apercevoir.
     const table = source.slice(source.indexOf('const OUTILS_DE_LHEURE = ['),
         source.indexOf('function barrePiloteHtml'));
     const cles = table.match(/cle: '/g) || [];
     const corps = table.match(/corps: outil/g) || [];
-    assert.equal(cles.length, 7, `${cles.length} outils au lieu de sept`);
+    assert.equal(cles.length, 8, `${cles.length} outils au lieu de huit`);
     assert.equal(corps.length, cles.length, 'un onglet n\'a pas de corps');
     // ET UN SECOND CLIC REFERME : c'est ce qui rend la barre à deux lignes
     // au-dessus de la liste des élèves, qui est ce qu'on vient regarder.

@@ -5713,3 +5713,69 @@ avec trente prénoms met le plus lent visiblement dernier **pendant toute la
 minute**, et non trois secondes. C'est sa décision ; j'ai trois formes qui
 l'évitent (pions anonymes, deux chenilles d'équipe), à lui proposer s'il veut
 qu'on le construise.
+
+### LE PLATEAU DES NOMBRES — son jeu à lui — 7 novembre
+
+> « J'aimerai bien qu'on fasse un jeu qui prend l'écran à 30, ce serait pour
+> tester, on pourrait faire quoi ? »
+>
+> Puis, après mes quatre propositions : « sinon on est sur un plateau avec des
+> nombres aux extrémités et on fonctionne par équipe, et sur le plateau chaque
+> joueur porte un chiffre (qui peut changer) exemple un joueur de l'équipe rouge
+> porte 7 et un autre 8 et il y a un 56 sur le plateau et il faut qu'il se
+> retrouve pour prendre le 56 (on peut aussi faire cela pour l'addition). Si
+> c'est un rouge et un bleu qui se rejoignent les points sont partagés. »
+>
+> Puis : « et j'aimerai bien un mode démo ».
+>
+> Puis, en voyant la première version : « je voyais plus les joueurs comme des
+> ronds qui se déplacent librement pas case par case et quand on recouvre un
+> carré, le carré s'éclaire. »
+
+**SON JEU EST MEILLEUR QUE MES QUATRE PROPOSITIONS, et pour une raison précise :
+les maths y sont DANS LE GESTE.** Les miennes posaient une question puis
+récompensaient la bonne réponse — le calcul était à côté du jeu. Chez lui, pour
+prendre le 56 il faut l'avoir décomposé AVANT de savoir qui chercher des yeux.
+Un élève qui balaie le plateau en cherchant « qui porte un 8 ? » fait de la
+décomposition, debout, sans qu'on le lui demande.
+
+**ET SA RÈGLE DU PARTAGE EST LA MEILLEURE DU LOT.** « Si c'est un rouge et un
+bleu qui se rejoignent les points sont partagés » fait trois choses à la fois :
+personne n'est jamais bloqué faute de partenaire ; chaque rencontre adverse
+pose un vrai choix (attendre son coéquipier pour tout gagner, ou prendre
+l'adversaire déjà là pour la moitié tout de suite) ; et aucun des deux élèves
+ne se sacrifie, donc ils le refont.
+
+**CE QUI A ÉTÉ FAIT**
+
+· `js/core/plateau.js` — la règle, PURE : qui prend quoi, avec qui, pour
+  combien. Rien n'y lit l'heure, le document ni le réseau, donc toute la règle
+  se mesure en millisecondes. **Sept défauts remis, sept épreuves tombées.**
+· `js/ui/plateauUI.js` — le terrain, les ronds libres, les carrés qui
+  s'éclairent, et les robots du mode démo.
+· L'onglet **🎲 Le plateau** dans la barre de pilotage, rangé juste après le
+  défi : ce sont les deux choses qui prennent l'écran de toute la classe.
+
+**LES TROIS STYLES**, puisqu'il a répondu « propose les 3 styles de jeu » :
+*en répondant* (pour devenir un 8, il faut trouver 8 — c'est là que le calcul
+coûte quelque chose), *en ramassant* (des jetons au sol), *librement*. Ils se
+choisissent dans la barre, et ils changent complètement la nature du jeu.
+
+**DEUX OU TROIS PIONS**, son choix : 56 = 7 × 8, ou 2 × 4 × 7. **À trois, la
+prise vaut le double** — réunir trois élèves au même endroit au même moment
+coûte largement plus du double d'une rencontre à deux ; à une fois et demie,
+personne ne tenterait deux fois.
+
+**LES RONDS LIBRES : il avait raison.** Un déplacement de case en case fait du
+jeu une suite de tours, et deux élèves qui se cherchent se croisent par
+à-coups. Des ronds libres font de la RENCONTRE le geste central. Mesuré après
+le changement : treize prises dans la fenêtre où il y en avait six.
+
+**CE QUI RESTE À FAIRE, et je le dis clairement : LE JEU EN RÉSEAU.** Ce qui
+existe aujourd'hui est le jeu complet, jouable, mais en MODE DÉMO — un humain,
+des pions tenus par l'ordinateur. Les trente ardoises demandent le serveur :
+des tables pour les pions et les prises, une route, et la sonde à trente.
+**La mesure du 7 novembre dit que le transport tient largement** (trente
+ardoises à quatre battements par seconde, 120 requêtes/s, médiane 26 ms, aucun
+verrou) — mais c'est un vrai morceau, et le mode démo existe précisément pour
+qu'il juge la règle AVANT que je l'écrive.

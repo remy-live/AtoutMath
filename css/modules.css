@@ -17212,3 +17212,216 @@ body.visite-en-cours .modal-overlay > * {
     .ea-champ b { font-size: 1.6rem; }
     .ea-pastille { width: 58px; height: 58px; font-size: 1.2rem; }
 }
+
+/* ══ LE PLATEAU DES NOMBRES ═══════════════════════════════════════════════
+   RÉMY : « on est sur un plateau avec des nombres aux extrémités et on
+   fonctionne par équipe, et sur le plateau chaque joueur porte un chiffre […]
+   il y a un 56 sur le plateau et il faut qu'il se retrouve pour prendre le 56 ».
+   LE PLATEAU DOIT SE LIRE DE DEUX DISTANCES À LA FOIS : à bout de bras sur une
+   tablette, et du fond de la classe sur un vidéoprojecteur. D'où des tailles en
+   `min()` de vw et de vh plutôt qu'en pixels : la même feuille sert aux deux. */
+.pdn-voile {
+    position: fixed; inset: 0; z-index: 9000;
+    display: flex; align-items: center; justify-content: center;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 8px;
+    background: color-mix(in srgb, var(--bg-app) 92%, var(--primary));
+}
+.pdn-carte {
+    position: relative;
+    background: var(--bg-panel); border-radius: 16px; box-shadow: var(--shadow-lg);
+    padding: clamp(8px, 1.6vmin, 18px);
+    width: min(1600px, 100%); max-height: 100%;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.pdn-haut {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-weight: 800;
+}
+.pdn-eq { display: flex; align-items: baseline; gap: 8px; font-size: clamp(.8rem, 2vmin, 1.1rem); }
+.pdn-eq b { font-size: clamp(1.1rem, 3.4vmin, 2rem); font-variant-numeric: tabular-nums; }
+/* LES DEUX COULEURS SONT ÉCRITES EN DUR, comme pour le défi, et pour la même
+   raison : « Les Bleus » dans un thème orange seraient orange, et deux équipes
+   de la même couleur ne s'opposent plus. */
+.pdn-eq--0 b { color: #2563eb; }
+.pdn-eq--1 b { color: #f97316; }
+.pdn-temps { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.pdn-temps b { color: var(--warning-texte); font-size: clamp(1rem, 3vmin, 1.7rem); }
+.pdn-sortir {
+    border: none; background: transparent; color: var(--text-muted);
+    font-size: 1.6rem; line-height: 1; cursor: pointer; padding: 2px 8px;
+}
+/* LE TERRAIN, ET LES DEUX PIÈGES DE MISE EN PAGE QU'IL A COÛTÉS.
+
+   RÉMY : « je voyais plus les joueurs comme des ronds qui se déplacent
+   librement pas case par case ». Les carrés sont donc un DÉCOR FIXE, et les
+   ronds vivent AU-DESSUS, en position absolue : un pion rangé DANS une case ne
+   pourrait être qu'au centre d'une case.
+
+   PREMIER PIÈGE — `aspect-ratio: 1` SUR CHAQUE CASE. Cela semble évident : des
+   cases carrées font une grille carrée. MESURÉ : la grille faisait 910 × 195 px
+   pour huit lignes, et une case en faisait 68 × 68 — autrement dit les lignes
+   ne mesuraient que 22 px et les pions se chevauchaient. La proportion d'un
+   enfant de grille ne dimensionne PAS sa ligne : le navigateur range la ligne
+   sur la hauteur de CONTENU de l'enfant, puis l'enfant déborde sans un mot.
+   La proportion va donc sur le TERRAIN, et les lignes sont en `1fr`.
+
+   SECOND PIÈGE — `width: 100%` AVEC UNE PROPORTION, dans un conteneur flex en
+   colonne : l'élément se PEINT à la bonne taille mais sa taille de base vaut
+   ZÉRO. La carte se rangeait sur 195 px et le plateau coulait par-dessus la
+   page entière. Photo à l'appui, et pas une erreur nulle part. On commande
+   donc par la HAUTEUR : la taille de base devient définie, et la largeur se
+   déduit de la proportion. Le `min()` prend la plus contraignante des deux
+   places — la hauteur de fenêtre moins les bandeaux, ou ce que la largeur
+   autorise — de sorte que le plateau remplit l'écran sans jamais pousser la
+   manette dehors. */
+.pdn-terrain {
+    position: relative;
+    aspect-ratio: var(--pdn-colonnes, 12) / var(--pdn-lignes, 8);
+    height: min(calc(100vh - 240px),
+                calc((100vw - 60px) * var(--pdn-lignes, 8) / var(--pdn-colonnes, 12)));
+    width: auto; max-width: 100%; flex: 0 0 auto;
+    margin: 0 auto;
+    touch-action: none;   /* le doigt dirige le rond, il ne fait pas défiler */
+}
+.pdn-grille {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--pdn-colonnes, 12), 1fr);
+    grid-template-rows: repeat(var(--pdn-lignes, 8), 1fr);
+    gap: 2px;
+}
+.pdn-case {
+    position: relative; min-width: 0; min-height: 0;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg-hover); color: var(--text-main);
+    transition: background-color .12s linear, border-color .12s linear;
+}
+.pdn-case--cible { background: var(--bg-panel); border-color: var(--primary); border-width: 2px; }
+/* « QUAND ON RECOUVRE UN CARRÉ, LE CARRÉ S'ÉCLAIRE » — la demande de Rémy, et
+   c'est la seule chose qui dise à trente élèves à la fois où il se passe
+   quelque chose. Un carré allumé qui n'est pas une cible s'allume aussi : on
+   voit ainsi passer les autres, ce qui est la moitié du plaisir. */
+.pdn-case--allumee { background: color-mix(in srgb, var(--warning) 26%, var(--bg-panel)); }
+.pdn-case--cible.pdn-case--allumee {
+    background: color-mix(in srgb, var(--warning) 34%, var(--bg-panel));
+    border-color: var(--warning-texte);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 55%, transparent);
+}
+.pdn-valeur {
+    position: absolute; left: 0; right: 0; top: 4%;
+    display: flex; align-items: flex-start; justify-content: center;
+    font-weight: 900; font-size: min(3.4vmin, 1.6rem); line-height: 1;
+    color: var(--primary-texte); opacity: .8; pointer-events: none;
+}
+.pdn-jeton {
+    position: absolute; right: 2px; bottom: 1px;
+    font-size: min(1.8vmin, .75rem); font-weight: 800;
+    color: var(--success-texte);
+}
+/* LA COUCHE DES RONDS : elle couvre le terrain et ne prend aucun doigt — c'est
+   le terrain, dessous, qui écoute, sinon un rond sous le pouce avalerait le
+   geste de direction. */
+.pdn-pions { position: absolute; inset: 0; pointer-events: none; }
+/* UN ROND. Sa taille se calcule sur la largeur d'une case, donc il grandit avec
+   le plateau : lisible à bout de bras sur une tablette comme du fond de la
+   classe. La transition est courte — elle lisse les à-coups d'images sans
+   jamais faire traîner le rond derrière le doigt. */
+.pdn-pion {
+    position: absolute;
+    width: calc(100% / var(--pdn-colonnes, 12) * 0.66);
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: min(2.1vmin, .95rem); line-height: 1;
+    transition: left .06s linear, top .06s linear;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+.pdn-pion--0 { background: #2563eb; }
+.pdn-pion--1 { background: #f97316; }
+/* SON ROND À LUI, et il doit le retrouver d'un coup d'œil au milieu de trente :
+   un anneau clair puis un anneau sombre, qui tient sur les deux couleurs
+   d'équipe comme sur les deux thèmes. */
+.pdn-pion--moi {
+    outline: 2px solid var(--bg-panel);
+    box-shadow: 0 0 0 4px var(--text-main);
+    z-index: 3;
+}
+/* CE QU'IL MANQUE POUR PRENDRE. C'est le moment d'enseignement du jeu :
+   « 56 — il manque un 8 » est une décomposition lue à voix haute par l'écran. */
+.pdn-dit {
+    text-align: center; font-weight: 700; min-height: 1.6em;
+    color: var(--text-muted); font-size: clamp(.85rem, 2.2vmin, 1.1rem);
+}
+.pdn-dit--sur { color: var(--text-main); }
+.pdn-dit b { color: var(--primary-texte); font-size: 1.25em; }
+.pdn-manque {
+    display: inline-block; min-width: 1.5em; padding: 0 .25em;
+    border-radius: 6px; background: var(--warning);
+    color: #1b1b1b; font-weight: 900;
+}
+.pdn-dit--fin { color: var(--text-main); font-size: clamp(1rem, 3vmin, 1.5rem); }
+.pdn-dit--fin small { display: block; color: var(--text-muted); font-size: .62em; }
+.pdn-bas {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap;
+}
+.pdn-moi { font-weight: 800; color: var(--text-muted); white-space: nowrap; }
+.pdn-moi b {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.8em; height: 1.8em; border-radius: 50%;
+    background: var(--text-main); color: var(--bg-panel); font-size: 1.1em;
+}
+.pdn-devenir { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex: 1 1 320px; }
+.pdn-aide { color: var(--text-muted); font-weight: 700; font-size: .8rem; }
+.pdn-nb {
+    min-width: 2.1em; min-height: 2.1em; padding: 0 .3em;
+    border: 2px solid var(--border); border-radius: 8px;
+    background: var(--bg-panel); color: var(--text-main);
+    font: inherit; font-weight: 800; cursor: pointer;
+}
+.pdn-nb--actif { border-color: var(--primary); background: var(--bg-hover); }
+.pdn-question { font-weight: 800; }
+.pdn-question b { color: var(--primary-texte); }
+.pdn-reponse {
+    font: inherit; font-weight: 800; width: 4.5em; text-align: center; padding: 6px;
+    border: 2px solid var(--border); border-radius: 8px;
+    background: var(--bg-panel); color: var(--text-main);
+}
+.pdn-reponse--ko { border-color: var(--danger); animation: pdn-non .3s; }
+@keyframes pdn-non { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: reduce) {
+    .pdn-reponse--ko, .pdn-pion, .pdn-annonce { animation: none; transition: none; }
+}
+.pdn-ok, .pdn-annul {
+    border: none; border-radius: 8px; padding: 7px 12px; min-height: 36px;
+    font: inherit; font-weight: 800; cursor: pointer;
+}
+.pdn-ok { background: var(--primary); color: #fff; }
+.pdn-annul { background: var(--bg-hover); color: var(--text-muted); }
+/* LA MANETTE, pour la tablette. Au clavier on a les flèches ; au doigt on a
+   ces quatre touches ET la case voisine — les deux, parce qu'un plateau se
+   joue au pouce quand on traverse et à l'index quand on vise. */
+.pdn-manette { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pdn-manette > div { display: flex; gap: 2px; }
+.pdn-manette button {
+    width: 2.4em; height: 2.4em; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-hover); color: var(--text-main);
+    font: inherit; font-size: 1rem; cursor: pointer;
+}
+.pdn-manette button:active { background: var(--primary); color: #fff; }
+/* L'ANNONCE D'UNE PRISE : une seconde et demie, par-dessus le plateau, et elle
+   ne pousse rien — un bandeau qui décalerait la grille ferait sauter les trente
+   pions au moment précis où la classe regarde la prise. */
+.pdn-annonce {
+    position: absolute; left: 50%; top: 14%; transform: translateX(-50%);
+    background: var(--text-main); color: var(--bg-panel);
+    padding: 8px 16px; border-radius: 999px; font-weight: 800;
+    font-size: clamp(.85rem, 2.4vmin, 1.2rem); white-space: nowrap;
+    box-shadow: var(--shadow-lg); animation: pdn-pop .25s ease-out; z-index: 5;
+}
+.pdn-annonce--partage { background: var(--warning); color: #1b1b1b; }
+.pdn-annonce b { font-size: 1.3em; }
+.pdn-annonce i { font-style: normal; opacity: .8; }
+.pdn-annonce span { opacity: .85; }
+@keyframes pdn-pop { from { opacity: 0; transform: translate(-50%, -8px); } }
