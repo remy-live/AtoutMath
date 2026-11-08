@@ -43,7 +43,8 @@
 
 import {
     NOMBRES, RAYON, VITESSE, dessinerLePlateau, placeDeDepart, avancer, caseSous,
-    cibleEn, cibleSous, quiPrend, repartirLesPoints, decompositions, coupDuRobot
+    cibleEn, cibleSous, quiPrend, repartirLesPoints, decompositions, coupDuRobot,
+    nombresUtiles
 } from '../core/plateau.js';
 import { makeRng, shortId } from '../core/ids.js';
 
@@ -110,6 +111,9 @@ export function semerDesJetons(plateau, combien, rng) {
  * @param {string} [o.graine] la même graine donne le même plateau
  * @param {'×'|'+'} [o.operation]
  * @param {'question'|'jetons'|'libre'} [o.style] comment on change de nombre
+ * @param {{tables?:number[], mini?:number}} [o.quoi] sur quoi on joue — une
+ *   table, plusieurs, ou une plage de valeurs. Rémy : « Choisir ce qu'on
+ *   travaille ». Vide veut dire « toutes les tables ».
  * @param {number} [o.robots] combien de pions tenus par l'ordinateur
  * @param {number} [o.secondes] la durée de la partie
  * @param {function} [o.surLaFin] appelée avec les scores quand le temps tombe
@@ -120,9 +124,10 @@ export function ouvrirLePlateau(o = {}) {
     const style = ['question', 'jetons', 'libre'].includes(o.style) ? o.style : 'question';
     const combienDeRobots = Math.max(0, Math.min(40, Math.round(o.robots ?? 11)));
     const secondes = Math.max(20, Math.round(o.secondes || 120));
+    const quoi = o.quoi || {};
     const rng = makeRng(`partie-${graine}`);
     const plateau = dessinerLePlateau({
-        graine, operation,
+        graine, operation, quoi,
         // LE PLATEAU GRANDIT AVEC LA CLASSE. Trente ronds sur douze cases de
         // large se marcheraient dessus — on ne verrait plus que des tas.
         largeur: Math.max(12, Math.min(18, 10 + Math.ceil((combienDeRobots + 1) / 4))),
@@ -136,6 +141,10 @@ export function ouvrirLePlateau(o = {}) {
     // reste une ligne sur deux — exactement comme le serveur partagera la vraie
     // classe (`equipeDeLEleve`). La démo montre donc la MÊME répartition que la
     // partie réelle, et non une mise en scène.
+    // LES NOMBRES DE DÉPART SE TIRENT PARMI CEUX QUI SERVENT ICI. Sur un
+    // plateau de la table de 7, démarrer avec un 5 n'ouvre rien : la partie
+    // commencerait par trente changements de nombre avant le premier geste.
+    const utiles = nombresUtiles(plateau);
     const pions = [];
     const compteurs = [0, 0];
     const ajouter = (nom, robot) => {
@@ -143,7 +152,7 @@ export function ouvrirLePlateau(o = {}) {
         const place = placeDeDepart(plateau, equipe, compteurs[equipe]++);
         pions.push({
             id: shortId(6), nom, equipe, robot,
-            x: place.x, y: place.y, nombre: rng.pick(NOMBRES),
+            x: place.x, y: place.y, nombre: rng.pick(utiles),
             depuis: Date.now(), vise: null, el: null
         });
     };
@@ -386,8 +395,11 @@ export function ouvrirLePlateau(o = {}) {
             p.vise = null;
         }
         // ET UN CARRÉ NEUF APPARAÎT AILLEURS : le plateau ne s'épuise pas.
+        // LE CARRÉ NEUF SUIT LE MÊME RÉGLAGE : sans `quoi`, un plateau de la
+        // table de 7 se remplirait peu à peu de carrés pris n'importe où, et
+        // le réglage s'effacerait tout seul au fil de la partie.
         const neuf = dessinerLePlateau({
-            graine: `${graine}-${prises.length}`, operation,
+            graine: `${graine}-${prises.length}`, operation, quoi,
             largeur: plateau.largeur, hauteur: plateau.hauteur, combien: 1
         }).cibles[0];
         const occupee = (x, y) => pions.some((p) => {

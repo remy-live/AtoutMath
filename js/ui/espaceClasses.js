@@ -3026,6 +3026,28 @@ function outilDefi(info, ch, enCours, defiCourt) {
 }
 
 /**
+ * CE QUE LE DÉROULANT « sur quoi on joue » VEUT DIRE, EN CLAIR.
+ *
+ * UN SEUL ENDROIT TRADUIT UN CHOIX EN FILTRE, et c'est tout l'intérêt de cette
+ * fonction de huit lignes : l'écran de démonstration et la partie à trente
+ * liront le même déroulant, et ils doivent en tirer EXACTEMENT le même plateau.
+ * Deux traductions séparées auraient fini par ne plus dire la même chose — la
+ * règle qui a déjà servi quatre fois cette semaine.
+ *
+ * `tables` NOMME LES FACTEURS, et non les valeurs : « la table de 7 », ce sont
+ * les carrés dont 7 est l'un des deux facteurs, 56 compris.
+ */
+function filtreDuPlateau(choix) {
+    if (/^t[2-9]$/.test(choix)) return { tables: [Number(choix.slice(1))] };
+    if (choix === 'dures') return { tables: [6, 7, 8] };
+    if (choix === 'petites') return { tables: [2, 3, 4, 5] };
+    // LES GRANDS NOMBRES : tout ce que deux pions peuvent encore faire au-delà
+    // de cinquante. C'est la plage où les tables cessent d'être des réflexes.
+    if (choix === 'gros') return { mini: 50 };
+    return {};
+}
+
+/**
  * 🎲 LE PLATEAU DES NOMBRES — corps de l'onglet.
  *
  * POUR L'INSTANT, IL N'Y A QUE LE MODE DÉMO, et c'est délibéré : Rémy doit
@@ -3048,6 +3070,27 @@ function outilPlateau() {
                      est un jeu de maths ou une course-poursuite. Rémy : « propose
                      les 3 styles de jeu » — les voici, à essayer l'un après
                      l'autre. « En répondant » est celui où le nombre se mérite. -->
+                <!-- SUR QUOI ON JOUE. Rémy, quand je lui ai demandé par quoi
+                     commencer : « Choisir ce qu'on travaille ». C'était le
+                     manque le plus coûteux : dans tout le reste du logiciel il
+                     choisit le chapitre, et le plateau, lui, tirait dans les
+                     huit tables mélangées. Un jeu qu'on ne peut pas accorder à
+                     sa séance reste une récréation. -->
+                <select class="ec-champ ec-champ--mince" data-plateau-quoi
+                        aria-label="Sur quoi on joue">
+                    <option value="tout">toutes les tables</option>
+                    <option value="t2">table de 2</option>
+                    <option value="t3">table de 3</option>
+                    <option value="t4">table de 4</option>
+                    <option value="t5">table de 5</option>
+                    <option value="t6">table de 6</option>
+                    <option value="t7">table de 7</option>
+                    <option value="t8">table de 8</option>
+                    <option value="t9">table de 9</option>
+                    <option value="dures">les tables dures (6, 7, 8)</option>
+                    <option value="petites">les petites (2 à 5)</option>
+                    <option value="gros">les grands nombres</option>
+                </select>
                 <select class="ec-champ ec-champ--mince" data-plateau-style
                         aria-label="Comment on change de nombre">
                     <option value="question">en répondant</option>
@@ -4793,6 +4836,7 @@ async function brancher(e, redessiner) {
         const partie = ouvrirLePlateau({
             operation: lu('[data-plateau-op]', '×'),
             style: lu('[data-plateau-style]', 'question'),
+            quoi: filtreDuPlateau(lu('[data-plateau-quoi]', 'tout')),
             robots: Number(lu('[data-plateau-combien]', '11')) || 11,
             secondes: 180
         });

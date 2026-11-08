@@ -17311,7 +17311,15 @@ body.visite-en-cours .modal-overlay > * {
     position: absolute; left: 0; right: 0; top: 4%;
     display: flex; align-items: flex-start; justify-content: center;
     font-weight: 900; font-size: min(3.4vmin, 1.6rem); line-height: 1;
-    color: var(--primary-texte); opacity: .8; pointer-events: none;
+    color: var(--primary-texte); opacity: .85; pointer-events: none;
+    /* UN HALO, PARCE QUE LES RONDS PASSENT DEVANT. Les pions ne sont plus
+       rangés dans la case : ils se déplacent librement, donc rien n'empêche
+       l'un d'eux de s'arrêter pile sur le nombre. Vu sur la photo d'un plateau
+       de la table de 7 — un 42 à moitié mangé par un rond orange. Le halo
+       garde les chiffres lisibles sur n'importe quel fond, y compris sur le
+       bleu et l'orange des deux équipes. */
+    text-shadow: 0 0 3px var(--bg-panel), 0 0 6px var(--bg-panel),
+                 0 0 10px var(--bg-panel);
 }
 .pdn-jeton {
     position: absolute; right: 2px; bottom: 1px;

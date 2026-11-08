@@ -5779,3 +5779,50 @@ des tables pour les pions et les prises, une route, et la sonde à trente.
 ardoises à quatre battements par seconde, 120 requêtes/s, médiane 26 ms, aucun
 verrou) — mais c'est un vrai morceau, et le mode démo existe précisément pour
 qu'il juge la règle AVANT que je l'écrive.
+
+### « COMMENT ON POURRAIT AMÉLIORER ? » — 8 novembre
+
+**J'AI D'ABORD MESURÉ LE JEU AVANT DE PROPOSER QUOI QUE CE SOIT** — soixante
+secondes de démo à douze puis à trente joueurs :
+
+| | Prises | À deux | **À trois** | **Partagées** |
+| --- | --- | --- | --- | --- |
+| 12 joueurs | 69 | 68 | **1** | 8 |
+| 30 joueurs | 47 | 47 | **0** | 0 |
+
+**LA PRISE À TROIS QU'IL A CHOISIE EST MORTE : une sur cent seize.** Et ce
+n'est pas un défaut de réglage, c'est structurel — **tant qu'une paire suffit,
+la paire arrive toujours la première**. Doubler les points n'y change rien.
+Sa règle ne vivra que s'il existe des carrés que deux NE PEUVENT PAS prendre :
+avec des nombres de 2 à 9, deux pions ne dépassent jamais 81, donc un carré à
+90 ou 126 est forcément à trois — et l'élève le lit à l'œil.
+
+**CE QUE J'AI REFUSÉ DE CORRIGER** : la cadence (69 prises par minute) et
+l'absence de partage sont des ARTEFACTS DE ROBOTS. Mes pions ne connaissent ni
+l'hésitation ni la négociation, et ils vont toujours au plus proche — donc ils
+rencontrent leur propre couleur. Avec de vrais élèves les deux nombres
+changeront beaucoup, et corriger maintenant serait corriger un fantôme.
+
+**SON CHOIX : « Choisir ce qu'on travaille ».** C'était le bon, et c'était le
+manque le plus coûteux : dans tout le reste du logiciel il choisit le chapitre,
+et le plateau tirait dans les huit tables mélangées. **Un jeu qu'on ne peut pas
+accorder à sa séance reste une récréation.**
+
+Fait : un déroulant « sur quoi on joue » — toutes les tables, une table précise
+(2 à 9), les tables dures (6, 7, 8), les petites (2 à 5), ou les grands
+nombres. Le plateau ne pose alors que des carrés de ce qu'on révise, **les
+carrés qui repoussent en cours de partie suivent le même réglage** (sans quoi
+le réglage s'effacerait tout seul au fil de la partie), et les nombres de
+DÉPART se tirent parmi ceux qui servent sur ce plateau-là — sinon la partie
+commencerait par trente changements de nombre avant le premier geste.
+
+**TROIS DE MES CINQ ÉPREUVES NEUVES NE GARDAIENT RIEN**, et `epreuveTombe` l'a
+dit. L'une d'elles mordait dans le vide de la pire façon : elle vérifiait qu'un
+plateau filtré à l'absurde portait bien dix carrés — ce qui était vrai, avec dix
+carrés portant `undefined`. Et pour une autre, **c'est mon défaut qui n'en
+était pas un** : filtrer sur un seul facteur au lieu des deux donne exactement
+les mêmes valeurs, puisque 7 × 8 et 8 × 7 sont le même carré.
+
+**IL RESTE** : les gros carrés forcément à trois, et le halo qui montre qui
+complète (sans quoi, chercher « qui porte un 8 » parmi trente ronds sur une
+tablette risque d'être le vrai mur). Et toujours le jeu en réseau.

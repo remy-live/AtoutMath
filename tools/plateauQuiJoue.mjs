@@ -209,9 +209,23 @@ await dormir(1800);
 await s.doitExister('[data-outil="plateau"]', 'l\'onglet du plateau dans la barre');
 await s.page.click('[data-outil="plateau"]');
 await dormir(1200);
+await s.doitExister('[data-plateau-quoi]', 'le réglage « sur quoi on joue »');
+// ── ON CHOISIT LA TABLE DE 7, ET LE PLATEAU DOIT OBÉIR ───────────────────
+//
+// RÉMY, quand je lui ai demandé par quoi améliorer : « Choisir ce qu'on
+// travaille ». Un déroulant que le plateau n'écoute pas aurait exactement la
+// même apparence qu'un déroulant qui marche — et c'est le professeur qui s'en
+// apercevrait, devant sa classe, en voyant passer des 25 sur la table de 7.
+await s.page.selectOption('[data-plateau-quoi]', 't7');
 await s.doitExister('[data-plateau-demo]', 'le bouton « Essayer en démo »');
 await s.page.click('[data-plateau-demo]');
 await dormir(1500);
+const surLaTable = await s.page.evaluate(() => [...document.querySelectorAll('.pdn-valeur')]
+    .map(v => Number(v.textContent)));
+dire('LE RÉGLAGE « table de 7 » EST VRAIMENT OBÉI',
+    surLaTable.length >= 5 && surLaTable.every(v => v % 7 === 0)
+        && new Set(surLaTable).size >= 3,
+    `carrés posés : ${JSON.stringify(surLaTable)}`);
 const parLeBouton = await s.page.evaluate(() => {
     const g = document.querySelector('.pdn-terrain');
     return { grille: !!g, haut: g ? Math.round(g.getBoundingClientRect().height) : 0,

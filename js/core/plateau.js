@@ -135,14 +135,53 @@ export function decompositions(valeur, operation = '×') {
 }
 
 /** Les valeurs qu'on peut poser sur un plateau : celles qui se prennent à deux. */
-export function valeursPossibles(operation = '×') {
+export function valeursPossibles(operation = '×', quoi = {}) {
+    const tables = Array.isArray(quoi.tables) && quoi.tables.length ? quoi.tables : null;
+    const mini = Number(quoi.mini) || 0;
     const vues = new Set();
     for (const a of NOMBRES) {
         for (const b of NOMBRES) {
-            vues.add(operation === '+' ? a + b : a * b);
+            // UNE TABLE SE RECONNAÎT À L'UN DE SES DEUX FACTEURS. « La table de
+            // 7 », ce sont les 7 × k — et 56 en fait partie qu'on l'écrive
+            // 7 × 8 ou 8 × 7, parce que c'est le même carré sur le plateau.
+            if (tables && !tables.includes(a) && !tables.includes(b)) continue;
+            const v = operation === '+' ? a + b : a * b;
+            if (v < mini) continue;
+            vues.add(v);
         }
     }
+    // UN FILTRE QUI NE LAISSE RIEN NE REND PAS UN PLATEAU VIDE.
+    //
+    // C'est la garde la moins intéressante à écrire et la plus coûteuse à
+    // oublier : un plateau sans un seul carré, c'est trente élèves devant un
+    // damier mort, et aucune erreur nulle part pour le dire. On retombe sur
+    // toutes les valeurs, ce qui est un jeu jouable — simplement pas celui
+    // qu'on avait demandé.
+    if (!vues.size) return valeursPossibles(operation);
     return [...vues].sort((x, y) => x - y);
+}
+
+/**
+ * LES NOMBRES QUI SERVENT VRAIMENT SUR CE PLATEAU-CI.
+ *
+ * Sur un plateau de la table de 7, un pion qui démarre avec un 3 n'est utile
+ * qu'à 21 et 63 ; sur un plateau de grands nombres, un 2 ne sert presque à
+ * rien. On tire donc les nombres de DÉPART parmi ceux qui composent les carrés
+ * posés : la partie est jouable dès la première seconde, au lieu de commencer
+ * par trente changements de nombre.
+ *
+ * LE CLAVIER DES « deviens », LUI, GARDE TOUS LES NOMBRES : c'est à l'élève de
+ * s'apercevoir qu'un 5 ne sert à rien sur la table de 7, et cette découverte-là
+ * vaut mieux qu'un bouton grisé.
+ */
+export function nombresUtiles(plateau) {
+    const vus = new Set();
+    for (const c of (plateau.cibles || [])) {
+        for (const v of decompositions(c.valeur, plateau.operation)) {
+            for (const n of v) vus.add(n);
+        }
+    }
+    return vus.size ? [...vus].sort((a, b) => a - b) : [...NOMBRES];
 }
 
 /**
@@ -168,11 +207,24 @@ export function valeursPossibles(operation = '×') {
  * servirait plus à rien. On les écarte donc d'au moins deux cases.
  */
 export function dessinerLePlateau({
-    graine = 'plateau', largeur = 12, hauteur = 8, combien = 10, operation = '×'
+    graine = 'plateau', largeur = 12, hauteur = 8, combien = 10, operation = '×',
+    quoi = {}
 } = {}) {
     const op = operation === '+' ? '+' : '×';
-    const rng = makeRng(`plateau-${graine}-${op}`);
-    const choix = valeursPossibles(op);
+    // ── SUR QUOI ON JOUE ─────────────────────────────────────────────────
+    //
+    // RÉMY, quand je lui ai demandé par quoi commencer : « Choisir ce qu'on
+    // travaille ». C'est ce qui manquait le plus — dans tout le reste du
+    // logiciel il choisit le chapitre, et ici le plateau tirait dans les huit
+    // tables mélangées. Un jeu qu'on ne peut pas accorder à sa séance reste
+    // une récréation.
+    //
+    // LA GRAINE PORTE LE FILTRE, sans quoi deux plateaux réglés différemment
+    // mais tirés de la même graine se ressembleraient — et « Rejouer » sur un
+    // autre réglage rendrait exactement le même terrain.
+    const marque = `${(quoi.tables || []).join('.')}-${quoi.mini || 0}`;
+    const rng = makeRng(`plateau-${graine}-${op}-${marque}`);
+    const choix = valeursPossibles(op, quoi);
     const cibles = [];
     const loinDeTout = (x, y) => cibles.every(c =>
         Math.abs(c.x - x) > 1 || Math.abs(c.y - y) > 1);

@@ -23,7 +23,7 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import {
     NOMBRES, PIONS_MAX, RAYON, VITESSE, pointsDeLaPrise, prendLaCible,
-    decompositions, valeursPossibles, dessinerLePlateau, placeDeDepart,
+    decompositions, valeursPossibles, nombresUtiles, dessinerLePlateau, placeDeDepart,
     avancer, caseSous, cibleEn, cibleSous, quiPrend, repartirLesPoints,
     coupDuRobot
 } from '../js/core/plateau.js';
@@ -343,4 +343,95 @@ test('LES VALEURS POSSIBLES SONT CELLES DES TABLES, pas des nombres de fantaisie
     const plus = valeursPossibles('+');
     assert.equal(plus[0], 4, 'la plus petite somme est 2 + 2');
     assert.equal(plus[plus.length - 1], 18, 'la plus grande est 9 + 9');
+});
+
+/* ──────────────────── SUR QUOI ON JOUE : LE CHAPITRE ───────────────────── */
+
+// RÉMY, quand je lui ai demandé par quoi améliorer le jeu : « Choisir ce qu'on
+// travaille ». C'était le manque le plus coûteux — dans tout le reste du
+// logiciel il choisit le chapitre, et le plateau tirait dans les huit tables
+// mélangées. Un jeu qu'on ne peut pas accorder à sa séance reste une
+// récréation.
+
+test('LA TABLE DE 7 NE POSE QUE DES MULTIPLES DE 7', () => {
+    const p = dessinerLePlateau({ graine: 'sept', combien: 12, quoi: { tables: [7] } });
+    assert.ok(p.cibles.length >= 6, `${p.cibles.length} carré(s) seulement`);
+    // ET PLUSIEURS VALEURS DIFFÉRENTES. Sans cette ligne, un filtre qui
+    // exigerait que les DEUX facteurs soient dans la table passerait : il ne
+    // laisserait que 49, qui est bien un multiple de 7 — et le plateau entier
+    // ne porterait qu'un seul nombre, huit fois. `epreuveTombe` l'a dit.
+    assert.ok(new Set(p.cibles.map(c => c.valeur)).size >= 3,
+        `un seul nombre sur tout le plateau : ${JSON.stringify(p.cibles.map(c => c.valeur))}`);
+    for (const c of p.cibles) {
+        assert.equal(c.valeur % 7, 0, `${c.valeur} n'est pas dans la table de 7`);
+        // ET IL RESTE PRENABLE À DEUX : 7 × k, avec k entre 2 et 9.
+        assert.ok(decompositions(c.valeur, '×').some(v => v.length === 2 && v.includes(7)),
+            `${c.valeur} ne se prend pas avec un 7`);
+    }
+});
+
+test('ET « LES TABLES DURES » EN POSE DE TROIS TABLES À LA FOIS', () => {
+    const p = dessinerLePlateau({ graine: 'dures', combien: 14, quoi: { tables: [6, 7, 8] } });
+    for (const c of p.cibles) {
+        assert.ok([6, 7, 8].some(t => c.valeur % t === 0 && c.valeur / t >= 2 && c.valeur / t <= 9),
+            `${c.valeur} n'appartient à aucune des trois tables`);
+    }
+});
+
+test('« LES GRANDS NOMBRES » NE POSE RIEN SOUS LE SEUIL', () => {
+    const p = dessinerLePlateau({ graine: 'gros', combien: 10, quoi: { mini: 50 } });
+    assert.ok(p.cibles.length >= 5);
+    for (const c of p.cibles) assert.ok(c.valeur >= 50, `${c.valeur} est sous le seuil`);
+});
+
+test('UN FILTRE QUI NE LAISSE RIEN NE REND PAS UN PLATEAU VIDE', () => {
+    // LA GARDE LA MOINS INTÉRESSANTE À ÉCRIRE ET LA PLUS COÛTEUSE À OUBLIER :
+    // un plateau sans un seul carré, c'est trente élèves devant un damier mort,
+    // et aucune erreur nulle part pour le dire.
+    const p = dessinerLePlateau({ graine: 'vide', combien: 10, quoi: { mini: 9999 } });
+    assert.ok(p.cibles.length >= 5, 'le plateau est vide');
+    // ET CE SONT DE VRAIS NOMBRES. C'est ici que l'épreuve mordait dans le
+    // vide : sans ce contrôle, un plateau de dix carrés portant `undefined`
+    // passait — il avait le bon NOMBRE de carrés, et pas un seul lisible.
+    for (const c of p.cibles) {
+        assert.ok(Number.isFinite(c.valeur) && c.valeur >= 4,
+            `carré illisible : ${JSON.stringify(c)}`);
+    }
+    assert.deepEqual(valeursPossibles('×', { tables: [] }), valeursPossibles('×'),
+        'une liste de tables vide doit valoir « toutes »');
+});
+
+test('DEUX RÉGLAGES DIFFÉRENTS NE DONNENT PAS LE MÊME TERRAIN', () => {
+    // LA GRAINE PORTE LE FILTRE. Sans cela, « Rejouer » après avoir changé de
+    // table rendrait exactement le même plateau, et le professeur croirait le
+    // réglage cassé.
+    const a = dessinerLePlateau({ graine: 'x', quoi: { tables: [7] } });
+    const b = dessinerLePlateau({ graine: 'x', quoi: { tables: [8] } });
+    // LES VALEURS CHANGERAIENT DE TOUTE FAÇON, puisqu'on ne tire pas dans la
+    // même liste : ce n'est donc PAS ce qu'il faut mesurer, et l'épreuve ne
+    // gardait rien tant qu'elle s'en contentait. Ce que la graine achète, ce
+    // sont les PLACES : sans elle, deux réglages donnent le même terrain avec
+    // d'autres nombres dessus, et le professeur croit le réglage cassé.
+    const places = (p) => p.cibles.map(c => `${c.x},${c.y}`).join(' ');
+    assert.notEqual(places(a), places(b),
+        'les deux réglages posent leurs carrés exactement aux mêmes endroits');
+});
+
+test('LES NOMBRES DE DÉPART SERVENT SUR CE PLATEAU-LÀ', () => {
+    // Sur un plateau de grands nombres, démarrer avec un 2 n'ouvre presque
+    // rien : la partie commencerait par trente changements de nombre avant le
+    // premier geste.
+    const p = dessinerLePlateau({ graine: 'utiles', combien: 10, quoi: { mini: 50 } });
+    const utiles = nombresUtiles(p);
+    assert.ok(utiles.length >= 2, JSON.stringify(utiles));
+    for (const n of utiles) assert.ok(NOMBRES.includes(n));
+    // ET CHACUN SERT VRAIMENT : il compose au moins un carré posé.
+    for (const n of utiles) {
+        assert.ok(p.cibles.some(c =>
+            decompositions(c.valeur, '×').some(v => v.includes(n))),
+            `${n} ne compose aucun carré`);
+    }
+    // LE CLAVIER DES « deviens », LUI, GARDE TOUT : qu'un 5 ne serve à rien sur
+    // la table de 7 est une découverte qui vaut mieux qu'un bouton grisé.
+    assert.equal(NOMBRES.length, 8);
 });

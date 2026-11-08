@@ -6915,3 +6915,24 @@ plus d'un.**
   de l'élément à celle de son parent et **crie quand l'enfant déborde** —
   `s.deborde('.ma-grille')`. Elle aurait dit la vérité au premier lancement
   dans les deux cas, et elle vaut pour tout débordement silencieux.
+
+**`remplacer.mjs` imprime « ok » sur les paires qui ne seront pas écrites** — 8 novembre
+
+- *Ce que je voulais faire* : poser un déroulant dans la barre de pilotage et
+  brancher sa valeur. Deux paires dans le même appel ; la seconde n'a pas
+  trouvé son compte, donc **rien n'a été écrit** — ce qui est la bonne décision
+  de l'outil, et elle est documentée. Mais sa sortie affiche d'abord
+  `ok paire 1 : 1 occurrence(s)` en vert, PUIS l'échec. J'ai lu le vert, corrigé
+  la seconde paire dans un appel séparé, et **cru que la première était posée**.
+  Le déroulant n'existait nulle part pendant trois quarts d'heure de travail
+  qui s'appuyait dessus.
+- *Ce qui a coûté* : un lancement de sonde pour rien — rattrapé net par
+  `doitExister`, qui a dit « le crochet `[data-plateau-quoi]` ne désigne RIEN ».
+  Sans lui, j'aurais cherché le défaut dans le filtre, pas dans l'écriture.
+- *Combien de fois* : | (première, mais je fais deux ou trois appels
+  multi-paires par jour : elle reviendra)
+- *Ce qui manque* : que l'outil, quand il renonce, **réimprime les paires déjà
+  marquées « ok » en les barrant** — ou simplement qu'il n'affiche aucun « ok »
+  tant qu'il n'a pas décidé d'écrire. Un vert qui ne veut pas dire « écrit » est
+  un vert qui ment, et c'est la même famille de défaut que les épreuves vertes
+  qui ne gardent rien.
