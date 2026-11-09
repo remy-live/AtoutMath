@@ -44,7 +44,7 @@
 import {
     NOMBRES, RAYON, VITESSE, dessinerLePlateau, placeDeDepart, avancer, caseSous,
     cibleEn, cibleSous, quiPrend, repartirLesPoints, decompositions, coupDuRobot,
-    nombresUtiles
+    nombresUtiles, coutDeLErreur, scoreApresPenalite
 } from '../core/plateau.js';
 import { makeRng, shortId } from '../core/ids.js';
 
@@ -116,6 +116,8 @@ export function semerDesJetons(plateau, combien, rng) {
  *   travaille ». Vide veut dire « toutes les tables ».
  * @param {number} [o.robots] combien de pions tenus par l'ordinateur
  * @param {number} [o.secondes] la durée de la partie
+ * @param {boolean} [o.noms] écrire le prénom sous chaque rond
+ * @param {'aucune'|'fige'|'points'|'deux'} [o.penalite] ce que coûte une erreur
  * @param {function} [o.surLaFin] appelée avec les scores quand le temps tombe
  */
 export function ouvrirLePlateau(o = {}) {
@@ -125,6 +127,14 @@ export function ouvrirLePlateau(o = {}) {
     const combienDeRobots = Math.max(0, Math.min(40, Math.round(o.robots ?? 11)));
     const secondes = Math.max(20, Math.round(o.secondes || 120));
     const quoi = o.quoi || {};
+    // LES PRÉNOMS SOUS LES RONDS. Rémy : « Il faudrait une option pour les
+    // prénoms ». C'est une OPTION et non un réglage par défaut, parce qu'elle
+    // pose la question qu'il avait lui-même tranchée pour le podium du défi :
+    // écrire trente prénoms au tableau, c'est désigner celui qui ne prend rien.
+    // Ici, en revanche, elle répond à la vraie difficulté du jeu — trouver QUI
+    // porte le 8 parmi trente pastilles.
+    const avecNoms = !!o.noms;
+    const penalite = coutDeLErreur(o.penalite);
     const rng = makeRng(`partie-${graine}`);
     const plateau = dessinerLePlateau({
         graine, operation, quoi,
@@ -259,8 +269,14 @@ export function ouvrirLePlateau(o = {}) {
         const d = document.createElement('div');
         d.className = `pdn-pion pdn-pion--${p.equipe}${p === moi ? ' pdn-pion--moi' : ''}`;
         d.title = p.nom;
+        // LE NOMBRE RESTE DANS LE ROND, LE PRÉNOM VA DESSOUS. Le nombre est ce
+        // qui décide la prise : il ne doit jamais céder sa place. Le prénom
+        // n'est qu'une aide pour s'appeler.
+        d.innerHTML = '<span class="pdn-nb-pion" data-nb></span>'
+            + (avecNoms ? `<span class="pdn-nom">${echapper(p.nom)}</span>` : '');
         zonePions.appendChild(d);
         p.el = d;
+        p.elNb = d.querySelector('[data-nb]');
     }
 
     /* ────────────────────────── LA BOUCLE ───────────────────────────── */
@@ -307,7 +323,12 @@ export function ouvrirLePlateau(o = {}) {
         for (const p of pions) {
             p.el.style.left = `${(p.x / plateau.largeur) * 100}%`;
             p.el.style.top = `${(p.y / plateau.hauteur) * 100}%`;
-            if (p.el.textContent !== String(p.nombre)) p.el.textContent = String(p.nombre);
+            if (p.elNb.textContent !== String(p.nombre)) {
+                p.elNb.textContent = String(p.nombre);
+            }
+            // LE ROND FIGÉ SE VOIT DU FOND DE LA CLASSE : gris, immobile, le
+            // temps de la pénalité. C'est toute la lisibilité de ce réglage.
+            p.el.classList.toggle('pdn-pion--fige', p.figeJusqua > Date.now());
         }
     };
 
@@ -413,6 +434,28 @@ export function ouvrirLePlateau(o = {}) {
         peindreLeDecor();
     };
 
+    /**
+     * UNE ERREUR SE PAYE, ET DE LA MÊME FAÇON POUR TOUT LE MONDE.
+     *
+     * UN SEUL ENDROIT PUNIT — l'élève et les pions de l'ordinateur passent par
+     * ici. Deux punitions séparées auraient fini par ne plus coûter la même
+     * chose, et la démo aurait montré un jeu que la classe ne joue pas.
+     */
+    const punir = (p) => {
+        if (penalite.fige) p.figeJusqua = Date.now() + penalite.fige * 1000;
+        if (penalite.points) {
+            scores[p.equipe] = scoreApresPenalite(scores[p.equipe], penalite.points);
+        }
+        if (!penalite.fige && !penalite.points) return;
+        const b = document.createElement('div');
+        b.className = 'pdn-annonce pdn-annonce--faute';
+        b.innerHTML = (avecNoms ? `<b>${echapper(p.nom)}</b> s'est trompé` : 'Raté')
+            + (penalite.points ? ` <span>−${penalite.points}</span>` : '')
+            + (penalite.fige ? ` <i>figé ${penalite.fige} s</i>` : '');
+        voile.querySelector('.pdn-carte').appendChild(b);
+        setTimeout(() => b.remove(), 1400);
+    };
+
     /** Un bandeau d'une seconde et demie : qui a pris quoi, et pour combien. */
     const annoncer = (cible, prise) => {
         const b = document.createElement('div');
@@ -511,7 +554,8 @@ export function ouvrirLePlateau(o = {}) {
         dernierTemps = maintenant;
         if (!dt) return;
 
-        if (!question) {
+        const jeSuisFige = moi.figeJusqua > Date.now();
+        if (!question && !jeSuisFige) {
             const v = voulu();
             if (v) {
                 const vers = avancer(plateau, moi.x, moi.y, v.dx, v.dy, dt);
@@ -520,10 +564,38 @@ export function ouvrirLePlateau(o = {}) {
         }
         for (const p of pions) {
             if (!p.robot) continue;
+            if (p.figeJusqua > Date.now()) continue;
             const coup = coupDuRobot(p, plateau, pions, [...dejaPris], rng.next);
             if (!coup) continue;
             if (coup.vise !== undefined) p.vise = coup.vise;
-            if (coup.devenir) { p.nombre = coup.devenir; continue; }
+            if (coup.devenir) {
+                // ── UN PION NE CHANGE DE NOMBRE QU'UNE FOIS PAR SECONDE ET
+                //    DEMIE, et c'est la correction d'un vrai défaut.
+                //
+                // Le tirage d'erreur se faisait À CHAQUE IMAGE — soixante fois
+                // par seconde —, donc un pion qui avait besoin de changer se
+                // trompait presque aussitôt, et se retrouvait figé dès qu'il
+                // dégelait. MESURÉ SUR LA PHOTO : trois pions sur six gris en
+                // même temps. Une tentative, c'est un élève qui réfléchit puis
+                // tape une réponse : ça prend un temps, et c'est ce temps-là
+                // qu'on compte.
+                if (maintenant < (p.prochainEssai || 0)) continue;
+                p.prochainEssai = maintenant + 1500;
+                // LES PIONS DE L'ORDINATEUR SE TROMPENT AUSSI, environ une fois
+                // sur sept. Sans cela, la pénalité n'arriverait JAMAIS en mode
+                // démo — Rémy réglerait « on perd des points » et ne verrait
+                // rien se passer. Un robot infaillible ne montre pas le jeu
+                // qu'il va lancer à sa classe. C'est une erreur SIMULÉE, et
+                // c'est écrit ici pour que personne ne la prenne pour une
+                // mesure de quoi que ce soit.
+                if (style === 'question' && (penalite.fige || penalite.points)
+                    && rng.next() < 0.15) {
+                    punir(p);
+                    continue;
+                }
+                p.nombre = coup.devenir;
+                continue;
+            }
             if (coup.vers) {
                 const vers = avancer(plateau, p.x, p.y,
                     coup.vers.dx, coup.vers.dy, dt, VITESSE_ROBOT);
@@ -562,6 +634,14 @@ export function ouvrirLePlateau(o = {}) {
                     champ.classList.add('pdn-reponse--ko');
                     champ.value = '';
                     setTimeout(() => champ.classList.remove('pdn-reponse--ko'), 400);
+                    // ET ÇA COÛTE, si Rémy l'a réglé ainsi. La question se
+                    // ferme : rester dessus à réessayer jusqu'à tomber juste
+                    // viderait la pénalité de son sens.
+                    if (penalite.fige || penalite.points) {
+                        punir(moi);
+                        question = null;
+                        peindreDevenir();
+                    }
                 }
             };
             zone.querySelector('[data-valider]').onclick = valider;
@@ -635,6 +715,16 @@ export function ouvrirLePlateau(o = {}) {
          */
         bouger(direction, combien = 0.33) {
             if (fini) return;
+            // LE GEL VAUT ICI AUSSI, ET LA SONDE L'A DIT.
+            //
+            // La pénalité ne vivait que dans la boucle d'animation — donc pour
+            // un élève au clavier ou au doigt, qui passent par elle. Mais ce
+            // chemin-ci, programmé, la contournait : un rond figé avançait
+            // quand même. Une règle qui ne vit que dans l'interface n'est pas
+            // une règle, c'est une décoration — et le jour où la partie en
+            // réseau fera avancer les pions par ici, la pénalité serait
+            // devenue gratuite sans que rien ne le dise.
+            if (moi.figeJusqua > Date.now()) return;
             const d = { haut: [0, -1], bas: [0, 1], gauche: [-1, 0], droite: [1, 0] }[direction];
             if (!d) return;
             const vers = avancer(plateau, moi.x, moi.y, d[0], d[1], 1, combien);

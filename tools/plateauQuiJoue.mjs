@@ -38,6 +38,22 @@ const dire = (q, ok, d = '') => {
         d ? ` \x1b[2m— ${d}\x1b[0m` : ''}`);
 };
 
+/**
+ * LA PHOTO SE PREND SUR LA PAGE QU'ON LUI DONNE.
+ *
+ * `s.photo` découpe LA PAGE DE LA SONDE, et elle crie quand l'image est
+ * coupée — ce qui est précieux. Mais elle ne sait découper QUE celle-là ;
+ * pour une seconde ardoise, ou simplement pour choisir la page, il faut
+ * celle-ci. Elle DIT quand le sélecteur ne désigne rien : une photo ratée en
+ * silence est pire qu'une photo ratée.
+ */
+const photo = async (page, sel, fichier) => {
+    const e = await page.$(sel);
+    if (!e) { console.log(`  . pas de photo : ${sel} n'est pas à l'écran`); return; }
+    await e.screenshot({ path: fichier });
+    console.log(`  . photo : ${fichier}`);
+};
+
 const s = await ouvrirSonde({ largeur: 1700, hauteur: 1050 });
 await s.identifier();
 
@@ -239,6 +255,85 @@ await s.page.click('.pdn-sortir');
 await dormir(500);
 dire('ET LA CROIX LE REFERME',
     await s.page.evaluate(() => !document.querySelector('.pdn-voile')));
+
+/* ───────────── LES PRÉNOMS, ET CE QUE COÛTE UNE ERREUR ──────────────────── */
+//
+// RÉMY : « Il faudrait une option pour les prénoms et si on se trompe on a une
+// pénalité ». Les deux ne se mesurent qu'ici : un prénom qui ne s'affiche pas
+// et une pénalité qui ne punit pas ont exactement l'apparence d'un réglage qui
+// marche.
+console.log('\nLES PRÉNOMS, ET LA PÉNALITÉ');
+console.log('─'.repeat(68));
+await s.page.evaluate(async () => {
+    const { ouvrirLePlateau } = await import('./js/ui/plateauUI.js');
+    window.__partie = ouvrirLePlateau({
+        graine: 'penalite', robots: 5, style: 'question', operation: '×',
+        secondes: 300, noms: true, penalite: 'deux'
+    });
+});
+await dormir(900);
+await s.doitExister('.pdn-nom', 'le prénom sous un rond');
+const noms = await s.page.evaluate(() =>
+    [...document.querySelectorAll('.pdn-nom')].map(e => e.textContent));
+dire('LES PRÉNOMS S\'ÉCRIVENT SOUS LES RONDS', noms.length === 6 && noms.includes('Toi'),
+    `${noms.length} prénom(s) : ${JSON.stringify(noms.slice(0, 4))}`);
+
+// ── ON RÉPOND FAUX, EXPRÈS ───────────────────────────────────────────────
+//
+// C'est le seul endroit du jeu où l'on peut avoir tort, et donc le seul où la
+// pénalité a un sens. On prend le chemin de l'élève : un bouton « deviens »,
+// puis une réponse fausse dans le champ, puis OK.
+const avant = await s.page.evaluate(() => window.__partie.etat().scores[0]);
+const faute = await s.page.evaluate(async () => {
+    const autre = [...document.querySelectorAll('[data-devenir-nb]')]
+        .find(b => !b.classList.contains('pdn-nb--actif'));
+    if (!autre) return { raté: 'aucun nombre à devenir' };
+    autre.click();
+    await new Promise(r => setTimeout(r, 200));
+    const champ = document.querySelector('[data-reponse]');
+    if (!champ) return { raté: 'aucune question posée' };
+    const enonce = (document.querySelector('.pdn-question') || {}).textContent || '';
+    champ.value = '1';   // faux à coup sûr : aucun pion ne porte 1
+    document.querySelector('[data-valider]').click();
+    await new Promise(r => setTimeout(r, 300));
+    return {
+        enonce: enonce.replace(/\s+/g, ' ').trim(),
+        fige: !!document.querySelector('.pdn-pion--moi.pdn-pion--fige'),
+        dit: (document.querySelector('.pdn-annonce--faute') || {}).textContent || '',
+        questionFermee: !document.querySelector('[data-reponse]')
+    };
+});
+dire('UNE MAUVAISE RÉPONSE FIGE LE ROND', !!faute.fige,
+    faute.raté || `« ${faute.enonce} » → réponse 1`);
+// ET LE SCORE NE DESCEND JAMAIS SOUS ZÉRO. Une équipe à −40 au tableau,
+// devant la classe, désigne un groupe d'élèves comme étant en dessous de rien.
+// (Que la pénalité RETIRE bien 20 points est gardé par `npm test`, qui peut
+// partir d'un score non nul ; ici l'équipe est souvent encore à zéro, et une
+// épreuve qui se contenterait de « c'est plus petit » ne mesurerait rien.)
+const apresLaFaute = await s.page.evaluate(() => window.__partie.etat().scores);
+dire('ET LE SCORE NE DESCEND JAMAIS SOUS ZÉRO',
+    apresLaFaute.every(n => n >= 0) && avant >= 0,
+    `avant ${avant}, après ${JSON.stringify(apresLaFaute)}`);
+// L'ÉCRAN LE DIT : un élève figé qui ne sait pas pourquoi croit l'application
+// cassée.
+dire('ET L\'ÉCRAN DIT POURQUOI', /trompé|Raté/.test(faute.dit),
+    `« ${String(faute.dit).replace(/\s+/g, ' ').trim()} »`);
+// LA QUESTION SE FERME : rester dessus à réessayer jusqu'à tomber juste
+// viderait la pénalité de son sens.
+dire('ET LA QUESTION SE FERME, pas de seconde chance gratuite',
+    !!faute.questionFermee);
+// LE ROND FIGÉ NE BOUGE PLUS, et c'est la seule chose qui prouve que la
+// pénalité coûte vraiment quelque chose.
+const ouEtaitIl = await s.page.evaluate(() => window.__partie.etat().moi);
+await s.page.evaluate(() => { for (let i = 0; i < 8; i++) window.__partie.bouger('droite'); });
+await dormir(400);
+const ouEstIl = await s.page.evaluate(() => window.__partie.etat().moi);
+dire('UN ROND FIGÉ NE SE DÉPLACE PLUS',
+    Math.abs(ouEstIl.x - ouEtaitIl.x) < 0.01,
+    `x : ${ouEtaitIl.x.toFixed(2)} → ${ouEstIl.x.toFixed(2)}`);
+await photo(s.page, '.pdn-carte', 'tools/tmp/plateau-prenoms.png');
+await s.page.evaluate(() => window.__partie.fermer());
+await dormir(300);
 
 console.log(`\nerreurs de page : ${s.erreurs.length}, fenêtres natives : ${s.fenetresNatives.length}`);
 s.erreurs.slice(0, 4).forEach(e => console.log('  ! ' + String(e).slice(0, 180)));

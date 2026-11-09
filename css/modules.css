@@ -17347,6 +17347,31 @@ body.visite-en-cours .modal-overlay > * {
 }
 .pdn-pion--0 { background: #2563eb; }
 .pdn-pion--1 { background: #f97316; }
+/* LE NOMBRE DANS LE ROND : c'est lui qui décide la prise, il ne cède jamais
+   sa place. */
+.pdn-nb-pion { pointer-events: none; }
+/* LE PRÉNOM SOUS LE ROND. Rémy : « Il faudrait une option pour les prénoms ».
+   Il répond à la vraie difficulté du jeu — trouver QUI porte le 8 parmi trente
+   pastilles. Il est DEHORS du rond, et non dedans : le nombre doit rester
+   lisible, et un prénom de huit lettres dans un disque de douze millimètres ne
+   se lit pas. Le halo le garde lisible par-dessus n'importe quel carré. */
+.pdn-nom {
+    position: absolute; top: 102%; left: 50%; transform: translateX(-50%);
+    font-size: min(1.5vmin, .68rem); font-weight: 800; line-height: 1;
+    color: var(--text-main); white-space: nowrap; pointer-events: none;
+    text-shadow: 0 0 3px var(--bg-panel), 0 0 5px var(--bg-panel),
+                 0 0 8px var(--bg-panel);
+}
+/* FIGÉ PAR UNE PÉNALITÉ. Rémy : « si on se trompe on a une pénalité ». Gris,
+   immobile, hachuré : ça se voit du fond de la classe, et c'est tout l'intérêt
+   de cette punition-là — elle coûte du TEMPS devant tout le monde, sans écrire
+   un nombre négatif à côté d'une équipe. */
+.pdn-pion--fige {
+    background: var(--text-muted) !important;
+    opacity: .55;
+    outline: 2px dashed var(--text-main);
+    outline-offset: 1px;
+}
 /* SON ROND À LUI, et il doit le retrouver d'un coup d'œil au milieu de trente :
    un anneau clair puis un anneau sombre, qui tient sur les deux couleurs
    d'équipe comme sur les deux thèmes. */
@@ -17429,6 +17454,10 @@ body.visite-en-cours .modal-overlay > * {
     box-shadow: var(--shadow-lg); animation: pdn-pop .25s ease-out; z-index: 5;
 }
 .pdn-annonce--partage { background: var(--warning); color: #1b1b1b; }
+/* L'ERREUR S'ANNONCE AUSSI, et en rouge : sans un mot à l'écran, un élève figé
+   ne sait pas POURQUOI il ne bouge plus, et il croit l'application cassée. */
+.pdn-annonce--faute { background: var(--danger-fond); color: #fff; top: 24%; }
+.pdn-annonce--faute i { font-style: normal; opacity: .9; }
 .pdn-annonce b { font-size: 1.3em; }
 .pdn-annonce i { font-style: normal; opacity: .8; }
 .pdn-annonce span { opacity: .85; }

@@ -25,7 +25,7 @@ import {
     NOMBRES, PIONS_MAX, RAYON, VITESSE, pointsDeLaPrise, prendLaCible,
     decompositions, valeursPossibles, nombresUtiles, dessinerLePlateau, placeDeDepart,
     avancer, caseSous, cibleEn, cibleSous, quiPrend, repartirLesPoints,
-    coupDuRobot
+    coupDuRobot, PENALITES, coutDeLErreur, scoreApresPenalite
 } from '../js/core/plateau.js';
 
 /* ─────────────────────────── PRENDRE UNE CIBLE ─────────────────────────── */
@@ -434,4 +434,30 @@ test('LES NOMBRES DE DÉPART SERVENT SUR CE PLATEAU-LÀ', () => {
     // LE CLAVIER DES « deviens », LUI, GARDE TOUT : qu'un 5 ne serve à rien sur
     // la table de 7 est une découverte qui vaut mieux qu'un bouton grisé.
     assert.equal(NOMBRES.length, 8);
+});
+
+/* ─────────────────────── SE TROMPER COÛTE QUELQUE CHOSE ────────────────── */
+
+// RÉMY : « si on se trompe on a une pénalité ».
+
+test('LES QUATRE PÉNALITÉS DISENT CE QU\'ELLES COÛTENT', () => {
+    assert.deepEqual(coutDeLErreur('aucune'), { fige: 0, points: 0 });
+    assert.deepEqual(coutDeLErreur('fige'), { fige: 4, points: 0 });
+    assert.deepEqual(coutDeLErreur('points'), { fige: 0, points: 20 });
+    assert.deepEqual(coutDeLErreur('deux'), { fige: 4, points: 20 });
+    // UN RÉGLAGE INCONNU NE PUNIT PAS. Une valeur mal recopiée dans un
+    // déroulant ne doit pas figer toute la classe pour une durée inventée.
+    assert.deepEqual(coutDeLErreur('n\'importe quoi'), PENALITES.aucune);
+    assert.deepEqual(coutDeLErreur(undefined), PENALITES.aucune);
+});
+
+test('UN SCORE NE DESCEND JAMAIS SOUS ZÉRO', () => {
+    // CE N'EST PAS DE LA GENTILLESSE : une équipe à −40 au tableau, devant la
+    // classe, désigne un groupe d'élèves comme étant en dessous de rien. Zéro
+    // dit la même chose sans l'humilier — et c'est la règle que Rémy a déjà
+    // posée pour le défi, où l'on n'écrit jamais « perdu ».
+    assert.equal(scoreApresPenalite(100, 20), 80);
+    assert.equal(scoreApresPenalite(10, 20), 0);
+    assert.equal(scoreApresPenalite(0, 20), 0);
+    assert.equal(scoreApresPenalite(50, 0), 50);
 });

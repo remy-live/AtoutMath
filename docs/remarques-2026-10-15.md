@@ -5826,3 +5826,52 @@ les mêmes valeurs, puisque 7 × 8 et 8 × 7 sont le même carré.
 **IL RESTE** : les gros carrés forcément à trois, et le halo qui montre qui
 complète (sans quoi, chercher « qui porte un 8 » parmi trente ronds sur une
 tablette risque d'être le vrai mur). Et toujours le jeu en réseau.
+
+### LES PRÉNOMS, ET LA PÉNALITÉ — 9 novembre
+
+> « Il faudrait une option pour les prénoms et si on se trompe on a une
+> pénalité »
+
+**LES PRÉNOMS SONT UNE OPTION, ET PAS UN RÉGLAGE PAR DÉFAUT**, parce qu'ils
+posent la question que Rémy avait lui-même tranchée pour le podium du défi :
+écrire trente prénoms au tableau, c'est désigner celui qui ne prend rien. Mais
+ici, ils répondent à la vraie difficulté du jeu — **trouver QUI porte le 8
+parmi trente pastilles**. Le nombre reste DANS le rond (c'est lui qui décide la
+prise), le prénom va dessous.
+
+**LA PÉNALITÉ A DEMANDÉ DE TRANCHER CE QU'ELLE COÛTE**, et les deux lectures
+n'enseignent pas la même chose : **être figé** coûte du TEMPS, se voit du fond
+de la classe et ne désigne personne dans le score ; **perdre des points** coûte
+à l'ÉQUIPE, ce qui est plus dur et correspond à ce que « pénalité » veut dire
+le plus souvent en classe. J'ai donc fait des deux un réglage — figé 4 s,
+−20 points, les deux, ou aucune — plutôt que de choisir à sa place.
+
+**ET UN PLANCHER À ZÉRO** : une équipe à −40 au tableau, devant la classe,
+désigne un groupe d'élèves comme étant en dessous de rien. C'est la même règle
+que pour le défi, où l'on n'écrit jamais « perdu ».
+
+**OÙ L'ON PEUT SE TROMPER, ET NULLE PART AILLEURS.** Il n'y a qu'un endroit
+dans ce jeu où l'on peut avoir tort : la question qu'on répond pour devenir un
+nombre. Marcher au mauvais endroit est un choix, pas une erreur. **La pénalité
+ne joue donc qu'avec le style « en répondant »** — et il faut le dire plutôt
+que de laisser croire qu'un réglage agit alors qu'il ne peut pas.
+
+**TROIS DÉFAUTS TROUVÉS PAR LA MESURE, ET PAS UN PAR LA RELECTURE :**
+
+1. **`bouger()` ignorait le gel.** La pénalité ne vivait que dans la boucle
+   d'animation — donc pour un élève au clavier ou au doigt. Le chemin programmé,
+   lui, la contournait : un rond figé avançait quand même. *Une règle qui ne vit
+   que dans l'interface n'est pas une règle.* C'est la sonde qui l'a dit.
+2. **Le tirage d'erreur des robots se faisait à chaque image**, soixante fois
+   par seconde : un pion qui avait besoin de changer se trompait presque
+   aussitôt et se refigeait dès qu'il dégelait. **Vu sur la photo : trois pions
+   sur six gris en même temps.** Une tentative est maintenant limitée à une par
+   seconde et demie, comme un élève qui réfléchit puis tape.
+3. **Mon bandeau rouge posait du blanc sur `--danger`** — 3,76 de contraste. La
+   garde d'accessibilité du dépôt l'a refusé net ; le jeton prévu pour porter du
+   blanc est `--danger-fond` (6,29).
+
+**ET LES PIONS DE L'ORDINATEUR SE TROMPENT EXPRÈS**, environ une fois sur sept.
+Sans cela la pénalité n'arriverait JAMAIS en démo : Rémy réglerait « on perd des
+points » et ne verrait rien se passer. C'est une erreur SIMULÉE, écrite comme
+telle dans la source pour que personne ne la prenne pour une mesure.

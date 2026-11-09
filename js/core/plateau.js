@@ -410,6 +410,56 @@ export function repartirLesPoints(prise) {
     return out;
 }
 
+/* ──────────────────────── SE TROMPER COÛTE QUELQUE CHOSE ────────────────── */
+
+// RÉMY : « si on se trompe on a une pénalité ».
+//
+// ── OÙ L'ON PEUT SE TROMPER, ET NULLE PART AILLEURS ───────────────────────
+//
+// Dans ce jeu, il n'y a qu'UN endroit où l'on peut avoir tort : la question
+// qu'on répond pour devenir un nombre (le style « en répondant »). Marcher au
+// mauvais endroit n'est pas une erreur, c'est un choix ; recouvrir un carré
+// avec quelqu'un dont le nombre ne convient pas n'est pas une erreur non plus,
+// c'est une rencontre qui ne donne rien. SANS QUESTION, PAS DE PÉNALITÉ — et
+// il faut le dire au professeur plutôt que de lui laisser croire qu'un réglage
+// agit alors qu'il ne peut pas.
+//
+// ── DEUX FAÇONS DE FAIRE PAYER, ET ELLES NE DISENT PAS LA MÊME CHOSE ──────
+//
+// ÊTRE FIGÉ coûte du TEMPS, et c'est la plus lisible au vidéoprojecteur : un
+// rond gris immobile au milieu des autres se voit du fond de la classe, et
+// l'élève reprend sa partie entière ensuite. ELLE NE DÉSIGNE PERSONNE DANS LE
+// SCORE.
+//
+// PERDRE DES POINTS coûte à L'ÉQUIPE, ce qui est plus dur : l'erreur d'un
+// élève se lit dans le nombre que toute la classe regarde. C'est aussi ce que
+// « pénalité » veut dire le plus souvent dans une salle de classe, et c'est
+// pour cela que les deux existent — à Rémy de choisir ce qu'il veut enseigner.
+export const PENALITES = {
+    aucune: { fige: 0, points: 0 },
+    fige: { fige: 4, points: 0 },
+    points: { fige: 0, points: 20 },
+    deux: { fige: 4, points: 20 }
+};
+
+/** Ce que coûte une erreur, pour un réglage donné. Inconnu = aucune. */
+export function coutDeLErreur(reglage) {
+    return PENALITES[reglage] || PENALITES.aucune;
+}
+
+/**
+ * LE SCORE D'UNE ÉQUIPE APRÈS UNE PÉNALITÉ.
+ *
+ * IL NE DESCEND JAMAIS SOUS ZÉRO, et ce n'est pas de la gentillesse : une
+ * équipe à −40 au tableau, devant la classe, désigne un groupe d'élèves comme
+ * étant en dessous de rien. Zéro est un plancher qui dit la même chose sans
+ * l'humilier — et c'est la règle que Rémy a déjà posée pour le défi, où l'on
+ * n'écrit jamais « perdu ».
+ */
+export function scoreApresPenalite(score, cout) {
+    return Math.max(0, Math.round(score) - Math.max(0, Math.round(cout || 0)));
+}
+
 /* ───────────────────────────── LE MODE DÉMO ─────────────────────────────── */
 
 // RÉMY : « et j'aimerai bien un mode démo ».

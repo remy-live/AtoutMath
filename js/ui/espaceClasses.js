@@ -3097,6 +3097,32 @@ function outilPlateau() {
                     <option value="jetons">en ramassant</option>
                     <option value="libre">librement</option>
                 </select>
+                <!-- LES PRÉNOMS. Rémy : « Il faudrait une option pour les
+                     prénoms ». C'est une OPTION, parce qu'elle pose la
+                     question qu'il avait lui-même tranchée pour le podium du
+                     défi : écrire trente prénoms au tableau, c'est désigner
+                     celui qui ne prend rien. Ici elle répond en échange à la
+                     vraie difficulté du jeu — trouver QUI porte le 8. -->
+                <select class="ec-champ ec-champ--mince" data-plateau-noms
+                        aria-label="Afficher les prénoms">
+                    <option value="oui">avec les prénoms</option>
+                    <option value="non">sans les prénoms</option>
+                </select>
+                <!-- LA PÉNALITÉ. Rémy : « si on se trompe on a une pénalité ».
+                     Deux façons de faire payer, et elles n'enseignent pas la
+                     même chose : ÊTRE FIGÉ coûte du temps et se voit du fond
+                     de la classe sans désigner personne dans le score ;
+                     PERDRE DES POINTS coûte à l'équipe, ce qui est plus dur et
+                     correspond à ce que « pénalité » veut dire le plus souvent
+                     en classe. ELLE NE JOUE QU'AVEC LE STYLE « en répondant » :
+                     c'est le seul endroit du jeu où l'on peut avoir tort. -->
+                <select class="ec-champ ec-champ--mince" data-plateau-penalite
+                        aria-label="Ce que coûte une erreur">
+                    <option value="fige">erreur : figé 4 s</option>
+                    <option value="points">erreur : −20 points</option>
+                    <option value="deux">erreur : figé ET −20</option>
+                    <option value="aucune">erreur : sans pénalité</option>
+                </select>
                 <select class="ec-champ ec-champ--mince" data-plateau-combien
                         aria-label="Combien de joueurs">
                     <option value="11">12 joueurs</option>
@@ -4837,6 +4863,8 @@ async function brancher(e, redessiner) {
             operation: lu('[data-plateau-op]', '×'),
             style: lu('[data-plateau-style]', 'question'),
             quoi: filtreDuPlateau(lu('[data-plateau-quoi]', 'tout')),
+            noms: lu('[data-plateau-noms]', 'oui') === 'oui',
+            penalite: lu('[data-plateau-penalite]', 'fige'),
             robots: Number(lu('[data-plateau-combien]', '11')) || 11,
             secondes: 180
         });
