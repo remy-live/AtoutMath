@@ -3656,6 +3656,33 @@ $encore = $battre($jetonZoe, ['x' => 3, 'y' => 3, 'nombre' => 7]);
 verifier('LE GEL SURVIT AU BATTEMENT SUIVANT',
     ($encore['json']['moi']['fige'] ?? 0) >= 3, json_encode($encore['json']['moi'] ?? null));
 
+// ── ET CE QU'UNE ERREUR FAIT PERDRE À L'ÉQUIPE ──────────────────────────
+//
+// RÉMY : « si on ne trompe on a une pénalité ». Au plateau, la pénalité en
+// points est COLLECTIVE : on joue en équipe, et c'est ce qui rend l'erreur
+// chère. Elle a besoin d'une colonne à part et non de points négatifs, parce
+// que `points` est plafonné par le temps écoulé — une pénalité rangée là
+// serait effacée par le plafond au battement suivant.
+$avantMalus = array_sum($battre($jetonZoe, ['x' => 3, 'y' => 3, 'nombre' => 7])['json']['scores'] ?? []);
+$puni = $battre($jetonZoe, ['x' => 3, 'y' => 3, 'nombre' => 7, 'malus' => 20]);
+verifier('UNE ERREUR FAIT PERDRE DES POINTS À SON ÉQUIPE',
+    array_sum($puni['json']['scores'] ?? []) === $avantMalus - 20,
+    'avant ' . $avantMalus . ', après ' . array_sum($puni['json']['scores'] ?? []));
+// ON ENVOIE LE CUMUL, ET LE SERVEUR GARDE LE PLUS GRAND DES DEUX : un
+// battement perdu dans le réseau — ou une ardoise rechargée, qui repart de
+// zéro — n'efface pas la punition.
+$oublie = $battre($jetonZoe, ['x' => 3, 'y' => 3, 'nombre' => 7, 'malus' => 0]);
+verifier('ET UN BATTEMENT QUI L\'OUBLIE NE L\'EFFACE PAS',
+    array_sum($oublie['json']['scores'] ?? []) === $avantMalus - 20,
+    json_encode($oublie['json']['scores'] ?? null));
+// UN SCORE D'ÉQUIPE NE DESCEND PAS SOUS ZÉRO. C'est la règle de
+// `scoreApresPenalite` côté règles ; elle vaut au serveur aussi, sans quoi une
+// équipe qui se trompe avant sa première prise afficherait « −60 » au tableau.
+$creuse = $battre($jetonYanis, ['x' => 3, 'y' => 3, 'nombre' => 8, 'malus' => 400]);
+verifier('ET AUCUN SCORE D\'ÉQUIPE NE DESCEND SOUS ZÉRO',
+    ($creuse['json']['scores'][0] ?? -1) >= 0 && ($creuse['json']['scores'][1] ?? -1) >= 0,
+    json_encode($creuse['json']['scores'] ?? null));
+
 // ── ET LE PROFESSEUR VOIT LA PARTIE DEPUIS SON DIRECT ───────────────────
 $live = json('/teacher/live', ['classId' => $idDefi], $jetonNotre)['json'];
 verifier('LE DIRECT DU PROFESSEUR PORTE LE JEU EN COURS',

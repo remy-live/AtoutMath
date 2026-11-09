@@ -26,6 +26,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/coffre.php';
+// `jeuEnCours` vit dans jeu.php, et `etatDeSeance` l'appelle : c'est par ce
+// battement-ci qu'une ardoise APPREND qu'une partie a commencé.
+require_once __DIR__ . '/jeu.php';
 
 /** Un horodatage de la base (UTC) vers des millisecondes, comme le journal. */
 function msDepuisSql(?string $quand): ?int
@@ -211,13 +214,34 @@ function etatDeSeance(array $eleve): array
     // La classe : on la relit plutôt que de la faire porter par la jointure de
     // requireStudent(), pour que cette fonction soit utilisable seule (elle
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
+    //
+    // ── CETTE LISTE DE COLONNES EST TENUE À LA MAIN, ET ELLE A DÉJÀ MENTI ──
+    //
+    // LES CINQ COLONNES `jeu_*` MANQUAIENT, et le défaut était invisible de
+    // partout. Le serveur lançait bien la partie, `/teacher/live` la voyait,
+    // `/jeu` la servait, et `tools/testApi.php` la trouvait juste en 581
+    // vérifications — mais AUCUNE ARDOISE NE L'APPRENAIT, parce que c'est ce
+    // battement-ci qui l'annonce et que ce SELECT ne lisait pas les colonnes.
+    // Rien ne criait : `jeuEnCours` recevait une ligne sans `jeu_fin`, et une
+    // ligne sans `jeu_fin` veut dire « aucune partie ».
+    //
+    // MESURÉ PAR `tools/plateauEnClasse.mjs`, ET PAR RIEN D'AUTRE : trois vrais
+    // navigateurs, l'annonce reçue par 0 sur 3. C'est le même piège que la
+    // boucle d'`ALTER TABLE` de `schema.php` a fermé pour les colonnes — une
+    // liste qu'il faut penser à allonger — et il se reproduit ici, dans un
+    // SELECT, où aucune boucle ne peut le fermer.
+    //
+    // D'OÙ LA RÈGLE, ÉCRITE UNE FOIS POUR TOUTES : qui ajoute un champ à
+    // `etatDeSeance` ajoute sa colonne ci-dessous, et le vérifie dans un
+    // NAVIGATEUR — l'API, elle, répondra juste.
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
                               hors_seance_exos,
                               impose_jusqu_a, impose_plein_ecran, chrono_fin, chrono_a_zero,
                               pause_mot, bac_ferme, bac_minutes, bac_jeux,
                               hors_seance, hors_seance_mot,
                               defi_exo, defi_graine, defi_mode, defi_debut, defi_fin,
-                              defi_manches, defi_duree, defi_but, defi_equipes
+                              defi_manches, defi_duree, defi_but, defi_equipes,
+                              jeu_type, jeu_graine, jeu_debut, jeu_fin, jeu_reglages
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
@@ -436,6 +460,14 @@ function etatDeSeance(array $eleve): array
         // deviner lequel des deux il tient, et il le devinerait en comparant
         // des horloges — celle du serveur et la sienne.
         'defi'        => defiEnCours($classe),
+        // LE JEU DE CLASSE PASSE PAR LA MÊME PORTE QUE LE DÉFI.
+        //
+        // RÉMY : « Fais tout ». C'est ce champ-ci qui fait qu'une ardoise
+        // APPREND qu'une partie a commencé — et c'est pour cela que le départ
+        // est annoncé douze secondes à l'avance : ce battement-ci passe toutes
+        // les dix secondes. Une fois le jeu connu, l'écran ouvre un second
+        // fil, à la seconde, qui ne porte que le monde (`/jeu`).
+        'jeu'         => jeuEnCours($classe),
         // ── CE QUE LA CLASSE A MARQUÉ ENSEMBLE, EN DIRECT ────────────────
         //
         // RÉMY : « Le défi ca cartonne, des idées dans ce style ». La barre de

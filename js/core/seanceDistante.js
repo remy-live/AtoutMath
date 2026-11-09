@@ -84,7 +84,11 @@ const VIDE = {
     // DEUX CHAMPS ET NON UN, parce que ce sont deux moments : pendant, on
     // répond ; après, on regarde. Le serveur n'en envoie jamais deux à la
     // fois, donc l'écran n'a aucune règle à appliquer pour savoir où il en est.
-    defi: null, defiTableau: null, defiCumul: null
+    defi: null, defiTableau: null, defiCumul: null,
+    // LE JEU DE CLASSE EN COURS. Rémy : « Fais tout ». C'est par ce champ que
+    // l'ardoise APPREND qu'une partie a commencé — le départ est annoncé douze
+    // secondes à l'avance parce que ce battement-ci passe toutes les dix.
+    jeu: null
 };
 
 let etat = { ...VIDE };
@@ -339,7 +343,8 @@ export function indicesNonLus() { return messagesNonLus().filter(m => genreDe(m)
 export function ceQueVoitLEleve(opts = {}) {
     if (opts.professeur) {
         return { consigne: '', verrouille: false, ecarte: false, ferme: null,
-                 mots: [], indices: [], defi: null, defiTableau: null, defiCumul: null };
+                 mots: [], indices: [], defi: null, defiTableau: null,
+                 defiCumul: null, jeu: null };
     }
     return {
         consigne: consigneDuProf(),
@@ -361,7 +366,10 @@ export function ceQueVoitLEleve(opts = {}) {
         // est déjà fermée au professeur —, mais les deux côtés de cette porte
         // doivent rendre LA MÊME FORME : c'est tout ce qui empêche un septième
         // champ d'arriver un jour d'un côté seulement, et de passer.
-        defiCumul: cumulDuDefi()
+        defiCumul: cumulDuDefi(),
+        // ET LE JEU DE CLASSE PASSE PAR LA MÊME PORTE, avec la même règle : le
+        // professeur qui repasse côté élève ne se lance pas un jeu à lui-même.
+        jeu: jeuDeClasse()
     };
 }
 
@@ -544,6 +552,30 @@ export function defiEnCours(maintenant = Math.floor(Date.now() / 1000)) {
  * @returns {{points:number, participants:number, equipes:number[],
  *            moi:number, noms:object, record:?object}|null}
  */
+/**
+ * LE JEU DE CLASSE EN COURS, ou rien.
+ *
+ * ON NE REND QUE CE QUI EST VIVANT, comme pour le défi : une partie dont la
+ * fin est passée n'est plus une partie. L'écran n'a donc aucune règle à
+ * appliquer — il reçoit un jeu, ou il n'en reçoit pas.
+ *
+ * ET LE TEMPS SE RELIT SUR L'HORLOGE DU SERVEUR : `reste` et `avant` arrivent
+ * déjà comptés, pour la raison qui a déjà servi trois fois sur cet écran — un
+ * onglet en arrière-plan fige les minuteurs du navigateur, et deux élèves
+ * finiraient à dix secondes d'écart.
+ */
+export function jeuDeClasse() {
+    const j = etat.jeu;
+    if (!j || !j.type) return null;
+    const VRAIE_HEURE = 1.5e9;
+    const ecart = (etat.maintenant > VRAIE_HEURE && etat.recuA > VRAIE_HEURE)
+        ? (etat.maintenant - etat.recuA) : 0;
+    const ici = Math.floor(Date.now() / 1000) + ecart;
+    const reste = (j.fin || 0) - ici;
+    if (reste <= 0) return null;
+    return { ...j, reste, avant: Math.max(0, (j.debut || 0) - ici) };
+}
+
 export function cumulDuDefi() {
     return etat.defiCumul || null;
 }

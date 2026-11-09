@@ -374,6 +374,24 @@ export const lancerLeDefi = (classId, exo, secondes, mode = 'qcm', opts = {}) =>
         equipes: !!opts.equipes
     });
 
+/**
+ * LANCER UN JEU DE CLASSE À LA VRAIE CLASSE.
+ *
+ * RÉMY : « Fais tout ». Les quatre jeux ne se jouaient qu'en démonstration,
+ * contre des pions de l'ordinateur ; ceci est le geste qui les donne aux trente.
+ *
+ * ON N'ENVOIE NI LA GRAINE NI LES INSTANTS, exactement comme pour le défi, et
+ * pour la même raison : le serveur les écrit, et c'est toute la différence
+ * entre un terrain commun et trente terrains différents. `secondes = 0`
+ * arrête la partie en cours.
+ *
+ * `reglages` EST RECOPIÉ TEL QUEL VERS LES TRENTE ARDOISES — l'opération, le
+ * style, les tables, les prénoms, la pénalité, le nombre de joueurs. Le serveur
+ * ne le lit pas : il n'a aucune règle à appliquer, il transporte.
+ */
+export const lancerUnJeuDeClasse = (classId, jeu, secondes, reglages = {}) =>
+    auServeur('/teacher/class', { classId, action: 'jeu', jeu, secondes, reglages });
+
 /** Les réglages d'exercice d'une classe : saut autorisé, exercice retiré. */
 export const lesReglages = (classId) =>
     auServeur('/teacher/override', { classId, action: 'list' });

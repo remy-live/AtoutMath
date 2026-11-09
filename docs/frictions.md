@@ -6936,3 +6936,43 @@ plus d'un.**
   tant qu'il n'a pas décidé d'écrire. Un vert qui ne veut pas dire « écrit » est
   un vert qui ment, et c'est la même famille de défaut que les épreuves vertes
   qui ne gardent rien.
+
+**Une liste de colonnes tenue à la main dans un SELECT, que rien ne vérifie** — 9 novembre
+
+- *Ce que je voulais faire* : qu'une ardoise APPRENNE qu'un jeu de classe a
+  commencé. Le serveur lançait la partie, `/teacher/live` la voyait, `/jeu` la
+  servait, et `tools/testApi.php` la trouvait juste **en 581 vérifications**.
+  Aucune ardoise ne l'apprenait : le SELECT de `etatDeSeance` nomme ses colonnes
+  une par une, et les cinq colonnes `jeu_*` n'y étaient pas. `jeuEnCours`
+  recevait une ligne sans `jeu_fin`, et une ligne sans `jeu_fin` veut dire
+  « aucune partie ». **Le défaut rend exactement la même réponse que « le
+  professeur n'a rien lancé ».**
+- *Ce qui a coûté* : une sonde à trois navigateurs écrite, lancée, rouge sur
+  trois points, puis une seconde sonde jetable pour descendre jusqu'au JSON du
+  battement. Quarante minutes. `schema.php` avait DÉJÀ payé ce piège pour les
+  colonnes et l'a fermé en dérivant la migration des définitions — mais un
+  SELECT, aucune boucle ne peut le fermer.
+- *Combien de fois* : || (les colonnes de `schema.php` à la rentrée, celles-ci
+  aujourd'hui ; et il reste quatre SELECT à colonnes nommées dans `api/lib/`)
+- *Ce qui manque* : une épreuve qui compare **les champs rendus par
+  `etatDeSeance` aux colonnes que ses fonctions lisent** — ou, à défaut, un
+  outil qui liste les SELECT à colonnes nommées et dise lesquels portent sur une
+  table qui a grandi depuis. Et une règle de conduite : un champ ajouté à l'état
+  de séance se vérifie dans un NAVIGATEUR, jamais par l'API, qui répondra juste.
+
+**`git checkout <fichier>` pour défaire une écriture rate, et emporte le reste** — 9 novembre
+
+- *Ce que je voulais faire* : annuler un `remplacer.mjs` dont le commentaire SQL
+  contenait une apostrophe et cassait le fichier PHP. Réflexe : `git checkout
+  api/lib/seance.php`. Le fichier portait **deux autres corrections non
+  commitées** de la demi-heure précédente, et elles sont parties avec.
+- *Ce qui a coûté* : vingt minutes à réécrire ce qui existait déjà, et la peur
+  d'en avoir oublié une — c'est le genre de perte qu'on ne découvre que trois
+  harnais plus tard.
+- *Combien de fois* : | (première, mais `remplacer.mjs` casse un fichier environ
+  une fois sur dix, et c'est là qu'on cherche à défaire)
+- *Ce qui manque* : que `remplacer.mjs` **garde une copie de ce qu'il écrase**
+  (`<fichier>.avant`, écrasée au suivant) et l'annonce quand `node --check`
+  tombe : « remis en place, copie de l'état d'avant dans … ». Il remet déjà le
+  fichier tout seul quand la syntaxe ne tient plus — c'est la seule raison pour
+  laquelle j'ai cru avoir besoin de git, et je me suis trompé de direction.

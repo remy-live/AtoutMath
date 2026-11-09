@@ -66,7 +66,8 @@ import {
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis, fermerHorsSeance,
     lesConnexions,
     accorderLaCalculatrice, retirerLaCalculatrice,
-    imposerLaSeance, lancerLeChrono, arreterLeChrono, lancerLeDefi, auServeur, reglagesDuSite,
+    imposerLaSeance, lancerLeChrono, arreterLeChrono, lancerLeDefi, lancerUnJeuDeClasse,
+    auServeur, reglagesDuSite,
     lesSignalements, photoDuSignalement, classerSignalement, effacerSignalement
 } from '../core/espaceProf.js';
 import { noterReglagesSite } from '../core/reglagesSite.js';
@@ -2745,7 +2746,8 @@ const OUTILS_DE_LHEURE = [
     // les deux choses qui prennent l'écran de toute la classe, et on les
     // cherche au même endroit.
     { cle: 'plateau',
-      titre: () => '🎲 Le plateau',
+      titre: () => `🎲 Le plateau${jeuDeLaClasse('plateau')
+                ? ' <b class="ec-pilote-outil-vif">· en jeu</b>' : ''}`,
       corps: outilPlateau },
     // LES TROIS JEUX VIFS. Rémy : « Je préfère un jeu assez rapide fun »,
     // puis « Les 3 sont top tu peux y aller ». Ils sont rangés avec le défi
@@ -3108,6 +3110,47 @@ function filtreDuPlateau(choix) {
  * règle de jeu se juge en jouant, pas en lisant — et s'il veut en changer une,
  * mieux vaut le savoir avant d'avoir écrit le serveur qui la porte.
  */
+/**
+ * LE JEU EN COURS DANS CETTE CLASSE, s'il est bien de ce type-là.
+ *
+ * UNE SEULE PARTIE À LA FOIS PAR CLASSE, et c'est une décision du serveur : la
+ * fiche de classe ne porte qu'un `jeu_type`. Deux jeux à la fois voudraient dire
+ * deux moitiés de classe qui ne jouent pas ensemble, ce qui est exactement ce
+ * qu'on cherche à éviter.
+ */
+function jeuDeLaClasse(type) {
+    const j = vue.direct && vue.direct.jeu;
+    return (j && j.type === type) ? j : null;
+}
+
+/**
+ * CE QUE LE PROFESSEUR LIT PENDANT QUE ÇA JOUE.
+ *
+ * TROIS NOMBRES, ET C'EST EXPRÈS : le score des deux équipes et combien
+ * d'élèves y sont. C'est ce qu'il annonce à voix haute, et il le lit en passant
+ * dans les rangs — donc en gros, et sans rien à déchiffrer.
+ *
+ * « EN ATTENTE » EST UN ÉTAT QU'IL FAUT MONTRER : entre le clic et le départ il
+ * y a douze secondes, le temps que les trente ardoises apprennent la partie à
+ * leur battement de séance. Sans cette ligne, il croirait que rien ne s'est
+ * passé et cliquerait une seconde fois.
+ */
+function resumeDuJeuHtml(type) {
+    const j = jeuDeLaClasse(type);
+    if (!j) return '';
+    if (j.avant > 0) {
+        return `<span class="ec-pilote-dit ec-jeu-vivant">Partie annoncée —
+                   <b>départ dans ${j.avant} s</b>. Les tablettes l'apprennent à
+                   leur battement, puis le terrain s'ouvre tout seul.</span>`;
+    }
+    const s = j.scores || [0, 0];
+    return `<span class="ec-pilote-dit ec-jeu-vivant">En jeu —
+               <b class="ec-jeu-eq0">${s[0]}</b> à
+               <b class="ec-jeu-eq1">${s[1]}</b>,
+               ${j.joueurs} élève(s) sur le terrain,
+               ${j.prises} nombre(s) pris, ${j.reste} s restantes.</span>`;
+}
+
 function outilPlateau() {
     return `<span class="ec-pilote-dit">Chaque joueur porte un nombre. Deux (ou
                trois) qui se retrouvent sur une case la prennent si leurs nombres
@@ -3183,10 +3226,29 @@ function outilPlateau() {
                     <option value="23">24 joueurs</option>
                     <option value="29">30 joueurs</option>
                 </select>
+                <select class="ec-champ ec-champ--mince" data-plateau-duree
+                        aria-label="Combien de temps">
+                    <option value="180">3 minutes</option>
+                    <option value="120">2 minutes</option>
+                    <option value="300">5 minutes</option>
+                </select>
                 <button type="button" class="ec-pilote-btn" data-plateau-demo
                         title="Jouer une partie seul, les autres pions tenus par l'ordinateur"
                         >▶ Essayer en démo</button>
+                <!-- ET LE GESTE QUI DONNE LE JEU AUX TRENTE. Il est à côté de
+                     la démonstration et non ailleurs : on règle, on essaie, on
+                     lance — dans cet ordre, avec les mêmes déroulants. Deux
+                     endroits séparés auraient fini par ne pas lancer ce qu'on
+                     venait d'essayer. -->
+                <button type="button" class="ec-pilote-btn ec-pilote-btn--go"
+                        data-plateau-go
+                        title="Ouvrir le plateau sur les tablettes de toute la classe"
+                        >🎲 Lancer à la classe</button>
+                ${jeuDeLaClasse('plateau') ? `
+                <button type="button" class="ec-pilote-btn" data-plateau-stop
+                        >■ Arrêter</button>` : ''}
             </span>
+            ${resumeDuJeuHtml('plateau')}
             <span class="ec-pilote-dit">En démo, les autres pions sont tenus par
                l'ordinateur&nbsp;: ils lisent le plateau avec les mêmes règles que
                vous et ne trichent pas. Flèches du clavier, ou la case voisine au
@@ -3761,6 +3823,7 @@ async function brancher(e, redessiner) {
         // `tools/defiEnManches.mjs`, qui a cliqué « Au tableau » sans qu'il se
         // passe quoi que ce soit — ni fenêtre, ni message, ni erreur.
         + '[data-defi-rejouer], [data-defi-tableau], [data-plateau-demo],'
+        + '[data-plateau-go], [data-plateau-stop],'
         + '[data-vif-demo],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
@@ -4933,6 +4996,38 @@ async function brancher(e, redessiner) {
     // à trente ne se regarde pas tout seul, et Rémy ne peut PAS juger sa propre
     // règle avant de l'avoir jouée. Les pions de l'ordinateur lisent le plateau
     // par les mêmes fonctions que lui (`core/plateau.js`) et ne trichent pas.
+    // ── LE PLATEAU, DONNÉ À LA VRAIE CLASSE ───────────────────────────────
+    //
+    // ON LIT LES MÊMES DÉROULANTS QUE LA DÉMONSTRATION, et c'est tout l'intérêt
+    // de les avoir côte à côte : ce qu'il vient d'essayer est ce qu'il lance.
+    //
+    // LA GRAINE N'EST PAS ENVOYÉE : le serveur la tire. C'est la seule façon
+    // que le terrain soit le même pour les trente, et personne ne peut la
+    // choisir pour retomber sur un terrain qu'il connaît déjà.
+    if (d.plateauGo !== undefined || d.plateauStop !== undefined) {
+        if (d.plateauStop !== undefined) {
+            await fait(lancerUnJeuDeClasse(cid, 'plateau', 0));
+            return;
+        }
+        const zone = el.closest('.ec-pilote') || document;
+        const lu = (sel, defaut) => ((zone.querySelector(sel) || {}).value || defaut);
+        await fait(lancerUnJeuDeClasse(cid, 'plateau',
+            Number(lu('[data-plateau-duree]', '180')) || 180, {
+                operation: lu('[data-plateau-op]', '×'),
+                style: lu('[data-plateau-style]', 'question'),
+                quoi: filtreDuPlateau(lu('[data-plateau-quoi]', 'tout')),
+                noms: lu('[data-plateau-noms]', 'oui') === 'oui',
+                penalite: lu('[data-plateau-penalite]', 'fige'),
+                // LE NOMBRE DE JOUEURS TAILLE LE TERRAIN, et il doit être le
+                // même sur les trente ardoises : il part donc dans les réglages
+                // plutôt que de se déduire de qui s'est connecté. Une ardoise
+                // qui compterait les pions reçus dessinerait un terrain qui
+                // grandit au fil de la partie.
+                joueurs: (Number(lu('[data-plateau-combien]', '23')) || 23) + 1
+            }));
+        return;
+    }
+
     if (d.plateauDemo !== undefined) {
         const zone = el.closest('.ec-pilote') || document;
         const lu = (sel, defaut) => ((zone.querySelector(sel) || {}).value || defaut);
@@ -5391,6 +5486,27 @@ const BATTEMENT_MS = 5000;
  * fenêtre, et l'épreuve tombe — à juste titre : un corps qu'on ne peut plus
  * lire d'un coup d'œil est un corps qu'on ne relit plus.)
  */
+/**
+ * CE QUI, DANS LE JEU DE CLASSE, CHANGE LA FORME DE LA BARRE.
+ *
+ * POUR LA MÊME RAISON QUE LE DÉFI : sans cette ligne dans la signature, le
+ * bouton « Arrêter » n'apparaîtrait jamais et les scores des deux équipes se
+ * figeraient à l'instant où Rémy les lit le plus. Les trois nombres qui BOUGENT
+ * en font donc partie — le temps restant, les scores, les élèves sur le terrain.
+ *
+ * ELLE EST UNE FONCTION À PART, ET CE N'EST PAS UN GOÛT : `signatureDuPilote`
+ * est relue par une épreuve qui cherche son `.join('|')` dans les deux mille
+ * quatre cents caractères qui suivent son nom. Un commentaire de huit lignes
+ * posé DEDANS l'a repoussé au-delà, et l'épreuve est tombée en disant qu'on
+ * tapait encore l'identifiant d'un exercice à la main — ce qui n'avait aucun
+ * rapport. Les explications vivent donc ici, et la signature reste courte.
+ */
+function signatureDuJeu() {
+    const j = vue.direct && vue.direct.jeu;
+    if (!j) return '';
+    return `${j.type}:${j.avant}:${j.reste}:${(j.scores || []).join('-')}:${j.joueurs}`;
+}
+
 function signatureDuPilote() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
@@ -5412,6 +5528,7 @@ function signatureDuPilote() {
         // « Au tableau », qui n'arriveraient sinon qu'au prochain changement
         // d'onglet — après le seul défi de l'heure, c'est-à-dire jamais.
         (vue.direct && vue.direct.defiGraine) || '',
+        signatureDuJeu(),
         // ET LE TOTAL DE LA CLASSE, QUI MONTE PENDANT LE DÉFI. Sans lui, le
         // nombre de scores suffisait à redessiner tant que des élèves
         // arrivaient — mais pas une seconde de plus : les trente ont fini

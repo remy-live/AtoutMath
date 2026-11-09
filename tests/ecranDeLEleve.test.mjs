@@ -70,7 +70,12 @@ test('LE PROFESSEUR N\'EN VOIT RIEN — ni le mot, ni le coup de pouce', () => {
         // qui garde ici. Un septième champ ajouté d'un seul côté de la porte
         // fait tomber cette épreuve — ce qui vient d'arriver avec `defiCumul`,
         // et c'est exactement ce qu'on lui demande.
-        defi: null, defiTableau: null, defiCumul: null
+        //
+        // ET C'EST LA DEUXIÈME FOIS EN TROIS JOURS qu'elle tombe pour cette
+        // raison — `defiCumul`, puis `jeu`. Elle fait donc très exactement son
+        // travail : chaque champ neuf passe par les DEUX côtés de la porte, ou
+        // l'épreuve crie.
+        defi: null, defiTableau: null, defiCumul: null, jeu: null
     });
 });
 

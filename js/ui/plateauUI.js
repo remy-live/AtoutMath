@@ -114,7 +114,18 @@ export function semerDesJetons(plateau, combien, rng) {
  * @param {{tables?:number[], mini?:number}} [o.quoi] sur quoi on joue — une
  *   table, plusieurs, ou une plage de valeurs. Rémy : « Choisir ce qu'on
  *   travaille ». Vide veut dire « toutes les tables ».
- * @param {number} [o.robots] combien de pions tenus par l'ordinateur
+ * @param {number} [o.robots] combien de pions tenus par l'ordinateur. EN
+ *   RÉSEAU, où il n'y en a aucun, ce nombre dit combien d'élèves on attend :
+ *   c'est lui qui donne la TAILLE du terrain, et elle doit être la même pour
+ *   les trente — elle se calcule donc du nombre d'élèves de la classe, et
+ *   jamais de qui s'est déjà connecté.
+ * @param {object} [o.lien] le fil ouvert par `core/jeuDistant.js`. S'il est
+ *   là, la partie est jouée par une vraie classe : pas de pions de
+ *   l'ordinateur, les prises sont RÉCLAMÉES au serveur, et les scores
+ *   descendent de lui.
+ * @param {0|1} [o.monEquipe] mon équipe, telle que le serveur l'a répartie
+ * @param {string} [o.monId] mon identifiant d'élève — pour me reconnaître
+ *   dans la liste des pions que le serveur renvoie
  * @param {number} [o.secondes] la durée de la partie
  * @param {boolean} [o.noms] écrire le prénom sous chaque rond
  * @param {'aucune'|'fige'|'points'|'deux'} [o.penalite] ce que coûte une erreur
@@ -135,6 +146,27 @@ export function ouvrirLePlateau(o = {}) {
     // porte le 8 parmi trente pastilles.
     const avecNoms = !!o.noms;
     const penalite = coutDeLErreur(o.penalite);
+    // ── EN RÉSEAU, OU CONTRE DES PIONS DE L'ORDINATEUR ───────────────────
+    //
+    // UN SEUL ÉCRAN POUR LES DEUX, et c'est une décision. Rémy voit en
+    // démonstration EXACTEMENT le jeu que sa classe va jouer : le même terrain,
+    // les mêmes règles de prise, la même pénalité. Deux écrans séparés auraient
+    // fini par ne plus montrer la même chose, et la démo aurait menti — ce
+    // dépôt a déjà payé cette leçon sur les règles réécrites en PHP.
+    //
+    // CE QUI CHANGE QUAND `o.lien` EST LÀ, ET RIEN D'AUTRE :
+    //   · aucun pion de l'ordinateur — les vingt-neuf autres sont de vrais
+    //     élèves, et ils arrivent par le battement ;
+    //   · une prise n'est pas ENCAISSÉE mais RÉCLAMÉE : le serveur dit qui est
+    //     arrivé le premier, et l'écran ATTEND sa réponse avant d'éteindre ;
+    //   · les scores et l'horloge descendent du serveur, et ne se comptent
+    //     plus ici.
+    const lien = o.lien || null;
+    const pionsDeLOrdinateur = lien ? 0 : combienDeRobots;
+    // CE QUE J'AI FAIT PERDRE À MON ÉQUIPE, cumulé depuis le début. On envoie
+    // le CUMUL et non l'erreur du moment : le serveur garde le plus grand des
+    // deux, donc un battement perdu dans le réseau n'efface pas la punition.
+    let malusCumule = 0;
     const rng = makeRng(`partie-${graine}`);
     const plateau = dessinerLePlateau({
         graine, operation, quoi,
@@ -157,18 +189,30 @@ export function ouvrirLePlateau(o = {}) {
     const utiles = nombresUtiles(plateau);
     const pions = [];
     const compteurs = [0, 0];
-    const ajouter = (nom, robot) => {
-        const equipe = pions.length % 2;
-        const place = placeDeDepart(plateau, equipe, compteurs[equipe]++);
+    const ajouter = (nom, robot, equipeImposee, rangImpose) => {
+        const equipe = equipeImposee === 0 || equipeImposee === 1
+            ? equipeImposee : pions.length % 2;
+        const rang = Number.isInteger(rangImpose) ? rangImpose : compteurs[equipe]++;
+        const place = placeDeDepart(plateau, equipe, rang);
         pions.push({
             id: shortId(6), nom, equipe, robot,
             x: place.x, y: place.y, nombre: rng.pick(utiles),
             depuis: Date.now(), vise: null, el: null
         });
     };
-    ajouter(o.nom || 'Toi', false);
+    // ── OÙ JE DÉMARRE, EN RÉSEAU ─────────────────────────────────────────
+    //
+    // CHAQUE ARDOISE SE CROIT PREMIÈRE DE SON ÉQUIPE : elle ne connaît pas
+    // encore les autres au moment où elle se place. Quinze Bleus démarreraient
+    // donc sur la MÊME case, empilés, et deux d'entre eux pourraient prendre un
+    // nombre sans avoir fait un geste. Le rang se tire donc de mon identifiant
+    // d'élève — stable d'un rechargement à l'autre, et dispersé.
+    const monRang = lien && o.monId
+        ? makeRng(`place-${o.monId}`).int(0, plateau.hauteur * 2 - 1) : undefined;
+    ajouter(o.nom || 'Toi', false, lien ? (o.monEquipe === 1 ? 1 : 0) : undefined, monRang);
     const moi = pions[0];
-    for (let i = 0; i < combienDeRobots; i++) ajouter(`Pion ${i + 1}`, true);
+    if (lien && o.monId) moi.id = o.monId;
+    for (let i = 0; i < pionsDeLOrdinateur; i++) ajouter(`Pion ${i + 1}`, true);
 
     let jetons = style === 'jetons' ? semerDesJetons(plateau, 14, rng) : [];
     const prises = [];
@@ -264,8 +308,12 @@ export function ouvrirLePlateau(o = {}) {
         }
     };
 
-    /** Un rond par pion, créé une fois : ensuite on ne bouge que sa position. */
-    for (const p of pions) {
+    // UN ROND PAR PION, CRÉÉ UNE FOIS : ensuite on ne bouge que sa position.
+    //
+    // C'EST UNE FONCTION ET NON UNE BOUCLE, parce qu'en réseau les pions
+    // ARRIVENT : un élève qui ouvre sa tablette en retard n'existait pas quand
+    // l'écran s'est dessiné, et il doit pouvoir pousser son rond ensuite.
+    const creerLeRond = (p) => {
         const d = document.createElement('div');
         d.className = `pdn-pion pdn-pion--${p.equipe}${p === moi ? ' pdn-pion--moi' : ''}`;
         d.title = p.nom;
@@ -277,7 +325,8 @@ export function ouvrirLePlateau(o = {}) {
         zonePions.appendChild(d);
         p.el = d;
         p.elNb = d.querySelector('[data-nb]');
-    }
+    };
+    for (const p of pions) creerLeRond(p);
 
     /* ────────────────────────── LA BOUCLE ───────────────────────────── */
 
@@ -364,10 +413,27 @@ export function ouvrirLePlateau(o = {}) {
         // LES JETONS SE RAMASSENT EN PASSANT DESSUS.
         if (style === 'jetons') {
             for (const p of pions) {
+                // EN RÉSEAU, JE NE RAMASSE QUE POUR MOI : le nombre des autres
+                // descend du serveur, et le leur changer ici ne tiendrait qu'une
+                // seconde avant d'être écrasé.
+                if (lien && p !== moi) continue;
                 const c = caseSous(p.x, p.y);
                 const k = jetons.findIndex(j => j.x === c.x && j.y === c.y);
                 if (k < 0) continue;
                 p.nombre = jetons[k].nombre;
+                // ── EN RÉSEAU, UN JETON NE S'ÉPUISE PAS ──────────────────
+                //
+                // Il devient une BORNE DE NOMBRE posée sur le terrain : on passe
+                // dessus, on porte son nombre, et il reste pour le suivant.
+                //
+                // POURQUOI PAS COMME EN DÉMONSTRATION : là, un jeton ramassé
+                // disparaît et l'on en resème un AU HASARD. Ce hasard-là est
+                // local — trente ardoises tireraient trente terrains
+                // différents, et un élève courrait vers un jeton que personne
+                // d'autre ne voit. Le rendre permanent le rend identique pour
+                // les trente sans rien demander au serveur, et à trente c'est
+                // même un meilleur jeu : on ne se bat pas pour la borne.
+                if (lien) continue;
                 jetons.splice(k, 1);
                 // ON EN RESÈME UN AILLEURS : un plateau qui s'épuise de ses
                 // jetons fige le jeu à mi-partie, et plus personne ne peut
@@ -394,8 +460,195 @@ export function ouvrirLePlateau(o = {}) {
             if (!cible) continue;
             const prise = quiPrend(cible.valeur, surPlace, operation);
             if (!prise) continue;
+            if (lien) {
+                // ON NE RÉCLAME QUE LES PRISES OÙ L'ON EST. Mon écran voit les
+                // vingt-neuf autres à la place qu'ils occupaient au dernier
+                // battement : deux élèves que je vois encore ensemble sur un 56
+                // s'en sont peut-être déjà séparés. Réclamer leur prise, ce
+                // serait leur accorder des points qu'ils n'ont pas faits. Une
+                // prise où JE suis, en revanche, je l'ai sous les yeux.
+                if (prise.pions.includes(moi)) reclamer(cible, prise);
+                continue;
+            }
             encaisser(cible, prise);
         }
+    };
+
+    /* ──────── CE QUE DEVIENT UNE PRISE QUAND LA CLASSE EST EN LIGNE ────── */
+
+    // CE QUI EST RÉCLAMÉ ET ATTEND SA RÉPONSE. Sans cette liste, les soixante
+    // images de la seconde qui suit réclameraient soixante fois le même nombre :
+    // trente élèves feraient mille huit cents requêtes pour une prise.
+    const reclames = new Set();
+    // ET CELLES QU'ON A PERDUES. Le serveur répond « déjà pris » dans la même
+    // requête : sans garder cette réponse, l'écran annoncerait « c'est à vous »
+    // sur un nombre que quelqu'un d'autre a eu d'un cheveu — ce qui est le plus
+    // désagréable des deux, parce que l'élève y croit.
+    const perdues = new Set();
+    const reclamer = (cible, prise) => {
+        if (reclames.has(cible.i)) return;
+        reclames.add(cible.i);
+        lien.reclamer(`c${cible.i}`, prise.partage ? -1 : prise.equipes[0], prise.points);
+    };
+
+    /**
+     * UN NOMBRE A ÉTÉ PRIS, ET C'EST LE SERVEUR QUI LE DIT.
+     *
+     * ON N'ÉTEINT RIEN AVANT SA RÉPONSE. Deux élèves recouvrent le même 56 dans
+     * la même demi-seconde — c'est la situation NORMALE à trente, pas un cas
+     * limite. Si chaque ardoise éteignait le carré de son côté, les deux
+     * croiraient l'avoir eu et le tableau compterait deux fois les points. Le
+     * serveur tranche par l'unicité de `jeu_prises`, et l'écran SUIT.
+     *
+     * L'ATTENTE EST D'UN ALLER-RETOUR, ET NON D'UN BATTEMENT : `reclamer` vide
+     * la file tout de suite, et la réponse à cette requête-là porte déjà la
+     * prise. MESURÉ à trente ardoises sur cette route : médiane 28 ms.
+     */
+    const appliquerUnePrise = (cle, cible) => {
+        dejaPris.add(cible.i);
+        prises.push({ valeur: cible.valeur, points: 0, partage: false,
+                      equipes: [], qui: [] });
+        annoncerDeLoin(cible, reclames.has(cible.i) && !perdues.has(cle));
+        // ET UN CARRÉ NEUF APPARAÎT AILLEURS — à la MÊME place sur les trente
+        // ardoises, sans quoi le jeu n'est plus le même pour tous.
+        //
+        // DEUX CHOSES RENDENT CETTE PLACE IDENTIQUE PARTOUT, et chacune ferme
+        // une divergence que j'avais d'abord écrite :
+        //
+        //   1. LA GRAINE PORTE L'IDENTIFIANT DE LA PRISE, pas son RANG. Au rang,
+        //      deux ardoises servies dans un ordre différent auraient dessiné
+        //      deux terrains différents. À l'identifiant, le terrain ne dépend
+        //      que de l'ENSEMBLE des prises, et l'ordre ne compte plus.
+        //   2. ON NE REGARDE PAS OÙ SONT LES PIONS. En démonstration, un carré
+        //      neuf évite les ronds. Ici les positions des vingt-neuf autres
+        //      datent du dernier battement, donc elles DIFFÈRENT d'une ardoise
+        //      à l'autre : un carré refusé chez l'un et accepté chez l'autre,
+        //      c'est la même divergence par un autre chemin. On n'évite donc
+        //      que les carrés encore vivants, qui sont les mêmes pour tous.
+        const neuf = dessinerLePlateau({
+            graine: `${graine}-${cle}`, operation, quoi,
+            largeur: plateau.largeur, hauteur: plateau.hauteur, combien: 1
+        }).cibles[0];
+        const colle = !neuf || plateau.cibles.some(c => !dejaPris.has(c.i)
+            && Math.abs(c.x - neuf.x) <= 1 && Math.abs(c.y - neuf.y) <= 1);
+        if (!colle) {
+            // L'IDENTIFIANT DU CARRÉ NEUF EST UN CONDENSÉ DE LA PRISE QUI L'A
+            // FAIT NAÎTRE, et non le rang dans la liste : le rang vaut 21 chez
+            // qui a reçu vingt prises et 22 chez qui en a reçu vingt-et-une, et
+            // ces deux-là réclameraient alors DEUX carrés différents sous le
+            // même nom. Le condensé tient en cinq caractères, donc la chaîne ne
+            // grandit pas de génération en génération — le serveur refuse un
+            // `quoi` de plus de soixante.
+            const idNeuf = `n${makeRng(`cible-${cle}`).int(0, 1679615).toString(36)}`;
+            plateau.cibles.push({ ...neuf, i: idNeuf });
+        }
+        peindreLeDecor();
+    };
+
+    /**
+     * TOUTES LES PRISES DU SERVEUR, POSÉES DANS N'IMPORTE QUEL ORDRE.
+     *
+     * ON REPASSE TANT QUE ÇA AVANCE, et ce n'est pas du zèle : la prise d'un
+     * carré NÉ d'une autre prise ne peut s'appliquer qu'après elle. Le serveur
+     * ne promet aucun ordre — et c'est bien ainsi, voir le commentaire de
+     * `mondeDuJeu` : une contrainte qu'on n'a pas besoin de tenir vaut mieux
+     * qu'une contrainte qu'on tient bien.
+     */
+    const appliquees = new Set();
+    const appliquerLesPrises = (liste) => {
+        let encore = true;
+        while (encore) {
+            encore = false;
+            for (const cle of liste || []) {
+                if (appliquees.has(cle)) continue;
+                const cible = plateau.cibles.find(c => `c${c.i}` === cle);
+                if (!cible || dejaPris.has(cible.i)) continue;
+                appliquees.add(cle);
+                appliquerUnePrise(cle, cible);
+                encore = true;
+            }
+        }
+    };
+
+    /** Un bandeau sobre : le nombre est parti, et l'on dit si c'était nous. */
+    const annoncerDeLoin = (cible, cEtaitMoi) => {
+        const b = document.createElement('div');
+        b.className = `pdn-annonce${cEtaitMoi ? '' : ' pdn-annonce--partage'}`;
+        b.innerHTML = `<b>${cible.valeur}</b> ${cEtaitMoi ? 'est à vous&nbsp;!' : 'a été pris'}`;
+        voile.querySelector('.pdn-carte').appendChild(b);
+        setTimeout(() => b.remove(), 1400);
+    };
+
+    /**
+     * LE MONDE DES VINGT-NEUF AUTRES, TEL QUE LE SERVEUR LE REND.
+     *
+     * ── CE QU'ON NE TOUCHE JAMAIS ICI : SON PROPRE ROND ───────────────────
+     *
+     * Le serveur renvoie aussi MON pion, à la place où je l'ai posé il y a une
+     * seconde. Le replacer d'après lui ferait reculer le rond de l'élève d'une
+     * seconde à chaque battement, sous son doigt. C'est à ce prix-là qu'un jeu
+     * en réseau reste jouable : chacun est maître de son propre rond, et le
+     * serveur n'arbitre que ce qu'une ardoise seule ne peut pas trancher.
+     */
+    const recevoirLeMonde = (monde) => {
+        if (fini || !lien || !monde) return;
+        // PLUS DE JEU : le professeur a arrêté, ou le temps est tombé. On finit
+        // sur l'ordre du serveur, et non sur son propre minuteur.
+        if (!monde.jeu) { terminer(); return; }
+        // CE QUE LE SERVEUR A RÉPONDU À MA RÉCLAMATION, s'il y en avait une.
+        if (monde.prise && monde.prise.quoi && monde.prise.ok === false) {
+            perdues.add(String(monde.prise.quoi));
+        }
+        if (typeof monde.jeu.reste === 'number') {
+            // L'HORLOGE SE RECALE À CHAQUE BATTEMENT SUR CELLE DU SERVEUR. Un
+            // onglet passé en arrière-plan fige les minuteurs du navigateur :
+            // sans ce recalage, deux élèves finiraient à dix secondes d'écart.
+            finAt = Date.now() + monde.jeu.reste * 1000;
+        }
+        const vus = new Set();
+        for (const v of monde.pions || []) {
+            if (!v || !v.id || v.id === moi.id) continue;
+            vus.add(v.id);
+            let p = pions.find(q => q.id === v.id);
+            if (!p) {
+                p = { id: v.id, nom: v.prenom || 'Élève',
+                      equipe: v.equipe === 1 ? 1 : 0, robot: false, distant: true,
+                      x: v.x, y: v.y, nombre: v.nombre,
+                      depuis: Date.now(), vise: null, el: null };
+                pions.push(p);
+                creerLeRond(p);
+            }
+            p.x = Number(v.x) || 0;
+            p.y = Number(v.y) || 0;
+            p.nombre = Math.round(Number(v.nombre) || 0);
+            p.figeJusqua = Date.now() + (Number(v.fige) || 0) * 1000;
+        }
+        // CELUI QUI A FERMÉ SA TABLETTE S'EN VA DU TERRAIN. Sans cela son rond
+        // resterait planté là, et il compterait pour une prise : deux élèves
+        // croiraient prendre un nombre avec un absent.
+        for (let k = pions.length - 1; k >= 0; k--) {
+            const p = pions[k];
+            if (!p.distant || vus.has(p.id)) continue;
+            if (p.el) p.el.remove();
+            pions.splice(k, 1);
+        }
+        appliquerLesPrises(monde.prises);
+        // LES SCORES DESCENDENT DU SERVEUR, ENTIERS. On ne les additionne plus
+        // ici : une prise refusée par l'unicité doit DISPARAÎTRE du tableau,
+        // et un score qu'on tient soi-même ne sait pas revenir en arrière.
+        if (Array.isArray(monde.scores)) {
+            scores[0] = Math.max(0, Math.round(monde.scores[0] || 0));
+            scores[1] = Math.max(0, Math.round(monde.scores[1] || 0));
+        }
+        // LE GEL AUSSI VIENT DE LUI : c'est ce qui fait qu'une punition survit
+        // au rechargement de la page.
+        if (monde.moi && Number(monde.moi.fige) > 0) {
+            moi.figeJusqua = Math.max(moi.figeJusqua || 0,
+                Date.now() + Number(monde.moi.fige) * 1000);
+        }
+        placerLesPions();
+        rallumer();
+        direCeQuOnVoit();
     };
 
     const encaisser = (cible, prise) => {
@@ -445,6 +698,13 @@ export function ouvrirLePlateau(o = {}) {
         if (penalite.fige) p.figeJusqua = Date.now() + penalite.fige * 1000;
         if (penalite.points) {
             scores[p.equipe] = scoreApresPenalite(scores[p.equipe], penalite.points);
+        }
+        // EN RÉSEAU, LA PUNITION EST DITE AU SERVEUR, et pour une seule raison :
+        // elle doit survivre au rechargement de la page. Un élève figé quatre
+        // secondes qui tire la page vers le bas ne doit pas repartir neuf.
+        if (lien && p === moi) {
+            if (penalite.fige) lien.figer(penalite.fige);
+            if (penalite.points) malusCumule += penalite.points;
         }
         if (!penalite.fige && !penalite.points) return;
         const b = document.createElement('div');
@@ -670,7 +930,7 @@ export function ouvrirLePlateau(o = {}) {
 
     /* ─────────────────────────── L'HORLOGE ──────────────────────────── */
 
-    const finAt = Date.now() + secondes * 1000;
+    let finAt = Date.now() + secondes * 1000;
     const horloge = setInterval(() => {
         const reste = Math.max(0, Math.round((finAt - Date.now()) / 1000));
         el('[data-reste]').textContent = String(reste);
@@ -704,6 +964,17 @@ export function ouvrirLePlateau(o = {}) {
 
     return {
         element: voile,
+        /**
+         * CE QUE J'ENVOIE AU SERVEUR À CHAQUE BATTEMENT.
+         *
+         * `points` VAUT ZÉRO AU PLATEAU, et ce n'est pas un oubli : ici tous
+         * les points viennent des PRISES, qui sont comptées par le serveur pour
+         * l'équipe entière. Les trois jeux vifs, eux, marquent des points qu'une
+         * ardoise seule connaît — c'est pour eux que ce champ existe.
+         */
+        monEtat: () => ({ x: moi.x, y: moi.y, nombre: moi.nombre,
+                          points: 0, malus: malusCumule }),
+        recevoirLeMonde,
         etat: () => ({ scores, prises: [...prises], fini,
                        moi: { x: moi.x, y: moi.y, nombre: moi.nombre },
                        cibles: plateau.cibles.filter(c => !dejaPris.has(c.i)).length }),

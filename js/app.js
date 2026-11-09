@@ -48,6 +48,7 @@ import { initSyncUI } from './ui/syncUI.js';
 import { initSeanceDistante } from './core/seanceDistante.js';
 import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
 import { initDefiUI } from './ui/defiUI.js';
+import { initJeuDeClasseUI } from './ui/jeuDeClasseUI.js';
 import { modeLibre, estRattache, adresseApiDeduite } from './core/portail.js';
 import { chargerReglagesSite } from './core/reglagesSite.js';
 import { outilsAuteur, reglerOutilsAuteur, appliquerOutilsAuteur } from './core/outilsAuteur.js';
@@ -144,6 +145,10 @@ const demarrerLApplication = async () => {
     // LE DÉFI CHRONOMÉTRÉ ÉCOUTE LE MÊME ÉVÉNEMENT que le reste du direct : il
     // arrive par l'état de séance, comme le verrou et les mots.
     initDefiUI();
+    // ET LE JEU DE CLASSE ÉCOUTE LE MÊME BATTEMENT. Il est branché ici, à côté
+    // du défi, parce qu'il pose les mêmes quatre questions et les résout de la
+    // même façon : voir le préambule de `ui/jeuDeClasseUI.js`.
+    initJeuDeClasseUI();
     initSync();
 
     // LES PARCOURS ET LE SERVEUR, DANS LES DEUX SENS.

@@ -119,6 +119,24 @@ export async function initSync() {
     rafraichirSeance();
 }
 
+/**
+ * MON IDENTIFIANT D'ÉLÈVE, TEL QUE LE SERVEUR LE CONNAÎT — ou rien.
+ *
+ * IL SERT À SE RECONNAÎTRE DANS LA FOULE. Dans un jeu de classe, le serveur
+ * renvoie les trente pions, le mien compris : sans cet identifiant, mon écran
+ * replacerait mon propre rond d'après une position vieille d'une seconde, et il
+ * reculerait sous le doigt de l'élève à chaque battement.
+ *
+ * IL EST DÉJÀ RANGÉ SUR LE PROFIL — on ne le redemande pas au serveur. C'est
+ * aussi lui qui fixe la place de départ sur le terrain, et cette place doit
+ * survivre à un rechargement de page : un identifiant tiré au hasard à chaque
+ * ouverture ferait sauter l'élève ailleurs dès qu'il tire sa page vers le bas.
+ */
+export function monIdentifiantEleve() {
+    const p = getActiveProfile();
+    return (p && p.remote && p.remote.studentId) || null;
+}
+
 export function isActive() {
     const profile = getActiveProfile();
     return !!(config.enabled && config.apiUrl && profile && profile.remote && profile.remote.token);

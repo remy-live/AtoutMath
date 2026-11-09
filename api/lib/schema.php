@@ -873,6 +873,12 @@ function lesTablesDuSchema(bool $sqlite): array
         -- le dit, et non l'ardoise : une pénalité que l'on pourrait effacer en
         -- rechargeant sa page n'est pas une pénalité.
         fige       " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'BIGINT NOT NULL DEFAULT 0') . ",
+        -- CE QU'IL A FAIT PERDRE À SON ÉQUIPE, cumulé. Il faut une colonne à
+        -- part et non des points négatifs : `points` est PLAFONNÉ par le temps
+        -- écoulé, et une pénalité rangée là serait effacée par le plafond au
+        -- battement suivant. Comme `fige`, ce nombre ne fait que MONTER — sans
+        -- quoi un élève figé effacerait sa punition en rechargeant sa page.
+        malus      " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
         maj        " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'BIGINT NOT NULL DEFAULT 0') . ",
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
 

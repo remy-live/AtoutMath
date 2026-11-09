@@ -5933,3 +5933,48 @@ savoir lequel était arrivé. Deux fois en deux jours.
 
 **IL RESTE** : les trois jeux n'existent qu'en MODE DÉMO, comme le plateau. Le
 réseau reste le gros morceau commun aux quatre.
+
+---
+
+## « Fais tout » — le plateau joué par une vraie classe
+
+**Ce qu'il a dit** : « Fais tout ».
+
+**Ce que ça voulait dire**, après « Tu as mis des modes démos » : les quatre
+jeux de classe ne se jouaient que dans un seul navigateur, contre des pions de
+l'ordinateur. Il faut qu'une classe entière y joue.
+
+**Fait, en trois temps** :
+
+1. **Le serveur** — deux tables, et pas une de plus. Il ne connaît AUCUNE règle
+   du jeu : il tient où est tout le monde, et qui est arrivé le premier. Mesuré
+   à trente ardoises : 600 requêtes sur 600, médiane 28 ms, 81 prises pour 81
+   distinctes, aucun verrou.
+2. **Le noyau client** — un second battement, à la SECONDE et seulement pendant
+   la partie. Le battement de séance, à dix secondes, porte le reste.
+3. **Le plateau en réseau** — le même écran que la démonstration, avec trois
+   différences : pas de pions de l'ordinateur, une prise est RÉCLAMÉE au lieu
+   d'être encaissée, et les scores descendent du serveur.
+
+**Ce qu'il voit de neuf** : dans l'onglet 🎲 Le plateau, un bouton **Lancer à la
+classe** à côté de **Essayer en démo**, une durée, et une ligne qui dit pendant
+la partie le score des deux équipes, combien d'élèves sont sur le terrain et ce
+qu'il reste. La notice est dans `docs/notice-du-plateau.md`.
+
+**LE DÉFAUT QUE RIEN NE VOYAIT, et comment il a été trouvé** : le serveur
+lançait la partie, le direct du professeur la voyait, la route du jeu la
+servait, et 581 vérifications d'API passaient — mais AUCUNE ardoise ne
+l'apprenait. Le battement de séance nomme ses colonnes une par une, et les cinq
+colonnes du jeu n'y étaient pas. Une ligne sans fin de partie veut dire « aucune
+partie » : le défaut rendait exactement la même réponse que le repos. Il a fallu
+trois VRAIS navigateurs (`tools/plateauEnClasse.mjs`) pour le voir — et c'est la
+règle du dépôt, encore une fois : une mesure qui n'emprunte pas le chemin de
+l'utilisateur ne mesure pas son problème.
+
+**IL RESTE** : les trois jeux vifs — le chat perché, la ruée, la pluie. Leur
+terrain se remet en place au hasard LOCAL quand on ramasse un jeton : trente
+ardoises tireraient trente terrains différents. Il faut les rendre fonction de
+la graine et de l'horloge du serveur avant de les brancher. En attendant, une
+partie d'un de ces trois jeux annoncée par le serveur est IGNORÉE par l'ardoise
+— mieux vaut ne rien ouvrir qu'ouvrir un jeu qui ne serait pas le même pour
+tous.

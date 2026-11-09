@@ -69,10 +69,15 @@ function jeuEnCours(array $classe): ?array
 /**
  * LANCER UNE PARTIE.
  *
- * ON ANNONCE LE DÉPART HUIT SECONDES PLUS TARD, pour la même raison que le
- * défi : les ardoises n'apprennent le jeu qu'à leur prochain battement, et
- * celle qui vient de battre partirait en retard. Huit et non douze — ici le
- * battement est à la seconde, pas à la dizaine de secondes.
+ * ON ANNONCE LE DÉPART DOUZE SECONDES PLUS TARD, exactement comme le défi, et
+ * pour exactement la même raison : l'ardoise n'apprend qu'un jeu a commencé
+ * QU'À SON BATTEMENT DE SÉANCE, qui passe toutes les dix secondes. Celle qui
+ * vient de battre l'apprendrait dix secondes trop tard.
+ *
+ * J'AVAIS ÉCRIT HUIT, en me disant que le battement du jeu est à la seconde.
+ * C'était faux : le battement à la seconde ne commence QU'UNE FOIS LE JEU
+ * CONNU. C'est le battement lent qui l'annonce, et c'est donc lui qui commande
+ * ce nombre-là.
  */
 function lancerLeJeu(array $classe, string $type, int $secondes, array $reglages): array
 {
@@ -80,7 +85,7 @@ function lancerLeJeu(array $classe, string $type, int $secondes, array $reglages
         return ['ok' => false, 'dit' => 'Ce jeu n\'existe pas.'];
     }
     $secondes = max(30, min(600, $secondes));
-    $debut = time() + 8;
+    $debut = time() + 12;
     $fin = $debut + $secondes;
     // LA GRAINE EST TIRÉE ICI, PAS PAR L'ÉCRAN : c'est la seule façon que le
     // terrain soit le même pour les trente, et personne ne peut la choisir
@@ -126,7 +131,7 @@ function mondeDuJeu(array $classe, string $eleveId): array
 {
     $debut = (int) ($classe['jeu_debut'] ?? 0);
     $s = db()->prepare(
-        'SELECT p.student_id, p.x, p.y, p.nombre, p.points, p.fige, e.first_name
+        'SELECT p.student_id, p.x, p.y, p.nombre, p.points, p.fige, p.malus, e.first_name
            FROM jeu_pions p JOIN students e ON e.id = p.student_id
           WHERE p.class_id = ? AND p.jeu_debut = ?'
     );
@@ -150,11 +155,29 @@ function mondeDuJeu(array $classe, string $eleveId): array
             'fige' => max(0, ((int) $l['fige']) - $maintenant),
         ];
         $scores[$equipe] += (int) $l['points'];
+        // CE QU'IL A FAIT PERDRE À SON ÉQUIPE. Rémy : « si on ne trompe on a une
+        // pénalité ». La pénalité en points est COLLECTIVE au plateau — c'est
+        // son choix, et c'est ce qui rend l'erreur chère : on joue en équipe.
+        $scores[$equipe] -= (int) $l['malus'];
         $pions[] = $pion;
         if ($l['student_id'] === $eleveId) {
             $moi = ['equipe' => $equipe, 'fige' => $pion['fige'], 'points' => (int) $l['points']];
         }
     }
+    // ON NE REND AUCUN ORDRE, ET L'ARDOISE N'EN DEMANDE AUCUN.
+    //
+    // J'avais d'abord écrit `ORDER BY rowid` : l'ardoise fait réapparaître un
+    // nombre ailleurs à chaque prise, et si cette place se calculait depuis le
+    // RANG de la prise, deux ardoises servies dans un ordre différent
+    // dessineraient deux terrains différents. Mais `rowid` n'existe pas en
+    // MySQL, que ce dépôt sert aussi — la requête aurait rendu un 500 le jour
+    // où Rémy changerait de base, et personne n'aurait relié les deux.
+    //
+    // CORRIGÉ DU BON CÔTÉ : la place du nombre neuf se calcule depuis la graine
+    // ET L'IDENTIFIANT DE LA PRISE (`plateauUI.js`), jamais depuis son rang. Le
+    // terrain ne dépend alors que de l'ENSEMBLE des prises, et deux ardoises
+    // convergent même servies à l'envers. Une contrainte qu'on n'a plus besoin
+    // de tenir vaut mieux qu'une contrainte qu'on tient bien.
     $q = db()->prepare(
         'SELECT quoi, equipe, points FROM jeu_prises WHERE class_id = ? AND jeu_debut = ?'
     );
@@ -179,6 +202,12 @@ function mondeDuJeu(array $classe, string $eleveId): array
         $moi = ['equipe' => equipeDeLEleve((string) $classe['id'], $eleveId),
                 'fige' => 0, 'points' => 0];
     }
+    // UN SCORE D'ÉQUIPE NE DESCEND PAS SOUS ZÉRO. C'est la règle déjà écrite
+    // dans `scoreApresPenalite` côté règles ; elle vaut ici aussi, sans quoi
+    // une équipe qui se trompe trois fois avant sa première prise afficherait
+    // « −60 » au tableau devant la classe.
+    $scores[0] = max(0, $scores[0]);
+    $scores[1] = max(0, $scores[1]);
     return ['pions' => $pions, 'prises' => $prises, 'scores' => $scores, 'moi' => $moi];
 }
 
@@ -218,7 +247,7 @@ function poserMonPion(array $eleve, array $classe, array $corps): void
     $plafond = max(0, $maintenant - $debut) + 10;
     $points = max(0, min($plafond, (int) ($corps['points'] ?? 0)));
 
-    $deja = lireUne('SELECT id, fige FROM jeu_pions
+    $deja = lireUne('SELECT id, fige, malus FROM jeu_pions
                       WHERE class_id = ? AND jeu_debut = ? AND student_id = ?',
         [$classe['id'], $debut, $eleve['id']]);
     // LA PÉNALITÉ EST TENUE PAR LE SERVEUR, et elle ne fait que MONTER : une
@@ -228,20 +257,27 @@ function poserMonPion(array $eleve, array $classe, array $corps): void
     if ($pour > 0) {
         $fige = max($fige, $maintenant + $pour);
     }
+    // ET LE MALUS NON PLUS NE REDESCEND PAS. L'ardoise envoie ce qu'elle a
+    // cumulé depuis le début de la partie, pas l'erreur du moment : un
+    // battement perdu dans le réseau effacerait sinon la punition. On garde le
+    // plus grand des deux, comme pour `fige`. Le plafond vaut quatre cents, soit
+    // vingt erreurs à vingt points — au-delà, c'est une bêtise, pas une partie.
+    $malus = (int) ($deja['malus'] ?? 0);
+    $malus = max($malus, max(0, min(400, (int) ($corps['malus'] ?? 0))));
     if ($deja) {
         ecrireMalgreLaRuee(
-            'UPDATE jeu_pions SET x = ?, y = ?, nombre = ?, points = ?, fige = ?, maj = ?
-              WHERE id = ?',
-            [$x, $y, $nombre, $points, $fige, $maintenant, $deja['id']]
+            'UPDATE jeu_pions SET x = ?, y = ?, nombre = ?, points = ?, fige = ?,
+                    malus = ?, maj = ? WHERE id = ?',
+            [$x, $y, $nombre, $points, $fige, $malus, $maintenant, $deja['id']]
         );
         return;
     }
     ecrireMalgreLaRuee(
         'INSERT INTO jeu_pions (id, class_id, student_id, jeu_debut, x, y, nombre,
-                                points, fige, maj)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                points, fige, malus, maj)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [uuidv4(), $classe['id'], $eleve['id'], $debut, $x, $y, $nombre,
-         $points, $fige, $maintenant]
+         $points, $fige, $malus, $maintenant]
     );
 }
 

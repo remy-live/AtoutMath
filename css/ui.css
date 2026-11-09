@@ -6112,3 +6112,24 @@ body.classe-ouverte #bottom-nav { display: none !important; }
    absolute` aurait empilé les trois cases à cocher au même endroit. */
 .fq-cellule { position: absolute; border: 1px solid #cbd2dc; box-sizing: border-box; }
 .fq-cellule--bande { background: #f0f4fa; }
+
+/* ── LE GESTE QUI DONNE LE JEU À TOUTE LA CLASSE ─────────────────────────
+   IL NE RESSEMBLE PAS AUX AUTRES, ET C'EST VOULU : « Essayer en démo » ne
+   change que l'écran de Rémy, « Lancer à la classe » ouvre un terrain sur
+   trente tablettes. Deux boutons voisins d'apparence identique, dont l'un est
+   sans conséquence et l'autre prend la classe, c'est une erreur en attente. */
+.ec-pilote-btn--go {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+}
+@media (hover: hover) {
+    .ec-pilote-btn--go:hover { filter: brightness(1.08); color: #fff; }
+}
+/* ET CE QU'IL LIT PENDANT QUE ÇA JOUE : il le lit en passant dans les rangs,
+   donc en plus gros que le reste du panneau. */
+.ec-jeu-vivant { font-size: .92rem; }
+.ec-jeu-vivant b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+/* LES DEUX COULEURS SONT ÉCRITES EN DUR, comme au plateau et au défi : « Les
+   Bleus » dans un thème orange seraient orange, et deux équipes de la même
+   couleur ne s'opposent plus. */
+.ec-jeu-eq0 { color: #2563eb; }
+.ec-jeu-eq1 { color: #f97316; }

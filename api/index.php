@@ -1814,7 +1814,7 @@ function handleTeacherClass(): void
         if (empty($r['ok'])) {
             fail(400, 'jeu', (string) ($r['dit'] ?? 'Jeu inconnu.'));
         }
-        respond($r + ['dit' => 'Jeu annoncé : départ dans 8 secondes.']);
+        respond($r + ['dit' => 'Jeu annoncé : départ dans 12 secondes.']);
     }
 
     if ($action === 'defi') {

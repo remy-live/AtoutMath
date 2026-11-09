@@ -17599,3 +17599,31 @@ body.visite-en-cours .modal-overlay > * {
 @media (prefers-reduced-motion: reduce) {
     .jv-pion, .jv-chat, .jv-neuve { transition: none; animation: none; }
 }
+
+/* ── L'ANNONCE D'UN JEU DE CLASSE ────────────────────────────────────────
+   Douze secondes d'attente, et un seul chiffre à lire du fond de la salle :
+   c'est le même écran pour les trente, et il les fait partir ensemble. */
+.jdc-voile {
+    position: fixed; inset: 0; z-index: 9100;
+    display: flex; align-items: center; justify-content: center;
+    padding: max(12px, env(safe-area-inset-top, 0px)) 16px;
+    background: color-mix(in srgb, var(--bg-app) 94%, var(--primary));
+}
+.jdc-carte {
+    background: var(--bg-panel); border-radius: 18px; box-shadow: var(--shadow-lg);
+    padding: clamp(18px, 4vmin, 40px); text-align: center;
+    width: min(620px, 100%);
+}
+.jdc-quoi {
+    font-weight: 800; font-size: clamp(1.1rem, 4vmin, 2rem);
+    /* LA VERSION LISIBLE DU JETON, ET NON LE JETON DE FOND : employer
+       --primary comme couleur de texte ne passe pas le seuil AA, et le dépôt a
+       une épreuve qui le refuse (tests/contraste.test.mjs). --primary-texte
+       existe exprès. */
+    color: var(--primary-texte);
+}
+.jdc-compte {
+    font-size: clamp(3.4rem, 22vmin, 11rem); font-weight: 900; line-height: 1;
+    color: var(--warning-texte); font-variant-numeric: tabular-nums;
+}
+.jdc-aide { color: var(--text-muted); font-size: clamp(.85rem, 2.2vmin, 1.05rem); }
