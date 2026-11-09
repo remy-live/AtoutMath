@@ -59,9 +59,20 @@ test('LES OUTILS DE L\'HEURE SONT DE VRAIS ONGLETS', () => {
     // une commande sans s'en apercevoir.
     const table = source.slice(source.indexOf('const OUTILS_DE_LHEURE = ['),
         source.indexOf('function barrePiloteHtml'));
-    const cles = table.match(/cle: '/g) || [];
+    const cles = (table.match(/cle: '([a-z]+)'/g) || [])
+        .map(m => m.replace(/cle: '|'/g, ''));
     const corps = table.match(/corps: outil/g) || [];
-    assert.equal(cles.length, 8, `${cles.length} outils au lieu de huit`);
+    // ON NOMME LES ONGLETS PLUTÔT QUE DE LES COMPTER.
+    //
+    // La version d'avant disait « 9 outils au lieu de huit », ce qui est vrai
+    // et inutile : il fallait rouvrir le fichier pour savoir LEQUEL était
+    // arrivé. Deux fois en deux jours — le plateau, puis les jeux vifs. La
+    // liste, elle, dit tout de suite ce qui a changé, et elle garde la même
+    // chose : on n'ajoute pas une commande à la barre de pilotage sans s'en
+    // apercevoir. C'est l'écran que Rémy a le plus corrigé.
+    assert.deepEqual(cles,
+        ['maison', 'defi', 'plateau', 'vifs', 'chrono', 'calc', 'bac', 'liste', 'tableau'],
+        'la barre de pilotage a changé d\'onglets');
     assert.equal(corps.length, cles.length, 'un onglet n\'a pas de corps');
     // ET UN SECOND CLIC REFERME : c'est ce qui rend la barre à deux lignes
     // au-dessus de la liste des élèves, qui est ce qu'on vient regarder.

@@ -2747,6 +2747,12 @@ const OUTILS_DE_LHEURE = [
     { cle: 'plateau',
       titre: () => '🎲 Le plateau',
       corps: outilPlateau },
+    // LES TROIS JEUX VIFS. Rémy : « Je préfère un jeu assez rapide fun »,
+    // puis « Les 3 sont top tu peux y aller ». Ils sont rangés avec le défi
+    // et le plateau : ce sont les choses qui prennent l'écran de la classe.
+    { cle: 'vifs',
+      titre: () => '⚡ Jeux vifs',
+      corps: outilJeuxVifs },
     { cle: 'chrono',
       titre: (info, ch, enCours, defiCourt) => `⏱ Compte à rebours${enCours
                 ? ` <b class="ec-pilote-outil-vif ec-chrono-reste">${enMinutes(resteDuChrono(ch))}</b>`
@@ -3023,6 +3029,53 @@ function outilDefi(info, ch, enCours, defiCourt) {
                         >📺 Au tableau</button>` : ''}
             </span>
             ${classementDuDefiHtml(vue.direct)}`;
+}
+
+/**
+ * ⚡ LES TROIS JEUX VIFS — corps de l'onglet.
+ *
+ * UN SEUL ONGLET POUR TROIS JEUX, et non trois : ils se règlent de la même
+ * façon (une consigne, des familles, des joueurs) et l'on en choisit un au
+ * dernier moment. Trois onglets auraient triplé une barre que Rémy a déjà
+ * trouvée chargée une fois.
+ */
+function outilJeuxVifs() {
+    return `<span class="ec-pilote-dit">Une consigne qui change toutes les vingt
+               secondes — <b>LES MULTIPLES DE 7</b>, <b>LES NOMBRES PREMIERS</b> —
+               et tout le monde joue en même temps, sans tour de rôle.</span>
+            <span class="ec-pilote-cadre" role="group" aria-label="Essayer un jeu vif">
+                <select class="ec-champ ec-champ--defi" data-vif-jeu
+                        aria-label="Quel jeu">
+                    <option value="chat">🐈 Le chat perché — on n'est sauvé que sur un bon nombre</option>
+                    <option value="ruee">🏃 La ruée — on ramasse les bons, on évite les autres</option>
+                    <option value="pluie">🌧 La pluie — on attrape les bons qui tombent</option>
+                </select>
+                <!-- LES FAMILLES DE CONSIGNES, et c'est le réglage qui accorde
+                     le jeu à la séance : « les multiples » en sixième, « les
+                     nombres premiers » en quatrième. Sans lui, un jeu vif
+                     enverrait une classe de sixième courir après des carrés
+                     parfaits. -->
+                <select class="ec-champ ec-champ--mince" data-vif-familles
+                        aria-label="Quelles consignes">
+                    <option value="faciles">consignes faciles</option>
+                    <option value="toutes">toutes les consignes</option>
+                    <option value="multiples">les multiples seulement</option>
+                    <option value="premiers">premiers et carrés</option>
+                </select>
+                <select class="ec-champ ec-champ--mince" data-vif-combien
+                        aria-label="Combien de joueurs">
+                    <option value="11">12 joueurs</option>
+                    <option value="5">6 joueurs</option>
+                    <option value="23">24 joueurs</option>
+                    <option value="29">30 joueurs</option>
+                </select>
+                <button type="button" class="ec-pilote-btn" data-vif-demo
+                        title="Jouer une partie seul, les autres joueurs tenus par l'ordinateur"
+                        >▶ Essayer en démo</button>
+            </span>
+            <span class="ec-pilote-dit">Flèches du clavier, la manette au doigt, ou
+               le doigt posé sur le terrain. En démo, les autres joueurs lisent la
+               consigne comme vous — et se trompent, eux aussi.</span>`;
 }
 
 /**
@@ -3708,6 +3761,7 @@ async function brancher(e, redessiner) {
         // `tools/defiEnManches.mjs`, qui a cliqué « Au tableau » sans qu'il se
         // passe quoi que ce soit — ni fenêtre, ni message, ni erreur.
         + '[data-defi-rejouer], [data-defi-tableau], [data-plateau-demo],'
+        + '[data-vif-demo],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
@@ -4846,6 +4900,30 @@ async function brancher(e, redessiner) {
             const info = (vue.liste && vue.liste.classe);
             if (info) info.defi_exo = exo;
         });
+        return;
+    }
+
+    // ── LES TROIS JEUX VIFS, EN DÉMO ──────────────────────────────────────
+    if (d.vifDemo !== undefined) {
+        const zone = el.closest('.ec-pilote') || document;
+        const lu = (sel, defaut) => ((zone.querySelector(sel) || {}).value || defaut);
+        const { ouvrirUnJeuVif, brancherLaSortie } = await import('./jeuxVifsUI.js');
+        // LES QUATRE CHOIX DE CONSIGNES, TRADUITS À UN SEUL ENDROIT : l'écran
+        // de démonstration et la future partie à trente liront le même
+        // déroulant, et ils doivent en tirer exactement les mêmes consignes.
+        const familles = {
+            faciles: ['parite', 'comparaison', 'multiples'],
+            multiples: ['multiples'],
+            premiers: ['premiers', 'carres'],
+            toutes: null
+        }[lu('[data-vif-familles]', 'faciles')];
+        const partie = ouvrirUnJeuVif({
+            jeu: lu('[data-vif-jeu]', 'chat'),
+            familles,
+            robots: Number(lu('[data-vif-combien]', '11')) || 11,
+            secondes: 150, noms: true
+        });
+        brancherLaSortie(partie);
         return;
     }
 

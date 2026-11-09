@@ -5875,3 +5875,61 @@ que de laisser croire qu'un réglage agit alors qu'il ne peut pas.
 Sans cela la pénalité n'arriverait JAMAIS en démo : Rémy réglerait « on perd des
 points » et ne verrait rien se passer. C'est une erreur SIMULÉE, écrite comme
 telle dans la source pour que personne ne la prenne pour une mesure.
+
+### LES TROIS JEUX VIFS — 9 novembre
+
+> « Quel autre type de jeu fun on pourrait faire ? » … puis, devant mes quatre
+> premières idées : « Je préfère un jeu assez rapide fun » … puis « Les 3 sont
+> top tu peux y aller ».
+
+**MES QUATRE PREMIÈRES IDÉES ÉTAIENT TROP CÉRÉBRALES**, et l'une était même
+mauvaise : une bataille navale à trente, c'est chacun qui tire une fois tous
+les trente tours. Il avait raison, et sa correction a donné le bon critère —
+**tout le monde bouge en même temps, en continu, et une décision mathématique
+se prend en une seconde sous pression.**
+
+· 🐈 **LE CHAT PERCHÉ** — on n'est sauvé que POSÉ sur un nombre qui obéit. Le
+  chat tourne, la consigne change, et le perchoir d'il y a vingt secondes ne
+  vaut plus rien. **Un camarade délivre celui qui est pris** : sans cela, un
+  élève attrapé en début de partie regarderait les autres jouer, ce qui est le
+  pire écran qu'on puisse donner à un enfant de sixième.
+· 🏃 **LA RUÉE** — on ramasse les bons nombres, on évite les autres.
+· 🌧 **LA PLUIE** — les nombres tombent, on n'attrape que les bons.
+
+**UN SEUL ARBITRE POUR LES TROIS** (`core/consignes.js`). Si « 51 est-il
+premier » recevait une réponse ici et une autre là, l'élève serait pris au chat
+perché pour une raison qui lui donnerait des points à la ruée — et PERSONNE ne
+le verrait, parce que chaque jeu, pris seul, aurait l'air juste.
+
+**ET LA PART DE BONS NOMBRES EST UNE RÈGLE DE JEU**, pas un détail de tirage :
+un terrain où tout obéit se ramasse les yeux fermés, un terrain où rien n'obéit
+fait courir trente élèves pour rien. On vise un peu moins de la moitié, et on
+le garantit.
+
+**QUATRE DÉFAUTS TROUVÉS PAR LA PHOTO, AUCUN PAR LA RELECTURE :**
+
+1. **Le rond couvrait entièrement le nombre sur lequel il était perché** — or
+   c'est exactement ce que la classe doit lire pour savoir s'il a eu raison. Le
+   pion s'assoit maintenant AU-DESSUS, comme sur une marche : les deux se
+   voient, et « être perché » se comprend sans qu'on l'explique.
+2. **Puis le prénom est retombé sur le nombre.** Il passe au-dessus du rond :
+   prénom, rond, nombre.
+3. **La pluie était vide** — deux gouttes pour douze paniers, onze élèves qui
+   regardent le douzième jouer. Et, faute de bonne goutte, **les robots
+   couraient après une mauvaise** et se faisaient punir, ce qu'aucun élève ne
+   ferait : un joueur sans cible ATTEND, ou s'écarte. *Ne rien prendre est un
+   coup valable*, et c'est aussi ce qu'on veut montrer à la classe.
+4. **Sept pions sur douze étaient figés à la ruée** : ils ramassaient de
+   mauvais nombres EN LES FRÔLANT sur le chemin d'un bon. Le rayon de
+   ramassage y est maintenant plus serré qu'au perchoir — passer à côté d'un
+   nombre ne doit pas valoir le prendre, sinon l'élève est puni pour s'être
+   déplacé plutôt que pour avoir mal calculé. Mesuré : 7 → 4,3 figés, et 27 →
+   51 ramassages réussis.
+
+**ET LA GARDE DES ONGLETS A REFIRÉ** (8 → 9). Je l'ai rendue plus utile au
+passage : elle NOMME désormais les onglets au lieu de les compter — « 9 outils
+au lieu de huit » était vrai et inutile, il fallait rouvrir le fichier pour
+savoir lequel était arrivé. Deux fois en deux jours.
+
+**IL RESTE** : les trois jeux n'existent qu'en MODE DÉMO, comme le plateau. Le
+réseau reste le gros morceau commun aux quatre.

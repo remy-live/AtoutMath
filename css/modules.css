@@ -17462,3 +17462,140 @@ body.visite-en-cours .modal-overlay > * {
 .pdn-annonce i { font-style: normal; opacity: .8; }
 .pdn-annonce span { opacity: .85; }
 @keyframes pdn-pop { from { opacity: 0; transform: translate(-50%, -8px); } }
+
+/* ══ LES TROIS JEUX VIFS ══════════════════════════════════════════════════
+   RÉMY : « Je préfère un jeu assez rapide fun », puis « Les 3 sont top tu peux
+   y aller » — le chat perché, la ruée, la pluie. Même terrain, même bandeau,
+   même manette : seule la règle change. */
+.jv-voile {
+    position: fixed; inset: 0; z-index: 9000;
+    display: flex; align-items: center; justify-content: center;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 8px;
+    background: color-mix(in srgb, var(--bg-app) 92%, var(--primary));
+}
+.jv-carte {
+    position: relative;
+    background: var(--bg-panel); border-radius: 16px; box-shadow: var(--shadow-lg);
+    padding: clamp(8px, 1.6vmin, 18px);
+    width: min(1600px, 100%); max-height: 100%;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.jv-haut {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; font-weight: 800;
+}
+.jv-eq { display: flex; align-items: baseline; gap: 8px; font-size: clamp(.75rem, 1.8vmin, 1rem); }
+.jv-eq b { font-size: clamp(1rem, 3vmin, 1.8rem); font-variant-numeric: tabular-nums; }
+.jv-eq--0 b { color: #2563eb; }
+.jv-eq--1 b { color: #f97316; }
+/* LA CONSIGNE EST LE PLUS GROS ÉLÉMENT DE L'ÉCRAN, et de loin : c'est elle
+   qu'on lit du fond de la classe, en courant, en une demi-seconde. Le compte à
+   rebours à côté dit quand elle va changer — c'est lui qui crée la tension, et
+   c'est pour ça qu'il est petit mais présent. */
+.jv-consigne { text-align: center; flex: 1 1 auto; min-width: 0; }
+.jv-consigne b {
+    display: block; font-size: clamp(1rem, 3.6vmin, 2.1rem); font-weight: 900;
+    letter-spacing: .02em; color: var(--primary-texte); line-height: 1.1;
+}
+.jv-consigne small { color: var(--text-muted); font-weight: 700; }
+/* UNE CONSIGNE NEUVE CLIGNOTE UNE FOIS. Sans ce battement, trente élèves qui
+   regardent leurs pieds ne voient pas que le monde vient de changer. */
+.jv-neuve { animation: jv-neuve .7s ease-out; }
+@keyframes jv-neuve {
+    0% { transform: scale(1.18); color: var(--warning-texte); }
+    60% { transform: scale(1.04); color: var(--warning-texte); }
+}
+.jv-temps { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.jv-temps b { color: var(--warning-texte); font-size: clamp(.9rem, 2.4vmin, 1.4rem); }
+.jv-sortir {
+    border: none; background: transparent; color: var(--text-muted);
+    font-size: 1.6rem; line-height: 1; cursor: pointer; padding: 2px 8px;
+}
+/* LE TERRAIN. Même décision qu'au plateau des nombres, et pour les deux mêmes
+   pièges : la proportion va sur le CONTENEUR (un enfant de grille ne
+   dimensionne pas sa ligne), et c'est la HAUTEUR qui commande (une largeur en
+   pourcentage avec une proportion donne une taille de base nulle en flexbox,
+   et le terrain déborde par-dessus la page). */
+.jv-terrain {
+    position: relative;
+    aspect-ratio: var(--jv-colonnes, 12) / var(--jv-lignes, 8);
+    height: min(calc(100vh - 230px),
+                calc((100vw - 60px) * var(--jv-lignes, 8) / var(--jv-colonnes, 12)));
+    width: auto; max-width: 100%; flex: 0 0 auto; margin: 0 auto;
+    border-radius: 12px; background: var(--bg-hover);
+    overflow: hidden; touch-action: none;
+}
+.jv-jetons, .jv-pions { position: absolute; inset: 0; pointer-events: none; }
+/* UN NOMBRE POSÉ. Il ne dit JAMAIS s'il obéit : c'est à l'élève de décider, et
+   colorier les bons nombres rendrait le jeu muet — c'est exactement ce qu'on
+   évite en mettant les maths dans le geste. */
+.jv-jeton {
+    position: absolute; transform: translate(-50%, -50%);
+    min-width: calc(100% / var(--jv-colonnes, 12) * 0.86);
+    padding: .15em .3em;
+    border-radius: 8px; background: var(--bg-panel);
+    border: 2px solid var(--border); color: var(--primary-texte);
+    font-weight: 900; font-size: min(2.9vmin, 1.35rem); line-height: 1.1;
+    text-align: center;
+}
+/* SAUF QUAND QUELQU'UN EST DESSUS : là on le marque, parce que c'est une
+   information de JEU et non une réponse — « ce perchoir est pris ». */
+.jv-jeton--perche { border-color: var(--warning-texte); background: color-mix(in srgb, var(--warning) 26%, var(--bg-panel)); }
+.jv-pion {
+    position: absolute; transform: translate(-50%, -50%);
+    width: calc(100% / var(--jv-colonnes, 12) * 0.56); aspect-ratio: 1;
+    border-radius: 50%; box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+    transition: left .06s linear, top .06s linear;
+}
+.jv-pion--0 { background: #2563eb; }
+.jv-pion--1 { background: #f97316; }
+/* LE PANIER DE LA PLUIE n'est pas un rond : c'est une coupe, et elle se
+   reconnaît comme telle du fond de la classe. */
+.jv-pion--panier { border-radius: 4px 4px 14px 14px; aspect-ratio: 1.6; }
+.jv-pion--moi { outline: 2px solid var(--bg-panel); box-shadow: 0 0 0 4px var(--text-main); z-index: 3; }
+/* PERCHÉ = ASSIS AU-DESSUS DU NOMBRE, comme sur une marche.
+   VU SUR LA PHOTO : le rond couvrait entièrement le nombre sur lequel il se
+   tenait — or c'est exactement ce que la classe doit lire pour savoir s'il a eu
+   raison. Le décalage libère le nombre ET fait comprendre « perché » sans un
+   mot. Il ne touche QUE le dessin : la position qui décide la règle, elle, ne
+   bouge pas d'un pouce. */
+.jv-pion--dessus { transform: translate(-50%, -118%); }
+.jv-pion--dessus .jv-nom { top: auto; bottom: 104%; }
+/* PERCHÉ = SAUVÉ. Un anneau vert, qui se lit sur les deux couleurs d'équipe. */
+.jv-pion--sauf { box-shadow: 0 0 0 3px var(--success), 0 1px 3px rgba(0, 0, 0, .35); }
+.jv-pion--moi.jv-pion--sauf { box-shadow: 0 0 0 4px var(--success); }
+.jv-pion--fige { background: var(--text-muted) !important; opacity: .55; outline: 2px dashed var(--text-main); }
+.jv-nom {
+    position: absolute; top: 104%; left: 50%; transform: translateX(-50%);
+    font-size: min(1.4vmin, .62rem); font-weight: 800; white-space: nowrap;
+    color: var(--text-main);
+    text-shadow: 0 0 3px var(--bg-hover), 0 0 6px var(--bg-hover);
+}
+/* LE CHAT. Un émoji plutôt qu'un dessin : il se lit à toutes les tailles, il
+   n'a pas besoin d'être chargé, et toute la classe sait ce que c'est. */
+.jv-chat {
+    position: absolute; transform: translate(-50%, -50%);
+    font-size: min(5vmin, 2.4rem); line-height: 1; z-index: 4;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .4));
+    transition: left .06s linear, top .06s linear;
+}
+.jv-dit {
+    text-align: center; font-weight: 700; min-height: 1.5em;
+    color: var(--text-muted); font-size: clamp(.8rem, 2vmin, 1.05rem);
+}
+.jv-dit--ok { color: var(--success-texte); font-weight: 900; }
+.jv-dit--ko { color: var(--danger-texte); font-weight: 900; }
+.jv-dit--neuve { color: var(--warning-texte); font-weight: 900; }
+.jv-dit--fin { color: var(--text-main); font-size: clamp(1rem, 3vmin, 1.5rem); }
+.jv-bas { display: flex; align-items: center; justify-content: flex-end; }
+.jv-manette { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.jv-manette > div { display: flex; gap: 2px; }
+.jv-manette button {
+    width: 2.4em; height: 2.4em; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-hover); color: var(--text-main);
+    font: inherit; font-size: 1rem; cursor: pointer;
+}
+.jv-manette button:active { background: var(--primary); color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+    .jv-pion, .jv-chat, .jv-neuve { transition: none; animation: none; }
+}
