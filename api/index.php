@@ -45,6 +45,7 @@ require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/projections.php';
 require_once __DIR__ . '/lib/grading.php';
 require_once __DIR__ . '/lib/seance.php';
+require_once __DIR__ . '/lib/jeu.php';
 require_once __DIR__ . '/lib/coffre.php';
 require_once __DIR__ . '/lib/eleves.php';
 require_once __DIR__ . '/lib/schema.php';
@@ -118,6 +119,12 @@ switch ($route) {
     case '/messages/read':   handleMessagesRead(); break;
     case '/signalement':     handleSignalement(); break;
     case '/defi/score':      handleDefiScore(); break;
+    // LE BATTEMENT DES JEUX DE CLASSE. Rémy : « Fais tout ». C'est la seule
+    // route du logiciel appelée à la SECONDE, et elle est faite pour :
+    // elle pose un pion, réclame une prise au plus, et rend le monde. Rien
+    // d'autre — surtout pas l'état de séance entier, qui voyage déjà dans le
+    // battement des dix secondes.
+    case '/jeu':             handleJeu(); break;
     case '/teacher/login':   handleTeacherLogin(); break;
     case '/teacher/classes': handleTeacherClasses(); break;
     case '/teacher/paths':   handleTeacherPaths(); break;
@@ -1782,6 +1789,34 @@ function handleTeacherClass(): void
     // elle, chaque ardoise tirerait ses propres questions : on classerait
     // trente épreuves différentes. Les générateurs sont déjà déterministes —
     // il suffit de leur donner le même point de départ.
+    // ── LANCER OU ARRÊTER UN JEU DE CLASSE ────────────────────────────────
+    //
+    // RÉMY : « Fais tout ». Les quatre jeux passent par ici — le plateau des
+    // nombres, le chat perché, la ruée, la pluie — parce qu'ils se lancent de
+    // la même façon : un type, une durée, et les réglages propres au jeu.
+    //
+    // `secondes = 0` ARRÊTE, comme pour le défi : c'est la même convention
+    // dans tout le logiciel, et en changer ici ferait chercher pourquoi.
+    if ($action === 'jeu') {
+        $secondes = (int) ($body['secondes'] ?? 0);
+        if ($secondes <= 0) {
+            respond(arreterLeJeu($classe));
+        }
+        $type = trim((string) ($body['jeu'] ?? ''));
+        // LES RÉGLAGES SONT BORNÉS AVANT D'ÊTRE RANGÉS : ils repartiront vers
+        // trente ardoises, et un JSON de dix kilo-octets recopié trente fois
+        // par seconde n'est pas un réglage, c'est une panne.
+        $reglages = is_array($body['reglages'] ?? null) ? $body['reglages'] : [];
+        if (strlen(json_encode($reglages)) > 1200) {
+            fail(400, 'reglages', 'Trop de réglages.');
+        }
+        $r = lancerLeJeu($classe, $type, $secondes, $reglages);
+        if (empty($r['ok'])) {
+            fail(400, 'jeu', (string) ($r['dit'] ?? 'Jeu inconnu.'));
+        }
+        respond($r + ['dit' => 'Jeu annoncé : départ dans 8 secondes.']);
+    }
+
     if ($action === 'defi') {
         $secondes = (int) ($body['secondes'] ?? 0);
         if ($secondes <= 0) {
@@ -2353,6 +2388,10 @@ function handleTeacherLive(): void
         'defiEquipes' => (bool) ($classe['defi_equipes'] ?? false),
         'defiBut' => max(0, (int) ($classe['defi_but'] ?? 0)),
         'defiNoms' => EQUIPES,
+        // CE QUE LE PROFESSEUR VOIT DU JEU EN COURS : le score des deux
+        // équipes, combien d'élèves y sont, et ce qui reste. C'est ce qu'il
+        // annonce à voix haute pendant que ça joue.
+        'jeu' => resumeDuJeu($classe),
         'defiRecord' => recordDeLaClasse($classe, (string) ($classe['defi_exo'] ?? ''),
             (int) ($classe['defi_debut'] ?? 0)),
     ]);
@@ -2365,6 +2404,54 @@ function handleTeacherLive(): void
  * `enregistrerScoreDefi` : c'est le serveur qui sait quel défi est ouvert, et
  * personne d'autre.
  */
+/**
+ * LE BATTEMENT D'UN JEU DE CLASSE — la seule route appelée à la seconde.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « Fais tout ». Trente ardoises qui jouent ensemble ont besoin de se
+ * voir ; l'état de séance, lui, passe toutes les dix secondes et porte bien
+ * d'autres choses. On a donc UNE ROUTE À PART, aussi maigre que possible :
+ * elle pose un pion, réclame une prise au plus, et rend le monde.
+ *
+ * MESURÉ AVANT DE L'ÉCRIRE (`tools/plateauEnTempsReel.mjs`) : trente ardoises
+ * à quatre battements par seconde tiennent — 120 requêtes/s, médiane 26 ms,
+ * aucun verrou SQLite. Et cette route-ci fait MOINS de travail que celle sur
+ * laquelle la mesure a été prise.
+ *
+ * ELLE NE JETTE JAMAIS QUAND IL N'Y A PAS DE JEU : une ardoise qui bat une
+ * seconde de trop après la fin recevrait une erreur alors qu'elle n'a rien
+ * fait de mal. Elle reçoit `jeu: null`, et elle range son écran.
+ */
+function handleJeu(): void
+{
+    $eleve = requireStudent();
+    $corps = jsonBody();
+    $classe = lireUne('SELECT * FROM classes WHERE id = ?', [$eleve['class_id']]);
+    $jeu = $classe ? jeuEnCours($classe) : null;
+    if (!$jeu) {
+        respond(['jeu' => null, 'maintenant' => time()]);
+    }
+    // ON POSE LE PION AVANT DE LIRE LE MONDE, et dans cet ordre : sinon, on
+    // se verrait soi-même à la place qu'on occupait il y a une seconde, et le
+    // rond de l'élève traînerait derrière son doigt.
+    poserMonPion($eleve, $classe, $corps);
+    $prise = null;
+    if (is_array($corps['prise'] ?? null)) {
+        $prise = reclamerUnePrise($eleve, $classe, $corps['prise']);
+    }
+    $monde = mondeDuJeu($classe, (string) $eleve['id']);
+    respond([
+        'jeu' => $jeu,
+        'prise' => $prise,
+        'pions' => $monde['pions'],
+        'prises' => $monde['prises'],
+        'scores' => $monde['scores'],
+        'moi' => $monde['moi'],
+        'maintenant' => time(),
+    ]);
+}
+
 function handleDefiScore(): void
 {
     $eleve = requireStudent();

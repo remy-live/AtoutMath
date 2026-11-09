@@ -401,6 +401,28 @@ function lesTablesDuSchema(bool $sqlite): array
         --     partage la classe en deux, une ligne sur deux, et la répartition
         --     ne bouge pas d'un défi à l'autre.
         defi_equipes   $bool,
+        -- ── LE JEU DE CLASSE EN COURS ─────────────────────────────────────
+        --
+        -- RÉMY : « Fais tout » — c'est-à-dire : les quatre jeux de classe,
+        -- joués pour de vrai à trente ardoises, et non plus en démonstration.
+        --
+        --   · jeu_type : 'plateau', 'chat', 'ruee' ou 'pluie'.
+        --   · jeu_graine : LA MÊME GRAINE POUR TOUT LE MONDE. Elle suffit à
+        --     reconstruire le terrain, les nombres posés et la suite des
+        --     consignes : les trente ardoises les recalculent chacune de leur
+        --     côté, à l'identique, et le serveur n'en range RIEN. C'est la
+        --     décision déjà prise pour les questions du défi, et pour la même
+        --     raison : un terrain rangé en base serait une seconde vérité à
+        --     tenir d'accord avec le code qui le dessine.
+        --   · jeu_reglages : ce que le professeur a choisi (les familles de
+        --     consignes, le style, l'opération). Du JSON, parce que les quatre
+        --     jeux n'ont pas les mêmes réglages et qu'une colonne par réglage
+        --     ferait quinze colonnes dont douze vides.
+        jeu_type       $txtNull,
+        jeu_graine     $txtNull,
+        jeu_debut      " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
+        jeu_fin        " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
+        jeu_reglages   $txtNull,
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
@@ -824,6 +846,65 @@ function lesTablesDuSchema(bool $sqlite): array
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
 
+    // ── OÙ EN EST CHAQUE JOUEUR, ET CE QU'IL A PRIS ────────────────────────
+    //
+    // RÉMY : « Fais tout ». Deux tables, et pas une de plus.
+    //
+    // `jeu_pions` EST ÉCRASÉE À CHAQUE BATTEMENT : une ligne par élève, où il
+    // est, ce qu'il porte, ce qu'il a marqué. Elle ne garde pas d'historique —
+    // la position d'il y a trois secondes n'intéresse personne, et trente
+    // élèves qui écriraient une ligne par seconde pendant trois minutes en
+    // feraient cinq mille quatre cents pour rien.
+    $tables['jeu_pions'] = "
+        id         $id,
+        class_id   $ref,
+        student_id $ref,
+        jeu_debut  " . ($sqlite ? 'INTEGER NOT NULL' : 'BIGINT NOT NULL') . ",
+        -- LES POSITIONS SONT CONTINUES : les pions sont des RONDS qui se
+        -- déplacent librement, et non des jetons posés sur une grille. On les
+        -- range donc en millièmes de case, en entier — un flottant en SQLite
+        -- et en MySQL ne se compare pas de la même façon, et l'on n'a aucun
+        -- besoin de cette précision-là.
+        x          " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        y          " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        nombre     " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        points     " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        -- JUSQU'À QUAND IL EST FIGÉ, en instant serveur. C'est le serveur qui
+        -- le dit, et non l'ardoise : une pénalité que l'on pourrait effacer en
+        -- rechargeant sa page n'est pas une pénalité.
+        fige       " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'BIGINT NOT NULL DEFAULT 0') . ",
+        maj        " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'BIGINT NOT NULL DEFAULT 0') . ",
+        FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
+
+    // ── CE QUI A ÉTÉ PRIS, ET PAR QUI — LA TABLE QUI ARBITRE ──────────────
+    //
+    // ELLE NE SERT QU'À UNE CHOSE : dire qui est arrivé le premier. Deux
+    // élèves ramassent le même nombre dans la même demi-seconde — c'est la
+    // situation NORMALE d'un jeu à trente, pas un cas limite — et il faut que
+    // l'un des deux l'ait et l'autre non.
+    //
+    // C'EST L'INDEX D'UNICITÉ QUI TRANCHE, et non du code : `UNIQUE(class_id,
+    // jeu_debut, quoi)` fait que le second INSERT échoue, tout seul, sans
+    // course possible. Une vérification en PHP — « est-ce déjà pris ? » puis
+    // « alors j'insère » — laisserait passer les deux à un cheveu près, et ce
+    // cheveu arrive plusieurs fois par minute à trente joueurs.
+    $tables['jeu_prises'] = "
+        id         $id,
+        class_id   $ref,
+        student_id $ref,
+        jeu_debut  " . ($sqlite ? 'INTEGER NOT NULL' : 'BIGINT NOT NULL') . ",
+        -- CE QUI A ÉTÉ PRIS : l'identifiant de la cible ou du jeton, tel que
+        -- l'ardoise le calcule depuis la graine. Le serveur n'a pas besoin de
+        -- savoir ce que c'est — seulement que personne ne l'ait pris avant.
+        quoi       $txt,
+        -- L'ÉQUIPE QUI MARQUE, et combien. Une prise partagée entre deux
+        -- couleurs (la règle de Rémy au plateau) écrit DEUX lignes de points —
+        -- non, une seule : `equipe` vaut alors -1 et les deux se partagent.
+        equipe     " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        points     " . ($sqlite ? 'INTEGER NOT NULL DEFAULT 0' : 'INT NOT NULL DEFAULT 0') . ",
+        created_at $date,
+        FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
+
     $tables['overrides'] = "
         id          $id,
         class_id    $refNull,
@@ -842,6 +923,18 @@ function lesTablesDuSchema(bool $sqlite): array
 /** Les index, les colonnes rattrapées, les réparations. */
 function migrerLaSuite(PDO $pdo, bool $sqlite, array $tables): void
 {
+
+    // L'INDEX D'UNICITÉ QUI ARBITRE LES PRISES. Il est à part des autres
+    // parce qu'il n'est PAS une commodité de lecture : c'est lui qui décide
+    // qui a pris le nombre quand deux élèves le ramassent dans la même
+    // demi-seconde. Sans lui, les deux marqueraient, et le total de la classe
+    // dépasserait ce qu'il y avait à prendre.
+    try {
+        $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_jeu_prise_unique'
+            . ' ON jeu_prises(class_id, jeu_debut, quoi)');
+    } catch (Throwable $t) {
+        // Il existe déjà, et c'est très bien.
+    }
 
     foreach ([
         'idx_students_class'   => 'students(class_id)',
@@ -868,6 +961,11 @@ function migrerLaSuite(PDO $pdo, bool $sqlite, array $tables): void
         // Le journal des connexions se lit PAR CLASSE et du plus récent au
         // plus ancien — c'est sa seule lecture, comme pour les signalements.
         'idx_cnx_class'        => 'connexions(class_id, le)',
+        // LES JEUX DE CLASSE. On lit toujours « tous les pions de cette
+        // partie » et « tout ce qui a été pris dans cette partie » : c'est la
+        // seule lecture des deux tables, trente fois par seconde.
+        'idx_jeu_pions'        => 'jeu_pions(class_id, jeu_debut)',
+        'idx_jeu_prises'       => 'jeu_prises(class_id, jeu_debut)',
     ] as $nom => $cible) {
         try {
             $pdo->exec("CREATE INDEX IF NOT EXISTS $nom ON $cible");

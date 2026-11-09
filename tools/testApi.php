@@ -1844,12 +1844,21 @@ $tables = array_column(db()->query(
 // déploiement ne se voit qu'au moment où une route l'interroge — c'est-à-dire
 // en classe. On la met à jour à la main à chaque table neuve, et c'est le prix
 // à payer pour que l'oubli crie ici plutôt que là-bas.
-verifier('les quinze tables sont là',
-    $tables === ['assignments', 'classes', 'connexions', 'defi_scores', 'events',
-                 'message_reads', 'messages', 'overrides', 'paths', 'reglages',
-                 'reinitialisations', 'signalements', 'student_tokens', 'students',
-                 'teachers'],
-    implode(', ', $tables));
+$attendues = ['assignments', 'classes', 'connexions', 'defi_scores', 'events',
+              'jeu_pions', 'jeu_prises',
+              'message_reads', 'messages', 'overrides', 'paths', 'reglages',
+              'reinitialisations', 'signalements', 'student_tokens', 'students',
+              'teachers'];
+// ON NOMME CE QUI MANQUE OU CE QUI ARRIVE, plutôt que de compter.
+//
+// La version d'avant disait « les quinze tables sont là » et rendait la liste
+// entière : il fallait la comparer à l'œil pour voir laquelle avait bougé. La
+// différence, elle, se lit en une seconde — et c'est elle qu'on veut sous les
+// yeux le jour où un déploiement oublie une table.
+verifier(count($attendues) . ' tables, exactement celles qu\'on attend',
+    $tables === $attendues,
+    'en trop : ' . (implode(', ', array_diff($tables, $attendues)) ?: 'aucune')
+    . ' · manquantes : ' . (implode(', ', array_diff($attendues, $tables)) ?: 'aucune'));
 
 titre('12 bis. La liste : lire un vrai fichier de professeur');
 
@@ -3542,6 +3551,143 @@ $qP = enBase()->prepare('SELECT bonnes, points FROM defi_scores
 $qP->execute([$debut2]);
 verifier('UN RENVOI À MOINS DE POINTS NE DÉTRUIT PAS LE MEILLEUR',
     ((int) ($qP->fetch()['bonnes'] ?? 0)) === 5);
+
+// ══ LES JEUX DE CLASSE, JOUÉS À PLUSIEURS ═══════════════════════════════
+//
+// RÉMY : « Fais tout ». Les quatre jeux — le plateau, le chat perché, la ruée,
+// la pluie — passaient par un seul navigateur. Ce qui suit garde le seul
+// endroit où le SERVEUR tranche vraiment : qui est arrivé le premier.
+
+titre('14 ter. Les jeux de classe : le monde partagé et son arbitre');
+
+$jeuProf = fn (array $corps) => json('/teacher/class',
+    array_merge(['classId' => $idDefi, 'action' => 'jeu'], $corps), $jetonNotre);
+$battre = fn (string $jeton, array $corps = []) => json('/jeu', $corps, $jeton);
+
+$r = $jeuProf(['jeu' => 'plateau', 'secondes' => 120,
+               'reglages' => ['operation' => '×', 'style' => 'question']]);
+verifier('LE PROFESSEUR LANCE UN JEU DE CLASSE', ($r['json']['ok'] ?? false) === true,
+    json_encode($r['json']['jeu'] ?? $r['json']));
+$graineDuJeu = $r['json']['jeu']['graine'] ?? '';
+verifier('ET LA GRAINE VIENT DU SERVEUR, pas de l\'écran',
+    strlen($graineDuJeu) >= 8, $graineDuJeu);
+
+// UN JEU INCONNU EST REFUSÉ : un réglage mal recopié ne doit pas ouvrir un
+// terrain que personne ne sait dessiner.
+verifier('UN JEU QUI N\'EXISTE PAS EST REFUSÉ',
+    ($jeuProf(['jeu' => 'marelle', 'secondes' => 60])['code'] ?? 0) === 400);
+
+// ── LE MONDE PARTAGÉ ─────────────────────────────────────────────────────
+$a = $battre($jetonZoe, ['x' => 3.5, 'y' => 2.25, 'nombre' => 7, 'points' => 0]);
+$b = $battre($jetonYanis, ['x' => 9.0, 'y' => 5.5, 'nombre' => 8, 'points' => 0]);
+verifier('CHACUN POSE SON PION, ET VOIT CELUI DE L\'AUTRE',
+    count($b['json']['pions'] ?? []) === 2,
+    count($b['json']['pions'] ?? []) . ' pion(s)');
+$zoeVuParYanis = null;
+foreach (($b['json']['pions'] ?? []) as $p) {
+    if (abs(($p['x'] ?? 0) - 3.5) < 0.01) { $zoeVuParYanis = $p; }
+}
+// LES POSITIONS SONT RANGÉES EN MILLIÈMES DE CASE : elles doivent revenir en
+// cases, au millième près, sinon les ronds dérivent d'une ardoise à l'autre.
+verifier('ET LA POSITION REVIENT INTACTE, au millième de case',
+    $zoeVuParYanis && abs($zoeVuParYanis['y'] - 2.25) < 0.001
+    && ($zoeVuParYanis['nombre'] ?? 0) === 7,
+    json_encode($zoeVuParYanis));
+verifier('CHACUN SAIT DANS QUELLE ÉQUIPE IL EST',
+    in_array($a['json']['moi']['equipe'] ?? null, [0, 1], true)
+    && in_array($b['json']['moi']['equipe'] ?? null, [0, 1], true),
+    'Zoe ' . json_encode($a['json']['moi']['equipe'] ?? null)
+    . ', Yanis ' . json_encode($b['json']['moi']['equipe'] ?? null));
+
+// ── L'ARBITRAGE : LE PREMIER ARRIVÉ L'EMPORTE ───────────────────────────
+//
+// C'EST LE SEUL ENDROIT OÙ LE SERVEUR TRANCHE, et c'est la situation NORMALE
+// d'un jeu à trente : deux élèves ramassent le même nombre dans la même
+// demi-seconde. Il faut que l'un l'ait et l'autre non.
+$p1 = $battre($jetonZoe, ['x' => 3.5, 'y' => 2.25, 'nombre' => 7,
+    'prise' => ['quoi' => 'cible-4', 'equipe' => 0, 'points' => 56]]);
+$p2 = $battre($jetonYanis, ['x' => 9.0, 'y' => 5.5, 'nombre' => 8,
+    'prise' => ['quoi' => 'cible-4', 'equipe' => 1, 'points' => 56]]);
+verifier('LE PREMIER QUI RÉCLAME UNE PRISE L\'OBTIENT',
+    ($p1['json']['prise']['ok'] ?? false) === true, json_encode($p1['json']['prise'] ?? null));
+verifier('ET LE SECOND SE LA VOIT REFUSER',
+    ($p2['json']['prise']['ok'] ?? true) === false, json_encode($p2['json']['prise'] ?? null));
+verifier('LE NOMBRE PRIS N\'APPARAÎT QU\'UNE FOIS DANS LE MONDE',
+    count(array_filter($p2['json']['prises'] ?? [], fn ($q) => $q === 'cible-4')) === 1,
+    json_encode($p2['json']['prises'] ?? []));
+// ET LES POINTS NE SONT COMPTÉS QU'UNE FOIS : sans l'unicité, le total de la
+// classe dépasserait ce qu'il y avait à prendre, et le tableau mentirait.
+verifier('ET SES POINTS NE SONT COMPTÉS QU\'UNE FOIS',
+    array_sum($p2['json']['scores'] ?? []) === 56,
+    json_encode($p2['json']['scores'] ?? null));
+
+// UNE PRISE PARTAGÉE DONNE LA MOITIÉ À CHACUNE DES DEUX ÉQUIPES — la règle de
+// Rémy au plateau, et non la moitié à l'une et rien à l'autre.
+$pp = $battre($jetonZoe, ['x' => 3.5, 'y' => 2.25, 'nombre' => 7,
+    'prise' => ['quoi' => 'cible-9', 'equipe' => -1, 'points' => 40]]);
+verifier('UNE PRISE PARTAGÉE DONNE LA MOITIÉ À CHACUNE',
+    ($pp['json']['scores'][0] ?? 0) - ($p2['json']['scores'][0] ?? 0) === 20
+    && ($pp['json']['scores'][1] ?? 0) - ($p2['json']['scores'][1] ?? 0) === 20,
+    json_encode($pp['json']['scores'] ?? null));
+
+// ── CE QUE LE SERVEUR REFUSE DE CROIRE ──────────────────────────────────
+//
+// Il ne connaît pas les règles du jeu — c'est une décision —, mais il borne ce
+// qui s'affichera au tableau devant la classe.
+$fou = $battre($jetonZoe, ['x' => 999999, 'y' => -5, 'nombre' => 7, 'points' => 99999,
+    'prise' => ['quoi' => 'cible-7', 'equipe' => 0, 'points' => 99999]]);
+$moiFou = null;
+foreach (($fou['json']['pions'] ?? []) as $p) {
+    if (($p['nombre'] ?? 0) === 7) { $moiFou = $p; }
+}
+verifier('UNE POSITION ABSURDE EST RAMENÉE SUR LE TERRAIN',
+    $moiFou && $moiFou['x'] <= 30 && $moiFou['y'] >= 0, json_encode($moiFou));
+verifier('ET UN SCORE IMPOSSIBLE EST BORNÉ',
+    ($fou['json']['moi']['points'] ?? 0) < 1000
+    && array_sum($fou['json']['scores'] ?? []) < 1000,
+    'moi ' . ($fou['json']['moi']['points'] ?? 0)
+    . ', total ' . array_sum($fou['json']['scores'] ?? []));
+
+// ── LA PÉNALITÉ EST TENUE PAR LE SERVEUR ────────────────────────────────
+//
+// Une punition qu'on efface en rechargeant sa page n'est pas une punition.
+$battre($jetonZoe, ['x' => 3, 'y' => 3, 'nombre' => 7, 'figePour' => 4]);
+$encore = $battre($jetonZoe, ['x' => 3, 'y' => 3, 'nombre' => 7]);
+verifier('LE GEL SURVIT AU BATTEMENT SUIVANT',
+    ($encore['json']['moi']['fige'] ?? 0) >= 3, json_encode($encore['json']['moi'] ?? null));
+
+// ── ET LE PROFESSEUR VOIT LA PARTIE DEPUIS SON DIRECT ───────────────────
+$live = json('/teacher/live', ['classId' => $idDefi], $jetonNotre)['json'];
+verifier('LE DIRECT DU PROFESSEUR PORTE LE JEU EN COURS',
+    ($live['jeu']['type'] ?? '') === 'plateau'
+    && ($live['jeu']['joueurs'] ?? 0) === 2
+    && is_array($live['jeu']['scores'] ?? null),
+    json_encode($live['jeu'] ?? null));
+
+// ── ON ARRÊTE, ET LE MONDE SE RANGE ─────────────────────────────────────
+$jeuProf(['secondes' => 0]);
+$apres = $battre($jetonZoe, ['x' => 1, 'y' => 1, 'nombre' => 7]);
+// `array_key_exists` ET NON `??`, ET C'EST MON ÉPREUVE QUI AVAIT TORT.
+//
+// `$x['jeu'] ?? 'rien'` rend 'rien' quand la clef vaut NULL — ce qui est
+// précisément la réponse qu'on attend ici. L'épreuve accusait donc le serveur
+// d'un défaut qu'il n'avait pas. C'est la même famille que le `|| 30` sur une
+// durée dont zéro est une commande : un opérateur de repli posé sur une valeur
+// qui veut dire quelque chose.
+verifier('LE JEU ARRÊTÉ, L\'ARDOISE NE REÇOIT PLUS DE MONDE',
+    array_key_exists('jeu', $apres['json'] ?? []) && $apres['json']['jeu'] === null
+    && ($apres['code'] ?? 0) === 200,
+    json_encode($apres['json']));
+// ET RELANCER EFFACE LA PARTIE D'AVANT : sans cela, une prise de la partie
+// précédente porterait le même nom qu'une cible de celle-ci et paraîtrait
+// déjà prise — un nombre invisible, et personne pour comprendre pourquoi.
+$jeuProf(['jeu' => 'ruee', 'secondes' => 60, 'reglages' => []]);
+$neuf = $battre($jetonZoe, ['x' => 2, 'y' => 2, 'nombre' => 5]);
+verifier('ET UNE PARTIE NEUVE REPART D\'UN TERRAIN VIERGE',
+    count($neuf['json']['prises'] ?? []) === 0
+    && array_sum($neuf['json']['scores'] ?? [1]) === 0,
+    json_encode([$neuf['json']['prises'] ?? null, $neuf['json']['scores'] ?? null]));
+$jeuProf(['secondes' => 0]);
 
 // ── ON NE MARQUE PAS UN POINT SUR UN DÉFI QUI N'EXISTE PAS ─────────────────
 // ── CE QUE LA CLASSE FAIT ENSEMBLE : LE BUT, LES DEUX ÉQUIPES, LE RECORD ──

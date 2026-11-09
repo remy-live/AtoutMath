@@ -50,7 +50,7 @@ const TICS = Math.max(4, Math.round(SECONDES * PAR_SECONDE));
 // LE BOND : un élève marque cinq cents points d'un coup, au milieu de la
 // mesure. C'est le pion qui saute sur le plateau — et la seule façon de savoir
 // en combien de temps les autres le voient.
-const BOND = 500;
+const BOND = 200;
 const QUAND_LE_BOND = Math.floor(TICS / 2);
 
 let ratés = 0;
@@ -143,11 +143,12 @@ try {
     // serveur, puisqu'il l'oblige à additionner les trente lignes et à les
     // ranger en deux équipes à chaque battement. On mesure le pire cas.
     const lance = await appel('/teacher/class', {
-        classId: classe.id, action: 'defi', exo: 'calc-add',
-        secondes: Math.max(60, SECONDES + 40), mode: 'qcm', but: 5000, equipes: true
+        classId: classe.id, action: 'jeu', jeu: 'plateau',
+        secondes: Math.max(60, SECONDES + 40),
+        reglages: { operation: '×', style: 'question' }
     }, jetonProf);
-    dire('LE DÉFI TOURNE, avec but commun et deux équipes',
-        ((lance.json || {}).ok) === true, (lance.json || {}).dit || '');
+    dire('LE JEU DE CLASSE TOURNE', ((lance.json || {}).ok) === true,
+        (lance.json || {}).dit || JSON.stringify(lance.json));
 
     // ── LA MESURE : TOUT LE MONDE BAT, EN MÊME TEMPS, À CHAQUE SECONDE ───
     //
@@ -162,21 +163,36 @@ try {
     const departMesure = Date.now();
     for (let t = 0; t < TICS; t++) {
         const debutTic = Date.now();
-        const reponses = await Promise.all(jetons.map((j, i) => appel('/session', {
-            defi: {
-                bonnes: t + 1, total: TICS + 1, ms: 500 + i,
-                // CHAQUE SECONDE, CHACUN AVANCE D'UN PAS. Les scores ne font que
-                // monter : le serveur garde le meilleur, donc un battement en
-                // retard ne peut jamais faire RECULER un pion.
-                points: t * 2 + i + (i === 0 && t >= QUAND_LE_BOND ? BOND : 0)
-            }
+        const reponses = await Promise.all(jetons.map((j, i) => appel('/jeu', {
+            // CHACUN BOUGE ET MARQUE. C'est exactement ce qu'une ardoise envoie
+            // pendant une partie : une position, un nombre porté, un score.
+            x: 1 + ((t + i) % 14), y: 1 + ((t * 2 + i) % 7),
+            nombre: 2 + (i % 8),
+            // LES POINTS LIBRES RESTENT PETITS, et c'est le serveur qui
+            // l'impose : il les borne au temps écoulé (une seconde perchée
+            // vaut un point). La sonde ne cherche donc pas à les faire
+            // exploser — elle vérifie ailleurs que ce plafond tient.
+            points: Math.min(t, 60),
+            // ET UN SUR TROIS RÉCLAME UNE PRISE, dont beaucoup LA MÊME : c'est
+            // la bousculade qu'on vient mesurer, celle où deux élèves ramassent
+            // le même nombre dans la même demi-seconde.
+            //
+            // LE BOND PASSE PAR UNE PRISE, et c'est la correction d'une sonde
+            // qui mesurait mal : elle le faisait passer par les points libres,
+            // que le serveur borne — à juste titre. Une prise est le VRAI
+            // chemin par lequel un élève fait bondir le score de sa classe.
+            ...(i === 0 && t === QUAND_LE_BOND
+                ? { prise: { quoi: `bond-${t}`, equipe: 0, points: BOND } }
+                : (i % 3 === 0
+                    ? { prise: { quoi: `c-${t}-${i % 4}`, equipe: i % 2, points: 1 } }
+                    : {}))
         }, j)));
         reponses.forEach((r, i) => {
             temps.push(r.ms);
             codes.set(r.code, (codes.get(r.code) || 0) + 1);
             octetsMax = Math.max(octetsMax, r.octets);
-            const c = ((r.json || {}).session || {}).defiCumul;
-            vus[i].push(c ? Number(c.points) : null);
+            const sc = (r.json || {}).scores;
+            vus[i].push(Array.isArray(sc) ? sc[0] + sc[1] : null);
         });
         const reste = PAS_MS - (Date.now() - debutTic);
         if (reste > 0) await dormir(reste);
@@ -202,8 +218,24 @@ try {
     // LE POIDS DE LA RÉPONSE, ET CE QU'UN PLATEAU Y AJOUTERAIT. Trente
     // positions, c'est trente nombres : on peut le chiffrer plutôt que le
     // craindre.
-    dit('poids de la réponse', `${octetsMax} octets aujourd'hui, `
-        + `+ ~${COMBIEN * 18} pour les ${COMBIEN} positions d'un plateau`);
+    dit('poids de la réponse', `${octetsMax} octets pour ${COMBIEN} pions`);
+
+    // ── L'ARBITRAGE, À TRENTE ET POUR DE VRAI ────────────────────────────
+    //
+    // UN SUR TROIS A RÉCLAMÉ UNE PRISE À CHAQUE SECONDE, et plusieurs LA MÊME.
+    // C'est la situation normale d'un jeu à trente, pas un cas limite. Si deux
+    // élèves pouvaient prendre le même nombre, le total de la classe
+    // dépasserait ce qu'il y avait à prendre — et le tableau mentirait devant
+    // tout le monde.
+    const dernier = await appel('/jeu', { x: 1, y: 1, nombre: 2 }, jetons[0]);
+    const monde = dernier.json || {};
+    dire(`CHAQUE ARDOISE VOIT LES ${COMBIEN} AUTRES`,
+        (monde.pions || []).length === COMBIEN,
+        `${(monde.pions || []).length} pion(s) sur ${COMBIEN}`);
+    const uniques = new Set(monde.prises || []);
+    dire('ET AUCUN NOMBRE N\'A ÉTÉ PRIS DEUX FOIS',
+        uniques.size === (monde.prises || []).length && uniques.size > 0,
+        `${(monde.prises || []).length} prise(s), ${uniques.size} distincte(s)`);
 
     // ── LE PLATEAU BOUGE-T-IL ? ──────────────────────────────────────────
     //
