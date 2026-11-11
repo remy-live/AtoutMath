@@ -9,6 +9,57 @@ import { TAGS } from './tags.js';
 
 const D = TAGS.DOMAINE.NUMERIQUE;
 const NUM = TAGS.SOUS_DOMAINE.NUMERATION;
+
+// ── LES RÉGLAGES DES TROIS JEUX VIFS, ÉCRITS UNE FOIS ─────────────────────
+//
+// Les trois se règlent EXACTEMENT de la même façon : une famille de consignes,
+// un nombre de joueurs, une durée, un plafond. Recopier la liste trois fois,
+// c'est s'assurer qu'elle finira par ne plus dire la même chose aux trois — et
+// ce dépôt a déjà payé cette leçon sur les règles écrites à deux endroits.
+//
+// LE PREMIER RÉGLAGE EST CELUI QUI ACCORDE LE JEU À LA SÉANCE : « les
+// multiples » en sixième, « premiers et carrés » en quatrième. Sans lui, un
+// jeu vif enverrait une classe de sixième courir après des carrés parfaits.
+const JEU_VIF_REGLAGES = [
+    {
+        key: 'familles', label: 'Quelles consignes',
+        type: 'select', default: 'faciles',
+        options: [
+            { value: 'faciles', label: 'consignes faciles' },
+            { value: 'toutes', label: 'toutes les consignes' },
+            { value: 'multiples', label: 'les multiples seulement' },
+            { value: 'premiers', label: 'premiers et carrés' }
+        ]
+    },
+    {
+        key: 'joueurs', label: 'Combien de joueurs',
+        type: 'select', default: 12,
+        options: [
+            { value: 6, label: '6 joueurs' },
+            { value: 12, label: '12 joueurs' },
+            { value: 24, label: '24 joueurs' },
+            { value: 30, label: '30 joueurs' }
+        ]
+    },
+    {
+        key: 'secondes', label: 'Combien de temps',
+        type: 'select', default: 150,
+        options: [
+            { value: 90, label: '1 min 30' },
+            { value: 150, label: '2 min 30' },
+            { value: 240, label: '4 minutes' }
+        ]
+    },
+    {
+        key: 'maxi', label: 'Jusqu\u2019à quel nombre',
+        type: 'select', default: 99,
+        options: [
+            { value: 50, label: 'jusqu\u2019à 50' },
+            { value: 99, label: 'jusqu\u2019à 99' },
+            { value: 200, label: 'jusqu\u2019à 200' }
+        ]
+    }
+];
 const DEC = TAGS.SOUS_DOMAINE.DECIMAUX;
 
 /**
@@ -1590,5 +1641,69 @@ export const numerationExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "Les mêmes questions, avec la ligne du milieu : 10⁵ × 10² = 10^(5 + 2) = 10⁷. L'exposant se tape avec la touche ^, parce qu'un exposant qui est une SOMME ne s'écrit pas en petits chiffres. Seule la dernière ligne compte pour la séance ; les autres sont la trace qu'on demande sur la copie."
+    },
+
+    // ── LES TROIS JEUX VIFS, DANS LE CATALOGUE ────────────────────────────
+    //
+    // RÉMY : « Je préfère un jeu assez rapide fun », puis « Les 3 sont top tu
+    // peux y aller », puis « j'aimerai bien avoir les jeux plateaux dispo/demo
+    // dans les derniers jeux ». Ils ne vivaient que dans sa barre de pilotage.
+    //
+    // LES TROIS PARTAGENT UNE CONSIGNE QUI CHANGE toutes les vingt secondes —
+    // LES MULTIPLES DE 7, LES NOMBRES PREMIERS, PLUS GRAND QUE 40 — et c'est
+    // elle qui les rend mathématiques : le terrain ne bouge pas, les mêmes
+    // nombres changent de camp, et tout le monde doit repartir.
+    //
+    // AUCUNE COMPÉTENCE N'Y EST ACCROCHÉE, ET C'EST UNE DÉCISION.
+    //
+    // La consigne est tirée dans SIX familles — parité, comparaison,
+    // multiples, encadrement, carrés, premiers — et le réglage décide
+    // lesquelles. En nommer une décrirait un sixième du jeu, et le bilan par
+    // compétence se remplirait de lignes qui ne mesurent pas ce qu'elles
+    // annoncent. C'est le raisonnement que ce dépôt a déjà écrit pour Les
+    // Petites Ailes, et il vaut ici pour la raison inverse : non pas parce
+    // qu'il n'y a rien à travailler, mais parce qu'il y en a trop pour une
+    // seule ligne.
+    {
+        id: 'num-chat-perche', title: 'Le Chat Perché',
+        cree: '2026-11-11',
+        activityId: 'chat-perche',
+        skills: [], horsProgression: true,
+        sansRevision: true,
+        paramSchema: JEU_VIF_REGLAGES,
+        params: { familles: 'faciles', joueurs: 12, secondes: 150, maxi: 99 },
+        motsClefs: ['chat perché', 'consigne', 'multiples', 'premiers', 'pairs',
+            'carrés', 'à plusieurs', 'jeu de classe', 'poursuite', 'perchoir'],
+        tags: { chemin: [D, NUM],
+                niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "LE CHAT ARRIVE, et tu n'es sauvé que PERCHÉ SUR UN NOMBRE QUI OBÉIT à la consigne du haut de l'écran. Perché sur un bon nombre, tu marques des points tant que tu y restes. Perché sur un mauvais, tu es figé deux secondes et tu perds des points — alors vérifie avant de monter. LA CONSIGNE CHANGE TOUTES LES VINGT SECONDES, et les nombres du terrain ne bougent pas : ton perchoir d'avant peut devenir mauvais sous tes pieds, et il faut repartir. Pour te déplacer : pose le doigt sur le terrain, ou tiens les flèches."
+    },
+    {
+        id: 'num-la-ruee', title: 'La Ruée',
+        cree: '2026-11-11',
+        activityId: 'la-ruee',
+        skills: [], horsProgression: true,
+        sansRevision: true,
+        paramSchema: JEU_VIF_REGLAGES,
+        params: { familles: 'faciles', joueurs: 12, secondes: 150, maxi: 99 },
+        motsClefs: ['ruée', 'ramasser', 'consigne', 'multiples', 'premiers', 'pairs',
+            'carrés', 'à plusieurs', 'jeu de classe', 'course'],
+        tags: { chemin: [D, NUM],
+                niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "RAMASSE LES NOMBRES QUI OBÉISSENT à la consigne du haut de l'écran, en passant dessus. Chaque bon nombre rapporte des points. UN MAUVAIS COÛTE CHER : tu es figé deux secondes et tu perds des points, donc il vaut mieux ralentir une seconde que ramasser au hasard. La consigne change toutes les vingt secondes. Pour te déplacer : pose le doigt sur le terrain, ou tiens les flèches."
+    },
+    {
+        id: 'num-pluie-nombres', title: 'La Pluie de Nombres',
+        cree: '2026-11-11',
+        activityId: 'pluie-nombres',
+        skills: [], horsProgression: true,
+        sansRevision: true,
+        paramSchema: JEU_VIF_REGLAGES,
+        params: { familles: 'faciles', joueurs: 12, secondes: 150, maxi: 99 },
+        motsClefs: ['pluie', 'attraper', 'panier', 'consigne', 'multiples', 'premiers',
+            'pairs', 'carrés', 'à plusieurs', 'jeu de classe'],
+        tags: { chemin: [D, NUM],
+                niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "DES NOMBRES TOMBENT. Attrape avec ton panier CEUX QUI OBÉISSENT à la consigne du haut de l'écran, et LAISSE FILER LES AUTRES — attraper un mauvais te fige deux secondes et te coûte des points. Ici tu ne te déplaces qu'EN LARGEUR : le panier est sur une ligne. La consigne change toutes les vingt secondes, et ce qui tombait pour toi tombe alors pour personne. Pose le doigt sous le nombre que tu veux, ou tiens les flèches gauche et droite."
     }
 ];

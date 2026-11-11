@@ -3642,5 +3642,111 @@ export const calculExercises = [
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
         instruction: "UNE SEULE TOUCHE, et il n'y a rien à calculer : c'est un jeu d'adresse. Appuie — clic, doigt ou barre d'ESPACE — pour PLONGER, relâche pour planer. Appuie dans la DESCENTE : tu prends de la vitesse, et la jauge du bas te le montre. Relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante. C'est là que la vitesse se fabrique, nulle part ailleurs — rester collé au sol te fait payer chaque montée. Et il faut aller vite, parce que LA NUIT COURT DERRIÈRE TOI : si elle te rattrape, la partie s'arrête. Les étoiles la repoussent un peu ; franchir une frontière de monde la repousse beaucoup. Il y a six mondes, chacun plus haut, plus serré et plus pressé que le précédent — le but est d'aller voir le suivant."
+    },
+    {
+        // ── LE PLATEAU DES NOMBRES, DANS LE CATALOGUE ─────────────────────
+        //
+        // RÉMY : « j'aimerai bien avoir les jeux plateaux dispo/demo dans les
+        // derniers jeux ». Il ne vivait que dans sa barre de pilotage — ouvrir
+        // une classe, aller au direct, trouver l'onglet. Le voici là où l'on
+        // cherche un exercice.
+        //
+        // SA RÈGLE EST DE RÉMY, mot pour mot : « sur le plateau chaque joueur
+        // porte un chiffre […] il y a un 56 sur le plateau et il faut qu'il se
+        // retrouve pour prendre le 56 », puis « Si c'est un rouge et un bleu
+        // qui se rejoignent les points sont partagés ».
+        //
+        // LA COMPÉTENCE EST CELLE DU FACTEUR MANQUANT, et ce n'est pas un
+        // rapprochement de façade : porter 7 et chercher QUI porte le 8 pour
+        // prendre le 56, c'est résoudre 7 × ? = 56 en mobilisant la table —
+        // la définition même de cette compétence. (En réglage « + », c'est
+        // l'addition qu'on travaille ; le réglage par défaut est « × », et
+        // c'est lui que la compétence décrit.)
+        id: 'calc-plateau-nombres', title: 'Le Plateau des Nombres',
+        cree: '2026-11-11',
+        activityId: 'plateau-nombres',
+        skills: ['num.mult.facteur-manquant'],
+        // PAS DE FICHE PAPIER, et ce n'est pas un manque : le jeu est une
+        // RENCONTRE entre deux élèves sur une case. Sur le papier, il ne
+        // resterait qu'une table de multiplication — qui existe déjà, en mieux.
+        sansRevision: true,
+        // LES RÉGLAGES SONT CEUX DE LA BARRE DE PILOTAGE, dans le même ordre et
+        // avec les mêmes mots : le professeur qui a réglé sa partie en classe
+        // doit retrouver ses repères ici, et inversement.
+        paramSchema: [
+            {
+                key: 'quoi', label: 'Sur quoi on joue',
+                type: 'select', default: 'tout',
+                options: [
+                    { value: 'tout', label: 'toutes les tables' },
+                    { value: 't2', label: 'table de 2' },
+                    { value: 't3', label: 'table de 3' },
+                    { value: 't4', label: 'table de 4' },
+                    { value: 't5', label: 'table de 5' },
+                    { value: 't6', label: 'table de 6' },
+                    { value: 't7', label: 'table de 7' },
+                    { value: 't8', label: 'table de 8' },
+                    { value: 't9', label: 'table de 9' },
+                    { value: 'dures', label: 'les tables dures (6, 7, 8)' },
+                    { value: 'petites', label: 'les petites (2 à 5)' },
+                    { value: 'gros', label: 'les grands nombres' }
+                ]
+            },
+            {
+                key: 'operation', label: 'L\u2019opération',
+                type: 'select', default: '\u00d7',
+                options: [
+                    { value: '\u00d7', label: '\u00d7 multiplication' },
+                    { value: '+', label: '+ addition' }
+                ]
+            },
+            {
+                key: 'style', label: 'Comment on change de nombre',
+                type: 'select', default: 'question',
+                options: [
+                    { value: 'question', label: 'en répondant' },
+                    { value: 'jetons', label: 'en ramassant' },
+                    { value: 'libre', label: 'librement' }
+                ]
+            },
+            {
+                key: 'penalite', label: 'Ce que coûte une erreur',
+                type: 'select', default: 'fige',
+                options: [
+                    { value: 'fige', label: 'figé 4 s' },
+                    { value: 'points', label: '\u221220 points' },
+                    { value: 'deux', label: 'figé ET \u221220' },
+                    { value: 'aucune', label: 'sans pénalité' }
+                ]
+            },
+            {
+                key: 'joueurs', label: 'Combien de joueurs',
+                type: 'select', default: 12,
+                options: [
+                    { value: 6, label: '6 joueurs' },
+                    { value: 12, label: '12 joueurs' },
+                    { value: 24, label: '24 joueurs' },
+                    { value: 30, label: '30 joueurs' }
+                ]
+            },
+            {
+                key: 'secondes', label: 'Combien de temps',
+                type: 'select', default: 180,
+                options: [
+                    { value: 120, label: '2 minutes' },
+                    { value: 180, label: '3 minutes' },
+                    { value: 300, label: '5 minutes' }
+                ]
+            }
+        ],
+        params: { quoi: 'tout', operation: '\u00d7', style: 'question',
+                  penalite: 'fige', joueurs: 12, secondes: 180 },
+        motsClefs: ['plateau', 'tables', 'multiplication', 'équipes', 'à plusieurs',
+            'jeu de classe', 'rencontre', 'facteur manquant', 'décomposition'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "TU PORTES UN NOMBRE, écrit dans ton rond. Des nombres sont posés sur le terrain. Pour en prendre un, il faut être DEUX dessus, et que vos deux nombres le donnent : 7 et 8 prennent le 56. À TROIS, ça vaut le double — 2, 4 et 7 prennent le 56 aussi. Si un Bleu et un Orange se retrouvent, les points sont PARTAGÉS entre les deux équipes : on n'est donc jamais bloqué faute de coéquipier. Pour te déplacer : POSE LE DOIGT sur le terrain et ton rond vient vers lui, ou tiens les flèches du clavier, ou la manette du bas. L'écran te dit ce qu'il manque sous tes pieds : « 56 — il manque un 8 ». Les autres ronds sont tenus par l'ordinateur : ils lisent le plateau avec les mêmes règles que toi, et ils se trompent aussi."
     }
 ];

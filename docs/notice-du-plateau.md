@@ -118,10 +118,32 @@ ce qui garantit que ce que vous essayez est ce que vous lancez.
 
 ---
 
+## 7 bis. Les quatre jeux sont aussi dans le catalogue
+
+Rémy : « j'aimerai bien avoir les jeux plateaux dispo/demo dans les derniers
+jeux ». C'est fait : **Le Plateau des Nombres**, **Le Chat Perché**, **La Ruée**
+et **La Pluie de Nombres** sont quatre exercices comme les autres.
+
+- On les trouve dans **« Les derniers exercices »**, dans la **recherche**, et
+  par leur **code dicté** : `LT`, `HC`, `RU`, `LU`.
+- On peut les poser dans un **parcours** ou dans le **bac à sable** : un élève
+  qui a fini son travail joue seul, contre des pions tenus par l'ordinateur —
+  qui lisent le terrain avec les mêmes règles que lui et se trompent aussi.
+- Ils gardent **tous leurs réglages** : la table travaillée, l'opération, la
+  façon de changer de nombre, la pénalité, le nombre de joueurs, la durée.
+
+> **Ce n'est pas la même chose que « Lancer à la classe ».** Depuis le
+> catalogue, chacun joue **sa** partie, seul contre l'ordinateur. Pour que les
+> trente jouent **ensemble, sur le même terrain**, c'est le bouton de l'onglet
+> 🎲 Le plateau, et lui seul.
+
+---
+
 ## 8. Ce que ça ne fait pas
 
 - **Pas de note.** Aucun point du plateau n'entre dans le bilan d'un élève.
-  C'est un jeu de classe, et il doit le rester.
+  C'est un jeu de classe, et il doit le rester — et c'est vrai aussi quand il
+  est ouvert depuis le catalogue.
 - **Pas encore les trois jeux vifs.** *Le chat perché*, *la ruée* et *la pluie*
   se jouent en démonstration ; ils ne se lancent pas encore à la classe, parce
   que leur terrain se remet en place au hasard sur chaque tablette. C'est la

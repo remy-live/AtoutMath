@@ -5978,3 +5978,41 @@ la graine et de l'horloge du serveur avant de les brancher. En attendant, une
 partie d'un de ces trois jeux annoncée par le serveur est IGNORÉE par l'ardoise
 — mieux vaut ne rien ouvrir qu'ouvrir un jeu qui ne serait pas le même pour
 tous.
+
+---
+
+## « j'aimerai bien avoir les jeux plateaux dispo/demo dans les derniers jeux »
+
+**Ce qu'il a dit**, le 11 novembre, au lendemain du plateau en réseau.
+
+**Ce que ça voulait dire** : les quatre jeux de classe ne vivaient que dans sa
+barre de pilotage — ouvrir une classe, aller au direct, trouver l'onglet. Il les
+veut là où l'on cherche un exercice.
+
+**La question que j'ai posée avant de m'y mettre** : jusqu'où les faire entrer ?
+Un simple bloc « essayer en démo » en tête de la fenêtre des nouveautés, ou de
+VRAIES entrées du catalogue ? Il a répondu : de vraies entrées.
+
+**Fait** : quatre exercices — `LT` Le Plateau des Nombres, `HC` Le Chat Perché,
+`RU` La Ruée, `LU` La Pluie de Nombres. Ils apparaissent dans « Les derniers
+exercices », dans la recherche, par leur code dicté ; ils se posent dans un
+parcours et dans le bac à sable ; ils gardent tous leurs réglages.
+
+**CE QUE LA SONDE A VU, ET QU'AUCUNE ÉPREUVE N'AURAIT DIT** : ces quatre écrans
+sont des VOILES PLEIN ÉCRAN — c'est leur raison d'être en classe. Posés dans le
+cadre du meneur, ils le recouvraient : plus d'entête, plus de bouton pour
+sortir. Corrigé, puis mesuré encore : la rangée du bas débordait quand même de
+20 px au plateau et de 44 px au chat perché — la manette et le clavier des
+nombres passaient sous le bord. La hauteur du terrain était écrite en `vh`, ce
+qui est juste en plein écran et faux dans un cadre ; elle se mesure maintenant
+sur la carte. Et la croix du jeu, qu'on venait de masquer, servait d'écart entre
+le score des Orange et le temps restant : les deux nombres se touchaient.
+
+**TROIS DÉFAUTS QU'ON NE VOIT QU'EN REGARDANT.** Les trois ont été trouvés sur
+des photos, pas sur des chiffres.
+
+**CE QUE J'AI VU SANS LE CORRIGER** : à la ruée, douze pions de l'ordinateur
+ramassent les bons nombres en quelques secondes, et le terrain peut n'en porter
+aucun pendant un moment — chaque jeton ramassé est remplacé à pile ou face. Ce
+n'est pas nouveau et ce n'est pas un défaut d'écriture : c'est un choix de
+règle, et les règles de ses jeux sont à lui.

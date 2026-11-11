@@ -223,7 +223,19 @@ export function ouvrirLePlateau(o = {}) {
 
     // ── L'ÉCRAN ──────────────────────────────────────────────────────────
     const voile = document.createElement('div');
-    voile.className = 'pdn-voile';
+    // ── DANS UN CADRE, OU PAR-DESSUS TOUT L'ÉCRAN ────────────────────────
+    //
+    // RÉMY : « j'aimerai bien avoir les jeux plateaux dispo/demo dans les
+    // derniers jeux ». Le jeu devient donc un exercice du catalogue, et un
+    // exercice du catalogue vit DANS le cadre du meneur, qui porte déjà son
+    // entête, son bouton pour sortir et sa barre d'auteur.
+    //
+    // UN VOILE `position: fixed` DANS UN CADRE RECOUVRE TOUT, et cache ce
+    // cadre-là : l'élève n'a plus de quoi sortir, et le professeur n'a plus sa
+    // barre. On garde donc le voile plein écran pour le lancement en classe —
+    // là, il DOIT prendre l'écran — et on le pose dans le flux quand on nous
+    // donne un hôte.
+    voile.className = `pdn-voile${o.hote ? ' pdn-voile--cadre' : ''}`;
     voile.innerHTML = `
         <div class="pdn-carte">
             <div class="pdn-haut">

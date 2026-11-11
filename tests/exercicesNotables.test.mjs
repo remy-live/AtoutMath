@@ -168,8 +168,25 @@ test('COMBIEN, EXACTEMENT', () => {
     // LE TRENTE-QUATRIÈME EST BOULDER DASH, le même jour. Rémy : « B — la
     // partie », c'est-à-dire la récréation et non l'énigme. Se faire écraser
     // par un rocher n'est pas une faute de mathématiques non plus.
+    //
+    // LES TRENTE-CINQUIÈME À TRENTE-HUITIÈME SONT LES QUATRE JEUX DE CLASSE,
+    // le 11 novembre. Rémy : « j'aimerai bien avoir les jeux plateaux
+    // dispo/demo dans les derniers jeux » — ils entrent donc au catalogue.
+    // Ils ne se notent pas, et la raison n'est pas celle des récréations : on
+    // y marque des points en RENCONTRANT quelqu'un sur un nombre, donc le
+    // score dépend d'autant de ses coéquipiers que de soi. Le compter comme
+    // une réussite personnelle serait faux — c'est la décision déjà prise pour
+    // le défi de la classe, et la notice la dit mot pour mot : « Pas de note.
+    // C'est un jeu de classe, et il doit le rester. »
     const sans = exercices.filter(e => !estNotable(e));
-    assert.equal(sans.length, 34, `${sans.length} exercices sans note : ${sans.map(e => e.id).join(', ')}`);
+    assert.equal(sans.length, 38, `${sans.length} exercices sans note : ${sans.map(e => e.id).join(', ')}`);
+    // ET LES QUATRE Y SONT NOMMÉS, pas seulement comptés : un repère qui ne
+    // compte que des lignes ne dit pas LESQUELLES, et c'est la friction que ce
+    // dépôt a payée deux fois sur le compte des onglets du pilote.
+    for (const id of ['calc-plateau-nombres', 'num-chat-perche', 'num-la-ruee',
+                      'num-pluie-nombres']) {
+        assert.ok(sans.some(e => e.id === id), `${id} doit être sans note`);
+    }
     assert.ok(sans.some(e => e.id === 'geo-quadrilateres'),
         'l\'organigramme de Rémy est bien du lot — c\'est de lui qu\'on est parti');
 });

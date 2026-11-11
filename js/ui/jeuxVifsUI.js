@@ -154,7 +154,9 @@ export function ouvrirUnJeuVif(o = {}) {
     /* ─────────────────────────────── L'ÉCRAN ──────────────────────────── */
 
     const voile = document.createElement('div');
-    voile.className = 'jv-voile';
+    // DANS UN CADRE, OU PAR-DESSUS TOUT L'ÉCRAN : même décision qu'au
+    // plateau, et pour la même raison — voir le commentaire de `plateauUI.js`.
+    voile.className = `jv-voile${o.hote ? ' jv-voile--cadre' : ''}`;
     voile.innerHTML = `
         <div class="jv-carte">
             <div class="jv-haut">

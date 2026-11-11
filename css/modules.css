@@ -17627,3 +17627,55 @@ body.visite-en-cours .modal-overlay > * {
     color: var(--warning-texte); font-variant-numeric: tabular-nums;
 }
 .jdc-aide { color: var(--text-muted); font-size: clamp(.85rem, 2.2vmin, 1.05rem); }
+
+/* ── UN JEU DE CLASSE POSÉ DANS LE CADRE DU MENEUR ───────────────────────
+   RÉMY : « j'aimerai bien avoir les jeux plateaux dispo/demo dans les derniers
+   jeux ». Lancé à la classe, le terrain DOIT prendre l'écran — c'est un voile
+   plein écran. Ouvert depuis le catalogue, il vit dans le cadre du meneur, qui
+   porte déjà l'entête, le bouton pour sortir et la barre d'auteur : un voile
+   `position: fixed` les recouvrirait, et l'élève n'aurait plus de quoi sortir.
+   Le même écran, donc, à deux places, et une seule classe de différence. */
+.pdn-voile--cadre,
+.jv-voile--cadre {
+    position: static; inset: auto; z-index: auto;
+    background: none; padding: 0;
+    width: 100%; height: 100%; min-height: 0;
+}
+/* LA CARTE REMPLIT LE CADRE SANS SE DÉTACHER : l'ombre et le fond de panneau
+   d'un voile servaient à le décoller de la page qu'il recouvrait. Dans un
+   cadre, il n'y a rien à décoller. */
+.pdn-voile--cadre .pdn-carte,
+.jv-voile--cadre .jv-carte {
+    box-shadow: none; background: none; max-height: 100%;
+    width: 100%; padding: 0;
+}
+/* ET LE BOUTON DE SORTIE DISPARAÎT : le cadre a le sien, et deux croix dont
+   l'une ne ferme que la moitié de l'écran, c'est une erreur en attente. */
+.pdn-voile--cadre .pdn-sortir,
+.jv-voile--cadre .jv-sortir { display: none; }
+
+/* ── DANS LE CADRE, LE TERRAIN SE MESURE SUR LA CARTE, PAS SUR LA FENÊTRE ──
+   MESURÉ, ET C'EST POUR ÇA QUE CETTE RÈGLE EXISTE : la hauteur du terrain est
+   écrite `min(100vh - 240px, …)`, ce qui est juste quand le voile prend TOUT
+   l'écran. Dans le cadre du meneur, il reste 790 px sur 900 — l'entête en
+   mange 90 — et le terrain gardait sa taille de plein écran. Résultat mesuré :
+   la rangée du bas débordait de 20 px au plateau, de 44 px au chat perché, et
+   c'est précisément la manette et le clavier des nombres qui passaient sous le
+   bord. Un jeu dont on ne voit plus les commandes n'est pas un jeu.
+   La carte devient donc un CONTENEUR DE TAILLE, et le terrain se mesure en
+   `cqh` — la hauteur de ce qui lui est réellement donné. */
+.pdn-voile--cadre, .jv-voile--cadre { container-type: size; }
+.pdn-voile--cadre .pdn-terrain {
+    height: min(calc(100cqh - 175px),
+                calc((100cqw - 30px) * var(--pdn-lignes, 8) / var(--pdn-colonnes, 12)));
+}
+.jv-voile--cadre .jv-terrain {
+    height: min(calc(100cqh - 195px),
+                calc((100cqw - 30px) * var(--jv-lignes, 8) / var(--jv-colonnes, 12)));
+}
+/* ET LE BANDEAU RESPIRE UN PEU PLUS, parce qu'on vient de lui retirer sa croix.
+   MESURÉ SUR LA PHOTO : « Les Orange 19 144 s » — le score de l'équipe et le
+   temps restant collés l'un à l'autre, deux nombres qu'on lit comme un seul.
+   En plein écran, c'est la croix qui les séparait ; dans le cadre elle n'est
+   plus là, et personne ne s'en serait douté en lisant le code. */
+.jv-voile--cadre .jv-haut { gap: 20px; }

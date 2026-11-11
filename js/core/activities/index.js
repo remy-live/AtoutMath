@@ -1270,7 +1270,26 @@ const legacy = [
     ['dedale', 'Les Dédales', 'dedale', 'engineDedale', 'dédale', 5],
     ['point-a-point', 'Le Point à Point', 'pointAPoint', 'enginePointAPoint', 'dessin', 3],
     ['poser-multiplication', 'Poser une multiplication', 'poserLongue', 'enginePoserMultiplication', 'opération', 5],
-    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision', 'opération', 5]
+    ['poser-division', 'Poser une division', 'poserLongue', 'enginePoserDivision', 'opération', 5],
+    // ── LES QUATRE JEUX DE CLASSE, DEPUIS LE CATALOGUE ────────────────────
+    //
+    // RÉMY : « j'aimerai bien avoir les jeux plateaux dispo/demo dans les
+    // derniers jeux ». Ils ne vivaient que dans sa barre de pilotage — il
+    // fallait ouvrir une classe, aller au direct, trouver l'onglet. Les voici
+    // dans le catalogue, donc dans « Les derniers exercices », dans la
+    // recherche, et posables dans un parcours ou dans le bac à sable.
+    //
+    // UNE PARTIE COMME UNITÉ, et non une question : on n'y répond pas à une
+    // série, on y joue trois minutes. C'est la même décision que pour Bumpy et
+    // Boulder Dash — « pas besoin de 5/6 obligatoire c'est un jeu ».
+    ['plateau-nombres', 'Le Plateau des Nombres (à plusieurs)', 'jeuxDeClasse',
+     'engineLePlateauDesNombres', 'partie', 1],
+    ['chat-perche', 'Le Chat Perché (consignes)', 'jeuxDeClasse',
+     'engineLeChatPerche', 'partie', 1],
+    ['la-ruee', 'La Ruée (ramasser les bons)', 'jeuxDeClasse',
+     'engineLaRuee', 'partie', 1],
+    ['pluie-nombres', 'La Pluie de Nombres (attraper les bons)', 'jeuxDeClasse',
+     'engineLaPluieDesNombres', 'partie', 1]
 ];
 
 legacy.forEach(([id, label, file, fn, unite, parDefaut]) => {
@@ -1323,7 +1342,19 @@ const SANS_NOTE = [
     // parler. Un exercice qui ne peut RIEN rater rendrait 20 à qui le
     // traverse : il se déclare ici au lieu de fausser une moyenne.
     'trefles',
-    'trigo-cotes'
+    'trigo-cotes',
+    // ── LES QUATRE JEUX DE CLASSE NE SE NOTENT PAS ────────────────────────
+    //
+    // Une partie n'est pas une série de questions. On y marque des points en
+    // RENCONTRANT quelqu'un sur un nombre : le score dépend d'autant de ses
+    // coéquipiers que de soi, et le compter comme une réussite personnelle
+    // dans le bilan d'un élève serait faux.
+    //
+    // RÉMY A DÉJÀ TRANCHÉ LA MÊME QUESTION pour le défi de la classe, et la
+    // notice le dit mot pour mot : « Pas de note. C'est un jeu de classe, et
+    // il doit le rester. » Ils alimentent le bilan par compétence comme les
+    // autres ; c'est la MOYENNE qu'ils ne faussent pas.
+    'plateau-nombres', 'chat-perche', 'la-ruee', 'pluie-nombres'
 ];
 SANS_NOTE.forEach(id => declarerSansNote(id));
 

@@ -81,9 +81,16 @@ test('SEULS LES JEUX QUI AVANCENT TOUT SEULS GARDENT LA CARTE FUGACE', () => {
     // « bumpy » : les rochers tombent pendant qu'on lit, donc une carte de
     // correction qui attendrait un clic se ferait écraser par un jeu qui ne
     // s'arrête pas.
+    // « jeuxDeClasse » s'ajoute le 11 novembre : les quatre jeux de classe
+    // entrent au catalogue (Rémy : « j'aimerai bien avoir les jeux plateaux
+    // dispo/demo dans les derniers jeux »). Leur terrain porte sa propre
+    // boucle d'animation et sa propre horloge — c'est ce qui permet à des
+    // ronds de se déplacer librement plutôt que de sauter de case en case —,
+    // donc rien ne s'arrête pendant qu'on lit. C'est exactement le critère de
+    // cette liste.
     const attendus = ['boulderDash', 'bumpy', 'canon', 'course', 'demineur',
-        'diviseurs', 'duel', 'escadrille', 'galactic', 'jezzball', 'ninja', 'nova',
-        'pousseur', 'serpent', 'skweek', 'tetris'];
+        'diviseurs', 'duel', 'escadrille', 'galactic', 'jeuxDeClasse', 'jezzball',
+        'ninja', 'nova', 'pousseur', 'serpent', 'skweek', 'tetris'];
     assert.deepEqual(declarent, attendus,
         'la liste des jeux en temps réel a changé — mesure-la avant de la corriger '
         + '(tools/tmp/boucleContinue.mjs)');

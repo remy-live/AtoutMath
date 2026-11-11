@@ -345,6 +345,16 @@ export const CODES_EXERCICES = {
     'rc-7':                       'RL',   // La racine ne traverse pas une addition
     'rc-8':                       'RM',   // Diviser, et le dénominateur
     'rc-revision':                'RN',   // Les quatre premiers barreaux
+    // ── LES QUATRE JEUX DE CLASSE ──────────────────────────────────────────
+    //
+    // Leurs initiales étaient toutes prises : les 23 codes commençant par P
+    // sont pris depuis longtemps. On applique donc la règle écrite en tête de
+    // ce fichier — « la lettre suivante du premier mot » :
+    // pLaTeau, cHat perChé, RUée, pLUie.
+    'calc-plateau-nombres':       'LT',   // Le Plateau des Nombres
+    'num-chat-perche':            'HC',   // Le Chat Perché
+    'num-la-ruee':                'RU',   // La Ruée
+    'num-pluie-nombres':          'LU',   // La Pluie de Nombres
 };
 
 /** L'exercice que désignent ces deux lettres, ou undefined. */
