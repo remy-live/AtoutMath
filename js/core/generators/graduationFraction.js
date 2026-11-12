@@ -213,6 +213,8 @@ export const graduationFractionGenerator = {
                 papier: 'Écris la fraction marquée par chaque croix.'
             },
             answer: cases(num, den),
+            // Pas de tuyau sur le corrigé — voir `frac.add` dans `fractions.js`.
+            reponsePapier: String(cases(num, den)).replace('|', '/'),
             choices: finalizeChoices(rng, choix, {
                 count: 4,
                 filler: (r) => {

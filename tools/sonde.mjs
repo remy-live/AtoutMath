@@ -225,6 +225,43 @@ export async function ouvrirSonde(o = {}) {
             }, champs || null);
         },
 
+        /**
+         * LA QUESTION POSÉE EN CE MOMENT : son énoncé et sa réponse attendue.
+         *
+         * FRICTION PAYÉE LE 12 NOVEMBRE, AU LENDEMAIN DE `etatDuJeu`. Celui-ci
+         * lit `handle.jeu`, l'instance d'un jeu bâti sur `BaseGame` — le
+         * Pousseur, Boulder Dash, la frise. Mais les activités à ITEMS — les
+         * bulles, les taupes, le pavé, les cartes — n'ont pas d'instance de ce
+         * genre : leur `handle` ne porte que `showNext`, `showPrevious` et
+         * `destroy`. `etatDuJeu` rendait donc `null`, et une sonde qui voulait
+         * cliquer la BONNE bulle n'avait plus que deux solutions : refaire le
+         * calcul dans la sonde — donc mesurer la sonde —, ou lire une classe
+         * CSS que le logiciel ne pose qu'APRÈS le clic.
+         *
+         * LE MENEUR LE SAIT DÉJÀ : `runner.session.item` est l'item courant,
+         * avec son `answer` et son `prompt`. Il ne manquait qu'un chemin.
+         *
+         * Et c'est la famille la plus nombreuse du catalogue : tout exercice
+         * qui pose des questions passe par là.
+         */
+        async questionCourante() {
+            return page.evaluate(() => {
+                const it = window.__sondeRunner
+                    && window.__sondeRunner.session
+                    && window.__sondeRunner.session.item;
+                if (!it) return null;
+                return {
+                    texte: (it.prompt && it.prompt.text) || '',
+                    reponse: it.answer === null || it.answer === undefined ? null : String(it.answer),
+                    // Les valeurs des propositions, dans l'ordre où le
+                    // générateur les a rendues : de quoi cliquer la bonne ET une
+                    // mauvaise choisie exprès.
+                    propositions: (it.choices || []).map(c => String(c.value)),
+                    competence: it.skillId || ''
+                };
+            });
+        },
+
         /** S'identifie comme le professeur, PUIS RECHARGE. */
         async identifier(email, mdp) {
             const dit = await page.evaluate(async ([e, m]) => {

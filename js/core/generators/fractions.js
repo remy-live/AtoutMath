@@ -16,6 +16,9 @@ import {
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
+import {
+    NIVEAUX_SOMME, tirerDenominateurs, ppcm, estIrreductible
+} from '../fractionsEquivalentes.js';
 
 function gcd(a, b) {
     return b === 0 ? a : gcd(b, a % b);
@@ -399,6 +402,8 @@ export const fracProduitGenerator = {
                 papier: `${p.a}/${p.b} × ${p.c}/${p.d} =`
             },
             answer: ecrireCases(bonne),
+            // Pas de tuyau sur le corrigé — voir `frac.add` plus bas.
+            reponsePapier: String(ecrireCases(bonne)).replace('|', '/'),
             choices,
             hints: etapesProduit(p),
             explanation: corrigeProduit(p),
@@ -549,74 +554,204 @@ const fenteAvecTrous = () => '<span class="compare-slot">'
     + '<span class="fraction-den"><u class="np-trou" data-trou="1">&nbsp;?&nbsp;</u></span>'
     + '</span></span>';
 
+// --- Additionner, du même dénominateur jusqu'au PPCM ------------------------
+//
+// RÉMY : « il n'y a pas d'addition de fraction avec dénominateur multiple ou
+// ppcm non ? »
+//
+// IL Y EN AVAIT — « Poser une Addition de Fractions » et ses quatre marches —
+// MAIS PAS EN QCM, ET PAS SOUS LE TITRE OÙ IL L'A CHERCHÉE. Mesuré dans la
+// fenêtre de choix : en tapant « addition de fractions », le PREMIER résultat
+// est cet exercice-ci, qui ne faisait QUE le même dénominateur, pour toujours,
+// sans réglage. Sa compétence s'appelait pourtant « add-meme-denom » et son
+// étiquette « (même dénominateur) » : la restriction était écrite partout SAUF
+// à l'endroit où le professeur la lit. Un titre générique posé sur l'exercice
+// le plus étroit fait croire que le logiciel ne sait pas faire le reste.
+//
+// IL FAIT MAINTENANT LES QUATRE MARCHES — les mêmes que l'addition posée, même
+// vocabulaire, même progression, pour que les deux exercices se suivent.
+//
+// ET CE N'EST PAS LE MÊME TRAVAIL QUE L'ÉCRIT POSÉ. Là on convertit ligne par
+// ligne ; ici on RECONNAÎT parmi quatre propositions. Les leurres portent donc
+// les erreurs du chapitre, et l'ORDRE dans lequel ils sont écrits EST le choix
+// pédagogique : `finalizeChoices` ne garde que les trois premiers.
+const LISTE_ADD = NIVEAUX_SOMME.map((n, i) => ({ id: n.id, nom: `${i + 1}. ${n.nom}` }));
+const PAR_MARCHE_ADD = 3;
+
+// LE DÉNOMINATEUR COMMUN DOIT TENIR DANS UNE BULLE. 7/9 + 1/10 demande des
+// 90èmes : juste au tableau, illisible dans un rond, et hors de portée d'une
+// réponse qu'on ne pose pas sur le papier. On refuse donc les tirages dont le
+// commun dépasse quarante — il reste largement de quoi tirer, y compris à la
+// marche du PPCM (4 et 6, 6 et 8, 8 et 10, 6 et 10, 9 et 6…).
+const COMMUN_MAX = 40;
+
 export const fracAddGenerator = {
     id: 'frac.add',
-    label: 'Additionner des fractions (même dénominateur)',
-    skills: ['num.frac.add-meme-denom'],
+    label: 'Additionner des fractions (jusqu\'au PPCM)',
+    // DEUX COMPÉTENCES, ET C'EST LE RÉGLAGE QUI DÉCIDE. Additionner des
+    // huitièmes entre eux et trouver que 4 et 6 se rencontrent à 12 ne sont pas
+    // le même savoir-faire : le carnet d'erreurs doit les séparer, sinon une
+    // marche réussie masque l'autre.
+    skills: ['num.frac.add-meme-denom', 'num.frac.denominateur-commun'],
     answerKinds: ['choice', 'numeric'],
     ecrit: true,
     fractions: true,
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_ADD).length, PAR_MARCHE_ADD),
     params: [
-        { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 12, min: 3, max: 20 }
+        // LES QUATRE CASES SONT COCHÉES DANS LE PANNEAU, comme chez les treize
+        // autres générateurs à progression : un exercice qui annonce une
+        // progression l'offre en entier, sinon le réglage se découvre par
+        // hasard. C'est le catalogue qui ramène `frac-add` au seul même
+        // dénominateur (`params: { marches: ['meme'] }`), parce que c'est tout
+        // ce qu'il savait faire jusqu'à aujourd'hui.
+        paramMarches({ marches: LISTE_ADD, mot: 'marche' }),
+        {
+            id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 12, min: 3, max: 20,
+            aide: 'Il ne vaut que pour les dénominateurs de départ. Dès qu\'ils diffèrent, on '
+                + 'ne dépasse pas dix : l\'aide est la table de Pythagore, et elle s\'arrête là.'
+        }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const d = rng.int(3, params.maxDen || 12);
-        const n1 = rng.int(1, d - 1);
-        const n2 = rng.int(1, d - 1);
-        const sum = n1 + n2;
+        // UNE SÉANCE ENREGISTRÉE AVANT CE JOUR RESTE AU MÊME DÉNOMINATEUR.
+        //
+        // Elle n'a pas de clef « marches » — le réglage n'existait pas —, et
+        // `marchesCochees` rend alors TOUTES les marches. Une heure préparée
+        // pour des additions de huitièmes se mettrait à poser des PPCM, dans le
+        // dos du professeur et au milieu de son heure.
+        //
+        // C'est la question que `marchesCochees` traite avec son `ancien` chez
+        // les autres : « que valait ce réglage avant les cases ? ». Ici la
+        // réponse ne se déduit d'aucun ancien réglage — il n'y avait PAS de
+        // progression —, elle se dit en clair : avant, cet exercice ne faisait
+        // que le même dénominateur. Le `default` du schéma ne peut pas le dire :
+        // il ne sert qu'à remplir le panneau, et le panneau doit montrer les
+        // quatre marches.
+        const avecDefaut = Array.isArray(params.marches) && params.marches.length
+            ? params : { ...params, marches: ['meme'] };
+        const marche = marcheAuRang(
+            ctx.index ?? 0, marchesCochees(avecDefaut, LISTE_ADD),
+            totalDe(ctx, avecDefaut), avecDefaut, PAR_MARCHE_ADD);
+        const plafond = Math.max(3, Math.min(Number(params.maxDen) || 12, marche === 'meme' ? 20 : 10));
+
+        // ON VÉRIFIE LA PROPRIÉTÉ AU LIEU DE L'ESPÉRER : `tirerDenominateurs`
+        // garantit la marche, la boucle garantit que le commun reste lisible.
+        let d1 = 4, d2 = 4;
+        for (let essai = 0; essai < 80; essai++) {
+            [d1, d2] = tirerDenominateurs(rng, marche, plafond);
+            if (marche === 'meme' || ppcm(d1, d2) <= COMMUN_MAX) break;
+        }
+        const commun = ppcm(d1, d2);
+        const k1 = commun / d1, k2 = commun / d2;
+
+        // LES DEUX FRACTIONS DE DÉPART SONT IRRÉDUCTIBLES, et ce n'est pas une
+        // affaire de goût. Posée « 3/6 + 4/10 », la question a DEUX réponses
+        // justes : l'élève qui simplifie d'abord calcule 1/2 + 2/5 et trouve
+        // 9/10, celui qui ne simplifie pas trouve 27/30 — la même valeur, pas la
+        // même écriture, et 9/10 n'est pas sur les boutons. Le premier a eu tout
+        // bon et le logiciel lui dirait qu'il a eu faux. Le mot exact est déjà
+        // dans `core/fractionsEquivalentes.js`, pour l'écrit posé : « l'élève
+        // simplifie d'abord, trouve un autre dénominateur commun que celui qu'on
+        // attend, et IL A RAISON ».
+        let n1 = 1, n2 = 1;
+        for (let essai = 0; essai < 120; essai++) {
+            n1 = rng.int(1, d1 - 1);
+            n2 = rng.int(1, d2 - 1);
+            if (estIrreductible(n1, d1) && estIrreductible(n2, d2)) break;
+            // Repli : 1/d est irréductible quel que soit d.
+            n1 = 1; n2 = 1;
+        }
+        const somme = n1 * k1 + n2 * k2;
+        const meme = d1 === d2;
 
         // LA VALEUR JUGE, L'ÉTIQUETTE SE LIT : « 7|5 » part au pavé, et le
         // bouton montre la fraction dessinée. La bonne proposition doit porter
         // EXACTEMENT ce que le pavé enverra, sinon la cliquer serait compté faux.
         const label = (n, dd) => casesFraction(n, dd);
+        const prop = (n, dd, why) => ({ value: label(n, dd), label: fracHtml(n, dd), why });
+
+        // LES LEURRES, DU PLUS INSTRUCTIF AU PLUS ANODIN. Au dénominateur
+        // commun, le premier est L'ERREUR DU CHAPITRE — additionner les
+        // dénominateurs entre eux — et c'est elle qu'il faut nommer. Les doublons
+        // se neutralisent tout seuls (`finalizeChoices` déduplique par valeur) :
+        // à la marche « multiple », le commun EST le plus grand des deux, donc le
+        // deuxième leurre et le troisième se confondent, et c'est le mieux
+        // expliqué des deux qui reste.
+        const leurres = meme ? [
+            prop(somme, d1 * 2, 'On n\'additionne pas les dénominateurs : ils restent identiques.'),
+            prop(n1 * n2, d1, 'Tu as multiplié les numérateurs au lieu de les additionner.'),
+            prop(somme - 1, d1, 'Erreur de calcul sur les numérateurs.')
+        ] : [
+            prop(n1 + n2, d1 + d2,
+                'On n\'additionne pas les dénominateurs entre eux : on ne peut additionner '
+                + 'que des parts de MÊME taille.'),
+            prop(n1 + n2, commun,
+                `Le dénominateur commun est bon, mais les numérateurs se convertissent aussi : `
+                + `le MÊME facteur en haut et en bas (×${k1} et ×${k2}).`),
+            prop(n1 + n2, Math.max(d1, d2),
+                'Prendre le plus grand des deux dénominateurs ne suffit pas : il faut encore '
+                + 'convertir les deux fractions.'),
+            prop(somme - 1, commun, 'La méthode est bonne, le calcul des numérateurs non.')
+        ];
+
         let extra = 1;
         const choices = finalizeChoices(rng, [
-            { value: label(sum, d), label: fracHtml(sum, d), correct: true },
-            {
-                value: label(sum, d * 2), label: fracHtml(sum, d * 2),
-                why: 'On n\'additionne pas les dénominateurs : ils restent identiques.'
-            },
-            {
-                value: label(n1 * n2, d), label: fracHtml(n1 * n2, d),
-                why: 'Tu as multiplié les numérateurs au lieu de les additionner.'
-            },
-            {
-                value: label(sum - 1, d), label: fracHtml(sum - 1, d),
-                why: 'Erreur de calcul sur les numérateurs.'
-            }
+            { value: label(somme, commun), label: fracHtml(somme, commun), correct: true },
+            ...leurres
         ], {
             count: 4,
             // Les bouche-trous disent leur valeur ET leur étiquette : sans
             // cela, « 9|5 » s'afficherait tel quel sur un bouton.
             filler: () => {
-                const n = sum + (++extra);
-                return { value: label(n, d), label: fracHtml(n, d) };
+                const n = somme + (++extra);
+                return { value: label(n, commun), label: fracHtml(n, commun) };
             }
         });
 
-        const g = gcd(sum, d);
-        const simplified = g > 1 && sum % d !== 0 ? ` (soit ${sum / g}/${d / g} simplifié)` : '';
+        const g = gcd(somme, commun);
+        const simplifie = g > 1 && somme % commun !== 0
+            ? ` (soit ${somme / g}/${commun / g} simplifié)` : '';
 
         return makeItem({
-            seed: rng.seed, generatorId: 'frac.add', skillId: 'num.frac.add-meme-denom',
+            seed: rng.seed, generatorId: 'frac.add',
+            skillId: meme ? 'num.frac.add-meme-denom' : 'num.frac.denominateur-commun',
             answerKind: 'choice',
             prompt: {
-                text: `${n1}/${d} + ${n2}/${d} = ?`,
+                text: `${n1}/${d1} + ${n2}/${d2} = ?`,
                 html: `<div class="compare-line">
-                        ${fracHtml(n1, d)} <span class="compare-op">+</span> ${fracHtml(n2, d)}
+                        ${fracHtml(n1, d1)} <span class="compare-op">+</span> ${fracHtml(n2, d2)}
                         <span class="compare-op">=</span> ${fenteAvecTrous()}
                        </div>`
             },
-            answer: label(sum, d),
+            answer: label(somme, commun),
+            // LE CORRIGÉ DU PROFESSEUR N'ÉCRIT PAS « 14|30 ».
+            //
+            // Le tuyau est la notation du PAVÉ : deux cases, un numérateur et un
+            // dénominateur. À l'écran personne ne le voit — l'élève tape dans
+            // deux cases, ou clique une fraction dessinée. Sur le papier,
+            // `formaterReponse` prend la VALEUR de la bonne proposition dès que
+            // son libellé contient du HTML (et une fraction en contient
+            // toujours), et le tuyau partait tel quel sur la page des solutions.
+            // Mesuré : cinq exercices écrits le faisaient, dont celui-ci.
+            //
+            // `reponsePapier` est le mécanisme prévu pour cela — « le générateur
+            // écrit ce qu'il faut lire, quand ce n'est pas la même chose ».
+            reponsePapier: `${somme}/${commun}`,
             choices,
-            hints: [
+            hints: meme ? [
                 'Les dénominateurs sont identiques : on additionne seulement les numérateurs.',
-                `${n1} + ${n2} = ${sum}, sur ${d}.`
+                `${n1} + ${n2} = ${somme}, sur ${d1}.`
+            ] : [
+                `Cherche un nombre à la fois dans la table de ${d1} et dans celle de ${d2}.`,
+                `Les parts n'ont pas la même taille : écris les deux fractions en ${commun}èmes.`,
+                `${n1}/${d1} = ${n1 * k1}/${commun} et ${n2}/${d2} = ${n2 * k2}/${commun}.`
             ],
-            explanation: `${n1}/${d} + ${n2}/${d} = ${sum}/${d}${simplified}. Le dénominateur ne change pas.`,
-            difficulty: 3,
-            meta: { n1, n2, d, sum }
+            explanation: meme
+                ? `${n1}/${d1} + ${n2}/${d1} = ${somme}/${d1}${simplifie}. Le dénominateur ne change pas.`
+                : `${n1}/${d1} + ${n2}/${d2} = ${n1 * k1}/${commun} + ${n2 * k2}/${commun} = `
+                    + `${somme}/${commun}${simplifie}.`,
+            difficulty: 2 + Math.max(0, LISTE_ADD.findIndex(m => m.id === marche)),
+            meta: { n1, n2, d1, d2, commun, somme, marche }
         });
     }
 };

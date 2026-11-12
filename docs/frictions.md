@@ -7081,3 +7081,66 @@ plus d'un.**
   `box-sizing`, et refuser `container-type: size` — qui exige une taille que
   le cadre ne tient que de son parent. Il lit déjà le CSS pour les jetons de
   couleur.
+
+---
+
+**`ficheEnPdf.mjs` perdait les réglages pour les fiches de QUESTIONS** — 12 novembre
+
+- *Ce que je voulais faire* : regarder la feuille imprimée d'« Addition de
+  Fractions » à la marche du PPCM, avant de la livrer à Rémy.
+- *Ce qui a coûté* : une feuille rendue, regardée, trouvée **correcte** — et
+  entièrement fausse pour ce que je mesurais : vingt additions au même
+  dénominateur alors que j'avais demandé le PPCM. L'outil ouvre la fiche à
+  grille avec `{ ...e.params, ...reglages }` et la liste de questions avec
+  `{ ...e.params }` seul : les réglages tombaient en route, sans un mot. Dix
+  minutes à chercher le défaut dans le générateur, qui n'en avait pas. Et
+  `--reglage=marches=ppcm` passait de toute façon une CHAÎNE là où
+  `marchesCochees` attend un TABLEAU — elle retombe alors sur « toutes les
+  marches », silencieusement.
+- *Combien de fois* : | (mais onze exercices du dépôt ont un réglage à marches,
+  et ce sont justement ceux dont on veut regarder une marche précise)
+- *Ce qui manque* : **fait le jour même.** `--reglage=marches=[ppcm,premiers]`
+  écrit une liste, et la branche « liste de questions » reçoit les réglages
+  comme l'autre. Reste la famille de la friction : une mesure qui répond
+  quelque chose plutôt que de dire qu'elle n'a pas mesuré ce qu'on demandait.
+
+---
+
+**`etatDuJeu` ne voit pas les activités à items** — 12 novembre
+
+- *Ce que je voulais faire* : cliquer la BONNE bulle dans une sonde, pour
+  vérifier qu'une bonne réponse est comptée juste.
+- *Ce qui a coûté* : `s.etatDuJeu(['item.answer'])` rend `null`. Il lit
+  `handle.jeu`, l'instance d'un jeu bâti sur `BaseGame` — et les activités à
+  items (bulles, taupes, pavé, cartes) n'en ont pas : leur `handle` ne porte
+  que `showNext`, `showPrevious` et `destroy`. Trois sondes jetables pour
+  comprendre que l'outil d'hier ne couvrait que la moitié du catalogue, et
+  qu'il ne le disait pas. Les deux solutions restantes étaient pires : refaire
+  le calcul dans la sonde — donc mesurer la sonde —, ou lire une classe que le
+  logiciel ne pose qu'APRÈS le clic.
+- *Combien de fois* : || (deuxième jour de suite où il faut lire l'état d'un
+  exercice depuis une sonde)
+- *Ce qui manque* : **fait le jour même.** `s.questionCourante()` lit
+  `runner.session.item` et rend l'énoncé, la réponse attendue, les valeurs des
+  propositions et la compétence. C'est la famille la plus nombreuse du
+  catalogue : tout exercice qui pose des questions passe par là.
+
+---
+
+**Un corrigé imprimé ne se voit qu'en le regardant** — 12 novembre
+
+- *Ce que je voulais faire* : vérifier la page des solutions d'un exercice
+  qu'on venait d'élargir.
+- *Ce qui a coûté* : elle annonçait « 1. 14|30   2. 32|30 » — la notation à
+  deux cases du pavé, imprimée telle quelle sur la feuille du professeur.
+  Mesuré ensuite sur tout le catalogue : **six exercices** le faisaient, dont
+  la réciproque de Pythagore avec « 225|225 ». Aucun test, aucune sonde, aucun
+  harnais ne regardait cela — le défaut ne se voit QUE sur une image de PDF,
+  donc une fois sur cent.
+- *Combien de fois* : | (première fois notée, mais `reponsePapier` est
+  facultatif et son absence ne lève rien : le septième s'écrira sans y penser)
+- *Ce qui manque* : **fait le jour même.** `tests/corrigeSansTuyau.test.mjs`
+  refait le raisonnement de `ui/printQuestions.js` sans navigateur, sur tout le
+  catalogue, en deux cents millisecondes. Sa première version répondait
+  « aucun » alors que six exercices étaient fautifs : `makeItem` pose
+  `reponsePapier: ''`, et `??` laisse passer la chaîne vide.

@@ -342,6 +342,11 @@ export function question(etape, rng) {
             papier: `${a}/${b} ÷ ${c}/${d} =\n…/… × …/… =\n…/…`,
             htmlReponse: ligneDeDivision(a, b, c, d),
             kind: 'numeric', reponse: `${a}|${b}|${d}|${c}|${n}|${m}`,
+            // SIX CASES, DONC TROIS FRACTIONS — et sur le corrigé elles se lisent
+            // comme l'élève les écrit : la première recopiée, l'inverse de la
+            // seconde, le résultat. Sans cette ligne, la page des solutions
+            // annonçait « 3/4|7|4|21|16 ».
+            reponsePapier: `${a}/${b} × ${d}/${c} = ${n}/${m}`,
             pourquoi: `On garde la première et l'on multiplie par l'INVERSE de la seconde : `
                 + `${a}/${b} ÷ ${c}/${d} = ${a}/${b} × ${d}/${c} = ${n}/${m}.`,
             aide: 'ON NE RETOURNE QUE LA SECONDE. La première se RECOPIE telle quelle — la '
@@ -437,6 +442,10 @@ export const divisionFractionsGenerator = {
                     + '</div>'
             },
             answer: q.reponse,
+            // Pas de tuyau sur le corrigé — voir `frac.add` dans `fractions.js`.
+            // Deux cases, c'est une fraction ; au-delà, la question dit elle-même
+            // ce qu'il faut lire — six cases sont TROIS fractions, pas une.
+            reponsePapier: q.reponsePapier || String(q.reponse).replace('|', '/'),
             choices: choix,
             hints: [
                 q.aide,

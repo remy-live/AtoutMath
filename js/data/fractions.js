@@ -60,15 +60,54 @@ export const fractionsExercises = [
             + "le réglage « Dénominateurs » fait passer aux dénominateurs différents."
     },
     {
+        // RÉMY : « il n'y a pas d'addition de fraction avec dénominateur
+        // multiple ou ppcm non ? »
+        //
+        // IL Y EN AVAIT, mais pas ici — et c'est ICI qu'il a cherché. Mesuré
+        // dans la fenêtre de choix : en tapant « addition de fractions », cet
+        // exercice est le PREMIER résultat, et il ne faisait que le même
+        // dénominateur, pour toujours, sans réglage. « Poser une Addition de
+        // Fractions », qui va jusqu'au PPCM, arrivait en troisième — et son
+        // titre s'entend comme une variante de présentation, pas comme un champ
+        // plus large.
+        //
+        // IL FAIT MAINTENANT LES QUATRE MARCHES, et le défaut reste le même
+        // dénominateur : une séance préparée avant ce jour ne doit pas se mettre
+        // à poser des PPCM dans le dos du professeur.
         id: 'frac-add',
         cree: '2026-07-28',
-        consignePapier: "Additionne les fractions.",
+        revisions: [{
+            date: '2026-11-12',
+            quoi: 'Les quatre marches du dénominateur commun — même dénominateur, un '
+                + 'dénominateur multiple de l\'autre, premiers entre eux, il faut chercher le '
+                + 'PPCM — au lieu du seul même dénominateur. C\'est le pendant RAPIDE de '
+                + '« Poser une Addition de Fractions » : on ne convertit pas ligne par ligne, '
+                + 'on reconnaît parmi quatre propositions, dont les leurres portent les '
+                + 'erreurs du chapitre.'
+        }],
+        // VRAIE AUX QUATRE MARCHES. Une consigne papier est une chaîne, pas
+        // une fonction : elle ne sait pas quelle marche a été cochée. « Quand il
+        // le faut » ne ment donc ni sur 3/8 + 2/8, ni sur 1/4 + 5/6.
+        consignePapier: "Additionne les fractions. Mets-les au même dénominateur quand il le faut.",
         colonnesPapier: 4,
         title: 'Addition de Fractions',
         generatorId: 'frac.add', activityId: 'bubbles',
-        params: { maxDen: 12 },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS], niveaux: [TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Additionne les deux fractions et choisis le bon résultat."
+        params: { marches: ['meme'], maxDen: 12 },
+        // SANS CES MOTS, L'EXERCICE NE SE TROUVE PAS PAR CE QU'IL SAIT FAIRE.
+        // Mesuré : en cherchant « ppcm », il n'était pas dans les résultats,
+        // alors que la recherche lit les mots clefs.
+        motsClefs: ['PPCM', 'dénominateur commun', 'dénominateur multiple',
+            'même dénominateur', 'additionner', 'mettre au même dénominateur'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Additionne les deux fractions et choisis le bon résultat. Le réglage "
+            + "« Les marches travaillées » décide de la difficulté du dénominateur : identique "
+            + "des deux côtés, multiple de l'autre (6 est déjà dans la table de 3), premiers "
+            + "entre eux (3 et 4 se rencontrent à 12), ou à chercher (4 et 6 se rencontrent à "
+            + "12, pas à 24). Le résultat est donné brut, sans simplification — comme dans "
+            + "« Poser une Addition de Fractions », où le même calcul s'écrit ligne par ligne."
     },
     {
         // MULTIPLIER DES FRACTIONS — Rémy : « on fait les multiplications de

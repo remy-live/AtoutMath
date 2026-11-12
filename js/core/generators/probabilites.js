@@ -545,6 +545,10 @@ export const probabilitesGenerator = {
                     + '</div>'
             },
             answer: q.reponse,
+            // Pas de tuyau sur le corrigé — voir `frac.add` dans `fractions.js`.
+            // Une probabilité se répond en deux cases ; sur la feuille c'est une
+            // fraction, et « 7|9 » n'en est pas une.
+            reponsePapier: String(q.reponse).replace('|', '/'),
             choices: choix,
             hints: [
                 q.aide,

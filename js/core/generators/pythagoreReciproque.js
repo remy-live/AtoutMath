@@ -236,6 +236,15 @@ export function question(etape, rng) {
             htmlReponse: `<span class="pp-ecriture">${t.plusLong.nom}² = ${trou(0)}`
                 + ` &nbsp;et&nbsp; ${t.autres[0].nom}² + ${t.autres[1].nom}² = ${trou(1)}</span>`,
             kind: 'numeric', reponse: `${t.carreLong}|${t.sommeCarres}`, cases: 2,
+            // LE CORRIGÉ DU PROFESSEUR N'ÉCRIT PAS « 225|225 ».
+            //
+            // Ici le tuyau ne sépare pas un numérateur d'un dénominateur : il
+            // sépare les DEUX nombres qu'on demande de calculer, et sur le
+            // papier ils se lisent avec le même « et » que dans la question.
+            // Voir `frac.add` dans `generators/fractions.js` : la valeur à deux
+            // cases partait telle quelle sur la page des solutions.
+            reponsePapier: `${t.plusLong.nom}² = ${t.carreLong} et ${t.autres[0].nom}² + `
+                + `${t.autres[1].nom}² = ${t.sommeCarres}`,
             pourquoi: `${t.plusLong.nom}² = ${t.plusLong.lg}² = ${t.carreLong}. Et `
                 + `${t.autres[0].nom}² + ${t.autres[1].nom}² = ${t.autres[0].lg}² + `
                 + `${t.autres[1].lg}² = ${t.autres[0].lg * t.autres[0].lg} + `
@@ -397,6 +406,7 @@ export const pythagoreReciproqueGenerator = {
                     + '</div>'
             },
             answer: q.reponse,
+            reponsePapier: q.reponsePapier || '',
             choices: choix,
             hints: [
                 q.aide,

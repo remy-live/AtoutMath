@@ -6487,3 +6487,58 @@ la règle de celle du cercle — des teintes distinctes **y compris en
 luminosité**, donc séparables pour qui ne distingue pas le rouge du vert — et
 elles sont éclaircies en thème sombre. La couleur ne porte jamais
 l'information toute seule : la carte reliée garde sa bordure verte.
+
+---
+
+## « Il n'y a pas d'addition de fraction avec dénominateur multiple ou PPCM ? » — 12 novembre
+
+> « il n'y a pas d'addition de fraction avec dénominateur multiple ou ppcm
+> non ? »
+
+**Il y en a** — « Poser une Addition de Fractions », et ses quatre marches sont
+exactement celles-là : même dénominateur, un dénominateur multiple de l'autre,
+dénominateurs premiers entre eux, il faut chercher le PPCM. Mesuré en
+générant quatre questions par marche : `3/5 + 3/10`, `1/4 + 2/7`,
+`3/4 + 1/6` — et le PPCM n'est tiré que s'il est STRICTEMENT plus petit que le
+produit, sinon la marche ne demanderait rien de plus que la précédente.
+
+**MAIS LA QUESTION EST LÉGITIME, ET LA FAUTE EST AU TITRE.** Mesuré dans la
+fenêtre de choix : en tapant « addition de fractions », le PREMIER résultat est
+« **Addition de Fractions** » — et celui-là ne fait QUE le même dénominateur,
+pour toujours, sans réglage. Son générateur s'appelle pourtant « Additionner
+des fractions (même dénominateur) » et sa compétence
+`num.frac.add-meme-denom` : la restriction est écrite partout SAUF à l'endroit
+où le professeur la lit. Celui qui fait tout s'appelle « **Poser** une
+Addition », ce qui s'entend comme une variante de présentation, pas comme un
+champ plus large.
+
+**UN TITRE QUI NE DIT PAS SA RESTRICTION FAIT CROIRE QUE LE LOGICIEL NE SAIT
+PAS FAIRE LE RESTE.** C'est la deuxième fois qu'un nom générique posé sur
+l'exercice le plus étroit coûte une question.
+
+**FAIT** : « Addition de Fractions » fait maintenant **les quatre marches**,
+les mêmes que l'addition posée — même vocabulaire, même progression, pour que
+les deux exercices se suivent. C'est le pendant RAPIDE de l'écrit posé : là on
+convertit ligne par ligne, ici on RECONNAÎT parmi quatre propositions, et les
+leurres portent les erreurs du chapitre. Mesuré sur `3/4 + 9/10` : à côté de
+33/20, on propose 12/14 (on a additionné les dénominateurs), 12/10 (on a pris
+le plus grand sans convertir) et 12/20 (bon dénominateur, numérateurs oubliés).
+
+**LE DÉFAUT RESTE LE MÊME DÉNOMINATEUR**, et c'est voulu : une séance préparée
+avant ce jour n'a pas ce réglage, et elle ne doit pas se mettre à poser des
+PPCM dans le dos du professeur.
+
+**ET UN DÉFAUT TROUVÉ EN ÉCRIVANT CELUI-CI, LE MÊME QU'HIER.** Posée
+« 3/6 + 4/10 », la question a DEUX réponses justes : l'élève qui simplifie
+d'abord calcule 1/2 + 2/5 et trouve 9/10 ; celui qui ne simplifie pas trouve
+27/30. Même valeur, pas la même écriture — et 9/10 n'est sur aucun bouton. Les
+deux fractions de départ sont donc irréductibles, comme l'addition posée le
+faisait déjà : « l'élève simplifie d'abord, trouve un autre dénominateur commun
+que celui qu'on attend, et IL A RAISON ».
+
+**ET LA PAGE DES SOLUTIONS ÉCRIVAIT « 14|30 ».** Vu en regardant la feuille
+imprimée — c'est le seul endroit où cela se voit. Le tuyau est la notation du
+pavé : deux cases, un numérateur et un dénominateur. Mesuré ensuite sur tout le
+catalogue : **six exercices** l'imprimaient sur le corrigé du professeur, dont
+la réciproque de Pythagore avec « 225|225 », qui se lit « AB² = 225 et
+AC² + BC² = 225 ». Tous corrigés, et une épreuve garde les suivants.

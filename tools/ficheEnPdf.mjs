@@ -57,17 +57,32 @@ const ids = args.filter(a => !a.startsWith('--'));
 // `js/data/mesures.js`, imprimer, puis remettre le fichier. Trois gestes et un
 // risque d'oubli, à chaque regard.
 const reglages = {};
+// UN RÉGLAGE EST PARFOIS UNE LISTE, et sans cela on ne peut pas regarder la
+// feuille d'une marche précise.
+//
+// `paramMarches` attend un TABLEAU d'identifiants — onze exercices du dépôt en
+// ont un. `--reglage=marches=ppcm` passait la chaîne « ppcm », que
+// `marchesCochees` ne reconnaît pas comme un tableau : elle retombe alors sur
+// « toutes les marches », et la feuille qu'on regarde n'est pas celle qu'on a
+// demandée — sans un mot pour le dire. On écrit donc la liste entre crochets :
+//
+//     --reglage=marches=[ppcm]          une seule marche
+//     --reglage=marches=[premiers,ppcm] deux
+const valeur = (brut) => (brut === 'true' ? true : brut === 'false' ? false
+    : (brut !== '' && !Number.isNaN(Number(brut)) ? Number(brut) : brut));
 for (const a of args.filter(x => x.startsWith('--reglage='))) {
     const [cle, ...reste] = a.slice('--reglage='.length).split('=');
     if (!cle) continue;
     const brut = reste.join('=');
-    reglages[cle] = brut === 'true' ? true : brut === 'false' ? false
-        : (brut !== '' && !Number.isNaN(Number(brut)) ? Number(brut) : brut);
+    reglages[cle] = /^\[.*\]$/.test(brut)
+        ? brut.slice(1, -1).split(',').map(x => x.trim()).filter(Boolean).map(valeur)
+        : valeur(brut);
 }
 if (!ids.length) {
     console.error('emploi : node tools/ficheEnPdf.mjs <id> [<id>…] [--couleur=nb|gris|couleur|intense]');
     console.error('         [--items=12] [--solutions] [--champs] [--page=1] [--echelle=2] [--sortie=dossier]');
     console.error('         [--tableau=liste|tableau|zebre] [--colonnes=auto|1…6]');
+    console.error('         [--reglage=cle=valeur] [--reglage=marches=[ppcm,premiers]]');
     console.error('         [--orientation=portrait|paysage]');
     process.exit(2);
 }
@@ -157,7 +172,14 @@ for (const id of ids) {
         // manque. Deux fiches de questions mesurées pour rien avant de voir
         // que le défaut était dans la sonde et non dans le logiciel.
         const ps2 = await import('./js/ui/printSheet.js');
-        pq.ouvrirFicheQuestions(e, { ...(e.params || {}) }, ps2.chargerJsPDF,
+        // ET LES RÉGLAGES PASSENT ICI AUSSI. Cette branche-là les perdait en
+        // route : la fiche à GRILLE les recevait, la liste de QUESTIONS non.
+        // L'outil imprimait alors la feuille des réglages du catalogue sans un
+        // mot, et l'on regardait une feuille entière d'additions au même
+        // dénominateur en croyant regarder celle du PPCM. C'est la friction de
+        // `doitExister` sous une autre forme : une mesure qui répond quelque
+        // chose plutôt que de dire qu'elle n'a pas mesuré ce qu'on demandait.
+        pq.ouvrirFicheQuestions(e, { ...(e.params || {}), ...reglages }, ps2.chargerJsPDF,
             { flottant: false, nbItems: n });
         return 'questions';
     }, [id, ITEMS, reglages]);
