@@ -1792,7 +1792,18 @@ export const numerationExercises = [
         cree: '2026-11-12',
         activityId: 'frise-puissances',
         skills: ['num.puissances.dix'],
-        sansRevision: true,
+        // ── ET SUR LE PAPIER ──────────────────────────────────────────
+        //
+        // RÉMY : « Oui fais les deux » — la fraction, et la frise sur papier.
+        //
+        // À L'ÉCRAN ON DÉPOSE, SUR LA FEUILLE ON ÉCRIT : l'élève inscrit la
+        // LETTRE de l'objet dans la case de sa taille. Même travail, geste du
+        // papier. Les dessins restent à l'écran, et c'est dit dans
+        // `generators/echelleFiche.js` : une image tramée sur une photocopie
+        // donne des traits gris et baveux.
+        printable: 'echelleTailles', printGeneratorId: 'num.echelle-fiche',
+        printParams: { monde: 'nous', objets: 5 },
+        consignePapier: 'Écris la lettre de chaque objet dans la case de sa taille.',
         params: { monde: 'nous', objets: 5, carte: 'decimale' },
         paramSchema: [
             {

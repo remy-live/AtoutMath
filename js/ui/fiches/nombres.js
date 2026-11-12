@@ -9,6 +9,9 @@ import {
     echapperSheet, largeurTexte, largeurTrigo, ligneReponsePdf, rangDuBloc,
     unite
 } from './socle.js';
+// `texteRiche` DESSINE CE QUE LA POLICE DU PDF N'A PAS : les exposants, les
+// racines, le « ≈ ». « 10⁻¹² m » s'imprimerait vide sans lui.
+import { texteRiche } from '../ficheRendu.js';
 import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../../core/figures.js';
 import { INGREDIENTS as INGREDIENTS_FICHE } from '../../core/pizza.js';
 import { boiteDessin, cubesAPeindre, facesCube } from '../../core/cubes.js';
@@ -3557,7 +3560,125 @@ function dessinerFractionDecimalePdf(doc, item, slot, solution, champ) {
     }
 }
 
+/* ══ L'ÉCHELLE DES TAILLES, SUR LE PAPIER ═══════════════════════════════════
+
+   RÉMY : « Oui fais les deux » — la fraction, et la frise sur papier.
+
+   À L'ÉCRAN ON DÉPOSE, SUR LE PAPIER ON ÉCRIT. L'élève ne peut pas glisser une
+   carte sur une feuille : il écrit la LETTRE de l'objet dans la case de sa
+   taille. Même travail — lire une écriture décimale, trouver sa puissance de
+   10 — avec le geste que le papier permet.
+
+   PAS DE DESSINS, et c'est une décision : « une image tramée sur une
+   photocopie donne des traits gris et baveux, alors qu'un trait vectoriel sort
+   net à n'importe quelle échelle » (fiches/elementsGeo.js). Porter les vingt et
+   un dessins en vectoriel est un chantier à part ; le nom et la mesure
+   suffisent à faire l'exercice, et ils se photocopient.                     */
+
+/** La géométrie de la frise, en millimètres, dans la boîte du bloc. */
+function geoEchelle(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta || {};
+    const cases = m.cases || [];
+    const liste = m.liste || [];
+    const marge = 2;
+    const x0 = b.x + marge;
+    const large = b.w - marge * 2;
+    // LA LISTE D'ABORD : c'est elle qui a une hauteur incompressible — une
+    // ligne par objet, et une ligne de titre. Ce qui reste va à la frise.
+    const hLigne = 5.2;
+    const hListe = (liste.length + 1) * hLigne + 2;
+    const hFrise = Math.max(cases.length * 7, b.h - marge * 2 - hListe);
+    const hCase = cases.length ? hFrise / cases.length : 0;
+    // Les étiquettes « 10⁻¹² m » sont les plus larges du lot.
+    const wEtiq = Math.min(20, large * 0.33);
+    return {
+        b, m, cases, liste, x0, large, marge, hLigne, hListe, hFrise, hCase, wEtiq,
+        y0: b.y + marge,
+        xTrait: x0 + wEtiq + 1.6,
+        xCase: x0 + wEtiq + 3.2,
+        wCase: large - wEtiq - 3.2,
+        yListe: b.y + marge + hFrise + 2,
+        corps: Math.max(2.4, Math.min(3.4, hCase * 0.42))
+    };
+}
+
+export function echelleTaillesPreviewHtml(item, slot, k, solution) {
+    const g = geoEchelle(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    const abs = (x, y, w, h, style = '') =>
+        `position:absolute; left:${T(x)}px; top:${T(y)}px; width:${T(w)}px; height:${T(h)}px; ${style}`;
+    let html = '';
+    // Le trait de l'échelle : c'est lui qui fait voir que les neuf cases n'en
+    // forment qu'une, chacune dix fois la précédente.
+    html += `<div style="${abs(g.xTrait, g.y0, 0, g.hFrise)} border-left:${T(0.5)}px solid #1a202c"></div>`;
+    g.cases.forEach((c, i) => {
+        const y = g.y0 + i * g.hCase;
+        html += `<div style="${abs(g.x0, y, g.wEtiq, g.hCase)} display:flex; align-items:center;
+            justify-content:flex-end; font-weight:700; font-size:${T(g.corps)}px">${echapperSheet(c.etiquette)}</div>`;
+        html += `<div style="${abs(g.xCase, y + 0.5, g.wCase, g.hCase - 1)}
+            border:${T(0.35)}px solid #8d94a5; border-radius:${T(1.2)}px;
+            display:flex; align-items:center; padding-left:${T(2)}px;
+            font-weight:800; font-size:${T(g.corps * 1.15)}px; color:#2f855a">${
+            solution ? echapperSheet(c.lettre) : ''}</div>`;
+    });
+    html += `<div style="${abs(g.x0, g.yListe, g.large, g.hLigne)}
+        font-weight:700; font-size:${T(g.corps)}px">${echapperSheet(g.m.nomDuMonde || '')}</div>`;
+    g.liste.forEach((l, i) => {
+        html += `<div style="${abs(g.x0, g.yListe + (i + 1) * g.hLigne, g.large, g.hLigne)}
+            font-size:${T(g.corps)}px">${echapperSheet(`${l.lettre}. ${l.nom} ${l.mesure}`)}</div>`;
+    });
+    return html;
+}
+
+export function dessinerEchelleTaillesPdf(doc, item, slot, solution) {
+    const g = geoEchelle(item, slot);
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.line(g.xTrait, g.y0, g.xTrait, g.y0 + g.hFrise);
+    doc.setLineWidth(0.35);
+    g.cases.forEach((c, i) => {
+        const y = g.y0 + i * g.hCase;
+        doc.setTextColor(...ENCRE.trait);
+        doc.setFontSize(g.corps / 0.3528);
+        // `texteRiche` DESSINE LES EXPOSANTS : « 10⁻¹² m » n'a pas de glyphe
+        // dans la police du PDF, et `doc.text` l'imprimerait vide ou faux.
+        texteRiche(doc, c.etiquette, g.x0 + g.wEtiq, y + g.hCase / 2 + g.corps * 0.35,
+            g.corps, { align: 'right' });
+        doc.setDrawColor(141, 148, 165);
+        doc.roundedRect(g.xCase, y + 0.5, g.wCase, g.hCase - 1, 1.2, 1.2, 'S');
+        if (solution && c.lettre) {
+            doc.setTextColor(47, 133, 90);
+            doc.setFontSize(g.corps * 1.2 / 0.3528);
+            doc.text(c.lettre, g.xCase + 2, y + g.hCase / 2 + g.corps * 0.42);
+            doc.setTextColor(...ENCRE.trait);
+        }
+    });
+    doc.setFontSize(g.corps / 0.3528);
+    doc.text(pourPdf(g.m.nomDuMonde || ''), g.x0, g.yListe + g.hLigne * 0.7);
+    g.liste.forEach((l, i) => {
+        texteRiche(doc, `${l.lettre}. ${l.nom} ${l.mesure}`,
+            g.x0, g.yListe + (i + 1) * g.hLigne + g.hLigne * 0.7, g.corps);
+    });
+}
+
 export const RENDUS_NOMBRES = {
+    echelleTailles: {
+        titre: 'L\u2019Échelle des Tailles',
+        consigne: () => 'Écris la LETTRE de chaque objet dans la case de sa taille. '
+            + 'La mesure est donnée en écriture décimale : compte les rangs pour trouver '
+            + 'sa puissance de 10. Toutes les cases ne sont pas occupées.',
+        previewGrille: echelleTaillesPreviewHtml,
+        pdfGrille: dessinerEchelleTaillesPdf,
+        nomBloc: 'Échelle', nomBlocs: 'échelles',
+        // BEAUCOUP PLUS HAUTE QUE LARGE : neuf cases empilées, puis la liste
+        // des objets. C'est la forme d'une échelle, et c'est aussi ce qui la
+        // rend lisible d'un bout à l'autre.
+        proportions: { w: 1, h: 1.75 },
+        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 1 },
+        parLigneDefaut: 1,
+        titreAGauche: true
+    },
     pyramideNombres: {
         titre: 'La Pyramide des nombres',
         consigne: (items) => {

@@ -162,6 +162,7 @@ import { prioritesFicheGenerator } from '../generators/prioritesFiche.js';
 import { prioritesRelatifsGenerator } from '../generators/prioritesRelatifs.js';
 import { poserFicheGenerator } from '../generators/poserFiche.js';
 import { conversionFicheGenerator } from '../generators/conversionFiche.js';
+import { echelleFicheGenerator } from '../generators/echelleFiche.js';
 import { tangramFicheGenerator } from '../generators/tangramFiche.js';
 import { memoryFicheGenerator } from '../generators/memoryFiche.js';
 import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
@@ -258,7 +259,7 @@ import {
     tableurFicheGenerator, chatFicheGenerator,
     echecsFicheGenerator, matFicheGenerator, prioritesFicheGenerator,
     prioritesRelatifsGenerator,
-    poserFicheGenerator, conversionFicheGenerator,
+    poserFicheGenerator, conversionFicheGenerator, echelleFicheGenerator,
     tangramFicheGenerator, memoryFicheGenerator,
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator, hexagrilleFicheGenerator,

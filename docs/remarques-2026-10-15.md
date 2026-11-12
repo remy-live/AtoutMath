@@ -6368,3 +6368,49 @@ GRANDEUR : l'écrire sans le dire était faux. Une épreuve le garde.
 sur écran large — aucune carte ne recopie l'étiquette d'une case, l'erreur
 révèle bien l'écriture décimale (et pas la puissance), la carte reste en main
 après une erreur, et les cinq objets se rangent. Zéro erreur de page.
+
+---
+
+## « fais les deux et améliorer les dessins » — 12 novembre
+
+**LES DESSINS**, sept repris après les avoir regardés sur la planche : la
+bactérie avait deux points qui faisaient des yeux (c'était une tête), le cheveu
+était deux traits au lieu d'une mèche, le bonhomme avait les bras plantés au
+milieu du tronc et finissait sur deux traits en l'air, l'autocar avait deux
+tirets pour fenêtres, « La France » gagne Paris et la Corse — dehors, ce qui
+est exact —, la Terre de « Terre–Lune » est devenue un vrai globe, et la fourmi
+est passée DE PROFIL. Vue de dessus, ses six pattes partaient en étoile et
+faisaient un paquet de traits : deux versions regardées, deux fois illisible.
+De profil on n'en voit que trois, et les antennes ne s'y confondent plus.
+
+**LA FRACTION**, à l'écran : un réglage « Écrire les divisions », qui empile le
+numérateur sur le dénominateur avec une barre HORIZONTALE. La division reste le
+défaut, parce que c'est l'écriture du signe qu'on travaille d'abord — « le
+signe ÷ porte sur les nombres, pas sur les exposants ». Et l'énoncé LU ne
+change pas : `prompt` garde le ÷, parce qu'il est lu à voix haute, journalisé
+et comparé dans les épreuves ; seul l'affichage empile.
+
+**CE QUI N'A PAS ÉTÉ FAIT, ET POURQUOI** : la fraction sur le PAPIER. Tout le
+mécanisme existe — `RE_FRACTION`, `porteUneFraction`, l'interligne qui passe à
+1,85 quand une fraction est là, et un dessin PDF dans `fiches/theoremes.js`.
+Mais sa notation n'accepte que des étages de CHIFFRES, et « 10⁸ » en porte un
+en exposant. L'élargir touche un motif partagé par toutes les fiches, avec
+trois lecteurs à synchroniser — « en ajouter une sans faire le tour des trois,
+c'est composer sur une largeur et imprimer sur une autre ». C'est un chantier à
+part, pas une ligne à glisser au passage.
+
+**LA FRISE SUR PAPIER**, elle, est faite. À l'écran on dépose, sur la feuille
+on ÉCRIT : l'élève inscrit la LETTRE de l'objet dans la case de sa taille.
+Neuf cases, cinq objets, quatre cases vides — la même règle qu'à l'écran, pour
+la même raison. Deux échelles par page.
+
+**PAS DE DESSINS SUR LA FEUILLE**, et c'est une décision du dépôt qu'on
+applique, pas un oubli : « une image tramée sur une photocopie donne des traits
+gris et baveux, alors qu'un trait vectoriel sort net à n'importe quelle
+échelle ». Porter les vingt et un dessins en vectoriel est un chantier à part ;
+le nom et la mesure suffisent à faire l'exercice, et ils se photocopient.
+
+**MESURÉ** : la feuille et sa page de solutions REGARDÉES — chaque lettre est
+dans sa case, les étiquettes portent leurs exposants (la police du PDF n'en a
+pas : c'est `texteRiche` qui les dessine), et la liste des objets ne donne que
+des écritures décimales, jamais la puissance que la case demande.

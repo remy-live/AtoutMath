@@ -65,6 +65,26 @@ const EXPOSANTS = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5
 // La règle vit maintenant dans `signeMoins.js`, où TOUT LE MONDE passe.
 const nbT = relatif;
 
+/**
+ * UN QUOTIENT, EN DIVISION OU EN FRACTION.
+ *
+ * RÉMY : « pour les divisions de puissances, tu le présentes en division ou
+ * est en fraction » — puis, devant le choix : « fais les deux ».
+ *
+ * LA BARRE EST HORIZONTALE, ET CE N'EST PAS NÉGOCIABLE. Le dépôt l'a déjà
+ * tranché à la marche de l'inverse : « sur le papier, une fraction s'écrit EN
+ * COLONNE — numérateur sur dénominateur —, et la barre oblique est une
+ * commodité d'écran ; une feuille qui l'imprime enseigne le contraire du
+ * cours ». On ne va donc pas écrire « 10⁸ / 10³ » : on empile.
+ */
+export function quotientHtml(a, b, enFraction) {
+    if (!enFraction) {
+        return `<b>${puissanceTexte(a)} \u00F7 ${puissanceTexte(b)}</b>`;
+    }
+    return `<span class="qp-frac"><span class="qp-num">${puissanceTexte(a)}</span>`
+        + `<span class="qp-den">${puissanceTexte(b)}</span></span>`;
+}
+
 /** « 2⁵ », « a³ » — une puissance de base quelconque, avec un vrai exposant. */
 export const puissance = (base, n) =>
     `${base}${String(n).split('').map(c => EXPOSANTS[c]).join('')}`;
@@ -243,14 +263,19 @@ const MARCHES = {
         };
     },
 
-    quotient(rng) {
+    quotient(rng, o = {}) {
         const b = rng.int(2, 6);
         const a = b + rng.int(1, 6);
         const juste = a - b;
         const ecrit = `${puissanceTexte(a)} ÷ ${puissanceTexte(b)}`;
         return {
+            // LE TEXTE GARDE LE « ÷ », l'AFFICHAGE peut prendre la barre.
+            //
+            // `prompt` est lu à voix haute, journalisé, et comparé dans les
+            // épreuves : une fraction dessinée n'y aurait pas de sens. C'est
+            // `html` qui montre, et lui seul qui change.
             prompt: `${ecrit} = ?`,
-            html: `<div class="game-question"><b>${ecrit}</b> = ?</div>`,
+            html: `<div class="game-question">${quotientHtml(a, b, o.fraction)} = ?</div>`,
             papier: `${ecrit} = `,
             answer: puissanceTexte(juste),
             choices: [
@@ -326,13 +351,13 @@ const MARCHES = {
         };
     },
 
-    quotientRelatif(rng) {
+    quotientRelatif(rng, o = {}) {
         const a = expo(rng, -12, -4), b = expo(rng, -6, -2);
         const juste = a - b;
         const ecrit = `${puissanceTexte(a)} ÷ ${puissanceTexte(b)}`;
         return {
             prompt: `${ecrit} = ?`,
-            html: `<div class="game-question"><b>${ecrit}</b> = ?</div>`,
+            html: `<div class="game-question">${quotientHtml(a, b, o.fraction)} = ?</div>`,
             papier: `${ecrit} = `,
             answer: puissanceTexte(juste),
             choices: [
@@ -534,6 +559,27 @@ export const puissancesCalculGenerator = {
             marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
         }),
         {
+            // RÉMY : « pour les divisions de puissances, tu le présentes en
+            // division ou est en fraction » — puis « fais les deux ».
+            //
+            // LA DIVISION RESTE LE DÉFAUT, parce que c'est l'écriture du
+            // signe qu'on travaille d'abord : « le signe ÷ porte sur les
+            // nombres, pas sur les exposants ». La fraction est l'écriture
+            // des manuels et des contrôles, et c'est elle qu'on prend quand
+            // on veut que l'exercice ressemble au devoir.
+            //
+            // L'ÉNONCÉ LU ET ENREGISTRÉ NE CHANGE PAS : il garde « ÷ ». Seul
+            // l'affichage empile.
+            id: 'quotient', type: 'select', label: 'Écrire les divisions',
+            default: 'division', papier: false,
+            aide: 'La barre de fraction est horizontale, numérateur sur dénominateur — '
+                + 'jamais une barre oblique.',
+            options: [
+                { value: 'division', label: '10\u2078 \u00F7 10\u00B3' },
+                { value: 'fraction', label: 'En fraction, l\u2019un sur l\u2019autre' }
+            ]
+        },
+        {
             id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
             papier: false,
             aide: 'La question s\'écrit ligne à ligne : la règle sur les exposants, puis '
@@ -548,7 +594,11 @@ export const puissancesCalculGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const marche = marchePour(params, ctx.index, totalDe(ctx, params));
-        const q = MARCHES[marche](rng);
+        // LES RÉGLAGES QUI CHANGENT L'ÉCRITURE VONT À LA MARCHE. Jusqu'ici
+        // elle ne recevait que le tirage ; le quotient a maintenant besoin de
+        // savoir s'il s'écrit avec « ÷ » ou sous forme de fraction. Les huit
+        // autres marches ignorent ce second argument, et c'est très bien.
+        const q = MARCHES[marche](rng, { fraction: params.quotient === 'fraction' });
         const pasAPas = String(params.etapes || 'non') === 'oui';
         // LES LIGNES DE LA CHAÎNE. La marche « (−3)² et −3² » n'en a pas — un
         // seul geste —, ni « il faut la MÊME base » quand la réponse est « on

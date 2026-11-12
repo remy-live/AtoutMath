@@ -17780,6 +17780,27 @@ body.visite-en-cours .modal-overlay > * {
     animation: pa-flotte var(--pa-duree, 3.4s) ease-in-out infinite alternate;
     animation-delay: var(--pa-retard, 0s);
 }
+/* ══ UN QUOTIENT ÉCRIT EN FRACTION ══════════════════════════════════════════
+
+   RÉMY : « pour les divisions de puissances, tu le présentes en division ou
+   est en fraction » — puis « fais les deux ».
+
+   LA BARRE EST HORIZONTALE, et c'est une décision déjà prise dans le dépôt :
+   « une fraction s'écrit EN COLONNE — numérateur sur dénominateur —, et la
+   barre oblique est une commodité d'écran ; une feuille qui l'imprime
+   enseigne le contraire du cours ». D'où la colonne, et le trait par une
+   bordure haute du dénominateur.
+
+   `vertical-align: middle` aligne la BARRE sur la ligne du « = », et non le
+   bas de la fraction : sans lui, l'égalité flotte sous le dénominateur. */
+.qp-frac {
+    display: inline-flex; flex-direction: column; align-items: center;
+    vertical-align: middle; font-weight: 800; line-height: 1.18;
+    margin: 0 .15em;
+}
+.qp-num { padding: 0 .4em .06em; }
+.qp-den { padding: .06em .4em 0; border-top: .09em solid currentColor; }
+
 /* ══ RANGER SUR L'ÉCHELLE DES TAILLES ═══════════════════════════════════════
 
    RÉMY : « j'aime le fait de ranger sur une échelle de taille. On donne

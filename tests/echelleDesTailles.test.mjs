@@ -34,6 +34,7 @@ import {
 } from '../js/core/echelleDesTailles.js';
 import { makeRng } from '../js/core/ids.js';
 import { getExerciseById } from '../js/data/catalog.js';
+import { echelleFicheGenerator } from '../js/core/generators/echelleFiche.js';
 
 test('DEUX OBJETS NE PARTAGENT JAMAIS UNE CASE', () => {
     const vus = new Map();
@@ -169,6 +170,68 @@ test('L\u2019ÉCRITURE DÉCIMALE EST CELLE D\u2019UNE PUISSANCE PURE', () => {
     assert.ok(!ecritureDecimale(13).includes(' '), 'pas une seule espace ordinaire');
 });
 
+
+test('LA FEUILLE DONNE UNE LETTRE PAR OBJET, ET SA CASE', () => {
+    // RÉMY : « Oui fais les deux » — la fraction, et la frise sur papier.
+    //
+    // À L'ÉCRAN ON DÉPOSE, SUR LA FEUILLE ON ÉCRIT : l'élève inscrit la LETTRE
+    // de l'objet dans la case de sa taille. Ce que cette épreuve garde, c'est
+    // la correspondance — une lettre posée dans la mauvaise case rendrait la
+    // page des solutions FAUSSE, et personne ne s'en apercevrait avant d'avoir
+    // corrigé une copie.
+    for (const monde of NOMS_MONDES) {
+        const q = echelleFicheGenerator.generate(
+            { monde, objets: 5 }, { rng: makeRng(`fiche-${monde}`) });
+        const { cases, liste } = q.meta;
+        assert.equal(cases.length, 9);
+        assert.equal(liste.length, 5);
+        // DES LETTRES TOUTES DIFFÉRENTES : deux « A » et la feuille ne se
+        // corrige plus.
+        const lettres = liste.map(l => l.lettre);
+        assert.equal(new Set(lettres).size, 5, `lettres en double : ${lettres.join('')}`);
+        for (const l of liste) {
+            const c = cases.find(x => x.exposant === l.exposant);
+            assert.ok(c, `« ${l.nom} » n\u2019a pas de case`);
+            assert.equal(c.lettre, l.lettre,
+                `« ${l.nom} » devrait être en ${c.etiquette}`);
+            // LA MESURE EST EN ÉCRITURE DÉCIMALE, jamais en puissance : sinon
+            // la feuille donnerait la réponse que la case demande.
+            assert.match(l.mesure, /^\u2248 [0-9\u00a0,]+ m$/);
+            assert.ok(!/[\u2070-\u2079\u00b2\u00b3\u00b9\u207b]/.test(l.mesure),
+                `« ${l.mesure} » ne doit pas porter d\u2019exposant`);
+        }
+        // ET LES CASES SANS OBJET RESTENT VIDES — ce sont elles qui empêchent
+        // de placer les dernières lettres par élimination.
+        const prises = cases.filter(c => c.lettre).length;
+        assert.equal(prises, 5);
+        assert.equal(cases.length - prises, 4, 'quatre cases doivent rester vides');
+    }
+});
+
+test('ET LA LISTE N\u2019EST PAS DÉJÀ RANGÉE PAR TAILLE', () => {
+    // Une liste triée se recopierait de haut en bas sans rien lire. Le tirage
+    // peut tomber juste par hasard — on regarde donc plusieurs feuilles.
+    let melangees = 0;
+    for (let i = 0; i < 12; i++) {
+        const q = echelleFicheGenerator.generate(
+            { monde: 'nous', objets: 5 }, { rng: makeRng(`melange-${i}`) });
+        const e = q.meta.liste.map(l => l.exposant);
+        const croissant = e.every((v, j) => j === 0 || v > e[j - 1]);
+        const decroissant = e.every((v, j) => j === 0 || v < e[j - 1]);
+        if (!croissant && !decroissant) melangees++;
+    }
+    assert.ok(melangees >= 10,
+        `${melangees} feuilles sur 12 sont mélangées : la liste est rangée trop souvent`);
+});
+
+test('LA FICHE EST DÉCLARÉE SUR L\u2019EXERCICE', () => {
+    const exo = getExerciseById('num-echelle-tailles');
+    assert.equal(exo.printable, 'echelleTailles');
+    assert.equal(exo.printGeneratorId, 'num.echelle-fiche');
+    // SANS `printParams`, la feuille sortirait sur le monde par défaut quel
+    // que soit celui que le professeur a réglé à l'écran.
+    assert.ok(exo.printParams && MONDES[exo.printParams.monde]);
+});
 
 test('L’EXERCICE EST AU CATALOGUE, AVEC SES TROIS MONDES', () => {
     const exo = getExerciseById('num-echelle-tailles');

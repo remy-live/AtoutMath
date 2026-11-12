@@ -27,7 +27,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getExerciseById } from '../js/data/catalog.js';
-import { ORDRE, ETAPES, puissancesCalculGenerator } from '../js/core/generators/puissancesCalcul.js';
+import { ORDRE, ETAPES, puissancesCalculGenerator, quotientHtml } from '../js/core/generators/puissancesCalcul.js';
 import { makeRng } from '../js/core/ids.js';
 import { CODES_EXERCICES } from '../js/data/codesExercices.js';
 
@@ -108,6 +108,43 @@ test('CHAQUE EXPOSANT NÉGATIF PREND SES PARENTHÈSES', () => {
             `le modèle « ${q.meta.etapes[0].modele} » doit ouvrir sur deux parenthèses`);
     }
     assert.ok(vus > 0, 'aucune ligne du milieu tirée : l\u2019épreuve ne mesure rien');
+});
+
+test('UN QUOTIENT S\u2019ÉCRIT EN DIVISION OU EN FRACTION', () => {
+    // RÉMY : « pour les divisions de puissances, tu le présentes en division
+    // ou est en fraction » — puis « fais les deux ».
+    assert.match(quotientHtml(8, 3, false), /\u00F7/);
+    assert.ok(!/qp-frac/.test(quotientHtml(8, 3, false)));
+
+    const f = quotientHtml(8, 3, true);
+    assert.match(f, /qp-frac/);
+    assert.match(f, /qp-num/);
+    assert.match(f, /qp-den/);
+    // JAMAIS DE BARRE OBLIQUE, et c'est une décision déjà prise dans le
+    // dépôt : « une fraction s'écrit EN COLONNE — numérateur sur
+    // dénominateur —, et la barre oblique est une commodité d'écran ; une
+    // feuille qui l'imprime enseigne le contraire du cours ».
+    assert.ok(!f.includes('/10'), `« ${f} » : pas de barre oblique`);
+    assert.ok(!f.includes('\u00F7'), 'la fraction remplace le signe, elle ne s\u2019y ajoute pas');
+});
+
+test('MAIS L\u2019ÉNONCÉ LU NE CHANGE PAS', () => {
+    // `prompt` est lu à voix haute, journalisé et comparé : une fraction
+    // dessinée n'y aurait pas de sens. Seul l'AFFICHAGE empile.
+    for (const q of ['division', 'fraction']) {
+        const item = puissancesCalculGenerator.generate(
+            { marches: ['quotient'], quotient: q },
+            { rng: makeRng(`lu-${q}`), index: 0 });
+        const texte = item.prompt.text || item.prompt;
+        assert.match(String(texte), /\u00F7/,
+            `en « ${q} », le texte de l\u2019énoncé doit garder le signe \u00F7`);
+    }
+    // ET LE RÉGLAGE EXISTE, décoché par défaut : le signe ÷ est l'écriture
+    // qu'on travaille d'abord — « il porte sur les nombres, pas sur les
+    // exposants ».
+    const r = puissancesCalculGenerator.params.find(p => p.id === 'quotient');
+    assert.ok(r, 'le réglage « Écrire les divisions » manque');
+    assert.equal(r.default, 'division');
 });
 
 test('LE MODE RIGOLO EST UN RÉGLAGE, ET IL EST DÉCOCHÉ AU DÉPART', () => {

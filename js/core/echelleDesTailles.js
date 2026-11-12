@@ -68,30 +68,57 @@ const D = {
         + '<path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4M5.2 5.2l2.8 2.8M16 16l2.8 2.8M18.8 5.2L16 8M8 16l-2.8 2.8"/>'
         + '<circle cx="12" cy="2.5" r="1"/><circle cx="12" cy="21.5" r="1"/>'
         + '<circle cx="2.5" cy="12" r="1"/><circle cx="21.5" cy="12" r="1"/>',
-    bacterie: '<rect x="5" y="8" width="14" height="8" rx="4"/>'
-        + '<path d="M5 10c-2-1-2.5-3-2-4.5M5 14c-2 1-2.5 3-2 4.5M19 10c2-1 2.5-3 2-4.5"/>'
-        + '<circle cx="10" cy="12" r="1"/><circle cx="14" cy="12" r="1"/>',
+    // LES DEUX POINTS DU MILIEU FAISAIENT DES YEUX : regardée sur la planche,
+    // la bactérie était une tête. Le matériel interne est maintenant un trait
+    // ondulé — ce qu'est un nucléoïde —, et les flagelles sont du même côté,
+    // comme chez une vraie bactérie flagellée.
+    bacterie: '<rect x="4.5" y="8.4" width="13" height="7.2" rx="3.6"/>'
+        + '<path d="M7.4 12.6c1.1-1.4 2.2 1.4 3.3 0s2.2 1.4 3.3 0"/>'
+        + '<path d="M17.5 10.4c2.2-.7 3.3-2.1 3.5-3.8"/>'
+        + '<path d="M17.5 13.6c2.3.6 3.5 2.2 3.7 4"/>'
+        + '<path d="M17.5 12h4.2"/>',
     globule: '<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="3.2"/>',
-    cheveu: '<path d="M5 22c0-9 2-13 5.5-15.5S17 3 19 2"/><path d="M8 22c0-7.5 2-11 5-13"/>',
+    // UNE MÈCHE, ET NON DEUX TRAITS. Trois courbes de longueurs différentes
+    // qui partent du même côté : c'est ce qui fait lire « cheveu » plutôt que
+    // « courbe ».
+    cheveu: '<path d="M4 22c0-9.4 2.2-14 6-16.6S17.6 2.4 20.2 1.4"/>'
+        + '<path d="M7.6 22c0-7.8 2-11.4 5.3-13.7"/>'
+        + '<path d="M11.2 22c0-5.6 1.4-8.6 3.7-10.4"/>',
     sable: '<path d="M6 17l3.2-5.2L12.4 17z"/><path d="M12.8 18.5l2.4-3.8 2.4 3.8z"/>'
         + '<path d="M3 19.5l1.8-2.8 1.8 2.8z"/>',
     // LA FOURMI A ÉTÉ REDESSINÉE APRÈS L'AVOIR REGARDÉE : trois cercles et
     // quatre traits en diagonale donnaient un nœud papillon, pas un insecte.
     // Trois segments ALLONGÉS, trois pattes de chaque côté partant du thorax,
     // deux antennes à l'avant — et cette fois on la reconnaît à 34 pixels.
-    fourmi: '<ellipse cx="4.6" cy="12" rx="2.4" ry="2"/>'
-        + '<ellipse cx="10.4" cy="12" rx="2" ry="1.7"/>'
-        + '<ellipse cx="17.6" cy="12" rx="3.6" ry="3"/>'
-        + '<path d="M9.6 10.5L7.6 6.4M10.6 10.3V5.8M11.6 10.5l2.2-4"/>'
-        + '<path d="M9.6 13.5L7.6 17.6M10.6 13.7V18.2M11.6 13.5l2.2 4"/>'
-        + '<path d="M3.2 10.4L1.4 7M3.2 13.6L1.4 17"/>',
+    // PATTES RACCOURCIES, SEGMENTS RESSERRÉS : la première version avait des
+    // pattes aussi longues que le corps, et l'insecte disparaissait sous ses
+    // traits. Six pattes sur le thorax, deux antennes sur la tête.
+    // DE PROFIL, ET TROIS PATTES SEULEMENT. Vue de dessus, les six pattes
+    // partaient en étoile autour du thorax et faisaient un paquet de traits :
+    // deux versions regardées sur la planche, deux fois illisible. De profil
+    // on ne voit que les trois pattes du côté visible, et les antennes ne se
+    // confondent plus avec elles — c'est ainsi qu'on dessine un insecte.
+    fourmi: '<ellipse cx="5" cy="10.6" rx="2.4" ry="2"/>'
+        + '<ellipse cx="10.4" cy="11.6" rx="2.2" ry="1.9"/>'
+        + '<ellipse cx="17.4" cy="11" rx="3.8" ry="3.2"/>'
+        + '<path d="M9 13.2L7.4 18.4M10.6 13.4v5M12.2 13.2L14 18.4"/>'
+        + '<path d="M3.8 8.9L2.2 5.4M5.6 8.6L5.4 4.8"/>',
     main: '<path d="M8 21v-9M8 12V5.2a1.5 1.5 0 0 1 3 0V11"/>'
         + '<path d="M11 11V4.2a1.5 1.5 0 0 1 3 0V11"/>'
         + '<path d="M14 11V5.6a1.5 1.5 0 0 1 3 0V13c0 4.8-2.8 8-6 8H9.4c-1.8 0-2.8-1.6-3.6-3.4L4 13.6"/>',
-    homme: '<circle cx="12" cy="4" r="2.4"/><path d="M12 6.6V15M12 15l-3 7M12 15l3 7M6.5 10.5L12 11.6l5.5-1.1"/>',
-    bus: '<rect x="3" y="6" width="18" height="9" rx="1.5"/>'
-        + '<path d="M3 11.5h18M7 9h3M14 9h3"/>'
-        + '<circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
+    // DES BRAS QUI PARTENT DES ÉPAULES, ET DES PIEDS. Le bonhomme-bâton
+    // d'avant avait les bras plantés au milieu du tronc et finissait sur deux
+    // traits en l'air : à 34 pixels, il ressemblait à une étoile.
+    homme: '<circle cx="12" cy="4.2" r="2.6"/>'
+        + '<path d="M12 6.8v7.4"/>'
+        + '<path d="M12 8.6L7.8 11.4M12 8.6l4.2 2.8"/>'
+        + '<path d="M12 14.2l-2.7 7.1M12 14.2l2.7 7.1"/>'
+        + '<path d="M9.3 21.3H7.6M14.7 21.3h1.7"/>',
+    // DE VRAIES FENÊTRES, en trois carreaux : deux tirets ne disaient rien.
+    bus: '<rect x="2.5" y="5.6" width="19" height="9.4" rx="1.6"/>'
+        + '<path d="M2.5 11.4h19"/>'
+        + '<path d="M5.4 7.4h3.4v3.2H5.4zM10.3 7.4h3.4v3.2h-3.4zM15.2 7.4h3.4v3.2h-3.4z"/>'
+        + '<circle cx="7" cy="17.2" r="2"/><circle cx="17" cy="17.2" r="2"/>',
     terrain: '<rect x="2" y="5" width="20" height="14" rx="1"/>'
         + '<path d="M12 5v14"/><circle cx="12" cy="12" r="2.8"/>'
         + '<path d="M2 9h3v6H2M22 9h-3v6h3"/>',
@@ -103,8 +130,11 @@ const D = {
     // L'HEXAGONE, ET NON UNE CARTE PLIÉE. Le premier dessin montrait une
     // carte routière — juste pour « une carte », trompeur sous le mot
     // « La France ». Un élève de quatrième appelle son pays l'Hexagone.
-    pays: '<path d="M12 2.2l8.4 4.9v9.8L12 21.8l-8.4-4.9V7.1z"/>'
-        + '<circle cx="13" cy="9.5" r="1.1" fill="currentColor" stroke="none"/>',
+    // L'HEXAGONE, PARIS, ET LA CORSE. L'île est volontairement DEHORS : c'est
+    // exact, et c'est ce qui fait reconnaître la carte plutôt qu'un hexagone.
+    pays: '<path d="M12 2.4l8 4.7v9.4L12 21.2l-8-4.7V7.1z"/>'
+        + '<circle cx="12.6" cy="9" r="1.1" fill="currentColor" stroke="none"/>'
+        + '<ellipse cx="20.8" cy="18.6" rx="1.3" ry="2" transform="rotate(-18 20.8 18.6)"/>',
     terre: '<circle cx="12" cy="12" r="9"/>'
         + '<path d="M3 12h18"/><path d="M12 3a13 13 0 0 1 0 18"/><path d="M12 3a13 13 0 0 0 0 18"/>'
         + '<path d="M4.8 7h14.4M4.8 17h14.4"/>',
@@ -113,10 +143,14 @@ const D = {
     // lisaient comme une orbite, et « la distance Terre-Lune » devenait « la
     // Lune ». Les deux cartes de distance partagent donc le même motif —
     // deux astres, et l'écart marqué entre eux.
+    // LA TERRE EST UN GLOBE, pas une planète barrée : méridien et équateur,
+    // comme sur la carte « La Terre ». Et la Lune a son cratère.
     lune: '<circle cx="5.4" cy="12" r="4.2"/>'
-        + '<path d="M2 10h6.8M2 14h6.8"/>'
-        + '<circle cx="20.4" cy="12" r="1.7"/>'
-        + '<path d="M11.4 12h6.2M12.8 10.4L11.2 12l1.6 1.6M16.2 10.4L17.8 12l-1.6 1.6"/>',
+        + '<path d="M1.2 12h8.4"/>'
+        + '<path d="M5.4 7.8a6.4 6.4 0 0 1 0 8.4M5.4 7.8a6.4 6.4 0 0 0 0 8.4"/>'
+        + '<circle cx="20.6" cy="12" r="1.8"/>'
+        + '<circle cx="20.2" cy="11.4" r=".55" fill="currentColor" stroke="none"/>'
+        + '<path d="M11.8 12h5.8M13 10.4L11.4 12l1.6 1.6M16.4 10.4L18 12l-1.6 1.6"/>',
     soleil: '<circle cx="12" cy="12" r="5"/>'
         + '<path d="M12 1.2v3M12 19.8v3M1.2 12h3M19.8 12h3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M19.6 4.4l-2.1 2.1M6.5 17.5l-2.1 2.1"/>',
     // MÊME MOTIF QUE LA DISTANCE TERRE-LUNE, avec le Soleil à gauche : deux
