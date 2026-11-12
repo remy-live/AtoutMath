@@ -1750,6 +1750,22 @@ export const numerationExercises = [
                 aide: 'Les cartes dérivent lentement et les traits les suivent. Quand tout est '
                     + 'relié, l’écran se pose : le tableau fini se relit tranquillement.',
                 default: false
+            },
+            {
+                // RÉMY : « j'aimerai des cases qui bougent plus vite et
+                // partout (on peut régler la vitesse) ».
+                //
+                // LA COURSE AUSSI CHANGE AVEC LA VITESSE, et c'est ce qui fait
+                // le « partout » : une carte rapide qui ne bouge que de six
+                // pixels frétille sur place. Lent 14 px, normal 20, rapide 26.
+                id: 'vitesse', type: 'select', label: 'À quelle vitesse',
+                aide: 'Sans effet si le mode rigolo est décoché.',
+                options: [
+                    { value: 'lent', label: 'Doucement' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'rapide', label: 'Vite — il faut viser' }
+                ],
+                default: 'normal'
             }
         ],
         motsClefs: ['relier', 'associer', 'paires', 'puissances de 10', 'exposant',

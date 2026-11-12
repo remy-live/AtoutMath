@@ -17773,9 +17773,53 @@ body.visite-en-cours .modal-overlay > * {
    doigt fait défiler la page et le trait n'existe jamais. */
 .pa-carte { touch-action: none; }
 @keyframes pa-flotte {
-    from { transform: translate(-6px, -4px) rotate(-1.1deg); }
-    to   { transform: translate(6px, 4px) rotate(1.1deg); }
+    from { transform: translate(calc(var(--pa-ax, 6px) * -1), calc(var(--pa-ay, 4px) * -1))
+                      rotate(calc(var(--pa-tour, 1.1deg) * -1)); }
+    to   { transform: translate(var(--pa-ax, 6px), var(--pa-ay, 4px))
+                      rotate(var(--pa-tour, 1.1deg)); }
 }
+
+/* ── LES TRAITS, UNE COULEUR PAR PAIRE ──────────────────────────────────────
+
+   RÉMY : « ça relie dans des couleurs différentes pour aider ». Huit traits
+   verts qui se croisent sur le même tableau ne se suivent plus de l'œil.
+
+   LA PALETTE SUIT LA MÊME RÈGLE QUE CELLE DU CERCLE (core/cercleFigure.js) :
+   des teintes qui restent distinctes Y COMPRIS EN LUMINOSITÉ, donc encore
+   séparables pour qui ne distingue pas le rouge du vert — et la couleur ne
+   porte jamais l'information toute seule, puisque la carte reliée garde sa
+   bordure verte et devient inerte.
+
+   ET ELLES CHANGENT EN THÈME SOMBRE. Rémy, capture d'iPhone en nuit : « il
+   faut faire attention aux contrastes selon les modes ». Les mêmes teintes,
+   éclaircies, pour qu'un trait se voie sur le bleu nuit du plateau. */
+.pa-trait--juste { stroke: var(--pa-couleur, var(--success)); }
+.pa-trait--c0 { --pa-couleur: #1f77b4; }
+.pa-trait--c1 { --pa-couleur: #d62728; }
+.pa-trait--c2 { --pa-couleur: #2ca02c; }
+.pa-trait--c3 { --pa-couleur: #9467bd; }
+.pa-trait--c4 { --pa-couleur: #e07b00; }
+.pa-trait--c5 { --pa-couleur: #17a2b8; }
+.pa-trait--c6 { --pa-couleur: #c2185b; }
+.pa-trait--c7 { --pa-couleur: #6d8f00; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .pa-trait--c0 { --pa-couleur: #6cb6e8; }
+    :root:not([data-theme="light"]) .pa-trait--c1 { --pa-couleur: #ff7b7b; }
+    :root:not([data-theme="light"]) .pa-trait--c2 { --pa-couleur: #6ad46a; }
+    :root:not([data-theme="light"]) .pa-trait--c3 { --pa-couleur: #c4a2e8; }
+    :root:not([data-theme="light"]) .pa-trait--c4 { --pa-couleur: #ffad4d; }
+    :root:not([data-theme="light"]) .pa-trait--c5 { --pa-couleur: #5fd3e3; }
+    :root:not([data-theme="light"]) .pa-trait--c6 { --pa-couleur: #ff86b4; }
+    :root:not([data-theme="light"]) .pa-trait--c7 { --pa-couleur: #bcd94a; }
+}
+:root[data-theme="dark"] .pa-trait--c0 { --pa-couleur: #6cb6e8; }
+:root[data-theme="dark"] .pa-trait--c1 { --pa-couleur: #ff7b7b; }
+:root[data-theme="dark"] .pa-trait--c2 { --pa-couleur: #6ad46a; }
+:root[data-theme="dark"] .pa-trait--c3 { --pa-couleur: #c4a2e8; }
+:root[data-theme="dark"] .pa-trait--c4 { --pa-couleur: #ffad4d; }
+:root[data-theme="dark"] .pa-trait--c5 { --pa-couleur: #5fd3e3; }
+:root[data-theme="dark"] .pa-trait--c6 { --pa-couleur: #ff86b4; }
+:root[data-theme="dark"] .pa-trait--c7 { --pa-couleur: #bcd94a; }
 .pa-bougent .pa-carte {
     animation: pa-flotte var(--pa-duree, 3.4s) ease-in-out infinite alternate;
     animation-delay: var(--pa-retard, 0s);

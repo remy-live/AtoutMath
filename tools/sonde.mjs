@@ -180,6 +180,51 @@ export async function ouvrirSonde(o = {}) {
     const sonde = {
         page, ctx, nav, port, info, doigt, erreurs, fenetresNatives,
 
+        /**
+         * L'ÉTAT DU JEU EN COURS — ce qui ne se lit pas dans le DOM.
+         *
+         * FRICTION PAYÉE LE 12 NOVEMBRE : le geste à deux touches du jeu de
+         * reliage ne marchait plus après un trait lâché dans le vide, et tout
+         * se jouait sur UN CHAMP de l'instance — un verrou resté armé. Rien
+         * dans le DOM ne le montrait : les cartes avaient l'air normales,
+         * aucune erreur de page, le clic ne faisait simplement rien. Il a
+         * fallu quatre sondes pour isoler le scénario, puis ajouter
+         * `window.__dbg = …` à la main dans le source, mesurer, et retirer la
+         * ligne.
+         *
+         * LE RUNNER GARDE DÉJÀ L'INSTANCE (`handle.jeu`) : il ne manquait
+         * qu'un chemin pour y aller.
+         *
+         * ON NE REND QUE DU SIMPLE — nombres, chaînes, booléens, et la TAILLE
+         * des Set, Map et tableaux. Rendre l'objet entier le ferait traverser
+         * la frontière du navigateur, où il perdrait ses méthodes et gagnerait
+         * des cycles : une sonde qui plante en lisant l'état ne mesure plus
+         * rien.
+         *
+         * Les chemins pointés marchent : `etatDuJeu(['etat.c', 'etat.r'])`.
+         *
+         * @param {string[]} [champs] ceux qu'on veut ; sinon tous les simples.
+         */
+        async etatDuJeu(champs) {
+            return page.evaluate((cles) => {
+                const r = window.__sondeRunner;
+                const j = r && r.handle && r.handle.jeu;
+                if (!j) return null;
+                const aller = (o, chemin) => chemin.split('.')
+                    .reduce((x, c) => (x === null || x === undefined ? x : x[c]), o);
+                const simple = (v) => (
+                    v === null || ['number', 'string', 'boolean'].includes(typeof v) ? v
+                        : (v instanceof Set || v instanceof Map) ? v.size
+                            : Array.isArray(v) ? v.length : undefined);
+                const out = {};
+                for (const c of (cles && cles.length ? cles : Object.keys(j))) {
+                    const v = simple(aller(j, c));
+                    if (v !== undefined) out[c] = v;
+                }
+                return out;
+            }, champs || null);
+        },
+
         /** S'identifie comme le professeur, PUIS RECHARGE. */
         async identifier(email, mdp) {
             const dit = await page.evaluate(async ([e, m]) => {

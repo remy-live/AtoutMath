@@ -7055,6 +7055,10 @@ plus d'un.**
   champs simples de l'instance (nombres, chaînes, booléens, tailles des Set et
   des Map). Le Runner a déjà l'objet en main ; il ne manque qu'une référence
   et un filtre. On passerait de quatre sondes à une.
+- **FAIT le 12 novembre** : `s.etatDuJeu(['etat.c', 'etat.r'])`. Le Runner
+  gardait déjà l'instance dans `handle.jeu` ; il ne manquait que le chemin.
+  Employé le jour même pour mesurer la latence du clavier de Boulder Dash —
+  156 ms avant, 26 après — ce qu'aucune lecture du DOM n'aurait donné.
 
 **Le cadre d'un jeu neuf s'effondre, et rien ne le dit** — 12 novembre
 

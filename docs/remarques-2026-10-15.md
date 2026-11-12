@@ -6414,3 +6414,76 @@ le nom et la mesure suffisent à faire l'exercice, et ils se photocopient.
 dans sa case, les étiquettes portent leurs exposants (la police du PDF n'en a
 pas : c'est `texteRiche` qui les dessine), et la liste des objets ne donne que
 des écritures décimales, jamais la puissance que la case demande.
+
+---
+
+## « j'ai eu tout bon et il dit que j'ai eu faux » — 12 novembre
+
+**C'EST LE DÉFAUT LE PLUS GRAVE DE LA JOURNÉE**, et il était à moi. Photo
+d'écran : après avoir rangé une frise entière sans une erreur, « Tu as 1 bonne
+réponse, il en faut 4 » — et l'exercice en demandait cinq.
+
+**DEUX CAUSES, L'UNE DERRIÈRE L'AUTRE.**
+
+1. `terminerPartie` fait DEUX choses : elle compte une réussite, et elle
+   appelle `runner.partieTerminee`, qui **clôt l'étape**. Elle convient aux
+   jeux qui ont une vraie fin — un échec et mat, un plateau rempli. Pas à ceux
+   dont l'unité se répète. Un exercice réglé sur cinq frises s'arrêtait donc à
+   la première.
+2. Corrigé cela, la SECONDE frise ne comptait toujours pas : `poses` survivait
+   d'une manche à l'autre. À la deuxième, il contenait déjà les cinq objets de
+   la première, si bien que « tout est rangé » n'était plus jamais vrai. La
+   frise se rangeait en entier sans être comptée. Mesuré : « 1 / 5 » après
+   deux frises.
+
+**ET LE MÊME DÉFAUT DORMAIT DANS « RELIER LES PUISSANCES »** — même structure,
+écrite le même jour. Corrigé aussi, avant qu'un élève ne le rencontre.
+
+**Fait** : une manche compte une QUESTION PLEINE et le jeu enchaîne tout seul,
+comme le Pousseur « qui prépare l'entrepôt suivant deux secondes après la
+victoire ». `tools/deuxFrisesDeSuite.mjs` range deux frises et vérifie que le
+bandeau passe à 2 / 5.
+
+---
+
+## Boulder Dash : les touches, et le rocher — 12 novembre
+
+> « je trouve que boulder dash pour les touches c'est laborieux et peu fluide »
+>
+> « et quand un boulet tombe sur nous, il faut qqch de visuel »
+
+**MESURÉ AVANT** (`tools/fluiditeBoulder.mjs`) : entre l'appui sur la flèche et
+le départ du mineur, **jusqu'à 156 millisecondes**, médiane 151. Le monde
+avance par tics de 150 ms, et une touche pressée juste après un tic attendait
+le suivant. C'est exactement la sensation de lourdeur.
+
+**APRÈS** : 26 ms au pire, médiane 15. Une direction qui arrive à l'arrêt arme
+le tic au lieu d'attendre le suivant. Et ce n'est pas une triche : le pas du
+joueur EST le tic du monde, les rochers tombent du même coup. La cadence de
+croisière passe de 150 à 120 ms — 10,4 cases par seconde touche tenue.
+
+**LE ROCHER SE VOIT MAINTENANT** : un éclat jaune sur la case, une secousse de
+toute la grille, et un liseré rouge sur le pourtour. Le voile seul ne suffisait
+pas — vu sur la photo, sur la terre ORANGE de la mine, un rouge à trente pour
+cent passe inaperçu. La secousse se tait pour qui a demandé un écran sans
+mouvement ; l'éclat et le liseré restent.
+
+---
+
+## Le reliage : plus vite, partout, et en couleurs — 12 novembre
+
+> « pour les puissances à relier, j'aimerai des cases qui bougent plus vite et
+> partout (on peut régler la vitesse) et ca relie dans des couleurs
+> différentes pour aider »
+
+**Fait** : trois vitesses — doucement, normal, vite —, et **la course change
+avec elles**. C'est elle qui faisait le « partout » : la première version
+dérivait de six pixels, ce qui se voyait à peine. Mesuré sur une période
+entière : 17 px en lent, 28 en normal, 36 en rapide.
+
+**ET HUIT COULEURS POUR LES TRAITS.** Huit traits verts qui se croisent sur le
+même tableau ne se suivent plus de l'œil ; huit couleurs, si. La palette suit
+la règle de celle du cercle — des teintes distinctes **y compris en
+luminosité**, donc séparables pour qui ne distingue pas le rouge du vert — et
+elles sont éclaircies en thème sombre. La couleur ne porte jamais
+l'information toute seule : la carte reliée garde sa bordure verte.

@@ -38,8 +38,25 @@ export const TUILE = {
 /** Un côté de case, en pixels. Tout le dessin en découle. */
 export const CASE = 36;
 
-/** Un pas du monde, en millisecondes. Le joueur avance d'une case par pas. */
-export const TIC_MS = 150;
+/**
+ * UN PAS DU MONDE, EN MILLISECONDES. Le joueur avance d'une case par pas.
+ *
+ * RÉMY : « je trouve que boulder dash pour les touches c'est laborieux et peu
+ * fluide ».
+ *
+ * MESURÉ À 150 (tools/fluiditeBoulder.mjs) : 6,6 cases par seconde touche
+ * tenue, et jusqu'à 156 ms avant que le premier pas ne parte. Deux causes, et
+ * la seconde pesait le plus lourd — elle est traitée dans `games/boulderDash`,
+ * où une direction qui arrive à l'arrêt arme le tic au lieu d'attendre le
+ * suivant.
+ *
+ * CELLE-CI EST LA CADENCE DE CROISIÈRE, et 120 donne 8,3 cases par seconde :
+ * assez nerveux pour qu'on se sente aux commandes, assez posé pour qu'on voie
+ * tomber le rocher qu'on vient de déchausser — c'est tout le jeu. Descendre
+ * plus bas enlèverait à l'élève le temps de LIRE la grille, qui est ce qu'on
+ * lui demande.
+ */
+export const TIC_MS = 120;
 
 /**
  * LES TABLEAUX.

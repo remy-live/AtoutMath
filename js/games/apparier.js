@@ -37,6 +37,26 @@ import { tirerDesPaires, FAMILLES_PAIRES } from '../core/pairesPuissances.js';
 
 const COMPETENCE = 'num.puissances.dix';
 
+/**
+ * LES TROIS VITESSES DU MODE RIGOLO.
+ *
+ * RÉMY : « j'aimerai des cases qui bougent plus vite et partout (on peut
+ * régler la vitesse) ».
+ *
+ * `course` est l'AMPLITUDE en pixels, et c'est elle qui fait le « partout » :
+ * la première version dérivait de six pixels, ce qui se voyait à peine. Une
+ * vingtaine fait vraiment voyager la carte sans qu'elle sorte de sa colonne —
+ * le `transform` ne pousse pas ses voisines.
+ *
+ * `duree` est la période, et `ecart` ce qu'on ajoute d'une carte à l'autre
+ * pour qu'elles ne battent jamais ensemble.
+ */
+const VITESSES = {
+    lent: { duree: 4.2, ecart: 0.6, course: 14 },
+    normal: { duree: 2.6, ecart: 0.45, course: 20 },
+    rapide: { duree: 1.3, ecart: 0.22, course: 26 }
+};
+
 /** Le temps pendant lequel un trait faux reste visible, en millisecondes. */
 const FAUX_MS = 900;
 
@@ -59,10 +79,22 @@ class Apparier extends BaseGame {
         // bougent ». C'est un réglage, pas le défaut : une carte qui dérive
         // demande de VISER, et ce n'est pas ce qu'on travaille le premier jour.
         this.bougent = this.params.bougent === true;
+        // LA VITESSE DU MODE RIGOLO. Rémy : « j'aimerai des cases qui bougent
+        // plus vite et partout (on peut régler la vitesse) ».
+        this.vitesse = VITESSES[this.params.vitesse] ? this.params.vitesse : 'normal';
         this.rafId = null;
     }
 
     render() {
+        // ON REPART D'UN TABLEAU VIDE. `relies` survivait d'un tableau à
+        // l'autre, et ses clés sont des RANGS (0, 1, 2…) : au second tableau,
+        // il contenait déjà tous ceux du premier. Le compte ne tombait donc
+        // plus jamais juste, et `redessiner` cherchait des cartes disparues.
+        // Même défaut que sur l'Échelle des Tailles, trouvé en la mesurant.
+        this.relies = new Set();
+        this.choisi = null;
+        this.vise = null;
+        this.glisse = null;
         this.paires = tirerDesPaires(
             { famille: this.famille, combien: this.combien }, this.rng);
         // LES DEUX COLONNES SONT MÉLANGÉES SÉPARÉMENT, sans quoi la première
@@ -95,12 +127,23 @@ class Apparier extends BaseGame {
             el.addEventListener('click', () => this.toucher(el));
             el.addEventListener('pointerdown', (e) => this.commencerLeTrait(e, el));
             if (!this.bougent) return;
-            // DES CADENCES DIFFÉRENTES POUR CHAQUE CARTE, sans quoi les douze
-            // battent ensemble : l'écran respire d'un bloc au lieu de frémir.
-            // Le retard est NÉGATIF, donc chacune démarre déjà en cours de
-            // route — sinon elles repartiraient toutes du même point.
-            el.style.setProperty('--pa-duree', `${(2.6 + (i % 5) * 0.45).toFixed(2)}s`);
-            el.style.setProperty('--pa-retard', `-${((i * 0.37) % 2.5).toFixed(2)}s`);
+            // DES CADENCES ET DES COURSES DIFFÉRENTES POUR CHAQUE CARTE.
+            //
+            // Sans cela les douze battent ensemble : l'écran respire d'un bloc
+            // au lieu de frémir. Le retard est NÉGATIF, donc chacune démarre
+            // déjà en cours de route — sinon elles repartiraient toutes du
+            // même point.
+            //
+            // RÉMY : « des cases qui bougent plus vite et PARTOUT ». La course
+            // est passée de six pixels à une vingtaine, et chaque carte a la
+            // sienne : c'est ce « partout » qui demandait de l'amplitude, pas
+            // de la vitesse. Les deux se règlent maintenant.
+            const v = VITESSES[this.vitesse];
+            el.style.setProperty('--pa-duree', `${(v.duree + (i % 5) * v.ecart).toFixed(2)}s`);
+            el.style.setProperty('--pa-retard', `-${((i * 0.37) % v.duree).toFixed(2)}s`);
+            el.style.setProperty('--pa-ax', `${(v.course * (0.7 + (i % 4) * 0.2)).toFixed(1)}px`);
+            el.style.setProperty('--pa-ay', `${(v.course * (0.45 + (i % 3) * 0.22)).toFixed(1)}px`);
+            el.style.setProperty('--pa-tour', `${(1.4 + (i % 3) * 0.9).toFixed(1)}deg`);
         });
         if (this.bougent) {
             this.jeu.classList.add('pa-bougent');
@@ -343,7 +386,17 @@ class Apparier extends BaseGame {
     tracer(a, b, quoi) {
         if (!this.jeu || !this.traits) return null;
         const ligne = this.nouvelleLigne(quoi);
-        if (quoi === 'juste') ligne.dataset.rang = a.dataset.rang;
+        if (quoi === 'juste') {
+            ligne.dataset.rang = a.dataset.rang;
+            // UNE COULEUR PAR PAIRE. Rémy : « ça relie dans des couleurs
+            // différentes pour aider ». Huit traits verts qui se croisent sur
+            // le même tableau ne se suivent plus de l'œil ; huit couleurs, si.
+            //
+            // LA COULEUR NE PORTE PAS L'INFORMATION TOUTE SEULE : la carte
+            // reliée garde sa bordure verte et devient inerte. Un élève qui ne
+            // distingue pas le rouge du vert voit toujours ce qui est fait.
+            ligne.classList.add(`pa-trait--c${Number(a.dataset.rang) % 8}`);
+        }
         this.placerLigne(ligne, a, b);
         this.traits.appendChild(ligne);
         return ligne;
@@ -457,14 +510,36 @@ class Apparier extends BaseGame {
             if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
             this.majTraits();
         }
-        this.dire('Tout est relié. ↺ Autres cartes pour recommencer.', 'pa-dit--ok');
+        this.dire('Tout est relié. Un autre tableau arrive…', 'pa-dit--ok');
         const neuf = this.container.querySelector('[data-neuf]');
         if (neuf) neuf.classList.add('pa-neuf--pret');
-        // LE TABLEAU ENTIER EST L'UNITÉ DE TRAVAIL, et c'est ici qu'on le
-        // compte — une fois, pas six.
-        this.terminerPartie({
-            gagne: true, quoi: 'Relier toutes les écritures', concept: COMPETENCE
+
+        // UN TABLEAU EST UNE QUESTION, PAS LA PARTIE.
+        //
+        // LE MÊME DÉFAUT QUE SUR L'ÉCHELLE DES TAILLES, et Rémy l'a vu là-bas :
+        // « j'ai eu tout bon et il dit que j'ai eu faux ». `terminerPartie` ne
+        // se compte qu'une fois (`_partieClose`) et surtout elle CLÔT
+        // L'ÉTAPE — `partieTerminee` appelle `endStep`. Un exercice réglé sur
+        // quatre tableaux s'arrêtait donc au premier, et annonçait une bonne
+        // réponse sur les trois qu'il exigeait.
+        //
+        // UNE QUESTION PLEINE — sans `partiel`, contrairement aux paires — et
+        // le runner compte les tableaux tout seul.
+        this.onCorrectAnswer(null, COMPETENCE, {
+            questionText: 'Relier toutes les écritures',
+            given: 'tout relié', expected: 'tout relié', points: 25
         });
+
+        // ET ON EN DONNE UN AUTRE. Le délai laisse relire le tableau fini :
+        // « relis le tableau de haut en bas, c'est là que la règle se voit
+        // d'un coup ». Si l'étape est close, `isRunning` le dit.
+        if (this.suite) clearTimeout(this.suite);
+        this.suite = setTimeout(() => {
+            this.suite = null;
+            if (!this.isRunning || !this.container.isConnected) return;
+            this.rng = makeRng(`apparier-${Date.now()}`);
+            this.render();
+        }, 2400);
     }
 
     /* ─────────────────────── LA DÉMONSTRATION ───────────────────────── */
@@ -498,6 +573,7 @@ class Apparier extends BaseGame {
     destroy() {
         this.oublierLaFenetre();
         if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+        if (this.suite) { clearTimeout(this.suite); this.suite = null; }
         this.glisse = null;
         super.destroy();
     }

@@ -27,6 +27,21 @@ import { BaseGame } from '../core/BaseGame.js';
 import {
     CASE, DIRECTIONS, NIVEAUX, TIC_MS, TUILE, avancer, etatInitial, lireNiveau
 } from '../core/boulderDash.js';
+
+/** Combien de temps dure l'impact d'un rocher, en millisecondes. */
+const CHOC_MS = 620;
+
+/**
+ * L'ÉCRAN DOIT-IL RESTER CALME ?
+ *
+ * Un élève que le mouvement gêne n'a pas à choisir entre son confort et le
+ * jeu que son professeur a donné : la secousse disparaît, l'éclat et le voile
+ * restent. On perd le tremblement, jamais l'information.
+ */
+const ecranCalme = () => {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch (e) { return false; }
+};
 import { faireJouer } from '../core/boulderRobot.js';
 
 /** Les couleurs de la mine. */
@@ -142,7 +157,9 @@ class BoulderDash extends BaseGame {
             // appuie sur la seconde flèche sans lâcher la première, et il
             // attend que ce soit la nouvelle qui compte.
             const l = [...this.tenues];
+            const avant = this.dir;
             this.dir = l.length ? DIRECTIONS[l[l.length - 1]] : null;
+            if (!avant && this.dir) this.reveiller();
         };
         this._bas = (e) => {
             const nom = nomDe[e.key];
@@ -168,7 +185,7 @@ class BoulderDash extends BaseGame {
                 e.preventDefault();
                 this.tenues.delete(nom);
                 this.tenues.add(nom);
-                marquer();
+                marquer();          // `marquer` réveille le tic au besoin
                 // LE SENS D'ABORD, LA CAPTURE ENSUITE, et la capture dans un
                 // `try` : `setPointerCapture` jette quand le pointeur n'est
                 // plus actif, et l'exception interromprait le gestionnaire
@@ -185,6 +202,32 @@ class BoulderDash extends BaseGame {
         if (neuf) neuf.onclick = () => this.recommencer();
     }
 
+    /**
+     * LE PREMIER PAS PART TOUT DE SUITE.
+     *
+     * RÉMY : « je trouve que boulder dash pour les touches c'est laborieux et
+     * peu fluide ».
+     *
+     * MESURÉ AVANT (tools/fluiditeBoulder.mjs) : entre l'appui sur la flèche
+     * et le départ du mineur, JUSQU'À 156 MILLISECONDES — médiane 151. Le
+     * monde avance par tics de 150 ms, et une touche pressée juste après un
+     * tic attendait le suivant. C'est exactement la sensation de lourdeur :
+     * on appuie, et il ne se passe rien pendant un sixième de seconde.
+     *
+     * ON ARME DONC LE TIC quand une direction arrive alors qu'on était à
+     * l'arrêt : le prochain affichage — seize millisecondes au plus — fait le
+     * pas.
+     *
+     * ET CE N'EST PAS UNE TRICHE, parce que le pas du joueur EST le tic du
+     * monde : les rochers tombent du même coup. Marteler la flèche ne gagne
+     * pas un tour d'avance sur la pierre qui vous suit ; cela avance tout
+     * ensemble, comme toujours.
+     */
+    reveiller() {
+        if (this.fige || this.isDemo || !this.niveau) return;
+        this.depuisTic = TIC_MS;
+    }
+
     chargerTableau(rang) {
         this.rang = rang % NIVEAUX.length;
         this.niveau = lireNiveau(NIVEAUX[this.rang]);
@@ -194,6 +237,7 @@ class BoulderDash extends BaseGame {
         this.mouvements = [];
         this.avant = { c: this.etat.c, r: this.etat.r };
         this.fige = false;
+        this.choc = null;
         this.dernier = null;
         this.demoCoups = null;
         this.majHud();
@@ -238,6 +282,12 @@ class BoulderDash extends BaseGame {
         if (!this.isRunning || !this.toile || !this.toile.isConnected) return;
         const dt = this.dernier === null ? 16 : Math.min(60, t - this.dernier);
         this.dernier = t;
+        // LE CHOC VIEILLIT MÊME QUAND LE MONDE EST FIGÉ : c'est justement
+        // pendant ce gel qu'on le montre.
+        if (this.choc) {
+            this.choc.t += dt;
+            if (this.choc.t > CHOC_MS) this.choc = null;
+        }
         if (!this.fige && !this.gelDemo) this.horloge(dt);
         this.dessiner();
         this.raf = requestAnimationFrame(this.boucle);
@@ -268,7 +318,18 @@ class BoulderDash extends BaseGame {
                 + `${this.niveau.ilEnFaut}.`);
         }
         if (fait === 'ouverte') this.dire('La porte est ouverte !');
-        if (fait === 'ecrase') this.perdreUneVie('Un rocher t\'est tombé dessus.');
+        if (fait === 'ecrase') {
+            // ON LE VOIT AVANT DE LE LIRE. Rémy : « quand un boulet tombe sur
+            // nous, il faut qqch de visuel ». Le jeu se figeait, écrivait une
+            // phrase sous la grille, et rechargeait une seconde plus tard :
+            // l'élève voyait son mineur disparaître sans savoir pourquoi, et
+            // la phrase arrivait là où il ne regardait pas.
+            //
+            // LA CASE EST PRISE MAINTENANT, avant que `chargerTableau` ne
+            // remette le tableau à zéro : après, elle n'existe plus.
+            this.choc = { c: this.etat.c, r: this.etat.r, t: 0 };
+            this.perdreUneVie('Un rocher t\'est tombé dessus.');
+        }
         if (fait === 'sortie') this.tableauFini();
     }
 
@@ -340,6 +401,21 @@ class BoulderDash extends BaseGame {
         g.fillStyle = ENCRE.fond;
         g.fillRect(0, 0, this.toile.width, this.toile.height);
 
+        // LA SECOUSSE EST POSÉE SUR TOUT LE MONDE, pas sur la seule case :
+        // c'est la grille entière qui encaisse, et c'est ce qui fait sentir
+        // le poids. Elle s'éteint en même temps que le choc.
+        //
+        // PAS DE SECOUSSE POUR QUI A DEMANDÉ UN ÉCRAN QUI NE BOUGE PAS. Le
+        // reste de l'effet — l'éclat, le voile — tient tout seul : on perd le
+        // tremblement, jamais l'information.
+        const secoue = this.choc && !ecranCalme();
+        if (secoue) {
+            const part = 1 - this.choc.t / CHOC_MS;
+            const a = 7 * part * part;
+            g.save();
+            g.translate(Math.sin(this.choc.t / 18) * a, Math.cos(this.choc.t / 13) * a * 0.7);
+        }
+
         // LES PIERRES QUI BOUGENT NE SONT PAS DESSINÉES À LEUR PLACE DE
         // GRILLE : on les efface de la grille et on les repose entre les deux
         // cases. C'est tout ce qui sépare une chute d'une téléportation.
@@ -356,6 +432,53 @@ class BoulderDash extends BaseGame {
             this.dessinerTuile(g, m.t, x, y);
         }
         this.dessinerMineur(g, f);
+        if (secoue) g.restore();
+        if (this.choc) this.dessinerChoc(g);
+    }
+
+    /**
+     * L'IMPACT : un éclat, puis un voile.
+     *
+     * L'ÉCLAT EST DESSINÉ SUR LA CASE DU MINEUR et grandit en s'effaçant —
+     * c'est lui qui dit OÙ. Le voile rouge couvre toute la grille et dit QUOI,
+     * pour celui qui regardait ailleurs. Les deux ensemble tiennent moins
+     * d'une seconde, avant que le tableau ne se recharge.
+     */
+    dessinerChoc(g) {
+        const part = Math.min(1, this.choc.t / CHOC_MS);
+        const cx = (this.choc.c + 0.5) * CASE;
+        const cy = (this.choc.r + 0.5) * CASE;
+        g.save();
+        // LE VOILE D'ABORD, SOUS L'ÉCLAT : un éclat lavé par le voile ne se
+        // verrait plus, et c'est lui qui porte l'endroit.
+        g.fillStyle = `rgba(220, 38, 38, ${(0.30 * (1 - part)).toFixed(3)})`;
+        g.fillRect(0, 0, this.toile.width, this.toile.height);
+        // ET UN LISERÉ, PARCE QUE LE VOILE SEUL NE SUFFIT PAS. Vu sur la
+        // photo : sur la terre ORANGE de la mine, un voile rouge à trente
+        // pour cent passe presque inaperçu. Un cadre épais, lui, se voit sur
+        // n'importe quel fond, et il prend l'œil de celui qui regardait
+        // ailleurs — c'est tout ce qu'on lui demande.
+        g.strokeStyle = `rgba(220, 38, 38, ${(0.85 * (1 - part)).toFixed(3)})`;
+        g.lineWidth = 12;
+        g.strokeRect(6, 6, this.toile.width - 12, this.toile.height - 12);
+        g.globalAlpha = Math.max(0, 1 - part);
+        g.strokeStyle = '#fde047';
+        g.lineWidth = 3.2;
+        g.lineCap = 'round';
+        const rayon = CASE * (0.4 + part * 1.5);
+        for (let i = 0; i < 8; i++) {
+            const an = (i / 8) * Math.PI * 2 + 0.2;
+            g.beginPath();
+            g.moveTo(cx + Math.cos(an) * rayon * 0.42, cy + Math.sin(an) * rayon * 0.42);
+            g.lineTo(cx + Math.cos(an) * rayon, cy + Math.sin(an) * rayon);
+            g.stroke();
+        }
+        g.beginPath();
+        g.arc(cx, cy, rayon * 0.5, 0, Math.PI * 2);
+        g.strokeStyle = '#f87171';
+        g.lineWidth = 2.4;
+        g.stroke();
+        g.restore();
     }
 
     dessinerTuile(g, t, x, y) {

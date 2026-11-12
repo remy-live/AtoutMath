@@ -70,6 +70,16 @@ class FrisePuissances extends BaseGame {
     }
 
     render() {
+        // ON REPART D'UNE FRISE VIDE, et c'est un défaut mesuré, pas une
+        // précaution : `poses` survivait d'une frise à l'autre. À la seconde,
+        // il contenait déjà les cinq objets de la première, si bien que
+        // `poses.size === objets.length` n'était plus jamais vrai — la frise
+        // se rangeait entièrement SANS JAMAIS ÊTRE COMPTÉE. Vu à la sonde :
+        // « 1 / 5 » après deux frises rangées.
+        this.poses = new Set();
+        this.choisi = null;
+        this.vise = null;
+        this.glisse = null;
         this.objets = tirerDesObjets({ monde: this.monde, combien: this.combien }, this.rng);
         this.cases = casesDuMonde(this.monde);
         const m = mondeDe(this.monde);
@@ -324,9 +334,39 @@ class FrisePuissances extends BaseGame {
             + 'chaque case est DIX FOIS la précédente.', 'fr-dit--ok');
         const neuf = this.container.querySelector('[data-neuf]');
         if (neuf) neuf.classList.add('fr-neuf--pret');
-        this.terminerPartie({
-            gagne: true, quoi: 'Ranger l’échelle des tailles', concept: COMPETENCE
+
+        // UNE FRISE EST UNE QUESTION, PAS LA PARTIE.
+        //
+        // RÉMY, sur sa photo d'écran : « j'ai eu tout bon et il dit que j'ai eu
+        // faux » — « Tu as 1 bonne réponse, il en faut 4 », après UNE SEULE
+        // frise rangée sans une erreur.
+        //
+        // C'ÉTAIT `terminerPartie` : elle ne se compte qu'une fois
+        // (`_partieClose`) et surtout elle CLÔT L'ÉTAPE — `partieTerminee`
+        // appelle `endStep`. Un exercice réglé sur cinq frises s'arrêtait donc
+        // à la première, avec une bonne réponse sur les quatre qu'il exigeait.
+        // L'élève avait tout juste et le logiciel lui disait le contraire :
+        // c'est ce qu'un exercice peut faire de pire.
+        //
+        // UNE QUESTION PLEINE, DONC — sans `partiel` —, et le runner compte
+        // jusqu'à cinq tout seul. `terminerPartie` est pour les jeux qui ont
+        // une vraie fin ; une frise n'en est pas une.
+        this.onCorrectAnswer(null, COMPETENCE, {
+            questionText: 'Ranger l’échelle des tailles',
+            given: 'rangée', expected: 'rangée', points: 25
         });
+
+        // ET ON EN PROPOSE UNE AUTRE, comme le font les jeux qui enchaînent —
+        // le Pousseur prépare l'entrepôt suivant deux secondes après la
+        // victoire. Le délai laisse relire le tableau fini : c'est là que la
+        // règle se voit. Si l'étape est close, `isRunning` le dit.
+        if (this.suite) clearTimeout(this.suite);
+        this.suite = setTimeout(() => {
+            this.suite = null;
+            if (!this.isRunning || !this.container.isConnected) return;
+            this.rng = makeRng(`frise-${Date.now()}`);
+            this.render();
+        }, 2400);
     }
 
     /* ─────────────────────── LA DÉMONSTRATION ───────────────────────────── */
@@ -357,6 +397,7 @@ class FrisePuissances extends BaseGame {
 
     destroy() {
         this.oublierLaFenetre();
+        if (this.suite) { clearTimeout(this.suite); this.suite = null; }
         this.glisse = null;
         super.destroy();
     }
