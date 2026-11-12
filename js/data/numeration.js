@@ -1762,6 +1762,73 @@ export const numerationExercises = [
         instruction: "Deux gestes au choix, et ils font la même chose : TOUCHER une écriture à gauche puis le nombre qui lui correspond à droite, ou APPUYER sur l'une et TIRER le trait jusqu'à l'autre avant de relâcher — le trait se dessine pendant qu'on tire, et la carte visée s'allume. Un trait lâché dans le vide n'est pas une erreur : il s'efface, et rien n'est compté. Rémy : « on pourrait aussi relier en appuyant et relachant ». Le réglage « Mode rigolo » fait DÉRIVER les cartes, chacune à sa cadence, et les traits les suivent ; quand tout est relié, l'écran se pose, parce que le tableau fini est justement celui qu'on vient relire.\n\nTouche une écriture à gauche, puis le nombre qui lui correspond à droite : un trait se trace. 10² va avec 100, 10⁻³ avec 0,001. Si tu te trompes, le trait rouge s'efface et la phrase du milieu te dit POURQUOI la paire ne va pas ensemble — c'est elle qu'il faut lire, pas le score. Un exposant POSITIF donne un grand nombre, un 1 suivi d'autant de zéros ; un exposant NÉGATIF donne un nombre tout petit, mais JAMAIS un nombre négatif. Quand tout est relié, relis le tableau de haut en bas : c'est là que la règle se voit d'un coup."
     },
     {
+        // ── RANGER SUR L'ÉCHELLE DES TAILLES ──────────────────────────────
+        //
+        // RÉMY : « j'aime le fait de ranger sur une échelle de taille. On
+        // donne l'objet (en svg) sa valeur sous la forme de 10^... et on
+        // range. »
+        //
+        // LA VALEUR EST DONNÉE, ET C'EST LE MOT QUI DÉCIDE DE TOUT. On ne
+        // demande jamais de deviner la taille d'un virus : ce serait de la
+        // culture générale, et un élève qui ne la sait pas serait arrêté par
+        // autre chose que des mathématiques. La carte porte « Un virus ·
+        // 10⁻⁷ m », et le travail est de LIRE cet exposant et de le placer.
+        //
+        // CE QUE LE RANGEMENT APPREND, ET QU'UN TABLEAU N'APPREND PAS : à la
+        // fin, la frise porte toute la collection, et l'on VOIT ce que trois
+        // exposants d'écart représentent. C'est précisément ce qu'une liste de
+        // nombres ne montre jamais.
+        //
+        // PLUS DE CASES QUE D'OBJETS — neuf contre cinq. Si la frise était
+        // pleine, les deux dernières cartes se placeraient PAR ÉLIMINATION,
+        // sans rien lire.
+        //
+        // PAS DE FICHE PAPIER POUR L'INSTANT, et ce n'est pas un oubli : une
+        // frise imprimée serait belle, mais elle demande de porter les dessins
+        // dans le PDF, ce qui est un vrai chantier de géométrie. À proposer à
+        // Rémy plutôt qu'à bâcler.
+        id: 'num-echelle-tailles',
+        title: 'L\u2019Échelle des Tailles',
+        cree: '2026-11-12',
+        activityId: 'frise-puissances',
+        skills: ['num.puissances.dix'],
+        sansRevision: true,
+        params: { monde: 'nous', objets: 5 },
+        paramSchema: [
+            {
+                id: 'monde', type: 'select', label: 'Quel monde',
+                aide: 'Chaque monde couvre neuf puissances de 10, de la plus grande en haut '
+                    + 'à la plus petite en bas.',
+                options: [
+                    { value: 'nous', label: 'Autour de nous — du cheveu à la ville' },
+                    { value: 'petit', label: 'L\u2019infiniment petit — de l\u2019atome au cheveu' },
+                    { value: 'univers', label: 'L\u2019Univers — de la ville au système solaire' }
+                ],
+                default: 'nous'
+            },
+            {
+                id: 'objets', type: 'select', label: 'Combien d\u2019objets à ranger',
+                aide: 'Jamais plus de six : au-delà, les dernières cartes se placent par '
+                    + 'élimination au lieu de se lire.',
+                options: [
+                    { value: 3, label: '3 objets — pour commencer' },
+                    { value: 5, label: '5 objets' },
+                    { value: 6, label: '6 objets' }
+                ],
+                default: 5
+            }
+        ],
+        motsClefs: ['échelle', 'tailles', 'ordre de grandeur', 'ranger', 'ordonner',
+            'puissances de 10', 'exposant', 'atome', 'virus', 'cheveu', 'Terre', 'Soleil',
+            'système solaire', 'jeu', 'frise', 'comparer'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Prends un objet en bas, puis pose-le sur sa taille. Sa valeur est ÉCRITE sur la carte — « Un virus · 10⁻⁷ m » —, donc il n'y a rien à deviner : tout se joue sur la lecture de l'exposant. 10⁻⁷ est plus PETIT que 10⁻⁶, donc le virus va SOUS la bactérie. Un exposant négatif ne donne jamais un nombre négatif : il donne un nombre tout petit, mais positif. On peut toucher la carte puis sa case, ou prendre la carte et la lâcher sur sa case. Si l'on se trompe, on ne dit pas « c'est faux » : on dit DE COMBIEN — « cent fois trop grand » —, et c'est la leçon du chapitre. Quand tout est rangé, relis l'échelle de haut en bas : chaque case vaut DIX FOIS la précédente, et c'est là qu'on voit ce que trois exposants d'écart représentent vraiment."
+    },
+
+    {
         // ── LE TABLEAU DES PRÉFIXES ───────────────────────────────────────
         //
         // RÉMY : « j'aimerai bien des exercices de conversion avec milli,

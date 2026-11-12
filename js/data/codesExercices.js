@@ -357,6 +357,8 @@ export const CODES_EXERCICES = {
     'num-puissances-relier':      'EP',   // Relier les Puissances de 10
     // eXposants : RG, RE, RS et PG étaient pris.
     'num-puissances-regles':      'XP',   // Les Règles des Puissances
+    // ÉcHelle : EC, ET et EL étaient pris.
+    'num-echelle-tailles':        'EH',   // L'Échelle des Tailles
     'num-prefixes-tableau':       'MK',   // Milli, Kilo, Méga — le tableau
     'num-puissances-produit':     'UP',   // Multiplier par une Puissance de 10
     'calc-plateau-nombres':       'LT',   // Le Plateau des Nombres

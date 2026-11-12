@@ -1298,6 +1298,19 @@ const legacy = [
     // font UNE question. Sinon un exercice de huit questions serait fini en
     // un tableau et demi, et l'élève n'aurait rien relu.
     ['apparier', 'Relier deux colonnes', 'apparier', 'engineApparier', 'tableau', 4],
+    // ── RANGER SUR L'ÉCHELLE DES TAILLES ──────────────────────────────
+    //
+    // RÉMY : « j'aime le fait de ranger sur une échelle de taille. On donne
+    // l'objet (en svg) sa valeur sous la forme de 10^... et on range. »
+    //
+    // LA VALEUR EST DONNÉE, et c'est le mot qui décide de tout : on ne
+    // demande pas de deviner la taille d'un virus — ce serait de la culture
+    // générale —, mais de LIRE un exposant et de le placer.
+    //
+    // UNE FRISE ENTIÈRE COMME UNITÉ, comme au reliage : cinq objets rangés
+    // font UNE question, sinon l'exercice serait fini en une frise et demie.
+    ['frise-puissances', 'Ranger sur l\u2019échelle des tailles', 'frisePuissances',
+     'engineFrisePuissances', 'frise', 5],
     ['plateau-nombres', 'Le Plateau des Nombres (à plusieurs)', 'jeuxDeClasse',
      'engineLePlateauDesNombres', 'partie', 1],
     ['chat-perche', 'Le Chat Perché (consignes)', 'jeuxDeClasse',

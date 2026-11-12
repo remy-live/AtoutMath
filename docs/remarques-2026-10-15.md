@@ -6281,4 +6281,43 @@ Trois choses qui n'étaient pas dans ma proposition : l'objet est **dessiné en
 SVG** (pas une émoticône), sa valeur est **donnée** sous la forme 10^…, et le
 travail est de **ranger**. Ce n'est donc pas « retrouver l'ordre de grandeur
 d'un objet » — ce qui serait de la culture générale —, mais « lire des
-exposants et les ordonner », ce qui est le chapitre. À faire.
+exposants et les ordonner », ce qui est le chapitre. Fait.
+
+**Fait** : `EH` L'Échelle des Tailles. Une colonne de neuf cases, de 10⁴ m en
+haut à 10⁻⁴ m en bas, un trait qui les relie, et cinq objets à poser — chacun
+dessiné en SVG, avec sa valeur ÉCRITE sur la carte. On touche la carte puis sa
+case, ou on la tire jusqu'à elle : le même geste qu'au reliage, demandé le même
+jour.
+
+**NEUF CASES POUR CINQ OBJETS**, et c'est la décision qui compte : si la frise
+était pleine, les deux dernières cartes se placeraient PAR ÉLIMINATION, sans
+lire un seul exposant. Trois mondes au choix — l'infiniment petit, autour de
+nous, l'Univers —, neuf puissances chacun.
+
+**QUAND ON SE TROMPE, ON NE DIT PAS « C'EST FAUX »** : on dit DE COMBIEN.
+« Un autocar mesure 10¹ m. Là, c'est 10¹ fois trop grand. » L'écart des
+exposants EST la leçon du chapitre, et il se lit directement.
+
+**DEUX DÉFAUTS TROUVÉS EN REGARDANT, ET AUCUN NE SE SERAIT VU AUTREMENT** :
+
+1. Le cadre s'effondrait en **une colonne de texte de soixante pixels**, à 390
+   comme à 1280. J'avais écrit `container-type: size` sans largeur : `size`
+   confine les DEUX axes et exige une taille définie. Aucune erreur de page,
+   aucun test rouge — seulement une photo qui montre une bande verticale.
+2. Au doigt, la **cinquième carte sortait de l'écran** : cinq cartes de 74
+   pixels font 410 pixels pour 390 disponibles. Elle restait atteignable en
+   faisant défiler la bande, donc tout « marchait » — mais une carte qu'il faut
+   aller chercher dans un geste que rien n'annonce est une carte qu'on ne voit
+   pas. La réserve s'enroule maintenant sur deux rangées.
+
+**ET QUATRE DESSINS ONT ÉTÉ REFAITS APRÈS LES AVOIR REGARDÉS**, sur une planche
+qui les montre tous les vingt et un d'un coup (`tools/tmp/planche.mjs`) : la
+fourmi était un nœud papillon, « La France » était une carte routière pliée, et
+les deux DISTANCES — Terre-Lune, Terre-Soleil — se lisaient comme des orbites.
+Elles partagent maintenant le même motif : deux astres, et la double flèche de
+l'écart entre eux. Un fragment SVG qui ne trace rien ne lève aucune erreur : il
+ne se voit qu'à l'œil.
+
+**PAS DE FICHE PAPIER**, et c'est dit plutôt que caché : une frise imprimée
+serait belle, mais elle demande de porter les dessins dans le PDF — un vrai
+chantier de géométrie. À proposer à Rémy plutôt qu'à bâcler.

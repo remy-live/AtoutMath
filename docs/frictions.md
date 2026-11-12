@@ -7055,3 +7055,25 @@ plus d'un.**
   champs simples de l'instance (nombres, chaînes, booléens, tailles des Set et
   des Map). Le Runner a déjà l'objet en main ; il ne manque qu'une référence
   et un filtre. On passerait de quatre sondes à une.
+
+**Le cadre d'un jeu neuf s'effondre, et rien ne le dit** — 12 novembre
+
+- *Ce que je voulais faire* : ouvrir un jeu que je venais d'écrire. Le cadre
+  s'affichait en **une colonne de soixante pixels**, à 390 comme à 1280 px :
+  j'avais écrit `container-type: size` sans `width: 100%` ni
+  `box-sizing: border-box`, alors que le jeu voisin — dont j'avais copié la
+  structure, mais pas cette règle-là — a `inline-size` et les deux autres.
+- *Ce qui a coûté* : une sonde complète passée au rouge sur QUATORZE points,
+  dont douze n'étaient que des conséquences — les cartes étaient hors de
+  l'écran, donc rien ne se cliquait, donc rien ne se posait. Dix minutes à
+  lire des échecs qui désignaient le geste alors que le défaut était la
+  largeur. Zéro erreur de page, zéro test rouge : seule la PHOTO le disait.
+- *Combien de fois* : | (première fois notée — mais tout jeu neuf part du
+  cadre d'un jeu existant, et `container-type` a deux valeurs dont une seule
+  convient)
+- *Ce qui manque* : un cinquième piège dans `tools/nouvelExercice.mjs`, qui
+  coûte deux cents millisecondes là où la sonde en coûte quarante mille :
+  pour tout jeu neuf, vérifier que son cadre déclare `width`, `height` et
+  `box-sizing`, et refuser `container-type: size` — qui exige une taille que
+  le cadre ne tient que de son parent. Il lit déjà le CSS pour les jetons de
+  couleur.

@@ -17780,6 +17780,127 @@ body.visite-en-cours .modal-overlay > * {
     animation: pa-flotte var(--pa-duree, 3.4s) ease-in-out infinite alternate;
     animation-delay: var(--pa-retard, 0s);
 }
+/* ══ RANGER SUR L'ÉCHELLE DES TAILLES ═══════════════════════════════════════
+
+   RÉMY : « j'aime le fait de ranger sur une échelle de taille. On donne
+   l'objet (en svg) sa valeur sous la forme de 10^... et on range. »
+
+   UNE COLONNE, ET NON UNE FRISE COUCHÉE. Une échelle de tailles se lit du
+   petit vers le grand, et le haut est le grand : c'est l'image des manuels.
+   Mais la vraie raison est mesurable — sur une tablette tenue droite, la
+   hauteur est la dimension abondante. Neuf cases en colonne tiennent sans
+   faire défiler ; neuf en ligne ne tiennent pas, et une frise qu'il faut
+   faire défiler ne montre plus le rapport entre ses deux bouts, qui est
+   pourtant tout ce qu'on vient voir. */
+.fr-cadre {
+    display: flex; flex-direction: column; gap: 8px;
+    /* LARGEUR ET BOÎTE : sans elles, le cadre s’effondre en une colonne de
+       texte de soixante pixels. Et `inline-size`, non `size` : `size`
+       confine les DEUX axes et exige une taille définie — le cadre ne la
+       tient que de son parent. Vu sur la photo, à 390 comme à 1280 px. */
+    width: 100%; height: 100%; padding: 8px;
+    box-sizing: border-box; container-type: inline-size;
+}
+.fr-haut {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; flex: 0 0 auto;
+}
+.fr-compte { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.fr-compte b { color: var(--primary-texte); font-size: 1.3rem; }
+/* LA PHRASE DU MILIEU DIT CE QU'ON VIENT DE POSER — « Un cheveu : un dixième
+   de millimètre » —, et c'est là que l'ordre de grandeur redevient une
+   taille. Elle a donc la place, et elle ne change pas de ligne. */
+.fr-dit { flex: 1 1 13rem; min-width: 0; text-align: center;
+          color: var(--text-muted); font-size: .92rem; }
+.fr-dit--ok { color: var(--success-texte); font-weight: 700; }
+.fr-dit--ko { color: var(--danger-texte); font-weight: 700; }
+.fr-neuf {
+    font: inherit; font-weight: 700; cursor: pointer; white-space: nowrap;
+    padding: 8px 14px; border-radius: 10px; min-height: 44px;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-main);
+}
+.fr-neuf--pret { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.fr-jeu { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+
+/* L'ÉCHELLE, ET SON TRAIT. Le trait vertical n'est pas décoratif : sans lui,
+   neuf cases empilées sont une liste, et l'on perd ce qui fait l'exercice —
+   que ces cases forment une MÊME échelle, chacune dix fois la précédente. */
+.fr-echelle {
+    position: relative; flex: 1 1 auto; min-height: 0;
+    display: flex; flex-direction: column; gap: 3px; overflow-y: auto;
+}
+.fr-echelle::before {
+    content: ''; position: absolute; top: 6px; bottom: 6px;
+    left: calc(4.6rem + 5px); width: 3px; border-radius: 2px;
+    background: var(--border);
+}
+.fr-case { display: flex; align-items: stretch; gap: 14px; flex: 1 1 0; min-height: 38px; }
+.fr-etiq {
+    flex: 0 0 4.6rem; align-self: center; text-align: right;
+    font-weight: 800; font-variant-numeric: tabular-nums;
+    font-size: clamp(.8rem, 3cqw, 1rem); color: var(--text-main);
+}
+.fr-trou {
+    flex: 1 1 auto; min-width: 0;
+    display: flex; align-items: center; gap: 8px; padding: 3px 10px;
+    border: 2px dashed var(--border); border-radius: 10px;
+    transition: border-color .15s ease, background .15s ease;
+}
+.fr-trou--vise {
+    border-color: var(--primary); border-style: solid;
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.fr-trou--refus {
+    border-color: var(--danger); border-style: solid;
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+/* UNE CASE REMPLIE N'EST PLUS UNE CIBLE : trait plein, et le pointillé
+   d'attente disparaît — ce qui reste à faire se voit d'un coup d'œil. */
+.fr-trou:has(.fr-pose) { border-style: solid; border-color: var(--success); }
+.fr-pose { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.fr-pose-nom { font-weight: 700; font-size: clamp(.75rem, 2.8cqw, .95rem);
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* LA RÉSERVE : une bande en bas. ELLE S’ENROULE, elle ne défile pas.
+
+   MESURÉ AU DOIGT (390 px) : cinq cartes de 74 pixels et leurs écarts font
+   410 pixels, et la CINQUIÈME sortait de l’écran. Elle restait
+   atteignable — en faisant défiler la bande —, mais une carte qu’il faut
+   aller chercher dans un geste que rien n’annonce est une carte qu’on
+   ne voit pas. Sur deux rangées, tout est là d’un coup. */
+.fr-reserve {
+    flex: 0 0 auto; display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 8px; padding: 2px 2px 6px;
+}
+.fr-carte {
+    flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 1px;
+    font: inherit; cursor: pointer; touch-action: none;
+    min-width: 82px; min-height: 44px; padding: 6px 8px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+    transition: border-color .15s ease, background .15s ease;
+}
+@media (hover: hover) { .fr-carte:hover { border-color: var(--primary); } }
+.fr-carte--choisie { border-color: var(--primary); background: var(--bg-hover); }
+/* UNE CARTE POSÉE RESTE VISIBLE, en retrait : on voit ce qui est fait sans
+   que cela se confonde avec ce qui reste. */
+.fr-carte--posee { opacity: .3; cursor: default; }
+.fr-nom { font-size: clamp(.62rem, 2.4cqw, .76rem); color: var(--text-muted);
+          max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-val { font-weight: 800; font-size: clamp(.76rem, 3cqw, .95rem); color: var(--primary-texte); }
+.fr-svg { flex: 0 0 auto; }
+
+@media (max-width: 520px) {
+    .fr-case { gap: 10px; }
+    .fr-etiq { flex-basis: 4rem; }
+    .fr-echelle::before { left: calc(4rem + 3px); }
+    .fr-carte { min-width: 74px; padding: 5px 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .fr-trou, .fr-carte { transition: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .pa-carte { transition: none; }
     /* ON NE FAIT PAS BOUGER L'ÉCRAN DE QUELQU'UN QUI A DEMANDÉ QU'IL NE BOUGE
