@@ -92,10 +92,39 @@ if ($erreurDepot !== '') {
                 <?php endforeach; ?>
             </ul>
         <?php else: ?>
-            <p class="gris-clair">Ouvrez maintenant
-            <a href="../install.php">api/install.php</a> — tout de suite, c'est lui
-            qui met la base au niveau de la nouvelle version. Puis revenez ici et
-            regardez la santé.</p>
+            <?php // CE QUI RESTE À FAIRE, DANS L'ORDRE — ET LE SITE AU BOUT.
+                  //
+                  // RÉMY : « et aussi pour l'admin, une fois qu'on a posé ça va
+                  // sur le site pour tester ».
+                  //
+                  // LA PAGE RENVOYAIT VERS ELLE-MÊME. Elle disait d'ouvrir
+                  // install.php, puis « revenez ici et regardez la santé » — et
+                  // pas une fois, au moment précis où l'on vient de poser une
+                  // version neuve, elle ne proposait d'aller la VOIR. Il
+                  // fallait retaper l'adresse du site à la main.
+                  //
+                  // ET LE NUMÉRO EST LU SUR LE DISQUE, pas dans l'archive : il
+                  // dit que les fichiers sont ARRIVÉS, et il donne à Rémy ce
+                  // qu'il doit retrouver en bas de l'accueil pour savoir qu'il
+                  // essaie bien la nouvelle version.
+                  //
+                  // PAS D'ANTI-CACHE SUR CE LIEN, et c'est vérifié dans
+                  // `sw.js` : la page est servie au RÉSEAU D'ABORD — « servir
+                  // la PAGE depuis le cache ferait un logiciel qui ne se met
+                  // plus jamais à jour ». Le lien nu montre donc la version
+                  // qu'on vient de poser. ?>
+            <?php $posee = versionDuSite(); ?>
+            <p class="gris-clair" style="margin-bottom:6px">Deux gestes, dans cet ordre :</p>
+            <ol class="gris-clair" style="margin:0 0 14px; padding-left:20px">
+                <li><b><a href="../install.php">api/install.php</a></b> — tout de
+                suite : c'est lui qui met la base au niveau de la nouvelle version.</li>
+                <li>puis le site, pour essayer<?= $posee !== ''
+                    ? ' — il annonce maintenant la <b>version ' . h($posee) . '</b>,'
+                      . ' écrite tout en bas de l\'accueil'
+                    : '' ?>.</li>
+            </ol>
+            <p><a class="bouton" href="../../" target="_blank" rel="noopener">Aller sur le site et tester</a></p>
+            <p class="gris-clair" style="margin-bottom:0">Puis revenez ici et regardez la santé.</p>
         <?php endif; ?>
 
     <?php elseif ($apercu !== null): ?>

@@ -166,7 +166,16 @@ export const conversionFicheGenerator = {
             difficulty: 3,
             meta: {
                 famille, nom: f.nom,
-                unites: f.unites.map(u => u.symbole),
+                // LE NOM À CÔTÉ DU SYMBOLE QUAND LA FAMILLE LE PORTE.
+                //
+                // Rémy : « Mets le nom dans le tableau ». L'écran le fait sur
+                // trois lignes ; la feuille n'a qu'une rangée d'en-tête, de
+                // hauteur fixe et éprouvée, alors le nom va sur la MÊME ligne.
+                // Une unité de préfixe coiffe trois cases : « MW mégawatt » y
+                // tient. Aux longueurs, où une unité coiffe UNE case de sept
+                // millimètres, `vaut` est absent et rien ne change — c'est la
+                // famille qui décide, pas la feuille.
+                unites: f.unites.map(u => (u.vaut ? `${u.symbole} ${u.nom}` : u.symbole)),
                 // COMBIEN DE SOUS-COLONNES PAR UNITÉ : 1 pour une longueur, 2
                 // pour une aire, 3 pour un volume. La feuille en a besoin pour
                 // coiffer les bonnes cases d'une seule étiquette.

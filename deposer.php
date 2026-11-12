@@ -109,6 +109,35 @@ function archivesPresentes(): array
     return $l;
 }
 
+/**
+ * LA VERSION QUE LE SITE ANNONCE MAINTENANT — lue sur le DISQUE.
+ *
+ * RÉMY : « une fois qu'on a posé ça va sur le site pour tester ». Encore
+ * faut-il savoir ce qu'on teste. L'archive dit la version qu'elle PORTE ;
+ * `index.html` dit celle qui est ARRIVÉE. Les deux se séparent dès qu'un
+ * fichier a été refusé ou n'a pas pu s'écrire — et c'est précisément le cas où
+ * l'on irait regarder le site sans comprendre qu'on y voit encore l'ancien.
+ *
+ * SEIZE KILO-OCTETS, ET CE N'EST PAS UN CHIFFRE EN L'AIR. J'avais écrit
+ * quatre, en recopiant la fenêtre de `lireArchive` sans la vérifier ICI :
+ * le premier `?v=` d'`index.html` est à l'octet 4907, et la fonction rendait
+ * une chaîne vide. L'épreuve l'a dit tout de suite — et elle a dit du même
+ * coup que `lireArchive`, qui en lit huit mille, passait de justesse. Un
+ * en-tête qui grossit de trois kilo-octets lui ferait perdre la version
+ * SANS UN MOT, et l'aperçu d'archive cesserait simplement de l'afficher.
+ * `tools/testApi.php` garde maintenant la marge, pas seulement le résultat.
+ */
+function versionDuSite(): string
+{
+    $f = @fopen(RACINE_SITE . '/index.html', 'rb');
+    if (!$f) {
+        return '';
+    }
+    $debut = (string) fread($f, 16384);
+    fclose($f);
+    return preg_match('/\?v=(\d+)/', $debut, $m) ? $m[1] : '';
+}
+
 /** « 4,7 Mo » plutôt que « 4766938 ». */
 function poids(int $octets): string
 {
@@ -173,7 +202,10 @@ function lireArchive(string $zipf): array
         }
         $fichiers[] = $sur;
         if ($sur === 'index.html' && $version === '') {
-            $debut = (string) $zip->getFromIndex($i, 8192);
+            // SEIZE KILO-OCTETS, comme `versionDuSite` : le marqueur est à
+            // l'octet 4907 aujourd'hui, et huit mille ne laissaient qu'une
+            // marge qu'aucune épreuve ne gardait.
+            $debut = (string) $zip->getFromIndex($i, 16384);
             $version = (preg_match('/\?v=(\d+)/', $debut, $m) ? $m[1] : '');
         }
     }

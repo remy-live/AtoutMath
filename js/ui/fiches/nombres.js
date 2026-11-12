@@ -1949,9 +1949,24 @@ function geoConversion(item, slot) {
         // corps calculé sur toute sa largeur débordait de chacune.
         tailleEnonce: Math.max(5, Math.min(taille * 0.92,
             ((avecTableau ? enonceW : b.w / colonnes) - 3) / 0.3528 / pire)),
-        // « dam » est le plus large des en-têtes : c'est lui qui fixe leur
-        // corps, sans quoi il déborde de sa case dès qu'on resserre le tableau.
-        tailleEntete: Math.max(5, Math.min(rh * 1.15, 12, (cw - 0.8) / 0.6))
+        // LE PLUS LONG DES EN-TÊTES FIXE LEUR CORPS — et ce n'est plus « dam ».
+        //
+        // Rémy : « Mets le nom dans le tableau ». Un en-tête peut désormais
+        // porter « mW milliwatt » : douze caractères là où « dam » en avait
+        // trois, et il coiffe ech colonnes au lieu d'une. L'ancien calcul
+        // mesurait UNE colonne et supposait TROIS lettres — les deux à la
+        // fois, dans le même 0,6 —, si bien qu'il tombait juste par un hasard
+        // qui ne survivait pas au premier nom.
+        //
+        // MESURÉ SUR LA FEUILLE DES PRÉFIXES, avant ce calcul : « MW mégawatt »
+        // touchait les deux traits épais de sa case. Il tenait encore, parce
+        // que l'énoncé de ce tirage était court ; un tirage à « 478 kW = ……… MW »
+        // resserre le tableau, et rien n'aurait retenu le texte au bord.
+        //
+        // 0,2 mm par caractère et par point de corps : c'est le 0,6 d'avant,
+        // divisé par ses trois lettres.
+        tailleEntete: Math.max(5, Math.min(rh * 1.15, 12,
+            (cw * ech - 1.6) / (Math.max(3, ...(m.unites || []).map(u => String(u).length)) * 0.2)))
     };
 }
 

@@ -37,8 +37,17 @@ class Conversion extends BaseGame {
         this.avecVirgule = this.params.decimales === true;
         this.reussis = 0;
         // L'étape 1 ne se refait pas : une fois le tableau garni, il le reste.
-        this.tableauGarni = false;
+        //
+        // ET CERTAINES FAMILLES L'OUVRENT DÉJÀ GARNI — voir `enPlace` dans
+        // `core/conversion.js`, qui dit pourquoi : aux préfixes, l'étape 1
+        // faisait trier mW et MW à la casse avant la première conversion.
+        // Rémy : « on place dans le tableau au départ ».
+        const f0 = familleDe(this.famille);
+        this.tableauGarni = f0.enPlace === true;
         this.unitesPosees = {};
+        if (this.tableauGarni) {
+            f0.unites.forEach(u => { this.unitesPosees[u.rang] = u.symbole; });
+        }
     }
 
     // TOUTES LES COLONNES, ET NON LES RANGS DES UNITÉS.
@@ -114,6 +123,17 @@ class Conversion extends BaseGame {
                     .cv-tete-posee:hover { background: color-mix(in srgb, var(--primary) 14%, transparent);
                     outline: 2px solid var(--primary); outline-offset: -3px; }
                 }
+
+                /* TROIS LIGNES DANS L'EN-TÊTE : le symbole, le nom, ce que
+                   l'unité vaut. white-space: nowrap sur les deux dernières,
+                   pour que « 1 000 000 W » ne se coupe pas en deux ; la
+                   colonne s'élargit alors, et .cv-defile porte déjà le
+                   débordement. MESURÉ au doigt (390 px) : elle ne déborde
+                   pas, « 1 000 000 W » tient dans 78 px. */
+                .cv-sym { font-weight: 800; }
+                .cv-nom, .cv-vaut { font-weight: 500; white-space: nowrap;
+                                    font-size: .82em; line-height: 1.25; }
+                .cv-vaut { color: var(--primary-texte); }
 
                 /* Le chiffre posé, et le fantôme pendant le glissement. */
                 .cv-chiffre { color: var(--text-main); }
@@ -377,7 +397,31 @@ class Conversion extends BaseGame {
             const th = document.createElement('th');
             if (e > 1) th.colSpan = e;
             const pose = this.unitesPosees[u.rang];
-            th.textContent = pose || '';
+            // LE NOM ET L'ÉQUIVALENT SOUS LE SYMBOLE, quand la famille les
+            // porte. Rémy : « Mets le nom dans le tableau et leur équivalent
+            // non minifié ». « kW » seul n'apprend rien à qui ne sait pas
+            // encore ce que vaut kilo ; « kilowatt » et « 1 000 W » le disent
+            // sans qu'il faille ouvrir l'aide — et la ligne du milieu règle au
+            // passage le piège de la casse, puisque « milliwatt » et
+            // « mégawatt » ne se confondent pas, eux.
+            //
+            // SEULEMENT SI L'ÉTIQUETTE EST POSÉE : sur une colonne vide, le
+            // nom donnerait la réponse que l'étape 1 demande.
+            if (pose && u.vaut) {
+                th.textContent = '';
+                const sym = document.createElement('div');
+                sym.className = 'cv-sym';
+                sym.textContent = pose;
+                const nom = document.createElement('div');
+                nom.className = 'cv-nom';
+                nom.textContent = u.nom;
+                const vaut = document.createElement('div');
+                vaut.className = 'cv-vaut';
+                vaut.textContent = u.vaut;
+                th.append(sym, nom, vaut);
+            } else {
+                th.textContent = pose || '';
+            }
             th.className = pose ? '' : 'cv-tete-vide';
             // TOUTE COLONNE RESTE UNE CIBLE, occupée ou non. Une étiquette
             // lâchée dans la mauvaise colonne y restait pour toujours : la

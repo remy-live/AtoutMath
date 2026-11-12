@@ -6998,3 +6998,39 @@ plus d'un.**
   espaces, le fichier en a 12 ». Il a déjà le fichier en main ; il ne manque
   qu'une distance de Levenshtein sur les lignes. C'est la différence entre
   « ça ne marche pas » et « voilà pourquoi ».
+
+**Un fichier de paires mal formé vomit son contenu entier** — 12 novembre
+
+- *Ce que je voulais faire* : ajouter deux sections au journal des remarques
+  avec `remplacer.mjs --depuis`. Le texte citait Rémy avec des guillemets
+  droits — « "m" minuscule est MILLI » —, qui ferment la chaîne JSON.
+- *Ce qui a coûté* : un aller-retour de quatre minutes. Le `JSON.parse` qui
+  tombe imprime **les trois mille caractères du fichier** puis « Expected ','
+  or ']' at position 3281 », une position dans une ligne unique de trois mille
+  caractères : inutilisable telle quelle. J'ai dû relire le texte à l'œil pour
+  trouver les deux guillemets.
+- *Combien de fois* : || (deuxième fois que le fichier de paires lui-même coûte
+  plus cher que le remplacement qu'il décrit — la note précédente parlait de
+  l'indentation)
+- *Ce qui manque* : que `remplacer.mjs` attrape l'erreur de `JSON.parse`,
+  n'imprime **pas** le fichier, et montre les soixante caractères autour de la
+  position fautive avec un accent dessous — et qu'il nomme le coupable le plus
+  fréquent : « un guillemet droit non échappé ? le dépôt écrit « » ».
+
+**Regarder UN DÉTAIL d'une feuille demande de la recadrer à l'aveugle** — 12 novembre
+
+- *Ce que je voulais faire* : savoir si « MW mégawatt » touchait les traits de
+  sa case sur la feuille des préfixes. `pdfEnImage.mjs` rend la page ENTIÈRE —
+  à l'échelle 1 le détail fait douze pixels, et à l'échelle 4 l'image fait
+  3367 × 2381 et passe à la trappe du redimensionnement quand je la regarde.
+- *Ce qui a coûté* : trois découpages ratés à `convert … -crop LxH+X+Y` en
+  devinant les coordonnées, plus la découverte que `PIL` est cassé dans cet
+  environnement (`cannot import name '_imaging'`). Dix minutes pour obtenir une
+  bande de 760 × 52 pixels.
+- *Combien de fois* : | (première fois notée, mais « une feuille, ça se
+  regarde » est une règle du dépôt, et le détail est toujours DANS une case)
+- *Ce qui manque* : `node tools/pdfEnImage.mjs <pdf> <png> [échelle] [page]
+  --autour="<texte>"` — il sait déjà extraire le texte et ses positions pour
+  compter les segments ; il ne manque qu'un recadrage autour de la boîte du
+  texte demandé, avec une marge. On dirait « montre-moi autour de mégawatt »
+  au lieu de chercher 385, 358, 760, 52.

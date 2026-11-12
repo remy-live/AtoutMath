@@ -146,13 +146,33 @@ export const FAMILLES = {
     // qu'un choix : de téra à nano, le tableau ferait vingt-quatre colonnes,
     // qu'aucune tablette ne porte lisiblement. Micro et nano restent travaillés
     // par « Kilo, Méga, Giga, Micro, Nano », qui n'a pas besoin de tableau.
+    //
+    // ── CE QUE LE TABLEAU ÉCRIT DE LUI-MÊME ─────────────────────────────
+    //
+    // RÉMY, après l'avoir essayé : « Mets le nom dans le tableau et leur
+    // équivalent non minifié, il faut que ce soit plus simple et aussi milli
+    // et on place dans le tableau au départ. »
+    //
+    // D'OÙ CES DEUX CHAMPS, QUE LES AUTRES FAMILLES N'ONT PAS. `vaut` est
+    // l'équivalence écrite en entier — « 1 000 000 W » sous « MW » —, et
+    // `enPlace` dit que les étiquettes sont posées dès l'ouverture.
+    //
+    // POURQUOI ICI ET PAS AUX LONGUEURS. Aux longueurs, placer km, hm, dam…
+    // EST la leçon, et l'élève connaît les mots depuis le CM2 ; sous « km »,
+    // écrire « 1 000 m » donnerait la conversion qu'on demande. Aux préfixes,
+    // personne n'a encore rencontré le mot : on ouvrait sur quatre cases vides
+    // et quatre étiquettes — W, MW, mW, kW — en avertissant que « m »
+    // minuscule est MILLI et « M » majuscule MÉGA. C'était demander de TRIER
+    // DES PRÉFIXES À LA CASSE avant la première conversion, et celui qui s'y
+    // trompait n'atteignait jamais le calcul.
     prefixes: {
         id: 'prefixes', nom: 'Préfixes (MW → mW)', base: 'W', echelon: 3,
+        enPlace: true,
         unites: [
-            { symbole: 'MW', nom: 'mégawatt', rang: 6 },
-            { symbole: 'kW', nom: 'kilowatt', rang: 3 },
-            { symbole: 'W', nom: 'watt', rang: 0 },
-            { symbole: 'mW', nom: 'milliwatt', rang: -3 }
+            { symbole: 'MW', nom: 'mégawatt', rang: 6, vaut: '1 000 000 W' },
+            { symbole: 'kW', nom: 'kilowatt', rang: 3, vaut: '1 000 W' },
+            { symbole: 'W', nom: 'watt', rang: 0, vaut: '1 W' },
+            { symbole: 'mW', nom: 'milliwatt', rang: -3, vaut: '0,001 W' }
         ]
     }
 };

@@ -2483,6 +2483,47 @@ $lu = lireArchive($BAC . '/pasunzip.zip');
 verifier("une archive abîmée est refusée avec une phrase, pas une erreur",
     $lu['erreur'] !== '' && $lu['fichiers'] === [], $lu['erreur']);
 
+// ── APRÈS LA POSE, LE SITE ──────────────────────────────────────────────────
+//
+// RÉMY : « et aussi pour l'admin, une fois qu'on a posé ça va sur le site pour
+// tester ». La page disait d'ouvrir install.php, puis « revenez ici et regardez
+// la santé » — elle renvoyait donc vers ELLE-MÊME, et jamais vers le site qu'on
+// venait de mettre à jour. Il fallait retaper l'adresse à la main.
+//
+// `RACINE_SITE` est le dépôt lui-même pendant ces épreuves : `versionDuSite()`
+// lit donc le VRAI `index.html`, celui que `tools/version.mjs` numérote.
+$vueParLaFonction = versionDuSite();
+$dansLePage = (string) file_get_contents(RACINE_SITE . '/index.html');
+preg_match('/\?v=(\d+)/', $dansLePage, $mV);
+verifier('le site sait dire quelle version il porte',
+    $vueParLaFonction !== '' && $vueParLaFonction === ($mV[1] ?? 'rien'),
+    'lu « ' . $vueParLaFonction . ' », le fichier porte « ' . ($mV[1] ?? '') . ' »');
+
+// ET LA MARGE, PAS SEULEMENT LE RÉSULTAT.
+//
+// Les deux lecteurs du marqueur — `versionDuSite` ici, `lireArchive` pour
+// l'aperçu d'une archive — n'en lisent que le début du fichier. Le jour où
+// l'en-tête d'`index.html` dépasse cette fenêtre, la version disparaît SANS
+// UN MOT : l'aperçu n'affiche plus rien, et l'administration ne sait plus
+// dire ce qu'elle vient de poser. C'est arrivé en écrivant `versionDuSite` —
+// quatre kilo-octets pour un marqueur qui est à 4907. On garde donc le
+// DOUBLE de marge, pour être prévenu longtemps avant la panne.
+// LA FENÊTRE EST LUE DANS `deposer.php`, pas recopiée ici : une épreuve qui
+// garde un nombre qu'elle a elle-même écrit ne garde rien.
+$ouEstLeMarqueur = strpos($dansLePage, '?v=');
+preg_match('/fread\(\$f, (\d+)\)/', $depose, $mF);
+$fenetre = (int) ($mF[1] ?? 0);
+verifier('et la fenêtre de lecture garde le double de marge',
+    $ouEstLeMarqueur !== false && $fenetre > 0 && $ouEstLeMarqueur * 2 < $fenetre,
+    'le marqueur est à l\'octet ' . (string) $ouEstLeMarqueur
+        . ' ; on en lit ' . (string) $fenetre);
+
+$sectionDepot = (string) file_get_contents(dirname(__DIR__) . '/api/admin/sections/depot.php');
+verifier('et l\'administration mène au site après la pose',
+    str_contains($sectionDepot, 'versionDuSite()')
+    && str_contains($sectionDepot, 'href="../../"'),
+    'sinon il faut retaper l\'adresse à la main');
+
 titre('12 octies. Deux professeurs sur le même serveur');
 
 // LA CLOISON ENTRE COLLÈGUES, ET POURQUOI ELLE SE VÉRIFIE MAINTENANT.

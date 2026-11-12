@@ -6070,3 +6070,79 @@ affichait « Attention : hecto vient avant déca » — deux étiquettes qu'il n
 porte pas ; et dans le jeu, une carte sur deux devenait verte, celle de droite,
 parce que la classe de base peint l'élément qu'on lui donne. Deux cartes
 reliées par le même trait n'avaient pas l'air d'avoir le même statut.
+
+---
+
+## « une fois qu'on a posé ça va sur le site pour tester » — 12 novembre
+
+> « et aussi pour l'admin, une fois qu'on a posé ca va sur le site pour tester 🙂 »
+
+**CE QUE LA PAGE FAISAIT** : elle renvoyait vers ELLE-MÊME. Après une pose
+réussie elle disait d'ouvrir `api/install.php`, puis « revenez ici et regardez
+la santé ». Pas une fois, au moment précis où l'on vient de poser une version
+neuve, elle ne proposait d'aller la VOIR : il fallait retaper l'adresse du site
+à la main.
+
+**Fait** : deux gestes numérotés — install.php d'abord, le site ensuite —, un
+bouton « Aller sur le site et tester » qui s'ouvre à côté pour que
+l'administration reste ouverte, et **le numéro de version lu sur le disque**,
+qui dit ce qu'on doit retrouver en bas de l'accueil. Pas d'anti-cache sur ce
+lien, et c'est vérifié : `sw.js` sert la page au RÉSEAU D'ABORD — « servir la
+PAGE depuis le cache ferait un logiciel qui ne se met plus jamais à jour ».
+
+**MESURÉ DANS UN VRAI NAVIGATEUR**, le chemin entier : entrer dans
+l'administration, ouvrir le guichet, téléverser une archive, la poser, et
+regarder. Cinq points verts, zéro erreur de page. Cette branche-là ne se
+mesure pas en lisant le code : son propre commentaire le dit, « le rendu de
+toute la section s'arrêtait là — sans un mot à l'écran, puisque les erreurs ne
+s'affichent pas en production ».
+
+**ET L'ÉPREUVE A TROUVÉ UN DÉFAUT QUE JE VENAIS D'ÉCRIRE** : pour lire le
+numéro de version, j'avais recopié la fenêtre de `lireArchive` — quatre
+kilo-octets — sans vérifier qu'elle suffisait ici. Le premier `?v=` d'index.html
+est à l'octet **4907**. La fonction rendait une chaîne vide. Et du même coup
+l'épreuve a dit que `lireArchive`, qui en lit huit mille, passait de justesse :
+un en-tête qui grossit de trois kilo-octets lui ferait perdre la version SANS
+UN MOT, et l'aperçu d'archive cesserait simplement de l'afficher. Les deux
+lisent maintenant seize mille, et `testApi.php` garde la MARGE, pas seulement
+le résultat — en lisant la fenêtre dans `deposer.php` plutôt qu'en la
+recopiant.
+
+---
+
+## Le tableau des préfixes : « il faut que ce soit plus simple » — 12 novembre
+
+> « pour le tableau des mega w, kw, Mets le nom dans le tableau et leur
+> équivalent non minifié , il faut que ce soit plus simple et aussi milli et on
+> place dans le tableau au départ »
+
+**CE QU'IL VOYAIT, ET LA PHOTO LE DIT MIEUX QUE MOI** : quatre cases vides,
+quatre étiquettes — W, MW, mW, kW — et sous le tableau, l'aide : « Attention :
+« m » minuscule est MILLI, « M » majuscule est MÉGA ». L'exercice ouvrait donc sur
+un **tri de préfixes à la casse**, avant la moindre conversion. Celui qui s'y
+trompait n'atteignait jamais le calcul, qui est pourtant tout l'exercice.
+
+**Fait**, et les trois demandes vont ensemble, ce qui ne se voyait pas au
+premier coup d'œil : les étiquettes sont posées d'entrée (`enPlace`), donc
+l'en-tête peut porter le nom entier et l'équivalence sans donner la réponse
+d'une étape qui n'existe plus. Trois lignes par colonne : **MW / mégawatt /
+1 000 000 W**, et **mW / milliwatt / 0,001 W** pour son « et aussi milli ».
+
+**CE QU'ON N'A PAS FAIT, ET POURQUOI** : les longueurs gardent l'étape 1.
+Placer km, hm, dam… EST la leçon de ce tableau-là, et l'élève connaît ces mots
+depuis le CM2 ; écrire « 1 000 m » sous « km » donnerait la conversion qu'on
+demande. C'est la famille qui décide, pas le jeu — une épreuve le garde.
+
+**MESURÉ** : au doigt (390 px) et sur écran large, les deux tableaux dans la
+même passe. Les préfixes ouvrent à l'étape ②, quatre noms, **zéro pixel de
+débordement** — « 1 000 000 W » tient dans 78 px. Les longueurs ouvrent à
+l'étape ①, sept étiquettes. Zéro erreur de page.
+
+**ET SUR LE PAPIER AUSSI**, parce que la feuille porte le même tableau : une
+seule rangée d'en-tête, de hauteur fixe et éprouvée, donc le nom va sur la MÊME
+ligne — « MW mégawatt ». Et en le regardant, un défaut latent est apparu : le
+corps des en-têtes se calculait sur « dam », trois lettres dans UNE colonne.
+« MW mégawatt » touchait les deux traits épais de sa case ; il tenait encore
+parce que l'énoncé de ce tirage était court, et rien ne l'aurait retenu au bord
+sur un tirage plus long. Le calcul mesure maintenant ce qu'on écrit VRAIMENT,
+et la largeur dont on dispose vraiment.
