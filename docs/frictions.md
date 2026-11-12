@@ -7034,3 +7034,24 @@ plus d'un.**
   compter les segments ; il ne manque qu'un recadrage autour de la boîte du
   texte demandé, avec une marge. On dirait « montre-moi autour de mégawatt »
   au lieu de chercher 385, 358, 760, 52.
+
+**Pour voir l'état interne d'un jeu, il faut l'instrumenter à la main** — 12 novembre
+
+- *Ce que je voulais faire* : comprendre pourquoi le geste à deux touches du
+  jeu de reliage ne marchait plus après un trait lâché dans le vide. Tout se
+  jouait sur un champ de l'instance — un verrou resté armé —, et rien dans le
+  DOM ne le montrait : les cartes avaient l'air normales, aucune erreur de
+  page, le clic ne faisait simplement rien.
+- *Ce qui a coûté* : quatre sondes successives pour ISOLER le scénario fautif
+  (trait puis clics / vide puis clics / clics seuls), puis une cinquième après
+  avoir ajouté `window.__dbg = { … }` À LA MAIN dans le source, mesuré, et
+  retiré la ligne. Vingt minutes, dont quinze passées à raisonner sur ce que
+  le code DEVRAIT faire au lieu de regarder ce qu'il faisait.
+- *Combien de fois* : | (première fois notée, mais tout jeu un peu vivant a
+  un état qui ne se lit pas dans le DOM : une sélection en cours, une file
+  d'animation, un verrou)
+- *Ce qui manque* : que `ouvrirExercice` laisse le jeu courant accessible —
+  `window.__sondeJeu` — et que la sonde offre `s.etatDuJeu()`, qui rende les
+  champs simples de l'instance (nombres, chaînes, booléens, tailles des Set et
+  des Map). Le Runner a déjà l'objet en main ; il ne manque qu'une référence
+  et un filtre. On passerait de quatre sondes à une.

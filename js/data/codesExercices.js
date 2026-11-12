@@ -355,6 +355,8 @@ export const CODES_EXERCICES = {
     // suivante du premier mot. mUltiplier Par une Puissance.
     // RP, PR, RL et LR étaient pris : rElier les Puissances.
     'num-puissances-relier':      'EP',   // Relier les Puissances de 10
+    // eXposants : RG, RE, RS et PG étaient pris.
+    'num-puissances-regles':      'XP',   // Les Règles des Puissances
     'num-prefixes-tableau':       'MK',   // Milli, Kilo, Méga — le tableau
     'num-puissances-produit':     'UP',   // Multiplier par une Puissance de 10
     'calc-plateau-nombres':       'LT',   // Le Plateau des Nombres

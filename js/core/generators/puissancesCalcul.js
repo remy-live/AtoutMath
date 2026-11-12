@@ -302,15 +302,25 @@ const MARCHES = {
                 + 'deux exposants, comme deux relatifs.'],
             lignes: [
                 { titre: 'On AJOUTE les exposants, signes compris',
-                    // UN EXPOSANT NÉGATIF PREND SES PARENTHÈSES quand il est
-                    // le second terme : « 5 + −6 » ne se lit pas, « 5 + (−6) »
-                    // se lit — et c'est aussi ce qu'on écrit au tableau.
-                    montrer: `10^(${nbT(x)} + ${y < 0 ? `(${nbT(y)})` : y})`,
+                    // CHAQUE EXPOSANT NÉGATIF PREND SES PARENTHÈSES, le premier
+                    // comme le second.
+                    //
+                    // RÉMY : « pour 10^(-3) / 10^(-5) il faut bien faire
+                    // l'opération 10^((-3)-(-5)) pour bien comprendre le
+                    // principe. » On n'écrivait les parenthèses que sur le
+                    // second — « −8 + (−3) » —, ce qui est juste et ne montre
+                    // qu'à MOITIÉ ce qu'on fait : l'élève doit voir DEUX
+                    // NOMBRES RELATIFS et une opération entre eux, pas un
+                    // nombre qui commence par un signe et un relatif.
+                    //
+                    // MESURÉ AVANT : le gabarit à remplir affichait
+                    // « □^(−□ − (…)) ».
+                    montrer: `10^(${relatifEnPar(x)} + ${relatifEnPar(y)})`,
                     memesNombres: true, exposant: true, parentheses: true,
                     aide: 'Un exposant négatif s\'ajoute comme un relatif.' }
             ],
             titreFinal: 'On calcule l\'exposant',
-            explanation: `${ecrit} = 10^(${nbT(x)} + ${relatifEnPar(y)}) = ${puissanceTexte(juste)}. Un exposant `
+            explanation: `${ecrit} = 10^(${relatifEnPar(x)} + ${relatifEnPar(y)}) = ${puissanceTexte(juste)}. Un exposant `
                 + 'négatif n\'ajoute aucune règle : il applique celle du produit avec des relatifs.',
             difficulty: 3
         };
@@ -334,15 +344,18 @@ const MARCHES = {
                     why: 'On garde les signes des exposants : ils sont tous les deux négatifs.' }
             ],
             filler: voisine(juste),
-            hints: [`On soustrait : ${nbT(a)} − (${nbT(b)}). Retirer un nombre négatif revient à l'ajouter.`],
+            hints: [`On soustrait : ${relatifEnPar(a)} − ${relatifEnPar(b)}. Retirer un nombre négatif revient à l'ajouter.`],
             lignes: [
                 { titre: 'On SOUSTRAIT les exposants, signes compris',
-                    montrer: `10^(${nbT(a)} \u2212 (${nbT(b)}))`,
+                    // LES DEUX EXPOSANTS ENTRE PARENTHÈSES — c'est la demande
+                    // de Rémy, mot pour mot : « il faut bien faire l'opération
+                    // 10^((-3)-(-5)) pour bien comprendre le principe ».
+                    montrer: `10^(${relatifEnPar(a)} \u2212 ${relatifEnPar(b)})`,
                     memesNombres: true, exposant: true, parentheses: true,
                     aide: 'Retirer un nombre négatif revient à l\'ajouter.' }
             ],
             titreFinal: 'On calcule l\'exposant',
-            explanation: `${ecrit} = 10^(${nbT(a)} − (${nbT(b)})) = ${puissanceTexte(juste)}. Soustraire un `
+            explanation: `${ecrit} = 10^(${relatifEnPar(a)} − ${relatifEnPar(b)}) = ${puissanceTexte(juste)}. Soustraire un `
                 + 'exposant négatif revient à l\'ajouter — c\'est la règle des relatifs, appliquée '
                 + 'aux exposants.',
             difficulty: 3

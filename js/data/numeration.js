@@ -1644,6 +1644,54 @@ export const numerationExercises = [
     },
 
     {
+        // ── LES RÈGLES, ET RIEN QU'ELLES ──────────────────────────────────
+        //
+        // RÉMY : « et un exercice sur les règles sur les puissances
+        // 10^3 * 10^2 = 10^(3+2) = 10^5 et on écrit l'opération sur les
+        // exposants à chaque fois ».
+        //
+        // LE MOTEUR FAISAIT DÉJÀ EXACTEMENT CELA. « Calculer avec des
+        // Puissances, pas à pas » écrit la ligne du milieu depuis septembre.
+        // MESURÉ AU NAVIGATEUR AVANT D'ÉCRIRE QUOI QUE CE SOIT : il ouvre sur
+        // « Combien vaut 10³ ? », la première de ses NEUF marches, et la règle
+        // du produit n'arrive qu'à la troisième. On peut cocher les marches
+        // une par une dans le panneau du professeur — encore faut-il savoir
+        // qu'il est là, et c'est beaucoup demander pour une demande aussi
+        // simple que « je veux les règles ».
+        //
+        // CETTE ENTRÉE N'A DONC PAS UNE LIGNE DE MOTEUR À ELLE : c'est le même
+        // générateur, avec les cinq marches où l'on écrit vraiment une
+        // opération SUR LES EXPOSANTS — produit, quotient, les deux avec des
+        // exposants négatifs, et la puissance de puissance.
+        //
+        // LES MARCHES 1 ET 2 EN SONT EXCLUES, et ce n'est pas un oubli : 2⁵ et
+        // (−3)² n'ont AUCUNE opération sur les exposants à écrire. La ligne du
+        // milieu y dit autre chose (2 × 2 × 2 × 2 × 2), ce qui est juste mais
+        // n'est pas ce qu'il demande ici. Elles restent dans « Calculer avec
+        // des Puissances », où elles sont à leur place.
+        id: 'num-puissances-regles',
+        title: 'Les Règles des Puissances',
+        cree: '2026-11-12',
+        generatorId: 'num.puissances-calcul', activityId: 'buttons',
+        skills: ['num.puissances.regles'],
+        params: {
+            etapes: 'oui',
+            marches: ['produit', 'quotient', 'produitRelatif', 'quotientRelatif',
+                'puissanceDePuissance']
+        },
+        consignePapier: "Écris le résultat sous la forme d'une seule puissance. Tu écriras l'opération sur les exposants !",
+        colonnesPapier: 4,
+        motsClefs: ['puissances', 'règles', 'règle', 'exposant', 'exposants', 'produit',
+            'quotient', 'multiplier', 'diviser', 'puissance de puissance', 'ajouter les exposants',
+            'soustraire les exposants', 'pas à pas', 'écrire le calcul', 'même base'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Les trois règles, et seulement elles — avec l'opération sur les exposants ÉCRITE à chaque fois : 10³ × 10² = 10^(3 + 2) = 10⁵. Rémy : « on écrit l'opération sur les exposants à chaque fois ». Le produit AJOUTE les exposants, le quotient les SOUSTRAIT, la puissance de puissance les MULTIPLIE — et le signe de l'opération n'est JAMAIS celui qu'on fait sur les exposants, ce qui est la faute la plus fréquente du chapitre. L'exposant du milieu se tape avec la touche ^, parce qu'une SOMME ne s'écrit pas en petits chiffres. Seule la dernière ligne compte pour la séance ; celle du milieu est la trace qu'on demande sur la copie. Pour travailler d'abord ce qu'EST une puissance — 2⁵, (−3)² —, prendre « Calculer avec des Puissances »."
+    },
+
+    {
         // ── RELIER 10² À 100 ──────────────────────────────────────────────
         //
         // RÉMY : « J'aimerai bien un jeu où on relie 10² à 100, 10⁻³ à 0,001,
@@ -1689,15 +1737,29 @@ export const numerationExercises = [
                     { value: 8, label: '8 paires' }
                 ],
                 default: 6
+            },
+            {
+                // RÉMY : « on peut faire un mode rigolo ou les cases bougent 🙂 ».
+                //
+                // CE N'EST PAS LE DÉFAUT, et c'est voulu : une carte qui
+                // dérive demande de VISER, ce qui n'est pas ce qu'on travaille
+                // le premier jour. Coché, il transforme une relecture en jeu
+                // d'adresse — et c'est très bien pour la deuxième séance, ou
+                // pour celui qui a déjà fini.
+                id: 'bougent', type: 'checkbox', label: 'Mode rigolo : les cases bougent',
+                aide: 'Les cartes dérivent lentement et les traits les suivent. Quand tout est '
+                    + 'relié, l’écran se pose : le tableau fini se relit tranquillement.',
+                default: false
             }
         ],
         motsClefs: ['relier', 'associer', 'paires', 'puissances de 10', 'exposant',
-            'million', 'millième', 'milli', 'méga', 'écriture scientifique', 'jeu'],
+            'million', 'millième', 'milli', 'méga', 'écriture scientifique', 'jeu',
+            'rigolo', 'bougent', 'glisser', 'tirer un trait'],
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Touche une écriture à gauche, puis le nombre qui lui correspond à droite : un trait se trace. 10² va avec 100, 10⁻³ avec 0,001. Si tu te trompes, le trait rouge s'efface et la phrase du milieu te dit POURQUOI la paire ne va pas ensemble — c'est elle qu'il faut lire, pas le score. Un exposant POSITIF donne un grand nombre, un 1 suivi d'autant de zéros ; un exposant NÉGATIF donne un nombre tout petit, mais JAMAIS un nombre négatif. Quand tout est relié, relis le tableau de haut en bas : c'est là que la règle se voit d'un coup."
+        instruction: "Deux gestes au choix, et ils font la même chose : TOUCHER une écriture à gauche puis le nombre qui lui correspond à droite, ou APPUYER sur l'une et TIRER le trait jusqu'à l'autre avant de relâcher — le trait se dessine pendant qu'on tire, et la carte visée s'allume. Un trait lâché dans le vide n'est pas une erreur : il s'efface, et rien n'est compté. Rémy : « on pourrait aussi relier en appuyant et relachant ». Le réglage « Mode rigolo » fait DÉRIVER les cartes, chacune à sa cadence, et les traits les suivent ; quand tout est relié, l'écran se pose, parce que le tableau fini est justement celui qu'on vient relire.\n\nTouche une écriture à gauche, puis le nombre qui lui correspond à droite : un trait se trace. 10² va avec 100, 10⁻³ avec 0,001. Si tu te trompes, le trait rouge s'efface et la phrase du milieu te dit POURQUOI la paire ne va pas ensemble — c'est elle qu'il faut lire, pas le score. Un exposant POSITIF donne un grand nombre, un 1 suivi d'autant de zéros ; un exposant NÉGATIF donne un nombre tout petit, mais JAMAIS un nombre négatif. Quand tout est relié, relis le tableau de haut en bas : c'est là que la règle se voit d'un coup."
     },
     {
         // ── LE TABLEAU DES PRÉFIXES ───────────────────────────────────────

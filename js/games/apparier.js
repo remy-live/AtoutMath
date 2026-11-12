@@ -52,6 +52,14 @@ class Apparier extends BaseGame {
         this.choisi = null;
         this.relies = new Set();
         this.surRedim = null;
+        // LE TRAIT QU'ON TIRE, ET LA CARTE QU'ON VISE EN LE TIRANT.
+        this.glisse = null;
+        this.vise = null;
+        // LE MODE RIGOLO. Rémy : « on peut faire un mode rigolo ou les cases
+        // bougent ». C'est un réglage, pas le défaut : une carte qui dérive
+        // demande de VISER, et ce n'est pas ce qu'on travaille le premier jour.
+        this.bougent = this.params.bougent === true;
+        this.rafId = null;
     }
 
     render() {
@@ -83,18 +91,63 @@ class Apparier extends BaseGame {
 
         this.jeu = this.container.querySelector('[data-jeu]');
         this.traits = this.container.querySelector('[data-traits]');
-        this.container.querySelectorAll('.pa-carte').forEach((el) => {
+        this.container.querySelectorAll('.pa-carte').forEach((el, i) => {
             el.addEventListener('click', () => this.toucher(el));
+            el.addEventListener('pointerdown', (e) => this.commencerLeTrait(e, el));
+            if (!this.bougent) return;
+            // DES CADENCES DIFFÉRENTES POUR CHAQUE CARTE, sans quoi les douze
+            // battent ensemble : l'écran respire d'un bloc au lieu de frémir.
+            // Le retard est NÉGATIF, donc chacune démarre déjà en cours de
+            // route — sinon elles repartiraient toutes du même point.
+            el.style.setProperty('--pa-duree', `${(2.6 + (i % 5) * 0.45).toFixed(2)}s`);
+            el.style.setProperty('--pa-retard', `-${((i * 0.37) % 2.5).toFixed(2)}s`);
         });
+        if (this.bougent) {
+            this.jeu.classList.add('pa-bougent');
+            this.animerLesTraits();
+        }
         this.container.querySelector('[data-neuf]').addEventListener('click', () => {
             this.rng = makeRng(`apparier-${Date.now()}`);
             this.render();
         });
-        // LES TRAITS SE REDESSINENT QUAND LA PLACE CHANGE. Sans cela, une
-        // tablette tournée d'un quart de tour garde ses traits là où les
-        // cartes ÉTAIENT — et plus rien ne se lit.
+        this.ecouterLaFenetre();
+    }
+
+    /**
+     * LES ÉCOUTEURS DE LA FENÊTRE, POSÉS UNE SEULE FOIS.
+     *
+     * `render()` est rappelé par « ↺ Autres cartes », et l'on reposait alors
+     * un second `resize` sur la fenêtre, puis un troisième — sans jamais
+     * retirer les précédents. On les retire donc AVANT de les poser.
+     *
+     * LES TRAITS SE REDESSINENT QUAND LA PLACE CHANGE : sans cela, une
+     * tablette tournée d'un quart de tour garde ses traits là où les cartes
+     * ÉTAIENT, et plus rien ne se lit.
+     *
+     * LE DOIGT, LUI, EST ÉCOUTÉ SUR LA FENÊTRE et non sur la carte : on tire
+     * un trait JUSQU'EN DEHORS de la carte de départ, et c'est tout l'objet du
+     * geste. `setPointerCapture` suffirait sur un navigateur qui l'accepte ;
+     * la fenêtre marche partout.
+     */
+    ecouterLaFenetre() {
+        this.oublierLaFenetre();
         this.surRedim = () => this.redessiner();
+        this.surBouge = (e) => this.tirerLeTrait(e);
+        this.surLache = (e) => this.lacherLeTrait(e);
         window.addEventListener('resize', this.surRedim);
+        window.addEventListener('pointermove', this.surBouge);
+        window.addEventListener('pointerup', this.surLache);
+        window.addEventListener('pointercancel', this.surLache);
+    }
+
+    oublierLaFenetre() {
+        if (this.surRedim) window.removeEventListener('resize', this.surRedim);
+        if (this.surBouge) window.removeEventListener('pointermove', this.surBouge);
+        if (this.surLache) {
+            window.removeEventListener('pointerup', this.surLache);
+            window.removeEventListener('pointercancel', this.surLache);
+        }
+        this.surRedim = this.surBouge = this.surLache = null;
     }
 
     carteHtml(c, cote) {
@@ -106,6 +159,23 @@ class Apparier extends BaseGame {
     /* ─────────────────────────── LE GESTE ───────────────────────────── */
 
     toucher(el) {
+        // UN GLISSEMENT N'EST PAS UNE TOUCHE. Le navigateur émet quand même un
+        // « click » quand on relâche, et sans ce garde-fou la carte d'arrivée
+        // se retrouvait SÉLECTIONNÉE juste après avoir été reliée.
+        // IL N'Y A PAS DE GARDE-FOU CONTRE LE « click » QUI SUIT UN TRAIT,
+        // et c'est VÉRIFIÉ, pas supposé : quand on relâche ailleurs que sur
+        // la carte de départ, le navigateur émet son « click » sur l'ANCÊTRE
+        // COMMUN des deux — la colonne ou le terrain —, jamais sur une carte.
+        //
+        // J'en avais quand même posé un, armé pour un tour de boucle. MESURÉ
+        // AU NAVIGATEUR : il restait armé, et les DEUX touches suivantes
+        // étaient avalées — le geste d'avant ne marchait plus dès qu'on avait
+        // lâché un trait dans le vide. Un garde-fou contre un danger qui
+        // n'existe pas ne protège rien ; il casse.
+        //
+        // Reste le seul cas où le « click » tombe bien sur une carte : on
+        // part d'elle, on tire, et l'on revient lâcher dessus. Elle se
+        // sélectionne alors, ce qui est exactement ce qu'on voulait.
         if (!this.isRunning || el.classList.contains('pa-carte--relie')) return;
         const cote = el.dataset.cote;
         // DEUX CARTES DU MÊME CÔTÉ : on ne refuse pas, on DÉPLACE le choix.
@@ -120,6 +190,82 @@ class Apparier extends BaseGame {
         const a = this.choisi;
         this.choisi = null;
         a.classList.remove('pa-carte--choisi');
+        this.relier(a, el);
+    }
+
+    /* ─────────── RELIER EN TIRANT LE TRAIT, D'UNE CARTE À L'AUTRE ─────── */
+
+    //
+    // RÉMY : « on pourrait AUSSI relier en appuyant et relachant entre les
+    // puissances de 10 et le traits se crées ».
+    //
+    // « AUSSI », ET C'EST LE MOT QUI COMPTE : les deux touches restent. Elles
+    // sont plus sûres quand on vise mal, c'est le geste que la démonstration
+    // montre, et c'est le seul qui marche au clavier. Tirer un trait, lui, est
+    // le geste du cahier — et il dit ce qu'on est en train de faire AVANT
+    // qu'on lâche, ce que deux touches ne disent jamais.
+
+    commencerLeTrait(e, el) {
+        if (!this.isRunning || this.isDemo) return;
+        if (el.classList.contains('pa-carte--relie')) return;
+        this.glisse = { depart: el, x0: e.clientX, y0: e.clientY, bouge: false, ligne: null };
+    }
+
+    tirerLeTrait(e) {
+        const g = this.glisse;
+        if (!g) return;
+        if (!g.bouge) {
+            // SIX PIXELS AVANT DE CROIRE À UN GLISSEMENT : un doigt qui se
+            // pose bouge toujours un peu, et un trait qui apparaîtrait à
+            // chaque simple touche ferait clignoter l'écran.
+            if (Math.hypot(e.clientX - g.x0, e.clientY - g.y0) < 6) return;
+            g.bouge = true;
+            // On ne vise pas deux choses à la fois : le trait qu'on tire
+            // remplace la sélection en cours.
+            if (this.choisi) { this.choisi.classList.remove('pa-carte--choisi'); this.choisi = null; }
+            g.depart.classList.add('pa-carte--choisi');
+        }
+        g.ligne = g.ligne || this.tracerLibre(g.depart);
+        this.placerLigneLibre(g.ligne, g.depart, e.clientX, e.clientY);
+        const sous = this.carteSous(e.clientX, e.clientY);
+        this.viser(sous && sous !== g.depart
+            && sous.dataset.cote !== g.depart.dataset.cote
+            && !sous.classList.contains('pa-carte--relie') ? sous : null);
+    }
+
+    lacherLeTrait(e) {
+        const g = this.glisse;
+        if (!g) return;
+        this.glisse = null;
+        if (g.ligne && g.ligne.parentNode) g.ligne.remove();
+        const cible = this.vise;
+        this.viser(null);
+        if (!g.bouge) return;         // c'était une touche : le « click » s'en charge
+        g.depart.classList.remove('pa-carte--choisi');
+        // LÂCHÉ DANS LE VIDE : rien ne se passe, et rien n'est compté faux.
+        // Un trait abandonné en l'air n'est pas une réponse.
+        if (cible) this.relier(g.depart, cible);
+    }
+
+    /** La carte sous un point de l'écran, s'il y en a une. */
+    carteSous(x, y) {
+        // `elementFromPoint` NOMME QUI EST LÀ. C'est la seule façon de le
+        // savoir pendant un glissement : les événements de la fenêtre ne
+        // désignent pas la carte survolée, et le SVG des traits ne prend
+        // aucun clic (`pointer-events: none`), donc il ne masque personne.
+        const el = document.elementFromPoint(x, y);
+        return el && el.closest ? el.closest('.pa-carte') : null;
+    }
+
+    /** La carte qu'on vise se marque, pour qu'on sache où l'on va lâcher. */
+    viser(el) {
+        if (this.vise === el) return;
+        if (this.vise) this.vise.classList.remove('pa-carte--vise');
+        this.vise = el || null;
+        if (this.vise) this.vise.classList.add('pa-carte--vise');
+    }
+
+    relier(a, el) {
         const juste = a.dataset.rang === el.dataset.rang;
         const paire = this.paires[Number(a.dataset.rang)];
         if (juste) {
@@ -196,40 +342,121 @@ class Apparier extends BaseGame {
      */
     tracer(a, b, quoi) {
         if (!this.jeu || !this.traits) return null;
-        const cadre = this.jeu.getBoundingClientRect();
-        const ra = a.getBoundingClientRect();
-        const rb = b.getBoundingClientRect();
-        const bord = (r, versLaDroite) => ({
-            x: (versLaDroite ? r.right : r.left) - cadre.left,
-            y: r.top + r.height / 2 - cadre.top
-        });
-        const gauche = a.dataset.cote === 'g' ? a : b;
-        const droite = a.dataset.cote === 'g' ? b : a;
-        const p1 = bord(gauche === a ? ra : rb, true);
-        const p2 = bord(droite === a ? ra : rb, false);
-        const ligne = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        ligne.setAttribute('x1', String(p1.x));
-        ligne.setAttribute('y1', String(p1.y));
-        ligne.setAttribute('x2', String(p2.x));
-        ligne.setAttribute('y2', String(p2.y));
-        ligne.setAttribute('class', `pa-trait pa-trait--${quoi}`);
+        const ligne = this.nouvelleLigne(quoi);
         if (quoi === 'juste') ligne.dataset.rang = a.dataset.rang;
+        this.placerLigne(ligne, a, b);
         this.traits.appendChild(ligne);
         return ligne;
     }
 
-    /** Après un redimensionnement : les cartes ont bougé, les traits suivent. */
-    redessiner() {
+    nouvelleLigne(quoi) {
+        const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        l.setAttribute('class', `pa-trait pa-trait--${quoi}`);
+        return l;
+    }
+
+    /** Le trait qu'on tire : il part d'une carte et suit le doigt. */
+    tracerLibre(a) {
+        const l = this.nouvelleLigne('encours');
+        this.traits.appendChild(l);
+        return l;
+    }
+
+    /** Le bord d'une carte, dans le repère du cadre du jeu. */
+    bordDe(el, versLaDroite) {
+        const cadre = this.jeu.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        return {
+            x: (versLaDroite ? r.right : r.left) - cadre.left,
+            y: r.top + r.height / 2 - cadre.top
+        };
+    }
+
+    /** Les quatre coordonnées d'un trait entre deux cartes. */
+    placerLigne(ligne, a, b) {
+        const gaucheDAbord = a.dataset.cote === 'g';
+        const p1 = this.bordDe(gaucheDAbord ? a : b, true);
+        const p2 = this.bordDe(gaucheDAbord ? b : a, false);
+        ligne.setAttribute('x1', String(p1.x));
+        ligne.setAttribute('y1', String(p1.y));
+        ligne.setAttribute('x2', String(p2.x));
+        ligne.setAttribute('y2', String(p2.y));
+    }
+
+    /** Le trait en cours : d'une carte vers un point de l'écran. */
+    placerLigneLibre(ligne, a, x, y) {
+        if (!this.jeu) return;
+        const cadre = this.jeu.getBoundingClientRect();
+        // IL SORT DU CÔTÉ OÙ L'ON VA : d'une carte de gauche il part à droite,
+        // et d'une carte de droite il part à gauche. Un trait qui sortirait
+        // toujours du même bord traverserait sa propre carte.
+        const p1 = this.bordDe(a, a.dataset.cote === 'g');
+        ligne.setAttribute('x1', String(p1.x));
+        ligne.setAttribute('y1', String(p1.y));
+        ligne.setAttribute('x2', String(x - cadre.left));
+        ligne.setAttribute('y2', String(y - cadre.top));
+    }
+
+    /**
+     * UNE CARTE S'ARRÊTE LÀ OÙ ELLE EST.
+     *
+     * Couper l'animation la ramènerait d'un coup à sa place de repos — un saut
+     * de six pixels. On fige donc la position COURANTE avant de couper.
+     */
+    poser(el) {
+        const t = getComputedStyle(el).transform;
+        el.style.animation = 'none';
+        if (t && t !== 'none') el.style.transform = t;
+    }
+
+    /**
+     * LES TRAITS SUIVENT LES CARTES, sans être recréés.
+     *
+     * En mode rigolo on repasse ici à chaque image : effacer puis recréer six
+     * éléments soixante fois par seconde ferait travailler le navigateur pour
+     * rien, alors que quatre attributs suffisent.
+     */
+    majTraits() {
         if (!this.traits) return;
-        this.traits.querySelectorAll('.pa-trait--juste').forEach(l => l.remove());
         for (const rang of this.relies) {
             const a = this.container.querySelector(`.pa-carte[data-cote="g"][data-rang="${rang}"]`);
             const b = this.container.querySelector(`.pa-carte[data-cote="d"][data-rang="${rang}"]`);
-            if (a && b) this.tracer(a, b, 'juste');
+            if (!a || !b) continue;
+            const ligne = this.traits.querySelector(`.pa-trait--juste[data-rang="${rang}"]`);
+            if (ligne) this.placerLigne(ligne, a, b);
+            else this.tracer(a, b, 'juste');
         }
     }
 
+    /** Après un redimensionnement : les cartes ont bougé, les traits suivent. */
+    redessiner() { this.majTraits(); }
+
+    /** En mode rigolo, les traits se replacent à chaque image. */
+    animerLesTraits() {
+        const boucle = () => {
+            if (!this.bougent || !this.traits) { this.rafId = null; return; }
+            this.majTraits();
+            this.rafId = requestAnimationFrame(boucle);
+        };
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        this.rafId = requestAnimationFrame(boucle);
+    }
+
     fini() {
+        // L'ÉCRAN SE POSE QUAND TOUT EST RELIÉ.
+        //
+        // En mode rigolo, le tableau fini est justement ce qu'on vient relire
+        // — « relis le tableau de haut en bas : c'est là que la règle se voit
+        // d'un coup » —, et on ne relit pas douze cartes qui frétillent. On
+        // fige donc chacune LÀ OÙ ELLE EST, puis on arrête la boucle : sans
+        // ce figement, les douze reviendraient d'un coup à leur place de
+        // repos, traits compris.
+        if (this.bougent) {
+            this.container.querySelectorAll('.pa-carte').forEach(el => this.poser(el));
+            this.bougent = false;
+            if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+            this.majTraits();
+        }
         this.dire('Tout est relié. ↺ Autres cartes pour recommencer.', 'pa-dit--ok');
         const neuf = this.container.querySelector('[data-neuf]');
         if (neuf) neuf.classList.add('pa-neuf--pret');
@@ -269,7 +496,9 @@ class Apparier extends BaseGame {
     startGameLoop() { /* rien à cadencer : le jeu attend le doigt */ }
 
     destroy() {
-        if (this.surRedim) { window.removeEventListener('resize', this.surRedim); this.surRedim = null; }
+        this.oublierLaFenetre();
+        if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+        this.glisse = null;
         super.destroy();
     }
 }

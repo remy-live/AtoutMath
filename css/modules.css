@@ -17724,6 +17724,11 @@ body.visite-en-cours .modal-overlay > * {
 .pa-trait { stroke-width: 3.5; stroke-linecap: round; fill: none; }
 .pa-trait--juste { stroke: var(--success); }
 .pa-trait--faux { stroke: var(--danger); stroke-dasharray: 7 5; }
+/* LE TRAIT QU'ON EST EN TRAIN DE TIRER. Rémy : « on pourrait aussi relier en
+   appuyant et relachant entre les puissances de 10 et le traits se crées ».
+   Il est pointillé et plus pâle : tant qu'on n'a pas lâché, rien n'est décidé,
+   et il ne doit pas se confondre avec un trait acquis. */
+.pa-trait--encours { stroke: var(--primary); stroke-dasharray: 6 6; opacity: .7; }
 .pa-colonne {
     display: flex; flex-direction: column; justify-content: space-around;
     gap: 8px; flex: 0 1 clamp(120px, 30cqw, 260px); min-width: 0;
@@ -17738,6 +17743,9 @@ body.visite-en-cours .modal-overlay > * {
 }
 @media (hover: hover) { .pa-carte:hover { border-color: var(--primary); } }
 .pa-carte--choisi { border-color: var(--primary); background: var(--bg-hover); }
+/* LA CARTE QU'ON VISE EN TIRANT LE TRAIT. On doit savoir OÙ l'on va lâcher
+   avant de lâcher — sur une tablette, le doigt cache justement la carte. */
+.pa-carte--vise { border-color: var(--primary); background: var(--bg-hover); transform: scale(1.04); }
 /* UNE CARTE RELIÉE RESTE LISIBLE, et c'est voulu : le tableau fini se relit
    d'un bout à l'autre, et c'est là qu'on voit la règle. On la rend seulement
    inerte, et son trait vert dit qu'elle est prise. */
@@ -17748,4 +17756,36 @@ body.visite-en-cours .modal-overlay > * {
     .pa-jeu { gap: 30px; }
     .pa-carte { padding: 8px 10px; }
 }
-@media (prefers-reduced-motion: reduce) { .pa-carte { transition: none; } }
+/* ── LE MODE RIGOLO : LES CASES BOUGENT ─────────────────────────────────────
+
+   RÉMY : « et on peut faire un mode rigolo ou les cases bougent 🙂 ».
+
+   CHAQUE CARTE DÉRIVE SUR SA PROPRE CADENCE (voir --pa-duree et --pa-retard,
+   posés carte par carte dans games/apparier.js) : si les douze battaient
+   ensemble, l'écran respirerait d'un bloc au lieu de frémir.
+
+   SEPT PIXELS, ET PAS DAVANTAGE. C'est assez pour qu'il faille viser, et trop
+   peu pour qu'on rate une carte qu'on visait bien — le jeu reste un exercice
+   de lecture, pas un exercice d'adresse. Les traits suivent les cartes, et le
+   JavaScript les replace à chaque image.
+
+   `touch-action: none` sur les cartes : sans lui, le premier mouvement du
+   doigt fait défiler la page et le trait n'existe jamais. */
+.pa-carte { touch-action: none; }
+@keyframes pa-flotte {
+    from { transform: translate(-6px, -4px) rotate(-1.1deg); }
+    to   { transform: translate(6px, 4px) rotate(1.1deg); }
+}
+.pa-bougent .pa-carte {
+    animation: pa-flotte var(--pa-duree, 3.4s) ease-in-out infinite alternate;
+    animation-delay: var(--pa-retard, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+    .pa-carte { transition: none; }
+    /* ON NE FAIT PAS BOUGER L'ÉCRAN DE QUELQU'UN QUI A DEMANDÉ QU'IL NE BOUGE
+       PAS. Le réglage reste coché — le jeu se joue exactement pareil —, mais
+       les cartes restent en place. Un élève que le mouvement gêne n'a pas à
+       choisir entre son confort et l'exercice que son professeur a donné. */
+    .pa-bougent .pa-carte { animation: none; }
+    .pa-carte--vise { transform: none; }
+}

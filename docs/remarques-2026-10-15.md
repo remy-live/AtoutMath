@@ -6146,3 +6146,139 @@ corps des en-têtes se calculait sur « dam », trois lettres dans UNE colonne.
 parce que l'énoncé de ce tirage était court, et rien ne l'aurait retenu au bord
 sur un tirage plus long. Le calcul mesure maintenant ce qu'on écrit VRAIMENT,
 et la largeur dont on dispose vraiment.
+
+---
+
+## « tu penses à d'autres exercices ? » — 12 novembre
+
+**CE QUE LA RECHERCHE A TROUVÉ, ET QUI EST PLUS GROS QUE PRÉVU** : le catalogue
+porte neuf exercices sur les puissances **de 10**, et RIEN sur 2⁵, (−3)², a⁰ ou
+2⁻³. Entre « Puissances de 10 — reconnaître » (4e) et le calcul littéral aⁿ
+(3e), il n'y a rien — et le chapitre `4-puissances` ne déclare que quatre
+compétences, dix / scientifique / préfixes / règles, dont aucune ne couvre la
+puissance d'un nombre quelconque. C'est pourtant par là que la leçon commence,
+et c'est là que vivent les deux fautes les plus chères : (−3)² = 9 contre
+−3² = −9, et 2⁵ lu comme 2 × 5.
+
+**QUATRE PROPOSITIONS**, par ordre d'utilité : les puissances d'un nombre ;
+ranger des écritures scientifiques (aucun exercice de rangement n'existe dans
+le logiciel, pour aucun chapitre) ; les ordres de grandeur ; la frise des
+puissances, de 10⁻¹⁵ à 10²⁶.
+
+**IL A CHOISI LA FRISE** — le plus ambitieux des quatre. Elle reste à faire.
+
+---
+
+## Relier en tirant le trait, et le mode rigolo — 12 novembre
+
+> « on pourrait aussi relier en appuyant et relachant entre les puissances de
+> 10 et le traits se crées. et on peut faire un mode rigolo ou les cases
+> bougent 🙂 »
+
+**Fait** : on appuie sur une carte, on tire — le trait se dessine pendant le
+mouvement, la carte visée s'allume —, et l'on relâche. Un trait lâché dans le
+vide s'efface sans rien compter : un trait abandonné en l'air n'est pas une
+réponse. Le geste à deux touches reste, parce qu'il a dit « AUSSI » : il est
+plus sûr quand on vise mal, c'est celui que la démonstration montre, et c'est
+le seul qui marche au clavier.
+
+**Le mode rigolo** est un réglage, décoché au départ : chaque carte dérive de
+six pixels sur sa propre cadence, et les traits la suivent image par image.
+Quand tout est relié, l'écran se pose — chaque carte figée LÀ OÙ ELLE EST, pas
+ramenée d'un coup à sa place de repos —, parce que le tableau fini est
+justement celui qu'on vient relire.
+
+**ET LE GARDE-FOU QUE J'AVAIS POSÉ « AU CAS OÙ » A CASSÉ LE GESTE D'AVANT.**
+J'avais armé un verrou pour ignorer le « click » qui suivrait un glissement.
+MESURÉ EN JOUANT, dans un vrai navigateur : il restait armé, et les DEUX
+touches suivantes étaient avalées — après avoir lâché un seul trait dans le
+vide, le geste à deux touches ne marchait plus du tout. Or ce verrou ne
+protégeait de rien : quand on relâche ailleurs que sur la carte de départ, le
+navigateur émet son « click » sur l'ANCÊTRE COMMUN des deux, jamais sur une
+carte. Il a été supprimé, pas réparé. Un garde-fou contre un danger qui
+n'existe pas ne protège rien ; il casse.
+
+---
+
+## « un exercice sur les règles sur les puissances » — 12 novembre
+
+> « et un exercice sur les règles sur les puissances 10^3 * 10^2 = 10^(3+2) =
+> 10^5 et on écrit l'opération sur les exposants à chaque fois »
+
+**LE MOTEUR LE FAISAIT DÉJÀ, ET CE N'EST PAS SA FAUTE S'IL NE L'A PAS TROUVÉ.**
+« Calculer avec des Puissances, pas à pas » écrit la ligne du milieu depuis
+septembre. MESURÉ AU NAVIGATEUR avant de lui répondre : il ouvre sur « Combien
+vaut 10³ ? », la première de ses NEUF marches, et la règle du produit n'arrive
+qu'à la troisième. On peut cocher les marches une par une dans le panneau du
+professeur — encore faut-il savoir qu'il est là.
+
+**Fait** : `XP` Les Règles des Puissances. Pas une ligne de moteur à elle —
+le même générateur, avec les cinq marches où l'on écrit vraiment une opération
+SUR LES EXPOSANTS. Il ouvre sur « 10² × 10⁴ = ? », puis « On AJOUTE les
+exposants », puis la ligne finale.
+
+**ET UNE ÉPREUVE GARDE CE QUI NE SE VERRAIT PAS** : `marchesCochees` ne rend
+jamais une liste vide — c'est la bonne décision, « tout décocher est un geste
+qu'on fait en passant » —, mais la conséquence est redoutable ici. Si l'un des
+cinq identifiants cessait de correspondre à une marche, l'exercice retomberait
+EN SILENCE sur les neuf, et rouvrirait sur « Combien vaut 10³ ? » : le défaut
+même qu'on vient de fermer, sans un message.
+
+---
+
+## « en division ou en fraction ? » — 12 novembre
+
+> « pour les divisions de puissances, tu le présentes en division ou est en
+> fraction »
+
+**MESURÉ, PAS SUPPOSÉ** : en DIVISION, avec le signe ÷ — « 10¹⁰ ÷ 10⁵ = » à
+l'écran comme sur la feuille des Règles, regardée à l'instant.
+
+**ET CE N'EST PAS UN HASARD** : une décision écrite dans
+`generators/puissancesCalcul.js`, à la marche de l'inverse, écarte déjà la
+barre oblique. « Sur le papier, une fraction s'écrit EN COLONNE — numérateur
+sur dénominateur —, et la barre oblique est une commodité d'écran : une feuille
+qui l'imprime enseigne le contraire du cours. » C'est pourquoi l'exercice dit
+« l'inverse de 10⁴ » et jamais « 1 / 10⁴ ».
+
+**CE QUI RESTE OUVERT, ET QUI EST SON MÉTIER** : une VRAIE fraction en colonne
+ne contredit rien — c'est l'écriture des manuels de quatrième. Elle demande un
+rendu neuf à l'écran (facile) et sur le papier (de la géométrie PDF). En
+attente de sa réponse.
+
+---
+
+## « 10^((-3)-(-5)) pour bien comprendre le principe » — 12 novembre
+
+> « pour 10^(-3) / 10^(-5) il faut bien faire l'opération 10^((-3)-(-5)) pour
+> bien comprendre le principe »
+
+**MESURÉ AVANT** : le gabarit que l'élève avait sous les yeux affichait
+« □^(−□ − (…)) ». Les parenthèses n'étaient mises que sur le SECOND exposant,
+en vertu d'une règle écrite dans le fichier — « 5 + −6 ne se lit pas, 5 + (−6)
+se lit ». C'est juste, et cela ne montre qu'à MOITIÉ ce qu'on fait : l'élève
+doit voir DEUX NOMBRES RELATIFS et une opération entre eux, pas un nombre qui
+commence par un signe et un relatif.
+
+**Fait** : « □^((…) − (…)) », pour le quotient comme pour le produit — la même
+raison vaut des deux côtés. L'explication et l'indice suivent.
+
+**ET ON A VÉRIFIÉ CE QUI COMPTE VRAIMENT**, en TAPANT les deux écritures dans
+un vrai navigateur (`tools/lignesDuMilieu.mjs`) : « 10^((−10)−(−5)) » et
+« 10^(−9−(−4)) » sont acceptées toutes les deux, la ligne finale s'ouvre, et la
+séance les compte. Changer l'écriture proposée ne vaudrait rien si l'élève qui
+tape l'ancienne — juste, et enseignée jusqu'à hier — se voyait compter une
+faute.
+
+---
+
+## La frise, précisée — 12 novembre
+
+> « j'aime le fait de ranger sur une échelle de taille. On donne l'objet (en
+> svg) sa valeur sous la forme de 10^... et on range »
+
+Trois choses qui n'étaient pas dans ma proposition : l'objet est **dessiné en
+SVG** (pas une émoticône), sa valeur est **donnée** sous la forme 10^…, et le
+travail est de **ranger**. Ce n'est donc pas « retrouver l'ordre de grandeur
+d'un objet » — ce qui serait de la culture générale —, mais « lire des
+exposants et les ordonner », ce qui est le chapitre. À faire.
