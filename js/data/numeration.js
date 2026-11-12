@@ -1793,8 +1793,29 @@ export const numerationExercises = [
         activityId: 'frise-puissances',
         skills: ['num.puissances.dix'],
         sansRevision: true,
-        params: { monde: 'nous', objets: 5 },
+        params: { monde: 'nous', objets: 5, carte: 'decimale' },
         paramSchema: [
+            {
+                // RÉMY, après l'avoir essayé : « c'est hyper facile l'échelle
+                // des tailles, il suffit de placer 10^4 à 10^4, où est la
+                // recherche ? » Il avait raison : la carte disait « 10⁴ m »,
+                // la case disait « 10⁴ m ». C'était apparier deux étiquettes
+                // identiques.
+                //
+                // LA RECHERCHE VIENT DE L'ÉCART entre ce que porte la carte et
+                // ce que porte l'échelle. Et il a tranché : « par contre reste
+                // sur des puissances de 10 » — donc des puissances PURES,
+                // jamais 1,27 × 10⁷.
+                id: 'carte', type: 'select', label: 'Ce qui est écrit sur la carte',
+                aide: 'L\u2019échelle, elle, porte toujours 10\u207F : c\u2019est l\u2019écart entre les '
+                    + 'deux écritures qui fait l\u2019exercice.',
+                options: [
+                    { value: 'decimale', label: '0,000 1 m — compter les rangs' },
+                    { value: 'nom', label: 'Rien que le nom — chercher la taille' },
+                    { value: 'puissance', label: '10\u207B\u2074 m — pour la première fois seulement' }
+                ],
+                default: 'decimale'
+            },
             {
                 id: 'monde', type: 'select', label: 'Quel monde',
                 aide: 'Chaque monde couvre neuf puissances de 10, de la plus grande en haut '
@@ -1825,7 +1846,7 @@ export const numerationExercises = [
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Prends un objet en bas, puis pose-le sur sa taille. Sa valeur est ÉCRITE sur la carte — « Un virus · 10⁻⁷ m » —, donc il n'y a rien à deviner : tout se joue sur la lecture de l'exposant. 10⁻⁷ est plus PETIT que 10⁻⁶, donc le virus va SOUS la bactérie. Un exposant négatif ne donne jamais un nombre négatif : il donne un nombre tout petit, mais positif. On peut toucher la carte puis sa case, ou prendre la carte et la lâcher sur sa case. Si l'on se trompe, on ne dit pas « c'est faux » : on dit DE COMBIEN — « cent fois trop grand » —, et c'est la leçon du chapitre. Quand tout est rangé, relis l'échelle de haut en bas : chaque case vaut DIX FOIS la précédente, et c'est là qu'on voit ce que trois exposants d'écart représentent vraiment."
+        instruction: "L'échelle porte des puissances de 10 — 10⁴ m, 10³ m, … — et les cartes portent la MÊME taille écrite autrement : « 0,000 1 m » pour un cheveu. Tout l'exercice est là : compter les rangs pour retrouver 10⁻⁴, puis poser la carte. Rémy : « c'est hyper facile de placer 10^4 à 10^4, où est la recherche ? » — elle est dans l'écart entre les deux écritures. Le réglage « Ce qui est écrit sur la carte » la règle : l'écriture décimale pour travailler les rangs ; RIEN QUE LE NOM pour chercher la taille, et alors une erreur écrit la mesure sur la carte, ce qui laisse l'exercice entier ; la puissance toute faite pour la toute première fois. Un exposant négatif ne donne jamais un nombre négatif : il donne un nombre tout petit, mais positif. On touche la carte puis sa case, ou on tire la carte jusqu'à elle. Si l'on se trompe, on ne dit pas « c'est faux » : on dit DE COMBIEN — « cent fois trop grand ». Quand tout est rangé, relis l'échelle de haut en bas : chaque case vaut DIX FOIS la précédente."
     },
 
     {

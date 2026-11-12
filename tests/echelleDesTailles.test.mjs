@@ -30,7 +30,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     OBJETS, MONDES, NOMS_MONDES, casesDuMonde, objetsDuMonde,
-    tirerDesObjets, puissanceDeDix
+    tirerDesObjets, puissanceTexte, ecritureDecimale, texteDeLaCarte, ECRITURES
 } from '../js/core/echelleDesTailles.js';
 import { makeRng } from '../js/core/ids.js';
 import { getExerciseById } from '../js/data/catalog.js';
@@ -108,15 +108,67 @@ test('LES DESSINS DESSINENT QUELQUE CHOSE', () => {
 });
 
 test('LES PUISSANCES S’ÉCRIVENT EN PETITS CHIFFRES, AVEC LE VRAI SIGNE', () => {
-    assert.equal(puissanceDeDix(4), '10⁴');
-    assert.equal(puissanceDeDix(0), '10⁰');
-    assert.equal(puissanceDeDix(13), '10¹³');
+    assert.equal(puissanceTexte(4), '10⁴');
+    assert.equal(puissanceTexte(0), '10⁰');
+    assert.equal(puissanceTexte(13), '10¹³');
     // LE SIGNE MOINS EN EXPOSANT (U+207B), jamais un tiret de clavier : le
     // dépôt a une épreuve qui refuse le tiret dans un énoncé, et elle a
     // raison — les deux ne se ressemblent qu’à l’écran d’un adulte.
-    assert.equal(puissanceDeDix(-4), '10⁻⁴');
-    assert.ok(!puissanceDeDix(-7).includes('-'));
+    assert.equal(puissanceTexte(-4), '10⁻⁴');
+    assert.ok(!puissanceTexte(-7).includes('-'));
 });
+
+test('LA CARTE NE DIT PAS LA MÊME CHOSE QUE LA CASE', () => {
+    // RÉMY : « c'est hyper facile l'échelle des tailles, il suffit de placer
+    // 10^4 à 10^4, où est la recherche ? »
+    //
+    // C'EST L'ÉPREUVE QUI GARDE LA RÉPONSE À CETTE QUESTION. Si la carte
+    // reprenait l'écriture de la case, l'exercice redeviendrait un
+    // appariement de deux étiquettes identiques — sans une ligne de
+    // mathématiques, et sans que rien ne le signale.
+    const o = OBJETS.find(x => x.exposant === -4);
+    assert.equal(texteDeLaCarte(o, 'decimale'), '\u2248 0,000\u00a01 m');
+    assert.equal(texteDeLaCarte(o, 'nom'), '', 'le nom seul : aucune valeur sur la carte');
+    assert.equal(texteDeLaCarte(o, 'puissance'), '\u2248 10\u207B\u2074 m');
+    // LE « ≈ » EST OBLIGATOIRE, et c'est une question de justesse : les
+    // valeurs sont des puissances PURES, donc la carte d'un élève porte
+    // « 1 m » quand un élève mesure un mètre soixante. Sans le signe,
+    // l'exercice affirme quelque chose de faux. Vu sur la mesure.
+    for (const e of ['decimale', 'puissance']) {
+        assert.ok(texteDeLaCarte(o, e).startsWith('\u2248 '),
+            `« ${texteDeLaCarte(o, e)} » : un ordre de grandeur s’annonce comme tel`);
+    }
+    for (const e of ECRITURES) {
+        if (e === 'puissance') continue;
+        assert.notEqual(texteDeLaCarte(o, e), `${puissanceTexte(o.exposant)} m`,
+            `l\u2019écriture « ${e} » ne doit pas recopier l\u2019étiquette de la case`);
+    }
+    // ET UNE ÉCRITURE INCONNUE RETOMBE SUR LA DÉCIMALE, jamais sur la
+    // puissance : un réglage mal orthographié ne doit pas ramener en silence
+    // l'exercice que Rémy a jugé trop facile.
+    assert.equal(texteDeLaCarte(o, 'nimporte'), texteDeLaCarte(o, 'decimale'));
+});
+
+test('L\u2019ÉCRITURE DÉCIMALE EST CELLE D\u2019UNE PUISSANCE PURE', () => {
+    // RÉMY : « par contre reste sur des puissances de 10 ». Donc jamais de
+    // 1,27 × 10⁷ : le chiffre significatif est TOUJOURS un seul 1. Cela
+    // écarte au passage l'ambiguïté des mantisses autour de 5 — le mont Blanc
+    // à 4 810 m est d'ordre 10³, mais 4 810 est plus proche de 10 000, et
+    // l'élève qui répondrait 10⁴ aurait un raisonnement défendable.
+    for (const o of OBJETS) {
+        const d = ecritureDecimale(o.exposant);
+        assert.equal((d.match(/[1-9]/g) || []).length, 1,
+            `« ${d} » doit n\u2019avoir qu\u2019un seul chiffre significatif`);
+        assert.ok(d.includes('1'), `« ${d} » : ce chiffre est un 1`);
+    }
+    assert.equal(ecritureDecimale(0), '1');
+    assert.equal(ecritureDecimale(4), '10\u00a0000');
+    assert.equal(ecritureDecimale(-4), '0,000\u00a01');
+    // LES ESPACES SONT INSÉCABLES : « une tranche de milliers qui passe à la
+    // ligne ressemble à deux nombres ».
+    assert.ok(!ecritureDecimale(13).includes(' '), 'pas une seule espace ordinaire');
+});
+
 
 test('L’EXERCICE EST AU CATALOGUE, AVEC SES TROIS MONDES', () => {
     const exo = getExerciseById('num-echelle-tailles');

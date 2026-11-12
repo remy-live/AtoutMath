@@ -43,7 +43,8 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import {
-    MONDES, mondeDe, casesDuMonde, tirerDesObjets, puissanceDeDix
+    MONDES, mondeDe, casesDuMonde, tirerDesObjets,
+    puissanceTexte, texteDeLaCarte, ecritureDecimale, ECRITURES
 } from '../core/echelleDesTailles.js';
 
 const COMPETENCE = 'num.puissances.dix';
@@ -57,6 +58,11 @@ class FrisePuissances extends BaseGame {
         this.rng = makeRng(this.params.seed || 'frise');
         this.monde = MONDES[this.params.monde] ? this.params.monde : 'nous';
         this.combien = Math.max(3, Math.min(8, Math.round(Number(this.params.objets) || 5)));
+        // CE QUI EST ÉCRIT SUR LA CARTE — voir `ECRITURES` dans
+        // `core/echelleDesTailles.js`, qui dit pourquoi ce réglage existe.
+        // Rémy : « c'est hyper facile, il suffit de placer 10^4 à 10^4, où est
+        // la recherche ? » Le défaut par défaut n'est donc PAS la puissance.
+        this.ecriture = ECRITURES.includes(this.params.carte) ? this.params.carte : 'decimale';
         this.choisi = null;
         this.vise = null;
         this.glisse = null;
@@ -72,8 +78,7 @@ class FrisePuissances extends BaseGame {
             <div class="fr-cadre">
                 <div class="fr-haut">
                     <span class="fr-compte"><b data-faits>0</b> / ${this.objets.length}</span>
-                    <span class="fr-dit" data-dit>${echapper(m.nom)} — prends un objet,
-                        puis pose-le sur sa taille.</span>
+                    <span class="fr-dit" data-dit>${echapper(m.nom)} — ${echapper(this.consigne())}</span>
                     <button type="button" class="fr-neuf" data-neuf>↺ D'autres objets</button>
                 </div>
                 <div class="fr-jeu" data-jeu>
@@ -138,19 +143,32 @@ class FrisePuissances extends BaseGame {
             + ` stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${o.svg}</svg>`;
     }
 
+    /** Ce qu'on demande, et cela dépend de ce que la carte montre. */
+    consigne() {
+        if (this.ecriture === 'nom') {
+            return 'prends un objet et cherche sa taille. Si tu te trompes, '
+                + 'sa mesure s\u2019écrit sur la carte.';
+        }
+        if (this.ecriture === 'puissance') return 'prends un objet, puis pose-le sur sa taille.';
+        return 'prends un objet, compte les rangs, et pose-le sur sa puissance de 10.';
+    }
+
     caseHtml(e) {
         return `<div class="fr-case">
-            <span class="fr-etiq">${puissanceDeDix(e)} m</span>
+            <span class="fr-etiq">${puissanceTexte(e)} m</span>
             <div class="fr-trou" data-expo="${e}"></div>
         </div>`;
     }
 
     carteHtml(o) {
+        // EN MODE « NOM SEUL », LA CARTE NE PORTE PAS DE VALEUR — mais la
+        // place reste, et c'est elle qui recevra la mesure après une erreur.
+        const val = texteDeLaCarte(o, this.ecriture);
         return `<button type="button" class="fr-carte" data-id="${echapper(o.id)}"
             data-expo="${o.exposant}">
             ${this.dessin(o, 34)}
             <span class="fr-nom">${echapper(o.nom)}</span>
-            <span class="fr-val">${puissanceDeDix(o.exposant)} m</span>
+            <span class="fr-val" data-val>${echapper(val)}</span>
         </button>`;
     }
 
@@ -232,15 +250,30 @@ class FrisePuissances extends BaseGame {
             // leçon du chapitre, et elle se lit dans la différence des
             // exposants — qui est exactement ce qu'on travaille.
             const ecart = ici - voulu;
-            const facteur = puissanceDeDix(Math.abs(ecart));
-            this.dire(`${o.nom} mesure ${puissanceDeDix(voulu)} m. Là, c'est `
+            const facteur = puissanceTexte(Math.abs(ecart));
+            // EN MODE « NOM SEUL », L'ERREUR RÉVÈLE LA MESURE SUR LA CARTE.
+            //
+            // Sans cela le mode serait un jeu de devinette : on cherche, on se
+            // trompe, et l'on ne sait toujours pas. En révélant l'écriture
+            // DÉCIMALE — et non la puissance, qui est écrite sur les cases —,
+            // il reste exactement le travail du mode « écriture décimale » :
+            // compter les rangs. L'élève a donc appris la taille ET gardé son
+            // exercice.
+            if (this.ecriture === 'nom') {
+                const val = carte.querySelector('[data-val]');
+                if (val && !val.textContent) {
+                    val.textContent = `${ecritureDecimale(voulu)} m`;
+                    carte.classList.add('fr-carte--revelee');
+                }
+            }
+            this.dire(`${o.nom} mesure ${puissanceTexte(voulu)} m. Là, c'est `
                 + `${facteur} fois trop ${ecart > 0 ? 'grand' : 'petit'}.`, 'fr-dit--ko');
             trou.classList.add('fr-trou--refus');
             setTimeout(() => trou.classList.remove('fr-trou--refus'), 650);
             this.onWrongAnswer(null, {
-                questionText: `${o.nom} — ${puissanceDeDix(voulu)} m`,
-                input: `${puissanceDeDix(ici)} m`,
-                expected: `${puissanceDeDix(voulu)} m`,
+                questionText: `${o.nom} — ${puissanceTexte(voulu)} m`,
+                input: `${puissanceTexte(ici)} m`,
+                expected: `${puissanceTexte(voulu)} m`,
                 concept: COMPETENCE,
                 // LE JEU VIENT DE DIRE POURQUOI, au milieu de l'écran, et la
                 // case a clignoté : une carte de correction par-dessus
@@ -251,10 +284,13 @@ class FrisePuissances extends BaseGame {
         }
 
         this.poser(carte, trou, o);
-        this.dire(`${o.nom} : ${o.taille}.`, 'fr-dit--ok');
+        // ET LA PHRASE FAIT LE PONT ENTRE LES DEUX ÉCRITURES : « 0,000 1 m,
+        // c'est 10⁻⁴ m ». C'est la seule chose qu'on veuille lui laisser.
+        this.dire(`${o.nom} : ${o.taille} — ${ecritureDecimale(voulu)} m, `
+            + `c'est ${puissanceTexte(voulu)} m.`, 'fr-dit--ok');
         this.onCorrectAnswer(null, COMPETENCE, {
-            questionText: `${o.nom} — ${puissanceDeDix(voulu)} m`,
-            given: `${puissanceDeDix(ici)} m`, expected: `${puissanceDeDix(voulu)} m`,
+            questionText: `${o.nom} — ${puissanceTexte(voulu)} m`,
+            given: `${puissanceTexte(ici)} m`, expected: `${puissanceTexte(voulu)} m`,
             // L'ÉCHELLE ENTIÈRE EST L'UNITÉ DE TRAVAIL, pas chaque carte :
             // sans cela, cinq objets compteraient cinq questions et l'élève
             // aurait « fini » son exercice en une frise et demie.

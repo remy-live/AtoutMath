@@ -48,9 +48,25 @@ for (const [nom, l, h] of [['au doigt', 390, 844], ['écran large', 1280, 900]])
     const s = await ouvrirSonde({ largeur: l, hauteur: h });
     await s.identifier();
     console.log(`\n═══ ${nom} (${l} × ${h}) ═══`);
-    await s.ouvrirExercice('num-echelle-tailles', { monde: 'nous', objets: 5 });
+    await s.ouvrirExercice('num-echelle-tailles',
+        { monde: 'nous', objets: 5, carte: 'decimale' });
     await s.doitExister('.fr-echelle');
     await s.doitExister('.fr-carte');
+
+    // ── LA CARTE NE DIT PAS LA MÊME CHOSE QUE LA CASE ──────────────────────
+    //
+    // RÉMY : « c'est hyper facile, il suffit de placer 10^4 à 10^4, où est la
+    // recherche ? » C'est LE point à mesurer : si les deux écritures se
+    // rejoignaient, l'exercice redeviendrait un appariement d'étiquettes.
+    const ecarts = await s.page.evaluate(() => {
+        const cases = [...document.querySelectorAll('.fr-etiq')].map(e => e.textContent.trim());
+        const cartes = [...document.querySelectorAll('.fr-val')].map(e => e.textContent.trim());
+        return { cases, cartes, memes: cartes.filter(v => cases.includes(v)).length };
+    });
+    dire(ecarts.memes === 0,
+        `aucune carte ne recopie une étiquette de case (${ecarts.cartes.slice(0, 3).join(' · ')})`);
+    dire(ecarts.cartes.every(v => /^≈ [0-9\u00a0 ,]+ m$/.test(v)),
+        'les cartes portent une écriture décimale, annoncée comme un ORDRE DE GRANDEUR');
 
     const d = await etat(s);
     dire(d.cases === 9, `neuf cases sur l’échelle (${d.cases})`);
@@ -125,6 +141,59 @@ for (const [nom, l, h] of [['au doigt', 390, 844], ['écran large', 1280, 900]])
     console.log(`  erreurs de page : ${s.erreurs.length} · fenêtres natives : ${s.fenetresNatives.length}`);
     ko += s.erreurs.length + s.fenetresNatives.length;
     for (const e of s.erreurs.slice(0, 4)) console.log('   !', e);
+    await s.fermer();
+}
+
+
+// ══ LE MODE « RIEN QUE LE NOM » ════════════════════════════════════════════
+//
+// RÉMY l'a retenu avec l'écriture décimale. Sans révélation après l'erreur, ce
+// serait un jeu de devinette : on cherche, on se trompe, et l'on ne sait
+// toujours pas. On mesure donc que la carte REÇOIT sa mesure — et que c'est
+// l'écriture DÉCIMALE, pas la puissance : il doit rester du travail.
+{
+    const s = await ouvrirSonde({ largeur: 1280, hauteur: 900 });
+    await s.identifier();
+    console.log('\n\u2550\u2550\u2550 rien que le nom \u2550\u2550\u2550');
+    await s.ouvrirExercice('num-echelle-tailles', { monde: 'nous', objets: 5, carte: 'nom' });
+    await s.doitExister('.fr-carte');
+    const vide = await s.page.evaluate(() =>
+        [...document.querySelectorAll('.fr-val')].every(e => !e.textContent.trim()));
+    dire(vide, 'aucune carte ne porte de valeur au d\u00e9part');
+
+    const carte = await s.page.evaluate(() => {
+        const c = document.querySelector('.fr-carte');
+        return { id: c.dataset.id, expo: Number(c.dataset.expo) };
+    });
+    const mauvaise = carte.expo === 4 ? 3 : carte.expo + 1;
+    const pc = await centre(s, '.fr-carte');
+    const pm = await centre(s, `.fr-trou[data-expo="${mauvaise}"]`);
+    await s.page.mouse.click(pc.x, pc.y);
+    await s.page.mouse.click(pm.x, pm.y);
+    const revele = await s.page.evaluate(() => {
+        const c = document.querySelector('.fr-carte');
+        return { val: c.querySelector('[data-val]').textContent.trim(),
+            marque: c.classList.contains('fr-carte--revelee') };
+    });
+    dire(/[0-9]/.test(revele.val),
+        `l\u2019erreur \u00e9crit la mesure sur la carte : \u00ab ${revele.val} \u00bb`);
+    dire(!/[\u2070-\u2079\u00b2\u00b3\u00b9\u207b]/.test(revele.val),
+        'et c\u2019est l\u2019\u00e9criture D\u00c9CIMALE : il reste \u00e0 compter les rangs');
+    dire(revele.marque, 'la mesure re\u00e7ue se distingue de celle qu\u2019on aurait trouv\u00e9e');
+
+    // APRÈS UNE ERREUR, LA CARTE RESTE EN MAIN : on retente en touchant une
+    // autre case, sans avoir à la reprendre. La retoucher la REPOSE, ce qui
+    // est le geste de celui qui change d'avis.
+    const encorePrise = await s.page.evaluate(() =>
+        document.querySelectorAll('.fr-carte--choisie').length);
+    dire(encorePrise === 1, `la carte reste en main après l\u2019erreur (${encorePrise})`);
+    const pb = await centre(s, `.fr-trou[data-expo="${carte.expo}"]`);
+    await s.page.mouse.click(pb.x, pb.y);
+    const apres = await etat(s);
+    dire(apres.faits === 1, `et l\u2019on peut alors la poser (${apres.faits})`);
+    await s.photo('.fr-cadre', 'tools/tmp/echelle-nom.png');
+    console.log(`  erreurs de page : ${s.erreurs.length} \u00b7 fen\u00eatres natives : ${s.fenetresNatives.length}`);
+    ko += s.erreurs.length + s.fenetresNatives.length;
     await s.fermer();
 }
 

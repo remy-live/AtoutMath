@@ -32,6 +32,13 @@
 // cartes se placeraient PAR ÉLIMINATION, sans lire quoi que ce soit — et c'est
 // exactement l'exercice qu'on ne veut pas.
 
+import { puissanceTexte, valeurPuissance, grouper } from './puissances.js';
+
+// LE TEXTE D'UNE PUISSANCE VIENT DE `core/puissances.js`, comme partout
+// ailleurs dans le chapitre : une seconde écriture de « 10⁻⁴ » finirait par
+// diverger de la première, et c'est le genre d'écart qu'on ne voit jamais.
+export { puissanceTexte };
+
 /**
  * LES DESSINS, EN FRAGMENTS SVG.
  *
@@ -220,8 +227,56 @@ export function tirerDesObjets({ monde = 'nous', combien = 5 } = {}, rng) {
     return rng.shuffle(possibles.slice()).slice(0, n);
 }
 
-/** « 10⁻⁴ » — l'exposant en vrais petits chiffres. */
-const HAUT = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴',
-    5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
-export const puissanceDeDix = (n) =>
-    '10' + String(n).split('').map(c => HAUT[c] || c).join('');
+/**
+ * CE QUI EST ÉCRIT SUR LA CARTE — et c'est là que l'exercice se joue.
+ *
+ * RÉMY, en l'essayant : « c'est hyper facile l'échelle des tailles, il suffit
+ * de placer 10^4 à 10^4, où est la recherche ? »
+ *
+ * IL AVAIT RAISON, ET LE DÉFAUT ÉTAIT ENTIER : la carte disait « 10⁴ m », la
+ * case disait « 10⁴ m ». C'était apparier deux étiquettes identiques — aucune
+ * mathématique là-dedans. La recherche vient de l'ÉCART entre ce qui est écrit
+ * sur la carte et ce qui est écrit sur l'échelle.
+ *
+ * TROIS ÉCRITURES, et il a tranché deux choses : « par contre reste sur des
+ * puissances de 10 » — donc jamais de 1,27 × 10⁷, que des puissances PURES —,
+ * et il a retenu l'écriture décimale et le nom seul.
+ *
+ *   · `decimale` : « 0,000 1 m » → compter les rangs. Le geste du chapitre.
+ *   · `nom`      : « Un virus » → chercher, et apprendre de son erreur.
+ *   · `puissance`: « 10⁻⁴ m » → ce qu'il a jugé trop facile. Gardé pour la
+ *                  toute première fois, jamais par défaut.
+ *
+ * RESTER SUR DES PUISSANCES PURES ÉCARTE AUSSI UN PIÈGE qu'il aurait fallu
+ * éviter à la main : avec une mantisse, le mont Blanc (4 810 m) est d'ordre
+ * 10³, mais 4 810 est plus proche de 10 000 que de 1 000, et l'élève qui
+ * répond 10⁴ a un raisonnement défendable. Pas de mantisse, pas d'ambiguïté.
+ */
+export const ECRITURES = ['decimale', 'nom', 'puissance'];
+
+/** « 0,000 1 » ou « 10 000 » — la MÊME puissance, écrite en décimal.
+ *
+ *  `valeurPuissance` pose les zéros un par un (10 ** -7 donne
+ *  1.0000000000000001e-7), et `grouper` les range par trois avec des espaces
+ *  INSÉCABLES : « cet exercice demande justement de COMPTER les rangs ». Les
+ *  deux existaient déjà dans `core/puissances.js` ; on ne les réécrit pas. */
+export const ecritureDecimale = (n) => grouper(valeurPuissance(n));
+
+/**
+ * CE QUE PORTE LA CARTE, SELON CE QU'ON A RÉGLÉ — et toujours avec « ≈ ».
+ *
+ * LE SIGNE N'EST PAS UNE PRÉCAUTION DE STYLE, il rétablit une vérité. Puisque
+ * les valeurs restent des puissances PURES, la carte d'un élève porte « 1 m »
+ * alors qu'un élève mesure un mètre soixante. Écrire « 1 m » tout court serait
+ * faux ; écrire « ≈ 1 m » est juste, et dit en un caractère ce qu'est un ordre
+ * de grandeur — ce que l'exercice travaille précisément.
+ *
+ * VU SUR LA MESURE : la carte annonçait « Un élève · 1 m ».
+ */
+export function texteDeLaCarte(objet, ecriture) {
+    if (ecriture === 'nom') return '';
+    const v = ecriture === 'puissance'
+        ? puissanceTexte(objet.exposant)
+        : ecritureDecimale(objet.exposant);
+    return `\u2248 ${v} m`;
+}

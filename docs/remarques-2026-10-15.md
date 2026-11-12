@@ -6321,3 +6321,50 @@ ne se voit qu'à l'œil.
 **PAS DE FICHE PAPIER**, et c'est dit plutôt que caché : une frise imprimée
 serait belle, mais elle demande de porter les dessins dans le PDF — un vrai
 chantier de géométrie. À proposer à Rémy plutôt qu'à bâcler.
+
+---
+
+## « où est la recherche ? » — 12 novembre, le même jour
+
+> « c'est hyper facille l'échelle des tailles, il suffits de placer 10^4 à 10^4
+> où est la recherche ? »
+
+**IL AVAIT RAISON, ET LE DÉFAUT ÉTAIT ENTIER.** La carte disait « 10⁴ m », la
+case disait « 10⁴ m » : c'était apparier deux étiquettes identiques. J'avais
+pris sa phrase — « on donne l'objet, sa valeur sous la forme de 10^… » — au
+pied de la lettre, et j'en avais fait un exercice sans une ligne de
+mathématiques. Le commentaire que j'avais écrit disait même « le travail est de
+LIRE cet exposant et de le placer » : c'est de la lecture de symbole, pas du
+calcul.
+
+**LA RECHERCHE VIENT DE L'ÉCART** entre ce que porte la carte et ce que porte
+l'échelle. Quatre façons de le créer lui ont été proposées ; il en a retenu
+deux, et il a tranché une troisième chose :
+
+> « par contre reste sur des puissances de 10 »
+
+Donc des puissances PURES — jamais 1,27 × 10⁷. Ce qui écarte au passage un
+piège que j'allais devoir éviter à la main : avec une mantisse, le mont Blanc
+(4 810 m) est d'ordre 10³, mais 4 810 est plus proche de 10 000 que de 1 000,
+et l'élève qui répond 10⁴ a un raisonnement défendable.
+
+**Fait** : un réglage « Ce qui est écrit sur la carte », avec trois écritures.
+
+- **l'écriture décimale** (par défaut) : « ≈ 0,000 1 m » en face de « 10⁻⁴ m ».
+  Il faut compter les rangs. C'est le geste du chapitre.
+- **rien que le nom** : « Un virus », et l'on cherche. Et si l'on se trompe,
+  **l'erreur écrit la mesure sur la carte** — en décimal, pas en puissance :
+  l'élève a donc appris la taille ET gardé son exercice. Sans cela, le mode
+  serait une devinette : on cherche, on se trompe, et l'on ne sait toujours pas.
+- **la puissance** : ce qu'il a jugé trop facile. Gardé pour la toute première
+  fois, jamais par défaut.
+
+**ET LE « ≈ » N'EST PAS UNE PRÉCAUTION DE STYLE.** Vu sur la mesure : la carte
+annonçait « Un élève · 1 m », alors qu'un élève mesure un mètre soixante.
+Puisque les valeurs sont des puissances pures, la carte porte un ORDRE DE
+GRANDEUR : l'écrire sans le dire était faux. Une épreuve le garde.
+
+**MESURÉ** : les trois écritures jouées dans un vrai navigateur, au doigt et
+sur écran large — aucune carte ne recopie l'étiquette d'une case, l'erreur
+révèle bien l'écriture décimale (et pas la puissance), la carte reste en main
+après une erreur, et les cinq objets se rangent. Zéro erreur de page.

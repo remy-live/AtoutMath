@@ -17889,6 +17889,12 @@ body.visite-en-cours .modal-overlay > * {
 .fr-nom { font-size: clamp(.62rem, 2.4cqw, .76rem); color: var(--text-muted);
           max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fr-val { font-weight: 800; font-size: clamp(.76rem, 3cqw, .95rem); color: var(--primary-texte); }
+/* UNE MESURE RÉVÉLÉE APRÈS UNE ERREUR se distingue de celle qu'on avait dès le
+   départ : l'élève doit voir qu'il l'a REÇUE, pas trouvée. */
+.fr-carte--revelee .fr-val { color: var(--danger-texte); font-style: italic; }
+/* Une carte sans valeur ne doit pas se tasser : la place reste, et c'est elle
+   qui recevra la mesure. */
+.fr-val:empty { min-height: 1.1em; }
 .fr-svg { flex: 0 0 auto; }
 
 @media (max-width: 520px) {
