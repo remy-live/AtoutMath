@@ -121,6 +121,39 @@ export const FAMILLES = {
             { symbole: 'cm³', nom: 'centimètre cube', rang: -6 },
             { symbole: 'mm³', nom: 'millimètre cube', rang: -9 }
         ]
+    },
+    // ── LES PRÉFIXES, DANS LE MÊME TABLEAU ────────────────────────────────
+    //
+    // RÉMY, en préparant son chapitre sur les puissances de 10 : « j'aimerai
+    // bien des exercices de conversion avec milli, million (on peut proposer
+    // un tableau) ».
+    //
+    // IL N'Y A RIEN À ÉCRIRE DE PLUS QUE CES DIX LIGNES, et c'est la preuve
+    // que le tableau était bien rangé : une famille y est une liste d'unités
+    // et un ÉCHELON — le nombre de colonnes que chaque unité coiffe. Les aires
+    // en coiffent deux, les volumes trois. Les préfixes aussi en coiffent
+    // trois, parce qu'ils vont de mille en mille : c'est exactement la même
+    // forme, et le moteur n'a pas bougé d'une ligne.
+    //
+    // POURQUOI LE WATT, ET PAS LE MÈTRE NI LE GRAMME. Il faut une unité où
+    // les QUATRE marches existent vraiment, sinon le tableau enseigne des mots
+    // qu'on ne rencontre nulle part : le mégamètre n'existe pas, le
+    // mégagramme s'appelle une tonne. Le watt, lui, se lit sur les appareils
+    // de la maison — une diode fait 20 mW, une ampoule 9 W, une bouilloire
+    // 2 kW, une éolienne 3 MW. Et « méga », c'est le MILLION qu'il demande.
+    //
+    // ON S'ARRÊTE À MÉGA ET À MILLI, et c'est une contrainte d'écran autant
+    // qu'un choix : de téra à nano, le tableau ferait vingt-quatre colonnes,
+    // qu'aucune tablette ne porte lisiblement. Micro et nano restent travaillés
+    // par « Kilo, Méga, Giga, Micro, Nano », qui n'a pas besoin de tableau.
+    prefixes: {
+        id: 'prefixes', nom: 'Préfixes (MW → mW)', base: 'W', echelon: 3,
+        unites: [
+            { symbole: 'MW', nom: 'mégawatt', rang: 6 },
+            { symbole: 'kW', nom: 'kilowatt', rang: 3 },
+            { symbole: 'W', nom: 'watt', rang: 0 },
+            { symbole: 'mW', nom: 'milliwatt', rang: -3 }
+        ]
     }
 };
 

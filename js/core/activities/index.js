@@ -145,6 +145,12 @@ import {
     puissancesReconnaitreGenerator, puissancesTransformerGenerator, puissancesGenerator
 } from '../generators/puissances.js';
 import { prefixesGenerator } from '../generators/prefixes.js';
+// MULTIPLIER PAR UNE PUISSANCE DE 10. Rémy, en préparant son chapitre : « je
+// ne crois pas qu'il y ait des calculs du genre 5 × 10² ou 6 × 10⁻⁵ etc. »
+// Il avait raison : `puissances.js` change des ÉCRITURES et
+// `puissancesCalcul.js` manipule des puissances SEULES. Le produit d'un
+// nombre par une puissance n'était nulle part.
+import { puissancesProduitGenerator } from '../generators/puissancesProduit.js';
 import { puissancesCalculGenerator } from '../generators/puissancesCalcul.js';
 import { thalesGenerator } from '../generators/thales.js';
 import { hashiFicheGenerator } from '../generators/hashiFiche.js';
@@ -246,7 +252,7 @@ import {
     mastermindFicheGenerator, pyramideNombresFicheGenerator, tasukoFicheGenerator,
     tourBrahmaFicheGenerator, grenouillesFicheGenerator, parkingFicheGenerator,
     puissancesReconnaitreGenerator, puissancesTransformerGenerator, puissancesGenerator,
-    prefixesGenerator, puissancesCalculGenerator,
+    prefixesGenerator, puissancesCalculGenerator, puissancesProduitGenerator,
     thalesGenerator,
     hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
@@ -1282,6 +1288,16 @@ const legacy = [
     // UNE PARTIE COMME UNITÉ, et non une question : on n'y répond pas à une
     // série, on y joue trois minutes. C'est la même décision que pour Bumpy et
     // Boulder Dash — « pas besoin de 5/6 obligatoire c'est un jeu ».
+    // ── RELIER DEUX COLONNES ──────────────────────────────────────────────
+    //
+    // RÉMY : « J'aimerai bien un jeu où on relie 10² à 100, 10⁻³ à 0,001,
+    // etc ». C'est l'exercice du cahier, et le dépôt n'avait rien pour : le
+    // Memory cache ses cartes, et « Relier les points » est un point à point.
+    //
+    // UN TABLEAU ENTIER COMME UNITÉ, et non une paire : six paires reliées
+    // font UNE question. Sinon un exercice de huit questions serait fini en
+    // un tableau et demi, et l'élève n'aurait rien relu.
+    ['apparier', 'Relier deux colonnes', 'apparier', 'engineApparier', 'tableau', 4],
     ['plateau-nombres', 'Le Plateau des Nombres (à plusieurs)', 'jeuxDeClasse',
      'engineLePlateauDesNombres', 'partie', 1],
     ['chat-perche', 'Le Chat Perché (consignes)', 'jeuxDeClasse',

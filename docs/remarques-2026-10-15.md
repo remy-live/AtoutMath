@@ -6016,3 +6016,57 @@ ramassent les bons nombres en quelques secondes, et le terrain peut n'en porter
 aucun pendant un moment — chaque jeton ramassé est remplacé à pile ou face. Ce
 n'est pas nouveau et ce n'est pas un défaut d'écriture : c'est un choix de
 règle, et les règles de ses jeux sont à lui.
+
+---
+
+## Le chapitre des puissances de 10 — trois manques, trois ajouts
+
+**Ce qu'il a dit**, le 12 novembre : « je ne crois pas qu'il y ait des calculs
+du genre 5 × 10² ou 6 × 10⁻⁵ etc. Et j'aimerai bien des exercices de
+conversion avec milli, million (on peut proposer un tableau). J'aimerai bien un
+jeu où on relie 10² à 100, 10⁻³ à 0,001, etc »
+
+**Il avait raison sur les trois.** Le chapitre portait quatre exercices —
+reconnaître, transformer, les préfixes, les règles de calcul — et :
+
+- aucun ne pose « 5 × 10² ». « Écriture scientifique » demande bien d'écrire
+  3,47 × 10⁴ sans puissance de 10, mais il tire TOUJOURS deux ou trois chiffres
+  significatifs, et il présente le geste comme un changement d'écriture.
+  « Calculer avec des Puissances », lui, travaille 10⁵ × 10³ — des puissances
+  SEULES, sans nombre devant ;
+- les préfixes existaient, sans tableau ;
+- rien ne permettait de relier deux colonnes : le Memory CACHE ses cartes, et
+  « Relier les points » est un point à point.
+
+**Fait** : `UP` Multiplier par une Puissance de 10 (cinq marches, dont le
+produit et le quotient de deux écritures — son « etc. »), `MK` Milli, Kilo,
+Méga — le tableau, `EP` Relier les Puissances de 10 (quatre familles de cartes,
+dont « un million ↔ 10⁶ »).
+
+**CE QUE LE RANGEMENT A RENDU** : le tableau des préfixes n'a coûté que DIX
+LIGNES. Une famille du tableau de conversion est une liste d'unités et un
+ÉCHELON — le nombre de colonnes que chaque unité coiffe. Les aires en coiffent
+deux, les volumes trois ; les préfixes trois aussi, puisqu'ils vont de mille en
+mille. Le moteur n'a pas bougé d'une ligne. C'est le genre de moment où l'on
+voit à quoi servent les décisions prises six semaines plus tôt.
+
+**TROIS DÉFAUTS TROUVÉS EN MESURANT, ET AUCUN N'ÉTAIT CELUI QUE JE CHERCHAIS** :
+
+1. Sur `(4 × 10⁴) ÷ (2 × 10²)`, deux distracteurs valaient la bonne réponse —
+   4 ÷ 2 et 4 − 2 font tous les deux 2 — et le garde-fou les écartait tous les
+   deux. **L'élève recevait un QCM à DEUX choix, dont le bon** : une chance sur
+   deux sans rien savoir.
+2. Sur la fiche papier, « et donne le résultat sous la forme a × 10ⁿ »
+   occupait deux des trois lignes de chaque question, neuf fois de suite. C'est
+   exactement ce qu'il avait dit de l'exercice voisin : « mets juste calcule ».
+3. Dans le jeu, une partie mélangée sur soixante-cinq mettait **la même
+   écriture des deux côtés** — « 10³ » à gauche, et « 10³ » à droite en face de
+   « kilo ». L'élève reliait 10³ à 10³, ce qui est vrai, et on le comptait
+   faux. Une erreur comptée sur une réponse juste est ce qu'un exercice peut
+   faire de pire.
+
+**ET DEUX PETITES CHOSES VUES SUR DES PHOTOS** : le tableau des préfixes
+affichait « Attention : hecto vient avant déca » — deux étiquettes qu'il ne
+porte pas ; et dans le jeu, une carte sur deux devenait verte, celle de droite,
+parce que la classe de base peint l'élément qu'on lui donne. Deux cartes
+reliées par le même trait n'avaient pas l'air d'avoir le même statut.

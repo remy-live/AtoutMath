@@ -474,11 +474,27 @@ class Conversion extends BaseGame {
         // deux, et c'est précisément ce qu'il faut avoir compris avant de
         // poser quoi que ce soit.
         const e = this.echelon;
+        // ── L'AVERTISSEMENT DOIT PARLER DE CE TABLEAU-CI ─────────────────
+        //
+        // « Attention : hecto vient avant déca » était dit à TOUS les
+        // tableaux. MESURÉ SUR LA PHOTO du tableau des préfixes, qui ne porte
+        // ni hecto ni déca : l'élève lisait un piège qui n'existe pas, et
+        // cherchait deux étiquettes absentes. Un avertissement qui désigne ce
+        // qui n'est pas là est pire que pas d'avertissement — il envoie
+        // chercher.
+        //
+        // Chaque famille a d'ailleurs SON piège, et il n'est pas le même : aux
+        // longueurs, l'ordre de hecto et déca ; aux préfixes, le « m » qui est
+        // milli en minuscule et méga en majuscule — la faute qui vaut un
+        // milliard, et que l'exercice voisin documente déjà.
+        const piege = this.famille === 'prefixes'
+            ? 'Attention : « m » minuscule est MILLI, « M » majuscule est MÉGA.'
+            : 'Attention : hecto vient avant déca.';
         this.note(e === 1
-            ? 'Chaque étiquette va dans SA colonne. Attention : hecto vient avant déca.'
+            ? `Chaque étiquette va dans SA colonne. ${piege}`
             : `Chaque étiquette coiffe ${e === 2 ? 'DEUX' : 'TROIS'} colonnes — on passe `
                 + `d'une unité à la suivante en multipliant par ${e === 2 ? 'cent' : 'mille'}. `
-                + 'Attention : hecto vient avant déca.');
+                + piege);
         this.melange.etiquettes.forEach(sym => {
             const el = document.createElement('div');
             el.className = 'cv-etiquette';

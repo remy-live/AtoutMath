@@ -178,7 +178,14 @@ export const mesuresExercises = [
                     // simple perd un facteur dix PAR COLONNE — et le tableau est le
                     // seul endroit où cela se voit.
                     { value: 'aire', label: 'Aires (km² → mm²) — deux colonnes par unité' },
-                    { value: 'volume', label: 'Volumes (m³ → mm³) — trois colonnes par unité' }
+                    { value: 'volume', label: 'Volumes (m³ → mm³) — trois colonnes par unité' },
+                    // LES PRÉFIXES. Rémy : « j'aimerai bien des exercices de
+                    // conversion avec milli, million (on peut proposer un
+                    // tableau) ». Ils ont leur propre entrée au catalogue —
+                    // « Milli, Kilo, Méga » —, et ils sont aussi ici : qui
+                    // ouvre LE tableau de conversion doit pouvoir y aller sans
+                    // chercher ailleurs.
+                    { value: 'prefixes', label: 'Préfixes (MW → mW) — trois colonnes par préfixe' }
                 ],
                 default: 'longueur'
             },

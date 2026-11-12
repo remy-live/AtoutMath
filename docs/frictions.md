@@ -6976,3 +6976,25 @@ plus d'un.**
   tombe : « remis en place, copie de l'état d'avant dans … ». Il remet déjà le
   fichier tout seul quand la syntaxe ne tient plus — c'est la seule raison pour
   laquelle j'ai cru avoir besoin de git, et je me suis trompé de direction.
+
+**`remplacer.mjs` cherche un texte que j'ai ÉCRIT, et ne le trouve pas** — 12 novembre
+
+- *Ce que je voulais faire* : corriger deux lignes d'un fichier que je venais
+  d'écrire moi-même, dans le même quart d'heure. Les paires ont été retapées
+  depuis mon brouillon ; l'outil a refusé **deux fois**, pour deux raisons
+  différentes et toutes les deux invisibles : la première fois l'indentation
+  (vingt espaces au lieu de douze — je comptais sur le texte de mon brouillon,
+  pas sur le fichier), la seconde un `−` que mon outil d'écriture avait
+  déjà transformé en « − » sur le disque.
+- *Ce qui a coûté* : deux allers-retours de trois minutes, et à chaque fois un
+  `grep` pour relire la ligne telle qu'elle est VRAIMENT. L'outil dit la bonne
+  chose — « RELIRE le fichier plutôt que de le retaper » — mais il le dit APRÈS
+  l'échec, et il ne montre pas ce qu'il a trouvé à la place.
+- *Combien de fois* : ||| (trois fois aujourd'hui, et la note du 8 novembre
+  parlait déjà de la même famille)
+- *Ce qui manque* : que l'outil, quand une paire ne trouve pas son compte,
+  cherche le **meilleur candidat approchant** dans le fichier et l'imprime à
+  côté du texte demandé, avec les différences marquées — « tu as demandé 20
+  espaces, le fichier en a 12 ». Il a déjà le fichier en main ; il ne manque
+  qu'une distance de Levenshtein sur les lignes. C'est la différence entre
+  « ça ne marche pas » et « voilà pourquoi ».

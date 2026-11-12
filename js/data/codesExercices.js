@@ -351,6 +351,12 @@ export const CODES_EXERCICES = {
     // sont pris depuis longtemps. On applique donc la règle écrite en tête de
     // ce fichier — « la lettre suivante du premier mot » :
     // pLaTeau, cHat perChé, RUée, pLUie.
+    // MP et PM étaient pris : on applique la règle de ce fichier — la lettre
+    // suivante du premier mot. mUltiplier Par une Puissance.
+    // RP, PR, RL et LR étaient pris : rElier les Puissances.
+    'num-puissances-relier':      'EP',   // Relier les Puissances de 10
+    'num-prefixes-tableau':       'MK',   // Milli, Kilo, Méga — le tableau
+    'num-puissances-produit':     'UP',   // Multiplier par une Puissance de 10
     'calc-plateau-nombres':       'LT',   // Le Plateau des Nombres
     'num-chat-perche':            'HC',   // Le Chat Perché
     'num-la-ruee':                'RU',   // La Ruée

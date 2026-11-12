@@ -1643,6 +1643,154 @@ export const numerationExercises = [
         instruction: "Les mêmes questions, avec la ligne du milieu : 10⁵ × 10² = 10^(5 + 2) = 10⁷. L'exposant se tape avec la touche ^, parce qu'un exposant qui est une SOMME ne s'écrit pas en petits chiffres. Seule la dernière ligne compte pour la séance ; les autres sont la trace qu'on demande sur la copie."
     },
 
+    {
+        // ── RELIER 10² À 100 ──────────────────────────────────────────────
+        //
+        // RÉMY : « J'aimerai bien un jeu où on relie 10² à 100, 10⁻³ à 0,001,
+        // etc ». C'est l'exercice qu'il donne sur papier depuis toujours, et
+        // le dépôt n'avait rien pour : le Memory CACHE ses cartes — on y
+        // cherche de mémoire — alors qu'ici tout doit rester sous les yeux.
+        // Regarder douze écritures posées à plat et voir lesquelles désignent
+        // le même nombre, c'est précisément le travail.
+        //
+        // QUATRE FAMILLES DE CARTES, et la première est sa demande mot pour
+        // mot. Les trois autres suivent le chapitre : les écritures
+        // scientifiques, les préfixes, et les MOTS — « un million » ↔ 10⁶,
+        // parce qu'un élève qui sait dire « méga, c'est un million » ne sait
+        // pas toujours l'écrire en puissance de 10.
+        id: 'num-puissances-relier',
+        title: 'Relier les Puissances de 10',
+        cree: '2026-11-12',
+        activityId: 'apparier',
+        skills: ['num.puissances.dix'],
+        // PAS DE FICHE PAPIER DEPUIS CET EXERCICE, et ce n'est pas un oubli :
+        // relier deux colonnes sur une feuille, Rémy le fait déjà à la main en
+        // trente secondes, et mieux que nous — il choisit ses nombres.
+        sansRevision: true,
+        params: { famille: 'puissances', paires: 6 },
+        paramSchema: [
+            {
+                id: 'famille', type: 'select', label: 'Quelles cartes',
+                options: [
+                    { value: 'puissances', label: '10² ↔ 100' },
+                    { value: 'scientifique', label: '5 × 10² ↔ 500' },
+                    { value: 'prefixes', label: 'milli ↔ 10⁻³' },
+                    { value: 'mots', label: 'un million ↔ 10⁶' },
+                    { value: 'melange', label: 'de tout' }
+                ],
+                default: 'puissances'
+            },
+            {
+                id: 'paires', type: 'select', label: 'Combien de paires',
+                aide: 'Quatre pour commencer. Huit, et le tableau se lit en entier avant de tracer.',
+                options: [
+                    { value: 4, label: '4 paires' },
+                    { value: 6, label: '6 paires' },
+                    { value: 8, label: '8 paires' }
+                ],
+                default: 6
+            }
+        ],
+        motsClefs: ['relier', 'associer', 'paires', 'puissances de 10', 'exposant',
+            'million', 'millième', 'milli', 'méga', 'écriture scientifique', 'jeu'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Touche une écriture à gauche, puis le nombre qui lui correspond à droite : un trait se trace. 10² va avec 100, 10⁻³ avec 0,001. Si tu te trompes, le trait rouge s'efface et la phrase du milieu te dit POURQUOI la paire ne va pas ensemble — c'est elle qu'il faut lire, pas le score. Un exposant POSITIF donne un grand nombre, un 1 suivi d'autant de zéros ; un exposant NÉGATIF donne un nombre tout petit, mais JAMAIS un nombre négatif. Quand tout est relié, relis le tableau de haut en bas : c'est là que la règle se voit d'un coup."
+    },
+    {
+        // ── LE TABLEAU DES PRÉFIXES ───────────────────────────────────────
+        //
+        // RÉMY : « j'aimerai bien des exercices de conversion avec milli,
+        // million (on peut proposer un tableau) ».
+        //
+        // C'EST LE TABLEAU DE CONVERSION QU'IL CONNAÎT DÉJÀ, avec une famille
+        // de plus. Pas un second tableau écrit à côté : le même moteur, les
+        // mêmes gestes, les mêmes colonnes — seule la liste des unités change.
+        // Un élève qui a converti des longueurs en sixième retrouve ici le
+        // geste exact, et c'est précisément ce qui fait comprendre que les
+        // préfixes ne sont pas une nouveauté mais la MÊME chose, en plus large.
+        //
+        // TROIS COLONNES PAR PRÉFIXE, parce qu'ils vont de mille en mille. Les
+        // aires en coiffent deux, les volumes trois : la forme existait.
+        //
+        // SUR LE WATT, et le commentaire de `core/conversion.js` dit pourquoi :
+        // c'est la seule unité courante où les quatre marches existent
+        // vraiment — 20 mW une diode, 9 W une ampoule, 2 kW une bouilloire,
+        // 3 MW une éolienne. Et « méga », c'est le MILLION qu'il demande.
+        id: 'num-prefixes-tableau',
+        title: 'Milli, Kilo, Méga — le tableau',
+        cree: '2026-11-12',
+        activityId: 'conversion',
+        skills: ['num.puissances.prefixes'],
+        printable: 'conversion', printGeneratorId: 'mes.conversion-fiche',
+        printParams: { famille: 'prefixes', lignes: 8, entetes: true, ecart: 3, tableau: true },
+        consignePapier: 'Complète le tableau et effectue les conversions.',
+        params: { famille: 'prefixes', ecart: 3, decimales: false },
+        paramSchema: [
+            {
+                id: 'ecart', type: 'select', label: 'Écart entre les unités',
+                aide: 'Une seule marche pour commencer : W → kW. Trois marches, c\u2019est mW → kW.',
+                options: [
+                    { value: 3, label: '1 marche — pour commencer (W → kW)' },
+                    { value: 6, label: 'Jusqu\u2019à 2 marches (W → MW)' },
+                    { value: 9, label: 'Tout le tableau (mW → MW)' }
+                ],
+                default: 3
+            },
+            {
+                id: 'decimales', type: 'checkbox', label: 'Nombres à virgule au départ',
+                aide: 'Sans cela, on part toujours d\u2019un entier — la virgule n\u2019apparaît qu\u2019à l\u2019arrivée.',
+                default: false
+            }
+        ],
+        motsClefs: ['préfixe', 'milli', 'kilo', 'méga', 'million', 'millième', 'watt',
+            'tableau', 'conversion', 'puissances de 10', 'mW', 'kW', 'MW'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Le tableau que tu connais, avec les préfixes à la place des unités. CHAQUE PRÉFIXE COIFFE TROIS COLONNES, parce qu'ils vont de MILLE EN MILLE : du watt au kilowatt il y a trois rangs, et du kilowatt au mégawatt trois autres. C'est la seule chose à retenir, et elle explique tout le reste. On place d'abord le nombre dans le tableau — le chiffre des unités sous la colonne de son unité —, puis on lit la conversion sous le préfixe demandé, en complétant par des zéros. 2 kW = 2 000 W, et 2 000 W = 0,002 MW. Les quatre marches existent pour de vrai : une diode fait 20 mW, une ampoule 9 W, une bouilloire 2 kW, une éolienne 3 MW."
+    },
+    {
+        // ── MULTIPLIER PAR UNE PUISSANCE DE 10 ────────────────────────────
+        //
+        // RÉMY, en préparant son chapitre : « je ne crois pas qu'il y ait des
+        // calculs du genre 5 × 10² ou 6 × 10⁻⁵ etc. »
+        //
+        // IL AVAIT RAISON, ET C'EST VÉRIFIÉ : « Puissances de 10 — écriture
+        // scientifique » demande bien « écris 3,47 × 10⁴ sans puissance de 10 »,
+        // mais il tire TOUJOURS deux ou trois chiffres significatifs — jamais
+        // « 5 × 10² » — et il présente le geste comme un changement d'écriture.
+        // « Calculer avec des Puissances », lui, travaille 10⁵ × 10³, des
+        // puissances SEULES. Le produit d'un nombre PAR une puissance, qui est
+        // le calcul le plus courant du chapitre, n'était nulle part.
+        //
+        // CINQ MARCHES, et les deux dernières sont son « etc. » : le produit et
+        // le quotient de deux écritures, là où la règle des nombres et celle
+        // des exposants se rencontrent.
+        id: 'num-puissances-produit',
+        title: 'Multiplier par une Puissance de 10',
+        cree: '2026-11-12',
+        generatorId: 'num.puissances-produit', activityId: 'buttons',
+        skills: ['num.puissances.scientifique'],
+        // « a × 10ⁿ » NE S'IMPRIME PAS : le « ⁿ » en exposant Unicode sort
+        // « 10^n » sur la fiche, là où 10⁻² s'imprime très bien. On donne donc
+        // la forme attendue par un EXEMPLE, ce qui est de toute façon plus
+        // clair pour un élève de quatrième qu'une formule avec des lettres.
+        consignePapier: "Calcule. Les produits et les quotients s'écrivent comme 6 × 10⁻² : un nombre, puis une puissance de 10.",
+        colonnesPapier: 3,
+        motsClefs: ['puissances de 10', 'multiplier', 'exposant', 'écriture scientifique',
+            'produit', 'quotient', 'virgule', 'déplacer la virgule', 'physique',
+            'notation scientifique', 'grands nombres', 'petits nombres'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Cinq marches, et l'on monte tout seul toutes les trois questions. D'ABORD EFFECTUER : 5 × 10² = 500. Multiplier par 10², c'est déplacer la virgule de DEUX rangs vers la droite, en complétant par des zéros. PUIS LE CAS QUI PIÈGE : 6 × 10⁻⁵ = 0,000 06. L'exposant est négatif, donc la virgule part vers la GAUCHE et le nombre devient tout petit — mais il ne devient JAMAIS négatif, et c'est la faute qu'on voit le plus. TROISIÈME MARCHE, le chemin inverse : 4 500 = 4,5 × 10 puissance combien ? Compte les rangs, et regarde si le nombre a grandi ou rapetissé — c'est cela qui donne le signe. ENFIN LES DEUX DERNIÈRES, où tout se rencontre : (3 × 10⁴) × (2 × 10⁻⁶). Range d'un côté les nombres, de l'autre les puissances : 3 × 2 = 6, et 10⁴ × 10⁻⁶ = 10⁻². Le signe × est écrit entre les deux nombres, pas entre les exposants : un produit de puissances AJOUTE les exposants, un quotient les SOUSTRAIT."
+    },
+
     // ── LES TROIS JEUX VIFS, DANS LE CATALOGUE ────────────────────────────
     //
     // RÉMY : « Je préfère un jeu assez rapide fun », puis « Les 3 sont top tu
