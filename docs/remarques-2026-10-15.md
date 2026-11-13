@@ -6863,3 +6863,25 @@ Ce qu'il demande est une règle, pas un réglage : **le plateau part sur les
 élèves EN LIGNE**, et sur eux tous. Reste à savoir ce que « en ligne » veut
 dire aujourd'hui pour le serveur — depuis quand un élève compte comme
 connecté, et ce qui est envoyé à celui qui ne l'est pas encore.
+
+## Soumettre le site à Google — 13 novembre
+
+> « comment soumettre http://atout-math.fr à google ? »
+
+**Il n'y a plus de formulaire** : l'ancien « Submit URL » a disparu. On prouve
+qu'on possède le domaine dans la Search Console, on y dépose un plan du site,
+et on demande l'indexation de la page d'accueil.
+
+La moitié qui s'écrit dans des fichiers est faite : `robots.txt` (qui tient
+surtout `?code=` à l'écart — le lien pour rejoindre une classe n'a rien à faire
+dans un moteur de recherche), `sitemap.xml`, et dans `index.html` la
+description, le lien canonique et les `og:` qui font la carte quand on colle le
+lien dans un message.
+
+**L'autre moitié est pour lui seul**, parce qu'elle demande son compte Google :
+elle est écrite pas à pas dans `docs/referencement.md`.
+
+**ET IL FAUT LE DIRE FRANCHEMENT** : une application d'une seule page ne se
+référencera jamais sur « fractions sixième ». Ce qui amènera des collègues,
+c'est le lien collé dans un courriel ou dans l'ENT — d'où les `og:`, qui
+comptent ici plus que l'indexation.

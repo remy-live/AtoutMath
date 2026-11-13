@@ -23,6 +23,39 @@
          donc une application et en ouvrait une autre — et « Mode Démo &
          Layout » traînait depuis les premiers jours du gabarit. -->
     <title>AtoutMath — Entraînement en mathématiques</title>
+    <!-- ── CE QUE GOOGLE AFFICHE SOUS LE TITRE ────────────────────────────
+
+         RÉMY : « comment soumettre http://atout-math.fr à google ? »
+
+         SANS CES QUATRE LIGNES, LA SOUMISSION NE SERT PAS À GRAND-CHOSE.
+         Google indexe la page, puis compose lui-même un résumé à partir du
+         premier texte qu'il trouve — ici le portail de connexion. Un
+         professeur qui cherche « exercices maths collège » lirait donc
+         « Se connecter · J'ai un code », ce qui ne dit rien de ce que le
+         logiciel fait.
+
+         LA DESCRIPTION EST CELLE DU MANIFESTE, mot pour mot : deux endroits
+         qui décrivent la même chose doivent la décrire pareil, sans quoi l'un
+         des deux dérive et personne ne s'en aperçoit.
+
+         `canonical` EN HTTPS : le site répond aux deux, et sans cette ligne
+         Google peut indexer les deux adresses comme deux sites, qui se
+         partagent alors leur réputation au lieu de l'additionner.
+
+         Les lignes `og:` servent quand on COLLE le lien — dans un courriel,
+         un message, l'ENT : c'est une carte avec le titre, la phrase et
+         l'image, au lieu d'une adresse nue. C'est par là que ce logiciel se
+         transmettra entre collègues, bien plus que par une recherche. -->
+    <meta name="description" content="Entraînement et évaluation en mathématiques (collège). Fonctionne sans connexion.">
+    <link rel="canonical" href="https://atout-math.fr/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="AtoutMath">
+    <meta property="og:title" content="AtoutMath — Entraînement en mathématiques">
+    <meta property="og:description" content="Entraînement et évaluation en mathématiques (collège). Fonctionne sans connexion.">
+    <meta property="og:url" content="https://atout-math.fr/">
+    <meta property="og:image" content="https://atout-math.fr/vg.png">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" href="icones/icon-192.png" type="image/png">
     <!-- Application installable (PWA) : manifeste, couleur de thème et icône
          d'écran d'accueil iOS. Le service worker est enregistré en fin de page. -->
@@ -86,12 +119,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1170">
-    <link rel="stylesheet" href="css/layout.css?v=1170">
-    <link rel="stylesheet" href="css/ui.css?v=1170">
-    <link rel="stylesheet" href="css/games.css?v=1170">
-    <link rel="stylesheet" href="css/components.css?v=1170">
-    <link rel="stylesheet" href="css/modules.css?v=1170">
+    <link rel="stylesheet" href="css/base.css?v=1171">
+    <link rel="stylesheet" href="css/layout.css?v=1171">
+    <link rel="stylesheet" href="css/ui.css?v=1171">
+    <link rel="stylesheet" href="css/games.css?v=1171">
+    <link rel="stylesheet" href="css/components.css?v=1171">
+    <link rel="stylesheet" href="css/modules.css?v=1171">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le

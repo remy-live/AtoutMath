@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LE PLAN DU SITE, POUR LES MOTEURS DE RECHERCHE.
+
+  RÉMY : « comment soumettre http://atout-math.fr à google ? » — c'est ce
+  fichier qu'on dépose dans la Search Console, et non une page une par une.
+
+  IL N'Y A QU'UNE ADRESSE, ET C'EST NORMAL : AtoutMath est une application
+  d'une seule page. Tout ce qu'elle montre — le catalogue, un exercice, une
+  séance — se construit en JavaScript derrière la même adresse. Ajouter ici des
+  adresses qui n'existent pas côté serveur ferait perdre son temps au robot et
+  remonterait des erreurs dans la Search Console.
+
+  `?visite=1` EST LA SEULE EXCEPTION, et elle se défend : c'est la visite
+  guidée, la page qu'un professeur qui découvre le logiciel a envie de trouver.
+  Elle répond à la même adresse, mais Google la traite comme une page distincte,
+  et c'est exactement ce qu'on veut qu'il propose.
+
+  `lastmod` SE MET À JOUR À LA MAIN, le jour où le site change vraiment de
+  contenu visible. Mentir ici — remonter la date à chaque commit — apprend au
+  robot à ne plus la croire.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://atout-math.fr/</loc>
+        <lastmod>2026-11-13</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+    </url>
+    <url>
+        <loc>https://atout-math.fr/?visite=1</loc>
+        <lastmod>2026-11-13</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+</urlset>

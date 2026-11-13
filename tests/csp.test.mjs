@@ -106,8 +106,22 @@ test('ET AUCUNE RESSOURCE NE VIENT D\'AILLEURS', () => {
     // `localforage` et `confetti` sont servis depuis `vendor/` — un commentaire
     // de `core/store.js` dit encore « chargé depuis un CDN », ce qui n'est plus
     // vrai ; c'est la page qui fait foi.
+    //
+    // ── UN LIEN QUI NE CHARGE RIEN N'EST PAS UNE RESSOURCE ──────────────
+    //
+    // `<link rel="canonical" href="https://atout-math.fr/">` dit à Google
+    // quelle adresse compte quand le site répond aux deux (avec et sans
+    // HTTPS). Le navigateur ne télécharge RIEN à cette adresse : ce n'est pas
+    // une ressource, la CSP ne s'y applique pas, et elle DOIT être absolue —
+    // un canonique relatif ne dit rien de ce qu'il est censé trancher.
+    //
+    // On nomme donc les `rel` qui ne chargent rien plutôt que de relâcher le
+    // motif : la règle qu'on garde ici — aucune ressource d'un autre hôte —
+    // reste exactement aussi serrée qu'avant.
+    const SANS_CHARGEMENT = /rel="(canonical|alternate|me)"/;
     const H = lire('index.html');
     const externes = [...H.matchAll(/<(?:script|link)[^>]*(?:src|href)="(https?:\/\/[^"]+)"/g)]
+        .filter(m => !SANS_CHARGEMENT.test(m[0]))
         .map(m => m[1]);
     assert.deepEqual(externes, [],
         `des ressources viennent d'ailleurs : ${externes.join(', ')}`);

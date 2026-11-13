@@ -1,0 +1,37 @@
+# CE QUE LES MOTEURS DE RECHERCHE ONT LE DROIT DE LIRE.
+#
+# RÉMY : « comment soumettre http://atout-math.fr à google ? »
+#
+# ── IL N'Y A PLUS DE FORMULAIRE À REMPLIR ──────────────────────────────────
+#
+# On ne « soumet » plus un site à Google depuis des années : on lui dit où
+# regarder, et on lui montre qu'on est bien le propriétaire. Ce fichier est la
+# moitié qu'on peut écrire ici ; l'autre se fait dans la Search Console, et
+# elle est décrite dans docs/referencement.md.
+#
+# ── CE QU'ON LAISSE DEHORS, ET POURQUOI ────────────────────────────────────
+#
+# L'API, les outils et les dépôts ne sont pas des pages : indexés, ils
+# donneraient des résultats de recherche qui mènent à une erreur, et une
+# adresse d'API dans Google est une invitation qu'on n'a pas lancée.
+#
+# `?code=` EST LE PLUS IMPORTANT DE LA LISTE. C'est le lien qu'un élève reçoit
+# pour rejoindre sa classe : il ne doit se trouver nulle part ailleurs que dans
+# la main de son professeur. Un robot qui l'indexerait mettrait le code d'une
+# classe réelle dans un moteur de recherche public.
+#
+# `Disallow` N'EST PAS UNE SERRURE : c'est une consigne que les robots honnêtes
+# suivent. Ce qui ferme vraiment, c'est `.htaccess` et le serveur — voir les
+# règles `Require all denied` qui y sont écrites.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /tools/
+Disallow: /outils/
+Disallow: /imports/
+Disallow: /deposer.php
+Disallow: /postes.html
+Disallow: /*?code=
+
+Sitemap: https://atout-math.fr/sitemap.xml
