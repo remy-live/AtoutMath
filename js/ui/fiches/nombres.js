@@ -2951,16 +2951,30 @@ function cascadePreviewHtml(item, slot, k, solution) {
 
     g.etages.forEach((e, i) => {
         const y = g.yDe(i);
-        // LE TRAPÈZE D'ABORD : il passe DERRIÈRE l'axe du dessous.
+        // L'INTERVALLE QU'ON OUVRE, POSÉ SUR L'AXE, ET SES DEUX GUIDES.
+        //
+        // RÉMY : « c'est pas très beau et je préfère que l'on fasse un
+        // intervalle ». L'écran a remplacé le trapèze rempli par l'intervalle
+        // lui-même et par l'animation qui l'ouvre ; la feuille ne peut pas
+        // s'animer, mais elle peut dire la même chose avec le même trait. Un
+        // élève qui a joué à l'écran doit retrouver SA figure sur le papier.
+        //
+        // Les deux guides restent ici — sur le papier, ils sont tout ce qui
+        // porte le lien d'un axe à l'autre.
         if (Number.isInteger(e.cran) && i + 1 < g.etages.length) {
             const x1 = g.px(e.cran), x2 = g.px(e.cran + 1);
             const yBas = g.yDe(i + 1) - g.cran;
-            svg += `<path d="M ${(x1 * k).toFixed(1)} ${((y + g.cran) * k).toFixed(1)}
-                L ${(x2 * k).toFixed(1)} ${((y + g.cran) * k).toFixed(1)}
-                L ${((g.x0 + g.larg) * k).toFixed(1)} ${(yBas * k).toFixed(1)}
-                L ${(g.x0 * k).toFixed(1)} ${(yBas * k).toFixed(1)} Z"
-                fill="#eceefb" stroke="#b9c0e8" stroke-width="${Math.max(1, 0.35 * k)}"
-                stroke-dasharray="${3 * k} ${2.4 * k}"/>`;
+            svg += `<g stroke="#b9c0e8" stroke-width="${Math.max(1, 0.3 * k)}"
+                stroke-dasharray="${3 * k} ${2.4 * k}" fill="none">
+                <line x1="${(x1 * k).toFixed(1)}" y1="${((y + g.cran * 0.4) * k).toFixed(1)}"
+                      x2="${(g.x0 * k).toFixed(1)}" y2="${(yBas * k).toFixed(1)}"/>
+                <line x1="${(x2 * k).toFixed(1)}" y1="${((y + g.cran * 0.4) * k).toFixed(1)}"
+                      x2="${((g.x0 + g.larg) * k).toFixed(1)}" y2="${(yBas * k).toFixed(1)}"/>
+            </g>`;
+            svg += `<line x1="${(x1 * k).toFixed(1)}" y1="${(y * k).toFixed(1)}"
+                x2="${(x2 * k).toFixed(1)}" y2="${(y * k).toFixed(1)}"
+                stroke="#4f46e5" stroke-width="${Math.max(2, 1.4 * k)}"
+                stroke-linecap="round"/>`;
         }
         html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
             width:${(g.larg + 2) * k}px; height:${Math.max(1, 0.5 * k)}px; background:#1a202c"></div>`;
@@ -3008,34 +3022,38 @@ function cascadePreviewHtml(item, slot, k, solution) {
 function dessinerCascadePdf(doc, item, slot, solution) {
     const g = geoCascade(item, slot);
 
-    // LES TRAPÈZES D'ABORD, TOUS, puis les axes : en PDF il n'y a pas de
-    // couches, c'est l'ordre des appels qui décide de ce qui couvre quoi.
+    // LES DEUX GUIDES D'ABORD, puis les axes : en PDF il n'y a pas de couches,
+    // c'est l'ordre des appels qui décide de ce qui couvre quoi.
     //
-    // ET ON REMPLIT AVANT DE CONTOURNER, EN DEUX TEMPS. Un trapèze se remplit
-    // ici en deux triangles — jsPDF ne sait pas remplir un quadrilatère —, et
-    // les tracer chacun avec son contour ('FD') DESSINE L'ARÊTE COMMUNE : une
-    // diagonale en travers de la loupe, qui se lit comme un troisième côté et
-    // ne veut rien dire. Mesuré sur la photo de la feuille, deux fois.
-    // Donc : les deux triangles en remplissage seul, puis les DEUX côtés
-    // obliques, et eux seuls, en pointillé.
-    doc.setFillColor(236, 238, 251);
-    g.etages.forEach((e, i) => {
-        if (!Number.isInteger(e.cran) || i + 1 >= g.etages.length) return;
-        const y = g.yDe(i), yBas = g.yDe(i + 1) - g.cran;
-        doc.triangle(g.px(e.cran), y + g.cran, g.px(e.cran + 1), y + g.cran,
-            g.x0 + g.larg, yBas, 'F');
-        doc.triangle(g.px(e.cran), y + g.cran, g.x0 + g.larg, yBas, g.x0, yBas, 'F');
-    });
+    // LE TRAPÈZE REMPLI A DISPARU — RÉMY : « c'est pas très beau et je préfère
+    // que l'on fasse un intervalle ». L'écran montre l'intervalle et l'ouvre en
+    // s'animant ; la feuille ne s'anime pas, mais elle porte le même trait, à la
+    // même place. Un élève qui a joué doit retrouver SA figure sur le papier.
+    //
+    // ON Y GAGNE AUSSI LA COUTURE : jsPDF ne remplit pas un quadrilatère, donc
+    // le trapèze se faisait en deux triangles, et les tracer chacun avec son
+    // contour dessinait l'arête commune — une diagonale en travers de la loupe.
+    // Deux photos de la feuille avaient été nécessaires pour la voir. Sans
+    // remplissage, le problème n'existe plus.
     doc.setDrawColor(185, 192, 232);
     doc.setLineWidth(0.25);
     if (doc.setLineDashPattern) doc.setLineDashPattern([1.2, 0.9], 0);
     g.etages.forEach((e, i) => {
         if (!Number.isInteger(e.cran) || i + 1 >= g.etages.length) return;
         const y = g.yDe(i), yBas = g.yDe(i + 1) - g.cran;
-        doc.line(g.px(e.cran), y + g.cran, g.x0, yBas);
-        doc.line(g.px(e.cran + 1), y + g.cran, g.x0 + g.larg, yBas);
+        doc.line(g.px(e.cran), y + g.cran * 0.4, g.x0, yBas);
+        doc.line(g.px(e.cran + 1), y + g.cran * 0.4, g.x0 + g.larg, yBas);
     });
     if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+
+    // ET L'INTERVALLE, SUR L'AXE LUI-MÊME. Il se trace avant les axes pour la
+    // même raison qu'à l'écran : les crans le traversent, et l'on voit les deux.
+    doc.setDrawColor(79, 70, 229);
+    doc.setLineWidth(1.5);
+    g.etages.forEach((e, i) => {
+        if (!Number.isInteger(e.cran) || i + 1 >= g.etages.length) return;
+        doc.line(g.px(e.cran), g.yDe(i), g.px(e.cran + 1), g.yDe(i));
+    });
 
     g.etages.forEach((e, i) => {
         const y = g.yDe(i);

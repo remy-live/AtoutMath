@@ -7105,3 +7105,62 @@ d'abord ».
 (0 / −5 / −10). C'est le levier arithmétique, et le seul qui annule vraiment le
 calcul du marteleur sans exclure personne : à −10 pour +10, une réponse au
 hasard sur quatre propositions rapporte en moyenne −5.
+
+---
+
+## Trois remarques sur la beauté et sur l'aide — 13 novembre, au soir
+
+Rémy regarde les trois exercices en ligne (`v1182`, déployé par son hébergeur) et
+envoie trois choses coup sur coup.
+
+### 1. « c'est pas très beau » — le trapèze de la cascade
+
+> « c'est pas très beau et je préfère que l'on fasse un intervalle, ca zoome
+> dessus en s'animant et en faisant apparaitre les graduations, ce serait plus
+> sympa »
+
+**IL A RAISON SUR LE FOND, PAS SEULEMENT SUR LE DESSIN.** Le trapèze DISAIT le
+zoom, il ne le montrait pas : on lisait « ces deux bouts deviennent ces deux
+bouts » comme on lit une légende, et il fallait le croire.
+
+**ET IL Y A UNE PROPRIÉTÉ QUI REND L'ANIMATION JUSTE, PAS SEULEMENT JOLIE.**
+L'axe du dessous porte l'intervalle [cran ; cran+1] de celui du dessus, étalé
+sur dix fois plus large. Réduit au dixième et posé au bon endroit, **il se
+superpose exactement à cet intervalle** — sa croix tombe sur la croix du dessus,
+puisque les deux désignent le même nombre. L'animation ne fait donc pas
+qu'illustrer le zoom : elle EST le zoom. Vérifié au navigateur, animation mise
+en pause à t = 0 : `matrix(0.1, 0, 0, 1, 282.6, -96)`, et l'axe réduit tombe à
+deux pixels de l'intervalle.
+
+**DEUX MESURES ONT DÉPLACÉ L'INTERVALLE SUR L'AXE LUI-MÊME**, et aucune n'était
+une affaire de goût : treize unités plus bas, il se trouvait 23 unités sous
+l'endroit d'où l'axe du dessous démarrait — l'animation partait visiblement « à
+côté » —, et il recouvrait le nombre du bout quand l'intervalle touchait un
+bord (le « 10 » illisible sur sa capture).
+
+**ET LES DEUX GUIDES OBLIQUES ONT DISPARU DE L'ÉCRAN.** Regardés une fois
+l'animation en place, ils forment une grande flèche qui barre le dessin —
+c'est-à-dire le « pas très beau » déplacé de dix pixels. Ils ne servent plus :
+l'axe du dessous part de l'intervalle sous les yeux de l'élève. Ils restent pour
+qui demande `prefers-reduced-motion`, et sur la feuille imprimée.
+
+### 2. « le pointillé autour de la réponse ne fait pas très beau »
+
+Capture de « Addition de Fractions » : la fraction-réponse est entourée d'un
+rectangle en pointillé arrondi, numérateur et dénominateur dedans. À traiter.
+
+### 3. Guider l'addition de fractions, étape par étape
+
+> « et peut être guider un peu en mettant
+> 1/2 + 3/4 = 1*.../2*... + 3/4 = ..../4 + 3/4 = 5/4 »
+
+**CE QU'IL DEMANDE N'EST PAS UN INDICE, C'EST LE CHEMIN ÉCRIT.** Aujourd'hui
+l'élève voit `3/5 + 2/5 = ?/?` et doit tout faire de tête. Ce qu'il propose
+montre les trois temps : on met au même dénominateur en multipliant en haut ET
+en bas, on remplace, on additionne. Les pointillés sont des trous à remplir, pas
+une correction — c'est la différence avec « Montre-moi ».
+
+À noter : son exemple porte sur deux dénominateurs DIFFÉRENTS (2 et 4), là où la
+capture montre un exercice à dénominateur commun (5 et 5). Le chemin en trois
+temps n'a de sens que dans le premier cas ; à dénominateur égal, la première
+étape n'existe pas et l'afficher apprendrait un geste inutile.

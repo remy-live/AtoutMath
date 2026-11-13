@@ -548,7 +548,15 @@ const casesFraction = (n, d) => `${n}|${d}`;
  * les `[data-trou]` qu'il y trouve. Une seule place pour la réponse, quelle
  * que soit la façon d'y répondre.
  */
-const fenteAvecTrous = () => '<span class="compare-slot">'
+//
+// ET ELLE EST « RICHE » DÈS LE DÉPART, PAS SEULEMENT UNE FOIS REMPLIE.
+// `compare-slot--riche` — la fente qui prend la largeur de son contenu — n'était
+// posée qu'au moment du dépôt (`choice.js`). Vide, la fente restait donc carrée
+// à 1,78 em pendant que la fraction à deux trous en faisait 119 px : la barre de
+// fraction DÉBORDAIT de 25 px et traversait la case de part en part. C'est le
+// long trait qu'on voit sur la capture de Rémy, et il était là avant le
+// pointillé dont il se plaignait.
+const fenteAvecTrous = () => '<span class="compare-slot compare-slot--riche">'
     + '<span class="fraction">'
     + '<span class="fraction-num"><u class="np-trou" data-trou="0">&nbsp;?&nbsp;</u></span>'
     + '<span class="fraction-den"><u class="np-trou" data-trou="1">&nbsp;?&nbsp;</u></span>'
