@@ -71,6 +71,9 @@ import {
     lesSignalements, photoDuSignalement, classerSignalement, effacerSignalement
 } from '../core/espaceProf.js';
 import { noterReglagesSite } from '../core/reglagesSite.js';
+// LES DÉCORS VIENNENT DE LÀ OÙ ILS SONT DÉCLARÉS, pas d'une copie : la liste
+// du professeur et les boutons de l'élève doivent montrer les mêmes.
+import { decorsDeLaFamille } from './pathView.js';
 import { adresseAdmin } from './classesServeur.js';
 import { adresseDuPoste } from './posteEleve.js';
 import { versionLisible } from '../core/versionDuSite.js';
@@ -860,13 +863,19 @@ function signalementReglageHtml() {
 function decorDuMomentHtml() {
     const su = vue.reglagesSite !== null;
     const actuel = (vue.reglagesSite && vue.reglagesSite.decorDuMoment) || '';
-    const CHOIX = [
-        ['', '— Aucun décor —'],
-        ['noel', '🎄 Noël'],
-        ['halloween', '🎃 Halloween'],
-        ['paques', '🐣 Pâques'],
-        ['robot', '🤖 Robot']
+    // LA LISTE VIENT DE `DECORS`, ET C'EST UNE CORRECTION. Elle était recopiée
+    // à la main ici : ajouter un monde demandait d'éditer DEUX listes, et celle
+    // qu'on oublie est toujours celle qu'on ne regarde pas — le professeur
+    // aurait eu quatre décors là où l'élève en voyait seize, sans un mot.
+    //
+    // Les deux familles sont séparées par un `<optgroup>`, comme les deux
+    // rangées de l'élève : une fête a une DATE, un monde n'en a pas.
+    const groupes = [
+        ['Les fêtes', decorsDeLaFamille('fete')],
+        ['Les mondes', decorsDeLaFamille('monde')]
     ];
+    const option = (v, mot) => `<option value="${v}"${
+        v === actuel ? ' selected' : ''}>${mot}</option>`;
     return `
     <section class="ec-bloc ec-bloc--site">
         <h3 class="ec-h3">Le décor du moment</h3>
@@ -877,8 +886,9 @@ function decorDuMomentHtml() {
         <label class="ec-champ-ligne">
             <span class="ec-champ-mot">Décor</span>
             <select class="cfg-input" data-decor-moment ${su ? '' : 'disabled'}>
-                ${CHOIX.map(([v, mot]) => `<option value="${v}"${
-        v === actuel ? ' selected' : ''}>${mot}</option>`).join('')}
+                ${option('', '— Aucun décor —')}
+                ${groupes.map(([titre, liste]) => `<optgroup label="${titre}">${
+        liste.map(d => option(d.id, `${d.icon} ${d.label}`)).join('')}</optgroup>`).join('')}
             </select>
         </label>
     </section>`;

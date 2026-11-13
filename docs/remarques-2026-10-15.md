@@ -6542,3 +6542,70 @@ pavé : deux cases, un numérateur et un dénominateur. Mesuré ensuite sur tout
 catalogue : **six exercices** l'imprimaient sur le corrigé du professeur, dont
 la réciproque de Pythagore avec « 225|225 », qui se lit « AB² = 225 et
 AC² + BC² = 225 ». Tous corrigés, et une épreuve garde les suivants.
+
+---
+
+## D'autres mondes, et le design des icônes — 13 novembre
+
+> « tu pourrais rajouter d'autres thèmes (tu as déjà mis halloween , paques)
+> mais aussi du design des icones, un peu comme si on allait dans différents
+> monde de mario »
+
+**CE QUI EXISTE** : quatre décors — Noël, Halloween, Pâques, Robot — plus
+« Sans décor ». Un décor, aujourd'hui, c'est deux variables de couleur
+(`--primary`, `--accent`), six emoji semés au fond, et une texture dessinée en
+dégradés CSS (la neige qui tombe, la toile d'araignée, le ruban pastel, le
+circuit imprimé). Le décor est un AXE À PART de l'habillage, et les vingt
+combinaisons existent.
+
+**CE QU'IL DEMANDE EN PLUS** : que le monde touche aussi aux PASTILLES, comme
+dans Mario où les blocs changent d'un monde à l'autre.
+
+**CE QUE LE DÉPÔT AVAIT TRANCHÉ, ET QUI TIENT TOUJOURS** : « le décor ne touche
+pas au pictogramme — le picto dit la notion travaillée ». Dans Mario non plus
+Mario ne change pas : c'est le SOL, les blocs et le ciel qui changent. La
+pastille est donc skinnable (sa matière, sa forme, sa tranche) ; l'emoji qui
+est dedans, non.
+
+**ET DEUX CHOSES QUI NE BOUGENT PAS NON PLUS** : l'or d'une étape réussie —
+« un élève qui change de décor ne doit pas réapprendre à lire sa propre
+carte » — et le contraste, mesuré : la gommette de rang écrit du BLANC sur
+`--primary`, donc chaque monde doit tenir 4,5.
+
+**UNE CONTRAINTE MESURÉE** : la rangée de boutons est une pastille qui ne
+s'enroule pas (`.path-style-groupe` n'a pas de `flex-wrap`). Elle fait 204 px
+pour cinq boutons sur un écran de 390. Treize en feraient 520 : il faut une
+deuxième rangée ou un tiroir.
+
+**FAIT — ONZE MONDES NEUFS, ET LES PASTILLES CHANGENT AVEC EUX.**
+
+L'Océan, le Volcan, les Neiges, le Désert, la Jungle, le Château fort,
+l'Espace, les Nuages, le Pays des Bonbons, les Pirates, et le Rétro 8 bits —
+plus le Robot, qui existait et qui gagne sa matière. Avec les trois fêtes et
+« Sans décor », seize en tout.
+
+**CE QUE CHAQUE MONDE FAIT AUX PASTILLES** : sa FORME et sa MATIÈRE. Un bloc
+carré au rétro, un écu au château, une feuille à la jungle, un galet au désert,
+un hublot sous l'eau et dans l'espace, une rondelle de bois chez les pirates.
+Le picto dedans ne bouge pas — c'est ce que fait Mario : les blocs changent
+d'un monde à l'autre, Mario non.
+
+**LA FORME VAUT POUR LES QUATRE ÉTATS, LA MATIÈRE SEULEMENT POUR CE QUI
+ATTEND.** L'or d'une étape réussie, le halo de l'étape en cours et le gris d'un
+verrou disent OÙ L'ON EN EST. Le piège était invisible : `.decor-matiere--bloc
+.world-node-btn` pèse exactement autant que `.world-node--done
+.world-node-btn`, et il est écrit plus bas — une couleur posée sans `--open`
+aurait effacé l'or sur treize mondes d'un coup.
+
+**CE QUE LA PLANCHE A DIT, ET QU'AUCUNE ÉPREUVE N'AURAIT DIT** : le château
+virait au ROSE (son accent rouge teintait le ciel), le volcan était un papier
+rayé orange, l'Espace ne se distinguait pas de « Sans décor » (même lavande
+pâle), et le hublot de l'Océan et celui de l'Espace étaient le même anneau
+gris. Quatre défauts que seize images côte à côte montrent en une seconde.
+
+**ET EN THÈME SOMBRE** : les nuages devenaient de grosses taches grises qui
+avalaient deux pastilles sur quatre. Une couleur s'assombrit, le blanc non.
+
+**MESURÉ** : seize contrastes, le plus bas à 4,81 (désert et jungle) pour 4,5
+exigés ; la barre de boutons tient au doigt, trois rangées, aucun débordement ;
+les pictos sont intacts sur les seize.

@@ -4643,6 +4643,14 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     display: flex; gap: 4px; background: var(--bg-app);
     border: 1px solid var(--border); border-radius: 999px; padding: 3px;
 }
+/* LA RANGÉE DES MONDES S'ENROULE, ET ELLE SEULE. Douze boutons à la suite
+   feraient 490 px — plus large qu'un téléphone de 390, donc un débordement
+   horizontal que la feuille de style interdit partout ailleurs. La pastille
+   devient alors un rectangle arrondi : un bord de 999 px sur deux lignes donne
+   des angles qui ne bouclent pas. */
+.path-style-groupe--mondes {
+    flex-wrap: wrap; border-radius: 22px; max-width: 100%;
+}
 .path-style-btn {
     width: 36px; height: 36px; border-radius: 50%; border: none;
     background: transparent; font-size: 1.05rem; cursor: pointer;
@@ -4826,6 +4834,355 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
    qui gêne, pas la couleur. */
 @media (prefers-reduced-motion: reduce) {
     .decor--noel .decor-nappe::before { animation: none; }
+}
+
+/* ═══ LES MONDES ═════════════════════════════════════════════════════════════
+
+   RÉMY : « tu pourrais rajouter d'autres thèmes […] mais aussi du design des
+   icones, un peu comme si on allait dans différents monde de mario ».
+
+   TROIS COUCHES, ET ELLES SONT INDÉPENDANTES :
+
+     1. DEUX JETONS DE COULEUR. `--primary` et `--accent` repeignent d'un coup
+        le ciel, le sentier, la pastille en cours et le fanion « C'est ici ! »,
+        sur les cinq habillages. C'est ce qui rend un monde si bon marché.
+     2. UNE TEXTURE, dessinée en dégradés — jamais une image : un dégradé pèse
+        trois lignes, se met à l'échelle sans flou, et suit le thème sombre.
+     3. UNE MATIÈRE DE PASTILLE, qui est ce que Rémy appelle « le design des
+        icônes ». Elle est une classe À PART (`decor-matiere--hublot`), parce
+        que deux mondes très différents peuvent partager la même peau : l'Océan
+        et l'Espace sont l'un bleu-vert et l'autre nuit étoilée, et leurs
+        pastilles sont le même hublot.
+
+   CE QU'UNE MATIÈRE A LE DROIT DE TOUCHER, ET C'EST TOUT :
+
+     · LA FORME, sur TOUS les états. Un monde de blocs carrés dont les étapes
+       réussies resteraient rondes ne serait pas un monde, ce serait un bug.
+     · LA MATIÈRE, sur le seul état `--open` : celui qui ATTEND. L'or d'une
+       étape réussie, le halo de l'étape en cours et le gris d'une étape
+       verrouillée disent OÙ L'ON EN EST, et un élève qui change de monde ne
+       doit pas réapprendre à lire sa carte.
+
+   LE PIÈGE DE SPÉCIFICITÉ, ÉCRIT ICI PARCE QU'IL EST INVISIBLE :
+   `.decor--retro .world-node-btn` et `.world-node--done .world-node-btn` ont
+   EXACTEMENT la même spécificité (0,2,1). Celle qui est écrite plus bas dans
+   le fichier gagne — et ce bloc-ci est le dernier. Une couleur de monde posée
+   sans `--open` effacerait donc l'or de la réussite en silence. D'où la règle :
+   la forme sans état, la matière avec `--open`.
+
+   LES COULEURS SONT MESURÉES, PAS CHOISIES À L'ŒIL : la gommette de rang et le
+   fanion écrivent du BLANC sur `--primary`, donc chacune doit tenir 4,5. Les
+   chiffres en commentaire viennent de `tools/decorsDeSaison.mjs`, qui lit les
+   PIXELS rendus. */
+
+.decor--ocean    { --primary: #0e6aa8; --accent: #06b6d4; }
+.decor--volcan   { --primary: #b91c1c; --accent: #f97316; }
+.decor--neiges   { --primary: #1a6b8f; --accent: #7dd3fc; }
+.decor--desert   { --primary: #a16207; --accent: #f59e0b; }
+.decor--jungle   { --primary: #15803d; --accent: #84cc16; }
+/* LE CHÂTEAU GARDE SON ROUGE POUR LES BANNIÈRES, PAS POUR LE CIEL. Avec un
+   accent rouge, le ciel — qui est un `color-mix` des deux jetons — virait au
+   ROSE : vu sur la planche, la carte du château ressemblait à du papier
+   quadrillé rose, et pas à de la pierre. L'accent devient donc une pierre plus
+   claire, et le rouge reste dans les six emoji (🏰 ⚔️ 🛡️ 👑 🐉 🗝️). */
+.decor--chateau  { --primary: #52525b; --accent: #78716c; }
+.decor--espace   { --primary: #4338ca; --accent: #a78bfa; }
+.decor--nuages   { --primary: #0369a1; --accent: #7dd3fc; }
+.decor--bonbons  { --primary: #be185d; --accent: #f472b6; }
+.decor--pirates  { --primary: #78350f; --accent: #d97706; }
+.decor--retro    { --primary: #1d4ed8; --accent: #fbbf24; }
+
+/* ── LES TEXTURES ────────────────────────────────────────────────────────── */
+
+/* L'OCÉAN : des bulles qui montent. Trois semis à trois tailles, comme la
+   neige de Noël mais à l'envers — le même procédé rend le fond de la mer et le
+   ciel d'hiver, et c'est pour cela qu'il n'y a pas d'image. */
+.decor--ocean .decor-nappe::before {
+    content: ''; position: absolute; inset: -40% 0; opacity: .5;
+    background:
+        radial-gradient(circle at 25% 20%, #bae6fd 2.4px, transparent 3px) 0 0 / 90px 120px,
+        radial-gradient(circle at 70% 60%, #e0f2fe 1.5px, transparent 2px) 0 0 / 60px 80px,
+        radial-gradient(circle at 48% 85%, #7dd3fc 3.2px, transparent 3.8px) 0 0 / 140px 160px;
+    animation: decorBulles 16s linear infinite;
+}
+@keyframes decorBulles {
+    from { transform: translateY(0); }
+    to { transform: translateY(-120px); }
+}
+
+/* LE VOLCAN : des coulées sombres et une lueur au pied de la carte. Le rouge
+   reste EN BAS — une lueur derrière les pastilles du haut se battrait avec le
+   fanion « C'est ici ! », qui est rouge lui aussi sur ce monde. */
+.decor--volcan .decor-nappe::before {
+    /* OPACITÉ .18 ET COULÉES DE 6 px, mesuré sur la planche : à .33 sur 10 px,
+       les rayures traversaient la carte en diagonale et le monde se lisait
+       comme un papier rayé orange. Une coulée de lave se devine entre les
+       pastilles ; elle ne quadrille pas le ciel. */
+    content: ''; position: absolute; inset: 0; opacity: .18;
+    background:
+        linear-gradient(0deg, rgba(234, 88, 12, .7) 0, transparent 30%),
+        repeating-linear-gradient(74deg,
+            rgba(41, 37, 36, .65) 0 6px, transparent 6px 58px);
+}
+
+/* LES NEIGES : du givre qui mord les quatre bords. Un dégradé radial posé en
+   `inset` dit la glace mieux qu'un semis de flocons — qui serait Noël. */
+.decor--neiges .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .5;
+    background:
+        radial-gradient(ellipse 120% 70% at 50% 50%, transparent 55%, #e0f2fe 100%),
+        repeating-linear-gradient(118deg, rgba(125, 211, 252, .35) 0 2px, transparent 2px 26px);
+}
+
+/* LE DÉSERT : des dunes. Deux ellipses posées au pied, l'une derrière
+   l'autre — c'est le minimum pour que l'œil lise une profondeur. */
+.decor--desert .decor-nappe::after {
+    content: ''; position: absolute; inset: auto 0 0 0; height: 34%;
+    opacity: .4;
+    background:
+        radial-gradient(ellipse 80% 100% at 15% 100%, #fbbf24 0 60%, transparent 62%),
+        radial-gradient(ellipse 90% 85% at 80% 100%, #d97706 0 58%, transparent 60%);
+}
+
+/* LA JUNGLE : des lianes qui pendent du haut. Un dégradé répété en biais, et
+   un voile vert au sommet pour l'accrocher. */
+.decor--jungle .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .3;
+    background:
+        linear-gradient(180deg, rgba(21, 128, 61, .7) 0, transparent 22%),
+        repeating-linear-gradient(96deg,
+            rgba(132, 204, 22, .5) 0 3px, transparent 3px 52px);
+}
+
+/* LE CHÂTEAU FORT : un appareil de pierre. Deux assises décalées d'une
+   demi-brique, comme un vrai mur — un quadrillage droit aurait dit le papier
+   millimétré, pas la pierre. */
+.decor--chateau .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .22;
+    background:
+        linear-gradient(90deg, #44403c 0 2px, transparent 2px 74px) 0 0 / 74px 44px,
+        linear-gradient(90deg, #44403c 0 2px, transparent 2px 74px) 37px 22px / 74px 44px,
+        linear-gradient(180deg, #44403c 0 2px, transparent 2px 44px) 0 0 / 74px 44px;
+}
+
+/* L'ESPACE : un champ d'étoiles, immobile. Elles ne tombent pas — ce qui
+   bouge, dans l'espace, c'est le vaisseau, et la carte n'en est pas un. */
+.decor--espace .decor-nappe::before {
+    /* LA NUIT D'ABORD, LES ÉTOILES ENSUITE. Sans le voile sombre, ce monde
+       était la lavande pâle de « Sans décor » avec trois points dessus — vu sur
+       la planche des treize, côte à côte : on ne les distinguait pas. Le ciel
+       d'un habillage est un `color-mix` CLAIR des deux jetons, et aucun jeton
+       ne peut l'assombrir ; c'est la nappe qui le fait, comme le parchemin des
+       Pirates assombrit ses angles. */
+    content: ''; position: absolute; inset: 0; opacity: .8;
+    background:
+        radial-gradient(circle at 18% 22%, #fff 1.4px, transparent 1.9px) 0 0 / 78px 94px,
+        radial-gradient(circle at 64% 58%, #e0e7ff 2px, transparent 2.5px) 0 0 / 128px 148px,
+        radial-gradient(circle at 42% 81%, #fff 1.1px, transparent 1.5px) 0 0 / 54px 62px,
+        radial-gradient(ellipse 130% 100% at 50% 40%,
+            rgba(49, 46, 129, .22) 0 38%, rgba(30, 27, 75, .55) 100%);
+}
+
+/* LES NUAGES : des moutons clairs, en bas et en haut. Opacité basse : ce monde
+   est le plus pâle de tous, et une nuée trop dense avalerait les pastilles. */
+.decor--nuages .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .45;
+    background:
+        radial-gradient(ellipse 36% 16% at 22% 14%, #fff 0 70%, transparent 72%),
+        radial-gradient(ellipse 28% 13% at 78% 36%, #fff 0 70%, transparent 72%),
+        radial-gradient(ellipse 42% 18% at 48% 88%, #e0f2fe 0 70%, transparent 72%);
+}
+
+/* LE PAYS DES BONBONS : du sucre d'orge. Des rayures en biais, roses et
+   blanches, et c'est tout — le reste du monde est déjà très sucré. */
+.decor--bonbons .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .22;
+    background: repeating-linear-gradient(48deg,
+        #f472b6 0 16px, transparent 16px 32px, #a7f3d0 32px 48px, transparent 48px 64px);
+}
+
+/* LES PIRATES : du vieux papier. Des veines horizontales irrégulières et un
+   halo brun aux angles, comme une carte qu'on a trop pliée. */
+.decor--pirates .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .3;
+    background:
+        radial-gradient(ellipse 110% 90% at 50% 50%, transparent 52%, #78350f 100%),
+        repeating-linear-gradient(4deg, rgba(120, 53, 15, .3) 0 1px, transparent 1px 19px);
+}
+
+/* RÉTRO 8 BITS : la grille de pixels. Maille de 16 — c'est la taille d'une
+   tuile sur les machines de l'époque, et c'est ce qui fait reconnaître le
+   monde avant même d'avoir lu son nom. */
+.decor--retro .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .18;
+    background:
+        linear-gradient(90deg, #1d4ed8 0 2px, transparent 2px 16px) 0 0 / 16px 16px,
+        linear-gradient(180deg, #1d4ed8 0 2px, transparent 2px 16px) 0 0 / 16px 16px;
+}
+
+/* ── LES MATIÈRES DE PASTILLE ────────────────────────────────────────────── */
+
+/* LE BLOC : carré, à facettes, avec une tranche épaisse. C'est le plus
+   reconnaissable des huit, et c'est voulu — Rémy a dit « comme si on allait
+   dans différents monde de mario », et le bloc de brique EST le monde de
+   Mario. La forme vaut pour TOUS les états : des étapes réussies restées
+   rondes au milieu de blocs carrés se liraient comme un défaut d'affichage. */
+.decor-matiere--bloc .world-node-btn { border-radius: 5px; }
+.decor-matiere--bloc .world-node-rang { border-radius: 4px; right: -5px; }
+.decor-matiere--bloc .world-node--current .world-node-socle::after { border-radius: 9px; }
+.decor-matiere--bloc .world-node--open .world-node-btn {
+    border-color: #1e3a8a;
+    background: linear-gradient(135deg, #dbeafe 0 48%, #bfdbfe 48% 100%);
+    box-shadow: 0 6px 0 #1e3a8a, 0 8px 14px rgba(30, 58, 138, .28);
+}
+
+/* LE HUBLOT : un disque cerclé, avec un anneau clair à l'intérieur et un
+   reflet en haut à gauche. L'anneau se fait avec un `inset` du box-shadow —
+   zéro élément de plus dans le DOM, et la pastille garde son relief. */
+.decor-matiere--hublot .world-node--open .world-node-btn {
+    /* LE CERCLE DE MÉTAL PREND LA COULEUR DE SON MONDE. Posé en gris fixe, le
+       hublot de l'Océan et celui de l'Espace étaient le MÊME anneau terne sur
+       deux mondes que tout oppose — c'est la planche qui l'a dit. Mélangé au
+       jeton du monde, il est bleu sous l'eau et indigo dans l'espace, sans une
+       règle de plus. */
+    border-color: color-mix(in srgb, var(--primary) 45%, #94a3b8);
+    background:
+        radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .9) 0 20%, transparent 42%),
+        linear-gradient(170deg, var(--bg-panel), color-mix(in srgb, var(--primary) 22%, var(--bg-panel)));
+    /* LA TRANCHE RESTE CLAIRE. À #334155 la pastille se lisait comme un anneau
+       NOIR sur la planche — vu à l'échelle 2 —, bien plus lourde que la
+       pastille sans décor qu'elle remplace. Un monde habille, il n'assombrit
+       pas. */
+    box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .6),
+                0 6px 0 color-mix(in srgb, var(--primary) 55%, #64748b),
+                0 8px 14px rgba(15, 23, 42, .18);
+}
+
+/* LA BRAISE : la pierre chauffée. Le fond part du sombre et rougit vers le
+   bas, et la tranche est orange — c'est elle qui donne l'impression que la
+   chaleur vient de DESSOUS, donc du volcan. */
+.decor-matiere--braise .world-node--open .world-node-btn {
+    /* La pierre chauffée reste CLAIRE EN HAUT : partie du sombre sur toute la
+       hauteur, elle avalait le pictogramme — et un picto illisible est ce que
+       ce dépôt refuse en premier. Le rouge monte du bas, là où est le volcan. */
+    border-color: #c2410c;
+    background: linear-gradient(180deg, #d6d3d1 0 38%, #ea580c 100%);
+    box-shadow: 0 6px 0 #9a3412, 0 8px 18px rgba(234, 88, 12, .38);
+}
+/* Le picto reste lisible sur la pierre sombre : il est en emoji, donc on ne
+   peut pas lui donner une couleur — on lui donne une ombre portée claire. */
+.decor-matiere--braise .world-node--open .world-node-picto {
+    filter: drop-shadow(0 1px 2px rgba(255, 255, 255, .95));
+}
+
+/* LE GIVRE : la glace. Bordure blanc bleuté, fond très clair, et une frange de
+   givre au pied du disque. */
+.decor-matiere--givre .world-node--open .world-node-btn {
+    border-color: #bae6fd;
+    background:
+        radial-gradient(ellipse 100% 42% at 50% 100%, rgba(255, 255, 255, .95) 0 60%, transparent 62%),
+        linear-gradient(175deg, #f0f9ff, #cfeafe);
+    box-shadow: 0 6px 0 #7dd3fc, 0 8px 16px rgba(14, 116, 144, .22);
+}
+
+/* LE GRÈS : un galet. Les quatre rayons de la bordure diffèrent, ce qui suffit
+   à sortir du cercle parfait sans partir dans une forme qu'on ne reconnaît
+   plus. Un galet n'est pas rond, et c'est tout ce qu'il faut dire. */
+.decor-matiere--gres .world-node-btn { border-radius: 56% 44% 48% 52% / 52% 50% 50% 48%; }
+.decor-matiere--gres .world-node--open .world-node-btn {
+    border-color: #b45309;
+    background: linear-gradient(165deg, #fef3c7, #fcd34d 72%, #f59e0b);
+    box-shadow: 0 6px 0 #92400e, 0 8px 14px rgba(146, 64, 14, .26);
+}
+
+/* LA FEUILLE : deux coins pointus en diagonale, les deux autres arrondis.
+   C'est la forme d'une feuille, et elle se reconnaît à 66 px comme à 54. */
+.decor-matiere--feuille .world-node-btn { border-radius: 50% 10% 50% 10%; }
+.decor-matiere--feuille .world-node-rang { right: -2px; bottom: -4px; }
+.decor-matiere--feuille .world-node--open .world-node-btn {
+    border-color: #166534;
+    background: linear-gradient(140deg, #dcfce7, #86efac);
+    box-shadow: 0 6px 0 #14532d, 0 8px 14px rgba(20, 83, 45, .26);
+}
+
+/* L'ÉCU : le blason. Plat en haut, pointu en bas — l'inverse d'une goutte. */
+.decor-matiere--ecu .world-node-btn { border-radius: 16% 16% 48% 48% / 12% 12% 60% 60%; }
+.decor-matiere--ecu .world-node--current .world-node-socle::after {
+    border-radius: 18% 18% 48% 48% / 14% 14% 58% 58%;
+}
+.decor-matiere--ecu .world-node--open .world-node-btn {
+    /* La pierre, pas l'ardoise : à #3f3f46 l'écu était un trou noir au milieu
+       de la carte. */
+    border-color: #a1a1aa;
+    background: linear-gradient(180deg, #fafafa 0 52%, #e4e4e7 100%);
+    box-shadow: 0 6px 0 #71717a, 0 8px 14px rgba(39, 39, 42, .22);
+}
+
+/* LE COTON : un nuage. Les huit rayons bombent le haut et aplatissent le bas,
+   comme un mouton posé sur le ciel. */
+.decor-matiere--coton .world-node-btn {
+    border-radius: 52% 52% 46% 46% / 58% 58% 42% 42%;
+}
+.decor-matiere--coton .world-node--open .world-node-btn {
+    border-color: #e0f2fe;
+    background: linear-gradient(185deg, #fff, #e0f2fe);
+    box-shadow: 0 6px 0 #bae6fd, 0 8px 18px rgba(2, 132, 199, .2);
+}
+
+/* LE BONBON : brillant. Un gros reflet blanc en haut à gauche, et une bordure
+   d'un rose franc — c'est le reflet qui fait le « sucré », pas la couleur. */
+.decor-matiere--bonbon .world-node--open .world-node-btn {
+    border-color: #db2777;
+    background:
+        radial-gradient(circle at 30% 24%, rgba(255, 255, 255, .95) 0 20%, transparent 44%),
+        linear-gradient(160deg, #fce7f3, #fbcfe8 60%, #a7f3d0);
+    box-shadow: 0 6px 0 #9d174d, 0 8px 16px rgba(157, 23, 77, .3);
+}
+
+/* LE BOIS : une rondelle. Des cernes concentriques faits d'un dégradé radial
+   répété — trois lignes pour un tronc scié. */
+.decor-matiere--bois .world-node--open .world-node-btn {
+    border-color: #78350f;
+    background:
+        repeating-radial-gradient(circle at 50% 50%,
+            #fde68a 0 4px, #fcd34d 4px 7px, #f59e0b 7px 10px);
+    box-shadow: 0 6px 0 #451a03, 0 8px 14px rgba(69, 26, 3, .3);
+}
+
+/* LE BOÎTIER : la pastille du Robot, qui n'en avait pas. Un rectangle à coins
+   cassés, et quatre vis. Les vis sont un `inset` à quatre ombres : rien dans
+   le DOM, et elles suivent la taille de la pastille sur petit écran. */
+.decor-matiere--boitier .world-node-btn { border-radius: 12px; }
+.decor-matiere--boitier .world-node-rang { border-radius: 6px; }
+.decor-matiere--boitier .world-node--current .world-node-socle::after { border-radius: 16px; }
+.decor-matiere--boitier .world-node--open .world-node-btn {
+    border-color: #0c4a6e;
+    background: linear-gradient(160deg, #e0f2fe, #bae6fd);
+    box-shadow:
+        inset 5px 5px 0 -3px #0891b2, inset -5px 5px 0 -3px #0891b2,
+        inset 5px -5px 0 -3px #0891b2, inset -5px -5px 0 -3px #0891b2,
+        0 6px 0 #0c4a6e, 0 8px 14px rgba(12, 74, 110, .26);
+}
+
+/* ── LES MONDES CLAIRS, EN THÈME SOMBRE ──────────────────────────────────────
+
+   DEUX TEXTURES SONT FAITES DE BLANC, et le blanc ne se comporte pas pareil sur
+   les deux fonds. Sur le ciel clair, un nuage à .45 est un nuage ; sur le fond
+   sombre, c'est une GROSSE TACHE GRISE — vu sur la planche des quatre mondes en
+   sombre, les moutons avalaient deux pastilles sur quatre et le texte sous
+   elles. Les autres mondes n'ont pas ce défaut parce que leurs textures sont
+   colorées : une couleur s'assombrit, le blanc non.
+
+   ON BAISSE L'OPACITÉ PLUTÔT QUE DE CHANGER LA COULEUR : le monde doit rester
+   le même monde, en plus discret. */
+html[data-theme="dark"] .decor--nuages .decor-nappe::before { opacity: .14; }
+html[data-theme="dark"] .decor--neiges .decor-nappe::before { opacity: .22; }
+
+/* LES TEXTURES QUI BOUGENT S'ARRÊTENT pour qui l'a demandé — la règle de Noël,
+   étendue aux deux mondes qui animent quelque chose. Le monde reste : c'est le
+   MOUVEMENT qui gêne, pas la couleur. */
+@media (prefers-reduced-motion: reduce) {
+    .decor--ocean .decor-nappe::before { animation: none; }
 }
 
 /* Parcours du professeur listés côté élève. */

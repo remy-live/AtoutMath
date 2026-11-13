@@ -206,23 +206,111 @@ const DECOR_PAR_DEFAUT = 'aucun';
 /**
  * Les décors proposés. `ornements` est la poignée d'emoji semée au fond de la
  * carte ; « sans décor » n'en a pas, et c'est ce qui le définit.
+ *
+ * ── DEUX FAMILLES, ET C'EST UNE QUESTION DE DATE ──────────────────────────
+ *
+ * RÉMY : « tu pourrais rajouter d'autres thèmes (tu as déjà mis halloween,
+ * paques) mais aussi du design des icones, un peu comme si on allait dans
+ * différents monde de mario ».
+ *
+ * UNE FÊTE A UNE DATE : on met Halloween en octobre et Pâques en avril, et le
+ * reste de l'année elles n'ont rien à faire là. UN MONDE N'EN A PAS : on va
+ * sur la banquise ou dans le volcan parce qu'on en a envie. Mélangées dans une
+ * seule rangée, les trois fêtes se perdaient au milieu de douze mondes — et
+ * c'est la rangée qu'on vient chercher deux fois par an.
+ *
+ * Mesuré AVANT de choisir : la rangée de boutons est une pastille qui ne
+ * s'enroulait pas, 204 px pour cinq boutons sur un écran de 390. Seize à la
+ * suite en auraient fait 640.
+ *
+ * ── CE QU'UN MONDE FAIT AUX PASTILLES, ET CE QU'IL NE FAIT PAS ────────────
+ *
+ * `matiere` est le nom de la peau que `css/modules.css` donne aux pastilles du
+ * monde : leur FORME et leur MATIÈRE — un bloc carré au rétro, un écu au
+ * château, un hublot sous l'eau. C'est ce que Rémy appelle « le design des
+ * icônes », et c'est exactement ce que fait Mario : les blocs changent d'un
+ * monde à l'autre, Mario non.
+ *
+ * ET LE PICTOGRAMME NE BOUGE TOUJOURS PAS. Remplacer 🍕 par un champignon
+ * ferait joli et coûterait l'information : le picto dit la notion travaillée.
+ * Deux autres choses ne bougent pas non plus, et elles sont écrites en dur :
+ * l'OR d'une étape réussie — « un élève qui change de décor ne doit pas
+ * réapprendre à lire sa propre carte » — et la pastille en cours, qui garde son
+ * halo et son fanion. Un monde habille ce qui ATTEND ; il ne touche pas à ce
+ * qui dit où l'on en est.
  */
 export const DECORS = [
     { id: 'aucun', icon: '🎨', label: 'Sans décor',
         dit: 'Les couleurs du logiciel.' },
-    { id: 'noel', icon: '🎄', label: 'Noël',
+
+    // ── LES FÊTES ────────────────────────────────────────────────────────
+    { id: 'noel', famille: 'fete', icon: '🎄', label: 'Noël',
         dit: 'Rouge et sapin, et il neige derrière les étapes.',
         ornements: ['❄️', '🎁', '🎄', '⭐', '🔔', '❄️'] },
-    { id: 'halloween', icon: '🎃', label: 'Halloween',
+    { id: 'halloween', famille: 'fete', icon: '🎃', label: 'Halloween',
         dit: 'Violet et citrouille, toiles d\'araignée aux angles.',
         ornements: ['🕸️', '🦇', '🎃', '👻', '🕷️', '🕸️'] },
-    { id: 'paques', icon: '🐣', label: 'Pâques',
+    { id: 'paques', famille: 'fete', icon: '🐣', label: 'Pâques',
         dit: 'Vert tendre et œufs peints.',
         ornements: ['🥚', '🐣', '🌷', '🐰', '🌼', '🥚'] },
-    { id: 'robot', icon: '🤖', label: 'Robot',
-        dit: 'Bleu acier et circuits imprimés.',
-        ornements: ['⚙️', '🔧', '🤖', '🔌', '⚡', '⚙️'] }
+
+    // ── LES MONDES ───────────────────────────────────────────────────────
+    //
+    // L'ORDRE EST CELUI D'UNE TOURNÉE, pas celui de l'alphabet : on descend
+    // sous l'eau, on traverse les terres, on monte au ciel, et le rétro ferme
+    // la marche parce qu'il ne ressemble à aucun des autres.
+    { id: 'robot', famille: 'monde', icon: '🤖', label: 'Robot',
+        dit: 'Bleu acier et circuits imprimés ; pastilles en boîtier vissé.',
+        matiere: 'boitier',
+        ornements: ['⚙️', '🔧', '🤖', '🔌', '⚡', '⚙️'] },
+    { id: 'ocean', famille: 'monde', icon: '🌊', label: 'L’Océan',
+        dit: 'Bleu profond, bulles qui montent ; pastilles en hublot.',
+        matiere: 'hublot',
+        ornements: ['🐠', '🐙', '🫧', '🐚', '🦀', '🐟'] },
+    { id: 'volcan', famille: 'monde', icon: '🌋', label: 'Le Volcan',
+        dit: 'Braises et pierre chaude ; pastilles qui rougeoient.',
+        matiere: 'braise',
+        ornements: ['🔥', '🌋', '🪨', '💨', '🔥', '🪨'] },
+    { id: 'neiges', famille: 'monde', icon: '🏔️', label: 'Les Neiges',
+        dit: 'Bleu glacé et givre ; pastilles prises dans la glace.',
+        matiere: 'givre',
+        ornements: ['🐧', '❄️', '🏔️', '🧊', '🦭', '❄️'] },
+    { id: 'desert', famille: 'monde', icon: '🏜️', label: 'Le Désert',
+        dit: 'Ocre et dunes ; pastilles en galet de grès.',
+        matiere: 'gres',
+        ornements: ['🌵', '🐪', '🏜️', '☀️', '🦂', '🪨'] },
+    { id: 'jungle', famille: 'monde', icon: '🌴', label: 'La Jungle',
+        dit: 'Vert profond et lianes ; pastilles en feuille.',
+        matiere: 'feuille',
+        ornements: ['🌴', '🦜', '🐒', '🌿', '🦋', '🍃'] },
+    { id: 'chateau', famille: 'monde', icon: '🏰', label: 'Le Château fort',
+        dit: 'Pierre et bannières ; pastilles en écu de blason.',
+        matiere: 'ecu',
+        ornements: ['🏰', '⚔️', '🛡️', '👑', '🐉', '🗝️'] },
+    { id: 'espace', famille: 'monde', icon: '🚀', label: 'L’Espace',
+        dit: 'Nuit étoilée ; pastilles en hublot de fusée.',
+        matiere: 'hublot',
+        ornements: ['🚀', '🪐', '⭐', '🛸', '🌙', '✨'] },
+    { id: 'nuages', famille: 'monde', icon: '☁️', label: 'Les Nuages',
+        dit: 'Ciel clair ; pastilles posées sur du coton.',
+        matiere: 'coton',
+        ornements: ['☁️', '🕊️', '🌈', '🪁', '☁️', '🎈'] },
+    { id: 'bonbons', famille: 'monde', icon: '🍬', label: 'Le Pays des Bonbons',
+        dit: 'Rose et menthe, sucre d’orge ; pastilles en bonbon brillant.',
+        matiere: 'bonbon',
+        ornements: ['🍬', '🍭', '🧁', '🍩', '🍫', '🍡'] },
+    { id: 'pirates', famille: 'monde', icon: '🏴‍☠️', label: 'Les Pirates',
+        dit: 'Bois et vieille carte ; pastilles en rondelle de bois.',
+        matiere: 'bois',
+        ornements: ['🏴‍☠️', '⚓', '🦜', '🗺️', '💰', '🧭'] },
+    { id: 'retro', famille: 'monde', icon: '👾', label: 'Rétro 8 bits',
+        dit: 'Tout en angles droits ; pastilles en blocs carrés.',
+        matiere: 'bloc',
+        ornements: ['👾', '🕹️', '🎮', '🪙', '🍄', '⭐'] }
 ];
+
+/** Les décors d'une famille, dans l'ordre déclaré. */
+export const decorsDeLaFamille = (f) => DECORS.filter(d => d.famille === f);
 
 /**
  * CE QUE L'ÉLÈVE A CHOISI SUR CE POSTE — ou `null` s'il n'a rien choisi.
@@ -299,6 +387,12 @@ function poserLeDecor(carte, id) {
     const decor = DECORS.find(d => d.id === id);
     if (!decor || !decor.ornements) return carte;
     carte.classList.add('decor', `decor--${decor.id}`);
+    // LA MATIÈRE EST UNE CLASSE À PART DE L'IDENTITÉ DU MONDE, et c'est ce qui
+    // évite d'écrire deux fois la même peau : l'Océan et l'Espace sont deux
+    // mondes très différents — l'un bleu-vert, l'autre nuit étoilée — mais
+    // leurs pastilles sont le même HUBLOT, un disque cerclé de métal avec un
+    // reflet en haut. Le monde donne les couleurs, la matière donne la forme.
+    if (decor.matiere) carte.classList.add(`decor-matiere--${decor.matiere}`);
     if (carte.classList.contains('path-timeline')) return carte;
     // LE RUBAN DÉFILE, ET SON CADRE N'EST PAS SA PISTE. Les ornements se posent
     // sur la boîte qui porte les pastilles ; sur le cadre, ils resteraient
@@ -362,8 +456,21 @@ export function barreDeStyles(onChange, policy = null) {
             id => { memoriserStyle(id); onChange(id); }));
     }
     if (!decorImpose(policy)) {
-        groupes.push(groupeDeBoutons(DECORS, 'Décor', getPathDecor(),
-            id => { memoriserDecor(id); onChange(id); }));
+        // DEUX RANGÉES, ET C'EST UNE MESURE QUI L'A DÉCIDÉ. La pastille de
+        // boutons ne s'enroulait pas : 204 px pour cinq sur un écran de 390.
+        // Seize boutons à la suite en auraient fait 640, donc un débordement
+        // horizontal — ce que la feuille de style interdit partout ailleurs.
+        //
+        // La première rangée porte « Sans décor » et les trois FÊTES, qu'on
+        // vient chercher deux fois par an et qui se perdraient au milieu des
+        // mondes. La seconde porte les MONDES, et elle s'enroule : douze
+        // boutons tiennent sur deux lignes.
+        const choisir = id => { memoriserDecor(id); onChange(id); };
+        const actif = getPathDecor();
+        groupes.push(groupeDeBoutons(
+            [DECORS[0], ...decorsDeLaFamille('fete')], 'Décor', actif, choisir));
+        groupes.push(groupeDeBoutons(
+            decorsDeLaFamille('monde'), 'Monde', actif, choisir, 'path-style-groupe--mondes'));
     }
     if (!groupes.length) return null;
     const box = document.createElement('div');
@@ -379,9 +486,9 @@ export function barreDeStyles(onChange, policy = null) {
  * pastilles de 36 px font 420 px et débordent de l'écran. Deux groupes de cinq
  * passent à la ligne tout seuls, et chacun reste lisible comme un choix.
  */
-function groupeDeBoutons(liste, quoi, actif, choisir) {
+function groupeDeBoutons(liste, quoi, actif, choisir, enPlus = '') {
     const groupe = document.createElement('div');
-    groupe.className = 'path-style-groupe';
+    groupe.className = 'path-style-groupe' + (enPlus ? ' ' + enPlus : '');
     groupe.setAttribute('role', 'group');
     groupe.setAttribute('aria-label', quoi);
     liste.forEach(s => {

@@ -14,13 +14,14 @@
 //     ailleurs.
 //   · QUE LES DEUX RANGÉES DE BOUTONS TIENNENT SUR UN TÉLÉPHONE. Dix pastilles
 //     de 36 px font 420 px : c'est la mesure qui a imposé deux groupes.
+//   · ET QUE LA PASTILLE CHANGE DE MATIÈRE. Un monde qui repeint le ciel mais
+//     laisse les pastilles identiques n'est pas un monde de Mario : c'est un
+//     filtre de couleur. La photo est le seul juge.
 //
 // À relancer à chaque décor ajouté : c'est le seul endroit où l'on voit si la
 // teinte choisie tient sur l'écran, et non sur le papier.
 import { ouvrirSonde } from './sonde.mjs';
 import { setTimeout as dormir } from 'node:timers/promises';
-
-const DECORS = ['aucun', 'noel', 'halloween', 'paques', 'robot'];
 
 const s = await ouvrirSonde({ largeur: 1500, hauteur: 1200 });
 await s.identifier();
@@ -35,6 +36,16 @@ await s.page.evaluate(() => document.getElementById('btn-path-policy').click());
 await dormir(1800);
 await s.doitExister('#cfg-presentation');
 await s.doitExister('#cfg-decor');
+
+// LA LISTE VIENT DE LA PAGE, PAS D'UNE COPIE ICI. Elle était écrite en dur en
+// tête de cette sonde : le jour où douze mondes se sont ajoutés, elle aurait
+// mesuré les cinq d'avant et dit « tout va bien » — la mesure qui ne regarde
+// que ce qu'on connaît déjà ne voit pas ce qu'on vient d'ajouter.
+const DECORS = await s.page.evaluate(async () => {
+    const m = await import('/js/ui/pathView.js?v=' + Date.now());
+    return m.DECORS.map(d => d.id);
+});
+console.log(`${DECORS.length} décors déclarés : ${DECORS.join(', ')}`);
 
 // ── 1 · LE DÉCOR SUR CHAQUE HABILLAGE ───────────────────────────────────────
 // Les vingt combinaisons sont la raison d'être de l'axe à part : on en regarde

@@ -33,6 +33,11 @@ const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const PV = lire('js/ui/pathView.js');
 const CSS = lire('css/modules.css');
 
+// LES CINQ DU DÉPART, qu'on refuse de perdre. La liste en compte seize
+// aujourd'hui, et ce n'est PAS ici qu'on les énumère : une épreuve qui récite
+// ce qu'elle connaît ne voit rien de ce qu'on vient d'ajouter — mesuré le
+// 13 novembre, où onze mondes neufs ont traversé l'épreuve du contraste sans
+// être regardés une seule fois. `TOUS` lit la liste à la source.
 const ATTENDUS = ['aucun', 'noel', 'halloween', 'paques', 'robot'];
 
 /** Le corps de `DECORS`, isolé de celui de `STYLES` et de `HABILLAGES`. */
@@ -40,6 +45,11 @@ function listeDesDecors() {
     const debut = PV.indexOf('export const DECORS = [');
     assert.notEqual(debut, -1, 'DECORS a disparu de pathView.js');
     return PV.slice(debut, PV.indexOf('];', debut));
+}
+
+/** TOUS les identifiants déclarés, dans l'ordre. C'est la liste qui fait foi. */
+function tousLesDecors() {
+    return [...listeDesDecors().matchAll(/\bid: '([a-z]+)'/g)].map(m => m[1]);
 }
 
 // ── 1 · UN AXE À PART ───────────────────────────────────────────────────────
@@ -204,12 +214,18 @@ function contraste(a, b) {
 }
 
 test('LE BLANC SE LIT SUR LA COULEUR DE CHAQUE DÉCOR', () => {
+    // NOTE DU 13 NOVEMBRE : cette épreuve itérait sur `ATTENDUS`, les cinq
+    // décors du départ. Onze mondes se sont ajoutés le même jour et elle est
+    // restée verte sans en regarder un seul — l'assurance qui n'existe pas.
     // La gommette de rang de l'étape en cours et le fanion « C'est ici ! »
     // écrivent du BLANC sur `--primary`. Un décor repeint ce jeton : choisir
     // la teinte à l'œil, c'est accepter de rendre le numéro d'étape illisible
     // pour quatre élèves sur cinq de la classe.
-    ATTENDUS.filter(id => id !== 'aucun').forEach(id => {
-        const debut = CSS.indexOf(`.decor--${id} {`);
+    // SUR CHAQUE DÉCOR DÉCLARÉ, pas sur les cinq qu'on avait en tête.
+    const tous = tousLesDecors().filter(id => id !== 'aucun');
+    assert.ok(tous.length >= ATTENDUS.length - 1, `${tous.length} décors lus : la liste n'a pas été trouvée`);
+    tous.forEach(id => {
+        const debut = CSS.search(new RegExp(`\\.decor--${id}\\s*\\{`));
         assert.notEqual(debut, -1, `.decor--${id} a disparu de la feuille`);
         const regle = CSS.slice(debut, CSS.indexOf('}', debut));
         const m = regle.match(/--primary:\s*(#[0-9a-fA-F]{6})/);

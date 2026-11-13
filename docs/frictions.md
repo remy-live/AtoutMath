@@ -7144,3 +7144,43 @@ plus d'un.**
   catalogue, en deux cents millisecondes. Sa première version répondait
   « aucun » alors que six exercices étaient fautifs : `makeItem` pose
   `reponsePapier: ''`, et `??` laisse passer la chaîne vide.
+
+---
+
+**La planche d'images, refaite à la main à chaque fois** — 13 novembre
+
+- *Ce que je voulais faire* : juger seize mondes, puis treize dessins de
+  pastilles. Pas un par un — TOUS ENSEMBLE, parce que c'est la seule façon de
+  voir qu'un château vire au rose à côté d'un désert qui ne vire pas.
+- *Ce qui a coûté* : les mêmes vingt lignes pour la troisième fois — un gabarit
+  HTML, les images encodées en `data:`, une capture Playwright. Et la même
+  erreur à chaque fois : une grille à colonnes fixes DÉBORDE de son conteneur
+  sans s'élargir, donc sa boîte mesure la largeur de la fenêtre, et la première
+  planche est sortie coupée à la première colonne (800 px au lieu de 1500).
+- *Combien de fois* : ||| (les vingt et un dessins de l'Échelle des Tailles le
+  12, les seize mondes et les treize pastilles le 13)
+- *Ce qui manque* : **fait le jour même.** `node tools/planche.mjs <sortie.png>
+  <images…> [--colonnes=4] [--largeur=420]`. Fond de l'application et non du
+  blanc, légende = nom du fichier, `width: max-content` écrit une fois pour
+  toutes. Il a servi quatre fois dans l'heure qui a suivi.
+
+---
+
+**Une épreuve qui récite sa liste ne voit pas ce qu'on ajoute** — 13 novembre
+
+- *Ce que je voulais faire* : savoir si onze mondes neufs tenaient le contraste
+  de 4,5 exigé sur la gommette de rang.
+- *Ce qui a coûté* : `tests/decorsDeSaison.test.mjs` est VERT. Il itère sur
+  `ATTENDUS = ['aucun','noel','halloween','paques','robot']` — les cinq du
+  départ, écrits à la main. Les onze mondes ajoutés le même jour l'ont traversé
+  sans être regardés une seule fois. Même chose, la même heure, dans
+  `tools/decorsDeSaison.mjs`, dont la liste était aussi en dur. Deux fois en
+  deux heures, et dans les deux cas le vert était une assurance qui n'existait
+  pas.
+- *Combien de fois* : || (et le motif est partout : une liste en dur dans une
+  épreuve est une liste qui vieillit sans le dire)
+- *Ce qui manque* : les deux sont corrigés — ils lisent la liste à la source —,
+  mais le motif, lui, reste. Ce qui aiderait : que `tools/nouvelExercice.mjs`,
+  ou un outil voisin, sache DIRE quelles épreuves portent une liste d'identifiants
+  écrite en dur alors que la source en déclare davantage. C'est une comparaison
+  de deux ensembles, pas un jugement.
