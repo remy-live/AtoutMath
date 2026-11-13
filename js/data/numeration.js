@@ -650,6 +650,33 @@ export const numerationExercises = [
         instruction: "Chaque droite a SON échelle, et elle change d'une ligne à l'autre : lis d'abord les deux nombres écrits sous ses bouts. Placer 0,4 sur une droite de 0 à 1 et 40 sur une droite de 0 à 100, c'est le même geste et deux nombres différents. On compte les INTERVALLES depuis le bout gauche, jamais les traits. Touche la droite à l'endroit voulu : le point se range sur la graduation la plus proche, et son abscisse se relit en dessous — pour que tu puisses te corriger AVANT de valider. Quand tout est posé, le dessin apparaît. Le réglage « Comment l'abscisse est écrite » demande le même nombre de plusieurs façons : « 0,4 », « quatre dixièmes », « 4/10 », « le double de 0,2 »."
     },
 
+    // --- Ranger, et le mot apparaît (sa page « Ordre · Axe », exercice 17) ---
+    //
+    // LE TROISIÈME DES TROIS, ET C'EST LUI QUI SE CORRIGE TOUT SEUL. Rémy :
+    // « on place les points, on range les abscisses dans l'ordre, et les
+    // lettres donnent un mot. C'est un exercice qui se corrige tout seul : si
+    // le mot ne sort pas, l'élève le sait avant le professeur. »
+    //
+    // SUR UNE SEULE DROITE, IL N'Y AURAIT RIEN À RANGER : l'ordre des points
+    // serait l'ordre de gauche à droite. Le travail n'existe qu'avec plusieurs
+    // ÉCHELLES, et c'est pour cela que les droites se chevauchent — à la
+    // troisième marche, le même cran vaut 10, 1 ou 0,1 selon la droite.
+    {
+        id: 'num-ranger-le-mot',
+        cree: '2026-11-13',
+        title: 'Ranger, et le Mot Apparaît',
+        consignePapier: 'Range les abscisses, puis recopie les lettres.',
+        colonnesPapier: 1,
+        printable: 'rangerLeMot',
+        generatorId: 'num.ranger-le-mot', activityId: 'rangerLeMot',
+        skills: ['num.dec.graduations'],
+        params: { nbQuestions: 4, marches: ['deux', 'trois', 'melees'] },
+        motsClefs: ['droite graduée', 'abscisse', 'graduation', 'échelle', 'ranger',
+            'ordre croissant', 'comparer', 'décimaux', 'mot', 'lettres'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Les droites n'ont PAS la même échelle, et c'est tout l'exercice : un point dessiné loin à droite sur une droite qui va de 0 à 1 vaut moins qu'un point dessiné tout à gauche sur une droite qui va de 0 à 100. On lit donc d'abord les deux nombres des bouts de chaque droite, on en déduit ce que vaut un intervalle, puis on compte les intervalles depuis le bout GAUCHE — jamais les traits. On touche ensuite les points du plus petit au plus grand : chaque lettre vient se poser dans la case suivante, et le mot se construit sous les yeux de l'élève. Toucher un point déjà posé reprend sa lettre, et les suivantes se resserrent. Si le mot ne sort pas, il le sait avant vous : c'est la seule correction dont cet exercice ait besoin."
+    },
+
     // --- Le vocabulaire du calcul (fiche 4ᵉ § 4, 5, 6, N) ---
     // Le seul chapitre où la bonne réponse ne se déduit de rien : elle se sait.
     // Un élève qui ignore « différence » rate une soustraction qu'il savait

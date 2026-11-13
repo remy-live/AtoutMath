@@ -17032,6 +17032,85 @@ body.en-boite > #app-container { background: none; }
    droites, et un aplat opaque effacerait les graduations sur lesquelles
    l'élève est en train de compter.
    ───────────────────────────────────────────────────────────────────────── */
+/* ── RANGER, ET LE MOT APPARAÎT ─────────────────────────────────────────────
+
+   RÉMY, page « Ordre · Axe », exercice 17. Mise en page jumelle de celle du
+   Dessin Gradué, et pour la même raison : cette activité a son propre écran,
+   elle ne vit pas dans `numpad-context`, donc AUCUN des plafonds de hauteur
+   écrits pour protéger le pavé numérique ne s'y applique. Mesuré sur la cascade
+   de loupes, ces plafonds réduisaient un dessin haut à 19 px par ligne et les
+   cases à 12 × 4 px. Ici le dessin prend la largeur qu'on lui donne, et sa
+   hauteur suit. */
+.rlm-layout { display: flex; flex-direction: column; align-items: center;
+    gap: 12px; width: 100%; }
+.rlm-context { text-align: center; max-width: 48ch; }
+.rlm-plan {
+    width: 100%; max-width: 640px;
+    border: 2px solid var(--border); border-radius: 14px;
+    background: var(--bg-panel); overflow: hidden;
+}
+.rlm-plan--ok { outline: 3px solid var(--success); outline-offset: 3px; }
+.rlm-svg { display: block; width: 100%; height: auto; color: var(--text-main); }
+
+.rlm-axe { stroke: var(--text-main); stroke-width: 2; fill: none; }
+.rlm-cran { stroke: var(--text-main); stroke-width: 1.5; }
+.rlm-borne { fill: var(--text-main); font-size: 13px; font-weight: 700; }
+
+/* LE JETON SE VOIT, SE VISE, ET DIT QU'ON PEUT LE TOUCHER. Vingt-deux pixels de
+   diamètre dans un dessin de 400 unités de large : sur un téléphone de 390 px,
+   cela fait encore vingt pixels à l'écran — la mesure qui manquait à la cascade
+   de loupes, dont les cases tombaient à 4 px de haut. */
+.rlm-jeton { cursor: pointer; }
+.rlm-jeton circle {
+    fill: var(--bg-panel); stroke: var(--primary); stroke-width: 2.5;
+    transition: fill .12s ease;
+}
+.rlm-jeton text {
+    fill: var(--text-main); font-size: 13px; font-weight: 800;
+    pointer-events: none; user-select: none;
+}
+.rlm-jeton:hover circle { fill: color-mix(in srgb, var(--primary) 12%, transparent); }
+.rlm-jeton:focus-visible circle { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* UN JETON POSÉ RESTE LISIBLE, ET C'EST VOULU : il se remplit au lieu de
+   s'effacer, et il porte le RANG où sa lettre est partie. Un jeton grisé dirait
+   « c'est fini pour lui » ; ici l'élève doit pouvoir relire son propre
+   rangement — et le reprendre d'un doigt. */
+.rlm-jeton--pose circle { fill: var(--primary); stroke: var(--primary); }
+.rlm-jeton--pose text { fill: #fff; }
+.rlm-rang {
+    fill: var(--text-soft) !important; font-size: 10px !important;
+    font-weight: 700 !important;
+}
+/* UNE FOIS VALIDÉ, PLUS RIEN NE SE TOUCHE : sans cette ligne, le doigt
+   continuait d'allumer les jetons pendant que la question suivante montait. */
+.rlm-jeton--fini { cursor: default; pointer-events: none; }
+
+/* LES CASES DU MOT. Elles sont toutes là dès le départ : voir cinq cases, c'est
+   savoir qu'on cherche cinq points — une information que le dessin donne déjà,
+   et qu'il serait absurde de cacher. */
+.rlm-mot { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.rlm-case {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 38px; height: 46px; padding: 0 4px;
+    border: 2px dashed var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1.5rem; font-weight: 800;
+}
+.rlm-case--pleine { border-style: solid; border-color: var(--primary); }
+
+.rlm-statut { text-align: center; min-height: 1.4em; color: var(--text-soft);
+    font-size: .95rem; }
+.rlm-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.rlm-btn {
+    min-height: 44px; padding: 0 16px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1rem; font-weight: 800; cursor: pointer;
+}
+.rlm-btn--fort { border-color: var(--primary); background: var(--primary); color: #fff; }
+.rlm-btn:disabled { opacity: .45; cursor: default; }
+
 .dg-layout { display: flex; flex-direction: column; align-items: center;
     gap: 12px; width: 100%; }
 .dg-context { text-align: center; max-width: 48ch; }

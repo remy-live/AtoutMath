@@ -7457,3 +7457,34 @@ plus d'un.**
   remise les fichiers nommés, lance la sonde, imprime son relevé sous « AVANT »,
   remet les fichiers quoi qu'il arrive, relance, imprime sous « APRÈS », et met
   les deux relevés côte à côte. Jamais de `checkout` à la main.
+
+**Trois sondes « sur les quatre écrans », écrites trois fois** — 13 novembre
+
+- *Ce que je voulais faire* : savoir si un exercice neuf est jouable sur un
+  téléphone, une tablette et un ordinateur.
+- *Ce qui s'est passé* : `plateauSurTousLesEcrans.mjs`, puis
+  `cascadeSurLesEcrans.mjs`, puis une troisième pour « Ranger, et le mot
+  apparaît » — la même boucle sur les mêmes quatre tailles, avec à chaque fois
+  les mêmes quatre relevés et le même piège à retrouver (mesurer le BAS du
+  bouton d'action, jamais la somme des hauteurs).
+- *Combien de fois* : ||| (trois, dont deux le même jour)
+- *Ce qui manque* : **fait.** `node tools/surLesEcrans.mjs <exercice>
+  [--cibles=…]` porte la boucle, les quatre relevés et le plancher de 10 px en
+  dessous duquel une cible n'est plus une cible. Vérifié : il retrouve au pixel
+  les chiffres de la sonde dédiée à la cascade, qui a donc été supprimée.
+
+**La vérification la moins chère du dépôt, réécrite à la main trois fois** — 13 novembre
+
+- *Ce que je voulais faire* : savoir si le juge accepte la bonne réponse que le
+  générateur annonce — trois lignes : tirer, donner `item.answer` à `evaluate`,
+  compter.
+- *Ce qui s'est passé* : réécrit à la main pour « Graduer un Axe », « La Cascade
+  de Loupes » et « Ranger, et le Mot Apparaît ». C'est pourtant la porte la plus
+  chère à laisser ouverte : un exercice dont la forme de `answer` ne correspond
+  pas à ce qu'attend `evaluate` est juste partout — dessin, énoncé, épreuves —
+  et refuse l'élève qui répond bien. Aucune épreuve hors navigateur ne le voit.
+- *Combien de fois* : ||| (trois, en trois exercices consécutifs)
+- *Ce qui manque* : **fait.** `node tools/leJugeAccepte.mjs [exercice]
+  [tirages]` boucle marche par marche — une marche cassée sur trois se noierait
+  dans un tirage mélangé. Passé sur tout le catalogue d'un coup : 34 640 bonnes
+  réponses mesurées, zéro refusée.

@@ -43,6 +43,7 @@ import { traverseeGenerator } from '../generators/traversee.js';
 import { pontLampeGenerator } from '../generators/pontLampe.js';
 import { penduGenerator } from '../generators/pendu.js';
 import { dessinGradueGenerator } from '../generators/dessinGradue.js';
+import { rangerLeMotGenerator } from '../generators/rangerLeMot.js';
 import { arbreCalculGenerator } from '../generators/arbreCalcul.js';
 import { pentaminosGenerator } from '../generators/pentaminos.js';
 import { transvasementsGenerator } from '../generators/transvasements.js';
@@ -202,7 +203,7 @@ import {
     kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
     cheminNombresGenerator, allumettesGenerator,
     allumettesEgaliteGenerator, traverseeGenerator, pontLampeGenerator, penduGenerator,
-    dessinGradueGenerator, arbreCalculGenerator, pentaminosGenerator,
+    dessinGradueGenerator, rangerLeMotGenerator, arbreCalculGenerator, pentaminosGenerator,
     transvasementsGenerator, cavaliersGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
@@ -608,6 +609,25 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./dessinGradue.js')
+});
+
+// RANGER, ET LE MOT APPARAÎT — l'unité est le MOT, et quatre par défaut : ranger
+// cinq abscisses prises sur trois échelles différentes demande cinq lectures de
+// graduation, pas une. Rémy avait demandé « Toucher les points dans l'ordre »
+// parmi trois gestes possibles ; il n'y a donc rien à taper, et aucun réglage de
+// saisie à offrir.
+//
+// `accepts: ['text']` ET NON `['choice']` : l'activité envoie les lettres dans
+// l'ordre où on les a touchées, c'est-à-dire une chaîne. Un QCM existe quand
+// même, mais pour les DÉFIS seuls, où l'on ne peut pas toucher l'énoncé.
+registerActivity({
+    id: 'rangerLeMot',
+    unite: 'mot',
+    parDefaut: 4,
+    label: 'Ranger, et le mot apparaît',
+    accepts: ['text'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./rangerLeMot.js')
 });
 
 // L'ARBRE DE CALCULS — l'unité est l'ARBRE. Pas de réglage de saisie : le

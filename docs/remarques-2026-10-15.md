@@ -6825,7 +6825,57 @@ tablette ; sur un téléphone, la marche « deux étages » est celle qui convie
 Le dépôt avait déjà tranché cela — `--fig-etirement` retombe à 1 sur les paliers
 du téléphone pour qu'une figure haute ne chasse pas le clavier.
 
-Reste le troisième, « Ranger, et un mot apparaît ».
+**LE TROISIÈME EST FAIT — « Ranger, et le Mot Apparaît » (`num-ranger-le-mot`,
+code RV).** C'est l'exercice 17, et c'est celui qui se corrige tout seul.
+
+**TROIS GESTES ÉTAIENT POSSIBLES, ET JE LUI AI DEMANDÉ** : toucher les points
+dans l'ordre, taper le mot au pavé de lettres, ou écrire les abscisses rangées
+au pavé numérique. Rémy : « Toucher les points dans l'ordre ». C'est le seul des
+trois où le mot se construit SOUS SES YEUX, donc le seul qui tient sa phrase —
+les deux autres l'auraient obligé à avoir trouvé le mot AVANT d'écrire, et le
+garde-fou serait devenu une récompense de fin.
+
+On touche un jeton, sa lettre va dans la première case libre, et le jeton garde
+le rang où elle est partie. On touche un jeton déjà posé : sa lettre revient et
+les suivantes se resserrent — la forme qu'il avait demandée pour « Le Dessin
+Gradué » : « quand on clique sur un point qui est sur un axe ca le remet ».
+
+**SUR UNE SEULE DROITE, IL N'Y AURAIT RIEN À RANGER.** L'ordre des points serait
+l'ordre de gauche à droite, et le mot se lirait sans avoir lu une abscisse. Le
+travail n'existe qu'avec plusieurs ÉCHELLES, et il faut qu'elles se
+CHEVAUCHENT : avec une droite de 0 à 1 et une de 100 à 150, tous les points de
+la première précèdent tous ceux de la seconde, et l'on range par droite sans
+rien lire. À la troisième marche, le MÊME CRAN vaut 10, 1 ou 0,1 selon la
+droite — la position dessinée ne dit plus rien du tout.
+
+**ET LE TIRAGE TIENT TROIS CONDITIONS, dont deux ont été mesurées avant d'être
+crues.** En retirant les gardes et en tirant 1200 questions : 13 laissaient lire
+le mot droite par droite, et **84 le laissaient ranger à l'oeil** — 7 %, c'est-à-
+dire une question sur quatorze où un élève qui ignore tout des échelles trouve
+le mot. La troisième condition est que deux points n'aient jamais la même
+abscisse : les droites se chevauchant, cela peut arriver, et la question a alors
+deux réponses justes sans que rien ne le signale.
+
+**UN LEURRE IMPOSSIBLE N'EST PAS UN LEURRE.** J'avais mis « le plus de chiffres
+est le plus grand » — 0,12 devant 0,3. Une épreuve a montré qu'elle NE PEUT PAS
+se produire ici : avec des pas de 10, 1 et 0,1, toutes les abscisses décimales
+ont un seul chiffre après la virgule. Le leurre valait la bonne réponse et
+disparaissait en silence. Remplacé par celui qui compte vraiment : ranger à
+l'oeil.
+
+**IL TIENT SUR LES QUATRE ÉCRANS** — `node tools/surLesEcrans.mjs
+num-ranger-le-mot`. Les jetons font 19 × 19 px sur un téléphone et 35 × 35 sur
+une tablette, et le bouton « Valider » reste dans la fenêtre partout. C'est la
+leçon de la cascade appliquée d'avance : cette activité a son propre écran, donc
+aucun des plafonds écrits pour protéger le pavé numérique ne l'écrase.
+
+**ET SUR LE PAPIER**, une case par lettre où écrire les abscisses rangées, et
+sous chacune une petite case pour la lettre. Regardé : ROSE, ASTRE et DROITE
+sortent bien. Au premier jet, les cases prenaient 78 % de leur emplacement, soit
+50 mm de long sur 5 de haut pour y écrire « 0,4 » — vu sur la photo, et
+seulement là.
+
+**LES TROIS SONT FAITS.**
 
 ---
 

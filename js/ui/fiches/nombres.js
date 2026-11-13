@@ -2728,6 +2728,187 @@ function geoGraduation(item, slot) {
 }
 
 /**
+ * RANGER, ET LE MOT APPARAÎT, SUR LE PAPIER.
+ *
+ * RÉMY, page « Ordre · Axe », exercice 17.
+ *
+ * LA FEUILLE NE PEUT PAS FAIRE LE GESTE DE L'ÉCRAN — on ne touche pas un jeton
+ * imprimé. Elle demande donc l'ÉCRITURE du rangement : une case par lettre, où
+ * l'on écrit les abscisses du plus petit au plus grand, et sous chacune une
+ * petite case pour la lettre. Les lettres lues de gauche à droite donnent le
+ * mot — c'est la même auto-correction, avec un crayon.
+ *
+ * LES JETONS SONT AU-DESSUS DE LA DROITE ET LES NOMBRES AU-DESSOUS, comme à
+ * l'écran : un jeton au cran 0 ou au cran 10 couvrirait sinon l'étiquette du
+ * bout, et c'est le défaut que la photo de « Graduer un Axe » avait montré.
+ */
+function geoRanger(item, slot) {
+    const m = item.meta || {};
+    const axes = Array.isArray(m.axes) ? m.axes : [];
+    const points = Array.isArray(m.points) ? m.points : [];
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const marge = b.w * 0.045;
+    const x0 = b.x + marge;
+    const larg = b.w - 2 * marge;
+    const pt = Math.max(5.5, Math.min(9.5, b.h * 0.075));
+    // LES DROITES PRENNENT LES DEUX TIERS, LA LIGNE DE RÉPONSE LE RESTE. À
+    // moins que ça, les cases où l'on écrit « 0,4 » deviennent trop basses pour
+    // qu'un crayon y tienne.
+    const hautAxes = b.h * 0.66;
+    const bande = hautAxes / Math.max(1, axes.length);
+    return {
+        m, axes, points, boite: b, x0, larg, pt,
+        rayon: Math.min(bande * 0.2, 3.4),
+        cran: Math.min(bande * 0.1, 1.8),
+        intervalles: m.intervalles || 10,
+        yDe: (i) => b.y + bande * (i + 0.62),
+        yReponse: b.y + hautAxes + b.h * 0.1,
+        px: (c) => x0 + (c / (m.intervalles || 10)) * larg
+    };
+}
+
+function rangerPreviewHtml(item, slot, k, solution) {
+    const g = geoRanger(item, slot);
+    const police = g.pt * 0.3528 * k;
+    let html = '';
+    let svg = '';
+
+    g.axes.forEach((a, i) => {
+        const y = g.yDe(i);
+        html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
+            width:${g.larg * k}px; height:${Math.max(1, 0.5 * k)}px; background:#1a202c"></div>`;
+        for (let c = 0; c <= g.intervalles; c++) {
+            const h = (c === 0 || c === g.intervalles) ? g.cran : g.cran * 0.6;
+            html += `<div style="position:absolute; left:${g.px(c) * k}px;
+                top:${(y - h) * k}px; width:${Math.max(1, 0.45 * k)}px;
+                height:${2 * h * k}px; background:#1a202c"></div>`;
+        }
+        [[0, a.min], [g.intervalles, a.max]].forEach(([c, v]) => {
+            html += `<div style="position:absolute; left:${(g.px(c) - g.larg * 0.08) * k}px;
+                top:${(y + g.cran * 1.2) * k}px; width:${g.larg * 0.16 * k}px;
+                text-align:center; font-size:${police}px; font-weight:700;
+                color:#1a202c">${echapperSheet(ecrireDecimal(v, 3))}</div>`;
+        });
+    });
+
+    g.points.forEach((p) => {
+        const y = g.yDe(p.axe);
+        const cx = g.px(p.cran);
+        const cy = y - g.rayon - g.cran * 0.6;
+        svg += `<circle cx="${(cx * k).toFixed(1)}" cy="${(cy * k).toFixed(1)}"
+            r="${(g.rayon * k).toFixed(1)}" fill="none" stroke="#1a202c"
+            stroke-width="${Math.max(1, 0.45 * k)}"/>`;
+        html += `<div style="position:absolute; left:${(cx - g.rayon) * k}px;
+            top:${(cy - g.rayon) * k}px; width:${2 * g.rayon * k}px;
+            height:${2 * g.rayon * k}px; display:flex; align-items:center;
+            justify-content:center; font-size:${police * 0.95}px; font-weight:800;
+            color:#1a202c">${echapperSheet(p.lettre)}</div>`;
+    });
+
+    // LA LIGNE DU RANGEMENT : une case large pour l'abscisse, une petite
+    // dessous pour la lettre. Le signe « < » entre deux cases dit le sens du
+    // rangement sans qu'on ait à le relire dans la consigne.
+    const n = g.points.length;
+    const pas = g.larg / n;
+    // LA CASE EST TAILLÉE POUR CE QU'ON Y ÉCRIT, PAS POUR LA PLACE DISPONIBLE.
+    // Au premier jet elle prenait 78 % de son emplacement : sur la feuille
+    // imprimée, cela donnait un rectangle de 50 mm de long et 5 de haut pour y
+    // écrire « 0,4 ». Vu sur la photo, et seulement là. Une case haute de 6 mm
+    // et longue de deux fois et demie sa hauteur tient « 0,45 » au crayon, et
+    // laisse voir les signes « < » entre les cases.
+    const haut = g.pt * 0.3528 * 2;
+    const large = Math.min(pas * 0.56, haut * 2.6);
+    const ordre = Array.isArray(g.m.ordre) ? g.m.ordre : [];
+    const mot = String(g.m.mot || '');
+    for (let i = 0; i < n; i++) {
+        const cx = g.x0 + pas * (i + 0.5);
+        html += `<div style="position:absolute; left:${(cx - large / 2) * k}px;
+            top:${g.yReponse * k}px; width:${large * k}px; height:${haut * k}px;
+            border:${Math.max(1, 0.4 * k)}px dashed #7b8798; border-radius:${1.2 * k}px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:${police * 0.95}px; font-weight:700; color:#2f855a">${
+    solution ? echapperSheet(ordre[i] || '') : ''}</div>`;
+        html += `<div style="position:absolute; left:${(cx - haut * 0.45) * k}px;
+            top:${(g.yReponse + haut + 0.7) * k}px; width:${haut * 0.9 * k}px;
+            height:${haut * 0.9 * k}px; border:${Math.max(1, 0.4 * k)}px solid #7b8798;
+            border-radius:${1.2 * k}px; display:flex; align-items:center;
+            justify-content:center; font-size:${police * 0.95}px; font-weight:800;
+            color:#2f855a">${solution ? echapperSheet(mot[i] || '') : ''}</div>`;
+        if (i < n - 1) {
+            html += `<div style="position:absolute; left:${(cx + pas / 2 - pas * 0.1) * k}px;
+                top:${(g.yReponse + haut * 0.2) * k}px; width:${pas * 0.2 * k}px;
+                text-align:center; font-size:${police}px; font-weight:700;
+                color:#7b8798">&lt;</div>`;
+        }
+    }
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible">${svg}</svg>` + html;
+}
+
+/** La même chose dans le PDF — voir l'aperçu pour le raisonnement. */
+function dessinerRangerPdf(doc, item, slot, solution) {
+    const g = geoRanger(item, slot);
+
+    g.axes.forEach((a, i) => {
+        const y = g.yDe(i);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.5);
+        doc.line(g.x0, y, g.x0 + g.larg, y);
+        doc.setLineWidth(0.45);
+        for (let c = 0; c <= g.intervalles; c++) {
+            const h = (c === 0 || c === g.intervalles) ? g.cran : g.cran * 0.6;
+            doc.line(g.px(c), y - h, g.px(c), y + h);
+        }
+        doc.setTextColor(...ENCRE.texte);
+        doc.setFontSize(g.pt);
+        doc.text(pourPdf(ecrireDecimal(a.min, 3)), g.px(0),
+            y + g.cran * 1.2 + g.pt * 0.3528 * 0.8, { align: 'center' });
+        doc.text(pourPdf(ecrireDecimal(a.max, 3)), g.px(g.intervalles),
+            y + g.cran * 1.2 + g.pt * 0.3528 * 0.8, { align: 'center' });
+    });
+
+    g.points.forEach((p) => {
+        const y = g.yDe(p.axe);
+        const cx = g.px(p.cran);
+        const cy = y - g.rayon - g.cran * 0.6;
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.45);
+        doc.circle(cx, cy, g.rayon, 'S');
+        doc.setFontSize(g.pt * 0.95);
+        doc.text(pourPdf(p.lettre), cx, cy + g.pt * 0.3528 * 0.35, { align: 'center' });
+    });
+
+    const n = g.points.length;
+    const pas = g.larg / n;
+    // Mêmes mesures qu'à l'aperçu — voir le commentaire là-haut.
+    const haut = g.pt * 0.3528 * 2;
+    const large = Math.min(pas * 0.56, haut * 2.6);
+    const ordre = Array.isArray(g.m.ordre) ? g.m.ordre : [];
+    const mot = String(g.m.mot || '');
+    for (let i = 0; i < n; i++) {
+        const cx = g.x0 + pas * (i + 0.5);
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(cx - large / 2, g.yReponse, large, haut, 0.8, 0.8, 'S');
+        doc.roundedRect(cx - haut * 0.45, g.yReponse + haut + 0.7,
+            haut * 0.9, haut * 0.9, 0.8, 0.8, 'S');
+        if (i < n - 1) {
+            doc.setTextColor(...ENCRE.grille);
+            doc.setFontSize(g.pt);
+            doc.text('<', cx + pas / 2, g.yReponse + haut * 0.72, { align: 'center' });
+        }
+        if (!solution) continue;
+        doc.setTextColor(47, 133, 90);
+        doc.setFontSize(g.pt * 0.95);
+        doc.text(pourPdf(ordre[i] || ''), cx, g.yReponse + haut * 0.72, { align: 'center' });
+        doc.text(pourPdf(mot[i] || ''), cx,
+            g.yReponse + haut + 0.7 + haut * 0.62, { align: 'center' });
+    }
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(g.pt);
+}
+
+/**
  * LA CASCADE DE LOUPES, SUR LE PAPIER.
  *
  * RÉMY, page « Ordre · Axe », exercice 14.
@@ -4045,6 +4226,25 @@ export const RENDUS_NOMBRES = {
         disposition: { cols: 4, rows: 3, maxCols: 5, maxRows: 4 },
         parLigneDefaut: 4
     },
+    // RANGER, ET LE MOT APPARAÎT — sa page « Ordre · Axe », exercice 17.
+    rangerLeMot: {
+        titre: () => 'Ranger, et le mot apparaît',
+        consigne: () => 'Les droites n\u2019ont PAS la même échelle : lis d\u2019abord '
+            + 'les deux nombres de leurs bouts. Écris ensuite les abscisses des points '
+            + 'du PLUS PETIT au PLUS GRAND dans les cases, et recopie sous chacune la '
+            + 'lettre de son point : elles donnent un mot.',
+        previewGrille: rangerPreviewHtml,
+        pdfGrille: dessinerRangerPdf,
+        nomBloc: 'Mot', nomBlocs: 'mots',
+        // PLEINE LARGEUR, ET HAUTE DE PRESQUE UN TIERS : trois droites graduées
+        // en dix intervalles plus la ligne du rangement. Des droites courtes
+        // rendraient les intervalles indistinguables — or c\u2019est eux qu\u2019on compte.
+        proportions: { w: 1, h: 0.42 },
+        grilleMax: 170,
+        disposition: { cols: 1, rows: 2, maxCols: 1, maxRows: 3 },
+        parLigneDefaut: 1
+    },
+
     // LA CASCADE DE LOUPES — sa page « Ordre · Axe », exercice 14.
     cascade: {
         titre: () => 'La cascade de loupes',
