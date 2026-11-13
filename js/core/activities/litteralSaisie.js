@@ -101,9 +101,31 @@ export function mount(container, session, opts = {}) {
         // LA DERNIÈRE ÉTAPE EST LA QUESTION ELLE-MÊME, et l'item n'a pas à la
         // répéter : on l'ajoute ici, avec le juge et la réponse qu'il porte
         // déjà. Un item sans `etapes` se comporte exactement comme avant.
+        // LA BASE RESTE ÉCRITE, L'ÉLÈVE N'ÉCRIT QUE L'EXPOSANT.
+        //
+        // RÉMY, 13 novembre : « pour l'exercice sur les puissance dans la
+        // réponse ne demande que l'exposant, j'aime pas l'écriture 10^3 pour
+        // les élèves ».
+        //
+        // Il avait raison deux fois. `10^3` n'est pas une écriture de
+        // mathématiques, c'est une écriture de CLAVIER : au tableau on écrit un
+        // 10 avec un 3 en haut, et un élève de quatrième n'a jamais vu d'accent
+        // circonflexe dans un exposant. Et dès que l'exposant est négatif, la
+        // notation de clavier se casse — il avait aussi signalé
+        // « 10^-10/10--2 s'est écrit bizarrement », et le gabarit du champ
+        // affichait « □^((…) − (…)) », trois signes de machine pour une seule
+        // idée.
+        //
+        // AVEC `base`, LA LIGNE PORTE LE 10 ET LE CHAMP PORTE L'EXPOSANT. On
+        // garde donc ce que Rémy avait demandé la veille — « on écrit
+        // l'opération sur les exposants à chaque fois », c'est-à-dire
+        // 10³ × 10² = 10³⁺² = 10⁵ — sans faire taper une seule fois ni accent
+        // circonflexe ni parenthèse de machine.
+        const base = m.base || '';
         const etapes = (m.etapes || []).length
             ? [...m.etapes,
                 { titre: m.titreFinal || 'La réponse, jusqu\'au bout', finale: true }]
+                .map(e => (base && e.base === undefined ? { ...e, base } : e))
             : [];
         rang = 0;
         ratages = 0;
@@ -310,7 +332,9 @@ export function mount(container, session, opts = {}) {
                         <span class="ls-gauche">${echapper(
         e.note ? e.titre : (e.gauche || ''))}</span>
                         <span class="ls-egal" aria-hidden="true">${e.note ? ':' : '='}</span>
-                        <span class="ls-membre" data-val="${i}"></span>
+                        ${e.base ? `<span class="ls-puiss"><span class="ls-base">${
+    echapper(e.base)}</span><sup class="ls-membre ls-membre--expo" data-val="${i}"></sup></span>`
+        : `<span class="ls-membre" data-val="${i}"></span>`}
                         <span class="ls-quoi">${echapper(e.note ? '' : e.titre)}</span>
                     </li>`).join('')}
             </ol>` : '';
@@ -328,8 +352,24 @@ export function mount(container, session, opts = {}) {
                     ${friseHtml}
                 </div>
                 <div class="ls-panel">
-                    <div class="ls-champ" aria-live="polite" data-champ>
-                        <span class="ls-texte" data-texte></span><span class="ls-curseur"></span><span class="ls-modele" data-modele aria-hidden="true"></span>
+                    <!-- LE CHAMP PORTE LA BASE, ET LA SAISIE MONTE EN EXPOSANT.
+
+                         Les trois morceaux de la saisie — le texte, le curseur
+                         et le moule — sont enfermés dans UN seul élément quand
+                         il y a une base : le champ est une boîte flexible, et
+                         trois enfants séparés se seraient relevés chacun de son
+                         côté. C'est le même piège que dans la chaîne, dont la
+                         ligne est une grille à trois colonnes et où un
+                         quatrième enfant partait à la rangée suivante.
+
+                         ET CE COMMENTAIRE N'A PAS D'ACCENT GRAVE, parce qu'il
+                         est À L'INTÉRIEUR d'un gabarit : un accent grave le
+                         fermerait, et l'erreur désignerait une ligne sans
+                         rapport. Huitième fois dans ce dépôt. -->
+                    <div class="ls-champ${base ? ' ls-champ--base' : ''}" aria-live="polite" data-champ>
+                        ${base
+        ? `<span class="ls-champ-base" aria-hidden="true">${echapper(base)}</span><span class="ls-haut"><span class="ls-texte" data-texte></span><span class="ls-curseur"></span><span class="ls-modele" data-modele aria-hidden="true"></span></span>`
+        : '<span class="ls-texte" data-texte></span><span class="ls-curseur"></span><span class="ls-modele" data-modele aria-hidden="true"></span>'}
                     </div>
                     <div class="ls-clavier">${rangees.map(rangee).join('')}</div>
                     <div class="ls-actions">
@@ -455,7 +495,13 @@ export function mount(container, session, opts = {}) {
         // `reponsePapier` porte déjà exactement ça : « la réponse telle qu'on
         // l'écrit ». On la lit ici, et l'on retombe sur `answer` pour les
         // exercices dont la réponse EST sa propre valeur.
-        const aMontrer = String(item.reponsePapier || item.answer || '');
+        //
+        // ET `reponseTapee` PASSE DEVANT LES DEUX quand l'écriture du PAPIER
+        // n'est pas celle du CHAMP. C'est le cas dès qu'une base est posée
+        // devant la saisie : sur la feuille on écrit 10¹⁵, dans le champ on
+        // écrit 15 — et montrer 10¹⁵ à l'élève qui sèche lui ferait taper un
+        // 10 qui compte déjà, sur un pavé qui n'a même plus la touche « ^ ».
+        const aMontrer = String(m.reponseTapee || item.reponsePapier || item.answer || '');
 
         // ── LA FRISE, SI L'ITEM EN A UNE ────────────────────────────────
 
@@ -701,6 +747,20 @@ export function mount(container, session, opts = {}) {
             champ.classList.toggle('ls-champ--ok', result.correct);
             champ.classList.toggle('ls-champ--ko', !result.correct);
             if (result.correct && etapes.length) {
+                // ON ÉCRIT SUR LA DERNIÈRE LIGNE, ET LES SAUTÉES RESTENT VIDES.
+                //
+                // J'allais « corriger » cela après avoir vu à l'écran, sur
+                // 10⁶ × 10⁹, la ligne « On AJOUTE les exposants » barrée en vert
+                // et vide pendant que la finale portait 10⁶⁺⁹. La mesure a
+                // donné tort à la correction : `sautDirect` pose déjà `rang` sur
+                // la dernière ligne, donc la branche que j'écrivais n'aurait
+                // JAMAIS tourné — et la règle d'origine est écrite et défendue
+                // dix lignes plus haut : « la trace dit la vérité, à savoir que
+                // ces lignes n'ont pas été écrites ».
+                //
+                // Et ce qu'on pose est bien ce que l'ÉLÈVE a tapé : « 6 + 9 »
+                // est une réponse juste, et la remplacer par 15 lui dirait que
+                // son écriture ne valait pas.
                 poserEtape(etapes.length - 1, saisie.trim(), false);
             }
             // L'ITEM SAIT SOUVENT MIEUX POURQUOI C'EST FAUX que le

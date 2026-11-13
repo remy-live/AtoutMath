@@ -62,6 +62,42 @@ const EXPOSANTS = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5
 export const puissanceTexte = (n) =>
     `10${String(n).split('').map(c => EXPOSANTS[c]).join('')}`;
 
+/** Le chemin du retour : « ⁻¹⁰ » redevient « −10 ». */
+const APLATI = Object.fromEntries(
+    Object.entries(EXPOSANTS).map(([plat, haut]) => [haut, plat === '-' ? '\u2212' : plat]));
+
+/**
+ * LES EXPOSANTS DESSINÉS, POUR L'ÉCRAN — pas les petits caractères.
+ *
+ * RÉMY, 13 novembre : « les exposants en fraction sont vieux ». Et le même
+ * jour, devant un quotient de puissances négatives : « 10^-10/10--2 s'est
+ * écrit bizarrement ».
+ *
+ * IL A RAISON, ET LA CAUSE EST DANS LA POLICE, PAS DANS LE CODE. « ⁻¹⁰ » n'est
+ * pas un exposant : c'est trois caractères que le typographe a dessinés
+ * séparément, il y a longtemps, pour les quelques-uns qui existaient — ¹ ² ³
+ * viennent même d'un autre jeu de caractères que ⁴ ⁵ ⁶. Leurs hauteurs, leurs
+ * graisses et leurs chasses ne s'accordent pas, le « ⁻ » ne se pose pas à la
+ * hauteur des chiffres, et dans une FRACTION, déjà réduite de moitié, cela
+ * devient illisible. C'est exactement ce qu'il a vu.
+ *
+ * `<sup>` dessine le même exposant avec la police de la page, à la bonne
+ * taille et à la bonne hauteur, quels que soient les chiffres.
+ *
+ * ON NE TOUCHE QU'À L'AFFICHAGE. `prompt.text` est lu à voix haute, journalisé
+ * et comparé dans les épreuves ; `papier` part dans un PDF. Les deux gardent
+ * les petits caractères, qui y sont à leur place : sur une feuille, une balise
+ * ne se lit pas.
+ *
+ * @param {string} texte un texte qui contient des exposants Unicode
+ * @returns {string} le même, leurs suites remplacées par des `<sup>`
+ */
+export function dessinerExposants(texte) {
+    return String(texte == null ? '' : texte)
+        .replace(/[\u2070\u00b9\u00b2\u00b3\u2074-\u2079\u207b]+/g,
+            (s) => `<sup class="puiss-expo">${[...s].map(c => APLATI[c] || c).join('')}</sup>`);
+}
+
 /**
  * LA VALEUR DE 10ⁿ, ÉCRITE À LA MAIN.
  *

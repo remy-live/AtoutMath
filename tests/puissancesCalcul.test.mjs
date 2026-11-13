@@ -8,6 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import { puissanceTexte } from '../js/core/puissances.js';
@@ -224,6 +225,18 @@ test('la même graine rend la même question', () => {
 //
 // LE JUGE COMPARE LES EXPOSANTS, PAS LES VALEURS : 10⁹ × 10⁹ vaut 10¹⁸, qui
 // dépasse 2⁵³ et cesse d'être un entier exact en virgule flottante.
+//
+// ── ET DEPUIS LE 13 NOVEMBRE, L'ÉLÈVE N'ÉCRIT QUE L'EXPOSANT ───────────────
+//
+// RÉMY : « pour l'exercice sur les puissance dans la réponse ne demande que
+// l'exposant, j'aime pas l'écriture 10^3 pour les élèves ». La chaîne montre
+// toujours 10³ × 10² = 10³⁺² = 10⁵, mais c'est l'ACTIVITÉ qui pose le 10 et
+// place la saisie en exposant : l'élève écrit « 3 + 2 ».
+//
+// LA RÈGLE QUE CETTE ÉPREUVE GARDE CHANGE DONC DE MONDE, sans s'affaiblir. Sur
+// une marche à base écrite, chaque ligne ne vaut plus la réponse : elle vaut
+// l'EXPOSANT de la réponse. Une ligne qui vaudrait encore la réponse entière
+// serait justement le défaut qu'on vient de corriger.
 
 test('CHAQUE LIGNE VAUT L\'ÉNONCÉ, ET NE SE LAISSE PAS SAUTER', async () => {
     const { lirePuissance, memePuissance, lireExacte, memeR } =
@@ -240,17 +253,25 @@ test('CHAQUE LIGNE VAUT L\'ÉNONCÉ, ET NE SE LAISSE PAS SAUTER', async () => {
                 `[${marche}] le clavier ne prend pas la main`);
             const memeQue = (a, b) => memePuissance(lirePuissance(a, fx), lirePuissance(b, fx))
                 || memeR(lireExacte(a, fx), lireExacte(b, fx));
+            // CE QUE LA LIGNE DOIT VALOIR : la réponse entière quand l'élève
+            // écrit la puissance, son seul EXPOSANT quand la base est déjà
+            // écrite devant le champ.
+            assert.ok(!it.meta.base || String(it.answer).startsWith(it.meta.base),
+                `[${marche}] la base écrite (${it.meta.base}) n'est pas celle de ${it.answer}`);
+            const attendu = it.meta.base
+                ? String(exposantDe(it.answer)).replace('-', '\u2212')
+                : it.reponsePapier;
             for (const e of etapes) {
                 lignesVues += 1;
-                assert.ok(memeQue(e.montrer, it.reponsePapier),
-                    `[${marche}] « ${e.montrer} » ne vaut pas « ${it.reponsePapier} »`);
+                assert.ok(memeQue(e.montrer, attendu),
+                    `[${marche}] « ${e.montrer} » ne vaut pas « ${attendu} »`);
                 assert.ok(e.verifie(e.montrer.replace(/\s+/g, '')).juste,
                     `[${marche}] « ${e.montrer} » refusée à son étape`);
                 // LA RÉPONSE FINALE NE PASSE PAS À L'ÉTAPE : les deux sont
                 // égales, donc sans exigence de forme l'étape serait sautable.
-                const v = e.verifie(it.reponsePapier.replace(/\s+/g, ''));
+                const v = e.verifie(attendu.replace(/\s+/g, ''));
                 assert.ok(v && !v.juste,
-                    `[${marche}] « ${it.reponsePapier} » passe à l'étape « ${e.titre} »`);
+                    `[${marche}] « ${attendu} » passe à l'étape « ${e.titre} »`);
                 assert.ok(e.modele && /[□…]/.test(e.modele),
                     `[${marche}] l'étape « ${e.titre} » n'a pas de moule`);
             }
@@ -260,18 +281,33 @@ test('CHAQUE LIGNE VAUT L\'ÉNONCÉ, ET NE SE LAISSE PAS SAUTER', async () => {
     assert.ok(sansChaine > 0, 'toutes les marches ont une chaîne : (−3)² n\'en veut pas');
 });
 
-test('CE QUI S\'AFFICHE EN PETIT SE TAPE AVEC ^ — et rien n\'est intapable', () => {
+test('TOUT CE QU\'ON FAIT ÉCRIRE SE TAPE, ET AUCUNE TOUCHE NE SERT DE PIÈGE', () => {
     // LE PIÈGE DU « ² » DE LA FACTORISATION, où la première ligne ne pouvait
     // pas s'écrire et où rien ne le disait. Ici le danger est double : les
     // chiffres en exposant (10⁸) et le trait d'union (−2 écrit « -2 »), qui
     // n'est PAS le moins du clavier.
-    const CLAVIER = new Set(['^', '(', ')', '+', '−', '×', '/', ...'0123456789']);
+    //
+    // ET DEPUIS LE 13 NOVEMBRE, UN SECOND DANGER, SYMÉTRIQUE : une touche
+    // PRÉSENTE dont on ne veut pas l'écriture. Rémy : « j'aime pas l'écriture
+    // 10^3 pour les élèves ». Tant que « ^ » reste sur le pavé d'une marche où
+    // le 10 est déjà écrit devant le champ, un élève peut taper « 10^5 » — et
+    // il aura écrit 10 puissance 10 puissance 5. Prêter l'outil, c'est tendre
+    // le piège soi-même.
+    const CHIFFRES = new Set(['(', ')', '+', '−', '×', '/', ...'0123456789']);
+    let avecBase = 0, sansBase = 0;
     for (const marche of ORDRE) {
         for (let i = 0; i < 40; i++) {
             const it = G.generate({ marches: [marche], etapes: 'oui' },
                 { rng: makeRng(`pct_${marche}_${i}`), index: 0, total: 3 });
             if (!it.meta.composable) continue;   // réponse en toutes lettres
-            const lignes = [...(it.meta.etapes || []).map(e => e.montrer), it.reponsePapier];
+            const base = it.meta.base || '';
+            if (base) avecBase += 1; else sansBase += 1;
+            // LE CLAVIER RÉELLEMENT OFFERT, ET LUI SEUL : avec une base écrite,
+            // la touche « ^ » n'est plus là, donc aucune ligne ne doit la
+            // demander.
+            const CLAVIER = base ? CHIFFRES : new Set([...CHIFFRES, '^']);
+            const lignes = [...(it.meta.etapes || []).map(e => e.montrer),
+                base ? '' : it.reponsePapier];
             for (const l of lignes) {
                 const manque = new Set();
                 for (const c of String(l).replace(/\s+/g, '')) {
@@ -281,11 +317,48 @@ test('CE QUI S\'AFFICHE EN PETIT SE TAPE AVEC ^ — et rien n\'est intapable', (
                     `[${marche}] « ${l} » demande ${[...manque].join(' ')}, `
                     + 'que le pavé n\'a pas');
             }
-            assert.equal(it.meta.exposant, true, `[${marche}] pas de touche ^`);
+            assert.equal(it.meta.exposant, !base,
+                `[${marche}] la touche ^ ${base ? 'reste' : 'manque'} alors que la base `
+                + `est ${base ? 'écrite' : 'à écrire'}`);
             assert.equal(it.meta.lettre, null, `[${marche}] le pavé offre une lettre`);
             assert.equal(it.meta.carre, false, `[${marche}] le pavé offre la touche ²`);
         }
     }
+    // LES DEUX MONDES EXISTENT. Sans ce compte, l'épreuve resterait verte le
+    // jour où `meta.base` disparaîtrait de partout : tout serait « sans base »,
+    // et la règle qu'on vient d'écrire ne garderait plus rien.
+    assert.ok(avecBase > 100, `seulement ${avecBase} questions à base écrite`);
+    assert.ok(sansBase > 0, 'aucune question sans base écrite');
+});
+
+test('L\'ÉLÈVE QUI ÉCRIT L\'EXPOSANT SEUL A BON, ET CELUI QUI ÉCRIT LA PUISSANCE A TORT', () => {
+    // LA MOITIÉ QUI COMPTE, et celle qui se casse le plus facilement : le juge
+    // compare désormais un NOMBRE. S'il continuait de lire une puissance,
+    // « 5 » serait lu comme le nombre cinq là où l'on attend 10⁵, et une
+    // réponse juste serait refusée — « j'ai eu tout bon et il dit que j'ai eu
+    // faux », que Rémy a déjà eu à écrire une fois.
+    let vues = 0;
+    for (const marche of ORDRE) {
+        for (let i = 0; i < 20; i++) {
+            const it = G.generate({ marches: [marche], etapes: 'oui' },
+                { rng: makeRng(`pcx_${marche}_${i}`), index: 0, total: 3 });
+            if (!it.meta.base || !it.verifieTexte) continue;
+            vues += 1;
+            const n = exposantDe(it.answer);
+            const exposant = String(n).replace('-', '\u2212');
+            assert.ok(it.verifieTexte(exposant).juste,
+                `[${marche}] « ${exposant} » refusé alors que c'est l'exposant juste`);
+            // ET L'ANCIENNE ÉCRITURE N'EST PLUS LA BONNE : un élève qui tape
+            // « 10^5 » dans un champ déjà précédé d'un 10 a écrit 10¹⁰⁵.
+            const r = it.verifieTexte(`${it.meta.base}^${exposant}`);
+            assert.ok(r && !r.juste,
+                `[${marche}] « ${it.meta.base}^${exposant} » accepté : le 10 compte deux fois`);
+            // UN EXPOSANT FAUX RESTE FAUX.
+            const faux = it.verifieTexte(String(n + 1).replace('-', '\u2212'));
+            assert.ok(faux && !faux.juste, `[${marche}] un exposant faux passe`);
+        }
+    }
+    assert.ok(vues > 40, `seulement ${vues} questions à base écrite jugées`);
 });
 
 test('UNE RÉPONSE QUI EST UNE PHRASE N\'OUVRE PAS DE CLAVIER', () => {
@@ -305,4 +378,69 @@ test('UNE RÉPONSE QUI EST UNE PHRASE N\'OUVRE PAS DE CLAVIER', () => {
         assert.ok(!it.verifieTexte, 'un juge de texte sur une phrase');
     }
     assert.ok(vues > 20, `seulement ${vues} questions à bases différentes`);
+});
+
+test('CE QU\'ON MONTRE À CELUI QUI SÈCHE SE TAPE SUR LE PAVÉ QU\'IL A', () => {
+    // « Montre-moi » écrit la réponse DANS LE CHAMP. Elle doit donc s'écrire
+    // avec les touches présentes : sur une marche à base écrite, le champ est
+    // déjà précédé d'un 10 et la touche « ^ » n'existe plus. Montrer « 10^15 »
+    // ferait apparaître une écriture que l'élève ne peut ni taper ni refaire,
+    // et qui compterait le 10 deux fois.
+    //
+    // MESURÉ AVANT : `aMontrer` lisait `reponsePapier`, qui vaut « 10^15 ».
+    let vues = 0;
+    for (const marche of ORDRE) {
+        for (let i = 0; i < 20; i++) {
+            const it = G.generate({ marches: [marche], etapes: 'oui' },
+                { rng: makeRng(`pcm2_${marche}_${i}`), index: 0, total: 3 });
+            if (!it.meta.base) continue;
+            vues += 1;
+            const montre = it.meta.reponseTapee;
+            assert.ok(montre, `[${marche}] rien à montrer`);
+            assert.ok(!/\^/.test(montre), `[${marche}] « ${montre} » demande la touche ^`);
+            // ET IL SE TAPE SUR CE PAVÉ-LÀ : des chiffres et le moins du
+            // clavier, rien d'autre. Un « ⁵ » en petit ne s'écrit avec aucune
+            // touche, et c'est le piège du « ² » de la factorisation.
+            assert.match(montre, /^\u2212?\d+$/,
+                `[${marche}] « ${montre} » ne s'écrit pas avec les touches du pavé`);
+            // (Un exposant PEUT valoir 10 : on ne compare donc pas à la base.)
+            // Et c'est bien la bonne réponse : le juge du champ l'accepte.
+            assert.ok(it.verifieTexte(montre).juste,
+                `[${marche}] on montre « ${montre} », que le juge refuse`);
+        }
+    }
+    assert.ok(vues > 40, `seulement ${vues} questions à base écrite`);
+    // ── ET L'ACTIVITÉ DOIT LA LIRE, SINON RIEN DE TOUT CECI NE SERT ──────
+    //
+    // CE BOUT-LÀ A ÉTÉ AJOUTÉ PARCE QUE `epreuveTombe` A DIT NON. Les vingt
+    // lignes au-dessus restaient vertes quand on remettait le défaut : elles
+    // lisent le GÉNÉRATEUR, et le défaut était dans l'ACTIVITÉ, qui montrait
+    // `reponsePapier` sans regarder `reponseTapee`. Une épreuve qui garde la
+    // moitié de la règle donne une assurance qui n'existe pas.
+    const LS = readFileSync(new URL('../js/core/activities/litteralSaisie.js',
+        import.meta.url), 'utf8');
+    assert.match(LS, /const aMontrer = String\(m\.reponseTapee \|\| item\.reponsePapier/,
+        'l’activité doit préférer `reponseTapee` à la réponse du papier : les '
+        + 'deux ne s’écrivent plus pareil dès qu’une base est posée devant le champ');
+});
+
+test('ET SUR LE PAPIER, LA VRAIE ÉCRITURE — pas celle du clavier', () => {
+    // RÉMY : « j'aime pas l'écriture 10^3 pour les élèves ». Le corrigé imprimé
+    // est lu par des élèves aussi, et il est posé à côté d'un énoncé qui écrit
+    // déjà 10⁸ × 10² avec de vrais exposants. Écrire la réponse « 10^10 » juste
+    // en dessous enseignerait deux notations pour la même chose.
+    let vues = 0;
+    for (const marche of ORDRE) {
+        for (let i = 0; i < 20; i++) {
+            const it = G.generate({ marches: [marche], etapes: 'oui' },
+                { rng: makeRng(`pcp_${marche}_${i}`), index: 0, total: 3 });
+            if (!it.meta.base) continue;
+            vues += 1;
+            assert.ok(!/\^/.test(it.reponsePapier),
+                `[${marche}] le corrigé imprime « ${it.reponsePapier} »`);
+            assert.ok(/[⁰¹²³⁴-⁹⁻]/.test(it.reponsePapier),
+                `[${marche}] « ${it.reponsePapier} » n'a pas de vrai exposant`);
+        }
+    }
+    assert.ok(vues > 40, `seulement ${vues} questions à base écrite`);
 });

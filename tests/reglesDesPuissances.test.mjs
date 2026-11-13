@@ -89,6 +89,20 @@ test('CHAQUE EXPOSANT NÉGATIF PREND SES PARENTHÈSES', () => {
     // qui est juste et ne montre qu'à MOITIÉ ce qu'on fait. MESURÉ AU
     // NAVIGATEUR avant de corriger : le gabarit affichait « □^(−□ − (…)) ».
     // L'élève doit voir DEUX NOMBRES RELATIFS et une opération entre eux.
+    //
+    // ── LE 13 NOVEMBRE, LE « 10^( ) » A DISPARU, ET PAS LA RÈGLE ──────────
+    //
+    // RÉMY : « dans la réponse ne demande que l'exposant, j'aime pas
+    // l'écriture 10^3 pour les élèves ». La ligne ne porte donc plus que
+    // l'opération — le 10 est écrit par l'activité, devant le champ. Les deux
+    // parenthèses, elles, sont exactement ce qu'il demandait la veille, et
+    // elles restent.
+    //
+    // CETTE ÉPREUVE ÉPINGLAIT L'ÉCRITURE ENTIÈRE, « 10^((−8) − (−6)) », et
+    // elle est donc tombée en rouge alors que ce qu'elle garde n'avait pas
+    // bougé. C'est la deuxième fois ce mois-ci, et c'est noté au journal des
+    // frictions : une épreuve qui lit du code épingle CE QU'ELLE GARDE, pas la
+    // ligne où ça se trouve.
     const MOINS = '\u2212';
     let vus = 0;
     for (let i = 0; i < 40; i++) {
@@ -99,13 +113,20 @@ test('CHAQUE EXPOSANT NÉGATIF PREND SES PARENTHÈSES', () => {
         if (!montrer) continue;
         vus++;
         assert.match(montrer,
-            new RegExp(`^10\\^\\(\\(${MOINS}\\d+\\) ${MOINS} \\(${MOINS}\\d+\\)\\)$`),
+            new RegExp(`^\\(${MOINS}\\d+\\) ${MOINS} \\(${MOINS}\\d+\\)$`),
             `« ${montrer} » : les DEUX exposants doivent être entre parenthèses`);
+        // ET PLUS D'ACCENT CIRCONFLEXE : c'est la demande du 13 novembre, et
+        // la touche n'existe même plus sur le pavé de cette marche.
+        assert.ok(!/\^/.test(montrer), `« ${montrer} » garde une écriture de clavier`);
         // ET LE MODÈLE QUE L\u2019ÉLÈVE VOIT porte les mêmes parenthèses :
         // c\u2019est lui qui dit quoi écrire. MESURÉ AU NAVIGATEUR avant la
         // correction : « □^(−□ − (…)) ».
-        assert.match((q.meta.etapes[0].modele || ''), /\(\(…\)/,
-            `le modèle « ${q.meta.etapes[0].modele} » doit ouvrir sur deux parenthèses`);
+        assert.match((q.meta.etapes[0].modele || ''), /^\(…\) /,
+            `le modèle « ${q.meta.etapes[0].modele} » doit ouvrir sur une parenthèse`);
+        // ET LA BASE EST ÉCRITE PAR L'ACTIVITÉ, devant le champ : sans elle,
+        // l'élève qui lit « (…) − (…) » ne saurait pas de quoi c'est
+        // l'exposant.
+        assert.equal(q.meta.base, '10', 'le 10 doit être posé devant le champ');
     }
     assert.ok(vus > 0, 'aucune ligne du milieu tirée : l\u2019épreuve ne mesure rien');
 });

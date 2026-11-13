@@ -29,7 +29,8 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { relatif, relatifEnPar } from '../signeMoins.js';
-import { puissanceTexte, valeurPuissance, grouper } from '../puissances.js';
+import { puissanceTexte, valeurPuissance, grouper, dessinerExposants }
+    from '../puissances.js';
 import * as fx from '../maths/formule.js';
 import { garnirEtapesNombres } from '../maths/etapesNombres.js';
 import { lirePuissance, memePuissance, lireExacte, memeR as memeExacte }
@@ -250,12 +251,15 @@ const MARCHES = {
             filler: voisine(juste),
             hints: [`${puissanceTexte(a)}, c'est ${a} dix ; ${puissanceTexte(b)}, c'est ${b} dix. `
                 + 'Mis bout à bout, cela fait combien de dix ?'],
+            // L'ÉLÈVE N'ÉCRIT QUE L'EXPOSANT — voir `base` en tête de ce
+            // fichier. La ligne porte le 10, lui écrit ce qui va en haut.
+            baseExposant: 10, exposantJuste: juste,
             lignes: [
-                { titre: 'On AJOUTE les exposants', montrer: `10^(${a} + ${b})`,
-                    memesNombres: true, exposant: true, parentheses: true,
+                { titre: 'On AJOUTE les exposants', montrer: `${a} + ${b}`,
+                    memesNombres: true,
                     aide: `${a} dix suivis de ${b} dix, cela fait ${a} + ${b} dix.` }
             ],
-            titreFinal: 'On calcule l\'exposant',
+            titreFinal: 'L\'exposant du résultat',
             explanation: `${puissanceTexte(a)} × ${puissanceTexte(b)} = ${puissanceCalcul(10, a, '+', b)} `
                 + `= ${puissanceTexte(juste)}. Dans un PRODUIT, on AJOUTE les exposants : `
                 + `${a} dix suivis de ${b} dix font ${juste} dix.`,
@@ -289,13 +293,14 @@ const MARCHES = {
             ],
             filler: voisine(juste),
             hints: [`${puissanceTexte(a)}, c'est ${a} dix. On en enlève ${b}. Il en reste combien ?`],
+            baseExposant: 10, exposantJuste: juste,
             lignes: [
                 { titre: 'On SOUSTRAIT les exposants',
-                    montrer: `10^(${a} \u2212 ${b})`,
-                    memesNombres: true, exposant: true, parentheses: true,
+                    montrer: `${a} \u2212 ${b}`,
+                    memesNombres: true,
                     aide: `Sur ${a} dix, ${b} s'en vont.` }
             ],
-            titreFinal: 'On calcule l\'exposant',
+            titreFinal: 'L\'exposant du résultat',
             explanation: `${ecrit} = ${puissanceCalcul(10, a, '-', b)} = ${puissanceTexte(juste)}. `
                 + `Dans un QUOTIENT, on SOUSTRAIT les exposants : sur ${a} dix, ${b} s'en vont.`,
             difficulty: 2
@@ -312,6 +317,7 @@ const MARCHES = {
             prompt: `${ecrit} = ?`,
             html: `<div class="game-question"><b>${ecrit}</b> = ?</div>`,
             papier: `${ecrit} = `,
+            baseExposant: 10, exposantJuste: juste,
             answer: puissanceTexte(juste),
             choices: [
                 { value: puissanceTexte(juste), correct: true },
@@ -340,11 +346,11 @@ const MARCHES = {
                     //
                     // MESURÉ AVANT : le gabarit à remplir affichait
                     // « □^(−□ − (…)) ».
-                    montrer: `10^(${relatifEnPar(x)} + ${relatifEnPar(y)})`,
-                    memesNombres: true, exposant: true, parentheses: true,
+                    montrer: `${relatifEnPar(x)} + ${relatifEnPar(y)}`,
+                    memesNombres: true, parentheses: true,
                     aide: 'Un exposant négatif s\'ajoute comme un relatif.' }
             ],
-            titreFinal: 'On calcule l\'exposant',
+            titreFinal: 'L\'exposant du résultat',
             explanation: `${ecrit} = 10^(${relatifEnPar(x)} + ${relatifEnPar(y)}) = ${puissanceTexte(juste)}. Un exposant `
                 + 'négatif n\'ajoute aucune règle : il applique celle du produit avec des relatifs.',
             difficulty: 3
@@ -359,6 +365,7 @@ const MARCHES = {
             prompt: `${ecrit} = ?`,
             html: `<div class="game-question">${quotientHtml(a, b, o.fraction)} = ?</div>`,
             papier: `${ecrit} = `,
+            baseExposant: 10, exposantJuste: juste,
             answer: puissanceTexte(juste),
             choices: [
                 { value: puissanceTexte(juste), correct: true },
@@ -375,11 +382,11 @@ const MARCHES = {
                     // LES DEUX EXPOSANTS ENTRE PARENTHÈSES — c'est la demande
                     // de Rémy, mot pour mot : « il faut bien faire l'opération
                     // 10^((-3)-(-5)) pour bien comprendre le principe ».
-                    montrer: `10^(${relatifEnPar(a)} \u2212 ${relatifEnPar(b)})`,
-                    memesNombres: true, exposant: true, parentheses: true,
+                    montrer: `${relatifEnPar(a)} \u2212 ${relatifEnPar(b)}`,
+                    memesNombres: true, parentheses: true,
                     aide: 'Retirer un nombre négatif revient à l\'ajouter.' }
             ],
-            titreFinal: 'On calcule l\'exposant',
+            titreFinal: 'L\'exposant du résultat',
             explanation: `${ecrit} = 10^(${relatifEnPar(a)} − ${relatifEnPar(b)}) = ${puissanceTexte(juste)}. Soustraire un `
                 + 'exposant négatif revient à l\'ajouter — c\'est la règle des relatifs, appliquée '
                 + 'aux exposants.',
@@ -408,14 +415,15 @@ const MARCHES = {
             filler: voisine(juste),
             hints: [`(${puissanceTexte(x)})${String(b).split('').map(c => EXPOSANTS[c]).join('')}, `
                 + `c'est ${b} paquets de ${x} dix. Combien de dix en tout ?`],
+            baseExposant: 10, exposantJuste: juste,
             lignes: [
                 { titre: 'On MULTIPLIE les exposants',
-                    montrer: `10^(${nbT(x)} × ${b})`,
-                    memesNombres: true, exposant: true, parentheses: true,
+                    montrer: `${nbT(x)} × ${b}`,
+                    memesNombres: true, parentheses: x < 0,
                     multiplication: true,
                     aide: `${b} paquets de ${x} dix.` }
             ],
-            titreFinal: 'On calcule l\'exposant',
+            titreFinal: 'L\'exposant du résultat',
             explanation: `${ecrit} = ${puissanceCalcul(10, x, '×', b)} = ${puissanceTexte(juste)}. `
                 + `Une PUISSANCE DE PUISSANCE MULTIPLIE les exposants : ${b} paquets de ${x}.`,
             difficulty: 3
@@ -454,13 +462,31 @@ const MARCHES = {
             filler: voisine(juste),
             hints: ['L\'inverse, c\'est 1 divisé par le nombre — donc un quotient : 10⁰ ÷ 10ⁿ. '
                 + 'On soustrait les exposants, et 0 − n vaut −n.'],
+            baseExposant: 10, exposantJuste: juste,
+            // ON NE FAIT PLUS TAPER LA FRACTION « 1/10^(−4) ».
+            //
+            // RÉMY, 13 novembre : « les exposants en fraction sont vieux », et
+            // « j'aime pas l'écriture 10^3 pour les élèves ». Cette ligne
+            // cumulait les deux : une barre de fraction de clavier, un accent
+            // circonflexe, et des parenthèses de machine autour du
+            // relatif — quatre signes de clavier pour une règle qui en demande
+            // zéro.
+            //
+            // CE QU'ON MET À LA PLACE DIT LA MÊME RÈGLE, EN MIEUX. L'indice la
+            // nommait déjà : « 1 divisé par le nombre — donc un quotient :
+            // 10⁰ ÷ 10ⁿ. On soustrait les exposants, et 0 − n vaut −n. » La
+            // ligne porte maintenant cette soustraction, et rien d'autre : le
+            // 10 est écrit par l'activité, l'élève pose « 0 − 4 » en exposant
+            // et LIT 10⁰⁻⁴. C'est le raisonnement qu'on veut lui voir faire,
+            // et c'est la seule marche de ce chapitre qui ne découlait pas
+            // d'une règle déjà apprise.
             lignes: [
-                { titre: 'L\'inverse, c\'est 1 divisé par',
-                    montrer: `1/10^${versNegatif ? String(n) : `(${nbT(-n)})`}`,
-                    memesNombres: true, exposant: true, parentheses: true, fraction: true,
-                    aide: 'Et 1 divisé par une puissance change le SIGNE de l\'exposant.' }
+                { titre: 'L\'inverse, c\'est 10\u2070 ÷ : on SOUSTRAIT les exposants',
+                    montrer: `0 \u2212 ${versNegatif ? String(n) : relatifEnPar(-n)}`,
+                    memesNombres: true, parentheses: !versNegatif,
+                    aide: 'Et 0 moins l\'exposant, c\'est l\'exposant changé de signe.' }
             ],
-            titreFinal: 'On écrit la puissance, exposant négatif',
+            titreFinal: 'L\'exposant du résultat',
             explanation: `L'inverse de ${depart}, c'est 10⁰ ÷ ${depart} = ${puissanceTexte(juste)}. `
                 + 'Prendre l\'inverse d\'une puissance de 10 revient à CHANGER LE SIGNE de son '
                 + 'exposant.',
@@ -506,13 +532,19 @@ const MARCHES = {
             filler: (r) => puissance(base, a + b + r.int(1, 4)),
             hints: ['La règle « on ajoute les exposants » compte des facteurs TOUS ÉGAUX. '
                 + 'Les deux bases sont-elles les mêmes ?'],
+            // LA BASE N'EST PAS 10 ICI, ET C'EST TOUT L'INTÉRÊT : `base` porte
+            // la base de la question, quelle qu'elle soit. Et quand la réponse
+            // est « on ne peut pas simplifier », ces deux champs sont absents —
+            // il n'y a pas d'exposant à écrire, et le clavier ne s'ouvre même
+            // pas (voir `tapableEnExpression`).
+            ...(memes ? { baseExposant: base, exposantJuste: a + b } : {}),
             lignes: memes
                 ? [{ titre: 'Même base : on AJOUTE les exposants',
-                    montrer: `${base}^(${a} + ${b})`,
-                    memesNombres: true, exposant: true, parentheses: true,
+                    montrer: `${a} + ${b}`,
+                    memesNombres: true,
                     aide: `${a} fois le facteur ${base}, puis ${b} fois encore.` }]
                 : [],
-            titreFinal: 'On calcule l\'exposant',
+            titreFinal: memes ? 'L\'exposant du résultat' : 'La réponse',
             explanation: memes
                 ? `${g} × ${d} = ${juste} : même base, donc on ajoute les exposants.`
                 : `${g} × ${d} ne se simplifie pas : ${base} et ${autre} sont des bases `
@@ -631,12 +663,47 @@ export const puissancesCalculGenerator = {
         // une expression, et aucun clavier ne la tape.
         const tapableEnExpression = !!(lirePuissance(tapable(q.answer), fx)
             || lireExacte(tapable(q.answer), fx));
+
+        // ── L'ÉLÈVE N'ÉCRIT QUE L'EXPOSANT ──────────────────────────────────
+        //
+        // RÉMY, 13 novembre : « pour l'exercice sur les puissance dans la
+        // réponse ne demande que l'exposant, j'aime pas l'écriture 10^3 pour
+        // les élèves ».
+        //
+        // IL AVAIT RAISON DEUX FOIS. `10^3` est une écriture de CLAVIER, pas de
+        // mathématiques : au tableau on écrit un 10 avec un 3 en haut, et un
+        // élève de quatrième n'a jamais vu d'accent circonflexe dans un
+        // exposant. Et dès que l'exposant devient négatif, cette notation se
+        // casse — il avait signalé le même jour « 10^-10/10--2 s'est écrit
+        // bizarrement », et le gabarit à remplir affichait « □^((…) − (…)) » :
+        // trois signes de machine pour une seule idée.
+        //
+        // CE QU'ON GARDE DE LA VEILLE : « on écrit l'opération sur les
+        // exposants à chaque fois », c'est-à-dire 10³ × 10² = 10³⁺² = 10⁵. La
+        // chaîne le montre toujours — c'est l'activité qui pose la base et qui
+        // place la saisie EN EXPOSANT (voir `base` dans
+        // `activities/litteralSaisie`). L'élève écrit « 3 + 2 », il lit 10³⁺².
+        //
+        // LA BASE N'EST PAS TOUJOURS 10 : la marche « il faut la MÊME base »
+        // travaille sur 2, 3, 5 ou 7, et elle a le même droit à un exposant
+        // seul. On lit donc ce que la marche déclare, sans rien supposer.
+        //
+        // LE QCM NE CHANGE PAS : on y CLIQUE une puissance dessinée, et une
+        // puissance dessinée est justement l'écriture qu'on veut enseigner.
+        const surExposant = Number.isFinite(q.baseExposant)
+            && Number.isFinite(q.exposantJuste);
         return makeItem({
             seed: rng.seed,
             generatorId: 'num.puissances-calcul',
             skillId: SKILL,
             answerKind: 'choice',
-            prompt: { text: q.prompt, html: q.html, papier: q.papier || q.prompt },
+            // LES EXPOSANTS SE DESSINENT À L'ÉCRAN, ET SEULEMENT LÀ. Voir
+            // `dessinerExposants` : « ⁻¹⁰ » est une suite de caractères
+            // disparates, et dans une fraction cela donne ce que Rémy a appelé
+            // « vieux ». Le texte et le papier gardent les petits caractères,
+            // qui y sont à leur place.
+            prompt: { text: q.prompt, html: dessinerExposants(q.html),
+                papier: q.papier || q.prompt },
             answer: q.answer,
             // UN DISTRACTEUR NE DOIT JAMAIS VALOIR LA BONNE RÉPONSE. Les fautes
             // se rejoignent parfois d'elles-mêmes : pour 10² × 10², ajouter et
@@ -647,13 +714,38 @@ export const puissancesCalculGenerator = {
             hints: q.hints,
             explanation: q.explanation,
             difficulty: q.difficulty,
-            reponsePapier: tapable(q.answer),
+            // SUR LE PAPIER, LA VRAIE ÉCRITURE. `tapable` mettait la réponse en
+            // écriture de clavier — « 10^15 » — pour qu'elle soit la même que
+            // celle du champ. Les deux ne sont plus la même chose, et Rémy sur
+            // celle du papier : « j'aime pas l'écriture 10^3 pour les élèves ».
+            // Le corrigé imprimé porte donc 10¹⁵, comme l'énoncé juste à côté.
+            reponsePapier: surExposant ? String(q.answer) : tapable(q.answer),
             /**
              * JUGER UNE RÉPONSE TAPÉE — sur les EXPOSANTS, pas sur la valeur :
              * 10⁹ × 10⁹ vaut 10¹⁸, qui dépasse 2⁵³ et cesse d'être un entier
              * exact. C'est de toute façon ce qu'un professeur regarde.
              */
             verifieTexte: !tapableEnExpression ? undefined : (saisie) => {
+                // SUR UNE MARCHE À EXPOSANT SEUL, C'EST UN NOMBRE QU'ON LIT.
+                //
+                // L'élève a tapé « 5 », ou « −6 », ou l'opération « 3 + 2 »
+                // s'il répond d'un trait. On compare donc des VALEURS, et non
+                // des puissances : sans cela « 5 » serait lu comme le nombre
+                // cinq là où l'on attend 10⁵, et une réponse juste serait
+                // refusée — exactement le défaut que Rémy avait rapporté sur un
+                // autre exercice, « j'ai eu tout bon et il dit que j'ai eu
+                // faux ».
+                if (surExposant) {
+                    const v = lireExacte(saisie, fx);
+                    if (!v) {
+                        return { juste: false,
+                            pourquoi: 'Je n\'arrive pas à lire cette écriture. '
+                                + `Écris seulement l'EXPOSANT : le ${q.baseExposant} est déjà là.` };
+                    }
+                    const attenduExposant = lireExacte(
+                        String(q.exposantJuste).replace('-', '\u2212'), fx);
+                    return { juste: !!(attenduExposant && memeExacte(v, attenduExposant)) };
+                }
                 const attendu = lirePuissance(tapable(q.answer), fx);
                 const lu = lirePuissance(saisie, fx);
                 if (!attendu) {
@@ -691,9 +783,24 @@ export const puissancesCalculGenerator = {
                 ...(tapableEnExpression ? { composable: 'litteral' } : {}),
                 lettre: null,
                 carre: false,
-                exposant: true,
+                // LA BASE EST ÉCRITE, L'ÉLÈVE POSE L'EXPOSANT DESSUS.
+                ...(surExposant ? {
+                    base: String(q.baseExposant),
+                    // CE QU'ON MONTRE À CELUI QUI SÈCHE, ET CE QU'ON IMPRIME,
+                    // NE S'ÉCRIVENT PLUS PAREIL. Sur la feuille, la réponse est
+                    // 10¹⁵ — une puissance, avec son exposant en petit. Dans le
+                    // champ, le 10 est déjà là : on tape 15.
+                    reponseTapee: String(q.exposantJuste).replace('-', '\u2212')
+                } : {}),
+                // ET LA TOUCHE « ^ » DISPARAÎT AVEC ELLE : prêter une touche
+                // dont on sait qu'elle produira l'écriture qu'on ne veut pas
+                // enseigner, c'est tendre le piège soi-même.
+                exposant: !surExposant,
                 multiplication: lignes.some(l => l.multiplication),
-                parentheses: true,
+                // LES PARENTHÈSES SEULEMENT QUAND UNE LIGNE EN DEMANDE : sur
+                // « 3 + 2 » elles n'ont rien à y faire, et sur
+                // « (−10) − (−2) » elles SONT la leçon.
+                parentheses: !surExposant || lignes.some(l => l.parentheses),
                 fraction: lignes.some(l => l.fraction),
                 ...(pasAPas && tapableEnExpression
                     ? { saisieSeule: true,

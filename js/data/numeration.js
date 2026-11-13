@@ -1640,7 +1640,7 @@ export const numerationExercises = [
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Les mêmes questions, avec la ligne du milieu : 10⁵ × 10² = 10^(5 + 2) = 10⁷. L'exposant se tape avec la touche ^, parce qu'un exposant qui est une SOMME ne s'écrit pas en petits chiffres. Seule la dernière ligne compte pour la séance ; les autres sont la trace qu'on demande sur la copie."
+        instruction: "Les mêmes questions, avec la ligne du milieu : 10⁵ × 10² = 10⁵⁺² = 10⁷. Le 10 est écrit par le logiciel et l'élève ne tape QUE l'exposant : il écrit « 5 + 2 », il lit 10⁵⁺². Rémy : « j'aime pas l'écriture 10^3 pour les élèves » — il n'y a donc ni accent circonflexe ni parenthèses de clavier sur le pavé. Seule la dernière ligne compte pour la séance ; les autres sont la trace qu'on demande sur la copie."
     },
 
     {
@@ -1688,7 +1688,7 @@ export const numerationExercises = [
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Les trois règles, et seulement elles — avec l'opération sur les exposants ÉCRITE à chaque fois : 10³ × 10² = 10^(3 + 2) = 10⁵. Rémy : « on écrit l'opération sur les exposants à chaque fois ». Le produit AJOUTE les exposants, le quotient les SOUSTRAIT, la puissance de puissance les MULTIPLIE — et le signe de l'opération n'est JAMAIS celui qu'on fait sur les exposants, ce qui est la faute la plus fréquente du chapitre. L'exposant du milieu se tape avec la touche ^, parce qu'une SOMME ne s'écrit pas en petits chiffres. Seule la dernière ligne compte pour la séance ; celle du milieu est la trace qu'on demande sur la copie. Pour travailler d'abord ce qu'EST une puissance — 2⁵, (−3)² —, prendre « Calculer avec des Puissances »."
+        instruction: "Les trois règles, et seulement elles — avec l'opération sur les exposants ÉCRITE à chaque fois : 10³ × 10² = 10³⁺² = 10⁵. Rémy : « on écrit l'opération sur les exposants à chaque fois ». Le produit AJOUTE les exposants, le quotient les SOUSTRAIT, la puissance de puissance les MULTIPLIE — et le signe de l'opération n'est JAMAIS celui qu'on fait sur les exposants, ce qui est la faute la plus fréquente du chapitre. Le 10 est écrit par le logiciel et l'élève ne tape QUE l'exposant : il écrit « 3 + 2 », il lit 10³⁺². Seule la dernière ligne compte pour la séance ; celle du milieu est la trace qu'on demande sur la copie. Pour travailler d'abord ce qu'EST une puissance — 2⁵, (−3)² —, prendre « Calculer avec des Puissances »."
     },
 
     {

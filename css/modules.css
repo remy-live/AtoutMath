@@ -10932,6 +10932,79 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border: 3px solid var(--border); background: var(--bg-panel);
     transition: border-color .18s ease, background .18s ease;
 }
+/* ── UN EXPOSANT DESSINÉ, PAS UN PETIT CARACTÈRE ────────────────────────────
+
+   RÉMY, 13 novembre : « les exposants en fraction sont vieux », et le même
+   jour « 10^-10/10--2 s'est écrit bizarrement ». « ⁻¹⁰ » n'est pas un
+   exposant : ce sont trois caractères dessinés séparément il y a longtemps —
+   ¹ ² ³ ne viennent même pas du même jeu que ⁴ ⁵ ⁶ —, de hauteurs, de graisses
+   et de chasses qui ne s'accordent pas. Dans une fraction, déjà réduite de
+   moitié, cela devient illisible.
+
+   `line-height: 0` est ce qui empêche la ligne de grandir : sans lui, chaque
+   énoncé portant un exposant pousserait sa voisine d'un demi-cran, et l'écart
+   entre les lignes d'une fraction sauterait. Voir `dessinerExposants`. */
+.puiss-expo {
+    font-size: .62em;
+    line-height: 0;
+    vertical-align: super;
+    font-weight: inherit;
+    letter-spacing: 0;
+}
+
+/* ── LA BASE EST ÉCRITE, L'ÉLÈVE POSE L'EXPOSANT DESSUS ──────────────────────
+
+   RÉMY, 13 novembre : « pour l'exercice sur les puissance dans la réponse ne
+   demande que l'exposant, j'aime pas l'écriture 10^3 pour les élèves ». Le
+   logiciel écrit donc le 10 ; ce que l'élève tape monte en haut, à la place où
+   un exposant s'écrit au tableau.
+
+   LA SAISIE EST RELEVÉE PAR UNE TRANSFORMATION, PAS PAR UNE MARGE. Le champ a
+   une hauteur FIXE pour une raison mesurée (voir juste au-dessus : sans elle,
+   le clavier remontait d'une ligne à la première frappe, au moment précis où
+   le doigt visait une touche). Une marge négative la ferait varier ;
+   `translate` ne touche à aucune hauteur.
+
+   ET L'EXPOSANT NE DESCEND PAS SOUS 15 px. Il est à .62 de la saisie normale,
+   qui va de 26 à 42 px — donc de 16 à 26 px. C'est le plancher de ce dépôt
+   pour un texte qu'un élève doit relire sur un téléphone. */
+.ls-champ--base { gap: 0; }
+.ls-champ-base { font-weight: 900; }
+.ls-champ .ls-haut {
+    display: inline-flex; align-items: center; gap: 1px;
+    font-size: .62em;
+    transform: translateY(-.5em);
+}
+/* Le curseur suit la taille de l'exposant : il est dimensionné en `em`, donc
+   il rapetisse tout seul — on ne le reprend ici que pour qu'il ne dépasse pas
+   du 10 par le haut. */
+.ls-champ--base .ls-curseur { height: .85em; }
+
+/* DANS LA CHAÎNE, LA MÊME PUISSANCE — mais en `sup`, parce qu'il y a là une
+   ligne de texte et non une boîte flexible. `.ls-ligne` est une grille à trois
+   colonnes : la base et son exposant sont enfermés dans UN élément, sinon le
+   second part à la ligne suivante. Mesuré : la chaîne se cassait en escalier. */
+.ls-puiss { font-weight: 800; color: var(--text-main); white-space: nowrap; }
+.ls-membre--expo {
+    font-size: .68em; line-height: 0; vertical-align: super;
+    min-width: 1ch; display: inline-block;
+}
+/* TANT QUE L'EXPOSANT N'EST PAS ÉCRIT, LE 10 NE S'AFFICHE PAS.
+
+   MESURÉ, ET C'EST LA PHOTO QUI L'A DIT — pas les onze vérifications vertes
+   qui l'accompagnaient. La chaîne affichait « = 10 » sur une ligne que l'élève
+   n'a pas encore écrite, parce que la base est posée par le gabarit et
+   l'exposant par la saisie. Un élève lit « la réponse est 10 », ce qui est faux
+   et ce qu'aucune des mesures ne regardait : elles comptaient des pixels et des
+   rangées, pas le SENS de la ligne.
+
+   `visibility` et non `display` : la place du 10 reste prise, donc la ligne ne
+   saute pas d'un cran au moment de la validation. */
+.ls-puiss:has(.ls-membre--expo:empty) .ls-base { visibility: hidden; }
+
+/* Une ligne FAITE colore son membre : l'exposant est le membre, il suit. */
+.ls-ligne--faite .ls-puiss { color: var(--success, #16a34a); }
+
 .ls-champ--ok { border-color: var(--success, #16a34a); background: color-mix(in srgb, var(--success, #16a34a) 10%, var(--bg-panel)); }
 .ls-champ--ko { border-color: var(--danger, #dc2626); }
 /* PRESQUE : c'est juste, ce n'est pas fini. Ni le vert du succès ni le rouge
