@@ -102,23 +102,38 @@ test('LE MINEUR PART AU DOIGT, ET LE ROCHER SE VOIT', () => {
         + 'de 90 l’élève n’a plus le temps de LIRE la grille, qui est ce qu’on lui demande');
 });
 
-test('LE MODE RIGOLO A TROIS VITESSES, ET ELLES DIFFÈRENT VRAIMENT', () => {
-    // RÉMY : « j'aimerai des cases qui bougent plus vite et partout (on peut
-    // régler la vitesse) ». LA COURSE change avec la vitesse, et c'est elle
-    // qui fait le « partout » : une carte rapide qui ne bouge que de six
-    // pixels frétille sur place.
+test('LE MODE RIGOLO SE RÈGLE, ET LE RÉGLAGE CHANGE QUELQUE CHOSE', () => {
+    // ── CETTE ÉPREUVE A ÉTÉ RÉÉCRITE LE 13 NOVEMBRE, ET C'EST LA LEÇON ─────
+    //
+    // Sa première version, écrite la veille, exigeait « trois vitesses » et
+    // « trois COURSES différentes » — l'amplitude d'une oscillation. Elle
+    // gardait fidèlement un mécanisme que Rémy a fait retirer le lendemain :
+    // « là ça bouge mais vraiment peu ». L'oscillation est devenue un VOL, les
+    // trois choix une glissière de 1 à 10, et l'épreuve est tombée en rouge sur
+    // une règle qui n'existait plus.
+    //
+    // Une épreuve qui tombe parce que la décision a changé n'est pas une
+    // épreuve cassée : c'est une épreuve qui fait son travail, et qu'on
+    // réécrit. Ce qu'elle garde ici est ce qui RESTE vrai des deux côtés du
+    // changement : le mode rigolo se règle, et le réglage a un effet.
     const src = lire('js/games/apparier.js');
-    const bloc = /const VITESSES = \{([\s\S]*?)\};/.exec(src);
-    assert.ok(bloc, 'les trois vitesses doivent être déclarées');
-    const courses = [...bloc[1].matchAll(/course:\s*(\d+)/g)].map(x => Number(x[1]));
-    assert.equal(courses.length, 3, 'trois vitesses');
-    assert.equal(new Set(courses).size, 3, 'trois courses différentes');
-    assert.ok(Math.min(...courses) >= 12,
-        `la plus petite course est ${Math.min(...courses)} px : en dessous d’une douzaine, `
-        + 'la carte frétille sur place au lieu de voyager');
-    // `matchAll` rend des TABLEAUX de capture, pas des chaînes : `.map(Number)`
-    // donnait trois NaN, et la comparaison était fausse à coup sûr. Une épreuve
-    // qui tombe pour une raison qui n'est pas la sienne ne garde rien.
-    const durees = [...bloc[1].matchAll(/duree:\s*([\d.]+)/g)].map(x => Number(x[1]));
-    assert.ok(durees[0] > durees[durees.length - 1], 'le « lent » doit être plus lent que le « rapide »');
+    assert.ok(!/const VITESSES = \{/.test(src),
+        'la table des trois vitesses a été retirée : deux échelles finiraient par '
+        + 'se contredire. L’échelle vit dans `core/volDesCartes.js`.');
+    assert.match(src, /from '\.\.\/core\/volDesCartes\.js'/,
+        'le jeu doit prendre son échelle là où elle est déclarée');
+    // ET LE VOL EST TENU PAR LE JAVASCRIPT, PAS PAR UNE ANIMATION CSS : une
+    // animation va et vient entre deux points, elle ne déplace rien.
+    // ON VISE L'APPEL, PAS LA DÉFINITION. `/separerLesCartes\(/` attrape aussi
+    // la ligne qui DÉCLARE la méthode : retirer son appel laissait l'épreuve
+    // verte, et `epreuveTombe` l'a dit. Troisième fois dans la même journée
+    // qu'un motif trop large attrape ce qui explique au lieu de ce qui fait.
+    assert.match(src, /this\.volerUneImage\(/,
+        'le vol se calcule image par image — c’est ce qui le distingue d’une oscillation');
+    assert.match(src, /this\.separerLesCartes\(/,
+        'et les cartes se repoussent : mesuré, huit sur seize étaient recouvertes à '
+        + 'plus de moitié sur un téléphone, en permanence');
+    // Le détail de l'échelle (bornes, anciens réglages, allure) est gardé par
+    // `tests/volDesCartes.test.mjs`, et le VOL lui-même par
+    // `tools/lesCartesVolent.mjs` — il ne se mesure que sur la durée.
 });

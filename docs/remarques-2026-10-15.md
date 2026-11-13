@@ -6671,3 +6671,67 @@ répondre oui :
 d'autres » — au-delà des quatre familles demandées, deux mondes ont été
 ajoutés (le Pays des Bonbons et les Pirates). Il y a de la place pour
 davantage, et c'est à Rémy de dire lesquels.
+
+---
+
+## « Ça bouge mais vraiment peu » — 13 novembre
+
+> « pour les puissance de 10 qui bougent tu peux pas mettre un slide de vitesse,
+> là ca bouge mais vraiment peu, j'adorai que ca se déplace partout dans
+> l'écran quitte a ce que le trait qui relie soit pas forcément sur le bord
+> droit »
+
+**DEUX CHOSES, ET LA SECONDE DIT QUE JE M'ÉTAIS TROMPÉ HIER.** Hier il avait
+déjà demandé « plus vite et partout » ; j'ai répondu en portant la course de
+six pixels à vingt-six, en écrivant que « c'est elle qui fait le partout ».
+Mesuré sur une période entière : 17, 28 et 36 px. C'est trois fois plus
+qu'avant et **ça reste un frémissement** : une carte qui se balance de trente
+pixels autour de sa place ne se déplace pas, elle vibre.
+
+**CE QU'IL DEMANDE N'EST PAS UNE AMPLITUDE, C'EST UN DÉPLACEMENT.** Une carte
+qui part du haut à gauche et arrive en bas à droite. C'est un autre mécanisme :
+l'animation CSS va et vient entre deux points ; il faut un vol, avec une
+vitesse, des bords et des rebonds.
+
+**ET IL LÈVE LUI-MÊME L'OBSTACLE** : « quitte à ce que le trait qui relie soit
+pas forcément sur le bord droit ». C'était la contrainte qui tenait les cartes
+dans leur colonne — le trait part du bord DROIT d'une carte de gauche. Dès que
+les cartes volent, une carte de gauche peut se retrouver à droite de sa
+partenaire, et le trait doit sortir par le bord qu'il faut.
+
+**ET UN CURSEUR, PAS TROIS CHOIX.** Le dépôt sait déjà le faire
+(`core/echelle.js`), et c'est Rémy qui l'avait demandé : « je pensais à qqch,
+un slider de paramètres ». Un réglage `number` borné devient une glissière
+sans rien déclarer.
+
+**FAIT — LES CARTES VOLENT POUR DE BON.**
+
+Un **curseur de 1 à 10** remplace les trois choix, et il ne règle plus une
+amplitude mais une **allure** : de 35 à 206 pixels par seconde. Les cartes
+traversent tout le tableau à tous les crans — c'est leur vitesse qui change,
+pas leur territoire.
+
+**MESURÉ, et c'est le chiffre qui dit que la correction tient** : en six
+secondes au cran 4, une carte visite 456 × 312 pixels sur un tableau de
+1220 × 712, soit 16 % de sa surface. Au cran 10 : 621 × 454, et 1 235 pixels
+parcourus. La version d'hier oscillait de 36 pixels et couvrait moins d'un
+pour cent.
+
+**LE TRAIT SORT PAR LE CÔTÉ OÙ IL VA.** C'était la phrase qui débloquait tout :
+« quitte à ce que le trait qui relie soit pas forcément sur le bord droit ». On
+cherche maintenant l'intersection du segment centre→centre avec le rectangle de
+la carte. Côte à côte, cela rend exactement l'ancien bord droit : l'ancien
+comportement est le cas particulier du nouveau.
+
+**ET UN DÉFAUT TROUVÉ PAR LA MESURE, APRÈS QUE J'AI ÉCRIT LE CONTRAIRE.**
+J'avais noté dans le code qu'il était inutile de gérer les collisions entre
+cartes. Mesuré sur un téléphone de 390 px, soixante relevés : avec huit paires,
+**huit cartes sur seize** étaient recouvertes à plus de moitié, en permanence,
+et pas un seul instant propre. Un exercice où l'on doit LIRE les cartes ne peut
+pas en cacher la moitié. Les cartes se repoussent désormais ; après correction,
+**zéro** carte cachée sur soixante relevés, dans les trois cas essayés.
+
+**ET LE PLANCHER DU CURSEUR A ÉTÉ RELEVÉ** de 20 à 35 px/s : à 20, une carte
+parcourait 120 pixels en six secondes, c'est-à-dire qu'elle avait l'air
+immobile. Un cran le plus bas qui mérite encore « ça bouge mais vraiment peu »
+ne vaut rien.

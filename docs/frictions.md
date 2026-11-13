@@ -7228,3 +7228,26 @@ plus d'un.**
   employé ici par distraction. Ce qui aiderait vraiment : que `epreuveTombe`
   DISE, quand une épreuve ne tombe pas, si le motif cherché apparaît dans un
   commentaire du fichier — c'est la cause une fois sur deux.
+
+---
+
+**Un commentaire qui affirme là où il aurait fallu mesurer** — 13 novembre
+
+- *Ce que je voulais faire* : faire voler les cartes du reliage « partout dans
+  l'écran », comme Rémy l'a demandé.
+- *Ce qui a coûté* : j'ai écrit dans le code, en toutes lettres, qu'il était
+  inutile de gérer les collisions entre cartes — « une boucle en n² pour un
+  bénéfice nul ». Puis j'ai mesuré, parce que je n'avais pas regardé le
+  téléphone : avec huit paires sur 390 px, **huit cartes sur seize** étaient
+  recouvertes à plus de moitié, en permanence, soixante relevés sans un seul
+  instant propre. Le commentaire n'était pas une opinion, c'était une
+  affirmation sur un comportement — et elle était fausse. Elle aurait pu rester
+  des mois, et servir de raison de ne pas regarder.
+- *Combien de fois* : || (même jour : « la course de 26 px fait le partout »
+  était la même erreur, une semaine plus tôt dans la même journée)
+- *Ce qui manque* : rien d'outillable — c'est une discipline. **Un commentaire
+  qui dit ce qu'un comportement COÛTE ou RAPPORTE doit porter le chiffre, ou
+  ne pas être écrit.** Les bons commentaires de ce dépôt le font déjà tous :
+  « 156 ms au pire », « 4,81 de contraste », « 800 px au lieu de 1500 ». Les
+  deux que j'ai eu à démentir aujourd'hui sont exactement les deux qui
+  n'avaient pas de chiffre.

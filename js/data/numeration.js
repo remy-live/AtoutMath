@@ -1755,17 +1755,28 @@ export const numerationExercises = [
                 // RÉMY : « j'aimerai des cases qui bougent plus vite et
                 // partout (on peut régler la vitesse) ».
                 //
-                // LA COURSE AUSSI CHANGE AVEC LA VITESSE, et c'est ce qui fait
-                // le « partout » : une carte rapide qui ne bouge que de six
-                // pixels frétille sur place. Lent 14 px, normal 20, rapide 26.
-                id: 'vitesse', type: 'select', label: 'À quelle vitesse',
-                aide: 'Sans effet si le mode rigolo est décoché.',
-                options: [
-                    { value: 'lent', label: 'Doucement' },
-                    { value: 'normal', label: 'Normal' },
-                    { value: 'rapide', label: 'Vite — il faut viser' }
-                ],
-                default: 'normal'
+                // UNE GLISSIÈRE, ET PLUS TROIS CHOIX. Rémy : « tu peux pas
+                // mettre un slide de vitesse ». Un `number` borné en forme une
+                // tout seul — voir `core/echelle.js`, et c'est lui qui l'avait
+                // demandée : « je pensais à qqch, un slider de paramètres ».
+                //
+                // ET CE N'EST PLUS UNE AMPLITUDE MAIS UNE VITESSE DE VOL. La
+                // version d'hier faisait osciller la carte autour de sa place,
+                // de 17 à 36 pixels — mesuré, et c'est un frémissement. « Là ça
+                // bouge mais vraiment peu » : une oscillation entre deux points
+                // ne déplace rien, quelle que soit sa course. Les cartes volent
+                // maintenant d'un bord à l'autre du tableau, et le cran règle
+                // leur allure : 20 pixels par seconde en bas, 200 en haut.
+                id: 'vitesse', type: 'number', label: 'À quelle vitesse ça bouge',
+                min: 1, max: 10, default: 4,
+                // DEUX PHRASES COURTES, et c'est une règle du dépôt que `npm test`
+                // garde : l'aide dit ce que le réglage CHANGE, le pourquoi va ici.
+                // Ce qui n'y tient pas : les cartes traversent tout le tableau à
+                // tous les crans — c'est l'allure qui change, pas le territoire —,
+                // le réglage est sans effet si le mode rigolo est décoché, et un
+                // appareil réglé sur « moins d'animations » les laisse en place.
+                aide: 'De 1, une dérive qu’on suit sans effort, à 10, où il faut viser. '
+                    + 'Les cartes traversent tout le tableau dans les deux cas.'
             }
         ],
         motsClefs: ['relier', 'associer', 'paires', 'puissances de 10', 'exposant',

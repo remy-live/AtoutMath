@@ -34,28 +34,58 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { tirerDesPaires, FAMILLES_PAIRES } from '../core/pairesPuissances.js';
+import { niveauDeVitesse, allureDuVol, sortieDuRectangle } from '../core/volDesCartes.js';
 
 const COMPETENCE = 'num.puissances.dix';
 
 /**
- * LES TROIS VITESSES DU MODE RIGOLO.
+ * LA VITESSE DU VOL, DE 1 À 10 — ET CE N'EST PLUS UNE AMPLITUDE.
  *
- * RÉMY : « j'aimerai des cases qui bougent plus vite et partout (on peut
- * régler la vitesse) ».
+ * RÉMY, 13 novembre : « tu peux pas mettre un slide de vitesse, là ça bouge
+ * mais vraiment peu, j'adorerais que ça se déplace partout dans l'écran quitte
+ * à ce que le trait qui relie soit pas forcément sur le bord droit ».
  *
- * `course` est l'AMPLITUDE en pixels, et c'est elle qui fait le « partout » :
- * la première version dérivait de six pixels, ce qui se voyait à peine. Une
- * vingtaine fait vraiment voyager la carte sans qu'elle sorte de sa colonne —
- * le `transform` ne pousse pas ses voisines.
+ * ── POURQUOI LA VERSION D'HIER NE POUVAIT PAS SUFFIRE ─────────────────────
  *
- * `duree` est la période, et `ecart` ce qu'on ajoute d'une carte à l'autre
- * pour qu'elles ne battent jamais ensemble.
+ * Elle faisait osciller chaque carte autour de sa place, par une animation CSS
+ * entre deux points. J'avais porté la course de six pixels à vingt-six en
+ * écrivant que « c'est elle qui fait le partout ». Mesuré sur une période
+ * entière : 17, 28 et 36 px. Trois fois plus qu'avant, et toujours un
+ * FRÉMISSEMENT — une carte qui se balance de trente pixels autour de sa place
+ * ne se déplace pas, elle vibre.
+ *
+ * Ce qu'il demande est un DÉPLACEMENT : une carte qui part du haut à gauche et
+ * arrive en bas à droite. Une oscillation entre deux points ne le fera jamais,
+ * quelle que soit son amplitude. Il faut un vol — une vitesse, des bords, des
+ * rebonds — et c'est le JavaScript qui le tient, image par image, dans la
+ * boucle qui replaçait déjà les traits.
+ *
+ * ── LA PLAGE, ET POURQUOI ELLE COMMENCE SI BAS ────────────────────────────
+ *
+ * De 35 à 206 pixels par seconde. MESURÉ, et le plancher a été relevé pour
+ * cela : à 20 px/s, une carte ne parcourait que 120 pixels en six secondes et
+ * visitait UN pour cent du tableau — c'est-à-dire qu'elle avait l'air immobile
+ * pendant tout le temps qu'on la regarde. « Là ça bouge mais vraiment peu »
+ * était la remarque de départ ; un cran le plus bas qui la mérite encore ne
+ * vaut rien. À 35, elle en parcourt 210 : on la voit partir.
+ *
+ * En haut, elle traverse un tableau de mille pixels en cinq secondes, et le jeu
+ * devient franchement un jeu d'adresse — ce que Rémy demande, et ce que le
+ * réglage permet de ne pas imposer à toute la classe.
+ *
+ * LE DÉFAUT EST À 4, pas au milieu : le milieu d'une échelle est un choix par
+ * défaut qui ne dit rien, et le quatrième cran est celui où l'on voit les
+ * cartes voyager tout en lisant tranquillement.
  */
-const VITESSES = {
-    lent: { duree: 4.2, ecart: 0.6, course: 14 },
-    normal: { duree: 2.6, ecart: 0.45, course: 20 },
-    rapide: { duree: 1.3, ecart: 0.22, course: 26 }
-};
+// L'ÉCHELLE ET LA GÉOMÉTRIE DU TRAIT VIVENT DANS `core/volDesCartes.js` : ce
+// sont les deux morceaux qui se calculent SANS écran, donc les deux qu'on peut
+// éprouver exactement. Le vol lui-même a besoin de la mise en page et ne se
+// mesure qu'en regardant les cartes bouger (`tools/lesCartesVolent.mjs`).
+
+/** L'élève a-t-il demandé un écran sans mouvement ? */
+const ecranCalme = () => typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Le temps pendant lequel un trait faux reste visible, en millisecondes. */
 const FAUX_MS = 900;
@@ -79,10 +109,13 @@ class Apparier extends BaseGame {
         // bougent ». C'est un réglage, pas le défaut : une carte qui dérive
         // demande de VISER, et ce n'est pas ce qu'on travaille le premier jour.
         this.bougent = this.params.bougent === true;
-        // LA VITESSE DU MODE RIGOLO. Rémy : « j'aimerai des cases qui bougent
-        // plus vite et partout (on peut régler la vitesse) ».
-        this.vitesse = VITESSES[this.params.vitesse] ? this.params.vitesse : 'normal';
+        // LA VITESSE DU VOL, de 1 à 10.
+        this.vitesse = niveauDeVitesse(this.params.vitesse);
         this.rafId = null;
+        // LES CARTES EN VOL : une entrée par carte qui bouge encore. Une carte
+        // reliée en sort — elle s'est posée.
+        this.vol = [];
+        this.dernierTic = 0;
     }
 
     render() {
@@ -123,30 +156,16 @@ class Apparier extends BaseGame {
 
         this.jeu = this.container.querySelector('[data-jeu]');
         this.traits = this.container.querySelector('[data-traits]');
-        this.container.querySelectorAll('.pa-carte').forEach((el, i) => {
+        this.container.querySelectorAll('.pa-carte').forEach((el) => {
             el.addEventListener('click', () => this.toucher(el));
             el.addEventListener('pointerdown', (e) => this.commencerLeTrait(e, el));
-            if (!this.bougent) return;
-            // DES CADENCES ET DES COURSES DIFFÉRENTES POUR CHAQUE CARTE.
-            //
-            // Sans cela les douze battent ensemble : l'écran respire d'un bloc
-            // au lieu de frémir. Le retard est NÉGATIF, donc chacune démarre
-            // déjà en cours de route — sinon elles repartiraient toutes du
-            // même point.
-            //
-            // RÉMY : « des cases qui bougent plus vite et PARTOUT ». La course
-            // est passée de six pixels à une vingtaine, et chaque carte a la
-            // sienne : c'est ce « partout » qui demandait de l'amplitude, pas
-            // de la vitesse. Les deux se règlent maintenant.
-            const v = VITESSES[this.vitesse];
-            el.style.setProperty('--pa-duree', `${(v.duree + (i % 5) * v.ecart).toFixed(2)}s`);
-            el.style.setProperty('--pa-retard', `-${((i * 0.37) % v.duree).toFixed(2)}s`);
-            el.style.setProperty('--pa-ax', `${(v.course * (0.7 + (i % 4) * 0.2)).toFixed(1)}px`);
-            el.style.setProperty('--pa-ay', `${(v.course * (0.45 + (i % 3) * 0.22)).toFixed(1)}px`);
-            el.style.setProperty('--pa-tour', `${(1.4 + (i % 3) * 0.9).toFixed(1)}deg`);
         });
         if (this.bougent) {
             this.jeu.classList.add('pa-bougent');
+            // LA MISE EN PAGE D'ABORD, LE VOL ENSUITE. Les bornes de chaque
+            // carte se lisent sur sa place de REPOS, et elle n'en a pas tant
+            // que le navigateur n'a pas disposé les deux colonnes.
+            requestAnimationFrame(() => this.preparerLeVol());
             this.animerLesTraits();
         }
         this.container.querySelector('[data-neuf]').addEventListener('click', () => {
@@ -415,21 +434,40 @@ class Apparier extends BaseGame {
         return l;
     }
 
-    /** Le bord d'une carte, dans le repère du cadre du jeu. */
-    bordDe(el, versLaDroite) {
+    /** Le centre d'une carte, dans le repère du cadre du jeu. */
+    centreDe(el) {
         const cadre = this.jeu.getBoundingClientRect();
         const r = el.getBoundingClientRect();
-        return {
-            x: (versLaDroite ? r.right : r.left) - cadre.left,
-            y: r.top + r.height / 2 - cadre.top
-        };
+        return { x: r.left + r.width / 2 - cadre.left, y: r.top + r.height / 2 - cadre.top,
+            demiL: r.width / 2, demiH: r.height / 2 };
     }
+
+    /**
+     * LE POINT PAR OÙ LE TRAIT SORT D'UNE CARTE, EN ALLANT VERS UN AUTRE POINT.
+     *
+     * RÉMY : « quitte à ce que le trait qui relie soit pas forcément sur le bord
+     * droit ». C'était la phrase qui débloquait tout.
+     *
+     * AVANT, LE CÔTÉ ÉTAIT ÉCRIT D'AVANCE : une carte de gauche sortait par sa
+     * droite, une carte de droite par sa gauche. Tant que les colonnes se
+     * faisaient face, c'était juste. Dès que les cartes volent, une carte de
+     * gauche peut passer au-dessus, en dessous ou à droite de sa partenaire —
+     * et le trait sortait alors du mauvais côté, traversant sa propre carte
+     * pour aller la rejoindre.
+     *
+     * ON CHERCHE DONC L'INTERSECTION du segment centre→centre avec le rectangle
+     * de la carte. Quand les deux cartes sont côte à côte, cela donne
+     * exactement le bord droit de celle de gauche : l'ancien comportement est
+     * le cas particulier du nouveau, et il n'y a pas deux chemins à tenir.
+     */
+    sortieVers(c, vers) { return sortieDuRectangle(c, vers); }
 
     /** Les quatre coordonnées d'un trait entre deux cartes. */
     placerLigne(ligne, a, b) {
-        const gaucheDAbord = a.dataset.cote === 'g';
-        const p1 = this.bordDe(gaucheDAbord ? a : b, true);
-        const p2 = this.bordDe(gaucheDAbord ? b : a, false);
+        const ca = this.centreDe(a);
+        const cb = this.centreDe(b);
+        const p1 = this.sortieVers(ca, cb);
+        const p2 = this.sortieVers(cb, ca);
         ligne.setAttribute('x1', String(p1.x));
         ligne.setAttribute('y1', String(p1.y));
         ligne.setAttribute('x2', String(p2.x));
@@ -440,10 +478,9 @@ class Apparier extends BaseGame {
     placerLigneLibre(ligne, a, x, y) {
         if (!this.jeu) return;
         const cadre = this.jeu.getBoundingClientRect();
-        // IL SORT DU CÔTÉ OÙ L'ON VA : d'une carte de gauche il part à droite,
-        // et d'une carte de droite il part à gauche. Un trait qui sortirait
-        // toujours du même bord traverserait sa propre carte.
-        const p1 = this.bordDe(a, a.dataset.cote === 'g');
+        // IL SORT DU CÔTÉ OÙ L'ON VA, et ce côté se calcule : le doigt peut
+        // être n'importe où, y compris au-dessus de la carte qu'on tire.
+        const p1 = this.sortieVers(this.centreDe(a), { x: x - cadre.left, y: y - cadre.top });
         ligne.setAttribute('x1', String(p1.x));
         ligne.setAttribute('y1', String(p1.y));
         ligne.setAttribute('x2', String(x - cadre.left));
@@ -457,6 +494,11 @@ class Apparier extends BaseGame {
      * de six pixels. On fige donc la position COURANTE avant de couper.
      */
     poser(el) {
+        // ELLE SORT DU VOL, ET ELLE RESTE OÙ ELLE EST. Son décalage est déjà
+        // écrit dans son `transform` par la boucle — il n'y a rien à figer,
+        // seulement à cesser de l'avancer.
+        this.vol = this.vol.filter(c => c.el !== el);
+        if (this.bougent) return;
         const t = getComputedStyle(el).transform;
         el.style.animation = 'none';
         if (t && t !== 'none') el.style.transform = t;
@@ -481,13 +523,175 @@ class Apparier extends BaseGame {
         }
     }
 
-    /** Après un redimensionnement : les cartes ont bougé, les traits suivent. */
-    redessiner() { this.majTraits(); }
+    /**
+     * LE VOL DES CARTES — ce que Rémy appelle « se déplacer partout ».
+     *
+     * CHAQUE CARTE GARDE SA PLACE DANS LA COLONNE et reçoit un DÉCALAGE. Le
+     * `transform` ne pousse pas ses voisines : les deux colonnes restent
+     * rangées dessous, et c'est ce qui permet à une carte de traverser tout le
+     * tableau sans que le reste se réorganise derrière elle.
+     *
+     * LES BORNES SONT CELLES DU TABLEAU, PAS DE LA COLONNE. Une carte de gauche
+     * peut donc passer à droite de sa partenaire — Rémy l'a autorisé mot pour
+     * mot : « quitte à ce que le trait qui relie soit pas forcément sur le bord
+     * droit ». C'est la contrainte qui retenait tout, et elle est levée.
+     *
+     * LES CARTES SE REPOUSSENT, ET C'EST UNE CORRECTION DE CE QUE J'AVAIS
+     * ÉCRIT ICI. La première version disait : « on ne gère pas les collisions,
+     * cela coûterait une boucle en n² pour un bénéfice nul — deux cartes qui se
+     * croisent se décroisent toutes seules ». MESURÉ sur un téléphone de
+     * 390 px, pendant six secondes et soixante relevés : avec huit paires,
+     * HUIT CARTES SUR SEIZE étaient recouvertes à plus de moitié, en moyenne,
+     * et il n'y avait pas un seul instant propre. Avec cinq paires, 2,6 sur
+     * dix. Un exercice où l'on doit LIRE les cartes ne peut pas en cacher le
+     * tiers en permanence.
+     *
+     * La boucle en n² est de cent vingt paires par image pour seize cartes :
+     * c'est le prix d'un battement de cil, et le bénéfice n'était pas nul, il
+     * était la lisibilité du jeu.
+     */
+    preparerLeVol() {
+        if (!this.jeu || !this.bougent) return;
+        // UN ÉCRAN SANS MOUVEMENT RESTE SANS MOUVEMENT. Le professeur a coché
+        // le mode rigolo pour sa classe ; l'élève qui a demandé à son appareil
+        // de ne rien animer a une raison que ce réglage-là ne connaît pas.
+        // L'exercice est le même, les cartes ne volent pas.
+        if (ecranCalme()) return;
+        const cadre = this.jeu.getBoundingClientRect();
+        if (!cadre.width || !cadre.height) return;
+        const px = allureDuVol(this.vitesse);
+        this.vol = [...this.container.querySelectorAll('.pa-carte')]
+            .filter(el => !el.classList.contains('pa-carte--relie'))
+            .map((el, i) => {
+                el.style.animation = 'none';
+                el.style.transform = 'none';
+                const r = el.getBoundingClientRect();
+                // LA PLACE DE REPOS, dans le repère du tableau. C'est à partir
+                // d'elle qu'on sait où la carte EST à chaque image — son
+                // décalage seul ne suffit pas à la séparer de sa voisine.
+                const rx = r.left - cadre.left, ry = r.top - cadre.top;
+                // UNE DIRECTION PAR CARTE, ET AUCUNE À L'HORIZONTALE PURE :
+                // douze cartes qui glissent toutes de gauche à droite se
+                // suivraient comme un troupeau. L'angle est pris dans une
+                // spirale — le rang multiplié par un nombre qui ne divise pas
+                // le tour — pour qu'aucune paire ne parte dans le même sens.
+                const angle = (i * 2.399 + 0.6) % (Math.PI * 2);
+                return {
+                    el,
+                    x: 0, y: 0,
+                    rx, ry, rl: r.width, rh: r.height,
+                    vx: Math.cos(angle) * px, vy: Math.sin(angle) * px,
+                    // La carte penche en roulant, et le balancement a sa propre
+                    // cadence : une rotation CONTINUE donnerait le tournis.
+                    phase: i * 0.8, amplitude: 1.6 + (i % 3) * 0.9,
+                    minX: -(r.left - cadre.left), maxX: cadre.right - r.right,
+                    minY: -(r.top - cadre.top), maxY: cadre.bottom - r.bottom
+                };
+            })
+            // UNE CARTE PLUS GRANDE QUE LE TABLEAU N'A NULLE PART OÙ ALLER :
+            // ses bornes se croisent, et l'on se mettrait à rebondir soixante
+            // fois par seconde contre deux murs qui se touchent.
+            .filter(c => c.maxX > c.minX && c.maxY > c.minY);
+        this.dernierTic = 0;
+    }
 
-    /** En mode rigolo, les traits se replacent à chaque image. */
+    /** Une image de vol : on avance, on rebondit sur les bords, on écrit. */
+    volerUneImage(maintenant) {
+        if (!this.vol.length) return;
+        // LE PREMIER PAS EST NUL, et les suivants sont plafonnés. Un onglet
+        // qu'on laisse en arrière-plan rend un `dt` de plusieurs secondes au
+        // retour : sans plafond, les douze cartes se téléporteraient dans un
+        // coin d'un seul coup.
+        const dt = this.dernierTic ? Math.min(0.05, (maintenant - this.dernierTic) / 1000) : 0;
+        this.dernierTic = maintenant;
+        if (!dt) return;
+        for (const c of this.vol) {
+            c.x += c.vx * dt;
+            c.y += c.vy * dt;
+            if (c.x <= c.minX) { c.x = c.minX; c.vx = Math.abs(c.vx); }
+            if (c.x >= c.maxX) { c.x = c.maxX; c.vx = -Math.abs(c.vx); }
+            if (c.y <= c.minY) { c.y = c.minY; c.vy = Math.abs(c.vy); }
+            if (c.y >= c.maxY) { c.y = c.maxY; c.vy = -Math.abs(c.vy); }
+        }
+        this.separerLesCartes();
+        for (const c of this.vol) {
+            c.phase += dt * 1.6;
+            const tour = Math.sin(c.phase) * c.amplitude;
+            c.el.style.transform =
+                `translate(${c.x.toFixed(1)}px, ${c.y.toFixed(1)}px) rotate(${tour.toFixed(2)}deg)`;
+        }
+    }
+
+    /**
+     * DEUX CARTES NE SE SUPERPOSENT PAS — elles se repoussent.
+     *
+     * On sépare par la POSITION, pas par la force : on calcule de combien les
+     * deux rectangles se chevauchent, et on les écarte de la moitié chacune,
+     * selon l'axe où le chevauchement est le PLUS COURT. C'est le geste le plus
+     * économique — pousser selon l'autre axe ferait traverser la carte entière
+     * pour sortir par le mauvais côté.
+     *
+     * ET ON ÉCHANGE LES VITESSES SUR CET AXE, sans quoi les deux cartes
+     * resteraient collées : écartées à cette image, elles se rentreraient
+     * dedans à la suivante, et l'on verrait deux cartes trembler l'une contre
+     * l'autre au lieu de rebondir.
+     *
+     * UNE MARGE DE HUIT PIXELS : deux cartes qui se frôlent exactement se
+     * lisent comme une seule boîte coupée en deux. Le blanc entre elles est ce
+     * qui dit qu'il y en a deux.
+     */
+    separerLesCartes() {
+        const MARGE = 8;
+        const n = this.vol.length;
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                const a = this.vol[i], b = this.vol[j];
+                const ax = a.rx + a.x, ay = a.ry + a.y;
+                const bx = b.rx + b.x, by = b.ry + b.y;
+                const ox = Math.min(ax + a.rl, bx + b.rl) - Math.max(ax, bx) + MARGE;
+                const oy = Math.min(ay + a.rh, by + b.rh) - Math.max(ay, by) + MARGE;
+                if (ox <= 0 || oy <= 0) continue;
+                if (ox < oy) {
+                    const sens = ax < bx ? -1 : 1;
+                    a.x += (sens * ox) / 2;
+                    b.x -= (sens * ox) / 2;
+                    const t = a.vx; a.vx = b.vx; b.vx = t;
+                } else {
+                    const sens = ay < by ? -1 : 1;
+                    a.y += (sens * oy) / 2;
+                    b.y -= (sens * oy) / 2;
+                    const t = a.vy; a.vy = b.vy; b.vy = t;
+                }
+                // LA SÉPARATION NE DOIT PAS POUSSER DEHORS. Sans ce rappel, une
+                // carte coincée dans un angle par deux voisines sortait du
+                // tableau — et le rebond du tour suivant la ramenait d'un coup
+                // sec, ce qui se voit.
+                a.x = Math.max(a.minX, Math.min(a.maxX, a.x));
+                a.y = Math.max(a.minY, Math.min(a.maxY, a.y));
+                b.x = Math.max(b.minX, Math.min(b.maxX, b.x));
+                b.y = Math.max(b.minY, Math.min(b.maxY, b.y));
+            }
+        }
+    }
+
+    /** Après un redimensionnement : les cartes ont bougé, les traits suivent. */
+    redessiner() {
+        // LE TABLEAU A CHANGÉ DE TAILLE, DONC LES MURS AUSSI. Sans ce calcul,
+        // une carte gardait les bornes de l'ancienne largeur : après une
+        // rotation d'écran, elle rebondissait dans le vide ou sortait du cadre.
+        if (this.bougent && this.vol.length) this.preparerLeVol();
+        this.majTraits();
+    }
+
+    /** En mode rigolo, les cartes volent et les traits les suivent. */
     animerLesTraits() {
-        const boucle = () => {
+        const boucle = (t) => {
             if (!this.bougent || !this.traits) { this.rafId = null; return; }
+            // LE VOL D'ABORD, LES TRAITS ENSUITE, DANS LA MÊME IMAGE. Placés
+            // avant, ils décriraient la position de l'image PRÉCÉDENTE : à deux
+            // cents pixels par seconde, le trait traînerait visiblement
+            // derrière sa carte.
+            this.volerUneImage(t);
             this.majTraits();
             this.rafId = requestAnimationFrame(boucle);
         };

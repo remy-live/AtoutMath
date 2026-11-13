@@ -18178,12 +18178,10 @@ body.visite-en-cours .modal-overlay > * {
    `touch-action: none` sur les cartes : sans lui, le premier mouvement du
    doigt fait défiler la page et le trait n'existe jamais. */
 .pa-carte { touch-action: none; }
-@keyframes pa-flotte {
-    from { transform: translate(calc(var(--pa-ax, 6px) * -1), calc(var(--pa-ay, 4px) * -1))
-                      rotate(calc(var(--pa-tour, 1.1deg) * -1)); }
-    to   { transform: translate(var(--pa-ax, 6px), var(--pa-ay, 4px))
-                      rotate(var(--pa-tour, 1.1deg)); }
-}
+/* `pa-flotte` A ÉTÉ RETIRÉE le 13 novembre : plus personne ne l'emploie depuis
+   que les cartes volent pour de bon. On ne garde pas une image clef « au cas
+   où » — c'est ainsi qu'on se retrouve avec deux mécanismes de mouvement dont
+   un seul marche. */
 
 /* ── LES TRAITS, UNE COULEUR PAR PAIRE ──────────────────────────────────────
 
@@ -18226,10 +18224,37 @@ body.visite-en-cours .modal-overlay > * {
 :root[data-theme="dark"] .pa-trait--c5 { --pa-couleur: #5fd3e3; }
 :root[data-theme="dark"] .pa-trait--c6 { --pa-couleur: #ff86b4; }
 :root[data-theme="dark"] .pa-trait--c7 { --pa-couleur: #bcd94a; }
-.pa-bougent .pa-carte {
-    animation: pa-flotte var(--pa-duree, 3.4s) ease-in-out infinite alternate;
-    animation-delay: var(--pa-retard, 0s);
-}
+/* LE VOL N'EST PLUS UNE ANIMATION CSS, ET IL NE POUVAIT PAS L'ÊTRE.
+
+   RÉMY : « là ça bouge mais vraiment peu, j'adorerais que ça se déplace
+   partout dans l'écran ». Une animation entre deux points FAIT OSCILLER : la
+   carte va et revient, et son amplitude a beau tripler — 17, 28, 36 pixels,
+   mesurés —, elle vibre autour de sa place au lieu de voyager. Un déplacement
+   demande une vitesse, des murs et des rebonds : c'est `games/apparier.js` qui
+   le tient, dans la boucle qui replaçait déjà les traits à chaque image.
+
+   IL RESTE UNE TRANSITION SUR LA POSITION ? NON, ET C'EST VOULU : le
+   `transform` est réécrit soixante fois par seconde, et une transition dessus
+   ferait courir le navigateur après sa propre cible.
+
+   UNE CARTE RELIÉE NE PREND PLUS LES CLICS. Tant que les cartes restaient dans
+   leur colonne, une carte finie ne gênait personne. Maintenant qu'elles
+   traversent le tableau, une carte posée peut se retrouver EXACTEMENT sur
+   celle qu'on vise — et l'élève cliquerait sur un rectangle inerte sans
+   comprendre pourquoi rien ne se passe. Elle est finie : elle n'a plus rien à
+   prendre. */
+.pa-bougent .pa-carte--relie { pointer-events: none; }
+
+/* CELLE QU'ON TOUCHE PASSE DEVANT. Douze cartes qui traversent le même tableau
+   finissent par se recouvrir — c'est le prix du « partout », et Rémy l'a
+   accepté d'avance. Ce qui n'est pas acceptable, c'est de VOIR une carte sous
+   une autre et de ne pas pouvoir la prendre : sans `z-index`, la carte visée
+   grandit de quatre pour cent SOUS sa voisine, et le geste semble ne rien
+   faire. `position: relative` est ce qui rend le `z-index` effectif sur un
+   élément de flux. */
+.pa-carte { position: relative; }
+.pa-carte--choisi, .pa-carte--vise { z-index: 3; }
+@media (hover: hover) { .pa-carte:hover { z-index: 2; } }
 /* ══ UN QUOTIENT ÉCRIT EN FRACTION ══════════════════════════════════════════
 
    RÉMY : « pour les divisions de puissances, tu le présentes en division ou
@@ -18384,6 +18409,9 @@ body.visite-en-cours .modal-overlay > * {
        PAS. Le réglage reste coché — le jeu se joue exactement pareil —, mais
        les cartes restent en place. Un élève que le mouvement gêne n'a pas à
        choisir entre son confort et l'exercice que son professeur a donné. */
-    .pa-bougent .pa-carte { animation: none; }
+    /* LE VOL EST ARRÊTÉ DANS LE JAVASCRIPT, et pas ici : une règle CSS ne
+       peut plus rien contre un `transform` réécrit à chaque image. C'est
+       `ecranCalme()` dans `games/apparier.js` qui ne lance pas le vol du tout.
+       Cette ligne-ci reste pour ce qui, ailleurs, s'anime encore. */
     .pa-carte--vise { transform: none; }
 }
