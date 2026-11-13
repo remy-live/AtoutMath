@@ -6799,3 +6799,67 @@ compte ce qui reste à faire. Le bouton ne faisait que ne pas le dire.
 **ELLE NE S'OUVRE PAS DEUX FOIS** sur la même étape : une fenêtre déjà lue est
 une fenêtre qu'on ferme sans la lire, et c'est ainsi qu'on apprend à fermer
 toutes les autres.
+
+---
+
+## Les puissances : l'exposant seul, et un quotient mal écrit — 13 novembre
+
+> « pour l'exercice sur les puissance dans la réponse ne demande que l'exposant
+> j'aime pas l'écriture 10^3 pour les élèves »
+
+> « 10^-10/10--2 s'est écrit bizarrement »
+
+**DEUX REMARQUES, ET LA SECONDE EXPLIQUE LA PREMIÈRE.** `10^3` n'est pas une
+écriture de mathématiques : c'est une écriture de clavier. Au tableau on écrit
+10 avec un 3 en haut, et un élève de quatrième n'a jamais vu d'accent
+circonflexe dans un exposant. Et dès que l'exposant est négatif, l'écriture de
+clavier se casse franchement : `10^-10/10--2` porte un double moins qu'aucune
+règle ne justifie.
+
+**CE QU'IL DEMANDE EST PLUS SIMPLE QUE DE MIEUX ÉCRIRE** : que la RÉPONSE ne
+porte que l'exposant. L'élève tape 5, pas « 10^5 ». Le « 10 puissance » est
+déjà dans la question ; le redemander dans la réponse fait taper au clavier une
+notation qu'on ne veut pas lui apprendre.
+
+## Les exposants en fraction — 13 novembre
+
+> « les exposants en fraction sont vieux »
+
+Le quotient de deux puissances se dessine en fraction (`quotientHtml`, réglage
+`fraction`), et les exposants y sont des caractères Unicode en petit
+(`10⁻¹⁰`). Dans une fraction déjà réduite, ces glyphes-là sont minuscules,
+inégaux, et le `⁻` ne se pose pas à la même hauteur que les chiffres. À
+regarder avant de corriger : une planche du quotient en fraction, sur écran
+d'ordinateur ET sur téléphone.
+
+## Le tableur dit « faux » à une formule juste — 13 novembre
+
+> « on me dit que c'est faux »
+
+**Avec sa capture**, qui porte tout : École du Tableur, leçon « 5. Formules
+(+) », 0/3 réussies. La grille montre A1 = 9, B1 = 0. Il écrit dans C1 la
+formule `=A1+B1`, qui est EXACTEMENT celle que la consigne demande, et le
+logiciel refuse :
+
+> CE N'EST PAS ÇA — Le tableur n'arrive pas à calculer =A1+B1 : le calcul 9+0
+> ne se fait pas.
+
+C'est la pire espèce de refus : l'élève a bon, on lui dit qu'il a tort, et le
+message nomme un calcul qui se fait très bien. Le texte vient de la branche
+`catch` de `evaluerFormule` (`js/games/spreadsheet.js`), celle qui attrape ce
+que `new Function` a refusé d'évaluer.
+
+**MESURÉ AVANT DE CORRIGER** : soixante formules tapées au clavier sur le site
+d'essai, leçons 5 à 7, avec des zéros parmi les valeurs — aucune n'a été
+refusée. Le défaut ne se reproduit donc PAS par les valeurs ; il est dans ce
+qui diffère entre son navigateur et le site d'essai.
+
+## Le plateau ne part que sur quelques élèves — 13 novembre
+
+> « le plateau ne s'est lancé que sur qqs élèves ca devrait se lancer sur ceux
+> en ligne en fait »
+
+Ce qu'il demande est une règle, pas un réglage : **le plateau part sur les
+élèves EN LIGNE**, et sur eux tous. Reste à savoir ce que « en ligne » veut
+dire aujourd'hui pour le serveur — depuis quand un élève compte comme
+connecté, et ce qui est envoyé à celui qui ne l'est pas encore.

@@ -70,6 +70,136 @@ export function attenduEcrit(tache) {
     return (tache && tache.formule && tache.modele) ? tache.modele : (tache || {}).attendu;
 }
 
+/**
+ * LE CALCUL D'UNE EXPRESSION, SANS `new Function` — et c'est tout le sujet.
+ *
+ * ── CE QUE RÉMY A VU ──────────────────────────────────────────────────────
+ *
+ * RÉMY, 13 novembre, capture à l'appui : « on me dit que c'est faux ». École
+ * du Tableur, leçon « 5. Formules (+) », A1 = 9, B1 = 0. Il écrit dans C1 la
+ * formule `=A1+B1` — celle que la consigne donne en exemple deux lignes
+ * au-dessus — et le logiciel répond :
+ *
+ *     « Le tableur n'arrive pas à calculer =A1+B1 : le calcul 9+0 ne se fait
+ *       pas. »
+ *
+ * Un calcul qui se fait très bien. CE N'ÉTAIT PAS LA FORMULE, ni les valeurs :
+ * c'était `new Function`, que la POLITIQUE DE SÉCURITÉ du site interdit —
+ * `script-src` n'y porte pas `unsafe-eval` (voir `.htaccess`). Chaque formule
+ * de chaque leçon, de la 5 à la 9, tombait dans le `catch`. Le jeu était mort
+ * en ligne, entièrement, et vert en essai.
+ *
+ * ── POURQUOI AUCUNE SONDE NE L'AVAIT VU, ET C'EST LA VRAIE LEÇON ──────────
+ *
+ * Le commentaire d'`evaluerFormule` portait déjà, depuis une capture
+ * précédente : « Je n'ai pas su reproduire son cas : soixante questions
+ * d'affilée n'ont produit aucune Erreur. » Les soixante questions passaient
+ * par `page.evaluate` — et `page.evaluate` emprunte le protocole de débogage,
+ * QUI AUTORISE `eval` MÊME SOUS UNE POLITIQUE QUI L'INTERDIT.
+ *
+ * La sonde tapait donc dans un navigateur qui n'existe nulle part. Avec une
+ * VRAIE frappe (`keyboard.type`), le refus tombe à la première formule. C'est
+ * la phrase du dépôt, dans une forme qu'on n'avait pas prévue :
+ *
+ *     Une mesure qui n'emprunte pas le chemin de l'utilisateur ne mesure pas
+ *     son problème — et le chemin, ce n'est pas seulement l'écran : c'est
+ *     aussi la porte par laquelle on frappe.
+ *
+ * ── CE QU'ON MET À LA PLACE ───────────────────────────────────────────────
+ *
+ * Vingt lignes d'analyseur pour le langage que ce jeu enseigne, et rien de
+ * plus : des nombres, les quatre opérations, des parenthèses. Pas de
+ * bibliothèque, pas d'`eval`, donc plus rien que la politique puisse refuser.
+ * Et un refus NOMME ce qu'il n'a pas su lire, au lieu de dire « ne se fait
+ * pas » — un message qui décrit le symptôme et cache la cause.
+ *
+ * @param {string} expr n'a plus que des chiffres, des opérateurs, des points
+ *   et des parenthèses : les références ont déjà été remplacées.
+ * @returns {{valeur:number}|{erreur:string}}
+ */
+export function calculerExpression(expr) {
+    const src = String(expr);
+    let i = 0;
+    const passer = () => { while (i < src.length && /\s/.test(src[i])) i += 1; };
+    let faute = null;
+
+    // facteur := '-'? ( nombre | '(' expression ')' )
+    const facteur = () => {
+        passer();
+        if (src[i] === '+') { i += 1; return facteur(); }
+        if (src[i] === '-') { i += 1; const x = facteur(); return x === null ? null : -x; }
+        if (src[i] === '(') {
+            i += 1;
+            const x = expression();
+            passer();
+            if (src[i] !== ')') { faute = faute || 'il manque une parenthèse fermante'; return null; }
+            i += 1;
+            return x;
+        }
+        const debut = i;
+        while (i < src.length && /[0-9.]/.test(src[i])) i += 1;
+        if (i === debut) {
+            faute = faute || (i >= src.length
+                ? 'la formule s\'arrête au milieu d\'un calcul'
+                : `je ne sais pas lire « ${src[i]} » ici`);
+            return null;
+        }
+        const v = Number(src.slice(debut, i));
+        if (!Number.isFinite(v)) {
+            faute = faute || `« ${src.slice(debut, i)} » n'est pas un nombre`;
+            return null;
+        }
+        return v;
+    };
+
+    // terme := facteur (('*'|'/') facteur)*  — la multiplication avant
+    // l'addition, parce que c'est ce qu'un tableur fait et ce qu'on enseigne.
+    const terme = () => {
+        let x = facteur();
+        for (;;) {
+            if (x === null) return null;
+            passer();
+            const op = src[i];
+            if (op !== '*' && op !== '/') return x;
+            i += 1;
+            const y = facteur();
+            if (y === null) return null;
+            if (op === '/' && y === 0) {
+                faute = faute || 'on ne divise pas par zéro';
+                return null;
+            }
+            x = op === '*' ? x * y : x / y;
+        }
+    };
+
+    const expression = () => {
+        let x = terme();
+        for (;;) {
+            if (x === null) return null;
+            passer();
+            const op = src[i];
+            if (op !== '+' && op !== '-') return x;
+            i += 1;
+            const y = terme();
+            if (y === null) return null;
+            x = op === '+' ? x + y : x - y;
+        }
+    };
+
+    const v = expression();
+    if (v === null) return { erreur: faute || 'je n\'arrive pas à lire ce calcul' };
+    passer();
+    // CE QUI RESTE APRÈS LE CALCUL EST UNE FAUTE, pas un détail : « 2+3)» rend
+    // 5 et laisse une parenthèse, et un élève qui a mal fermé doit le savoir.
+    if (i < src.length) {
+        return { erreur: src[i] === ')'
+            ? 'il y a une parenthèse fermante de trop'
+            : `je ne sais pas lire « ${src.slice(i).trim()} » à la fin` };
+    }
+    if (!Number.isFinite(v)) return { erreur: 'ce calcul n\'a pas de résultat' };
+    return { valeur: v };
+}
+
 class Tableur extends BaseGame {
     render() {
         this.level = Math.min(9, Math.max(1, parseInt(this.params.startLevel) || 1));
@@ -834,30 +964,29 @@ class Tableur extends BaseGame {
             const v = inp ? parseFloat(inp.value) : NaN;
             return isNaN(v) ? 0 : v;
         });
-        try {
-            // CE QUI RESTE ET QUI N'EST PAS DU CALCUL. Après les remplacements,
-            // une formule lisible ne contient plus que des chiffres, des
-            // opérateurs, des parenthèses et des espaces. Tout le reste est ce
-            // qu'on n'a pas su lire — et c'est cela qu'il faut nommer.
-            const restes = expr.match(/[^0-9+\-*/().\s]+/g);
-            if (restes) {
-                // UNE RÉFÉRENCE HORS GRILLE SE DIT PAR SON NOM. « B7 » quand
-                // la grille s'arrête à la ligne 6 : après remplacement il ne
-                // reste que le « B », qui ne dirait rien. On relit donc la
-                // formule d'origine pour retrouver la référence entière.
-                const refs = brut.match(/[A-Z]+\d+/g) || [];
-                const absente = refs.find(r =>
-                    !this.grilleActive()?.querySelector(`input[data-cell-id="${r}"]`));
-                if (absente) return `Erreur : il n'y a pas de case ${absente} dans cette grille`;
-                const quoi = [...new Set(restes)].slice(0, 2).join(' ');
-                return `Erreur : je ne sais pas lire « ${quoi} » dans ${brut}`;
-            }
-            const res = new Function('return ' + expr)();
-            if (!Number.isFinite(res)) return 'Erreur : ce calcul n\'a pas de résultat';
-            return Math.round(res * 100) / 100;
-        } catch (e) {
-            return `Erreur : le calcul ${expr} ne se fait pas`;
+        // CE QUI RESTE ET QUI N'EST PAS DU CALCUL. Après les remplacements,
+        // une formule lisible ne contient plus que des chiffres, des
+        // opérateurs, des parenthèses et des espaces. Tout le reste est ce
+        // qu'on n'a pas su lire — et c'est cela qu'il faut nommer.
+        const restes = expr.match(/[^0-9+\-*/().\s]+/g);
+        if (restes) {
+            // UNE RÉFÉRENCE HORS GRILLE SE DIT PAR SON NOM. « B7 » quand la
+            // grille s'arrête à la ligne 6 : après remplacement il ne reste que
+            // le « B », qui ne dirait rien. On relit donc la formule d'origine
+            // pour retrouver la référence entière.
+            const refs = brut.match(/[A-Z]+\d+/g) || [];
+            const absente = refs.find(r =>
+                !this.grilleActive()?.querySelector(`input[data-cell-id="${r}"]`));
+            if (absente) return `Erreur : il n'y a pas de case ${absente} dans cette grille`;
+            const quoi = [...new Set(restes)].slice(0, 2).join(' ');
+            return `Erreur : je ne sais pas lire « ${quoi} » dans ${brut}`;
         }
+        // PLUS DE `new Function` : la politique de sécurité du site l'interdit,
+        // et toutes les formules du jeu tombaient donc dans son `catch`. Voir
+        // `calculerExpression`, en tête de ce fichier, pour l'histoire entière.
+        const lu = calculerExpression(expr);
+        if (lu.erreur) return `Erreur : ${lu.erreur}`;
+        return Math.round(lu.valeur * 100) / 100;
     }
 
     // --- Progression --------------------------------------------------------

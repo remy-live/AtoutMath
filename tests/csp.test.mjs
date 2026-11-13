@@ -24,7 +24,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, globSync } from 'node:fs';
 import { empreintesDe, fabriquerCsp, poserDansHtaccess } from '../tools/csp.mjs';
 
 const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
@@ -113,4 +113,43 @@ test('ET AUCUNE RESSOURCE NE VIENT D\'AILLEURS', () => {
         `des ressources viennent d'ailleurs : ${externes.join(', ')}`);
     assert.match(H, /src="vendor\/localforage\//);
     assert.match(H, /src="vendor\/confetti\//);
+});
+
+test('ET AUCUN CODE N\'APPELLE `eval` NI `new Function` — LA POLITIQUE LES REFUSE', () => {
+    // ── CE QUE CELA A COÛTÉ ───────────────────────────────────────────────
+    //
+    // RÉMY, 13 novembre, capture à l'appui : « on me dit que c'est faux ».
+    // École du Tableur, leçon 5, A1 = 9, B1 = 0 ; il écrit `=A1+B1`, la formule
+    // que la consigne donne en exemple, et le jeu répond « le calcul 9+0 ne se
+    // fait pas ».
+    //
+    // `evaluerFormule` calculait par `new Function`. `script-src` ne porte pas
+    // `'unsafe-eval'` — et ne doit pas le porter, c'est la moitié de l'intérêt
+    // d'une CSP. Toutes les formules des leçons 5 à 9 tombaient donc dans le
+    // `catch`, chez tous les élèves, depuis le jour où la politique est née.
+    //
+    // ── ET POURQUOI AUCUNE MESURE NE L'AVAIT VU ───────────────────────────
+    //
+    // Une sonde l'avait cherché : « soixante questions d'affilée n'ont produit
+    // aucune Erreur » (c'est encore écrit dans `spreadsheet.js`). Elle tapait
+    // par `page.evaluate`, QUI EMPRUNTE LE PROTOCOLE DE DÉBOGAGE ET AUTORISE
+    // `eval` MÊME SOUS UNE POLITIQUE QUI L'INTERDIT. Soixante mesures vertes
+    // dans un navigateur qui n'existe nulle part. `tools/tableurAuClavier.mjs`
+    // tape maintenant au clavier, et le refus tombait à la première formule.
+    //
+    // CETTE ÉPREUVE-CI EST LE FILET BON MARCHÉ : quatre millisecondes de
+    // lecture, contre une fonction morte en ligne et verte partout ailleurs.
+    const fichiers = [...globSync('js/**/*.js', { cwd: new URL('../', import.meta.url) })];
+    assert.ok(fichiers.length > 100, `seulement ${fichiers.length} fichiers lus`);
+    const coupables = [];
+    for (const f of fichiers) {
+        // Hors commentaires : ce test s'explique en citant `new Function`, et
+        // une épreuve qui s'accuse elle-même ne garde rien.
+        const src = lire(f).replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|\s)\/\/.*$/gm, ' ');
+        const m = /\bnew\s+Function\s*\(|(?<![.\w$])eval\s*\(/.exec(src);
+        if (m) coupables.push(`${f} : ${m[0].trim()}`);
+    }
+    assert.deepEqual(coupables, [],
+        'la politique du site refuse ces appels, et le navigateur jette sans un '
+        + `mot dans la page :\n    ${coupables.join('\n    ')}`);
 });

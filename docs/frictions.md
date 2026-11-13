@@ -7270,3 +7270,51 @@ plus d'un.**
   qu'elle garde, pas la ligne où ça se trouve** : ici, que `retireMaintenant`
   soit l'un des termes de la permission — pas que la permission ait exactement
   deux termes. Corrigée dans ce sens, elle a été revue tomber.
+
+---
+
+**`page.evaluate` autorise ce que le site interdit** — 13 novembre
+
+- *Ce que je voulais faire* : reproduire le refus que Rémy voit à l'écran — le
+  Tableur répondait « le calcul 9+0 ne se fait pas » à la formule `=A1+B1`.
+- *Ce qui a coûté* : une heure, et une première tentative abandonnée il y a
+  quelques jours en écrivant dans le code « je n'ai pas su reproduire son cas :
+  soixante questions d'affilée n'ont produit aucune Erreur ». Les soixante
+  passaient par `page.evaluate`, **qui emprunte le protocole de débogage et
+  autorise `eval` même sous une politique de sécurité qui l'interdit**. La
+  cause était `new Function` dans `evaluerFormule` : toutes les formules des
+  leçons 5 à 9 étaient mortes en ligne, et vertes en essai. Trois mesures de
+  contrôle m'ont menti avant que je tape au clavier — dont une qui exécutait
+  `new Function` « depuis la page » par `page.evaluate`, et rendait 9.
+- *Combien de fois* : | (mais la famille est large : `sousLaVraiePolitique.mjs`
+  existe déjà parce que les en-têtes manquaient au site d'essai ; ici les
+  en-têtes étaient bien là, c'est la SONDE qui passait à côté)
+- *Ce qui manque* : deux choses, et la première est faite. **Une épreuve de
+  source qui refuse `eval` et `new Function` partout dans `js/`** — quatre
+  millisecondes contre une fonction morte en ligne (`tests/csp.test.mjs`). Et
+  dans `tools/sonde.mjs`, **un `taper(selecteur, texte)` qui passe par
+  `keyboard.type`**, pour que le chemin du clavier soit le chemin par défaut et
+  non celui qu'on pense à prendre. La règle à retenir tant qu'il n'existe pas :
+
+  > Pour mesurer ce qu'une politique de sécurité fait, il faut frapper par la
+  > porte de l'élève — `page.evaluate` a la clef du garage.
+
+---
+
+**Une épreuve qui épingle l'écriture entière tombe quand l'écriture change** — 13 novembre
+
+- *Ce que je voulais faire* : retirer le « 10^( ) » de la ligne du milieu, pour
+  que l'élève n'écrive que l'exposant.
+- *Ce qui a coûté* : `tests/reglesDesPuissances.test.mjs` exigeait la chaîne
+  entière, `10^((−8) − (−6))`, pour garder une règle qui ne porte que sur les
+  DEUX PAIRES DE PARENTHÈSES. Elle est passée au rouge dans `npm test` — quatre
+  minutes après le commit espéré — alors que ce qu'elle garde n'avait pas bougé
+  d'un pouce.
+- *Combien de fois* : ||| (même famille que « l'épreuve cherche un NOM et
+  trouve le commentaire » et que `retraitVivant` qui épinglait l'expression de
+  permission entière — trois fois en un mois)
+- *Ce qui manque* : rien d'outillable de plus ; la règle est déjà écrite dans ce
+  journal et elle se vérifie. **Une épreuve qui lit du code épingle CE QU'ELLE
+  GARDE, pas la ligne où ça se trouve.** Ici : deux groupes parenthésés séparés
+  par un moins — et non le gabarit complet qui les entoure. Un motif ancré sur
+  `^…$` d'une écriture complète est le signal : il garde la forme du jour.

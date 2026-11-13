@@ -484,6 +484,48 @@ export async function ouvrirSonde(o = {}) {
             await dormir(400);
         },
 
+        /**
+         * TAPE DANS UN CHAMP COMME UN ÉLÈVE — par le clavier, pas par le DOM.
+         *
+         * ── UNE HEURE PAYÉE POUR CELLE-CI, ET ELLE SE REPAIERA ────────────
+         *
+         * `page.evaluate` emprunte le protocole de débogage, qui AUTORISE
+         * `eval` MÊME SOUS UNE POLITIQUE DE SÉCURITÉ QUI L'INTERDIT. Une sonde
+         * qui pose une valeur et lance ses événements par là ne mesure donc pas
+         * le navigateur de l'élève : elle mesure un navigateur qui n'existe
+         * nulle part.
+         *
+         * RÉMY, 13 novembre : « on me dit que c'est faux » — le Tableur
+         * refusait `=A1+B1` parce que `new Function` y était interdit, et
+         * soixante mesures écrites par `page.evaluate` avaient conclu, par
+         * écrit, « je n'ai pas su reproduire son cas ». Avec une vraie frappe,
+         * le refus tombe à la première formule.
+         *
+         *     Pour mesurer ce qu'une politique de sécurité fait, il faut
+         *     frapper par la porte de l'élève — `page.evaluate` a la clef du
+         *     garage.
+         *
+         * VIDE LE CHAMP D'ABORD : sans cela la frappe s'AJOUTE à ce qui
+         * restait, et « SOMME(C1:C4)SOMME(C1:C4) » vaut 3535. Le logiciel a
+         * alors raison de refuser, et l'on cherche le défaut dans le code.
+         *
+         * @param {string} selecteur le champ
+         * @param {string} texte ce qu'on tape
+         * @param {{entree?:boolean, garder?:boolean}} [o] `entree` appuie sur
+         *   Entrée après ; `garder` n'efface pas ce qui est déjà là.
+         */
+        async taper(selecteur, texte, o = {}) {
+            await this.doitExister(selecteur, 'le champ où taper');
+            await page.click(selecteur);
+            if (!o.garder) {
+                await page.keyboard.press('Control+a');
+                await page.keyboard.press('Delete');
+            }
+            await page.keyboard.type(String(texte), { delay: 18 });
+            if (o.entree) await page.keyboard.press('Enter');
+            await dormir(400);
+        },
+
         /** Bascule un thème (ou revient au thème clair avec `null`). */
         async theme(nom) {
             themeVoulu = nom || null;
