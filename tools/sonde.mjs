@@ -245,10 +245,22 @@ export async function ouvrirSonde(o = {}) {
          * qui pose des questions passe par là.
          */
         async questionCourante() {
-            return page.evaluate(() => {
-                const it = window.__sondeRunner
-                    && window.__sondeRunner.session
-                    && window.__sondeRunner.session.item;
+            return page.evaluate(async () => {
+                // DEUX MENEURS POSSIBLES, ET C'EST UNE FRICTION PAYÉE DEUX FOIS.
+                // `__sondeRunner` n'existe que lorsque la sonde a ouvert
+                // l'exercice elle-même. Quand c'est l'ÉLÈVE qui clique une
+                // pastille de son parcours, le meneur est celui de
+                // l'application — `state.activeSequenceRunner` — et la fonction
+                // rendait `null` : une sonde qui joue une séance pour de vrai
+                // n'avait plus accès à la question.
+                let r = window.__sondeRunner;
+                if (!r || !r.session) {
+                    try {
+                        const { state } = await import('/js/core/state.js');
+                        r = state.activeSequenceRunner || r;
+                    } catch (e) { /* page sans module : on garde ce qu'on a */ }
+                }
+                const it = r && r.session && r.session.item;
                 if (!it) return null;
                 return {
                     texte: (it.prompt && it.prompt.text) || '',

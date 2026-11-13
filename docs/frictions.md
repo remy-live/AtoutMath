@@ -7184,3 +7184,47 @@ plus d'un.**
   ou un outil voisin, sache DIRE quelles épreuves portent une liste d'identifiants
   écrite en dur alors que la source en déclare davantage. C'est une comparaison
   de deux ensembles, pas un jugement.
+
+---
+
+**Deux listes de part et d'autre du réseau, et rien ne les compare** — 13 novembre
+
+- *Ce que je voulais faire* : ajouter onze décors, et que le professeur puisse
+  les choisir.
+- *Ce qui a coûté* : le serveur revérifie le décor avant de l'écrire — à juste
+  titre — contre une liste écrite **en PHP**. Elle en comptait quatre. Le
+  professeur aurait choisi « L'Océan », le serveur aurait répondu `ok`, écrit
+  une chaîne vide, et le décor aurait disparu sans un mot. Trouvé par hasard,
+  en lisant `api/index.php` pour autre chose : `npm test` ne lit pas le PHP et
+  `php tools/testApi.php` ne lit pas le JavaScript, donc **aucun** des trois
+  harnais ne pouvait le voir.
+- *Combien de fois* : | (première fois notée, mais le motif existe partout où
+  un identifiant voyage : les décors, les habillages, les genres d'exercices,
+  les codes dictés)
+- *Ce qui manque* : une épreuve a été écrite pour CE cas
+  (`tests/mondesDeMario.test.mjs` lit les deux fichiers et compare). Ce qui
+  manque encore, c'est l'outil qui trouverait les AUTRES : une liste de chaînes
+  littérales en PHP dont les mêmes valeurs sont déclarées en JavaScript, et qui
+  ne coïncident plus. Trois harnais verts et un réglage qui s'efface, c'est la
+  pire forme de vert.
+
+---
+
+**Une épreuve qui cherche un NOM trouve le commentaire qui l'explique** — 13 novembre
+
+- *Ce que je voulais faire* : garder qu'un réglage met bien le cache à jour
+  (`noterReglagesSite`).
+- *Ce qui a coûté* : deux passages de `epreuveTombe.mjs` pour rien. La première
+  fois, ma fenêtre de lecture de 900 caractères débordait sur le gestionnaire
+  SUIVANT, qui appelle la même fonction. La seconde, elle attrapait le
+  commentaire placé juste au-dessus de l'appel — celui qui explique pourquoi
+  l'appel est là, et qui contient donc son nom. Dans les deux cas l'épreuve
+  était verte avec le défaut remis.
+- *Combien de fois* : || (et ce dépôt commente BEAUCOUP : toute épreuve qui lit
+  la source rencontrera ses propres explications)
+- *Ce qui manque* : une aide dans les épreuves qui lisent du code — lire un
+  fichier SANS ses commentaires. `tests/helpers.mjs` porte déjà
+  `sansCommentaires`, employé par `manchesQuiSEnchainent` ; il n'a pas été
+  employé ici par distraction. Ce qui aiderait vraiment : que `epreuveTombe`
+  DISE, quand une épreuve ne tombe pas, si le motif cherché apparaît dans un
+  commentaire du fichier — c'est la cause une fois sur deux.

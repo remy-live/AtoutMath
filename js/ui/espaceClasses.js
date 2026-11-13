@@ -360,6 +360,27 @@ export async function ouvrirEspaceClasses() {
         // LE DÉCOR DU MOMENT — un menu, pas un interrupteur : il a cinq états.
         // On croit le SERVEUR et non le menu, comme pour les trois
         // interrupteurs au-dessus : la route rend ce qu'elle a écrit.
+        const ecran = e.target.closest('[data-ecran-eleve]');
+        if (ecran) {
+            reglagesDuSite({ ecranDeLEleve: ecran.value }).then((r) => {
+                if (r.erreur) { showToast(r.erreur, 'error'); return; }
+                vue.reglagesSite = r.reglages || vue.reglagesSite;
+                // `noterReglagesSite` MET LE CACHE À JOUR, et sans lui le
+                // réglage ne vaut rien sur CE poste : `reglageSite` lit le
+                // cache local, pas la réponse du serveur. Mesuré — le serveur
+                // répondait « kiosque » et le navigateur relisait « ».
+                noterReglagesSite(vue.reglagesSite);
+                // ON L'APPLIQUE TOUT DE SUITE SUR CE POSTE AUSSI : le
+                // professeur doit voir que son geste a pris, et `modeKiosque`
+                // ne s'applique jamais à lui — donc rien ne bouge chez lui.
+                import('./ecranDeLEleve.js')
+                    .then(m => m.appliquerEcranDeLEleve()).catch(() => {});
+                showToast(ecran.value === 'kiosque'
+                    ? 'Les élèves travailleront en plein écran, sans le profil.'
+                    : 'Les élèves retrouvent leur écran habituel.');
+            });
+            return;
+        }
         const decor = e.target.closest('[data-decor-moment]');
         if (decor) {
             const choisi = decor.value;
@@ -844,6 +865,39 @@ function signalementReglageHtml() {
 }
 
 /**
+ * L'ÉCRAN RANGÉ DE L'ÉLÈVE — plein écran, et pas de profil.
+ *
+ * RÉMY : « on peut aussi envisager que ce soit plein écran (en option là où on
+ * choisit le thème) où l'élève n'a pas accès à son profil ».
+ *
+ * POURQUOI JUSTE SOUS LE DÉCOR, et non dans un bloc à lui : c'est l'endroit
+ * qu'il a nommé, et c'est le bon — les deux réglages répondent à la même
+ * question, « de quoi l'écran de mes élèves a-t-il l'air cette semaine ? », et
+ * se changent au même moment, en début de période.
+ *
+ * ON NE PROMET PAS UN VERROU, ET LA PHRASE LE DIT. Un navigateur se quitte,
+ * un onglet se change : aucune page web ne peut l'empêcher. Écrire « l'élève
+ * ne peut plus sortir » serait un mensonge qui se découvrirait en classe, le
+ * jour où quelqu'un sortirait.
+ */
+function ecranDeLEleveHtml(su) {
+    const actuel = (vue.reglagesSite && vue.reglagesSite.ecranDeLEleve) || '';
+    const choix = [['', 'Écran normal'], ['kiosque', 'Plein écran, sans le profil']];
+    return `
+        <label class="ec-champ-ligne">
+            <span class="ec-champ-mot">L'écran de l'élève</span>
+            <select class="cfg-input" data-ecran-eleve ${su ? '' : 'disabled'}>
+                ${choix.map(([v, mot]) => `<option value="${v}"${
+        v === actuel ? ' selected' : ''}>${mot}</option>`).join('')}
+            </select>
+        </label>
+        <p class="ec-note ec-note--bloc">« Plein écran, sans le profil » range l'écran de vos
+           élèves : la page prend tout l'écran au premier geste, et l'onglet « Profil » n'est
+           plus proposé. Ce n'est pas un verrou — un navigateur se quitte, et aucune page web
+           ne peut l'empêcher. Cela ne change rien à VOTRE écran.</p>`;
+}
+
+/**
  * LE DÉCOR DU MOMENT — « Les deux : un réglage global, et l'élève peut encore
  * jouer. »
  *
@@ -891,6 +945,7 @@ function decorDuMomentHtml() {
         liste.map(d => option(d.id, `${d.icon} ${d.label}`)).join('')}</optgroup>`).join('')}
             </select>
         </label>
+        ${ecranDeLEleveHtml(su)}
     </section>`;
 }
 

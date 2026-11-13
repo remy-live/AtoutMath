@@ -4836,6 +4836,55 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     .decor--noel .decor-nappe::before { animation: none; }
 }
 
+/* ── L'ÉCRAN RANGÉ DE L'ÉLÈVE ────────────────────────────────────────────────
+
+   RÉMY : « on peut aussi envisager que ce soit plein écran (en option là où on
+   choisit le thème) où l'élève n'a pas accès à son profil ».
+
+   ON CACHE LES DEUX PORTES, EN HAUT ET EN BAS — la barre du haut sur un écran
+   large, la barre du bas sur un téléphone. Une seule des deux suffirait à
+   croire que c'est fait, et l'autre se découvrirait en classe.
+
+   `!important` PARCE QUE `navigation.js` POSE `display` EN LIGNE sur ces
+   boutons : un style en ligne gagne contre une règle ordinaire, et la porte
+   réapparaîtrait au premier changement de vue. C'est le seul endroit de ce
+   bloc qui en a besoin.
+
+   LE REFUS, LUI, N'EST PAS ICI : `setTopNavMode` renvoie au parcours toute
+   demande d'ouvrir le profil. Cacher un bouton n'a jamais fermé une porte. */
+body.ecran-kiosque #top-btn-profile,
+body.ecran-kiosque #mob-btn-profile { display: none !important; }
+
+/* ── LA PASTILLE DU BAC À SABLE ──────────────────────────────────────────────
+
+   RÉMY : « on rajoute l'apparition du bac à sable si tout est fini qui se
+   rajoute au monde ».
+
+   ELLE NE RESSEMBLE À AUCUNE ÉTAPE, ET C'EST LE BUT : un liseré POINTILLÉ, là
+   où toutes les autres ont un trait plein. Le pointillé dit « ceci n'est pas au
+   programme » sans qu'on ait à l'écrire, et il le dit dans les seize mondes —
+   il emprunte `--accent`, donc il est vert tendre à Pâques et orange au volcan.
+
+   ELLE REBONDIT, ET ELLE PEUT SE LE PERMETTRE : elle n'apparaît que lorsque
+   TOUT est fini, donc il n'y a plus d'étape en cours pour rebondir avec elle.
+   Deux pastilles qui sautent en même temps se disputeraient l'œil.
+
+   SA FORME EST CELLE DU MONDE. Les règles de matière posent `border-radius`
+   sans état — c'est leur raison d'être —, donc le bac est un bloc carré au
+   rétro et un écu au château, sans une ligne de plus ici. */
+.world-node--bac .world-node-btn {
+    border-style: dashed;
+    border-color: color-mix(in srgb, var(--accent) 75%, var(--border));
+    background: linear-gradient(180deg, var(--bg-panel),
+        color-mix(in srgb, var(--accent) 16%, var(--bg-panel)));
+    box-shadow: 0 6px 0 color-mix(in srgb, var(--accent) 55%, #000 18%),
+                0 8px 16px color-mix(in srgb, var(--accent) 28%, transparent);
+    animation: worldBounce 1.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .world-node--bac .world-node-btn { animation: none; }
+}
+
 /* ═══ LES MONDES ═════════════════════════════════════════════════════════════
 
    RÉMY : « tu pourrais rajouter d'autres thèmes […] mais aussi du design des

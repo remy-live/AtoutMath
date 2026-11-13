@@ -6609,3 +6609,44 @@ avalaient deux pastilles sur quatre. Une couleur s'assombrit, le blanc non.
 **MESURÉ** : seize contrastes, le plus bas à 4,81 (désert et jungle) pour 4,5
 exigés ; la barre de boutons tient au doigt, trois rangées, aucun débordement ;
 les pictos sont intacts sur les seize.
+
+**FAIT — LE BAC À SABLE AU BOUT DU CHEMIN.**
+
+> « on rajoute l'apparition du bac à sable si tout est fini qui se rajoute au
+> monde »
+
+Il existait, mais seulement sur l'écran de BILAN — celui qui s'ouvre à la
+dernière question et qu'on referme. Un élève qui revenait à sa carte cinq
+minutes plus tard ne le retrouvait plus. Il est maintenant une PASTILLE au
+bout du chemin, liseré pointillé, qui prend la forme du monde : un bloc carré
+au rétro, un écu au château. Une étape de plus qui s'ouvre quand les autres
+sont faites — le niveau bonus à la fin du monde.
+
+**ET LA RÈGLE QUI NE SE NÉGOCIE PAS RESTE OÙ ELLE EST** : « il ne s'ouvre
+qu'une fois la séance FINIE ». La carte ne la recalcule pas, elle lit la
+réponse du bac — qui sait aussi pourquoi il est fermé (temps écoulé, fermé par
+le professeur, quart d'heure épuisé).
+
+**FAIT — L'ÉCRAN RANGÉ DE L'ÉLÈVE.**
+
+> « on peut aussi envisager que ce soit plein écran (en option là où on
+> choisit le thème) où l'élève n'a pas accès à son profil »
+
+Un réglage « L'écran de l'élève » juste sous le décor : *Écran normal* ou
+*Plein écran, sans le profil*. La page prend tout l'écran au premier geste —
+les navigateurs refusent le plein écran en dehors d'un geste —, et l'onglet
+« Profil » n'est plus proposé, ni en haut ni en bas.
+
+**CE N'EST PAS UN VERROU, ET LA PHRASE SOUS LE RÉGLAGE LE DIT.** Un navigateur
+se quitte, un onglet se change ; aucune page web ne peut l'empêcher. C'est un
+écran RANGÉ. Et le refus ne se contente pas de cacher les deux boutons :
+`setTopNavMode` renvoie au parcours toute demande d'ouvrir le profil — cacher
+un bouton n'a jamais fermé une porte.
+
+**IL NE S'APPLIQUE JAMAIS AU PROFESSEUR**, qui le règle depuis sa zone.
+
+**UN DÉFAUT GRAVE TROUVÉ EN CHEMIN, ET IL ÉTAIT À MOI** : le serveur ne
+connaissait que les quatre décors d'avant. Choisir « L'Océan » renvoyait `ok`,
+écrivait une chaîne vide, et le décor disparaissait **sans un mot**. Ni
+`npm test` ni `php tools/testApi.php` ne pouvaient le voir — chacun ne regarde
+que son côté. Une épreuve compare désormais les deux listes.

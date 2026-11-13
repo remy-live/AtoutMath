@@ -15,6 +15,11 @@ import { estUnMessage } from '../core/path.js';
 import { sectionMesExercices } from './mesExercicesUI.js';
 import { instantane, ouvrirSeance } from './maSeance.js';
 import { pleinEcranSiSeanceImposee } from './fullscreen.js';
+// L'ÉTAT DU BAC SEULEMENT, PAS SON OUVERTURE. Le clic est déjà pris en charge
+// par un écouteur unique posé sur `[data-ouvrir-bac]` : la porte peut donc
+// réapparaître n'importe où — c'est écrit dans `ui/bacASable.js` — et la
+// pastille de la carte en profite sans une ligne de plus.
+import { etatDuBac } from './bacASable.js';
 import { estRattache } from '../core/portail.js';
 import { getExerciseById } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
@@ -838,6 +843,19 @@ function assignedSection() {
         // ET SON DÉCOR, de la même façon : imposé par la séance, ou celui que
         // l'élève a choisi sur ce poste.
         decor: decorDeLaSeance(policy),
+        // LE BAC À SABLE SUR LA CARTE. Rémy : « on rajoute l'apparition du bac à
+        // sable si tout est fini qui se rajoute au monde ».
+        //
+        // Il existait déjà, mais seulement sur l'écran de BILAN — celui qui
+        // s'ouvre à la dernière question et qu'on referme. Un élève qui revient
+        // à sa carte cinq minutes plus tard ne le retrouvait plus : il fallait
+        // qu'il sache qu'il était en bas de la page d'accueil.
+        //
+        // ON PASSE L'ÉTAT, PAS L'ENVIE : `etatDuBac` dit aussi POURQUOI il est
+        // fermé — pas fini, temps écoulé, fermé par le professeur — et la carte
+        // n'a pas à le redécider. La règle qui ne se négocie pas reste la
+        // sienne : « il ne s'ouvre qu'une fois la séance FINIE ».
+        bac: etatDuBac(),
         ouverture,
         gagnes,
         onNodeClick: (i, statut) => {
@@ -1304,9 +1322,79 @@ export function construireCarte(steps, opts = {}) {
     else if (style === 'damier') carte = buildDamier(steps, o);
     else if (style === 'ruban') carte = buildRuban(steps, o);
     else carte = buildWorldMap(steps, o);
+    // LE BAC À SABLE EN BOUT DE CARTE, puis le décor par-dessus : les deux se
+    // posent ici parce que c'est le seul endroit où les cinq habillages se
+    // rejoignent.
+    poserLaPastilleDuBac(carte, o);
     // ET LE DÉCOR PAR-DESSUS, quel que soit l'habillage : c'est tout l'intérêt
     // de l'avoir mis sur un axe à part.
     return poserLeDecor(carte, o.decor || DECOR_PAR_DEFAUT);
+}
+
+/**
+ * LA PASTILLE DU BAC À SABLE, posée au bout du chemin quand tout est fini.
+ *
+ * RÉMY : « on rajoute l'apparition du bac à sable si tout est fini qui se
+ * rajoute au monde ».
+ *
+ * ── POURQUOI UNE PASTILLE ET PAS UN BOUTON ────────────────────────────────
+ *
+ * Parce que c'est ce qu'elle EST : une étape de plus, qui s'ouvre quand les
+ * autres sont faites. Un bouton posé à côté de la carte dirait « sortez du
+ * parcours » ; une pastille au bout du chemin dit « continuez ». C'est le
+ * niveau bonus à la fin du monde, et c'est la comparaison que Rémy a faite.
+ *
+ * ── CE QU'ELLE NE FAIT PAS ────────────────────────────────────────────────
+ *
+ * ELLE NE DÉCIDE RIEN. `etatDuBac` sait déjà s'il est ouvert, et surtout
+ * pourquoi il ne l'est pas — séance non finie, temps de la classe écoulé, bac
+ * fermé par le professeur, quart d'heure de l'élève épuisé. La pastille lit
+ * cette réponse ; elle ne la recalcule pas. La règle qui ne se négocie pas
+ * reste à sa place : « il ne s'ouvre qu'une fois la séance FINIE ».
+ *
+ * ET ELLE NE VA PAS SUR LA LISTE CLASSIQUE, pour la raison qui écarte déjà les
+ * ornements : cette présentation se lit en toutes lettres, et une pastille
+ * ronde au bas d'une liste de titres n'y est pas chez elle. La porte du bac
+ * reste sur l'écran de bilan, où elle a toujours été.
+ */
+function poserLaPastilleDuBac(carte, o) {
+    const bac = o && o.bac;
+    if (!bac || !bac.ouvert) return;
+    if (carte.classList.contains('path-timeline')) return;
+    // LE RUBAN DÉFILE, ET SON CADRE N'EST PAS SA PISTE — même raison que pour
+    // les ornements : posée sur le cadre, la pastille resterait collée à la
+    // fenêtre pendant que le parcours glisse dessous.
+    const sol = carte.classList.contains('ruban-path')
+        ? carte.querySelector('.ruban-piste') : carte;
+    if (!sol) return;
+
+    const noeud = document.createElement('div');
+    noeud.className = 'world-node world-node--bac';
+    const socle = document.createElement('div');
+    socle.className = 'world-node-socle';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'world-node-btn';
+    // `data-ouvrir-bac` EST TOUT LE BRANCHEMENT. Un écouteur unique, posé une
+    // fois par `initBacASable`, ouvre le bac d'où qu'on clique.
+    btn.setAttribute('data-ouvrir-bac', '');
+    btn.setAttribute('aria-label', 'Le bac à sable');
+    btn.title = 'Le bac à sable';
+    const picto = document.createElement('span');
+    picto.className = 'world-node-picto';
+    picto.textContent = '🪣';
+    btn.appendChild(picto);
+    socle.appendChild(btn);
+    const nom = document.createElement('div');
+    nom.className = 'world-node-label';
+    nom.textContent = 'Le bac à sable';
+    const sous = document.createElement('div');
+    sous.className = 'world-node-meta';
+    sous.textContent = 'Tu as fini : à toi de choisir.';
+    noeud.appendChild(socle);
+    noeud.appendChild(nom);
+    noeud.appendChild(sous);
+    sol.appendChild(noeud);
 }
 
 /** L'habillage du POSTE, pour qui veut le lire sans le changer. Hors séance,

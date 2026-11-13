@@ -134,6 +134,11 @@ const demarrerLApplication = async () => {
         state.isTeacherMode = true;
         document.body.classList.add('teacher-mode');
     }
+    // ET LE MODE KIOSQUE SE RELIT APRÈS, avec ce qu'on a en cache : le
+    // professeur vient peut-être d'être reconnu, et le mode ne s'applique
+    // jamais à lui.
+    import('./ui/ecranDeLEleve.js')
+        .then(m => m.appliquerEcranDeLEleve()).catch(() => {});
     // LE VERROU DE LA CLASSE S'APPLIQUE AVANT LE PREMIER DESSIN.
     //
     // On relit l'état de séance connu AVANT `refreshViews()` : sinon l'élève
@@ -362,6 +367,13 @@ const demarrerLApplication = async () => {
     // booléen. On dessine avec ce qu'on sait — la dernière réponse connue, mise
     // en cache — et la porte se redessine si le serveur dit autre chose.
     chargerReglagesSite(adresseApiDeduite(getSyncConfig().apiUrl))
+        // L'ÉCRAN DE L'ÉLÈVE SE RANGE QUAND LE SERVEUR A RÉPONDU, et pas avant.
+        // Le réglage vient du site ; au premier démarrage, le cache est vide et
+        // `modeKiosque` répond « on ne sait pas », donc l'écran reste celui de
+        // toujours. C'est le bon repli : on ne retire pas son profil à un élève
+        // sur une supposition.
+        .then(() => import('./ui/ecranDeLEleve.js'))
+        .then(m => m.appliquerEcranDeLEleve())
         .catch(() => null);
     // LE COMPLÉMENT DE SÉANCE SE DIT À L'ÉLÈVE, IL NE SE GLISSE PAS.
     //

@@ -2909,6 +2909,13 @@ function handleReglages(): void
         // Une séance qui impose son décor l'emporte quand même : voir
         // `decorDeLaSeance`.
         'decorDuMoment' => lireReglage('site.decorDuMoment', '') ?: '',
+        // L'ÉCRAN RANGÉ DE L'ÉLÈVE — plein écran, et pas d'accès au profil.
+        //
+        // PUBLIC POUR LA MÊME RAISON QUE LE DÉCOR : il décide de l'allure de
+        // l'écran, et l'application doit le savoir avant d'avoir dessiné quoi
+        // que ce soit. Savoir qu'une salle travaille en plein écran n'apprend
+        // rien à personne.
+        'ecranDeLEleve' => lireReglage('site.ecranDeLEleve', '') ?: '',
     ]]);
 }
 
@@ -2962,14 +2969,36 @@ function handleTeacherReglages(): void
     // s'installer — « je ne sais pas » vaut mieux que « n'importe quoi ».
     if (array_key_exists('decorDuMoment', $body)) {
         $d = (string) $body['decorDuMoment'];
-        $connus = ['noel', 'halloween', 'paques', 'robot'];
+        // CETTE LISTE EST LA JUMELLE DE `DECORS` DANS `js/ui/pathView.js`, et
+        // c'est la copie la plus chère du dépôt : elle vit de l'autre côté du
+        // réseau, dans un autre langage, et son désaccord ne se voit NULLE PART.
+        //
+        // MESURÉ LE 13 NOVEMBRE : onze mondes neufs ont été ajoutés côté
+        // navigateur ; ici la liste en comptait quatre. Le professeur choisissait
+        // « L'Océan », le serveur répondait `ok`, écrivait une chaîne vide — « je
+        // ne sais pas » vaut mieux que « n'importe quoi » —, et le décor
+        // disparaissait sans un mot. Ni `npm test` ni `php tools/testApi.php` ne
+        // le voyaient : chacun ne regarde que son côté.
+        //
+        // `tests/mondesDeMario.test.mjs` compare désormais les deux listes.
+        $connus = ['noel', 'halloween', 'paques', 'robot', 'ocean', 'volcan',
+            'neiges', 'desert', 'jungle', 'chateau', 'espace', 'nuages',
+            'bonbons', 'pirates', 'retro'];
         ecrireReglage('site.decorDuMoment', in_array($d, $connus, true) ? $d : '');
+    }
+    // L'ÉCRAN RANGÉ DE L'ÉLÈVE. Deux valeurs seulement, et tout le reste vaut
+    // « non » : un réglage d'affichage qu'on ne comprend pas doit rendre
+    // l'écran de toujours, jamais un écran amputé.
+    if (array_key_exists('ecranDeLEleve', $body)) {
+        $e = (string) $body['ecranDeLEleve'];
+        ecrireReglage('site.ecranDeLEleve', $e === 'kiosque' ? 'kiosque' : '');
     }
     respond(['ok' => true, 'reglages' => [
         'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
         'inscriptionLibre' => lireReglage('site.inscriptionLibre', '0') === '1',
         'signalement' => lireReglage('site.signalement', '0') === '1',
         'decorDuMoment' => lireReglage('site.decorDuMoment', '') ?: '',
+        'ecranDeLEleve' => lireReglage('site.ecranDeLEleve', '') ?: '',
     ]]);
 }
 

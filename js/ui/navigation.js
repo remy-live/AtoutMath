@@ -1223,6 +1223,18 @@ export function setSidebarMode(m) {
 }
 
 export function setTopNavMode(m) {
+    // LE PROFIL EST FERMÉ EN MODE KIOSQUE, ET PAS SEULEMENT CACHÉ.
+    //
+    // Retirer les deux boutons suffirait à l'œil, et c'est exactement le genre
+    // de demi-mesure qui se défait : le profil s'atteint aussi par un lien du
+    // bilan, par l'historique du navigateur, et par un bouton qu'on ajoutera
+    // dans six mois sans penser à ce mode. On le refuse donc ICI, à l'endroit
+    // où toutes les routes passent, et l'on renvoie l'élève à son parcours —
+    // pas sur un écran vide, qui se lirait comme une panne.
+    if (m === 'profile' && document.body
+        && document.body.classList.contains('ecran-kiosque')) {
+        m = 'path';
+    }
     ['grid', 'path', 'profile'].forEach(k => {
         if(document.getElementById('top-btn-'+k)) document.getElementById('top-btn-'+k).classList.toggle('active', k===m);
     });

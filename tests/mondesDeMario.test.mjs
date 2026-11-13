@@ -174,3 +174,30 @@ test('LES MONDES FAITS DE BLANC S’ATTÉNUENT EN THÈME SOMBRE', () => {
             + 'elle passe devant les pastilles');
     }
 });
+
+test('LE SERVEUR CONNAÎT LES MÊMES MONDES QUE LE NAVIGATEUR', () => {
+    // LA COPIE LA PLUS CHÈRE DU DÉPÔT, et c'est celle qu'on ne voit pas.
+    //
+    // `api/index.php` revérifie le décor du moment avant de l'écrire — à juste
+    // titre : « un réglage qu'on accepte sans le lire est un réglage qui finit
+    // par porter ce qu'un autre a voulu ». Mais sa liste est une COPIE, de
+    // l'autre côté du réseau et dans un autre langage.
+    //
+    // MESURÉ LE 13 NOVEMBRE : onze mondes neufs côté navigateur, quatre côté
+    // serveur. Le professeur choisissait « L'Océan », le serveur répondait
+    // `ok`, écrivait une chaîne vide, et le décor disparaissait sans un mot.
+    // Ni `npm test` ni `php tools/testApi.php` ne pouvaient le voir : chacun
+    // ne regarde que son côté. C'est le seul endroit du dépôt où les deux se
+    // regardent.
+    const php = lire('api/index.php');
+    const bloc = /\$connus = \[([\s\S]*?)\];/.exec(php);
+    assert.ok(bloc, 'la liste des décors connus du serveur a disparu');
+    const duServeur = new Set([...bloc[1].matchAll(/'([a-z]+)'/g)].map(m => m[1]));
+    const duNavigateur = decorsDeclares()
+        .map(d => d.id).filter(id => id !== 'aucun');
+    const manquants = duNavigateur.filter(id => !duServeur.has(id));
+    assert.deepEqual(manquants, [],
+        `Le serveur ne connaît pas : ${manquants.join(', ')}. Le professeur les choisirait `
+        + 'dans son menu, le serveur répondrait « ok » et effacerait le réglage en silence. '
+        + 'Ajouter ces identifiants à $connus dans api/index.php.');
+});
