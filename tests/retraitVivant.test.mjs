@@ -35,8 +35,18 @@ test('UN EXERCICE RETIRÉ OUVRE LE BOUTON « PASSER », TOUT DE SUITE', () => {
     // lui, ne se rattache à rien : c'est le geste du professeur qui a constaté
     // que l'exercice plante, et il ne veut pas que l'élève retombe dessus,
     // dans ce parcours-ci ni dans un autre.
-    assert.match(bloc.slice(0, 2200),
-        /const permis = !!exoId && \(peutSauter\(exoId\) \|\| retireMaintenant\);/,
+    // ON ÉPINGLE CE QU'ON GARDE, PAS LA LIGNE ENTIÈRE.
+    //
+    // Cette épreuve exigeait l'expression complète, au caractère près. Le 13
+    // novembre une TROISIÈME porte s'y est ajoutée — un exercice récompense se
+    // passe de lui-même —, et l'épreuve est tombée en rouge alors que ce
+    // qu'elle garde n'avait pas bougé d'un pouce. Une épreuve qui épingle la
+    // forme d'une ligne s'oppose à toute ligne qui grandit, y compris aux
+    // bonnes.
+    const perm = /const permis = !!exoId && \(([^)]*\)[^;]*)\);/.exec(bloc.slice(0, 2200));
+    assert.ok(perm, 'la permission de passer doit se calculer ici');
+    assert.match(perm[1], /peutSauter\(exoId\)/, 'le saut accordé par le professeur');
+    assert.match(perm[1], /retireMaintenant/,
         'le retrait vaut permission de passer, comme le saut — mais lui, partout');
 });
 

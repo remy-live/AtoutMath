@@ -7251,3 +7251,22 @@ plus d'un.**
   « 156 ms au pire », « 4,81 de contraste », « 800 px au lieu de 1500 ». Les
   deux que j'ai eu à démentir aujourd'hui sont exactement les deux qui
   n'avaient pas de chiffre.
+
+---
+
+**Une épreuve qui épingle une LIGNE s'oppose à toute ligne qui grandit** — 13 novembre
+
+- *Ce que je voulais faire* : ajouter une troisième raison d'ouvrir le bouton
+  « Passer » — un exercice récompense se passe de lui-même.
+- *Ce qui a coûté* : `tests/retraitVivant.test.mjs` exigeait l'expression
+  entière, au caractère près : `const permis = !!exoId && (peutSauter(exoId) ||
+  retireMaintenant);`. Elle est tombée en rouge alors que ce qu'elle garde — un
+  exercice retiré ouvre le bouton — n'avait pas bougé d'un pouce. Dix minutes
+  pour comprendre que l'épreuve avait raison sur la forme et tort sur le fond.
+- *Combien de fois* : || (même famille que « l'épreuve cherche un NOM et trouve
+  le commentaire », notée le même jour : un motif qui ratisse trop large ou
+  trop étroit garde autre chose que ce qu'il annonce)
+- *Ce qui manque* : rien d'outillable. **Une épreuve qui lit du code épingle ce
+  qu'elle garde, pas la ligne où ça se trouve** : ici, que `retireMaintenant`
+  soit l'un des termes de la permission — pas que la permission ait exactement
+  deux termes. Corrigée dans ce sens, elle a été revue tomber.

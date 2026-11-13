@@ -6735,3 +6735,67 @@ pas en cacher la moitié. Les cartes se repoussent désormais ; après correctio
 parcourait 120 pixels en six secondes, c'est-à-dire qu'elle avait l'air
 immobile. Un cran le plus bas qui mérite encore « ça bouge mais vraiment peu »
 ne vaut rien.
+
+---
+
+## « On a ce genre d'exercice ? » — la page « Ordre · Axe » — 13 novembre
+
+Rémy envoie une page de ses propres fiches, en trois colonnes : *Graduer des
+axes* (13 et 15), *Donner des abscisses* (14), *Lire des abscisses* (16 et 17).
+
+**CE QU'ON A DÉJÀ, ET QUI RÉPOND À LA MOITIÉ DE LA PAGE :**
+
+· **« La Loupe sur la Droite »** fait l'exercice 16 presque à l'identique :
+  plusieurs points nommés A, B, C sur un axe, l'abscisse à écrire entre
+  parenthèses, et l'échelle qui change d'un axe à l'autre — 9 à 19, puis 3 à 4,
+  puis 8,4 à 8,5, puis 6,3 à 6,4. Vérifié en imprimant la feuille.
+· **« Le Dessin Gradué »** fait la première moitié de l'exercice 17 : placer
+  des points à des abscisses données. Mais c'est pour en faire un DESSIN, pas
+  pour les ranger ensuite.
+
+**CE QU'ON N'A PAS, ET C'EST LE PLUS INTÉRESSANT DES TROIS :**
+
+1. **GRADUER** (13 et 15) : écrire toutes les graduations d'un axe, pas lire un
+   point. Entre 8,13 et 8,14, savoir ce qu'on écrit dans chaque case est un
+   autre savoir que lire une croix.
+2. **LA CASCADE DE LOUPES** (14) : 0–4, puis on zoome entre 2 et 3, puis entre
+   2,7 et 2,8, puis entre 2,72 et 2,73. Nos axes changent d'échelle, mais
+   chacun est indépendant — on ne voit pas qu'on descend DANS le même nombre.
+3. **RANGER, ET UN MOT APPARAÎT** (17) : on place les points, on range les
+   abscisses dans l'ordre, et les lettres donnent un mot. C'est un exercice qui
+   se corrige tout seul : si le mot ne sort pas, l'élève le sait avant le
+   professeur.
+
+---
+
+## L'exercice récompense doit se présenter — 13 novembre
+
+> « j'aimerai aussi quand il y a un exercice récompense qu'on ait une popup qui
+> explique que c'est un exercice récompense et qu'il est facultatif et qu'on
+> peut passer au suivant sans le réussir »
+
+**TROIS CHOSES À DIRE, ET LA TROISIÈME EST LA VRAIE.** Que c'est une
+récompense, qu'elle est facultative, et surtout qu'ON PEUT PASSER SANS LA
+RÉUSSIR. Un élève qui bloque sur un jeu bonus et croit qu'il barre la route
+s'arrête là — et c'est exactement le contraire de ce qu'une récompense est
+censée faire.
+
+**FAIT.** Une fenêtre dorée s'ouvre PAR-DESSUS le jeu déjà monté — la forme que
+Rémy avait demandée pour les mots : « je le voyais plus comme une popup et il
+faut que l'élève appuie sur un bouton pour poursuivre ». On ferme, on y est.
+
+Elle nomme l'exercice, dit que ce n'est pas un exercice de la séance mais un
+jeu gagné, et écrit en gras : **« Tu n'es pas obligé de le réussir. »**
+
+**ET LE BOUTON « PASSER » S'OUVRE TOUT SEUL SUR UNE RÉCOMPENSE**, sans que le
+professeur ait rien à accorder. Une fenêtre qui annonce une porte que l'élève
+ne trouve pas ensuite est pire que pas de fenêtre : il a lu qu'il pouvait
+partir, il cherche, il ne voit rien, et il conclut que le logiciel lui a menti.
+
+Ce n'est pas une permission neuve, c'est une règle qu'on DIT : une récompense
+ne barrait déjà la route de personne — `prochaineObligatoire` la saute quand il
+compte ce qui reste à faire. Le bouton ne faisait que ne pas le dire.
+
+**ELLE NE S'OUVRE PAS DEUX FOIS** sur la même étape : une fenêtre déjà lue est
+une fenêtre qu'on ferme sans la lire, et c'est ainsi qu'on apprend à fermer
+toutes les autres.

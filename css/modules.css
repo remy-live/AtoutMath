@@ -4836,6 +4836,30 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     .decor--noel .decor-nappe::before { animation: none; }
 }
 
+/* LA FENÊTRE D'UN EXERCICE RÉCOMPENSE.
+
+   RÉMY : « j'aimerai aussi quand il y a un exercice récompense qu'on ait une
+   popup qui explique que c'est un exercice récompense et qu'il est facultatif
+   et qu'on peut passer au suivant sans le réussir ».
+
+   ELLE EMPRUNTE LA CARTE DU MOT DU PROFESSEUR — même forme, même bouton, même
+   place par-dessus le jeu déjà monté — et change seulement sa couleur : un
+   liseré doré et un fond chaud, les deux teintes que ce logiciel emploie déjà
+   pour « c'est gagné » (l'or d'une étape réussie, la pastille du cadeau sur la
+   carte). Une fenêtre de récompense qui ressemblerait à un avertissement
+   dirait le contraire de ce qu'elle annonce. */
+.run-mot-carte--cadeau {
+    border-color: #f59e0b;
+    background: linear-gradient(180deg,
+        color-mix(in srgb, #fde68a 55%, var(--bg-panel)), var(--bg-panel));
+}
+.run-mot-carte--cadeau .run-mot-titre { color: #92400e; }
+:root[data-theme="dark"] .run-mot-carte--cadeau {
+    background: linear-gradient(180deg,
+        color-mix(in srgb, #92400e 45%, var(--bg-panel)), var(--bg-panel));
+}
+:root[data-theme="dark"] .run-mot-carte--cadeau .run-mot-titre { color: #fde68a; }
+
 /* ── L'ÉCRAN RANGÉ DE L'ÉLÈVE ────────────────────────────────────────────────
 
    RÉMY : « on peut aussi envisager que ce soit plein écran (en option là où on

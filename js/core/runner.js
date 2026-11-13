@@ -19,7 +19,9 @@ import { getActivity, getGenerator, uniteDe } from './registry.js';
 import { ItemSession } from './itemSession.js';
 import { resolvePolicy, isEvaluation, isApprentissage, describePolicy } from './policy.js';
 import { seuilRequis } from './seuilEtape.js';
-import { etatRecompenses, prochaineObligatoire, etapesDeTravail } from './recompenses.js';
+import {
+    etatRecompenses, prochaineObligatoire, etapesDeTravail, estRecompense
+} from './recompenses.js';
 import { skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
 import {
@@ -780,6 +782,73 @@ export class Runner {
         }
     }
 
+    /**
+     * L'EXERCICE RÉCOMPENSE SE PRÉSENTE, ET IL DIT QU'ON PEUT LE LAISSER.
+     *
+     * RÉMY : « j'aimerai aussi quand il y a un exercice récompense qu'on ait
+     * une popup qui explique que c'est un exercice récompense et qu'il est
+     * facultatif et qu'on peut passer au suivant sans le réussir ».
+     *
+     * ── LA TROISIÈME PHRASE EST LA VRAIE ──────────────────────────────────
+     *
+     * Qu'il s'agisse d'une récompense se devine au cadeau sur la carte. Qu'elle
+     * soit facultative se devine à peine. Mais QU'ON PUISSE PASSER SANS LA
+     * RÉUSSIR ne se devine pas du tout — et c'est elle qui compte : un élève
+     * qui bloque sur un jeu bonus et croit qu'il barre la route s'arrête là.
+     * C'est exactement le contraire de ce qu'une récompense est censée faire.
+     *
+     * ── ET ON NE SE CONTENTE PAS DE LE DIRE ───────────────────────────────
+     *
+     * `majBoutonPasser` ouvre le bouton « Passer » sur une étape récompense,
+     * sans que le professeur ait rien à accorder. Une fenêtre qui annonce une
+     * porte que l'élève ne trouve pas ensuite est pire que pas de fenêtre : il
+     * a lu qu'il pouvait partir, il cherche, il ne voit rien, et il conclut que
+     * le logiciel lui a menti.
+     *
+     * ── UNE SEULE FOIS PAR ÉTAPE ──────────────────────────────────────────
+     *
+     * `_recompensesDites` retient celles qu'on a présentées. Sans cela, un
+     * élève qui refait l'étape — le bouton « Recommencer », une navigation
+     * arrière — reverrait la même fenêtre à chaque fois, et une fenêtre qu'on
+     * a déjà lue est une fenêtre qu'on ferme sans la lire.
+     */
+    montrerLaRecompense(step) {
+        const plateau = this.canvas;
+        if (!plateau || !plateau.parentNode) return;
+        const id = (step && step.stepId) || (step && step.exercise && step.exercise.id);
+        if (!this._recompensesDites) this._recompensesDites = new Set();
+        if (id && this._recompensesDites.has(id)) return;
+        if (id) this._recompensesDites.add(id);
+        this.effacerLeMot();
+        const boite = document.createElement('div');
+        boite.className = 'run-mot-popup';
+        boite.id = 'run-mot-popup';
+        boite.setAttribute('role', 'dialog');
+        boite.setAttribute('aria-modal', 'true');
+        boite.setAttribute('aria-label', 'Un exercice récompense');
+        const nom = (step && step.exercise && step.exercise.title) || '';
+        boite.innerHTML = `
+            <div class="run-mot-carte run-mot-carte--cadeau">
+                <span class="run-mot-marque" aria-hidden="true">\uD83C\uDF81</span>
+                <h2 class="run-mot-titre">C'est une récompense\u00a0!</h2>
+                <div class="run-mot-texte">
+                    <p>${nom ? `<b>${escapeHtml(nom)}</b> n'est pas` : 'Cet exercice n\'est pas'}
+                       un exercice de la séance\u00a0: c'est un jeu que tu as gagné.</p>
+                    <p><b>Tu n'es pas obligé de le réussir.</b> Si tu n'y arrives pas, ou si
+                       tu n'en as pas envie, tu peux passer au suivant\u00a0— ça ne t'enlèvera
+                       rien.</p>
+                </div>
+                <button type="button" class="btn-toggle active run-mot-btn"
+                        id="btn-run-mot">Je joue\u00a0!</button>
+            </div>`;
+        plateau.parentNode.insertBefore(boite, plateau);
+        const btn = boite.querySelector('#btn-run-mot');
+        if (btn) {
+            btn.onclick = () => this.effacerLeMot();
+            try { btn.focus(); } catch (e) { /* sans focus, le clic suffit */ }
+        }
+    }
+
     /** La fenêtre du mot ne survit pas à l'étape qu'elle surmonte. */
     effacerLeMot() {
         const vieille = document.getElementById('run-mot-popup');
@@ -1211,6 +1280,12 @@ export class Runner {
             this.motEnAttente = null;
             this.montrerLeMot(mot);
         }
+
+        // LA RÉCOMPENSE SE PRÉSENTE AVANT QU'ON JOUE, et par-dessus le jeu
+        // déjà monté — la forme que Rémy avait demandée pour les mots : « je le
+        // voyais plus comme une popup et il faut que l'élève appuie sur un
+        // bouton pour poursuivre ». On ferme, on y est.
+        if (estRecompense(step)) this.montrerLaRecompense(step);
 
         this.majBoutonPasser(step);
         // La calculatrice n'est offerte que là où l'exercice le dit, et une
@@ -2181,7 +2256,19 @@ export class Runner {
         // franchit quand il veut. Le saut ne compte ni pour ni contre lui.
         const exoId = step && step.exercise && step.exercise.id;
         const retireMaintenant = !!exoId && estRetire(exoId);
-        const permis = !!exoId && (peutSauter(exoId) || retireMaintenant);
+        // UNE RÉCOMPENSE SE PASSE SANS RIEN DEMANDER À PERSONNE.
+        //
+        // Les deux autres portes sont des décisions du professeur — il accorde
+        // le saut à un élève qui bute, ou il retire l'exercice. Celle-ci est
+        // dans la nature de l'étape : un jeu bonus ne barre la route de
+        // personne, `prochaineObligatoire` le saute déjà quand il compte ce qui
+        // reste à faire. Le bouton ne faisait que ne pas le dire.
+        //
+        // ET C'EST CE QUI REND VRAIE LA FENÊTRE qui vient de s'ouvrir : elle
+        // annonce qu'on peut passer au suivant. Une promesse sans porte est un
+        // mensonge que l'élève découvre tout seul, en cherchant.
+        const estUnCadeau = estRecompense(step);
+        const permis = !!exoId && (peutSauter(exoId) || retireMaintenant || estUnCadeau);
         const apparait = permis && bouton.hidden;
         bouton.hidden = !permis;
         bouton.onclick = permis ? () => this.passerEtape() : null;
