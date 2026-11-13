@@ -262,7 +262,15 @@ test('LE PROFESSEUR CHOISIT DANS LA MÊME LISTE QUE L\'ÉLÈVE', () => {
     // habillages, par l'autre bout.
     const CFG = lire('js/games/configUI.js');
     assert.match(CFG, /import \{ HABILLAGES, DECORS \} from '\.\.\/ui\/pathView\.js';/);
-    assert.match(CFG, /\$\{DECORS\.map\(d => /);
+    // LA LISTE VIENT DE `DECORS`, quelle que soit la façon dont elle est
+    // parcourue. Elle l'était par un `.map` simple ; depuis que les décors sont
+    // seize, elle est rangée en deux familles — et l'épreuve tombait sur la
+    // FORME de la boucle au lieu de sa source, ce qui n'est pas ce qu'elle
+    // garde.
+    assert.match(CFG, /DECORS\.filter\(d => d\.famille === f\)/,
+        'le menu de la séance doit être rempli depuis DECORS, pas depuis une copie');
+    assert.match(CFG, /<optgroup label=/,
+        'et rangé en deux familles, comme les deux rangées de l’élève');
     assert.match(CFG, /<option value="libre" \$\{p\.decor === 'libre'/);
     // Et le choix s'enregistre : un réglage qui s'affiche sans se sauver est
     // pire qu'un réglage absent.

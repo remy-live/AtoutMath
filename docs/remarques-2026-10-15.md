@@ -6650,3 +6650,24 @@ connaissait que les quatre décors d'avant. Choisir « L'Océan » renvoyait `ok
 écrivait une chaîne vide, et le décor disparaissait **sans un mot**. Ni
 `npm test` ni `php tools/testApi.php` ne pouvaient le voir — chacun ne regarde
 que son côté. Une épreuve compare désormais les deux listes.
+
+**VÉRIFIÉ APRÈS COUP — « tu as tout fait ? »**
+
+Quatre points que je n'avais pas mesurés, et qu'il fallait mesurer avant de
+répondre oui :
+
+· **Le code dicté emporte les mondes neufs.** Testé sur six décors, dont
+  `chateau`, `bonbons` et `pirates` : chacun fait l'aller-retour.
+· **La pastille du bac est sur les quatre habillages illustrés** — chemin,
+  mondes, damier, ruban — et en DERNIER sur chacun. La liste classique n'en a
+  pas, comme elle n'a pas d'ornements : elle se lit en toutes lettres.
+· **Le menu « Mode et barème » d'une séance** montrait les seize décors à la
+  file ; il est maintenant rangé en deux familles, comme les deux rangées de
+  l'élève et le menu de la zone professeur. Dix-sept lignes, deux groupes.
+· **Un commentaire périmé** dans `core/policy.js` énumérait encore les quatre
+  décors d'octobre. Il n'énumère plus : il renvoie à la liste.
+
+**CE QUI RESTE EN SUSPENS, ET QUI EST UN CHOIX, PAS UN OUBLI** : « et mets en
+d'autres » — au-delà des quatre familles demandées, deux mondes ont été
+ajoutés (le Pays des Bonbons et les Pirates). Il y a de la place pour
+davantage, et c'est à Rémy de dire lesquels.

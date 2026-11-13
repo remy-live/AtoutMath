@@ -30,6 +30,22 @@ import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePol
 // aussi à les dessiner. Deux listes de présentations finiraient par offrir
 // ici un habillage que l'écran de l'élève ne sait pas rendre.
 import { HABILLAGES, DECORS } from '../ui/pathView.js';
+
+/**
+ * UNE LIGNE DU MENU DES DÉCORS, avec ce que le décor promet.
+ *
+ * Les seize sont rangés en DEUX FAMILLES, comme les deux rangées de boutons de
+ * l'élève et comme le menu de la zone du professeur : une fête a une date, un
+ * monde n'en a pas. Seize lignes à la file, c'est une liste qu'on parcourt ;
+ * deux groupes, c'est un choix qu'on fait.
+ *
+ * Et chacune garde son `dit` : un nom seul ne dit pas de quoi « Les Pirates » a
+ * l'air, et l'on ne donne pas une séance à six classes pour le découvrir.
+ */
+const optionDecor = (p, d) => (d
+    ? `<option value="${d.id}"${p.decor === d.id ? ' selected' : ''}>`
+        + `${d.icon} ${d.label} — ${d.dit}</option>`
+    : '');
 import { reglagesQuiChangent as ecartsDeReglages } from '../core/reglagesDUsine.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
@@ -3696,8 +3712,10 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             <label class="cfg-label" for="cfg-decor">Décor</label>
             <select id="cfg-decor" class="cfg-input">
                 <option value="libre" ${p.decor === 'libre' || !p.decor ? 'selected' : ''}>Laisser l'élève choisir</option>
-                ${DECORS.map(d => `<option value="${d.id}"${
-        p.decor === d.id ? ' selected' : ''}>${d.icon} ${d.label} — ${d.dit}</option>`).join('')}
+                ${optionDecor(p, DECORS.find(d => d.id === 'aucun'))}
+                ${['fete', 'monde'].map(f => `<optgroup label="${
+        f === 'fete' ? 'Les fêtes' : 'Les mondes'}">${
+        DECORS.filter(d => d.famille === f).map(d => optionDecor(p, d)).join('')}</optgroup>`).join('')}
             </select>
             <p class="cfg-help">Le décor ne touche pas aux pictogrammes des étapes : ils disent la notion travaillée. Imposez « Sans décor » pour une interrogation.</p>
         </div>

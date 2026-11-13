@@ -97,7 +97,12 @@ export function defaultPolicy() {
         // lui, ne change rien à ce qu'on travaille — autant le laisser à
         // l'élève, qui est celui que ça amuse. Le professeur le fixe quand il
         // le veut, « aucun » compris pour une interrogation.
-        decor: 'libre',          // 'aucun' | 'noel' | 'halloween' | 'paques' | 'robot' | 'libre'
+        // `libre`, `aucun`, ou l'identifiant d'un décor. LA LISTE N'EST PAS
+        // RECOPIÉE ICI : elle vit dans `DECORS` (ui/pathView.js) et elle a
+        // triplé le 13 novembre — un commentaire qui énumère est un commentaire
+        // qui ment six mois plus tard, et celui-ci disait encore « noel,
+        // halloween, paques, robot » quand il y en avait seize.
+        decor: 'libre',
         allowRetryStep: true,   // réessayer une étape ratée
         pointsPerItem: 10,
         hintPenalty: 0.25,      // part de points perdue par aide utilisée

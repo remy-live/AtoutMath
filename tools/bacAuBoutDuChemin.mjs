@@ -143,6 +143,40 @@ if (apres.bac === 1) {
     dire(ouvert.ok, 'et un clic dessus OUVRE le bac');
 }
 
+// ── ET SUR LES CINQ HABILLAGES ──────────────────────────────────────────────
+//
+// La pastille se pose dans `construireCarte`, le seul endroit où les cinq se
+// rejoignent — comme le décor, et pour la même raison. Mais « elle devrait y
+// être » et « elle y est » sont deux phrases différentes : le ruban garde ses
+// pastilles dans une piste qui défile, pas dans son cadre, et un sixième
+// habillage ajouté dans six mois la perdrait sans rien casser.
+//
+// LA LISTE CLASSIQUE N'EN A PAS, ET C'EST VOULU : elle se lit en toutes
+// lettres, et une pastille ronde au bas d'une liste de titres n'y est pas chez
+// elle. C'est la décision qui écarte déjà les ornements. La porte du bac reste
+// sur l'écran de bilan, où elle a toujours été.
+console.log('\n── SUR LES CINQ HABILLAGES ──');
+for (const style of ['chemin', 'mondes', 'damier', 'ruban', 'classique']) {
+    const vu = await s.page.evaluate(async (st) => {
+        const { construireCarte } = await import('/js/ui/pathView.js');
+        const { makeStep } = await import('/js/core/path.js');
+        const carte = construireCarte(
+            [makeStep('calc-add', {}, { stepId: 'a' }), makeStep('frac-add', {}, { stepId: 'b' })],
+            { style: st, decor: 'retro', done: new Set(['a', 'b']),
+                bac: { ouvert: true, pourquoi: 'fini', dire: 'Tu as fini.' } });
+        const n = carte.querySelector('.world-node--bac');
+        return { classes: carte.className.split(' ')[0],
+            bac: carte.querySelectorAll('.world-node--bac').length,
+            dernier: n ? n === n.parentElement.lastElementChild : null };
+    }, style);
+    console.log(`  ${style.padEnd(10)} ${JSON.stringify(vu)}`);
+    const attendu = style === 'classique' ? 0 : 1;
+    dire(vu.bac === attendu, style === 'classique'
+        ? 'la liste classique n’en a pas — elle se lit en toutes lettres'
+        : `« ${style} » porte la pastille du bac`);
+    if (attendu) dire(vu.dernier === true, `   et elle y est en DERNIER`);
+}
+
 console.log(`\nerreurs de page : ${s.erreurs.length} · fenêtres natives : ${s.fenetresNatives.length}`);
 ko += s.erreurs.length + s.fenetresNatives.length;
 for (const e of s.erreurs.slice(0, 4)) console.log('  !', e);
