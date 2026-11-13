@@ -6885,3 +6885,107 @@ elle est écrite pas à pas dans `docs/referencement.md`.
 référencera jamais sur « fractions sixième ». Ce qui amènera des collègues,
 c'est le lien collé dans un courriel ou dans l'ENT — d'où les `og:`, qui
 comptent ici plus que l'indexation.
+
+## Le plateau, en salle informatique : quinze élèves, et le réglage ne propose pas quinze — 13 novembre
+
+> « Ils étaient en plein exercices dans la salle informatique chacun ayant un
+> ordi, il était 15, je n'ai pas cette proposition dans le nombre de joueur qui
+> est un peu arbitraire je trouve »
+
+**DEUX CHOSES, ET LA SECONDE EXPLIQUE PEUT-ÊTRE LA PREMIÈRE.**
+
+1. L'état des élèves est nommé : **en plein exercice, sur un ordinateur**, pas
+   sur une tablette posée. La sonde `plateauSurTousLesEcrans.mjs` mesure déjà
+   cet état-là et le voit passer en 12,5 s — donc ce n'est pas l'état seul.
+   Ce qui reste de différent : **ils étaient quinze**.
+2. Le réglage « nombre de joueurs » ne propose pas 15, et sa liste est
+   **arbitraire** — c'est lui qui le dit, et il a raison : ces nombres-là ne
+   sortent de rien.
+
+À vérifier dans cet ordre : est-ce que le nombre de joueurs TAILLE le terrain,
+et qu'arrive-t-il aux élèves en trop quand la classe est plus nombreuse que le
+réglage ? Si oui, « le plateau ne s'est lancé que sur qqs élèves » n'est pas un
+défaut de réseau du tout.
+
+**TROUVÉ, ET C'ÉTAIT L'ÉTAGE.** À z-index 9000, le voile du plateau passait
+DERRIÈRE `#game-layer` (10000) : l'élève en plein exercice recevait la partie,
+la rejoignait, son rond bougeait sur le terrain des autres — et il voyait son
+exercice. Ceux qui n'étaient pas dans un exercice la voyaient. « Que sur
+quelques élèves », mot pour mot.
+
+Le dépôt avait déjà écrit la réponse, pour le défi et pas pour le jeu (voir le
+commentaire de `.defi-voile`). La correction d'alors n'avait monté qu'un des
+quatre voiles.
+
+**ET LE NOMBRE DE JOUEURS SE TAPE MAINTENANT**, en s'ouvrant sur le nombre
+d'élèves EN LIGNE — c'est la règle qu'il a lui-même donnée le même jour pour le
+lancement, et le logiciel connaissait déjà ce nombre.
+
+**TROUVÉ, ET CE N'EST PAS LA CORRECTION DU JOUR : LE DÉFAUT EST ANCIEN.** La
+trace, relevée au clavier dans un vrai navigateur :
+
+```
+#2 valider rang=0 → TROIS RATAGES → minuteur 2200           (A)
+#3 valider rang=0 → TROIS RATAGES → minuteur 2200           (B)  ← ratages n'est pas remis à zéro
+   etapeSuivante depuis rang=0        (A) → rang 1
+#4 valider rang=1 (la ligne finale)   → la réponse part
+   etapeSuivante depuis rang=1        (B) → rang 2   ← LA LIGNE FINALE EST SAUTÉE
+#6 valider rang=2 → etapes[2] est `undefined` → TypeError
+```
+
+**AU TROISIÈME RATAGE, ON POSE LA LIGNE ET L'ON ATTEND 2,2 SECONDES** avant de
+passer à la suivante. Pendant ces 2,2 secondes le bouton reste allumé et
+`ratages` reste à 3 : un élève qui réappuie — ce que tout le monde fait quand
+l'écran dit « on la pose ensemble, et on continue » — pose un SECOND minuteur.
+Les deux avancent l'étape, la ligne finale est sautée, `rang` sort du tableau,
+et **chaque clic suivant sur Valider jette une erreur : le bouton ne fait plus
+rien.** L'exercice est mort pour cette question.
+
+Ce n'est pas propre aux puissances : c'est `litteralSaisie`, donc tous les
+exercices « pas à pas ».
+
+## Le défi : on ne peut pas choisir le pas — 13 novembre
+
+> « pour le défi, quand ce sont des exercices à pas, je ne peux choisir le pas »
+
+Le défi chronométré prend un exercice, mais pas ses RÉGLAGES : sur un exercice
+à marches, il tire dans toutes, alors que le professeur qui lance un défi vient
+de travailler UNE règle précise. À regarder : ce que `/teacher/class defi`
+accepte, et ce que l'écran du défi offre à côté du choix de l'exercice.
+
+## Le défi au hasard : cliquer n'importe quoi et marquer — 13 novembre
+
+> « et aussi dans les défi, j'ai un élève qui a cliqué n'importe quoi en qcm et
+> aue plein de point, il faudrait faire qqch »
+
+**C'EST LE DÉFAUT DE FOND DU QCM CHRONOMÉTRÉ, et il est arithmétique.** Quatre
+propositions, une chance sur quatre, et la seule limite au nombre de questions
+est la VITESSE DU DOIGT. Un élève qui réfléchit fait peut-être dix questions en
+une minute et en réussit neuf ; un élève qui martèle en fait soixante et en
+réussit quinze. Il gagne, et il a raison de recommencer — c'est le logiciel qui
+lui a appris que c'était payant.
+
+**CE N'EST DONC PAS UNE TRICHERIE À PUNIR, C'EST UN BARÈME À CORRIGER.** Ce
+qu'il faut regarder, dans l'ordre : ce qu'une faute coûte (rien, aujourd'hui),
+et s'il existe un temps minimum sous lequel une réponse n'est pas une réponse.
+À proposer à Rémy avant d'écrire quoi que ce soit — « fais moi des propositions
+d'abord ».
+
+> « on peut mettre une option enelevr des points ou bloquer si trop de
+> mauvais réponses ou mettre plus de case dans le qcm »
+
+**IL PROPOSE LUI-MÊME LES TROIS LEVIERS**, et ils ne se valent pas :
+
+1. **Enlever des points sur une faute.** C'est le levier arithmétique, et le
+   seul qui annule vraiment le calcul du marteleur : à −10 pour +10, une
+   réponse au hasard sur quatre propositions rapporte en moyenne
+   (1/4 × 10) − (3/4 × 10) = −5. Marteler devient perdant, sans qu'on ait rien
+   à interdire.
+2. **Bloquer après trop de fautes.** C'est une punition, et elle tombe aussi
+   sur l'élève qui cherche. À manier avec précaution — un court délai après
+   une faute dit la même chose sans exclure personne.
+3. **Plus de propositions.** De quatre à six, le hasard passe de 25 % à 17 % :
+   cela n'annule pas la stratégie, cela la ralentit. Et six propositions à lire
+   en une minute pénalisent surtout le lecteur lent.
+
+**À LUI PRÉSENTER AVANT D'ÉCRIRE** — « fais moi des propositions d'abord ».

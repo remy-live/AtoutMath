@@ -545,8 +545,48 @@ export function mount(container, session, opts = {}) {
             }
         };
 
+        /**
+         * UNE AVANCE EN ATTENTE, ET UNE SEULE.
+         *
+         * ── CE QUE ÇA A COÛTÉ À UNE ÉLÈVE ────────────────────────────────
+         *
+         * RÉMY, 13 novembre : « L'exercice Règle sur les puissances a bloqué
+         * pour une élève, elle ne pouvait plus appuyer sur Valider ».
+         *
+         * LA TRACE, RELEVÉE AU CLAVIER DANS UN VRAI NAVIGATEUR :
+         *
+         *     valider rang=0 → TROIS RATAGES → minuteur 2200        (A)
+         *     valider rang=0 → TROIS RATAGES → minuteur 2200        (B)
+         *     etapeSuivante depuis rang=0     (A) → rang 1
+         *     valider rang=1 (la ligne finale) → la réponse part
+         *     etapeSuivante depuis rang=1     (B) → rang 2
+         *     valider rang=2 → etapes[2] est `undefined` → TypeError
+         *
+         * AU TROISIÈME RATAGE ON POSE LA LIGNE ET L'ON ATTEND 2,2 SECONDES.
+         * Pendant ce temps le bouton restait allumé et `ratages` restait à
+         * trois : l'élève qui réappuie — ce que tout le monde fait quand
+         * l'écran dit « on la pose ensemble, et on continue » — posait un
+         * SECOND minuteur. Les deux avançaient l'étape, la ligne finale était
+         * sautée, `rang` sortait du tableau, et CHAQUE CLIC SUIVANT JETAIT.
+         * Le bouton ne faisait plus rien, et la question était morte.
+         *
+         * `enRoute` ferme la porte à l'endroit où elle s'ouvre : tant qu'une
+         * avance est promise, la ligne est réglée et il n'y a plus rien à
+         * valider.
+         */
+        let enRoute = false;
+        const avancerBientot = (delai) => {
+            if (enRoute) return;
+            enRoute = true;
+            regTimeout(() => { if (!destroyed) etapeSuivante(); }, delai);
+        };
+
         const etapeSuivante = () => {
-            rang += 1;
+            enRoute = false;
+            // ON NE DÉPASSE JAMAIS LA DERNIÈRE LIGNE. Même si deux avances se
+            // croisaient malgré `enRoute`, `rang` resterait dans le tableau :
+            // une borne coûte un `Math.min` et évite une activité morte.
+            rang = Math.min(rang + 1, Math.max(0, etapes.length - 1));
             ratages = 0;
             saisie = '';
             redessiner();
@@ -607,7 +647,7 @@ export function mount(container, session, opts = {}) {
                 // le contraire.
                 poserEtape(rang, saisie.trim(), false);
                 champ.classList.add('ls-champ--ok');
-                regTimeout(() => { if (!destroyed) etapeSuivante(); }, 700);
+                avancerBientot(700);
                 return;
             }
             ratages += 1;
@@ -616,7 +656,7 @@ export function mount(container, session, opts = {}) {
                 poserEtape(rang, String(e.montrer || ''), true);
                 noteEl.textContent = 'On la pose ensemble, et on continue : '
                     + `${e.titre.toLowerCase()} vaut ${e.montrer}.`;
-                regTimeout(() => { if (!destroyed) etapeSuivante(); }, 2200);
+                avancerBientot(2200);
                 return;
             }
             noteEl.textContent = (typeof v === 'object' && v.pourquoi)
@@ -682,8 +722,31 @@ export function mount(container, session, opts = {}) {
             return true;
         };
 
+        /*
+         * DEUX GARDES EN TÊTE DE `valider`, ET ELLES SONT ICI ET NON DEDANS.
+         *
+         * `enRoute` : la ligne est déjà réglée, on attend seulement qu'elle
+         * s'efface. Il n'y a rien à valider, et répondre ici serait répondre
+         * deux fois — voir `avancerBientot`, qui porte l'histoire entière.
+         *
+         * `laLigne` : si `rang` a malgré tout débordé, on répond comme à la
+         * ligne finale plutôt que de jeter. Un bouton qui jette est un bouton
+         * qui ne fait rien, et l'élève n'a aucun moyen de le savoir — c'est
+         * exactement ce qu'une élève de Rémy a eu sous les doigts.
+         *
+         * ET CES DEUX PHRASES SONT AU-DESSUS POUR UNE RAISON MESURÉE : deux
+         * épreuves lisent les deux mille six cents premiers caractères de ce
+         * corps pour y trouver la condition du saut direct. Dix lignes de
+         * commentaire posées dedans l'ont repoussée au-delà, et les deux sont
+         * tombées en disant tout autre chose. Le dépôt porte déjà cet
+         * avertissement sur `signatureDuPilote` et sur `corps` : un corps
+         * qu'on ne peut plus lire d'un coup d'œil est un corps qu'on ne relit
+         * plus.
+         */
         const valider = () => {
             if (destroyed || !saisie.trim()) return;
+            if (enRoute) return;
+            const laLigne = etapes[rang];
             // UNE ÉTAPE INTERMÉDIAIRE NE PASSE PAS PAR LA SÉANCE. Voir l'en-tête :
             // elle s'écrit, elle se corrige, elle ne se note pas.
             //
@@ -718,7 +781,7 @@ export function mount(container, session, opts = {}) {
             // ON NE L'ACCEPTE PAS POUR AUTANT : la ligne finale demande la forme
             // réduite, et la donner reste le travail. On dit seulement LEQUEL
             // des deux reproches est le bon.
-            if (etapes.length && !etapes[rang].finale && !sautDirect(saisie)) {
+            if (etapes.length && laLigne && !laLigne.finale && !sautDirect(saisie)) {
                 const presque = item.verifieTexte ? item.verifieTexte(saisie) : null;
                 if (presque && typeof presque === 'object' && presque.inacheve) {
                     return signalerInacheve(presque.pourquoi || '');

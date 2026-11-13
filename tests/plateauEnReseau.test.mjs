@@ -152,3 +152,47 @@ test('LE MALUS NE REDESCEND PAS, ET AUCUN SCORE NE PASSE SOUS ZÉRO', () => {
     assert.match(JEU, /\$scores\[0\] = max\(0, \$scores\[0\]\)/,
         'et aucun score d\'équipe ne descend sous zéro');
 });
+
+// ── COMBIEN DE JOUEURS : ON LE COMPTE, ON NE LE CHOISIT PLUS ────────────────
+//
+// RÉMY, 13 novembre : « il était 15, je n'ai pas cette proposition dans le
+// nombre de joueur qui est un peu arbitraire je trouve ».
+//
+// IL AVAIT RAISON DEUX FOIS. Le déroulant ne proposait que 6, 12, 24 et 30 —
+// quatre nombres qui ne sortaient de rien, et aucune classe ne fait 24. Et
+// surtout : CE NOMBRE, LE LOGICIEL LE CONNAÎT. Il écrit « 15 en ligne sur 28 »
+// deux onglets plus loin.
+//
+// C'est aussi la règle qu'il a donnée pour le lancement, le même jour : « ça
+// devrait se lancer sur ceux en ligne en fait ».
+
+test('LE NOMBRE DE JOUEURS SE TAPE, ET S\'OUVRE SUR CEUX QUI SONT EN LIGNE', () => {
+    const EC = readFileSync(new URL('../js/ui/espaceClasses.js', import.meta.url), 'utf8');
+    // LE DÉROULANT ARBITRAIRE A DISPARU.
+    assert.ok(!/data-plateau-combien[\s\S]{0,80}<option value="23">/.test(EC),
+        'le déroulant à quatre nombres est revenu');
+    assert.match(EC, /<input type="number"[^>]*\n?[^>]*data-plateau-combien/,
+        'le nombre de joueurs doit se TAPER : une classe de 15 n’était dans aucune liste');
+    // ET IL S'OUVRE SUR CE QUE LE LOGICIEL SAIT DÉJÀ.
+    assert.match(EC, /value="\$\{combienDeJoueursParDefaut\(\)\}"/,
+        'le champ doit s’ouvrir sur le nombre d’élèves en ligne');
+    const i = EC.indexOf('function combienDeJoueursParDefaut()');
+    assert.notEqual(i, -1, 'la fonction qui compte a disparu');
+    const corps = EC.slice(i, EC.indexOf('\n}', i));
+    assert.match(corps, /estEnLigne\(e\.vu, d\.maintenant\)/,
+        'elle doit compter CEUX QUI SONT EN LIGNE, et non les inscrits');
+    // DEUX AU MOINS : un plateau à un joueur n'est pas un jeu, et c'est ce
+    // nombre qui taille le terrain.
+    assert.match(corps, /return liste\.length >= 2/, 'elle doit refuser un seul joueur');
+
+    // ── ET LE « + 1 » QUI TRAÎNAIT A DISPARU AVEC LE DÉROULANT ───────────
+    //
+    // L'ancien déroulant rangeait 11 pour dire douze — il comptait LES AUTRES.
+    // Le champ, lui, porte le nombre de joueurs. Un « + 1 » resté là aurait
+    // lancé un terrain pour 16 quand le professeur en demande 15, sans que
+    // rien ne le dise.
+    const j = EC.indexOf('joueurs: Math.max(2, Math.min(40,');
+    assert.notEqual(j, -1, 'le nombre envoyé à la classe n’est plus borné');
+    assert.ok(!/\)\) \+ 1/.test(EC.slice(j, j + 220)),
+        'le « + 1 » de l’ancien déroulant est revenu : le terrain serait trop grand d’un');
+});

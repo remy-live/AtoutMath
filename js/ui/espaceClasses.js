@@ -3216,6 +3216,35 @@ function resumeDuJeuHtml(type) {
                ${j.prises} nombre(s) pris, ${j.reste} s restantes.</span>`;
 }
 
+/**
+ * COMBIEN DE JOUEURS ON ATTEND SUR LE TERRAIN, PAR DÉFAUT.
+ *
+ * RÉMY : « il était 15, je n'ai pas cette proposition dans le nombre de joueur
+ * qui est un peu arbitraire je trouve ». Et, le même jour, sur le lancement :
+ * « ça devrait se lancer sur ceux en ligne en fait ».
+ *
+ * LES DEUX PHRASES DONNENT LA MÊME RÉPONSE : le nombre qu'on attend, c'est
+ * CEUX QUI SONT EN LIGNE. Le logiciel le sait déjà — il l'écrit en gros dans
+ * l'onglet du direct, « 15 en ligne sur 28 ».
+ *
+ * TROIS SECOURS, DU PLUS VRAI AU PLUS PAUVRE : ceux qui sont en ligne, puis la
+ * classe entière si le direct n'a encore rien dit (début d'heure), puis douze —
+ * une demi-classe, qui ne ment à personne.
+ *
+ * DEUX AU MOINS : un plateau à un joueur n'est pas un jeu, et le terrain se
+ * calcule sur ce nombre.
+ */
+function combienDeJoueursParDefaut() {
+    const d = vue.direct;
+    if (d && Array.isArray(d.eleves) && d.eleves.length) {
+        const enLigne = d.eleves.filter(e => estEnLigne(e.vu, d.maintenant)).length;
+        if (enLigne >= 2) return Math.min(40, enLigne);
+        return Math.max(2, Math.min(40, d.eleves.length));
+    }
+    const liste = (vue.liste && vue.liste.eleves) || [];
+    return liste.length >= 2 ? Math.min(40, liste.length) : 12;
+}
+
 function outilPlateau() {
     return `<span class="ec-pilote-dit">Chaque joueur porte un nombre. Deux (ou
                trois) qui se retrouvent sur une case la prennent si leurs nombres
@@ -3284,13 +3313,35 @@ function outilPlateau() {
                     <option value="deux">erreur : figé ET −20</option>
                     <option value="aucune">erreur : sans pénalité</option>
                 </select>
-                <select class="ec-champ ec-champ--mince" data-plateau-combien
-                        aria-label="Combien de joueurs">
-                    <option value="11">12 joueurs</option>
-                    <option value="5">6 joueurs</option>
-                    <option value="23">24 joueurs</option>
-                    <option value="29">30 joueurs</option>
-                </select>
+                <!-- ── COMBIEN DE JOUEURS : ON LE COMPTE, ON NE LE CHOISIT PLUS
+
+                     RÉMY, 13 novembre : « il était 15, je n'ai pas cette
+                     proposition dans le nombre de joueur qui est un peu
+                     arbitraire je trouve ».
+
+                     IL AVAIT RAISON DEUX FOIS. Le déroulant ne proposait que
+                     6, 12, 24 et 30 — quatre nombres qui ne sortaient de rien,
+                     et aucune classe ne fait 24. Et surtout : CE NOMBRE, LE
+                     LOGICIEL LE CONNAÎT. Il sait qui est en ligne, il
+                     l'affiche deux onglets plus loin.
+
+                     Le champ s'ouvre donc sur le nombre d'élèves EN LIGNE, et
+                     reste un champ : le professeur qui attend deux retardataires
+                     monte à 17 sans chercher son compte dans une liste. C'est
+                     la règle qu'il a lui-même donnée pour le lancement — « ça
+                     devrait se lancer sur ceux en ligne en fait ».
+
+                     CE NOMBRE TAILLE LE TERRAIN : trente ronds sur douze cases
+                     de large se marcheraient dessus. Il doit être le même sur
+                     les trente ardoises, et il part donc dans les réglages
+                     plutôt que de se déduire de qui s'est connecté — une
+                     ardoise qui compterait les pions reçus dessinerait un
+                     terrain qui grandit au fil de la partie. -->
+                <input type="number" class="ec-champ ec-champ--court"
+                       data-plateau-combien min="2" max="40" step="1"
+                       value="${combienDeJoueursParDefaut()}"
+                       aria-label="Combien de joueurs sur le terrain">
+                <span class="ec-pilote-mot-liant">joueurs</span>
                 <select class="ec-champ ec-champ--mince" data-plateau-duree
                         aria-label="Combien de temps">
                     <option value="180">3 minutes</option>
@@ -5088,7 +5139,11 @@ async function brancher(e, redessiner) {
                 // plutôt que de se déduire de qui s'est connecté. Une ardoise
                 // qui compterait les pions reçus dessinerait un terrain qui
                 // grandit au fil de la partie.
-                joueurs: (Number(lu('[data-plateau-combien]', '23')) || 23) + 1
+                // LE CHAMP PORTE LE NOMBRE DE JOUEURS, pas « les autres » :
+                // l'ancien déroulant rangeait 11 pour dire douze, et le « + 1 »
+                // qui traînait ici était la seule chose qui le rattrapait.
+                joueurs: Math.max(2, Math.min(40,
+                    Number(lu('[data-plateau-combien]', '')) || combienDeJoueursParDefaut()))
             }));
         return;
     }
@@ -5103,7 +5158,11 @@ async function brancher(e, redessiner) {
             quoi: filtreDuPlateau(lu('[data-plateau-quoi]', 'tout')),
             noms: lu('[data-plateau-noms]', 'oui') === 'oui',
             penalite: lu('[data-plateau-penalite]', 'fige'),
-            robots: Number(lu('[data-plateau-combien]', '11')) || 11,
+            // EN DÉMONSTRATION, LES AUTRES SONT DES PIONS DE L'ORDINATEUR :
+            // on en pose un de moins que de joueurs, parce que le professeur
+            // en est un.
+            robots: Math.max(1, Math.min(40,
+                Number(lu('[data-plateau-combien]', '')) || combienDeJoueursParDefaut()) - 1),
             secondes: 180
         });
         brancherLaSortie(partie);

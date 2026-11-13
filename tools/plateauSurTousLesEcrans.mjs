@@ -62,6 +62,8 @@ const ok = (q, bon, d = '') => {
     return bon;
 };
 
+const dit = (q, d) => console.log(`  \x1b[2m·\x1b[0m ${q} \x1b[2m— ${d}\x1b[0m`);
+
 const PORT = String(8900 + Math.floor(Math.random() * 300));
 const serveur = spawn('php', ['tools/siteEssai.php', PORT],
     { stdio: ['ignore', 'pipe', 'inherit'] });
@@ -90,7 +92,11 @@ async function ouvrirUnePage(qui) {
 const ETATS = [
     { cle: 'chemin', dit: 'sur son chemin, écran allumé' },
     { cle: 'exercice', dit: 'au milieu d\'un exercice' },
-    { cle: 'cache', dit: 'onglet caché depuis une minute' },
+    // CELUI-CI NE COMPTE PAS DANS LE VERDICT, et la raison est écrite en bas :
+    // un onglet qui reste en arrière-plan est gelé par le navigateur, et
+    // personne ne le regarde. On le mesure quand même, pour que le jour où il
+    // passerait au vert on le sache.
+    { cle: 'cache', dit: 'onglet caché depuis une minute', horsVerdict: true },
     { cle: 'cacheRevenu', dit: 'onglet caché, reprise 4 s après l\'annonce' },
     { cle: 'rechargee', dit: 'rechargée 3 s après l\'annonce' }
 ];
@@ -195,21 +201,58 @@ try {
         const debut = Date.now();
         try {
             await a.page.waitForSelector('.pdn-voile', { timeout: 45000 });
-            return { ...a.etat, ouvert: true, secondes: Math.round((Date.now() - debut) / 100) / 10 };
         } catch (e) {
-            return { ...a.etat, ouvert: false, secondes: null };
+            return { ...a.etat, ouvert: false, devant: false, qui: '(rien)', secondes: null };
         }
+        const secondes = Math.round((Date.now() - debut) / 100) / 10;
+        // ── ET QUI EST DEVANT ? ───────────────────────────────────────────
+        //
+        // « LE TERRAIN EXISTE » N'EST PAS « L'ÉLÈVE LE VOIT ». C'est la
+        // famille de défauts la plus chère de ce dépôt, et elle est écrite en
+        // toutes lettres au-dessus de `.defi-voile` : « le sélecteur répondait
+        // il est là, le compteur montait, les contrôles étaient tous verts —
+        // et l'élève voyait son exercice ».
+        //
+        // On demande donc à `elementFromPoint`, au centre de l'écran, QUI
+        // répond. C'est le geste que CLAUDE.md prescrit avant de douter de
+        // l'outil, et c'est le seul qui distingue « monté » de « vu ».
+        const qui = await a.page.evaluate(() => {
+            const el = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+            if (!el) return '(personne)';
+            for (let n = el; n; n = n.parentElement) {
+                if (n.classList && n.classList.contains('pdn-voile')) return 'le terrain';
+                if (n.classList && n.classList.contains('jdc-voile')) return 'l\u2019annonce';
+                if (n.id === 'game-layer') return 'l\u2019exercice (#game-layer)';
+            }
+            return el.id ? `#${el.id}` : `.${(el.className || '').toString().split(' ')[0]}`;
+        });
+        return { ...a.etat, ouvert: true, devant: /terrain|annonce/.test(qui), qui, secondes };
     }));
     await apres;
 
     for (const v of verdicts) {
-        ok(`${v.dit}`, v.ouvert,
-            v.ouvert ? `terrain ouvert après ${v.secondes} s` : 'RIEN NE S\'EST OUVERT');
-        tout = v.ouvert && tout;
+        const bon = v.ouvert && v.devant;
+        const quoi = !v.ouvert ? 'RIEN NE S\'EST OUVERT'
+            : v.devant ? `terrain ouvert et DEVANT après ${v.secondes} s`
+                : `terrain monté en ${v.secondes} s mais DERRIÈRE : au centre, c'est ${v.qui}`;
+        if (v.horsVerdict) {
+            dit(v.dit, `${quoi} — attendu, et hors verdict`);
+            continue;
+        }
+        ok(v.dit, bon, quoi);
+        tout = bon && tout;
     }
-    const combien = verdicts.filter(v => v.ouvert).length;
-    tout = ok(`LE PLATEAU EST PARTI SUR TOUTES LES ARDOISES EN LIGNE`,
-        combien === ETATS.length, `${combien}/${ETATS.length}`) && tout;
+    // ── POURQUOI L'ONGLET CACHÉ NE COMPTE PAS ─────────────────────────────
+    //
+    // Le battement y passe à soixante secondes (`SEANCE_CACHE_MS`), et le
+    // navigateur gèle par-dessus les minuteurs d'un onglet en arrière-plan. On
+    // ne peut pas le joindre plus vite, et personne ne le regarde. CE QUI
+    // COMPTE, c'est que l'élève qui REVIENT dessus rejoigne la partie en
+    // cours — c'est la ligne d'après, et elle est verte.
+    const comptees = verdicts.filter(v => !v.horsVerdict);
+    const combien = comptees.filter(v => v.ouvert && v.devant).length;
+    tout = ok(`LE PLATEAU EST PARTI, ET SE VOIT, SUR TOUTES LES ARDOISES QU'ON PEUT JOINDRE`,
+        combien === comptees.length, `${combien}/${comptees.length}`) && tout;
     tout = ok('ERREURS DE PAGE', erreurs.length === 0, `${erreurs.length}`) && tout;
     for (const e of erreurs) console.log(`      ${e}`);
 } finally {

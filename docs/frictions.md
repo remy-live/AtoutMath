@@ -7318,3 +7318,26 @@ plus d'un.**
   GARDE, pas la ligne où ça se trouve.** Ici : deux groupes parenthésés séparés
   par un moins — et non le gabarit complet qui les entoure. Un motif ancré sur
   `^…$` d'une écriture complète est le signal : il garde la forme du jour.
+
+---
+
+**Une épreuve qui lit une fenêtre de N caractères bascule sur un caractère** — 13 novembre
+
+- *Ce que je voulais faire* : ajouter deux gardes en tête de `valider`, dans
+  `litteralSaisie` — une élève s'était retrouvée devant un bouton qui jetait.
+- *Ce qui a coûté* : trois allers-retours de quatre minutes chacun. Deux
+  épreuves lisent `LS.slice(i, i + 2600)` et y cherchent une condition. Mes
+  dix lignes de commentaire ont repoussé la condition au-delà — je les ai donc
+  déplacées au-dessus de la fonction, comme le dépôt le prescrit déjà deux fois
+  — et `return validerEtape();` s'est alors retrouvé **au caractère 2601**.
+  L'épreuve est tombée en annonçant que l'ORDRE des branches avait changé ; il
+  n'avait pas bougé d'un pouce.
+- *Combien de fois* : |||| (et c'est la même famille que « l'épreuve épingle
+  l'écriture entière » : un motif ancré sur la forme du jour plutôt que sur la
+  règle)
+- *Ce qui manque* : rien d'outillable, une règle de plus. **Une épreuve lit le
+  CORPS d'une fonction, pas ses N premiers caractères** — `LS.slice(i,
+  LS.indexOf('\n        };', i))` dit ce qu'on voulait dire, et ne bascule pas
+  sur un commentaire ajouté. Une fenêtre fixe tombera à nouveau, et l'on
+  prendra l'habitude de la rallonger sans la lire : c'est ainsi qu'une épreuve
+  devient une formalité.

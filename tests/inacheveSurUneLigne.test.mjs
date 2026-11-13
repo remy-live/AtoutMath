@@ -44,9 +44,32 @@ const LS = readFileSync(
 test('UNE LIGNE ÉGALE MAIS NON RÉDUITE DIT « PAS FINI », PAS « NE CALCULE PAS »', () => {
     const i = LS.indexOf('const valider = () => {');
     assert.ok(i > 0, 'la validation doit exister');
-    const bloc = LS.slice(i, i + 2600);
-    assert.match(bloc, /if \(etapes\.length && !etapes\[rang\]\.finale && !sautDirect\(saisie\)\) \{/,
-        'le cas se traite là où l\'on renonçait au saut direct');
+    // ── LE CORPS DE LA FONCTION, ET NON UNE LONGUEUR CHOISIE ─────────────
+    //
+    // Cette ligne lisait les 2600 premiers caractères. Le jour où l'on a ajouté
+    // deux gardes en tête de `valider` — une élève s'était retrouvée devant un
+    // bouton qui jetait —, `return validerEtape();` s'est retrouvé au caractère
+    // 2601, et l'épreuve est tombée en annonçant que l'ORDRE des branches avait
+    // changé. Il n'avait pas changé d'un pouce.
+    //
+    // UNE ÉPREUVE QUI BASCULE SUR UN CARACTÈRE NE GARDE RIEN : elle tombera à
+    // nouveau au premier commentaire ajouté, et l'on prendra l'habitude de la
+    // rallonger sans la lire. On lit donc le corps jusqu'à son accolade
+    // fermante, qui est ce que cette épreuve voulait dire depuis le début.
+    const bloc = LS.slice(i, LS.indexOf('\n        };', i));
+    // ── ON ÉPINGLE CE QU'ON GARDE, PAS L'ÉCRITURE DU JOUR ────────────────
+    //
+    // Cette ligne exigeait la condition entière, au caractère près. Le jour où
+    // l'on a rendu la lecture de l'étape défensive — `laLigne` plutôt que
+    // `etapes[rang]`, parce qu'une élève s'était retrouvée devant un bouton
+    // qui jetait —, elle est tombée en rouge alors que ce qu'elle garde
+    // n'avait pas bougé. Quatrième fois ce mois-ci, et c'est au journal des
+    // frictions. On garde donc les DEUX termes qui comptent : qu'on ne traite
+    // ce cas que sur une ligne NON finale, et qu'on y renonce au saut direct.
+    const condition = /if \(etapes\.length && [^)]*finale && !sautDirect\(saisie\)\) \{/;
+    assert.match(bloc, condition,
+        'le cas se traite là où l\'on renonçait au saut direct, sur une ligne '
+        + 'qui n\'est pas la finale');
     assert.match(bloc, /const presque = item\.verifieTexte \? item\.verifieTexte\(saisie\) : null;/,
         'on redemande à l\'item ce qu\'il en pense : c\'est lui qui sait que la '
         + 'valeur est bonne et la forme inachevée');

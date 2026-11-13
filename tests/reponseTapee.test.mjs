@@ -315,8 +315,15 @@ test('CELUI QUI SAIT DÉJÀ PEUT RÉPONDRE D\'UN COUP', () => {
         import.meta.url), 'utf8');
     assert.match(src, /const sautDirect = /, 'le saut direct a disparu');
     // IL EST TESTÉ AVANT DE RENVOYER À L'ÉTAPE : après, il ne servirait à rien.
-    const i = src.indexOf('if (etapes.length && !etapes[rang].finale');
+    //
+    // ON CHERCHE LE DÉBUT DE LA CONDITION, PAS SON ÉCRITURE ENTIÈRE : elle a
+    // changé le jour où la lecture de l'étape est devenue défensive — une
+    // élève s'était retrouvée devant un bouton qui jetait —, et cette épreuve
+    // était tombée en rouge sans que ce qu'elle garde ait bougé.
+    const i = src.indexOf('if (etapes.length &&');
     assert.ok(i > 0, 'le renvoi à l\'étape intermédiaire a disparu');
+    assert.match(src.slice(i, i + 160), /finale/,
+        'et il ne vaut que pour une ligne qui n\'est pas la finale');
     assert.match(src.slice(i, i + 160), /!sautDirect\(saisie\)/,
         'le saut direct n\'est plus consulté avant de renvoyer à l\'étape');
     // ET C'EST LE JUGE DE L'ITEM QUI TRANCHE, pas celui de l'étape : une

@@ -17723,8 +17723,35 @@ body.visite-en-cours .modal-overlay > * {
    LE PLATEAU DOIT SE LIRE DE DEUX DISTANCES À LA FOIS : à bout de bras sur une
    tablette, et du fond de la classe sur un vidéoprojecteur. D'où des tailles en
    `min()` de vw et de vh plutôt qu'en pixels : la même feuille sert aux deux. */
+/* ── LE TERRAIN PASSE DEVANT L'EXERCICE, ET IL A FALLU UNE CLASSE POUR LE VOIR
+
+   RÉMY, 13 novembre : « le plateau ne s'est lancé que sur qqs élèves ».
+   Puis, interrogé sur ce que faisaient les autres : « Ils étaient en plein
+   exercices dans la salle informatique chacun ayant un ordi ».
+
+   C'ÉTAIT TOUT. À z-index 9000, le voile du plateau passait DERRIÈRE
+   `#game-layer` (10000, css/layout.css) : l'élève en train de faire un
+   exercice recevait la partie, la rejoignait, son rond bougeait sur le
+   terrain des autres — et il voyait son exercice. Ceux qui n'étaient pas dans
+   un exercice la voyaient. « Que sur quelques élèves. »
+
+   LE DÉPÔT AVAIT DÉJÀ ÉCRIT CETTE RÉPONSE, POUR LE DÉFI ET PAS POUR LE JEU :
+   voir le commentaire de `.defi-voile` — « le sélecteur répondait il est là,
+   le compteur montait, les contrôles étaient tous verts, et l'élève voyait son
+   exercice. C'est la famille de défauts la plus chère du dépôt : tout
+   fonctionne, rien ne se voit. » La correction d'alors n'a monté qu'un seul
+   des quatre voiles.
+
+   L'ORDRE RESTE CELUI QUI Y EST DÉCIDÉ : le plateau et les jeux vifs, puis le
+   défi (2147480000), puis la pause du professeur (2147481000), puis le compte
+   à rebours. Un professeur qui met la classe en pause pendant une partie
+   arrête tout le monde — « tout le monde » veut dire tout le monde.
+
+   MESURÉ, et pas avec un sélecteur : `tools/plateauSurTousLesEcrans.mjs`
+   demande à `elementFromPoint` QUI répond au centre de l'écran. Avant : « au
+   centre, c'est l'exercice (#game-layer) ». Après : « le terrain ». */
 .pdn-voile {
-    position: fixed; inset: 0; z-index: 9000;
+    position: fixed; inset: 0; z-index: 2147479000;
     display: flex; align-items: center; justify-content: center;
     padding: max(8px, env(safe-area-inset-top, 0px)) 8px;
     background: color-mix(in srgb, var(--bg-app) 92%, var(--primary));
@@ -17970,8 +17997,11 @@ body.visite-en-cours .modal-overlay > * {
    RÉMY : « Je préfère un jeu assez rapide fun », puis « Les 3 sont top tu peux
    y aller » — le chat perché, la ruée, la pluie. Même terrain, même bandeau,
    même manette : seule la règle change. */
+/* LES TROIS JEUX VIFS SONT AU MÊME ÉTAGE QUE LE PLATEAU, et pour la même
+   raison : ils s'ouvrent par-dessus ce que l'élève faisait. Voir le long
+   commentaire de `.pdn-voile`. */
 .jv-voile {
-    position: fixed; inset: 0; z-index: 9000;
+    position: fixed; inset: 0; z-index: 2147479000;
     display: flex; align-items: center; justify-content: center;
     padding: max(8px, env(safe-area-inset-top, 0px)) 8px;
     background: color-mix(in srgb, var(--bg-app) 92%, var(--primary));
@@ -18106,8 +18136,13 @@ body.visite-en-cours .modal-overlay > * {
 /* ── L'ANNONCE D'UN JEU DE CLASSE ────────────────────────────────────────
    Douze secondes d'attente, et un seul chiffre à lire du fond de la salle :
    c'est le même écran pour les trente, et il les fait partir ensemble. */
+/* ET L'ANNONCE JUSTE AU-DESSUS DU TERRAIN QU'ELLE ANNONCE — cent de plus, pas
+   davantage : elle doit couvrir le plateau pendant le compte à rebours, et
+   rien d'autre. Elle souffrait du même défaut, et c'est elle qu'on voyait
+   manquer en premier : l'élève en exercice n'avait même pas le « départ dans
+   douze secondes ». */
 .jdc-voile {
-    position: fixed; inset: 0; z-index: 9100;
+    position: fixed; inset: 0; z-index: 2147479100;
     display: flex; align-items: center; justify-content: center;
     padding: max(12px, env(safe-area-inset-top, 0px)) 16px;
     background: color-mix(in srgb, var(--bg-app) 94%, var(--primary));

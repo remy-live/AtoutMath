@@ -180,3 +180,65 @@ test('LA BANNIÈRE REND LE FOYER À CELUI QUI L\'AVAIT', () => {
     assert.match(src, /avant\.isConnected/);
     assert.match(src, /!avant\.disabled/);
 });
+
+// ── ET LE BOUTON QUI JETTE, DEUXIÈME FAÇON DE NE PLUS RIEN FAIRE ───────────
+//
+// RÉMY, 13 novembre : « L'exercice Règle sur les puissances a bloqué pour une
+// élève, elle ne pouvait plus appuyer sur Valider ».
+//
+// MÊME SYMPTÔME QUE LE FOYER PERDU, AUTRE CAUSE — et c'est pour ça que
+// l'épreuve est ici : qui lira « le bouton Valider ne répond plus » doit
+// trouver les DEUX au même endroit.
+//
+// LA TRACE, RELEVÉE AU CLAVIER DANS UN VRAI NAVIGATEUR :
+//
+//     valider rang=0 → TROIS RATAGES → minuteur 2200        (A)
+//     valider rang=0 → TROIS RATAGES → minuteur 2200        (B)
+//     etapeSuivante depuis rang=0     (A) → rang 1
+//     valider rang=1 (la ligne finale) → la réponse part
+//     etapeSuivante depuis rang=1     (B) → rang 2
+//     valider rang=2 → etapes[2] est `undefined` → TypeError
+//
+// AU TROISIÈME RATAGE ON POSE LA LIGNE ET L'ON ATTEND 2,2 SECONDES. Le bouton
+// restait allumé et `ratages` restait à trois : l'élève qui réappuie — ce que
+// tout le monde fait quand l'écran dit « on la pose ensemble, et on
+// continue » — posait un SECOND minuteur. Les deux avançaient l'étape, la
+// ligne finale était sautée, `rang` sortait du tableau, et chaque clic suivant
+// jetait. L'exercice était mort pour cette question.
+
+test('UNE SEULE AVANCE EN ATTENTE, ET `rang` NE SORT JAMAIS DU TABLEAU', () => {
+    const LS = readFileSync(new URL('../js/core/activities/litteralSaisie.js',
+        import.meta.url), 'utf8');
+    // LA PORTE EST FERMÉE LÀ OÙ ELLE S'OUVRE : une avance promise, et une
+    // seule. Deux `regTimeout(etapeSuivante)` posés à la main reviendraient au
+    // défaut d'origine.
+    assert.match(LS, /const avancerBientot = \(delai\) => \{\s*\n\s*if \(enRoute\) return;/,
+        'la deuxième avance doit être refusée à la porte');
+    assert.equal((LS.match(/\n\s*avancerBientot\(\d+\);/g) || []).length, 2,
+        'les DEUX endroits qui avancent — la ligne juste et la ligne donnée après '
+        + 'trois ratages — doivent passer par `avancerBientot` : un '
+        + '`regTimeout(etapeSuivante)` écrit à la main rouvrirait la porte');
+    // UN SEUL MINUTEUR DANS TOUT LE FICHIER, et c'est celui d'`avancerBientot`.
+    // Un second, écrit à la main ailleurs, rouvrirait exactement la porte
+    // qu'on vient de fermer — et c'est la forme qu'avait le défaut.
+    assert.equal((LS.match(/etapeSuivante\(\);/g) || []).length, 1,
+        'un seul endroit appelle `etapeSuivante` — celui d’`avancerBientot`. Un '
+        + 'second appel, posé à la main dans un minuteur, rouvrirait exactement '
+        + 'la porte qu’on vient de fermer : c’est la forme qu’avait le défaut');
+    // ET LE BOUTON NE RÉPOND PLUS TANT QUE LA LIGNE EST RÉGLÉE : répondre ici
+    // serait répondre deux fois.
+    const v = LS.indexOf('const valider = () => {');
+    assert.notEqual(v, -1);
+    assert.match(LS.slice(v, v + 700), /if \(enRoute\) return;/,
+        'Valider doit se taire pendant que la ligne s’efface');
+    // LA BORNE, MÊME SI TOUT LE RESTE CÉDAIT : `rang` reste dans le tableau.
+    assert.match(LS, /rang = Math\.min\(rang \+ 1, Math\.max\(0, etapes\.length - 1\)\)/,
+        'une étape de plus que la dernière rend `etapes[rang]` indéfini, et le '
+        + 'bouton jette à chaque clic');
+    // ET LA LECTURE EST DÉFENSIVE : un bouton qui jette est un bouton qui ne
+    // fait rien, et l'élève n'a aucun moyen de le savoir.
+    assert.ok(!/!etapes\[rang\]\.finale/.test(LS),
+        'on ne lit plus `etapes[rang].finale` sans avoir vérifié la ligne');
+    assert.match(LS, /const laLigne = etapes\[rang\];/);
+    assert.match(LS, /if \(etapes\.length && laLigne && !laLigne\.finale/);
+});
