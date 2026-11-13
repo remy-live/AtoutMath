@@ -1444,6 +1444,75 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .ax-barre { stroke: var(--text-main); stroke-width: 2; stroke-linecap: round; }
 .ax-point line { stroke: #dc2626; stroke-width: 3.4; stroke-linecap: round; }
 
+/* ── LA LOUPE DE LA CASCADE ─────────────────────────────────────────────────
+
+   RÉMY, page « Ordre · Axe », exercice 14. Le trapèze part des deux bouts de
+   l'intervalle qu'on ouvre et rejoint les deux bouts de l'axe du dessous : CE
+   SONT CES DEUX OBLIQUES QUI FONT L'EXERCICE. Sans elles, ce sont trois axes
+   empilés — trois questions, et non une cascade.
+
+   TRÈS PÂLE, ET C'EST LE POINT DÉLICAT : le trapèze couvre la moitié de la
+   figure, et un remplissage franc rendrait les graduations qu'il traverse
+   moins lisibles que celles du dehors. Il doit se voir sans se faire regarder. */
+.casc-loupe {
+    fill: color-mix(in srgb, var(--primary) 9%, transparent);
+    stroke: color-mix(in srgb, var(--primary) 45%, transparent);
+    stroke-width: 1.4;
+    stroke-dasharray: 5 4;
+}
+.casc-svg { max-width: 100%; height: auto; }
+
+/* ── LA CASCADE EST UNE FIGURE HAUTE, ET LE DÉPÔT A DÉJÀ SON RÉGLAGE ────────
+
+   Les plafonds de ce fichier sont écrits pour « une droite graduée large et
+   basse ». UNE CASCADE N'EST NI L'UNE NI L'AUTRE : quatre axes empilés font un
+   dessin presque carré, et le plafond le réduit alors à un ruban.
+
+   MESURÉ SUR 390 × 844, quatre étages : la figure tenait dans 76 px, soit 19 px
+   par étage, et le `rect` d'une case faisait 12 × 4 PIXELS. Playwright les
+   remplit toutes les quatre et le verdict dit « Parfait ! » — le mécanisme
+   marche. Un doigt ne vise pas 4 px de haut, et l'oeil ne lit pas un « 6,983 »
+   de six pixels. UNE MESURE QUI DIT « ÇA FONCTIONNE » NE DIT PAS « C'EST
+   JOUABLE ».
+
+   J'AI D'ABORD ÉCRIT MON PROPRE PLAFOND, ET C'ÉTAIT DEUX FOIS FAUX. Une fois
+   parce qu'à 40vh le pavé sortait de l'écran de 235 px — le compte se mesure au
+   BAS du pavé, pas en additionnant des hauteurs, et il était déjà à 828 px sur
+   844. Une fois parce que le vrai plafond n'était pas le `9vh` que je croyais :
+   en demandant au navigateur QUELLES règles désignent ce SVG, c'est
+   `--fig-plafond` et `46cqh` qui sont sortis. Ma règle ne gagnait rien.
+
+   `--fig-etirement` EST EXACTEMENT CE RÉGLAGE-LÀ, et `.ar-svg` comme `.cu-svg`
+   s'en servent déjà pour la même raison. Il vaut 1,55 là où l'écran a de la
+   place et retombe à 1 sur les paliers du téléphone — c'est-à-dire que le dépôt
+   avait déjà tranché : sur un téléphone, une figure haute ne chasse pas le
+   clavier. On suit. */
+.numpad-context .casc-svg { max-height: calc(var(--fig-plafond) * var(--fig-etirement)); }
+
+/* ET SUR LE TÉLÉPHONE, LES 88 PIXELS QUE L'ÉNONCÉ A RENDUS.
+
+   Le palier de 480 px pose `.numpad-context .figure-wrap svg { max-height: 9vh }`
+   — deux classes et un élément, donc il bat la règle ci-dessus, qui n'a que
+   deux classes. C'est voulu pour une figure large et basse ; ici cela donnait
+   19 px par étage.
+
+   APRÈS L'ÉNONCÉ RACCOURCI, le bas du pavé est remonté de 828 à 756 px sur une
+   fenêtre de 844 : 88 pixels libres, mesurés, pas supposés. On en rend 68 au
+   dessin (17vh), et le pavé finit à 824 — vingt pixels de marge, sur les deux
+   téléphones essayés. Le plancher de 96 px et le plafond de 150 px tiennent les
+   fenêtres courtes, où le pavé descend aussi.
+
+   DEUX RÈGLES SÉPARÉES, ET C'EST DÉLIBÉRÉ : le cadre porte le même plafond que
+   le SVG, et un enfant ne dépasse pas son cadre. Réunies en une seule liste de
+   sélecteurs, un sélecteur qu'un navigateur refuse emporterait l'autre avec
+   lui — c'est ce qui est arrivé à l'essai précédent, écrit avec un `:has()`. */
+@media (max-width: 767px) {
+    .numpad-context .figure-wrap .casc-svg { max-height: clamp(96px, 17vh, 150px); }
+}
+@media (max-width: 767px) {
+    .figure-wrap.figure-wrap--casc { max-height: clamp(96px, 17vh, 150px); }
+}
+
 /* ── LES CASES À REMPLIR SOUS LES GRADUATIONS ───────────────────────────────
 
    RÉMY, page « Ordre · Axe », exercices 13 et 15 : GRADUER un axe, et non y

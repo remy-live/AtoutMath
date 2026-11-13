@@ -591,6 +591,34 @@ export const numerationExercises = [
         instruction: "Les deux grands traits portent leur nombre ; entre eux, l'axe est coupé en DIX intervalles égaux. On lit d'abord le PAS : si l'axe va de 8,1 à 8,2, un intervalle vaut 0,01. Puis, pour chaque case, on compte les intervalles DEPUIS LE TRAIT DE GAUCHE — jamais les traits. Trois cases et non une : une seule se devine par symétrie, trois obligent à compter à chaque fois. Les trois marches sont les trois zooms — dixièmes entre deux entiers, centièmes entre deux dixièmes, millièmes entre deux centièmes — et elles montrent ce que le tableau de numération ne dit jamais : entre deux décimaux, il y en a toujours d'autres."
     },
 
+    // --- LA CASCADE DE LOUPES (sa page « Ordre · Axe », exercice 14) ---
+    //
+    // RÉMY : 0–4, puis on zoome entre 2 et 3, puis entre 2,7 et 2,8, puis entre
+    // 2,72 et 2,73.
+    //
+    // « LA LOUPE SUR LA DROITE » CHANGE D'ÉCHELLE, MAIS CHAQUE AXE Y EST
+    // INDÉPENDANT : rien ne montre qu'on descend dans le MÊME nombre. Un élève
+    // peut lire 2,73 sur un axe des centièmes sans avoir jamais vu que ce 2,73
+    // est quelque part dans l'intervalle [2 ; 3] du premier. Ici les trois axes
+    // sont le même axe, et deux traits obliques le disent.
+    //
+    // ET CE QU'ON FAIT ÉCRIRE EST UN ENCADREMENT DE PLUS EN PLUS SERRÉ :
+    // 2 < A < 3, puis 2,7 < A < 2,8, puis A = 2,73.
+    {
+        id: 'num-cascade-loupes',
+        cree: '2026-11-13',
+        title: 'La Cascade de Loupes',
+        consignePapier: 'Complète l\u2019encadrement, étage par étage.',
+        colonnesPapier: 1,
+        printable: 'cascade',
+        generatorId: 'num.cascade-loupes', activityId: 'numpad',
+        skills: ['num.dec.graduations'],
+        motsClefs: ['loupe', 'cascade', 'zoom', 'encadrement', 'axe', 'droite graduée',
+            'décimaux', 'dixièmes', 'centièmes', 'millièmes', 'abscisse'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "La croix est le MÊME point sur tous les axes. Chaque loupe — le trapèze — ouvre en DIX l'intervalle qui la contient : l'axe du dessous est cet intervalle-là, agrandi. On écrit à chaque étage la graduation juste À GAUCHE de la croix, et c'est un encadrement de plus en plus serré : 2 < A < 3, puis 2,7 < A < 2,8, puis A = 2,73 — au dernier étage la croix tombe sur une graduation, et c'est son abscisse exacte. Le nombre de l'étage du dessus RESTE DEVANT, et un chiffre s'ajoute derrière : c'est là que se voit ce que le tableau de numération ne dit jamais — entre deux décimaux, il y en a toujours d'autres."
+    },
+
     // --- Le dessin gradué (demandé par Rémy le 27 octobre) ---
     //
     // RÉMY, quatre captures d'une publication de collègues : « Tu pourrais

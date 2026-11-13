@@ -690,7 +690,123 @@ export function axeSvg({
     </svg>`;
 }
 
-/** Enveloppe une figure pour qu'elle occupe une largeur stable et centrée. */
-export function figure(svg) {
-    return `<div class="figure-wrap">${svg}</div>`;
+/**
+ * LA CASCADE DE LOUPES — trois axes, et l'on descend DANS le même nombre.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, page « Ordre · Axe », exercice 14 : 0–4, puis on zoome entre 2 et 3,
+ * puis entre 2,7 et 2,8, puis entre 2,72 et 2,73.
+ *
+ * ── CE QUE LE DÉPÔT AVAIT DÉJÀ, ET CE QUI MANQUAIT ──────────────────────
+ *
+ * « La Loupe sur la Droite » change d'échelle d'une question à l'autre, et
+ * c'est déjà beaucoup. Mais chaque axe y est INDÉPENDANT : rien ne montre
+ * qu'on descend dans le même nombre. Un élève peut lire 2,73 sur un axe des
+ * centièmes sans avoir jamais vu que ce 2,73 est quelque part dans l'intervalle
+ * [2 ; 3] du premier.
+ *
+ * CE SONT LES DEUX TRAITS OBLIQUES QUI FONT L'EXERCICE. Ils partent des deux
+ * bouts de l'intervalle qu'on ouvre et rejoignent les deux bouts de l'axe du
+ * dessous : la loupe est dessinée, et l'on VOIT l'intervalle s'écarter. Sans
+ * eux, ce sont trois axes empilés — c'est-à-dire trois questions, et non une
+ * cascade.
+ *
+ * @param {Object} cfg
+ * @param {Array} cfg.etages  un par axe, du plus large au plus fin :
+ *   `{ debut, fin, rang, point, cran }` — `cran` est le rang du cran où
+ *   commence l'intervalle qu'ouvre l'étage suivant.
+ * @param {boolean} [cfg.cases] poser une case à remplir au bout de chaque axe
+ */
+export function cascadeSvg({ etages = [], cases = false } = {}) {
+    // LA FIGURE S'ÉLARGIT AVEC LA PLUS LONGUE RÉPONSE : à quatre étages, la
+    // dernière case porte « 9,887 » et déborderait d'une largeur fixe.
+    const signesMax = Math.max(4, ...etages.map(e => e.signes || 4));
+    const W = 400 + Math.max(50, 18 + 10 * signesMax);
+    const H = 56 + etages.length * 96;
+    const G = 26, D = 350;              // l'axe s'arrête à 350 : la case tient après
+    const yDe = (k) => 46 + k * 96;
+    const fr = (v, rang) => v.toFixed(rang)
+        .replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
+    const xDe = (k) => G + (k / 10) * (D - G);
+
+    const morceaux = [];
+    etages.forEach((e, k) => {
+        const y = yDe(k);
+        const rang = e.rang || 0;
+        // L'axe, ses onze traits, ses deux bouts chiffrés.
+        morceaux.push(`<line class="ax-axe" x1="8" y1="${y}" x2="${D + 22}" y2="${y}"
+            marker-end="url(#casc-fleche)"/>`);
+        for (let i = 0; i <= 10; i++) {
+            const bout = i === 0 || i === 10;
+            const xx = xDe(i);
+            morceaux.push(`<line class="ax-cran${bout ? ' ax-cran--bout' : ''}"
+                x1="${xx.toFixed(1)}" y1="${(y - (bout ? 12 : 6)).toFixed(1)}"
+                x2="${xx.toFixed(1)}" y2="${(y + (bout ? 12 : 6)).toFixed(1)}"/>`);
+        }
+        morceaux.push(`<text class="ax-nb" x="${xDe(0).toFixed(1)}" y="${y + 28}"
+            text-anchor="middle">${fr(e.debut, rang)}</text>`);
+        morceaux.push(`<text class="ax-nb" x="${xDe(10).toFixed(1)}" y="${y + 28}"
+            text-anchor="middle">${fr(e.fin, rang)}</text>`);
+        // La croix du point, sur CHAQUE étage : c'est le même point qu'on suit.
+        if (e.point !== undefined && e.point !== null) {
+            const xp = G + ((e.point - e.debut) / (e.fin - e.debut)) * (D - G);
+            morceaux.push(`<g class="ax-point">
+                <line x1="${(xp - 6).toFixed(1)}" y1="${y - 6}" x2="${(xp + 6).toFixed(1)}" y2="${y + 6}"/>
+                <line x1="${(xp - 6).toFixed(1)}" y1="${y + 6}" x2="${(xp + 6).toFixed(1)}" y2="${y - 6}"/>
+            </g>`);
+        }
+        // ── LA LOUPE : LE TRAPÈZE QUI OUVRE UN INTERVALLE ──────────────
+        //
+        // Il se dessine AVANT l'axe du dessous dans l'ordre du document, donc
+        // derrière lui : un remplissage posé par-dessus effacerait les traits
+        // qu'il désigne.
+        if (Number.isInteger(e.cran) && k + 1 < etages.length) {
+            const x1 = xDe(e.cran), x2 = xDe(e.cran + 1);
+            const yBas = yDe(k + 1) - 14;
+            morceaux.push(`<path class="casc-loupe"
+                d="M ${x1.toFixed(1)} ${y + 13} L ${x2.toFixed(1)} ${y + 13}
+                   L ${(D + 2).toFixed(1)} ${yBas} L ${(G - 2).toFixed(1)} ${yBas} Z"/>`);
+        }
+        if (cases) {
+            // LA LARGEUR SUIT CE QU'ON Y ÉCRIRA. Mesuré sur la photo : « 9,24 »
+            // dans une case de 58 px passait par-dessus ses propres pointillés.
+            // Chaque étage dit son nombre de signes (`e.signes`), et la case la
+            // plus large les prend tous — des cases de tailles différentes dans
+            // une colonne se liraient comme des réponses de longueurs imposées,
+            // ce qui donnerait la moitié de la réponse.
+            const large = Math.max(...etages.map(x => x.signes || 4));
+            const w = Math.max(50, 18 + 10 * large);
+            morceaux.push(`<g class="ax-case">
+                <rect x="${D + 26}" y="${y - 12}" width="${w.toFixed(1)}" height="24" rx="5"/>
+                <text class="np-trou ax-trou" data-trou="${k}"
+                      x="${(D + 26 + w / 2).toFixed(1)}" y="${y + 6}" text-anchor="middle">?</text>
+            </g>`);
+        }
+    });
+
+    return `
+    <svg class="fig-svg ax-svg casc-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"
+         role="img" aria-label="Trois axes emboîtés, du plus large au plus fin">
+        <defs>
+            <marker id="casc-fleche" viewBox="0 0 10 10" refX="8" refY="5"
+                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+        </defs>
+        ${morceaux.join('\n        ')}
+    </svg>`;
+}
+
+/**
+ * Enveloppe une figure pour qu'elle occupe une largeur stable et centrée.
+ *
+ * `classe` AJOUTE UN MODIFICATEUR AU CADRE, et il sert à une chose précise : le
+ * cadre porte les mêmes plafonds de hauteur que le SVG, et un enfant ne dépasse
+ * pas son cadre. Une figure HAUTE — la cascade de loupes — doit donc relever les
+ * deux, et le CSS n'a aucun moyen de reconnaître le cadre d'une telle figure
+ * sans `:has()`. On le lui dit.
+ */
+export function figure(svg, classe = '') {
+    return `<div class="figure-wrap${classe ? ' ' + classe : ''}">${svg}</div>`;
 }

@@ -7389,3 +7389,71 @@ plus d'un.**
   moins deux ») plutôt qu'un compte exact. À fabriquer à la prochaine occasion :
   un `node tools/epreuveTropSerree.mjs` qui relit `tests/` et nomme ces quatre
   formes.
+
+**jsPDF ne remplit pas un quadrilatère, et `'FD'` dessine la couture** — 13 novembre
+
+- *Ce que je voulais faire* : une loupe — un trapèze — sous l'axe d'une cascade, sur
+  la feuille imprimée.
+- *Ce qui s'est passé* : jsPDF n'a pas de `quad()`. On remplit donc en deux
+  `doc.triangle(...)`, et tracer chacun avec son contour (`'FD'`) **dessine
+  l'arête commune** : une diagonale en travers de la loupe, que l'élève lit
+  comme un troisième côté. Invisible dans le code, invisible dans les épreuves,
+  visible immédiatement sur la photo de la feuille — et seulement là.
+- *Combien de fois* : | (première, mais tout polygone à plus de trois côtés la
+  retrouvera : un parallélogramme, un trapèze de géométrie, un drapeau)
+- *Ce qui manque* : un `polygonePdf(doc, points, {remplir, contour, pointille})`
+  dans `js/ui/fiches/` — qui triangule pour le remplissage, puis trace le
+  contour en UNE boucle sur les arêtes du bord, jamais sur celles de la
+  triangulation. Trois lignes à écrire une fois ; sinon chaque figure à quatre
+  côtés repaiera la couture.
+
+**On ne sait pas quelle règle CSS gagne, et on écrit la sienne pour rien** — 13 novembre
+
+- *Ce que je voulais faire* : relever le plafond de hauteur d'UNE figure, la
+  cascade, sur l'écran d'un téléphone.
+- *Ce qui s'est passé* : j'ai cherché le plafond au `grep`, trouvé
+  `.numpad-context .figure-wrap svg { max-height: 9vh }`, écrit une règle plus
+  spécifique — et rien n'a bougé. Trois sondes plus tard, en demandant au
+  navigateur QUELLES règles désignent ce SVG, deux autres sont sorties :
+  `.numpad-context .fig-svg { max-height: var(--fig-plafond) }` et
+  `.fig-svg { max-height: 46cqh }`. Le dépôt avait déjà son réglage
+  (`--fig-etirement`, dont `.ar-svg` et `.cu-svg` se servent pour exactement ce
+  cas) et je ne l'avais pas vu. Six allers-retours de sonde, et une règle morte
+  laissée dans le fichier entre-temps.
+- *Combien de fois* : || (déjà payé sur les voiles et leurs `z-index`, où c'est
+  `elementFromPoint` qui avait tranché)
+- *Ce qui manque* : un `node tools/quiStyle.mjs <exercice> <sélecteur>
+  <propriété>` qui ouvre l'exercice, parcourt toutes les feuilles, et imprime
+  CHAQUE règle qui désigne l'élément — avec sa requête média, sa spécificité et
+  la valeur calculée qui l'emporte. C'est à `elementFromPoint` ce que celui-ci
+  est aux `z-index` : il nomme QUI est là, au lieu de laisser deviner. La boucle
+  est déjà écrite trois fois dans `tools/tmp/`.
+
+**« Il reste de la place » ne se calcule pas en additionnant des hauteurs** — 13 novembre
+
+- *Ce que je voulais faire* : savoir combien de pixels une figure pouvait gagner
+  sans pousser le pavé hors de l'écran.
+- *Ce qui s'est passé* : j'ai additionné figure (76) + pavé (371) + énoncé (~60)
+  sur une fenêtre de 844 et conclu « 337 px libres ». Le BAS du pavé était déjà
+  à 828. J'ai monté le plafond à 40vh, et le pavé est sorti de 235 px — mesuré
+  après coup, sur quatre écrans. La bonne mesure tient en une ligne :
+  `pave.getBoundingClientRect().bottom <= window.innerHeight`.
+- *Combien de fois* : | (première, mais toute retouche de plafond la retrouvera)
+- *Ce qui manque* : rien à fabriquer — `tools/cascadeSurLesEcrans.mjs` porte
+  désormais la mesure et son commentaire porte la règle. À reprendre comme
+  patron pour toute figure dont on relève la hauteur.
+
+**Mesurer l'état d'AVANT en revenant en arrière sur un fichier** — 13 novembre
+
+- *Ce que je voulais faire* : comparer l'écran avant et après une retouche CSS.
+- *Ce qui s'est passé* : `git checkout css/modules.css` a emporté TOUT ce que le
+  fichier portait de non committé — dix-huit lignes de CSS de l'exercice en
+  cours, pas seulement ma retouche. Récupérées parce que j'en avais gardé une
+  copie dix minutes plus tôt, par chance. Le `git stash push` / `pop` du premier
+  essai était le bon geste ; je ne l'ai pas refait au second.
+- *Combien de fois* : | (première, mais « mesurer avant, mesurer après » est le
+  geste central du dépôt — il reviendra à chaque correction visuelle)
+- *Ce qui manque* : un `node tools/avantApres.mjs <sonde> -- <fichier…>` qui
+  remise les fichiers nommés, lance la sonde, imprime son relevé sous « AVANT »,
+  remet les fichiers quoi qu'il arrive, relance, imprime sous « APRÈS », et met
+  les deux relevés côte à côte. Jamais de `checkout` à la main.

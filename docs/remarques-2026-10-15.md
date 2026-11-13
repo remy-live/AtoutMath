@@ -6766,6 +6766,67 @@ axes* (13 et 15), *Donner des abscisses* (14), *Lire des abscisses* (16 et 17).
    se corrige tout seul : si le mot ne sort pas, l'élève le sait avant le
    professeur.
 
+Rémy : « fais les axes », et « Les trois », « Un par savoir ».
+
+**LE PREMIER EST FAIT — « Graduer un Axe » (`num-graduer-axe`, code AX).** Un
+axe, trois cases vides sur des crans tirés au sort, et le pavé pour écrire
+dedans. Trois marches : dixièmes, centièmes, millièmes. Les trois fautes du
+chapitre sont dans les propositions — l'échelle du dessus, les traits comptés au
+lieu des intervalles, le départ oublié.
+
+Deux défauts trouvés en le jouant, et aucun des deux ne plantait :
+`answerKind: 'choice'` faisait DISPARAÎTRE le pavé derrière les propositions —
+trois cases dessinées, portant leur `data-trou`, et aucun moyen d'écrire
+dedans ; et les arguments de `marcheAuRang` étaient à l'envers, si bien que les
+trois marches dessinaient toutes l'axe des dixièmes.
+
+**LE DEUXIÈME EST FAIT — « La Cascade de Loupes » (`num-cascade-loupes`, code
+LS).** C'est l'exercice 14 de sa page, et c'est celui qui dit ce que les autres
+ne disent pas : les deux, trois ou quatre axes sont LE MÊME AXE. Un trapèze part
+des deux bouts de l'intervalle qu'on ouvre et rejoint les deux bouts de l'axe du
+dessous — on VOIT l'intervalle s'écarter. Une case par étage, et c'est un
+encadrement qui se resserre : 2 < A < 3, puis 2,7 < A < 2,8, puis A = 2,73.
+
+**CHAQUE CHIFFRE EST NON NUL, ET C'EST UNE DÉCISION.** Avec un dixième à zéro,
+l'axe du dessous commence là où commence celui du dessus — « 2 » puis « 2 » dans
+deux cases voisines —, et la croix du dernier étage tombe sur le bord gauche. On
+y perd les nombres comme 2,05 ; on y gagne un dessin qui dit ce qu'il montre.
+
+**ET DEUX DÉFAUTS QUE SEULE LA PHOTO DE LA FEUILLE POUVAIT DIRE :** jsPDF ne
+remplit pas un quadrilatère, donc le trapèze se fait en deux triangles — et les
+tracer chacun avec son contour DESSINAIT L'ARÊTE COMMUNE, une diagonale en
+travers de la loupe qui se lit comme un troisième côté. Et la croix était rouge
+à l'écran, noire au PDF.
+
+**UN TROISIÈME DÉFAUT, TROUVÉ PAR UNE ÉPREUVE DU DÉPÔT :** l'énoncé disait
+« (le point vaut 8,2) », c'est-à-dire MOT POUR MOT la réponse de la dernière
+case — et ce texte part dans le journal de l'élève et dans la vue en direct du
+professeur. Le dessin est la question ; un énoncé qui se suffirait sans lui n'en
+est plus une.
+
+**ET UN QUATRIÈME, QUI TENAIT DANS LA LONGUEUR DU TEXTE.** Sur une tablette de
+768 × 1024, relevé enfant par enfant : l'énoncé prenait 211 px — PLUS QUE LE
+DESSIN (200 px) — et LE PAVÉ SORTAIT DE L'ÉCRAN DE 75 PIXELS. On cherchait du
+côté de la figure ; c'était le texte. L'énoncé tient maintenant en une phrase,
+« À chaque étage, écris la graduation juste à GAUCHE de la croix », et ce qu'il
+disait de plus est passé dans un troisième indice.
+
+**LA CASCADE TIENT MAINTENANT SUR LES QUATRE ÉCRANS** — `node
+tools/cascadeSurLesEcrans.mjs` les relève tous les quatre, et le pavé est entier
+partout. À 9vh, la figure tenait dans 76 px sur un téléphone : 19 px par étage,
+chaque case 12 × 4 PIXELS. Playwright les remplissait toutes les quatre et le
+verdict disait « Parfait ! » — **une mesure qui dit « ça fonctionne » ne dit pas
+« c'est jouable ».** Après, la case fait 22 × 8 px sur un téléphone, 31 × 11 sur
+une tablette, 78 × 28 sur un ordinateur.
+
+**UNE CHOSE À DIRE À RÉMY SANS LA MAQUILLER** : quatre étages sur un téléphone
+restent petits. L'exercice est confortable sur ordinateur et correct sur
+tablette ; sur un téléphone, la marche « deux étages » est celle qui convient.
+Le dépôt avait déjà tranché cela — `--fig-etirement` retombe à 1 sur les paliers
+du téléphone pour qu'une figure haute ne chasse pas le clavier.
+
+Reste le troisième, « Ranger, et un mot apparaît ».
+
 ---
 
 ## L'exercice récompense doit se présenter — 13 novembre
