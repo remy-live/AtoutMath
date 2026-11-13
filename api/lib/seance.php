@@ -240,7 +240,8 @@ function etatDeSeance(array $eleve): array
                               pause_mot, bac_ferme, bac_minutes, bac_jeux,
                               hors_seance, hors_seance_mot,
                               defi_exo, defi_graine, defi_mode, defi_debut, defi_fin,
-                              defi_manches, defi_duree, defi_but, defi_equipes,
+                              defi_manches, defi_duree, defi_but, defi_equipes, defi_malus,
+                              defi_params,
                               jeu_type, jeu_graine, jeu_debut, jeu_fin, jeu_reglages
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
@@ -519,6 +520,22 @@ function etatDeSeance(array $eleve): array
  */
 const DEFI_PAUSE = 20;
 
+/**
+ * CE QUE COÛTE UNE FAUTE PAR DÉFAUT, en bonnes réponses.
+ *
+ * RÉMY : « j'ai un élève qui a cliqué n'importe quoi en qcm et aue plein de
+ * point, il faudrait faire qqch ».
+ *
+ * UNE FAUTE ANNULE UNE BONNE RÉPONSE. Avec quatre propositions, une réponse au
+ * hasard rapporte alors (1/4 × 1) − (3/4 × 1) = −0,5 point : marteler devient
+ * perdant tout seul, sans qu'on ait rien à interdire ni personne à exclure.
+ * Celui qui cherche, lui, ne perd presque rien — il se trompe peu.
+ *
+ * C'EST LE DÉFAUT ET NON UN RÉGLAGE OBLIGATOIRE : le professeur peut le mettre
+ * à zéro avant un défi où il veut qu'on ose.
+ */
+const DEFI_MALUS_PAR_DEFAUT = 1;
+
 function defiEnCours(array $classe): ?array
 {
     $fin = (int) ($classe['defi_fin'] ?? 0);
@@ -542,6 +559,17 @@ function defiEnCours(array $classe): ?array
         // c'est le défi ordinaire, avec son classement.
         'but'     => max(0, (int) ($classe['defi_but'] ?? 0)),
         'equipes' => !empty($classe['defi_equipes']),
+        // CE QUE COÛTE UNE FAUTE, en bonnes réponses. Voir `defi_malus` dans
+        // le schéma : NULL veut dire « le défaut », et non « sans pénalité ».
+        'malus'   => $classe['defi_malus'] === null
+            ? DEFI_MALUS_PAR_DEFAUT : max(0, min(2, (int) $classe['defi_malus'])),
+        // LES RÉGLAGES DE L'EXERCICE POUR CE DÉFI — la marche choisie, le plus
+        // souvent. Rémy : « quand ce sont des exercices à pas, je ne peux
+        // choisir le pas ». Vide veut dire « ceux de l'exercice ».
+        'params'  => (function () use ($classe) {
+            $p = json_decode((string) ($classe['defi_params'] ?? ''), true);
+            return is_array($p) ? $p : [];
+        })(),
         'manches' => max(1, (int) ($classe['defi_manches'] ?? 1)),
         'duree'   => max(1, (int) ($classe['defi_duree'] ?? 0)) ?: null,
         'pause'   => DEFI_PAUSE,

@@ -7341,3 +7341,25 @@ plus d'un.**
   sur un commentaire ajouté. Une fenêtre fixe tombera à nouveau, et l'on
   prendra l'habitude de la rallonger sans la lire : c'est ainsi qu'une épreuve
   devient une formalité.
+
+---
+
+**Cinq fois : l'épreuve épingle la liste d'arguments entière** — 13 novembre
+
+- *Ce que je voulais faire* : ajouter deux réglages au lancement d'un défi —
+  ce que coûte une faute, et la marche travaillée.
+- *Ce qui a coûté* : quatre minutes de `npm test` pour apprendre que
+  `tests/pilotageDuDirect.test.mjs` exigeait
+  `{ manches, memeGraine: rejoue, but, equipes }` au caractère près. Elle est
+  tombée en annonçant « le mode choisi ne part pas au serveur », ce qui était
+  faux : il part, avec deux compagnons de plus.
+- *Combien de fois* : ||||| (c'est la cinquième du mois, avec `retraitVivant`,
+  « l'épreuve cherche un NOM et trouve le commentaire », `reglesDesPuissances`
+  qui épinglait `10^((−8) − (−6))`, et la fenêtre de 2600 caractères)
+- *Ce qui manque* : **la règle est connue, il manque de la voir appliquée au
+  moment où l'on écrit l'épreuve.** Trois formes à bannir, toutes vues ce
+  mois-ci : un objet d'arguments épinglé en entier, une écriture complète
+  ancrée `^…$`, et une fenêtre de N caractères. La forme juste est toujours la
+  même — on extrait, puis on vérifie LES TERMES qui portent la règle. Si cela
+  se reproduit une sixième fois, un petit outil qui relit les épreuves de
+  source et signale ces trois motifs vaudra son écriture.

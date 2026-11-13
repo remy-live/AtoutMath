@@ -401,6 +401,39 @@ function lesTablesDuSchema(bool $sqlite): array
         --     partage la classe en deux, une ligne sur deux, et la répartition
         --     ne bouge pas d'un défi à l'autre.
         defi_equipes   $bool,
+        --   · defi_malus : CE QUE COÛTE UNE FAUTE, en points.
+        --
+        --     RÉMY : « j'ai un élève qui a cliqué n'importe quoi en qcm et aue
+        --     plein de point, il faudrait faire qqch ». Puis, en proposant
+        --     lui-même les leviers : « on peut mettre une option enelevr des
+        --     points ou bloquer si trop de mauvais réponses ou mettre plus de
+        --     case dans le qcm ». Il a choisi le premier.
+        --
+        --     C'EST LE SEUL LEVIER QUI ANNULE LE CALCUL SANS EXCLURE PERSONNE.
+        --     Quatre propositions, une chance sur quatre, et la seule limite
+        --     était la vitesse du doigt : marteler rapportait plus que
+        --     réfléchir. À une faute = une bonne réponse, une réponse au hasard
+        --     rapporte en moyenne (1/4 − 3/4) = −0,5 point. Marteler devient
+        --     perdant tout seul, et celui qui cherche ne perd presque rien —
+        --     il se trompe peu.
+        --
+        --     NULL VEUT DIRE « LE DÉFAUT », ET NON « SANS PÉNALITÉ » : les
+        --     défis lancés avant cette version ne portent pas la colonne, et
+        --     ils doivent se comporter comme les suivants. Zéro, lui, veut
+        --     dire sans pénalité, et c'est un choix du professeur.
+        defi_malus     " . ($sqlite ? 'INTEGER' : 'INT') . " NULL,
+        --   · defi_params : LES RÉGLAGES DE L'EXERCICE, pour ce défi-là.
+        --
+        --     RÉMY : « pour le défi, quand ce sont des exercices à pas, je ne
+        --     peux choisir le pas ». Le défi prenait l'exercice et ses
+        --     réglages PAR DÉFAUT : sur un exercice à marches, il tirait dans
+        --     toutes, alors que le professeur qui lance un défi vient de
+        --     travailler UNE règle précise au tableau.
+        --
+        --     DU JSON, ET BORNÉ : il repart vers trente ardoises à chaque
+        --     battement. Vide ou NULL veut dire « les réglages de l'exercice »,
+        --     c'est-à-dire le défi d'avant cette version.
+        defi_params    $txtNull,
         -- ── LE JEU DE CLASSE EN COURS ─────────────────────────────────────
         --
         -- RÉMY : « Fais tout » — c'est-à-dire : les quatre jeux de classe,

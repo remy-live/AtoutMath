@@ -1829,7 +1829,8 @@ function handleTeacherClass(): void
             db()->prepare('UPDATE classes SET defi_mode = NULL,
                                   defi_debut = NULL, defi_fin = NULL,
                                   defi_manches = NULL, defi_duree = NULL,
-                                  defi_but = NULL, defi_equipes = 0
+                                  defi_but = NULL, defi_equipes = 0,
+                                  defi_malus = NULL
                            WHERE id = ?')->execute([$classe['id']]);
             respond(['ok' => true, 'defi' => null, 'dit' => 'Défi arrêté.']);
         }
@@ -1854,6 +1855,37 @@ function handleTeacherClass(): void
         // CINQ AU PLUS, et la durée donnée est celle d'UNE manche : « 3 × 40 s »
         // se lit tout seul, « deux minutes coupées en trois » non.
         $manches = max(1, min(5, (int) ($body['manches'] ?? 1)));
+        // ── CE QUE COÛTE UNE FAUTE ────────────────────────────────────────
+        //
+        // RÉMY : « j'ai un élève qui a cliqué n'importe quoi en qcm et aue
+        // plein de point, il faudrait faire qqch ».
+        //
+        // ZÉRO, UN OU DEUX BONNES RÉPONSES. Au-delà, un élève qui cherche
+        // vraiment et se trompe trois fois de suite se retrouve à zéro, et le
+        // défi ne lui apprend plus qu'à ne pas jouer.
+        //
+        // ABSENT VEUT DIRE « LE DÉFAUT » (une), et non « sans pénalité » : une
+        // ardoise ou un écran qui n'a pas encore reçu la mise à jour ne doit
+        // pas ramener en silence le barème qu'on vient de corriger.
+        $malus = isset($body['malus'])
+            ? max(0, min(2, (int) $body['malus'])) : DEFI_MALUS_PAR_DEFAUT;
+        // ── LES RÉGLAGES DE L'EXERCICE, POUR CE DÉFI-LÀ ──────────────────
+        //
+        // RÉMY : « pour le défi, quand ce sont des exercices à pas, je ne peux
+        // choisir le pas ». Le défi prenait l'exercice avec ses réglages PAR
+        // DÉFAUT — sur un exercice à marches, il tirait dans toutes, alors que
+        // le professeur qui lance un défi vient de travailler UNE règle au
+        // tableau.
+        //
+        // BORNÉ COMME CEUX DU JEU, et pour la même raison : ils repartent vers
+        // trente ardoises à chaque battement. Un JSON de dix kilo-octets
+        // recopié trente fois par battement n'est pas un réglage, c'est une
+        // panne.
+        $params = is_array($body['params'] ?? null) ? $body['params'] : [];
+        $paramsJson = $params ? json_encode($params) : null;
+        if ($paramsJson !== null && strlen($paramsJson) > 1200) {
+            fail(400, 'params', 'Trop de réglages pour un défi.');
+        }
         // ── COMMENT ON COMPTE : classement, but commun, ou deux équipes ──
         //
         // RÉMY : « Le défi ca cartonne, des idées dans ce style ». Un
@@ -1913,10 +1945,11 @@ function handleTeacherClass(): void
         $fin = $debut + $manches * $secondes + ($manches - 1) * $pause;
         db()->prepare('UPDATE classes SET defi_exo = ?, defi_graine = ?, defi_mode = ?,
                               defi_debut = ?, defi_fin = ?, defi_manches = ?, defi_duree = ?,
-                              defi_but = ?, defi_equipes = ?
+                              defi_but = ?, defi_equipes = ?, defi_malus = ?,
+                              defi_params = ?
                        WHERE id = ?')
             ->execute([$exo, $graine, $mode, $debut, $fin, $manches, $secondes,
-                       $but ?: null, $equipes, $classe['id']]);
+                       $but ?: null, $equipes, $malus, $paramsJson, $classe['id']]);
         // ── CE QU'ON LUI RÉPOND, ET POURQUOI C'EST PLUS QU'UNE POLITESSE ──
         //
         // QUAND IL LAISSE LE SERVEUR CALCULER LE BUT, IL DOIT LIRE LE NOMBRE :
@@ -2372,6 +2405,16 @@ function handleTeacherLive(): void
         // rien. Elle survit à l'arrêt du défi, exprès : on corrige APRÈS.
         'defiGraine' => (string) ($classe['defi_graine'] ?? ''),
         'defiExo' => (string) ($classe['defi_exo'] ?? ''),
+        // ET LES RÉGLAGES DU DÉFI SURVIVENT AVEC LA GRAINE, pour la même
+        // raison : « Rejouer » doit relancer LE MÊME défi, et « Au tableau »
+        // projeter les VRAIES questions qu'on vient de poser. Rémy : « quand
+        // ce sont des exercices à pas, je ne peux choisir le pas » — si les
+        // réglages s'effaçaient à l'arrêt, l'écran de correction montrerait
+        // des questions d'une autre marche que celles que la classe a eues.
+        'defiParams' => (function () use ($classe) {
+            $p = json_decode((string) ($classe['defi_params'] ?? ''), true);
+            return is_array($p) ? $p : [];
+        })(),
         'classement' => classementDuDefi($classe),
         // ── CE QUE LA CLASSE A FAIT ENSEMBLE, ET SON RECORD ──────────────
         //

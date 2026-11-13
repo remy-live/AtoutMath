@@ -371,7 +371,16 @@ export const lancerLeDefi = (classId, exo, secondes, mode = 'qcm', opts = {}) =>
         manches: opts.manches || 1,
         memeGraine: !!opts.memeGraine,
         but: opts.but === undefined ? 0 : opts.but,
-        equipes: !!opts.equipes
+        equipes: !!opts.equipes,
+        // CE QUE COÛTE UNE FAUTE, en bonnes réponses — voir `defi_malus` au
+        // serveur. Absent veut dire « le défaut », et non « sans pénalité » :
+        // un écran qui n'a pas encore la mise à jour ne doit pas ramener en
+        // silence le barème qu'on vient de corriger.
+        ...(opts.malus === undefined ? {} : { malus: opts.malus }),
+        // LES RÉGLAGES DE L'EXERCICE POUR CE DÉFI — la marche choisie, le plus
+        // souvent. Rémy : « quand ce sont des exercices à pas, je ne peux
+        // choisir le pas ». Vide veut dire « ceux de l'exercice ».
+        ...(opts.params ? { params: opts.params } : {})
     });
 
 /**

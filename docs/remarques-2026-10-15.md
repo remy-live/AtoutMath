@@ -6989,3 +6989,8 @@ d'abord ».
    en une minute pénalisent surtout le lecteur lent.
 
 **À LUI PRÉSENTER AVANT D'ÉCRIRE** — « fais moi des propositions d'abord ».
+
+**SON CHOIX : LA FAUTE COÛTE DES POINTS**, réglable avant chaque défi
+(0 / −5 / −10). C'est le levier arithmétique, et le seul qui annule vraiment le
+calcul du marteleur sans exclure personne : à −10 pour +10, une réponse au
+hasard sur quatre propositions rapporte en moyenne −5.

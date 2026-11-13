@@ -522,6 +522,21 @@ export function defiEnCours(maintenant = Math.floor(Date.now() / 1000)) {
         // c'est même la façon la plus vivante de jouer.
         but: Math.max(0, Math.round(Number(d.but) || 0)),
         equipes: !!d.equipes,
+        // CE QUE COÛTE UNE FAUTE, en bonnes réponses. Rémy : « j'ai un élève
+        // qui a cliqué n'importe quoi en qcm et aue plein de point ».
+        //
+        // ABSENT VEUT DIRE « LE DÉFAUT » (une), et non « sans pénalité » : un
+        // défi annoncé par un serveur qui n'a pas encore la colonne ne doit
+        // pas ramener en silence le barème qu'on vient de corriger. Zéro, lui,
+        // est un choix du professeur et se respecte.
+        malus: d.malus === undefined || d.malus === null
+            ? 1 : Math.max(0, Math.min(2, Math.round(Number(d.malus) || 0))),
+        // LES RÉGLAGES DE L'EXERCICE POUR CE DÉFI — la marche choisie, le plus
+        // souvent. Rémy : « quand ce sont des exercices à pas, je ne peux
+        // choisir le pas ». Vide veut dire « ceux de l'exercice », c'est-à-dire
+        // le défi d'avant cette version : un parcours lancé hier ne change pas
+        // de forme.
+        params: (d.params && typeof d.params === 'object') ? d.params : {},
         manches,
         dureeManche,
         // OÙ L'ON EN EST : la manche, ce qu'il y reste, et la pause s'il y en a

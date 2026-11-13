@@ -79,6 +79,9 @@ import { adresseDuPoste } from './posteEleve.js';
 import { versionLisible } from '../core/versionDuSite.js';
 import { copieDEssai } from '../core/copieDEssai.js';
 import { getExerciseById, skillsOf } from '../data/catalog.js';
+// LA LISTE DES MARCHES D'UN EXERCICE SE LIT SUR SON GÉNÉRATEUR — voir
+// `marchesPourLeDefi`, qui dit pourquoi.
+import { getGenerator } from '../core/registry.js';
 import { state } from '../core/state.js';
 import { getSkill } from '../data/skills.js';
 import { indicesProposes } from '../core/indice.js';
@@ -393,6 +396,27 @@ export async function ouvrirEspaceClasses() {
                     : 'Décor retiré : les parcours reprennent les couleurs du logiciel.',
                     'success');
             });
+            return;
+        }
+        // ── LE PAS SUIT L'EXERCICE DU DÉFI ───────────────────────────────
+        //
+        // RÉMY : « pour le défi, quand ce sont des exercices à pas, je ne peux
+        // choisir le pas ». Changer d'exercice change la liste des marches —
+        // et souvent la fait disparaître.
+        //
+        // ON NE REDESSINE PAS LA BARRE POUR AUTANT : elle porte six autres
+        // réglages que le professeur vient peut-être de poser, et les refaire
+        // les remettrait tous au défaut au pire moment. On remplit ce seul
+        // déroulant.
+        const exoDefi = e.target.closest('[data-defi-exo]');
+        if (exoDefi) {
+            const zone = exoDefi.closest('.ec-pilote') || document;
+            const champ = zone.querySelector('[data-defi-marche]');
+            if (champ) {
+                const options = marchesPourLeDefi(exoDefi.value);
+                champ.innerHTML = options;
+                champ.hidden = !options;
+            }
             return;
         }
         const sel = e.target.closest('[data-seance-detail]');
@@ -3009,6 +3033,19 @@ function outilDefi(info, ch, enCours, defiCourt) {
                         aria-label="L'exercice du défi">
                     ${exercicesPourLeDefi(info)}
                 </select>
+                <!-- LE PAS, QUAND L'EXERCICE EN A. Rémy : « pour le défi, quand
+                     ce sont des exercices à pas, je ne peux choisir le pas ».
+
+                     IL SE REMPLIT AU CHANGEMENT D'EXERCICE et se cache quand
+                     l'exercice n'a pas de marches — un déroulant vide est pire
+                     qu'un déroulant absent : on l'ouvre, on ne comprend pas, et
+                     l'on doute du reste de la barre. Voir l'écoute de
+                     « change » plus haut. -->
+                <select class="ec-champ ec-champ--mince" data-defi-marche
+                        aria-label="La marche travaillée"${
+    marchesPourLeDefi((info && info.defi_exo) || '') ? '' : ' hidden'}>
+                    ${marchesPourLeDefi((info && info.defi_exo) || '')}
+                </select>
                 <!-- PAS ec-champ--court : CE N'EST PAS UN CHAMP DE CHIFFRES.
                      RÉMY : « pour le défi de la classe, on ne voit pas le
                      temps (il est tronqué) ». Mesuré sur sa capture : « 1 mi »
@@ -3043,6 +3080,28 @@ function outilDefi(info, ch, enCours, defiCourt) {
                      quarante secondes lui donnent DEUX PAUSES de vingt
                      secondes pour commenter, et la classe repart sur sa
                      lancée. La durée choisie est celle d'UNE manche. -->
+                <!-- CE QUE COÛTE UNE FAUTE. Rémy : « j'ai un élève qui a
+                     cliqué n'importe quoi en qcm et aue plein de point, il
+                     faudrait faire qqch ».
+
+                     QUATRE PROPOSITIONS, UNE CHANCE SUR QUATRE, et la seule
+                     limite était la vitesse du doigt : marteler rapportait
+                     plus que réfléchir, et l'élève avait raison de
+                     recommencer. À une faute = une bonne réponse, le hasard
+                     rapporte en moyenne −0,5 point par clic — il n'y a rien à
+                     interdire ni personne à exclure.
+
+                     « SANS PÉNALITÉ » RESTE OFFERT, en premier recours pour un
+                     défi de découverte où l'on veut qu'ils osent. Au-delà de
+                     deux, un élève qui cherche vraiment et se trompe trois
+                     fois de suite se retrouve à zéro, et le défi ne lui
+                     apprend plus qu'à ne pas jouer. -->
+                <select class="ec-champ ec-champ--mince" data-defi-malus
+                        aria-label="Ce que coûte une faute">
+                    <option value="1">faute : −1 point</option>
+                    <option value="2">faute : −2 points</option>
+                    <option value="0">faute : sans pénalité</option>
+                </select>
                 <select class="ec-champ ec-champ--mince" data-defi-manches
                         aria-label="En combien de manches">
                     <option value="1">1 manche</option>
@@ -4975,11 +5034,16 @@ async function brancher(e, redessiner) {
         if (!exo) return;
         const { questionDuDefi } = await import('./defiUI.js');
         const graine = 'apercu-' + Date.now();
+        // L'APERÇU MONTRE CE QU'ON VA LANCER, marche comprise : un aperçu qui
+        // tire dans toutes les marches alors qu'on en a choisi une ne prévient
+        // de rien, et c'est précisément ce qu'il existe pour faire.
+        const marcheVue = (zone.querySelector('[data-defi-marche]') || {}).value || '';
+        const reglagesVus = marcheVue ? { marches: [marcheVue] } : {};
         const cartes = [];
         let sansChoix = 0;
         let estimations = 0;
         for (let n = 0; n < 3; n++) {
-            const item = questionDuDefi(exo, graine, n);
+            const item = questionDuDefi(exo, graine, n, reglagesVus);
             if (!item) continue;
             // L'ANGLE À ESTIMER EST TOUT L'ÉNONCÉ, et sans lui l'aperçu de
             // « À vue d'œil » montrait TROIS FOIS LA MÊME PHRASE — « Combien
@@ -5074,8 +5138,17 @@ async function brancher(e, redessiner) {
             if (rejoue) showToast('Aucun défi à rejouer dans cette classe.', 'info');
             return;
         }
+        // CE QUE COÛTE UNE FAUTE : zéro, une ou deux bonnes réponses. Absent
+        // veut dire « le défaut » et non « sans pénalité » — voir
+        // `DEFI_MALUS_PAR_DEFAUT` au serveur.
+        const champMalus = zone.querySelector('[data-defi-malus]');
+        const malus = champMalus ? Math.max(0, Math.min(2, Number(champMalus.value))) : 1;
+        // LA MARCHE CHOISIE, QUAND IL Y EN A UNE. Vide veut dire « toutes »,
+        // c'est-à-dire ce que le défi faisait jusqu'ici.
+        const marche = (zone.querySelector('[data-defi-marche]') || {}).value || '';
+        const params = marche ? { marches: [marche] } : {};
         await fait(lancerLeDefi(cid, exo, secondes, mode,
-            { manches, memeGraine: rejoue, but, equipes }), () => {
+            { manches, memeGraine: rejoue, but, equipes, malus, params }), () => {
             const info = (vue.liste && vue.liste.classe);
             if (info) info.defi_exo = exo;
         });
@@ -5188,8 +5261,12 @@ async function brancher(e, redessiner) {
         }
         const { questionDuDefi } = await import('./defiUI.js');
         const cartes = [];
+        // LES RÉGLAGES DU DÉFI QU'ON VIENT DE JOUER, et non ceux de
+        // l'exercice : projeter des questions d'une autre marche que celles
+        // que la classe a eues ne corrigerait rien du tout.
+        const reglages = (vue.direct && vue.direct.defiParams) || {};
         for (let n = 0; n < 12; n++) {
-            const item = questionDuDefi(exo, graine, n);
+            const item = questionDuDefi(exo, graine, n, reglages);
             if (!item) break;
             cartes.push({
                 enonce: (item.prompt && item.prompt.html)
@@ -5673,6 +5750,40 @@ function signatureDuPilote() {
  * « on pourrait faire cela avec les générateurs ». Un exercice sans générateur
  * est un jeu à plateau — on ne joue pas au 2048 pendant une minute à trente.
  */
+/**
+ * LES MARCHES D'UN EXERCICE, POUR LE DÉFI — et rien quand il n'en a pas.
+ *
+ * RÉMY : « pour le défi, quand ce sont des exercices à pas, je ne peux choisir
+ * le pas ». Le défi prenait l'exercice avec ses réglages par défaut : sur un
+ * exercice à marches, il tirait dans TOUTES, alors que le professeur qui lance
+ * un défi vient de travailler UNE règle au tableau.
+ *
+ * « TOUTES LES MARCHES » RESTE EN PREMIER, et ce n'est pas un détail : c'est
+ * ce que le défi faisait jusqu'ici, donc ce qu'il continue de faire quand on
+ * ne touche à rien.
+ *
+ * ON LIT LA LISTE DANS LE RÉGLAGE DE L'EXERCICE (`paramMarches`), et non dans
+ * une table écrite ici : une seconde liste finirait par ne plus dire la même
+ * chose que la première, et ce dépôt a payé cette leçon quatre fois.
+ */
+function marchesPourLeDefi(exoId, choisie = '') {
+    const exo = exoId ? getExerciseById(exoId) : null;
+    // LES RÉGLAGES VIVENT SUR LE GÉNÉRATEUR, PAS SUR L'EXERCICE, et c'est ce
+    // qui m'a fait écrire une première version qui ne proposait jamais rien.
+    // L'entrée du catalogue porte les VALEURS choisies (`exo.params`) ; la
+    // LISTE des marches, elle, est déclarée là où elles sont jouées. Mesuré :
+    // `exo.paramSchema` vaut `undefined` sur les deux exercices de puissances.
+    const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
+    const reglage = ((gen && gen.params) || [])
+        .find(p => p && p.id === 'marches' && Array.isArray(p.marches));
+    const liste = reglage ? reglage.marches : [];
+    if (!liste.length) return '';
+    const mot = (reglage && reglage.mot) || 'marche';
+    return `<option value="">toutes les ${mot}s</option>`
+        + liste.map(m => `<option value="${esc(m.id)}"${m.id === choisie ? ' selected' : ''}>`
+            + `${esc(m.nom)}</option>`).join('');
+}
+
 function exercicesPourLeDefi(info) {
     const choisi = (info && info.defi_exo) || '';
     return catalogueComplet

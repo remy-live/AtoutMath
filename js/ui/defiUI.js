@@ -229,11 +229,20 @@ const echapper = (s) => String(s == null ? '' : s)
  * numéro sept est la même chez les trente élèves, et elle ne dépend pas de la
  * vitesse à laquelle on y arrive.
  */
-export function questionDuDefi(exo, graine, n) {
+export function questionDuDefi(exo, graine, n, reglages = null) {
     const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
     if (!gen) return null;
     try {
-        return gen.generate(exo.params || {}, {
+        // LES RÉGLAGES DU DÉFI PASSENT PAR-DESSUS CEUX DE L'EXERCICE, et non
+        // à leur place. Rémy : « pour le défi, quand ce sont des exercices à
+        // pas, je ne peux choisir le pas ». Il choisit UNE marche ; tout le
+        // reste de ce que l'exercice déclare — ses bornes, sa façon de
+        // compter — doit continuer de s'appliquer. Les remplacer en bloc
+        // donnerait un exercice que personne n'a réglé.
+        const params = (reglages && typeof reglages === 'object' && Object.keys(reglages).length)
+            ? { ...(exo.params || {}), ...reglages }
+            : (exo.params || {});
+        return gen.generate(params, {
             rng: makeRng(`${graine}-${n}`), index: n, total: 999
         });
     } catch (e) { return null; }
@@ -412,6 +421,27 @@ async function questionner(defi, exo) {
     // le compteur du haut, la place du dessin et la taille de l'énoncé en
     // dépendent, et l'exercice ne change pas en cours de défi.
     const enPoints = compteEnPoints(defi.exo, defi.graine);
+    // ── CE QUE COÛTE UNE FAUTE ──────────────────────────────────────────
+    //
+    // RÉMY : « j'ai un élève qui a cliqué n'importe quoi en qcm et aue plein de
+    // point, il faudrait faire qqch ». Quatre propositions, une chance sur
+    // quatre, et la seule limite était la vitesse du doigt : marteler
+    // rapportait plus que réfléchir, et l'élève avait RAISON de recommencer —
+    // c'est le logiciel qui lui avait appris que c'était payant.
+    //
+    // À une faute = une bonne réponse, le hasard rapporte en moyenne
+    // (1/4 − 3/4) = −0,5 point par clic. Il n'y a rien à interdire ni personne
+    // à exclure : le barème s'en charge.
+    //
+    // ABSENT VEUT DIRE « LE DÉFAUT » : un défi annoncé par un serveur qui n'a
+    // pas encore la colonne ne doit pas ramener en silence l'ancien barème.
+    const malus = Math.max(0, Math.min(2, Number(defi.malus ?? 1)));
+    // ET L'ÉLÈVE DOIT VOIR LE SCORE QUI COMPTE. Sur un défi de calcul, le
+    // compteur du haut montrait les BONNES RÉPONSES, tandis que le classement
+    // se fait sur les POINTS : avec une pénalité, les deux cessent de
+    // coïncider, et l'élève perdrait des places sans qu'aucun chiffre ne bouge
+    // sous ses yeux. Une règle qu'on ne voit pas s'appliquer ne s'apprend pas.
+    const enScore = enPoints || malus > 0;
     const voile = plateau(`
         <div class="defi-carte defi-carte--jeu${enPoints ? ' defi-carte--estim' : ''}">
             <!-- ON DIT CE QUE C'EST, MÊME PENDANT. Les trois secondes de départ
@@ -436,7 +466,7 @@ async function questionner(defi, exo) {
                      tombe pile, huit de moins par degré d'écart — et afficher
                      « 3 bonnes réponses » cacherait exactement ce que Rémy
                      voulait rendre motivant : de combien on s'est approché. -->
-                <span class="defi-score">${enPoints
+                <span class="defi-score">${enScore
                     ? '⭐ <b data-bonnes>0</b> pts'
                     : '✅ <b data-bonnes>0</b>'}</span>
             </div>
@@ -649,7 +679,9 @@ async function questionner(defi, exo) {
     const poser = () => {
         if (fini) return;
         if (clavier) { document.removeEventListener('keydown', clavier); clavier = null; }
-        const item = questionDuDefi(exo, defi.graine, n);
+        // LES RÉGLAGES DU DÉFI, ET NON CEUX DE L'EXERCICE : le professeur a pu
+        // choisir une marche en lançant. Voir `questionDuDefi`.
+        const item = questionDuDefi(exo, defi.graine, n, defi.params);
         if (!item) { fini = true; terminer(); return; }
         el('[data-question]').innerHTML = (item.prompt && item.prompt.html)
             ? item.prompt.html
@@ -666,7 +698,7 @@ async function questionner(defi, exo) {
          * parie ! » sauterait la correction qu'on vient de demander.
          */
         const enchainer = (attente, passable = false) => {
-            el('[data-bonnes]').textContent = String(enPoints ? points : bonnes);
+            el('[data-bonnes]').textContent = String(enScore ? points : bonnes);
             // ET LE BATTEMENT L'EMPORTERA : c'est le seul endroit par lequel
             // passent les DEUX façons de répondre, le choix et le pari.
             annoncerLeScore();
@@ -716,6 +748,10 @@ async function questionner(defi, exo) {
             if (fini) return;
             total++;
             if (juste) { bonnes++; points++; ms += Date.now() - parti; }
+            // ET LA FAUTE COÛTE. On ne descend pas sous zéro : un score négatif
+            // n'apprend rien de plus et décourage celui qui a commencé par se
+            // tromper — c'est aussi ce que le serveur garde (`max(0, …)`).
+            else points = Math.max(0, points - malus);
             zone.classList.add(juste ? 'defi-ok' : 'defi-ko');
             enchainer(260);
         };

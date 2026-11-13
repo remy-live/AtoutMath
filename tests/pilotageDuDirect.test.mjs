@@ -225,9 +225,21 @@ test('LE DÉROULANT DU MODE EXISTE, ET QUELQU\'UN LE LIT', () => {
     assert.match(ec, /querySelector\('\[data-defi-ensemble\]'\)/,
         'le déroulant est à l\'écran mais personne ne lit sa valeur : le '
         + 'professeur choisira un objectif et lancera un défi ordinaire');
-    // ET CE QU'IL DIT ARRIVE JUSQU'À `lancerLeDefi`.
-    assert.match(ec, /lancerLeDefi\(cid, exo, secondes, mode,\s*\n?\s*\{ manches, memeGraine: rejoue, but, equipes \}\)/,
-        'le mode choisi ne part pas au serveur');
+    // ── ET CE QU'IL DIT ARRIVE JUSQU'À `lancerLeDefi` ────────────────────
+    //
+    // ON ÉPINGLE LES TERMES, PAS LA LISTE ENTIÈRE. Cette ligne exigeait
+    // `{ manches, memeGraine: rejoue, but, equipes }` au caractère près : le
+    // jour où le barème des fautes et la marche choisie s'y sont ajoutés, elle
+    // est tombée en annonçant que « le mode choisi ne part pas au serveur » —
+    // ce qui était faux. Cinquième fois ce mois-ci, et c'est au journal des
+    // frictions : une épreuve qui lit du code garde CE QU'ELLE GARDE.
+    const appel = /lancerLeDefi\(cid, exo, secondes, mode,\s*\n?\s*\{([^}]*)\}\)/.exec(ec);
+    assert.ok(appel, 'le lancement du défi a changé de forme');
+    for (const terme of ['manches', 'memeGraine: rejoue', 'but', 'equipes']) {
+        assert.ok(appel[1].includes(terme),
+            `« ${terme} » ne part plus au serveur : le professeur choisira et `
+            + 'le défi partira sans son choix');
+    }
 });
 
 test('ET LE RÉGLAGE TRAVERSE LE NOYAU JUSQU\'AU SERVEUR', () => {
