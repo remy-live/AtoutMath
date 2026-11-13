@@ -2672,7 +2672,12 @@ const largeurEtageFraction = (mm, lTrait) =>
 
 function geoGraduation(item, slot) {
     const m = item.meta || {};
-    const rang = RANG_GRADUATION[m.zoom] ?? 1;
+    // LE BLOC PEUT DIRE SON RANG LUI-MÊME, et c'est ce que fait « Graduer un
+    // Axe » : ses trois marches s'appellent dixiemes, centiemes, milliemes, et
+    // la table ci-dessus s'arrête aux centièmes. Une table à allonger à la
+    // main est une table qu'on oublie — ce dépôt l'a payé sur les colonnes de
+    // la séance. On lit donc `m.rang` quand il est là.
+    const rang = Number.isFinite(m.rang) ? m.rang : (RANG_GRADUATION[m.zoom] ?? 1);
     // TOUT SE CALE SUR LA BOÎTE DU BLOC, jamais sur `slot.taille` : celle-ci
     // est le côté d'un emplacement CARRÉ, et un axe est large et bas. Mesurée
     // au carré, l'écriture sortait trois fois trop grosse et le trait de
@@ -2720,6 +2725,108 @@ function geoGraduation(item, slot) {
         pt: Math.max(6, Math.min(11, b.h * 0.42)),
         px: (i) => x0 + i * pas
     };
+}
+
+/**
+ * GRADUER UN AXE, SUR LE PAPIER — les cases sont vides, l'élève les remplit.
+ *
+ * RÉMY, page « Ordre · Axe », exercices 13 et 15 : « on a ce genre d'exercice ? »
+ *
+ * LA MÊME GÉOMÉTRIE QUE LA LOUPE, et c'est voulu : `geoGraduation` sait déjà
+ * poser l'axe, ses crans et ses étiquettes dans la boîte d'un bloc. Ce qui
+ * change tient en deux lignes — il n'y a pas de croix à placer, et sous
+ * certains crans il y a un RECTANGLE à remplir.
+ *
+ * LES CASES SONT SOUS L'AXE, À LEUR CRAN, et non alignées en bas de page :
+ * c'est l'alignement avec la graduation qui fait l'exercice. Une case posée
+ * ailleurs demanderait de se souvenir de quel cran elle parle.
+ */
+function graduerPreviewHtml(item, slot, k, solution) {
+    const g = geoGraduation(item, slot);
+    const m = g.m;
+    let html = '';
+    const bout = Math.min(g.pas * 0.5, 6);
+
+    html += `<div style="position:absolute; left:${g.x0 * k}px; top:${g.yAxe * k}px;
+        width:${(g.larg + bout) * k}px; height:${Math.max(1, 0.5 * k)}px; background:#1a202c"></div>`;
+    html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
+        <path d="M ${((g.x0 + g.larg + bout) * k).toFixed(2)} ${(g.yAxe * k).toFixed(2)}
+                 l ${(-g.cran * 0.55 * k).toFixed(2)} ${(-g.cran * 0.3 * k).toFixed(2)}
+                 l 0 ${(g.cran * 0.6 * k).toFixed(2)} Z" fill="#1a202c"/></svg>`;
+    for (let i = 0; i <= g.nb; i++) {
+        const grand = i % g.grand === 0;
+        const h = grand ? g.cran : g.cran * 0.5;
+        html += `<div style="position:absolute; left:${g.px(i) * k}px;
+            top:${(g.yAxe - h) * k}px; width:${Math.max(1, 0.45 * k)}px;
+            height:${2 * h * k}px; background:#1a202c"></div>`;
+    }
+    const police = g.pt * 0.3528 * k;
+    [[0, ecrireDecimal(m.debut, g.rang)], [g.nb, ecrireDecimal(m.fin, g.rang)]]
+        .forEach(([i, t]) => {
+            html += `<div style="position:absolute; left:${(g.px(i) - g.pas) * k}px;
+                top:${(g.yNombres - g.pt * 0.3528) * k}px; width:${2 * g.pas * k}px;
+                text-align:center; font-size:${police}px; font-weight:700;
+                color:#1a202c">${echapperSheet(String(t))}</div>`;
+        });
+
+    // LES CASES. En aperçu comme au PDF, la largeur suit ce qu'on y écrira :
+    // une case de la taille d'un chiffre pour « 2,343 » déborderait.
+    const larg = Math.max(g.pas * 1.5, g.pt * 0.3528 * 3.4);
+    const haut = g.pt * 0.3528 * 1.5;
+    (m.crans || []).forEach((cr, i) => {
+        const x = g.px(cr) - larg / 2;
+        const yb = g.yNombres - haut * 0.78;
+        html += `<div style="position:absolute; left:${x * k}px; top:${yb * k}px;
+            width:${larg * k}px; height:${haut * k}px;
+            border:${Math.max(1, 0.4 * k)}px dashed #7b8798; border-radius:${1.2 * k}px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:${police * 0.92}px; font-weight:700; color:#2f855a">${
+    solution ? echapperSheet(ecrireDecimal((m.valeurs || [])[i], g.rang)) : ''}</div>`;
+    });
+    return html;
+}
+
+/** La même chose dans le PDF — voir l'aperçu pour le raisonnement. */
+function dessinerGraduerPdf(doc, item, slot, solution) {
+    const g = geoGraduation(item, slot);
+    const m = g.m;
+    const bout = Math.min(g.pas * 0.5, 6);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.line(g.x0, g.yAxe, g.x0 + g.larg + bout, g.yAxe);
+    doc.setFillColor(...ENCRE.trait);
+    doc.triangle(g.x0 + g.larg + bout, g.yAxe,
+        g.x0 + g.larg + bout - g.cran * 0.55, g.yAxe - g.cran * 0.3,
+        g.x0 + g.larg + bout - g.cran * 0.55, g.yAxe + g.cran * 0.3, 'F');
+    doc.setLineWidth(0.45);
+    for (let i = 0; i <= g.nb; i++) {
+        const h = (i % g.grand === 0) ? g.cran : g.cran * 0.5;
+        doc.line(g.px(i), g.yAxe - h, g.px(i), g.yAxe + h);
+    }
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(g.pt);
+    [[0, ecrireDecimal(m.debut, g.rang)], [g.nb, ecrireDecimal(m.fin, g.rang)]]
+        .forEach(([i, t]) => doc.text(pourPdf(t), g.px(i), g.yNombres, { align: 'center' }));
+
+    const larg = Math.max(g.pas * 1.5, g.pt * 0.3528 * 3.4);
+    const haut = g.pt * 0.3528 * 1.5;
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...ENCRE.grille);
+    (m.crans || []).forEach((cr, i) => {
+        const x = g.px(cr) - larg / 2;
+        const yb = g.yNombres - haut * 0.78;
+        doc.roundedRect(x, yb, larg, haut, 0.8, 0.8, 'S');
+        if (!solution) return;
+        // LE VERT DU CORRIGÉ, celui que les autres rendus emploient déjà pour
+        // ce qui est écrit à la place de l'élève.
+        doc.setTextColor(47, 133, 90);
+        doc.setFontSize(g.pt * 0.92);
+        doc.text(pourPdf(ecrireDecimal((m.valeurs || [])[i], g.rang)),
+            x + larg / 2, yb + haut * 0.72, { align: 'center' });
+        doc.setTextColor(...ENCRE.texte);
+        doc.setFontSize(g.pt);
+    });
 }
 
 function graduationPreviewHtml(item, slot, k, solution) {
@@ -3772,6 +3879,27 @@ export const RENDUS_NOMBRES = {
         disposition: { cols: 4, rows: 3, maxCols: 5, maxRows: 4 },
         parLigneDefaut: 4
     },
+    // GRADUER UN AXE — sa page « Ordre · Axe », exercices 13 et 15.
+    graduer: {
+        titre: () => 'Graduer un axe',
+        consigne: () => 'Les deux grands traits portent leur nombre. Entre eux, '
+            + 'l\u2019axe est coupé en DIX intervalles égaux : lis d\u2019abord ce que vaut '
+            + 'un intervalle, puis écris dans chaque case le nombre qui lui correspond. '
+            + 'On compte les INTERVALLES depuis le trait de gauche, jamais les traits.',
+        previewGrille: graduerPreviewHtml,
+        pdfGrille: dessinerGraduerPdf,
+        nomBloc: 'Axe', nomBlocs: 'axes',
+        // LES MÊMES PROPORTIONS QUE LA LOUPE, et pour la même raison : un axe
+        // tient sur trois centimètres de haut, et lui en donner huit laisserait
+        // la page à moitié blanche. Il prend en revanche toute la largeur —
+        // plus l\u2019axe est long, plus les intervalles se distinguent, et c\u2019est
+        // justement ce qu\u2019on demande de compter.
+        proportions: { w: 1, h: 0.22 },
+        grilleMax: 170,
+        disposition: { cols: 1, rows: 6, maxCols: 1, maxRows: 8 },
+        parLigneDefaut: 1
+    },
+
     graduation: {
         // LE TITRE DIT CE QUE LA FEUILLE DEMANDE, et ce rendu sert maintenant
         // DEUX exercices : la loupe sur les décimaux, et la fraction sur la

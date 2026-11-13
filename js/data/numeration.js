@@ -562,6 +562,35 @@ export const numerationExercises = [
         instruction: "Entre les deux grands traits, l'axe est coupé en DIX. On compte les INTERVALLES depuis le trait de gauche, jamais les traits. Puis on recommence un cran plus bas : entre 3,5 et 3,6, il y a encore dix intervalles, et un intervalle vaut 0,01. Le réglage « Le pas de la graduation » permet de rester aux centièmes du début à la fin."
     },
 
+    // --- GRADUER UN AXE (sa page « Ordre · Axe », exercices 13 et 15) ---
+    //
+    // RÉMY envoie une page de ses fiches et demande : « on a ce genre
+    // d'exercice ? ». Deux de ses trois colonnes étaient couvertes — « La
+    // Loupe sur la Droite » LIT une abscisse, « Le Dessin Gradué » POSE un
+    // point. La troisième ne l'était pas.
+    //
+    // LIRE UNE CROIX ET GRADUER NE SONT PAS LE MÊME SAVOIR. Lire se fait en
+    // comptant des intervalles jusqu'à la croix ; graduer demande de tenir le
+    // pas sur toute la longueur de l'axe. Un élève peut lire juste et, à qui
+    // lui demande la graduation suivante de 8,13, répondre 8,14 puis 8,15.
+    //
+    // LA MÊME COMPÉTENCE QUE LA LOUPE, et c'est voulu : les deux citent
+    // `num.dec.graduations`, pour que le bilan les réunisse.
+    {
+        id: 'num-graduer-axe',
+        cree: '2026-11-13',
+        title: 'Graduer un Axe',
+        consignePapier: 'Complète les graduations.',
+        colonnesPapier: 1,
+        printable: 'graduer',
+        generatorId: 'num.graduer-axe', activityId: 'numpad',
+        skills: ['num.dec.graduations'],
+        motsClefs: ['graduation', 'graduer', 'axe', 'droite graduée', 'décimaux',
+            'dixièmes', 'centièmes', 'millièmes', 'intercaler', 'compléter'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Les deux grands traits portent leur nombre ; entre eux, l'axe est coupé en DIX intervalles égaux. On lit d'abord le PAS : si l'axe va de 8,1 à 8,2, un intervalle vaut 0,01. Puis, pour chaque case, on compte les intervalles DEPUIS LE TRAIT DE GAUCHE — jamais les traits. Trois cases et non une : une seule se devine par symétrie, trois obligent à compter à chaque fois. Les trois marches sont les trois zooms — dixièmes entre deux entiers, centièmes entre deux dixièmes, millièmes entre deux centièmes — et elles montrent ce que le tableau de numération ne dit jamais : entre deux décimaux, il y en a toujours d'autres."
+    },
+
     // --- Le dessin gradué (demandé par Rémy le 27 octobre) ---
     //
     // RÉMY, quatre captures d'une publication de collègues : « Tu pourrais

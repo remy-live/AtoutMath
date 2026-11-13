@@ -1444,6 +1444,44 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .ax-barre { stroke: var(--text-main); stroke-width: 2; stroke-linecap: round; }
 .ax-point line { stroke: #dc2626; stroke-width: 3.4; stroke-linecap: round; }
 
+/* ── LES CASES À REMPLIR SOUS LES GRADUATIONS ───────────────────────────────
+
+   RÉMY, page « Ordre · Axe », exercices 13 et 15 : GRADUER un axe, et non y
+   lire un point.
+
+   ELLES SONT DANS LE SVG, ET IL FAUT DONC LES PEINDRE ICI. Un `<rect>` sans
+   `fill` est NOIR — c'est le défaut de SVG, et non « transparent » comme en
+   HTML. Mesuré sur la première photo : trois pavés noirs sous l'axe, et le
+   « ? » invisible dessus. C'est exactement le genre de chose qu'aucun compte
+   de sélecteurs ne dit : les trois cases étaient là, et illisibles.
+
+   LE POINTILLÉ DIT « À ÉCRIRE ». Une bordure pleine se lit comme un cadre
+   décoratif ; celle d'un champ qu'on attend est interrompue, comme les traits
+   d'une feuille d'exercice. */
+.ax-case rect {
+    fill: var(--bg-panel);
+    stroke: var(--primary);
+    stroke-width: 1.6;
+    stroke-dasharray: 4 3;
+}
+.ax-trou {
+    fill: var(--text-muted);
+    font-size: 13px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+/* LA CASE VISÉE SE VOIT DE LOIN. Le pavé numérique pose `np-trou--vise` sur
+   celle où il écrit ; sans marque, l'élève tape et ne sait pas où ça tombe. */
+.ax-case:has(.np-trou--vise) rect {
+    fill: color-mix(in srgb, var(--primary) 14%, var(--bg-panel));
+    stroke-dasharray: none;
+    stroke-width: 2.4;
+}
+.np-trou--vise.ax-trou { fill: var(--text-main); }
+/* ET CE QUI EST ÉCRIT N'EST PLUS UN « ? » : il est franc, et noir. */
+.ax-trou:not(:empty) { fill: var(--text-main); }
+
 /* --- Mode apprentissage : la leçon ---------------------------
    Elle occupe le plateau, pas une modale : ce n'est pas un avertissement qu'on
    chasse d'un clic, c'est la première étape de l'exercice. */
@@ -1833,7 +1871,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 
 .rep-point { color: var(--primary-texte); }
 .not-point { color: var(--text-main); }
-.rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
+.rep-point-label { fill: var(--primary); font-size: 13px; font-weight: 800; }
 
 .rep-hit { fill: transparent; cursor: pointer; transition: fill .12s; outline: none; }
 /* LE SURVOL N'EXISTE QUE POUR UNE VRAIE SOURIS.
@@ -1916,7 +1954,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .qd-film-fantome { transition: opacity .3s ease; }
 .qd-film-fantome--part { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .qd-film-fantome { transition: none; } }
-.qd-etiquette { fill: #fff; font-size: 15px; font-weight: 800; }
+.qd-etiquette { fill: #fff; font-size: 13px; font-weight: 800; }
 
 /* LES PIÈCES D'UN PAVAGE : six teintes, et une LETTRE sur chacune.
    La couleur seule ne peut pas porter la question — un élève qui distingue mal
@@ -2434,7 +2472,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .qd-axe { stroke: #dc2626; stroke-width: 2.6; }
 .qd-centre line { stroke: #dc2626; stroke-width: 3.2; stroke-linecap: round; }
 .qd-vecteur, .qd-arc { stroke: #dc2626; stroke-width: 2.6; fill: none; color: #dc2626; }
-.qd-marque-nom { fill: #dc2626; font-size: 15px; font-weight: 800; font-style: italic; }
+.qd-marque-nom { fill: #dc2626; font-size: 13px; font-weight: 800; font-style: italic; }
 
 .qd-hit { fill: transparent; cursor: pointer; outline: none; transition: fill .1s; }
 /* Même règle qu'au repère : au doigt, `:hover` se colle sur la dernière case

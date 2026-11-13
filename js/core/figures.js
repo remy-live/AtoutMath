@@ -582,7 +582,7 @@ export function traceSvg({ type, a = 'A', b = 'B', echelle = 1 } = {}) {
  */
 export function axeSvg({
     debut = 0, fin = 1, pas = 0.1, rang = 1, point = null,
-    intervalles = 0, etiquettes = null, grandsTous = 0
+    intervalles = 0, etiquettes = null, grandsTous = 0, cases = null
 } = {}) {
     // UNE DROITE GRADUÉE N'A PAS TOUJOURS DIX INTERVALLES, et c'est tout le
     // bloc 10 de sixième : pour lire une fraction, l'axe est coupé en DEUX,
@@ -638,6 +638,35 @@ export function axeSvg({
     // ou deux — assez pour qu'une croix soit « entre deux traits ».
     const xPoint = point === null ? null
         : (typeof point === 'object' ? xDeCran(point.i) : x(point));
+    // ── LES CASES À REMPLIR, SOUS LES GRADUATIONS ───────────────────────
+    //
+    // RÉMY, page « Ordre · Axe », exercices 13 et 15 : GRADUER un axe, et non
+    // y lire un point. Entre 8,13 et 8,14, savoir ce qu'on écrit dans chaque
+    // case est un autre savoir que lire une croix.
+    //
+    // CE SONT DE VRAIS `[data-trou]`, ET C'EST POURQUOI ILS SONT DANS LE
+    // DESSIN. Le pavé numérique compte les `[data-trou]` de l'énoncé et allume
+    // une case par trou (voir `aTrous` dans `activities/numeric.js`) ; il y
+    // écrit par `textContent` et y pose un `onclick`. Un `<text>` de SVG sait
+    // faire les trois. Les poser SOUS le dessin, dans une rangée HTML,
+    // marcherait aussi — et perdrait l'alignement avec la graduation, qui est
+    // toute la question.
+    // LA LARGEUR D'UNE CASE SUIT CE QU'ON Y ÉCRIRA, et c'est la photo qui l'a
+    // dit : une case de 34 px avec « 9,13 » dedans montrait les chiffres
+    // par-dessus ses propres pointillés. On la taille donc sur le nombre de
+    // signes attendus (`c.signes`), à 13 px de police tabulaire — sept pixels
+    // et demi par signe, plus de quoi respirer.
+    const boites = (Array.isArray(cases) ? cases : []).map((c, k) => {
+        const xx = xDeCran(c.i);
+        const w = Math.max(34, 11 + 7.6 * Math.max(1, c.signes || 4));
+        return `<g class="ax-case">
+            <rect x="${(xx - w / 2).toFixed(1)}" y="${y + 16}"
+                  width="${w.toFixed(1)}" height="20" rx="5"/>
+            <text class="np-trou ax-trou" data-trou="${k}"
+                  x="${xx.toFixed(1)}" y="${y + 30}" text-anchor="middle">?</text>
+        </g>`;
+    }).join('');
+
     const marque = xPoint === null ? '' : `
         <g class="ax-point">
             <line x1="${(xPoint - 6).toFixed(1)}" y1="${y - 6}" x2="${(xPoint + 6).toFixed(1)}" y2="${y + 6}"/>
@@ -656,6 +685,7 @@ export function axeSvg({
         <line class="ax-axe" x1="8" y1="${y}" x2="${W - 6}" y2="${y}" marker-end="url(#ax-fleche)"/>
         ${traits.join('\n        ')}
         ${nombres}
+        ${boites}
         ${marque}
     </svg>`;
 }

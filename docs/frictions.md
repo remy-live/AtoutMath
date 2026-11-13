@@ -7363,3 +7363,29 @@ plus d'un.**
   même — on extrait, puis on vérifie LES TERMES qui portent la règle. Si cela
   se reproduit une sixième fois, un petit outil qui relit les épreuves de
   source et signale ces trois motifs vaudra son écriture.
+
+---
+
+**Sixième fois : une épreuve qui COMPTE les occurrences** — 13 novembre
+
+- *Ce que je voulais faire* : ajouter « Graduer un Axe », dont le rendu imprimé
+  reprend la géométrie d'axe déjà écrite pour « La Loupe sur la Droite ».
+- *Ce qui a coûté* : quatre minutes de `npm test` pour deux rouges, et les deux
+  étaient des épreuves qui avaient raison sur le fond et tort sur la forme.
+  `graduationFraction` exigeait que `Math.min(g.pas * 0.5, 6)` apparaisse
+  **exactement deux fois** : un troisième rendu qui reprend la bonne idée la
+  fait rougir en annonçant « l'aperçu et le PDF ne bornent pas la pointe de la
+  même façon », ce qui est faux. Et `grandsNombres` comptait les chiffres de la
+  réponse ENTIÈRE là où le pavé borne chaque CASE : « 12,383|12,386|12,388 »
+  faisait quinze chiffres, et six par case.
+- *Combien de fois* : |||||| (sixième du mois : arguments épinglés, écriture
+  complète ancrée, fenêtre de N caractères, et maintenant le COMPTE
+  d'occurrences)
+- *Ce qui manque* : **l'outil vaut maintenant son écriture.** Quatre motifs à
+  signaler dans les épreuves de source : un objet d'arguments épinglé en entier,
+  un `^…$` sur une écriture complète, un `slice(i, i + N)`, et un
+  `assert.equal(compter(…), N)`. Le bon réflexe est toujours le même — extraire,
+  puis vérifier LES TERMES, ou poser une invariante (« un nombre pair », « au
+  moins deux ») plutôt qu'un compte exact. À fabriquer à la prochaine occasion :
+  un `node tools/epreuveTropSerree.mjs` qui relit `tests/` et nomme ces quatre
+  formes.

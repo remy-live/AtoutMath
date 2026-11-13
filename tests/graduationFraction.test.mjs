@@ -151,8 +151,17 @@ test('LE RENDU IMPRIMÉ NE COMPTE PLUS DIX INTERVALLES EN DUR', () => {
         'il reste une boucle à dix intervalles codée en dur');
     // ET LA POINTE DE LA FLÈCHE NE DÉPASSE PLUS D'UN DEMI-INTERVALLE : sur une
     // droite de demis, cela sortait de la feuille.
-    assert.equal(compter(N, /Math\.min\(g\.pas \* 0\.5, 6\)/g), 2,
-        'l\'aperçu et le PDF doivent borner la pointe de la même façon');
+    // CHAQUE RENDU D'AXE BORNE SA POINTE DE LA MÊME FAÇON — et ils sont
+    // maintenant quatre : l'aperçu et le PDF de la loupe, puis ceux de
+    // « Graduer un Axe ». Cette ligne exigeait le compte DEUX, et elle est
+    // tombée le jour où un troisième rendu a repris la bonne idée : elle
+    // annonçait « l'aperçu et le PDF ne bornent pas la pointe de la même
+    // façon », ce qui était faux. On garde donc qu'ils sont en NOMBRE PAIR —
+    // un aperçu et un PDF par rendu — et jamais zéro.
+    const bornes = compter(N, /Math\.min\(g\.pas \* 0\.5, 6\)/g);
+    assert.ok(bornes >= 2 && bornes % 2 === 0,
+        `${bornes} rendu(s) bornent la pointe : il en faut un nombre pair, `
+        + 'un aperçu et un PDF par axe dessiné');
 });
 
 test('« A ( …/… ) » SE POSE D\'UN SEUL BLOC', () => {

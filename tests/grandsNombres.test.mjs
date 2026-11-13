@@ -32,7 +32,21 @@ import { RANK_NAMES, digitAtRank, formatFr } from '../js/core/numberWords.js';
 import { chiffreRangGenerator, decompositionGenerator } from '../js/core/generators/numeration.js';
 
 const lire = (chemin) => readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8');
-const chiffresDe = (v) => String(v).replace(/[^0-9]/g, '').length;
+/**
+ * COMBIEN DE CHIFFRES ON TAPE POUR LA PLUS LONGUE CASE.
+ *
+ * LE PLAFOND DU PAVÉ EST PAR CASE, ET NON PAR RÉPONSE. Quand l'énoncé déclare
+ * plusieurs `[data-trou]`, le pavé tient un tampon par case (voir `aTrous`
+ * dans `activities/numeric.js`) : c'est CE tampon que `CHIFFRES_MAX` borne.
+ *
+ * MESURÉ EN AJOUTANT « Graduer un Axe », dont la réponse est
+ * « 12,383|12,386|12,388 » : quinze chiffres en tout, six par case, et chaque
+ * case se tape très bien. Compter la réponse entière aurait interdit un
+ * exercice parfaitement jouable — et, pire, aurait laissé croire qu'on
+ * mesurait le pavé alors qu'on mesurait une concaténation.
+ */
+const chiffresDe = (v) => String(v).split('|')
+    .reduce((max, part) => Math.max(max, part.replace(/[^0-9]/g, '').length), 0);
 
 test('CE QUE LA DICTÉE FAIT ENTENDRE, ELLE LAISSE LE TAPER', () => {
     // LE JEU TOUCHE LE DOM : on le lit comme un texte, comme le fait déjà
