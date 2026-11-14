@@ -18873,7 +18873,52 @@ body.visite-en-cours .modal-overlay > * {
    décimale de plus. C'est la seule chose qui change d'un niveau à l'autre, et
    c'est toute la leçon — on les écrit donc plus gros que le reste. */
 .lp-bout { font-size: 20px; font-weight: 800; }
-.lp-croix line { stroke: var(--danger); stroke-width: 4; stroke-linecap: round; }
+/* UNE CROIX PLUS FINE — RÉMY : « fais une croix un peu plus fine du coup ».
+   À quatre unités d'épaisseur sur un cran de 64, elle pesait autant qu'un grand
+   trait et l'on ne savait plus lequel des deux désignait la graduation. À 2,4,
+   elle se voit encore — c'est la seule chose rouge du dessin — sans écraser ce
+   qu'elle montre. */
+.lp-croix line { stroke: var(--danger); stroke-width: 2.4; stroke-linecap: round; }
+
+/* ── LE ZOOM S'ANIME ───────────────────────────────────────────────────────
+
+   RÉMY : « voir l'animation serait encore plus cool, ou on voit les traits qui
+   apparaissent progressivement ».
+
+   L'INTERVALLE CHOISI S'OUVRE JUSQU'À REMPLIR LA DROITE. Au premier instant, la
+   nouvelle droite est posée exactement là où était l'intervalle qu'on vient de
+   toucher — réduite au dixième et translatée — puis elle s'écarte jusqu'à sa
+   place. Ce n'est pas une illustration du zoom : c'est le zoom, et la croix y
+   reste sur le même point du début à la fin.
+
+   `transform-box: view-box` ET `transform-origin: 0 0` SONT OBLIGATOIRES :
+   sans eux, le navigateur prend l'origine au centre de la boîte de l'élément,
+   et le `translate` calculé dans `figures.js` — qui vise l'origine du viewBox —
+   pose la droite n'importe où. Payé sur la cascade, deux sondes. */
+.lp-mobile { transform-box: view-box; transform-origin: 0 0; }
+
+@keyframes lp-ouvrir {
+    from { transform: translate(var(--dx), 0) scaleX(var(--sx)); opacity: .4; }
+    55%  { opacity: 1; }
+    to   { transform: translate(0px, 0px) scaleX(1); opacity: 1; }
+}
+.lp-mobile--anime { animation: lp-ouvrir 560ms cubic-bezier(.22, .72, .28, 1) both; }
+
+/* LES TRAITS APPARAISSENT UN PAR UN, de gauche à droite — c'est son mot.
+   24 ms d'écart : assez pour qu'on le voie, trop peu pour qu'on attende. */
+@keyframes lp-poindre { from { opacity: 0; } to { opacity: 1; } }
+.lp-mobile--anime .lp-cran {
+    animation: lp-poindre 200ms ease-out both; animation-delay: var(--tc, 0ms);
+}
+/* ET LES DEUX NOMBRES DES BOUTS SE POSENT APRÈS. Étirés d'un dixième à un, ils
+   seraient illisibles pendant toute la traversée ; et ce sont eux qui portent
+   la leçon — à chaque zoom, une décimale de plus. */
+.lp-mots--anime { animation: lp-poindre 300ms ease-out both; animation-delay: 300ms; }
+
+/* ET QUI DEMANDE MOINS DE MOUVEMENT N'EN A PAS : tout est à sa place d'emblée. */
+@media (prefers-reduced-motion: reduce) {
+    .lp-mobile--anime, .lp-mobile--anime .lp-cran, .lp-mots--anime { animation: none; }
+}
 
 /* LES DIX ZONES QU'ON TOUCHE. Invisibles au repos : ce qu'on vise, c'est la
    bande entre deux graduations, et la dessiner en permanence ferait un

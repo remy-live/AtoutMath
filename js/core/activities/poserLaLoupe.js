@@ -35,7 +35,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { loupeSvg } from '../figures.js';
+import { loupeSvg, loupeDepart } from '../figures.js';
 
 const CHIFFRES = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
 
@@ -51,6 +51,8 @@ export function mount(container, session) {
     let saisie = '';
     let fini = false;
     let message = '';
+    /** D'où part l'animation du prochain dessin — `null` quand rien ne bouge. */
+    let anim = null;
 
     const niveau = () => pile[pile.length - 1];
 
@@ -63,6 +65,7 @@ export function mount(container, session) {
         item = prochain;
         // AU DÉPART : la droite des entiers, de `entier` à `entier + 1`.
         pile = [{ debut: item.meta.entier, rang: 0 }];
+        anim = null;
         saisie = '';
         fini = false;
         message = '';
@@ -127,8 +130,12 @@ export function mount(container, session) {
         if (plan) {
             plan.innerHTML = loupeSvg({
                 gauche: fr(gauche, n.rang), droite: fr(droite, n.rang),
-                place: place(), zones: !fini
+                place: place(), zones: !fini, anim
             });
+            // L'ANIMATION NE JOUE QU'UNE FOIS. Sans cette ligne, le moindre
+            // repeint — une touche du pavé, un message — relancerait le zoom
+            // sous les yeux de l'élève qui est déjà en train de lire.
+            anim = null;
             if (!fini) brancherZones();
         }
         const niv = container.querySelector('.lp-niveau');
@@ -178,12 +185,21 @@ export function mount(container, session) {
             return;
         }
         message = '';
+        anim = loupeDepart(i);
         pile.push({ debut, rang: n.rang + 1 });
         peindre();
     }
 
     function dezoomer() {
         if (fini || pile.length === 1) return;
+        // LE MOUVEMENT S'INVERSE : la droite d'arrivée est plus LARGE, et elle
+        // part donc agrandie dix fois, l'intervalle d'où l'on sort remplissant
+        // tout l'écran. C'est ce qu'on voit quand on recule une loupe.
+        const n = niveau();
+        const avant = pile[pile.length - 2];
+        const large = Math.pow(10, -avant.rang);
+        const i = Math.round(((n.debut - avant.debut) / large) * 10);
+        anim = loupeDepart(Math.min(9, Math.max(0, i)), true);
         pile.pop();
         message = '';
         peindre();

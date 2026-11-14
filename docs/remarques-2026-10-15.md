@@ -7357,3 +7357,42 @@ court, repris sur les écarts entre blocs. Six épreuves, six défauts remis, si
 chutes. Le juge accepte 180 bonnes réponses sur 180. Joué de bout en bout : 9 →
 10, puis 9,5 → 9,6, puis 9,55 → 9,56, réponse 9,551 acceptée — et un mauvais
 intervalle touché exprès au passage, qui n'a rien cassé.
+
+### « voir l'animation serait encore plus cool » — 14 novembre
+
+> « bonne idée mais voir l'animation serait encore plus cool, ou on voit les
+> traits qui apparaissent progressivement et fais une croix un peu plus fine du
+> coup »
+
+**L'INTERVALLE CHOISI S'OUVRE JUSQU'À REMPLIR LA DROITE.** Au premier instant,
+la nouvelle droite est posée EXACTEMENT là où était l'intervalle qu'on vient de
+toucher — réduite au dixième et translatée — puis elle s'écarte jusqu'à sa
+place. Ce n'est pas une illustration du zoom : c'est le zoom, et la croix y
+reste sur le même point du début à la fin, puisque les deux désignent le même
+nombre.
+
+    en zoomant :    sx = 1/10,  dx = x(i) − G/10
+    en dézoomant :  sx = 10,    dx = G − 10·x(i)
+
+**ET LE DÉZOOM S'INVERSE**, ce qui n'allait pas de soi : la droite d'arrivée est
+plus LARGE, elle part donc agrandie dix fois, l'intervalle d'où l'on sort
+remplissant tout l'écran. C'est ce qu'on voit quand on recule une loupe.
+
+**LES TRAITS APPARAISSENT UN PAR UN**, de gauche à droite, 24 ms d'écart — son
+mot exact. Les deux nombres des bouts, eux, ne s'étirent jamais : réduits au
+dixième puis rendus à leur taille ils seraient illisibles pendant toute la
+traversée. Ils se posent en fondu, après — et ce sont eux qui portent la leçon.
+
+**LA CROIX EST PASSÉE DE 4 À 2,4 D'ÉPAISSEUR.** À quatre, sur un cran de 64,
+elle pesait autant qu'un grand trait et l'on ne savait plus lequel des deux
+désignait la graduation.
+
+**MESURÉ EN ARRÊTANT LE TEMPS** (`getAnimations()`, animation mise en pause à
+t = 0, 200 et 560 ms) : à t = 0, la nouvelle droite est bien posée dans
+l'intervalle touché, croix comprise. Une animation ne se mesure pas sur son état
+final.
+
+**ET UNE LIGNE QUI A FAILLI MANQUER** : l'animation ne doit jouer QU'UNE FOIS.
+Sans remettre le départ à `null` après le dessin, le moindre repeint — une
+touche du pavé, un message — relançait le zoom sous les yeux de l'élève qui
+était déjà en train de lire.

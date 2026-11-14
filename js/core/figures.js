@@ -864,35 +864,82 @@ export function axeCentiemesSvg({ gauche = '0', droite = '1', points = [],
  * @param {boolean} [cfg.zones] poser les dix zones qu'on touche
  */
 export function loupeSvg({ gauche = '0', droite = '1', place = null,
-    zones = false } = {}) {
+    zones = false, anim = null } = {}) {
     const G = 56, D = 700, W = 760, H = 150;
     const y = 82;
     const pas = (D - G) / 10;
     const xDe = (i) => G + i * pas;
 
-    const morceaux = [];
-    morceaux.push(`<line class="ax-axe" x1="${G - 26}" y1="${y}" x2="${D + 30}" y2="${y}"
-        marker-end="url(#loupe-fleche)"/>`);
+    // ── CE QUI BOUGE : le trait, ses crans, la croix ──────────────────────
+    //
+    // RÉMY : « voir l'animation serait encore plus cool, ou on voit les traits
+    // qui apparaissent progressivement ».
+    //
+    // L'INTERVALLE CHOISI S'OUVRE JUSQU'À REMPLIR LA DROITE. Au premier
+    // instant, la nouvelle droite est posée EXACTEMENT là où était
+    // l'intervalle qu'on vient de toucher — réduite au dixième et translatée.
+    // Elle s'écarte ensuite jusqu'à sa place. Ce n'est pas une illustration du
+    // zoom : c'est le zoom, et la croix y reste sur le même point du début à
+    // la fin, puisque les deux désignent le même nombre.
+    //
+    //     en zoomant :    sx = 1/10,  dx = x(i) − G/10
+    //     en dézoomant :  sx = 10,    dx = G − 10·x(i)
+    //
+    // `vector-effect="non-scaling-stroke"` EST OBLIGATOIRE : sans lui, un cran
+    // vertical réduit au dixième a un trait dix fois plus fin, c'est-à-dire
+    // invisible — et dix fois plus épais quand on dézoome.
+    const mobile = [];
+    mobile.push(`<line class="ax-axe" x1="${G - 26}" y1="${y}" x2="${D + 30}" y2="${y}"
+        vector-effect="non-scaling-stroke" marker-end="url(#loupe-fleche)"/>`);
     for (let i = 0; i <= 10; i++) {
         const bout = i === 0 || i === 10;
-        morceaux.push(`<line class="ax-cran${bout ? ' ax-cran--bout' : ''}"
+        // CHAQUE CRAN APPARAÎT À SON TOUR, de gauche à droite — « on voit les
+        // traits qui apparaissent progressivement ». 24 ms d'écart, soit
+        // 264 ms pour les onze : assez pour qu'on le voie, trop peu pour qu'on
+        // attende.
+        mobile.push(`<line class="ax-cran lp-cran${bout ? ' ax-cran--bout' : ''}"
+            style="--tc:${120 + i * 24}ms" vector-effect="non-scaling-stroke"
             x1="${xDe(i).toFixed(1)}" y1="${(y - (bout ? 18 : 11)).toFixed(1)}"
             x2="${xDe(i).toFixed(1)}" y2="${(y + (bout ? 18 : 11)).toFixed(1)}"/>`);
     }
-    morceaux.push(`<text class="ax-nb lp-bout" x="${G}" y="${y + 44}"
-        text-anchor="middle">${gauche}</text>`);
-    morceaux.push(`<text class="ax-nb lp-bout" x="${D}" y="${y + 44}"
-        text-anchor="middle">${droite}</text>`);
-
     if (place !== null && place !== undefined) {
         const xp = xDe(place);
-        morceaux.push(`<g class="lp-croix">
-            <line x1="${(xp - 9).toFixed(1)}" y1="${y - 9}" x2="${(xp + 9).toFixed(1)}" y2="${y + 9}"/>
-            <line x1="${(xp - 9).toFixed(1)}" y1="${y + 9}" x2="${(xp + 9).toFixed(1)}" y2="${y - 9}"/>
+        // UNE CROIX PLUS FINE — Rémy : « fais une croix un peu plus fine du
+        // coup ». À quatre unités d'épaisseur sur un cran de 64, elle pesait
+        // autant qu'un grand trait et l'on ne savait plus lequel des deux
+        // désignait la graduation. L'épaisseur vit dans `modules.css`.
+        mobile.push(`<g class="lp-croix">
+            <line x1="${(xp - 8).toFixed(1)}" y1="${y - 8}" x2="${(xp + 8).toFixed(1)}" y2="${y + 8}"
+                  vector-effect="non-scaling-stroke"/>
+            <line x1="${(xp - 8).toFixed(1)}" y1="${y + 8}" x2="${(xp + 8).toFixed(1)}" y2="${y - 8}"
+                  vector-effect="non-scaling-stroke"/>
         </g>`);
     }
 
+    const style = anim
+        ? ` style="--dx:${anim.dx.toFixed(2)}px; --sx:${anim.sx}"`
+        : '';
+    const morceaux = [`<g class="lp-mobile${anim ? ' lp-mobile--anime' : ''}"${style}>
+        ${mobile.join('\n        ')}
+    </g>`];
+
+    // ── CE QUI NE S'ÉTIRE PAS : les deux nombres des bouts ────────────────
+    //
+    // Réduits au dixième puis rendus à leur taille, ils seraient illisibles
+    // pendant toute la traversée. Ils se posent en fondu, après — et ce sont
+    // eux qui portent la leçon : à chaque zoom, une décimale de plus.
+    morceaux.push(`<g class="lp-mots${anim ? ' lp-mots--anime' : ''}">
+        <text class="ax-nb lp-bout" x="${G}" y="${y + 44}"
+              text-anchor="middle">${gauche}</text>
+        <text class="ax-nb lp-bout" x="${D}" y="${y + 44}"
+              text-anchor="middle">${droite}</text>
+    </g>`);
+
     if (zones) {
+        // LES ZONES NE S'ANIMENT PAS, et c'est voulu : elles décrivent la
+        // droite d'ARRIVÉE. Un élève qui enchaîne deux zooms sans attendre la
+        // fin du premier touche ainsi le bon intervalle, et non celui qui
+        // passe sous son doigt.
         for (let i = 0; i < 10; i++) {
             morceaux.push(`<g class="lp-zone" data-zone="${i}" role="button" tabindex="0"
                 aria-label="Zoomer sur l’intervalle ${i + 1}">
@@ -913,6 +960,24 @@ export function loupeSvg({ gauche = '0', droite = '1', place = null,
         </defs>
         ${morceaux.join('\n        ')}
     </svg>`;
+}
+
+/**
+ * LE DÉPART DE L'ANIMATION DU ZOOM, pour `loupeSvg`.
+ *
+ * On le calcule ici et non dans l'activité : c'est de la géométrie du dessin,
+ * et `G`, `D` et le pas vivent dans ce fichier. Une activité qui recopierait
+ * ces trois nombres les laisserait diverger au premier changement de largeur.
+ *
+ * @param {number} i      l'intervalle touché, de 0 à 9
+ * @param {boolean} sort  vrai quand on DÉZOOME (le mouvement s'inverse)
+ */
+export function loupeDepart(i, sort = false) {
+    const G = 56, D = 700;
+    const x = G + i * ((D - G) / 10);
+    return sort
+        ? { sx: 10, dx: G - 10 * x }
+        : { sx: 0.1, dx: x - G / 10 };
 }
 
 /**
