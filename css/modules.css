@@ -18851,3 +18851,67 @@ body.visite-en-cours .modal-overlay > * {
 .cent-etiquette {
     fill: var(--text-muted); font-size: 16px; font-weight: 700;
 }
+
+/* ── POSE LA LOUPE ─────────────────────────────────────────────────────────
+
+   RÉMY : « il faudrait que ce soit l'élève qui pose la loupe et gère le zoom
+   quand il se rend compte que ca ne tombe pas encore juste ».
+
+   Mise en page à soi, comme « Le Dessin Gradué » et « Ranger, et le mot
+   apparaît » : l'activité ne vit pas dans `numpad-context`, donc aucun des
+   plafonds écrits pour protéger le pavé numérique ne s'y applique. */
+.lp-layout { display: flex; flex-direction: column; align-items: center;
+    gap: 10px; width: 100%; }
+.lp-context { text-align: center; max-width: 46ch; }
+.lp-plan {
+    width: 100%; max-width: 680px;
+    border: 2px solid var(--border); border-radius: 14px;
+    background: var(--bg-panel); overflow: hidden;
+}
+.lp-svg { display: block; width: 100%; height: auto; color: var(--text-main); }
+/* LES DEUX BOUTS SONT CE QU'ON VIENT DE GAGNER : à chaque zoom, ils portent une
+   décimale de plus. C'est la seule chose qui change d'un niveau à l'autre, et
+   c'est toute la leçon — on les écrit donc plus gros que le reste. */
+.lp-bout { font-size: 20px; font-weight: 800; }
+.lp-croix line { stroke: var(--danger); stroke-width: 4; stroke-linecap: round; }
+
+/* LES DIX ZONES QU'ON TOUCHE. Invisibles au repos : ce qu'on vise, c'est la
+   bande entre deux graduations, et la dessiner en permanence ferait un
+   quadrillage qui n'existe pas sur une droite graduée. */
+.lp-zone rect { fill: transparent; cursor: pointer; transition: fill .12s ease; }
+@media (hover: hover) {
+    .lp-zone:hover rect { fill: color-mix(in srgb, var(--primary) 14%, transparent); }
+}
+.lp-zone:active rect { fill: color-mix(in srgb, var(--primary) 22%, transparent); }
+.lp-zone:focus-visible rect {
+    fill: color-mix(in srgb, var(--primary) 14%, transparent);
+    outline: 3px solid var(--primary); outline-offset: -2px;
+}
+
+.lp-barre { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    justify-content: center; }
+.lp-niveau { color: var(--text-muted); font-weight: 700; font-size: .95rem; }
+.lp-btn {
+    min-height: 40px; padding: 0 14px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: .98rem; font-weight: 800; cursor: pointer;
+}
+.lp-btn:disabled { opacity: .4; cursor: default; }
+/* LE MESSAGE GARDE SA PLACE MÊME VIDE : sans `min-height`, tout le pavé
+   remontait de vingt pixels quand la loupe était mal posée — au moment précis
+   où l'élève regarde ce qu'il vient de toucher. */
+.lp-statut { text-align: center; min-height: 2.6em; max-width: 44ch;
+    color: var(--text-soft); font-size: .95rem; }
+.lp-pave { margin: 0 auto; }
+/* SUR UN ÉCRAN BAS, ON RESSERRE — six pixels manquaient.
+   Mesuré sur 390 × 667 : le bouton « Valider » du pavé dépassait de 6 px sous
+   la fenêtre. Six pixels ne se devinent pas, ils se relèvent
+   (`node tools/surLesEcrans.mjs num-poser-la-loupe --cibles=".lp-zone rect"`).
+   On les reprend là où ils ne manquent à personne : l'écart entre les blocs, et
+   la place que le message garde même vide. */
+@media (max-height: 720px) {
+    .lp-layout { gap: 6px; }
+    .lp-statut { min-height: 1.4em; font-size: .9rem; }
+    .lp-context { font-size: .95rem; }
+}

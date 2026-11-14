@@ -829,6 +829,93 @@ export function axeCentiemesSvg({ gauche = '0', droite = '1', points = [],
 }
 
 /**
+ * LA LOUPE QUE L'ÉLÈVE POSE LUI-MÊME.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « pour le zoom, il faudrait que ce soit l'élève qui pose la loupe et
+ * gère le zoom quand il se rend compte que ca ne tombe pas encore juste. »
+ *
+ * ── POURQUOI CELA RÉPOND À « ON COMPREND PAS TROP » ─────────────────────
+ *
+ * Dans la cascade, les trois axes étaient DONNÉS : l'élève lisait un
+ * raisonnement déjà fait, et regardait quelqu'un d'autre zoomer. Ici c'est lui
+ * qui décide — « la croix est entre 8,2 et 8,3, je zoome LÀ » — et le geste
+ * devient le sien. C'est aussi, probablement, pourquoi on ne comprenait pas.
+ *
+ * ── SEULS LES DEUX BOUTS SONT ÉCRITS, ET C'EST TOUTE LA LEÇON ───────────
+ *
+ * À chaque zoom, les deux nombres des bouts gagnent une décimale : 8 et 9,
+ * puis 8,2 et 8,3, puis 8,24 et 8,25. L'élève VOIT la décimale apparaître, et
+ * il la voit apparaître PARCE QU'IL A CHOISI l'intervalle. Écrire tous les
+ * crans donnerait la réponse et supprimerait la leçon.
+ *
+ * ── LES DIX ZONES SE TOUCHENT AU DOIGT ──────────────────────────────────
+ *
+ * Chaque intervalle porte un rectangle transparent haut de 56 unités —
+ * mesuré : à l'écran le plus étroit, cela fait encore 24 px de haut et 29 de
+ * large, au-dessus du plancher tactile. Un trait de graduation, lui, en ferait
+ * deux : on ne vise pas une graduation, on vise la BANDE entre deux.
+ *
+ * @param {Object} cfg
+ * @param {string} cfg.gauche   le nombre du bout gauche, déjà écrit
+ * @param {string} cfg.droite   celui du bout droit
+ * @param {number} cfg.place    où poser la croix, de 0 à 10 (décimal)
+ * @param {boolean} [cfg.zones] poser les dix zones qu'on touche
+ */
+export function loupeSvg({ gauche = '0', droite = '1', place = null,
+    zones = false } = {}) {
+    const G = 56, D = 700, W = 760, H = 150;
+    const y = 82;
+    const pas = (D - G) / 10;
+    const xDe = (i) => G + i * pas;
+
+    const morceaux = [];
+    morceaux.push(`<line class="ax-axe" x1="${G - 26}" y1="${y}" x2="${D + 30}" y2="${y}"
+        marker-end="url(#loupe-fleche)"/>`);
+    for (let i = 0; i <= 10; i++) {
+        const bout = i === 0 || i === 10;
+        morceaux.push(`<line class="ax-cran${bout ? ' ax-cran--bout' : ''}"
+            x1="${xDe(i).toFixed(1)}" y1="${(y - (bout ? 18 : 11)).toFixed(1)}"
+            x2="${xDe(i).toFixed(1)}" y2="${(y + (bout ? 18 : 11)).toFixed(1)}"/>`);
+    }
+    morceaux.push(`<text class="ax-nb lp-bout" x="${G}" y="${y + 44}"
+        text-anchor="middle">${gauche}</text>`);
+    morceaux.push(`<text class="ax-nb lp-bout" x="${D}" y="${y + 44}"
+        text-anchor="middle">${droite}</text>`);
+
+    if (place !== null && place !== undefined) {
+        const xp = xDe(place);
+        morceaux.push(`<g class="lp-croix">
+            <line x1="${(xp - 9).toFixed(1)}" y1="${y - 9}" x2="${(xp + 9).toFixed(1)}" y2="${y + 9}"/>
+            <line x1="${(xp - 9).toFixed(1)}" y1="${y + 9}" x2="${(xp + 9).toFixed(1)}" y2="${y - 9}"/>
+        </g>`);
+    }
+
+    if (zones) {
+        for (let i = 0; i < 10; i++) {
+            morceaux.push(`<g class="lp-zone" data-zone="${i}" role="button" tabindex="0"
+                aria-label="Zoomer sur l’intervalle ${i + 1}">
+                <rect x="${xDe(i).toFixed(1)}" y="${y - 28}" width="${pas.toFixed(1)}"
+                      height="56" rx="6"/>
+            </g>`);
+        }
+    }
+
+    return `
+    <svg class="fig-svg ax-svg lp-svg" viewBox="0 0 ${W} ${H}"
+         role="img" aria-label="Une droite graduée de ${gauche} à ${droite}, en dix intervalles">
+        <defs>
+            <marker id="loupe-fleche" viewBox="0 0 10 10" refX="8" refY="5"
+                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+        </defs>
+        ${morceaux.join('\n        ')}
+    </svg>`;
+}
+
+/**
  * Enveloppe une figure pour qu'elle occupe une largeur stable et centrée.
  *
  * `classe` AJOUTE UN MODIFICATEUR AU CADRE, et il sert à une chose précise : le

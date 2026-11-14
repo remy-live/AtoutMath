@@ -622,6 +622,32 @@ export const numerationExercises = [
         instruction: "Chaque droite a SON échelle, et elle change d'une ligne à l'autre : lis d'abord les deux nombres écrits sous ses bouts. Placer 0,4 sur une droite de 0 à 1 et 40 sur une droite de 0 à 100, c'est le même geste et deux nombres différents. On compte les INTERVALLES depuis le bout gauche, jamais les traits. Touche la droite à l'endroit voulu : le point se range sur la graduation la plus proche, et son abscisse se relit en dessous — pour que tu puisses te corriger AVANT de valider. Quand tout est posé, le dessin apparaît. Le réglage « Comment l'abscisse est écrite » demande le même nombre de plusieurs façons : « 0,4 », « quatre dixièmes », « 4/10 », « le double de 0,2 »."
     },
 
+    // --- Pose la loupe (demandé le 14 novembre) ---
+    //
+    // RÉMY, après la cascade : « pour le zoom, il faudrait que ce soit l'élève
+    // qui pose la loupe et gère le zoom quand il se rend compte que ca ne tombe
+    // pas encore juste. »
+    //
+    // DANS LA CASCADE, LES TROIS AXES ÉTAIENT DONNÉS : l'élève lisait un
+    // raisonnement déjà fait, et regardait quelqu'un d'autre zoomer. Ici c'est
+    // lui qui décide — « la croix est entre 8,2 et 8,3, je zoome LÀ ».
+    //
+    // PAS DE FICHE PAPIER, ET CE N'EST PAS UN OUBLI : une feuille ne zoome pas.
+    // Imprimer cet exercice donnerait un axe et une croix à lire, c'est-à-dire
+    // « L'Axe au Centième », qui existe et qui est fait pour ça.
+    {
+        id: 'num-poser-la-loupe',
+        cree: '2026-11-14',
+        title: 'Pose la Loupe',
+        generatorId: 'num.poser-la-loupe', activityId: 'poserLaLoupe',
+        skills: ['num.dec.graduations'],
+        params: { nbQuestions: 6, marches: ['un', 'deux', 'melange'] },
+        motsClefs: ['droite graduée', 'abscisse', 'zoom', 'loupe', 'graduation',
+            'décimaux', 'centièmes', 'millièmes', 'encadrer'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "La croix ne tombe pas sur une graduation : il faut zoomer. On touche l'intervalle qui la contient, et cet intervalle devient la droite entière — ses deux bouts gagnent alors une décimale : 8 et 9 deviennent 8,2 et 8,3, puis 8,24 et 8,25. C'est là toute la leçon, et elle se lit dans les deux étiquettes. On peut zoomer autant qu'on veut et revenir en arrière : toucher le mauvais intervalle n'est pas compté comme une faute, c'est une loupe mal posée qu'on repose. Ce qui est jugé, c'est l'abscisse écrite au pavé, une seule fois, à la fin. La troisième marche est la vraie : on ne sait pas d'avance combien de zooms il faut, donc il faut REGARDER si la croix est tombée juste."
+    },
+
     // --- L'axe au centième (demandé le 14 novembre) ---
     //
     // RÉMY, après avoir essayé la cascade de loupes : « Cascade de loupe, on

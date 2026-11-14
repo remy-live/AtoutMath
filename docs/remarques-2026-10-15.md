@@ -7315,3 +7315,45 @@ défauts remis, sept chutes. Le juge accepte 180 bonnes réponses sur 180.
 **ET UN DÉFAUT VU SUR LA PHOTO** : les trois cases débordaient du cadre et leur
 contenu était coupé en deux — j'avais calculé la hauteur du dessin à 150 unités
 alors que les cases descendent à 162. Aucun compteur ne l'aurait dit.
+
+### « Pose la Loupe » — la deuxième des deux idées, 14 novembre
+
+> « pour le zoom, il faudrait que ce soit l'élève qui pose la loupe et gère le
+> zoom quand il se rend compte que ca ne tombe pas encore juste. »
+
+**C'EST LUI QUI A DIAGNOSTIQUÉ LA CASCADE, pas moi.** Les trois axes y étaient
+DONNÉS : l'élève lisait un raisonnement déjà fait, et regardait quelqu'un
+d'autre zoomer. Ici il décide — « la croix est entre 8,2 et 8,3, je zoome LÀ ».
+
+**LE ZOOM EST UN OUTIL, PAS LA RÉPONSE.** On ne demande ni combien de fois il a
+zoomé, ni où : on demande l'ABSCISSE. La loupe rend le nombre lisible, comme une
+vraie loupe sur une vraie règle — elle ne fait pas le travail, elle le permet.
+
+**ET TOUCHER LE MAUVAIS INTERVALLE N'EST PAS UNE FAUTE.** « Il se rend compte
+que ça ne tombe pas encore juste » suppose qu'il PUISSE se tromper sans être
+puni : l'écran dit que la croix n'est pas là, et rien ne se passe. On peut
+dézoomer, zoomer trop, recommencer. Ce qui est jugé, c'est le nombre écrit, une
+seule fois, à la fin.
+
+**À CHAQUE ZOOM, UNE DÉCIMALE DE PLUS, ET ELLE EST ÉCRITE.** 8 et 9, puis 8,2 et
+8,3, puis 8,24 et 8,25. L'élève VOIT la décimale apparaître, et il la voit
+apparaître parce qu'il a choisi l'intervalle. C'est toute la leçon du chapitre,
+et elle tient dans les deux étiquettes des bouts.
+
+**LA TROISIÈME MARCHE EST LA VRAIE** : « un ou deux zooms, à toi de voir ». Aux
+deux premières, l'élève sait d'avance combien de fois zoomer ; à la troisième,
+non — il doit REGARDER si la croix est tombée juste. Mot pour mot ce que Rémy
+décrit.
+
+**PAS DE FICHE PAPIER, ET UNE ÉPREUVE LE GARDE.** Une feuille ne zoome pas ;
+imprimer cet exercice donnerait un axe et une croix à lire, c'est-à-dire
+« L'Axe au Centième », qui existe. L'épreuve existe parce que l'oubli et la
+décision se ressemblent : sans elle, personne ne saurait dans six mois si la
+fiche manque ou si on l'a refusée.
+
+**MESURÉ** : les quatre écrans tiennent — zones de 33 × 28 px sur un téléphone,
+57 × 50 ailleurs —, et six pixels manquaient à « Valider » sur un téléphone
+court, repris sur les écarts entre blocs. Six épreuves, six défauts remis, six
+chutes. Le juge accepte 180 bonnes réponses sur 180. Joué de bout en bout : 9 →
+10, puis 9,5 → 9,6, puis 9,55 → 9,56, réponse 9,551 acceptée — et un mauvais
+intervalle touché exprès au passage, qui n'a rien cassé.
