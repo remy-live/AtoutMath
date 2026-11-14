@@ -2732,7 +2732,10 @@ function geoGraduation(item, slot) {
  *
  * RÉMY : « un axe qui va de 8 à 9 donc 10 séparations et entre chaque dixième
  * encore dix séparations (avec un trait rouge pour les milieux) […] il faut
- * évidemment qu'il y ait de la place en largeur ».
+ * évidemment qu'il y ait de la place en largeur ». Puis : « ne mets pas la
+ * croix au dessus, il faut qu'elle soit sur l'axe et tu peux mettre plusieurs
+ * points et aussi des axe qui commence à 3,5 et finissent à 3,6 pour faire des
+ * millièmes ».
  *
  * SUR LE PAPIER, LA PLACE EXISTE : une page A4 en paysage donne 25 cm de large
  * pour cent intervalles, soit 2,4 mm chacun — plus que les 2 mm d'un papier
@@ -2747,14 +2750,18 @@ function geoGraduation(item, slot) {
 function geoCentieme(item, slot) {
     const m = item.meta || {};
     const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const points = Array.isArray(m.points) ? m.points : [];
     const marge = b.w * 0.035;
     const x0 = b.x + marge;
-    const larg = b.w - 2 * marge - 26;
-    const pt = Math.max(6, Math.min(10, b.h * 0.3));
+    // LA COLONNE DE DROITE N'EXISTE QU'À UN SEUL POINT. À plusieurs, les cases
+    // vont SOUS l'axe, avec leur lettre — comme à l'écran, pour qu'un élève qui
+    // a joué retrouve sa figure.
+    const colonne = points.length > 1 ? 0 : 26;
+    const larg = b.w - 2 * marge - colonne;
+    const pt = Math.max(5.5, Math.min(9.5, b.h * (points.length > 1 ? 0.2 : 0.3)));
     return {
-        m, boite: b, x0, larg, pt,
-        y: b.y + b.h * 0.52,
-        pas: larg / 100,
+        m, points, boite: b, x0, larg, pt, colonne,
+        y: b.y + b.h * (points.length > 1 ? 0.38 : 0.52),
         px: (i) => x0 + (i / 100) * larg
     };
 }
@@ -2769,43 +2776,65 @@ function centiemePreviewHtml(item, slot, k, solution) {
     html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
         width:${(g.larg + 4) * k}px; height:${Math.max(1, 0.5 * k)}px; background:#1a202c"></div>`;
     for (let i = 0; i <= 100; i++) {
-        const dixieme = i % 10 === 0;
+        const grand = i % 10 === 0;
         const milieu = i % 10 === 5;
-        const h = dixieme ? g.pt * 0.52 : milieu ? g.pt * 0.34 : g.pt * 0.19;
+        const h = grand ? g.pt * 0.52 : milieu ? g.pt * 0.34 : g.pt * 0.19;
         html += `<div style="position:absolute; left:${g.px(i) * k}px;
-            top:${(y - h) * k}px; width:${Math.max(1, (dixieme ? 0.5 : 0.35) * k)}px;
+            top:${(y - h) * k}px; width:${Math.max(1, (grand ? 0.5 : 0.35) * k)}px;
             height:${2 * h * k}px; background:${milieu ? '#c0392b' : '#1a202c'}"></div>`;
     }
-    [[0, g.m.debut], [100, g.m.debut + 1]].forEach(([i, v]) => {
-        html += `<div style="position:absolute; left:${(g.px(i) - 6) * k}px;
-            top:${(y + g.pt * 0.62) * k}px; width:${12 * k}px; text-align:center;
-            font-size:${police}px; font-weight:700; color:#1a202c">${v}</div>`;
+    [[0, g.m.debut], [100, g.m.fin]].forEach(([i, v]) => {
+        html += `<div style="position:absolute; left:${(g.px(i) - 9) * k}px;
+            top:${(y + g.pt * 0.62) * k}px; width:${18 * k}px; text-align:center;
+            font-size:${police}px; font-weight:700; color:#1a202c">${
+    echapperSheet(ecrireDecimal(v, g.m.rang || 2))}</div>`;
     });
 
-    // LA CROIX EST AU-DESSUS DU TRAIT, pas dessus : posée sur l'axe, elle
-    // couvrirait les petits traits qu'il faut justement compter.
-    // LA CROIX SE POSE JUSTE AU-DESSUS DES TRAITS, pas plus haut. À 0,95 fois
-    // la taille du texte, elle flottait à un centimètre de l'axe sur la feuille
-    // imprimée : on ne voyait plus QUEL trait elle désignait, ce qui est toute
-    // la question. Vu sur la photo de la fiche. Elle reste au-dessus, et non
-    // dessus : posée sur le trait, elle couvrirait les petits traits qu'il faut
-    // compter.
-    const xp = g.px(g.m.cran);
+    // LA CROIX EST SUR L'AXE — Rémy : « ne mets pas la croix au dessus ». Au
+    // dessus, elle ne désignait rien : il fallait redescendre à la verticale
+    // pour trouver SON trait, un geste de plus qui n'a rien à voir avec la
+    // lecture. Creuse, pour rendre à la graduation ce qu'elle lui prend.
     const r = g.pt * 0.3;
-    const yc = y - g.pt * 0.62;
-    svg += `<g stroke="#c0392b" stroke-width="${(0.6 * k).toFixed(2)}" stroke-linecap="round">
-        <line x1="${((xp - r) * k).toFixed(1)}" y1="${((yc - r) * k).toFixed(1)}"
-              x2="${((xp + r) * k).toFixed(1)}" y2="${((yc + r) * k).toFixed(1)}"/>
-        <line x1="${((xp - r) * k).toFixed(1)}" y1="${((yc + r) * k).toFixed(1)}"
-              x2="${((xp + r) * k).toFixed(1)}" y2="${((yc - r) * k).toFixed(1)}"/></g>`;
+    g.points.forEach((p) => {
+        const xp = g.px(p.cran);
+        svg += `<g stroke="#c0392b" stroke-width="${(0.55 * k).toFixed(2)}" stroke-linecap="round">
+            <line x1="${((xp - r) * k).toFixed(1)}" y1="${((y - r) * k).toFixed(1)}"
+                  x2="${((xp + r) * k).toFixed(1)}" y2="${((y + r) * k).toFixed(1)}"/>
+            <line x1="${((xp - r) * k).toFixed(1)}" y1="${((y + r) * k).toFixed(1)}"
+                  x2="${((xp + r) * k).toFixed(1)}" y2="${((y - r) * k).toFixed(1)}"/></g>`;
+        if (p.lettre) {
+            html += `<div style="position:absolute; left:${(xp - 6) * k}px;
+                top:${(y - g.pt * 1.15) * k}px; width:${12 * k}px; text-align:center;
+                font-size:${police * 0.95}px; font-weight:800;
+                color:#1a202c">${echapperSheet(p.lettre)}</div>`;
+        }
+    });
 
     const haut = g.pt * 0.3528 * 1.8;
-    html += `<div style="position:absolute; left:${(g.x0 + g.larg + 7) * k}px;
-        top:${(y - haut / 2) * k}px; width:${18 * k}px; height:${haut * k}px;
-        border:${Math.max(1, 0.4 * k)}px solid #7b8798; border-radius:${1.2 * k}px;
-        display:flex; align-items:center; justify-content:center;
-        font-size:${police * 0.95}px; font-weight:700; color:#2f855a">${
-    solution ? echapperSheet(String(item.answer)) : ''}</div>`;
+    const reponses = String(item.answer).split('|');
+    if (g.points.length > 1) {
+        const ecart = g.larg / g.points.length;
+        g.points.forEach((p, i) => {
+            const cx = g.x0 + ecart * (i + 0.5);
+            html += `<div style="position:absolute; left:${(cx - 22) * k}px;
+                top:${(y + g.pt * 1.5) * k}px; width:${11 * k}px; text-align:right;
+                font-size:${police}px; font-weight:700;
+                color:#1a202c">${echapperSheet(p.lettre)} =</div>`;
+            html += `<div style="position:absolute; left:${(cx - 9) * k}px;
+                top:${(y + g.pt * 1.5) * k}px; width:${22 * k}px; height:${haut * k}px;
+                border:${Math.max(1, 0.4 * k)}px solid #7b8798; border-radius:${1.2 * k}px;
+                display:flex; align-items:center; justify-content:center;
+                font-size:${police * 0.95}px; font-weight:700; color:#2f855a">${
+    solution ? echapperSheet(reponses[i] || '') : ''}</div>`;
+        });
+    } else {
+        html += `<div style="position:absolute; left:${(g.x0 + g.larg + 7) * k}px;
+            top:${(y - haut / 2) * k}px; width:${19 * k}px; height:${haut * k}px;
+            border:${Math.max(1, 0.4 * k)}px solid #7b8798; border-radius:${1.2 * k}px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:${police * 0.95}px; font-weight:700; color:#2f855a">${
+    solution ? echapperSheet(reponses[0] || '') : ''}</div>`;
+    }
 
     return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
         overflow:visible">${svg}</svg>` + html;
@@ -2815,44 +2844,68 @@ function centiemePreviewHtml(item, slot, k, solution) {
 function dessinerCentiemePdf(doc, item, slot, solution) {
     const g = geoCentieme(item, slot);
     const y = g.y;
+    const rang = g.m.rang || 2;
 
     doc.setDrawColor(...ENCRE.trait);
     doc.setLineWidth(0.5);
     doc.line(g.x0, y, g.x0 + g.larg + 4, y);
     for (let i = 0; i <= 100; i++) {
-        const dixieme = i % 10 === 0;
+        const grand = i % 10 === 0;
         const milieu = i % 10 === 5;
-        const h = dixieme ? g.pt * 0.52 : milieu ? g.pt * 0.34 : g.pt * 0.19;
+        const h = grand ? g.pt * 0.52 : milieu ? g.pt * 0.34 : g.pt * 0.19;
         if (milieu) doc.setDrawColor(192, 57, 43); else doc.setDrawColor(...ENCRE.trait);
-        doc.setLineWidth(dixieme ? 0.5 : 0.3);
+        doc.setLineWidth(grand ? 0.5 : 0.3);
         doc.line(g.px(i), y - h, g.px(i), y + h);
     }
     doc.setDrawColor(...ENCRE.trait);
     doc.setTextColor(...ENCRE.texte);
     doc.setFontSize(g.pt);
-    doc.text(pourPdf(String(g.m.debut)), g.px(0), y + g.pt * 0.62 + g.pt * 0.3528 * 0.8,
-        { align: 'center' });
-    doc.text(pourPdf(String(g.m.debut + 1)), g.px(100), y + g.pt * 0.62 + g.pt * 0.3528 * 0.8,
-        { align: 'center' });
+    doc.text(pourPdf(ecrireDecimal(g.m.debut, rang)), g.px(0),
+        y + g.pt * 0.62 + g.pt * 0.3528 * 0.8, { align: 'center' });
+    doc.text(pourPdf(ecrireDecimal(g.m.fin, rang)), g.px(100),
+        y + g.pt * 0.62 + g.pt * 0.3528 * 0.8, { align: 'center' });
 
-    const xp = g.px(g.m.cran);
     const r = g.pt * 0.3;
-    const yc = y - g.pt * 0.62;   // voir l'aperçu : elle flottait trop haut
-    doc.setDrawColor(192, 57, 43);
-    doc.setLineWidth(0.6);
-    doc.line(xp - r, yc - r, xp + r, yc + r);
-    doc.line(xp - r, yc + r, xp + r, yc - r);
+    g.points.forEach((p) => {
+        const xp = g.px(p.cran);
+        doc.setDrawColor(192, 57, 43);
+        doc.setLineWidth(0.55);
+        doc.line(xp - r, y - r, xp + r, y + r);
+        doc.line(xp - r, y + r, xp + r, y - r);
+        if (!p.lettre) return;
+        doc.setTextColor(...ENCRE.texte);
+        doc.setFontSize(g.pt * 0.95);
+        doc.text(pourPdf(p.lettre), xp, y - g.pt * 0.75, { align: 'center' });
+    });
 
     const haut = g.pt * 0.3528 * 1.8;
-    doc.setDrawColor(...ENCRE.grille);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(g.x0 + g.larg + 7, y - haut / 2, 18, haut, 0.8, 0.8, 'S');
-    if (solution) {
+    const reponses = String(item.answer).split('|');
+    const ecrire = (x, large, i) => {
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, y + (g.points.length > 1 ? g.pt * 1.5 : -haut / 2),
+            large, haut, 0.8, 0.8, 'S');
+        if (!solution) return;
         doc.setTextColor(47, 133, 90);
         doc.setFontSize(g.pt * 0.95);
-        doc.text(pourPdf(String(item.answer)), g.x0 + g.larg + 7 + 9, y + haut * 0.2,
+        doc.text(pourPdf(reponses[i] || ''), x + large / 2,
+            y + (g.points.length > 1 ? g.pt * 1.5 : -haut / 2) + haut * 0.7,
             { align: 'center' });
         doc.setTextColor(...ENCRE.texte);
+    };
+
+    if (g.points.length > 1) {
+        const ecart = g.larg / g.points.length;
+        g.points.forEach((p, i) => {
+            const cx = g.x0 + ecart * (i + 0.5);
+            doc.setTextColor(...ENCRE.texte);
+            doc.setFontSize(g.pt);
+            doc.text(pourPdf(`${p.lettre} =`), cx - 11,
+                y + g.pt * 1.5 + haut * 0.7, { align: 'right' });
+            ecrire(cx - 9, 22, i);
+        });
+    } else {
+        ecrire(g.x0 + g.larg + 7, 19, 0);
     }
 }
 

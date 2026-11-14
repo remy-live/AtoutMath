@@ -643,7 +643,7 @@ export const numerationExercises = [
         printable: 'auCentieme',
         generatorId: 'num.lire-au-centieme', activityId: 'numpad',
         skills: ['num.dec.graduations'],
-        params: { nbQuestions: 6, marches: ['reperes', 'cote', 'entre'] },
+        params: { nbQuestions: 6, marches: ['reperes', 'cote', 'entre'], echelle: 'melange', points: '2' },
         motsClefs: ['droite graduée', 'abscisse', 'graduation', 'centième', 'dixième',
             'lire', 'décimaux', 'précision'],
         tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },

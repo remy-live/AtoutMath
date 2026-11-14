@@ -18841,3 +18841,13 @@ body.visite-en-cours .modal-overlay > * {
    colonne. */
 .numpad-layout:has(.figure-wrap--cent) { justify-items: center; }
 .numpad-layout:has(.figure-wrap--cent) > .numpad-panel { margin-inline: auto; }
+
+/* LA LETTRE D'UN POINT, ET L'ÉTIQUETTE DE SA CASE — Rémy : « tu peux mettre
+   plusieurs points ». Sans la lettre, trois croix et trois cases ne se
+   correspondent plus. */
+.cent-lettre {
+    fill: var(--text-main); font-size: 17px; font-weight: 800;
+}
+.cent-etiquette {
+    fill: var(--text-muted); font-size: 16px; font-weight: 700;
+}

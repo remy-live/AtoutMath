@@ -691,99 +691,133 @@ export function axeSvg({
 }
 
 /**
- * L'AXE AU CENTIÈME — dixièmes et centièmes sur la MÊME droite.
+ * L'AXE AU CENTIÈME — deux précisions sur la MÊME droite.
  *
  * ─────────────────────────────────────────────────────────────────────────
  *
  * RÉMY, après avoir essayé la cascade de loupes : « Cascade de loupe, on
- * comprend pas trop en fait. » Et, dans le même souffle, ce qu'il voudrait :
+ * comprend pas trop en fait. » Et, dans le même souffle :
  *
  * > « on peut faire un exercice où on a un axe qui va de 8 à 9 donc 10
  * > séparations et entre chaque dixième encore dix séparations (avec un trait
  * > rouge pour les milieux) et on place un point et il faut lire, il faut
  * > évidemment qu'il y ait de la place en largeur »
  *
- * ── POURQUOI CELA MARCHE LÀ OÙ LA CASCADE ÉCHOUAIT ──────────────────────
+ * Puis, en le voyant : « ne mets pas la croix au dessus, il faut qu'elle soit
+ * sur l'axe et tu peux mettre plusieurs points et aussi des axe qui commence à
+ * 3,5 et finissent à 3,6 pour faire des millièmes ».
  *
- * La cascade racontait le zoom EN TROIS TEMPS, et l'élève regardait quelqu'un
- * d'autre zoomer. Ici il n'y a pas de zoom du tout : les deux précisions sont
- * là, ENSEMBLE, sur une seule droite. Le dixième est un grand trait, le
- * centième un petit. Lire 8,47, c'est aller au grand trait d'après 8,4 puis
- * compter sept petits — un seul geste, visible en entier.
+ * ── LA CROIX EST SUR L'AXE, ET CE N'ÉTAIT PAS MON IDÉE ──────────────────
  *
- * ── LE TRAIT ROUGE DES MILIEUX, ET CE QU'IL ÉVITE ───────────────────────
+ * Je l'avais posée AU-DESSUS pour qu'elle ne couvre pas les petits traits
+ * qu'il faut compter. Rémy a tranché l'inverse, et il a raison pour une raison
+ * que je n'avais pas vue : au-dessus, la croix ne désigne rien — il faut
+ * redescendre à la verticale pour trouver SON trait, et c'est un geste de
+ * plus, à faire de tête, qui n'a rien à voir avec la lecture. Sur l'axe, elle
+ * EST à sa graduation.
  *
- * Sans lui, compter sept petits traits demande de compter jusqu'à sept sans se
- * tromper, dix fois par axe. Avec un repère au milieu — à 8,45 —, on compte au
- * plus cinq, et le plus souvent deux : « cinq, six, sept » depuis le rouge. Ce
- * n'est pas une décoration, c'est ce qui rend la lecture faisable de l'oeil.
+ * Ce qu'elle couvre, on le lui rend autrement : elle est CREUSE (deux traits
+ * fins qui se croisent, pas un bloc), et les petits traits qu'elle recouvre
+ * sont ceux qu'on vient de compter, pas ceux qui restent à compter.
  *
- * ── CE QUI N'EST PAS ÉCRIT, ET POURQUOI ─────────────────────────────────
+ * ── DEUX ÉCHELLES, LE MÊME DESSIN ───────────────────────────────────────
  *
- * SEULS LES DEUX BOUTS PORTENT LEUR NOMBRE. Écrire 8,1 … 8,9 sous chaque grand
- * trait donnerait la moitié de la réponse : il ne resterait qu'à compter les
- * petits traits depuis l'étiquette la plus proche, et la lecture du DIXIÈME —
- * qui est le premier savoir du chapitre — disparaîtrait.
+ * De 8 à 9 : grand trait = dixième, petit trait = centième.
+ * De 3,5 à 3,6 : grand trait = centième, petit trait = MILLIÈME.
+ *
+ * La figure ne sait pas laquelle elle dessine, et c'est voulu : elle reçoit le
+ * nombre du bout gauche, celui du bout droit, et cent intervalles entre les
+ * deux. Le sens — centièmes ou millièmes — vit dans le générateur. Un dessin
+ * qui connaîtrait les deux cas aurait deux fois plus de raisons de se tromper.
  *
  * @param {Object} cfg
- * @param {number} cfg.debut  le nombre du bout gauche (entier, 8 par exemple)
- * @param {number} cfg.point  l'abscisse à lire, au centième
- * @param {boolean} [cfg.cases] poser la case à remplir au bout de l'axe
- * @param {boolean} [cfg.milieux] le repère rouge au milieu de chaque dixième
+ * @param {string} cfg.gauche   le nombre du bout gauche, déjà écrit (« 3,5 »)
+ * @param {string} cfg.droite   celui du bout droit (« 3,6 »)
+ * @param {Array}  cfg.points   `{ lettre, cran }` — `cran` de 0 à 100
+ * @param {boolean} [cfg.cases] poser une case à remplir par point
  */
-export function axeCentiemesSvg({ debut = 0, point = null, cases = false,
-    milieux = true } = {}) {
+export function axeCentiemesSvg({ gauche = '0', droite = '1', points = [],
+    cases = false } = {}) {
     // LA LARGEUR EST LE SUJET, PAS UN RÉGLAGE. Rémy : « il faut évidemment
     // qu'il y ait de la place en largeur ». Cent intervalles sur 860 unités
-    // font 8,6 unités chacun — c'est le minimum pour que deux petits traits
-    // voisins ne se touchent pas une fois la figure réduite à la largeur d'un
-    // écran. Tout le reste du dessin se règle là-dessus.
-    const G = 40, D = 900, W = 960, H = 128;
-    const y = 72;
+    // font 8,6 unités chacun — mesuré à l'écran, cela donne 9,5 px sur un
+    // ordinateur et 7,2 ailleurs, le minimum pour que l'oeil sépare deux
+    // graduations qu'on lui demande de compter.
+    const G = 40, D = 900, W = 960;
+    const y = 64;
+    const avecCases = cases && points.length > 1;
+    // LA LIGNE DES CASES NE S'AJOUTE QUE S'IL Y EN A. À un seul point, le pavé
+    // n'allume pas son mécanisme de cases (il lui en faut DEUX) et la case
+    // resterait décorative : on la laisse alors à l'afficheur du pavé.
+    // LA HAUTEUR SE CALCULE SUR CE QU'ON DESSINE, et le compte se refait à la
+    // main : la case descend à y+68+30 = 162, son étiquette écrit sa base à
+    // y+86. À 150, les trois cases sortaient du cadre et leur contenu était
+    // coupé en deux — vu sur la photo, pas sur un compteur.
+    const H = avecCases ? 180 : 104;
     const pas = (D - G) / 100;
     const xDe = (i) => G + i * pas;
-    const fr = (v) => v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
 
     const morceaux = [];
     morceaux.push(`<line class="ax-axe" x1="${G - 22}" y1="${y}" x2="${D + 26}" y2="${y}"
         marker-end="url(#cent-fleche)"/>`);
 
     for (let i = 0; i <= 100; i++) {
-        const dixieme = i % 10 === 0;
-        const milieu = milieux && i % 10 === 5;
-        const h = dixieme ? 20 : milieu ? 13 : 7;
-        const classe = dixieme ? 'ax-cran ax-cran--bout' : milieu ? 'cent-milieu' : 'cent-petit';
+        const grand = i % 10 === 0;
+        const milieu = i % 10 === 5;
+        const h = grand ? 20 : milieu ? 13 : 7;
+        const classe = grand ? 'ax-cran ax-cran--bout' : milieu ? 'cent-milieu' : 'cent-petit';
         morceaux.push(`<line class="${classe}" x1="${xDe(i).toFixed(1)}" y1="${y - h}"
             x2="${xDe(i).toFixed(1)}" y2="${y + h}"/>`);
     }
 
-    // LES DEUX BOUTS, ET EUX SEULS — voir l'en-tête.
+    // LES DEUX BOUTS, ET EUX SEULS. Écrire tous les grands traits donnerait la
+    // moitié de la réponse : il ne resterait qu'à compter les petits depuis
+    // l'étiquette la plus proche, et la lecture du grand trait — qui est le
+    // premier savoir du chapitre — disparaîtrait.
     morceaux.push(`<text class="ax-nb" x="${G}" y="${y + 40}"
-        text-anchor="middle">${debut}</text>`);
+        text-anchor="middle">${gauche}</text>`);
     morceaux.push(`<text class="ax-nb" x="${D}" y="${y + 40}"
-        text-anchor="middle">${debut + 1}</text>`);
+        text-anchor="middle">${droite}</text>`);
 
-    if (point !== null && point !== undefined) {
-        // LA CROIX EST AU-DESSUS DE L'AXE, pas dessus : posée sur le trait, elle
-        // couvrirait les petits traits qu'il faut justement compter.
-        const xp = xDe(Math.round((point - debut) * 100));
-        morceaux.push(`<g class="ax-point cent-point">
-            <line x1="${(xp - 8).toFixed(1)}" y1="${y - 36}" x2="${(xp + 8).toFixed(1)}" y2="${y - 20}"/>
-            <line x1="${(xp - 8).toFixed(1)}" y1="${y - 20}" x2="${(xp + 8).toFixed(1)}" y2="${y - 36}"/>
+    points.forEach((p) => {
+        const xp = xDe(p.cran);
+        // LA CROIX EST SUR L'AXE — voir l'en-tête. Creuse, pour rendre à la
+        // graduation ce qu'elle lui prend.
+        morceaux.push(`<g class="cent-point">
+            <line x1="${(xp - 7).toFixed(1)}" y1="${y - 7}" x2="${(xp + 7).toFixed(1)}" y2="${y + 7}"/>
+            <line x1="${(xp - 7).toFixed(1)}" y1="${y + 7}" x2="${(xp + 7).toFixed(1)}" y2="${y - 7}"/>
         </g>`);
-    }
+        // SA LETTRE AU-DESSUS, quand il y en a plusieurs : sans elle, trois
+        // croix et trois cases ne se correspondent plus.
+        if (p.lettre) {
+            morceaux.push(`<text class="cent-lettre" x="${xp.toFixed(1)}" y="${y - 24}"
+                text-anchor="middle">${p.lettre}</text>`);
+        }
+    });
 
-    if (cases) {
-        morceaux.push(`<g class="ax-case">
-            <rect x="${D + 34}" y="${y - 15}" width="86" height="30" rx="6"/>
-            <text class="np-trou ax-trou" data-trou="0"
-                  x="${D + 34 + 43}" y="${y + 8}" text-anchor="middle">?</text>
-        </g>`);
+    if (avecCases) {
+        // LES CASES SOUS L'AXE, une par point, dans l'ordre des lettres — et
+        // non dans celui des abscisses : l'élève remplit A, puis B, puis C, et
+        // c'est à lui de trouver où chacune se trouve.
+        const n = points.length;
+        const large = 96, ecart = (D - G) / n;
+        points.forEach((p, k) => {
+            const cx = G + ecart * (k + 0.5);
+            morceaux.push(`<text class="cent-etiquette" x="${(cx - large / 2 - 10).toFixed(1)}"
+                y="${y + 86}" text-anchor="end">${p.lettre} =</text>`);
+            morceaux.push(`<g class="ax-case">
+                <rect x="${(cx - large / 2).toFixed(1)}" y="${y + 68}"
+                      width="${large}" height="30" rx="6"/>
+                <text class="np-trou ax-trou" data-trou="${k}"
+                      x="${cx.toFixed(1)}" y="${y + 89}" text-anchor="middle">?</text>
+            </g>`);
+        });
     }
 
     return `
-    <svg class="fig-svg ax-svg cent-svg" viewBox="0 0 ${cases ? W + 70 : W} ${H}"
-         role="img" aria-label="Une droite de ${debut} à ${debut + 1}, graduée en centièmes">
+    <svg class="fig-svg ax-svg cent-svg" viewBox="0 0 ${W} ${H}"
+         role="img" aria-label="Une droite graduée de ${gauche} à ${droite}, portant ${
+    points.length} point${points.length > 1 ? 's' : ''}">
         <defs>
             <marker id="cent-fleche" viewBox="0 0 10 10" refX="8" refY="5"
                     markerWidth="6" markerHeight="6" orient="auto-start-reverse">

@@ -7279,3 +7279,39 @@ relecture. Noté au journal des frictions avec l'outil qui manque.
 **RESTE LA PREMIÈRE DE SES DEUX IDÉES** : l'élève qui pose la loupe et zoome
 lui-même. Il a demandé « les deux, dans cet ordre » — celui-ci d'abord, qu'il
 essaie en classe, et l'on décide ensuite si la loupe posée reste nécessaire.
+
+### Trois retouches de Rémy sur l'axe au centième — 14 novembre
+
+> « ne mets pas la croix au dessus, il faut qu'elle soit sur l'axe et tu peux
+> mettre plusieurs points et aussi des axe qui commence à 3,5 et finissent à
+> 3,6 pour faire des millièmes »
+
+**LA CROIX SUR L'AXE, ET IL A RAISON POUR UNE RAISON QUE JE N'AVAIS PAS VUE.**
+Je l'avais posée au-dessus pour qu'elle ne couvre pas les petits traits qu'il
+faut compter. Mais au-dessus, elle NE DÉSIGNE RIEN : il faut redescendre à la
+verticale pour trouver SON trait, et c'est un geste de plus, fait de tête, qui
+n'a rien à voir avec la lecture. Sur l'axe, elle EST à sa graduation. Ce qu'elle
+couvre, on le lui rend autrement : elle est creuse — deux traits fins qui se
+croisent, pas un bloc —, et les traits qu'elle recouvre sont ceux qu'on vient de
+compter, pas ceux qui restent.
+
+**PLUSIEURS POINTS, AVEC LEURS LETTRES.** Un à trois, A, B et C, et une case par
+point sous l'axe. Les lettres suivent l'ordre A, B, C et NON celui des
+abscisses : c'est à l'élève de trouver où chacune se trouve. Dix crans d'écart
+au moins entre deux croix — la croix fait quatorze unités de large et sa lettre
+autant, pour un cran de 8,6 : à cinq crans elles se touchent, à trois les
+lettres se recouvrent et l'on ne sait plus laquelle va avec laquelle.
+
+**ET LES MILLIÈMES.** De 3,5 à 3,6 : un grand trait vaut un CENTIÈME, un petit
+un MILLIÈME. C'est le même dessin, un cran plus fin — et c'est précisément ce
+que ce chapitre doit faire comprendre : la règle ne change pas, seul le nom des
+traits change. La figure ne sait d'ailleurs pas laquelle des deux elle dessine ;
+elle reçoit les deux bouts et cent intervalles, le sens vit dans le générateur.
+
+**MESURÉ APRÈS** : 10,2 px entre deux petits traits sur un ordinateur, 7,7
+partout ailleurs, trois points et leurs cases compris. Sept épreuves, sept
+défauts remis, sept chutes. Le juge accepte 180 bonnes réponses sur 180.
+
+**ET UN DÉFAUT VU SUR LA PHOTO** : les trois cases débordaient du cadre et leur
+contenu était coupé en deux — j'avais calculé la hauteur du dessin à 150 unités
+alors que les cases descendent à 162. Aucun compteur ne l'aurait dit.
