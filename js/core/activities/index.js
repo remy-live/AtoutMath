@@ -44,6 +44,7 @@ import { pontLampeGenerator } from '../generators/pontLampe.js';
 import { penduGenerator } from '../generators/pendu.js';
 import { dessinGradueGenerator } from '../generators/dessinGradue.js';
 import { rangerLeMotGenerator } from '../generators/rangerLeMot.js';
+import { lireAuCentiemeGenerator } from '../generators/lireAuCentieme.js';
 import { arbreCalculGenerator } from '../generators/arbreCalcul.js';
 import { pentaminosGenerator } from '../generators/pentaminos.js';
 import { transvasementsGenerator } from '../generators/transvasements.js';
@@ -98,7 +99,6 @@ import { anglesManquantsGenerator } from '../generators/anglesManquants.js';
 import { anglesNommerGenerator } from '../generators/anglesNommer.js';
 import { graduationsGenerator } from '../generators/graduations.js';
 import { graduerAxeGenerator } from '../generators/graduerAxe.js';
-import { cascadeDeLoupesGenerator } from '../generators/cascadeDeLoupes.js';
 import { graduationFractionGenerator } from '../generators/graduationFraction.js';
 import { encadrementGenerator } from '../generators/encadrement.js';
 import { euclidienneGenerator } from '../generators/euclidienne.js';
@@ -203,7 +203,8 @@ import {
     kakuroGenerator, yohakuGenerator, suguruGenerator, gratteCielGenerator,
     cheminNombresGenerator, allumettesGenerator,
     allumettesEgaliteGenerator, traverseeGenerator, pontLampeGenerator, penduGenerator,
-    dessinGradueGenerator, rangerLeMotGenerator, arbreCalculGenerator, pentaminosGenerator,
+    dessinGradueGenerator, rangerLeMotGenerator, lireAuCentiemeGenerator,
+    arbreCalculGenerator, pentaminosGenerator,
     transvasementsGenerator, cavaliersGenerator,
     dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
@@ -236,7 +237,7 @@ import {
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
     elementsGeometrieGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,
-    graduationsGenerator, graduerAxeGenerator, cascadeDeLoupesGenerator,
+    graduationsGenerator, graduerAxeGenerator,
     graduationFractionGenerator, encadrementGenerator,
     euclidienneGenerator, dureesGenerator,
     transfoQuadrillageGenerator, pavageGenerator, pavageImageGenerator,

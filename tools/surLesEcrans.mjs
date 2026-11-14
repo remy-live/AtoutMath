@@ -67,14 +67,29 @@ for (const [L, H, nom] of ECRANS) {
 
     const vu = await s.page.evaluate(([selCibles, selPlan, selAction]) => {
         const boite = (e) => e.getBoundingClientRect();
-        const cibles = [...document.querySelectorAll(selCibles)].map(boite)
-            .filter(b => b.width > 0 && b.height > 0);
+        const toutes = [...document.querySelectorAll(selCibles)].map(boite);
+        const cibles = toutes.filter(b => b.width > 0 && b.height > 0);
+        // UN TRAIT VERTICAL A UNE LARGEUR NULLE, et l'outil rendait alors
+        // « 0 cible » — la même réponse qu'un sélecteur inventé, c'est-à-dire
+        // la pire. Sur une droite graduée, ce qui se mesure n'est d'ailleurs
+        // pas la taille d'une cible mais l'ÉCART entre deux traits : on ne
+        // touche pas une graduation, on la compte. On bascule donc sur cet
+        // écart dès que les cibles sont plates.
+        const plats = toutes.length && !cibles.length;
+        let ecart = 0;
+        if (plats) {
+            const xs = toutes.map(b => b.x).sort((a, b) => a - b);
+            ecart = Infinity;
+            for (let i = 1; i < xs.length; i++) ecart = Math.min(ecart, xs[i] - xs[i - 1]);
+            ecart = Number(ecart.toFixed(2));
+        }
         const plan = document.querySelector(selPlan);
         const action = document.querySelector(selAction);
         const ab = action ? boite(action) : null;
         return {
             plan: plan ? Math.round(boite(plan).height) : 0,
-            cibles: cibles.length,
+            cibles: toutes.length,
+            plats, ecart,
             minL: cibles.length ? Math.round(Math.min(...cibles.map(b => b.width))) : 0,
             minH: cibles.length ? Math.round(Math.min(...cibles.map(b => b.height))) : 0,
             actionBas: ab ? Math.round(ab.bottom) : 0,
@@ -84,12 +99,17 @@ for (const [L, H, nom] of ECRANS) {
     }, [CIBLES, PLAN, ACTION]);
 
     const entier = !vu.actionBas || vu.actionBas <= vu.fenetre + 1;
-    const visable = Math.min(vu.minL, vu.minH) >= SEUIL;
+    // SUR DES TRAITS, LE PLANCHER EST UN ÉCART, PAS UNE SURFACE. Sept pixels
+    // entre deux graduations : en dessous, l'oeil ne les sépare plus et on ne
+    // peut plus les compter. Mesuré sur « L'Axe au Centième », où l'exercice
+    // consiste précisément à les compter.
+    const visable = vu.plats ? vu.ecart >= 7 : Math.min(vu.minL, vu.minH) >= SEUIL;
     if (!entier || vu.deborde || !visable || s.erreurs.length) fautes++;
     console.log(`  ${nom.padEnd(16)} ${L}×${H}  plan ${String(vu.plan).padStart(3)} px`
-        + ` · ${String(vu.cibles).padStart(2)} cibles, la plus petite `
-        + `${String(vu.minL).padStart(2)}×${String(vu.minH).padStart(2)}`
-        + `${visable ? '' : ' TROP PETITE'}`
+        + ` · ${String(vu.cibles).padStart(3)} cibles, `
+        + (vu.plats ? `écart ${String(vu.ecart).padStart(5)} px`
+            : `la plus petite ${String(vu.minL).padStart(2)}×${String(vu.minH).padStart(2)}`)
+        + `${visable ? '' : vu.plats ? ' TROP SERRÉ' : ' TROP PETITE'}`
         + ` · action ${entier ? 'DANS L’ÉCRAN' : 'COUPÉE de ' + (vu.actionBas - vu.fenetre) + ' px'}`
         + `${vu.deborde ? ' · PAGE QUI DÉBORDE' : ''}`
         + ` · erreurs ${s.erreurs.length}`);

@@ -691,213 +691,101 @@ export function axeSvg({
 }
 
 /**
- * LA CASCADE DE LOUPES — trois axes, et l'on descend DANS le même nombre.
+ * L'AXE AU CENTIÈME — dixièmes et centièmes sur la MÊME droite.
  *
- * ─────────────────────────────────────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────────────────────────
  *
- * RÉMY, page « Ordre · Axe », exercice 14 : 0–4, puis on zoome entre 2 et 3,
- * puis entre 2,7 et 2,8, puis entre 2,72 et 2,73.
+ * RÉMY, après avoir essayé la cascade de loupes : « Cascade de loupe, on
+ * comprend pas trop en fait. » Et, dans le même souffle, ce qu'il voudrait :
  *
- * ── CE QUE LE DÉPÔT AVAIT DÉJÀ, ET CE QUI MANQUAIT ──────────────────────
+ * > « on peut faire un exercice où on a un axe qui va de 8 à 9 donc 10
+ * > séparations et entre chaque dixième encore dix séparations (avec un trait
+ * > rouge pour les milieux) et on place un point et il faut lire, il faut
+ * > évidemment qu'il y ait de la place en largeur »
  *
- * « La Loupe sur la Droite » change d'échelle d'une question à l'autre, et
- * c'est déjà beaucoup. Mais chaque axe y est INDÉPENDANT : rien ne montre
- * qu'on descend dans le même nombre. Un élève peut lire 2,73 sur un axe des
- * centièmes sans avoir jamais vu que ce 2,73 est quelque part dans l'intervalle
- * [2 ; 3] du premier.
+ * ── POURQUOI CELA MARCHE LÀ OÙ LA CASCADE ÉCHOUAIT ──────────────────────
  *
- * ── LE TRAPÈZE A ÉTÉ REMPLACÉ PAR UN ZOOM QUI S'ANIME ───────────────────
+ * La cascade racontait le zoom EN TROIS TEMPS, et l'élève regardait quelqu'un
+ * d'autre zoomer. Ici il n'y a pas de zoom du tout : les deux précisions sont
+ * là, ENSEMBLE, sur une seule droite. Le dixième est un grand trait, le
+ * centième un petit. Lire 8,47, c'est aller au grand trait d'après 8,4 puis
+ * compter sept petits — un seul geste, visible en entier.
  *
- * RÉMY, capture à l'appui : « c'est pas très beau et je préfère que l'on fasse
- * un intervalle, ca zoome dessus en s'animant et en faisant apparaitre les
- * graduations, ce serait plus sympa ».
+ * ── LE TRAIT ROUGE DES MILIEUX, ET CE QU'IL ÉVITE ───────────────────────
  *
- * Il a raison sur le fond, pas seulement sur le dessin : LE TRAPÈZE DISAIT LE
- * ZOOM, IL NE LE MONTRAIT PAS. On lisait « ces deux bouts deviennent ces deux
- * bouts » comme on lit une légende, et il fallait le croire. Un intervalle qui
- * s'ouvre, on le VOIT — et c'est exactement le geste que l'exercice enseigne.
+ * Sans lui, compter sept petits traits demande de compter jusqu'à sept sans se
+ * tromper, dix fois par axe. Avec un repère au milieu — à 8,45 —, on compte au
+ * plus cinq, et le plus souvent deux : « cinq, six, sept » depuis le rouge. Ce
+ * n'est pas une décoration, c'est ce qui rend la lecture faisable de l'oeil.
  *
- * ET IL Y A UNE PROPRIÉTÉ QUI REND L'ANIMATION JUSTE, PAS SEULEMENT JOLIE.
- * L'axe du dessous porte l'intervalle [cran ; cran+1] de celui du dessus, étalé
- * sur dix fois plus de large. Réduit au dixième et posé au bon endroit, IL SE
- * SUPERPOSE EXACTEMENT à cet intervalle — sa croix tombe sur la croix du
- * dessus, puisque les deux désignent le même nombre. L'animation part donc de
- * la figure du dessus et s'en détache : ce n'est pas une illustration du zoom,
- * c'est le zoom.
+ * ── CE QUI N'EST PAS ÉCRIT, ET POURQUOI ─────────────────────────────────
  *
- *   sx = 1/10,  dx = x(cran) − G/10,  dy = y(k−1) − y(k)
- *
- * CE QUI S'ANIME ET CE QUI NE S'ANIME PAS. Le trait, ses crans et la croix
- * s'écartent ensemble, avec `vector-effect="non-scaling-stroke"` — sans lui, un
- * cran vertical réduit au dixième a un trait dix fois plus fin et disparaît.
- * Les NOMBRES des bouts et la case, eux, ne bougent jamais : étirés d'un
- * dixième à un, ils seraient illisibles pendant toute l'animation. Ils
- * apparaissent en fondu, un peu après — « en faisant apparaitre les
- * graduations », mot pour mot.
- *
- * ET LA CASE RESTE TOUCHABLE DU PREMIER INSTANT : un fondu ne bloque pas les
- * clics, et un élève qui sait déjà sa réponse ne doit pas attendre la fin d'une
- * animation pour la donner.
- *
- * LES DEUX GUIDES EN POINTILLÉ RESTENT, très pâles : ils portent le lien quand
- * l'animation est finie, quand l'écran demande `prefers-reduced-motion`, et sur
- * la feuille imprimée, qui ne s'anime pas.
+ * SEULS LES DEUX BOUTS PORTENT LEUR NOMBRE. Écrire 8,1 … 8,9 sous chaque grand
+ * trait donnerait la moitié de la réponse : il ne resterait qu'à compter les
+ * petits traits depuis l'étiquette la plus proche, et la lecture du DIXIÈME —
+ * qui est le premier savoir du chapitre — disparaîtrait.
  *
  * @param {Object} cfg
- * @param {Array} cfg.etages  un par axe, du plus large au plus fin :
- *   `{ debut, fin, rang, point, cran }` — `cran` est le rang du cran où
- *   commence l'intervalle qu'ouvre l'étage suivant.
- * @param {boolean} [cfg.cases] poser une case à remplir au bout de chaque axe
+ * @param {number} cfg.debut  le nombre du bout gauche (entier, 8 par exemple)
+ * @param {number} cfg.point  l'abscisse à lire, au centième
+ * @param {boolean} [cfg.cases] poser la case à remplir au bout de l'axe
+ * @param {boolean} [cfg.milieux] le repère rouge au milieu de chaque dixième
  */
-export function cascadeSvg({ etages = [], cases = false } = {}) {
-    // LA FIGURE S'ÉLARGIT AVEC LA PLUS LONGUE RÉPONSE : à quatre étages, la
-    // dernière case porte « 9,887 » et déborderait d'une largeur fixe.
-    const signesMax = Math.max(4, ...etages.map(e => e.signes || 4));
-    const W = 400 + Math.max(50, 18 + 10 * signesMax);
-    const H = 56 + etages.length * 96;
-    const G = 26, D = 350;              // l'axe s'arrête à 350 : la case tient après
-    const yDe = (k) => 46 + k * 96;
-    const fr = (v, rang) => v.toFixed(rang)
-        .replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
-    const xDe = (k) => G + (k / 10) * (D - G);
-
-    // LE RYTHME DE LA DESCENTE. Un étage part 520 ms après le précédent, et il
-    // met 620 ms à s'ouvrir (la durée, elle, vit dans `modules.css` avec
-    // l'animation) : chaque étage commence donc avant que le précédent ait fini,
-    // et la cascade descend d'un trait au lieu de marquer trois arrêts.
-    const PAS = 520;
+export function axeCentiemesSvg({ debut = 0, point = null, cases = false,
+    milieux = true } = {}) {
+    // LA LARGEUR EST LE SUJET, PAS UN RÉGLAGE. Rémy : « il faut évidemment
+    // qu'il y ait de la place en largeur ». Cent intervalles sur 860 unités
+    // font 8,6 unités chacun — c'est le minimum pour que deux petits traits
+    // voisins ne se touchent pas une fois la figure réduite à la largeur d'un
+    // écran. Tout le reste du dessin se règle là-dessus.
+    const G = 40, D = 900, W = 960, H = 128;
+    const y = 72;
+    const pas = (D - G) / 100;
+    const xDe = (i) => G + i * pas;
+    const fr = (v) => v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
 
     const morceaux = [];
-    etages.forEach((e, k) => {
-        const y = yDe(k);
-        const rang = e.rang || 0;
-        const parent = k > 0 ? etages[k - 1] : null;
-        // D'OÙ CET ÉTAGE ARRIVE : l'intervalle qu'ouvre celui du dessus. Voir
-        // l'en-tête pour le calcul — réduit au dixième et posé là, cet axe se
-        // superpose exactement à cet intervalle.
-        const ouvre = parent && Number.isInteger(parent.cran);
-        const dx = ouvre ? xDe(parent.cran) - G / 10 : 0;
-        const dy = ouvre ? yDe(k - 1) - y : 0;
-        const depart = k * PAS;
-        const style = ouvre
-            ? ` style="--dx:${dx.toFixed(2)}px; --dy:${dy.toFixed(1)}px; --t:${depart}ms"`
-            : ` style="--t:${depart}ms"`;
+    morceaux.push(`<line class="ax-axe" x1="${G - 22}" y1="${y}" x2="${D + 26}" y2="${y}"
+        marker-end="url(#cent-fleche)"/>`);
 
-        // ── CE QUI S'ÉCARTE : le trait, ses crans, la croix ───────────────
-        const trait = [];
-        trait.push(`<line class="ax-axe" x1="8" y1="${y}" x2="${D + 22}" y2="${y}"
-            vector-effect="non-scaling-stroke" marker-end="url(#casc-fleche)"/>`);
-        // ── L'INTERVALLE QU'ON VA OUVRIR, POSÉ SUR L'AXE LUI-MÊME ────────
-        //
-        // RÉMY : « je préfère que l'on fasse un intervalle ». SUR l'axe, et non
-        // treize unités en dessous comme au premier jet — deux mesures l'ont
-        // demandé, et aucune n'était une affaire de goût :
-        //
-        //   · l'axe réduit du dessous se pose exactement sur cet intervalle,
-        //     mais il se posait alors 23 unités plus haut que le trait qui
-        //     était censé le désigner : l'animation partait visiblement « à
-        //     côté ». Relevé au navigateur, animation mise en pause à t = 0 :
-        //     intervalle en y = 69, axe réduit en y = 40.
-        //   · et treize unités plus bas, le trait épais recouvrait le nombre du
-        //     bout quand l'intervalle touchait un bord — « 10 » illisible sur
-        //     la capture de Rémy.
-        //
-        // Il se dessine APRÈS le trait et AVANT les crans : il couvre l'axe,
-        // les crans le traversent, et l'on voit les deux.
-        if (Number.isInteger(e.cran) && k + 1 < etages.length) {
-            trait.push(`<g class="casc-zone" style="--t:${depart + 420}ms">
-                <line class="casc-intervalle" x1="${xDe(e.cran).toFixed(1)}" y1="${y}"
-                      x2="${xDe(e.cran + 1).toFixed(1)}" y2="${y}"
-                      vector-effect="non-scaling-stroke"/>
-            </g>`);
-        }
-        for (let i = 0; i <= 10; i++) {
-            const bout = i === 0 || i === 10;
-            const xx = xDe(i);
-            // CHAQUE CRAN APPARAÎT À SON TOUR, de gauche à droite : c'est ce que
-            // Rémy appelle « faire apparaitre les graduations ». 26 ms d'écart,
-            // soit 260 ms pour les onze — assez pour qu'on le voie, trop peu
-            // pour qu'on attende.
-            trait.push(`<line class="ax-cran casc-cran${bout ? ' ax-cran--bout' : ''}"
-                style="--tc:${depart + 150 + i * 26}ms" vector-effect="non-scaling-stroke"
-                x1="${xx.toFixed(1)}" y1="${(y - (bout ? 12 : 6)).toFixed(1)}"
-                x2="${xx.toFixed(1)}" y2="${(y + (bout ? 12 : 6)).toFixed(1)}"/>`);
-        }
-        // La croix du point, sur CHAQUE étage : c'est le même point qu'on suit,
-        // et c'est elle qui rend l'animation vraie — au premier instant, elle
-        // est posée sur la croix de l'étage du dessus.
-        if (e.point !== undefined && e.point !== null) {
-            const xp = G + ((e.point - e.debut) / (e.fin - e.debut)) * (D - G);
-            trait.push(`<g class="ax-point" vector-effect="non-scaling-stroke">
-                <line x1="${(xp - 6).toFixed(1)}" y1="${y - 6}" x2="${(xp + 6).toFixed(1)}" y2="${y + 6}"
-                      vector-effect="non-scaling-stroke"/>
-                <line x1="${(xp - 6).toFixed(1)}" y1="${y + 6}" x2="${(xp + 6).toFixed(1)}" y2="${y - 6}"
-                      vector-effect="non-scaling-stroke"/>
-            </g>`);
-        }
-        morceaux.push(`<g class="casc-etage${ouvre ? ' casc-etage--ouvre' : ''}"${style}>
-            ${trait.join('\n            ')}
+    for (let i = 0; i <= 100; i++) {
+        const dixieme = i % 10 === 0;
+        const milieu = milieux && i % 10 === 5;
+        const h = dixieme ? 20 : milieu ? 13 : 7;
+        const classe = dixieme ? 'ax-cran ax-cran--bout' : milieu ? 'cent-milieu' : 'cent-petit';
+        morceaux.push(`<line class="${classe}" x1="${xDe(i).toFixed(1)}" y1="${y - h}"
+            x2="${xDe(i).toFixed(1)}" y2="${y + h}"/>`);
+    }
+
+    // LES DEUX BOUTS, ET EUX SEULS — voir l'en-tête.
+    morceaux.push(`<text class="ax-nb" x="${G}" y="${y + 40}"
+        text-anchor="middle">${debut}</text>`);
+    morceaux.push(`<text class="ax-nb" x="${D}" y="${y + 40}"
+        text-anchor="middle">${debut + 1}</text>`);
+
+    if (point !== null && point !== undefined) {
+        // LA CROIX EST AU-DESSUS DE L'AXE, pas dessus : posée sur le trait, elle
+        // couvrirait les petits traits qu'il faut justement compter.
+        const xp = xDe(Math.round((point - debut) * 100));
+        morceaux.push(`<g class="ax-point cent-point">
+            <line x1="${(xp - 8).toFixed(1)}" y1="${y - 36}" x2="${(xp + 8).toFixed(1)}" y2="${y - 20}"/>
+            <line x1="${(xp - 8).toFixed(1)}" y1="${y - 20}" x2="${(xp + 8).toFixed(1)}" y2="${y - 36}"/>
         </g>`);
+    }
 
-        // ── CE QUI NE S'ÉTIRE PAS : les nombres, et la case ───────────────
-        //
-        // Un texte réduit au dixième puis étiré jusqu'à un est illisible
-        // pendant toute la traversée. Ils se posent donc en fondu, après.
-        const mots = [];
-        mots.push(`<text class="ax-nb" x="${xDe(0).toFixed(1)}" y="${y + 28}"
-            text-anchor="middle">${fr(e.debut, rang)}</text>`);
-        mots.push(`<text class="ax-nb" x="${xDe(10).toFixed(1)}" y="${y + 28}"
-            text-anchor="middle">${fr(e.fin, rang)}</text>`);
-        if (cases) {
-            // LA LARGEUR SUIT CE QU'ON Y ÉCRIRA. Mesuré sur la photo : « 9,24 »
-            // dans une case de 58 px passait par-dessus ses propres pointillés.
-            // Chaque étage dit son nombre de signes (`e.signes`), et la case la
-            // plus large les prend tous — des cases de tailles différentes dans
-            // une colonne se liraient comme des réponses de longueurs imposées,
-            // ce qui donnerait la moitié de la réponse.
-            const large = Math.max(...etages.map(x => x.signes || 4));
-            const w = Math.max(50, 18 + 10 * large);
-            mots.push(`<g class="ax-case">
-                <rect x="${D + 26}" y="${y - 12}" width="${w.toFixed(1)}" height="24" rx="5"/>
-                <text class="np-trou ax-trou" data-trou="${k}"
-                      x="${(D + 26 + w / 2).toFixed(1)}" y="${y + 6}" text-anchor="middle">?</text>
-            </g>`);
-        }
-        morceaux.push(`<g class="casc-mots" style="--t:${depart + 260}ms">
-            ${mots.join('\n            ')}
+    if (cases) {
+        morceaux.push(`<g class="ax-case">
+            <rect x="${D + 34}" y="${y - 15}" width="86" height="30" rx="6"/>
+            <text class="np-trou ax-trou" data-trou="0"
+                  x="${D + 34 + 43}" y="${y + 8}" text-anchor="middle">?</text>
         </g>`);
-
-        // ── L'INTERVALLE QU'ON OUVRE, ET SES DEUX GUIDES ──────────────────
-        //
-        // Rémy : « je préfère que l'on fasse un intervalle ». C'est le trait
-        // épais qui désigne CE morceau-là de l'axe ; l'étage du dessous en est
-        // l'agrandissement. Les deux guides pâles portent le lien une fois
-        // l'animation finie — et sur un écran qui refuse les animations, ils
-        // sont tout ce qui reste.
-        // ── LES DEUX GUIDES, QUI RESTENT QUAND LE MOUVEMENT EST FINI ─────
-        //
-        // Ils ne paraissent qu'une fois l'étage du dessous ARRIVÉ : pendant la
-        // descente, l'oeil doit suivre l'axe qui s'ouvre, pas deux obliques qui
-        // traversent la figure. Après, ils portent le lien — et sur un écran
-        // qui refuse les animations, ou sur la feuille imprimée, ils sont tout
-        // ce qui en reste.
-        if (Number.isInteger(e.cran) && k + 1 < etages.length) {
-            const x1 = xDe(e.cran), x2 = xDe(e.cran + 1);
-            const yBas = yDe(k + 1);
-            morceaux.push(`<g class="casc-liens" style="--t:${(k + 1) * PAS + 420}ms">
-                <line class="casc-guide" x1="${x1.toFixed(1)}" y1="${y + 4}"
-                      x2="${(G - 2).toFixed(1)}" y2="${yBas - 16}"/>
-                <line class="casc-guide" x1="${x2.toFixed(1)}" y1="${y + 4}"
-                      x2="${(D + 2).toFixed(1)}" y2="${yBas - 16}"/>
-            </g>`);
-        }
-    });
+    }
 
     return `
-    <svg class="fig-svg ax-svg casc-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"
-         role="img" aria-label="${etages.length} axes emboîtés : chacun agrandit un intervalle du précédent">
+    <svg class="fig-svg ax-svg cent-svg" viewBox="0 0 ${cases ? W + 70 : W} ${H}"
+         role="img" aria-label="Une droite de ${debut} à ${debut + 1}, graduée en centièmes">
         <defs>
-            <marker id="casc-fleche" viewBox="0 0 10 10" refX="8" refY="5"
+            <marker id="cent-fleche" viewBox="0 0 10 10" refX="8" refY="5"
                     markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
             </marker>
@@ -905,7 +793,6 @@ export function cascadeSvg({ etages = [], cases = false } = {}) {
         ${morceaux.join('\n        ')}
     </svg>`;
 }
-
 
 /**
  * Enveloppe une figure pour qu'elle occupe une largeur stable et centrée.

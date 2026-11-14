@@ -40,9 +40,9 @@ export const CODES_EXERCICES = {
     'num-fraction-decimale':      'VF',   // Virgule ou Fraction ?
     'num-graduations':            'LD',   // La Loupe sur la Droite
     'num-graduer-axe':            'GY',   // Graduer un Axe (GA, GD, GR sont pris)
-    'num-cascade-loupes':         'LS',   // La cascade de LoupeS (LP est pris)
     'num-dessin-gradue':          'LP',   // Les Points à placer (DG est pris)
     'num-ranger-le-mot':          'RV',   // RangeR le mot (RG, RM, MR sont pris)
+    'num-lire-au-centieme':       'NC',   // Nombre au Centième (CM est pris)
     'num-vocabulaire':            'MJ',   // Le Mot Juste
     'num-complement-10':          'AM',   // Amis de 10
     'num-amis-de-dix':            'AD',   // Les Amis de Dix

@@ -7488,3 +7488,23 @@ plus d'un.**
   [tirages]` boucle marche par marche — une marche cassée sur trois se noierait
   dans un tirage mélangé. Passé sur tout le catalogue d'un coup : 34 640 bonnes
   réponses mesurées, zéro refusée.
+
+**Retirer une entrée « de l'ancre A à l'ancre B » emporte ce qu'il y a entre** — 14 novembre
+
+- *Ce que je voulais faire* : retirer du catalogue l'exercice « La Cascade de
+  Loupes », que Rémy ne comprenait pas.
+- *Ce qui s'est passé* : j'ai coupé de son commentaire d'en-tête jusqu'à celui
+  de l'exercice suivant — en me trompant sur QUI était le suivant. « Le Dessin
+  Gradué » est parti avec. Puis, en le remettant depuis `git show HEAD:`, j'ai
+  recopié une tranche qui contenait AUSSI « Ranger, et le mot apparaît », et me
+  suis retrouvé avec un doublon. Deux erreurs de la même forme en trois minutes.
+  Trouvé par `nouvelExercice.mjs` — « 280 codes dictés, 279 exercices » — et
+  non par la lecture.
+- *Combien de fois* : | (première, mais retirer ou déplacer une entrée de
+  catalogue reviendra, et le fichier fait 2000 lignes)
+- *Ce qui manque* : un `node tools/retirerExercice.mjs <id>` qui trouve l'entrée
+  par son `id:` et non par un commentaire voisin, coupe exactement de
+  l'accolade ouvrante à sa fermante, retire le code dicté, l'inscription du
+  générateur, le rendu de fiche et le fichier d'épreuves, puis RELIT le
+  catalogue et refuse si le compte des exercices n'a pas baissé d'exactement
+  un. Deux cents millisecondes contre les quinze minutes que ça vient de coûter.

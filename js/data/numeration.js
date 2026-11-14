@@ -591,34 +591,6 @@ export const numerationExercises = [
         instruction: "Les deux grands traits portent leur nombre ; entre eux, l'axe est coupé en DIX intervalles égaux. On lit d'abord le PAS : si l'axe va de 8,1 à 8,2, un intervalle vaut 0,01. Puis, pour chaque case, on compte les intervalles DEPUIS LE TRAIT DE GAUCHE — jamais les traits. Trois cases et non une : une seule se devine par symétrie, trois obligent à compter à chaque fois. Les trois marches sont les trois zooms — dixièmes entre deux entiers, centièmes entre deux dixièmes, millièmes entre deux centièmes — et elles montrent ce que le tableau de numération ne dit jamais : entre deux décimaux, il y en a toujours d'autres."
     },
 
-    // --- LA CASCADE DE LOUPES (sa page « Ordre · Axe », exercice 14) ---
-    //
-    // RÉMY : 0–4, puis on zoome entre 2 et 3, puis entre 2,7 et 2,8, puis entre
-    // 2,72 et 2,73.
-    //
-    // « LA LOUPE SUR LA DROITE » CHANGE D'ÉCHELLE, MAIS CHAQUE AXE Y EST
-    // INDÉPENDANT : rien ne montre qu'on descend dans le MÊME nombre. Un élève
-    // peut lire 2,73 sur un axe des centièmes sans avoir jamais vu que ce 2,73
-    // est quelque part dans l'intervalle [2 ; 3] du premier. Ici les trois axes
-    // sont le même axe, et deux traits obliques le disent.
-    //
-    // ET CE QU'ON FAIT ÉCRIRE EST UN ENCADREMENT DE PLUS EN PLUS SERRÉ :
-    // 2 < A < 3, puis 2,7 < A < 2,8, puis A = 2,73.
-    {
-        id: 'num-cascade-loupes',
-        cree: '2026-11-13',
-        title: 'La Cascade de Loupes',
-        consignePapier: 'Complète l\u2019encadrement, étage par étage.',
-        colonnesPapier: 1,
-        printable: 'cascade',
-        generatorId: 'num.cascade-loupes', activityId: 'numpad',
-        skills: ['num.dec.graduations'],
-        motsClefs: ['loupe', 'cascade', 'zoom', 'encadrement', 'axe', 'droite graduée',
-            'décimaux', 'dixièmes', 'centièmes', 'millièmes', 'abscisse'],
-        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
-        instruction: "La croix est le MÊME point sur tous les axes. Chaque loupe — le trapèze — ouvre en DIX l'intervalle qui la contient : l'axe du dessous est cet intervalle-là, agrandi. On écrit à chaque étage la graduation juste À GAUCHE de la croix, et c'est un encadrement de plus en plus serré : 2 < A < 3, puis 2,7 < A < 2,8, puis A = 2,73 — au dernier étage la croix tombe sur une graduation, et c'est son abscisse exacte. Le nombre de l'étage du dessus RESTE DEVANT, et un chiffre s'ajoute derrière : c'est là que se voit ce que le tableau de numération ne dit jamais — entre deux décimaux, il y en a toujours d'autres."
-    },
-
     // --- Le dessin gradué (demandé par Rémy le 27 octobre) ---
     //
     // RÉMY, quatre captures d'une publication de collègues : « Tu pourrais
@@ -648,6 +620,34 @@ export const numerationExercises = [
             'dessin', 'points', 'relier', 'décimaux', 'coloriage'],
         tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
         instruction: "Chaque droite a SON échelle, et elle change d'une ligne à l'autre : lis d'abord les deux nombres écrits sous ses bouts. Placer 0,4 sur une droite de 0 à 1 et 40 sur une droite de 0 à 100, c'est le même geste et deux nombres différents. On compte les INTERVALLES depuis le bout gauche, jamais les traits. Touche la droite à l'endroit voulu : le point se range sur la graduation la plus proche, et son abscisse se relit en dessous — pour que tu puisses te corriger AVANT de valider. Quand tout est posé, le dessin apparaît. Le réglage « Comment l'abscisse est écrite » demande le même nombre de plusieurs façons : « 0,4 », « quatre dixièmes », « 4/10 », « le double de 0,2 »."
+    },
+
+    // --- L'axe au centième (demandé le 14 novembre) ---
+    //
+    // RÉMY, après avoir essayé la cascade de loupes : « Cascade de loupe, on
+    // comprend pas trop en fait. » Et, dans le même souffle :
+    //
+    // > « on peut faire un exercice où on a un axe qui va de 8 à 9 donc 10
+    // > séparations et entre chaque dixième encore dix séparations (avec un
+    // > trait rouge pour les milieux) et on place un point et il faut lire »
+    //
+    // LA CASCADE RACONTAIT LE ZOOM EN TROIS TEMPS, et l'élève regardait
+    // quelqu'un d'autre zoomer. Ici il n'y a pas de zoom : les deux précisions
+    // sont là, ensemble, sur une seule droite.
+    {
+        id: 'num-lire-au-centieme',
+        cree: '2026-11-14',
+        title: 'L\u2019Axe au Centième',
+        consignePapier: 'Écris l\u2019abscisse de chaque croix.',
+        colonnesPapier: 1,
+        printable: 'auCentieme',
+        generatorId: 'num.lire-au-centieme', activityId: 'numpad',
+        skills: ['num.dec.graduations'],
+        params: { nbQuestions: 6, marches: ['reperes', 'cote', 'entre'] },
+        motsClefs: ['droite graduée', 'abscisse', 'graduation', 'centième', 'dixième',
+            'lire', 'décimaux', 'précision'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
+        instruction: "Les deux précisions sont sur la MÊME droite : un grand trait vaut un dixième, un petit trait vaut un centième. Lire 8,47, c'est aller au grand trait juste à gauche de la croix — il donne 8,4 — puis compter les petits traits à partir de lui. Le trait ROUGE est au milieu de chaque dixième : il en vaut cinq, et il évite de compter jusqu'à neuf sans se tromper. Les deux bouts seuls portent leur nombre, et c'est voulu : écrire 8,1 … 8,9 sous chaque grand trait donnerait la moitié de la réponse. Les trois marches ne changent pas la taille du nombre, elles changent la DISTANCE AU REPÈRE — sur un repère, à un ou deux traits, puis n'importe où."
     },
 
     // --- Ranger, et le mot apparaît (sa page « Ordre · Axe », exercice 17) ---

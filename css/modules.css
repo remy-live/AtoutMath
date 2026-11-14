@@ -1444,146 +1444,6 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .ax-barre { stroke: var(--text-main); stroke-width: 2; stroke-linecap: round; }
 .ax-point line { stroke: #dc2626; stroke-width: 3.4; stroke-linecap: round; }
 
-/* ── LA CASCADE : UN INTERVALLE QUI S'OUVRE ─────────────────────────────────
-
-   RÉMY, capture à l'appui : « c'est pas très beau et je préfère que l'on fasse
-   un intervalle, ca zoome dessus en s'animant et en faisant apparaitre les
-   graduations, ce serait plus sympa ».
-
-   Le trapèze rempli qui tenait cette place DISAIT le zoom sans le montrer : on
-   lisait « ces deux bouts deviennent ces deux bouts » comme une légende, et il
-   fallait le croire. Il a été remplacé par l'intervalle lui-même, épais sur
-   l'axe, et par l'animation qui l'ouvre.
-
-   LE CALCUL EST DANS `figures.js`, et il rend l'animation JUSTE et pas
-   seulement jolie : l'axe du dessous, réduit au dixième et posé au bon endroit,
-   se superpose exactement à l'intervalle du dessus — croix comprise, puisque
-   les deux désignent le même nombre. */
-
-/* L'INTERVALLE QU'ON OUVRE : le trait épais, et ses deux bornes. */
-.casc-intervalle {
-    stroke: var(--primary); stroke-width: 5; stroke-linecap: round;
-}
-.casc-borne { stroke: var(--primary); stroke-width: 2.4; stroke-linecap: round; }
-
-/* ── LES DEUX GUIDES NE S'AFFICHENT PAS QUAND L'ANIMATION JOUE ─────────────
-
-   Ils reliaient l'intervalle aux deux bouts de l'axe du dessous. Regardés sur la
-   figure une fois l'animation en place, ils forment une grande flèche qui barre
-   le dessin — c'est-à-dire exactement ce que Rémy appelait « pas très beau »,
-   déplacé de dix pixels.
-
-   ET ILS NE SERVENT PLUS : l'axe du dessous PART de l'intervalle sous les yeux
-   de l'élève, et l'intervalle reste marqué sur l'axe après. Le lien est montré,
-   il n'a plus besoin d'être annoté.
-
-   ILS RESTENT POUR QUI DEMANDE MOINS DE MOUVEMENT, et là ils sont tout ce qui
-   dit la cascade — ainsi que sur la feuille imprimée, qui a son propre rendu. */
-.casc-liens { display: none; }
-.casc-guide {
-    stroke: color-mix(in srgb, var(--primary) 30%, transparent);
-    stroke-width: 1.2; stroke-dasharray: 4 4;
-}
-
-/* ── L'OUVERTURE ───────────────────────────────────────────────────────────
-
-   `transform-box: view-box` et `transform-origin: 0 0` sont OBLIGATOIRES : sans
-   eux, le navigateur prend l'origine au centre de la boîte de l'élément, et le
-   `translate` calculé dans `figures.js` — qui vise l'origine du viewBox — pose
-   l'axe n'importe où.
-
-   `scaleX(.1)` seul écraserait aussi l'épaisseur des traits : un cran vertical
-   réduit au dixième a un trait dix fois plus fin, c'est-à-dire invisible. C'est
-   `vector-effect="non-scaling-stroke"`, posé dans `figures.js`, qui l'empêche. */
-.casc-etage { transform-box: view-box; transform-origin: 0 0; }
-
-@keyframes casc-ouvrir {
-    from { transform: translate(var(--dx), var(--dy)) scaleX(.1); opacity: .35; }
-    55%  { opacity: 1; }
-    to   { transform: translate(0px, 0px) scaleX(1); opacity: 1; }
-}
-.casc-etage--ouvre {
-    animation: casc-ouvrir 620ms cubic-bezier(.22, .72, .28, 1) both;
-    animation-delay: var(--t, 0ms);
-}
-
-/* LES GRADUATIONS APPARAISSENT, UNE PAR UNE, de gauche à droite — c'est le mot
-   de Rémy. 26 ms d'écart entre deux crans : assez pour qu'on le voie, trop peu
-   pour qu'on attende. */
-@keyframes casc-poindre { from { opacity: 0; } to { opacity: 1; } }
-.casc-cran { animation: casc-poindre 220ms ease-out both; animation-delay: var(--tc, 0ms); }
-
-/* LES NOMBRES ET LA CASE NE S'ÉTIRENT JAMAIS : un texte réduit au dixième puis
-   rendu à sa taille est illisible pendant toute la traversée. Ils se posent en
-   fondu, après que l'axe est arrivé.
-
-   ET LA CASE RESTE TOUCHABLE DU PREMIER INSTANT : un fondu ne bloque pas les
-   clics. Un élève qui sait déjà sa réponse ne doit pas attendre la fin d'une
-   animation pour la donner — c'est la règle qu'on s'est donnée sur l'annonce du
-   défi, et elle vaut ici. */
-.casc-mots { animation: casc-poindre 320ms ease-out both; animation-delay: var(--t, 0ms); }
-.casc-zone { animation: casc-poindre 260ms ease-out both; animation-delay: var(--t, 0ms); }
-
-/* ET QUI DEMANDE MOINS DE MOUVEMENT N'EN A PAS. Tout est à sa place d'emblée,
-   et les deux guides pâles disent alors seuls ce que l'animation montrait. */
-@media (prefers-reduced-motion: reduce) {
-    .casc-etage--ouvre, .casc-cran, .casc-mots, .casc-zone { animation: none; }
-    .casc-liens { display: unset; }
-}
-
-.casc-svg { max-width: 100%; height: auto; }
-
-/* ── LA CASCADE EST UNE FIGURE HAUTE, ET LE DÉPÔT A DÉJÀ SON RÉGLAGE ────────
-
-   Les plafonds de ce fichier sont écrits pour « une droite graduée large et
-   basse ». UNE CASCADE N'EST NI L'UNE NI L'AUTRE : quatre axes empilés font un
-   dessin presque carré, et le plafond le réduit alors à un ruban.
-
-   MESURÉ SUR 390 × 844, quatre étages : la figure tenait dans 76 px, soit 19 px
-   par étage, et le `rect` d'une case faisait 12 × 4 PIXELS. Playwright les
-   remplit toutes les quatre et le verdict dit « Parfait ! » — le mécanisme
-   marche. Un doigt ne vise pas 4 px de haut, et l'oeil ne lit pas un « 6,983 »
-   de six pixels. UNE MESURE QUI DIT « ÇA FONCTIONNE » NE DIT PAS « C'EST
-   JOUABLE ».
-
-   J'AI D'ABORD ÉCRIT MON PROPRE PLAFOND, ET C'ÉTAIT DEUX FOIS FAUX. Une fois
-   parce qu'à 40vh le pavé sortait de l'écran de 235 px — le compte se mesure au
-   BAS du pavé, pas en additionnant des hauteurs, et il était déjà à 828 px sur
-   844. Une fois parce que le vrai plafond n'était pas le `9vh` que je croyais :
-   en demandant au navigateur QUELLES règles désignent ce SVG, c'est
-   `--fig-plafond` et `46cqh` qui sont sortis. Ma règle ne gagnait rien.
-
-   `--fig-etirement` EST EXACTEMENT CE RÉGLAGE-LÀ, et `.ar-svg` comme `.cu-svg`
-   s'en servent déjà pour la même raison. Il vaut 1,55 là où l'écran a de la
-   place et retombe à 1 sur les paliers du téléphone — c'est-à-dire que le dépôt
-   avait déjà tranché : sur un téléphone, une figure haute ne chasse pas le
-   clavier. On suit. */
-.numpad-context .casc-svg { max-height: calc(var(--fig-plafond) * var(--fig-etirement)); }
-
-/* ET SUR LE TÉLÉPHONE, LES 88 PIXELS QUE L'ÉNONCÉ A RENDUS.
-
-   Le palier de 480 px pose `.numpad-context .figure-wrap svg { max-height: 9vh }`
-   — deux classes et un élément, donc il bat la règle ci-dessus, qui n'a que
-   deux classes. C'est voulu pour une figure large et basse ; ici cela donnait
-   19 px par étage.
-
-   APRÈS L'ÉNONCÉ RACCOURCI, le bas du pavé est remonté de 828 à 756 px sur une
-   fenêtre de 844 : 88 pixels libres, mesurés, pas supposés. On en rend 68 au
-   dessin (17vh), et le pavé finit à 824 — vingt pixels de marge, sur les deux
-   téléphones essayés. Le plancher de 96 px et le plafond de 150 px tiennent les
-   fenêtres courtes, où le pavé descend aussi.
-
-   DEUX RÈGLES SÉPARÉES, ET C'EST DÉLIBÉRÉ : le cadre porte le même plafond que
-   le SVG, et un enfant ne dépasse pas son cadre. Réunies en une seule liste de
-   sélecteurs, un sélecteur qu'un navigateur refuse emporterait l'autre avec
-   lui — c'est ce qui est arrivé à l'essai précédent, écrit avec un `:has()`. */
-@media (max-width: 767px) {
-    .numpad-context .figure-wrap .casc-svg { max-height: clamp(96px, 17vh, 150px); }
-}
-@media (max-width: 767px) {
-    .figure-wrap.figure-wrap--casc { max-height: clamp(96px, 17vh, 150px); }
-}
-
 /* ── LES CASES À REMPLIR SOUS LES GRADUATIONS ───────────────────────────────
 
    RÉMY, page « Ordre · Axe », exercices 13 et 15 : GRADUER un axe, et non y
@@ -18891,3 +18751,93 @@ body.visite-en-cours .modal-overlay > * {
     background: color-mix(in srgb, var(--primary) 14%, transparent);
     border-radius: 5px;
 }
+
+/* ── L'AXE AU CENTIÈME ─────────────────────────────────────────────────────
+
+   RÉMY : « un axe qui va de 8 à 9 donc 10 séparations et entre chaque dixième
+   encore dix séparations (avec un trait rouge pour les milieux) […] il faut
+   évidemment qu'il y ait de la place en largeur ».
+
+   LA LARGEUR EST LE SUJET, PAS UN RÉGLAGE. Cent intervalles, c'est cent traits
+   à distinguer : à 390 px de large, ils seraient à 3,2 px l'un de l'autre, et
+   l'exercice demande justement de les COMPTER. La figure prend donc toute la
+   largeur qu'on peut lui donner — voir `.figure-wrap--cent` plus bas. */
+.cent-petit { stroke: var(--text-main); stroke-width: 1; opacity: .55; }
+/* LE TRAIT ROUGE DU MILIEU. Ce n'est pas une décoration : sans lui, compter
+   sept petits traits demande de compter jusqu'à sept sans se tromper, dix fois
+   par axe. Avec lui, on compte au plus cinq — et le plus souvent deux. */
+.cent-milieu { stroke: var(--danger); stroke-width: 1.6; }
+.cent-point line { stroke: var(--danger); stroke-width: 3.2; stroke-linecap: round; }
+.cent-svg { max-width: 100%; height: auto; }
+
+/* ET LA FIGURE SORT DE SA COLONNE.
+
+   Les plafonds de ce fichier protègent le pavé numérique d'une figure trop
+   HAUTE ; celle-ci est l'inverse — très basse (rapport 8 pour 1) et affamée de
+   largeur. Le plafond de hauteur ne la gêne donc pas, mais la largeur de la
+   colonne de gauche, si : à 560 px, les cent traits tombent à 5,6 px l'un de
+   l'autre.
+
+   On lui rend la largeur de la zone entière. C'est sans risque pour le pavé :
+   une figure qui s'élargit ne descend pas, elle s'étale. */
+.figure-wrap--cent { width: 100%; max-width: none; }
+.numpad-context .figure-wrap--cent .cent-svg { max-height: none; }
+
+/* ET ELLE PREND LES DEUX COLONNES, pas seulement celle de gauche.
+
+   MESURÉ sur 1180 × 920 : enfermée dans la colonne du contexte (560 px), la
+   figure donnait 4,67 px entre deux petits traits. On ne compte pas des traits
+   distants de quatre pixels — et compter les traits EST l'exercice.
+
+   Le pavé passe donc sous la figure au lieu d'être à côté. C'est le même
+   arbitrage que partout ici : la colonne de droite existe pour que le dessin et
+   le clavier tiennent ensemble à l'écran, et elle ne vaut que tant que le
+   dessin y tient. */
+.numpad-layout:has(.figure-wrap--cent) { grid-template-columns: minmax(0, 1fr); }
+/* ET LE CONTEXTE LÈVE SON PROPRE PLAFOND DE LARGEUR.
+   Première tentative : passer la grille en une colonne. La figure a RÉTRÉCI,
+   de 560 à 455 px — `.numpad-context` est capé à 430 px (600 sur un grand
+   plateau), et c'est lui qui bornait, pas la grille. Mesuré, pas déduit. */
+.numpad-context:has(.figure-wrap--cent) { max-width: none; width: 100%; }
+/* ET LA GRILLE ELLE-MÊME PREND LA ZONE.
+   Troisième mesure : les deux règles au-dessus s'appliquaient bien
+   (`max-width: none` confirmé au navigateur), et la figure restait à 455 px —
+   parce que `.numpad-layout` est l'enfant d'un flex et se réduisait à son
+   contenu : 495 px dans une zone de 1180. On ne devine pas une largeur, on
+   remonte la chaîne et on demande à chaque parent. */
+.numpad-layout:has(.figure-wrap--cent) { width: 100%; max-width: 1180px; }
+
+/* ── ET SUR UN ÉCRAN ÉTROIT, L'AXE GLISSE AU LIEU DE S'ÉCRASER ─────────────
+
+   MESURÉ sur les quatre écrans (`node tools/surLesEcrans.mjs
+   num-lire-au-centieme --cibles=".cent-petit"`), écart entre deux petits
+   traits : 9,52 px sur un ordinateur, 6,08 sur une tablette, 3,02 sur un
+   téléphone. En dessous de sept, l'oeil ne sépare plus deux graduations — et
+   LES COMPTER EST L'EXERCICE.
+
+   Rémy l'avait dit avant d'écrire la première ligne : « il faut évidemment
+   qu'il y ait de la place en largeur ». Quand l'écran ne l'a pas, on ne la
+   fabrique pas en serrant : la figure garde sa largeur minimale et c'est ELLE
+   qui glisse, dans sa propre boîte. La PAGE, elle, ne déborde jamais.
+
+   ET L'ÉNONCÉ NOMME ALORS LES DEUX BOUTS, parce qu'ils peuvent se trouver hors
+   du cadre quand on a fait glisser : « La droite va de 8 à 9 ». Sur un grand
+   écran c'est une redite inoffensive ; sur un petit, c'est ce qui dit de quel
+   nombre on parle. */
+.figure-wrap--cent { overflow-x: auto; overscroll-behavior-x: contain; }
+.figure-wrap--cent .cent-svg { min-width: 860px; }
+/* ET LE PLAFOND DE HAUTEUR NE S'APPLIQUE PAS NON PLUS AU CADRE.
+   Mesuré : avec la largeur minimale posée, le téléphone haut gardait 76 px de
+   figure au lieu de 107 — le cadre était capé à 9vh, et deux contraintes
+   contraires se partageaient la différence. On lève les deux, et l'écart
+   remonte de 5,1 à 7,2 px. Sans risque pour le pavé : cette figure est très
+   basse (rapport 8 pour 1), elle s'étale, elle ne descend pas. */
+.numpad-context .figure-wrap--cent { max-height: none; }
+/* ET LE PAVÉ SE RECENTRE SOUS LA FIGURE.
+   En passant la grille à une seule colonne pour laisser la place à l'axe, le
+   pavé s'est retrouvé collé au bord gauche avec la moitié de l'écran vide à
+   droite. Vu sur la photo, pas sur un compteur : la mise en page à deux
+   colonnes centrait le pavé dans la sienne, et cette raison a disparu avec la
+   colonne. */
+.numpad-layout:has(.figure-wrap--cent) { justify-items: center; }
+.numpad-layout:has(.figure-wrap--cent) > .numpad-panel { margin-inline: auto; }

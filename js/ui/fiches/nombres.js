@@ -2728,6 +2728,135 @@ function geoGraduation(item, slot) {
 }
 
 /**
+ * L'AXE AU CENTIÈME, SUR LE PAPIER.
+ *
+ * RÉMY : « un axe qui va de 8 à 9 donc 10 séparations et entre chaque dixième
+ * encore dix séparations (avec un trait rouge pour les milieux) […] il faut
+ * évidemment qu'il y ait de la place en largeur ».
+ *
+ * SUR LE PAPIER, LA PLACE EXISTE : une page A4 en paysage donne 25 cm de large
+ * pour cent intervalles, soit 2,4 mm chacun — plus que les 2 mm d'un papier
+ * millimétré, que tout élève sait lire. C'est l'écran qui est à l'étroit, pas
+ * la feuille.
+ *
+ * ET LE TRAIT ROUGE SURVIT À LA PHOTOCOPIE, parce qu'il n'est pas QUE rouge :
+ * il est aussi plus HAUT que ses voisins. En noir et blanc, le repère du milieu
+ * se voit encore — l'information est portée deux fois, et la couleur n'est que
+ * la plus agréable des deux.
+ */
+function geoCentieme(item, slot) {
+    const m = item.meta || {};
+    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
+    const marge = b.w * 0.035;
+    const x0 = b.x + marge;
+    const larg = b.w - 2 * marge - 26;
+    const pt = Math.max(6, Math.min(10, b.h * 0.3));
+    return {
+        m, boite: b, x0, larg, pt,
+        y: b.y + b.h * 0.52,
+        pas: larg / 100,
+        px: (i) => x0 + (i / 100) * larg
+    };
+}
+
+function centiemePreviewHtml(item, slot, k, solution) {
+    const g = geoCentieme(item, slot);
+    const police = g.pt * 0.3528 * k;
+    const y = g.y;
+    let html = '';
+    let svg = '';
+
+    html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
+        width:${(g.larg + 4) * k}px; height:${Math.max(1, 0.5 * k)}px; background:#1a202c"></div>`;
+    for (let i = 0; i <= 100; i++) {
+        const dixieme = i % 10 === 0;
+        const milieu = i % 10 === 5;
+        const h = dixieme ? g.pt * 0.52 : milieu ? g.pt * 0.34 : g.pt * 0.19;
+        html += `<div style="position:absolute; left:${g.px(i) * k}px;
+            top:${(y - h) * k}px; width:${Math.max(1, (dixieme ? 0.5 : 0.35) * k)}px;
+            height:${2 * h * k}px; background:${milieu ? '#c0392b' : '#1a202c'}"></div>`;
+    }
+    [[0, g.m.debut], [100, g.m.debut + 1]].forEach(([i, v]) => {
+        html += `<div style="position:absolute; left:${(g.px(i) - 6) * k}px;
+            top:${(y + g.pt * 0.62) * k}px; width:${12 * k}px; text-align:center;
+            font-size:${police}px; font-weight:700; color:#1a202c">${v}</div>`;
+    });
+
+    // LA CROIX EST AU-DESSUS DU TRAIT, pas dessus : posée sur l'axe, elle
+    // couvrirait les petits traits qu'il faut justement compter.
+    // LA CROIX SE POSE JUSTE AU-DESSUS DES TRAITS, pas plus haut. À 0,95 fois
+    // la taille du texte, elle flottait à un centimètre de l'axe sur la feuille
+    // imprimée : on ne voyait plus QUEL trait elle désignait, ce qui est toute
+    // la question. Vu sur la photo de la fiche. Elle reste au-dessus, et non
+    // dessus : posée sur le trait, elle couvrirait les petits traits qu'il faut
+    // compter.
+    const xp = g.px(g.m.cran);
+    const r = g.pt * 0.3;
+    const yc = y - g.pt * 0.62;
+    svg += `<g stroke="#c0392b" stroke-width="${(0.6 * k).toFixed(2)}" stroke-linecap="round">
+        <line x1="${((xp - r) * k).toFixed(1)}" y1="${((yc - r) * k).toFixed(1)}"
+              x2="${((xp + r) * k).toFixed(1)}" y2="${((yc + r) * k).toFixed(1)}"/>
+        <line x1="${((xp - r) * k).toFixed(1)}" y1="${((yc + r) * k).toFixed(1)}"
+              x2="${((xp + r) * k).toFixed(1)}" y2="${((yc - r) * k).toFixed(1)}"/></g>`;
+
+    const haut = g.pt * 0.3528 * 1.8;
+    html += `<div style="position:absolute; left:${(g.x0 + g.larg + 7) * k}px;
+        top:${(y - haut / 2) * k}px; width:${18 * k}px; height:${haut * k}px;
+        border:${Math.max(1, 0.4 * k)}px solid #7b8798; border-radius:${1.2 * k}px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:${police * 0.95}px; font-weight:700; color:#2f855a">${
+    solution ? echapperSheet(String(item.answer)) : ''}</div>`;
+
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible">${svg}</svg>` + html;
+}
+
+/** La même chose dans le PDF — voir l'aperçu pour le raisonnement. */
+function dessinerCentiemePdf(doc, item, slot, solution) {
+    const g = geoCentieme(item, slot);
+    const y = g.y;
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.5);
+    doc.line(g.x0, y, g.x0 + g.larg + 4, y);
+    for (let i = 0; i <= 100; i++) {
+        const dixieme = i % 10 === 0;
+        const milieu = i % 10 === 5;
+        const h = dixieme ? g.pt * 0.52 : milieu ? g.pt * 0.34 : g.pt * 0.19;
+        if (milieu) doc.setDrawColor(192, 57, 43); else doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(dixieme ? 0.5 : 0.3);
+        doc.line(g.px(i), y - h, g.px(i), y + h);
+    }
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(g.pt);
+    doc.text(pourPdf(String(g.m.debut)), g.px(0), y + g.pt * 0.62 + g.pt * 0.3528 * 0.8,
+        { align: 'center' });
+    doc.text(pourPdf(String(g.m.debut + 1)), g.px(100), y + g.pt * 0.62 + g.pt * 0.3528 * 0.8,
+        { align: 'center' });
+
+    const xp = g.px(g.m.cran);
+    const r = g.pt * 0.3;
+    const yc = y - g.pt * 0.62;   // voir l'aperçu : elle flottait trop haut
+    doc.setDrawColor(192, 57, 43);
+    doc.setLineWidth(0.6);
+    doc.line(xp - r, yc - r, xp + r, yc + r);
+    doc.line(xp - r, yc + r, xp + r, yc - r);
+
+    const haut = g.pt * 0.3528 * 1.8;
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(g.x0 + g.larg + 7, y - haut / 2, 18, haut, 0.8, 0.8, 'S');
+    if (solution) {
+        doc.setTextColor(47, 133, 90);
+        doc.setFontSize(g.pt * 0.95);
+        doc.text(pourPdf(String(item.answer)), g.x0 + g.larg + 7 + 9, y + haut * 0.2,
+            { align: 'center' });
+        doc.setTextColor(...ENCRE.texte);
+    }
+}
+
+/**
  * RANGER, ET LE MOT APPARAÎT, SUR LE PAPIER.
  *
  * RÉMY, page « Ordre · Axe », exercice 17.
@@ -2906,190 +3035,6 @@ function dessinerRangerPdf(doc, item, slot, solution) {
     }
     doc.setTextColor(...ENCRE.texte);
     doc.setFontSize(g.pt);
-}
-
-/**
- * LA CASCADE DE LOUPES, SUR LE PAPIER.
- *
- * RÉMY, page « Ordre · Axe », exercice 14.
- *
- * LA BOÎTE DU BLOC SE PARTAGE EN AUTANT DE BANDES QU'IL Y A D'ÉTAGES, et
- * chaque bande porte son axe, ses deux bouts chiffrés, la croix, et la case de
- * l'encadrement à droite. Entre deux bandes, le trapèze de la loupe.
- *
- * LE TRAPÈZE SE DESSINE AVANT LES AXES qu'il touche : rempli après, il les
- * effacerait. En PDF comme en aperçu — c'est le même ordre, et c'est la seule
- * chose qu'il faut tenir des deux côtés.
- */
-function geoCascade(item, slot) {
-    const m = item.meta || {};
-    const etages = Array.isArray(m.etages) ? m.etages : [];
-    const b = slot.boite || { x: slot.x, y: slot.y, w: slot.taille, h: slot.taille };
-    const marge = b.w * 0.05;
-    // LA COLONNE DES CASES EST À DROITE, et sa largeur se calcule sur le plus
-    // long nombre à écrire : « 5,667 » et « 5 » ne tiennent pas la même place.
-    const signes = Math.max(4, ...etages.map(e => (e.signes || 4)));
-    const pt = Math.max(5.5, Math.min(10, b.h * 0.1));
-    const colonne = pt * 0.3528 * (signes + 1.6);
-    const x0 = b.x + marge;
-    const larg = b.w - 2 * marge - colonne - 3;
-    const bande = b.h / Math.max(1, etages.length);
-    return {
-        m, etages, boite: b, x0, larg, colonne, pt,
-        cran: Math.min(bande * 0.16, 3.2),
-        pas: larg / 10,
-        yDe: (k) => b.y + bande * (k + 0.42),
-        px: (i) => x0 + (i / 10) * larg
-    };
-}
-
-function cascadePreviewHtml(item, slot, k, solution) {
-    const g = geoCascade(item, slot);
-    const police = g.pt * 0.3528 * k;
-    let html = '';
-    let svg = '';
-
-    g.etages.forEach((e, i) => {
-        const y = g.yDe(i);
-        // L'INTERVALLE QU'ON OUVRE, POSÉ SUR L'AXE, ET SES DEUX GUIDES.
-        //
-        // RÉMY : « c'est pas très beau et je préfère que l'on fasse un
-        // intervalle ». L'écran a remplacé le trapèze rempli par l'intervalle
-        // lui-même et par l'animation qui l'ouvre ; la feuille ne peut pas
-        // s'animer, mais elle peut dire la même chose avec le même trait. Un
-        // élève qui a joué à l'écran doit retrouver SA figure sur le papier.
-        //
-        // Les deux guides restent ici — sur le papier, ils sont tout ce qui
-        // porte le lien d'un axe à l'autre.
-        if (Number.isInteger(e.cran) && i + 1 < g.etages.length) {
-            const x1 = g.px(e.cran), x2 = g.px(e.cran + 1);
-            const yBas = g.yDe(i + 1) - g.cran;
-            svg += `<g stroke="#b9c0e8" stroke-width="${Math.max(1, 0.3 * k)}"
-                stroke-dasharray="${3 * k} ${2.4 * k}" fill="none">
-                <line x1="${(x1 * k).toFixed(1)}" y1="${((y + g.cran * 0.4) * k).toFixed(1)}"
-                      x2="${(g.x0 * k).toFixed(1)}" y2="${(yBas * k).toFixed(1)}"/>
-                <line x1="${(x2 * k).toFixed(1)}" y1="${((y + g.cran * 0.4) * k).toFixed(1)}"
-                      x2="${((g.x0 + g.larg) * k).toFixed(1)}" y2="${(yBas * k).toFixed(1)}"/>
-            </g>`;
-            svg += `<line x1="${(x1 * k).toFixed(1)}" y1="${(y * k).toFixed(1)}"
-                x2="${(x2 * k).toFixed(1)}" y2="${(y * k).toFixed(1)}"
-                stroke="#4f46e5" stroke-width="${Math.max(2, 1.4 * k)}"
-                stroke-linecap="round"/>`;
-        }
-        html += `<div style="position:absolute; left:${g.x0 * k}px; top:${y * k}px;
-            width:${(g.larg + 2) * k}px; height:${Math.max(1, 0.5 * k)}px; background:#1a202c"></div>`;
-        for (let t = 0; t <= 10; t++) {
-            const h = (t === 0 || t === 10) ? g.cran : g.cran * 0.5;
-            html += `<div style="position:absolute; left:${g.px(t) * k}px;
-                top:${(y - h) * k}px; width:${Math.max(1, 0.45 * k)}px;
-                height:${2 * h * k}px; background:#1a202c"></div>`;
-        }
-        [[0, ecrireDecimal(e.debut, e.rang)], [10, ecrireDecimal(e.fin, e.rang)]]
-            .forEach(([t, mot]) => {
-                html += `<div style="position:absolute; left:${(g.px(t) - g.pas) * k}px;
-                    top:${(y + g.cran * 1.1) * k}px; width:${2 * g.pas * k}px;
-                    text-align:center; font-size:${police}px; font-weight:700;
-                    color:#1a202c">${echapperSheet(String(mot))}</div>`;
-            });
-        // LA CROIX EST À L'ENCRE DU TRAIT, à l'écran comme au PDF. Elle était
-        // rouge ici et noire là-bas : l'élève qui corrige sur la feuille ne
-        // retrouvait pas la même figure, et une photocopie ne garde de toute
-        // façon pas la couleur.
-        if (e.point !== undefined && e.point !== null) {
-            const xp = g.px(((e.point - e.debut) / (e.fin - e.debut)) * 10);
-            const r = g.cran * 0.62;
-            svg += `<g stroke="#1a202c" stroke-width="${(0.55 * k).toFixed(2)}"
-                stroke-linecap="round">
-                <line x1="${((xp - r) * k).toFixed(1)}" y1="${((y - r) * k).toFixed(1)}"
-                      x2="${((xp + r) * k).toFixed(1)}" y2="${((y + r) * k).toFixed(1)}"/>
-                <line x1="${((xp - r) * k).toFixed(1)}" y1="${((y + r) * k).toFixed(1)}"
-                      x2="${((xp + r) * k).toFixed(1)}" y2="${((y - r) * k).toFixed(1)}"/></g>`;
-        }
-        // La case de l'encadrement, à droite de l'axe.
-        const haut = g.pt * 0.3528 * 1.5;
-        html += `<div style="position:absolute; left:${(g.x0 + g.larg + 3) * k}px;
-            top:${(y - haut / 2) * k}px; width:${g.colonne * k}px; height:${haut * k}px;
-            border:${Math.max(1, 0.4 * k)}px dashed #7b8798; border-radius:${1.2 * k}px;
-            display:flex; align-items:center; justify-content:center;
-            font-size:${police * 0.92}px; font-weight:700; color:#2f855a">${
-    solution ? echapperSheet(ecrireDecimal((g.m.bornes || [])[i], i)) : ''}</div>`;
-    });
-    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
-        overflow:visible">${svg}</svg>` + html;
-}
-
-/** La même chose dans le PDF — voir l'aperçu pour le raisonnement. */
-function dessinerCascadePdf(doc, item, slot, solution) {
-    const g = geoCascade(item, slot);
-
-    // LES DEUX GUIDES D'ABORD, puis les axes : en PDF il n'y a pas de couches,
-    // c'est l'ordre des appels qui décide de ce qui couvre quoi.
-    //
-    // LE TRAPÈZE REMPLI A DISPARU — RÉMY : « c'est pas très beau et je préfère
-    // que l'on fasse un intervalle ». L'écran montre l'intervalle et l'ouvre en
-    // s'animant ; la feuille ne s'anime pas, mais elle porte le même trait, à la
-    // même place. Un élève qui a joué doit retrouver SA figure sur le papier.
-    //
-    // ON Y GAGNE AUSSI LA COUTURE : jsPDF ne remplit pas un quadrilatère, donc
-    // le trapèze se faisait en deux triangles, et les tracer chacun avec son
-    // contour dessinait l'arête commune — une diagonale en travers de la loupe.
-    // Deux photos de la feuille avaient été nécessaires pour la voir. Sans
-    // remplissage, le problème n'existe plus.
-    doc.setDrawColor(185, 192, 232);
-    doc.setLineWidth(0.25);
-    if (doc.setLineDashPattern) doc.setLineDashPattern([1.2, 0.9], 0);
-    g.etages.forEach((e, i) => {
-        if (!Number.isInteger(e.cran) || i + 1 >= g.etages.length) return;
-        const y = g.yDe(i), yBas = g.yDe(i + 1) - g.cran;
-        doc.line(g.px(e.cran), y + g.cran * 0.4, g.x0, yBas);
-        doc.line(g.px(e.cran + 1), y + g.cran * 0.4, g.x0 + g.larg, yBas);
-    });
-    if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
-
-    // ET L'INTERVALLE, SUR L'AXE LUI-MÊME. Il se trace avant les axes pour la
-    // même raison qu'à l'écran : les crans le traversent, et l'on voit les deux.
-    doc.setDrawColor(79, 70, 229);
-    doc.setLineWidth(1.5);
-    g.etages.forEach((e, i) => {
-        if (!Number.isInteger(e.cran) || i + 1 >= g.etages.length) return;
-        doc.line(g.px(e.cran), g.yDe(i), g.px(e.cran + 1), g.yDe(i));
-    });
-
-    g.etages.forEach((e, i) => {
-        const y = g.yDe(i);
-        doc.setDrawColor(...ENCRE.trait);
-        doc.setLineWidth(0.5);
-        doc.line(g.x0, y, g.x0 + g.larg + 2, y);
-        doc.setLineWidth(0.45);
-        for (let t = 0; t <= 10; t++) {
-            const h = (t === 0 || t === 10) ? g.cran : g.cran * 0.5;
-            doc.line(g.px(t), y - h, g.px(t), y + h);
-        }
-        doc.setTextColor(...ENCRE.texte);
-        doc.setFontSize(g.pt);
-        doc.text(pourPdf(ecrireDecimal(e.debut, e.rang)), g.px(0),
-            y + g.cran * 1.1 + g.pt * 0.3528 * 0.8, { align: 'center' });
-        doc.text(pourPdf(ecrireDecimal(e.fin, e.rang)), g.px(10),
-            y + g.cran * 1.1 + g.pt * 0.3528 * 0.8, { align: 'center' });
-        if (e.point !== undefined && e.point !== null) {
-            const xp = g.px(((e.point - e.debut) / (e.fin - e.debut)) * 10);
-            const r = g.cran * 0.62;
-            doc.setLineWidth(0.7);
-            doc.line(xp - r, y - r, xp + r, y + r);
-            doc.line(xp - r, y + r, xp + r, y - r);
-        }
-        const haut = g.pt * 0.3528 * 1.5;
-        doc.setLineWidth(0.3);
-        doc.setDrawColor(...ENCRE.grille);
-        doc.roundedRect(g.x0 + g.larg + 3, y - haut / 2, g.colonne, haut, 0.8, 0.8, 'S');
-        if (!solution) return;
-        doc.setTextColor(47, 133, 90);
-        doc.setFontSize(g.pt * 0.92);
-        doc.text(pourPdf(ecrireDecimal((g.m.bornes || [])[i], i)),
-            g.x0 + g.larg + 3 + g.colonne / 2, y + haut * 0.22, { align: 'center' });
-        doc.setTextColor(...ENCRE.texte);
-        doc.setFontSize(g.pt);
-    });
 }
 
 /**
@@ -4244,6 +4189,24 @@ export const RENDUS_NOMBRES = {
         disposition: { cols: 4, rows: 3, maxCols: 5, maxRows: 4 },
         parLigneDefaut: 4
     },
+    // L'AXE AU CENTIÈME — demandé le 14 novembre.
+    auCentieme: {
+        titre: () => 'L\u2019axe au centième',
+        consigne: () => 'Un GRAND trait vaut un dixième, un petit trait vaut un centième, '
+            + 'et le trait ROUGE est au milieu de chaque dixième. Écris l\u2019abscisse de '
+            + 'chaque croix dans la case du bout.',
+        previewGrille: centiemePreviewHtml,
+        pdfGrille: dessinerCentiemePdf,
+        nomBloc: 'Droite', nomBlocs: 'droites',
+        // PLEINE LARGEUR ET TRÈS BASSE : cent intervalles ont besoin de toute la
+        // page, et de rien d'autre. Six par feuille en paysage, soit 2,4 mm par
+        // intervalle — plus qu'un papier millimétré.
+        proportions: { w: 1, h: 0.14 },
+        grilleMax: 180,
+        disposition: { cols: 1, rows: 6, maxCols: 1, maxRows: 7 },
+        parLigneDefaut: 1
+    },
+
     // RANGER, ET LE MOT APPARAÎT — sa page « Ordre · Axe », exercice 17.
     rangerLeMot: {
         titre: () => 'Ranger, et le mot apparaît',
@@ -4258,25 +4221,6 @@ export const RENDUS_NOMBRES = {
         // en dix intervalles plus la ligne du rangement. Des droites courtes
         // rendraient les intervalles indistinguables — or c\u2019est eux qu\u2019on compte.
         proportions: { w: 1, h: 0.42 },
-        grilleMax: 170,
-        disposition: { cols: 1, rows: 2, maxCols: 1, maxRows: 3 },
-        parLigneDefaut: 1
-    },
-
-    // LA CASCADE DE LOUPES — sa page « Ordre · Axe », exercice 14.
-    cascade: {
-        titre: () => 'La cascade de loupes',
-        consigne: () => 'La croix est le MÊME point sur tous les axes, et chaque '
-            + 'loupe ouvre en dix l\u2019intervalle qui la contient. Écris dans la case de '
-            + 'chaque étage la graduation juste À GAUCHE de la croix — au dernier étage, '
-            + 'elle tombe dessus : c\u2019est son abscisse exacte.',
-        previewGrille: cascadePreviewHtml,
-        pdfGrille: dessinerCascadePdf,
-        nomBloc: 'Cascade', nomBlocs: 'cascades',
-        // HAUTE, ET PLEINE LARGEUR : quatre axes empilés ne tiennent pas sur
-        // trois centimètres, et des axes courts rendraient les intervalles
-        // indistinguables — or c\u2019est eux qu\u2019on compte.
-        proportions: { w: 1, h: 0.55 },
         grilleMax: 170,
         disposition: { cols: 1, rows: 2, maxCols: 1, maxRows: 3 },
         parLigneDefaut: 1

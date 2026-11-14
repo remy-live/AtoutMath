@@ -7238,3 +7238,44 @@ demande une activité à part (poser la loupe, zoomer, recommencer).
 la place en largeur ». Cent traits sur 390 px font 3,9 px d'écart — illisible.
 C'est la même mesure que celle qui a coûté la cascade sur téléphone, et elle se
 pose AVANT d'écrire : `node tools/surLesEcrans.mjs` existe pour ça.
+
+
+### Ce qui a été construit, et ce que la mesure a corrigé — 14 novembre
+
+**« L'AXE AU CENTIÈME » EST FAIT** (`num-lire-au-centieme`, code NC), exactement
+comme il l'a décrit : dix grandes divisions entre 8 et 9, dix petites dans
+chacune, un trait rouge au milieu de chaque dixième, une croix à lire.
+
+**SA CONTRAINTE ÉTAIT LA VRAIE DIFFICULTÉ, ET ELLE S'EST MESURÉE EN TROIS
+TEMPS.** Enfermée dans la colonne du pavé : 4,67 px entre deux petits traits.
+Élargie : 3,8 px — PIRE —, parce que ce n'était pas la grille qui bornait mais
+le contexte (capé à 430 px), puis la grille, puis le fait que la mise en page
+est l'enfant d'un flex et se réduisait à son contenu (495 px dans une zone de
+1180). Trois parents à interroger l'un après l'autre, en demandant à chaque fois
+au navigateur plutôt qu'en déduisant. Après : **9,5 px sur un ordinateur, 7,2
+partout ailleurs**, et sur un écran étroit l'axe glisse dans sa propre boîte au
+lieu de s'écraser — la page, elle, ne déborde jamais.
+
+**DEUX CORRECTIONS QUI N'ÉTAIENT PAS DES QUESTIONS DE GOÛT :**
+
+· **La case de réponse au bout de l'axe n'existe pas.** Le pavé n'allume son
+  mécanisme de cases qu'à partir de DEUX trous (`aTrous = trous.length > 1`) :
+  une case unique dessinée dans la figure restait décorative — on cliquait, on
+  tapait, le « ? » ne bougeait pas. Une case qui ne se remplit jamais est pire
+  qu'une absence de case.
+· **Trois marches n'en faisaient que deux.** Avec un repère tous les cinq
+  traits, aucun centième n'est à plus de DEUX traits d'un repère : « à un ou
+  deux traits » et « n'importe où » demandaient le même travail. C'est une
+  épreuve qui l'a dit, en refusant de trouver un seul cas plus difficile sur
+  quarante tirages. Les marches sont maintenant : sur un repère, juste à côté,
+  entre deux repères.
+
+**ET « LA CASCADE DE LOUPES » EST RETIRÉE**, comme il l'a choisi. Le retrait a
+coûté quinze minutes : le découpage a emporté « Le Dessin Gradué » au passage,
+puis la réparation a dupliqué « Ranger, et le mot apparaît ». Les deux trouvées
+par `nouvelExercice.mjs` — « 280 codes dictés, 279 exercices » —, pas par la
+relecture. Noté au journal des frictions avec l'outil qui manque.
+
+**RESTE LA PREMIÈRE DE SES DEUX IDÉES** : l'élève qui pose la loupe et zoome
+lui-même. Il a demandé « les deux, dans cet ordre » — celui-ci d'abord, qu'il
+essaie en classe, et l'on décide ensuite si la loupe posée reste nécessaire.
