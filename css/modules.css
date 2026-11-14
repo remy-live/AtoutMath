@@ -18848,3 +18848,46 @@ body.visite-en-cours .modal-overlay > * {
     text-decoration: none;
     min-width: 1.3em;
 }
+
+/* ── LE CHEMIN ÉCRIT DE L'ADDITION DE FRACTIONS, EN COLONNE ────────────────
+
+   RÉMY : « ecris en colonne oui tu ajoutes ce chemin dans addition de
+   fraction ». Une ligne par étape, chacune sous la précédente — la disposition
+   du cahier. Sur une seule ligne, une égalité à quatre membres se casse là où
+   la place manque, pas là où le raisonnement change.
+
+   LE CHEMIN SE POSE SOUS L'ÉNONCÉ ET Y RESTE pendant que l'élève calcule :
+   c'est le mécanisme `schemas` du dépôt, écrit pour une raison qui vaut ici
+   mot pour mot — « un texte se retient, un dessin se regarde pendant qu'on
+   calcule ». */
+.chem-colonne {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    margin: 4px auto; padding: 10px 14px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--primary) 5%, transparent);
+    color: var(--text-main);
+}
+/* LE PRÉFIXE EST `chem-`, ET PAS `fa-`, PARCE QUE `fa-` ÉTAIT DÉJÀ PRIS.
+   « Poser une Addition de Fractions » (`fractionsPose.js`) emploie `.fa-ligne`,
+   `.fa-op`, `.fa-lignes` depuis longtemps. Mes classes homonymes HÉRITAIENT de
+   sa mise en page : la ligne se posait en colonne, et les trois morceaux d'une
+   addition s'empilaient l'un sous l'autre. Mesuré sur la photo de l'indice —
+   rien ne plantait, rien ne prévenait, et la règle que j'avais écrite était
+   bien là, elle ne disait simplement pas `flex-direction`. */
+.chem-ligne {
+    display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px;
+    font-size: 1.45rem; font-weight: 800; line-height: 1;
+}
+.chem-op { color: var(--text-muted); font-weight: 700; }
+/* LE SIGNE « × » EST PLUS PETIT QUE LES NOMBRES qu'il relie : dans « 1×3 », le
+   lecteur cherche les deux nombres, pas l'opération. À taille égale, les trois
+   signes se valaient et la fraction devenait un mot de trois lettres. */
+.chem-x { font-size: .72em; color: var(--text-muted); margin: 0 .08em; }
+/* LE TROU DU PREMIER ÉTAGE : « par quoi multiplie-t-on ? ». Il se voit sans
+   crier — c'est une question posée, pas une faute à corriger. */
+.chem-trou {
+    display: inline-block; min-width: .9em; text-align: center;
+    color: var(--primary-texte);
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    border-radius: 5px;
+}

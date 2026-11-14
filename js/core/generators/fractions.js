@@ -583,6 +583,64 @@ const fenteAvecTrous = () => '<span class="compare-slot compare-slot--riche">'
 // ligne ; ici on RECONNAÎT parmi quatre propositions. Les leurres portent donc
 // les erreurs du chapitre, et l'ORDRE dans lequel ils sont écrits EST le choix
 // pédagogique : `finalizeChoices` ne garde que les trois premiers.
+/**
+ * LE CHEMIN ÉCRIT, EN COLONNE — l'indice de l'addition de fractions.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « ecris en colonne oui tu ajoutes ce chemin dans addition de
+ * fraction », avec son modèle :
+ *
+ *     1/2 + 3/4 = 1*.../2*... + 3/4 = ..../4 + 3/4 = 5/4
+ *
+ * EN COLONNE ET NON SUR UNE LIGNE. Son modèle tient sur une ligne parce qu'il
+ * l'a tapé dans un message ; une égalité à quatre membres ne se lit pas d'un
+ * trait, et sur un téléphone elle se casse où la place manque — pas où le
+ * raisonnement change. Une ligne par étape, chacune sous la précédente : c'est
+ * la disposition du cahier, et c'est celle qu'il a demandée.
+ *
+ * ── CE QU'IL A VU, ET QUI ÉTAIT UN DÉFAUT ──────────────────────────────
+ *
+ * « pour des dénominateurs multiples, il suffit juste de multiplier une
+ * fraction ». C'est exact, et l'indice d'avant l'ignorait : il écrivait
+ * « 1/2 = 3/6 et 1/6 = 1/6 ». La seconde moitié ne dit RIEN — elle recopie la
+ * fraction en annonçant une transformation qui n'a pas eu lieu, ce qui est pire
+ * que de se taire. Ici, la fraction qui ne change pas est simplement RECOPIÉE,
+ * sans « ×1 », et l'indice le dit en toutes lettres.
+ *
+ * ── DEUX ÉTAGES, PARCE QU'UN INDICE QUI DONNE TOUT N'EN EST PAS UN ──────
+ *
+ * Le premier montre le chemin avec les facteurs EN TROUS (« ×? ») : voilà où
+ * l'on va, trouve par quoi multiplier. Le second les remplit et pose la somme.
+ * L'élève qui n'a besoin que du chemin s'arrête au premier.
+ */
+function cheminEnColonne(n1, d1, n2, d2, { commun, k1, k2, somme, trous = false }) {
+    const mul = (a, k) => (k === 1 ? `${a}` : `${a}<span class="chem-x">×</span>${
+        trous ? '<span class="chem-trou">?</span>' : k}`);
+    const ligne = (contenu) => `<div class="chem-ligne">${contenu}</div>`;
+    const plus = '<span class="chem-op">+</span>';
+    const egal = '<span class="chem-op">=</span>';
+
+    const lignes = [ligne(`${fracHtml(n1, d1)}${plus}${fracHtml(n2, d2)}`)];
+
+    // L'ÉTAPE DE CONVERSION N'EXISTE QUE S'IL Y A QUELQUE CHOSE À CONVERTIR.
+    // À dénominateurs égaux, l'écrire ferait apprendre un geste inutile ; à
+    // dénominateurs multiples, une seule des deux fractions la traverse.
+    if (k1 > 1 || k2 > 1) {
+        lignes.push(ligne(
+            `<span class="fraction"><span class="fraction-num">${mul(n1, k1)}</span>`
+            + `<span class="fraction-den">${mul(d1, k1)}</span></span>${plus}`
+            + `<span class="fraction"><span class="fraction-num">${mul(n2, k2)}</span>`
+            + `<span class="fraction-den">${mul(d2, k2)}</span></span>`));
+    }
+    if (!trous) {
+        lignes.push(ligne(
+            `${fracHtml(n1 * k1, commun)}${plus}${fracHtml(n2 * k2, commun)}`
+            + `${egal}${fracHtml(somme, commun)}`));
+    }
+    return `<div class="chem-colonne">${lignes.join('')}</div>`;
+}
+
 const LISTE_ADD = NIVEAUX_SOMME.map((n, i) => ({ id: n.id, nom: `${i + 1}. ${n.nom}` }));
 const PAR_MARCHE_ADD = 3;
 
@@ -671,6 +729,11 @@ export const fracAddGenerator = {
         }
         const somme = n1 * k1 + n2 * k2;
         const meme = d1 === d2;
+        // DÉNOMINATEURS MULTIPLES : l'un divise l'autre, donc le commun EST le
+        // plus grand des deux et UNE SEULE fraction se convertit. Rémy :
+        // « pour des dénominateurs multiples, il suffit juste de multiplier une
+        // fraction ». Le cas se reconnaît à ceci qu'un des deux facteurs vaut 1.
+        const multiple = !meme && (k1 === 1 || k2 === 1);
 
         // LA VALEUR JUGE, L'ÉTIQUETTE SE LIT : « 7|5 » part au pavé, et le
         // bouton montre la fraction dessinée. La bonne proposition doit porter
@@ -746,13 +809,40 @@ export const fracAddGenerator = {
             // écrit ce qu'il faut lire, quand ce n'est pas la même chose ».
             reponsePapier: `${somme}/${commun}`,
             choices,
+            // ── LES INDICES, ET LE CHEMIN ÉCRIT QUI LES ACCOMPAGNE ─────────
+            //
+            // RÉMY : « penses tu que la table de pythagore aide ? » — pour des
+            // dénominateurs MULTIPLES, non, et c'est pourquoi le premier indice
+            // change de phrase dans ce cas. Chercher 6 dans la table de 2 et
+            // dans celle de 6 est un détour : 6 EST déjà dans la table de 2, il
+            // n'y a rien à chercher. La table sert quand aucun des deux ne
+            // divise l'autre — 4 et 6, où il faut trouver 12.
+            //
+            // Lui faire ouvrir une table ici enseignerait qu'on cherche
+            // TOUJOURS, alors que le savoir du jour est précisément de voir que
+            // 6 = 2 × 3 et de ne convertir qu'une fraction.
             hints: meme ? [
                 'Les dénominateurs sont identiques : on additionne seulement les numérateurs.',
                 `${n1} + ${n2} = ${somme}, sur ${d1}.`
+            ] : multiple ? [
+                `${commun} est dans la table de ${Math.min(d1, d2)} : `
+                    + `${commun} = ${Math.min(d1, d2)} × ${Math.max(k1, k2)}. `
+                    + `Une seule des deux fractions change.`,
+                `${n1}/${d1} + ${n2}/${d2} = ${n1 * k1}/${commun} + ${n2 * k2}/${commun}`
+                    + ` = ${somme}/${commun}.`
             ] : [
                 `Cherche un nombre à la fois dans la table de ${d1} et dans celle de ${d2}.`,
                 `Les parts n'ont pas la même taille : écris les deux fractions en ${commun}èmes.`,
                 `${n1}/${d1} = ${n1 * k1}/${commun} et ${n2}/${d2} = ${n2 * k2}/${commun}.`
+            ],
+            // LE CHEMIN EN COLONNE, posé sous l'énoncé et qui y RESTE pendant
+            // que l'élève calcule : « un texte se retient, un dessin se regarde
+            // pendant qu'on calcule ». D'abord les facteurs en trous, puis
+            // remplis. À dénominateurs égaux il n'y a pas de chemin à montrer —
+            // on additionne, et c'est tout ce qu'il y a à dire.
+            schemas: meme ? [] : [
+                cheminEnColonne(n1, d1, n2, d2, { commun, k1, k2, somme, trous: true }),
+                cheminEnColonne(n1, d1, n2, d2, { commun, k1, k2, somme })
             ],
             explanation: meme
                 ? `${n1}/${d1} + ${n2}/${d1} = ${somme}/${d1}${simplifie}. Le dénominateur ne change pas.`

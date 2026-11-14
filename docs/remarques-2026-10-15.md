@@ -7164,3 +7164,77 @@ une correction — c'est la différence avec « Montre-moi ».
 capture montre un exercice à dénominateur commun (5 et 5). Le chemin en trois
 temps n'a de sens que dans le premier cas ; à dénominateur égal, la première
 étape n'existe pas et l'afficher apprendrait un geste inutile.
+
+---
+
+## « Cascade de loupe, on comprend pas trop » — 14 novembre
+
+Trois messages coup sur coup, et le dernier change le reste.
+
+### Le chemin écrit de l'addition, en colonne — FAIT
+
+> « ecris en colonne oui tu ajoutes ce chemin dans addition de fraction mais
+> ceci dit pour des dénominateurs multiples, il suffit juste de multiplier une
+> fraction, penses tu que la table de pythagore aide ? »
+
+**SA QUESTION A UNE RÉPONSE NETTE : NON, pas pour des dénominateurs multiples.**
+Chercher 6 à la fois dans la table de 2 et dans celle de 6 est un détour — 6 EST
+déjà dans la table de 2, il n'y a rien à chercher. La table sert quand aucun des
+deux ne divise l'autre : 4 et 6, où il faut trouver 12. Lui faire ouvrir une
+table à 1/2 + 1/6 enseignerait qu'on cherche TOUJOURS, alors que le savoir du
+jour est justement de voir que 6 = 2 × 3 et de ne convertir qu'une fraction.
+
+**ET SA CAPTURE MONTRAIT UN DÉFAUT QUE PERSONNE N'AVAIT VU.** L'indice écrivait
+« 1/2 = 3/6 et 1/6 = 1/6 ». La seconde moitié ne dit RIEN : elle recopie la
+fraction en annonçant une transformation qui n'a pas eu lieu. C'est pire que de
+se taire. Le premier indice de la marche « multiple » dit maintenant « 6 est
+dans la table de 2 : 6 = 2 × 3. Une seule des deux fractions change. »
+
+**LE CHEMIN EST POSÉ SOUS L'ÉNONCÉ ET Y RESTE** — mécanisme `schemas`, écrit
+pour une raison qui vaut ici mot pour mot : « un texte se retient, un dessin se
+regarde pendant qu'on calcule ». Deux étages : les facteurs en trous (« ×? »),
+puis remplis avec la somme.
+
+**ET UNE COLLISION DE NOMS, TROUVÉE SUR LA PHOTO.** Mes classes `fa-ligne`,
+`fa-op` existaient DÉJÀ — « Poser une Addition de Fractions » les emploie. Mes
+lignes héritaient de sa mise en page et s'empilaient en colonne. Rien ne
+plantait, rien ne prévenait, et ma règle était bien là : elle ne disait
+simplement pas `flex-direction`. Renommées en `chem-`.
+
+### « Cascade de loupe, on comprend pas trop en fait »
+
+**C'EST LA REMARQUE QUI COMPTE, ET ELLE NE PORTE PLUS SUR LE DESSIN.** On a passé
+la soirée à rendre la cascade belle — l'intervalle qui s'ouvre, les graduations
+qui apparaissent. Elle est plus belle, et elle ne se comprend toujours pas.
+
+**CE QU'IL PROPOSE À LA PLACE, ET C'EST UNE AUTRE IDÉE :**
+
+> « pour le zoom, il faudrait que ce soit l'élève qui pose la loupe et gère le
+> zoom quand il se rend compte que ca ne tombe pas encore juste. »
+
+> « on peut faire un exercice où on a un axe qui va de 8 à 9 donc 10
+> séparations et entre chaque dixième encore dix séparations (avec un trait
+> rouge pour les milieux) et on place un point et il faut lire, il faut
+> évidemment qu'il y ait de la place en largeur »
+
+**DEUX IDÉES DISTINCTES, ET IL FAUT LE DIRE AVANT DE CONSTRUIRE :**
+
+1. **L'ÉLÈVE POSE LA LOUPE.** Dans la cascade actuelle, les trois axes sont
+   DONNÉS : l'élève lit un raisonnement déjà fait. S'il choisit lui-même
+   l'intervalle à ouvrir — « ça ne tombe pas juste, je zoome ICI » —, le geste
+   devient le sien, et c'est exactement le geste que le chapitre enseigne. C'est
+   aussi, probablement, pourquoi on ne comprenait pas : **on regardait quelqu'un
+   d'autre zoomer.**
+2. **UN SEUL AXE, DIXIÈMES ET CENTIÈMES ENSEMBLE.** De 8 à 9, dix grandes
+   divisions, et dix petites dans chacune — cent traits, avec un repère rouge
+   au milieu de chaque dixième. On place un point, on lit. Pas de zoom du tout :
+   la précision est là, d'emblée, et c'est l'ŒIL qui descend.
+
+La seconde est plus simple et sans doute plus claire que la cascade : elle
+montre d'un coup ce que la cascade racontait en trois temps. La première
+demande une activité à part (poser la loupe, zoomer, recommencer).
+
+**UNE CONTRAINTE QU'IL A NOMMÉE LUI-MÊME** : « il faut évidemment qu'il y ait de
+la place en largeur ». Cent traits sur 390 px font 3,9 px d'écart — illisible.
+C'est la même mesure que celle qui a coûté la cascade sur téléphone, et elle se
+pose AVANT d'écrire : `node tools/surLesEcrans.mjs` existe pour ça.
