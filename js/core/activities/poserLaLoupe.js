@@ -22,12 +22,25 @@
 // fois, le morceau qu'il couvre. L'élève le fait glisser jusqu'à la croix, lit
 // les petits traits, et écrit.
 //
-// ── UN SEUL GESTE, ET IL N'A PAS DE MODE ───────────────────────────────────
+// ── DEUX GESTES, ET AUCUN N'A DE MODE ──────────────────────────────────────
 //
-// On pose le doigt n'importe où dans le dessin : le verre y va. On glisse : il
-// suit. C'est tout. Il n'y a pas de « mode zoom », pas de bouton à armer, pas
-// d'intervalle à choisir avant de pouvoir regarder. Les deux flèches font la
-// même chose d'un cran, pour le clavier et pour les doigts qui ne glissent pas.
+// RÉMY : « quand on clique on zoome, une belle animation entre les deux ».
+//
+//   · ON TAPE quelque part sur le dessin : la loupe s'y REND, en glissant, et
+//     l'on voit le trajet — les graduations défilent sous le verre pendant la
+//     traversée. C'est le geste qu'on fait avec une vraie loupe : on l'envoie
+//     là où l'on veut regarder.
+//   · ON TIRE : elle suit le doigt, sans animation. Une animation pendant un
+//     glissé ne serait que du retard : le doigt est déjà la consigne.
+//
+// CE QUI SÉPARE LES DEUX EST UN SEUIL DE SIX PIXELS, en pixels d'écran et non
+// en centièmes : un seuil exprimé dans les unités du dessin vaudrait trois
+// pixels sur un téléphone et neuf sur un portable, c'est-à-dire « trop
+// sensible » ici et « ne répond pas » là. Le doigt, lui, tremble du même nombre
+// de pixels partout.
+//
+// Les deux flèches font un cran, sans animation : sur un cran, une animation
+// est plus longue à regarder que le mouvement n'est à comprendre.
 //
 // ── CE QUI N'EST PAS UNE FAUTE ─────────────────────────────────────────────
 //
@@ -70,6 +83,8 @@ export function mount(container, session) {
     let message = '';
     /** Vrai pendant qu'un doigt tient le verre. */
     let tient = false;
+    /** Le numéro du voyage en cours — l'incrémenter annule celui d'avant. */
+    let vol = 0;
 
     function renderNext() {
         if (destroyed) return;
@@ -94,12 +109,12 @@ export function mount(container, session) {
                 <div class="lp-scene">
                     <div class="lp-gauche">
                         <div class="lp-plan" data-plan tabindex="0" role="slider"
-                             aria-label="La loupe, à faire glisser le long de la droite"
+                             aria-label="La loupe : touche la droite pour l’y envoyer, ou tire-la"
                              aria-valuemin="0" aria-valuemax="100"></div>
                         <div class="lp-barre">
                             <button type="button" class="lp-fleche" data-pas="-1"
                                     aria-label="Glisser la loupe vers la gauche">◀</button>
-                            <span class="lp-aide">Fais glisser la loupe</span>
+                            <span class="lp-aide">Touche la droite, ou tire la loupe</span>
                             <button type="button" class="lp-fleche" data-pas="1"
                                     aria-label="Glisser la loupe vers la droite">▶</button>
                         </div>
@@ -131,7 +146,7 @@ export function mount(container, session) {
         });
         container.querySelector('[data-valider]').onclick = valider;
         container.querySelectorAll('[data-pas]').forEach((b) => {
-            b.onclick = () => poser(centre + Number(b.getAttribute('data-pas')));
+            b.onclick = () => { vol++; poser(centre + Number(b.getAttribute('data-pas'))); };
         });
         brancherLeGeste();
         peindre();
@@ -174,33 +189,90 @@ export function mount(container, session) {
         if (centre !== avant) peindre();
     }
 
+    /**
+     * LA LOUPE S'Y REND, ET L'ON VOIT LE TRAJET.
+     *
+     * RÉMY : « quand on clique on zoome, une belle animation entre les deux ».
+     *
+     * ON REDESSINE À CHAQUE IMAGE plutôt que de faire glisser le `<svg>` par une
+     * transformation CSS : ce qui doit défiler, c'est le CONTENU du verre, et
+     * une transformation le déplacerait tout entier sans jamais changer ce
+     * qu'il montre. La loupe arriverait alors en montrant déjà l'arrivée — ce
+     * n'est pas un voyage, c'est une coupure déguisée.
+     *
+     * LA DURÉE SUIT LA DISTANCE, et s'arrête à 460 ms. Une durée fixe ferait
+     * ramper la loupe sur trois crans et filer sur soixante-dix ; au-delà d'une
+     * demi-seconde, l'élève a compris et attend.
+     */
+    function allerA(but) {
+        if (fini || destroyed || but === null || !Number.isFinite(but)) return;
+        const cible = Math.max(0, Math.min(100, Math.round(but)));
+        const de = centre;
+        const route = cible - de;
+        if (!route) return;
+        const jeton = ++vol;
+        // ET QUI DEMANDE MOINS DE MOUVEMENT ARRIVE TOUT DE SUITE.
+        if (window.matchMedia
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            poser(cible);
+            return;
+        }
+        const duree = Math.min(460, 140 + Math.abs(route) * 4);
+        const debut = performance.now();
+        const pas = (t) => {
+            // UN JETON PÉRIMÉ ARRÊTE LE VOYAGE : un doigt posé pendant que la
+            // loupe vole doit en reprendre la main à l'instant même, sans quoi
+            // deux mouvements se disputeraient le même verre.
+            if (destroyed || jeton !== vol) return;
+            const k = Math.min(1, (t - debut) / duree);
+            const e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+            poser(de + route * e);
+            if (k < 1) requestAnimationFrame(pas);
+        };
+        requestAnimationFrame(pas);
+    }
+
     function brancherLeGeste() {
         const plan = container.querySelector('[data-plan]');
         if (!plan) return;
+        let xPx = 0, centreDepart = 0, aBouge = false;
 
         // LES ÉCOUTEURS DU GLISSÉ VIVENT SUR `window`, PAS SUR LE DESSIN.
         // `peindre()` remplace le `<svg>` en entier : un écouteur posé dessus
         // disparaîtrait au premier cran franchi, et le glissé s'arrêterait tout
         // seul après un pixel. `setPointerCapture` aurait le même sort.
         const bouge = (ev) => {
-            if (destroyed) { lache(); return; }
+            if (destroyed) { lache(ev); return; }
             if (!tient) return;
             ev.preventDefault();
-            poser(auDoigt(ev));
+            // SIX PIXELS D'ÉCRAN SÉPARENT LE CLIC DU GLISSÉ — voir l'en-tête.
+            if (!aBouge && Math.abs(ev.clientX - xPx) < 6) return;
+            aBouge = true;
+            // LE GLISSÉ EST RELATIF : la loupe se déplace d'autant que le doigt,
+            // elle ne saute pas sous lui. On peut donc l'attraper par n'importe
+            // quel bout et la pousser, comme un objet posé sur la droite.
+            const ici = auDoigt(ev), la = auDoigt({ clientX: xPx, clientY: ev.clientY });
+            if (ici === null || la === null) return;
+            poser(centreDepart + (ici - la));
         };
-        const lache = () => {
+        const lache = (ev) => {
             if (!tient) return;
             tient = false;
             window.removeEventListener('pointermove', bouge);
             window.removeEventListener('pointerup', lache);
             window.removeEventListener('pointercancel', lache);
+            // ON N'A PAS BOUGÉ : C'ÉTAIT UNE TAPE, ET LA LOUPE S'Y REND.
+            if (!aBouge && ev && ev.type === 'pointerup') allerA(auDoigt(ev));
             peindre();
         };
 
         plan.onpointerdown = (ev) => {
             if (fini || session.locked) return;
+            vol++;                       // un doigt posé annule le voyage en cours
             tient = true;
-            poser(auDoigt(ev));
+            aBouge = false;
+            xPx = ev.clientX;
+            centreDepart = centre;
             peindre();
             window.addEventListener('pointermove', bouge, { passive: false });
             window.addEventListener('pointerup', lache);
@@ -213,6 +285,7 @@ export function mount(container, session) {
             const d = { ArrowLeft: -1, ArrowRight: 1, Home: -100, End: 100 }[ev.key];
             if (d === undefined) return;
             ev.preventDefault();
+            vol++;                       // une touche aussi reprend la main
             poser(centre + d);
         };
     }
@@ -266,20 +339,14 @@ export function mount(container, session) {
         });
     }
 
-    /** Le robot fait glisser le verre jusqu'à la croix, puis écrit. */
+    /** Le robot envoie le verre sur la croix, puis écrit. */
     async function runDemo() {
         peindre();
-        // IL GLISSE, IL NE SAUTE PAS. Une démonstration qui poserait le verre
-        // d'un coup montrerait le résultat du geste et non le geste — et c'est
-        // le geste qui est la leçon.
-        const but = item.meta.croix;
-        const n = 14;
-        for (let k = 1; k <= n; k++) {
-            if (destroyed) return;
-            poser(centre + (but - centre) / (n - k + 1));
-            await new Promise(r => regTimeout(r, 55));
-        }
-        await new Promise(r => regTimeout(r, 420));
+        // IL EMPRUNTE LE MÊME VOYAGE QUE LA TAPE DE L'ÉLÈVE, et non un mouvement
+        // à lui : une démonstration qui bougerait autrement que le logiciel
+        // montrerait un geste que l'élève ne peut pas refaire.
+        allerA(item.meta.croix);
+        await new Promise(r => regTimeout(r, 900));
         for (const c of String(item.answer)) {
             if (destroyed) return;
             taper(c);

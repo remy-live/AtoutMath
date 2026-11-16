@@ -146,6 +146,52 @@ test('IL Y A TOUJOURS UN REPÈRE SOUS LE VERRE, ET LA CROIX Y TIENT', () => {
     }
 });
 
+test('LA DROITE DU HAUT MONTRE SES CENTIÈMES, PÂLES ET VERS LE BAS', () => {
+    // RÉMY : « on pourrait aussi mettre les sousgradution sous le dessin ».
+    //
+    // ILS SONT ILLISIBLES À DESSEIN — à 3 px d'écart sur un téléphone, ces
+    // quatre-vingt-dix traits font une bande grise. Mais cette bande DIT qu'il
+    // y a dix crans dans chaque dixième, et donc à quoi sert la loupe. Sans
+    // eux, elle a l'air d'inventer les graduations qu'elle montre.
+    const svg = loupeSvg({ gauche: '6', droite: '7', croix: 37, centre: 37 });
+    const sous = [...svg.matchAll(
+        /class="lp-sous" x1="([\d.-]+)" y1="([\d.-]+)"\s+x2="[\d.-]+" y2="([\d.-]+)"/g)]
+        .map(m => ({ x: Number(m[1]), haut: Number(m[2]), bas: Number(m[3]) }));
+    // QUATRE-VINGT-DIX, et non cent : les dix dixièmes ont déjà leur grand
+    // trait, et en redessiner un petit par-dessus l'épaissirait sans rien dire.
+    assert.equal(sous.length, 90, `${sous.length} petits traits au lieu de 90`);
+    // VERS LE BAS SEULEMENT, c'est-à-dire PAS AU-DESSUS DE L'AXE. Vers le haut
+    // ils se mêleraient aux grands traits, qui montent autant qu'ils
+    // descendent, et la hiérarchie serait perdue : on ne saurait plus lequel
+    // porte un nombre.
+    //
+    // ON S'EST D'ABORD MESURÉ AU GRAND TRAIT, ET ÇA NE GARDAIT RIEN :
+    // `epreuveTombe.mjs` a fait monter les petits traits à mi-hauteur d'un
+    // grand, et l'épreuve est restée verte — « moins haut qu'un grand » est
+    // vrai de presque tout. C'est à l'AXE qu'il faut se comparer.
+    const axe = svg.match(/class="ax-axe" x1="[\d.-]+" y1="([\d.-]+)"/);
+    assert.ok(axe, 'la droite elle-même est introuvable');
+    for (const t of sous) {
+        assert.ok(t.haut >= Number(axe[1]),
+            `un petit trait monte jusqu’à ${t.haut}, au-dessus de l’axe (${axe[1]})`);
+        assert.ok(t.bas > t.haut, 'un petit trait ne descend pas');
+    }
+    // ET ILS SONT AUX BONS ENDROITS, chacun au centième qu'il désigne.
+    //
+    // ON A D'ABORD MESURÉ L'ÉCART ENTRE VOISINS, ET C'ÉTAIT FAUX : aux
+    // dixièmes il n'y a pas de petit trait, donc l'écart y vaut le double, et
+    // l'épreuve rougissait sur un dessin juste. On compare donc chaque trait à
+    // la place que la droite lui assigne — ce qui garde davantage : un peigne
+    // régulier mais décalé d'un demi-cran passerait l'autre épreuve.
+    const { G, D } = LOUPE_GEO;
+    const attendus = [];
+    for (let c = 1; c < 100; c++) {
+        if (c % 10) attendus.push((G + c * (D - G) / 100).toFixed(1));
+    }
+    assert.deepEqual(sous.map(t => t.x.toFixed(1)).sort(), attendus.sort(),
+        'les petits traits ne tombent pas sur les centièmes de la droite');
+});
+
 test('RIEN N’EST ÉTIRÉ : la loupe agrandit les deux directions', () => {
     // RÉMY : « que ce soit pas un étirement vertical qui déforme la croix,
     // c'est pas terribe. »
@@ -161,7 +207,7 @@ test('RIEN N’EST ÉTIRÉ : la loupe agrandit les deux directions', () => {
     // la droite comme sous le verre, sont des diagonales à 45°, c'est-à-dire de
     // même écart en x et en y.
     const croix = [...svg.matchAll(
-        /<line x1="([\d.-]+)" y1="([\d.-]+)" x2="([\d.-]+)" y2="([\d.-]+)"/g)]
+        /<line x1="([\d.-]+)" y1="([\d.-]+)" x2="([\d.-]+)" y2="([\d.-]+)"\/>/g)]
         .map(m => m.slice(1).map(Number))
         .filter(([x1, y1, x2, y2]) => Math.abs(x2 - x1) > 0 && Math.abs(y2 - y1) > 0);
     assert.equal(croix.length, 4, `${croix.length} diagonales au lieu des quatre du X`);

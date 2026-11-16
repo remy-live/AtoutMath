@@ -7440,3 +7440,80 @@ Quatre formes de portable, quatre fois coupé. **La hauteur est la contrainte
 rare, pas la largeur** — et c'est elle que la liste oubliait. Deux tailles
 ajoutées (1280 × 720 et 1440 × 830), et l'outil dit maintenant la vérité.
 
+
+### « les sousgraduations sous le dessin, et au clic ça zoome » — 16 novembre
+
+> « parfait mais on pourrait aussi mettre les sousgradution sous le dessin et
+> quand on clique on zoome, une belle animation entre les deux »
+
+**« PARFAIT MAIS » : C'EST UN AJOUT, PAS UN REMPLACEMENT.** La loupe qui glisse
+lui convient ; il veut y ajouter quelque chose. Deux lectures tiennent dans la
+phrase, et elles ne demandent pas le même travail :
+
+1. **Le clic amène la loupe, en glissant.** Aujourd'hui un clic la pose d'un
+   coup, elle SAUTE. « Quand on clique on zoome, une belle animation entre les
+   deux » se lit alors mot pour mot : elle s'y rend, et l'on voit le trajet.
+   Le glissé au doigt reste comme il est.
+
+2. **Le verre cesse de se déplacer : c'est une bande fixe sous la droite.** On
+   clique sur un dixième en haut, et cet intervalle DESCEND et s'ouvre dans une
+   bande toujours au même endroit, pleine largeur. On gagne : plus d'encart qui
+   penche près des bords, plus de contrainte sur la largeur du verre, une
+   animation franche. On perd le glissé continu, qu'il vient d'appeler parfait.
+
+**ET UNE TROISIÈME CHOSE, QUI PEUT S'AJOUTER AUX DEUX** : « mettre les
+sousgraduations sous le dessin » se lit aussi comme « les dessiner sur la
+droite du haut, vers le bas ». Elles n'y sont pas aujourd'hui, et c'est
+délibéré : à 3 px d'écart sur un téléphone elles font une bande grise. Mais une
+bande grise DIT quelque chose — elle montre qu'il y a bien dix crans par
+dixième, et pourquoi la loupe est nécessaire. Pâles et vers le bas seulement,
+elles informeraient sans prétendre qu'on peut les compter.
+
+**LE RISQUE À DIRE À VOIX HAUTE** : la lecture 2 ressemble beaucoup à « La
+Cascade de Loupes », qu'il a retirée lui-même en disant « on comprend pas trop
+en fait ». La différence serait qu'il n'y a que DEUX droites au lieu de trois,
+et que c'est lui qui choisit l'intervalle. Mais la ressemblance est assez forte
+pour qu'on la lui signale avant de construire, plutôt qu'après.
+
+**CE QU'IL A CHOISI** : la lecture 1 — « La loupe y va en glissant » — ET les
+centièmes pâles sur la droite du haut. Donc on garde tout, et l'on ajoute.
+
+**UNE TAPE L'ENVOIE, UN GLISSÉ LA TIRE, ET SIX PIXELS LES SÉPARENT.** Le seuil
+est en pixels d'écran et non en centièmes : un seuil écrit dans les unités du
+dessin vaudrait trois pixels sur un téléphone et neuf sur un portable — « trop
+sensible » ici, « ne répond pas » là. Le doigt, lui, tremble du même nombre de
+pixels partout. Et le glissé est devenu RELATIF : la loupe se déplace d'autant
+que le doigt au lieu de sauter sous lui, ce qui permet de l'attraper par
+n'importe quel bout.
+
+**ON REDESSINE À CHAQUE IMAGE, ON NE FAIT PAS GLISSER LE DESSIN.** Une
+transformation CSS déplacerait le verre entier sans jamais changer ce qu'il
+montre : la loupe arriverait en montrant déjà l'arrivée. Ce n'est pas un
+voyage, c'est une coupure déguisée. Vingt-quatre images, 440 éléments SVG
+chacune, et aucune erreur de page sur les six écrans.
+
+**LA DURÉE SUIT LA DISTANCE** — `min(460, 140 + crans × 4)` ms. Une durée fixe
+ferait ramper la loupe sur trois crans et filer sur soixante-dix.
+
+**MESURÉ EN REGARDANT PENDANT, PAS APRÈS** (`tools/loupeAuDoigt.mjs`, gardé) :
+à 170 ms d'un trajet de 100 à 0, la loupe est à 82. Une mesure qui ne regarde
+que l'arrivée ne sait pas distinguer un saut d'un voyage — c'est la troisième
+fois que cette règle se paie.
+
+**ET LES CENTIÈMES PÂLES DISENT POURQUOI LA LOUPE EXISTE.** On les avait
+écartés pour une demi-raison : à 3 px d'écart ils font une bande grise. Mais
+une bande grise DIT quelque chose — qu'il y a bien dix crans par dixième. Sans
+eux, la loupe avait l'air d'inventer les graduations qu'elle montre.
+
+**ET L'ÉNONCÉ A CHANGÉ DE VERBE** : « Envoie la loupe sur la croix » et non
+plus « Fais glisser ». Depuis qu'une tape suffit, « fais glisser » ne nommerait
+qu'un des deux gestes — et ce serait le plus difficile des deux.
+
+**DEUX ÉPREUVES ÉCRITES QUI NE GARDAIENT RIEN, LE MÊME JOUR.** La première
+mesurait l'écart entre petits traits voisins : aux dixièmes il n'y a pas de
+petit trait, l'écart y vaut le double, et elle rougissait sur un dessin juste.
+La seconde comparait la hauteur des petits traits à celle d'un GRAND trait —
+« moins haut qu'un grand » est vrai de presque tout, et `epreuveTombe.mjs` les
+a fait monter à mi-hauteur sans la faire tomber. C'est à l'AXE qu'il fallait se
+comparer.
+

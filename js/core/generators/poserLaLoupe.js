@@ -126,7 +126,10 @@ export const poserLaLoupeGenerator = {
         const valeur = Number((entier + croix / 100).toFixed(2));
         const reponse = fr(valeur, 2);
 
-        const enonce = 'Fais glisser la loupe jusqu’à la croix, puis écris son abscisse.';
+        // L'ÉNONCÉ DIT « ENVOIE » ET NON « FAIS GLISSER » : depuis qu'une tape
+        // suffit, « fais glisser » ne nommerait qu'un des deux gestes — et ce
+        // serait le plus difficile des deux qu'on nommerait.
+        const enonce = 'Envoie la loupe sur la croix, puis écris son abscisse.';
 
         // ── LES FAUTES QU'ON PROPOSE EN DÉFI ──────────────────────────────
         //
@@ -175,8 +178,8 @@ export const poserLaLoupeGenerator = {
                 }
             }),
             hints: [
-                'Pose le doigt sur le dessin et fais glisser la loupe le long de la '
-                    + 'droite, jusqu’à ce que la croix soit sous le verre.',
+                'Touche la droite à l’endroit de la croix : la loupe s’y rend toute '
+                    + 'seule. Tu peux aussi l’attraper et la faire glisser.',
                 'Sous le verre, repère le grand trait qui porte un nombre, puis compte '
                     + 'les petits traits jusqu’à la croix : chacun vaut un centième.',
                 `La croix est à ${reponse}.`

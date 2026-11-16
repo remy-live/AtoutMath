@@ -18916,6 +18916,13 @@ body.visite-en-cours .modal-overlay > * {
 .lp-bout { fill: var(--text-main); font-size: 22px; font-weight: 800;
     font-variant-numeric: tabular-nums; }
 
+/* LES CENTIÈMES SUR LA DROITE DU HAUT — RÉMY : « on pourrait aussi mettre les
+   sousgradution sous le dessin ». Ils sont illisibles À DESSEIN : à 3 px d'écart
+   sur un téléphone ils font une bande grise. Mais cette bande dit qu'il y a bien
+   dix crans dans chaque dixième, et donc pourquoi la loupe existe. Sans eux,
+   elle a l'air d'inventer les graduations qu'elle montre. */
+.lp-sous { stroke: var(--text-main); stroke-width: 1; opacity: .3; }
+
 /* ── CE QUI RELIE LE MORCEAU REGARDÉ AU VERRE ──────────────────────────────
 
    Un encart translucide, comme un détail de carte. Il est très pâle à dessein :

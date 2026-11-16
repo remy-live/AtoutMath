@@ -896,12 +896,29 @@ export function loupeSvg({ gauche = '0', droite = '1', croix = null,
     const m = [];
 
     // ── LA DROITE, EN ENTIER ET À SA TAILLE ───────────────────────────────
-    //
-    // ELLE NE PORTE QUE SES DIXIÈMES. Y dessiner les centièmes serait les
-    // dessiner à 3 px d'écart sur un téléphone : l'élève verrait une bande
-    // grise, et c'est précisément ce que la loupe est là pour résoudre.
     m.push(`<line class="ax-axe" x1="${G - 26}" y1="${y}" x2="${D + 30}" y2="${y}"
         marker-end="url(#loupe-fleche)"/>`);
+
+    // ── LES CENTIÈMES, PÂLES ET VERS LE BAS ───────────────────────────────
+    //
+    // RÉMY : « on pourrait aussi mettre les sousgradution sous le dessin ».
+    //
+    // ON LES AVAIT ÉCARTÉS, ET C'ÉTAIT UNE DEMI-RAISON. À 3 px d'écart sur un
+    // téléphone, ces cent traits font une bande grise qu'on ne peut pas
+    // compter — d'où la loupe. Mais une bande grise DIT quelque chose : qu'il y
+    // a bien dix crans dans chaque dixième, et donc pourquoi la loupe est
+    // nécessaire. Sans eux, rien n'annonce que la droite est plus fine qu'elle
+    // n'en a l'air, et la loupe a l'air d'inventer les graduations qu'elle
+    // montre.
+    //
+    // PÂLES ET VERS LE BAS SEULEMENT : ils informent sans prétendre qu'on peut
+    // les lire à l'oeil nu. Vers le haut ils se mêleraient aux grands traits,
+    // qui montent autant qu'ils descendent, et la hiérarchie serait perdue.
+    for (let c = 0; c <= 100; c++) {
+        if (c % 10 === 0) continue;
+        m.push(`<line class="lp-sous" x1="${xDe(c).toFixed(1)}" y1="${y + 1}"
+            x2="${xDe(c).toFixed(1)}" y2="${y + 8}"/>`);
+    }
     for (let c = 0; c <= 100; c += 10) {
         const bout = c === 0 || c === 100;
         m.push(`<line class="ax-cran${bout ? ' ax-cran--bout' : ''}"
