@@ -19036,14 +19036,18 @@ body.visite-en-cours .modal-overlay > * {
    longue. Le trait pointillé du sommet au centre de la base, lui, désigne. */
 .vol-hauteur { stroke: var(--primary); stroke-width: 2; stroke-dasharray: 6 4; }
 .vol-droit { fill: none; stroke: var(--primary); stroke-width: 1.6; }
-.vol-cote { stroke: var(--text-soft); stroke-width: 1.4; }
+/* LES COTES ET LEURS NOMBRES SERVENT À TOUTES LES FIGURES MESURÉES — les
+   solides, et depuis le 16 novembre les aires aussi. Le préfixe est donc
+   `fig-` et non `vol-` : `core/cotes.js` les écrit pour les deux, et un nom
+   qui désigne un seul des deux usages finit par mentir. */
+.fig-cote { stroke: var(--text-soft); stroke-width: 1.4; }
 /* L'ÉQUATEUR DE LA BOULE, et il a failli rester NOIR. Une `<ellipse>` sans
    `fill` se remplit en noir : la boule est alors barrée d'un ovale opaque qui
    mange son rayon. Même piège que `var(--bg-main)` sur la loupe, et même
    remède — regarder le dessin. */
 .vol-equateur { fill: none; stroke: var(--text-main); stroke-width: 1.6; }
 .vol-centre { fill: var(--text-main); }
-.vol-nb { fill: var(--text-main); font-size: 15px; font-weight: 800;
+.fig-nb { fill: var(--text-main); font-size: 15px; font-weight: 800;
     font-variant-numeric: tabular-nums; }
 /* L'énoncé d'un volume tient en une ligne et demie ; il n'a pas besoin de la
    largeur d'un paragraphe, et centré sous une figure il se lit mieux. */
@@ -19085,5 +19089,28 @@ body.visite-en-cours .modal-overlay > * {
    jamais savoir pourquoi. */
 .numpad-context .figure-wrap.fig-volume,
 .numpad-context .figure-wrap.fig-volume .fig-svg {
+    max-height: clamp(140px, 21vh, 225px);
+}
+
+/* ── L'AIRE DES FIGURES ────────────────────────────────────────────────────
+
+   RÉMY : « tu me fais […] les aires et préimètres ». Il manquait l'aire du
+   triangle et celle du parallélogramme — les deux formules de cinquième, et
+   les deux seules où intervient une HAUTEUR.
+
+   LA HAUTEUR SE TRACE, elle ne se dit pas : « h = 5 cm » posé à côté d'un
+   triangle ne désigne rien, et l'élève le lit comme le côté oblique, qui est
+   plus long. Le trait pointillé et son angle droit, eux, désignent. */
+.air-svg { display: block; width: 100%; height: auto; color: var(--text-main); }
+.fig-trait { fill: color-mix(in srgb, var(--primary) 7%, transparent);
+    stroke: var(--text-main); stroke-width: 2.2; stroke-linejoin: round; }
+.fig-hauteur { stroke: var(--primary); stroke-width: 2; stroke-dasharray: 6 4; }
+.fig-droit { fill: none; stroke: var(--primary); stroke-width: 1.6; }
+.air-question { text-align: center; max-width: 44ch; margin-inline: auto; }
+/* Même plage que les volumes, et pour la même raison : une figure dont on doit
+   LIRE les nombres n'a pas le même besoin qu'une figure qu'on regarde. Voir le
+   long commentaire de `.fig-volume`. */
+.numpad-context .figure-wrap.fig-aire,
+.numpad-context .figure-wrap.fig-aire .fig-svg {
     max-height: clamp(140px, 21vh, 225px);
 }

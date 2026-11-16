@@ -263,6 +263,7 @@ export const CODES_EXERCICES = {
     'mes-perimetre-triangle':     'RD',   // le touR D'un triangle (TR et TP étaient pris)
     'mes-disque':                 'DS',   // le DiSque (Q ne fait pas partie de l'alphabet)
     'mes-volumes':                'VE',   // le VolumE (VL est pris par les intervalles)
+    'mes-aires':                  'FC',   // les Figures et leur Contenu (AI, AR sont pris)
     'mes-perimetre':              'TU',   // Le Tour du Rectangle
     'mes-perimetre-qcm':          'PH',   // Périmètre : à toi de choisir
     'mes-aire':                   'CX',   // Carreaux et Surfaces

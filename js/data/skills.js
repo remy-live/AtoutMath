@@ -1567,6 +1567,28 @@ const BASE = {
         descriptor: 'Construire un angle de mesure donnée à l\'aide du rapporteur.',
         lesson: 'Centre sur le sommet, zéro sur le côté déjà tracé : repère la graduation voulue en partant de ce zéro, puis trace le second côté qui passe par elle.'
     },
+    // LE THÉORÈME DE CINQUIÈME QUI MANQUAIT — Rémy, le 16 novembre : « tu me
+    // fais […] la somme des angles d'un triangle ». Mesuré avant d'écrire :
+    // ni compétence ni exercice. « La Valeur Manquante » traitait les cinq
+    // autres relations, pas celle-là.
+    //
+    // UNE COMPÉTENCE À PART, et non une marche de plus sous les angles
+    // remarquables : les cinq autres se LISENT sur la figure — deux droites
+    // qui se croisent, une sécante — et celle-ci se DÉMONTRE. Un élève peut
+    // très bien reconnaître des alternes-internes et ignorer que les trois
+    // angles font 180° ; le bilan doit pouvoir le dire.
+    'geo.triangle.somme': {
+        label: 'La somme des angles d\'un triangle',
+        chemin: [D.GEOMETRIQUE, SD.ANGLES],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['geo.angles.mesure'],
+        descriptor: 'Calculer le troisième angle d\'un triangle connaissant les deux autres.',
+        lesson: 'Dans TOUT triangle, la somme des trois angles vaut 180° — quelle que soit sa '
+            + 'forme, et c\'est bien ce qui rend le théorème utile. Connaissant deux angles, '
+            + 'on retire leur somme à 180°. La faute la plus fréquente est de n\'en retirer '
+            + 'qu\'un : les trois font 180° ENSEMBLE. Un cas se retient : dans un triangle '
+            + 'rectangle, les deux angles aigus font 90° à eux deux.'
+    },
     'geo.angles.relations': {
         label: 'Reconnaître et utiliser les angles remarquables',
         chemin: [D.GEOMETRIQUE, SD.ANGLES],
@@ -2015,6 +2037,42 @@ const BASE = {
         prereqs: ['num.mult.sens'],
         descriptor: 'Calculer l\'aire d\'un rectangle à partir de ses dimensions.',
         lesson: 'Aire = Longueur × largeur. On compte les carreaux qui remplissent la figure.'
+    },
+
+    // ── LES DEUX AIRES DE CINQUIÈME, ET LA HAUTEUR QUI LES PORTE ─────────
+    //
+    // Rémy, le 16 novembre : « tu me fais […] les aires et préimètres ».
+    // Mesuré : l'aire du rectangle existait, celle du disque aussi, et le
+    // triangle n'avait que son PÉRIMÈTRE.
+    //
+    // DEUX COMPÉTENCES ET NON UNE, bien que les deux formules se ressemblent :
+    // l'élève qui réussit le parallélogramme et rate le triangle n'a pas
+    // oublié ce qu'est une hauteur, il a oublié le ÷ 2 — et l'inverse arrive
+    // tout autant. Ce sont deux fautes différentes, donc deux lignes de bilan.
+    'mes.aire.triangle': {
+        label: 'Aire d\'un triangle',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.CINQUIEME],
+        prereqs: ['mes.aire.rectangle'],
+        descriptor: 'Calculer l\'aire d\'un triangle à partir d\'une base et de la hauteur '
+            + 'correspondante.',
+        lesson: 'Aire = (base × hauteur) ÷ 2. Un triangle est la MOITIÉ du rectangle de même '
+            + 'base et même hauteur — c\'est de là que vient le ÷ 2. La hauteur n\'est pas un '
+            + 'côté : c\'est le segment qui descend du sommet PERPENDICULAIREMENT à la base, '
+            + 'et prendre le côté oblique à sa place donne un calcul juste sur de mauvais '
+            + 'nombres.'
+    },
+    'mes.aire.parallelogramme': {
+        label: 'Aire d\'un parallélogramme',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.CINQUIEME],
+        prereqs: ['mes.aire.rectangle'],
+        descriptor: 'Calculer l\'aire d\'un parallélogramme à partir d\'une base et de la '
+            + 'hauteur correspondante.',
+        lesson: 'Aire = base × hauteur, SANS diviser par 2. On découpe le triangle qui '
+            + 'dépasse d\'un côté et on le recolle de l\'autre : on obtient un rectangle de '
+            + 'même base et même hauteur, en entier. La hauteur est le segment '
+            + 'perpendiculaire à la base, jamais le côté oblique.'
     },
 
     // ── LES VOLUMES ──────────────────────────────────────────────────────

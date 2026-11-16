@@ -165,8 +165,46 @@ test('TOUTES LES MARCHES DE STATISTIQUES RÉPONDENT JUSTE', () => {
                 assert.ok(Number.isInteger(Number(it.answer)),
                     `moyenne non entière demandée : ${serie} → ${it.answer}`);
             }
-            if (e.id.startsWith('mediane')) {
+            if (e.id === 'mediane-rangee' || e.id === 'mediane-desordre'
+                || e.id === 'mediane-paire') {
                 assert.equal(Number(it.answer), mediane(serie), `${serie}`);
+            }
+
+            // ── LES TROIS MARCHES « PAS À PAS » ────────────────────────────
+            //
+            // Elles demandent TROIS nombres dans une phrase à trous, et la
+            // réponse est leur suite séparée par des barres. On refait ici le
+            // chemin complet depuis la série : une case fausse au milieu rend
+            // la question injuste sans que rien ne plante.
+            if (e.id.endsWith('-etapes')) {
+                const parts = String(it.answer).split('|').map(Number);
+                assert.equal(parts.length, 3, `${e.id} : ${parts.length} cases au lieu de 3`);
+                assert.equal(it.meta.cases, 3, `${e.id} : cases déclarées ${it.meta.cases}`);
+                // ET L'ÉNONCÉ DÉCLARE SES TROIS TROUS. Le pavé les COMPTE
+                // dans le HTML : deux trous pour trois nombres, et l'élève ne
+                // peut pas répondre — sans que rien ne plante ni ne prévienne.
+                assert.equal((it.prompt.html.match(/data-trou/g) || []).length, 3,
+                    `${e.id} : l’énoncé ne déclare pas trois cases`);
+                if (e.id === 'etendue-etapes') {
+                    assert.deepEqual(parts, [Math.max(...serie), Math.min(...serie),
+                        etendue(serie)], `${serie}`);
+                }
+                if (e.id === 'moyenne-etapes') {
+                    assert.deepEqual(parts, [serie.length,
+                        serie.reduce((a, b) => a + b, 0), moyenne(serie)], `${serie}`);
+                }
+                if (e.id === 'mediane-etapes') {
+                    assert.equal(serie.length % 2, 1,
+                        `${e.id} : série paire, le rang de la médiane n’existe pas`);
+                    assert.deepEqual(parts, [serie.length, (serie.length + 1) / 2,
+                        mediane(serie)], `${serie}`);
+                }
+                // ET LA FEUILLE PORTE LA PHRASE À TROUS. Imprimée sans elle,
+                // « Remplis les trois cases : » n'a aucune réponse possible.
+                const pap = ST.generate({ marches: [e.id] },
+                    { rng: makeRng(`${e.id}-${k}`), index: k, total: 40, papier: true });
+                assert.match(pap.prompt.papier, /….…/,
+                    `${e.id} : la feuille ne porte pas ses cases — « ${pap.prompt.papier} »`);
             }
             if (e.id === 'effectif') {
                 // La valeur cherchée est le dernier nombre de la question.
@@ -422,8 +460,15 @@ test('LA VIRGULE N\'EST OFFERTE QUE LÀ OÙ ELLE A UN SENS', () => {
             if (!DECIMALES[e.id]) {
                 assert.equal(it.meta.decimal, false, `${e.id} : virgule offerte pour rien`);
                 if (it.answerKind !== 'choice') {
-                    assert.ok(Number.isInteger(Number(it.answer)),
-                        `${e.id} : réponse non entière « ${it.answer} » sans virgule offerte`);
+                    // UNE RÉPONSE À PLUSIEURS CASES EST UNE SUITE DE NOMBRES,
+                    // séparés par des barres — « 5|65|13 ». `Number()` y rend
+                    // NaN, et l'épreuve rougissait sur une question juste. On
+                    // vérifie donc CHAQUE case : c'est ce qu'elle voulait dire
+                    // depuis le début, et cela garde davantage.
+                    for (const part of String(it.answer).split('|')) {
+                        assert.ok(Number.isInteger(Number(part)),
+                            `${e.id} : réponse non entière « ${it.answer} » sans virgule offerte`);
+                    }
                 }
             }
         }

@@ -21,7 +21,8 @@ import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
 import {
-    RELATIONS, figureSecantes, figurePartage, figureParalleles, mesureArc, pencheEtale
+    RELATIONS, TRIANGLE, figureSecantes, figurePartage, figureParalleles, figureTriangle,
+    mesureArc, pencheEtale
 } from '../anglesRemarquables.js';
 import { figureAnglesSvg } from '../anglesRemarquablesSvg.js';
 import { figure as encadrer } from '../figures.js';
@@ -122,7 +123,13 @@ function figureChaine(angle, penche) {
 const LISTE_MARCHES = [
     { id: '0', nom: '0. Des angles égaux, rien à calculer' },
     { id: '1', nom: '1. Une soustraction : 90°, 180° ou 360°' },
-    { id: '2', nom: '2. La chaîne : deux relations à la suite' }
+    { id: '2', nom: '2. La chaîne : deux relations à la suite' },
+    // LA SOMME DES ANGLES D'UN TRIANGLE ARRIVE EN QUATRIÈME POSITION, et non
+    // en deuxième où sa difficulté la mettrait. Rémy a des séances réglées
+    // sur les marches existantes : renuméroter 0, 1, 2 décalerait tout ce
+    // qu'il a déjà coché, et une séance de cinquième se mettrait à tirer des
+    // chaînes. Un numéro n'est pas un rang de difficulté, c'est une ADRESSE.
+    { id: '3', nom: '3. La somme des angles d’un triangle' }
 ];
 /** Le réglage d'avant les cases : « melange » n'était aucune marche — donc toutes. */
 const ANCIEN = { cle: 'niveau' };
@@ -130,7 +137,7 @@ const ANCIEN = { cle: 'niveau' };
 export const anglesManquantsGenerator = {
     id: 'geo.angles-manquants',
     label: 'La valeur manquante — angles remarquables',
-    skills: ['geo.angles.relations'],
+    skills: ['geo.angles.relations', 'geo.triangle.somme'],
     answerKinds: ['numeric', 'choice'],
     ecrit: true,
     // LA LONGUEUR SUIT LE NOMBRE DE NIVEAUX COCHÉS — voir core/duree.js.
@@ -161,6 +168,7 @@ export const anglesManquantsGenerator = {
         const voulu = Number(marcheAuRang(ctx.index ?? 0,
             marchesCochees(p, LISTE_MARCHES, ANCIEN), totalDe(ctx, p), p)) || 0;
 
+        if (voulu === 3) return itemTriangle(rng);
         if (voulu === 2) return itemChaine(rng);
         const pool = liste.filter(f => f.niveau === voulu);
         const f = rng.pick(pool.length ? pool : liste);
@@ -214,6 +222,80 @@ function itemSimple(rng, f) {
             marche: String(f.niveau),
             donne: mDonne, reponse: bon, figure,
             theme: `${f.id}-${mDonne}`
+        }
+    });
+}
+
+/**
+ * UN TRIANGLE : deux angles donnés, le troisième à trouver.
+ *
+ * RÉMY : « tu me fais […] la somme des angles d'un triangle ».
+ *
+ * ── CE QUE LE TIRAGE ÉVITE, ET POURQUOI ───────────────────────────────────
+ *
+ * · AUCUN ANGLE SOUS 20°. Un arc de quinze degrés ne se lit pas : son
+ *   étiquette ne tient pas entre les deux côtés, et l'élève mesure au
+ *   rapporteur un angle qu'il ne voit pas.
+ * · LES TROIS ANGLES SONT DIFFÉRENTS. Avec deux angles égaux, celui qui
+ *   recopie la mesure donnée tombe juste une fois sur deux, et ni lui ni le
+ *   bilan ne l'apprennent.
+ * · PAS DE MULTIPLE DE 90 À TROUVER. « 90° » se devine à la forme du coin,
+ *   sans jamais faire la somme.
+ */
+function itemTriangle(rng) {
+    let a, b, c;
+    do {
+        a = rng.int(20, 110);
+        b = rng.int(20, 110);
+        c = 180 - a - b;
+    } while (c < 20 || c > 130 || a === b || b === c || a === c || c % 90 === 0);
+
+    const figure = pencheEtale((p) => figureTriangle({ a, b, penche: p }), rng.int(0, 359));
+    // LES MESURES RÉELLEMENT DESSINÉES FONT FOI, comme partout dans ce
+    // fichier : c'est elles que l'élève lit au rapporteur, et un arrondi de
+    // tracé qui diverge d'un degré rendrait l'exercice injuste.
+    const donnes = figure.arcs.filter(x => x.role === 'donne').map(mesureArc);
+    const bon = 180 - donnes[0] - donnes[1];
+    const enonce = 'Combien mesure l’angle vert ?';
+    const [d1, d2] = donnes;
+    return makeItem({
+        seed: rng.seed,
+        generatorId: 'geo.angles-manquants',
+        skillId: 'geo.triangle.somme',
+        answerKind: 'numeric',
+        prompt: {
+            text: enonce,
+            papier: enonce,
+            html: `<div class="game-question">${enonce}</div>`
+                + encadrer(figureAnglesSvg(figure))
+        },
+        answer: bon,
+        unite: '°',
+        choices: finalizeChoices(rng, [
+            { value: `${bon}°`, label: `${bon}°`, correct: true },
+            // LA FAUTE DU CHAPITRE : n'enlever qu'un seul des deux angles.
+            { value: `${180 - d1}°`, label: `${180 - d1}°`,
+                why: `Tu n’as enlevé qu’un seul angle. Les TROIS font 180° ensemble : il `
+                    + `faut retirer ${d1}° ET ${d2}°.` },
+            { value: `${d1 + d2}°`, label: `${d1 + d2}°`,
+                why: 'Tu as ADDITIONNÉ les deux angles donnés. Leur somme n’est pas le '
+                    + 'troisième angle : c’est ce qu’il faut RETIRER à 180°.' },
+            { value: `${Math.max(1, 360 - d1 - d2)}°`, label: `${Math.max(1, 360 - d1 - d2)}°`,
+                why: 'Le tour complet vaut 360°, mais un triangle n’est pas un tour : ses '
+                    + 'trois angles font 180°, c’est-à-dire un angle PLAT.' }
+        ], { count: 4 }),
+        hints: [
+            'Les trois angles d’un triangle ont toujours la même somme, quelle que soit sa '
+                + 'forme. Deux d’entre eux sont écrits.',
+            `Cette somme vaut 180°. Ici : ${d1}° + ${d2}° + l’angle vert = 180°.`,
+            `Donc ${TRIANGLE.calcul(d1, d2)}.`
+        ],
+        explanation: `Dans un triangle, ${TRIANGLE.pourquoi}. Donc ${TRIANGLE.calcul(d1, d2)}.`,
+        difficulty: 2,
+        meta: {
+            famille: 'triangle', relation: 'triangle', niveau: 3, marche: '3',
+            donne: d1, donneB: d2, reponse: bon, figure,
+            theme: `triangle-${d1}-${d2}`
         }
     });
 }

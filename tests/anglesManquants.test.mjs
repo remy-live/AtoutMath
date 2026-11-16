@@ -16,6 +16,25 @@ test('la réponse est celle que dit la relation, sur la mesure DESSINÉE', () =>
     for (let i = 0; i < 300; i++) {
         const m = tirer({}, i).meta;
         if (m.famille === 'chaine') continue;
+
+        // LE TRIANGLE A DEUX ANGLES DONNÉS, et sa règle en prend donc deux :
+        // il n'est pas dans `RELATIONS`, qui ne sait lire qu'une entrée. Le
+        // contrat reste le MÊME — ce qui est annoncé est ce qui est dessiné —
+        // et il se vérifie ici de la seule façon qui ait un sens : la somme
+        // des trois angles DESSINÉS vaut 180°.
+        if (m.famille === 'triangle') {
+            const lus = m.figure.arcs.filter(a => a.role === 'donne').map(mesureArc);
+            const vert = mesureArc(m.figure.arcs.find(a => a.role === 'cherche'));
+            assert.deepEqual(lus.slice().sort(), [m.donne, m.donneB].sort(),
+                `triangle : l'énoncé annonce ${m.donne}° et ${m.donneB}°, le dessin montre `
+                + `${lus.join('° et ')}°`);
+            assert.equal(lus[0] + lus[1] + vert, 180,
+                `triangle : les trois angles dessinés font ${lus[0] + lus[1] + vert}°`);
+            assert.equal(m.reponse, vert,
+                `triangle : la réponse ${m.reponse}° n'est pas l'angle dessiné (${vert}°)`);
+            continue;
+        }
+
         const donne = mesureArc(m.figure.arcs.find(a => a.role === 'donne'));
         const cherche = mesureArc(m.figure.arcs.find(a => a.role === 'cherche'));
         assert.equal(m.donne, donne, `${m.famille} : l'énoncé annonce ${m.donne}°, le dessin montre ${donne}°`);
@@ -73,7 +92,7 @@ test('la chaîne passe vraiment par un pas intermédiaire', () => {
 
 test('le niveau demandé est celui qu\'on obtient', () => {
     // UNE SEULE CASE COCHÉE : toutes les figures sont à ce niveau-là.
-    for (const marche of ['0', '1', '2']) {
+    for (const marche of ['0', '1', '2', '3']) {
         for (let i = 0; i < 30; i++) {
             const m = G.generate({ marches: [marche] },
                 { rng: makeRng('n' + marche + i), index: i, total: 30 }).meta;
@@ -91,10 +110,18 @@ test('le niveau demandé est celui qu\'on obtient', () => {
     // le donne, et c'est le même esprit — on ne commence pas une série par la
     // chaîne — avec deux choses en plus : le professeur VOIT le partage, et il
     // peut le tirer. Douze questions sur les trois niveaux : quatre chacun.
+    //
+    // ET DEPUIS LE 16 NOVEMBRE IL Y A QUATRE MARCHES : la somme des angles
+    // d'un triangle est arrivée. « Mélangé » veut dire TOUTES les marches,
+    // donc douze questions se partagent maintenant en trois par marche et non
+    // quatre. C'est l'effet voulu — une séance de cinquième qui mélangeait
+    // tirera des triangles, et c'est le programme de cinquième — mais il faut
+    // l'écrire : un professeur qui avait réglé « mélangé » verra ses séries
+    // changer sans avoir rien touché.
     const suite = Array.from({ length: 12 }, (_, i) =>
         G.generate({ niveau: 'melange' },
             { rng: makeRng('mel' + i), index: i, total: 12 }).meta.niveau);
-    assert.deepEqual(suite, [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2]);
+    assert.deepEqual(suite, [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3]);
     // Et la répartition écrite à la main est suivie : trois, puis un, puis huit.
     const tiree = Array.from({ length: 12 }, (_, i) =>
         G.generate({ repartitionMarches: '3,1,8' },

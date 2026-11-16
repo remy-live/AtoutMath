@@ -7586,3 +7586,24 @@ plus d'un.**
   exercice sans `motsClefs`, ou dont aucun mot-clef n'est absent du titre, est
   signalé. Et une commande qui liste les 70, pour les reprendre un jour.
 
+
+**Une marche neuve change ce que « mélangé » tirait, sans prévenir** — 16 novembre
+
+- *Ce que je voulais faire* : ajouter la somme des angles d'un triangle à « La
+  Valeur Manquante », qui avait trois marches.
+- *Ce qui s'est passé* : deux épreuves du dépôt ont rougi, et elles avaient
+  raison toutes les deux. La première lisait `RELATIONS[m.relation].de(donne)`
+  — le triangle a DEUX angles donnés, il n'est pas dans `RELATIONS`. La
+  seconde gardait le partage de « mélangé » : douze questions donnaient quatre
+  figures par marche sur trois marches, et en donnent maintenant trois sur
+  quatre. **Un professeur qui avait réglé « mélangé » verra ses séries changer
+  sans avoir rien touché** — ici c'est tant mieux (le triangle est au programme
+  de cinquième), mais rien ne l'aurait dit si l'épreuve n'existait pas.
+- *Combien de fois* : | (et cela se reposera à chaque marche ajoutée à un
+  exercice existant : il y en a une vingtaine qui ont des marches)
+- *Ce qui manque* : `nouvelExercice.mjs` ne regarde que les exercices NEUFS.
+  Il faudrait qu'une commande dise, pour un exercice dont on vient de changer
+  la liste des marches, ce que « mélangé » tirait AVANT et ce qu'il tire
+  APRÈS — trois lignes de sortie, et la décision devient consciente au lieu
+  d'être découverte par une épreuve quatre minutes plus tard.
+

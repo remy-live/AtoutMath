@@ -38,6 +38,10 @@
 // cherche la faute dans sa formule alors qu'elle est dans son écriture.
 
 import { figure } from './figures.js';
+// LE CADRE, LES COTES ET LES ÉTIQUETTES vivent dans `core/cotes.js` : les
+// aires en ont eu besoin à leur tour, et une règle écrite à deux endroits
+// finit par diverger.
+import { pt, cote, etiquette, cadreSvg } from './cotes.js';
 
 /* ── LES MARCHES ──────────────────────────────────────────────────────── */
 
@@ -393,86 +397,6 @@ export function leurresDe(t) {
 const FUITE = 0.5 * Math.SQRT1_2;        // cos 45° × 0,5, et sin 45° × 0,5
 
 /**
- * LE CADRE SE CALCULE, IL NE SE DEVINE PAS.
- *
- * ─────────────────────────────────────────────────────────────────────────
- *
- * La première version posait un `viewBox` fixe de 300 × 230 et plaçait les
- * solides dedans à la main. Regardé : le « h = 8 cm » du cylindre sortait à
- * droite, amputé de sa dernière lettre, et le prisme débordait en haut. Rien
- * ne le disait — un SVG qui déborde ne lève aucune erreur, il coupe.
- *
- * On accumule donc TOUS les points, ceux des traits comme les coins des
- * textes, et le `viewBox` se déduit de leur boîte englobante. Un dessin ne
- * peut alors plus sortir de son cadre, quelles que soient les dimensions
- * tirées — et c'est une classe entière de défauts qui disparaît, pas une
- * occurrence.
- *
- * LA LARGEUR D'UN TEXTE EST ESTIMÉE, et c'est assez : à 15 px de corps, un
- * chiffre fait un peu moins de 9 px. On majore à 9, ce qui laisse de l'air
- * plutôt que d'en manquer — une étiquette un peu au large ne se voit pas, une
- * étiquette coupée se voit tout de suite.
- */
-function boite(P, marge = 14, minL = 320, minH = 260) {
-    const xs = P.map(p => p[0]), ys = P.map(p => p[1]);
-    let x = Math.min(...xs) - marge, y = Math.min(...ys) - marge;
-    let w = Math.max(...xs) + marge - x, h = Math.max(...ys) + marge - y;
-    // ── UNE TAILLE MINIMALE, ET ELLE A ÉTÉ PAYÉE ─────────────────────────
-    //
-    // Recadrer au plus juste a réglé les débordements et créé l'inverse : un
-    // cube de 3 cm s'affichait PLUS GROS qu'un pavé de 12, parce qu'un petit
-    // dessin recadré au plus juste est ensuite étiré à la largeur de son
-    // emplacement. L'élève voyait donc un cube géant et un pavé minuscule,
-    // dans un chapitre dont toute la leçon est qu'un volume grandit vite.
-    //
-    // Le cadre a donc un plancher, et les petits solides flottent dedans.
-    // Seuls ceux qui le dépassent l'élargissent — et ceux-là ne sont pas
-    // coupés, ce qui était le défaut d'avant.
-    if (w < minL) { x -= (minL - w) / 2; w = minL; }
-    if (h < minH) { y -= (minH - h) / 2; h = minH; }
-    return { x, y, w, h };
-}
-
-/** Les quatre coins qu'occupera un texte, selon son ancrage. */
-function coinsTexte(x, y, texte, ancre) {
-    const w = String(texte).length * 9;
-    const g = ancre === 'end' ? x - w : ancre === 'start' ? x : x - w / 2;
-    return [[g, y - 13], [g + w, y + 5]];
-}
-
-const pt = (x, y) => `${x.toFixed(1)},${y.toFixed(1)}`;
-
-/**
- * Une cote : un trait fin entre deux points, et le nombre posé à côté.
- * Pousse dans `P` ce qu'elle occupe, pour que le cadre en tienne compte.
- */
-function cote(P, x1, y1, x2, y2, texte, { dx = 0, dy = 0, ancre = 'middle' } = {}) {
-    const tx = (x1 + x2) / 2 + dx, ty = (y1 + y2) / 2 + dy;
-    P.push([x1, y1], [x2, y2], ...coinsTexte(tx, ty, texte, ancre));
-    return `<line class="vol-cote" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}"
-            x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>
-        <text class="vol-nb" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}"
-            text-anchor="${ancre}">${texte}</text>`;
-}
-
-/** Un nombre seul, sans trait de cote. */
-function etiquette(P, x, y, texte, ancre = 'start') {
-    P.push(...coinsTexte(x, y, texte, ancre));
-    return `<text class="vol-nb" x="${x.toFixed(1)}" y="${y.toFixed(1)}"
-        text-anchor="${ancre}">${texte}</text>`;
-}
-
-const cadre = (contenu, P) => {
-    const b = boite(P);
-    return `
-    <svg class="fig-svg vol-svg" viewBox="${b.x.toFixed(1)} ${b.y.toFixed(1)}
-         ${b.w.toFixed(1)} ${b.h.toFixed(1)}" role="img"
-         aria-label="Un solide coté, dont il faut calculer le volume">
-        ${contenu}
-    </svg>`;
-};
-
-/**
  * Met les longueurs à l'échelle.
  *
  * LE PLAFOND DE 26 N'EST PAS UNE COQUETTERIE : sans lui, un cube de 2 cm
@@ -513,7 +437,8 @@ function paveSvg(L, l, h, u, cube = false) {
         m.push(cote(P, B[0] + 7, B[1] - 4, B2[0] + 7, B2[1] - 4, `${l} ${u}`,
             { dx: 10, dy: 12, ancre: 'start' }));
     }
-    return cadre(m.join('\n        '), P);
+    return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
+        aria: 'Un solide coté, dont il faut calculer le volume' });
 }
 
 /** Le prisme droit à base triangulaire : le triangle de face, la longueur qui fuit. */
@@ -545,7 +470,8 @@ function prismeSvg(b, hb, H, u) {
     m.push(etiquette(P, S[0] - 10, S[1] - 8, `h = ${hb} ${u}`, 'end'));
     m.push(cote(P, B[0] + 7, B[1] - 4, B2[0] + 7, B2[1] - 4, `${H} ${u}`,
         { dx: 10, dy: 12, ancre: 'start' }));
-    return cadre(m.join('\n        '), P);
+    return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
+        aria: 'Un solide coté, dont il faut calculer le volume' });
 }
 
 /** Le cylindre : deux ellipses et deux génératrices. */
@@ -573,7 +499,8 @@ function cylindreSvg(r, h, u) {
     m.push(`<circle class="vol-centre" cx="${cx}" cy="${haut.toFixed(1)}" r="2.6"/>`);
     m.push(cote(P, cx + R + 20, haut, cx + R + 20, bas, `h = ${h} ${u}`,
         { dx: 8, ancre: 'start' }));
-    return cadre(m.join('\n        '), P);
+    return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
+        aria: 'Un solide coté, dont il faut calculer le volume' });
 }
 
 /** La pyramide à base carrée : la base en losange, la hauteur en pointillés. */
@@ -601,7 +528,8 @@ function pyramideSvg(c, h, u) {
     // arête — et l'on croit alors qu'elle mesure CETTE arête, qui est plus
     // longue que la hauteur. C'est exactement la confusion du chapitre.
     m.push(etiquette(P, S[0] - 10, S[1] - 8, `h = ${h} ${u}`, 'end'));
-    return cadre(m.join('\n        '), P);
+    return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
+        aria: 'Un solide coté, dont il faut calculer le volume' });
 }
 
 /** Le cône : une ellipse, deux génératrices, la hauteur en pointillés. */
@@ -623,7 +551,8 @@ function coneSvg(r, h, u) {
         L ${pt(cx, bas - 9)}"/>`);
     m.push(cote(P, cx, bas + ry, cx + R, bas + ry, `r = ${r} ${u}`, { dy: 22 }));
     m.push(etiquette(P, S[0] - 10, S[1] - 8, `h = ${h} ${u}`, 'end'));
-    return cadre(m.join('\n        '), P);
+    return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
+        aria: 'Un solide coté, dont il faut calculer le volume' });
 }
 
 /** La boule : un cercle et son équateur. */
@@ -646,7 +575,8 @@ function bouleSvg(r, u) {
     const bx = cx + R * 0.72, by = cy - R * 0.69;
     m.push(cote(P, cx, cy, bx, by, `r = ${r} ${u}`, { dx: 12, dy: -6, ancre: 'start' }));
     m.push(`<circle class="vol-centre" cx="${cx}" cy="${cy}" r="2.6"/>`);
-    return cadre(m.join('\n        '), P);
+    return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
+        aria: 'Un solide coté, dont il faut calculer le volume' });
 }
 
 /** Le dessin du solide tiré, coté. */

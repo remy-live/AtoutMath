@@ -7618,3 +7618,61 @@ une fiche à moitié dessinée serait pire qu'une fiche honnêtement écrite.
 question de manuel parfaitement ordinaire — et une épreuve garde que la feuille
 ne dit jamais « CE pavé droit », qui ne désignerait rien.
 
+
+### « les statistiques par étape, la somme des angles, les aires » — 16 novembre
+
+Trois des quatre demandes de la même phrase, et chacune a trouvé son chemin le
+plus court — ce qui n'était pas celui auquel je pensais.
+
+**LES STATISTIQUES PAR ÉTAPE : TROIS MARCHES, PAS UN EXERCICE DE PLUS.**
+L'exercice existant a déjà neuf marches et un moteur complet ; et le pavé
+numérique sait remplir PLUSIEURS cases, à condition que l'énoncé les déclare
+avec `data-trou`. « La moyenne, pas à pas » demande donc trois nombres dans une
+phrase à trous — « ? valeurs, somme ?, moyenne ? » — et la réponse est leur
+suite séparée par des barres, jugée comme une PAIRE RANGÉE : intervertir la
+somme et l'effectif n'est pas accepté, et c'est justement la faute qu'on veut
+voir. Une question directe se répond juste ou faux ; ici c'est la case fausse
+qui dit OÙ l'élève a raté.
+
+**DEUX ÉPREUVES DU DÉPÔT M'ONT ATTRAPÉ, ET ELLES AVAIENT RAISON.** Une réponse
+« 5|65|13 » n'est pas un entier au sens de `Number()`, et `e.id.startsWith
+('mediane')` ramassait aussi « mediane-etapes ». Je les ai ÉTENDUES plutôt
+qu'assouplies : elles vérifient maintenant chaque case, et refont le chemin
+complet depuis la série.
+
+**LA SOMME DES ANGLES D'UN TRIANGLE : UNE MARCHE DE « LA VALEUR MANQUANTE ».**
+Même activité, même moteur de figure, même façon de lire une mesure sur le
+dessin. La figure PART DES ANGLES et place le troisième sommet par la loi des
+sinus : un triangle dessiné au jugé puis étiqueté « 50° » serait un mensonge
+que l'élève voit — il mesure au rapporteur, c'est même ce qu'on lui demande de
+savoir faire. Vérifié sur huit formes : les arcs mesurent exactement ce qui est
+annoncé.
+
+**ET SON NUMÉRO EST 3, ALORS QUE SA DIFFICULTÉ EN FERAIT UN 2.** Rémy a des
+séances réglées sur les marches existantes : renuméroter 0, 1, 2 décalerait
+tout ce qu'il a coché, et une séance de cinquième se mettrait à tirer des
+chaînes. **Un numéro de marche n'est pas un rang de difficulté, c'est une
+ADRESSE.**
+
+**LES AIRES : CE QUI MANQUAIT ÉTAIT LA HAUTEUR.** Le rectangle et le disque
+existaient ; le triangle n'avait que son PÉRIMÈTRE. Les deux formules de
+cinquième sont les deux seules où intervient une hauteur — et la hauteur n'est
+pas un côté. Le côté oblique porte donc SA MESURE sur la figure : sans elle, la
+faute du chapitre est impossible à commettre, donc invisible, et l'exercice ne
+mesure plus rien. Une épreuve garde cette mesure sur la figure.
+
+**UN RECTANGLE DE 6 SUR 3 A LA MÊME AIRE QUE SON PÉRIMÈTRE — 18.** Sur lui, la
+marche « aire ou périmètre ? » ne distingue plus rien : celui qui se trompe de
+formule tombe juste, et le leurre qui dénonce la confusion vaut la bonne
+réponse, donc disparaît. C'est le seul rectangle non carré dans ce cas, et
+c'est une épreuve qui l'a trouvé, pas une relecture.
+
+**ET LE BOUCHE-TROU DU QCM N'A PLUS LE DROIT DE TOMBER SUR UNE FAUTE QUI A UN
+NOM.** Tiré au hasard autour de la réponse, il atterrissait parfois pile sur
+l'autre grandeur et s'affichait SANS explication, à côté d'un leurre qui,
+lui, l'aurait expliquée.
+
+**LE CADRE CALCULÉ EST DEVENU UN MODULE** (`js/core/cotes.js`) : les aires en
+ont eu besoin après les volumes, et une règle écrite à deux endroits finit par
+diverger — c'est ce que dit déjà `deDevant` dans `core/accord.js`.
+

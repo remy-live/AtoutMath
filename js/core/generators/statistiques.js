@@ -131,10 +131,13 @@ const trou = (i) => `<u class="np-trou" data-trou="${i}">&nbsp;?&nbsp;</u>`;
 export const ETAPES = [
     { id: 'effectif', temps: 'A', titre: 'Combien de fois cette valeur ?', skill: S_LIRE },
     { id: 'etendue', temps: 'A', titre: 'L\'étendue', skill: S_LIRE },
+    { id: 'etendue-etapes', temps: 'A', titre: 'L\'étendue, pas à pas', skill: S_LIRE },
     { id: 'moyenne', temps: 'B', titre: 'Calculer la moyenne', skill: S_MOYENNE },
+    { id: 'moyenne-etapes', temps: 'B', titre: 'La moyenne, pas à pas', skill: S_MOYENNE },
     { id: 'mediane-rangee', temps: 'B', titre: 'La médiane, série rangée', skill: S_MEDIANE },
     { id: 'mediane-desordre', temps: 'B', titre: 'La médiane, série en désordre', skill: S_MEDIANE },
     { id: 'mediane-paire', temps: 'B', titre: 'La médiane, série paire', skill: S_MEDIANE },
+    { id: 'mediane-etapes', temps: 'B', titre: 'La médiane, pas à pas', skill: S_MEDIANE },
     { id: 'frequence', temps: 'C', titre: 'La fréquence, en pourcentage', skill: S_FREQUENCE },
     { id: 'moyenne-manquante', temps: 'C', titre: 'La valeur qui manque', skill: S_MOYENNE },
     { id: 'comparer', temps: 'C', titre: 'Même moyenne, pas même série', skill: S_LIRE }
@@ -226,6 +229,106 @@ export function question(etape, rng) {
                 + 'valeurs différentes.',
             calcul: `J'additionne les ${serie.length} valeurs, puis je divise la somme par ${
                 serie.length}.`
+        };
+    }
+
+    // ── LES TROIS MARCHES « PAS À PAS » ────────────────────────────────────
+    //
+    // RÉMY, le 16 novembre : « tu me fais […] les statistiques (par étape) ».
+    //
+    // CE QU'UNE QUESTION DIRECTE NE DIT PAS. « Moyenne ? » se répond juste ou
+    // faux, et un élève qui rate ne sait pas OÙ il a raté : dans la somme,
+    // dans le compte des valeurs, ou dans la division. Ici il remplit les
+    // trois cases, et c'est la case fausse qui le dit.
+    //
+    // ON NE REFAIT PAS UNE ACTIVITÉ POUR CELA : le pavé numérique sait déjà
+    // remplir plusieurs cases, à condition que l'ÉNONCÉ les déclare avec
+    // `data-trou` — voir `aTrous` dans `core/activities/numeric.js`. La
+    // réponse est alors la suite des cases séparées par des barres, et c'est
+    // une PAIRE RANGÉE qu'on juge : intervertir la somme et l'effectif n'est
+    // pas accepté, et c'est précisément la faute qu'on veut voir.
+    //
+    // LES TROIS MARCHES DOUBLENT LEUR VOISINE DIRECTE, elles ne la remplacent
+    // pas : on fait le chemin en trois temps, puis on le fait d'un coup. Le
+    // professeur coche l'un, l'autre, ou les deux.
+
+    if (etape.id === 'etendue-etapes') {
+        const serie = serieDeMoyenne(s.centre, rng.int(5, 8), (a, b) => rng.int(a, b), s.ecart);
+        const hautE = Math.max(...serie), basE = Math.min(...serie);
+        return {
+            enonce: `${s.phrase(serie.length)}\n${ecrireSerie(serie)}`,
+            question: 'Remplis les trois cases :',
+            // PAS D'ESPACE AVANT LA VIRGULE : c'est une faute de français, et
+            // elle s'affiche en grand sous les yeux d'un élève à chaque
+            // question. Vue sur la photo, pas dans le code.
+            htmlReponse: `la plus grande ${trou(0)}, la plus petite ${trou(1)}`
+                + `, l’étendue ${trou(2)}`,
+            // SUR LA FEUILLE, LES CASES N'EXISTENT PAS. « Remplis les trois
+            // cases : » imprimé seul n'a aucune réponse possible — c'est le
+            // défaut du 20 octobre, arrivé trois fois. On écrit donc la phrase
+            // en toutes lettres, avec ses pointillés.
+            papierReponse: 'la plus grande ….…, la plus petite ….…, l’étendue ….…',
+            kind: 'numeric',
+            reponse: `${hautE}|${basE}|${hautE - basE}`,
+            cases: 3, serie, unite: s.unite,
+            pourquoi: `La plus grande vaut ${hautE}, la plus petite ${basE} : l’étendue est `
+                + `leur DIFFÉRENCE, ${hautE} − ${basE} = ${hautE - basE}.`,
+            aide: 'L’étendue n’est pas une valeur de la série : c’est l’écart entre les deux '
+                + 'extrêmes. On les repère d’abord, on soustrait ensuite.',
+            calcul: `Je repère ${hautE} et ${basE}, puis je fais ${hautE} − ${basE}.`
+        };
+    }
+
+    if (etape.id === 'moyenne-etapes') {
+        const m = s.centre + rng.int(-2, 2);
+        const serie = serieDeMoyenne(m, rng.int(4, 6), (a, b) => rng.int(a, b), s.ecart);
+        const somme = serie.reduce((a, b) => a + b, 0);
+        return {
+            enonce: `${s.phrase(serie.length)}\n${ecrireSerie(serie)}`,
+            question: 'Remplis les trois cases :',
+            // L'ORDRE EST CELUI DU CALCUL, pas celui de la formule écrite au
+            // tableau : on compte, on additionne, on divise. Mettre la moyenne
+            // en premier obligerait à la connaître pour remplir le reste.
+            htmlReponse: `${trou(0)} valeurs, somme ${trou(1)}, moyenne ${trou(2)}`,
+            papierReponse: '….… valeurs, somme ….…, moyenne ….…',
+            kind: 'numeric',
+            reponse: `${serie.length}|${somme}|${moyenne(serie)}`,
+            cases: 3, serie, unite: s.unite,
+            pourquoi: `Il y a ${serie.length} valeurs et leur somme vaut ${somme} : `
+                + `${somme} ÷ ${serie.length} = ${enFrancais(moyenne(serie))}.`,
+            aide: 'Trois gestes, dans cet ordre : COMPTER les valeurs, les ADDITIONNER, puis '
+                + 'diviser la somme par le compte. La faute la plus fréquente est de diviser '
+                + 'par le nombre de valeurs DIFFÉRENTES.',
+            calcul: `Je compte les valeurs, j’additionne, puis je divise la somme par ${
+                serie.length}.`
+        };
+    }
+
+    if (etape.id === 'mediane-etapes') {
+        // SÉRIE IMPAIRE ET EN DÉSORDRE : c'est le cas où le RANG se calcule et
+        // sert vraiment. Sur une série paire, la médiane n'est pas une valeur
+        // de la série, et la troisième case changerait de sens.
+        const combien = rng.int(2, 3) * 2 + 1;
+        const serie = rng.shuffle(serieDeMoyenne(s.centre, combien,
+            (a, b) => rng.int(a, b), s.ecart));
+        const triee = rangee(serie);
+        const rang = (combien + 1) / 2;
+        return {
+            enonce: `${s.phrase(combien)}\n${ecrireSerie(serie)}`,
+            question: 'Range la série au brouillon, puis remplis :',
+            htmlReponse: `${trou(0)} valeurs, la médiane est la ${trou(1)}<sup>e</sup>`
+                + `, elle vaut ${trou(2)}`,
+            papierReponse: '….… valeurs, la médiane est la ….…e, elle vaut ….…',
+            kind: 'numeric',
+            reponse: `${combien}|${rang}|${triee[rang - 1]}`,
+            cases: 3, serie, unite: s.unite,
+            pourquoi: `Rangée : ${ecrireSerie(triee)}. Il y a ${combien} valeurs, donc la `
+                + `médiane est la ${rang}<sup>e</sup> : ${triee[rang - 1]}. Autant avant, `
+                + 'autant après.',
+            aide: 'La médiane COUPE la série en deux parts égales. Avec un nombre impair de '
+                + 'valeurs, c’est celle du milieu de la série RANGÉE — et son rang se calcule '
+                + 'avant de la chercher.',
+            calcul: `Je range les ${combien} valeurs, puis je prends la ${rang}e.`
         };
     }
 
@@ -479,7 +582,14 @@ export const statistiquesGenerator = {
             answerKind: q.kind,
             prompt: {
                 text: `${aPlat} ${q.question}`.trim(),
-                papier: `${aPlat} ${q.question}`.trim(),
+                // LA FEUILLE PORTE LA PHRASE À TROUS EN TOUTES LETTRES.
+                //
+                // Les marches « pas à pas » demandent trois nombres dans une
+                // phrase que l'écran dessine en cases. Imprimée sans elle,
+                // « Remplis les trois cases : » n'a aucune réponse possible —
+                // le défaut du 20 octobre, arrivé trois fois.
+                papier: `${aPlat} ${q.question}${
+                    q.papierReponse ? ' ' + q.papierReponse : ''}`.trim(),
                 html: '<div class="game-question ap-probleme">'
                     + lignes.map((l, i) => (i === 0
                         ? `<span class="ap-situation">${l}</span>`

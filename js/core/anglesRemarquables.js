@@ -69,6 +69,26 @@ export const RELATIONS = {
     }
 };
 
+/**
+ * LA SOMME DES ANGLES D'UN TRIANGLE — le théorème de cinquième qui manquait.
+ *
+ * RÉMY, le 16 novembre : « tu me fais […] la somme des angles d'un triangle ».
+ * Mesuré avant d'écrire : aucune compétence, aucun exercice. « La Valeur
+ * Manquante » traite les opposés, les correspondants, les alternes-internes,
+ * les complémentaires et les supplémentaires — pas le triangle.
+ *
+ * ELLE N'EST PAS DANS `RELATIONS` AVEC LES AUTRES, et ce n'est pas un oubli :
+ * `de(a)` y donne le second angle à partir d'UN premier, alors qu'ici il en
+ * faut DEUX. Une relation à deux entrées rangée parmi des relations à une
+ * entrée casserait tout ce qui lit `RELATIONS` en aveugle.
+ */
+export const TRIANGLE = {
+    id: 'triangle', nom: 'les trois angles d\'un triangle',
+    de: (a, b) => 180 - a - b,
+    pourquoi: 'la somme des angles d\'un triangle vaut toujours 180°',
+    calcul: (a, b) => `180° − ${a}° − ${b}° = ${180 - a - b}°`
+};
+
 /** Un couple d'angles ADJACENTS n'a pas de valeur à trouver : c'est un nom. */
 export const ADJACENTS = { id: 'adjacents', nom: 'adjacents' };
 
@@ -130,6 +150,60 @@ export function figurePartage({ ouverture, angle, penche = 0 }) {
         ],
         // L'équerre du 90° : sans elle, rien ne dit que l'angle total est droit.
         droit: ouverture === 90 ? { x: 0, y: 0, de: d, a: d + 90 } : null
+    };
+}
+
+/**
+ * UN TRIANGLE : trois sommets, deux angles donnés, un à trouver.
+ *
+ * ON PART DES ANGLES, PAS DES POINTS. La figure DOIT montrer les mesures
+ * qu'elle annonce : un triangle dessiné au jugé puis étiqueté « 50° » et
+ * « 60° » serait un mensonge que l'élève voit — il mesure au rapporteur,
+ * c'est même ce qu'on lui demande de savoir faire.
+ *
+ * Base AB de longueur 1, A à l'origine, le côté AC partant à `a` degrés. Le
+ * troisième sommet se place par la loi des sinus : AC = sin(b) / sin(c). On
+ * recentre ensuite sur le centre de gravité et l'on ramène dans le disque
+ * unité, pour que le triangle occupe le cadre quelle que soit sa forme.
+ *
+ * LES TROIS ARCS SONT ORIENTÉS VERS L'INTÉRIEUR. Un arc dessiné du mauvais
+ * côté montre l'angle EXTÉRIEUR — qui vaut 180° moins le bon, et qui est
+ * exactement la faute que le chapitre voisin travaille. On calcule donc le
+ * sens à partir des deux côtés, on ne le suppose pas.
+ */
+export function figureTriangle({ a, b, penche = 0 }) {
+    const c = 180 - a - b;
+    const ac = Math.sin(b * RAD) / Math.sin(c * RAD);
+    const S = [
+        { x: 0, y: 0 },                                               // A
+        { x: 1, y: 0 },                                               // B
+        { x: ac * Math.cos(a * RAD), y: ac * Math.sin(a * RAD) }      // C
+    ];
+    const gx = (S[0].x + S[1].x + S[2].x) / 3;
+    const gy = (S[0].y + S[1].y + S[2].y) / 3;
+    const centre = S.map(p => ({ x: p.x - gx, y: p.y - gy }));
+    const rmax = Math.max(...centre.map(p => Math.hypot(p.x, p.y)));
+    const k = 0.92 / rmax;
+    const cos = Math.cos(penche * RAD), sin = Math.sin(penche * RAD);
+    const P = centre.map(p => ({
+        x: k * (p.x * cos - p.y * sin), y: k * (p.x * sin + p.y * cos)
+    }));
+
+    const dir = (de, vers) => (Math.atan2(P[vers].y - P[de].y, P[vers].x - P[de].x)
+        / RAD + 360) % 360;
+    /** L'arc INTÉRIEUR au sommet `i`, entre les deux autres sommets. */
+    const arc = (i, j, l, role) => {
+        const dj = dir(i, j), dl = dir(i, l);
+        // Le sens direct va dans l'ordre croissant : on part de celle des deux
+        // directions qui mène à l'autre en moins d'un demi-tour.
+        const de = (dl - dj + 360) % 360 < 180 ? dj : dl;
+        const vers = de === dj ? dl : dj;
+        return { x: P[i].x, y: P[i].y, de, a: de + ((vers - de + 360) % 360), role };
+    };
+    const seg = (i, j) => ({ x1: P[i].x, y1: P[i].y, x2: P[j].x, y2: P[j].y });
+    return {
+        traits: [seg(0, 1), seg(1, 2), seg(2, 0)],
+        arcs: [arc(0, 1, 2, 'donne'), arc(1, 2, 0, 'donne'), arc(2, 0, 1, 'cherche')]
     };
 }
 

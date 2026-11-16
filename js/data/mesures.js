@@ -347,6 +347,39 @@ export const mesuresExercises = [
         instruction: "Lis l'heure sur la pendule : la petite aiguille donne les heures, la grande les minutes. Le réglage « Question » passe au geste inverse — tirer les aiguilles pour afficher une heure donnée — ou fait alterner les deux. Le réglage « Niveau » mène jusqu'au tour de midi : la pendule ne compte que jusqu'à 12, l'après-midi il faut ajouter 12 pour donner l'heure en 24 heures."
     },
 
+    // --- L'aire des figures (demandé le 16 novembre) ---
+    //
+    // RÉMY, après l'inventaire du programme : « tu me fais […] les aires et
+    // préimètres ».
+    //
+    // CE QUI MANQUAIT EXACTEMENT, mesuré avant d'écrire : l'aire du rectangle
+    // existait, celle du disque aussi, et le triangle n'avait que son
+    // PÉRIMÈTRE. L'aire du triangle et celle du parallélogramme n'avaient ni
+    // compétence ni exercice — les deux formules de cinquième, et les deux
+    // seules où intervient une HAUTEUR.
+    //
+    // LE CÔTÉ OBLIQUE PORTE SA MESURE SUR LA FIGURE, et ce n'est pas une
+    // politesse : c'est lui que prend l'élève qui confond la hauteur avec un
+    // côté. Sans lui, la faute du chapitre est impossible — donc invisible,
+    // et l'exercice ne mesure plus rien.
+    {
+        id: 'mes-aires', title: 'L’Aire des Figures',
+        cree: '2026-11-16',
+        generatorId: 'mes.aires', activityId: 'numpad',
+        colonnesPapier: 2,
+        consignePapier: 'Écris le calcul, puis le résultat avec son unité.',
+        skills: ['mes.aire.rectangle', 'mes.aire.triangle', 'mes.aire.parallelogramme',
+            'mes.perimetre.rectangle'],
+        calculatrice: true,
+        params: { nbQuestions: 6,
+            marches: ['rectangle', 'triangle', 'parallelogramme', 'ou'] },
+        motsClefs: ['aire', 'périmètre', 'rectangle', 'triangle', 'parallélogramme',
+            'hauteur', 'base', 'cm2', 'centimètres carrés', 'surface', 'tour'],
+        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Quatre marches. Le rectangle en sixième, puis les deux formules de cinquième — le triangle et le parallélogramme —, puis la question qui les mélange. LA HAUTEUR EST TOUT LE CHAPITRE : dans « base × hauteur », la hauteur n'est pas un côté, c'est la distance entre la base et le sommet opposé, perpendiculairement. Elle est donc TRACÉE en pointillés avec son angle droit, et le côté oblique porte lui aussi sa mesure — sans quoi la faute la plus fréquente serait impossible à commettre, donc invisible. Le triangle est la MOITIÉ du rectangle de même base et même hauteur, d'où le ÷ 2 ; le parallélogramme se découpe et se recolle en rectangle ENTIER, d'où l'absence de ÷ 2. La quatrième marche demande tantôt l'aire, tantôt le périmètre sur la MÊME figure : tant qu'un exercice ne demande qu'une des deux, l'élève applique la formule du jour sans jamais se demander laquelle — et l'unité le dit, des cm pour un tour, des cm² pour une surface."
+    },
+
     // --- Le volume des solides (demandé le 16 novembre) ---
     //
     // RÉMY, après l'inventaire du programme : « tu me fais les volumes ».

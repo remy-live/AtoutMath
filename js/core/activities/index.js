@@ -183,6 +183,7 @@ import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
 import { volumesGenerator } from '../generators/volumes.js';
+import { airesGenerator } from '../generators/aires.js';
 import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator
@@ -273,7 +274,7 @@ import {
     egypteFicheGenerator, hexagrilleFicheGenerator,
     tuyauxGenerator, pourcentagesGenerator,
     perimetreTriangleGenerator, disqueGenerator, lasersGenerator,
-    volumesGenerator,
+    volumesGenerator, airesGenerator,
     intervallesGenerator,
     valeurAbsolueGenerator,
     ensemblesGenerator,

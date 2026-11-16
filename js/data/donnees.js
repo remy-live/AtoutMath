@@ -172,16 +172,20 @@ export const donneesExercises = [
         // s'arrête.
         colonnesPapier: 1,
         lignesReponsePapier: 2,
-        params: { marches: ['effectif', 'etendue', 'moyenne', 'mediane-rangee',
-            'mediane-desordre', 'mediane-paire', 'frequence', 'moyenne-manquante',
-            'comparer'] },
+        // LES TROIS MARCHES « PAS À PAS » SONT COCHÉES PAR DÉFAUT, chacune
+        // juste avant sa voisine directe. Rémy : « les statistiques (par
+        // étape) ». On fait le chemin en trois temps, puis on le fait d'un
+        // coup — et le professeur décroche l'un ou l'autre.
+        params: { marches: ['effectif', 'etendue-etapes', 'etendue', 'moyenne-etapes',
+            'moyenne', 'mediane-rangee', 'mediane-desordre', 'mediane-paire',
+            'mediane-etapes', 'frequence', 'moyenne-manquante', 'comparer'] },
         motsClefs: ['statistiques', 'moyenne', 'médiane', 'étendue', 'fréquence',
-            'effectif', 'série', 'quatrième', '4ème'],
+            'effectif', 'série', 'pas à pas', 'par étape', 'quatrième', '4ème'],
         tags: {
             chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.STATISTIQUES],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "LA CALCULATRICE EST AUTORISÉE, et le brouillon est ton meilleur outil : une moyenne de huit notes ne se fait pas de tête, et ce chapitre ne mesure pas ton calcul mental. AVANT TOUTE MÉDIANE, RANGE LA SÉRIE DANS L'ORDRE CROISSANT au brouillon, puis barre les valeurs deux par deux — une à gauche, une à droite — jusqu'à ce qu'il n'en reste qu'une au milieu. Neuf marches, et trois d'entre elles sont des médianes — ce n'est pas un hasard. La moyenne, l'étendue et la fréquence se CALCULENT : on additionne, on soustrait, on divise. La médiane, elle, se CHERCHE, et on la cherche mal de deux façons. D'abord en oubliant de RANGER la série : la médiane de 7 ; 2 ; 9 vaut 7, pas 2, et le terme du milieu de la liste telle qu'elle est écrite est juste un nombre de la série. Ensuite quand la série a un nombre PAIR de valeurs : il y a alors deux valeurs au milieu, la médiane est leur moyenne, et elle n'est pas dans la série. Une marche par piège, pour que le bilan dise lequel coince. La dernière question est celle qui compte : deux groupes de même moyenne, et c'est l'étendue qui les sépare."
+        instruction: "LA CALCULATRICE EST AUTORISÉE, et le brouillon est ton meilleur outil : une moyenne de huit notes ne se fait pas de tête, et ce chapitre ne mesure pas ton calcul mental. AVANT TOUTE MÉDIANE, RANGE LA SÉRIE DANS L'ORDRE CROISSANT au brouillon, puis barre les valeurs deux par deux — une à gauche, une à droite — jusqu'à ce qu'il n'en reste qu'une au milieu. Douze marches, et trois d'entre elles sont des médianes — ce n'est pas un hasard. TROIS AUTRES SE FONT PAS À PAS : l'étendue, la moyenne et la médiane y demandent non pas un nombre mais TROIS, dans une phrase à trous — « il y a ? valeurs, leur somme vaut ?, la moyenne vaut ? ». Une question directe se répond juste ou faux, et l'élève qui rate ne sait pas OÙ : dans la somme, dans le compte, ou dans la division. Ici c'est la case fausse qui le dit. On coche les deux versions, ou l'une des deux. La moyenne, l'étendue et la fréquence se CALCULENT : on additionne, on soustrait, on divise. La médiane, elle, se CHERCHE, et on la cherche mal de deux façons. D'abord en oubliant de RANGER la série : la médiane de 7 ; 2 ; 9 vaut 7, pas 2, et le terme du milieu de la liste telle qu'elle est écrite est juste un nombre de la série. Ensuite quand la série a un nombre PAIR de valeurs : il y a alors deux valeurs au milieu, la médiane est leur moyenne, et elle n'est pas dans la série. Une marche par piège, pour que le bilan dise lequel coince. La dernière question est celle qui compte : deux groupes de même moyenne, et c'est l'étendue qui les sépare."
     },
     {
         id: 'don-probabilites',
