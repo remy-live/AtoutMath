@@ -67,15 +67,39 @@ et ne calcule aucun volume.
 Et avec eux les conversions qui coincent tous les ans : 1 L = 1 dm³,
 1 m³ = 1 000 L, et le passage m³ ↔ cm³ qui n'est pas celui des longueurs.
 
-### 2.2 Algorithmique et programmation — rien
+### 2.2 Algorithmique — couvert, et j'avais dit le contraire
 
-Thème à part entière du programme, du cycle 3 au cycle 4, et le logiciel n'en
-a aucune compétence. Ce qui manque : instruction, séquence, **boucle**,
-**variable**, **test (si… alors)**, et la lecture d'un script type Scratch.
+**CETTE SECTION DISAIT « RIEN ». C'ÉTAIT FAUX, ET RÉMY L'A RELEVÉ :** « on a
+pas déjà fait des choses en programmation ? » Si, deux fois, et bien :
 
-Les voisins existants ne le couvrent pas : `geo.espace.programme` fait exécuter
-un déplacement, `geo.construction.programme` fait écrire un programme de
-construction. Ce sont des cousins utiles, pas le thème.
+- **« L'Automate »** (CM2, 6ème, 5ème) : le programme à blocs est écrit, et
+  c'est l'élève qui est l'ordinateur. Il l'exécute bloc après bloc, le bloc
+  allumé disant où l'on en est — et quand la BOUCLE arrive au bout de son
+  corps, il remonte et le compteur passe au tour suivant. Séquence, boucle,
+  exécution pas à pas : le coeur du thème.
+- **« Le Chat Géomètre »** (6ème, 5ème) et son **atelier libre** : l'élève
+  ÉCRIT le programme — il pose des blocs « avancer » et « tourner » pour que
+  le chat repasse une figure. Douze niveaux, du trait unique à la rosace. On y
+  juge le tracé obtenu, pas la forme du programme.
+
+Les deux ensemble font les deux moitiés du thème : exécuter un programme écrit,
+et en écrire un.
+
+**POURQUOI JE LES AVAIS RATÉS** — et c'est la leçon réutilisable : je cherchais
+« scratch », « algorithme », « programmation » dans les TITRES et les
+`motsClefs`. Or ces deux exercices n'ont aucun `motsClefs` — comme 70 des 281
+— et aucun de ces trois mots dans leur titre. Ils ne sont apparus qu'en
+étendant la recherche au texte de l'`instruction`.
+
+**ET CE N'EST PAS QU'UN PROBLÈME DE MESURE** : `js/ui/rechercheUI.js` indexe le
+titre, les `motsClefs` et l'instruction. Donc « boucle » et « programme »
+sortent bien « L'Automate », mais **« scratch » et « algorithmique » ne sortent
+rien** — alors que le logiciel fait les deux. Un exercice sans mots-clefs est
+trouvable par accident, pas par intention.
+
+**CE QUI MANQUE VRAIMENT**, une fois ces deux-là comptés : la **variable** et
+le **test (si… alors)**, qui sont au programme du cycle 4 et qu'aucun des deux
+n'introduit.
 
 ### 2.3 Trigonométrie (3ème) — on nomme, on ne calcule pas
 

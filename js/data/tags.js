@@ -76,6 +76,16 @@ export const TAGS = {
         PRIORITES: "Priorités opératoires",
         LOGIQUE: "Logique",
         PERIMETRE_AIRE: "Périmètre et aire",
+        // LE TROISIÈME TROU QUE L'INVENTAIRE DU 16 NOVEMBRE A TROUVÉ, et le plus
+        // gros : pas une compétence, pas un exercice, à aucun niveau. Rémy :
+        // « tu me fais les volumes ».
+        //
+        // UNE RUBRIQUE À PART, ET NON SOUS « PÉRIMÈTRE ET AIRE ». Elles se
+        // ressemblent de loin — on mesure, on applique une formule — et c'est
+        // justement pour cela : toute l'année se passe à faire comprendre
+        // qu'une aire se compte en cm² et un volume en cm³, et qu'on ne les
+        // additionne pas. Les ranger ensemble serait dire le contraire.
+        VOLUMES: "Volumes",
         ESPACE: "Géométrie dans l'espace",
         TABLEUR: "Tableur",
         // LES DEUX CHAPITRES QUE LE CATALOGUE N'AVAIT PAS DU TOUT. Rémy, dans sa

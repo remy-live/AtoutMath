@@ -7563,3 +7563,26 @@ plus d'un.**
   DISE quand un élément porte à la fois `touch-action: none` et un ancêtre qui
   défile en largeur — la contradiction est silencieuse, et son symptôme (« le
   glissé s'arrête après dix pixels ») envoie chercher le défaut dans le code.
+
+**Un exercice sans mots-clefs est invisible à toute recherche par mot** — 16 novembre
+
+- *Ce que je voulais faire* : répondre à « ai-je oublié des choses dans le
+  programme de collège ? ». J'ai croisé les titres et les `motsClefs` du
+  catalogue avec les notions du programme.
+- *Ce qui s'est passé* : j'ai répondu « rien en algorithmique ». C'était FAUX —
+  « L'Automate » fait exécuter un programme à blocs, boucle comprise, et « Le
+  Chat Géomètre » en fait écrire un. Rémy l'a relevé en une phrase : « on a pas
+  déjà fait des choses en programmation ? » Les deux n'ont AUCUN mot-clef — ils
+  sont 70 sur 281 dans ce cas — et ni leur titre ni leur instruction ne disent
+  « scratch » ou « algorithmique ». Je ne les ai trouvés qu'en étendant la
+  recherche au texte de l'`instruction`, au troisième essai.
+- *Et ce n'est pas qu'un problème de mesure* : `js/ui/rechercheUI.js` indexe
+  titre + mots-clefs + instruction. Donc dans le logiciel lui-même, « scratch »
+  et « algorithmique » ne sortent RIEN, alors que deux exercices le font. Un
+  exercice sans mots-clefs est trouvable par accident, pas par intention.
+- *Combien de fois* : | (mais 70 exercices sont dans ce cas, et chaque nouvel
+  exercice peut s'y ajouter sans que rien ne le dise)
+- *Ce qui manque* : une cinquième vérification dans `nouvelExercice.mjs` — un
+  exercice sans `motsClefs`, ou dont aucun mot-clef n'est absent du titre, est
+  signalé. Et une commande qui liste les 70, pour les reprendre un jour.
+

@@ -2015,6 +2015,60 @@ const BASE = {
         prereqs: ['num.mult.sens'],
         descriptor: 'Calculer l\'aire d\'un rectangle à partir de ses dimensions.',
         lesson: 'Aire = Longueur × largeur. On compte les carreaux qui remplissent la figure.'
+    },
+
+    // ── LES VOLUMES ──────────────────────────────────────────────────────
+    //
+    // QUATRE COMPÉTENCES ET NON SEPT, bien qu'il y ait sept solides : ce sont
+    // les quatre FORMULES, et c'est ce qu'un bilan doit dire. Le pavé et le
+    // cube sont la même multiplication ; le prisme et le cylindre sont « aire
+    // de la base × hauteur » ; la pyramide et le cône sont cela divisé par
+    // trois. La boule est seule, et c'est pour cela qu'elle a sa ligne.
+    //
+    // Un élève qui sait faire le cylindre et rate le prisme n'a pas un trou de
+    // formule : il a un trou sur l'aire du disque ou sur celle du triangle, et
+    // c'est ce que les prérequis disent.
+    'mes.volume.pave': {
+        label: 'Volume du pavé droit et du cube',
+        chemin: [D.GRANDEURS, SD.VOLUMES],
+        niveaux: [N.SIXIEME],
+        prereqs: ['mes.aire.rectangle'],
+        descriptor: 'Calculer le volume d\'un pavé droit et d\'un cube.',
+        lesson: 'Volume = Longueur × largeur × hauteur. C\'est le nombre de petits cubes '
+            + 'd\'un centimètre d\'arête qui remplissent le solide — d\'où les cm³. Pour un '
+            + 'cube, les trois mesures sont la même : a × a × a.'
+    },
+    'mes.volume.prisme': {
+        label: 'Volume du prisme droit et du cylindre',
+        chemin: [D.GRANDEURS, SD.VOLUMES],
+        niveaux: [N.CINQUIEME],
+        prereqs: ['mes.volume.pave', 'mes.aire.disque'],
+        descriptor: 'Calculer le volume d\'un prisme droit et d\'un cylindre.',
+        lesson: 'Volume = aire de la base × hauteur. Un prisme, c\'est une base qu\'on fait '
+            + 'glisser : toute la difficulté est de calculer SA BASE d\'abord — un triangle, '
+            + 'un disque — et de ne multiplier par la hauteur qu\'ensuite. Le pavé droit en '
+            + 'est le cas où la base est un rectangle.'
+    },
+    'mes.volume.pyramide': {
+        label: 'Volume de la pyramide et du cône',
+        chemin: [D.GRANDEURS, SD.VOLUMES],
+        niveaux: [N.QUATRIEME],
+        prereqs: ['mes.volume.prisme'],
+        descriptor: 'Calculer le volume d\'une pyramide et d\'un cône.',
+        lesson: 'Volume = (aire de la base × hauteur) ÷ 3. Il n\'y a qu\'une chose de neuve : '
+            + 'une pyramide tient TROIS FOIS dans le prisme de même base et même hauteur, et '
+            + 'un cône trois fois dans le cylindre. Oublier le ÷ 3 est la faute du chapitre, '
+            + 'et elle donne un nombre parfaitement crédible.'
+    },
+    'mes.volume.boule': {
+        label: 'Volume de la boule',
+        chemin: [D.GRANDEURS, SD.VOLUMES],
+        niveaux: [N.TROISIEME],
+        prereqs: ['mes.volume.pyramide'],
+        descriptor: 'Calculer le volume d\'une boule à partir de son rayon.',
+        lesson: 'Volume = (4 ÷ 3) × π × r × r × r. La boule n\'a qu\'une mesure, son rayon, '
+            + 'et il y sert TROIS fois — c\'est un volume. Le mettre au carré donne une aire, '
+            + 'et c\'est la faute la plus fréquente.'
     }
 };
 

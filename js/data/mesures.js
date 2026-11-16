@@ -345,5 +345,48 @@ export const mesuresExercises = [
         motsClefs: ['pendule', 'aiguilles', 'placer', 'régler', '24 heures', 'après-midi'],
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Lis l'heure sur la pendule : la petite aiguille donne les heures, la grande les minutes. Le réglage « Question » passe au geste inverse — tirer les aiguilles pour afficher une heure donnée — ou fait alterner les deux. Le réglage « Niveau » mène jusqu'au tour de midi : la pendule ne compte que jusqu'à 12, l'après-midi il faut ajouter 12 pour donner l'heure en 24 heures."
+    },
+
+    // --- Le volume des solides (demandé le 16 novembre) ---
+    //
+    // RÉMY, après l'inventaire du programme : « tu me fais les volumes ».
+    //
+    // C'ÉTAIT LE PLUS GROS TROU DU LOGICIEL : ni compétence ni exercice, à
+    // aucun niveau. Le seul voisin, « Combien de Cubes ? », DÉNOMBRE un
+    // empilement et ne calcule aucun volume.
+    //
+    // SEPT SOLIDES, ET L'ORDRE EST CELUI DES FORMULES, pas celui du hasard :
+    // les quatre premiers sont « aire de la base × hauteur » — le pavé et le
+    // cube en sont le cas où la base est un rectangle —, les deux suivants
+    // sont la même chose divisée par trois, et la boule est seule. Un élève
+    // qui a compris les quatre premiers n'a qu'UNE chose de neuve à retenir
+    // en quatrième.
+    //
+    // SIX QUESTIONS PAR DÉFAUT ET NON DIX : un volume se pose, se calcule et
+    // s'écrit avec son unité — c'est trois minutes, pas trente secondes.
+    {
+        id: 'mes-volumes', title: 'Le Volume des Solides',
+        cree: '2026-11-16',
+        generatorId: 'mes.volumes', activityId: 'numpad',
+        // PAS DE `printable` : la feuille donne les dimensions en toutes
+        // lettres plutôt qu'un dessin — voir l'en-tête du générateur, qui dit
+        // pourquoi et ce qu'il faudrait pour le dessiner.
+        colonnesPapier: 2,
+        consignePapier: 'Écris le calcul, puis le résultat avec son unité.',
+        skills: ['mes.volume.pave', 'mes.volume.prisme', 'mes.volume.pyramide',
+            'mes.volume.boule'],
+        // LA CALCULATRICE EST AUTORISÉE : les nombres sont choisis pour tomber
+        // juste, mais 12 × 9 × 6 n'est pas du calcul mental et ce n'est pas ce
+        // qu'on mesure ici. Ce qu'on mesure, c'est la formule et l'unité.
+        calculatrice: true,
+        params: { nbQuestions: 6, marches: ['pave', 'cube', 'prisme', 'cylindre',
+            'pyramide', 'cone', 'boule'] },
+        motsClefs: ['volume', 'solide', 'pavé droit', 'cube', 'prisme', 'cylindre',
+            'pyramide', 'cône', 'boule', 'sphère', 'cm3', 'centimètres cubes',
+            'aire de la base', 'hauteur', 'espace'],
+        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.VOLUMES],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME,
+                TAGS.NIVEAU.TROISIEME] },
+        instruction: "Sept solides, un par marche, et chacun arrive à son niveau : le pavé droit et le cube en sixième, le prisme droit et le cylindre en cinquième, la pyramide et le cône en quatrième, la boule en troisième. Le solide est dessiné en perspective cavalière avec ses cotes — les arêtes cachées sont en pointillés, et la HAUTEUR est tracée, pas seulement écrite : sans ce trait, l'élève la confond avec une arête, qui est plus longue. Les quatre premières marches sont une seule et même formule, « aire de la base × hauteur » ; les deux suivantes sont cela divisé par trois, et c'est tout ce qu'il y a de neuf en quatrième. Oublier ce ÷ 3 est la faute du chapitre, et elle donne un nombre parfaitement crédible — elle est donc proposée, avec son explication. Pour le cylindre, le cône et la boule on demande la valeur EXACTE, avec son π : le pavé porte alors sa touche π. Les nombres sont choisis pour que la réponse soit entière — hauteurs multiples de trois, aire de base paire — afin qu'un élève qui se trompe cherche sa faute dans la formule et non dans son écriture."
     }
 ];

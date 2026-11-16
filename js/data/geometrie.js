@@ -1110,6 +1110,18 @@ export const geometrieExercises = [
     {
         id: 'geo-chat-geometre', title: 'Le Chat Géomètre',
         cree: '2026-08-05',
+        // DES MOTS-CLEFS AJOUTÉS LE 16 NOVEMBRE, ET VOICI POURQUOI. Rémy
+        // demandait ce qui manquait au programme ; un inventaire a répondu
+        // « rien en algorithmique », ce qui était faux — cet exercice et
+        // « L'Automate » font les deux moitiés du thème. Ils avaient été
+        // ratés parce qu'ils n'avaient AUCUN mot-clef, et que ni leur titre
+        // ni leur instruction ne disent « scratch » ou « algorithmique ».
+        // `rechercheUI.js` indexe titre + mots-clefs + instruction : ces deux
+        // mots-là ne sortaient donc rien, alors que le logiciel les fait.
+        // L'exercice reste rangé dans les ANGLES, qui est ce qu'il enseigne ;
+        // on ne change que ce par quoi on le trouve.
+        motsClefs: ['scratch', 'algorithmique', 'programmation', 'programmer',
+            'blocs', 'boucle', 'répéter', 'robot', 'angle', 'tracé'],
         generatorId: 'geo.scratch', activityId: 'scratch',
         // SUR LE PAPIER, ON RENVERSE L'EXERCICE : le programme est donné, la
         // figure est à tracer. Tant qu'on peut lancer, on ne prévoit pas ; ici
@@ -1135,6 +1147,8 @@ export const geometrieExercises = [
         // donne qu'on découvre le cercle.
         id: 'geo-chat-libre', title: 'Le Chat Géomètre — atelier libre',
         cree: '2026-08-06',
+        motsClefs: ['scratch', 'algorithmique', 'programmation', 'programmer',
+            'blocs', 'boucle', 'répéter', 'atelier', 'libre', 'rosace'],
         generatorId: 'geo.scratch', activityId: 'scratch',
         // Un ATELIER, pas un exercice : rien à régler avant d'entrer (le
         // panneau demandait un nombre de questions et un niveau de départ pour
@@ -1595,6 +1609,11 @@ export const geometrieExercises = [
         id: 'geo-automate',
         jeu: false, title: 'L\'Automate',
         cree: '2026-08-11',
+        // Voir « Le Chat Géomètre » : sans mots-clefs, un exercice est
+        // trouvable par accident et non par intention. Celui-ci est la
+        // moitié « exécuter » du thème, l'autre étant la moitié « écrire ».
+        motsClefs: ['algorithmique', 'programmation', 'programme', 'exécuter',
+            'boucle', 'répéter', 'scratch', 'blocs', 'robot', 'déplacement'],
         activityId: 'automate',
         params: { niveau: 'moyen', mode: 'progressif' },
         paramSchema: [

@@ -7548,3 +7548,73 @@ pas sur une échelle 1/25 000. Un titre ne dit pas ce qu'un exercice enseigne.
 sur celui de 2020 — le nouveau les atteindra en 2027 et 2028. Aucun des trous
 listés ne dépend de cette bascule.
 
+
+### « tu me fais les volumes » — 16 novembre
+
+> « tu me fais les volumes, les statistiques (par étape), la somme des angles
+> d'un triangle, les aires et préimètres, mais on a pas déjà fait des choses en
+> programmation ? »
+
+**IL AVAIT RAISON SUR LA PROGRAMMATION, ET MON INVENTAIRE AVAIT TORT.**
+« L'Automate » fait EXÉCUTER un programme à blocs, boucle comprise ; « Le Chat
+Géomètre » en fait ÉCRIRE un, sur douze niveaux. Les deux moitiés du thème.
+Je ne les avais pas trouvés parce qu'ils n'ont aucun mot-clef — ils sont 70 sur
+281 — et que ni leur titre ni leur instruction ne disent « scratch » ni
+« algorithmique ». Ce n'est pas qu'un problème de mesure : dans le logiciel
+lui-même, chercher « scratch » ne donnait rien. Mots-clefs ajoutés aux trois,
+sans toucher à leur classement — « Le Chat Géomètre » reste dans les ANGLES,
+qui est ce qu'il enseigne.
+
+**LE VOLUME DES SOLIDES, SEPT MARCHES ET L'ORDRE EST CELUI DES FORMULES.** Pavé
+et cube (6e), prisme et cylindre (5e), pyramide et cône (4e), boule (3e). Les
+quatre premières sont une seule et même chose — aire de la base × hauteur —,
+les deux suivantes sont cela divisé par trois, et c'est tout ce qu'il y a de
+neuf en quatrième. La boule est seule, d'où sa place en dernier.
+
+**QUATRE COMPÉTENCES POUR SEPT SOLIDES**, parce que ce sont les quatre
+FORMULES, et que c'est cela qu'un bilan doit dire. Un élève qui réussit le
+cylindre et rate le prisme n'a pas un trou de formule : il a un trou sur l'aire
+du triangle.
+
+**TROIS DÉFAUTS TROUVÉS EN REGARDANT, ET AUCUN AUTREMENT** :
+
+1. **L'équateur de la boule était NOIR.** Une `<ellipse>` sans `fill` se
+   remplit en noir. Deuxième fois en deux jours, après `var(--bg-main)`.
+2. **Le « h = 8 cm » du cylindre sortait du cadre**, amputé de sa dernière
+   lettre, et le prisme débordait par le haut. Un SVG qui déborde ne lève
+   aucune erreur : il coupe. Le cadre se CALCULE maintenant depuis tous les
+   points, coins des étiquettes compris.
+3. **Puis le recadrage a créé l'inverse** : un cube de 3 cm s'affichait plus
+   gros qu'un pavé de 12, parce qu'un petit dessin recadré au plus juste est
+   ensuite étiré à la largeur de son emplacement. Un plancher de 320 × 260 l'a
+   réglé. Dans un chapitre dont la leçon est qu'un volume grandit vite, c'était
+   exactement le contraire de ce qu'il faut montrer.
+
+**ET UN QUATRIÈME QUE SEULE UNE MESURE DONNE** : sur 390 × 844, la cote
+« r = 7 cm » faisait **CINQ PIXELS DE HAUT**. Le plafond général des figures
+(`max-height: 9vh` sur le `.figure-wrap`) écrasait le dessin à 27 % de sa
+taille — et l'outil des six écrans répondait « TIENT », parce qu'il mesure ce
+qu'on TOUCHE, et qu'ici on ne touche pas le dessin : on le LIT. J'ai mis deux
+essais à trouver la bonne règle, en DEMANDANT au navigateur quel `max-height`
+il calculait : 75,96 px, soit exactement 9 % de 844.
+
+**LE RÉGLAGE EST UN COMPROMIS, ET IL SE MESURE À DEUX.** À 26vh les cotes
+deviennent confortables (16 px) mais « Valider » sort de l'écran de 18 px sur
+un téléphone. À 21vh, les deux tiennent : 177 px de dessin, cote à 13 px,
+bouton dans l'écran, sur les six tailles.
+
+**DEUX ÉPREUVES ÉCRITES QUI NE GARDAIENT RIEN** — la troisième et la quatrième
+fois cette semaine. L'une ne vérifiait que le POINT d'ancrage des étiquettes et
+non leur boîte : on pouvait retirer les textes du calcul du cadre sans la faire
+rougir. L'autre cherchait « diviser par 3 » dans TOUTES les explications ; on
+pouvait supprimer le leurre de la pyramide ET du cône sans qu'elle tombe,
+puisque la BOULE emploie les mêmes mots.
+
+**LA FICHE PAPIER DONNE LES DIMENSIONS EN TOUTES LETTRES, pas le dessin**, et
+c'est écrit noir sur blanc dans le générateur plutôt que laissé à deviner :
+redessiner la perspective cavalière en jsPDF est un travail à part entière, et
+une fiche à moitié dessinée serait pire qu'une fiche honnêtement écrite.
+« Calcule le volume d'un pavé droit : L = 12 cm, l = 7 cm, h = 6 cm » est une
+question de manuel parfaitement ordinaire — et une épreuve garde que la feuille
+ne dit jamais « CE pavé droit », qui ne désignerait rien.
+

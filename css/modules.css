@@ -19006,3 +19006,84 @@ body.visite-en-cours .modal-overlay > * {
     .lp-statut { min-height: 1.4em; font-size: .9rem; }
     .lp-context { font-size: .95rem; }
 }
+
+/* ── LE VOLUME DES SOLIDES ─────────────────────────────────────────────────
+
+   RÉMY, le 16 novembre : « tu me fais les volumes ». C'était le plus gros trou
+   du logiciel : pas une compétence, pas un exercice, à aucun niveau.
+
+   PERSPECTIVE CAVALIÈRE, LA MÊME QUE `js/core/solides.js` : face avant en
+   vraie grandeur, profondeur à 45° réduite de moitié. Deux conventions
+   différentes dans un même logiciel apprendraient à l'élève que le dessin est
+   arbitraire, ce qu'il n'est pas. */
+.vol-svg { display: block; width: 100%; height: auto; color: var(--text-main); }
+/* `fill: none` N'EST PAS DÉCORATIF : les arêtes d'un pavé sont des `<path>`
+   FERMÉS, et un path fermé se remplit en NOIR par défaut. Sans cette ligne, le
+   solide est une silhouette opaque dont on ne voit plus une seule cote. */
+.vol-arete { fill: none; stroke: var(--text-main); stroke-width: 2.2;
+    stroke-linejoin: round; }
+/* Les faces rondes — le disque du haut d'un cylindre, la boule — portent un
+   aplat très pâle : c'est ce qui les fait lire comme des SURFACES et non comme
+   des ellipses posées là. */
+.vol-face { fill: color-mix(in srgb, var(--primary) 8%, transparent); }
+/* LES ARÊTES CACHÉES EN POINTILLÉS. C'est à elles qu'un élève reconnaît qu'un
+   dessin est un solide et non un hexagone — et c'est la convention de tous ses
+   manuels. */
+.vol-cache { fill: none; stroke: var(--text-main); stroke-width: 1.5;
+    stroke-dasharray: 5 4; opacity: .45; }
+/* LA HAUTEUR SE TRACE, elle ne se dit pas. « h = 6 cm » posé à côté d'une
+   pyramide ne désigne rien : l'élève le lit comme l'arête, qui est plus
+   longue. Le trait pointillé du sommet au centre de la base, lui, désigne. */
+.vol-hauteur { stroke: var(--primary); stroke-width: 2; stroke-dasharray: 6 4; }
+.vol-droit { fill: none; stroke: var(--primary); stroke-width: 1.6; }
+.vol-cote { stroke: var(--text-soft); stroke-width: 1.4; }
+/* L'ÉQUATEUR DE LA BOULE, et il a failli rester NOIR. Une `<ellipse>` sans
+   `fill` se remplit en noir : la boule est alors barrée d'un ovale opaque qui
+   mange son rayon. Même piège que `var(--bg-main)` sur la loupe, et même
+   remède — regarder le dessin. */
+.vol-equateur { fill: none; stroke: var(--text-main); stroke-width: 1.6; }
+.vol-centre { fill: var(--text-main); }
+.vol-nb { fill: var(--text-main); font-size: 15px; font-weight: 800;
+    font-variant-numeric: tabular-nums; }
+/* L'énoncé d'un volume tient en une ligne et demie ; il n'a pas besoin de la
+   largeur d'un paragraphe, et centré sous une figure il se lit mieux. */
+.vol-question { text-align: center; max-width: 44ch; margin-inline: auto; }
+
+/* ── LA HAUTEUR DU DESSIN, ET POURQUOI ELLE EST ÉCRITE ICI ────────────────
+
+   LE PLAFOND À DESSERRER EST SUR LE `.figure-wrap`, PAS SUR LE SVG — et je
+   l'ai d'abord écrit sur le svg, sans aucun effet. Le navigateur a tranché :
+   `max-height` calculé valait 75,96 px, soit EXACTEMENT 9vh de 844, et aucune
+   règle ne correspondait au sélecteur que j'interrogeais. C'est
+   `.numpad-context .figure-wrap { max-height: 9vh }`, plus haut dans ce
+   fichier, dont le commentaire dit d'ailleurs pourquoi : « une droite graduée
+   est large et basse, elle ne perd rien à 9 % de la hauteur de l'écran ». Un
+   SOLIDE, lui, y perd tout.
+
+   MESURÉ sur 390 × 844 : le dessin faisait 348 × 76 px et la cote « r = 7 cm »
+   CINQ PIXELS DE HAUT. Le plafond général des figures l'écrasait à 27 % de sa
+   taille — et l'outil des six écrans répondait pourtant « TIENT », parce qu'il
+   mesure ce qu'on TOUCHE, et qu'ici on ne touche pas le dessin : on le LIT.
+
+   Une figure dont l'élève doit lire les nombres n'a pas le même besoin qu'une
+   figure qu'il regarde. On lui donne donc sa propre plage — un plancher pour
+   qu'elle reste lisible sur un téléphone, un plafond pour qu'elle ne mange pas
+   l'écran sur un grand.
+
+   LA PLAGE EST UN COMPROMIS, ET IL S'EST MESURÉ EN DEUX FOIS. À 26vh, les
+   cotes devenaient confortables (16 px) mais « Valider » sortait de l'écran de
+   18 px sur un téléphone et de 2 px sur une tablette : on avait déplacé le
+   défaut, pas réglé. À 21vh, les deux tiennent ensemble — c'est la seule
+   mesure qui vaille, et elle demande de regarder les DEUX à la fois.
+
+       390 × 844  →  177 px, cote 13 px, « Valider » dans l'écran
+       390 × 667  →  140 px, cote 10 px, « Valider » dans l'écran
+       768 × 1024 →  215 px, cote 15 px, « Valider » dans l'écran
+
+   DIX PIXELS EST LE PLANCHER D'UN NOMBRE QU'ON LIT, pas un idéal : en dessous,
+   un « 6 » et un « 8 » ne se distinguent plus, et l'élève répond à côté sans
+   jamais savoir pourquoi. */
+.numpad-context .figure-wrap.fig-volume,
+.numpad-context .figure-wrap.fig-volume .fig-svg {
+    max-height: clamp(140px, 21vh, 225px);
+}
