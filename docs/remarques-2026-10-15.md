@@ -7517,3 +7517,34 @@ La seconde comparait la hauteur des petits traits à celle d'un GRAND trait —
 a fait monter à mi-hauteur sans la faire tomber. C'est à l'AXE qu'il fallait se
 comparer.
 
+
+### « ai-je oublié des choses dans le programme de collège ? » — 16 novembre
+
+Inventaire complet dans `docs/couverture-programme.md`. Les trous francs, par
+ordre : **les volumes** (rien, à aucun niveau), **l'algorithmique et la
+programmation** (thème entier), **la trigonométrie qui calcule** (on ne fait
+que nommer les côtés), **l'agrandissement-réduction et l'homothétie** (dont
+l'effet en k² et k³, faute de brevet annuelle), **les diagrammes
+statistiques**, la **somme des angles d'un triangle** et l'**inégalité
+triangulaire**, l'**aire du triangle et du parallélogramme**, la **fonction
+linéaire**, les **échelles** de plan.
+
+**UNE PREMIÈRE MESURE A ANNONCÉ 101 COMPÉTENCES ORPHELINES. IL Y EN A NEUF.**
+Je les avais cherchées dans les `skills:` du catalogue ; or 156 exercices sur
+281 n'en déclarent aucune et tiennent la leur de leur GÉNÉRATEUR — c'est de là
+que vient le `skillId` de chaque question, donc c'est ce lien-là qui nourrit le
+bilan par compétence. Mesurer du mauvais côté a fait apparaître des trous
+inexistants dans des chapitres entiers (statistiques, probabilités, fractions)
+pendant que les vrais — les volumes, l'algorithmique — restaient invisibles,
+puisqu'une notion jamais écrite n'apparaît nulle part comme manquante.
+
+**DEUX FAUX AMIS, TROUVÉS EN LISANT LES CONSIGNES ET NON LES TITRES** :
+« Carrés, Cubes et Réduction » est du calcul littéral sur les exposants, pas de
+l'agrandissement ; « L'Échelle des Tailles » porte sur les puissances de 10,
+pas sur une échelle 1/25 000. Un titre ne dit pas ce qu'un exercice enseigne.
+
+**ET TROIS PROGRAMMES COEXISTENT DANS SON COLLÈGE** : la 6e sur le cycle 3 de
+2025, la 5e sur le cycle 4 NOUVEAU (BO du 5 mars 2026), la 4e et la 3e encore
+sur celui de 2020 — le nouveau les atteindra en 2027 et 2028. Aucun des trous
+listés ne dépend de cette bascule.
+
