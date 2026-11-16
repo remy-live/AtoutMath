@@ -149,6 +149,17 @@ export const donneesExercises = [
     {
         id: 'don-statistiques',
         cree: '2026-10-20',
+        revisions: [
+            {
+                date: '2026-11-16',
+                quoi: 'Trois marches « pas à pas » — l’étendue, la moyenne et la médiane y '
+                    + 'demandent non pas un nombre mais TROIS, dans une phrase à trous. Une '
+                    + 'question directe se répond juste ou faux, et l’élève qui rate ne sait '
+                    + 'pas OÙ : dans la somme, dans le compte, ou dans la division. Ici c’est '
+                    + 'la case fausse qui le dit. Demandé par Rémy : « les statistiques (par '
+                    + 'étape) ».'
+            }
+        ],
         title: 'Moyenne, Médiane, Étendue',
         generatorId: 'don.statistiques', activityId: 'numpad',
         // LA CALCULATRICE EST OUVERTE, ET C'EST RÉMY QUI L'A DEMANDÉ.

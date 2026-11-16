@@ -648,6 +648,17 @@ export const numerationExercises = [
     {
         id: 'num-poser-la-loupe',
         cree: '2026-11-14',
+        revisions: [
+            {
+                date: '2026-11-16',
+                quoi: 'La loupe GLISSE au lieu d’étirer la droite. Rémy : « je préfèrerai '
+                    + 'que l’élève puisse avoir une loupe et que ce soit pas un étirement '
+                    + 'vertical qui déforme la croix ». On tape, elle s’y rend, et le trajet '
+                    + 'se voit ; on tire, elle suit. La droite montre aussi ses centièmes, '
+                    + 'pâles — c’est ce qui dit à quoi sert la loupe. On s’arrête aux '
+                    + 'centièmes : les millièmes restent à « L’Axe au Centième ».'
+            }
+        ],
         title: 'Pose la Loupe',
         generatorId: 'num.poser-la-loupe', activityId: 'poserLaLoupe',
         skills: ['num.dec.graduations'],

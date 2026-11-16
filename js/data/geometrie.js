@@ -81,6 +81,17 @@ export const geometrieExercises = [
         id: 'geo-angles-manquants',
         colonnesPapier: 5,
         cree: '2026-08-25',
+        revisions: [
+            {
+                date: '2026-11-16',
+                quoi: 'Une quatrième marche : LA SOMME DES ANGLES D’UN TRIANGLE, demandée '
+                    + 'par Rémy. Deux angles donnés, le troisième à trouver — et la figure '
+                    + 'part des angles pour que le rapporteur confirme ce qui est écrit. '
+                    + 'ATTENTION : « mélangé » veut dire TOUTES les marches, donc une série '
+                    + 'réglée ainsi tirera désormais des triangles. Sur douze questions, '
+                    + 'trois par marche au lieu de quatre.'
+            }
+        ],
         title: 'La Valeur Manquante',
         generatorId: 'geo.angles-manquants', activityId: 'numpad',
         printable: 'anglesManquants',
