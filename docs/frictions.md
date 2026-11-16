@@ -7508,3 +7508,58 @@ plus d'un.**
   générateur, le rendu de fiche et le fichier d'épreuves, puis RELIT le
   catalogue et refuse si le compte des exercices n'a pas baissé d'exactement
   un. Deux cents millisecondes contre les quinze minutes que ça vient de coûter.
+
+**Les quatre écrans de référence n'ont pas de portable** — 16 novembre
+
+- *Ce que je voulais faire* : savoir si « Pose la Loupe » tient sur les écrans
+  de Rémy. `surLesEcrans.mjs` répondait « TIENT SUR LES QUATRE ÉCRANS ».
+- *Ce qui s'est passé* : Rémy l'ouvre et le pavé est COUPÉ. Les quatre tailles
+  de l'outil sont 390×844, 390×667, 768×1024 et 1180×920 — deux téléphones, une
+  tablette, et un « ordinateur » haut de 920 px. Aucune n'est un PORTABLE, qui
+  est large et BAS : mesuré ensuite, le bouton « Valider » sort de l'écran sur
+  1000×700, 1280×720, 1440×830 et 900×600, c'est-à-dire sur toutes les formes
+  de portable essayées. L'outil disait vrai sur ce qu'il mesurait, et ce qu'il
+  mesurait n'était pas l'écran de Rémy.
+- *Combien de fois* : | (première, mais la liste est dans l'outil : elle servira
+  à chaque exercice neuf, et elle se trompera à chaque fois de la même façon)
+- *Ce qui manque* : ajouter **1280 × 720** et **1440 × 830** à la liste de
+  `surLesEcrans.mjs` — un portable ordinaire et un grand portable. Et noter
+  dans l'en-tête POURQUOI : une fenêtre de 1180 × 920 n'existe sur aucune
+  machine réelle, c'est une tablette debout déguisée en ordinateur. La hauteur
+  est la contrainte rare, pas la largeur.
+
+**Un jeton de couleur qui n'existe pas rend l'aplat NOIR, sans un mot** — 16 novembre
+
+- *Ce que je voulais faire* : donner au verre de la loupe le fond des cartes.
+  J'ai écrit `fill: var(--bg-main)`.
+- *Ce qui s'est passé* : `--bg-main` n'existe nulle part dans le dépôt — c'est
+  `--bg-panel`. Un `var()` non déclaré sans valeur de repli rend la propriété
+  invalide, et un `fill` invalide retombe sur sa valeur initiale, qui est NOIR.
+  Pas d'avertissement dans la console, pas d'erreur de page, rien : le verre
+  s'est affiché en noir avec ses traits noirs dedans, c'est-à-dire vide. Trouvé
+  en REGARDANT la photo, jamais autrement — la sonde disait « 0 erreur ».
+- *Combien de fois* : | (mais le dépôt a cinq thèmes et une trentaine de jetons,
+  et `nouvelExercice.mjs` vérifie déjà les jetons employés dans `js/data/` : il
+  ne regarde pas le CSS)
+- *Ce qui manque* : étendre `nouvelExercice.mjs`, ou en faire un outil à part,
+  qui relise `css/*.css`, relève tout `var(--…)` employé et le confronte aux
+  jetons DÉCLARÉS dans `base.css`. Deux cents millisecondes, et cela attrape la
+  faute de frappe que ni `node --check`, ni la console, ni une épreuve ne voient.
+
+**Un dessin qu'on fait glisser ne peut pas déborder en largeur** — 16 novembre
+
+- *Ce que je voulais faire* : donner à la loupe la même largeur confortable
+  qu'à « L'Axe au Centième », qui s'offre un `min-width: 860px` et une barre de
+  défilement horizontale.
+- *Ce qui s'est passé* : impossible, et il a fallu le raisonner au lieu de
+  l'essayer — un dessin qui défile horizontalement sous un glissé horizontal est
+  un dessin qu'on ne peut plus faire glisser : le navigateur prend la main et
+  déplace la page au lieu de l'objet. Il a donc fallu tout redimensionner en
+  unités de `viewBox` (nombres à 26 au lieu de 16) pour qu'un téléphone de
+  390 px reste lisible sans défilement.
+- *Combien de fois* : | (et cela se reposera à chaque figure qu'on manipule au
+  doigt : `touch-action: none` et `min-width` se contredisent)
+- *Ce qui manque* : une ligne dans `sonde.mjs` ou dans `surLesEcrans.mjs` qui
+  DISE quand un élément porte à la fois `touch-action: none` et un ancêtre qui
+  défile en largeur — la contradiction est silencieuse, et son symptôme (« le
+  glissé s'arrête après dix pixels ») envoie chercher le défaut dans le code.

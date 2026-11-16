@@ -2,85 +2,173 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// RÉMY, après avoir essayé la cascade de loupes : « pour le zoom, il faudrait
-// que ce soit l'élève qui pose la loupe et gère le zoom quand il se rend compte
-// que ca ne tombe pas encore juste. »
+// RÉMY, deux fois : « il faudrait que ce soit l'élève qui pose la loupe », puis,
+// en voyant la première version : « je préfèrerai que l'élève puisse avoir une
+// loupe et que ce soit pas un étirement vertical qui déforme la croix ».
 //
 // CE QUE CES ÉPREUVES GARDENT :
 //
-//   · IL FAUT VRAIMENT ZOOMER. Si la croix tombait déjà sur une graduation de
-//     la droite de départ, la question se résoudrait en se posant — et
-//     l'exercice n'enseignerait rien. C'est le défaut le plus facile à écrire
-//     sans s'en apercevoir : il suffit d'un dernier chiffre nul.
-//   · LA PROFONDEUR CORRESPOND À LA MARCHE. Un zoom donne des centièmes, deux
-//     des millièmes ; la troisième marche mêle les deux, et c'est elle qui
-//     oblige à REGARDER si la croix est tombée juste.
-//   · LA CROIX EST DANS LA DROITE DE DÉPART, et la place qu'on donne au dessin
-//     la désigne au bon endroit.
-//   · PAS DE FICHE PAPIER, ET C'EST DÉLIBÉRÉ. Une feuille ne zoome pas.
+//   · IL Y A TOUJOURS QUELQUE CHOSE À LIRE. Si la croix tombait sur un grand
+//     trait, ce trait porterait déjà son nombre écrit : la question se
+//     résoudrait en se posant. Il suffit d'un centième nul pour que ce soit le
+//     cas, et c'est le défaut le plus facile à écrire sans s'en apercevoir.
+//   · LA MARCHE EST UNE DISTANCE À UN REPÈRE, et la troisième seule contient 3
+//     et 7 — les deux centièmes qui obligent à compter trois crans.
+//   · LA CROIX EST DESSINÉE LÀ OÙ LA RÉPONSE L'ATTEND.
+//   · IL Y A TOUJOURS UN REPÈRE SOUS LE VERRE. C'est la contrainte qui a fixé
+//     la puissance de la loupe, et elle ne se voit nulle part dans le code
+//     autrement qu'en la mesurant : `LARGE / K ≥ (D − G) / 10`.
+//   · RIEN N'EST ÉTIRÉ. C'est sa phrase, et elle se garde.
+//   · PAS DE FICHE PAPIER, ET C'EST DÉLIBÉRÉ. Une feuille ne glisse pas.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import { poserLaLoupeGenerator as G } from '../js/core/generators/poserLaLoupe.js';
+import { loupeSvg, LOUPE_GEO } from '../js/core/figures.js';
 
-const MARCHES = ['un', 'deux', 'melange'];
+const MARCHES = ['repere', 'pres', 'partout'];
 const item = (marche, i) => G.generate({ marches: [marche] },
     { rng: makeRng(`lp-${marche}-${i}`), index: 0, total: 3 });
 
-test('IL FAUT VRAIMENT ZOOMER : la croix ne tombe jamais juste trop tôt', () => {
+test('IL Y A TOUJOURS QUELQUE CHOSE À LIRE : le centième n’est jamais nul', () => {
     for (const m of MARCHES) {
         for (let i = 0; i < 40; i++) {
             const it = item(m, i);
-            const { valeur, entier, zooms, rang } = it.meta;
+            const { valeur, entier, centieme, croix } = it.meta;
             const ou = `${m} #${i} (${valeur})`;
-            // LE DERNIER CHIFFRE N'EST JAMAIS ZÉRO. À 8,40, la croix tomberait
-            // sur une graduation dès le premier zoom — et à 8,0 elle y serait
-            // d'emblée. La question se résoudrait alors en se posant.
-            const dernier = Math.round(valeur * Math.pow(10, rang)) % 10;
-            assert.notEqual(dernier, 0, `${ou} : le dernier chiffre est nul`);
-            // ET LE COMPTE DE ZOOMS EST CELUI QU'IL FAUT : avec `rang`
-            // décimales, il faut `rang - 1` zooms depuis la droite des entiers.
-            assert.equal(zooms, rang - 1, `${ou} : ${zooms} zoom(s) pour ${rang} décimales`);
-            // LA CROIX EST DANS LA DROITE DE DÉPART, bornes exclues.
+            // À 6,40 la croix tomberait sur le grand trait de 6,4, qui porte
+            // déjà son nombre écrit sous le verre. Il n'y aurait plus rien à
+            // compter, et la loupe ne servirait à rien.
+            assert.notEqual(centieme, 0, `${ou} : le centième est nul`);
+            assert.equal(Math.round(valeur * 100) % 10, centieme,
+                `${ou} : le centième annoncé n’est pas celui du nombre`);
+            // LA CROIX EST DANS LA DROITE, bornes exclues : à 0 ou à 100 elle
+            // serait sur un bout, où le nombre est écrit en grand au-dessus.
+            assert.ok(croix > 0 && croix < 100,
+                `${ou} : la croix est à ${croix} centièmes, donc sur un bout`);
             assert.ok(valeur > entier && valeur < entier + 1,
                 `${ou} : la croix est hors de la droite [${entier} ; ${entier + 1}]`);
         }
     }
 });
 
-test('LA PROFONDEUR CORRESPOND À LA MARCHE', () => {
-    for (let i = 0; i < 30; i++) {
-        assert.equal(item('un', i).meta.zooms, 1, `un #${i} : pas un seul zoom`);
-        assert.equal(item('deux', i).meta.zooms, 2, `deux #${i} : pas deux zooms`);
+test('LA MARCHE EST UNE DISTANCE À UN REPÈRE', () => {
+    // SOUS LE VERRE, TROIS SORTES DE TRAITS : les grands (0 et 10, qui portent
+    // un nombre), le rouge du milieu (5), et les petits. La distance au plus
+    // proche repère est ce qui rend le comptage facile ou non — c'est donc elle
+    // qui fait les marches.
+    const loin = (c) => Math.min(c, Math.abs(c - 5), 10 - c);
+    for (let i = 0; i < 40; i++) {
+        assert.equal(item('repere', i).meta.centieme, 5,
+            `repere #${i} : la croix n’est pas sur le trait rouge`);
+        assert.equal(loin(item('pres', i).meta.centieme), 1,
+            `pres #${i} : la croix n’est pas à exactement un cran d’un repère`);
     }
-    // ET LA TROISIÈME MÊLE VRAIMENT LES DEUX. C'est elle qui porte l'exercice :
-    // on ne sait pas d'avance combien de zooms il faut, donc il faut REGARDER
-    // si la croix est tombée juste — mot pour mot ce que Rémy décrit. Une
-    // marche « au hasard » qui ne tirerait qu'une profondeur serait un décor,
-    // et rien ne le dirait.
+    // ET LA TROISIÈME VA VRAIMENT JUSQU'À DEUX CRANS, qui est le plus loin
+    // qu'on puisse être quand il y a un repère tous les cinq centièmes : 2, 3,
+    // 7 et 8, et eux seuls. Une marche « n'importe où » qui ne les tirerait
+    // jamais serait un décor, et rien ne le dirait.
+    //
+    // ON A ÉCRIT « TROIS CRANS » D'ABORD, ET C'ÉTAIT FAUX : `epreuveTombe.mjs` a
+    // refusé de voir cette épreuve tomber quand on remettait 3 dans la deuxième
+    // marche, parce que 3 est à deux crans du trait rouge. Le défaut déduit
+    // n'existait pas.
     const vus = new Set();
-    for (let i = 0; i < 40; i++) vus.add(item('melange', i).meta.zooms);
-    assert.deepEqual([...vus].sort(), [1, 2],
-        `la marche « mélange » ne tire que ${[...vus].join(' et ')} zoom(s)`);
+    for (let i = 0; i < 60; i++) vus.add(loin(item('partout', i).meta.centieme));
+    assert.ok(vus.has(2),
+        `la marche « partout » ne s’éloigne jamais de deux crans `
+        + `(distances vues : ${[...vus].sort().join(' ')})`);
 });
 
-test('LA PLACE DE LA CROIX DÉSIGNE LE BON ENDROIT SUR LE DESSIN', () => {
+test('LA CROIX EST DESSINÉE LÀ OÙ LA RÉPONSE L’ATTEND', () => {
     for (const m of MARCHES) {
         for (let i = 0; i < 30; i++) {
             const it = item(m, i);
-            const { valeur, entier, place, rang } = it.meta;
+            const { valeur, entier, dixieme, centieme, croix } = it.meta;
             const ou = `${m} #${i}`;
-            // `place` EST EN DIXIÈMES DE LA DROITE DE DÉPART, de 0 à 10 : c'est
-            // ce que le dessin reçoit. Si elle diverge de la valeur, la croix
-            // est dessinée ailleurs que là où la réponse l'attend, et personne
-            // ne le voit — ni une épreuve, ni un plantage.
-            assert.equal(Number(place.toFixed(rang)),
-                Number(((valeur - entier) * 10).toFixed(rang)),
-                `${ou} : la croix est dessinée à ${place}/10 pour ${valeur}`);
-            assert.ok(place > 0 && place < 10, `${ou} : la croix sort du dessin`);
+            // `croix` EST EN CENTIÈMES DE LA DROITE, de 0 à 100 : c'est ce que
+            // reçoivent le dessin ET le robot de démonstration. Si elle diverge
+            // de la valeur, la croix est dessinée ailleurs que là où la réponse
+            // l'attend, et personne ne le voit — ni une épreuve, ni un plantage.
+            assert.equal(croix, dixieme * 10 + centieme,
+                `${ou} : la croix est à ${croix} pour ${dixieme} dixièmes et `
+                + `${centieme} centièmes`);
+            assert.equal(valeur, Number((entier + croix / 100).toFixed(2)),
+                `${ou} : la croix est dessinée à ${croix}/100 pour ${valeur}`);
         }
+    }
+});
+
+test('IL Y A TOUJOURS UN REPÈRE SOUS LE VERRE, ET LA CROIX Y TIENT', () => {
+    // CETTE ÉPREUVE GARDE LA CONTRAINTE QUI A FIXÉ LA PUISSANCE DE LA LOUPE.
+    //
+    // Un verre de largeur `w` et de puissance `k` ne montre que `w/k` de la
+    // droite. Pour qu'il y ait TOUJOURS au moins un grand trait sous le verre —
+    // un trait qui porte un nombre, donc d'où l'on peut compter —, il faut que
+    // ce morceau soit plus large qu'un dixième. À ×10, le verre ne découvrirait
+    // que 0,7 dixième : on pourrait alors ne voir aucun grand trait, et il n'y
+    // aurait plus rien d'où compter. Rien dans le code ne dit cela : ça se
+    // mesure sur le dessin, ou ça se perd.
+    for (let c = 1; c <= 99; c++) {
+        const svg = loupeSvg({
+            gauche: '6', droite: '7', croix: c, centre: c,
+            nombre: (u) => `6,${u / 10}`
+        });
+        // AU MOINS UN NOMBRE SOUS LE VERRE.
+        const nombres = svg.match(/class="lp-vue-nb"/g) || [];
+        assert.ok(nombres.length >= 1,
+            `croix à ${c} centièmes : aucun grand trait sous le verre`);
+        // ET LA CROIX AGRANDIE TOMBE DANS LE CADRE DU VERRE. Elle est dessinée
+        // dans un groupe découpé (`clip-path`) : hors cadre, elle disparaîtrait
+        // sans la moindre erreur, et l'élève verrait un verre vide.
+        const cadre = svg.match(/class="lp-verre-cadre" x="([\d.-]+)" y="[\d.-]+"\s+width="(\d+)"/);
+        assert.ok(cadre, `croix à ${c} : le cadre du verre est introuvable`);
+        const [gx, large] = [Number(cadre[1]), Number(cadre[2])];
+        const vue = svg.match(/class="lp-croix lp-croix--vue">\s*<line x1="([\d.-]+)"/);
+        assert.ok(vue, `croix à ${c} : la croix agrandie est introuvable`);
+        const x = Number(vue[1]) + 9;   // le `x1` est le coin gauche du X
+        assert.ok(x > gx + 6 && x < gx + large - 6,
+            `croix à ${c} centièmes : elle tombe à ${x.toFixed(1)}, hors du verre `
+            + `[${gx} ; ${gx + large}]`);
+    }
+    // ET LE MORCEAU REGARDÉ NE SORT PAS DE LA DROITE, aux deux extrêmes : le
+    // verre montrerait du vide d'un côté, et l'élève croirait sa loupe cassée.
+    for (const centre of [-20, 0, 100, 120]) {
+        const svg = loupeSvg({ gauche: '6', droite: '7', croix: 50, centre });
+        const p = svg.match(/class="lp-poignee" x="([\d.-]+)"[\s\S]*?width="([\d.-]+)"/);
+        assert.ok(p, `centre ${centre} : la poignée est introuvable`);
+        const [x, w] = [Number(p[1]), Number(p[2])];
+        assert.ok(x >= LOUPE_GEO.G - 0.5 && x + w <= LOUPE_GEO.D + 0.5,
+            `centre ${centre} : le morceau regardé va de ${x.toFixed(1)} à `
+            + `${(x + w).toFixed(1)}, hors de la droite [${LOUPE_GEO.G} ; ${LOUPE_GEO.D}]`);
+    }
+});
+
+test('RIEN N’EST ÉTIRÉ : la loupe agrandit les deux directions', () => {
+    // RÉMY : « que ce soit pas un étirement vertical qui déforme la croix,
+    // c'est pas terribe. »
+    //
+    // LA VERSION D'AVANT EMPLOYAIT `scaleX`, qui ne tire QUE l'horizontale : la
+    // croix, qui est un X, devenait un X aplati. Cette épreuve garde la phrase
+    // de Rémy à l'endroit où on pourrait la reperdre — en réintroduisant une
+    // transformation pour « faire tenir » quelque chose.
+    const svg = loupeSvg({ gauche: '6', droite: '7', croix: 37, centre: 37 });
+    assert.ok(!/scaleX|scaleY/.test(svg), 'le dessin étire une seule direction');
+    assert.ok(!/transform=/.test(svg), 'le dessin porte une transformation');
+    // ET LA CROIX GARDE SON ÉPAISSEUR ET SA FORME : les deux traits du X, sur
+    // la droite comme sous le verre, sont des diagonales à 45°, c'est-à-dire de
+    // même écart en x et en y.
+    const croix = [...svg.matchAll(
+        /<line x1="([\d.-]+)" y1="([\d.-]+)" x2="([\d.-]+)" y2="([\d.-]+)"/g)]
+        .map(m => m.slice(1).map(Number))
+        .filter(([x1, y1, x2, y2]) => Math.abs(x2 - x1) > 0 && Math.abs(y2 - y1) > 0);
+    assert.equal(croix.length, 4, `${croix.length} diagonales au lieu des quatre du X`);
+    for (const [x1, y1, x2, y2] of croix) {
+        assert.equal(Math.abs(x2 - x1).toFixed(1), Math.abs(y2 - y1).toFixed(1),
+            `une branche du X mesure ${Math.abs(x2 - x1)} en x et `
+            + `${Math.abs(y2 - y1)} en y : elle est déformée`);
     }
 });
 
@@ -89,19 +177,25 @@ test('LA RÉPONSE S’ÉCRIT COMME UN ÉLÈVE L’ÉCRIT', () => {
         for (let i = 0; i < 30; i++) {
             const it = item(m, i);
             const ou = `${m} #${i} (${it.answer})`;
-            assert.match(it.answer, /^[1-9],\d{2,3}$/, `${ou} : écriture inattendue`);
-            assert.ok(!/0$/.test(it.answer), `${ou} : un zéro inutile à la fin`);
+            // DEUX DÉCIMALES, TOUJOURS : le centième n'est jamais nul, donc il
+            // n'y a jamais de zéro à retirer au bout.
+            assert.match(it.answer, /^[1-9],\d{2}$/, `${ou} : écriture inattendue`);
             // LE PAVÉ DE L'ACTIVITÉ ENVOIE UNE CHAÎNE : c'est `text` et non
-            // `numeric`. Avec `numeric`, c'est le pavé du dépôt qui se monte,
-            // et il n'y a plus de droite à toucher.
+            // `numeric`. Avec `numeric`, c'est le pavé du dépôt qui se monte, et
+            // il n'y a plus de loupe à faire glisser.
             assert.equal(it.answerKind, 'text', `${ou} : ce n’est pas la loupe qui répond`);
             assert.equal(it.meta.decimal, true, `${ou} : pas de virgule au pavé`);
+            // ET L'ÉNONCÉ NE DIT PAS LA RÉPONSE. Payé une fois sur « L'Axe au
+            // Centième », où le `prompt.text` portait « (le point vaut 8,2) » —
+            // ce qui s'imprime dans les défis.
+            assert.ok(!it.prompt.text.includes(it.answer),
+                `${ou} : l’énoncé contient la réponse — « ${it.prompt.text} »`);
         }
     }
 });
 
 test('PAS DE FICHE PAPIER, ET C’EST DÉLIBÉRÉ', () => {
-    // UNE FEUILLE NE ZOOME PAS. Imprimer cet exercice donnerait un axe et une
+    // UNE FEUILLE NE GLISSE PAS. Imprimer cet exercice donnerait un axe et une
     // croix à lire — c'est-à-dire « L'Axe au Centième », qui existe et qui est
     // fait pour ça. Un exercice dont le geste EST l'écran n'a pas de version
     // papier honnête ; en fabriquer une serait imprimer un autre exercice sous
@@ -111,7 +205,7 @@ test('PAS DE FICHE PAPIER, ET C’EST DÉLIBÉRÉ', () => {
     // sans elle, personne ne saurait, dans six mois, si la fiche manque ou si
     // on l'a refusée.
     assert.equal(G.ecrit, false, 'le générateur promet une fiche papier');
-    const it = item('deux', 0);
+    const it = item('pres', 0);
     assert.ok(!it.prompt.papier,
         `une consigne papier est écrite : « ${it.prompt.papier} »`);
 });
@@ -119,7 +213,7 @@ test('PAS DE FICHE PAPIER, ET C’EST DÉLIBÉRÉ', () => {
 test('LE QCM DES DÉFIS PORTE LES FAUTES DE LECTURE', () => {
     let vues = 0;
     const fautes = new Set();
-    for (const m of ['un', 'deux']) {
+    for (const m of MARCHES) {
         for (let i = 0; i < 20; i++) {
             const it = item(m, i);
             const ou = `${m} #${i}`;
@@ -129,12 +223,14 @@ test('LE QCM DES DÉFIS PORTE LES FAUTES DE LECTURE', () => {
             const vals = (it.choices || []).map(c => String(c.value));
             assert.equal(new Set(vals).size, vals.length, `${ou} : deux propositions identiques`);
             const pourquoi = (it.choices || []).map(c => c.why || '').join(' ');
-            [/un zoom trop tôt/, /partie entière/].forEach((r, k) => {
-                if (r.test(pourquoi)) fautes.add(k);
-            });
+            [/grand trait, pas la croix/, /grand trait de\s+DROITE/, /partie entière/]
+                .forEach((r, k) => { if (r.test(pourquoi)) fautes.add(k); });
             vues += 1;
         }
     }
-    assert.ok(vues >= 40, `seulement ${vues} questions examinées`);
-    assert.equal(fautes.size, 2, `seules ${fautes.size} des deux fautes se rencontrent`);
+    assert.ok(vues >= 60, `seulement ${vues} questions examinées`);
+    // LA DEUXIÈME EST LA PLUS INSTRUCTIVE : compter les petits traits en partant
+    // du grand trait de DROITE. On la voit en classe, et elle donne un nombre
+    // parfaitement crédible — c'est justement pour cela qu'elle doit y être.
+    assert.equal(fautes.size, 3, `seules ${fautes.size} des trois fautes se rencontrent`);
 });

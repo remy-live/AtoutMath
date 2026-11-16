@@ -622,7 +622,7 @@ export const numerationExercises = [
         instruction: "Chaque droite a SON échelle, et elle change d'une ligne à l'autre : lis d'abord les deux nombres écrits sous ses bouts. Placer 0,4 sur une droite de 0 à 1 et 40 sur une droite de 0 à 100, c'est le même geste et deux nombres différents. On compte les INTERVALLES depuis le bout gauche, jamais les traits. Touche la droite à l'endroit voulu : le point se range sur la graduation la plus proche, et son abscisse se relit en dessous — pour que tu puisses te corriger AVANT de valider. Quand tout est posé, le dessin apparaît. Le réglage « Comment l'abscisse est écrite » demande le même nombre de plusieurs façons : « 0,4 », « quatre dixièmes », « 4/10 », « le double de 0,2 »."
     },
 
-    // --- Pose la loupe (demandé le 14 novembre) ---
+    // --- Pose la loupe (demandé le 14 novembre, refait le 16) ---
     //
     // RÉMY, après la cascade : « pour le zoom, il faudrait que ce soit l'élève
     // qui pose la loupe et gère le zoom quand il se rend compte que ca ne tombe
@@ -630,9 +630,19 @@ export const numerationExercises = [
     //
     // DANS LA CASCADE, LES TROIS AXES ÉTAIENT DONNÉS : l'élève lisait un
     // raisonnement déjà fait, et regardait quelqu'un d'autre zoomer. Ici c'est
-    // lui qui décide — « la croix est entre 8,2 et 8,3, je zoome LÀ ».
+    // lui qui promène le verre — « la croix est par là, je regarde ».
     //
-    // PAS DE FICHE PAPIER, ET CE N'EST PAS UN OUBLI : une feuille ne zoome pas.
+    // LA PREMIÈRE VERSION ÉTIRAIT LA DROITE, ET IL L'A REFUSÉE : « je préfèrerai
+    // que l'élève puisse avoir une loupe et que ce soit pas un étirement
+    // vertical qui déforme la croix ». L'étirement ne tirait que l'horizontale,
+    // et la croix — un X — devenait un X aplati. Une loupe agrandit les deux
+    // directions du même facteur : une croix y reste une croix.
+    //
+    // ON S'ARRÊTE DONC AUX CENTIÈMES, et c'est un échange : une loupe a une
+    // puissance, et elle l'a une fois pour toutes. Les millièmes sont servis par
+    // « L'Axe au Centième », qui a un réglage pour eux.
+    //
+    // PAS DE FICHE PAPIER, ET CE N'EST PAS UN OUBLI : une feuille ne glisse pas.
     // Imprimer cet exercice donnerait un axe et une croix à lire, c'est-à-dire
     // « L'Axe au Centième », qui existe et qui est fait pour ça.
     {
@@ -641,11 +651,11 @@ export const numerationExercises = [
         title: 'Pose la Loupe',
         generatorId: 'num.poser-la-loupe', activityId: 'poserLaLoupe',
         skills: ['num.dec.graduations'],
-        params: { nbQuestions: 6, marches: ['un', 'deux', 'melange'] },
-        motsClefs: ['droite graduée', 'abscisse', 'zoom', 'loupe', 'graduation',
-            'décimaux', 'centièmes', 'millièmes', 'encadrer'],
+        params: { nbQuestions: 6, marches: ['repere', 'pres', 'partout'] },
+        motsClefs: ['droite graduée', 'abscisse', 'loupe', 'agrandir', 'graduation',
+            'décimaux', 'centièmes', 'encadrer'],
         tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME] },
-        instruction: "La croix ne tombe pas sur une graduation : il faut zoomer. On touche l'intervalle qui la contient, et cet intervalle devient la droite entière — ses deux bouts gagnent alors une décimale : 8 et 9 deviennent 8,2 et 8,3, puis 8,24 et 8,25. C'est là toute la leçon, et elle se lit dans les deux étiquettes. On peut zoomer autant qu'on veut et revenir en arrière : toucher le mauvais intervalle n'est pas compté comme une faute, c'est une loupe mal posée qu'on repose. Ce qui est jugé, c'est l'abscisse écrite au pavé, une seule fois, à la fin. La troisième marche est la vraie : on ne sait pas d'avance combien de zooms il faut, donc il faut REGARDER si la croix est tombée juste."
+        instruction: "La droite va de 6 à 7 et ne porte que ses dixièmes ; la croix tombe entre deux d'entre eux. L'élève pose le doigt sur le dessin et fait GLISSER une loupe le long de la droite : sous le verre, le morceau couvert apparaît agrandi six fois, avec ses petits traits des centièmes et un trait rouge au milieu de chaque dixième. Rien n'est déformé, c'est un agrandissement uniforme — la croix y garde sa forme et son épaisseur. Il la fait glisser jusqu'à la croix, repère le grand trait qui porte un nombre, compte les petits traits, et écrit l'abscisse au pavé. Poser le verre au mauvais endroit n'est pas compté comme une faute : on le promène autant qu'on veut, ce qui est jugé c'est le nombre écrit, une seule fois, à la fin. Les trois marches sont trois distances à un repère : pile sur le trait rouge, puis à un seul cran d'un repère, puis n'importe où — et la troisième seule contient 2, 3, 7 et 8, c'est-à-dire les quatre centièmes à deux crans d'un repère, qui est le plus loin qu'on puisse être quand il y en a un tous les cinq centièmes."
     },
 
     // --- L'axe au centième (demandé le 14 novembre) ---

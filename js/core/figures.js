@@ -829,156 +829,194 @@ export function axeCentiemesSvg({ gauche = '0', droite = '1', points = [],
 }
 
 /**
- * LA LOUPE QUE L'ÉLÈVE POSE LUI-MÊME.
+ * UNE LOUPE QUI GLISSE LE LONG DE LA DROITE.
  *
  * ─────────────────────────────────────────────────────────────────────────
  *
- * RÉMY : « pour le zoom, il faudrait que ce soit l'élève qui pose la loupe et
- * gère le zoom quand il se rend compte que ca ne tombe pas encore juste. »
+ * RÉMY, en voyant le zoom qui remplaçait la droite : « je trouve la disposition
+ * mauvaise. Je préfèrerais que l'élève puisse avoir une loupe et que ce soit
+ * pas un étirement vertical qui déforme la croix, c'est pas terrible. »
  *
- * ── POURQUOI CELA RÉPOND À « ON COMPREND PAS TROP » ─────────────────────
+ * ── CE QU'UNE VRAIE LOUPE FAIT, ET QUE L'ÉTIREMENT NE FAISAIT PAS ──────
  *
- * Dans la cascade, les trois axes étaient DONNÉS : l'élève lisait un
- * raisonnement déjà fait, et regardait quelqu'un d'autre zoomer. Ici c'est lui
- * qui décide — « la croix est entre 8,2 et 8,3, je zoome LÀ » — et le geste
- * devient le sien. C'est aussi, probablement, pourquoi on ne comprenait pas.
+ * Elle agrandit EN LARGEUR ET EN HAUTEUR, du même facteur. Rien n'est déformé :
+ * la croix garde sa forme, les crans gardent leurs proportions. Le zoom d'avant
+ * ne tirait QUE l'horizontale (`scaleX`) — c'est ce qui aplatissait la croix, et
+ * Rémy l'a vu au premier coup d'oeil.
  *
- * ── SEULS LES DEUX BOUTS SONT ÉCRITS, ET C'EST TOUTE LA LEÇON ───────────
+ * ── LA PUISSANCE N'EST PAS UN CHIFFRE ROND, C'EST UNE CONTRAINTE ───────
  *
- * À chaque zoom, les deux nombres des bouts gagnent une décimale : 8 et 9,
- * puis 8,2 et 8,3, puis 8,24 et 8,25. L'élève VOIT la décimale apparaître, et
- * il la voit apparaître PARCE QU'IL A CHOISI l'intervalle. Écrire tous les
- * crans donnerait la réponse et supprimerait la leçon.
+ * Une loupe de largeur `w` et de puissance `k` ne montre que `w/k` de la
+ * droite. Pour qu'il y ait TOUJOURS au moins un grand trait sous le verre — un
+ * trait qui porte un nombre, donc d'où l'on peut compter —, il faut que ce
+ * morceau soit plus large qu'un dixième :
  *
- * ── LES DIX ZONES SE TOUCHENT AU DOIGT ──────────────────────────────────
+ *     LARGE / K  ≥  (D − G) / 10        →  440 / 6 = 73 > 64        ✔
  *
- * Chaque intervalle porte un rectangle transparent haut de 56 unités —
- * mesuré : à l'écran le plus étroit, cela fait encore 24 px de haut et 29 de
- * large, au-dessus du plancher tactile. Un trait de graduation, lui, en ferait
- * deux : on ne vise pas une graduation, on vise la BANDE entre deux.
+ * À ×10, le même verre ne découvrirait que 44 unités, soit 0,7 dixième : on
+ * pourrait alors ne voir aucun grand trait, et il n'y aurait plus rien d'où
+ * compter. ×6 est le plus fort agrandissement qui garantisse un repère.
+ *
+ * ── POURQUOI UN ENCART, ET NON UN VERRE POSÉ SUR LA DROITE ─────────────
+ *
+ * Un verre de 440 unités centré sur son objet sortirait du dessin dès que
+ * l'objet approche d'un bout : il faudrait que la droite commence à 228 unités
+ * du bord, et il ne resterait alors que 300 unités de droite — des dixièmes de
+ * 30 unités, illisibles. On garde donc le verre DANS le cadre et l'on relie le
+ * morceau regardé au verre par un encart translucide, comme un détail de carte.
+ * Près d'un bout l'encart penche : c'est exactement ce que fait une grosse
+ * loupe tenue au bord d'une page.
+ *
+ * ── CE QUI EST DESSINÉ SOUS LE VERRE ──────────────────────────────────
+ *
+ * La MÊME droite, aux mêmes endroits, vue de plus près : les grands traits des
+ * dixièmes, les petits des centièmes, un trait rouge au milieu de chaque
+ * dixième, les nombres des dixièmes qui tombent dans le champ, et la croix si
+ * elle y est. La loupe n'ajoute rien — elle ne fait que rapprocher.
  *
  * @param {Object} cfg
- * @param {string} cfg.gauche   le nombre du bout gauche, déjà écrit
- * @param {string} cfg.droite   celui du bout droit
- * @param {number} cfg.place    où poser la croix, de 0 à 10 (décimal)
- * @param {boolean} [cfg.zones] poser les dix zones qu'on touche
+ * @param {string} cfg.gauche    le nombre du bout gauche, déjà écrit
+ * @param {string} cfg.droite    celui du bout droit
+ * @param {number} cfg.croix     où est la croix, en centièmes (0 à 100)
+ * @param {number} cfg.centre    où est le centre du verre, en centièmes
+ * @param {Function} cfg.nombre  (centièmes) → le nombre à écrire, en français
  */
-export function loupeSvg({ gauche = '0', droite = '1', place = null,
-    zones = false, anim = null } = {}) {
-    const G = 56, D = 700, W = 760, H = 150;
-    const y = 82;
-    const pas = (D - G) / 10;
-    const xDe = (i) => G + i * pas;
+export function loupeSvg({ gauche = '0', droite = '1', croix = null,
+    centre = 50, nombre = (c) => String(c) } = {}) {
+    const { G, D, W } = LOUPE_GEO;
+    const H = 222;
+    const y = 60;                      // la droite
+    const K = 6;                       // la puissance du verre — voir l'en-tête
+    const LARGE = 440, HAUT = 112;     // le verre
+    const gy = 102;                    // son bord haut
+    const pas = (D - G) / 100;         // un centième, sur la droite
+    const xDe = (c) => G + c * pas;
+    const demi = (LARGE / 2) / K;      // la demi-largeur du morceau regardé
 
-    // ── CE QUI BOUGE : le trait, ses crans, la croix ──────────────────────
+    const m = [];
+
+    // ── LA DROITE, EN ENTIER ET À SA TAILLE ───────────────────────────────
     //
-    // RÉMY : « voir l'animation serait encore plus cool, ou on voit les traits
-    // qui apparaissent progressivement ».
-    //
-    // L'INTERVALLE CHOISI S'OUVRE JUSQU'À REMPLIR LA DROITE. Au premier
-    // instant, la nouvelle droite est posée EXACTEMENT là où était
-    // l'intervalle qu'on vient de toucher — réduite au dixième et translatée.
-    // Elle s'écarte ensuite jusqu'à sa place. Ce n'est pas une illustration du
-    // zoom : c'est le zoom, et la croix y reste sur le même point du début à
-    // la fin, puisque les deux désignent le même nombre.
-    //
-    //     en zoomant :    sx = 1/10,  dx = x(i) − G/10
-    //     en dézoomant :  sx = 10,    dx = G − 10·x(i)
-    //
-    // `vector-effect="non-scaling-stroke"` EST OBLIGATOIRE : sans lui, un cran
-    // vertical réduit au dixième a un trait dix fois plus fin, c'est-à-dire
-    // invisible — et dix fois plus épais quand on dézoome.
-    const mobile = [];
-    mobile.push(`<line class="ax-axe" x1="${G - 26}" y1="${y}" x2="${D + 30}" y2="${y}"
-        vector-effect="non-scaling-stroke" marker-end="url(#loupe-fleche)"/>`);
-    for (let i = 0; i <= 10; i++) {
-        const bout = i === 0 || i === 10;
-        // CHAQUE CRAN APPARAÎT À SON TOUR, de gauche à droite — « on voit les
-        // traits qui apparaissent progressivement ». 24 ms d'écart, soit
-        // 264 ms pour les onze : assez pour qu'on le voie, trop peu pour qu'on
-        // attende.
-        mobile.push(`<line class="ax-cran lp-cran${bout ? ' ax-cran--bout' : ''}"
-            style="--tc:${120 + i * 24}ms" vector-effect="non-scaling-stroke"
-            x1="${xDe(i).toFixed(1)}" y1="${(y - (bout ? 18 : 11)).toFixed(1)}"
-            x2="${xDe(i).toFixed(1)}" y2="${(y + (bout ? 18 : 11)).toFixed(1)}"/>`);
+    // ELLE NE PORTE QUE SES DIXIÈMES. Y dessiner les centièmes serait les
+    // dessiner à 3 px d'écart sur un téléphone : l'élève verrait une bande
+    // grise, et c'est précisément ce que la loupe est là pour résoudre.
+    m.push(`<line class="ax-axe" x1="${G - 26}" y1="${y}" x2="${D + 30}" y2="${y}"
+        marker-end="url(#loupe-fleche)"/>`);
+    for (let c = 0; c <= 100; c += 10) {
+        const bout = c === 0 || c === 100;
+        m.push(`<line class="ax-cran${bout ? ' ax-cran--bout' : ''}"
+            x1="${xDe(c).toFixed(1)}" y1="${(y - (bout ? 16 : 10)).toFixed(1)}"
+            x2="${xDe(c).toFixed(1)}" y2="${(y + (bout ? 16 : 10)).toFixed(1)}"/>`);
     }
-    if (place !== null && place !== undefined) {
-        const xp = xDe(place);
-        // UNE CROIX PLUS FINE — Rémy : « fais une croix un peu plus fine du
-        // coup ». À quatre unités d'épaisseur sur un cran de 64, elle pesait
-        // autant qu'un grand trait et l'on ne savait plus lequel des deux
-        // désignait la graduation. L'épaisseur vit dans `modules.css`.
-        mobile.push(`<g class="lp-croix">
-            <line x1="${(xp - 8).toFixed(1)}" y1="${y - 8}" x2="${(xp + 8).toFixed(1)}" y2="${y + 8}"
-                  vector-effect="non-scaling-stroke"/>
-            <line x1="${(xp - 8).toFixed(1)}" y1="${y + 8}" x2="${(xp + 8).toFixed(1)}" y2="${y - 8}"
-                  vector-effect="non-scaling-stroke"/>
+    m.push(`<text class="lp-bout" x="${G}" y="${y - 26}"
+        text-anchor="middle">${gauche}</text>`);
+    m.push(`<text class="lp-bout" x="${D}" y="${y - 26}"
+        text-anchor="middle">${droite}</text>`);
+    if (croix !== null && croix !== undefined) {
+        const xp = xDe(croix);
+        m.push(`<g class="lp-croix">
+            <line x1="${(xp - 7).toFixed(1)}" y1="${y - 7}" x2="${(xp + 7).toFixed(1)}" y2="${y + 7}"/>
+            <line x1="${(xp - 7).toFixed(1)}" y1="${y + 7}" x2="${(xp + 7).toFixed(1)}" y2="${y - 7}"/>
         </g>`);
     }
 
-    const style = anim
-        ? ` style="--dx:${anim.dx.toFixed(2)}px; --sx:${anim.sx}"`
-        : '';
-    const morceaux = [`<g class="lp-mobile${anim ? ' lp-mobile--anime' : ''}"${style}>
-        ${mobile.join('\n        ')}
-    </g>`];
-
-    // ── CE QUI NE S'ÉTIRE PAS : les deux nombres des bouts ────────────────
+    // ── LE MORCEAU REGARDÉ, ET L'ENCART QUI LE RELIE AU VERRE ─────────────
     //
-    // Réduits au dixième puis rendus à leur taille, ils seraient illisibles
-    // pendant toute la traversée. Ils se posent en fondu, après — et ce sont
-    // eux qui portent la leçon : à chaque zoom, une décimale de plus.
-    morceaux.push(`<g class="lp-mots${anim ? ' lp-mots--anime' : ''}">
-        <text class="ax-nb lp-bout" x="${G}" y="${y + 44}"
-              text-anchor="middle">${gauche}</text>
-        <text class="ax-nb lp-bout" x="${D}" y="${y + 44}"
-              text-anchor="middle">${droite}</text>
-    </g>`);
+    // LE CENTRE EST BORNÉ pour que le morceau regardé ne sorte pas de la
+    // droite : poussé au-delà, le verre montrerait du vide d'un côté et l'élève
+    // croirait sa loupe cassée.
+    const cc = Math.max(demi / pas, Math.min(100 - demi / pas, centre));
+    const cx = xDe(cc);
+    const gx = Math.max(8, Math.min(W - LARGE - 8, cx - LARGE / 2));
 
-    if (zones) {
-        // LES ZONES NE S'ANIMENT PAS, et c'est voulu : elles décrivent la
-        // droite d'ARRIVÉE. Un élève qui enchaîne deux zooms sans attendre la
-        // fin du premier touche ainsi le bon intervalle, et non celui qui
-        // passe sous son doigt.
-        for (let i = 0; i < 10; i++) {
-            morceaux.push(`<g class="lp-zone" data-zone="${i}" role="button" tabindex="0"
-                aria-label="Zoomer sur l’intervalle ${i + 1}">
-                <rect x="${xDe(i).toFixed(1)}" y="${y - 28}" width="${pas.toFixed(1)}"
-                      height="56" rx="6"/>
-            </g>`);
+    m.push(`<polygon class="lp-encart" points="${(cx - demi).toFixed(1)},${y + 14}
+        ${(cx + demi).toFixed(1)},${y + 14} ${gx + LARGE},${gy} ${gx},${gy}"/>`);
+    // LA POIGNÉE : elle couvre exactement le morceau regardé, et c'est elle
+    // qu'on attrape. Une loupe dont on ne voit pas la prise ne se glisse pas.
+    m.push(`<rect class="lp-poignee" x="${(cx - demi).toFixed(1)}" y="${y - 13}"
+        width="${(2 * demi).toFixed(1)}" height="26" rx="7"/>`);
+
+    // ── CE QU'ON VOIT DANS LE VERRE ───────────────────────────────────────
+    //
+    // `dedans(u)` envoie un point de la droite à sa place sous le verre : le
+    // centre du morceau regardé tombe au centre du verre, et tout s'en écarte K
+    // fois plus. Les ÉPAISSEURS, elles, ne changent pas — on rapproche, on ne
+    // grossit pas les traits.
+    const ya = gy + HAUT / 2;
+    const dedans = (u) => (gx + LARGE / 2) + (u - cx) * K;
+    const premier = Math.max(0, Math.floor(cc - (LARGE / 2) / K / pas));
+    const dernier = Math.min(100, Math.ceil(cc + (LARGE / 2) / K / pas));
+
+    const vu = [];
+    vu.push(`<line class="lp-vue-axe" x1="${gx}" y1="${ya}" x2="${gx + LARGE}" y2="${ya}"/>`);
+    for (let c = premier; c <= dernier; c++) {
+        const dixieme = c % 10 === 0;
+        const milieu = c % 10 === 5;
+        const h = dixieme ? 26 : milieu ? 18 : 11;
+        const classe = dixieme ? 'lp-vue-grand' : milieu ? 'lp-vue-milieu' : 'lp-vue-petit';
+        vu.push(`<line class="${classe}" x1="${dedans(xDe(c)).toFixed(1)}"
+            y1="${(ya - h).toFixed(1)}" x2="${dedans(xDe(c)).toFixed(1)}"
+            y2="${(ya + h).toFixed(1)}"/>`);
+        // LE NOMBRE D'UN DIXIÈME, quand il tombe sous le verre : c'est de lui
+        // qu'on compte, et sans lui les centièmes ne disent rien. C'est la
+        // contrainte qui a fixé la puissance du verre — voir l'en-tête.
+        //
+        // ET SEULEMENT S'IL TIENT EN ENTIER. Un nombre coupé en deux par le
+        // bord du verre est illisible, et c'est justement celui dont on a
+        // besoin pour compter. La marge de 26 unités n'est pas choisie au
+        // jugé : les deux grands traits sont à 384 unités l'un de l'autre sous
+        // le verre, qui en fait 440 ; au-delà de (440 − 384) / 2 = 28, il
+        // existe des positions où AUCUN des deux ne tiendrait, et le verre
+        // n'aurait plus de repère du tout.
+        const place = dedans(xDe(c)) - (gx + LARGE / 2);
+        if (dixieme && Math.abs(place) <= LARGE / 2 - 26) {
+            vu.push(`<text class="lp-vue-nb" x="${dedans(xDe(c)).toFixed(1)}"
+                y="${(ya + 40).toFixed(1)}" text-anchor="middle">${nombre(c)}</text>`);
         }
     }
+    if (croix !== null && croix !== undefined) {
+        const xp = dedans(xDe(croix));
+        // LA CROIX GARDE SA TAILLE ET SA FORME — c'est tout l'objet de cette
+        // réécriture. Elle est seulement plus loin des autres traits.
+        vu.push(`<g class="lp-croix lp-croix--vue">
+            <line x1="${(xp - 9).toFixed(1)}" y1="${ya - 9}" x2="${(xp + 9).toFixed(1)}" y2="${ya + 9}"/>
+            <line x1="${(xp - 9).toFixed(1)}" y1="${ya + 9}" x2="${(xp + 9).toFixed(1)}" y2="${ya - 9}"/>
+        </g>`);
+    }
+
+    m.push(`<g class="lp-verre">
+        <rect class="lp-verre-fond" x="${gx}" y="${gy}" width="${LARGE}"
+              height="${HAUT}" rx="16"/>
+        <g clip-path="url(#lp-verre-clip)">${vu.join('\n            ')}</g>
+        <rect class="lp-verre-cadre" x="${gx}" y="${gy}" width="${LARGE}"
+              height="${HAUT}" rx="16"/>
+    </g>`);
 
     return `
-    <svg class="fig-svg ax-svg lp-svg" viewBox="0 0 ${W} ${H}"
-         role="img" aria-label="Une droite graduée de ${gauche} à ${droite}, en dix intervalles">
+    <svg class="fig-svg lp-svg" viewBox="0 0 ${W} ${H}" role="img"
+         aria-label="Une droite graduée de ${gauche} à ${droite}, et une loupe qui glisse dessus">
         <defs>
             <marker id="loupe-fleche" viewBox="0 0 10 10" refX="8" refY="5"
                     markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
             </marker>
+            <clipPath id="lp-verre-clip">
+                <rect x="${gx}" y="${gy}" width="${LARGE}" height="${HAUT}" rx="16"/>
+            </clipPath>
         </defs>
-        ${morceaux.join('\n        ')}
+        ${m.join('\n        ')}
     </svg>`;
 }
 
 /**
- * LE DÉPART DE L'ANIMATION DU ZOOM, pour `loupeSvg`.
+ * OÙ EST LA DROITE DANS LE DESSIN, pour que l'activité traduise la position du
+ * doigt en centièmes sans recopier `G`, `D` ni la largeur du `viewBox`.
  *
- * On le calcule ici et non dans l'activité : c'est de la géométrie du dessin,
- * et `G`, `D` et le pas vivent dans ce fichier. Une activité qui recopierait
- * ces trois nombres les laisserait diverger au premier changement de largeur.
- *
- * @param {number} i      l'intervalle touché, de 0 à 9
- * @param {boolean} sort  vrai quand on DÉZOOME (le mouvement s'inverse)
+ * Une activité qui recopierait ces trois nombres les laisserait diverger au
+ * premier changement de dessin — et le verre se poserait alors à côté du doigt,
+ * d'un écart que personne ne saurait expliquer.
  */
-export function loupeDepart(i, sort = false) {
-    const G = 56, D = 700;
-    const x = G + i * ((D - G) / 10);
-    return sort
-        ? { sx: 10, dx: G - 10 * x }
-        : { sx: 0.1, dx: x - G / 10 };
-}
+export const LOUPE_GEO = { G: 56, D: 700, W: 760 };
 
 /**
  * Enveloppe une figure pour qu'elle occupe une largeur stable et centrée.

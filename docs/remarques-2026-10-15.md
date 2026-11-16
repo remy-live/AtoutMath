@@ -7396,3 +7396,47 @@ final.
 Sans remettre le départ à `null` après le dessin, le moindre repeint — une
 touche du pavé, un message — relançait le zoom sous les yeux de l'élève qui
 était déjà en train de lire.
+
+### « une loupe qui glisse », et le clavier coupé — 16 novembre
+
+> « je trouve la disposition mauvais. Je préfèrerai que l'élève puisse avoir une
+> loupe et que ce soit pas un étirement vertical qui déforme la croix, c'est pas
+> terribe. Et puis le clavier en dessous est coupé »
+
+Deux défauts dans une phrase, et le second était invisible depuis ici.
+
+**L'ÉTIREMENT N'ÉTAIT PAS UNE LOUPE.** Le zoom d'avant tirait la droite EN
+LARGEUR SEULEMENT (`scaleX`) : la croix, qui est un X, devenait un X aplati.
+Rémy l'a vu au premier coup d'oeil. Une vraie loupe agrandit les deux
+directions du même facteur — c'est la définition d'un agrandissement, et c'est
+la seule façon qu'une croix reste une croix.
+
+**CE QU'IL A CHOISI**, parmi trois propositions : « Une loupe qui glisse, aux
+centièmes ». La droite reste en place, de 6 à 7. Un verre se déplace le long de
+l'axe et montre, agrandi, le morceau qu'il couvre — avec ses petites
+graduations et la croix si elle est dedans. L'élève le fait glisser jusqu'à la
+croix et lit. En échange, on s'arrête aux centièmes ; les millièmes restent
+couverts par « L'Axe au Centième », qui a un réglage pour eux.
+
+**LA PUISSANCE DU VERRE N'EST PAS UN CHIFFRE ROND, C'EST UNE CONTRAINTE.** Une
+loupe de largeur `w` et de puissance `k` ne montre que `w/k` de la droite. À
+×10, un verre de 460 unités sur une droite de 644 découvrirait 46 unités, soit
+0,7 dixième : on peut donc ne voir AUCUN grand trait, et il n'y a plus rien
+d'où compter. À ×6 il en découvre 1,2 — il y a TOUJOURS un repère sous le
+verre. On a choisi le plus fort agrandissement qui garantisse de quoi compter.
+
+**LE CLAVIER COUPÉ N'ÉTAIT PAS UN DÉFAUT DE CSS, C'ÉTAIT UN TROU DANS LA LISTE
+DES ÉCRANS.** `surLesEcrans.mjs` répondait « TIENT SUR LES QUATRE ÉCRANS » à
+l'instant où Rémy voyait son pavé coupé. Ses quatre tailles étaient deux
+téléphones, une tablette, et un « ordinateur » de 1180 × 920 — qui n'existe sur
+aucune machine réelle : c'est une tablette debout déguisée en ordinateur. Aucun
+PORTABLE, c'est-à-dire aucun écran LARGE ET BAS.
+
+Mesuré ensuite, bas du bouton « Valider » contre la hauteur de fenêtre :
+
+    1000×700 → 751    1280×720 → 762    1440×830 → 863    900×600 → 699
+
+Quatre formes de portable, quatre fois coupé. **La hauteur est la contrainte
+rare, pas la largeur** — et c'est elle que la liste oubliait. Deux tailles
+ajoutées (1280 × 720 et 1440 × 830), et l'outil dit maintenant la vérité.
+

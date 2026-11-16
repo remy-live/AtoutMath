@@ -18854,8 +18854,9 @@ body.visite-en-cours .modal-overlay > * {
 
 /* ── POSE LA LOUPE ─────────────────────────────────────────────────────────
 
-   RÉMY : « il faudrait que ce soit l'élève qui pose la loupe et gère le zoom
-   quand il se rend compte que ca ne tombe pas encore juste ».
+   RÉMY, deux fois : « il faudrait que ce soit l'élève qui pose la loupe », puis
+   « je préfèrerai que l'élève puisse avoir une loupe et que ce soit pas un
+   étirement vertical qui déforme la croix ».
 
    Mise en page à soi, comme « Le Dessin Gradué » et « Ranger, et le mot
    apparaît » : l'activité ne vit pas dans `numpad-context`, donc aucun des
@@ -18863,100 +18864,138 @@ body.visite-en-cours .modal-overlay > * {
 .lp-layout { display: flex; flex-direction: column; align-items: center;
     gap: 10px; width: 100%; }
 .lp-context { text-align: center; max-width: 46ch; }
+
+/* ── LE PAVÉ SE MET À CÔTÉ DU DESSIN, PAS EN DESSOUS ───────────────────────
+
+   RÉMY, sur son portable : « le clavier en dessous est coupé ». Mesuré ensuite,
+   bas du bouton « Valider » contre la hauteur de fenêtre :
+
+       1000×700 → 751    1280×720 → 762    1440×830 → 863    900×600 → 699
+
+   Quatre formes de portable, quatre fois coupé. UNE ADDITION DE HAUTEURS NE SE
+   CORRIGE PAS EN ROGNANT CHAQUE MORCEAU — elle se corrige en cessant
+   d'additionner. Dès qu'il y a la largeur, dessin et pavé se mettent côte à
+   côte, et la hauteur de la page n'est plus que celle du plus grand des deux.
+
+   LE SEUIL EST 860 px ET NON 768 : à 768, les deux colonnes font 420 et 300, et
+   le dessin tombe à 123 px de haut — les petits traits sous le verre se
+   touchent. Mieux vaut empiler sur une tablette debout, qui a la hauteur. */
+.lp-scene { display: grid; gap: 12px; width: 100%; justify-items: center; }
+.lp-gauche { display: flex; flex-direction: column; align-items: center;
+    gap: 8px; width: 100%; min-width: 0; }
+@media (min-width: 860px) {
+    .lp-scene { grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+        justify-items: stretch; max-width: 1180px; }
+}
+
+/* ── LE DESSIN, QU'ON ATTRAPE ──────────────────────────────────────────────
+
+   `touch-action: none` EST INDISPENSABLE, pas décoratif : sans lui le
+   navigateur décide qu'un glissé horizontal est un défilement de page, prend la
+   main au bout de quelques pixels, et le verre ne bouge plus du tout. Le doigt
+   continue, la loupe reste — et l'on cherche le défaut dans le code JavaScript,
+   où il n'est pas.
+
+   `user-select: none` ferme la deuxième friction du même geste : sans lui, un
+   glissé sur un `<text>` du SVG sélectionne les nombres, et Chromium affiche
+   alors sa poignée de sélection bleue par-dessus la loupe. */
 .lp-plan {
-    width: 100%; max-width: 680px;
+    width: 100%; max-width: 720px;
     border: 2px solid var(--border); border-radius: 14px;
     background: var(--bg-panel); overflow: hidden;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    cursor: grab;
 }
+.lp-plan--tenu { cursor: grabbing; }
+.lp-plan:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 .lp-svg { display: block; width: 100%; height: auto; color: var(--text-main); }
-/* LES DEUX BOUTS SONT CE QU'ON VIENT DE GAGNER : à chaque zoom, ils portent une
-   décimale de plus. C'est la seule chose qui change d'un niveau à l'autre, et
-   c'est toute la leçon — on les écrit donc plus gros que le reste. */
-.lp-bout { font-size: 20px; font-weight: 800; }
-/* UNE CROIX PLUS FINE — RÉMY : « fais une croix un peu plus fine du coup ».
-   À quatre unités d'épaisseur sur un cran de 64, elle pesait autant qu'un grand
-   trait et l'on ne savait plus lequel des deux désignait la graduation. À 2,4,
-   elle se voit encore — c'est la seule chose rouge du dessin — sans écraser ce
-   qu'elle montre. */
+
+/* LES DEUX BOUTS PORTENT LES ENTIERS, et ils sont AU-DESSUS de la droite :
+   en dessous, ils tombaient dans l'encart de la loupe et l'on lisait « 6 » à
+   travers le verre comme si c'était une graduation. */
+.lp-bout { fill: var(--text-main); font-size: 22px; font-weight: 800;
+    font-variant-numeric: tabular-nums; }
+
+/* ── CE QUI RELIE LE MORCEAU REGARDÉ AU VERRE ──────────────────────────────
+
+   Un encart translucide, comme un détail de carte. Il est très pâle à dessein :
+   ce n'est pas lui qu'on regarde, c'est ce qu'il y a aux deux bouts. Près d'un
+   bord de la droite il penche — c'est ce que fait une grosse loupe tenue au
+   bord d'une page, et `figures.js` explique pourquoi le verre ne peut pas
+   rester centré sur son objet. */
+.lp-encart { fill: color-mix(in srgb, var(--primary) 10%, transparent); }
+/* LA POIGNÉE COUVRE EXACTEMENT LE MORCEAU REGARDÉ : elle dit à la fois « voilà
+   ce que tu vois » et « voilà ce que tu attrapes ». Une loupe dont on ne voit
+   pas la prise ne se glisse pas — personne n'essaie. */
+.lp-poignee {
+    fill: color-mix(in srgb, var(--primary) 24%, transparent);
+    stroke: var(--primary); stroke-width: 2;
+}
+.lp-plan--tenu .lp-poignee {
+    fill: color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+/* ── LE VERRE ──────────────────────────────────────────────────────────────
+
+   Un fond opaque, et non translucide : la droite passe juste au-dessus, et un
+   verre transparent laissait voir ses dixièmes DERRIÈRE les centièmes
+   agrandis — deux graduations superposées à des échelles différentes, ce qui
+   est exactement ce qu'un élève ne doit pas avoir à démêler. */
+.lp-verre-fond { fill: var(--bg-panel); stroke: none; }
+.lp-verre-cadre { fill: none; stroke: var(--primary); stroke-width: 3; }
+.lp-vue-axe { stroke: var(--text-main); stroke-width: 2.4; }
+.lp-vue-grand { stroke: var(--text-main); stroke-width: 2.6; }
+/* LE TRAIT ROUGE DU MILIEU, le même que sur « L'Axe au Centième » : c'est le
+   repère des cinq centièmes, et les deux exercices doivent le dire pareil. */
+.lp-vue-milieu { stroke: var(--danger); stroke-width: 1.8; opacity: .75; }
+.lp-vue-petit { stroke: var(--text-main); stroke-width: 1.3; opacity: .6; }
+/* LES NOMBRES SOUS LE VERRE SONT GROS EN UNITÉS DE `viewBox` — 26 contre 16
+   ailleurs — PARCE QUE CE DESSIN NE DÉFILE PAS. « L'Axe au Centième » s'offre
+   un `min-width` de 860 px et une barre de défilement ; ici le doigt glisse sur
+   le dessin, et un dessin qui défile sous un glissé est un dessin qu'on ne peut
+   plus faire glisser. Il tient donc dans la largeur de l'écran — 358 px sur un
+   téléphone, soit 0,47 px par unité : à 16, ces nombres feraient 7 px. */
+.lp-vue-nb { fill: var(--text-main); font-size: 26px; font-weight: 800;
+    font-variant-numeric: tabular-nums; }
+
+/* UNE CROIX FINE — RÉMY : « fais une croix un peu plus fine du coup ».
+   À quatre unités d'épaisseur elle pesait autant qu'un grand trait et l'on ne
+   savait plus lequel des deux désignait la graduation. ET ELLE GARDE LA MÊME
+   ÉPAISSEUR SOUS LE VERRE : une loupe rapproche, elle n'épaissit pas les
+   traits. C'est le `stroke-width` constant qui le dit. */
 .lp-croix line { stroke: var(--danger); stroke-width: 2.4; stroke-linecap: round; }
 
-/* ── LE ZOOM S'ANIME ───────────────────────────────────────────────────────
+/* ── LES DEUX FLÈCHES ──────────────────────────────────────────────────────
 
-   RÉMY : « voir l'animation serait encore plus cool, ou on voit les traits qui
-   apparaissent progressivement ».
-
-   L'INTERVALLE CHOISI S'OUVRE JUSQU'À REMPLIR LA DROITE. Au premier instant, la
-   nouvelle droite est posée exactement là où était l'intervalle qu'on vient de
-   toucher — réduite au dixième et translatée — puis elle s'écarte jusqu'à sa
-   place. Ce n'est pas une illustration du zoom : c'est le zoom, et la croix y
-   reste sur le même point du début à la fin.
-
-   `transform-box: view-box` ET `transform-origin: 0 0` SONT OBLIGATOIRES :
-   sans eux, le navigateur prend l'origine au centre de la boîte de l'élément,
-   et le `translate` calculé dans `figures.js` — qui vise l'origine du viewBox —
-   pose la droite n'importe où. Payé sur la cascade, deux sondes. */
-.lp-mobile { transform-box: view-box; transform-origin: 0 0; }
-
-@keyframes lp-ouvrir {
-    from { transform: translate(var(--dx), 0) scaleX(var(--sx)); opacity: .4; }
-    55%  { opacity: 1; }
-    to   { transform: translate(0px, 0px) scaleX(1); opacity: 1; }
-}
-.lp-mobile--anime { animation: lp-ouvrir 560ms cubic-bezier(.22, .72, .28, 1) both; }
-
-/* LES TRAITS APPARAISSENT UN PAR UN, de gauche à droite — c'est son mot.
-   24 ms d'écart : assez pour qu'on le voie, trop peu pour qu'on attende. */
-@keyframes lp-poindre { from { opacity: 0; } to { opacity: 1; } }
-.lp-mobile--anime .lp-cran {
-    animation: lp-poindre 200ms ease-out both; animation-delay: var(--tc, 0ms);
-}
-/* ET LES DEUX NOMBRES DES BOUTS SE POSENT APRÈS. Étirés d'un dixième à un, ils
-   seraient illisibles pendant toute la traversée ; et ce sont eux qui portent
-   la leçon — à chaque zoom, une décimale de plus. */
-.lp-mots--anime { animation: lp-poindre 300ms ease-out both; animation-delay: 300ms; }
-
-/* ET QUI DEMANDE MOINS DE MOUVEMENT N'EN A PAS : tout est à sa place d'emblée. */
-@media (prefers-reduced-motion: reduce) {
-    .lp-mobile--anime, .lp-mobile--anime .lp-cran, .lp-mots--anime { animation: none; }
-}
-
-/* LES DIX ZONES QU'ON TOUCHE. Invisibles au repos : ce qu'on vise, c'est la
-   bande entre deux graduations, et la dessiner en permanence ferait un
-   quadrillage qui n'existe pas sur une droite graduée. */
-.lp-zone rect { fill: transparent; cursor: pointer; transition: fill .12s ease; }
-@media (hover: hover) {
-    .lp-zone:hover rect { fill: color-mix(in srgb, var(--primary) 14%, transparent); }
-}
-.lp-zone:active rect { fill: color-mix(in srgb, var(--primary) 22%, transparent); }
-.lp-zone:focus-visible rect {
-    fill: color-mix(in srgb, var(--primary) 14%, transparent);
-    outline: 3px solid var(--primary); outline-offset: -2px;
-}
-
+   Elles font la même chose que le doigt, d'un centième. Elles existent pour
+   trois cas qu'on ne voit pas d'ici : le clavier, le pointeur de souris qu'on
+   n'aime pas tenir enfoncé, et le doigt qui ne glisse pas droit. 44 px de côté,
+   c'est-à-dire la cible au doigt recommandée — ici on peut la tenir. */
 .lp-barre { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     justify-content: center; }
-.lp-niveau { color: var(--text-muted); font-weight: 700; font-size: .95rem; }
-.lp-btn {
-    min-height: 40px; padding: 0 14px;
+.lp-aide { color: var(--text-muted); font-weight: 700; font-size: .95rem; }
+.lp-fleche {
+    min-width: 44px; min-height: 44px; padding: 0 10px;
     border: 2px solid var(--border); border-radius: 12px;
     background: var(--bg-panel); color: var(--text-main);
-    font-size: .98rem; font-weight: 800; cursor: pointer;
+    font-size: 1.1rem; font-weight: 800; cursor: pointer;
 }
-.lp-btn:disabled { opacity: .4; cursor: default; }
+.lp-fleche:disabled { opacity: .4; cursor: default; }
+
 /* LE MESSAGE GARDE SA PLACE MÊME VIDE : sans `min-height`, tout le pavé
-   remontait de vingt pixels quand la loupe était mal posée — au moment précis
-   où l'élève regarde ce qu'il vient de toucher. */
+   remontait de vingt pixels au moment précis où l'élève lit ce qu'il vient
+   d'écrire. */
 .lp-statut { text-align: center; min-height: 2.6em; max-width: 44ch;
     color: var(--text-soft); font-size: .95rem; }
 .lp-pave { margin: 0 auto; }
-/* SUR UN ÉCRAN BAS, ON RESSERRE — six pixels manquaient.
-   Mesuré sur 390 × 667 : le bouton « Valider » du pavé dépassait de 6 px sous
-   la fenêtre. Six pixels ne se devinent pas, ils se relèvent
-   (`node tools/surLesEcrans.mjs num-poser-la-loupe --cibles=".lp-zone rect"`).
-   On les reprend là où ils ne manquent à personne : l'écart entre les blocs, et
-   la place que le message garde même vide. */
-@media (max-height: 720px) {
+
+/* SUR UN ÉCRAN BAS, ON RESSERRE. On reprend les pixels là où ils ne manquent à
+   personne : l'écart entre les blocs, et la place que le message garde même
+   vide. Le seuil est monté de 720 à 860 px de haut parce qu'un portable de
+   1440 × 830 en avait besoin aussi — et qu'il n'était dans aucune liste. */
+@media (max-height: 860px) {
     .lp-layout { gap: 6px; }
+    .lp-scene { gap: 8px; }
     .lp-statut { min-height: 1.4em; font-size: .9rem; }
     .lp-context { font-size: .95rem; }
 }

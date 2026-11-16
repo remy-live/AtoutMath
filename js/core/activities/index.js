@@ -623,13 +623,13 @@ registerActivity({
 // `accepts: ['text']` ET NON `['choice']` : l'activité envoie les lettres dans
 // l'ordre où on les a touchées, c'est-à-dire une chaîne. Un QCM existe quand
 // même, mais pour les DÉFIS seuls, où l'on ne peut pas toucher l'énoncé.
-// POSE LA LOUPE — l'unité est la QUESTION, et six par défaut : un zoom se fait
-// en un geste, et l'exercice tient sa valeur de la RÉPÉTITION — c'est en
-// reposant la loupe dix fois qu'on cesse de se demander où la poser.
+// POSE LA LOUPE — l'unité est la QUESTION, et six par défaut : un glissé se
+// fait en un geste, et l'exercice tient sa valeur de la RÉPÉTITION — c'est en
+// promenant la loupe dix fois qu'on cesse de se demander où la poser.
 //
-// Rémy : « il faudrait que ce soit l'élève qui pose la loupe et gère le zoom ».
-// Il n'y a donc rien à régler du côté de la saisie : on touche un intervalle, et
-// l'on écrit un nombre au pavé que l'activité porte elle-même.
+// Rémy : « je préfèrerai que l'élève puisse avoir une loupe ». Il n'y a donc
+// rien à régler du côté de la saisie : on fait glisser le verre, et l'on écrit
+// un nombre au pavé que l'activité porte elle-même.
 registerActivity({
     id: 'poserLaLoupe',
     label: 'Pose la Loupe',

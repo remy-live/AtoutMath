@@ -1,41 +1,58 @@
-// Activité « Pose la Loupe » — on touche un intervalle, il devient la droite.
+// Activité « Pose la Loupe » — on fait GLISSER le verre jusqu'à la croix.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// RÉMY : « pour le zoom, il faudrait que ce soit l'élève qui pose la loupe et
-// gère le zoom quand il se rend compte que ca ne tombe pas encore juste. »
+// RÉMY, deux fois, et la seconde a défait la première :
 //
-// ── LE GESTE, ET CE QU'IL AUTORISE ─────────────────────────────────────────
+// > « pour le zoom, il faudrait que ce soit l'élève qui pose la loupe et gère
+// > le zoom quand il se rend compte que ca ne tombe pas encore juste. »
 //
-// On touche un intervalle : il devient la droite entière, et les deux nombres
-// des bouts gagnent une décimale. On peut revenir en arrière. On peut zoomer
-// trop. On peut zoomer sur le mauvais intervalle — et alors la croix n'y est
-// pas, l'écran le dit, et rien ne se passe.
+// > « je trouve la disposition mauvais. Je préfèrerai que l'élève puisse avoir
+// > une loupe et que ce soit pas un étirement vertical qui déforme la croix,
+// > c'est pas terribe. Et puis le clavier en dessous est coupé »
 //
-// CE DERNIER POINT EST LE PLUS IMPORTANT. « Il se rend compte que ça ne tombe
-// pas encore juste » suppose qu'il PUISSE se tromper sans être puni : toucher
-// un mauvais intervalle n'est pas une faute comptée, c'est une loupe mal posée
-// qu'on repose. Ce qui est jugé, c'est l'abscisse écrite — une seule fois, à la
-// fin.
+// ── CE QUI A CHANGÉ, ET POURQUOI ───────────────────────────────────────────
 //
-// ── POURQUOI UN PAVÉ À SOI, ET PAS CELUI DU DÉPÔT ──────────────────────────
+// La première version remplaçait la droite par l'intervalle choisi, étiré
+// jusqu'à remplir l'écran. Cet étirement ne tirait QUE l'horizontale : la croix,
+// qui est un X, devenait un X aplati. Une loupe, elle, agrandit les deux
+// directions du même facteur — et une croix reste une croix.
+//
+// Alors la droite ne bouge plus. Un verre glisse dessus et montre, agrandi six
+// fois, le morceau qu'il couvre. L'élève le fait glisser jusqu'à la croix, lit
+// les petits traits, et écrit.
+//
+// ── UN SEUL GESTE, ET IL N'A PAS DE MODE ───────────────────────────────────
+//
+// On pose le doigt n'importe où dans le dessin : le verre y va. On glisse : il
+// suit. C'est tout. Il n'y a pas de « mode zoom », pas de bouton à armer, pas
+// d'intervalle à choisir avant de pouvoir regarder. Les deux flèches font la
+// même chose d'un cran, pour le clavier et pour les doigts qui ne glissent pas.
+//
+// ── CE QUI N'EST PAS UNE FAUTE ─────────────────────────────────────────────
+//
+// Poser le verre au mauvais endroit n'est pas jugé, n'est pas compté, et ne
+// dit rien. On peut le promener toute la question. Ce qui est jugé, c'est
+// l'abscisse écrite — une seule fois, à la fin. Rémy : « quand il se rend
+// compte que ça ne tombe pas encore juste » suppose qu'il PUISSE se tromper
+// sans être puni.
+//
+// ── POURQUOI UN PAVÉ À SOI, ET POURQUOI IL EST À CÔTÉ ──────────────────────
 //
 // Le pavé de `numeric.js` est une ACTIVITÉ entière : il tient la session, les
-// propositions, la démonstration, les outils. On ne peut pas l'ouvrir au milieu
-// d'une autre. On réécrit donc le clavier — vingt lignes — mais AVEC SES
-// CLASSES (`numpad-device`, `numpad-key`, `numpad-screen`) : même dessin, même
-// taille de touche, mêmes sondes. Un clavier qui ressemblerait à un autre
-// clavier serait une deuxième chose à apprendre.
+// propositions, la démonstration. On ne peut pas l'ouvrir au milieu d'une
+// autre. On réécrit donc le clavier — vingt lignes — mais AVEC SES CLASSES
+// (`numpad-device`, `numpad-key`, `numpad-screen`) : même dessin, même taille
+// de touche, mêmes sondes.
 //
-// ── CE QUI N'EST PAS DIT, ET POURQUOI ──────────────────────────────────────
-//
-// L'écran ne dit JAMAIS « c'est bon, tu peux lire ». Ce serait corriger avant
-// l'heure, et le savoir du jour est précisément de RECONNAÎTRE qu'une croix
-// tombe sur une graduation. On montre donc la droite, et rien d'autre.
+// ET SUR UN ÉCRAN LARGE IL SE MET À CÔTÉ DU DESSIN, pas en dessous. Empilés,
+// dessin et pavé faisaient 762 px sur un portable de 720 : « le clavier en
+// dessous est coupé ». Une addition de hauteurs ne se corrige pas en rognant
+// chaque morceau — elle se corrige en cessant d'additionner.
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { loupeSvg, loupeDepart } from '../figures.js';
+import { loupeSvg, LOUPE_GEO } from '../figures.js';
 
 const CHIFFRES = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
 
@@ -46,15 +63,13 @@ const fr = (v, rang) => v.toFixed(rang)
 export function mount(container, session) {
     let destroyed = false;
     let item = null;
-    /** La pile des zooms : chaque entrée est `{ debut, rang }`. */
-    let pile = [];
+    /** Où est le centre du verre, en centièmes de la droite (0 à 100). */
+    let centre = 50;
     let saisie = '';
     let fini = false;
     let message = '';
-    /** D'où part l'animation du prochain dessin — `null` quand rien ne bouge. */
-    let anim = null;
-
-    const niveau = () => pile[pile.length - 1];
+    /** Vrai pendant qu'un doigt tient le verre. */
+    let tient = false;
 
     function renderNext() {
         if (destroyed) return;
@@ -63,37 +78,49 @@ export function mount(container, session) {
 
     function render(prochain) {
         item = prochain;
-        // AU DÉPART : la droite des entiers, de `entier` à `entier + 1`.
-        pile = [{ debut: item.meta.entier, rang: 0 }];
-        anim = null;
+        // LE VERRE NE COMMENCE JAMAIS SUR LA CROIX. S'il y était déjà, la
+        // question se résoudrait en se posant : il n'y aurait plus de geste, et
+        // c'est le geste qu'on enseigne. On le range donc à l'autre bout, à
+        // trente-cinq centièmes au moins de ce qu'il faut lire.
+        centre = item.meta.croix < 50 ? 85 : 15;
         saisie = '';
         fini = false;
         message = '';
+        tient = false;
 
         container.innerHTML = `
             <div class="lp-layout">
                 <div class="lp-context">${item.prompt.html}</div>
-                <div class="lp-plan"></div>
-                <div class="lp-barre">
-                    <button type="button" class="lp-btn" data-revenir>↶ Dézoomer</button>
-                    <span class="lp-niveau" role="status" aria-live="polite"></span>
+                <div class="lp-scene">
+                    <div class="lp-gauche">
+                        <div class="lp-plan" data-plan tabindex="0" role="slider"
+                             aria-label="La loupe, à faire glisser le long de la droite"
+                             aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="lp-barre">
+                            <button type="button" class="lp-fleche" data-pas="-1"
+                                    aria-label="Glisser la loupe vers la gauche">◀</button>
+                            <span class="lp-aide">Fais glisser la loupe</span>
+                            <button type="button" class="lp-fleche" data-pas="1"
+                                    aria-label="Glisser la loupe vers la droite">▶</button>
+                        </div>
+                    </div>
+                    <div class="numpad-device lp-pave">
+                        <div class="numpad-screen" aria-live="polite">
+                            <span class="numpad-value" data-display></span>
+                        </div>
+                        <div class="numpad" role="group" aria-label="Pavé numérique">
+                            ${CHIFFRES.map(c => `<button type="button" class="numpad-key"
+                                data-touche="${c}">${c}</button>`).join('')}
+                            <button type="button" class="numpad-key" data-touche=",">,</button>
+                            <button type="button" class="numpad-key" data-touche="0">0</button>
+                            <button type="button" class="numpad-key numpad-key--del"
+                                    data-touche="←" aria-label="Effacer le dernier chiffre">←</button>
+                            <button type="button" class="numpad-key numpad-key--ok"
+                                    data-valider>Valider</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="lp-statut" role="status" aria-live="polite"></div>
-                <div class="numpad-device lp-pave">
-                    <div class="numpad-screen" aria-live="polite">
-                        <span class="numpad-value" data-display></span>
-                    </div>
-                    <div class="numpad" role="group" aria-label="Pavé numérique">
-                        ${CHIFFRES.map(c => `<button type="button" class="numpad-key"
-                            data-touche="${c}">${c}</button>`).join('')}
-                        <button type="button" class="numpad-key" data-touche=",">,</button>
-                        <button type="button" class="numpad-key" data-touche="0">0</button>
-                        <button type="button" class="numpad-key numpad-key--del"
-                                data-touche="←" aria-label="Effacer le dernier chiffre">←</button>
-                        <button type="button" class="numpad-key numpad-key--ok"
-                                data-valider>Valider</button>
-                    </div>
-                </div>
                 ${hintBar(session)}
             </div>`;
 
@@ -103,106 +130,117 @@ export function mount(container, session) {
             b.onclick = () => taper(b.getAttribute('data-touche'));
         });
         container.querySelector('[data-valider]').onclick = valider;
-        container.querySelector('[data-revenir]').onclick = dezoomer;
+        container.querySelectorAll('[data-pas]').forEach((b) => {
+            b.onclick = () => poser(centre + Number(b.getAttribute('data-pas')));
+        });
+        brancherLeGeste();
         peindre();
     }
 
-    /** Les deux bouts du niveau courant, en nombres. */
-    function bouts() {
-        const n = niveau();
-        const large = Math.pow(10, -n.rang);
-        return { gauche: n.debut, droite: Number((n.debut + large).toFixed(n.rang + 1)) };
+    // ─────────────────────────────────────────────────────────────────────────
+    // LE GESTE
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * OÙ EST LE DOIGT, EN CENTIÈMES DE LA DROITE.
+     *
+     * ON PASSE PAR `getScreenCTM()`, ET NON PAR LA LARGEUR DE LA BOÎTE. Un
+     * `viewBox` que son élément n'a pas le même rapport conserve des bandes
+     * vides sur les côtés (`preserveAspectRatio` par défaut) : diviser par la
+     * largeur de la boîte donne alors un décalage que rien n'explique, et qui
+     * grandit vers les bords. La matrice de l'écran, elle, est exacte quelle que
+     * soit la mise en page.
+     */
+    function auDoigt(ev) {
+        const svg = container.querySelector('.lp-svg');
+        if (!svg || !svg.getScreenCTM) return null;
+        const ctm = svg.getScreenCTM();
+        if (!ctm) return null;
+        const p = svg.createSVGPoint();
+        p.x = ev.clientX; p.y = ev.clientY;
+        const u = p.matrixTransform(ctm.inverse()).x;
+        return (u - LOUPE_GEO.G) / ((LOUPE_GEO.D - LOUPE_GEO.G) / 100);
     }
 
-    /** Où tombe la croix sur le niveau courant, de 0 à 10. */
-    function place() {
-        const n = niveau();
-        const { gauche, droite } = bouts();
-        const v = item.meta.valeur;
-        if (v < gauche || v > droite) return null;
-        return Number(((v - gauche) / (droite - gauche) * 10).toFixed(n.rang + 2));
+    /** Pose le verre à `c` centièmes, arrondi au cran et borné à la droite. */
+    function poser(c) {
+        if (fini || destroyed || c === null || !Number.isFinite(c)) return;
+        const avant = centre;
+        centre = Math.max(0, Math.min(100, Math.round(c)));
+        // ON NE REDESSINE QUE SI LE CRAN A CHANGÉ. Un doigt qui glisse émet un
+        // événement tous les quelques pixels ; reconstruire le dessin à chaque
+        // fois alors que le verre n'a pas bougé d'un cran, c'est cent dessins
+        // pour rien et un glissé qui accroche.
+        if (centre !== avant) peindre();
     }
+
+    function brancherLeGeste() {
+        const plan = container.querySelector('[data-plan]');
+        if (!plan) return;
+
+        // LES ÉCOUTEURS DU GLISSÉ VIVENT SUR `window`, PAS SUR LE DESSIN.
+        // `peindre()` remplace le `<svg>` en entier : un écouteur posé dessus
+        // disparaîtrait au premier cran franchi, et le glissé s'arrêterait tout
+        // seul après un pixel. `setPointerCapture` aurait le même sort.
+        const bouge = (ev) => {
+            if (destroyed) { lache(); return; }
+            if (!tient) return;
+            ev.preventDefault();
+            poser(auDoigt(ev));
+        };
+        const lache = () => {
+            if (!tient) return;
+            tient = false;
+            window.removeEventListener('pointermove', bouge);
+            window.removeEventListener('pointerup', lache);
+            window.removeEventListener('pointercancel', lache);
+            peindre();
+        };
+
+        plan.onpointerdown = (ev) => {
+            if (fini || session.locked) return;
+            tient = true;
+            poser(auDoigt(ev));
+            peindre();
+            window.addEventListener('pointermove', bouge, { passive: false });
+            window.addEventListener('pointerup', lache);
+            window.addEventListener('pointercancel', lache);
+        };
+        // `touch-action: none` EST DANS LE CSS, et il est indispensable : sans
+        // lui le navigateur décide que ce glissé horizontal est un défilement de
+        // page, prend la main, et le verre ne bouge plus du tout.
+        plan.onkeydown = (ev) => {
+            const d = { ArrowLeft: -1, ArrowRight: 1, Home: -100, End: 100 }[ev.key];
+            if (d === undefined) return;
+            ev.preventDefault();
+            poser(centre + d);
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // LE DESSIN
+    // ─────────────────────────────────────────────────────────────────────────
 
     function peindre() {
-        const n = niveau();
-        const { gauche, droite } = bouts();
-        const plan = container.querySelector('.lp-plan');
+        const plan = container.querySelector('[data-plan]');
         if (plan) {
+            const e = item.meta.entier;
             plan.innerHTML = loupeSvg({
-                gauche: fr(gauche, n.rang), droite: fr(droite, n.rang),
-                place: place(), zones: !fini, anim
+                gauche: String(e), droite: String(e + 1),
+                croix: item.meta.croix, centre,
+                nombre: (c) => fr(e + c / 100, 1)
             });
-            // L'ANIMATION NE JOUE QU'UNE FOIS. Sans cette ligne, le moindre
-            // repeint — une touche du pavé, un message — relancerait le zoom
-            // sous les yeux de l'élève qui est déjà en train de lire.
-            anim = null;
-            if (!fini) brancherZones();
+            plan.setAttribute('aria-valuenow', String(centre));
+            plan.setAttribute('aria-valuetext', `la loupe est sur ${fr(e + centre / 100, 2)}`);
+            plan.classList.toggle('lp-plan--tenu', tient);
         }
-        const niv = container.querySelector('.lp-niveau');
-        if (niv) {
-            niv.textContent = pile.length === 1
-                ? 'Droite de départ'
-                : `${pile.length - 1} zoom${pile.length > 2 ? 's' : ''}`;
-        }
-        const rev = container.querySelector('[data-revenir]');
-        if (rev) rev.disabled = fini || pile.length === 1;
         const aff = container.querySelector('[data-display]');
-        if (aff) aff.textContent = saisie || ' ';
+        if (aff) aff.textContent = saisie || ' ';
         const ok = container.querySelector('[data-valider]');
         if (ok) ok.disabled = fini || !saisie || session.locked;
+        container.querySelectorAll('[data-pas]').forEach((b) => { b.disabled = fini; });
         const st = container.querySelector('.lp-statut');
         if (st) st.textContent = message;
-    }
-
-    function brancherZones() {
-        container.querySelectorAll('[data-zone]').forEach((g) => {
-            const i = Number(g.getAttribute('data-zone'));
-            // `onclick` SUR UN GROUPE SVG MARCHE : un élément SVG n'a pas de
-            // MÉTHODE `click()` — elle vit sur `HTMLElement` —, mais
-            // l'événement du navigateur part bien du doigt. C'est une sonde qui
-            // s'y était trompée, pas le logiciel.
-            g.onclick = () => zoomer(i);
-            g.onkeydown = (e) => {
-                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); zoomer(i); }
-            };
-        });
-    }
-
-    function zoomer(i) {
-        if (fini || destroyed || session.locked) return;
-        const n = niveau();
-        const large = Math.pow(10, -n.rang);
-        const debut = Number((n.debut + i * large / 10).toFixed(n.rang + 1));
-        const fin = Number((debut + large / 10).toFixed(n.rang + 1));
-        const v = item.meta.valeur;
-        if (v < debut || v > fin) {
-            // ON NE COMPTE PAS CELA COMME UNE FAUTE. Une loupe mal posée se
-            // repose ; c'est le sens même de « il se rend compte que ça ne
-            // tombe pas encore juste ».
-            message = 'La croix n’est pas dans cet intervalle-là. Regarde bien '
-                + 'entre quelles deux graduations elle se trouve.';
-            peindre();
-            return;
-        }
-        message = '';
-        anim = loupeDepart(i);
-        pile.push({ debut, rang: n.rang + 1 });
-        peindre();
-    }
-
-    function dezoomer() {
-        if (fini || pile.length === 1) return;
-        // LE MOUVEMENT S'INVERSE : la droite d'arrivée est plus LARGE, et elle
-        // part donc agrandie dix fois, l'intervalle d'où l'on sort remplissant
-        // tout l'écran. C'est ce qu'on voit quand on recule une loupe.
-        const n = niveau();
-        const avant = pile[pile.length - 2];
-        const large = Math.pow(10, -avant.rang);
-        const i = Math.round(((n.debut - avant.debut) / large) * 10);
-        anim = loupeDepart(Math.min(9, Math.max(0, i)), true);
-        pile.pop();
-        message = '';
-        peindre();
     }
 
     function taper(touche) {
@@ -218,7 +256,7 @@ export function mount(container, session) {
         fini = true;
         const result = session.submit(saisie);
         message = result.correct
-            ? `${saisie} — la croix tombait bien sur cette graduation.`
+            ? `${saisie} — c'est bien là que tombait la croix.`
             : `Tu as écrit ${saisie}. ${item.explanation}`;
         peindre();
         if (result.ignored) return;
@@ -228,18 +266,20 @@ export function mount(container, session) {
         });
     }
 
-    /** Le robot zoome au bon endroit, puis écrit la réponse. */
+    /** Le robot fait glisser le verre jusqu'à la croix, puis écrit. */
     async function runDemo() {
         peindre();
-        for (let k = 0; k < item.meta.zooms; k++) {
+        // IL GLISSE, IL NE SAUTE PAS. Une démonstration qui poserait le verre
+        // d'un coup montrerait le résultat du geste et non le geste — et c'est
+        // le geste qui est la leçon.
+        const but = item.meta.croix;
+        const n = 14;
+        for (let k = 1; k <= n; k++) {
             if (destroyed) return;
-            const n = niveau();
-            const large = Math.pow(10, -n.rang);
-            const i = Math.floor(Number((((item.meta.valeur - n.debut) / large) * 10)
-                .toFixed(6)));
-            zoomer(Math.min(9, Math.max(0, i)));
-            await new Promise(r => regTimeout(r, 620));
+            poser(centre + (but - centre) / (n - k + 1));
+            await new Promise(r => regTimeout(r, 55));
         }
+        await new Promise(r => regTimeout(r, 420));
         for (const c of String(item.answer)) {
             if (destroyed) return;
             taper(c);

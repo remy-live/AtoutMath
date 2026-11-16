@@ -1,4 +1,4 @@
-// POSE LA LOUPE — c'est l'élève qui zoome.
+// POSE LA LOUPE — on fait glisser le verre jusqu'à la croix, et on lit.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //
@@ -10,31 +10,63 @@
 // > « pour le zoom, il faudrait que ce soit l'élève qui pose la loupe et gère
 // > le zoom quand il se rend compte que ca ne tombe pas encore juste. »
 //
+// Puis, en voyant la première version, où l'intervalle choisi s'étirait jusqu'à
+// remplir la droite :
+//
+// > « je trouve la disposition mauvais. Je préfèrerai que l'élève puisse avoir
+// > une loupe et que ce soit pas un étirement vertical qui déforme la croix »
+//
 // ── CE QUE LA CASCADE RATAIT, ET QU'IL A DIAGNOSTIQUÉ ──────────────────────
 //
 // Les trois axes y étaient DONNÉS : l'élève lisait un raisonnement déjà fait,
-// et regardait quelqu'un d'autre zoomer. Ici c'est lui qui décide — « la croix
-// est entre 8,2 et 8,3, je zoome LÀ » — et le geste devient le sien.
+// et regardait quelqu'un d'autre zoomer. Ici c'est lui qui promène le verre —
+// « la croix est par là, je regarde » — et le geste devient le sien.
 //
-// ── LE ZOOM EST UN OUTIL, PAS LA RÉPONSE ───────────────────────────────────
+// ── LA LOUPE EST UN OUTIL, PAS LA RÉPONSE ──────────────────────────────────
 //
-// On ne demande pas combien de fois il a zoomé, ni où. On demande L'ABSCISSE.
-// La loupe est là pour rendre le nombre lisible, exactement comme une vraie
-// loupe sur une vraie règle : elle ne fait pas le travail, elle le permet.
-// C'est aussi ce qui autorise à zoomer trop, ou pas assez, et à revenir — « il
-// se rend compte que ça ne tombe pas encore juste » suppose qu'il puisse se
-// tromper sans être puni.
+// On ne demande pas où il a posé le verre, ni combien de fois. On demande
+// L'ABSCISSE. La loupe est là pour rendre le nombre lisible, exactement comme
+// une vraie loupe sur une vraie règle : elle ne fait pas le travail, elle le
+// permet. C'est aussi ce qui autorise à la poser n'importe où et à la reposer
+// — « il se rend compte que ça ne tombe pas encore juste » suppose qu'il PUISSE
+// se tromper sans être puni.
 //
-// ── À CHAQUE ZOOM, UNE DÉCIMALE DE PLUS, ET ELLE EST ÉCRITE ────────────────
+// ── ON S'ARRÊTE AUX CENTIÈMES, ET C'EST UN ÉCHANGE ─────────────────────────
 //
-// Les deux bouts seuls portent leur nombre : 8 et 9, puis 8,2 et 8,3, puis 8,24
-// et 8,25. L'élève VOIT la décimale apparaître, et il la voit apparaître PARCE
-// QU'IL A CHOISI l'intervalle. C'est toute la leçon du chapitre, et elle se lit
-// dans les deux étiquettes.
+// La version d'avant descendait aux millièmes en zoomant deux fois. Une loupe
+// ne zoome pas deux fois : elle a une puissance, et elle l'a une fois pour
+// toutes. On perd donc les millièmes ici — et on les garde ailleurs : « L'Axe
+// au Centième » a un réglage `echelle` qui les sert, sur une droite qui va de
+// 3,5 à 3,6. Deux exercices, deux gestes, et aucun des deux n'est amputé.
+//
+// ── LES TROIS MARCHES SONT TROIS DISTANCES À UN REPÈRE ─────────────────────
+//
+// Sous le verre, trois sortes de traits : les grands, qui portent un nombre
+// (les dixièmes), le rouge du milieu (cinq centièmes), et les petits. Compter
+// est facile près d'un trait qui dit quelque chose, et difficile loin de tout.
+// Les marches sont donc la distance, en crans, du plus proche repère :
+//
+//     1. zéro cran   — le centième est 5, la croix est PILE sur le trait rouge
+//     2. un cran     — 1, 4, 6 ou 9 : un seul petit trait sépare la croix d'un
+//                      grand trait ou du rouge
+//     3. jusqu'à deux — 2, 3, 7 et 8 entrent, et c'est là qu'il faut vraiment
+//                      compter, sans pouvoir s'appuyer sur un repère voisin
+//
+// DEUX CRANS EST LE PLUS LOIN QU'ON PUISSE ÊTRE, ET CE N'EST PAS UNE OPINION :
+// avec un repère tous les cinq centièmes, la distance maximale au plus proche
+// vaut 2, atteinte par 2, 3, 7 et 8. La première écriture de ces marches
+// annonçait « trois crans pour 3 et 7 » ; `epreuveTombe.mjs` a refusé de voir
+// l'épreuve tomber en remettant 3 dans la deuxième marche — parce que 3 est à
+// deux crans du trait rouge, et que la marche à trois crans n'existe pas.
+// Un fait DÉDUIT, et faux.
+//
+// LE CENTIÈME N'EST JAMAIS ZÉRO, à aucune marche : la croix tomberait alors sur
+// un grand trait, qui porte déjà son nombre écrit — il n'y aurait plus rien à
+// lire, et la question se résoudrait en se posant.
 //
 // ── PAS DE FICHE PAPIER, ET CE N'EST PAS UN OUBLI ──────────────────────────
 //
-// Une feuille ne zoome pas. Imprimer cet exercice-là donnerait un axe et une
+// Une feuille ne glisse pas. Imprimer cet exercice-là donnerait un axe et une
 // croix à lire — c'est-à-dire « L'Axe au Centième », qui existe et qui est fait
 // pour ça. Un exercice dont le geste EST l'écran n'a pas de version papier
 // honnête ; en fabriquer une serait imprimer un autre exercice sous son nom.
@@ -52,17 +84,18 @@ const fr = (v, rang) => v.toFixed(rang)
     .replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
 
 /**
- * LES TROIS MARCHES SONT TROIS PROFONDEURS — et la troisième est la vraie.
+ * LES CENTIÈMES AUTORISÉS À CHAQUE MARCHE — voir l'en-tête.
  *
- * Aux deux premières, l'élève sait d'avance combien de fois zoomer : toutes les
- * questions ont la même profondeur. À la troisième, il ne le sait pas, et doit
- * donc REGARDER si la croix est tombée juste. C'est mot pour mot ce que Rémy
- * décrit : « quand il se rend compte que ça ne tombe pas encore juste ».
+ * `loin` dit à quelle distance d'un repère on peut se trouver ; il n'est pas
+ * employé par le code, il est là pour qu'on n'ait pas à recompter les listes
+ * pour comprendre dans quel ordre elles vont.
  */
 const MARCHES = [
-    { id: 'un', nom: '1. Un zoom (des centièmes)', zooms: [1] },
-    { id: 'deux', nom: '2. Deux zooms (des millièmes)', zooms: [2] },
-    { id: 'melange', nom: '3. Un ou deux — à toi de voir', zooms: [1, 2] }
+    { id: 'repere', nom: '1. Pile sur le trait rouge', loin: 0, chiffres: [5] },
+    { id: 'pres', nom: '2. À un cran d’un repère', loin: 1,
+        chiffres: [1, 4, 6, 9] },
+    { id: 'partout', nom: '3. N’importe où entre deux dixièmes', loin: 2,
+        chiffres: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
 ];
 const LISTE = MARCHES.map(m => ({ id: m.id, nom: m.nom }));
 const marcheDe = (id) => MARCHES.find(m => m.id === id) || MARCHES[0];
@@ -86,40 +119,36 @@ export const poserLaLoupeGenerator = {
         const marche = marcheDe(marcheAuRang(Number(ctx.index) || 0,
             marchesCochees(params, LISTE), totalDe(ctx, params), params, 3));
 
-        // LA PROFONDEUR : un zoom donne des centièmes, deux des millièmes.
-        const zooms = marche.zooms[rng.int(0, marche.zooms.length - 1)];
-        const rang = zooms + 1;
-
-        // LES CHIFFRES DE LA DESCENTE. Le dernier n'est JAMAIS zéro : à 8,40 la
-        // croix tomberait sur une graduation dès le premier zoom, et il n'y
-        // aurait plus rien à zoomer — la question se résoudrait en se posant.
         const entier = rng.int(1, 9);
-        const chiffres = [];
-        for (let i = 0; i < rang; i++) {
-            chiffres.push(i === rang - 1 ? rng.int(1, 9) : rng.int(0, 9));
-        }
-        const valeur = Number((entier + chiffres
-            .reduce((acc, c, i) => acc + c / Math.pow(10, i + 1), 0)).toFixed(rang));
-        const reponse = fr(valeur, rang);
+        const dixieme = rng.int(0, 9);
+        const centieme = marche.chiffres[rng.int(0, marche.chiffres.length - 1)];
+        const croix = dixieme * 10 + centieme;          // en centièmes, de 1 à 99
+        const valeur = Number((entier + croix / 100).toFixed(2));
+        const reponse = fr(valeur, 2);
 
-        const enonce = 'Zoome jusqu’à ce que la croix tombe sur une graduation, '
-            + 'puis écris son abscisse.';
+        const enonce = 'Fais glisser la loupe jusqu’à la croix, puis écris son abscisse.';
 
         // ── LES FAUTES QU'ON PROPOSE EN DÉFI ──────────────────────────────
         //
         // L'exercice se joue au pavé ; le QCM n'existe que pour les défis, où
-        // l'on ne peut pas zoomer. On y met donc les fautes de LECTURE, les
-        // seules qui aient un sens quand la loupe n'est pas là.
-        const tropTot = Number((entier + chiffres.slice(0, -1)
-            .reduce((acc, c, i) => acc + c / Math.pow(10, i + 1), 0)).toFixed(rang - 1));
-        const sansEntier = Number(chiffres
-            .reduce((acc, c, i) => acc + c / Math.pow(10, i + 1), 0).toFixed(rang));
+        // l'on ne peut rien faire glisser. On y met donc les fautes de LECTURE,
+        // les seules qui aient un sens quand la loupe n'est pas là.
+        //
+        // LA DEUXIÈME EST LA PLUS INSTRUCTIVE : compter les petits traits en
+        // partant du grand trait de DROITE. C'est une faute qu'on voit en
+        // classe, et elle donne un nombre parfaitement crédible.
+        const auDixieme = Number((entier + dixieme / 10).toFixed(1));
+        const aLEnvers = Number((entier + (dixieme + 1) / 10 - centieme / 100).toFixed(2));
+        const sansEntier = Number((croix / 100).toFixed(2));
         const leurres = [
-            { value: fr(tropTot, rang - 1), label: fr(tropTot, rang - 1),
-                why: 'Tu t’es arrêté un zoom trop tôt : à ce niveau-là, la croix ne '
-                    + 'tombait pas encore sur une graduation.' },
-            { value: fr(sansEntier, rang), label: fr(sansEntier, rang),
-                why: `Tu as lu les décimales, mais oublié la partie entière : l’axe `
+            { value: fr(auDixieme, 1), label: fr(auDixieme, 1),
+                why: 'Tu as lu le grand trait, pas la croix : elle est un peu plus '
+                    + 'loin, et ce sont les petits traits qui le disent.' },
+            { value: fr(aLEnvers, 2), label: fr(aLEnvers, 2),
+                why: `Tu as compté les petits traits en partant du grand trait de `
+                    + `DROITE. On compte toujours depuis celui de gauche, en avançant.` },
+            { value: fr(sansEntier, 2), label: fr(sansEntier, 2),
+                why: `Tu as lu les décimales, mais oublié la partie entière : la droite `
                     + `part de ${entier}, pas de 0.` }
         ].filter(l => l.value !== reponse);
 
@@ -141,32 +170,28 @@ export const poserLaLoupeGenerator = {
                 count: 4,
                 filler: (r) => {
                     const d = r.int(1, 9) * (r.int(0, 1) ? 1 : -1);
-                    const v = fr(Number((valeur + d / Math.pow(10, rang)).toFixed(rang)), rang);
+                    const v = fr(Number((valeur + d / 100).toFixed(2)), 2);
                     return { value: v, label: v };
                 }
             }),
             hints: [
-                'Regarde entre quelles DEUX graduations la croix se trouve, et touche cet '
-                    + 'intervalle-là : il devient la droite entière.',
-                'À chaque zoom, les deux nombres des bouts gagnent une décimale. Quand la '
-                    + 'croix tombe PILE sur une graduation, tu peux lire son abscisse.',
-                `Il faut ${zooms} zoom${zooms > 1 ? 's' : ''} ici, et la réponse est `
-                    + `${reponse}.`
+                'Pose le doigt sur le dessin et fais glisser la loupe le long de la '
+                    + 'droite, jusqu’à ce que la croix soit sous le verre.',
+                'Sous le verre, repère le grand trait qui porte un nombre, puis compte '
+                    + 'les petits traits jusqu’à la croix : chacun vaut un centième.',
+                `La croix est à ${reponse}.`
             ],
-            explanation: `La croix est à ${reponse}. ${zooms === 1
-                ? `Un seul zoom suffisait : entre ${fr(tropTot, rang - 1)} et `
-                    + `${fr(Number((tropTot + Math.pow(10, -(rang - 1))).toFixed(rang - 1)),
-                        rang - 1)}, elle tombe sur une graduation.`
-                : `Il fallait zoomer ${zooms} fois : chaque zoom ajoute une décimale aux `
-                    + `nombres des bouts.`}`,
-            difficulty: zooms,
+            explanation: `La croix est à ${reponse} : c’est ${fr(auDixieme, 1)} `
+                + `et ${centieme} centième${centieme > 1 ? 's' : ''} de plus.`,
+            difficulty: MARCHES.indexOf(marche) + 1,
             meta: {
                 marche: marche.id,
                 decimal: true,
-                entier, rang, zooms, valeur,
-                // LA PLACE DE LA CROIX SUR LE PREMIER AXE, de 0 à 10. L'activité
-                // la recalcule à chaque zoom ; celle-ci est le point de départ.
-                place: Number(((valeur - entier) * 10).toFixed(rang)),
+                entier, dixieme, centieme, valeur,
+                // OÙ EST LA CROIX, EN CENTIÈMES DE LA DROITE (0 à 100) : c'est
+                // ce que reçoivent le dessin ET le robot de démonstration. Une
+                // seule unité pour les deux, sinon le verre se pose à côté.
+                croix,
                 theme: `${marche.id}-${entier}`
             }
         });

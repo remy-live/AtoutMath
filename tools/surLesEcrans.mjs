@@ -1,4 +1,4 @@
-// UN EXERCICE SUR LES QUATRE ÉCRANS — et ce qu'on y touche doit être touchable.
+// UN EXERCICE SUR TOUS LES ÉCRANS — et ce qu'on y touche doit être touchable.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //
@@ -52,9 +52,26 @@ const ACTION = lire('action', '[data-valider], [data-validate], .rlm-btn--fort')
 const PARAMS = JSON.parse(lire('params', '{}'));
 const SEUIL = Number(lire('seuil', 10));
 
+// LES SIX ÉCRANS, ET LES DEUX DERNIERS ONT ÉTÉ AJOUTÉS APRÈS COUP.
+//
+// Il n'y en avait que quatre : deux téléphones, une tablette, et un
+// « ordinateur » de 1180 × 920. Rémy a ouvert « Pose la Loupe » sur le sien et
+// le pavé était COUPÉ — alors que l'outil venait de répondre « TIENT SUR LES
+// QUATRE ÉCRANS ».
+//
+// LA CAUSE EST DANS LA LISTE : aucune de ces quatre tailles n'est un PORTABLE,
+// qui est large et BAS. Une fenêtre de 1180 × 920 n'existe sur aucune machine
+// réelle — c'est une tablette debout déguisée en ordinateur. Mesuré ensuite :
+// « Valider » sortait de l'écran sur 1000×700, 1280×720, 1440×830 et 900×600,
+// c'est-à-dire sur toutes les formes de portable essayées.
+//
+// LA HAUTEUR EST LA CONTRAINTE RARE, PAS LA LARGEUR. C'est elle qu'il faut
+// mettre à l'épreuve, et c'est elle que la liste oubliait.
 const ECRANS = [
     [390, 844, 'téléphone haut'], [390, 667, 'téléphone court'],
-    [768, 1024, 'tablette'], [1180, 920, 'ordinateur']
+    [768, 1024, 'tablette'],
+    [1280, 720, 'portable'], [1440, 830, 'grand portable'],
+    [1180, 920, 'grand écran']
 ];
 
 let fautes = 0;
@@ -118,6 +135,6 @@ for (const [L, H, nom] of ECRANS) {
 }
 
 console.log(fautes === 0
-    ? `\n${exo} TIENT SUR LES QUATRE ÉCRANS.`
+    ? `\n${exo} TIENT SUR LES ${ECRANS.length} ÉCRANS.`
     : `\n${fautes} écran(s) en faute.`);
 process.exit(fautes === 0 ? 0 : 1);
