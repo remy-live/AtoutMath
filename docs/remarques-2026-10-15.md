@@ -7913,3 +7913,31 @@ avec des outils virtuels » parle du tracé à la règle et au compas. Ranger de
 nombres au doigt n'est pas un tracé : c'est le geste du cours lui-même, celui
 qu'on fait au tableau avec des étiquettes. Le glisser-déposer existe déjà dans
 « Ranger, et le mot apparaît ».
+
+### Les figures, quatre remarques en quatre captures
+
+> « déborde un peu ! » — capture d'un triangle où « 80° » sort de l'arc orange
+> et traverse le côté.
+>
+> « le rectangle est petit » — capture de L'Aire des Figures : un rectangle de
+> cent pixels au milieu d'un écran vide.
+>
+> « idem et mets un peu de couleurs pour les figures et solide » — capture du
+> pavé droit, même défaut de taille, et tout est au trait noir.
+>
+> « et il faut la fiche pdf »
+
+**LE RECTANGLE EST PETIT À CAUSE DE MA PROPRE CORRECTION**, et c'est la plus
+intéressante des quatre. J'avais posé un cadre MINIMUM de 320 × 260 px pour
+empêcher qu'un cube de 3 cm, recadré au plus juste, soit ensuite étiré plus
+gros qu'un pavé de 12 — « un petit dessin recadré au plus juste est ensuite
+étiré à la largeur de son emplacement ». La correction était juste et son
+mécanisme est faux : il bourre de VIDE. Un rectangle de 10 × 3 mesure 170 × 51
+px ; dans un cadre de 320 × 260 il n'occupe que 62 % de la largeur et 42 % de
+la hauteur, et le plafond de hauteur rapetisse ensuite le tout.
+
+**LA DETTE DE LA FICHE PDF ÉTAIT DOCUMENTÉE COMME DÉLIBÉRÉE**, et il la
+réclame : « La feuille donne les dimensions en toutes lettres — comme les
+volumes, et pour la même raison : dessiner la hauteur et son angle droit en
+jsPDF est un travail à part, et une fiche à moitié dessinée serait pire qu'une
+fiche honnêtement écrite ». Il a tranché : il veut la fiche.
