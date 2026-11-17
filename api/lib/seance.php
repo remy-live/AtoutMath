@@ -236,7 +236,8 @@ function etatDeSeance(array $eleve): array
     // NAVIGATEUR — l'API, elle, répondra juste.
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
                               hors_seance_exos,
-                              impose_jusqu_a, impose_plein_ecran, chrono_fin, chrono_a_zero,
+                              impose_jusqu_a, impose_ecran_seance, impose_profil_ouvert,
+                              chrono_fin, chrono_a_zero,
                               pause_mot, bac_ferme, bac_minutes, bac_jeux,
                               hors_seance, hors_seance_mot,
                               defi_exo, defi_graine, defi_mode, defi_debut, defi_fin,
@@ -247,13 +248,28 @@ function etatDeSeance(array $eleve): array
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
                               'notice' => null, 'impose_path_id' => null,
-                              'impose_jusqu_a' => null, 'impose_plein_ecran' => 0,
+                              'impose_jusqu_a' => null, 'impose_ecran_seance' => 1,
+                              'impose_profil_ouvert' => 0,
                               'chrono_fin' => null,
                               'chrono_a_zero' => null, 'bac_ferme' => 0,
                               'bac_minutes' => null, 'bac_jeux' => null];
     // LA SÉANCE IMPOSÉE A UNE FIN, et c'est ici qu'on la fait respecter : c'est
     // la porte par laquelle TOUS les élèves la reçoivent.
     $imposeId = imposeEncoreValide($classe);
+
+    // L'AUTORISATION NOMINATIVE, RELUE ICI ET NON PORTÉE PAR `$eleve`.
+    //
+    // `requireStudent()` ne rend que trois colonnes, et c'est bien : cette
+    // fonction-là est traversée par CHAQUE requête d'élève, y compris celles
+    // qui n'ont rien à voir avec la séance. On va donc chercher ce seul
+    // drapeau ici, et seulement quand une séance est imposée — sans séance
+    // imposée, il n'y a pas d'écran de séance, donc rien à ouvrir ni à fermer.
+    $profilRenduALui = false;
+    if ($imposeId) {
+        $qp = $pdo->prepare('SELECT profil_ouvert FROM students WHERE id = ?');
+        $qp->execute([$eleve['id']]);
+        $profilRenduALui = !empty($qp->fetchColumn());
+    }
 
     // LES MESSAGES NON LUS, adressés à lui ou à sa classe. « Non lus » et pas
     // « récents » : un élève qui arrive en retard doit voir le mot qu'on a
@@ -353,7 +369,33 @@ function etatDeSeance(array $eleve): array
                        // côté d'elle : c'est elle que l'élève reçoit, et un
                        // drapeau rangé ailleurs serait à retrouver au bon
                        // moment. Rémy : « oui si la séance est imposée ».
-                       'pleinEcran' => (bool) ($classe['impose_plein_ecran'] ?? 0),
+                       'pleinEcran' => (bool) ($classe['impose_ecran_seance'] ?? 1),
+                       // ── LE PROFIL EST-IL FERMÉ POUR CET ÉLÈVE-CI ? ───────
+                       //
+                       // RÉMY : « il ne peut accéder à son profil que si je
+                       // l'y autorise ou qu'il a fini la séance ».
+                       //
+                       // ON ENVOIE LA CONCLUSION, PAS LE RÉGLAGE — la règle de
+                       // cette fonction, déjà appliquée au voile de pause et au
+                       // « fermé hors séance ». Trente ardoises qui
+                       // appliqueraient la règle finiraient par diverger du
+                       // serveur.
+                       //
+                       // MAIS CETTE CONCLUSION-CI EST INCOMPLÈTE, ET C'EST
+                       // VOULU. Elle ne porte QUE ce que le professeur a
+                       // décidé : la case cochée, et son autorisation — à la
+                       // classe ou à cet élève. Le troisième ouvreur, « il a
+                       // fini au moins une étape », est décidé par l'ARDOISE,
+                       // dans `js/ui/ecranDeSeance.js`, et il ne peut pas être
+                       // décidé ici : le travail arrive au serveur par la
+                       // synchronisation, donc avec du retard et pas du tout
+                       // hors ligne. Un élève qui vient de finir son étape
+                       // doit retrouver son profil TOUT DE SUITE — pas au
+                       // prochain aller-retour réseau, et pas jamais s'il
+                       // travaille dans le train.
+                       'profilFerme' => (bool) ($classe['impose_ecran_seance'] ?? 1)
+                           && empty($classe['impose_profil_ouvert'])
+                           && !$profilRenduALui,
                        'path' => json_decode($p['data'], true)];
         }
     }

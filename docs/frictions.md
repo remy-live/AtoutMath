@@ -7689,3 +7689,44 @@ plus d'un.**
   qui manque encore est plus général : **une marque dans le code disant « cette
   valeur est dérivée de telle mesure »**, pour qu'un outil puisse lister ce
   qu'une retouche vient de périmer.
+
+---
+
+**Un commentaire SQL dans une chaîne PHP à guillemets interpole ses dollars** — 17 novembre
+
+- *Ce que je voulais faire* — documenter une colonne neuve de `classes` en
+  citant, comme le dépôt le fait partout, la fonction PHP qui s'en sert :
+  « Voir `$changeDeSeance` dans api/index.php ».
+- *Ce qui a coûté* — le serveur a crié `Undefined variable $changeDeSeance` à
+  CHAQUE migration, donc à chaque requête d'un conteneur neuf. Tout le bloc
+  `CREATE TABLE` de `schema.php` est une chaîne PHP à GUILLEMETS — c'est ce qui
+  permet d'y écrire `$bool` et `$txtNull` —, et « dollar suivi d'un mot » y est
+  interpolé même dans un commentaire `--`. Ni `php -l`, ni `npm test`, ni le
+  navigateur ne le voient : seul `php tools/testApi.php` le trouve, et
+  seulement par sa dernière vérification, « le serveur n'a crié aucune erreur
+  PHP ».
+- *Combien de fois* — | (première, mais le dépôt a DÉJÀ un piège de la même
+  famille, l'accent grave dans un commentaire à l'intérieur d'un gabarit, qui
+  a été payé sept fois avant qu'un hook ne le ferme).
+- *Ce qui manque* — **le hook `verifierSyntaxe.sh` devrait aussi regarder les
+  fichiers PHP écrits** : un `$motEnCamelCase` à l'intérieur d'une chaîne à
+  guillemets qui n'est pas une variable connue du fichier est presque toujours
+  une citation, pas une interpolation. Une ligne de plus dans le hook, contre
+  une erreur qu'on ne voit qu'au bout de quatre minutes.
+
+**Une épreuve qui lit N caractères de code tombe quand on documente ce code** — 17 novembre
+
+- *Ce que je voulais faire* — ajouter un second mode au refus de route de
+  `setTopNavMode`, et l'expliquer en six lignes de commentaire comme le dépôt
+  le demande.
+- *Ce qui a coûté* — deux épreuves vertes sont tombées sans qu'aucune règle ne
+  soit cassée : l'une lisait `NAV.slice(i, i + 900)` et le commentaire a poussé
+  le code au-delà ; l'autre cherchait `await` à moins de N caractères d'un
+  appel et a lu le mot « await » dans le commentaire qui EXPLIQUE la règle.
+  **Les deux tombaient parce que le code était bien documenté.** Vingt minutes
+  à chercher une régression qui n'existait pas.
+- *Combien de fois* — || (les deux dans la même heure, et c'est le même piège).
+- *Ce qui manque* — une aide dans les épreuves : `sansCommentaires(source)` et
+  `corpsDeLaFonction(source, nom)`, pour qu'une épreuve de source lise une
+  FONCTION et non une fenêtre de caractères. La fenêtre est toujours arbitraire,
+  et elle se périme au premier commentaire qu'on ajoute.

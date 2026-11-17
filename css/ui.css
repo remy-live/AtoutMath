@@ -4796,6 +4796,16 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 /* Le bouton « indice » se distingue du bouton « mot » sans crier : ce sont deux
    gestes différents, et la ligne d'un élève en porte déjà trois. */
 .ec-mini--indice { color: var(--accent-texte); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+/* LE BOUTON « profil » DU DIRECT, QUAND IL EST DÉJÀ RENDU. Il ne change pas de
+   mot — il dit toujours « profil » —, il change d'ÉTAT : plein quand c'est
+   ouvert, creux quand c'est fermé. Un bouton qui change de libellé se relit à
+   chaque regard ; un bouton qui change de teinte se balaie des yeux, et c'est
+   ce que fait Rémy en traversant trente lignes. */
+.ec-mini--rendu {
+    color: var(--success-texte);
+    border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+}
 
 /* La fenêtre de choix d'un indice — plus large que « demander », parce qu'elle
    porte des phrases entières et non un nom de classe. */

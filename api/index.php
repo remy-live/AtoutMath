@@ -1737,14 +1737,42 @@ function handleTeacherClass(): void
             db()->prepare('UPDATE classes SET chrono_fin = NULL, chrono_a_zero = NULL
                            WHERE id = ?')->execute([$classe['id']]);
         };
+        // ── ET LES PROFILS RENDUS S'EN VONT AVEC ELLE ───────────────────────
+        //
+        // RÉMY : « il ne peut accéder à son profil que si je l'y autorise ».
+        // UNE AUTORISATION EST DONNÉE POUR UNE HEURE, PAS POUR L'ANNÉE. Celle
+        // de mardi ne doit pas ouvrir le profil de jeudi — sinon le réglage
+        // serait à défaire élève par élève avant chaque séance, et personne ne
+        // le ferait. C'est la même règle que le compte à rebours juste
+        // au-dessus, et pour la même raison : ce qui a été réglé pour l'heure
+        // d'avant ne vaut plus pour celle-ci.
+        $rendreLesProfils = function () use ($classe, $changeDeSeance) {
+            if (!$changeDeSeance) return;
+            db()->prepare('UPDATE classes SET impose_profil_ouvert = 0 WHERE id = ?')
+                ->execute([$classe['id']]);
+            db()->prepare('UPDATE students SET profil_ouvert = 0 WHERE class_id = ?')
+                ->execute([$classe['id']]);
+        };
         if ($pathId === '') {
-            db()->prepare('UPDATE classes SET impose_path_id = NULL, impose_jusqu_a = NULL,
-                                  impose_plein_ecran = 0
+            // ON GARDE LA PRÉFÉRENCE DE PLEIN ÉCRAN, ON NE LA REMET PLUS À ZÉRO.
+            //
+            // Elle était effacée ici, et c'est ce qui rendait impossible la
+            // demande de Rémy — « une popup, en option chèck de base » : une
+            // case cochée par défaut qu'on décoche, et qui se recoche toute
+            // seule au retrait de la séance suivante, n'est pas un réglage,
+            // c'est un piège. Le drapeau ne FAIT rien tant qu'aucune séance
+            // n'est imposée ; il n'y a donc rien à éteindre, seulement un
+            // choix à se rappeler.
+            db()->prepare('UPDATE classes SET impose_path_id = NULL, impose_jusqu_a = NULL
                            WHERE id = ?')->execute([$classe['id']]);
             // « PLUS DE SÉANCE » EST LA FIN DE L'HEURE, pas une heure qui
             // continue sans séance : le compte à rebours s'en va avec elle.
             $eteindreLeChrono();
-            respond(['ok' => true, 'impose' => null, 'jusqua' => null, 'pleinEcran' => false,
+            // ET LES PROFILS REVIENNENT À TOUT LE MONDE : plus de séance
+            // imposée, plus d'écran de séance, donc plus rien de fermé.
+            $rendreLesProfils();
+            respond(['ok' => true, 'impose' => null, 'jusqua' => null,
+                     'pleinEcran' => (bool) ($classe['impose_ecran_seance'] ?? 1),
                      'dit' => 'La séance n\'est plus imposée : chacun choisit.']);
         }
         $q = db()->prepare('SELECT id, name FROM paths WHERE id = ? AND teacher_id = ?');
@@ -1755,6 +1783,7 @@ function handleTeacherClass(): void
         // de parcours inventé ne doit pas pouvoir éteindre le compte à rebours
         // d'une classe qui travaille.
         $eteindreLeChrono();
+        $rendreLesProfils();
         // ELLE S'ÉTEINT TOUTE SEULE À LA FIN DE LA JOURNÉE.
         //
         // Rémy : « si je ne clos pas une séance, à la maison l'élève aura
@@ -1765,7 +1794,7 @@ function handleTeacherClass(): void
         // chez l'élève qui finit à 23 h 50.
         $jusqua = finDeLaJourneeScolaire();
         db()->prepare('UPDATE classes SET impose_path_id = ?, impose_jusqu_a = ?,
-                              impose_plein_ecran = ? WHERE id = ?')
+                              impose_ecran_seance = ? WHERE id = ?')
             ->execute([$pathId, $jusqua, $pleinEcran, $classe['id']]);
         respond(['ok' => true, 'impose' => $pathId, 'jusqua' => $jusqua,
                  'pleinEcran' => (bool) $pleinEcran,
@@ -2003,6 +2032,32 @@ function handleTeacherClass(): void
                      ($aZero === 'pause' ? 'met la classe en pause.' : 'termine la séance.')]);
     }
 
+    // ── RENDRE LES PROFILS À TOUTE LA CLASSE ────────────────────────────────
+    //
+    // RÉMY : « il ne peut accéder à son profil que si je l'y autorise ou qu'il
+    // a fini la séance ».
+    //
+    // UN BOUTON POUR LES TRENTE, parce que c'est le geste de fin d'heure : on
+    // rend la main, et l'on ne va pas cliquer trente fois pour cela. L'autre
+    // portée — un seul élève, celui qui a fini en avance ou qui doit relire
+    // ses erreurs — est dans `/teacher/roster`, à côté de la liste nominative
+    // où Rémy le voit travailler.
+    //
+    // ON N'EFFACE PAS LES AUTORISATIONS INDIVIDUELLES EN REFERMANT. Refermer
+    // pour la classe veut dire « je retire ce que j'avais ouvert à tous », pas
+    // « je reprends aussi ce que j'avais donné à Léa ». Les deux colonnes sont
+    // deux décisions, et la séance imposée les remet à zéro ensemble quand
+    // elle change.
+    if ($action === 'profils') {
+        $ouvert = !empty($body['ouvert']) ? 1 : 0;
+        db()->prepare('UPDATE classes SET impose_profil_ouvert = ? WHERE id = ?')
+            ->execute([$ouvert, $classe['id']]);
+        respond(['ok' => true, 'profilsOuverts' => (bool) $ouvert,
+                 'dit' => $ouvert
+                     ? 'Les profils sont rendus à toute la classe.'
+                     : 'Les profils se referment : il faut finir une étape pour les rouvrir.']);
+    }
+
     // LE BAC À SABLE DE CEUX QUI ONT FINI.
     //
     // Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des
@@ -2227,6 +2282,22 @@ function handleTeacherRoster(): void
                               : 'Élève réactivé.']);
     }
 
+    // RENDRE LE PROFIL À UN SEUL ÉLÈVE. Rémy : « si je l'y autorise ». C'est
+    // le geste de celui qui a fini en avance, ou de celui à qui l'on demande
+    // de relire son carnet d'erreurs pendant que les autres travaillent — donc
+    // un geste NOMINATIF, pris dans Le direct où Rémy a déjà la liste sous les
+    // yeux. Il ne survit pas au changement de séance : voir `$rendreLesProfils`.
+    if ($action === 'profil') {
+        $on = !empty($body['ouvert']) ? 1 : 0;
+        $sid = (string) ($body['studentId'] ?? '');
+        $maj = db()->prepare('UPDATE students SET profil_ouvert = ? WHERE id = ? AND class_id = ?');
+        $maj->execute([$on, $sid, $classe['id']]);
+        if ($maj->rowCount() === 0) fail(404, 'student_not_found', 'Élève introuvable.');
+        respond(['ok' => true, 'eleves' => rosterLisible($classe['id']),
+                 'dit' => $on ? 'Son profil lui est rendu.'
+                              : 'Son profil se referme jusqu\'à la première étape finie.']);
+    }
+
     if ($action !== 'list') fail(400, 'bad_action', 'Action inconnue : ' . $action);
 
     respond([
@@ -2246,7 +2317,10 @@ function handleTeacherRoster(): void
             // LA CASE DOIT MONTRER SON ÉTAT, sinon le professeur la recoche à
             // chaque heure sans savoir si elle l'était déjà — c'est la leçon
             // écrite deux lignes plus haut, et elle vaut pour tout réglage.
-            'impose_plein_ecran' => (bool) ($classe['impose_plein_ecran'] ?? 0),
+            'impose_ecran_seance' => (bool) ($classe['impose_ecran_seance'] ?? 1),
+            // ET SI LES PROFILS ONT ÉTÉ RENDUS À TOUTE LA CLASSE. Même leçon
+            // encore : un bouton qui ne montre pas son état se reclique.
+            'impose_profil_ouvert' => (bool) ($classe['impose_profil_ouvert'] ?? 0),
             // FERMÉ HORS SÉANCE, et le mot qu'on lit alors. Même raison que
             // ci-dessus : une case qui ne montre pas son état se recoche.
             'hors_seance' => (bool) ($classe['hors_seance'] ?? 0),
@@ -2299,6 +2373,10 @@ function rosterLisible(string $classeId): array
         // exactement ceux-là que le professeur cherche quand il recolle sa
         // liste, puisque l'import va les rattacher à leur travail.
         'sansBillet' => (string) $e['login'] === '',
+        // SON PROFIL LUI A-T-IL ÉTÉ RENDU, nominativement, pour la séance en
+        // cours ? Le bouton du direct doit dire ce qu'il fera — « rendre » ou
+        // « refermer » — et non poser la même question à chaque clic.
+        'profilOuvert' => !empty($e['profil_ouvert']),
     ], elevesDeLaClasse($classeId));
 }
 
@@ -2351,6 +2429,10 @@ function handleTeacherLive(): void
             'prenom' => $e['first_name'],
             'vu' => instantDe($e['last_seen_at']),
             'ecarte' => !empty($e['blocked']),
+            // SON PROFIL LUI A-T-IL ÉTÉ RENDU NOMINATIVEMENT ? Le bouton du
+            // direct doit dire ce qu'il FERA — « rendre » ou « refermer » —
+            // sinon Rémy reclique pour savoir, et ce clic-là change l'état.
+            'profilOuvert' => !empty($e['profil_ouvert']),
             'exo' => $a['exo'],
             'parcours' => $a['parcours'],
             'justes' => $a['justes'],

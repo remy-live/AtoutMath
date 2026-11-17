@@ -212,8 +212,23 @@ function lesTablesDuSchema(bool $sqlite): array
         --     samedi. Un instant, et non un drapeau : c'est la seule forme qui
         --     survit à un serveur qu'on ne redémarre jamais.
         impose_jusqu_a " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
-        --   · impose_plein_ecran : l'écran de l'élève passe en plein écran dès
-        --     qu'il ouvre la séance imposée.
+        --   · impose_ecran_seance : L'ÉCRAN DE SÉANCE, en un seul réglage —
+        --     l'écran de départ que l'élève valide, le plein écran que son
+        --     clic déclenche, et le profil fermé jusqu'à sa première étape
+        --     finie.
+        --
+        --     ELLE S'APPELAIT `impose_plein_ecran` ET VALAIT ZÉRO PAR DÉFAUT.
+        --     Rémy, 17 novembre : « une popup (en option chèck de base) ».
+        --     « De base » veut dire COCHÉE, et une colonne à zéro par défaut ne
+        --     sait pas l'être. D'où le défaut à UN, et le nom qui dit enfin
+        --     tout ce que le réglage fait : le plein écran n'en est plus que
+        --     le tiers visible.
+        --
+        --     L'ANCIENNE COLONNE RESTE DANS LES BASES DÉJÀ EN SERVICE, inerte :
+        --     SQLite ne retire pas une colonne sans réécrire la table, et une
+        --     réécriture pour gagner un entier par classe n'en vaut pas le
+        --     risque. Les classes de Rémy repartent donc sur le défaut, qui est
+        --     celui qu'il demande.
         --
         --     Rémy : « est ce que lorsque j'impose une séance, et que l'élève
         --     découvre la carte du monde je peux forcer le plein écran ? »,
@@ -232,7 +247,32 @@ function lesTablesDuSchema(bool $sqlite): array
         --     soir à la maison, et personne n'a demandé le plein écran chez
         --     l'élève. C'est une décision de CONDUITE DE CLASSE, comme le
         --     verrou et le compte à rebours qui l'entourent.
-        impose_plein_ecran $bool,
+        impose_ecran_seance INTEGER NOT NULL DEFAULT 1,
+        --   · impose_profil_ouvert : le professeur A RENDU le profil à toute
+        --     la classe, pour la séance imposée en cours.
+        --
+        --     Rémy, 17 novembre : « il ne peut accéder à son profil que si je
+        --     l'y autorise ou qu'il a fini la séance ».
+        --
+        --     TROIS CHOSES OUVRENT LE PROFIL, ET ELLES NE SONT PAS AU MÊME
+        --     ENDROIT. Le travail fait est décidé par l'ARDOISE de l'élève,
+        --     qui le sait tout de suite et même hors ligne ; l'autorisation du
+        --     professeur est décidée ICI, et elle a deux portées — toute la
+        --     classe (cette colonne) ou un seul élève
+        --     (`students.profil_ouvert`).
+        --
+        --     ELLE SE REMET À ZÉRO QUAND LA SÉANCE CHANGE, et c'est le point
+        --     qui compte : une autorisation donnée mardi ne doit pas ouvrir le
+        --     profil de jeudi. Voir `rendreLesProfils` dans api/index.php, qui
+        --     suit le compte à rebours, éteint pour la même raison.
+        --
+        --     ET L'ON N'ÉCRIT PAS UN NOM DE VARIABLE PHP DANS CE COMMENTAIRE.
+        --     Tout ce bloc est une chaîne PHP à GUILLEMETS : « dollar suivi
+        --     d'un mot » y est interpolé, pas cité. La première écriture
+        --     nommait la variable avec son dollar, et le serveur a crié
+        --     « Undefined variable » à chaque migration — un avertissement
+        --     dans un COMMENTAIRE SQL, que seul `php tools/testApi.php` a vu.
+        impose_profil_ouvert $bool,
         --   · hors_seance : la classe est FERMÉE quand aucune séance n'est
         --     imposée, et l'élève ne voit alors que le mot du professeur.
         --
@@ -520,6 +560,13 @@ function lesTablesDuSchema(bool $sqlite): array
         -- Un élève peut être mis de côté sans être effacé : il ne peut plus
         -- se rattacher, mais son travail reste lisible jusqu'à la purge.
         blocked      $bool,
+        -- Le professeur a rendu SON profil à CET élève, pendant la séance
+        -- imposée en cours — celui qui a fini en avance, celui qui a besoin de
+        -- relire ses erreurs. Rémy : « si je l'y autorise ». Comme
+        -- `classes.impose_profil_ouvert`, elle se remet à zéro quand la séance
+        -- change : sans cela, l'autorisation d'une heure vaudrait pour toutes
+        -- les suivantes, et le réglage serait à défaire élève par élève.
+        profil_ouvert $bool,
         created_at   $date,
         last_seen_at $dateN,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";

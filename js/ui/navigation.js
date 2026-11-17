@@ -1231,8 +1231,15 @@ export function setTopNavMode(m) {
     // dans six mois sans penser à ce mode. On le refuse donc ICI, à l'endroit
     // où toutes les routes passent, et l'on renvoie l'élève à son parcours —
     // pas sur un écran vide, qui se lirait comme une panne.
+    //
+    // ET LA MÊME PORTE REFUSE AUSSI L'ÉCRAN DE SÉANCE. Rémy, 17 novembre :
+    // « il ne peut accéder à son profil que si je l'y autorise ou qu'il a fini
+    // la séance ». Deux modes, deux classes, une seule décision — et la raison
+    // écrite au-dessus vaut mot pour mot pour le second : retirer les deux
+    // boutons suffirait à l'œil, et c'est exactement ce qui se défait.
     if (m === 'profile' && document.body
-        && document.body.classList.contains('ecran-kiosque')) {
+        && (document.body.classList.contains('ecran-kiosque')
+            || document.body.classList.contains('seance-profil-ferme'))) {
         m = 'path';
     }
     ['grid', 'path', 'profile'].forEach(k => {

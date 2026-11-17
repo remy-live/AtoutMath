@@ -185,6 +185,23 @@ export const retirerEleve = (classId, studentId) =>
 export const ecarterEleve = (classId, studentId, blocked) =>
     auServeur('/teacher/roster', { classId, action: 'bloquer', studentId, blocked });
 
+/**
+ * RENDRE SON PROFIL À UN SEUL ÉLÈVE, pendant la séance en cours.
+ *
+ * Rémy : « il ne peut accéder à son profil que si je l'y autorise ». Celui qui
+ * a fini en avance, celui à qui l'on demande de relire son carnet d'erreurs —
+ * donc un geste NOMINATIF, pris dans Le direct où la liste est déjà sous les
+ * yeux. Il ne survit pas au changement de séance : une autorisation est donnée
+ * pour une heure, pas pour l'année.
+ */
+export const ouvrirLeProfil = (classId, studentId, ouvert) =>
+    auServeur('/teacher/roster',
+        { classId, action: 'profil', studentId, ouvert: !!ouvert });
+
+/** Et à toute la classe d'un coup — le geste de fin d'heure. */
+export const ouvrirLesProfils = (classId, ouvert) =>
+    auServeur('/teacher/class', { classId, action: 'profils', ouvert: !!ouvert });
+
 export const leDirect = (classId) => auServeur('/teacher/live', { classId });
 
 /**

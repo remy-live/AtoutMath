@@ -101,11 +101,21 @@ test('LE PROFIL SE REFUSE LÀ OÙ TOUTES LES ROUTES PASSENT', () => {
     // CACHER UN BOUTON NE FERME PAS UNE PORTE. Le profil s'atteint aussi par un
     // lien du bilan, par l'historique du navigateur, et par un bouton qu'on
     // ajoutera dans six mois sans penser à ce mode.
+    //
+    // ET DEPUIS LE 17 NOVEMBRE, DEUX MODES PASSENT PAR CETTE PORTE : le kiosque
+    // du site, et l'écran de séance (« il ne peut accéder à son profil que si
+    // je l'y autorise ou qu'il a fini la séance »). On exige les deux. Le
+    // premier jet de cette épreuve ne lisait que les 900 premiers caractères de
+    // la fonction, et la phrase qui explique les deux modes a suffi à pousser
+    // le refus au-delà : l'épreuve tombait sans qu'aucune règle ne soit cassée.
+    // Une fenêtre arbitraire autour d'un code qu'on documente est un piège.
     const i = NAV.indexOf('export function setTopNavMode(');
     assert.notEqual(i, -1);
-    const debut = NAV.slice(i, i + 900);
-    assert.match(debut, /m === 'profile'[\s\S]{0,200}ecran-kiosque/,
+    const debut = NAV.slice(i, i + 2400);
+    assert.match(debut, /m === 'profile'[\s\S]{0,300}ecran-kiosque/,
         '`setTopNavMode` doit refuser le profil, pas seulement cacher ses boutons');
+    assert.match(debut, /m === 'profile'[\s\S]{0,300}seance-profil-ferme/,
+        'et le refuser aussi pendant une séance imposée en écran de séance');
     assert.match(debut, /m = 'path'/,
         'et renvoyer au parcours : un écran vide se lirait comme une panne');
 });
@@ -113,13 +123,19 @@ test('LE PROFIL SE REFUSE LÀ OÙ TOUTES LES ROUTES PASSENT', () => {
 test('LES DEUX PORTES DU PROFIL SONT FERMÉES, PAS UNE', () => {
     // Celle du haut sur un écran large, celle du bas sur un téléphone. Une
     // seule suffirait à croire que c'est fait, et l'autre se découvrirait en
-    // classe.
-    assert.match(CSS, /body\.ecran-kiosque #top-btn-profile/);
-    assert.match(CSS, /body\.ecran-kiosque #mob-btn-profile/);
-    const i = CSS.indexOf('body.ecran-kiosque #top-btn-profile');
-    assert.match(CSS.slice(i, i + 220), /display:\s*none\s*!important/,
-        '`navigation.js` pose `display` EN LIGNE sur ces boutons : sans '
-        + '`!important`, la porte réapparaît au premier changement de vue');
+    // classe. ET POUR LES DEUX MODES : le kiosque du site, et l'écran de
+    // séance du 17 novembre. Le second a été écrit en copiant le premier, ce
+    // qui est exactement la façon dont on oublie une des deux portes.
+    for (const mode of ['ecran-kiosque', 'seance-profil-ferme']) {
+        assert.match(CSS, new RegExp(`body\\.${mode} #top-btn-profile`),
+            `la porte du haut reste ouverte en « ${mode} »`);
+        assert.match(CSS, new RegExp(`body\\.${mode} #mob-btn-profile`),
+            `la porte du bas reste ouverte en « ${mode} »`);
+        const i = CSS.indexOf(`body.${mode} #top-btn-profile`);
+        assert.match(CSS.slice(i, i + 220), /display:\s*none\s*!important/,
+            '`navigation.js` pose `display` EN LIGNE sur ces boutons : sans '
+            + '`!important`, la porte réapparaît au premier changement de vue');
+    }
 });
 
 test('LE SERVEUR GARDE LE RÉGLAGE, ET N’EN INVENTE PAS', () => {

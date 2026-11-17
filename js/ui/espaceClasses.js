@@ -67,6 +67,7 @@ import {
     lesConnexions,
     accorderLaCalculatrice, retirerLaCalculatrice,
     imposerLaSeance, lancerLeChrono, arreterLeChrono, lancerLeDefi, lancerUnJeuDeClasse,
+    ouvrirLeProfil, ouvrirLesProfils,
     auServeur, reglagesDuSite,
     lesSignalements, photoDuSignalement, classerSignalement, effacerSignalement
 } from '../core/espaceProf.js';
@@ -1348,6 +1349,14 @@ function rangHtml(e, maintenant) {
             <button type="button" class="ec-mini ec-mini--indice" data-indice-eleve="${esc(e.id)}"
                     data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"
                     title="Lui souffler un coup de pouce, sans l'interrompre">indice</button>
+            ${ecranDeSeanceActif() ? `
+            <button type="button" class="ec-mini${e.profilOuvert ? ' ec-mini--rendu' : ''}"
+                    data-profil-eleve="${esc(e.id)}" data-ouvert="${e.profilOuvert ? '0' : '1'}"
+                    data-prenom="${esc(e.prenom)}"
+                    title="${e.profilOuvert
+                        ? 'Refermer son profil'
+                        : 'Lui rendre son profil sans attendre qu\'il ait fini une étape'}"
+                    >profil</button>` : ''}
         </span>
     </div>
     ${ouverte ? ficheHtml(e, maintenant) : ''}
@@ -1512,6 +1521,19 @@ function jusquaDit() {
     // soir » ; sinon, l'élève la garde toute la soirée et elle s'arrête au matin.
     const memeJour = nuit.getTime() <= Date.now();
     return memeJour ? 'jusqu\'à tout à l\'heure' : 'jusqu\'à demain matin';
+}
+
+/**
+ * L'ÉCRAN DE SÉANCE TOURNE-T-IL EN CE MOMENT DANS CETTE CLASSE ?
+ *
+ * DEUX CONDITIONS, ET LES DEUX COMPTENT. La case cochée ne ferme rien tant
+ * qu'aucune séance n'est imposée — c'est même tout l'intérêt d'un réglage qu'on
+ * pose AVANT l'heure. Un bouton « profil » affiché hors séance ne ferait donc
+ * rien, se cliquerait quand même, et se signalerait comme cassé.
+ */
+function ecranDeSeanceActif() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    return !!(info.impose_path_id && info.impose_ecran_seance);
 }
 
 /** Le bac à sable est-il fermé pour cette classe ? (Ouvert par défaut.) */
@@ -1749,29 +1771,67 @@ function seancesHtml() {
     // sans un bouton sur chaque ligne, on ne peut pas la changer là où on la
     // lit. Le menu déroulant existait, au fond d'un autre onglet.
     const enCours = liste.find(s => s.pathId === impose);
-    // LE PLEIN ÉCRAN EST UN RÉGLAGE DE LA SÉANCE IMPOSÉE, ET IL SE COCHE ICI.
+    // L'ÉCRAN DE SÉANCE EST UN RÉGLAGE DE LA SÉANCE IMPOSÉE, ET IL SE COCHE ICI.
     //
     // Rémy : « est ce que lorsque j'impose une séance […] je peux forcer le
     // plein écran ? », puis « oui si la séance est imposée et laisse le
     // bouton », puis « après peut être vaut il mieux le mettre en paramètre ».
+    // Et enfin, le 17 novembre : « une popup (en option chèck de base) […] et
+    // il ne peut accéder à son profil que si je l'y autorise ou qu'il a fini
+    // la séance ».
+    //
+    // UNE SEULE CASE POUR TROIS CHOSES, parce qu'il a demandé un interrupteur
+    // et non un menu : l'écran de départ que l'élève valide, le plein écran que
+    // son clic obtient, et son profil fermé le temps de s'y mettre. Les séparer
+    // donnerait trois cases à régler avant chaque heure, et l'on en oublierait
+    // toujours une.
     //
     // LA CASE EST LÀ MÊME QUAND RIEN N'EST IMPOSÉ, et c'est délibéré : sans
     // cela, il faudrait imposer d'abord, puis cocher — et les élèves déjà
-    // entrés dans l'intervalle n'auraient pas le plein écran, tandis que les
+    // entrés dans l'intervalle n'auraient pas l'écran de séance, tandis que les
     // suivants l'auraient. On la coche AVANT, elle part avec l'imposition.
     // Cochée pendant qu'une séance est déjà en cours, elle se réapplique
     // aussitôt plutôt que d'attendre : un réglage qui ne fait rien quand on y
     // touche ressemble à un réglage cassé.
-    const pleinEcran = !!(vue.liste && vue.liste.classe
-        && vue.liste.classe.impose_plein_ecran);
+    //
+    // ET ELLE EST COCHÉE DE BASE — « en option chèck de base ». C'est le défaut
+    // de la colonne (`impose_ecran_seance INTEGER NOT NULL DEFAULT 1`), et non
+    // une astuce d'affichage : une case qui s'afficherait cochée sans que la
+    // base le soit mentirait au premier élève entré avant le premier clic.
+    const ecranSeance = !!(vue.liste && vue.liste.classe
+        && vue.liste.classe.impose_ecran_seance);
+    // LES PROFILS SONT-ILS DÉJÀ RENDUS À TOUTE LA CLASSE ? Le bouton doit dire
+    // ce qu'il FERA, pas poser la même question à chaque clic.
+    const profilsOuverts = !!(vue.liste && vue.liste.classe
+        && vue.liste.classe.impose_profil_ouvert);
     const caseEcran = `
         <label class="ec-encours-ecran">
-            <input type="checkbox" data-ecran-seance${pleinEcran ? ' checked' : ''}>
-            <span>Plein écran chez les élèves</span>
+            <input type="checkbox" data-ecran-seance${ecranSeance ? ' checked' : ''}>
+            <span>Écran de séance chez les élèves</span>
         </label>
-        <span class="ec-note">Au premier appui de l'élève — un navigateur ne
-            l'accorde pas autrement. Le bouton pour en sortir reste à l'écran,
-            et sur iPad Safari ne le donne pas du tout.</span>`;
+        <span class="ec-note">Un écran de départ à valider, puis le plein écran —
+            un navigateur ne l'accorde pas autrement. Le bouton pour en sortir
+            reste à l'écran, et sur iPad Safari ne le donne pas du tout. Le profil
+            de l'élève est fermé jusqu'à sa première étape terminée.</span>`;
+    // ── RENDRE LES PROFILS À TOUTE LA CLASSE ────────────────────────────────
+    //
+    // Rémy : « il ne peut accéder à son profil que si je l'y autorise ». C'est
+    // le geste de FIN D'HEURE — on rend la main aux trente —, donc un bouton et
+    // non trente clics. L'autre portée, nominative, est dans Le direct, à côté
+    // du nom de celui qui a fini en avance.
+    //
+    // IL NE S'AFFICHE QUE QUAND IL PEUT SERVIR : sans séance imposée ou sans la
+    // case cochée, aucun profil n'est fermé, et un bouton qui ne fait rien se
+    // clique quand même puis se signale comme cassé.
+    const boutonProfils = (enCours && ecranSeance)
+        ? `<button type="button" class="ec-bouton ec-bouton--doux"
+                   data-profils-classe="${profilsOuverts ? '0' : '1'}">${
+            profilsOuverts ? 'Refermer les profils' : 'Ouvrir les profils'
+        }</button>
+           <span class="ec-note">${profilsOuverts
+            ? 'Les profils sont rendus : chacun peut aller voir ses badges et ses erreurs.'
+            : 'Sans cela, chaque élève retrouve le sien en terminant une étape.'}</span>`
+        : '';
     return `
         <div class="ec-encours${enCours ? '' : ' ec-encours--aucune'}">
             ${enCours
@@ -1779,6 +1839,7 @@ function seancesHtml() {
                    <span>Elle s'ouvre toute seule chez vos élèves, sans qu'ils aient rien à
                          lancer, ${esc(jusquaDit())}.</span>
                    ${caseEcran}
+                   ${boutonProfils}
                    <button type="button" class="ec-bouton ec-bouton--doux" data-imposer-rien>Ne plus rien imposer</button>`
                 : `<b>Aucune séance imposée</b>
                    <span>Vos élèves voient TOUTES les séances ci-dessous et choisissent eux-mêmes.
@@ -3991,6 +4052,7 @@ async function brancher(e, redessiner) {
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours], [data-ecran-seance],'
+        + '[data-profils-classe], [data-profil-eleve],'
         + '[data-maison], [data-maison-mot], [data-defi-go], [data-defi-stop], [data-defi-voir],'
         // LES DEUX ÉCRANS D'APRÈS LE DÉFI. Un crochet absent de cette liste
         // désigne un bouton qui EXISTE et qui ne fait RIEN : il se dessine, il
@@ -4307,6 +4369,39 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    // ── RENDRE LES PROFILS, À TOUTE LA CLASSE ───────────────────────────────
+    //
+    // Rémy : « il ne peut accéder à son profil que si je l'y autorise ». Le
+    // geste de fin d'heure, en un clic pour les trente.
+    if (d.profilsClasse !== undefined) {
+        const ouvert = d.profilsClasse === '1';
+        await fait(ouvrirLesProfils(vue.classe.id, ouvert), () => {
+            if (vue.liste && vue.liste.classe) {
+                vue.liste.classe.impose_profil_ouvert = ouvert;
+            }
+        });
+        return;
+    }
+
+    // ET À UN SEUL ÉLÈVE — celui qui a fini en avance, celui qu'on envoie
+    // relire son carnet d'erreurs. Le direct est l'écran où Rémy le voit
+    // travailler, donc c'est là que le geste se prend.
+    if (d.profilEleve !== undefined) {
+        const ouvert = d.ouvert === '1';
+        const prenom = d.prenom || 'Cet élève';
+        await fait(ouvrirLeProfil(vue.classe.id, d.profilEleve, ouvert), () => {
+            // ON RETOUCHE LA LIGNE QU'ON A SOUS LES YEUX plutôt que d'attendre
+            // le battement du direct : il passe toutes les dix secondes, et un
+            // bouton qui met dix secondes à changer d'avis se reclique.
+            const lui = ((vue.direct && vue.direct.eleves) || [])
+                .find(x => x.id === d.profilEleve);
+            if (lui) lui.profilOuvert = ouvert;
+        }, ouvert
+            ? `${prenom} retrouve son profil.`
+            : `Le profil de ${prenom} se referme jusqu'à sa première étape finie.`);
+        return;
+    }
+
     // METTRE UNE SÉANCE EN COURS, DEPUIS LA LISTE DES SÉANCES.
     //
     // Le geste existait — un menu déroulant, au fond de l'onglet « En cours ».
@@ -4321,7 +4416,7 @@ async function brancher(e, redessiner) {
         await fait(imposerLaSeance(vue.classe.id, d.mettreEnCours, ecran), () => {
             if (vue.liste && vue.liste.classe) {
                 vue.liste.classe.impose_path_id = d.mettreEnCours;
-                vue.liste.classe.impose_plein_ecran = ecran;
+                vue.liste.classe.impose_ecran_seance = ecran;
             }
         });
         return;
@@ -4332,7 +4427,7 @@ async function brancher(e, redessiner) {
         // case garde sa valeur et partira avec la prochaine imposition.
         const ecran = !!el.checked;
         const encours = (vue.liste && vue.liste.classe && vue.liste.classe.impose_path_id) || '';
-        if (vue.liste && vue.liste.classe) vue.liste.classe.impose_plein_ecran = ecran;
+        if (vue.liste && vue.liste.classe) vue.liste.classe.impose_ecran_seance = ecran;
         if (!encours) return;
         await fait(imposerLaSeance(vue.classe.id, encours, ecran), () => {});
         return;
@@ -4344,7 +4439,7 @@ async function brancher(e, redessiner) {
                 // LE PLEIN ÉCRAN S'ÉTEINT AVEC LA SÉANCE, côté serveur comme
                 // ici : un drapeau qui lui survivrait reviendrait tout seul la
                 // semaine suivante sur une séance qui ne l'a pas demandé.
-                vue.liste.classe.impose_plein_ecran = false;
+                vue.liste.classe.impose_ecran_seance = false;
             }
         });
         return;

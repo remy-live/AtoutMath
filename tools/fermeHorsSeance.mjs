@@ -143,7 +143,7 @@ await eleve.screenshot({ path: 'tools/tmp/ferme-eleve.png' });
 // ── 3. LE PROFESSEUR IMPOSE SA SÉANCE, ET LA PORTE S'OUVRE ──────────────────
 //
 // On passe par l'API pour ce geste-là : il est déjà mesuré ailleurs
-// (tools/pleinEcranImpose.mjs), et ce qu'on veut voir ici est l'effet chez
+// (tools/ecranDeSeance.mjs), et ce qu'on veut voir ici est l'effet chez
 // l'élève, pas le chemin de clics du professeur.
 const parcours = await s.page.evaluate(async () => {
     const { imposerLaSeance, mesClasses, auServeur } = await import('./js/core/espaceProf.js');

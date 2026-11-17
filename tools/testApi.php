@@ -3295,7 +3295,7 @@ json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => 
 // ON NE PEUT PAS LE FORCER — un navigateur n'accorde le plein écran qu'à la
 // suite d'un geste de l'élève, et c'est une règle du web. Ce qui part au
 // PREMIER APPUI, lui, s'accroche à ce geste : mesuré au navigateur par
-// `node tools/pleinEcranImpose.mjs`, qui obtient un vrai
+// `node tools/ecranDeSeance.mjs`, qui obtient un vrai
 // `document.fullscreenElement`.
 //
 // CE QUI SE GARDE ICI EST LE CHEMIN DU RÉGLAGE, et il traverse trois couches :
@@ -3329,9 +3329,9 @@ verifier('ET L\'ÉLÈVE LE REÇOIT AVEC SA SÉANCE', $sonEcran() === true,
 $repProf = json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre);
 $vuProf = $repProf['json']['classe'] ?? [];
 verifier('l\'écran du professeur montre la case cochée',
-    $repProf['code'] === 200 && ($vuProf['impose_plein_ecran'] ?? null) === true,
+    $repProf['code'] === 200 && ($vuProf['impose_ecran_seance'] ?? null) === true,
     'code ' . $repProf['code'] . ' · reçu : '
-        . var_export($vuProf['impose_plein_ecran'] ?? null, true));
+        . var_export($vuProf['impose_ecran_seance'] ?? null, true));
 
 // LA CASE SE DÉCOCHE SANS LEVER L'IMPOSITION — c'est tout l'intérêt d'un
 // réglage : il doit pouvoir revenir en arrière tout seul.
@@ -3342,17 +3342,61 @@ verifier('DÉCOCHÉE, LA SÉANCE RESTE IMPOSÉE ET L\'ÉCRAN NE BOUGE PLUS',
     $laSienne() === 'Le devoir du mardi' && $sonEcran() === false,
     $laSienne() . ' / ' . var_export($sonEcran(), true));
 
-// ET IL S'ÉTEINT AVEC LA SÉANCE. Un drapeau qui lui survivrait reviendrait tout
-// seul la semaine suivante sur une séance qui ne l'a pas demandé — la séance,
-// elle, s'éteint toute seule à la fin de la journée.
+// ── ET IL NE S'ÉTEINT PLUS AVEC LA SÉANCE. LA RÈGLE A CHANGÉ, EXPRÈS. ──────
+//
+// Cette vérification gardait l'inverse, et sa raison était juste à l'époque :
+// « un drapeau qui lui survivrait reviendrait tout seul la semaine suivante
+// sur une séance qui ne l'a pas demandé ».
+//
+// RÉMY, 17 NOVEMBRE : « une popup (en option chèck de base) ». « De base » veut
+// dire COCHÉE — c'est-à-dire que revenir tout seul la semaine suivante est
+// désormais ce qu'on VEUT. Et une case cochée par défaut, qu'on décoche, et qui
+// se recoche toute seule au retrait de la séance, n'est pas un réglage : c'est
+// un piège. On garde donc le choix du professeur, dans les deux sens.
+//
+// LE DRAPEAU NE FAIT RIEN SANS SÉANCE IMPOSÉE — il n'y a pas d'écran de séance
+// à éteindre, seulement un choix à se rappeler. C'est pourquoi le garder ne
+// change rien à ce que vivent les élèves entre deux heures.
+json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours,
+     'pleinEcran' => false], $jetonNotre);
+json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
+$qEcr = enBase()->prepare('SELECT impose_ecran_seance FROM classes WHERE id = ?');
+$qEcr->execute([$idApp]);
+// UNE SEULE LECTURE : `fetchColumn()` AVANCE LE CURSEUR. L'appeler une
+// deuxième fois pour le message rendrait `false`, et le message dirait le
+// contraire de ce que la vérification a mesuré.
+$luApresDecoche = (int) $qEcr->fetchColumn();
+verifier('DÉCOCHÉ, L\'ÉCRAN DE SÉANCE LE RESTE APRÈS LE RETRAIT DE LA SÉANCE',
+    $luApresDecoche === 0, 'colonne : ' . $luApresDecoche);
+
+// ET COCHÉ, IL LE RESTE AUSSI : le réglage se souvient dans les deux sens, ce
+// qui est la définition même d'un réglage.
 json('/teacher/class',
     ['classId' => $idApp, 'action' => 'imposer', 'pathId' => $leParcours,
      'pleinEcran' => true], $jetonNotre);
 json('/teacher/class', ['classId' => $idApp, 'action' => 'imposer', 'pathId' => ''], $jetonNotre);
-$qEcr = enBase()->prepare('SELECT impose_plein_ecran FROM classes WHERE id = ?');
-$qEcr->execute([$idApp]);
-verifier('LE PLEIN ÉCRAN S\'ÉTEINT AVEC LA SÉANCE QU\'IL ACCOMPAGNAIT',
-    (int) $qEcr->fetchColumn() === 0);
+$qEcr2 = enBase()->prepare('SELECT impose_ecran_seance FROM classes WHERE id = ?');
+$qEcr2->execute([$idApp]);
+verifier('COCHÉ, IL LE RESTE AUSSI — un réglage se souvient dans les deux sens',
+    (int) $qEcr2->fetchColumn() === 1);
+
+// ── ET IL EST COCHÉ DE BASE SUR UNE CLASSE NEUVE ───────────────────────────
+//
+// Rémy : « en option chèck de base ». Une colonne à zéro par défaut ne sait pas
+// l'être — c'est pour cela que `impose_plein_ecran` est devenue
+// `impose_ecran_seance INTEGER NOT NULL DEFAULT 1`. Sans cette vérification, le
+// jour où quelqu'un remet un `$bool` par commodité, la case redeviendrait vide
+// et personne ne le verrait avant la rentrée.
+json('/teacher/classes', ['action' => 'create', 'name' => 'Classe toute neuve'], $jetonNotre);
+$qId = enBase()->prepare('SELECT id FROM classes WHERE name = ?');
+$qId->execute(['Classe toute neuve']);
+$idNeuve = (string) $qId->fetchColumn();
+$qNeuve = enBase()->prepare('SELECT impose_ecran_seance FROM classes WHERE id = ?');
+$qNeuve->execute([$idNeuve]);
+verifier('UNE CLASSE NEUVE A L\'ÉCRAN DE SÉANCE DÉJÀ COCHÉ',
+    $idNeuve !== '' && (int) $qNeuve->fetchColumn() === 1,
+    'classe ' . var_export($idNeuve, true));
 
 // ────────── DONNER À UN ÉLÈVE, ET À LUI SEUL ───────────────────────────────
 //

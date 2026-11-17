@@ -42,6 +42,13 @@ import { normalizePath } from '../core/path.js';
 import { memeEtape } from '../core/seances.js';
 import { resolvePolicy } from '../core/policy.js';
 import { identiteDeParcours } from '../core/shortcodes.js';
+// L'ÉCRAN DE SÉANCE, importé EN TÊTE et non à la demande. Son écran de départ
+// demande le plein écran dans le clic de l'élève, et un `await import()` au
+// milieu rendrait la main au navigateur : la demande ne serait plus reconnue
+// comme venant d'un geste et échouerait en silence. La même raison que celle
+// écrite dans `ui/fullscreen.js`, et elle a déjà coûté.
+import { appliquerEcranDeSeance, montrerLEcranDeDepart,
+    oublierLEcranDeDepart } from './ecranDeSeance.js';
 
 let pose = false;
 let minuteur = null;
@@ -232,6 +239,12 @@ function ouvrirLaSeanceImposee(impose) {
         policy: resolvePolicy(parcours.policy)
     });
     dernierImpose = id;
+    // ET L'ÉCRAN DE DÉPART, ICI ET NULLE PART AILLEURS. Une séance imposée
+    // s'ouvre TOUTE SEULE — c'est tout son intérêt, « comme cela ils n'ont rien
+    // à lancer » — donc il n'existe aucun clic à attraper pour demander le
+    // plein écran. L'écran de départ fabrique ce clic, et c'est le seul endroit
+    // du logiciel où l'on sait qu'une séance vient de s'ouvrir d'elle-même.
+    montrerLEcranDeDepart(impose);
 }
 
 // ───────────────────────────────────────────────────── LE BANDEAU ───────────
@@ -393,6 +406,15 @@ function surEtat() {
     // chronométrée le matin empêcherait celle de l'après-midi de se clore.
     const t = tempsRestant();
     if (t && t.reste > 0) dejaTermine = false;
+    // LE PROFIL SE FERME ET S'OUVRE ICI, à chaque battement de l'état de
+    // séance : le professeur peut rendre les profils au milieu de l'heure, et
+    // l'élève ne doit pas avoir à recharger pour s'en apercevoir.
+    appliquerEcranDeSeance();
+    // PLUS DE SÉANCE IMPOSÉE, PLUS D'ÉCRAN DE DÉPART MONTRÉ. Sans cet oubli,
+    // Rémy qui retire sa séance puis repose LA MÊME dans l'heure suivante
+    // n'aurait pas d'écran de départ chez ses élèves — donc pas de plein
+    // écran, et un réglage qui a l'air cassé.
+    if (!impose || !impose.pathId) oublierLEcranDeDepart();
     dessiner();
 }
 
@@ -401,6 +423,11 @@ export function initLeMoment() {
     if (pose || typeof document === 'undefined') return;
     pose = true;
     document.addEventListener('seance_distante', surEtat);
+    // ET LE TRAVAIL DE L'ÉLÈVE OUVRE SON PROFIL SANS PASSER PAR LE RÉSEAU.
+    // « Le verrou meurt si il a fait la séance ou au moins un bout » — au
+    // moment où la pastille devient or, pas au prochain aller-retour avec le
+    // serveur, et même hors ligne.
+    document.addEventListener('studentPath_updated', appliquerEcranDeSeance);
     clearInterval(minuteur);
     minuteur = setInterval(battre, 1000);
     surEtat();
