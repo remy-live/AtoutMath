@@ -95,11 +95,14 @@ import {
     anglesDroitsDe as anglesDroitsDeCodage,
     NOM_TYPE as NOM_TYPE_CODAGE
 } from '../core/codage.js';
+// QUATRE DE CES IMPORTS NE SERVAIENT PLUS : `ancreArc`, `contourSecteur`,
+// `HAUTEUR_ETIQUETTE` et `etiquetteDedans` étaient nommés ici alors que le
+// dessin des angles est descendu dans `fiches/socle.js`. Un import mort n'est
+// pas une faute, mais celui-là a failli coûter cher : en cherchant qui posait
+// les étiquettes d'angle, il désignait ce fichier-ci. On les retire.
 import {
-    contourSecteur as contourSecteurAngle, equerreDe as equerreAngle,
-    mesureArc as mesureArcAngle, ancreArc as ancreArcAngle,
-    rayonSecteur as rayonSecteurAngle, boiteFigure as boiteFigureAngle,
-    HAUTEUR_ETIQUETTE as HAUTEUR_ETIQ_ANGLE, etiquetteDedans as etiqDedansAngle
+    equerreDe as equerreAngle, mesureArc as mesureArcAngle,
+    rayonSecteur as rayonSecteurAngle, boiteFigure as boiteFigureAngle
 } from '../core/anglesRemarquables.js';
 import { sommets as sommetsAngles } from '../core/anglesRemarquablesSvg.js';
 import {

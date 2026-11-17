@@ -420,6 +420,26 @@ function paveSvg(L, l, h, u, cube = false) {
     const C2 = [C[0] + p, C[1] - p], D2 = [D[0] + p, D[1] - p];
     const P = [A, B, C, D, A2, B2, C2, D2];
     const m = [];
+    // ── TROIS FACES, TROIS TEINTES, ET CE N'EST PAS DE LA DÉCORATION ─────
+    //
+    // Rémy : « mets un peu de couleurs pour les figures et solide ». Un pavé
+    // au seul trait noir est un hexagone barré de trois segments : il faut
+    // RECONSTRUIRE le solide pour le voir, et c'est exactement l'effort qu'on
+    // veut épargner à un élève de sixième qui cherche déjà sa formule.
+    //
+    // Trois teintes d'un même bleu — le dessus le plus clair, le côté le plus
+    // sombre — posent une lumière qui vient d'en haut à gauche, et le solide
+    // se lit sans qu'on y pense. Une seule teinte sur les trois faces rendrait
+    // une silhouette plate.
+    //
+    // ELLES SE DESSINENT AVANT LES ARÊTES, sinon elles les recouvriraient : en
+    // SVG, ce qui vient après passe devant.
+    m.push(`<path class="vol-face vol-face--dessus" d="M ${pt(...D)} L ${pt(...C)}
+        L ${pt(...C2)} L ${pt(...D2)} Z"/>`);
+    m.push(`<path class="vol-face vol-face--cote" d="M ${pt(...B)} L ${pt(...B2)}
+        L ${pt(...C2)} L ${pt(...C)} Z"/>`);
+    m.push(`<path class="vol-face vol-face--avant" d="M ${pt(...A)} L ${pt(...B)}
+        L ${pt(...C)} L ${pt(...D)} Z"/>`);
     // LES ARÊTES CACHÉES EN POINTILLÉS : c'est à cela qu'un élève reconnaît
     // que le dessin est un solide et non un hexagone.
     m.push(`<path class="vol-cache" d="M ${pt(...A2)} L ${pt(...A)} M ${pt(...A2)} L ${pt(...B2)}
@@ -449,6 +469,10 @@ function prismeSvg(b, hb, H, u) {
     const A2 = [A[0] + p, A[1] - p], B2 = [B[0] + p, B[1] - p], S2 = [S[0] + p, S[1] - p];
     const P = [A, B, S, A2, B2, S2];
     const m = [];
+    m.push(`<path class="vol-face vol-face--cote" d="M ${pt(...B)} L ${pt(...B2)}
+        L ${pt(...S2)} L ${pt(...S)} Z"/>`);
+    m.push(`<path class="vol-face vol-face--avant" d="M ${pt(...A)} L ${pt(...B)}
+        L ${pt(...S)} Z"/>`);
     m.push(`<path class="vol-cache" d="M ${pt(...A2)} L ${pt(...B2)} M ${pt(...A2)} L ${pt(...S2)}
         M ${pt(...A2)} L ${pt(...A)}"/>`);
     m.push(`<path class="vol-arete" d="M ${pt(...A)} L ${pt(...B)} L ${pt(...S)} Z"/>`);
@@ -481,6 +505,11 @@ function cylindreSvg(r, h, u) {
     const cx = 0, bas = 0, haut = -ht;
     const P = [[cx - R, bas + ry], [cx + R, bas + ry], [cx - R, haut - ry], [cx + R, haut - ry]];
     const m = [];
+    // LE CORPS DU CYLINDRE : le rectangle, fermé en bas par l'arc qu'on VOIT.
+    // Le haut se ferme par un trait droit, invisible puisque le disque du
+    // dessus se dessine par-dessus.
+    m.push(`<path class="vol-face vol-face--avant" d="M ${pt(cx - R, haut)} L ${pt(cx - R, bas)}
+        A ${R.toFixed(1)} ${ry.toFixed(1)} 0 0 0 ${pt(cx + R, bas)} L ${pt(cx + R, haut)} Z"/>`);
     m.push(`<path class="vol-cache" d="M ${pt(cx - R, bas)} A ${R.toFixed(1)} ${ry.toFixed(1)}
         0 0 0 ${pt(cx + R, bas)}"/>`);
     m.push(`<path class="vol-arete" d="M ${pt(cx - R, bas)} A ${R.toFixed(1)} ${ry.toFixed(1)}
@@ -513,6 +542,12 @@ function pyramideSvg(c, h, u) {
     const S = [O[0], O[1] - ht];
     const P = [A, B, A2, B2, S];
     const m = [];
+    m.push(`<path class="vol-face vol-face--dessus" d="M ${pt(...A)} L ${pt(...B)}
+        L ${pt(...B2)} L ${pt(...A2)} Z"/>`);
+    m.push(`<path class="vol-face vol-face--cote" d="M ${pt(...B)} L ${pt(...S)}
+        L ${pt(...B2)} Z"/>`);
+    m.push(`<path class="vol-face vol-face--avant" d="M ${pt(...A)} L ${pt(...B)}
+        L ${pt(...S)} Z"/>`);
     m.push(`<path class="vol-cache" d="M ${pt(...A2)} L ${pt(...A)} M ${pt(...A2)} L ${pt(...B2)}
         M ${pt(...A2)} L ${pt(...S)}"/>`);
     m.push(`<path class="vol-arete" d="M ${pt(...A)} L ${pt(...B)} L ${pt(...B2)}"/>`);
@@ -540,6 +575,14 @@ function coneSvg(r, h, u) {
     const S = [cx, bas - ht];
     const P = [[cx - R, bas + ry], [cx + R, bas + ry], S];
     const m = [];
+    // DEUX MORCEAUX DE LA MÊME TEINTE : le triangle des génératrices, et le
+    // croissant du disque de base qu'on voit par en dessous. Les écrire en un
+    // seul chemin demanderait de retourner l'arc, ce qui se trompe de sens une
+    // fois sur deux et ne se voit qu'à l'image.
+    m.push(`<path class="vol-face vol-face--avant" d="M ${pt(cx - R, bas)} L ${pt(...S)}
+        L ${pt(cx + R, bas)} Z"/>`);
+    m.push(`<path class="vol-face vol-face--avant" d="M ${pt(cx - R, bas)}
+        A ${R.toFixed(1)} ${ry.toFixed(1)} 0 0 1 ${pt(cx + R, bas)} Z"/>`);
     m.push(`<path class="vol-cache" d="M ${pt(cx - R, bas)} A ${R.toFixed(1)} ${ry.toFixed(1)}
         0 0 0 ${pt(cx + R, bas)}"/>`);
     m.push(`<path class="vol-arete" d="M ${pt(cx - R, bas)} A ${R.toFixed(1)} ${ry.toFixed(1)}

@@ -9,8 +9,7 @@
 // ici, une fois, et nulle part ailleurs : `versEcran`.
 
 import {
-    contourSecteur, equerreDe, mesureArc, ancreArc, rayonSecteur, boiteFigure,
-    HAUTEUR_ETIQUETTE, etiquetteDedans
+    contourSecteur, equerreDe, mesureArc, rayonSecteur, boiteFigure, poseEtiquettes
 } from './anglesRemarquables.js';
 
 // LE CADRE ÉPOUSE LA FIGURE, il ne l'enferme pas dans un carré. Deux droites
@@ -86,21 +85,31 @@ export function figureAnglesSvg(figure, { mesures = 'donne', prefixe = 'ar' } = 
         d += `<circle class="ar-sommet" cx="${arr(q.x)}" cy="${arr(q.y)}" r="3"/>`;
     });
 
-    figure.arcs.forEach((arc) => {
+    // LA POSE, LA TAILLE ET LA PLACE DES VOISINES VIENNENT ENSEMBLE.
+    //
+    // C'étaient trois décisions séparées : `ancreArc` plaçait, une constante
+    // dimensionnait, et personne ne regardait les voisines. Or la place qu'il
+    // faut dépend de la LARGEUR du nombre — « 130° » est trois fois plus large
+    // que haut —, la largeur dépend de la taille, et les trois secteurs d'un
+    // triangle se recouvrent dans son intérieur. Trois décisions qui s'ignorent
+    // ne peuvent pas tenir : Rémy l'a vu d'un coup d'œil (« déborde un peu ! »),
+    // et la planche de huit triangles a montré bien pire.
+    //
+    // ON NE POSE QUE LES ÉTIQUETTES QUI S'ÉCRIVENT : une figure où l'on cache
+    // les mesures n'a pas à écarter des nombres qu'elle ne montre pas.
+    const texteDe = (arc) => {
         const dit = mesures === 'toutes'
             || (mesures === 'donne' && arc.role === 'donne');
-        const numero = arc.pas ? String(arc.pas) : '';
-        if (!dit && !numero) return;
-        const ancre = ancreArc(arc);
-        const q = P(ancre.x, ancre.y);
-        const texte = dit ? `${mesureArc(arc)}°` : numero;
-        // LA TAILLE VIENT DE L'ÉCHELLE DU DESSIN, pas d'une constante de
-        // feuille de style : c'est la seule façon qu'une étiquette occupe la
-        // part de figure que `ancreArc` lui a réservée. Fixée en dur, elle
-        // était énorme sur une figure resserrée et minuscule sur une figure
-        // étalée — et dans le premier cas elle mordait sur un côté.
-        const taille = arr(HAUTEUR_ETIQUETTE * k);
-        const ou = etiquetteDedans(arc) ? ' ar-mesure--dedans' : '';
+        return dit ? `${mesureArc(arc)}°` : (arc.pas ? String(arc.pas) : '');
+    };
+    const ecrits = figure.arcs.filter(arc => texteDe(arc) !== '');
+    const poses = poseEtiquettes(ecrits, texteDe);
+    ecrits.forEach((arc, i) => {
+        const texte = texteDe(arc);
+        const pose = poses[i];
+        const q = P(pose.x, pose.y);
+        const taille = arr(pose.h * k);
+        const ou = pose.dedans ? ' ar-mesure--dedans' : '';
         d += `<text class="ar-mesure ar-mesure--${arc.role}${ou}" x="${arr(q.x)}" y="${arr(q.y + taille * 0.35)}"
             font-size="${taille}" stroke-width="${arr(taille * 0.26)}"
             text-anchor="middle">${texte}</text>`;

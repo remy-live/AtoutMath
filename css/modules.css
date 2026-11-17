@@ -19293,7 +19293,18 @@ body.visite-en-cours .modal-overlay > * {
 /* Les faces rondes — le disque du haut d'un cylindre, la boule — portent un
    aplat très pâle : c'est ce qui les fait lire comme des SURFACES et non comme
    des ellipses posées là. */
-.vol-face { fill: color-mix(in srgb, var(--primary) 8%, transparent); }
+/* ── LES FACES, ET LEURS TROIS TEINTES ───────────────────────────────────
+   Rémy : « mets un peu de couleurs pour les figures et solide ». Un aplat à
+   8 % ne se voyait pas : à l'écran, le pavé restait un hexagone barré de trois
+   segments, et il fallait RECONSTRUIRE le solide pour le voir.
+   Trois valeurs d'un même bleu posent une lumière qui vient d'en haut à
+   gauche — le dessus le plus clair, le côté le plus sombre — et le solide se
+   lit sans y penser. Une seule teinte sur les trois faces rendrait une
+   silhouette plate, ce qui serait pire que le trait nu. */
+.vol-face { fill: color-mix(in srgb, var(--primary) 18%, transparent); }
+.vol-face--dessus { fill: color-mix(in srgb, var(--primary) 11%, transparent); }
+.vol-face--avant { fill: color-mix(in srgb, var(--primary) 20%, transparent); }
+.vol-face--cote { fill: color-mix(in srgb, var(--primary) 32%, transparent); }
 /* LES ARÊTES CACHÉES EN POINTILLÉS. C'est à elles qu'un élève reconnaît qu'un
    dessin est un solide et non un hexagone — et c'est la convention de tous ses
    manuels. */
@@ -19370,7 +19381,11 @@ body.visite-en-cours .modal-overlay > * {
    triangle ne désigne rien, et l'élève le lit comme le côté oblique, qui est
    plus long. Le trait pointillé et son angle droit, eux, désignent. */
 .air-svg { display: block; width: 100%; height: auto; color: var(--text-main); }
-.fig-trait { fill: color-mix(in srgb, var(--primary) 7%, transparent);
+/* L'APLAT D'UNE FIGURE PLANE EST SON AIRE, et c'est la grandeur qu'on demande
+   — il a donc le droit de se voir. À 7 % il ne se voyait pas, et le rectangle
+   était un cadre vide ; à 20 % il désigne la surface dont on parle. Rémy :
+   « mets un peu de couleurs ». */
+.fig-trait { fill: color-mix(in srgb, var(--primary) 20%, transparent);
     stroke: var(--text-main); stroke-width: 2.2; stroke-linejoin: round; }
 .fig-hauteur { stroke: var(--primary); stroke-width: 2; stroke-dasharray: 6 4; }
 .fig-droit { fill: none; stroke: var(--primary); stroke-width: 1.6; }

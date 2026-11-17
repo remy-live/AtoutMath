@@ -25,6 +25,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
+import { CADRE_L, CADRE_H } from '../js/core/cotes.js';
 import { volumesGenerator as G } from '../js/core/generators/volumes.js';
 import {
     MARCHES_VOLUME, EXACTS_PI, tirerVolume, figureVolumeSvg
@@ -195,8 +196,17 @@ test('LES SOLIDES GARDENT DES TAILLES COMPARABLES', () => {
         for (let i = 0; i < 12; i++) {
             const svg = figureVolumeSvg(tirerVolume(makeRng(`t-${m}-${i}`), m));
             const [, , w, h] = svg.match(/viewBox="([\d.\s-]+)"/)[1].trim().split(/\s+/).map(Number);
-            assert.ok(w >= 320, `${m} #${i} : cadre large de ${w}, sous le plancher de 320`);
-            assert.ok(h >= 260, `${m} #${i} : cadre haut de ${h}, sous le plancher de 260`);
+            // LES DEUX NOMBRES NE SONT PLUS ÉCRITS ICI, ils sont lus. Ils ont
+            // changé le 17 novembre — Rémy : « le rectangle est petit » — parce
+            // que le plancher était PORTRAIT (320 × 260) dans un emplacement
+            // PAYSAGE (538 × 189) : un SVG s'inscrit en entier dans sa place,
+            // donc il était bridé par la hauteur et les 306 px de largeur qui
+            // restaient ne servaient à personne. Une épreuve qui recopie les
+            // chiffres d'une constante tombe à chaque réglage sans rien dire
+            // de vrai sur la règle qu'elle garde — et la règle, ici, est qu'il
+            // y A un plancher.
+            assert.ok(w >= CADRE_L, `${m} #${i} : cadre large de ${w}, sous le plancher`);
+            assert.ok(h >= CADRE_H, `${m} #${i} : cadre haut de ${h}, sous le plancher`);
             cadres.push(w);
         }
     }

@@ -198,7 +198,32 @@ export function figureTriangle({ a, b, penche = 0 }) {
         // directions qui mène à l'autre en moins d'un demi-tour.
         const de = (dl - dj + 360) % 360 < 180 ? dj : dl;
         const vers = de === dj ? dl : dj;
-        return { x: P[i].x, y: P[i].y, de, a: de + ((vers - de + 360) % 360), role };
+        // LA PLACE DONT DISPOSE CE SOMMET : la plus courte des deux arêtes qui
+        // en partent. C'est elle qui borne la taille de l'étiquette — voir
+        // `poseEtiquette`, et la planche de huit triangles qui a montré deux
+        // nombres superposés sur un triangle étroit.
+        const loin = (k) => Math.hypot(P[k].x - P[i].x, P[k].y - P[i].y);
+        const ouverture = (vers - de + 360) % 360;
+        // ── ET JUSQU'OÙ VA LA BISSECTRICE AVANT DE SORTIR DU TRIANGLE ──────
+        //
+        // LA PLUS COURTE ARÊTE NE SUFFIT PAS, et une épreuve neuve l'a dit sur
+        // le vrai code : dans un angle très ouvert, la bissectrice traverse le
+        // côté OPPOSÉ bien avant d'avoir parcouru la moitié d'une arête, et
+        // l'étiquette sortait du triangle. C'est exactement ce que Rémy a
+        // photographié — « déborde un peu ! ».
+        //
+        // On calcule donc la vraie portée : où le rayon issu du sommet, dans
+        // la direction de la bissectrice, rencontre le segment qui joint les
+        // deux autres sommets.
+        const bis = (de + ouverture / 2) * RAD;
+        const ux = Math.cos(bis), uy = Math.sin(bis);
+        const ex = P[l].x - P[j].x, ey = P[l].y - P[j].y;
+        const det = ux * (-ey) - uy * (-ex);
+        const portee = Math.abs(det) < 1e-9 ? Infinity
+            : ((P[j].x - P[i].x) * (-ey) - (P[j].y - P[i].y) * (-ex)) / det;
+        return { x: P[i].x, y: P[i].y, de, a: de + ouverture, role,
+                 place: Math.min(loin(j), loin(l)),
+                 portee: portee > 0 ? portee : Infinity };
     };
     const seg = (i, j) => ({ x1: P[i].x, y1: P[i].y, x2: P[j].x, y2: P[j].y });
     return {
@@ -273,9 +298,183 @@ export const HAUTEUR_ETIQUETTE = 0.2;
  * Les deux rendus ont besoin de le savoir pour choisir la couleur du liseré
  * qui la détache : dehors, celle du fond de la page ; dedans, celle du secteur
  * — sinon le liseré blanc perce un trou au milieu de la couleur.
+ *
+ * ELLE N'EST PLUS LA SOURCE DE VÉRITÉ : `poseEtiquette` décide, et rend
+ * `dedans`. Celle-ci reste pour les appelants qui n'ont que l'arc sous la
+ * main, et elle dit la même chose dans le cas simple.
  */
 export function etiquetteDedans(arc) {
     return mesureArc(arc) >= 90;
+}
+
+/**
+ * LA LARGEUR D'UN NOMBRE D'ANGLE, dans les unités de la figure.
+ *
+ * On n'a pas de moteur de texte ici — ni en SVG avant le rendu, ni en jsPDF
+ * sans charger la police. Mais la seule chose qu'on écrive est « 25° » ou
+ * « 130° » dans une graisse 800 : trois ou quatre glyphes, tous de même
+ * chasse. 0,58 em par chiffre et 0,46 em pour le degré, mesurés sur la police
+ * du logiciel, suffisent amplement — on ne cherche pas le pixel, on cherche à
+ * ne pas poser un nombre sur un trait.
+ */
+export function largeurEtiquette(texte, hauteur) {
+    const s = String(texte);
+    const degres = (s.match(/°/g) || []).length;
+    return hauteur * (0.58 * (s.length - degres) + 0.46 * degres);
+}
+
+/**
+ * OÙ POSER L'ÉTIQUETTE, ET DE QUELLE TAILLE — en une seule décision.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, capture à l'appui : « déborde un peu ! ». Un « 80° » qui sortait de
+ * son secteur et traversait le côté du triangle. REGARDÉ EN PLANCHE ensuite
+ * (`tools/tmp/angles.png`, huit triangles d'un coup), ce n'était pas « un
+ * peu » : sur quatre des huit, DEUX étiquettes se chevauchaient, et sur l'une
+ * d'elles les deux nombres étaient simplement superposés.
+ *
+ * ── POURQUOI L'ANCIENNE POSE NE POUVAIT PAS TENIR ────────────────────────
+ *
+ * Elle réservait à l'étiquette une demi-largeur égale à la MOITIÉ DE SA
+ * HAUTEUR (`HAUTEUR_ETIQUETTE / 2`). Or « 130° » est trois fois plus large que
+ * haut. Elle était écrite pour la figure des deux parallèles, où les sommets
+ * sont loin l'un de l'autre et où l'erreur ne se voyait pas ; un triangle
+ * rapproche trois sommets, et trois étiquettes.
+ *
+ * ── LA RÈGLE, ET POURQUOI ELLE SUFFIT ────────────────────────────────────
+ *
+ * L'étiquette tient dans un disque de rayon R (sa demi-diagonale). Posée à la
+ * distance d du sommet sur la bissectrice, elle est à l'intérieur du secteur
+ * si d·sin(m/2) ≥ R — la distance de la bissectrice à chaque côté.
+ *
+ * ET ELLE NE DOIT PAS ALLER SE COGNER À L'ÉTIQUETTE DU SOMMET D'À CÔTÉ. Il
+ * suffit pour cela que chacune reste dans la MOITIÉ de la plus courte arête
+ * qui part de son sommet : deux étiquettes posées sur une même arête ne
+ * peuvent alors pas se rencontrer. C'est une borne généreuse et elle se
+ * démontre en une ligne, ce qui vaut mieux qu'un détecteur de collision
+ * qu'on croit juste.
+ *
+ * `arc.place` porte cette plus courte arête ; les figures de droites n'en ont
+ * pas, et une droite est longue : on prend alors large.
+ *
+ * SI L'ÉTIQUETTE VOULUE NE TIENT PAS, ON LA RAPETISSE — jusqu'à un plancher,
+ * au-dessous duquel un élève ne lit plus. Là, et seulement là, elle sort
+ * derrière l'arc, comme dans un manuel.
+ */
+export const ETIQUETTE_MINI = 0.085;
+
+export function poseEtiquette(arc, texte = '00°', hVoulue = HAUTEUR_ETIQUETTE,
+    exterieur = false) {
+    const m = mesureArc(arc);
+    const rs = rayonSecteur(arc);
+    const place = Number.isFinite(arc.place) ? arc.place : 3;
+    // Un secteur rentrant (plus de 180°) a la place qu'il veut : c'est son
+    // complémentaire qui est étroit. On borne à 90° pour ne pas diviser par
+    // un sinus qui redescend.
+    const demi = Math.min(Math.max(m, 4), 180) / 2 * RAD;
+    const disque = (h) => Math.hypot(largeurEtiquette(texte, h) / 2, h * 0.58);
+
+    let h = Math.max(ETIQUETTE_MINI, Math.min(HAUTEUR_ETIQUETTE, hVoulue));
+    let R = disque(h);
+    // CE QUE LE SOMMET PEUT PORTER : d + R ≤ place/2, avec d = R / sin(m/2).
+    const Rmax = (place / 2) / (1 + 1 / Math.sin(demi));
+    if (R > Rmax) { h = Math.max(ETIQUETTE_MINI, h * Rmax / R); R = disque(h); }
+
+    const dIdeal = R / Math.sin(demi);
+    // ON NE COLLE PAS L'ÉTIQUETTE AU SOMMET : dans un secteur large, elle y
+    // serait posée sur la pointe de l'angle au lieu d'occuper le secteur.
+    // LA BISSECTRICE SORT DU TRIANGLE QUELQUE PART, et l'étiquette doit rester
+    // en deçà : c'est la borne qui manquait, et sans elle un angle très ouvert
+    // posait son nombre de l'autre côté du côté opposé.
+    const portee = Number.isFinite(arc.portee) ? arc.portee : Infinity;
+    const limite = Math.min(place / 2, portee - R);
+    const dedans = dIdeal + R <= place / 2 && dIdeal <= limite;
+    const d = dedans
+        ? Math.max(Math.min(rs * 0.52, limite), Math.min(dIdeal, limite))
+        // DEHORS : derrière l'arc, sur la bissectrice, comme dans un manuel.
+        : rs + R;
+    // DE L'AUTRE CÔTÉ DU SOMMET, en dernier recours. Deux étiquettes déjà
+    // sorties de leur secteur peuvent encore se rencontrer dans l'intérieur de
+    // la figure — 29 fois sur 4 500 triangles, mesuré. Posées sur la
+    // bissectrice EXTÉRIEURE, elles sont dans trois régions disjointes du plan
+    // et ne peuvent plus se voir. On y perd un peu de lisibilité — le nombre
+    // n'est plus contre son arc —, on y gagne de ne jamais superposer deux
+    // nombres, ce qui ne se lit pas du tout.
+    const direction = arc.de + m / 2 + (exterieur ? 180 : 0);
+    const p = pt(exterieur ? rs * 0.42 + R : d, direction);
+    return { x: arc.x + p.x, y: arc.y + p.y, h, dedans: dedans && !exterieur };
+}
+
+/** La boîte qu'occupe une étiquette posée, dans les unités de la figure. */
+export function boiteEtiquette(pose, texte) {
+    const w = largeurEtiquette(texte, pose.h);
+    return { x1: pose.x - w / 2, x2: pose.x + w / 2,
+             y1: pose.y - pose.h * 0.58, y2: pose.y + pose.h * 0.58 };
+}
+
+const seTouchent = (a, b) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+
+/**
+ * POSER TOUTES LES ÉTIQUETTES D'UNE FIGURE, ET LES EMPÊCHER DE SE RENCONTRER.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * UNE POSE SOMMET PAR SOMMET NE PEUT PAS Y ARRIVER, et c'est ce que la planche
+ * de huit triangles a montré : chaque étiquette tenait bien dans SON secteur,
+ * et deux d'entre elles se superposaient quand même. Les trois secteurs d'un
+ * triangle se recouvrent dans son intérieur — « je tiens chez moi » ne veut
+ * donc pas dire « je ne suis chez personne d'autre ».
+ *
+ * J'AI D'ABORD ESSAYÉ DE BORNER, et le balayage l'a réfuté : en limitant
+ * chaque étiquette à la moitié de la plus courte arête de son sommet, il
+ * restait 179 chevauchements sur 4 500 triangles ; en la rapetissant jusqu'à
+ * un plancher plus bas, encore 105. Une borne assez serrée pour tout empêcher
+ * envoyait un tiers des étiquettes hors de leur secteur, ce qui est pire.
+ *
+ * ON RÉSOUT DONC LA COLLISION ELLE-MÊME, et rapetisser est le bon geste :
+ * l'étiquette se pose à la distance R/sin(m/2) de son sommet, donc une
+ * étiquette plus petite se RAPPROCHE de son sommet en même temps qu'elle
+ * maigrit. Deux voisines qui rétrécissent s'écartent l'une de l'autre.
+ *
+ * ON RAPETISSE LES DEUX, jamais une seule : n'en réduire qu'une ferait
+ * dépendre le dessin de l'ORDRE des arcs, c'est-à-dire du hasard du
+ * générateur — et deux élèves auraient la même figure dessinée autrement.
+ */
+export function poseEtiquettes(arcs, texteDe) {
+    const textes = arcs.map(texteDe);
+    const hauteurs = arcs.map(() => HAUTEUR_ETIQUETTE);
+    const dehors = arcs.map(() => false);
+    const poses = arcs.map((a, i) => poseEtiquette(a, textes[i], hauteurs[i]));
+    for (let essai = 0; essai < 12; essai++) {
+        const boites = poses.map((p, i) => boiteEtiquette(p, textes[i]));
+        let touche = null;
+        for (let i = 0; i < boites.length && !touche; i++) {
+            for (let j = i + 1; j < boites.length; j++) {
+                if (seTouchent(boites[i], boites[j])) { touche = [i, j]; break; }
+            }
+        }
+        if (!touche) break;
+        let bouge = false;
+        for (const k of touche) {
+            if (hauteurs[k] > ETIQUETTE_MINI + 1e-9) {
+                hauteurs[k] = Math.max(ETIQUETTE_MINI, hauteurs[k] * 0.86);
+                poses[k] = poseEtiquette(arcs[k], textes[k], hauteurs[k], dehors[k]);
+                bouge = true;
+            } else if (!poses[k].dedans && !dehors[k]) {
+                // AU PLANCHER, ET DÉJÀ HORS DE SON SECTEUR : rapetisser encore
+                // ne la déplacerait presque pas, puisqu'elle est posée juste
+                // derrière l'arc. On la passe de l'autre côté du sommet.
+                dehors[k] = true;
+                poses[k] = poseEtiquette(arcs[k], textes[k], hauteurs[k], true);
+                bouge = true;
+            }
+        }
+        // PLUS RIEN À TENTER : on s'arrête plutôt que de tourner douze fois
+        // pour rien. L'épreuve dira si cela arrive encore.
+        if (!bouge) break;
+    }
+    return poses;
 }
 
 /**

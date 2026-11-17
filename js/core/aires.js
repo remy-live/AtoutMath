@@ -300,7 +300,20 @@ function triangleAireSvg(b, h, oblique, u) {
         x2="${sx.toFixed(1)}" y2="0"/>`);
     m.push(ANGLE_DROIT(P, sx, 0, -1, -1));
     m.push(cote(P, 0, 14, w, 14, `${b} ${u}`, { dy: 18 }));
-    m.push(etiquette(P, sx - 16, -ht / 2, `h = ${h} ${u}`, 'end'));
+    // LA HAUTEUR S'ÉCRIT AU-DESSUS DU SOMMET, et non à mi-hauteur du trait.
+    //
+    // VU SUR LA PLANCHE (`tools/tmp/solides-couleur.png`) : à mi-hauteur,
+    // « h = 5 cm » passait SUR le côté gauche de la figure — le trait du
+    // triangle traverse l'étiquette en plein milieu, et le nombre devient
+    // illisible. Le prisme avait déjà réglé cela de la même façon, et pour la
+    // même raison : au-dessus du sommet, il n'y a rien, quelles que soient les
+    // dimensions tirées.
+    //
+    // C'est le même défaut que celui que Rémy a signalé le 17 sur les angles
+    // — « déborde un peu ! » — et la même leçon : une étiquette posée à une
+    // coordonnée FIXE finit toujours par rencontrer un trait, parce que le
+    // dessin, lui, change à chaque tirage.
+    m.push(etiquette(P, sx - 10, -ht - 8, `h = ${h} ${u}`, 'end'));
     // LE CÔTÉ OBLIQUE PORTE SA MESURE : c'est lui que prend l'élève qui se
     // trompe, et sans elle la faute est impossible — donc invisible.
     m.push(etiquette(P, (sx + w) / 2 + 10, -ht / 2, `${oblique} ${u}`, 'start'));
@@ -319,7 +332,9 @@ function parallelogrammeSvg(b, h, oblique, u) {
         x2="${d.toFixed(1)}" y2="0"/>`);
     m.push(ANGLE_DROIT(P, d, 0, 1, -1));
     m.push(cote(P, 0, 14, w, 14, `${b} ${u}`, { dy: 18 }));
-    m.push(etiquette(P, d - 16, -ht / 2, `h = ${h} ${u}`, 'end'));
+    // AU-DESSUS DU SOMMET GAUCHE, comme pour le triangle et le prisme : à
+    // mi-hauteur, l'étiquette tombait sur le côté oblique de gauche.
+    m.push(etiquette(P, d - 10, -ht - 8, `h = ${h} ${u}`, 'end'));
     m.push(etiquette(P, (w + d + w) / 2 + 12, -ht / 2, `${oblique} ${u}`, 'start'));
     return cadreSvg(m.join('\n        '), P, { classe: 'air-svg',
         aria: `Un parallélogramme de base ${b} ${u} et de hauteur ${h} ${u}` });

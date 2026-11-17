@@ -5,7 +5,7 @@
 // `RENDUS` atteint part avec sa famille ; celles qu'en atteignent deux ou
 // plus restent ici. Voir `tools/decouperPrintSheet.mjs`.
 
-import { HAUTEUR_ETIQUETTE as HAUTEUR_ETIQ_ANGLE, ancreArc as ancreArcAngle, boiteFigure as boiteFigureAngle, contourSecteur as contourSecteurAngle, equerreDe as equerreAngle, etiquetteDedans as etiqDedansAngle, rayonSecteur as rayonSecteurAngle } from '../../core/anglesRemarquables.js';
+import { poseEtiquette as poseEtiqAngle, boiteFigure as boiteFigureAngle, contourSecteur as contourSecteurAngle, equerreDe as equerreAngle, rayonSecteur as rayonSecteurAngle } from '../../core/anglesRemarquables.js';
 import { encre, mesureur, polycopieEnCouleur, pourPdf, texteRiche } from '../ficheRendu.js';
 import { sommets as sommetsAngles } from '../../core/anglesRemarquablesSvg.js';
 
@@ -79,7 +79,17 @@ export function geoAnglesManquants(item, slot, partLigne = 0.2) {
         // plafond ne fait que RÉDUIRE l'étiquette, donc la place que `ancreArc`
         // lui a réservée reste suffisante.
         taille: Math.max(2.6, Math.min(Math.min(b.w, dispoH) * 0.085, 4.4)),
-        tailleEtiq: Math.min(HAUTEUR_ETIQ_ANGLE * k, Math.max(2.2, Math.min(b.w, dispoH) * 0.075))
+        // LE PLAFOND SEUL RESTE ICI ; la taille de CHAQUE étiquette vient
+        // maintenant de `poseEtiquette`, qui la calcule d'après la place dont
+        // dispose son sommet et la largeur du nombre à écrire. Une taille
+        // unique pour toute la figure était justement ce qui faisait déborder
+        // « 130° » là où « 25° » passait — Rémy : « déborde un peu ! ».
+        plafondEtiq: Math.max(2.2, Math.min(b.w, dispoH) * 0.075),
+        etiq: (arc, mot) => {
+            const pose = poseEtiqAngle(arc, mot);
+            return { ...pose, taille: Math.min(pose.h * k,
+                Math.max(2.2, Math.min(b.w, dispoH) * 0.075)) };
+        }
     };
 }
 
@@ -129,14 +139,14 @@ export function figureAnglePreviewHtml(g, k, etiquette) {
     m.figure.arcs.forEach(arc => {
         const mot = etiquette(arc);
         if (!mot) return;
-        const ancre = ancreArcAngle(arc);
-        const p = g.P(ancre.x, ancre.y);
+        const pose = g.etiq(arc, mot);
+        const p = g.P(pose.x, pose.y);
         const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
         // La même gomme qu'au PDF : le fond du secteur quand l'étiquette est
         // dedans, le blanc du papier quand elle est derrière l'arc.
-        const gomme = aplat && etiqDedansAngle(arc) ? `rgb(${c.fond.join(',')})` : '#fff';
-        html += `<div class="fx-ar-mesure" style="left:${T(p.x - 8)}px; top:${T(p.y - g.tailleEtiq * 0.7)}px;
-            width:${T(16)}px; font-size:${T(g.tailleEtiq)}px;
+        const gomme = aplat && pose.dedans ? `rgb(${c.fond.join(',')})` : '#fff';
+        html += `<div class="fx-ar-mesure" style="left:${T(p.x - 8)}px; top:${T(p.y - pose.taille * 0.7)}px;
+            width:${T(16)}px; font-size:${T(pose.taille)}px;
             color:rgb(${c.trait.join(',')})"><span
             style="background:${gomme}">${echapperSheet(mot)}</span></div>`;
     });
@@ -189,25 +199,29 @@ export function dessinerFigureAnglePdf(doc, g, etiquette) {
     });
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(g.tailleEtiq / 0.3528);
     m.figure.arcs.forEach(arc => {
-        const ancre = ancreArcAngle(arc);
-        const p = g.P(ancre.x, ancre.y);
         const c = ENCRE_ANGLE[arc.role] || ENCRE_ANGLE.donne;
         const brut = etiquette(arc);
         if (!brut) return;
         const mot = pourPdf(brut);
+        // LA TAILLE SE POSE DANS LA BOUCLE, ET NON AVANT ELLE : chaque
+        // étiquette a désormais la sienne, calculée d'après la place de son
+        // sommet et la largeur de son nombre. Une taille unique pour toute la
+        // figure était ce qui faisait déborder « 130° » là où « 25° » passait.
+        const pose = g.etiq(arc, mot);
+        doc.setFontSize(pose.taille / 0.3528);
+        const p = g.P(pose.x, pose.y);
         // LE BLANC SOUS L'ÉTIQUETTE. Un côté d'angle passe forcément près de
         // sa bissectrice quand l'angle est serré ; un rectangle blanc posé
         // avant le texte coupe le trait juste là, comme une gomme, et le
         // nombre reste lisible sans qu'on ait à écarter la figure.
-        const lg = doc.getTextWidth(mot) + 0.8, ht = g.tailleEtiq * 0.9;
+        const lg = doc.getTextWidth(mot) + 0.8, ht = pose.taille * 0.9;
         // Dedans, la gomme prend la couleur du secteur : blanche, elle y
         // perçait un trou. Sans aplat, c'est le blanc du papier partout.
-        doc.setFillColor(...(aplat && etiqDedansAngle(arc) ? c.fond : [255, 255, 255]));
+        doc.setFillColor(...(aplat && pose.dedans ? c.fond : [255, 255, 255]));
         doc.rect(p.x - lg / 2, p.y - ht * 0.62, lg, ht, 'F');
         doc.setTextColor(...c.trait);
-        doc.text(mot, p.x, p.y + g.tailleEtiq * 0.35, { align: 'center' });
+        doc.text(mot, p.x, p.y + pose.taille * 0.35, { align: 'center' });
     });
 
 }
