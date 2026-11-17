@@ -7802,3 +7802,59 @@ voyait pas les lucioles, les dinosaures un lavis beige sans fougère, l'Égypte
 virait au lavande faute d'un bleu assez plein, et le Far West ne se distinguait
 pas de « Sans décor ». `node tools/pastillesDesMondes.mjs` puis
 `node tools/planche.mjs` : c'est la planche entière, côte à côte, qui le dit.
+
+---
+
+## 17 novembre — L'écran de séance : une popup, le plein écran, et le profil fermé
+
+> « Et quand j'impose une séance on pourrait pas mettre une popup (en option
+> chèck de base) et quand l'élève valide ça met le parcours vraiment en plein
+> écran (ça prend tout l'écran) et il ne peut accéder à son profil que si je
+> l'y autorise ou qu'il a fini la séance. Qu'en penses-tu il faut que ce soit
+> compatible avec le fait qu'il puisse réviser au soir à la maison on en
+> parle ? »
+
+**UNE PARTIE EXISTAIT DÉJÀ**, et il ne s'en souvenait pas : la case « Plein
+écran chez les élèves », dans *Les séances*, posée après sa demande du mois
+dernier (« est-ce que lorsque j'impose une séance je peux forcer le plein
+écran ? »). Le drapeau voyage avec la séance imposée, et l'imposition s'éteint
+toute seule à trois heures du matin.
+
+**LA POPUP N'EST PAS QU'UN CONFORT, C'EST UNE RÉPARATION.** Le plein écran
+était demandé au PREMIER APPUI de l'élève, quel qu'il soit. Or un navigateur
+n'accorde `requestFullscreen` que pendant un vrai geste, et un doigt posé pour
+faire défiler n'en est pas toujours un : cela échouait **en silence**. Un
+bouton « Commencer » est le geste le plus propre qui existe.
+
+**LE POINT DUR EST CELUI QU'IL A VU LUI-MÊME** — « compatible avec le fait
+qu'il puisse réviser au soir à la maison ». J'ai proposé de séparer deux
+échéances : la séance vit jusqu'à demain matin, le verrou ne vit qu'une heure.
+**Il a répondu autre chose, et de meilleur** :
+
+> « Le verrou meurt si il a fait la séance ou au moins un bout »
+
+Ce n'est plus l'horloge qui ouvre le profil, **c'est le travail fait**. Celui
+qui a travaillé en classe révise librement le soir ; celui qui n'a rien fait
+retrouve sa séance devant lui. Aucune heure à régler, aucune question à poser
+à Rémy, et la règle s'explique à un élève de sixième en une phrase.
+
+**LES QUATRE DÉCISIONS**, après deux séries de questions :
+
+1. « un bout » = **une étape terminée**, seuil de validation compris. C'est une
+   unité que le logiciel compte déjà, que l'élève VOIT (sa pastille devient
+   or), et qu'on ne franchit pas par hasard — contrairement à « une question
+   répondue », qu'on franchit en tapant n'importe quoi.
+2. Quand le bout est fait, **le profil s'ouvre et le plein écran reste**. Le
+   plein écran n'a jamais enfermé personne (le bouton pour en sortir est à
+   l'écran en permanence) ; c'est le profil qui est la vraie distraction.
+3. L'autorisation de Rémy existe **des deux côtés** : un bouton pour les trente
+   d'un coup, et un par élève dans *Le direct*, là où il a déjà la liste
+   nominative. C'est ce qu'il a écrit : « si je l'y autorise ».
+4. La popup ne s'affiche que pour **la séance imposée**. Chez lui, le soir,
+   l'élève ouvre ses séances comme avant — un clic de plus pour rien serait un
+   clic de trop.
+
+**ET JE LUI AI REDIT CE QUE LE CODE DIT DÉJÀ** : ce n'est pas un verrou. Un
+navigateur se quitte, un onglet se change, et aucune page web ne peut
+l'empêcher. C'est un écran RANGÉ. La différence comptera le jour où un élève
+lui montrera qu'il est passé à côté.
