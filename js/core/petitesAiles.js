@@ -56,7 +56,7 @@ export const HAUTEUR_MONDE = 620;
  *
  * LA PALETTE EST DANS LE MONDE, PAS DANS LE DESSIN. Un ciel rose et des roches
  * violettes ne sont pas une décoration : c'est le seul signal qui dit « tu as
- * changé de monde » alors qu'on file à cinq cents pixels par seconde.
+ * changé de monde » alors qu'on file à sept cents pixels par seconde.
  *
  * LES SIX VITESSES DE NUIT SONT MESURÉES, PAS DEVINÉES. Le test simule les
  * trois joueurs — celui qui plonge à propos, celui qui ne fait rien, celui qui
@@ -86,7 +86,7 @@ export const LONGUEUR_MONDE = 6400;
  */
 export const MONDES = [
     {
-        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 380,
+        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 310,
         // Les collines du fond sont du SABLE, pas du bleu : ce sont les mêmes
         // dunes vues de loin, et une couche bleue au milieu du désert se lisait
         // comme une flaque.
@@ -94,27 +94,27 @@ export const MONDES = [
         sol: '#c99a52', herbe: '#f0c987'
     },
     {
-        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 385,
+        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 405,
         ciel: ['#8ed0ff', '#dff3ff'], fond: ['#a9c8e8', '#87b0d8'],
         sol: '#2f855a', herbe: '#68d391'
     },
     {
-        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 390,
+        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 380,
         ciel: ['#ffc98a', '#ffe9cf'], fond: ['#e0a98a', '#c98a72'],
         sol: '#7b4b2a', herbe: '#c0703c'
     },
     {
-        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 395,
+        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 370,
         ciel: ['#b9a7ff', '#e9e2ff'], fond: ['#a99ad8', '#8878c0'],
         sol: '#4a5578', herbe: '#e6ecff'
     },
     {
-        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 400,
+        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 350,
         ciel: ['#63c7c0', '#d6f5f2'], fond: ['#7fbfc4', '#5d9aa4'],
         sol: '#1f6b6b', herbe: '#7fe6d8'
     },
     {
-        id: 6, nom: 'Le pays de nuit', amplitude: 192, periode: 790, nuit: 450,
+        id: 6, nom: 'Le pays de nuit', amplitude: 192, periode: 790, nuit: 415,
         ciel: ['#2d3561', '#5a6bad'], fond: ['#3f4a80', '#2b3358'],
         sol: '#1b2140', herbe: '#8f9bff'
     },
@@ -155,12 +155,12 @@ export const MONDES = [
     // Les sept vitesses de nuit sont donc 88 % de l'allure MESURÉE de leur
     // monde, et de rien d'autre.
     {
-        id: 7, nom: 'Le pays kawaï', amplitude: 139, periode: 900, nuit: 460,
+        id: 7, nom: 'Le pays kawaï', amplitude: 139, periode: 900, nuit: 405,
         ciel: ['#ffd6ec', '#fff2f8'], fond: ['#ffc2dd', '#f7a8cb'],
         sol: '#e07ba8', herbe: '#b9f3dd'
     },
     {
-        id: 8, nom: 'Le royaume fantaisiste', amplitude: 198, periode: 820, nuit: 455,
+        id: 8, nom: 'Le royaume fantaisiste', amplitude: 198, periode: 820, nuit: 410,
         ciel: ['#3b1d63', '#8e4fb0'], fond: ['#6a3a95', '#48256b'],
         sol: '#2a1240', herbe: '#ffd36e'
     },
@@ -168,17 +168,17 @@ export const MONDES = [
         // L'AURORE EST PLUS SOMBRE QU'ELLE N'EN A L'AIR : à `#7ef0c8`, la
         // glace du sol ne s'en détachait plus — rapport de contraste 1,20,
         // c'est-à-dire un sol invisible. Mesuré, pas jugé à l'oeil.
-        id: 9, nom: 'La banquise', amplitude: 119, periode: 950, nuit: 440,
+        id: 9, nom: 'La banquise', amplitude: 119, periode: 950, nuit: 365,
         ciel: ['#07182a', '#2fae8a'], fond: ['#cfe9f5', '#a9d2e6'],
         sol: '#eaf7ff', herbe: '#3f9fd4'
     },
     {
-        id: 10, nom: 'Les terres de braise', amplitude: 162, periode: 700, nuit: 355,
+        id: 10, nom: 'Les terres de braise', amplitude: 162, periode: 700, nuit: 335,
         ciel: ['#3a0f10', '#ff7a3c'], fond: ['#7a2518', '#471310'],
         sol: '#1d0c0b', herbe: '#ff9d4d'
     },
     {
-        id: 11, nom: 'La canopée', amplitude: 199, periode: 760, nuit: 450,
+        id: 11, nom: 'La canopée', amplitude: 199, periode: 760, nuit: 400,
         ciel: ['#9fd6a8', '#e9f8ec'], fond: ['#2f6b46', '#1d4a2f'],
         sol: '#4a3620', herbe: '#5fdc7a'
     },
@@ -188,7 +188,7 @@ export const MONDES = [
         // couleur, et plus de relief du tout. C'est le couchant qui sauve le
         // tableau : un ciel qui descend du bleu de nuit à l'abricot, et le
         // miroir de sel qui le reflète en clair.
-        id: 12, nom: 'Le désert de sel', amplitude: 109, periode: 1000, nuit: 500,
+        id: 12, nom: 'Le désert de sel', amplitude: 109, periode: 1000, nuit: 435,
         ciel: ['#2b4f72', '#e9a07a'], fond: ['#c9a08f', '#a87e6e'],
         sol: '#fbf7f2', herbe: '#d9654a'
     },
@@ -198,7 +198,7 @@ export const MONDES = [
         // ON EST TRÈS HAUT, DONC LE CIEL EST SOMBRE EN HAUT. C'est ce qui
         // dit l'altitude sans un mot — et c'est aussi ce qui détache enfin la
         // mer de nuages, qui est blanche et ne se détachait de rien (1,36).
-        id: 13, nom: 'Au-dessus des nuages', amplitude: 184, periode: 860, nuit: 445,
+        id: 13, nom: 'Au-dessus des nuages', amplitude: 184, periode: 860, nuit: 375,
         ciel: ['#123a6b', '#e8a93f'], fond: ['#ffffff', '#ffe0a8'],
         sol: '#fdfcf8', herbe: '#e8a62a'
     }
@@ -260,10 +260,105 @@ export function progressionMonde(distance) {
  */
 export const TRANSITION = 900;
 
+/**
+ * LA HAUTEUR DE LA BOSSE DE FRONTIÈRE — voir `bosse` pour sa forme.
+ *
+ * CE CHIFFRE EST CELUI DU DÉCOLLAGE, et il se calcule. `quitteLeSol` demande
+ * que la courbure du sol dépasse la gravité : −courbure · v² > g. La courbure
+ * maximale de la bosse vaut BOSSE · 2,85 · 10⁻⁵ (c'est `adoucir2` à son
+ * extremum, divisé par TRANSITION²). À 500 px/s et g = 1300, il faut donc une
+ * bosse de plus de 182 px pour que l'oiseau quitte vraiment le sol.
+ *
+ * On prend plus large : la frontière doit se voir, pas se deviner.
+ */
+export const BOSSE_FRONTIERE = 150;
+
+/**
+ * ET LE SOL SE DÉROBE : chaque frontière descend de ce nombre de pixels.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « dans tiny wings on passait d'un monde à l'autre avec un gros vol
+ * plané ».
+ *
+ * LA BOSSE SEULE NE SUFFISAIT PAS, ET LA MESURE A ÉTÉ SANS APPEL : à bosse
+ * nulle, le plus long vol de la frontière durait déjà 1,05 s pour 279 px ; à
+ * 260 px de bosse, 1,07 s pour 271. Elle ajoutait onze degrés de pente — au-delà
+ * de la falaise — et pas un centième de seconde de vol. Les crêtes ordinaires
+ * du relief éjectaient déjà l'oiseau ; une bosse de plus, étalée sur 900 px, ne
+ * fait qu'une crête de plus.
+ *
+ * CE QUI ALLONGE UN VOL N'EST PAS L'ÉLAN VERS LE HAUT, C'EST LE SOL QUI PART.
+ * Un oiseau lancé à 450 px/s vers le haut retombe en sept dixièmes de seconde,
+ * quelle que soit la bosse. Mais si le sol descend de sept cents pixels pendant
+ * ce temps-là, il ne le rencontre plus : il plane. C'est le mécanisme de Tiny
+ * Wings, et c'est une propriété du TERRAIN, pas de l'oiseau.
+ *
+ * LA BOSSE RESTE, PLUS BASSE : elle donne la crête d'où l'on part, juste avant
+ * que le sol ne s'en aille. Les deux vont ensemble.
+ *
+ * ET LA DESCENTE RAPPORTE : sept cents pixels de chute valent 215 000 de ½v²,
+ * donc 500 px/s qui deviennent 900, le plafond du jeu. Franchir une frontière est une récompense,
+ * et elle se sent dans les doigts.
+ */
+export const DESCENTE_FRONTIERE = 700;
+
+/**
+ * LE NIVEAU MOYEN DU SOL EN x — il descend d'une marche à chaque frontière.
+ *
+ * EXPORTÉ PARCE QUE LE DESSIN EN A BESOIN. Les deux plans d'arrière-plan sont
+ * tirés du même relief, comprimés vers le niveau moyen pour donner la
+ * profondeur. Comprimés vers `SOL_MOYEN`, qui ne descend pas, ils flottaient
+ * dans le ciel dès le troisième monde — mesuré en écrivant cette marche la
+ * première fois, et c'est ce qui m'avait fait l'abandonner. Comprimés vers le
+ * niveau LOCAL, ils suivent.
+ */
+export function niveauFrontiere(x) {
+    const { i, t } = raccord(x);
+    return SOL_MOYEN - DESCENTE_FRONTIERE * (i + adoucir(t));
+}
+
 const pulsation = (m) => (2 * Math.PI) / m.periode;
 const adoucir = (t) => t * t * t * (t * (6 * t - 15) + 10);
 const adoucir1 = (t) => 30 * t * t * (t - 1) * (t - 1);
 const adoucir2 = (t) => 60 * t * (t - 1) * (2 * t - 1);
+/**
+ * LA BOSSE DE LA FRONTIÈRE : elle monte, puis elle retombe — et c'est tout le
+ * passage d'un monde à l'autre.
+ *
+ * RÉMY : « dans tiny wings on passait d'un monde à l'autre avec un gros vol
+ * plané ». La frontière n'était qu'un fondu de fréquence sur 900 pixels : le
+ * relief se resserrait doucement, rien ne se voyait, et franchir un monde ne
+ * se remarquait qu'à la bannière qui l'annonçait.
+ *
+ * MONTER PUIS REDESCENDRE, ET NON DESCENDRE TOUT COURT. J'ai d'abord écrit une
+ * marche d'escalier — le sol perdait quelques centaines de pixels à chaque
+ * frontière —, et c'était juste en énergie : la descente rend de la vitesse.
+ * Mais les deux plans d'arrière-plan sont tirés du MÊME relief, comprimés vers
+ * `SOL_MOYEN` (voir `dessiner`, dans games/petitesAiles.js) : au douzième
+ * monde, le sol est à trois mille pixels sous la moyenne et les collines du
+ * fond flottent dans le ciel. Une forme qui revient à son niveau n'a pas ce
+ * défaut.
+ *
+ * ELLE EST ASYMÉTRIQUE, et c'est elle qui fait le vol : on monte sur les six
+ * dixièmes de la rampe, on retombe sur les quatre derniers. Le flanc de
+ * descente est donc une fois et demie plus raide que celui de montée — c'est
+ * là que l'oiseau décolle, et il a ensuite tout le reste de la descente pour
+ * planer au-dessus.
+ *
+ * DEUX ADOUCISSEURS BOUT À BOUT, et non un sinus : `adoucir` s'annule à
+ * l'ordre DEUX à ses deux bouts, donc la bosse se raccorde au relief sans
+ * casser ni la pente ni la courbure. Et la courbure décide du décollage.
+ */
+const MONTEE_BOSSE = 0.6;
+const bosse = (t) => adoucir(Math.min(1, t / MONTEE_BOSSE))
+    - adoucir(Math.max(0, (t - MONTEE_BOSSE) / (1 - MONTEE_BOSSE)));
+const bosse1 = (t) => adoucir1(Math.min(1, t / MONTEE_BOSSE)) / MONTEE_BOSSE
+    - adoucir1(Math.max(0, (t - MONTEE_BOSSE) / (1 - MONTEE_BOSSE))) / (1 - MONTEE_BOSSE);
+const bosse2 = (t) => adoucir2(Math.min(1, t / MONTEE_BOSSE)) / (MONTEE_BOSSE ** 2)
+    - adoucir2(Math.max(0, (t - MONTEE_BOSSE) / (1 - MONTEE_BOSSE)))
+        / ((1 - MONTEE_BOSSE) ** 2);
+
 /** ∫₀ᵗ adoucir — elle vaut 1/2 en t = 1, d'où la moyenne des deux pulsations. */
 const primitive = (t) => t * t * t * t * (t * (t - 3) + 2.5);
 const melange = (a, b, u) => a + (b - a) * u;
@@ -373,7 +468,7 @@ export const penteMax = (monde) =>
  * h″ = k″H + 2k′H′ + kH″. Trois lignes de plus, et plus rien à négliger.
  */
 export function relief(x, graine = 0) {
-    const { m, suivant, t } = raccord(x);
+    const { i, m, suivant, t } = raccord(x);
     const wa = pulsation(m), wb = pulsation(suivant);
     // Les dérivées du mélange, EN x : la rampe fait TRANSITION pixels de long.
     const u = adoucir(t);
@@ -397,10 +492,18 @@ export function relief(x, graine = 0) {
         H1 += o.a * o.f * w * c;
         H2 += o.a * o.f * (w1 * c - o.f * w * w * s);
     }
+    // LA BOSSE DE LA FRONTIÈRE S'AJOUTE AU RELIEF, elle ne le remplace pas :
+    // on survole les collines du monde qu'on quitte. Elle vaut zéro partout
+    // ailleurs, puisque `t` vaut zéro hors de la rampe — et au dernier monde,
+    // qui ne se raccorde à rien.
+    const B = BOSSE_FRONTIERE * bosse(t) - DESCENTE_FRONTIERE * (i + u);
+    const B1 = (BOSSE_FRONTIERE * bosse1(t) - DESCENTE_FRONTIERE * adoucir1(t)) / TRANSITION;
+    const B2 = (BOSSE_FRONTIERE * bosse2(t) - DESCENTE_FRONTIERE * adoucir2(t))
+        / (TRANSITION * TRANSITION);
     return {
-        hauteur: SOL_MOYEN + k * H,
-        pente: k1 * H + k * H1,
-        courbure: k2 * H + 2 * k1 * H1 + k * H2
+        hauteur: SOL_MOYEN + k * H + B,
+        pente: k1 * H + k * H1 + B1,
+        courbure: k2 * H + 2 * k1 * H1 + k * H2 + B2
     };
 }
 
@@ -647,7 +750,7 @@ export const PESANTEUR_GLISSE_APPUI = 1200;
 /**
  * LE FROTTEMENT — faible des deux côtés, et c'est capital.
  *
- * Au sol, il valait 0,55 par seconde : à cinq cents pixels par seconde, cela
+ * Au sol, il valait 0,55 par seconde : à sept cents pixels par seconde, cela
  * reprenait deux cent soixante-quinze pixels par seconde carrée, c'est-à-dire
  * la moitié de ce qu'une belle descente venait de donner. Il n'y avait pas de
  * glissé parce que le glissé était mangé à mesure. Un vingtième par seconde
@@ -729,9 +832,18 @@ export const FROTTEMENT_AIR = 0.07;
  * joueur : 8,8 s à 40 ; 5,0 s à 150 ; 3,5 s à 200 ; ZÉRO à 260. Et celui qui
  * appuie sans arrêt rampe toujours 8,4 s — la faute, elle, continue de coûter.
  */
-export const POUSSEE = 200;
+export const POUSSEE = 450;
 /** De combien le battement s’éteint dans une côte. 0 = il ne s’éteint pas. */
 export const FREIN_MONTEE = 0;
+
+/**
+ * LA VITESSE OÙ LE BATTEMENT S'ÉTEINT — voir son emploi dans `pas`.
+ *
+ * C'est la vitesse de croisière de qui ne fait rien, et donc le plancher du
+ * jeu. Au-dessus, il faut plonger dans les descentes ; au-dessous, les ailes
+ * remettent l'oiseau en route toutes seules.
+ */
+export const VITESSE_BATTEMENT = 300;
 
 /** Le coup d'ailes qui lance le saut. Voir son emploi dans `pas`. */
 export const IMPULSION_DECOLLAGE = 200;
@@ -816,7 +928,31 @@ export function pas(etat, dt, appuie, graine) {
         // s'éteint donc avec la pente, et elle est nulle au-delà de 31° — là
         // où il faut vraiment de l'élan, et rien d'autre.
         const grimpe = Math.max(0, Math.min(1, sol.pente / 0.9));
-        v += POUSSEE * (1 - FREIN_MONTEE * grimpe) * dt;
+        // ── LE BATTEMENT S'ÉTEINT AVEC LA VITESSE ───────────────────────────
+        //
+        // RÉMY : « clairement aux petites ailes, je ne peux pas perdre même si
+        // je ne fais rien ». Mesuré : la nuit mettait de 89 à 205 secondes à
+        // rattraper quelqu'un qui ne touche à rien.
+        //
+        // LA CAUSE N'ÉTAIT NI LA NUIT NI LE RELIEF, C'ÉTAIT CE BATTEMENT. À
+        // poussée constante, l'oiseau qu'on abandonne CROISE : il se stabilise
+        // là où le battement équilibre le frottement, et cette vitesse-là ne
+        // demande aucun geste. Mesuré sur les treize mondes, le rapport entre
+        // bien jouer et ne rien faire ne dépassait jamais 1,25 — et une nuit
+        // assez rapide pour rattraper celui qui ne fait rien rattrapait aussi
+        // celui qui joue imparfaitement, c'est-à-dire tous les élèves.
+        //
+        // BAISSER LA POUSSÉE NE RÉPARAIT PAS : le balayage le dit, de 200 à 40
+        // le rapport reste entre 1,14 et 1,24, et les rampements reviennent
+        // (3,5 s à 200, 7,6 s à 40).
+        //
+        // UN OISEAU BAT DES AILES POUR DÉMARRER, PAS POUR CROISER. Le battement
+        // vaut donc tout quand l'oiseau est arrêté — c'est ce qui le sort d'une
+        // côte où il a calé — et plus rien passé `VITESSE_BATTEMENT`. Celui qui
+        // ne fait rien se stabilise alors à cette vitesse-là ; celui qui plonge
+        // dans les descentes la dépasse largement. L'écart redevient un écart.
+        const elan = Math.max(0, 1 - v / VITESSE_BATTEMENT);
+        v += POUSSEE * elan * (1 - FREIN_MONTEE * grimpe) * dt;
         // ET SE PLAQUER AU SOL FROTTE — c'est l'asymétrie qui manquait.
         //
         // Appuyer change la pesanteur du glissé, donc la vitesse qu'on perd en

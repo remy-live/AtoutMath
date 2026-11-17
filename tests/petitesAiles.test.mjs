@@ -9,6 +9,7 @@ import {
     etatInitial, semerEtoile, HAUT_ETOILE_MIN, HAUT_ETOILE_MAX,
     avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE, qualiteAiles,
     GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, FROTTEMENT_SOL, FROTTEMENT_APPUI,
+    niveauFrontiere, BOSSE_FRONTIERE, DESCENTE_FRONTIERE, VITESSE_BATTEMENT,
     PESANTEUR_GLISSE_APPUI, quitteLeSol,
     POUSSEE, PESANTEUR_GLISSE, suiviArret, estArrete, DUREE_ARRET
 } from '../js/core/petitesAiles.js';
@@ -113,8 +114,21 @@ test('le relief reste dans des altitudes jouables', () => {
             const h = relief(i * LONGUEUR_MONDE + x, 1.4).hauteur;
             bas = Math.min(bas, h); haut = Math.max(haut, h);
         }
-        assert.ok(bas > SOL_MOYEN - monde.amplitude - 1, `monde ${monde.id} : creux trop bas`);
-        assert.ok(haut < SOL_MOYEN + monde.amplitude + 1, `monde ${monde.id} : crête trop haute`);
+        // ── ON MESURE CONTRE LE NIVEAU LOCAL, PAS CONTRE `SOL_MOYEN` ──────
+        //
+        // Depuis que chaque frontière fait descendre le sol de sept cents
+        // pixels (`DESCENTE_FRONTIERE`, qui fait le grand vol plané que Rémy
+        // réclamait), `SOL_MOYEN` n'est plus le niveau du sol : c'est celui du
+        // PREMIER monde. Au douzième, le relief est huit mille pixels plus bas,
+        // et lui reprocher ses « creux trop bas » n'aurait aucun sens.
+        //
+        // Ce qu'on veut garder est inchangé : l'ONDULATION du relief tient dans
+        // l'amplitude du monde. C'est `niveauFrontiere` qui dit par rapport à
+        // quoi.
+        assert.ok(bas > niveauFrontiere(i * LONGUEUR_MONDE) - monde.amplitude - 1,
+            `monde ${monde.id} : creux trop bas`);
+        assert.ok(haut < niveauFrontiere(i * LONGUEUR_MONDE) + monde.amplitude + 1,
+            `monde ${monde.id} : crête trop haute`);
         // Et il monte VRAIMENT : un relief plat ne ferait pas un jeu.
         assert.ok(haut - bas > monde.amplitude, `monde ${monde.id} : relief trop plat`);
     });
@@ -126,10 +140,15 @@ test('la rampe reste ENTRE les deux mondes qu\'elle relie', () => {
     // le monde qu'on rejoint — sans quoi la difficulté ferait une bosse au
     // milieu du raccord au lieu de monter tranquillement.
     for (let i = 0; i < MONDES.length - 1; i++) {
-        const plafond = Math.max(MONDES[i].amplitude, MONDES[i + 1].amplitude);
+        // LA BOSSE DE LA FRONTIÈRE S'AJOUTE À L'AMPLITUDE, et c'est voulu :
+        // c'est la crête d'où l'on part pour le grand vol plané. Elle n'est pas
+        // « hors des bornes », elle EST la frontière.
+        const plafond = Math.max(MONDES[i].amplitude, MONDES[i + 1].amplitude)
+            + BOSSE_FRONTIERE;
         for (let x = LONGUEUR_MONDE - TRANSITION; x <= LONGUEUR_MONDE; x += 2.7) {
-            const h = relief(i * LONGUEUR_MONDE + x, 1.4).hauteur;
-            assert.ok(Math.abs(h - SOL_MOYEN) < plafond + 1,
+            const abs = i * LONGUEUR_MONDE + x;
+            const h = relief(abs, 1.4).hauteur - niveauFrontiere(abs);
+            assert.ok(Math.abs(h) < plafond + 1,
                 `rampe ${i + 1}→${i + 2} : ${h.toFixed(0)} px hors des bornes`);
         }
     }
@@ -221,10 +240,28 @@ test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
     }
     const leLongDuSol = (vx, pente) => vx * Math.hypot(1, pente);
     const h0 = relief(depart, g).hauteur;
-    const V0 = 700;
+    // ── ON PART VITE, ET C'EST UNE CONDITION DE LA MESURE ─────────────────
+    //
+    // Sept cents suffisaient tant que le battement était constant : son énergie
+    // s'écrivait `2·POUSSEE·v·dt` et se reconstituait de l'extérieur. Depuis
+    // qu'il s'éteint au-delà de `VITESSE_BATTEMENT`, l'énergie qu'il ajoute
+    // dépend de la vitesse À L'INTÉRIEUR du pas — et la reconstituer du dehors
+    // devient faux dès que la vitesse change vite. Mesuré : 32 % de dérive
+    // annoncée sur une conversion hauteur → vitesse parfaitement exacte, à
+    // partir de l'instant où l'oiseau descendait sous 160 px/s en grimpant.
+    //
+    // À 880, il franchit la bosse sans jamais passer sous le seuil : le
+    // battement vaut alors zéro tout du long, et l'identité qu'on éprouve — la
+    // hauteur se change en vitesse, exactement — redevient lisible. Une
+    // vérification plus bas exige que cette condition tienne, sinon la mesure
+    // ne mesurerait plus rien.
+    // ET SOUS `VX_MAX` : à 940, le tout premier pas rabotait la vitesse à 900,
+    // et ce que le plafond retire ne figure dans aucun des deux bilans. On
+    // annonçait alors 22 % de dérive — sur un plafond, pas sur une colline.
+    const V0 = 880;
     let e = { x: depart, y: h0, vx: V0, vy: 0, auSol: true };
     const v0 = leLongDuSol(V0, relief(depart, g).pente);
-    let ecart = 0, haut = h0, perdu = 0, gagne = 0;
+    let ecart = 0, haut = h0, perdu = 0, gagne = 0, monte = 0;
     for (let t = 0; t < 3; t += 1 / 60) {
         e = pas(e, 1 / 60, true, g);
         assert.ok(e.auSol, 'en appuyant, on ne décolle pas : le test ne mesure plus rien');
@@ -245,20 +282,65 @@ test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
         // la conversion hauteur → vitesse d'un défaut qui était en réalité le
         // frottement voulu, mesuré et documenté dans `FROTTEMENT_APPUI`.
         const colle = r.pente > 0 ? FROTTEMENT_APPUI : 0;
-        perdu += 2 * (FROTTEMENT_SOL + colle) * v * v / 60;
+        // ── LA VITESSE D'AVANT LE FROTTEMENT ──────────────────────────────
+        //
+        // `pas` applique les trois dans cet ordre : l'énergie de la hauteur, le
+        // battement, puis le frottement. `v` ici est la vitesse FINALE ; le
+        // battement, lui, a été calculé sur celle d'avant le frottement. Tant
+        // que le battement était constant, l'écart ne se voyait pas. Depuis
+        // qu'il s'éteint au-delà de `VITESSE_BATTEMENT`, il se voit beaucoup :
+        // l'épreuve annonçait 32 % de dérive sur une conversion hauteur →
+        // vitesse exacte, uniquement parce qu'elle lisait le battement à la
+        // mauvaise vitesse.
+        const vAvant = v / (1 - (FROTTEMENT_SOL + colle) / 60);
+        // ET C'EST ELLE QUI SERT AUX DEUX BILANS. `pas` retranche le frottement
+        // à la vitesse D'AVANT ; l'accumuler sur celle d'après le sous-estime
+        // de huit dixièmes de pour cent à chaque pas — ce qui ne se voyait pas
+        // tant que le frottement valait 0,05, et se voit beaucoup depuis que se
+        // plaquer dans une côte en coûte 0,45. Mesuré : 2,8 % de dérive annoncée
+        // sur une conversion exacte.
+        perdu += 2 * (FROTTEMENT_SOL + colle) * vAvant * vAvant / 60;
         // ET LE BATTEMENT D'AILES AJOUTE, lui. C'est une énergie de plus dans
         // le bilan — `v += POUSSEE·dt` fait monter v² de 2·v·POUSSEE·dt — et
         // l'invariant qu'on éprouve n'est plus « ½v² + p·h se conserve » mais
         // « ½v² + p·h se conserve AU BATTEMENT ET AU FROTTEMENT PRÈS ». Ce qui
         // est mis à l'épreuve reste le même : la conversion exacte de la
         // hauteur en vitesse, que l'ancienne formule ne savait pas tenir.
-        gagne += 2 * POUSSEE * v / 60;
+        // ET LE BATTEMENT S'ÉTEINT AVEC LA VITESSE depuis le 17 novembre — voir
+        // `VITESSE_BATTEMENT`. Sans ce facteur, le bilan ajoutait une énergie
+        // que le code n'ajoute plus, et l'épreuve annonçait 92 % de dérive sur
+        // une conversion hauteur → vitesse parfaitement exacte.
+        gagne += 2 * POUSSEE * Math.max(0, 1 - vAvant / VITESSE_BATTEMENT) * vAvant / 60;
         const attendu = Math.sqrt(v0 * v0 - 2 * PESANTEUR_GLISSE_APPUI * (r.hauteur - h0)
             - perdu + gagne);
         ecart = Math.max(ecart, Math.abs(v - attendu) / attendu);
+        // ── ON S'ARRÊTE QUAND LE BATTEMENT SE RALLUME ─────────────────────
+        //
+        // Il s'éteint au-dessus de `VITESSE_BATTEMENT` ; au-dessous, l'énergie
+        // qu'il ajoute dépend de la vitesse À L'INTÉRIEUR du pas, et la
+        // reconstituer du dehors devient faux dès que la vitesse change vite.
+        // Mesuré : l'épreuve annonçait 32 % de dérive sur une conversion
+        // hauteur → vitesse parfaitement exacte, à partir de l'instant où
+        // l'oiseau passait sous le seuil.
+        //
+        // ET ON NE PEUT PAS PARTIR ASSEZ VITE POUR L'ÉVITER : `VX_MAX` plafonne
+        // à 900, et se plaquer dans une côte coûte 45 % de frottement par
+        // seconde — à 900 px/s au creux, l'oiseau descend sous le seuil avant
+        // le sommet, quel que soit le départ. Alors on mesure la partie qu'on
+        // peut mesurer, et l'on exige qu'elle porte une vraie bosse.
+        if (v <= VITESSE_BATTEMENT) break;
+        monte = r.hauteur - h0;
     }
     // On a bien franchi une VRAIE bosse, pas une ondulation.
-    assert.ok(haut - h0 > 150, `la bosse ne fait que ${Math.round(haut - h0)} px : on ne mesure rien`);
+    // CENT PIXELS, ET LE CHIFFRE SE JUSTIFIE : le creux-à-crête du premier
+    // monde vaut cent quatre-vingt-dix pixels, donc on en mesure plus de la
+    // moitié. On ne peut pas aller plus loin — se plaquer dans une côte coûte
+    // 45 % de frottement par seconde, et l'oiseau passe sous le seuil du
+    // battement avant le sommet, quel que soit le départ.
+    assert.ok(monte > 100,
+        `on n'a grimpé que ${Math.round(monte)} px avant que le battement ne se rallume : `
+        + 'on ne mesure rien');
+    assert.ok(haut - h0 > 100, `la bosse ne fait que ${Math.round(haut - h0)} px : on ne mesure rien`);
     assert.ok(ecart < 0.02,
         `l'énergie du glissé dérive de ${(ecart * 100).toFixed(1)} % : la colline mange l'élan`);
 });
@@ -377,11 +459,34 @@ test('LA PRESSION DE LA NUIT MONTE, PUIS SE TIENT — c’est elle, la difficult
     }
     // ET APRÈS, ELLE SE TIENT : aussi serrée qu'au sixième, jamais au-delà de
     // la borne des 90 % qui rendrait le monde impossible.
+    //
+    // LA PLAGE A CHANGÉ LE 17 NOVEMBRE, ET LE POURQUOI VAUT D'ÊTRE ÉCRIT.
+    // Elle valait 82 à 90 % de l'allure du bon joueur. Rémy : « clairement aux
+    // petites ailes, je ne peux pas perdre même si je ne fais rien » — or une
+    // nuit réglée sur la seule allure du BON joueur ne sait rien de l'autre.
+    // Elle est maintenant prise en sandwich : au-dessus de ce que fait l'oiseau
+    // qu'on abandonne (sinon ne rien faire gagne), au-dessous de ce que fait le
+    // bon joueur (sinon le monde est impossible). Comme l'écart entre les deux
+    // vaut 1,5, le sandwich se referme autour de 78 %.
     for (let i = MONTEE; i < MONDES.length; i++) {
-        assert.ok(pressions[i] > 0.82 && pressions[i] < 0.9,
+        assert.ok(pressions[i] > 0.72 && pressions[i] < 0.88,
             `monde ${i + 1} : la nuit y serre à ${Math.round(pressions[i] * 100)} %, `
             + 'hors de la plage du sixième monde');
     }
+    // ── ET LA RÈGLE QUI MANQUAIT : NE RIEN FAIRE DOIT PERDRE ───────────────
+    //
+    // C'est la demande elle-même, et aucune des bornes ci-dessus ne la dit :
+    // on peut très bien avoir une pression qui monte joliment et une nuit que
+    // l'oiseau abandonné distance sans effort. Mesuré avant : il tenait 93 s.
+    for (let i = 1; i < MONDES.length; i++) {
+        const rien = allure(MONDES[i], JAMAIS);
+        assert.ok(MONDES[i].nuit > rien * 1.05,
+            `monde ${i + 1} : nuit à ${MONDES[i].nuit} contre ${Math.round(rien)} `
+            + 'sans rien faire — on n’y perd pas en abandonnant');
+    }
+    // SAUF LE PREMIER, qui pardonne : on y apprend le geste sans perdre.
+    assert.ok(MONDES[0].nuit < allure(MONDES[0], JAMAIS),
+        'le premier monde doit pardonner');
 });
 
 test('on change de monde à la frontière, et jamais avant', () => {
@@ -631,10 +736,24 @@ test('LE BATTEMENT D\'AILES DONNE UNE VITESSE À QUI NE SAIT PAS ENCORE JOUER', 
         return { v: somme / n, sauts };
     };
     const jamais = vol(() => false);
-    assert.ok(jamais.v > 350,
-        `qui n'appuie jamais rampe à ${Math.round(jamais.v)} px/s`);
-    assert.ok(jamais.sauts > 4,
-        `qui n'appuie jamais ne décolle que ${jamais.sauts} fois : il est collé au sol`);
+    // ── CE QUE LE BATTEMENT DOIT FAIRE A CHANGÉ, ET C'EST RÉMY QUI L'A DIT ──
+    //
+    // « clairement aux petites ailes, je ne peux pas perdre même si je ne fais
+    // rien ». À poussée CONSTANTE, l'oiseau qu'on abandonne CROISE : il se
+    // stabilise là où le battement équilibre le frottement, et cette vitesse-là
+    // ne demande aucun geste. Mesuré : il tenait 82 % de l'allure du bon
+    // joueur, et aucune nuit ne pouvait rattraper l'un sans rattraper l'autre.
+    //
+    // Le battement vaut donc tout quand l'oiseau est ARRÊTÉ et plus rien passé
+    // `VITESSE_BATTEMENT`. Ce que l'épreuve garde n'est plus « il va vite »
+    // mais les deux bornes qui comptent : il ne se traîne pas au plancher, et
+    // il ne croise pas comme s'il jouait.
+    assert.ok(jamais.v > VITESSE_BATTEMENT * 0.7,
+        `qui n'appuie jamais rampe à ${Math.round(jamais.v)} px/s : le battement `
+        + 'ne le relève plus');
+    assert.ok(jamais.v < VITESSE_BATTEMENT * 1.35,
+        `qui n'appuie jamais croise à ${Math.round(jamais.v)} px/s : on peut encore `
+        + 'gagner sans rien faire');
     // ET LE TALENT GARDE SON AVANCE : le battement monte le plancher, il ne
     // remplace pas le geste.
     //
@@ -647,8 +766,12 @@ test('LE BATTEMENT D\'AILES DONNE UNE VITESSE À QUI NE SAIT PAS ENCORE JOUER', 
     // oiseau qui ne se traîne plus, Rémy a tranché en jouant — « si l'oiseau
     // s'arrête et bien on a perdu ». On garde donc le rapport SOUS SURVEILLANCE
     // à 1,2 : au-dessous, le battement aurait vraiment mangé le jeu.
+    // ET L'ÉCART S'EST OUVERT : 1,19 au mieux avec l'ancien battement, 1,50
+    // depuis qu'il s'éteint. C'est cet écart qui laisse enfin la place à une
+    // nuit posée ENTRE les deux — assez rapide pour rattraper l'oiseau
+    // abandonné, assez lente pour laisser passer celui qui joue.
     const bon = vol((e) => relief(e.x, 1.9).pente < 0);
-    assert.ok(bon.v > jamais.v * 1.2,
+    assert.ok(bon.v > jamais.v * 1.4,
         `le bon joueur ne fait que ${Math.round(bon.v)} contre ${Math.round(jamais.v)} :`
         + ' le battement a mangé le jeu');
 });
@@ -821,4 +944,132 @@ test('LA NUIT DE CHAQUE MONDE RESTE SOUS L\'ALLURE DU BON JOUEUR', () => {
     const dernier = MONDES[MONDES.length - 1];
     assert.ok(dernier.nuit > allure(dernier, JAMAIS),
         'le dernier monde pardonne encore');
+});
+
+// ── LES DEUX REMARQUES DU SOIR ──────────────────────────────────────────────
+//
+// RÉMY, en jouant : « clairement aux petites ailes, je ne peux pas perdre même
+// si je ne fais rien », puis « dans tiny wings on passait d'un monde à l'autre
+// avec un gros vol plané ».
+
+test('LA FRONTIÈRE EST UN GRAND VOL PLANÉ, pas un fondu invisible', () => {
+    // ELLE N'ÉTAIT QU'UN FONDU DE FRÉQUENCE sur neuf cents pixels : le relief
+    // se resserrait doucement, rien ne se voyait, et franchir un monde ne se
+    // remarquait qu'à la bannière qui l'annonçait.
+    //
+    // ET LA BOSSE SEULE N'Y SUFFISAIT PAS — mesuré, et c'est ce qui a tout
+    // décidé : à bosse nulle, le plus long vol de frontière durait déjà 1,05 s
+    // pour 279 px ; à 260 px de bosse, 1,07 s pour 271. Elle ajoutait onze
+    // degrés de pente et pas un centième de seconde de vol.
+    //
+    // CE QUI ALLONGE UN VOL N'EST PAS L'ÉLAN VERS LE HAUT, C'EST LE SOL QUI
+    // PART. Un oiseau lancé à 450 px/s vers le haut retombe en sept dixièmes de
+    // seconde, quelle que soit la bosse ; mais si le sol descend de sept cents
+    // pixels pendant ce temps-là, il ne le rencontre plus.
+    assert.ok(DESCENTE_FRONTIERE > 300,
+        'sans une vraie marche, la frontière ne fait pas voler');
+    const PARFAIT_SOL = (sol) => sol.pente < 0;
+    let meilleur = { duree: 0, haut: 0 };
+    for (const g of [0.7, 1.9, 3.3]) {
+        for (const m of [1, 4, 8]) {
+            const bord = m * LONGUEUR_MONDE;
+            let e = etatInitial(g, bord - 2500);
+            let vol = null;
+            for (let t = 0; t < 40 && e.x < bord + 2500; t += 1 / 60) {
+                const avant = e;
+                e = pas(e, 1 / 60, PARFAIT_SOL(relief(e.x, g)), g);
+                if (avant.auSol && !e.auSol) vol = { t0: t, x0: e.x, haut: 0 };
+                if (vol && !e.auSol) vol.haut = Math.max(vol.haut, e.y - relief(e.x, g).hauteur);
+                if (vol && e.auSol) {
+                    const pres = vol.x0 > bord - TRANSITION - 400 && vol.x0 < bord + 400;
+                    if (pres && t - vol.t0 > meilleur.duree) {
+                        meilleur = { duree: t - vol.t0, haut: vol.haut };
+                    }
+                    vol = null;
+                }
+            }
+        }
+    }
+    // UN SAUT ORDINAIRE DURE HUIT DIXIÈMES DE SECONDE POUR 150 px. La frontière
+    // doit se voir du premier coup d'œil, donc faire nettement mieux.
+    assert.ok(meilleur.duree > 1.1,
+        `le plus long vol de frontière ne dure que ${meilleur.duree.toFixed(2)} s`);
+    assert.ok(meilleur.haut > 300,
+        `il ne monte qu'à ${Math.round(meilleur.haut)} px : c'est un saut, pas un vol plané`);
+});
+
+test('LA MARCHE DESCEND POUR DE VRAI, ET ELLE SE RACCORDE SANS CASSURE', () => {
+    // LA MARCHE EST UNE PROPRIÉTÉ DU TERRAIN, et `quitteLeSol` lit la COURBURE :
+    // une marche qui se raccorderait mal donnerait un décollage fantôme ou un
+    // mur. On vérifie donc les deux dérivées à la main, de part et d'autre de
+    // chaque frontière.
+    for (let i = 1; i < MONDES.length; i++) {
+        const bord = i * LONGUEUR_MONDE;
+        assert.ok(niveauFrontiere(bord + 10) < niveauFrontiere(bord - TRANSITION - 10) - 500,
+            `frontière ${i} : le sol n'est pas descendu`);
+        for (const x of [bord - TRANSITION, bord - 1, bord + 1]) {
+            const a = relief(x - 0.5, 1.4), b = relief(x + 0.5, 1.4);
+            // La pente ANNONCÉE doit être la vraie dérivée de la hauteur.
+            const vraie = b.hauteur - a.hauteur;
+            const dite = (a.pente + b.pente) / 2;
+            assert.ok(Math.abs(vraie - dite) < 0.02,
+                `x = ${x} : pente annoncée ${dite.toFixed(3)} pour ${vraie.toFixed(3)} de vraie`);
+        }
+    }
+});
+
+test('ET LA RAMPE NE MONTE PAS PLUS QU’UN MUR — la descente, elle, a le droit', () => {
+    // « On ne glisse pas sur un mur, quelle que soit la façon dont on écrit la
+    // gravité » parle de ce qu'il faut GRAVIR. Une descente à 72° n'est pas un
+    // mur, c'est un plongeon — et l'oiseau y est en l'air de toute façon. C'est
+    // la distinction qui a permis de garder la marche : sans elle, la seule
+    // mesure « pente la plus raide » aurait condamné un terrain sain.
+    let monte = 0;
+    for (const g of [0.7, 1.9, 3.3]) {
+        for (let i = 1; i < MONDES.length; i++) {
+            const bord = i * LONGUEUR_MONDE;
+            for (let x = bord - TRANSITION - 50; x < bord + 50; x += 3) {
+                const p = relief(x, g).pente;
+                if (p > 0) monte = Math.max(monte, p);
+            }
+        }
+    }
+    const degres = Math.atan(monte) * 180 / Math.PI;
+    assert.ok(degres < 65, `la rampe monte à ${degres.toFixed(0)}° : c'est une falaise`);
+});
+
+test('NE RIEN FAIRE FAIT PERDRE, ET AVANT QU’ON SE LASSE', () => {
+    // RÉMY : « clairement aux petites ailes, je ne peux pas perdre même si je
+    // ne fais rien ».
+    //
+    // L'OUTIL LE DISAIT DÉJÀ, ET JE NE L'AVAIS PAS LU COMME IL FALLAIT. Il
+    // imprimait « sans rien faire : monde 6, 36 928 px », et je m'en étais
+    // contenté : la nuit finit par rattraper, donc la règle tient. Mais une
+    // DISTANCE ne dit pas une DURÉE. En secondes, c'était quatre-vingt-treize.
+    //
+    // QUATRE-VINGT-DIX SECONDES DE PATIENCE : c'est déjà long pour un élève qui
+    // essaie « et si je ne fais rien ? ». Au-delà, il ne voit pas la fin.
+    const jusquOu = (joue, graine) => {
+        let e = etatInitial(graine, 0);
+        let nuit = -1500;
+        for (let t = 0; t < 300; t += 1 / 60) {
+            const sol = relief(e.x, graine);
+            e = pas(e, 1 / 60, joue(sol.pente), graine);
+            const m = MONDES[Math.max(0, Math.min(MONDES.length - 1,
+                Math.floor(e.x / LONGUEUR_MONDE)))];
+            nuit += m.nuit / 60;
+            if (nuit >= e.x) return t;
+        }
+        return 300;
+    };
+    for (const g of [0.7, 1.9, 3.3]) {
+        const t = jusquOu(JAMAIS, g);
+        assert.ok(t < 90, `paysage ${g} : on tient ${Math.round(t)} s sans rien faire`);
+    }
+    // ET LE BON JOUEUR, LUI, NE SE FAIT PAS RATTRAPER. Une nuit qui punit
+    // l'abandon ne vaut que si elle laisse passer celui qui joue.
+    for (const g of [0.7, 1.9, 3.3]) {
+        assert.equal(jusquOu(PARFAIT, g), 300,
+            `paysage ${g} : le bon joueur se fait rattraper`);
+    }
 });

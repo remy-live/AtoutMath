@@ -37,7 +37,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { meneurDemo } from '../core/meneurDemo.js';
 import {
-    MONDES, SOL_MOYEN, mondeDe, progressionMonde, relief, pas, etatInitial,
+    MONDES, SOL_MOYEN, niveauFrontiere, mondeDe, progressionMonde, relief, pas, etatInitial,
     semerEtoile, ECART_ETOILES, avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE,
     qualiteAiles, VX_MAX, VX_MIN, suiviArret, estArrete, DUREE_ARRET
 } from '../core/petitesAiles.js';
@@ -373,7 +373,21 @@ class PetitesAiles extends BaseGame {
             for (let px = 0; px <= larg; px += 6) {
                 const xm = camX * k.part + px / e;
                 const s = relief(xm, this.grainePaysage);
-                const y = SOL_MOYEN + (s.hauteur - SOL_MOYEN) * k.part - k.decalage;
+                // ── ON COMPRIME LES COLLINES, PAS LA DESCENTE DES MONDES ────
+                //
+                // Chaque frontière fait descendre le sol de cinq cents pixels
+                // (voir `DESCENTE_FRONTIERE` : c'est elle qui fait le grand vol
+                // plané que Rémy réclamait). Comprimés vers `SOL_MOYEN`, qui ne
+                // descend pas, les deux plans du fond flottaient dans le ciel
+                // dès le troisième monde — mesuré, et c'est ce qui m'avait fait
+                // abandonner la marche une première fois.
+                //
+                // Ce qu'on veut comprimer, c'est l'ONDULATION du relief : son
+                // écart au niveau moyen LOCAL. Et on la repose au niveau du sol
+                // d'ICI, pas de là-bas, pour que les trois plans restent alignés
+                // sous l'oiseau.
+                const ondule = s.hauteur - niveauFrontiere(xm);
+                const y = niveauFrontiere(camX + px / e) + ondule * k.part - k.decalage;
                 c.lineTo(px, versEcran(y));
             }
             c.lineTo(larg, haut);
