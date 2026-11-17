@@ -7858,3 +7858,58 @@ retrouve sa séance devant lui. Aucune heure à régler, aucune question à pose
 navigateur se quitte, un onglet se change, et aucune page web ne peut
 l'empêcher. C'est un écran RANGÉ. La différence comptera le jour où un élève
 lui montrera qu'il est passé à côté.
+
+---
+
+## 17 novembre, le soir — cinq remarques d'affilée, en jouant et en relisant
+
+### Les Petites Ailes
+
+> « clairement aux petites ailes, je ne peux pas perdre même si je ne fais rien »
+
+**IL A RAISON, ET MA PROPRE MESURE LE DISAIT DÉJÀ** — je ne l'avais pas lue
+comme il fallait. `node tools/allureDesMondes.mjs --loin` imprimait « sans rien
+faire : monde 6, 36 928 px », et je m'en étais contenté : la nuit finit par
+rattraper, donc la règle tient. Mais la distance ne dit pas le TEMPS. En
+secondes, c'est **quatre-vingt-treize** — une minute et demie à ne toucher à
+rien avant de perdre. Aucun élève ne va jusque-là : il repose la tablette en
+disant « on ne perd pas ».
+
+**LA LEÇON EST POUR L'OUTIL, PAS POUR LE JEU.** Une mesure qui rend une
+distance là où la question porte sur une durée laisse conclure de travers sans
+mentir une seule fois. L'outil imprime maintenant les deux.
+
+> « dans tiny wings on passait d'un monde à l'autre avec un gros vol plané »
+
+La frontière entre deux mondes n'est aujourd'hui qu'un **fondu de fréquence sur
+900 pixels** : le relief se resserre doucement, rien ne se voit, et franchir un
+monde ne se remarque qu'à la bannière qui l'annonce. Dans Tiny Wings, la fin
+d'une île est une longue descente qui vous jette dans l'île suivante — c'est à
+la fois la récompense d'être arrivé vite et le plus beau vol de la partie.
+
+### Les statistiques
+
+> « pour la moyenne il faudrait que l'élève écrive le calcul (avec parenthèses)
+> et il faut de la moyenne pondérée »
+
+**C'EST EXACTEMENT LA LEÇON DU TABLEUR**, qu'il avait déjà tranchée une fois :
+« la bonne réponse est =A1+B1 pas 17 ». Un élève qui tape 15 a peut-être
+compris, ou peut-être deviné ; un élève qui écrit `(12+15+18)/3` a montré la
+seule chose qu'on cherche à lui apprendre. Et les parenthèses ne sont pas un
+détail de forme : `12+15+18/3` vaut 33, et c'est LA faute du chapitre.
+
+> « pour la médiane, on peut ranger dans l'ordre croissant par drag drop »
+>
+> « et on peut sélectionner ou barrer des valeurs qui s'affichent »
+
+**LES DEUX MESSAGES N'EN FONT QU'UN, ET C'EST LA MÉTHODE DU COURS EN ENTIER** :
+on range dans l'ordre croissant, puis on barre une valeur à chaque bout jusqu'à
+ce qu'il ne reste que le milieu. Aujourd'hui l'élève tape un nombre — il peut
+l'obtenir de tête, ou au hasard, et dans les deux cas le logiciel ne voit rien
+de sa méthode.
+
+**ET CE N'EST PAS LA LIGNE ROUGE.** « Je ne veux pas de construction géométrique
+avec des outils virtuels » parle du tracé à la règle et au compas. Ranger des
+nombres au doigt n'est pas un tracé : c'est le geste du cours lui-même, celui
+qu'on fait au tableau avec des étiquettes. Le glisser-déposer existe déjà dans
+« Ranger, et le mot apparaît ».

@@ -141,9 +141,14 @@ if (loin) {
     for (const g of GRAINES) {
         const bon = jusquOu(PARFAIT, g);
         const rien = jusquOu(JAMAIS, g);
+        // LE TEMPS DIT CE QUE LA DISTANCE CACHE. « Rattrapé au monde 6 » peut
+        // vouloir dire trente secondes ou trois minutes, et ce n'est pas le
+        // même jeu — Rémy, en jouant : « je ne peux pas perdre même si je ne
+        // fais rien ».
         console.log(`    paysage ${g} · bien joué : monde ${bon.monde}, `
             + `${Math.round(bon.x)} px en ${bon.t.toFixed(0)} s`
-            + `   ·   sans rien faire : monde ${rien.monde}, ${Math.round(rien.x)} px`);
+            + `   ·   sans rien faire : monde ${rien.monde}, ${Math.round(rien.x)} px`
+            + ` en ${rien.t.toFixed(0)} s`);
     }
     console.log(`\n    (il y a ${MONDES.length} mondes de ${LONGUEUR_MONDE} px, `
         + `soit ${MONDES.length * LONGUEUR_MONDE} px en tout)`);
