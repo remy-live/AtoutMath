@@ -19035,6 +19035,14 @@ body.visite-en-cours .modal-overlay > * {
    sept petits traits demande de compter jusqu'à sept sans se tromper, dix fois
    par axe. Avec lui, on compte au plus cinq — et le plus souvent deux. */
 .cent-milieu { stroke: var(--danger); stroke-width: 1.6; }
+/* LES DIXIÈMES DE L'INDICE. Plus petits et plus pâles que les deux bouts, et
+   c'est volontaire : ils sont une AIDE posée sur l'axe, pas une donnée de
+   l'énoncé. L'élève doit pouvoir les distinguer de ce qui était là au départ —
+   sinon, la fois suivante, il cherchera des nombres qui n'y seront plus. */
+.cent-dixieme {
+    fill: var(--text-muted); font-size: 13px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
 .cent-point line { stroke: var(--danger); stroke-width: 3.2; stroke-linecap: round; }
 .cent-svg { max-width: 100%; height: auto; }
 
@@ -19074,6 +19082,108 @@ body.visite-en-cours .modal-overlay > * {
    contenu : 495 px dans une zone de 1180. On ne devine pas une largeur, on
    remonte la chaîne et on demande à chaque parent. */
 .numpad-layout:has(.figure-wrap--cent) { width: 100%; max-width: 1180px; }
+
+/* ── SAUF SUR UN PLATEAU LARGE ET BAS : LE PAVÉ REVIENT À CÔTÉ ─────────────
+
+   RÉMY, capture à l'appui : « le pavé numérique est un peu tronqué ».
+
+   MESURÉ, et c'est la mesure qui a dit où était la limite :
+
+       1440 × 900 ....... le pavé finit à 874, dans 900 — ça tient
+       1280 × 800 ....... il finit à 810, dans 800 — 10 px dehors
+       1440 × 700 ....... il finit à 732, dans 700 — 32 px dehors
+
+   La zone défile bien (734 px de contenu pour 630 de place), mais un clavier
+   qu'il faut faire défiler pour atteindre « Valider » n'est pas un clavier :
+   sur un écran tactile, le geste pour faire défiler et le geste pour appuyer
+   se disputent la même touche.
+
+   ON NE PEUT PAS RAPETISSER LE PAVÉ : à 630 px de plateau, il faudrait des
+   touches de 33 px, sous le minimum de 44 px qu'un doigt demande. Et on ne
+   peut pas rapetisser la figure non plus : compter les traits EST l'exercice.
+
+   MAIS SUR UN PLATEAU LARGE, LES DEUX TIENNENT CÔTE À CÔTE. Le commentaire
+   au-dessus dit pourquoi la figure prend les deux colonnes : « enfermée dans
+   la colonne du contexte (560 px), la figure donnait 4,67 px entre deux petits
+   traits ». C'est juste à 1180 px de plateau ; à 1400, il reste 1060 px pour
+   la figure une fois les 318 du pavé retirés, soit 10,6 px entre deux traits —
+   plus que les 9,5 px qu'on avait mesurés comme confortables.
+
+   La règle ne vaut donc QUE là où la largeur le permet, et seulement quand la
+   hauteur manque : ailleurs, la figure garde toute la zone. */
+/* ET SUR TOUT PLATEAU BAS, LA MARGE DU HAUT ET DU BAS SE SERRE.
+
+   À 1280 × 800, le plateau n'est pas assez large pour les deux colonnes (il
+   resterait 900 px pour la figure, soit 9 px entre deux traits : juste sous le
+   confortable), et il manquait exactement DIX pixels. Les vingt pixels de marge
+   haute et basse les donnent sans toucher à une seule taille de touche ni à un
+   seul trait de la figure — c'est le réglage le moins cher du lot, et il ne se
+   voit pas. */
+@container plateau (max-height: 830px) {
+    .numpad-layout { padding-block: 8px; }
+}
+
+/* ── ET ON A ESSAYÉ LES DEUX COLONNES, QUI COÛTENT TROP CHER ──────────────
+
+   Écrit, mesuré, retiré. Sur 1440 × 700, le pavé revenait entier à côté de la
+   figure — et la figure tombait de 1180 à 860 px de large, soit 7,7 px entre
+   deux petits traits au lieu de 10,1. Le commentaire du dessus donne le seuil
+   qu'on s'était fixé : 9,5 px, « le minimum pour que l'oeil sépare deux
+   graduations qu'on lui demande de compter ».
+
+   On ne répare pas un clavier tronqué en rendant l'exercice illisible. Les
+   pixels se prennent donc sur la HAUTEUR de la figure, qui n'en a pas besoin :
+   un axe est un objet plat, et seule sa largeur porte l'exercice. */
+@container plateau (max-height: 830px) {
+    .numpad-context:has(.figure-wrap--cent) { --fig-plafond: clamp(96px, 26cqh, 200px); }
+}
+
+/* ── ET SUR UN PLATEAU VRAIMENT BAS, LES TOUCHES SE SERRENT ───────────────
+
+   À 1440 × 700, la figure ne se laisse pas rapetisser : `--fig-plafond` ne
+   s'applique pas à l'axe au centième (voir `.cent-svg { max-height: none }`
+   plus haut), parce que sa HAUTEUR porte la lisibilité de ses traits autant
+   que sa largeur. Il restait trente pixels à trouver, et ils sont sur le
+   clavier.
+
+   HUIT POUR CENT AU LIEU DE NEUF : à 630 px de plateau, la touche passe de
+   56,7 à 50,4 px. Elle reste au-dessus des 44 px qu'un doigt demande — c'est
+   la seule borne qui compte ici, et on ne descend pas en dessous.
+
+   On ne touche qu'au plateau BAS : ailleurs, les touches gardent leur taille. */
+@container plateau (max-height: 740px) {
+    .numpad-key { height: clamp(44px, min(8cqh, 22cqw), 92px); }
+    .numpad-device { padding: clamp(8px, 1.2cqh, 12px); }
+    /* ET LE VIDE ENTRE LE DESSIN ET LE CLAVIER, qui valait encore neuf pixels
+       après le reste. C'est le dernier endroit où l'on peut prendre sans rien
+       rapetisser : ils sont voisins, ils n'ont pas besoin d'être écartés. */
+    .numpad-layout { row-gap: 2px; }
+}
+
+/* ── ET SOUS 740 px DE HAUT, SUR UN PLATEAU LARGE : LES DEUX COLONNES ──────
+
+   Tout ce qui précède ne suffit pas. Mesuré à 1440 × 700 : la colonne entière
+   demande 705 px pour 630 de place, et les soixante-quinze qui manquent ne se
+   trouvent nulle part — la figure porte sa lisibilité dans sa hauteur comme
+   dans sa largeur, et les touches sont déjà au minimum du doigt.
+
+   LA PREMIÈRE ÉCRITURE DE CETTE RÈGLE DONNAIT 7,7 px ENTRE DEUX TRAITS, et je
+   l'avais retirée pour cela. La mesure disait vrai et ma conclusion était
+   fausse : la figure n'était pas étranglée par la colonne, elle l'était par le
+   `max-width: 1180px` de la grille, écrit plus haut pour une tout autre raison.
+   Levé, la colonne de gauche reçoit 1050 px, soit 9,4 px entre deux traits —
+   le seuil qu'on s'était fixé.
+
+   « On remonte la chaîne et on demande à chaque parent » : c'est écrit vingt
+   lignes plus haut, pour le même défaut, et je ne l'ai pas fait du premier
+   coup. */
+@container plateau (min-width: 1360px) and (max-height: 740px) {
+    .numpad-layout:has(.figure-wrap--cent) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 318px);
+        align-items: center;
+        max-width: none;
+    }
+}
 
 /* ── ET SUR UN ÉCRAN ÉTROIT, L'AXE GLISSE AU LIEU DE S'ÉCRASER ─────────────
 

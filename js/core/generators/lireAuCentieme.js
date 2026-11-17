@@ -260,6 +260,27 @@ export const lireAuCentiemeGenerator = {
                     return { value: v, label: v };
                 }
             }),
+            // ── LE DESSIN DE L'INDICE : L'AXE AVEC SES DIXIÈMES ÉCRITS ──────
+            //
+            // RÉMY : « pour la, un indice pourrait de graduer les dixièmes ».
+            //
+            // C'est le premier indice qui le porte, parce que c'est lui qui dit
+            // « trouve le grand trait » : montrer les nombres des grands traits
+            // au moment exact où on en parle, c'est répondre à « lequel ? » sans
+            // donner la réponse. Les deux indices suivants n'en ont pas besoin —
+            // on compte alors des petits traits, et l'axe graduée reste à
+            // l'écran dans la tête de l'élève.
+            schemas: [
+                figure(axeCentiemesSvg({
+                    gauche: fr(debut, ech.rang), droite: fr(fin, ech.rang),
+                    points,
+                    // LES NEUF GRANDS TRAITS DU MILIEU. Les deux bouts portent
+                    // déjà le leur ; les réécrire les doublerait.
+                    dixiemes: Array.from({ length: 9 }, (vide, k) =>
+                        fr(Number((debut + (k + 1) * 10 * ech.unite).toFixed(ech.rang)),
+                            ech.rang))
+                }), 'figure-wrap--cent')
+            ],
             hints: [
                 `Trouve d’abord le GRAND trait juste à gauche de la croix : il donne le `
                     + `${ech.grand}.`,

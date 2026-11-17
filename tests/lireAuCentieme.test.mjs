@@ -243,3 +243,63 @@ test('ET LA FEUILLE SAIT QUOI DESSINER', () => {
         }
     }
 });
+
+// ── L'INDICE GRADUE LES DIXIÈMES ────────────────────────────────────────────
+//
+// RÉMY, capture à l'appui, 17 novembre : « pour la, un indice pourrait de
+// graduer les dixièmes ».
+//
+// L'AXE NE PORTE QUE SES DEUX BOUTS, ET C'EST ÉCRIT DANS `figures.js` : « écrire
+// tous les grands traits donnerait la moitié de la réponse ». La même phrase
+// dit pourquoi les montrer À LA DEMANDE est exactement le bon coup de pouce —
+// « la moitié de la réponse » est la définition d'un indice. Il ne reste plus
+// qu'à compter les petits traits depuis le grand le plus proche, c'est-à-dire
+// la seconde moitié du savoir, celle que l'élève doit faire seul.
+
+test('L’INDICE MONTRE L’AXE AVEC SES DIXIÈMES ÉCRITS', () => {
+    for (const graine of ['ind-1', 'ind-2', 'ind-3']) {
+        for (const echelle of ['entiers', 'dixiemes']) {
+            const it = G.generate(
+                { nbQuestions: 1, marches: ['entre'], echelle, points: '1' },
+                { rng: makeRng(graine), index: 0 });
+            const schema = (it.schemas || [])[0];
+            assert.ok(schema, `${graine}/${echelle} : le premier indice n’a pas de dessin`);
+            // NEUF NOMBRES, PAS DIX : les deux bouts portent déjà le leur, et
+            // les réécrire les doublerait.
+            const ecrits = [...schema.matchAll(/class="cent-dixieme"[^>]*>([^<]+)</g)]
+                .map(m => m[1]);
+            assert.equal(ecrits.length, 9,
+                `${graine}/${echelle} : ${ecrits.length} dixièmes écrits`);
+            // ET CE SONT LES BONS. L'échelle est tirée au sort — de 8 à 9 un
+            // grand trait vaut un dixième, de 3,5 à 3,6 il vaut un centième —
+            // donc les recalculer ici reviendrait à redire ce que le
+            // générateur sait seul. On vérifie la seule chose qu'on puisse
+            // vérifier sans le copier : ils sont CROISSANTS, et ils tombent
+            // entre les deux bouts.
+            const nb = (s) => Number(String(s).replace(',', '.'));
+            const bouts = [...schema.matchAll(/class="ax-nb"[^>]*>([^<]+)</g)].map(m => nb(m[1]));
+            assert.equal(bouts.length, 2, 'les deux bouts doivent rester écrits');
+            for (let i = 1; i < ecrits.length; i++) {
+                assert.ok(nb(ecrits[i]) > nb(ecrits[i - 1]),
+                    `${ecrits[i - 1]} puis ${ecrits[i]} : ce n’est pas croissant`);
+            }
+            assert.ok(nb(ecrits[0]) > bouts[0] && nb(ecrits[8]) < bouts[1],
+                `les dixièmes doivent tomber entre ${bouts[0]} et ${bouts[1]}`);
+        }
+    }
+});
+
+test('ET L’AXE DE L’ÉNONCÉ, LUI, NE LES PORTE PAS', () => {
+    // LA MOITIÉ DE L'EXERCICE EST LÀ. Sans cette vérification, il suffirait
+    // qu'un jour `dixiemes` parte aussi dans le dessin de l'énoncé pour que
+    // l'exercice n'ait plus d'objet — et rien ne le signalerait, puisque la
+    // figure resterait belle et la réponse juste.
+    for (const graine of ['nu-1', 'nu-2']) {
+        const it = G.generate(
+            { nbQuestions: 1, marches: ['entre'], echelle: 'entiers', points: '2' },
+            { rng: makeRng(graine), index: 0 });
+        assert.ok(!it.prompt.html.includes('cent-dixieme'),
+            'l’énoncé ne doit porter que ses deux bouts : lire le grand trait '
+            + 'EST le premier savoir du chapitre');
+    }
+});

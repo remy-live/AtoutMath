@@ -737,7 +737,7 @@ export function axeSvg({
  * @param {boolean} [cfg.cases] poser une case à remplir par point
  */
 export function axeCentiemesSvg({ gauche = '0', droite = '1', points = [],
-    cases = false } = {}) {
+    cases = false, dixiemes = null } = {}) {
     // LA LARGEUR EST LE SUJET, PAS UN RÉGLAGE. Rémy : « il faut évidemment
     // qu'il y ait de la place en largeur ». Cent intervalles sur 860 unités
     // font 8,6 unités chacun — mesuré à l'écran, cela donne 9,5 px sur un
@@ -778,6 +778,28 @@ export function axeCentiemesSvg({ gauche = '0', droite = '1', points = [],
         text-anchor="middle">${gauche}</text>`);
     morceaux.push(`<text class="ax-nb" x="${D}" y="${y + 40}"
         text-anchor="middle">${droite}</text>`);
+
+    // ── SAUF DANS UN INDICE, ET C'EST PRÉCISÉMENT CE QU'IL DOIT DONNER ──────
+    //
+    // RÉMY, capture à l'appui : « pour la, un indice pourrait de graduer les
+    // dixièmes ».
+    //
+    // « La moitié de la réponse », c'est la définition d'un bon indice. Le
+    // paragraphe ci-dessus explique pourquoi l'axe NE PORTE PAS ces nombres en
+    // temps normal ; la même raison dit pourquoi les montrer À LA DEMANDE est
+    // exactement le bon coup de pouce : il ne reste plus qu'à compter les
+    // petits traits depuis le grand le plus proche, c'est-à-dire la seconde
+    // moitié du savoir, celle que l'élève doit faire seul.
+    //
+    // LES NOMBRES VIENNENT DU GÉNÉRATEUR, qui seul connaît l'échelle tirée :
+    // de 8 à 9 un grand trait vaut un dixième, de 3,5 à 3,6 il vaut un
+    // centième. Les recalculer ici demanderait de deviner le rang décimal, et
+    // l'on écrirait « 3,51 » là où il faut « 3,510 ».
+    (dixiemes || []).forEach((mot, k) => {
+        if (!mot) return;
+        morceaux.push(`<text class="cent-dixieme" x="${xDe((k + 1) * 10).toFixed(1)}"
+            y="${y + 38}" text-anchor="middle">${mot}</text>`);
+    });
 
     points.forEach((p) => {
         const xp = xDe(p.cran);

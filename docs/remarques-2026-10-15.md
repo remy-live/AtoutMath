@@ -7941,3 +7941,46 @@ réclame : « La feuille donne les dimensions en toutes lettres — comme les
 volumes, et pour la même raison : dessiner la hauteur et son angle droit en
 jsPDF est un travail à part, et une fiche à moitié dessinée serait pire qu'une
 fiche honnêtement écrite ». Il a tranché : il veut la fiche.
+
+### L'Axe au Centième, deux remarques
+
+> « le pavé numérique est un peu tronqué et quand on demande un incide ca
+> affiche les valeurs au dixième des graduations qui entourent le point »
+>
+> puis, à ma question : « pour la, un indice pourrait de graduer les dixièmes »
+
+**J'AI DEMANDÉ PLUTÔT QUE DE DEVINER, ET J'AI BIEN FAIT.** La seconde phrase se
+lisait aussi bien comme un défaut (« l'indice affiche des dixièmes, c'est
+faux ») que comme une demande (« l'indice pourrait graduer les dixièmes »). Les
+deux menaient à des travaux opposés. C'était une demande.
+
+Et elle est juste pour une raison écrite depuis longtemps dans le code : l'axe
+ne porte que ses deux bouts, parce qu'« écrire tous les grands traits donnerait
+la moitié de la réponse ». **« La moitié de la réponse » est la définition d'un
+indice.**
+
+**LE PAVÉ TRONQUÉ A COÛTÉ TROIS ESSAIS, ET LE SECOND ÉTAIT UNE FAUSSE BONNE
+IDÉE.** Mesuré d'abord : 32 px sous le bord à 1440 × 700, 10 px à 1280 × 800.
+La zone défile, ce qui est le piège — rien ne casse, rien ne rougit, et sur un
+écran tactile le geste qui fait défiler se dispute la touche avec celui qui
+appuie.
+
+1. Serrer les marges et les touches : 22 px gagnés, pas assez.
+2. Deux colonnes, le clavier à côté de l'axe : le clavier tenait, et la figure
+   tombait de 1180 à **860 px — 7,7 px entre deux traits au lieu de 10,1**,
+   sous le seuil de 9,5 que le dépôt s'était fixé. *Compter les traits EST
+   l'exercice* : on ne répare pas un clavier en rendant l'exercice illisible.
+   J'ai retiré la règle.
+3. **Et ma conclusion était fausse.** La figure n'était pas étranglée par la
+   colonne, elle l'était par un `max-width: 1180px` écrit vingt lignes plus
+   haut pour une tout autre raison. Levé, la colonne de gauche reçoit 1050 px :
+   9,4 px entre deux traits, et le clavier entier. Le commentaire que je n'ai
+   pas suivi est dans le même fichier : « on ne devine pas une largeur, on
+   remonte la chaîne et on demande à chaque parent ».
+
+**L'OUTIL EST GARDÉ** — `node tools/leClavierTient.mjs` mesure, sur six
+formats, que le clavier tient ET que deux traits se séparent encore. Il a
+immédiatement accusé la tablette et le téléphone d'un défaut que personne
+n'avait introduit : j'avais retenu UN seuil là où le code en documentait DEUX
+(9,5 px sur un ordinateur, 7,2 ailleurs). Une sonde qui crie sur du code sain
+ne se relance pas deux fois.
