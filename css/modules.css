@@ -16073,6 +16073,44 @@ body.en-boite > #app-container { background: none; }
     width: 100%; max-width: 46ch; text-align: left;
 }
 
+/* LE TABLEAU DES NOTES ET DE LEURS COEFFICIENTS.
+   ==============================================
+   RÉMY, devant la moyenne pondérée : « si ce sont des notes avec coeff tu peux
+   le présenter en tableau pour les moyennes pondérées ».
+
+   CE QU'IL CORRIGE : « 15 (coef. 1) · 16 (coef. 4) » demande de tenir quatre
+   nombres APPARIÉS dans la tête avant même de commencer, et la somme des
+   coefficients — par laquelle il faut diviser, et c'est LA faute du chapitre —
+   n'est écrite nulle part. En colonnes, chaque note est au-dessus de son
+   coefficient et la ligne du bas s'additionne du regard.
+
+   LES CHIFFRES SONT TABULAIRES ET LA COLONNE EST FIXE : sans cela, « 6 » et
+   « 18 » ne donnent pas la même largeur de case, les colonnes se décalent, et
+   l'appariement qu'on vient de gagner se reperd.
+
+   IL NE PORTE NI FOND NI OMBRE. Ce n'est pas une carte posée sur la page,
+   c'est la série de l'énoncé : une règle sous la ligne des notes suffit à dire
+   que le dessous se lit autrement. */
+.st-coefs {
+    border-collapse: collapse; margin: .35em 0 .2em;
+    font-variant-numeric: tabular-nums; color: var(--text-main);
+}
+.st-coefs th, .st-coefs td {
+    padding: .18em .5em; text-align: center; min-width: 2.6em;
+}
+.st-coefs th {
+    text-align: right; font-size: .66em; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em;
+    white-space: nowrap;
+}
+.st-coefs td { font-size: .95em; font-weight: 800; }
+/* La note se lit en premier, le coefficient la commente : c'est la règle entre
+   les deux qui le dit, et elle évite d'avoir à colorer l'une des deux lignes. */
+.st-coefs tr:first-child td, .st-coefs tr:first-child th {
+    border-bottom: 2px solid var(--border);
+}
+.st-coefs tr:last-child td { color: var(--primary-texte); }
+
 /* LES QUATRE VUES DE L'OUTIL « Tourner » — Rémy, devant « Dénombrer des cubes
    par tranche » : « j'aimerai bien ce genre d'exercices ». L'exercice qu'il a
    photographié porte un bouton 90° ; on montre les quatre coins d'un coup,
@@ -17333,6 +17371,100 @@ body.en-boite > #app-container { background: none; }
 }
 .rlm-btn--fort { border-color: var(--primary); background: var(--primary); color: #fff; }
 .rlm-btn:disabled { opacity: .45; cursor: default; }
+
+/* LA MÉDIANE AU DOIGT — on range, puis on barre.
+   ===============================================
+   RÉMY : « pour la médiane, on peut ranger dans l'ordre croissant par drag
+   drop », puis « et on peut sélectionner ou barrer des valeurs qui
+   s'affichent ».
+
+   LES JETONS NE CHANGENT JAMAIS DE TAILLE. Un jeton qui grossit au survol ou
+   au toucher déplacerait tous ses voisins pendant qu'on glisse, et la case
+   qu'on visait ne serait plus là où on l'a visée. On ne bouge donc que des
+   couleurs et une ombre — et `translateX`, qui ne pousse personne. */
+.md-layout { display: flex; flex-direction: column; align-items: center;
+    gap: 12px; width: 100%; }
+.md-context { text-align: center; max-width: 48ch; }
+.md-consigne {
+    margin: 0; text-align: center; max-width: 44ch;
+    font-size: 1rem; font-weight: 800; color: var(--primary-texte);
+}
+.md-rangee {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    padding: 12px; width: 100%; max-width: 680px;
+    border: 2px dashed var(--border); border-radius: 16px;
+    background: var(--bg-panel);
+}
+/* LA BORDURE PASSE EN TRAIT PLEIN QUAND LA SÉRIE EST RANGÉE : c'est le seul
+   endroit où le logiciel dit « cette étape-là est finie », et il le dit sans
+   un mot de plus. */
+.md-rangee--range { border-style: solid; }
+.md-rangee--ok { outline: 3px solid var(--success); outline-offset: 3px; }
+.md-rangee--ko { outline: 3px solid var(--danger); outline-offset: 3px; }
+.md-jeton {
+    min-width: 56px; min-height: 56px; padding: 0 10px;
+    border: 2px solid var(--primary); border-radius: 14px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    cursor: grab; touch-action: none; user-select: none;
+    transition: background .12s ease, opacity .12s ease;
+}
+/* `touch-action: none` EST LA LIGNE QUI FAIT MARCHER LE GLISSER AU DOIGT.
+   Sans elle, le navigateur prend le geste pour un défilement de page, annule
+   le pointeur en cours de route, et le jeton retombe à sa place — sur tablette
+   seulement, donc invisible à la souris. */
+/* LE SURVOL EST SOUS `@media (hover: hover)`, et ce n'est pas de la prudence :
+   sur un téléphone, un survol qui se voit RESTE COLLÉ après le doigt — le
+   jeton qu'on vient de glisser garde sa teinte, et l'on croit l'avoir tenu.
+   Une épreuve du dépôt garde cette règle pour toute la feuille de style. */
+@media (hover: hover) {
+    .md-jeton:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+}
+.md-jeton:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.md-jeton--tenu {
+    cursor: grabbing; z-index: 2;
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, .18);
+}
+/* UN JETON BARRÉ RESTE LISIBLE. On le raye, on ne l'efface pas : la série
+   entière doit rester sous les yeux, puisque c'est en la voyant se vider par
+   les deux bouts qu'on comprend où est le milieu. */
+.md-jeton--barre {
+    border-color: var(--border); color: var(--text-muted);
+    text-decoration: line-through; text-decoration-thickness: 3px;
+    opacity: .55; cursor: default;
+}
+/* LES DEUX BOUTS SE DÉSIGNENT, parce que « barre le plus petit et le plus
+   grand » est une consigne qu'un élève de quatrième lit deux fois. Ce n'est
+   pas la réponse : c'est le GESTE suivant. */
+.md-jeton--bout { border-color: var(--accent); border-width: 3px; }
+.md-jeton--seul {
+    border-color: var(--success); background: color-mix(in srgb, var(--success) 16%, transparent);
+}
+.md-jeton--faute { border-color: var(--danger); }
+/* LES TROIS PROPOSITIONS DE LA SÉRIE PAIRE — les deux survivants et leur
+   moyenne. C'est le seul moment de l'exercice où l'on choisit, et il mérite
+   d'être visiblement autre chose qu'une rangée de jetons. */
+.md-choix { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.md-prop {
+    min-height: 52px; padding: 0 20px;
+    border: 2px solid var(--border); border-radius: 14px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1.2rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+.md-prop--prise { border-color: var(--primary); background: var(--primary); color: #fff; }
+.md-statut { text-align: center; min-height: 1.4em; color: var(--text-soft);
+    font-size: .95rem; max-width: 46ch; }
+.md-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.md-btn {
+    min-height: 44px; padding: 0 16px;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: 1rem; font-weight: 800; cursor: pointer;
+}
+.md-btn--fort { border-color: var(--primary); background: var(--primary); color: #fff; }
+.md-btn:disabled { opacity: .45; cursor: default; }
 
 .dg-layout { display: flex; flex-direction: column; align-items: center;
     gap: 12px; width: 100%; }

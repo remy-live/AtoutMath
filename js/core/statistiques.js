@@ -169,3 +169,140 @@ export function enFrancais(x, decimales = 2) {
     const arrondi = Number(Number(x).toFixed(decimales));
     return String(arrondi).replace('.', ',');
 }
+
+// ── LA MOYENNE QUI S'ÉCRIT, ET CELLE QU'ON PONDÈRE ──────────────────────────
+//
+// RÉMY, le 17 novembre : « pour la moyenne il faudrait que l'élève écrive le
+// calcul (avec parenthèses) et il faut de la moyenne pondérée ».
+//
+// C'EST EXACTEMENT LA LEÇON DU TABLEUR, qu'il avait déjà tranchée une fois :
+// « la bonne réponse est =A1+B1 pas 17 ». Un élève qui tape 15 a peut-être
+// compris, ou peut-être deviné ; un élève qui écrit (12+15+18)/3 a montré la
+// seule chose qu'on cherche à lui apprendre.
+//
+// ET LES PARENTHÈSES NE SONT PAS UN DÉTAIL DE FORME : 12+15+18/3 vaut 33, et
+// c'est LA faute du chapitre. Elle se voit ici, et seulement ici.
+
+/**
+ * LIT UN CALCUL ÉCRIT PAR UN ÉLÈVE, et rend sa valeur — ou `null`.
+ *
+ * ── POURQUOI UN ANALYSEUR DE TRENTE LIGNES PLUTÔT QUE CELUI DU DÉPÔT ──────
+ *
+ * `maths/formule.js` sait lire bien plus que cela : des lettres, des racines,
+ * des exposants, des produits implicites. C'est précisément ce qu'on ne veut
+ * pas ici — « 3(12+15) » y serait un produit valide, et l'on accepterait une
+ * écriture qu'aucun professeur ne lirait comme une moyenne. La grammaire est
+ * donc explicite et fermée : des nombres, quatre signes, des parenthèses.
+ *
+ * ET JAMAIS `eval`. La saisie vient d'un élève ; elle part dans le journal,
+ * puis au serveur. On ne donne pas l'interpréteur à une chaîne qu'on n'a pas
+ * écrite, même dans un exercice de quatrième.
+ *
+ * @returns {?{valeur:number, nombres:number[], parentheses:boolean}}
+ */
+export function lireCalcul(saisie) {
+    const src = String(saisie == null ? '' : saisie)
+        .replace(/\s+/g, '')
+        .replace(/,/g, '.')
+        .replace(/[×x*]/g, '*')
+        .replace(/[÷:]/g, '/')
+        .replace(/[−–—]/g, '-');
+    if (!src || !/^[0-9.+\-*/()]+$/.test(src)) return null;
+    const nombres = [];
+    let i = 0;
+    const fin = () => i >= src.length;
+    const voir = () => src[i];
+
+    function facteur() {
+        if (voir() === '-') { i++; const f = facteur(); return f === null ? null : -f; }
+        if (voir() === '(') {
+            i++;
+            const v = somme();
+            if (voir() !== ')') return null;
+            i++;
+            return v;
+        }
+        const d = /^[0-9]+(\.[0-9]+)?/.exec(src.slice(i));
+        if (!d) return null;
+        i += d[0].length;
+        const n = Number(d[0]);
+        nombres.push(n);
+        return n;
+    }
+    function produit() {
+        let g = facteur();
+        while (g !== null && (voir() === '*' || voir() === '/')) {
+            const op = src[i++];
+            const d = facteur();
+            if (d === null) return null;
+            // DIVISER PAR ZÉRO N'EST PAS UNE RÉPONSE, c'est une saisie à
+            // refuser : l'infini remonterait jusqu'à la comparaison et
+            // vaudrait « faux » sans qu'on sache pourquoi.
+            if (op === '/' && d === 0) return null;
+            g = op === '*' ? g * d : g / d;
+        }
+        return g;
+    }
+    function somme() {
+        let g = produit();
+        while (g !== null && (voir() === '+' || voir() === '-')) {
+            const op = src[i++];
+            const d = produit();
+            if (d === null) return null;
+            g = op === '+' ? g + d : g - d;
+        }
+        return g;
+    }
+
+    const v = somme();
+    if (v === null || !fin() || !Number.isFinite(v)) return null;
+    return { valeur: v, nombres, parentheses: src.includes('(') };
+}
+
+/** Deux listes portent-elles exactement les mêmes nombres, répétitions comprises ? */
+export function memesNombres(a, b) {
+    if (a.length !== b.length) return false;
+    const tri = (l) => l.slice().sort((x, y) => x - y);
+    const [p, q] = [tri(a), tri(b)];
+    return p.every((x, k) => Math.abs(x - q[k]) < 1e-9);
+}
+
+/**
+ * LE CALCUL D'UNE MOYENNE EST-IL CELUI QU'ON ATTEND ?
+ *
+ * TROIS REFUS, ET CHACUN DIT AUTRE CHOSE À L'ÉLÈVE :
+ *
+ *   · ce n'est pas un calcul lisible → on le lui dit, sans le juger ;
+ *   · le calcul est juste mais la SOMME a été faite de tête (« 45/3 ») → on
+ *     redemande le calcul entier, puisque c'est lui la réponse ;
+ *   · le calcul est écrit mais faux → on ne dit PAS lequel est juste, on
+ *     montre l'endroit : la somme d'abord, la division ensuite.
+ *
+ * LE QUATRIÈME CAS EST CELUI QUI COMPTE : « 12+15+18/3 » porte bien tous les
+ * nombres et donne 33. On refuse sur la VALEUR, et le message nomme la cause —
+ * c'est la faute du chapitre, et elle mérite sa phrase.
+ *
+ * @param {string} saisie   ce que l'élève a tapé
+ * @param {number[]} valeurs la série (ou les produits, pour une pondérée)
+ * @param {number} diviseur  l'effectif
+ */
+export function verifieMoyenneEcrite(saisie, valeurs, diviseur) {
+    const lu = lireCalcul(saisie);
+    if (!lu) {
+        return { juste: false, pourquoi: 'Je n’arrive pas à lire ce calcul. '
+            + 'Il s’écrit avec des nombres, des +, une barre / et des parenthèses.' };
+    }
+    const attendue = valeurs.reduce((a, b) => a + b, 0) / diviseur;
+    const voulus = valeurs.concat([diviseur]);
+    if (!memesNombres(lu.nombres, voulus)) {
+        return { juste: false, pourquoi: 'Écris le calcul EN ENTIER : toutes les valeurs '
+            + `additionnées, puis la division par ${diviseur}. C’est le calcul qu’on `
+            + 'te demande, pas seulement son résultat.' };
+    }
+    if (Math.abs(lu.valeur - attendue) > 1e-9) {
+        return { juste: false, pourquoi: 'Les nombres y sont, mais le calcul ne donne pas '
+            + `la moyenne : sans parenthèses, seule la DERNIÈRE valeur est divisée par `
+            + `${diviseur}. La somme entière doit l’être.` };
+    }
+    return { juste: true };
+}

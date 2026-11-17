@@ -25,9 +25,10 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { figure } from '../figures.js';
+import { planVolume } from '../planPapier.js';
 import {
     MARCHES_VOLUME, EXACTS_PI, DIFFICULTE_VOLUME, tirerVolume, enonceDe, reponseDe,
-    uniteDe, reponseEcrite, dimensionsEcrites, enoncePapierDe, expliquer, indicesDe, leurresDe,
+    uniteDe, reponseEcrite, dimensionsEcrites, expliquer, indicesDe, leurresDe,
     figureVolumeSvg
 } from '../volumes.js';
 import {
@@ -103,12 +104,22 @@ export const volumesGenerator = {
             answerKind: auChoix ? 'choice' : 'numeric',
             prompt: {
                 text: enonce,
-                // SUR LA FEUILLE, IL N'Y A PAS DE DESSIN : les dimensions
-                // s'écrivent donc dans la question, sans quoi elle n'a aucune
-                // réponse possible. C'est la faute qui est arrivée trois fois
-                // le 20 octobre — un énoncé juste à l'écran, muet sur le
-                // papier.
-                papier: enoncePapierDe(t),
+                // ── LA FEUILLE A MAINTENANT LE DESSIN ─────────────────────
+                //
+                // RÉMY : « et il faut la fiche pdf », puis « avec des shémas
+                // évidemment ». Le commentaire d'avant disait vrai de son
+                // temps : « sur la feuille, il n'y a pas de dessin, les
+                // dimensions s'écrivent donc dans la question, sans quoi elle
+                // n'a aucune réponse possible » — c'était la faute arrivée
+                // trois fois le 20 octobre.
+                //
+                // ELLE EN A UN, ET LE RÉCITER DEVIENT NUISIBLE : « r = 3 cm,
+                // h = 5 cm » écrit à côté d'un cylindre qui porte déjà ses
+                // cotes, c'est la même mesure donnée deux fois, et l'élève
+                // qui lit la phrase n'a plus à regarder le solide. Or lire un
+                // dessin coté est une moitié du chapitre.
+                papier: enonceDe(t),
+                figure: planVolume(t),
                 html: `<div class="game-question vol-question">${enonce}</div>`
                     + figure(figureSvg, 'fig-volume')
             },

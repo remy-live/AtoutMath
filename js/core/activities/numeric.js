@@ -131,6 +131,42 @@ export function mount(container, session, opts = {}) {
     let avis = opts.avis || '';
     let cursor = null;
     let gate = null;
+    // L'activité à qui l'on a passé la main, quand la question ne se tape pas
+    // sur des chiffres. Voir `clavierVoulu` juste en dessous.
+    let releve = null;
+
+    /**
+     * ── ET UNE QUESTION QUI NE SE TAPE PAS SUR DES CHIFFRES ? ───────────────
+     *
+     * VU À L'ÉCRAN, sur « Écris le CALCUL de la moyenne, avec les parenthèses »
+     * : l'élève recevait le pavé de chiffres. Ni parenthèse, ni barre de
+     * fraction, ni « + » — c'est-à-dire aucune des touches dont la question a
+     * besoin. Et rien ne rougissait nulle part.
+     *
+     * POURQUOI CELA NE SE VOYAIT PAS DANS LE GÉNÉRATEUR, qui disait pourtant
+     * tout : l'item portait bien `saisieSeule` et `composable: 'litteral'`.
+     * Mais ces deux mots-là n'étaient lus que par le QCM (`choice.js`), qui est
+     * l'aiguilleur des claviers. Or un exercice dont le catalogue écrit
+     * `activityId: 'numpad'` — c'est le cas de `don-statistiques` — n'emprunte
+     * JAMAIS le QCM : il arrive ici directement, et plus personne ne lit la
+     * déclaration.
+     *
+     * C'est le même défaut que `propositions` ci-dessous, à un cran près : là,
+     * le pavé réaffichait un QCM qu'il ne fallait pas taper ; ici, il tape une
+     * réponse qu'il ne sait pas écrire.
+     *
+     * ON LIT DONC LA MÊME DÉCLARATION, SOUS LE MÊME NOM que `MODULES` dans
+     * `choice.js`. Deux tables qui divergeraient rendraient le défaut à la
+     * question suivante, et il serait alors invisible une seconde fois.
+     */
+    const COMPOSABLES = { litteral: './litteralSaisie.js',
+        notation: './notationSaisie.js', trace: './traceNotation.js' };
+    // SAUF QUAND C'EST LE QCM QUI NOUS A PASSÉ LA MAIN. Il a déjà lu cette
+    // déclaration-là et conclu « le pavé » — relire ici produirait un
+    // aller-retour entre deux activités à chaque question. Même signal que
+    // `propositions`, et pour la même raison.
+    const clavierVoulu = (item) => (opts.rendreLaMain ? null
+        : COMPOSABLES[(item && item.meta && item.meta.composable) || '']) || null;
 
     /**
      * CE PAVÉ SAIT AUSSI MONTRER DES PROPOSITIONS — et il faut qu'il le sache.
@@ -157,7 +193,37 @@ export function mount(container, session, opts = {}) {
         // L'escalier a pu redescendre : le QCM reprend la main, et cette
         // activité s'efface. Voir `rendreLaMain` dans choice.js.
         if (opts.rendreLaMain && opts.rendreLaMain(item)) return;
+        const autre = clavierVoulu(item);
+        if (autre) { passerALaMain(item, autre); return; }
         render(item);
+    }
+
+    /** La question demande un autre clavier : il prend la main sur le nôtre. */
+    async function passerALaMain(item, module) {
+        const mod = await import(module);
+        if (destroyed) return;
+        if (cursor) { cursor.destroy(); cursor = null; }
+        if (gate) { gate.destroy(); gate = null; }
+        container.onkeydown = null;
+        releve = mod.mount(container, session, { item, rendreLaMain: reprendreLaMain });
+    }
+
+    /**
+     * ET ON REPREND LA MAIN quand la question suivante se tape en chiffres.
+     *
+     * Un exercice mêle les deux formes d'une marche à l'autre : « Écris le
+     * CALCUL de la moyenne » veut les parenthèses, « Moyenne ? » veut le pavé.
+     * Sans ce retour, le clavier des parenthèses resterait pour toute la fin de
+     * la séance — et l'élève taperait un nombre sur un clavier d'expressions.
+     */
+    function reprendreLaMain(item) {
+        if (destroyed) return false;
+        // La suivante veut le MÊME clavier : il continue, rien à faire.
+        if (clavierVoulu(item)) return false;
+        if (releve && releve.destroy) releve.destroy();
+        releve = null;
+        render(item);
+        return true;
     }
 
     /**
@@ -706,15 +772,30 @@ export function mount(container, session, opts = {}) {
     // C'est ce qui permet au QCM de passer la main au pavé en cours
     // d'exercice : il a fallu générer la question pour savoir si sa réponse
     // était un nombre, et la retirer ici en poserait une autre.
-    if (opts.item) render(opts.item); else renderNext();
+    if (opts.item) {
+        const autre = clavierVoulu(opts.item);
+        if (autre) passerALaMain(opts.item, autre); else render(opts.item);
+    } else renderNext();
 
     return {
-        showNext: renderNext,
-        showPrevious() { if (session.rewind()) renderNext(); },
+        // UNE SEULE ACTIVITÉ PILOTE LE CONTENEUR À LA FOIS. La même règle que
+        // dans `choice.js`, et pour la même raison : deux activités qui
+        // répondent au professeur en même temps se marchent dessus, et
+        // `session.finish()` appelé deux fois clôt la séance deux fois.
+        showNext() { (releve || { showNext: renderNext }).showNext(); },
+        showPrevious() {
+            if (releve) return releve.showPrevious();
+            if (session.rewind()) renderNext();
+        },
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
             if (gate) { gate.destroy(); gate = null; }
+            // LE CLAVIER COMPOSÉ S'EFFACE AVANT NOUS, ET `session.finish()`
+            // RESTE ICI : `litteralSaisie.destroy` ne clôt pas la séance (c'est
+            // son appelant qui le fait), et une séance qu'on quitte sans la
+            // fermer ne compte nulle part.
+            if (releve) { const r = releve; releve = null; r.destroy(); }
             container.onkeydown = null;
             container.innerHTML = '';
             session.finish();

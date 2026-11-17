@@ -37,10 +37,13 @@ import { showToast, showConfirm, showModal } from './modal.js';
 import { chercher } from '../core/recherche.js';
 import { ficheDe } from './rechercheUI.js';
 import { makeStep } from '../core/path.js';
-import { PAR_DEFAUT as BAC_PAR_DEFAUT } from '../core/bacASable.js';
+import { PAR_DEFAUT as BAC_PAR_DEFAUT, jeuxDuBac } from '../core/bacASable.js';
+import { faireUneSessionExpress, MINUTES_PAR_DEFAUT } from '../core/sessionExpress.js';
+import { Shortcodes } from '../core/shortcodes.js';
 import { isGame } from '../core/gameAccess.js';
 import { estADeux } from '../data/catalog.js';
-import { monterUnParcours, ramenerLaBibliotheque } from '../core/parcoursServeur.js';
+import { monterUnParcours, ramenerLaBibliotheque,
+    donnerAuServeur } from '../core/parcoursServeur.js';
 import { cheminDeLEntree } from '../core/entreeParcours.js';
 // LE CATALOGUE SE COMPTE, IL NE SE RECOPIE PAS. Deux phrases de cet écran
 // annonçaient « 172 exercices » ; le catalogue en contient 178 depuis qu'on y
@@ -1742,16 +1745,46 @@ function tuileHtml(v) {
 //   · La classe          — qui est dedans, et comment elle marche ?
 //   · Les bilans         — qu'est-ce que je reprends lundi ?
 
+/**
+ * LE BOUTON DE LA SESSION EXPRESS, écrit UNE fois pour les deux états.
+ *
+ * RÉMY : « je vais sur la classe, je clique session express et hop ».
+ *
+ * IL PARAÎT DANS LES TROIS CAS de cet écran — aucune séance donnée, une séance
+ * en cours, aucune séance imposée. La raison est la même partout : la session
+ * express se décide à trois minutes de la sonnerie, et ce qui demande de
+ * chercher ne se fait pas.
+ *
+ * DEUX COPIES DIVERGERAIENT, et l'une des deux cesserait d'être branchée sans
+ * que rien ne rougisse — c'est le défaut que la sonde vient d'attraper sur
+ * l'écran « aucune séance donnée », qui sortait avant le bandeau.
+ */
+function boutonExpressHtml() {
+    return `<button type="button" class="ec-bouton ec-bouton--express"
+            data-session-express="${MINUTES_PAR_DEFAUT}">⚡ Session express</button>
+        <span class="ec-note">${MINUTES_PAR_DEFAUT} minutes de jeux de maths, en un clic —
+            avec son code à dicter.</span>`;
+}
+
 function seancesHtml() {
     if (vue.seances === null) return '<div class="ec-vide">On regarde ce qui a été donné…</div>';
     if (vue.seances.erreur) return `<div class="ec-vide">${esc(vue.seances.erreur)}</div>`;
 
     const liste = vue.seances.seances || [];
     if (!liste.length) {
+        // ET LE BOUTON EXPRESS EST LÀ AUSSI — c'est même ici qu'il sert le plus.
+        //
+        // MESURÉ PAR LA SONDE, qui a refusé de trouver le crochet : cet écran
+        // sort AVANT le bandeau, donc une classe sans aucune séance donnée
+        // n'avait pas le bouton. Or c'est exactement la classe du début
+        // d'année, celle du collègue, celle où l'on n'a rien préparé — et donc
+        // celle où « dix minutes de jeux en un clic » est la seule chose qu'on
+        // puisse faire.
         return `<div class="ec-vide ec-vide--invite">
             <p class="ec-vide-grand">Aucune séance donnée à cette classe.</p>
             <p>Ouvrez un parcours dans <b>Préparer</b>, et cochez cette classe
                dans le panneau <b>À qui ce parcours est donné</b>.</p>
+            <p>${boutonExpressHtml()}</p>
         </div>`;
     }
     const impose = (vue.liste && vue.liste.classe && vue.liste.classe.impose_path_id) || null;
@@ -1832,6 +1865,21 @@ function seancesHtml() {
             ? 'Les profils sont rendus : chacun peut aller voir ses badges et ses erreurs.'
             : 'Sans cela, chaque élève retrouve le sien en terminant une étape.'}</span>`
         : '';
+    // ── LA SESSION EXPRESS ─────────────────────────────────────────────
+    //
+    // RÉMY : « on pourrait envisager une session express, avec des jeux
+    // mathématiques (ou des défis) quand il reste 10 minutes, je vais sur la
+    // classe, je clique session express et hop ».
+    //
+    // LE BOUTON EST ICI, ET NULLE PART AILLEURS. « je vais sur la classe » :
+    // c'est cet écran-là, celui où il met déjà une séance en cours. Le poser
+    // dans l'atelier de parcours demanderait d'en sortir pour revenir ; à
+    // trois minutes de la sonnerie, c'est le même que de ne pas l'avoir.
+    //
+    // ET IL EST VISIBLE DANS LES DEUX ÉTATS — séance en cours ou non. Une
+    // séance express s'impose PAR-DESSUS celle du jour, et c'est précisément
+    // le cas d'usage : le travail est fini, il reste dix minutes.
+    const boutonExpress = boutonExpressHtml();
     return `
         <div class="ec-encours${enCours ? '' : ' ec-encours--aucune'}">
             ${enCours
@@ -1840,11 +1888,13 @@ function seancesHtml() {
                          lancer, ${esc(jusquaDit())}.</span>
                    ${caseEcran}
                    ${boutonProfils}
-                   <button type="button" class="ec-bouton ec-bouton--doux" data-imposer-rien>Ne plus rien imposer</button>`
+                   <button type="button" class="ec-bouton ec-bouton--doux" data-imposer-rien>Ne plus rien imposer</button>
+                   ${boutonExpress}`
                 : `<b>Aucune séance imposée</b>
                    <span>Vos élèves voient TOUTES les séances ci-dessous et choisissent eux-mêmes.
                          Pour qu'une seule s'ouvre toute seule, cliquez <b>mettre en cours</b>.</span>
-                   ${caseEcran}`}
+                   ${caseEcran}
+                   ${boutonExpress}`}
         </div>
         <p class="ec-note ec-note--bloc">De la plus récente à la plus ancienne.</p>
         <div class="ec-seances">${liste.map(s => `
@@ -4052,6 +4102,7 @@ async function brancher(e, redessiner) {
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours], [data-ecran-seance],'
+        + '[data-session-express],'
         + '[data-profils-classe], [data-profil-eleve],'
         + '[data-maison], [data-maison-mot], [data-defi-go], [data-defi-stop], [data-defi-voir],'
         // LES DEUX ÉCRANS D'APRÈS LE DÉFI. Un crochet absent de cette liste
@@ -4399,6 +4450,62 @@ async function brancher(e, redessiner) {
         }, ouvert
             ? `${prenom} retrouve son profil.`
             : `Le profil de ${prenom} se referme jusqu'à sa première étape finie.`);
+        return;
+    }
+
+    // ── LA SESSION EXPRESS : DIX MINUTES, UN CLIC ──────────────────────────
+    //
+    // RÉMY : « je vais sur la classe, je clique session express et hop », puis
+    // « on pourrait même donner un code express ».
+    //
+    // TROIS GESTES EN UN, ET C'EST TOUT L'INTÉRÊT : on fabrique la séance, on
+    // la monte au serveur, on l'impose. Séparés, ils demanderaient de passer
+    // par l'atelier, la bibliothèque et cette liste — trois écrans pour dix
+    // minutes de jeu, c'est-à-dire qu'on ne le ferait pas.
+    //
+    // ET LE CODE S'AFFICHE APRÈS, pas avant : il ne sert qu'à ceux qui ne sont
+    // PAS dans la classe — la tablette prêtée, le groupe du fond, la classe du
+    // collègue. Ceux qui sont inscrits l'ont déjà reçue sans rien taper.
+    if (d.sessionExpress !== undefined) {
+        const minutes = Number(d.sessionExpress) || MINUTES_PAR_DEFAUT;
+        // LE NIVEAU DE LA CLASSE TRIE LES JEUX, il ne les filtre pas — voir
+        // `jeuxExpress`. Une classe sans niveau renseigné reçoit la liste
+        // telle quelle, ce qui est le bon repli : on ne refuse pas de jouer
+        // parce qu'une case est vide.
+        const niveau = (vue.liste && vue.liste.classe && vue.liste.classe.level)
+            || (vue.classe && vue.classe.level) || '';
+        const seance = faireUneSessionExpress({
+            jeux: jeuxDuBac(getExerciseById), minutes, niveau
+        });
+        if (!seance.steps.length) {
+            showToast('Aucun jeu disponible pour une session express.', 'error');
+            return;
+        }
+        const ecran = !!(document.querySelector('[data-ecran-seance]') || {}).checked;
+        const r = await fait(donnerAuServeur(seance, vue.classe.id), null);
+        if (!r) return;
+        await fait(imposerLaSeance(vue.classe.id, seance.id, ecran), () => {
+            if (vue.liste && vue.liste.classe) {
+                vue.liste.classe.impose_path_id = seance.id;
+                vue.liste.classe.impose_ecran_seance = ecran;
+            }
+        }, `${seance.name} est en cours.`);
+        const code = Shortcodes.encodePath(seance);
+        // ON MONTRE LE CODE EN GRAND, et on dit à quoi il sert. Un code qu'on
+        // doit chercher dans un sous-menu n'est pas un code express.
+        // `showModal(titre, html, options)` EST POSITIONNEL. Lui passer un
+        // objet comme premier argument ne lève aucune erreur : la fenêtre
+        // s'ouvre avec « [object Object] » en titre et un corps vide, et le
+        // code ne s'affiche nulle part. Mesuré par la sonde, qui n'a pas
+        // trouvé `.ec-express-code`.
+        showModal(seance.name,
+            `<p>Elle vient de s'ouvrir chez vos élèves, sans qu'ils aient rien à lancer.</p>
+             <p class="ec-express-code">${esc(code)}</p>
+             <p class="ec-note">À dicter à qui n'est pas dans la classe — une tablette
+                prêtée, un groupe, la classe d'un collègue. Ils le tapent sur l'accueil.</p>
+             <p class="ec-note">${seance.steps.length} jeu${seance.steps.length > 1 ? 'x' : ''}
+                de mathématiques. Rien n'est noté : c'est du jeu, pas une interrogation.</p>`,
+            { width: '460px' });
         return;
     }
 

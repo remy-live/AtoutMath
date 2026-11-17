@@ -131,6 +131,23 @@ mesurent quelque chose qu'on voudra remesurer.
 
 **On lit le verdict AVANT de committer**, pas après.
 
+### On n'écrit plus une aide d'épreuve à la main
+
+`tests/helpers.mjs` porte ce qu'on réécrivait à chaque fois — au premier rang
+**`sansCommentaires(source)`**, sans laquelle une épreuve qui cherche un motif
+interdit le trouve **dans la phrase qui l'interdit** : ce dépôt explique chaque
+règle à l'endroit où elle se prend, donc le mot proscrit est toujours écrit
+juste au-dessus du code qui l'évite. Quatre épreuves sont tombées sur du code
+sain pour cette seule raison, et je l'ai réécrite deux fois sans la voir.
+
+```js
+import { sansCommentaires } from './helpers.mjs';
+const SRC = sansCommentaires(lire('js/core/activities/medianeAuDoigt.js'));
+```
+
+Et l'on **lit une fonction, pas une fenêtre de caractères** : `SRC.slice(i, i + 900)`
+se périme au premier commentaire qu'on ajoute au-dessus.
+
 ### Une épreuve neuve se voit échouer avant qu'on la croie
 
 Deux fois dans la même journée, une épreuve écrite pour garder une règle ne

@@ -121,6 +121,11 @@ function tirerQuestions(generator, params, nb) {
             // posé dans un seul rend la déclaration muette dans l'autre — ce
             // qui est arrivé au menu « Présentation » la semaine dernière.
             bonds: (item.prompt && item.prompt.bonds) || null,
+            // LE SCHÉMA DE LA FIGURE voyage par le même chemin, et il faut
+            // l'écrire ICI ET DANS `printParcours.js` — les deux panneaux
+            // d'impression recopient l'item à la main, et un chaînon posé dans
+            // un seul rend la déclaration muette dans l'autre.
+            figure: (item.prompt && item.prompt.figure) || null,
             // SUR LE PAPIER, UNE FRACTION S'ÉCRIT EN COLONNE — numérateur sur
             // dénominateur, séparés d'un trait. La barre oblique est une
             // commodité d'écran ; ce n'est pas ce qu'on demande d'écrire à

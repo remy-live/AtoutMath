@@ -22,8 +22,9 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { figure } from '../figures.js';
+import { planAire } from '../planPapier.js';
 import {
-    MARCHES_AIRE, DIFFICULTE_AIRE, tirerAire, enonceDe, enoncePapierDe, uniteDe,
+    MARCHES_AIRE, DIFFICULTE_AIRE, tirerAire, enonceDe, uniteDe,
     reponseEcrite, dimensionsEcrites, expliquer, indicesDe, leurresDe, figureAireSvg
 } from '../aires.js';
 import {
@@ -90,7 +91,19 @@ export const airesGenerator = {
             answerKind: auChoix ? 'choice' : 'numeric',
             prompt: {
                 text: enonce,
-                papier: enoncePapierDe(t),
+                // ── L'ÉNONCÉ PAPIER NE RÉCITE PLUS LES DIMENSIONS ─────────
+                //
+                // RÉMY : « et il faut la fiche pdf », puis « avec des shémas
+                // évidemment ». La feuille écrivait « Calcule l'AIRE d'un
+                // triangle : base 7 cm, hauteur 4 cm (côté oblique 5 cm) ».
+                // C'était honnête tant qu'elle n'avait pas le dessin, et c'est
+                // devenu NUISIBLE depuis qu'elle l'a : LA HAUTEUR EST TOUT LE
+                // CHAPITRE, et un élève qui lit le mot « hauteur » suivi d'un
+                // nombre ne peut plus se tromper de longueur. La faute que les
+                // trois marches existent pour rendre visible redevenait
+                // impossible, et la feuille mesurait autre chose que l'écran.
+                papier: enonceDe(t),
+                figure: planAire(t),
                 html: `<div class="game-question air-question">${enonce}</div>`
                     + figure(figureSvg, 'fig-aire')
             },

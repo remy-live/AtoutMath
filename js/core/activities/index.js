@@ -641,6 +641,27 @@ registerActivity({
     load: () => import('./poserLaLoupe.js')
 });
 
+// LA MÉDIANE AU DOIGT. Rémy, 17 novembre : « pour la médiane, on peut ranger
+// dans l'ordre croissant par drag drop », puis « et on peut sélectionner ou
+// barrer des valeurs qui s'affichent ».
+//
+// `accepts: ['numeric']` — la réponse reste un NOMBRE, la médiane ; c'est le
+// chemin pour y arriver qui change, et c'est tout l'intérêt. Le générateur des
+// statistiques n'a donc rien eu à apprendre.
+//
+// `parDefaut: 5` — une série se range et se barre en une quinzaine d'appuis,
+// soit nettement plus qu'une question au pavé. Dix d'affilée déborderaient de
+// l'heure ; cinq suffisent pour que le geste devienne une habitude.
+registerActivity({
+    id: 'medianeAuDoigt',
+    unite: 'série',
+    parDefaut: 5,
+    label: 'La Médiane au Doigt',
+    accepts: ['numeric'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./medianeAuDoigt.js')
+});
+
 registerActivity({
     id: 'rangerLeMot',
     unite: 'mot',

@@ -453,13 +453,29 @@ test('LA VIRGULE N\'EST OFFERTE QUE LÀ OÙ ELLE A UN SENS', () => {
     // là où la réponse EST décimale rendrait la question impossible — et c'est
     // le cas de la médiane d'une série paire, qui vaut souvent un demi.
     const DECIMALES = { 'mediane-paire': true, frequence: true };
+    // ET UNE MARCHE PEUT TRANCHER TIRAGE PAR TIRAGE. La moyenne pondérée vaut
+    // un demi quand la somme des coefficients est paire, et un entier sinon :
+    // une déclaration fixe serait fausse une fois sur deux, dans un sens ou
+    // dans l'autre. Elle dit donc la vérité de SA question — et l'épreuve
+    // garde alors davantage, puisqu'elle compare les deux au lieu de lire une
+    // liste écrite à la main.
+    const AU_TIRAGE = { 'moyenne-ponderee': true };
     for (const e of ETAPES_ST) {
         for (let k = 0; k < 10; k++) {
             const it = ST.generate({ marches: [e.id] },
                 { rng: makeRng(`v-${e.id}-${k}`), index: k, total: 10 });
-            if (!DECIMALES[e.id]) {
+            if (AU_TIRAGE[e.id]) {
+                assert.equal(it.meta.decimal, !Number.isInteger(Number(it.answer)),
+                    `${e.id} : la virgule doit suivre CETTE réponse-là (${it.answer})`);
+            } else if (!DECIMALES[e.id]) {
                 assert.equal(it.meta.decimal, false, `${e.id} : virgule offerte pour rien`);
-                if (it.answerKind !== 'choice') {
+                // ET UNE RÉPONSE ÉCRITE N'EST PAS UN NOMBRE : « (46+48+41)/3 »
+                // est LA réponse attendue de « Écris le CALCUL de la moyenne »,
+                // et elle ne se tape pas sur un pavé de chiffres — c'est le
+                // clavier des expressions qui la reçoit, et il n'a pas de
+                // touche virgule à offrir ou à retenir. `Number()` n'y voit
+                // qu'un NaN, et l'épreuve rougissait sur une question juste.
+                if (it.answerKind !== 'choice' && it.answerKind !== 'text') {
                     // UNE RÉPONSE À PLUSIEURS CASES EST UNE SUITE DE NOMBRES,
                     // séparés par des barres — « 5|65|13 ». `Number()` y rend
                     // NaN, et l'épreuve rougissait sur une question juste. On

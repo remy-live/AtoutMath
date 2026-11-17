@@ -967,6 +967,34 @@
 }
 .ec-bouton--rouge { background: var(--bg-panel); color: var(--danger-texte); border-color: var(--danger); }
 
+/* LE BOUTON DE LA SESSION EXPRESS.
+   ================================
+   RÉMY : « je vais sur la classe, je clique session express et hop ».
+
+   IL SE VOIT SANS CRIER. C'est un bouton qu'on cherche à trois minutes de la
+   sonnerie, donc il doit sauter aux yeux ; mais il vit à côté de « mettre en
+   cours », qui est le geste ordinaire de cet écran — le peindre en couleur
+   d'action ferait croire que c'est LUI qu'on attend. Une bordure accentuée et
+   la couleur d'action en TEXTE : il se repère, il ne domine pas. */
+.ec-bouton--express {
+    background: var(--bg-panel); color: var(--primary-texte);
+    border-color: var(--primary); border-width: 2px;
+}
+@media (hover: hover) {
+    .ec-bouton--express:hover {
+        background: color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+}
+/* LE CODE EXPRESS SE LIT À VOIX HAUTE, DONC IL S'ÉCRIT GRAND.
+   « on pourrait même donner un code express » : il est dicté devant une
+   classe, souvent en tenant la tablette à bout de bras. Chiffres tabulaires et
+   lettres espacées — « MHC-MML-CTM » s'épelle groupe par groupe. */
+.ec-express-code {
+    font-size: 1.9rem; font-weight: 800; letter-spacing: .12em;
+    text-align: center; margin: 14px 0; color: var(--primary-texte);
+    font-variant-numeric: tabular-nums; word-break: break-all;
+}
+
 /* LE CHOISISSEUR D'EXERCICE, dans l'écran de la classe.
    Rémy : « il faut vraiment que pour la séance ce soit facile d'ajouter et
    d'enlever un exercice ». Une liste de lignes pleines, hautes de 44 px : on

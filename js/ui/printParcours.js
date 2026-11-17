@@ -310,6 +310,9 @@ export function questionsDe(etape, nb) {
             // posé dans un seul rend la déclaration muette dans l'autre — ce
             // qui est arrivé au menu « Présentation » la semaine dernière.
             bonds: (item.prompt && item.prompt.bonds) || null,
+            // Et le schéma de la figure — voir `printQuestions.js`, qui porte
+            // la même ligne et dit pourquoi elle est à deux endroits.
+            figure: (item.prompt && item.prompt.figure) || null,
             // LE MÊME PIÈGE QUE POUR LA RÉPONSE, un cran plus loin : le
             // libellé d'une proposition est fait pour l'ÉCRAN. Une fraction y
             // est du HTML — deux span empilés —, et une égalité de Thalès

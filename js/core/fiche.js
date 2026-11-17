@@ -451,6 +451,113 @@ export function mesurerBonds(b, dispo, o, mes) {
 }
 
 
+/**
+ * UN SCHÉMA DE FIGURE, MIS À L'ÉCHELLE DE SA COLONNE.
+ *
+ * RÉMY, 17 novembre : « et il faut la fiche pdf », puis « avec des shémas
+ * évidemment ». Le plan arrive de `core/planPapier.js` dans ses propres
+ * unités ; c'est ici qu'il devient des millimètres, UNE FOIS, et les deux
+ * traceurs ne font ensuite que recopier ces nombres — la règle de
+ * `mesurerBonds`, et pour la même raison.
+ *
+ * ── DEUX PASSES, ET LA SECONDE EST CELLE QUI COMPTE ───────────────────────
+ *
+ * On ne peut pas mettre un dessin coté à l'échelle en une fois : la place que
+ * prend « h = 12 cm » ne dépend PAS de l'échelle du dessin — le texte est
+ * toujours à `o.taille`. Un cadre calculé avant la mise à l'échelle est donc
+ * faux dès que les étiquettes dépassent, c'est-à-dire sur les petites figures,
+ * c'est-à-dire exactement là où le débord se voit.
+ *
+ * On met donc les TRAITS à l'échelle d'abord, puis on mesure le cadre avec les
+ * largeurs RÉELLES du texte, et l'on resserre si ça dépasse.
+ *
+ * @param {Object} plan    - traits, caches, droits, textes (voir planPapier.js)
+ * @param {number} dispo   - la largeur disponible, en mm
+ * @param {Object} o       - les options de composition
+ * @param {Function} mes   - le mesureur de texte
+ */
+export function mesurerFigure(plan, dispo, o, mes) {
+    if (!plan || !plan.traits) return null;
+    const lignes = [...(plan.traits || []), ...(plan.caches || [])];
+    if (!lignes.length) return null;
+    // LE PLAFOND DE HAUTEUR EST CE QUI EMPÊCHE UNE FIGURE DE MANGER LA PAGE.
+    // Huit questions à dessin par feuille, c'est quatre centimètres chacune au
+    // plus — en dessous, les cotes se touchent ; au-dessus, on imprime trois
+    // questions par page et le contrôle tient sur quatre feuilles.
+    const hMax = Math.max(18, Math.min(o.figureMax || 34, dispo * 0.8));
+    const brut = cadreTraits(lignes, plan.droits || []);
+    const texteH = o.taille;
+
+    /** Le cadre vrai, textes compris, pour une échelle donnée. */
+    const cadreA = (k) => {
+        let x0 = brut.x0 * k, x1 = brut.x1 * k, y0 = brut.y0 * k, y1 = brut.y1 * k;
+        for (const t of plan.textes || []) {
+            const w = mes(t.t, texteH);
+            // L'ÉCART EST EN HAUTEURS DE TEXTE, et il s'ajoute APRÈS l'échelle
+            // — voir `texte` dans `planPapier.js` : un écart mis à l'échelle
+            // avec le dessin disparaît sur les figures hautes, et l'étiquette
+            // vient se poser SUR le trait qu'elle cote.
+            const x = t.x * k + (t.dx || 0) * texteH;
+            const y = t.y * k + (t.dy || 0) * texteH;
+            const g = t.ancre === 'fin' ? x - w : (t.ancre === 'debut' ? x : x - w / 2);
+            x0 = Math.min(x0, g); x1 = Math.max(x1, g + w);
+            y0 = Math.min(y0, y - texteH * 0.85);
+            y1 = Math.max(y1, y + texteH * 0.25);
+        }
+        return { x0, y0, w: Math.max(x1 - x0, 0.1), h: Math.max(y1 - y0, 0.1) };
+    };
+
+    let k = Math.min(dispo / Math.max(brut.x1 - brut.x0, 1),
+        hMax / Math.max(brut.y1 - brut.y0, 1));
+    // DEUX RESSERRAGES SUFFISENT, et le second ne sert presque jamais : chacun
+    // rend le cadre exact pour l'échelle qu'il vient de poser. On borne pour ne
+    // pas tourner sur une figure dont les étiquettes font toute la largeur.
+    for (let passe = 0; passe < 2; passe++) {
+        const c = cadreA(k);
+        const trop = Math.max(c.w / dispo, c.h / hMax);
+        if (trop <= 1.001) break;
+        k /= trop;
+    }
+    const c = cadreA(k);
+    const X = (x) => x * k - c.x0;
+    const Y = (y) => y * k - c.y0;
+    const mettre = (ls) => ls.map(l => l.map(([x, y]) => [X(x), Y(y)]));
+    return {
+        w: c.w, h: c.h, taille: texteH,
+        traits: mettre(plan.traits || []),
+        caches: mettre(plan.caches || []),
+        // L'ANGLE DROIT GARDE SA TAILLE EN MILLIMÈTRES, et ne suit pas
+        // l'échelle du dessin : c'est un SIGNE, pas une longueur. Mis à
+        // l'échelle, il devient un timbre-poste sur une petite figure et une
+        // deuxième figure sur une grande.
+        droits: (plan.droits || []).map(d => {
+            const c2 = Math.max(1.6, Math.min(o.taille * 0.62, 2.6));
+            return { x: X(d.x), y: Y(d.y), dx: d.dx, dy: d.dy, c: c2 };
+        }),
+        textes: (plan.textes || []).map(t => ({
+            x: X(t.x) + (t.dx || 0) * texteH,
+            y: Y(t.y) + (t.dy || 0) * texteH,
+            t: t.t, ancre: t.ancre
+        }))
+    };
+}
+
+/** Le cadre des seuls traits — la première passe de `mesurerFigure`. */
+function cadreTraits(lignes, droits) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const l of lignes) {
+        for (const [x, y] of l) {
+            if (x < x0) x0 = x; if (x > x1) x1 = x;
+            if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+    }
+    for (const d of droits) {
+        if (d.x < x0) x0 = d.x; if (d.x > x1) x1 = d.x;
+        if (d.y < y0) y0 = d.y; if (d.y > y1) y1 = d.y;
+    }
+    return { x0, y0, x1, y1 };
+}
+
 export const DEFAUTS = {
     colonnes: 2,
     taille: 3.9,        // hauteur des capitales, en mm (≈ 11 pt)
@@ -1384,6 +1491,11 @@ export function composerBlocs(exos, opts, mesurer) {
             // tableau et se pose comme lui ; mais lui NE PREND PAS la place de
             // la réponse — voir `mesurerBonds`.
             const bonds = q.bonds ? mesurerBonds(q.bonds, texteW, o, mes) : null;
+            // LE SCHÉMA DE LA FIGURE, s'il y en a un. Il se pose comme les
+            // bonds, et comme eux il NE PREND PAS la place de la réponse : un
+            // dessin coté est l'ÉNONCÉ, pas le brouillon. Rémy : « avec des
+            // shémas évidemment ».
+            const figure = q.figure ? mesurerFigure(q.figure, texteW, o, mes) : null;
             // LA PLACE DEMANDÉE L'EMPORTE SUR LA PLACE DISPONIBLE.
             //
             // Rémy, sur la fiche des grandeurs composées : « pourquoi tu mets
@@ -1456,7 +1568,8 @@ export function composerBlocs(exos, opts, mesurer) {
             // tient pas dans huit descend, et y trouve toute la largeur.
             const besoinRep = Math.min(o.repMin,
                 Math.max(8, mes(String(q.reponse ?? ''), o.taille) + 3));
-            const memeLigne = !placeDemandee && !trou && !trouDessine && !choix && !tableau && !bonds && lignes.length === 1
+            const memeLigne = !placeDemandee && !trou && !trouDessine && !choix && !tableau
+                && !bonds && !figure && lignes.length === 1
                 && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= besoinRep;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
             // numérateur au-dessus du trait, le dénominateur dessous. Il leur
@@ -1474,10 +1587,11 @@ export function composerBlocs(exos, opts, mesurer) {
             // tableau posé sous un énoncé, et deux boutons pour une seule
             // question se répondent un jour l'un à l'autre.
             const hBonds = bonds ? o.avantTableau + bonds.h + o.apresTableau : 0;
+            const hFigure = figure ? o.avantTableau + figure.h + o.apresTableau : 0;
             const h = supp + hauteurDesLignes(o, lignes.length, !!q.fractions)
                 + (choix ? o.interligne : 0)
                 + (tableau ? o.avantTableau + tableau.h + o.apresTableau : 0)
-                + hBonds
+                + hBonds + hFigure
                 + (sansPointilles ? 0 : hRep);
             // `iQ` : le rang de la question DANS SON EXERCICE. C'est la seule
             // chose qui permette, depuis l'aperçu, de désigner celle qu'on
@@ -1485,7 +1599,8 @@ export function composerBlocs(exos, opts, mesurer) {
             // sur toute la feuille et saute les exercices non numérotés.
             return { lignes, coupee: lignes.length > lignesVoulues,
                 casse: coupureCasseUneExpression(lignes),
-                choix, memeLigne, trou, trous, trouDessine, tableau, bonds, hBonds, sansPointilles, h,
+                choix, memeLigne, trou, trous, trouDessine, tableau, bonds, hBonds,
+                figure, hFigure, sansPointilles, h,
                 // CE QUE LA QUESTION A DEMANDÉ voyage avec sa cellule : le
                 // traceur, plus bas, n'a plus accès à `q`.
                 nRep, hRep,
@@ -1495,7 +1610,8 @@ export function composerBlocs(exos, opts, mesurer) {
         /** Vingt questions du même moule : une ligne, pas de trou, pas de QCM. */
         function exerciceHomogene(cells) {
             return cells.length > 1
-                && cells.every(c => !c.trou && !c.choix && !c.tableau && !c.bonds && c.lignes.length === 1);
+                && cells.every(c => !c.trou && !c.choix && !c.tableau && !c.bonds && !c.figure
+                    && c.lignes.length === 1);
         }
         /** Les réponses sont-elles toutes au même endroit ? */
         function reponsesRegulieres(cells) {
@@ -1638,12 +1754,21 @@ export function composerBlocs(exos, opts, mesurer) {
                     const pas = (cell.hRep || ligneRep) / nRep;
                     rep = {
                         x: texteX,
-                        // `hBonds` EST DANS CE CALCUL, sans quoi les pointillés
-                        // de la réponse se posent EN PLEIN MILIEU du schéma :
-                        // la hauteur était comptée dans la cellule, mais pas
-                        // dans l'endroit où la réponse commence.
+                        // `hBonds` ET `hFigure` SONT DANS CE CALCUL, sans quoi
+                        // les pointillés de la réponse se posent EN PLEIN
+                        // MILIEU du schéma : la hauteur était comptée dans la
+                        // cellule, mais pas dans l'endroit où la réponse
+                        // commence.
+                        //
+                        // LE MÊME DÉFAUT DEUX FOIS, À LA MÊME LIGNE : il avait
+                        // été payé pour les bonds, et le schéma de figure l'a
+                        // refait le jour où on l'a ajouté. VU SUR LA FEUILLE
+                        // IMPRIMÉE : le trait de réponse traversait les huit
+                        // rectangles de la page. Tout canal de dessin qu'on
+                        // ajoutera ensuite devra s'écrire ICI aussi.
                         y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
-                            + (cell.choix ? o.interligne : 0) + (cell.hBonds || 0) + pas * 0.72,
+                            + (cell.choix ? o.interligne : 0)
+                            + (cell.hBonds || 0) + (cell.hFigure || 0) + pas * 0.72,
                         w: texteW, lignes: nRep, pas
                     };
                 }
@@ -1680,9 +1805,17 @@ export function composerBlocs(exos, opts, mesurer) {
                     y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
                         + (cell.choix ? o.interligne : 0) + o.avantTableau
                 } : null;
+                // LE SCHÉMA DE LA FIGURE, POSÉ. Sous le texte comme les
+                // bonds, et APRÈS eux si jamais les deux se croisaient.
+                const figure = cell.figure ? {
+                    ...cell.figure,
+                    x: texteX,
+                    y: y + cell.dy + hauteurDesLignes(o, cell.lignes.length, cell.fractions)
+                        + (cell.choix ? o.interligne : 0) + cell.hBonds + o.avantTableau
+                } : null;
                 page.items.push({
                     type: 'q', n: numerote ? numero : null,
-                    tableau, bonds,
+                    tableau, bonds, figure,
                     // LE CADRE DE LA CASE, quand la fiche est en tableau. Il
                     // déborde de `padTableau` de chaque côté : deux cases
                     // voisines partagent alors exactement leur filet.

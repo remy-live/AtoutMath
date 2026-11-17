@@ -7984,3 +7984,49 @@ immédiatement accusé la tablette et le téléphone d'un défaut que personne
 n'avait introduit : j'avais retenu UN seuil là où le code en documentait DEUX
 (9,5 px sur un ordinateur, 7,2 ailleurs). Une sonde qui crie sur du code sain
 ne se relance pas deux fois.
+
+### Les statistiques : écrire le calcul, ranger au doigt, barrer
+
+> « pour la moyenne il faudrait que l'élève écrive le calcul (avec
+> parenthèses) et il faut de la moyenne pondérée »
+>
+> « et pour la médiane, on peut ranger dans l'ordre croissant par drag drop »
+>
+> « et on peut sélectionner ou barrer des valeurs qui s'affichent »
+>
+> puis, en voyant la moyenne pondérée à l'écran : « si ce sont des notes avec
+> coeff tu peux le présenter en tableau pour les moyennes pondérées »
+
+**ÉCRIRE LE CALCUL N'EST PAS LA MÊME QUESTION QUE DONNER LE RÉSULTAT.** Un
+élève qui tape 15 a peut-être compris, peut-être deviné, peut-être compté la
+valeur du milieu : la réponse ne dit rien de sa méthode. Et les parenthèses
+sont le sujet, pas la forme — `12+15+18/3` vaut 33, et c'est LA faute du
+chapitre ; elle est invisible tant qu'on ne demande que le résultat.
+
+**LE TABLEAU EST UNE CORRECTION, PAS UN ORNEMENT.** Écrite en ligne,
+« 15 (coef. 1) · 16 (coef. 4) » demande de tenir quatre nombres appariés dans
+la tête avant de commencer à calculer ; la faute du chapitre — diviser par le
+nombre de notes et non par la somme des coefficients — devient d'autant plus
+facile que la somme des coefficients n'est écrite nulle part. En tableau, la
+ligne « coefficient » se lit et s'additionne du regard.
+
+**RANGER ET BARRER SONT LE GESTE DE LA LEÇON**, et c'est pourquoi la ligne
+rouge ne s'y applique pas : on ne trace rien à la souris à la place de la règle
+et du compas ; on ordonne une série, ce qui est exactement ce qu'on demande au
+tableau noir.
+
+### La session express, et son code
+
+> « on pourrait envisager une session express, avec des jeux mathématiques (ou
+> des défis) quand il reste 10 minutes, je vais sur la classe, je clique
+> session express et hop »
+>
+> puis : « on pourrait même donner un code express »
+
+**LE CODE EST LA MOITIÉ QUI MANQUAIT.** « Je vais sur la classe » suppose que
+les élèves soient déjà identifiés et rattachés — ce qui est vrai en salle
+informatique et faux partout ailleurs : au fond de la classe, sur trois
+tablettes prêtées, devant une classe qui n'est pas la sienne. Un code dicté ne
+suppose rien : il se dit à voix haute et il s'ouvre. Les deux portes mènent à
+la même séance, et c'est la séance qui doit être prête en un clic, pas la
+classe.

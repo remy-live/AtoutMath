@@ -649,8 +649,14 @@ test('ET LA LIGNE DE RÉPONSE PASSE SOUS LE SCHÉMA, PAS DEDANS', () => {
     const F = readFileSync(new URL('../js/core/fiche.js', import.meta.url), 'utf8');
     assert.match(F, /const sansPointilles = trou \|\| trouDessine \|\| memeLigne \|\| \(tableau && tableau\.aRemplir\);/,
         'le schéma a pris la place de la ligne de réponse');
-    assert.match(F, /\+ \(cell\.choix \? o\.interligne : 0\) \+ \(cell\.hBonds \|\| 0\) \+ pas \* 0\.72,/,
+    // ET LE MÊME DÉFAUT S'EST REFAIT LE 17 NOVEMBRE, À LA MÊME LIGNE : le
+    // schéma des FIGURES (`hFigure`) est arrivé — Rémy : « avec des shémas
+    // évidemment » — et sa hauteur manquait au même endroit. VU SUR LA FEUILLE
+    // IMPRIMÉE : le trait de réponse traversait les huit rectangles de la page.
+    // Tout canal de dessin qu'on ajoutera ensuite devra s'écrire là aussi.
+    assert.match(F, /\+ \(cell\.hBonds \|\| 0\) \+ \(cell\.hFigure \|\| 0\) \+ pas \* 0\.72,/,
         'la ligne de réponse ignore la hauteur du schéma');
+    assert.match(F, /const figure = q\.figure \? mesurerFigure\(q\.figure, texteW, o, mes\) : null;/);
     assert.match(F, /const bonds = q\.bonds \? mesurerBonds\(q\.bonds, texteW, o, mes\) : null;/);
 });
 

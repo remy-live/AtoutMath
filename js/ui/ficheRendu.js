@@ -1371,6 +1371,40 @@ function tableauApercu(t, k, o) {
  * convertir les lignes de base en `top` de boîte, et une étiquette se
  * retrouverait un millimètre plus bas dans l'aperçu que sur la feuille.
  */
+/**
+ * LE SCHÉMA D'UNE FIGURE, DANS L'APERÇU.
+ *
+ * RÉMY : « avec des shémas évidemment ». Tous les nombres sont déjà posés par
+ * `mesurerFigure` (core/fiche.js) : ici on ne fait que les recopier en SVG.
+ * Une seule primitive — la ligne brisée —, donc un seul chemin de dessin, donc
+ * aucune chance que l'aperçu et le PDF divergent.
+ */
+function figureApercu(f, k, o) {
+    const d = (n) => Number(n).toFixed(2);
+    const chemin = (l) => 'M ' + l.map(([x, y]) => `${d(x)} ${d(y)}`).join(' L ');
+    const traits = f.traits.map(l =>
+        `<path d="${chemin(l)}" fill="none" stroke="#1a202c" stroke-width=".3"
+            stroke-linejoin="round"/>`).join('');
+    // LES ARÊTES CACHÉES ET LES HAUTEURS SONT EN POINTILLÉS, et c'est ce qui
+    // fait comprendre qu'il y a de la profondeur — ou qu'un trait n'est pas un
+    // côté. Sans elles, un pavé est un hexagone et une hauteur une arête.
+    const caches = f.caches.map(l =>
+        `<path d="${chemin(l)}" fill="none" stroke="#1a202c" stroke-width=".28"
+            stroke-dasharray="1.4 1.1" stroke-linejoin="round"/>`).join('');
+    const droits = f.droits.map(a =>
+        `<path d="M ${d(a.x + a.dx * a.c)} ${d(a.y)} L ${d(a.x + a.dx * a.c)} ${
+            d(a.y + a.dy * a.c)} L ${d(a.x)} ${d(a.y + a.dy * a.c)}"
+            fill="none" stroke="#1a202c" stroke-width=".25"/>`).join('');
+    const ANCRES = { milieu: 'middle', debut: 'start', fin: 'end' };
+    const textes = f.textes.map(t =>
+        `<text x="${d(t.x)}" y="${d(t.y)}" text-anchor="${ANCRES[t.ancre] || 'middle'}"
+            font-size="${d(o.taille)}" fill="#1a202c">${echapper(t.t)}</text>`).join('');
+    return `<svg class="fq-figure" viewBox="0 0 ${d(f.w)} ${d(f.h)}"
+        style="position:absolute; left:${f.x * k}px; top:${f.y * k}px;
+        width:${f.w * k}px; height:${f.h * k}px" aria-hidden="true">
+        ${traits}${caches}${droits}${textes}</svg>`;
+}
+
 function bondsApercu(b, k, o) {
     const d = (n) => Number(n).toFixed(2);
     const arcs = b.arcs.map(a =>
@@ -1582,6 +1616,7 @@ export function apercuItems(page, k, o) {
         }
         if (it.tableau) html += tableauApercu(it.tableau, k, o);
         if (it.bonds) html += bondsApercu(it.bonds, k, o);
+        if (it.figure) html += figureApercu(it.figure, k, o);
         if (it.rep && !it.rep.dansLeTexte) {
             // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
             // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
@@ -2243,6 +2278,42 @@ function tableauPdf(pdf, t, o) {
  * c₁ = p₀ + ⅔(c − p₀), c₂ = p₂ + ⅔(c − p₂) —, et c'est la conversion exacte,
  * pas une approximation : toute courbe quadratique EST une cubique.
  */
+/** Le même schéma, dans le PDF — les mêmes nombres, l'autre encre. */
+function figurePdf(pdf, f, o) {
+    const ligne = (l) => {
+        for (let i = 0; i < l.length - 1; i++) {
+            pdf.line(f.x + l[i][0], f.y + l[i][1], f.x + l[i + 1][0], f.y + l[i + 1][1]);
+        }
+    };
+    pdf.setDrawColor(...ENCRE.trait);
+    pdf.setLineWidth(0.3);
+    f.traits.forEach(ligne);
+    pdf.setLineWidth(0.28);
+    pdf.setLineDashPattern([1.4, 1.1], 0);
+    f.caches.forEach(ligne);
+    // ON REMET LE TRAIT PLEIN TOUT DE SUITE : un motif de tirets laissé en
+    // place teinte tout ce que le traceur dessine ensuite, jusqu'au prochain
+    // qui pense à le remettre. C'est le genre de défaut qui apparaît sur la
+    // question d'après, et qu'on cherche alors dans la mauvaise.
+    pdf.setLineDashPattern([], 0);
+    pdf.setLineWidth(0.25);
+    // `ligne` POSE DÉJÀ LE COIN DU SCHÉMA (`f.x`, `f.y`) : l'angle droit se
+    // donne donc en coordonnées du schéma, comme les traits.
+    f.droits.forEach(a => ligne([
+        [a.x + a.dx * a.c, a.y],
+        [a.x + a.dx * a.c, a.y + a.dy * a.c],
+        [a.x, a.y + a.dy * a.c]
+    ]));
+    const ALIGN = { milieu: 'center', debut: 'left', fin: 'right' };
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(o.taille * 2.83);
+    pdf.setTextColor(...ENCRE.texte);
+    f.textes.forEach(t => {
+        pdf.text(pourPdf(t.t), f.x + t.x, f.y + t.y, { align: ALIGN[t.ancre] || 'center' });
+    });
+    pdf.setDrawColor(...ENCRE.trait);
+}
+
 function bondsPdf(pdf, b, o) {
     pdf.setDrawColor(...ENCRE.trait);
     pdf.setLineWidth(0.25);
@@ -2421,6 +2492,7 @@ export function pdfItems(pdf, page, o) {
         }
         if (it.tableau) tableauPdf(pdf, it.tableau, o);
         if (it.bonds) bondsPdf(pdf, it.bonds, o);
+        if (it.figure) figurePdf(pdf, it.figure, o);
         if (it.rep) {
             // SUR UN QCM, LA RÉPONSE EST LA CASE COCHÉE, pas une seconde
             // saisie. Rémy : « pour les QCM, il faut que le champ remplissable

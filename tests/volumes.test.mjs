@@ -18,8 +18,10 @@
 //   · LES LEURRES SONT LES FAUTES DU CHAPITRE, et jamais la bonne réponse.
 //   · LE DESSIN NE SORT PAS DE SON CADRE. Un SVG qui déborde ne lève aucune
 //     erreur : il coupe, en silence.
-//   · LA FEUILLE PORTE SES DIMENSIONS. « Calcule le volume de ce pavé droit »
-//     ne désigne rien quand le dessin n'y est pas.
+//   · LA FEUILLE PORTE SON DESSIN. Rémy, le 17 novembre : « et il faut la
+//     fiche pdf […] avec des shémas évidemment ». Avant lui, elle écrivait les
+//     dimensions en toutes lettres, et lire un solide coté — une moitié du
+//     chapitre — n'était plus nécessaire.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -216,11 +218,20 @@ test('LES SOLIDES GARDENT DES TAILLES COMPARABLES', () => {
         `les cadres vont de ${Math.min(...cadres)} à ${Math.max(...cadres)}`);
 });
 
-test('LA FEUILLE PORTE SES DIMENSIONS', () => {
-    // UN ÉNONCÉ JUSTE À L'ÉCRAN PEUT ÊTRE SANS RÉPONSE POSSIBLE SUR LE PAPIER.
-    // Il n'y a pas de dessin sur la feuille : « Calcule le volume de CE pavé
-    // droit » n'y désigne rien. C'est arrivé trois fois le 20 octobre, et
-    // c'est pourquoi le dépôt demande de REGARDER la fiche imprimée.
+test('LA FEUILLE PORTE SON DESSIN, ET LE DESSIN PORTE LES COTES', () => {
+    // CETTE ÉPREUVE DEMANDAIT L'EXACT CONTRAIRE, ET ELLE AVAIT RAISON DE SON
+    // TEMPS : « il n'y a pas de dessin sur la feuille, donc "CE pavé droit" n'y
+    // désigne rien ». C'est le défaut payé trois fois le 20 octobre, et c'est
+    // pour lui que le dépôt demande de REGARDER la fiche imprimée.
+    //
+    // RÉMY A CHANGÉ LA PRÉMISSE le 17 novembre : « et il faut la fiche pdf »,
+    // puis « avec des shémas évidemment ». Les sept solides sont dessinés sur
+    // la feuille (`core/planPapier.js`), arêtes cachées comprises — et lire un
+    // solide coté est une moitié du chapitre, que la phrase récitée dispensait
+    // de faire.
+    //
+    // CE QUE L'ÉPREUVE GARDE N'A PAS CHANGÉ : qu'une question imprimée ait une
+    // réponse possible. Seul l'endroit où vivent les cotes a bougé.
     assert.equal(G.ecrit, true, 'le générateur ne promet aucune fiche');
     for (const m of MARCHES) {
         for (let i = 0; i < 10; i++) {
@@ -229,18 +240,21 @@ test('LA FEUILLE PORTE SES DIMENSIONS', () => {
             const p = it.prompt.papier;
             const ou = `${m} #${i}`;
             assert.ok(p, `${ou} : aucune consigne papier`);
-            assert.ok(!/\bce |cette |ces /.test(p),
-                `${ou} : la feuille désigne un dessin absent — « ${p} »`);
-            // CHAQUE DIMENSION TIRÉE EST ÉCRITE. Il suffit d'en oublier une
-            // pour que la question n'ait plus de réponse, et le texte reste
-            // parfaitement lisible.
+            assert.ok(it.prompt.figure, `${ou} : la feuille n'a pas de dessin`);
+            // CHAQUE DIMENSION TIRÉE EST SUR LE DESSIN. Il suffit d'en oublier
+            // une pour que la question n'ait plus de réponse, et la feuille
+            // reste parfaitement lisible.
+            const ecrits = it.prompt.figure.textes.map(t => t.t).join(' ');
             for (const v of Object.values(it.meta.dims)) {
-                assert.ok(new RegExp(`\\b${v}\\b`).test(p),
-                    `${ou} : la cote ${v} manque dans « ${p} »`);
+                assert.ok(new RegExp(`\\b${v}\\b`).test(ecrits),
+                    `${ou} : la cote ${v} n'est pas sur le dessin — « ${ecrits} »`);
             }
-            // ET ELLE NE DIT PAS LA RÉPONSE. Un énoncé qui la contient
-            // s'imprime tel quel sur la feuille de l'élève — payé une fois
-            // sur « L'Axe au Centième », dont le `prompt.text` portait
+            // ET L'ÉNONCÉ NE LES RÉCITE PLUS.
+            assert.equal((p.match(/\d/g) || []).length, 0,
+                `${ou} : l'énoncé papier récite encore des nombres — « ${p} »`);
+            // IL NE DIT PAS DAVANTAGE LA RÉPONSE. Un énoncé qui la contient
+            // s'imprime tel quel sur la feuille de l'élève — payé une fois sur
+            // « L'Axe au Centième », dont le `prompt.text` portait
             // « (le point vaut 8,2) ».
             assert.ok(!p.includes(it.answer),
                 `${ou} : la réponse « ${it.answer} » est écrite dans « ${p} »`);

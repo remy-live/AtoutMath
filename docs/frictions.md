@@ -7730,3 +7730,84 @@ plus d'un.**
   `corpsDeLaFonction(source, nom)`, pour qu'une épreuve de source lise une
   FONCTION et non une fenêtre de caractères. La fenêtre est toujours arbitraire,
   et elle se périme au premier commentaire qu'on ajoute.
+
+**Troisième récidive du même piège, et j'ai réécrit l'aide à la main** — 17 novembre
+
+- *Ce que je voulais faire* — garder la règle « une saisie d'élève ne s'évalue
+  jamais » sur le juge de la moyenne écrite.
+- *Ce qui a coûté* — l'épreuve cherchait le mot interdit dans la source et l'a
+  trouvé **dans le commentaire qui explique la règle**, à trois lignes de la
+  fonction qu'il protège. Verte sur le défaut, rouge sur le code sain. Et j'ai
+  réécrit `sansCommentaires` dans mon fichier d'épreuve — c'est exactement
+  l'aide que l'entrée précédente réclamait, écrite une troisième fois au lieu
+  d'être prise quelque part.
+- *Combien de fois* — ||| (deux le 17 au matin, une le 17 au soir).
+- *Et la vraie friction n'est pas celle que je croyais* — **`sansCommentaires`
+  EXISTAIT DÉJÀ** dans `tests/helpers.mjs`, documentée sur vingt lignes, avec
+  un défaut mesuré que ma version de cinq lignes ne traitait pas (`accept="image/*"`
+  ouvrait un faux commentaire et avalait quatre-vingt-quinze lignes). Je l'ai
+  réécrite deux fois dans la journée sans jamais la voir. Le coût n'est pas
+  d'avoir manqué un outil : c'est d'avoir manqué un outil QUI ÉTAIT LÀ.
+- *Ce qui manque* — que `tests/helpers.mjs` soit cité dans `CLAUDE.md` au même
+  titre que `tools/sonde.mjs` : « on n'écrit plus une sonde à la main » a sauvé
+  quinze sondes ; la même phrase manque pour les épreuves. Et il y reste à
+  ajouter `corpsDeLaFonction(src, nom)`, pour qu'une épreuve lise une FONCTION
+  et non une fenêtre de caractères — la fenêtre est toujours arbitraire, et
+  elle se périme au premier commentaire qu'on ajoute.
+
+**Une activité branchée en dur ne lit pas ce que l'item déclare** — 17 novembre
+
+- *Ce que je voulais faire* — ajouter une question dont la réponse s'écrit avec
+  des parenthèses, dans un exercice existant.
+- *Ce qui a coûté* — une heure. Le générateur déclarait tout ce qu'il fallait
+  (`saisieSeule`, `composable: 'litteral'`), la route existait, et l'élève
+  recevait quand même le pavé de chiffres. Ces deux mots n'étaient lus que par
+  `choice.js`, l'aiguilleur des claviers — or le catalogue écrit
+  `activityId: 'numpad'` pour cet exercice, qui n'emprunte donc jamais le QCM.
+  **Le défaut vivait dans l'espace ENTRE deux fichiers**, là où aucune épreuve
+  de source ne regarde. Je l'ai cherché quatre fois dans le générateur avant de
+  penser à lire le catalogue.
+- *Combien de fois* — | (mais le même mécanisme a déjà frappé pour les
+  propositions affichées dans le pavé, commenté dans `numeric.js`).
+- *Ce qui manque* — un contrôle de catalogue, dans `nouvelExercice.mjs` : pour
+  chaque exercice à `activityId` fixe, tirer une question de chaque marche et
+  dire si l'item réclame une activité que celle du catalogue ne sait pas
+  servir. Deux cents millisecondes, et il nomme le fichier à corriger.
+
+**Un canal de dessin ajouté à la fiche se branche à SEPT endroits** — 17 novembre
+
+- *Ce que je voulais faire* — mettre un schéma coté sous chaque question des
+  aires et des volumes, comme il en existe déjà un pour les « bonds ».
+- *Ce qui a coûté* — une heure et deux allers-retours sur la feuille imprimée.
+  Un canal se déclare dans `core/fiche.js` (mesure, hauteur de cellule,
+  placement, l'exclusion de `memeLigne`, l'exclusion de `exerciceHomogene`, ET
+  le calcul de la ligne de réponse), puis dans les deux traceurs de
+  `ui/ficheRendu.js`, puis dans `printQuestions.js` **et** `printParcours.js`
+  — ces deux-là recopient l'item à la main, et le dépôt a déjà un commentaire
+  qui le dit. J'en ai oublié un : la ligne de réponse traversait les huit
+  rectangles de la page. Le commentaire du dépôt avertissait de ce défaut
+  exact, pour les bonds, à la ligne où je l'ai refait.
+- *Combien de fois* — || (les bonds l'avaient déjà payé, à la même ligne).
+- *Ce qui manque* — que `core/fiche.js` déclare ses canaux dans UNE liste
+  (`CANAUX = ['tableau', 'bonds', 'figure']`) que les six endroits parcourent,
+  au lieu de six endroits qui nomment chaque canal à la main. Tant que c'est à
+  la main, le huitième canal oubliera le septième endroit.
+
+**Une sonde qui lit un champ inventé accuse le logiciel** — 17 novembre
+
+- *Ce que je voulais faire* — mesurer que la session express est bien celle qui
+  est imposée, et que l'élève la voit arriver.
+- *Ce qui a coûté* — vingt minutes à chercher pourquoi `imposerLaSeance`
+  n'imposait rien. Elle imposait très bien : ma sonde lisait
+  `seancesDeLaClasse().classe.impose_path_id`, un champ que cette réponse ne
+  porte pas (il est dans `mesClasses()`). Deuxième lecture inventée dans la même
+  sonde : `window.__atoutmathEtat`, qui n'existe pas. **`doitExister` ferme ce
+  piège pour les SÉLECTEURS, et rien ne le ferme pour les CHAMPS d'une réponse
+  JSON** — or `undefined` et « le serveur n'a rien fait » se ressemblent
+  exactement.
+- *Combien de fois* — | (mais c'est le même mécanisme que les quinze
+  occurrences qui ont donné `doitExister`).
+- *Ce qui manque* — un `s.doitPorter(objet, 'chemin.vers.champ')` dans
+  `tools/sonde.mjs`, qui JETTE quand le champ est absent au lieu de rendre
+  `undefined`. Deux lignes, et la même friction fermée pour les réponses du
+  serveur.

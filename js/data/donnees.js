@@ -151,6 +151,16 @@ export const donneesExercises = [
         cree: '2026-10-20',
         revisions: [
             {
+                date: '2026-11-17',
+                quoi: 'La moyenne s’ÉCRIT : « Écris le CALCUL de la moyenne, avec les '
+                    + 'parenthèses » se répond sur un clavier à parenthèses, et 12+15+18/3 '
+                    + 'y est refusé en nommant la faute — c’est LA faute du chapitre, et '
+                    + 'elle est invisible tant qu’on ne demande que le résultat. Et la '
+                    + 'moyenne PONDÉRÉE arrive, notes et coefficients en tableau. Demandé '
+                    + 'par Rémy : « il faudrait que l’élève écrive le calcul (avec '
+                    + 'parenthèses) et il faut de la moyenne pondérée ».'
+            },
+            {
                 date: '2026-11-16',
                 quoi: 'Trois marches « pas à pas » — l’étendue, la moyenne et la médiane y '
                     + 'demandent non pas un nombre mais TROIS, dans une phrase à trous. Une '
@@ -197,6 +207,57 @@ export const donneesExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "LA CALCULATRICE EST AUTORISÉE, et le brouillon est ton meilleur outil : une moyenne de huit notes ne se fait pas de tête, et ce chapitre ne mesure pas ton calcul mental. AVANT TOUTE MÉDIANE, RANGE LA SÉRIE DANS L'ORDRE CROISSANT au brouillon, puis barre les valeurs deux par deux — une à gauche, une à droite — jusqu'à ce qu'il n'en reste qu'une au milieu. Douze marches, et trois d'entre elles sont des médianes — ce n'est pas un hasard. TROIS AUTRES SE FONT PAS À PAS : l'étendue, la moyenne et la médiane y demandent non pas un nombre mais TROIS, dans une phrase à trous — « il y a ? valeurs, leur somme vaut ?, la moyenne vaut ? ». Une question directe se répond juste ou faux, et l'élève qui rate ne sait pas OÙ : dans la somme, dans le compte, ou dans la division. Ici c'est la case fausse qui le dit. On coche les deux versions, ou l'une des deux. La moyenne, l'étendue et la fréquence se CALCULENT : on additionne, on soustrait, on divise. La médiane, elle, se CHERCHE, et on la cherche mal de deux façons. D'abord en oubliant de RANGER la série : la médiane de 7 ; 2 ; 9 vaut 7, pas 2, et le terme du milieu de la liste telle qu'elle est écrite est juste un nombre de la série. Ensuite quand la série a un nombre PAIR de valeurs : il y a alors deux valeurs au milieu, la médiane est leur moyenne, et elle n'est pas dans la série. Une marche par piège, pour que le bilan dise lequel coince. La dernière question est celle qui compte : deux groupes de même moyenne, et c'est l'étendue qui les sépare."
+    },
+    // ── LA MÉDIANE AU DOIGT ────────────────────────────────────────────────
+    //
+    // RÉMY, 17 novembre : « et pour la médiane, on peut ranger dans l'ordre
+    // croissant par drag drop », puis « et on peut sélectionner ou barrer des
+    // valeurs qui s'affichent ».
+    //
+    // UN EXERCICE À PART, ET NON UNE MARCHE DE PLUS. Les médianes de
+    // « Moyenne, Médiane, Étendue » se répondent au pavé : on tape un nombre.
+    // Ici on range et on barre — c'est le même générateur, le même tirage, la
+    // même réponse, et un chemin entièrement différent pour y arriver. Les
+    // mélanger dans un seul exercice obligerait à changer de geste d'une
+    // question à l'autre, et le réglage « quelles marches » perdrait son sens.
+    //
+    // LES TROIS MARCHES DE MÉDIANE, ET ELLES SEULES. « Pas à pas » demande
+    // trois nombres dans une phrase à trous : ce n'est pas une médiane qu'on
+    // isole en barrant, c'est un compte, une somme et une division.
+    {
+        id: 'don-mediane-doigt',
+        cree: '2026-11-17',
+        title: 'La Médiane au Doigt',
+        generatorId: 'don.statistiques', activityId: 'medianeAuDoigt',
+        // LA CALCULATRICE N'A RIEN À FAIRE ICI, et c'est le seul endroit du
+        // chapitre où l'on peut l'écrire : une médiane ne se calcule pas. On
+        // range, on barre, et le nombre qui reste EST la réponse. Le seul
+        // calcul possible est la demi-somme des deux du milieu, qui se choisit
+        // parmi trois propositions.
+        calculatrice: false,
+        consignePapier: 'RANGE la série dans l\'ordre croissant, puis barre les valeurs '
+            + 'deux par deux — une à gauche, une à droite — jusqu\'au milieu.',
+        colonnesPapier: 1,
+        lignesReponsePapier: 2,
+        params: { marches: ['mediane-rangee', 'mediane-desordre', 'mediane-paire'] },
+        motsClefs: ['médiane', 'ranger', 'ordre croissant', 'barrer', 'au doigt',
+            'statistiques', 'série', 'quatrième', '4ème'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.STATISTIQUES],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: 'ON NE TAPE PAS LA MÉDIANE, ON LA FAIT APPARAÎTRE. L\'élève range '
+            + 'la série en faisant glisser les nombres, puis barre le plus petit ET le '
+            + 'plus grand, deux par deux, jusqu\'à ce qu\'il n\'en reste qu\'un. C\'est '
+            + 'la méthode du papier, celle qui survit à une série de onze valeurs : '
+            + 'compter « (n+1)/2 » est une formule, barrer deux par deux est un '
+            + 'raisonnement — et il explique de lui-même pourquoi une série PAIRE n\'a '
+            + 'pas de milieu. Quand il reste deux nombres, l\'exercice ne conclut pas à '
+            + 'la place de l\'élève : il propose les deux survivants et leur moyenne. '
+            + 'C\'est exactement l\'idée fausse à défaire — « la médiane est une valeur '
+            + 'de la série » — et elle se joue devant les deux nombres qu\'il vient '
+            + 'lui-même d\'isoler. Au pavé numérique, on ne sait pas s\'il a rangé, '
+            + 'compté, ou deviné le milieu ; ici cela se voit.'
     },
     {
         id: 'don-probabilites',

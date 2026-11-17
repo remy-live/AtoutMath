@@ -15,8 +15,10 @@
 //     un périmètre raté ne doit pas se ranger sous « aire du rectangle ».
 //   · TOUT TOMBE JUSTE — la réponse ET les leurres. Un leurre à virgule se
 //     repère sans calculer.
-//   · LA FEUILLE PORTE SES DIMENSIONS. « Calcule l'aire de CE triangle » ne
-//     désigne rien quand le dessin n'y est pas.
+//   · LA FEUILLE PORTE SON DESSIN, ET LE DESSIN PORTE LES COTES. Rémy, le
+//     17 novembre : « et il faut la fiche pdf […] avec des shémas évidemment ».
+//     Avant lui, la feuille écrivait les dimensions en toutes lettres — ce qui
+//     rendait impossible la faute que ce chapitre existe pour montrer.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -190,7 +192,22 @@ test('LE DESSIN NE SORT PAS DE SON CADRE', () => {
     }
 });
 
-test('LA FEUILLE PORTE SES DIMENSIONS', () => {
+test('LA FEUILLE PORTE SON DESSIN, ET LE DESSIN PORTE LES COTES', () => {
+    // CETTE ÉPREUVE DEMANDAIT L'EXACT CONTRAIRE, ET ELLE AVAIT RAISON DE SON
+    // TEMPS : « il n'y a pas de dessin sur la feuille, donc "CE triangle" n'y
+    // désigne rien, et chaque dimension doit être écrite ». C'était le défaut
+    // payé trois fois le 20 octobre.
+    //
+    // RÉMY A CHANGÉ LA PRÉMISSE, le 17 novembre : « et il faut la fiche pdf »,
+    // puis « avec des shémas évidemment ». La feuille A le dessin maintenant
+    // (`core/planPapier.js`), et réciter les dimensions à côté est devenu
+    // NUISIBLE : la hauteur est tout le chapitre, et un élève qui lit le mot
+    // « hauteur » suivi d'un nombre ne peut plus prendre le côté oblique —
+    // c'est-à-dire que la faute que ces marches existent pour montrer
+    // redevient impossible.
+    //
+    // CE QUE L'ÉPREUVE GARDE N'A PAS CHANGÉ : qu'une question imprimée ait une
+    // réponse possible. Seul l'endroit où vivent les cotes a bougé.
     assert.equal(G.ecrit, true, 'le générateur ne promet aucune fiche');
     for (const m of MARCHES) {
         for (let i = 0; i < 15; i++) {
@@ -198,14 +215,18 @@ test('LA FEUILLE PORTE SES DIMENSIONS', () => {
                 { rng: makeRng(`p-${m}-${i}`), index: 0, total: 4, papier: true });
             const p = it.prompt.papier, ou = `${m} #${i}`;
             assert.ok(p, `${ou} : aucune consigne papier`);
-            // IL N'Y A PAS DE DESSIN SUR LA FEUILLE : « CE triangle » n'y
-            // désigne rien. Payé trois fois le 20 octobre.
-            assert.ok(!/\bce |cette |ces /.test(p),
-                `${ou} : la feuille désigne un dessin absent — « ${p} »`);
+            // LE DESSIN EXISTE, SANS QUOI « CE triangle » ne désigne toujours
+            // rien — et l'on retombe mot pour mot sur le 20 octobre.
+            assert.ok(it.prompt.figure, `${ou} : la feuille n'a pas de dessin`);
+            const ecrits = it.prompt.figure.textes.map(t => t.t).join(' ');
             for (const v of Object.values(it.meta.dims)) {
-                assert.ok(new RegExp(`\\b${v}\\b`).test(p),
-                    `${ou} : la cote ${v} manque dans « ${p} »`);
+                assert.ok(new RegExp(`\\b${v}\\b`).test(ecrits),
+                    `${ou} : la cote ${v} n'est pas sur le dessin — « ${ecrits} »`);
             }
+            // ET L'ÉNONCÉ NE LES RÉCITE PLUS : deux fois la même mesure, et
+            // l'élève n'a plus à regarder la figure.
+            assert.equal((p.match(/\d/g) || []).length, 0,
+                `${ou} : l'énoncé papier récite encore des nombres — « ${p} »`);
             assert.ok(!p.includes(` ${it.answer} `),
                 `${ou} : la réponse est écrite dans « ${p} »`);
         }

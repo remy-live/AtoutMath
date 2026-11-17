@@ -40,7 +40,8 @@ import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
 import {
-    moyenne, mediane, etendue, effectif, frequence, rangee, enFrancais, serieDeMoyenne
+    moyenne, mediane, etendue, effectif, frequence, rangee, enFrancais, serieDeMoyenne,
+    verifieMoyenneEcrite
 } from '../statistiques.js';
 // LE NOMBRE ÉCRIT EN LETTRES, et il ne sert qu'à UN énoncé — voir
 // `moyenne-manquante`, où « On en connaît 3 » se lisait comme une valeur
@@ -134,6 +135,19 @@ export const ETAPES = [
     { id: 'etendue-etapes', temps: 'A', titre: 'L\'étendue, pas à pas', skill: S_LIRE },
     { id: 'moyenne', temps: 'B', titre: 'Calculer la moyenne', skill: S_MOYENNE },
     { id: 'moyenne-etapes', temps: 'B', titre: 'La moyenne, pas à pas', skill: S_MOYENNE },
+    // ── LES DEUX MARCHES DU 17 NOVEMBRE ────────────────────────────────────
+    //
+    // RÉMY : « pour la moyenne il faudrait que l'élève écrive le calcul (avec
+    // parenthèses) et il faut de la moyenne pondérée ».
+    //
+    // ELLES NE REMPLACENT PAS « Calculer la moyenne », elles la suivent : on
+    // apprend d'abord à trouver le nombre, puis à ÉCRIRE le chemin qui y mène.
+    // C'est la leçon du tableur, qu'il avait déjà tranchée — « la bonne réponse
+    // est =A1+B1 pas 17 ».
+    { id: 'moyenne-calcul', temps: 'B', titre: 'Écrire le calcul de la moyenne',
+        skill: S_MOYENNE },
+    { id: 'moyenne-ponderee', temps: 'C', titre: 'La moyenne pondérée',
+        skill: S_MOYENNE },
     { id: 'mediane-rangee', temps: 'B', titre: 'La médiane, série rangée', skill: S_MEDIANE },
     { id: 'mediane-desordre', temps: 'B', titre: 'La médiane, série en désordre', skill: S_MEDIANE },
     { id: 'mediane-paire', temps: 'B', titre: 'La médiane, série paire', skill: S_MEDIANE },
@@ -229,6 +243,150 @@ export function question(etape, rng) {
                 + 'valeurs différentes.',
             calcul: `J'additionne les ${serie.length} valeurs, puis je divise la somme par ${
                 serie.length}.`
+        };
+    }
+
+    // ── ÉCRIRE LE CALCUL, ET NON SON RÉSULTAT ──────────────────────────────
+    //
+    // RÉMY : « pour la moyenne il faudrait que l'élève écrive le calcul (avec
+    // parenthèses) ».
+    //
+    // POURQUOI CE N'EST PAS LA MÊME QUESTION. Un élève qui tape 15 a peut-être
+    // compris, ou peut-être deviné, ou peut-être compté sur ses doigts la
+    // valeur du milieu : la réponse ne dit rien de sa méthode. Un élève qui
+    // écrit (12+15+18)/3 a montré la seule chose qu'on cherche à lui apprendre.
+    //
+    // ET LES PARENTHÈSES SONT LE SUJET, PAS LA FORME : 12+15+18/3 vaut 33, et
+    // c'est LA faute du chapitre. Elle est invisible tant qu'on ne demande que
+    // le résultat ; ici elle se voit, et le refus la nomme.
+    //
+    // LA SÉRIE EST COURTE — trois ou quatre valeurs. On écrit un calcul à la
+    // main sur un clavier à l'écran : huit nombres à taper feraient de la
+    // SAISIE l'exercice, et des fautes de frappe la note.
+    if (etape.id === 'moyenne-calcul') {
+        const m = s.centre + rng.int(-2, 2);
+        const serie = serieDeMoyenne(m, rng.int(3, 4), (a, b) => rng.int(a, b), s.ecart);
+        const somme = serie.reduce((a, b) => a + b, 0);
+        const n = serie.length;
+        return {
+            enonce: `${s.phrase(n)}\n${ecrireSerie(serie)}`,
+            question: 'Écris le CALCUL de la moyenne, avec les parenthèses.',
+            kind: 'texte',
+            // LA RÉPONSE DE RÉFÉRENCE sert au corrigé et à la feuille ; c'est
+            // `verifie` qui juge, et il accepte tous les ordres de la somme.
+            reponse: `(${serie.join('+')})/${n}`,
+            serie,
+            verifie: (saisie) => verifieMoyenneEcrite(saisie, serie, n),
+            // LE CLAVIER NE PORTE QUE CE QUE CETTE QUESTION PEUT VOULOIR.
+            //
+            // `carre: false` EST INDISPENSABLE, et il manquait : la touche « ² »
+            // est allumée PAR DÉFAUT — elle sert partout en calcul littéral —,
+            // et `exposant: false` ne la retient pas, puisque ce sont deux
+            // réglages distincts (l'un la touche « ² », l'autre la touche « ^ »).
+            // VU À L'ÉCRAN : un « ² » seul, flottant au-dessus du pavé, sur une
+            // moyenne d'âges. C'est la règle déjà écrite dans `litteralSaisie` —
+            // « une touche offerte est une touche qu'on croit utile » — et on la
+            // paie dès qu'on ne la relit pas.
+            composable: { lettre: null, parentheses: true, fraction: true,
+                multiplication: false, exposant: false, carre: false },
+            pourquoi: `On additionne les ${n} valeurs — (${serie.join(' + ')}) = ${somme} — `
+                + `puis on divise cette somme par ${n} : ${somme} ÷ ${n} = `
+                + `${enFrancais(moyenne(serie))}. Les parenthèses disent que c'est TOUTE `
+                + `la somme qu'on divise.`,
+            aide: 'Les parenthèses d\'abord : elles enferment la somme. Sans elles, seule '
+                + 'la dernière valeur serait divisée.',
+            calcul: `J'écris (${serie.join(' + ')}) ÷ ${n}.`
+        };
+    }
+
+    // ── LA MOYENNE PONDÉRÉE ────────────────────────────────────────────────
+    //
+    // RÉMY : « et il faut de la moyenne pondérée ».
+    //
+    // C'EST LA MOYENNE DES NOTES AVEC COEFFICIENTS, celle de son bulletin. La
+    // faute du chapitre n'est plus la parenthèse, c'est le DÉNOMINATEUR : on
+    // divise par la somme des coefficients, pas par le nombre de notes. Les
+    // leurres la portent, et l'explication la nomme.
+    if (etape.id === 'moyenne-ponderee') {
+        const combien = rng.int(2, 3);
+        const notes = [], coefs = [];
+        for (let k = 0; k < combien; k++) {
+            notes.push(rng.int(6, 18));
+            coefs.push(rng.int(1, 4));
+        }
+        const poids = coefs.reduce((a, b) => a + b, 0);
+        const total = notes.reduce((a, b, k) => a + b * coefs[k], 0);
+        const vraie = total / poids;
+        // ON TIRE JUSQU'À CE QUE ÇA TOMBE JUSTE : une moyenne pondérée à
+        // 13,666… se répond « 13,67 » ou « 13,7 », et l'on noterait alors un
+        // arrondi au lieu d'une méthode.
+        if (!Number.isInteger(vraie * 10)) return question(etape, rng);
+        // ── ET DES COEFFICIENTS TOUS ÉGAUX NE PÈSENT RIEN ──────────────────
+        //
+        // VU À L'ÉCRAN : « Note 14 · 11 / Coefficient 1 · 1 ». C'est une
+        // moyenne ORDINAIRE habillée en tableau : diviser par la somme des
+        // coefficients et diviser par le nombre de notes donnent le même
+        // résultat, donc la faute du chapitre est non seulement invisible,
+        // elle est IMPOSSIBLE — et le leurre qui la porte vaut exactement la
+        // bonne réponse, qu'on proposerait donc deux fois, une fois marquée
+        // fausse.
+        //
+        // Le cas n'est pas rare : avec deux notes et des coefficients tirés
+        // entre 1 et 4, il tombe une fois sur quatre.
+        //
+        // ON TIRE AUSSI LES NOTES DIFFÉRENTES, pour la même raison : deux
+        // fois 12, quels que soient les coefficients, font 12 des deux
+        // façons de compter.
+        if (coefs.every(c => c === coefs[0])) return question(etape, rng);
+        if (notes.every(v => v === notes[0])) return question(etape, rng);
+        const lignes = notes.map((v, k) => `${v} (coef. ${coefs[k]})`).join(' · ');
+        // ── LE TABLEAU, ET POURQUOI CE N'EST PAS UN ORNEMENT ────────────────
+        //
+        // RÉMY, en voyant la question à l'écran : « si ce sont des notes avec
+        // coeff tu peux le présenter en tableau pour les moyennes pondérées ».
+        //
+        // Écrite en ligne, « 15 (coef. 1) · 16 (coef. 4) » demande de tenir
+        // quatre nombres APPARIÉS dans la tête avant même de commencer. Et la
+        // faute du chapitre — diviser par le nombre de notes au lieu de la
+        // somme des coefficients — en devient plus facile, puisque cette somme
+        // n'est écrite nulle part et qu'il faut d'abord aller chercher les
+        // coefficients un par un entre les parenthèses. En tableau, la ligne
+        // « Coefficient » se lit et s'additionne du regard : c'est le même
+        // tableau que celui du bulletin, qui est l'endroit où l'élève
+        // rencontre vraiment la moyenne pondérée.
+        //
+        // LE TABLEAU EST DANS L'ÉNONCÉ, PAS DANS UNE FIGURE : il porte les
+        // nombres de la question, donc il doit être lu par la voix de synthèse
+        // et imprimé dans l'ordre. D'où `<th scope="row">`, et non des cases
+        // mises en forme.
+        const rangee = (nom, vals) => `<tr><th scope="row">${nom}</th>`
+            + vals.map(v => `<td>${v}</td>`).join('') + '</tr>';
+        const htmlSerie = '<table class="st-coefs">'
+            + rangee('Note', notes) + rangee('Coefficient', coefs) + '</table>';
+        return {
+            enonce: `Les notes de Camille, avec leur coefficient :\n${lignes}`,
+            htmlSerie,
+            question: 'Moyenne ?',
+            kind: 'numeric', reponse: vraie, decimal: !Number.isInteger(vraie),
+            serie: notes,
+            pourquoi: `Chaque note compte autant de fois que son coefficient : `
+                + `${notes.map((v, k) => `${v} × ${coefs[k]}`).join(' + ')} = ${total}. `
+                + `On divise par la somme des coefficients, ${coefs.join(' + ')} = ${poids}, `
+                + `et non par ${combien} : ${total} ÷ ${poids} = ${enFrancais(vraie)}.`,
+            aide: 'Une note de coefficient 3 compte TROIS fois. On divise ensuite par la '
+                + 'somme des coefficients, pas par le nombre de notes.',
+            calcul: `Je fais ${notes.map((v, k) => `${v} × ${coefs[k]}`).join(' + ')}, `
+                + `puis je divise par ${poids}.`,
+            leurres: [
+                // LA FAUTE DU CHAPITRE : diviser par le nombre de notes.
+                { v: Number((total / combien).toFixed(2)),
+                    why: `Tu as divisé par ${combien}, le nombre de notes. Il faut diviser `
+                        + `par la somme des COEFFICIENTS, ${poids}.` },
+                // ET CELLE D'AVANT : oublier les coefficients tout court.
+                { v: Number((notes.reduce((a, b) => a + b, 0) / combien).toFixed(2)),
+                    why: 'Tu as fait la moyenne ordinaire : les coefficients n\'ont pas '
+                        + 'servi. Une note de coefficient 3 compte trois fois.' }
+            ]
         };
     }
 
@@ -557,7 +715,33 @@ export const statistiquesGenerator = {
             ? finalizeChoices(rng, q.choix.map(c => ({
                 value: c, label: `Équipe ${c}`, correct: c === q.reponse
             })), { count: q.choix.length })
-            : null;
+            // ── LA MOYENNE PONDÉRÉE PORTE SES DEUX FAUTES ───────────────────
+            //
+            // Diviser par le nombre de notes, et oublier les coefficients. Ce
+            // sont les deux seules qu'on voit en classe, et chacune a sa
+            // phrase : un leurre sans « pourquoi » apprend qu'on s'est trompé,
+            // et rien d'autre.
+            : (q.leurres
+                ? finalizeChoices(rng, [
+                    { value: String(q.reponse), label: enFrancais(q.reponse), correct: true },
+                    // UN LEURRE QUI VAUT LA BONNE RÉPONSE S'AFFICHERAIT DEUX
+                    // FOIS, une fois marqué faux : l'élève cliquerait le bon
+                    // nombre et se verrait refusé. Le tirage écarte déjà le cas
+                    // le plus fréquent (tous les coefficients égaux), mais la
+                    // moyenne ordinaire peut tomber sur la pondérée par
+                    // coïncidence — on ne garde que ce qui diffère, et
+                    // `finalizeChoices` complète.
+                    ...q.leurres
+                        .filter(l => Number(l.v) !== Number(q.reponse))
+                        .map(l => ({ value: String(l.v), label: enFrancais(l.v),
+                            correct: false, why: l.why }))
+                ], { count: 4,
+                    filler: (r) => {
+                        const v = Number((q.reponse + r.int(1, 4) * (r.int(0, 1) ? 1 : -1))
+                            .toFixed(2));
+                        return { value: String(v), label: enFrancais(v) };
+                    } })
+                : null);
 
         // L'ÉNONCÉ PORTE DES RETOURS À LA LIGNE, et la série doit rester sur sa
         // propre ligne : écrite à la suite de la phrase, elle se confond avec
@@ -579,7 +763,9 @@ export const statistiquesGenerator = {
             seed: rng.seed,
             generatorId: 'don.statistiques',
             skillId: etape.skill,
-            answerKind: q.kind,
+            // UNE RÉPONSE ÉCRITE EST UN TEXTE, pas un nombre : `(12+15+18)/3`
+            // ne se compare pas comme 15. C'est `verifieTexte` qui juge.
+            answerKind: q.kind === 'texte' ? 'text' : q.kind,
             prompt: {
                 text: `${aPlat} ${q.question}`.trim(),
                 // LA FEUILLE PORTE LA PHRASE À TROUS EN TOUTES LETTRES.
@@ -590,16 +776,23 @@ export const statistiquesGenerator = {
                 // le défaut du 20 octobre, arrivé trois fois.
                 papier: `${aPlat} ${q.question}${
                     q.papierReponse ? ' ' + q.papierReponse : ''}`.trim(),
+                // UNE SÉRIE PEUT SE DESSINER PLUTÔT QUE S'ÉCRIRE EN LIGNE —
+                // le tableau des coefficients, demandé par Rémy. L'énoncé en
+                // toutes lettres (`enonce`, `papier`) reste celui de la feuille
+                // imprimée et de la voix : on ne remplace que l'affichage.
                 html: '<div class="game-question ap-probleme">'
-                    + lignes.map((l, i) => (i === 0
-                        ? `<span class="ap-situation">${l}</span>`
-                        : `<span class="st-serie">${l}</span>`)).join('')
+                    + (q.htmlSerie
+                        ? `<span class="ap-situation">${lignes[0]}</span>${q.htmlSerie}`
+                        : lignes.map((l, i) => (i === 0
+                            ? `<span class="ap-situation">${l}</span>`
+                            : `<span class="st-serie">${l}</span>`)).join(''))
                     + `<span class="ap-question">${q.question}</span>`
                     + (q.htmlReponse ? `<span class="pp-reponse">${q.htmlReponse}</span>` : '')
                     + '</div>'
             },
             answer: q.reponse,
             choices: choix,
+            verifieTexte: q.verifie || null,
             // ── LE DERNIER INDICE POSE LE CALCUL ───────────────────────────
             //
             // RÉMY : « le robot doit aussi montrer comment on calcule la
@@ -633,6 +826,17 @@ export const statistiquesGenerator = {
                 // invitation à la faute.
                 decimal: !!q.decimal || etape.id === 'frequence',
                 serie: q.serie || null,
+                // ── LE CLAVIER D'UNE RÉPONSE ÉCRITE ─────────────────────────
+                //
+                // `saisieSeule` parce qu'il n'y a pas de marche plus basse :
+                // on ne propose pas quatre calculs à choisir, cela rendrait la
+                // question à ce qu'elle n'est plus — reconnaître au lieu
+                // d'écrire. Et `composable: 'litteral'` parce que ce clavier-là
+                // porte les parenthèses et la barre de fraction ; le pavé
+                // numérique n'a ni l'une ni l'autre.
+                ...(q.composable
+                    ? { saisieSeule: true, composable: 'litteral', ...q.composable }
+                    : {}),
                 ...(q.unite ? { unite: q.unite } : {}),
                 ...(q.cases ? { cases: q.cases } : {})
             }
