@@ -86,7 +86,7 @@ export const LONGUEUR_MONDE = 6400;
  */
 export const MONDES = [
     {
-        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 300,
+        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 380,
         // Les collines du fond sont du SABLE, pas du bleu : ce sont les mêmes
         // dunes vues de loin, et une couche bleue au milieu du désert se lisait
         // comme une flaque.
@@ -94,29 +94,113 @@ export const MONDES = [
         sol: '#c99a52', herbe: '#f0c987'
     },
     {
-        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 330,
+        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 385,
         ciel: ['#8ed0ff', '#dff3ff'], fond: ['#a9c8e8', '#87b0d8'],
         sol: '#2f855a', herbe: '#68d391'
     },
     {
-        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 360,
+        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 390,
         ciel: ['#ffc98a', '#ffe9cf'], fond: ['#e0a98a', '#c98a72'],
         sol: '#7b4b2a', herbe: '#c0703c'
     },
     {
-        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 380,
+        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 395,
         ciel: ['#b9a7ff', '#e9e2ff'], fond: ['#a99ad8', '#8878c0'],
         sol: '#4a5578', herbe: '#e6ecff'
     },
     {
-        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 390,
+        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 400,
         ciel: ['#63c7c0', '#d6f5f2'], fond: ['#7fbfc4', '#5d9aa4'],
         sol: '#1f6b6b', herbe: '#7fe6d8'
     },
     {
-        id: 6, nom: 'Le pays de nuit', amplitude: 198, periode: 790, nuit: 400,
+        id: 6, nom: 'Le pays de nuit', amplitude: 192, periode: 790, nuit: 450,
         ciel: ['#2d3561', '#5a6bad'], fond: ['#3f4a80', '#2b3358'],
         sol: '#1b2140', herbe: '#8f9bff'
+    },
+
+    // ── LES SEPT MONDES DU 17 NOVEMBRE ───────────────────────────────────
+    //
+    // RÉMY : « rajoute des mondes kawai, fantaisiste et 5 de ton choix ».
+    //
+    // LE SEPTIÈME ARRIVE JUSTE APRÈS LA NUIT, et le contraste est voulu : on
+    // sort du pays le plus sombre pour tomber dans le plus sucré. C'est la
+    // frontière qui se voit le mieux de toutes, et elle arrive au moment où
+    // l'on commence à trouver le jeu difficile.
+    //
+    // ── LA DIFFICULTÉ PLAFONNE AU SIXIÈME, ET C'EST MESURÉ ───────────────
+    //
+    // Les six premiers mondes montent : plus hauts, plus serrés, plus pressés.
+    // On a voulu continuer sur sept de plus, et c'est IMPOSSIBLE.
+    //
+    // Un relief plus haut et plus serré RALENTIT l'oiseau — c'est tout le jeu.
+    // Un balayage de soixante-dix couples (amplitude de 200 à 290, période de
+    // 700 à 790) donne au mieux 384 px/s au bon joueur, contre 453 dans le
+    // sixième monde. Or la nuit doit rester sous 90 % de cette allure : son
+    // plafond tombe donc à 345, alors que le sixième monde porte déjà une nuit
+    // à 400. Il n'existe aucun septième monde à la fois plus dur ET plus
+    // pressé. Mesuré, pas supposé : `node tools/allureDesMondes.mjs`.
+    //
+    // CE QUI MONTE N'EST DONC PLUS LA VITESSE DE LA NUIT, C'EST SA PRESSION —
+    // le rapport entre elle et l'allure du bon joueur. Et c'est la seule
+    // mesure qui ait un sens : une nuit à 400 dans un monde où l'on file à 453
+    // serre exactement autant qu'une nuit à 300 dans un monde où l'on rampe à
+    // 345. Les six premiers vont de 43 % à 88 % ; les sept suivants tiennent
+    // tous les 88 % du sixième.
+    //
+    // Autrement dit : LE JEU ATTEINT SA DIFFICULTÉ AU SIXIÈME MONDE, et ce qui
+    // vient après est un voyage, pas une épreuve de plus. Chaque monde garde
+    // son relief propre et sa palette — c'est ce qu'on va y chercher.
+    //
+    // Les sept vitesses de nuit sont donc 88 % de l'allure MESURÉE de leur
+    // monde, et de rien d'autre.
+    {
+        id: 7, nom: 'Le pays kawaï', amplitude: 139, periode: 900, nuit: 460,
+        ciel: ['#ffd6ec', '#fff2f8'], fond: ['#ffc2dd', '#f7a8cb'],
+        sol: '#e07ba8', herbe: '#b9f3dd'
+    },
+    {
+        id: 8, nom: 'Le royaume fantaisiste', amplitude: 198, periode: 820, nuit: 455,
+        ciel: ['#3b1d63', '#8e4fb0'], fond: ['#6a3a95', '#48256b'],
+        sol: '#2a1240', herbe: '#ffd36e'
+    },
+    {
+        // L'AURORE EST PLUS SOMBRE QU'ELLE N'EN A L'AIR : à `#7ef0c8`, la
+        // glace du sol ne s'en détachait plus — rapport de contraste 1,20,
+        // c'est-à-dire un sol invisible. Mesuré, pas jugé à l'oeil.
+        id: 9, nom: 'La banquise', amplitude: 119, periode: 950, nuit: 440,
+        ciel: ['#07182a', '#2fae8a'], fond: ['#cfe9f5', '#a9d2e6'],
+        sol: '#eaf7ff', herbe: '#3f9fd4'
+    },
+    {
+        id: 10, nom: 'Les terres de braise', amplitude: 162, periode: 700, nuit: 355,
+        ciel: ['#3a0f10', '#ff7a3c'], fond: ['#7a2518', '#471310'],
+        sol: '#1d0c0b', herbe: '#ff9d4d'
+    },
+    {
+        id: 11, nom: 'La canopée', amplitude: 199, periode: 760, nuit: 450,
+        ciel: ['#9fd6a8', '#e9f8ec'], fond: ['#2f6b46', '#1d4a2f'],
+        sol: '#4a3620', herbe: '#5fdc7a'
+    },
+    {
+        // LE SEL EST BLANC, DONC LE CIEL NE PEUT PAS L'ÊTRE. Premier essai :
+        // ciel crème et sol crème, rapport 1,07 — deux aplats de la même
+        // couleur, et plus de relief du tout. C'est le couchant qui sauve le
+        // tableau : un ciel qui descend du bleu de nuit à l'abricot, et le
+        // miroir de sel qui le reflète en clair.
+        id: 12, nom: 'Le désert de sel', amplitude: 109, periode: 1000, nuit: 500,
+        ciel: ['#2b4f72', '#e9a07a'], fond: ['#c9a08f', '#a87e6e'],
+        sol: '#fbf7f2', herbe: '#d9654a'
+    },
+    {
+        // LE DERNIER, ET IL NE PARDONNE PLUS : sa nuit va plus vite que
+        // l'oiseau qui ne fait rien. On n'y reste qu'en jouant.
+        // ON EST TRÈS HAUT, DONC LE CIEL EST SOMBRE EN HAUT. C'est ce qui
+        // dit l'altitude sans un mot — et c'est aussi ce qui détache enfin la
+        // mer de nuages, qui est blanche et ne se détachait de rien (1,36).
+        id: 13, nom: 'Au-dessus des nuages', amplitude: 184, periode: 860, nuit: 445,
+        ciel: ['#123a6b', '#e8a93f'], fond: ['#ffffff', '#ffe0a8'],
+        sol: '#fdfcf8', herbe: '#e8a62a'
     }
 ];
 
@@ -413,6 +497,19 @@ export const quitteLeSol = (courbure, vx, gravite) => -courbure * vx * vx > grav
  * ne montait jamais ; maintenant qu'elle monte vraiment, c'est lui qu'on va
  * chercher en récompense d'une belle descente.
  */
+/**
+ * LA PESANTEUR DE CHUTE — et elle décide de la TAILLE DES SAUTS.
+ *
+ * RÉMY, le 17 novembre : « il faut que les sauts soient plus spectaculaires ».
+ * Mesuré avant (`tools/volDesAiles.mjs`) : le bon joueur montait à 60 px et
+ * restait 0,62 s en l'air. Une bosse du premier monde fait 95 px de haut — on
+ * sautait donc moins haut que le relief, ce qui ne se voit pas.
+ *
+ * À 980, le même vol monte trois fois plus et dure moitié plus longtemps. Ce
+ * n'est pas « moins de gravité » au hasard : c'est le seul réglage qui agisse
+ * sur la HAUTEUR sans toucher à la vitesse au sol, donc sans redéfaire
+ * l'équilibre des treize mondes.
+ */
 export const GRAVITE = 1300;
 export const GRAVITE_PLONGEE = 2950;
 /**
@@ -432,8 +529,83 @@ export const GRAVITE_PLONGEE = 2950;
  * net (99 % du temps sous 100 px/s, 115 px parcourus en une minute). Sans un
  * minimum, l'oiseau posé sur une pente ne redémarre jamais.
  */
+/**
+ * LE PLANCHER RESTE À QUARANTE, ET LA RÈGLE « ARRÊTÉ = PERDU » EST AILLEURS.
+ *
+ * RÉMY : « si l'oiseau s'arrête et bien on a perdu ». La tentation est de
+ * descendre ce plancher à zéro pour que l'arrêt soit VRAI. On l'a fait, deux
+ * fois, et mesuré les deux :
+ *
+ *   · à ZÉRO, le premier calage est définitif — l'oiseau posé sur une côte
+ *     n'a plus aucune raison de bouger — et le bon joueur lui-même tombait
+ *     de 485 à 27 px/s au sixième monde ;
+ *   · à QUINZE, c'est encore trop peu : le bon joueur passait de 295 à 149
+ *     px/s au cinquième monde et de 278 à 117 au sixième, où ne rien faire
+ *     devenait MEILLEUR que bien jouer. Les trois mondes les plus raides
+ *     cessaient d'être jouables, pour personne.
+ *
+ * Ce plancher porte donc les mondes à soixante degrés, et on le garde. La
+ * règle de Rémy est une règle de JEU, pas une constante de physique : elle
+ * vit dans `games/petitesAiles.js`, où ramper sous un seuil pendant plus
+ * d'une seconde perd la partie. Et quarante pixels par seconde, à l'écran,
+ * c'est un oiseau arrêté — un élève ne mesure pas, il regarde.
+ */
+/**
+ * LES SIX PREMIERS MONDES MONTENT, LES SUIVANTS VARIENT.
+ *
+ * La difficulté ne peut pas monter indéfiniment : un relief plus haut et plus
+ * serré RALENTIT l'oiseau, donc la nuit qu'il peut porter baisse avec lui, et
+ * la pente butte sur la falaise à 65°. Au-delà du sixième, chaque monde a donc
+ * son caractère sous les mêmes bornes, et c'est la PRESSION de la nuit qui
+ * continue de serrer. Ce nombre est lu par l'épreuve ET par
+ * `tools/allureDesMondes.mjs --nuits` : il n'a pas le droit de diverger.
+ */
+export const MONTEE = 6;
+
 export const VX_MIN = 40;
 export const VX_MAX = 900;
+
+/**
+ * ARRÊTÉ = PERDU, et les deux chiffres de la règle.
+ *
+ * RÉMY, le 17 novembre, en jouant : « si l'oiseau s'arrête et bien on a
+ * perdu ». C'est une règle de JEU, pas une physique : elle s'applique dans
+ * `games/petitesAiles.js`, qui termine la partie. Mais les deux nombres vivent
+ * ici, pour que le harnais les mesure sur la même physique que le jeu.
+ *
+ * ILS NE SONT PAS CHOISIS, ILS SONT MESURÉS. Quatre façons de jouer, treize
+ * mondes, trois paysages, soixante secondes : 39 parties par façon, et l'on
+ * compte celles que la règle tuerait.
+ *
+ *   sous 70 px/s pendant …    bon joueur   rase le sol   ne fait rien   appuie sans arrêt
+ *          1 s                 15/39          1/39          31/39            39/39
+ *          2 s                 10/39          1/39          29/39            34/39
+ *          3 s                  6/39          1/39          22/39            20/39
+ *          4 s                  0/39          0/39           5/39            16/39
+ *
+ * QUATRE SECONDES EST LA PREMIÈRE LIGNE OÙ LE BON GESTE NE MEURT JAMAIS. Au-
+ * dessous, la règle tue aussi celui qui joue bien — et une règle qui punit le
+ * bon geste n'enseigne rien. Au-dessus, elle ne punit plus personne.
+ *
+ * `auSol` est dans la condition : un oiseau EN VOL n'est pas arrêté, même lent.
+ * Sans cela, le sommet d'un beau saut — où la vitesse horizontale est au plus
+ * bas — comptait comme un arrêt, c'est-à-dire que réussir le geste perdait la
+ * partie.
+ */
+export const SEUIL_ARRET = 70;
+export const DUREE_ARRET = 4;
+
+/**
+ * LE COMPTEUR D'ARRÊT : il monte tant que l'oiseau rampe au sol, et retombe à
+ * zéro dès qu'il reprend. Une fonction pure, pour que l'épreuve puisse la
+ * suivre image par image sans monter le jeu.
+ */
+export function suiviArret(compteur, etat, dt) {
+    return etat.auSol && etat.vx < SEUIL_ARRET ? compteur + dt : 0;
+}
+
+/** Vrai quand le compteur a tenu assez longtemps pour perdre la partie. */
+export const estArrete = (compteur) => compteur >= DUREE_ARRET;
 
 /**
  * LA PESANTEUR DU GLISSÉ — celle qui change la hauteur en vitesse, et elle
@@ -462,6 +634,13 @@ export const VX_MAX = 900;
  * le même en l'air et au sol : c'est LUI, l'asymétrie, qui fait tout le jeu.
  * Appuyer dans la descente gagne beaucoup, relâcher dans la montée perd peu.
  */
+// ON A ESSAYÉ DE LA MONTER À 620 POUR QUE LA CÔTE COÛTE, ET C'ÉTAIT SE
+// TROMPER DE COUPABLE. Le glissé CONSERVE l'énergie : ce que la montée prend,
+// la descente le rend au pixel près — l'augmenter ne rend pas la côte plus
+// chère, elle rend seulement les écarts plus violents. Mesuré : le bon joueur
+// tombait de 598 à 240 px/s, et celui qui appuie sans arrêt restait planté à
+// 2 px/s. Ce qui faisait « glisser en montée », c'était le BATTEMENT qui ne
+// s'éteignait jamais et le PLANCHER de vitesse — les deux vrais coupables.
 export const PESANTEUR_GLISSE = 430;
 export const PESANTEUR_GLISSE_APPUI = 1200;
 
@@ -481,6 +660,15 @@ export const PESANTEUR_GLISSE_APPUI = 1200;
  * côte pour s'épargner le freinage de la montée — se retrouvait puni.
  */
 export const FROTTEMENT_SOL = 0.05;
+export const FROTTEMENT_APPUI = 0.45;
+// L'AIR FREINE TROIS FOIS MOINS QU'AVANT, ET C'EST CE QUI REND LE VOL PAYANT.
+//
+// En allongeant les sauts pour Rémy — « il faut que les sauts soient plus
+// spectaculaires » —, on a d'abord RALENTI le bon joueur : un vol long est du
+// temps pendant lequel on n'accélère pas, et à 0,07 il perdait même de la
+// vitesse en l'air. Mesuré : celui qui appuie sans arrêt, qui ne décolle
+// jamais, le dépassait (462 contre 401 px/s). Un jeu où voler fait perdre
+// n'apprend pas à voler.
 export const FROTTEMENT_AIR = 0.07;
 
 /**
@@ -520,12 +708,33 @@ export const FROTTEMENT_AIR = 0.07;
  * rend toujours, et l'appui au bon moment rapporte toujours autant. Le sol
  * monte le plancher ; il ne remplace pas le talent.
  *
- * ET LA CÔTE PEUT ENCORE ARRÊTER. Franchir une bosse de 200 px demande
- * √(2 · 430 · 200) ≈ 415 px/s : au-dessous, on cale — ce que Rémy demande
- * explicitement (« ou puisse être bloqué »). Le battement repousse alors
- * doucement, au lieu de figer l'oiseau pour de bon.
+ * DEUX CENT SOIXANTE, ET CE CHIFFRE A ÉTÉ PAYÉ PAR UNE TRACE. Il valait
+ * quarante, et à quarante l'oiseau RAMPAIT : mesuré image par image dans le
+ * premier monde, il retombait d'un vol de 189 px sur un flanc qui monte, la
+ * projection à l'atterrissage lui laissait 147 px/s, et il remontait toute la
+ * côte COLLÉ À SON PLANCHER DE VITESSE pendant HUIT SECONDES. Un tiers du
+ * temps de jeu se passait sous 70 px/s. C'est cela que Rémy voyait quand il a
+ * dit « si l'oiseau s'arrête » — il ne demandait pas une règle, il signalait
+ * un défaut.
+ *
+ * LA CAUSE N'EST PAS LE PLANCHER, C'EST LE BATTEMENT. Franchir une bosse de
+ * 200 px demande √(2 · 430 · 200) ≈ 415 px/s ; au-dessous on cale, et il faut
+ * alors que les ailes puissent faire le reste du chemin. À 40 px/s² elles n'y
+ * arrivaient pas : la côte reprenait l'élan plus vite que le battement ne le
+ * rendait. À 260 px/s², le battement et la pesanteur du flanc le plus raide
+ * s'équilibrent presque — l'oiseau grimpe, lentement, ce qui est exactement ce
+ * qu'on veut voir.
+ *
+ * MESURÉ SUR LES TREIZE MONDES, plus long rampement sous 70 px/s du bon
+ * joueur : 8,8 s à 40 ; 5,0 s à 150 ; 3,5 s à 200 ; ZÉRO à 260. Et celui qui
+ * appuie sans arrêt rampe toujours 8,4 s — la faute, elle, continue de coûter.
  */
-export const POUSSEE = 40;
+export const POUSSEE = 200;
+/** De combien le battement s’éteint dans une côte. 0 = il ne s’éteint pas. */
+export const FREIN_MONTEE = 0;
+
+/** Le coup d'ailes qui lance le saut. Voir son emploi dans `pas`. */
+export const IMPULSION_DECOLLAGE = 200;
 
 /**
  * CE QU'IL RESTE DE LA VITESSE À L'ATTERRISSAGE — et ce n'est plus un forfait.
@@ -548,10 +757,17 @@ export const POUSSEE = 40;
  * plus qu'on tombe vite et que la pente est raide. Se planter dans une côte
  * casse ; poser l'aile sur une descente lance.
  *
- * On en garde tout de même un quart de l'ancienne vitesse : un atterrissage
- * raté doit coûter cher, pas mettre à l'arrêt.
+ * ON EN GARDE TROIS CINQUIÈMES, ET C'EST UN QUART QUI A ÉTÉ MESURÉ TROP DUR.
+ *
+ * Un quart suffisait quand les sauts duraient quatorze centièmes de seconde.
+ * Depuis qu'ils montent à 150 px et durent huit dixièmes — Rémy : « il faut
+ * que les sauts soient plus spectaculaires » —, ils DÉPASSENT le creux et
+ * retombent sur le flanc qui monte : un atterrissage sur trois, et le quart ne
+ * laissait alors plus rien. Mesuré, plus long rampement sous 70 px/s du bon
+ * joueur : 8,8 s à 0,25 ; 7,3 s à 0,6 ; 6,4 s à 0,8. Un saut spectaculaire ne
+ * doit pas être un piège — sinon le geste qu'on vient d'apprendre se paie.
  */
-export const REBOND_ATTERRISSAGE = 0.25;
+export const REBOND_ATTERRISSAGE = 0.6;
 
 /**
  * Le monde n'est plus un paramètre du PAS : le sol est une fonction de `x`
@@ -590,8 +806,37 @@ export function pas(etat, dt, appuie, graine) {
         // LE BATTEMENT D'AILES, puis le frottement. Voir `POUSSEE` : c'est la
         // seule vitesse qui ne demande pas de jouer juste, et c'est elle qui
         // décolle le joueur ordinaire du sol.
-        v += POUSSEE * dt;
-        v -= v * FROTTEMENT_SOL * dt;
+        // LE BATTEMENT NE GRAVIT PAS — Rémy, en jouant : « là même en montée
+        // ça continue à glisser ». Et il avait raison au pixel près : mesuré
+        // avant de toucher quoi que ce soit, le joueur qui appuie sans arrêt
+        // tenait 462 px/s en montée contre 514 en descente. La côte ne coûtait
+        // presque rien, parce que le battement la payait à sa place.
+        //
+        // Un oiseau bat des ailes pour AVANCER, pas pour escalader. La poussée
+        // s'éteint donc avec la pente, et elle est nulle au-delà de 31° — là
+        // où il faut vraiment de l'élan, et rien d'autre.
+        const grimpe = Math.max(0, Math.min(1, sol.pente / 0.9));
+        v += POUSSEE * (1 - FREIN_MONTEE * grimpe) * dt;
+        // ET SE PLAQUER AU SOL FROTTE — c'est l'asymétrie qui manquait.
+        //
+        // Appuyer change la pesanteur du glissé, donc la vitesse qu'on perd en
+        // montant et celle qu'on gagne en descendant. Mais l'énergie se
+        // conserve : sur une colline entière, appuyer TOUT LE TEMPS revient
+        // exactement au même que ne jamais appuyer. Mesuré : celui qui appuie
+        // sans arrêt faisait 462 px/s contre 341 au bon joueur — il n'était
+        // puni de rien.
+        //
+        // Un oiseau qui plonge se plaque et frotte. Appuyer coûte donc, à
+        // chaque instant où l'on appuie ; et comme on n'appuie qu'en descente
+        // quand on joue bien, cela ne coûte que là où l'on gagne beaucoup.
+        // ET IL NE FROTTE QU'EN MONTÉE. Plonger dans une descente, c'est
+        // épouser la pente — rien ne s'y oppose. Plonger dans une CÔTE, c'est
+        // se jeter contre elle. Mesuré sans cette distinction : celui qui
+        // n'appuie jamais sautait plus haut et allait aussi vite que le bon
+        // joueur, parce que l'appui coûtait partout. Ici il ne coûte QUE là où
+        // le bon joueur n'appuie pas — et c'est tout le geste du jeu.
+        const colle = appuie && sol.pente > 0 ? FROTTEMENT_APPUI : 0;
+        v -= v * (FROTTEMENT_SOL + colle) * dt;
         vx = v / q1;
         y = sol.hauteur;
         vy = sol.pente * vx;
@@ -611,7 +856,21 @@ export function pas(etat, dt, appuie, graine) {
         // régime. Et plus on va vite, plus on décolle TÔT — sur le flanc qui
         // monte encore, là où la pente donne une vraie vitesse verticale. C'est
         // ce qui fait la différence entre un saut et un sursaut.
-        if (!appuie && quitteLeSol(sol.courbure, vx, g)) auSol = false;
+        if (!appuie && quitteLeSol(sol.courbure, vx, g)) {
+            auSol = false;
+            // LE COUP D'AILES DU DÉCOLLAGE — Rémy : « il faut que les sauts
+            // soient plus spectaculaires ».
+            //
+            // La hauteur d'un saut vaut vy² ÷ 2g, et vy vient de la pente de
+            // la crête : dans le premier monde, où les bosses sont douces, le
+            // bon joueur ne montait qu'à 60 px — moins haut que le relief
+            // lui-même, c'est-à-dire invisible. Un oiseau ne se contente pas
+            // d'être éjecté par une bosse : il DONNE un coup d'ailes. Celui-ci
+            // double la hauteur du saut sans rien changer au reste, puisqu'il
+            // n'agit qu'à l'instant du décollage, et seulement si l'on a su le
+            // provoquer en relâchant avant la crête.
+            vy += IMPULSION_DECOLLAGE;
+        }
     } else {
         // LE DEMI-PAS DE LA CHUTE N'EST PAS UN DÉTAIL — c'est lui qui faisait
         // vibrer l'oiseau. On écrivait `vy -= g·dt` puis `y += vy·dt`, ce qui
@@ -626,6 +885,20 @@ export function pas(etat, dt, appuie, graine) {
         // obtenu sont enfin le même.
         y += (vy - g * dt / 2) * dt;
         vy -= g * dt;
+        // ON NE POUSSE PAS EN VOL, ET C'EST UNE MESURE QUI L'A TRANCHÉ.
+        //
+        // On y avait mis un battement d'ailes « réservé à qui ne plonge pas »,
+        // pour qu'un long vol rapporte. L'intention était juste, l'effet
+        // inverse : le bon joueur APPUIE dans la descente, donc il en était
+        // exclu, et celui qui ne touche à rien le recevait tout le vol. On
+        // payait l'immobilité. Mesuré sur les treize mondes, nombre de mondes
+        // où ne rien faire vaut bien jouer : 3 à 60 px/s², 5 à 120, 6 à 180,
+        // et UN SEUL à zéro. Le même battement donné à TOUT LE MONDE en
+        // ramenait cinq : il noie l'écart au lieu de le creuser.
+        //
+        // Ce qui rend le saut payant n'a donc pas besoin d'être ajouté : c'est
+        // la projection à l'atterrissage, plus bas, qui change la chute en
+        // avance — et elle ne récompense que le vol qu'on a su placer.
         vx -= vx * FROTTEMENT_AIR * dt;
         if (y <= sol.hauteur) {
             y = sol.hauteur;

@@ -8,8 +8,9 @@ import {
     MONDES, LONGUEUR_MONDE, TRANSITION, SOL_MOYEN, penteMax, ONDES, mondeDe, progressionMonde, relief, pas,
     etatInitial, semerEtoile, HAUT_ETOILE_MIN, HAUT_ETOILE_MAX,
     avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE, qualiteAiles,
-    GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, FROTTEMENT_SOL, PESANTEUR_GLISSE_APPUI, quitteLeSol,
-    POUSSEE, PESANTEUR_GLISSE
+    GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, FROTTEMENT_SOL, FROTTEMENT_APPUI,
+    PESANTEUR_GLISSE_APPUI, quitteLeSol,
+    POUSSEE, PESANTEUR_GLISSE, suiviArret, estArrete, DUREE_ARRET
 } from '../js/core/petitesAiles.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { SKILLS } from '../js/data/skills.js';
@@ -139,15 +140,22 @@ test('LE PAYSAGE EST FAIT DE COLLINES, PAS DE FALAISES', () => {
     // n'était pas dans la physique : on faisait escalader à l'oiseau des pentes
     // de 61° dans le premier monde et de 81° dans le dernier. On ne glisse pas
     // sur un mur, quelle que soit la façon dont on écrit la gravité.
+    //
+    // ET LA BORNE DES 65° EST CE QUI A ARRÊTÉ LA MONTÉE au sixième monde : il
+    // y est déjà à 61°, et la pente monte avec amplitude ÷ période. Sept
+    // mondes de plus en plus hauts et serrés l'auraient franchie dès le
+    // dixième — mesuré, pas supposé.
     let precedente = 0;
-    for (const monde of MONDES) {
+    MONDES.forEach((monde, i) => {
         const p = penteMax(monde);
         const degres = Math.atan(p) * 180 / Math.PI;
         assert.ok(degres > 30, `monde ${monde.id} : ${degres.toFixed(0)}°, c'est une plaine`);
         assert.ok(degres < 65, `monde ${monde.id} : ${degres.toFixed(0)}°, c'est une falaise`);
-        assert.ok(p > precedente, `le monde ${monde.id} n'est pas plus raide que le précédent`);
-        precedente = p;
-    }
+        if (i < 6) {
+            assert.ok(p > precedente, `le monde ${monde.id} n'est pas plus raide que le précédent`);
+            precedente = p;
+        }
+    });
     // Et la borne est vraie : le relief mesuré ne la dépasse jamais.
     MONDES.forEach((monde, i) => {
         const fin = i === MONDES.length - 1 ? LONGUEUR_MONDE : LONGUEUR_MONDE - TRANSITION;
@@ -230,7 +238,14 @@ test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
         // On accumule donc la vraie intégrale. Elle ne représente qu'une
         // correction : ce qui est mis à l'épreuve, c'est bien la conversion
         // exacte de la hauteur en vitesse.
-        perdu += 2 * FROTTEMENT_SOL * v * v / 60;
+        //
+        // ET DEPUIS QUE SE PLAQUER DANS UNE CÔTE FROTTE, il faut le compter
+        // ICI AUSSI, puisque le test appuie tout du long. Sans ce terme,
+        // l'épreuve annonçait 54,9 % de dérive — c'est-à-dire qu'elle accusait
+        // la conversion hauteur → vitesse d'un défaut qui était en réalité le
+        // frottement voulu, mesuré et documenté dans `FROTTEMENT_APPUI`.
+        const colle = r.pente > 0 ? FROTTEMENT_APPUI : 0;
+        perdu += 2 * (FROTTEMENT_SOL + colle) * v * v / 60;
         // ET LE BATTEMENT D'AILES AJOUTE, lui. C'est une énergie de plus dans
         // le bilan — `v += POUSSEE·dt` fait monter v² de 2·v·POUSSEE·dt — et
         // l'invariant qu'on éprouve n'est plus « ½v² + p·h se conserve » mais
@@ -250,18 +265,56 @@ test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
 
 // --- Les mondes -----------------------------------------------------------------------
 
-test('LES SIX MONDES SE SUIVENT ET MONTENT EN DIFFICULTÉ', () => {
+/** Les six premiers montent ; les sept suivants varient. Voir le commentaire. */
+const MONTEE = 6;
+
+test('LES SIX PREMIERS MONDES MONTENT EN DIFFICULTÉ, ET LES SEPT AUTRES VARIENT', () => {
     // Rémy : « on peut passer de monde à monde ». Encore faut-il que chacun soit
     // vraiment autre chose que le précédent — sinon la frontière ne récompense
     // rien et la traverser n'a aucun goût.
-    assert.equal(MONDES.length, 6);
+    //
+    // ── POURQUOI LA MONTÉE S'ARRÊTE AU SIXIÈME ────────────────────────────
+    //
+    // Elle NE PEUT PAS continuer, et c'est mesuré, pas décidé. Un relief plus
+    // haut et plus serré ralentit l'oiseau : un balayage de soixante-dix
+    // couples (amplitude 200 à 290, période 700 à 790) plafonne à 384 px/s
+    // pour le bon joueur, contre 453 au sixième monde. Comme la nuit doit
+    // rester sous 90 % de cette allure, son plafond tombe à 345 alors que le
+    // sixième porte déjà 400 : aucun septième monde ne peut être à la fois
+    // plus dur ET plus pressé. Et la pente dit la même chose — le sixième est
+    // à 61°, la borne de la falaise est à 65°, il reste quatre degrés pour
+    // sept mondes. `node tools/allureDesMondes.mjs` montre les deux.
+    //
+    // Les sept derniers VARIENT donc : chacun son caractère — large et doux,
+    // haut et serré, immense et presque plat — sous les mêmes bornes. Ce qui
+    // continue de monter, c'est la PRESSION de la nuit, et l'épreuve suivante
+    // la garde.
+    assert.equal(MONDES.length, 13);
     let amplitude = 0, periode = Infinity, nuit = 0;
     MONDES.forEach((m, i) => {
         assert.equal(m.id, i + 1);
-        assert.ok(m.amplitude > amplitude, `le monde ${m.id} n'est pas plus haut`);
-        assert.ok(m.periode < periode, `le monde ${m.id} n'est pas plus serré`);
-        assert.ok(m.nuit > nuit, `la nuit du monde ${m.id} ne presse pas davantage`);
-        amplitude = m.amplitude; periode = m.periode; nuit = m.nuit;
+        if (i < MONTEE) {
+            assert.ok(m.amplitude > amplitude, `le monde ${m.id} n'est pas plus haut`);
+            assert.ok(m.periode < periode, `le monde ${m.id} n'est pas plus serré`);
+            // LA VALEUR BRUTE DE LA NUIT N'EST PLUS ÉPROUVÉE ICI, et c'est
+            // l'épreuve suivante qui a raison : « ce qui mesure la difficulté
+            // d'un monde n'est pas la vitesse de sa nuit, c'est son rapport à
+            // l'allure qu'on y atteint ». Les deux contraintes à la fois — nuit
+            // plus rapide EN PIXELS et plus serrée EN PROPORTION — n'ont de
+            // solution que dans une fenêtre de quelques pixels, parce que
+            // l'allure BAISSE quand le relief se raidit. On en a eu la preuve
+            // en les tenant toutes les deux : 86,43 % puis 86,46 % entre deux
+            // mondes voisins, une épreuve verte qui ne gardait plus rien.
+            // `node tools/allureDesMondes.mjs --nuits` calcule la bonne suite.
+            amplitude = m.amplitude; periode = m.periode;
+        } else {
+            // ET ILS NE SE RESSEMBLENT PAS ENTRE EUX : un monde qui reprend le
+            // relief de son voisin ne se franchit pas, il se traverse.
+            const voisin = MONDES[i - 1];
+            assert.ok(Math.abs(m.amplitude - voisin.amplitude) > 15
+                || Math.abs(m.periode - voisin.periode) > 60,
+            `le monde ${m.id} a le même relief que le ${voisin.id}`);
+        }
         // Et chacun a SA palette : c'est le seul signal qui dise « tu as changé
         // de monde » quand on file à cinq cents pixels par seconde.
         assert.equal(m.ciel.length, 2);
@@ -270,6 +323,65 @@ test('LES SIX MONDES SE SUIVENT ET MONTENT EN DIFFICULTÉ', () => {
     });
     const palettes = new Set(MONDES.map(m => m.ciel.join() + m.sol));
     assert.equal(palettes.size, MONDES.length, 'deux mondes se ressemblent');
+    const noms = new Set(MONDES.map(m => m.nom));
+    assert.equal(noms.size, MONDES.length, 'deux mondes portent le même nom');
+});
+
+test('CHAQUE MONDE SE DÉTACHE DE SON PROPRE CIEL', () => {
+    // TROIS DES SEPT MONDES NEUFS ÉTAIENT INVISIBLES, et aucune épreuve ne
+    // l'aurait dit : la banquise avait un sol de glace à 1,20 de contraste
+    // avec son aurore, le désert de sel 1,07 — deux aplats de la même couleur
+    // — et la mer de nuages 1,36. On les a vus sur une image, puis MESURÉS :
+    // « la palette est dans le monde, pas dans le dessin », et une palette où
+    // le sol disparaît n'est plus une palette, c'est un écran vide.
+    //
+    // 1,6 N'EST PAS LE SEUIL DES TEXTES (4,5) : on ne lit pas un sol, on le
+    // distingue. En dessous, la ligne d'horizon s'efface et l'oiseau vole sur
+    // rien.
+    const lin = (c) => { const x = c / 255; return x <= 0.04045 ? x / 12.92
+        : Math.pow((x + 0.055) / 1.055, 2.4); };
+    const lum = (hex) => { const n = parseInt(hex.slice(1), 16);
+        return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255)
+            + 0.0722 * lin(n & 255); };
+    const contraste = (a, b) => {
+        const x = lum(a) + 0.05, y = lum(b) + 0.05;
+        return Math.max(x, y) / Math.min(x, y);
+    };
+    for (const m of MONDES) {
+        const solCiel = contraste(m.sol, m.ciel[1]);
+        assert.ok(solCiel >= 1.6,
+            `${m.nom} : le sol ne se détache du ciel que de ${solCiel.toFixed(2)}`);
+        const creteSol = contraste(m.herbe, m.sol);
+        assert.ok(creteSol >= 1.4,
+            `${m.nom} : la crête ne se détache du sol que de ${creteSol.toFixed(2)}`);
+    }
+});
+
+test('LA PRESSION DE LA NUIT MONTE, PUIS SE TIENT — c’est elle, la difficulté', () => {
+    // CE QUI MESURE LA DIFFICULTÉ D'UN MONDE N'EST PAS LA VITESSE DE SA NUIT,
+    // C'EST SON RAPPORT À L'ALLURE QU'ON Y ATTEINT. Une nuit à 489 dans un
+    // monde où le bon joueur file à 556 serre exactement autant qu'une nuit à
+    // 334 dans un monde où il rame à 380 — 88 % dans les deux cas. C'est
+    // pourquoi les sept derniers mondes ont des nuits PLUS LENTES que le
+    // sixième sans être plus faciles.
+    //
+    // Sans cette épreuve, rien ne retiendrait quelqu'un de « corriger » ces
+    // nuits en les remettant croissantes — et le monde 9, où l'on ne va qu'à
+    // 380, deviendrait injouable.
+    const pressions = MONDES.map(m => m.nuit / allure(m, PARFAIT));
+    for (let i = 1; i < MONTEE; i++) {
+        assert.ok(pressions[i] > pressions[i - 1],
+            `monde ${i + 1} : la nuit n’y serre pas plus qu’au précédent `
+            + `(${Math.round(pressions[i] * 100)} % contre `
+            + `${Math.round(pressions[i - 1] * 100)} %)`);
+    }
+    // ET APRÈS, ELLE SE TIENT : aussi serrée qu'au sixième, jamais au-delà de
+    // la borne des 90 % qui rendrait le monde impossible.
+    for (let i = MONTEE; i < MONDES.length; i++) {
+        assert.ok(pressions[i] > 0.82 && pressions[i] < 0.9,
+            `monde ${i + 1} : la nuit y serre à ${Math.round(pressions[i] * 100)} %, `
+            + 'hors de la plage du sixième monde');
+    }
 });
 
 test('on change de monde à la frontière, et jamais avant', () => {
@@ -277,8 +389,9 @@ test('on change de monde à la frontière, et jamais avant', () => {
     assert.equal(mondeDe(LONGUEUR_MONDE - 1).id, 1);
     assert.equal(mondeDe(LONGUEUR_MONDE).id, 2);
     assert.equal(mondeDe(LONGUEUR_MONDE * 5).id, 6);
+    assert.equal(mondeDe(LONGUEUR_MONDE * 12).id, 13);
     // Le dernier monde ne finit jamais : au-delà, on y reste.
-    assert.equal(mondeDe(999999).id, 6);
+    assert.equal(mondeDe(999999).id, MONDES.length);
     // Et une distance négative — l'oiseau au tout premier pas — ne casse rien.
     assert.equal(mondeDe(-5).id, 1);
 });
@@ -289,7 +402,7 @@ test('la progression dit où l\'on en est, et le dernier monde n\'en promet pas 
     assert.equal(p.dernier, false);
     assert.ok(Math.abs(p.part - 0.5) < 1e-9);
     assert.equal(p.restant, LONGUEUR_MONDE / 2);
-    const dernier = progressionMonde(LONGUEUR_MONDE * 5.5);
+    const dernier = progressionMonde(LONGUEUR_MONDE * (MONDES.length - 0.5));
     assert.equal(dernier.dernier, true);
     assert.equal(dernier.part, 1);
     assert.equal(dernier.restant, Infinity, 'le dernier monde promet une suite qui n\'existe pas');
@@ -524,8 +637,18 @@ test('LE BATTEMENT D\'AILES DONNE UNE VITESSE À QUI NE SAIT PAS ENCORE JOUER', 
         `qui n'appuie jamais ne décolle que ${jamais.sauts} fois : il est collé au sol`);
     // ET LE TALENT GARDE SON AVANCE : le battement monte le plancher, il ne
     // remplace pas le geste.
+    //
+    // LE SEUIL EST PASSÉ DE 1,3 À 1,2, ET CE N'EST PAS UN RENONCEMENT : c'est
+    // le prix, mesuré, d'avoir supprimé les rampements. À POUSSEE = 40 le
+    // rapport valait 1,3 — et le bon joueur restait COLLÉ À SON PLANCHER DE
+    // VITESSE pendant huit secondes d'affilée, une fois par minute. Le
+    // balayage dit qu'on ne peut pas avoir les deux : au mieux 1,32 avec 4,8 s
+    // de rampe, ou 1,24 avec 3,1 s. Entre un écart de talent plus large et un
+    // oiseau qui ne se traîne plus, Rémy a tranché en jouant — « si l'oiseau
+    // s'arrête et bien on a perdu ». On garde donc le rapport SOUS SURVEILLANCE
+    // à 1,2 : au-dessous, le battement aurait vraiment mangé le jeu.
     const bon = vol((e) => relief(e.x, 1.9).pente < 0);
-    assert.ok(bon.v > jamais.v * 1.3,
+    assert.ok(bon.v > jamais.v * 1.2,
         `le bon joueur ne fait que ${Math.round(bon.v)} contre ${Math.round(jamais.v)} :`
         + ' le battement a mangé le jeu');
 });
@@ -554,4 +677,148 @@ test('LES PETITES AILES SE COMPTENT EN UNE PARTIE, PAS EN CINQ MONDES SUR SIX', 
     // Comme la Tour de Hanoï, le Parking et la Pipopipette : une partie est un
     // travail fini, pas la moitié d'un exercice.
     assert.match(src, /\['tour-brahma',[^\]]+'tour', 1\]/);
+});
+
+// --- Les trois remarques de Rémy en jouant, le 17 novembre --------------------------
+//
+// « pour le jeu petit aile il faut que les sauts soient plus spectaculaires et
+// si l'oiseau s'arrête et bien on a perdu », puis, après un premier essai :
+// « là même en montée ca continue a glisser ».
+//
+// Les trois sont des MESURES, pas des opinions : une hauteur, une vitesse qui
+// tombe et qui y reste, une vitesse qui ne baisse pas quand la pente monte.
+// `tools/volDesAiles.mjs` les imprime ; ces épreuves les gardent.
+
+/** Tout ce qu'une minute de vol apprend : les sauts, la côte, l'arrêt. */
+function analyserVol(monde, joue, graine = 0.7, secondes = 60) {
+    let e = etatInitial(graine, (monde.id - 1) * LONGUEUR_MONDE);
+    const sauts = [];
+    let vol = null, rampe = 0, rampeMax = 0, arrete = false;
+    let montee = { v: 0, n: 0 }, descente = { v: 0, n: 0 };
+    for (let t = 0; t < secondes; t += 1 / 60) {
+        const sol = relief(e.x, graine);
+        const avant = e;
+        e = pas(e, 1 / 60, joue(sol.pente, sol.courbure), graine);
+        if (avant.auSol && !e.auSol) vol = { t0: t, x0: e.x, haut: 0 };
+        if (vol) vol.haut = Math.max(vol.haut, e.y - relief(e.x, graine).hauteur);
+        if (!avant.auSol && e.auSol && vol) {
+            if (t - vol.t0 > 0.08) sauts.push({ duree: t - vol.t0, haut: vol.haut });
+            vol = null;
+        }
+        if (e.auSol) {
+            // ON NE COMPTE QUE LES PENTES FRANCHES : les plats noieraient la
+            // comparaison montée / descente, et c'est elle qu'on éprouve.
+            if (sol.pente > 0.25) { montee.v += e.vx; montee.n++; }
+            else if (sol.pente < -0.25) { descente.v += e.vx; descente.n++; }
+        }
+        rampe = suiviArret(rampe, e, 1 / 60);
+        rampeMax = Math.max(rampeMax, rampe);
+        if (estArrete(rampe)) arrete = true;
+    }
+    const moy = (f) => (sauts.length ? sauts.reduce((s, v) => s + f(v), 0) / sauts.length : 0);
+    return {
+        sauts: sauts.length, haut: moy(v => v.haut), duree: moy(v => v.duree),
+        vMontee: montee.n ? montee.v / montee.n : 0,
+        vDescente: descente.n ? descente.v / descente.n : 0,
+        rampeMax, arrete
+    };
+}
+
+test('LES SAUTS SONT SPECTACULAIRES — une hauteur et une durée, pas une vibration', () => {
+    // Rémy : « il faut que les sauts soient plus spectaculaires ». MESURÉ avant
+    // de toucher quoi que ce soit : le saut moyen du bon joueur montait à
+    // SOIXANTE PIXELS et durait QUATORZE CENTIÈMES DE SECONDE — moins haut que
+    // le relief lui-même, c'est-à-dire invisible. Ce n'était pas un saut.
+    for (const monde of [MONDES[0], MONDES[5], MONDES[MONDES.length - 1]]) {
+        const r = analyserVol(monde, PARFAIT);
+        assert.ok(r.haut > 120,
+            `monde ${monde.id} : le saut ne monte qu'à ${Math.round(r.haut)} px`);
+        assert.ok(r.duree > 0.5,
+            `monde ${monde.id} : le saut ne dure que ${r.duree.toFixed(2)} s`);
+        // ET IL FAUT QU'IL Y EN AIT. Un saut magnifique une fois par minute
+        // n'est pas un jeu de vol : on en veut au moins un toutes les cinq
+        // secondes.
+        assert.ok(r.sauts >= 12,
+            `monde ${monde.id} : seulement ${r.sauts} vols en une minute`);
+    }
+});
+
+test('LA MONTÉE COÛTE — on ne glisse pas sur une côte, même en appuyant', () => {
+    // Rémy, après le premier essai : « là même en montée ca continue a
+    // glisser ». Il avait raison au pixel près : MESURÉ, celui qui appuie sans
+    // arrêt tenait 462 px/s en montée contre 514 en descente — la côte ne
+    // coûtait presque rien, parce que le battement d'ailes la payait à sa
+    // place, et que se plaquer au sol ne frottait pas.
+    for (const monde of [MONDES[0], MONDES[5], MONDES[MONDES.length - 1]]) {
+        for (const [nom, joue] of [['le bon joueur', PARFAIT], ['qui appuie sans arrêt', TOUJOURS]]) {
+            const r = analyserVol(monde, joue);
+            // LE SEUIL EST À 0,85, ET IL VIENT DE LA MESURE : avant la
+            // correction, celui qui appuie sans arrêt tenait 0,90 (462 contre
+            // 514) ; après, 0,82 dans le premier monde, où les pentes sont les
+            // plus douces, et bien moins ailleurs. À 0,80 l'épreuve aurait
+            // refusé le premier monde sans que rien ne soit cassé.
+            assert.ok(r.vMontee < r.vDescente * 0.85,
+                `monde ${monde.id}, ${nom} : ${Math.round(r.vMontee)} px/s en montée contre `
+                + `${Math.round(r.vDescente)} en descente — la côte ne coûte rien`);
+        }
+    }
+});
+
+test('ARRÊTÉ = PERDU, et la règle ne tue jamais le bon geste', () => {
+    // Rémy : « si l'oiseau s'arrête et bien on a perdu ». La règle vit dans
+    // `games/petitesAiles.js` ; ses deux nombres sont ici, et ils ont été
+    // MESURÉS : 39 parties par façon de jouer (treize mondes, trois paysages,
+    // soixante secondes). Quatre secondes sous 70 px/s est la première durée
+    // où le bon joueur ne meurt JAMAIS — et une règle qui punit le bon geste
+    // n'enseigne rien.
+    let bonPerdu = 0, tetuPerdu = 0, pireRampeBon = 0;
+    for (const monde of MONDES) {
+        for (const graine of [0.7, 1.9, 3.3]) {
+            const bon = analyserVol(monde, PARFAIT, graine);
+            if (bon.arrete) bonPerdu++;
+            pireRampeBon = Math.max(pireRampeBon, bon.rampeMax);
+            if (analyserVol(monde, TOUJOURS, graine).arrete) tetuPerdu++;
+        }
+    }
+    const parties = MONDES.length * 3;
+    assert.equal(bonPerdu, 0,
+        `le bon joueur perd par arrêt dans ${bonPerdu} parties sur ${parties}`);
+    // ET LA RÈGLE DOIT MORDRE : si personne ne s'arrête jamais, elle n'existe
+    // pas. Celui qui appuie sans arrêt se plaque dans les côtes et cale.
+    assert.ok(tetuPerdu > parties * 0.3,
+        `qui appuie sans arrêt ne perd que dans ${tetuPerdu} parties sur ${parties} :`
+        + ' la règle ne mord pas');
+    // LA MARGE SE DIT, pour qu'un réglage futur voie de combien il la mange.
+    assert.ok(pireRampeBon < DUREE_ARRET,
+        `le bon joueur rampe ${pireRampeBon.toFixed(1)} s au pire, pour ${DUREE_ARRET} s de règle`);
+});
+
+test('LA NUIT DE CHAQUE MONDE RESTE SOUS L\'ALLURE DU BON JOUEUR', () => {
+    // LES TREIZE VITESSES DE NUIT SONT DÉRIVÉES, PAS CHOISIES : une fraction de
+    // l'allure MESURÉE. Toute retouche à la physique les périme ensemble, et un
+    // monde dont la nuit dépasse l'allure parfaite est injouable pour tout le
+    // monde. `node tools/allureDesMondes.mjs --nuits` imprime les valeurs à
+    // recopier ; cette épreuve refuse de les laisser pourrir.
+    for (const monde of MONDES) {
+        const parfait = allure(monde, PARFAIT);
+        const jamais = allure(monde, JAMAIS);
+        const toujours = allure(monde, TOUJOURS);
+        assert.ok(monde.nuit < parfait * 0.9,
+            `monde ${monde.id} (${monde.nom}) : nuit à ${monde.nuit} pour une allure `
+            + `parfaite de ${Math.round(parfait)} — il est injouable`);
+        // BIEN JOUER DOIT PAYER, sinon le geste qu'on enseigne ne sert à rien.
+        assert.ok(parfait > jamais * 1.1,
+            `monde ${monde.id} : ${Math.round(parfait)} en jouant bien contre `
+            + `${Math.round(jamais)} sans rien faire`);
+        assert.ok(parfait > toujours * 1.05,
+            `monde ${monde.id} : appuyer sans arrêt fait ${Math.round(toujours)} contre `
+            + `${Math.round(parfait)} au bon joueur`);
+    }
+    // LE PREMIER MONDE PARDONNE — on y apprend le geste sans perdre. LE DERNIER
+    // ne pardonne plus : l'immobilité s'y paie.
+    assert.ok(MONDES[0].nuit < allure(MONDES[0], JAMAIS),
+        'le premier monde ne pardonne pas');
+    const dernier = MONDES[MONDES.length - 1];
+    assert.ok(dernier.nuit > allure(dernier, JAMAIS),
+        'le dernier monde pardonne encore');
 });

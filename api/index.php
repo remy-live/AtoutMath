@@ -3026,7 +3026,8 @@ function handleTeacherReglages(): void
         // `tests/mondesDeMario.test.mjs` compare désormais les deux listes.
         $connus = ['noel', 'halloween', 'paques', 'robot', 'ocean', 'volcan',
             'neiges', 'desert', 'jungle', 'chateau', 'espace', 'nuages',
-            'bonbons', 'pirates', 'retro'];
+            'bonbons', 'pirates', 'retro', 'kawai', 'fantaisie', 'foret',
+            'farwest', 'cirque', 'dinosaures', 'egypte'];
         ecrireReglage('site.decorDuMoment', in_array($d, $connus, true) ? $d : '');
     }
     // L'ÉCRAN RANGÉ DE L'ÉLÈVE. Deux valeurs seulement, et tout le reste vaut

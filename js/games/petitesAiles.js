@@ -39,7 +39,7 @@ import { meneurDemo } from '../core/meneurDemo.js';
 import {
     MONDES, SOL_MOYEN, mondeDe, progressionMonde, relief, pas, etatInitial,
     semerEtoile, ECART_ETOILES, avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE,
-    qualiteAiles, VX_MAX, VX_MIN
+    qualiteAiles, VX_MAX, VX_MIN, suiviArret, estArrete, DUREE_ARRET
 } from '../core/petitesAiles.js';
 
 /** L'avance donnée à l'oiseau au départ : le temps de comprendre le geste. */
@@ -139,7 +139,7 @@ class PetitesAiles extends BaseGame {
                     <p><span class="pa-touche">clic</span> ou
                        <span class="pa-touche">espace</span></p>
                     <small>Plonge dans la descente : c'est là que la vitesse se gagne.<br>
-                    La nuit court derrière toi.</small>
+                    La nuit court derrière toi — et un oiseau arrêté est un oiseau perdu.</small>
                 </div>
                 <div class="pa-fin" id="pa-fin">
                     <h3 id="pa-fin-titre"></h3>
@@ -197,6 +197,9 @@ class PetitesAiles extends BaseGame {
         // LA NUIT PART LOIN DERRIÈRE. Le temps de lire l'écran de départ, de
         // comprendre le geste et de rater les trois premières bosses.
         this.nuit = -AVANCE_DEPART;
+        // LE TEMPS PASSÉ À RAMPER, remis à zéro à chaque reprise d'élan. Voir
+        // `suiviArret` : c'est lui qui décide, et la règle est de Rémy.
+        this.rampe = 0;
         this.demarre = this.isDemo;
         this.fini = false;
         this.finEl.classList.remove('pa-fin--vu');
@@ -249,7 +252,16 @@ class PetitesAiles extends BaseGame {
             this.nuit -= RECUL_ETOILE;
         }
 
-        if (this.demarre && !this.isDemo && rattrape(this.nuit, this.etat.x)) this.terminer();
+        if (this.demarre && !this.isDemo && rattrape(this.nuit, this.etat.x)) {
+            this.terminer('nuit');
+        } else if (this.demarre && !this.isDemo) {
+            // ARRÊTÉ = PERDU. Rémy, en jouant : « si l'oiseau s'arrête et bien
+            // on a perdu ». La démonstration en est dispensée : elle ne joue
+            // pas, elle montre, et un oiseau qui cale pendant la visite guidée
+            // fermerait la visite.
+            this.rampe = suiviArret(this.rampe, this.etat, dt);
+            if (estArrete(this.rampe)) this.terminer('arret');
+        }
         this.majHud();
     }
 
@@ -277,14 +289,20 @@ class PetitesAiles extends BaseGame {
         }, 1800);
     }
 
-    terminer() {
+    terminer(cause = 'nuit') {
         this.fini = true;
         const q = qualiteAiles(this.etat.x / 10, this.monde.id, this.ramassees);
-        this.container.querySelector('#pa-fin-titre').textContent =
-            `La nuit t'a rattrapé — monde ${q.monde}`;
-        this.container.querySelector('#pa-fin-texte').textContent =
-            `${this.monde.nom} · ${q.distance} m · ${q.etoiles} étoile`
+        // ON DIT LAQUELLE DES DEUX FINS, ET ON DIT QUOI FAIRE. Un écran de fin
+        // qui annonce « perdu » sans nommer la cause laisse l'élève croire
+        // qu'il a manqué de chance ; l'arrêt, lui, a un remède en une phrase.
+        this.container.querySelector('#pa-fin-titre').textContent = cause === 'arret'
+            ? `Ton oiseau s'est arrêté — monde ${q.monde}`
+            : `La nuit t'a rattrapé — monde ${q.monde}`;
+        const bilan = `${this.monde.nom} · ${q.distance} m · ${q.etoiles} étoile`
             + `${q.etoiles > 1 ? 's' : ''} ramassée${q.etoiles > 1 ? 's' : ''}.`;
+        this.container.querySelector('#pa-fin-texte').textContent = cause === 'arret'
+            ? `${bilan} Relâche dans les montées : appuyer t'y plaque au sol.`
+            : bilan;
         this.finEl.classList.add('pa-fin--vu');
     }
 
@@ -486,6 +504,22 @@ class PetitesAiles extends BaseGame {
         c.beginPath(); c.roundRect(x, y, w, h, h / 2); c.fill();
         c.fillStyle = part > 0.66 ? '#e04a3a' : (part > 0.33 ? '#f6ad55' : '#63b3ed');
         c.beginPath(); c.roundRect(x, y, Math.max(h, w * part), h, h / 2); c.fill();
+        // LE COMPTE À REBOURS DE L'ARRÊT, SUR LA JAUGE ELLE-MÊME.
+        //
+        // La règle « arrêté = perdu » est juste, et elle serait DÉLOYALE sans
+        // cela : l'élève verrait la partie s'arrêter sans savoir qu'il lui
+        // restait trois secondes pour reprendre son élan. On prévient donc dès
+        // la première seconde, là où l'œil est déjà — sur la jauge qui se vide
+        // — et le remède tient dans le mot « relâche ».
+        if (this.rampe > 1) {
+            const reste = Math.max(0, DUREE_ARRET - this.rampe);
+            c.fillStyle = '#c53030';
+            c.font = '800 12px system-ui, sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'bottom';
+            c.fillText(`il s'arrête ! relâche — ${reste.toFixed(1)} s`, larg / 2, y - 3);
+            return;
+        }
         c.fillStyle = 'rgba(18,50,74,.85)';
         c.font = '800 11px system-ui, sans-serif';
         c.textAlign = 'center';
@@ -551,7 +585,7 @@ class PetitesAiles extends BaseGame {
         cur.say('Et il faut aller vite : la nuit court derrière toi.', this.mondeEl);
         if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
-        cur.say('Chaque frontière franchie ouvre un nouveau monde et repousse la nuit — il y en a six.', this.mondeEl);
+        cur.say(`Chaque frontière franchie ouvre un nouveau monde et repousse la nuit — il y en a ${MONDES.length}.`, this.mondeEl);
         await cur.pause(DEMO_SPEED.between);
         fin();
     }

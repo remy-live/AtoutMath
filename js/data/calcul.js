@@ -3624,7 +3624,20 @@ export const calculExercises = [
         instruction: "IL N'Y A RIEN À CALCULER : c'est un jeu de mine. Tu creuses la terre avec les quatre flèches, et tu ramasses les diamants bleus. Quand tu en as assez — le compteur te dit combien il en faut — LA PORTE DEVIENT VERTE et tu peux sortir. LES ROCHERS GRIS TOMBENT dès que plus rien ne les retient : tant que tu es dessous, c'est TOI qui les retiens, mais si tu t'en vas vers le bas, le rocher te suit et t'écrase. Alors écarte-toi sur le côté, laisse-le tomber, et passe après. Tu peux aussi POUSSER un rocher sur le côté, à condition que la case d'après soit libre. Un chronomètre tourne, et tu as trois vies."
     },
     {
-        id: 'jeu-petites-ailes', title: 'Les Petites Ailes',
+        id: 'jeu-petites-ailes',
+        revisions: [
+            {
+                date: '2026-11-17',
+                quoi: 'SEPT MONDES DE PLUS — Rémy : « rajoute des mondes kawai, '
+                    + 'fantaisiste et 5 de ton choix ». Le pays kawaï, le royaume '
+                    + 'fantaisiste, la banquise, les terres de braise, la canopée, le '
+                    + 'désert de sel et la mer de nuages. Les six premiers continuent de '
+                    + 'monter en difficulté ; les sept nouveaux VARIENT — mesuré : au-delà '
+                    + 'du sixième, un relief plus dur ralentit tellement l’oiseau que la '
+                    + 'nuit ne peut plus accélérer, et la pente y touche déjà la borne de '
+                    + 'la falaise.'
+            }
+        ], title: 'Les Petites Ailes',
         cree: '2026-08-25',
         // PAS DE COMPÉTENCE, ET C'EST VOULU. Rémy : « n'en fais pas un jeu
         // mathématiques […] c'est plus un jeu de réflexe ». Lui accrocher une
@@ -3641,7 +3654,7 @@ export const calculExercises = [
             chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.ADRESSE],
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "UNE SEULE TOUCHE, et il n'y a rien à calculer : c'est un jeu d'adresse. Appuie — clic, doigt ou barre d'ESPACE — pour PLONGER, relâche pour planer. Appuie dans la DESCENTE : tu prends de la vitesse, et la jauge du bas te le montre. Relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante. C'est là que la vitesse se fabrique, nulle part ailleurs — rester collé au sol te fait payer chaque montée. Et il faut aller vite, parce que LA NUIT COURT DERRIÈRE TOI : si elle te rattrape, la partie s'arrête. Les étoiles la repoussent un peu ; franchir une frontière de monde la repousse beaucoup. Il y a six mondes, chacun plus haut, plus serré et plus pressé que le précédent — le but est d'aller voir le suivant."
+        instruction: "UNE SEULE TOUCHE, et il n'y a rien à calculer : c'est un jeu d'adresse. Appuie — clic, doigt ou barre d'ESPACE — pour PLONGER, relâche pour planer. Appuie dans la DESCENTE : tu prends de la vitesse, et la jauge du bas te le montre. Relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante. C'est là que la vitesse se fabrique, nulle part ailleurs — rester collé au sol te fait payer chaque montée. Et il faut aller vite, parce que LA NUIT COURT DERRIÈRE TOI : si elle te rattrape, la partie s'arrête. Les étoiles la repoussent un peu ; franchir une frontière de monde la repousse beaucoup. Il y a TREIZE mondes, et le but est toujours d'aller voir le suivant. Les six premiers montent : chacun plus haut, plus serré et plus pressé que le précédent. Les sept autres ne durcissent plus — ils CHANGENT : le pays kawaï et ses collines roses, le royaume fantaisiste, la banquise sous son aurore, les terres de braise, la canopée, le désert de sel au couchant, et tout en haut la mer de nuages. Chacun a son relief et sa palette, et la nuit y serre autant qu'au sixième — pas davantage, parce qu'au-delà le jeu deviendrait injouable."
     },
     {
         // ── LE PLATEAU DES NOMBRES, DANS LE CATALOGUE ─────────────────────

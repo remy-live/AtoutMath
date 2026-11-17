@@ -311,7 +311,49 @@ export const DECORS = [
     { id: 'retro', famille: 'monde', icon: '👾', label: 'Rétro 8 bits',
         dit: 'Tout en angles droits ; pastilles en blocs carrés.',
         matiere: 'bloc',
-        ornements: ['👾', '🕹️', '🎮', '🪙', '🍄', '⭐'] }
+        ornements: ['👾', '🕹️', '🎮', '🪙', '🍄', '⭐'] },
+
+    // ── LES SEPT DEMANDÉS LE 17 NOVEMBRE ─────────────────────────────────
+    //
+    // RÉMY : « rajoute des mondes kawai, fantaisiste et 5 de ton choix », puis,
+    // quand j'avais d'abord servi les mondes du JEU : « c'est ok tu peux le
+    // garder mais je parlais des parcours ». Ce sont donc ceux-ci.
+    //
+    // LES CINQ SONT CHOISIS POUR CE QU'ILS N'ONT PAS EN COMMUN avec les douze
+    // d'avant : une forêt (vert, mais tamisé et nocturne, là où la jungle est
+    // vert plein jour), un far west (cuir et bois, là où les pirates sont du
+    // vieux papier), un cirque (rayures rouge et or, qu'aucun autre ne porte),
+    // des dinosaures (ambre et fougère) et l'Égypte (lapis et or). Chacun a sa
+    // palette, sa texture de fond et sa matière de pastille : un monde qui ne
+    // se distingue qu'au nom ne se franchit pas, il se traverse.
+    { id: 'kawai', famille: 'monde', icon: '🌸', label: 'Kawaï',
+        dit: 'Pastel et tout rond ; pastilles en guimauve.',
+        matiere: 'guimauve',
+        ornements: ['🌸', '🧸', '🍡', '🐰', '💕', '🌸'] },
+    { id: 'fantaisie', famille: 'monde', icon: '🦄', label: 'Le Pays fantaisiste',
+        dit: 'Arc-en-ciel et paillettes ; pastilles qui scintillent.',
+        matiere: 'paillette',
+        ornements: ['🦄', '🌈', '✨', '🧚', '💫', '🎠'] },
+    { id: 'foret', famille: 'monde', icon: '🍄', label: 'La Forêt enchantée',
+        dit: 'Vert sombre et lucioles ; pastilles en feuille.',
+        matiere: 'feuille',
+        ornements: ['🍄', '🦌', '🌲', '🪵', '🦉', '🌙'] },
+    { id: 'farwest', famille: 'monde', icon: '🤠', label: 'Le Far West',
+        dit: 'Cuir et planches de saloon ; pastilles cousues.',
+        matiere: 'cuir',
+        ornements: ['🤠', '🐎', '🌵', '⭐', '🎸', '🪵'] },
+    { id: 'cirque', famille: 'monde', icon: '🎪', label: 'Le Cirque',
+        dit: 'Rouge et or, rayures de chapiteau ; pastilles en toile tendue.',
+        matiere: 'chapiteau',
+        ornements: ['🎪', '🤹', '🎈', '🦁', '🎟️', '🎺'] },
+    { id: 'dinosaures', famille: 'monde', icon: '🦕', label: 'Les Dinosaures',
+        dit: 'Fougère et ambre ; pastilles en résine dorée.',
+        matiere: 'ambre',
+        ornements: ['🦕', '🦖', '🌿', '🥚', '🦴', '🌋'] },
+    { id: 'egypte', famille: 'monde', icon: '🔺', label: 'L’Égypte antique',
+        dit: 'Lapis et or, murs gravés ; pastilles en grès.',
+        matiere: 'gres',
+        ornements: ['🔺', '🐈', '📜', '🪬', '🐍', '⚱️'] }
 ];
 
 /** Les décors d'une famille, dans l'ordre déclaré. */

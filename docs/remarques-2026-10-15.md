@@ -7676,3 +7676,129 @@ lui, l'aurait expliquée.
 ont eu besoin après les volumes, et une règle écrite à deux endroits finit par
 diverger — c'est ce que dit déjà `deDevant` dans `core/accord.js`.
 
+
+### « rajoute des mondes kawai, fantaisiste et 5 de ton choix » — 17 novembre
+
+Et : « non pour décoché par défaut » — la marche du triangle reste cochée dans
+« La Valeur Manquante ».
+
+**SEPT MONDES DE PLUS AUX PETITES AILES, soit treize** : le pays kawaï, le
+royaume fantaisiste, la banquise, les terres de braise, la canopée, le désert
+de sel, et tout en haut la mer de nuages.
+
+**LA RÈGLE DU JEU NE POUVAIT PAS CONTINUER, ET C'EST MESURÉ.** Les six mondes
+d'origine sont « chacun plus haut, plus serré et plus pressé que le
+précédent ». J'ai écrit les sept suivants sur ce modèle — et ils étaient tous
+injouables. Deux murs, tous deux relevés par la mesure :
+
+1. **L'ALLURE S'EFFONDRE.** Un relief plus haut et plus serré RALENTIT
+   l'oiseau. Un balayage de soixante-dix couples (amplitude 200 à 290, période
+   700 à 790) plafonne à 384 px/s pour le bon joueur, contre 453 au sixième
+   monde. Or la nuit doit rester sous 90 % de cette allure : son plafond tombe
+   à 345 alors que le sixième porte déjà 400. **Il n'existe aucun septième
+   monde à la fois plus dur et plus pressé.**
+2. **LA PENTE TOUCHE LA FALAISE.** Le sixième monde est déjà à 61°, et la
+   borne du dépôt est 65° — « on ne glisse pas sur un mur, quelle que soit la
+   façon dont on écrit la gravité ». Il reste quatre degrés pour sept mondes.
+
+**CE QUI MONTE N'EST DONC PLUS LA VITESSE DE LA NUIT, C'EST SA PRESSION** — le
+rapport entre elle et l'allure du bon joueur. Et c'est la seule mesure qui ait
+un sens : une nuit à 489 dans un monde où l'on file à 556 serre exactement
+autant qu'une nuit à 334 dans un monde où l'on rame à 380. Les six premiers
+vont de 43 % à 88 % ; les sept suivants se tiennent tous à 88 %. Le jeu
+atteint donc sa difficulté au sixième monde, et ce qui vient après est un
+voyage, pas une épreuve de plus. Il faut le dire plutôt que de le cacher.
+
+**AJOUTER DES MONDES A CHANGÉ L'ÉQUILIBRE DES ANCIENS**, ce que je n'avais pas
+prévu : le relief est une fonction de l'abscisse ABSOLUE, et chaque monde est
+relié au suivant par une rampe. Le sixième monde, qui montait vers un septième
+plus doux au lieu de finir le jeu, est passé de 453 à 556 px/s d'allure — sa
+nuit à 400 n'y serrait plus qu'à 72 % au lieu de 88 %. Il a fallu recaler les
+nuits des mondes 5 et 6 : **on ne peut pas ajouter un monde sans remesurer
+ceux d'avant.**
+
+**TROIS DES SEPT MONDES ÉTAIENT INVISIBLES**, et seul le calcul l'a dit : la
+banquise avait un sol de glace à 1,20 de contraste avec son aurore, le désert
+de sel 1,07 — deux aplats de la même couleur —, la mer de nuages 1,36. Je les
+avais pourtant REGARDÉS sur une image : à l'oeil, « très pâle » passe pour une
+intention. Une épreuve mesure maintenant le contraste sol/ciel et crête/sol
+des treize mondes.
+
+**L'OUTIL QUI MESURE TOUT CELA EST GARDÉ** cette fois — `tools/allureDesMondes.mjs`.
+Il avait existé dans `tools/tmp/`, le commentaire du code le citait comme la
+source des six vitesses de nuit, et il avait disparu.
+
+
+---
+
+## 17 novembre — Rémy joue aux Petites Ailes, et dit trois choses
+
+> « ah tu mets les mondes sur un jeu, c'est ok tu peux le garder mais je parlais
+> des parcours et pour le jeu petit aile il faut que **les sauts soient plus
+> spectaculaires** et **si l'oiseau s'arrête et bien on a perdu** »
+
+Puis, après un premier essai :
+
+> « là même en montée ca continue a glisser »
+
+**LES TROIS SE TIENNENT, ET AUCUNE NE SE LIT DANS LE CODE.** Un saut
+« spectaculaire » est une hauteur et une durée ; « s'arrêter » est une vitesse
+qui tombe et qui y reste ; « glisser en montée » est une vitesse qui ne baisse
+pas quand la pente monte. Il a fallu écrire l'outil qui les mesure —
+`tools/volDesAiles.mjs` — avant de pouvoir corriger quoi que ce soit.
+
+| | avant | après |
+| --- | --- | --- |
+| hauteur du saut | 60 px | 159 à 183 px |
+| durée du saut | 0,14 s | 0,76 à 0,84 s |
+| vitesse en montée ÷ en descente (bon joueur) | 0,90 | 0,65 |
+| arrêts du bon joueur, par minute | — | 0 |
+| arrêts de qui appuie sans arrêt | — | 9 à 10 |
+
+**« SI L'OISEAU S'ARRÊTE » N'ÉTAIT PAS UNE DEMANDE DE RÈGLE, C'ÉTAIT LE SIGNAL
+D'UN DÉFAUT.** J'ai d'abord écrit la règle, puis j'ai tracé une partie image
+par image pour choisir ses deux nombres — et la trace a montré autre chose :
+l'oiseau retombait d'un vol de 189 px sur un flanc qui monte, l'atterrissage ne
+lui laissait que 147 px/s, et il remontait toute la côte **collé à son plancher
+de vitesse pendant huit secondes**. Un tiers du temps de jeu se passait sous
+70 px/s. La règle seule aurait puni l'élève pour un défaut du logiciel.
+
+Deux constantes l'ont réparé, et elles vont ensemble : le battement d'ailes
+(40 → 260 px/s², puis 200) pour que les ailes puissent finir la côte quand
+l'élan n'y suffit plus, et ce qui reste de la vitesse à l'atterrissage
+(0,25 → 0,6) parce qu'un saut spectaculaire dépasse le creux et retombe sur le
+flanc d'en face : **un saut plus beau ne doit pas devenir un piège.**
+
+**ET IL A FALLU CHOISIR UN CAMP.** Le balayage dit qu'on ne peut pas avoir à la
+fois l'écart de talent le plus large et l'oiseau qui ne se traîne jamais : au
+mieux un rapport de 1,32 avec 4,8 s de rampement, ou 1,24 avec 3,1 s. Rémy a
+tranché en jouant — c'est l'arrêt qui l'a gêné, pas l'écart. L'épreuve garde
+donc le rapport à 1,2, et dit pourquoi.
+
+**LA RÈGLE ELLE-MÊME EST MESURÉE, PAS CHOISIE.** 39 parties par façon de jouer
+(treize mondes, trois paysages, soixante secondes), et l'on compte celles que
+la règle tuerait :
+
+| sous 70 px/s pendant… | bon joueur | rase le sol | ne fait rien | appuie sans arrêt |
+| --- | --- | --- | --- | --- |
+| 1 s | 15/39 | 1/39 | 31/39 | 39/39 |
+| 2 s | 10/39 | 1/39 | 29/39 | 34/39 |
+| 3 s | 6/39 | 1/39 | 22/39 | 20/39 |
+| **4 s** | **0/39** | **0/39** | 5/39 | 16/39 |
+
+Quatre secondes est la première ligne où le bon geste ne meurt jamais. Et la
+jauge de vitesse annonce le compte à rebours dès la première seconde : une
+règle juste qui frappe sans prévenir est une règle déloyale.
+
+**« JE PARLAIS DES PARCOURS ».** Les sept mondes demandés le 16 — kawaï,
+fantaisiste et cinq au choix — sont donc dans `DECORS`, pas dans le jeu : le
+Kawaï, le Pays fantaisiste, la Forêt enchantée, le Far West, le Cirque, les
+Dinosaures et l'Égypte antique. Les mondes du jeu, eux, sont gardés : « c'est
+ok tu peux le garder ».
+
+**ET LA PLANCHE A ENCORE PARLÉ** — quatre des sept étaient ratés, et aucune
+épreuve ne pouvait le dire : la forêt était un papier rayé vert dont on ne
+voyait pas les lucioles, les dinosaures un lavis beige sans fougère, l'Égypte
+virait au lavande faute d'un bleu assez plein, et le Far West ne se distinguait
+pas de « Sans décor ». `node tools/pastillesDesMondes.mjs` puis
+`node tools/planche.mjs` : c'est la planche entière, côte à côte, qui le dit.

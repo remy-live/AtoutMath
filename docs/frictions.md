@@ -7607,3 +7607,85 @@ plus d'un.**
   APRÈS — trois lignes de sortie, et la décision devient consciente au lieu
   d'être découverte par une épreuve quatre minutes plus tard.
 
+
+**Un outil qui règle l'équilibre d'un jeu ne peut pas vivre dans `tools/tmp/`** — 17 novembre
+
+- *Ce que je voulais faire* : ajouter sept mondes aux Petites Ailes. Leurs
+  vitesses de nuit se calent sur l'allure mesurée du bon joueur.
+- *Ce qui s'est passé* : le commentaire de `core/petitesAiles.js` cite
+  nommément l'outil qui a produit les six valeurs existantes —
+  `tools/tmp/allureMondes.mjs` — et `tools/tmp/` est ignoré par git. L'outil
+  n'existait plus. Il a fallu le réécrire entièrement (simulation des trois
+  joueurs, trois paysages, trente secondes) avant de pouvoir poser la moindre
+  valeur.
+- *Et ce n'est pas qu'une perte de temps* : sans lui, on pose des nombres au
+  jugé dans un jeu dont tout l'équilibre tient à trois rapports. Les sept
+  premiers mondes que j'ai écrits « à l'estime » étaient TOUS injouables.
+- *Combien de fois* : | (mais la règle est déjà écrite dans CLAUDE.md : « on
+  garde ceux qui mesurent quelque chose qu'on voudra remesurer » — et un
+  commentaire de code qui cite un chemin `tools/tmp/` est la preuve qu'on
+  voudra le remesurer)
+- *Ce qui manque* : une vérification mécanique — aucun commentaire du dépôt ne
+  devrait citer un chemin sous `tools/tmp/` comme source d'une valeur. Trois
+  lignes de grep dans un harnais, et la contradiction se voit le jour où on
+  l'écrit, pas six mois plus tard.
+
+**Ajouter un monde change l'équilibre de ceux d'avant** — 17 novembre
+
+- *Ce que je voulais faire* : ajouter sept mondes à la suite des six existants,
+  sans toucher aux six.
+- *Ce qui s'est passé* : le relief est une fonction de l'abscisse ABSOLUE, et
+  chaque monde est relié au suivant par une rampe. Le sixième, qui montait
+  jusque-là vers rien, monte maintenant vers un septième plus doux : l'allure
+  du bon joueur y est passée de 453 à 556 px/s, et sa nuit n'y serrait plus
+  qu'à 72 % au lieu de 88 %. Le monde le plus dur du jeu était devenu plus
+  facile sans qu'une seule de ses valeurs ait bougé.
+- *Combien de fois* : | (et cela se reposera à chaque monde ajouté ou retiré)
+- *Ce qui manque* : que `tools/allureDesMondes.mjs` affiche aussi l'écart avec
+  la mesure PRÉCÉDENTE — un fichier de valeurs de référence relu à chaque
+  passage, et la ligne « le monde 6 est passé de 88 % à 72 % » s'écrit toute
+  seule au lieu de se découvrir en lisant un tableau.
+
+
+---
+
+**Un réglage de physique se cherche à la main, un balayage à la fois** — 17 novembre
+
+- *Ce que je voulais faire* — répondre aux trois remarques de Rémy sur Les
+  Petites Ailes : des sauts plus hauts, une côte qui coûte, un oiseau qui peut
+  s'arrêter. Six constantes se tiennent entre elles.
+- *Ce qui a coûté* — **neuf balayages écrits à la suite dans `tools/tmp/`**
+  (`sweepG`, `sweep`, `sweep3`, `sweep4`, `sweep5`, `joueurs`, `arrets`,
+  `regle`, `trace`), chacun recopiant les mêmes quarante lignes : écrire la
+  constante dans le fichier, réimporter le module avec une URL datée, faire
+  courir trois ou quatre joueurs sur treize mondes et trois paysages, agréger.
+  Deux d'entre eux étaient faux de la même façon (un compteur moyenné là où il
+  fallait un maximum), et je ne l'ai vu qu'en comparant leurs sorties.
+- *Combien de fois* — ||| (les mondes du jeu le 16, les ailes le 17, et déjà
+  en novembre pour le battement d'ailes, dont le commentaire cite un outil
+  disparu).
+- *Ce qui manque* — **un banc d'essai qui prenne les constantes en argument**
+  et rende toujours le même tableau : `node tools/bancDesAiles.mjs
+  POUSSEE=200 REBOND_ATTERRISSAGE=0.6` → une ligne par façon de jouer, avec
+  vitesse, saut, rampement et arrêts. Les balayages ne seraient plus que des
+  boucles autour de lui, et la mesure serait la même d'un essai à l'autre.
+
+**Une constante dérivée d'une mesure périme en silence toutes les autres** — 17 novembre
+
+- *Ce que je voulais faire* — changer deux constantes de physique. Les treize
+  vitesses de nuit en dépendent : elles valent une fraction de l'allure mesurée
+  du bon joueur.
+- *Ce qui a coûté* — **quatre recalculs complets des treize valeurs**, à la
+  main, dont trois parce qu'une retouche ultérieure les avait reperimées. Et
+  deux contraintes qui ne se voient pas en les lisant : la nuit doit monter en
+  PIXELS sur les six premiers mondes *et* se resserrer en PROPORTION, alors
+  que l'allure, elle, BAISSE quand le relief se raidit. Deux mondes voisins
+  sont sortis à 86,43 % et 86,46 % — l'épreuve passait, et ne gardait plus
+  rien.
+- *Combien de fois* — || (le 16 pour les sept mondes neufs, le 17 pour la
+  physique).
+- *Ce qui manque* — c'est fait : `node tools/allureDesMondes.mjs --nuits`
+  imprime la suite à recopier, en tenant les trois contraintes à la fois. Ce
+  qui manque encore est plus général : **une marque dans le code disant « cette
+  valeur est dérivée de telle mesure »**, pour qu'un outil puisse lister ce
+  qu'une retouche vient de périmer.

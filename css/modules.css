@@ -5026,6 +5026,16 @@ body.ecran-kiosque #mob-btn-profile { display: none !important; }
 .decor--bonbons  { --primary: #be185d; --accent: #f472b6; }
 .decor--pirates  { --primary: #78350f; --accent: #d97706; }
 .decor--retro    { --primary: #1d4ed8; --accent: #fbbf24; }
+/* LES SEPT DU 17 NOVEMBRE. Chaque paire est choisie pour que le picto NOIR des
+   pastilles fermées se lise encore dessus : c'est la contrainte qui a écarté
+   un kawaï tout en rose pâle, où la primaire ne tranchait plus sur le fond. */
+.decor--kawai      { --primary: #db2777; --accent: #a78bfa; }
+.decor--fantaisie  { --primary: #7c3aed; --accent: #f472b6; }
+.decor--foret      { --primary: #14532d; --accent: #65a30d; }
+.decor--farwest    { --primary: #92400e; --accent: #ca8a04; }
+.decor--cirque     { --primary: #be123c; --accent: #eab308; }
+.decor--dinosaures { --primary: #3f6212; --accent: #d97706; }
+.decor--egypte     { --primary: #1e40af; --accent: #d4a017; }
 
 /* ── LES TEXTURES ────────────────────────────────────────────────────────── */
 
@@ -5153,6 +5163,128 @@ body.ecran-kiosque #mob-btn-profile { display: none !important; }
     background:
         linear-gradient(90deg, #1d4ed8 0 2px, transparent 2px 16px) 0 0 / 16px 16px,
         linear-gradient(180deg, #1d4ed8 0 2px, transparent 2px 16px) 0 0 / 16px 16px;
+}
+
+/* KAWAÏ : des pois pastel. Deux grilles de points décalées d'une demi-maille —
+   c'est le motif de papier cadeau, et il se reconnaît avant qu'on l'ait lu. */
+.decor--kawai .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .26;
+    background:
+        radial-gradient(circle at 50% 50%, #f9a8d4 0 5px, transparent 6px) 0 0 / 46px 46px,
+        radial-gradient(circle at 50% 50%, #c4b5fd 0 4px, transparent 5px) 23px 23px / 46px 46px;
+}
+
+/* LE PAYS FANTAISISTE : l'arc-en-ciel, en biais et en bandes larges. Six teintes
+   à 24° : moins, cela ne se lit pas comme un arc-en-ciel ; plus serré, cela
+   devient une vibration qui fatigue derrière les pastilles. */
+.decor--fantaisie .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .15;
+    /* L'OPACITÉ EST À .15, ET C'EST LA PLANCHE QUI L'A DIT : à .22, les six
+       teintes passaient devant le « 15 questions » sous chaque pastille, et le
+       gris du texte ne tenait plus contre le jaune. Un décor qui empêche de
+       lire la carte n'est pas un décor. */
+    background: repeating-linear-gradient(24deg,
+        #f87171 0 34px, #fbbf24 34px 68px, #4ade80 68px 102px,
+        #38bdf8 102px 136px, #818cf8 136px 170px, #e879f9 170px 204px);
+}
+
+/* LA FORÊT ENCHANTÉE : des troncs et des lucioles. Les troncs sont des bandes
+   verticales irrégulières, les lucioles trois halos jaunes posés dessus — c'est
+   le second calque qui fait « enchantée » plutôt que « bois de chauffage ». */
+.decor--foret .decor-nappe::before {
+    /* DES TRONCS NE FONT PAS UNE FORÊT — la planche l'a dit en une image : des
+       bandes verticales régulières se lisaient comme un papier rayé vert, et
+       les trois lucioles posées dessus ne se voyaient pas du tout. Une futaie
+       se reconnaît à son FEUILLAGE : des houppiers ronds qui se chevauchent,
+       en deux verts et à deux tailles. Les lucioles sont montées à six et
+       grossies ; à trois, elles disparaissaient dans le bruit. */
+    content: ''; position: absolute; inset: 0; opacity: .34;
+    background:
+        radial-gradient(circle at 22% 26%, rgba(254, 240, 138, .95) 0 5px, transparent 20px),
+        radial-gradient(circle at 68% 18%, rgba(254, 240, 138, .8) 0 4px, transparent 17px),
+        radial-gradient(circle at 44% 52%, rgba(254, 240, 138, .9) 0 5px, transparent 19px),
+        radial-gradient(circle at 84% 58%, rgba(254, 240, 138, .75) 0 4px, transparent 16px),
+        radial-gradient(circle at 14% 72%, rgba(254, 240, 138, .85) 0 5px, transparent 18px),
+        radial-gradient(circle at 60% 88%, rgba(254, 240, 138, .8) 0 4px, transparent 17px),
+        radial-gradient(circle at 50% 42%, rgba(20, 83, 45, .55) 0 30%, transparent 62%)
+            0 0 / 132px 108px,
+        radial-gradient(circle at 50% 50%, rgba(101, 163, 13, .45) 0 26%, transparent 56%)
+            66px 54px / 132px 108px;
+}
+
+/* LE FAR WEST : des planches. Horizontales, larges, avec une veine plus sombre
+   au milieu de chacune — un plancher de saloon vu de dessus. */
+.decor--farwest .decor-nappe::before {
+    /* TROP PÂLE : sur la planche, le far west ne se distinguait pas de « Sans
+       décor » — des filets bruns à 25 % sur un fond clair, c'est un papier
+       uni. Une planche de saloon se reconnaît à TROIS choses, et il les faut
+       toutes : des lames larges (38 px, pas 13), un joint sombre et NET entre
+       elles, et des clous. Les clous sont deux points par lame, posés par un
+       second calque décalé d'une demi-maille. */
+    content: ''; position: absolute; inset: 0; opacity: .34;
+    background:
+        radial-gradient(circle at 12% 50%, rgba(68, 26, 3, .85) 0 2px, transparent 3px)
+            0 0 / 160px 38px,
+        radial-gradient(circle at 88% 50%, rgba(68, 26, 3, .85) 0 2px, transparent 3px)
+            80px 19px / 160px 38px,
+        repeating-linear-gradient(180deg,
+            rgba(68, 26, 3, .9) 0 3px,
+            rgba(180, 83, 9, .22) 3px 20px,
+            rgba(146, 64, 14, .4) 20px 23px,
+            rgba(180, 83, 9, .14) 23px 38px),
+        repeating-linear-gradient(88deg,
+            rgba(146, 64, 14, .2) 0 1px, transparent 1px 9px);
+}
+
+/* LE CIRQUE : la toile du chapiteau. Des fuseaux qui convergent vers le haut,
+   obtenus par un dégradé CONIQUE — un dégradé linéaire en biais donnait des
+   rayures de pyjama, et le chapiteau ne se reconnaissait plus. */
+.decor--cirque .decor-nappe::before {
+    content: ''; position: absolute; inset: 0; opacity: .24;
+    background: repeating-conic-gradient(from 0deg at 50% -20%,
+        #be123c 0deg 7deg, #fef3c7 7deg 14deg);
+}
+
+/* LES DINOSAURES : des fougères. Chaque fronde est un dégradé radial allongé,
+   et elles sont posées à trois tailles pour que la jungle ait de la
+   profondeur — une seule taille donnait un papier peint. */
+.decor--dinosaures .decor-nappe::before {
+    /* QUATRE FRONDES EN BAS NE SE VOYAIENT PAS : sur la planche, le monde
+       n'était qu'un lavis beige, et rien n'y disait « fougère ». Une fougère
+       se reconnaît à ses FOLIOLES — des petites feuilles alternées le long
+       d'une tige. On les fabrique en pavant : une tige verticale, et deux
+       rangées de demi-ellipses décalées d'une demi-maille de chaque côté. Le
+       motif couvre toute la nappe, pas seulement le bas. */
+    content: ''; position: absolute; inset: 0; opacity: .32;
+    background:
+        radial-gradient(ellipse 34% 11% at 22% 50%, rgba(63, 98, 18, .8) 0 60%, transparent 72%)
+            0 0 / 86px 30px,
+        radial-gradient(ellipse 34% 11% at 78% 50%, rgba(101, 163, 13, .7) 0 60%, transparent 72%)
+            43px 15px / 86px 30px,
+        linear-gradient(90deg, transparent 0 48%, rgba(63, 98, 18, .5) 48% 52%, transparent 52%)
+            0 0 / 86px 30px,
+        linear-gradient(170deg, rgba(217, 119, 6, .26), transparent 60%);
+}
+
+/* L'ÉGYPTE ANTIQUE : un mur gravé. Des registres horizontaux séparés par un
+   filet d'or, comme les bandeaux d'un tombeau — et rien dans les bandeaux :
+   des hiéroglyphes dessinés en CSS seraient illisibles et feraient du bruit
+   derrière les pastilles. */
+.decor--egypte .decor-nappe::before {
+    /* LE LAPIS ÉTAIT DEVENU DU LAVANDE. À 30 % d'alpha sur un fond clair, le
+       bleu de la frise virait au gris-violet, et le monde ne se distinguait
+       plus de « Sans décor ». Le bleu est donc PLEIN dans ses registres, et
+       c'est l'or qui les sépare — deux filets, pas un, parce qu'un seul filet
+       se lit comme une rayure et deux comme un bandeau gravé. */
+    content: ''; position: absolute; inset: 0; opacity: .3;
+    background:
+        repeating-linear-gradient(180deg,
+            rgba(212, 160, 23, .95) 0 3px,
+            rgba(30, 64, 175, .85) 3px 38px,
+            rgba(212, 160, 23, .95) 38px 41px,
+            transparent 41px 62px),
+        repeating-linear-gradient(90deg,
+            rgba(212, 160, 23, .35) 0 2px, transparent 2px 54px);
 }
 
 /* ── LES MATIÈRES DE PASTILLE ────────────────────────────────────────────── */
@@ -5297,6 +5429,77 @@ body.ecran-kiosque #mob-btn-profile { display: none !important; }
         inset 5px 5px 0 -3px #0891b2, inset -5px 5px 0 -3px #0891b2,
         inset 5px -5px 0 -3px #0891b2, inset -5px -5px 0 -3px #0891b2,
         0 6px 0 #0c4a6e, 0 8px 14px rgba(12, 74, 110, .26);
+}
+
+/* LA GUIMAUVE : presque un cercle, mais pas tout à fait — les quatre rayons
+   diffèrent de six points, ce qui suffit à faire « mou » là où un cercle parfait
+   fait « bouton ». Et un liseré blanc à l'intérieur, qui est le sucre glace. */
+.decor-matiere--guimauve .world-node-btn {
+    border-radius: 54% 46% 52% 48% / 48% 52% 46% 54%;
+}
+.decor-matiere--guimauve .world-node--open .world-node-btn {
+    border-color: #f9a8d4;
+    background: linear-gradient(170deg, #fff1f2, #fce7f3 55%, #ede9fe);
+    box-shadow:
+        inset 0 0 0 3px rgba(255, 255, 255, .85),
+        0 6px 0 #f0abfc, 0 8px 16px rgba(219, 39, 119, .22);
+}
+
+/* LA PAILLETTE : un scintillement. Trois petits éclats blancs posés en
+   triangle sur un dégradé irisé — ce sont les éclats qui font « paillette »,
+   pas l'irisation, qui toute seule ressemble à une bulle de savon. */
+.decor-matiere--paillette .world-node--open .world-node-btn {
+    border-color: #a855f7;
+    background:
+        radial-gradient(circle at 26% 22%, rgba(255, 255, 255, .95) 0 9%, transparent 18%),
+        radial-gradient(circle at 72% 36%, rgba(255, 255, 255, .8) 0 6%, transparent 14%),
+        radial-gradient(circle at 48% 76%, rgba(255, 255, 255, .7) 0 5%, transparent 12%),
+        linear-gradient(150deg, #fae8ff, #e9d5ff 45%, #bfdbfe);
+    box-shadow: 0 6px 0 #7e22ce, 0 8px 18px rgba(126, 34, 206, .3);
+}
+
+/* LE CUIR : cousu. La couture est un `inset` en tirets — un `border-style:
+   dashed` aurait mangé la bordure elle-même, et la pastille aurait perdu son
+   contour sur les quatre états. */
+.decor-matiere--cuir .world-node-btn { border-radius: 26% 26% 30% 30%; }
+.decor-matiere--cuir .world-node--open .world-node-btn {
+    border-color: #78350f;
+    background:
+        repeating-linear-gradient(90deg,
+            transparent 0 6px, rgba(255, 255, 255, .55) 6px 11px, transparent 11px 17px)
+            0 4px / 100% 2px no-repeat,
+        repeating-linear-gradient(90deg,
+            transparent 0 6px, rgba(255, 255, 255, .55) 6px 11px, transparent 11px 17px)
+            0 calc(100% - 4px) / 100% 2px no-repeat,
+        linear-gradient(165deg, #fde68a, #d6a15b 60%, #a16207);
+    box-shadow: 0 6px 0 #451a03, 0 8px 14px rgba(69, 26, 3, .3);
+}
+
+/* LE CHAPITEAU : de la toile tendue. Les rayons du haut sont très bombés et
+   ceux du bas presque droits, pour que la pastille lise comme un pan de
+   chapiteau, pointe en haut. Les rayures sont rouge et crème, comme la nappe —
+   c'est la seule matière qui reprend la texture de son monde, et c'est voulu :
+   un chapiteau rayé posé sur une toile rayée, c'est ce qu'on voit dans un
+   cirque. */
+.decor-matiere--chapiteau .world-node-btn {
+    border-radius: 48% 48% 14% 14% / 62% 62% 20% 20%;
+}
+.decor-matiere--chapiteau .world-node--open .world-node-btn {
+    border-color: #9f1239;
+    background: repeating-linear-gradient(94deg,
+        #fef3c7 0 7px, #fecdd3 7px 14px);
+    box-shadow: 0 6px 0 #881337, 0 8px 16px rgba(136, 19, 55, .3);
+}
+
+/* L'AMBRE : de la résine. Un cœur clair et un bord plus dense, par un dégradé
+   radial décentré — la goutte d'ambre se reconnaît à ce décentrement, un
+   dégradé centré donnant une bille de verre. */
+.decor-matiere--ambre .world-node--open .world-node-btn {
+    border-color: #92400e;
+    background:
+        radial-gradient(circle at 38% 32%,
+            #fef9c3 0 22%, #fcd34d 48%, #d97706 82%, #92400e 100%);
+    box-shadow: 0 6px 0 #78350f, 0 8px 18px rgba(217, 119, 6, .34);
 }
 
 /* ── LES MONDES CLAIRS, EN THÈME SOMBRE ──────────────────────────────────────
