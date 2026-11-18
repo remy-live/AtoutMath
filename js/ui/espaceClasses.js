@@ -95,6 +95,8 @@ import { state } from '../core/state.js';
 import { getSkill } from '../data/skills.js';
 import { indicesProposes } from '../core/indice.js';
 import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
+// CE QU'UNE TUILE DU MUR DIT — au noyau, pour s'éprouver dans les cinq états.
+import { anneauSvg, quoiEtOu } from '../core/murDeClasse.js';
 import { lesAlarmes, trierPourLeMur, direLesAlarmes, vigilanceDe,
     ORDRES_DU_DIRECT, trieurDuDirect } from '../core/vigilance.js';
 
@@ -157,6 +159,40 @@ let ordreDesBilans = (() => {
     try { return localStorage.getItem(CLEF_ORDRE_BILAN) || 'geste'; }
     catch (e) { return 'geste'; }
 })();
+
+/**
+ * EN LIGNES OU EN TUILES — ET CE CHOIX SE GARDE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 18 novembre, devant trois maquettes : « mets la maquette en réglage
+ * j'aime bien le C ».
+ *
+ * DEUX DEMANDES DANS UNE PHRASE, et la seconde pèse le plus. « J'aime bien le
+ * C » : les tuiles, qu'on lit debout au fond de la salle. « EN RÉGLAGE » : pas
+ * à la place des lignes — à côté, et **le choix doit tenir**.
+ *
+ * L'interrupteur existait déjà ; le choix, lui, mourait au premier
+ * rechargement. MESURÉ avant d'y toucher : on passe en tuiles, on recharge la
+ * page, on rouvre la classe — et l'on est revenu en lignes. Un interrupteur
+ * qu'il faut recliquer à chaque fois n'est pas un réglage, c'est un geste de
+ * plus, vingt fois par semaine.
+ *
+ * TROISIÈME CLEF, ET NON UNE DE PLUS PARTAGÉE : l'ordre des rangs, l'ordre des
+ * bilans et la forme du direct répondent à trois questions différentes, et les
+ * fondre obligerait à choisir entre elles. La raison est écrite au-dessus, pour
+ * `CLEF_ORDRE_BILAN`, et elle vaut mot pour mot ici.
+ */
+const CLEF_FORME = 'atoutmath.direct.forme';
+const FORME_PAR_DEFAUT = 'lignes';
+const formeRetenue = () => {
+    // UN STOCKAGE QUI REFUSE NE DOIT PAS EMPÊCHER LA CLASSE DE S'OUVRIR : en
+    // navigation privée, `localStorage` peut jeter à la simple lecture.
+    try {
+        const v = localStorage.getItem(CLEF_FORME);
+        return (v === 'tuiles' || v === 'lignes') ? v : FORME_PAR_DEFAUT;
+    } catch (e) { return FORME_PAR_DEFAUT; }
+};
 import { enMinutes } from './leMoment.js';
 import { ficheDeLEleve, gestesPossibles, pourquoiDebloquer } from '../core/ficheEleve.js';
 import { notionsAReprendre, notionsComprises, resumeDeClasse, enHeures,
@@ -256,7 +292,11 @@ export async function ouvrirEspaceClasses() {
         // EN LIGNES OU EN TUILES : l'ancien « Le mur » est devenu une forme
         // de ce même écran. Rémy : « j'ai l'impression le direct et le mur
         // font la même chose mais présenté différement ».
-        formeDuDirect: 'lignes',
+        //
+        // ON RELIT LE RÉGLAGE À CHAQUE OUVERTURE, et non une fois au
+        // chargement du module : Rémy peut avoir basculé depuis un autre
+        // onglet de son navigateur, et c'est le même professeur.
+        formeDuDirect: formeRetenue(),
             liste: null, direct: null, apercu: null, profs: null, reglages: null,
             // Ce que les élèves ont signalé — `null` tant qu'on n'est pas allé
             // voir, ce qui n'est pas « aucun signalement ».
@@ -1194,10 +1234,25 @@ function directHtml() {
         </div>
     </div>`;
 
-    return `<div class="ec-direct-haut">` + alarmeHtml(eleves, maintenant)
+    // ── EN TUILES, LA BARRE DE PILOTAGE DESCEND ──────────────────────────
+    //
+    // RÉMY, devant la maquette C : « j'aime bien le C ».
+    //
+    // Les tuiles sont la forme qu'on regarde DEBOUT, en marchant entre les
+    // rangs. Les commandes restaient alors en haut d'une page qu'il faut
+    // remonter — mesuré sur une classe de 27 : la barre est à 430 px du haut,
+    // et le dernier élève à 1 400 px. Posée en bas et collée à l'écran, elle
+    // est à portée de pouce sur une tablette tenue à deux mains, et les
+    // tuiles occupent tout ce qui reste.
+    //
+    // EN LIGNES ELLE NE BOUGE PAS : on y est assis, on lit le détail d'un
+    // élève, et les commandes au-dessus de la liste sont à leur place.
+    const pilote = barrePiloteHtml();
+    return `<div class="ec-direct${enTuiles ? ' ec-direct--tuiles' : ''}">
+    <div class="ec-direct-haut">` + alarmeHtml(eleves, maintenant)
         + entete + avance + `
     </div>
-    ${barrePiloteHtml()}
+    ${enTuiles ? '' : pilote}
     <!-- CEUX QU'IL FAUT ALLER VOIR SONT EN HAUT.
          Le direct rangeait ses élèves par ordre alphabétique — celui de la
          liste du professeur. Un élève arrêté dont le nom commence par V est
@@ -1242,7 +1297,9 @@ function directHtml() {
     ${enTuiles ? murHtml() : `<div class="ec-rangs">
         ${trieurDuDirect(ordreDuDirect)(eleves, maintenant, { enPause: classeEnPause() })
             .map(v => rangHtml(v.eleve, maintenant)).join('')}
-    </div>`}`;
+    </div>`}
+    ${enTuiles ? pilote : ''}
+    </div>`;
 }
 
 /**
@@ -1704,20 +1761,34 @@ function murHtml() {
            </p>`;
 }
 
+/**
+ * LA TUILE — tout ce qu'elle DIT vit dans `core/murDeClasse.js`.
+ *
+ * RÉMY, 18 novembre, devant la maquette C : « j'aime bien le C ».
+ *
+ * L'anneau et les deux fragments sous le nom sont au noyau, et non ici, parce
+ * qu'ils doivent s'éprouver DANS LES CINQ ÉTATS — travaille, ralentit,
+ * bloqué, a fini, parti. Une sonde ne voit que l'état que la classe d'essai
+ * lui montre, et la classe d'essai est celle où personne ne travaille : tous
+ * les anneaux à zéro, tous les élèves hors ligne. Voir le long commentaire en
+ * tête de `core/murDeClasse.js` : la leçon a coûté une heure.
+ */
 function tuileHtml(v) {
     const e = v.eleve;
     const av = e.avancement || null;
     const p = Math.round((av && av.fraction ? av.fraction : 0) * 100);
-    // Ce qu'on écrit sous le prénom : l'état d'abord quand il appelle un geste,
-    // l'avancement sinon. Une tuile de cette taille ne porte qu'une phrase.
+    const { quoi, ou } = quoiEtOu(v, av, depuisCombien);
+    // L'INFOBULLE GARDE LA PHRASE ENTIÈRE : la tuile coupe pour se lire de
+    // loin, et le détail reste à un survol pour qui est assis devant.
     const mot = v.etat === 'bloque' || v.etat === 'ralenti'
         ? 'rien depuis ' + depuisCombien(v.silence)
         : (v.etat === 'parti' ? 'hors ligne'
             : (v.etat === 'pas-commence' ? 'pas commencé' : enBref(av)));
     return `<div class="ec-tuile ec-tuile--${esc(v.etat)}" title="${esc(e.prenom)} — ${esc(v.pourquoi || mot)}">
+        ${anneauSvg(p)}
         <div class="ec-tuile-qui">${esc(e.prenom)}</div>
-        <div class="ec-tuile-jauge"><i style="width:${p}%"></i></div>
-        <div class="ec-tuile-mot">${esc(mot)}</div>
+        ${quoi ? `<div class="ec-tuile-quoi">${esc(quoi)}</div>` : ''}
+        <div class="ec-tuile-mot">${esc(ou)}</div>
         <div class="ec-tuile-actions">
             <button type="button" class="ec-mini" data-mot-eleve="${esc(e.id)}"
                     data-prenom="${esc(e.prenom)}" title="Lui écrire un mot">mot</button>
@@ -4290,6 +4361,10 @@ async function brancher(e, redessiner) {
     // professeur est peut-être en train d'écrire dans la barre.
     if (d.formeDirect !== undefined) {
         vue.formeDuDirect = d.formeDirect;
+        // ET LE CHOIX SE GARDE — c'est la demande de Rémy : « mets la maquette
+        // en réglage ». Sans cette ligne, l'interrupteur existe mais le
+        // réglage n'existe pas.
+        try { localStorage.setItem(CLEF_FORME, d.formeDirect); } catch (e) { /* refusé : tant pis */ }
         redessiner();
         return;
     }
@@ -6305,7 +6380,27 @@ function classementDuDefiHtml(direct) {
 
 function rafraichirLeDirect(zone) {
     const haut = zone.querySelector('.ec-direct-haut');
-    const rangs = zone.querySelector('.ec-rangs');
+    // ── LA LISTE VIVANTE N'A PAS LE MÊME NOM DANS LES DEUX FORMES ─────────
+    //
+    // RÉMY, 18 novembre : « mets la maquette en réglage j'aime bien le C ».
+    //
+    // Cette fonction ne cherchait que `.ec-rangs`. En TUILES, ce bloc
+    // s'appelle `.ec-mur` et `.ec-rangs` n'existe pas : la condition tombait,
+    // et l'on repartait sur `zone.innerHTML = directHtml()` — c'est-à-dire
+    // qu'on redessinait TOUT, barre de pilotage comprise, toutes les dix
+    // secondes.
+    //
+    // MESURÉ AVANT DE CORRIGER, parce que le défaut avait été DÉDUIT en lisant
+    // le code et non vu : on tape « Prenez le cahier rouge » dans le mot à la
+    // classe, on attend douze secondes. En lignes, le texte est encore là et
+    // le curseur aussi. En tuiles, le champ est VIDE et le foyer est perdu.
+    // C'est exactement le défaut que le commentaire des trois zones, plus
+    // haut, dit avoir fermé — il ne l'était que d'un côté.
+    //
+    // Et il fallait le fermer AVANT de rendre les tuiles persistantes : sans
+    // cela, le réglage que Rémy vient de choisir rendait sa barre de pilotage
+    // inutilisable.
+    const rangs = zone.querySelector('.ec-rangs') || zone.querySelector('.ec-mur');
     const pilote = zone.querySelector('.ec-pilote');
     // Pas encore la bonne structure — on vient d'arriver sur l'onglet : on
     // dessine tout, une fois.
@@ -6319,9 +6414,14 @@ function rafraichirLeDirect(zone) {
     const boite = document.createElement('div');
     boite.innerHTML = directHtml();
     const hautNeuf = boite.querySelector('.ec-direct-haut');
-    const rangsNeufs = boite.querySelector('.ec-rangs');
+    const rangsNeufs = boite.querySelector('.ec-rangs') || boite.querySelector('.ec-mur');
     if (hautNeuf) haut.innerHTML = hautNeuf.innerHTML;
-    if (rangsNeufs) rangs.innerHTML = rangsNeufs.innerHTML;
+    // ON NE RECOPIE QUE DU MÊME VERS LE MÊME. Si la forme a changé entre deux
+    // battements — ce qui n'arrive pas, puisque basculer redessine tout —, on
+    // verserait des tuiles dans un conteneur de rangs.
+    if (rangsNeufs && rangsNeufs.className === rangs.className) {
+        rangs.innerHTML = rangsNeufs.innerHTML;
+    }
 }
 
 /**

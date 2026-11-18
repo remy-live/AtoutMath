@@ -8248,3 +8248,24 @@ question n'est pas « où est le bouton » mais « est-ce que c'est ouvert ».
   est TOUTE la demande de Rémy. **La conclusion est donc une décision
   d'architecture :** on écrit notre propre diagnostic, en français, qui passe
   AVANT Skulpt ; Skulpt n'exécute que ce qu'on a déjà jugé lisible.
+
+### Il choisit la maquette C, et il la veut EN RÉGLAGE — 18 novembre au soir
+
+> « Du coup mets la maquette en réglage j'aime bien le C »
+
+**DEUX DEMANDES DANS UNE PHRASE, et la seconde est la plus importante.**
+
+« J'aime bien le C » : les tuiles, une par élève, qu'on lit debout au fond de
+la salle. « En réglage » : pas à la place de l'autre — **à côté**, et le choix
+doit TENIR. Un interrupteur qu'il faut recliquer à chaque ouverture de classe
+n'est pas un réglage, c'est un geste de plus.
+
+**ET LA MOITIÉ EXISTE DÉJÀ.** `vue.formeDuDirect` bascule le direct entre
+lignes et tuiles depuis que « Le mur » est devenu une forme de cet écran. Mais
+il naît à `'lignes'` à chaque fois : le choix de Rémy ne survit pas à la
+fermeture de la classe. C'est exactement ce que `CLEF_ORDRE` fait déjà pour
+l'ordre des rangs, à six lignes près.
+
+Reste à rapprocher la tuile de la maquette C : l'anneau de progression à la
+place de la jauge plate, le prénom en gros et le nom dessous, le score, et la
+barre de pilotage qui descend au pouce quand on est en tuiles.

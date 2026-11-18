@@ -7986,3 +7986,43 @@ plus d'un.**
 - **Ce qui manque** : que `remplacer.mjs` refuse d'écrire un texte contenant
   une séquence `\uXXXX` littérale, ou la convertisse en disant qu'il l'a fait.
   Quatre lignes dans l'outil, et le piège se ferme pour de bon.
+
+## L'accent grave passe `node --check` quand le fichier reste valide — 2026-11-18
+
+- **Ce que je voulais faire** : écrire un commentaire CSS, dans un gabarit, qui
+  cite une classe — `.ec-corps`.
+- **Ce qui a coûté** : un `ReferenceError: corps is not defined` sur une ligne
+  de commentaire, et le temps de se rappeler que c'est le piège de CLAUDE.md
+  §6. **Le hook n'a rien dit, et il avait raison** : l'accent grave a fermé le
+  gabarit, le reste du fichier s'est recollé en expressions valides, et
+  `node --check` est passé au vert. Le hook attrape le cas où le fichier ne
+  compile plus ; il ne peut rien contre celui où il compile AUTREMENT.
+- **Combien de fois** : |||||||||  (neuvième occurrence du piège, première par
+  cette porte — les huit précédentes cassaient la syntaxe et étaient attrapées)
+- **Ce qui manque** : que `verifierSyntaxe.sh` cherche aussi un accent grave à
+  l'intérieur d'un commentaire `/* … */` ou `//` LUI-MÊME à l'intérieur d'un
+  gabarit, et le dise. C'est une recherche de texte, pas une analyse : les
+  gabarits de ce dépôt contiennent du CSS et du HTML commentés, et c'est
+  exactement là que le piège se tend.
+
+## Une sonde ne voit que l'état que la classe d'essai veut bien montrer — 2026-11-18
+
+- **Ce que je voulais faire** : vérifier qu'une tuile du mur dit la bonne chose
+  dans ses cinq états — travaille, ralentit, bloqué, a fini, parti.
+- **Ce qui a coûté** : une heure. La classe d'essai est, par construction,
+  celle où personne ne travaille : tous les anneaux à zéro, tous les élèves
+  hors ligne. Pour obtenir un seul anneau non nul il a fallu coller vingt-six
+  élèves, donner une séance, ouvrir cinq postes, trouver que « Commencer ma
+  séance » ouvre le parcours et non l'exercice, que l'exercice s'ouvre sur un
+  écran « JOUER », puis que chaque jeu a SON clavier — et à ce stade je
+  mesurais les jeux, pas la tuile.
+- **Combien de fois** : ||  (déjà payé pour la carte d'accueil en mode poste,
+  dans `devoirALaMaison.mjs`)
+- **Ce qui manque** : deux choses, et la première a été faite. (1) La logique
+  d'affichage descend au noyau — `js/core/murDeClasse.js` —, où les cinq états
+  s'écrivent à la main en deux millisecondes. **La règle vaut au-delà de ce
+  cas : ce qui doit être vrai dans N états n'a rien à faire dans un fichier
+  d'interface.** (2) Il manque un jeu d'essai SERVEUR avec des élèves qui ont
+  déjà travaillé — une classe « 6e B peuplée » que `siteEssai.php` monterait
+  sur demande. Toute sonde qui regarde un écran de suivi en a besoin, et
+  chacune le refabrique à la main.
