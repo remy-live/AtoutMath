@@ -40,6 +40,11 @@ import { makeStep } from '../core/path.js';
 import { PAR_DEFAUT as BAC_PAR_DEFAUT, jeuxDuBac } from '../core/bacASable.js';
 import { faireUneSessionExpress, MINUTES_PAR_DEFAUT } from '../core/sessionExpress.js';
 import { Shortcodes } from '../core/shortcodes.js';
+// LE DEVOIR À LA MAISON — ses dates, ses mots, et le tableau de qui l'a rendu.
+// Tout ce qui se dit et se calcule est dans `core/devoir.js` ; cet écran ne
+// fait que l'afficher et envoyer la date au serveur.
+import { propositionsDe, direAuProf, direLeTableau, echeanceTenable, dateDite }
+    from '../core/devoir.js';
 import { isGame } from '../core/gameAccess.js';
 import { estADeux } from '../data/catalog.js';
 import { monterUnParcours, ramenerLaBibliotheque,
@@ -1922,8 +1927,32 @@ function seancesHtml() {
                     <span class="ec-sous-sep">·</span>
                     <span>${esc(MODES[s.mode] || s.mode)}</span>
                     ${s.pourLe ? `<span class="ec-sous-sep">·</span>
-                        <span>à rendre ${esc(quandLisible(s.pourLe))}</span>` : ''}
+                        <span class="ec-devoir-quand">${esc(direAuProf(instantDe(s.pourLe)))}</span>` : ''}
                 </div>
+                <!-- ── LE DEVOIR À LA MAISON, SUR LA LIGNE DE SA SÉANCE ──────
+
+                     RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme
+                     toute seule à une date, et le tableau de qui l'a faite ».
+
+                     ICI ET PAS DANS UN ÉCRAN DE PLUS : la question « qui ne
+                     l'a pas fait ? » se pose en regardant la liste des
+                     séances, et elle appelle un geste — relancer. Un écran
+                     « Devoirs » séparé obligerait à savoir d'avance qu'on
+                     cherche un devoir, alors qu'on cherche une séance. -->
+                ${s.pour ? '' : `
+                <div class="ec-seance-devoir">
+                    <button type="button" class="ec-mini" data-echeance="${esc(s.pathId)}"
+                            data-nom="${esc(s.nom)}"
+                            data-echeance-deja="${s.pourLe ? esc(String(instantDe(s.pourLe))) : ''}"
+                            title="La séance se ferme toute seule à cette date. Ce qui arrive après ne compte plus pour la note, mais l'élève peut continuer à s'entraîner."
+                            >${s.pourLe ? 'changer l’échéance' : 'à rendre pour…'}</button>
+                    ${s.rendus ? `<span class="ec-devoir-compte${
+        s.rendus.rendus === s.rendus.combien ? ' ec-devoir-compte--plein' : ''}">${
+        esc(direLeTableau(s.rendus))}</span>
+                        ${s.rendus.commences ? `<span class="ec-note">${s.rendus.commences}
+                            l’${s.rendus.commences > 1 ? 'ont' : 'a'} commencé sans finir.</span>` : ''}`
+        : ''}
+                </div>`}
                 <!-- COMPLÉTER ET ALLÉGER, LÀ OÙ ON REGARDE SA CLASSE.
 
                      Rémy : « il faut vraiment que pour la séance ce soit
@@ -1975,6 +2004,21 @@ const MODES = {
  * semaine dernière ». Au-delà d'une semaine, la date exacte redevient plus
  * parlante que le compte des jours.
  */
+/**
+ * L'INSTANT D'UNE DATE DU SERVEUR, en millisecondes.
+ *
+ * LE SERVEUR RANGE DE L'UTC SANS LE DIRE — « 2026-11-22 19:00:00 ». Relue sans
+ * le « Z », cette chaîne est comprise comme une heure LOCALE : une échéance
+ * posée pour dimanche 20 h s'affichait 21 h en hiver et 22 h en été, et le
+ * devoir se fermait une heure plus tôt que ce qu'avait lu l'élève. C'est la
+ * même conversion que `parcoursServeur.js` fait de son côté.
+ */
+const instantDe = (quand) => {
+    if (!quand) return null;
+    const t = Date.parse(String(quand).replace(' ', 'T') + 'Z');
+    return Number.isNaN(t) ? null : t;
+};
+
 function quandLisible(quand) {
     if (!quand) return '';
     const t = new Date(String(quand).replace(' ', 'T'));
@@ -4102,7 +4146,7 @@ async function brancher(e, redessiner) {
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours], [data-ecran-seance],'
-        + '[data-session-express],'
+        + '[data-session-express], [data-echeance],'
         + '[data-profils-classe], [data-profil-eleve],'
         + '[data-maison], [data-maison-mot], [data-defi-go], [data-defi-stop], [data-defi-voir],'
         // LES DEUX ÉCRANS D'APRÈS LE DÉFI. Un crochet absent de cette liste
@@ -4506,6 +4550,100 @@ async function brancher(e, redessiner) {
              <p class="ec-note">${seance.steps.length} jeu${seance.steps.length > 1 ? 'x' : ''}
                 de mathématiques. Rien n'est noté : c'est du jeu, pas une interrogation.</p>`,
             { width: '460px' });
+        return;
+    }
+
+    // ── « À RENDRE POUR… » : LE DEVOIR À LA MAISON ──────────────────────────
+    //
+    // RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme toute seule à une
+    // date, et le tableau de qui l'a faite. »
+    //
+    // QUATRE PROPOSITIONS ET UN CHAMP DE DATE. Un champ seul demande six gestes
+    // pour une décision qui en vaut un — et les quatre dates que voici
+    // couvrent ce qu'on donne vraiment : la fin de l'heure, le cours suivant,
+    // le week-end, la semaine. Voir `PROPOSITIONS` dans `core/devoir.js`.
+    //
+    // PAS DE `prompt` NI DE `confirm` : « tu utilises des alert et prompt, on
+    // évite ! ». C'est `showModal`, et il est POSITIONNEL — titre, HTML,
+    // options.
+    if (d.echeance) {
+        const pathId = d.echeance;
+        const nom = d.nom || 'cette séance';
+        // LE CROCHET NE S'APPELLE PAS `data-quand` : c'est le nom que portent
+        // les quatre PROPOSITIONS de la fenêtre, et la sonde comptait cinq
+        // boutons au lieu de quatre — la ligne de la séance répondait au même
+        // sélecteur. Deux choses différentes ne portent pas le même nom.
+        const deja = d.echeanceDeja ? Number(d.echeanceDeja) : null;
+        const propos = propositionsDe();
+        const pourChamp = (t) => {
+            const dte = new Date(t);
+            return new Date(dte.getTime() - dte.getTimezoneOffset() * 60000)
+                .toISOString().slice(0, 16);
+        };
+        const m = showModal(`À rendre pour… — ${nom}`,
+            `<p>La séance se ferme toute seule à cette date. Ce qui arrive après ne
+                compte plus pour la note du devoir, mais elle <b>reste ouverte à
+                l'entraînement</b> : l'élève en retard travaille quand même.</p>
+             <div class="ec-echeances">${propos.map(p => `
+                <button type="button" class="ec-bouton ec-bouton--doux" data-quand="${p.quand}">
+                    ${esc(p.nom)}<span class="ec-note">${esc(dateDite(p.quand))}</span>
+                </button>`).join('')}</div>
+             <!-- LES TROIS CROCHETS DE CETTE FENETRE COMMENCENT PAR
+                  « echeance- », ET CE N'EST PAS DE LA COQUETTERIE : le
+                  repartiteur de l'ecran ecoute une liste de crochets, et
+                  l'epreuve des crochets refuse tout bouton qui n'y est pas —
+                  « ils s'afficheront normalement et NE FERONT RIEN au clic ».
+                  Un crochet qui PORTE le nom d'un crochet ecoute est reconnu
+                  comme son compagnon ; c'est la regle du depot, et elle evite
+                  d'allonger la liste d'un nom par bouton de fenetre.
+                  (Sans accents : ce commentaire vit DANS un gabarit.) -->
+             <label class="ec-echeance-date">Ou une autre date :
+                <input type="datetime-local" data-echeance-date
+                       value="${esc(pourChamp(deja || propos[2].quand))}">
+             </label>
+             <div class="ec-echeance-gestes">
+                <button type="button" class="ec-bouton" data-echeance-poser>Poser cette date</button>
+                ${deja ? '<button type="button" class="ec-bouton ec-bouton--doux"'
+        + ' data-echeance-sans>Plus de date</button>' : ''}
+             </div>
+             <p class="ec-note">Les élèves la voient sur leur séance, et le compte
+                « rendus » apparaît ici dès qu'elle est posée.</p>`,
+            { width: '520px' });
+        const poser = async (quand) => {
+            const verdict = echeanceTenable(quand);
+            if (!verdict.ok) { showToast(verdict.pourquoi, 'error'); return; }
+            const { poserLEcheance } = await import('../core/espaceProf.js');
+            const r = await poserLEcheance(vue.classe.id, pathId, verdict.quand);
+            if (r && r.erreur) { showToast(`Le serveur n'a pas pris la date — ${r.erreur}`, 'error'); return; }
+            if (m && m.close) m.close();
+            showToast(verdict.quand
+                ? `${nom} : à rendre ${dateDite(verdict.quand)}.`
+                : `${nom} : plus d'échéance.`, 'success');
+            // ON RELIT LE SERVEUR PLUTÔT QUE DE RETOUCHER L'ÉCRAN : c'est lui
+            // qui compte les rendus, et une ligne qu'on corrigerait à la main
+            // afficherait la date neuve avec le compte d'avant.
+            const frais = await seancesDeLaClasse(vue.classe && vue.classe.id);
+            vue.seances = frais.erreur ? { erreur: frais.erreur } : frais;
+            redessiner();
+        };
+        // `showModal` REND `{ close, element }`, ET NON L'ÉLÉMENT. Écrit
+        // `m.querySelectorAll(...)` d'abord : « m.querySelectorAll is not a
+        // function », levée dans un écouteur, donc AUCUN bouton de la fenêtre
+        // n'était branché — elle s'ouvrait, on cliquait, rien ne se passait, et
+        // la ligne de la séance restait sans date. Trouvé par la sonde, pas par
+        // la lecture.
+        const boite = m && m.element;
+        if (boite) {
+            boite.querySelectorAll('[data-quand]').forEach(b => {
+                b.onclick = () => poser(Number(b.dataset.quand));
+            });
+            const champ = boite.querySelector('[data-echeance-date]');
+            (boite.querySelector('[data-echeance-poser]') || {}).onclick = () =>
+                poser(champ && champ.value ? new Date(champ.value).getTime() : null);
+            // « PLUS DE DATE » PASSE PAR LA MÊME ROUTE, avec `null` : c'est la
+            // clef PRÉSENTE et vide qui efface, voir `poserLEcheance`.
+            (boite.querySelector('[data-echeance-sans]') || {}).onclick = () => poser(null);
+        }
         return;
     }
 

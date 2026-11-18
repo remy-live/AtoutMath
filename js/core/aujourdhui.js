@@ -30,6 +30,10 @@
 // Module pur : ni DOM, ni horloge propre, ni journal. On lui passe des faits.
 
 import { conseilDuJour } from './accueil.js';
+// L'ÉCHÉANCE SE DIT DANS UN SEUL FICHIER — voir `core/devoir.js`. Trois écrans
+// l'affichent (l'accueil, la liste des séances, l'écran du professeur) et une
+// phrase écrite trois fois finit par ne plus dire la même chose.
+import { direLEcheance } from './devoir.js';
 
 /** Après cette heure, on ne dit plus « Bonjour ». */
 const SOIR = 18;
@@ -129,10 +133,23 @@ export function actionDuJour({ parcours, erreurs, suggestions = [], seance = nul
     // un travail terminé n'en est plus une. Elle redescend alors dans les
     // raccourcis, où l'on peut la refaire.
     if (seance && !seance.fini) {
+        // ── UN DEVOIR À RENDRE NE S'ANNONCE PAS COMME « ta séance du jour » ─
+        //
+        // RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme toute seule
+        // à une date, et le tableau de qui l'a faite. » Ce qui distingue un
+        // devoir d'une séance, pour l'élève, tient en un mot : une DATE. La
+        // carte d'accueil est le seul écran que tous voient, et l'échéance y
+        // vaut plus que le nom de la classe — qu'elle remplace donc, plutôt
+        // que de s'ajouter à une ligne déjà pleine.
+        const devoir = seance.rendreLe && seance.rendreLe > Date.now();
         return {
             genre: 'seance',
-            titre: seance.commence ? 'Reprends ta séance' : 'Ta séance du jour',
-            sous: seance.classeNom ? `${seance.titre} · ${seance.classeNom}` : seance.titre,
+            titre: devoir
+                ? (seance.commence ? 'Reprends ton devoir' : 'Ton devoir à la maison')
+                : (seance.commence ? 'Reprends ta séance' : 'Ta séance du jour'),
+            sous: devoir
+                ? `${seance.titre} · ${direLEcheance(seance.rendreLe)}`
+                : (seance.classeNom ? `${seance.titre} · ${seance.classeNom}` : seance.titre),
             bouton: seance.commence ? 'Continuer' : 'Commencer',
             faites: seance.faites, total: seance.total,
             // LE MOT DU PROFESSEUR VOYAGE AVEC LA CARTE. Rémy voulait pouvoir

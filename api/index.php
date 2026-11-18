@@ -1002,7 +1002,7 @@ function handleTeacherAssign(): void
         // n'apparaîtrait nulle part chez le professeur — exactement le genre de
         // séance fantôme qu'on vient de passer la journée à supprimer.
         $s = db()->prepare(
-            'SELECT a.id, a.path_id, a.due_at, a.created_at, a.student_id,
+            'SELECT a.id, a.path_id, a.due_at, a.created_at, a.student_id, a.path_identity,
                     p.name, p.updated_at, p.data, st.first_name
                FROM assignments a
                JOIN paths p ON p.id = a.path_id
@@ -1012,6 +1012,27 @@ function handleTeacherAssign(): void
               ORDER BY a.created_at DESC'
         );
         $s->execute([$classId, $classId]);
+
+        // COMBIEN D'ÉLÈVES ONT TERMINÉ CE TRAVAIL — voir `rendus`, plus bas.
+        //
+        // `derniereActivite` est la MÊME fonction que celle du direct : les
+        // deux écrans doivent dire la même chose du même élève à la même
+        // seconde, et deux calculs parallèles divergent toujours.
+        $elevesDuCompte = null;
+        $compteRendus = function (array $a) use ($classId, &$elevesDuCompte) {
+            if (empty($a['due_at']) || !empty($a['student_id'])) return null;
+            if ($elevesDuCompte === null) $elevesDuCompte = elevesDeLaClasse($classId);
+            $rendus = 0; $commences = 0;
+            foreach ($elevesDuCompte as $e) {
+                $act = derniereActivite($e['id'], $a['path_identity'] ?: null, $a['name']);
+                $av = $act['avancement'] ?? null;
+                if (($av['etat'] ?? '') === 'fini') $rendus++;
+                elseif ($av && ((int) ($av['faites'] ?? 0) > 0
+                    || (int) ($av['questions'] ?? 0) > 0)) $commences++;
+            }
+            return ['rendus' => $rendus, 'commences' => $commences,
+                    'combien' => count($elevesDuCompte)];
+        };
 
         $seances = [];
         foreach ($s->fetchAll() as $a) {
@@ -1038,6 +1059,24 @@ function handleTeacherAssign(): void
                 'eleveId'  => $a['student_id'] ?: null,
                 'donneeLe' => $a['created_at'],
                 'pourLe'   => $a['due_at'],
+                // ── QUI L'A RENDU, ET SEULEMENT QUAND ON A POSÉ UNE DATE ────
+                //
+                // RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme
+                // toute seule à une date, ET LE TABLEAU DE QUI L'A FAITE ».
+                //
+                // ON NE LE CALCULE PAS POUR LES AUTRES SÉANCES, et ce n'est pas
+                // de la paresse : il faut lire deux cents événements par élève,
+                // soit trente lectures pour une classe. Sur une liste de vingt
+                // séances données dans l'année, cela ferait six cents lectures
+                // à chaque ouverture de l'onglet, pour une question que
+                // personne ne pose — « qui a fait la séance du 3 octobre ? » se
+                // regarde dans les bilans, qui existent pour cela.
+                //
+                // LA QUESTION DU DEVOIR EST AUTRE : elle se pose AVANT
+                // l'échéance, et elle appelle un geste — relancer ceux qui ne
+                // l'ont pas fait. C'est pour cela qu'elle vit ici, sur la
+                // ligne de la séance, et pas dans un écran de plus.
+                'rendus'   => $compteRendus($a),
                 'etapes'   => count($etapes),
                 // CE QU'IL Y A DEDANS, ET PAS SEULEMENT COMBIEN.
                 //
@@ -1185,9 +1224,28 @@ function handleTeacherAssign(): void
         // doit pas débaptiser le travail que les élèves ont déjà fait. On ne
         // la pose que si elle manque, c'est-à-dire pour les séances données
         // avant que cette colonne n'existe.
-        db()->prepare('UPDATE assignments SET due_at = ?,
-                              path_identity = COALESCE(path_identity, ?) WHERE id = ?')
-            ->execute([$body['dueAt'] ?? null, $identite !== '' ? $identite : null, $deja]);
+        // ── ET REDONNER UNE SÉANCE N'EFFACE PAS SON ÉCHÉANCE ──────────────
+        //
+        // `$body['dueAt'] ?? null` écrivait NULL à chaque fois que la clef
+        // manquait — c'est-à-dire à CHAQUE redonnage, puisque le panneau des
+        // classes n'en envoie pas. Le professeur pose un devoir pour dimanche,
+        // ajoute un exercice à la séance en cours de semaine, et la date
+        // disparaît sans un mot : les élèves qui ne l'avaient pas encore fait
+        // n'ont plus de date, et le tableau de qui l'a rendu non plus.
+        //
+        // « ABSENTE » ET « VIDE » NE SONT PAS LA MÊME CHOSE, et c'est
+        // `array_key_exists` qui les sépare : la clef absente garde ce qui est
+        // en base, la clef à null l'efface — ce qui est le geste « plus de
+        // date » de l'écran de la classe.
+        if (array_key_exists('dueAt', $body)) {
+            db()->prepare('UPDATE assignments SET due_at = ?,
+                                  path_identity = COALESCE(path_identity, ?) WHERE id = ?')
+                ->execute([$body['dueAt'], $identite !== '' ? $identite : null, $deja]);
+        } else {
+            db()->prepare('UPDATE assignments
+                              SET path_identity = COALESCE(path_identity, ?) WHERE id = ?')
+                ->execute([$identite !== '' ? $identite : null, $deja]);
+        }
         respond(['ok' => true, 'deja' => true]);
     }
 

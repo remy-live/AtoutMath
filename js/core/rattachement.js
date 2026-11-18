@@ -207,6 +207,14 @@ export function etatDeMaSeance(seance, lien, parcours = null, maintenant = Date.
         etat, close: etat === ETATS.CLOSE,
         total, faites, fini: total > 0 && faites >= total,
         commence: faites > 0,
+        // ── L'ÉCHÉANCE SUIT LA SÉANCE JUSQU'À L'ÉCRAN D'ACCUEIL ───────────
+        //
+        // RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme toute seule
+        // à une date ». Un devoir dont la date ne s'affiche QUE dans la liste
+        // « Mes séances » est un devoir qu'on découvre le lundi matin : la
+        // carte d'accueil est le seul écran que tous les élèves voient, et
+        // c'est donc là que la date doit être.
+        rendreLe: seance.rendreLe || null,
         mot: monMot(seance, lien)
     };
 }

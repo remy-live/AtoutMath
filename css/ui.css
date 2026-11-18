@@ -6171,3 +6171,33 @@ body.classe-ouverte #bottom-nav { display: none !important; }
    couleur ne s'opposent plus. */
 .ec-jeu-eq0 { color: #2563eb; }
 .ec-jeu-eq1 { color: #f97316; }
+
+/* ── LE DEVOIR À LA MAISON ────────────────────────────────────────────────
+
+   RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme toute seule à une
+   date, et le tableau de qui l'a faite. »
+
+   LA LIGNE DU DEVOIR SE DÉTACHE DE CELLE DE LA SÉANCE : c'est une information
+   d'un autre ordre — elle appelle un geste (relancer ceux qui n'ont pas
+   rendu), là où le reste de la ligne ne fait que décrire. */
+.ec-seance-devoir {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border);
+}
+/* LA COULEUR DE TEXTE N'EST PAS CELLE DU FOND : `--primary` employé comme
+   encre ne passe pas le seuil AA, et le dépôt a une variable pour cela —
+   l'épreuve `contraste.test.mjs` l'a attrapée à la première lecture. */
+.ec-devoir-quand { font-weight: 600; color: var(--primary-texte); }
+.ec-devoir-compte { font-weight: 600; }
+/* TOUT LE MONDE L'A RENDU : c'est la seule nouvelle qui mérite une couleur,
+   parce qu'elle dit qu'il n'y a RIEN à faire. */
+.ec-devoir-compte--plein { color: var(--success, #16a34a); }
+.ec-echeances { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 10px 0; }
+.ec-echeances .ec-bouton { flex-direction: column; align-items: flex-start; text-align: left; }
+.ec-echeances .ec-note { font-weight: 400; }
+.ec-echeance-date { display: block; margin: 10px 0; font-size: .9rem; }
+.ec-echeance-date input { margin-left: 8px; padding: 6px 8px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-panel); color: var(--text-main); }
+.ec-echeance-gestes { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 600px) { .ec-echeances { grid-template-columns: 1fr; } }

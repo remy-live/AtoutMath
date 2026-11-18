@@ -664,6 +664,10 @@ export async function recevoirLesAssignations(assignations) {
     const parId = new Map(seances.map(s => [s.id, s]));
     const neuves = [];
     const completees = [];
+    // UNE ÉCHÉANCE POSÉE APRÈS COUP NE CRÉE NI SÉANCE NEUVE NI ÉTAPE DE PLUS :
+    // sans ce drapeau, on ne réécrirait rien et la date resterait en mémoire
+    // vive jusqu'au prochain rechargement, où elle disparaîtrait.
+    let changees = false;
     for (const a of assignations) {
         if (!a || !a.path) continue;
         // ─────────────────────────────────────────────────────────────────
@@ -711,6 +715,29 @@ export async function recevoirLesAssignations(assignations) {
         // c'est la dispense qui est faite pour ça.
         const existante = parId.get(id);
         if (existante) {
+            // ── L'ÉCHÉANCE SUIT, MÊME SUR UNE SÉANCE DÉJÀ REÇUE ───────────
+            //
+            // C'EST LE CAS ORDINAIRE, ET IL SERAIT PASSÉ À TRAVERS : le
+            // professeur donne la séance en classe le mardi, puis décide le
+            // jeudi qu'elle est à rendre pour dimanche. Les élèves l'ont déjà
+            // ; cette branche-ci est la leur, et elle ne regardait que le
+            // CONTENU. La date serait arrivée chez ceux qui n'avaient pas
+            // encore synchronisé, et chez eux seuls — c'est-à-dire que la
+            // moitié d'une classe aurait eu un devoir et l'autre non.
+            //
+            // ON L'ÉCRIT AUSSI QUAND ELLE DISPARAÎT (le professeur retire la
+            // date) : un devoir qu'on annule doit s'annuler chez l'élève.
+            const dateServeur = a.dueAt
+                ? (Number.isNaN(Date.parse(String(a.dueAt).replace(' ', 'T') + 'Z'))
+                    ? null : Date.parse(String(a.dueAt).replace(' ', 'T') + 'Z'))
+                : null;
+            if ((existante.rendreLe || null) !== dateServeur) {
+                const avecDate = { ...existante, rendreLe: dateServeur };
+                const j = seances.indexOf(existante);
+                if (j >= 0) seances[j] = avecDate;
+                parId.set(id, avecDate);
+                changees = true;
+            }
             // OÙ EN EST-IL DANS CETTE SÉANCE-LÀ ? La question décide de tout.
             //
             // ON LA POSE AU JOURNAL, et non à `state.studentPath` : celui-ci ne
@@ -725,16 +752,17 @@ export async function recevoirLesAssignations(assignations) {
             // par EXCÈS d'étapes faites est sans danger — on refuse alors une
             // retouche qu'on aurait pu accepter ; se tromper par défaut
             // réécrirait du travail réel.
-            const faites = etapesFaitesDeLaSeance(existante, journal.all());
+            const courante = parId.get(id);
+            const faites = etapesFaitesDeLaSeance(courante, journal.all());
             const enCours = state.studentPath;
-            if (enCours && enCours.pathId && enCours.pathId === existante.pathId) {
+            if (enCours && enCours.pathId && enCours.pathId === courante.pathId) {
                 for (const sid of (enCours.completed || [])) faites.add(sid);
             }
-            const maj = majDeSeance(existante,
+            const maj = majDeSeance(courante,
                 normalizePath(chemin, a.name || chemin.name), faites);
             if (maj) {
-                const retouchee = appliquerLaMaj(existante, maj);
-                const i = seances.indexOf(existante);
+                const retouchee = appliquerLaMaj(courante, maj);
+                const i = seances.indexOf(courante);
                 if (i >= 0) seances[i] = retouchee;
                 parId.set(id, retouchee);
                 completees.push({ seance: retouchee, ajoutees: maj.ajoutees });
@@ -761,18 +789,28 @@ export async function recevoirLesAssignations(assignations) {
         // colonne n'existe n'en a pas. Elle retombe alors sur l'ancien calcul,
         // qui est exactement ce qu'elle avait déjà.
         s.pathId = a.pathIdentity || identiteDeParcours(parcours);
-        // L'HORAIRE DU SERVEUR DEVIENT L'OUVERTURE DE LA SÉANCE. `due_at`
-        // existait en base et ne servait à rien ; c'est lui qui portera
-        // « imposée de 8 h à 9 h ».
+        // ── `due_at` EST LA DATE À RENDRE, ET RIEN D'AUTRE ────────────────
+        //
+        // CETTE LIGNE EN FAISAIT L'HEURE D'OUVERTURE (« c'est lui qui portera
+        // imposée de 8 h à 9 h »), pendant que le serveur la rendait au
+        // professeur sous le nom `pourLe` et que son écran écrivait « à rendre
+        // … ». La même colonne voulait donc dire deux choses opposées aux deux
+        // bouts du tuyau. Personne ne s'en est aperçu pour une seule raison :
+        // PERSONNE NE LA REMPLISSAIT — aucun appel ne passait de date.
+        //
+        // RÉMY, 18 novembre, a tranché en demandant la chose : « une séance qui
+        // s'ouvre et se ferme toute seule à une date ». `due_at` est l'échéance
+        // du devoir ; le jour où l'on programmera une OUVERTURE, ce sera une
+        // autre colonne, avec un autre nom. Voir `core/devoir.js`.
         if (a.dueAt) {
             const t = Date.parse(String(a.dueAt).replace(' ', 'T') + 'Z');
-            if (!Number.isNaN(t)) s.ouvreLe = t;
+            if (!Number.isNaN(t)) s.rendreLe = t;
         }
         seances.push(s);
         parId.set(id, s);
         neuves.push(s);
     }
-    if (neuves.length || completees.length) await ecrireSeances(seances);
+    if (neuves.length || completees.length || changees) await ecrireSeances(seances);
     // ON ANNONCE LE COMPLÉMENT, ON NE LE GLISSE PAS. Deux exercices qui
     // apparaissent au milieu de l'heure sans un mot, c'est un élève qui croit
     // avoir mal lu — ou qui croit avoir fini et s'arrête.

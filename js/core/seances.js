@@ -36,6 +36,10 @@
 import { shortId } from './ids.js';
 import { normalizePath } from './path.js';
 import { identiteDeParcours } from './shortcodes.js';
+// L'ÉCHÉANCE SE DIT AILLEURS, et c'est voulu : `core/devoir.js` porte les
+// formulations et les propositions de dates, qui sont de la langue, pas de la
+// mécanique de séance. Les deux fichiers se lisent séparément.
+import { direLEcheance } from './devoir.js';
 
 /**
  * L'ÉTAT D'UNE SÉANCE, et il n'y en a que trois.
@@ -170,6 +174,22 @@ export function donnerSeance(classe, parcours, opts = {}) {
         donneeLe: opts.donneeLe || Date.now(),
         ouvreLe: opts.ouvreLe || null,
         closeLe: null,
+        // ── L'ÉCHÉANCE D'UN DEVOIR À LA MAISON ────────────────────────────
+        //
+        // RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme toute seule
+        // à une date, et le tableau de qui l'a faite ».
+        //
+        // DEUX CHAMPS ET NON UN, et la différence est celle du geste : `closeLe`
+        // est posé par le professeur au moment où il décide que c'est fini —
+        // « en gros je décide de la fin » —, `rendreLe` est décidé À L'AVANCE
+        // et se passe de lui. Les confondre reviendrait à dire qu'une séance
+        // donnée pour dimanche est DÉJÀ close, ce qu'aucun écran ne saurait
+        // afficher sans mentir.
+        //
+        // LES DEUX FERMENT, ET C'EST `finDe` QUI LE DIT : la première des deux
+        // dates l'emporte, parce qu'un professeur qui clôt le mercredi un
+        // devoir donné pour dimanche a raison contre le calendrier.
+        rendreLe: opts.rendreLe || null,
         // RETIRÉE DE L'ÉCRAN DES ÉLÈVES, mais gardée — voir `retirer`.
         retireeLe: null,
         // Les mots que le professeur ajoute à un élève PENDANT la séance.
@@ -252,10 +272,25 @@ export function aRattraper(bilans, seuil = 0.6) {
         .map(b => b.id);
 }
 
+/**
+ * QUAND CETTE SÉANCE SE FERME — la première des deux dates.
+ *
+ * `closeLe` : le professeur a cliqué « clore ». `rendreLe` : l'échéance posée
+ * à l'avance d'un devoir à la maison. Clore le mercredi un devoir donné pour
+ * dimanche doit marcher, et l'inverse aussi : on prend donc la plus proche.
+ */
+export const finDe = (seance) => {
+    if (!seance) return null;
+    const a = seance.closeLe || null, b = seance.rendreLe || null;
+    if (a && b) return Math.min(a, b);
+    return a || b;
+};
+
 /** L'état d'une séance à un instant donné. */
 export function etatSeance(seance, maintenant = Date.now()) {
     if (!seance) return null;
-    if (seance.closeLe && maintenant >= seance.closeLe) return ETATS.CLOSE;
+    const fin = finDe(seance);
+    if (fin && maintenant >= fin) return ETATS.CLOSE;
     if (seance.ouvreLe && maintenant < seance.ouvreLe) return ETATS.A_VENIR;
     return ETATS.EN_COURS;
 }
@@ -595,7 +630,12 @@ export const estRetiree = (s) => !!(s && s.retireeLe);
 export function comptePourLaNote(seance, ts) {
     if (!seance) return false;
     if (seance.ouvreLe && ts < seance.ouvreLe) return false;
-    if (seance.closeLe && ts > seance.closeLe) return false;
+    // ET L'ÉCHÉANCE D'UN DEVOIR COMPTE COMME UNE CLÔTURE : ce qui arrive après
+    // dimanche 20 h ne compte plus pour la note de dimanche. L'élève peut
+    // continuer — la séance « reste ouverte à l'entraînement » —, mais il ne
+    // rattrape pas la note en rendant le mardi.
+    const fin = finDe(seance);
+    if (fin && ts > fin) return false;
     return true;
 }
 
@@ -608,10 +648,20 @@ export function direSeance(seance, maintenant = Date.now()) {
             + `à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
     }
     if (etat === ETATS.CLOSE) {
-        const d = new Date(seance.closeLe);
-        return `Close le ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} `
+        const d = new Date(finDe(seance));
+        // ON DIT POURQUOI ELLE EST CLOSE : « close » tout court laisse croire à
+        // une décision du professeur, et un élève qui a raté l'échéance d'un
+        // devoir doit lire que c'est l'heure qui est passée, pas qu'on lui a
+        // fermé la porte.
+        const parLEcheance = seance.rendreLe && (!seance.closeLe
+            || seance.rendreLe <= seance.closeLe);
+        return `${parLEcheance ? 'Échéance passée le' : 'Close le'} `
+            + `${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} `
             + '— reste ouverte à l\'entraînement';
     }
+    // ET SI ELLE EST À RENDRE, ON LE DIT PLUTÔT QUE « En cours » : c'est la
+    // seule information qui demande un geste de l'élève.
+    if (seance.rendreLe) return direLEcheance(seance.rendreLe, maintenant);
     return 'En cours';
 }
 

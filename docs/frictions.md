@@ -7883,3 +7883,40 @@ plus d'un.**
   vue tomber sur le défaut qu'on venait de payer. La leçon à retenir est plus
   générale — **un outil qui vérifie « les lettres » ne vérifie pas « le
   mot »** : quand une règle a une forme ET une taille, il faut les deux.
+
+**L'accent grave dans un gabarit, huitième occurrence — et le hook l'a attrapé** — 18 novembre
+
+- *Ce que je voulais faire* — expliquer, dans un commentaire HTML à l'intérieur
+  d'un gabarit, pourquoi trois crochets de fenêtre portent le préfixe d'un
+  crochet écouté.
+- *Ce qui a coûté* — trente secondes, et c'est le fait notable. J'ai cité un
+  fichier entre accents graves (`...test.mjs`) : le gabarit s'est fermé là, et
+  `node --check` a désigné une ligne sans rapport, trois cents lignes plus bas.
+  `tools/hooks/verifierSyntaxe.sh` a REFUSÉ l'écriture et remis le fichier
+  comme il était, en nommant le piège. Sans lui, c'était vingt minutes.
+- *Combien de fois* — |||| |||| (huit, mais les trois dernières ont coûté une
+  minute chacune au lieu de vingt).
+- *Ce qui manque* — rien de plus : l'outil fait son travail. On le note pour
+  la raison inverse des autres entrées — **pour garder la trace de ce qu'un
+  outil fait gagner**, et ne pas le supprimer un jour en le croyant inutile
+  parce qu'on ne voit plus le piège qu'il désamorce.
+
+**« C'est dans la page » ne veut pas dire « il le voit »** — 18 novembre
+
+- *Ce que je voulais faire* — mesurer que l'élève voit l'échéance de son devoir
+  en arrivant.
+- *Ce qui a coûté* — vingt minutes, et une fausse accusation du produit. Ma
+  sonde cherchait « à rendre » dans `document.body.innerText` : rien. La carte
+  d'accueil, elle, portait bien la date — je l'ai lue avec
+  `querySelector('.auj-carte').innerText`. Les deux disaient vrai : **en mode
+  poste, `.auj-carte` est dans le DOM mais INVISIBLE**, et `innerText` ne rend
+  que ce qui est rendu. L'écran que l'élève a devant lui est le bandeau de
+  `pathView`, qui disait « 6e B · 1 exercice à faire » et ignorait la date.
+  J'ai failli corriger la sonde au lieu du produit.
+- *Combien de fois* — || (même famille que « une sonde qui lit un champ
+  inventé » : on mesure autre chose que ce qu'on croit).
+- *Ce qui manque* — un `s.visible(sel)` dans `tools/sonde.mjs` qui JETTE quand
+  l'élément existe mais ne se voit pas, au lieu de rendre son texte. Le
+  contraire de `doitExister` : celui-ci dit « ce crochet ne désigne rien »,
+  l'autre dirait « ce crochet désigne quelque chose que personne ne voit » —
+  et les deux mensonges se ressemblent.

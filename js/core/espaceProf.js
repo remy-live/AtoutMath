@@ -261,6 +261,37 @@ export const imposerLaSeance = (classId, pathId, pleinEcran = false) =>
         { classId, action: 'imposer', pathId: pathId || '', pleinEcran: !!pleinEcran });
 
 /**
+ * POSER (OU RETIRER) L'ÉCHÉANCE D'UN DEVOIR À LA MAISON.
+ *
+ * RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme toute seule à une
+ * date ». La date voyage dans `assignments.due_at` — la colonne existait
+ * depuis le premier jour et n'avait jamais servi ; voir `core/devoir.js`, qui
+ * dit pourquoi elle veut dire « à rendre » et pas « s'ouvre le ».
+ *
+ * ON RÉEMPLOIE `/teacher/assign`, QUI MET À JOUR L'EXISTANTE. Une route de
+ * plus pour écrire une colonne de la même ligne serait une seconde porte sur
+ * la même pièce — et c'est là que les deux finissent par ne plus dire la même
+ * chose. Le serveur distingue la clef ABSENTE (il garde la date) de la clef à
+ * `null` (il l'efface) : c'est ce qui permet au panneau des classes de
+ * redonner une séance sans lui faire perdre son échéance.
+ *
+ * @param {string} classId
+ * @param {string} pathId
+ * @param {?number} rendreLe  l'instant (ms), ou null pour retirer la date
+ */
+export const poserLEcheance = (classId, pathId, rendreLe) =>
+    auServeur('/teacher/assign', {
+        classId, pathId,
+        // LE SERVEUR RANGE DU TEXTE UTC, et l'élève le relit avec un « Z » :
+        // voir `parcoursServeur.js`. Une date écrite dans le fuseau du
+        // professeur ferait tomber le devoir une heure trop tôt ou trop tard,
+        // et personne ne saurait pourquoi.
+        dueAt: rendreLe
+            ? new Date(rendreLe).toISOString().slice(0, 19).replace('T', ' ')
+            : null
+    });
+
+/**
  * LE COMPTE À REBOURS, ET CE QU'IL FAIT À ZÉRO.
  *
  * `aZero` vaut 'terminer' (la séance est finie) ou 'pause' (on reprend la

@@ -21,6 +21,11 @@ import { pleinEcranSiSeanceImposee } from './fullscreen.js';
 // pastille de la carte en profite sans une ligne de plus.
 import { etatDuBac } from './bacASable.js';
 import { estRattache } from '../core/portail.js';
+// L'ÉCHÉANCE SE DIT DANS UN SEUL FICHIER — `core/devoir.js`. Quatre écrans
+// l'affichent maintenant (l'accueil, ce bandeau, la liste des séances, l'écran
+// du professeur) et une phrase écrite quatre fois ne dit plus la même chose à
+// la quatrième.
+import { direLEcheance } from '../core/devoir.js';
 import { getExerciseById } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import { reglageSite } from '../core/reglagesSite.js';
@@ -678,12 +683,27 @@ function sectionSansParcours(box) {
         return box;
     }
 
+    // ── L'ÉCHÉANCE PASSE AVANT LE NOMBRE D'EXERCICES ──────────────────────
+    //
+    // RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme toute seule à
+    // une date ». CE BANDEAU EST L'ÉCRAN DE L'ÉLÈVE EN MODE POSTE — celui
+    // qu'il ouvre avec son billet, à l'école comme à la maison. Mesuré avec la
+    // sonde : la carte d'accueil, elle, est bien présente dans la page et
+    // porte la date, mais elle n'y est PAS VISIBLE — c'est ce bandeau-ci qu'on
+    // voit, et il disait « 6e B · 1 exercice à faire ».
+    //
+    // UN DEVOIR DONT ON NE VOIT PAS LA DATE N'EST PAS UN DEVOIR DONNÉ : on la
+    // met donc là où l'élève regarde, et avant le compte d'exercices, qui ne
+    // demande aucune décision.
+    const combien = `${etat.total} exercice${etat.total > 1 ? 's' : ''} à faire.`;
     const dit = etat.close
         ? 'Sa fenêtre est fermée, mais tu peux encore la faire.'
         // « Étape » désigne une POSITION dans le parcours, pas une chose : on la
         // garde là où elle dit ça (« étape 3 sur 5 », la carte), et l'on compte
         // ici des EXERCICES, comme partout ailleurs.
-        : `${etat.total} exercice${etat.total > 1 ? 's' : ''} à faire.`;
+        : (etat.rendreLe && etat.rendreLe > Date.now()
+            ? `${direLEcheance(etat.rendreLe)} · ${combien}`
+            : combien);
     box.innerHTML = `
         <h2 class="path-section-title">${escapeHtml(etat.titre)}</h2>
         <p class="path-section-sub">${etat.classeNom ? escapeHtml(etat.classeNom) + ' · ' : ''}${dit}</p>`;

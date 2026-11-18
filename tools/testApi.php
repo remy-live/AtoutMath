@@ -2087,6 +2087,82 @@ verifier("ET L'ÉLÈVE LA REÇOIT AU LIEU DE LA RECALCULER",
     ($a['pathIdentity'] ?? '') === 'path_PREMIERE',
     json_encode($a['pathIdentity'] ?? null));
 
+// ── LE DEVOIR À LA MAISON : SA DATE, ET QUI L'A RENDU ───────────────────────
+//
+// RÉMY, 18 novembre : « une séance qui s'ouvre et se ferme toute seule à une
+// date, et le tableau de qui l'a faite. »
+//
+// TOUT LE TUYAU EXISTAIT, VIDE : la colonne `due_at` est là depuis le premier
+// jour, le serveur la rend au professeur sous le nom `pourLe` et à l'élève sous
+// le nom `dueAt`, et PERSONNE NE LA REMPLISSAIT. Ce qu'on mesure ici est ce
+// qu'elle doit faire maintenant qu'elle sert.
+titre('LE DEVOIR À LA MAISON');
+
+json('/teacher/assign', ['pathId' => $parcoursI, 'classId' => $classeI,
+                         'dueAt' => '2026-11-22 19:00:00'], $jetonProf);
+$laDate = function () use ($classeI) {
+    $s = db()->prepare('SELECT due_at FROM assignments WHERE class_id = ?');
+    $s->execute([$classeI]);
+    return (string) ($s->fetchAll()[0]['due_at'] ?? '');
+};
+verifier("L'ÉCHÉANCE SE POSE SUR UNE SÉANCE DÉJÀ DONNÉE",
+    str_starts_with($laDate(), '2026-11-22'), $laDate());
+
+// ── ET REDONNER LA SÉANCE NE L'EFFACE PAS ──────────────────────────────────
+//
+// LE DÉFAUT ÉVITÉ, ET IL ÉTAIT CERTAIN : `$body['dueAt'] ?? null` écrivait
+// NULL à chaque fois que la clef manquait — c'est-à-dire à CHAQUE redonnage,
+// puisque le panneau des classes n'en envoie pas. Le professeur pose un devoir
+// pour dimanche, ajoute un exercice en cours de semaine, et la date disparaît
+// sans un mot.
+json('/teacher/assign', ['pathId' => $parcoursI, 'classId' => $classeI,
+                         'pathIdentity' => 'path_TROISIEME'], $jetonProf);
+verifier('ET REDONNER LA SÉANCE NE L\'EFFACE PAS',
+    str_starts_with($laDate(), '2026-11-22'),
+    'la date a été perdue en complétant la séance : ' . $laDate());
+
+// ── MAIS « PLUS DE DATE » L'EFFACE, lui ────────────────────────────────────
+//
+// La clef ABSENTE garde, la clef à NULL efface : c'est ce qui distingue
+// « je complète la séance » de « ce n'est plus un devoir ».
+json('/teacher/assign', ['pathId' => $parcoursI, 'classId' => $classeI,
+                         'dueAt' => null], $jetonProf);
+verifier('et « plus de date » l\'efface', $laDate() === '', $laDate());
+
+// On la repose pour la suite.
+json('/teacher/assign', ['pathId' => $parcoursI, 'classId' => $classeI,
+                         'dueAt' => '2026-11-22 19:00:00'], $jetonProf);
+
+// ── L'ÉLÈVE LA REÇOIT ──────────────────────────────────────────────────────
+$sess2 = json('/sync', ['deviceId' => 'd', 'cursor' => 0, 'events' => []],
+              $cx['json']['token'] ?? '');
+$a2 = ($sess2['json']['assignments'] ?? [])[0] ?? [];
+verifier("L'ÉLÈVE REÇOIT L'ÉCHÉANCE AVEC SA SÉANCE",
+    str_starts_with((string) ($a2['dueAt'] ?? ''), '2026-11-22'),
+    json_encode($a2['dueAt'] ?? null));
+
+// ── ET LE PROFESSEUR VOIT QUI L'A RENDU ────────────────────────────────────
+//
+// `rendus` n'est calculé QUE pour les séances qui ont une date : lire deux
+// cents événements par élève pour les vingt séances de l'année coûterait six
+// cents lectures à chaque ouverture de l'onglet, pour une question que
+// personne ne pose.
+// LA ROUTE EST `/teacher/assign` AVEC `action: list` — la même que
+// `seancesDeLaClasse` dans `js/core/espaceProf.js`. Premier jet :
+// `/teacher/classes` avec `action: seances`, qui n'existe pas : le serveur
+// répondait sans séances, et l'épreuve accusait le code d'avoir perdu la date.
+$vues = json('/teacher/assign', ['classId' => $classeI, 'action' => 'list'],
+             $jetonProf);
+$ligne = ($vues['json']['seances'] ?? [])[0] ?? [];
+verifier('LA LIGNE DE LA SÉANCE PORTE SON ÉCHÉANCE',
+    str_starts_with((string) ($ligne['pourLe'] ?? ''), '2026-11-22'),
+    json_encode($ligne['pourLe'] ?? null));
+verifier('ET LE COMPTE DE CEUX QUI L\'ONT RENDU',
+    is_array($ligne['rendus'] ?? null)
+    && ($ligne['rendus']['combien'] ?? 0) === 1
+    && ($ligne['rendus']['rendus'] ?? -1) === 0,
+    json_encode($ligne['rendus'] ?? null));
+
 // --- RETIRER UN ÉLÈVE. Impossible avant : un départ en cours d'année restait
 //     dans la liste pour toujours.
 $idSacha = json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['json']['studentId'];

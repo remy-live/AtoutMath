@@ -8157,3 +8157,24 @@ Mesuré sur son chemin (`node tools/trigoCalcul.mjs`), sur la tablette et sur le
 téléphone : la figure tient dans l'écran, ses nombres font 31 à 36 px, la
 calculatrice est à portée, la virgule est là pour une longueur — et elle
 disparaît pour un angle, qui s'arrondit au degré.
+
+**CE QUI A ÉTÉ FAIT POUR « LE DEVOIR À LA MAISON DATÉ ».** Sur la ligne de
+chaque séance, un bouton « à rendre pour… » : quatre dates proposées — ce soir,
+demain matin, dimanche soir, dans une semaine — et un champ pour le reste. La
+séance se ferme alors toute seule à l'heure dite ; ce qui arrive après ne compte
+plus pour la note, mais elle **reste ouverte à l'entraînement**, et l'élève en
+retard travaille quand même. La ligne porte ensuite la date et le compte :
+« 12 rendus sur 28 — 16 à relancer ».
+
+TOUT LE TUYAU EXISTAIT, VIDE. La colonne `due_at` est en base depuis le premier
+jour ; le serveur la rendait au professeur sous le nom `pourLe`, l'écran de la
+classe savait déjà écrire « à rendre … », et le navigateur de l'élève la
+recevait. Personne ne la remplissait — et les deux bouts du tuyau lui avaient
+donné deux sens contraires : le professeur lisait « à rendre », l'élève en
+faisait l'heure d'OUVERTURE. Une colonne qui veut dire deux choses ne veut rien
+dire ; elle est maintenant l'échéance, et rien d'autre.
+
+Mesuré des deux côtés (`node tools/devoirALaMaison.mjs`) : Rémy pose la date en
+deux clics, la ligne la relit avec le compte des rendus, et l'élève voit « à
+rendre pour dimanche soir, 20 h » sur l'écran qu'il a devant lui — sans rien
+chercher et sans recharger.
