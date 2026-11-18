@@ -1918,6 +1918,46 @@ export const geometrieExercises = [
         },
         instruction: "Trois côtés, trois noms, et un ordre pour les trouver. COMMENCE PAR L'HYPOTÉNUSE : c'est le côté en face de l'ANGLE DROIT, le plus long, et le seul qui ne change jamais de nom quel que soit l'angle qu'on regarde — c'est ton point d'appui. Les deux autres, eux, DÉPENDENT DE L'ANGLE marqué sur la figure. Le côté OPPOSÉ est celui qui ne le touche pas, celui d'en face. Le côté ADJACENT est celui qui le touche ET qui touche aussi l'angle droit. ATTENTION, C'EST LÀ QU'ON SE TROMPE : l'hypoténuse touche l'angle elle aussi, et « adjacent » veut dire « à côté de » — beaucoup la donnent donc pour adjacente. Un seul mot les sépare : l'adjacent touche AUSSI l'angle droit. Et la figure TOURNE d'une question à l'autre : « adjacent » n'est pas « horizontal ». Si tu apprends une position au lieu d'une définition, le premier triangle penché du contrôle te le fera payer. SELON LE RÉGLAGE, on te demandera de CLIQUER le côté, de l'ÉCRIRE — deux lettres, celles de ses extrémités, et les crochets si tu les connais : [AB] est le SEGMENT, (AB) la droite, AB la longueur — ou d'écrire la FORMULE. Pour la formule, deux gestes dans cet ordre, et ils se ratent séparément : d'abord LE RAPPORT (CAH SOH TOA : cosinus = adjacent sur hypoténuse, sinus = opposé sur hypoténuse, tangente = opposé sur adjacent), ensuite LA FIGURE (quel côté joue ce rôle pour l'angle marqué). Se tromper de rapport et se tromper de côté ne sont pas la même faute, et ne se rattrapent pas de la même façon."
     },
+    // ── LA TRIGONOMÉTRIE QUI CALCULE ───────────────────────────────────────
+    //
+    // RÉMY, 18 novembre : « tu as d'autres idées ? » — et l'inventaire du
+    // programme répondait depuis le 16 : « Trigonométrie (3ème) : on nomme, on
+    // ne calcule pas. “Hypoténuse, Opposé, Adjacent” apprend à repérer les
+    // côtés. Il manque ensuite tout : choisir entre cosinus, sinus et tangente,
+    // calculer une longueur, calculer un angle. »
+    //
+    // UN EXERCICE À PART, ET NON DEUX MARCHES DE PLUS CHEZ LE VOISIN. « Clique
+    // le côté » et « tape 6,9 » ne sont pas le même geste, pas le même clavier
+    // et pas les mêmes fautes — et le réglage « quelles marches » perdrait son
+    // sens à les mêler. C'est la même décision que pour « La Médiane au
+    // Doigt », prise pour la même raison.
+    {
+        id: 'geo-trigo-calcul',
+        cree: '2026-11-18',
+        title: 'Trigonométrie : la Longueur et l’Angle',
+        generatorId: 'geo.trigo.calcul', activityId: 'numpad',
+        // LA CALCULATRICE EST OUVERTE, ET SANS ELLE CET EXERCICE N'EXISTE PAS :
+        // cos(35°) ne se calcule pas de tête. Ce qu'on mesure est le CHOIX du
+        // rapport et la PLACE du côté cherché — pas la table des cosinus.
+        calculatrice: true,
+        consignePapier: 'Écris le rapport, puis le calcul, puis la réponse arrondie. '
+            + 'Vérifie que ta calculatrice est en DEGRÉS.',
+        colonnesPapier: 2,
+        lignesReponsePapier: 2,
+        skills: ['geo.trigo.choisir', 'geo.trigo.longueur', 'geo.trigo.angle'],
+        params: { nbQuestions: 6,
+            marches: ['choisir', 'longueur-produit', 'longueur-quotient',
+                'longueur-melange', 'angle'] },
+        motsClefs: ['trigonométrie', 'trigo', 'cosinus', 'sinus', 'tangente',
+            'sohcahtoa', 'calculer une longueur', 'calculer un angle', 'arccos',
+            'triangle rectangle', 'hypoténuse', 'opposé', 'adjacent', 'degrés',
+            'troisième', '3ème', 'brevet'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE],
+            niveaux: [TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "LE RAPPORT SE LIT SUR LES DEUX CÔTÉS EN JEU, et sur eux seuls : celui qu'on te donne, celui que tu cherches. Le troisième côté ne sert à RIEN — le chercher d'abord est la perte de temps la plus fréquente du chapitre. CAH · SOH · TOA : cosinus = adjacent sur hypoténuse, sinus = opposé sur hypoténuse, tangente = opposé sur adjacent. L'hypoténuse est au dénominateur des deux premiers et ABSENTE du troisième : dès qu'elle n'est pas dans l'affaire, c'est la tangente. LA PREMIÈRE MARCHE NE DEMANDE AUCUN CALCUL, exprès : se tromper de rapport et se tromper de calcul ne sont pas la même faute, et mélangées elles deviennent invisibles. ENSUITE, TOUT SE JOUE SUR UNE PLACE : le côté cherché est-il en HAUT ou en BAS de la fraction ? En haut on multiplie, en bas on DIVISE — et c'est le seul moment du chapitre où le geste change, d'où une marche pour chacun puis une qui les mélange. REGARDE TON RÉSULTAT AVANT DE LE RECOPIER : l'hypoténuse est toujours le plus long côté. POUR UN ANGLE, on calcule le quotient puis on demande à la machine quel angle a ce cosinus-là : touche « seconde » puis cos. Le quotient n'est pas l'angle — 0,57 n'est pas une mesure. ET LA MACHINE DOIT ÊTRE EN DEGRÉS : si cos(35) affiche −0,903 au lieu de 0,819, elle est en radians, et tout ton calcul est juste pour rien."
+    },
     {
         id: 'geo-repere-relatifs-lire', title: 'Coordonnées Négatives',
         cree: '2026-08-03',

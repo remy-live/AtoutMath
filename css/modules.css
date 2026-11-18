@@ -19664,3 +19664,28 @@ body.visite-en-cours .modal-overlay > * {
 .numpad-context .figure-wrap.fig-diagramme .dg-figure {
     max-height: clamp(150px, 26vh, 280px);
 }
+
+/* ── TRIGONOMÉTRIE : LA LONGUEUR ET L'ANGLE ───────────────────────────────
+
+   RÉMY, 18 novembre : « tu as d'autres idées ? » — et le trou que l'inventaire
+   nommait depuis le 16 : « on nomme, on ne calcule pas ».
+
+   L'ARC DE L'ANGLE EST DE LA COULEUR D'ACCENT, et ce n'est pas décoratif :
+   c'est lui qui dit DE QUEL ANGLE on parle, et toute la question tient à cela.
+   Le reste du triangle est au trait, comme les figures d'aires.
+
+   MÊME PLAGE DE HAUTEUR QUE LES AIRES, et pour la même raison : une figure
+   dont on doit LIRE les nombres — « 7 cm », « 35° » — n'a pas le même besoin
+   qu'une figure qu'on regarde. Voir le long commentaire de `.fig-volume`. */
+.tc-figure { display: block; width: 100%; height: auto; color: var(--text-main); }
+.tc-trait { fill: color-mix(in srgb, var(--primary) 12%, transparent);
+    stroke: var(--text-main); stroke-width: 2; stroke-linejoin: round; }
+.tc-droit { fill: none; stroke: var(--text-main); stroke-width: 1.4; }
+.tc-arc { fill: none; stroke: var(--primary); stroke-width: 2.2; }
+.tc-texte { fill: var(--text-main); }
+.tc-sommet { font-weight: 700; }
+.tc-question { text-align: center; max-width: 46ch; margin-inline: auto; }
+.numpad-context .figure-wrap.fig-trigo,
+.numpad-context .figure-wrap.fig-trigo .tc-figure {
+    max-height: clamp(140px, 23vh, 240px);
+}

@@ -8137,3 +8137,23 @@ La feuille PDF **dessine** les diagrammes, elle ne les décrit pas : trois par
 page, étiquettes séparées. Il a fallu pour cela qu'une figure puisse demander
 sa hauteur — 46 mm au lieu des 34 d'une figure cotée —, sans quoi les noms des
 colonnes se touchaient : « 2 livres3 livres ».
+
+**CE QUI A ÉTÉ FAIT POUR « LA TRIGONOMÉTRIE QUI CALCULE ».** Cinq marches, et
+la première ne demande AUCUN calcul : choisir le rapport. Se tromper de rapport
+et se tromper de calcul ne sont pas la même faute, et mélangées elles deviennent
+invisibles — un élève obtient alors un nombre faux sans savoir laquelle des deux
+choses il a ratée. Viennent ensuite la longueur quand le côté cherché est en
+HAUT du rapport (on multiplie), la même quand il est en BAS (on DIVISE — le seul
+moment du chapitre où le geste change), les deux au hasard, et enfin l'angle
+avec la touche « seconde ».
+
+Quatre fautes sont nommées par leur nombre, sans jamais s'afficher : le mauvais
+rapport, le × à la place du ÷, **la calculatrice en radians** — cos(35) vaut
+0,819 en degrés et −0,903 en radians, et personne ne peut le deviner sans voir
+l'écran de la machine — et, pour l'angle, le quotient rendu à la place de la
+mesure.
+
+Mesuré sur son chemin (`node tools/trigoCalcul.mjs`), sur la tablette et sur le
+téléphone : la figure tient dans l'écran, ses nombres font 31 à 36 px, la
+calculatrice est à portée, la virgule est là pour une longueur — et elle
+disparaît pour un angle, qui s'arrondit au degré.

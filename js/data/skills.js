@@ -1293,6 +1293,40 @@ const BASE = {
         descriptor: 'Nommer l\'hypoténuse, le côté opposé et le côté adjacent à un angle aigu donné, sur une figure quelconque.',
         lesson: 'AVANT TOUTE FORMULE, il faut savoir nommer. Trois côtés, trois noms, et un seul ordre pour les trouver. L\'HYPOTÉNUSE D\'ABORD : c\'est le côté en face de l\'ANGLE DROIT, le plus long, et surtout le seul qui ne change JAMAIS de nom — quel que soit l\'angle qu\'on considère, c\'est toujours le même. C\'est pour cela qu\'on la cherche en premier : c\'est le point d\'appui. LES DEUX AUTRES DÉPENDENT DE L\'ANGLE. On choisit un angle aigu — jamais l\'angle droit, la question n\'aurait pas de sens. Le CÔTÉ OPPOSÉ est celui qui ne le touche pas, celui d\'en face. Le CÔTÉ ADJACENT est celui qui le touche ET qui touche aussi l\'angle droit. LA FAUTE DU CHAPITRE EST LÀ : l\'hypoténuse touche l\'angle elle aussi, et « adjacent » veut dire « à côté de » — alors on la donne pour adjacente. Ce qui les sépare tient en un mot : l\'adjacent touche AUSSI l\'angle droit, l\'hypoténuse est en face de lui. Et changer d\'angle ÉCHANGE l\'opposé et l\'adjacent, sans toucher à l\'hypoténuse : c\'est la même figure, lue depuis l\'autre coin. DERNIER PIÈGE, celui des figures : « adjacent » n\'est pas « horizontal » et « opposé » n\'est pas « vertical ». Un triangle toujours dessiné dans le même sens fabrique cette règle fausse, qui s\'effondre au premier contrôle où la figure est penchée.'
     },
+    // ── LA TRIGONOMÉTRIE QUI CALCULE ───────────────────────────────────
+    //
+    // RÉMY, 18 novembre : « tu as d'autres idées ? ». L'inventaire du programme
+    // répondait : « Trigonométrie (3ème) — on nomme, on ne calcule pas ».
+    //
+    // TROIS COMPÉTENCES, ET NON UNE SEULE « trigonométrie ». Elles se ratent
+    // pour trois raisons différentes, et c'est le bilan qui doit le dire :
+    // choisir le mauvais RAPPORT, multiplier là où il fallait DIVISER, ou
+    // rendre le rapport au lieu de l'ANGLE. Un bilan qui dit « trigonométrie :
+    // non acquis » n'apprend rien à personne.
+    'geo.trigo.choisir': {
+        label: 'Choisir le bon rapport trigonométrique',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.TROISIEME],
+        prereqs: ['geo.trigo.cotes'],
+        descriptor: 'Dire lequel du cosinus, du sinus ou de la tangente relie le côté donné au côté cherché.',
+        lesson: 'ON NE CHOISIT PAS LE RAPPORT AU HASARD NI PAR HABITUDE : on le lit sur les DEUX côtés en jeu. Celui qu\'on te donne, celui que tu cherches — et le rapport à écrire est celui qui porte ces deux-là, il n\'y en a qu\'un. CAH · SOH · TOA : Cosinus Adjacent Hypoténuse, Sinus Opposé Hypoténuse, Tangente Opposé Adjacent. L\'hypoténuse est au dénominateur des deux premiers et ABSENTE du troisième : dès que l\'hypoténuse n\'est pas dans l\'affaire, c\'est la tangente. Et le troisième côté, celui dont on ne parle pas, ne sert à RIEN — le chercher d\'abord est la perte de temps la plus fréquente du chapitre.'
+    },
+    'geo.trigo.longueur': {
+        label: 'Calculer une longueur avec la trigonométrie',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.TROISIEME],
+        prereqs: ['geo.trigo.choisir'],
+        descriptor: 'Trouver la longueur d\'un côté d\'un triangle rectangle à partir d\'un angle et d\'un autre côté.',
+        lesson: 'UNE FOIS LE RAPPORT ÉCRIT, TOUT SE JOUE SUR UNE PLACE : le côté cherché est-il EN HAUT ou EN BAS de la fraction ? En haut, on MULTIPLIE — cos(A) = AB/AC donne AB = AC × cos(A). En bas, on DIVISE — la même égalité donne AC = AB ÷ cos(A). C\'est la seule chose qui change, et c\'est la faute la plus coûteuse du chapitre : multiplier à la place de diviser donne un résultat PLUS PETIT que la donnée alors qu\'on cherchait l\'hypoténuse, qui est le plus grand côté. UN RÉSULTAT SE REGARDE AVANT D\'ÊTRE RECOPIÉ : l\'hypoténuse est toujours le plus long côté, et un côté de l\'angle droit est toujours plus court qu\'elle. ET LA MACHINE DOIT ÊTRE EN DEGRÉS : si cos(35) affiche −0,903 au lieu de 0,819, elle est en radians, et tout le reste du calcul est juste pour rien.'
+    },
+    'geo.trigo.angle': {
+        label: 'Calculer un angle avec la trigonométrie',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.TROISIEME],
+        prereqs: ['geo.trigo.choisir'],
+        descriptor: 'Trouver la mesure d\'un angle aigu à partir de deux côtés d\'un triangle rectangle.',
+        lesson: 'DEUX CÔTÉS DONNÉS, ET L\'ANGLE SE DÉDUIT. On écrit le rapport qui porte ces deux côtés — par exemple cos(A) = 4/7 —, on calcule le quotient, puis on demande à la machine QUEL ANGLE a ce cosinus-là : c\'est la touche « seconde » (ou « shift ») suivie de cos, qu\'on écrit cos⁻¹. LA FAUTE À NE PAS FAIRE est de recopier le quotient : 0,57 n\'est pas un angle, c\'est un cosinus. Un angle de triangle rectangle se lit entre 0 et 90 degrés, jamais 0,57. Et si la réponse tombe sur l\'autre angle aigu — le complémentaire —, c\'est qu\'on a regardé la figure depuis le mauvais sommet : l\'opposé et l\'adjacent s\'échangent quand on change d\'angle.'
+    },
     'geo.figures.coder': {
         label: 'Coder un quadrilatère',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],

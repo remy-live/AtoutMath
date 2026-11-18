@@ -226,6 +226,7 @@ export const CODES_EXERCICES = {
     // Glisse : on garde « HY », comme HYpoténuse — c'est le côté par lequel on
     // commence, et celui qui donne son nom au reste.
     'geo-trigo-cotes':            'HY',   // HYpoténuse, opposé, adjacent
+    'geo-trigo-calcul':           'TJ',   // TrigonométrieJ — « TG », « TR » et « TC » sont pris
 
     // --- Repris de la branche principale à la fusion du 10/09 ---------------
     'geo-repere-relatifs-lire':   'NG',   // coordonnées NéGatives
