@@ -83,10 +83,23 @@ export const LONGUEUR_MONDE = 6400;
  *
  * Elle monte aussi de monde en monde, ce qu'elle faisait déjà : chacun est
  * « plus haut, plus serré et plus pressé que le précédent ».
+ *
+ * ── ET LES TREIZE VALEURS ONT ÉTÉ REFAITES LE 18 NOVEMBRE, APRÈS LE VIDE ──
+ *
+ * Elles sont DÉRIVÉES de l'allure mesurée du bon joueur, donc le vide de la
+ * frontière les a toutes périmées d'un coup : l'oiseau qui le manque tombe à la
+ * mer, et une allure moyennée sur une partie qu'on a perdue ne veut rien dire.
+ * `node tools/allureDesMondes.mjs --nuits` les recalcule et imprime les lignes
+ * à recopier ; les valeurs ci-dessous en sortent, et la pression voulue va de
+ * 56 % de l'allure parfaite au premier monde à 78 % dès le sixième.
+ *
+ * LE PREMIER MONDE SORT À 47 %, et ce n'est pas une erreur : sa borne dure
+ * l'emporte sur la pression voulue — sa nuit reste sous l'allure de qui ne
+ * touche à rien, parce qu'on y apprend le geste sans perdre.
  */
 export const MONDES = [
     {
-        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 310,
+        id: 1, nom: 'Les dunes', amplitude: 95, periode: 900, nuit: 280,
         // Les collines du fond sont du SABLE, pas du bleu : ce sont les mêmes
         // dunes vues de loin, et une couche bleue au milieu du désert se lisait
         // comme une flaque.
@@ -94,27 +107,27 @@ export const MONDES = [
         sol: '#c99a52', herbe: '#f0c987'
     },
     {
-        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 405,
+        id: 2, nom: 'Les collines', amplitude: 118, periode: 870, nuit: 345,
         ciel: ['#8ed0ff', '#dff3ff'], fond: ['#a9c8e8', '#87b0d8'],
         sol: '#2f855a', herbe: '#68d391'
     },
     {
-        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 380,
+        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 340,
         ciel: ['#ffc98a', '#ffe9cf'], fond: ['#e0a98a', '#c98a72'],
         sol: '#7b4b2a', herbe: '#c0703c'
     },
     {
-        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 370,
+        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 325,
         ciel: ['#b9a7ff', '#e9e2ff'], fond: ['#a99ad8', '#8878c0'],
         sol: '#4a5578', herbe: '#e6ecff'
     },
     {
-        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 350,
+        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 310,
         ciel: ['#63c7c0', '#d6f5f2'], fond: ['#7fbfc4', '#5d9aa4'],
         sol: '#1f6b6b', herbe: '#7fe6d8'
     },
     {
-        id: 6, nom: 'Le pays de nuit', amplitude: 192, periode: 790, nuit: 415,
+        id: 6, nom: 'Le pays de nuit', amplitude: 192, periode: 790, nuit: 385,
         ciel: ['#2d3561', '#5a6bad'], fond: ['#3f4a80', '#2b3358'],
         sol: '#1b2140', herbe: '#8f9bff'
     },
@@ -155,12 +168,12 @@ export const MONDES = [
     // Les sept vitesses de nuit sont donc 88 % de l'allure MESURÉE de leur
     // monde, et de rien d'autre.
     {
-        id: 7, nom: 'Le pays kawaï', amplitude: 139, periode: 900, nuit: 405,
+        id: 7, nom: 'Le pays kawaï', amplitude: 139, periode: 900, nuit: 390,
         ciel: ['#ffd6ec', '#fff2f8'], fond: ['#ffc2dd', '#f7a8cb'],
         sol: '#e07ba8', herbe: '#b9f3dd'
     },
     {
-        id: 8, nom: 'Le royaume fantaisiste', amplitude: 198, periode: 820, nuit: 410,
+        id: 8, nom: 'Le royaume fantaisiste', amplitude: 198, periode: 820, nuit: 385,
         ciel: ['#3b1d63', '#8e4fb0'], fond: ['#6a3a95', '#48256b'],
         sol: '#2a1240', herbe: '#ffd36e'
     },
@@ -168,17 +181,17 @@ export const MONDES = [
         // L'AURORE EST PLUS SOMBRE QU'ELLE N'EN A L'AIR : à `#7ef0c8`, la
         // glace du sol ne s'en détachait plus — rapport de contraste 1,20,
         // c'est-à-dire un sol invisible. Mesuré, pas jugé à l'oeil.
-        id: 9, nom: 'La banquise', amplitude: 119, periode: 950, nuit: 365,
+        id: 9, nom: 'La banquise', amplitude: 119, periode: 950, nuit: 375,
         ciel: ['#07182a', '#2fae8a'], fond: ['#cfe9f5', '#a9d2e6'],
         sol: '#eaf7ff', herbe: '#3f9fd4'
     },
     {
-        id: 10, nom: 'Les terres de braise', amplitude: 162, periode: 700, nuit: 335,
+        id: 10, nom: 'Les terres de braise', amplitude: 162, periode: 700, nuit: 305,
         ciel: ['#3a0f10', '#ff7a3c'], fond: ['#7a2518', '#471310'],
         sol: '#1d0c0b', herbe: '#ff9d4d'
     },
     {
-        id: 11, nom: 'La canopée', amplitude: 199, periode: 760, nuit: 400,
+        id: 11, nom: 'La canopée', amplitude: 199, periode: 760, nuit: 390,
         ciel: ['#9fd6a8', '#e9f8ec'], fond: ['#2f6b46', '#1d4a2f'],
         sol: '#4a3620', herbe: '#5fdc7a'
     },
@@ -188,7 +201,7 @@ export const MONDES = [
         // couleur, et plus de relief du tout. C'est le couchant qui sauve le
         // tableau : un ciel qui descend du bleu de nuit à l'abricot, et le
         // miroir de sel qui le reflète en clair.
-        id: 12, nom: 'Le désert de sel', amplitude: 109, periode: 1000, nuit: 435,
+        id: 12, nom: 'Le désert de sel', amplitude: 109, periode: 1000, nuit: 440,
         ciel: ['#2b4f72', '#e9a07a'], fond: ['#c9a08f', '#a87e6e'],
         sol: '#fbf7f2', herbe: '#d9654a'
     },
@@ -198,7 +211,7 @@ export const MONDES = [
         // ON EST TRÈS HAUT, DONC LE CIEL EST SOMBRE EN HAUT. C'est ce qui
         // dit l'altitude sans un mot — et c'est aussi ce qui détache enfin la
         // mer de nuages, qui est blanche et ne se détachait de rien (1,36).
-        id: 13, nom: 'Au-dessus des nuages', amplitude: 184, periode: 860, nuit: 375,
+        id: 13, nom: 'Au-dessus des nuages', amplitude: 184, periode: 860, nuit: 405,
         ciel: ['#123a6b', '#e8a93f'], fond: ['#ffffff', '#ffe0a8'],
         sol: '#fdfcf8', herbe: '#e8a62a'
     }
@@ -263,15 +276,40 @@ export const TRANSITION = 900;
 /**
  * LA HAUTEUR DE LA BOSSE DE FRONTIÈRE — voir `bosse` pour sa forme.
  *
- * CE CHIFFRE EST CELUI DU DÉCOLLAGE, et il se calcule. `quitteLeSol` demande
- * que la courbure du sol dépasse la gravité : −courbure · v² > g. La courbure
- * maximale de la bosse vaut BOSSE · 2,85 · 10⁻⁵ (c'est `adoucir2` à son
- * extremum, divisé par TRANSITION²). À 500 px/s et g = 1300, il faut donc une
- * bosse de plus de 182 px pour que l'oiseau quitte vraiment le sol.
+ * CE CHIFFRE ÉTAIT CELUI DU DÉCOLLAGE, et il se calculait. `quitteLeSol`
+ * demande que la courbure du sol dépasse la gravité : −courbure · v² > g. La
+ * courbure maximale de la bosse vaut BOSSE · 2,85 · 10⁻⁵ (c'est `adoucir2` à
+ * son extremum, divisé par TRANSITION²). À 500 px/s et g = 1300, il fallait
+ * donc une bosse de plus de 182 px pour que l'oiseau quitte vraiment le sol —
+ * et l'on avait pris 150 en comptant sur la descente de frontière pour le
+ * reste.
  *
- * On prend plus large : la frontière doit se voir, pas se deviner.
+ * ── CE N'EST PLUS ELLE QUI LANCE L'OISEAU, ET ELLE EST DESCENDUE À 80 ─────
+ *
+ * Depuis le vide, c'est le TREMPLIN qui lance (voir `TREMPLIN`,
+ * `SAUT_TREMPLIN`) : la bosse n'a plus qu'à faire VOIR la frontière de loin.
+ * Et tant qu'elle valait 150, son flanc de montée s'ajoutait aux collines du
+ * monde : MESURÉ hors de la zone de saut, le sol montait à 65,6° en x = 63 369
+ * — c'est-à-dire un MUR, exactement ce que la garde du dépôt interdit, et
+ * exactement ce que Rémy avait senti avant qu'on le mesure (« beaucoup moins
+ * bien que Tiny Wings, dans le glissé »). La marche de 380 px, qui descendait
+ * autrefois pendant cette montée, la compensait sans qu'on le sache ; elle est
+ * maintenant DANS le vide, et le flanc est resté seul.
+ *
+ * LE CHIFFRE EST SORTI D'UN BALAYAGE, pas d'un calcul (`tools/tmp/sweepB.mjs`,
+ * quatre graines × douze frontières × trois joueurs) :
+ *
+ *     bosse   joueur ordinaire   ne fait rien   vol    sol hors zone de saut
+ *      150        42/48             0/48       1,71 s        65,6°  ← un mur
+ *      110        43/48             0/48       1,70 s        64,1°
+ *       80        43/48             0/48       1,71 s        63,0°  ← retenu
+ *       50        39/48             0/48       1,73 s        61,9°
+ *        0        35/48             0/48       1,73 s        61,9°
+ *
+ * À 80, le joueur ordinaire franchit MIEUX qu'à 150, personne ne gagne en ne
+ * faisant rien, le vol plané garde sa durée — et le mur a disparu.
  */
-export const BOSSE_FRONTIERE = 150;
+export const BOSSE_FRONTIERE = 80;
 
 /**
  * ET LE SOL SE DÉROBE : chaque frontière descend de ce nombre de pixels.
@@ -301,7 +339,7 @@ export const BOSSE_FRONTIERE = 150;
  * donc 500 px/s qui deviennent 900, le plafond du jeu. Franchir une frontière est une récompense,
  * et elle se sent dans les doigts.
  */
-export const DESCENTE_FRONTIERE = 700;
+export const DESCENTE_FRONTIERE = 380;
 
 /**
  * LE NIVEAU MOYEN DU SOL EN x — il descend d'une marche à chaque frontière.
@@ -313,9 +351,263 @@ export const DESCENTE_FRONTIERE = 700;
  * première fois, et c'est ce qui m'avait fait l'abandonner. Comprimés vers le
  * niveau LOCAL, ils suivent.
  */
+/**
+ * LE VIDE DE LA FRONTIÈRE — le monde d'avant s'arrête, le suivant reprend plus
+ * loin.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 18 novembre : « Dans le jeu tiny wings quand on changeait de monde, il
+ * fallait faire un long vol plané car le monde d'avant se terminait et le monde
+ * d'après commençait plus loin […] Là même en ne faisant rien, on gagne quand
+ * même ».
+ *
+ * MA CORRECTION DE LA VEILLE ÉTAIT À CÔTÉ, ET LA MESURE LE DIT. J'avais fait
+ * DESCENDRE le sol de sept cents pixels à chaque frontière, avec un
+ * raisonnement qui tient debout — « ce qui allonge un vol n'est pas l'élan vers
+ * le haut, c'est le sol qui part ». C'est vrai, et c'est insuffisant : un sol
+ * qui descend reste un SOL. Mesuré (`tools/tmp/frontiere3.mjs`, jeté) : celui
+ * qui ne touche à rien franchissait les trois premières frontières, en 8,2 s
+ * contre 5,1 au bon joueur. La frontière ne lui coûtait rien.
+ *
+ * UN VIDE, LUI, NE SE ROULE PAS. Il n'y a rien sous les roues : il faut
+ * arriver avec de la vitesse ET de la hauteur, donc avoir su relâcher avant la
+ * crête pour décoller dessus. C'est la seule forme qui rende « ne rien faire »
+ * perdant à la frontière — et c'est exactement ce que Rémy décrit.
+ *
+ * ── OÙ IL COMMENCE, ET POURQUOI LÀ ───────────────────────────────────────
+ *
+ * Juste après la CRÊTE de la bosse de frontière, qui est le tremplin. La bosse
+ * culmine à `MONTEE_BOSSE` de la rampe, soit 540 px après son début, c'est-à-
+ * dire 360 px avant la fin du monde. On laisse quarante pixels pour que
+ * l'oiseau quitte vraiment le sommet, puis le sol disparaît.
+ *
+ * ── ET IL FINIT APRÈS LA FIN DU MONDE ────────────────────────────────────
+ *
+ * La rive d'arrivée est donc au-delà de `fin`, là où la descente des sept cents
+ * pixels est TERMINÉE : on retombe sur le monde suivant, entier, et non au
+ * milieu d'une rampe. C'est ce qui demande `VIDE_FRONTIERE > 320`.
+ */
+const AVANT_LE_VIDE = 0;
+
+/**
+ * LA LARGEUR DU VIDE — c'est elle qui sépare les deux joueurs, et elle se
+ * calcule avant de se régler.
+ *
+ * Un oiseau qui quitte la crête à v px/s avec une vitesse verticale vy franchit
+ * v·T, où T est le temps qu'il met à retomber de 700 px : T = (vy + √(vy² +
+ * 2·g·700)) / g. Mesuré au bord, le bon joueur passe à 640–900 px/s en ayant
+ * décollé ; celui qui ne fait rien roule à 490–715 px/s SANS décoller, donc
+ * avec la seule pente pour vitesse verticale.
+ *
+ * ON NE DEVINE PAS LA VALEUR : `tools/allureDesMondes.mjs --vide` balaie, et
+ * c'est lui qui a donné ce nombre.
+ */
+export const VIDE_FRONTIERE = 340;
+
+/**
+ * LA MER, SOUS LE VIDE : la toucher, c'est avoir manqué le saut.
+ *
+ * QUATRE CENT VINGT PIXELS, ET C'EST UNE MESURE D'ÉCRAN, pas de physique. À
+ * neuf cents, la mer tombait sous le bord de la fenêtre : l'oiseau planait
+ * au-dessus d'un ciel vide, et l'on ne voyait NI l'eau ni la rive d'en face.
+ * Un saut dont on ne voit pas l'arrivée ne se prépare pas. À quatre cent
+ * vingt, l'eau est à l'écran pendant tout le vol, et la rive d'arrivée avec.
+ */
+export const PROFONDEUR_MER = 420;
+
+/** Le début et la fin du vide qui suit le monde `i`, en abscisse. */
+export function bordsDuVide(i) {
+    const debut = (i + 1) * LONGUEUR_MONDE + AVANT_LE_VIDE;
+    return { debut, fin: debut + VIDE_FRONTIERE };
+}
+
+/**
+ * OÙ UN MONDE COMMENCE VRAIMENT — c'est-à-dire là où l'on y ATTERRIT.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * CETTE FONCTION EXISTE POUR LES MESURES, ET ELLE A ÉTÉ PAYÉE CHER. Les
+ * outils et les épreuves faisaient partir l'oiseau à `(id − 1) × 6400` — le
+ * début arithmétique du monde. Depuis que la frontière est un VIDE, cette
+ * abscisse-là est exactement la GUEULE DU TROU : l'oiseau y naissait au-dessus
+ * de la mer, coulait à la première image, et l'allure mesurée du monde valait
+ * « quelques pixels ÷ un soixantième de seconde » — soit 320 px/s pour les
+ * douze mondes, tous identiques. Le tableau annonçait alors « NUIT TROP
+ * RAPIDE » douze fois de suite, sur un jeu parfaitement sain.
+ *
+ * ON PART DONC OÙ LE JOUEUR ARRIVE : sur la piste plate de l'autre rive, un
+ * peu après le bord du vide. C'est le seul endroit d'un monde qu'on puisse
+ * atteindre, et c'est celui que l'oiseau connaît.
+ */
+export const APRES_LE_VIDE = 60;
+export const departDuMonde = (id) =>
+    id <= 1 ? 0 : bordsDuVide(id - 2).fin + APRES_LE_VIDE;
+
+/**
+ * CET ENDROIT EST-IL UN VIDE ?
+ *
+ * LE DERNIER MONDE N'EN A PAS : il ne se raccorde à rien, et un vide au bout
+ * du jeu serait un piège sans récompense.
+ */
+export function dansLeVide(x) {
+    const i = Math.floor(x / LONGUEUR_MONDE);
+    for (const k of [i - 1, i]) {
+        if (k < 0 || k >= MONDES.length - 1) continue;
+        const b = bordsDuVide(k);
+        if (x >= b.debut && x <= b.fin) return true;
+    }
+    return false;
+}
+
+/**
+ * LE TREMPLIN — les derniers pixels avant le vide, et ils sont toujours les
+ * mêmes.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * LE DÉFAUT QUE LA MESURE A MONTRÉ, et aucun réglage de largeur ne le soignait.
+ * L'oiseau arrive au bord du vide À UNE PHASE QUELCONQUE du relief : tantôt il
+ * vient de dévaler une bosse et file à 900 px/s, tantôt il est en pleine montée
+ * et rampe à 250. Mesuré sur les douze frontières, les portées du bon joueur
+ * allaient de 156 à 1 252 pixels — un facteur huit, pour le même geste. Un vide
+ * assez étroit pour la pire se franchit sans rien faire ; un vide taillé pour la
+ * meilleure tue le bon joueur une fois sur cinq. Ce n'est pas une difficulté,
+ * c'est une loterie.
+ *
+ * DANS TINY WINGS, CHAQUE ÎLE SE TERMINE DE LA MÊME FAÇON. Les derniers pixels
+ * sont une descente propre : on y prend de la vitesse, et c'est le GESTE qui
+ * décide de combien — plonger dans ce tremplin rapporte, le subir ne rapporte
+ * que la pesanteur.
+ *
+ * ON ÉTEINT DONC LES COLLINES sur ces quatre cent vingt pixels, et l'on pose à
+ * la place une descente nette. L'oiseau arrive alors toujours dans le même
+ * état de terrain, et la seule différence entre deux joueurs est ce qu'ils ont
+ * fait de ce tremplin.
+ *
+ * ── CE QUE ÇA CHANGE EN ÉNERGIE, ET POURQUOI ÇA SÉPARE ───────────────────
+ *
+ * Le glissé conserve ½v² + p·h. Descendre 230 px rend 2·p·230 : avec la
+ * pesanteur de glissé ordinaire (430) cela fait 198 000, et avec celle de
+ * l'appui (1200) 552 000. Parti à 300 px/s, on arrive donc à 537 px/s sans
+ * appuyer et à 800 en plongeant — sans compter `POUSSEE_PLONGEE`, qui s'ajoute
+ * par-dessus. Le tremplin n'est pas un décor : c'est l'endroit où le geste se
+ * paie, juste avant l'endroit où il compte.
+ */
+export const LONGUEUR_TREMPLIN = 520;
+export const TREMPLIN = 230;
+
+/**
+ * ET LE TREMPLIN REMONTE AU BOUT — c'est un saut à ski, pas une falaise.
+ *
+ * ── CE QUE LA MESURE A FINI PAR DIRE ─────────────────────────────────────
+ *
+ * Avec une simple descente, le vide se franchissait à la VITESSE, et la
+ * vitesse est plafonnée (`VX_MAX`). Balayé : de 900 à 2 600 de
+ * `POUSSEE_PLONGEE`, le nombre de vides franchis ne bougeait pas d'un seul —
+ * tout le monde tapait le plafond. L'écart entre bien jouer et ne rien faire
+ * était donc borné à 900 / 603, et aucune largeur de trou ne séparait
+ * proprement les deux.
+ *
+ * L'ALTITUDE, ELLE, N'EST PAS PLAFONNÉE. Un oiseau qui arrive vite sur une
+ * courbure décolle (`quitteLeSol` : −courbure·v² > g) et part d'autant plus
+ * haut qu'il allait vite ; celui qui rampe reste collé et roule dans le trou.
+ * C'est la même condition que les crêtes du relief, posée à l'endroit où elle
+ * décide de tout.
+ *
+ * ET C'EST AUSSI CE QUE DÉCRIT RÉMY : « il fallait faire un long vol plané ».
+ * Un vol plané part d'un tremplin, pas d'un bord de table.
+ */
+export const SAUT_TREMPLIN = 220;
+
+/** La part du tremplin qui descend ; le reste remonte. */
+const PART_DESCENTE = 0.72;
+
+/** Le profil du tremplin : il descend, puis il remonte. Et ses dérivées. */
+const avale = (s) => Math.min(1, s / PART_DESCENTE);
+const monte = (s) => Math.max(0, (s - PART_DESCENTE) / (1 - PART_DESCENTE));
+const tremplinH = (s) => -TREMPLIN * adoucir(avale(s)) + SAUT_TREMPLIN * adoucir(monte(s));
+const tremplinH1 = (s) => -TREMPLIN * adoucir1(avale(s)) / PART_DESCENTE
+    + SAUT_TREMPLIN * adoucir1(monte(s)) / (1 - PART_DESCENTE);
+const tremplinH2 = (s) => -TREMPLIN * adoucir2(avale(s)) / (PART_DESCENTE ** 2)
+    + SAUT_TREMPLIN * adoucir2(monte(s)) / ((1 - PART_DESCENTE) ** 2);
+
+/**
+ * Où l'on en est du tremplin : 0 loin du vide, 1 au bord.
+ *
+ * Rend aussi `ds`, la dérivée en x — nulle hors du tremplin. Les deux voyagent
+ * ensemble parce que `relief` a besoin des deux et qu'on ne les calcule qu'une
+ * fois : c'est la règle du fichier depuis la rampe de raccord.
+ */
+/**
+ * EST-ON SUR LE TREMPLIN ? C'est là que le coup d'ailes se donne.
+ *
+ * MESURÉ, ET C'EST POURQUOI CETTE FONCTION EXISTE : l'oiseau DÉCOLLE 78 pixels
+ * AVANT la lèvre — la courbure de la rampe suffit, c'est `quitteLeSol` qui fait
+ * son travail. Donner le coup d'ailes « au moment de quitter la rive » ne le
+ * donnait donc jamais : quand la rive s'arrête, l'oiseau est déjà en l'air
+ * depuis un dixième de seconde. On le donne au DÉCOLLAGE, là où il arrive.
+ */
+export const surLeTremplin = (x) => partTremplin(x).s > 0;
+
+function partTremplin(x) {
+    for (let k = 0; k < MONDES.length - 1; k++) {
+        const b = bordsDuVide(k);
+        const avant = b.debut - x;
+        if (avant >= 0 && avant <= LONGUEUR_TREMPLIN) {
+            return { s: 1 - avant / LONGUEUR_TREMPLIN, ds: 1 / LONGUEUR_TREMPLIN, tremplin: 1 };
+        }
+        // ── ET LA RIVE D'ARRIVÉE EST PLATE, POUR LA MÊME RAISON ───────────
+        //
+        // MESURÉ une fois le tremplin posé : celui qui ne fait rien franchissait
+        // 42 vides sur 48 alors que sa portée ne vaut que 480 pixels pour un
+        // trou de 520. Il ne les franchissait pas — il S'ACCROCHAIT aux
+        // collines de la rive d'en face, qui montent jusqu'à l'amplitude du
+        // monde et rattrapent un oiseau bien avant le bord. Le saut se jouait
+        // donc sur la phase du relief d'arrivée, c'est-à-dire sur rien.
+        //
+        // Une bande plate de la même longueur, et le vide mesure enfin ce
+        // qu'il annonce.
+        const apres = x - b.fin;
+        if (apres >= 0 && apres <= LONGUEUR_TREMPLIN) {
+            return { s: 1 - apres / LONGUEUR_TREMPLIN, ds: -1 / LONGUEUR_TREMPLIN, tremplin: 0 };
+        }
+    }
+    return { s: 0, ds: 0, tremplin: 0 };
+}
+
 export function niveauFrontiere(x) {
-    const { i, t } = raccord(x);
-    return SOL_MOYEN - DESCENTE_FRONTIERE * (i + adoucir(t));
+    return SOL_MOYEN - DESCENTE_FRONTIERE * videsFranchis(x);
+}
+
+/**
+ * COMBIEN DE VIDES ON A DERRIÈRE SOI — et c'est ce qui donne l'altitude.
+ *
+ * ── LA MARCHE EST DANS LE VIDE, ET C'EST TOUT LE CORRECTIF ────────────────
+ *
+ * La descente des sept cents pixels se faisait AVANT la frontière, étalée sur
+ * la rampe de neuf cents pixels. Elle était donc une pente, et une pente
+ * donne de la vitesse À TOUT LE MONDE : mesuré, celui qui ne fait rien
+ * arrivait au bord à 385–487 px/s, presque autant que le bon joueur. Le
+ * balayage de la largeur du vide ne séparait alors jamais les deux — 96 % de
+ * réussite pour l'un et 63 % pour l'autre à 300 px, 69 % et 19 % à 460, sans
+ * jamais de palier franc.
+ *
+ * ICI LA DESCENTE EST UNE MARCHE, et la marche tombe exactement là où il n'y a
+ * plus de sol : la rive de départ reste à son altitude, la rive d'arrivée est
+ * sept cents pixels plus bas, et la discontinuité ne se voit pas puisqu'elle
+ * est AU-DESSUS DU TROU. Personne ne gagne de vitesse en approchant — il faut
+ * l'avoir prise dans les bosses d'avant.
+ *
+ * ET LE VOL DEVIENT LONG POUR DE BON : tomber de sept cents pixels demande une
+ * seconde entière, et c'est le « long vol plané » que Rémy décrit.
+ */
+function videsFranchis(x) {
+    let n = 0;
+    for (let k = 0; k < MONDES.length - 1; k++) {
+        if (x > bordsDuVide(k).fin) n++; else break;
+    }
+    return n;
 }
 
 const pulsation = (m) => (2 * Math.PI) / m.periode;
@@ -468,6 +760,22 @@ export const penteMax = (monde) =>
  * h″ = k″H + 2k′H′ + kH″. Trois lignes de plus, et plus rien à négliger.
  */
 export function relief(x, graine = 0) {
+    // ── LE VIDE D'ABORD : là où il n'y a plus de sol, il n'y a plus rien à
+    //    calculer ───────────────────────────────────────────────────────────
+    //
+    // RÉMY : « le monde d'avant se terminait et le monde d'après commençait
+    // plus loin ». On rend la MER, très bas, avec une pente et une courbure
+    // nulles : un oiseau qui la touche a manqué son saut (`dansLaMer`), et le
+    // dessin, lui, y voit la falaise et l'abîme.
+    //
+    // ON COUPE LE RELIEF, ON NE LE REMPLACE PAS. Tout le reste — la bosse de
+    // tremplin, la descente de sept cents pixels, le mélange des amplitudes —
+    // continue de se calculer comme avant, de part et d'autre du trou. C'est
+    // ce qui fait qu'on retombe sur un monde suivant entier et non sur une
+    // rampe à moitié parcourue.
+    if (dansLeVide(x)) {
+        return { hauteur: niveauFrontiere(x) - PROFONDEUR_MER, pente: 0, courbure: 0 };
+    }
     const { i, m, suivant, t } = raccord(x);
     const wa = pulsation(m), wb = pulsation(suivant);
     // Les dérivées du mélange, EN x : la rampe fait TRANSITION pixels de long.
@@ -477,8 +785,25 @@ export function relief(x, graine = 0) {
 
     // On ramène la somme des trois ondes à l'amplitude voulue, en pixels.
     const dA = (suivant.amplitude - m.amplitude) / SOMME_ONDES;
-    const k = melange(m.amplitude, suivant.amplitude, u) / SOMME_ONDES;
-    const k1 = dA * u1, k2 = dA * u2;
+    const kA = melange(m.amplitude, suivant.amplitude, u) / SOMME_ONDES;
+    const kA1 = dA * u1, kA2 = dA * u2;
+    // ── LE TREMPLIN ÉTEINT LES COLLINES, et sa dérivée compte autant que lui ──
+    //
+    // Voir `LONGUEUR_TREMPLIN` : sur les derniers pixels avant le vide, le
+    // relief s'efface et laisse une descente nette. `f` est ce qui reste des
+    // collines — 1 loin du vide, 0 au bord.
+    //
+    // ON ÉCRIT LE PRODUIT EN ENTIER (f·k)′ = f′k + fk′ et (f·k)″ = f″k + 2f′k′
+    // + fk″. C'est la même règle que pour l'amplitude sur la rampe, et elle a
+    // déjà été payée une fois : une pente ANNONCÉE fausse là où l'oiseau
+    // change de monde, c'est-à-dire exactement là où la vitesse se décide.
+    const { s, ds, tremplin } = partTremplin(x);
+    const f = 1 - adoucir(s);
+    const f1 = -adoucir1(s) * ds;
+    const f2 = -adoucir2(s) * ds * ds;
+    const k = f * kA;
+    const k1 = f1 * kA + f * kA1;
+    const k2 = f2 * kA + 2 * f1 * kA1 + f * kA2;
 
     const w = melange(wa, wb, u);
     const w1 = (wb - wa) * u1;
@@ -496,10 +821,20 @@ export function relief(x, graine = 0) {
     // on survole les collines du monde qu'on quitte. Elle vaut zéro partout
     // ailleurs, puisque `t` vaut zéro hors de la rampe — et au dernier monde,
     // qui ne se raccorde à rien.
-    const B = BOSSE_FRONTIERE * bosse(t) - DESCENTE_FRONTIERE * (i + u);
-    const B1 = (BOSSE_FRONTIERE * bosse1(t) - DESCENTE_FRONTIERE * adoucir1(t)) / TRANSITION;
-    const B2 = (BOSSE_FRONTIERE * bosse2(t) - DESCENTE_FRONTIERE * adoucir2(t))
-        / (TRANSITION * TRANSITION);
+    // LA DESCENTE NE CONTRIBUE NI À LA PENTE NI À LA COURBURE, et c'est le
+    // cœur du correctif : elle est une MARCHE posée dans le vide (voir
+    // `videsFranchis`), donc constante de part et d'autre. Une rive plate ne
+    // donne pas de vitesse gratuite ; il faut l'avoir prise avant.
+    // ET LA DESCENTE DU TREMPLIN S'AJOUTE : c'est elle qui donne la vitesse
+    // du saut, et c'est la seule chose qui reste du relief au bord du vide.
+    // LA DESCENTE DU TREMPLIN NE VAUT QUE SUR LA RIVE DE DÉPART (`tremplin`) :
+    // c'est elle qui donne la vitesse du saut. La rive d'arrivée, elle, est
+    // simplement PLATE — on y retombe, on n'y repart pas.
+    const B = BOSSE_FRONTIERE * bosse(t) + (niveauFrontiere(x) - SOL_MOYEN)
+        + tremplin * tremplinH(s);
+    const B1 = BOSSE_FRONTIERE * bosse1(t) / TRANSITION + tremplin * tremplinH1(s) * ds;
+    const B2 = BOSSE_FRONTIERE * bosse2(t) / (TRANSITION * TRANSITION)
+        + tremplin * tremplinH2(s) * ds * ds;
     return {
         hauteur: SOL_MOYEN + k * H + B,
         pente: k1 * H + k * H1 + B1,
@@ -520,16 +855,29 @@ export function relief(x, graine = 0) {
  * secondes sans jamais rien ramasser. Vingt à quatre-vingts pixels, c'est la
  * portée de l'oiseau qui GLISSE — et le vol rapporte davantage sans être la
  * seule façon de marquer.
+ *
+ * ── ET AU-DESSUS D'UN VIDE, LE « SOL » EST LE FOND DE LA MER ─────────────
+ *
+ * VU SUR LA PHOTO DE LA DÉFAITE (`tools/volPlaneDesAiles.mjs --photos`) : une
+ * étoile flottait SOUS L'EAU, à côté de l'oiseau noyé. Au-dessus d'un vide,
+ * `relief` rend le fond de la mer — quatre cent vingt pixels plus bas —, et
+ * les étoiles du trou étaient donc semées au fond, c'est-à-dire là où l'on
+ * perd. On enseignait à plonger vers la noyade.
+ *
+ * ELLES SE POSENT DONC SUR LA RIVE D'OÙ L'ON SAUTE, et c'est bien mieux qu'une
+ * réparation : une étoile suspendue au-dessus du trou RÉCOMPENSE LE VOL PLANÉ,
+ * qui est exactement le geste que Rémy réclamait (« il fallait faire un long
+ * vol plané »).
  */
 export const ECART_ETOILES = 250;
 export const HAUT_ETOILE_MIN = 20;
 export const HAUT_ETOILE_MAX = 80;
 
 export function semerEtoile(x, graine, rng) {
-    const sol = relief(x, graine);
+    const base = dansLeVide(x) ? niveauFrontiere(x) : relief(x, graine).hauteur;
     return {
         x,
-        y: sol.hauteur + HAUT_ETOILE_MIN
+        y: base + HAUT_ETOILE_MIN
             + rng.int(0, HAUT_ETOILE_MAX - HAUT_ETOILE_MIN),
         prise: false
     };
@@ -711,6 +1059,20 @@ export function suiviArret(compteur, etat, dt) {
 export const estArrete = (compteur) => compteur >= DUREE_ARRET;
 
 /**
+ * L'OISEAU EST-IL TOMBÉ DANS LE VIDE ?
+ *
+ * RÉMY : « le monde d'avant se terminait et le monde d'après commençait plus
+ * loin ». Au fond d'un vide il y a la mer, et rien d'autre : s'y poser, c'est
+ * avoir manqué le saut.
+ *
+ * LA RÈGLE N'A AUCUN SEUIL, ET C'EST VOULU. On ne compare pas une altitude à
+ * une marge choisie à l'œil — on demande seulement si l'oiseau s'est POSÉ
+ * pendant qu'il était au-dessus du vide. Le seul sol qui s'y trouve est la mer.
+ * Une règle sans réglage est une règle qui ne dérive pas.
+ */
+export const dansLaMer = (etat) => !!etat && etat.auSol && dansLeVide(etat.x);
+
+/**
  * LA PESANTEUR DU GLISSÉ — celle qui change la hauteur en vitesse, et elle
  * n'est PAS celle de la chute.
  *
@@ -833,6 +1195,41 @@ export const FROTTEMENT_AIR = 0.07;
  * appuie sans arrêt rampe toujours 8,4 s — la faute, elle, continue de coûter.
  */
 export const POUSSEE = 450;
+
+/**
+ * L'APPUI POUSSE DANS LA DESCENTE — et c'est ce que Rémy réclamait.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 18 novembre : « l'appui donnait vraiment une accélération ».
+ *
+ * CE QUE L'APPUI FAISAIT, ET POURQUOI ÇA NE SE SENTAIT PAS. Trois choses, et
+ * aucune n'est une poussée : il alourdit la chute (`GRAVITE_PLONGEE`), il
+ * change la pesanteur du glissé (`PESANTEUR_GLISSE_APPUI`), et il frotte en
+ * côte (`FROTTEMENT_APPUI`). Les deux premières ne font qu'ÉCHANGER de la
+ * hauteur contre de la vitesse — sur une colline entière, l'énergie se
+ * conserve et l'on retrouve exactement ce qu'on avait. Mesuré sur un dixième
+ * de seconde en pleine descente : 96 px/s² sans appui, 313 avec. Trois fois
+ * plus, et trente et un pixels par seconde gagnés — c'est vrai, et c'est
+ * invisible dans les doigts.
+ *
+ * CELLE-CI EST UNE VRAIE POUSSÉE, et elle ne se conserve pas : elle ajoute de
+ * l'énergie. C'est le geste du jeu, et il doit payer.
+ *
+ * ── ELLE NE VIENT QUE DANS LA DESCENTE, ET D'AUTANT PLUS QU'ELLE EST RAIDE ──
+ *
+ * C'est toute la leçon du chapitre précédent, et elle est payée : une poussée
+ * qui marche partout profite d'abord à celui qui ne lâche jamais le bouton —
+ * « le battement d'ailes » l'avait montré, et il a fallu l'éteindre. Ici, elle
+ * s'annule à plat et n'existe pas en côte, là où appuyer coûte déjà
+ * (`FROTTEMENT_APPUI`). Celui qui tient le bouton appuyé reçoit donc la
+ * poussée dans les descentes et la paie dans les montées ; celui qui joue
+ * juste ne paie rien.
+ */
+export const POUSSEE_PLONGEE = 900;
+
+/** La pente à partir de laquelle la poussée de plongée donne tout. */
+export const PENTE_PLONGEE = 0.45;
 /** De combien le battement s’éteint dans une côte. 0 = il ne s’éteint pas. */
 export const FREIN_MONTEE = 0;
 
@@ -881,6 +1278,7 @@ export const IMPULSION_DECOLLAGE = 200;
  */
 export const REBOND_ATTERRISSAGE = 0.6;
 
+
 /**
  * Le monde n'est plus un paramètre du PAS : le sol est une fonction de `x`
  * seul, et c'est ce qui a supprimé la falaise des frontières. Ce qui reste du
@@ -892,6 +1290,24 @@ export function pas(etat, dt, appuie, graine) {
     const sol = relief(x, graine);
     const g = appuie ? GRAVITE_PLONGEE : GRAVITE;
     let { y, vy, vx, auSol } = etat;
+
+    // ── ON QUITTE LA RIVE EN VOL, ON N'Y EST PAS TÉLÉPORTÉ ─────────────────
+    //
+    // LE DÉFAUT QUE LA MESURE A TROUVÉ, et il rendait le vide inutile : le
+    // bloc « au sol » pose `y = sol.hauteur` sans rien demander. En entrant
+    // dans le vide, l'oiseau se retrouvait donc INSTANTANÉMENT à la surface de
+    // la mer, neuf cents pixels plus bas, sans un centième de seconde de vol.
+    // Mesuré : « vol 0,00 s · 1 % du vide » pour celui qui ne fait rien — il
+    // ne tombait pas, il se téléportait.
+    //
+    // Un bord de falaise ne retient personne : on le quitte avec la vitesse
+    // qu'on avait, à la hauteur où l'on était, et c'est la balistique qui dit
+    // la suite. C'est elle, et elle seule, qui décide si le saut est franchi.
+    if (auSol && dansLeVide(x) && !dansLeVide(etat.x)) {
+        auSol = false;
+        y = avant.hauteur;
+        vy = avant.pente * vx;
+    }
 
     if (auSol) {
         // LE GLISSÉ SE CALCULE EN ÉNERGIE, PAS EN ACCÉLÉRATION PROJETÉE.
@@ -971,6 +1387,14 @@ export function pas(etat, dt, appuie, graine) {
         // n'appuie jamais sautait plus haut et allait aussi vite que le bon
         // joueur, parce que l'appui coûtait partout. Ici il ne coûte QUE là où
         // le bon joueur n'appuie pas — et c'est tout le geste du jeu.
+        // ── ET PLONGER DANS UNE DESCENTE POUSSE ─────────────────────────
+        //
+        // RÉMY : « l'appui donnait vraiment une accélération ». Voir
+        // `POUSSEE_PLONGEE` : c'est la seule poussée du jeu qui ajoute de
+        // l'énergie, et elle n'existe que là où le bon joueur appuie.
+        if (appuie && sol.pente < 0) {
+            v += POUSSEE_PLONGEE * Math.min(1, -sol.pente / PENTE_PLONGEE) * dt;
+        }
         const colle = appuie && sol.pente > 0 ? FROTTEMENT_APPUI : 0;
         v -= v * (FROTTEMENT_SOL + colle) * dt;
         vx = v / q1;

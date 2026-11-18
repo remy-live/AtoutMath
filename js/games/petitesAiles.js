@@ -39,7 +39,8 @@ import { meneurDemo } from '../core/meneurDemo.js';
 import {
     MONDES, SOL_MOYEN, niveauFrontiere, mondeDe, progressionMonde, relief, pas, etatInitial,
     semerEtoile, ECART_ETOILES, avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE,
-    qualiteAiles, VX_MAX, VX_MIN, suiviArret, estArrete, DUREE_ARRET
+    qualiteAiles, VX_MAX, VX_MIN, suiviArret, estArrete, DUREE_ARRET, dansLaMer,
+    dansLeVide, bordsDuVide, PROFONDEUR_MER
 } from '../core/petitesAiles.js';
 
 /** L'avance donnée à l'oiseau au départ : le temps de comprendre le geste. */
@@ -159,6 +160,8 @@ class PetitesAiles extends BaseGame {
         this.container.querySelector('#pa-rejouer').onclick = () => this.commencer();
 
         this.appuie = false;
+        /** Ce que la DÉMONSTRATION demande — voir la boucle de `pas`. */
+        this.appuieRobot = false;
         // UN APPUI SUR LE JEU EST UN APPUI SUR LE JEU, y compris le tout
         // premier : celui qui fait disparaître l'écran de départ doit AUSSI
         // faire plonger. Demander deux appuis pour un jeu à une touche serait
@@ -230,7 +233,25 @@ class PetitesAiles extends BaseGame {
         // pendant qu'il lit la consigne.
         const avant = this.monde;
         this.monde = mondeDe(this.etat.x);
-        this.etat = pas(this.etat, dt, this.appuie && !this.isDemo, this.grainePaysage);
+        // ── LA DÉMONSTRATION APPUIE VRAIMENT ──────────────────────────────
+        //
+        // ELLE DISAIT « J'appuie dans la DESCENTE pour prendre de la vitesse »
+        // ET NE LE FAISAIT PAS : `this.appuie && !this.isDemo` jetait l'appui
+        // du robot en même temps que celui d'un élève qui cliquerait pendant
+        // la visite. L'oiseau PIQUAIT à l'écran — le dessin, lui, lit
+        // `this.appuie` — et glissait comme s'il ne touchait à rien. On
+        // montrait un geste sans son effet.
+        //
+        // Deux champs, donc : `appuie` est ce qu'on DESSINE, `appuieRobot` est
+        // ce que la démonstration DEMANDE. Un clic d'élève ne détourne toujours
+        // pas la visite.
+        //
+        // ET CELA COMPTE MAINTENANT POUR DE BON : sans appuyer, le robot
+        // tombait dans le premier vide à onze secondes, au milieu de sa propre
+        // explication. En plongeant, il le franchit — mesuré sur sept graines,
+        // toutes passent.
+        this.etat = pas(this.etat, dt,
+            this.isDemo ? this.appuieRobot : this.appuie, this.grainePaysage);
         if (this.demarre && !this.isDemo) this.nuit = avancerNuit(this.nuit, dt, this.monde);
 
         if (this.monde.id !== avant.id) this.passerMonde();
@@ -252,7 +273,23 @@ class PetitesAiles extends BaseGame {
             this.nuit -= RECUL_ETOILE;
         }
 
-        if (this.demarre && !this.isDemo && rattrape(this.nuit, this.etat.x)) {
+        // ── LA MER : LA TROISIÈME FIN, ET LA PLUS RAPIDE ──────────────────
+        //
+        // RÉMY : « le monde d'avant se terminait et le monde d'après
+        // commençait plus loin […] Là même en ne faisant rien, on gagne quand
+        // même ». Au fond d'un vide il y a la mer : s'y poser, c'est avoir
+        // manqué le saut.
+        //
+        // ELLE PASSE AVANT LES DEUX AUTRES parce qu'elle est plus précise : un
+        // oiseau qui tombe à l'eau s'y arrête aussi, et « ton oiseau s'est
+        // arrêté » enverrait l'élève relire la mauvaise leçon.
+        //
+        // LA DÉMONSTRATION EN EST DISPENSÉE comme des deux autres — mais elle
+        // n'en a plus besoin : depuis qu'elle appuie pour de bon, son robot
+        // franchit le premier vide à toutes les graines mesurées.
+        if (this.demarre && !this.isDemo && dansLaMer(this.etat)) {
+            this.terminer('chute');
+        } else if (this.demarre && !this.isDemo && rattrape(this.nuit, this.etat.x)) {
             this.terminer('nuit');
         } else if (this.demarre && !this.isDemo) {
             // ARRÊTÉ = PERDU. Rémy, en jouant : « si l'oiseau s'arrête et bien
@@ -295,14 +332,25 @@ class PetitesAiles extends BaseGame {
         // ON DIT LAQUELLE DES DEUX FINS, ET ON DIT QUOI FAIRE. Un écran de fin
         // qui annonce « perdu » sans nommer la cause laisse l'élève croire
         // qu'il a manqué de chance ; l'arrêt, lui, a un remède en une phrase.
-        this.container.querySelector('#pa-fin-titre').textContent = cause === 'arret'
-            ? `Ton oiseau s'est arrêté — monde ${q.monde}`
-            : `La nuit t'a rattrapé — monde ${q.monde}`;
+        const TITRES = {
+            arret: `Ton oiseau s'est arrêté — monde ${q.monde}`,
+            chute: `Tu es tombé dans le vide — monde ${q.monde}`,
+            nuit: `La nuit t'a rattrapé — monde ${q.monde}`
+        };
+        this.container.querySelector('#pa-fin-titre').textContent = TITRES[cause] || TITRES.nuit;
         const bilan = `${this.monde.nom} · ${q.distance} m · ${q.etoiles} étoile`
             + `${q.etoiles > 1 ? 's' : ''} ramassée${q.etoiles > 1 ? 's' : ''}.`;
-        this.container.querySelector('#pa-fin-texte').textContent = cause === 'arret'
-            ? `${bilan} Relâche dans les montées : appuyer t'y plaque au sol.`
-            : bilan;
+        // CHAQUE FIN A SON REMÈDE, EN UNE PHRASE. Un écran qui annonce
+        // « perdu » sans dire quoi faire laisse l'élève croire qu'il a manqué
+        // de chance — et la chute dans le vide a le remède le plus net de tous.
+        const REMEDES = {
+            arret: ' Relâche dans les montées : appuyer t\'y plaque au sol.',
+            chute: ' Le tremplin d\'avant le vide est une descente : plonge dedans '
+                + 'pour prendre de la vitesse, et relâche au bout pour décoller.',
+            nuit: ''
+        };
+        this.container.querySelector('#pa-fin-texte').textContent =
+            bilan + (REMEDES[cause] || '');
         this.finEl.classList.add('pa-fin--vu');
     }
 
@@ -386,7 +434,26 @@ class PetitesAiles extends BaseGame {
                 // écart au niveau moyen LOCAL. Et on la repose au niveau du sol
                 // d'ICI, pas de là-bas, pour que les trois plans restent alignés
                 // sous l'oiseau.
-                const ondule = s.hauteur - niveauFrontiere(xm);
+                // ── ET LE VIDE SE VOIT AUSSI DANS LE FOND ─────────────────
+                //
+                // VU À L'ÉCRAN, et c'était le plus trompeur des trois défauts
+                // du vide : les deux plans d'arrière-fond continuaient de
+                // dessiner des collines SOUS l'oiseau en plein saut. On lisait
+                // une grande surface bleu-gris juste en dessous de lui — un
+                // sol, pour n'importe quel œil — et le trou ne se voyait pas.
+                //
+                // Le fond doit donc tomber avec le reste : là où il n'y a pas
+                // d'île, il n'y a pas de colline lointaine non plus.
+                // ET LE TROU SE CREUSE À L'ABSCISSE RÉELLE, pas à celle du
+                // plan lointain. Premier jet : `dansLeVide(xm)` — le fond
+                // tombait bien, mais DÉCALÉ par la parallaxe, si bien qu'une
+                // falaise bleue traversait l'écran à côté du vrai vide et
+                // qu'une colline lointaine restait sous l'oiseau. C'est la
+                // même règle que l'altitude juste en dessous : « on la repose
+                // au niveau du sol d'ICI, pas de là-bas, pour que les trois
+                // plans restent alignés sous l'oiseau ».
+                const ondule = dansLeVide(camX + px / e) ? -PROFONDEUR_MER
+                    : s.hauteur - niveauFrontiere(xm);
                 const y = niveauFrontiere(camX + px / e) + ondule * k.part - k.decalage;
                 c.lineTo(px, versEcran(y));
             }
@@ -406,16 +473,56 @@ class PetitesAiles extends BaseGame {
         c.lineTo(larg, haut);
         c.closePath();
         c.fill();
-        // Le liseré clair, qui donne l'herbe.
+        // ── L'HERBE S'ARRÊTE AU BORD DU VIDE ──────────────────────────────
+        //
+        // Le liseré clair suivait le relief sans rien demander : au-dessus d'un
+        // vide, il descendait la falaise, longeait la mer et remontait de
+        // l'autre côté — de l'herbe sur l'eau, et deux traits verticaux qui
+        // faisaient croire à un mur. On lève donc le crayon au-dessus du trou,
+        // et le bord de l'île se voit pour ce qu'il est.
         c.strokeStyle = M.herbe;
         c.lineWidth = 5 * e;
         c.beginPath();
+        let leve = true;
         for (let px = 0; px <= larg; px += 4) {
-            const s = relief(camX + px / e, this.grainePaysage);
-            const y = versEcran(s.hauteur);
-            if (px === 0) c.moveTo(px, y); else c.lineTo(px, y);
+            const xm = camX + px / e;
+            if (dansLeVide(xm)) { leve = true; continue; }
+            const y = versEcran(relief(xm, this.grainePaysage).hauteur);
+            if (leve) { c.moveTo(px, y); leve = false; } else c.lineTo(px, y);
         }
         c.stroke();
+
+        // ── LA MER, AU FOND DU VIDE ───────────────────────────────────────
+        //
+        // RÉMY : « le monde d'avant se terminait et le monde d'après commençait
+        // plus loin ». Le remplissage du relief peint déjà le fond du trou de
+        // la couleur de la terre : on le recouvre d'eau, parce qu'un élève doit
+        // VOIR que ce n'est pas un sol où l'on roule. C'est la seule chose à
+        // l'écran qui dise « ici, on tombe ».
+        //
+        // ── ET L'EAU MONTE AU-DESSUS DU FOND, DE QUATRE-VINGT-DIX PIXELS ──
+        //
+        // MESURÉ EN REGARDANT L'IMAGE (`tools/volPlaneDesAiles.mjs --photos`,
+        // puis `tools/tmp/ailes-chute.png`) : la surface était peinte au FOND
+        // de la mer, c'est-à-dire exactement là où l'oiseau se pose en
+        // tombant. Sur la photo de la défaite, il était donc DEBOUT SUR L'EAU,
+        // au bord d'un rectangle bleu — la seule image que l'élève garde de sa
+        // chute lui montrait un oiseau qui ne tombe pas.
+        //
+        // Quatre-vingt-dix pixels, c'est trois fois l'oiseau : il y disparaît
+        // à moitié, et la chute se lit sans qu'on explique rien.
+        const HAUT_DE_MER = 90;
+        for (let k = 0; k < MONDES.length - 1; k++) {
+            const b = bordsDuVide(k);
+            const g = versEcranX(b.debut), d = versEcranX(b.fin);
+            if (d < -20 || g > larg + 20) continue;
+            const surface = versEcran(
+                relief((b.debut + b.fin) / 2, this.grainePaysage).hauteur + HAUT_DE_MER);
+            c.fillStyle = '#2b6cb0';
+            c.fillRect(g, surface, d - g, Math.max(0, haut - surface));
+            c.fillStyle = 'rgba(255,255,255,.35)';
+            c.fillRect(g, surface, d - g, Math.max(2, 4 * e));
+        }
 
         // Les étoiles.
         for (const et of this.etoiles) {
@@ -590,10 +697,14 @@ class PetitesAiles extends BaseGame {
         // Le robot joue parfaitement pendant quelques secondes.
         for (let i = 0; i < 260 && this.isRunning; i++) {
             const sol = relief(this.etat.x, this.grainePaysage);
+            // LES DEUX : `appuie` pour que l'oiseau pique à l'écran,
+            // `appuieRobot` pour que la physique l'entende.
             this.appuie = sol.pente < 0;
+            this.appuieRobot = this.appuie;
             if (!await robot.pause(16)) break;
         }
         this.appuie = false;
+        this.appuieRobot = false;
         if (!this.isRunning) return fin();
 
         cur.say('Et il faut aller vite : la nuit court derrière toi.', this.mondeEl);

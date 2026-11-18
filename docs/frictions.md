@@ -7811,3 +7811,42 @@ plus d'un.**
   `tools/sonde.mjs`, qui JETTE quand le champ est absent au lieu de rendre
   `undefined`. Deux lignes, et la même friction fermée pour les réponses du
   serveur.
+
+**Un point de départ de mesure que le terrain périme sans le dire** — 18 novembre
+
+- *Ce que je voulais faire* — remesurer les treize vitesses de nuit après avoir
+  creusé un vide à chaque frontière.
+- *Ce qui a coûté* — quarante minutes et une fausse piste complète.
+  `tools/allureDesMondes.mjs` et les épreuves faisaient naître l'oiseau en
+  `(id − 1) × 6400`, qui était le début du monde et qui est devenu LA GUEULE DU
+  TROU : il coulait à la première image, et l'outil annonçait treize mondes à
+  « 320 px/s, NUIT TROP RAPIDE » — treize fois le même chiffre, sur un jeu
+  parfaitement sain. J'ai cherché le défaut dans le relief avant de regarder le
+  point de départ. Une mesure qui commence dans la mer ne dit pas qu'elle a
+  commencé dans la mer.
+- *Combien de fois* — || (le même jour, la sonde de la partie et l'outil des
+  nuits sont tombés dans le trou, chacun de son côté).
+- *Ce qui manque* — ce qui a été fait ici, mais en règle : qu'un repère de
+  mesure (« où commence un monde ») soit une FONCTION du noyau que le terrain
+  met à jour avec lui (`departDuMonde`), jamais une arithmétique recopiée dans
+  les outils. Et l'épreuve qui va avec : « le départ d'un monde n'est jamais le
+  vide ».
+
+**Une demande de Rémy sans épreuve, et personne ne le dit** — 18 novembre
+
+- *Ce que je voulais faire* — vérifier que l'accélération qu'il réclamait
+  (« l'appui donnait vraiment une accélération ») était gardée.
+- *Ce qui a coûté* — elle ne l'était pas. `POUSSEE_PLONGEE = 0` laissait les
+  5 992 épreuves au vert ; je ne l'ai su qu'en lançant `epreuveTombe.mjs` sur la
+  CONSTANTE, par acquit de conscience, après avoir vérifié mes gardes neuves.
+  Et la première épreuve que j'ai écrite pour la garder ne gardait rien non
+  plus : le rapport des allures sur trente secondes vaut 1,74 avec la poussée et
+  1,65 sans. Il a fallu mesurer le GESTE (trois dixièmes de seconde) pour que
+  l'écart apparaisse : 159 px/s contre 59.
+- *Combien de fois* — || (même mécanisme que les deux épreuves vertes qui ne
+  gardaient rien, le 17).
+- *Ce qui manque* — un `node tools/epreuveTombe.mjs --constantes <module>` qui
+  mette à zéro, une par une, les constantes exportées d'un module et nomme
+  celles que PERSONNE ne pleure. Ce que Rémy demande vit presque toujours dans
+  une constante ; une constante sans épreuve est une demande qu'on peut effacer
+  sans bruit.

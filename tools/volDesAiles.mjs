@@ -23,7 +23,7 @@
 //     node tools/volDesAiles.mjs           # le premier monde, trois joueurs
 //     node tools/volDesAiles.mjs --tous    # les treize mondes
 import {
-    MONDES, LONGUEUR_MONDE, relief, pas, etatInitial, VX_MIN
+    MONDES, LONGUEUR_MONDE, relief, pas, etatInitial, VX_MIN, departDuMonde, dansLaMer
 } from '../js/core/petitesAiles.js';
 
 const PARFAIT = (pente) => pente < 0;
@@ -32,9 +32,15 @@ const TOUJOURS = () => true;
 const JOUEURS = [['au bon moment', PARFAIT], ['jamais', JAMAIS], ['sans arrêt', TOUJOURS]];
 const GRAINES = [0.7, 1.9, 3.3];
 
-/** Soixante secondes de vol, et tout ce qu'on peut en dire. */
+/**
+ * Soixante secondes de vol, et tout ce qu'on peut en dire.
+ *
+ * ON PART OÙ LE JOUEUR ATTERRIT, pas au début arithmétique du monde : depuis le
+ * 18 novembre, `(id − 1) × 6400` est la gueule du vide, et l'oiseau y naissait
+ * au-dessus de la mer. Voir `departDuMonde` dans le noyau.
+ */
 function voler(monde, joue, secondes = 60, graine = 0.7) {
-    const depart = (monde.id - 1) * LONGUEUR_MONDE;
+    const depart = departDuMonde(monde.id);
     let e = etatInitial(graine, depart);
     const vols = [];
     let vol = null, auSol = 0, n = 0;

@@ -501,11 +501,51 @@ export function largeurDesReglagesDictes(exerciseId) {
  */
 const MOTIF_ETAPE = /([A-Z]{3})([0-9]{0,4})/y;
 
+/**
+ * L'EN-TÊTE DE LA CHAÎNE : « 9L », et il dit « ordre libre ».
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 18 novembre : « il faut pas que la session express attende que l'on
+ * fasse un jeu pour en avoir un autre, tout doit être ouvert. »
+ *
+ * POURQUOI LA CHAÎNE DEVAIT L'APPRENDRE. `ordreLibre` n'est pas un réglage
+ * d'usine, donc il faisait basculer tout le parcours en base64 : « MHC-MML-CTM »
+ * devenait cent quatre-vingt-six caractères, et un code express qui ne se
+ * dicte pas n'est pas un code express. J'avais tranché la veille en retirant
+ * l'ordre libre ; sa phrase dit que ce n'était pas le bon côté — dix minutes,
+ * trois jeux, et il faut finir le premier pour voir le second, c'est qu'on
+ * n'en verra qu'un.
+ *
+ * POURQUOI UN CHIFFRE EN TÊTE, ET POURQUOI C'EST SÛR. Une chaîne d'étapes
+ * commence TOUJOURS par trois lettres (`MOTIF_ETAPE`) : un chiffre en première
+ * position est impossible aujourd'hui, donc il ne peut rien vouloir dire
+ * d'autre. Aucun code déjà dicté dans une classe ne change de sens.
+ *
+ * ET UNE SEULE LETTRE DE DRAPEAUX, pas un par réglage : « 9L » coûte deux
+ * caractères à dire, et il en restera vingt-cinq pour les réglages qu'on
+ * voudra faire voyager ensuite.
+ */
+const ENTETE = '9';
+const DRAPEAU_LIBRE = 'L';
+
 function decouperChaine(code) {
     const brut = normaliserCourt(code);
     if (!brut) return null;
     const etapes = [];
+    let libre = false;
     let i = 0;
+    if (brut[0] === ENTETE) {
+        // L'EN-TÊTE EST DE LONGUEUR FIXE : un chiffre, une lettre. Un code qui
+        // s'arrête après le chiffre, ou qui porte une lettre inconnue, est
+        // REFUSÉ — pas interprété de travers. C'est la règle de la lettre de
+        // contrôle, et elle vaut ici aussi : mieux vaut « code inconnu » qu'un
+        // parcours dont l'élève ne saura jamais qu'il n'est pas le bon.
+        if (brut[1] !== DRAPEAU_LIBRE) return null;
+        libre = true;
+        i = 2;
+        if (i >= brut.length) return null;
+    }
     while (i < brut.length) {
         MOTIF_ETAPE.lastIndex = i;
         const m = MOTIF_ETAPE.exec(brut);
@@ -540,13 +580,13 @@ function decouperChaine(code) {
         }
         etapes.push({ exerciseId, questions: n, overrides });
     }
-    return etapes.length ? etapes : null;
+    return etapes.length ? { etapes, libre } : null;
 }
 
 /** Le découpage d'un code à UN seul exercice, ou null. */
 function decouperCodeCourt(code) {
-    const etapes = decouperChaine(code);
-    return (etapes && etapes.length === 1) ? etapes[0] : null;
+    const lu = decouperChaine(code);
+    return (lu && lu.etapes.length === 1) ? lu.etapes[0] : null;
 }
 
 /**
@@ -701,6 +741,12 @@ function politiqueOrdinaire(policy) {
     const def = resolvePolicy(defaultPolicy());
     if (pol.mode !== def.mode || pol.grading) return false;
     for (const cle of Object.keys(CLES_POLITIQUE)) {
+        // `ordreLibre` VOYAGE MAINTENANT DANS L'EN-TÊTE (« 9L »), donc il ne
+        // force plus le format complet. C'est le seul réglage dans ce cas, et
+        // il y est pour une raison nommée : Rémy, sur la session express —
+        // « tout doit être ouvert ». Tout autre réglage hors d'usine fait
+        // toujours basculer en base64, et c'est voulu.
+        if (cle === 'ordreLibre') continue;
         // `showCorrection` se déduit de `correction` : le comparer deux fois
         // ne peut que se contredire (voir `compact`).
         if (cle === 'showCorrection' && pol.correction) continue;
@@ -745,7 +791,9 @@ function chaineCourte(path) {
     // d'accueil. « Sudoku, Mathdoku » à la place de « Les jeux de la 6e B »,
     // c'est perdre la boîte elle-même. Le format complet, lui, porte le nom.
     if (p.boite) return '';
-    let out = '';
+    // L'EN-TÊTE, s'il y a quelque chose à dire. Voir `ENTETE` : deux
+    // caractères, et le code reste dictable.
+    let out = p.policy && p.policy.ordreLibre ? ENTETE + DRAPEAU_LIBRE : '';
     for (const s of p.steps) {
         if (!etapeSimple(s)) return '';
         const code = codeCourt(s.exerciseId);
@@ -1115,8 +1163,13 @@ export const Shortcodes = {
                 // exercices » — s'applique donc ici aussi : c'est la MÊME
                 // fonction, et un parcours reçu par code se nomme comme le
                 // même parcours construit à la main.
-                const path = makePath('', [], defaultPolicy());
-                path.steps = chaine.map((e, i) => {
+                // L'EN-TÊTE REFAIT LA POLITIQUE : « 9L » rouvre toutes les
+                // étapes. Sans cette ligne, le code se lirait sans erreur et
+                // l'élève retrouverait l'ordre imposé — un défaut muet, du
+                // genre qu'on cherche dans le mauvais fichier.
+                const path = makePath('', [],
+                    chaine.libre ? { ...defaultPolicy(), ordreLibre: true } : defaultPolicy());
+                path.steps = chaine.etapes.map((e, i) => {
                     // Le nombre de questions écrit après le tiret, s'il y est —
                     // et le seuil s'en déduit, comme partout ailleurs.
                     const n = e.questions || telQuel(e.exerciseId);

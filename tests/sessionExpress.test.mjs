@@ -26,14 +26,24 @@ import { jeuxDuBac } from '../js/core/bacASable.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { Shortcodes } from '../js/core/shortcodes.js';
 import { defaultPolicy } from '../js/core/policy.js';
+import { makePath, makeStep } from '../js/core/path.js';
+import { exercices } from '../js/data/catalog.js';
 
 const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const JEUX = jeuxDuBac(getExerciseById);
 
-test('LE CODE EXPRESS SE DICTE — c\'est lui qui commande', () => {
-    // MESURÉ : avec `ordreLibre: true` et `adaptive: false`, le code sortait en
-    // base64 — 186 caractères. Avec les réglages d'usine, « MHC-MML-CTM ».
-    // L'ordre libre était MON idée, le code est SA demande.
+test('LE CODE EXPRESS SE DICTE, ET IL DIT « TOUT EST OUVERT »', () => {
+    // DEUX DEMANDES QUI SE BATTAIENT, ET QUI TIENNENT MAINTENANT ENSEMBLE.
+    //
+    // « on pourrait même donner un code express » : avec `ordreLibre`, il
+    // sortait en base64 — 186 caractères, impossibles à épeler devant une
+    // classe. J'avais donc retiré l'ordre libre. Puis : « il faut pas que la
+    // session express attende que l'on fasse un jeu pour en avoir un autre,
+    // tout doit être ouvert. »
+    //
+    // La chaîne courte a appris à dire « ordre libre » en DEUX caractères
+    // (« 9L », voir `ENTETE` dans shortcodes.js). Cette épreuve garde les deux
+    // moitiés : le code se dicte ET il rouvre tout à l'arrivée.
     for (const minutes of [5, 10, 15, 20]) {
         const p = faireUneSessionExpress({ jeux: JEUX, minutes });
         const code = Shortcodes.encodePath(p);
@@ -43,20 +53,69 @@ test('LE CODE EXPRESS SE DICTE — c\'est lui qui commande', () => {
         // UN CODE DICTÉ S'ÉPELLE EN QUELQUES SECONDES. Trois lettres et un
         // tiret par jeu : six jeux font vingt-trois caractères, et c'est la
         // borne haute qu'on accepte à voix haute.
-        assert.ok(code.length <= 24, `${minutes} min : « ${code} » est trop long à dicter`);
+        // SIX JEUX FONT VINGT-SIX CARACTÈRES AVEC L'EN-TÊTE : « 9L » plus
+        // quatre par jeu. C'est la borne haute de ce qui s'épelle d'une traite.
+        assert.ok(code.length <= 26, `${minutes} min : « ${code} » est trop long à dicter`);
         assert.ok(!code.includes('M2-'), 'un code en base64 ne se dicte pas');
+        // ET IL ROUVRE TOUT À L'ARRIVÉE. Sans cette ligne, le code se lirait
+        // sans erreur et l'élève retrouverait l'ordre imposé — un défaut muet.
+        const relu = Shortcodes.decodePath(code);
+        assert.equal(relu.policy.ordreLibre, true,
+            `${minutes} min : « ${code} » n'ouvre pas tout chez l'élève`);
+        assert.equal(relu.steps.length, p.steps.length);
     }
 });
 
-test('LA POLITIQUE EST CELLE D\'USINE, ET RIEN D\'AUTRE', () => {
-    // LA GARDE QUI TIENT LA PRÉCÉDENTE. Le jour où quelqu'un rajoute un
-    // réglage ici — avec une bonne raison, comme j'en avais une —, le code
-    // repasse en base64 sans que rien ne rougisse à la lecture. Celle-ci
-    // rougit.
-    const p = politiqueExpress(), d = defaultPolicy();
-    for (const cle of new Set([...Object.keys(d), ...Object.keys(p)])) {
-        assert.deepEqual(p[cle], d[cle],
+test('TOUT EST OUVERT — « il faut pas qu\'elle attende qu\'on fasse un jeu »', () => {
+    // RÉMY, 18 novembre, mot pour mot : « il faut pas que la session express
+    // attende que l'on fasse un jeu pour en avoir un autre, tout doit être
+    // ouvert. » Dix minutes, trois jeux, et il faut finir le premier pour voir
+    // le second : on n'en verra qu'un.
+    //
+    // C'EST `ordreLibre` QUI OUVRE, ET RIEN D'AUTRE — lu dans
+    // `core/recompenses.js` : sans lui, `routeOuverte` barre par la
+    // chronologie, seuil ou pas de seuil.
+    const p = faireUneSessionExpress({ jeux: JEUX, minutes: 10 });
+    assert.equal(p.policy.ordreLibre, true);
+    // ET LE RESTE EST D'USINE : tout autre réglage ferait repasser le code en
+    // base64, puisque l'en-tête ne sait dire QUE l'ordre libre.
+    const d = defaultPolicy();
+    for (const cle of new Set([...Object.keys(d), ...Object.keys(p.policy)])) {
+        if (cle === 'ordreLibre') continue;
+        assert.deepEqual(p.policy[cle], d[cle],
             `« ${cle} » sort de l'usine : le code express cessera de se dicter`);
+    }
+});
+
+test('L\'EN-TÊTE NE CHANGE AUCUN CODE DÉJÀ DICTÉ', () => {
+    // LA PEUR LÉGITIME QUAND ON TOUCHE À UN FORMAT : trente élèves ont le code
+    // d'une séance écrit dans leur cahier. Un chiffre ajouté en tête ne doit
+    // rien vouloir dire de nouveau pour eux.
+    //
+    // IL NE PEUT PAS : une chaîne d'étapes commence TOUJOURS par trois lettres
+    // (`MOTIF_ETAPE`), donc un chiffre en première position était impossible
+    // jusqu'ici. On le vérifie sur de vrais parcours plutôt que de le déduire.
+    let vus = 0;
+    for (let n = 1; n <= 3; n++) {
+        for (let k = 0; k + n <= 60; k += 7) {
+            const pas = exercices.slice(k, k + n)
+                .map((e, i) => makeStep(e.id, {}, { stepId: 's' + i }));
+            const code = Shortcodes.encodePath(makePath('Essai', pas, defaultPolicy()));
+            if (!code || code.startsWith('M2-')) continue;
+            vus++;
+            assert.ok(!code.startsWith('9'),
+                `un parcours ordinaire ne doit pas porter d'en-tête : « ${code} »`);
+            const relu = Shortcodes.decodePath(code);
+            assert.equal(relu.steps.length, n, `« ${code} » ne se relit plus`);
+            assert.equal(!!relu.policy.ordreLibre, false,
+                `« ${code} » ouvre tout alors qu'il ne le dit pas`);
+        }
+    }
+    assert.ok(vus >= 15, `seulement ${vus} codes ordinaires vérifiés`);
+    // ET UN EN-TÊTE ABÎMÉ EST REFUSÉ, pas interprété de travers : c'est la
+    // règle de la lettre de contrôle, et elle vaut pour l'en-tête aussi.
+    for (const faux of ['9', '9L', '9X-MHC', '9-MHC']) {
+        assert.equal(Shortcodes.decodePath(faux), null, `« ${faux} » est accepté`);
     }
 });
 

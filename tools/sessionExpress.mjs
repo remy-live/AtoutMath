@@ -113,8 +113,10 @@ if (code) {
     // IL SE DICTE : trois lettres par jeu, un tiret entre, et rien d'autre.
     // Un code en base64 commence par « M2- » et fait cent quatre-vingts
     // caractères — il ne s'épelle pas devant une classe.
+    // L'EN-TÊTE « 9L » EN TÊTE — c'est lui qui dit « tout est ouvert », et il
+    // ne coûte que deux caractères à dicter. Voir `ENTETE` dans shortcodes.js.
     dire('il se dicte à voix haute',
-        /^[A-Z]{3}(-[A-Z]{3})*$/.test(code.texte) && code.texte.length <= 24,
+        /^9L(-[A-Z]{3})+$/.test(code.texte) && code.texte.length <= 26,
         `« ${code.texte} », ${code.texte.length} caractères`);
     // ET IL SE LIT DE LOIN : il est tenu à bout de bras au-dessus d'une classe.
     dire('et il s\'écrit assez grand pour être lu', code.taille >= 24,
@@ -159,6 +161,22 @@ for (let i = 0; i < 14 && !vu; i++) {
 }
 dire('l\'élève voit la session express arriver, sans rien lancer', !!vu,
     vu || 'rien dans le bandeau du moment après 28 s');
+
+// ── ET LES TROIS JEUX SONT OUVERTS D'EMBLÉE ───────────────────────────────
+//
+// RÉMY, 18 novembre : « il faut pas que la session express attende que l'on
+// fasse un jeu pour en avoir un autre, tout doit être ouvert. »
+//
+// LA MESURE DISCRIMINE, ET C'EST VÉRIFIÉ : la même sonde lancée avec
+// `ordreLibre: false` compte DEUX cadenas sur trois jeux, et zéro avec. Une
+// mesure qui rendrait zéro dans les deux cas ne garderait rien.
+const cadenas = await eleve.evaluate(() => ({
+    verrous: (document.body.innerText.match(/🔒/g) || []).length,
+    debloquer: (document.body.innerText.match(/à débloquer/g) || []).length
+}));
+dire('aucun jeu n\'attend qu\'on finisse le précédent',
+    cadenas.verrous === 0 && cadenas.debloquer === 0,
+    `${cadenas.verrous} cadenas, ${cadenas.debloquer} « à débloquer »`);
 if (photos) await s.photo('body', 'tools/tmp/express-prof.png');
 
 dire('aucune erreur de page côté professeur', s.erreurs.length === 0,

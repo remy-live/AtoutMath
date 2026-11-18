@@ -8030,3 +8030,69 @@ tablettes prêtées, devant une classe qui n'est pas la sienne. Un code dicté n
 suppose rien : il se dit à voix haute et il s'ouvre. Les deux portes mènent à
 la même séance, et c'est la séance qui doit être prête en un clic, pas la
 classe.
+
+### Les Petites Ailes, la frontière : ce n'est pas une pente, c'est un VIDE
+
+> « Dans le jeu tiny wings quand on changeait de monde, il fallait faire un
+> long vol plané car le monde d'avant se terminait et le monde d'après
+> commençait plus loin et il était plus réactif. Là même en ne faisant rien,
+> on gagne quand même et l'appui donnait vraiment une accélération »
+
+**MA CORRECTION DU 17 NOVEMBRE ÉTAIT À CÔTÉ.** J'avais fait DESCENDRE le sol de
+sept cents pixels à chaque frontière, et le raisonnement tenait debout : « ce
+qui allonge un vol n'est pas l'élan vers le haut, c'est le sol qui part ».
+C'est vrai, et c'est insuffisant — un sol qui descend reste un SOL. On le
+rattrape, on roule dessus, et l'on passe sans rien faire.
+
+**CE QU'IL DÉCRIT EST UN TROU.** « le monde d'avant se terminait et le monde
+d'après commençait plus loin » : le terrain s'arrête, il y a du vide, et le
+monde suivant reprend à distance. On ne le franchit pas en roulant — il n'y a
+rien sous les roues. Il faut arriver avec de la vitesse ET de la hauteur, donc
+avoir travaillé les deux bosses d'avant. C'est la seule forme qui rend
+« ne rien faire » perdant à la frontière, et c'est exactement ce qu'il dit :
+« là même en ne faisant rien, on gagne quand même ».
+
+**ET DEUX AUTRES MOTS, QUE JE NE DOIS PAS LIRE COMME DU DÉCOR.** « il était
+plus réactif » et « l'appui donnait vraiment une accélération » : l'appui, chez
+moi, ne fait que plonger plus vite (`GRAVITE_PLONGEE`) et coller à la pente. Il
+ne pousse pas. Dans Tiny Wings, piquer dans une descente REND de la vitesse, et
+cela se sent dans les doigts à l'instant où l'on appuie.
+
+### La session express : tout doit être ouvert
+
+> « il faut pas que la session express attende que l'on fasse un jeu pour en
+> avoir un autre, tout doit être ouvert. »
+
+**C'EST L'ARBITRAGE D'HIER, ET IL TOMBE DU BON CÔTÉ CETTE FOIS.** J'avais écrit
+`ordreLibre: true` — « il reste dix minutes, on commence tout de suite, par le
+jeu qu'on veut » — puis je l'ai retiré, parce que ce réglage ne tient pas dans
+le code dicté et faisait passer « MHC-MML-CTM » à cent quatre-vingt-six
+caractères de base64. J'avais gardé le code et noté, dans le fichier : « le
+jour où la chaîne courte saura dire ordre libre (un seul caractère suffirait),
+ce choix se rouvre ».
+
+**IL VIENT DE SE ROUVRIR, ET CE N'EST PLUS UN CHOIX.** Dix minutes, trois jeux,
+et il faut finir le premier pour voir le second : on n'en verra qu'un. Rémy ne
+demande pas une préférence, il décrit ce qui rend la session inutilisable.
+
+Donc : on apprend à la chaîne courte à dire « ordre libre ». Un caractère, et
+les deux demandes tiennent ensemble.
+
+**CE QUI A ÉTÉ FAIT, ET CE QUI A ÉTÉ MESURÉ.** Trois ouvrages, et des chiffres
+pris sur le chemin de l'élève (`node tools/volPlaneDesAiles.mjs`) :
+
+- **le vide** — 340 px de rien, avec la mer au fond, à chaque frontière. Le
+  terrain s'arrête, le monde suivant reprend plus loin. En ne faisant rien, on
+  perd au premier trou, **au bout de 18,5 secondes**, et l'écran dit pourquoi :
+  « Tu es tombé dans le vide — monde 2 », avec le remède en une phrase.
+- **le tremplin** — 230 px de descente puis 220 de saut, juste avant le trou.
+  C'est là qu'on prend l'élan du vol plané : l'oiseau y arrive à 650–780 px/s et
+  en repart en l'air. Le joueur ordinaire franchit 43 vides sur 48 ; celui qui
+  ne fait rien, aucun.
+- **l'appui qui pousse** — `POUSSEE_PLONGEE`, proportionnée à la pente : piquer
+  dans une descente REND de la vitesse. Mesuré au temps d'un geste (trois
+  dixièmes de seconde) : **159 px/s de gain** là où il n'y en avait que 59. Sur
+  la tablette, à durée égale, appuyer mène **1,77 fois plus loin**.
+
+Et la nuit des treize mondes a été refaite entièrement : elle est DÉRIVÉE de
+l'allure mesurée, que le vide venait de périmer.

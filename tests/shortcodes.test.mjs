@@ -411,14 +411,31 @@ test('LA CHAÎNE COURTE NE TAIT JAMAIS UN RÉGLAGE', () => {
     assert.ok(Shortcodes.encodePath(seuilBonus).startsWith('M2-'),
         'un seuil de récompense déplacé doit voyager');
 
-    // L'ORDRE LIBRE CHANGE CE QUE L'ÉLÈVE PEUT FAIRE : un parcours partagé qui
+    // ── L'ORDRE LIBRE : LA SEULE EXCEPTION, ET ELLE TIENT EN DEUX LETTRES ─
+    //
+    // L'ordre libre CHANGE CE QUE L'ÉLÈVE PEUT FAIRE : un parcours partagé qui
     // le perdrait rendrait au collègue une séance verrouillée dans l'ordre.
+    // Jusqu'au 18 novembre, il faisait donc basculer la chaîne en base64 — 186
+    // caractères, qu'on n'épelle pas devant une classe.
+    //
+    // RÉMY : « il faut pas que la session express attende que l'on fasse un jeu
+    // pour en avoir un autre, tout doit être ouvert », et, la veille : « on
+    // pourrait même donner un code express ». Les deux demandes ne tenaient
+    // ensemble qu'à une condition : que la chaîne SACHE dire l'ordre libre.
+    // Elle le dit maintenant en tête, avec « 9L » — voir `ENTETE` dans
+    // `core/shortcodes.js`.
+    //
+    // CE QUI EST GARDÉ ICI N'A PAS CHANGÉ : le réglage ne doit pas se perdre.
+    // Ce qui a changé est le prix — deux caractères au lieu de cent quatre-
+    // vingts.
     const libre = makePath('X', [makeStep('calc-sudoku', {}, {}), makeStep('geo-thales', {}, {})],
         defaultPolicy({ ordreLibre: true }));
     libre.policy.ordreLibre = true;
-    assert.ok(Shortcodes.encodePath(libre).startsWith('M2-'));
+    const codeLibre = Shortcodes.encodePath(libre);
+    assert.equal(codeLibre, '9L-SUD-TRY', 'l\'ordre libre doit se dicter, pas se coller');
+    assert.ok(codeLibre.length < 20, `${codeLibre.length} caractères : ça ne s'épelle pas`);
     assert.equal(resolvePolicy(normalizePath(
-        Shortcodes.decodePath(Shortcodes.encodePath(libre))).policy).ordreLibre, true);
+        Shortcodes.decodePath(codeLibre)).policy).ordreLibre, true);
 
     // Et le cas ordinaire reste court : rien ne s'est mis à tout refuser.
     const simple = makePath('X', [

@@ -45,13 +45,14 @@
 // TROP RAPIDE » sans qu'aucun monde ait changé. On les a recalculées à la main
 // deux fois ; la deuxième, treize lignes à reporter une par une.
 //
-// La pression monte de 60 % au premier monde à 86 % au SIXIÈME, puis s'y
-// tient : c'est la difficulté, et elle ne peut pas venir du relief seul, qui
-// doit rester franchissable. Voir `MONTEE` dans le noyau. Le premier monde
+// La pression VOULUE monte de 56 % au premier monde à 78 % au SIXIÈME, puis
+// s'y tient : c'est la difficulté, et elle ne peut pas venir du relief seul,
+// qui doit rester franchissable. Voir `MONTEE` dans le noyau. Le premier monde
 // garde en plus une borne dure — sa nuit reste sous l'allure de qui ne touche
-// à rien, car on y apprend le geste.
+// à rien, car on y apprend le geste —, et c'est elle qui l'emporte : mesuré,
+// il sort à 47 % et non à 56 %.
 import {
-    MONDES, LONGUEUR_MONDE, relief, pas, etatInitial, penteMax, MONTEE
+    MONDES, LONGUEUR_MONDE, relief, pas, etatInitial, penteMax, MONTEE, dansLaMer, departDuMonde
 } from '../js/core/petitesAiles.js';
 
 /** L'angle le plus raide d'un monde, en degrés. Au-delà de 65°, c'est un mur. */
@@ -64,13 +65,24 @@ const GRAINES = [0.7, 1.9, 3.3];
 
 /** Une course de `secondes` dans un monde, et la vitesse moyenne obtenue. */
 function courir(monde, joue, secondes = 30, graine = 0.7) {
-    let e = etatInitial(graine, (monde.id - 1) * LONGUEUR_MONDE);
+    let e = etatInitial(graine, departDuMonde(monde.id));
+    // ── LA COURSE S'ARRÊTE À LA MER, parce que la partie s'y arrête ───────
+    //
+    // Depuis que la frontière est un VIDE (18 novembre), l'oiseau qui le
+    // manque tombe à la mer et perd. Le faire glisser ensuite sur le fond
+    // pendant la moitié de la mesure donnait une allure que personne ne joue,
+    // et c'est de cette allure que sont dérivées les treize vitesses de nuit :
+    // l'outil fabriquait donc des nuits trop lentes pour un jeu qu'on perd, et
+    // le tableau s'en plaignait sans dire pourquoi.
+    let vecu = 1 / 60;
     for (let t = 0; t < secondes; t += 1 / 60) {
         const sol = relief(e.x, graine);
         e = pas(e, 1 / 60, joue(sol.pente, sol.courbure), graine);
+        vecu = t + 1 / 60;
+        if (dansLaMer(e)) break;
     }
-    const depart = (monde.id - 1) * LONGUEUR_MONDE;
-    return (e.x - depart) / secondes;
+    const depart = departDuMonde(monde.id);
+    return (e.x - depart) / vecu;
 }
 
 /** L'allure moyenne sur les trois paysages — un seul en dirait trop peu. */
@@ -94,9 +106,14 @@ function jusquOu(joue, graine = 0.7) {
         const m = MONDES[Math.max(0, Math.min(MONDES.length - 1,
             Math.floor(e.x / LONGUEUR_MONDE)))];
         nuit += m.nuit / 60;
-        if (nuit >= e.x) return { x: e.x, t, monde: m.id };
+        // DEUX FAÇONS DE PERDRE, ET L'ON DIT LAQUELLE EST ARRIVÉE. La nuit
+        // n'est plus la seule : depuis le 18 novembre, le vide de la frontière
+        // noie celui qui ne vole pas. Ne compter que la nuit annonçait « ne
+        // rien faire perd en 93 s » là où, en vrai, on coule au premier vide.
+        if (dansLaMer(e)) return { x: e.x, t, monde: m.id, par: 'la mer' };
+        if (nuit >= e.x) return { x: e.x, t, monde: m.id, par: 'la nuit' };
     }
-    return { x: e.x, t: 600, monde: MONDES.length };
+    return { x: e.x, t: 600, monde: MONDES.length, par: 'rien' };
 }
 
 const loin = process.argv.includes('--loin');
@@ -167,17 +184,17 @@ if (loin) {
         // même jeu — Rémy, en jouant : « je ne peux pas perdre même si je ne
         // fais rien ».
         console.log(`    paysage ${g} · bien joué : monde ${bon.monde}, `
-            + `${Math.round(bon.x)} px en ${bon.t.toFixed(0)} s`
+            + `${Math.round(bon.x)} px en ${bon.t.toFixed(0)} s (${bon.par})`
             + `   ·   sans rien faire : monde ${rien.monde}, ${Math.round(rien.x)} px`
-            + ` en ${rien.t.toFixed(0)} s`);
+            + ` en ${rien.t.toFixed(0)} s (${rien.par})`);
     }
     console.log(`\n    (il y a ${MONDES.length} mondes de ${LONGUEUR_MONDE} px, `
         + `soit ${MONDES.length * LONGUEUR_MONDE} px en tout)`);
 }
 
 if (nuits) {
-    console.log(`\n  LES \`nuit:\` À RECOPIER dans \`MONDES\` (60 % → 86 % au monde ${MONTEE},`
-        + ' puis 86 %) :');
+    console.log(`\n  LES \`nuit:\` À RECOPIER dans \`MONDES\` (56 % → 78 % au monde ${MONTEE},`
+        + ' puis 78 %) :');
     // DEUX CONTRAINTES, PAS UNE, SUR LA MONTÉE — et elles ne disent pas la même
     // chose. L'allure BAISSE quand le relief se raidit, donc une pression qui
     // monte peut donner une nuit plus LENTE que celle du monde précédent. Or on

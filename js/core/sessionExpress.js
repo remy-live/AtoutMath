@@ -82,28 +82,32 @@ export function combienDeJeux(minutes) {
 }
 
 /**
- * LA POLITIQUE D'UNE SESSION EXPRESS : CELLE D'USINE, ET C'EST UN ARBITRAGE.
+ * LA POLITIQUE D'UNE SESSION EXPRESS : D'USINE, PLUS L'ORDRE LIBRE.
  *
- * J'avais écrit `ordreLibre: true` et `adaptive: false`, avec de bonnes
- * raisons : « il reste 10 minutes » veut dire qu'on commence tout de suite,
- * par le jeu qu'on veut, et le tirage adaptatif n'a pas de progression à
- * corriger en dix minutes de jeu.
+ * ── L'ARBITRAGE D'HIER, ET POURQUOI IL EST TOMBÉ ──────────────────────────
  *
- * MESURÉ, ET LA MESURE A TRANCHÉ. Ces deux réglages ne sont pas ceux d'usine,
- * donc ils doivent VOYAGER dans le code — et le code bascule alors en base64 :
- * 186 caractères au lieu de « MHC-MML-CTM ». Or Rémy a demandé « on pourrait
- * même donner un code express », et un code express de 186 caractères ne
- * s'épelle pas à voix haute devant une classe à trois minutes de la sonnerie.
+ * J'avais écrit `ordreLibre: true`, puis je l'avais retiré : ce réglage n'est
+ * pas celui d'usine, donc il faisait voyager tout le parcours en base64 — 186
+ * caractères au lieu de « MHC-MML-CTM ». Rémy avait demandé « on pourrait même
+ * donner un code express », et un code de 186 caractères ne s'épelle pas
+ * devant une classe. J'avais gardé le code, et noté ici : « le jour où la
+ * chaîne courte saura dire ordre libre, ce choix se rouvre ».
  *
- * L'ORDRE LIBRE ÉTAIT MON IDÉE, LE CODE EST SA DEMANDE. On garde le code. Et
- * l'on ne perd pas grand-chose : sans seuil, une étape se termine dès qu'elle
- * est jouée, donc personne ne reste bloqué sur le premier jeu.
+ * IL S'EST ROUVERT LE LENDEMAIN, ET CE N'ÉTAIT PLUS UN CHOIX. RÉMY : « il
+ * faut pas que la session express attende que l'on fasse un jeu pour en avoir
+ * un autre, tout doit être ouvert. » Dix minutes, trois jeux, et il faut finir
+ * le premier pour voir le second : on n'en verra qu'un.
  *
- * LE JOUR OÙ LA CHAÎNE COURTE SAURA DIRE « ordre libre » (un seul caractère
- * suffirait), ce choix se rouvre — et c'est la seule ligne à changer ici.
+ * LA CHAÎNE A DONC APPRIS À LE DIRE. Deux caractères en tête — « 9L » —, et
+ * les deux demandes tiennent ensemble : « 9L-MHC-MML-CTM » se dicte encore, et
+ * tout est ouvert. Voir `ENTETE` dans `core/shortcodes.js`.
+ *
+ * `adaptive` RESTE D'USINE, lui : il visait les notions fragiles, et dix
+ * minutes de jeux n'ont pas de progression à corriger — mais le retirer
+ * coûterait un second drapeau pour un effet que personne ne verrait.
  */
 export function politiqueExpress() {
-    return defaultPolicy();
+    return { ...defaultPolicy(), ordreLibre: true };
 }
 
 /**

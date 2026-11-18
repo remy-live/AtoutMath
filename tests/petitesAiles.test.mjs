@@ -11,9 +11,32 @@ import {
     GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, FROTTEMENT_SOL, FROTTEMENT_APPUI,
     niveauFrontiere, BOSSE_FRONTIERE, DESCENTE_FRONTIERE, VITESSE_BATTEMENT,
     PESANTEUR_GLISSE_APPUI, quitteLeSol,
-    POUSSEE, PESANTEUR_GLISSE, suiviArret, estArrete, DUREE_ARRET
+    POUSSEE, PESANTEUR_GLISSE, suiviArret, estArrete, DUREE_ARRET,
+    dansLeVide, dansLaMer, bordsDuVide, LONGUEUR_TREMPLIN, VIDE_FRONTIERE,
+    SAUT_TREMPLIN, TREMPLIN, POUSSEE_PLONGEE, PENTE_PLONGEE, departDuMonde, PROFONDEUR_MER
 } from '../js/core/petitesAiles.js';
 import { getExerciseById } from '../js/data/catalog.js';
+
+/**
+ * ── LE VIDE DE LA FRONTIÈRE, ET CE QU'IL CHANGE POUR CES ÉPREUVES ─────────
+ *
+ * RÉMY, 18 novembre : « le monde d'avant se terminait et le monde d'après
+ * commençait plus loin […] Là même en ne faisant rien, on gagne quand même ».
+ *
+ * Le sol S'ARRÊTE maintenant à chaque frontière et reprend plus loin, plus
+ * bas. Plusieurs gardes écrites ici demandaient l'exact contraire — « le sol
+ * est continu », « la marche se raccorde sans cassure » —, et elles avaient
+ * raison de leur temps : la frontière était alors une rampe. Elles changent de
+ * PRÉMISSE, pas d'objet : ce qu'elles gardent reste « aucune falaise là où
+ * l'oiseau ROULE », et l'oiseau ne roule pas au-dessus d'un trou.
+ */
+const dansLaZoneDeSaut = (x) => {
+    for (let k = 0; k < MONDES.length - 1; k++) {
+        const b = bordsDuVide(k);
+        if (x >= b.debut - LONGUEUR_TREMPLIN - 1 && x <= b.fin + LONGUEUR_TREMPLIN + 1) return true;
+    }
+    return false;
+};
 import { SKILLS } from '../js/data/skills.js';
 import { TAGS } from '../js/data/tags.js';
 
@@ -26,23 +49,43 @@ import { TAGS } from '../js/data/tags.js';
  * passer son descripteur à une fonction qui ne le regarde plus.
  */
 function courir(monde, joue, secondes = 30, graine = 0.7) {
-    let e = etatInitial(graine, (monde.id - 1) * LONGUEUR_MONDE);
-    let air = 0, n = 0;
+    let e = etatInitial(graine, departDuMonde(monde.id));
+    let air = 0, n = 0, vecu = 1 / 60;
     for (let t = 0; t < secondes; t += 1 / 60) {
         const sol = relief(e.x, graine);
         e = pas(e, 1 / 60, joue(sol.pente, sol.courbure), graine);
-        if (!e.auSol) air++;
-        n++;
+        // ── LE VOL AU-DESSUS D'UN VIDE N'EST PAS UN SAUT DE BOSSE ─────────
+        //
+        // Depuis le 18 novembre, la frontière est un TROU : on le survole,
+        // qu'on appuie ou non, parce qu'il n'y a plus de sol. Le compter dans
+        // « part du temps en l'air » ferait dire à cette mesure que celui qui
+        // appuie sans arrêt décolle — alors qu'il tombe.
+        if (!dansLaZoneDeSaut(e.x)) {
+            if (!e.auSol) air++;
+            n++;
+        }
         assert.ok(Number.isFinite(e.x) && Number.isFinite(e.y) && Number.isFinite(e.vx),
             `la simulation a divergé à t = ${t.toFixed(2)}`);
+        vecu = t + 1 / 60;
+        // ── ET L'ALLURE SE MESURE SUR CE QUI SE JOUE, PAS SUR TRENTE SECONDES
+        //
+        // Depuis le 18 novembre, l'oiseau qui manque un vide TOMBE À LA MER et
+        // la partie est finie. Continuer à le faire glisser sur le fond de la
+        // mer pendant les quinze secondes qui restent mesurait une allure que
+        // personne ne joue — et c'est de cette allure que sont DÉRIVÉES les
+        // treize vitesses de nuit. « Une mesure qui n'emprunte pas le chemin
+        // de l'utilisateur ne mesure pas son problème. »
+        if (dansLaMer(e)) break;
     }
-    const depart = (monde.id - 1) * LONGUEUR_MONDE;
-    return { x: e.x, vx: e.vx, partAir: air / n, vitesse: (e.x - depart) / secondes };
+    const depart = departDuMonde(monde.id);
+    return { x: e.x, vx: e.vx, partAir: air / n, vitesse: (e.x - depart) / vecu };
 }
 
 const PARFAIT = (pente) => pente < 0;
 const JAMAIS = () => false;
 const TOUJOURS = () => true;
+/** Le contre-geste : appuyer en MONTÉE, l'inverse de ce que le jeu enseigne. */
+const CONTRE = (pente) => pente > 0;
 
 /** La vitesse moyenne d'un joueur sur un monde, sur trois paysages. */
 function allure(monde, joue) {
@@ -83,21 +126,39 @@ test('LE SOL EST CONTINU D\'UN MONDE À L\'AUTRE', () => {
     // l'amplitude et la période changent d'un coup à la frontière : le sol y
     // tombait de 101 pixels et la pente sautait de 0,16 à 2,46 — une falaise
     // verticale, et un oiseau en l'air sans l'avoir demandé.
+    // ── LA PRÉMISSE A CHANGÉ LE 18 NOVEMBRE, ET L'OBJET NON ──────────────
+    //
+    // Le sol s'arrête maintenant au bord de chaque vide : y chercher une
+    // continuité serait demander qu'il n'y ait pas de trou. CE QUI RESTE À
+    // GARDER est exactement ce qui comptait : là où l'oiseau ROULE, aucune
+    // falaise. Les deux bords du trou sont les seules cassures du paysage, et
+    // elles sont voulues.
     for (const graine of [0.3, 1.4, 2.9]) {
         for (let i = 1; i < MONDES.length; i++) {
-            const f = i * LONGUEUR_MONDE;
-            const marche = Math.abs(relief(f + 0.05, graine).hauteur - relief(f - 0.05, graine).hauteur);
-            assert.ok(marche < 1, `frontière ${i} : marche de ${marche.toFixed(1)} px`);
+            const b = bordsDuVide(i - 1);
+            // Juste avant la lèvre et juste après la rive : deux zones de sol
+            // continu, et c'est tout ce qu'on peut exiger.
+            for (const f of [b.debut - 200, b.fin + 200]) {
+                const marche = Math.abs(relief(f + 0.05, graine).hauteur
+                    - relief(f - 0.05, graine).hauteur);
+                assert.ok(marche < 1, `frontière ${i} : marche de ${marche.toFixed(1)} px`);
+            }
         }
     }
-    // Et nulle part ailleurs non plus : on cherche la plus grande marche sur un
-    // dixième de pixel, sur tout le paysage.
+    // Et nulle part ailleurs non plus — hors des vides, qui sont des trous.
     let pire = 0, ou = 0;
     for (let x = 1; x < MONDES.length * LONGUEUR_MONDE; x += 0.5) {
+        if (dansLeVide(x) || dansLeVide(x - 0.5)) continue;
         const d = Math.abs(relief(x, 0.7).hauteur - relief(x - 0.5, 0.7).hauteur);
         if (d > pire) { pire = d; ou = x; }
     }
     assert.ok(pire < 6, `marche de ${pire.toFixed(1)} px en x = ${ou}`);
+    // ET LE TROU, LUI, EST BIEN UN TROU : au bord, le sol tombe d'un coup.
+    for (let i = 0; i < MONDES.length - 1; i++) {
+        const b = bordsDuVide(i);
+        const chute = relief(b.debut - 1, 0.7).hauteur - relief(b.debut + 1, 0.7).hauteur;
+        assert.ok(chute > 300, `vide ${i + 1} : la lèvre ne tombe que de ${chute.toFixed(0)} px`);
+    }
 });
 
 test('le relief reste dans des altitudes jouables', () => {
@@ -111,7 +172,12 @@ test('le relief reste dans des altitudes jouables', () => {
         const dernier = i === MONDES.length - 1;
         const fin = dernier ? LONGUEUR_MONDE : LONGUEUR_MONDE - TRANSITION;
         for (let x = 0; x < fin; x += 3.1) {
-            const h = relief(i * LONGUEUR_MONDE + x, 1.4).hauteur;
+            const abs = i * LONGUEUR_MONDE + x;
+            // LE TREMPLIN ET LE VIDE NE SONT PAS « LE RELIEF DU MONDE » : l'un
+            // est une descente voulue, l'autre un trou. Leur reprocher des
+            // creux trop bas, c'est leur reprocher d'exister.
+            if (dansLaZoneDeSaut(abs)) continue;
+            const h = relief(abs, 1.4).hauteur;
             bas = Math.min(bas, h); haut = Math.max(haut, h);
         }
         // ── ON MESURE CONTRE LE NIVEAU LOCAL, PAS CONTRE `SOL_MOYEN` ──────
@@ -125,9 +191,17 @@ test('le relief reste dans des altitudes jouables', () => {
         // Ce qu'on veut garder est inchangé : l'ONDULATION du relief tient dans
         // l'amplitude du monde. C'est `niveauFrontiere` qui dit par rapport à
         // quoi.
-        assert.ok(bas > niveauFrontiere(i * LONGUEUR_MONDE) - monde.amplitude - 1,
+        // LE NIVEAU DE RÉFÉRENCE SE PREND DANS LE MONDE, PAS À SA FRONTIÈRE.
+        //
+        // La marche est maintenant DANS le vide (voir `videsFranchis`) : à
+        // l'abscisse exacte de la frontière, le sol n'est pas encore descendu,
+        // et comparer le relief du monde 2 à ce niveau-là le trouve « trop
+        // bas » de trois cent quatre-vingts pixels. On lit donc l'altitude là
+        // où le monde est vraiment.
+        const reference = niveauFrontiere(i * LONGUEUR_MONDE + LONGUEUR_MONDE / 2);
+        assert.ok(bas > reference - monde.amplitude - 1,
             `monde ${monde.id} : creux trop bas`);
-        assert.ok(haut < niveauFrontiere(i * LONGUEUR_MONDE) + monde.amplitude + 1,
+        assert.ok(haut < reference + monde.amplitude + 1,
             `monde ${monde.id} : crête trop haute`);
         // Et il monte VRAIMENT : un relief plat ne ferait pas un jeu.
         assert.ok(haut - bas > monde.amplitude, `monde ${monde.id} : relief trop plat`);
@@ -140,16 +214,35 @@ test('la rampe reste ENTRE les deux mondes qu\'elle relie', () => {
     // le monde qu'on rejoint — sans quoi la difficulté ferait une bosse au
     // milieu du raccord au lieu de monter tranquillement.
     for (let i = 0; i < MONDES.length - 1; i++) {
-        // LA BOSSE DE LA FRONTIÈRE S'AJOUTE À L'AMPLITUDE, et c'est voulu :
-        // c'est la crête d'où l'on part pour le grand vol plané. Elle n'est pas
-        // « hors des bornes », elle EST la frontière.
-        const plafond = Math.max(MONDES[i].amplitude, MONDES[i + 1].amplitude)
-            + BOSSE_FRONTIERE;
+        // ── ET LA BORNE N'EST PAS LA MÊME EN HAUT ET EN BAS ──────────────
+        //
+        // Deux ouvrages s'ajoutent à l'amplitude du monde sur cette rampe, et
+        // chacun tire d'un seul côté. Ils ne sont pas « hors des bornes », ils
+        // SONT la frontière :
+        //
+        //   EN HAUT, la bosse de frontière (`BOSSE_FRONTIERE`) : elle fait
+        //   voir de loin qu'un monde se termine. Mesuré, le plus haut point de
+        //   rampe est à 233 px pour une amplitude de 192 (rampe 5→6).
+        //
+        //   EN BAS, la descente du tremplin (`TREMPLIN`) : c'est elle qui
+        //   donne l'allure du saut, et les collines y sont effacées (voir le
+        //   fondu `f` dans `relief`). Mesuré, les douze rampes creusent entre
+        //   198 et 228 px, toutes à 130 px de la frontière — c'est-à-dire le
+        //   fond du tremplin, et non une colline.
+        //
+        // UNE SEULE BORNE SYMÉTRIQUE LES CONFONDAIT : tant que la bosse valait
+        // 150, elle couvrait par accident les 230 px du tremplin, et le jour
+        // où la bosse est descendue à 80 — parce que son flanc faisait un mur
+        // de 65,6° — cette garde est tombée sur du relief parfaitement sain.
+        const monde = Math.max(MONDES[i].amplitude, MONDES[i + 1].amplitude);
+        const enHaut = monde + BOSSE_FRONTIERE;
+        const enBas = monde + TREMPLIN;
         for (let x = LONGUEUR_MONDE - TRANSITION; x <= LONGUEUR_MONDE; x += 2.7) {
             const abs = i * LONGUEUR_MONDE + x;
             const h = relief(abs, 1.4).hauteur - niveauFrontiere(abs);
-            assert.ok(Math.abs(h) < plafond + 1,
-                `rampe ${i + 1}→${i + 2} : ${h.toFixed(0)} px hors des bornes`);
+            assert.ok(h < enHaut + 1 && h > -enBas - 1,
+                `rampe ${i + 1}→${i + 2} : ${h.toFixed(0)} px hors des bornes `
+                + `(${-Math.round(enBas)} … ${Math.round(enHaut)})`);
         }
     }
 });
@@ -200,7 +293,7 @@ test('UN SAUT EST UN VOL, PAS UN SURSAUT', () => {
     // demi-pas de la chute dans `pas` — et elle ne se voit QUE comme ceci, en
     // comptant les décollages et en chronométrant ce qui les suit.
     for (const monde of [MONDES[0], MONDES[2], MONDES[5]]) {
-        let e = etatInitial(0.7, (monde.id - 1) * LONGUEUR_MONDE);
+        let e = etatInitial(0.7, departDuMonde(monde.id));
         let sauts = 0, enAir = 0;
         const dt = 1 / 60;
         for (let t = 0; t < 40; t += dt) {
@@ -311,6 +404,23 @@ test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
         // que le code n'ajoute plus, et l'épreuve annonçait 92 % de dérive sur
         // une conversion hauteur → vitesse parfaitement exacte.
         gagne += 2 * POUSSEE * Math.max(0, 1 - vAvant / VITESSE_BATTEMENT) * vAvant / 60;
+        // ── ET LA POUSSÉE DE PLONGÉE, DEPUIS LE 18 NOVEMBRE ───────────────
+        //
+        // RÉMY : « l'appui donnait vraiment une accélération ». Elle n'est pas
+        // un échange hauteur ↔ vitesse : elle AJOUTE de l'énergie, et c'est
+        // tout son intérêt. Le bilan doit donc la compter, sans quoi l'épreuve
+        // annoncerait une « dérive » qui est exactement l'effet demandé —
+        // mesuré, elle tombait sur du code qui faisait ce qu'on lui demandait.
+        //
+        // Même forme que le battement : une accélération appliquée à v pendant
+        // dt vaut 2·a·v·dt d'énergie.
+        const penteAvant = relief(e.x, g).pente;
+        if (penteAvant < 0) {
+            gagne += 2 * POUSSEE_PLONGEE * Math.min(1, -penteAvant / PENTE_PLONGEE)
+                * vAvant / 60;
+        }
+        // (elle ne vaut que les tout premiers pas, au fond du creux : on
+        //  s'arrête au sommet, voir plus bas.)
         const attendu = Math.sqrt(v0 * v0 - 2 * PESANTEUR_GLISSE_APPUI * (r.hauteur - h0)
             - perdu + gagne);
         ecart = Math.max(ecart, Math.abs(v - attendu) / attendu);
@@ -329,7 +439,28 @@ test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
         // le sommet, quel que soit le départ. Alors on mesure la partie qu'on
         // peut mesurer, et l'on exige qu'elle porte une vraie bosse.
         if (v <= VITESSE_BATTEMENT) break;
-        monte = r.hauteur - h0;
+        // ── ET ON S'ARRÊTE AU SOMMET ──────────────────────────────────────
+        //
+        // « Une colline rend ce qu'elle a pris » se mesure sur la MONTÉE : on
+        // y convertit de la vitesse en hauteur, et l'identité est exacte.
+        // Au-delà du sommet, `POUSSEE_PLONGEE` entre en scène — elle n'agit
+        // que dans la descente — et l'énergie qu'elle ajoute dépend de la
+        // pente À L'INTÉRIEUR du pas, qu'on ne peut pas reconstituer du
+        // dehors : mesuré, 43 % de « dérive » annoncée sur un code qui fait
+        // exactement ce que Rémy a demandé. C'est le même piège que le
+        // battement, deux paragraphes plus haut, et la même réponse : on
+        // mesure la partie qu'on sait mesurer.
+        if (r.pente <= 0 && monte > 20) break;
+        // ── LE PLUS HAUT ATTEINT, ET NON LE DERNIER POINT ─────────────────
+        //
+        // La ligne disait `monte = r.hauteur - h0` : elle mesurait l'altitude
+        // du DERNIER pas. Tant que l'oiseau ralentissait avant la crête, le
+        // dernier pas ÉTAIT le plus haut, et les deux se confondaient. Depuis
+        // que `POUSSEE_PLONGEE` existe — Rémy : « l'appui donnait vraiment une
+        // accélération » —, il ne passe plus jamais sous le seuil : la boucle
+        // va au bout, redescend de l'autre côté, et l'épreuve annonçait « on
+        // n'a grimpé que 91 px » après avoir franchi une bosse de deux cents.
+        monte = Math.max(monte, r.hauteur - h0);
     }
     // On a bien franchi une VRAIE bosse, pas une ondulation.
     // CENT PIXELS, ET LE CHIFFRE SE JUSTIFIE : le creux-à-crête du premier
@@ -587,7 +718,7 @@ test('ON DÉCOLLE AU SOMMET, ET SEULEMENT SI L\'ON VA ASSEZ VITE', () => {
 test('la vitesse reste dans ses bornes, quoi qu\'on fasse', () => {
     for (const monde of MONDES) {
         for (const joue of [PARFAIT, JAMAIS, TOUJOURS, () => Math.random() < 0.5]) {
-            let e = etatInitial(2.2, (monde.id - 1) * LONGUEUR_MONDE);
+            let e = etatInitial(2.2, departDuMonde(monde.id));
             for (let t = 0; t < 40; t += 1 / 60) {
                 const sol = relief(e.x, 2.2);
                 e = pas(e, 1 / 60, joue(sol.pente, sol.courbure), 2.2);
@@ -644,6 +775,138 @@ test('les étoiles se posent à portée de l\'oiseau qui GLISSE', () => {
             assert.ok(e.y - sol >= HAUT_ETOILE_MIN, `étoile sous le sol : ${e.y - sol}`);
             assert.ok(e.y - sol <= HAUT_ETOILE_MAX, `étoile hors de portée : ${e.y - sol}`);
         }
+    }
+});
+
+test('L’APPUI EST UNE ACCÉLÉRATION QUI SE SENT — trois dixièmes de seconde', () => {
+    // RÉMY, 18 novembre : « l'appui donnait vraiment une accélération ».
+    //
+    // ── POURQUOI ON MESURE UN TIERS DE SECONDE, ET NON UNE PARTIE ────────
+    //
+    // On avait d'abord cru que le rapport des allures le dirait. Il ne dit
+    // rien : MESURÉ, « plonger dans les descentes » rend 1,74 fois la distance
+    // de « ne rien faire » avec la poussée, et 1,65 fois SANS — parce que sur
+    // trente secondes c'est la gravité de plongée qui domine, et elle existait
+    // déjà. Une épreuve bâtie là-dessus serait restée verte en supprimant tout
+    // ce que Rémy a demandé.
+    //
+    // CE QU'IL A SENTI EST LA RÉACTIVITÉ, pas la moyenne : le doigt se pose, et
+    // l'oiseau PART. Cela se mesure sur le temps d'un geste — dix-huit images —,
+    // et là l'écart est net : 159 px/s de gain avec la poussée, 59 sans.
+    const DUREE = 0.3;
+    for (const monde of MONDES) {
+        let somme = 0, combien = 0;
+        for (const graine of [0.7, 1.9, 3.3]) {
+            const depart = departDuMonde(monde.id);
+            for (let k = 0; k < 4000; k += 37) {
+                const x = depart + k;
+                // UNE DESCENTE FRANCHE, pas un plat : la poussée est
+                // proportionnée à la pente, et sur le plat elle ne doit rien
+                // donner — c'est un plongeon, pas un moteur.
+                if (relief(x, graine).pente > -0.4) continue;
+                const debut = { x, y: relief(x, graine).hauteur, vx: 400, vy: 0, auSol: true };
+                const courir = (appuie) => {
+                    let e = debut;
+                    for (let t = 0; t < DUREE; t += 1 / 60) e = pas(e, 1 / 60, appuie, graine);
+                    return e.vx;
+                };
+                somme += courir(true) - courir(false);
+                combien++;
+            }
+        }
+        const gain = somme / Math.max(1, combien);
+        assert.ok(combien > 10, `monde ${monde.id} : ${combien} descentes mesurées, c'est trop peu`);
+        assert.ok(gain > 100,
+            `monde ${monde.id} : appuyer dans une descente ne rend que `
+            + `${Math.round(gain)} px/s en ${DUREE} s — ça ne se sent pas`);
+    }
+    // ── ET CE QU'ON NE DIT PAS ICI, PARCE QUE CE SERAIT FAUX ────────────
+    //
+    // J'allais écrire « et sur le plat, l'appui ne pousse pas ». MESURÉ avant
+    // de l'écrire : sur le plat, appuyer rend jusqu'à 241 px/s en trois
+    // dixièmes de seconde — c'est le BATTEMENT D'AILES (`VITESSE_BATTEMENT`),
+    // qui est là exprès pour « qui ne sait pas encore jouer ». Seule
+    // `POUSSEE_PLONGEE` est proportionnée à la pente ; l'appui, lui, sert
+    // partout. Ce que la montée coûte est gardé par une autre épreuve, qui
+    // compare la vitesse en montée et en descente.
+});
+
+test('ON QUITTE LA FALAISE, ON N’Y TOMBE PAS D’UN COUP', () => {
+    // LE DÉFAUT QUI SE VOYAIT À L'ŒIL : l'oiseau arrivé au bord SANS avoir
+    // décollé était TÉLÉPORTÉ au fond de la mer, quatre cent vingt pixels plus
+    // bas, à l'image d'après. Le bloc « au sol » pose `y = sol.hauteur` sans
+    // discuter, et dans le vide `sol.hauteur` est le fond.
+    //
+    // CE N'EST PAS UN DÉTAIL DE DESSIN : c'est le saut lui-même. Un oiseau qui
+    // sort d'une falaise emporte la vitesse qu'il avait, à la hauteur où il
+    // était, et c'est la balistique qui dit s'il franchit — « il fallait faire
+    // un long vol plané » (Rémy). Téléporté au fond, il ne franchit jamais
+    // rien : le vide devient un mur, et le jeu, une loterie.
+    const b = bordsDuVide(0);
+    for (const vx of [120, 200, 320]) {
+        let e = { x: b.debut - 180, y: relief(b.debut - 180, 0.7).hauteur, vx, vy: 0, auSol: true };
+        let avant = null;
+        for (let i = 0; i < 400 && !dansLeVide(e.x); i++) { avant = e; e = pas(e, 1 / 60, false, 0.7); }
+        // À ces vitesses-là, il est encore AU SOL en arrivant au bord : c'est
+        // le cas qu'on veut mesurer, et non celui d'un oiseau déjà en vol.
+        assert.ok(avant && avant.auSol,
+            `à ${vx} px/s l'oiseau a décollé avant le bord : le cas n'est pas mesuré`);
+        assert.equal(e.auSol, false, `à ${vx} px/s il reste « au sol » au-dessus du vide`);
+        const rive = niveauFrontiere(e.x);
+        assert.ok(e.y > rive - 60,
+            `à ${vx} px/s il se retrouve à ${Math.round(e.y)} pour une rive à `
+            + `${Math.round(rive)} : il a été téléporté au fond de la mer `
+            + `(${Math.round(rive - PROFONDEUR_MER)})`);
+    }
+});
+
+test('AUCUNE ÉTOILE NE SE POSE DANS LA MER — on n’appâte pas vers la noyade', () => {
+    // VU SUR LA PHOTO DE LA DÉFAITE (`tools/volPlaneDesAiles.mjs --photos`) :
+    // une étoile flottait SOUS L'EAU, à côté de l'oiseau noyé. Au-dessus d'un
+    // vide, `relief` rend le fond de la mer — PROFONDEUR_MER plus bas —, et les
+    // étoiles du trou se semaient donc là où l'on PERD.
+    //
+    // CE N'EST PAS UNE QUESTION DE DÉCOR : une étoile est la seule chose du jeu
+    // qui dise « viens ici ». La poser au fond du trou, c'est enseigner le
+    // geste qui tue, à l'endroit précis où Rémy veut qu'on plane.
+    const rng = makeRng('etoiles-du-vide');
+    for (let k = 0; k < MONDES.length - 1; k++) {
+        const b = bordsDuVide(k);
+        for (let x = b.debut; x <= b.fin; x += 20) {
+            const e = semerEtoile(x, 1.1, rng);
+            const rive = niveauFrontiere(x);
+            // ELLE PEND AU-DESSUS DU TROU, à portée de l'oiseau qui plane : pas
+            // plus bas que la rive d'où il saute, pas plus haut que sa portée.
+            assert.ok(e.y >= rive + HAUT_ETOILE_MIN,
+                `étoile à ${Math.round(e.y)} pour une rive à ${Math.round(rive)} :`
+                + ` elle est dans la mer (fond à ${Math.round(rive - PROFONDEUR_MER)})`);
+            assert.ok(e.y <= rive + HAUT_ETOILE_MAX,
+                `étoile à ${Math.round(e.y - rive)} px au-dessus de la rive : hors de portée`);
+        }
+    }
+});
+
+test('LE DÉPART D’UN MONDE EST UNE RIVE, JAMAIS LE VIDE', () => {
+    // `departDuMonde` n'existe que pour les mesures, et c'est précisément ce
+    // qui l'a rendue nécessaire : les outils faisaient naître l'oiseau à
+    // `(id − 1) × 6400`, qui est devenu la GUEULE DU TROU le jour où la
+    // frontière est devenue un vide. Il coulait à la première image, et
+    // `tools/allureDesMondes.mjs` annonçait alors treize mondes à 320 px/s —
+    // tous identiques, tous « NUIT TROP RAPIDE », sur un jeu parfaitement sain.
+    //
+    // UNE MESURE QUI PART DANS LA MER NE MESURE RIEN, et elle ne le dit pas.
+    for (const monde of MONDES) {
+        const x = departDuMonde(monde.id);
+        assert.ok(!dansLeVide(x),
+            `le monde ${monde.id} commence dans le vide, en x = ${Math.round(x)}`);
+        // ET IL EST DANS SON MONDE, pas dans le précédent ni au milieu du
+        // suivant : on mesure bien le monde qu'on croit mesurer.
+        assert.equal(mondeDe(x).id, monde.id,
+            `le départ du monde ${monde.id} tombe dans le monde ${mondeDe(x).id}`);
+        // ET L'OISEAU Y TIENT DEBOUT : la piste d'atterrissage est plate, donc
+        // il n'y naît ni en l'air ni dans une falaise.
+        const e = etatInitial(0.7, x);
+        assert.ok(e.auSol, `l'oiseau naît en l'air au monde ${monde.id}`);
     }
 });
 
@@ -814,7 +1077,7 @@ test('LES PETITES AILES SE COMPTENT EN UNE PARTIE, PAS EN CINQ MONDES SUR SIX', 
 
 /** Tout ce qu'une minute de vol apprend : les sauts, la côte, l'arrêt. */
 function analyserVol(monde, joue, graine = 0.7, secondes = 60) {
-    let e = etatInitial(graine, (monde.id - 1) * LONGUEUR_MONDE);
+    let e = etatInitial(graine, departDuMonde(monde.id));
     const sauts = [];
     let vol = null, rampe = 0, rampeMax = 0, arrete = false;
     let montee = { v: 0, n: 0 }, descente = { v: 0, n: 0 };
@@ -894,22 +1157,37 @@ test('ARRÊTÉ = PERDU, et la règle ne tue jamais le bon geste', () => {
     // soixante secondes). Quatre secondes sous 70 px/s est la première durée
     // où le bon joueur ne meurt JAMAIS — et une règle qui punit le bon geste
     // n'enseigne rien.
-    let bonPerdu = 0, tetuPerdu = 0, pireRampeBon = 0;
+    let bonPerdu = 0, contrePerdu = 0, pireRampeBon = 0;
     for (const monde of MONDES) {
         for (const graine of [0.7, 1.9, 3.3]) {
             const bon = analyserVol(monde, PARFAIT, graine);
             if (bon.arrete) bonPerdu++;
             pireRampeBon = Math.max(pireRampeBon, bon.rampeMax);
-            if (analyserVol(monde, TOUJOURS, graine).arrete) tetuPerdu++;
+            if (analyserVol(monde, CONTRE, graine).arrete) contrePerdu++;
         }
     }
     const parties = MONDES.length * 3;
     assert.equal(bonPerdu, 0,
         `le bon joueur perd par arrêt dans ${bonPerdu} parties sur ${parties}`);
-    // ET LA RÈGLE DOIT MORDRE : si personne ne s'arrête jamais, elle n'existe
-    // pas. Celui qui appuie sans arrêt se plaque dans les côtes et cale.
-    assert.ok(tetuPerdu > parties * 0.3,
-        `qui appuie sans arrêt ne perd que dans ${tetuPerdu} parties sur ${parties} :`
+    // ── ET LA RÈGLE DOIT MORDRE : QUI LA PAIE, DEPUIS LE 18 NOVEMBRE ──────
+    //
+    // Si personne ne s'arrête jamais, la règle n'existe pas. Elle était
+    // mesurée sur CELUI QUI APPUIE SANS ARRÊT : il se plaquait dans les côtes
+    // et calait. Il ne cale plus — MESURÉ, 0 partie sur 39 —, et c'est la
+    // demande de Rémy elle-même : « l'appui donnait vraiment une
+    // accélération ». Depuis `POUSSEE_PLONGEE`, ce qu'il gagne dans les
+    // descentes paie le frottement qu'il prend dans les montées.
+    //
+    // CELUI QUI LA PAIE MAINTENANT EST LE CONTRE-GESTE : appuyer en MONTÉE,
+    // c'est-à-dire exactement l'inverse de ce que le jeu enseigne. Mesuré,
+    // il cale dans 39 parties sur 39 (`tools/tmp/arretQui.mjs`).
+    //
+    // ET LE TÊTU N'EST PAS IMPUNI POUR AUTANT — il est puni ailleurs, par le
+    // vide : mesuré, il tombe à la mer dans 39 parties sur 39. Une règle de
+    // moins ne fait pas un jeu plus facile ; elle fait un jeu où la punition
+    // vient de l'endroit qui se voit.
+    assert.ok(contrePerdu > parties * 0.3,
+        `le contre-geste ne cale que dans ${contrePerdu} parties sur ${parties} :`
         + ' la règle ne mord pas');
     // LA MARGE SE DIT, pour qu'un réglage futur voie de combien il la mange.
     assert.ok(pireRampeBon < DUREE_ARRET,
@@ -1005,9 +1283,23 @@ test('LA MARCHE DESCEND POUR DE VRAI, ET ELLE SE RACCORDE SANS CASSURE', () => {
     // chaque frontière.
     for (let i = 1; i < MONDES.length; i++) {
         const bord = i * LONGUEUR_MONDE;
-        assert.ok(niveauFrontiere(bord + 10) < niveauFrontiere(bord - TRANSITION - 10) - 500,
+        const b = bordsDuVide(i - 1);
+        // ── LA MARCHE EST DANS LE VIDE, DEPUIS LE 18 NOVEMBRE ────────────
+        //
+        // Elle était une RAMPE de sept cents pixels avant la frontière, et
+        // cette rampe donnait de la vitesse à tout le monde : mesuré, celui
+        // qui ne fait rien arrivait au bord aussi vite que le bon joueur, et
+        // aucune largeur de trou ne séparait jamais les deux. La marche tombe
+        // donc là où il n'y a plus de sol — personne n'y gagne rien.
+        assert.ok(niveauFrontiere(b.fin + 10) < niveauFrontiere(b.debut - 10) - 300,
             `frontière ${i} : le sol n'est pas descendu`);
-        for (const x of [bord - TRANSITION, bord - 1, bord + 1]) {
+        // ET LES RIVES SONT PLATES : une rive en pente rendrait la vitesse
+        // gratuite, qui est exactement ce qu'on vient de retirer.
+        for (const x of [b.debut - 5, b.fin + 5]) {
+            assert.ok(Math.abs(relief(x, 1.4).pente) < 0.25,
+                `frontière ${i} : la rive penche de ${relief(x, 1.4).pente.toFixed(2)}`);
+        }
+        for (const x of [bord - TRANSITION, b.debut - 1, b.fin + 1]) {
             const a = relief(x - 0.5, 1.4), b = relief(x + 0.5, 1.4);
             // La pente ANNONCÉE doit être la vraie dérivée de la hauteur.
             const vraie = b.hauteur - a.hauteur;
@@ -1024,18 +1316,53 @@ test('ET LA RAMPE NE MONTE PAS PLUS QU’UN MUR — la descente, elle, a le droi
     // mur, c'est un plongeon — et l'oiseau y est en l'air de toute façon. C'est
     // la distinction qui a permis de garder la marche : sans elle, la seule
     // mesure « pente la plus raide » aurait condamné un terrain sain.
-    let monte = 0;
+    // ── ET LE TREMPLIN EST UNE EXCEPTION NOMMÉE, PAS UN OUBLI ────────────
+    //
+    // RÉMY, 18 novembre : « il fallait faire un long vol plané ». Ce qui fait
+    // durer un vol est la vitesse VERTICALE au départ, et elle se prend sur la
+    // rampe de saut : à 650 px/s d'allure, il faut une pente de 1,08 pour
+    // partir à 700 px/s vers le haut. Le tremplin monte donc à 69°, sur cent
+    // cinquante pixels.
+    //
+    // POURQUOI CE N'EST PAS LE MUR QUE CETTE GARDE COMBAT. Les murs mesurés
+    // par Rémy — « beaucoup moins bien que Tiny Wings, dans le glissé » —
+    // étaient des COLLINES de 61° à 81° qu'il fallait GRAVIR, partout, pendant
+    // des centaines de pixels, en y perdant tout son élan. Le tremplin, lui,
+    // suit une descente de 230 px et se franchit lancé : mesuré, l'oiseau y
+    // arrive à 650–780 px/s et en repart en vol. On ne le gravit pas, on le
+    // saute.
+    //
+    // ET L'ALTERNATIVE A ÉTÉ MESURÉE AVANT D'ÊTRE ÉCARTÉE : une rampe douce
+    // (13°) avec un coup d'ailes au décollage donnait un vol plus long et
+    // DEUX FOIS MOINS de vides franchis par le bon joueur — l'oiseau partait
+    // trop haut et retombait court.
+    let monte = 0, ou = 0;
     for (const g of [0.7, 1.9, 3.3]) {
         for (let i = 1; i < MONDES.length; i++) {
             const bord = i * LONGUEUR_MONDE;
             for (let x = bord - TRANSITION - 50; x < bord + 50; x += 3) {
+                if (dansLaZoneDeSaut(x)) continue;
                 const p = relief(x, g).pente;
-                if (p > 0) monte = Math.max(monte, p);
+                if (p > monte) { monte = p; ou = x; }
             }
         }
     }
     const degres = Math.atan(monte) * 180 / Math.PI;
-    assert.ok(degres < 65, `la rampe monte à ${degres.toFixed(0)}° : c'est une falaise`);
+    assert.ok(degres < 65,
+        `la rampe monte à ${degres.toFixed(0)}° en x = ${Math.round(ou)} : c'est une falaise`);
+
+    // LE TREMPLIN EST RAIDE, ET IL EST COURT : les deux comptent, et c'est la
+    // seconde moitié qui fait la différence avec un mur. S'il s'allongeait, il
+    // redeviendrait une colline à gravir.
+    let hautTremplin = 0, longTremplin = 0;
+    for (let x = bordsDuVide(0).debut - LONGUEUR_TREMPLIN; x < bordsDuVide(0).debut; x += 2) {
+        const p = relief(x, 0.7).pente;
+        if (p > 0.4) { longTremplin += 2; hautTremplin = Math.max(hautTremplin, p); }
+    }
+    assert.ok(longTremplin < 260,
+        `le tremplin monte raide sur ${longTremplin} px : ce n'est plus un saut, c'est une côte`);
+    assert.ok(hautTremplin > 1,
+        'le tremplin ne lance plus rien : sans pente, pas de vol plané');
 });
 
 test('NE RIEN FAIRE FAIT PERDRE, ET AVANT QU’ON SE LASSE', () => {
