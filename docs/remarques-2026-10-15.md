@@ -8096,3 +8096,44 @@ pris sur le chemin de l'élève (`node tools/volPlaneDesAiles.mjs`) :
 
 Et la nuit des treize mondes a été refaite entièrement : elle est DÉRIVÉE de
 l'allure mesurée, que le vide venait de périmer.
+
+### « d'autres idées ? » — les trois chantiers choisis le 18 novembre
+
+> « J'ai l'impression qu'AtoutMath est bien complet, tu as d'autres idées ? Je
+> le fais régulièrement avec mes élèves, ça fonctionne bien ! »
+
+J'ai remesuré `docs/couverture-programme.md` sur les 284 exercices du jour.
+Plusieurs trous du 16 novembre sont bouchés (volumes, aires, moyenne, médiane).
+Rémy a retenu trois chantiers, dans cet ordre :
+
+1. **Lire un diagramme** — chercher « diagramme » dans le catalogue ne sort
+   RIEN aujourd'hui. Bâtons, circulaire, histogramme : lire une valeur,
+   comparer deux séries, choisir le diagramme qui convient. C'est la moitié du
+   chapitre statistiques, de la 6ème à la 3ème, et **on ne trace rien** — la
+   ligne rouge ne s'y oppose pas.
+2. **La trigonométrie qui CALCULE (3ème)** — « Hypoténuse, Opposé, Adjacent »
+   apprend à nommer les côtés et s'arrête là. Choisir entre cosinus, sinus et
+   tangente, calculer une longueur, calculer un angle : rien. Au brevet tous
+   les ans.
+3. **Le devoir à la maison daté** — aujourd'hui une classe a UNE séance
+   imposée, ouverte ou fermée. Il n'y a ni « ouverte jusqu'à dimanche 20 h », ni
+   le tableau de qui l'a faite avant l'heure. C'est le seul des trois qui touche
+   le serveur.
+
+**CE QUI A ÉTÉ FAIT POUR « LIRE UN DIAGRAMME ».** Onze marches, quatre temps —
+les bâtons, le circulaire, l'histogramme, puis le choix de la représentation.
+L'ordre est celui des FAUTES et non celui des objets : la deuxième marche porte
+tout l'exercice, c'est celle où l'axe va de 2, 5 ou 10 en 10 et où compter les
+traits donne 3 au lieu de 15. Le diagnostic nomme ce nombre-là à l'élève.
+
+Mesuré sur son chemin (`node tools/lireUnDiagramme.mjs`), sur la tablette et
+sur le téléphone : le diagramme tient dans l'écran sans défiler, les nombres de
+l'axe font 14 px (le plancher est à 10, en dessous un « 6 » et un « 8 » se
+confondent), la virgule est au clavier — « 17,5 » est une réponse de cet
+exercice —, et la marche « quel diagramme ? » pose bien ses quatre propositions
+au lieu d'un pavé de chiffres.
+
+La feuille PDF **dessine** les diagrammes, elle ne les décrit pas : trois par
+page, étiquettes séparées. Il a fallu pour cela qu'une figure puisse demander
+sa hauteur — 46 mm au lieu des 34 d'une figure cotée —, sans quoi les noms des
+colonnes se touchaient : « 2 livres3 livres ».

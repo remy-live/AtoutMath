@@ -7850,3 +7850,36 @@ plus d'un.**
   celles que PERSONNE ne pleure. Ce que Rémy demande vit presque toujours dans
   une constante ; une constante sans épreuve est une demande qu'on peut effacer
   sans bruit.
+
+**Un sélecteur trop LARGE accuse le logiciel, comme un sélecteur inventé** — 18 novembre
+
+- *Ce que je voulais faire* — mesurer qu'une question à choix efface bien le
+  pavé de chiffres.
+- *Ce qui a coûté* — dix minutes et une fausse accusation. J'ai compté les
+  `button` de toute la page dont le texte est un seul chiffre : la sonde en
+  trouvait deux et annonçait « le pavé ne s'efface pas ». C'étaient le compteur
+  de score et le bouton du carnet, en haut à droite, qui affichent « 0 ». Le
+  pavé, lui, était bien parti.
+- *Combien de fois* — ||| (le champ JSON inventé le 17, le `window.__atoutmathEtat`
+  le 17, celui-ci le 18 : c'est le même mécanisme à chaque fois — **une mesure
+  qui porte sur plus large que son sujet rend la même réponse qu'un défaut**).
+- *Ce qui manque* — `doitExister` ferme le cas du sélecteur qui ne désigne RIEN.
+  Il manque le symétrique : un `s.combienDans(racine, sel)` qui exige une
+  RACINE nommée et jette si elle n'existe pas, pour qu'on ne puisse pas compter
+  « dans toute la page » sans l'avoir écrit.
+
+**L'outil des quatre pièges ne voyait pas un code à TROIS lettres** — 18 novembre
+
+- *Ce que je voulais faire* — ajouter « Lire un Diagramme » au catalogue.
+- *Ce qui a coûté* — quatre minutes de `npm test`, c'est-à-dire exactement ce
+  que `tools/nouvelExercice.mjs` existe pour épargner. J'avais écrit le code
+  « DGR » : trois lettres toutes dans l'alphabet, donc l'outil a répondu « les
+  quatre pièges sont évités ». Le harnais, lui, a dit « identité hors alphabet :
+  DGR » — l'identité fait DEUX lettres, la troisième étant la lettre de
+  contrôle que `codeCourt` ajoute.
+- *Combien de fois* — | (mais c'est la deuxième fois que cet outil laisse
+  passer une règle qu'il prétend couvrir, et il a été écrit POUR cela).
+- *Ce qui manque* — rien : la vérification de longueur est ajoutée, et on l'a
+  vue tomber sur le défaut qu'on venait de payer. La leçon à retenir est plus
+  générale — **un outil qui vérifie « les lettres » ne vérifie pas « le
+  mot »** : quand une règle a une forme ET une taille, il faut les deux.

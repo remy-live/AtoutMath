@@ -1867,6 +1867,43 @@ const BASE = {
         descriptor: 'Donner la fréquence d\'une valeur, en pourcentage de l\'effectif total.',
         lesson: 'La fréquence répond à « quelle PART du total ? », pas à « combien ? ». Trois élèves sur douze, c\'est 3 ÷ 12 = 0,25, donc 25 %. L\'effectif dépend de la taille du groupe ; la fréquence, non — c\'est elle qui permet de comparer deux classes de tailles différentes.'
     },
+    // ── LIRE UN DIAGRAMME ──────────────────────────────────────────────
+    //
+    // RÉMY, 18 novembre : « tu as d'autres idées ? ». L'inventaire du programme
+    // répondait depuis le 16 : « Les diagrammes statistiques — rien. » Mesuré
+    // de nouveau le 18 sur les 284 exercices : chercher « diagramme » ne
+    // sortait RIEN.
+    //
+    // TROIS COMPÉTENCES, ET NON UNE SEULE « lire un diagramme ». Elles ne se
+    // ratent pas pour la même raison : on rate un diagramme en bâtons sur la
+    // GRADUATION de l'axe, un diagramme circulaire parce qu'on y cherche un
+    // effectif qu'il ne donne pas, et le choix d'une représentation parce qu'on
+    // ne sait pas ce que chacune MONTRE. Trois remèdes différents, donc trois
+    // lignes différentes dans le bilan.
+    'don.diagramme.lire': {
+        label: 'Lire un diagramme en bâtons ou un histogramme',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Lire une valeur sur un diagramme en bâtons ou un histogramme, comparer deux colonnes, et calculer un total.',
+        lesson: 'ON LIT D\'ABORD L\'AXE, PAS LA BARRE. Un axe gradué de 5 en 5 n\'a rien à voir avec un axe gradué de 1 en 1 : trois graduations y valent 15, pas 3 — et compter les traits au lieu de lire les nombres écrits est LA faute du chapitre. Quand le haut d\'une barre tombe ENTRE deux graduations, sa valeur est entre les deux nombres écrits, à la moitié si elle est au milieu. ET DANS UN HISTOGRAMME, LES BARRES SE TOUCHENT : l\'axe du bas est continu, chaque barre couvre un INTERVALLE — « de 150 à 160 cm » — et non une valeur unique.'
+    },
+    'don.diagramme.circulaire': {
+        label: 'Lire un diagramme circulaire',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.CINQUIEME, N.QUATRIEME, N.TROISIEME],
+        prereqs: ['num.frac.sens'],
+        descriptor: 'Reconnaître la part qu\'occupe un secteur, et passer d\'un pourcentage à un effectif quand le total est donné.',
+        lesson: 'UN DISQUE NE DONNE JAMAIS UN EFFECTIF : il donne des PARTS. On y voit la moitié, le quart, le tiers — et pour savoir combien d\'élèves cela fait, il faut le TOTAL, qui est écrit dans l\'énoncé et nulle part sur le dessin. De 25 % à un nombre d\'élèves, le chemin est toujours le même : total × pourcentage ÷ 100. Et un pourcentage n\'est pas un nombre d\'élèves : répondre « 25 » quand on a lu « 25 % » revient à dire que la classe compte 25 élèves parce que le quart est colorié.'
+    },
+    'don.diagramme.choisir': {
+        label: 'Choisir la représentation qui convient',
+        chemin: [D.DONNEES, SD.STATISTIQUES],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['don.diagramme.lire'],
+        descriptor: 'Dire quel diagramme convient à une situation : bâtons, circulaire, histogramme ou courbe.',
+        lesson: 'TROIS QUESTIONS SUFFISENT. Compare-t-on des CATÉGORIES indépendantes — des sports, des couleurs, des jours ? Ce sont des bâtons, séparés les uns des autres. Partage-t-on un MÊME TOUT en parts — un budget, un effectif, une journée ? C\'est un disque. Groupe-t-on des mesures en CLASSES qui se suivent — des tailles, des durées, des masses ? C\'est un histogramme, dont les barres se touchent. Et si l\'on suit une grandeur DANS LE TEMPS, c\'est une courbe : on relie les points pour voir monter et descendre.'
+    },
     'don.proba.vocabulaire': {
         label: 'Le vocabulaire des probabilités',
         chemin: [D.DONNEES, SD.PROBABILITES],

@@ -82,6 +82,21 @@ if (!lire('js/core/shortcodes.js').includes(`'${ALPHABET}'`)) {
 }
 const vus = new Map();
 for (const [id, code] of Object.entries(CODES_EXERCICES)) {
+    // ── DEUX LETTRES, PAS TROIS — ET CET OUTIL NE LE DISAIT PAS ──────────
+    //
+    // PAYÉ LE 18 NOVEMBRE : « Lire un Diagramme » est entré au catalogue avec
+    // le code « DGR ». Les trois lettres sont dans l'alphabet, donc cet outil
+    // a répondu « les quatre pièges sont évités » — et c'est `npm test`, quatre
+    // minutes plus tard, qui a dit « identité hors alphabet : DGR ».
+    //
+    // L'IDENTITÉ FAIT DEUX LETTRES ; la troisième d'un code dicté est la lettre
+    // de CONTRÔLE, que `codeCourt` ajoute. En écrire trois à la main, c'est
+    // écrire l'identité par-dessus le contrôle.
+    if (String(code).length !== 2) {
+        faute(`${id} porte le code « ${code} » : une identité fait DEUX lettres`,
+            'La troisième lettre d\'un code dicté est la lettre de CONTRÔLE, ajoutée '
+            + 'par `codeCourt` — on ne l\'écrit pas dans la table.');
+    }
     for (const lettre of String(code)) {
         if (!ALPHABET.includes(lettre)) {
             faute(`${id} porte le code « ${code} », et « ${lettre} » n\u2019est pas dans l\u2019alphabet`,

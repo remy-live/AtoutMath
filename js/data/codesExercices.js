@@ -77,6 +77,7 @@ export const CODES_EXERCICES = {
     'num-pgcd-ppcm-problemes':    'MP',   // probleMes de Pgcd et ppcm
     'don-statistiques':           'SA',   // StAtistiques
     'don-mediane-doigt':          'MN',   // MédiaNe — « MD » et « ME » étaient pris
+    'don-diagrammes':             'DU',   // le Diagramme, à lire — « DG » et « DI » sont pris ou hors alphabet
     'don-probabilites':           'HZ',   // haZard — « PB » et « PR » étaient pris
     'frac-division':              'FD',   // Fraction, Division
     'geo-pythagore-reciproque':   'VS',   // la réciproque : le théorème à l'enVerS

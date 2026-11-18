@@ -484,7 +484,22 @@ export function mesurerFigure(plan, dispo, o, mes) {
     // Huit questions à dessin par feuille, c'est quatre centimètres chacune au
     // plus — en dessous, les cotes se touchent ; au-dessus, on imprime trois
     // questions par page et le contrôle tient sur quatre feuilles.
-    const hMax = Math.max(18, Math.min(o.figureMax || 34, dispo * 0.8));
+    //
+    // ── ET UNE FIGURE A LE DROIT DE DIRE QU'ELLE A BESOIN DE PLUS ────────
+    //
+    // VU SUR LA FEUILLE des diagrammes : à 34 mm de haut, un diagramme en
+    // bâtons sort large de cinquante-quatre millimètres, et les noms des
+    // colonnes se touchent — « 2 livres3 livres », « TennisDanse ». La cause
+    // n'est pas le plafond, qui est juste pour un triangle coté : c'est qu'un
+    // triangle porte trois nombres et qu'un diagramme porte sept graduations
+    // ET cinq étiquettes sous l'axe. Le dessin rapetisse, le texte non.
+    //
+    // C'EST DONC LE PLAN QUI LE DIT, et non un réglage de fiche : lui seul
+    // sait combien de texte il porte. `planBatons` demande 46 mm, et les
+    // étiquettes y tiennent — mesuré sur la feuille, à cinq colonnes. À 54 elles
+    // tenaient aussi, mais il ne passait plus que DEUX questions par page ;
+    // à 46, il en passe trois et l'on ne perd rien.
+    const hMax = Math.max(18, Math.min(plan.hauteurMax || o.figureMax || 34, dispo * 0.8));
     const brut = cadreTraits(lignes, plan.droits || []);
     const texteH = o.taille;
 

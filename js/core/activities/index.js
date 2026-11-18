@@ -184,6 +184,7 @@ import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
 import { volumesGenerator } from '../generators/volumes.js';
 import { airesGenerator } from '../generators/aires.js';
+import { lireUnDiagrammeGenerator } from '../generators/lireUnDiagramme.js';
 import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator
@@ -274,7 +275,7 @@ import {
     egypteFicheGenerator, hexagrilleFicheGenerator,
     tuyauxGenerator, pourcentagesGenerator,
     perimetreTriangleGenerator, disqueGenerator, lasersGenerator,
-    volumesGenerator, airesGenerator,
+    volumesGenerator, airesGenerator, lireUnDiagrammeGenerator,
     intervallesGenerator,
     valeurAbsolueGenerator,
     ensemblesGenerator,

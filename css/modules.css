@@ -19639,3 +19639,28 @@ body.visite-en-cours .modal-overlay > * {
 .numpad-context .figure-wrap.fig-aire .fig-svg {
     max-height: clamp(140px, 21vh, 225px);
 }
+
+/* ── LIRE UN DIAGRAMME ─────────────────────────────────────────────────────
+
+   RÉMY, 18 novembre : « tu as d'autres idées ? » — et c'était le trou que
+   l'inventaire du programme nommait depuis le 16 : « Les diagrammes
+   statistiques — rien ».
+
+   UN DIAGRAMME N'EST PAS UNE FIGURE DE GÉOMÉTRIE : ce qu'on y lit est un
+   NOMBRE écrit sur un axe, pas une forme. Il lui faut donc plus de place en
+   hauteur qu'à un triangle — sept graduations numérotées, et le nom de chaque
+   colonne dessous —, et sa plage va un cran au-dessus de celle des aires.
+   Mesuré sur les trois écrans, comme elle :
+
+       390 × 844  →  211 px, nombres de l'axe à 11 px, « Valider » dans l'écran
+       768 × 1024 →  266 px, nombres de l'axe à 14 px
+
+   EN DESSOUS DE 150 PX, les sept nombres de l'axe passent sous dix pixels et
+   l'on ne distingue plus un « 6 » d'un « 8 » — or c'est exactement ce qu'on
+   demande de lire. */
+.dg-figure { display: block; width: 100%; height: auto; color: var(--text-main); }
+.dg-question { text-align: center; max-width: 46ch; margin-inline: auto; }
+.numpad-context .figure-wrap.fig-diagramme,
+.numpad-context .figure-wrap.fig-diagramme .dg-figure {
+    max-height: clamp(150px, 26vh, 280px);
+}

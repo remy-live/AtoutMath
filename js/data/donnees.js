@@ -259,6 +259,58 @@ export const donneesExercises = [
             + 'lui-même d\'isoler. Au pavé numérique, on ne sait pas s\'il a rangé, '
             + 'compté, ou deviné le milieu ; ici cela se voit.'
     },
+    // ── LIRE UN DIAGRAMME ──────────────────────────────────────────────
+    //
+    // RÉMY, 18 novembre : « J'ai l'impression qu'AtoutMath est bien complet, tu
+    // as d'autres idées ? Je le fais régulièrement avec mes élèves, ça
+    // fonctionne bien ! »
+    //
+    // L'INVENTAIRE DU PROGRAMME RÉPONDAIT DEPUIS LE 16 : « Les diagrammes
+    // statistiques — rien ». Remesuré le 18 sur les 284 exercices : chercher
+    // « diagramme » dans le catalogue ne sortait RIEN. « Moyenne, Médiane,
+    // Étendue » couvre les indicateurs ; LIRE une représentation, et choisir
+    // laquelle convient, n'existait nulle part — c'est la moitié du chapitre,
+    // et c'est au programme de la sixième à la troisième.
+    //
+    // ET LA LIGNE ROUGE NE S'Y OPPOSE PAS : « Je ne veux pas de construction
+    // géométrique avec des outils virtuels. » On ne trace pas un diagramme ici,
+    // on le LIT. Le tracé reste sur le cahier, où il doit être.
+    //
+    // QUATRE TEMPS, ONZE MARCHES, et l'ordre est celui des FAUTES et non celui
+    // des objets — voir l'en-tête du générateur. La deuxième marche porte tout
+    // l'exercice : un axe gradué de 5 en 5, où compter les traits donne 3 au
+    // lieu de 15.
+    {
+        id: 'don-diagrammes',
+        cree: '2026-11-18',
+        title: 'Lire un Diagramme',
+        generatorId: 'don.diagrammes', activityId: 'numpad',
+        // LA CALCULATRICE EST OUVERTE, pour la raison de « Moyenne, Médiane,
+        // Étendue » : les deux dernières marches des bâtons additionnent cinq
+        // nombres, et celle du camembert prend un pourcentage d'un total. Ce
+        // qu'on mesure est la LECTURE du diagramme, pas l'addition.
+        calculatrice: true,
+        consignePapier: 'Regarde d\'abord la GRADUATION de l\'axe : elle ne va pas '
+            + 'toujours de 1 en 1.',
+        // UNE SEULE COLONNE : un diagramme réduit à une demi-largeur de page
+        // n'a plus d'axe lisible, et c'est l'axe qu'on demande de lire.
+        colonnesPapier: 1,
+        lignesReponsePapier: 1,
+        params: { nbQuestions: 8,
+            marches: ['batons-un', 'batons-echelle', 'batons-entre', 'batons-comparer',
+                'batons-total', 'batons-record', 'circulaire-part', 'circulaire-effectif',
+                'histogramme-classe', 'histogramme-cumul', 'choisir'] },
+        motsClefs: ['diagramme', 'bâtons', 'barres', 'circulaire', 'camembert',
+            'histogramme', 'graduation', 'axe', 'échelle', 'lire un graphique',
+            'statistiques', 'effectif', 'classe', 'courbe', 'représentation',
+            'sixième', '6ème', 'brevet'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.STATISTIQUES],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME,
+                TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "ON LIT D'ABORD L'AXE, PAS LA BARRE. C'est toute la difficulté du chapitre, et elle est invisible tant que les axes vont de 1 en 1 : sur un axe gradué de 5 en 5, une barre qui dépasse trois traits vaut QUINZE et non trois. Une marche entière est faite pour cela, et une autre pour le cas où la barre s'arrête ENTRE deux graduations — là, compter ne marche plus du tout. Viennent ensuite les questions où la lecture n'est que la première étape : combien de plus que l'autre, combien en tout, laquelle est la plus haute. LE DIAGRAMME CIRCULAIRE NE DONNE JAMAIS UN EFFECTIF : il donne des PARTS — la moitié, le quart, le tiers —, et pour savoir combien d'élèves cela fait il faut le TOTAL, qui est écrit dans l'énoncé et nulle part sur le dessin. L'HISTOGRAMME, lui, a ses barres COLLÉES, et ce n'est pas une question de dessin : son axe est continu, chaque barre couvre un intervalle — « de 150 à 160 cm » — et non une valeur. La dernière marche est celle du brevet : quel diagramme pour quelle situation ? Trois questions suffisent — compare-t-on des catégories, partage-t-on un tout, ou groupe-t-on des mesures en classes ?"
+    },
     {
         id: 'don-probabilites',
         cree: '2026-10-20',
