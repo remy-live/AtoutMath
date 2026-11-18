@@ -88,6 +88,16 @@ export const TAGS = {
         VOLUMES: "Volumes",
         ESPACE: "Géométrie dans l'espace",
         TABLEUR: "Tableur",
+        // RÉMY, 18 novembre : « J'aimerai bien des exercices pour apprendre
+        // python ». Une rubrique à part, et non sous « Tableur » : les deux
+        // sont de l'outillage, mais un tableur se REMPLIT quand un programme
+        // s'EXÉCUTE, ligne après ligne — et c'est justement cette exécution
+        // pas à pas que les treize marches de « Python pas à pas » apprennent
+        // à suivre.
+        //
+        // Le nom est celui des programmes de collège, comme les domaines
+        // au-dessus : « Algorithmique et programmation ».
+        PROGRAMMATION: "Algorithmique et programmation",
         // LES DEUX CHAPITRES QUE LE CATALOGUE N'AVAIT PAS DU TOUT. Rémy, dans sa
         // progression de quatrième : « Statistique (Médiane, moyenne, étendue,
         // fréquence: listes) » et « Probabilités ». Mesuré avant d'écrire une

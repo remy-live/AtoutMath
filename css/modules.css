@@ -19689,3 +19689,63 @@ body.visite-en-cours .modal-overlay > * {
 .numpad-context .figure-wrap.fig-trigo .tc-figure {
     max-height: clamp(140px, 23vh, 240px);
 }
+
+/* ── PYTHON PAS À PAS : LE PROGRAMME, SES NUMÉROS ET SES DÉCALAGES ────────
+
+   RÉMY, 18 novembre : « des qcm et après que l'élève tape, l'aider sur
+   l'indentation ».
+
+   LE FILET VERTICAL N'EST PAS UNE DÉCORATION. En Python, quatre espaces
+   changent le sens du programme ; or quatre espaces, sur un écran, ne se
+   VOIENT pas — l'œil voit du blanc, et du blanc ne se compte pas. Le filet
+   rend le décalage visible, donc comptable, donc discutable : « suis le
+   trait » est une consigne qu'un élève peut suivre, « compte les espaces »
+   n'en est pas une.
+
+   IL EST EN POSITION ABSOLUE, derrière le texte. Un filet qui pousserait le
+   code d'un seul pixel ferait mentir la colonne — et c'est la colonne qu'on
+   veut faire voir.
+
+   DEUX COULEURS, ET DEUX SEULEMENT, POUR LE CODE : le TEXTE entre guillemets
+   d'un côté, tout le reste de l'autre. C'est la confusion des trois premières
+   marches — print("3 + 4") affiche 3 + 4, print(3 + 4) affiche 7 —, et deux
+   couleurs la montrent mieux qu'une phrase. Une coloration complète, elle,
+   donnerait des couleurs à des mots que l'exercice n'a jamais présentés. */
+.py-bloc {
+    margin: 0 auto; max-width: 42ch; padding: 10px 0;
+    background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: clamp(0.95rem, 3.4vw, 1.15rem); line-height: 1.75;
+    overflow-x: auto; text-align: left;
+}
+.py-ligne { display: flex; align-items: baseline; padding: 0 12px; }
+.py-num {
+    flex: none; width: 2.2ch; margin-right: 10px; text-align: right;
+    color: var(--text-muted); font-size: .8em; user-select: none;
+}
+.py-code { position: relative; white-space: pre; flex: 1; }
+.py-filet {
+    position: absolute; top: -0.25em; bottom: -0.25em; width: 1px;
+    background: var(--border); pointer-events: none;
+}
+/* La ligne dont parle la question, ou celle que le vérificateur accuse. */
+.py-ligne--montree { background: color-mix(in srgb, var(--primary) 9%, transparent); }
+.py-ligne--fautive { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.py-mot { color: var(--primary-texte); font-weight: 600; }
+.py-fonction { color: var(--accent-texte); }
+.py-texte { color: var(--success-texte); }
+.py-nombre { color: var(--text-main); }
+.py-note { color: var(--text-muted); font-style: italic; }
+.py-question { text-align: center; max-width: 46ch; margin: 14px auto 0; }
+
+/* LES DEUX PROGRAMMES CÔTE À CÔTE — la marche où quatre espaces changent
+   tout. Ils passent l'un SOUS l'autre dès qu'on manque de largeur : sur un
+   téléphone, deux colonnes de code réduiraient la police au point où le
+   décalage redeviendrait invisible, ce qui annulerait la question. */
+.py-deux { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.py-paire { flex: 1 1 280px; max-width: 360px; }
+.py-paire-nom {
+    font-size: .8rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--text-muted);
+    text-align: center; margin-bottom: 4px;
+}

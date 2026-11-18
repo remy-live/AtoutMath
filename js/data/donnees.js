@@ -281,6 +281,40 @@ export const donneesExercises = [
     // l'exercice : un axe gradué de 5 en 5, où compter les traits donne 3 au
     // lieu de 15.
     {
+        id: 'algo-python',
+        cree: '2026-11-18',
+        title: 'Python Pas à Pas',
+        generatorId: 'algo.python', activityId: 'numpad',
+        // PAS DE CALCULATRICE, ET C'EST VOULU. Tous les calculs sont choisis
+        // pour tenir de tête — 3 × 4, 6 × 2 —, parce que la question n'est
+        // jamais le résultat : elle est de savoir si Python calcule ou
+        // recopie. Une calculatrice ouverte déplacerait l'attention vers le
+        // nombre, qui est la seule chose sans importance ici.
+        calculatrice: false,
+        consignePapier: 'Lis le programme LIGNE PAR LIGNE, comme Python le fait, '
+            + 'et surveille les décalages.',
+        // UNE SEULE COLONNE : un programme coupé à une demi-largeur de page
+        // perd ses décalages, et le décalage EST la question des marches 11 à
+        // 13. Mesuré sur la feuille : quatre espaces de marge disparaissent au
+        // premier repli de ligne.
+        colonnesPapier: 1,
+        lignesReponsePapier: 1,
+        params: { nbQuestions: 10,
+            marches: ['afficher', 'calcul', 'texte-ou-calcul', 'variable', 'ordre',
+                'calcul-variable', 'saisie', 'si-alors', 'combien-de-tours', 'de-zero',
+                'dans-la-boucle', 'deux-programmes', 'la-faute'] },
+        motsClefs: ['python', 'programmation', 'algorithmique', 'code', 'coder',
+            'programme', 'print', 'variable', 'boucle', 'for', 'while', 'if',
+            'indentation', 'décalage', 'instruction', 'informatique', 'NSI',
+            'troisième', '3ème', 'brevet', 'seconde'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.PROGRAMMATION],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME,
+                TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "ON APPREND À LIRE AVANT D'APPRENDRE À ÉCRIRE, et c'est tout le plan de cet exercice. Rémy : « des qcm et après que l'élève tape ». Un élève qui ne sait pas dire ce qu'affiche une boucle de deux lignes ne peut pas en écrire une : il peut seulement la recopier. Les treize marches sont donc des questions à choix, et elles séparent une par une les choses qu'un débutant confond. LES TROIS PREMIÈRES PORTENT SUR LES GUILLEMETS, et se ressemblent exprès : print(\"Bonjour\") affiche Bonjour, print(3 + 4) affiche 7, et print(\"3 + 4\") affiche 3 + 4. Trois lignes presque identiques, trois comportements — les guillemets disent à Python de recopier au lieu de calculer, et sans cette marche-là l'élève croit toute l'année que Python « comprend » ce qu'il lit. VIENNENT ENSUITE LES BOÎTES : ranger une valeur, puis découvrir qu'un second rangement EFFACE le premier (a = 2 puis a = 5 laisse 5), puis calculer avec deux boîtes, puis recevoir dans une boîte ce que l'élève tape au clavier. PUIS LE SI ET LA BOUCLE, dont une marche entière est consacrée au fait qu'elle COMMENCE À ZÉRO : range(3) donne 0, 1, 2 — c'est la faute la plus universelle du début de Python. ET LES TROIS DERNIÈRES MARCHES SONT CELLES DE L'INDENTATION, qui est la demande même de Rémy. En Python, le décalage n'est pas de la présentation : c'est le sens. On apprend d'abord à le LIRE — quelles lignes sont DANS la boucle ? —, puis on met côte à côte deux programmes qui ont exactement les mêmes mots et pas le même décalage, et qui ne font pas la même chose. La dernière demande de trouver la faute, et ses propositions sont mot pour mot les phrases que le logiciel dira plus tard à l'élève quand il se mettra à taper : le message d'erreur ne sera pas une langue étrangère, ce sera une vieille connaissance."
+    },
+    {
         id: 'don-diagrammes',
         cree: '2026-11-18',
         title: 'Lire un Diagramme',

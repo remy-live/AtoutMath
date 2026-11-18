@@ -1833,6 +1833,41 @@ const BASE = {
         descriptor: 'Dérouler pas à pas un programme de déplacement, boucle comprise, et dire où arrive le robot.',
         lesson: 'Exécuter un programme, c\'est faire UNE chose à la fois, dans l\'ordre, en sachant toujours où on en est. « Répéter 4 fois » ne recopie pas les blocs plus bas : quand on arrive au bout du corps de la boucle, on REMONTE au premier bloc de ce corps, et on recommence — jusqu\'à avoir fait les quatre tours. Compte les tours à voix haute. Et « tourner à gauche », c\'est la gauche du ROBOT : quand il descend l\'écran, sa gauche est à droite du dessin.'
     },
+    // ── ALGORITHMIQUE ET PROGRAMMATION ────────────────────────────────────
+    //
+    // RÉMY, 18 novembre : « J'aimerai bien des exercices pour apprendre
+    // python. L'idéal serait de faire des qcm et après que l'élève tape,
+    // l'aider sur l'indentation. Être hyper hyper hyper progressif. »
+    //
+    // TROIS COMPÉTENCES, ET NON UNE SEULE « SAVOIR PROGRAMMER ». L'élève qui
+    // bute n'a presque jamais un problème de « programmation » : il a un
+    // problème précis, et les trois qui suivent sont celui-là. Un bilan qui
+    // dirait « Python : 4/10 » n'apprendrait rien à Rémy ; « il lit bien les
+    // programmes, il ne tient pas les variables » lui dit quoi faire lundi.
+    'algo.python.lire': {
+        label: 'Lire un programme Python',
+        chemin: [D.DONNEES, SD.PROGRAMMATION],
+        niveaux: [N.CINQUIEME, N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Dire ce qu’affiche un programme de quelques lignes, en suivant les instructions dans l’ordre.',
+        lesson: 'Un programme s’exécute ligne par ligne, de haut en bas. print(...) affiche ce qu’il y a dans ses parenthèses. Et les GUILLEMETS décident de tout : print("3 + 4") affiche 3 + 4 — le texte tel quel —, alors que print(3 + 4) affiche 7, parce que sans guillemets Python calcule.'
+    },
+    'algo.python.variable': {
+        label: 'Suivre une variable Python',
+        chemin: [D.DONNEES, SD.PROGRAMMATION],
+        niveaux: [N.CINQUIEME, N.QUATRIEME, N.TROISIEME],
+        prereqs: ['algo.python.lire'],
+        descriptor: 'Savoir ce que contient chaque variable à chaque ligne, y compris après une saisie ou un remplacement.',
+        lesson: 'Une variable est une boîte qui porte un nom. Le signe = RANGE une valeur dedans : a = 5 met 5 dans la boîte a. Une boîte ne garde qu’une chose à la fois, donc un second rangement EFFACE le premier : après a = 2 puis a = 5, la boîte contient 5. Et input() met dans la boîte ce que l’élève a tapé au clavier.'
+    },
+    'algo.python.bloc': {
+        label: 'Lire l’indentation d’un programme',
+        chemin: [D.DONNEES, SD.PROGRAMMATION],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        prereqs: ['algo.python.lire'],
+        descriptor: 'Dire quelles lignes sont DANS une boucle ou sous un « si », à partir de leur décalage.',
+        lesson: 'En Python, le décalage n’est pas de la présentation : c’est le sens. Une ligne qui finit par « : » ouvre un bloc, et les lignes DÉCALÉES en dessous sont dans ce bloc — donc répétées par la boucle, ou exécutées seulement si le test est vrai. Une ligne revenue à gauche en est sortie. Deux programmes qui ont exactement les mêmes mots mais pas le même décalage ne font pas la même chose.'
+    },
     'don.tableur.reperage': {
         label: 'Se repérer dans un tableur',
         chemin: [D.DONNEES, SD.TABLEUR],

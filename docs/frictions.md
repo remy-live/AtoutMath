@@ -7920,3 +7920,69 @@ plus d'un.**
   contraire de `doitExister` : celui-ci dit « ce crochet ne désigne rien »,
   l'autre dirait « ce crochet désigne quelque chose que personne ne voit » —
   et les deux mensonges se ressemblent.
+
+## Un énoncé qui SURLIGNE est un énoncé qui RÉPOND — 2026-11-18
+
+- **Ce que je voulais faire** : poser la marche « quelles lignes sont RÉPÉTÉES
+  par la boucle ? » de Python pas à pas.
+- **Ce qui a coûté** : rien en temps — mais le défaut a traversé, VERTS, les
+  treize mille tirages du générateur, les douze épreuves de `node --test` et
+  les vingt-quatre points de la sonde Playwright. Les lignes 2 et 3 étaient
+  déjà peintes en violet dans l'énoncé : la question donnait sa réponse. Aucun
+  de ces trois harnais ne pouvait le voir — tous les trois vérifiaient que le
+  programme était AFFICHÉ, aucun qu'il ne répondait pas à sa propre question.
+  Il a fallu REGARDER la photo d'écran.
+- **Combien de fois** : |  (première, mais la famille est connue : l'indice qui
+  contient la réponse, le leurre plus long que la bonne réponse, la figure dont
+  la cote donne le résultat demandé)
+- **Ce qui manque** : une vérification générique — pour chaque item, chercher la
+  RÉPONSE dans ce que l'énoncé montre (texte, classes de surlignage, cotes de
+  figure) et le dire. `tools/nouvelExercice.mjs` est l'endroit : il tourne en
+  deux cents millisecondes avant chaque ajout au catalogue.
+
+## Trois espaces dans un énoncé papier = un trou à remplir — 2026-11-18
+
+- **Ce que je voulais faire** : imprimer les programmes Python en gardant
+  l'indentation, sans laquelle trois marches sur treize n'ont plus de réponse.
+- **Ce qui a coûté** : une fiche entière à refaire, et vingt minutes à lire le
+  moteur de fiche. `trouDe` (`js/core/fiche.js`) lit TROIS ESPACES CONSÉCUTIFS
+  comme un trou à compléter : les quatre espaces d'indentation devenaient la
+  case où l'élève écrit sa réponse, posée au milieu du programme ligne 3, et
+  cinq questions sur neuf perdaient leurs pointillés de fin. Zéro erreur, zéro
+  avertissement, et la règle n'est écrite nulle part hors du corps de `trouDe`.
+- **Combien de fois** : |  (mais tout énoncé futur qui doit MONTRER du blanc —
+  un alignement, une colonne, une tabulation — tombera dedans)
+- **Ce qui manque** : que `tools/nouvelExercice.mjs` ou `ficheEnPdf.mjs` dise
+  « cet énoncé papier porte un trou implicite ligne N — voulu ? ». Une ligne de
+  sortie suffirait ; c'est la détection qui manque, pas le message.
+
+## Une sonde qui lit `firstChild` mesure le décor, pas le texte — 2026-11-18
+
+- **Ce que je voulais faire** : mesurer EN PIXELS le décalage d'une ligne
+  indentée, qui est toute la demande de Rémy sur Python.
+- **Ce qui a coûté** : un aller-retour complet. La sonde rendait « 0 px » sur
+  toutes les lignes et sur les deux écrans — c'est-à-dire exactement ce que
+  rendrait un logiciel cassé. Le défaut était dans la mesure : `code.firstChild`
+  n'est pas le texte mais le FILET d'indentation, un span vide en position
+  absolue. Il a fallu parcourir les nœuds de TEXTE avec un `TreeWalker`.
+- **Combien de fois** : ||  (la famille « la mesure rend la même réponse qu'un
+  produit cassé » en est à sa cinquième entrée dans ce journal)
+- **Ce qui manque** : dans `tools/sonde.mjs`, un `s.positionDuTexte(selecteur)`
+  qui rende la position du premier caractère VISIBLE, en sautant les décors.
+  Trois exercices ont déjà eu besoin de mesurer où commence un texte.
+
+## `remplacer.mjs --depuis` ramène le piège de la séquence d'échappement — 2026-11-18
+
+- **Ce que je voulais faire** : insérer trois compétences avec des apostrophes
+  françaises dans `js/data/skills.js`.
+- **Ce qui a coûté** : une écriture fausse, silencieuse, et une passe de
+  réparation. Dans le JSON des paires, l'apostrophe doit survivre à DEUX
+  niveaux d'échappement ; écrite `\\u2019` pour passer le JSON, elle arrive
+  LITTÉRALE dans le fichier — dix fois. Le code marche (JavaScript sait lire
+  `’`), `node --check` est vert, et la règle du dépôt est violée sans que
+  rien ne le dise. C'est le piège de CLAUDE.md §6, par une autre porte.
+- **Combien de fois** : |  (première fois par cette porte, mais `--depuis` est
+  devenu le chemin NORMAL pour tout texte français, donc elle reviendra)
+- **Ce qui manque** : que `remplacer.mjs` refuse d'écrire un texte contenant
+  une séquence `\uXXXX` littérale, ou la convertisse en disant qu'il l'a fait.
+  Quatre lignes dans l'outil, et le piège se ferme pour de bon.

@@ -77,6 +77,10 @@ export const CODES_EXERCICES = {
     'num-pgcd-ppcm-problemes':    'MP',   // probleMes de Pgcd et ppcm
     'don-statistiques':           'SA',   // StAtistiques
     'don-mediane-doigt':          'MN',   // MédiaNe — « MD » et « ME » étaient pris
+    // Python, et ni « PY » ni aucune paire commençant par P n'était libre :
+    // les vingt-deux étaient prises. « YP » se lit encore comme Python à
+    // l'envers, et c'est tout ce qu'on peut faire d'un alphabet à 23 lettres.
+    'algo-python':                'YP',   // le serPent
     'don-diagrammes':             'DU',   // le Diagramme, à lire — « DG » et « DI » sont pris ou hors alphabet
     'don-probabilites':           'HZ',   // haZard — « PB » et « PR » étaient pris
     'frac-division':              'FD',   // Fraction, Division

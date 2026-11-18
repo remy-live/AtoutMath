@@ -8178,3 +8178,73 @@ Mesuré des deux côtés (`node tools/devoirALaMaison.mjs`) : Rémy pose la date
 deux clics, la ligne la relit avec le compte des rendus, et l'élève voit « à
 rendre pour dimanche soir, 20 h » sur l'écran qu'il a devant lui — sans rien
 chercher et sans recharger.
+
+### Deux demandes du 18 novembre au soir
+
+> « Et peut être pour les classes vois tu une autre présentation regarde celle
+> actuelle fais moi des maquettes »
+
+> « J'aimerai bien des exercices pour apprendre python. Tu peux utiliser des
+> bibliothèques. L'idéal serait de faire des qcm et après que l'élève tape,
+> l'aider sur l'indentation. Être hyper hyper hyper progressif »
+
+**CE QUE JE RETIENS DE LA SECONDE, MOT PAR MOT.** « des qcm ET APRÈS que
+l'élève tape » : deux temps, dans cet ordre, et le QCM n'est pas une
+dégradation du second — c'est la marche d'avant. « L'aider sur l'indentation » :
+en Python, l'indentation n'est pas de la mise en forme, c'est de la SYNTAXE,
+et c'est le seul langage courant où une erreur d'espace change le sens du
+programme sans le casser. « Hyper hyper hyper progressif » est répété trois
+fois : ce n'est pas une préférence, c'est la contrainte principale.
+
+**ET « tu peux utiliser des bibliothèques » lève une règle du dépôt**, celle
+qui dit « on n'ajoute pas de dépendance sans une raison qu'on peut écrire ».
+La raison s'écrit : apprendre Python sans jamais EXÉCUTER de Python, c'est
+apprendre une langue morte. Reste à choisir ce qu'on embarque — et à le
+mesurer sur une tablette, hors ligne, comme tout le reste.
+
+### Les maquettes de l'écran des classes
+
+Trois planches, sur la VRAIE feuille de style (`css/base.css` chargée telle
+quelle : couleurs, Outfit, ombres), et **avec vingt-six élèves**. Le premier
+jet en portait six, comme la classe d'essai : les trois dispositions tenaient
+alors sur un écran et se valaient toutes les trois, ce qui ne voulait rien
+dire. C'est à vingt-six qu'elles se séparent — mesuré au pixel :
+
+| | ce qu'elle change | hauteur |
+| --- | --- | --- |
+| **A** Le tableau de bord | quatre tuiles d'état en haut, les commandes deviennent des pastilles dont la couleur EST l'état | 1 119 px — on défile |
+| **B** Une seule page, trois bandes | plus d'onglets ; les élèves rangés par ce qu'ils DEMANDENT (4 lignes entières, puis 22 pastilles) | **867 px — tout tient** |
+| **C** La salle en tuiles | une tuile par élève pour le professeur DEBOUT, commandes dans une barre fixe au pouce | 852 px |
+
+**CE QUE L'ÉCRAN ACTUEL FAIT MAL, mesuré avant de dessiner.** Neuf commandes
+(À la maison, Défi, Le plateau, Jeux vifs, Compte à rebours, Calculatrice, Bac
+à sable, La liste, Le mot au tableau) sont des liens de MÊME POIDS, et leur
+état est écrit en petit à côté : « Bac à sable · ouvert ». Pendant l'heure, la
+question n'est pas « où est le bouton » mais « est-ce que c'est ouvert ».
+
+### Ce que Skulpt sait faire, et ce qu'il ne sait pas dire
+
+`node tools/tmp/mesurePython.mjs`, seize programmes dans Chromium :
+
+- **il charge en 105 ms** pour 944 Ko (232 Ko compressés) et exécute chaque
+  programme de collège en **2 à 6 ms** — `print`, variables, `if`, `for`,
+  `def`, listes et `input()` compris. C'est donc tenable hors ligne, sur une
+  tablette, dans le cache du service worker ;
+- **le stdlib n'est pas optionnel** : `print` lui-même importe `sys`, et sans
+  les 400 Ko du stdlib le tout premier programme d'un élève rend
+  « ImportError: No module named sys » ;
+- **ET SES MESSAGES D'ERREUR SONT INUTILISABLES POUR UN DÉBUTANT.** Trois
+  fautes entièrement différentes rendent la MÊME phrase :
+
+  | ce que l'élève a fait | ce que Skulpt répond |
+  | --- | --- |
+  | oublié l'indentation après `:` | `bad input on line 2` |
+  | indenté une ligne sans raison | `bad input on line 2` |
+  | oublié les deux-points | `bad input on line 1` |
+  | écrit `if n = 3:` | `bad input on line 2` |
+  | mis un accent dans un nom | `bad token T_OP on line 1` |
+
+  En anglais, et sans jamais nommer la faute. Or « l'aider sur l'indentation »
+  est TOUTE la demande de Rémy. **La conclusion est donc une décision
+  d'architecture :** on écrit notre propre diagnostic, en français, qui passe
+  AVANT Skulpt ; Skulpt n'exécute que ce qu'on a déjà jugé lisible.
