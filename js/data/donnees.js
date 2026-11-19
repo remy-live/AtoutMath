@@ -295,7 +295,7 @@ export const donneesExercises = [
         id: 'algo-python-ecrire',
         cree: '2026-11-19',
         title: 'Python : à Toi de Taper',
-        generatorId: 'algo.python', activityId: 'pythonEditeur',
+        generatorId: 'algo.python.ecrire', activityId: 'pythonEditeur',
         calculatrice: false,
         consignePapier: 'Écris ton programme à la main, en marquant bien les décalages.',
         colonnesPapier: 1,

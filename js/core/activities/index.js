@@ -186,7 +186,7 @@ import { volumesGenerator } from '../generators/volumes.js';
 import { airesGenerator } from '../generators/aires.js';
 import { lireUnDiagrammeGenerator } from '../generators/lireUnDiagramme.js';
 import { trigoCalculGenerator } from '../generators/trigoCalcul.js';
-import { pythonPasAPasGenerator } from '../generators/pythonPasAPas.js';
+import { pythonPasAPasGenerator, pythonEcrireGenerator } from '../generators/pythonPasAPas.js';
 import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator
@@ -278,7 +278,7 @@ import {
     tuyauxGenerator, pourcentagesGenerator,
     perimetreTriangleGenerator, disqueGenerator, lasersGenerator,
     volumesGenerator, airesGenerator, lireUnDiagrammeGenerator, trigoCalculGenerator,
-    pythonPasAPasGenerator,
+    pythonPasAPasGenerator, pythonEcrireGenerator,
     intervallesGenerator,
     valeurAbsolueGenerator,
     ensemblesGenerator,

@@ -8120,3 +8120,33 @@ l'interdit — aussi en dehors des tests** — 19 novembre
   **sans tenir compte des blancs de début de ligne** ; si elle existe alors,
   dire « trouvée à la ligne N, mais avec 4 espaces d'indentation au lieu de 5 ».
   L'outil a déjà le fichier en main : la réponse lui coûte deux lignes.
+
+---
+
+**« Peut parfois marcher » est lu comme « marche toujours » — `isCompatible`
+emploie `.some()`** — 19 novembre
+
+- *Ce que je voulais faire* : brancher un second exercice sur un générateur
+  existant, avec une autre activité.
+- *Ce qui a coûté* : une capture d'écran de Rémy — « je ne comprends pas ce que
+  tu demandes » — sur une question à choix posée dans l'éditeur où l'on tape.
+  Toutes les épreuves étaient vertes : le générateur produisait des items bien
+  formés, l'activité affichait ce qu'on lui donnait, et `validateCatalog`
+  déclarait le couple compatible parce que `g.answerKinds.some(k =>
+  a.accepts.includes(k))` — « il PEUT produire quelque chose qu'elle prend ».
+  Quatre items sur cinq, en l'occurrence.
+  Et le catalogue avait beau limiter l'exercice à ses cinq marches, le PANNEAU
+  DE RÉGLAGES est bâti par le générateur, qui en proposait vingt-et-une.
+- *Combien de fois* : | (mais le dépôt compte **dix-neuf** autres exercices dont
+  le générateur déclare un genre que l'activité refuse ; j'en ai mesuré trois
+  qui MÉLANGENT les genres — `alg-fonctions`, `geo-thales`,
+  `geo-repere-relatifs-lire` — sans vérifier à l'écran s'ils en souffrent)
+- *Ce qui manque* : une épreuve générale « aucune activité ne reçoit un genre
+  qu'elle refuse » est **fausse** telle quelle : plusieurs activités ADAPTENT —
+  `numeric.js` a `clavierVoulu`, qui passe la main à un autre clavier. Ce qui
+  manque est donc le moyen de distinguer **une activité qui adapte d'une
+  activité qui subit** : tant qu'une activité ne DÉCLARE pas ce qu'elle sait
+  convertir, aucune épreuve ne peut juger la jointure, et chaque branchement
+  neuf se paiera sur une capture d'écran. La piste la plus courte :
+  `registerActivity({ convertit: ['text'] })` à côté de `accepts`, et
+  `isCompatible` qui exige `every` sur l'union des deux.

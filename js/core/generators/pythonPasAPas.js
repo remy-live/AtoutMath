@@ -106,9 +106,35 @@ const TEMPS = {
 };
 
 const MOT = 'marche';
-const LISTE_MARCHES = ETAPES.map((e, i) => ({
+
+// ── DEUX LISTES, ET C'EST UNE CORRECTION PAYÉE SUR UNE CAPTURE DE RÉMY ────
+//
+// Rémy, 19 novembre au soir, photo à l'appui : « je ne comprends pas ce que tu
+// demandes ». L'ÉDITEUR lui affichait « Que va afficher ce programme ? » au-
+// dessus d'un champ de saisie et de deux boutons de décalage. La question est
+// celle d'un QCM ; l'activité est celle où l'on tape. Aucune des deux n'avait
+// tort : elles n'auraient jamais dû se rencontrer.
+//
+// LA CAUSE : un seul générateur déclarait les vingt-et-une marches, et DEUX
+// exercices s'en servaient avec deux activités différentes. Le panneau de
+// réglages de « à Toi de Taper » proposait donc les seize marches de QCM,
+// qu'il ne sait pas servir — et celui de « Pas à Pas » proposait les cinq
+// marches d'écriture, que le pavé à choix ne sait pas servir non plus.
+// Mesuré dans les deux sens.
+//
+// Les deux exercices ont maintenant CHACUN LEUR GÉNÉRATEUR, donc chacun sa
+// liste de marches : le panneau ne peut plus proposer ce que l'activité ne
+// peut pas prendre. C'est la même raison que `generators/oppose.js`, où deux
+// générateurs servent deux activités d'un même sujet.
+const nommer = (etapes) => etapes.map((e, i) => ({
     id: e.id, nom: `${i + 1}. ${e.titre}`, groupe: e.temps
 }));
+const ETAPES_QCM = ETAPES.filter((e) => !e.ecrire);
+const ETAPES_ECRITURE = ETAPES.filter((e) => e.ecrire);
+const MARCHES_QCM = nommer(ETAPES_QCM);
+const MARCHES_ECRITURE = nommer(ETAPES_ECRITURE);
+const TEMPS_QCM = { A: TEMPS.A, B: TEMPS.B, C: TEMPS.C, D: TEMPS.D };
+const TEMPS_ECRITURE = { E: TEMPS.E };
 
 /**
  * Le HTML de l'énoncé : le ou les programmes, puis la question.
@@ -148,121 +174,152 @@ function enoncePapier(f) {
     return `${blocs}\n\n${f.question}`;
 }
 
+/**
+ * CHOISIR LA MARCHE, DANS SA PROPRE LISTE.
+ *
+ * `etapes` est celle du générateur qui appelle — jamais les vingt-et-une.
+ * C'est ce qui rend impossible la rencontre qui a fait écrire à Rémy « je ne
+ * comprends pas ce que tu demandes » : une question de QCM dans l'éditeur.
+ */
+function choisirLaMarche(etapes, marches, params, ctx) {
+    const id = marcheAuRang(ctx.index ?? 0, marchesCochees(params, marches),
+        totalDe(ctx, params), params);
+    return etapes.find((e) => e.id === id) || etapes[0];
+}
+
+/** Une marche où l'élève TAPE : l'item part vers l'éditeur. */
+function itemEcriture(etape, rng, generatorId) {
+    const e = FABRIQUES_ECRITURE[etape.id](rng);
+    return makeItem({
+        seed: rng.seed,
+        generatorId,
+        skillId: etape.skill,
+        answerKind: 'text',
+        prompt: {
+            text: e.consigne,
+            // LA FEUILLE IMPRIMÉE PORTE LE PROGRAMME DE DÉPART et la
+            // consigne : un élève sans tablette écrit son programme à
+            // la main, ce qui est exactement ce qu'on lui demandera au
+            // brevet. Le décalage s'y dessine (voir `codePapier`).
+            // `consignePapier` QUAND IL Y EN A UNE : la marche du
+            // décalage parle de deux boutons à l'écran, et le papier
+            // n'en a pas (voir `python/ecrire.js`).
+            papier: (e.depart ? codePapier(e.depart) + '\n\n' : '')
+                + (e.consignePapier || e.consigne),
+            html: `<div class="game-question py-question">${e.consigne}</div>`
+        },
+        // LA RÉPONSE EST CE QUE LE PROGRAMME AFFICHE, pas le texte tapé.
+        // Un élève qui écrit print('Bonjour') avec des apostrophes a
+        // écrit un programme juste, et Python le lui dira. Comparer les
+        // sources reviendrait à noter la façon d'écrire.
+        answer: e.sortieAttendue,
+        // ── SUR LE PAPIER, LA RÉPONSE EST LE PROGRAMME ───────────
+        //
+        // À l'écran, la réponse est ce que le programme AFFICHE : on
+        // ne note pas la façon d'écrire. Sur la feuille de solutions,
+        // c'est l'inverse qu'il faut — Rémy corrige des copies.
+        //
+        // VU SUR LA FEUILLE, ET NULLE PART AILLEURS : la question 1
+        // demandait d'écrire `print("Coucou")` et la solution disait
+        // « Coucou ». Le professeur lisait le résultat sans savoir ce
+        // qu'il fallait écrire. Pire, `0\n1\n2\n3` s'imprimait
+        // « 0 123 », parce que les sauts de ligne disparaissent dans
+        // une colonne de solutions.
+        // Les sauts de ligne DISPARAISSENT dans une colonne de
+        // solutions — mesuré : `0\n1\n2\n3` s'imprimait « 0 123 ».
+        // On sépare donc les lignes à la main, et l'on garde le CRAN
+        // visible : sans lui, la solution de la marche « le décalage »
+        // ne montrerait plus ce qu'on y corrige.
+        reponsePapier: e.solution.split('\n')
+            .map((l) => l.replace(/^ {4}/, '> ')).join(' / '),
+        hints: e.indices,
+        explanation: `Un programme qui marche :\n${e.solution}`,
+        difficulty: etape.difficulte,
+        meta: {
+            marche: etape.id, temps: etape.temps, titre: etape.titre,
+            depart: e.depart,
+            sortieAttendue: e.sortieAttendue,
+            entrees: e.entrees || null,
+            programme: e.solution
+        }
+    });
+}
+
+/** Une marche à choix : l'item part vers le pavé de propositions. */
+function itemQcm(etape, rng, generatorId) {
+    const f = (FABRIQUES[etape.id] || FABRIQUES.afficher)(rng);
+
+    return makeItem({
+        seed: rng.seed,
+        generatorId,
+        skillId: etape.skill,
+        answerKind: 'choice',
+        prompt: {
+            text: f.question,
+            papier: enoncePapier(f),
+            html: enonceHtml(f)
+        },
+        answer: f.reponse,
+        choices: finalizeChoices(rng, [
+            { value: f.reponse, label: f.reponse, correct: true },
+            ...f.leurres.map((l) => ({
+                value: l.value, label: l.value, correct: false, why: l.why
+            }))
+        ], { count: 4 }),
+        hints: f.indices,
+        explanation: f.explication,
+        difficulty: etape.difficulte,
+        meta: {
+            marche: etape.id, temps: etape.temps, titre: etape.titre,
+            // LE PROGRAMME VOYAGE AVEC L'ITEM : le bilan doit pouvoir
+            // montrer ce que l'élève avait sous les yeux quand il s'est
+            // trompé. « Il bute sur la marche 11 » ne dit rien ; « il a
+            // répondu les lignes 2, 3 et 4 sur CE programme » dit tout.
+            programme: f.sources ? f.sources.join('\n---\n') : f.source
+        }
+    });
+}
+
+// ── LES SEIZE MARCHES À CHOIX ────────────────────────────────────────────
 export const pythonPasAPasGenerator = {
     id: 'algo.python',
     label: 'Python pas à pas',
     skills: [LIRE, MEMOIRE, BLOC],
     // SEULEMENT DES QCM, ET C'EST L'ORDRE DEMANDÉ : « des qcm ET APRÈS que
-    // l'élève tape ». La saisie viendra avec l'éditeur, qui est une autre
-    // activité — pas une autre réponse du même générateur.
-    // DEUX GENRES DE RÉPONSE, ET DEUX ACTIVITÉS : les seize premières marches
-    // sont des QCM qui passent par le pavé ; les cinq dernières demandent
-    // d'ÉCRIRE, et c'est l'éditeur qui les prend. C'est le `answerKind` de
-    // l'item qui décide, comme partout ailleurs dans le dépôt.
-    answerKinds: ['choice', 'text'],
+    // l'élève tape ». La saisie est l'affaire de l'autre générateur, juste en
+    // dessous — pas une autre réponse de celui-ci.
+    answerKinds: ['choice'],
     // LA FEUILLE PORTE LE PROGRAMME, donc la question tient sur le papier :
     // c'est même le seul endroit où un élève sans tablette peut lire du
     // Python. On garde les espaces de décalage (voir `codePapier`), sans quoi
     // les marches 11 et 12 poseraient une question dont la réponse a disparu.
     ecrit: true,
-    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES).length),
-    params: [paramMarches({ marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT })],
+    conseil: (p) => conseilProgression(marchesCochees(p, MARCHES_QCM).length),
+    params: [paramMarches({ marches: MARCHES_QCM, groupes: TEMPS_QCM, mot: MOT })],
 
     generate(params, ctx) {
-        const rng = ctx.rng;
-        const id = marcheAuRang(ctx.index ?? 0, marchesCochees(params, LISTE_MARCHES),
-            totalDe(ctx, params), params);
-        const etape = ETAPES.find((e) => e.id === id) || ETAPES[0];
+        return itemQcm(choisirLaMarche(ETAPES_QCM, MARCHES_QCM, params, ctx),
+            ctx.rng, 'algo.python');
+    }
+};
 
-        // ── LES MARCHES OÙ L'ON TAPE ─────────────────────────────────────
-        if (etape.ecrire) {
-            const e = FABRIQUES_ECRITURE[etape.id](rng);
-            return makeItem({
-                seed: rng.seed,
-                generatorId: 'algo.python',
-                skillId: etape.skill,
-                answerKind: 'text',
-                prompt: {
-                    text: e.consigne,
-                    // LA FEUILLE IMPRIMÉE PORTE LE PROGRAMME DE DÉPART et la
-                    // consigne : un élève sans tablette écrit son programme à
-                    // la main, ce qui est exactement ce qu'on lui demandera au
-                    // brevet. Le décalage s'y dessine (voir `codePapier`).
-                    // `consignePapier` QUAND IL Y EN A UNE : la marche du
-                    // décalage parle de deux boutons à l'écran, et le papier
-                    // n'en a pas (voir `python/ecrire.js`).
-                    papier: (e.depart ? codePapier(e.depart) + '\n\n' : '')
-                        + (e.consignePapier || e.consigne),
-                    html: `<div class="game-question py-question">${e.consigne}</div>`
-                },
-                // LA RÉPONSE EST CE QUE LE PROGRAMME AFFICHE, pas le texte tapé.
-                // Un élève qui écrit print('Bonjour') avec des apostrophes a
-                // écrit un programme juste, et Python le lui dira. Comparer les
-                // sources reviendrait à noter la façon d'écrire.
-                answer: e.sortieAttendue,
-                // ── SUR LE PAPIER, LA RÉPONSE EST LE PROGRAMME ───────────
-                //
-                // À l'écran, la réponse est ce que le programme AFFICHE : on
-                // ne note pas la façon d'écrire. Sur la feuille de solutions,
-                // c'est l'inverse qu'il faut — Rémy corrige des copies.
-                //
-                // VU SUR LA FEUILLE, ET NULLE PART AILLEURS : la question 1
-                // demandait d'écrire `print("Coucou")` et la solution disait
-                // « Coucou ». Le professeur lisait le résultat sans savoir ce
-                // qu'il fallait écrire. Pire, `0\n1\n2\n3` s'imprimait
-                // « 0 123 », parce que les sauts de ligne disparaissent dans
-                // une colonne de solutions.
-                // Les sauts de ligne DISPARAISSENT dans une colonne de
-                // solutions — mesuré : `0\n1\n2\n3` s'imprimait « 0 123 ».
-                // On sépare donc les lignes à la main, et l'on garde le CRAN
-                // visible : sans lui, la solution de la marche « le décalage »
-                // ne montrerait plus ce qu'on y corrige.
-                reponsePapier: e.solution.split('\n')
-                    .map((l) => l.replace(/^ {4}/, '> ')).join(' / '),
-                hints: e.indices,
-                explanation: `Un programme qui marche :\n${e.solution}`,
-                difficulty: etape.difficulte,
-                meta: {
-                    marche: etape.id, temps: etape.temps, titre: etape.titre,
-                    depart: e.depart,
-                    sortieAttendue: e.sortieAttendue,
-                    entrees: e.entrees || null,
-                    programme: e.solution
-                }
-            });
-        }
+// ── LES CINQ MARCHES OÙ L'ON TAPE ────────────────────────────────────────
+//
+// UN GÉNÉRATEUR À PART, et c'est la correction du 19 novembre au soir. Il ne
+// connaît que ses cinq marches : son panneau de réglages ne peut donc plus
+// proposer une question à choix à l'éditeur, qui ne sait pas la servir.
+export const pythonEcrireGenerator = {
+    id: 'algo.python.ecrire',
+    label: 'Python : à toi de taper',
+    skills: [LIRE, MEMOIRE, BLOC],
+    answerKinds: ['text'],
+    ecrit: true,
+    conseil: (p) => conseilProgression(marchesCochees(p, MARCHES_ECRITURE).length),
+    params: [paramMarches({ marches: MARCHES_ECRITURE, groupes: TEMPS_ECRITURE, mot: MOT })],
 
-        const f = (FABRIQUES[etape.id] || FABRIQUES.afficher)(rng);
-
-        return makeItem({
-            seed: rng.seed,
-            generatorId: 'algo.python',
-            skillId: etape.skill,
-            answerKind: 'choice',
-            prompt: {
-                text: f.question,
-                papier: enoncePapier(f),
-                html: enonceHtml(f)
-            },
-            answer: f.reponse,
-            choices: finalizeChoices(rng, [
-                { value: f.reponse, label: f.reponse, correct: true },
-                ...f.leurres.map((l) => ({
-                    value: l.value, label: l.value, correct: false, why: l.why
-                }))
-            ], { count: 4 }),
-            hints: f.indices,
-            explanation: f.explication,
-            difficulty: etape.difficulte,
-            meta: {
-                marche: etape.id, temps: etape.temps, titre: etape.titre,
-                // LE PROGRAMME VOYAGE AVEC L'ITEM : le bilan doit pouvoir
-                // montrer ce que l'élève avait sous les yeux quand il s'est
-                // trompé. « Il bute sur la marche 11 » ne dit rien ; « il a
-                // répondu les lignes 2, 3 et 4 sur CE programme » dit tout.
-                programme: f.sources ? f.sources.join('\n---\n') : f.source
-            }
-        });
+    generate(params, ctx) {
+        return itemEcriture(choisirLaMarche(ETAPES_ECRITURE, MARCHES_ECRITURE, params, ctx),
+            ctx.rng, 'algo.python.ecrire');
     }
 };
 

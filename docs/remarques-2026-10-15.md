@@ -8376,3 +8376,21 @@ navigation vers une origine opaque n'est pas servie par le service worker. Dans
 une salle de collège sans réseau, c'est l'exercice entier qui disparaît. Le
 cloisonnement vient donc de l'en-tête de la page, et `tools/pythonHorsLigne.mjs`
 garde cette propriété-là.
+
+### 9. « je ne comprends pas ce que tu demandes » — 19 novembre, capture d'écran
+
+Sur sa photo : **« Que va afficher ce programme ? »** au-dessus du champ de
+saisie et des deux boutons de décalage de l'éditeur. Il n'y avait rien à taper,
+et pas de propositions non plus. **Il avait raison de ne pas comprendre : la
+question venait du QCM et l'écran était celui de l'éditeur.**
+
+UN SEUL générateur portait les vingt-et-une marches, et DEUX exercices s'en
+servaient avec DEUX activités. Le catalogue limitait bien « à Toi de Taper » à
+ses cinq marches d'écriture — mais le **panneau de réglages est bâti par le
+générateur**, qui proposait les vingt-et-une. Dès qu'on y touche, l'éditeur
+reçoit un QCM. Mesuré dans les deux sens : le pavé à choix recevait aussi, lui,
+les marches où il faut écrire un programme.
+
+Corrigé à la racine : **deux générateurs**, `algo.python` (16 marches à choix)
+et `algo.python.ecrire` (5 marches où l'on tape). Chacun ne propose que les
+siennes, donc la rencontre est devenue impossible plutôt qu'improbable.
