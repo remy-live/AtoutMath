@@ -39,10 +39,16 @@
 import { regTimeout } from '../timers.js';
 import { codeHtml, decaler, cranDe } from '../python/afficher.js';
 import { diagnostiquer, conseilDuPas } from '../python/diagnostic.js';
-import { lancer, chargerPython } from '../python/executer.js';
+import { lancer, dessiner, chargerPython } from '../python/executer.js';
 import { sortieJuste, canoniqueSortie } from '../python/sortie.js';
+import { memeFigure, ressemblance } from '../python/dessin.js';
 
 const PAS = '    ';   // un cran : quatre espaces, la convention de Python
+
+// LA PLANCHE À DESSIN, EN PIXELS. Carrée, et la même pour le modèle et pour
+// l'élève — sans quoi les deux grilles ne se compareraient pas. 400 tient sur
+// un téléphone une fois réduite, et laisse de la place à une figure de 150.
+const PLANCHE = 400;
 
 const echapper = (t) => String(t == null ? '' : t).replace(/[&<>"]/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -71,6 +77,17 @@ export function mount(container, session) {
      */
     const estSortie = () => !!(item && item.meta && item.meta.genre === 'sortie');
 
+    /**
+     * LA MARCHE OÙ L'ON DESSINE — et c'est le « petit jeu » que Rémy demandait.
+     *
+     * « des petits jeux simples c'est toujours motivant ». Le jeu est le plus
+     * simple qui soit : LE MODÈLE EST TRACÉ À CÔTÉ, et il faut écrire le
+     * programme qui le refait. La correction ne passe par aucune phrase —
+     * l'élève voit les deux dessins et sait tout de suite.
+     */
+    const estDessin = () => !!(item && item.meta && item.meta.genre === 'dessin');
+    let grilleModele = null;
+
     function renderNext() {
         if (destroyed) return;
         render(session.next());
@@ -83,9 +100,23 @@ export function mount(container, session) {
         const depart = (item.meta && item.meta.depart) || '';
 
         const sortie = estSortie();
+        const trace = estDessin();
+        grilleModele = null;
         container.innerHTML = `
-            <div class="pe-plan${sortie ? ' pe-plan--sortie' : ''}">
+            <div class="pe-plan${sortie ? ' pe-plan--sortie' : ''}${
+    trace ? ' pe-plan--dessin' : ''}">
                 ${item.prompt.html}
+                ${trace ? `<div class="pe-planches">
+                    <figure class="pe-planche">
+                        <figcaption>Le modèle</figcaption>
+                        <img data-modele alt="Le dessin à refaire" class="pe-image">
+                    </figure>
+                    <figure class="pe-planche">
+                        <figcaption>Ton dessin</figcaption>
+                        <img data-tien alt="Ton dessin" class="pe-image" hidden>
+                        <div class="pe-vide" data-vide>rien encore</div>
+                    </figure>
+                </div>` : ''}
                 <div class="pe-atelier">
                     <div class="pe-editeur${sortie ? ' pe-editeur--sortie' : ''}">
                         ${sortie ? '' : '<div class="pe-marges" data-marges></div>'}
@@ -102,7 +133,7 @@ export function mount(container, session) {
                             aria-label="Décaler la ligne vers la droite">⇥</button>
                         <span class="pe-cran-dit">décaler la ligne</span>`}
                         <button type="button" class="pe-lancer" data-lancer>${
-    sortie ? 'Vérifier' : 'Lancer'}</button>
+    sortie ? 'Vérifier' : (trace ? 'Dessiner' : 'Lancer')}</button>
                     </div>
                 </div>
                 <div class="pe-console" data-console hidden></div>
@@ -132,6 +163,11 @@ export function mount(container, session) {
         container.querySelector('[data-lancer]').addEventListener('click', essayer);
         redessinerMarges();
         if (sortie) return;
+        // ON DESSINE LE MODÈLE TOUT DE SUITE, et c'est le bac à sable qui le
+        // trace : le générateur ne peut pas dessiner, il n'a pas de navigateur
+        // sous la main. Il nous passe le programme du modèle, nous le faisons
+        // tourner, et l'image qui en sort est l'énoncé.
+        if (trace) { montrerLeModele(); return; }
         // ON NE CHARGE PAS PYTHON POUR UNE QUESTION QUI NE LE LANCE PAS :
         // une marche « écris ce que ça affiche » se corrige par comparaison,
         // et faire descendre 944 Ko sur la tablette d'un élève pour rien est
@@ -229,6 +265,21 @@ export function mount(container, session) {
         redessinerMarges();
     }
 
+    /** Fait tracer le modèle par le bac à sable, et le montre. */
+    async function montrerLeModele() {
+        const cible = container.querySelector('[data-modele]');
+        if (!cible || !item.meta.solution) return;
+        const r = await dessiner(item.meta.solution, { largeur: PLANCHE, hauteur: PLANCHE });
+        if (destroyed || !r.ok) {
+            dire('<p class="pe-dit">Le modèle n’a pas pu être tracé.</p>'
+                + '<p class="pe-aide">Réessaie dans un moment : la tortue n’est pas '
+                + 'encore arrivée.</p>', 'ko');
+            return;
+        }
+        grilleModele = r.grille;
+        cible.src = r.image;
+    }
+
     /** Écrit dans la console, et la montre. */
     function dire(html, genre) {
         const c = container.querySelector('[data-console]');
@@ -282,11 +333,71 @@ export function mount(container, session) {
         });
     }
 
+    /**
+     * ON DESSINE, PUIS ON COMPARE LES DEUX FIGURES.
+     *
+     * UNE FAUTE DE SYNTAXE NE COMPTE PAS COMME UN ESSAI, exactement comme
+     * ailleurs : un programme qui ne tourne pas n'est pas une réponse fausse,
+     * c'est un programme qui n'est pas fini.
+     */
+    async function tracer(source, code) {
+        dire('<span class="pe-attente">Je dessine…</span>', 'attente');
+        const r = await dessiner(source, { largeur: PLANCHE, hauteur: PLANCHE });
+        if (destroyed) return;
+
+        if (!r.ok) {
+            fautive = r.ligne || null;
+            redessinerMarges();
+            dire(`<p class="pe-dit">${echapper(r.dire)}</p>`
+                + `<p class="pe-aide">${echapper(r.aide || '')}</p>`, 'ko');
+            return;
+        }
+        const tien = container.querySelector('[data-tien]');
+        const vide = container.querySelector('[data-vide]');
+        if (tien && r.image) { tien.src = r.image; tien.hidden = false; }
+        if (vide) vide.hidden = true;
+        fautive = null;
+        redessinerMarges();
+
+        if (!grilleModele) {
+            dire('<p class="pe-dit">Le modèle n’est pas encore tracé.</p>', 'ko');
+            return;
+        }
+        const pareil = memeFigure(r.grille, grilleModele);
+        const proche = ressemblance(r.grille, grilleModele);
+
+        const result = session.submit(
+            pareil ? item.answer : `figure/autre/${Math.round(proche * 100)}`,
+            { element: code,
+                dire: { given: 'la figure dessinée', expected: 'la figure du modèle' } });
+        if (result.ignored) return;
+
+        if (result.correct) {
+            gagne = true;
+            dire('<p class="pe-dit">C’est exactement la même figure.</p>', 'ok');
+            result.dismissed.then(() => { if (!destroyed) regTimeout(renderNext, 1400); });
+            return;
+        }
+        // ON NE DIT PAS CE QUI MANQUE : les deux dessins sont côte à côte, et
+        // l'œil le voit mieux qu'une phrase ne le dirait. On dit seulement
+        // s'il s'en approche, parce que cela, l'œil ne le dit pas.
+        dire(`<p class="pe-dit">${proche >= 0.6
+            ? 'Tu n’es pas loin, mais ce n’est pas la même figure.'
+            : 'Ce n’est pas la même figure.'}</p>`
+            + '<p class="pe-aide">Compare ton dessin et le modèle, juste au-dessus.</p>',
+        'ko');
+        result.dismissed.then(() => {
+            if (destroyed) return;
+            if (result.revealed) renderNext();
+        });
+    }
+
     async function essayer() {
         if (destroyed || gagne || session.locked) return;
         const code = container.querySelector('[data-code]');
         const source = code ? code.value : '';
         if (estSortie()) { comparer(source, code); return; }
+        if (estDessin()) { await tracer(source, code); return; }
         dire('<span class="pe-attente">Je lance…</span>', 'attente');
 
         const r = await lancer(source, { entrees: entrees() });

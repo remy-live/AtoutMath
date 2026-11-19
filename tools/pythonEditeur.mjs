@@ -351,6 +351,96 @@ console.log('\n\x1b[1mÉCRIRE CE QUE LE PROGRAMME AFFICHE\x1b[0m');
     await s.fermer();
 }
 
+// ── LE DESSIN : UN MODÈLE À CÔTÉ, ET LE PROGRAMME QUI LE REFAIT ──────────
+//
+// RÉMY, 19 novembre : « aussi des fonctions et du dessin », puis « des petits
+// jeux simples c'est toujours motivant ». Le jeu est là, et la correction ne
+// passe par aucune phrase : on voit les deux dessins.
+console.log('\n\x1b[1mDESSINER, ET COMPARER AU MODÈLE\x1b[0m');
+{
+    const s = await ouvrirSonde({ largeur: 1000, hauteur: 1400 });
+    await s.identifier();
+    const ennui = await s.ouvrirExercice('algo-python-ecrire',
+        { marches: ['dessin-carre'] }, { questions: 4 });
+    if (ennui) { dire('l\'exercice s\'ouvre', false, String(ennui)); }
+    else {
+        await s.doitExister(CODE);
+        await s.doitExister('[data-modele]');
+        // LE MODÈLE EST TRACÉ PAR LE BAC À SABLE : il arrive après coup, on
+        // le guette au lieu de l'attendre.
+        let modele = '';
+        for (let i = 0; i < 60 && !modele; i++) {
+            modele = await s.page.evaluate(() =>
+                (document.querySelector('[data-modele]') || {}).src || '');
+            if (!modele) await dormir(200);
+        }
+        dire('le modèle est dessiné', modele.startsWith('data:image/png'),
+            modele ? modele.slice(0, 22) + '…' : 'aucune image');
+        const vu = await s.page.evaluate(() => ({
+            bouton: (document.querySelector('[data-lancer]') || {}).textContent || '',
+            depart: (document.querySelector('[data-code]') || {}).value || '',
+            numeros: document.querySelectorAll('[data-marges] .py-num').length,
+            crans: document.querySelectorAll('[data-decaler]').length,
+            consigne: (document.querySelector('.py-question') || {}).textContent || ''
+        }));
+        dire('le bouton dit « Dessiner »', /Dessiner/.test(vu.bouton), vu.bouton.trim());
+        dire('la tortue est déjà importée', /import turtle/.test(vu.depart),
+            JSON.stringify(vu.depart));
+        // ICI LES NUMÉROS RESTENT : le champ porte un PROGRAMME, pas une
+        // réponse. C'est la frontière que Rémy a tracée le 19 novembre.
+        dire('et les numéros de ligne sont là, car c\'est un programme',
+            vu.numeros >= 2 && vu.crans === 2, `${vu.numeros} numéro(s), ${vu.crans} bouton(s)`);
+
+        const cote = (vu.consigne.match(/côté (\d+)/) || [0, '100'])[1];
+        const ecrire = (v) => s.page.evaluate((t) => {
+            const c = document.querySelector('[data-code]');
+            c.value = t; c.dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector('[data-lancer]').click();
+        }, v);
+        const guetter = async () => {
+            let dernier = null;
+            for (let i = 0; i < 90; i++) {
+                const c = await s.page.evaluate(() => {
+                    const e = document.querySelector('[data-console]');
+                    return e && !e.hidden ? { genre: e.className,
+                        texte: e.textContent.replace(/\s+/g, ' ').trim().slice(0, 90),
+                        tien: !(document.querySelector('[data-tien]') || {}).hidden } : null;
+                });
+                if (c) { dernier = c; if (/--(ok|ko)/.test(c.genre)) return c; }
+                await dormir(150);
+            }
+            return dernier;
+        };
+
+        // ── UNE AUTRE FIGURE ────────────────────────────────────────────
+        await ecrire(`import turtle\nt = turtle.Turtle()\nfor i in range(3):\n`
+            + `    t.forward(${cote})\n    t.left(120)`);
+        const autre = await guetter();
+        dire('un triangle n\'est pas le carré demandé',
+            !!autre && /--ko/.test(autre.genre), autre ? autre.texte : 'aucun verdict');
+        dire('et son dessin s\'affiche à côté du modèle', !!autre && autre.tien);
+        await dormir(2600);
+
+        // ── UNE FAUTE DE SYNTAXE ────────────────────────────────────────
+        await ecrire(`import turtle\nt = turtle.Turtle()\nfor i in range(4):\nt.forward(${cote})`);
+        const faute = await guetter();
+        dire('une faute de décalage se dit en FRANÇAIS',
+            !!faute && /DÉCALÉE|décal/.test(faute.texte), faute ? faute.texte.slice(0, 70) : '');
+        await dormir(2600);
+
+        // ── ET LA BONNE FIGURE ──────────────────────────────────────────
+        await ecrire(`import turtle\nt = turtle.Turtle()\nfor i in range(4):\n`
+            + `    t.forward(${cote})\n    t.left(90)`);
+        const bon = await guetter();
+        dire('le carré demandé : C\'EST LA MÊME FIGURE',
+            !!bon && /--ok/.test(bon.genre), bon ? bon.texte : 'aucun verdict');
+        if (photos) await s.photo('#game-layer', 'tools/tmp/python-dessin.png');
+        dire('aucune erreur de page', s.erreurs.length === 0, s.erreurs.slice(0, 2).join(' | '));
+        dire('aucune fenêtre native', s.fenetresNatives.length === 0);
+    }
+    await s.fermer();
+}
+
 console.log('\n' + '─'.repeat(70));
 console.log(rates ? `\n${rates} POINT(S) À REVOIR.`
     : '\nON DÉCALE AU DOIGT, LE PROGRAMME TOURNE,\n'

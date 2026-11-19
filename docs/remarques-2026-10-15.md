@@ -8413,3 +8413,28 @@ la frontière est nette : devant un PROGRAMME ils servent — le vérificateur d
 croire qu'ils en font partie, ou que la sortie est numérotée. Retirés dans ce
 cas-là, gardés dans l'autre. *À lui dire si c'est partout qu'il les voulait
 retirés.*
+
+### 11. « aussi des fonctions et du dessin » + « des petits jeux simples c'est toujours motivant » — 19 novembre
+
+**LE DESSIN EST LE JEU.** C'est la réponse aux deux phrases à la fois : un
+modèle est tracé à côté, et il faut écrire le programme qui le refait. La
+correction ne passe par aucune phrase — on voit les deux dessins.
+
+**ET LA LIGNE ROUGE TIENT**, mais je la pose sur la table plutôt que de décider
+seul. « Je ne veux pas de construction géométrique avec des outils virtuels.
+Rien ne remplace le geste. » Ici l'élève ne trace RIEN à la souris : il écrit
+`t.forward(120)` et la machine exécute. Le dessin est le RÉSULTAT d'un
+programme, pas un compas virtuel — et c'est la seule façon de voir une boucle
+agir.
+
+**HUIT MARCHES.** Groupe G, les fonctions : appeler une fonction déjà écrite —
+c'est là qu'on découvre qu'elle ne sert à rien tant qu'on ne l'appelle pas —,
+écrire le `return`, écrire une fonction à deux paramètres. Groupe H, le
+dessin : un trait, un angle droit, un carré avec une boucle, un polygone
+régulier, et enfin **une fonction qui dessine**, appelée deux fois avec deux
+côtés différents — le moment où l'on voit à quoi sert d'écrire une fonction.
+
+**CE QUE J'AI MESURÉ AVANT DE PROMETTRE** : la tortue de Python tourne bien
+dans le bac à sable cloisonné, hors ligne compris. Et le seuil qui dit « c'est
+la même figure » a été lu sur un tableau, pas choisi : les figures justes
+rendent 1,000, les fausses au plus 0,821.

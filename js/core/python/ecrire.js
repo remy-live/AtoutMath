@@ -234,7 +234,148 @@ function sortieTantQue(rng) {
     });
 }
 
-/** Les huit fabricants, dans l'ordre des marches. */
+/* ── 9 à 11. LES FONCTIONS ───────────────────────────────────────────────
+ *
+ * RÉMY, 19 novembre : « aussi des fonctions et du dessin ».
+ *
+ * TROIS MARCHES, ET L'ORDRE EST CELUI DE LA DIFFICULTÉ RÉELLE. Écrire une
+ * fonction n'est pas dur ; comprendre qu'elle ne sert à rien tant qu'on ne
+ * l'APPELLE pas l'est. On commence donc par l'appel, sur une fonction déjà
+ * écrite — c'est le moment où l'élève voit que `double` tout seul n'affiche
+ * rien.
+ */
+function fonctionAppel(rng) {
+    const v = rng.int(3, 12);
+    return fait({
+        depart: 'def double(x):\n    return 2 * x\n\n',
+        consigne: 'La fonction est écrite, mais elle ne sert encore à rien. Ajoute la '
+            + `ligne qui AFFICHE le double de ${v}.`,
+        sortieAttendue: String(2 * v) + '\n',
+        solution: `def double(x):\n    return 2 * x\n\nprint(double(${v}))`,
+        indices: ['Une fonction ne fait rien tant qu’on ne l’appelle pas.',
+            `Écris : print(double(${v}))`]
+    });
+}
+
+function fonctionRetour(rng) {
+    const v = rng.int(3, 9);
+    return fait({
+        depart: `def triple(x):\n    .....\n\nprint(triple(${v}))`,
+        consigne: 'Remplace les points par la ligne qui RENVOIE le triple de x. Le '
+            + `programme doit écrire ${3 * v}.`,
+        sortieAttendue: String(3 * v) + '\n',
+        solution: `def triple(x):\n    return 3 * x\n\nprint(triple(${v}))`,
+        indices: ['« return » renvoie un résultat à qui a appelé la fonction.',
+            'Écris : return 3 * x']
+    });
+}
+
+function fonctionEcrire(rng) {
+    const L = rng.int(4, 12), l = rng.int(2, 9);
+    return fait({
+        depart: '',
+        consigne: 'Écris une fonction « aire » qui prend L et l et renvoie leur produit, '
+            + `puis affiche l’aire d’un rectangle ${L} sur ${l}.`,
+        sortieAttendue: String(L * l) + '\n',
+        solution: `def aire(L, l):\n    return L * l\n\nprint(aire(${L}, ${l}))`,
+        indices: ['Deux paramètres entre les parenthèses, séparés par une virgule.',
+            `def aire(L, l) : … return L * l … puis print(aire(${L}, ${l}))`]
+    });
+}
+
+/* ── 12 à 16. LE DESSIN ──────────────────────────────────────────────────
+ *
+ * RÉMY : « des petits jeux simples c'est toujours motivant ». Le jeu est ici,
+ * et il est le plus simple qui soit : UN MODÈLE EST DESSINÉ À CÔTÉ, et il faut
+ * écrire le programme qui le refait. On voit tout de suite si l'on a gagné —
+ * c'est la correction la plus courte qui existe, et elle ne passe par aucune
+ * phrase.
+ *
+ * ET LA LIGNE ROUGE TIENT. Rémy : « Je ne veux pas de construction géométrique
+ * avec des outils virtuels. Rien ne remplace le geste. » Ici l'élève ne trace
+ * RIEN à la souris : il écrit `t.forward(120)` et la machine exécute. Le
+ * dessin est le RÉSULTAT d'un programme, pas un compas virtuel — c'est de la
+ * programmation, et c'est même la seule façon de voir une boucle agir.
+ */
+const EN_TETE_TORTUE = 'import turtle\nt = turtle.Turtle()\n';
+const dessin = (o) => fait({ genre: 'dessin', depart: EN_TETE_TORTUE,
+    consignePapier: auPapier(o.consigne), ...o });
+
+// ── ET SUR LE PAPIER, « CE DESSIN » NE DÉSIGNE RIEN ──────────────────────
+//
+// À l'écran, le modèle est tracé à côté et « refais ce carré » se comprend
+// d'un coup d'œil. SUR LA FEUILLE IL N'Y A PAS DE MODÈLE — le PDF ne sait pas
+// faire tourner la tortue —, et l'élève lirait une consigne qui montre du
+// doigt une image absente. On la réécrit donc en toutes lettres, et la figure
+// se décrit : c'est d'ailleurs ce qu'on lui demandera au brevet.
+const auPapier = (texte) => texte
+    .replace(/^Refais ce dessin : /, 'Écris un programme qui trace ')
+    .replace(/^Refais ce /, 'Écris un programme qui dessine un ')
+    .replace(/^Refais /, 'Écris un programme qui dessine ');
+
+function dessinTrait(rng) {
+    const n = rng.int(10, 20) * 10;
+    return dessin({
+        consigne: `Refais ce dessin : un trait de ${n} vers la droite. La tortue part `
+            + 'du centre, tournée vers la droite.',
+        solution: `${EN_TETE_TORTUE}t.forward(${n})`,
+        indices: ['« forward » avance de ce qu’on lui donne.',
+            `Écris : t.forward(${n})`]
+    });
+}
+
+function dessinAngle(rng) {
+    const n = rng.int(8, 14) * 10;
+    return dessin({
+        consigne: `Refais ce dessin : un trait de ${n} vers la droite, un quart de tour `
+            + `à gauche, puis un trait de ${n}.`,
+        solution: `${EN_TETE_TORTUE}t.forward(${n})\nt.left(90)\nt.forward(${n})`,
+        indices: ['Un quart de tour vaut 90 degrés.',
+            `t.forward(${n}) … t.left(90) … t.forward(${n})`]
+    });
+}
+
+function dessinCarre(rng) {
+    const n = rng.int(8, 14) * 10;
+    return dessin({
+        consigne: `Refais ce carré de côté ${n}, avec une boucle « for » : quatre fois `
+            + 'un trait et un quart de tour.',
+        solution: `${EN_TETE_TORTUE}for i in range(4):\n    t.forward(${n})\n    t.left(90)`,
+        indices: ['Quatre côtés : range(4).',
+            'Les deux lignes du tour sont DÉCALÉES sous le « for ».']
+    });
+}
+
+function dessinPolygone(rng) {
+    // SEULEMENT LES NOMBRES DE CÔTÉS QUI DIVISENT 360. Avec 7, l'angle vaut
+    // 51,42857… : l'élève ne peut pas le taper, et la consigne lui demanderait
+    // un nombre qui n'existe pas. Un exercice doit avoir une réponse écrivable.
+    const n = [3, 4, 5, 6, 8, 9, 10, 12][rng.int(0, 7)];
+    const cote = n <= 4 ? 110 : (n <= 6 ? 80 : 50);
+    return dessin({
+        consigne: `Refais ce polygone à ${n} côtés de ${cote}. Pour revenir à son point `
+            + `de départ, la tortue tourne de 360 ÷ ${n} à chaque sommet.`,
+        solution: `${EN_TETE_TORTUE}for i in range(${n}):\n    t.forward(${cote})\n`
+            + `    t.left(${360 / n})`,
+        indices: [`360 ÷ ${n} = ${360 / n}.`,
+            `for i in range(${n}) : … t.forward(${cote}) … t.left(${360 / n})`]
+    });
+}
+
+function dessinFonction(rng) {
+    const a = rng.int(6, 9) * 10;
+    const b = a + rng.int(3, 6) * 10;
+    return dessin({
+        consigne: 'Écris une fonction « carre » qui dessine un carré du côté qu’on lui '
+            + `donne, puis appelle-la pour ${a} et pour ${b}.`,
+        solution: `${EN_TETE_TORTUE}def carre(cote):\n    for i in range(4):\n`
+            + `        t.forward(cote)\n        t.left(90)\n\ncarre(${a})\ncarre(${b})`,
+        indices: ['La fonction prend le côté en paramètre : def carre(cote):',
+            `Puis deux appels : carre(${a}) et carre(${b}).`]
+    });
+}
+
+/** Les seize fabricants, dans l'ordre des marches. */
 export const FABRIQUES_ECRITURE = {
     'un-mot': unMot,
     'une-ligne': uneLigne,
@@ -243,5 +384,13 @@ export const FABRIQUES_ECRITURE = {
     'petit-programme': petitProgramme,
     'sortie-deux-lignes': sortieDeuxLignes,
     'sortie-boucle': sortieBoucle,
-    'sortie-tant-que': sortieTantQue
+    'sortie-tant-que': sortieTantQue,
+    'fonction-appel': fonctionAppel,
+    'fonction-retour': fonctionRetour,
+    'fonction-ecrire': fonctionEcrire,
+    'dessin-trait': dessinTrait,
+    'dessin-angle': dessinAngle,
+    'dessin-carre': dessinCarre,
+    'dessin-polygone': dessinPolygone,
+    'dessin-fonction': dessinFonction
 };

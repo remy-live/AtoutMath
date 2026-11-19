@@ -196,8 +196,51 @@ async function tendrePython() {
     }
 }
 
+/**
+ * FAIT DESSINER UN PROGRAMME, et rend l'image et la grille de comparaison.
+ *
+ * RÉMY, 19 novembre : « aussi des fonctions et du dessin ». La tortue de
+ * Python tourne dans le bac à sable comme le reste — c'est le même `eval`
+ * confiné, et c'est pour cela qu'il existe.
+ *
+ * @returns {Promise<{ok:boolean, image?:string, grille?:string, sortie:string,
+ *                    dire?:string, aide?:string, ligne?:number}>}
+ */
+export async function dessiner(source, o = {}) {
+    const vu = diagnostiquer(source);
+    if (vu) return { ok: false, sortie: '', dire: vu.dire, aide: vu.aide,
+        ligne: vu.ligne, faute: vu.faute };
+
+    const pret = await chargerPython();
+    if (!pret || !cadre || !cadre.contentWindow) {
+        return { ok: false, sortie: '',
+            dire: 'Python n’a pas pu être chargé.',
+            aide: 'Ton programme est correct, mais la machine ne peut pas le lancer '
+                + 'pour l’instant. Réessaie dans un moment.' };
+    }
+    // UNE TORTUE EST PLUS LENTE QU'UN `print` : chaque trait passe par le
+    // dessin. Cinq secondes, et le garde-fou du parent suit.
+    const limite = o.limite || 5000;
+    const r = await demanderAuBac(source, [], limite, {
+        quoi: 'dessiner', largeur: o.largeur || 400, hauteur: o.hauteur || 400
+    });
+    if (r.ok) return { ok: true, sortie: r.sortie || '', image: r.image, grille: r.grille };
+
+    const texte = String(r.erreur || '');
+    if (/execution time|timed? out|TimeLimitError|ne répond pas/i.test(texte)) {
+        return { ok: false, sortie: r.sortie || '',
+            dire: 'Ton programme ne s’arrête pas.',
+            aide: 'Je l’ai coupé. Une boucle doit finir : vérifie ce qui fait avancer '
+                + 'son compteur.' };
+    }
+    const { dire, aide } = traduireErreur(texte);
+    const m = texte.match(/on line (\d+)/);
+    return { ok: false, sortie: r.sortie || '', image: r.image, grille: r.grille,
+        dire, aide, ligne: m ? Number(m[1]) : null };
+}
+
 /** Envoie un programme au bac, et attend sa réponse. */
-function demanderAuBac(source, entrees, limite) {
+function demanderAuBac(source, entrees, limite, extra = {}) {
     return new Promise((resoudre) => {
         const n = ++jeton;
         let repondu = false;
@@ -209,7 +252,8 @@ function demanderAuBac(source, entrees, limite) {
         // Et le message ne porte que le programme de l'élève — ce qu'il vient
         // de taper lui-même, pas un secret.
         cadre.contentWindow.postMessage(
-            { pour: 'bac-python', quoi: 'lancer', jeton: n, source, entrees, limite },
+            { pour: 'bac-python', quoi: 'lancer', jeton: n, source, entrees, limite,
+                ...extra },
             '*');
         // LE GARDE-FOU DU GARDE-FOU. `execLimit` coupe les boucles sans fin
         // DANS le bac ; si c'est le bac lui-même qui ne répond plus, personne

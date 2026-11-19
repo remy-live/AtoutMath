@@ -307,7 +307,13 @@ export const donneesExercises = [
                 // « ça devrait être bon » : il avait tapé la sortie d'une
                 // boucle au lieu de la choisir parmi quatre. Écrire vaut
                 // mieux que reconnaître — c'est ce que demande le brevet.
-                'sortie-deux-lignes', 'sortie-boucle', 'sortie-tant-que'] },
+                'sortie-deux-lignes', 'sortie-boucle', 'sortie-tant-que',
+                // ── « aussi des fonctions et du dessin » — 19 novembre ──
+                // Et le dessin EST le petit jeu qu'il demandait dans la même
+                // phrase : un modèle à côté, et le programme qui le refait.
+                'fonction-appel', 'fonction-retour', 'fonction-ecrire',
+                'dessin-trait', 'dessin-angle', 'dessin-carre',
+                'dessin-polygone', 'dessin-fonction'] },
         motsClefs: ['python', 'programmation', 'algorithmique', 'code', 'coder',
             'écrire un programme', 'éditeur', 'indentation', 'décalage',
             'print', 'boucle', 'informatique', 'NSI', 'troisième', '3ème', 'seconde'],

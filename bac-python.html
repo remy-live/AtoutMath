@@ -96,7 +96,17 @@
     // humain peut lire, et l'on DIT qu'on l'a fait.
     var PLAFOND = 20000;
 
+    // LA FINESSE DE LA GRILLE DE COMPARAISON — voir `comparerLesGrilles`.
+    //
+    // 64 × 64 sur un dessin de 400 × 400 : une case vaut six pixels. C'est
+    // assez grossier pour pardonner un trait anticrénelé qui déborde d'un
+    // pixel, et assez fin pour qu'un carré de côté 100 ne passe pas pour un
+    // carré de côté 120. Mesuré, pas choisi au hasard : voir
+    // `tests/dessinPython.test.mjs`.
+    var GRILLE = 64;
+
     var pret = false;
+    var atelier = null;
 
     /** Python nous est tendu en texte : on l'évalue, une fois. */
     function recevoirPython(sources) {
@@ -112,6 +122,120 @@
         } catch (e) { return false; }
         pret = !!(window.Sk && window.Sk.importMainWithBody);
         return pret;
+    }
+
+    /**
+     * LA PLANCHE À DESSIN — remontée à neuf à chaque essai.
+     *
+     * Skulpt empile DEUX canvas : le tracé, et la tortue elle-même. Ils se
+     * distinguent par leur `z-index`, et c'est le seul repère stable qu'ils
+     * donnent — ils n'ont ni classe ni identifiant. MESURÉ : tracé z = 2,
+     * tortue z = 3. On regarde donc TOUT pour l'image qu'on montre, et tout
+     * SAUF le calque du dessus pour l'image qu'on compare : la flèche n'est
+     * pas une partie du dessin, et deux élèves qui finissent leur figure en
+     * regardant dans deux directions différentes ont dessiné la même chose.
+     */
+    function planche(largeur, hauteur) {
+        if (atelier) atelier.parentNode.removeChild(atelier);
+        atelier = document.createElement('div');
+        atelier.id = 'atelier-tortue';
+        atelier.style.width = largeur + 'px';
+        atelier.style.height = hauteur + 'px';
+        document.body.appendChild(atelier);
+        window.Sk.TurtleGraphics = { target: 'atelier-tortue',
+            width: largeur, height: hauteur, animate: false };
+        return atelier;
+    }
+
+    /** Aplatit des canvas sur un fond blanc, et rend l'image. */
+    function aplatir(canvas, largeur, hauteur) {
+        var plat = document.createElement('canvas');
+        plat.width = largeur; plat.height = hauteur;
+        var ctx = plat.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, largeur, hauteur);
+        for (var i = 0; i < canvas.length; i++) ctx.drawImage(canvas[i], 0, 0);
+        return plat;
+    }
+
+    /**
+     * LE DESSIN, RAMENÉ À UNE GRILLE DE CASES PLEINES OU VIDES.
+     *
+     * ON NE COMPARE PAS DES PIXELS. Deux programmes qui dessinent le même
+     * carré peuvent poser leurs traits à un pixel près — anticrénelage,
+     * arrondi d'un cosinus — et une comparaison pixel à pixel déclarerait
+     * fausse une figure juste. La grille absorbe cela ; elle ne pardonne pas
+     * un côté deux fois trop long.
+     */
+    function grilleDe(canvas, largeur, hauteur) {
+        var plat = aplatir(canvas, largeur, hauteur);
+        var d = plat.getContext('2d').getImageData(0, 0, largeur, hauteur).data;
+        var pas = GRILLE;
+        var out = '';
+        for (var cy = 0; cy < pas; cy++) {
+            for (var cx = 0; cx < pas; cx++) {
+                var x0 = Math.floor(cx * largeur / pas), x1 = Math.floor((cx + 1) * largeur / pas);
+                var y0 = Math.floor(cy * hauteur / pas), y1 = Math.floor((cy + 1) * hauteur / pas);
+                var encre = 0;
+                for (var y = y0; y < y1; y++) {
+                    for (var x = x0; x < x1; x++) {
+                        var i = (y * largeur + x) * 4;
+                        // Sur fond blanc, « il y a de l'encre » veut dire
+                        // « ce n'est pas blanc ».
+                        if (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240) encre++;
+                    }
+                }
+                out += encre > 0 ? '1' : '0';
+            }
+        }
+        return out;
+    }
+
+    /** Lance un programme qui DESSINE, et rend l'image et la grille. */
+    function dessiner(source, largeur, hauteur, limite) {
+        var cible = planche(largeur, hauteur);
+        var sortie = [];
+        window.Sk.configure({
+            output: function (t) { sortie.push(t); },
+            read: function (f) {
+                if (!window.Sk.builtinFiles || !window.Sk.builtinFiles.files[f]) {
+                    throw new Error('module introuvable : ' + f);
+                }
+                return window.Sk.builtinFiles.files[f];
+            },
+            inputfun: function () { return ''; },
+            inputfunTakesPrompt: true,
+            execLimit: limite || 5000,
+            __future__: window.Sk.python3
+        });
+        return new Promise(function (res) {
+            var fini = function (ok, erreur) {
+                var tous = [].slice.call(cible.querySelectorAll('canvas'));
+                if (!tous.length) {
+                    res({ ok: false, sortie: sortie.join(''),
+                        erreur: erreur || 'rien n’a été dessiné' });
+                    return;
+                }
+                // Le calque du dessus porte la tortue : on l'écarte du dessin
+                // qu'on compare, on le garde dans celui qu'on montre.
+                var parZ = tous.slice().sort(function (a, b) {
+                    return (parseInt(getComputedStyle(a).zIndex, 10) || 0)
+                        - (parseInt(getComputedStyle(b).zIndex, 10) || 0);
+                });
+                var trace = parZ.slice(0, Math.max(1, parZ.length - 1));
+                res({ ok: ok, sortie: sortie.join(''), erreur: erreur,
+                    image: aplatir(tous, largeur, hauteur).toDataURL('image/png'),
+                    grille: grilleDe(trace, largeur, hauteur) });
+            };
+            var p;
+            try {
+                p = window.Sk.misceval.asyncToPromise(function () {
+                    return window.Sk.importMainWithBody('<eleve>', false, source, true);
+                });
+            } catch (e) { fini(false, String(e && e.message ? e.message : e)); return; }
+            p.then(function () { fini(true, undefined); },
+                function (e) { fini(false, String(e && e.message ? e.message : e)); });
+        });
     }
 
     /** Lance un programme et rend ce qu'il a affiché. */
@@ -172,6 +296,22 @@
             reponse.pret = recevoirPython(d.sources || []);
         } else if (d.quoi === 'es-tu-la') {
             reponse.pret = pret;
+        } else if (d.quoi === 'dessiner') {
+            if (!pret) {
+                reponse.ok = false;
+                reponse.erreur = 'Python n’est pas chargé.';
+            } else {
+                dessiner(String(d.source || ''), d.largeur || 400, d.hauteur || 400, d.limite)
+                    .then(function (r) {
+                        reponse.ok = r.ok;
+                        reponse.sortie = r.sortie;
+                        reponse.erreur = r.erreur;
+                        reponse.image = r.image;
+                        reponse.grille = r.grille;
+                        ev.source.postMessage(reponse, ev.origin);
+                    });
+                return;   // la réponse part plus tard
+            }
         } else if (d.quoi === 'lancer') {
             if (!pret) {
                 reponse.ok = false;

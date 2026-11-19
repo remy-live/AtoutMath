@@ -119,7 +119,35 @@ export const ETAPES = [
     { id: 'sortie-boucle', temps: 'F', titre: 'Dérouler une boucle « for »',
       skill: BLOC, difficulte: 3, ecrire: true, genre: 'sortie' },
     { id: 'sortie-tant-que', temps: 'F', titre: 'Dérouler un « while »',
-      skill: BLOC, difficulte: 4, ecrire: true, genre: 'sortie' }
+      skill: BLOC, difficulte: 4, ecrire: true, genre: 'sortie' },
+
+    // ── LES FONCTIONS, PUIS LE DESSIN ───────────────────────────────────
+    //
+    // RÉMY, 19 novembre : « aussi des fonctions et du dessin », puis « des
+    // petits jeux simples c'est toujours motivant ».
+    //
+    // LE JEU EST LE DESSIN LUI-MÊME : un modèle est tracé à côté, et il faut
+    // écrire le programme qui le refait. On voit tout de suite si l'on a
+    // gagné, sans lire une phrase. Et c'est là que la fonction cesse d'être
+    // une formalité : `carre(80)` puis `carre(120)` dessinent deux carrés
+    // avec UNE seule définition, ce qu'aucun exercice de calcul ne montre
+    // aussi vite.
+    { id: 'fonction-appel', temps: 'G', titre: 'Appeler une fonction déjà écrite',
+      skill: MEMOIRE, difficulte: 3, ecrire: true },
+    { id: 'fonction-retour', temps: 'G', titre: 'Écrire le « return »',
+      skill: MEMOIRE, difficulte: 4, ecrire: true },
+    { id: 'fonction-ecrire', temps: 'G', titre: 'Écrire une fonction à deux paramètres',
+      skill: MEMOIRE, difficulte: 5, ecrire: true },
+    { id: 'dessin-trait', temps: 'H', titre: 'Un trait',
+      skill: LIRE, difficulte: 2, ecrire: true, genre: 'dessin' },
+    { id: 'dessin-angle', temps: 'H', titre: 'Un trait, un quart de tour, un trait',
+      skill: LIRE, difficulte: 3, ecrire: true, genre: 'dessin' },
+    { id: 'dessin-carre', temps: 'H', titre: 'Un carré, avec une boucle',
+      skill: BLOC, difficulte: 3, ecrire: true, genre: 'dessin' },
+    { id: 'dessin-polygone', temps: 'H', titre: 'Un polygone régulier',
+      skill: BLOC, difficulte: 4, ecrire: true, genre: 'dessin' },
+    { id: 'dessin-fonction', temps: 'H', titre: 'Une fonction qui dessine',
+      skill: BLOC, difficulte: 5, ecrire: true, genre: 'dessin' }
 ];
 
 const TEMPS = {
@@ -128,7 +156,9 @@ const TEMPS = {
     C: 'C — choisir et répéter',
     D: 'D — le décalage, et les fautes',
     E: 'E — à toi de taper',
-    F: 'F — écrire ce que ça affiche'
+    F: 'F — écrire ce que ça affiche',
+    G: 'G — les fonctions',
+    H: 'H — dessiner avec la tortue'
 };
 
 const MOT = 'marche';
@@ -160,7 +190,7 @@ const ETAPES_ECRITURE = ETAPES.filter((e) => e.ecrire);
 const MARCHES_QCM = nommer(ETAPES_QCM);
 const MARCHES_ECRITURE = nommer(ETAPES_ECRITURE);
 const TEMPS_QCM = { A: TEMPS.A, B: TEMPS.B, C: TEMPS.C, D: TEMPS.D };
-const TEMPS_ECRITURE = { E: TEMPS.E, F: TEMPS.F };
+const TEMPS_ECRITURE = { E: TEMPS.E, F: TEMPS.F, G: TEMPS.G, H: TEMPS.H };
 
 /**
  * Le HTML de l'énoncé : le ou les programmes, puis la question.
@@ -249,7 +279,19 @@ function itemEcriture(etape, rng, generatorId) {
         // ce qui reste est un nombre (la règle « 62 307 = 62307 »), ce qui
         // ramène « 1\n2\n3 » à « 123 » et déclare JUSTE une sortie écrite
         // tout sur une ligne. Voir `python/sortie.js`.
-        answer: canoniqueSortie(e.sortieAttendue),
+        // ── TROIS GENRES, TROIS RÉPONSES ────────────────────────────────
+        //
+        // · « dessin » : C'EST L'ACTIVITÉ QUI JUGE, en comparant la figure de
+        //   l'élève au modèle (voir `python/dessin.js`). Le meneur, lui, a
+        //   besoin d'une réponse à comparer : on lui donne un JETON propre à
+        //   cette question, que l'activité renvoie quand la figure est la
+        //   bonne et jamais autrement. C'est le motif que le noyau prévoit —
+        //   « ce qui juge n'est pas toujours ce qui se lit », voir
+        //   `itemSession.submit` — et `dire` porte la version lisible.
+        // · les deux autres : la sortie, sous sa forme canonique.
+        answer: e.genre === 'dessin'
+            ? `figure/${etape.id}/${rng.seed}`
+            : canoniqueSortie(e.sortieAttendue),
         // ── SUR LE PAPIER, LA RÉPONSE EST LE PROGRAMME ───────────
         //
         // À l'écran, la réponse est ce que le programme AFFICHE : on
@@ -285,6 +327,11 @@ function itemEcriture(etape, rng, generatorId) {
             // l'élève comme du Python — ce qui est exactement ce qui a fait
             // répondre « faux » à la bonne réponse de Rémy, le 19 novembre.
             genre: e.genre || 'programme',
+            // LE PROGRAMME DU MODÈLE VOYAGE AVEC L'ITEM : l'activité le fait
+            // tourner dans le bac à sable pour DESSINER le modèle. Le
+            // générateur, lui, ne peut pas dessiner — il n'a pas de
+            // navigateur sous la main, et c'est très bien ainsi.
+            solution: e.solution,
             depart: e.depart,
             sortieAttendue: e.sortieAttendue,
             entrees: e.entrees || null,
