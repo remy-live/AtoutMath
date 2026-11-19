@@ -8026,3 +8026,97 @@ plus d'un.**
   déjà travaillé — une classe « 6e B peuplée » que `siteEssai.php` monterait
   sur demande. Toute sonde qui regarde un écran de suivi en a besoin, et
   chacune le refabrique à la main.
+
+---
+
+**Une sonde qui lit l'écran APRÈS la bonne réponse mesure la question suivante**
+— 19 novembre
+
+- *Ce que je voulais faire* : vérifier que l'éditeur Python lance le programme
+  de l'élève et dit « c'est juste ».
+- *Ce qui a coûté* : une heure de recherche dans le mauvais fichier. La sonde
+  cliquait « Lancer », attendait 3 secondes, puis lisait la console — mais le
+  meneur enchaîne sur la question suivante 900 ms après une bonne réponse, et
+  remplace tout le conteneur. La sonde rendait donc « aucune console », c'est-à-
+  dire **la même réponse qu'un logiciel cassé**, sur un logiciel qui venait de
+  répondre « C'est exactement ça ».
+- *Combien de fois* : ||| (le QR code et le mur blanc, puis ceci)
+- *Ce qui manque* : la règle existe dans CLAUDE.md pour les caméras — « pour
+  mesurer un écran, il faut une entrée qui ne le fasse pas changer » — mais
+  l'autre moitié n'y est pas : **quand on ne peut pas empêcher l'écran de
+  changer, il faut GUETTER, pas attendre.** Un `attendreVerdict(s)` qui
+  interroge toutes les 120 ms et garde le PREMIER état stable appartient à
+  `tools/sonde.mjs`, pas à chaque sonde. Il y est maintenant trois fois, écrit
+  trois fois.
+
+---
+
+**Onze contrôles verts, et la photo montre un éditeur inutilisable** —
+19 novembre
+
+- *Ce que je voulais faire* : livrer l'éditeur Python.
+- *Ce qui a coûté* : rien, par chance — j'ai regardé l'image. Police, taille,
+  interligne, numéros, filets, décalage, curseur, boutons au doigt : onze
+  mesures vertes. Et l'élève voyait **son programme écrit deux fois**, en
+  couleurs, décalé de trois pixels. La couche invisible qui tient la place
+  disait `color: transparent`, mais la coloration syntaxique POSE une couleur
+  sur chaque jeton, et une couleur posée gagne sur l'héritage.
+- *Combien de fois* : || (déjà payé sur l'énoncé qui montrait sa propre
+  réponse, le 18)
+- *Ce qui manque* : pour toute interface à DEUX COUCHES SUPERPOSÉES — un
+  `textarea` transparent sur un calque colorié —, une mesure qui dit que la
+  couche cachée est VRAIMENT cachée. Elle tient en une ligne et ne vient à
+  l'esprit qu'après : compter les descendants dont la couleur calculée n'est
+  pas transparente. Elle est maintenant dans `tools/pythonEditeur.mjs` ; elle
+  mériterait d'être dans `sonde.mjs` sous le nom `coucheInvisible(sel)`.
+
+---
+
+**Une sonde qui dispatche un faux message attrape son propre appât** —
+19 novembre
+
+- *Ce que je voulais faire* : vérifier que le bac à sable Python refuse un
+  message qui ne vient pas de la fenêtre qui l'a posé.
+- *Ce qui a coûté* : vingt minutes à chercher un trou de sécurité qui n'existait
+  pas. `window.dispatchEvent(new MessageEvent(...))` réveille **tous** les
+  écouteurs de la fenêtre, y compris celui que la sonde venait d'installer pour
+  guetter la réponse. Elle annonçait « IL A RÉPONDU » sur un cadre resté muet.
+- *Combien de fois* : |
+- *Ce qui manque* : la forme générale est « l'appât et le filet sont sur le même
+  fil ». Dans ce dépôt elle se présentera chaque fois qu'on éprouve un
+  protocole `postMessage`. La parade est de distinguer la demande de la réponse
+  par leur FORME (ici : une réponse ne porte jamais `quoi`), et de le dire dans
+  l'aide d'épreuve plutôt que dans chaque sonde.
+
+---
+
+**Une sonde qui cherche un motif interdit le trouve dans le commentaire qui
+l'interdit — aussi en dehors des tests** — 19 novembre
+
+- *Ce que je voulais faire* : vérifier que le cadre du bac à sable n'est jamais
+  posé avec `allow-same-origin`.
+- *Ce qui a coûté* : un rouge inexplicable. `sansCommentaires` est dans
+  `tests/helpers.mjs` et CLAUDE.md en parle pour les **épreuves** ; je ne l'ai
+  pas appliquée à une **sonde**, qui lit pourtant les mêmes fichiers avec la
+  même expression régulière. Et ce dépôt écrit toujours le mot proscrit juste
+  au-dessus du code qui l'évite.
+- *Combien de fois* : ||||| (quatre fois dans les tests, une ici)
+- *Ce qui manque* : `sansCommentaires` doit sortir de `tests/` — c'est un outil
+  de LECTURE DE SOURCE, pas un outil d'épreuve. Tant qu'elle vit sous `tests/`,
+  on ne pense pas à elle quand on écrit un `tools/*.mjs`.
+
+---
+
+**`remplacer.mjs` refuse en bloc sans dire QUE l'indentation diffère** —
+19 novembre
+
+- *Ce que je voulais faire* : insérer deux lignes dans `tools/siteEssai.php`.
+- *Ce qui a coûté* : trois allers-retours. L'outil dit « 0 occurrence(s) au lieu
+  de 1 » et conseille de relire le fichier à cause des apostrophes courbes — le
+  vrai écart était **une espace d'indentation**. Le conseil affiché envoie
+  chercher au mauvais endroit, et c'est arrivé trois fois dans la même séance.
+- *Combien de fois* : |||
+- *Ce qui manque* : quand une paire ne trouve rien, chercher la même chaîne
+  **sans tenir compte des blancs de début de ligne** ; si elle existe alors,
+  dire « trouvée à la ligne N, mais avec 4 espaces d'indentation au lieu de 5 ».
+  L'outil a déjà le fichier en main : la réponse lui coûte deux lignes.

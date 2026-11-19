@@ -45,7 +45,14 @@ $vrai = realpath($fichier);
 if ($vrai !== false && str_starts_with($vrai, $racine . DIRECTORY_SEPARATOR)
     && substr($vrai, -5) === '.html' && is_file($vrai)) {
     header('Content-Type: text/html; charset=UTF-8');
-    $csp = getenv('ATOUTMATH_CSP');
+    // LA PAGE DU BAC À SABLE A SA POLITIQUE À ELLE, et c'est tout l'intérêt
+    // de l'exercice : elle seule peut évaluer. Si on la servait avec la
+    // politique générale, la sonde de l'éditeur Python mesurerait un site qui
+    // n'existe pas — et elle le ferait EN VERT sur tout le reste, ce qui est
+    // la forme la plus coûteuse d'une mesure fausse.
+    $csp = basename($vrai) === 'bac-python.html'
+        ? (getenv('ATOUTMATH_CSP_BAC') ?: getenv('ATOUTMATH_CSP'))
+        : getenv('ATOUTMATH_CSP');
     if ($csp) header('Content-Security-Policy: ' . $csp);
     // Les deux autres en-têtes que `.htaccess` pose sur les documents, pour la
     // même raison : ce qu'on mesure doit être ce qui sera servi.

@@ -426,17 +426,72 @@ export function ecrireSymboles(doc) {
     // points, les coordonnées en millimètres.
     const PT = 25.4 / 72;
 
+    // ── LE CHAPEAU DES ANGLES, QU'ON DESSINE AU LIEU DE L'ÉCRIRE ─────────
+    //
+    // RÉMY, 19 novembre : « on met des accents circonflexes sur les angles ».
+    // Puis, quand je lui ai dit que le PDF ne savait pas composer et qu'il
+    // faudrait embarquer une police : « tu me fais les deux ».
+    //
+    // ON N'EMBARQUE PAS DE POLICE, ET C'EST MIEUX. Une police dans le PDF,
+    // c'est deux cent cinquante kilo-octets sur CHAQUE feuille imprimée, une
+    // conversion WOFF2 vers TTF qu'aucun outil du dépôt ne sait faire, et une
+    // dépendance de plus. Or cette fonction-ci écrit DÉJÀ des morceaux
+    // hétérogènes — un glyphe Symbol ici, un indice rapetissé là — et pose
+    // chacun à sa place. Un accent circonflexe au-dessus d'une lettre est
+    // exactement le même geste : on écrit la lettre, puis on écrit « ^ »
+    // par-dessus, centré, et l'on n'avance que de la largeur de la lettre.
+    //
+    // ÇA MARCHE POUR LES VINGT-SIX LETTRES, précomposées ou non — c'est ce
+    // que la solution « police embarquée » n'aurait pas donné gratuitement,
+    // puisque WinAnsi n'a que Â Ê Î Ô Û.
+    const CHAPEAU = '\u0302';
+
     /** Découpe « (AB) ⊥ (CD) » en morceaux homogènes. */
     const morceaux = (t) => {
         const out = [];
         let courant = '';
-        for (const c of t) {
-            const genre = SYMBOLE[c] ? 'symbole' : (INDICES[c] ? 'indice' : 'texte');
+        // ── LES VINGT-SIX LETTRES DOIVENT SE RESSEMBLER ──────────────────
+        //
+        // VU SUR LA FEUILLE RENDUE, et c'est l'objection que je m'étais faite
+        // à moi-même la veille : « Î » a un caractère précomposé dans la
+        // police du PDF, « M̂ » non. La première question sortait donc avec le
+        // VRAI accent, la deuxième avec le nôtre, dessiné — plus haut et plus
+        // fin. Deux écritures du même objet sur une même page, et un élève y
+        // lit une différence qui n'existe pas.
+        //
+        // ON DÉCOMPOSE DONC LES PRÉCOMPOSÉS, pour que tout le monde passe par
+        // le même tracé. Mais SEULEMENT quand la lettre est SEULE : « Île » et
+        // « Êtes-vous » sont du français, pas des angles, et leur accent doit
+        // rester celui de la police. Un nom d'angle est une majuscule entourée
+        // de ce qui n'est pas une lettre — « l'angle Î et », « sin(Î) ».
+        // LES DOUZE MAJUSCULES À CHAPEAU PRÉCOMPOSÉ, et non les cinq du
+        // français : Ĉ, Ĝ, Ĥ, Ĵ, Ŝ, Ŵ, Ŷ existent aussi, et sept d'entre
+        // elles sont ABSENTES du jeu de caractères des polices standard d'un
+        // PDF. « Ŝ » sortait en « ? », et la feuille disait « On connaît
+        // l'angle ? ». Le logiciel n'en produit plus (voir `avecChapeau`),
+        // mais ce filet reste : un texte collé par Rémy, lui, peut en porter.
+        const SEULE = /(^|[^A-Za-zÀ-ÿ])([ÂĈÊĜĤÎĴÔŜÛŴŶ])(?![A-Za-zÀ-ÿ])/g;
+        const DECOMPOSE = { 'Â': 'A', 'Ĉ': 'C', 'Ê': 'E', 'Ĝ': 'G', 'Ĥ': 'H',
+            'Î': 'I', 'Ĵ': 'J', 'Ô': 'O', 'Ŝ': 'S', 'Û': 'U', 'Ŵ': 'W', 'Ŷ': 'Y' };
+        const texteNorme = String(t).replace(SEULE,
+            (m0, avant, lettre) => avant + DECOMPOSE[lettre] + CHAPEAU);
+
+        // UNE LETTRE CHAPEAUTÉE EST UN SEUL MORCEAU, donc on regroupe d'abord :
+        // le diacritique suit sa lettre et ne vaut rien tout seul.
+        const unites = [];
+        for (const c of texteNorme) {
+            if (c === CHAPEAU && unites.length) { unites[unites.length - 1] += c; continue; }
+            unites.push(c);
+        }
+        for (const u of unites) {
+            const c = u[0];
+            const genre = u.length > 1 && u.endsWith(CHAPEAU) ? 'chapeau'
+                : (SYMBOLE[c] ? 'symbole' : (INDICES[c] ? 'indice' : 'texte'));
             if (genre === 'texte') { courant += c; continue; }
             if (courant) { out.push({ genre: 'texte', t: courant }); courant = ''; }
-            out.push(genre === 'symbole'
-                ? { genre, t: SYMBOLE[c][0], mille: SYMBOLE[c][1] }
-                : { genre, t: INDICES[c] });
+            out.push(genre === 'symbole' ? { genre, t: SYMBOLE[c][0], mille: SYMBOLE[c][1] }
+                : genre === 'chapeau' ? { genre, t: c }
+                    : { genre, t: INDICES[c] });
         }
         if (courant) out.push({ genre: 'texte', t: courant });
         return out;
@@ -444,6 +499,8 @@ export function ecrireSymboles(doc) {
 
     // On N'INTERROGE PAS jsPDF pour un glyphe Symbol : il rendrait 580 pour
     // tous. La largeur vient de la table mesurée ci-dessus.
+    // Une lettre chapeautée occupe la largeur de SA LETTRE : l'accent se pose
+    // par-dessus et ne pousse rien.
     const largeur = (m, taille) => (m.genre === 'symbole'
         ? m.mille / 1000 * taille * PT
         : doc.getTextWidth(m.t) * (m.genre === 'indice' ? 0.68 : 1));
@@ -469,6 +526,23 @@ export function ecrireSymboles(doc) {
                 doc.setFont('symbol', 'normal');
                 brut.call(doc, m.t, cx, y, reste);
                 doc.setFont(police.fontName, police.fontStyle);
+            } else if (m.genre === 'chapeau') {
+                // La lettre d'abord, à sa place ordinaire.
+                brut.call(doc, m.t, cx, y, reste);
+                // Puis l'accent, CENTRÉ sur elle et remonté d'un demi-corps.
+                // Les deux nombres sont mesurés sur la feuille rendue, pas
+                // devinés : 0,56 corps au-dessus de la ligne de base pose la
+                // pointe du chapeau juste au-dessus d'une majuscule, et le
+                // recentrage évite le « Â » penché à droite qu'on obtient en
+                // posant l'accent au même x que la lettre.
+                //
+                // 0,48 ET NON 0,56 : à 0,56, VU SUR LA FEUILLE RENDUE, le
+                // chapeau flottait au-dessus de la majuscule au lieu de s'y
+                // poser. Le pied du « ^ » d'Helvetica est déjà haut dans sa
+                // chasse ; il n'a pas besoin qu'on le remonte d'un demi-corps.
+                const lettre = doc.getTextWidth(m.t);
+                const accent = doc.getTextWidth('^');
+                brut.call(doc, '^', cx + (lettre - accent) / 2, y - taille * PT * 0.48, reste);
             } else if (m.genre === 'indice') {
                 // Plus petit, et posé plus bas — c'est la définition d'un indice.
                 doc.setFontSize(taille * 0.68);
@@ -747,12 +821,12 @@ const HORS_TABLE = {
     //     suivent, c'est-à-dire une notation qui change de règle en cours de
     //     page. Un élève y lirait une différence qui n'existe pas.
     //
-    // La feuille écrit donc « sin(B) », qui est l'écriture des manuels quand
-    // la composition n'est pas possible, et l'écran garde le chapeau. POUR
-    // L'AVOIR SUR LE PAPIER AUSSI, il faudrait embarquer une police dans le
-    // PDF : c'est faisable, c'est un autre chantier, et il attendra que Rémy
-    // dise que cela en vaut la peine.
-    '\u0302': '',
+    // ET IL S'IMPRIME MAINTENANT — voir `morceaux`, plus haut dans ce fichier.
+    //
+    // RÉMY : « tu me fais les deux ». Il n'est donc PLUS effacé ici : il
+    // traverse `pourPdf` intact, comme les symboles mathématiques, et c'est
+    // `ecrireSymboles` qui le DESSINE au-dessus de sa lettre au moment du
+    // tracé. Aucune police embarquée, et les vingt-six lettres y ont droit.
     // L'ESPACE FINE INSÉCABLE des milliers (« 62 307 ») n'existe pas en
     // WinAnsi : elle sortait en « ? » au milieu de chaque grand nombre. On la
     // remplace par l'insécable ordinaire, qui, elle, y est — le nombre reste
@@ -1307,7 +1381,20 @@ const exposantsLisibles = (t) => t.replace(
     });
 
 /** Les caractères que `ecrireSymboles` sait dessiner : ils traversent pourPdf. */
-export const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('') + Object.keys(INDICES).join('') + ']');
+// LE DIACRITIQUE COMBINANT EST DANS LA LISTE, et c'est lui qui fait emprunter
+// à une ligne d'angles le chemin de `ecrireSymboles` plutôt que le chemin
+// rapide de jsPDF. Sans cette lettre-là dans le motif, « sin(B̂) » passait tout
+// droit et le chapeau ressortait en « ? ».
+// ET LES CINQ MAJUSCULES PRÉCOMPOSÉES Y SONT AUSSI, sans quoi la
+// décomposition de `morceaux` ne servirait à rien : une ligne qui ne porte que
+// « Î » ne matcherait pas ce motif, prendrait le chemin rapide de jsPDF, et
+// sortirait avec le glyphe de la police — donc d'une autre forme que le « M̂ »
+// dessiné de la question d'à côté. Les mots français qui les contiennent
+// (« Île ») empruntent alors le chemin long sans rien y changer : `morceaux`
+// ne décompose que les lettres SEULES.
+export const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('')
+    + Object.keys(INDICES).join('')
+    + '\u0302\u00c2\u0108\u00ca\u011c\u0124\u00ce\u0134\u00d4\u015c\u00db\u0174\u0176' + ']');
 
 export function pourPdf(texte) {
     let t = exposantsLisibles(typographieFr(texte));

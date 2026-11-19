@@ -41,6 +41,31 @@ import { dirname, join } from 'node:path';
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES = ['index.html', 'postes.html'];
 
+// LA POLITIQUE DU BAC À SABLE PYTHON : la même que celle du site, en plus
+// SERRÉE partout sauf sur le point unique qui l'oblige à exister. Pas d'image,
+// pas de police, pas de réseau, pas de cadre — cette page n'affiche rien et ne
+// parle à personne : elle calcule, et elle répond à qui l'a ouverte.
+//
+// `frame-ancestors 'self'` est la ligne qui compte autant que `unsafe-eval` :
+// sans elle, n'importe quel site pourrait ouvrir ce cadre et s'en servir comme
+// d'un évaluateur. Avec elle, seul AtoutMath peut l'embarquer.
+export const CSP_BAC_PYTHON = [
+    // `sandbox` DANS L'EN-TÊTE ET NON SUR LA BALISE : voir l'essai
+    // `tools/tmp/bacHorsLigne.mjs`.
+    "sandbox allow-scripts",
+    "default-src 'none'",
+    // `'unsafe-inline'` ET PAS `'self'` : cette page ne charge AUCUN
+    // fichier — son script est écrit dedans, et Skulpt lui est tendu en texte
+    // par l'application. C'est ce qui la rend disponible hors ligne.
+    "script-src 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'unsafe-inline'",
+    "connect-src 'none'",
+    "frame-ancestors 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "object-src 'none'"
+].join('; ');
+
 const MARQUE_DEBUT = '# ── CSP : engendrée par `node tools/csp.mjs`, ne pas éditer à la main ──';
 const MARQUE_FIN = '# ── fin CSP ──';
 
@@ -192,6 +217,27 @@ function blocHtaccess(csp) {
         '    # complète de la page à un site tiers.',
         '    Header always set X-Content-Type-Options "nosniff"',
         '    Header always set Referrer-Policy "strict-origin-when-cross-origin"',
+        '',
+        '    # ── UNE SEULE PAGE A LE DROIT D\'ÉVALUER : LE BAC À SABLE PYTHON ──',
+        '    #',
+        '    # Rémy, 19 novembre : « il faudrait que l\'élève puisse faire des',
+        '    # petits programmes ». Skulpt compile le Python en JavaScript et',
+        '    # l\'exécute, et cette exécution passe par `eval` — MESURÉ dans le',
+        '    # vrai site : « Evaluating a string as JavaScript is not allowed ».',
+        '    #',
+        '    # ON NE L\'OUVRE PAS POUR TOUT LE SITE. Ajouter `unsafe-eval` à la',
+        '    # politique générale aurait coûté une ligne et rendu au logiciel la',
+        '    # faiblesse qu\'il a payée : en septembre 2026, le PRÉNOM d\'un élève',
+        '    # s\'exécutait chez le professeur. N\'importe quelle chaîne injectée',
+        '    # redeviendrait exécutable, et c\'est exactement cette attaque-là.',
+        '    #',
+        '    # `bac-python.html` ne contient AUCUN code de l\'application, ne lit',
+        '    # aucune donnée d\'élève et ne touche à rien : elle attend un',
+        '    # programme par `postMessage`, le fait tourner, et renvoie ce qu\'il',
+        '    # a affiché. L\'exception s\'arrête à elle.',
+        '    <Files "bac-python.html">',
+        `        Header always set Content-Security-Policy "${CSP_BAC_PYTHON}"`,
+        '    </Files>',
         '</IfModule>',
         MARQUE_FIN
     ].join('\n');

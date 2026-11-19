@@ -144,12 +144,25 @@ export const sommetVise = (t) => t.sommets[t.angleVise];
  * l'on parle d'un angle, jamais par balayage du texte.
  */
 const CHAPEAU = '\u0302';
-// NORMALISER APRÈS, PAS AVANT. Premier jet : `String(lettre).normalize('NFC')
-// + CHAPEAU`, ce qui ne recolle évidemment rien — le chapeau arrive après la
-// normalisation. « A » restait donc deux caractères là où un seul existe, et
-// mon propre commentaire au-dessus disait le contraire de ce que le code
-// faisait. On compose, PUIS on normalise.
-export const avecChapeau = (lettre) => (String(lettre) + CHAPEAU).normalize('NFC');
+// ── ET L'ON NE NORMALISE PAS. UNE SEULE ÉCRITURE, TOUJOURS LA MÊME ───────
+//
+// Premier jet : on normalisait en NFC, pour que « A » + U+0302 devienne le
+// seul caractère « Â ». L'intention était bonne — deux écritures d'un même
+// angle feraient échouer la moindre comparaison de chaînes. Le résultat ne
+// l'était pas, et c'est la FEUILLE IMPRIMÉE qui l'a dit.
+//
+// DOUZE MAJUSCULES ONT UN CARACTÈRE PRÉCOMPOSÉ — Â Ĉ Ê Ĝ Ĥ Î Ĵ Ô Ŝ Û Ŵ Ŷ —,
+// et SEPT d'entre elles n'existent pas dans le jeu de caractères des polices
+// standard d'un PDF. « Ŝ » et « Ĝ » sortaient donc en « ? » : la feuille
+// disait « On connaît l'angle ? ». Normaliser créait exactement la diversité
+// qu'on voulait éviter, et la poussait là où elle fait le plus de dégâts.
+//
+// ON GARDE DONC TOUJOURS LA FORME DÉCOMPOSÉE : lettre + U+0302, pour les
+// vingt-six. Les comparaisons restent cohérentes puisqu'il n'y a plus qu'une
+// écriture ; l'écran compose (photographié dans Outfit, c'est net) ; et la
+// feuille dessine le chapeau au-dessus de la lettre, de la même façon pour
+// toutes — voir `morceaux` dans `js/ui/ficheRendu.js`.
+export const avecChapeau = (lettre) => String(lettre).normalize('NFD') + CHAPEAU;
 export const angleVise = (t) => avecChapeau(sommetVise(t));
 
 /**

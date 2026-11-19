@@ -9,18 +9,18 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v1170';
+const CACHE = 'atoutmath-v1171';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=1231',
-    './css/layout.css?v=1231',
-    './css/ui.css?v=1231',
-    './css/games.css?v=1231',
-    './css/components.css?v=1231',
-    './css/modules.css?v=1231',
+    './css/base.css?v=1232',
+    './css/layout.css?v=1232',
+    './css/ui.css?v=1232',
+    './css/games.css?v=1232',
+    './css/components.css?v=1232',
+    './css/modules.css?v=1232',
     './icones/icon-192.png',
     './icones/icon-512.png',
     // LES BIBLIOTHÈQUES, désormais servies avec l'application. Elles sont dans
@@ -35,6 +35,18 @@ const NOYAU = [
     // une salle SANS RÉSEAU, et un décodeur qu'il faudrait alors aller
     // chercher serait un décodeur absent le jour où il sert.
     './vendor/jsqr/jsQR.js',
+    // PYTHON, POUR L'ÉDITEUR — et c'est le premier endroit où Rémy s'en
+    // servira : une salle de collège derrière un filtre, ou une tablette sans
+    // réseau. 944 Ko, chargés à l'ouverture de l'éditeur seulement (voir
+    // `js/core/python/executer.js`), et gardés ici pour le hors-ligne.
+    './vendor/skulpt/skulpt.min.js',
+    './vendor/skulpt/skulpt-stdlib.js',
+    // ET LA PAGE QUI LES FAIT TOURNER. Sans elle dans le cache, l'éditeur
+    // s'ouvre hors ligne, relit le programme en français — et ne peut pas le
+    // lancer. Elle n'a PAS de script à elle : il est en ligne dans la page,
+    // parce qu'un document à origine opaque ne se fait servir aucune
+    // sous-ressource depuis ce cache (mesuré). Voir son en-tête.
+    './bac-python.html',
     './vendor/outfit/outfit.css',
     './vendor/outfit/outfit-latin-400-normal.woff2',
     './vendor/outfit/outfit-latin-700-normal.woff2',

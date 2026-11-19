@@ -64,9 +64,24 @@ function lesDeclarations() {
         // s'accusait elle-même. Troisième fois de la soirée ; la quatrième a
         // fait naître `sansCommentaires`, qu'on emploie ici.
         const code = sansCommentaires(texte);
+        // ── ON SUIT LES VARIABLES, ON NE LES CROIT PAS SUR PAROLE ──────
+        //
+        // `font-family: var(--pe-police)` ne dit rien à cette épreuve : ni la
+        // police servie, ni la police absente. Deux réponses étaient
+        // possibles — autoriser `var(…)` en bloc, ou aller lire ce que la
+        // variable VAUT. La première aurait rendu l'épreuve aveugle au jour
+        // où quelqu'un redéfinit la variable ; on va donc lire.
+        const variables = new Map(
+            [...code.matchAll(/(--[\w-]+)\s*:\s*([^;}]+)/g)].map((m) => [m[1], m[2].trim()]));
+        const resoudre = (v, profondeur = 0) => {
+            const m = /^var\(\s*(--[\w-]+)\s*\)$/.exec(v);
+            if (!m || profondeur > 3) return v;
+            const vu = variables.get(m[1]);
+            return vu === undefined ? v : resoudre(vu, profondeur + 1);
+        };
         code.split('\n').forEach((ligne, i) => {
             const m = ligne.match(/font-family:\s*([^;}]+)/);
-            if (m) out.push({ fichier: f, ligne: i + 1, valeur: m[1].trim() });
+            if (m) out.push({ fichier: f, ligne: i + 1, valeur: resoudre(m[1].trim()) });
         });
     }
     return out;

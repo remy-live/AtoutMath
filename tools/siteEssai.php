@@ -96,10 +96,25 @@ if ($ht && preg_match('/Header always set Content-Security-Policy "([^"]+)"/', $
     $CSP = $m[1];
 }
 
+// ET LA POLITIQUE DE LA SEULE PAGE QUI A LE DROIT D'ÉVALUER.
+//
+// `bac-python.html` reçoit dans `.htaccess` une politique à elle, écrite dans
+// un bloc `<Files>`. SANS CETTE LECTURE, LE SITE D'ESSAI LA SERVIRAIT AVEC LA
+// POLITIQUE GÉNÉRALE — qui interdit `eval` — et toute sonde de l'éditeur
+// Python mesurerait une configuration qui n'existe nulle part. C'est
+// exactement la friction que ce fichier existe pour fermer, une page plus bas.
+$CSP_BAC = '';
+if ($ht && preg_match(
+    '/<Files "bac-python\.html">\s*Header always set Content-Security-Policy "([^"]+)"/',
+    $ht, $mb)) {
+    $CSP_BAC = $mb[1];
+}
+
 $serveur = proc_open(
     [PHP_BINARY, '-S', "127.0.0.1:$PORT", '-t', $RACINE, $RACINE . '/tools/routeurEssai.php'],
     [1 => ['file', $BAC . '/log', 'a'], 2 => ['file', $BAC . '/log', 'a']], $t, $RACINE,
     ['ATOUTMATH_CONFIG' => $CONFIG, 'ATOUTMATH_CSP' => $CSP,
+     'ATOUTMATH_CSP_BAC' => $CSP_BAC,
      'PATH' => getenv('PATH') ?: '/usr/bin:/bin',
      'PHP_CLI_SERVER_WORKERS' => '4']);
 

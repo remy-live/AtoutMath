@@ -281,6 +281,38 @@ export const donneesExercises = [
     // l'exercice : un axe gradué de 5 en 5, où compter les traits donne 3 au
     // lieu de 15.
     {
+        // ── ET À TOI DE TAPER — le second temps, et un exercice à part ────
+        //
+        // RÉMY, 18 novembre : « des qcm et APRÈS que l'élève tape ». Puis le
+        // 19 : « il faudrait que l'élève puisse faire des petits programmes ».
+        //
+        // DEUX EXERCICES ET NON UN SEUL, pour une raison de tuyauterie qui se
+        // trouve être aussi une bonne raison pédagogique : un exercice du
+        // catalogue déclare UNE activité, et lire (le pavé de propositions) et
+        // écrire (l'éditeur) n'en sont pas la même. Rémy peut donc donner les
+        // seize QCM à une classe et l'éditeur à une autre, ou les deux à la
+        // suite — ce qui est exactement l'ordre qu'il a décrit.
+        id: 'algo-python-ecrire',
+        cree: '2026-11-19',
+        title: 'Python : à Toi de Taper',
+        generatorId: 'algo.python', activityId: 'pythonEditeur',
+        calculatrice: false,
+        consignePapier: 'Écris ton programme à la main, en marquant bien les décalages.',
+        colonnesPapier: 1,
+        lignesReponsePapier: 6,
+        params: { nbQuestions: 4,
+            marches: ['un-mot', 'une-ligne', 'le-decalage', 'deux-lignes',
+                'petit-programme'] },
+        motsClefs: ['python', 'programmation', 'algorithmique', 'code', 'coder',
+            'écrire un programme', 'éditeur', 'indentation', 'décalage',
+            'print', 'boucle', 'informatique', 'NSI', 'troisième', '3ème', 'seconde'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DONNEES, TAGS.SOUS_DOMAINE.PROGRAMMATION],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "ICI L'ÉLÈVE TAPE, ET SON PROGRAMME TOURNE POUR DE VRAI. C'est le second temps de « Python Pas à Pas », et il suppose le premier : les seize questions à choix ont posé le vocabulaire — print, les guillemets, la boîte, le décalage —, celui-ci demande de produire. CE QUI MONTE D'UNE MARCHE À L'AUTRE N'EST PAS LA DIFFICULTÉ DU CONCEPT, c'est la quantité à écrire : un mot dans un trou, puis une ligne entière, puis le DÉCALAGE SEUL, puis deux lignes, puis un petit programme. LA TROISIÈME MARCHE EST CELLE QUI N'EXISTE NULLE PART AILLEURS : toutes les lignes sont écrites, aucune n'est décalée, et l'élève ne tape RIEN — il pose l'indentation avec deux boutons. Ni au tableau ni dans un manuel on ne peut séparer l'indentation de l'écriture : on recopie un programme entier et le décalage vient avec. Ici il vient seul. IL N'Y A PAS DE TOUCHE DE TABULATION SUR UNE TABLETTE, et c'est pour cela que les deux boutons ⇤ ⇥ existent : ils décalent la ligne où est le curseur d'un cran entier, sans compter d'espaces. La touche Entrée descend toute seule d'un cran après un deux-points, là où la faute se fait. ET LE LOGICIEL RELIT AVANT DE LANCER : mesuré, Python répond « bad input on line 2 » à quatre fautes de débutant entièrement différentes. Le vérificateur français passe donc d'abord, nomme la faute, dit la ligne — et la ligne s'allume dans l'éditeur. Une faute de syntaxe ne compte pas comme un essai raté : un programme qui ne compile pas n'est pas une réponse fausse, c'est un programme qui n'est pas fini. Ce qu'on vérifie est CE QUE LE PROGRAMME AFFICHE, jamais le texte tapé : un élève qui écrit print('Bonjour') avec des apostrophes a écrit un programme juste."
+    },
+    {
         id: 'algo-python',
         cree: '2026-11-18',
         title: 'Python Pas à Pas',

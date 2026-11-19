@@ -98,6 +98,27 @@ Options -Indexes
     # complète de la page à un site tiers.
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # ── UNE SEULE PAGE A LE DROIT D'ÉVALUER : LE BAC À SABLE PYTHON ──
+    #
+    # Rémy, 19 novembre : « il faudrait que l'élève puisse faire des
+    # petits programmes ». Skulpt compile le Python en JavaScript et
+    # l'exécute, et cette exécution passe par `eval` — MESURÉ dans le
+    # vrai site : « Evaluating a string as JavaScript is not allowed ».
+    #
+    # ON NE L'OUVRE PAS POUR TOUT LE SITE. Ajouter `unsafe-eval` à la
+    # politique générale aurait coûté une ligne et rendu au logiciel la
+    # faiblesse qu'il a payée : en septembre 2026, le PRÉNOM d'un élève
+    # s'exécutait chez le professeur. N'importe quelle chaîne injectée
+    # redeviendrait exécutable, et c'est exactement cette attaque-là.
+    #
+    # `bac-python.html` ne contient AUCUN code de l'application, ne lit
+    # aucune donnée d'élève et ne touche à rien : elle attend un
+    # programme par `postMessage`, le fait tourner, et renvoie ce qu'il
+    # a affiché. L'exception s'arrête à elle.
+    <Files "bac-python.html">
+        Header always set Content-Security-Policy "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; connect-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"
+    </Files>
 </IfModule>
 # ── fin CSP ──
 

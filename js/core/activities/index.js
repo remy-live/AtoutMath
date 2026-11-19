@@ -666,6 +666,28 @@ registerActivity({
     load: () => import('./medianeAuDoigt.js')
 });
 
+// L'ÉDITEUR PYTHON. Rémy, 18 novembre : « et APRÈS que l'élève tape, l'aider
+// sur l'indentation » ; puis le 19 : « il faudrait que l'élève puisse faire
+// des petits programmes ».
+//
+// L'UNITÉ EST LE PROGRAMME, et quatre par séance est un maximum : écrire cinq
+// lignes de Python et les faire tourner prend plusieurs minutes, là où un QCM
+// en prend dix secondes. Un réglage à huit donnerait une séance qui déborde de
+// l'heure sans que personne ne l'ait voulu.
+//
+// PAS DE RÉGLAGE DE SAISIE : le clavier fait partie de l'exercice, avec ses
+// deux boutons de décalage — il n'y a pas de touche de tabulation sur une
+// tablette, et c'est tout le sujet.
+registerActivity({
+    id: 'pythonEditeur',
+    unite: 'programme',
+    parDefaut: 4,
+    label: 'L’éditeur Python',
+    accepts: ['text'],
+    supports: { timed: false, autonomous: false, demo: false },
+    load: () => import('./pythonEditeur.js')
+});
+
 registerActivity({
     id: 'rangerLeMot',
     unite: 'mot',

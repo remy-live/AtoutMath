@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Le bac à sable Python</title>
+<!--
+  LE BAC À SABLE PYTHON — il existe pour deux raisons : CONFINER `eval`, et
+  n'avoir RIEN à demander au réseau.
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  RÉMY, 19 novembre : « il faudrait que l'élève puisse faire des petits
+  programmes ». Puis, le même soir : « et surtout attention que le script ne
+  permet pas d'intrusion ».
+
+  ── LE PROBLÈME, MESURÉ ET NON DEVINÉ ──────────────────────────────────────
+
+  Skulpt COMPILE le Python en JavaScript et l'exécute. Cette exécution passe
+  par `eval`, que la politique de sécurité du site interdit — et c'est bien
+  ainsi : cette politique existe parce qu'en septembre 2026 le PRÉNOM d'un
+  élève s'exécutait chez le professeur. Voir le long en-tête de
+  `tools/csp.mjs`.
+
+  MA PREMIÈRE MESURE DISAIT LE CONTRAIRE, et elle était fausse : j'avais servi
+  une page d'essai avec `script-src 'self'` et Skulpt y tournait. Sur le vrai
+  site, la sonde a rendu « Evaluating a string as JavaScript is not allowed ».
+  La différence tenait à ce que mon essai exécutait un programme trop simple
+  pour emprunter le chemin qui évalue. Une mesure qui n'emprunte pas le chemin
+  de l'utilisateur ne mesure pas son problème.
+
+  ── POURQUOI UNE PAGE À PART PLUTÔT QU'UNE LIGNE DANS LA POLITIQUE ─────────
+
+  Ajouter `'unsafe-eval'` à `script-src` aurait coûté une ligne. Cela aurait
+  aussi rendu au site la faiblesse qu'il a payée : n'importe quelle chaîne
+  injectée dans l'application redeviendrait exécutable, et c'est exactement
+  l'attaque de septembre.
+
+  CETTE PAGE-CI EST SEULE À AVOIR LE DROIT D'ÉVALUER. L'exception est écrite
+  dans `.htaccess` par `tools/csp.mjs`, à côté de la politique générale.
+
+  ── ET ELLE EST CLOISONNÉE PAR SON EN-TÊTE, PAS PAR SA BALISE ──────────────
+
+  C'est la décision la moins évidente de ce fichier, et elle a été prise sur
+  une mesure. `sandbox="allow-scripts"` posé sur la balise `iframe` cloisonne
+  parfaitement — `tools/intrusionDuBac.mjs` le prouve — MAIS IL REND LA PAGE
+  INTROUVABLE HORS LIGNE : une navigation vers un cadre à origine opaque n'est
+  pas servie par le service worker. Mesuré (`tools/tmp/bacHorsLigne.mjs`) :
+  zéro cadre chargé, bouton « Lancer » mort. Or Rémy travaille dans une salle
+  de collège, parfois sans réseau, et c'est précisément là qu'il ne faut rien
+  casser.
+
+  La directive `sandbox allow-scripts` DANS LA POLITIQUE de cette page donne le
+  même cloisonnement — origine opaque, pas de stockage, pas de parent — en
+  laissant la navigation ordinaire, donc servie depuis le cache. Mesuré : le
+  document arrive hors ligne.
+
+  ── ALORS ELLE NE CHARGE PLUS RIEN ─────────────────────────────────────────
+
+  Reste la conséquence : un document à origine opaque n'est pas un « client »
+  du worker, donc SES sous-ressources, elles, ne sont pas servies hors ligne.
+  Mesuré : le document arrivait, `Sk` restait absent.
+
+  Cette page ne demande donc AUCUN fichier. Son script est ici même, et Skulpt
+  lui est TENDU PAR L'APPLICATION, qui l'a lu dans le cache du worker. Le sens
+  de la dépendance est inversé, et c'est ce qui la rend disponible hors ligne.
+
+  ── ET CE QUE LE PROGRAMME DE L'ÉLÈVE PEUT FAIRE D'ICI ─────────────────────
+
+  Rien. Skulpt n'expose ni le DOM, ni le réseau, ni le stockage : un programme
+  Python n'y dispose que de ce que `Sk.configure` lui donne — ici, une sortie
+  texte et une réserve de réponses pour `input()`. Et quand bien même il en
+  sortirait, il n'y a rien derrière : ni `localStorage`, ni `document.cookie`,
+  ni la page du professeur. `tools/intrusionDuBac.mjs` pousse chacune de ces
+  portes à chaque fois qu'on y touche.
+-->
+<style>html,body{margin:0;background:transparent}</style>
+</head>
+<body>
+<script>
+// LE DEDANS DU BAC À SABLE — il attend Python, puis des programmes.
+//
+// EN LIGNE DANS LA PAGE, et c'est la raison dite plus haut : un fichier à part
+// serait une sous-ressource, et une sous-ressource ne nous parvient pas hors
+// ligne. Ce script est donc le SEUL de cette page, et il tient sous les yeux.
+(function () {
+    'use strict';
+
+    // ── CE QU'UN PROGRAMME PEUT AFFICHER AU PLUS ─────────────────────────
+    //
+    // « La boucle qui ne s'arrête jamais » EST UNE MARCHE DE L'EXERCICE : un
+    // élève écrira `while True: print("a")`, et il DOIT le faire. `execLimit`
+    // le coupe au bout de deux secondes — mais deux secondes de `print`, c'est
+    // plusieurs millions de lignes assemblées en une chaîne, puis recopiées
+    // dans un message. La tablette de l'élève se figerait, et la faute en
+    // serait à nous, pas à lui. On arrête donc de retenir au-delà de ce qu'un
+    // humain peut lire, et l'on DIT qu'on l'a fait.
+    var PLAFOND = 20000;
+
+    var pret = false;
+
+    /** Python nous est tendu en texte : on l'évalue, une fois. */
+    function recevoirPython(sources) {
+        if (pret) return true;
+        try {
+            for (var i = 0; i < sources.length; i++) {
+                // C'EST L'UNIQUE `eval` DU LOGICIEL, et il est ici parce que
+                // cette page est la seule dont la politique l'autorise. Ce
+                // qu'il évalue vient de l'application, pas de l'élève : le
+                // programme de l'élève, lui, passe par Skulpt.
+                (0, eval)(String(sources[i]));
+            }
+        } catch (e) { return false; }
+        pret = !!(window.Sk && window.Sk.importMainWithBody);
+        return pret;
+    }
+
+    /** Lance un programme et rend ce qu'il a affiché. */
+    function lancer(source, entrees, limite) {
+        var sortie = [];
+        var taille = 0;
+        var deborde = false;
+        var reste = (entrees || []).slice();
+        window.Sk.configure({
+            output: function (t) {
+                if (taille >= PLAFOND) { deborde = true; return; }
+                taille += t.length;
+                sortie.push(t);
+            },
+            read: function (f) {
+                if (!window.Sk.builtinFiles || !window.Sk.builtinFiles.files[f]) {
+                    throw new Error('module introuvable : ' + f);
+                }
+                return window.Sk.builtinFiles.files[f];
+            },
+            // `input()` NE DEMANDE RIEN À L'ÉCRAN : une fenêtre native est
+            // bannie du logiciel, et l'exercice fournit lui-même ce que
+            // l'élève « tape ».
+            inputfun: function () { return reste.length ? String(reste.shift()) : ''; },
+            inputfunTakesPrompt: true,
+            // LA BOUCLE SANS FIN DOIT S'ARRÊTER. `execLimit` est en
+            // millisecondes de temps réel.
+            execLimit: limite || 2000,
+            __future__: window.Sk.python3
+        });
+        try {
+            window.Sk.importMainWithBody('<eleve>', false, source, true);
+            return { ok: true, sortie: sortie.join(''), deborde: deborde };
+        } catch (e) {
+            return { ok: false, sortie: sortie.join(''), deborde: deborde,
+                erreur: String(e && e.message ? e.message : e) };
+        }
+    }
+
+    window.addEventListener('message', function (ev) {
+        // LA FENÊTRE QUI NOUS A POSÉS, ET AUCUNE AUTRE.
+        //
+        // C'est le contrôle d'identité, et il est plus étroit qu'une
+        // comparaison d'origines : une autre page de la même origine ne nous
+        // parle pas non plus. `frame-ancestors 'self'` interdit par ailleurs à
+        // tout autre site de nous poser.
+        if (ev.source !== window.parent) return;
+        var d = ev.data;
+        if (!d || typeof d !== 'object' || d.pour !== 'bac-python') return;
+        // ON NE RÉPOND QU'À UNE ORIGINE NOMMÉE. Si le parent est lui-même
+        // opaque, `ev.origin` vaut « null » et il n'y a pas de destinataire
+        // sûr : on se tait plutôt que de diffuser à tout le monde.
+        if (!ev.origin || ev.origin === 'null') return;
+
+        var reponse = { pour: 'bac-python', jeton: d.jeton };
+        if (d.quoi === 'voici-python') {
+            reponse.quoi = 'debout';
+            reponse.pret = recevoirPython(d.sources || []);
+        } else if (d.quoi === 'es-tu-la') {
+            reponse.pret = pret;
+        } else if (d.quoi === 'lancer') {
+            if (!pret) {
+                reponse.ok = false;
+                reponse.erreur = 'Python n’est pas chargé.';
+            } else {
+                var r = lancer(String(d.source || ''), d.entrees, d.limite);
+                reponse.ok = r.ok;
+                reponse.sortie = r.sortie;
+                reponse.deborde = r.deborde;
+                reponse.erreur = r.erreur;
+            }
+        } else return;
+
+        ev.source.postMessage(reponse, ev.origin);
+    });
+
+    // ON RÉCLAME PYTHON : l'application n'a alors rien à deviner, ni sur le
+    // moment où nous sommes prêts, ni sur ce qui nous manque.
+    //
+    // `'*'` ET NON NOTRE ORIGINE : la nôtre est opaque, et l'on ne connaît pas
+    // celle du parent avant qu'il nous parle. Ce message ne porte rien.
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+            { pour: 'bac-python', quoi: 'il-me-faut-python' }, '*');
+    }
+}());
+</script>
+</body>
+</html>

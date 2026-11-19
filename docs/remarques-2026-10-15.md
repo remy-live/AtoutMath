@@ -8340,3 +8340,39 @@ décalé d'un demi-caractère, ou pas du tout.
 **ET SEULEMENT SUR LES ANGLES.** « rectangle en A » nomme un sommet, « AB »
 nomme un côté : ni l'un ni l'autre ne prend de chapeau. Une règle appliquée
 trop largement enseignerait le contraire de ce qu'elle veut dire.
+
+### 7. « tu me fais les deux » — 19 novembre au soir
+
+Les deux choses que je lui avais laissées ouvertes :
+
+1. **LE CHAPEAU SUR LA FEUILLE IMPRIMÉE.** Le PDF l'écrivait « ? » ; je l'ai
+   effacé sur le papier en disant qu'il faudrait embarquer une police. Il dit
+   oui.
+2. **L'ÉDITEUR PYTHON** — « il faudrait que l'élève puisse faire des petits
+   programmes », la seconde moitié de sa demande du 18 : « des qcm ET APRÈS
+   que l'élève tape, l'aider sur l'indentation ».
+
+### 8. « et surtout attention que le script ne permet pas d'intrusion » — 19 novembre au soir
+
+Dit pendant que je bâtissais l'éditeur, et dit au bon moment : c'est **la**
+question que pose un logiciel qui exécute le code de ses élèves.
+
+**LA PORTE EXISTAIT.** Le cadre d'exécution était posé sans cloisonnement, donc
+sur la même origine que l'application. Mesuré depuis l'intérieur :
+**4915 éléments** de la page du professeur lus, et dans le stockage local
+`atoutmath-prof`, `atoutmath-porte`, `atoutmath-reglages-site`. Rien
+n'avertissait : tout marchait.
+
+**CE QUI A ÉTÉ FAIT.** Le document du bac à sable est cloisonné — origine
+opaque, donc ni DOM du parent, ni stockage, ni biscuits, ni navigation —, il
+n'écoute que la fenêtre qui l'a posé, il ne peut rien demander au réseau, sa
+sortie est plafonnée, et une boucle sans fin est coupée en deux secondes.
+`tools/intrusionDuBac.mjs` **pousse chacune de ces portes** à chaque fois qu'on
+y touche : c'est une sonde d'attaque, pas une relecture.
+
+**ET LE CLOISONNEMENT NE SE LIT PAS SUR LA BALISE.** La façon évidente
+(`sandbox="allow-scripts"`) rendait l'exercice **mort hors ligne** : une
+navigation vers une origine opaque n'est pas servie par le service worker. Dans
+une salle de collège sans réseau, c'est l'exercice entier qui disparaît. Le
+cloisonnement vient donc de l'en-tête de la page, et `tools/pythonHorsLigne.mjs`
+garde cette propriété-là.

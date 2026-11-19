@@ -53,7 +53,13 @@ const { pourPdf } = await import('../js/ui/ficheRendu.js');
 /** Tout ce qu'un item mettra sur la feuille — énoncé, réponse, propositions. */
 function textesDe(item) {
     const p = item.prompt || {};
-    const out = [p.papier, p.text, item.explicationPapier, item.explanation];
+    // `reponsePapier` ET `hints` SONT ARRIVÉS APRÈS, ET LEUR ABSENCE S'EST
+    // PAYÉE : la feuille de solutions de « Python : à Toi de Taper »
+    // imprimait « ? » entre chaque ligne de programme, et cette épreuve était
+    // VERTE — elle ne lisait pas ce champ. Un filet qui ne couvre qu'une
+    // partie de ce qui s'imprime est un filet qui rassure à tort.
+    const out = [p.papier, p.text, item.explicationPapier, item.explanation,
+        item.reponsePapier, ...(item.hints || [])];
     if (Array.isArray(item.choices)) {
         item.choices.forEach(c => out.push(typeof c === 'string' ? c : (c.label ?? c.texte)));
     }

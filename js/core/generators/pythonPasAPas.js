@@ -34,6 +34,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { FABRIQUES } from '../python/exercices.js';
+import { FABRIQUES_ECRITURE } from '../python/ecrire.js';
 import { codeHtml, codePapier } from '../python/afficher.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
@@ -75,14 +76,33 @@ export const ETAPES = [
     { id: 'deux-programmes', temps: 'D', titre: 'Quatre espaces changent tout',
       skill: BLOC, difficulte: 4 },
     { id: 'la-faute', temps: 'D', titre: 'Trouver la faute',
-      skill: BLOC, difficulte: 4 }
+      skill: BLOC, difficulte: 4 },
+
+    // ── ET MAINTENANT L'ÉLÈVE TAPE ───────────────────────────────────────
+    //
+    // RÉMY, 18 novembre : « des qcm et APRÈS que l'élève tape ». Deux temps,
+    // dans cet ordre, et c'est ici que le second commence. Ce qui monte d'une
+    // marche à l'autre n'est pas la difficulté du concept — tous ont été vus
+    // dans les seize QCM — c'est la QUANTITÉ À PRODUIRE : un mot, une ligne,
+    // le décalage seul, deux lignes, un programme.
+    { id: 'un-mot', temps: 'E', titre: 'Taper un mot dans le trou',
+      skill: LIRE, difficulte: 2, ecrire: true },
+    { id: 'une-ligne', temps: 'E', titre: 'Écrire la dernière ligne',
+      skill: MEMOIRE, difficulte: 3, ecrire: true },
+    { id: 'le-decalage', temps: 'E', titre: 'Poser le décalage, et rien d’autre',
+      skill: BLOC, difficulte: 3, ecrire: true },
+    { id: 'deux-lignes', temps: 'E', titre: 'Écrire deux lignes',
+      skill: MEMOIRE, difficulte: 4, ecrire: true },
+    { id: 'petit-programme', temps: 'E', titre: 'Écrire un petit programme',
+      skill: BLOC, difficulte: 5, ecrire: true }
 ];
 
 const TEMPS = {
     A: 'A — afficher',
     B: 'B — les boîtes',
     C: 'C — choisir et répéter',
-    D: 'D — le décalage, et les fautes'
+    D: 'D — le décalage, et les fautes',
+    E: 'E — à toi de taper'
 };
 
 const MOT = 'marche';
@@ -135,7 +155,11 @@ export const pythonPasAPasGenerator = {
     // SEULEMENT DES QCM, ET C'EST L'ORDRE DEMANDÉ : « des qcm ET APRÈS que
     // l'élève tape ». La saisie viendra avec l'éditeur, qui est une autre
     // activité — pas une autre réponse du même générateur.
-    answerKinds: ['choice'],
+    // DEUX GENRES DE RÉPONSE, ET DEUX ACTIVITÉS : les seize premières marches
+    // sont des QCM qui passent par le pavé ; les cinq dernières demandent
+    // d'ÉCRIRE, et c'est l'éditeur qui les prend. C'est le `answerKind` de
+    // l'item qui décide, comme partout ailleurs dans le dépôt.
+    answerKinds: ['choice', 'text'],
     // LA FEUILLE PORTE LE PROGRAMME, donc la question tient sur le papier :
     // c'est même le seul endroit où un élève sans tablette peut lire du
     // Python. On garde les espaces de décalage (voir `codePapier`), sans quoi
@@ -149,6 +173,65 @@ export const pythonPasAPasGenerator = {
         const id = marcheAuRang(ctx.index ?? 0, marchesCochees(params, LISTE_MARCHES),
             totalDe(ctx, params), params);
         const etape = ETAPES.find((e) => e.id === id) || ETAPES[0];
+
+        // ── LES MARCHES OÙ L'ON TAPE ─────────────────────────────────────
+        if (etape.ecrire) {
+            const e = FABRIQUES_ECRITURE[etape.id](rng);
+            return makeItem({
+                seed: rng.seed,
+                generatorId: 'algo.python',
+                skillId: etape.skill,
+                answerKind: 'text',
+                prompt: {
+                    text: e.consigne,
+                    // LA FEUILLE IMPRIMÉE PORTE LE PROGRAMME DE DÉPART et la
+                    // consigne : un élève sans tablette écrit son programme à
+                    // la main, ce qui est exactement ce qu'on lui demandera au
+                    // brevet. Le décalage s'y dessine (voir `codePapier`).
+                    // `consignePapier` QUAND IL Y EN A UNE : la marche du
+                    // décalage parle de deux boutons à l'écran, et le papier
+                    // n'en a pas (voir `python/ecrire.js`).
+                    papier: (e.depart ? codePapier(e.depart) + '\n\n' : '')
+                        + (e.consignePapier || e.consigne),
+                    html: `<div class="game-question py-question">${e.consigne}</div>`
+                },
+                // LA RÉPONSE EST CE QUE LE PROGRAMME AFFICHE, pas le texte tapé.
+                // Un élève qui écrit print('Bonjour') avec des apostrophes a
+                // écrit un programme juste, et Python le lui dira. Comparer les
+                // sources reviendrait à noter la façon d'écrire.
+                answer: e.sortieAttendue,
+                // ── SUR LE PAPIER, LA RÉPONSE EST LE PROGRAMME ───────────
+                //
+                // À l'écran, la réponse est ce que le programme AFFICHE : on
+                // ne note pas la façon d'écrire. Sur la feuille de solutions,
+                // c'est l'inverse qu'il faut — Rémy corrige des copies.
+                //
+                // VU SUR LA FEUILLE, ET NULLE PART AILLEURS : la question 1
+                // demandait d'écrire `print("Coucou")` et la solution disait
+                // « Coucou ». Le professeur lisait le résultat sans savoir ce
+                // qu'il fallait écrire. Pire, `0\n1\n2\n3` s'imprimait
+                // « 0 123 », parce que les sauts de ligne disparaissent dans
+                // une colonne de solutions.
+                // Les sauts de ligne DISPARAISSENT dans une colonne de
+                // solutions — mesuré : `0\n1\n2\n3` s'imprimait « 0 123 ».
+                // On sépare donc les lignes à la main, et l'on garde le CRAN
+                // visible : sans lui, la solution de la marche « le décalage »
+                // ne montrerait plus ce qu'on y corrige.
+                reponsePapier: e.solution.split('\n')
+                    .map((l) => l.replace(/^ {4}/, '> ')).join(' / '),
+                hints: e.indices,
+                explanation: `Un programme qui marche :\n${e.solution}`,
+                difficulty: etape.difficulte,
+                meta: {
+                    marche: etape.id, temps: etape.temps, titre: etape.titre,
+                    depart: e.depart,
+                    sortieAttendue: e.sortieAttendue,
+                    entrees: e.entrees || null,
+                    programme: e.solution
+                }
+            });
+        }
+
         const f = (FABRIQUES[etape.id] || FABRIQUES.afficher)(rng);
 
         return makeItem({

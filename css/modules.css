@@ -19749,3 +19749,129 @@ body.visite-en-cours .modal-overlay > * {
     text-transform: uppercase; color: var(--text-muted);
     text-align: center; margin-bottom: 4px;
 }
+
+/* ── L'ÉDITEUR PYTHON — on tape, et le décalage se voit ───────────────────
+
+   RÉMY, 18 novembre : « et APRÈS que l'élève tape, l'aider sur l'indentation ».
+
+   LE CHAMP DE SAISIE EST TRANSPARENT, POSÉ SUR LES MARGES. C'est le seul moyen
+   d'avoir à la fois les numéros de ligne, les filets de décalage et un vrai
+   `textarea` — donc le curseur du système, la sélection, le copier-coller et
+   le clavier de la tablette. Les deux couches partagent LA MÊME POLICE, LA
+   MÊME TAILLE et LE MÊME INTERLIGNE : un pixel d'écart et le texte tapé glisse
+   sous les numéros. C'est la seule chose fragile de ce bloc, et c'est pour
+   cela qu'elle est écrite une fois, dans une variable. */
+/* LE BAC À SABLE PYTHON N'A RIEN À MONTRER — il calcule. Il est posé dans la
+   page parce qu'un cadre doit être dans un document pour exister, et sa taille
+   est nulle. ON LE CACHE EN CSS ET NON PAR UN ATTRIBUT `style` : la politique
+   de sécurité du site autorise `style-src 'unsafe-inline'`, mais on ne
+   s'appuie pas sur une permission dont on voudra peut-être se passer. */
+.pe-bac {
+    position: absolute; width: 0; height: 0; border: 0;
+    visibility: hidden; pointer-events: none;
+}
+
+.pe-plan { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.pe-atelier {
+    --pe-police: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --pe-taille: clamp(0.95rem, 3.4vw, 1.1rem);
+    --pe-interligne: 1.75;
+    width: min(100%, 44ch);
+}
+.pe-editeur {
+    position: relative; background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+}
+.pe-marges, .pe-saisie {
+    font-family: var(--pe-police); font-size: var(--pe-taille);
+    line-height: var(--pe-interligne); padding: 10px 12px; margin: 0;
+    white-space: pre; tab-size: 4;
+}
+.pe-marges .py-bloc {
+    background: none; border: 0; border-radius: 0; padding: 0; margin: 0;
+    font-size: inherit; line-height: inherit; max-width: none; overflow: visible;
+}
+.pe-marges .py-ligne { padding: 0; }
+.pe-marges { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* LE TEXTE DES MARGES EST INVISIBLE, SA PLACE NE L'EST PAS : il tient la
+   colonne pour que les numéros et les filets tombent où le texte tapé tombe.
+   Le `textarea`, lui, porte les vraies lettres.
+
+   ET « * » N'EST PAS DE LA PRUDENCE, C'EST LE DÉFAUT MÊME. `color` s'hérite,
+   mais la coloration syntaxique POSE une couleur sur chaque jeton : « for »,
+   « print », les chaînes. Ces couleurs-là gagnent sur le transparent du
+   parent, et l'élève voyait alors son programme EN DOUBLE, décalé de quelques
+   pixels. MESURÉ : sept jetons colorés dans un programme de trois lignes.
+
+   ONZE CONTRÔLES ÉTAIENT VERTS PENDANT CE TEMPS-LÀ — police, taille,
+   interligne, numéros, filets, décalage, curseur. Seule la PHOTO l'a dit. */
+.pe-marges .py-code,
+.pe-marges .py-code * { color: transparent; }
+/* LES NUMÉROS GARDENT LA TAILLE DU CODE, et c'est une question de gouttière :
+   `.py-num` fait `2.2ch` de large, et `ch` se mesure sur SA police. En
+   « .8em », ses 2.2ch valaient 3 px de moins que ceux du `textarea`, et les
+   deux couches ne commençaient pas à la même colonne. Mesuré : 42 px contre
+   45. Du même coup, le numéro et sa ligne partagent enfin leur boîte, pas
+   seulement leur ligne de base. */
+.pe-marges .py-num {
+    color: var(--text-muted); font-size: inherit;
+    /* ET LA POLICE DU CODE, PAS CELLE DE LA PAGE. `.py-num` est un `span` :
+       il n'hérite pas du monospace que le `pre` se donne, il prend Outfit. Or
+       sa largeur vaut `2.2ch`, et `ch` se mesure sur SA police — 25,4 px en
+       Outfit contre 23,2 en monospace. Les filets de la marge tombaient donc
+       deux pixels à droite de l'indentation tapée. */
+    font-family: var(--pe-police);
+}
+.pe-saisie {
+    position: relative; display: block; width: 100%; min-height: 9em;
+    background: transparent; border: 0; resize: vertical; color: var(--text-main);
+    /* La gouttière des numéros : la même que `.py-num` + sa marge. */
+    text-indent: 0; padding-left: calc(12px + 2.2ch + 10px);
+}
+.pe-saisie:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+/* LES DEUX BOUTONS DE DÉCALAGE SONT GRANDS, parce qu'il n'y a pas de touche de
+   tabulation sur une tablette et que c'est le geste central de l'exercice. */
+.pe-gestes { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.pe-cran {
+    min-width: 56px; min-height: 44px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    font-size: 1.35rem; font-weight: 700; color: var(--text-main);
+}
+.pe-cran:active { background: var(--bg-hover); }
+.pe-cran-dit { font-size: .8rem; color: var(--text-muted); flex: 1; }
+.pe-lancer {
+    min-height: 44px; padding: 0 22px; border-radius: 999px; border: none;
+    background: var(--primary); color: #fff; font-weight: 700; font-size: 1rem;
+}
+
+/* LA CONSOLE — ce que le programme a affiché, ou ce qui cloche. */
+.pe-console {
+    width: min(100%, 44ch); border-radius: 12px; padding: 10px 14px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+}
+.pe-console--ok { border-color: var(--success-texte);
+    background: color-mix(in srgb, var(--success) 8%, var(--bg-panel)); }
+.pe-console--ko { border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 7%, var(--bg-panel)); }
+.pe-dit { margin: 0 0 4px; font-weight: 700; }
+.pe-aide, .pe-conseil { margin: 4px 0 0; font-size: .88rem; color: var(--text-muted); }
+.pe-sortie {
+    margin: 6px 0 0; padding: 8px 10px; border-radius: 8px;
+    background: var(--bg-app); border: 1px solid var(--border);
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92rem;
+    white-space: pre-wrap; overflow-x: auto;
+}
+.pe-sortie--vise { border-style: dashed; }
+.pe-attente { color: var(--text-muted); font-style: italic; }
+.pe-attendu { width: min(100%, 44ch); }
+.pe-attendu-nom {
+    font-size: .78rem; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.pe-attendu-texte {
+    margin: 4px 0 0; padding: 8px 10px; border-radius: 8px;
+    background: var(--bg-app); border: 1px dashed var(--border);
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92rem;
+    white-space: pre-wrap;
+}
