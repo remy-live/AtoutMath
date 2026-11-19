@@ -8216,3 +8216,27 @@ pareil** — 19 novembre
   `explanation`. Elle se mesure en lisant la source des `js/core/activities/*`,
   tient en vingt lignes, et aurait trouvé celle-ci le jour de sa naissance.
   Aujourd'hui, une activité neuve n'hérite de rien : elle doit se souvenir.
+
+---
+
+**La même leçon reçue deux fois, à deux mois d'écart, et écrite entre les
+deux** — 19 novembre
+
+- *Ce que je voulais faire* : juger un programme d'élève.
+- *Ce qui a coûté* : une capture de Rémy — « ça dit bon... » — sur `print(14)`
+  là où la question demandait une somme. Or il me l'avait DÉJÀ dit le
+  13 novembre sur le tableur : « la bonne réponse est =A1+B1 pas 17 ». La règle
+  qui en était sortie est écrite dans `js/games/spreadsheet.js` et citée dans
+  CLAUDE.md : « on ne dit plus attendu : 17 sous une question qui demande une
+  formule ». Je l'ai relue, je l'ai même CITÉE dans un commentaire du jour — et
+  j'ai quand même affiché « ton programme doit afficher : 14 » sous un champ où
+  il fallait écrire une formule.
+- *Combien de fois* : || (tableur, puis Python)
+- *Ce qui manque* : une règle apprise reste **attachée à l'écran où elle a été
+  payée**. Il n'existe nulle part de liste des règles TRANSVERSALES — « ne
+  jamais afficher la valeur attendue sous une question qui demande le chemin »
+  en est une, et elle vaut pour le tableur, Python, les fractions, la
+  rédaction. CLAUDE.md porte les règles d'OUTILLAGE ; `docs/remarques` porte
+  les demandes dans l'ordre où elles arrivent. Il manque un
+  `docs/regles-pedagogiques.md` court, relu avant d'écrire un exercice neuf —
+  sans quoi chaque nouvel écran repaiera les leçons des précédents.

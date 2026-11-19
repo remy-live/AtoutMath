@@ -493,6 +493,70 @@ console.log('\n\x1b[1mL’INDICE, ET L’EXEMPLE QU’IL MONTRE\x1b[0m');
     await s.fermer();
 }
 
+// ── LA SORTIE JUSTE SANS LE TRAVAIL ──────────────────────────────────────
+//
+// RÉMY, 19 novembre, capture à l'appui : devant « affiche leur SOMME », il
+// écrit `print(14)` et le logiciel répond que c'est juste. « ça dit bon... ».
+console.log('\n\x1b[1mAFFICHER LE BON NOMBRE SANS LE CALCULER\x1b[0m');
+{
+    const s = await ouvrirSonde({ largeur: 1000, hauteur: 1300 });
+    await s.identifier();
+    const ennui = await s.ouvrirExercice('algo-python-ecrire',
+        { marches: ['une-ligne'] }, { questions: 4 });
+    if (ennui) { dire('l\'exercice s\'ouvre', false, String(ennui)); }
+    else {
+        await s.doitExister(CODE);
+        const q = await s.page.evaluate(() => ({
+            consigne: (document.querySelector('.py-question') || {}).textContent || '',
+            depart: (document.querySelector('[data-code]') || {}).value || '',
+            rappel: !!document.querySelector('.pe-attendu')
+        }));
+        // LE BANDEAU « TON PROGRAMME DOIT AFFICHER : 14 » SE TENAIT JUSTE
+        // AU-DESSUS DU CHAMP où il a tapé 14. Même règle que sur le tableur :
+        // « on ne dit plus attendu : 17 sous une question qui demande une
+        // formule ».
+        dire('le rappel « doit afficher » ne donne plus la réponse', !q.rappel);
+
+        const n = (q.consigne.match(/écrire (\d+)/) || [0, '0'])[1];
+        const guetter = async () => {
+            let d = null;
+            for (let i = 0; i < 80; i++) {
+                const c = await s.page.evaluate(() => {
+                    const e = document.querySelector('[data-console]');
+                    return e && !e.hidden
+                        ? { genre: e.className, texte: e.textContent.replace(/\s+/g, ' ').trim() }
+                        : null;
+                });
+                if (c) { d = c; if (/--(ok|ko)/.test(c.genre)) return c; }
+                await dormir(150);
+            }
+            return d;
+        };
+        const ecrire = (v) => s.page.evaluate((t) => {
+            const c = document.querySelector('[data-code]');
+            c.value = t; c.dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector('[data-lancer]').click();
+        }, v);
+
+        await ecrire(q.depart + `print(${n})`);
+        const triche = await guetter();
+        dire(`print(${n}) n'est PAS accepté`,
+            !!triche && /--ko/.test(triche.genre), triche ? triche.texte.slice(0, 60) : 'rien');
+        dire('et on dit ce qui manque, pas que c\'est faux',
+            !!triche && /CALCULE/.test(triche.texte),
+            triche ? triche.texte.slice(0, 70) : '');
+        await dormir(2600);
+
+        await ecrire(q.depart + 'print(a + b)');
+        const bon = await guetter();
+        dire('print(a + b) est accepté', !!bon && /--ok/.test(bon.genre),
+            bon ? bon.texte.slice(0, 40) : 'rien');
+        dire('aucune erreur de page', s.erreurs.length === 0, s.erreurs.slice(0, 2).join(' | '));
+        dire('aucune fenêtre native', s.fenetresNatives.length === 0);
+    }
+    await s.fermer();
+}
+
 console.log('\n' + '─'.repeat(70));
 console.log(rates ? `\n${rates} POINT(S) À REVOIR.`
     : '\nON DÉCALE AU DOIGT, LE PROGRAMME TOURNE,\n'

@@ -8458,3 +8458,28 @@ question attendait 10.
 était partie sans. Les indices étaient écrits, rangés dans l'item, et
 inatteignables : un élève coincé n'avait que le bouton « Lancer ». Rien ne le
 signalait — un exercice sans aide marche très bien, pour qui n'en a pas besoin.
+
+### 13. « ça dit bon... » — 19 novembre, capture
+
+Devant « Ajoute la ligne qui affiche leur SOMME. Le programme doit écrire 14 »,
+il écrit `print(14)`. Le logiciel répond que c'est juste.
+
+**IL ME L'AVAIT DÉJÀ DIT, SUR UN AUTRE ÉCRAN** : École du Tableur, « la bonne
+réponse est =A1+B1 pas 17 ». Même phrase, même faute — et la règle était même
+écrite dans ce dépôt : « on ne dit plus "attendu : 17" sous une question qui
+demande une formule ». Je l'ai refaite ici deux mois plus tard.
+
+**LE PRINCIPE DE DÉPART RESTE JUSTE** : on juge sur ce que le programme
+AFFICHE, pas sur le texte tapé — sinon `print('Bonjour')` avec des apostrophes
+serait refusé, et l'on noterait la façon d'écrire. **Mais il ne suffit pas
+quand c'est le calcul qu'on enseigne.** « Affiche leur somme » ne demande pas
+un 14 à l'écran : il demande un programme qui marcherait encore si les boîtes
+changeaient.
+
+Neuf marches ont donc une **exigence** en plus de leur sortie — et elle est la
+plus LARGE qui sépare encore la tricherie du travail : `print(a + b)`,
+`print(b + a)`, `s = a + b` puis `print(s)` passent tous les trois. Une
+exigence plus étroite se remettrait à noter l'écriture.
+
+**ET LE BANDEAU « TON PROGRAMME DOIT AFFICHER : 14 » A DISPARU** de ces
+marches-là. Il se tenait juste au-dessus du champ où il a tapé 14.

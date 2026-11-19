@@ -43,6 +43,7 @@ import { diagnostiquer, conseilDuPas } from '../python/diagnostic.js';
 import { lancer, dessiner, chargerPython } from '../python/executer.js';
 import { sortieJuste, canoniqueSortie } from '../python/sortie.js';
 import { memeFigure, ressemblance } from '../python/dessin.js';
+import { exigenceNonTenue, aUneExigence } from '../python/exigences.js';
 
 const PAS = '    ';   // un cran : quatre espaces, la convention de Python
 
@@ -139,7 +140,8 @@ export function mount(container, session) {
                 </div>
                 <div class="pe-console" data-console hidden></div>
                 ${hintBar(session)}
-                ${(attendu() && !sortie) ? `<div class="pe-attendu">
+                ${(attendu() && !sortie && !aUneExigence(item.meta.marche))
+        ? `<div class="pe-attendu">
                     <span class="pe-attendu-nom">Ton programme doit afficher</span>
                     <pre class="pe-attendu-texte">${echapper(attendu())}</pre></div>` : ''}
             </div>`;
@@ -377,9 +379,13 @@ export function mount(container, session) {
         }
         const pareil = memeFigure(r.grille, grilleModele);
         const proche = ressemblance(r.grille, grilleModele);
+        // LA FIGURE PEUT ÊTRE JUSTE ET LE PROGRAMME PASSER À CÔTÉ : quatre
+        // `forward` écrits à la suite dessinent le carré que la consigne
+        // demande de tracer AVEC UNE BOUCLE. Voir `python/exigences.js`.
+        const manque = pareil ? exigenceNonTenue(item.meta.marche, source, item.meta) : null;
 
         const result = session.submit(
-            pareil ? item.answer : `figure/autre/${Math.round(proche * 100)}`,
+            (pareil && !manque) ? item.answer : `figure/autre/${Math.round(proche * 100)}`,
             { element: code,
                 dire: { given: 'la figure dessinée', expected: 'la figure du modèle' } });
         if (result.ignored) return;
@@ -388,6 +394,14 @@ export function mount(container, session) {
             gagne = true;
             dire('<p class="pe-dit">C’est exactement la même figure.</p>', 'ok');
             result.dismissed.then(() => { if (!destroyed) regTimeout(renderNext, 1400); });
+            return;
+        }
+        if (manque) {
+            dire(`<p class="pe-dit">${echapper(manque.dire)}</p>`
+                + `<p class="pe-aide">${echapper(manque.aide)}</p>`, 'ko');
+            result.dismissed.then(() => {
+                if (!destroyed && result.revealed) renderNext();
+            });
             return;
         }
         // ON NE DIT PAS CE QUI MANQUE : les deux dessins sont côte à côte, et
@@ -440,7 +454,15 @@ export function mount(container, session) {
         const conseil = conseilDuPas(source);
         const vu = `<pre class="pe-sortie">${echapper(r.sortie || '(rien)')}</pre>`;
 
-        const result = session.submit(canoniqueSortie(r.sortie || ''),
+        // ── LA SORTIE NE SUFFIT PAS QUAND C'EST LE CALCUL QU'ON ENSEIGNE ──
+        //
+        // RÉMY, 19 novembre : devant « affiche leur SOMME », il écrit
+        // `print(14)` et le logiciel répond que c'est juste. « ça dit bon... ».
+        // Il me l'avait déjà dit sur le tableur : « la bonne réponse est
+        // =A1+B1 pas 17 ». Voir `python/exigences.js`.
+        const manque = exigenceNonTenue(item.meta.marche, source, item.meta);
+        const result = session.submit(
+            manque ? 'sortie-juste-sans-le-travail' : canoniqueSortie(r.sortie || ''),
             { element: code, dire: { given: (r.sortie || '').trimEnd(),
                 expected: attendu().trimEnd() } });
         if (result.ignored) return;
@@ -450,6 +472,16 @@ export function mount(container, session) {
             dire('<p class="pe-dit">C’est exactement ça.</p>' + vu
                 + (conseil ? `<p class="pe-conseil">${echapper(conseil)}</p>` : ''), 'ok');
             result.dismissed.then(() => { if (!destroyed) regTimeout(renderNext, 900); });
+            return;
+        }
+        if (manque) {
+            // ON NE MONTRE PAS CE QU'IL FALLAIT AFFICHER : il l'a affiché. Ce
+            // qui manque n'est pas le résultat, c'est le chemin.
+            dire(`<p class="pe-dit">${echapper(manque.dire)}</p>` + vu
+                + `<p class="pe-aide">${echapper(manque.aide)}</p>`, 'ko');
+            result.dismissed.then(() => {
+                if (!destroyed && result.revealed) renderNext();
+            });
             return;
         }
         dire('<p class="pe-dit">Ton programme tourne, mais il n’affiche pas ce qu’on '
