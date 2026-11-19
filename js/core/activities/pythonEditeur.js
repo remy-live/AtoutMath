@@ -37,6 +37,7 @@
 //    ligne fautive s'allume dans l'éditeur.
 
 import { regTimeout } from '../timers.js';
+import { hintBar, wireHint } from './choice.js';
 import { codeHtml, decaler, cranDe } from '../python/afficher.js';
 import { diagnostiquer, conseilDuPas } from '../python/diagnostic.js';
 import { lancer, dessiner, chargerPython } from '../python/executer.js';
@@ -137,6 +138,7 @@ export function mount(container, session) {
                     </div>
                 </div>
                 <div class="pe-console" data-console hidden></div>
+                ${hintBar(session)}
                 ${(attendu() && !sortie) ? `<div class="pe-attendu">
                     <span class="pe-attendu-nom">Ton programme doit afficher</span>
                     <pre class="pe-attendu-texte">${echapper(attendu())}</pre></div>` : ''}
@@ -161,6 +163,16 @@ export function mount(container, session) {
             b.addEventListener('click', () => decalerLaLigne(Number(b.dataset.decaler)));
         });
         container.querySelector('[data-lancer]').addEventListener('click', essayer);
+        // ── LA BARRE D'INDICE MANQUAIT TOUT ENTIÈRE ─────────────────────
+        //
+        // RÉMY, 19 novembre : « pour Python, je pense qu'il faut que tu
+        // montres un exemple dans l'indice ». En allant poser les exemples,
+        // j'ai trouvé pire : CET ÉDITEUR N'AVAIT AUCUN BOUTON « Un indice ».
+        // Les quatre autres activités de saisie l'ont — `rangerLeMot`,
+        // `notationSaisie`, `litteralSaisie`, `egaliteFleches` —, celle-ci
+        // était partie sans. Les indices étaient écrits, rangés dans l'item,
+        // et INATTEIGNABLES : l'élève coincé n'avait que le bouton « Lancer ».
+        wireHint(container, session);
         redessinerMarges();
         if (sortie) return;
         // ON DESSINE LE MODÈLE TOUT DE SUITE, et c'est le bac à sable qui le

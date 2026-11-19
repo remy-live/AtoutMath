@@ -19838,6 +19838,29 @@ body.visite-en-cours .modal-overlay > * {
    un écran large, l'une sous l'autre au téléphone — et jamais plus larges que
    la moitié de la place, sans quoi la comparaison demande de faire défiler,
    c'est-à-dire de se souvenir au lieu de voir. */
+/* ── L'EXEMPLE MONTRÉ SOUS UN INDICE ──────────────────────────────────────
+   Rémy : « pour Python, je pense qu'il faut que tu montres un exemple dans
+   l'indice ». Il est encadré et porte son étiquette, pour qu'on ne le prenne
+   pas une seconde pour l'énoncé — c'est du code d'AILLEURS, sur d'autres
+   valeurs, et le confondre avec la question ferait recopier une réponse qui
+   n'est pas la sienne. */
+.py-exemple {
+    display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+    margin: 10px auto 0; max-width: 42ch; text-align: left;
+    padding: 10px; border: 1px dashed var(--border); border-radius: 12px;
+    background: color-mix(in srgb, var(--primary) 4%, transparent);
+}
+.py-exemple-nom {
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted);
+}
+.py-exemple .py-bloc { margin: 0; max-width: none; }
+.py-exemple-sortie {
+    margin: 0; padding: 6px 12px; white-space: pre;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    background: var(--bg-app); border: 1px solid var(--border); border-radius: 8px;
+}
+
 .pe-planches {
     display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
     width: min(100%, 44ch);

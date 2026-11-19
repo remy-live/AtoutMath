@@ -32,12 +32,53 @@
 // refuser des solutions correctes, ce qui est la pire chose qu'un exercice de
 // programmation puisse faire.
 
+import { codeHtml } from './afficher.js';
+
 const MOTS = ['Bonjour', 'Salut', 'Bravo', 'Coucou', 'Merci'];
 const ACTIONS = ['tour', 'étape', 'ligne', 'passage'];
 const choisir = (rng, liste) => liste[rng.int(0, liste.length - 1)];
 
+// ── UN EXEMPLE SOUS LE PREMIER INDICE ────────────────────────────────────
+//
+// RÉMY, 19 novembre : « pour Python, je pense qu'il faut que tu montres un
+// exemple dans l'indice ».
+//
+// UN EXEMPLE N'EST PAS LA RÉPONSE, et c'est toute la difficulté. « Le mot qui
+// affiche s'écrit en cinq lettres » n'apprend rien à qui ne l'a jamais vu
+// écrit ; « Écris : print("Merci") » lui donne sa réponse et le dispense de
+// comprendre. Entre les deux il y a la forme montrée SUR D'AUTRES VALEURS :
+// l'élève voit la tournure, la reconnaît, et doit encore la transposer.
+//
+// Chaque exemple ci-dessous porte donc des valeurs ou un mot QUE LA QUESTION
+// NE TIRE JAMAIS — `tests/exemplesPython.test.mjs` le vérifie sur toutes les
+// marches et tous les tirages, parce qu'un exemple qui finit par tomber sur
+// la réponse serait pire qu'aucun exemple : il marcherait presque toujours.
+//
+// LE DESSIN SUIT SON INDICE : `schemas[i]` se pose sous `indices[i]`, en jeu
+// comme dans « montre-moi » (voir `core/aideExercice.js`).
+
+/**
+ * Un bout de code montré en exemple, rendu comme le code de l'exercice.
+ *
+ * PAS DE NUMÉRO SUR UN EXEMPLE D'UNE SEULE LIGNE. Un « 1 » tout seul devant
+ * `print("Bonsoir")` ne désigne rien et se lit comme une étape — « 1. fais
+ * ceci ». Rémy, le même jour, sur un autre écran : « ne numérote pas les
+ * lignes, je trouve cela trompeur ». Dès deux lignes ils servent à nouveau :
+ * c'est par eux qu'on parle du décalage.
+ */
+const exemple = (code) =>
+    `<div class="py-exemple"><span class="py-exemple-nom">Par exemple</span>`
+    + `${codeHtml(code, { numeros: String(code).includes('\n') })}</div>`;
+
+/** Un exemple de programme AVEC ce qu'il affiche — pour les marches de sortie. */
+const exempleAvecSortie = (code, sortie) =>
+    `<div class="py-exemple"><span class="py-exemple-nom">Par exemple</span>`
+    + `${codeHtml(code, { numeros: String(code).includes('\n') })}`
+    + `<span class="py-exemple-nom">affiche</span>`
+    + `<pre class="py-exemple-sortie">${sortie}</pre></div>`;
+
 /** Le gabarit commun : ce que chaque marche rend au générateur. */
-const fait = (o) => ({ indices: [], ...o });
+const fait = (o) => ({ indices: [], schemas: [], ...o });
 
 /* ── 1. UN MOT ──────────────────────────────────────────────────────────── */
 function unMot(rng) {
@@ -52,6 +93,7 @@ function unMot(rng) {
             + `écrire ${mot}.`,
         sortieAttendue: mot + '\n',
         solution: `print("${mot}")`,
+        schemas: [exemple('print("Bonsoir")')],
         indices: ['Le mot qui affiche quelque chose en Python s’écrit en cinq lettres.',
             `Écris : print("${mot}")`]
     });
@@ -66,6 +108,7 @@ function uneLigne(rng) {
             + `SOMME. Le programme doit écrire ${a + b}.`,
         sortieAttendue: String(a + b) + '\n',
         solution: `a = ${a}\nb = ${b}\nprint(a + b)`,
+        schemas: [exemple('x = 2\ny = 5\nprint(x + y)')],
         indices: ['Il faut un print, et dedans un calcul — sans guillemets, sinon '
             + 'Python recopierait au lieu de calculer.',
         'Écris : print(a + b)']
@@ -106,6 +149,7 @@ function leDecalage(rng) {
             + `${quoi} ${n} fois, puis fini.`,
         sortieAttendue: Array.from({ length: n }, () => quoi).join('\n') + '\nfini\n',
         solution: `for i in range(${n}):\n    print("${quoi}")\nprint("fini")`,
+        schemas: [exemple('for i in range(2):\n    print("ici")\nprint("fin")')],
         indices: ['Clique dans la ligne 2, puis appuie UNE FOIS sur le bouton de droite.',
             'La ligne 3 reste collée à gauche : elle n’est pas dans la boucle, '
             + 'elle vient après.']
@@ -122,6 +166,7 @@ function deuxLignes(rng) {
             + `appelée ${nom}, puis affiche ce qu’elle contient.`,
         sortieAttendue: String(v) + '\n',
         solution: `${nom} = ${v}\nprint(${nom})`,
+        schemas: [exemple('p = 7\nprint(p)')],
         indices: ['La première ligne range, la seconde affiche.',
             `Écris : ${nom} = ${v}  puis  print(${nom})`]
     });
@@ -138,6 +183,7 @@ function petitProgramme(rng) {
                 + 'un par ligne.',
             sortieAttendue: Array.from({ length: n }, (_, k) => k).join('\n') + '\n',
             solution: `for i in range(${n}):\n    print(i)`,
+            schemas: [exemple('for i in range(2):\n    print(i)')],
             indices: ['Une boucle « for » et un « print » décalé en dessous.',
                 `range(${n}) donne 0, 1, … , ${n - 1}.`]
         });
@@ -151,6 +197,7 @@ function petitProgramme(rng) {
             + 'programme doit afficher grand ; sinon, petit.',
         sortieAttendue: dit + '\n',
         solution: `n = ${valeur}\nif n > ${seuil}:\n    print("grand")\nelse:\n    print("petit")`,
+        schemas: [exemple('n = 1\nif n > 5:\n    print("haut")\nelse:\n    print("bas")')],
         indices: [`Il faut un « if n > ${seuil} : », puis un « else : ».`,
             'Les deux lignes qui affichent sont DÉCALÉES, chacune sous son mot.']
     });
@@ -185,6 +232,7 @@ function sortieDeuxLignes(rng) {
         programme: `print("${mot}")\nprint(${a} * ${b})`,
         consigne: CONSIGNE_SORTIE,
         sortieAttendue: `${mot}\n${a * b}\n`,
+        schemas: [exempleAvecSortie('print("ici")\nprint(2 * 5)', 'ici\n10')],
         indices: ['Deux « print », donc DEUX lignes affichées.',
             `Les guillemets empêchent le calcul : la première ligne affiche le mot `
             + `tel quel, la seconde le RÉSULTAT de ${a} × ${b}.`]
@@ -205,6 +253,7 @@ function sortieBoucle(rng) {
             : `for i in range(${n}):\n    print("${quoi}")`,
         consigne: CONSIGNE_SORTIE,
         sortieAttendue: lignes.join('\n') + '\n',
+        schemas: [exempleAvecSortie('for i in range(2):\n    print(i)', '0\n1')],
         indices: [`range(${n}) donne ${n} tours.`,
             avecNombre
                 ? `Une boucle commence à ZÉRO : 0, 1, … jusqu’à ${n - 1}.`
@@ -226,6 +275,7 @@ function sortieTantQue(rng) {
             : `n = ${n}\nwhile n > 0:\n    print(n)\n    n = n - 1`,
         consigne: CONSIGNE_SORTIE,
         sortieAttendue: lignes.join('\n') + '\n',
+        schemas: [exempleAvecSortie('n = 2\nwhile n > 0:\n    print(n)\n    n = n - 1', '2\n1')],
         indices: ['Déroule tour par tour : qu’affiche-t-il au premier tour ? et '
             + 'que vaut n juste après ?',
         monte ? `n part de 1 et monte jusqu’à ${n}.`
@@ -252,6 +302,11 @@ function fonctionAppel(rng) {
             + `ligne qui AFFICHE le double de ${v}.`,
         sortieAttendue: String(2 * v) + '\n',
         solution: `def double(x):\n    return 2 * x\n\nprint(double(${v}))`,
+        // `moitie(50)` REND 25, un nombre IMPAIR : la question demande toujours
+        // un DOUBLE, donc un nombre pair. L'exemple ne peut ainsi jamais
+        // afficher la réponse attendue — mesuré, pas supposé : avec
+        // `moitie(20)`, la garde a trouvé la collision au premier tirage.
+        schemas: [exempleAvecSortie('def moitie(x):\n    return x // 2\n\nprint(moitie(50))', '25')],
         indices: ['Une fonction ne fait rien tant qu’on ne l’appelle pas.',
             `Écris : print(double(${v}))`]
     });
@@ -265,6 +320,10 @@ function fonctionRetour(rng) {
             + `programme doit écrire ${3 * v}.`,
         sortieAttendue: String(3 * v) + '\n',
         solution: `def triple(x):\n    return 3 * x\n\nprint(triple(${v}))`,
+        // 16 N'EST PAS UN MULTIPLE DE TROIS, et la question demande toujours un
+        // triple. Avec `carre(3)`, l'exemple affichait 9 — exactement la
+        // réponse quand la question tirait 3.
+        schemas: [exempleAvecSortie('def carre(x):\n    return x * x\n\nprint(carre(4))', '16')],
         indices: ['« return » renvoie un résultat à qui a appelé la fonction.',
             'Écris : return 3 * x']
     });
@@ -278,6 +337,7 @@ function fonctionEcrire(rng) {
             + `puis affiche l’aire d’un rectangle ${L} sur ${l}.`,
         sortieAttendue: String(L * l) + '\n',
         solution: `def aire(L, l):\n    return L * l\n\nprint(aire(${L}, ${l}))`,
+        schemas: [exempleAvecSortie('def somme(a, b):\n    return a + b\n\nprint(somme(2, 3))', '5')],
         indices: ['Deux paramètres entre les parenthèses, séparés par une virgule.',
             `def aire(L, l) : … return L * l … puis print(aire(${L}, ${l}))`]
     });
@@ -319,6 +379,7 @@ function dessinTrait(rng) {
         consigne: `Refais ce dessin : un trait de ${n} vers la droite. La tortue part `
             + 'du centre, tournée vers la droite.',
         solution: `${EN_TETE_TORTUE}t.forward(${n})`,
+        schemas: [exemple('t.forward(50)')],
         indices: ['« forward » avance de ce qu’on lui donne.',
             `Écris : t.forward(${n})`]
     });
@@ -330,6 +391,7 @@ function dessinAngle(rng) {
         consigne: `Refais ce dessin : un trait de ${n} vers la droite, un quart de tour `
             + `à gauche, puis un trait de ${n}.`,
         solution: `${EN_TETE_TORTUE}t.forward(${n})\nt.left(90)\nt.forward(${n})`,
+        schemas: [exemple('t.forward(50)\nt.right(90)\nt.forward(50)')],
         indices: ['Un quart de tour vaut 90 degrés.',
             `t.forward(${n}) … t.left(90) … t.forward(${n})`]
     });
@@ -341,6 +403,7 @@ function dessinCarre(rng) {
         consigne: `Refais ce carré de côté ${n}, avec une boucle « for » : quatre fois `
             + 'un trait et un quart de tour.',
         solution: `${EN_TETE_TORTUE}for i in range(4):\n    t.forward(${n})\n    t.left(90)`,
+        schemas: [exemple('for i in range(3):\n    t.forward(60)\n    t.left(120)')],
         indices: ['Quatre côtés : range(4).',
             'Les deux lignes du tour sont DÉCALÉES sous le « for ».']
     });
@@ -350,13 +413,20 @@ function dessinPolygone(rng) {
     // SEULEMENT LES NOMBRES DE CÔTÉS QUI DIVISENT 360. Avec 7, l'angle vaut
     // 51,42857… : l'élève ne peut pas le taper, et la consigne lui demanderait
     // un nombre qui n'existe pas. Un exercice doit avoir une réponse écrivable.
-    const n = [3, 4, 5, 6, 8, 9, 10, 12][rng.int(0, 7)];
+    //
+    // ET PAS QUATRE. L'indice montre en exemple le carré — « 360 ÷ 4 = 90 » —,
+    // parce que c'est la figure que l'élève vient de tracer à la marche
+    // précédente. Tirer quatre ici ferait de l'exemple la réponse, à la
+    // longueur du côté près. Le carré a déjà sa marche ; celle-ci sert à
+    // généraliser.
+    const n = [3, 5, 6, 8, 9, 10, 12][rng.int(0, 6)];
     const cote = n <= 4 ? 110 : (n <= 6 ? 80 : 50);
     return dessin({
         consigne: `Refais ce polygone à ${n} côtés de ${cote}. Pour revenir à son point `
             + `de départ, la tortue tourne de 360 ÷ ${n} à chaque sommet.`,
         solution: `${EN_TETE_TORTUE}for i in range(${n}):\n    t.forward(${cote})\n`
             + `    t.left(${360 / n})`,
+        schemas: [exemple('for i in range(4):\n    t.forward(60)\n    t.left(90)')],
         indices: [`360 ÷ ${n} = ${360 / n}.`,
             `for i in range(${n}) : … t.forward(${cote}) … t.left(${360 / n})`]
     });
@@ -370,6 +440,7 @@ function dessinFonction(rng) {
             + `donne, puis appelle-la pour ${a} et pour ${b}.`,
         solution: `${EN_TETE_TORTUE}def carre(cote):\n    for i in range(4):\n`
             + `        t.forward(cote)\n        t.left(90)\n\ncarre(${a})\ncarre(${b})`,
+        schemas: [exemple('def trait(n):\n    t.forward(n)\n\ntrait(30)\ntrait(60)')],
         indices: ['La fonction prend le côté en paramètre : def carre(cote):',
             `Puis deux appels : carre(${a}) et carre(${b}).`]
     });

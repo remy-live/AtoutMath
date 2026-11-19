@@ -313,6 +313,15 @@ function itemEcriture(etape, rng, generatorId) {
             .map((l) => l.replace(/^ {4}/, '> '))
             : lignesDeSortie(e.sortieAttendue)).join(' / '),
         hints: e.indices,
+        // ── UN EXEMPLE SOUS L'INDICE ────────────────────────────────────
+        //
+        // RÉMY, 19 novembre : « pour Python, je pense qu'il faut que tu
+        // montres un exemple dans l'indice ». `schemas[i]` se pose sous
+        // `hints[i]`, en jeu comme dans « montre-moi » — c'est le même
+        // mécanisme que les figures des onze autres générateurs qui en
+        // posent, et il valait mieux le réemployer que d'en inventer un
+        // second qui aurait divergé.
+        schemas: e.schemas,
         // DEUX EXPLICATIONS, parce qu'il y a deux exercices : montrer un
         // programme qui marche là où il fallait en écrire un, montrer la
         // sortie là où il fallait la prédire.

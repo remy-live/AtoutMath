@@ -8194,3 +8194,25 @@ pareil** — 19 novembre
   `\.hidden = ` du JavaScript, elle tient en quinze lignes, et elle attraperait
   les deux occurrences d'un coup — là où il faut aujourd'hui qu'un humain
   regarde la bonne image au bon moment.
+
+---
+
+**Une activité peut naître sans barre d'indice, et tout reste vert** —
+19 novembre
+
+- *Ce que je voulais faire* : poser un exemple sous le premier indice de
+  l'éditeur Python.
+- *Ce qui a coûté* : la demande de Rémy aurait été livrée **invisible**. En
+  cherchant où s'affichent les indices, j'ai trouvé que `pythonEditeur.js` ne
+  contenait pas une seule fois le mot — ni `hintBar`, ni `wireHint`. Les quatre
+  autres activités de saisie les ont. Les `hints` des items existaient depuis
+  le premier jour et personne ne pouvait les lire.
+- *Combien de fois* : | (mais la famille est la même que « l'activité et le
+  meneur ne jugent pas pareil » : une pièce du contrat qu'aucune épreuve ne
+  réclame)
+- *Ce qui manque* : **une épreuve de CONTRAT D'ACTIVITÉ**, qui vérifierait pour
+  chacune ce qu'elle doit offrir quand l'item le permet — une barre d'indice
+  quand l'item porte des `hints`, un « Montre-moi » quand il porte une
+  `explanation`. Elle se mesure en lisant la source des `js/core/activities/*`,
+  tient en vingt lignes, et aurait trouvé celle-ci le jour de sa naissance.
+  Aujourd'hui, une activité neuve n'hérite de rien : elle doit se souvenir.

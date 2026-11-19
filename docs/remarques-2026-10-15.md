@@ -8438,3 +8438,23 @@ côtés différents — le moment où l'on voit à quoi sert d'écrire une fonct
 dans le bac à sable cloisonné, hors ligne compris. Et le seuil qui dit « c'est
 la même figure » a été lu sur un tableau, pas choisi : les figures justes
 rendent 1,000, les fausses au plus 0,821.
+
+### 12. « pour Python, il faut que tu montres un exemple dans l'indice » — 19 novembre
+
+**UN EXEMPLE N'EST PAS LA RÉPONSE**, et c'est toute la difficulté de la
+demande. « Le mot qui affiche s'écrit en cinq lettres » n'apprend rien à qui ne
+l'a jamais vu écrit ; « Écris : print("Merci") » lui donne sa réponse et le
+dispense de comprendre. Entre les deux : **la même tournure, sur d'autres
+valeurs**. L'élève reconnaît la forme et doit encore la transposer.
+
+Les seize marches où l'on tape portent donc un exemple en code sous leur
+premier indice, et `tests/exemplesPython.test.mjs` garde le milieu : l'exemple
+n'est jamais le programme attendu, ni la sortie attendue. **La garde a trouvé
+deux collisions à son premier passage** — l'exemple affichait 10 quand la
+question attendait 10.
+
+**ET EN ALLANT LES POSER, J'AI TROUVÉ PIRE : l'éditeur n'avait AUCUN bouton
+« Un indice ».** Les quatre autres activités de saisie en ont un ; celle-ci
+était partie sans. Les indices étaient écrits, rangés dans l'item, et
+inatteignables : un élève coincé n'avait que le bouton « Lancer ». Rien ne le
+signalait — un exercice sans aide marche très bien, pour qui n'en a pas besoin.

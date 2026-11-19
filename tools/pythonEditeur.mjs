@@ -441,6 +441,58 @@ console.log('\n\x1b[1mDESSINER, ET COMPARER AU MODÈLE\x1b[0m');
     await s.fermer();
 }
 
+// ── L'INDICE MONTRE UN EXEMPLE ───────────────────────────────────────────
+//
+// RÉMY, 19 novembre : « pour Python, je pense qu'il faut que tu montres un
+// exemple dans l'indice ». En allant les poser, j'ai trouvé que l'éditeur
+// n'avait AUCUN bouton d'indice : les phrases existaient et personne ne
+// pouvait les lire.
+console.log('\n\x1b[1mL’INDICE, ET L’EXEMPLE QU’IL MONTRE\x1b[0m');
+{
+    const s = await ouvrirSonde({ largeur: 1000, hauteur: 1300 });
+    await s.identifier();
+    const ennui = await s.ouvrirExercice('algo-python-ecrire',
+        { marches: ['un-mot'] }, { questions: 4 });
+    if (ennui) { dire('l\'exercice s\'ouvre', false, String(ennui)); }
+    else {
+        await s.doitExister(CODE);
+        await s.doitExister('[data-hint]');
+        dire('le bouton « Un indice » existe', true);
+        await s.page.click('[data-hint]');
+        await dormir(800);
+        const carte = await s.page.evaluate(() => {
+            const c = document.querySelector('.fb-card--hint');
+            if (!c) return null;
+            const ex = c.querySelector('.py-exemple');
+            return {
+                texte: (c.querySelector('.fb-message') || {}).textContent?.trim() || '',
+                exemple: !!ex,
+                code: ex ? ex.textContent.replace(/\s+/g, ' ').trim() : '',
+                numeros: ex ? ex.querySelectorAll('.py-num').length : -1
+            };
+        });
+        dire('l\'indice s\'ouvre en carte', !!carte, carte ? carte.texte.slice(0, 50) : 'aucune');
+        dire('et il MONTRE un exemple en code', !!carte && carte.exemple,
+            carte ? carte.code.slice(0, 48) : '');
+        // L'EXEMPLE N'EST PAS LA RÉPONSE : la question tire un mot, l'exemple
+        // en montre un autre. Sans cela l'élève recopie et passe la marche
+        // sans l'avoir montée.
+        const mot = await s.page.evaluate(() =>
+            ((document.querySelector('.py-question') || {}).textContent || '')
+                .match(/écrire (\w+)/)?.[1] || '');
+        dire('et l\'exemple ne donne pas la réponse',
+            !!carte && !!mot && !carte.code.includes(mot), `question : ${mot}`);
+        // UN EXEMPLE D'UNE SEULE LIGNE N'EST PAS NUMÉROTÉ : « 1 » tout seul se
+        // lit comme une étape, pas comme une ligne.
+        dire('un exemple d\'une ligne n\'est pas numéroté',
+            !!carte && carte.numeros === 0, `${carte ? carte.numeros : '?'} numéro(s)`);
+        if (photos) await s.photo('.fb-card--hint', 'tools/tmp/python-indice.png');
+        dire('aucune erreur de page', s.erreurs.length === 0, s.erreurs.slice(0, 2).join(' | '));
+        dire('aucune fenêtre native', s.fenetresNatives.length === 0);
+    }
+    await s.fermer();
+}
+
 console.log('\n' + '─'.repeat(70));
 console.log(rates ? `\n${rates} POINT(S) À REVOIR.`
     : '\nON DÉCALE AU DOIGT, LE PROGRAMME TOURNE,\n'
