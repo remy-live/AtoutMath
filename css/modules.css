@@ -19858,6 +19858,13 @@ body.visite-en-cours .modal-overlay > * {
     display: flex; align-items: center; justify-content: center;
     color: var(--text-muted); font-size: .9rem;
 }
+/* ET `hidden` DOIT GAGNER. Vu sur une capture, nulle part ailleurs : une fois
+   le dessin de l'élève affiché, la case « rien encore » restait DESSOUS —
+   `display: flex` bat la règle `[hidden] { display: none }` du navigateur, qui
+   n'a aucune spécificité. La colonne de droite faisait alors deux fois la
+   hauteur de celle du modèle, et la comparaison, qui est tout l'exercice,
+   demandait de faire défiler. */
+.pe-vide[hidden] { display: none; }
 .pe-editeur--sortie .pe-saisie { padding-left: 12px; }
 .pe-saisie::placeholder { color: var(--text-muted); opacity: .7; }
 .pe-saisie:focus { outline: 2px solid var(--primary); outline-offset: -2px; }

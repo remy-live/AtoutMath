@@ -8174,3 +8174,23 @@ pareil** — 19 novembre
   d'épreuve `lesDeuxJugesSAccordent(activiteJuge, item, essais)` tiendrait en
   dix lignes et vaudrait pour toutes les activités qui jugent : le Chat
   Géomètre, la médiane au doigt, l'éditeur Python.
+
+---
+
+**`[hidden]` perd contre `display: flex`, et seule une capture le dit** —
+19 novembre
+
+- *Ce que je voulais faire* : cacher la case « rien encore » dès que le dessin
+  de l'élève s'affiche à côté du modèle.
+- *Ce qui a coûté* : rien, par chance — j'ai regardé la capture. `el.hidden =
+  true` ne cache RIEN quand la règle CSS de l'élément pose `display: flex` :
+  la règle `[hidden] { display: none }` du navigateur n'a aucune spécificité.
+  La colonne de droite faisait deux fois la hauteur de celle du modèle, et la
+  comparaison — qui est tout l'exercice — demandait de faire défiler.
+- *Combien de fois* : || (déjà payé sur un autre volet, même cause)
+- *Ce qui manque* : une épreuve de FEUILLE DE STYLE, pas de code : « tout
+  sélecteur qui pose `display:` sur un élément que le code met en `hidden` doit
+  porter sa règle `[hidden]` ». Elle se mesure en lisant le CSS et les
+  `\.hidden = ` du JavaScript, elle tient en quinze lignes, et elle attraperait
+  les deux occurrences d'un coup — là où il faut aujourd'hui qu'un humain
+  regarde la bonne image au bon moment.
