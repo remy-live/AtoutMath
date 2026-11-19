@@ -39,7 +39,8 @@
 import { regTimeout } from '../timers.js';
 import { codeHtml, decaler, cranDe } from '../python/afficher.js';
 import { diagnostiquer, conseilDuPas } from '../python/diagnostic.js';
-import { lancer, sortieJuste, chargerPython } from '../python/executer.js';
+import { lancer, chargerPython } from '../python/executer.js';
+import { sortieJuste, canoniqueSortie } from '../python/sortie.js';
 
 const PAS = '    ';   // un cran : quatre espaces, la convention de Python
 
@@ -55,6 +56,21 @@ export function mount(container, session) {
     const attendu = () => (item && item.meta && item.meta.sortieAttendue) || '';
     const entrees = () => (item && item.meta && item.meta.entrees) || [];
 
+    /**
+     * LE CHAMP TIENT-IL UNE RÉPONSE, OU UN PROGRAMME ?
+     *
+     * RÉMY, 19 novembre : il a lu « Que va afficher ce programme ? », tapé
+     * « 5 / 4 / 3 / 2 / 1 » — et le logiciel a dit « faux ». Il avait raison.
+     * Ses cinq nombres, chacun sur sa ligne, FORMENT DU PYTHON VALIDE qui
+     * n'affiche rien ; l'éditeur les a donc exécutés, a recueilli le vide, et
+     * a comparé ce vide à la bonne réponse.
+     *
+     * UNE RÉPONSE NE SE LANCE PAS, ELLE SE COMPARE. Tout ce fichier change de
+     * comportement sur cette ligne, et c'est voulu : les deux exercices se
+     * ressemblent à l'écran, mais l'un produit du code et l'autre du texte.
+     */
+    const estSortie = () => !!(item && item.meta && item.meta.genre === 'sortie');
+
     function renderNext() {
         if (destroyed) return;
         render(session.next());
@@ -66,33 +82,45 @@ export function mount(container, session) {
         gagne = false;
         const depart = (item.meta && item.meta.depart) || '';
 
+        const sortie = estSortie();
         container.innerHTML = `
-            <div class="pe-plan">
+            <div class="pe-plan${sortie ? ' pe-plan--sortie' : ''}">
                 ${item.prompt.html}
                 <div class="pe-atelier">
-                    <div class="pe-editeur">
-                        <div class="pe-marges" data-marges></div>
+                    <div class="pe-editeur${sortie ? ' pe-editeur--sortie' : ''}">
+                        ${sortie ? '' : '<div class="pe-marges" data-marges></div>'}
                         <textarea class="pe-saisie" data-code spellcheck="false"
                             autocapitalize="off" autocomplete="off" autocorrect="off"
-                            aria-label="Ton programme Python">${echapper(depart)}</textarea>
+                            ${sortie ? 'placeholder="une ligne par ligne affichée"' : ''}
+                            aria-label="${sortie ? 'Ce que le programme affiche'
+        : 'Ton programme Python'}">${echapper(depart)}</textarea>
                     </div>
                     <div class="pe-gestes">
-                        <button type="button" class="pe-cran" data-decaler="-1"
+                        ${sortie ? '' : `<button type="button" class="pe-cran" data-decaler="-1"
                             aria-label="Ramener la ligne vers la gauche">⇤</button>
                         <button type="button" class="pe-cran" data-decaler="1"
                             aria-label="Décaler la ligne vers la droite">⇥</button>
-                        <span class="pe-cran-dit">décaler la ligne</span>
-                        <button type="button" class="pe-lancer" data-lancer>Lancer</button>
+                        <span class="pe-cran-dit">décaler la ligne</span>`}
+                        <button type="button" class="pe-lancer" data-lancer>${
+    sortie ? 'Vérifier' : 'Lancer'}</button>
                     </div>
                 </div>
                 <div class="pe-console" data-console hidden></div>
-                ${attendu() ? `<div class="pe-attendu">
+                ${(attendu() && !sortie) ? `<div class="pe-attendu">
                     <span class="pe-attendu-nom">Ton programme doit afficher</span>
                     <pre class="pe-attendu-texte">${echapper(attendu())}</pre></div>` : ''}
             </div>`;
+        // ── ET SURTOUT PAS LE RAPPEL « DOIT AFFICHER » EN MODE RÉPONSE ───
+        //
+        // Il porte la sortie attendue. Sous une question qui DEMANDE cette
+        // sortie, il donnerait la réponse — la même faute que l'énoncé qui
+        // surlignait lui-même les lignes répétées, le 18 novembre. Deux fois
+        // le même piège en deux jours : ce qui aide dans un exercice est la
+        // réponse dans l'autre.
 
         const code = container.querySelector('[data-code]');
         code.addEventListener('input', redessinerMarges);
+        if (sortie) code.value = '';
         code.addEventListener('scroll', () => {
             const m = container.querySelector('[data-marges]');
             if (m) m.scrollTop = code.scrollTop;
@@ -103,6 +131,12 @@ export function mount(container, session) {
         });
         container.querySelector('[data-lancer]').addEventListener('click', essayer);
         redessinerMarges();
+        if (sortie) return;
+        // ON NE CHARGE PAS PYTHON POUR UNE QUESTION QUI NE LE LANCE PAS :
+        // une marche « écris ce que ça affiche » se corrige par comparaison,
+        // et faire descendre 944 Ko sur la tablette d'un élève pour rien est
+        // une seconde volée à chaque connexion.
+        //
         // ON CHARGE PYTHON DÈS L'OUVERTURE, sans attendre le premier « Lancer » :
         // 944 Ko arrivent pendant que l'élève lit la consigne et tape, c'est-à-dire
         // pendant un temps qu'il ne compte pas. Chargé au clic, il l'aurait compté.
@@ -113,6 +147,13 @@ export function mount(container, session) {
     function redessinerMarges() {
         const code = container.querySelector('[data-code]');
         const marges = container.querySelector('[data-marges]');
+        // EN MODE RÉPONSE, IL N'Y A PAS DE MARGE — et c'est une demande de
+        // Rémy, mot pour mot : « ne numérote pas les lignes, je trouve cela
+        // trompeur ». Il a raison : des numéros devant un texte qu'on écrit
+        // laissent croire qu'ils FONT PARTIE de la réponse, ou que la sortie
+        // du programme est numérotée. Devant un programme ils servent — le
+        // vérificateur dit « ligne 2 » et la ligne s'allume ; devant une
+        // réponse ils ne servent qu'à tromper.
         if (!code || !marges) return;
         marges.innerHTML = codeHtml(code.value, { numeros: true, fautive });
     }
@@ -160,6 +201,11 @@ export function mount(container, session) {
      *   moment où l'on crée la ligne, pas après.
      */
     function surTouche(e) {
+        // EN MODE RÉPONSE, LE CLAVIER REDEVIENT ORDINAIRE : la tabulation
+        // repart vers le bouton suivant, et Entrée ne décale rien. Décaler une
+        // ligne de RÉPONSE n'a pas de sens, et la sortie de `print` ne
+        // s'indente pas.
+        if (estSortie()) return;
         const code = e.target;
         if (e.key === 'Tab') {
             e.preventDefault();
@@ -192,10 +238,55 @@ export function mount(container, session) {
         c.innerHTML = html;
     }
 
+    /**
+     * LE MODE RÉPONSE : ON COMPARE, ON NE LANCE PAS.
+     *
+     * Et l'on reconnaît UNE faute au passage, parce que c'est celle que Rémy a
+     * faite en premier : écrire « 54321 » sur une seule ligne. Le contenu est
+     * juste, la mise en page ne l'est pas — lui répondre « faux » sans un mot
+     * laisserait chercher une erreur de calcul qui n'existe pas. On ne donne
+     * pas la réponse pour autant : on dit où regarder.
+     */
+    function comparer(texte, element) {
+        const juste = sortieJuste(texte, attendu());
+        const nu = (t) => String(t).replace(/\s+/g, '');
+        const memeContenu = !juste && nu(texte) === nu(attendu()) && nu(texte) !== '';
+        const vu = `<pre class="pe-sortie">${echapper(texte.trim() || '(rien)')}</pre>`;
+
+        // ON SOUMET LA FORME CANONIQUE, ET L'ON JOINT LA LISIBLE.
+        //
+        // Sans cela le meneur jugeait « 123 » égal à « 1\n2\n3 » — sa règle
+        // « 62 307 = 62307 » retire les blancs d'un nombre. L'élève lisait
+        // alors « c'est exactement ça » sur la faute même qu'on veut lui faire
+        // voir. `dire` porte les deux textes en clair, pour le carnet.
+        const result = session.submit(canoniqueSortie(texte),
+            { element, dire: { given: texte.trim(), expected: attendu().trimEnd() } });
+        if (result.ignored) return;
+
+        if (result.correct) {
+            gagne = true;
+            dire('<p class="pe-dit">C’est exactement ça.</p>' + vu, 'ok');
+            result.dismissed.then(() => { if (!destroyed) regTimeout(renderNext, 900); });
+            return;
+        }
+        dire(`<p class="pe-dit">${memeContenu
+            ? 'Les bons nombres, mais pas à la bonne place.'
+            : 'Ce n’est pas ce que ce programme affiche.'}</p>` + vu
+            + `<p class="pe-aide">${memeContenu
+                ? 'Chaque « print » va À LA LIGNE : il faut une ligne par ligne affichée.'
+                : 'Déroule le programme tour par tour, et écris ce qu’il affiche à '
+                  + 'chaque passage.'}</p>`, 'ko');
+        result.dismissed.then(() => {
+            if (destroyed) return;
+            if (result.revealed) renderNext();
+        });
+    }
+
     async function essayer() {
         if (destroyed || gagne || session.locked) return;
         const code = container.querySelector('[data-code]');
         const source = code ? code.value : '';
+        if (estSortie()) { comparer(source, code); return; }
         dire('<span class="pe-attente">Je lance…</span>', 'attente');
 
         const r = await lancer(source, { entrees: entrees() });
@@ -223,11 +314,12 @@ export function mount(container, session) {
 
         fautive = null;
         redessinerMarges();
-        const juste = sortieJuste(r.sortie, attendu());
         const conseil = conseilDuPas(source);
         const vu = `<pre class="pe-sortie">${echapper(r.sortie || '(rien)')}</pre>`;
 
-        const result = session.submit(juste ? attendu() : (r.sortie || ''), { element: code });
+        const result = session.submit(canoniqueSortie(r.sortie || ''),
+            { element: code, dire: { given: (r.sortie || '').trimEnd(),
+                expected: attendu().trimEnd() } });
         if (result.ignored) return;
 
         if (result.correct) {

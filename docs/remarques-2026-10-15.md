@@ -8394,3 +8394,22 @@ les marches où il faut écrire un programme.
 Corrigé à la racine : **deux générateurs**, `algo.python` (16 marches à choix)
 et `algo.python.ecrire` (5 marches où l'on tape). Chacun ne propose que les
 siennes, donc la rencontre est devenue impossible plutôt qu'improbable.
+
+### 10. « ça devrait être bon » et « ne numérote pas les lignes » — 19 novembre
+
+Deux remarques dans la même capture, et la première est une **demande**.
+
+**IL AVAIT TAPÉ LA SORTIE AU LIEU DE LA CHOISIR.** Devant « Que va afficher ce
+programme ? », il a écrit `5` `4` `3` `2` `1`, une par ligne — et le logiciel a
+répondu « faux ». Écrire vaut mieux que reconnaître : au brevet on ne donne pas
+quatre sorties au choix, et dérouler une boucle tour par tour dans sa tête n'a
+rien à voir avec repérer la bonne ligne dans une liste. **Trois marches neuves**
+(groupe F) : deux `print`, une boucle `for`, un `while`. On ne lance rien — ce
+que l'élève tape est une réponse, pas un programme.
+
+**ET LES NUMÉROS DE LIGNE SONT TROMPEURS DEVANT UNE RÉPONSE.** Il a raison, et
+la frontière est nette : devant un PROGRAMME ils servent — le vérificateur dit
+« ligne 2 » et la ligne s'allume ; devant une RÉPONSE qu'on écrit, ils laissent
+croire qu'ils en font partie, ou que la sortie est numérotée. Retirés dans ce
+cas-là, gardés dans l'autre. *À lui dire si c'est partout qu'il les voulait
+retirés.*

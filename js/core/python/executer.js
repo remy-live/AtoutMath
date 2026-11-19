@@ -279,22 +279,9 @@ export async function lancer(source, o = {}) {
     return { ok: false, sortie, dire, aide, ligne: m ? Number(m[1]) : null };
 }
 
-/**
- * CE QU'IL FALLAIT AFFICHER A-T-IL ÉTÉ AFFICHÉ ?
- *
- * ON COMPARE LIGNE À LIGNE, EN PARDONNANT LES ESPACES DE BOUT DE LIGNE et la
- * dernière ligne vide. Un élève dont le programme est juste mais qui a laissé
- * une espace derrière « Bonjour » a écrit un programme juste : lui répondre
- * « faux » sur un caractère invisible, c'est lui apprendre à se méfier.
- *
- * LE RESTE EST STRICT, ET C'EST VOULU : « bonjour » n'est pas « Bonjour », et
- * « 7 » n'est pas « 7.0 ». Python ne pardonne pas non plus, et c'est Python
- * qu'on apprend.
- */
-export function sortieJuste(sortie, attendue) {
-    const net = (t) => String(t == null ? '' : t)
-        .replace(/\r\n?/g, '\n')
-        .split('\n').map(l => l.replace(/[ \t]+$/, '')).join('\n')
-        .replace(/\n+$/, '');
-    return net(sortie) === net(attendue);
-}
+// CE QUI COMPTE COMME « LA MÊME SORTIE » vit dans `python/sortie.js`, parce
+// que le GÉNÉRATEUR en a besoin lui aussi — il doit donner à juger la même
+// forme que celle qu'on déclare juste ici. Deux normalisations qui se
+// ressemblent finiraient par diverger, et l'élève lirait « c'est exactement
+// ça » avant de perdre son point.
+export { sortieJuste, canoniqueSortie } from './sortie.js';

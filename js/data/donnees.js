@@ -302,7 +302,12 @@ export const donneesExercises = [
         lignesReponsePapier: 6,
         params: { nbQuestions: 4,
             marches: ['un-mot', 'une-ligne', 'le-decalage', 'deux-lignes',
-                'petit-programme'] },
+                'petit-programme',
+                // ── ET L'AUTRE SENS, DEMANDÉ PAR RÉMY LE 19 NOVEMBRE ──
+                // « ça devrait être bon » : il avait tapé la sortie d'une
+                // boucle au lieu de la choisir parmi quatre. Écrire vaut
+                // mieux que reconnaître — c'est ce que demande le brevet.
+                'sortie-deux-lignes', 'sortie-boucle', 'sortie-tant-que'] },
         motsClefs: ['python', 'programmation', 'algorithmique', 'code', 'coder',
             'écrire un programme', 'éditeur', 'indentation', 'décalage',
             'print', 'boucle', 'informatique', 'NSI', 'troisième', '3ème', 'seconde'],

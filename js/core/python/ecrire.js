@@ -156,11 +156,92 @@ function petitProgramme(rng) {
     });
 }
 
-/** Les cinq fabricants, dans l'ordre des marches. */
+/* ── 6 à 8. LIRE UN PROGRAMME ET ÉCRIRE CE QU'IL AFFICHE ─────────────────
+ *
+ * RÉMY, 19 novembre : « ça devrait être bon ». Il venait de taper, ligne par
+ * ligne, la sortie d'une boucle qu'un QCM lui demandait de RECONNAÎTRE parmi
+ * quatre. Écrire vaut mieux que choisir : au brevet on ne donne pas quatre
+ * sorties au choix, et dérouler une boucle tour par tour dans sa tête n'a rien
+ * à voir avec repérer la bonne ligne dans une liste.
+ *
+ * CES TROIS MARCHES NE SE LANCENT PAS. Ce que l'élève tape est une RÉPONSE,
+ * pas un programme : on la compare au texte attendu. C'est la leçon directe de
+ * ce qui lui est arrivé — ses cinq nombres chacun sur leur ligne formaient du
+ * Python valide qui n'affiche RIEN, et le logiciel a comparé ce vide à la
+ * bonne réponse.
+ *
+ * ET LA SORTIE ATTENDUE EST CALCULÉE ICI, pas devinée : chaque fabricant
+ * déroule sa propre boucle en JavaScript, de sorte que l'énoncé et la réponse
+ * ne peuvent pas diverger.
+ */
+const CONSIGNE_SORTIE = 'Écris ce que ce programme affiche, une ligne par ligne '
+    + 'affichée.';
+
+function sortieDeuxLignes(rng) {
+    const mot = choisir(rng, MOTS);
+    const a = rng.int(2, 9), b = rng.int(2, 9);
+    return fait({
+        genre: 'sortie',
+        programme: `print("${mot}")\nprint(${a} * ${b})`,
+        consigne: CONSIGNE_SORTIE,
+        sortieAttendue: `${mot}\n${a * b}\n`,
+        indices: ['Deux « print », donc DEUX lignes affichées.',
+            `Les guillemets empêchent le calcul : la première ligne affiche le mot `
+            + `tel quel, la seconde le RÉSULTAT de ${a} × ${b}.`]
+    });
+}
+
+function sortieBoucle(rng) {
+    const n = rng.int(3, 5);
+    const quoi = choisir(rng, ACTIONS);
+    const avecNombre = rng.bool();
+    const lignes = avecNombre
+        ? Array.from({ length: n }, (_, k) => String(k))
+        : Array.from({ length: n }, () => quoi);
+    return fait({
+        genre: 'sortie',
+        programme: avecNombre
+            ? `for i in range(${n}):\n    print(i)`
+            : `for i in range(${n}):\n    print("${quoi}")`,
+        consigne: CONSIGNE_SORTIE,
+        sortieAttendue: lignes.join('\n') + '\n',
+        indices: [`range(${n}) donne ${n} tours.`,
+            avecNombre
+                ? `Une boucle commence à ZÉRO : 0, 1, … jusqu’à ${n - 1}.`
+                : `La même ligne est affichée à chaque tour, donc ${n} fois.`]
+    });
+}
+
+function sortieTantQue(rng) {
+    const n = rng.int(3, 6);
+    const monte = rng.bool();
+    const lignes = monte
+        ? Array.from({ length: n }, (_, k) => String(k + 1))
+        : Array.from({ length: n }, (_, k) => String(n - k));
+    return fait({
+        genre: 'sortie',
+        // LA DESCENTE EST CELLE DE LA CAPTURE DE RÉMY, au nombre près.
+        programme: monte
+            ? `n = 1\nwhile n <= ${n}:\n    print(n)\n    n = n + 1`
+            : `n = ${n}\nwhile n > 0:\n    print(n)\n    n = n - 1`,
+        consigne: CONSIGNE_SORTIE,
+        sortieAttendue: lignes.join('\n') + '\n',
+        indices: ['Déroule tour par tour : qu’affiche-t-il au premier tour ? et '
+            + 'que vaut n juste après ?',
+        monte ? `n part de 1 et monte jusqu’à ${n}.`
+            : `n part de ${n} et descend jusqu’à 1 — pas jusqu’à 0, car la boucle `
+                + 's’arrête dès que n n’est plus strictement positif.']
+    });
+}
+
+/** Les huit fabricants, dans l'ordre des marches. */
 export const FABRIQUES_ECRITURE = {
     'un-mot': unMot,
     'une-ligne': uneLigne,
     'le-decalage': leDecalage,
     'deux-lignes': deuxLignes,
-    'petit-programme': petitProgramme
+    'petit-programme': petitProgramme,
+    'sortie-deux-lignes': sortieDeuxLignes,
+    'sortie-boucle': sortieBoucle,
+    'sortie-tant-que': sortieTantQue
 };

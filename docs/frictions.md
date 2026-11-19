@@ -8150,3 +8150,27 @@ emploie `.some()`** — 19 novembre
   neuf se paiera sur une capture d'écran. La piste la plus courte :
   `registerActivity({ convertit: ['text'] })` à côté de `accepts`, et
   `isCompatible` qui exige `every` sur l'union des deux.
+
+---
+
+**Deux juges sur la même réponse : l'activité et le meneur ne normalisaient pas
+pareil** — 19 novembre
+
+- *Ce que je voulais faire* : accepter « 5 / 4 / 3 / 2 / 1 » écrit une ligne par
+  ligne, et refuser « 54321 » écrit d'un bloc.
+- *Ce qui a coûté* : une mesure à l'écran et une demi-heure. L'activité jugeait
+  avec `sortieJuste` et disait « faux » ; le meneur jugeait avec `sameAnswer` et
+  comptait **juste**. Sa règle « 62 307 = 62307 » — retirer les blancs quand ce
+  qui reste est un nombre, qui est juste et nécessaire pour les grands nombres —
+  ramène « 1\n2\n3 » à « 123 ». L'élève lisait donc un message et récoltait
+  l'autre verdict, sur la faute même que l'exercice existe pour montrer.
+- *Combien de fois* : || (le même genre que « l'énoncé montrait sa réponse » :
+  deux pièces qui se croient d'accord)
+- *Ce qui manque* : **dès qu'une activité juge elle-même, il y a DEUX juges**, et
+  rien dans le dépôt ne le signale. Le noyau accepte `opts.dire` pour séparer la
+  forme qui juge de la forme qui se lit — la moitié du problème est donc déjà
+  pensée —, mais rien n'oblige l'activité à soumettre une forme que `sameAnswer`
+  ne peut pas écraser, ni ne vérifie que les deux verdicts coïncident. Une aide
+  d'épreuve `lesDeuxJugesSAccordent(activiteJuge, item, essais)` tiendrait en
+  dix lignes et vaudrait pour toutes les activités qui jugent : le Chat
+  Géomètre, la médiane au doigt, l'éditeur Python.

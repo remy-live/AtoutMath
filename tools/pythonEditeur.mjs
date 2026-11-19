@@ -265,6 +265,92 @@ console.log('\n\x1b[1mLE CLAVIER, POUR CEUX QUI SONT SUR ORDINATEUR\x1b[0m');
     await s.fermer();
 }
 
+// ── ÉCRIRE CE QUE LE PROGRAMME AFFICHE ───────────────────────────────────
+//
+// RÉMY, 19 novembre : il a lu « Que va afficher ce programme ? », tapé la
+// sortie ligne par ligne, et le logiciel a dit « faux » — parce qu'il
+// EXÉCUTAIT sa réponse au lieu de la comparer. « ça devrait être bon ».
+console.log('\n\x1b[1mÉCRIRE CE QUE LE PROGRAMME AFFICHE\x1b[0m');
+{
+    const s = await ouvrirSonde({ largeur: 900, hauteur: 1100 });
+    await s.identifier();
+    const ennui = await s.ouvrirExercice('algo-python-ecrire',
+        { marches: ['sortie-tant-que'] }, { questions: 4 });
+    if (ennui) { dire('l\'exercice s\'ouvre', false, String(ennui)); }
+    else {
+        await s.doitExister(CODE);
+        const vu = await s.page.evaluate(() => ({
+            programme: [...document.querySelectorAll('.py-bloc .py-code')]
+                .map(c => c.textContent).join('\n'),
+            question: (document.querySelector('.py-question') || {}).textContent || '',
+            // CE QUE RÉMY A DEMANDÉ : pas de numéros devant une réponse.
+            numeros: document.querySelectorAll('[data-marges] .py-num').length,
+            marges: !!document.querySelector('[data-marges]'),
+            crans: document.querySelectorAll('[data-decaler]').length,
+            bouton: (document.querySelector('[data-lancer]') || {}).textContent || '',
+            // ET SURTOUT : le rappel « doit afficher » porterait LA RÉPONSE.
+            rappel: !!document.querySelector('.pe-attendu'),
+            champVide: (document.querySelector('[data-code]') || {}).value === ''
+        }));
+        dire('le programme à lire est dans l\'énoncé', /while|print/.test(vu.programme),
+            vu.programme.replace(/\n/g, ' / ').slice(0, 50));
+        dire('la question demande la sortie', /affiche/.test(vu.question),
+            vu.question.slice(0, 50));
+        dire('AUCUN numéro devant la réponse', vu.numeros === 0 && !vu.marges,
+            `${vu.numeros} numéro(s)`);
+        dire('aucun bouton de décalage', vu.crans === 0, `${vu.crans} bouton(s)`);
+        dire('le bouton dit « Vérifier », pas « Lancer »',
+            /Vérifier/.test(vu.bouton), vu.bouton.trim());
+        dire('et RIEN n\'affiche la réponse attendue', !vu.rappel);
+        dire('le champ est vide au départ', vu.champVide);
+
+        // ── LA FAUTE DE RÉMY : tout sur une seule ligne ──────────────────
+        const attendu = await s.page.evaluate(() => {
+            const b = [...document.querySelectorAll('.py-bloc .py-code')]
+                .map(c => c.textContent).join('\n');
+            // DEUX FORMES, ET LA BORNE N'EST PAS AU MÊME ENDROIT. En descente
+            // elle est dans « n = 5 » ; en montée, « n = 1 » n'est que le
+            // départ et la borne est dans « n <= 6 ». Lire la première au lieu
+            // de la seconde faisait taper « 1 » à la sonde, qui mesurait alors
+            // une réponse qu'aucun élève n'écrirait.
+            const descend = /n > 0/.test(b);
+            const m = descend ? /n = (\d+)/.exec(b) : /n <= (\d+)/.exec(b);
+            if (!m) return null;
+            const n = Number(m[1]);
+            return descend
+                ? Array.from({ length: n }, (_, k) => n - k)
+                : Array.from({ length: n }, (_, k) => k + 1);
+        });
+        // ON ÉCRIT PAR `evaluate` ET NON AU CLAVIER : après une réponse
+        // fausse, le meneur pose sa fenêtre de retour par-dessus l'éditeur, et
+        // Playwright attend alors trente secondes « element is not stable ».
+        // L'outil a raison ; c'est la sonde qui frappait au mauvais moment.
+        const ecrire = (t) => s.page.evaluate((v) => {
+            const c = document.querySelector('[data-code]');
+            c.value = v;
+            c.dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector('[data-lancer]').click();
+        }, t);
+        await ecrire(attendu.join(''));
+        const colle = await attendreVerdict(s);
+        dire('tout collé sur une ligne : on dit OÙ regarder',
+            !!colle && /pas à la bonne place|À LA LIGNE/.test(colle.texte),
+            colle ? colle.texte.slice(0, 80) : 'aucun verdict');
+        dire('et ce n\'est pas compté juste', !!colle && /pe-console--ko/.test(colle.genre));
+
+        // ── ET LA BONNE RÉPONSE, UNE LIGNE PAR LIGNE ─────────────────────
+        await dormir(2600);   // le temps que la fenêtre de retour s'efface
+        await ecrire(attendu.join('\n'));
+        const bon = await attendreVerdict(s);
+        dire('une ligne par ligne : C\'EST JUSTE',
+            !!bon && /pe-console--ok/.test(bon.genre),
+            bon ? bon.texte.slice(0, 60) : 'aucun verdict');
+        dire('aucune erreur de page', s.erreurs.length === 0, s.erreurs.slice(0, 2).join(' | '));
+        dire('aucune fenêtre native', s.fenetresNatives.length === 0);
+    }
+    await s.fermer();
+}
+
 console.log('\n' + '─'.repeat(70));
 console.log(rates ? `\n${rates} POINT(S) À REVOIR.`
     : '\nON DÉCALE AU DOIGT, LE PROGRAMME TOURNE,\n'

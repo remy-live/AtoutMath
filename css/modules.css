@@ -19828,6 +19828,13 @@ body.visite-en-cours .modal-overlay > * {
     /* La gouttière des numéros : la même que `.py-num` + sa marge. */
     text-indent: 0; padding-left: calc(12px + 2.2ch + 10px);
 }
+/* ── LE CHAMP DE RÉPONSE N'A NI GOUTTIÈRE NI NUMÉROS ──────────────────────
+   RÉMY, 19 novembre : « ne numérote pas les lignes, je trouve cela trompeur ».
+   Devant un PROGRAMME les numéros servent — le vérificateur dit « ligne 2 » et
+   la ligne s'allume. Devant une RÉPONSE qu'on écrit, ils laissent croire
+   qu'ils en font partie, ou que la sortie du programme est numérotée. */
+.pe-editeur--sortie .pe-saisie { padding-left: 12px; }
+.pe-saisie::placeholder { color: var(--text-muted); opacity: .7; }
 .pe-saisie:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
 
 /* LES DEUX BOUTONS DE DÉCALAGE SONT GRANDS, parce qu'il n'y a pas de touche de

@@ -378,9 +378,29 @@ test('SUR UNE FEUILLE, UN NOMBRE NE SE COLLE PAS À LA QUESTION', async () => {
     const { makeRng } = await import('../js/core/ids.js');
     await import('../js/core/activities/index.js');
 
-    const COLLE = new RegExp('[0-9\u2070-\u2079\u00b2\u00b3\u00b9]\\s+'
+    // ── SUR LA MÊME LIGNE, ET SEULEMENT LÀ ───────────────────────────────
+    //
+    // `\s` traverse les sauts de ligne, et cela donnait un FAUX POSITIF :
+    // « Python : à Toi de Taper » met le programme, une LIGNE VIDE, puis la
+    // consigne — et « n = n - 1 » suivi de « Écris ce que… » était dénoncé
+    // alors que rien ne se touche sur le papier (vérifié sur le PDF).
+    //
+    // Le défaut gardé est, lui, toujours sur une seule ligne : c'est la
+    // concaténation bout à bout de l'énoncé et de la question. On ne reconnaît
+    // donc que les blancs qui ne changent pas de ligne.
+    const COLLE = new RegExp('[0-9\u2070-\u2079\u00b2\u00b3\u00b9][ \t\u00A0\u202F]+'
         + '(Quel|Quelle|Quels|Quelles|Combien|Laquelle|Lequel|Calcule|Donne|'
         + 'Écris|Rends|Complète|Trouve|Dans quel|Range|Dis )');
+    // ET ELLE ATTRAPE ENCORE SES DEUX DÉFAUTS D'ORIGINE. Resserrer une garde
+    // pour qu'un code neuf passe est le geste le plus dangereux du dépôt : on
+    // le fait ici en lui faisant redire, à chaque passage, ce qu'elle doit
+    // continuer de voir.
+    for (const vu of ['84 = 2² × 3 × 7 et 120 = 2³ × 3 × 5 Quel est le PGCD de 84 et 120 ?',
+        '166 ; 171 ; 159 ; 165 Quelle est l’étendue de cette série ?']) {
+        assert.match(vu, COLLE, 'la règle ne voit plus le défaut qui l’a fait naître');
+    }
+    // Et elle ne dénonce PAS ce qui est séparé par une ligne vide.
+    assert.doesNotMatch('n = n - 1\n\nÉcris ce que ce programme affiche.', COLLE);
     const fautifs = [];
     for (const exo of exercices) {
         if (exo.printable) continue;

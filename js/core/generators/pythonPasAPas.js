@@ -36,6 +36,7 @@ import { makeItem, finalizeChoices } from '../items.js';
 import { FABRIQUES } from '../python/exercices.js';
 import { FABRIQUES_ECRITURE } from '../python/ecrire.js';
 import { codeHtml, codePapier } from '../python/afficher.js';
+import { canoniqueSortie, lignesDeSortie } from '../python/sortie.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
@@ -94,7 +95,31 @@ export const ETAPES = [
     { id: 'deux-lignes', temps: 'E', titre: 'Écrire deux lignes',
       skill: MEMOIRE, difficulte: 4, ecrire: true },
     { id: 'petit-programme', temps: 'E', titre: 'Écrire un petit programme',
-      skill: BLOC, difficulte: 5, ecrire: true }
+      skill: BLOC, difficulte: 5, ecrire: true },
+
+    // ── ET L'AUTRE SENS : LIRE UN PROGRAMME ET ÉCRIRE CE QU'IL AFFICHE ───
+    //
+    // RÉMY, 19 novembre, capture à l'appui. L'éditeur lui avait posé, par
+    // erreur, une question de QCM — « Que va afficher ce programme ? » — et il
+    // a TAPÉ la réponse, ligne par ligne, au lieu de la chercher parmi quatre :
+    // « ça devrait être bon ».
+    //
+    // Il avait raison, et c'est un meilleur exercice que le QCM : au brevet on
+    // ne donne pas quatre sorties au choix, on demande d'écrire ce que le
+    // programme affiche. Choisir, c'est reconnaître ; écrire, c'est dérouler
+    // la boucle dans sa tête, tour par tour.
+    //
+    // ON NE LANCE RIEN ICI. Ce que l'élève tape n'est pas un programme, c'est
+    // une RÉPONSE : on la compare au texte attendu. L'exécuter reviendrait à
+    // ce qui est arrivé à Rémy — ses cinq nombres posés chacun sur sa ligne
+    // formaient du Python valide qui n'affiche rien, et le logiciel a comparé
+    // ce vide à la bonne réponse. Il a répondu « faux » à une réponse juste.
+    { id: 'sortie-deux-lignes', temps: 'F', titre: 'Écrire ce que deux lignes affichent',
+      skill: LIRE, difficulte: 2, ecrire: true, genre: 'sortie' },
+    { id: 'sortie-boucle', temps: 'F', titre: 'Dérouler une boucle « for »',
+      skill: BLOC, difficulte: 3, ecrire: true, genre: 'sortie' },
+    { id: 'sortie-tant-que', temps: 'F', titre: 'Dérouler un « while »',
+      skill: BLOC, difficulte: 4, ecrire: true, genre: 'sortie' }
 ];
 
 const TEMPS = {
@@ -102,7 +127,8 @@ const TEMPS = {
     B: 'B — les boîtes',
     C: 'C — choisir et répéter',
     D: 'D — le décalage, et les fautes',
-    E: 'E — à toi de taper'
+    E: 'E — à toi de taper',
+    F: 'F — écrire ce que ça affiche'
 };
 
 const MOT = 'marche';
@@ -134,7 +160,7 @@ const ETAPES_ECRITURE = ETAPES.filter((e) => e.ecrire);
 const MARCHES_QCM = nommer(ETAPES_QCM);
 const MARCHES_ECRITURE = nommer(ETAPES_ECRITURE);
 const TEMPS_QCM = { A: TEMPS.A, B: TEMPS.B, C: TEMPS.C, D: TEMPS.D };
-const TEMPS_ECRITURE = { E: TEMPS.E };
+const TEMPS_ECRITURE = { E: TEMPS.E, F: TEMPS.F };
 
 /**
  * Le HTML de l'énoncé : le ou les programmes, puis la question.
@@ -204,15 +230,26 @@ function itemEcriture(etape, rng, generatorId) {
             // `consignePapier` QUAND IL Y EN A UNE : la marche du
             // décalage parle de deux boutons à l'écran, et le papier
             // n'en a pas (voir `python/ecrire.js`).
-            papier: (e.depart ? codePapier(e.depart) + '\n\n' : '')
+            papier: ((e.programme || e.depart)
+                ? codePapier(e.programme || e.depart) + '\n\n' : '')
                 + (e.consignePapier || e.consigne),
-            html: `<div class="game-question py-question">${e.consigne}</div>`
+            // LE PROGRAMME À LIRE EST DANS L'ÉNONCÉ, pas dans le champ :
+            // c'est toute la différence entre « écris ce programme » et
+            // « écris ce que CE programme affiche ».
+            html: (e.programme ? codeHtml(e.programme) : '')
+                + `<div class="game-question py-question">${e.consigne}</div>`
         },
         // LA RÉPONSE EST CE QUE LE PROGRAMME AFFICHE, pas le texte tapé.
         // Un élève qui écrit print('Bonjour') avec des apostrophes a
         // écrit un programme juste, et Python le lui dira. Comparer les
         // sources reviendrait à noter la façon d'écrire.
-        answer: e.sortieAttendue,
+        //
+        // ET ON LA DONNE SOUS SA FORME CANONIQUE — lignes séparées par
+        // « / ». MESURÉ : le comparateur du noyau retire les blancs quand
+        // ce qui reste est un nombre (la règle « 62 307 = 62307 »), ce qui
+        // ramène « 1\n2\n3 » à « 123 » et déclare JUSTE une sortie écrite
+        // tout sur une ligne. Voir `python/sortie.js`.
+        answer: canoniqueSortie(e.sortieAttendue),
         // ── SUR LE PAPIER, LA RÉPONSE EST LE PROGRAMME ───────────
         //
         // À l'écran, la réponse est ce que le programme AFFICHE : on
@@ -230,17 +267,28 @@ function itemEcriture(etape, rng, generatorId) {
         // On sépare donc les lignes à la main, et l'on garde le CRAN
         // visible : sans lui, la solution de la marche « le décalage »
         // ne montrerait plus ce qu'on y corrige.
-        reponsePapier: e.solution.split('\n')
-            .map((l) => l.replace(/^ {4}/, '> ')).join(' / '),
+        reponsePapier: (e.solution ? e.solution.trimEnd().split('\n')
+            .map((l) => l.replace(/^ {4}/, '> '))
+            : lignesDeSortie(e.sortieAttendue)).join(' / '),
         hints: e.indices,
-        explanation: `Un programme qui marche :\n${e.solution}`,
+        // DEUX EXPLICATIONS, parce qu'il y a deux exercices : montrer un
+        // programme qui marche là où il fallait en écrire un, montrer la
+        // sortie là où il fallait la prédire.
+        explanation: e.genre === 'sortie'
+            ? `Ce programme affiche :\n${e.sortieAttendue.trimEnd()}`
+            : `Un programme qui marche :\n${e.solution}`,
         difficulty: etape.difficulte,
         meta: {
             marche: etape.id, temps: etape.temps, titre: etape.titre,
+            // `genre` DIT À L'ÉDITEUR CE QU'IL TIENT : un programme à écrire,
+            // ou une réponse à comparer. Sans lui, il lancerait la réponse de
+            // l'élève comme du Python — ce qui est exactement ce qui a fait
+            // répondre « faux » à la bonne réponse de Rémy, le 19 novembre.
+            genre: e.genre || 'programme',
             depart: e.depart,
             sortieAttendue: e.sortieAttendue,
             entrees: e.entrees || null,
-            programme: e.solution
+            programme: e.programme || e.solution
         }
     });
 }
