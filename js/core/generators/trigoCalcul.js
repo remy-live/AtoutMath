@@ -24,7 +24,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { figure } from '../figures.js';
-import { FONCTIONS, sommetVise } from '../trigonometrie.js';
+import { FONCTIONS, angleVise } from '../trigonometrie.js';
 import {
     tirerCalcul, enonceDe, enonceChoix, expliquer, indicesDe, diagnosticsDe,
     triangleSvg, planTriangle
@@ -56,7 +56,7 @@ const LISTE_MARCHES = ETAPES.map((e, i) => ({ id: e.id, nom: `${i + 1}. ${e.titr
 /** Pourquoi tel rapport ne convient pas — nommé côté par côté. */
 function pourquoiPas(c, cle) {
     const f = FONCTIONS[cle];
-    const A = sommetVise(c.t);
+    const A = angleVise(c.t);
     return `${f.nom}(${A}) met en jeu ${c.roles[f.haut]} et ${c.roles[f.bas]}. `
         + `Or on te donne ${c.nomConnu} et l'on cherche ${c.nomCherche} : ce n'est `
         + 'pas le bon rapport.';
@@ -81,7 +81,7 @@ export const trigoCalculGenerator = {
         const etape = ETAPES.find(e => e.id === id) || ETAPES[0];
         const c = tirerCalcul(rng, { genre: etape.genre });
         const svg = triangleSvg(c);
-        const A = sommetVise(c.t);
+        const A = angleVise(c.t);
 
         if (etape.id === 'choisir') {
             const f = FONCTIONS[c.situation.fonction];

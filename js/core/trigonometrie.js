@@ -111,6 +111,48 @@ export const sommetDroit = (t) => t.sommets[t.angleDroit];
 export const sommetVise = (t) => t.sommets[t.angleVise];
 
 /**
+ * UN ANGLE PORTE UN CHAPEAU.
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 19 novembre : « on met des accents circonflexes sur les angles ».
+ *
+ * C'est la notation du collège, celle du tableau et celle de la copie. Et ce
+ * n'est pas une convention d'écriture de plus : c'est ce qui DISTINGUE
+ * l'angle du point et du côté. Dans « sin(B) = AB / BC », le premier B est un
+ * ANGLE et les deux autres sont les sommets de deux SEGMENTS — trois lettres
+ * identiques pour trois objets différents, dans la ligne même qui sert à les
+ * distinguer. Le chapeau lève la confusion que le chapitre existe pour lever.
+ *
+ * ── POURQUOI LE DIACRITIQUE COMBINANT, ET PAS UNE LETTRE TOUTE FAITE ─────
+ *
+ * Â et Ê existent en Unicode ; B̂, Ĉ, P̂, R̂ n'existent pas. On pose donc
+ * U+0302 APRÈS la lettre, et le navigateur compose. MESURÉ dans Chromium avec
+ * la police du logiciel (Outfit) : les vingt-six lettres composent, et le
+ * chapeau se pose au-dessus sans décaler la ligne — voir
+ * `tools/tmp/anglesChapeau.mjs`.
+ *
+ * `normalize('NFC')` recolle ensuite ce qui peut l'être : « A » + U+0302
+ * devient le seul caractère « Â ». Deux écritures pour un même angle feraient
+ * échouer la moindre comparaison de chaînes, et le carnet d'erreurs les
+ * compterait comme deux fautes différentes.
+ *
+ * ── ET SEULEMENT SUR LES ANGLES ──────────────────────────────────────────
+ *
+ * « rectangle en A » nomme un SOMMET, « AB » nomme un CÔTÉ : ni l'un ni
+ * l'autre ne prend de chapeau. Cette fonction ne s'appelle donc que là où
+ * l'on parle d'un angle, jamais par balayage du texte.
+ */
+const CHAPEAU = '\u0302';
+// NORMALISER APRÈS, PAS AVANT. Premier jet : `String(lettre).normalize('NFC')
+// + CHAPEAU`, ce qui ne recolle évidemment rien — le chapeau arrive après la
+// normalisation. « A » restait donc deux caractères là où un seul existe, et
+// mon propre commentaire au-dessus disait le contraire de ce que le code
+// faisait. On compose, PUIS on normalise.
+export const avecChapeau = (lettre) => (String(lettre) + CHAPEAU).normalize('NFC');
+export const angleVise = (t) => avecChapeau(sommetVise(t));
+
+/**
  * QUEL CÔTÉ JOUE QUEL RÔLE — le cœur du module, et il tient en trois lignes.
  *
  * L'hypoténuse relie les deux sommets qui ne portent pas l'angle droit. Le

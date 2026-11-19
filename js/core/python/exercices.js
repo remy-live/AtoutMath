@@ -261,6 +261,53 @@ function siAlors(rng) {
     });
 }
 
+/* ── 8 bis. SINON SI — et il ne se lit QUE si le premier est faux ─────────
+ *
+ * RÉMY, 19 novembre : « il faut rajouter elif, else, while ».
+ *
+ * LA SEULE IDÉE NEUVE DE CETTE MARCHE, et elle est contre-intuitive : un
+ * « elif » n'est PAS un second « if ». Python s'arrête à la première branche
+ * vraie et saute toutes les autres — même si elles sont vraies aussi. C'est
+ * exactement ce qu'un élève ne devine pas, et c'est pourquoi le programme est
+ * tiré de façon à ce que DEUX conditions soient vraies à la fois : sans cela,
+ * la marche ne distingue rien d'une suite de « if » indépendants.
+ */
+function sinonSi(rng) {
+    // n EST CHOISI POUR QUE LES DEUX PREMIÈRES CONDITIONS SOIENT VRAIES.
+    // « n > 10 » et « n > 5 » le sont toutes les deux dès que n dépasse 10 :
+    // c'est le seul tirage qui enseigne quelque chose.
+    const n = rng.int(11, 20);
+    const source = [
+        `n = ${n}`,
+        'if n > 10:',
+        '    print("grand")',
+        'elif n > 5:',
+        '    print("moyen")',
+        'else:',
+        '    print("petit")'
+    ].join('\n');
+    return fait({
+        source,
+        question: 'Que va afficher ce programme ?',
+        reponse: 'grand',
+        leurres: [
+            { value: 'grand puis moyen', why: `n vaut ${n}, donc « n > 10 » ET « n > 5 » sont `
+                + 'vrais tous les deux. Mais Python s’arrête à la PREMIÈRE branche vraie '
+                + 'et saute toutes les suivantes : c’est toute la différence entre « elif » '
+                + 'et un second « if ».' },
+            { value: 'moyen', why: 'Python lit les branches DANS L’ORDRE, de haut en bas. '
+                + `Comme ${n} > 10, il s’arrête à la première.` },
+            { value: 'petit', why: '« else » n’est lu que si AUCUNE des branches au-dessus '
+                + 'n’est vraie.' }
+        ],
+        explication: `n vaut ${n}. La ligne 2 est vraie, donc Python affiche « grand » et `
+            + 'SAUTE tout le reste — le « elif » et le « else » ne sont même pas lus. Une '
+            + 'seule branche s’exécute, toujours.',
+        indices: ['Lis les branches dans l’ordre, et arrête-toi à la première qui est vraie.',
+            `Est-ce que ${n} > 10 ?`]
+    });
+}
+
 /* ── 9. COMBIEN DE FOIS ? ─────────────────────────────────────────────── */
 function combienDeTours(rng) {
     const n = rng.int(3, 6);
@@ -306,6 +353,84 @@ function deZero(rng) {
             + 'à ZÉRO et s’arrêtent juste avant le nombre écrit.',
         indices: ['Par quoi commence une boucle range ?',
             `range(${n}) donne ${n} valeurs, de 0 à ${n - 1}.`]
+    });
+}
+
+/* ── 10 bis. TANT QUE — une boucle qui s'arrête quand elle veut ───────────
+ *
+ * RÉMY, 19 novembre : « il faut rajouter elif, else, while ».
+ *
+ * CE QUI SÉPARE « while » DE « for », ET QUI EST TOUTE LA MARCHE : un « for »
+ * sait d'avance combien de tours il fera, un « while » ne le sait pas. Il
+ * REGARDE son test à chaque tour, et il s'arrête quand celui-ci devient faux.
+ * Compter les tours demande donc de suivre la variable, pas de lire un nombre.
+ */
+function tantQue(rng) {
+    const depart = rng.int(3, 6);
+    const source = [
+        `n = ${depart}`,
+        'while n > 0:',
+        '    print(n)',
+        '    n = n - 1'
+    ].join('\n');
+    const vrai = Array.from({ length: depart }, (_, k) => depart - k).join('  ');
+    return fait({
+        source,
+        question: 'Que va afficher ce programme ?',
+        reponse: vrai,
+        leurres: [
+            { value: Array.from({ length: depart }, (_, k) => k + 1).join('  '),
+                why: `n part de ${depart} et DIMINUE d’un à chaque tour : le compte à `
+                    + 'rebours descend, il ne monte pas.' },
+            { value: Array.from({ length: depart + 1 }, (_, k) => depart - k).join('  '),
+                why: 'Quand n vaut 0, le test « n > 0 » est FAUX : la boucle s’arrête '
+                    + 'AVANT d’afficher 0.' },
+            { value: String(depart), why: 'Le print est DANS la boucle : il s’exécute à '
+                + 'chaque tour, pas une seule fois.' }
+        ],
+        explication: `n part de ${depart}. À chaque tour, Python affiche n puis lui retire 1. `
+            + 'Quand n arrive à 0, le test « n > 0 » devient faux et la boucle s’arrête : '
+            + `${depart} lignes, de ${depart} à 1.`,
+        indices: ['Écris la valeur de n à chaque tour, sur ton brouillon.',
+            'La boucle s’arrête dès que « n > 0 » devient FAUX.']
+    });
+}
+
+/* ── 10 ter. ET CELLE QUI NE S'ARRÊTE JAMAIS ─────────────────────────────
+ *
+ * LA FAUTE QUE TOUT LE MONDE FAIT UNE FOIS, et qui mérite sa marche : on
+ * écrit le « while », on oublie de changer la variable, et le programme tourne
+ * pour toujours. Sur l'ordinateur de la salle, cela se termine par un onglet
+ * figé que l'élève ne sait pas rouvrir — autant lui montrer d'abord ici,
+ * tranquillement, sur un programme qu'on LIT.
+ */
+function sansFin(rng) {
+    const depart = rng.int(3, 6);
+    const source = [
+        `n = ${depart}`,
+        'while n > 0:',
+        '    print(n)'
+    ].join('\n');
+    return fait({
+        source,
+        question: 'Que fait ce programme ?',
+        reponse: 'il ne s’arrête jamais',
+        leurres: [
+            { value: `il affiche ${depart} une fois`, why: 'Le print est dans la boucle, et '
+                + 'rien n’a changé n : le test est encore vrai, donc on recommence.' },
+            { value: `il affiche ${depart} fois le nombre ${depart}`,
+                why: 'Rien dans la boucle ne change n : il n’y a aucune raison que le test '
+                    + `« n > 0 » devienne faux. Comparé au programme d’avant, c’est la ligne `
+                    + '« n = n − 1 » qui manque.' },
+            { value: 'il n’affiche rien', why: `n vaut ${depart}, donc « n > 0 » est vrai dès `
+                + 'le départ : la boucle démarre bien.' }
+        ],
+        explication: 'Rien dans la boucle ne change n : le test « n > 0 » reste vrai pour '
+            + 'toujours, et le programme affiche le même nombre sans fin. UNE BOUCLE '
+            + '« while » DOIT CONTENIR CE QUI FINIRA PAR RENDRE SON TEST FAUX — ici, la '
+            + 'ligne « n = n − 1 » qui manque.',
+        indices: ['Qu’est-ce qui pourrait rendre « n > 0 » faux ?',
+            'Compare avec le programme de la marche d’avant : quelle ligne manque ?']
     });
 }
 
@@ -458,7 +583,9 @@ function laFaute(rng) {
 export const FABRIQUES = {
     afficher, calcul, 'texte-ou-calcul': texteOuCalcul, variable, ordre,
     'calcul-variable': calculVariable, saisie, 'si-alors': siAlors,
+    'sinon-si': sinonSi,
     'combien-de-tours': combienDeTours, 'de-zero': deZero,
+    'tant-que': tantQue, 'sans-fin': sansFin,
     'dans-la-boucle': dansLaBoucle, 'deux-programmes': deuxProgrammes,
     'la-faute': laFaute
 };

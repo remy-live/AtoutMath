@@ -1351,18 +1351,41 @@ test('ET LA RAMPE NE MONTE PAS PLUS QU’UN MUR — la descente, elle, a le droi
     assert.ok(degres < 65,
         `la rampe monte à ${degres.toFixed(0)}° en x = ${Math.round(ou)} : c'est une falaise`);
 
-    // LE TREMPLIN EST RAIDE, ET IL EST COURT : les deux comptent, et c'est la
-    // seconde moitié qui fait la différence avec un mur. S'il s'allongeait, il
-    // redeviendrait une colline à gravir.
+    // LE TREMPLIN LANCE, MAIS IL NE PERCUTE PAS : les deux bornes comptent,
+    // et la seconde a bougé le 19 novembre.
+    //
+    // RÉMY : « La fin d'un monde doit être un TREMPLIN et PAS SI ABRUPT. C'est
+    // choquant. » Mesuré avant d'y toucher, il avait raison au degré près : la
+    // rampe montait à **69°**, c'est-à-dire une paroi qu'on percute.
+    //
+    // LA BORNE BASSE DESCEND DONC DE 1,00 À 0,75 — de 45° à 37°. Elle existe
+    // toujours, et pour la même raison : sans pente, pas de vol plané. Ce qui
+    // change, c'est qu'on ne demande plus au tremplin d'être RAIDE, on lui
+    // demande d'être LONG : les mêmes 220 px de hauteur, sur 333 pixels au
+    // lieu de 146, montent à 40° au lieu de 69. L'oiseau part aussi haut
+    // qu'avant, et il arrive à la lèvre en se redressant.
+    //
+    // ET LA BORNE HAUTE EST NEUVE : au-delà de 50°, on retombe dans ce que
+    // Rémy vient de refuser. Les deux se tiennent, et c'est ce couple qui dit
+    // ce qu'est un tremplin.
+    //
+    // J'AVAIS D'ABORD DESCENDU LA HAUTEUR À 120 PX, ce qui donnait 28° : très
+    // doux, et le jeu cassé — six gardes tombées d'un coup, dont « on tient
+    // 117 secondes sans rien faire ». C'est la LONGUEUR qui adoucit sans rien
+    // casser, pas la hauteur.
     let hautTremplin = 0, longTremplin = 0;
     for (let x = bordsDuVide(0).debut - LONGUEUR_TREMPLIN; x < bordsDuVide(0).debut; x += 2) {
         const p = relief(x, 0.7).pente;
         if (p > 0.4) { longTremplin += 2; hautTremplin = Math.max(hautTremplin, p); }
     }
-    assert.ok(longTremplin < 260,
+    assert.ok(longTremplin < 400,
         `le tremplin monte raide sur ${longTremplin} px : ce n'est plus un saut, c'est une côte`);
-    assert.ok(hautTremplin > 1,
-        'le tremplin ne lance plus rien : sans pente, pas de vol plané');
+    assert.ok(hautTremplin > 0.75,
+        `le tremplin ne lance plus rien (${(Math.atan(hautTremplin) * 180 / Math.PI).toFixed(0)}°) : `
+        + 'sans pente, pas de vol plané');
+    assert.ok(hautTremplin < 1.2,
+        `le tremplin monte à ${(Math.atan(hautTremplin) * 180 / Math.PI).toFixed(0)}° : `
+        + 'c\'est le mur que Rémy appelle « choquant »');
 });
 
 test('NE RIEN FAIRE FAIT PERDRE, ET AVANT QU’ON SE LASSE', () => {

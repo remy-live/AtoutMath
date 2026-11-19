@@ -7,6 +7,17 @@
 // posé). Aucun générateur n'a eu besoin d'être modifié pour en profiter.
 
 import { regTimeout } from '../timers.js';
+// UNE FRACTION S'ÉCRIT EN COLONNE, PARTOUT. Rémy, 19 novembre : « je ne veux
+// que des fractions en colonnes » — et déjà le 3 novembre : « dans la réponse
+// montre moi donner la fraction sous forme de fraction colonne ».
+//
+// Ce pavé-ci ÉCHAPPAIT ses libellés, ce qui aplatissait tout ce qu'un
+// générateur empile : « sin(F) = DE / EF » en trigonométrie. `choice.js`, lui,
+// pose les siens par `innerHTML` depuis toujours, et c'est ainsi que les
+// fractions du chapitre s'empilent. On ne passe pas pour autant en `innerHTML`
+// brut : `htmlDeLibelle` échappe tout, puis rend leur forme aux SEULES balises
+// dont on a besoin — la fraction et l'exposant. Voir `maths/fractionColonne.js`.
+import { afficherEnColonnes } from '../maths/fractionColonne.js';
 import { espacerMilliers, FINE } from '../nombres.js';
 import { hintBar, wireHint } from './choice.js';
 import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
@@ -342,7 +353,7 @@ export function mount(container, session, opts = {}) {
                     ${propositions(item) ? `<div class="np-choix" role="group"
                         aria-label="Propositions">${item.choices.map((c, i) =>
         `<button type="button" class="np-choix-btn" data-choix-i="${i}">${
-            echapperTexte(String(c.label ?? c.value))}</button>`).join('')}</div>` : `
+            afficherEnColonnes(c.label ?? c.value)}</button>`).join('')}</div>` : `
                     <div class="numpad-device">
                     <div class="numpad-screen" aria-live="polite">
                         <span class="numpad-value" data-display></span>

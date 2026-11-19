@@ -8269,3 +8269,74 @@ l'ordre des rangs, à six lignes près.
 Reste à rapprocher la tuile de la maquette C : l'anneau de progression à la
 place de la jauge plate, le prénom en gros et le nom dessous, le score, et la
 barre de pilotage qui descend au pouce quand on est en tuiles.
+
+## Quatre demandes du 19 novembre
+
+### 1. « je ne veux que des fractions en colonnes »
+
+> « pour la trigonométrie dans les réponses utilise des fractions en colonne
+> d'ailleurs, je ne veux que des fractions en colonnes. »
+
+**« D'AILLEURS » ÉLARGIT LA RÈGLE À TOUT LE LOGICIEL.** Il part de la
+trigonométrie et finit par une phrase générale. Une fraction s'écrit avec un
+numérateur AU-DESSUS d'un trait et un dénominateur DESSOUS — c'est ainsi qu'il
+l'écrit au tableau, c'est ainsi que ses élèves l'écrivent sur leur copie, et
+« CA/BC » n'est pas une fraction : c'est une division tapée à la machine.
+
+### 2. La rédaction de la trigonométrie
+
+> « Je sais que : ABC est un triangle rectangle en A
+> Or : sin(B) = CA/BC
+> sin(B) = 3/5
+> Donc B = arcsin(3/5) = … »
+
+**C'EST LA RÉDACTION DU COLLÈGE, et elle n'est pas décorative :** « Je sais
+que / Or / Donc » est ce qu'on exige dans la copie, et c'est là-dessus que
+l'élève est noté au brevet. Une correction qui donne le résultat sans la
+rédaction apprend à trouver le nombre, pas à l'écrire.
+
+### 3. « Et le produit en croix pour calculer une longueur »
+
+Quand l'inconnue est une LONGUEUR, on ne pose pas « x = 8 × sin(35°) » :
+on écrit l'égalité des deux rapports et on passe par le produit en croix.
+C'est la même méthode que Thalès, et c'est fait exprès — un élève qui a appris
+le produit en croix en quatrième doit le retrouver en troisième.
+
+### 4. Les Petites Ailes : la frontière doit être un TREMPLIN
+
+> « La fin d'un monde doit être un tremplin et pas si abrupt. C'est choquant
+> et le monde suivant un peu plus loin. »
+
+**TROIS CHOSES DANS UNE PHRASE.** La fin du monde est aujourd'hui une falaise
+qui tombe dans le vide : il veut une RAMPE qui lance. « Pas si abrupt » :
+l'arrivée dans le monde suivant est brutale. « Un peu plus loin » : la
+distance de vol plané doit grandir — c'est la correction d'APRÈS celle du
+17 novembre, qui l'avait déjà rallongée une fois.
+
+### 5. Python : elif, else, while, et de petits programmes
+
+> « pour python, c'est très bien, il faut rajouter elif, else, while, et il
+> faudrait que l'élève puisse faire des petits programmes. »
+
+« C'est très bien » porte sur les QCM. Ce qui manque est la SUITE qu'il avait
+annoncée le 18 : « et après que l'élève tape ». Trois mots-clefs à ajouter aux
+marches de lecture, puis l'éditeur.
+
+### 6. « on met des accents circonflexes sur les angles » — 19 novembre
+
+Un angle s'écrit avec un chapeau : **B̂**, et non « B ». C'est la notation du
+collège, celle du tableau et celle de la copie — et c'est aussi ce qui
+distingue L'ANGLE du POINT et du CÔTÉ : dans « sin(B) = AB / BC », le premier
+B est un angle et les deux autres sont des sommets de segments. Sans chapeau,
+les trois lettres se ressemblent, et c'est exactement la confusion que le
+chapitre existe pour lever.
+
+**ATTENTION, DEUX LETTRES SUR VINGT-SIX ONT UN CARACTÈRE TOUT FAIT.** Â et Ê
+existent en Unicode ; B̂, Ĉ, P̂, R̂ n'existent pas et se composent d'une lettre
+suivie du diacritique combinant U+0302. Il faut donc le POSER, et surtout
+VÉRIFIER QU'IL S'AFFICHE : une police qui ne compose pas rend le chapeau
+décalé d'un demi-caractère, ou pas du tout.
+
+**ET SEULEMENT SUR LES ANGLES.** « rectangle en A » nomme un sommet, « AB »
+nomme un côté : ni l'un ni l'autre ne prend de chapeau. Une règle appliquée
+trop largement enseignerait le contraire de ce qu'elle veut dire.

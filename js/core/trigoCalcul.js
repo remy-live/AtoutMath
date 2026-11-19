@@ -41,7 +41,7 @@
 import { plan, ferme, texte } from './planPapier.js';
 import {
     ROLES, FONCTIONS, tirerTriangle, rolesDe, nomCote, pointsDe,
-    sommetDroit, sommetVise
+    sommetDroit, sommetVise, angleVise
 } from './trigonometrie.js';
 
 /* ── LES VALEURS TIRÉES ───────────────────────────────────────────────── */
@@ -224,7 +224,7 @@ const LE = {
 };
 
 export function enonceDe(c) {
-    const A = sommetVise(c.t);
+    const A = angleVise(c.t);
     if (c.genre === 'angle') {
         return `Dans ce triangle rectangle, calcule la mesure de l’angle ${A}, `
             + 'arrondie au degré.';
@@ -235,34 +235,115 @@ export function enonceDe(c) {
 
 /** L'énoncé de la marche « quel rapport ? » — on ne calcule pas, on choisit. */
 export const enonceChoix = (c) => {
-    const A = sommetVise(c.t);
+    const A = angleVise(c.t);
     return `On connaît l’angle ${A} et ${LE[c.situation.connue]} ${c.nomConnu}. `
         + `Pour trouver ${c.nomCherche}, quel rapport faut-il écrire ?`;
 };
 
-export function expliquer(c) {
-    const A = sommetVise(c.t);
+/**
+ * LA RÉDACTION — « Je sais que… Or… Donc… »
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 19 novembre, en donnant le plan ligne à ligne :
+ *
+ *     Je sais que : ABC est un triangle rectangle en A
+ *     Or : sin(B) = CA/BC
+ *     sin(B) = 3/5
+ *     Donc B = arcsin(3/5) = …
+ *
+ * et, pour une longueur : « Et le produit en croix pour calculer une longueur ».
+ *
+ * CE N'EST PAS DE LA MISE EN FORME. « Je sais que / Or / Donc » est la forme
+ * qu'on exige sur une copie, et c'est elle qui rapporte les points au brevet :
+ * un élève qui écrit le bon nombre sans la justifier ne démontre rien. La même
+ * demande avait déjà produit `core/thalesRedaction.js` ; on en reprend la
+ * structure au mot près — des blocs `{ titre, lignes }` — parce que c'est la
+ * même rédaction, apprise au même moment de l'année, et que deux écritures
+ * différentes pour une seule leçon enseigneraient qu'il y en a deux.
+ *
+ * ON ÉCRIT « arcsin » ET NON « sin⁻¹ », parce que c'est ce que Rémy a écrit.
+ * La machine, elle, porte « sin⁻¹ » au-dessus de la touche : la dernière
+ * ligne le dit, sans quoi l'élève cherche une touche qui n'existe pas.
+ *
+ * @returns {{titre:string, lignes:string[]}[]}
+ */
+export function redactionDe(c) {
+    const A = angleVise(c.t);
+    const D = sommetDroit(c.t);
+    const saisQue = `${c.t.nom} est un triangle rectangle en ${D}`;
+
     if (c.genre === 'angle') {
         const f = c.fonction;
-        return `${f.nom}(${A}) = ${c.nomHaut} / ${c.nomBas} = ${c.haut.valeur} / `
-            + `${c.bas.valeur} ≈ ${(c.quotient).toFixed(3).replace('.', ',')}. `
-            + `Donc ${A} = ${f.nom}⁻¹(${(c.quotient).toFixed(3).replace('.', ',')}) ≈ `
-            + `${c.reponse}°. Sur la calculatrice : la touche « seconde » puis `
-            + `${f.nom} — et la machine doit être en DEGRÉS.`;
+        const q = c.quotient.toFixed(3).replace('.', ',');
+        return [
+            { titre: 'Je sais que', lignes: [saisQue] },
+            { titre: 'Or', lignes: [
+                `${f.nom}(${A}) = ${c.nomHaut} / ${c.nomBas}`,
+                `${f.nom}(${A}) = ${c.haut.valeur} / ${c.bas.valeur}`
+            ] },
+            { titre: 'Donc', lignes: [
+                `${A} = arc${f.nom}(${c.haut.valeur} / ${c.bas.valeur}) ≈ ${c.reponse}°`,
+                `Sur la machine : touche « seconde » puis ${f.nom} (${f.nom}⁻¹), `
+                    + 'et le mode DEGRÉS.'
+            ] }
+        ];
     }
+
+    // ── UNE LONGUEUR : LE PRODUIT EN CROIX ───────────────────────────────
+    //
+    // RÉMY : « Et le produit en croix pour calculer une longueur ».
+    //
+    // On n'écrit donc pas « x = 8 × cos(35°) » tombé du ciel : on pose
+    // l'égalité des deux rapports, on remplace par les valeurs, et la ligne
+    // suivante est le produit en croix. C'est LA MÊME MÉTHODE QUE THALÈS, et
+    // c'est fait exprès — un élève qui a appris le produit en croix en
+    // quatrième doit le retrouver en troisième, pas découvrir une règle de
+    // plus qui lui ressemble.
     const f = FONCTIONS[c.situation.fonction];
     const haut = c.roles[f.haut], bas = c.roles[f.bas];
-    const formule = `${f.nom}(${A}) = ${haut} / ${bas}`;
-    return c.situation.produit
-        ? `${formule}, donc ${c.nomCherche} = ${c.nomConnu} × ${f.nom}(${A}) = `
-            + `${c.donnee} × ${f.nom}(${c.degres}°) ≈ ${c.reponse} cm.`
-        : `${formule}. Ici ${c.nomCherche} est AU DÉNOMINATEUR, donc on divise : `
-            + `${c.nomCherche} = ${c.nomConnu} ÷ ${f.nom}(${A}) = ${c.donnee} ÷ `
-            + `${f.nom}(${c.degres}°) ≈ ${c.reponse} cm.`;
+    const n = (x) => String(x).replace('.', ',');
+    const cherche = c.nomCherche, connu = c.nomConnu;
+    // L'inconnue est-elle AU NUMÉRATEUR du rapport ? C'est ce qui décide du
+    // sens du produit en croix, et c'est la seule chose qui change entre les
+    // deux cas.
+    const enHaut = c.situation.produit;
+    const remplace = enHaut
+        ? `${f.nom}(${c.degres}°) = ${cherche} / ${n(c.donnee)}`
+        : `${f.nom}(${c.degres}°) = ${n(c.donnee)} / ${cherche}`;
+    return [
+        { titre: 'Je sais que', lignes: [saisQue] },
+        { titre: 'Or', lignes: [
+            `${f.nom}(${A}) = ${haut} / ${bas}`,
+            remplace
+        ] },
+        { titre: 'Donc, par le produit en croix', lignes: enHaut
+            ? [`${cherche} = ${n(c.donnee)} × ${f.nom}(${c.degres}°)`,
+                `${cherche} ≈ ${c.reponse} cm`]
+            : [`${cherche} × ${f.nom}(${c.degres}°) = ${n(c.donnee)}`,
+                `${cherche} = ${n(c.donnee)} ÷ ${f.nom}(${c.degres}°)`,
+                `${cherche} ≈ ${c.reponse} cm`] }
+    ];
+}
+
+/**
+ * LA RÉDACTION, MISE À PLAT — c'est ce que porte `explanation`.
+ *
+ * UNE IDÉE PAR LIGNE, ET C'EST TOUT CE QU'IL FAUT : la carte de correction
+ * affiche en `white-space: pre-line` (voir `messageHtml` dans
+ * `js/ui/gameFeedbackUI.js`), donc un retour à la ligne suffit — aucune balise
+ * à poser ici. Et les fractions écrites « 3 / 5 » s'empilent à l'affichage,
+ * par `afficherEnColonnes`. Le texte, lui, reste du texte : c'est lui qui part
+ * dans le PDF, dans le carnet d'erreurs et dans la voix.
+ */
+export function expliquer(c) {
+    return redactionDe(c)
+        .map(b => `${b.titre} : ${b.lignes.join('\n')}`)
+        .join('\n');
 }
 
 export function indicesDe(c) {
-    const A = sommetVise(c.t);
+    const A = angleVise(c.t);
     if (c.genre === 'angle') {
         return [
             `Tu connais DEUX côtés : ${c.nomHaut} et ${c.nomBas}. Lequel est `
@@ -291,7 +372,7 @@ export function indicesDe(c) {
  * elles servent à répondre quand l'élève a tapé celle-là, et rien d'autre.
  */
 export function diagnosticsDe(c) {
-    const A = sommetVise(c.t);
+    const A = angleVise(c.t);
     const out = [];
     if (c.genre === 'angle') {
         // RENDRE LE RAPPORT AU LIEU DE L'ANGLE : c'est le dernier nombre

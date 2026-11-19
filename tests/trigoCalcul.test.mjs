@@ -318,6 +318,48 @@ test('CHAQUE MARCHE REND UNE QUESTION COMPLÈTE', () => {
     }
 });
 
+// ON DÉCOMPOSE AU LIEU D'ÉNUMÉRER.
+//
+// `avecChapeau` normalise en NFC, donc une lettre qui A un caractère
+// précomposé le prend : Â, Ĉ, Ê, Ĝ, Ĥ, Î, Ĵ, Ô, Ŝ, Û, Ŵ, Ŷ — douze sur
+// vingt-six, et les autres restent « lettre + U+0302 ». Premier jet : une
+// liste à cinq lettres, « ÂÊÎÔÛ », qui est celle du français courant. Elle a
+// laissé passer « Ĝ » au premier tirage. Énumérer un sous-ensemble d'Unicode
+// de mémoire ne marche jamais : on remet la chaîne en NFD, où TOUT chapeau
+// redevient un U+0302 derrière sa lettre, et l'on cherche celui-là.
+const CHAPEAU = '\u0302';
+const nfd = (t) => String(t).normalize('NFD');
+const ANGLE = `[A-Z]${CHAPEAU}`;
+const FORME_RAPPORT = new RegExp(`^(cos|sin|tan)\\(${ANGLE}\\) = [A-Z]{2} / [A-Z]{2}$`);
+
+test('UN ANGLE PORTE UN CHAPEAU, UN CÔTÉ N’EN PORTE PAS', () => {
+    // Rémy, 19 novembre : « on met des accents circonflexes sur les angles ».
+    //
+    // LA SECONDE MOITIÉ DE LA RÈGLE COMPTE AUTANT QUE LA PREMIÈRE : « AB »
+    // nomme un CÔTÉ et « rectangle en A » un SOMMET — ni l'un ni l'autre ne
+    // prend de chapeau. Une règle posée trop largement enseignerait le
+    // contraire de ce qu'elle veut dire, et c'est ce qu'un balayage du texte
+    // aurait fait.
+    for (const marche of ['choisir', 'longueur-produit', 'angle']) {
+        for (let i = 0; i < 8; i++) {
+            const it = item(marche, i);
+            const tout = nfd([it.prompt.text, it.explanation,
+                ...(it.choices || []).map(c => c.label)].join('\n'));
+            // Un côté, ce sont DEUX majuscules collées : aucun chapeau ne doit
+            // se glisser entre elles ni après la seconde.
+            assert.ok(!new RegExp(`[A-Z]${CHAPEAU}[A-Z]`).test(tout),
+                `un côté porte un chapeau : ${tout.slice(0, 120)}`);
+            assert.ok(!new RegExp(`[A-Z][A-Z]${CHAPEAU}`).test(tout),
+                `un côté porte un chapeau : ${tout.slice(0, 120)}`);
+        }
+    }
+    // ET L'ANGLE, LUI, EN PORTE UN : sans cette moitié-ci, l'épreuve passerait
+    // au vert sur un logiciel qui n'écrirait plus aucun chapeau nulle part.
+    const avecAngle = item('angle', 3);
+    assert.match(nfd(avecAngle.explanation), new RegExp(ANGLE),
+        `aucun angle chapeauté dans : ${avecAngle.explanation.slice(0, 120)}`);
+});
+
 test('LA MARCHE « CHOISIR » NE DEMANDE AUCUN CALCUL', () => {
     // C'est sa raison d'être : se tromper de rapport et se tromper de calcul ne
     // sont pas la même faute, et mélangées elles deviennent invisibles.
@@ -327,9 +369,17 @@ test('LA MARCHE « CHOISIR » NE DEMANDE AUCUN CALCUL', () => {
         assert.equal(it.choices.length, 3, 'les trois rapports, et eux seuls');
         const bonne = it.choices.find(c => c.correct);
         assert.ok(bonne, 'aucune proposition juste');
-        // LES TROIS PROPOSITIONS ONT LA MÊME FORME — « cos(A) = AB / AC » —,
+        // LES TROIS PROPOSITIONS ONT LA MÊME FORME — « cos(Â) = AB / AC » —,
         // sinon la plus détaillée se repère sans regarder la figure.
-        it.choices.forEach(c => assert.match(c.label, /^(cos|sin|tan)\([A-Z]\) = [A-Z]{2} \/ [A-Z]{2}$/,
+        //
+        // ET L'ANGLE PORTE SON CHAPEAU. Rémy, 19 novembre : « on met des
+        // accents circonflexes sur les angles ». Ce n'est pas une convention
+        // de plus : dans « cos(Â) = AB / AC », le premier A est un ANGLE et
+        // les deux autres sont les sommets de deux SEGMENTS — trois lettres
+        // identiques pour trois objets, dans la ligne même qui sert à les
+        // distinguer. Le motif EXIGE donc le chapeau sur l'angle et
+        // l'INTERDIT sur les côtés.
+        it.choices.forEach(c => assert.match(nfd(c.label), FORME_RAPPORT,
             `proposition mal formée : ${c.label}`));
         it.choices.filter(c => !c.correct).forEach(c =>
             assert.ok(c.why && c.why.length > 40, 'un leurre sans explication'));

@@ -16,6 +16,7 @@
 // carte affiche. Deux règles séparées dériveraient, et la mesure dirait alors
 // le contraire de ce que voit l'élève.
 import { aerer } from '../core/aideExercice.js';
+import { afficherEnColonnes } from '../core/maths/fractionColonne.js';
 
 const SUCCESS_MESSAGES = ['Bonne réponse !', 'Bravo !', 'Exact !', 'Parfait !'];
 
@@ -302,9 +303,21 @@ function messageHtml(texte) {
     if (coupe > 0) {
         const exemple = brut.slice(coupe + 3).trim();
         if (exemple && EXEMPLE_CHIFFRE.test(exemple)) {
-            return escapeHtml(aerer(brut.slice(0, coupe)) + ' :')
-                + `<span class="fb-exemple">${escapeHtml(exemple)}</span>`;
+            return afficherEnColonnes(aerer(brut.slice(0, coupe)) + ' :')
+                + `<span class="fb-exemple">${afficherEnColonnes(exemple)}</span>`;
         }
     }
-    return escapeHtml(aerer(brut));
+    // UNE FRACTION S'ÉCRIT EN COLONNE, Y COMPRIS DANS LA CORRECTION.
+    //
+    // RÉMY, 19 novembre : « je ne veux que des fractions en colonnes ». La
+    // carte de retour échappait tout, donc « sin(B) = CA / BC » s'y lisait à
+    // plat. `afficherEnColonnes` échappe exactement comme `escapeHtml` et
+    // empile en plus les fractions qu'elle trouve — ce qui fait la règle pour
+    // les soixante-quatre exercices du catalogue d'un seul coup, sans toucher
+    // au texte qu'aucun d'eux n'a à changer.
+    //
+    // `explanation` RESTE DU TEXTE, et c'est voulu : c'est lui qui part dans le
+    // PDF, dans le carnet d'erreurs et dans la voix de la démonstration, où
+    // une balise n'aurait aucun sens. La colonne se fabrique À L'AFFICHAGE.
+    return afficherEnColonnes(aerer(brut));
 }

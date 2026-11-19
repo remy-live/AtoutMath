@@ -723,6 +723,36 @@ const INDICES = {
 };
 
 const HORS_TABLE = {
+    // ── LE CHAPEAU DES ANGLES, QUI NE S'IMPRIME PAS ──────────────────────
+    //
+    // RÉMY, 19 novembre : « on met des accents circonflexes sur les angles ».
+    // À l'écran, « B̂ » se compose très bien : une lettre suivie du
+    // diacritique U+0302, et le navigateur empile — photographié, c'est net.
+    //
+    // LE PDF, LUI, NE SAIT PAS. Ses polices standard n'ont pas de glyphe
+    // combinant, et l'écriture se fait caractère par caractère : le chapeau
+    // sortait en « ? » neuf fois sur une seule feuille de trigonométrie.
+    // C'est `tests/caracteresDuPapier.test.mjs` qui l'a dit — une garde que je
+    // ne connaissais pas, et qui a attrapé exactement le risque que j'avais
+    // écrit dans `avecChapeau` sans aller jusqu'au bout.
+    //
+    // ON L'EFFACE, ET ON NE LE REMPLACE PAR RIEN. Les deux solutions de
+    // facilité sont pires :
+    //
+    //   · un accent circonflexe ASCII après la lettre — « B^ » — se lit comme
+    //     une puissance, et c'est le chapitre d'à côté ;
+    //   · garder le chapeau sur les cinq lettres qui ONT un caractère
+    //     précomposé dans WinAnsi (Â Ê Î Ô Û) et l'effacer sur les vingt et
+    //     une autres donnerait une feuille où « sin(Â) » et « sin(B) » se
+    //     suivent, c'est-à-dire une notation qui change de règle en cours de
+    //     page. Un élève y lirait une différence qui n'existe pas.
+    //
+    // La feuille écrit donc « sin(B) », qui est l'écriture des manuels quand
+    // la composition n'est pas possible, et l'écran garde le chapeau. POUR
+    // L'AVOIR SUR LE PAPIER AUSSI, il faudrait embarquer une police dans le
+    // PDF : c'est faisable, c'est un autre chantier, et il attendra que Rémy
+    // dise que cela en vaut la peine.
+    '\u0302': '',
     // L'ESPACE FINE INSÉCABLE des milliers (« 62 307 ») n'existe pas en
     // WinAnsi : elle sortait en « ? » au milieu de chaque grand nombre. On la
     // remplace par l'insécable ordinaire, qui, elle, y est — le nombre reste

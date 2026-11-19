@@ -122,7 +122,15 @@ export const MONDES = [
         sol: '#4a5578', herbe: '#e6ecff'
     },
     {
-        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 310,
+        // NUIT REMONTÉE DE 310 À 320 LE 19 NOVEMBRE, pour la même raison que
+        // le dixième monde : le tremplin allongé a bougé les allures. Ici ce
+        // n'est pas la pression qui sortait de sa plage, c'est l'autre règle —
+        // « ne rien faire doit perdre » : la nuit n'allait plus qu'à 310
+        // contre 296 pour l'oiseau qu'on abandonne, soit cinq pour cent de
+        // marge tout juste manqués. Mesuré : 320 contre 296, et la pression
+        // passe de 77 à 79 %, toujours entre celle du quatrième et celle du
+        // sixième.
+        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 320,
         ciel: ['#63c7c0', '#d6f5f2'], fond: ['#7fbfc4', '#5d9aa4'],
         sol: '#1f6b6b', herbe: '#7fe6d8'
     },
@@ -186,7 +194,13 @@ export const MONDES = [
         sol: '#eaf7ff', herbe: '#3f9fd4'
     },
     {
-        id: 10, nom: 'Les terres de braise', amplitude: 162, periode: 700, nuit: 305,
+        // NUIT REMONTÉE DE 305 À 325 LE 19 NOVEMBRE, et c'est le tremplin qui
+        // l'a demandée. En allongeant la rampe de sortie — Rémy : « pas si
+        // abrupt » —, l'allure du bon joueur a bougé dans ce monde-ci, et la
+        // nuit n'y serrait plus qu'à 69 % au lieu des 72 à 88 % que la règle
+        // exige. Ce qui mesure la difficulté n'est pas la vitesse de la nuit :
+        // c'est son RAPPORT à l'allure qu'on atteint. Mesuré à 74 %.
+        id: 10, nom: 'Les terres de braise', amplitude: 162, periode: 700, nuit: 325,
         ciel: ['#3a0f10', '#ff7a3c'], fond: ['#7a2518', '#471310'],
         sol: '#1d0c0b', herbe: '#ff9d4d'
     },
@@ -403,7 +417,17 @@ const AVANT_LE_VIDE = 0;
  * ON NE DEVINE PAS LA VALEUR : `tools/allureDesMondes.mjs --vide` balaie, et
  * c'est lui qui a donné ce nombre.
  */
-export const VIDE_FRONTIERE = 340;
+// ── ET LE MONDE SUIVANT EST UN PEU PLUS LOIN ─────────────────────────────
+//
+// RÉMY, 19 novembre, dans la même phrase que le tremplin : « et le monde
+// suivant un peu plus loin ».
+//
+// Quatre-vingts pixels de plus, soit un quart. « Un peu » est le mot : le vol
+// plané doit rester franchissable par qui a plongé dans le tremplin, et la
+// portée vient de se raccourcir en s'adoucissant. On mesure donc la traversée
+// après coup, dans le vrai jeu — `node tools/volPlaneDesAiles.mjs` —, et non
+// dans un modèle qu'on se serait écrit à côté.
+export const VIDE_FRONTIERE = 420;
 
 /**
  * LA MER, SOUS LE VIDE : la toucher, c'est avoir manqué le saut.
@@ -494,8 +518,37 @@ export function dansLeVide(x) {
  * par-dessus. Le tremplin n'est pas un décor : c'est l'endroit où le geste se
  * paie, juste avant l'endroit où il compte.
  */
-export const LONGUEUR_TREMPLIN = 520;
-export const TREMPLIN = 230;
+// ── ET IL EST LONG, PARCE QU'UN TREMPLIN COURT EST UN MUR ────────────────
+//
+// RÉMY, 19 novembre : « La fin d'un monde doit être un TREMPLIN et PAS SI
+// ABRUPT. C'est choquant. »
+//
+// MESURÉ AVANT D'Y TOUCHER, et il avait raison au degré près : sur 520 px,
+// la rampe de sortie montait à **69°**. Ce n'est pas un tremplin, c'est une
+// paroi — l'oiseau ne la monte pas, il la percute, et le jeu le propulse sans
+// qu'on comprenne ce qui s'est passé.
+//
+// LA PENTE MAXIMALE D'UN ADOUCISSEMENT VAUT 1,5 × amplitude ÷ longueur. Pour
+// tenir sous 35° (tangente 0,70) il faut donc amplitude ÷ longueur ≤ 0,47.
+// D'où ces nombres-ci, et non d'autres :
+//
+//   descente  260 px sur 647  →  pente maximale 31°, une plongée où l'on se
+//                                 penche au lieu de tomber ;
+//   montée    220 px sur 333  →  pente maximale 45°, une rampe de saut à ski.
+//
+// LA MONTÉE GARDE SA HAUTEUR ET GAGNE DEUX CENTS PIXELS DE LONGUEUR, et c'est
+// tout le correctif : les mêmes 220 px sur 146 montaient à 69°, sur 333 ils
+// montent à 45°. L'oiseau part aussi haut qu'avant — donc le vol plané reste
+// le vol plané — mais il arrive à la lèvre en se redressant au lieu de
+// percuter.
+//
+// ET J'AVAIS D'ABORD BAISSÉ LA HAUTEUR À 120, ce qui donnait 28° : très doux,
+// et le jeu cassé. Six gardes sont tombées d'un coup, dont celle qui dit
+// « le tremplin ne lance plus rien : sans pente, pas de vol plané », et celle
+// qui dit qu'on tient alors 117 secondes sans rien faire. C'est la pente qui
+// était en cause, pas la hauteur.
+export const LONGUEUR_TREMPLIN = 980;
+export const TREMPLIN = 260;
 
 /**
  * ET LE TREMPLIN REMONTE AU BOUT — c'est un saut à ski, pas une falaise.
@@ -518,10 +571,13 @@ export const TREMPLIN = 230;
  * ET C'EST AUSSI CE QUE DÉCRIT RÉMY : « il fallait faire un long vol plané ».
  * Un vol plané part d'un tremplin, pas d'un bord de table.
  */
+// DEUX CENT VINGT, SUR TROIS CENT TRENTE-TROIS PIXELS AU LIEU DE CENT
+// QUARANTE-SIX : c'est la LONGUEUR qui change, pas la hauteur. Voir le
+// commentaire de `LONGUEUR_TREMPLIN`.
 export const SAUT_TREMPLIN = 220;
 
 /** La part du tremplin qui descend ; le reste remonte. */
-const PART_DESCENTE = 0.72;
+const PART_DESCENTE = 0.66;
 
 /** Le profil du tremplin : il descend, puis il remonte. Et ses dérivées. */
 const avale = (s) => Math.min(1, s / PART_DESCENTE);
