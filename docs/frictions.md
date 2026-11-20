@@ -8261,3 +8261,42 @@ deux** — 19 novembre
   dans CLAUDE.md : **devant un rouge, demander d'abord s'il est à moi.** Un
   outil qui relancerait la sonde sur `HEAD` et dirait « ce rouge existait
   déjà » tiendrait en dix lignes.
+
+---
+
+**Une sonde dont la fenêtre suit ce qu'elle mesure ne compare rien** — 20 novembre
+
+- *Ce que je voulais faire* : dire de combien le saut de fin de monde avait
+  grandi après avoir creusé le tremplin, pour Rémy et pour le commentaire.
+- *Ce qui a coûté* : vingt minutes et trois réglages pris à l'envers. Ma sonde
+  regardait « les `LONGUEUR_TREMPLIN` derniers pixels ». Or c'est précisément
+  `LONGUEUR_TREMPLIN` que je venais de faire passer de 980 à 1 300 : l'avant et
+  l'après ne regardaient plus le même morceau de terrain. Elle annonçait un
+  gain de 167 à 385 ; le vrai, mesuré ensuite à fenêtre fixe et par
+  `git stash`, était de 236 à 369. J'ai réglé l'impulsion deux fois sur le
+  faux chiffre.
+- *Combien de fois* : | (mais de la même famille que « la mesure qui n'emprunte
+  pas le chemin de l'utilisateur », qui en est à quatre)
+- *Ce qui manque* : la règle, qui vaut au-delà des sondes — **une mesure ne doit
+  jamais être paramétrée par ce qu'elle mesure.** Et le réflexe qui la rattrape :
+  `git stash`, relancer LA MÊME sonde, noter le chiffre d'avant AVANT de
+  toucher au code. `tools/sautDesAiles.mjs` importe désormais le module entier
+  (`import * as`) pour cette seule raison : avec des imports nommés, une
+  constante qui n'existe pas encore fait échouer le fichier au moment précis où
+  l'on veut mesurer l'ancienne version.
+
+---
+
+**Deux `arc` dans le même chemin sont reliés par une droite** — 20 novembre
+
+- *Ce que je voulais faire* : poser des buissons ronds sur les crêtes, trois
+  cercles par touffe.
+- *Ce qui a coûté* : un aller-retour complet — écrire, lancer la sonde,
+  photographier, regarder, comprendre. Les buissons sortaient en gribouillis
+  noués : `c.arc(...)` répété sans `moveTo` relie chaque cercle au précédent.
+- *Combien de fois* : |
+- *Ce qui manque* : rien d'outillable — mais c'est le genre de défaut qu'AUCUNE
+  épreuve ne peut voir, et que la photo a donné en deux secondes. À noter comme
+  rappel : **un dessin se relit sur l'image, jamais dans le code.** Les trois
+  corrections de cet habillage (bandes trop larges, liseré trop épais, buissons
+  noués) sont toutes venues de la photo, aucune d'un test.

@@ -8508,3 +8508,47 @@ portait `z-index` sans `position` : inopérant, il passait SOUS ses voisins.
 gagnait — `.md-jeton:hover` est plus spécifique que `.md-jeton--tenu`. Au doigt,
 le survol n'existe pas. Le défaut était donc chez Rémy et sur aucune tablette
 d'élève.
+
+### 15. « ça a un plus bel habillage » et « ça peut aller super haut » — 20 novembre
+
+Quatre captures de Tiny Wings, et une phrase qui répond aux deux questions que
+je lui avais posées : « en fait ça a un plus bel habillage et à la fin d'un
+monde, ça descend fort et on saute et ça peut aller super haut comme si le
+poussin était super lourd ».
+
+**L'HABILLAGE, C'EST TROIS CHOSES ET PAS UNE DE PLUS.** En regardant ses
+images à côté des nôtres : rien n'était laid chez nous, tout était PLAT. Le
+relief était un aplat d'une seule couleur, avec un trait clair sur la crête.
+Chez Tiny Wings, la pente est rayée de larges **bandes diagonales**, la
+silhouette porte un **liseré** qui la découpe sur le ciel, et les crêtes sont
+ponctuées de **buissons** ronds. Les trois sont maintenant là, plus un
+troisième plan de parallaxe et une lueur dans le ciel. Coût mesuré : 0,77 ms
+par image, pour un budget de 16,7.
+
+**LES COULEURS NE SONT PAS ÉCRITES, ELLES SE CALCULENT** — treize mondes font
+trente-neuf couleurs à choisir, et la garde « chaque monde se détache de son
+propre ciel » existe parce que trois mondes neufs étaient invisibles. Chaque
+bande part donc du sol vers l'ombre ou vers la lumière, du côté où il reste de
+la place, et l'on rabote tant qu'elle n'est pas à 1,8 de contraste de son
+ciel. Deux réglages ont été pris à l'envers avant celui-là, et chacun a été
+mesuré sur les treize mondes.
+
+**« SUPER LOURD » N'EST PAS UNE PESANTEUR.** Alourdir l'oiseau le ferait tomber
+plus vite ET retomber plus vite : on gagnerait d'un côté ce qu'on perdrait de
+l'autre. Ce qui donne la sensation de poids est le CREUX qu'on dévale avant de
+sauter. La plongée du tremplin passe donc de 260 à 420 pixels, et le tremplin
+de 980 à 1 300 de long pour que ni la plongée ni la rampe ne redeviennent le
+mur qu'il avait refusé le 19 novembre.
+
+**ET LE SAUT SE MÉRITE.** La hauteur vient d'un coup d'ailes de frontière —
+760 au lieu de 200 — mais il s'achète dans la plongée : en dessous de l'élan
+qu'elle donne, il ne vaut pas plus que celui d'une crête ordinaire. Sans cela,
+celui qui ne touche à rien le recevait en entier, et une garde l'a dit tout de
+suite : « on tient 111 s sans rien faire », pour 90 autorisées. C'est la
+troisième fois que ce fichier paie la même faute.
+
+**MESURÉ, SUR LA MÊME SONDE, PAR `git stash`** : l'apex du bon joueur passe de
+236 à 369 pixels au-dessus de la lèvre, et de 342 à 587 au mieux. Celui qui ne
+fait rien reste à 11. Les treize vitesses de nuit ont été réaccordées sur les
+nouvelles allures : ce n'est pas la vitesse de la nuit qui mesure la
+difficulté, c'est son rapport à ce que le bon joueur atteint.

@@ -40,8 +40,52 @@ import {
     MONDES, SOL_MOYEN, niveauFrontiere, mondeDe, progressionMonde, relief, pas, etatInitial,
     semerEtoile, ECART_ETOILES, avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE,
     qualiteAiles, VX_MAX, VX_MIN, suiviArret, estArrete, DUREE_ARRET, dansLaMer,
-    dansLeVide, bordsDuVide, PROFONDEUR_MER
+    dansLeVide, bordsDuVide, PROFONDEUR_MER,
+    tonsDuSol, traitDuSol, buissonDuSol, melerCouleur
 } from '../core/petitesAiles.js';
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * L'HABILLAGE — RÉMY, 20 NOVEMBRE : « ça a un plus bel habillage ».
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * Quatre captures de Tiny Wings à l'appui. En les regardant, trois choses
+ * seulement font la différence avec ce qu'on avait, et elles ne coûtent aucune
+ * image : le relief n'est pas un aplat mais de larges BANDES DIAGONALES, sa
+ * silhouette porte un LISERÉ SOMBRE qui la découpe sur le ciel, et ses crêtes
+ * sont ponctuées de BUISSONS ronds qui donnent l'échelle.
+ *
+ * Ce qu'on avait : une forme pleine d'une seule couleur, un trait clair sur la
+ * crête, deux plans de fond. Mesuré sur l'image — `tools/tmp/ailes-avant.png` —
+ * et c'est exactement ce que décrit « ça a un plus bel habillage » : rien n'y
+ * est laid, tout y est plat.
+ */
+
+/**
+ * La largeur d'une bande, en pixels de MONDE — elle défile avec le relief.
+ *
+ * QUATRE-VINGT-DIX, ET PAS CENT QUATRE-VINGT-DIX. Premier essai à 190 : avec
+ * quatre tons, un cycle complet mesurait 760 pixels et il n'en tenait pas deux
+ * à l'écran. Sur la photo, on ne voyait qu'UNE diagonale dans un coin — ce qui
+ * se lit comme une rayure accidentelle, jamais comme un habillage. À 90, il y
+ * en a une douzaine, et le relief est rayé.
+ */
+const LARGEUR_BANDE = 90;
+
+/**
+ * L'INCLINAISON DES BANDES, en pente d'écran.
+ *
+ * ELLES SONT DIAGONALES ET PAS VERTICALES, et ce n'est pas un goût : une bande
+ * verticale suit la même direction que la chute de l'oiseau et que le défilé
+ * du terrain, donc elle ne se voit pas bouger. Inclinée, elle coupe la pente
+ * des collines et le volume apparaît.
+ */
+const PENTE_BANDE = 0.62;
+
+/** Un hasard reproductible à partir d'un entier : les buissons ne clignotent pas. */
+const bruit = (n) => {
+    const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+    return x - Math.floor(x);
+};
 
 /** L'avance donnée à l'oiseau au départ : le temps de comprendre le geste. */
 const AVANCE_DEPART = 1500;
@@ -407,10 +451,29 @@ class PetitesAiles extends BaseGame {
         ciel.addColorStop(1, M.ciel[1]);
         c.fillStyle = ciel;
         c.fillRect(0, 0, larg, haut);
+        // ── UNE LUEUR, PARCE QU'UN DÉGRADÉ SEUL EST UN MUR DE PEINTURE ────
+        //
+        // Sur les captures de Rémy, le ciel de Tiny Wings n'est pas uni : il
+        // s'éclaircit vers une source. Un dégradé radial très pâle suffit à le
+        // dire, et il ne coûte rien. Il est posé en haut à DROITE, du côté où
+        // l'oiseau va : c'est vers là qu'on regarde.
+        const lueur = c.createRadialGradient(larg * 0.78, haut * 0.1, 0,
+            larg * 0.78, haut * 0.1, Math.max(larg, haut) * 0.62);
+        lueur.addColorStop(0, 'rgba(255,255,255,.30)');
+        lueur.addColorStop(1, 'rgba(255,255,255,0)');
+        c.fillStyle = lueur;
+        c.fillRect(0, 0, larg, haut);
 
         // Deux collines d'arrière-plan, tirées du même relief : la profondeur
         // sans un dessin de plus.
+        // ── TROIS PLANS, ET LE PLUS LOINTAIN EST NEUF ────────────────────
+        //
+        // Deux plans donnent de la profondeur ; trois donnent de la DISTANCE.
+        // Le troisième est délavé vers le ciel — c'est ce que fait l'air — et
+        // il bouge trois fois moins vite que le relief de jeu, donc il se lit
+        // comme un horizon et non comme une colline qu'on va franchir.
         const couches = [
+            { part: 0.18, teinte: melerCouleur(M.fond[0], M.ciel[1], 0.55), decalage: 170 },
             { part: 0.35, teinte: M.fond[0], decalage: 90 },
             { part: 0.62, teinte: M.fond[1], decalage: 40 }
         ];
@@ -462,8 +525,16 @@ class PetitesAiles extends BaseGame {
             c.fill();
         }
 
-        // Le relief de jeu.
-        c.fillStyle = M.sol;
+        // ── LE RELIEF DE JEU, ET IL N'EST PLUS UN APLAT ──────────────────
+        //
+        // RÉMY, 20 novembre : « ça a un plus bel habillage ». Voir
+        // `LARGEUR_BANDE` en tête de fichier pour ce que ses captures montrent.
+        //
+        // LE CHEMIN SERT TROIS FOIS : on le remplit, on s'en sert de MASQUE
+        // pour les bandes, et le liseré le repasse. Le retracer trois fois
+        // coûterait trois cents `relief` par image, et `relief` est la
+        // fonction la plus chère du jeu.
+        const tons = tonsDuSol(M);
         c.beginPath();
         c.moveTo(0, haut);
         for (let px = 0; px <= larg; px += 4) {
@@ -472,7 +543,12 @@ class PetitesAiles extends BaseGame {
         }
         c.lineTo(larg, haut);
         c.closePath();
+        c.fillStyle = tons[0];
         c.fill();
+        c.save();
+        c.clip();
+        this.dessinerBandes(c, larg, haut, camX, e, versEcran, tons);
+        c.restore();
         // ── L'HERBE S'ARRÊTE AU BORD DU VIDE ──────────────────────────────
         //
         // Le liseré clair suivait le relief sans rien demander : au-dessus d'un
@@ -480,8 +556,14 @@ class PetitesAiles extends BaseGame {
         // l'autre côté — de l'herbe sur l'eau, et deux traits verticaux qui
         // faisaient croire à un mur. On lève donc le crayon au-dessus du trou,
         // et le bord de l'île se voit pour ce qu'il est.
-        c.strokeStyle = M.herbe;
-        c.lineWidth = 5 * e;
+        // ── DEUX TRAITS, ET L'ORDRE EST TOUT ─────────────────────────────
+        //
+        // Le liseré SOMBRE d'abord, large ; le trait d'herbe par-dessus, plus
+        // fin. On voit alors une crête éclairée posée sur une silhouette
+        // découpée — c'est la lecture des captures de Rémy. Dans l'autre
+        // ordre, le sombre mangerait l'herbe et il ne resterait qu'un contour.
+        //
+        // Un seul parcours du relief pour les deux : on garde le chemin.
         c.beginPath();
         let leve = true;
         for (let px = 0; px <= larg; px += 4) {
@@ -490,7 +572,19 @@ class PetitesAiles extends BaseGame {
             const y = versEcran(relief(xm, this.grainePaysage).hauteur);
             if (leve) { c.moveTo(px, y); leve = false; } else c.lineTo(px, y);
         }
+        c.lineCap = 'round';
+        c.lineJoin = 'round';
+        // SEPT ET QUATRE, MESURÉS SUR LA PHOTO : à 9 et 4,5 le liseré sombre
+        // débordait de trois pixels de chaque côté du trait d'herbe, et les
+        // deux ensemble se lisaient comme une CORDE posée sur la dune. Un
+        // liseré doit se voir et ne pas s'annoncer.
+        c.strokeStyle = traitDuSol(M);
+        c.lineWidth = 7 * e;
         c.stroke();
+        c.strokeStyle = M.herbe;
+        c.lineWidth = 4 * e;
+        c.stroke();
+        this.dessinerBuissons(c, larg, camX, e, versEcran, M);
 
         // ── LA MER, AU FOND DU VIDE ───────────────────────────────────────
         //
@@ -585,6 +679,116 @@ class PetitesAiles extends BaseGame {
 
         this.dessinerNuit(c, larg, haut, versEcranX);
         this.dessinerVitesse(c, larg, haut);
+    }
+
+    /**
+     * LES BANDES DIAGONALES QUI TRAVERSENT LES COLLINES.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * ELLES SONT ANCRÉES AU MONDE, PAS À L'ÉCRAN, et c'est la seule chose
+     * difficile ici. Une bande posée à une abscisse d'écran glisserait sur le
+     * terrain au lieu de défiler avec lui : on verrait des rayures fixes
+     * derrière un paysage qui bouge, ce qui se lit comme un défaut d'affichage.
+     * On place donc l'origine des bandes à l'abscisse de MONDE zéro, et c'est
+     * la caméra qui les emporte.
+     *
+     * ── POURQUOI ON CALCULE LES COINS AU LIEU DE BALAYER LARGEMENT ───────
+     *
+     * L'origine du monde est à quatre-vingt mille pixels derrière l'oiseau au
+     * treizième monde. Dessiner « toutes les bandes » ferait quatre cents
+     * rectangles invisibles par image. On projette donc les quatre coins de
+     * l'écran sur l'axe des bandes : il en reste huit ou neuf à peindre, et le
+     * compte ne dépend pas du monde où l'on se trouve.
+     */
+    dessinerBandes(c, larg, haut, camX, e, versEcran, tons) {
+        const angle = Math.atan(PENTE_BANDE);
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const x0 = -camX * e, y0 = versEcran(SOL_MOYEN);
+        const lb = LARGEUR_BANDE * e;
+        let uMin = Infinity, uMax = -Infinity, vMin = Infinity, vMax = -Infinity;
+        for (const [px, py] of [[0, 0], [larg, 0], [0, haut], [larg, haut]]) {
+            const dx = px - x0, dy = py - y0;
+            const u = dx * cos + dy * sin, v = -dx * sin + dy * cos;
+            uMin = Math.min(uMin, u); uMax = Math.max(uMax, u);
+            vMin = Math.min(vMin, v); vMax = Math.max(vMax, v);
+        }
+        c.save();
+        c.translate(x0, y0);
+        c.rotate(angle);
+        for (let i = Math.floor(uMin / lb); i <= Math.ceil(uMax / lb); i++) {
+            const ton = tons[((i % tons.length) + tons.length) % tons.length];
+            // Le premier ton EST la couleur du sol, déjà peinte : la repeindre
+            // ne ferait que doubler le travail.
+            if (ton === tons[0]) continue;
+            c.fillStyle = ton;
+            c.fillRect(i * lb, vMin - 2, lb + 1, vMax - vMin + 4);
+        }
+        c.restore();
+    }
+
+    /**
+     * LES BUISSONS SUR LES CRÊTES — ce qui donne l'échelle.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * Sur les captures de Rémy, les collines portent des touffes rondes, et
+     * elles font plus que décorer : SANS ELLES, UNE COLLINE N'A PAS DE TAILLE.
+     * Une courbe lisse de deux cents pixels et une de huit cents se ressemblent
+     * exactement — c'est le buisson, dont on sait qu'il est petit, qui dit
+     * laquelle est laquelle. C'est le même service que rend un personnage au
+     * pied d'un bâtiment sur une photo d'architecte.
+     *
+     * ── ILS NE CLIGNOTENT PAS, ET C'EST POURQUOI `bruit` EXISTE ──────────
+     *
+     * Un `Math.random()` par image redistribuerait les buissons soixante fois
+     * par seconde. Ils sont donc tirés d'une fonction de leur NUMÉRO : le même
+     * buisson revient au même endroit, qu'on l'ait quitté il y a une seconde ou
+     * qu'on y revienne au tour suivant.
+     */
+    dessinerBuissons(c, larg, camX, e, versEcran, M) {
+        const PAS = 240;
+        c.strokeStyle = traitDuSol(M);
+        c.fillStyle = buissonDuSol(M);
+        c.lineWidth = 2.5 * e;
+        for (let n = Math.floor(camX / PAS) - 1; n <= Math.ceil((camX + larg / e) / PAS); n++) {
+            const h = bruit(n);
+            // DEUX CRÊTES SUR TROIS SEULEMENT : alignés tous les deux cent
+            // quarante pixels, ils deviendraient une frise, et une frise ne
+            // donne plus l'échelle, elle fait motif.
+            if (h > 0.66) continue;
+            const xm = n * PAS + h * PAS;
+            if (dansLeVide(xm)) continue;
+            const s = relief(xm, this.grainePaysage);
+            // RIEN SUR LES PAROIS : un buisson sur une pente à 50° se lit
+            // comme un caillou en train de tomber. On ne garde que ce qui
+            // ressemble à une crête ou à une épaule.
+            if (Math.abs(s.pente) > 0.42) continue;
+            // ── ET SEULEMENT SUR CE QUI BOMBE ────────────────────────────
+            //
+            // La pente seule ne suffit pas : dans un monde doux comme le
+            // désert de sel, elle laisse passer presque tout le terrain, et la
+            // photo en montrait six d'affilée — une frise, qui ne donne plus
+            // l'échelle. Une courbure NÉGATIVE, c'est un sommet ; positive,
+            // c'est un creux. Les buissons poussent sur les crêtes.
+            if (s.courbure >= 0) continue;
+            const px = (xm - camX) * e, py = versEcran(s.hauteur);
+            const r = (15 + bruit(n + 97) * 9) * e;
+            // ── UN `moveTo` AVANT CHAQUE ARC, ET CE N'EST PAS DU STYLE ────
+            //
+            // Deux `arc` à la suite dans le même chemin sont RELIÉS PAR UNE
+            // DROITE : le buisson sortait comme un gribouillis noué, et c'est
+            // ce que la photo montrait. Chaque rond commence donc son propre
+            // sous-chemin.
+            const ronds = [[-0.95, -0.2, 0.78], [0, -0.58, 1], [0.95, -0.2, 0.72]];
+            c.beginPath();
+            for (const [dx, dy, k] of ronds) {
+                c.moveTo(px + r * dx + r * k, py + r * dy);
+                c.arc(px + r * dx, py + r * dy, r * k, 0, Math.PI * 2);
+            }
+            c.fill();
+            c.stroke();
+        }
     }
 
     /**

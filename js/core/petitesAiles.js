@@ -112,12 +112,22 @@ export const MONDES = [
         sol: '#2f855a', herbe: '#68d391'
     },
     {
-        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 340,
+        // ── LES NUITS RETOUCHÉES LE 20 NOVEMBRE ──────────────────────
+        //
+        // Le tremplin creusé et son coup d'ailes ont changé l'ALLURE du bon
+        // joueur dans chaque monde : il arrive plus vite et repart plus haut,
+        // donc il avance davantage par seconde. Or ce qui mesure la difficulté
+        // n'est pas la vitesse de la nuit, c'est son RAPPORT à cette allure.
+        // Les nuits ci-dessous sont donc recalculées, et non « augmentées » :
+        // `node tools/allureDesMondes.mjs` imprime le tableau, et c'est lui
+        // qui les a dictées.
+        id: 3, nom: 'Les crêtes', amplitude: 140, periode: 840, nuit: 400,
         ciel: ['#ffc98a', '#ffe9cf'], fond: ['#e0a98a', '#c98a72'],
         sol: '#7b4b2a', herbe: '#c0703c'
     },
     {
-        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 325,
+        // Mesuré à 78 % : la pression continue de monter (voir le monde 3).
+        id: 4, nom: 'La montagne', amplitude: 162, periode: 820, nuit: 386,
         ciel: ['#b9a7ff', '#e9e2ff'], fond: ['#a99ad8', '#8878c0'],
         sol: '#4a5578', herbe: '#e6ecff'
     },
@@ -130,12 +140,20 @@ export const MONDES = [
         // marge tout juste manqués. Mesuré : 320 contre 296, et la pression
         // passe de 77 à 79 %, toujours entre celle du quatrième et celle du
         // sixième.
-        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 320,
+        // ET REMONTÉE À 355 LE 20 NOVEMBRE, pour la même raison qu'alors : le
+        // tremplin a bougé l'allure, pas la difficulté voulue. Mesuré à 80 %,
+        // entre le quatrième (78) et le sixième (86).
+        id: 5, nom: 'Le grand large', amplitude: 180, periode: 800, nuit: 355,
         ciel: ['#63c7c0', '#d6f5f2'], fond: ['#7fbfc4', '#5d9aa4'],
         sol: '#1f6b6b', herbe: '#7fe6d8'
     },
     {
-        id: 6, nom: 'Le pays de nuit', amplitude: 192, periode: 790, nuit: 385,
+        // 431 DEPUIS LE 20 NOVEMBRE. C'est le monde le plus dur des six, donc
+        // celui dont la pression est la plus forte — 86 %, et toute la plage
+        // des sept suivants est accordée sur lui. Le tremplin l'a fait passer
+        // de 446 à 501 px/s d'allure : à 385, sa nuit serrait moins que celle
+        // du cinquième, et la montée s'inversait au dernier échelon.
+        id: 6, nom: 'Le pays de nuit', amplitude: 192, periode: 790, nuit: 431,
         ciel: ['#2d3561', '#5a6bad'], fond: ['#3f4a80', '#2b3358'],
         sol: '#1b2140', herbe: '#8f9bff'
     },
@@ -176,7 +194,10 @@ export const MONDES = [
     // Les sept vitesses de nuit sont donc 88 % de l'allure MESURÉE de leur
     // monde, et de rien d'autre.
     {
-        id: 7, nom: 'Le pays kawaï', amplitude: 139, periode: 900, nuit: 390,
+        // 440 DEPUIS LE 20 NOVEMBRE : on y file à 585 px/s, l'allure la plus
+        // rapide des sept derniers mondes. À 390 la nuit n'y serrait plus qu'à
+        // 67 %, c'est-à-dire sous la plage du sixième. Mesuré à 75 %.
+        id: 7, nom: 'Le pays kawaï', amplitude: 139, periode: 900, nuit: 440,
         ciel: ['#ffd6ec', '#fff2f8'], fond: ['#ffc2dd', '#f7a8cb'],
         sol: '#e07ba8', herbe: '#b9f3dd'
     },
@@ -205,7 +226,11 @@ export const MONDES = [
         sol: '#1d0c0b', herbe: '#ff9d4d'
     },
     {
-        id: 11, nom: 'La canopée', amplitude: 199, periode: 760, nuit: 390,
+        // BAISSÉE À 365 LE 20 NOVEMBRE, et c'est le seul monde que le tremplin
+        // a rendu PLUS dur : son relief est le plus haut et le plus serré, on
+        // n'y dépasse pas 431 px/s, et la nuit à 390 y collait à 90 % — la
+        // borne au-delà de laquelle le monde est injouable. Mesuré à 85 %.
+        id: 11, nom: 'La canopée', amplitude: 199, periode: 760, nuit: 365,
         ciel: ['#9fd6a8', '#e9f8ec'], fond: ['#2f6b46', '#1d4a2f'],
         sol: '#4a3620', herbe: '#5fdc7a'
     },
@@ -230,6 +255,171 @@ export const MONDES = [
         sol: '#fdfcf8', herbe: '#e8a62a'
     }
 ];
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * LES BANDES DE COULEUR DES COLLINES — l'habillage de Tiny Wings.
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 20 novembre, quatre captures à l'appui : « en fait ça a un plus bel
+ * habillage ». Ce qu'on voit sur ses images, avant toute autre chose, ce sont
+ * de LARGES BANDES DIAGONALES qui traversent les collines : la pente n'est pas
+ * un aplat, elle est rayée, et c'est ce qui donne du volume à une forme qui
+ * n'a ni ombre ni texture.
+ *
+ * ── POURQUOI LES TONS SE CALCULENT AU LIEU D'ÊTRE ÉCRITS ─────────────────
+ *
+ * Treize mondes font trente-neuf couleurs à choisir à la main, et chacune
+ * devrait être vérifiée contre son propre ciel : la garde « CHAQUE MONDE SE
+ * DÉTACHE DE SON PROPRE CIEL » existe parce que trois mondes neufs étaient
+ * littéralement invisibles. Trente-neuf occasions de recommencer.
+ *
+ * ── ET POURQUOI ELLES VONT TOUJOURS À L'OPPOSÉ DU CIEL ───────────────────
+ *
+ * PREMIER JET, ET IL ÉTAIT FAUX : mélanger le sol vers `herbe`, la couleur de
+ * la crête, pour retrouver le dégradé vert-jaune-orange des captures. MESURÉ
+ * sur les treize mondes : quatre tombaient sous le seuil, « Le royaume
+ * fantaisiste » à 1,19 de contraste avec son ciel — c'est-à-dire un sol qui
+ * disparaît. La cause est simple : `herbe` est souvent plus CLAIRE que le sol,
+ * et le ciel aussi, donc éclaircir le sol le rapproche du ciel.
+ *
+ * SECOND JET, ET IL NE MARCHAIT PAS NON PLUS : pousser toujours du côté
+ * OPPOSÉ au ciel. Le contraste ne pouvait alors que grandir — c'était l'idée —
+ * mais trois mondes n'avaient plus de bandes du tout. Un sol de glace à
+ * `#eaf7ff` qu'on éclaircit encore ne bouge plus : il n'y a plus de place.
+ * Mesuré : trois tons identiques à un chiffre près, c'est-à-dire un aplat.
+ *
+ * ── CE QUI MARCHE : LE CÔTÉ OÙ IL RESTE DE LA PLACE, PUIS UN PLAFOND ─────
+ *
+ * On essaie LES DEUX CÔTÉS. De chaque côté, on rabote l'écart tant que la
+ * bande la plus marquée n'est pas à 1,8 de contraste du ciel — c'est le
+ * plafond, et il garde la lisibilité du sol. Puis on retient le côté qui
+ * CHANGE LE PLUS LA LUMINANCE, et c'est lui qui garde la visibilité de la
+ * bande.
+ *
+ * ET CE N'EST PAS « LE PLUS GRAND MÉLANGE » : troisième jet, troisième faute.
+ * Comparer les deux écarts `t` disait que la banquise avait plus de place vers
+ * la lumière — 0,30 contre 0,10 — alors qu'un sol de glace déjà à 0,90 de
+ * luminance ne bouge pas d'un cheveu quand on l'éclaircit, et que les mêmes
+ * 0,10 vers l'ombre lui font descendre un cinquième de l'échelle. Un mélange
+ * n'est pas une différence perçue ; on mesure donc la différence perçue.
+ *
+ * C'est d'ailleurs ce que les bandes de Tiny Wings SONT : du soleil et de
+ * l'ombre sur une dune, pas un arc-en-ciel.
+ */
+const OMBRE = '#101624';
+const LUMIERE = '#fffdf5';
+
+/** Le canal `i` d'une couleur `#rrggbb`. */
+const canal = (hex, i) => (parseInt(hex.slice(1), 16) >> (16 - 8 * i)) & 255;
+
+/** Deux couleurs mélangées, `t` de la seconde. */
+export function melerCouleur(a, b, t) {
+    const v = [0, 1, 2].map((i) => Math.round(canal(a, i) + (canal(b, i) - canal(a, i)) * t));
+    return `#${v.map((n) => n.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** La luminance perçue, comme la garde du contraste la calcule. */
+export function luminance(hex) {
+    const droit = (c) => { const x = c / 255; return x <= 0.04045 ? x / 12.92
+        : Math.pow((x + 0.055) / 1.055, 2.4); };
+    return 0.2126 * droit(canal(hex, 0)) + 0.7152 * droit(canal(hex, 1))
+        + 0.0722 * droit(canal(hex, 2));
+}
+
+/** De combien la bande la plus marquée s'écarte du sol, au mieux. */
+export const ECART_BANDES = 0.30;
+
+/** Le contraste que le sol garde avec son ciel, bandes comprises. */
+export const CONTRASTE_CIEL = 1.8;
+
+/** Le nombre de bandes d'un cycle. Quatre : le cycle se lit sans se compter. */
+export const NOMBRE_BANDES = 4;
+
+/** Le rapport de contraste de deux couleurs. */
+export const contrasteCouleurs = (a, b) => {
+    const x = luminance(a) + 0.05, y = luminance(b) + 0.05;
+    return Math.max(x, y) / Math.min(x, y);
+};
+
+/** Le plus grand écart vers `pole` qui garde le sol lisible sur son ciel. */
+function ecartTenable(monde, pole, plafond = ECART_BANDES) {
+    for (let t = plafond; t > 0; t -= 0.01) {
+        if (contrasteCouleurs(melerCouleur(monde.sol, pole, t), monde.ciel[1])
+            >= CONTRASTE_CIEL) return t;
+    }
+    return 0;
+}
+
+/**
+ * LE CÔTÉ OÙ L'ON PART, ET DE COMBIEN — tout l'habillage en dépend.
+ *
+ * DE CHAQUE CÔTÉ : ce qu'on a le droit de faire (le plafond de contraste), et
+ * ce que ça change à l'œil. On garde celui qui change le plus.
+ */
+function poleEtEcart(monde) {
+    const essais = [OMBRE, LUMIERE].map((pole) => {
+        const ecart = ecartTenable(monde, pole);
+        return { pole, ecart, vu: Math.abs(luminance(melerCouleur(monde.sol, pole, ecart))
+            - luminance(monde.sol)) };
+    });
+    return essais[0].vu >= essais[1].vu ? essais[0] : essais[1];
+}
+
+/**
+ * LES TONS DES BANDES D'UN MONDE.
+ *
+ * Le premier EST le sol : une colline reste de sa couleur, elle est seulement
+ * rayée. Le dernier est le plus marqué.
+ */
+export function tonsDuSol(monde) {
+    const { pole, ecart } = poleEtEcart(monde);
+    return [...Array(NOMBRE_BANDES).keys()].map((i) =>
+        melerCouleur(monde.sol, pole, (ecart * i) / (NOMBRE_BANDES - 1)));
+}
+
+/**
+ * LE LISERÉ QUI CERNE LA SILHOUETTE.
+ *
+ * IL EST SOMBRE, SAUF QUAND LE SOL L'EST DÉJÀ. Sur les captures de Rémy, le
+ * trait est toujours plus foncé que la colline — mais « Le pays de nuit » a un
+ * sol à #1b2140, et l'assombrir encore ne donne rien : mesuré, 1,2 de
+ * contraste, c'est-à-dire pas de liseré du tout. Deux mondes sur treize sont
+ * dans ce cas.
+ *
+ * On passe alors de l'autre côté, et ce n'est pas un pis-aller : un trait
+ * CLAIR sur une masse noire est exactement ce qu'on voit la nuit au bord d'une
+ * crête. Ce que le liseré doit faire est de donner un BORD à la silhouette ;
+ * de quel côté, c'est le sol qui le dit.
+ */
+export const traitDuSol = (monde) => {
+    const sombre = melerCouleur(monde.sol, OMBRE, 0.52);
+    return contrasteCouleurs(sombre, monde.sol) >= 1.6
+        ? sombre : melerCouleur(monde.sol, LUMIERE, 0.42);
+};
+
+/**
+ * LA COULEUR DES BUISSONS POSÉS SUR LES CRÊTES.
+ *
+ * PREMIER JET : un mélange de `herbe` et de `sol`. Sur la photo, les buissons
+ * des dunes sortaient de la MÊME couleur que la dune — on ne voyait plus que
+ * leur contour, c'est-à-dire trois anneaux posés sur le sable.
+ *
+ * ILS SUIVENT DONC LA MÊME ROUTE QUE LES BANDES, mais deux fois plus loin. Ce
+ * n'est pas un choix esthétique, c'est une garantie : cette route est celle
+ * qui s'ÉLOIGNE du ciel, donc aller plus loin ne peut qu'augmenter le
+ * contraste — avec le ciel ET avec la colline, qui est restée au départ.
+ */
+export const buissonDuSol = (monde) => {
+    const { pole, ecart } = poleEtEcart(monde);
+    // ET LE PLAFOND S'APPLIQUE AUSSI À EUX, CE QUE J'AVAIS OUBLIÉ. Second
+    // jet : « aller plus loin ne peut qu'augmenter le contraste avec le ciel ».
+    // C'est FAUX dès que le ciel se trouve DU CÔTÉ où l'on va — le désert de
+    // sel a un sol blanc et un ciel abricot, donc assombrir le sol le fait
+    // passer PAR la couleur du ciel. Mesuré : 1,04 de contraste, c'est-à-dire
+    // des buissons invisibles sur l'horizon, qui est le seul endroit où ils
+    // se détachent. Le même plafond que les bandes, simplement plus haut.
+    return melerCouleur(monde.sol, pole, ecartTenable(monde, pole, Math.max(0.62, ecart)));
+};
 
 /** Le monde où l'on se trouve. Le dernier ne finit jamais. */
 export const mondeDe = (distance) =>
@@ -547,8 +737,46 @@ export function dansLeVide(x) {
 // « le tremplin ne lance plus rien : sans pente, pas de vol plané », et celle
 // qui dit qu'on tient alors 117 secondes sans rien faire. C'est la pente qui
 // était en cause, pas la hauteur.
-export const LONGUEUR_TREMPLIN = 980;
-export const TREMPLIN = 260;
+// ── ET LA DESCENTE S'APPROFONDIT, PARCE QUE C'EST ELLE QU'ON SENT ───────
+//
+// RÉMY, 20 novembre, quatre captures de Tiny Wings à l'appui : « à la fin d'un
+// monde, ça descend FORT et on saute et ça peut aller SUPER HAUT, comme si le
+// poussin était super lourd ».
+//
+// « SUPER LOURD » N'EST PAS UNE PESANTEUR, C'EST UNE DESCENTE. Alourdir
+// l'oiseau le ferait tomber plus vite ET retomber plus vite : la hauteur d'un
+// saut vaut vy² ÷ 2g, et vy vient de la pente — on gagnerait d'un côté ce
+// qu'on perdrait de l'autre. Ce qui donne la sensation de poids est le CREUX
+// qu'on dévale avant de sauter : plus il est profond, plus on arrive vite, et
+// plus on repart haut. C'est la seule lecture de sa phrase qui se mesure.
+//
+// MESURÉ AVANT D'Y TOUCHER, sur les douze frontières et trois graines
+// (`node tools/sautDesAiles.mjs`) : le bon joueur culminait de 79 à 342 pixels
+// au-dessus de la lèvre, 236 en moyenne, et quittait le sol à 685 px/s au
+// mieux. Un saut ordinaire de relief monte déjà à 150 : la frontière ne se
+// distinguait donc pas franchement d'une bosse.
+//
+// DEUX CENT SOIXANTE DEVIENNENT QUATRE CENT VINGT, sur les mêmes 647 pixels :
+// la plongée passe de 31° à 44°. C'est raide, et c'est permis — la garde qui
+// interdit les murs ne parle que de ce qu'il faut GRAVIR, et ici l'oiseau
+// descend, collé par l'appui. Ce qu'il y gagne lui est rendu à la rampe.
+//
+// ET LA RAMPE SUIT, PARCE QUE LA LÈVRE NE DOIT PAS DESCENDRE. Creuser la
+// plongée seule faisait tomber le départ du saut de deux cents pixels sous le
+// plateau — et deux gardes l'ont dit tout de suite : « vide 1 : la lèvre ne
+// tombe que de 220 px » (le trou cessait d'être un trou) et « il a été
+// téléporté au fond de la mer » (l'oiseau quittait la rive deux cents pixels
+// plus bas qu'elle). Le creux se creuse, le tremplin le rend : 420 en bas,
+// 390 en haut, et la lèvre reste à trente pixels sous le plateau, où elle
+// était.
+//
+// LES LONGUEURS SUIVENT LES HAUTEURS, SINON ON REFAIT LE MUR DU 19 NOVEMBRE.
+// Mesuré (`node tools/tmp/profilTremplin.mjs`) : à 980 de long, la plongée
+// passait à 55° et la rampe à 41° pour 420 seulement ; portée à 390 sans
+// allonger, la rampe serait montée à 61°. Treize cents pixels tiennent les
+// deux à 48°, et la portion raide à 344 px — la garde en interdit 400.
+export const LONGUEUR_TREMPLIN = 1300;
+export const TREMPLIN = 420;
 
 /**
  * ET LE TREMPLIN REMONTE AU BOUT — c'est un saut à ski, pas une falaise.
@@ -574,10 +802,23 @@ export const TREMPLIN = 260;
 // DEUX CENT VINGT, SUR TROIS CENT TRENTE-TROIS PIXELS AU LIEU DE CENT
 // QUARANTE-SIX : c'est la LONGUEUR qui change, pas la hauteur. Voir le
 // commentaire de `LONGUEUR_TREMPLIN`.
-export const SAUT_TREMPLIN = 220;
+//
+// PUIS 390, LE 20 NOVEMBRE, POUR RATTRAPER LA PLONGÉE CREUSÉE — pas pour
+// sauter plus haut. La hauteur vient du coup d'ailes (`IMPULSION_TREMPLIN`) ;
+// cette rampe-ci n'est là que pour ramener l'oiseau au niveau de la lèvre
+// avant qu'il parte, et elle monte toujours à 48°.
+export const SAUT_TREMPLIN = 375;
 
-/** La part du tremplin qui descend ; le reste remonte. */
-const PART_DESCENTE = 0.66;
+/**
+ * La part du tremplin qui descend ; le reste remonte.
+ *
+ * 0,59 DE TREIZE CENTS, SOIT 767 PIXELS DE PLONGÉE ET 533 DE RAMPE. MESURÉ, et
+ * il a fallu deux essais : à 0,64 la rampe montait à 52°, c'est-à-dire par-
+ * dessus la borne que Rémy a fait poser le 19 novembre (« pas si abrupt »). On
+ * rend donc des pixels à la rampe, ce qui raidit la plongée d'autant — et
+ * c'est exactement l'autre moitié de sa phrase : « ça descend fort ».
+ */
+const PART_DESCENTE = 0.53;
 
 /** Le profil du tremplin : il descend, puis il remonte. Et ses dérivées. */
 const avale = (s) => Math.min(1, s / PART_DESCENTE);
@@ -1302,6 +1543,99 @@ export const VITESSE_BATTEMENT = 300;
 export const IMPULSION_DECOLLAGE = 200;
 
 /**
+ * ET CELUI DE LA FRONTIÈRE EST D'UN AUTRE ORDRE — « ça peut aller super haut ».
+ *
+ * (Le voisin ci-dessus vaut 200 ; celui-ci vaut 760 quand on l'a mérité.)
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, 20 novembre : « à la fin d'un monde, ça descend fort et on saute et ça
+ * peut aller SUPER HAUT ».
+ *
+ * ── POURQUOI CE N'EST PAS LA PENTE DE LA RAMPE QU'ON MONTE ───────────────
+ *
+ * On aurait voulu redresser la rampe : plus elle est raide, plus la vitesse
+ * verticale au décollage est grande. C'est précisément ce que Rémy a refusé
+ * le 19 novembre — « pas si abrupt, c'est choquant » —, et une garde le tient
+ * maintenant entre 37° et 50°. On ne peut plus y toucher, et c'est bien.
+ *
+ * ── ET PAS NON PLUS LA VITESSE ───────────────────────────────────────────
+ *
+ * Elle est plafonnée (`VX_MAX`), et MESURÉ : le bon joueur arrive déjà à la
+ * lèvre entre 870 et 960 px/s, c'est-à-dire au plafond. Creuser encore la
+ * descente ne lui donnerait plus un pixel par seconde.
+ *
+ * RESTE LE COUP D'AILES, qui est la seule chose du jeu qui ajoute de la
+ * hauteur sans rien demander au terrain. Celui des crêtes vaut 200 : il
+ * double un saut ordinaire. Celui de la frontière vaut deux fois et demie
+ * plus, et c'est ce qui fait la différence entre une bosse et un départ.
+ *
+ * MESURÉ APRÈS, avec la même sonde et sur les mêmes trente-six essais : l'apex
+ * passe de 236 à 369 pixels au-dessus de la lèvre en moyenne, et de 342 à 587
+ * au mieux. Celui qui ne fait rien, lui, reste à 11. On voit la frontière
+ * arriver, on voit qu'on part, et l'on voit que c'est la plongée qui l'a payé.
+ *
+ * ET LE CHIFFRE D'AVANT A ÉTÉ PRIS SUR LE MÊME OUTIL, PAR `git stash`. Le
+ * premier jet comparait deux sondes différentes — l'une regardait « les
+ * `LONGUEUR_TREMPLIN` derniers pixels », qui venaient de passer de 980 à
+ * 1 300 — et annonçait un gain de 167 à 385 qui n'existait pas. Une mesure qui
+ * change de fenêtre entre l'avant et l'après ne compare rien.
+ *
+ * IL NE SE DONNE QU'AU TREMPLIN, et c'est ce que `surLeTremplin` existe pour
+ * dire. Partout ailleurs il déréglerait les treize mondes d'un coup : la nuit
+ * de chacun est accordée à l'allure du bon joueur, et une impulsion générale
+ * la ferait mentir treize fois.
+ */
+export const IMPULSION_TREMPLIN = 760;
+
+/**
+ * ET IL SE PAIE EN VITESSE — sinon il paierait l'immobilité.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * LE DÉFAUT QUE LA GARDE A ATTRAPÉ, et c'était la troisième fois dans ce
+ * fichier. Le coup d'ailes se donne à l'instant du décollage, et le décollage
+ * demande de NE PAS appuyer (`!appuie`) : celui qui ne touche à rien le
+ * recevait donc en entier, douze fois par partie. Mesuré : « on tient 111 s
+ * sans rien faire », contre les 90 que la règle autorise.
+ *
+ * C'est la leçon du battement d'ailes, mot pour mot : « une poussée qui marche
+ * partout profite d'abord à celui qui ne lâche jamais le bouton ». Ici elle
+ * profitait à celui qui ne le touche jamais.
+ *
+ * LE COUP D'AILES DE LA FRONTIÈRE S'ACHÈTE DONC DANS LA PLONGÉE. En dessous de
+ * `VITESSE_TREMPLIN`, il ne vaut pas plus que celui d'une crête ordinaire ; au
+ * plafond de vitesse, il vaut tout. Celui qui a plongé les 420 pixels arrive à
+ * 900 px/s et part très haut ; celui qui s'est laissé rouler arrive à 520 et
+ * saute comme sur une bosse. C'est la même phrase de Rémy, prise par l'autre
+ * bout : « ça descend fort ET ça peut aller super haut » — le second est payé
+ * par le premier.
+ */
+// ── ET CE QU'ON MESURE EST L'ÉLAN, PAS LA VITESSE HORIZONTALE ───────────
+//
+// DEUX RÉGLAGES RATÉS AVANT CELUI-CI, ET C'EST LA MÊME ERREUR LES DEUX FOIS :
+// prendre `vx` pour l'élan de l'oiseau.
+//
+// Au décollage, l'oiseau est au MILIEU D'UNE RAMPE QUI MONTE À 49°. Il vient
+// d'échanger la moitié de sa vitesse horizontale contre de la montée : mesuré
+// (`node tools/tmp/decollage.mjs`), il part à vx 529 et vy 892 — l'élan est
+// bien là, mais il est VERTICAL. Jugé sur `vx`, le meilleur joueur du jeu
+// touchait 0,32 de son coup d'ailes et le saut restait une bosse ; jugé sur le
+// plafond `VX_MAX`, qui est celui de la vitesse AU SOL, il en touchait la
+// moitié.
+//
+// ON JUGE DONC SUR √(vx² + vy²), pris JUSTE AVANT le coup d'ailes — sinon on
+// mesurerait le coup d'ailes avec lui-même. La séparation redevient franche :
+// 740 à 840 pour celui qui a plongé, 300 à 500 pour celui qui se laisse
+// rouler. Les deux bornes sont posées entre les deux, avec de la marge.
+export const VITESSE_TREMPLIN = 520;
+export const VITESSE_TREMPLIN_PLEIN = 780;
+
+/** Ce qu'on a mérité du coup d'ailes de la frontière, entre 0 et 1. */
+export const elanDuTremplin = (v) => Math.max(0, Math.min(1,
+    (v - VITESSE_TREMPLIN) / (VITESSE_TREMPLIN_PLEIN - VITESSE_TREMPLIN)));
+
+/**
  * CE QU'IL RESTE DE LA VITESSE À L'ATTERRISSAGE — et ce n'est plus un forfait.
  *
  * L'ancienne règle était en deux morceaux cousus à la main : retomber dans une
@@ -1485,7 +1819,17 @@ export function pas(etat, dt, appuie, graine) {
             // double la hauteur du saut sans rien changer au reste, puisqu'il
             // n'agit qu'à l'instant du décollage, et seulement si l'on a su le
             // provoquer en relâchant avant la crête.
-            vy += IMPULSION_DECOLLAGE;
+            // ── ET LE COUP D'AILES DE LA FRONTIÈRE EST PLUS FORT ────────
+            //
+            // RÉMY, 20 novembre : « ça descend fort et on saute et ça peut
+            // aller super haut ». Voir `IMPULSION_TREMPLIN` : la rampe ne peut
+            // plus être redressée et la vitesse est au plafond ; il ne reste
+            // que le coup d'ailes, et il ne se donne qu'ici.
+            vy += surLeTremplin(x)
+                ? IMPULSION_DECOLLAGE
+                    + (IMPULSION_TREMPLIN - IMPULSION_DECOLLAGE)
+                        * elanDuTremplin(Math.hypot(vx, vy))
+                : IMPULSION_DECOLLAGE;
         }
     } else {
         // LE DEMI-PAS DE LA CHUTE N'EST PAS UN DÉTAIL — c'est lui qui faisait

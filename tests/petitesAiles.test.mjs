@@ -10,6 +10,8 @@ import {
     avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE, qualiteAiles,
     GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, FROTTEMENT_SOL, FROTTEMENT_APPUI,
     niveauFrontiere, BOSSE_FRONTIERE, DESCENTE_FRONTIERE, VITESSE_BATTEMENT,
+    tonsDuSol, buissonDuSol, traitDuSol, luminance, contrasteCouleurs,
+    NOMBRE_BANDES, CONTRASTE_CIEL,
     PESANTEUR_GLISSE_APPUI, quitteLeSol,
     POUSSEE, PESANTEUR_GLISSE, suiviArret, estArrete, DUREE_ARRET,
     dansLeVide, dansLaMer, bordsDuVide, LONGUEUR_TREMPLIN, VIDE_FRONTIERE,
@@ -269,9 +271,26 @@ test('LE PAYSAGE EST FAIT DE COLLINES, PAS DE FALAISES', () => {
         }
     });
     // Et la borne est vraie : le relief mesuré ne la dépasse jamais.
+    //
+    // ── HORS LA ZONE DE SAUT, ET C'EST LA MÊME EXCEPTION QU'AU MUR ───────
+    //
+    // `penteMax(monde)` décrit les COLLINES d'un monde — l'amplitude et la
+    // période de ses ondes. Le tremplin de frontière n'en est pas une : c'est
+    // une pièce posée par-dessus, nommée, déjà exclue de la garde des murs
+    // (« ET LA RAMPE NE MONTE PAS PLUS QU'UN MUR »), et mesurée pour elle-même
+    // juste en dessous — entre 37° et 50° pour la rampe, la seule qu'on
+    // gravisse.
+    //
+    // ELLE N'A COMMENCÉ À COMPTER QUE LE 20 NOVEMBRE : à 980 pixels de long,
+    // le tremplin tenait dans les 900 derniers pixels que cette boucle ne
+    // regarde pas. Allongé à 1 300 — Rémy : « ça descend fort » —, il dépasse
+    // de quatre cents pixels, et sa plongée s'est mise à répondre « 0,76 »
+    // pour un premier monde qui plafonne à 0,69. Le relief des dunes n'avait
+    // pas bougé d'un pixel.
     MONDES.forEach((monde, i) => {
         const fin = i === MONDES.length - 1 ? LONGUEUR_MONDE : LONGUEUR_MONDE - TRANSITION;
         for (let x = 0; x < fin; x += 2.3) {
+            if (dansLaZoneDeSaut(i * LONGUEUR_MONDE + x)) continue;
             const pente = Math.abs(relief(i * LONGUEUR_MONDE + x, 1.4).pente);
             assert.ok(pente <= penteMax(monde) + 1e-9,
                 `monde ${monde.id} : pente ${pente.toFixed(2)} au-delà de la borne annoncée`);
@@ -567,6 +586,55 @@ test('CHAQUE MONDE SE DÉTACHE DE SON PROPRE CIEL', () => {
         const creteSol = contraste(m.herbe, m.sol);
         assert.ok(creteSol >= 1.4,
             `${m.nom} : la crête ne se détache du sol que de ${creteSol.toFixed(2)}`);
+    }
+});
+
+test('LES BANDES ET LES BUISSONS SE VOIENT, ET NE MANGENT PAS L’HORIZON', () => {
+    // ── L'HABILLAGE DU 20 NOVEMBRE ───────────────────────────────────────
+    //
+    // RÉMY, quatre captures de Tiny Wings à l'appui : « ça a un plus bel
+    // habillage ». Le relief est maintenant rayé de bandes diagonales et ses
+    // crêtes portent des buissons — ce sont les deux choses qui font, sur ses
+    // images, la différence avec l'aplat qu'on avait.
+    //
+    // ── CETTE GARDE TIENT LES DEUX BOUTS, ET AUCUN NE VA DE SOI ──────────
+    //
+    // 1. LES BANDES DOIVENT SE VOIR. Un premier réglage « toujours à l'opposé
+    //    du ciel » laissait trois mondes sans bandes du tout : un sol de glace
+    //    à #eaf7ff qu'on éclaircit encore ne bouge plus. Rien ne l'aurait dit,
+    //    puisqu'un terrain sans bandes s'affiche parfaitement.
+    //
+    // 2. ELLES NE DOIVENT PAS EFFACER LE SOL. La garde juste au-dessus existe
+    //    parce que trois mondes neufs étaient invisibles sur leur propre ciel ;
+    //    une bande est un bout de sol, et elle est le bout le plus clair ou le
+    //    plus sombre. C'est donc elle, et non `sol`, qu'il faut mesurer.
+    //
+    // 3. ET LES BUISSONS SONT SUR L'HORIZON, c'est-à-dire le seul endroit où
+    //    ils ont le ciel pour fond. Mesuré sur une version intermédiaire : 1,04
+    //    de contraste pour le désert de sel — des buissons qu'on ne voit pas.
+    const vu = (a, b) => Math.abs(luminance(a) - luminance(b));
+    for (const m of MONDES) {
+        const tons = tonsDuSol(m);
+        assert.equal(tons.length, NOMBRE_BANDES);
+        assert.ok(vu(tons[0], tons[tons.length - 1]) >= 0.04,
+            `${m.nom} : ses bandes ne se distinguent pas du sol `
+            + `(${vu(tons[0], tons[tons.length - 1]).toFixed(3)} de luminance)`);
+        for (const t of tons) {
+            const c = contrasteCouleurs(t, m.ciel[1]);
+            assert.ok(c >= CONTRASTE_CIEL - 0.01,
+                `${m.nom} : une bande ne se détache du ciel que de ${c.toFixed(2)}`);
+        }
+        const b = buissonDuSol(m);
+        assert.ok(contrasteCouleurs(b, m.ciel[1]) >= CONTRASTE_CIEL - 0.01,
+            `${m.nom} : les buissons se perdent dans le ciel `
+            + `(${contrasteCouleurs(b, m.ciel[1]).toFixed(2)})`);
+        assert.ok(contrasteCouleurs(b, tons[0]) >= 1.8,
+            `${m.nom} : les buissons se perdent dans la colline `
+            + `(${contrasteCouleurs(b, tons[0]).toFixed(2)})`);
+        // ET LE LISERÉ CERNE : s'il se confondait avec le sol, la silhouette
+        // n'aurait plus de bord et l'on retomberait sur l'aplat d'avant.
+        assert.ok(contrasteCouleurs(traitDuSol(m), tons[0]) >= 1.5,
+            `${m.nom} : le liseré ne cerne rien`);
     }
 });
 
@@ -1386,6 +1454,65 @@ test('ET LA RAMPE NE MONTE PAS PLUS QU’UN MUR — la descente, elle, a le droi
     assert.ok(hautTremplin < 1.2,
         `le tremplin monte à ${(Math.atan(hautTremplin) * 180 / Math.PI).toFixed(0)}° : `
         + 'c\'est le mur que Rémy appelle « choquant »');
+});
+
+test('LE SAUT DE FRONTIÈRE EST SPECTACULAIRE, ET IL SE PAIE DANS LA PLONGÉE', () => {
+    // ── CE QUE RÉMY A DEMANDÉ, LE 20 NOVEMBRE ────────────────────────────
+    //
+    // Quatre captures de Tiny Wings, et cette phrase : « à la fin d'un monde,
+    // ça descend FORT et on saute et ça peut aller SUPER HAUT, comme si le
+    // poussin était super lourd ».
+    //
+    // ── POURQUOI CETTE GARDE A DEUX MOITIÉS ─────────────────────────────
+    //
+    // La première dit que le saut est gros. La seconde dit qu'il se MÉRITE —
+    // et c'est elle qui compte, parce que ce fichier a déjà payé trois fois
+    // la même faute : une poussée qui marche partout profite d'abord à celui
+    // qui ne joue pas. Le coup d'ailes de la frontière se donne au décollage,
+    // et le décollage demande de NE PAS appuyer : celui qui ne touche à rien
+    // le recevait donc en entier. Mesuré à ce moment-là : « on tient 111 s
+    // sans rien faire », pour 90 autorisées.
+    //
+    // ON LE MESURE DONC SUR LES DEUX JOUEURS, sur les douze frontières et
+    // trois paysages. `node tools/sautDesAiles.mjs` imprime le même tableau en
+    // détail quand on veut régler plutôt que garder.
+    const sauter = (joue) => {
+        let somme = 0, n = 0;
+        for (const g of [0.7, 1.9, 3.3]) {
+            for (let k = 0; k < MONDES.length - 1; k++) {
+                const b = bordsDuVide(k);
+                const levre = relief(b.debut - 2, g).hauteur;
+                // LA FENÊTRE NE SUIT PAS LE TREMPLIN : 1 500 pixels fixes. En
+                // la calant sur `LONGUEUR_TREMPLIN`, qui vient de passer de
+                // 980 à 1 300, l'avant et l'après ne regardaient plus le même
+                // morceau de terrain — et la sonde a annoncé un gain qui
+                // n'existait pas.
+                let e = etatInitial(g, b.debut - 3100);
+                let apex = -Infinity, vu = false;
+                for (let t = 0; t < 40 && e.x < b.fin + 3000; t += 1 / 60) {
+                    e = pas(e, 1 / 60, joue(relief(e.x, g).pente), g);
+                    if (e.x <= b.debut - 1500) continue;
+                    if (!e.auSol) { apex = Math.max(apex, e.y); vu = true; }
+                    if (vu && e.auSol && e.x > b.debut) break;
+                }
+                if (vu) { somme += apex - levre; n++; }
+            }
+        }
+        return n ? somme / n : 0;
+    };
+    const bon = sauter(PARFAIT), rien = sauter(JAMAIS);
+    // UN SAUT DE RELIEF ORDINAIRE MONTE À 150 PIXELS — c'est la garde « les
+    // sauts sont spectaculaires » qui le dit. La frontière doit faire DEUX
+    // FOIS cela, sinon elle ne se distingue pas d'une bosse : c'était le cas
+    // avant le 20 novembre, à 236 px de moyenne.
+    assert.ok(bon > 300,
+        `le saut de frontière ne monte qu'à ${Math.round(bon)} px au-dessus de la `
+        + 'lèvre : ce n’est pas « super haut », c’est une bosse');
+    // ET CELUI QUI SE LAISSE ROULER NE L'A PAS. La séparation doit être
+    // FRANCHE, pas statistique : un facteur trois au moins.
+    assert.ok(rien < bon / 3,
+        `celui qui ne fait rien monte à ${Math.round(rien)} px contre ${Math.round(bon)} : `
+        + 'le coup d’ailes de la frontière paie l’immobilité');
 });
 
 test('NE RIEN FAIRE FAIT PERDRE, ET AVANT QU’ON SE LASSE', () => {
