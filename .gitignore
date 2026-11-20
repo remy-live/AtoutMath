@@ -31,3 +31,10 @@ tools/tmp/
 # doublerait le poids du dépôt à chaque livraison, et la version committée
 # serait périmée dès la modification suivante.
 atoutmath-v*.zip
+
+# LE DOSSIER DE LIVRAISON — ce qu'on tend à Rémy, pas ce qu'on garde. Il porte
+# l'archive de la version et les photos d'écran qui accompagnent un envoi :
+# toutes se refabriquent en une commande (`node tools/version.mjs`, une sonde),
+# et une capture de trois mégaoctets dans l'historique ne redit rien que le
+# code ne dise déjà.
+livraison/
