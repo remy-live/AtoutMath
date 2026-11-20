@@ -17418,12 +17418,35 @@ body.en-boite > #app-container { background: none; }
    jeton qu'on vient de glisser garde sa teinte, et l'on croit l'avoir tenu.
    Une épreuve du dépôt garde cette règle pour toute la feuille de style. */
 @media (hover: hover) {
-    .md-jeton:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+    /* ET JAMAIS SUR LE JETON QU'ON TIENT. `.md-jeton:hover` est PLUS
+       SPÉCIFIQUE que `.md-jeton--tenu` — une classe plus une pseudo-classe
+       contre une classe — et gagnait donc sur lui : pendant tout le glissé à
+       la souris, le jeton gardait un fond à 10 % d'opacité et le voisin se
+       lisait AU TRAVERS. Mesuré sur le style calculé : `/ 0.1`.
+       Au doigt, le survol n'existe pas : le défaut n'apparaissait qu'à la
+       souris, c'est-à-dire chez Rémy et pas sur la tablette d'un élève. */
+    .md-jeton:hover:not(.md-jeton--tenu) {
+        background: color-mix(in srgb, var(--primary) 10%, transparent);
+    }
 }
 .md-jeton:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 .md-jeton--tenu {
+    /* `position: relative` EST CE QUI REND `z-index` OPÉRANT. Sans elle, un
+       `z-index` sur un élément non positionné ne fait RIEN : le jeton qu'on
+       tenait passait SOUS ses voisins, et l'on voyait un chiffre à moitié
+       caché derrière un autre pendant tout le glissé. C'est la seconde moitié
+       des « fantômes curieux » de Rémy — l'autre était le recalage, dans
+       `medianeAuDoigt.js`. */
+    position: relative;
     cursor: grabbing; z-index: 2;
-    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    /* ── ET IL EST OPAQUE ──────────────────────────────────────────────
+       C'était la troisième moitié du fantôme, et la plus visible : le fond
+       « 18 % de primaire sur TRANSPARENT » laissait lire le voisin À TRAVERS
+       le jeton qu'on tenait. Sur la capture, « 15 » et « 17 » s'écrivaient
+       l'un par-dessus l'autre, illisibles. On teinte donc le fond du panneau
+       au lieu de teinter du vide : même couleur à l'œil, mais on ne voit plus
+       au travers. */
+    background: color-mix(in srgb, var(--primary) 14%, var(--bg-panel));
     box-shadow: 0 6px 18px rgba(15, 23, 42, .18);
 }
 /* UN JETON BARRÉ RESTE LISIBLE. On le raye, on ne l'efface pas : la série
@@ -19684,6 +19707,33 @@ body.visite-en-cours .modal-overlay > * {
 .tc-arc { fill: none; stroke: var(--primary); stroke-width: 2.2; }
 .tc-texte { fill: var(--text-main); }
 .tc-sommet { font-weight: 700; }
+/* ── LA RÉDACTION : « Je sais que / Or / Donc » ───────────────────────────
+   Rémy, 20 novembre : « tu n'as pas mis la partie rédaction pour la
+   trigonométrie ». Les trois mots sont en gras SUR LEUR PROPRE LIGNE, parce
+   que c'est leur place qui s'apprend autant que leur contenu : l'hypothèse, la
+   propriété, la conclusion. Un paragraphe où ils se suivent dans le texte
+   n'enseigne pas cette structure-là — et c'est elle qui vaut des points au
+   brevet, à part du résultat. */
+.tc-redaction {
+    display: flex; flex-direction: column; gap: 10px;
+    margin: 10px auto 0; max-width: 34ch; text-align: left;
+    padding: 12px 14px; border-radius: 12px;
+    background: var(--bg-app); border: 1px solid var(--border);
+}
+.tc-red-pas { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.tc-red-mot {
+    /* `--primary-texte` ET NON `--primary` : une couleur de FOND employée
+       comme couleur de TEXTE ne passe pas le seuil AA, et le dépôt garde une
+       version lisible de chaque teinte pour cela. L'épreuve `contraste` l'a
+       dit, et c'est elle qui a attrapé celle-ci. */
+    font-weight: 800; color: var(--primary-texte);
+    font-size: .95rem; letter-spacing: .01em;
+}
+.tc-red-ligne { padding-left: 10px; }
+/* LA LIGNE QUI POURSUIT LE MÊME PAS est décalée un peu plus : c'est le même
+   « Or » qui se déroule, pas une nouvelle étape. */
+.tc-red-ligne--suite { padding-left: 22px; color: var(--text-muted); }
+
 .tc-question { text-align: center; max-width: 46ch; margin-inline: auto; }
 .numpad-context .figure-wrap.fig-trigo,
 .numpad-context .figure-wrap.fig-trigo .tc-figure {

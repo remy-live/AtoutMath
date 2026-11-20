@@ -39,6 +39,7 @@
 // Aucun DOM ici : ce fichier se lit sous Node, donc il s'éprouve.
 
 import { plan, ferme, texte } from './planPapier.js';
+import { afficherEnColonnes } from './maths/fractionColonne.js';
 import {
     ROLES, FONCTIONS, tirerTriangle, rolesDe, nomCote, pointsDe,
     sommetDroit, sommetVise, angleVise
@@ -336,6 +337,33 @@ export function redactionDe(c) {
  * par `afficherEnColonnes`. Le texte, lui, reste du texte : c'est lui qui part
  * dans le PDF, dans le carnet d'erreurs et dans la voix.
  */
+/**
+ * LA RÉDACTION, MISE EN PAGE — « Je sais que / Or / Donc » comme au tableau.
+ *
+ * RÉMY, 20 novembre : « tu n'as pas mis la partie rédaction pour la
+ * trigonométrie ». Elle y était — mais seulement dans `explanation`, c'est-à-
+ * dire après DEUX erreurs sur la même question, ou derrière deux appuis de
+ * « Montre-moi ». Un élève qui répond juste ne la voyait jamais, et c'est
+ * précisément celui à qui il faut montrer comment on rédige : au brevet, la
+ * rédaction vaut des points à part.
+ *
+ * LES TROIS MOTS SONT EN GRAS ET SUR LEUR PROPRE LIGNE, parce que c'est leur
+ * place qui s'apprend autant que leur contenu : « Je sais que » dit l'hypothèse,
+ * « Or » la propriété, « Donc » la conclusion. Un paragraphe où les trois mots
+ * se suivent dans le texte n'enseigne pas cette structure-là.
+ *
+ * ET LES FRACTIONS S'EMPILENT. Rémy : « je ne veux que des fractions en
+ * colonnes » — `afficherEnColonnes` s'en charge, ici comme ailleurs.
+ */
+export function redactionHtml(c) {
+    const bloc = (b) => `<p class="tc-red-pas">`
+        + `<span class="tc-red-mot">${b.titre}</span>`
+        + b.lignes.map((l, i) => `<span class="tc-red-ligne${i ? ' tc-red-ligne--suite' : ''}">`
+            + `${afficherEnColonnes(l)}</span>`).join('')
+        + '</p>';
+    return `<div class="tc-redaction">${redactionDe(c).map(bloc).join('')}</div>`;
+}
+
 export function expliquer(c) {
     return redactionDe(c)
         .map(b => `${b.titre} : ${b.lignes.join('\n')}`)

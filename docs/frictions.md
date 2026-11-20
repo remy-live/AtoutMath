@@ -8240,3 +8240,24 @@ deux** — 19 novembre
   les demandes dans l'ordre où elles arrivent. Il manque un
   `docs/regles-pedagogiques.md` court, relu avant d'écrire un exercice neuf —
   sans quoi chaque nouvel écran repaiera les leçons des précédents.
+
+---
+
+**Une sonde qui n'a pas suivi ce qu'elle mesure reste rouge sur du code juste**
+— 20 novembre
+
+- *Ce que je voulais faire* : vérifier la trigonométrie après y avoir touché.
+- *Ce qui a coûté* : vingt minutes à chercher ce que j'avais cassé. Rien.
+  `tools/trigoCalcul.mjs` exigeait des propositions de la forme
+  `cos(A) = AB / AC` — avec une barre oblique. Or depuis que Rémy a demandé
+  « je ne veux que des fractions en colonnes », elles s'affichent en deux
+  étages et `textContent` rend « cos(Î) = IJIK ». La sonde était rouge depuis
+  ce jour-là, sur un logiciel juste.
+- *Combien de fois* : || (même famille que l'épreuve qui garde un ancien
+  contrat)
+- *Ce qui manque* : un rouge ANCIEN ne se distingue pas d'un rouge NEUF, et
+  c'est tout le problème — on le lit comme « tu viens de casser quelque chose ».
+  `git stash` + relance répond en deux minutes, et c'est le réflexe qui manque
+  dans CLAUDE.md : **devant un rouge, demander d'abord s'il est à moi.** Un
+  outil qui relancerait la sonde sur `HEAD` et dirait « ce rouge existait
+  déjà » tiendrait en dix lignes.

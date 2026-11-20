@@ -29,6 +29,7 @@
 import { ouvrirSonde } from './sonde.mjs';
 
 const photos = process.argv.includes('--photos');
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 let rates = 0;
 const dire = (quoi, bon, detail = '') => {
     if (!bon) rates++;
@@ -105,8 +106,22 @@ console.log('\n\x1b[1mLA MARCHE « QUEL RAPPORT ? »\x1b[0m');
     else {
         await s.doitExister('.np-choix-btn');
         const vu = await s.page.evaluate(() => {
-            const btns = [...document.querySelectorAll('.np-choix-btn')]
-                .map(b => (b.textContent || '').trim());
+            // ON LIT LA FRACTION EMPILÉE, PAS UNE BARRE OBLIQUE.
+            //
+            // Rémy, 19 novembre : « je ne veux que des fractions en colonnes ».
+            // Depuis, `cos(Î) = IJ / IK` s'affiche en deux étages — et
+            // `textContent` rend « cos(Î) = IJIK », sans barre. Cette sonde
+            // cherchait encore la barre : elle était ROUGE sur un logiciel
+            // juste, et elle l'est restée jusqu'à ce qu'on la relise. Une
+            // mesure qui n'a pas suivi ce qu'elle mesure ne mesure plus rien.
+            const btns = [...document.querySelectorAll('.np-choix-btn')].map((b) => {
+                const f = b.querySelector('.fraction');
+                const tete = (b.firstChild && b.firstChild.textContent || '').trim();
+                return f
+                    ? `${tete} ${f.querySelector('.fraction-num')?.textContent.trim()}`
+                      + ` / ${f.querySelector('.fraction-den')?.textContent.trim()}`
+                    : (b.textContent || '').trim();
+            });
             const pave = document.querySelector('.numpad-device');
             return { btns, chiffres: pave
                 ? [...pave.querySelectorAll('button')]
@@ -116,7 +131,7 @@ console.log('\n\x1b[1mLA MARCHE « QUEL RAPPORT ? »\x1b[0m');
         // ET ILS ONT LA MÊME FORME : « cos(A) = AB / AC ». Une proposition plus
         // détaillée que les autres se repère sans regarder la figure.
         dire('et ils s\'écrivent tous pareil',
-            vu.btns.every(b => /^(cos|sin|tan)\([A-Z]\) = [A-Z]{2} \/ [A-Z]{2}$/.test(b)),
+            vu.btns.every((b) => /^(cos|sin|tan)\([A-Z]\u0302?\) = [A-Z]{2} \/ [A-Z]{2}$/.test(b)),
             vu.btns.join(' | '));
         dire('le pavé de chiffres s\'efface', vu.chiffres === 0,
             `${vu.chiffres} touches de chiffres`);
@@ -152,6 +167,79 @@ console.log('\n\x1b[1mLA MARCHE « CALCULER UN ANGLE »\x1b[0m');
         dire('et la virgule n\'est PAS au clavier', !vu.virgule,
             'un angle s’arrondit au degré');
         dire('aucune erreur de page', s.erreurs.length === 0, s.erreurs.slice(0, 2).join(' | '));
+    }
+    await s.fermer();
+}
+
+// ── LA RÉDACTION, APRÈS LA RÉPONSE — MÊME JUSTE ──────────────────────────
+//
+// RÉMY, 20 novembre : « tu n'as pas mis la partie rédaction pour la
+// trigonométrie ». Elle y était — dans `explanation`, c'est-à-dire après DEUX
+// erreurs sur la même question, ou derrière deux appuis de « Montre-moi ». Un
+// élève qui répond juste ne la voyait JAMAIS, et c'est pourtant celui-là qu'il
+// faut faire rédiger : au brevet, la rédaction vaut des points à part.
+console.log('\n\x1b[1mLA RÉDACTION APRÈS UNE BONNE RÉPONSE\x1b[0m');
+{
+    const s = await ouvrirSonde({ largeur: 1100, hauteur: 1700 });
+    await s.identifier();
+    const ennui = await s.ouvrirExercice('geo-trigo-calcul',
+        { marches: ['longueur-produit'] }, { questions: 5 });
+    if (ennui) { dire('l\'exercice s\'ouvre', false, String(ennui)); }
+    else {
+        await s.doitExister('.numpad-key');
+        await s.doitExister('.btn-showme');
+        // ON SE FAIT DONNER LA RÉPONSE, puis on la TAPE : c'est le seul moyen
+        // d'emprunter le chemin « bonne réponse » sans recalculer la
+        // trigonométrie dans la sonde. Les clics passent par `evaluate` parce
+        // que le bouton se désactive au second appui, et que Playwright
+        // attendrait alors trente secondes qu'il redevienne cliquable.
+        let rep = '';
+        for (let i = 0; i < 2 && !rep; i++) {
+            await s.page.evaluate(() => document.querySelector('.btn-showme')?.click());
+            await dormir(1100);
+            const c = await s.page.evaluate(() =>
+                (document.querySelector('.fb-card') || {}).textContent || '');
+            rep = ((c.match(/La réponse est « ([^»]+) »/) || [])[1] || '').trim();
+            await s.page.evaluate(() => document.querySelector('.fb-close')?.click());
+            await dormir(800);
+        }
+        dire('on obtient la réponse à taper', !!rep, JSON.stringify(rep));
+        for (const ch of rep) {
+            await s.page.evaluate((c) => {
+                const t = [...document.querySelectorAll('.numpad-key')]
+                    .find((b) => b.textContent.trim() === c);
+                if (t) t.click();
+            }, ch === '.' ? ',' : ch);
+            await dormir(70);
+        }
+        await s.page.evaluate(() => document.querySelector('.numpad-key--ok')?.click());
+
+        let vue = null;
+        for (let i = 0; i < 90 && !vue; i++) {
+            vue = await s.page.evaluate(() => {
+                const k = document.querySelector('.fb-card--hint');
+                if (!k || !k.querySelector('.tc-redaction')) return null;
+                return { titre: (k.querySelector('.fb-label') || {}).textContent?.trim() || '',
+                    pas: [...k.querySelectorAll('.tc-red-mot')].map((m) => m.textContent.trim()),
+                    fractions: k.querySelectorAll('.fraction').length };
+            });
+            if (!vue) await dormir(150);
+        }
+        dire('la rédaction s\'ouvre APRÈS la bonne réponse', !!vue);
+        dire('elle porte les trois temps', !!vue && vue.pas.length === 3,
+            vue ? vue.pas.join(' / ') : '');
+        dire('« Je sais que », puis « Or », puis « Donc »',
+            !!vue && /^Je sais que/.test(vue.pas[0] || '') && /^Or/.test(vue.pas[1] || '')
+            && /^Donc/.test(vue.pas[2] || ''));
+        // RÉMY : « je ne veux que des fractions en colonnes ».
+        dire('et ses fractions sont EN COLONNES', !!vue && vue.fractions >= 2,
+            `${vue ? vue.fractions : 0} fraction(s) empilée(s)`);
+        // ET LA CARTE NE DIT PAS « INDICE » : l'élève vient de trouver.
+        dire('la carte s\'appelle « La rédaction », pas « Indice »',
+            !!vue && /rédaction/i.test(vue.titre), vue ? vue.titre : '');
+        if (photos) await s.photo('.fb-card--hint', 'tools/tmp/trigo-redaction.png');
+        dire('aucune erreur de page', s.erreurs.length === 0, s.erreurs.slice(0, 2).join(' | '));
+        dire('aucune fenêtre native', s.fenetresNatives.length === 0);
     }
     await s.fermer();
 }

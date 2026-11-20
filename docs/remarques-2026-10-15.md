@@ -8483,3 +8483,28 @@ exigence plus étroite se remettrait à noter l'écriture.
 
 **ET LE BANDEAU « TON PROGRAMME DOIT AFFICHER : 14 » A DISPARU** de ces
 marches-là. Il se tenait juste au-dessus du champ où il a tapé 14.
+
+### 14. « la partie rédaction » et « des fantômes curieux » — 20 novembre
+
+**LA RÉDACTION Y ÉTAIT, ET IL NE POUVAIT PAS LA VOIR.** Elle vivait dans
+`explanation` : après DEUX erreurs sur la même question, ou derrière deux
+appuis de « Montre-moi ». Un élève qui répond juste ne la rencontrait jamais —
+or c'est précisément à celui qui trouve qu'il faut montrer comment on l'écrit,
+puisqu'au brevet la rédaction vaut des points à part du résultat.
+
+Elle s'ouvre maintenant **après chaque réponse, même juste**, sous le titre
+« La rédaction » : les trois temps en gras sur leur propre ligne, et les
+fractions empilées. Le champ `meta.redactionHtml` est générique : Thalès et
+Pythagore se rédigent pareil et n'auront rien à ajouter.
+
+**LES FANTÔMES DE LA MÉDIANE AVAIENT TROIS CAUSES.** (1) Quand le doigt entrait
+dans la moitié GAUCHE du voisin, on « ré-insérait » le jeton là où il était
+déjà : le DOM ne bougeait pas, mais le décalage était remis à zéro et le jeton
+sautait en arrière sous un doigt parti 88 px plus loin. (2) Le jeton tenu
+portait `z-index` sans `position` : inopérant, il passait SOUS ses voisins.
+(3) Son fond était translucide et l'on lisait le voisin au travers.
+
+**ET LA TROISIÈME NE SE VOYAIT QU'À LA SOURIS** : c'est la règle de survol qui
+gagnait — `.md-jeton:hover` est plus spécifique que `.md-jeton--tenu`. Au doigt,
+le survol n'existe pas. Le défaut était donc chez Rémy et sur aucune tablette
+d'élève.

@@ -26,7 +26,7 @@ import { makeItem, finalizeChoices } from '../items.js';
 import { figure } from '../figures.js';
 import { FONCTIONS, angleVise } from '../trigonometrie.js';
 import {
-    tirerCalcul, enonceDe, enonceChoix, expliquer, indicesDe, diagnosticsDe,
+    tirerCalcul, enonceDe, enonceChoix, expliquer, redactionHtml, indicesDe, diagnosticsDe,
     triangleSvg, planTriangle
 } from '../trigoCalcul.js';
 import {
@@ -134,6 +134,21 @@ export const trigoCalculGenerator = {
             meta: {
                 marche: etape.id, titre: etape.titre, figure: svg,
                 degres: c.degres, genre: c.genre,
+                // ── LA RÉDACTION SE MONTRE APRÈS LA RÉPONSE, MÊME JUSTE ────
+                //
+                // RÉMY, 20 novembre : « tu n'as pas mis la partie rédaction
+                // pour la trigonométrie ». Elle y était — dans `explanation`,
+                // c'est-à-dire après DEUX erreurs sur la même question, ou
+                // derrière deux appuis de « Montre-moi ». Un élève qui répond
+                // juste ne la voyait JAMAIS, et c'est pourtant celui-là qu'il
+                // faut faire rédiger : au brevet, la rédaction vaut des points
+                // à part du résultat.
+                //
+                // L'activité la pose donc après chaque réponse. Le champ est
+                // générique — un item qui porte `redactionHtml` fait ouvrir
+                // une carte — pour que les autres notions qui se rédigent
+                // (Thalès, Pythagore) puissent s'en servir sans rien ajouter.
+                redactionHtml: redactionHtml(c),
                 // LE PAVÉ MONTRE L'UNITÉ, et ce n'est pas la même selon la
                 // marche : des centimètres pour une longueur, un degré pour un
                 // angle. Un élève qui lit « cm » sous une question d'angle

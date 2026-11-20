@@ -311,7 +311,23 @@ export function mount(container, session) {
             if (v === el) continue;
             const r = v.getBoundingClientRect();
             if (e.clientX <= r.left || e.clientX >= r.right) continue;
-            rangee.insertBefore(el, e.clientX > r.left + r.width / 2 ? v.nextSibling : v);
+            const cible = e.clientX > r.left + r.width / 2 ? v.nextSibling : v;
+            // ── ON NE RECALE QUE SI LE JETON A VRAIMENT CHANGÉ DE PLACE ────
+            //
+            // RÉMY, 20 novembre : « le tri pour la médiane est bizarre, ça
+            // fait des fantômes curieux dans le déplacement ».
+            //
+            // MESURÉ, ET LE DÉFAUT EST DANS CES DEUX LIGNES. Dès que le doigt
+            // entrait dans la MOITIÉ GAUCHE du voisin de droite, on demandait
+            // « insère-le avant ce voisin » — c'est-à-dire exactement là où il
+            // était déjà. Le DOM ne bougeait pas, mais le décalage était remis
+            // à zéro : le jeton SAUTAIT EN ARRIÈRE sous un doigt parti 88 px
+            // plus loin, puis repartait au mouvement suivant. Relevé pendant
+            // un glissé de 224 px : 12@372, 12@344, 12@422, 12@408…
+            //
+            // Une insertion qui ne déplace rien ne doit donc rien recaler.
+            if (cible === el || cible === el.nextSibling) continue;
+            rangee.insertBefore(el, cible);
             // LE POINT DE RÉFÉRENCE A BOUGÉ AVEC LE JETON : sans ce recalage,
             // le décalage affiché saute d'une case entière et le jeton part se
             // coller sous le doigt d'à côté.

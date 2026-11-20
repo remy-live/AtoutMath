@@ -198,6 +198,35 @@ export function mount(container, session, opts = {}) {
     const propositions = (item) => !opts.rendreLaMain
         && item.answerKind === 'choice' && Array.isArray(item.choices) && item.choices.length > 0;
 
+    /**
+     * LA RÉDACTION, MONTRÉE APRÈS LA RÉPONSE — même quand elle est juste.
+     *
+     * RÉMY, 20 novembre : « tu n'as pas mis la partie rédaction pour la
+     * trigonométrie ». Elle était dans `explanation`, c'est-à-dire après DEUX
+     * erreurs ou derrière deux appuis de « Montre-moi » : un élève qui répond
+     * juste ne la voyait jamais. Or au brevet la rédaction vaut des points à
+     * part du résultat, et c'est bien à celui qui trouve qu'il faut montrer
+     * comment on l'écrit.
+     *
+     * LE CHAMP EST GÉNÉRIQUE, et volontairement : tout item qui porte
+     * `meta.redactionHtml` fait ouvrir cette carte. Thalès et Pythagore se
+     * rédigent de la même façon et n'auront rien à ajouter ici.
+     *
+     * On passe par le même canal que les cartes d'indice (`game_feedback`),
+     * parce que c'est lui qui sait attendre que l'élève ait fini de lire.
+     */
+    function apresLaReponse(item, suite) {
+        const html = item && item.meta && item.meta.redactionHtml;
+        if (!html || typeof document === 'undefined') { suite(); return; }
+        const detail = { kind: 'hint', label: 'La rédaction',
+            msg: 'Voilà comment on l’écrit au propre :',
+            schema: html, handled: false, dismiss: () => { if (!destroyed) suite(); } };
+        document.dispatchEvent(new CustomEvent('game_feedback', { detail }));
+        // PERSONNE N'ÉCOUTE — vignette d'aperçu, épreuve sans navigateur : on
+        // enchaîne, plutôt que de rester bloqué sur une carte qui n'existe pas.
+        if (!detail.handled) suite();
+    }
+
     function renderNext() {
         if (destroyed) return;
         const item = session.next();
@@ -504,7 +533,7 @@ export function mount(container, session, opts = {}) {
             result.dismissed.then(() => {
                 if (destroyed) return;
 
-                if (result.correct) { renderNext(); return; }
+                if (result.correct) { apresLaReponse(item, renderNext); return; }
 
                 if (result.revealed) {
                     if (aTrous) {

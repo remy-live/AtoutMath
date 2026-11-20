@@ -154,7 +154,14 @@ function showSuccess(d, done) {
 // --- Erreur ou indice : attend la fermeture ---------------------------------
 
 function showDismissable(d, done, isHint) {
-    const label = isHint ? 'Indice' : 'Ce n\'est pas ça';
+    // ── L'EN-TÊTE PEUT ÊTRE AUTRE CHOSE QU'« INDICE » ────────────────────
+    //
+    // La carte d'indice sait déjà tout faire : elle attend, elle porte un
+    // dessin, elle rend le foyer. Mais son titre disait « Indice » même quand
+    // ce qu'elle montre n'en est pas un — la RÉDACTION de trigonométrie, par
+    // exemple, qui s'affiche APRÈS une bonne réponse. Un élève qui vient de
+    // trouver et lit « Indice » croit qu'on l'aide encore.
+    const label = d.label || (isHint ? 'Indice' : 'Ce n\'est pas ça');
     const detail = d.misconception && d.misconception !== d.msg
         ? `<div class="fb-detail">${messageHtml(d.misconception)}</div>` : '';
 
