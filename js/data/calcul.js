@@ -1535,10 +1535,51 @@ export const calculExercises = [
         // seulement, et elle a une ligne d'arrivée.
         id: 'calc-multikart', title: 'MultiKart',
         cree: '2026-11-23',
-        activityId: 'multikart', skills: ['num.mult.table.*'],
-        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], allure: 'tranquille', circuit: 'prairie' },
+        activityId: 'multikart',
+        skills: ['num.mult.table.*', 'num.div.quotient', 'num.add.entiers', 'num.sub.entiers', 'num.dec.puissances10'],
+        params: {
+            operations: ['mul'], tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], sens: 'resultat',
+            voies: 'progressif', allure: 'tranquille', circuit: 'prairie'
+        },
         paramSchema: [
-            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            {
+                // RÉMY, devant la première version : « configurer pour ne pas
+                // avoir que des tables de pythagore (addition, x10, x100,
+                // etc ». Les puces portent un EXEMPLE, pas un nom : « 3,4 ×
+                // 100 » dit la famille en six caractères.
+                id: 'operations', type: 'multiselect', label: 'Calculs posés', default: ['mul'],
+                aide: 'On peut en cocher plusieurs : la course les mélange. Les leurres sont ceux de chaque famille — pour « 3,4 × 100 », l\'un des panneaux propose « 3,400 ».',
+                options: [
+                    { value: 'mul', label: '7 × 8', aide: 'Tables de multiplication' },
+                    { value: 'div', label: '56 ÷ 7', aide: 'Divisions : les tables à l\'envers' },
+                    { value: 'add', label: '47 + 8', aide: 'Additions de tête' },
+                    { value: 'sub', label: '53 − 7', aide: 'Soustractions de tête' },
+                    { value: 'dix', label: '3,4 × 100', aide: 'Multiplier par 10, 100, 1 000' },
+                    { value: 'dixieme', label: '340 ÷ 100', aide: 'Diviser par 10, 100' }
+                ]
+            },
+            { id: 'tables', type: 'multiselect', label: 'Tables (multiplications et divisions)', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            {
+                // « on a le résultat et il faut trouver le calcul ».
+                id: 'sens', type: 'select', label: 'Ce qu\'on cherche', default: 'resultat',
+                aide: 'Dans le sens inverse, « 56 » est écrit en haut et les panneaux portent des calculs : 7 × 8, 6 × 9, 8 × 8. Un seul fait 56.',
+                options: [
+                    { value: 'resultat', label: 'Le résultat — on donne le calcul' },
+                    { value: 'calcul', label: 'Le calcul — on donne le résultat' },
+                    { value: 'mixte', label: 'Les deux, un portique sur deux' }
+                ]
+            },
+            {
+                // « pas forcément que 3 passages, ça peut être 2, puis 3 puis 4 ».
+                id: 'voies', type: 'select', label: 'Nombre de voies', default: 'progressif',
+                aide: 'Le calcul ne change pas : ce qui monte, c\'est le nombre de mauvaises réponses à écarter. « Progressif » fait un tiers de la course à deux voies, un tiers à trois, un tiers à quatre.',
+                options: [
+                    { value: 'progressif', label: 'Progressif — 2, puis 3, puis 4' },
+                    { value: '2', label: '2 voies' },
+                    { value: '3', label: '3 voies' },
+                    { value: '4', label: '4 voies' }
+                ]
+            },
             {
                 // LE NOM DIT LE TEMPS QU'ON A. Le jeu reçu parlait de « 50cc,
                 // 100cc, 150cc » : cela ne dit rien à qui ne connaît pas le
@@ -1555,21 +1596,28 @@ export const calculExercises = [
             },
             {
                 id: 'circuit', type: 'select', label: 'Circuit', default: 'prairie',
-                aide: 'L\'élève peut en changer sur l\'écran de départ : c\'est une couleur de ciel, pas un niveau.',
+                aide: 'L\'élève peut en changer sur l\'écran de départ : c\'est un paysage, pas un niveau.',
                 options: [
                     { value: 'prairie', label: 'Prairie ensoleillée' },
+                    { value: 'plage', label: 'Plage des cocotiers' },
                     { value: 'canyon', label: 'Canyon au crépuscule' },
-                    { value: 'neon', label: 'Nuit néon' }
+                    { value: 'neige', label: 'Sommets enneigés' },
+                    { value: 'automne', label: 'Forêt d\'automne' },
+                    { value: 'volcan', label: 'Volcan en colère' },
+                    { value: 'neon', label: 'Nuit néon' },
+                    { value: 'espace', label: 'Piste des étoiles' },
+                    { value: 'surprise', label: 'Au hasard' }
                 ]
             }
         ],
-        motsClefs: ['multikart', 'kart', 'course', 'tables', 'multiplication', 'portique',
-            'voiture', 'circuit', 'rivaux', 'podium', 'calcul mental'],
+        motsClefs: ['multikart', 'kart', 'course', 'tables', 'multiplication', 'division', 'addition',
+            'soustraction', 'multiplier par 10', 'diviser par 100', 'portique', 'voiture', 'circuit',
+            'rivaux', 'podium', 'calcul mental', 'bonus'],
         tags: {
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "Une course de karts, et un calcul à chaque portique. Le calcul est écrit en haut de l'écran ; trois résultats arrivent, un par voie. PLACE TON KART DANS LA VOIE DU BON RÉSULTAT avant de passer dessous : TOUCHE le résultat, ou sers-toi des flèches ← → du clavier (les touches 1, 2, 3 choisissent aussi la voie). Juste, ton kart accélère ; faux, il tousse une seconde, l'arche du bon résultat s'allume en vert et la correction s'écrit sous le calcul. Pas sûr de toi ? Tiens le FREIN — le bouton en bas à gauche, ou la flèche ↓ : tu ralentis, et tu as le temps de finir ton calcul. Mieux vaut arriver deuxième avec le bon résultat. TROIS bons résultats d'affilée te donnent un BONUS, à lancer avec le bouton en bas à droite ou la barre d'ESPACE ; les boules marquées « ? » sur la piste en donnent aussi. Léo, Mia et Sacha font la même course que toi, mais CHACUN A SON PROPRE CALCUL : la voie qu'ils prennent ne te dit rien de la tienne, inutile de les suivre. Léo se trompe rarement, Sacha souvent. À l'arrivée, le podium — et la liste des calculs à revoir, avec une course pour les réviser."
+        instruction: "Une course de karts, et un calcul à chaque portique. Le calcul est écrit en haut de l'écran ; des résultats arrivent, un par voie — deux voies au début, puis trois, puis quatre. PLACE TON KART DANS LA VOIE DU BON RÉSULTAT avant de passer dessous : TOUCHE le résultat, ou sers-toi des flèches ← → du clavier (les touches 1, 2, 3, 4 choisissent aussi la voie). Selon le réglage, c'est parfois l'inverse : le RÉSULTAT est écrit en haut, et il faut trouver LE CALCUL qui le donne. Juste, ton kart accélère ; faux, il tousse une seconde, l'arche du bon résultat s'allume en vert et la correction s'écrit sous le calcul. Pas sûr de toi ? Tiens le FREIN — le bouton en bas à gauche, ou la flèche ↓ : tu ralentis, et tu as le temps de finir ton calcul. Mieux vaut arriver deuxième avec le bon résultat. TROIS bons résultats d'affilée te donnent un BONUS, à lancer avec le bouton en bas à droite ou la barre d'ESPACE ; les boules marquées « ? » sur la piste en donnent aussi. Il y en a dix : le turbo, la carapace, l'étoile, le bouclier, l'éclair, la banane, le glaçon, l'échange — et deux pour réfléchir : le SABLIER ralentit le temps, l'INDICE barre les mauvais résultats jusqu'à n'en laisser que deux. Aucun ne donne la réponse. Léo, Mia et Sacha font la même course que toi, mais CHACUN A SON PROPRE CALCUL : la voie qu'ils prennent ne te dit rien de la tienne, inutile de les suivre. Léo se trompe rarement, Sacha souvent. Huit circuits au choix sur l'écran de départ : la prairie, la plage, le canyon, la neige, la forêt d'automne, le volcan, la ville de nuit et l'espace. À l'arrivée, le podium — et la liste des calculs à revoir, avec une course pour les réviser."
     },
     {
         id: 'calc-tetris', title: 'Math Tetris',

@@ -1,6 +1,6 @@
 // QUI GAGNE À MULTIKART ? — la course jouée cent fois sans écran.
 //
-//   node tools/equilibreDuKart.mjs [courses=60]
+//   node tools/equilibreDuKart.mjs [courses=60] [voies=progressif] [familles=mul] [sens=resultat]
 //
 // Quatre joueurs : celui qui calcule juste ; celui qui se trompe une fois sur
 // quatre ; celui qui ne touche à rien ; et CELUI QUI SUIT LE RIVAL DE DEVANT
@@ -11,10 +11,13 @@ import { Course, voieDe } from '../js/core/multiKart.js';
 import { makeRng } from '../js/core/ids.js';
 
 const N = Number(process.argv[2]) || 60;
+// Le troisième argument règle les voies : 2, 3, 4 ou « progressif ».
+const REGLAGES = { voies: process.argv[3] || 'progressif',
+    familles: (process.argv[4] || 'mul').split(','), sens: process.argv[5] || 'resultat' };
 const DT = 1 / 60;
 
-export function jouer(graine, allure, strategie) {
-    const k = new Course({ graine, allure });
+export function jouer(graine, allure, strategie, reglages = {}) {
+    const k = new Course({ graine, allure, ...reglages });
     const de = makeRng(`${graine}-joueur`);
     let vu = -1;
     k.demarrer();
@@ -24,10 +27,10 @@ export function jouer(graine, allure, strategie) {
             if (strategie === 'juste') k.viser(p.voieJuste);
             else if (strategie === 'trois-quarts' && vu !== p.index && k.approche > 0.5) {
                 vu = p.index;
-                k.viser(de.next() < 0.75 ? p.voieJuste : (p.voieJuste + 1 + de.int(0, 1)) % 3);
+                k.viser(de.next() < 0.75 ? p.voieJuste : (p.voieJuste + 1 + de.int(0, p.voies - 2)) % p.voies);
             } else if (strategie === 'suiveur') {
                 const devant = k.rivaux.filter((r) => r.z > k.joueur.z).sort((a, b) => a.z - b.z)[0];
-                if (devant) k.viser(voieDe(devant.x));
+                if (devant) k.viser(voieDe(devant.x, p.voies));
             }
             if (k.bonus) k.utiliserBonus();
         }
@@ -42,7 +45,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         for (const s of ['juste', 'trois-quarts', 'inerte', 'suiveur']) {
             let reussite = 0, rang = 0, gagne = 0, temps = 0;
             for (let i = 0; i < N; i++) {
-                const b = jouer(`eq${i}`, allure, s);
+                const b = jouer(`eq${i}`, allure, s, REGLAGES);
                 reussite += b.precision; rang += b.rang; temps += b.temps;
                 if (b.rang === 1) gagne++;
             }

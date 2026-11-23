@@ -80,9 +80,10 @@ try {
         if (e.fin) break;
         if (e.m.phase === 'course' && e.m.panneaux && e.m.choix && e.q !== vu) {
             vu = e.q; n++;
-            const [a, b] = e.q.split('=')[0].split('×').map((x) => Number(x.trim()));
-            let voie = e.m.choix.indexOf(a * b);
-            if (n <= Number(fautes)) voie = (voie + 1) % 3;
+            // La bonne voie est demandée au jeu : la sonde mesure le doigt et
+            // la fenêtre, pas le calcul mental.
+            let voie = e.m.juste;
+            if (n <= Number(fautes)) voie = (voie + 1) % e.m.choix.length;
             // Le doigt se pose SUR le panneau : à mi-hauteur du jeu, c'est la
             // piste, et le plus proche en largeur est celui qu'on vise.
             await s.page.mouse.click(boite.x + e.m.panneaux[voie], boite.y + boite.h * 0.62);

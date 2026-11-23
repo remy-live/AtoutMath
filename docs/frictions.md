@@ -8367,3 +8367,19 @@ deux** — 19 novembre
 - *Ce qui manque* — écrire le fichier collé dans `tools/tmp/recu/` DÈS sa
   réception, avant toute autre lecture : un `node tools/recuDuFil.mjs <mot>`
   qui le ressort du journal ferait l'affaire après coup.
+
+**Une épreuve qui PILOTE elle-même peut effacer le défaut qu'elle garde** — 23 novembre
+
+- *Ce que je voulais faire* — garder « le kart ne change pas de voie tout seul
+  quand la piste passe de deux à trois voies ».
+- *Ce qui a coûté* — l'épreuve visait la voie 0 à chaque image pour vérifier
+  autre chose au passage ; or la voie 0 reste la voie 0 quel que soit le nombre
+  de voies. `epreuveTombe` l'a dit — « CETTE ÉPREUVE NE GARDE RIEN » — mais
+  seulement parce que je l'ai lancé. La même heure, une autre garde ne gardait
+  rien non plus : la règle était tenue DEUX fois dans le code, et retirer une
+  des deux tenues ne changeait rien.
+- *Combien de fois* — ||||| (deux de plus aujourd'hui ; c'est la friction la
+  plus régulière du dépôt)
+- *Ce qui manque* — `epreuveTombe --tout <essai>` : remettre un par un, à partir
+  d'un fichier de paires rangé à côté de l'épreuve, TOUS les défauts qu'elle
+  prétend garder, et le faire dans `npm test` plutôt qu'à la main.

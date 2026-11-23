@@ -8642,3 +8642,11 @@ CINQ DEMANDES, À TENIR UNE PAR UNE :
 4. D'AUTRES CALCULS que les tables : additions, × 10, × 100, « etc. » — et LE
    SENS INVERSE : on donne le résultat, il faut trouver le calcul.
 5. PAS TOUJOURS TROIS VOIES : deux, puis trois, puis quatre.
+
+**CE QUI EN EST SORTI (v1244)** : huit circuits qui sont huit lieux — chacun a
+son lointain, ses quatre objets de bord de piste, ses deux repères et sa
+météo — ; dix bonus dont deux pour réfléchir, le sablier et l'indice, et aucun
+qui donne la réponse ; six familles de calcul dans les deux sens ; deux, trois
+ou quatre voies, « progressif » par défaut. Mesuré : tout juste, premier 59
+fois sur 60 ; suivre le kart de devant, 39 % de réussite sur les voies
+progressives (qui commencent à deux), 27 % à quatre voies — le hasard.

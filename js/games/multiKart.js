@@ -67,8 +67,11 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointe
 import { meneurDemo } from '../core/meneurDemo.js';
 import {
     Course, PISTE, ALLURES, CIRCUITS, ARCHES, BONUS, PILOTES, SERIE_BONUS,
-    tempsEcrit, rangEcrit
+    centresDesVoies, tempsEcrit, rangEcrit
 } from '../core/multiKart.js';
+import { FAMILLES, SENS } from '../core/multiKartCalculs.js';
+import { peindreFond, peindreMeteo } from './multiKartFonds.js';
+import { peindreObjet } from './multiKartObjets.js';
 
 /* ─────────────────────────────────────────────────────────────────────────
  * LES PETITS OUTILS DU DESSIN
@@ -125,7 +128,11 @@ const ICONES = {
     eclair: '<svg viewBox="0 0 24 24"><path d="M13.5 2L4 14h7l-1.5 8L19 10h-7l1.5-8z" fill="#fde047" stroke="#ca8a04" stroke-width="1.2" stroke-linejoin="round"/></svg>',
     banane: '<svg viewBox="0 0 24 24"><path d="M6 17c4.5 1.5 9.5-1.5 11.5-8.5.5 5-2.5 10.5-8.5 11-1.5.1-2.6-.9-3-2.5z" fill="#facc15"/><circle cx="17.5" cy="7.8" r="1.4" fill="#78350f"/></svg>'
 };
-const ORDRE_ROULETTE = ['turbo', 'carapace', 'etoile', 'bouclier', 'eclair', 'banane'];
+ICONES.indice = '<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="#bae6fd" stroke="#0ea5e9" stroke-width="2.2"/><path d="M15 15l5.5 5.5" stroke="#0ea5e9" stroke-width="2.8" stroke-linecap="round"/></svg>';
+ICONES.sablier = '<svg viewBox="0 0 24 24"><path d="M6 3h12M6 21h12" stroke="#fde68a" stroke-width="2.4" stroke-linecap="round"/><path d="M7 3c0 5 5 6 5 9s-5 4-5 9h10c0-5-5-6-5-9s5-4 5-9H7z" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.5 19c.5-2 2.5-2.6 2.5-2.6s2 .6 2.5 2.6h-5z" fill="#f59e0b"/></svg>';
+ICONES.echange = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3.5-3.5" stroke="#34d399"/><path d="M20 16H7l3.5 3.5" stroke="#f472b6"/></svg>';
+ICONES.glacon = '<svg viewBox="0 0 24 24"><path d="M12 2.5l8 4.5v10l-8 4.5-8-4.5V7l8-4.5z" fill="#bae6fd" stroke="#38bdf8" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 12l8-5M12 12v9.5M12 12L4 7" stroke="#e0f2fe" stroke-width="1.6" fill="none"/></svg>';
+const ORDRE_ROULETTE = Object.keys(BONUS);
 
 class MultiKart extends BaseGame {
     constructor(container, isDemo, params) {
@@ -138,8 +145,22 @@ class MultiKart extends BaseGame {
         this.tables = (Array.isArray(this.params.tables) ? this.params.tables : [])
             .map(Number).filter((t) => t >= 1 && t <= 12);
         if (!this.tables.length) this.tables = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+        // CE QU'ON CALCULE, DANS QUEL SENS, SUR COMBIEN DE VOIES — les trois
+        // réglages que Rémy a demandés après la première version : « pas que
+        // des tables de pythagore […] on a le résultat et il faut trouver le
+        // calcul […] ça peut être 2, puis 3 puis 4 ».
+        this.familles = (Array.isArray(this.params.operations) ? this.params.operations : [])
+            .filter((f) => FAMILLES[f]);
+        if (!this.familles.length) this.familles = ['mul'];
+        this.sens = SENS.includes(this.params.sens) ? this.params.sens : 'resultat';
+        this.voies = ['2', '3', '4', 'progressif'].includes(String(this.params.voies))
+            ? String(this.params.voies) : 'progressif';
         this.allure = ALLURES[this.params.allure] ? this.params.allure : 'tranquille';
-        this.circuit = CIRCUITS[this.params.circuit] ? this.params.circuit : 'prairie';
+        // « Au hasard » : le circuit vient de la graine, donc le professeur
+        // qui ouvre l'écran de son élève voit le même.
+        const cles = Object.keys(CIRCUITS);
+        this.circuit = CIRCUITS[this.params.circuit] ? this.params.circuit
+            : (this.params.circuit === 'surprise' ? makeRng(`${this.graine}-circuit`).pick(cles) : 'prairie');
         // LE NOMBRE DE PORTIQUES EST CELUI DE L'ÉTAPE. Le parcours annonce
         // « 10 portiques » en haut de l'écran : la course en a dix, et chacun
         // compte pour une question. Hors parcours, dix.
@@ -334,12 +355,19 @@ class MultiKart extends BaseGame {
                 }
                 .mk-regles li { display: flex; gap: 8px; align-items: baseline; }
                 .mk-regles li b { flex: 0 0 auto; color: #7dd3fc; font-weight: 900; }
-                .mk-circuits { display: flex; gap: calc(var(--u) * 1); justify-content: center; }
+                /* HUIT CIRCUITS : quatre par rang, et huit de front quand la
+                   fenêtre est basse. */
+                .mk-circuits {
+                    display: grid; grid-template-columns: repeat(4, 1fr);
+                    gap: calc(var(--u) * .8);
+                }
+                .mk-bas .mk-circuits { grid-template-columns: repeat(8, 1fr); }
                 .mk-circuit {
-                    flex: 1 1 0; min-width: 0; border-radius: calc(var(--u) * 1.6);
+                    min-width: 0; border-radius: calc(var(--u) * 1.6); overflow: hidden;
+                    text-overflow: ellipsis; white-space: nowrap;
                     border: 2px solid rgba(255, 255, 255, .25); cursor: pointer;
-                    padding: calc(var(--u) * 1) 4px; font-weight: 800; color: #fff;
-                    font-size: clamp(11px, calc(var(--u) * 2.1), 14px);
+                    padding: calc(var(--u) * 1.2) 2px; font-weight: 800; color: #fff;
+                    font-size: clamp(10px, calc(var(--u) * 1.9), 13px);
                     text-shadow: 0 1px 2px rgba(0, 0, 0, .55);
                 }
                 .mk-circuit[aria-pressed="true"] {
@@ -453,10 +481,9 @@ class MultiKart extends BaseGame {
                 <div class="mk-voile" id="mk-depart">
                     <div class="mk-carte">
                         <h3>MultiKart</h3>
-                        <p>Le calcul est écrit en haut. <b>Place ton kart dans la voie du bon résultat</b>
-                           avant de passer sous le portique.</p>
+                        <p id="mk-regle"></p>
                         <ul class="mk-regles">
-                            <li><b>Voie</b><span>Touche le résultat — ou les flèches ← → du clavier.</span></li>
+                            <li><b>Voie</b><span>Touche le panneau — ou les flèches ← → du clavier.</span></li>
                             <li><b>Frein</b><span>Ralentis pour finir ton calcul : mieux vaut juste que premier.</span></li>
                             <li><b>Bonus</b><span>${SERIE_BONUS} bons résultats d'affilée, et tu en gagnes un.</span></li>
                         </ul>
@@ -505,12 +532,21 @@ class MultiKart extends BaseGame {
             `<i${i === 0 ? ' class="mk-moi"' : ''} style="background:${p.coque}"></i>`).join('');
         this.points = [...this.el.ligne.children];
 
-        q('mk-tables').innerHTML = `Tables travaillées : <b>${this.tables.join(' · ')}</b>`;
+        // LA RÈGLE SUIT LE SENS. Écrire « le calcul est en haut » à l'élève à
+        // qui l'on va montrer « 56 = ? », c'est lui faire lire le contraire de
+        // ce qu'il va voir.
+        q('mk-regle').innerHTML = this.sens === 'calcul'
+            ? 'Le RÉSULTAT est écrit en haut. <b>Place ton kart dans la voie du calcul qui le donne</b> avant de passer sous le portique.'
+            : (this.sens === 'mixte'
+                ? 'Un calcul — ou un résultat — est écrit en haut. <b>Place ton kart dans la voie du panneau qui va avec</b> avant de passer sous le portique.'
+                : 'Le calcul est écrit en haut. <b>Place ton kart dans la voie du bon résultat</b> avant de passer sous le portique.');
+        q('mk-tables').innerHTML = this.programme();
         const circuits = q('mk-circuits');
         circuits.innerHTML = Object.entries(CIRCUITS).map(([cle, c]) =>
             `<button type="button" class="mk-circuit" data-circuit="${cle}"
+                title="${c.nom}" aria-label="${c.nom}"
                 style="background: linear-gradient(180deg, ${c.ciel[0]}, ${c.ciel[1]} 55%, ${c.herbe[0]} 56%)"
-                >${c.nom}</button>`).join('');
+                >${c.court}</button>`).join('');
         circuits.addEventListener('click', (e) => {
             const b = e.target.closest('[data-circuit]');
             if (b) this.choisirCircuit(b.dataset.circuit);
@@ -526,7 +562,12 @@ class MultiKart extends BaseGame {
         this.wrap.mesure = () => ({
             phase: this.phase, voie: this.course.joueur.voie,
             panneaux: this.panneaux ? this.panneaux.map(Math.round) : null,
-            choix: this.course.portiqueActif ? this.course.portiqueActif.choix.slice() : null
+            choix: this.course.portiqueActif ? this.course.portiqueActif.choix.slice() : null,
+            // La bonne voie est donnée À LA SONDE, qui doit jouer juste sans
+            // savoir calculer six familles dans les deux sens. Elle n'est
+            // écrite nulle part dans la page.
+            juste: this.course.portiqueActif ? this.course.portiqueActif.voieJuste : null,
+            circuit: this.circuit
         });
 
         this.brancher();
@@ -576,7 +617,7 @@ class MultiKart extends BaseGame {
             if (!bas) return;
             if (e.key === 'ArrowLeft') { e.preventDefault(); k.viser(k.joueur.voie - 1); }
             else if (e.key === 'ArrowRight') { e.preventDefault(); k.viser(k.joueur.voie + 1); }
-            else if (e.key === '1' || e.key === '2' || e.key === '3') k.viser(Number(e.key) - 1);
+            else if (/^[1-4]$/.test(e.key)) k.viser(Number(e.key) - 1);
             else if (e.code === 'Space' || e.key === ' ') {
                 e.preventDefault();
                 if (!e.repeat) k.utiliserBonus();
@@ -608,11 +649,27 @@ class MultiKart extends BaseGame {
      * dernier portique et la ligne d'arrivée.
      */
     voieTouchee(x, largeur) {
-        const p = this.panneaux;
-        if (!p) return borner(Math.floor(x / (largeur / 3)), 0, 2);
+        const p = this.panneaux, n = this.course.voiesIci;
+        if (!p) return borner(Math.floor(x / (largeur / n)), 0, n - 1);
         let mieux = 0;
-        for (let i = 1; i < 3; i++) if (Math.abs(x - p[i]) < Math.abs(x - p[mieux])) mieux = i;
+        for (let i = 1; i < p.length; i++) if (Math.abs(x - p[i]) < Math.abs(x - p[mieux])) mieux = i;
         return mieux;
+    }
+
+    /**
+     * CE QU'ON VA CALCULER, dit à l'élève avant le départ.
+     *
+     * Par l'EXEMPLE, pas par le nom : « 3,4 × 100 » se lit plus vite que
+     * « multiplier un décimal par une puissance de dix », et un élève de
+     * sixième sait ce que c'est sans connaître le mot.
+     */
+    programme() {
+        const exemples = this.familles.map((f) => `<b>${FAMILLES[f].exemple}</b>`).join(' · ');
+        const tables = this.familles.some((f) => f === 'mul' || f === 'div') && this.tables.length < 9
+            ? ` — tables de ${this.tables.join(', ')}` : '';
+        const sens = this.sens === 'calcul' ? ' On te donne le <b>résultat</b> : trouve le calcul.'
+            : (this.sens === 'mixte' ? ' Tantôt le résultat à trouver, tantôt le <b>calcul</b>.' : '');
+        return `Au programme : ${exemples}${tables}.${sens}`;
     }
 
     choisirCircuit(cle) {
@@ -630,7 +687,11 @@ class MultiKart extends BaseGame {
     nouvelleCourse(faits) {
         this.numero = (this.numero || 0) + 1;
         this.course = new Course({
-            tables: this.tables, portiques: this.isDemo ? 3 : this.combien,
+            tables: this.tables, familles: this.familles, sens: this.sens,
+            // La démonstration se joue à trois voies : elle montre le geste,
+            // et le geste est le même à deux ou à quatre.
+            voies: this.isDemo ? 3 : this.voies,
+            portiques: this.isDemo ? 3 : this.combien,
             // LA DÉMONSTRATION ROULE AU RALENTI : le robot parle, et il lui faut
             // le temps de finir sa phrase avant le portique. Mesuré à l'allure
             // tranquille : la bulle du frein s'affichait une demi-seconde.
@@ -735,14 +796,17 @@ class MultiKart extends BaseGame {
         if (ev.quoi === 'portique') {
             const p = ev.portique;
             if (ev.juste) {
-                this.dire(this.el.retour, `✔ ${p.texte} = ${p.juste}`, 1500, 'mk-retour--juste');
+                this.dire(this.el.retour, `✔ ${p.egalite}`, 1500, 'mk-retour--juste');
                 this.gerbe(22, ['#fde047', '#4ade80', '#ffffff', '#38bdf8']);
             } else {
                 // LA CORRECTION DIT LES DEUX : le bon résultat, et celui qu'on a
                 // pris. « Faux » tout seul n'apprend rien ; « 7 × 8 = 56, pas
                 // 54 » montre de combien on s'est trompé, donc pourquoi.
-                this.dire(this.el.retour, `${p.texte} = ${p.juste}, pas ${p.donne}`,
-                    2800, 'mk-retour--faux');
+                // DANS LE SENS INVERSE, on dit aussi ce que VALAIT le calcul
+                // qu'on a pris : « 56 = 7 × 8 — et 6 × 9 = 54 ».
+                this.dire(this.el.retour, p.sens === 'calcul'
+                    ? `${p.fait.resultat} = ${p.fait.calcul} — et ${p.verites[p.voieDonnee]}`
+                    : `${p.egalite}, pas ${p.donne}`, 3000, 'mk-retour--faux');
                 if (ev.protege === 'bouclier') this.dire(this.el.annonce, 'Le bouclier a tenu !', 1600);
                 else if (!ev.protege) this.gerbe(10, ['#94a3b8', '#cbd5e1', '#64748b']);
             }
@@ -753,7 +817,10 @@ class MultiKart extends BaseGame {
             this.dire(this.el.annonce, BONUS[ev.id].dit, 1900);
             if (ev.id === 'etoile' || ev.id === 'turbo') this.gerbe(14, ['#fde047', '#f97316', '#ffffff']);
         } else if (ev.quoi === 'touche') {
-            this.dire(this.el.annonce, `${ev.pilote.nom} part en tête-à-queue !`, 1700);
+            this.dire(this.el.annonce, ev.par === 'glacon' ? `${ev.pilote.nom} est pris dans la glace !`
+                : `${ev.pilote.nom} part en tête-à-queue !`, 1700);
+        } else if (ev.quoi === 'echange') {
+            this.gerbe(18, ['#34d399', '#f472b6', '#ffffff']);
         } else if (ev.quoi === 'arrivee') {
             this.gerbe(46, ['#fde047', '#4ade80', '#38bdf8', '#f472b6', '#ffffff']);
             this.freiner(false);
@@ -784,14 +851,18 @@ class MultiKart extends BaseGame {
         const dernier = p.index === this.course.total - 1;
         const envoi = () => {
             const partiel = !this.comptee;
+            // La compétence est celle de la FAMILLE du calcul : la table de 7,
+            // l'addition, les puissances de dix. C'est elle que le bilan du
+            // professeur retient, pas « MultiKart ».
+            const concept = p.fait.competence;
+            const questionText = p.sens === 'calcul' ? `Quel calcul donne ${p.fait.resultat} ?` : p.fait.calcul;
             if (p.reussi) {
-                this.onCorrectAnswer(null, `mult:${p.table}`, {
-                    questionText: p.texte, given: p.donne, expected: p.juste, partiel
+                this.onCorrectAnswer(null, concept, {
+                    questionText, given: p.donne, expected: p.juste, partiel
                 });
             } else {
                 this.onWrongAnswer(null, {
-                    concept: `mult:${p.table}`, questionText: p.texte,
-                    input: p.donne, expected: p.juste,
+                    concept, questionText, input: p.donne, expected: p.juste,
                     silencieux: true, partiel, attemptIndex: 9
                 });
             }
@@ -833,12 +904,12 @@ class MultiKart extends BaseGame {
     majHud() {
         const k = this.course, e = this.el;
         const p = k.portiqueActif;
-        this.poser('question', p ? `${p.texte} = ?` : 'Arrivée !', (v) => { e.question.textContent = v; });
+        this.poser('question', p ? p.question : 'Arrivée !', (v) => { e.question.textContent = v; });
         // LES TROIS RÉSULTATS, EN TOUTES LETTRES. Ils ne sont peints que sur
         // la toile : sans cette ligne, un lecteur d'écran lirait la question
         // et aucune des réponses.
         this.poser('choix', p && k.etat === 'course'
-            ? `gauche ${p.choix[0]}, centre ${p.choix[1]}, droite ${p.choix[2]}` : '',
+            ? p.choix.map((v, i) => `voie ${i + 1} : ${v}`).join(', ') : '',
         (v) => { e.choix.textContent = v; });
         this.poser('approche', Math.round(k.approche * 100), (v) => { e.approche.style.width = `${v}%`; });
         const rang = k.rangFinal || k.rang();
@@ -855,13 +926,13 @@ class MultiKart extends BaseGame {
             Math.round(borner(q.z / k.arriveeZ, 0, 1) * 1000) / 10,
             (v) => { this.points[i].style.left = `${v}%`; }));
 
-        const cle = k.roulette > 0 ? `r${k.rouletteCran % 6}`
+        const cle = k.roulette > 0 ? `r${k.rouletteCran % ORDRE_ROULETTE.length}`
             : (k.bonus || `vide${k.serie % SERIE_BONUS}`);
         this.poser('bonus', cle, () => {
             const b = e.bonus;
             if (k.roulette > 0) {
                 b.className = 'mk-rond mk-bonus';
-                b.innerHTML = `${ICONES[ORDRE_ROULETTE[k.rouletteCran % 6]]}<span>…</span>`;
+                b.innerHTML = `${ICONES[ORDRE_ROULETTE[k.rouletteCran % ORDRE_ROULETTE.length]]}<span>…</span>`;
             } else if (k.bonus) {
                 b.className = 'mk-rond mk-bonus mk-bonus--plein';
                 b.innerHTML = `${ICONES[k.bonus]}<span>Bonus</span>`;
@@ -1151,158 +1222,20 @@ class MultiKart extends BaseGame {
 
     /* ── LE CIEL ET LE LOINTAIN ────────────────────────────────────────── */
 
+    /** L'échelle du décor : 1 pour une fenêtre de 600 pixels de haut. */
+    echelle(haut) { return borner(haut / 600, 0.55, 1.6); }
+
+    /**
+     * Le lointain a son fichier, `multiKartFonds.js` : huit lieux, chacun avec
+     * ce qu'on y voit. Ici, on ne fait que lui dire où est l'horizon, de
+     * combien on a tourné, et l'heure qu'il est.
+     */
     dessinerDecor(c, larg, haut) {
-        const th = this.theme, t = this.temps;
-        const horizon = this.horizon;
-        const ciel = c.createLinearGradient(0, 0, 0, horizon * 1.1);
-        ciel.addColorStop(0, th.ciel[0]);
-        ciel.addColorStop(0.6, th.ciel[1]);
-        ciel.addColorStop(1, th.ciel[2]);
-        c.fillStyle = ciel;
-        c.fillRect(0, 0, larg, haut);
-        const m = haut / 600;
-        const tour = (v, periode) => ((v % periode) + periode) % periode;
-
-        if (th.nuit) {
-            for (let s = 0; s < 46; s++) {
-                const sx = tour(s * 173 + 40 - this.cap * 30, larg);
-                const sy = (s * 89 + 20) % Math.max(60, horizon - 20);
-                c.fillStyle = `rgba(224, 242, 254, ${0.35 + 0.5 * Math.abs(Math.sin(t * 1.6 + s))})`;
-                c.beginPath();
-                c.arc(sx, sy, s % 3 === 0 ? 1.8 : 1.1, 0, Math.PI * 2);
-                c.fill();
-            }
-        }
-
-        // L'astre : il glisse quand on tourne, comme tout le lointain.
-        const ax = tour(larg * 0.74 - this.cap * 60, larg + 240) - 120;
-        const ay = this.circuit === 'canyon' ? horizon * 0.62 : horizon * 0.34;
-        const ar = (this.circuit === 'canyon' ? 44 : 30) * Math.max(0.7, m);
-        const halo = c.createRadialGradient(ax, ay, ar * 0.3, ax, ay, ar * 3.4);
-        halo.addColorStop(0, th.astre);
-        halo.addColorStop(0.3, th.halo);
-        halo.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        c.fillStyle = halo;
-        c.beginPath(); c.arc(ax, ay, ar * 3.4, 0, Math.PI * 2); c.fill();
-        c.fillStyle = th.astre;
-        c.beginPath(); c.arc(ax, ay, ar, 0, Math.PI * 2); c.fill();
-        if (th.nuit) {
-            // Un croissant : la lune mordue par un disque de la couleur du ciel.
-            c.fillStyle = th.ciel[1];
-            c.beginPath(); c.arc(ax + ar * 0.42, ay - ar * 0.18, ar * 0.86, 0, Math.PI * 2); c.fill();
-        }
-
-        for (let n = 0; n < 6; n++) {
-            const nx = tour(n * 310 + t * 9 - this.cap * 90, larg + 320) - 160;
-            const ny = horizon * (0.2 + (n % 3) * 0.13);
-            this.nuage(c, nx, ny, (26 + (n % 2) * 10) * Math.max(0.7, m),
-                th.nuit ? 0.13 : (this.circuit === 'canyon' ? 0.5 : 0.8));
-        }
-        if (!th.nuit) {
-            const bx = tour(larg * 0.2 + t * 11 - this.cap * 70, larg + 260) - 130;
-            this.montgolfiere(c, bx, horizon * 0.5 + Math.sin(t * 1.3) * 6, Math.max(0.7, m));
-        }
-
-        // TROIS PLANS DE RELIEF, du plus pâle au plus franc : c'est l'écart de
-        // teinte entre eux qui donne la distance.
-        const plans = [
-            { couleur: th.lointain, pas: 250, h0: 60, h1: 70, vit: 26, bas: 4 },
-            { couleur: th.collineLoin, pas: 210, h0: 34, h1: 46, vit: 48, bas: 8 },
-            { couleur: th.collinePres, pas: 170, h0: 16, h1: 26, vit: 80, bas: 14 }
-        ];
-        plans.forEach((pl, rang) => {
-            const glisse = tour(this.cap * pl.vit, pl.pas);
-            const depart = Math.floor((this.cap * pl.vit) / pl.pas);
-            c.fillStyle = pl.couleur;
-            c.beginPath();
-            c.moveTo(-pl.pas, haut);
-            c.lineTo(-pl.pas, horizon + pl.bas * m);
-            for (let i = -1; i * pl.pas < larg + pl.pas; i++) {
-                const x = i * pl.pas - glisse;
-                const graine = Math.abs(Math.sin((i + depart) * (1.7 + rang)));
-                const hh = (pl.h0 + graine * pl.h1) * m;
-                if (this.circuit === 'canyon' && rang < 2) {
-                    // Des mesas : un plateau, deux falaises.
-                    const l = pl.pas * (0.34 + graine * 0.3);
-                    c.lineTo(x + pl.pas * 0.12, horizon + pl.bas * m);
-                    c.lineTo(x + pl.pas * 0.2, horizon - hh);
-                    c.lineTo(x + pl.pas * 0.2 + l, horizon - hh);
-                    c.lineTo(x + pl.pas * 0.28 + l, horizon + pl.bas * m);
-                } else if (th.nuit && rang === 1) {
-                    // Une ville : des tours, et leurs fenêtres plus bas.
-                    const l = pl.pas * 0.42;
-                    c.lineTo(x + pl.pas * 0.1, horizon + pl.bas * m);
-                    c.lineTo(x + pl.pas * 0.1, horizon - hh * 1.5);
-                    c.lineTo(x + pl.pas * 0.1 + l, horizon - hh * 1.5);
-                    c.lineTo(x + pl.pas * 0.1 + l, horizon - hh * 0.8);
-                    c.lineTo(x + pl.pas * 0.9, horizon - hh * 0.8);
-                    c.lineTo(x + pl.pas * 0.9, horizon + pl.bas * m);
-                } else {
-                    c.bezierCurveTo(x + pl.pas * 0.28, horizon - hh, x + pl.pas * 0.72, horizon - hh,
-                        x + pl.pas, horizon + pl.bas * m);
-                }
-            }
-            c.lineTo(larg + pl.pas * 2, haut);
-            c.closePath();
-            c.fill();
-            if (th.nuit && rang === 1) {
-                for (let i = -1; i * pl.pas < larg + pl.pas; i++) {
-                    const x = i * pl.pas - glisse;
-                    const graine = Math.abs(Math.sin((i + depart) * 2.7));
-                    const hh = (pl.h0 + graine * pl.h1) * m * 1.5;
-                    for (let f = 0; f < 6; f++) {
-                        c.fillStyle = (f + i + depart) % 3 === 0 ? '#fde68a' : '#67e8f9';
-                        c.fillRect(x + pl.pas * (0.16 + (f % 3) * 0.11), horizon - hh * (0.9 - Math.floor(f / 3) * 0.3),
-                            3 * m, 4 * m);
-                    }
-                }
-            }
+        peindreFond(c, {
+            larg, haut, horizon: this.horizon, cap: this.cap, t: this.temps,
+            m: this.echelle(haut), theme: this.theme,
+            sol: this.teinte(this.theme.herbe[1], PISTE.PORTEE)
         });
-        // Sous l'horizon, la couleur du sol lointain : ce qu'on aperçoit entre
-        // deux bosses de la piste.
-        c.fillStyle = this.teinte(th.herbe[1], PISTE.PORTEE);
-        c.fillRect(0, horizon + 14 * m, larg, haut);
-    }
-
-    nuage(c, x, y, r, alpha) {
-        const boules = [[0, 0, 1], [0.85, -0.25, 1.15], [1.75, 0, 0.9], [-0.75, 0.1, 0.75]];
-        for (const [dx, dy, k] of boules) {
-            const g = c.createRadialGradient(x + dx * r, y + dy * r - r * k * 0.2, r * k * 0.15,
-                x + dx * r, y + dy * r, r * k);
-            g.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
-            g.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            c.fillStyle = g;
-            c.beginPath();
-            c.arc(x + dx * r, y + dy * r, r * k, 0, Math.PI * 2);
-            c.fill();
-        }
-    }
-
-    montgolfiere(c, x, y, m) {
-        c.save();
-        c.translate(x, y);
-        c.scale(m, m);
-        c.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-        c.lineWidth = 1.5;
-        c.beginPath();
-        c.moveTo(-10, 18); c.lineTo(-6, 29); c.moveTo(10, 18); c.lineTo(6, 29);
-        c.stroke();
-        c.fillStyle = '#78350f';
-        rectRond(c, -8, 28, 16, 10, 4);
-        c.fill();
-        const g = c.createRadialGradient(-8, -14, 4, 0, -6, 32);
-        g.addColorStop(0, '#ffffff');
-        g.addColorStop(0.5, this.theme.vibreur[1]);
-        g.addColorStop(1, '#7f1d1d');
-        c.fillStyle = g;
-        c.beginPath();
-        c.moveTo(0, -34);
-        c.bezierCurveTo(28, -34, 30, -2, 11, 20);
-        c.lineTo(-11, 20);
-        c.bezierCurveTo(-30, -2, -28, -34, 0, -34);
-        c.closePath();
-        c.fill();
-        c.restore();
     }
 
     /* ── LA PISTE ──────────────────────────────────────────────────────── */
@@ -1316,7 +1249,8 @@ class MultiKart extends BaseGame {
         c.fillStyle = this.teinte(th.herbe[ton], n);
         c.fillRect(0, y2, larg, p.a.y - y2 + 1);
 
-        c.fillStyle = this.teinte(th.vibreur[ton], n);
+        c.fillStyle = this.teinte(th.arcEnCiel
+            ? th.arcEnCiel[Math.floor(seg.index / 3) % th.arcEnCiel.length] : th.vibreur[ton], n);
         quad(c, x1 - w1 * 1.1, p.a.y, x1 - w1, p.a.y, x2 - w2, y2, x2 - w2 * 1.1, y2);
         quad(c, x1 + w1, p.a.y, x1 + w1 * 1.1, p.a.y, x2 + w2 * 1.1, y2, x2 + w2, y2);
 
@@ -1331,13 +1265,14 @@ class MultiKart extends BaseGame {
             // UN VOILE CLAIR ET DEUX RAILS DE COULEUR, pas un aplat teinté :
             // de l'ambre à 16 % sur du bitume gris donnait un brun de boue —
             // vu sur la première photo.
-            const v = PISTE.VOIES[k.joueur.voie], demi = 0.3;
+            const nv = seg.voies, voie = Math.min(k.joueur.voie, nv - 1);
+            const v = centresDesVoies(nv)[voie], demi = (0.99 / nv) * 0.92, rail = (0.99 / nv) * 0.82;
             c.fillStyle = seg.sombre ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.05)';
             quad(c, x1 + (v - demi) * w1, p.a.y, x1 + (v + demi) * w1, p.a.y,
                 x2 + (v + demi) * w2, y2, x2 + (v - demi) * w2, y2);
-            c.fillStyle = ARCHES[k.joueur.voie].trait;
+            c.fillStyle = ARCHES[voie].trait;
             c.globalAlpha = 0.85 - 0.5 * (n / PISTE.PORTEE);
-            for (const cote of [-0.27, 0.27]) {
+            for (const cote of [-rail, rail]) {
                 const e1 = Math.max(1, w1 * 0.02), e2 = Math.max(0.8, w2 * 0.02);
                 quad(c, x1 + (v + cote) * w1 - e1, p.a.y, x1 + (v + cote) * w1 + e1, p.a.y,
                     x2 + (v + cote) * w2 + e2, y2, x2 + (v + cote) * w2 - e2, y2);
@@ -1351,12 +1286,14 @@ class MultiKart extends BaseGame {
         quad(c, x1 - w1 * 0.955 - r1, p.a.y, x1 - w1 * 0.955 + r1, p.a.y, x2 - w2 * 0.955 + r2, y2, x2 - w2 * 0.955 - r2, y2);
         quad(c, x1 + w1 * 0.955 - r1, p.a.y, x1 + w1 * 0.955 + r1, p.a.y, x2 + w2 * 0.955 + r2, y2, x2 + w2 * 0.955 - r2, y2);
 
-        // Les pointillés qui séparent les trois voies.
+        // Les pointillés qui séparent les voies — deux, trois ou quatre : la
+        // piste est repeinte juste après chaque portique.
         if (!seg.sombre) {
             const d1 = Math.max(1, w1 * 0.016), d2 = Math.max(0.7, w2 * 0.016);
             c.fillStyle = th.trait;
             c.globalAlpha = 1 - 0.7 * Math.pow(n / PISTE.PORTEE, 1.5);
-            for (const f of [-0.33, 0.33]) {
+            for (let i = 1; i < seg.voies; i++) {
+                const f = ((2 * i) / seg.voies - 1) * 0.99;
                 quad(c, x1 + w1 * f - d1, p.a.y, x1 + w1 * f + d1, p.a.y,
                     x2 + w2 * f + d2, y2, x2 + w2 * f - d2, y2);
             }
@@ -1381,103 +1318,57 @@ class MultiKart extends BaseGame {
         c.clip();
     }
 
+    /** Un objet du bord de piste : voir `multiKartObjets.js`. */
     dessinerUnDecor(c, p, d) {
-        const l = p.a.s * 520 * d.taille * this.ech;
-        if (l < 4) return;
-        const h = l * 1.45;
-        const x = p.a.x + d.cote * p.a.w, y = p.a.y;
-        const grand = d.genre === 'grand';
+        const u = p.a.s * 520 * d.taille * this.ech;
+        if (u < 3) return;
         this.decouper(c, p.clip);
         c.globalAlpha = 1 - 0.75 * Math.pow(p.n / PISTE.PORTEE, 2);
-        c.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        c.beginPath(); c.ellipse(x, y, l * 0.36, l * 0.09, 0, 0, Math.PI * 2); c.fill();
-
-        if (this.circuit === 'prairie') {
-            if (grand) {
-                c.fillStyle = '#7c4a1e';
-                rectRond(c, x - l * 0.07, y - h * 0.42, l * 0.14, h * 0.42, l * 0.05);
-                c.fill();
-                for (const [dx, dy, r, coul] of [[0, -0.66, 0.34, '#15803d'], [-0.23, -0.56, 0.25, '#16a34a'],
-                    [0.23, -0.56, 0.25, '#16a34a'], [-0.07, -0.76, 0.22, '#4ade80']]) {
-                    c.fillStyle = coul;
-                    c.beginPath(); c.arc(x + l * dx, y + h * dy, l * r, 0, Math.PI * 2); c.fill();
-                }
-            } else {
-                // Un buisson, et trois fleurs dessus.
-                c.fillStyle = '#16a34a';
-                c.beginPath(); c.ellipse(x, y - h * 0.13, l * 0.36, h * 0.15, 0, 0, Math.PI * 2); c.fill();
-                c.fillStyle = '#22c55e';
-                c.beginPath(); c.ellipse(x - l * 0.1, y - h * 0.18, l * 0.2, h * 0.1, 0, 0, Math.PI * 2); c.fill();
-                for (const [dx, dy, coul] of [[-0.18, -0.2, '#fde047'], [0.12, -0.24, '#f9a8d4'], [0.02, -0.12, '#ffffff']]) {
-                    c.fillStyle = coul;
-                    c.beginPath(); c.arc(x + l * dx, y + h * dy, Math.max(1, l * 0.045), 0, Math.PI * 2); c.fill();
-                }
-            }
-        } else if (this.circuit === 'canyon') {
-            if (grand) {
-                c.fillStyle = '#15803d';
-                rectRond(c, x - l * 0.09, y - h * 0.85, l * 0.18, h * 0.85, l * 0.09); c.fill();
-                rectRond(c, x - l * 0.28, y - h * 0.62, l * 0.12, h * 0.26, l * 0.06); c.fill();
-                rectRond(c, x - l * 0.28, y - h * 0.44, l * 0.24, h * 0.09, l * 0.045); c.fill();
-                rectRond(c, x + l * 0.16, y - h * 0.72, l * 0.12, h * 0.26, l * 0.06); c.fill();
-                rectRond(c, x + l * 0.04, y - h * 0.54, l * 0.24, h * 0.09, l * 0.045); c.fill();
-            } else {
-                c.fillStyle = '#9a3412';
-                c.beginPath();
-                c.moveTo(x - l * 0.45, y);
-                c.bezierCurveTo(x - l * 0.35, y - h * 0.5, x + l * 0.35, y - h * 0.5, x + l * 0.45, y);
-                c.closePath(); c.fill();
-                c.fillStyle = '#c2410c';
-                c.beginPath();
-                c.moveTo(x - l * 0.3, y - h * 0.04);
-                c.bezierCurveTo(x - l * 0.2, y - h * 0.36, x + l * 0.05, y - h * 0.36, x + l * 0.1, y - h * 0.04);
-                c.closePath(); c.fill();
-            }
-        } else {
-            // La nuit, des lampadaires : un mât, et un halo de la couleur du
-            // vibreur le plus proche.
-            const coul = grand ? '#22d3ee' : '#e879f9';
-            c.fillStyle = '#334155';
-            c.fillRect(x - l * 0.025, y - h * 0.6, l * 0.05, h * 0.6);
-            const g = c.createRadialGradient(x, y - h * 0.62, l * 0.03, x, y - h * 0.62, l * 0.4);
-            g.addColorStop(0, '#f0f9ff');
-            g.addColorStop(0.3, coul);
-            g.addColorStop(1, 'rgba(15, 23, 42, 0)');
-            c.fillStyle = g;
-            c.beginPath(); c.arc(x, y - h * 0.62, l * 0.4, 0, Math.PI * 2); c.fill();
-        }
+        peindreObjet(c, this.theme, d, p.a.x + d.cote * p.a.w, p.a.y, u, this.temps);
         c.globalAlpha = 1;
         c.restore();
     }
 
     /* ── LES PORTIQUES ─────────────────────────────────────────────────── */
 
+    /** La demi-largeur et la hauteur d'une arche, sur une piste à `n` voies. */
+    gabarit(route, n) {
+        return { demi: route * (0.99 / n) * 0.9, hauteur: route * Math.min(0.68, 0.36 + 0.96 / n) };
+    }
+
     /**
-     * TROIS ARCHES, UNE PAR VOIE.
+     * UNE ARCHE PAR VOIE — deux, trois ou quatre.
      *
      * PASSÉ, LE PORTIQUE RÉPOND. L'arche du bon résultat verdit ; celle qu'on
      * a prise à tort rougit. On le voit en passant dessous — puisque la caméra
      * roule derrière — et c'est la correction la plus rapide qui soit : pas un
      * mot, la bonne porte allumée.
+     *
+     * UNE ARCHE BARRÉE PAR L'INDICE S'ÉTEINT : elle reste là, on peut encore
+     * la prendre, mais elle ne propose plus rien.
      */
     dessinerPortique(c, p, g, actif) {
         const cx = p.a.x, y = p.a.y, route = p.a.w;
         if (route < 14) return;
-        const k = this.course;
-        const demi = route * 0.295, hauteur = route * 0.68;
+        const k = this.course, n = g.voies, centres = centresDesVoies(n);
+        const { demi, hauteur } = this.gabarit(route, n);
         this.decouper(c, p.clip);
-        c.globalAlpha = Math.min(1, 1.25 - Math.pow(p.n / PISTE.PORTEE, 2));
-        for (let i = 0; i < 3; i++) {
-            const ax = cx + PISTE.VOIES[i] * route;
+        const fondu = Math.min(1, 1.25 - Math.pow(p.n / PISTE.PORTEE, 2));
+        for (let i = 0; i < n; i++) {
+            const ax = cx + centres[i] * route;
             const visee = actif && i === k.joueur.voie;
+            const barree = actif && g.barre.includes(i);
             let trait = ARCHES[i].trait, voile = visee ? ARCHES[i].lueur : ARCHES[i].voile;
             if (!actif) {
-                const bonne = i === g.voieJuste;
-                const prise = g.choix[i] === g.donne;
+                const bonne = i === g.voieJuste, prise = i === g.voieDonnee;
                 trait = bonne ? '#22c55e' : (prise ? '#f43f5e' : 'rgba(148, 163, 184, 0.5)');
                 voile = bonne ? 'rgba(34, 197, 94, 0.4)' : (prise ? 'rgba(244, 63, 94, 0.32)' : 'rgba(148, 163, 184, 0.06)');
+            } else if (barree) {
+                trait = 'rgba(148, 163, 184, 0.55)';
+                voile = 'rgba(148, 163, 184, 0.05)';
             }
-            const tube = Math.max(2.5, route * (visee ? 0.046 : 0.034));
+            c.globalAlpha = fondu;
+            const tube = Math.max(2.5, route * (visee ? 0.046 : 0.034) * Math.min(1, 3.3 / n));
             const arc = () => {
                 c.beginPath();
                 c.moveTo(ax - demi, y);
@@ -1508,64 +1399,96 @@ class MultiKart extends BaseGame {
     }
 
     /**
-     * LES TROIS RÉSULTATS, LISIBLES DÈS QUE LE PORTIQUE PARAÎT.
+     * LES RÉSULTATS — OU LES CALCULS —, LISIBLES DÈS QUE LE PORTIQUE PARAÎT.
      *
      * Un panneau ne descend jamais sous une taille qu'on lit sur un téléphone.
      * Tant que son arche est trop petite pour le recevoir, il flotte au-dessus
-     * d'elle, les trois écartés juste assez pour ne pas se toucher ; quand elle
-     * a grandi, il glisse dedans. On a ainsi tout le trajet pour calculer, au
+     * d'elle, tous écartés juste assez pour ne pas se toucher ; quand elle a
+     * grandi, il glisse dedans. On a ainsi tout le trajet pour calculer, au
      * lieu de la dernière seconde.
+     *
+     * QUATRE CALCULS NE TIENNENT PAS TOUJOURS À LA TAILLE VOULUE. « 0,087 ×
+     * 1 000 », quatre fois, sur 350 pixels : on réduit alors la police jusqu'à
+     * ce que les quatre tiennent côte à côte, plutôt que d'en laisser sortir un
+     * de l'écran. C'est la seule chose qui passe avant la taille.
      */
     dessinerPanneaux(c, larg, p, g) {
         const cx = p.a.x, y = p.a.y, route = p.a.w;
-        const k = this.course;
-        const demi = route * 0.295, hauteur = route * 0.68;
-        const hMin = borner(this.u * 4.4, 22, 40);
-        const h = Math.max(hMin, route * 0.21);
-        const police = Math.floor(h * 0.68);
-        c.font = `900 ${police}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+        const k = this.course, n = g.voies, centres = centresDesVoies(n);
+        const { demi, hauteur } = this.gabarit(route, n);
+        const police0 = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+        // ET IL NE GRANDIT PAS SANS FIN : à deux voies, le panneau suivait la
+        // largeur de l'arche et finissait par couvrir un quart de l'écran —
+        // vu sur la photo de la forêt, « 49 » haut de 220 pixels sur 470.
+        let h = Math.min(this.u * 9, Math.max(borner(this.u * 4.4, 22, 40), route * (0.63 / n)));
+        let police = Math.floor(h * 0.68);
+        c.font = `900 ${police}px ${police0}`;
         c.textAlign = 'center';
         c.textBaseline = 'middle';
-        const l = Math.max(...g.choix.map((v) => c.measureText(String(v)).width)) + h * 0.9;
+        let l = Math.max(...g.choix.map((v) => c.measureText(v).width)) + h * 0.9;
+        const dispo = (larg - 8 - (n - 1) * 5) / n;
+        if (l > dispo) {
+            const f = dispo / l;
+            police = Math.max(10, Math.floor(police * f));
+            h = Math.max(18, h * Math.max(f, 0.72));
+            l = dispo;
+        }
         // De combien l'arche sait recevoir son panneau : 0, pas du tout ; 1, entièrement.
         const dedans = borner(((demi * 2) / l - 0.95) / 0.5, 0, 1);
-        const ecart = Math.max(PISTE.VOIES[2] * route, l + 6);
+        const pas = Math.max((1.98 / n) * route, l + 5);
         const yLoin = y - hauteur * 1.02 - h * 0.75;
         const yPres = y - hauteur * 0.62;
         const plancher = (this.el.hud.offsetTop + this.el.hud.offsetHeight) + h * 0.62;
         const py = Math.max(plancher, entre(yLoin, yPres, dedans));
-        const xs = [-1, 0, 1].map((s) => cx + s * ecart);
+        const xs = centres.map((_, i) => cx + (i - (n - 1) / 2) * pas);
         // Dans un virage serré, le portique lointain peut frôler le bord : on
         // ramène les panneaux dans l'écran sans changer leur ordre.
         const marge = l / 2 + 4;
-        const glisse = xs[0] < marge ? marge - xs[0] : (xs[2] > larg - marge ? larg - marge - xs[2] : 0);
+        const glisse = xs[0] < marge ? marge - xs[0] : (xs[n - 1] > larg - marge ? larg - marge - xs[n - 1] : 0);
         this.panneaux = xs.map((x) => x + glisse);
 
-        for (let i = 0; i < 3; i++) {
+        // Le panneau visé se peint EN DERNIER : il est un peu plus grand, et
+        // doit passer par-dessus ses voisins plutôt que dessous.
+        const ordre = [...centres.keys()].sort((a, b) => (a === k.joueur.voie) - (b === k.joueur.voie));
+        for (const i of ordre) {
             const x = this.panneaux[i];
             const visee = i === k.joueur.voie;
-            const ax = cx + PISTE.VOIES[i] * route;
+            const barree = g.barre.includes(i);
+            const ax = cx + centres[i] * route;
             // Le fil qui relie le panneau à son arche, tant qu'il flotte.
             if (dedans < 1 && p.clip > y - hauteur) {
-                c.strokeStyle = ARCHES[i].trait;
+                c.strokeStyle = barree ? '#94a3b8' : ARCHES[i].trait;
                 c.globalAlpha = 0.75 * (1 - dedans);
                 c.lineWidth = 2;
                 c.beginPath();
                 c.moveTo(x, py + h * 0.5);
                 c.lineTo(ax, y - hauteur * 0.84);
                 c.stroke();
-                c.globalAlpha = 1;
             }
-            const ll = visee ? l * 1.1 : l, hh = visee ? h * 1.12 : h;
-            c.fillStyle = visee ? '#0b1220' : 'rgba(15, 23, 42, 0.92)';
+            c.globalAlpha = barree ? 0.5 : 1;
+            const ll = visee ? l * 1.06 : l, hh = visee ? h * 1.1 : h;
+            // LE PANNEAU VISÉ SE REMPLIT DE SA COULEUR, cerclé de blanc. La
+            // première version l'écrivait en jaune : sur une piste où l'arche
+            // du milieu est ambre, on ne savait plus si le jaune disait « ma
+            // voie » ou « cette voie-là ». Vu sur la photo de la plage.
+            c.fillStyle = visee && !barree ? ARCHES[i].trait : 'rgba(15, 23, 42, 0.92)';
             rectRond(c, x - ll / 2, py - hh / 2, ll, hh, hh / 2);
             c.fill();
-            c.strokeStyle = visee ? '#fde047' : ARCHES[i].trait;
+            c.strokeStyle = barree ? '#94a3b8' : (visee ? '#ffffff' : ARCHES[i].trait);
             c.lineWidth = Math.max(2, h * (visee ? 0.11 : 0.08));
             c.stroke();
-            c.fillStyle = visee ? '#fde047' : '#ffffff';
-            c.font = `900 ${Math.floor(police * (visee ? 1.1 : 1))}px system-ui, -apple-system, "Segoe UI", sans-serif`;
-            c.fillText(String(g.choix[i]), x, py + hh * 0.04);
+            c.fillStyle = barree ? '#94a3b8' : (visee ? '#0b1220' : '#ffffff');
+            c.font = `900 ${Math.floor(police * (visee ? 1.06 : 1))}px ${police0}`;
+            c.fillText(g.choix[i], x, py + hh * 0.04);
+            if (barree) {
+                // Barré d'un trait : l'indice l'a écarté.
+                c.strokeStyle = '#f43f5e';
+                c.lineWidth = Math.max(2, h * 0.09);
+                c.beginPath();
+                c.moveTo(x - ll * 0.36, py + hh * 0.24); c.lineTo(x + ll * 0.36, py - hh * 0.24);
+                c.stroke();
+            }
+            c.globalAlpha = 1;
         }
     }
 
@@ -1623,13 +1546,14 @@ class MultiKart extends BaseGame {
             if (l >= 8) {
                 this.dessinerKart(c, {
                     x: pos.x, y: pos.y, largeur: l,
-                    braquage: borner((PISTE.VOIES[ref.voie] - ref.x) * 2.4, -1, 1),
+                    braquage: borner((ref.cible - ref.x) * 2.4, -1, 1),
                     pilote: ref, tour: ref.tete > 0 ? (1 - ref.tete / 1.4) * Math.PI * 4 : 0,
                     turbo: ref.elan > 0, etoile: false, bouclier: false, frein: false,
                     fete: false, toux: ref.toux > 0,
-                    saut: Math.sin(t * 20 + ref.rangee * 2) * l * 0.012, nom: true,
+                    saut: ref.gel > 0 ? 0 : Math.sin(t * 20 + ref.rangee * 2) * l * 0.012, nom: true,
                     avance: ref.z
                 });
+                if (ref.gel > 0) this.glacer(c, pos.x, pos.y, l);
             }
         } else if (o.genre === 'boite') {
             const r = pos.s * 210 * this.ech;
@@ -1688,6 +1612,21 @@ class MultiKart extends BaseGame {
             }
         }
         c.restore();
+    }
+
+    /** Un bloc de glace autour d'un kart : le bonus « glaçon ». */
+    glacer(c, x, y, l) {
+        const h = l * 1.05;
+        c.fillStyle = 'rgba(186, 230, 253, 0.55)';
+        rectRond(c, x - l * 0.62, y - h, l * 1.24, h * 1.02, l * 0.1);
+        c.fill();
+        c.strokeStyle = 'rgba(240, 249, 255, 0.95)';
+        c.lineWidth = Math.max(1.5, l * 0.03);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(x - l * 0.46, y - h * 0.86); c.lineTo(x - l * 0.2, y - h * 0.6);
+        c.moveTo(x - l * 0.3, y - h * 0.9); c.lineTo(x - l * 0.18, y - h * 0.78);
+        c.stroke();
     }
 
     /** Un kart fait la moitié d'une voie ; un peu plus sur un écran étroit, où tout est petit. */
@@ -2004,6 +1943,17 @@ class MultiKart extends BaseGame {
 
     dessinerEffets(c, larg, haut) {
         const k = this.course, t = this.temps;
+        // CE QUI TOMBE, VOLE OU MONTE devant la piste : neige, feuilles,
+        // braises. Plus on roule vite, plus cela file vers nous.
+        peindreMeteo(c, {
+            larg, haut, horizon: this.horizon, cap: this.cap, t, m: this.echelle(haut),
+            theme: this.theme, allant: borner(k.joueur.vitesse / k.allure.turbo, 0, 1)
+        });
+        // SOUS LE SABLIER, le monde bleuit : on voit qu'on a du temps.
+        if (k.sablier > 0 && k.etat === 'course') {
+            c.fillStyle = `rgba(56, 189, 248, ${0.13 * Math.min(1, k.sablier)})`;
+            c.fillRect(0, 0, larg, haut);
+        }
         for (const g of this.gerbes) {
             c.globalAlpha = Math.max(0, 1 - g.vie / g.max);
             c.fillStyle = g.couleur;
@@ -2076,16 +2026,18 @@ class MultiKart extends BaseGame {
         };
 
         if (!await robot.pause(400)) return fin();
-        cur.say('Le calcul est écrit en haut. Trois résultats arrivent : un par voie.', this.el.question);
+        cur.say(k.portiques[0].sens === 'calcul'
+            ? 'Le résultat est écrit en haut. Des calculs arrivent : un par voie.'
+            : 'Le calcul est écrit en haut. Des résultats arrivent : un par voie.', this.el.question);
         if (!await jusqua(0, 0.45)) return fin();
         let p = k.portiques[0];
-        cur.say(`${p.texte} = ${p.juste} : je touche ce résultat, et mon kart y va.`, this.wrap);
+        cur.say(`${p.egalite} : je touche « ${p.juste} », et mon kart y va.`, this.wrap);
         k.viser(p.voieJuste);
         if (!await passer(0)) return fin();
 
         if (!await jusqua(1, 0.4)) return fin();
         p = k.portiques[1];
-        const faux = [0, 1, 2].find((v) => v !== p.voieJuste);
+        const faux = [...Array(p.voies).keys()].find((v) => v !== p.voieJuste);
         cur.say('Si je me trompe de voie…', this.wrap);
         k.viser(faux);
         if (!await passer(1)) return fin();
