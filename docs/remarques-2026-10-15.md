@@ -8552,3 +8552,41 @@ troisième fois que ce fichier paie la même faute.
 fait rien reste à 11. Les treize vitesses de nuit ont été réaccordées sur les
 nouvelles allures : ce n'est pas la vitesse de la nuit qui mesure la
 difficulté, c'est son rapport à ce que le bon joueur atteint.
+
+### 16. « je préfère ce tiny wings » — 22 novembre
+
+Rémy m'envoie un jeu complet, écrit ailleurs, en un seul fichier de 138 ko, et
+quand je lui demande jusqu'où le reprendre : « Tu refais tout le jeu à partir
+de ce que j'ai donné. Avant la fin d'un monde je veux juste une plus longue
+descente et un tremplin qui permet de faire un super long saut. Ne mets pas le
+son. »
+
+**J'AVAIS MAL LU SES CAPTURES DU 20 NOVEMBRE.** J'y avais vu des bandes qui
+traversent la colline en diagonale, et j'en avais posé. Elles ne la traversent
+pas : elles la SUIVENT. Chaque strate est une copie de la silhouette décalée
+vers le bas, du jaune pâle sous l'herbe au brun en profondeur. Son fichier le
+montrait en dix lignes.
+
+**CE QUI EST REPRIS** : le relief échantillonné, fait de points de contrôle et
+de cinq profils de collines ; les îles séparées par la mer ; les strates, le
+gazon épais, le soleil qui traverse le ciel, les montagnes, la mer en trois
+couches, les arbres, les fleurs, les panneaux de distance ; la catapulte de fin
+d'île et le ricochet sur l'eau ; le jour qui passe au lieu d'une nuit qui court.
+
+**CE QUI NE L'EST PAS, ET POURQUOI** : le son (il l'a écrit) ; les polices de
+Google (la politique de sécurité du site les refuse, et une tablette hors ligne
+afficherait une police de secours) ; et les quarante `Math.random()`, remplacés
+par la graine — un paysage qu'on ne peut pas refaire ne se mesure pas.
+
+**SA DEMANDE, MESURÉE** (`node tools/sautDesAiles.mjs`) : la descente de fin
+d'île passe de 1 160 à 1 900 pixels ; le saut porte à 2 840 pixels en moyenne
+pour qui a plongé, et retombe à sec 23 fois sur 23. Celui qui se laisse rouler
+part quand même — personne ne rate le plus beau moment du jeu — mais ne porte
+qu'à 2 210 et finit trois fois sur quatre dans l'eau. La mer fait 2 130.
+
+**ET LA RÈGLE QUI COMPTE TIENT TOUJOURS** (`node tools/equilibreDesAiles.mjs`) :
+le bon geste tient 153 secondes et neuf îles ; ne rien faire, 61 secondes ;
+appuyer sans arrêt, 68. « Je ne peux pas perdre même si je ne fais rien » était
+revenu par une porte neuve — la catapulte a une vitesse plancher, et à 1 420 le
+joueur immobile franchissait toutes les mers à sec et tenait 140 secondes. À
+1 150, son saut tombe à l'eau.

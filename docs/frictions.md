@@ -8300,3 +8300,56 @@ deux** — 19 novembre
   rappel : **un dessin se relit sur l'image, jamais dans le code.** Les trois
   corrections de cet habillage (bandes trop larges, liseré trop épais, buissons
   noués) sont toutes venues de la photo, aucune d'un test.
+
+---
+
+**Une garde qui mesure le MEILLEUR cas ne voit pas les cas cassés** — 22 novembre
+
+- *Ce que je voulais faire* : garder « le saut de fin d'île est un super long
+  saut ».
+- *Ce qui a coûté* : deux gardes écrites, deux fois « CETTE ÉPREUVE NE GARDE
+  RIEN » de `epreuveTombe`. La première mesurait le PLUS LONG saut d'une
+  partie : un seul bon saut verdissait l'épreuve, et les sauts de 17 pixels —
+  une catapulte sur quatre — passaient dessous. La seconde jouait des parties
+  entières, et le défaut ne sort qu'aux arrivées LENTES, c'est-à-dire jamais
+  quand on joue bien.
+- *Combien de fois* : || (même famille que « peut parfois marcher » lu comme
+  « marche toujours »)
+- *Ce qui manque* : la règle — **on garde le cas limite, pas la moyenne ni le
+  maximum.** Et une surprise de plus : le défaut, remis seul, ne se reproduisait
+  plus, parce qu'une AUTRE correction (le tremplin allongé de 280 à 460 pour
+  une raison de dessin) l'avait rendu inoffensif. `epreuveTombe --depuis` avec
+  les deux paires ensemble l'a fait retomber. « Ce défaut existe-t-il ? » a
+  parfois pour réponse « plus tout seul ».
+
+---
+
+**Chronométrer un canevas ne mesure pas ce qu'il peint** — 22 novembre
+
+- *Ce que je voulais faire* : dire ce que coûte une image du jeu refait.
+- *Ce qui a coûté* : deux mesures fausses à un facteur cent dans les deux sens.
+  `performance.now()` autour de `dessiner()` : 0,15 ms — le temps d'ENREGISTRER
+  les ordres, que le canevas exécute plus tard. Avec un `getImageData` pour
+  forcer la peinture : 15 ms — le coût d'une synchronisation que le jeu ne fait
+  jamais.
+- *Combien de fois* : |
+- *Ce qui manque* : rien — l'outil existe maintenant, `tools/imagesDesAiles.mjs`,
+  qui compte les images réellement peintes en quatre secondes. La règle : **pour
+  mesurer un dessin, on compte les images, on ne chronomètre pas les appels.**
+
+---
+
+**Une épreuve qui mesure une couleur qui n'est pas à l'écran** — 22 novembre
+
+- *Ce que je voulais faire* : garder « chaque île se détache de son ciel ».
+- *Ce qui a coûté* : une demi-heure à réaccorder treize palettes pour une garde
+  qui mesurait `theme.ciel` — alors que le dessin n'utilisait PAS ce ciel : il
+  ne suivait que l'heure, et les treize îles avaient le même ciel de midi. Vu
+  seulement sur la photo du pays kawaï. Et la garde exigeait d'abord que la
+  terre se détache du ciel, ce que le modèle de Rémy ne fait pas : chez Tiny
+  Wings, c'est le TRAIT D'HERBE qui sépare les deux.
+- *Combien de fois* : ||| (c'est « une mesure qui n'emprunte pas le chemin de
+  l'utilisateur », une fois de plus, et sur des couleurs cette fois)
+- *Ce qui manque* : `s.contrasteRendu` existe et mesure sur les PIXELS — il
+  fallait s'en servir dès la première garde de couleur d'un jeu neuf, et pas
+  seulement pour le HUD à la fin.

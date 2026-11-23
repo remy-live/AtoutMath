@@ -3627,6 +3627,19 @@ export const calculExercises = [
         id: 'jeu-petites-ailes',
         revisions: [
             {
+                date: '2026-11-22',
+                quoi: 'LE JEU EST REFAIT — Rémy, en envoyant un Tiny Wings complet écrit '
+                    + 'ailleurs : « je préfère ce tiny wings […] Tu refais tout le jeu à '
+                    + 'partir de ce que j’ai donné. Avant la fin d’un monde je veux juste '
+                    + 'une plus longue descente et un tremplin qui permet de faire un '
+                    + 'super long saut. Ne mets pas le son. » Les mondes deviennent des '
+                    + 'ÎLES séparées par la mer, le relief est peint en strates parallèles '
+                    + 'à la colline, et la nuit ne court plus derrière l’oiseau : le jour '
+                    + 'PASSE, et chaque mer franchie sans toucher l’eau en rend. Mesuré : '
+                    + 'le bon geste tient 174 s contre 55 à celui qui ne fait rien, et son '
+                    + 'saut de fin d’île porte à 3 000 pixels contre 2 100.'
+            },
+            {
                 date: '2026-11-17',
                 quoi: 'SEPT MONDES DE PLUS — Rémy : « rajoute des mondes kawai, '
                     + 'fantaisiste et 5 de ton choix ». Le pays kawaï, le royaume '
@@ -3654,7 +3667,7 @@ export const calculExercises = [
             chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.ADRESSE],
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: "UNE SEULE TOUCHE, et il n'y a rien à calculer : c'est un jeu d'adresse. Appuie — clic, doigt ou barre d'ESPACE — pour PLONGER, relâche pour planer. Appuie dans la DESCENTE : tu prends de la vitesse, et la jauge du bas te le montre. Relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante. C'est là que la vitesse se fabrique, nulle part ailleurs — rester collé au sol te fait payer chaque montée. Et il faut aller vite, parce que LA NUIT COURT DERRIÈRE TOI : si elle te rattrape, la partie s'arrête. Les étoiles la repoussent un peu ; franchir une frontière de monde la repousse beaucoup. Il y a TREIZE mondes, et le but est toujours d'aller voir le suivant. Les six premiers montent : chacun plus haut, plus serré et plus pressé que le précédent. Les sept autres ne durcissent plus — ils CHANGENT : le pays kawaï et ses collines roses, le royaume fantaisiste, la banquise sous son aurore, les terres de braise, la canopée, le désert de sel au couchant, et tout en haut la mer de nuages. Chacun a son relief et sa palette, et la nuit y serre autant qu'au sixième — pas davantage, parce qu'au-delà le jeu deviendrait injouable."
+        instruction: "UNE SEULE TOUCHE, et il n'y a rien à calculer : c'est un jeu d'adresse. Appuie — clic, doigt ou barre d'ESPACE — pour PLONGER, relâche pour planer. Appuie dans la DESCENTE : c'est là, et nulle part ailleurs, que la vitesse se fabrique. Relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante — rester collé au sol te fait payer chaque montée. Au bout de chaque ÎLE t'attendent un très haut sommet, une immense descente et un tremplin : plonge dans la descente, et le tremplin t'envoie par-dessus la mer d'un seul vol. Traverser sans toucher l'eau te rend beaucoup de jour ; ricocher sur les vagues t'en rend deux fois moins. Et il faut se dépêcher, parce que LE SOLEIL DESCEND : regarde-le traverser le ciel, et la barre en haut de l'écran. Quand LA NUIT tombe, l'oiseau se pose et la partie s'arrête. Il y a TREIZE îles, chacune avec son relief et ses couleurs : les dunes, les collines, les crêtes, la montagne, le grand large, le pays de nuit, le pays kawaï, le royaume fantaisiste, la banquise, les terres de braise, la canopée, le désert de sel au couchant, et tout en haut la mer de nuages. Les graines dorées se ramassent au fond des creux ; les éclats de soleil, eux, ne s'attrapent qu'en volant."
     },
     {
         // ── LE PLATEAU DES NOMBRES, DANS LE CATALOGUE ─────────────────────
