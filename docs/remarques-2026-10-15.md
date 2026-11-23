@@ -8590,3 +8590,14 @@ appuyer sans arrêt, 68. « Je ne peux pas perdre même si je ne fais rien » é
 revenu par une porte neuve — la catapulte a une vitesse plancher, et à 1 420 le
 joueur immobile franchissait toutes les mers à sec et tenait 140 secondes. À
 1 150, son saut tombe à l'eau.
+
+### 17. « les bonus devraient être dans la courbure » — 23 novembre
+
+Capture à l'appui, sur les crêtes : « génial mais les bonus devraient être dans
+la courbure, c'est beaucoup mieux, ce serait cool que entre les mondes le vol
+plané soit encore plus long ».
+
+**SUR SA CAPTURE, LES GRAINES FONT UNE ARCHE AU-DESSUS DU CREUX** — un arc
+tourné vers le haut, posé à 80 à 145 pixels du sol, c'est-à-dire l'inverse de
+la courbe que l'oiseau suit. On ne les enfile qu'en sautant, et pas en glissant
+dans le creux, qui est justement le geste qu'elles devaient apprendre.

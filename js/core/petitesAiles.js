@@ -273,8 +273,35 @@ export const GRAVITE_PLONGEE = 2700;
 export const VITESSE_MIN = 220;
 export const VITESSE_MAX = 1380;
 
-/** Au-dessus de la mer, l'oiseau plane : c'est ce qui fait le long vol. */
-export const GLISSE_MARINE = 0.62;
+/**
+ * AU-DESSUS DE LA MER, L'OISEAU PLANE : c'est ce qui fait le long vol.
+ *
+ * RÉMY, 23 novembre : « ce serait cool que entre les mondes le vol plané soit
+ * encore plus long ».
+ *
+ * ── LA PORTANCE SEULE NE L'ALLONGEAIT PAS, ET C'EST MESURÉ ─────────────
+ *
+ * Premier essai : baisser ce facteur de 0,62 à 0,28, et rien d'autre. Le vol
+ * passait de 2,15 à 2,37 secondes — dix pour cent pour une pesanteur divisée
+ * par deux. La raison se lit sur la trace : l'oiseau n'était pas retombé par
+ * la pesanteur, il ATTERRISSAIT déjà sur l'île d'en face. On ne plane pas plus
+ * longtemps au-dessus d'une mer qu'on a déjà traversée.
+ *
+ * LA PORTANCE ET LA LARGEUR DE LA MER VONT DONC ENSEMBLE, et elles ont été
+ * balayées ensemble (`node tools/sautDesAiles.mjs`) :
+ *
+ *     portance   mer      vol du bon geste        à sec
+ *       0,62    2 130    2 840 px · 2,15 s        24 / 24   (avant)
+ *       0,40    2 790    3 210 px · 2,37 s        21 / 21
+ *       0,32    3 190    3 580 px · 2,65 s        21 / 21
+ *       0,26    3 590    3 970 px · 2,93 s        20 / 20
+ *       0,22    3 890    4 270 px · 3,13 s        18 / 18   ← retenu
+ *
+ * Un vol cinquante pour cent plus long, qui retombe toujours à sec avec trois
+ * cents pixels de marge — et celui qui s'est laissé rouler finit dans l'eau à
+ * chaque fois, si bien que la traversée se mérite toujours.
+ */
+export const GLISSE_MARINE = 0.22;
 
 /** Le frottement de l'air, sur terre et au-dessus de l'eau. */
 export const FROTTEMENT_AIR = 0.030;
@@ -516,15 +543,17 @@ export class Relief {
             // ── LA LARGEUR DU DÉTROIT, ET ELLE EST MESURÉE ────────────
             //
             // C'est elle qui sépare les deux joueurs, et rien d'autre. MESURÉ
-            // (`node tools/sautDesAiles.mjs`) : celui qui a plongé porte à
-            // 2 780 pixels, celui qui s'est laissé rouler à 1 910. Le détroit
-            // se pose entre les deux — 2 050 au premier, un peu plus à chaque
-            // île — et le même geste décide alors de retomber à sec ou de
-            // ricocher.
+            // (`node tools/sautDesAiles.mjs`) : avec la portance de 0,22,
+            // celui qui a plongé porte à 4 270 pixels, celui qui s'est laissé
+            // rouler à 4 030 en comptant ses ricochets — il touche l'eau trois
+            // fois sur trois. Le détroit se pose entre les deux, 3 890 au
+            // premier et un peu plus à chaque île.
             //
             // À 1 810, les deux passaient à sec et la largeur ne mesurait plus
-            // rien : « ne rien faire » tenait 140 secondes.
-            ctrl.push({ dx: 840 + Math.min(260, idx * 32), y: FOND_MARIN });
+            // rien : « ne rien faire » tenait 140 secondes. ELLE A ENSUITE
+            // GRANDI AVEC LA PORTANCE, le 23 novembre — voir `GLISSE_MARINE` :
+            // une mer étroite arrêtait le vol plané avant la fin.
+            ctrl.push({ dx: 2600 + Math.min(260, idx * 32), y: FOND_MARIN });
 
             // On déplie les `dx` en abscisses absolues et l'on note les repères.
             const repere = {};
@@ -661,15 +690,42 @@ export class Relief {
             const s = this.echantillon(x, false);
             const g = this.echantillon(x - 120, false), d = this.echantillon(x + 120, false);
             if (s.y > g.y && s.y > d.y && !s.ocean) {
-                // UN CREUX : six graines en arc, qu'on enfile en allant vite.
-                for (let i = 0; i < 6; i++) {
-                    const sx = x + (i - 2.5) * 46;
-                    const sol = this.echantillon(sx, false).y;
-                    const lever = 80 + (1 - Math.pow((i - 2.5) / 2.6, 2)) * 65;
-                    this.bonus.push({ type: 'graine', x: sx, y: sol - lever,
+                // ── UN CREUX : NEUF GRAINES QUI ÉPOUSENT LA COURBE ────────────
+                //
+                // RÉMY, 23 novembre, capture à l'appui : « les bonus devraient
+                // être dans la courbure, c'est beaucoup mieux ».
+                //
+                // ELLES FAISAIENT UNE ARCHE AU-DESSUS DU CREUX : un arc tourné
+                // vers le haut, à 80 à 145 pixels du sol — l'inverse exact de la
+                // courbe que suit l'oiseau. On ne les enfilait qu'en SAUTANT
+                // par-dessus le creux, et pas en glissant dedans, qui est
+                // précisément le geste qu'elles devaient apprendre : plonger dans
+                // la descente et traverser le fond vite.
+                //
+                // ELLES SUIVENT DONC LE SOL, à trente-quatre pixels au-dessus de
+                // lui : le rayon de l'oiseau, celui de la graine, et un rien de
+                // marge. Celui qui glisse dans le creux les ramasse toutes, et
+                // celui qui a décollé trop tôt les survole — c'est la leçon,
+                // dite sans un mot.
+                //
+                // ET ON LES CENTRE SUR LE VRAI FOND. Le pas de recherche est de
+                // 110 pixels : il tombe près du creux, rarement dedans. On
+                // cherche donc le point le plus bas à ±120 avant de semer, sans
+                // quoi la rangée glisse sur un flanc et la symétrie qui fait
+                // « une courbe » se perd.
+                let fond = x, bas = s.y;
+                for (let cx = x - 120; cx <= x + 120; cx += 8) {
+                    const y = this.echantillon(cx, false).y;
+                    if (y > bas) { bas = y; fond = cx; }
+                }
+                for (let i = 0; i < GRAINES_PAR_CREUX; i++) {
+                    const sx = fond + (i - (GRAINES_PAR_CREUX - 1) / 2) * ECART_GRAINES;
+                    const sol = this.echantillon(sx, false);
+                    if (sol.ocean) continue;
+                    this.bonus.push({ type: 'graine', x: sx, y: sol.y - HAUTEUR_GRAINE,
                         pris: false, phase: i * 0.45 });
                 }
-                x += 560;
+                x = fond + 560;
                 continue;
             }
             if (s.y < g.y && s.y < d.y && s.y < 265 && r.next() < 0.5) {
@@ -681,8 +737,27 @@ export class Relief {
             }
             x += 110;
         }
+
+        // ── PAS D'ARBRE AU MILIEU D'UNE RANGÉE DE GRAINES ────────────────
+        //
+        // Vu sur la photo d'un creux : un sapin poussait entre la quatrième
+        // et la cinquième graine, et la courbe qu'elles dessinent se lisait
+        // en deux morceaux. Les décors sont semés AVANT les graines — il faut
+        // savoir où sont les creux pour y poser les graines, et les décors
+        // n'en ont pas besoin —, donc c'est après coup qu'on dégage le chemin.
+        // Les fleurs restent : elles sont basses et ne coupent rien.
+        const ici = this.bonus.filter((b) => b.type === 'graine'
+            && b.x >= depuis && b.x <= ile.sommetX);
+        this.decors = this.decors.filter((d) => d.type !== 'arbre'
+            || d.x < depuis || d.x > ile.sommetX
+            || !ici.some((b) => Math.abs(b.x - d.x) < 40));
     }
 }
+
+/** Les graines d'un creux, leur écart, et leur hauteur au-dessus du sol. */
+export const GRAINES_PAR_CREUX = 9;
+export const ECART_GRAINES = 52;
+export const HAUTEUR_GRAINE = 34;
 
 /* ─────────────────────────────────────────────────────────────────────────
  * 8. L'OISEAU

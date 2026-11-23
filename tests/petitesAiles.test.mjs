@@ -38,7 +38,7 @@ import {
     MEGA_DESCENTE, HAUTEUR_SOMMET, BAS_DE_DESCENTE, LONGUEUR_TREMPLIN,
     HAUT_DU_TREMPLIN, VITESSE_CATAPULTE, JOUR_DEPART, VITESSE_NUIT,
     avancerNuit, nuitTombee, luminance, contrasteCouleurs, quitteLeSol,
-    melerCouleur, borner, entre
+    melerCouleur, borner, entre, GRAINES_PAR_CREUX, ECART_GRAINES, HAUTEUR_GRAINE
 } from '../js/core/petitesAiles.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { SKILLS } from '../js/data/skills.js';
@@ -247,6 +247,47 @@ test('UNE MÊME GRAINE REFAIT LE MÊME PAYSAGE', () => {
     assert.ok(ecart > 8, `deux graines donnent le même relief (écart moyen ${ecart.toFixed(1)})`);
 });
 
+test('LES GRAINES ÉPOUSENT LA COURBE DU CREUX', () => {
+    // ── RÉMY, 23 NOVEMBRE ────────────────────────────────────────────────
+    //
+    // « les bonus devraient être dans la courbure, c'est beaucoup mieux ». Sur
+    // sa capture, elles faisaient une ARCHE au-dessus du creux — un arc tourné
+    // vers le haut, à 80 à 145 pixels du sol, l'inverse de la courbe que suit
+    // l'oiseau. On ne les enfilait qu'en sautant par-dessus.
+    //
+    // DEUX CHOSES À TENIR. Chaque graine est à la MÊME hauteur au-dessus du
+    // sol — c'est ce qui fait qu'elles dessinent la courbe ; et cette hauteur
+    // est à portée de l'oiseau qui GLISSE, sans quoi on les survolerait toutes.
+    const r = new Relief('courbure');
+    r.assurerJusqua(40000);
+    const graines = r.bonus.filter((b) => b.type === 'graine');
+    assert.ok(graines.length > 120, `${graines.length} graines seulement`);
+    for (const b of graines) {
+        const ecart = r.echantillon(b.x).y - b.y;
+        assert.ok(Math.abs(ecart - HAUTEUR_GRAINE) < 1.5,
+            `une graine est à ${Math.round(ecart)} px du sol en x = ${Math.round(b.x)} : `
+            + 'elle ne suit plus la courbe');
+    }
+    // ET L'OISEAU QUI GLISSE LES RAMASSE. Son centre est à vingt pixels du
+    // sol ; la prise tolère quarante-huit pixels d'écart vertical.
+    assert.ok(Math.abs(HAUTEUR_GRAINE - 20) < 48,
+        'les graines sont hors de portée de l’oiseau qui glisse');
+    // ET ELLES SONT CENTRÉES SUR LE FOND DU CREUX : la graine du milieu d'une
+    // rangée est au point le plus bas, sinon la rangée glisse sur un flanc et
+    // ne dessine plus une courbe.
+    let centrees = 0, rangees = 0;
+    for (let i = 0; i + GRAINES_PAR_CREUX <= graines.length; i += GRAINES_PAR_CREUX) {
+        const rang = graines.slice(i, i + GRAINES_PAR_CREUX);
+        if (rang[rang.length - 1].x - rang[0].x > GRAINES_PAR_CREUX * ECART_GRAINES) continue;
+        rangees++;
+        const milieu = rang[(GRAINES_PAR_CREUX - 1) / 2];
+        const plusBas = Math.max(...rang.map((b) => r.echantillon(b.x).y));
+        if (r.echantillon(milieu.x).y >= plusBas - 12) centrees++;
+    }
+    assert.ok(rangees > 10 && centrees >= rangees * 0.8,
+        `${centrees} rangées centrées sur ${rangees}`);
+});
+
 test('AUCUNE GRAINE NE SE POSE DANS LA MER — on n’appâte pas vers l’eau', () => {
     // VU SUR UNE PHOTO DE L'ANCIENNE VERSION : une étoile flottait SOUS L'EAU,
     // à côté de l'oiseau noyé. Une récompense est la seule chose du jeu qui
@@ -343,12 +384,29 @@ test('LE SAUT DE FIN D’ÎLE EST UN SUPER LONG SAUT, ET IL SE MÉRITE', () => {
     // arrive lent et finit dans l'eau. C'est la même mesure qui le dit.
     for (const g of ['a', 'b']) {
         const bon = jouer(BON_GESTE, g), rien = jouer(RIEN, g);
-        assert.ok(bon.plusLongSaut > 2400,
+        // RELEVÉ DE 2 400 À 3 600 LE 23 NOVEMBRE. Rémy : « ce serait cool que
+        // entre les mondes le vol plané soit encore plus long ». Mesuré avant :
+        // 2 840 pixels. Une borne restée à 2 400 aurait laissé revenir l'ancien
+        // vol sans que rien ne bronche.
+        assert.ok(bon.plusLongSaut > 3600,
             `paysage ${g} : le plus long saut ne porte qu'à `
             + `${Math.round(bon.plusLongSaut)} px — ce n'est pas « super long »`);
-        assert.ok(bon.plusLongSaut > rien.plusLongSaut * 1.25,
-            `paysage ${g} : celui qui ne fait rien saute aussi loin `
-            + `(${Math.round(rien.plusLongSaut)} contre ${Math.round(bon.plusLongSaut)})`);
+        // ── CE QUI SÉPARE LES DEUX JOUEURS, C'EST L'EAU ─────────────────
+        //
+        // PREMIER JET : comparer les distances de vol. Depuis que la mer s'est
+        // élargie, celui qui ne fait rien traverse aussi — en RICOCHANT, et
+        // le ricochet prolonge son vol. La mesure le donnait à 4 030 contre
+        // 4 350 et la garde tombait sur un jeu sain.
+        //
+        // La règle du jeu n'est pas « aller plus loin », c'est « retomber à
+        // sec » : c'est ce qui rend le jour, et c'est ce que le bon geste
+        // achète. On mesure donc les traversées parfaites.
+        assert.ok(bon.ile >= 3 && bon.parfaites >= bon.ile * 0.8,
+            `paysage ${g} : le bon geste ne traverse à sec que `
+            + `${bon.parfaites} mer(s) sur ${bon.ile}`);
+        assert.ok(rien.parfaites <= Math.max(0, rien.ile) * 0.5,
+            `paysage ${g} : celui qui ne fait rien traverse à sec `
+            + `${rien.parfaites} mer(s) sur ${rien.ile} — la traversée ne se mérite plus`);
         // ── ET CHAQUE CATAPULTE, PAS SEULEMENT LA MEILLEURE ─────────────
         //
         // LE DÉFAUT QUE CETTE LIGNE EXISTE POUR ATTRAPER, et la première

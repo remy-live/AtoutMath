@@ -3627,6 +3627,16 @@ export const calculExercises = [
         id: 'jeu-petites-ailes',
         revisions: [
             {
+                date: '2026-11-23',
+                quoi: 'LES GRAINES DANS LA COURBE, LE VOL PLANÉ PLUS LONG — Rémy : « les '
+                    + 'bonus devraient être dans la courbure […] ce serait cool que entre '
+                    + 'les mondes le vol plané soit encore plus long ». Les graines suivent '
+                    + 'le fond du creux à 34 pixels du sol au lieu d’y faire une arche : '
+                    + 'on les ramasse en glissant, plus en sautant. Le vol plané passe de '
+                    + '2,15 à 3,1 secondes et de 2 840 à 4 270 pixels ; la mer s’élargit '
+                    + 'avec, pour que la traversée se mérite toujours.'
+            },
+            {
                 date: '2026-11-22',
                 quoi: 'LE JEU EST REFAIT — Rémy, en envoyant un Tiny Wings complet écrit '
                     + 'ailleurs : « je préfère ce tiny wings […] Tu refais tout le jeu à '
