@@ -1522,6 +1522,56 @@ export const calculExercises = [
         instruction: "Dirige le véhicule vers la bonne réponse pour continuer la course !"
     },
     {
+        // ── MULTIKART ─────────────────────────────────────────────────────
+        //
+        // RÉMY, 23 novembre, en collant un jeu complet écrit ailleurs : « voilà
+        // un jeu canon, tu me l'améliores, le rends encore plus beau, plus
+        // cohérent, ne mets pas le son ». Puis : « il faut que tout passe dans
+        // la fenêtre et que ce soit compatible téléphone portable ».
+        //
+        // IL NE REMPLACE PAS LA « COURSE MATHÉMATIQUE » : celle-ci se joue vue
+        // de dessus, sur six types de calcul, avec des vies. MultiKart est une
+        // course contre trois rivaux QUI CALCULENT EUX AUSSI, sur les tables
+        // seulement, et elle a une ligne d'arrivée.
+        id: 'calc-multikart', title: 'MultiKart',
+        cree: '2026-11-23',
+        activityId: 'multikart', skills: ['num.mult.table.*'],
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], allure: 'tranquille', circuit: 'prairie' },
+        paramSchema: [
+            { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            {
+                // LE NOM DIT LE TEMPS QU'ON A. Le jeu reçu parlait de « 50cc,
+                // 100cc, 150cc » : cela ne dit rien à qui ne connaît pas le
+                // jeu d'où ces mots viennent, et ce n'est pas la vitesse du
+                // kart que ce réglage commande — c'est le temps de calcul.
+                id: 'allure', type: 'select', label: 'Allure de la course', default: 'tranquille',
+                aide: 'C\'est le temps qu\'on a pour calculer entre deux portiques. Les rivaux roulent à la même allure : aller plus vite ne rend pas la course plus facile à gagner, seulement plus pressée.',
+                options: [
+                    { value: 'ralenti', label: 'Ralentie — 8 secondes par calcul' },
+                    { value: 'tranquille', label: 'Tranquille — 6 secondes par calcul' },
+                    { value: 'normale', label: 'Normale — 4 secondes et demie' },
+                    { value: 'rapide', label: 'Rapide — moins de 4 secondes' }
+                ]
+            },
+            {
+                id: 'circuit', type: 'select', label: 'Circuit', default: 'prairie',
+                aide: 'L\'élève peut en changer sur l\'écran de départ : c\'est une couleur de ciel, pas un niveau.',
+                options: [
+                    { value: 'prairie', label: 'Prairie ensoleillée' },
+                    { value: 'canyon', label: 'Canyon au crépuscule' },
+                    { value: 'neon', label: 'Nuit néon' }
+                ]
+            }
+        ],
+        motsClefs: ['multikart', 'kart', 'course', 'tables', 'multiplication', 'portique',
+            'voiture', 'circuit', 'rivaux', 'podium', 'calcul mental'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Une course de karts, et un calcul à chaque portique. Le calcul est écrit en haut de l'écran ; trois résultats arrivent, un par voie. PLACE TON KART DANS LA VOIE DU BON RÉSULTAT avant de passer dessous : TOUCHE le résultat, ou sers-toi des flèches ← → du clavier (les touches 1, 2, 3 choisissent aussi la voie). Juste, ton kart accélère ; faux, il tousse une seconde, l'arche du bon résultat s'allume en vert et la correction s'écrit sous le calcul. Pas sûr de toi ? Tiens le FREIN — le bouton en bas à gauche, ou la flèche ↓ : tu ralentis, et tu as le temps de finir ton calcul. Mieux vaut arriver deuxième avec le bon résultat. TROIS bons résultats d'affilée te donnent un BONUS, à lancer avec le bouton en bas à droite ou la barre d'ESPACE ; les boules marquées « ? » sur la piste en donnent aussi. Léo, Mia et Sacha font la même course que toi, mais CHACUN A SON PROPRE CALCUL : la voie qu'ils prennent ne te dit rien de la tienne, inutile de les suivre. Léo se trompe rarement, Sacha souvent. À l'arrivée, le podium — et la liste des calculs à revoir, avec une course pour les réviser."
+    },
+    {
         id: 'calc-tetris', title: 'Math Tetris',
         cree: '2026-07-26',
         activityId: 'tetris', skills: ['num.mult.table.*'],

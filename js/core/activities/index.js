@@ -1188,6 +1188,12 @@ const legacy = [
     ['memory', 'Memory', 'math_memory', 'engineMathMemory', 'paire', 12],
     ['labyrinthe', 'Labyrinthe', 'labyrinthe', 'engineLabyrinthe'],
     ['course', 'Course', 'course', 'engineCourse'],
+    // MULTIKART SE COMPTE EN PORTIQUES. Chaque portique est une question,
+    // tranchée au passage — on ne repasse pas dessous —, et la course en a
+    // exactement autant que l'étape en annonce : « 10 portiques » en haut de
+    // l'écran, dix portiques sur la piste, une note sur dix. Compter « une
+    // partie » aurait rendu 20 à qui finit la course en se trompant partout.
+    ['multikart', 'MultiKart', 'multiKart', 'engineMultiKart', 'portique', 10],
     ['tetris', 'Math Tetris', 'tetris', 'engineTetris'],
     ['crush', 'Math Crush', 'math_crush', 'engineMathCrush'],
     ['vault', 'Le Coffre-Fort', 'vault', 'engineVault'],

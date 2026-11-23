@@ -8353,3 +8353,17 @@ deux** — 19 novembre
 - *Ce qui manque* : `s.contrasteRendu` existe et mesure sur les PIXELS — il
   fallait s'en servir dès la première garde de couleur d'un jeu neuf, et pas
   seulement pour le HUD à la fin.
+
+**Un fichier COLLÉ dans le message n'est pas sur le disque** — 23 novembre
+
+- *Ce que je voulais faire* — reprendre le rendu de MultiKart, que Rémy a collé
+  en entier dans son message (4 046 lignes), après que le fil a été résumé.
+- *Ce qui a coûté* — une dizaine de minutes : le résumé ne garde pas le fichier,
+  et il a fallu écrire un script Python qui fouille le journal de la
+  conversation pour retrouver le plus long message contenant deux mots du
+  fichier, puis le recopier dans `tools/tmp/recu/`. Un fichier DÉPOSÉ, lui, est
+  dans le dossier des dépôts ; un fichier collé n'est nulle part.
+- *Combien de fois* — | (première fois ; mais Rémy colle volontiers).
+- *Ce qui manque* — écrire le fichier collé dans `tools/tmp/recu/` DÈS sa
+  réception, avant toute autre lecture : un `node tools/recuDuFil.mjs <mot>`
+  qui le ressort du journal ferait l'affaire après coup.

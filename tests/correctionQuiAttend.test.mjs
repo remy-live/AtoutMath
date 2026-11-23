@@ -88,9 +88,13 @@ test('SEULS LES JEUX QUI AVANCENT TOUT SEULS GARDENT LA CARTE FUGACE', () => {
     // ronds de se déplacer librement plutôt que de sauter de case en case —,
     // donc rien ne s'arrête pendant qu'on lit. C'est exactement le critère de
     // cette liste.
+    // « multiKart » s'ajoute le 23 novembre : la course ne s'arrête pas pendant
+    // qu'on lit — une carte qui attendrait un clic laisserait filer deux
+    // portiques derrière elle. La correction est écrite sous le calcul, dans
+    // le jeu, le temps de la lire.
     const attendus = ['boulderDash', 'bumpy', 'canon', 'course', 'demineur',
         'diviseurs', 'duel', 'escadrille', 'galactic', 'jeuxDeClasse', 'jezzball',
-        'ninja', 'nova', 'pousseur', 'serpent', 'skweek', 'tetris'];
+        'multiKart', 'ninja', 'nova', 'pousseur', 'serpent', 'skweek', 'tetris'];
     assert.deepEqual(declarent, attendus,
         'la liste des jeux en temps réel a changé — mesure-la avant de la corriger '
         + '(tools/tmp/boucleContinue.mjs)');

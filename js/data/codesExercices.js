@@ -158,6 +158,7 @@ export const CODES_EXERCICES = {
     'logi-shikaku':               'RT',   // RecTangles — « SK » est aux serpents, « RE » au carré
     'calc-garam':                 'GA',   // Garam
     'calc-course':                'CM',   // Course Mathématique
+    'calc-multikart':             'KT',   // multiKarT — « MK » est Milli, Kilo, Méga
     'calc-tetris':                'MH',   // Math Tetris
     'calc-vault':                 'CF',   // Le Coffre-Fort
     'calc-duel':                  'DT',   // Duel des Tables (à deux)

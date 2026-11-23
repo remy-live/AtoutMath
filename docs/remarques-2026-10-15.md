@@ -8601,3 +8601,44 @@ plané soit encore plus long ».
 tourné vers le haut, posé à 80 à 145 pixels du sol, c'est-à-dire l'inverse de
 la courbe que l'oiseau suit. On ne les enfile qu'en sautant, et pas en glissant
 dans le creux, qui est justement le geste qu'elles devaient apprendre.
+
+### 18. « voilà un jeu canon » — MultiKart 3D, 23 novembre
+
+Rémy colle un jeu complet, en un fichier : une course en fausse 3D où chaque
+portique porte trois résultats, et où il faut placer son kart sur la voie du
+bon. « voilà un jeu canon, tu me l'améliores, le rends encore plus beau, plus
+cohérent, ne mets pas le son ».
+
+Trois mots à tenir : PLUS BEAU, PLUS COHÉRENT, PAS DE SON.
+
+Et, pendant que je lisais le socle : « il faut que tout passe dans la fenêtre
+et que ce soit compatible téléphone portable ». Son fichier est en
+`position: fixed` sur toute la page, avec une rangée de boutons en bas et un
+bandeau de 650 px : rien de cela ne tient dans le cadre d'un exercice, ni dans
+390 px de large.
+
+Et, pendant que je photographiais la première version : « et améliore les karts
+qui ne ressemblent pas a grand chose ». Il a raison, et c'est le dessin que
+j'avais repris du fichier courbe pour courbe en l'appelant « ce qu'il avait de
+plus beau » : une coque en haricot, quatre rectangles noirs pour les roues, une
+boule pour le casque. Vu de dos à 200 pixels de large, cela se lit ; à 70, sur
+un téléphone, c'est une tache rouge.
+
+Puis, la première version livrable sous les yeux, deux messages de suite :
+
+> « améliore le décor aussi mais vraiment super bien le décor, tu peux mettre
+> plusieurs circuits et plusieurs ambiances et rajouter des bonus »
+
+> « et configurer pour ne pas avoir que des tables de pythagore (addition, x10,
+> x100, etc et on a le résultat ezt il faut trouver le calcul) et aussi pas
+> forcément que 3 passages, ca peut être 2, puis 3 puis 4 »
+
+CINQ DEMANDES, À TENIR UNE PAR UNE :
+
+1. LE DÉCOR, « vraiment super bien » — pas trois palettes sur les mêmes
+   collines : des lieux qu'on reconnaît.
+2. PLUSIEURS CIRCUITS, PLUSIEURS AMBIANCES.
+3. DES BONUS EN PLUS — et aucun qui donne la réponse à la place de l'élève.
+4. D'AUTRES CALCULS que les tables : additions, × 10, × 100, « etc. » — et LE
+   SENS INVERSE : on donne le résultat, il faut trouver le calcul.
+5. PAS TOUJOURS TROIS VOIES : deux, puis trois, puis quatre.
