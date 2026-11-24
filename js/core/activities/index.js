@@ -1199,6 +1199,10 @@ const legacy = [
     ['vault', 'Le Coffre-Fort', 'vault', 'engineVault'],
     ['galactic', 'Galactic : Tir aux Angles', 'galactic', 'engineGalactic'],
     ['samurai', 'Le Samouraï des Fractions', 'fractions_samurai', 'engineFracSamurai'],
+    // ASTRO-SIMPLIF SE COMPTE EN FRACTIONS. Chaque astéroïde est une
+    // question — simplifiée ou laissée passer, elle ne revient pas —, et la
+    // mission en a exactement autant que l'étape en annonce, comme MultiKart.
+    ['astro-simplif', 'Astro-Simplif', 'astroSimplif', 'engineAstroSimplif', 'fraction', 10],
     // NEUF LEÇONS DE TROIS RÉUSSITES : L'ÉCOLE ENTIÈRE. Rémy : « pour le
     // tableur il faut faire le parcours en entier ». L'étape s'arrêtait au
     // bout de huit réussites, c'est-à-dire au milieu de la troisième leçon sur

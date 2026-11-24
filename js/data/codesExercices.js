@@ -219,6 +219,7 @@ export const CODES_EXERCICES = {
     'frac-somme-posee':           'AN',   // Poser une Addition de Fractions
     'frac-probleme':              'HF',   // Histoires de Fractions
     'frac-samurai':               'SF',   // Le Samouraï des Fractions
+    'frac-astro-simplif':         'FS',   // Fractions Simplifiées — « AS » est déjà pris
     'frac-pizza':                 'PZ',   // La Pizzeria des Fractions
     'frac-lire':                  'LF',   // Lis la Fraction
     'dec-compare':                'DD',   // Décimaux en Duel

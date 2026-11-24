@@ -8685,3 +8685,50 @@ rangeait n'importe quelle fenêtre sous un exercice.
 
 **RÉMY A TRANCHÉ**, à la question « tous les exercices, ou les jeux seulement ? » :
 « Oui autant attendre la fin d'une étape. » La règle vaut pour tout exercice.
+
+### 20. « C'est ça que tu m'intègres » — 24 novembre
+
+Un jeu complet collé dans un fichier : **Astro-Simplif**. Des astéroïdes
+portent une fraction et descendent vers un vaisseau ; ses canons tirent des
+diviseurs (÷ 2, ÷ 3, ÷ 5, ÷ 7, ÷ 10, ÷ 11, ÷ 13) qui divisent le numérateur ET
+le dénominateur ; une fraction devenue irréductible explose. Trois grades,
+quatre capsules, un astéroïde géant toutes les cinq fractions, un mémo des
+critères de divisibilité, un bilan qui relit les chaînes de simplification.
+
+Ce qu'il avait demandé pour MultiKart vaut ici, et pour la même raison : pas de
+son, tout dans la fenêtre, jouable au téléphone.
+
+**CE QUE LE JEU REÇU LAISSAIT PASSER, MESURÉ EN LE JOUANT SANS ÉCRAN** :
+
+- un robot qui appuie sur TOUS les canons à la suite, sans rien calculer,
+  simplifiait 100 % des fractions dans les trois grades : un tir faux ne
+  coûtait que le combo ;
+- le rayon « PGCD » simplifiait la fraction à la place de l'élève, et elle
+  comptait comme réussie ;
+- la vitesse était en pixels par seconde : un quart de temps en moins pour
+  calculer sur un téléphone que sur un ordinateur ;
+- la partie s'arrêtait au quatrième impact, sans rapport avec le nombre de
+  questions de l'étape.
+
+**CE QUI EST FAIT (v1248)** — « Astro-Simplif », dans les fractions, juste
+après le Samouraï :
+
+- un tir faux rebondit, fait faire un BOND à l'astéroïde, et fait
+  SURCHAUFFER les canons une seconde et demie ; une fraction qui a fait
+  rebondir plus d'un tir explose, mais compte « à revoir ». Mesuré sur 40
+  missions par grade : qui calcule simplifie 100 % des fractions, qui se
+  trompe une fois sur quatre 92 à 96 %, qui mitraille 4 à 34 % ;
+- le message d'un tir faux nomme celui des deux nombres qui bloque : « 18 se
+  divise par 2, mais 25 est impair » ; pour 7, 11 et 13, il dit le reste ;
+- la capsule PGCD écrit le PGCD sur l'astéroïde au lieu de simplifier ; le
+  bouclier « +1 » devient un rempart qui repousse le prochain impact ;
+- une fraction = une question, autant que l'étape en annonce ; le grade
+  (cadet, pilote, commandant) et l'allure se règlent avec l'exercice ;
+- le temps de chute se compte en secondes (24 s chez les cadets) ;
+- pas de son, tout dans le cadre de l'exercice ; la correction s'écrit en bas,
+  sur le vaisseau — en haut, mesuré en paysage, elle cachait la fraction
+  visée ; « Continuer » reste collé au bas du rapport de mission.
+
+Joué au doigt jusqu'au bout (`node tools/sondeAstro.mjs`) à 390 × 844,
+360 × 640, 844 × 390 et 1280 × 800 : tout dans la fenêtre, chaque toucher vise
+l'astéroïde touché, l'étape se clôt.

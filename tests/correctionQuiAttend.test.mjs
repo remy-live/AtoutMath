@@ -92,7 +92,9 @@ test('SEULS LES JEUX QUI AVANCENT TOUT SEULS GARDENT LA CARTE FUGACE', () => {
     // qu'on lit — une carte qui attendrait un clic laisserait filer deux
     // portiques derrière elle. La correction est écrite sous le calcul, dans
     // le jeu, le temps de la lire.
-    const attendus = ['boulderDash', 'bumpy', 'canon', 'course', 'demineur',
+    // « astroSimplif » s'ajoute le 24 novembre : les astéroïdes tombent
+    // pendant qu'on lit. La correction s'écrit dans le bandeau du haut.
+    const attendus = ['astroSimplif', 'boulderDash', 'bumpy', 'canon', 'course', 'demineur',
         'diviseurs', 'duel', 'escadrille', 'galactic', 'jeuxDeClasse', 'jezzball',
         'multiKart', 'ninja', 'nova', 'pousseur', 'serpent', 'skweek', 'tetris'];
     assert.deepEqual(declarent, attendus,

@@ -60,6 +60,7 @@ export const PAR_DEFAUT = [
     'calc-escadrille',
     'calc-course',
     'calc-multikart',
+    'frac-astro-simplif',
     'calc-labyrinthe',
     'calc-skweek',
     // Manches courtes : une partie tient dans le temps qui reste.

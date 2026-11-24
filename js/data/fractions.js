@@ -506,6 +506,55 @@ export const fractionsExercises = [
         instruction: "Rends la fraction irréductible ! Décompose le numérateur et le dénominateur (36/48 = 12×3 / 12×4), puis barre le facteur commun d'un coup de sabre. Attention aux pièges : si rien ne se simplifie, lève le bouclier 🛡️."
     },
     {
+        // ── ASTRO-SIMPLIF ─────────────────────────────────────────────────
+        //
+        // RÉMY, 24 novembre, en collant un jeu complet écrit ailleurs : « c'est
+        // ça que tu m'intègres ». Des astéroïdes portent une fraction ; les
+        // canons du vaisseau tirent des diviseurs, qui divisent le haut ET le
+        // bas ; une fraction devenue irréductible explose.
+        //
+        // IL NE REMPLACE PAS LE SAMOURAÏ, juste au-dessus : le samouraï fait
+        // ÉCRIRE la décomposition, puis barrer le facteur commun ; ici, on la
+        // FAIT par petits pas, sous la pression de l'astéroïde qui descend, et
+        // c'est le CRITÈRE de divisibilité qui décide du canon. Les deux se
+        // répondent : le bilan d'Astro-Simplif réécrit les chaînes comme au
+        // tableau, 36/48 → 18/24 → 9/12 → 3/4.
+        id: 'frac-astro-simplif', title: 'Astro-Simplif',
+        cree: '2026-11-24',
+        activityId: 'astro-simplif',
+        skills: ['num.frac.simplification'],
+        params: { grade: 'cadet', allure: 'normale' },
+        paramSchema: [
+            {
+                // LE GRADE SE RÈGLE ICI, et plus sur l'écran d'accueil du jeu :
+                // c'est le professeur qui sait si sa classe connaît la table de 11.
+                id: 'grade', type: 'select', label: 'Grade', default: 'cadet',
+                aide: 'Le grade dit quels canons on a, et la taille des nombres. Les fractions sont fabriquées avec ces canons-là : elles se simplifient toujours avec ceux qu\'on a.',
+                options: [
+                    { value: 'cadet', label: 'Cadet — canons ÷ 2, 3, 5, 7, 10 ; une ou deux étapes' },
+                    { value: 'pilote', label: 'Pilote — canons ÷ 2, 3, 5, 7, 11 ; deux ou trois étapes' },
+                    { value: 'commandant', label: 'Commandant — canons ÷ 2, 3, 5, 7, 11, 13 ; grands nombres' }
+                ]
+            },
+            {
+                id: 'allure', type: 'select', label: 'Allure des astéroïdes', default: 'normale',
+                aide: 'C\'est le temps qu\'on a pour simplifier une fraction avant qu\'elle touche le vaisseau : de vingt-quatre secondes (cadet, allure normale) à une quinzaine.',
+                options: [
+                    { value: 'lente', label: 'Lente — on a le temps de chercher' },
+                    { value: 'normale', label: 'Normale' },
+                    { value: 'rapide', label: 'Rapide — les critères doivent être sus' }
+                ]
+            }
+        ],
+        motsClefs: ['astro', 'simplifier', 'simplification', 'irréductible', 'fraction', 'critères de divisibilité',
+            'diviseur commun', 'pgcd', 'astéroïdes', 'vaisseau', 'arcade', 'espace'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Chaque astéroïde porte une fraction et descend vers ton vaisseau. Rends-la IRRÉDUCTIBLE avant qu'il ne te touche : il explose. Les canons du bas — ÷ 2, ÷ 3, ÷ 5… — divisent le numérateur ET le dénominateur de l'astéroïde visé. Un canon ne passe que s'il divise LES DEUX : sinon le tir rebondit, l'astéroïde fait un bond vers toi, et le bandeau du haut dit pourquoi (« 18 se divise par 2, mais 25 est impair »). TOUCHE un astéroïde pour le viser ; sans cela, le vaisseau vise le plus menaçant. Au clavier : les touches 1 à 6 pour les canons, ← → pour bouger, P pour la pause — qui montre aussi les critères de divisibilité. Des capsules tombent parfois : le PGCD s'écrit sur l'astéroïde visé (à toi de le casser en canons), le rempart repousse le prochain astéroïde qui touche, la stase ralentit tout, le × 2 double les points. Un astéroïde géant arrive toutes les cinq fractions. À la fin, le rapport de mission réécrit tes chaînes de simplification comme au tableau, et propose de refaire les fractions ratées."
+    },
+    {
         // LIRE LA FRACTION D'UNE FIGURE — le tout premier geste du chapitre,
         // et il manquait.
         //

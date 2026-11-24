@@ -8410,3 +8410,18 @@ deux** — 19 novembre
 - *Ce qui manque* — pour toute fonction qui lit le DOM : une ligne de sonde au
   navigateur dans l'épreuve, ou au moins le faux document tiré de la VRAIE
   structure de `index.html`.
+
+## La sonde d'un jeu se réécrit pour chaque jeu, et la phrase de fin d'étape aussi — 2026-11-24
+
+- *Ce que je voulais faire* — jouer Astro-Simplif au doigt jusqu'au bilan, puis
+  vérifier que l'étape se clôt.
+- *Ce qui a coûté* — une sonde de 170 lignes recopiée de celle de MultiKart
+  (« dehors », contraste, bilan, « Continuer ») ; puis un faux échec : sur un
+  sans-faute, l'écran de fin dit « Sans faute ! 8 sur 8 », que l'expression
+  recopiée (« Étape validée|bonnes réponses sur|… ») ne connaissait pas. Deux
+  parties de quatre minutes perdues à chercher un défaut qui n'existait pas. Et
+  le compte d'une étape de sonde est 8, pas 10 : une troisième partie rejouée.
+- *Combien de fois* — || (MultiKart, Astro-Simplif)
+- *Ce qui manque* — dans `sonde.mjs`, un `s.etapeClose()` qui lise l'état du
+  parcours (le runner) plutôt qu'une phrase à l'écran, et un `s.dehors(racine)`
+  qui dise ce qui sort d'un jeu ou se met en position fixe.
