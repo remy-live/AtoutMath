@@ -150,6 +150,9 @@ export const DUREES = {
 /** Sous le sablier, tout le monde roule à cette part de sa vitesse. */
 export const LENTEUR_DU_SABLIER = 0.5;
 
+/** Sur combien de segments le relief s'installe après la grille, et s'efface avant la ligne. */
+export const FONDU_DU_RELIEF = 90;
+
 /** Une série de trois bonnes réponses donne un bonus. */
 export const SERIE_BONUS = 3;
 
@@ -269,11 +272,26 @@ export class Course {
         this.boites = [];
         let yAvant = 0;
         for (let n = 0; n < combien; n++) {
-            let courbe = 0, y = 0;
-            if (n > 14 && n < this.segmentArrivee - 10) {
-                courbe = Math.sin(n * 0.022) * 1.75 + Math.cos(n * 0.041) * 0.85;
-                y = Math.sin(n * 0.031) * 950 + Math.sin(n * 0.015) * 620;
-            }
+            // ── LE RELIEF S'INSTALLE, IL NE S'ALLUME PAS ────────────────
+            //
+            // RÉMY, en jouant : « au début, tu fais une sorte de tremplin et à
+            // la fin aussi, je ne vois pas l'intérêt pour le kart. » Il n'y en
+            // avait aucun, et ce n'était pas voulu. La formule reçue mettait
+            // les bosses en marche au quinzième segment et les coupait dix
+            // segments avant la ligne — d'un seul coup. MESURÉ : une marche de
+            // 564 au troisième segment après la grille, une chute de 1 023
+            // avant l'arrivée — la hauteur de la caméra —, quand le reste de
+            // la piste ne dépasse jamais 39 par segment. Deux murs.
+            //
+            // Les bosses et les virages montent donc en douceur sur
+            // `FONDU_DU_RELIEF` segments après la grille, et redescendent de
+            // même avant la ligne : la grille est plate et droite, la ligne
+            // d'arrivée aussi, et rien entre les deux n'est plus raide que le
+            // relief lui-même.
+            const bord = Math.min(n - 14, this.segmentArrivee - 10 - n) / FONDU_DU_RELIEF;
+            const fondu = bord <= 0 ? 0 : (bord >= 1 ? 1 : bord * bord * (3 - 2 * bord));
+            const courbe = (Math.sin(n * 0.022) * 1.75 + Math.cos(n * 0.041) * 0.85) * fondu;
+            const y = (Math.sin(n * 0.031) * 950 + Math.sin(n * 0.015) * 620) * fondu;
             // ── LE BORD DE LA PISTE ─────────────────────────────────────
             //
             // QUATRE GENRES D'OBJETS, ET UN REPÈRE DE LOIN EN LOIN. Le fichier

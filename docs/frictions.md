@@ -8383,3 +8383,17 @@ deux** — 19 novembre
 - *Ce qui manque* — `epreuveTombe --tout <essai>` : remettre un par un, à partir
   d'un fichier de paires rangé à côté de l'épreuve, TOUS les défauts qu'elle
   prétend garder, et le faire dans `npm test` plutôt qu'à la main.
+
+**Une épreuve de CONTINUITÉ ne voit pas un mur** — 24 novembre
+
+- *Ce que je voulais faire* — garder « la piste de MultiKart ne se casse pas ».
+- *Ce qui a coûté* — un aller-retour avec Rémy : « au début, tu fais une sorte
+  de tremplin et à la fin aussi ». L'épreuve vérifiait que chaque segment
+  commence où le précédent finit ; une marche de 564 puis une chute de 1 023
+  la passaient donc au vert. Les photos de la sonde les montraient depuis la
+  première version, et je ne les ai pas lues comme un défaut.
+- *Combien de fois* — || (c'est la falaise des Petites Ailes, gardée là-bas par
+  « on ne fait pas gravir de falaise à l'oiseau », et pas reprise ici)
+- *Ce qui manque* — pour tout relief généré : une garde sur la PENTE, écrite en
+  même temps que celle sur le raccord. Une règle déjà payée dans un jeu doit
+  être relue en écrivant le suivant.

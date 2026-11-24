@@ -8650,3 +8650,15 @@ qui donne la réponse ; six familles de calcul dans les deux sens ; deux, trois
 ou quatre voies, « progressif » par défaut. Mesuré : tout juste, premier 59
 fois sur 60 ; suivre le kart de devant, 39 % de réussite sur les voies
 progressives (qui commencent à deux), 27 % à quatre voies — le hasard.
+
+Le lendemain, 24 novembre, en jouant la v1244 : « au début, tu fais une sorte de
+tremplin et à la fin aussi, je ne vois pas l'interet pour le kart. »
+
+**CE QUE C'ÉTAIT** : pas un tremplin voulu — deux MURS. La formule reçue met le
+relief en marche au quinzième segment et le coupe dix segments avant la ligne,
+d'un seul coup. Mesuré : une marche de 564 au troisième segment après la
+grille, une chute de 1 023 avant l'arrivée (la hauteur de la caméra), quand le
+reste de la piste ne dépasse jamais 39 par segment. Mon épreuve « la piste ne
+se casse pas » vérifiait que les segments se raccordent, pas qu'ils ne font
+pas un mur. **v1245** : bosses et virages s'installent sur 90 segments et
+s'effacent de même ; plus forte marche de toute la piste, 38,7.

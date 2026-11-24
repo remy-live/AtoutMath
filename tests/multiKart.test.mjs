@@ -42,7 +42,7 @@ import { makeRng } from '../js/core/ids.js';
 import { contrasteCouleurs } from '../js/core/petitesAiles.js';
 import {
     Course, PISTE, ALLURES, CIRCUITS, ARCHES, BONUS, PILOTES, DUREES, SERIE_BONUS,
-    LENTEUR_DU_SABLIER, tempsEcrit, rangEcrit
+    LENTEUR_DU_SABLIER, FONDU_DU_RELIEF, tempsEcrit, rangEcrit
 } from '../js/core/multiKart.js';
 import {
     FAMILLES, SENS, ecrire, decaler, leFait, tirerFait, leurresDeResultat, leurresDeCalcul,
@@ -359,6 +359,38 @@ test('LA PISTE NE SE CASSE PAS, VA PLUS LOIN QUE LA LIGNE, ET SON BORD VARIE', (
     }
     for (const d of decors) assert.ok(Math.abs(d.cote) > 1.2, `un décor est posé sur la piste (${d.cote})`);
     assert.ok(new Set(decors.map((d) => d.taille.toFixed(2))).size > 20, 'tous les objets ont la même taille');
+});
+
+test('NI TREMPLIN AU DÉPART, NI FALAISE À L\'ARRIVÉE', () => {
+    // RÉMY, en jouant : « au début, tu fais une sorte de tremplin et à la fin
+    // aussi, je ne vois pas l'intérêt pour le kart. » La formule reçue mettait
+    // les bosses en marche d'un coup : une marche de 564 au troisième segment
+    // après la grille, une chute de 1 023 avant la ligne, quand le reste de la
+    // piste ne dépasse jamais 39. L'épreuve d'au-dessus ne voyait rien : elle
+    // vérifie que les segments se RACCORDENT, pas qu'ils ne font pas un mur.
+    for (const portiques of [3, 5, 8, 10, 15, 20, 30]) {
+        const k = new Course({ portiques });
+        let pire = 0, ou = 0;
+        for (const s of k.segments) {
+            const d = Math.abs(s.p2.y - s.p1.y);
+            if (d > pire) { pire = d; ou = s.index; }
+        }
+        // Le relief lui-même monte de 39 par segment au plus : rien n'est plus raide.
+        assert.ok(pire < 45, `${portiques} portiques : une marche de ${pire.toFixed(0)} au segment ${ou} (arrivée au ${k.segmentArrivee})`);
+        // La grille est plate et droite ; la ligne d'arrivée aussi.
+        for (const n of [0, PISTE.DEPART, PISTE.DEPART + 2, k.segmentArrivee - 9, k.segmentArrivee, k.segmentArrivee + 30]) {
+            // La valeur absolue : un sinus négatif multiplié par zéro rend « −0 ».
+            assert.equal(Math.abs(k.segments[n].p2.y), 0, `segment ${n} : la piste n'est pas à plat`);
+            assert.equal(Math.abs(k.segments[n].courbe), 0, `segment ${n} : la piste tourne`);
+        }
+        // Le virage non plus ne se déclenche pas d'un coup.
+        for (let i = 1; i < k.segments.length; i++) {
+            assert.ok(Math.abs(k.segments[i].courbe - k.segments[i - 1].courbe) < 0.12, `coup de volant au segment ${i}`);
+        }
+        // Et le relief est bien là au milieu : on n'a pas aplati la piste pour autant.
+        assert.ok(Math.max(...k.segments.map((s) => Math.abs(s.p2.y))) > (portiques > 3 ? 600 : 200));
+    }
+    assert.ok(FONDU_DU_RELIEF >= 60);
 });
 
 test('L\'ALLURE DONNE LE TEMPS ANNONCÉ ENTRE DEUX PORTIQUES', () => {
