@@ -105,10 +105,21 @@ export function showToast(message, type = 'success', duration = 3000) {
  * `zIndex` ; l'Atelier est à 100001, et personne ne l'a su. Un étage écrit en
  * dur est une promesse sur un voisin qu'on ne connaît pas encore.
  *
- * ON REGARDE DONC CE QUI EST PEINT. Les couches plein écran sont des enfants
- * directs de `<body>` — une dizaine d'éléments, donc une mesure qui ne coûte
- * rien — et l'on se place au-dessus de la plus haute qui soit VISIBLE.
- * Une couche cachée ne compte pas, sinon l'étage ne redescendrait jamais.
+ * ON REGARDE DONC CE QUI EST PEINT, et l'on se place au-dessus de la plus
+ * haute couche qui soit VISIBLE. Une couche cachée ne compte pas, sinon
+ * l'étage ne redescendrait jamais.
+ *
+ * ET L'ON DESCEND D'UN CRAN DANS CE QUI N'A PAS D'ÉTAGE À SOI. Cette fonction
+ * a d'abord cru que les couches plein écran étaient toutes des enfants
+ * directs de `<body>`. La couche de jeu ne l'est pas : elle est rangée dans
+ * `#app-container`, qui n'a pas de `z-index`. Or un parent sans étage ne
+ * forme pas de contexte d'empilement — ses enfants se mesurent à ceux de la
+ * page. On ne la voyait donc pas, et toute fenêtre ouverte sur un écran
+ * d'exercice se posait à 9999, sous elle. Mesuré en retenant la carte des
+ * badges jusqu'à la fin d'une course (Rémy : « pendant un jeu ce type de
+ * popup ne doit pas apparaître ») : la carte s'ouvrait sous « Sans faute ! »,
+ * invisible, et tenait le clavier. Un parent qui A son étage, lui, enferme
+ * ses enfants : c'est son étage qui compte, et l'on ne descend pas.
  *
  * ET UNE COUCHE QUI NE PREND PAS LES CLICS NON PLUS : le porte-avis
  * (`#toast-container`, `pointer-events: none`) est tout en haut par nature —
@@ -117,14 +128,19 @@ export function showToast(message, type = 'success', duration = 3000) {
  */
 export function etageLibre() {
     let haut = 9998;
-    try {
-        for (const el of document.body.children) {
-            const st = getComputedStyle(el);
-            if (st.position === 'static' || st.display === 'none'
-                || st.visibility === 'hidden' || st.pointerEvents === 'none') continue;
-            const z = parseInt(st.zIndex, 10);
-            if (Number.isFinite(z) && z > haut) haut = z;
+    const regarder = (el, profondeur) => {
+        const st = getComputedStyle(el);
+        if (st.display === 'none' || st.visibility === 'hidden') return;
+        const z = parseInt(st.zIndex, 10);
+        if (st.position !== 'static' && Number.isFinite(z)) {
+            // Un étage à soi : il compte, et il enferme ses enfants.
+            if (st.pointerEvents !== 'none' && z > haut) haut = z;
+            return;
         }
+        if (profondeur > 0) for (const e of el.children || []) regarder(e, profondeur - 1);
+    };
+    try {
+        for (const el of document.body.children) regarder(el, 1);
     } catch (e) { /* une page sans corps : on garde le plancher */ }
     return haut + 1;
 }

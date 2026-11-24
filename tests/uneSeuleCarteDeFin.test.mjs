@@ -27,6 +27,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sansCommentaires } from './helpers.mjs';
 
 const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 
@@ -103,4 +104,43 @@ test('ET LE TEXTE D\'UN BADGE EST ÉCHAPPÉ — il vient d\'une donnée', () => 
     assert.match(F, /echapper\(b\.description\)/);
     assert.match(F, /echapper\(bilan\.titre\)/);
     assert.match(F, /echapper\(bilan\.texte\)/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PENDANT UN EXERCICE, LA CARTE ATTEND.
+//
+// RÉMY, capture d'un téléphone : « Badge débloqué ! Fidèle — Argent » posé en
+// pleine course de MultiKart, le calcul caché. « Je pense que pendant un jeu
+// ce type de popup ne doit pas apparaître. »
+//
+// Les badges sont accordés à CHAQUE réponse ; ce coordinateur, écrit pour la
+// fin de série, dessinait ce qu'on lui déposait 320 ms plus tard. MESURÉ AVANT
+// (`tools/tmp/badgeEnJeu.mjs`, au doigt, 390 × 844) : une fenêtre ouverte en
+// pleine course. APRÈS : aucune pendant la course ni sur le podium, une seule
+// à la fin de l'étape — par-dessus l'écran « Sans faute ! », lue.
+
+test('UN BADGE GAGNÉ PENDANT UN EXERCICE ATTEND LA FIN DE L\'ÉTAPE, SANS SE PERDRE', async () => {
+    await import('./helpers.mjs');
+    const { state } = await import('../js/core/state.js');
+    const { exerciceEnCours } = await import('../js/ui/finDeSerie.js');
+    const avant = state.activeSequenceRunner;
+    try {
+        state.activeSequenceRunner = null;
+        assert.equal(exerciceEnCours(), false, 'hors parcours, rien ne retient la carte');
+        state.activeSequenceRunner = { step: { stepId: 'a' } };
+        assert.equal(exerciceEnCours(), true, 'une étape ouverte doit retenir la carte');
+        state.activeSequenceRunner = { step: null };
+        assert.equal(exerciceEnCours(), false, 'l\'écran de fin d\'étape doit laisser passer la carte');
+    } finally {
+        state.activeSequenceRunner = avant;
+    }
+    // ET L'ON NE VIDE RIEN TANT QU'ON ATTEND : la carte est retardée, pas
+    // perdue, et le bilan de la série peut s'y joindre entre-temps.
+    const F = sansCommentaires(lire('js/ui/finDeSerie.js'));
+    const dessiner = F.slice(F.indexOf('function dessiner() {'), F.indexOf('function poser('));
+    const attente = dessiner.indexOf('if (exerciceEnCours())');
+    assert.ok(attente > 0, 'la carte ne regarde plus si un exercice est en cours');
+    assert.ok(attente < dessiner.indexOf('vider()'), 'on vide ce qui attend AVANT de savoir si l\'on peut dessiner');
+    assert.match(dessiner.slice(attente, dessiner.indexOf('vider()')), /setTimeout\(/,
+        'pendant l\'exercice, on ne regarde plus jamais : la carte serait perdue');
 });

@@ -8397,3 +8397,16 @@ deux** — 19 novembre
 - *Ce qui manque* — pour tout relief généré : une garde sur la PENTE, écrite en
   même temps que celle sur le raccord. Une règle déjà payée dans un jeu doit
   être relue en écrivant le suivant.
+
+**Un faux document qui recopie l'hypothèse du code ne peut pas la contredire** — 24 novembre
+
+- *Ce que je voulais faire* — retenir la carte des badges jusqu'à la fin d'une étape.
+- *Ce qui a coûté* — la carte retenue s'ouvrait SOUS l'écran de fin d'étape :
+  `etageLibre` ne regardait que les enfants directs de `<body>`, et son
+  épreuve fabriquait un faux `<body>` à plat — exactement l'hypothèse fausse.
+  La couche de jeu vit dans `#app-container`. Vu seulement parce que la sonde
+  demandait `elementFromPoint` au centre et non « combien de fenêtres ».
+- *Combien de fois* — || (le même que « la mesure qui n'emprunte pas le chemin »)
+- *Ce qui manque* — pour toute fonction qui lit le DOM : une ligne de sonde au
+  navigateur dans l'épreuve, ou au moins le faux document tiré de la VRAIE
+  structure de `index.html`.

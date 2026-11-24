@@ -61,7 +61,11 @@ function etageDesAvis() {
  * pas une copie de son idée.
  */
 function poserLesCouches(couches) {
-    const enfants = couches.map((c, i) => ({ nom: c.nom || `couche${i}`, style: c }));
+    // Une couche peut porter ses propres `enfants` : c'est ainsi qu'est rangée
+    // la couche de jeu, dans `#app-container` et non dans `<body>`.
+    const fabriquer = (c, i) => ({ nom: c.nom || `couche${i}`, style: c,
+        children: (c.enfants || []).map(fabriquer) });
+    const enfants = couches.map(fabriquer);
     globalThis.document.body = { children: enfants };
     globalThis.getComputedStyle = (el) => ({
         position: el.style.position || 'static',
@@ -93,6 +97,33 @@ test('ELLE PASSE AU-DESSUS DU PANNEAU DE L\'ATELIER, QUEL QUE SOIT SON ÉTAGE', 
     // texte et son dessin, et personne ne pouvait le voir.
     poserLesCouches([{ position: 'fixed', zIndex: 10000 }]);
     assert.equal(etageLibre(), 10001);
+});
+
+test('LA COUCHE DE JEU EST RANGÉE DANS UN CONTENEUR — on la voit quand même', () => {
+    // RÉMY : « pendant un jeu ce type de popup ne doit pas apparaître ». En
+    // retenant la carte des badges jusqu'à la fin de l'étape, on l'a vue
+    // s'ouvrir… SOUS l'écran de fin d'étape. Mesuré au navigateur : la carte à
+    // 9999, la couche de jeu à 10000, et au centre de l'écran le titre
+    // « Sans faute ! » — la carte invisible, tenant le clavier.
+    //
+    // LA CAUSE : `#game-layer` n'est pas un enfant de `<body>` mais de
+    // `#app-container`, qui n'a pas de `z-index`. Un tel parent ne forme pas
+    // de contexte d'empilement : ses enfants se mesurent à ceux de la page.
+    // `etageLibre` ne regardait que le premier rang, et ne la voyait pas.
+    poserLesCouches([{ nom: 'app-container', position: 'relative', enfants: [
+        { nom: 'game-layer', position: 'fixed', display: 'flex', zIndex: 10000 }] }]);
+    assert.equal(etageLibre(), 10001, 'la fenêtre se range sous la couche de jeu');
+    // UN CONTENEUR STATIQUE AUSSI : c'est le cas ordinaire d'un <div>.
+    poserLesCouches([{ nom: 'app-container', enfants: [
+        { nom: 'game-layer', position: 'fixed', zIndex: 10000 }] }]);
+    assert.equal(etageLibre(), 10001);
+    // MAIS UN PARENT QUI A SON PROPRE ÉTAGE ENFERME SES ENFANTS : ils ne
+    // peuvent pas sortir de son contexte, c'est donc LUI qui compte.
+    poserLesCouches([{ position: 'fixed', zIndex: 50, enfants: [{ position: 'fixed', zIndex: 900000 }] }]);
+    assert.equal(etageLibre(), 9999, 'un enfant enfermé dans un contexte bas a fait monter l\'étage');
+    // ET UN CONTENEUR FERMÉ NE MONTRE AUCUN DE SES ENFANTS.
+    poserLesCouches([{ display: 'none', enfants: [{ position: 'fixed', zIndex: 10000 }] }]);
+    assert.equal(etageLibre(), 9999);
 });
 
 test('MAIS PAS AU-DESSUS DE CE QUI NE CACHE RIEN', () => {

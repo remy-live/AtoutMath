@@ -8662,3 +8662,23 @@ reste de la piste ne dépasse jamais 39 par segment. Mon épreuve « la piste ne
 se casse pas » vérifiait que les segments se raccordent, pas qu'ils ne font
 pas un mur. **v1245** : bosses et virages s'installent sur 90 segments et
 s'effacent de même ; plus forte marche de toute la piste, 38,7.
+
+### 19. « pendant un jeu ce type de popup ne doit pas apparaître » — 24 novembre
+
+Capture à l'appui, sur un téléphone, en pleine course de MultiKart : la fenêtre
+« Badge débloqué ! — Fidèle, Argent — Travailler 10 jours différents. — Super ! »
+posée au milieu de l'écran, la piste floutée derrière, le calcul « 4 × 9 = ? »
+caché. « Je pense que pendant un jeu ce type de popup ne doit pas apparaître. »
+
+Dans un jeu qui avance tout seul, une fenêtre qui attend un clic fait passer
+un portique sans que l'élève l'ait vu : c'est une question ratée par le
+logiciel, pas par lui.
+
+**CE QUE C'ÉTAIT, ET CE QUI EST FAIT (v1246)** : les badges sont accordés à
+chaque réponse — « dix jours différents » se décroche au premier portique du
+dixième jour —, et la carte s'ouvrait 320 ms plus tard, où qu'on en soit. Elle
+attend maintenant que l'étape soit finie, pour TOUT exercice (un chronomètre de
+questions court aussi pendant qu'une fenêtre attend). Ce faisant, elle s'est
+ouverte SOUS l'écran de fin d'étape : `etageLibre` ne voyait pas la couche de
+jeu, rangée dans `#app-container`. Corrigé aussi — c'est le même défaut qui
+rangeait n'importe quelle fenêtre sous un exercice.

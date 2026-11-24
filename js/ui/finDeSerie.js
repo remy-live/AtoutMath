@@ -34,12 +34,48 @@
 
 import { showModal, quandLEcranEstLibre } from './modal.js';
 import { robotSvg } from './icones.js';
+import { state } from '../core/state.js';
 
 // 320 ms : plus long que les 260 ms d'attente des badges (voir
 // `gamificationUI`), de sorte qu'un lot de badges soit toujours complet quand
 // on dessine. Mesuré à l'œil : en dessous de 400 ms on ne perçoit pas de
 // retard après la dernière réponse.
 const ATTENTE_MS = 320;
+
+/** Tous les combien on regarde si l'exercice en cours est fini. */
+const REGARD_MS = 500;
+
+/**
+ * UN EXERCICE EST-IL EN COURS ?
+ *
+ * RÉMY, capture d'un téléphone à l'appui — « Badge débloqué ! Fidèle — Argent »
+ * posé en plein milieu d'une course de MultiKart, la piste floutée derrière,
+ * le calcul caché : « Je pense que pendant un jeu ce type de popup ne doit pas
+ * apparaître. »
+ *
+ * LES BADGES SONT ACCORDÉS À CHAQUE RÉPONSE, pas à la fin d'une série : « dix
+ * jours différents » se décroche à la première réponse du dixième jour, donc
+ * au premier portique. Et ce fichier, écrit pour la FIN de série, dessinait ce
+ * qu'on lui déposait 320 ms plus tard, où qu'on en soit. Mesuré sur le
+ * chemin de l'élève (`tools/tmp/badgeEnJeu.mjs`) : une fenêtre ouverte en
+ * pleine course. Dans un jeu qui avance tout seul, une fenêtre qui attend un
+ * clic laisse passer un portique que l'élève n'a pas vu : c'est le logiciel
+ * qui rate la question, pas lui.
+ *
+ * LE MENEUR LE SAIT, ET LUI SEUL : il tient une étape (`step`) du moment où
+ * l'exercice s'ouvre jusqu'à l'écran de fin d'étape, et la lâche aussi quand
+ * l'élève quitte. On lit donc cela, plutôt que de deviner à l'écran ce qui est
+ * un jeu : ce qui s'applique à MultiKart s'applique au chronomètre d'une série
+ * de questions, qui court lui aussi pendant qu'une fenêtre attend.
+ *
+ * LA CARTE N'EST PAS PERDUE, ELLE ATTEND SON TOUR. Elle s'ouvre sur l'écran de
+ * fin d'étape — l'endroit pour lequel ce fichier a été écrit —, et si le bilan
+ * de la série arrive entre-temps, elle s'y joint en une seule carte.
+ */
+export function exerciceEnCours() {
+    const r = state.activeSequenceRunner;
+    return !!(r && r.step);
+}
 
 let minuteur = null;
 /** Ce qui a été déposé depuis le dernier dessin. */
@@ -83,9 +119,15 @@ const echapper = (s) => String(s == null ? '' : s)
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 function dessiner() {
+    if (!enAttente.badges.length && !enAttente.bilan) return;
+    // PENDANT UN EXERCICE, ON NE DESSINE RIEN : on regarde de nouveau un peu
+    // plus tard, sans rien vider — voir `exerciceEnCours`.
+    if (exerciceEnCours()) {
+        minuteur = setTimeout(() => { minuteur = null; dessiner(); }, REGARD_MS);
+        return;
+    }
     const { badges, bilan, actions, apres } = enAttente;
     vider();
-    if (!badges.length && !bilan) return;
 
     // ET L'ON ATTEND QUE L'ÉCRAN SOIT LIBRE.
     //
