@@ -1,6 +1,9 @@
 // ASTRO-SIMPLIF, JOUÉ AU DOIGT — la mission entière, sur le chemin de l'élève.
 //
-//   node tools/sondeAstro.mjs [largeur=390] [hauteur=844] [fautes=2]
+//   node tools/sondeAstro.mjs [largeur=390] [hauteur=844] [fautes=2] [visee=auto|droit]
+//
+// EN TIR DROIT, toucher une fraction envoie le vaisseau DESSOUS : la sonde
+// attend qu'il y soit avant de tirer, comme un élève.
 //
 // Ce qu'on a demandé pour MultiKart vaut ici : « il faut que tout passe dans
 // la fenêtre et que ce soit compatible téléphone portable ». Cette sonde ouvre
@@ -22,8 +25,8 @@
 
 import { ouvrirSonde } from './sonde.mjs';
 
-const [largeur = '390', hauteur = '844', fautes = '2'] = process.argv.slice(2);
-const nom = `${largeur}x${hauteur}`;
+const [largeur = '390', hauteur = '844', fautes = '2', visee = 'auto'] = process.argv.slice(2);
+const nom = `${largeur}x${hauteur}${visee === 'droit' ? '-droit' : ''}`;
 const s = await ouvrirSonde({ largeur: Number(largeur), hauteur: Number(hauteur) });
 const echecs = [];
 const exiger = (vrai, quoi) => { if (!vrai) echecs.push(quoi); };
@@ -53,7 +56,7 @@ const faux = (a, canons) => canons.find((d) => a.num % d !== 0 || a.den % d !== 
 
 try {
     await s.identifier();
-    await s.ouvrirExercice('frac-astro-simplif');
+    await s.ouvrirExercice('frac-astro-simplif', { visee });
     await s.doitExister('[data-decoller]');
     await s.page.waitForTimeout(400);
     let d = await dehors();
@@ -84,7 +87,12 @@ try {
         const a = visibles[0];
         await toucher(boite.x + a.x, boite.y + a.py);
         touchers++;
-        const vise = await s.page.evaluate(() => document.querySelector('.as-wrap').mesure().cible);
+        let vise = null;
+        for (let k = 0; k < 20; k++) {
+            vise = await s.page.evaluate(() => document.querySelector('.as-wrap').mesure().cible);
+            if (vise === a.id || visee !== 'droit') break;
+            await s.page.waitForTimeout(60);
+        }
         if (vise === a.id) obeis++;
         const deja = fautesFaites.get(a.id) || 0;
         const rang = [...fautesFaites.keys()].length;

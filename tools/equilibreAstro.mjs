@@ -16,8 +16,8 @@ import { makeRng } from '../js/core/ids.js';
  * au hasard), 'mitraille' (tous les canons, en boucle, aussi vite que le jeu
  * le permet).
  */
-export function jouer({ grade = 'cadet', allure = 'normale', strategie = 'parfait', graine = 'eq', combien = 10 } = {}) {
-    const m = new Mission({ grade, allure, combien, graine });
+export function jouer({ grade = 'cadet', allure = 'normale', strategie = 'parfait', graine = 'eq', combien = 10, visee = 'auto' } = {}) {
+    const m = new Mission({ grade, allure, combien, graine, visee });
     const hasard = makeRng(`${graine}-main`);
     const canons = GRADES[grade].canons;
     let t = 0, prochain = 0, rang = 0;
@@ -26,7 +26,16 @@ export function jouer({ grade = 'cadet', allure = 'normale', strategie = 'parfai
         t += 1 / 60;
         m.evenements.length = 0;
         if (t < prochain || !m.asteroides.length) continue;
+        // EN TIR DROIT, le robot va se placer sous la plus basse, et ne tire
+        // qu'une fois dessous — comme un élève, qui doit d'abord y aller.
+        if (m.visee === 'droit') {
+            const visibles = m.asteroides.filter((x) => x.y >= 0);
+            if (!visibles.length) continue;
+            const bas = visibles.reduce((p, q) => (q.y > p.y ? q : p));
+            if (m.cible() !== bas) { m.diriger(bas.x); continue; }
+        }
         const a = m.cible();
+        if (!a) continue;
         const juste = cheminAvec(a.num, a.den, canons)[0];
         if (strategie === 'parfait') { m.tirer(juste); prochain = t + 1.2; }
         else if (strategie === 'distrait') { m.tirer(hasard.bool(0.25) ? hasard.pick(canons) : juste); prochain = t + 1.2; }
@@ -38,13 +47,13 @@ export function jouer({ grade = 'cadet', allure = 'normale', strategie = 'parfai
 if (import.meta.url === `file://${process.argv[1]}`) {
     const n = Number(process.argv[2]) || 40;
     for (const grade of Object.keys(GRADES)) {
-        for (const strategie of ['parfait', 'distrait', 'mitraille']) {
+        for (const visee of ['auto', 'droit']) for (const strategie of ['parfait', 'distrait', 'mitraille']) {
             let justes = 0, total = 0;
             for (let i = 0; i < n; i++) {
-                const b = jouer({ grade, strategie, graine: `eq-${i}` });
+                const b = jouer({ grade, strategie, visee, graine: `eq-${i}` });
                 justes += b.justes; total += b.total;
             }
-            console.log(`${grade.padEnd(11)} ${strategie.padEnd(10)} ${justes}/${total} fractions simplifiées (${Math.round(100 * justes / total)} %)`);
+            console.log(`${grade.padEnd(11)} ${visee.padEnd(6)} ${strategie.padEnd(10)} ${justes}/${total} fractions simplifiées (${Math.round(100 * justes / total)} %)`);
         }
     }
 }

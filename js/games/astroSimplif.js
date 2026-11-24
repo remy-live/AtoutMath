@@ -41,7 +41,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, dureeDemo } from '../core/demoPointer.js';
 import { meneurDemo } from '../core/meneurDemo.js';
 import {
-    Mission, GRADES, ALLURES, COULEURS, CRITERES, CAPSULES, BOSS_TOUS_LES, SURCHAUFFE,
+    Mission, GRADES, ALLURES, VISEES, PORTEE, COULEURS, CRITERES, CAPSULES, BOSS_TOUS_LES, SURCHAUFFE,
     chaineEcrite, cheminAvec
 } from '../core/astroSimplif.js';
 
@@ -60,6 +60,10 @@ class AstroSimplif extends BaseGame {
         this.graine = this.params.seed || this.params.graine || 'astro';
         this.cleGrade = GRADES[this.params.grade] ? this.params.grade : 'cadet';
         this.allure = ALLURES[this.params.allure] ? this.params.allure : 'normale';
+        // LA VISÉE : automatique, comme le jeu reçu, ou tir droit — Rémy :
+        // « là où le vaisseau tire droit, et on pourrait alors avoir plusieurs
+        // fractions ». Voir `VISEES` dans le cœur.
+        this.visee = VISEES[this.params.visee] ? this.params.visee : 'auto';
         // LE NOMBRE DE FRACTIONS EST CELUI DE L'ÉTAPE : « 10 fractions » en
         // haut de l'écran, dix astéroïdes, une note sur dix. Hors parcours, dix.
         this.combien = borner(Math.round(Number(this.params.nbQuestions) || 10), 3, 30);
@@ -282,7 +286,10 @@ class AstroSimplif extends BaseGame {
                         <ul class="as-regles">
                             <li>Un canon <b>÷ 2</b>, <b>÷ 3</b>… divise le haut <b>et</b> le bas de la fraction visée.</li>
                             <li>Il ne passe que s'il divise <b>les deux</b>. Sinon il rebondit, et l'astéroïde fait un bond vers toi.</li>
-                            <li>Touche un astéroïde pour le viser. Les capsules se ramassent au doigt ou avec le vaisseau.</li>
+                            ${this.visee === 'droit'
+        ? '<li><b>Tir droit</b> : le canon tire tout droit, sur la fraction la plus basse au-dessus du vaisseau. Glisse le doigt, ou touche une fraction, pour aller dessous.</li>'
+        : '<li>Touche un astéroïde pour le viser. Sinon, le vaisseau vise le plus menaçant.</li>'}
+                            <li>Les capsules se ramassent au doigt ou avec le vaisseau.</li>
                             <li>Clavier : touches <b>1</b> à <b>${this.canons.length}</b> pour les canons, <b>← →</b> pour bouger, <b>P</b> pour la pause.</li>
                         </ul>
                         <p class="as-texte" data-programme>Grade ${g.nom} — canons ${this.canons.map((d) => `÷ ${d}`).join(', ')}.
@@ -495,6 +502,7 @@ class AstroSimplif extends BaseGame {
             // LA DÉMONSTRATION SE JOUE AU RALENTI : le robot parle, et il lui
             // faut le temps de finir sa phrase avant que l'astéroïde arrive.
             allure: this.isDemo ? 'lente' : this.allure,
+            visee: this.visee,
             combien: this.combien,
             graine: `${this.graine}-${this.numero}`,
             fractions: this.isDemo ? [{ num: 12, den: 18 }] : fractions
@@ -504,6 +512,7 @@ class AstroSimplif extends BaseGame {
         // carnet d'erreurs sans s'ajouter aux questions de l'étape, qui
         // afficherait sinon « 14 fractions sur 10 ».
         this.comptee = this.numero === 1;
+        this.mission.portee = this.portee || PORTEE;
         this.retenue = null;
         this.effets = { rayons: [], eclats: [], textes: [] };
         this.secousse = 0;
@@ -696,9 +705,9 @@ class AstroSimplif extends BaseGame {
             e.rempart.textContent = '🛡'.repeat(v);
             e.rempart.setAttribute('aria-label', `${v} rempart${v > 1 ? 's' : ''}`);
         });
-        this.poser('effets', `${Math.ceil(m.stase)}-${Math.ceil(m.double)}`, () => {
-            e.effets.innerHTML = (m.stase > 0
-                ? `<span class="as-effet" style="--c:${CAPSULES.stase.couleur}">Stase ${Math.ceil(m.stase)} s</span>` : '')
+        this.poser('effets', `${Math.ceil(m.ralenti)}-${Math.ceil(m.double)}`, () => {
+            e.effets.innerHTML = (m.ralenti > 0
+                ? `<span class="as-effet" style="--c:${CAPSULES.ralenti.couleur}">Ralenti ${Math.ceil(m.ralenti)} s</span>` : '')
                 + (m.double > 0
                     ? `<span class="as-effet" style="--c:${CAPSULES.double.couleur}">Points × 2 — ${Math.ceil(m.double)} s</span>` : '');
         });
@@ -744,6 +753,11 @@ class AstroSimplif extends BaseGame {
         this.echelle = borner(petit / 480, 0.7, 1.5);
         this.rCapsule = 17 * this.echelle;
         this.rBase = borner(petit * 0.1, 32, 64);
+        // CE QUE TOUCHE UN TIR DROIT : la largeur réelle d'un astéroïde, en
+        // part de l'écran. Un rayon fixé dans le cœur aurait été trop large
+        // sur un ordinateur et trop étroit sur un téléphone tenu debout.
+        this.portee = (this.rBase * 0.85) / this.L;
+        if (this.mission) this.mission.portee = this.portee;
         this.yVaisseau = this.H - Math.max(34, 40 * this.echelle);
         this.ligne = this.yVaisseau - 30 * this.echelle;
     }
@@ -838,7 +852,19 @@ class AstroSimplif extends BaseGame {
         c.setLineDash([]);
 
         const cible = this.phase === 'bilan' ? null : m.cible();
-        if (cible && (this.phase === 'jeu' || this.phase === 'pause')) {
+        const droit = m.visee === 'droit';
+        // EN TIR DROIT, LA LIGNE DE VISÉE MONTE TOUT DROIT, même sans cible :
+        // c'est elle qui dit où partira le tir, donc où se placer.
+        if (droit && (this.phase === 'jeu' || this.phase === 'pause')) {
+            const x = m.vaisseau.x * L;
+            const haut = cible ? this.ecran(cible.x, cible.y).y + this.rayon(cible) * 0.8 : 0;
+            c.save();
+            c.strokeStyle = cible ? 'rgba(56,189,248,.5)' : 'rgba(148,163,184,.22)';
+            c.lineWidth = 2; c.setLineDash([7, 7]);
+            c.lineDashOffset = -this.temps * 38;
+            c.beginPath(); c.moveTo(x, this.yVaisseau - 28 * this.echelle); c.lineTo(x, haut); c.stroke();
+            c.restore();
+        } else if (cible && (this.phase === 'jeu' || this.phase === 'pause')) {
             const p = this.ecran(cible.x, cible.y);
             c.save();
             c.strokeStyle = 'rgba(56,189,248,.36)'; c.lineWidth = 2; c.setLineDash([7, 7]);
@@ -856,9 +882,16 @@ class AstroSimplif extends BaseGame {
             if (!r.vers) pts = [[x0, y0], [x0, 0]];
             else {
                 const p = this.ecran(r.vers.x, r.vers.y);
-                if (r.ricochet) {
-                    const cote = x0 <= p.x ? -1 : 1;
-                    const rr = this.rayon(r.vers);
+                const rr = this.rayon(r.vers);
+                const cote = x0 <= p.x ? -1 : 1;
+                if (droit) {
+                    // Le rayon monte tout droit et frappe le DESSOUS de la roche ;
+                    // le rebond repart vers le bas, de biais.
+                    const bas = p.y + rr * 0.7;
+                    pts = r.ricochet
+                        ? [[x0, y0], [x0, bas], [x0 + cote * 130 * this.echelle, bas + 90 * this.echelle]]
+                        : [[x0, y0], [x0, bas]];
+                } else if (r.ricochet) {
                     pts = [[x0, y0], [p.x + cote * rr, p.y], [p.x + cote * (rr + 140 * this.echelle), p.y - 125 * this.echelle]];
                 } else pts = [[x0, y0], [p.x, p.y]];
             }
@@ -980,9 +1013,14 @@ class AstroSimplif extends BaseGame {
         c.fillStyle = gl; c.beginPath(); c.arc(0, 0, r * 1.5, 0, Math.PI * 2); c.fill();
         c.fillStyle = col; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#050917';
-        c.font = `900 ${Math.round(r * 0.6)}px ${POLICE}`;
+        // LE NOM TIENT DANS LA CAPSULE : « Ralenti » est plus long que « Stase »,
+        // et dépassait du rond à la taille d'avant.
+        const nom = k.sorte === 'rempart' ? '🛡' : CAPSULES[k.sorte].nom;
+        let taille = Math.round(r * 0.6);
+        c.font = `900 ${taille}px ${POLICE}`;
+        while (taille > 7 && c.measureText(nom).width > r * 1.75) { taille--; c.font = `900 ${taille}px ${POLICE}`; }
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(k.sorte === 'rempart' ? '🛡' : CAPSULES[k.sorte].nom, 0, 0.5);
+        c.fillText(nom, 0, 0.5);
         c.restore();
     }
 
@@ -1060,6 +1098,13 @@ class AstroSimplif extends BaseGame {
         m.asteroides[0].y = Math.max(m.asteroides[0].y, 0.1);
         cur.say('12/18 descend. Je dois la rendre irréductible avant qu\'elle me touche.', this.el.arene);
         if (!await robot.attendre(DEMO_SPEED.between)) return fin();
+        if (this.visee === 'droit') {
+            if (!await robot.tour()) return fin();
+            cur.say('En tir droit, le canon tire devant lui : je vais me placer sous la fraction.', this.el.arene);
+            m.diriger(m.asteroides[0].x);
+            while (this.isRunning && m.cible() !== m.asteroides[0]) if (!await robot.pause(60)) return fin();
+            if (!await robot.attendre(dureeDemo(900))) return fin();
+        }
 
         if (!await robot.tour()) return fin();
         cur.say('12 et 18 sont pairs tous les deux : je tire ÷ 2.', canon(2));

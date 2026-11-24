@@ -131,17 +131,21 @@ export const CRITERES = {
 /**
  * LES CAPSULES. Quatre, comme dans le jeu reçu ; deux ont changé de sens
  * (voir l'en-tête). Aucune ne simplifie à la place de l'élève.
+ *
+ * « RALENTI », ET NON PLUS « STASE ». Rémy : « Stase est un mot compliqué. »
+ * Un mot qu'il faut expliquer à un élève de sixième n'explique rien ; celui-ci
+ * dit ce qu'il fait. Et la phrase dit combien : deux fois moins vite.
  */
 export const CAPSULES = {
     pgcd: { nom: 'PGCD', couleur: '#38bdf8', dit: 'Le PGCD s\'écrit sur l\'astéroïde visé : casse-le en canons !' },
     rempart: { nom: 'Rempart', couleur: '#34d399', dit: 'Rempart levé : le prochain astéroïde qui touche sera repoussé.' },
-    stase: { nom: 'Stase', couleur: '#c084fc', dit: 'Stase : les astéroïdes ralentissent pendant 6 secondes.' },
+    ralenti: { nom: 'Ralenti', couleur: '#c084fc', dit: 'Ralenti : les astéroïdes descendent deux fois moins vite pendant 6 secondes.' },
     double: { nom: '× 2', couleur: '#fbbf24', dit: 'Points doublés pendant 8 secondes !' }
 };
 
 /** Durées, en secondes, et quelques constantes de la mission. */
-export const DUREES = { STASE: 6, DOUBLE: 8 };
-export const LENTEUR_DE_STASE = 0.45;
+export const DUREES = { RALENTI: 6, DOUBLE: 8 };
+export const LENTEUR_DU_RALENTI = 0.5;
 /** Le bond d'un astéroïde touché par un tir faux, en part de la descente. */
 export const BOND = 0.12;
 /**
@@ -154,6 +158,26 @@ export const BOND = 0.12;
  * coûte du TEMPS, et pas seulement de la distance : on ne mitraille plus.
  */
 export const SURCHAUFFE = 1.5;
+/**
+ * LES DEUX VISÉES. Rémy : « ce serait bien d'avoir un mode auto (comme
+ * maintenant) où ça vise, mais aussi là où le vaisseau tire droit, et on
+ * pourrait alors avoir plusieurs fractions ».
+ *
+ * EN AUTOMATIQUE, le canon part vers la fraction touchée du doigt, sinon vers
+ * la plus menaçante : on choisit QUOI simplifier, jamais OÙ tirer.
+ *
+ * EN TIR DROIT, le canon part tout droit, et touche la plus basse des
+ * fractions au-dessus du vaisseau. Le choix de la cible redevient un geste —
+ * se placer dessous —, et c'est ce qui permet d'en mettre davantage à l'écran
+ * sans que l'élève perde le fil : deux de plus, qui arrivent plus serrées.
+ * Une fraction qui en cache une autre la protège, comme un vrai astéroïde.
+ */
+export const VISEES = {
+    auto: { nom: 'Automatique', enPlus: 0, cadence: 1 },
+    droit: { nom: 'Tir droit', enPlus: 2, cadence: 0.7 }
+};
+/** La demi-largeur touchée par un tir droit, en part de l'écran : l'écran la règle sur la taille réelle des astéroïdes. */
+export const PORTEE = 0.08;
 /** Où le rempart renvoie l'astéroïde qu'il arrête. */
 export const RENVOI_DU_REMPART = 0.25;
 /** Chute d'une capsule, en part de l'écran par seconde. */
@@ -277,9 +301,11 @@ export const chaineEcrite = (chaine) => chaine.map(([n, d]) => `${n}/${d}`).join
  * image : c'est lui qui dessine les rayons et les éclats, elle qui décide.
  */
 export class Mission {
-    constructor({ grade = 'cadet', allure = 'normale', combien = 10, graine = 'astro', fractions = null } = {}) {
+    constructor({ grade = 'cadet', allure = 'normale', combien = 10, graine = 'astro', fractions = null, visee = 'auto' } = {}) {
         this.cleGrade = GRADES[grade] ? grade : 'cadet';
         this.grade = GRADES[this.cleGrade];
+        this.visee = VISEES[visee] ? visee : 'auto';
+        this.portee = PORTEE;
         this.allure = ALLURES[allure] ? allure : 'normale';
         this.rng = makeRng(graine);
         // LA RÉVISION rejoue les fractions ratées, telles qu'elles étaient au
@@ -294,7 +320,7 @@ export class Mission {
         this.verrou = null;
         this.score = 0;
         this.combo = 1;
-        this.stase = 0;
+        this.ralenti = 0;
         this.double = 0;
         this.remparts = 0;
         this.tirs = 0;
@@ -309,6 +335,9 @@ export class Mission {
     }
 
     get lances() { return this.total - this.aVenir.length; }
+    /** Combien d'astéroïdes à la fois, et tous les combien : la visée les change. */
+    get ensemble() { return this.grade.ensemble + VISEES[this.visee].enPlus; }
+    get cadence() { return this.grade.cadence * VISEES[this.visee].cadence; }
     get faites() { return this.rapports.length; }
 
     /** La durée de chute d'un astéroïde neuf : un peu plus courte à chaque fraction réussie. */
@@ -347,6 +376,7 @@ export class Mission {
      * qui menace. Repris du jeu reçu.
      */
     cible() {
+        if (this.visee === 'droit') return this.auDessus();
         if (this.verrou) {
             const v = this.asteroides.find((a) => a.id === this.verrou);
             if (v) return v;
@@ -360,7 +390,28 @@ export class Mission {
         return mieux;
     }
 
+    /**
+     * EN TIR DROIT : la plus basse des fractions que le tir rencontre en
+     * montant. Il faut qu'elle soit entrée dans le ciel — on ne tire pas sur
+     * ce qu'on ne voit pas encore.
+     */
+    auDessus() {
+        const x = this.vaisseau.x;
+        let mieux = null;
+        for (const a of this.asteroides) {
+            if (a.y < 0 || Math.abs(a.x - x) > this.portee * (a.boss ? 1.3 : 1)) continue;
+            if (!mieux || a.y > mieux.y) mieux = a;
+        }
+        return mieux;
+    }
+
     verrouiller(id) {
+        // En tir droit, toucher une fraction, c'est aller se placer dessous.
+        if (this.visee === 'droit') {
+            const a = this.asteroides.find((x) => x.id === id);
+            if (a) this.diriger(a.x);
+            return;
+        }
         this.verrou = this.asteroides.some((a) => a.id === id) ? id : null;
         const a = this.cible();
         if (a) this.vaisseau.but = Math.min(0.92, Math.max(0.08, a.x));
@@ -457,7 +508,7 @@ export class Mission {
         const [c] = this.capsules.splice(i, 1);
         const ev = { type: 'capsule', id: c.id, sorte: c.sorte, x: c.x, y: c.y };
         if (c.sorte === 'rempart') this.remparts = Math.min(2, this.remparts + 1);
-        else if (c.sorte === 'stase') this.stase = DUREES.STASE;
+        else if (c.sorte === 'ralenti') this.ralenti = DUREES.RALENTI;
         else if (c.sorte === 'double') this.double = DUREES.DOUBLE;
         else if (c.sorte === 'pgcd') {
             const a = this.cible();
@@ -471,7 +522,7 @@ export class Mission {
     avancer(dt) {
         if (this.finie) return;
         this.temps += dt;
-        if (this.stase > 0) this.stase = Math.max(0, this.stase - dt);
+        if (this.ralenti > 0) this.ralenti = Math.max(0, this.ralenti - dt);
         if (this.double > 0) this.double = Math.max(0, this.double - dt);
         if (this.surchauffe > 0) this.surchauffe = Math.max(0, this.surchauffe - dt);
 
@@ -483,12 +534,12 @@ export class Mission {
         // Un astéroïde neuf : tout de suite si le ciel est vide, sinon à la cadence.
         this.attente -= dt;
         if (this.aVenir.length && (this.asteroides.length === 0
-            || (this.attente <= 0 && this.asteroides.length < this.grade.ensemble))) {
+            || (this.attente <= 0 && this.asteroides.length < this.ensemble))) {
             this.lancer();
-            this.attente = this.grade.cadence;
+            this.attente = this.cadence;
         }
 
-        const lent = this.stase > 0 ? LENTEUR_DE_STASE : 1;
+        const lent = this.ralenti > 0 ? LENTEUR_DU_RALENTI : 1;
         for (const a of [...this.asteroides]) {
             a.y += a.vitesse * lent * dt;
             a.rotation += a.tour * lent * dt;

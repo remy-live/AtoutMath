@@ -523,7 +523,7 @@ export const fractionsExercises = [
         cree: '2026-11-24',
         activityId: 'astro-simplif',
         skills: ['num.frac.simplification'],
-        params: { grade: 'cadet', allure: 'normale' },
+        params: { grade: 'cadet', allure: 'normale', visee: 'auto' },
         paramSchema: [
             {
                 // LE GRADE SE RÈGLE ICI, et plus sur l'écran d'accueil du jeu :
@@ -544,6 +544,17 @@ export const fractionsExercises = [
                     { value: 'normale', label: 'Normale' },
                     { value: 'rapide', label: 'Rapide — les critères doivent être sus' }
                 ]
+            },
+            {
+                // RÉMY : « ce serait bien d'avoir un mode auto (comme maintenant)
+                // où ça vise, mais aussi là où le vaisseau tire droit, et on
+                // pourrait alors avoir plusieurs fractions ».
+                id: 'visee', type: 'select', label: 'Visée', default: 'auto',
+                aide: 'En automatique, le canon vise la fraction touchée, sinon la plus menaçante. En tir droit, il part tout droit : on se place sous la fraction, et il en tombe deux de plus à la fois.',
+                options: [
+                    { value: 'auto', label: 'Automatique — le vaisseau vise pour toi' },
+                    { value: 'droit', label: 'Tir droit — on se place dessous, plus de fractions à la fois' }
+                ]
             }
         ],
         motsClefs: ['astro', 'simplifier', 'simplification', 'irréductible', 'fraction', 'critères de divisibilité',
@@ -552,7 +563,7 @@ export const fractionsExercises = [
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Chaque astéroïde porte une fraction et descend vers ton vaisseau. Rends-la IRRÉDUCTIBLE avant qu'il ne te touche : il explose. Les canons du bas — ÷ 2, ÷ 3, ÷ 5… — divisent le numérateur ET le dénominateur de l'astéroïde visé. Un canon ne passe que s'il divise LES DEUX : sinon le tir rebondit, l'astéroïde fait un bond vers toi, et le bandeau du haut dit pourquoi (« 18 se divise par 2, mais 25 est impair »). TOUCHE un astéroïde pour le viser ; sans cela, le vaisseau vise le plus menaçant. Au clavier : les touches 1 à 6 pour les canons, ← → pour bouger, P pour la pause — qui montre aussi les critères de divisibilité. Des capsules tombent parfois : le PGCD s'écrit sur l'astéroïde visé (à toi de le casser en canons), le rempart repousse le prochain astéroïde qui touche, la stase ralentit tout, le × 2 double les points. Un astéroïde géant arrive toutes les cinq fractions. À la fin, le rapport de mission réécrit tes chaînes de simplification comme au tableau, et propose de refaire les fractions ratées."
+        instruction: "Chaque astéroïde porte une fraction et descend vers ton vaisseau. Rends-la IRRÉDUCTIBLE avant qu'il ne te touche : il explose. Les canons du bas — ÷ 2, ÷ 3, ÷ 5… — divisent le numérateur ET le dénominateur de l'astéroïde visé. Un canon ne passe que s'il divise LES DEUX : sinon le tir rebondit, l'astéroïde fait un bond vers toi, les canons chauffent un instant, et le bandeau du bas dit pourquoi (« 18 se divise par 2, mais 25 est impair »). Selon le réglage, la visée est AUTOMATIQUE — TOUCHE un astéroïde pour le viser, sans cela le vaisseau vise le plus menaçant — ou en TIR DROIT : le canon tire tout droit, sur la fraction la plus basse au-dessus du vaisseau ; glisse le doigt ou touche une fraction pour aller dessous, et il en tombe davantage à la fois. Au clavier : les touches 1 à 6 pour les canons, ← → pour bouger, P pour la pause — qui montre aussi les critères de divisibilité. Des capsules tombent parfois : le PGCD s'écrit sur l'astéroïde visé (à toi de le casser en canons), le rempart repousse le prochain astéroïde qui touche, le RALENTI fait descendre les astéroïdes deux fois moins vite, le × 2 double les points. Un astéroïde géant arrive toutes les cinq fractions. À la fin, le rapport de mission réécrit tes chaînes de simplification comme au tableau, et propose de refaire les fractions ratées."
     },
     {
         // LIRE LA FRACTION D'UNE FIGURE — le tout premier geste du chapitre,

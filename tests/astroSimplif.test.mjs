@@ -28,7 +28,7 @@ import { CODES_EXERCICES } from '../js/data/codesExercices.js';
 import { SKILLS } from '../js/data/skills.js';
 import { makeRng } from '../js/core/ids.js';
 import {
-    Mission, GRADES, ALLURES, COULEURS, CRITERES, CAPSULES, BOND, SURCHAUFFE, REBONDS_PERMIS,
+    Mission, GRADES, ALLURES, VISEES, PORTEE, LENTEUR_DU_RALENTI, COULEURS, CRITERES, CAPSULES, BOND, SURCHAUFFE, REBONDS_PERMIS,
     RENVOI_DU_REMPART, BOSS_TOUS_LES, pgcd, irreductible, fabriquerFraction, fabriquerSerie,
     expliquer, chaineEcrite, cheminAvec
 } from '../js/core/astroSimplif.js';
@@ -156,18 +156,21 @@ test('PLUS D\'UN REBOND SUR UNE FRACTION : ELLE EXPLOSE, MAIS ELLE EST À REVOIR
 test('QUI CALCULE SIMPLIFIE TOUT, QUI SE TROMPE UN PEU PRESQUE TOUT, QUI MITRAILLE ÉCHOUE', () => {
     // MESURÉ avant la surchauffe et la règle du rebond : le robot qui appuie
     // sur tous les canons à la suite simplifiait 100 % des fractions.
-    const taux = (grade, strategie) => {
+    const taux = (grade, strategie, visee) => {
         let justes = 0, total = 0;
         for (let i = 0; i < 12; i++) {
-            const b = jouer({ grade, strategie, graine: `ep-${i}` });
+            const b = jouer({ grade, strategie, visee, graine: `ep-${i}` });
             justes += b.justes; total += b.total;
         }
         return justes / total;
     };
-    for (const grade of Object.keys(GRADES)) {
-        assert.equal(taux(grade, 'parfait'), 1, `${grade} : qui calcule juste perd une fraction`);
-        assert.ok(taux(grade, 'distrait') >= 0.85, `${grade} : se tromper une fois sur quatre coûte trop`);
-        assert.ok(taux(grade, 'mitraille') <= 0.5, `${grade} : mitrailler sans calculer réussit encore`);
+    // Les deux visées : le tir droit met plus de fractions à l'écran, et ne
+    // doit rien changer à ces trois verdicts.
+    for (const visee of Object.keys(VISEES)) for (const grade of Object.keys(GRADES)) {
+        const ici = `${grade}, ${visee}`;
+        assert.equal(taux(grade, 'parfait', visee), 1, `${ici} : qui calcule juste perd une fraction`);
+        assert.ok(taux(grade, 'distrait', visee) >= 0.85, `${ici} : se tromper une fois sur quatre coûte trop`);
+        assert.ok(taux(grade, 'mitraille', visee) <= 0.5, `${ici} : mitrailler sans calculer réussit encore`);
     }
 });
 
@@ -233,13 +236,13 @@ test('AUCUNE CAPSULE NE SIMPLIFIE À LA PLACE DE L\'ÉLÈVE', () => {
     assert.equal(r.remparts, 0);
     assert.equal(r.rapports.length, 0);
 
-    // Stase et × 2 : le temps et les points, jamais la fraction.
+    // Ralenti et × 2 : le temps et les points, jamais la fraction.
     const s = missionSur([{ num: 12, den: 18 }]);
-    s.capsules.push({ id: 97, sorte: 'stase', x: 0.5, y: 0.5, phase: 0 }, { id: 96, sorte: 'double', x: 0.5, y: 0.5, phase: 0 });
+    s.capsules.push({ id: 97, sorte: 'ralenti', x: 0.5, y: 0.5, phase: 0 }, { id: 96, sorte: 'double', x: 0.5, y: 0.5, phase: 0 });
     s.ramasser(97); s.ramasser(96);
-    assert.ok(s.stase > 0 && s.double > 0);
+    assert.ok(s.ralenti > 0 && s.double > 0);
     assert.equal(s.asteroides[0].num, 12);
-    assert.deepEqual(Object.keys(CAPSULES).sort(), ['double', 'pgcd', 'rempart', 'stase']);
+    assert.deepEqual(Object.keys(CAPSULES).sort(), ['double', 'pgcd', 'ralenti', 'rempart']);
 });
 
 test('LA CIBLE : CELLE QU\'ON TOUCHE, SINON LA PLUS MENAÇANTE PRÈS DU VAISSEAU', () => {
@@ -309,12 +312,78 @@ test('ASTRO-SIMPLIF EST INSCRIT, NOTABLE, ET SES RÉGLAGES SONT CEUX DU CŒUR', 
     const valeurs = (id) => schema[id].options.map((o) => o.value);
     assert.deepEqual(valeurs('grade'), Object.keys(GRADES));
     assert.deepEqual(valeurs('allure'), Object.keys(ALLURES));
+    assert.deepEqual(valeurs('visee'), Object.keys(VISEES));
     for (const s of ex.paramSchema) assert.ok(valeurs(s.id).includes(ex.params[s.id]), `${s.id} : défaut hors du menu`);
     // Le menu dit les canons de chaque grade : un professeur choisit sur eux.
     schema.grade.options.forEach((o) => GRADES[o.value].canons.forEach((d) =>
         assert.ok(o.label.includes(String(d)), `le libellé de « ${o.value} » ne dit pas le canon ÷ ${d}`)));
     for (const mot of [/irréductible/i, /numérateur ET le dénominateur/i, /rebondit/i, /touche/i, /pause/i,
-        /pgcd/i, /rempart/i, /rapport de mission/i]) {
+        /pgcd/i, /rempart/i, /ralenti/i, /tir droit/i, /automatique/i, /rapport de mission/i]) {
         assert.ok(mot.test(ex.instruction), `la consigne ne dit rien de ${mot}`);
     }
+});
+
+test('EN TIR DROIT, LE CANON TOUCHE LA PLUS BASSE DES FRACTIONS AU-DESSUS DU VAISSEAU', () => {
+    // Rémy : « là où le vaisseau tire droit, et on pourrait alors avoir
+    // plusieurs fractions ».
+    const m = new Mission({ grade: 'cadet', visee: 'droit',
+        fractions: [{ num: 12, den: 18 }, { num: 6, den: 14 }, { num: 20, den: 100 }] });
+    m.lancer(); m.lancer(); m.lancer();
+    const [haut, bas, loin] = m.asteroides;
+    haut.x = 0.5; haut.y = 0.2;
+    bas.x = 0.52; bas.y = 0.6;
+    loin.x = 0.15; loin.y = 0.9;
+    m.vaisseau.x = 0.5;
+    // La plus basse AU-DESSUS du vaisseau, et non la plus basse de l'écran.
+    assert.equal(m.cible(), bas, 'le tir droit ne touche pas la fraction juste au-dessus');
+    m.tirer(2);
+    assert.equal(bas.num, 3, 'le tir n\'est pas parti sur la fraction du dessous');
+    assert.equal(haut.num, 12, 'la fraction cachée derrière a été touchée');
+    // Rien au-dessus : le tir part dans le vide, sans pénalité.
+    m.vaisseau.x = 0.85;
+    assert.equal(m.cible(), null);
+    const avant = m.tirs;
+    assert.equal(m.tirer(3).vide, true);
+    assert.equal(m.tirs, avant, 'un tir dans le vide compte comme un tir faux');
+    assert.equal(m.surchauffe, 0, 'un tir dans le vide fait surchauffer');
+    // Une fraction pas encore entrée dans le ciel ne se touche pas.
+    loin.y = -0.05;
+    m.vaisseau.x = loin.x;
+    assert.equal(m.cible(), null, 'le tir droit touche une fraction hors de l\'écran');
+    // Toucher une fraction, c'est aller se placer dessous.
+    m.verrouiller(haut.id);
+    assert.equal(m.vaisseau.but, haut.x);
+    assert.equal(m.verrou, null);
+    // La portée suit la taille réelle de l'astéroïde, que l'écran règle.
+    m.vaisseau.x = haut.x + PORTEE * 0.9;
+    assert.ok(m.cible());
+    m.portee = PORTEE / 2;
+    assert.equal(m.cible(), null);
+});
+
+test('EN TIR DROIT, IL Y A PLUS DE FRACTIONS À LA FOIS', () => {
+    const auPlus = (visee) => {
+        const m = new Mission({ grade: 'pilote', visee, combien: 12, graine: 'foule' });
+        let max = 0;
+        for (let t = 0; t < 40; t += 0.05) { m.avancer(0.05); max = Math.max(max, m.asteroides.length); }
+        return max;
+    };
+    for (const g of Object.keys(GRADES)) {
+        const m = new Mission({ grade: g, visee: 'droit' });
+        assert.equal(m.ensemble, GRADES[g].ensemble + VISEES.droit.enPlus);
+        assert.ok(m.cadence < GRADES[g].cadence);
+    }
+    assert.ok(auPlus('droit') >= auPlus('auto') + 2, `tir droit ${auPlus('droit')}, automatique ${auPlus('auto')}`);
+});
+
+test('« STASE » NE S\'ÉCRIT PLUS NULLE PART OÙ UN ÉLÈVE LE LIRAIT', () => {
+    // Rémy : « Stase est un mot compliqué. »
+    for (const f of ['js/core/astroSimplif.js', 'js/games/astroSimplif.js']) {
+        assert.ok(!/stase/i.test(sansCommentaires(lire(f))), `${f} écrit encore « stase »`);
+    }
+    const ex = exercices.find((e) => e.id === 'frac-astro-simplif');
+    assert.ok(!/stase/i.test(ex.instruction));
+    assert.equal(CAPSULES.ralenti.nom, 'Ralenti');
+    assert.match(CAPSULES.ralenti.dit, /deux fois moins vite/);
+    assert.equal(LENTEUR_DU_RALENTI, 0.5, 'la phrase dit « deux fois moins vite »');
 });

@@ -8732,3 +8732,31 @@ après le Samouraï :
 Joué au doigt jusqu'au bout (`node tools/sondeAstro.mjs`) à 390 × 844,
 360 × 640, 844 × 390 et 1280 × 800 : tout dans la fenêtre, chaque toucher vise
 l'astéroïde touché, l'étape se clôt.
+
+### 21. « Stase est un mot compliqué » — 24 novembre
+
+Sur Astro-Simplif, à peine intégré : « Stase est un mot compliqué. Ce serait
+bien d'avoir un mode auto (comme maintenant) où ça vise, mais aussi là où le
+vaisseau tire droit, et on pourrait alors avoir plusieurs fractions. »
+
+Deux demandes : un mot qu'un élève de sixième comprend sans qu'on le lui
+explique ; et un second régime de visée, où c'est la position du vaisseau qui
+choisit la fraction — ce qui permet d'en mettre davantage à l'écran, puisque
+le choix de la cible redevient un geste de l'élève.
+
+**CE QUI EST FAIT (v1249)** :
+
+- « Stase » devient **Ralenti**, et la phrase dit ce qu'il fait : « les
+  astéroïdes descendent deux fois moins vite pendant 6 secondes » (le
+  ralentissement passe de 0,45 à 0,5 pour que la phrase soit vraie) ;
+- un réglage **Visée** : *Automatique* (comme avant) ou *Tir droit*. En tir
+  droit, le canon touche la plus basse des fractions au-dessus du vaisseau ;
+  toucher une fraction envoie le vaisseau dessous, glisser le doigt le
+  déplace ; une ligne pointillée monte du canon et dit où partira le tir. Il
+  en tombe deux de plus à la fois (4 chez les cadets, 5 au-delà), plus
+  serrées. Une fraction en cache une autre : elle la protège.
+
+Mesuré sur 40 missions par grade et par visée : qui calcule 100 % dans les
+deux visées ; qui se trompe une fois sur quatre 90 à 96 % ; qui mitraille
+6 à 34 %. Joué au doigt en tir droit à 390 × 844 et 1280 × 800 : l'étape se
+clôt, chaque toucher envoie le vaisseau sous la bonne fraction.
