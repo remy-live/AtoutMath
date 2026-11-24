@@ -66,7 +66,9 @@ const REGARD_MS = 500;
  * l'exercice s'ouvre jusqu'à l'écran de fin d'étape, et la lâche aussi quand
  * l'élève quitte. On lit donc cela, plutôt que de deviner à l'écran ce qui est
  * un jeu : ce qui s'applique à MultiKart s'applique au chronomètre d'une série
- * de questions, qui court lui aussi pendant qu'une fenêtre attend.
+ * de questions, qui court lui aussi pendant qu'une fenêtre attend. Rémy, à qui
+ * l'on a demandé « tous les exercices, ou les jeux seulement ? » : « Oui autant
+ * attendre la fin d'une étape. »
  *
  * LA CARTE N'EST PAS PERDUE, ELLE ATTEND SON TOUR. Elle s'ouvre sur l'écran de
  * fin d'étape — l'endroit pour lequel ce fichier a été écrit —, et si le bilan

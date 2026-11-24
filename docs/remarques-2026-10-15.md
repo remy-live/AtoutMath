@@ -8682,3 +8682,6 @@ questions court aussi pendant qu'une fenêtre attend). Ce faisant, elle s'est
 ouverte SOUS l'écran de fin d'étape : `etageLibre` ne voyait pas la couche de
 jeu, rangée dans `#app-container`. Corrigé aussi — c'est le même défaut qui
 rangeait n'importe quelle fenêtre sous un exercice.
+
+**RÉMY A TRANCHÉ**, à la question « tous les exercices, ou les jeux seulement ? » :
+« Oui autant attendre la fin d'une étape. » La règle vaut pour tout exercice.
