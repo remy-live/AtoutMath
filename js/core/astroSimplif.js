@@ -291,6 +291,33 @@ export function expliquer(num, den, d) {
     return `÷ ${d} impossible : ${pourquoiPas(num, d)}.`;
 }
 
+/**
+ * LE CLAVIER : ON TAPE LE DIVISEUR. Rémy, devant « ÷ 2 — touche 1, ÷ 3 —
+ * touche 2 » : « c'est un peu absurde ». La touche était le rang du canon,
+ * reprise du jeu reçu ; c'est maintenant le nombre lui-même — 2 pour ÷ 2,
+ * 5 pour ÷ 5, et 1 puis 0 pour ÷ 10, comme on l'écrirait.
+ *
+ * `tampon` est ce qu'on a déjà tapé, `chiffre` la touche qui arrive. On tire
+ * dès que ce qu'on a tapé est un canon et qu'aucun canon plus long ne commence
+ * pareil : « 2 » part tout de suite, « 1 » attend la suite (10, 11 ou 13). Un
+ * chiffre qui ne prolonge rien recommence un nombre neuf : 1 puis 2 tire ÷ 2.
+ *
+ * @returns {{ tir: number|null, tampon: string }}
+ */
+export function frapper(tampon, chiffre, canons) {
+    const ecrits = canons.map(String);
+    const essai = `${tampon}${chiffre}`;
+    const plusLong = ecrits.some((c) => c.length > essai.length && c.startsWith(essai));
+    if (ecrits.includes(essai) && !plusLong) return { tir: Number(essai), tampon: '' };
+    if (plusLong) return { tir: null, tampon: essai };
+    return tampon ? frapper('', chiffre, canons) : { tir: null, tampon: '' };
+}
+
+/** Ce qu'on a tapé, quand la suite n'est pas venue : un canon s'il en est un, sinon rien. */
+export function finirFrappe(tampon, canons) {
+    return canons.map(String).includes(tampon) ? Number(tampon) : null;
+}
+
 /** La chaîne écrite : « 36/48 → 18/24 → 3/4 ». */
 export const chaineEcrite = (chaine) => chaine.map(([n, d]) => `${n}/${d}`).join(' → ');
 

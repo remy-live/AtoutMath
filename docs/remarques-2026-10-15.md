@@ -8760,3 +8760,17 @@ Mesuré sur 40 missions par grade et par visée : qui calcule 100 % dans les
 deux visées ; qui se trompe une fois sur quatre 90 à 96 % ; qui mitraille
 6 à 34 %. Joué au doigt en tir droit à 390 × 844 et 1280 × 800 : l'étape se
 clôt, chaque toucher envoie le vaisseau sous la bonne fraction.
+
+### 22. « c'est un peu absurde les commandes » — 24 novembre
+
+Capture de la rangée de canons d'Astro-Simplif, « ÷ 2 — touche 1, ÷ 3 —
+touche 2, ÷ 5 — touche 3… » : « c'est un peu absurde les commandes, taper 1
+pour diviser par 2, 2 pour diviser par 3 ». La touche était le RANG du canon,
+repris du jeu reçu. Elle doit être le DIVISEUR : on tape le nombre par lequel
+on divise, comme on l'écrirait.
+
+**CE QUI EST FAIT (v1250)** : on tape le diviseur — 2 pour ÷ 2, 5 pour ÷ 5,
+1 puis 0 pour ÷ 10 (1 puis 1, 1 puis 3 chez les commandants). « 1 » seul
+attend la suite : les canons qui peuvent la recevoir s'allument, et sans
+suite au bout de 0,9 s on oublie. Les boutons ne portent plus que « ÷ 2 ».
+Vérifié au clavier dans le navigateur : 6 tirs sur 6 sur le bon canon.

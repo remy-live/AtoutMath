@@ -42,7 +42,7 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED, dureeDemo } from '../core
 import { meneurDemo } from '../core/meneurDemo.js';
 import {
     Mission, GRADES, ALLURES, VISEES, PORTEE, COULEURS, CRITERES, CAPSULES, BOSS_TOUS_LES, SURCHAUFFE,
-    chaineEcrite, cheminAvec
+    chaineEcrite, cheminAvec, frapper, finirFrappe
 } from '../core/astroSimplif.js';
 
 const COMPETENCE = 'num.frac.simplification';
@@ -161,7 +161,7 @@ class AstroSimplif extends BaseGame {
                     box-shadow: 0 4px 12px rgba(0, 0, 0, .38); touch-action: manipulation;
                     transition: transform .1s, background .1s;
                 }
-                .as-canon small { font-size: .5em; font-weight: 800; opacity: .7; }
+                .as-canon--attend { box-shadow: 0 0 0 3px var(--c), 0 0 18px var(--c); }
                 .as-dock { position: relative; }
                 .as-dock::after {
                     content: 'Canons en surchauffe'; position: absolute; left: 0; bottom: 0; height: 3px;
@@ -171,7 +171,6 @@ class AstroSimplif extends BaseGame {
                 .as-dock--non { animation: as-non .25s; }
                 @keyframes as-non { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
                 .as-canon--feu { transform: scale(.93); background: var(--c); color: #050917; }
-                @container (max-width: 520px) { .as-canon small { display: none; } }
 
                 /* LES VOILES : accueil, pause et bilan. Ils couvrent le jeu, pas la page. */
                 .as-voile {
@@ -274,7 +273,7 @@ class AstroSimplif extends BaseGame {
                 </div>
                 <div class="as-dock" data-dock>
                     ${this.canons.map((d, i) => `<button type="button" class="as-canon" data-canon="${d}"
-                        style="--c:${COULEURS[d]}" aria-label="Tirer divisé par ${d}">÷ ${d}<small>touche ${i + 1}</small></button>`).join('')}
+                        style="--c:${COULEURS[d]}" aria-label="Tirer divisé par ${d}" aria-keyshortcuts="${String(d).split('').join(' ')}">÷ ${d}</button>`).join('')}
                 </div>
 
                 <div class="as-voile${this.isDemo ? '' : ' as-vu'}" data-accueil>
@@ -290,7 +289,8 @@ class AstroSimplif extends BaseGame {
         ? '<li><b>Tir droit</b> : le canon tire tout droit, sur la fraction la plus basse au-dessus du vaisseau. Glisse le doigt, ou touche une fraction, pour aller dessous.</li>'
         : '<li>Touche un astéroïde pour le viser. Sinon, le vaisseau vise le plus menaçant.</li>'}
                             <li>Les capsules se ramassent au doigt ou avec le vaisseau.</li>
-                            <li>Clavier : touches <b>1</b> à <b>${this.canons.length}</b> pour les canons, <b>← →</b> pour bouger, <b>P</b> pour la pause.</li>
+                            <li>Clavier : tape le diviseur — <b>2</b> pour ÷ 2, <b>5</b> pour ÷ 5${this.canons.some((d) => d >= 10)
+        ? `, <b>1</b> puis <b>${String(this.canons.find((d) => d >= 10))[1]}</b> pour ÷ ${this.canons.find((d) => d >= 10)}` : ''} ; <b>← →</b> pour bouger, <b>P</b> pour la pause.</li>
                         </ul>
                         <p class="as-texte" data-programme>Grade ${g.nom} — canons ${this.canons.map((d) => `÷ ${d}`).join(', ')}.
                             ${this.combien} fractions, un astéroïde géant toutes les ${BOSS_TOUS_LES}.</p>
@@ -448,9 +448,9 @@ class AstroSimplif extends BaseGame {
             if (this.phase !== 'jeu') return;
             if (k === 'arrowleft' || k === 'q') { ev.preventDefault(); this.mission.pousser(bas ? -1 : 0); return; }
             if (k === 'arrowright' || k === 'd') { ev.preventDefault(); this.mission.pousser(bas ? 1 : 0); return; }
-            if (bas && !ev.repeat && /^[1-9]$/.test(ev.key)) {
-                const d = this.canons[Number(ev.key) - 1];
-                if (d) { ev.preventDefault(); this.tirer(d); }
+            if (bas && !ev.repeat && /^[0-9]$/.test(ev.key)) {
+                ev.preventDefault();
+                this.frappe(ev.key);
             }
         };
         window.addEventListener('keydown', this.surTouche);
@@ -478,8 +478,31 @@ class AstroSimplif extends BaseGame {
         else this.dernier = performance.now();
     }
 
+    /**
+     * UNE TOUCHE CHIFFRE : on tape le diviseur (voir `frapper` dans le cœur).
+     * « 1 » attend la suite ; les canons qui peuvent la recevoir s'allument,
+     * et sans suite au bout de 0,9 s, on oublie.
+     */
+    frappe(chiffre) {
+        clearTimeout(this.minuteurFrappe);
+        const r = frapper(this.tampon || '', chiffre, this.canons);
+        this.tampon = r.tampon;
+        this.el.wrap.querySelectorAll('[data-canon]').forEach((b) => b.classList.toggle('as-canon--attend',
+            !!r.tampon && b.dataset.canon.startsWith(r.tampon)));
+        if (r.tir) { this.tirer(r.tir); return; }
+        if (!r.tampon) { this.secouerDock(); return; }
+        this.minuteurFrappe = setTimeout(() => {
+            const d = finirFrappe(this.tampon, this.canons);
+            this.tampon = '';
+            this.el.wrap.querySelectorAll('.as-canon--attend').forEach((b) => b.classList.remove('as-canon--attend'));
+            if (d) this.tirer(d);
+        }, 900);
+    }
+
     tirer(d) {
         if (this.phase !== 'jeu') return;
+        this.tampon = '';
+        this.el.wrap.querySelectorAll('.as-canon--attend').forEach((b) => b.classList.remove('as-canon--attend'));
         const b = this.el.wrap.querySelector(`[data-canon="${d}"]`);
         if (b) {
             b.classList.add('as-canon--feu');
@@ -1134,6 +1157,7 @@ class AstroSimplif extends BaseGame {
         if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
         if (this.observateur) { this.observateur.disconnect(); this.observateur = null; }
         if (this.el) clearTimeout(this.el.retour._tempo);
+        clearTimeout(this.minuteurFrappe);
         if (this.detacher) this.detacher();
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();

@@ -30,7 +30,7 @@ import { makeRng } from '../js/core/ids.js';
 import {
     Mission, GRADES, ALLURES, VISEES, PORTEE, LENTEUR_DU_RALENTI, COULEURS, CRITERES, CAPSULES, BOND, SURCHAUFFE, REBONDS_PERMIS,
     RENVOI_DU_REMPART, BOSS_TOUS_LES, pgcd, irreductible, fabriquerFraction, fabriquerSerie,
-    expliquer, chaineEcrite, cheminAvec
+    expliquer, chaineEcrite, cheminAvec, frapper, finirFrappe
 } from '../js/core/astroSimplif.js';
 import { jouer } from '../tools/equilibreAstro.mjs';
 
@@ -386,4 +386,38 @@ test('« STASE » NE S\'ÉCRIT PLUS NULLE PART OÙ UN ÉLÈVE LE LIRAIT', () => 
     assert.equal(CAPSULES.ralenti.nom, 'Ralenti');
     assert.match(CAPSULES.ralenti.dit, /deux fois moins vite/);
     assert.equal(LENTEUR_DU_RALENTI, 0.5, 'la phrase dit « deux fois moins vite »');
+});
+
+test('AU CLAVIER, ON TAPE LE DIVISEUR — PAS LE RANG DU CANON', () => {
+    // Rémy, devant « ÷ 2 — touche 1, ÷ 3 — touche 2 » : « c'est un peu absurde ».
+    const taper = (touches, canons) => {
+        const tirs = [];
+        let t = '';
+        for (const k of touches) {
+            const r = frapper(t, k, canons);
+            t = r.tampon;
+            if (r.tir) tirs.push(r.tir);
+        }
+        return { tirs, reste: t };
+    };
+    const cadet = GRADES.cadet.canons, commandant = GRADES.commandant.canons;
+    assert.deepEqual(taper('2357', cadet).tirs, [2, 3, 5, 7], 'chaque chiffre ne tire pas son propre canon');
+    assert.deepEqual(taper('10', cadet).tirs, [10], '1 puis 0 ne tire pas ÷ 10');
+    assert.deepEqual(taper('1113', commandant).tirs, [11, 13]);
+    // « 1 » seul attend la suite ; « 1 » puis « 2 » recommence un nombre : ÷ 2.
+    assert.deepEqual(taper('1', commandant), { tirs: [], reste: '1' });
+    assert.deepEqual(taper('12', commandant).tirs, [2]);
+    // Une touche qui n'est aucun canon ne tire rien.
+    assert.deepEqual(taper('4', cadet).tirs, []);
+    assert.equal(finirFrappe('1', cadet), null);
+    assert.equal(finirFrappe('7', cadet), 7);
+    // Chaque canon de chaque grade se tape.
+    for (const g of Object.values(GRADES)) for (const d of g.canons) {
+        assert.deepEqual(taper(String(d), g.canons).tirs, [d], `÷ ${d} ne se tape pas en « ${d} »`);
+    }
+    // L'écran ne lit plus la touche comme un rang, et n'affiche plus « touche 1 ».
+    const JEU = sansCommentaires(lire('js/games/astroSimplif.js'));
+    assert.ok(!/canons\[Number\(ev\.key\) - 1\]/.test(JEU), 'la touche est encore lue comme le rang du canon');
+    assert.ok(!/touche \$\{i \+ 1\}/.test(JEU), 'les boutons affichent encore « touche 1, touche 2 »');
+    assert.ok(/frapper\(/.test(JEU));
 });
