@@ -379,6 +379,7 @@ export const CODES_EXERCICES = {
     'num-echelle-tailles':        'EH',   // L'Échelle des Tailles
     'num-prefixes-tableau':       'MK',   // Milli, Kilo, Méga — le tableau
     'num-puissances-produit':     'UP',   // Multiplier par une Puissance de 10
+    'num-puissances-deux-temps':  'ES',   // Écriture Scientifique en deux temps
     'calc-plateau-nombres':       'LT',   // Le Plateau des Nombres
     'num-chat-perche':            'HC',   // Le Chat Perché
     'num-la-ruee':                'RU',   // La Ruée

@@ -155,6 +155,10 @@ import { prefixesGenerator } from '../generators/prefixes.js';
 // `puissancesCalcul.js` manipule des puissances SEULES. Le produit d'un
 // nombre par une puissance n'était nulle part.
 import { puissancesProduitGenerator } from '../generators/puissancesProduit.js';
+// L'ÉCRITURE SCIENTIFIQUE EN DEUX TEMPS. Rémy : « on a 134 × 10⁵, on met
+// d'abord 134 sous forme scientifique en laissant le 10⁵, puis après on
+// applique la règle des puissances ».
+import { puissancesDeuxTempsGenerator } from '../generators/puissancesDeuxTemps.js';
 import { puissancesCalculGenerator } from '../generators/puissancesCalcul.js';
 import { thalesGenerator } from '../generators/thales.js';
 import { hashiFicheGenerator } from '../generators/hashiFiche.js';
@@ -266,6 +270,7 @@ import {
     tourBrahmaFicheGenerator, grenouillesFicheGenerator, parkingFicheGenerator,
     puissancesReconnaitreGenerator, puissancesTransformerGenerator, puissancesGenerator,
     prefixesGenerator, puissancesCalculGenerator, puissancesProduitGenerator,
+    puissancesDeuxTempsGenerator,
     thalesGenerator,
     hashiFicheGenerator,
     tableurFicheGenerator, chatFicheGenerator,
@@ -1140,6 +1145,19 @@ registerActivity({
     requiresMeta: ['facteur'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./egaliteFleches.js')
+});
+
+// L'ÉCRITURE SCIENTIFIQUE EN DEUX TEMPS, ÉCRITE COMME AU CAHIER : la ligne du
+// milieu — « 1,34 × 10² × 10⁵ » — est celle que Rémy veut voir, et un QCM
+// ne la ferait jamais écrire.
+registerActivity({
+    id: 'scientifique-deux-temps',
+    unite: 'calcul',
+    label: 'Écrire en deux temps',
+    accepts: ['text'],
+    requiresMeta: ['deuxTemps'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./scientifiqueDeuxTemps.js')
 });
 
 registerActivity({

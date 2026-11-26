@@ -154,7 +154,13 @@ test('LES SYMBOLES MATHÉMATIQUES TRAVERSENT pourPdf — le PDF sait les écrire
     // CE QUI RESTE TRANSLITTÉRÉ, et c'est voulu : Symbol ne l'a pas.
     assert.equal(pourPdf('a ☐ b'), 'a [ ] b');
     assert.equal(pourPdf('2 − 1'), '2 - 1');           // le vrai signe moins
-    assert.equal(pourPdf('62\u202F307'), '62\u00A0307'); // l'espace fine des milliers
+    // L'espace fine des milliers ne sort plus en « ? » — et, depuis le 26
+    // novembre, plus en insécable non plus : jsPDF compte celle-ci 2,24 mm
+    // quand le lecteur la dessine 1,19, et l'exposant d'après se décollait
+    // (Rémy : « parfois tes exposants sont un peu décalés » ; mesuré par
+    // `node tools/largeurInsecable.mjs`). Au tracé, la ligne est déjà coupée :
+    // une espace ordinaire suffit.
+    assert.equal(pourPdf('62\u202F307'), '62 307');
 
     // Et le filet de sécurité tient toujours pour le reste.
     assert.ok(pourPdf('a \u4E2D b').includes('?'), 'un idéogramme reste un « ? »');

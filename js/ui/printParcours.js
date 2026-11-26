@@ -321,6 +321,8 @@ export function questionsDe(etape, nb) {
             // imprimait « <span class="fraction">… » en toutes lettres.
             choix: item.choices ? item.choices.map(texteDeProposition) : null,
             reponse: formaterReponse(item),
+            // La largeur des trous, quand l'exercice la dit — voir `texteImprime`.
+            trou: (item.meta && item.meta.trouPapier) || 0,
             // Le générateur dit si ses questions portent des fractions : la
             // mise en page les écrira alors en colonne.
             fractions: !!etape.generator.fractions && porteUneFraction(texte, item.answer),

@@ -138,6 +138,8 @@ function tirerQuestions(generator, params, nb) {
             // place ; le réglage de la feuille ne sait pas les distinguer, le
             // générateur si. Voir `placeDemandee` dans core/fiche.js.
             lignes: (item.meta && item.meta.lignesPapier) || null,
+            // La largeur des trous, quand l'exercice la dit — voir `texteImprime`.
+            trou: (item.meta && item.meta.trouPapier) || 0,
             // LE MÊME PIÈGE QUE POUR LA RÉPONSE, un cran plus loin : le
             // libellé d'une proposition est fait pour l'ÉCRAN. Une fraction y
             // est du HTML — deux span empilés —, et une égalité de Thalès

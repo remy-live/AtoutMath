@@ -59,6 +59,14 @@ export const ORDRE_ETAPES = Object.values(ETAPES_PUISSANCES)
 const EXPOSANTS = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
 
 /** « 10⁻³ », avec de vrais exposants — lisibles partout, y compris sur papier. */
+/**
+ * L'EXPOSANT À TROUVER, SUR LA FEUILLE : « 10⸱ » s'imprime 10 suivi de quatre
+ * petits points en exposant. RÉMY : « juste quelques pointillés en exposant ».
+ * Un caractère que rien d'autre n'emploie (U+2E31), pour que la fiche le
+ * reconnaisse sans le confondre avec un vrai point.
+ */
+export const TROU_EN_EXPOSANT = '\u2E31';
+
 export const puissanceTexte = (n) =>
     `10${String(n).split('').map(c => EXPOSANTS[c]).join('')}`;
 

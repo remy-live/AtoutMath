@@ -8425,3 +8425,28 @@ deux** — 19 novembre
 - *Ce qui manque* — dans `sonde.mjs`, un `s.etapeClose()` qui lise l'état du
   parcours (le runner) plutôt qu'une phrase à l'écran, et un `s.dehors(racine)`
   qui dise ce qui sort d'un jeu ou se met en position fixe.
+
+## Un `render()` juste après `session.submit()` efface la carte de correction — 2026-11-26
+
+- *Ce que je voulais faire* — marquer en rouge la ligne fautive d'une activité
+  neuve (« Écriture scientifique en deux temps ») après une réponse fausse.
+- *Ce qui a coûté* — trois parties de sonde et un passage instrumenté : la
+  ligne se marquait, la phrase s'écrivait, puis plus rien ne bougeait. La carte
+  « Ce n'est pas ça » se pose DANS le conteneur de l'activité ; mon `render()`
+  la remplaçait aussitôt, et `result.dismissed` attendait pour toujours un clic
+  sur un bouton qui n'existait plus. Aucune erreur de page, aucune trace.
+- *Combien de fois* — |
+- *Ce qui manque* — que `gameFeedbackUI` dise quand sa carte est retirée du DOM
+  sans avoir été fermée (un `console.warn`, ou résoudre `dismissed`), et une
+  ligne dans le gabarit des activités : « après submit, on ne redessine pas
+  avant `dismissed` ».
+
+## jsPDF compte l'espace insécable presque deux fois trop large — 2026-11-26
+
+- *Ce que je voulais faire* — imprimer « 9 330 × 10⁶ » avec l'exposant collé.
+- *Ce qui a coûté* — trois rendus de fiche et une mesure à part : le défaut
+  touchait TOUTES les fiches dès qu'un exposant suivait une insécable (milliers,
+  bords de trou), mais aucune fiche n'avait encore ce cas. Rémy l'a vu avant moi.
+- *Combien de fois* — |
+- *Ce qui manque* — rien de plus : `node tools/largeurInsecable.mjs` le
+  remesure, et `pourPdf` change l'insécable en espace au tracé.

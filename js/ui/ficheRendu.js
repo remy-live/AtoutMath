@@ -920,7 +920,10 @@ const HORS_TABLE = {
  * L'APERÇU N'AVAIT PAS LE DÉFAUT : le navigateur, lui, sait écrire π et ⁴. Ce
  * changement fait donc simplement dire au PDF ce que l'écran montrait déjà.
  */
-const RE_EXPOSANT = '([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)';
+// U+2E31 est L'EXPOSANT À TROUVER — voir `TROU_EN_EXPOSANT` dans
+// core/puissances.js. Il fait partie du bloc d'exposants, donc il se pose en
+// haut, petit, collé à son 10, et se dessine en pointillés.
+const RE_EXPOSANT = '([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B\u2E31]+)';
 
 /**
  * LE RADICAL, ET CE QU'IL DOIT RECOUVRIR.
@@ -1349,7 +1352,11 @@ const EXPOSANTS_HAUT = {
     // « 10^7 × 10^7 = 10^7?7 » : le pas intermédiaire d'un exercice sur les
     // puissances, c'est-à-dire tout ce qu'il enseigne. Et « a × 10ⁿ »
     // devenait « a × 10? » dans la définition même de l'écriture scientifique.
-    '\u207A': '+', '\u207F': 'n', '\u02DF': '\u00D7'
+    '\u207A': '+', '\u207F': 'n', '\u02DF': '\u00D7',
+    // L'EXPOSANT À TROUVER. RÉMY : « juste quelques pointillés en exposant ».
+    // Un trou sur la ligne, après un 10, se lisait « × 10 ____ » — comme un
+    // produit. Quatre points, petits et en haut, disent « ici, l'exposant ».
+    '\u2E31': '. . . .'
 };
 // Seuls ¹ ² ³ existent dans la police du PDF. Les autres — ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁰ et le
 // moins en exposant — n'y sont pas, et sortaient en points d'interrogation :
@@ -1371,7 +1378,10 @@ const IMPRIMABLE_EN_HAUT = new Set(['\u00B9', '\u00B2', '\u00B3']);
 const exposantsLisibles = (t) => t.replace(
     // Le bloc inclut ⁺ ⁿ ˟ depuis qu'ils sont dans la table : sans eux,
     // « 10⁷⁺⁷ » se coupait en deux blocs et le ⁺ tombait seul au milieu.
-    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207A\u207B\u207F\u02DF]+)/g,
+    // ET L'EXPOSANT À TROUVER (U+2E31) : par ce chemin de secours — celui des
+    // textes qui ne passent pas par `morceauxLigne` —, il sort « ^. . . . »
+    // plutôt qu'un « ? ».
+    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207A\u207B\u207F\u02DF\u2E31]+)/g,
     (_, avant, bloc) => {
         const puissance = /\d/.test(avant);
         const tout = [...bloc].every(c => IMPRIMABLE_EN_HAUT.has(c));
@@ -1399,6 +1409,20 @@ export const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('')
 export function pourPdf(texte) {
     let t = exposantsLisibles(typographieFr(texte));
     for (const [de, a] of Object.entries(HORS_TABLE)) t = t.split(de).join(a);
+    // L'INSÉCABLE S'ÉCRIT COMME UNE ESPACE — et c'est ce qui recolle les
+    // exposants. RÉMY : « parfois tes exposants sont un peu décalés ».
+    //
+    // MESURÉ (`node tools/largeurInsecable.mjs`) : en Helvetica 12, jsPDF compte
+    // l'espace insécable 2,24 mm et l'espace ordinaire 1,19 mm, quand le
+    // lecteur de PDF les DESSINE toutes deux à 1,19. Chaque insécable d'un
+    // morceau de texte repoussait donc le morceau suivant d'un millimètre —
+    // et le morceau suivant d'un « 9 330 × 10 », c'est son exposant. Même
+    // chose au bord de chaque trou, que `texteImprime` borde d'insécables.
+    //
+    // ON LE FAIT ICI, AU TRACÉ, ET PAS PLUS TÔT : la mise en page a déjà
+    // coupé ses lignes, et l'insécable y a fait son travail — garder « 9 330 »
+    // d'un seul tenant. Sur le papier, il n'y a plus rien à couper.
+    t = t.replace(/\u00A0/g, ' ');
     // Filet de sécurité : tout ce qui reste au-dessus de la table y passe.
     // Un point d'interrogation vaut mieux qu'une ligne entière illisible.
     //
@@ -1419,7 +1443,19 @@ export function mesureur() {
     const c = document.createElement('canvas').getContext('2d');
     return (texte, taille) => {
         c.font = `${taille * 100}px Helvetica, Arial, sans-serif`;
-        return c.measureText(texte).width / 100;
+        // UN EXPOSANT SE MESURE COMME IL SE DESSINE : son chiffre ordinaire,
+        // aux deux tiers de la taille (`dessinerExposant`). Mesuré avec le
+        // glyphe « ⁻ » de la police de l'écran, plus étroit que le « - » que
+        // dessine le PDF, tout ce qui suivait un 10⁻⁹ glissait, et le trou
+        // d'après venait buter contre le « × ». Pire avec l'exposant à
+        // trouver, quatre points mesurés comme un seul petit caractère.
+        const t = String(texte);
+        let haut = 0;
+        const sans = t.replace(/[\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B\u2E31]/g, (ch) => {
+            haut += 0.68 * c.measureText(EXPOSANTS_HAUT[ch] ?? ch).width;
+            return '';
+        });
+        return (c.measureText(sans).width + haut) / 100;
     };
 }
 

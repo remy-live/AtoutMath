@@ -54,7 +54,7 @@ export function pageDe(orientation) {
  */
 export const TROU_MIN = 3;
 
-export function texteImprime(texte, reponse) {
+export function texteImprime(texte, reponse, largeurTrou = 0) {
     // Le « ? » qui suit un « = » EN FIN D'ÉNONCÉ disparaît : la place à
     // remplir, ce sont les pointillés juste après. Mais « 82 041 = ? + 40 »
     // n'est pas de ceux-là — son « ? » est un trou au milieu, et l'effacer
@@ -64,7 +64,12 @@ export function texteImprime(texte, reponse) {
     // Trois caractères de plus que la réponse attendue : un élève de sixième
     // n'écrit pas au millimètre, et un « 7 000 » posé dans la largeur exacte
     // de « 7 000 » déborde sur le signe d'après.
-    const large = Math.max(TROU_MIN + 2, String(reponse ?? '').length + 3);
+    // SAUF QUAND L'EXERCICE DIT LA LARGEUR (`meta.trouPapier`) : une question
+    // à DEUX trous n'a qu'une réponse pour les deux, et la réponse entière —
+    // « 1,34 × 10² × 10⁵ = 1,34 × 10⁷ » — faisait deux trous de trente
+    // caractères là où l'on n'écrit que « 1,34 ». Regardé sur la fiche.
+    const large = largeurTrou > 0 ? Math.max(TROU_MIN + 2, Math.round(largeurTrou))
+        : Math.max(TROU_MIN + 2, String(reponse ?? '').length + 3);
     // LE TROU NE TOUCHE PAS LES SIGNES QUI L'ENTOURENT.
     //
     // « 8 + ? = 10 » devenait « 8 +.........= 10 » : la mise en page prend
@@ -1446,7 +1451,7 @@ export function composerBlocs(exos, opts, mesurer) {
         // avant de poser quoi que ce soit.
         function mesurerCellules() { return questions.map((q, iQ) => {
             const mes = q.fractions ? mesureurFractions(mesurer) : mesurer;
-            const brut = texteImprime(q.texte, q.reponse);
+            const brut = texteImprime(q.texte, q.reponse, q.trou);
             const lignes = couperEnLignes(brut, texteW, o.taille, mes);
             // UN RETOUR À LA LIGNE VOULU N'EST PAS UNE COUPURE.
             //

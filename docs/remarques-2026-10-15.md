@@ -8774,3 +8774,43 @@ on divise, comme on l'écrirait.
 attend la suite : les canons qui peuvent la recevoir s'allument, et sans
 suite au bout de 0,9 s on oublie. Les boutons ne portent plus que « ÷ 2 ».
 Vérifié au clavier dans le navigateur : 6 tirs sur 6 sur le bon canon.
+
+### 23. « on met d'abord 134 sous forme scientifique en laissant le 10^5 » — 26 novembre
+
+« J'aimerais bien un exercice dans les puissances du genre : on a 134 × 10^5,
+on met d'abord 134 sous forme scientifique en laissant le 10^5, puis après on
+applique la règle des puissances pour avoir à la fin 1,34 × 10^7. »
+
+Deux temps, et l'ordre compte : 134 × 10^5 = 1,34 × 10^2 × 10^5 = 1,34 × 10^7.
+L'élève qui saute le premier temps écrit 1,34 × 10^5 — il a déplacé la
+virgule sans compter ce que ça coûte.
+
+Puis, pendant que je regardais la fiche : « attention pour l'impression pour
+les exposants, à bien les mettre, et juste quelques pointillés en exposant ».
+Sur la feuille, l'exposant à trouver se marque par quelques pointillés EN
+EXPOSANT — pas par un trou sur la ligne, qui se lit « × 10 ____ » comme un
+produit —, et les exposants donnés doivent coller à leur 10.
+
+**CE QUI EST FAIT (v1251)** — « Écriture Scientifique en Deux Temps », dans les
+puissances, juste après « Multiplier par une Puissance de 10 » :
+
+- l'élève ÉCRIT les deux lignes : `= [1,34] × 10^[2] × 10⁵` puis
+  `= 1,34 × 10^[7]` ; le 10⁵ est écrit, pas à remplir (« en laissant le
+  10⁵ »), et la mantisse se recopie toute seule dans la dernière ligne ;
+- cinq marches : un entier devant (l'exemple de Rémy), un décimal, un nombre
+  plus petit que 1, un exposant négatif, les deux à la fois ;
+- la ligne fautive s'encadre et la phrase dit pourquoi — « tu as gardé 10⁵ »,
+  « un produit de puissances AJOUTE les exposants », « 0,045 est plus PETIT
+  que 1 : l'exposant est négatif » ; après « J'ai compris », la ligne juste
+  reste écrite ;
+- sur la feuille, l'exposant à trouver est en pointillés EN HAUT du 10.
+
+**ET LES EXPOSANTS DÉCALÉS, PARTOUT** : jsPDF comptait l'espace insécable
+2,24 mm quand le lecteur la dessine 1,19 — chaque séparateur de milliers ou
+bord de trou repoussait l'exposant suivant d'un millimètre, sur toutes les
+fiches. Et la mise en page mesurait « ⁻ » avec le glyphe de l'écran, plus
+étroit que ce que dessine le PDF. Les deux sont corrigés pour toutes les
+fiches ; à l'écran de l'exercice, une ligne en flex faisait tomber les <sup>.
+
+Joué au doigt (`node tools/sondeDeuxTemps.mjs`) à 390 × 844 et 1280 × 800 ;
+fiche regardée (`ficheEnPdf`) après chaque retouche.

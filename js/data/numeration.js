@@ -2109,6 +2109,38 @@ export const numerationExercises = [
         },
         instruction: "Cinq marches, et l'on monte tout seul toutes les trois questions. D'ABORD EFFECTUER : 5 × 10² = 500. Multiplier par 10², c'est déplacer la virgule de DEUX rangs vers la droite, en complétant par des zéros. PUIS LE CAS QUI PIÈGE : 6 × 10⁻⁵ = 0,000 06. L'exposant est négatif, donc la virgule part vers la GAUCHE et le nombre devient tout petit — mais il ne devient JAMAIS négatif, et c'est la faute qu'on voit le plus. TROISIÈME MARCHE, le chemin inverse : 4 500 = 4,5 × 10 puissance combien ? Compte les rangs, et regarde si le nombre a grandi ou rapetissé — c'est cela qui donne le signe. ENFIN LES DEUX DERNIÈRES, où tout se rencontre : (3 × 10⁴) × (2 × 10⁻⁶). Range d'un côté les nombres, de l'autre les puissances : 3 × 2 = 6, et 10⁴ × 10⁻⁶ = 10⁻². Le signe × est écrit entre les deux nombres, pas entre les exposants : un produit de puissances AJOUTE les exposants, un quotient les SOUSTRAIT."
     },
+    {
+        // ── L'ÉCRITURE SCIENTIFIQUE EN DEUX TEMPS ──────────────────────────
+        //
+        // RÉMY, 26 novembre : « J'aimerais bien un exercice dans les puissances
+        // du genre : on a 134 × 10⁵, on met d'abord 134 sous forme scientifique
+        // en laissant le 10⁵, puis après on applique la règle des puissances
+        // pour avoir à la fin 1,34 × 10⁷. »
+        //
+        // CE QUI N'EXISTAIT PAS : « Multiplier par une Puissance de 10 », juste
+        // au-dessus, multiplie deux écritures DÉJÀ scientifiques, en QCM ; et
+        // « Puissances de 10 — écriture scientifique » transforme un nombre
+        // SEUL. Le nombre qui n'est pas entre 1 et 10 ET déjà multiplié par une
+        // puissance — le bout de chaque calcul de physique — n'était nulle part.
+        //
+        // ON ÉCRIT LA LIGNE DU MILIEU, au lieu de choisir le résultat : c'est
+        // elle que l'élève saute quand il écrit 1,34 × 10⁵.
+        id: 'num-puissances-deux-temps',
+        title: 'Écriture Scientifique en Deux Temps',
+        cree: '2026-11-26',
+        generatorId: 'num.puissances-deux-temps', activityId: 'scientifique-deux-temps',
+        skills: ['num.puissances.scientifique', 'num.puissances.regles'],
+        consignePapier: 'Écris chaque nombre en écriture scientifique, en deux temps : d\'abord le nombre de devant, puis la règle des puissances.',
+        colonnesPapier: 1,
+        motsClefs: ['écriture scientifique', 'notation scientifique', 'puissances de 10', 'deux temps',
+            'exposant', 'produit de puissances', 'ajouter les exposants', 'règle des puissances',
+            'mantisse', 'physique', 'grands nombres', 'petits nombres'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Le nombre de départ s'écrit déjà avec une puissance de 10, mais le nombre de DEVANT n'est pas entre 1 et 10 : 134 × 10⁵. On le met en écriture scientifique en DEUX TEMPS, ligne par ligne, comme au cahier. PREMIER TEMPS : 134 tout seul, SANS TOUCHER au 10⁵. On place la virgule après le premier chiffre qui n'est pas zéro — 1,34 — et l'on compte de combien de rangs elle a bougé : 134 = 1,34 × 10². On écrit donc 1,34 × 10² × 10⁵, le 10⁵ toujours là. Vérifie le signe : le nombre de devant était-il plus grand ou plus petit que 1 ? 0,045 = 4,5 × 10⁻². SECOND TEMPS, la règle des puissances : 10² × 10⁵, un produit de puissances de 10 AJOUTE les exposants, 2 + 5 = 7. Le nombre de devant ne change plus, il se recopie tout seul : 1,34 × 10⁷. Touche une case pour l'écrire ; la touche − met ou enlève le signe moins d'un exposant. Le piège est d'écrire 1,34 × 10⁵ : la virgule a bougé, et ce déplacement se paie dans l'exposant. Cinq marches : un entier devant, un décimal, un nombre plus petit que 1, un exposant négatif, puis les deux à la fois."
+    },
 
     // ── LES TROIS JEUX VIFS, DANS LE CATALOGUE ────────────────────────────
     //
