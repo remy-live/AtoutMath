@@ -48,8 +48,15 @@ test('IL SE REMPLIT AUX TROIS MOMENTS OÙ LA RÉPONSE PEUT CHANGER', () => {
     assert.match(src, /state\.currentPath = normalizePath\(p\.data, p\.name\);\n\s*\/\//);
     assert.match(src, /demanderLAuditoire\(true\);/);
     // 2 — après chaque enregistrement : le badge survit aux redessins.
-    const apresSave = src.slice(src.indexOf('export function autoSavePath'));
-    assert.match(apresSave.slice(0, 2000), /direLEtat\(new Date\(\)\);\n[\s\S]{0,200}demanderLAuditoire\(\);/);
+    // ON LIT LA FONCTION, PAS UNE FENÊTRE DE CARACTÈRES : la garde « rien n'a
+    // changé » (26 novembre) a repoussé la fin de `autoSavePath` au-delà de
+    // 2 000 caractères, et l'épreuve tombait sur du code sain. Les DEUX sorties
+    // — enregistré, ou inchangé — redemandent l'auditoire.
+    const debutSave = src.indexOf('export function autoSavePath');
+    const apresSave = src.slice(debutSave, src.indexOf('\n}\n', debutSave));
+    assert.match(apresSave, /direLEtat\(new Date\(\)\);\n[\s\S]{0,200}demanderLAuditoire\(\);/);
+    assert.match(apresSave, /direLEtat\(new Date\(range\.timestamp \|\| Date\.now\(\)\)\);\s*demanderLAuditoire\(\);\s*return;/,
+        'un parcours inchangé doit garder son badge aussi');
     // 3 — en refermant le panneau des classes, où l'on coche et décoche :
     //     garder la réponse d'avant ferait un badge qui contredit le geste
     //     qu'on vient de faire, dans la même seconde.

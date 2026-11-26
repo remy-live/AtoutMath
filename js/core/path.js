@@ -209,6 +209,31 @@ export function makePath(name = 'Nouveau parcours', steps = [], policy = null) {
  * Convertit un parcours de n'importe quelle version vers la v2.
  * Les anciens parcours (tableau d'exercices copiés) restent utilisables.
  */
+/**
+ * LE PARCOURS A-T-IL CHANGÉ DEPUIS SON ENREGISTREMENT ?
+ *
+ * Rémy : « dans le tri, le récent n'est pas forcément le plus récent ».
+ * MESURÉ (`tools/triRecent.mjs`) : « Tri A » puis « Tri B » enregistrés, B en
+ * tête ; on OUVRE A sans rien y toucher, et A passe devant — sa date avait
+ * sauté à l'heure de l'ouverture. L'enregistrement automatique part à chaque
+ * redessin du constructeur, ouverture comprise, et chaque enregistrement
+ * remettait l'horloge à zéro. « Récent » voulait donc dire « ouvert
+ * récemment ».
+ *
+ * On compare les deux parcours NORMALISÉS : celui qu'on ouvre l'est déjà
+ * (`normalizePath` à l'ouverture), celui qu'on a rangé ne l'est peut-être pas
+ * (un parcours d'avant une migration). Normalisés tous les deux, ils ne
+ * diffèrent que si quelqu'un a vraiment changé quelque chose.
+ */
+export function memeContenu(range, courant, nom = 'Parcours') {
+    if (!range || !courant) return false;
+    try {
+        return JSON.stringify(normalizePath(range, nom)) === JSON.stringify(normalizePath(courant, nom));
+    } catch (e) {
+        return false;
+    }
+}
+
 export function normalizePath(raw, name = 'Parcours') {
     if (!raw) return makePath(name);
 

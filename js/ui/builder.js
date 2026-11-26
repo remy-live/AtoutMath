@@ -14,7 +14,7 @@
 
 import { exercices, getExerciseById, paramSchemaOf, estNotable } from '../data/catalog.js';
 import { state } from '../core/state.js';
-import { makePath, makeStep, makeMessage, estUnMessage, normalizePath, totalItems }
+import { makePath, makeStep, makeMessage, estUnMessage, normalizePath, totalItems, memeContenu }
     from '../core/path.js';
 import { TITRE_MAX, LONGUEUR_MAX, inviteDuMot } from '../core/messageEtape.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
@@ -2233,6 +2233,17 @@ export function autoSavePath() {
         if (champ && champ.value !== propose) champ.value = propose;
     }
     const snapshot = JSON.parse(JSON.stringify(state.currentPath));
+    // RIEN N'A CHANGÉ : ON NE RÉÉCRIT PAS, ET L'HEURE NE BOUGE PAS. Sans quoi
+    // ouvrir un parcours le datait de l'ouverture, et le tri « récent » le
+    // remontait devant ceux qu'on a vraiment modifiés — voir `memeContenu`.
+    const range = state.currentPathId
+        && state.teacherPaths.find(x => x.id === state.currentPathId);
+    if (range && range.name === state.currentPath.name
+        && memeContenu(range.data, snapshot, range.name)) {
+        direLEtat(new Date(range.timestamp || Date.now()));
+        demanderLAuditoire();
+        return;
+    }
     if (!state.currentPathId) {
         const saved = state.saveTeacherPath(state.currentPath.name, snapshot);
         state.currentPathId = saved.id;

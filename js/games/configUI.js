@@ -432,7 +432,7 @@ const quotaCoche = (boite) => {
  * Le bloc se redessine : la borne haute du rail SUIT le nombre tapé, et le
  * quota se laisse tirer avec elle plutôt que de rester bloqué au-dessus.
  */
-function majDuo(boite) {
+function majDuo(boite, source = null) {
     if (!boite) return;
     const nb = boite.querySelector('[data-duo="questions"]');
     const ex = boite.querySelector('[data-duo="exigees"]');
@@ -486,10 +486,32 @@ function majDuo(boite) {
     const ancien = Math.round(Number(boite.dataset.duoQ)) || 0;
     const nouveau = Math.round(Number(nb.value)) || 0;
     let exigees = ex ? Number(ex.value) : Number(nb.value);
+    // LA PART EST CELLE QU'ON A CHOISIE, PAS CELLE DU CRAN D'AVANT.
+    //
+    // MESURÉ le 26 novembre, en cherchant le « ça revient à 15 » de Rémy : six
+    // appuis sur « − » menaient 11 sur 15 (73 %) à 9 sur 9 — « il faut tout
+    // réussir ». Chaque cran relisait la part sur le cran précédent, déjà
+    // arrondi vers le haut (11/14, 11/13, 11/12, 11/11, 10/10, 9/9), et
+    // l'arrondi s'empilait. Taper 9 d'un coup donnait 7 sur 9. On retient donc
+    // la part tant qu'on ne touche qu'au nombre de questions ; elle ne se relit
+    // que quand on bouge l'exigence elle-même.
+    const retenue = boite.dataset.duoTaux !== undefined && boite.dataset.duoTaux !== ''
+        ? Number(boite.dataset.duoTaux) : null;
     if (ex && ancien && nouveau && ancien !== nouveau) {
-        // LA PART SE LIT SUR L'ANCIEN TOTAL, et se repose dans le nouveau.
-        const voulu = seuilPourPart(nouveau, partDe({ nbItems: ancien, threshold: exigees }));
+        // LA PART SE LIT SUR L'ANCIEN TOTAL — la première fois — et se repose
+        // dans le nouveau.
+        const part = Number.isFinite(retenue) && retenue !== null
+            ? retenue : partDe({ nbItems: ancien, threshold: exigees });
+        const voulu = seuilPourPart(nouveau, part);
         if (voulu !== undefined && voulu !== null) exigees = voulu;
+        if (part !== null && part !== undefined) boite.dataset.duoTaux = String(part);
+    } else if (ex && nouveau && source && (source === ex || source.matches('[data-duo-quota]'))) {
+        // L'EXIGENCE A BOUGÉ À LA MAIN : c'est la nouvelle part choisie. Et
+        // SEULEMENT dans ce cas — `majDuo` passe deux fois par appui (`input`,
+        // puis le panneau qui relit tout), et la seconde, à nombre inchangé,
+        // relisait la part sur la valeur arrondie : la dérive revenait.
+        const part = partDe({ nbItems: nouveau, threshold: exigees });
+        boite.dataset.duoTaux = part === null || part === undefined ? '' : String(part);
     }
     if (nouveau) boite.dataset.duoQ = String(nouveau);
     const duo = ajusterDuo({ questions: nouveau, exigees, max: Number(nb.max) });
@@ -529,7 +551,7 @@ document.addEventListener('input', (e) => {
     const el = e.target.closest && e.target.closest('[data-duo], [data-duo-quota]');
     if (!el) return;
     const boite = el.closest('[data-duo-boite]');
-    majDuo(boite);
+    majDuo(boite, el);
     // Le panneau relit tout sur `change` ; un décrochage du quota n'en émet
     // pas de lui-même, et l'étape serait restée avec son ancien seuil.
     el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -3344,6 +3366,18 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     wireTips(content);
     content.addEventListener('change', commit);
     content.addEventListener('keyup', e => {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'number') commit();
+    });
+    // ET À CHAQUE MODIFICATION D'UN NOMBRE, QUELLE QU'EN SOIT LA SOURCE.
+    // Rémy : « je change le nombre de questions et dans le parcours ça revient
+    // à 15 alors que j'avais mis 9 ». Le panneau n'enregistrait que sur
+    // `change` et `keyup` : une valeur changée sans touche relâchée ni perte du
+    // focus — un correcteur, une dictée, les flèches natives d'un navigateur —
+    // se voyait à l'écran (« 7 bonnes réponses exigées sur 9 ») sans être
+    // enregistrée, et l'on ferme la fenêtre puisqu'il n'y a pas de « Valider ».
+    // Je n'ai pas reproduit son cas chez moi (douze gestes essayés, tous
+    // enregistrés) ; ceci ferme la seule porte que j'ai trouvée ouverte.
+    content.addEventListener('input', e => {
         if (e.target.tagName === 'INPUT' && e.target.type === 'number') commit();
     });
 }

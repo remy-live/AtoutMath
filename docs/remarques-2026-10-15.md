@@ -8814,3 +8814,35 @@ fiches ; à l'écran de l'exercice, une ligne en flex faisait tomber les <sup>.
 
 Joué au doigt (`node tools/sondeDeuxTemps.mjs`) à 390 × 844 et 1280 × 800 ;
 fiche regardée (`ficheEnPdf`) après chaque retouche.
+
+### 24. « je change le nombre de questions et dans le parcours ça revient à 15 » — 26 novembre
+
+Deux captures : le panneau de réglages d'« Écriture Scientifique en Deux
+Temps » réglé à 9 questions (« 7 bonnes réponses exigées sur 9 »), puis la
+ligne du parcours qui affiche « ✔ 7/15 ». « Je change le nombre de questions
+et dans le parcours ça revient à 15 alors que j'avais mis 9, ça le fait pour
+plein d'exercices. » Le seuil a suivi (7), le nombre de questions non.
+
+Puis : « et aussi dans le tri, le récent n'est pas forcément le plus récent ».
+
+**CE QUI EST FAIT (v1252)** :
+
+- **« Récent » voulait dire « ouvert »** — MESURÉ (`node tools/triRecent.mjs`) :
+  « Tri A » puis « Tri B » enregistrés, B en tête ; ouvrir A SANS RIEN Y
+  TOUCHER le remontait devant. L'enregistrement automatique part à chaque
+  redessin du constructeur, ouverture comprise, et remettait la date à
+  l'heure. Il ne réécrit plus un parcours inchangé (`memeContenu`) ; une vraie
+  modification remonte toujours en tête. Les dates déjà déplacées par des
+  ouvertures ne se retrouvent pas : on ne sait plus quand ces parcours ont
+  vraiment été modifiés.
+- **La part qui dérivait** — trouvé en cherchant le « 15 » : six appuis sur
+  « − » menaient 11 sur 15 à 9 sur 9 (« il faut tout réussir »), parce que
+  chaque cran relisait la part sur le cran d'avant, arrondi vers le haut.
+  Taper 9 donnait 7 sur 9. Les deux gestes donnent maintenant 7 sur 9.
+- **Le « 15 » lui-même n'est PAS reproduit.** Essayé au navigateur, sur
+  l'exercice de sa capture : saisie au clavier, « − », glissé, molette,
+  fermeture par la croix, Échap ou un clic à côté, deux étapes à la suite,
+  onglet « Aperçu », enregistrement puis rechargement et réouverture — douze
+  gestes, tous enregistrés à 9. Le panneau enregistre désormais aussi à chaque
+  modification du champ (`input`), ce qui ferme la seule porte trouvée
+  ouverte ; la question est posée à Rémy (navigateur, geste exact).

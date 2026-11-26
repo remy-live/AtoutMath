@@ -108,9 +108,14 @@ test('LE PANNEAU D\'UNE ÉTAPE EMPRUNTE LA MÊME RÈGLE QUE LA BARRE', () => {
     const source = readFileSync('js/games/configUI.js', 'utf8');
     assert.match(source, /import \{ seuilPourPart, partDe \} from '\.\.\/core\/reglagesGroupes\.js'/,
         'le panneau d\'étape n\'emprunte plus la règle du noyau');
-    const bloc = /function majDuo\(boite\) \{[\s\S]*?\n\}/.exec(source);
+    const bloc = /function majDuo\(boite[^)]*\) \{[\s\S]*?\n\}/.exec(source);
     assert.ok(bloc, '`majDuo` a changé de forme');
-    assert.match(bloc[0], /seuilPourPart\(nouveau, partDe\(/,
+    // LA PART EST LUE PAR `partDe` SUR L'ANCIEN TOTAL — puis retenue d'un cran
+    // à l'autre (26 novembre : six « − » dérivaient de 73 % à 100 %) — et
+    // reportée par `seuilPourPart` dans le nouveau.
+    assert.match(bloc[0], /partDe\(\{ nbItems: ancien, threshold: exigees \}\)/,
+        'le panneau ne lit plus la PART sur l\'ancien total');
+    assert.match(bloc[0], /seuilPourPart\(nouveau, part\)/,
         'le panneau ne reporte pas la PART dans le nouveau total');
     // ET L'ANCIENNE CONDITION N'EST PLUS LÀ. Elle ne recalculait que si le rail
     // portait encore le conseil de l'ancien total : c'est elle qui laissait le

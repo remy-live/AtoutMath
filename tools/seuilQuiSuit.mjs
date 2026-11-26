@@ -135,6 +135,46 @@ dire('UNE ÉTAPE SANS QUOTA N\'EN GAGNE PAS EN CHANGEANT DE LONGUEUR',
     sans.nbItems === 20 && sans.threshold === null,
     `seuil ${JSON.stringify(sans.threshold)}`);
 
+// ── CRAN PAR CRAN, LA PART NE DÉRIVE PAS ─────────────────────────────────
+//
+// MESURÉ le 26 novembre : six appuis sur « − » menaient 11 sur 15 (73 %) à
+// 9 sur 9 — chaque cran relisait la part sur le cran d'avant, déjà arrondi
+// vers le haut. Taper 9 d'un coup donnait 7 sur 9 ; les deux gestes doivent
+// donner la même chose.
+async function parCrans(nb, seuil, crans) {
+    await s.page.evaluate(async ([n, t]) => {
+        const { state } = await import('./js/core/state.js');
+        const { makePath, makeStep } = await import('./js/core/path.js');
+        const { defaultPolicy } = await import('./js/core/policy.js');
+        const { renderTeacherPath } = await import('./js/ui/builder.js');
+        state.currentPathId = null;
+        state.currentPath = makePath('Essai crans',
+            [makeStep('calc-detour-rond', {}, { nbItems: n, threshold: t })], defaultPolicy());
+        renderTeacherPath();
+    }, [nb, seuil]);
+    await dormir(700);
+    await s.page.evaluate(() => document.querySelector('.path-step').click());
+    await dormir(1400);
+    const bouton = await s.page.evaluateHandle((sens) => document.getElementById('cfg-nbitems')
+        .closest('[data-stepper]').querySelector(`[data-step="${sens}"]`), crans < 0 ? '-1' : '1');
+    for (let i = 0; i < Math.abs(crans); i++) { await bouton.click(); await dormir(120); }
+    await dormir(500);
+    const lu = await s.page.evaluate(async () => {
+        const { state } = await import('./js/core/state.js');
+        const st = state.currentPath.steps[0];
+        return { nbItems: st.nbItems, threshold: st.threshold };
+    });
+    await s.page.evaluate(() => { const x = document.querySelector('.modal-close-btn'); if (x) x.click(); });
+    await dormir(600);
+    return lu;
+}
+const crans = await parCrans(15, 11, -6);
+dire('SIX FOIS « − » DEPUIS 11 SUR 15 DONNENT 7 SUR 9, COMME TAPER 9',
+    crans.nbItems === 9 && crans.threshold === 7, `✔ ${crans.threshold}/${crans.nbItems} (la dérive donnait 9/9)`);
+const montee = await parCrans(8, 6, 7);
+dire('SEPT FOIS « + » DEPUIS 6 SUR 8 (75 %) DONNENT 12 SUR 15',
+    montee.nbItems === 15 && montee.threshold === 12, `✔ ${montee.threshold}/${montee.nbItems}`);
+
 console.log(`\nerreurs de page : ${s.erreurs.length}, fenêtres natives : ${s.fenetresNatives.length}`);
 s.erreurs.slice(0, 3).forEach(e => console.log('  ! ' + String(e).slice(0, 160)));
 if (s.erreurs.length || s.fenetresNatives.length) ratés++;
