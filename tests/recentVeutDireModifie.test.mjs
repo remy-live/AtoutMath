@@ -50,3 +50,18 @@ test('LE NOMBRE DE QUESTIONS S\'ENREGISTRE À CHAQUE MODIFICATION, QUELLE QU\'EN
     assert.match(SRC, /content\.addEventListener\('input', e => \{\s*if \(e\.target\.tagName === 'INPUT' && e\.target\.type === 'number'\) commit\(\);/,
         'le panneau d\'étape n\'enregistre plus un nombre changé sans « change » ni « keyup »');
 });
+
+test('LE PANNEAU D\'ÉTAPE NE RELIT QUE SES PROPRES CHAMPS', () => {
+    // La fenêtre « avant de jouer » se cache sans se vider et porte, elle
+    // aussi, un `cfg-nbitems`. Relu par `getElementById`, c'était le sien qu'on
+    // enregistrait : « ✔ 7/15 » chez Rémy. Voir `node tools/nombreQuiRevient.mjs`.
+    const SRC = sansCommentaires(lire('js/games/configUI.js'));
+    const debut = SRC.indexOf('export function renderGameConfigUI(');
+    const corps = SRC.slice(debut, SRC.indexOf('\n}\n', debut));
+    assert.ok(debut > 0 && corps.length > 2000, 'renderGameConfigUI introuvable');
+    assert.doesNotMatch(corps, /document\.getElementById\('cfg-/,
+        'le panneau d\'étape relit un champ dans toute la page');
+    const lectures = corps.match(/intVal\([^)]*\)/g) || [];
+    assert.ok(lectures.length >= 5, 'les lectures du panneau ont disparu');
+    for (const l of lectures) assert.match(l, /, content\)$/, `${l} lit dans toute la page`);
+});

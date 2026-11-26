@@ -8450,3 +8450,18 @@ deux** — 19 novembre
 - *Combien de fois* — |
 - *Ce qui manque* — rien de plus : `node tools/largeurInsecable.mjs` le
   remesure, et `pourPdf` change l'insécable en espace au tracé.
+
+## Une sonde sur une page NEUVE ne voit pas ce que les écrans d'avant ont laissé — 2026-11-26
+
+- *Ce que je voulais faire* — reproduire « le nombre de questions revient à 15 ».
+- *Ce qui a coûté* — douze gestes essayés au navigateur, une correction posée
+  « à l'aveugle », une question à Rémy : tout partait d'une page fraîche. Le
+  défaut demandait qu'on ait lancé un exercice AVANT — une fenêtre cachée
+  gardait un champ du même identifiant. Trouvé en lisant `intVal`, pas en
+  cliquant.
+- *Combien de fois* — |
+- *Ce qui manque* — dans `tools/sonde.mjs`, de quoi « salir » la page avant de
+  mesurer : ouvrir et refermer les fenêtres usuelles (lancer un exercice,
+  réglages de parcours, aperçu), puis signaler tout identifiant présent DEUX
+  fois dans le document. Un `getElementById` sur un identifiant doublé rend le
+  premier, sans erreur.

@@ -8846,3 +8846,22 @@ Puis : « et aussi dans le tri, le récent n'est pas forcément le plus récent 
   gestes, tous enregistrés à 9. Le panneau enregistre désormais aussi à chaque
   modification du champ (`input`), ce qui ferme la seule porte trouvée
   ouverte ; la question est posée à Rémy (navigateur, geste exact).
+
+Réponses de Rémy : « 1. Chrome, 2. avec plus et moins, 3. quand je ferme la
+fenêtre. Mais ça se trouve c'est un problème de réseau. »
+
+**TROUVÉ ET CORRIGÉ (v1253)** — ce n'était pas le réseau. Le « 15 » venait
+d'une AUTRE fenêtre : celle qui s'ouvre quand on lance un exercice depuis le
+catalogue (« avant de jouer »). En se fermant, elle se cache sans se vider, et
+son champ « nombre de questions » porte le même nom que celui du panneau
+d'étape. Le panneau relisait le nombre « dans toute la page », tombait sur le
+champ caché — resté à la valeur de ce lancement — et l'enregistrait à la place
+du 9 affiché. L'exigence (7), qui n'existe que dans le panneau, tombait juste :
+d'où « ✔ 7/15 ». Mes douze essais partaient d'une page neuve, sans rien lancer
+avant ; c'est pour cela qu'ils passaient.
+
+MESURÉ (`node tools/nombreQuiRevient.mjs`, Chrome, six clics sur « − », la
+croix) : « 15 questions, 7 exigées » avant, « 9 questions, 7 exigées » après.
+Le panneau ne lit plus que ses propres champs ; une épreuve le garde, vue
+tomber avec l'ancien code. Les étapes déjà enregistrées à 15 ne se corrigent
+pas seules : il faut remettre 9 une fois.

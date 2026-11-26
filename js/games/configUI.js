@@ -3059,6 +3059,21 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     const content = document.getElementById(containerId);
     if (!content) return;
 
+    // CE PANNEAU NE RELIT QUE SES PROPRES CHAMPS — et c'est le « revient à 15 ».
+    //
+    // Rémy, 26 novembre : « je change le nombre de questions et dans le
+    // parcours ça revient à 15 alors que j'avais mis à 9, ça le fait pour plein
+    // d'exercices ». Sa ligne disait « ✔ 7/15 » : l'exigence suivait les 9
+    // questions, le nombre non. Douze gestes sur une page neuve ne le
+    // reproduisaient pas — il manquait ce qu'un professeur fait AVANT : lancer
+    // un exercice depuis le catalogue. Sa fenêtre « avant de jouer » se CACHE
+    // en se fermant sans se vider, et son champ s'appelle aussi `cfg-nbitems`.
+    // On relisait par `getElementById`, qui rend le PREMIER du document : le
+    // champ caché, resté à 15. Le seuil, lui, n'existe que dans ce panneau, et
+    // tombait juste. MESURÉ (`node tools/nombreQuiRevient.mjs`) : « 15
+    // questions, 7 exigées » avant, 9 après.
+    const ici = (id) => content.querySelector(`#${id}`);
+
     // LE MODE DU PARCOURS CHANGE CE PANNEAU. En évaluation, « bonnes réponses
     // exigées » ne veut rien dire : une interrogation ne se valide pas étape
     // par étape, elle se note. Le constructeur nous le passe ; à défaut, on
@@ -3233,16 +3248,16 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // L'explication du seuil est chiffrée avec les valeurs courantes, et suit
     // la saisie : « 7 sur 10 » parle, « seuil » ne dit rien.
     const describeThreshold = () => {
-        const tip = document.getElementById('cfg-threshold-tip');
+        const tip = ici('cfg-threshold-tip');
         if (!tip) return;
-        const nb = intVal('cfg-nbitems', 10);
+        const nb = intVal('cfg-nbitems', 10, content);
         if (evaluation) {
             tip.dataset.tip = 'En évaluation, une étape ne se valide pas : elle se note. '
                 + 'La poignée du seuil n\'a donc pas lieu d\'être — l\'élève répond aux '
                 + `${nb} questions, et le bilan dit ce qu'il a réussi.`;
             return;
         }
-        const boite = document.querySelector('[data-duo-boite]');
+        const boite = content.querySelector('[data-duo-boite]');
         const coche = boite && boite.querySelector('[data-duo-quota]');
         if (coche && !coche.checked) {
             tip.dataset.tip = `Sans quota, l'étape se valide dès que l'élève a répondu aux `
@@ -3251,7 +3266,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                 + `réponses.`;
             return;
         }
-        const seuil = Math.min(intVal('cfg-threshold', nb), nb);
+        const seuil = Math.min(intVal('cfg-threshold', nb, content), nb);
         tip.dataset.tip = `Tape le nombre de questions, puis tire la poignée pour dire combien `
             + `de bonnes réponses tu exiges. L'élève doit en réussir ${seuil} `
             + `sur ${nb} pour valider l'étape ; en dessous, il la rejoue.`;
@@ -3260,8 +3275,8 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // Le choix « à chaque question / à toute l'étape » n'a de sens que s'il y
     // a un chronomètre.
     const toggleScope = () => {
-        const field = document.getElementById('cfg-scope-field');
-        if (field) field.style.display = intVal('cfg-timelimit', 0) > 0 ? '' : 'none';
+        const field = ici('cfg-scope-field');
+        if (field) field.style.display = intVal('cfg-timelimit', 0, content) > 0 ? '' : 'none';
     };
 
     // UN JEU DE RÉCOMPENSE N'A NI SEUIL NI POIDS : il ne se valide pas et ne
@@ -3275,10 +3290,10 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // il faut pouvoir choisir un nombre de questions et/ou une durée ». Ce
     // sont justement les deux seuls réglages qui comptent pour une récompense.
     const toggleBonus = () => {
-        const bonusEl = document.getElementById('cfg-bonus');
+        const bonusEl = ici('cfg-bonus');
         const bonus = !!(bonusEl && bonusEl.checked);
         const cacher = (id, off) => {
-            const el = document.getElementById(id);
+            const el = ici(id);
             if (el) el.style.display = off ? 'none' : '';
         };
         // LA RÉCOMPENSE GARDE SON NOMBRE DE QUESTIONS, ELLE PERD SON SEUIL.
@@ -3295,13 +3310,13 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         cacher('cfg-champ-poids', bonus);
         // UNE RÉCOMPENSE EST DÉJÀ NON OBLIGATOIRE : proposer la case en plus
         // laisserait croire qu'on peut avoir un cadeau qui barre la route.
-        const fac = document.getElementById('cfg-facultatif');
+        const fac = ici('cfg-facultatif');
         if (fac) {
             fac.closest('.cfg-case').style.display = bonus ? 'none' : '';
         }
-        const note = document.getElementById('cfg-note-bonus');
+        const note = ici('cfg-note-bonus');
         if (note) note.style.display = bonus ? '' : 'none';
-        const titre = document.getElementById('cfg-titre-deroulement');
+        const titre = ici('cfg-titre-deroulement');
         if (titre) titre.textContent = bonus ? 'Quand la récompense s\'arrête' : 'Déroulement de l\'étape';
     };
 
@@ -3319,18 +3334,18 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         // donc pas par `readParams`, et on l'ajoute à la main. Comme les
         // autres, on ne l'écrit QUE si elle s'écarte de l'exercice : sinon le
         // code à dicter s'allongerait d'un réglage qui ne change rien.
-        const calcEl = document.getElementById('cfg-calculatrice');
+        const calcEl = ici('cfg-calculatrice');
         if (calcEl) {
             const veut = !!calcEl.checked;
             if (veut !== !!exo.calculatrice) overrides.calculatrice = veut;
             else delete overrides.calculatrice;
         }
-        const nbItems = intVal('cfg-nbitems', 10);
+        const nbItems = intVal('cfg-nbitems', 10, content);
         describeThreshold();
         toggleScope();
         toggleBonus();
-        const scope = document.getElementById('cfg-timescope');
-        const bonusEl = document.getElementById('cfg-bonus');
+        const scope = ici('cfg-timescope');
+        const bonusEl = ici('cfg-bonus');
         const bonus = !!(bonusEl && bonusEl.checked);
         onSave({
             ...step,
@@ -3338,7 +3353,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
             // Ni l'évaluation ni la récompense n'exigent de bonnes réponses :
             // `threshold` y vaut `null`, c'est-à-dire aucune exigence.
             ...seuilPourMode({
-                questions: nbItems, exigees: intVal('cfg-threshold', nbItems),
+                questions: nbItems, exigees: intVal('cfg-threshold', nbItems, content),
                 evaluation: evaluation || bonus,
                 // L'INTERRUPTEUR DÉCIDE, PAS LA VALEUR DU RAIL. Décoché, il
                 // écrit `threshold: null` — l'absence d'exigence — même si le
@@ -3348,14 +3363,14 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                 quota: quotaCoche(content.querySelector('[data-duo-boite]')),
                 max: MAX_ETAPE
             }),
-            timeLimit: intVal('cfg-timelimit', 0) || null,
+            timeLimit: intVal('cfg-timelimit', 0, content) || null,
             timerScope: scope ? scope.value : 'etape',
-            weight: intVal('cfg-weight', 1),
+            weight: intVal('cfg-weight', 1, content),
             bonus,
             // Un jeu de récompense ne barre jamais la route : la case cachée ne
             // doit pas pouvoir le rendre obligatoire par inadvertance.
-            facultatif: bonus || !!(document.getElementById('cfg-facultatif')
-                && document.getElementById('cfg-facultatif').checked)
+            facultatif: bonus || !!(ici('cfg-facultatif')
+                && ici('cfg-facultatif').checked)
         });
     };
 
@@ -3644,7 +3659,7 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
         onStart({
             ...current,
             ...readParams(content, schema),
-            nbQuestions: intVal('cfg-nbitems', 10)
+            nbQuestions: intVal('cfg-nbitems', 10, content)
         });
     };
 }
@@ -4010,8 +4025,10 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
     majApercu();
 }
 
-function intVal(id, fallback) {
-    const el = document.getElementById(id);
+function intVal(id, fallback, racine = document) {
+    // `racine` : la fenêtre dont on lit le champ. Deux fenêtres portent des
+    // champs du même nom — voir le haut de `renderGameConfigUI`.
+    const el = racine.querySelector(`#${id}`);
     if (!el) return fallback;
     const n = parseInt(el.value, 10);
     return isNaN(n) ? fallback : n;
