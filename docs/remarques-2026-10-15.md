@@ -8900,3 +8900,24 @@ autoriser le mode libre (ils choisissent) comme cela en fin d'heure, je peux
 laisser à tout le monde le choix ». Maquette faite (trois planches : la roue à
 essayer, ce que le contraste touche, le direct). Rien de construit : on attend
 ses réponses sur les figures et sur le sens de « mode libre ».
+
+### 26. « pour les figures en option » — la roue d'affichage, 27 novembre
+
+Rémy, devant la maquette : « 1. pour les figures en option. 2. quand on est en
+direct, les élèves font leur exercice et j'aimerais par exemple 10 minutes
+avant la fin ouvrir tous les exercices. 3. cube, pavé droit, cylindre, prisme
+droit, pyramide, cône, sphère, boule ».
+
+**La roue (v1255)** — une roue ⚙ dans la barre du haut, pour l'élève et pour le
+professeur, réglée par appareil : un curseur « Contraste » de Normal à Fort, les
+cinq couleurs en pastilles, « Foncer aussi les figures » en option, « Texte plus
+aéré ». Elle remplace les deux entrées du menu « … ». MESURÉ avant : la bordure
+d'une carte ou d'un champ fait 1,23 sur son panneau (il en faut 3) ; le gris du
+texte passait déjà (5,74). À fond : de 7,11 à 9,85 selon le thème. La sonde
+(`node tools/sondeAffichage.mjs`) a trouvé trois défauts avant toi : la page
+rechargée naissait pâle (empreinte de sécurité à refaire), toucher une couleur
+refermait la roue, et pendant un exercice l'en-tête du jeu recouvre la barre —
+une seconde roue est donc dans l'en-tête de l'exercice.
+
+Pas de curseur « taille du texte », contrairement à la maquette : le zoom du
+navigateur (Ctrl +) le fait déjà, et un zoom maison dérègle les jeux à canevas.

@@ -119,12 +119,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=1254">
-    <link rel="stylesheet" href="css/layout.css?v=1254">
-    <link rel="stylesheet" href="css/ui.css?v=1254">
-    <link rel="stylesheet" href="css/games.css?v=1254">
-    <link rel="stylesheet" href="css/components.css?v=1254">
-    <link rel="stylesheet" href="css/modules.css?v=1254">
+    <link rel="stylesheet" href="css/base.css?v=1255">
+    <link rel="stylesheet" href="css/layout.css?v=1255">
+    <link rel="stylesheet" href="css/ui.css?v=1255">
+    <link rel="stylesheet" href="css/games.css?v=1255">
+    <link rel="stylesheet" href="css/components.css?v=1255">
+    <link rel="stylesheet" href="css/modules.css?v=1255">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -751,6 +751,22 @@
                      porte son nom. Dans le menu, elles en retrouvent un.
                      Le carnet et le score, eux, restent dehors : le premier est
                      ce qu'on vient revoir, le second ce qu'on vient gagner. -->
+                <!-- LA ROUE D'AFFICHAGE. Rémy : « une petite roue d'option qui
+                     permette les couleurs et le contraste (avec slide) », pour « les
+                     élèves et pour moi aussi ». Dehors, et non dans le menu « … » :
+                     celui qui lit mal un écran pâle ne doit pas avoir à deviner
+                     qu'un réglage se cache derrière trois points. Elle remplace
+                     « Changer de thème » et « Texte plus aéré », qui y étaient. -->
+                <button id="btn-affichage" class="btn-icon btn-icon--sm" type="button" data-affichage
+                        title="Affichage : contraste et couleurs"
+                        aria-label="Affichage : contraste et couleurs"
+                        aria-haspopup="dialog" aria-expanded="false" aria-controls="affichage-panneau">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
                 <div class="nav-menu">
                     <button id="btn-nav-plus" class="btn-icon btn-icon--sm" type="button"
                             title="Autres outils" aria-label="Autres outils"
@@ -762,24 +778,6 @@
                         </svg>
                     </button>
                     <div class="nav-menu-liste" id="nav-menu-liste" hidden role="menu">
-                        <!-- LE THÈME N'EST PAS RÉSERVÉ AUX ÉLÈVES. Rémy : « le mode prof n'a plus
-                         le thème, remets-le ». Il portait `student-only`, donc il
-                         disparaissait dès qu'on passait professeur — alors que c'est
-                         justement le professeur qui projette au tableau, et qui a besoin
-                         de pousser le contraste ou de passer en sombre selon la salle. -->
-                    <button id="btn-toggle-theme" class="nav-menu-item" role="menuitem" type="button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/>
-                                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-                            </svg><span id="btn-theme-mot">Changer de thème</span></button>
-                    <!-- À CÔTÉ DES THÈMES, ET C'EST SA PLACE : c'est le même
-                         geste — « je règle comment l'écran me parle » — et
-                         l'élève qui en a besoin cherche là. -->
-                    <button id="btn-toggle-aere" class="nav-menu-item" role="menuitem" type="button" aria-pressed="false">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-                                <polyline points="6 3 3 6 6 9"/><polyline points="6 21 3 18 6 15"/>
-                            </svg><span id="btn-aere-mot">Texte plus aéré</span></button>
                         <button id="btn-open-sync" class="nav-menu-item" role="menuitem" type="button">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.2 4.5 4.5 0 0 0 6.5 19z" />
@@ -1776,6 +1774,20 @@
                             <path d="M4 21V4.5a1 1 0 0 1 .6-.9c2.6-1.1 4.9.9 7.4 0 2.5-.9 4.8 1.1 7.4 0a1 1 0 0 1 1.4.9v8.7a1 1 0 0 1-.6.9c-2.6 1.1-4.9-.9-7.4 0-2.5.9-4.8-1.1-7.4 0" />
                         </svg>
                     </button>
+                    <!-- LA ROUE D'AFFICHAGE, AUSSI PENDANT L'EXERCICE. L'en-tête du
+                         jeu recouvre la barre du haut : la roue de la barre était
+                         donc hors d'atteinte au moment précis où une figure pâle
+                         la rend nécessaire. Mesuré par tools/sondeAffichage.mjs.
+                         C'est le même panneau, ouvert d'ici. -->
+                    <button id="btn-game-affichage" class="game-icon-btn game-icon-btn--neutre"
+                        data-affichage aria-haspopup="dialog" aria-expanded="false" aria-controls="affichage-panneau"
+                        title="Affichage : contraste et couleurs" aria-label="Affichage : contraste et couleurs">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
                     <!-- LE BROUILLON — Rémy : « Dans le menu à côté du robot,
                          avoir un mode brouillon pour poser son calcul. On peut
                          poser une opération […], mettre des notes. Dessiner en
@@ -2173,6 +2185,19 @@
                 document.documentElement.setAttribute('data-aere', '1');
             }
         } catch (e) { /* navigation privée : on reste au réglage par défaut */ }
+
+        // LE CONTRASTE SE POSE ICI AUSSI, pour la même raison que le thème : la
+        // page doit naître foncée, pas pâlir une seconde puis foncer. Les teintes
+        // ont été calculées par `js/ui/affichage.js` pour CE thème ; si le thème
+        // a changé depuis, on attend `app.js`, qui les recalcule.
+        try {
+            const encre = JSON.parse(localStorage.getItem('atoutmath-encre') || 'null');
+            if (encre && encre.theme === savedTheme && encre.vars) {
+                for (const k of Object.keys(encre.vars)) {
+                    document.documentElement.style.setProperty(k, encre.vars[k]);
+                }
+            }
+        } catch (e) { /* stockage refusé ou illisible : contraste d'origine */ }
 
         // PWA : enregistre le service worker (installation + hors ligne).
         // Silencieux en cas d'échec — l'application marche sans lui.

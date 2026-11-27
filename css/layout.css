@@ -566,3 +566,56 @@ html.volet-atelier .modal-overlay .glass-panel {
     max-width: none; width: 100%; height: 100%; max-height: none;
     border-radius: 0; border: 0;
 }
+
+/* --- LA ROUE D'AFFICHAGE ---------------------------------------------------
+   Rémy : « une petite roue d'option qui permette les couleurs et le contraste
+   (avec slide) ». Le panneau se pose sous la roue (`js/ui/affichage.js` le
+   place), au-dessus de tout, comme le menu « … » d'à côté. */
+#btn-affichage[aria-expanded="true"] { background: var(--bg-hover); color: var(--text-main); }
+.aff-panneau {
+    position: fixed; z-index: 100006; box-sizing: border-box;
+    max-height: calc(100vh - 80px); overflow-y: auto;
+    padding: 18px 20px; border-radius: 16px;
+    background: var(--bg-panel); color: var(--text-main);
+    border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+    display: flex; flex-direction: column; gap: 16px;
+}
+.aff-panneau[hidden] { display: none; }
+.aff-tete, .aff-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.aff-titre { margin: 0; font-size: 1.15rem; }
+.aff-bloc { display: flex; flex-direction: column; gap: 8px; }
+.aff-etiquette { font-weight: 600; font-size: .98rem; }
+.aff-note { font-size: .82rem; color: var(--text-muted); }
+.aff-note--bloc { display: block; margin-top: 2px; line-height: 1.4; }
+/* Le curseur se tire au doigt : une piste haute, et la couleur d'action. */
+.aff-curseur { width: 100%; height: 32px; margin: 0; accent-color: var(--primary); cursor: pointer; }
+.aff-pastilles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.aff-pastille {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 7px 2px; border-radius: 12px; border: 2px solid transparent;
+    background: none; color: var(--text-main); font: inherit; cursor: pointer;
+}
+.aff-pastille--choisie { border-color: var(--primary); }
+@media (hover: hover) { .aff-pastille:hover { background: var(--bg-hover); } }
+.aff-pastille-rond { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); }
+/* Le fond du thème et sa couleur d'action, en deux moitiés : on reconnaît le
+   thème avant d'avoir lu son nom. Teintes recopiées de `css/base.css`. */
+.aff-pastille-rond--light  { background: linear-gradient(135deg, #f8fafc 50%, #4f46e5 50%); }
+.aff-pastille-rond--dark   { background: linear-gradient(135deg, #0f172a 50%, #4f46e5 50%); }
+.aff-pastille-rond--ocean  { background: linear-gradient(135deg, #e0f2fe 50%, #0369a1 50%); }
+.aff-pastille-rond--forest { background: linear-gradient(135deg, #f0fdf4 50%, #15803d 50%); }
+.aff-pastille-rond--sunset { background: linear-gradient(135deg, #fffbeb 50%, #c2410c 50%); }
+.aff-pastille-nom { font-size: .74rem; }
+.aff-case { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.aff-case input { width: 20px; height: 20px; margin: 1px 0 0; flex-shrink: 0; accent-color: var(--primary); }
+.aff-pied { display: flex; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 12px; }
+.aff-remettre {
+    font: inherit; font-size: .88rem; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main); cursor: pointer;
+}
+.aff-panneau :is(button, input):focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* LES FIGURES, EN OPTION. Le filtre est une courbe gamma (voir
+   `gammaDesFigures`) : le blanc du fond reste blanc, les traits pâles foncent.
+   Seulement dans l'exercice : l'interface a déjà ses propres teintes. */
+:root[data-figures-fortes] #game-layer :is(svg, canvas, img) { filter: url(#aff-figures-fortes); }

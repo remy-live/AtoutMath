@@ -62,6 +62,7 @@ import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
 import { initMaSeance } from './ui/maSeance.js';
+import { initAffichage } from './ui/affichage.js';
 
 // Confirmation universelle, utilisée par plusieurs vues.
 window.appConfirm = (title, message, onConfirm) => {
@@ -1321,8 +1322,7 @@ function initNavButtons() {
     }
 
     initMobileDrillToggle();
-    initTheme();
-    initTexteAere();
+    initAffichage();
 }
 
 function initMobileDrillToggle() {
@@ -1354,91 +1354,13 @@ function initMobileDrillToggle() {
 }
 
 /**
- * LES CINQ THÈMES, ET CELUI OÙ L'ON EST.
+ * LE THÈME ET LE TEXTE AÉRÉ VIVENT DANS LA ROUE D'AFFICHAGE — `ui/affichage.js`.
  *
- * Le bouton disait « Changer de thème » et rien d'autre : cinq états derrière
- * un seul mot. On ne savait ni où l'on était, ni où l'on allait, ni combien de
- * fois il faudrait encore appuyer pour revenir à celui qu'on aimait bien. Un
- * bouton qui cycle sans annoncer son cycle se manipule à l'aveugle — et pour
- * qui lit l'écran à l'oreille, il n'annonçait strictement rien.
- *
- * Le nom du thème en cours s'écrit donc sur le bouton, et son étiquette dit ce
- * que l'appui suivant fera. Ce sont des noms, pas des numéros : personne ne se
- * dit « je veux le thème 3 ».
+ * Ils avaient ici deux boutons du menu « … » : un thème qui défilait à l'aveugle
+ * et un interrupteur. Rémy a demandé une roue « qui permette les couleurs et le
+ * contraste (avec slide) » ; les deux réglages y sont rangés avec le contraste,
+ * et l'on n'a plus deux endroits pour la même chose.
  */
-const THEMES = [
-    { id: 'light', nom: 'Clair' },
-    { id: 'dark', nom: 'Sombre' },
-    { id: 'ocean', nom: 'Océan' },
-    { id: 'forest', nom: 'Forêt' },
-    { id: 'sunset', nom: 'Couchant' }
-];
-
-/**
- * « Texte plus aéré » : l'interligne et l'espacement, réglables.
- *
- * POUR LES ÉLÈVES DYSLEXIQUES, et pas avec une police spéciale — les études
- * contrôlées ne montrent pas qu'une police dessinée exprès fasse mieux lire.
- * Ce qui a des preuves, c'est l'espacement : entre les lettres, entre les mots,
- * entre les lignes. Voir le bloc « TEXTE PLUS AÉRÉ » de `css/base.css`.
- *
- * UN RÉGLAGE ET NON UN DÉFAUT : passer tout le monde à 1,6 allonge chaque
- * écran et fait défiler davantage sur téléphone. On soignerait deux élèves en
- * gênant les vingt-trois autres.
- *
- * LE RÉGLAGE VIT DANS LE NAVIGATEUR, pas dans le profil serveur — c'est un
- * réglage de POSTE : le même élève sur la tablette du fond et sur son
- * téléphone n'a pas forcément le même besoin, et surtout il doit pouvoir le
- * mettre sans que personne ne le sache.
- */
-function initTexteAere() {
-    const btn = document.getElementById('btn-toggle-aere');
-    const mot = document.getElementById('btn-aere-mot');
-    if (!btn) return;
-    const actif = () => document.documentElement.getAttribute('data-aere') === '1';
-    const peindre = () => {
-        const on = actif();
-        if (mot) mot.textContent = on ? 'Texte aéré : oui' : 'Texte plus aéré';
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.title = on
-            ? 'Le texte est écarté — appuyer pour revenir à l\'espacement normal'
-            : 'Écarter les lettres et les lignes, pour lire plus facilement';
-        btn.setAttribute('aria-label', btn.title);
-    };
-    btn.onclick = () => {
-        const on = !actif();
-        if (on) document.documentElement.setAttribute('data-aere', '1');
-        else document.documentElement.removeAttribute('data-aere');
-        try { localStorage.setItem('atoutmath-aere', on ? '1' : '0'); } catch (e) { /* privé */ }
-        peindre();
-    };
-    peindre();
-}
-
-function initTheme() {
-    const btn = document.getElementById('btn-toggle-theme');
-    const mot = document.getElementById('btn-theme-mot');
-    if (!btn) return;
-    const nomDe = (id) => (THEMES.find(t => t.id === id) || THEMES[0]).nom;
-    const peindre = () => {
-        const actuel = document.documentElement.getAttribute('data-theme') || 'light';
-        const i = THEMES.findIndex(t => t.id === actuel);
-        const suivant = THEMES[((i < 0 ? 0 : i) + 1) % THEMES.length];
-        if (mot) mot.textContent = `Thème : ${nomDe(actuel)}`;
-        btn.title = `Thème ${nomDe(actuel)} — passer à ${suivant.nom}`;
-        btn.setAttribute('aria-label', btn.title);
-    };
-    btn.onclick = () => {
-        const actuel = document.documentElement.getAttribute('data-theme') || 'light';
-        const i = THEMES.findIndex(t => t.id === actuel);
-        const suivant = THEMES[((i < 0 ? 0 : i) + 1) % THEMES.length];
-        document.documentElement.setAttribute('data-theme', suivant.id);
-        try { localStorage.setItem('mathbox-theme', suivant.id); } catch (e) { /* privé */ }
-        peindre();
-    };
-    peindre();
-}
-
 // --- Barre de débogage ------------------------------------------------------
 
 /**

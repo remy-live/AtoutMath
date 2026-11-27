@@ -8465,3 +8465,18 @@ deux** — 19 novembre
   réglages de parcours, aperçu), puis signaler tout identifiant présent DEUX
   fois dans le document. Un `getElementById` sur un identifiant doublé rend le
   premier, sans erreur.
+
+## Les accents graves d'un commentaire, mangés par `node -e "…"` — 2026-11-27
+
+- *Ce que je voulais faire* — fabriquer les paires de `tools/remplacer.mjs` avec
+  un petit script en ligne, parce que le bloc à remplacer faisait 19 lignes.
+- *Ce qui a coûté* — deux fois de suite, un commentaire est arrivé dans le
+  fichier avec un trou à la place d'un nom de fichier : entre guillemets
+  doubles, le shell exécute ce qui est entre accents graves (« Permission
+  denied », « command not found » dans la sortie, et rien d'autre pour le dire).
+  Deux retouches de plus pour les remettre.
+- *Combien de fois* — ||
+- *Ce qui manque* — que `tools/remplacer.mjs` sache prendre un bloc PAR SES
+  BORNES (« de cette ligne à celle-ci ») au lieu de son texte entier ; à défaut,
+  la règle : un script en ligne s'écrit dans un fichier par `cat <<'EOF'`, jamais
+  dans `node -e "…"`.

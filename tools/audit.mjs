@@ -367,7 +367,7 @@ async function tourDesPanneaux(p, seau) {
     for (const [nom, sel] of [
         ['onglet Parcours', '#top-btn-path'], ['onglet Code', '#top-btn-code'],
         ['onglet Profil', '#top-btn-profile'], ['onglet Exercices', '#top-btn-grid'],
-        ['carnet d\'erreurs', '#btn-open-errors'], ['thème', '#btn-toggle-theme'],
+        ['carnet d\'erreurs', '#btn-open-errors'], ['affichage', '#btn-affichage'],
         ['ma classe', '#btn-open-sync'], ['sauvegarde', '#btn-open-import-export-student'],
         ['arbre des domaines', '#desk-btn-acc'], ['retour au clic', '#desk-btn-drill'],
         ['par chapitres', '[data-rangement="chapitre"]'], ['par domaines', '[data-rangement="domaine"]']
