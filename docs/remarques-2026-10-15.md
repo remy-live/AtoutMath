@@ -8893,3 +8893,10 @@ contraire depuis 98bc71a : son verdict datait de l'ancienne règle, il est remis
 d'accord.
 
 **Les solides et le contraste** — en discussion, rien de construit.
+
+Réponses de Rémy sur la roue d'affichage : « 1. élève et prof, 2. je ne
+comprends pas. 3, tu me maquettes et aussi dans le direct, il faudrait pouvoir
+autoriser le mode libre (ils choisissent) comme cela en fin d'heure, je peux
+laisser à tout le monde le choix ». Maquette faite (trois planches : la roue à
+essayer, ce que le contraste touche, le direct). Rien de construit : on attend
+ses réponses sur les figures et sur le sens de « mode libre ».
