@@ -793,7 +793,29 @@ ok('le code a disparu de la barre d\'adresse', !côtéÉlève.adresse.includes('
 // ET LE PROFESSEUR, LUI, EST TOUJOURS PROFESSEUR. C'est LA vérification : on
 // recharge sa page, dans le même navigateur, après que l'élève s'est connecté.
 await prof.reload();
-await prof.waitForFunction(() => window.__atoutmathPret === true, { timeout: 20000 });
+// CE RECHARGEMENT TOMBE PARFOIS EN 20 s, SANS RIEN DIRE DE CE QU'IL VOIT.
+//
+// Mesuré le 27 novembre : 3 échecs sur 5 essais, toujours ici ; la même sonde
+// munie d'écouteurs de console n'a JAMAIS échoué (4 sur 4) — l'observer change
+// son minutage, c'est une course. Le démarrage, lui, ne ralentit pas (0,7 s
+// avant comme après, cinq rechargements). Faute de pouvoir l'attraper en la
+// regardant, on la fait parler quand elle tombe : une photo et l'état de la
+// page, pour que le prochain échec dise lui-même où il s'est arrêté.
+try {
+    await prof.waitForFunction(() => window.__atoutmathPret === true, { timeout: 20000 });
+} catch (e) {
+    await prof.screenshot({ path: 'tools/tmp/boutEnBout-prof-bloque.png' }).catch(() => {});
+    const etat = await prof.evaluate(() => ({
+        pret: window.__atoutmathPret, adresse: location.href,
+        fenetres: [...document.querySelectorAll('.modal-overlay, [role="dialog"]')]
+            .filter(x => x.getBoundingClientRect().width)
+            .map(x => x.textContent.replace(/\s+/g, ' ').slice(0, 120)),
+        texte: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 240)
+    })).catch(err => ({ illisible: String(err).slice(0, 120) }));
+    console.log('LE RECHARGEMENT DU PROFESSEUR EST RESTÉ BLOQUÉ :', JSON.stringify(etat),
+        '— photo : tools/tmp/boutEnBout-prof-bloque.png');
+    throw e;
+}
 const côtéProf = await prof.evaluate(async () => {
     const { jetonProf } = await import('./js/core/verrouProf.js');
     const { mesClasses } = await import('./js/core/espaceProf.js');

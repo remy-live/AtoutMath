@@ -8965,3 +8965,19 @@ seul à l'heure, même sur une tablette sans réseau ou à l'horloge fausse.
 MESURÉ dans deux navigateurs (`node tools/toutOuvrir.mjs`) : avant, séance
 imposée qui retient et catalogue caché ; après le battement, catalogue visible
 et séance relâchée ; refermé, catalogue caché de nouveau.
+
+**Le Nom des Solides (v1258)** — demande 3 de la section 26 : « cube, pavé droit,
+cylindre, prisme droit, pyramide, cône, sphère, boule ». On comptait, on pliait,
+on calculait ; on ne NOMMAIT nulle part. Quatre marches (`geo-solides-nommer`,
+code SV) : un dessin en perspective cavalière (les polyèdres du moteur de
+« Compter sur un solide », les ronds de celui des volumes, sans cotes), des
+objets du quotidien, des propriétés, puis sphère ou boule mises en regard du
+cercle et du disque. Trois défauts trouvés avant Rémy :
+- des leurres VRAIS — un cube est un pavé droit, un pavé droit est un prisme
+  droit : « pavé droit » ne peut pas être une mauvaise réponse pour un cube ;
+- la marche « sphère ou boule » marquait juste la première proposition (la
+  sphère) même quand on décrivait une boule — vu par l'épreuve ;
+- sur la feuille (regardée par `ficheEnPdf`), cinq « Quel est ce solide ? » sans
+  dessin, et des doublons : sur papier, le dessin devient un objet, et chaque
+  question porte une clef qui l'empêche de revenir (`meta.clef`, que l'écran
+  reconnaît désormais pour tous les exercices).

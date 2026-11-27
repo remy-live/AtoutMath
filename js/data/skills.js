@@ -1665,6 +1665,14 @@ const BASE = {
         descriptor: 'Compter les sommets, les arêtes et les faces d\'un solide dessiné en perspective cavalière.',
         lesson: "Sur une perspective cavalière, une partie du solide est DERRIÈRE : elle se dessine en pointillés. Celui qui compte seulement ce qu'il voit trouve toujours trop peu. Compte donc en marquant, une par une, sans oublier les pointillés. Et surtout, raisonne par familles plutôt que d'apprendre des nombres : un PRISME a deux bases identiques, donc 2 × n sommets, 3 × n arêtes (les n côtés du bas, les n du haut, les n montants) et n + 2 faces. Une PYRAMIDE a une base et un sommet, donc n + 1 sommets, 2 × n arêtes (les n côtés de la base, les n qui montent) et n + 1 faces. Enfin, une vérification vaut pour tous ces solides : sommets − arêtes + faces = 2. Si tu ne tombes pas sur 2, l'un des trois comptes est faux."
     },
+    'geo.espace.nommer': {
+        label: 'Reconnaître et nommer les solides',
+        chemin: [D.GEOMETRIQUE, SD.ESPACE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME, N.TROISIEME],
+        prereqs: [],
+        descriptor: 'Nommer un cube, un pavé droit, un prisme droit, une pyramide, un cylindre, un cône, une sphère ou une boule — sur un dessin, dans un objet, par ses propriétés.',
+        lesson: "COMMENCE PAR LES BASES, c'est elles qui rangent les solides en familles. DEUX BASES identiques et parallèles : si ce sont des polygones, c'est un PRISME DROIT (ses autres faces sont des rectangles) ; si ce sont des disques, c'est un CYLINDRE. UNE SEULE BASE et un sommet : si la base est un polygone, c'est une PYRAMIDE (ses autres faces sont des triangles) ; si c'est un disque, c'est un CÔNE. Le PAVÉ DROIT est un prisme droit dont toutes les faces sont des rectangles, et le CUBE un pavé droit dont toutes les faces sont des carrés — comme le carré est un rectangle particulier. Enfin, la SPHÈRE et la BOULE sont la même paire que le cercle et le disque : la sphère est la surface seule (les points à exactement r du centre), la boule est la sphère et tout ce qu'elle contient (à r ou moins)."
+    },
     'geo.espace.cubes': {
         label: 'Compter les cubes d\'un empilement',
         chemin: [D.GEOMETRIQUE, SD.ESPACE],

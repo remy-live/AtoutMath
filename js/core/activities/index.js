@@ -98,6 +98,7 @@ import { notationGenerator } from '../generators/notation.js';
 import { elementsGeometrieGenerator } from '../generators/elementsGeometrie.js';
 import { anglesManquantsGenerator } from '../generators/anglesManquants.js';
 import { anglesNommerGenerator } from '../generators/anglesNommer.js';
+import { nomDesSolidesGenerator } from '../generators/nomDesSolides.js';
 import { graduationsGenerator } from '../generators/graduations.js';
 import { graduerAxeGenerator } from '../generators/graduerAxe.js';
 import { graduationFractionGenerator } from '../generators/graduationFraction.js';
@@ -247,7 +248,7 @@ import {
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
     elementsGeometrieGenerator,
-    anglesManquantsGenerator, anglesNommerGenerator,
+    anglesManquantsGenerator, anglesNommerGenerator, nomDesSolidesGenerator,
     graduationsGenerator, graduerAxeGenerator,
     graduationFractionGenerator, encadrementGenerator,
     euclidienneGenerator, dureesGenerator,

@@ -1523,6 +1523,28 @@ export const geometrieExercises = [
         instruction: "Six carrés posés à plat : est-ce que ça se plie en cube ? Tu réponds d'abord, et ENSUITE la figure se plie sous tes yeux — c'est le seul moyen d'apprendre, parce qu'un patron ne se reconnaît pas à l'allure. Méfie-toi du rectangle de 2 sur 3 : c'est la réponse que tout le monde donne, et deux de ses carrés retombent sur la même face. La méthode qui ne trompe jamais est de faire ROULER un cube en pensée : pose-le sur un carré, bascule-le vers le carré voisin, et note quelle face arrive dessous. Deux carrés sur la même face, le patron se recouvre ; les six faces prises une seule fois, il se ferme. Quand la figure ne se ferme pas, le carré rouge reste en l'air à la fin du pliage : il retombe sur une place déjà prise, et c'est là qu'est l'erreur. Une fois plié, les carrés de même teinte sont ceux qui se FONT FACE : et tu remarqueras que deux carrés qui se touchent ne peuvent jamais être opposés, puisqu'ils partagent une arête."
     },
     {
+        // LE NOM DES SOLIDES. Rémy, 27 novembre : « il n'y a pas grand-chose
+        // sur les solides de manière générale », puis la liste : « cube, pavé
+        // droit, cylindre, prisme droit, pyramide, cône, sphère, boule ». On
+        // comptait, on pliait, on calculait — on ne NOMMAIT nulle part. Voir
+        // `core/nomDesSolides.js` pour les quatre marches et les leurres.
+        id: 'geo-solides-nommer',
+        title: 'Le Nom des Solides',
+        cree: '2026-11-27',
+        generatorId: 'geo.solides-nommer', activityId: 'buttons',
+        skills: ['geo.espace.nommer'],
+        consignePapier: 'Donne le nom de chaque solide.',
+        motsClefs: ['solides', 'cube', 'pavé droit', 'prisme droit', 'pyramide', 'cylindre', 'cône',
+            'sphère', 'boule', 'perspective cavalière', 'vocabulaire', 'nommer', 'reconnaître',
+            'base', 'face', 'sommet'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME,
+                TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Quatre marches, de ce qu'on voit à ce qu'on définit. D'abord un DESSIN en perspective cavalière, les arêtes cachées en pointillés : on nomme le solide. Puis des OBJETS du quotidien — une boîte de conserve, un dé, un cornet de glace. Puis des PROPRIÉTÉS : « j'ai deux bases qui sont des disques ». Enfin SPHÈRE OU BOULE, mises en regard du cercle et du disque : la sphère est la surface seule, la boule est la sphère et tout ce qu'elle contient. La méthode est toujours la même : commence par les BASES. Deux bases identiques et parallèles, c'est un prisme droit (polygones) ou un cylindre (disques) ; une seule base et un sommet, une pyramide (polygone) ou un cône (disque). Aucun leurre n'est jamais vrai : un cube étant un pavé droit particulier, « pavé droit » n'est pas proposé pour un cube. En sixième, on décoche la quatrième marche ; elle est au programme de troisième."
+    },
+    {
         // DÉNOMBRER SUR UN SOLIDE. L'exercice a l'air simple et ne l'est pas :
         // sur une perspective cavalière, une partie du solide est derrière, et
         // l'élève qui compte ce qu'il voit trouve toujours trop peu. Le jeu

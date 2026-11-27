@@ -499,7 +499,7 @@ function prismeSvg(b, hb, H, u) {
 }
 
 /** Le cylindre : deux ellipses et deux génératrices. */
-function cylindreSvg(r, h, u) {
+function cylindreSvg(r, h, u, nu = false) {
     const e = echelleDe([2 * r, h], 140);
     const R = r * e, ht = h * e, ry = Math.max(8, R * 0.32);
     const cx = 0, bas = 0, haut = -ht;
@@ -524,12 +524,12 @@ function cylindreSvg(r, h, u) {
     // posé à côté du solide désignerait aussi bien le diamètre.
     // LE NOMBRE PASSE AU-DESSUS DE TOUTE L'ELLIPSE, et non juste au-dessus du
     // trait : posé là, il chevauchait l'arc du disque sur les grands rayons.
-    m.push(cote(P, cx, haut, cx + R, haut, `r = ${r} ${u}`, { dy: -(ry + 12) }));
-    m.push(`<circle class="vol-centre" cx="${cx}" cy="${haut.toFixed(1)}" r="2.6"/>`);
-    m.push(cote(P, cx + R + 20, haut, cx + R + 20, bas, `h = ${h} ${u}`,
+    if (!nu) m.push(cote(P, cx, haut, cx + R, haut, `r = ${r} ${u}`, { dy: -(ry + 12) }));
+    if (!nu) m.push(`<circle class="vol-centre" cx="${cx}" cy="${haut.toFixed(1)}" r="2.6"/>`);
+    if (!nu) m.push(cote(P, cx + R + 20, haut, cx + R + 20, bas, `h = ${h} ${u}`,
         { dx: 8, ancre: 'start' }));
     return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
-        aria: 'Un solide coté, dont il faut calculer le volume' });
+        aria: nu ? 'Un solide, à reconnaître' : 'Un solide coté, dont il faut calculer le volume' });
 }
 
 /** La pyramide à base carrée : la base en losange, la hauteur en pointillés. */
@@ -568,7 +568,7 @@ function pyramideSvg(c, h, u) {
 }
 
 /** Le cône : une ellipse, deux génératrices, la hauteur en pointillés. */
-function coneSvg(r, h, u) {
+function coneSvg(r, h, u, nu = false) {
     const e = echelleDe([2 * r, h], 130);
     const R = r * e, ht = h * e, ry = Math.max(8, R * 0.32);
     const cx = 0, bas = 0;
@@ -588,18 +588,18 @@ function coneSvg(r, h, u) {
     m.push(`<path class="vol-arete" d="M ${pt(cx - R, bas)} A ${R.toFixed(1)} ${ry.toFixed(1)}
         0 0 1 ${pt(cx + R, bas)}"/>`);
     m.push(`<path class="vol-arete" d="M ${pt(cx - R, bas)} L ${pt(...S)} L ${pt(cx + R, bas)}"/>`);
-    m.push(`<line class="vol-hauteur" x1="${S[0]}" y1="${S[1].toFixed(1)}"
+    if (!nu) m.push(`<line class="vol-hauteur" x1="${S[0]}" y1="${S[1].toFixed(1)}"
         x2="${cx}" y2="${bas}"/>`);
-    m.push(`<path class="vol-droit" d="M ${pt(cx - 9, bas)} L ${pt(cx - 9, bas - 9)}
+    if (!nu) m.push(`<path class="vol-droit" d="M ${pt(cx - 9, bas)} L ${pt(cx - 9, bas - 9)}
         L ${pt(cx, bas - 9)}"/>`);
-    m.push(cote(P, cx, bas + ry, cx + R, bas + ry, `r = ${r} ${u}`, { dy: 22 }));
-    m.push(etiquette(P, S[0] - 10, S[1] - 8, `h = ${h} ${u}`, 'end'));
+    if (!nu) m.push(cote(P, cx, bas + ry, cx + R, bas + ry, `r = ${r} ${u}`, { dy: 22 }));
+    if (!nu) m.push(etiquette(P, S[0] - 10, S[1] - 8, `h = ${h} ${u}`, 'end'));
     return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
-        aria: 'Un solide coté, dont il faut calculer le volume' });
+        aria: nu ? 'Un solide, à reconnaître' : 'Un solide coté, dont il faut calculer le volume' });
 }
 
 /** La boule : un cercle et son équateur. */
-function bouleSvg(r, u) {
+function bouleSvg(r, u, nu = false) {
     const R = Math.min(r * 16, 76);
     const cx = 0, cy = 0;
     const P = [[cx - R, cy - R], [cx + R, cy + R]];
@@ -616,23 +616,29 @@ function bouleSvg(r, u) {
     // l'horizontale il se confond avec l'équateur, et l'étiquette se pose sur
     // lui. Mesuré : « r = 3 cm » était illisible, écrit sur le trait.
     const bx = cx + R * 0.72, by = cy - R * 0.69;
-    m.push(cote(P, cx, cy, bx, by, `r = ${r} ${u}`, { dx: 12, dy: -6, ancre: 'start' }));
-    m.push(`<circle class="vol-centre" cx="${cx}" cy="${cy}" r="2.6"/>`);
+    if (!nu) m.push(cote(P, cx, cy, bx, by, `r = ${r} ${u}`, { dx: 12, dy: -6, ancre: 'start' }));
+    if (!nu) m.push(`<circle class="vol-centre" cx="${cx}" cy="${cy}" r="2.6"/>`);
     return cadreSvg(m.join('\n        '), P, { classe: 'vol-svg',
-        aria: 'Un solide coté, dont il faut calculer le volume' });
+        aria: nu ? 'Un solide, à reconnaître' : 'Un solide coté, dont il faut calculer le volume' });
 }
 
-/** Le dessin du solide tiré, coté. */
-export function figureVolumeSvg(t) {
+/**
+ * Le dessin du solide tiré, coté.
+ *
+ * `nu` : SANS COTES NI HAUTEUR, pour les ronds (cylindre, cône, boule) — c'est
+ * le dessin qu'emploie « Le Nom des Solides », où l'on reconnaît une forme et
+ * où des longueurs écrites dessus feraient croire qu'il y a un calcul à faire.
+ */
+export function figureVolumeSvg(t, { nu = false } = {}) {
     const d = t.dims, u = t.unite;
     switch (t.marche) {
         case 'pave': return paveSvg(d.L, d.l, d.h, u);
         case 'cube': return paveSvg(d.a, d.a, d.a, u, true);
         case 'prisme': return prismeSvg(d.b, d.hb, d.H, u);
-        case 'cylindre': return cylindreSvg(d.r, d.h, u);
+        case 'cylindre': return cylindreSvg(d.r, d.h, u, nu);
         case 'pyramide': return pyramideSvg(d.c, d.h, u);
-        case 'cone': return coneSvg(d.r, d.h, u);
-        case 'boule': return bouleSvg(d.r, u);
+        case 'cone': return coneSvg(d.r, d.h, u, nu);
+        case 'boule': return bouleSvg(d.r, u, nu);
         default: return '';
     }
 }

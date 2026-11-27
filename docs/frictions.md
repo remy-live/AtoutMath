@@ -8480,3 +8480,18 @@ deux** — 19 novembre
   BORNES (« de cette ligne à celle-ci ») au lieu de son texte entier ; à défaut,
   la règle : un script en ligne s'écrit dans un fichier par `cat <<'EOF'`, jamais
   dans `node -e "…"`.
+
+## `boutEnBout` tombe parfois au rechargement du professeur, et rien ne dit pourquoi — 2026-11-27
+
+- *Ce que je voulais faire* — lire le verdict du harnais avant de committer « Le
+  Nom des Solides ».
+- *Ce qui a coûté* — environ quarante minutes et onze essais : 3 échecs sur 5
+  avec le changement, 0 sur 3 sans, toujours au même `waitForFunction`
+  (`__atoutmathPret` après `prof.reload()`). Le démarrage ne ralentit pas
+  (0,7 s, mesuré), et la même sonde munie d'écouteurs de console n'a jamais
+  échoué en 4 essais : l'observer change son minutage. Déjà vu une fois le
+  26 novembre, au même endroit, avant tout changement de ce jour.
+- *Combien de fois* — ||
+- *Ce qui manque* — le harnais photographie maintenant la page et dit son état
+  quand ce pas tombe (`tools/tmp/boutEnBout-prof-bloque.png`). Il faudra lire
+  cette photo au prochain échec, au lieu de relancer jusqu'à ce que ça passe.

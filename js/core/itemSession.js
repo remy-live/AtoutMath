@@ -108,7 +108,12 @@ export class ItemSession {
         // Par défaut, deux questions sont la même quand leur ÉNONCÉ est le
         // même. Une activité qui ne montre qu'une partie de l'item redéfinit
         // cette clef.
-        this._clef = (it) => (it && it.prompt && it.prompt.text) || '';
+        // UN GÉNÉRATEUR PEUT DIRE SA CLEF (`meta.clef`) quand l'énoncé ne dit pas
+        // tout : « Quel est ce solide ? » est le même pour tous les dessins du
+        // Nom des Solides, qui ne se reconnaissent qu'à leur figure. Sans elle,
+        // chaque dessin passait pour une question déjà posée.
+        this._clef = (it) => (it && it.meta && it.meta.clef)
+            || (it && it.prompt && it.prompt.text) || '';
         // L'ESCALIER DE L'AIDE VIT SUR LA SESSION, pas sur l'activité.
         //
         // Il doit survivre au passage du QCM au pavé numérique — c'est même

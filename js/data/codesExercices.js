@@ -268,6 +268,7 @@ export const CODES_EXERCICES = {
     'geo-relier-points':          'RP',   // Relie les points
     'geo-cubes-compter':          'CS',   // Combien de Cubes ?
     'geo-solides-denombrer':      'CL',   // Compter sur un solide
+    'geo-solides-nommer':         'SV',   // les Solides et leur Vocabulaire
     'geo-automate':               'AU',   // L'Automate
     'geo-dedale-forme':           'DA',   // Les Dédales
     'geo-mat-echecs':             'EM',   // Échecs : mat en un, mat en deux
