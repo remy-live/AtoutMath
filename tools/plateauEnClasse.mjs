@@ -243,6 +243,11 @@ try {
         for (const [i, n] of [[0, cible.a], [1, cible.b]]) {
             await ardoises[i].page.click(`[data-devenir-nb="${n}"]`);
         }
+        // L'ÉTIQUETTE « tu portes » SE REPEINT À L'IMAGE SUIVANTE, pas au clic.
+        // Lue dans la même milliseconde, elle disait encore l'ancien nombre
+        // pendant que le rond portait déjà le nouveau — c'était la sonde qui
+        // lisait trop tôt, pas l'ardoise qui se trompait.
+        await dormir(300);
         const portes = [];
         for (const [i, n] of [[0, cible.a], [1, cible.b]]) {
             portes.push(await ardoises[i].page.evaluate(() =>
@@ -314,6 +319,42 @@ try {
             !!vuDuProf && vuDuProf.prises === 1,
             vuDuProf ? `${vuDuProf.prises} prise(s), ${vuDuProf.joueurs} joueur(s), `
                 + `${(vuDuProf.scores || []).join(' à ')}` : 'le direct ne dit rien du jeu');
+    }
+
+    // ── LES AUTRES GLISSENT, ILS NE SAUTENT PLUS ──────────────────────────
+    //
+    // RÉMY, 27 novembre : « ce n'est pas du tout fluide ». Les autres ronds
+    // arrivent une fois par seconde ; on les posait d'un coup. L'ardoise 1
+    // traverse le terrain au doigt pendant que l'ardoise 2 relève, toutes les
+    // 80 ms, où elle DESSINE les ronds des autres. Qui saute ne prend que deux
+    // ou trois places en trois secondes ; qui glisse en prend des dizaines.
+    {
+        const t = await ardoises[0].page.evaluate(() => {
+            const r = document.querySelector('[data-terrain]').getBoundingClientRect();
+            const moi = document.querySelector('.pdn-pion--moi').getBoundingClientRect();
+            const gauche = moi.left - r.left < r.width / 2;
+            return { x: gauche ? r.right - 20 : r.left + 20, y: r.top + r.height / 2 };
+        });
+        const releves = [];
+        const relever = (async () => {
+            for (let k = 0; k < 38; k++) {
+                releves.push(await ardoises[1].page.evaluate(() =>
+                    [...document.querySelectorAll('.pdn-pion:not(.pdn-pion--moi)')]
+                        .map(e => e.style.left)));
+                await dormir(80);
+            }
+        })();
+        await ardoises[0].page.mouse.move(t.x, t.y);
+        await ardoises[0].page.mouse.down();
+        await dormir(3000);
+        await ardoises[0].page.mouse.up();
+        await relever;
+        let auPlus = 0;
+        for (let j = 0; j < (releves[0] || []).length; j++) {
+            auPlus = Math.max(auPlus, new Set(releves.map(r => r[j])).size);
+        }
+        ok('LES AUTRES RONDS GLISSENT ENTRE DEUX BATTEMENTS', auPlus >= 12,
+            `${auPlus} places différentes en 38 relevés pour le rond qui a bougé`);
     }
 
     // ── CE QUE LE PROFESSEUR VOIT, ET LE BOUTON QUI ARRÊTE ────────────────

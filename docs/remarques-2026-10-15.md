@@ -8921,3 +8921,35 @@ une seconde roue est donc dans l'en-tête de l'exercice.
 
 Pas de curseur « taille du texte », contrairement à la maquette : le zoom du
 navigateur (Ctrl +) le fait déjà, et un zoom maison dérègle les jeux à canevas.
+
+### 27. « tous les élèves ont eu le chiffre 5 » — le plateau et le défi en classe, 27 novembre
+
+Rémy, mot à mot : « Le jeu de plateau ne fonctionne pas. Tous les élèves ont eu
+le chiffre 5 et je pense que le réseau n'a pas supporté, ce n'est pas du tout
+fluide. Pour le défi de la classe, si on clique deux fois sur la bonne réponse
+on a deux points. » Puis : « et aussi quand on est en direct, comment faire
+pour que l'élève n'aille pas sur son profil ou le bac à sable ou autre ».
+
+**Le défi (v1256)** — `repondre` n'avait pas de verrou ; la question suivante
+n'arrive que 260 ms après. MESURÉ (`node tools/defiDoubleClic.mjs`, un vrai
+double clic) : 0 → 2 → 4 → 6 avant, 0 → 1 → 2 → 3 après.
+
+**Le plateau (v1256)** — DEUX causes, aucune n'était le réseau.
+- Le 5 : toutes les ardoises reçoivent la même graine (il le faut, elle dessine
+  le même plateau), et les tirages de chacun en partaient aussi. Trente élèves
+  portaient le même nombre et posaient les mêmes questions. Les tirages
+  ajoutent maintenant l'identifiant de l'élève (`cleDesTirages`).
+- La saccade : les autres ronds arrivent une fois par seconde et étaient posés
+  d'un coup. Ils glissent maintenant d'un battement à l'autre
+  (`positionGlissee`) ; la règle lit toujours la position du serveur.
+- MESURÉ que ce n'était pas le serveur (`node tools/chargeDuPlateau.mjs`) :
+  trente élèves à un battement par seconde, 600 battements en 20 s, aucun
+  perdu, 4 ms de médiane, 16 ms au pire — sur le serveur d'essai qui ne sert
+  qu'une requête à la fois.
+- `node tools/plateauEnClasse.mjs` le garde : avec l'ancien écran, « 2 et 2 »
+  sur les ardoises et 3 places en 38 relevés ; avec le nouveau, des nombres
+  différents et 15 places.
+
+**Le profil et le bac pendant le direct** — tout existe déjà, réponse donnée à
+Rémy : « Écran de séance chez les élèves » (plein écran, profil fermé jusqu'à
+la première étape finie), le bac à sable « Fermer », « Fermer le catalogue ».

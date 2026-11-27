@@ -289,6 +289,55 @@ export const RAYON = 0.34;
 export const VITESSE = 3.4;
 
 /**
+ * LA GRAINE DES TIRAGES D'UNE ARDOISE — le nombre qu'on porte au départ, les
+ * questions « pour devenir », les jetons qu'on ramasse.
+ *
+ * RÉMY, 27 novembre : « tous les élèves ont eu le chiffre 5 ». En classe, le
+ * serveur donne LA MÊME graine à toutes les ardoises — il le faut, c'est elle
+ * qui dessine le MÊME plateau pour tout le monde. Mais les tirages de chacun en
+ * partaient aussi : trente ardoises tiraient le même premier nombre, puis les
+ * mêmes questions dans le même ordre. Avec trente 5, une seule cible se prend
+ * (25), et le jeu ne marche plus.
+ *
+ * EN RÉSEAU, L'IDENTIFIANT DE L'ÉLÈVE S'AJOUTE À LA GRAINE : le plateau reste
+ * commun (il a sa propre graine, voir `dessinerLePlateau`), les tirages
+ * deviennent personnels — et stables d'un rechargement à l'autre. En
+ * démonstration, rien ne change : la même graine rejoue la même partie.
+ */
+export function cleDesTirages(graine, monId = null) {
+    return monId ? `partie-${graine}-${monId}` : `partie-${graine}`;
+}
+
+/**
+ * OÙ DESSINER UN PION DISTANT, ENTRE DEUX BATTEMENTS.
+ *
+ * RÉMY : « ce n'est pas du tout fluide ». MESURÉ (`tools/chargeDuPlateau.mjs`)
+ * : ce n'était pas le serveur — trente élèves, 4 ms de médiane, aucun battement
+ * perdu. C'était l'écran : les autres pions arrivent une fois par seconde, et
+ * on les posait d'un coup à leur nouvelle place. Trente ronds qui sautent d'une
+ * case chaque seconde, c'est un jeu qui saccade.
+ *
+ * ON GLISSE DONC D'UNE POSITION À LA SUIVANTE, en ligne droite, pendant le
+ * temps qui sépare deux battements. Les autres sont vus avec une seconde de
+ * retard, ce qui ne change rien à la règle : c'est le SERVEUR qui arbitre les
+ * prises, et mon propre rond, lui, reste sous mon doigt sans aucun retard.
+ *
+ * UN GRAND SAUT NE SE GLISSE PAS : un élève qui recharge sa page réapparaît à
+ * sa place de départ, et le voir traverser tout le plateau mentirait.
+ *
+ * @param {{x:number,y:number}} de    où on le dessinait au battement
+ * @param {{x:number,y:number}} vers  où le serveur le dit maintenant
+ * @param {number} ecoule  millisecondes depuis le battement
+ * @param {number} duree   millisecondes jusqu'au battement suivant
+ */
+export const SAUT_SANS_GLISSER = 3;
+export function positionGlissee(de, vers, ecoule, duree) {
+    if (!de || Math.hypot(vers.x - de.x, vers.y - de.y) > SAUT_SANS_GLISSER) return { x: vers.x, y: vers.y };
+    const f = duree > 0 ? Math.max(0, Math.min(1, ecoule / duree)) : 1;
+    return { x: de.x + (vers.x - de.x) * f, y: de.y + (vers.y - de.y) * f };
+}
+
+/**
  * AVANCE UN ROND, borné au plateau.
  *
  * ON NORME LA DIRECTION, et ce n'est pas une coquetterie : sans cela, aller en

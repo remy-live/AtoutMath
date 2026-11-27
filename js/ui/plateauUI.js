@@ -44,7 +44,7 @@
 import {
     NOMBRES, RAYON, VITESSE, dessinerLePlateau, placeDeDepart, avancer, caseSous,
     cibleEn, cibleSous, quiPrend, repartirLesPoints, decompositions, coupDuRobot,
-    nombresUtiles, coutDeLErreur, scoreApresPenalite
+    nombresUtiles, coutDeLErreur, scoreApresPenalite, cleDesTirages, positionGlissee
 } from '../core/plateau.js';
 import { makeRng, shortId } from '../core/ids.js';
 
@@ -167,7 +167,9 @@ export function ouvrirLePlateau(o = {}) {
     // le CUMUL et non l'erreur du moment : le serveur garde le plus grand des
     // deux, donc un battement perdu dans le réseau n'efface pas la punition.
     let malusCumule = 0;
-    const rng = makeRng(`partie-${graine}`);
+    // MES TIRAGES, PAS CEUX DE LA CLASSE — voir `cleDesTirages` : avec la
+    // graine seule, trente ardoises portaient toutes le même 5.
+    const rng = makeRng(cleDesTirages(graine, lien && o.monId ? o.monId : null));
     const plateau = dessinerLePlateau({
         graine, operation, quoi,
         // LE PLATEAU GRANDIT AVEC LA CLASSE. Trente ronds sur douze cases de
@@ -381,9 +383,15 @@ export function ouvrirLePlateau(o = {}) {
     };
 
     const placerLesPions = () => {
+        const maintenant = Date.now();
         for (const p of pions) {
-            p.el.style.left = `${(p.x / plateau.largeur) * 100}%`;
-            p.el.style.top = `${(p.y / plateau.hauteur) * 100}%`;
+            // UN PION DISTANT SE DESSINE EN GLISSANT ; le mien et ceux de
+            // l'ordinateur sont déjà calculés à chaque image.
+            const ou = p.distant && p.vue
+                ? positionGlissee(p.vue, p, maintenant - (p.recuLe || maintenant), p.duree || 1000)
+                : p;
+            p.el.style.left = `${(ou.x / plateau.largeur) * 100}%`;
+            p.el.style.top = `${(ou.y / plateau.hauteur) * 100}%`;
             if (p.elNb.textContent !== String(p.nombre)) {
                 p.elNb.textContent = String(p.nombre);
             }
@@ -630,6 +638,15 @@ export function ouvrirLePlateau(o = {}) {
                 pions.push(p);
                 creerLeRond(p);
             }
+            // LE ROND GLISSE VERS SA NOUVELLE PLACE, il n'y saute pas — voir
+            // `positionGlissee`. On part d'où on le DESSINE en ce moment, et
+            // l'on prend pour durée l'écart réel entre deux battements.
+            const maintenant = Date.now();
+            p.vue = p.vue ? positionGlissee(p.vue, { x: p.x, y: p.y },
+                maintenant - (p.recuLe || maintenant), p.duree || 1000) : { x: p.x, y: p.y };
+            p.duree = p.recuLe ? Math.max(200, Math.min(1500, maintenant - p.recuLe)) : 1000;
+            p.recuLe = maintenant;
+            // LA RÈGLE, ELLE, LIT LA POSITION DU SERVEUR, sans retard.
             p.x = Number(v.x) || 0;
             p.y = Number(v.y) || 0;
             p.nombre = Math.round(Number(v.nombre) || 0);

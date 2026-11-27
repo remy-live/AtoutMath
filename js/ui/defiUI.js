@@ -744,8 +744,20 @@ async function questionner(defi, exo) {
             }, AVANT_DE_POUVOIR_PASSER);
         };
 
+        // UNE RÉPONSE PAR QUESTION, ET LE VERROU SE POSE AU PREMIER APPUI.
+        //
+        // Rémy : « si on clique deux fois sur la bonne réponse on a deux
+        // points ». La question suivante n'arrive que 260 ms après — le temps
+        // de voir la carte verdir —, et pendant ce temps les propositions
+        // restaient sous le doigt : chaque appui repassait ici. MESURÉ
+        // (`node tools/defiDoubleClic.mjs`, un vrai double clic) : 0 → 2, puis
+        // 2 → 4, puis 4 → 6. Le pari d'un angle avait déjà son verrou (`pose`,
+        // plus bas) ; le choix et la saisie n'en avaient pas.
+        let repondu = false;
         const repondre = (juste) => {
-            if (fini) return;
+            if (fini || repondu) return;
+            repondu = true;
+            zone.querySelectorAll('button, input').forEach((x) => { x.disabled = true; });
             total++;
             if (juste) { bonnes++; points++; ms += Date.now() - parti; }
             // ET LA FAUTE COÛTE. On ne descend pas sous zéro : un score négatif
