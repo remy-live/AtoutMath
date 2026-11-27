@@ -8953,3 +8953,15 @@ double clic) : 0 → 2 → 4 → 6 avant, 0 → 1 → 2 → 3 après.
 **Le profil et le bac pendant le direct** — tout existe déjà, réponse donnée à
 Rémy : « Écran de séance chez les élèves » (plein écran, profil fermé jusqu'à
 la première étape finie), le bac à sable « Fermer », « Fermer le catalogue ».
+
+**Tout ouvrir en fin d'heure (v1257)** — demande 2 de la section 26. Dans « Le
+direct », à côté de « Fermer le catalogue » : « 🔓 Tout ouvrir » et une durée
+(5 à 30 minutes, 10 par défaut). Tant que c'est ouvert, le catalogue entier
+s'ouvre à CETTE classe, même quand le site n'est pas en libre accès, et la
+séance imposée cesse de retenir l'élève (plus de plein écran forcé, profil
+rendu) — elle reste là pour qui veut la finir. L'élève reçoit un mot. Le bouton
+dit « Refermer les exercices (ouverts jusqu'à 11 h 52) », et tout se referme
+seul à l'heure, même sur une tablette sans réseau ou à l'horloge fausse.
+MESURÉ dans deux navigateurs (`node tools/toutOuvrir.mjs`) : avant, séance
+imposée qui retient et catalogue caché ; après le battement, catalogue visible
+et séance relâchée ; refermé, catalogue caché de nouveau.

@@ -239,6 +239,7 @@ function etatDeSeance(array $eleve): array
                               impose_jusqu_a, impose_ecran_seance, impose_profil_ouvert,
                               chrono_fin, chrono_a_zero,
                               pause_mot, bac_ferme, bac_minutes, bac_jeux,
+                              tout_ouvert_jusqu_a,
                               hors_seance, hors_seance_mot,
                               defi_exo, defi_graine, defi_mode, defi_debut, defi_fin,
                               defi_manches, defi_duree, defi_but, defi_equipes, defi_malus,
@@ -256,6 +257,21 @@ function etatDeSeance(array $eleve): array
     // LA SÉANCE IMPOSÉE A UNE FIN, et c'est ici qu'on la fait respecter : c'est
     // la porte par laquelle TOUS les élèves la reçoivent.
     $imposeId = imposeEncoreValide($classe);
+
+    // ── TOUT EST-IL OUVERT, MAINTENANT ? ────────────────────────────────────
+    //
+    // RÉMY : « 10 minutes avant la fin ouvrir tous les exercices ». TANT QU'IL
+    // DURE, il passe par-dessus tout ce qui ferme : le catalogue fermé, la
+    // porte « hors séance », le plein écran et le profil fermé de la séance
+    // imposée — fermer le catalogue pendant ces minutes n'y change rien, c'est
+    // son propre bouton (« Refermer les exercices ») qui le referme. La séance,
+    // elle, reste là : l'élève qui veut la finir la retrouve.
+    //
+    // ON ENVOIE L'INSTANT DE FIN, comme pour le compte à rebours : une
+    // ardoise qui perd le réseau referme la porte toute seule à l'heure dite,
+    // au lieu de la garder ouverte jusqu'au battement suivant.
+    $toutOuvertJusqua = (int) ($classe['tout_ouvert_jusqu_a'] ?? 0);
+    $toutOuvert = $toutOuvertJusqua > time();
 
     // L'AUTORISATION NOMINATIVE, RELUE ICI ET NON PORTÉE PAR `$eleve`.
     //
@@ -369,7 +385,7 @@ function etatDeSeance(array $eleve): array
                        // côté d'elle : c'est elle que l'élève reçoit, et un
                        // drapeau rangé ailleurs serait à retrouver au bon
                        // moment. Rémy : « oui si la séance est imposée ».
-                       'pleinEcran' => (bool) ($classe['impose_ecran_seance'] ?? 1),
+                       'pleinEcran' => !$toutOuvert && (bool) ($classe['impose_ecran_seance'] ?? 1),
                        // ── LE PROFIL EST-IL FERMÉ POUR CET ÉLÈVE-CI ? ───────
                        //
                        // RÉMY : « il ne peut accéder à son profil que si je
@@ -393,7 +409,7 @@ function etatDeSeance(array $eleve): array
                        // doit retrouver son profil TOUT DE SUITE — pas au
                        // prochain aller-retour réseau, et pas jamais s'il
                        // travaille dans le train.
-                       'profilFerme' => (bool) ($classe['impose_ecran_seance'] ?? 1)
+                       'profilFerme' => !$toutOuvert && (bool) ($classe['impose_ecran_seance'] ?? 1)
                            && empty($classe['impose_profil_ouvert'])
                            && !$profilRenduALui,
                        'path' => json_decode($p['data'], true)];
@@ -436,7 +452,8 @@ function etatDeSeance(array $eleve): array
     return [
         'className' => $classe['name'],
         'classCode' => $classe['join_code'],
-        'locked'    => (bool) $classe['locked'],
+        'locked'    => !$toutOuvert && (bool) $classe['locked'],
+        'toutOuvertJusqua' => $toutOuvert ? $toutOuvertJusqua : null,
         'pause'     => $enPause,
         'notice'    => $classe['notice'] !== null && $classe['notice'] !== '' ? $classe['notice'] : null,
         'blocked'   => (bool) ($eleve['blocked'] ?? 0),
@@ -452,7 +469,7 @@ function etatDeSeance(array $eleve): array
         // CONCLUSION — « c'est fermé pour toi, en ce moment ». C'est la même
         // raison que pour le compte à rebours : une règle recalculée sur trente
         // appareils finit par diverger de celle du serveur.
-        'horsSeance' => !empty($classe['hors_seance']) && !$imposeId,
+        'horsSeance' => !$toutOuvert && !empty($classe['hors_seance']) && !$imposeId,
         'horsSeanceMot' => trim((string) ($classe['hors_seance_mot'] ?? '')) !== ''
             ? (string) $classe['hors_seance_mot']
             : 'Pour l\'instant, AtoutMath ne s\'ouvre qu\'au collège, '

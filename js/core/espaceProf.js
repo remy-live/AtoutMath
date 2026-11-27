@@ -231,6 +231,16 @@ export const fermerLeCatalogue = (classId, ferme) =>
     auServeur('/teacher/class', { classId, action: 'lock', locked: ferme });
 
 /**
+ * TOUT OUVRIR À LA CLASSE, POUR QUELQUES MINUTES — zéro referme tout de suite.
+ *
+ * Rémy : « quand on est en direct, les élèves font leur exercice et j'aimerais
+ * par exemple 10 minutes avant la fin ouvrir tous les exercices ». Le serveur
+ * range l'heure de fin : la porte se referme seule.
+ */
+export const toutOuvrir = (classId, minutes) =>
+    auServeur('/teacher/class', { classId, action: 'toutOuvrir', minutes });
+
+/**
  * METTRE TOUTE LA CLASSE EN PAUSE, MAINTENANT — le vrai geste.
  *
  * L'écran de chaque élève se couvre d'un voile qui porte le mot du professeur,

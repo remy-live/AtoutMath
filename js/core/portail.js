@@ -27,6 +27,7 @@ import { getActiveProfile } from './profile.js';
 // requête cachée derrière un appel qui a l'air gratuit.
 import { reglageSite } from './reglagesSite.js';
 import { copieDEssai } from './copieDEssai.js';
+import { toutOuvert } from './seanceDistante.js';
 
 /**
  * LE MODE LIBRE, QUAND IL N'Y A PAS DE SERVEUR DU TOUT.
@@ -61,6 +62,10 @@ export function modeLibre() {
         if (v === '1') return true;
         if (v === '0') return false;
     } catch (e) { /* stockage refusé : on passe à l'autorité suivante */ }
+    // LE PROFESSEUR DEVANT SA CLASSE PASSE AVANT LE RÉGLAGE DU SITE. Rémy :
+    // « 10 minutes avant la fin ouvrir tous les exercices » — c'est ouvert pour
+    // SA classe, pour quelques minutes, même quand le site est fermé à tous.
+    if (toutOuvert()) return true;
     const duServeur = reglageSite('modeLibre');
     if (typeof duServeur === 'boolean') return duServeur;
     // SUR UNE COPIE D'ESSAI, LE REPLI EST « OUVERT », et il faut dire pourquoi.

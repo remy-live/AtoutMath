@@ -20,7 +20,7 @@
 
 import { ceQueVoitLEleve, direLu } from '../core/seanceDistante.js';
 import { state } from '../core/state.js';
-import { showModal } from './modal.js';
+import { showModal, showToast } from './modal.js';
 
 export function initSeanceDistanteUI() {
     document.addEventListener('seance_distante', () => rendre());
@@ -50,6 +50,28 @@ function rendre() {
     majFerme(vu.ferme);
     montrerLesMots(vu.mots);
     montrerLesIndices(vu.indices);
+    annoncerToutOuvert(vu.toutOuvert);
+}
+
+/* ------------------------------------------------------------ Tout ouvert */
+
+// ON LE DIT UNE FOIS, À L'OUVERTURE. Rémy : « 10 minutes avant la fin ouvrir
+// tous les exercices ». Le catalogue réapparaît dans la barre sans un bruit ;
+// sans ce mot, l'élève penché sur sa séance ne saurait pas qu'il peut aller
+// ailleurs — et celui qui s'en aperçoit croirait à une erreur. On ne le
+// redit pas à chaque battement : seulement quand la porte s'ouvre, et quand
+// elle se referme.
+let ouvertAvant = false;
+function annoncerToutOuvert(secondes) {
+    const ouvert = secondes > 0;
+    if (ouvert === ouvertAvant) return;
+    ouvertAvant = ouvert;
+    if (ouvert) {
+        const min = Math.max(1, Math.round(secondes / 60));
+        showToast(`Tous les exercices sont ouverts pendant ${min} minute${min > 1 ? 's' : ''} : va jouer à ce que tu veux !`, 'success', 6000);
+    } else {
+        showToast('Les exercices se referment : retour à ta séance.', 'info', 5000);
+    }
 }
 
 /* ------------------------------------------------------------------ Consigne */

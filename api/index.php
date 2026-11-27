@@ -2122,6 +2122,28 @@ function handleTeacherClass(): void
     // jeux ». Il est OUVERT par défaut : une fonction qu'il faut allumer pour
     // la découvrir n'est jamais découverte. Ce geste-ci sert à le FERMER, pour
     // les heures où celui qui a fini doit relire ou aider son voisin.
+    // ── TOUT OUVRIR, POUR QUELQUES MINUTES ───────────────────────────────────
+    //
+    // RÉMY : « quand on est en direct, les élèves font leur exercice et
+    // j'aimerais par exemple 10 minutes avant la fin ouvrir tous les
+    // exercices ». Le catalogue entier s'ouvre à CETTE classe, même quand le
+    // catalogue en libre accès du site est éteint, et la séance imposée cesse
+    // de retenir l'élève — voir `etatDeSeance`.
+    //
+    // ON RANGE UNE HEURE DE FIN, PAS UN INTERRUPTEUR : la porte se referme
+    // d'elle-même, et le professeur qui oublie de la refermer à la sonnerie ne
+    // laisse pas la classe ouverte jusqu'au soir. Zéro minute la referme tout
+    // de suite. Une heure au plus : au-delà, ce n'est plus une fin de cours.
+    if ($action === 'toutOuvrir') {
+        $minutes = max(0, min(60, (int) ($body['minutes'] ?? 0)));
+        $jusqua = $minutes > 0 ? time() + $minutes * 60 : null;
+        db()->prepare('UPDATE classes SET tout_ouvert_jusqu_a = ? WHERE id = ?')
+            ->execute([$jusqua, $classe['id']]);
+        respond(['ok' => true, 'jusqua' => $jusqua, 'dit' => $jusqua
+            ? "Tous les exercices sont ouverts pendant $minutes minutes."
+            : 'Les exercices sont refermés : les élèves retrouvent ce que vous leur donnez.']);
+    }
+
     if ($action === 'bac') {
         $ferme = !empty($body['ferme']);
         // ET COMBIEN DE TEMPS IL DURE. Rémy : « un temps, réglé par vous ». Le
@@ -2363,6 +2385,10 @@ function handleTeacherRoster(): void
             'id' => $classe['id'], 'name' => $classe['name'],
             'joinCode' => $classe['join_code'], 'level' => $classe['level'],
             'locked' => (bool) $classe['locked'], 'notice' => $classe['notice'],
+            // TOUT OUVERT JUSQU'À QUAND — rendu seulement s'il est encore à
+            // venir, pour la même raison que la séance imposée juste dessous.
+            'toutOuvertJusqua' => ((int) ($classe['tout_ouvert_jusqu_a'] ?? 0)) > time()
+                ? (int) $classe['tout_ouvert_jusqu_a'] : null,
             // LE MOMENT EN COURS, pour que l'écran s'ouvre sur ce qui est
             // VRAIMENT posé — et non sur des champs vides qu'il faudrait
             // deviner. Un écran de réglages qui ne montre pas l'état actuel

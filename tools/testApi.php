@@ -566,6 +566,29 @@ json('/teacher/class', ['classId' => $classId, 'action' => 'lock', 'locked' => f
 $r = json('/session', [], $lea);
 verifier('et le déverrouillage aussi', ($r['json']['session']['locked'] ?? null) === false);
 
+// ── TOUT OUVRIR, POUR QUELQUES MINUTES ─────────────────────────────────────
+//
+// Rémy : « 10 minutes avant la fin ouvrir tous les exercices ». Ouvert, il
+// passe par-dessus le catalogue fermé ; zéro le referme ; et l'heure de fin
+// est bornée à une heure.
+json('/teacher/class', ['classId' => $classId, 'action' => 'lock', 'locked' => true], $jetonProf);
+$r = json('/teacher/class', ['classId' => $classId, 'action' => 'toutOuvrir', 'minutes' => 10], $jetonProf);
+$fin = (int) ($r['json']['jusqua'] ?? 0);
+verifier('le professeur ouvre tout pour dix minutes', $r['code'] === 200 && abs($fin - (time() + 600)) <= 2, $r['brut']);
+$s = json('/session', [], $lea)['json']['session'] ?? [];
+verifier('L\'OUVERTURE ARRIVE À L\'ÉLÈVE, avec son heure de fin',
+    (int) ($s['toutOuvertJusqua'] ?? 0) === $fin);
+verifier('et elle passe par-dessus le catalogue fermé', ($s['locked'] ?? null) === false);
+$r = json('/teacher/class', ['classId' => $classId, 'action' => 'toutOuvrir', 'minutes' => 500], $jetonProf);
+verifier('une ouverture ne dure pas plus d\'une heure',
+    (int) ($r['json']['jusqua'] ?? 0) <= time() + 3600);
+json('/teacher/class', ['classId' => $classId, 'action' => 'toutOuvrir', 'minutes' => 0], $jetonProf);
+$s = json('/session', [], $lea)['json']['session'] ?? [];
+// `??` PREND UN NULL POUR UNE ABSENCE : on demande donc la clef, puis sa valeur.
+verifier('zéro minute referme : le verrou revient', array_key_exists('toutOuvertJusqua', $s)
+    && $s['toutOuvertJusqua'] === null && ($s['locked'] ?? null) === true);
+json('/teacher/class', ['classId' => $classId, 'action' => 'lock', 'locked' => false], $jetonProf);
+
 // ── METTRE TOUTE LA CLASSE EN PAUSE, MAINTENANT ────────────────────────────
 //
 // RÉMY : « je n'ai pas réussi à mettre toute la classe en pause ».

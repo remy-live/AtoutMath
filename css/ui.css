@@ -6258,3 +6258,8 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     background: var(--bg-panel); color: var(--text-main); }
 .ec-echeance-gestes { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 600px) { .ec-echeances { grid-template-columns: 1fr; } }
+
+/* « Tout ouvrir » et sa durée, côte à côte : on choisit les minutes là où l'on
+   appuie. Voir `boutonToutOuvrir` dans js/ui/espaceClasses.js. */
+.ec-pilote-tout { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.ec-pilote-tout .ec-champ--court { width: auto; }

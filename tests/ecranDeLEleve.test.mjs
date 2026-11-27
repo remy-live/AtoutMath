@@ -75,7 +75,10 @@ test('LE PROFESSEUR N\'EN VOIT RIEN — ni le mot, ni le coup de pouce', () => {
         // raison — `defiCumul`, puis `jeu`. Elle fait donc très exactement son
         // travail : chaque champ neuf passe par les DEUX côtés de la porte, ou
         // l'épreuve crie.
-        defi: null, defiTableau: null, defiCumul: null, jeu: null
+        defi: null, defiTableau: null, defiCumul: null, jeu: null,
+        // ET LA TROISIÈME : « Tout ouvrir » (27 novembre). Le professeur ne
+        // s'annonce pas à lui-même qu'il vient d'ouvrir les exercices.
+        toutOuvert: 0
     });
 });
 

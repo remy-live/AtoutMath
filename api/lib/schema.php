@@ -354,6 +354,13 @@ function lesTablesDuSchema(bool $sqlite): array
         --     avant les autres a droit aux mêmes dix minutes de jeu. NULL ou 0
         --     veut dire « pas de limite », ce qui reste le défaut.
         bac_minutes    " . ($sqlite ? 'INTEGER' : 'INT NULL') . ",
+        --   · tout_ouvert_jusqu_a : TOUS LES EXERCICES OUVERTS À CETTE CLASSE,
+        --     jusqu'à cet instant (secondes). Rémy : « quand on est en direct,
+        --     les élèves font leur exercice et j'aimerais par exemple 10 minutes
+        --     avant la fin ouvrir tous les exercices ». Un INSTANT et non un
+        --     drapeau : la porte se referme seule à la sonnerie, et l'élève qui
+        --     rentre chez lui ne la trouve pas ouverte.
+        tout_ouvert_jusqu_a " . ($sqlite ? 'INTEGER' : 'BIGINT NULL') . ",
         --   · bac_jeux : CE QU'IL Y A DEDANS, quand le professeur l'a choisi.
         --     Rémy : « pour le bac à sable j'aimerai quand même bien pouvoir
         --     éditer le contenu ». Le noyau savait déjà recevoir une liste —

@@ -37,6 +37,9 @@ const VIDE = {
     // connecte, on leur dit que pour l'instant ce n'est disponible qu'au
     // collège (je peux mettre le message de mon choix) ».
     horsSeance: false, horsSeanceMot: '',
+    // TOUT OUVERT JUSQU'À CET INSTANT (secondes du serveur), ou null. Rémy :
+    // « 10 minutes avant la fin ouvrir tous les exercices ». Voir `toutOuvert`.
+    toutOuvertJusqua: null,
     // CE QU'ON LAISSE PASSER MALGRÉ LA PORTE FERMÉE. Rémy : « je peux laisser
     // libre qqs exercices que j'aurais défini mais attention c'est la seule
     // chose qu'il peut faire, il ne peut pas aller sur son profil ou autre ».
@@ -162,7 +165,44 @@ export function appliquerEtat(nouveau, recuA = Math.floor(Date.now() / 1000)) {
     etat = { ...VIDE, ...nouveau, recuA, vuCourir };
     globalStore.set(CLE, etat).catch(() => {});
     if (JSON.stringify(etat) !== avant) prevenir();
+    surveillerLaFermeture();
     return etat;
+}
+
+/**
+ * COMBIEN DE SECONDES TOUT RESTE OUVERT, corrigé de l'écart des horloges —
+ * la même correction que `tempsRestant` : une tablette réglée dix minutes en
+ * avance refermerait sinon la porte dès qu'elle s'ouvre.
+ */
+export function resteOuvert(maintenant = Math.floor(Date.now() / 1000)) {
+    const jusqua = Number(etat.toutOuvertJusqua) || 0;
+    if (!jusqua) return 0;
+    const recu = Number(etat.recuA) || maintenant;
+    const ecart = (Number(etat.maintenant) || recu) - recu;
+    return Math.max(0, jusqua - (maintenant + ecart));
+}
+
+/**
+ * LE PROFESSEUR A-T-IL OUVERT TOUS LES EXERCICES, MAINTENANT ?
+ *
+ * Rémy : « quand on est en direct, les élèves font leur exercice et j'aimerais
+ * par exemple 10 minutes avant la fin ouvrir tous les exercices ». Le serveur
+ * a déjà levé ce qui fermait (catalogue, plein écran, profil) ; reste à ouvrir
+ * le catalogue même quand le libre accès du site est éteint — c'est
+ * `modeLibre` qui demande ici.
+ */
+export function toutOuvert(maintenant) {
+    return resteOuvert(maintenant) > 0;
+}
+
+// LA PORTE SE REFERME À L'HEURE, MÊME SANS RÉSEAU. Le battement suivant le
+// dirait aussi, mais une ardoise qui a perdu le wifi ne le recevrait jamais :
+// on prévient donc les écrans à l'instant de fin, d'ici.
+let minuteurOuvert = null;
+function surveillerLaFermeture() {
+    if (minuteurOuvert) { clearTimeout(minuteurOuvert); minuteurOuvert = null; }
+    const reste = resteOuvert();
+    if (reste > 0) minuteurOuvert = setTimeout(prevenir, reste * 1000 + 500);
 }
 
 function prevenir() {
@@ -344,7 +384,7 @@ export function ceQueVoitLEleve(opts = {}) {
     if (opts.professeur) {
         return { consigne: '', verrouille: false, ecarte: false, ferme: null,
                  mots: [], indices: [], defi: null, defiTableau: null,
-                 defiCumul: null, jeu: null };
+                 defiCumul: null, jeu: null, toutOuvert: 0 };
     }
     return {
         consigne: consigneDuProf(),
@@ -369,7 +409,11 @@ export function ceQueVoitLEleve(opts = {}) {
         defiCumul: cumulDuDefi(),
         // ET LE JEU DE CLASSE PASSE PAR LA MÊME PORTE, avec la même règle : le
         // professeur qui repasse côté élève ne se lance pas un jeu à lui-même.
-        jeu: jeuDeClasse()
+        jeu: jeuDeClasse(),
+        // TOUT OUVERT, ET POUR COMBIEN DE SECONDES ENCORE (0 : fermé). Même
+        // porte, même règle : le professeur qui repasse côté élève ne
+        // s'annonce pas à lui-même qu'il vient d'ouvrir les exercices.
+        toutOuvert: resteOuvert()
     };
 }
 

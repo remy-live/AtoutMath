@@ -66,7 +66,7 @@ import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
     nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, renommerLEleve,
     corrigerLePrenom, leDirect,
-    renommerClasse, fermerLeCatalogue, mettreLaClasseEnPause, rendreLaMain,
+    renommerClasse, fermerLeCatalogue, toutOuvrir, mettreLaClasseEnPause, rendreLaMain,
     poserConsigne, viderClasse, supprimerClasse,
     seancesDeLaClasse,
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
@@ -3142,6 +3142,41 @@ function barrePiloteHtml() {
  * et c'est elle qui est en premier : c'est le geste qu'on fait en pleine heure,
  * d'une main, en parlant.
  */
+/**
+ * TOUT OUVRIR, POUR QUELQUES MINUTES — le geste de fin d'heure.
+ *
+ * RÉMY : « quand on est en direct, les élèves font leur exercice et j'aimerais
+ * par exemple 10 minutes avant la fin ouvrir tous les exercices ».
+ *
+ * À CÔTÉ DE « Fermer le catalogue », parce que c'est son contraire et que l'on
+ * cherche l'un là où l'on a vu l'autre. Mais ce n'est pas le même geste : le
+ * verrou est un état qu'on pose pour l'heure, celui-ci une récréation qui se
+ * referme d'elle-même — d'où la durée, et l'heure de fin écrite sur le bouton
+ * une fois ouvert, pour qu'on sache sans calculer quand les élèves reviendront.
+ */
+function toutEstOuvert(info) {
+    return !!(info && info.toutOuvertJusqua && info.toutOuvertJusqua * 1000 > Date.now());
+}
+function boutonToutOuvrir(info) {
+    if (toutEstOuvert(info)) {
+        const fin = new Date(info.toutOuvertJusqua * 1000);
+        const heure = `${fin.getHours()} h ${String(fin.getMinutes()).padStart(2, '0')}`;
+        return `<button type="button" class="ec-pilote-btn ec-pilote-btn--actif" data-tout-ouvrir="0"
+                    title="Les élèves retrouvent tout de suite ce que vous leur donnez.">
+                🔒 Refermer les exercices (ouverts jusqu'à ${heure})
+            </button>`;
+    }
+    const choix = [5, 10, 15, 20, 30].map(m =>
+        `<option value="${m}"${m === 10 ? ' selected' : ''}>${m} min</option>`).join('');
+    return `<span class="ec-pilote-tout">
+            <button type="button" class="ec-pilote-btn" data-tout-ouvrir="1"
+                    title="Tout le catalogue s'ouvre à cette classe, même pendant une séance imposée, puis se referme seul.">
+                🔓 Tout ouvrir
+            </button>
+            <select id="ec-tout-minutes" class="ec-champ ec-champ--court" aria-label="Pendant combien de minutes">${choix}</select>
+        </span>`;
+}
+
 function rangeeDuHaut(info) {
     // LA PAUSE VIENT DU DIRECT, pas de la fiche de classe : c'est un état de
     // l'instant, et c'est le battement du direct qui le rapporte.
@@ -3158,6 +3193,7 @@ function rangeeDuHaut(info) {
                     title="Les élèves ne voient plus que ce que vous leur donnez : le catalogue disparaît de leur écran.">
                 ${info.locked ? '📚 Rouvrir le catalogue' : '📕 Fermer le catalogue'}
             </button>
+            ${boutonToutOuvrir(info)}
 
             <span class="ec-pilote-mot">
                 <input type="text" id="ec-mot" class="ec-champ" maxlength="500"
@@ -4212,7 +4248,7 @@ async function brancher(e, redessiner) {
         + '[data-seance-ajouter], [data-seance-retirer], [data-bac-jeux],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
-        + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-pause-classe], [data-renommer], [data-vider], [data-supprimer],'
+        + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-pause-classe], [data-tout-ouvrir], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
         + '[data-mode-libre], [data-inscription-libre],'
@@ -5948,6 +5984,15 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    if (d.toutOuvrir) {
+        const champ = document.getElementById('ec-tout-minutes');
+        const minutes = d.toutOuvrir === '1' ? (Number(champ && champ.value) || 10) : 0;
+        await fait(toutOuvrir(cid, minutes), (r) => {
+            if (vue.liste && vue.liste.classe) vue.liste.classe.toutOuvertJusqua = r.jusqua || null;
+        });
+        return;
+    }
+
     if (d.pause) {
         await fait(fermerLeCatalogue(cid, d.pause === '1'), (r) => {
             if (vue.liste && vue.liste.classe) vue.liste.classe.locked = !!r.locked;
@@ -6128,6 +6173,9 @@ function signatureDuPilote() {
     const ch = vue.direct && vue.direct.chrono;
     const df = vue.direct && vue.direct.defi;
     return [!!info.locked, !!(vue.direct && vue.direct.pause),
+        // TOUT OUVERT, ET SA FIN : la barre se redessine quand la porte se
+        // referme d'elle-même, sans attendre qu'on touche à quelque chose.
+        toutEstOuvert(info) ? `ouvert:${info.toutOuvertJusqua}` : '',
         !!bacDeLaClasse(), chronoQuiTourne(ch), (ch && ch.quoi) || '',
         // L'ONGLET OUVERT FAIT PARTIE DE LA FORME DE LA BARRE : sans lui, le
         // battement la laisserait telle quelle alors qu'on vient d'en changer.
