@@ -79,7 +79,10 @@ export const puissancesDeuxTempsGenerator = {
             // trois caractères de marge, pas sur le corrigé entier.
             meta: {
                 deuxTemps: { ...q, aGroupe: grouper(q.a) }, etape: marche, rang: RANG[marche],
-                trouPapier: q.mantisse.length + 5
+                trouPapier: q.mantisse.length + 5,
+                // « MONTRE-MOI » LIT LA CHAÎNE, pas « 1,34|2|7 » : la barre
+                // sépare les cases, elle n'est pas un signe de mathématiques.
+                reponseLisible: chaineTexte(q)
             }
         });
     }

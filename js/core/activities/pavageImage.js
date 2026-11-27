@@ -246,8 +246,8 @@ export function mount(container, session, opts = {}) {
             <div class="game-question">${item.prompt.text}</div>
             <div class="pv-cadre">${svgDuPavage()}</div>
             <div class="pv-aide" data-statut aria-live="polite">Touche la pièce qui est l'image de la pièce ${item.meta.depuis}.</div>
-            ${hintBar(item)}`;
-        wireHint(container, session, item);
+            ${hintBar(session)}`;
+        wireHint(container, session);
 
         // LA PIÈCE DE DÉPART S'ALLUME. Sans cela, l'élève commence par la
         // chercher parmi seize numéros — et c'est du temps pris sur la

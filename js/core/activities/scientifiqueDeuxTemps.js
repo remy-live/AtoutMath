@@ -152,8 +152,8 @@ export function mount(container, session, opts = {}) {
                     <button type="button" class="sd-touche sd-touche--ok" data-valider ${pret ? '' : 'disabled'}>Valider</button>
                 </div>
             </div>
-            ${hintBar(item)}`;
-        wireHint(container, item, session);
+            ${hintBar(session)}`;
+        wireHint(container, session);
         brancher();
     }
 

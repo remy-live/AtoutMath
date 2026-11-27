@@ -82,8 +82,8 @@ export function mount(container, session, opts = {}) {
                         ${pret ? '' : 'disabled'}>Valider</button>
                 </div>
             </div>
-            ${hintBar(item)}`;
-        wireHint(container, item, session);
+            ${hintBar(session)}`;
+        wireHint(container, session);
         brancher();
     }
 

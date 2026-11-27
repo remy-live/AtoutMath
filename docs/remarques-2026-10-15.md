@@ -8865,3 +8865,31 @@ croix) : « 15 questions, 7 exigées » avant, « 9 questions, 7 exigées » apr
 Le panneau ne lit plus que ses propres champs ; une épreuve le garde, vue
 tomber avec l'ancien code. Les étapes déjà enregistrées à 15 ne se corrigent
 pas seules : il faut remettre 9 une fois.
+
+### 25. « il n'y a pas d'aide pour l'écriture scientifique en deux étapes » — 27 novembre
+
+Rémy, mot à mot : « il n'y a pas grand chose sur les solides de manière
+générale. et il n'y a pas d'aide pour l'écriture scientique en deux étapes. Et
+aussi quand je change un parcours qui est en direct pour les élèves, ca change
+qqch pour eux ? » Puis, pendant que je cherchais : « peux tu mettre un option
+contraste fort pour les élèves et pour moi aussi, sur certains ordis c'est
+pale, d'ailleurs il faudrait un petite rouge d'option qui permette les couleurs
+et le contraste (avec slide) on peut en parler d'abords ».
+
+**L'aide absente (v1254)** — les trois indices par question existaient ;
+l'écran appelait `hintBar(item)` au lieu de `hintBar(session)`. Une question n'a
+pas de `hintsAvailable` : la barre rendait du vide, sans erreur. MESURÉ au
+navigateur : zéro bouton « Un indice » sur QUATRE écrans écrits pareil — les
+deux temps, « Par combien ? », le produit de fractions posé, la mosaïque des
+transformations —, un bouton et le bon indice après. « Montre-moi » lit
+désormais la chaîne (`reponseLisible`) et non « 1,34|2|7 ». Une épreuve passe
+sur tous les écrans d'activité (`tests/aideBranchee.test.mjs`), vue tomber.
+
+**Le parcours en direct** — réponse lue dans `majDeSeance` et remesurée
+(`node tools/seanceQuiChange.mjs`) : ce que l'élève a fait reste à sa place ;
+tout ce qui suit sa dernière étape faite suit la retouche, à sa synchronisation
+suivante ; une séance close ne bouge plus. La sonde criait en rouge le
+contraire depuis 98bc71a : son verdict datait de l'ancienne règle, il est remis
+d'accord.
+
+**Les solides et le contraste** — en discussion, rien de construit.

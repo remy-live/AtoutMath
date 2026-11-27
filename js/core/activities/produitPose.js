@@ -170,8 +170,8 @@ export function mount(container, session, opts = {}) {
                 <p class="pp-note" data-note role="status"></p>
                 <div class="pp-panneau">${saisie ? paveHtml() : outilsHtml()}</div>
             </div>
-            ${hintBar(item)}`;
-        wireHint(container, item, session);
+            ${hintBar(session)}`;
+        wireHint(container, session);
         brancher();
     }
 

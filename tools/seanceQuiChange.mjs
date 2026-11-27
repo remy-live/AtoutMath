@@ -158,9 +158,17 @@ console.log('   l\'identité du travail est restée la même : '
     + (memeIdentite ? '\x1b[32moui\x1b[0m' : '\x1b[31mNON — l\'avancement serait orphelin\x1b[0m')
     + '  (' + String((avantTom[0] || {}).pathId).slice(0, 12) + '…)');
 
-// 2. UNE VRAIE RETOUCHE NE DOIT PAS PASSER. On remplace le PREMIER exercice :
-//    ce n'est plus un complément, c'est une réécriture, et un élève a peut-être
-//    déjà fait l'ancien. La séance de Tom ne doit pas bouger d'un pouce.
+// 2. UNE RETOUCHE D'UNE ÉTAPE QUE TOM N'A PAS FAITE LE SUIT.
+//
+//    CETTE SONDE EXIGEAIT L'INVERSE (« la séance de Tom ne doit pas bouger
+//    d'un pouce »), et elle le criait en rouge depuis 98bc71a — « ce qui suit
+//    la dernière étape faite suit le parcours ». La règle de `majDeSeance` est
+//    que CE QU'IL A FAIT reste à sa place, identique ; le reste suit le
+//    professeur. Tom n'a rien fait ici : le premier exercice remplacé doit
+//    donc lui arriver. Relevé le 27 novembre, en répondant à Rémy (« quand je
+//    change un parcours qui est en direct, ça change quelque chose pour
+//    eux ? ») : un verdict périmé disait le contraire de ce que fait le
+//    logiciel.
 console.log('\n   le professeur REMPLACE le premier exercice : '
     + JSON.stringify(await donner(PARCOURS(['calc-div', 'calc-sub', 'calc-mul']))));
 await tom.reload();
@@ -168,10 +176,10 @@ await tom.waitForFunction(() => window.__atoutmathPret === true, { timeout: 3000
 await dormir(5000);
 const apresRetouche = await etapesVues(tom);
 console.log('   Tom après la retouche : ' + JSON.stringify(apresRetouche));
-const intact = apresRetouche[0] && apresRetouche[0].exercices === apresTom[0].exercices;
-console.log(intact
-    ? '   \x1b[32m→ UNE RETOUCHE NE RÉÉCRIT PAS UNE SÉANCE EN COURS.\x1b[0m'
-    : '   \x1b[31m→ LA SÉANCE A ÉTÉ RÉÉCRITE : le bilan de Tom désigne d\'autres exercices que ceux qu\'il a faits.\x1b[0m');
+const suit = apresRetouche[0] && apresRetouche[0].exercices === 'calc-div · calc-sub · calc-mul';
+console.log(suit
+    ? '   \x1b[32m→ UNE ÉTAPE PAS ENCORE FAITE SUIT LA RETOUCHE DU PROFESSEUR.\x1b[0m'
+    : '   \x1b[31m→ LA RETOUCHE N\'EST PAS ARRIVÉE : Tom fera un exercice que le professeur a retiré.\x1b[0m');
 
 console.log('\nerreurs de page : ' + s.erreurs.length + ' · fenêtres natives : ' + s.fenetresNatives.length);
 s.erreurs.slice(0, 4).forEach((e) => console.log('   ' + e));
