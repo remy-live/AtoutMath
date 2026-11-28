@@ -23,11 +23,16 @@
 // raison. Le tirage l'écarte, il ne le corrige pas.
 
 /** Les rangs, dans l'ordre où on les enseigne. */
+//
+// `garde` : le dernier chiffre qu'on garde ; `decide` : celui qu'on REGARDE
+// pour arrondir. Rémy, 28 novembre : « au dixième, et on regarde le chiffre des
+// centièmes ». La correction disait « le chiffre qui suit le rang » — juste,
+// mais pas dans les mots de la classe.
 export const RANGS = [
-    { id: 'unite', nom: 'à l’unité', decimales: 0, pas: '1' },
-    { id: 'dixieme', nom: 'au dixième', decimales: 1, pas: '0,1' },
-    { id: 'centieme', nom: 'au centième', decimales: 2, pas: '0,01' },
-    { id: 'millieme', nom: 'au millième', decimales: 3, pas: '0,001' }
+    { id: 'unite', nom: 'à l’unité', decimales: 0, pas: '1', garde: 'des unités', decide: 'des dixièmes' },
+    { id: 'dixieme', nom: 'au dixième', decimales: 1, pas: '0,1', garde: 'des dixièmes', decide: 'des centièmes' },
+    { id: 'centieme', nom: 'au centième', decimales: 2, pas: '0,01', garde: 'des centièmes', decide: 'des millièmes' },
+    { id: 'millieme', nom: 'au millième', decimales: 3, pas: '0,001', garde: 'des millièmes', decide: 'des dix-millièmes' }
 ];
 
 export const rangDe = (id) => RANGS.find(r => r.id === id) || RANGS[1];
@@ -198,11 +203,18 @@ export function encadrementDe(t) {
 /** Trois indices : le rang, l'encadrement, puis la règle du mot demandé. */
 export function indicesDe(t) {
     const r = rangDe(t.rang);
+    const Nom = r.nom.replace('au ', 'Au ').replace('à l’', 'À l’');
+    // LE CHIFFRE QU'ON REGARDE EST NOMMÉ, mais seulement pour l'arrondi : par
+    // défaut et par excès, il ne décide de rien — dire « regarde le chiffre des
+    // centièmes » pour une valeur par défaut enverrait chercher une règle là où
+    // il n'y a qu'à couper.
+    const regarde = t.sorte === 'arrondi'
+        ? ` Pour arrondir, on regarde le chiffre ${r.decide}, juste après : c'est lui qui décide.` : '';
     return [
-        r.decimales
-            ? `${r.nom.replace('au ', 'Au ').replace('à l’', 'À l’')}, il y a ${r.decimales} chiffre`
-                + `${r.decimales > 1 ? 's' : ''} après la virgule.`
-            : 'À l’unité, il n’y a plus de virgule du tout.',
+        (r.decimales
+            ? `${Nom}, on garde ${r.decimales} chiffre${r.decimales > 1 ? 's' : ''} après la virgule, `
+                + `jusqu'au chiffre ${r.garde}.`
+            : 'À l’unité, on ne garde aucun chiffre après la virgule.') + regarde,
         `${ecrire(t.n)} est entre ${ecrire(parDefaut(t.n, r.decimales))} et `
             + `${ecrire(parExces(t.n, r.decimales))}.`,
         SORTES[t.sorte].aide
@@ -225,8 +237,10 @@ export function expliquer(t) {
             + `C’est la précédente augmentée de ${rangDe(t.rang).pas}.`;
     }
     const suivant = t.n.chiffres[d];
-    return `${tete}Le chiffre qui suit le rang est ${suivant} : `
-        + `${suivant >= 5 ? 'il est 5 ou plus, on monte' : 'il est plus petit que 5, on reste en dessous'}, `
+    const r = rangDe(t.rang);
+    return `${tete}${r.nom.replace('au ', 'Au ').replace('à l’', 'À l’')}, on regarde le chiffre ${r.decide} : `
+        + `c'est ${suivant}. `
+        + `${suivant >= 5 ? 'Il est 5 ou plus : on monte' : 'Il est plus petit que 5 : on reste en dessous'}, `
         + `donc ${rep}. Arrondir, c’est choisir la plus PROCHE des deux — pas couper.`;
 }
 

@@ -2386,6 +2386,36 @@ html[data-point="plus"] .pt-croix { display: none; }
     color: var(--primary-texte); margin: .5em 0 .7em !important;
 }
 
+/* L'ARRONDI, MONTRÉ — voir js/core/arrondiDessin.js. Rémy : « il faut leur
+   montrer visuellement ». Trois couleurs, et chacune dit un rôle : le BLEU est
+   ce qu'on garde, l'ORANGE le chiffre qui décide, le GRIS ce qui part. Le point
+   et la flèche reprennent l'orange : c'est le même chiffre qui les place. */
+.arr-svg { display: block; width: 100%; max-width: 520px; height: auto; margin: 0 auto;
+    color: var(--text-main); font-family: inherit; }
+.arr-chiffre { font-size: 30px; font-weight: 800; }
+.arr-garde { fill: var(--primary-texte); }
+.arr-decide { fill: var(--warning-texte); }
+.arr-reste, .arr-virgule { fill: var(--text-muted); }
+.arr-virgule { fill: var(--text-main); }
+.arr-reste { opacity: .55; }
+.arr-cercle { fill: color-mix(in srgb, var(--warning) 18%, transparent);
+    stroke: var(--warning-texte); stroke-width: 2.2; }
+.arr-coupe { stroke: var(--text-main); stroke-width: 2; stroke-dasharray: 4 3; }
+.arr-legende { font-size: 13px; fill: var(--text-muted); }
+.arr-legende--decide { fill: var(--warning-texte); font-weight: 700; }
+.arr-legende--garde { fill: var(--primary-texte); font-weight: 700; }
+.arr-legende--milieu { fill: var(--text-main); font-weight: 600; }
+.arr-droite { stroke: var(--text-main); stroke-width: 2.4; }
+.arr-borne { stroke: var(--text-main); stroke-width: 2.4; }
+.arr-trait { stroke: var(--text-main); stroke-width: 1.2; opacity: .6; }
+.arr-milieu { stroke: var(--text-main); stroke-width: 2; stroke-dasharray: 3 2; }
+.arr-moitie { fill: color-mix(in srgb, var(--warning) 22%, transparent); }
+.arr-bout { font-size: 17px; font-weight: 800; fill: var(--text-main); }
+.arr-point { fill: var(--warning-texte); stroke: var(--bg-panel); stroke-width: 2; }
+.arr-nombre { font-size: 15px; font-weight: 700; fill: var(--warning-texte); }
+.arr-fleche { fill: none; stroke: var(--warning-texte); stroke-width: 2.6; }
+.arr-pointe { fill: var(--warning-texte); }
+
 /* LE RAPPEL DE π. Rémy : « Rappelle la valeur de Pi au départ. » Le panneau
    des outils centre son contenu — c'est ce qu'il faut pour un schéma, et le
    contraire de ce qu'il faut pour quatre phrases : centrées, elles se lisent

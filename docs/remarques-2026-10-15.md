@@ -8981,3 +8981,34 @@ cercle et du disque. Trois défauts trouvés avant Rémy :
   dessin, et des doublons : sur papier, le dessin devient un objet, et chaque
   question porte une clef qui l'empêche de revenir (`meta.clef`, que l'écran
   reconnaît désormais pour tous les exercices).
+
+### 28. « il faut leur montrer visuellement » — l'arrondi, 28 novembre
+
+Rémy : « A-t-on fait les valeurs approchées par excès, par défaut, les valeurs
+arrondies (au dixième et on regarde le chiffre des centièmes), les
+encadrements ? » — oui : `num-arrondi` et `num-encadrement`. Deux écarts relevés
+avec sa façon de dire : la correction ne NOMME pas le chiffre qu'on regarde
+(« le chiffre qui suit le rang ») ; et « 3,078 par défaut au dixième » s'écrit
+3 au lieu de 3,0. Sa réponse : « oui corrige et j'ai des élèves qui galèrent un
+peu, il faut leur montrer visuellement ».
+
+**CE QUI EST FAIT (v1259)** :
+- **Le chiffre qu'on regarde est nommé** : « Au dixième, on regarde le chiffre
+  des centièmes : c'est 5. Il est 5 ou plus : on monte, donc 87,6. » Pour « par
+  défaut » et « par excès », on ne le nomme pas : il ne décide de rien.
+- **« 3,0 » et non « 3 »** dans tout ce qu'on lit (correction, loupe,
+  « Montre-moi »). À la saisie, 3 et 3,0 restent acceptés.
+- **Montré** (`core/arrondiDessin.js`) : un dessin par indice — le nombre en
+  cases (gardé en bleu, le chiffre qui décide entouré d'orange et nommé, le
+  reste gris), puis la loupe entre les deux voisins, puis son milieu et la
+  moitié teintée — et le dessin complet, flèche vers la réponse, dans la carte
+  « Ce n'est pas ça » quand les essais sont épuisés. Le dessin d'un indice reste
+  sous l'énoncé une fois la carte fermée. Les encadrements (entre deux entiers,
+  deux dixièmes) ont la même loupe : des « ? » à l'indice, les voisins à la
+  correction.
+- Regardé sur une planche de cas durs (unité, 3,078, 9,97 par excès,
+  millième) : le cercle orange contredisait le texte pour « par défaut », la
+  flèche barrait le nombre, et le trait de coupe faisait de la virgule un
+  point-virgule à l'unité — corrigés avant de livrer. Au navigateur
+  (`node tools/sondeArrondiMontre.mjs`) : indice dessiné, dessin qui reste,
+  correction dessinée avec sa flèche.

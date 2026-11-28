@@ -18,6 +18,7 @@ import {
     tirerArrondi, enonceDe, reponseDe, encadrementDe, indicesDe, expliquer, leurresDe,
     ecrire, valeur
 } from '../arrondi.js';
+import { dessinsDeLArrondi } from '../arrondiDessin.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe,
     valeurParMarche
@@ -41,6 +42,8 @@ const RAPPEL_MOTS_HTML = `<div class="arr-mots">
             <b>proche</b> — ici 3,14, parce que le chiffre suivant est 1.</li>
     </ul>
     <p>Arrondir n’est pas couper : cela ne tombe pareil qu’une fois sur deux.</p>
+    ${dessinsDeLArrondi({ rang: 'centieme', sorte: 'arrondi',
+        n: { entier: 3, chiffres: [1, 4, 1, 6] } }).correction}
 </div>`;
 
 export const arrondiGenerator = {
@@ -92,6 +95,7 @@ export const arrondiGenerator = {
         const auChoix = valeurParMarche(params, 'reponse', id, 'saisie') === 'choix';
         const leurres = leurresDe(t);
         const enonce = enonceDe(t);
+        const dessins = dessinsDeLArrondi(t);
 
         return makeItem({
             seed: rng.seed, generatorId: 'num.arrondi', skillId: SKILL,
@@ -114,11 +118,23 @@ export const arrondiGenerator = {
             // calcul, il s'est trompé de mot, et « faux » ne le lui dit pas.
             diagnostics: auChoix ? null : leurres.map(l => ({ value: l.value, why: l.why })),
             hints: indicesDe(t),
+            // MONTRER, ET PAS SEULEMENT DIRE. Rémy : « j'ai des élèves qui
+            // galèrent un peu, il faut leur montrer visuellement ». Un dessin
+            // par indice — les chiffres, puis la loupe, puis son milieu — et le
+            // dessin complet, flèche comprise, avec la correction. Voir
+            // `core/arrondiDessin.js`.
+            schemas: dessins.indices,
             explanation: expliquer(t),
             difficulty: DIFFICULTE[id] || 2,
             meta: {
                 marche: id, titre: (MARCHES_ARRONDI.find(m => m.id === id) || {}).nom,
                 rang: t.rang, sorte: t.sorte, nombre: ecrire(t.n),
+                schemaCorrection: dessins.correction,
+                // « 3,0 » ET NON « 3 » : au dixième, on écrit le chiffre des
+                // dixièmes même quand il vaut zéro — c'est lui qui dit à quel
+                // rang on a arrondi. La valeur attendue reste un nombre : 3 et
+                // 3,0 sont acceptés tous les deux à la saisie.
+                reponseLisible: ecrire(rep),
                 encadrement: encadrementDe(t),
                 // L'ÉLÈVE ÉCRIT UN NOMBRE À VIRGULE — sauf à l'unité, où il n'y
                 // en a plus. Une touche virgule inutilisable laisserait croire

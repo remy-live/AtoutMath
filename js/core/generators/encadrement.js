@@ -30,6 +30,7 @@
 //   4. L'encadrement qui ENCADRE DE TRAVERS : les deux bornes du même côté.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { dessinsDeLEncadrement } from '../arrondiDessin.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
@@ -248,6 +249,8 @@ export const encadrementGenerator = {
         const e = tirerEncadrement(rng, pas);
         const ecrire = (b, h) => `${fr(b)} < ${fr(e.valeur)} < ${fr(h)}`;
         const bonne = ecrire(e.bas, e.haut);
+        const dessin = e.pas === 1 || e.pas === 0.1
+            ? dessinsDeLEncadrement(fr(e.valeur), e.pas === 1 ? 'unite' : 'dixieme', [fr(e.bas), fr(e.haut)]) : null;
 
         // LES TROIS ERREURS, et chacune a un nom. La dernière — les deux
         // bornes du même côté — n'est pas une faute de calcul mais de
@@ -294,11 +297,17 @@ export const encadrementGenerator = {
                     : 'Cherche le nombre juste en dessous, puis celui juste au-dessus.',
                 `Le nombre encadré doit être STRICTEMENT entre les deux.`
             ],
+            // LA LOUPE DE L'ARRONDI, pour l'encadrement aussi. Rémy : « il faut
+            // leur montrer visuellement ». Le second indice pose le nombre sur
+            // la droite, des « ? » aux deux bouts ; la correction écrit les
+            // voisins. Pas de dessin pour les dizaines (voir le module).
+            ...(dessin ? { schemas: [null, dessin.indice] } : {}),
             explanation: `${fr(e.bas)} et ${fr(e.haut)} sont ${NOM_DU_RANG[e.pas]} qui `
                 + `entourent ${fr(e.valeur)} : on écrit ${bonne}.`,
             difficulty: e.pas === 0.1 ? 3 : 2,
             meta: { marche, valeur: e.valeur, bas: e.bas, haut: e.haut, pas: e.pas,
-                theme: `enc-${e.pas}-${e.bas}` }
+                theme: `enc-${e.pas}-${e.bas}`,
+                ...(dessin ? { schemaCorrection: dessin.correction } : {}) }
         });
     }
 };

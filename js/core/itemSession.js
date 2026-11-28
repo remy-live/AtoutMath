@@ -586,6 +586,12 @@ export class ItemSession {
                     // fois les essais épuisés, pour la même raison.
                     misconception: (!encore && this.policy.correction !== 'reponse'
                         && verdict.misconception) ? this.item.explanation : null,
+                    // ET LE DESSIN DE LA CORRECTION, quand le générateur en donne un
+                    // (`meta.schemaCorrection`) — aux mêmes conditions que
+                    // l'explication : essais épuisés, et pas en interrogation.
+                    // Rémy, sur l'arrondi : « il faut leur montrer visuellement ».
+                    schema: (!encore && this.policy.correction !== 'reponse'
+                        && this.item.meta && this.item.meta.schemaCorrection) || null,
                     essaisRestants: encore ? this.attemptsLeft : 0
                 });
             }
